@@ -40,7 +40,7 @@ pub struct MapOffer {
     pub map: MapIdentity,
     /// The computer that plays its games' unowned battle sides (E16 M5 T10, v49).
     pub computer: Computer,
-    /// How its games are timed (E16 M5 T17, v59).
+    /// How its games are timed (E16 M5 T17, v60).
     pub clock: OfferClock,
 }
 

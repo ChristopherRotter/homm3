@@ -13,11 +13,11 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_adventure::{
-    AdventureObservation, AdventureReveal, BitGrid, Choice, HeroView, HireTarget, ObjectTypeId,
-    Offer, Pos, UniversityVisit, Viewers,
+    AdventureObservation, AdventureReveal, BitGrid, Choice, HeroView, HireSource, HireTarget,
+    ObjectTypeId, Offer, Pos, UniversityVisit, Viewers,
 };
 use h3_content::{CreatureTypeId, HeroTypeId, ResourceId, SkillId};
-use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_heroes::{HeroDetails, PrimarySkill, SlotState};
 
 use crate::command::GameEvent;
@@ -165,18 +165,62 @@ impl DecisionView {
 
 /// A hire dialog as its owner sees it (GAM-DEC-008, E08 T95b; increment 10's design note §13):
 /// what the original's `H3RecruitMgr` shows but the most, which the owner's own treasury gives (a
-/// client draws the slider). The source is named by type and anchor, never by index (ADR-0016
-/// point 6).
+/// client draws the slider). The source is named as [`HireSeen`] says, never by an object's index
+/// (ADR-0016 point 6).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HireView {
-    /// The army the bought creatures join: the visiting hero's.
+    /// The army the bought creatures join: the visiting hero's, or since E09 T27 a town's garrison.
     pub target: HireTarget,
-    /// The source's type: the dwelling's or the Refugee Camp's.
-    pub object_type: ObjectTypeId,
-    /// The source's anchor.
-    pub anchor: Pos,
-    /// The source's creatures in its order (a dwelling's kind's; a camp's one).
+    /// The source.
+    pub source: HireSeen,
+    /// The source's creatures in its order (a dwelling's kind's; a camp's one; since E09 T27 a
+    /// town's index's, the upgrade first, or its Portal's one).
     pub creatures: Vec<HireCreature>,
+}
+
+/// A hire dialog's source as its owner sees it ([`HireView`], [`crate::GameEvent::HireOpened`];
+/// E09 T27, the town epic's design note §49): a map object by type and anchor, never by index
+/// (ADR-0016 point 6), or a town's index or Portal by the town's id (ADR-0028 point 3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HireSeen {
+    /// A dwelling or a Refugee Camp on the map.
+    Object {
+        /// The object's type.
+        object_type: ObjectTypeId,
+        /// The object's anchor.
+        anchor: Pos,
+    },
+    /// A town's dwelling or horde: one of its fourteen creature indexes (`level - 1`, `+ 7`
+    /// upgraded).
+    Town {
+        /// The town.
+        town: TownId,
+        /// The creature index.
+        index: u8,
+    },
+    /// A town's Portal of Summoning.
+    Portal {
+        /// The town.
+        town: TownId,
+    },
+}
+
+impl HireSeen {
+    /// `source` as its owner sees it.
+    pub(crate) const fn of(source: &HireSource) -> Self {
+        match *source {
+            HireSource::Object {
+                object_type,
+                anchor,
+                ..
+            } => Self::Object {
+                object_type,
+                anchor,
+            },
+            HireSource::Town { town, index } => Self::Town { town, index },
+            HireSource::Portal { town } => Self::Portal { town },
+        }
+    }
 }
 
 /// A creature a hire dialog sells, as its owner sees it ([`HireView`]).

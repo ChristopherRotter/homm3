@@ -4,7 +4,7 @@
 //! Each time is what was left when the message was sent; a running one counts down from there on
 //! the client's own clock.
 //!
-//! A map offer shows how its games are timed (E16 M5 T17, v59: [`OfferClock`]), before anyone
+//! A map offer shows how its games are timed (E16 M5 T17, v60: [`OfferClock`]), before anyone
 //! joins.
 //!
 //! Provisional (the 2b review list): the shapes; a player told only its own timers (another
@@ -53,7 +53,7 @@ pub struct Duel {
     pub defender: Timer,
 }
 
-/// How a map offer's games are timed (E16 M5 T17, v59), as the lobby shows it: the session's
+/// How a map offer's games are timed (E16 M5 T17, v60), as the lobby shows it: the session's
 /// clock (`session::game::Clock`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

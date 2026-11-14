@@ -752,8 +752,10 @@ fn the_fold_leaves_the_view_for_messages_and_what_no_event_carries() {
             GameEvent::HireOpened {
                 player: 1,
                 target: HireTarget::Hero { hero: 4 },
-                object_type: ty,
-                anchor: a,
+                source: HireSeen::Object {
+                    object_type: ty,
+                    anchor: a,
+                },
             },
             GameEvent::BattleStarted {
                 heroes: [Some(4), None],

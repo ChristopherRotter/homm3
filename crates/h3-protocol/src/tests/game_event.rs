@@ -14,7 +14,7 @@ use h3_content::Formation as EngineFormation;
 use h3_contracts::{ArmyStack as EngineStack, BattleResult, FortLevel, HeroId, PlayerId, TownId};
 use h3_game::{
     ArmyRef, ArmySlot, ArtifactPlace, BuildingId, BuildingSet, GameEvent, GarrisonStackView,
-    HeroChange, HireTarget, MonthKind, Position, TownBuildingsView, Viewer, WeekKind,
+    HeroChange, HireSeen, HireTarget, MonthKind, Position, TownBuildingsView, Viewer, WeekKind,
 };
 use h3_heroes::{ArtifactInstance, OfferLevels, PrimarySkill as EnginePrimary};
 use h3_kernel::handle::Handle;
@@ -22,7 +22,7 @@ use h3_kernel::rng::{Rng, StreamId};
 use h3_sim::adventure::AdventureEnv;
 use h3_sim::adventure::rollout::choose;
 
-use super::game::{RULES, round_trips, set_back};
+use super::game::{RULES, hire_seen_back, hire_target_back, round_trips, set_back};
 use crate::map::from_engine;
 use crate::map::game::events;
 use crate::wire::game as w;
@@ -613,15 +613,11 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
         G::HireOpened {
             player,
             target,
-            object_type,
-            anchor,
+            source,
         } => GameEvent::HireOpened {
             player: p(player),
-            target: match target {
-                w::HireTarget::Hero { hero } => HireTarget::Hero(id(hero)),
-            },
-            object_type: ty(object_type),
-            anchor: pos_back(anchor),
+            target: hire_target_back(target),
+            source: hire_seen_back(source),
         },
         G::DecisionClosed { player } => GameEvent::DecisionClosed { player: p(player) },
         G::GroupLost {
@@ -965,8 +961,26 @@ pub(super) fn every_event() -> Vec<GameEvent> {
         GameEvent::HireOpened {
             player: P0,
             target: HireTarget::Hero(hero),
-            object_type: ty,
-            anchor: at,
+            source: HireSeen::Object {
+                object_type: ty,
+                anchor: at,
+            },
+        },
+        // E09 T27 (protocol v59): a town's recruitment.
+        GameEvent::HireOpened {
+            player: P0,
+            target: HireTarget::Garrison(TownId::new(1)),
+            source: HireSeen::Town {
+                town: TownId::new(1),
+                index: 7,
+            },
+        },
+        GameEvent::HireOpened {
+            player: P0,
+            target: HireTarget::Garrison(TownId::new(1)),
+            source: HireSeen::Portal {
+                town: TownId::new(1),
+            },
         },
         GameEvent::DecisionClosed { player: P0 },
         GameEvent::GroupLost {

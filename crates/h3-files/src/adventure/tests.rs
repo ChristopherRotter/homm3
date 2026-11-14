@@ -135,6 +135,15 @@ fn commands_round_trip_through_their_text() {
             }),
             "3 town build 2 40",
         ),
+        // Format v15 (E09 T27): a town's recruitment, by its town and building.
+        (
+            PlayerId::new(0),
+            GameCommand::Town(TownCommand::Recruit {
+                town: TownId::new(1),
+                building: BuildingId::from_index(30).unwrap(),
+            }),
+            "0 town recruit 1 30",
+        ),
         // Format v12 (E08 T105b2): a revisit, by its hero.
         (
             PlayerId::new(1),
@@ -364,6 +373,9 @@ fn commands_round_trip_through_their_text() {
         "0 town build 2 x",
         "0 town build 2 64",
         "0 town build 2 7 now",
+        "0 town recruit 2",
+        "0 town recruit 2 64",
+        "0 town recruit 2 7 now",
         "0 battle",
         "0 battle fly 3",
         "0 battle A wait",

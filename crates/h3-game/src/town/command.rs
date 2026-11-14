@@ -1,4 +1,5 @@
-//! The town context's commands as the game runs them (TWN-BLD-001; E09 T18b1, the town epic's
+//! The town context's commands as the game runs them (TWN-BLD-001, since E09 T27 TWN-REC-001's
+//! opening; E09 T18b1, the town epic's
 //! design note §29; ADR-0028 point 6): `GameCommand::Town` checks the actor's turn as an
 //! adventure command does (`GameState::check_ready`), then this module checks the town, its
 //! owner, the hall's tests and the treasury, and only then pays and builds. No hero, no visit, no
@@ -8,12 +9,13 @@ use h3_contracts::{PlayerId, TownId};
 use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use super::view::Told;
-use super::{Draws, holds_capitol, portal};
+use super::{Draws, holds_capitol, portal, recruit};
 use crate::command::{GameCommandError, GameEvent, Sink};
 use crate::{GameRuleset, GameState};
 
-/// Runs `player`'s town command, whose turn [`GameState::check_ready`] checked. A build
-/// (TWN-BLD-001), checked in this order, each refusal changing nothing:
+/// Runs `player`'s town command, whose turn [`GameState::check_ready`] checked: a recruitment
+/// opens a hire dialog (TWN-REC-001, -002; E09 T27, [`recruit::open`]); a build (TWN-BLD-001),
+/// checked in this order, each refusal changing nothing:
 ///
 /// 1. the town in the store of towns, else [`TownCommandError::UnknownTown`];
 /// 2. its owner, the adventure's owner of its object, is `player`, else
@@ -42,7 +44,12 @@ pub(crate) fn command<S: Sink>(
     command: TownCommand,
     sink: &mut S,
 ) -> Result<(), GameCommandError> {
-    let TownCommand::Build { town, building } = command;
+    let (town, building) = match command {
+        TownCommand::Build { town, building } => (town, building),
+        TownCommand::Recruit { town, building } => {
+            return recruit::open(state, rules, player, (town, building), sink);
+        }
+    };
     let part = rules.towns();
     let record = state
         .towns()
@@ -111,7 +118,7 @@ pub(crate) fn build_told<S: Sink>(
 
 /// The owner of `town` (the adventure's owner of its object; E09 increment 1's design note §11),
 /// none for a neutral town or a town the map lacks.
-fn owner(state: &GameState, town: TownId) -> Option<PlayerId> {
+pub(super) fn owner(state: &GameState, town: TownId) -> Option<PlayerId> {
     let adventure = state.adventure();
     adventure
         .map()

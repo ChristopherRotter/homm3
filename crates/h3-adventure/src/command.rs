@@ -471,6 +471,10 @@ pub struct HireDialog {
 pub enum HireTarget {
     /// The army of the hero on the source's entrance.
     Hero(HeroId),
+    /// The town's upper bar (E09 T27, the town epic's design note §49): its garrison, until a
+    /// garrison hero stands there (E09 T28a), never its visitor's army (survey `E09-growth.md`
+    /// §8).
+    Garrison(TownId),
 }
 
 /// Where a hire dialog's creatures are bought ([`HireDialog`]).
@@ -486,6 +490,20 @@ pub enum HireSource {
         /// The object's anchor.
         anchor: Pos,
     },
+    /// A town's dwelling or horde (E09 T27, the town epic's design note §49): the creatures of one
+    /// of its fourteen indexes, their counts the town's (`h3_towns::recruit_stock`); a plain index,
+    /// as this crate imports no town type.
+    Town {
+        /// The town.
+        town: TownId,
+        /// The creature index, `level - 1`, `+ 7` for the upgrade.
+        index: u8,
+    },
+    /// A town's Portal of Summoning (E09 T27, TWN-REC-002): its creature and count, the town's.
+    Portal {
+        /// The town.
+        town: TownId,
+    },
 }
 
 /// Why a purchase in a hire dialog was refused ([`crate::AdventureState::check_hire`], in this
@@ -493,7 +511,7 @@ pub enum HireSource {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HireError {
     /// The dialog's hero is not on the map, or its source is not the dwelling or Refugee Camp it
-    /// names.
+    /// names (since E09 T27 also a town's source or target the map does not have).
     NoSource,
     /// The creature is not one of the source's.
     NotOffered(CreatureTypeId),

@@ -44,7 +44,7 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
 - 2026-11-14 (the server lane, E16 M5 T17, `claude/admiring-lovelace-jlv0hu`; **a protocol
-  version taken**): protocol **v59**: a map offer shows how its games are timed,
+  version taken**): protocol **v60** (after the town lane's T27's v59): a map offer shows how its games are timed,
   `wire::game::MapOffer`'s `clock` (`wire::game::OfferClock`: `turn_ms`, none for unlimited, an
   offer's one of the original's 1, 2, 4, 6, 8, 10, 15, 20, 25 or 30 minutes; `level_up_ms`, none
   when the game waits for a level-up; `battle_ms` and `increment_ms`, each side's chess clock in a

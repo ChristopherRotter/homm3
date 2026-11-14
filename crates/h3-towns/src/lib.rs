@@ -25,7 +25,8 @@
 //! dwelling's growth ([`growth`] with the game's [`GrowthInputs`]; E09 T25a), the week's kind and
 //! growth and the month's ([`WeekKind`], [`week_growth`], [`MonthGrowth`], [`month`]; E09 T25b1),
 //! a neutral town's garrison week and the Portal's draw ([`garrison_week`], [`summon`]; E09
-//! T25b2). What comes next: the game's growth (E09 T26).
+//! T25b2); recruitment ([`recruit_source`], [`recruiting`], [`recruit_stock`], [`check_recruit`], [`recruit`];
+//! E09 T27). What comes next: the town's two bars and the garrison hero (E09 T28).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -59,6 +60,7 @@ mod growth;
 mod income;
 mod portal;
 mod record;
+mod recruit;
 mod ruleset;
 mod setup;
 mod siege;
@@ -77,6 +79,9 @@ pub use h3_contracts::Moat;
 pub use income::{daily_income, hall_level};
 pub use portal::{has_portal, summon};
 pub use record::{CREATURE_INDEXES, MAX_AVAILABLE, Summoned, Town, TownEvent, TownStatic};
+pub use recruit::{
+    RecruitError, RecruitSource, check_recruit, recruit, recruit_source, recruit_stock, recruiting,
+};
 pub use ruleset::{
     BUILDING_SLOTS, Building, BuildingDef, BuildingRoles, CreatureLevel, CreatureLevelDef,
     DefenderBonus, Dwelling, GarrisonRow, GarrisonWeekParams, Horde, MAX_CREATURE_LEVELS, Reveal,

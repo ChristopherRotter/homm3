@@ -3202,7 +3202,7 @@ clock's logic, the server only its configuration, its journal and its wake-ups.
   `battle_increment_ms` (SRV-Q32's base and increment, the session's defaults); `clock()` builds
   the session's `Clock`; a test's `test_clock` in place of it (`cfg(test)`, as the seeds), so that
   tests wait seconds, not minutes. `whole::MapOffer::clock`.
-- **The lobby** (protocol v59): `wire::game::MapOffer`'s `clock`, `wire::game::OfferClock`
+- **The lobby** (protocol v60, after the town lane's E09 T27 took v59 and `master` was merged in): `wire::game::MapOffer`'s `clock`, `wire::game::OfferClock`
   (`turn_ms`, `level_up_ms`, `battle_ms`, `increment_ms`; 32 bits, saturated), built by
   `map::game::offer_clock` inside `map_offer` (its last parameter now the computer and the clock).
 - **The journal**: `GameStart::clock` (`journal::whole::StartClock`), the offer's clock when the

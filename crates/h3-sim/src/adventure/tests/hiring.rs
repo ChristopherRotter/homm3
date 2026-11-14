@@ -221,11 +221,11 @@ fn a_hire_dialog_is_answered_through_the_env() {
 
 /// E08 T95b (replay format v10; v11 since E09 T18b1, the town context's commands; v12 since E08
 /// T105b2, the revisit; v13 since E08 T114a2, a map garrison's army; v14 since E16 M5 T14, the
-/// system's own commands): a recorded game of a hire dialog's answers, a purchase and its
-/// `Close`, verifies.
+/// system's own commands; v15 since E09 T27, a town's recruitment): a recorded game of a hire
+/// dialog's answers, a purchase and its `Close`, verifies.
 #[test]
 fn a_replay_records_a_hire_dialogs_answers() {
-    assert_eq!(replay::REPLAY_FORMAT_VERSION, 14);
+    assert_eq!(replay::REPLAY_FORMAT_VERSION, 15);
     let (mut env, mut commands) = hired("t:several");
     for action in [Action::hire(2), Action::decline()] {
         let (_, command) = env.step_decoded(RED, action, &mut Vec::new()).unwrap();

@@ -329,7 +329,7 @@ client lane's 2026-11-04 request, when online battles need them).
   `deadline`, `GameOptions::clock`, the turn's timer, the level-up's time, the chess clocks
   (SRV-Q32), the system's steps at an end, `GameEntry::Elapsed`; protocol v58 `GameClock`).
 - **T17 The clock hosted** done 2026-11-14 (`E16-log.md`: `[[map]] turn_minutes`, `level_up_ms`,
-  `battle_ms`, `battle_increment_ms`; the offer's clock in the lobby, protocol v59 `OfferClock`,
+  `battle_ms`, `battle_increment_ms`; the offer's clock in the lobby, protocol v60 `OfferClock`,
   and in the journal's first line; the game's thread waking at `GameSession::deadline`, a stop
   journaling its time, `GameSession::flush_time`; `tests/clock.rs`).
 - **T18 A seat's commands per turn** (SRV-Q30): `[limits]`'s bound of a seat's accepted commands
@@ -361,7 +361,7 @@ the tasks land):
   host's policy, outside the state; tested in `tests/game_clock.rs`).
 - T17: the configuration (`turn_minutes`, absent for unlimited, one of the original's ten;
   `level_up_ms`, 0 for a game that waits, 60 s by default also under unlimited turns; `battle_ms`,
-  not 0, and `battle_increment_ms`); the offer's clock shown in the lobby (`OfferClock`, v59,
+  not 0, and `battle_increment_ms`); the offer's clock shown in the lobby (`OfferClock`, v60,
   milliseconds as 32 bits); a game's clock fixed at its creation, in its journal's first line (a
   journal without one untimed, the format left at 1); the game's thread timed by a
   current-thread tokio runtime of its own (`timeout_at` on its inbox), the sweep's tick reading
