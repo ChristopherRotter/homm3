@@ -229,7 +229,8 @@ impl AdventureState {
                 }
                 Held::TownHero(at) => {
                     let hero = self.town_hero_at_mut(at);
-                    hero.into_iter().for_each(|hero| hero.army.clone_from(&stacks));
+                    hero.into_iter()
+                        .for_each(|hero| hero.army.clone_from(&stacks));
                 }
             }
         }

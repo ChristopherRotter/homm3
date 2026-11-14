@@ -365,8 +365,8 @@ fn a_town_s_purchase_joins_its_garrison_hero_s_army() {
 /// The adventure's refusals as the town command's, one to one (each the same name).
 #[test]
 fn each_refusal_of_a_move_is_the_town_command_s_own() {
-    use h3_adventure::TownHeroError as E;
     use TownCommandError as T;
+    use h3_adventure::TownHeroError as E;
     let pairs = [
         (E::UnknownTown, T::UnknownTown),
         (E::GarrisonHeld, T::GarrisonHeld),

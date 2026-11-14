@@ -48,6 +48,13 @@ Their scopes: the epic's M2 table; what each still reads or records: design §6.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-14 (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent;
+  **your path changed, informational**): protocol v62's `wire::game::Adventure` gains
+  `garrison_heroes` (a player's own garrison heroes, `wire::game::GarrisonHero`), so
+  `h3-view`'s `game_record/tests.rs` literal took `garrison_heroes: Vec::new()`. New wire
+  variants a client may meet: `TownCommand::Heroes`, eight `TownReject`s, the adventure events
+  `GarrisonEntered` and `GarrisonLeft`.
+
 - 2026-11-14 (the server lane, E16 M5 T17, `claude/admiring-lovelace-jlv0hu`; **a protocol
   version taken**): protocol **v60** (after the town lane's T27's v59): a map offer shows how its games are timed,
   `wire::game::MapOffer`'s `clock` (`wire::game::OfferClock`: `turn_ms`, none for unlimited, an

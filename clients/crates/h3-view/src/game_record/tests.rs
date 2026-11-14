@@ -439,6 +439,7 @@ fn game_snapshot(n: u32, battle: Option<Observation>) -> ServerMessage {
         keys: 0,
         known: Vec::new(),
         boats: Vec::new(),
+        garrison_heroes: Vec::new(),
     };
     ServerMessage::GameSnapshot {
         n,
