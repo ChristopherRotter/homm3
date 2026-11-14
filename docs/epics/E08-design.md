@@ -636,6 +636,12 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
   week's marks cleared at their steps; the points and the maximum raised together; the Sirens'
   survivors at least one, never more); the views follow (`check_told` for `GarrisonChanged`);
   fixed cases (256) that visit every class.
+  *As built* (T116b1, decision 329: the garrisons; the fifteen in T116b2): `GARRISONS` (33.0, 33.1,
+  219.0, 219.1; an RoE map's vertical one laid as its horizontal twin), `GarrisonPlan` (owner,
+  army, removable flag), `Step::Exchange`, `check_garrisons` with `check_garrison_battle_end` and
+  the exchange in `check_decisions`; the fixed cases 512, the oracles run inside them
+  (`the_plans_cross_fight_and_exchange_at_garrisons`); `check_told`'s `GarrisonChanged` (T114b)
+  unchanged, now met by the plans' garrisons.
 - **Benchmarks** (`homm3-bench-regression`): the passage in the reach first (T114a, right after
   its first build): `reach-xl-144` and `reach-lifted-xl-144` against `master` (no garrison: flat),
   a new **`reach-garrisons-xl-144`** (an XL map with garrisons across its passages, owned by the

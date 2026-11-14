@@ -8597,8 +8597,8 @@ fn check_garrison_battle_end(
 /// The map garrisons after an accepted command of `player` (E08 T116b1; increment 12's design
 /// note §16; ADV-GAR-002, ADV-GAR-003, ADV-GAR-005, GAM-MAN-001 amended, ADV-OWN-001): a
 /// garrison's army changes only by its battle's end ([`check_garrison_battle_end`]) or by an army
-/// command of the player's open exchange with it, of a garrison the player owns (the one owner
-/// rule: another's or a neutral garrison is never managed), and a non-removable one's stacks
+/// command of the player's open exchange with it, of a garrison the player owns (by the one owner
+/// rule another's or a neutral garrison is never managed), and a non-removable one's stacks
 /// never leave (each slot it held keeps its stack: no take, merge, swap or dismissal; only its
 /// empty slots take stacks, D-61); its owner changes only by its flag, told with the new owner,
 /// which only an empty garrison takes (ADV-OWN-001); and a battle started on an anti-magic

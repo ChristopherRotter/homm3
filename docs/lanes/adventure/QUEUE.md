@@ -4,24 +4,26 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1 done: T108a in two (decision 297): T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b (`adventure/e08-t108b`, whole: decision 304; the design note and the three drafts, the checkpoint ADV-Q50, decisions 305–309, the cut T109 to T117). Round 2: T109 in two at the code's seam (decision 310): T109a done (`adventure/e08-t109a`, `cross-lane`: the writer's seventeen classes, the spec's garrisons; no spell points, decision 311); T109b done (`adventure/e08-t109b`, `cross-lane`, whole: decision 312; the specs E12a and E12b, the School of War in the writer, decision 313; E12-5 on the start's reveal, decision 314); round 2 done. Round 3: T110 done (`adventure/e08-t110`, whole: decision 316; the harness's reads and steps, the recipes `E08-batch-12a` and `-12b`, three runs each, the templates filled); T111 done (`adventure/e08-t111`, whole, docs only: survey §15, every row as read; the visit modes by the class lists, the checkpoint ADV-Q51, decision 317); round 3 done. Round 4: T112 done (`shared/e08-t112`, `cross-lane`, whole: decision 318; the three drafts in ADR-0013, -0016, -0017 with batch E12's rows, the glossary, the security lines, `EffectSource::Visit`'s doc comment, the experiments README's visit modes); round 4 done. Round 5: T113a done (`adventure/e08-t113a`, `cross-lane`, alone: decision 319; the kinds, the packs, `kind_mark`, the check against the original data; part v20); T113b done (`adventure/e08-t113b`, whole: decisions 321, 322; the import, `Holds::Garrison`, the census, the grounds' twins checked; map import v22, adventure state hash v22); round 5 done. Round 6: T114a in two at the exchange (decision 323): T114a1 done (`adventure/e08-t114a1`: the visit, the battle, the capture, anti-magic, the passage; no version moved); T114a2 done (`adventure/e08-t114a2`, `cross-lane`, whole: decision 324; the exchange, the owner rule; game state hash v29, replay format v13, protocol v52); T114b done (`adventure/e08-t114b`, `cross-lane`, whole: decision 325; every viewer's map garrisons, `GarrisonChanged`, the fold; protocol v54); round 6 done. Round 7: T115a done (`adventure/e08-t115a`, `cross-lane`, whole: decision 326; the battle bonuses and timed marks of the heroes on the map, their inputs, the clear and the drops; adventure state hash v23, game state hash v31, protocol v57); T115b done (`adventure/e08-t115b` after `shared/e08-t115b-sirens` #909, `cross-lane`, whole: decision 327; the fifteen's visits, the blocks, the Sirens, the kind marks, the weekday; adventure state hash v24, protocol v61); round 7 done. Round 8: T116 in three (decision 328): T116a done (`adventure/e08-t116a`, `cross-lane`: the garrisons and bonuses maps, fourteen golden replays, the server lane's counts); T116b next, then T116c, T117. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1 done: T108a in two (decision 297): T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b (`adventure/e08-t108b`, whole: decision 304; the design note and the three drafts, the checkpoint ADV-Q50, decisions 305–309, the cut T109 to T117). Round 2: T109 in two at the code's seam (decision 310): T109a done (`adventure/e08-t109a`, `cross-lane`: the writer's seventeen classes, the spec's garrisons; no spell points, decision 311); T109b done (`adventure/e08-t109b`, `cross-lane`, whole: decision 312; the specs E12a and E12b, the School of War in the writer, decision 313; E12-5 on the start's reveal, decision 314); round 2 done. Round 3: T110 done (`adventure/e08-t110`, whole: decision 316; the harness's reads and steps, the recipes `E08-batch-12a` and `-12b`, three runs each, the templates filled); T111 done (`adventure/e08-t111`, whole, docs only: survey §15, every row as read; the visit modes by the class lists, the checkpoint ADV-Q51, decision 317); round 3 done. Round 4: T112 done (`shared/e08-t112`, `cross-lane`, whole: decision 318; the three drafts in ADR-0013, -0016, -0017 with batch E12's rows, the glossary, the security lines, `EffectSource::Visit`'s doc comment, the experiments README's visit modes); round 4 done. Round 5: T113a done (`adventure/e08-t113a`, `cross-lane`, alone: decision 319; the kinds, the packs, `kind_mark`, the check against the original data; part v20); T113b done (`adventure/e08-t113b`, whole: decisions 321, 322; the import, `Holds::Garrison`, the census, the grounds' twins checked; map import v22, adventure state hash v22); round 5 done. Round 6: T114a in two at the exchange (decision 323): T114a1 done (`adventure/e08-t114a1`: the visit, the battle, the capture, anti-magic, the passage; no version moved); T114a2 done (`adventure/e08-t114a2`, `cross-lane`, whole: decision 324; the exchange, the owner rule; game state hash v29, replay format v13, protocol v52); T114b done (`adventure/e08-t114b`, `cross-lane`, whole: decision 325; every viewer's map garrisons, `GarrisonChanged`, the fold; protocol v54); round 6 done. Round 7: T115a done (`adventure/e08-t115a`, `cross-lane`, whole: decision 326; the battle bonuses and timed marks of the heroes on the map, their inputs, the clear and the drops; adventure state hash v23, game state hash v31, protocol v57); T115b done (`adventure/e08-t115b` after `shared/e08-t115b-sirens` #909, `cross-lane`, whole: decision 327; the fifteen's visits, the blocks, the Sirens, the kind marks, the weekday; adventure state hash v24, protocol v61); round 7 done. Round 8: T116 in three (decision 328): T116a done (`adventure/e08-t116a`, `cross-lane`: the garrisons and bonuses maps, fourteen golden replays, the server lane's counts); T116b in two (decision 329): T116b1 done (`adventure/e08-t116b1`: the garrisons in the plans' properties, the hygiene property's two-way monolith); T116b2 next, then T116c, T117. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T116b — the plans' properties** (design note §16; decision 328; then **T116c**)
+**E08 T116b2 — the bonus visitables' properties** (design note §16; decision 329; then **T116c**)
 
-- **Scope:** `h3-map`'s plans (`play.rs`) with the seventeen kinds (`GARRISONS`, `BONUSES`; a
-  garrison's owner, army and removable flag drawn, the fifteen by template, the sea's three on
-  water), `Step::Exchange` with arbitrary army commands; `check_garrisons` (a garrison's army only
-  changes by its battle or the exchange; the one owner rule never broken; a non-removable
-  garrison's stacks never leave), `check_bonuses` (a mark set once per battle; the amounts the
-  visit's; the day's and the week's marks cleared at their steps; the points and the maximum raised
-  together; the Sirens' survivors at least one, never more); the views follow (`check_told` for
-  `GarrisonChanged`, the kind marks); fixed cases (256) that visit every class. The inbox's
-  hygiene-property case (a two-way monolith, `cc f1ef9d36…`) meets these properties: find it, fix
-  the property or the engine, commit the line. `TRAPS.md`: the plans' strategy (a draw appended
-  last; raise the cover tests' cases rather than tune the draw). Confirm the cut at its start.
-- **Inputs:** design §16; T116a's record (`E08-log.md`; the two maps' tests show the kinds' setups),
-  `state/garrisons.rs`, `state/visitables.rs`, `play.rs`, `view.rs`.
-- **Depends on:** T116a (its pull request). **Status:** ready once T116a merges (the scoped verify).
+- **Scope:** `h3-map`'s plans (`play.rs`) with the fifteen bonus visitables (`BONUSES`, appended
+  after T116b1's `GARRISONS`: the twelve land kinds by template, near the heroes; the sea's three,
+  the Buoy, the Mermaids and the Sirens, on the plan's strait as the Whirlpools), Springs emptied
+  and Fountains drawn by the build; `check_bonuses` (a once-mark set once per battle; the amounts
+  the visit's; the day's and the week's marks cleared at their steps; the points and the maximum
+  raised together; the Sirens' survivors at least one, never more; the kind marks only grow); the
+  old oracles met (the visits' events in `check_decisions`, `check_conservation`, the battle
+  bonuses' clear in `check_heroes_after_battle`); the views follow (`check_told`'s bonuses and
+  kind marks, T115b's, met by the plans' kinds; the hygiene property's own visits of a Fountain or
+  a Spring whose drawn value or entrance the two games differ in); a cover test of fixed cases
+  that visits every class (as T116b1's `the_plans_cross_fight_and_exchange_at_garrisons`, the
+  oracles run inside it). `TRAPS.md`: the plans' strategy (raise the cover tests' cases rather
+  than tune the draw). Confirm the cut at its start.
+- **Inputs:** design §8 to §10, §16; T116a's and T116b1's records (`E08-log.md`; `bonuses_map.rs`
+  shows the kinds' setups), `state/visitables.rs`, `state/bonuses.rs`, `play.rs`, `view.rs`.
+- **Depends on:** T116b1 (its pull request). **Status:** ready once T116b1 merges.
 
 **E08 T116c — the XL map, the workloads, the original data** (design note §16; decision 328; then
 **T117**)
@@ -86,17 +88,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   shell's) and reports it with the victory; the shell needs the day, the
   difficulty and the score, and stubs it until then.
 
-- 2026-11-13 (E08 T114b's scoped verify; **a failing case of the hygiene property, on `master`
-  too**): `h3-map`'s `a_viewer_learns_nothing_it_cannot_see` failed with the regression line `cc
-  f1ef9d365138e68fe1e92148a08536e583481e4b06db263fa364dc7e91824600` (a 7 × 7 two-level RoE plan;
-  red's hero walks to the two-way monolith at (6, 0, 1), whose pair (4, 0, 0) the unseen part's
-  teleporters change): one game tells the viewer the walk and `MovementChanged`, the other the walk
-  alone, and the `entering && ta != tb` branch (`view.rs`, the teleporters' cut at
-  `HeroTeleported`, `LeadsNowhere` or `MeetingOpened`) finds none of its events, so it compares
-  the whole lists. Replayed on `master` 8380e4e in a worktree: the same failure, so not T114b's;
-  the line is not committed (CI's random cases rarely meet it). Find what the second game told
-  instead (a battle at the exit, a hero gone from the map?) and fix the property or the engine;
-  then commit the line. T116b meets these properties anyway.
 - 2026-11-13 (the town lane, E09 T26b, `town/e09-t26b`, `cross-lane`; **in your files, for your
   T114b**): `AdventureOutcome::flagged_dwelling` (`command.rs`; set by `enter_dwelling` when the
   visit flags: the game then draws the player's empty Portals of Summoning, TWN-GRO-007, in
