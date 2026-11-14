@@ -1028,5 +1028,6 @@ mod offer;
 mod pool;
 mod portal;
 mod recruit;
+mod rows;
 mod siege;
 mod view;
