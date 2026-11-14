@@ -1,0 +1,129 @@
+commands = [
+    "0 town build 1 18",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0xac462566133690a0",
+    "0x7c5951bd4948e728",
+    "0xdb66fe89cd0cb145",
+    "0x475299d85076bcc4",
+    "0x539fc78faec0aba9",
+    "0x545fbcc27649f2ab",
+    "0x9c2bdb30b425156b",
+    "0x7bfa4b847ab2d9ac",
+    "0x1dfb572263695007",
+    "0xdd0b0252987ff15a",
+    "0xf137801903679395",
+    "0x77a33a988b1a9db9",
+    "0x15a4ca06827a3094",
+    "0xb869ede2a36ca9a1",
+    "0x31d8bbaef894642f",
+    "0x15549178b6cb5e7d",
+    "0x9e6a80ed4ba09b28",
+    "0x686e1d517c7afbd3",
+    "0x1711a7886e6f6883",
+    "0xb7b738de4c62ba9d",
+    "0x2de7bbf8327cb596",
+    "0xcaef7f5bdfae7d6b",
+    "0x58cba43179b21f90",
+    "0xf22551d39fa322ef",
+    "0xbc9382db165cf09f",
+    "0x4d10e4614d575455",
+    "0x069a126c5e19b1b2",
+    "0x301f3cfc6002b992",
+]
+
+[replay]
+format = 16
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0xb5c01c8736eb73f9"
+adventure_ruleset_hash = "0x505f48af68ec73ca"
+town_ruleset_hash = "0x0d7be940b64312a6"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 32
+adventure_state_hash_version = 25
+checkpoint_every = 2
+
+[map]
+path = "fixtures/maps/e09-builds-36.h3m"
+hash = "0x36e954b6f38638d8"
+import_version = 23
+
+[result]
+day = 29
+final_hash = "0x365fc30fef18f360"

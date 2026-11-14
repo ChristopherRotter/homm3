@@ -1,0 +1,90 @@
+commands = [
+    "0 move 0 4,19,0 4,18,0 4,17,0 4,16,0 5,15,0 6,14,0 7,13,0 8,12,0",
+    "0 town recruit 1 31",
+    "0 answer hire buy 5 3",
+    "0 answer hire buy 4 4",
+    "0 answer hire close",
+    "0 town heroes 1 enter",
+    "0 town recruit 4 20",
+    "0 answer hire buy 0 14",
+    "0 move 2 3,11,0 4,12,0 5,13,0 6,14,0",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 town heroes 1 leave",
+    "0 move 0 8,13,0 8,14,0 8,15,0 8,16,0",
+    "0 move 2 7,13,0 8,12,0",
+    "0 town heroes 1 enter",
+    "0 move 0 8,15,0 8,14,0 8,13,0 8,12,0",
+    "0 town heroes 1 swap",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0x4216a1b2c32e906f",
+    "0x56460eac04b40a50",
+    "0x84c1b7a18ace823d",
+    "0x9b06b9472c5863f1",
+    "0xc2b797c881ea3d5f",
+    "0xcee04c0a0afee02c",
+    "0x5d3ce3b317af14f3",
+    "0x0a89f14771278d9b",
+    "0x30520778d205ceee",
+    "0x607396bddb5642e9",
+    "0xbf349d74663a10f3",
+    "0xa3d182627044c48f",
+    "0x2285549d959366c4",
+    "0x2ec2cb4506fb77b9",
+    "0x1da79dcb37e67754",
+]
+
+[replay]
+format = 16
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0xb5c01c8736eb73f9"
+adventure_ruleset_hash = "0x505f48af68ec73ca"
+town_ruleset_hash = "0x0d7be940b64312a6"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 32
+adventure_state_hash_version = 25
+checkpoint_every = 2
+
+[map]
+path = "fixtures/maps/e09-builds-36.h3m"
+hash = "0x36e954b6f38638d8"
+import_version = 23
+
+[result]
+day = 9
+final_hash = "0xd2da8c932ca44963"
