@@ -440,11 +440,9 @@ pub enum GameReject {
     SystemOnly {},
     /// An answer of another kind than the open decision.
     WrongAnswer {},
-    /// The game waits for this player's answer to its level-up.
-    WaitingForLevelUp {
-        /// The player.
-        player: u8,
-    },
+    /// The game waits for another player's answer to its level-up: whose is not told (E16 M5
+    /// T19, v63; SRV-Q31, as `GameClock`'s `waits`).
+    WaitingForLevelUp {},
     /// The management command was refused.
     Manage {
         /// Why.

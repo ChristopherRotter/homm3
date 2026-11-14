@@ -422,6 +422,12 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             map_games: vec![MapGameInfo {
                 game: 5,
                 offer: "duel".to_string(),
+                clock: OfferClock {
+                    turn_ms: None,
+                    level_up_ms: None,
+                    battle_ms: 180_000,
+                    increment_ms: 10_000,
+                },
                 phase: Phase::Running,
                 open: vec![1],
                 seated: vec![SeatedPlayer {

@@ -450,9 +450,8 @@ pub fn reject(error: GameCommandError) -> GameReject {
         E::NotForSystem => GameReject::NotForSystem {},
         E::SystemOnly => GameReject::SystemOnly {},
         E::WrongAnswer => GameReject::WrongAnswer {},
-        E::WaitingForLevelUp(player) => GameReject::WaitingForLevelUp {
-            player: player.raw(),
-        },
+        // Whose level-up holds the game is not told (E16 M5 T19; SRV-Q31).
+        E::WaitingForLevelUp(_) => GameReject::WaitingForLevelUp {},
         E::Manage(error) => GameReject::Manage {
             error: manage_reject(error),
         },

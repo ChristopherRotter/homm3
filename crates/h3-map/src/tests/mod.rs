@@ -6,6 +6,7 @@
 //! its teleporters in `teleporters.rs` (E08 T99a); its garrisons and bonus visitables in
 //! `garrisons_bonuses.rs` (E08 T109a).
 
+mod bonuses_map;
 mod builds_map;
 mod dwellings;
 mod dwellings_map;
@@ -17,6 +18,7 @@ mod encode;
 mod fixtures;
 mod full_maps;
 mod garrisons_bonuses;
+mod garrisons_map;
 mod gates_map;
 mod import;
 mod play;

@@ -439,7 +439,8 @@ fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
         R::NotForSystem {} => E::NotForSystem,
         R::SystemOnly {} => E::SystemOnly,
         R::WrongAnswer {} => E::WrongAnswer,
-        R::WaitingForLevelUp { player } => E::WaitingForLevelUp(PlayerId::new(player)),
+        // The owner is not on the wire (E16 M5 T19): the hand-built list's is the first player.
+        R::WaitingForLevelUp {} => E::WaitingForLevelUp(PlayerId::new(0)),
         R::Manage { error } => E::Manage(manage_back(error)),
         R::SlotClosed {} => E::SlotClosed,
         R::CannotPay {} => E::CannotPay,
@@ -541,6 +542,13 @@ fn every_rejection_maps_back_and_round_trips() {
         round_trips(&wire);
         assert_eq!(reject_back(wire), Some(e));
     }
+    // Whose level-up holds the game is not told (E16 M5 T19; SRV-Q31): every owner's alike.
+    let held = |player| reject(GameCommandError::WaitingForLevelUp(PlayerId::new(player)));
+    assert_eq!(held(0), held(1));
+    assert_eq!(
+        serde_json::to_string(&held(1)).unwrap(),
+        r#"{"WaitingForLevelUp":{}}"#
+    );
     // The session's own (E16 M5 T8a, T8b, T18) are no engine error's.
     let own = [
         w::GameReject::NotSeated {},

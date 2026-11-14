@@ -166,8 +166,14 @@ pub mod wire;
 /// turn, answering a decision and fighting a battle still accepted), and its commands in one
 /// battle, past which the computer plays its side for the rest of the battle and its own are
 /// rejected `BattleLimit`; `GameTurn` then leaves the refused commands out.
+/// v63 (E16 M5 T19, the 2b reviewer's findings): `GameReject::WaitingForLevelUp` no longer names
+/// whose level-up holds the game (SRV-Q31: the others learn only that it waits); a whole game in
+/// the lobby shows its own clock (`wire::game::MapGameInfo`'s `clock`, the offer's at its
+/// creation, which a restart keeps); a seat whose turn or battle side's chess clock ran out is
+/// sent no battle commands in its `GameTurn` (the computer plays the side), and the game's start
+/// tells every player its clock.
 /// v64 (E09 T28a, the town lane's, `cross-lane`, after the adventure lane's T115b and the server
-/// lane's T18 took v61 and v62 and its T19, #919, open then, claimed v63): a town's garrison hero
+/// lane's T18 and T19 took v61 to v63): a town's garrison hero
 /// (TWN-ROW-001 to -004): the town command `Heroes` with its move (`wire::game::TownHeroChange`:
 /// `Enter`, `Leave`, `Swap`) and its eight refusals (`GarrisonHeld` to `EmptyArmy`), the
 /// adventure events `GarrisonEntered` and `GarrisonLeft`, and the owner's garrison heroes in the

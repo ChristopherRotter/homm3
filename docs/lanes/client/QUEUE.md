@@ -44,6 +44,16 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   variants a client may meet: `TownCommand::Heroes`, eight `TownReject`s, the adventure events
   `GarrisonEntered` and `GarrisonLeft`.
 
+- 2026-11-14 (the server lane, E16 M5 T19, `claude/gracious-maxwell-gu6rjb`; **a protocol
+  version taken**): protocol **v63** (after T18's v62), 2b's reviewer's findings:
+  `GameReject::WaitingForLevelUp {}` no longer names whose level-up holds the game (SRV-Q31:
+  show only that the game waits, as `GameClock`'s `waits`); the lobby's `wire::game::MapGameInfo`
+  gains `clock` (`OfferClock`, the game's own: the offer's at its creation, which a restart keeps
+  whatever the offer's is now; show it for a listed game rather than its offer's); a seat whose
+  turn or battle side's chess clock ran out gets no battle commands in its `GameTurn` (the
+  computer plays the side at once); the join that starts a game now tells every player its clock
+  as it runs (before, the first turn's timer looked stopped until the next reading). Nothing else
+  to build.
 - 2026-11-14 (the server lane, E16 M5 T18, `claude/awesome-sagan-lue93w`, `cross-lane` with the
   user's consent; **a protocol
   version taken**): protocol **v62** (after the adventure lane's T115b's v61): the server bounds a whole game's seat's commands

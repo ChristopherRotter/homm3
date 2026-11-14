@@ -75,6 +75,9 @@ pub struct MapGameInfo {
     pub game: u32,
     /// The map offer it was created from.
     pub offer: String,
+    /// How it is timed: its own clock, the offer's at its creation (E16 M5 T19, v63), which a
+    /// restart keeps whatever the offer's is now.
+    pub clock: OfferClock,
     /// Where it is: waiting until every seat is held at once, then running, or paused by its
     /// host.
     pub phase: Phase,

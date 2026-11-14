@@ -468,7 +468,7 @@ fn the_golden_replays_run_through_the_session() {
     assert!(seen.last_snapshots > 0, "{seen:?}");
     assert!(seen.start_events > 0, "{seen:?}");
     assert!(seen.clocks > 0, "{seen:?}");
-    assert_eq!(seen.restores, 72, "{seen:?}");
+    assert_eq!(seen.restores, 86, "{seen:?}");
     // The server's bounds counted, never met (E16 M5 T18: 26 and 348 when measured).
     assert!(seen.spent.0 > 10 && seen.spent.1 > 100, "{seen:?}");
 }
