@@ -302,19 +302,24 @@ fn video(options: &Options) -> Result<bool, String> {
             Kind::Bink => {
                 let (frames, clean) = decode(name, bytes, options.reading)?;
                 good &= clean;
-                (vec![("yuv", raw(&frames))], frames.len())
+                (vec![("yuv".to_owned(), raw(&frames))], frames.len())
             }
             Kind::Smacker => {
                 let (frames, clean) = decode_smacker(name, bytes)?;
                 good &= clean;
-                let outputs = vec![
-                    ("pal8", h3_smacker::check::raw(&frames)),
-                    ("565", original_16(&frames, Format::Rgb565)),
+                let mut outputs = vec![
+                    ("pal8".to_owned(), h3_smacker::check::raw(&frames)),
+                    ("565".to_owned(), original_16(&frames, Format::Rgb565)),
                 ];
+                // Each track's sound (E27 M2 T2), compared whole.
+                for (k, sound) in h3_smacker::check::sound(bytes).map_err(|e| format!("{e:?}"))? {
+                    outputs.push((format!("t{k}.pcm"), sound));
+                }
                 (outputs, frames.len())
             }
         };
         for (extension, ours) in outputs {
+            let count = if extension.ends_with("pcm") { 1 } else { count };
             write(options.out.join(format!("{stem}.{extension}")), &ours)?;
             if let Some(dir) = &options.reference {
                 let path = dir.join(format!("{stem}.{extension}"));

@@ -4,8 +4,9 @@
 # original-data/shell-videos.vid), AB's Credits.smk (original-data/install/Data/H3ab_ahd.vid,
 # when staged) and the synthetic samples of eight seeds with `h3-view video --smacker`, decodes the
 # same files with the DLL under Wine (scripts/smacker-dll.py: smackprobe.exe, 8-bit and 5-6-5),
-# and compares them frame by frame: the colour indices and palettes, and the original's 5-6-5 copy
-# (exit 1 on a difference). About 5 minutes after the release build, most of it H3INTRO.SMK
+# and compares them frame by frame: the colour indices and palettes, and the original's 5-6-5 copy,
+# and (E27 M2 T2) each track's sound as the DLL hands it to Miles (`smackprobe audio` with the
+# stand-in MSS32.DLL; exit 1 on a difference). About 5 minutes after the release build, most of it H3INTRO.SMK
 # (2 426 frames, decoded by the DLL twice); about 5 GB written (H3INTRO's 16-bit frames alone 1.1 GB
 # each side): delete clients/out/smacker after a run in a small sandbox.
 #

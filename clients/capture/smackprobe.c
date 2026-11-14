@@ -23,8 +23,8 @@
          SmackVolumePan as the game sets it (0x598CBE: the tracks 0xFE000, the volume 3640 times
          the effects' setting, here 9; the pan 0x8000), SmackToBuffer (8 bits), then per frame
          SmackDoFrame, the stand-in's timers called until they load nothing (at most 64 times),
-         SmackNextFrame; after the last frame the timers 256 times more (the ring's tail), then
-         SmackClose. The stand-in writes each sample handle's loads to <out>.<n>.pcm (the
+         SmackNextFrame (the frames as `frames` decodes them, the ring frame too); after the
+         last the timers 256 times more (the ring's tail), then SmackClose. The stand-in writes each sample handle's loads to <out>.<n>.pcm (the
          track's samples as the DLL decoded them: Miles' volume and pan act on playback, not on
          them) and every call to <out>.log.
 
@@ -184,7 +184,7 @@ static int audio(const char *vid, const char *entry, const char *out)
     smack_volume_pan(h, 0xFE000, 3640 * 9, 0x8000);
     w = FIELD(h, 4);
     ht = FIELD(h, 8);
-    n = FIELD(h, 0xC);
+    n = FIELD(h, 0xC) + (FIELD(h, 0x14) & 1);
     buf = calloc(w, ht);
     if (!buf)
         return 1;
