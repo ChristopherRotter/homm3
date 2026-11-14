@@ -695,6 +695,10 @@ pub enum GameEvent {
         /// The hall level of the popup's top level (`TownOwnerView::hall`), for a viewer at
         /// `OWNER_LEVEL`; none for every other viewer.
         hall: Option<u8>,
+        /// Whether a hero stands in its garrison, the popup's top level's mark
+        /// (`TownOwnerView::garrison_hero`, E09 T28b2), for a viewer at `OWNER_LEVEL`; false for
+        /// every other viewer.
+        garrison_hero: bool,
         /// Its buildings, for its owner alone (`TownView::buildings`).
         buildings: Option<TownBuildingsView>,
     },

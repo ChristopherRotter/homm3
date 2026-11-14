@@ -838,6 +838,7 @@ fn town_back(t: &Town) -> TownView {
         owner_facts: t.owner_facts.as_ref().map(|f| TownOwnerView {
             hall: f.hall,
             income: amounts_back(&f.income),
+            garrison_hero: f.garrison_hero,
         }),
         buildings: t.buildings.map(|b| TownBuildingsView {
             built: set_back(b.built.0),
@@ -1243,6 +1244,7 @@ pub(super) fn every_game_part(
         owner_facts: top.then(|| TownOwnerView {
             hall: 4,
             income: price(),
+            garrison_hero: true,
         }),
         buildings: top.then(|| TownBuildingsView {
             built: set_back(1 << 63 | 0b1011),

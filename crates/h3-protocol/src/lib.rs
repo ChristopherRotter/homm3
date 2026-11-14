@@ -188,7 +188,11 @@ pub mod wire;
 /// player's messages wrapped in `GameWatched` (the spectator's number, the player, the player's
 /// message), `SetSpectators` in a whole game (rejected `NotHost` or `AlreadyStarted`), the lobby's
 /// `MapGameInfo::spectators`.
-pub const PROTOCOL_VERSION: u32 = 66;
+/// v67 (E09 T28b2, the town lane's, `cross-lane`): a town's garrison hero in its views
+/// (TWN-VEW-001): `TownOwnerFacts::garrison_hero`, the popup's top level's mark, and
+/// `GameEvent::TownChanged`'s `garrison_hero`; a town's garrison as every level shows it is its
+/// upper bar, its garrison hero's army with one.
+pub const PROTOCOL_VERSION: u32 = 67;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

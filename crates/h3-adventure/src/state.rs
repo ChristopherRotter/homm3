@@ -2244,9 +2244,11 @@ impl AdventureState {
     /// survivors by slot: at least one stack, the caller's check), a hero without one leaves the
     /// map, told to its owner and the players that see its tile (ADV-FOG-004) as
     /// [`AdventureEventKind::HeroRemoved`]; since E08 T74b a hero in a boat takes its boat with it
-    /// ([`Self::remove_boat`], ADV-SEA-006), and a winner in a boat stays in it. Infallible: a
-    /// hero not on the map is skipped.
-    // rule: GAM-BAT-002, GAM-BAT-003, ADV-SEA-006
+    /// ([`Self::remove_boat`], ADV-SEA-006), and a winner in a boat stays in it. Since E09 T28b2 a
+    /// town's garrison hero that defended its siege ends it in its town
+    /// ([`Self::end_town_hero_battle`]: an empty army kept, `TWN-QUIRK-11`). Infallible: a hero
+    /// neither on the map nor in a garrison is skipped.
+    // rule: GAM-BAT-002, GAM-BAT-003, ADV-SEA-006, TWN-SIE-001
     pub fn end_battle<S: Sink>(
         &mut self,
         core: &Ruleset,
@@ -2255,6 +2257,7 @@ impl AdventureState {
     ) {
         for &(id, army) in heroes {
             let Ok(index) = self.heroes.binary_search_by_key(&id, |h| h.id) else {
+                self.end_town_hero_battle(id, army, sink);
                 continue;
             };
             match army {
@@ -2287,7 +2290,8 @@ impl AdventureState {
     /// count that joined, `None` when none did, `count` was 0 or the hero is not on the map. The
     /// original's `necromancy_add_raised` (0x469F20): `army_add_stack` (0x44ACE0), then once the
     /// upgrade (0x47B1A0) at (2c + 2) / 3; its exception for the four elementals (112 to 115, no
-    /// upgrade while a game flag is off) is not modelled, as no hero raises them.
+    /// upgrade while a game flag is off) is not modelled, as no hero raises them. Since E09 T28b2
+    /// a garrison hero that won its town's siege raises into its army too.
     // rule: GAM-BAT-006, ADV-ARM-007
     pub fn raise(
         &mut self,
@@ -2298,7 +2302,7 @@ impl AdventureState {
     ) -> Option<(CreatureTypeId, u32)> {
         let most = part.params().max_stack_count();
         let rules = (part.params().army_slots(), most);
-        let army = &mut self.heroes.iter_mut().find(|h| h.id == hero)?.army;
+        let army = &mut self.hero_or_held_mut(hero)?.army;
         let count = count.min(most);
         if count == 0 {
             return None;

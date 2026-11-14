@@ -375,19 +375,25 @@ impl Together {
 
 /// The views of the town whose garrison `command` names, if any, by every player that sees it
 /// before the command (TWN-ROW-001; E09 T28a, design §52: the upper bar's change told to the
-/// town's viewers at their level, [`crate::town::Told::tell`] after it). Nothing for a command
-/// naming none or a sink that keeps nothing.
+/// town's viewers at their level, [`crate::town::Told::tell`] after it); since E09 T28b2 also of
+/// the town whose garrison hero's army it names, the upper bar the town's views show
+/// (TWN-VEW-002). Nothing for a command naming none or a sink that keeps nothing.
 fn town_told<S: Sink>(
     state: &GameState,
     rules: &GameRuleset,
     command: &ArmyCommand,
 ) -> crate::town::Told {
+    if !S::RECORDS {
+        return crate::town::Told::default();
+    }
     let (from, to) = command.armies();
+    let adventure = state.adventure();
     let named = [Some(from), to]
         .into_iter()
         .flatten()
         .find_map(|army| match army {
             ArmyRef::Garrison(town) => Some(town),
+            ArmyRef::Hero(hero) => adventure.garrisoned(hero).map(|(town, _)| town),
             _ => None,
         });
     crate::town::Told::before::<S>(state, rules, named.as_slice(), &[])

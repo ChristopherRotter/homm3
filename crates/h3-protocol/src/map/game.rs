@@ -468,12 +468,17 @@ fn town(t: &TownView) -> Town {
         capitol: *capitol,
         built_today: *built_today,
         garrison: garrison_wire(garrison),
-        owner_facts: owner_facts
-            .as_ref()
-            .map(|TownOwnerView { hall, income }| TownOwnerFacts {
+        owner_facts: owner_facts.as_ref().map(
+            |TownOwnerView {
+                 hall,
+                 income,
+                 garrison_hero,
+             }| TownOwnerFacts {
                 hall: *hall,
                 income: amounts(income),
-            }),
+                garrison_hero: *garrison_hero,
+            },
+        ),
         buildings: buildings.map(town_buildings),
     }
 }

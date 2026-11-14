@@ -1514,6 +1514,7 @@ fn town_changed(town: u16, hall: Option<u8>) -> GameEvent {
         level: if hall.is_some() { 3 } else { 1 },
         slots: hall.is_some(),
         hall,
+        garrison_hero: false,
         buildings: hall.map(|_| TownBuildings {
             built: WireU64(0b101),
             forbidden: WireU64(1 << 40),
@@ -1588,6 +1589,7 @@ fn the_fold_replaces_a_towns_view_by_its_told_one() {
             },
             owner_facts: Some(TownOwnerFacts {
                 hall: 4,
+                garrison_hero: false,
                 income: vec![
                     Amount {
                         resource: 0,

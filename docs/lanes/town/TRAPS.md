@@ -102,7 +102,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   `Told::before` of the touched towns (and of every town by the players whose Taverns it may
   count) before the write and `Told::tell` after it; the plans' told-views property folds the
   views strictly and fails on an untold change (Visions' reach is `TWN-STUB-13`'s, exempt).
-  `Told` reads nothing for a sink that keeps nothing: test a hook with a `Vec` sink.
+  `Told` reads nothing for a sink that keeps nothing: test a hook with a `Vec` sink. Since E09
+  T28b2 a town's garrison view is its upper bar: a write of a garrison hero's army (an army
+  command naming it, its battle's end, its Necromancy) is a write of its town's view
+  (`state/manage.rs`' `town_told`, `state/battle.rs`' `bar_told`), and the plans' fold takes a
+  told view's garrison by slot whole (`views_move_as_the_events_say`, found by a stress of 300).
 
 ## The import (`h3-map` `src/import/town.rs`)
 

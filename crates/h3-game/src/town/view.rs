@@ -88,8 +88,10 @@ pub struct TownBuildingsView {
 /// A town's garrison as a viewer sees it (TWN-VEW-002, -003; survey `E09-towns.md` §12.3,
 /// `quick_view_army` 0x530990): by the viewer's level, its stacks packed in slot order (how many
 /// and of which creatures, never their slots) from level 1, each stack's size word from level 2,
-/// its count at [`OWNER_LEVEL`]; nothing at level 0, not even whether it is empty. The visiting
-/// hero is not in it: it stands on the entrance and is seen as a hero.
+/// its count at [`OWNER_LEVEL`]; nothing at level 0, not even whether it is empty. Since E09
+/// T28b2 the town's upper bar (`h3_adventure::AdventureState::upper_bar`): its garrison hero's
+/// army while one stands there (whose own changes, `StackChanged` of `ArmyRef::Hero`, then
+/// change it). The visiting hero is not in it: it stands on the entrance and is seen as a hero.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GarrisonView {
     /// The viewer's level, 0 to [`OWNER_LEVEL`]: [`OWNER_LEVEL`] for the owner's team or a
@@ -116,8 +118,7 @@ pub struct GarrisonStackView {
 }
 
 /// The facts of a town the popup shows only at its top level (TWN-VEW-003; survey
-/// `E09-towns.md` §12.3): to its owner's team and to a viewer whose hero sees it by Visions. The
-/// garrison hero's mark comes with the garrison hero (increment 3).
+/// `E09-towns.md` §12.3): to its owner's team and to a viewer whose hero sees it by Visions.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TownOwnerView {
     /// Its hall level, 1 the Village Hall to 4 the Capitol (`h3_towns::hall_level`).
@@ -125,6 +126,10 @@ pub struct TownOwnerView {
     /// Its day's income, its gold and its silo's resources, by resource in the core's order
     /// (`h3_towns::daily_income`).
     pub income: Vec<(ResourceId, u32)>,
+    /// Whether a hero stands in its garrison (TWN-VEW-001; E09 T28b2, the town epic's design
+    /// note §54: the popup's mark `townqkgh.pcx`); which hero is its owner's to see, in its
+    /// own heroes (`h3_adventure::AdventureObservation::garrison_heroes`).
+    pub garrison_hero: bool,
 }
 
 /// What the viewer of `observation`, the adventure map of `state` as it sees it
@@ -221,7 +226,9 @@ impl<'a> Seer<'a> {
                 .taverns
                 .get_or_insert_with(|| tavern_level(adventure, towns, part, viewer))
         };
-        let army = adventure.town_garrison(index).unwrap_or_default();
+        // rule: TWN-VEW-002
+        // E09 T28b2: the upper bar, its garrison hero's army with one (`town_garrison_army`).
+        let army = adventure.upper_bar(town);
         Some(TownView {
             town,
             anchor: object.anchor,
@@ -237,6 +244,7 @@ impl<'a> Seer<'a> {
             owner_facts: top.then(|| TownOwnerView {
                 hall: h3_towns::hall_level(record, part),
                 income: h3_towns::daily_income(record, part),
+                garrison_hero: adventure.town_hero(town).is_some(),
             }),
             // rule: TWN-VEW-004
             buildings: (owner == Some(viewer)).then(|| TownBuildingsView {
@@ -445,6 +453,7 @@ fn tell<S: Sink>(viewer: PlayerId, view: &TownView, sink: &mut S) {
         level: view.garrison.level,
         slots: army.is_some(),
         hall: view.owner_facts.as_ref().map(|facts| facts.hall),
+        garrison_hero: view.owner_facts.as_ref().is_some_and(|f| f.garrison_hero),
         buildings: view.buildings,
     });
     for (index, &stack) in view.garrison.stacks.iter().enumerate() {

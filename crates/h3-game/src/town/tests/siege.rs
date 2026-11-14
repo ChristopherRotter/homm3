@@ -1028,3 +1028,5 @@ fn a_visitors_siege_with_nothing_to_merge_tells_no_stack() {
     assert!(game.battle(RED).is_some());
     assert_eq!(garrison(&game), &before[..]);
 }
+
+mod held;

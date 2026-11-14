@@ -5,7 +5,9 @@
 //! every battle on the map (`GameState::start_battle`, `end_battle`); its capture after the
 //! attacker's win is the adventure's (`AdventureState::give_won`, TWN-CAP-003) composed by
 //! [`super::capture`]. Since E09 T8b2b the garrison's merge into the defending visitor's army
-//! before it ([`merge`], TWN-SIE-002; the town epic's design note §10).
+//! before it ([`merge`], TWN-SIE-002; the town epic's design note §10). Since E09 T28b2 a garrison
+//! hero defends a siege with its own army, raised by the town as a visitor is (the design note
+//! §54).
 
 use alloc::vec::Vec;
 
@@ -24,8 +26,10 @@ use crate::GameRuleset;
 /// garrison's, each with the player the game tells it to as the army dialog's
 /// (`GameEvent::StackChanged`, *agent's call*), before `BattleStarted`: its army's owner, the
 /// visitor's for its slots, the town's for the garrison's (none for a neutral town's: nobody is
-/// told). None for every other battle, which it leaves as it is. What stays in the garrison does
-/// not fight (survey `E09-towns.md` §9.2).
+/// told). None for every other battle, which it leaves as it is: since E09 T28b2 a siege its
+/// garrison hero defends with its own army (survey §9.1's third row; its town's garrison is empty
+/// while it stands there), and the battle beside a garrison hero is no siege. What stays in the
+/// garrison does not fight (survey `E09-towns.md` §9.2).
 // rule: TWN-SIE-002
 pub(crate) fn merge(
     adventure: &mut AdventureState,
@@ -35,6 +39,10 @@ pub(crate) fn merge(
     let (Some(town), Defender::Hero(visitor)) = (start.town, &mut start.defender) else {
         return Vec::new();
     };
+    if adventure.hero(visitor.hero).is_none() {
+        // A garrison hero, off the map: no merge.
+        return Vec::new();
+    }
     let slots = adventure.merge_garrison(rules.core(), rules.adventure(), town);
     // The visitor is on the map: the step that started the siege met it there.
     visitor.army = adventure
