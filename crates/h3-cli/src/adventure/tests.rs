@@ -34,6 +34,9 @@ const DWELLINGS_XL: &str = "fixtures/maps/e08-dwellings-144.h3m";
 const TOWNS: &str = "fixtures/maps/e09-towns-36.h3m";
 /// The gates XL map (E08 T104): a Subterranean Gate on every fifth tile of both levels.
 const GATES_XL: &str = "fixtures/maps/e08-gates-144.h3m";
+/// The garrisons and bonuses XL map (E08 T116c): the shipped maps' most garrisons and bonus
+/// visitables, eight Magic Springs among them.
+const GARRISONS_BONUSES_XL: &str = "fixtures/maps/e08-garrisons-bonuses-144.h3m";
 
 fn options(days: u32) -> RunOptions {
     RunOptions {
@@ -506,6 +509,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 battle: false,
                 meeting: false,
                 dwelling: false,
+                spring: false,
                 queries: 0,
             },
         )
@@ -563,6 +567,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             battle: false,
             meeting: false,
             dwelling: false,
+            spring: false,
             queries: 0,
         },
     )
@@ -588,6 +593,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 battle: false,
                 meeting: false,
                 dwelling: false,
+                spring: false,
                 queries: 0,
             },
         )
@@ -619,6 +625,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 battle: false,
                 meeting: false,
                 dwelling: false,
+                spring: false,
                 queries: 0,
             },
         )
@@ -660,6 +667,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             battle: true,
             meeting: false,
             dwelling: false,
+            spring: false,
             queries: 0,
         },
     )
@@ -689,6 +697,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 battle: false,
                 meeting: true,
                 dwelling: false,
+                spring: false,
                 queries: 5,
             },
         )
@@ -725,6 +734,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 battle: false,
                 meeting: false,
                 dwelling: false,
+                spring: false,
                 queries: 0,
             },
         )
@@ -765,6 +775,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 battle: false,
                 meeting: false,
                 dwelling,
+                spring: false,
                 queries: 0,
             },
         )
@@ -774,6 +785,39 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
     assert_eq!((random.operations, random.dwellings), (3, 0), "{random:?}");
     let sought = fork(true);
     assert_eq!((sought.operations, sought.dwellings), (3, 1), "{sought:?}");
+    assert!(sought.steps < random.steps, "{sought:?}");
+    // E08 T116c: on the garrisons and bonuses XL the step that starts day 8 refills the Magic
+    // Springs, so random play's forks carry no Springs' block; with `spring` the heroes seek the
+    // Springs until a visit empties one's entrance, which the forks then carry with the Fountains'
+    // values (`fork-bonuses-xl-144`).
+    let fork = |spring| {
+        bench::run(
+            &root().join("packs"),
+            &root(),
+            &bench::BenchOptions {
+                map: GARRISONS_BONUSES_XL.to_owned(),
+                profile: DEFAULT_PROFILE.to_owned(),
+                difficulty: h3_game::DEFAULT_DIFFICULTY,
+                workload: bench::Workload::Fork,
+                games: 1,
+                days: 7,
+                seed: 1,
+                forks: 3,
+                observe: false,
+                masks: false,
+                battle: false,
+                meeting: false,
+                dwelling: false,
+                spring,
+                queries: 0,
+            },
+        )
+        .unwrap()
+    };
+    let random = fork(false);
+    assert_eq!((random.operations, random.springs), (3, 0), "{random:?}");
+    let sought = fork(true);
+    assert_eq!((sought.operations, sought.springs), (3, 1), "{sought:?}");
     assert!(sought.steps < random.steps, "{sought:?}");
     // E09 T9c: `siege` counts one step a game, the one that opens a siege: on the town map the
     // heroes seek the other owners' towns and besiege one on day 1, a garrison alone or the
@@ -797,6 +841,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 battle: false,
                 meeting: false,
                 dwelling: false,
+                spring: false,
                 queries: 0,
             },
         )
@@ -829,6 +874,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 battle: false,
                 meeting: false,
                 dwelling: false,
+                spring: false,
                 queries: 0,
             },
         )
@@ -858,6 +904,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             battle: false,
             meeting: false,
             dwelling: false,
+            spring: false,
             queries: 0,
         },
     )
@@ -902,6 +949,8 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             "--meeting",
             agent,
             "--dwelling",
+            agent,
+            "--spring",
             agent,
             "--queries",
             "2",

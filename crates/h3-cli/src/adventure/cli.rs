@@ -10,7 +10,7 @@
 //! h3 adventure bench --map <file.h3m> [--workload play|reach|fork|manage|day-start|siege]
 //!                    [--packs-dir packs] [--root .] [--profile base:faithful] [--difficulty 1]
 //!                    [--games N] [--days N] [--seed N] [--forks N] [--observe 0|1] [--masks 0|1]
-//!                    [--battle 0|1] [--meeting 0|1] [--dwelling 0|1] [--queries N]
+//!                    [--battle 0|1] [--meeting 0|1] [--dwelling 0|1] [--spring 0|1] [--queries N]
 //! ```
 //!
 //! `--root` is the directory map paths are relative to (the repository's root for the fixtures);
@@ -42,7 +42,7 @@ pub const USAGE: &str = "usage:
   h3 adventure bench --map <file.h3m> [--workload play|reach|fork|manage|day-start|siege]
                      [--packs-dir packs] [--root .] [--profile base:faithful] [--difficulty 1]
                      [--games N] [--days N] [--seed N] [--forks N] [--observe 0|1] [--masks 0|1]
-                     [--battle 0|1] [--meeting 0|1] [--dwelling 0|1] [--queries N]";
+                     [--battle 0|1] [--meeting 0|1] [--dwelling 0|1] [--spring 0|1] [--queries N]";
 
 /// Parsed arguments: `--name value` options and positional words.
 struct Args {
@@ -240,6 +240,7 @@ fn bench(args: &Args) -> Result<(), String> {
         "battle",
         "meeting",
         "dwelling",
+        "spring",
         "queries",
     ])?;
     let workload = match args.get("workload").unwrap_or("play") {
@@ -272,6 +273,7 @@ fn bench(args: &Args) -> Result<(), String> {
         battle: args.num("battle", 0u8)? != 0,
         meeting: args.num("meeting", 0u8)? != 0,
         dwelling: args.num("dwelling", 0u8)? != 0,
+        spring: args.num("spring", 0u8)? != 0,
         queries: args.num("queries", 1_000)?,
     };
     if options.days == 0 {
@@ -314,6 +316,10 @@ fn bench(args: &Args) -> Result<(), String> {
         println!(
             "forks with the dwellings' week block: {} of {} games",
             r.dwellings, options.games
+        );
+        println!(
+            "forks with a Spring emptied: {} of {} games",
+            r.springs, options.games
         );
         println!("heroes in boats at the forks: {}", r.afloat);
     }

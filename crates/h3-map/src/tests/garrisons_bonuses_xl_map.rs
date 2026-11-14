@@ -119,7 +119,11 @@ impl Placed {
     /// Its anchor: one right of a horizontal one's entrance, one below a vertical one's.
     fn anchor(&self) -> (u8, u8) {
         let (x, y) = self.entrance;
-        if self.vertical { (x, y + 1) } else { (x + 1, y) }
+        if self.vertical {
+            (x, y + 1)
+        } else {
+            (x + 1, y)
+        }
     }
 
     /// The three tiles it covers on the wall.
@@ -161,11 +165,9 @@ fn garrisons() -> Vec<Placed> {
     let middle = |(first, last): (u8, u8)| first + (last - first) / 2;
     let horizontal = (WALL_ROWS.iter())
         .flat_map(|&y| columns.iter().map(move |&span| ((middle(span), y), false)));
-    let vertical = (rows.iter().flat_map(|&span| {
-        WALL_COLUMNS
-            .iter()
-            .map(move |&x| ((x, middle(span)), true))
-    }))
+    let vertical = (rows
+        .iter()
+        .flat_map(|&span| WALL_COLUMNS.iter().map(move |&x| ((x, middle(span)), true))))
     .enumerate()
     .filter(|(way, _)| way % 4 != 2)
     .map(|(_, placed)| placed);
@@ -226,7 +228,12 @@ fn sea_cells() -> Vec<(u8, u8)> {
 /// the same way along [`SEA_STRIDE`].
 fn bonuses() -> Vec<(&'static str, (u8, u8))> {
     let mut bonuses = placed(&LAND_BONUSES, &LAND_COUNTS, &land_cells(), LAND_STRIDE);
-    bonuses.extend(placed(&WATER_BONUSES, &WATER_COUNTS, &sea_cells(), SEA_STRIDE));
+    bonuses.extend(placed(
+        &WATER_BONUSES,
+        &WATER_COUNTS,
+        &sea_cells(),
+        SEA_STRIDE,
+    ));
     bonuses
 }
 
@@ -304,9 +311,7 @@ fn patches(garrisons: &[Placed]) -> Vec<w::Patch> {
     let patch = |terrain, from, to| w::Patch { terrain, from, to };
     let mut patches: Vec<w::Patch> = (WALL_ROWS.iter())
         .map(|&y| patch(w::Terrain::Rock, (0, y), (SEA - 1, y)))
-        .chain(
-            (WALL_COLUMNS.iter()).map(|&x| patch(w::Terrain::Rock, (x, 0), (x, SIDE - 1))),
-        )
+        .chain((WALL_COLUMNS.iter()).map(|&x| patch(w::Terrain::Rock, (x, 0), (x, SIDE - 1))))
         .collect();
     patches.extend(garrisons.iter().map(|g| {
         let tiles = g.tiles();
@@ -323,22 +328,33 @@ fn objects(garrisons: &[Placed], bonuses: &[(&'static str, (u8, u8))]) -> Vec<w:
         .map(|(&(tile, owner), hero_type)| w::MapObject::Hero(hero(tile, owner, hero_type)))
         .collect();
     objects.extend(garrisons.iter().map(|g| {
-        garrison(g.anchor(), GARRISONS[g.line], g.owner, &g.stacks(), g.removable)
+        garrison(
+            g.anchor(),
+            GARRISONS[g.line],
+            g.owner,
+            &g.stacks(),
+            g.removable,
+        )
     }));
     objects.extend(bonuses.iter().map(|&(line, at)| plain(line, at)));
     objects.extend(BOATS.map(|at| boat(0, at)));
     let gnolls = template(sea::GNOLLS);
-    objects.extend(monsters(garrisons, bonuses).into_iter().enumerate().map(|(n, tile)| {
-        w::MapObject::Monster(w::Monster {
-            tile,
-            template: gnolls.clone(),
-            count: 1 + u16::try_from(n % 12).unwrap(),
-            disposition: 4,
-            never_flees: true,
-            fixed_count: true,
-            treasure: None,
-        })
-    }));
+    objects.extend(
+        monsters(garrisons, bonuses)
+            .into_iter()
+            .enumerate()
+            .map(|(n, tile)| {
+                w::MapObject::Monster(w::Monster {
+                    tile,
+                    template: gnolls.clone(),
+                    count: 1 + u16::try_from(n % 12).unwrap(),
+                    disposition: 4,
+                    never_flees: true,
+                    fixed_count: true,
+                    treasure: None,
+                })
+            }),
+    );
     objects
 }
 
@@ -435,12 +451,22 @@ fn the_garrisons_bonuses_xl_map_is_committed_as_written_and_imports_its_seventee
     let bonuses = bonuses();
     let monsters = monsters(&garrisons, &bonuses);
     let objects = &setup.map.objects;
-    assert_eq!(objects.len(), garrisons.len() + bonuses.len() + monsters.len());
+    assert_eq!(
+        objects.len(),
+        garrisons.len() + bonuses.len() + monsters.len()
+    );
     assert!(objects.iter().all(|o| o.object_type.is_some()));
-    assert!((150..200).contains(&monsters.len()), "{} monsters", monsters.len());
+    assert!(
+        (150..200).contains(&monsters.len()),
+        "{} monsters",
+        monsters.len()
+    );
     // The garrisons: the census's most of each class, each with its owner, army and flag.
     let vertical = garrisons.iter().filter(|g| g.vertical).count();
-    assert_eq!((garrisons.len() - vertical, vertical), (HORIZONTAL, VERTICAL));
+    assert_eq!(
+        (garrisons.len() - vertical, vertical),
+        (HORIZONTAL, VERTICAL)
+    );
     let placed: Vec<_> = (objects.iter().take(garrisons.len()))
         .map(|o| (key(o), o.anchor, o.owner, o.holds.clone()))
         .collect();
@@ -451,14 +477,23 @@ fn the_garrisons_bonuses_xl_map_is_committed_as_written_and_imports_its_seventee
                 army: troops(&stacks),
                 removable: g.removable,
             };
-            (GARRISON_KEYS[g.line], at(g.anchor()), g.owner.map(PlayerId::new), holds)
+            (
+                GARRISON_KEYS[g.line],
+                at(g.anchor()),
+                g.owner.map(PlayerId::new),
+                holds,
+            )
         })
         .collect();
     assert_eq!(placed, expected);
     // Each wall's garrisons stand in its gaps: every way between two regions but the four of rock.
     assert!(garrisons.iter().all(|g| {
         let (x, y) = g.entrance;
-        if g.vertical { WALL_COLUMNS.contains(&x) } else { WALL_ROWS.contains(&y) }
+        if g.vertical {
+            WALL_COLUMNS.contains(&x)
+        } else {
+            WALL_ROWS.contains(&y)
+        }
     }));
     // The fifteen at their counts, each at its anchor.
     let counts = LAND_COUNTS.iter().chain(&WATER_COUNTS);
@@ -473,7 +508,11 @@ fn the_garrisons_bonuses_xl_map_is_committed_as_written_and_imports_its_seventee
     // Red's first hero has a Magic Spring in its region within a few steps.
     let springs = (bonuses.iter()).filter(|&&(line, _)| line == LAND_BONUSES[5]);
     let (hx, hy) = HEROES[0].0;
-    assert!(springs.into_iter().any(|&(_, (x, y))| x.abs_diff(hx).max(y.abs_diff(hy)) <= 8));
+    assert!(
+        springs
+            .into_iter()
+            .any(|&(_, (x, y))| x.abs_diff(hx).max(y.abs_diff(hy)) <= 8)
+    );
     let game = GameState::new(rules, &setup, 1).unwrap();
     assert_eq!(game.adventure().map().fountains().len(), LAND_COUNTS[2]);
 }
