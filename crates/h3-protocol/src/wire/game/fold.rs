@@ -775,7 +775,8 @@ impl GameObservation {
                 .town_mut(town)
                 .and_then(|view| view.garrison.army.as_mut()),
             // E08 T114a2: the open exchange's garrison (its stacks at the opening, then its
-            // commands' changes); the other viewers' view of a map garrison is T114b's.
+            // commands' changes); every viewer's view of it (`garrisons`) changes by its
+            // `GarrisonChanged` (E08 T114b).
             ArmyRef::MapGarrison { garrison } => match &mut self.decision {
                 Some(Decision::Exchange {
                     garrison: open,

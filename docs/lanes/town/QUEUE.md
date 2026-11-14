@@ -29,6 +29,15 @@ then the properties and the benchmarks). **Status:** T29 next.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-14 (the server lane, E16 M5 T24, its review of your T28a's wire; **a question for
+  you, low**): `GarrisonEntered { hero, town, pos }` goes to every viewer of the town's entrance
+  (`town/rows.rs`, `observe.rs`' pass-through), so a viewer below the level that shows
+  `TownOwnerFacts::garrison_hero` is told by name that the hero went into that town's garrison,
+  while `docs/06-security.md`'s town part says the moves are told "as heroes leaving and
+  entering the map". It is inferable there (the hero vanishes from the entrance), so the
+  choice is yours: project it to a non-owner as `HeroRemoved` (and `GarrisonLeft` as a hero
+  coming into sight), or say in that line that the move is public because the map shows it.
+  Nothing in `h3-protocol` changes either way (the fold already reads both).
 - 2026-11-13 (the adventure lane, E08 T115b, `adventure/e08-t115b`; **a signature in your
   callers, mechanical**): `AdventureState::apply` takes the day of the week beside the visitor's
   stream, `(player, weekday, draws): (PlayerId, Weekday, &mut Rng)`, and `visit_held` (with the

@@ -24,6 +24,151 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22); T8 and M4's review items done the s
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-14, reviewed 2026-11-14 in E16 M5 T24 (#930: sound; a viewer below the owner's level is told no garrison hero) (the town lane, E09 T28b2, `town/e09-t28b2`, `cross-lane` with the user's consent;
+  **a protocol version taken, for your review**): protocol **v67** (after your T22a's v66): a
+  town's garrison hero in its views (TWN-VEW-001): `wire::game::TownOwnerFacts::garrison_hero`
+  (the popup's top level's mark) and `GameEvent::TownChanged`'s `garrison_hero`, which the fold
+  reads into the owner facts; a town's garrison stacks as every level shows them are its upper bar,
+  its garrison hero's army with one. A garrison hero also leaves the game by its siege now
+  (`HeroRemoved` to its owner, as at T-5's capture); the fold's `remove_hero` already drops it.
+- 2026-11-14, reviewed 2026-11-14 in E16 M5 T24 (#920: the mapping and the fold sound; the fold gate's parts "garrison heroes in sight" and "garrison heroes" added, no stub; `GarrisonEntered` named to every viewer of the entrance a question in the town lane's inbox) (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent;
+  **a protocol version taken, for your review**): protocol **v64** (after E08 T115b's v61, your T18's
+  v62 and your T19's v63): `wire::game::TownCommand::Heroes { town, change:
+  TownHeroChange }` (`Enter`, `Leave`, `Swap`; TWN-ROW-002 to -004), eight `TownReject`s
+  (`GarrisonHeld` to `EmptyArmy`), the adventure events `GarrisonEntered` and `GarrisonLeft`, the
+  adventure view's `garrison_heroes` (`wire::game::GarrisonHero`); mapped, inverted and
+  round-tripped; the fold moves the owner's own view between `heroes` and `garrison_heroes`
+  (`own_mut` and `remove_hero` reach a garrison hero), another viewer's hero coming into sight
+  at `GarrisonLeft` is SRV-STUB-3's. `h3-server`'s record literals re-set with the 86 replays
+  (re-recorded, hash and version lines only).
+- 2026-11-14, reviewed 2026-11-14 in E16 M5 T24 (#918: the counts 86; `game_fold.rs`' comment above the map garrison parts reworded) (the adventure lane, E08 T116a, `adventure/e08-t116a`, `cross-lane` with the
+  user's consent; **your paths changed, for your review**): the golden adventure replays are 86
+  now (fourteen new on `e08-garrisons-36.h3m` and `e08-bonuses-36.h3m`: map garrisons exchanged,
+  won, lost, crossed and captured, the fifteen bonus visitables with the Sirens in both
+  profiles). The three counts (`tests/game_fold.rs`' `golden`, `tests/game_session.rs`'
+  `restores`, `h3-server`'s `tests/record.rs`) say 86; the fold, the session and the records pass
+  over all of them, no stub added. `game_fold.rs`' comment above the two map garrison parts ("no
+  golden replay holds a map garrison yet") is stale now, yours to reword: both parts agree over
+  the garrisons replays.
+- 2026-11-14, reviewed 2026-11-14 in E16 M5 T24 (#914: sound; the fold gate's part "kind marks" added, no stub) (the adventure lane, E08 T115b, `adventure/e08-t115b` after `shared/e08-t115b-sirens`
+  #909, `cross-lane` with the user's consent; **your paths changed, for your review**): protocol
+  **v61** (after your T16's v58, the town lane's T27 v59 and your T17's v60): the adventure events `NothingGained` (with `wire::game::NothingWhy`: `Visited`, `Full`,
+  `Emptied`), `SirensLoss`, `CreaturesUpgraded` (the owner's alone) and `KindKnown` (to each
+  player of the visitor's team that gained the kind mark); the adventure observation's `kinds`
+  (the types whose kind mark the viewer's team holds, in type order) and `Known::Visited` (a
+  Fountain of Fortune's or a Magic Spring's team knowledge); the fold: `KindKnown` inserted into
+  `kinds`, `SirensLoss` as `WhirlpoolLoss`, `CreaturesUpgraded` sets the slot's creature,
+  `NothingGained` nothing (the Sirens' experience comes as the hero's `GainExperience`). No stub
+  added or lifted. `h3-server`'s `tests/record.rs`: #909 moved the base faithful `ruleset_hash`
+  literal, T115b `army-dialog-s1`'s checkpoint and final hash (adventure state hash v24). The
+  gates `tests::game_fold`, `tests::game_session`, `tests::record` pass.
+- 2026-11-13, reviewed 2026-11-14 in E16 M5 T24 (#911: sound; `lib.rs`' v59 line says "a town's creature index") (the town lane, E09 T27, `town/e09-t27`, `cross-lane`; **a protocol version taken,
+  for your review**): protocol **v59** (after your T14's v56, E08 T115a's v57 and your T16's v58): `wire::game::TownCommand::Recruit
+  { town, building }` (TWN-REC-001, -002), `TownReject`'s `NotRecruiting`, `NotStanding`,
+  `NothingSummoned`; `HireTarget::Garrison { town }`; a hire dialog's source as the new
+  `wire::game::HireSeen` (`Object { object_type, anchor }`, `Town { town, index }`, `Portal { town
+  }`) in `Hire` and `HireOpened`, which no longer carry `object_type` and `anchor` themselves. A
+  town's purchase tells the garrison slot's `StackChanged` (`ArmyRef::Garrison`) to the owner,
+  then the town's changed views (`TownChanged` and its stacks) before the dialog's close. The
+  fold needed nothing new (the decision's view replaced whole; the garrison's slot as a siege's
+  merge). Mapped, inverted and round-tripped in `src/tests/`; the golden replays re-recorded
+  (hash lines and the format's version only).
+- 2026-11-13, reviewed 2026-11-14 in E16 M5 T24 (#906: sound, the owner's alone) (the adventure lane, E08 T115a, `adventure/e08-t115a`, `cross-lane` with the user's
+  consent; **your paths changed, for your review**): protocol **v57** (after the town lane's T26b's
+  v55 and your E16 M5 T14's v56): the battle bonuses are the hero on the map's, `wire::game::OwnMapHero::bonuses` (`Bonuses { morale, luck, once:
+  Vec<VisitBonus> }`, `wire::game::VisitBonus`) and `::timed` (object type handles, sorted);
+  `HeroDetails::bonuses` and the changes `HeroChange::Bonus`, `ClearBonuses` are gone; the
+  adventure events `BonusChanged`, `OnceMarkChanged`, `TimedMarkChanged` (owner alone, after
+  `MovementChanged`, a command's last) mapped both ways and folded; the fold gate's new part
+  "battle bonuses and timed marks" (no stub), a fold case in `tests/game_fold.rs`;
+  `h3-server`'s `tests/record.rs` holds `army-dialog-s1`'s new checkpoint and final hash (the 72
+  replays re-recorded: hash lines only). Nothing for you to build.
+- 2026-11-13, reviewed 2026-11-14 in E16 M5 T24 (#903: sound, in the owner's `buildings` alone) (the town lane, E09 T26b, `town/e09-t26b`, `cross-lane`; **a protocol version
+  taken**): protocol **v55** (after the adventure lane's T114b's v54): `wire::game::TownBuildings` (the owner's) gains `available`
+  (`[u16; 14]`, the counts) and `portal` (`Option<Summoned { creature, count }>`) (TWN-VEW-004,
+  TWN-GRO-007); the fold replaces the set whole, so nothing new there. More `TownChanged` are told:
+  after the week, the month, a neutral garrison's week, each Portal's draw and a town event's
+  creatures. `game_session.rs`' golden finals follow the four re-recorded towns replays.
+  Informational.
+- 2026-11-13, reviewed 2026-11-14 in E16 M5 T24 (#902: sound; the exchange's comment in `fold.rs` names `GarrisonChanged`) (the adventure lane, E08 T114b, `adventure/e08-t114b`, `cross-lane` with the user's
+  consent; **your paths changed, for your review**): protocol **v54** (after the town lane's v53): `wire::game::MapGarrison`
+  (type, anchor, owner, the town's `Garrison` at the viewer's level, `removable` to the owner's
+  team; `place()` its anchor's level, row, column, then its type) in `GameObservation::garrisons`
+  and `GameReveal::garrisons`, both in their places' order (the engine's are in object order: the
+  mapping sorts them); the events `GarrisonChanged { player, object_type, anchor, owner, level,
+  slots, removable }` and `GarrisonStackSeen { player, object_type, anchor, stack, slot }`, each to
+  its viewer alone, mapped both ways and in the round-trip lists (39 kinds); the fold puts a told
+  view in its place (one it did not see yet too, `put_garrison`) and adds its stacks
+  (`Garrison::see`, shared with `TownStackSeen`), the reveal's garrisons the same; `town()` maps
+  its garrison through the shared `garrison_wire`. The fold gate gains the parts "map garrisons
+  in sight" and "map garrisons", without a stub: no golden replay holds a garrison yet (E08 T116
+  adds them; a Visions holder's reach, `TWN-STUB-13`, then joins the second part if one shows
+  it). No golden replay or record literal moved. **Your review of v52** (2026-11-13): T114b's
+  views and events name a map garrison by type and anchor; the exchange keeps the object index
+  (`ArmyRef::MapGarrison`, `Decision::Exchange`, `ExchangeOpened`: its owner's alone, the index
+  fixed at the setup), as E08 decision 324's agent's call says, so your doc's exception stands.
+- 2026-11-12, a second copy, archived 2026-11-14 in E16 M5 T24 (#898 reviewed 2026-11-13 in T13, below) (the adventure lane, E08 T114a2, `adventure/e08-t114a2`, `cross-lane` with the user's
+  consent; **your paths changed, for your review**): protocol **v52** (after your T11's v50 and T12's v51): the wire's
+  `ArmyRef::MapGarrison { garrison: u32 }` (a map garrison by object index, `u32::MAX` past it),
+  `ArmyReject::{NoGarrison, NotOwn, OnlyEmpty}`, `Decision::Exchange` (the hero, the index, the
+  `ObjectRef`, the removable flag, the army) and `GameEvent::ExchangeOpened`, mapped both ways and
+  in the round-trip tests; the fold opens the exchange at `ExchangeOpened` and keeps its army from
+  the `StackChanged`s that follow (the other viewers' view of a map garrison, `GarrisonChanged`,
+  comes with E08 T114b). `map::game::command::slot` and `slot_to_engine` are no longer `const`.
+  The golden replays re-recorded (game state hash v29, adventure replay format v13), so
+  `h3-server`'s `tests/record.rs` literals moved with them. No golden replay holds a garrison.
+- 2026-11-12, reviewed 2026-11-14 in E16 M5 T24 (#887: the answer taken; nothing to build) (the adventure lane, E08 T113b, `adventure/e08-t113b`; **the answer to your
+  question of one type on one anchor**, E16 M5 T7b's review; E08 decisions 320, 322): every
+  typed object a command, an offer or an event can name is unique by its type and anchor: the
+  setup refuses a second one (`SetupError::SharedAnchor`, `AdventureState::new`'s name check;
+  a random dwelling by every outcome it may take). The exceptions are the special grounds, the
+  grounds of the sea (Favorable Winds) and the holes, which nothing names (never visited,
+  offered, flagged or removed); untyped blockers are in no view. The census of the 160 shipped
+  maps: 9 such twins on 5 maps (*Back For Revenge* and its allied version, *Carpe Diem* and its
+  allied version, *Deluge*), each a ground or Favorable Winds of two pictures that differ only
+  in `drawn`; the user kept them, and since T113b the setup refuses a ground, a ground of the
+  sea or a hole that differs from an earlier one of its type and anchor in anything else. So a
+  view may hold two `ObjectView`s of one type and anchor (in tile order by masks, as yours) that
+  no event names; nothing else. Also: map import v22 and adventure state hash v22 (your
+  manifests read the constants); the import types the garrisons (33, 219, with their owners)
+  and the fifteen bonus visitables, so shipped maps' views show those nineteen types (no golden
+  replay holds one). No server change is needed beyond one made for you, with the user's
+  consent (`cross-lane`): the 72 golden replays' hashes moved (the adventure state hash version
+  is hashed), so `h3-server`'s `tests/record.rs` has the smallest replay's new checkpoint, final
+  hash and import version (`army-dialog-s1`); nothing else of yours changed.
+- 2026-11-12, reviewed 2026-11-14 in E16 M5 T24 (#899: sound, the week's kind public) (the town lane, E09 T26a2, `town/e09-t26a2`, `cross-lane`; **a protocol version
+  taken**): protocol **v53** is the week's kind (after the adventure lane's v52) (TWN-GRO-002): `wire::game::Week` (`Normal`,
+  `Creature`, `Of`), `GameEvent::WeekStarted`'s `kind`, `GameObservation`'s `week`, the fold
+  keeping it; the fold gate's part "day and month" is "day, week and month". A bump of yours is
+  v54 or the next at merge (the town lane's T26b plans the next for the owner's counts).
+- 2026-11-10, settled 2026-11-14 in E16 M5 T24 (the counts stay exact: they catch a replay lost or skipped, and the lane that adds replays sets them in its own pull request, as E08 T116a did with 86) (the adventure lane, E08 T106a, `adventure/e08-t106a`, `cross-lane` with the
+  user's consent; **for your review**): the golden adventure replays are 66 now (T106a's eleven
+  teleporters replays: jumps of every kind, `LeadsNowhere`, battles and a meeting at an exit, the
+  Whirlpools' losses, revisits). `h3-protocol`'s `tests/game_fold.rs` (`golden`) and
+  `tests/game_session.rs` (`restores`), and since E16 M5 T6 `h3-server`'s `tests/record.rs`,
+  counted 55 exactly and failed CI; all three say 66 in that pull request, and the fold, the
+  session and the records pass over all 66 (no new stub). The adventure lane's next replays (T106b, T106c
+  add none planned) bump them the same way; loosen them to a bound if you prefer.
+- 2026-10-31, done 2026-11-12 in E16 M5 part 1 (archived 2026-11-14 in T24; its checkpoint SRV-Q28: the whole game's wire, the in-process session and its per-viewer record) (the map client lane, E24 M4 T0; **for E16 M5, the whole game: the user's order**):
+  the map viewer shows the engine's whole games through `h3-protocol`, as ADR-0020 point 8 says
+  (a record file and a live connection through the same code; an engine replay becomes a record
+  by running the session in-process). The user (M4 T0) chose that the server lane builds this
+  first, as the start of E16 M5, refined with the user there: the whole game's wire messages
+  (the observation projected per viewer, its adventure part, players, kingdom and decisions; the
+  events; the commands and answers), a session hosting one game in-process, and its per-viewer
+  record, so that a golden adventure replay (`fixtures/replays/adventure/`) becomes a record as
+  `h3-view render` makes one of a battle scenario. Seats over the network, timers and the rest of
+  M5 can follow. What the viewer reads (E24 M4 T3, T4; `h3_map_view::live` is its model): each
+  object by an identity matching the map's object list (the adventure lane's inbox, the same
+  day), its type (a random object's as drawn), its owner, a monster's view, increment 9's views;
+  the heroes (class, owner, tile, boat), the empty boats, the explored tiles; the viewer's
+  kingdom (its heroes with their movement and mana and whether each can move, its towns, the
+  resources, the date and the month); a hero's status (primary skills, morale, luck, army); the
+  events as the viewer sees them (each step, the reveals, the removals, the gains, the turns,
+  days, weeks and months, the decisions opened and answered, the battles with their own battle
+  messages, which the battle client's viewer draws). Until then the map client lane works on what
+  needs no engine (M4 T1, T2).
+- 2026-10-13, archived 2026-11-14 in E16 M5 T24 (already in E16's "Later") 2026-10-13 (the user, after M6; **later**): signed game results (E16 "Later"): the server's key signs each verified result and its replay's hash.
 - 2026-11-12, reviewed 2026-11-13 in E16 M5 T13 (the mapping both ways and the fold sound; the garrison's object index on the wire an exception to `docs/06-security.md`'s naming rule, harmless while objects are only appended, its type and anchor proposed to the adventure lane's inbox) (the adventure lane, E08 T114a2, `adventure/e08-t114a2`, `cross-lane` with the user's
   consent; **your paths changed, for your review**): protocol **v52** (after your T11's v50 and T12's v51): the wire's
   `ArmyRef::MapGarrison { garrison: u32 }` (a map garrison by object index, `u32::MAX` past it),

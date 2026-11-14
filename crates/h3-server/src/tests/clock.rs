@@ -205,7 +205,7 @@ async fn a_turn_runs_out_at_its_end_and_a_restart_keeps_the_time_left() {
     // (its clock ran since the restore, its seat empty); it runs out at its end.
     let restarted = Instant::now();
     let running = start(&config).await.unwrap();
-    let mut b = super::greeted(&running).await;
+    let mut b = greeted(&running).await;
     rejoined(&mut b, game, (1, &t1)).await;
     let back = told(&mut b).await;
     let Some(Timer {
@@ -485,7 +485,7 @@ async fn restarted(
     let running = start(config).await.unwrap();
     let mut taken = Vec::new();
     for player in 0..2 {
-        let mut client = super::greeted(&running).await;
+        let mut client = greeted(&running).await;
         let (last, _) = rejoined(&mut client, game, (player, &tokens[usize::from(player)])).await;
         assert_eq!(last, Some(lasts[usize::from(player)]), "player {player}");
         let clock = told(&mut client).await;

@@ -264,6 +264,14 @@ M0 starts now, while E04b finishes (SRV-Q7).
   user, 2026-10-13), the web portal's operator role (E21) and packaging (E22),
   content delivery, an embedded store if needed, state saves across upgrades once ADR-0004's
   save format exists, address resolution by key through a DHT if vouching no longer scales.
+  From the lane's inbox (moved 2026-11-14, verbatim; the user at T24: each waits until it
+  shows in practice):
+  - 2026-10-13 (the battle lane, E04c T2b; its `cross-lane` pull request): protocol v28 maps the observation's special battlefield and anti-magic flag and lists the battlefields in the key tables (done there). The server draws a hosted scenario's obstacles with `generate_obstacles(terrain)` (`game.rs`); a scenario that names a battlefield needs `h3_battle::generate_setup_obstacles` (none does yet).
+  - 2026-10-13 (M6 T3; **later**, with 1.0's version rules): a peer that runs another protocol version answers the fetch's hello with `Goodbye { Protocol }` and is skipped, logged; its card says its version, but the server cannot read it. Fetch another version's card once hellos negotiate versions.
+  - 2026-10-12 (after T8; **later**): a ranked game over whose result did not write (its ladder's log failed) keeps its journal, but its players may play another match on the ladder before the next start rates it, after the newer game. Keep its players out of the ladder until then if logs ever fail in practice.
+  - 2026-10-11 (M2 T5b; **later**, M4's refinement: the server's own bots send no messages): a separate rate for automated clients: an operator raises `messages_per_second` and `messages_per_address` meanwhile.
+  - 2026-10-11 (M3's review; **later**): the player log's readers (every login, the games' lookups of display names and preferences) wait behind a write's sync under its one lock; `account_changes_per_address` bounds the writes. Split the lock (a read lock for the accounts, the file's own for the writes) if logins stall under load.
+  - 2026-10-11 (M3 T3; **later**): the lobby shows a seat's display name as it stood at the seats' last change: a rename during a game shows at the game's next seat change or restart. Refresh the games' names on a rename if players notice.
 
 ## Closed milestones' tasks, exit criteria and review lists
 

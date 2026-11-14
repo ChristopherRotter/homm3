@@ -355,9 +355,9 @@ const PARTS: &[Part] = &[
         stubs: &[VISIONS],
         agree: |a, b| towns(a, b, |t| t.owner_facts.clone()),
     },
-    // E08 T114b (ADV-GAR-006): no golden replay holds a map garrison yet (increment 12's T116
-    // adds them), so neither part can differ; a Visions holder's reach (`TWN-STUB-13`) joins the
-    // second once one shows it.
+    // E08 T114b, T116a (ADV-GAR-006): the garrisons replays hold map garrisons, and both parts
+    // agree over them; a Visions holder's reach (`TWN-STUB-13`) joins the second once a replay
+    // shows it.
     Part {
         name: "map garrisons in sight",
         stubs: &[],
@@ -375,6 +375,34 @@ const PARTS: &[Part] = &[
         name: "map garrisons",
         stubs: &[],
         agree: |a, b| pairs(&a.garrisons, &b.garrisons, MapGarrison::place).all(|(x, y)| x == y),
+    },
+    // E08 T115b (v61): the types whose kind mark the viewer's team holds (E16 M5 T24: gated in a
+    // part of their own, not only where every other part agrees).
+    Part {
+        name: "kind marks",
+        stubs: &[],
+        agree: |a, b| a.adventure.kinds == b.adventure.kinds,
+    },
+    // E09 T28a (v64): the viewer's own heroes in its towns' garrisons (E16 M5 T24, as the kind
+    // marks).
+    Part {
+        name: "garrison heroes in sight",
+        stubs: &[],
+        agree: |a, b| {
+            let ids = |o: &GameObservation| {
+                let ids = o.adventure.garrison_heroes.iter().map(|h| (h.town, h.id));
+                ids.collect::<Vec<_>>()
+            };
+            ids(a) == ids(b)
+        },
+    },
+    Part {
+        name: "garrison heroes",
+        stubs: &[],
+        agree: |a, b| {
+            let (x, y) = (&a.adventure.garrison_heroes, &b.adventure.garrison_heroes);
+            pairs(x, y, |h| (h.town, h.id)).all(|(x, y)| x.own == y.own)
+        },
     },
 ];
 

@@ -3609,3 +3609,41 @@ Baseline: T23's commit (e692a71 on `master` 0872fc6). No original data. No wire 
   at the bound re-run in 0.16 s (0.75 before), verified in 0.09 s, its restored session 2.1 MiB
   (114.3), the re-run's peak beyond the read journal 57.5 MiB (115.4); the plain agent's years
   re-run in 0.03 to 0.06 s, sessions of 1.6 to 2.0 MiB (`E16-design.md` §15, "After T23b").
+
+### M5 T24 — 2c's closure (2026-11-14)
+
+Baseline: `master` 6b3087d (#931, T23 and T23b; CI green on it, the setup's run verified the same
+code). No original data. Branch `claude/adoring-fermi-l0mvur`. The user's session: "clear out the
+server lane's queue"; the inbox's waiting notes as the user chose (below).
+
+- **The end-to-end test** (`tests/clock.rs`, beside T19's 2b closure;
+  `a_spectator_watches_a_timed_game_through_a_restart_to_a_stalled_battles_void`): the duel map
+  timed at three seconds a turn, opened to spectators by its creator, the server's commands in one
+  battle bounded at 4 (`SYSTEM_BOUND`: above the monster's answers while its fighter plays, below
+  what a battle both of whose sides the server plays takes). A spectator watches from the first
+  player's first turn (its clock running); the golden replay's opening to the second player's
+  end of its fifth day; the stop: the spectator told each player's last clock as its seat was, and
+  `Shutdown`. Restarted: listed running, watched again and numbered afresh, the first player's
+  turn on from at most what it had; both seats re-taken, their last numbers the replay's. The
+  first player sends nothing: its turn runs out and the system ends it; the second moves onto the
+  wandering monster and gives its first battle command, then nothing: its turn runs out in the
+  battle (the spectator sees its clock at 0), the computer plays its side too and past the bound
+  the game is void, `CommandLimit` to both seats and the spectator (numbered on), the lobby no
+  longer listing it. The void journal: the system's end of the first player's turn, the fighter's
+  command 16 its last, the time counted before the computer's first command for its side, a system
+  command last. Six runs, 9.2 to 9.6 s each. The helpers it borrows from `watch.rs` and
+  `whole.rs` are `pub(super)` now.
+- **`docs/06-security.md`** (`cross-lane`, as T21a's lines): the whole game's spectator "hosted
+  since T22b" with the hosting's own lines (a watch binds as a join and counts against the
+  connection bounds, at most `spectators_per_game` (8) a game; no seat while it watches, a query
+  or command `NotSeated`; every player's stream under the same outbound queue; a paused game takes
+  none; the host's pause, a void, an abandoned game and the stop end a watch as the seats' play);
+  "Not covered yet" gets the long journals as measured and remedied (the restart's re-run before
+  listening, each journal read whole, no total on disk; §15's (d), (e), (g) later, (f) ruled out by
+  SRV-Q30) in place of "are 2c's".
+- **The inbox** (the user's choice at the session's start): the notes that wait until something
+  shows in practice moved verbatim into the epic's "Later" (six: a scenario's battlefield
+  obstacles, another protocol version's card, a ranked game over whose result did not write, a
+  rate for automated clients, the player log's lock, a rename shown in a running game); the signed
+  results' note archived (already in "Later"); the map client lane's whole-game order (2026-10-31)
+  archived as done in M5 part 1; the replay counts kept exact (the adding lane sets them).

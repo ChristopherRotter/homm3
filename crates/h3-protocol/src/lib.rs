@@ -152,7 +152,7 @@ pub mod wire;
 /// v59 (E09 T27, the town lane's, `cross-lane`): a town's recruitment
 /// (TWN-REC-001, -002): the town command `Recruit`, its refusals `NotRecruiting`, `NotStanding`
 /// and `NothingSummoned`, a hire dialog's town garrison target (`wire::game::HireTarget::Garrison`)
-/// and its source named as `wire::game::HireSeen` (a map object, a town's index or its Portal) in
+/// and its source named as `wire::game::HireSeen` (a map object, a town's creature index or its Portal) in
 /// the dialog's view and in `HireOpened`, in place of the object's type and anchor.
 /// v60 (E16 M5 T17, after the town lane's T27 took v59): a map offer shows how its games are
 /// timed (`wire::game::MapOffer`'s `clock`, `wire::game::OfferClock`: the turn's duration, the
