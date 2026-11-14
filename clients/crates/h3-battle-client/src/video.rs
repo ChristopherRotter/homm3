@@ -8,7 +8,10 @@
 //! `h3-smacker` (default archive `original-data/shell-videos.vid`), each written as its frames'
 //! colour indices and palettes (`<stem>.pal8`, `h3_smacker::check::raw`) and as the original's
 //! 5-6-5 copy of them (`<stem>.565`, `check::original_16`), both compared with the game's
-//! `SMACKW32.DLL`'s (`clients/scripts/smacker-check.sh`).
+//! `SMACKW32.DLL`'s (`clients/scripts/smacker-check.sh`). Since E27 M2 T2 a clip's sound too:
+//! a Bink clip's first track (`<stem>.pcm`, `h3_bink::check::sound`), each of a Smacker clip's
+//! (`<stem>.t<k>.pcm`, `h3_smacker::check::sound`), compared whole; `--sound-tables <file>`
+//! writes Bink's sound tables (`h3_bink::check::sound_tables`, against `binkprobe sound-tables`).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -48,14 +51,16 @@ pub struct Options {
     /// `--original`: the residues read as the DLL reads them (CLT-Q68; Bink's only).
     reading: Reading,
     kind: Kind,
+    /// `--sound-tables <file>` (E27 M2 T2): where to write Bink's sound tables.
+    tables: Option<PathBuf>,
 }
 
 impl Options {
     /// Parses `[<name>...] [--vid <file>] [--out <dir>] [--reference <dir>] [--sample <seed>]...
-    /// [--original] [--smacker]`.
+    /// [--original] [--smacker] [--sound-tables <file>]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
-        let (mut vid, mut out, mut reference) = (None, None, None);
+        let (mut vid, mut out, mut reference, mut tables) = (None, None, None, None);
         let (mut names, mut samples) = (Vec::new(), Vec::new());
         let mut reading = Reading::Fixed;
         let mut kind = Kind::Bink;
@@ -72,6 +77,7 @@ impl Options {
                 "--reference" => reference = Some(PathBuf::from(value()?)),
                 "--original" => reading = Reading::Original,
                 "--smacker" => kind = Kind::Smacker,
+                "--sound-tables" => tables = Some(PathBuf::from(value()?)),
                 "--sample" => {
                     let v = value()?;
                     samples.push(v.parse().map_err(|_| format!("video: bad seed `{v}`"))?);
@@ -94,6 +100,7 @@ impl Options {
             samples,
             reading,
             kind,
+            tables,
         })
     }
 
@@ -239,7 +246,11 @@ fn compare(name: &str, count: usize, ours: &[u8], reference: &[u8]) -> bool {
         }
     }
     if differing.is_empty() {
-        println!("{name}: as the reference, all {count} frames");
+        if count == 1 {
+            println!("{name}: as the reference, all {} bytes", ours.len());
+        } else {
+            println!("{name}: as the reference, all {count} frames");
+        }
         return true;
     }
     println!(
@@ -251,6 +262,16 @@ fn compare(name: &str, count: usize, ours: &[u8], reference: &[u8]) -> bool {
 }
 
 fn video(options: &Options) -> Result<bool, String> {
+    if let Some(path) = &options.tables {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+        }
+        fs::write(path, h3_bink::check::sound_tables())
+            .map_err(|e| format!("{}: {e}", path.display()))?;
+        if options.names.is_empty() && options.samples.is_empty() {
+            return Ok(true);
+        }
+    }
     let mut files: Vec<(String, Vec<u8>)> = Vec::new();
     let mut refused = false;
     if options.samples.is_empty() || !options.names.is_empty() {
@@ -302,7 +323,13 @@ fn video(options: &Options) -> Result<bool, String> {
             Kind::Bink => {
                 let (frames, clean) = decode(name, bytes, options.reading)?;
                 good &= clean;
-                (vec![("yuv".to_owned(), raw(&frames))], frames.len())
+                let mut outputs = vec![("yuv".to_owned(), raw(&frames))];
+                // The first track's sound (E27 M2 T2), compared whole.
+                if Clip::parse(bytes).is_ok_and(|clip| !clip.tracks.is_empty()) {
+                    let sound = h3_bink::check::sound(bytes).map_err(|e| format!("{e:?}"))?;
+                    outputs.push(("pcm".to_owned(), sound));
+                }
+                (outputs, frames.len())
             }
             Kind::Smacker => {
                 let (frames, clean) = decode_smacker(name, bytes)?;
@@ -325,8 +352,8 @@ fn video(options: &Options) -> Result<bool, String> {
                 let path = dir.join(format!("{stem}.{extension}"));
                 let reference = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
                 let label = match options.kind {
-                    Kind::Bink => name.clone(),
-                    Kind::Smacker => format!("{name} ({extension})"),
+                    Kind::Bink if extension == "yuv" => name.clone(),
+                    _ => format!("{name} ({extension})"),
                 };
                 good &= compare(&label, count, &ours, &reference);
             }
@@ -398,8 +425,27 @@ mod tests {
             samples: vec![3],
             reading: Reading::Fixed,
             kind: Kind::Bink,
+            tables: Some(dir.join("tables")),
         };
         assert_eq!(video(&options), Ok(true));
+        // The sound (E27 M2 T2) and the sound tables beside the frames.
+        assert_eq!(
+            fs::read(dir.join("sample-3.pcm")).unwrap(),
+            h3_bink::check::sound(&h3_bink::build::sample(3)).unwrap()
+        );
+        assert_eq!(
+            fs::read(dir.join("tables")).unwrap(),
+            h3_bink::check::sound_tables()
+        );
+        let tables_only = Options {
+            samples: Vec::new(),
+            ..Options::parse(&args(&[
+                "--sound-tables",
+                &dir.join("t").display().to_string(),
+            ]))
+            .unwrap()
+        };
+        assert_eq!(video(&tables_only), Ok(true));
         let ours = fs::read(dir.join("sample-3.yuv")).unwrap();
         let frame = 256 * 48 + 2 * 128 * 24;
         assert_eq!(ours.len(), h3_bink::build::SAMPLE_FRAMES * frame);
@@ -428,6 +474,7 @@ mod tests {
             samples: vec![5],
             reading: Reading::Fixed,
             kind: Kind::Smacker,
+            tables: None,
         };
         assert_eq!(video(&options), Ok(true));
         let frames = h3_smacker::check::frames(&h3_smacker::build::sample(5)).unwrap();
@@ -435,6 +482,8 @@ mod tests {
         assert_eq!(pal8, h3_smacker::check::raw(&frames));
         let sixteen = fs::read(dir.join("sample-5.565")).unwrap();
         assert_eq!(sixteen, original_16(&frames, Format::Rgb565));
+        let sound = h3_smacker::check::sound(&h3_smacker::build::sample(5)).unwrap();
+        assert_eq!(fs::read(dir.join("sample-5.t0.pcm")).unwrap(), sound[0].1);
         let reference = Options {
             reference: Some(dir.clone()),
             ..options
@@ -486,6 +535,7 @@ mod tests {
             samples: Vec::new(),
             reading: Reading::Original,
             kind: Kind::Bink,
+            tables: None,
         };
         assert_eq!(video(&options), Ok(false));
         assert!(out.join("\u{1b}[2Jgood.bik").exists());

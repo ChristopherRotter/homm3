@@ -75,6 +75,11 @@ impl Track {
     }
 }
 
+/// The bands for half the rate times the channels (0x1000F3FF: the frequencies below it).
+pub(crate) fn band_count(half: u32) -> usize {
+    FREQUENCIES.iter().take_while(|&&f| f < half).count()
+}
+
 /// The band scales of the 256 quantizer bytes (`0x1000F62D`: `fild`, `fmul` 0.664f, `fstp`;
 /// 0x1000F310: `fmul` 0.1f and the CRT's `pow`; `fstp`).
 pub(crate) fn band_scales() -> [X; 256] {
@@ -144,9 +149,8 @@ impl Audio {
             (512, SCALES[0])
         };
         let half = (rate * track.channels() + 1) >> 1;
-        let mut bands: Vec<usize> = FREQUENCIES
+        let mut bands: Vec<usize> = FREQUENCIES[..band_count(half)]
             .iter()
-            .take_while(|&&f| f < half)
             .map(|&f| (f * (frame as u32 / 2) / half) as usize)
             .collect();
         bands.push(frame / 2);
@@ -250,5 +254,129 @@ impl Audio {
             .copy_from_slice(&samples[frame - self.overlap..frame]);
         samples.truncate(frame - self.overlap);
         (samples, 8 + bits.words())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::build::{sound_block, sound_packet};
+
+    fn track(rate: u16, flags: u16) -> Track {
+        Track {
+            largest: 1 << 20,
+            rate,
+            flags,
+        }
+    }
+
+    /// A block whose spectrum is `dc` at its start and `nyquist` at its end (binary32 bits
+    /// of the integers), nothing between.
+    fn block(dc: i32, nyquist: i32, audio: &Audio) -> Vec<u8> {
+        let end = |v: i32| X::int(v).to_bits32().unwrap();
+        sound_block(
+            [end(dc), end(nyquist)],
+            &vec![0; audio.bands.len() - 1],
+            audio.frame,
+            &[],
+            &[],
+        )
+    }
+
+    fn samples(bytes: &[u8]) -> Vec<i16> {
+        bytes
+            .chunks_exact(2)
+            .map(|b| i16::from_le_bytes([b[0], b[1]]))
+            .collect()
+    }
+
+    #[test]
+    fn a_tracks_rate_and_channels_set_the_frame_and_the_bands() {
+        assert_eq!(
+            (
+                track(22050, 0xE000).channels(),
+                track(22050, 0xC000).channels()
+            ),
+            (2, 1)
+        );
+        assert_eq!(
+            Audio::new(track(0, 0)).err(),
+            Some(Error::Field("audio rate"))
+        );
+        assert_eq!(
+            Audio::new(track(22050, 0x1000)).err(),
+            Some(Error::Field("audio coding"))
+        );
+        for (rate, flags, frame, bands) in [
+            (11025, 0, 512, 20),
+            (22050, 0x2000, 1024, 25),
+            (22050, 0, 1024, 23),
+            (44100, 0x2000, 2048, 25),
+        ] {
+            let audio = Audio::new(track(rate, flags)).unwrap();
+            assert_eq!((audio.frame, audio.overlap), (frame, frame / 16));
+            assert_eq!(audio.bands.len() - 1, bands, "{rate} {flags:x}");
+            assert_eq!(*audio.bands.last().unwrap(), frame / 2);
+        }
+        // The game's: 1024, the scale 1/32.
+        let audio = Audio::new(track(22050, 0xE000)).unwrap();
+        assert_eq!(audio.scale.to_bits32(), Some(0x3D00_0000));
+    }
+
+    #[test]
+    fn a_spectrums_ends_give_a_constant_and_an_alternation() {
+        let mut audio = Audio::new(track(22050, 0xE000)).unwrap();
+        // DC 3200: every sample 100; the Nyquist value −320 adds ∓10 in turn.
+        let packet = sound_packet(2 * 960, &[block(3200, -320, &audio)]);
+        let out = samples(&audio.decode(&packet));
+        assert_eq!(out.len(), 960);
+        assert!(out.iter().step_by(2).all(|&s| s == 90));
+        assert!(out.iter().skip(1).step_by(2).all(|&s| s == 110));
+    }
+
+    #[test]
+    fn blocks_overlap_in_integers_and_round_half_away_from_zero() {
+        let mut audio = Audio::new(track(22050, 0xE000)).unwrap();
+        // −1.5 rounds to −2, 1.5 to 2; values past 16 bits are held to them.
+        let first = block(-48, 0, &audio);
+        let second = block(48, 0, &audio);
+        let packet = sound_packet(4 * 960, &[first, second]);
+        let out = samples(&audio.decode(&packet));
+        assert!(out[..960].iter().all(|&s| s == -2));
+        // The first 64 of the second block: ⌊(64 − i) × −2 / 64⌋ + ⌊i × 2 / 64⌋, each a floor.
+        for i in 0..64i32 {
+            let expect = ((64 - i) * -2).div_euclid(64) + (i * 2).div_euclid(64);
+            assert_eq!(i32::from(out[960 + i as usize]), expect, "{i}");
+        }
+        assert!(out[960 + 64..].iter().all(|&s| s == 2));
+        let mut audio = Audio::new(track(22050, 0xE000)).unwrap();
+        let loud = sound_packet(
+            4 * 960,
+            &[block(1 << 21, 0, &audio), block(-(1 << 22), 0, &audio)],
+        );
+        let out = samples(&audio.decode(&loud));
+        assert_eq!((out[0], out[1919]), (32767, -32768));
+    }
+
+    #[test]
+    fn a_packet_gives_its_decoded_size_held_to_the_tracks_largest() {
+        let mut audio = Audio::new(Track {
+            largest: 1000,
+            ..track(22050, 0xE000)
+        })
+        .unwrap();
+        // 1000 bytes of the first block; the second's (past the size) dropped.
+        let packet = sound_packet(5000, &[block(32, 0, &audio), block(64, 0, &audio)]);
+        assert_eq!(samples(&audio.decode(&packet)), vec![1; 500]);
+        // Under 4 bytes: no size, nothing; blocks past the packet read as zeros.
+        assert_eq!(audio.decode(&[1, 2]), Vec::<u8>::new());
+        let mut audio = Audio::new(track(22050, 0xE000)).unwrap();
+        assert_eq!(samples(&audio.decode(&sound_packet(8, &[]))), vec![0; 4]);
+        // Coefficients of every width and sign, a quantizer past FFmpeg's cap.
+        let mut audio = Audio::new(track(11025, 0)).unwrap();
+        let coefficients: Vec<i32> = (0..510).map(|k| (k % 31) - 15).collect();
+        let quantizers = vec![200; 20];
+        let b = sound_block([0, 0], &quantizers, 512, &coefficients, &[0, 5]);
+        assert_eq!(audio.decode(&sound_packet(960, &[b])).len(), 960);
     }
 }

@@ -260,6 +260,48 @@ mod tests {
     }
 
     #[test]
+    fn audio_tracks_are_described_and_their_packets_given() {
+        use crate::audio::Track;
+        let mut header = header();
+        header.audio_tracks = 2;
+        let track = Track {
+            largest: 300,
+            rate: 22050,
+            flags: 0xE000,
+        };
+        header.tracks = vec![track];
+        let mut frame = Vec::new();
+        for audio in [&b"abcde"[..], b"xyz"] {
+            frame.extend_from_slice(&(audio.len() as u32).to_le_bytes());
+            frame.extend_from_slice(audio);
+        }
+        frame.extend_from_slice(b"video");
+        let bytes = build::file(&header, &[frame.clone()]);
+        let clip = Clip::parse(&bytes).unwrap();
+        // The second track described by zeros.
+        assert_eq!(clip.tracks, vec![track, Track::default()]);
+        assert_eq!(clip.audio(0, 0), Ok(Some(&b"abcde"[..])));
+        // Under 4 bytes: none; a track past the frame's: none.
+        assert_eq!(clip.audio(0, 1), Ok(None));
+        assert_eq!(clip.audio(0, 2), Ok(None));
+        assert_eq!(clip.audio(1, 0), Err(Error::Field("frame")));
+        // A size past the frame, or no room for a size.
+        frame[0] = 99;
+        let clip_bytes = build::file(&header, &[frame]);
+        let clip = Clip::parse(&clip_bytes).unwrap();
+        assert_eq!(clip.audio(0, 0), Err(Error::Field("audio size")));
+        let bytes = build::file(&header, &[vec![1, 0, 0, 0, 9]]);
+        let clip = Clip::parse(&bytes).unwrap();
+        assert_eq!(clip.audio(0, 1), Err(Error::Truncated));
+        // The descriptions cut off.
+        let mut cut = build::file(&header, &[b"ab".to_vec()]);
+        cut.truncate(44 + 6);
+        assert_eq!(Clip::parse(&cut).err(), Some(Error::Truncated));
+        cut.truncate(44 + 2);
+        assert_eq!(Clip::parse(&cut).err(), Some(Error::Truncated));
+    }
+
+    #[test]
     fn audio_packets_are_skipped() {
         let mut header = header();
         header.audio_tracks = 2;

@@ -89,3 +89,34 @@ pub fn inverse_fft(n: usize, bits: &[u32]) -> Vec<u32> {
     }
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::build;
+    use alloc::vec;
+
+    #[test]
+    fn the_sound_checks_write_the_probes_formats() {
+        // A clip without a track has no sound; the samples' tracks a packet a frame.
+        assert_eq!(
+            sound(&build::file(&build::Header::new(16, 8), &[vec![0]])),
+            Ok(Vec::new())
+        );
+        assert_eq!(sound(b"BIK"), Err(Error::Truncated));
+        assert!(!sound(&build::sample(3)).unwrap().is_empty());
+        let mut bad = build::sample(3);
+        // Track 0 with the DCT coding: refused.
+        bad[44 + 4 + 3] |= 0x10;
+        assert_eq!(sound(&bad), Err(Error::Field("audio coding")));
+        // 256 scales and 256 + 512 + 1024 twiddles.
+        assert_eq!(sound_tables().len(), 4 * (256 + 256 + 512 + 1024));
+        // An impulse; a part run left out.
+        let mut one = vec![0u32; 16];
+        one[0] = 0x3F80_0000;
+        one.push(7);
+        let out = inverse_fft(16, &one);
+        assert_eq!(out.len(), 16);
+        assert!(out.iter().step_by(2).all(|&b| b == 0x3F80_0000));
+    }
+}

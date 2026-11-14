@@ -921,3 +921,46 @@ fn cftmdl(n: usize, l: usize, a: &mut [X], w: &[X]) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The values' binary32 bits.
+    fn bits(a: &[X]) -> Vec<u32> {
+        a.iter().map(|x| x.to_bits32().unwrap()).collect()
+    }
+
+    #[test]
+    fn a_constant_spectrum_is_an_impulse_and_back() {
+        // Every size from 8 to 4096 (each of cftbsub's tails, bitrv2's and bitrv2conj's two
+        // paths, makewt's): an impulse at 0 transforms to every value 1, exactly.
+        for n in [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096] {
+            let mut fft = Fft::new(n);
+            let mut a = vec![X::ZERO; n];
+            a[0] = X::int(1);
+            fft.inverse(&mut a);
+            for (k, v) in bits(&a).iter().enumerate() {
+                assert_eq!(*v, if k % 2 == 0 { 0x3F80_0000 } else { 0 }, "n {n} at {k}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_first_stage_of_sixteen_values_skips_its_twiddled_half() {
+        // cft1st of 16 values (cftbsub never calls it for so few): the stage without its
+        // second half, here of all ones.
+        let fft = Fft::new(64);
+        let mut a = vec![X::int(1); 16];
+        cft1st(16, &mut a, fft.twiddles());
+        let mut expected = vec![0; 16];
+        expected[0] = 0x4100_0000;
+        expected[1] = 0x4100_0000;
+        assert_eq!(bits(&a), expected);
+        // cftmdl over the whole array (cftbsub calls it only for less): its first half alone.
+        let mut a = vec![X::ZERO; 128];
+        a[0] = X::int(1);
+        cftmdl(128, 16, &mut a, fft.twiddles());
+        assert_eq!(bits(&a[..2]), [0x3F80_0000, 0]);
+    }
+}

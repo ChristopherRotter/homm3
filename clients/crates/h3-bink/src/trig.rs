@@ -129,5 +129,9 @@ mod tests {
         // A value of fewer bits than binary32's, from a fixed point that needs no shift down.
         assert_eq!(bits(round32(1, 124)), 0x3F80_0000);
         assert_eq!(round32(0, 0), X::ZERO);
+        // Ties to even: 2^24 + 1 and 2^24 + 3 halfway between two 24-bit values.
+        assert_eq!(round32((1 << 24) + 1, 124), X::int(1 << 24));
+        assert_eq!(round32((1 << 24) + 3, 124), X::int((1 << 24) + 4));
+        assert_eq!(round32((1 << 24) + 2, 124), X::int((1 << 24) + 2));
     }
 }
