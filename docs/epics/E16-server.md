@@ -323,11 +323,14 @@ Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisio
 - **T22b Spectators hosted** done 2026-11-14 (protocol stays v66; `E16-log.md`: the creator's
   flag into the lobby and the session, `Lobby::update_map`'s flag, `GameSession::takes_spectators`,
   `registry::watch_map`, a watcher bound while it watches, `tests/watch.rs`).
-- **T23 Long journals measured** (SRV-Q30's major finding's rest): a long game on an XL map
-  (seeded random legal play over many days), the restore's and the verification's time and
-  memory per day; the restart's cost (every whole journal re-run before the server listens) and
-  the session's in-memory copy of a game's commands; the case for state saves (ADR-0004 point 9)
-  written in the design note, the remedies the user's to pick then.
+- **T23 Long journals measured** done 2026-11-14 (`E16-design.md` §15, `E16-log.md`:
+  `h3-server-journals`, a year on the XL fixtures by the random agent and at a seat's bound; no
+  state saves now; SRV-Q37: remedies (a) to (c) in T23b).
+- **T23b The long journals' remedies** (SRV-Q37, §15's (a) to (c); `h3-protocol` and
+  `h3-server`, no wire or format change): the re-run's entries released; no copy of a game of
+  connections' commands (the count and the checkpoints kept; the in-process host keeps its
+  copy); a whole game's own checkpoint interval (`[server] whole_checkpoint_every`, 250), a
+  journal keeping its own; measured again.
 - **T24 2c's closure:** an end-to-end test (a spectator watching a timed game through a restart,
   a stalled battle voiding its game), `docs/06-security.md` (`cross-lane`; T20's and the
   spectator's lines written in T21a, the hosting's own left), the reviewer agent,
@@ -336,6 +339,11 @@ Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisio
 
 **Review list for the M5 2c checkpoint** (built so far; the reviewer and the user at T24):
 
+- T23: the measurement kept in the repo (`h3_server::measure`, the binary `h3-server-journals`
+  with a counting global allocator, `unsafe` in an adapter's binary; not a `bench-check`
+  workload: wall time and heap, §15's numbers); the journal built from the agent's commands as
+  a game of connections journals them (not through `handle`), untimed; the flood by tactics
+  switches; the fixtures' two seats, eight scaled by commands; no state saves (§15's case).
 - T22b: no protocol step (the server hosts what v66 defined); a paused whole game refuses a
   watch `NoSpectators` (as a paused battle a spectator), an unknown game and a paused battle
   `NoSuchGame`, a running battle's session `NoSuchGame` (the registry cannot tell it from a
