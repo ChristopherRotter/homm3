@@ -268,7 +268,7 @@ impl Prepared {
         (stores.ids.reach(game)).map_err(|e| Error(format!("game {game}'s id: {e}")))?;
         let options = GameOptions {
             game,
-            checkpoint_every: server.checkpoint_every,
+            checkpoint_every: server.whole_checkpoint_every,
             record_bytes: limits.record_bytes,
             clock: offer.clock,
             commands: limits.commands(),

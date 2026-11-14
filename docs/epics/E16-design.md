@@ -148,7 +148,8 @@ since M2 T5b, `outbound_bytes` and `record_bytes` since M2 T5c, `replays_kept` s
 `public_url` and `anonymous` in `[server]` and `failed_logins_per_address` in `[limits]` since M3
 T2a, `commands_per_game` (a game reaching it without an end is void) since M3 T4a,
 `trusted_proxies` in `[server]` (the operator's setup behind a TLS proxy:
-`crates/h3-server/README.md`) since M3 T4b. Still to come:
+`crates/h3-server/README.md`) since M3 T4b, `whole_checkpoint_every` in `[server]` (a whole
+game's, §15) since M5 T23b. Still to come:
 
 ```
 [[ladder]]    id = "arena"  name = "Arena"  scenarios = ["…"]  grace_ms = 300000  # M4, §11
@@ -556,3 +557,133 @@ gives the fold, a function of `h3-protocol` that clients and records share, with
 the golden replays (each viewer's snapshot folded with its events equals `observe` after every
 command), each gap a stub (`SRV-STUB-<n>`) until its lane lands it; T5's session keeps each
 viewer's last explored grid and sends the query's answer with the command's events.
+
+## 15. Long journals: the restart's cost, the copy, the case for state saves (M5 T23, 2026-11-14)
+
+SRV-Q30's major finding's rest (2a's reviewer): a whole game's journal grows with the game, a
+restart re-runs every whole journal before the server listens, and the session keeps a copy of
+the game's commands that a game of connections never reads. **Method.** `h3-server-journals`
+(`h3_server::measure`, kept in the repo; release build, the 4-CPU sandbox, idle) plays a game
+on an XL fixture for 336 days (twelve months), every seat a player's, and writes its journal as a
+game of connections' (every seat taken by token, the start, each seat's numbered commands and
+the system's, a checkpoint every 25 commands, untimed: no `Elapsed` lines) through
+`journal::whole`; then, for the journal up to the end of chosen days, it times the reading
+(`journal::whole::read`), the re-run as a restart hosts the game again (`GameSession::reopen`:
+the build, every command through the session, the checkpoints, each player's snapshot into its
+record) and the verification of the adventure replay it holds (`Replay::verify`: a finished
+game's check once games end, E10), and counts the heap with a counting allocator. Three agents:
+the plain random agent (`Replay::record_random`), and two that make each of a seat's turns up to
+40 or 1 000 map commands with free ones (a hero's tactics flag switched, GAM-MAN-001), the
+second at a seat's bound (`[limits] commands_per_turn`, T18): the most a seat can add to the
+journal in a turn. The fixtures have two players with four heroes each (`e08-economy-144`: 116
+mines, 328 monsters; `e08-xl-144`: the patchwork of 1 056 typed objects); the shipped XL maps
+were not staged. Seeds 1 (and 2 for the plain agent, alike).
+
+A year (336 days), two seats; times in seconds, the heap in MiB (the restored session's and the
+re-run's peak beyond the read journal):
+
+| Map, agent | commands (the system's, battle) | journal | read | re-run | verify | copy | restored session | re-run's peak |
+|---|---|---|---|---|---|---|---|---|
+| economy, plain | 6 595 (3 597, 5 508) | 0.35 | 0.003 | 0.058 | 0.051 | 0.37 | 2.5 | 3.4 |
+| economy, 40 a turn | 15 504 | 0.82 | 0.005 | 0.069 | 0.063 | 0.84 | 3.4 | 4.3 |
+| economy, 1 000 a turn | 239 184 | 12.9 | 0.067 | 0.478 | 0.435 | 12.8 | 29.8 | 30.6 |
+| XL, plain | 7 114 (3 164, 5 400) | 0.41 | 0.003 | 0.044 | 0.037 | 0.42 | 2.9 | 4.0 |
+| XL, 40 a turn | 29 233 | 1.58 | 0.010 | 0.065 | 0.054 | 1.60 | 5.6 | 6.6 |
+| XL, 1 000 a turn | 585 073 | 31.8 | 0.174 | 0.752 | 0.574 | 31.3 | 114.3 | 115.4 |
+
+The agents' games thin out: most of a seat's commands are its battles', the plain agent's heroes
+are mostly lost by days 112 to 168 (a day is then its two ends of turn), and on the economy map
+the flood stops at day 168 with the last hero. Seed 2's plain games alike (4 804 and 5 427
+commands, re-run 0.03 s). The XL map at the bound, by day:
+
+| Day | 7 | 28 | 84 | 168 | 336 |
+|---|---|---|---|---|---|
+| commands | 14 746 | 57 185 | 172 460 | 341 491 | 585 073 |
+| journal, MiB | 0.78 | 3.06 | 9.25 | 18.5 | 31.8 |
+| read, s | 0.006 | 0.016 | 0.047 | 0.115 | 0.174 |
+| re-run, s | 0.022 | 0.074 | 0.236 | 0.398 | 0.752 |
+| verify, s | 0.017 | 0.057 | 0.202 | 0.364 | 0.574 |
+| restored session, MiB (the copy) | 3.4 (0.8) | 8.7 (3.1) | 30.0 (9.2) | 58.1 (18.3) | 114.3 (31.3) |
+
+At the bound a seat-day adds about 1 000 commands, 47 KB of journal, 1.1 ms of re-run and 0.3 ms
+of reading.
+
+**Where the time goes.** The engine's re-run alone (`apply`, no session) is 4 to 6 µs a command
+of the agents' mix, the day starts included (a month's start walks the 41 472 tiles), and well
+under 0.1 µs a tactics switch. The session adds 0.3 µs a command of bookkeeping and **the
+checkpoints**: a state hash of these XL games costs about 25 µs, so at the bound (a hash every 25
+nearly free commands) the hashes are about 80 % of the re-run and 90 % of the verification: the
+XL year at the bound re-runs in 0.72 s with a hash every 25 commands, 0.29 every 100, 0.21 every
+250 and 0.16 with none (verified in 0.61, 0.18, 0.09, 0.04). The reading is 0.3 µs a line. A
+re-run's fixed part (the build, 2 to 4 ms, and each player's snapshot) is 6 to 10 ms for two
+players; each further player adds its snapshot (§14: `observe` about 0.4 ms a viewer on these
+maps, then its encoding), and each further seat its commands.
+
+**Memory.** The game's state holds 0.8 to 1.4 MiB however long the game. A journal line is
+about 55 B on disk; an entry and a command are 56 B in memory (`GameEntry`, `(Actor,
+GameCommand)`). The session's copy of the commands (`GameJournal::commands`, read only by tests) is 56 B a command, up to twice that with its vector's spare capacity.
+A **restored** session holds a second such vector: the re-run's entries, drained but never
+released (`GameSession::rerun` drains `entries`, which keeps its capacity for the game's life):
+at the bound a year's restored two-seat game holds 114 MiB, 112 of them these two vectors. The
+read journal (`GameRead::entries`, 56 B an entry) lives through the re-run: 56 MiB there, 88 at
+the reading's peak, freed after.
+
+**The restart.** `registry::restore` re-runs every whole journal one after another, each
+awaited, before the server listens; a paused game is re-run at the start (to list it paused)
+and again at the join that resumes it. Whole games never end before E10, so the lobby's `[limits]
+games` (16) can hold 16 of them for ever. A restart then costs the sum: at the agents'
+volumes 50 to 80 ms a two-seat game-year (16 games: about a second); at the bound about 0.9 s
+(0.17 reading, 0.75 re-run), so 16 two-seat games hold the start back about 15 s and 16
+eight-seat ones (four times the commands) about a minute, each restored one holding about 115
+MiB (two seats) or 450 MiB (eight). The bound is a rate: the message rate (20 a second) lets one address that holds both seats of an
+untimed two-seat game play a flooded day in about 100 s, a flooded year in about nine and a half
+hours; a turn's duration does not slow it (a 1 000-command turn fits in a minute).
+
+**The case for state saves (ADR-0004 point 9).** A save of the whole state every day (or every M
+commands) would make a restore the last save's load plus its tail; the journal stays the source
+of truth, the save checked against the checkpoint after its command. It does not shrink the
+journal on disk, the copy, or the reading unless the save records where in the journal it
+stands. Its cost is a versioned serialization of `GameState` across five crates of three other
+lanes (`h3-game`, `h3-adventure`, `h3-heroes`, `h3-towns`, `h3-battle` for a battle open at the
+save), stepped with every change of the state, with its own tests: the adventure lane's ADR-0004
+point 9 work. Measured, a year's restore is under a tenth of a second at the agents' volumes and
+under a second at the bound (two seats; 0.4 s with remedy (c) below), so **state saves buy the
+server little now**; they pay when a single game's re-run reaches seconds (eight
+flooding seats over years, computer players' many commands after E13) or for a player's own
+save and load.
+
+**The remedies** (SRV-Q37: the user picked (a) to (c), built in T23b; (d), (e) and (g) later, no (f)):
+
+- (a) **The re-run's entries released** (`rerun` drops its vector's capacity): −56 to 112 B per
+  journal entry for a restored game's life. A fix, no format or wire change.
+- (b) **No copy of a game of connections' commands**: the session keeps the count (the
+  checkpoints' cadence) and the checkpoints, not the commands; the in-process host and the tests
+  keep theirs; E10's finished game builds its replay from the journal file, which its
+  verification reads anyway. −56 to 112 B per command.
+- (c) **A whole game's own checkpoint interval** (`[server]`, default 250): the journal's first
+  line keeps each game's interval (its replay's `checkpoint_every`), so a journal written before
+  restores as written; no format step. The XL year at the bound: re-run 0.75 → 0.21 s,
+  verification 0.57 → 0.09 s; a divergence is found up to 250 commands later.
+- (d) **A streaming restore**: each line re-run as it is read, no vector of the whole journal: the
+  reading's transient peak (one game at a time) to a line's.
+- (e) **A lazy or parallel restart**: a running whole game listed from its journal's first line
+  and seat lines and re-run at its first join on its own thread (as a paused one is), so that a
+  restart listens at once; or the whole journals re-run on threads of their own (none is ranked,
+  so their order does not matter).
+- (f) **A total bound** per whole game (commands or journal bytes): SRV-Q30 chose the per-turn
+  bound instead; a legitimate long game must not be void.
+- (g) **State saves** as above.
+
+**After T23b** ((a) to (c) built; the same games, the journal's checkpoint every 250 commands):
+
+| Year, two seats | journal, MiB | read, s | re-run, s | verify, s | restored session, MiB | re-run's peak, MiB |
+|---|---|---|---|---|---|---|
+| economy, plain / 40 / 1 000 a turn | 0.34 / 0.79 / 12.5 | 0.003 / 0.006 / 0.058 | 0.047 / 0.057 / 0.101 | 0.039 / 0.044 / 0.097 | 1.6 / 1.6 / 1.6 | 2.5 / 2.5 / 15.4 |
+| XL, plain / 40 / 1 000 a turn | 0.40 / 1.54 / 30.9 | 0.003 / 0.009 / 0.170 | 0.034 / 0.039 / 0.164 | 0.028 / 0.031 / 0.093 | 2.0 / 2.0 / 2.1 | 3.1 / 3.2 / 57.5 |
+
+A restored session holds no more than a fresh one (the state, the records); at the bound a
+two-seat game-year restores in about a third of a second (16 games: about 5 s; eight seats:
+about 1.3 s a game, 21 s for 16) and with a hash every 25 commands its re-run would still take
+0.63 s. What is left is transient, one game at a time: the read journal (56 MiB at the bound)
+and the re-run's own entries until they are compared with it (the re-run's peak); (d) would
+remove both.

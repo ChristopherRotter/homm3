@@ -16,7 +16,7 @@ use super::game_fold::one;
 use super::game_session::duel;
 use crate::codec;
 use crate::map::game::{command, manifest, observe};
-use crate::session::game::{GameEntry, GameOptions, GameOutbound, GameSession};
+use crate::session::game::{GameEntry, GameJournal, GameOptions, GameOutbound, GameSession};
 use crate::session::{ConnId, Outbound};
 use crate::wire::game::{GameCommand, GameReject, MapIdentity};
 use crate::wire::{
@@ -48,6 +48,24 @@ const F: ConnId = ConnId(6);
 /// The token the host drew for `player`'s seat.
 pub(super) fn token(player: PlayerId) -> String {
     std::format!("token-{}", player.raw())
+}
+
+/// A game of connections' journal against its in-process twin's (E16 M5 T23b, SRV-Q37): the same
+/// but for the commands, of which the game of connections keeps no copy; its `entries` (all it
+/// journaled) hold the twin's commands in order, each as its actor's.
+pub(super) fn same_journal(net: &GameJournal, twin: &GameJournal, entries: &[GameEntry]) {
+    assert_eq!(net.commands, None);
+    let twins = GameJournal {
+        commands: None,
+        ..twin.clone()
+    };
+    assert_eq!(*net, twins);
+    let commands = entries.iter().filter_map(|entry| match entry {
+        GameEntry::Command(actor, command) => Some((*actor, command.clone())),
+        GameEntry::Numbered(player, _, command) => Some((Actor::Player(*player), command.clone())),
+        _ => None,
+    });
+    assert_eq!(Some(commands.collect::<Vec<_>>()), twin.commands);
 }
 
 /// `GameJoin` of game 9's `player` with `token`.
@@ -186,13 +204,13 @@ fn connections_hear_what_the_in_process_hosts_players_hear() {
     }
     assert!(systems > 0);
     assert_eq!(net.state().state_hash(), twin.state().state_hash());
-    assert_eq!(net.journal(), twin.journal());
     for player in (0..=u8::MAX).take(players).map(PlayerId::new) {
         assert_eq!(net.record(player), twin.record(player));
     }
     // Its journal, the seats' entries and the numbered commands, restores the game with its seats
     // taken, none held (E16 M5 T8b).
     let entries: Vec<GameEntry> = net.drain_entries().collect();
+    same_journal(net.journal(), twin.journal(), &entries);
     let numbered = entries
         .iter()
         .filter(|e| matches!(e, GameEntry::Numbered(..)));
@@ -202,7 +220,7 @@ fn connections_hear_what_the_in_process_hosts_players_hear() {
     let back = back.unwrap();
     assert!(back.started() && !back.paused());
     assert_eq!(back.state().state_hash(), twin.state().state_hash());
-    assert_eq!(back.journal(), twin.journal());
+    same_journal(back.journal(), twin.journal(), &entries);
 }
 
 #[test]

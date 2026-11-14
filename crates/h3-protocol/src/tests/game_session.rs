@@ -449,7 +449,8 @@ fn the_golden_replays_run_through_the_session() {
         // The journal is the replay's.
         let journal = GameJournal {
             seed: replay.seed,
-            commands: replay.commands.clone(),
+            commands: Some(replay.commands.clone()),
+            accepted: replay.commands.len(),
             checkpoint_every: replay.checkpoint_every,
             checkpoints: replay.checkpoints.clone(),
         };
@@ -777,7 +778,7 @@ fn a_journal_cut_short_is_completed() {
         after.as_slice(),
         [GameEntry::Command(..), GameEntry::Checkpoint(_)]
     ));
-    assert_eq!(back.journal().commands.len(), 5);
+    assert_eq!(back.journal().accepted, 5);
 }
 
 /// Whether a frame is a whole game's snapshot.

@@ -19,6 +19,11 @@ path = "src/main.rs"
 name = "h3-server-bench"
 path = "src/bin/h3-server-bench.rs"
 
+# The long journals' measurement (E16 M5 T23, `h3_server::measure`).
+[[bin]]
+name = "h3-server-journals"
+path = "src/bin/h3-server-journals.rs"
+
 [dependencies]
 h3-kernel.workspace = true
 h3-content.workspace = true

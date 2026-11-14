@@ -80,7 +80,8 @@
 //!   (`Goodbye { SpectatorsClosed }`). No whole game is ranked yet; a ranked one will take none.
 //! - **The journal** (E16 M5 T5b). The accepted commands with their actors and a state hash every
 //!   `checkpoint_every` commands: the adventure replay in progress ([`GameJournal`]; its header,
-//!   map and difficulty are the host's). What a restart must redo comes out as [`GameEntry`]s,
+//!   map and difficulty are the host's; a game of connections' without its commands, which its
+//!   host's file holds, E16 M5 T23b). What a restart must redo comes out as [`GameEntry`]s,
 //!   which the host drains after every call ([`GameSession::drain_entries`]) and makes durable
 //!   before it delivers that call's frames. [`GameSession::restore`] re-runs them: the same game,
 //!   every player then told it afresh as at the start (its numbers and record begin again: they
@@ -243,8 +244,13 @@ impl Spectators {
 pub struct GameJournal {
     /// The game's seed.
     pub seed: u64,
-    /// The accepted commands in order, each with its actor.
-    pub commands: Vec<(Actor, h3_game::GameCommand)>,
+    /// The accepted commands in order, each with its actor: the in-process host's
+    /// ([`GameSession::start`], [`GameSession::restore`]); none for a game of connections
+    /// ([`GameSession::new`], [`GameSession::reopen`]; E16 M5 T23b, SRV-Q37), whose host's file
+    /// of its entries holds them (56 B a command in memory, never read while the game runs).
+    pub commands: Option<Vec<(Actor, h3_game::GameCommand)>>,
+    /// How many commands were accepted (E16 M5 T23b): the checkpoints' cadence.
+    pub accepted: usize,
     /// A state hash after every this many commands (0: none).
     pub checkpoint_every: u32,
     /// The state hashes after commands `k · checkpoint_every`, k = 1, 2, …
@@ -262,9 +268,12 @@ impl GameJournal {
         entries: &mut Vec<GameEntry>,
     ) {
         entries.push(entry);
-        self.commands.push((actor, command));
+        if let Some(commands) = &mut self.commands {
+            commands.push((actor, command));
+        }
+        self.accepted += 1;
         let every = usize::try_from(self.checkpoint_every).unwrap_or(usize::MAX);
-        if self.commands.len().checked_rem(every) == Some(0) {
+        if self.accepted.checked_rem(every) == Some(0) {
             let hash = state.state_hash();
             self.checkpoints.push(hash);
             entries.push(GameEntry::Checkpoint(hash));
@@ -642,6 +651,8 @@ impl<'r> GameSession<'r> {
             });
         session.seats = Seats::Taken(seats.collect());
         session.started = false;
+        // The host's file is its journal (E16 M5 T23b, SRV-Q37): no copy of its commands.
+        session.journal.commands = None;
         Ok(session)
     }
 
@@ -752,7 +763,10 @@ impl<'r> GameSession<'r> {
                 .count();
             return Err(GameRestoreError::Diverged { at });
         }
+        // The re-run's own entries released (E16 M5 T23b, SRV-Q37): those it left are few, and the
+        // vector would keep the whole journal's room for the game's life.
         self.entries.drain(..entries.len());
+        self.entries.shrink_to_fit();
         Ok(())
     }
 
@@ -785,7 +799,8 @@ impl<'r> GameSession<'r> {
             game: options.game,
             journal: GameJournal {
                 seed,
-                commands: Vec::new(),
+                commands: Some(Vec::new()),
+                accepted: 0,
                 checkpoint_every: options.checkpoint_every,
                 checkpoints: Vec::new(),
             },
