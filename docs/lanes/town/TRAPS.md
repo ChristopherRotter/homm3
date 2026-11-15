@@ -100,12 +100,14 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   `AdventureState::town_heroes()` too, or a hero entering or leaving its garrison reads as a hero
   lost or made; the town's moves are probed among the town commands (`town_builds`). Since T29b
   the plans' `Step::Town` enters garrisons, so the battle's oracles meet one that defends and
-  wins (it stays in the garrison, its army even empty) and levels up: `hero_anywhere` reads a
-  battle's hero from either (`check_battle_end`, `check_heroes_after_battle`,
-  `check_progression`).
+  wins (it stays in the garrison, its army even empty), raises and levels up: `hero_anywhere`
+  reads a battle's hero from either (`check_battle_end`, `check_heroes_after_battle`,
+  `check_progression`, `check_conservation`'s levels), and `check_isolation` lets the battle's
+  garrison hero change.
 - **A new plan step meets oracles no game reached before** (E09 T29b: the hero moves met three):
   after changing what a step plays, run the properties of `play.rs` and `view.rs` at five times
-  their cases once (raise the two blocks' `cases`, then put 48 back).
+  their cases once, `every_step_keeps_the_commands_invariants` at ten (raise the two blocks'
+  `cases`, then put 48 back): 240 cases missed two that CI's seeds met.
 - **The hygiene's other game keeps every ownable object's entrance land** (`view.rs`' `vary`,
   its `entrances`): the import refuses one entered from water (`OwnedOnWater`). A new ownable
   body (E08 T116b1's map garrisons, missed until T29b) joins that list.

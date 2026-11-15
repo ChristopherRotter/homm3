@@ -3966,17 +3966,22 @@ two parts, the properties first), with a new month workload in place of counting
   lost, the hero moves, the Plagues and the weeks that leave a count at its bound, all above 0:
   `sieges: [34, 30, 16, 9]`, `won: [17, 9, 3, 5]`, `lost: [16, 18, 10, 4]`, `rows: [144, 95, 31]`,
   `plagues: 41`, `saturated: 14`.
-- **Three oracle gaps the new games met** (the plans' oracles, no engine change):
-  `check_progression` took a level-up's hero from the map only (a garrison hero that wins its
-  defence levels up: its owner's level-up, as T28b2's `held.rs` plays); `check_battle_end` and
-  `check_heroes_after_battle` read the battle's heroes from the map only (a garrison hero that wins
-  stays in the garrison, its army kept even empty, decision 95; found by a stress of 240 cases,
-  its case in `proptest-regressions/tests/play.txt`): `hero_anywhere` reads either.
+- **Oracle gaps the new games met** (the plans' oracles, no engine change): `check_progression`
+  took a level-up's hero from the map only (a garrison hero that wins its defence levels up: its
+  owner's level-up, as T28b2's `held.rs` plays); `check_battle_end` and `check_heroes_after_battle`
+  read the battle's heroes from the map only (a garrison hero that wins stays in the garrison, its
+  army kept even empty, decision 95; found by a stress of 240 cases); CI's first run on #946 met
+  two more: a garrison hero's Necromancy after its defence and its level-up answered later
+  (`check_heroes_after_battle`'s raise, `check_conservation`'s levels), and `check_isolation`
+  holding another player's garrison hero unchanged through the siege that player's hero fought.
+  `hero_anywhere` reads a hero on the map or in a garrison; the cases are in
+  `proptest-regressions/tests/play.txt`.
 - **A gap of `master`'s** (the setup's baseline, the coverage step's test run on 8026f16): the
   hygiene property's other game (`view.rs`' `vary`) flooded a map garrison's entrance (an ownable
   object since E08 T116b1), which the import refuses (`OwnedOnWater`); its `entrances` keep a
   garrison's land as a mine's (the case in `proptest-regressions/tests/view.txt`).
-- **Stress:** the properties of `play.rs` and `view.rs` at 240 cases (five times their 48) pass.
+- **Stress:** the properties of `play.rs` and `view.rs` at 240 cases (five times their 48) pass;
+  after CI's case, `every_step_keeps_the_commands_invariants` at 600.
 - **Bench:** `month-start-builds-36` (new, `benches/adventure/`) baselined at 2 620 845 Ir: the
   step that starts day 29 in each of 16 random games of 28 days on the builds map (seed 1's
   months: 2 Plagues, 6 a creature's with 36 monsters, 8 normal), 61 % the creature months' walk

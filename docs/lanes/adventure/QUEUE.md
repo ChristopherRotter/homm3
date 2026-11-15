@@ -55,8 +55,9 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   65 535 of a level where it drew 20; `check_invariants` bounds the towns' counts;
   `check_towns` takes the command (the Plague, a purchase's amount); a new property
   `a_forks_week_is_its_parents`; `hero_anywhere` (a hero on the map or a garrison hero) in
-  `check_battle_end`, `check_heroes_after_battle` and `check_progression`, which met a garrison
-  hero defending and levelling up. `view.rs`' `vary` keeps a map garrison's entrance land (a case
+  `check_battle_end`, `check_heroes_after_battle`, `check_conservation` and `check_progression`,
+  and `check_isolation` exempting the battle's garrison hero, which met a garrison hero
+  defending, raising and levelling up. `view.rs`' `vary` keeps a map garrison's entrance land (a case
   of `master`'s, `OwnedOnWater`; your E08 T116b1's ownable garrisons were not in its
   `entrances`). A new workload `benches/adventure/month-start-builds-36.toml` (the step that
   starts day 29 on the builds map), its README row by #942.

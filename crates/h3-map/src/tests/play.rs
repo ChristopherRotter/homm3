@@ -6977,7 +6977,8 @@ fn check_conservation(
         // meeting's spells (HER-SPL-007), an artifact's move, an assembly and a disassembly
         // (HER-ART-005, -006), each applied in order; (E08 T30) by the levels it is told it
         // gained answering its level-up, each the next level (GAM-DEC-002, HER-LVL-005).
-        let owner = before.adventure().hero(id).map(|h| h.owner);
+        // E09 T29b: or a garrison hero's ([`hero_anywhere`]: its level-up answered in its town).
+        let owner = hero_anywhere(before, id).map(|h| h.owner);
         let mut told = (**b).clone();
         for event in events {
             match *event {
@@ -6997,7 +6998,7 @@ fn check_conservation(
                     skill,
                 } if hero == id => {
                     prop_assert_eq!(Some(player), owner);
-                    prop_assert!(after.adventure().hero(id).is_some(), "{:?} levelled", id);
+                    prop_assert!(hero_anywhere(after, id).is_some(), "{:?} levelled", id);
                     prop_assert_eq!(level, told.level + 1);
                     // The offers' levels after the last level told are the hero's (one command
                     // may give several levels).
@@ -10177,8 +10178,9 @@ fn check_heroes_after_battle(
         } = *event
         {
             prop_assert!(fought.contains(&hero), "{:?} raised", hero);
-            prop_assert_eq!(player, before.adventure().hero(hero).unwrap().owner);
-            let stays = after.adventure().hero(hero);
+            // E09 T29b: a garrison hero that won its defence raises in its army too.
+            prop_assert_eq!(player, hero_anywhere(before, hero).unwrap().owner);
+            let stays = hero_anywhere(after, hero);
             prop_assert!(
                 stays.is_some_and(|h| h
                     .army
@@ -10912,7 +10914,8 @@ fn told_army(
 /// and changes another player's heroes' points only when that player's turn starts
 /// (ADV-MOV-002); but a battle (E08 T19a) the actor owns with another player: its commands play
 /// the battle both own, and the one that ends it changes the other's hero (its army, or its
-/// removal) and, by a surrender, its treasury ([`check_battle_end`]).
+/// removal; since E09 T29b a garrison hero's that defended) and, by a surrender, its treasury
+/// ([`check_battle_end`]).
 fn check_isolation(
     before: &GameState,
     after: &GameState,
@@ -10961,6 +10964,11 @@ fn check_isolation(
     // its points, then full (TWN-ROW-005); a captured town's leaves the game (`TWN-QUIRK-11`),
     // and since E09 T28b2 one its siege beat.
     for (town, b) in before.adventure().town_heroes() {
+        // E09 T29b: but one the command's ended battle fought (its siege's defence, won: its army
+        // and record as [`check_battle_end`] checks them).
+        if fought.contains(&b.id) {
+            continue;
+        }
         let Some(a) = after
             .adventure()
             .town_hero(*town)
