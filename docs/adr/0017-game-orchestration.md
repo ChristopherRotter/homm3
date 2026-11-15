@@ -566,12 +566,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    group); each command changes the armies at once, by the adventure's one owner rule (ADR-0016
    point 3: a non-removable garrison takes stacks only into its empty slots; batch E12's E12-3,
    D-61 the original), so the close writes nothing back. It opens at a visit of a team's garrison
-   and at the capture of one, and **after a won garrison battle as a sixth visit's rest**
-   (GAM-DEC-007), given once the winner's levels are answered, as the original's order; nothing
+   and at the capture of one, and **after a won garrison battle**, which the won battle's own
+   rest gives (`Rest::Won`, GAM-DEC-007's third: the flag, then the exchange; no rest of its
+   own), once the winner's levels are answered, as the original's order; nothing
    when the winner left the map (E12-1, E12-2, E12-6: the exchange at a move's end, after a flag
    and after a won battle). Its view (the owner's): the garrison by type and anchor, its army by
-   slot, its removable flag. The town's rows reuse its armies held together, not the kind (E09
-   decisions 67 and 80, the town's two rows above), with `ArmyRef::Garrison(town)` or the
+   slot, its removable flag. The town's rows reuse its army reference and the one owner rule,
+   not the decision (E09 decisions 67 and 80, the town's two rows above; E09 T28a): an own
+   town's two bars are admitted outside any decision, with `ArmyRef::Garrison(town)` or the
    garrison hero's army as the stationary bar. The bonus visitables ask nothing.
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
@@ -1175,7 +1177,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   visit's rest, the town's rows reusing its armies held together; the versions; the outcomes; a
   garrison's battle and the anti-magic flag, the bonuses from the hero on the map, the clear's
   kept marks. Drafted in E08 T108b (survey `E08-garrisons-bonuses.md`); batch E12's outcome
-  (T111, §15: every row as read) folded in.
+  (T111, §15: every row as read) folded in. Point 6 worded as built at E08 T117 (increment 12's
+  audit, `shared/e08-t117`): the exchange after a won garrison battle is the won battle's rest,
+  not a rest of its own; the town's rows reuse the army reference and the owner rule outside any
+  decision (E09 T28a).
 - 2026-11-13 (E16 M5 T14, the server lane's `cross-lane` pull request with its `shared:` commit;
   the user at SRV-Q31 and at T14's start): point 2: the system actor's own commands,
   `GameCommand::System(SystemCommand)` (`EndTurn`, `Answer` by `default_answer`, `Battle` for a

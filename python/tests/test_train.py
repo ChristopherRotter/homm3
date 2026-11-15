@@ -40,7 +40,15 @@ from h3env.train.evaluate import (  # noqa: E402
 )
 from h3env.train.hexnet import HexConv, HexFormer  # noqa: E402
 from h3env.train.policy import Mlp, build  # noqa: E402
-from h3env.train.ppo import _SEATS, TEACHER, Trainer, episode_entries, padded  # noqa: E402
+from h3env.train.ppo import (  # noqa: E402
+    _SEATS,
+    TEACHER,
+    TEACHER_STREAM,
+    Trainer,
+    episode_entries,
+    padded,
+    save,
+)
 from h3env.train.run import (  # noqa: E402
     ConfigError,
     HeldOutError,
@@ -524,6 +532,7 @@ def test_a_stopped_run_resumes_to_its_budget(tmp_path) -> None:
     for member in stopped.league.members:
         _same(again.nets[member.id].state_dict(), stopped.nets[member.id].state_dict())
     assert torch.equal(again.generator.get_state(), state["rng"]["sampling"])
+    assert state["rng"]["teacher"] is None and again.teacher_generator is None
     assert torch.equal(torch.get_rng_state(), state["rng"]["torch"])
     assert (again.samples, again.episodes) == (stopped.samples, stopped.episodes)
     assert again.snapshots.next == stopped.snapshots.next
@@ -661,9 +670,10 @@ def test_the_update_takes_the_entropy_bonus_it_is_given() -> None:
 IMITATE = dict(**{**SMALL, "max_steps": 60, "rollout": 32}, self_play=0.5, kinds=[1, 0, 1, 0, 0, 0])
 
 
-def imitating(coef: float) -> Trainer:
-    """A trainer of `IMITATE` at the imitation weight `coef`, a member of its league live."""
-    trainer = Trainer(Config(**IMITATE, imitation_coef=coef))
+def imitating(coef: float, **extra) -> Trainer:
+    """A trainer of `IMITATE` (and `extra`) at the imitation weight `coef`, a member of its league
+    live."""
+    trainer = Trainer(Config(**IMITATE, imitation_coef=coef, **extra))
     trainer.join()
     assert trainer.league.draw(0)
     trainer.assign(np.arange(trainer.config.envs))
@@ -715,6 +725,74 @@ def test_the_teachers_labels_change_no_episode_and_are_the_fair_actors_choices()
         np.testing.assert_array_equal(k[head][0, rows], expected[head][rows])
     plain.batch.close()
     taught.batch.close()
+
+
+def test_a_network_teacher_labels_the_learners_decisions_with_its_own_draws(
+    tmp_path, monkeypatch
+) -> None:
+    # E25 T34 (the KL anchor, `[ppo] imitation_teacher`): a saved network labels the learner's
+    # decisions instead of the fair actor, whom no call asks, its draws from a generator of its
+    # own: the rollout is the unlabelled one bit for bit, every learning row is labelled within
+    # the learner's masks, and the first call's labels are the network's draws on the same batch.
+    # Its generator's state goes into the checkpoint and comes back.
+    calls = []
+    monkeypatch.setattr(BattleBatch, "choice", lambda self, *a, **k: calls.append(a))
+    source = Trainer(Config(**IMITATE, seed=99))
+    path = tmp_path / "teacher.pt"
+    assert save(path, source.network())
+    source.batch.close()
+    with pytest.raises(ConfigError, match="does not exist"):
+        Trainer(Config(**IMITATE, imitation_coef=1.0, imitation_teacher=str(tmp_path / "no.pt")))
+    plain, taught = imitating(0.0), imitating(1.0, imitation_teacher=str(path))
+    c = taught.config
+    twin = BattleBatch(c.envs, threads=c.threads, seed=taught.batch_seed, max_steps=c.max_steps)
+    for weight, kinds, side in episode_entries(c):
+        twin.add_encounters(weight, kinds=kinds, **({} if side < 0 else _SEATS[side]))
+    twin.reset()
+    np.testing.assert_array_equal(twin.obs, taught.batch.obs)
+    plain.collect()
+    roll = taught.collect()
+    assert not calls
+    p, r = plain.rollout, taught.rollout
+    for name in ("obs", "entry", "spell", "target", "second", "side", "reward", "terminal"):
+        np.testing.assert_array_equal(getattr(p, name), getattr(r, name), err_msg=name)
+    assert r.labelled and roll["frozen_passes"] > 0 and roll["by_kind"]["wandering"]
+    k = r.teacher
+    assert k is not None
+    labelled = k["labelled"]
+    np.testing.assert_array_equal(labelled, r.side >= 0)
+    assert labelled.sum() == roll["teacher_rows"] == roll["decisions"]
+    assert roll["teacher_lost"] == 0 and 0.0 <= roll["teacher_agreement"] <= 1.0
+    t, e = np.nonzero(labelled)
+    assert r.entry_mask[t, e, k["entry"][t, e]].all()
+    cast = k["cast"]
+    assert not (cast & ~labelled).any()
+    t, e = np.nonzero(cast)
+    for head in ("spell", "target", "second"):
+        assert k[f"{head}_mask"][t, e, k[head][t, e]].all(), head
+    # The first call's labels: the network's draws on the same batch, from its stream's start.
+    rows = np.nonzero(labelled[0])[0]
+    assert len(rows)
+    generator = torch.Generator().manual_seed(c.seed + TEACHER_STREAM)
+    drawn = load(path).frozen().act(twin, generator, rows=rows)
+    twin.close()
+    for head in ("entry", "spell", "target", "second"):
+        np.testing.assert_array_equal(k[head][0, rows], getattr(drawn, head), err_msg=head)
+    np.testing.assert_array_equal(cast[0, rows], drawn.cast)
+    plain.batch.close()
+    taught.batch.close()
+    # The checkpoint: a new trainer's teacher draws from a fresh stream, a restored one goes on.
+    alone = Trainer(Config(**IMITATE, imitation_coef=1.0, imitation_teacher=str(path)))
+    alone.collect()
+    state = alone.state()
+    fresh = torch.Generator().manual_seed(c.seed + TEACHER_STREAM).get_state()
+    assert not torch.equal(state["rng"]["teacher"], fresh)
+    again = Trainer(alone.config, segment=1)
+    assert not torch.equal(again.teacher_generator.get_state(), state["rng"]["teacher"])
+    again.restore(state, tmp_path)
+    assert torch.equal(again.teacher_generator.get_state(), state["rng"]["teacher"])
+    alone.batch.close()
+    again.batch.close()
 
 
 def test_the_imitation_loss_pulls_the_learner_to_the_teacher_while_its_weight_lasts(

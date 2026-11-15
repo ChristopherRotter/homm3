@@ -66,7 +66,11 @@ as PPO's terms, averaged over a minibatch's labelled rows). The call draws from 
 move's seat stream, which no external seat otherwise reads (the internal seats draw from their
 own side's, the battle from its own streams): the episodes, and so the rollout, are the ones
 played without it. Reward v1, the gate and the ladders are unchanged; at weight 0 no teacher is
-asked and the training is the one before T21.
+asked and the training is the one before T21. With `[ppo] imitation_teacher` (E25 T34, the KL
+anchor) a saved network is the teacher instead: its draw for each learning row is the label
+(`Trainer.label`), from its own generator (`teacher_generator`, checkpointed beside the sampling
+one), so the rollout is again the one played without it, and the term's expectation is the
+cross-entropy to the network's policy.
 """
 
 from __future__ import annotations
@@ -125,6 +129,10 @@ CHECKPOINT_FORMAT = 3
 #: The teacher of the imitation loss and of the cloning bench (`clone`): the fair system actor's
 #: seat (C ABI v36), never the all-seeing one (E25 decision 3).
 TEACHER = "system"
+
+#: The offset of a network teacher's generator from the run's seed (E25 T34): a stream of its
+#: own, so the learner's draws are the ones the run makes without a teacher.
+TEACHER_STREAM = 0x7EAC4E
 
 
 class Rollout:
@@ -393,6 +401,19 @@ class Trainer:
         self.policy = build(asdict(c), self.batch).to(self.device)
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=c.lr, eps=1e-5)
         self.generator = torch.Generator(device=self.device).manual_seed(c.seed)
+        #: The imitation loss's network teacher (E25 T34, `imitation_teacher`; None: the fair
+        #: system actor) and the generator of its draws.
+        self.teacher: Policy | None = None
+        self.teacher_generator: torch.Generator | None = None
+        if c.imitation_teacher:
+            path = Path(c.imitation_teacher)
+            if not path.exists():
+                raise ConfigError(f"`imitation_teacher`: {path} does not exist")
+            self.teacher = load(path, self.device).frozen()
+            if self.teacher.reads_preview and self.batch.preview is None:
+                raise ConfigError(f"`imitation_teacher`: {path} reads the kill preview")
+            self.teacher_generator = torch.Generator(device=self.device)
+            self.teacher_generator.manual_seed(c.seed + TEACHER_STREAM)
         self.book = SeatBook(c.envs)
         self.rollout = Rollout(c.rollout, c.envs, self.batch)
         self.staging = Staging(self.device)
@@ -454,6 +475,9 @@ class Trainer:
             "rng": {
                 "device": self.device.type,
                 "sampling": self.generator.get_state(),
+                "teacher": None
+                if self.teacher_generator is None
+                else self.teacher_generator.get_state(),
                 "torch": torch.get_rng_state(),
                 "cuda": cuda,
             },
@@ -485,6 +509,11 @@ class Trainer:
             self.generator.set_state(rng["sampling"])
         else:
             self.generator.manual_seed(self.batch_seed)
+        if self.teacher_generator is not None:
+            if rng["device"] == self.device.type and rng.get("teacher") is not None:
+                self.teacher_generator.set_state(rng["teacher"])
+            else:
+                self.teacher_generator.manual_seed(self.batch_seed + TEACHER_STREAM)
         torch.set_rng_state(rng["torch"])
         if rng["cuda"] and len(rng["cuda"]) == torch.cuda.device_count():
             torch.cuda.set_rng_state_all(rng["cuda"])
@@ -630,9 +659,12 @@ class Trainer:
         rows (`side`, `act`'s) whose choice a batch action plays and whose entry the learner's
         mask (`choice.entry_mask`, its tactics bound's) holds, with its cast heads' masks along
         it. Returns the rows labelled, the choices lost (none expected) and the labelled rows
-        whose sampled entry was the teacher's."""
+        whose sampled entry was the teacher's. A network teacher (`imitation_teacher`, E25 T34):
+        `label_by_network`."""
         b = self.batch
         k = self.rollout.teach(b)
+        if self.teacher is not None:
+            return self.label_by_network(t, choice, side, k)
         encoded, lost = b.choice(TEACHER)
         a = b.actions
         entry = a["entry"].astype(np.int64)
@@ -655,6 +687,29 @@ class Trainer:
             k["second_mask"][t, cast] = b.second_mask(entries, spells, targets)[cast]
         agree = int((ok & (choice.entry == entry)).sum())
         return int(ok.sum()), int(lost), agree
+
+    def label_by_network(
+        self, t: int, choice: Choice, side: np.ndarray, k: dict[str, np.ndarray]
+    ) -> tuple[int, int, int]:
+        """`label` with a network teacher (E25 T34): its draw for each learning row (`side`'s),
+        from its own generator, kept where the learner's mask holds its entry, with the head
+        masks along its choice. Every draw is a batch action, so no choice is lost."""
+        assert self.teacher is not None and self.teacher_generator is not None
+        rows = np.nonzero(side >= 0)[0]
+        if not len(rows):
+            return 0, 0, 0
+        c = self.teacher.act(self.batch, self.teacher_generator, rows=rows)
+        entry = c.entry.astype(np.int64)
+        ok = choice.entry_mask[rows, entry].astype(bool)
+        cast = ok & c.cast
+        k["labelled"][t, rows] = ok
+        k["cast"][t, rows] = cast
+        k["entry"][t, rows] = entry
+        for name in ("spell", "target", "second"):
+            k[name][t, rows] = getattr(c, name)
+            k[f"{name}_mask"][t, rows[cast]] = getattr(c, f"{name}_mask")[cast].astype(bool)
+        agree = int((ok & (choice.entry[rows] == entry)).sum())
+        return int(ok.sum()), 0, agree
 
     def collect(self, stop: Stop | None = None) -> dict | None:
         """Plays one rollout; returns its episodes' statistics, or None when `stop` was

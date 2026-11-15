@@ -1896,3 +1896,70 @@ an entry only where a task builds on it.
   1.34 times #2's here. The parameters (built on the CPU from the bench's config): the control
   1 485 079 (#2's record's), 128 × 6 2 557 015, 64 × 10 1 033 431. The measures, the rule and
   the budget (about 7 hours) as the AI queue stated them before the run.
+- **The run** (the user's GPU, 2026-11-14 to 15, commit `7573cd8` (#910's merge, clean); C ABI
+  v37, system policy 19; `python/records/distill/arch-1.json`): one segment to the budget at
+  4 017 738 samples, not stopped (88 550 s on its clock: the students' passes 24 820 s, the
+  teacher's play 194 s, the ladders 32 minutes; the rest the record does not account for). The
+  teacher 4.03 M decisions in 77 439 episodes, none lost, 13 truncated; the held-out set T26b's
+  (16 384 decisions, the same categories).
+- **(a) At 4 M** (the curve every 0.5 M in the record):
+
+  | Student | CE entry | Agreement | Tactics | Wait, defend | Moves | Melee | Shots | Casts | Value | µs | MB |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | control 96 × 6, 1e-3 | 0.666 | 0.752 | 0.906 | 0.648 | 0.667 | 0.706 | 0.743 | 0.778 | 0.562 | 712 | 3 079 |
+  | 96 × 6, 2e-3 | 0.656 | 0.760 | 0.903 | 0.650 | 0.670 | **0.724** | **0.760** | 0.771 | 0.575 | 711 | 2 455 |
+  | 128 × 6 | **0.647** | **0.761** | **0.908** | **0.679** | **0.684** | 0.716 | **0.760** | 0.771 | **0.614** | 928 | 4 070 |
+  | 64 × 10 | 0.674 | 0.753 | 0.905 | 0.663 | 0.659 | 0.708 | 0.746 | **0.788** | 0.554 | 753 | 2 913 |
+  | T26b's control | 0.662 | 0.755 | | | 0.669 | 0.718 | 0.760 | | 0.590 | 683 | 3 076 |
+
+  Each arm's lead over the control at 0.5, 1, …, 4 M: the rate +0.007, +0.007, +0.009, +0.003,
+  +0.007, +0.006, +0.005, +0.009; 128 × 6 +0.005, +0.006, +0.005, +0.007, +0.008, +0.004,
+  +0.004, +0.009; 64 × 10 −0.005, −0.006, 0.000, −0.003, −0.002, −0.002, 0.000, +0.001. The
+  value's explained variance at 4 M as above; 128 × 6 leads it by +0.04 to +0.05 from 1 M on.
+- **(b) The ladders** (500 a kind; the hero battles' seats attacking, defending):
+
+  | Student | Fair actor | Hero | Siege hero | Siege garrison | Hero's seats | All-seeing | Neutral set |
+  |---|---:|---:|---:|---:|---:|---:|---:|
+  | control 96 × 6, 1e-3 | 0.457 ± 0.018, −0.033 | 0.453 | 0.444 | 0.501 | 0.653, 0.252 | 0.458 ± 0.019, −0.034 | 0.986, +0.264 |
+  | 96 × 6, 2e-3 | 0.459 ± 0.019, −0.034 | 0.456 | 0.450 | 0.492 | 0.645, 0.266 | 0.459, −0.035 | 0.989, +0.272 |
+  | 128 × 6 | **0.461** ± 0.019, **−0.030** | 0.461 | 0.445 | 0.494 | 0.659, 0.262 | 0.460, −0.031 | 0.990, **+0.273** |
+  | 64 × 10 | 0.449 ± 0.019, −0.038 | 0.443 | 0.442 | 0.491 | 0.637, 0.248 | 0.450, −0.041 | 0.985, +0.269 |
+  | T27's control at 16 M | 0.481 ± 0.019, −0.020 | 0.481 | 0.471 | 0.500 | | 0.473, −0.021 | 0.989, +0.274 |
+
+- **The read, by the rule stated before it ran:**
+  1. **No arm replaces the control:** the best leads are 0.009 (128 × 6, 0.761) and 0.009 (the
+     rate, 0.760), under half the 0.02 asked; every ladder lies inside the control's interval
+     (0.449 to 0.461 against 0.457). **`hexconv` 96 × 6 at 1e-3 stays the long run's network**,
+     and T35's long run starts from T27's 16 M clone (`runs/clone-3/students/hexconv-n-96x6-a.pt`,
+     #2's start): no new long clone (its 6 to 8 hours saved). The rate's lead (0.0085) is under
+     its 0.01: 1e-3 stays.
+  2. **The bench reproduces:** the control 0.752 against T26b's 0.755 and T27's 0.750 at 4 M (no
+     bit-identical rerun since T31's autotuner), its value 0.562 T27's at 4 M; its ladder 0.457
+     at 4 M, T27's 0.481 at 16 M (+0.024 for four times the samples).
+  3. **Size buys little at this budget:** 1.72 times the parameters (128 × 6) +0.009, a deeper
+     network with 0.70 of them (64 × 10) +0.001, the leads level along the curve from 0.5 M (no
+     widening). Samples bought T27's student +0.03 a doubling; the clone's gap to the teacher
+     (T27: 0.163 at 16 M) is not the network's size. The wider network's value leads throughout
+     (+0.05 at 4 M), but PPO's critic reached 0.80 from the control's (T33).
+  4. **The cost:** 128 × 6 1.30 times the control's sample-pass (928 against 712 µs; T24's grid
+     1.34), 64 × 10 1.06 times; the peak 4.1 GB at 512 rows. Decision 3's 8 hours for the
+     architectures: 7.4 used.
+- **T34 refined** (the user, 2026-11-15, of four offered: the search at play and the KL anchor to
+  #2; not #2 distilled into a fresh 96 × 6, whose best case is #2's level, nor straight to T35):
+  the AI queue's entry. **T32 closed** 2026-11-15.
+
+## T34 — Training regimes (prepared 2026-11-15)
+
+- **The arms** (the user, 2026-11-15, of four offered at T32's close): **the search at play**
+  with #2 on the sandbox's CPU, and **the KL anchor to #2**, PPO from T27's clone with #2 as the
+  imitation loss's teacher, on the user's GPU. Not offered again: #2 distilled into a fresh
+  96 × 6 (T32 kept #2's own network, so its best case is #2's level); not chosen: straight to
+  T35. The measures, the rules and the budgets as the AI queue stated them before the runs.
+- **Built:** `[ppo] imitation_teacher` (a saved network's draws label the learner's decisions
+  instead of the fair actor's choices, from a generator of its own, `TEACHER_STREAM` past the
+  seed, checkpointed beside the sampling one: the rollout is the one played without it, the
+  term in expectation the cross-entropy to the network's policy); `evaluate.report`'s `kinds`
+  and the search's `--kinds` (the set's episodes and agents for those kinds, the rates over
+  them); `configs/e25-anchor.toml`. The search runs `hexconv` with the legal mask as it is (its
+  test new): 56 ms a decision at N 16 on the sandbox's 4 cores with an untrained network of #2's
+  size (T1c's `t7-1` 42 ms), so the report set at N 16 about 1.8 hours.

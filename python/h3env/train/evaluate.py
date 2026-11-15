@@ -323,16 +323,23 @@ def report(
     mana_price: int = MANA_PRICE,
     stop=None,
     preview: bool = False,
+    kinds: Iterable[str] | None = None,
 ) -> dict:
     """Plays a stratified set (design §5: the report set v1 by default; the neutral set v1, whose
     one opponent is the system actor, the agent attacking), its first `per_kind` episodes of each
     kind, against `opponent` (`play`'s), an agent per (kind, side) from `make_agent(seed, side)`
     (its draws seeded alike for every network: common random numbers); returns `stratified`'s
     rates, per kind each side's `play` report, and the games, skipped episodes, truncations and
-    seconds. `preview`: as `play`'s."""
+    seconds. `preview`: as `play`'s. `kinds` (E25 T34): only these of the set's kinds (their
+    episodes and agents as in the whole set's), the rates over them."""
     if held_out not in STRATIFIED:
         raise ValueError(f"not a stratified set: {held_out!r} (one of {tuple(STRATIFIED)})")
     seed, envs, weights, sides = STRATIFIED[held_out]
+    names = [_ffi.ENCOUNTER_KINDS[k] for k in weights]
+    if kinds is not None:
+        kinds = set(kinds)
+        if not kinds or not kinds <= set(names):
+            raise ValueError(f"the {held_out} set's kinds are {names}, not {sorted(kinds)}")
     if held_out == "neutral-v1" and opponent != NEUTRAL_OPPONENT:
         raise ValueError(f"the neutral set v1's opponent is the system actor, not {opponent!r}")
     if not 1 <= per_kind <= envs:
@@ -340,6 +347,8 @@ def report(
     start = time.monotonic()
     by_kind = {}
     for k in weights:
+        if kinds is not None and _ffi.ENCOUNTER_KINDS[k] not in kinds:
+            continue
         one_hot = [int(i == k) for i in range(len(_ffi.ENCOUNTER_KINDS))]
         by_kind[_ffi.ENCOUNTER_KINDS[k]] = {
             side: play(
@@ -377,8 +386,10 @@ def stratified(by_kind: dict[str, dict], held_out: str = "report-v1") -> dict:
     win rate and the value efficiency weighed by the set's weights (the report set's
     `REPORT_V1_WEIGHTS`), its sides equally, the win rate's 95 % interval from the stratified
     variance `Σ Σ w² r (1 − r) / n` over the sides' count squared (design §5), and each kind's
-    win rate (its sides)."""
+    win rate (its sides); over the kinds `by_kind` holds (`report`'s `kinds`), their weights
+    renormalised."""
     _, _, weights, sides = STRATIFIED[held_out]
+    weights = {k: w for k, w in weights.items() if _ffi.ENCOUNTER_KINDS[k] in by_kind}
     total = sum(weights.values())
     m = len(sides)
     rate = value = variance = 0.0

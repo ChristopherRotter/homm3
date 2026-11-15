@@ -258,3 +258,31 @@ def test_the_report_plays_the_search_and_the_sampled_policy_on_the_same_episodes
     assert truth["search"]["games"] == search_["games"]
     with pytest.raises(SystemExit):
         main(["--report", "--per-kind", "1"])
+
+
+def test_the_report_searches_a_structured_network_on_the_kinds_asked(tmp_path) -> None:
+    # E25 T34: the current best's kind of network (`hexconv` normalised, with the legal mask, the
+    # order and the attack hex, the tactics bound; `e25-imitate-structure.toml`'s keys, small)
+    # searched and sampled on the report set's hero battles alone (`--kinds`).
+    from dataclasses import asdict
+
+    from h3env.search import main
+    from h3env.train import Config
+    from h3env.train.policy import build
+
+    keys = dict(kind="hexconv", norm="layer", width=8, layers=1, mask_input=True, order=True)
+    config = asdict(Config(**keys, attack_hex=True, tactics_rounds=3))
+    b = BattleBatch(1)
+    torch.manual_seed(0)
+    net = build(config, b)
+    b.close()
+    assert net.reads_mask
+    best = tmp_path / "best.pt"
+    torch.save({"config": config, "policy": net.state_dict()}, best)
+    args = ["--report", "--best", str(best), "--per-kind", "1", "--kinds", "hero"]
+    result = main([*args, "--simulations", "3", "--worlds", "2", "--k", "2"])
+    assert result["settings"]["kinds"] == ["hero"]
+    search_, sampled_ = result["search"], result["sampled"]
+    assert search_["games"] == sampled_["games"] == 2
+    assert list(search_["kinds"]) == list(sampled_["kinds"]) == ["hero"]
+    assert search_["costs"]["decisions"] > 0 and search_["costs"]["simulations"] > 0
