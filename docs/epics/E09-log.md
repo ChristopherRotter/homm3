@@ -3925,6 +3925,10 @@ user; the agent recommended three parts, the replays first).
   standing Portal of an owner (the builds map's replays and the unit tests hold those). Two
   mutations of the walk (the Castle's bonus dropped, the neutral halving dropped) fail it on the
   first map.
+- **CI on #937** failed in the server lane's tests, which the scoped verify does not run: they
+  count the golden adventure replays (`h3-protocol`'s fold and session gates, `h3-server`'s
+  record test: 86). Now 89 (`cross-lane`, mechanical); their gates play the three new replays
+  through the fold, the queries and the session, all passing (`TRAPS.md`).
 - **Versions:** none moved.
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
