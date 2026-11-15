@@ -71,6 +71,10 @@ anchor) a saved network is the teacher instead: its draw for each learning row i
 (`Trainer.label`), from its own generator (`teacher_generator`, checkpointed beside the sampling
 one), so the rollout is again the one played without it, and the term's expectation is the
 cross-entropy to the network's policy.
+
+The outcome's weight (E25 T35, `[ppo] win_bonus`): a decided battle's terminal transition of each
+learning side gains the bonus for its side's win and loses it for its loss (`outcome`; a draw 0,
+a cut battle none), beside reward v1 and the shaping; the evaluation stays on reward v1.
 """
 
 from __future__ import annotations
@@ -99,7 +103,7 @@ from .evaluate import (
     ladder,
     load,
 )
-from .gate import Bounds, game_score, gate
+from .gate import WINS, Bounds, game_score, gate
 from .league import League, Member
 from .policy import CASTS, Choice, Policy, bounded, build, rows_of
 from .run import (
@@ -769,6 +773,13 @@ class Trainer:
             r.closed[at, e] = True
             r.terminal[at, e] = closed.terminal[e, s]
             trunc = closed.truncated[e, s]
+            if c.win_bonus:
+                # The outcome's weight (E25 T35): a decided battle's last transition of each
+                # learning side, its result still the batch's after the step.
+                end = closed.terminal[e, s] & ~trunc
+                if end.any():
+                    sign = outcome(b.result[e[end]], s[end])
+                    r.reward[at[end], e[end]] += np.float32(c.win_bonus) * sign
             if c.truncation_penalty:
                 # A battle cut at the step limit ends there (it is terminal) at a loss for each
                 # learning side (E06 T5c): no bootstrap, so stalling to the limit never pays.
@@ -1089,6 +1100,15 @@ class Trainer:
             "samples": self.samples,
             **meta,
         }
+
+
+def outcome(result: np.ndarray, side: np.ndarray) -> np.ndarray:
+    """Each row's outcome for its `side` of a battle that ended with `result` (E25 T35): 1 a win
+    (the opponent's retreat or surrender included, `gate.WINS`), -1 a loss, 0 else (a draw)."""
+    result, side = np.asarray(result), np.asarray(side)
+    won = np.where(side == 0, np.isin(result, WINS[0]), np.isin(result, WINS[1]))
+    lost = np.where(side == 0, np.isin(result, WINS[1]), np.isin(result, WINS[0]))
+    return won.astype(np.float32) - lost.astype(np.float32)
 
 
 def save(path: Path, state: dict[str, Any]) -> bool:

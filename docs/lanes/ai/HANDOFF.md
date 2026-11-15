@@ -36,10 +36,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   against its sampled 0.511; N 64 on the hero battles +0.003), so the long run is PPO's; the KL
   anchor (`[ppo] imitation_teacher`, #2 teaching T27's clone) reaches #2's level in 2 M (0.496 ±
   0.002 head to head, 0.503 against the fair actor), its entropy 1.35 (mass-covering).
-  **Next: T35, the probes' checkpoint with the user** (the long run's start, teacher, settings,
-  length; the outcome's weight; about 19 of the probes' 20 hours used).
-- **Open pull requests:** the one of `claude/stoic-gauss-p3cmdq` (T34's close). Merged: #940
-  (T32's close, T34's preparation), #948 (T34's (a)).
+  **T35 in progress** (the probes' checkpoint; `QUEUE.md`): the user chose to probe the
+  outcome's weight first, decision 6 amended: `configs/e25-win-bonus.toml` (`[ppo] win_bonus`
+  0.1 on T33's annealed arm; **the user's GPU next, about 2 hours**); the long run agreed on its
+  read (T36).
+- **Open pull requests:** the one of `claude/stoic-gauss-p3cmdq` (T34's close, T35's probe).
+  Merged: #940 (T32's close, T34's preparation), #948 (T34's (a)).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -61,7 +63,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   minutes). The user chose T34's arms (the search at play, the KL anchor). #940 merged; #2's
   `best.pt` uploaded (in `python/runs/`, ignored): (a) run in the sandbox, N 16 72 minutes and
   the sampled policy 18, N 64 on the hero battles 27; #948 merged. (b)'s five files uploaded
-  (three with CRLF, stripped); T34 closed.
+  (three with CRLF, stripped); T34 closed. At T35 the user chose the win-bonus probe; built
+  and its config tested.
 
 ### 2026-11-13 — E25 T33 closed, T32 prepared
 

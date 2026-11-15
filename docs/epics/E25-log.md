@@ -2030,3 +2030,20 @@ an entry only where a task builds on it.
   at a tenth of its samples (b). Decision 3's probes: T31 about 1 hour, T33 8, T32 7.4, T34 2.2
   of the user's GPU (and 2 of the sandbox's CPU), about 19 of the 20. T35, the probes'
   checkpoint, next.
+
+## T35 — The probes' checkpoint (2026-11-15)
+
+- **The user's choice** (of four offered, the probes' findings beside: #2 at its setup's
+  plateau, T33; size under 0.01, T32; the search nothing, T34 (a); the anchor #2's level in
+  2 M, not past it, T34 (b)): **the outcome's weight probed first**, decision 6 amended (a
+  training signal may weigh the outcome beside reward v1; the evaluation unchanged). Not chosen
+  for now: the anchor resumed to 20 M (about 19 hours), the anchor's regime or #2's at 40 M
+  (about 42 and 37). T30's read is the evidence: in the hero battles #2 keeps more of its army
+  than the fair actor in its seat (+0.022 and +0.029 in value) but wins as often (+0.013
+  attacking, 0.000 defending); reward v1 prices the army, the target counts the wins.
+- **Built:** `[ppo] win_bonus` (a decided battle's last transition of each learning side gains
+  the bonus for its side's win and loses it for its loss, `ppo.outcome`: an escape is the
+  escaper's loss, a draw 0; a cut battle keeps its truncation penalty alone; the evaluation, the
+  gate and the ladders on reward v1), `configs/e25-win-bonus.toml` (T33's annealed arm with the
+  bonus 0.1: reward v1 lies in [-1, 1], #2's hero battles about ±0.09 a seat). The measures, the
+  rule and the budget as the AI queue stated them before the run.
