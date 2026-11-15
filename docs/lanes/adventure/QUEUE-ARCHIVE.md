@@ -1599,3 +1599,23 @@ T105b2 took adventure replay format v12.
   `BattleSetup` lacks); the battle lane's queue ("War machines"); the lane's `TRAPS.md`.
 - **Depends on:** T117 (done). **Status:** ready (the original data and the shipped maps:
   staging per `docs/08-work-process.md`, "Cloud sandbox").
+
+## T118b (moved 2026-11-15, its map side done as T118b1: `adventure/e08-t118b1`, decision 340; the rest queued as T118b2)
+
+*(Moved verbatim; the record in `E08-log.md`, T118b1.)*
+
+**E08 T118b — the ADR amendment drafts, the design note and the cut** (decision 334)
+
+- **Scope:** as T108b for increment 12: the drafts `adr-drafts/0016-increment-13.md` and
+  `0017-increment-13.md` (and ADR-0013's or ADR-0014's if the survey finds a change of the hero's
+  derived properties or of the battle's setup), increment 13's design note `E08-design.md` (its
+  parts by side), the building tasks' cut and the exit criteria; the checkpoint with the user (the
+  note, the drafts, the agent's calls, the cut).
+- **Inputs:** the survey `docs/rules/surveys/E08-banks.md` (§9's open points, §10 the interfaces'
+  sketch, §11 batch E13, §12 the proposed ids); decisions 333 to 339 (D-65, D-66, D-68 as the
+  original; **D-67 as the original: a won bank's reward before the winner's levels**, an exception
+  to GAM-DEC-007 point 3 to design; the bank battle the adventure lane's, `cross-lane`, after a
+  `shared/` change of `BattleSetup`; batch E13 before the build, its spec and recipe in the cut);
+  ADR-0015 to -0017, ADR-0013 (the three once-marks); the battle lane's inbox note of 2026-11-15
+  (the bank battle's needs) and any answer; T108b's drafts as the form.
+- **Depends on:** T118a (done). **Status:** ready (docs only).

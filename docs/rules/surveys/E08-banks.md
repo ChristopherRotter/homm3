@@ -51,7 +51,8 @@ into the catalog with its sources and tests.
 - **The census** (§1): 2 137 banks on 148 of the 160 shipped maps, eleven kinds: class 16 by its
   subclass 0 to 6 (1 215 on 143 maps), the Shipwreck 85 (401 / 69), the Crypt 84 (277 / 97), the
   Derelict Ship 24 (170 / 58), Dragon Utopia 25 (74 / 55). Every kind on maps of all three
-  versions; one entrance each, blocked (visited from a neighbour); 24 and 85 on water (183 of the
+  versions; one entrance each (the Shipwreck visited from a neighbour, the ten others entered:
+  the class lists, corrected by T118b1); 24 and 85 on water (183 of the
   401 Shipwrecks beside land, 11 of the 170 Derelict Ships), the others on land. No body in the map
   file (SoD and before; only HotA's format has one).
 - **The content** (§2): CrBanks.txt holds per kind four levels with their chance, up to four
@@ -107,8 +108,12 @@ by it without a test, §3). Most banks on one map: *Thousand Islands* and its al
 each), *War of the Mighty* (53). **Templates** (`Objects.txt` and the maps agree): one picture per
 kind but the Crypt's three (`AVXgyds0`, `AVXgyne0`, `AVXgysn0`, one per terrain group) and the
 Shipwreck's two (`AVAwrek0`, `AVAwre20`); every template has **one visitable tile, which it also
-blocks** (on the bottom row, at the template's right corner or one column left of it), so a bank
-is visited from a neighbouring tile as a monster is, never entered. The land kinds' entrances lie
+blocks** (on the bottom row, at the template's right corner or one column left of it). *Corrected
+by T118b1* (design note's correction; as decision 317 for increment 12): the visit mode is the
+class lists', not the mask's: `object_classes_not_entered` 0x63AA58 and `object_classes_from_above`
+0x63AB00 list 85 and none of the four others, so the Shipwreck is visited from a neighbour (and
+from above), the ten others are entered, the hero standing on the entrance (VCMI 1.7.5:
+`blockedVisitable` on the Shipwreck alone). The land kinds' entrances lie
 on every land terrain, the subterranean included; 24's and 85's on water only.
 
 **The map file:** no body for any of the five (`docs/formats/h3m.md`, the engine's
@@ -404,9 +409,9 @@ the owner's (its hero's status).
 For T118b's drafts and design note (ADR-0015 to -0017, ADR-0013, the battle setup seam); a sketch,
 not decided.
 
-- **Commands:** none new. A bank is visited by `MoveHero`'s last step toward its blocked entrance
-  (`Visit::Neighbour`), from land or from a boat (the sea banks), and again by a later move toward
-  it; the question is answered by the offer's answer, the battle by its commands, the reward's
+- **Commands:** none new. A bank is visited by `MoveHero`'s last step onto its entrance (the ten
+  entered kinds; *corrected by T118b1*, §1) or toward it (the Shipwreck, `Visit::Neighbour`), from
+  land or from a boat (the sea banks), and again by a later move or `Revisit`; the question is answered by the offer's answer, the battle by its commands, the reward's
   army dialog by the dialog's (GAM-DEC-004).
 - **Decisions:** the question, a pending offer of the visitor's owner (GAM-DEC-001: two kinds or
   one with the bank's kind), declining keeps nothing; the battle (GAM-BAT-001); the reward's army
@@ -471,8 +476,9 @@ for E13-5.
 A family **ADV-BNK**:
 
 - **ADV-BNK-001** the objects: the five classes, eleven kinds (16 by subclass 0 to 6, 85, 24, 84,
-  25), one blocked entrance each, visited from a neighbour (the sea banks from water, the
-  Shipwreck from the coast too); no body; the kinds' four levels as data (§2).
+  25), one entrance each, the ten entered and the Shipwreck visited from a neighbour (the
+  class lists, §1 as corrected; the sea banks from water, the Shipwreck from the coast too); no
+  body; the kinds' four levels as data (§2).
 - **ADV-BNK-002** the draw when the game is built: the level, the artifacts (relics first), the
   split, the upgrade (§3); never again.
 - **ADV-BNK-003** the visit: the two flows of §4, the question as an offer, declining; a looted
