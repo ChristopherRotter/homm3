@@ -190,6 +190,12 @@ class Config:
     #: is the cross-entropy to its policy (the KL to it plus its entropy). "" (the default): the
     #: fair system actor (`ppo.TEACHER`), as before T34.
     imitation_teacher: str = field(default="", metadata=_in("ppo"))
+    #: The outcome's weight in training (E25 T35, decision 6 amended by the user, 2026-11-15): a
+    #: decided battle's last transition of each learning side gains `win_bonus` for its side's
+    #: win and loses it for its loss (a draw 0; a cut battle none, it keeps
+    #: `truncation_penalty`). Reward v1 lies in [-1, 1] (`h3-sim`'s `reward`); the evaluation,
+    #: the gate and the ladders stay on reward v1. 0 (the default): reward v1 alone.
+    win_bonus: float = field(default=0.0, metadata=_in("ppo"))
     max_grad_norm: float = field(default=0.5, metadata=_in("ppo"))
     #: What a battle cut at `max_steps` costs each learning side (E06 T5c, the user's amendment
     #: of decision 10): its last transition gets `-truncation_penalty` and ends there, instead of
@@ -458,6 +464,8 @@ def resolve(config: Config) -> Config:
             "`checkpoint_minutes`, `pfsp_power`, `truncation_penalty` and `imitation_coef` must "
             "not be negative"
         )
+    if c.win_bonus < 0:
+        problems.append("`win_bonus` must not be negative")
     if c.imitation_teacher and not c.imitation_coef:
         problems.append("`imitation_teacher` needs `imitation_coef` above 0")
     if c.lr_schedule not in ("linear", "constant"):

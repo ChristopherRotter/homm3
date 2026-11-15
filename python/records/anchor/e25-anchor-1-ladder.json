@@ -1,0 +1,202 @@
+{
+ "system": {
+  "win_rate": 0.5029785284855425,
+  "interval": 0.018599974969663504,
+  "value": 0.02125815896903705,
+  "kinds": {
+   "hero": 0.4976973947895792,
+   "siege_hero": 0.515,
+   "siege_garrison": 0.500060120240481
+  },
+  "games": 2998,
+  "skipped": 2,
+  "truncated": 0.0,
+  "seconds": 117.0,
+  "by_kind": {
+   "hero": {
+    "attacker": {
+     "episodes": 499,
+     "skipped": 1,
+     "win_rate": 0.6973947895791583,
+     "reward": 0.08942216845814377,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 499,
+       "win_rate": 0.6973947895791583
+      }
+     }
+    },
+    "defender": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.298,
+     "reward": -0.04787202553267707,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 500,
+       "win_rate": 0.298
+      }
+     }
+    }
+   },
+   "siege_hero": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.56,
+     "reward": -0.021800973277669982,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_hero": {
+       "episodes": 500,
+       "win_rate": 0.56
+      }
+     }
+    },
+    "defender": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.47,
+     "reward": 0.08009304582816548,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_hero": {
+       "episodes": 500,
+       "win_rate": 0.47
+      }
+     }
+    }
+   },
+   "siege_garrison": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.94,
+     "reward": 0.148374744649278,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_garrison": {
+       "episodes": 500,
+       "win_rate": 0.94
+      }
+     }
+    },
+    "defender": {
+     "episodes": 499,
+     "skipped": 1,
+     "win_rate": 0.06012024048096192,
+     "reward": -0.133545235885617,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_garrison": {
+       "episodes": 499,
+       "win_rate": 0.06012024048096192
+      }
+     }
+    }
+   }
+  }
+ },
+ "system-all-seeing": {
+  "win_rate": 0.5056951044947036,
+  "interval": 0.018566361695645458,
+  "value": 0.020829940659958968,
+  "kinds": {
+   "hero": 0.49970140280561126,
+   "siege_hero": 0.521,
+   "siege_garrison": 0.4990601202404809
+  },
+  "games": 2998,
+  "skipped": 2,
+  "truncated": 0.0,
+  "seconds": 98.65600000001723,
+  "by_kind": {
+   "hero": {
+    "attacker": {
+     "episodes": 499,
+     "skipped": 1,
+     "win_rate": 0.7014028056112225,
+     "reward": 0.08786293504389193,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 499,
+       "win_rate": 0.7014028056112225
+      }
+     }
+    },
+    "defender": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.298,
+     "reward": -0.04811186352383811,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 500,
+       "win_rate": 0.298
+      }
+     }
+    }
+   },
+   "siege_hero": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.574,
+     "reward": -0.0215361672595609,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_hero": {
+       "episodes": 500,
+       "win_rate": 0.574
+      }
+     }
+    },
+    "defender": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.468,
+     "reward": 0.08080340600456111,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_hero": {
+       "episodes": 500,
+       "win_rate": 0.468
+      }
+     }
+    }
+   },
+   "siege_garrison": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.938,
+     "reward": 0.14762564155482688,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_garrison": {
+       "episodes": 500,
+       "win_rate": 0.938
+      }
+     }
+    },
+    "defender": {
+     "episodes": 499,
+     "skipped": 1,
+     "win_rate": 0.06012024048096192,
+     "reward": -0.133545235885617,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_garrison": {
+       "episodes": 499,
+       "win_rate": 0.06012024048096192
+      }
+     }
+    }
+   }
+  }
+ }
+}

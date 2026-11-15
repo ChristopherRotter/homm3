@@ -1992,3 +1992,58 @@ an entry only where a task builds on it.
   the long run is PPO's: neither the search at play as the agent nor expert iteration is T35's
   question. What #2 lacks is not a deeper look on its own evaluation (T1c: nor the hidden
   information). (a) done; (b) the user's GPU.
+- **(b) The KL anchor** (the user's GPU, 2026-11-15, commit `c30403d` (#938's merge, with #940),
+  clean; `python/records/e25-anchor-1.json`, the measures `python/records/anchor/`):
+  `--init-from` T27's clone, seed 1, 2 014 003 samples in 78 updates, 129 minutes, 259 to 266
+  samples a second (T33's 296 to 315: #2's pass about 9 s of an update's 97, the rest the
+  imitation term's); the run's own end gate promoted it over T27's clone (0.560, 87 pairs, Elo
+  +42).
+
+  | Measure | `e25-anchor-1` | #2 | T27's clone |
+  |---|---|---|---|
+  | (a) head to head against #2 | 0.4961 ± 0.0020 (−1.97 SE; pairs 143, 2, 3 742, 1, 112; Elo −2.7) | | |
+  | (b) fair actor | 0.503 ± 0.019, +0.021 | 0.511, +0.027 | 0.481, −0.020 |
+  | hero (attacking, defending), siege hero, siege garrison | 0.498 (0.697, 0.298), 0.515, 0.500 | 0.507 (0.707, 0.306), 0.525, 0.500 | 0.481, 0.471, 0.500 |
+  | all-seeing | 0.506 ± 0.019, +0.021 | 0.507, +0.026 | 0.473, −0.021 |
+  | neutral set | 0.989, +0.299 | +0.302 | +0.274 |
+
+  (c) The update records (the first 10 updates' means, the last 20's; #2's run's first 1 M
+  beside, T33's): the teacher's agreement 0.42 to 0.51 (the learner's draw against #2's; its
+  ceiling #2's agreement with itself, below 1 at #2's entropy); the imitation loss 1.92 to 1.41 nats (its first
+  update 2.74); entropy 1.78 to 1.40, its end 1.35 (#2's run 0.70, #2's end 1.00); KL 0.074 to
+  0.025, clip 0.22 to 0.21 (#2's run 0.012, 0.09; the first update's KL 0.59, clip 0.64: the
+  clone's distance to #2 crossed at once); the explained variance 0.71 to 0.78.
+- **(b)'s read, by the rule stated before it ran:** (a) lies within two standard errors of 0.5,
+  at the edge (−1.97), and (b) inside #2's interval: **the anchor brings T27's clone to about
+  #2's level in a tenth of #2's samples** (+0.022 against the fair actor over the clone, 0.008
+  below #2; head to head closer to #2 than 2 M of PPO from #2 itself at its rate, T33's 0.494 and
+  0.493). So T35 weighs a long run from the clone taught by #2 against #2's regime.
+  1. **The anchor is mass-covering:** the cross-entropy to #2's draws spreads the learner over
+     #2's choices, its entropy 1.35 at 2 M against #2's run's 0.70 at the same samples with the
+     fair actor's loss, and #2's own 1.00; KL and clip twice #2's run's at the same rate, the
+     imitation term's gradient beside PPO's. A taught run's sharpening comes after its loss
+     ends (T30's +0.011 at temperature 0.5 is what a sharper #2 is worth).
+  2. **What 2 M cannot show:** whether a taught run's remaining samples pass #2's plateau (T33:
+     PPO from #2 itself did not); the gain is speed to #2's level, not a level above it.
+  3. **The cost:** #2's pass about 9 % of an update; 2 M about 2.2 hours.
+- **T34 closed** 2026-11-15: the search at play gains nothing (a); the anchor reaches #2's level
+  at a tenth of its samples (b). Decision 3's probes: T31 about 1 hour, T33 8, T32 7.4, T34 2.2
+  of the user's GPU (and 2 of the sandbox's CPU), about 19 of the 20. T35, the probes'
+  checkpoint, next.
+
+## T35 — The probes' checkpoint (2026-11-15)
+
+- **The user's choice** (of four offered, the probes' findings beside: #2 at its setup's
+  plateau, T33; size under 0.01, T32; the search nothing, T34 (a); the anchor #2's level in
+  2 M, not past it, T34 (b)): **the outcome's weight probed first**, decision 6 amended (a
+  training signal may weigh the outcome beside reward v1; the evaluation unchanged). Not chosen
+  for now: the anchor resumed to 20 M (about 19 hours), the anchor's regime or #2's at 40 M
+  (about 42 and 37). T30's read is the evidence: in the hero battles #2 keeps more of its army
+  than the fair actor in its seat (+0.022 and +0.029 in value) but wins as often (+0.013
+  attacking, 0.000 defending); reward v1 prices the army, the target counts the wins.
+- **Built:** `[ppo] win_bonus` (a decided battle's last transition of each learning side gains
+  the bonus for its side's win and loses it for its loss, `ppo.outcome`: an escape is the
+  escaper's loss, a draw 0; a cut battle keeps its truncation penalty alone; the evaluation, the
+  gate and the ladders on reward v1), `configs/e25-win-bonus.toml` (T33's annealed arm with the
+  bonus 0.1: reward v1 lies in [-1, 1], #2's hero battles about ±0.09 a seat). The measures, the
+  rule and the budget as the AI queue stated them before the run.
