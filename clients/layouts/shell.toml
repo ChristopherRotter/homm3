@@ -3,15 +3,36 @@
 # M2's review, T8). Each built screen: the picture copied whole onto the screen first, then its
 # dialog's items (h3_ui::ui), drawn in the order the executable adds them.
 
+# The players' palette (32 entries a player): a box's frame in the viewing player's colours (E27
+# M2 T6a: red at the main menu).
+player_palette = "PLAYERS.PAL"
+
 # The cursor the menu loop sets (0x4EE842): the arrow, the default cursor's frame 0.
 [cursor]
 def = "crdeflt.def"
 frame = 0
 
+# The message boxes over the shell's screens (E27 M2 T6a: Quit's question, GENRLTXT 70 in a box of
+# style 2; the buttons' help, style 4): the battle's [message] (message_box 0x4F6570), the
+# executable's literals; h3_view::message lays them out.
+[message]
+background = "diboxbck.pcx"
+frame = "dialgbox.def"
+button_back = "Box64x30.pcx"
+ok = "iOkay.def"
+cancel = "iCancel.def"
+font = "medfont.fnt"
+caption_font = "smalfont.fnt"
+font_palette = "game.pal"
+spell_pictures = "spellScr.def"
+resources = "resour82.def"
+cursor = "crdeflt.def"
+
 # The main menu (§2.3: main_menu_create 0x4FB2A0): a dialog at (0, 0, 800, 600) with no picture
 # of its own over the loop's GamSelBk.pcx; its five DEF buttons (group 0, four frames: 0, pressed
 # 1, disabled 2, selected 3, the hover) in this order, their rectangles from main_menu_layout
-# 0x63FF28. The hover, the press, the hotkeys and the popups are T6's.
+# 0x63FF28. Their hotkeys are the shell's key table's (h3_view::shell::keys), their help the
+# user's Help.txt's (E27 M2 T6a).
 [main_menu]
 background = "GamSelBk.pcx"
 

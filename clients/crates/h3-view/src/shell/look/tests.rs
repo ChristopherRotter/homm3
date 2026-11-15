@@ -1,10 +1,12 @@
-//! The shell's looks' tests (E27 M2 T4): the layout file and the main menu at rest.
+//! The shell's looks' tests (E27 M2 T4, T6a): the layout file and the main menu.
 
 use alloc::string::String;
 
+use h3_render::Bugs;
 use h3_ui::ui::Draw;
 
 use super::{look, names, parse_layout};
+use crate::shell::menu::tests::main_menu;
 use crate::shell::{Game, Screen};
 
 const LAYOUT: &str = include_str!("../../../../../layouts/shell.toml");
@@ -16,8 +18,10 @@ fn the_main_menu_is_its_background_and_five_buttons_in_their_first_frame() {
         (layout.cursor.def.as_str(), layout.cursor.frame),
         ("crdeflt.def", 0)
     );
-    let shown = look(&layout, Screen::MainMenu).unwrap();
+    let mut menu = main_menu(Bugs::Original);
+    let shown = look(&layout, Screen::MainMenu, Some(&menu)).unwrap();
     assert_eq!(shown.background, "GamSelBk.pcx");
+    assert!(shown.cursor);
     let button = |def: &str, x, y| Draw::Button {
         def: def.into(),
         frame: 0,
@@ -36,9 +40,15 @@ fn the_main_menu_is_its_background_and_five_buttons_in_their_first_frame() {
             button("mmenuqt.def", 586, 469),
         ]
     );
-    // The screens not built yet show nothing.
-    assert_eq!(look(&layout, Screen::Start), None);
-    assert_eq!(look(&layout, Screen::GameType(Game::New)), None);
+    // The help popup over it, the cursor hidden (E27 M2 T6a).
+    let _ = menu.right([643, 70]);
+    let popup = look(&layout, Screen::MainMenu, Some(&menu)).unwrap();
+    assert!(!popup.cursor);
+    assert!(popup.draws.len() > shown.draws.len());
+    // The screens not built yet show nothing, nor the main menu without its state.
+    assert_eq!(look(&layout, Screen::Start, Some(&menu)), None);
+    assert_eq!(look(&layout, Screen::GameType(Game::New), None), None);
+    assert_eq!(look(&layout, Screen::MainMenu, None), None);
 }
 
 #[test]
@@ -55,12 +65,21 @@ fn the_shell_s_assets_are_named_once() {
             "mmenuhs.def",
             "mmenucr.def",
             "mmenuqt.def",
+            "diboxbck.pcx",
+            "dialgbox.def",
+            "Box64x30.pcx",
+            "iOkay.def",
+            "iCancel.def",
+            "medfont.fnt",
+            "smalfont.fnt",
+            "game.pal",
+            "PLAYERS.PAL",
         ]
     );
     // A name given twice in another case is kept once.
     let mut twice = layout;
     twice.cursor.def = String::from("MMENUNG.DEF");
-    assert_eq!(names(&twice).len(), 6);
+    assert_eq!(names(&twice).len(), 15);
 }
 
 #[test]

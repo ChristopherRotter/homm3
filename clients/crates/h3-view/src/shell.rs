@@ -5,7 +5,9 @@
 //! and refuses one the screen cannot end with. [`text`] is its headless driver: the `h3-view
 //! shell` command's words (the text client first); [`look`] what a built screen shows, from the
 //! shell's layout (`clients/layouts/shell.toml`), and [`replay`] a capture recipe's steps played
-//! on the shell's own clock, for the comparison with the original's shots (E27 M2 T4).
+//! on the shell's own clock, for the comparison with the original's shots (E27 M2 T4). [`menu`]
+//! is the main menu taking its inputs, [`keys`] the shell's key table and [`samples`] its press
+//! samples as the original's sound manager plays them (E27 M2 T6a).
 //!
 //! **The loop** (§2.2): at its top the screen asked for (`screen_request` 0x6976D8: the request
 //! play ended with, [`PlayEnd::Request`]) is taken by the main menu's switch (0x4EEC0D): none or
@@ -33,8 +35,11 @@
 
 use core::fmt;
 
+pub mod keys;
 pub mod look;
+pub mod menu;
 pub mod replay;
+pub mod samples;
 pub mod start;
 pub mod text;
 
@@ -170,9 +175,7 @@ pub enum Ended {
 pub enum Built {
     /// Not drawn: a stand-in until its task.
     Not,
-    /// Drawn at rest: the pointer moves over it, its hover, presses and keys are a later task's.
-    AtRest,
-    /// Drawn and taking its inputs (none yet: the main menu with T6).
+    /// Drawn and taking its inputs (the start since T5a, the main menu since T6a).
     Whole,
 }
 
@@ -198,7 +201,8 @@ impl Screen {
     pub const fn task(self) -> &'static str {
         match self {
             Self::Start => "E27 M2 T5",
-            Self::MainMenu | Self::GameType(_) => "E27 M2 T6",
+            Self::MainMenu => "E27 M2 T6a",
+            Self::GameType(_) => "E27 M2 T6b",
             Self::Multiplayer(_) => "E27 M2 T7",
             Self::Scenario(..) => "E27 M3",
             Self::Campaigns => "E20",
@@ -209,13 +213,13 @@ impl Screen {
         }
     }
 
-    /// How much of the screen is built ([`look::look`] draws it unless [`Built::Not`]): the main
-    /// menu at rest (E27 M2 T4); the others a stand-in until their task ([`Screen::task`]).
+    /// How much of the screen is built ([`look::look`] draws it unless [`Built::Not`]): the start
+    /// and the main menu (E27 M2 T5a, T6a); the others a stand-in until their task
+    /// ([`Screen::task`]).
     #[must_use]
     pub const fn built(self) -> Built {
         match self {
-            Self::Start => Built::Whole,
-            Self::MainMenu => Built::AtRest,
+            Self::Start | Self::MainMenu => Built::Whole,
             _ => Built::Not,
         }
     }
