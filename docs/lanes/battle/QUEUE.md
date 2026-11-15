@@ -21,6 +21,24 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-11-15 (the adventure lane, E08 T118a, `adventure/e08-t118a`; **the creature bank battle,
+  for your review**; survey `docs/rules/surveys/E08-banks.md` §5, the epic's decision 338): the
+  user gave the bank battle to the adventure lane, `cross-lane`, in E08 increment 13, after a
+  `shared/` change of `BattleSetup` (`h3-contracts`); tell its inbox if you see a better shape or
+  want to build it yourselves. What the original's bank flag (battle +0x53C5, H3API's
+  `creatureBank`; `adventure_battle`'s last argument, stored by `battle_side_setup` 0x463C48) does:
+  **no tactics phase** (0x462C5D, BAT-TAC-001's note); **no obstacles** (0x4662B3, BAT-GEO-004);
+  **no war machines on the field** (`battle_war_machine_stacks` 0x463758; the Ammo Cart's passive
+  test reads the hero's artifact, BAT-WAR-004, so its unlimited shots stay); **the layout**
+  (0x4636B7, the table `bank_battle_hexes` 0x63D0E0): each side's stacks, in slot order, on the
+  hexes of their **ordinal among the filled slots**, the formation ignored: the attacker 57, 61,
+  90, 93, 96, 125, 129, the defender 15, 185, 172, 2, 100, 87, 8 (BAT-SET-001 amended). The guards
+  defend without a hero (owner −1). The sea banks (the Shipwreck 85, the Derelict Ship 24) are
+  fought on the deck by the caller's battlefield key, as now. Open for you (D-69, batch E13's
+  E13-4): a two-hex guard on 172, 2 or 87: which hexes it covers under BAT-SET-001's footprint
+  rule (VCMI keeps a second table, 171, 1, 86, for two-hex guards). The battle's stored seed is
+  170 101 x + 223 252 y + 250 037 z + 82 037 of the bank's tile (unread inside the battle).
+
 - 2026-11-13 (the adventure lane, E08 T115a, `adventure/e08-t115a`, `cross-lane` with the user's
   consent; **informational**): `h3_heroes::HeroDetails` lost `bonuses` (the battle bonuses are the
   hero on the map's) and `derive_battle_hero(details, bonuses, ruleset)` takes them as its second

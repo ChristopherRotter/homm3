@@ -1568,3 +1568,34 @@ T105b2 took adventure replay format v12.
   for you: the visits by once-mark (`EffectSource::Visit { mark }`, the original's +0x105 lines)
   once the derivation knows each mark's amounts (your content), the rest staying temporary; the
   owner's Grail building is the town lane's (its inbox).
+
+## T118a (moved 2026-11-15, done: `adventure/e08-t118a`, decisions 335 to 339)
+
+*(Moved verbatim; the record in `E08-log.md`, T118a.)*
+
+**E08 T118a — the creature banks survey** (decision 334; as T108a for increment 12: survey file
+`docs/rules/surveys/E08-banks.md`)
+
+- **Scope:** the census of classes 16 (by subclass), 24, 25, 84 and 85 on the 160 shipped maps
+  (T97c's counts in `E08-log.md`, T97c: 2 137 objects on 148 maps); their `.h3m` bodies and
+  templates (`docs/formats/h3m.md`, VCMI 1.7.5's reader); the banks' configurations in the
+  original data (the text tables the harvest reads: each bank's levels, their chances, guards and
+  rewards); the original's code (`docs/exe/README.md`, `scripts/exe.py`): the draw of a bank's
+  level, guards and reward at a new game (and at a week's or a month's start, if any), the visit
+  (the question, the battle against the guards, the reward: resources, artifacts, creatures
+  through the army dialog 0x4ABDC0), the bank emptied, a revisit and a lost battle; the bank
+  battle (the battle's bank flag +0x53C5: no war machines, no tactics phase, the guards' own
+  layout; the battle lane's: its queue's "War machines" note); what a viewer sees (a bank's
+  visited state, its guards' size word); VCMI's and the wiki's rules; disputes `D-<n>` from 65,
+  reading quirk candidates `A-<n>` from 46; the proposed rule ids; the batch's plan (E13) on the
+  client lane's harness (decision 334's agent's call); what the bank battle needs, told to the
+  battle lane's inbox. Likely in parts (the content and the draw; the visit, the battle and the
+  reward), confirmed with the user at its start, the reading measured first.
+- **Inputs:** decisions 333, 334; ADR-0015 to -0017 (ADR-0016 points 3, 4 and 6, ADR-0017's
+  decisions and rests), ADR-0013 (the hero's derived properties); increment 3's monsters and
+  battles on the map (the neutral seat), increment 7's rewards (the shared reward record, the
+  artifacts), increment 10's hire dialog (creatures joining an army); `E08-archive.md` decision
+  127 (T55a3's measure: the five banks about 3 000 instructions and the battle's bank flag, which
+  `BattleSetup` lacks); the battle lane's queue ("War machines"); the lane's `TRAPS.md`.
+- **Depends on:** T117 (done). **Status:** ready (the original data and the shipped maps:
+  staging per `docs/08-work-process.md`, "Cloud sandbox").
