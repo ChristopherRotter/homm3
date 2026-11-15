@@ -10,11 +10,12 @@
 //! timing ([`super::start::Start`]), whose ops the caller carries out ([`Replay::ops`]); an input
 //! that stops a clip is the start's ([`Start::skip`]); its end shows the main menu.
 //!
-//! The main menu (E27 M2 T6a) takes the inputs as the harness gives them ([`super::menu`]): a
-//! `click` is a move there, a press and a release, a `down` or a `right` a move and a press, a
-//! `key` its key down and up (xdotool's names as the adapter's: a letter upper-cased), through the
-//! shell's key table ([`super::keys`]); with the effects on ([`Replay::with_sound`]) each press's
-//! sample is listed as the original's sound manager plays it ([`Replay::samples`]).
+//! The main menu (E27 M2 T6a) and the game type menus (T6b1) take the inputs as the harness gives
+//! them ([`super::menu`]): a `click` is a move there, a press and a release, a `down` or a `right`
+//! a move and a press, a `key` its key down and up (xdotool's names as the adapter's: a letter
+//! upper-cased), through the shell's key table ([`super::keys`]); each menu opens anew as its
+//! screen shows, the pointer where it is; with the effects on ([`Replay::with_sound`]) each
+//! press's sample is listed as the original's sound manager plays it ([`Replay::samples`]).
 //!
 //! What only the harness can do stops the replay ([`Stop`]): a step on the original's memory or
 //! its probes (`poke`, `press`, `point`, `until-button`, `games-time`, `freeze`), a screen name the
@@ -31,7 +32,7 @@ use alloc::vec::Vec;
 use h3_ui::keys::Keys;
 
 use super::keys::Command;
-use super::menu::{Did, MainMenu};
+use super::menu::{Did, Menu, Menus};
 use super::samples::{Played, Samples};
 use super::start::{Op, Start};
 use super::{Built, Ended, Game, Screen, Shell};
@@ -272,15 +273,17 @@ pub struct Replay {
     ops: Vec<Op>,
     /// Each op's time (E27 M2 T5b1: the sound's start and stop are listed with theirs).
     times: Vec<u32>,
-    /// The main menu as it is while it shows (E27 M2 T6a; opened anew each time it shows).
-    menu: MainMenu,
+    /// The menus as they open (E27 M2 T6a, T6b1).
+    menus: Menus,
+    /// The menu on the screen as it is, while one shows (opened anew each time its screen shows).
+    menu: Option<Menu>,
     keys: Keys<Command>,
     /// The press sample's length in ms, with the effects on.
     sample_ms: Option<u32>,
     samples: Samples,
 }
 
-/// What the main menu is given, in order (an input of the harness's may be several).
+/// What a menu is given, in order (an input of the harness's may be several).
 enum Given {
     Moved([i32; 2]),
     Press([i32; 2]),
@@ -307,15 +310,15 @@ impl Replay {
     /// A replay of `shell` from its first screen at 0 ms, the pointer at `pointer` (where the
     /// harness parks it before the game starts), each input followed by `input_step`; a shell at
     /// the start plays `start`'s clips (started at 0 ms: [`Start::new`] with its ops, given as
-    /// `ops`), none ending the start at once; the main menu is `menu` as it opens (its dialog and
-    /// boxes), its keys the original's.
+    /// `ops`), none ending the start at once; the menus are `menus` as they open (their dialogs
+    /// and boxes), their keys the original's.
     #[must_use]
     pub fn new(
         mut shell: Shell,
         pointer: [i32; 2],
         input_step: u32,
         start: Option<(Start, Vec<Op>)>,
-        menu: &MainMenu,
+        menus: &Menus,
     ) -> Self {
         let (start, ops) = match start {
             Some((start, ops)) if shell.screen() == Screen::Start => (Some(start), ops),
@@ -325,6 +328,7 @@ impl Replay {
             let _ = shell.end(Ended::Start);
         }
         let times = vec![0; ops.len()];
+        let menu = menus.opened(shell.screen(), pointer);
         Self {
             shell,
             time: 0,
@@ -333,7 +337,8 @@ impl Replay {
             start,
             ops,
             times,
-            menu: menu.opened(pointer),
+            menu,
+            menus: menus.clone(),
             keys: Keys::original(),
             sample_ms: None,
             samples: Samples::default(),
@@ -347,10 +352,10 @@ impl Replay {
         self
     }
 
-    /// The main menu as it is, while it shows.
+    /// The menu on the screen as it is, while one shows.
     #[must_use]
-    pub fn menu(&self) -> Option<&MainMenu> {
-        (self.screen() == Screen::MainMenu).then_some(&self.menu)
+    pub const fn menu(&self) -> Option<&Menu> {
+        self.menu.as_ref()
     }
 
     /// The samples started so far, with the effects on.
@@ -436,7 +441,7 @@ impl Replay {
                 self.tick(self.input_step);
                 Ok(None)
             }
-            Step::Input(input) if self.screen() == Screen::MainMenu => {
+            Step::Input(input) if self.menu.is_some() => {
                 self.on_menu(input);
                 self.tick(self.input_step);
                 Ok(None)
@@ -480,16 +485,15 @@ impl Replay {
         }
     }
 
-    /// The screen on ended with `ended` (never refused here); the main menu opened anew when it
-    /// is the next.
+    /// The screen on ended with `ended` (never refused here: a menu's endings are its screen's);
+    /// the next screen's menu opened anew, none for another screen.
     fn end(&mut self, ended: Ended) {
-        if self.shell.end(ended) == Ok(Screen::MainMenu) {
-            self.menu = self.menu.opened(self.pointer);
-        }
+        let _ = self.shell.end(ended);
+        self.menu = self.menus.opened(self.screen(), self.pointer);
     }
 
-    /// An input of the harness's to the main menu, as what it gives the game in order, until the
-    /// menu ends.
+    /// An input of the harness's to the menu on the screen, as what it gives the game in order,
+    /// until the menu ends.
     fn on_menu(&mut self, input: &Input) {
         let key = |name: &str| {
             if name.chars().count() == 1 {
@@ -523,31 +527,33 @@ impl Replay {
             {
                 let _ = self.samples.play(self.time, ms);
             }
-            if let Some(request) = did.ended {
-                self.end(Ended::MainMenu(request));
+            if let Some(ended) = did.ended {
+                self.end(ended);
                 return;
             }
         }
     }
 
-    /// One thing given to the main menu.
+    /// One thing given to the menu on the screen (there is one while its inputs are given).
     fn give(&mut self, given: Given) -> Did {
-        let menu = &mut self.menu;
-        match given {
-            Given::Moved(at) => {
-                self.pointer = at;
-                menu.moved(at)
-            }
-            Given::Press(at) => menu.press(at),
-            Given::Release => menu.release(),
-            Given::Right(at) => menu.right(at),
-            Given::RightRelease => menu.right_release(),
-            Given::Key(name) => match self.keys.command(menu.context(), false, &name) {
-                Some(command) => menu.key(command, &name),
-                None => Did::default(),
-            },
-            Given::KeyUp(name) => menu.key_up(&name),
-        }
+        let (keys, pointer) = (&self.keys, &mut self.pointer);
+        self.menu
+            .as_mut()
+            .map_or(Did::default(), |menu| match given {
+                Given::Moved(at) => {
+                    *pointer = at;
+                    menu.moved(at)
+                }
+                Given::Press(at) => menu.press(at),
+                Given::Release => menu.release(),
+                Given::Right(at) => menu.right(at),
+                Given::RightRelease => menu.right_release(),
+                Given::Key(name) => match keys.command(menu.context(), false, &name) {
+                    Some(command) => menu.key(command, &name),
+                    None => Did::default(),
+                },
+                Given::KeyUp(name) => menu.key_up(&name),
+            })
     }
 
     /// A name the viewer does not know among `screens`.

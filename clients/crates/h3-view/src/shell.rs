@@ -7,7 +7,8 @@
 //! shell's layout (`clients/layouts/shell.toml`), and [`replay`] a capture recipe's steps played
 //! on the shell's own clock, for the comparison with the original's shots (E27 M2 T4). [`menu`]
 //! is the main menu taking its inputs, [`keys`] the shell's key table and [`samples`] its press
-//! samples as the original's sound manager plays them (E27 M2 T6a).
+//! samples as the original's sound manager plays them (E27 M2 T6a); New Game's and Load Game's
+//! menus take theirs on the same machinery (E27 M2 T6b1).
 //!
 //! **The loop** (§2.2): at its top the screen asked for (`screen_request` 0x6976D8: the request
 //! play ended with, [`PlayEnd::Request`]) is taken by the main menu's switch (0x4EEC0D): none or
@@ -74,7 +75,7 @@ pub enum Game {
 }
 
 /// A game type menu's command (§2.4): the original's ids.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Choice {
     /// Single Scenario (100).
     Single = 100,
@@ -86,6 +87,21 @@ pub enum Choice {
     Tutorial = 103,
     /// Back (104; Load Game's 0x7801 too).
     Back = 104,
+}
+
+impl Choice {
+    /// The command of the button `id` (100 to 104), none for another id.
+    #[must_use]
+    pub const fn of(id: u16) -> Option<Self> {
+        Some(match id {
+            100 => Self::Single,
+            101 => Self::Campaign,
+            102 => Self::Multiplayer,
+            103 => Self::Tutorial,
+            104 => Self::Back,
+            _ => return None,
+        })
+    }
 }
 
 /// What the scenario screen lists and begins: a single scenario, a campaign's (Load Game's
@@ -175,7 +191,8 @@ pub enum Ended {
 pub enum Built {
     /// Not drawn: a stand-in until its task.
     Not,
-    /// Drawn and taking its inputs (the start since T5a, the main menu since T6a).
+    /// Drawn and taking its inputs (the start since T5a, the main menu since T6a, the game type
+    /// menus since T6b1).
     Whole,
 }
 
@@ -202,7 +219,7 @@ impl Screen {
         match self {
             Self::Start => "E27 M2 T5",
             Self::MainMenu => "E27 M2 T6a",
-            Self::GameType(_) => "E27 M2 T6b",
+            Self::GameType(_) => "E27 M2 T6b1",
             Self::Multiplayer(_) => "E27 M2 T7",
             Self::Scenario(..) => "E27 M3",
             Self::Campaigns => "E20",
@@ -213,13 +230,13 @@ impl Screen {
         }
     }
 
-    /// How much of the screen is built ([`look::look`] draws it unless [`Built::Not`]): the start
-    /// and the main menu (E27 M2 T5a, T6a); the others a stand-in until their task
-    /// ([`Screen::task`]).
+    /// How much of the screen is built ([`look::look`] draws it unless [`Built::Not`]): the start,
+    /// the main menu and the game type menus (E27 M2 T5a, T6a, T6b1); the others a stand-in until
+    /// their task ([`Screen::task`]).
     #[must_use]
     pub const fn built(self) -> Built {
         match self {
-            Self::Start | Self::MainMenu => Built::Whole,
+            Self::Start | Self::MainMenu | Self::GameType(_) => Built::Whole,
             _ => Built::Not,
         }
     }
