@@ -211,7 +211,9 @@ hygiene and told-views properties check it with growth, recruits and garrison he
 - **Events:** the week's and the month's writes told to each town's owner as its whole view
   (`TownChanged`), a neutral town's grown garrison to each viewer at its level; a purchase's
   `StackChanged` to the owner and the upper bar's change to the town's viewers at their level; the
-  hero moves as heroes leaving and entering the map, and the town's change to its viewers.
+  hero moves as heroes leaving and entering the map, by name (`GarrisonEntered`, `GarrisonLeft`)
+  only to the viewers that see the town's garrison hero (its view's level 3: the owner's team,
+  Visions within reach; E09 T31), and the town's change to its viewers.
 
 ## Denial of service and resource limits
 

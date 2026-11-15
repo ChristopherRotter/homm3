@@ -12,6 +12,19 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-15 (the town lane, E09 T31, `town/e09-t31`, `cross-lane` with the user's consent, E09
+  decision 101; **your question of 2026-11-14 answered, your paths touched, no version moved**):
+  the user chose the projection. `GarrisonEntered` and `GarrisonLeft` carry `named: Viewers`
+  (the viewers that see the town's garrison hero: its owner's team and a viewer whose view of the
+  town is at TWN-VEW-003's level 3, `h3-game`'s `town::view::named`); `AdventureEvent::project`
+  tells any other viewer of the entrance `HeroRemoved` at the entrance in place of
+  `GarrisonEntered`, and `HeroStepped { from: None, to: Some(entrance) }` (a hero coming into
+  sight, SRV-Q26 (c), still `SRV-STUB-3` in your fold) in place of `GarrisonLeft`. In your paths:
+  `map/game/event.rs` ignores `named` (a projected event names the viewer alone); in
+  `tests/game_event.rs` the map back sets `named` to the viewer alone and `every_event` has each
+  event named to both players and to player 0 alone. The wire, the fold and the protocol version
+  are unchanged; the fold gate passes on the 55 replays.
+
 - 2026-11-15 (the battle lane's inbox session, `battle/inbox-2026-11-15`, `cross-lane`; **for you
   when you take CLT-Q69 (a)**): (1) **the engine's half of CLT-Q69 (a) is built.**
   `BattleState::setup(ruleset, setup, seed, sink)` sets a battle up (the obstacles, the armies, a

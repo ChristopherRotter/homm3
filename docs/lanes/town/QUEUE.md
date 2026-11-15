@@ -9,21 +9,6 @@ to 102); done tasks in `E09-log.md`; increments 1 to 3 (closed by T10, T20 and T
 `E09-archive.md`. Each task's cut confirmed at its start; every entry's acceptance includes the
 Definition of Done (`docs/05-testing.md`).
 
-**E09 T31 — the garrison moves below level 3** (decision 101, `TWN-Q15` (4); the server lane's
-note of 2026-11-14, `QUEUE-ARCHIVE.md`): `GarrisonEntered { hero, town, pos }` and `GarrisonLeft`
-go to every viewer of the town's entrance (`h3-adventure`'s `town/rows.rs` emits them seen by the
-entrance's viewers, `observe.rs` passes them through), so a viewer that does not see the town's
-garrison hero (below TWN-VEW-001's level 3) learns by name that the hero went into, or came out
-of, that town's garrison. Such a viewer is told `GarrisonEntered` as `HeroRemoved` at the
-entrance and `GarrisonLeft` as a hero coming into sight there (SRV-Q26 (c)'s); the owner's team
-and a viewer at level 3 keep the named events. With: where the level-3 test is read (the town's
-view level is the game's: `h3-game`'s `town/view.rs`), TWN-ROW-002's to -004's summaries and the
-events' doc comments (`docs/06-security.md`'s town part already says so, its "Events" line:
-the code comes into line with it), the told-views and hygiene properties (`h3-map`), the fold
-gate (`h3-protocol`: the fold reads both, nothing moves there), a note to the server lane's inbox. `cross-lane` where it touches the adventure lane's paths
-(`observe.rs`, `h3-map`'s plans; the user's consent at its start). **At its start:** confirm the
-cut. **Status:** next.
-
 **E09 T32 — increment 4's survey** (decision 100): the code reading of `Heroes3.exe` (the
 tavern's two offers and their draw by the classes' tavern weights, the pool shared between the
 players, the week's refresh and a hired offer's replacement, the price and the most heroes, the
@@ -33,7 +18,8 @@ levels by taverns owned, the Den of Thieves), the wiki and VCMI 1.7.5 compared, 
 160 shipped maps (their hero settings, the customized and unavailable heroes, the taverns), the
 disputes and quirk candidates, batch TWN-4's rows; the inbox's three Tavern notes. Docs only:
 `docs/rules/surveys/E09-tavern.md`, its checkpoint `TWN-Q16`. **Needs** the original data
-staged. **At its start:** confirm the cut. **Status:** queued.
+staged. **At its start:** confirm the cut (the user, 2026-11-15 at T31's start: T32 whole,
+after T31 in the same session). **Status:** next.
 
 **E09 T33 — increment 4's drafts, Part F and the cut** (decision 100): the ADR amendment drafts
 with the survey's checkpoint answered, the design note's Part F from §59, the cut into building

@@ -22,7 +22,7 @@ use super::{
     towns_core_pack, towns_rules, towns_setup,
 };
 use crate::tests::key;
-use crate::town::view::in_visions;
+use crate::town::view::{in_visions, named};
 use crate::{
     Actor, BitGrid, GameCommand, GameEvent, GameRuleset, GameSetup, GameState, GarrisonStackView,
     GarrisonView, HeroArmy, NoopSink, OWNER_LEVEL, TownBuildingsView, TownOwnerView, TownView,
@@ -492,6 +492,45 @@ fn a_heros_visions_creature_shows_another_teams_town_at_the_top_level_within_its
     };
     assert_eq!(level((1, 0)), OWNER_LEVEL);
     assert_eq!(level((0, 0)), 0);
+}
+
+/// E09 T31 (decision 101): the players a garrison move names are those that see the town's
+/// garrison hero, its view's top level: the owner's team, and a player whose hero sees the town
+/// by Visions within reach (as above); a neutral town's those alone; nobody for a sink that keeps
+/// nothing.
+// covers: TWN-VEW-003
+#[test]
+fn a_garrison_move_names_the_owners_team_and_the_heroes_whose_visions_reach_it() {
+    let rules = visions_rules(3, 3);
+    let names = |setup: &GameSetup, town| {
+        let game = GameState::new(&rules, setup, 7).unwrap();
+        assert_eq!(
+            named::<NoopSink>(&game, &rules, TownId::new(town)),
+            h3_adventure::Viewers::NONE
+        );
+        named::<Vec<GameEvent>>(&game, &rules, TownId::new(town))
+    };
+    let (none, blue) = (
+        h3_adventure::Viewers::NONE,
+        h3_adventure::Viewers::NONE.with(BLUE),
+    );
+    assert_eq!(
+        names(&seer(&rules, (0, 0), 2, &[IMP, GOG]), 1),
+        blue.with(RED)
+    );
+    assert_eq!(names(&seer(&rules, (0, 0), 1, &[IMP, GOG]), 1), blue);
+    assert_eq!(names(&seer(&rules, (0, 0), 9, &[IMP]), 1), blue);
+    let neutral = |army: &[CreatureTypeId]| {
+        let mut setup = seer(&rules, (2, 1), 1, army);
+        setup.map.objects[1].owner = None;
+        setup.towns[1] = super::town(TownFaction::Fixed(faction(&rules, "t:town")));
+        setup
+    };
+    // Red by its Visions alone (blue's hero there sees it by its own).
+    assert!(names(&neutral(&[GOG]), 1).contains(RED));
+    assert!(!names(&neutral(&[IMP]), 1).contains(RED));
+    // A town the map does not have names nobody.
+    assert_eq!(names(&neutral(&[GOG]), 9), none);
 }
 
 // covers: TWN-VEW-003

@@ -972,8 +972,11 @@ pub enum AdventureEventKind {
     },
     /// A town's visitor left the map into its town's garrison (TWN-ROW-002, -004; E09 T28a), its
     /// record kept there. Seen by its owner and the players that saw it on `pos`, the town's
-    /// entrance (ADV-FOG-004, ADV-FOG-005, as [`Self::HeroRemoved`]): every other viewer sees a
-    /// hero leave the map; its owner moves its own view into its garrison heroes.
+    /// entrance (ADV-FOG-004, ADV-FOG-005, as [`Self::HeroRemoved`]); told by name only to those
+    /// of them in `named`, the viewers that see the town's garrison hero (its owner's team, and
+    /// since E09 T31 a viewer whose hero sees the town by Visions: TWN-VEW-003's level 3). Every
+    /// other viewer is told a hero leaving the map ([`AdventureEvent::project`]: a
+    /// [`Self::HeroRemoved`] at `pos`); its owner moves its own view into its garrison heroes.
     GarrisonEntered {
         /// The hero.
         hero: HeroId,
@@ -981,11 +984,15 @@ pub enum AdventureEventKind {
         town: TownId,
         /// The town's entrance, where it stood.
         pos: Pos,
+        /// The viewers told the move by name (E09 T31): in a projection the viewer alone.
+        named: Viewers,
     },
     /// A town's garrison hero came out onto its entrance as the town's visitor (TWN-ROW-003,
     /// -004; E09 T28a), with its record as it was kept. Seen by its owner and the players that see
-    /// `pos` (ADV-FOG-004, ADV-FOG-005): a hero coming into sight (SRV-Q26 (c)) for every other
-    /// viewer.
+    /// `pos` (ADV-FOG-004, ADV-FOG-005); told by name only to those of them in `named`, as
+    /// [`Self::GarrisonEntered`] (E09 T31). Every other viewer is told a hero coming into sight
+    /// there (SRV-Q26 (c); [`AdventureEvent::project`]: a [`Self::HeroStepped`] with no tile it
+    /// came from).
     GarrisonLeft {
         /// The hero.
         hero: HeroId,
@@ -993,6 +1000,8 @@ pub enum AdventureEventKind {
         town: TownId,
         /// The town's entrance, where it now stands.
         pos: Pos,
+        /// The viewers told the move by name (E09 T31): in a projection the viewer alone.
+        named: Viewers,
     },
     /// A wandering monster's group joined a hero's army (ADV-MON-008, E08 T20b1): its stack of
     /// the creature, else its first free slot. Seen by the hero's owner, as its army is; the

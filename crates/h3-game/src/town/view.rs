@@ -10,7 +10,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use h3_adventure::{AdventureObservation, AdventureState, Pos, allied};
+use h3_adventure::{AdventureObservation, AdventureState, Pos, Viewers, allied};
 use h3_content::{CreatureTypeId, FactionId, ResourceId};
 use h3_contracts::{ArmyStack, FortLevel, PlayerId, TownId};
 use h3_towns::{BuildingSet, CREATURE_INDEXES, Summoned, TownRuleset, Towns};
@@ -290,6 +290,29 @@ pub(crate) fn visions(state: &GameState, rules: &GameRuleset, viewer: PlayerId) 
                 })
         })
         .collect()
+}
+
+/// The players that see `town`'s garrison hero (E09 T31, decision 101): those whose view of it
+/// ([`Seer::view`]) is at TWN-VEW-003's top level, its owner's team (a neutral town's nobody) and
+/// a player one of whose heroes sees its entrance by Visions, among those that have explored a
+/// tile of it. A garrison move is told to them by name, to the entrance's other viewers as a hero
+/// leaving or entering the map (`h3_adventure::AdventureState::move_town_hero`;
+/// `docs/06-security.md`, "Towns"). Nobody for a sink that keeps nothing ([`Sink::RECORDS`]):
+/// nobody reads the events.
+// rule: TWN-VEW-003
+pub(crate) fn named<S: Sink>(state: &GameState, rules: &GameRuleset, town: TownId) -> Viewers {
+    if !S::RECORDS {
+        return Viewers::NONE;
+    }
+    let adventure = state.adventure();
+    (0..state.players())
+        .filter_map(|p| u8::try_from(p).ok().map(PlayerId::new))
+        .filter(|&viewer| {
+            let explored = |pos| adventure.is_explored(viewer, pos);
+            let view = Seer::new(state, rules, viewer).view(town, explored);
+            view.is_some_and(|view| view.owner_facts.is_some())
+        })
+        .fold(Viewers::NONE, Viewers::with)
 }
 
 /// Whether one of `seers` ([`visions`]) sees the town whose entrance is `entrance` (TWN-VEW-003;

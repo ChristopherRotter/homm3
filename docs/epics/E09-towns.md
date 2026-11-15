@@ -52,7 +52,7 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
 - **T30** the audit of increment 3's exit criteria, its closure, this refinement. Done 2026-11-15 (decisions 98–102; `E09-log.md`).
-- **T31** the garrison moves below level 3 (decision 101).
+- **T31** the garrison moves below level 3 (decision 101). Done 2026-11-15 (the projection; `E09-log.md`).
 - **T32** the survey (decision 100), with its checkpoint (`TWN-Q16`).
 - **T33** the ADR amendment drafts, the design note's Part F, the cut and the exit criteria (decision 100); the building tasks follow from the cut.
 

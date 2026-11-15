@@ -9,7 +9,7 @@ use h3_contracts::{PlayerId, TownId};
 use h3_towns::{TownCommand, TownCommandError, TownHeroChange};
 
 use super::command::owner;
-use super::view::Told;
+use super::view::{Told, named};
 use crate::command::{AdventureSink, GameCommand, GameCommandError, GameEvent, Sink};
 use crate::{GameRuleset, GameState};
 
@@ -25,7 +25,8 @@ const MOVES: [TownHeroChange; 3] = [
 /// owner `player` ([`TownCommandError::NotOwner`]), then the adventure's move with the town
 /// part's most heroes on the map ([`AdventureState::move_town_hero`]: its refusals as the town
 /// command's), its events told (the hero leaving and entering the map to the viewers of the
-/// entrance, the owner moving its own view); then each army slot `Enter` changed told to `player`
+/// entrance, the owner moving its own view; by name only to the players that see the town's
+/// garrison hero, [`named`], E09 T31); then each army slot `Enter` changed told to `player`
 /// (`StackChanged`: the hero's army, the town's garrison), then each view of the town the move
 /// changed told to its viewer ([`Told`]: `Enter` empties the garrison).
 ///
@@ -49,6 +50,7 @@ pub(crate) fn heroes<S: Sink>(
         return Err(refused(TownCommandError::NotOwner));
     }
     let told = Told::before::<S>(state, rules, &[town], &[]);
+    let named = named::<S>(state, rules, town);
     let (adventure, _) = state.adventure_with_heroes();
     let slots = adventure
         .move_town_hero(
@@ -56,6 +58,7 @@ pub(crate) fn heroes<S: Sink>(
             player,
             (town, most_heroes(rules)),
             adventure_move(change),
+            named,
             &mut AdventureSink(sink),
         )
         .map_err(|error| refused(town_error(error)))?;
