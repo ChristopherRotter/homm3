@@ -4169,3 +4169,37 @@ stream would then split by other players' hidden Visions, which the hygiene prop
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
 request is the record.
+
+### T32 — increment 4's survey and its checkpoint (2026-11-15)
+
+One session with T31, the user present at the start; branch `town/e09-t32` (docs only, stacked on
+`town/e09-t31`). T32 **whole** (the user at T31's start; the agent had proposed T32a, the hire,
+then T32b, the information). The original data, the four manuals and `H3MAPED.HLP` staged at the
+start (29 files, SHA-256 checked against the PC's). Survey `docs/rules/surveys/E09-tavern.md`.
+
+- **The code reading** (§2 to §6): `tavern_hero_draw` 0x4BB5E0, `tavern_new_heroes` 0x4C8450,
+  `tavern_slot_replace` 0x4C86A0 (renamed from an inferred name), `hero_leave_game` 0x4D9EC0
+  (likewise), the two hires `town_tavern_hire` 0x5C12E0 and `map_tavern_hire` 0x4D7890, the
+  tavern dialog and its hints, the week's and the start's release and fill, bit 17 of +0x105 (a
+  returning offer: set at a retreat or a surrender, cleared at its owner's turn end and at a hire),
+  the customised types' reader and their application to every type before the first draw, the
+  banned skills' readers (none on the hire's path), the Thieves' Guild's rows and parts by the
+  tavern count and the Den of Thieves' 99. Fifteen map entries added, four rewritten.
+- **The SoD Conflux rule** is dead in this build (edition 3, never written): a lead for E11 in
+  the battle lane's inbox.
+- **Compared:** VCMI 1.7.5 (`HeroPoolProcessor`, `TavernHeroesPool`, the removed hero,
+  `obtainPlayersStats`, the weights from `HCTRAITS.TXT`), the wiki's Tavern page, the RoE manual.
+  The shape agrees; disputes TD-18 to TD-21; quirk candidates T-14, T-15.
+- **The census** (159 `.h3m` maps, a throwaway example over `h3-map`'s reader, not committed):
+  versions, the allowed and disposed heroes, the customised types (`Marshland Menace`'s 15 at
+  2 000 experience the only experiences), the bans (110 hired types start with a banned skill on
+  19 maps), towns and taverns at the start (742 players: 228 none, 462 one, 43 two, 6 three, 3
+  four), the map's Taverns (93 on 47) and Dens (227 on 107), the Conflux heroes.
+- **Batch TWN-4's rows** (§9): eight, for T33's cut.
+- **The checkpoint** (`TWN-Q16`, one round of four, each as recommended): decisions 103 (TD-18 the
+  reading), 104 (TD-19, TD-20 the reading), 105 (T-14 the original's, not a quirk), 106 (the map's
+  Tavern in increment 4), 107 (the agent's calls). The survey's §11.
+- **Versions:** none (docs only).
+
+**Verify:** the docs gates (`check-docs`, `check-rules`, `check-stubs`, `check-exe-map`,
+`check-lane --base origin/master`, `doc-drift --base origin/master`).

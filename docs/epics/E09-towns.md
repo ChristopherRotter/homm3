@@ -49,11 +49,29 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
 101. **The garrison moves below level 3** (`TWN-Q15`, the server lane's inbox note of 2026-11-14; recommended): a viewer that does not see a town's garrison hero (below TWN-VEW-001's level 3: neither the owner's team nor expert Visions or a Rogue within reach) is told `GarrisonEntered` as the hero leaving the map and `GarrisonLeft` as a hero coming into sight; the owner's team and a viewer at level 3 keep the named events (`docs/06-security.md`'s town part already says so: the code comes into line). A small task T31 before the survey (code; `cross-lane` where it touches the adventure lane's paths). Not chosen: the move public, `docs/06-security.md`'s town line worded so (a hero vanishing from an entrance may also be a dismissal, so the name tells more than the original's map shows).
 102. *Agent's calls (change freely):* **the design note's Part F** in `E09-design.md`, its sections numbered from §59, as decisions 40 and 67; the survey `docs/rules/surveys/E09-tavern.md`; the experiment batch TWN-4; the inbox's notes that increment 3 acted on archived (`QUEUE-ARCHIVE.md`), the Tavern's three kept for T32.
 
+### Decisions at the survey's checkpoint (2026-11-15, the user; TWN-Q16)
+
+103. **TD-18, the week keeps a returning offer** (recommended): the reading (survey `E09-tavern.md`
+     §2.3, §4): the week releases every offer but a retreated or surrendered hero that came back
+     after its owner's turn ended. Not chosen: VCMI's release of both slots; the reading with a
+     `fix-optional` flag.
+104. **TD-19 and TD-20** (recommended): the reading for both: a returning hero's slot random,
+     sparing another returning offer; the offers' movement at their owner's turn start, spell
+     points only at a draw or a leave. Not chosen: VCMI's roles and daily regain.
+105. **T-14, a dismissed hero's artifacts** (recommended): the original's, not a quirk: they stay
+     with the hero in the pool (row TWN-4-5 confirms). Not chosen: a `fix-optional` flag.
+106. **The map's Tavern in increment 4** (recommended): class 95 hires as a town's tavern onto its
+     visited tile, no guild spells (`cross-lane`: the adventure's object kinds). Not chosen: E08's
+     trades and services.
+107. *Agent's calls (change freely):* TD-21 as read (one bound, `most_heroes`, on the map only);
+     T-15 for the packs' validation; the SoD edition's Conflux rule to E11 as a lead; batch TWN-4's
+     rows for T33's cut.
+
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
 - **T30** the audit of increment 3's exit criteria, its closure, this refinement. Done 2026-11-15 (decisions 98–102; `E09-log.md`).
 - **T31** the garrison moves below level 3 (decision 101). Done 2026-11-15 (the projection; `E09-log.md`).
-- **T32** the survey (decision 100), with its checkpoint (`TWN-Q16`).
+- **T32** the survey (decision 100), with its checkpoint (`TWN-Q16`). Done 2026-11-15 (decisions 103–107; `E09-log.md`).
 - **T33** the ADR amendment drafts, the design note's Part F, the cut and the exit criteria (decision 100); the building tasks follow from the cut.
 
 ## Risks

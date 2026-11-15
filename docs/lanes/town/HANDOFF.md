@@ -9,12 +9,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (the Tavern's hire from the shared pool by the classes' tavern weights, the heroes that come
   back, the map's customized heroes, the Thieves' Guild by taverns owned, the Den of Thieves).
   **T31 done** (decision 101: the garrison moves by name only to the viewers that see the garrison
-  hero). **Next:** T32 (the survey, its checkpoint `TWN-Q16`), then T33 (the drafts, Part F from
-  §59, the cut); `QUEUE.md`. The guild and the services are increment 5, travel and the Grail 6.
+  hero). **T32 done** (the survey `E09-tavern.md`; `TWN-Q16`, decisions 103–107: TD-18 to TD-20 as
+  read, T-14 not a quirk, the map's Tavern in the increment). **Next:** T33 (the ADR amendment
+  drafts, Part F from §59, the cut with batch TWN-4's rows; the user's acceptance before building);
+  `QUEUE.md`. The guild and the services are increment 5, travel and the Grail 6.
   Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment
   5), `TWN-STUB-2` (the victory conditions).
-- **Open pull requests:** #959 (`shared/e09-t31-security`, the security doc's line; merges first)
-  and the T31 one (`town/e09-t31`, `cross-lane`); watch both until they merge.
+- **Open pull requests:** #962 (`town/e09-t32`, docs; rebased onto `master` after #961, T31,
+  merged); watch it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -26,9 +28,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   map import v23, replay format v16 by T28a), the env's (v11 by T28a) and the protocol's (v67 by
   T28b2) are bumped `cross-lane` (each task's record in `E09-log.md`). Shared, from T24: core
   ruleset hash v53, pack format v52, quirk flags 41, `StreamId::TOWNS` (7).
-- **Ids** (next): questions `TWN-Q16`; decisions 103; quirks `TWN-QUIRK-12`; stubs `TWN-STUB-15`
-  (`-11`, `-12` planned by design §34); rules: design §55's all built; experiment batch `TWN-4`;
-  disputes `TD-18`; quirk candidates `T-14`. ADR-0028 is the lane's; no drafts wait.
+- **Ids** (next): questions `TWN-Q17`; decisions 108; quirks `TWN-QUIRK-12`; stubs `TWN-STUB-15`
+  (`-11`, `-12` planned by design §34); rules: design §55's all built; experiment batch `TWN-4`
+  (rows in the survey's §9, not run); disputes `TD-22`; quirk candidates `T-16`. ADR-0028 is the lane's; no drafts wait.
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at
   each round; the user confirms seams and ADRs; tokens first.
 
@@ -37,6 +39,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-15 — T32: the Tavern survey and its checkpoint
+
+After T31 in the same session (the user's cut: T32 whole). The staged original data and manuals
+used for the code reading and a throwaway census (159 maps); VCMI 1.7.5 from GitHub, the wiki's
+Tavern page. `TWN-Q16` answered as recommended (decisions 103–107). Docs only; a lead for E11 in
+the battle lane's inbox (the SoD edition's Conflux rule, dead in this build). PR stacked on T31's.
 
 ### 2026-11-15 — T31: the garrison moves named only to the viewers that see the garrison hero
 
@@ -59,15 +68,3 @@ step; the census to day 29 as T29a's). The eleven criteria hold; nine rules behi
 rows `verified`; the garrison moves' names below level 3 queued as T31 (decision 101). Increment 3
 archived; increment 4 the Tavern as sketched (decisions 99, 100, 102); seven inbox notes archived.
 Docs only; PRs #957 and #956 (the README's row).
-
-### 2026-11-15 — T29b: the properties, the plans' hero moves, the month workload
-
-Baseline 8026f16 (#934 to #937 merged; the setup's full baseline passed but coverage, whose test
-run met a hygiene case of `master`'s: a map garrison's entrance flooded by `vary`, fixed here).
-T29b whole (the user, decision 97; two parts were recommended), with `month-start-builds-36`
-for the week workload (the user's pick). The user's computer was connected at the start only:
-the original data and the four manuals staged then (28 files, SHA-256 checked), used for the
-scoped verify. `cross-lane`: `h3-map`'s `play.rs` (the counts' bound, the Plague, a purchase's
-amount, a fork's week; `Step::Town`'s hero moves; five oracles taught a garrison hero that
-defends) and `view.rs`, the workload. No version moved. Note in the adventure lane's inbox. T30
-next. PRs #942 and #946.
