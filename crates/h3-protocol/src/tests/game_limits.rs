@@ -370,3 +370,120 @@ fn a_battle_the_system_plays_for_both_sides_voids_its_game_at_its_bound() {
     assert!(cut.void());
     assert_eq!(cut.state().state_hash(), hash);
 }
+
+#[test]
+fn a_restore_under_a_lowered_bound_voids_only_a_battle_still_open() {
+    // The golden replay's battle against a monster, the monster's side the system's (its answers
+    // the replay's), won by the second player's hero. Restored under a bound of one system
+    // command a battle, the game is void while that battle is open and no more once it is over
+    // (E16 M5 T24, 2c's reviewer: decided afresh, not kept from a battle long over).
+    let (rules, setup, replay) = one("duel-s3-easy-d7");
+    let manifest = manifest(&rules, MAP);
+    let mut out = Vec::new();
+    let mut s = GameSession::start(
+        &rules,
+        &setup,
+        replay.seed,
+        manifest.clone(),
+        OPTIONS,
+        &mut out,
+    )
+    .unwrap();
+    let mut entries: Vec<GameEntry> = s.drain_entries().collect();
+    let mut answered = None;
+    for (seq, (actor, engine)) in replay.commands.iter().enumerate() {
+        let seq = u32::try_from(seq).unwrap();
+        match *actor {
+            Actor::Player(player) => s.play(player, seq, command(engine), &mut out),
+            Actor::System => s.system(command(engine), &mut out),
+        }
+        .unwrap();
+        entries.extend(s.drain_entries());
+        if *actor == Actor::System && answered.is_none() {
+            answered = Some(entries.len());
+        }
+    }
+    assert!(s.state().battle(P1).is_none(), "the battle is over");
+    let lowered = GameOptions {
+        commands: CommandBounds {
+            system_per_battle: 1,
+            ..CommandBounds::NONE
+        },
+        ..OPTIONS
+    };
+    let restore = |entries: &[GameEntry]| {
+        let manifest = manifest.clone();
+        GameSession::restore(
+            &rules,
+            &setup,
+            replay.seed,
+            manifest,
+            lowered,
+            entries,
+            &mut Vec::new(),
+        )
+        .unwrap()
+    };
+    assert!(!restore(&entries).void());
+    let answered = answered.unwrap();
+    let open = restore(&entries[..answered]);
+    assert!(open.void() && open.state().battle(P1).is_some());
+}
+
+#[test]
+fn a_void_game_of_connections_pauses_no_more() {
+    // Player 0's hero attacks player 1's; each side past its bound of one command is the
+    // computer's, whose first command reaches the system's bound of one: void. Neither the
+    // host's pause nor the sweep pauses it after that (E16 M5 T24, 2c's reviewer: a void reached
+    // in the host's step before a message or a tick); its host ends it.
+    let (rules, setup, replay) = one("towns-visitor-s1");
+    let options = GameOptions {
+        commands: CommandBounds {
+            per_turn: 1,
+            per_battle: 1,
+            system_per_battle: 1,
+        },
+        ..OPTIONS
+    };
+    let manifest = manifest(&rules, MAP);
+    let mut s = GameSession::new(&rules, &setup, replay.seed, manifest, options, token).unwrap();
+    for player in 0..2 {
+        send(&mut s, conn(player), join(player, None));
+    }
+    s.computer(Box::new(Striker(7)), &mut Vec::new());
+    let message = |seq, command| ClientMessage::GameCommand { seq, command };
+    send(&mut s, conn(0), message(0, command(&replay.commands[0].1)));
+    let defend = command(&Engine::Battle(Command::Defend));
+    let mut seqs = [1, 0];
+    for _ in 0..4 {
+        if s.void() {
+            break;
+        }
+        let battle = s.state().battle(P0).unwrap();
+        let side = battle.state().side_to_act().unwrap();
+        let player = usize::from(side == BattleSide::Defender);
+        send(
+            &mut s,
+            conn(player as u8),
+            message(seqs[player], defend.clone()),
+        );
+        seqs[player] += 1;
+    }
+    assert!(s.void());
+    let _ = s.drain_entries().count();
+    let out = send(&mut s, conn(0), ClientMessage::Pause { seq: 9 });
+    assert!(matches!(
+        to(&out, conn(0))[..],
+        [ServerMessage::GameRejected {
+            seq: 9,
+            code: GameReject::NotStarted {},
+            ..
+        }]
+    ));
+    assert!(!out.iter().any(|o| o.close));
+    for player in 0..2 {
+        s.disconnected(conn(player));
+    }
+    assert!(!s.suspend(&mut Vec::new()));
+    assert_eq!(s.drain_entries().count(), 0, "nothing journaled");
+}

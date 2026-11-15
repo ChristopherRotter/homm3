@@ -6,7 +6,8 @@
 //! `SetSpectators` until the start (the lobby lists it), the server's limit, a disconnect freeing
 //! a place; a watcher takes no seat and a seat watches nothing; unknown games, a battle and a
 //! paused game watched by nobody; the host's pause, an abandoned game and a server that takes no
-//! spectators. The void's goodbye is in `whole.rs` (T20's test).
+//! spectators. The void's goodbye is in `whole.rs` (T20's test), the end-to-end spectator of a
+//! timed game in `clock.rs` (T24).
 
 use h3_protocol::wire::game::{GameCommand, GameQuery, GameReject, MapGameInfo};
 use h3_protocol::wire::{ClientMessage, GoodbyeReason, Phase, Refusal, Seat, ServerMessage};
@@ -95,7 +96,7 @@ async fn until_unseated(client: &mut Client, seq: u32) -> Vec<ServerMessage> {
 
 /// `client` watches the whole game `game`: its `GameWatching`, then the watch's start (every
 /// player's view) up to the rejection of its query numbered `seq`.
-async fn watch(client: &mut Client, game: u32, seq: u32) -> Vec<ServerMessage> {
+pub(super) async fn watch(client: &mut Client, game: u32, seq: u32) -> Vec<ServerMessage> {
     client
         .send(&ClientMessage::GameWatch { game })
         .await
@@ -121,7 +122,7 @@ async fn refused_watch(client: &mut Client, game: u32) -> Refusal {
 }
 
 /// Player `player`'s messages among the spectator's `seen`, each as the player's seat got it.
-fn watched(seen: &[ServerMessage], player: u8) -> Vec<ServerMessage> {
+pub(super) fn watched(seen: &[ServerMessage], player: u8) -> Vec<ServerMessage> {
     let of = |m: &ServerMessage| match m {
         ServerMessage::GameWatched {
             player: p, message, ..
@@ -132,7 +133,7 @@ fn watched(seen: &[ServerMessage], player: u8) -> Vec<ServerMessage> {
 }
 
 /// The spectator's own numbers of its messages `seen`, which are all `GameWatched`.
-fn numbers(seen: &[ServerMessage]) -> Vec<u32> {
+pub(super) fn numbers(seen: &[ServerMessage]) -> Vec<u32> {
     let n = |m: &ServerMessage| match m {
         ServerMessage::GameWatched { n, .. } => *n,
         other => panic!("not watched: {other:?}"),
@@ -177,8 +178,16 @@ async fn a_spectator_sees_every_seats_messages_and_watches_again_after_a_restart
     };
     b.send(&join).await.unwrap();
     let joined = b.recv().await;
+    // Its join names the setting it agrees to (E16 M5 T24, SRV-Q38).
     assert!(
-        matches!(joined, Some(ServerMessage::GameJoined { player: 1, .. })),
+        matches!(
+            joined,
+            Some(ServerMessage::GameJoined {
+                player: 1,
+                spectators: true,
+                ..
+            })
+        ),
         "{joined:?}"
     );
     let of_b = until_answer(&mut b, 1).await;

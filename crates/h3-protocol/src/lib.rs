@@ -152,7 +152,7 @@ pub mod wire;
 /// v59 (E09 T27, the town lane's, `cross-lane`): a town's recruitment
 /// (TWN-REC-001, -002): the town command `Recruit`, its refusals `NotRecruiting`, `NotStanding`
 /// and `NothingSummoned`, a hire dialog's town garrison target (`wire::game::HireTarget::Garrison`)
-/// and its source named as `wire::game::HireSeen` (a map object, a town's index or its Portal) in
+/// and its source named as `wire::game::HireSeen` (a map object, a town's creature index or its Portal) in
 /// the dialog's view and in `HireOpened`, in place of the object's type and anchor.
 /// v60 (E16 M5 T17, after the town lane's T27 took v59): a map offer shows how its games are
 /// timed (`wire::game::MapOffer`'s `clock`, `wire::game::OfferClock`: the turn's duration, the
@@ -192,7 +192,11 @@ pub mod wire;
 /// (TWN-VEW-001): `TownOwnerFacts::garrison_hero`, the popup's top level's mark, and
 /// `GameEvent::TownChanged`'s `garrison_hero`; a town's garrison as every level shows it is its
 /// upper bar, its garrison hero's army with one.
-pub const PROTOCOL_VERSION: u32 = 67;
+/// v68 (E16 M5 T24, SRV-Q38: 2c's reviewer's consent finding): `GameJoined`'s `spectators`
+/// (whether the whole game may be watched, as the lobby lists it) and `GameSpectators`, the
+/// host's `SetSpectators` told to every other player before the start; on a server that requires
+/// logins a `GameWatch` needs one (`NotLoggedIn`), as a battle's spectator's `Join`.
+pub const PROTOCOL_VERSION: u32 = 68;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

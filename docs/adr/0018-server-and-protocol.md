@@ -64,7 +64,9 @@ from inputs to outputs, with sockets, clock and files outside.
    The game's creator opens it to spectators before the start (closed by default; the lobby shows
    it, so taking a seat agrees to it), within the server's limit per game; a ranked game never;
    live, no delay; nothing of a spectator is journaled. A hosted battle's spectator keeps the
-   battle's spectator viewer (SRV-Q4).
+   battle's spectator viewer (SRV-Q4). *Amended 2026-11-14 (E16 M5 T24, SRV-Q38):* the host's
+   change before the start is told to every other player, and each seat's join names the setting,
+   so that a seat which does not agree leaves before the start.
 8. **Hidden information** (into `docs/06-security.md` in M1): the game seed is 64 bits of OS
    randomness, never derived from or revealed by anything a client sees; random obstacles come
    from a separate throwaway seed and enter the setup as pieces; seeds, RNG state, state hashes and
