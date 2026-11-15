@@ -9,7 +9,10 @@
 # when no names are given, every clip's sound (its first track, `binkprobe sound`: the DLL's
 # decoder on each frame's packet) and the sound decoder's tables (`binkprobe sound-tables`). Since
 # E27 M2 T2b every frame as the DLL's BinkCopyToBuffer copies it for the game (`h3_bink::Target`:
-# the cells its decoding marked changed, CLT-Q122), which the shell's clips need to match.
+# the cells its decoding marked changed, CLT-Q122), which the shell's clips need to match. Since
+# E27 M2 T5b2 every clip with a track's sound start as the DLL's (`bink-dll.py`'s <stem>.start:
+# the frame whose BinkDoFrame loads Miles' first buffer, `binkprobe start`; not the synthetic
+# samples', whose rings never fill a buffer): the first, as `h3_view::shell::start` takes it.
 # About 10 minutes after the release build, most of it H3INTRO's 2 426 frames (about 2.5 GB
 # written into clients/out/video: delete it after a run in a small sandbox).
 #
@@ -46,6 +49,15 @@ for file in "$out"/*.bik "$out"/*.BIK; do
     [ -e "$file" ] || continue
     stem=$(basename "${file%.*}")
     python3 -I scripts/bink-dll.py "$file" "$out/dll/$stem.yuv" || status=1
+    # The synthetic samples' tracks never fill a Miles buffer (`none`): the game's clips alone.
+    if [ -f "$out/dll/$stem.start" ] && [ "${stem#sample-}" = "$stem" ]; then
+        if [ "$(cat "$out/dll/$stem.start")" = 1 ]; then
+            echo "$stem: the sound from the first frame, as the DLL's"
+        else
+            echo "$stem: the DLL's sound starts at frame $(cat "$out/dll/$stem.start"), not the first"
+            status=1
+        fi
+    fi
 done
 "$view" video --original --out "$out" --reference "$out/dll" "$@" || status=1
 if [ $# -eq 0 ] && [ -f ../original-data/shell-videos.vid ]; then

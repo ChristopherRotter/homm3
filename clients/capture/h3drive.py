@@ -159,7 +159,7 @@ TURN_LIMIT = 30000
 # The most values `roll:<name>:<a>,<b>,...` queues (xdd.c's QUEUE).
 QUEUE = 8
 # The fields of xdd.dll's ack (xdd.c's `control`; `Game.ack`).
-ACK_FIELDS = 13
+ACK_FIELDS = 15
 
 
 class Unreadable(RuntimeError):
@@ -577,7 +577,9 @@ class Game:
         clips' clock is the virtual one, (E17 M5 T5b2) the Miles imports hooked and (E17 M5
         T8b1, R7-5) the sample calls the hooks could not follow, (E27 M1 T2) 1 when the Smacker
         clips' clock is the virtual one too, the clips' reads since the command and 1 when
-        BinkGetSummary goes through xdd.dll's guard: ACK_FIELDS, padded with 0; None
+        BinkGetSummary goes through xdd.dll's guard, (E27 M2 T5b2) with sound the clips' sound
+        hooks (3: SmackSoundUseMSS and SMACKW32's two timers) and Bink's Miles functions answered
+        (11 once the sound started): ACK_FIELDS, padded with 0; None
         before the first. With `need` (a check reads it once so, R7-10) an error instead of None,
         and one naming a stale xdd.dll (built before xdd.c's last field) for fewer fields."""
         try:

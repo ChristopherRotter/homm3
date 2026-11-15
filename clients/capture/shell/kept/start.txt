@@ -12,3 +12,15 @@ start-skip-left before t12000 352ce7162dd4d11a
 start-skip-left menu t12200 e62581b7ce362971
 start-skip-right before t40000 774cf6dc4cf3c381
 start-skip-right menu t40200 e62581b7ce362971
+start-smacker-sound clips clip 2586@0-180420 bcc522dd421bdf1c
+start-smacker-sound menu t180420 e62581b7ce362971
+start-smacker-sound voice1 smacker t10-5350 v70
+start-smacker-sound voice2 smacker t5510-18450 v70
+start-smacker-sound voice3 smacker t18610-180270 v70
+start-skip-key-sound before t2000 fa76f99c6eb04011
+start-skip-key-sound menu t2200 e62581b7ce362971
+start-skip-key-sound voice1 smacker t10-2000 v70
+start-skip-left-sound before t12000 d847334ad5e17d8f
+start-skip-left-sound menu t12200 e62581b7ce362971
+start-skip-left-sound voice1 smacker t10-5350 v70
+start-skip-left-sound voice2 bink t5500-12000 v127

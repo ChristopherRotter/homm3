@@ -26,3 +26,6 @@ _AIL_mem_free_lock@4=AIL_mem_free_lock@4
 _AIL_get_preference@4=AIL_get_preference@4
 MssRecord=MssRecord@4
 MssPump=MssPump@0
+MssMinimum=MssMinimum@4
+MssLoads=MssLoads@0
+MssHold=MssHold@4

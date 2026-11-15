@@ -80,7 +80,31 @@
       answers for it); the harness fails a sound run when it is not 0. With sound the
       game's other threads read the clock too (its sound service), so only the main thread's
       reads count: they alone say the battle is idle (`machines`' heal read half done
-      otherwise). */
+      otherwise).
+   7. The clips' sound on the virtual clock (E27 M2 T5b2, *provisional*; E27-design §12): with
+      H3SOUND set, a clip's track plays on the virtual clock too, its calls logged to
+      <H3CLOCK>\clipsound, one line each "<time> <call> <a> <b>". SMACKW32.DLL times a Smacker
+      clip's frames by the play cursor of the DirectSound buffer Miles lends it (§11), which
+      Wine moves in real time: Heroes3.exe's import of SmackSoundUseMSS goes through
+      use_mss_hook, which gives the DLL's SmackSoundUseDirectSound vsound.h's stand-in (its
+      cursor on the virtual clock, an ideal device) instead of Miles' object (the game's Miles
+      answers preference 15 with 0 and goes there itself), so the DLL never loads Miles'
+      functions and makes its sound timer with timeSetEvent, whose import (and timeKillEvent's)
+      points at smack_set_event, made and never fired: the DLL's sound service runs from the
+      game's calls alone, as in `smackprobe wait`. The log gets vsound.h's lines but lock and
+      unlock (create, flags, play, stop, setpos, volume, pan, release) and "use", "timer",
+      "timer-killed". BINKW32.DLL streams a Bink clip's sound through Miles' double-buffered
+      sample, the functions BinkOpenMiles takes by name (GetProcAddress, 0x1000F970): its
+      GetProcAddress import goes through proc_hook, which answers the sample's calls with the
+      hooks below: the buffers play on the virtual clock at the sample's bytes a second, one
+      after the other from the first load (bink_* below); the real Miles makes, sets and
+      releases the handle and gives the least buffer size but never gets a buffer (it plays
+      nothing). The log gets "bink-minimum <size> <rate>", "bink-allocate", "bink-volume <v>",
+      "bink-load <buffer> <bytes>", "bink-play" (the first load: the sound starts), "bink-dry"
+      (a buffer played out with none after it), "bink-stop", "bink-resume" (BinkPause) and
+      "bink-release" (BinkClose). The ack's fourteenth field counts the Smacker hooks (3: the
+      import and the two timers), its fifteenth Bink's Miles functions answered (11, once
+      BinkOpenMiles has run: at the sound's start). */
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -727,6 +751,368 @@ static void hook_sounds(void)
     real_serve = (ail0_fn)hook_ail("_AIL_serve@0", (FARPROC)hook_serve);
 }
 
+/* 7. The clips' sound on the virtual clock (E27 M2 T5b2). */
+#include "vsound.h"
+
+typedef BYTE(WINAPI *use_ds_fn)(void *);
+static use_ds_fn smack_use_ds; /* SMACKW32.DLL's SmackSoundUseDirectSound */
+static int smack_sound;        /* the ack's fourteenth field: the Smacker hooks in place */
+static volatile LONG bink_sound; /* its fifteenth: Bink's Miles functions answered */
+static char clip_sound_path[MAX_PATH];
+static CRITICAL_SECTION clip_lock; /* the log and Bink's samples: Bink's own thread calls too */
+
+/* The clips' sound clock: the virtual time, not counted as anyone's reads. */
+static DWORD clip_now(void)
+{
+    DWORD t;
+    EnterCriticalSection(&lock);
+    t = now();
+    LeaveCriticalSection(&lock);
+    return t;
+}
+
+static int WINAPI use_mss_hook(void *driver)
+{
+    (void)driver;
+    vnote("use", 0, 0);
+    return smack_use_ds((void *)&vsound);
+}
+
+static UINT WINAPI smack_set_event(UINT delay, UINT resolution, LPTIMECALLBACK f, DWORD_PTR user,
+                                   UINT kind)
+{
+    (void)f;
+    (void)user;
+    vnote("timer", (long)delay, (long)(resolution | kind << 16));
+    return 1;
+}
+
+static UINT WINAPI smack_kill_event(UINT id)
+{
+    vnote("timer-killed", (long)id, 0);
+    return TIMERR_NOERROR;
+}
+
+/* Bink's sample: two buffers, played one after the other from the first load at the sample's
+   bytes a second; a buffer is free once played out (`bink_ready` gives the one after the last
+   loaded while it is free). Paused by BinkPause (AIL_stop_sample) until AIL_resume_sample. */
+#define BINK_SAMPLES 4
+static struct bsample {
+    void *handle;
+    unsigned long bps;      /* bytes a second: the rate times the format's bytes a frame */
+    long rate, format;
+    DWORD length[2];
+    int loaded[2];          /* loaded, not yet played out */
+    int fill;               /* the buffer to load next */
+    int current;            /* the buffer playing, -1 none */
+    DWORD since;            /* when the run of buffers began to play */
+    unsigned long long done; /* the bytes of that run's buffers played out */
+    int paused;
+    DWORD paused_at;
+    int heard;              /* it has played */
+} bsamples[BINK_SAMPLES];
+
+typedef DWORD(WINAPI *mins_fn)(void *, long, long);
+typedef void *(WINAPI *alloc_fn)(void *);
+typedef void(WINAPI *v1_fn)(void *);
+typedef void(WINAPI *v2_fn)(void *, long);
+typedef void(WINAPI *v3_fn)(void *, long, DWORD);
+typedef long(WINAPI *ready_fn)(void *);
+typedef void(WINAPI *load_fn)(void *, DWORD, const void *, DWORD);
+static mins_fn real_minimum;
+static alloc_fn real_allocate;
+static v1_fn real_binit, real_release, real_bstop, real_bresume;
+static v2_fn real_rate, real_volume;
+static v3_fn real_type;
+static ready_fn real_ready;
+static load_fn real_load;
+
+static void bnote(const char *what, long a, long b)
+{
+    char name[32];
+    snprintf(name, sizeof name, "bink-%s", what);
+    vnote(name, a, b);
+}
+
+static struct bsample *bsample_of(void *handle)
+{
+    int i;
+    for (i = 0; i < BINK_SAMPLES; i++)
+        if (bsamples[i].handle == handle)
+            return &bsamples[i];
+    return NULL;
+}
+
+static void bink_bps(struct bsample *s)
+{
+    /* Miles' DIG_F_*: bit 0 16-bit, bit 1 stereo. */
+    s->bps = (unsigned long)s->rate * (s->format & 1 ? 2u : 1u) * (s->format & 2 ? 2u : 1u);
+}
+
+/* The buffers played out by `t`. */
+static void bink_advance(struct bsample *s, DWORD t)
+{
+    while (s->current >= 0 && !s->paused && s->bps) {
+        int c = s->current;
+        unsigned long long end = s->done + s->length[c];
+        if ((unsigned long long)(DWORD)(t - s->since) * s->bps < end * 1000u)
+            return;
+        s->loaded[c] = 0;
+        if (s->loaded[c ^ 1]) {
+            s->current = c ^ 1;
+            s->done = end;
+        } else {
+            /* Dry: the next load starts a new run at its own time. */
+            s->current = -1;
+            bnote("dry", c, 0);
+        }
+    }
+}
+
+static DWORD WINAPI bink_minimum(void *driver, long rate, long format)
+{
+    DWORD n = real_minimum(driver, rate, format);
+    EnterCriticalSection(&clip_lock);
+    bnote("minimum", (long)n, rate);
+    LeaveCriticalSection(&clip_lock);
+    return n;
+}
+
+static void *WINAPI bink_allocate(void *driver)
+{
+    void *h = real_allocate(driver);
+    int i;
+    EnterCriticalSection(&clip_lock);
+    for (i = 0; h && i < BINK_SAMPLES; i++)
+        if (!bsamples[i].handle) {
+            memset(&bsamples[i], 0, sizeof bsamples[i]);
+            bsamples[i].handle = h;
+            bsamples[i].current = -1;
+            break;
+        }
+    if (h && i == BINK_SAMPLES)
+        InterlockedIncrement(&unfollowed);
+    bnote("allocate", i, 0);
+    LeaveCriticalSection(&clip_lock);
+    return h;
+}
+
+static void WINAPI bink_init(void *h)
+{
+    struct bsample *s;
+    real_binit(h);
+    EnterCriticalSection(&clip_lock);
+    if ((s = bsample_of(h))) {
+        void *keep = s->handle;
+        memset(s, 0, sizeof *s);
+        s->handle = keep;
+        s->current = -1;
+    }
+    LeaveCriticalSection(&clip_lock);
+}
+
+static void WINAPI bink_type(void *h, long format, DWORD flags)
+{
+    struct bsample *s;
+    real_type(h, format, flags);
+    EnterCriticalSection(&clip_lock);
+    if ((s = bsample_of(h))) {
+        s->format = format;
+        bink_bps(s);
+    }
+    LeaveCriticalSection(&clip_lock);
+}
+
+static void WINAPI bink_rate(void *h, long rate)
+{
+    struct bsample *s;
+    real_rate(h, rate);
+    EnterCriticalSection(&clip_lock);
+    if ((s = bsample_of(h))) {
+        s->rate = rate;
+        bink_bps(s);
+    }
+    LeaveCriticalSection(&clip_lock);
+}
+
+static void WINAPI bink_volume(void *h, long volume)
+{
+    real_volume(h, volume);
+    EnterCriticalSection(&clip_lock);
+    bnote("volume", volume, 0);
+    LeaveCriticalSection(&clip_lock);
+}
+
+static long WINAPI bink_ready(void *h)
+{
+    struct bsample *s;
+    long n = -1;
+    EnterCriticalSection(&clip_lock);
+    if ((s = bsample_of(h))) {
+        bink_advance(s, clip_now());
+        n = s->loaded[s->fill] ? -1 : s->fill;
+    }
+    LeaveCriticalSection(&clip_lock);
+    return n;
+}
+
+static void WINAPI bink_load(void *h, DWORD n, const void *buffer, DWORD length)
+{
+    struct bsample *s;
+    DWORD t = clip_now();
+    (void)buffer;
+    EnterCriticalSection(&clip_lock);
+    if ((s = bsample_of(h)) && n < 2) {
+        bink_advance(s, t);
+        s->loaded[n] = 1;
+        s->length[n] = length;
+        s->fill = (int)(n ^ 1);
+        bnote("load", (long)n, (long)length);
+        if (s->current < 0) {
+            s->current = (int)n;
+            s->since = t;
+            s->done = 0;
+            if (!s->heard) {
+                s->heard = 1;
+                bnote("play", (long)n, (long)s->bps);
+            }
+        }
+    } else {
+        InterlockedIncrement(&unfollowed);
+    }
+    LeaveCriticalSection(&clip_lock);
+}
+
+static void WINAPI bink_stop(void *h)
+{
+    struct bsample *s;
+    DWORD t = clip_now();
+    EnterCriticalSection(&clip_lock);
+    if ((s = bsample_of(h)) && !s->paused) {
+        bink_advance(s, t);
+        s->paused = 1;
+        s->paused_at = t;
+    }
+    bnote("stop", 0, 0);
+    LeaveCriticalSection(&clip_lock);
+}
+
+static void WINAPI bink_resume(void *h)
+{
+    struct bsample *s;
+    DWORD t = clip_now();
+    EnterCriticalSection(&clip_lock);
+    if ((s = bsample_of(h)) && s->paused) {
+        s->since += t - s->paused_at;
+        s->paused = 0;
+    }
+    bnote("resume", 0, 0);
+    LeaveCriticalSection(&clip_lock);
+}
+
+static void WINAPI bink_release(void *h)
+{
+    struct bsample *s;
+    EnterCriticalSection(&clip_lock);
+    if ((s = bsample_of(h)))
+        s->handle = NULL;
+    bnote("release", 0, 0);
+    LeaveCriticalSection(&clip_lock);
+    real_release(h);
+}
+
+/* The Miles functions BinkOpenMiles takes by name that the hooks answer, and where each keeps the
+   real one. */
+static const struct {
+    const char *name;
+    FARPROC hook;
+    FARPROC *real;
+} bink_calls[] = {
+    {"_AIL_minimum_sample_buffer_size@12", (FARPROC)bink_minimum, (FARPROC *)&real_minimum},
+    {"_AIL_allocate_sample_handle@4", (FARPROC)bink_allocate, (FARPROC *)&real_allocate},
+    {"_AIL_init_sample@4", (FARPROC)bink_init, (FARPROC *)&real_binit},
+    {"_AIL_set_sample_type@12", (FARPROC)bink_type, (FARPROC *)&real_type},
+    {"_AIL_set_sample_playback_rate@8", (FARPROC)bink_rate, (FARPROC *)&real_rate},
+    {"_AIL_set_sample_volume@8", (FARPROC)bink_volume, (FARPROC *)&real_volume},
+    {"_AIL_stop_sample@4", (FARPROC)bink_stop, (FARPROC *)&real_bstop},
+    {"_AIL_resume_sample@4", (FARPROC)bink_resume, (FARPROC *)&real_bresume},
+    {"_AIL_sample_buffer_ready@4", (FARPROC)bink_ready, (FARPROC *)&real_ready},
+    {"_AIL_load_sample_buffer@16", (FARPROC)bink_load, (FARPROC *)&real_load},
+    {"_AIL_release_sample_handle@4", (FARPROC)bink_release, (FARPROC *)&real_release},
+};
+
+typedef FARPROC(WINAPI *proc_fn)(HMODULE, LPCSTR);
+static proc_fn real_proc;
+
+static FARPROC WINAPI proc_hook(HMODULE module, LPCSTR name)
+{
+    FARPROC real = real_proc(module, name);
+    unsigned i;
+    if (!real || !HIWORD((DWORD)name) || module != GetModuleHandleA("mss32.dll"))
+        return real;
+    for (i = 0; i < sizeof bink_calls / sizeof bink_calls[0]; i++)
+        if (!strcmp(name, bink_calls[i].name)) {
+            *bink_calls[i].real = real;
+            InterlockedIncrement(&bink_sound);
+            return bink_calls[i].hook;
+        }
+    return real;
+}
+
+/* Points a module's import of `name` from `dll` (found by the address it holds: SMACKW32's and
+   BINKW32's tables keep no names once bound) at `fn`; the import's own address, or NULL. */
+static FARPROC hook_import(HMODULE module, const char *dll, const char *name, FARPROC fn)
+{
+    BYTE *base = (BYTE *)module;
+    IMAGE_NT_HEADERS32 *nt;
+    IMAGE_DATA_DIRECTORY dir;
+    IMAGE_IMPORT_DESCRIPTOR *d;
+    HMODULE from = GetModuleHandleA(dll);
+    FARPROC target = from ? GetProcAddress(from, name) : NULL;
+    if (!base || !target)
+        return NULL;
+    nt = (IMAGE_NT_HEADERS32 *)(base + ((IMAGE_DOS_HEADER *)base)->e_lfanew);
+    dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    d = (IMAGE_IMPORT_DESCRIPTOR *)(base + dir.VirtualAddress);
+    for (; d->Name; d++) {
+        DWORD *slot = (DWORD *)(base + d->FirstThunk);
+        if (lstrcmpiA((const char *)(base + d->Name), dll))
+            continue;
+        for (; *slot; slot++) {
+            DWORD old;
+            if (*slot != (DWORD)target)
+                continue;
+            if (!VirtualProtect(slot, sizeof *slot, PAGE_READWRITE, &old))
+                return NULL;
+            *slot = (DWORD)fn;
+            VirtualProtect(slot, sizeof *slot, old, &old);
+            return target;
+        }
+    }
+    return NULL;
+}
+
+static void hook_clip_sounds(void)
+{
+    HMODULE smack = GetModuleHandleA("SMACKW32.DLL");
+    InitializeCriticalSection(&clip_lock);
+    vsound_now = clip_now;
+    vsound_brief = 1;
+    vsound_log = fopen(clip_sound_path, "w");
+    if (vsound_log)
+        setvbuf(vsound_log, NULL, _IONBF, 0);
+    smack_use_ds = smack ? (use_ds_fn)GetProcAddress(smack, "_SmackSoundUseDirectSound@4") : NULL;
+    if (smack_use_ds && hook_import(GetModuleHandleA(NULL), "smackw32.dll", "_SmackSoundUseMSS@4",
+                                    (FARPROC)use_mss_hook))
+        smack_sound++;
+    if (hook_import(smack, "winmm.dll", "timeSetEvent", (FARPROC)smack_set_event))
+        smack_sound++;
+    if (hook_import(smack, "winmm.dll", "timeKillEvent", (FARPROC)smack_kill_event))
+        smack_sound++;
+    real_proc = (proc_fn)hook_import(GetModuleHandleA("BINKW32.DLL"), "kernel32.dll",
+                                     "GetProcAddress", (FARPROC)proc_hook);
+}
+
 /* Polls the command file and writes the acknowledgement, every 2 ms. */
 static DWORD WINAPI control(LPVOID unused)
 {
@@ -758,10 +1144,10 @@ static DWORD WINAPI control(LPVOID unused)
         LeaveCriticalSection(&lock);
         f = fopen(tmp_path, "w");
         if (f) {
-            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d %d %ld %d %ld %d\n", applied,
+            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d %d %ld %d %ld %d %d %ld\n", applied,
                     (unsigned long)t, (long)reads, (long)forced_draws, waiting, redirected,
                     (long)refused, bink_clock, sound_hooks, (long)unfollowed, smack_clock,
-                    (long)clip_reads, summary_hooked);
+                    (long)clip_reads, summary_hooked, smack_sound, (long)bink_sound);
             fclose(f);
             MoveFileExA(tmp_path, ack_path, MOVEFILE_REPLACE_EXISTING);
         }
@@ -857,6 +1243,7 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
     snprintf(tmp_path, sizeof tmp_path, "%s\\ack.tmp", dir);
     snprintf(draws_path, sizeof draws_path, "%s\\draws", dir);
     snprintf(sounds_path, sizeof sounds_path, "%s\\sounds", dir);
+    snprintf(clip_sound_path, sizeof clip_sound_path, "%s\\clipsound", dir);
     {
         FILE *f = fopen(draws_path, "w");
         if (f)
@@ -884,6 +1271,7 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
         summary_hooked = real_summary != NULL;
         if (GetEnvironmentVariableA("H3SOUND", NULL, 0)) {
             hook_sounds();
+            hook_clip_sounds(); /* 7. */
             /* DllMain runs on the process's first thread, the game's main one. */
             main_thread = GetCurrentThreadId();
         }

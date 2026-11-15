@@ -582,17 +582,23 @@ fn replay_steps(options: &Options, drawer: &Drawer) -> Result<(), String> {
             break;
         }
     }
-    // The clips' sound (E27 M2 T5b1): when each started and stopped.
+    // The clips' sound (E27 M2 T5b1): when each started, at what volume (T5b2: 0 to 127, the
+    // index of `SMACKW32.DLL`'s table or Miles' volume), and when it stopped: a skip (`quiet`) or
+    // the close after its last frame (`closed`), as the original's (`h3shell.py`'s voices).
+    let effects = options.effects.unwrap_or(0);
     for (op, t) in r.ops().iter().zip(r.op_times()) {
-        match op {
+        let line = match *op {
             Op::Sound(part) => {
-                listing.push(format!("sound {} t{t}", part.file(options.bink_video)))
+                let volume = clips[part as usize].as_ref().map_or(0, |clip| {
+                    h3_view::clip_sound::volume(clip.format(), effects, drawer.bugs)
+                });
+                format!("sound {} t{t} v{volume}", part.file(options.bink_video))
             }
-            Op::Quiet(part) => {
-                listing.push(format!("quiet {} t{t}", part.file(options.bink_video)))
-            }
-            _ => {}
-        }
+            Op::Quiet(part) => format!("quiet {} t{t}", part.file(options.bink_video)),
+            Op::Closed(part) => format!("closed {} t{t}", part.file(options.bink_video)),
+            _ => continue,
+        };
+        listing.push(line);
     }
     let listing: String = listing.iter().map(|l| format!("{l}\n")).collect();
     print!("{listing}");
