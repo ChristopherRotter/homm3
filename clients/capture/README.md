@@ -25,7 +25,8 @@ adventure).
 |---|---|
 | `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`), its `VIDEO.VID` the user's `original-data/battle-videos.vid` (the result window's clips, E17 M5 T4b2b) and `original-data/shell-videos.vid` (the shell's 13 clips, E27 M1 T2) joined into one archive (either alone when only it is staged; an empty archive without both, and it says which); builds `xdd.dll`, `binkprobe.exe`, `smackprobe.exe` and the stand-in Miles (`mss/MSS32.DLL`, E27 M2 T2); writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures, the spell book's page turns without their videos) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
 | `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** (BINKW32.DLL's too) and the **forced rolls** (below). |
-| `smackprobe.c` | Our `smackprobe.exe` (E27 M2 T1): the game's `SMACKW32.DLL` run on a video archive's Smacker clips as a black box: every frame as the DLL leaves it in the buffer (8 bits, 5-5-5 or 5-6-5) and its palette, the sound it hands Miles (T2) and every frame's `SmackToBufferRect` rectangles (T5a2; below, "The clips"). |
+| `smackprobe.c` | Our `smackprobe.exe` (E27 M2 T1): the game's `SMACKW32.DLL` run on a video archive's Smacker clips as a black box: every frame as the DLL leaves it in the buffer (8 bits, 5-5-5 or 5-6-5) and its palette, the sound it hands Miles (T2), every frame's `SmackToBufferRect` rectangles (T5a2; below, "The clips") and the frames' times with the sound on (T5b1: `wait`, below, "The clips' sound clock"). |
+| `vsound.h` | A stand-in DirectSound on a given clock (E27 M2 T5b1), included by `smackprobe.c`: below, "The clips' sound clock". |
 | `mss32.c`, `mss32.def`, `mss32.rc` | Our stand-in for Miles' `MSS32.DLL` (E27 M2 T2), built into the run directory's `mss/` (the game's own stays beside `Heroes3.exe`): the probes load it before a DLL asks for Miles, and it writes the sound the DLL hands Miles to files (below, "The clips' sound"). |
 | `binkprobe.c` | Our `binkprobe.exe` (E17 M5 T4b2b): the game's `BINKW32.DLL` run on a video archive's clips as a black box, its clock ours: every frame as the DLL copies it (5-6-5, YUY2, …), the result window's playback by the millisecond, the DLL's dequantizers (below, "The clips"); at the game's x87 control word 0x27F (E17 M6 T6c1). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
@@ -1442,6 +1443,39 @@ wine binkprobe.exe cdft 1024 in.f32 out.f32                   # the FFT alone (n
   of `n` binary32 values of its input in turn, one table for all.
 - `smacker-dll.py` and `bink-dll.py` run them for `smacker-check.sh` and `bink-check.sh`, which
   compare `h3-view video`'s `<stem>.t<k>.pcm` and `<stem>.pcm`.
+
+### The clips' sound clock
+
+E27 M2 T5b1 (`docs/epics/E27-design.md` §11): with a track `SMACKW32.DLL` times a clip's frames
+by the play cursor of the DirectSound buffer Miles lends it, which Wine moves in real time, so a
+capture with `sound = true` plays a Smacker clip off the frozen clock (a test of the 3DO logo:
+frames at 30, 40, 50 … ms against 350, 420, 490 … silent). Until T5b2 puts the same device into
+`xdd.dll`, no shell recipe records a clip with sound. The probe runs the DLL on a stand-in:
+
+```sh
+wine smackprobe.exe wait 'Data\VIDEO.VID' 3DOLOGO 10 5 out\logo  # 10 ms steps, effects 5
+```
+
+- `vsound.h`: a DirectSound object whose `CreateSoundBuffer` makes buffers that play on the
+  probe's clock: the play cursor where it stood at the `Play` (or the `SetCurrentPosition` after
+  it) plus the clock's milliseconds since × the format's bytes a second / 1000, whole blocks,
+  around the buffer; the write cursor the play cursor (an ideal device: no lead, no
+  granularity). Each call that changes what plays goes to `<out>.wait` (`<clock> <call> <a> <b>`:
+  `create`, `flags`, `play`, `stop`, `setpos`, `lock`, `unlock`, `volume`, `pan`, `release`),
+  every byte the cursor passes, as the buffer then held it, to `<out>.played`.
+- `smackprobe wait <vid> <entry> <step ms> <volume> <out>`: `SMACKW32`'s own `timeGetTime`,
+  `timeSetEvent` and `timeKillEvent` imports pointed at the probe (its clock from 1 000 000 ms; the
+  sound timer made, never fired: the service runs from the game's calls alone, as on the frozen
+  clock), `SmackSoundUseDirectSound` with the stand-in (the game's Miles answers preference 15
+  with 0 and goes this way), the entry opened with its tracks (0xFE000 | 0x1140),
+  `SmackVolumePan` with 3640 × `<volume>`, `SmackToBuffer`; then at each reading `smacker_tick`
+  (`SmackWait`, `SmackDoFrame`, `SmackNextFrame`, the last frame closed), again at one reading
+  until `SmackWait` holds a frame back, the clock stepped by `<step>`. The log gets `frame <k>`,
+  `open`, `timer`, `closed` lines too.
+- `clients/scripts/smacker-dll.py` runs it at 1, 5, 7, 10 and 16 ms for a clip with a track and
+  writes `<stem>.wait<step>` (times from the open: the volume as the index into `SMACKW32`'s
+  table, `play`, each `frame`, `stop` with the bytes played; ` not-the-track` when they are not
+  the track's first), compared with `h3-view video --smacker`'s model by `smacker-check.sh`.
 
 ## Sound
 

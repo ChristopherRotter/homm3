@@ -172,6 +172,106 @@ fn a_hero_standing_in_an_anti_magic_garrison_is_attacked_without_magic() {
     assert!(anti_magic(&state, &rules, RED));
 }
 
+// covers: ADV-GAR-005
+#[test]
+fn a_hero_attacking_out_of_an_anti_magic_garrison_fights_with_magic() {
+    let rules = rules();
+    let entrance = Pos::new(1, 1, 0);
+    let object = garrison(&rules, "t:anti_garrison", entrance, Some(RED), vec![]);
+    let mut state = game(&rules, 9, vec![object]);
+    // Red's hero steps into its own garrison (its exchange, closed), beside blue's hero on (2, 2).
+    play(&mut state, &rules, RED, move_hero(0, &[entrance])).unwrap();
+    assert_eq!(state.adventure().hero(RED_HERO).unwrap().pos, entrance);
+    assert!(state.exchange(RED).is_some());
+    play(&mut state, &rules, RED, answered(Answer::Close)).unwrap();
+    // Its attack is fought on the defender's tile, no garrison's entrance: with magic.
+    play(&mut state, &rules, RED, move_hero(0, &[Pos::new(2, 2, 0)])).unwrap();
+    let battle = state.battle(RED).unwrap();
+    assert_eq!(battle.heroes(), [Some(RED_HERO), Some(HeroId::new(1))]);
+    assert!(!anti_magic(&state, &rules, RED));
+    assert!(!anti_magic(&state, &rules, BLUE));
+}
+
+// covers: ADV-GAR-002
+#[test]
+fn a_neutral_garrison_s_single_stack_defends_unsplit_in_its_slot() {
+    let rules = rules();
+    let anchor = Pos::new(1, 0, 0);
+    let object = garrison(&rules, "t:garrison", anchor, None, vec![imp(1, 30)]);
+    let mut state = game(&rules, 300, vec![object]);
+    play(&mut state, &rules, RED, move_hero(0, &[anchor])).unwrap();
+    // The system's side holds the one stack of 30 in its slot, not a wandering monster's split
+    // (batch E12's E12-6).
+    let battle = state.battle(RED).unwrap();
+    assert_eq!(battle.owners(), [Some(RED), None]);
+    let defending: Vec<(u8, CreatureTypeId, u32)> = battle
+        .state()
+        .stacks()
+        .iter()
+        .filter(|s| s.side == h3_contracts::BattleSide::Defender)
+        .map(|s| (s.slot, s.creature, s.count))
+        .collect();
+    assert_eq!(defending, [(1, IMP, 30)]);
+}
+
+// covers: ADV-GAR-002, GAM-DEC-007, GAM-DEC-009
+#[test]
+fn a_won_garrison_s_flag_and_exchange_wait_for_the_winner_s_level_up() {
+    let rules = rules();
+    let anchor = Pos::new(1, 0, 0);
+    let ty = rules.adventure().object_type_by_key("t:garrison").unwrap();
+    // Red's hero 50 experience short of level 2, which the 30 imps' 120 hit points give it.
+    let mut setup = setup();
+    setup.heroes[0].army = HeroArmy::Custom(vec![imp(1, 300)]);
+    setup.heroes[0].details.experience = Some(950);
+    setup.map.objects = vec![garrison(
+        &rules,
+        "t:garrison",
+        anchor,
+        None,
+        vec![imp(1, 30)],
+    )];
+    let mut state = GameState::new(&rules, &setup, 7).unwrap();
+    play(&mut state, &rules, RED, move_hero(0, &[anchor])).unwrap();
+    let events = fight(&mut state, &rules);
+    // Won with the level open: the army gone, its flag and its exchange held behind the answer.
+    assert!(state.level_up(RED).is_some());
+    let flag = |e: &GameEvent| {
+        matches!(e, GameEvent::Adventure(a) if a.kind == AdventureEventKind::ObjectFlagged {
+            object_type: ty,
+            anchor,
+            owner: RED,
+        })
+    };
+    let opened = GameEvent::ExchangeOpened {
+        player: RED,
+        hero: RED_HERO,
+        garrison: 0,
+        object_type: ty,
+        anchor,
+        removable: true,
+    };
+    let exchanges = |e: &GameEvent| matches!(e, GameEvent::ExchangeOpened { .. });
+    assert!(!events.iter().any(flag) && !events.iter().any(exchanges));
+    let adventure = state.adventure();
+    assert_eq!(adventure.owner(0), None);
+    assert_eq!(adventure.garrison_army(0), []);
+    assert!(state.exchange(RED).is_none());
+    // Answered: the level, then the flag, then the exchange.
+    let first = answered(Answer::LevelUp(SkillOffer::First));
+    let events = play(&mut state, &rules, RED, first).unwrap();
+    let level = events
+        .iter()
+        .position(|e| matches!(e, GameEvent::LevelGained { .. }));
+    let flagged = events.iter().position(flag);
+    let exchange = events.iter().position(|e| *e == opened);
+    assert!(level.is_some() && level < flagged, "{events:?}");
+    assert!(flagged.is_some() && flagged < exchange, "{events:?}");
+    assert_eq!(state.hero(RED_HERO).unwrap().level, 2);
+    assert_eq!(state.adventure().owner(0), Some(RED));
+    assert_eq!(state.exchange(RED).map(|e| e.garrison), Some(0));
+}
+
 /// A slot of `army`.
 const fn at(army: ArmyRef, slot: u8) -> ArmySlot {
     ArmySlot { army, slot }

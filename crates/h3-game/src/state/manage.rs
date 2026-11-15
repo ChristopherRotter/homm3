@@ -61,8 +61,8 @@ impl GameState {
 
     /// Checks that `player` may give a management command now and returns what its commands may
     /// name together (GAM-MAN-001; E08 T51b): its turn is running, its first open decision, if
-    /// any, is a meeting or an army dialog (another is `DecisionOpen`), and the game waits for no
-    /// other player's level-up.
+    /// any, is a meeting, an army dialog or, since E08 T114a2, an exchange (GAM-DEC-009; another
+    /// is `DecisionOpen`), and the game waits for no other player's level-up.
     pub(crate) fn check_managing(&self, player: PlayerId) -> Result<Together, GameCommandError> {
         self.check_acting(player)?;
         let together = self

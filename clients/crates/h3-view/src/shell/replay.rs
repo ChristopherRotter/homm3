@@ -20,6 +20,7 @@
 
 use alloc::format;
 use alloc::string::{String, ToString};
+use alloc::vec;
 use alloc::vec::Vec;
 
 use super::start::{Op, Start};
@@ -261,6 +262,8 @@ pub struct Replay {
     input_step: u32,
     start: Option<Start>,
     ops: Vec<Op>,
+    /// Each op's time (E27 M2 T5b1: the sound's start and stop are listed with theirs).
+    times: Vec<u32>,
 }
 
 /// Whether an input stops a start's clip (`video_play_fullscreen`'s and `video_play_framed`'s
@@ -294,6 +297,7 @@ impl Replay {
         if shell.screen() == Screen::Start && start.as_ref().is_none_or(Start::ended) {
             let _ = shell.end(Ended::Start);
         }
+        let times = vec![0; ops.len()];
         Self {
             shell,
             time: 0,
@@ -301,6 +305,7 @@ impl Replay {
             input_step,
             start,
             ops,
+            times,
         }
     }
 
@@ -308,6 +313,12 @@ impl Replay {
     #[must_use]
     pub fn ops(&self) -> &[Op] {
         &self.ops
+    }
+
+    /// When each of [`Replay::ops`] happened.
+    #[must_use]
+    pub fn op_times(&self) -> &[u32] {
+        &self.times
     }
 
     /// The start's timing, while the start plays.
@@ -371,6 +382,7 @@ impl Replay {
                     self.start
                         .iter_mut()
                         .for_each(|start| start.skip(time, ops));
+                    self.times.resize(self.ops.len(), time);
                     self.ended();
                 }
                 self.tick(self.input_step);
@@ -408,6 +420,7 @@ impl Replay {
         if let Some(start) = self.start.as_mut() {
             start.read(self.time, &mut self.ops);
         }
+        self.times.resize(self.ops.len(), self.time);
         self.ended();
     }
 

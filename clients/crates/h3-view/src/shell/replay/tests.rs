@@ -8,7 +8,7 @@ use super::{
     ClipEnd, INPUT_STEP, Input, Replay, Step, Stop, Take, UNTIL_LIMIT, UNTIL_STEP, parse, shown,
     skips,
 };
-use crate::shell::start::{Header, Op, Pace, Start};
+use crate::shell::start::{Header, Op, Pace, Part, Start};
 use crate::shell::{Ended, Game, Kind, Request, Screen, Shell};
 
 fn names(list: &[&str]) -> Vec<String> {
@@ -396,6 +396,35 @@ fn a_press_or_a_key_skips_the_start_and_a_move_does_not() {
         ]
     );
     assert_eq!(r.ops().last(), Some(&Op::Black));
+    assert_eq!(r.op_times().len(), r.ops().len());
+    // E27 M2 T5b1: with its sound the logo's starts at 10 ms and stops at the key (2000 ms),
+    // each op with its time.
+    let header = Header {
+        size: [640, 480],
+        frames: 100,
+        pace: Pace::Smacker(6666),
+    };
+    let mut ops = Vec::new();
+    let sounding = Start::with_sound([Some(header); 3], [Some(88_200); 3], false, 0, &mut ops);
+    let r = Replay::new(
+        Shell::new(true),
+        [400, 300],
+        INPUT_STEP,
+        Some((sounding, ops)),
+    );
+    let (_, stop, r) = replay_from(r, &["step:2000:10", "key:space", "until:main_menu"]);
+    assert_eq!(stop, None);
+    let sound: Vec<(Op, u32)> = r
+        .ops()
+        .iter()
+        .zip(r.op_times())
+        .filter(|(op, _)| matches!(op, Op::Sound(_) | Op::Quiet(_)))
+        .map(|(op, t)| (*op, *t))
+        .collect();
+    assert_eq!(
+        sound,
+        [(Op::Sound(Part::Logo), 10), (Op::Quiet(Part::Logo), 2000)]
+    );
     for (input, skips_it) in [
         ("move:1,2", false),
         ("key:F4", false),

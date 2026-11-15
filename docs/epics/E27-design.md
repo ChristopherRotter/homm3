@@ -53,9 +53,9 @@ Scores and Credits (§2.6 to §2.9); T1b1 the scenario screen's frame, list and 
 ### 2.1 The start (`win_main` 0x4F7A30; `game_main` 0x4EE3E0 to 0x4EE834)
 
 1. `win_main`: a named event keeps one instance (a second start shows a message box and ends);
-   `timeBeginPeriod(1)`; `game_samples_load` 0x4ED650 (the samples; the CD status 0x69957C and the
-   screen asked for at the start, 0x6976D8: *inferred*); the window class and an 800 × 600 window;
-   then `game_main`.
+   `timeBeginPeriod(1)`; `game_init` 0x4ED650 (the game's loads, the CD status 0x69957C and the
+   screen asked for at the start, 0x6976D8; read whole at M2 T5b1, §11.6); the window class and an
+   800 × 600 window; then `game_main`.
 2. `game_main`'s start: the palettes and fonts (E17-design §4); the cursor; the CD status's switch
    (0x4EE4CD): 1, 2, 5 and 6 the CD notice `cd_notice` 0x698A2C (1 also the sound off and,
    under a condition not read, GENRLTXT 249), 3 and 4 GENRLTXT 114 or 115 in a startup error box
@@ -116,7 +116,7 @@ Scores and Credits (§2.6 to §2.9); T1b1 the scenario screen's frame, list and 
 - **The screen asked for** (`screen_request` 0x6976D8): −1 or 108 the main menu; any other id its
   case at once. Its writers in play: `adventure_key_down` 101, 102, 108 and 107,
   `adventure_command` and one more site 107, `system_options_open` 102, 105, 107 and 108 (§4.3);
-  `game_samples_load` the start's (*not read*; M2's start task).
+  `game_init` the start's (0x4EDA75; §11.6).
 - **The main menu's result** (the window manager's +0x38; switch 0x4EEC0D): 101 New Game, 102 Load
   Game (§2.4), 103 High Scores (videos paused, 0x4E9110: §2.8; resumed; `GamSelBk.pcx` copied
   whole; the top), 104 Credits (`mainmenu.pcx` copied, 0x4EDDA0: §2.9; the top), 105 Quit
@@ -1618,7 +1618,8 @@ game's DLLs (`clients/scripts/smacker-check.sh`, `bink-check.sh`; the probes in
 - The DLL's timer service (0x10007D50) copies the ring to Miles in whole words (0x10007DC1: a
   last odd half word stays behind) and flushes the tail only after a frame without a track packet
   (`[snd+0x4C]` set at 0x10005EBA): the samples end on a frame without sound and carry whole words.
-- The volume: the game's `SmackVolumePan` with 3640 × the effects setting (0x598CBE); the DLL
+- The volume (corrected at M2 T5b1, §11.4: that is the Miles path the stand-in takes; the game's
+  is DirectSound's): the game's `SmackVolumePan` with 3640 × the effects setting (0x598CBE); the DLL
   takes it to Miles' scale (0x10008110: `(min(v, 0x8000) × 1270 / 0x8000 + 5) / 10`), 0, 14, 28,
   42, 56, 71, 85, 99, 113 and 127 for the settings 0 to 9 (`h3_view::clip_sound::volume`).
 
@@ -1654,10 +1655,10 @@ game's DLLs (`clients/scripts/smacker-check.sh`, `bink-check.sh`; the probes in
   Found and settled at T2b: the decoding was right, the DLL's copy is not (§9).
 - **The end of a clip:** the game closes a Smacker clip right after its last `SmackDoFrame`
   (`smacker_tick` 0x598F74), so the sound still queued is cut; T5 reads how much plays and settles
-  the client's end (the samples are whole).
+  the client's end (the samples are whole). Read at M2 T5b1 (§11.3): the last frame's sound.
 - **The pace:** the client hands the host a clip's whole track (`HostSound::play_clip`, a stream
   of its own); the DLLs' rings and their drops on a late consumer are not modelled. The 3DO logo's
-  full-screen path's volume and the game's DirectSound path are read at T5.
+  full-screen path's volume and the game's DirectSound path are read at T5 (M2 T5b1: §11).
 
 ## 9. The Bink clips' copy (M2 T2b, 2026-11-14)
 
@@ -1815,3 +1816,130 @@ Video 0); `Videos` reads `shell-videos.vid` after `battle-videos.vid` when `VIDE
   (`h3_bink::copies`; a Smacker frame's written blocks), so the cells a frame leaves keep what
   the buffer held (the black, the rim).
 
+## 11. The start's sound (M2 T5b1, 2026-11-15)
+
+Read in `Heroes3.exe` (`smacker_open_in_dialog` 0x598AF0, `video_open_in_dialog` 0x44D830,
+`sound_digital_start` 0x5997D0, `smacker_tick` 0x598EB0, `game_init` 0x4ED650), `SMACKW32.DLL`
+(`SmackSoundUseMSS` 0x100079F0, `SmackSoundUseDirectSound` 0x100095C0 and the functions it
+installs, `SmackOpen`'s tracks 0x10005710, `SmackDoFrame`'s sound 0x10005DD0, `SmackWait`
+0x10007840, `SmackClose` 0x10005B20) and `BINKW32.DLL` (`BinkWait` 0x10005EE0, `BinkPause`,
+`BinkOpenMiles` 0x1000F970) with capstone; checked on the DLL by `smackprobe wait` on a stand-in
+DirectSound (`clients/capture/vsound.h`, §11.5). Built: `h3_view::shell::start::SmackSound`,
+`Op::Sound`, `Op::Quiet`, `Op::Closed`, `Start::with_sound`; `h3-view shell --effects`, the
+window's sound. The cut at the game's run (decision 33): the start recorded with `sound = true`
+waits for the same device in `xdd.dll` (T5b2).
+
+### 11.1 The path
+
+- **When a clip has sound:** `smacker_open_in_dialog` sets 0x69FE58 to 1 when the sound is not
+  off (0x699290), the sound manager has a digital driver (+0x3C) and the effects setting 0x698764
+  is not 0, and then opens the clip with all its tracks (0xFE000 with `SmackOpen`'s 0x1140); the
+  3DO logo takes this path too (`video_play_fullscreen` 0x5972D0 opens its Smacker clips through
+  it), so it plays at the effects setting like the others. Every clip of the shell but
+  `ProgressBar` and the `CREDITS` placeholders has a track (22 050 Hz, 16-bit, stereo, packed).
+  `video_open_in_dialog` sets 0x694D58 the same way and never reads it: a Bink clip opens its
+  sound whenever Bink has a sound system.
+- **The DLLs' sound:** `sound_digital_start` 0x5997D0, once the driver is open, calls
+  `SmackSoundUseMSS(driver)` and `BinkSetSoundSystem(BinkOpenMiles, driver)`. `SMACKW32` asks
+  Miles' preference 15 (`DIG_USE_WAVEOUT`): the game's Miles answers 0, so it calls
+  `SmackSoundUseDirectSound` with the driver's +0xA0 (the DirectSound object Miles opened) and
+  plays each track through a DirectSound buffer of its own (the probes' stand-in Miles answers 1,
+  the double buffers of §8.1). `BINKW32` plays through Miles' double-buffered samples (the
+  functions `BinkOpenMiles` takes from `MSS32.DLL` by name: `AIL_load_sample_buffer`,
+  `AIL_sample_buffer_ready`, …).
+- **The track's buffer** (`SmackOpen` 0x10005710, the DirectSound open 0x10009750): the track's
+  bytes a second `rate × (1 + 16-bit) × (1 + stereo)` (+0x14: 88 200), a frame's bytes × 1024
+  `(rate << 10) × frame time / 100 000` (+0x1C; the frame time in 10 µs), a ring of
+  `((+0x1C >> 9) + rate + 0xFFF) & !0xFFF` bytes (at least 0x2000), and a looping DirectSound
+  buffer of half a second rounded up to 4 KiB (+0x44: 45 056 bytes), its flags 0x18000 with the
+  volume's (and the pan's) control; a sound timer of 75 ms (`timeSetEvent`, or Miles' timer at
+  13 a second when Miles' functions are loaded).
+
+### 11.2 The frames with sound (`SmackWait` 0x10007840)
+
+- **The service** (0x10008F50; from the timer, `SmackWait`, the position, `SmackDoFrame` before
+  the frame's sound and `SmackNextFrame` twice): it runs at a call 10 ms or more after its last
+  (a global 0x100148E4, unsigned) and for each track reads the buffer's play cursor (the bytes
+  played since its last run go to the free space), tops the buffer up from the ring when a quarter
+  or more is free (pads silence and stops the buffer at an end mark when the ring runs dry), and
+  starts a stopped buffer that has data (`Play`, looping). The frame 0's service runs before its
+  sound is in the ring, so the buffer starts at the first call 10 ms or more after the clip's
+  open.
+- **The position** (0x100096A0): the bytes written less those not yet played (the cursor's total
+  as the service last read it); when that equals the last value seen (+0x84) and is not 0, that
+  value plus the clock's milliseconds since it was first seen (+0x88) × the bytes a second / 1000,
+  at most the bytes written; never less than its last answer (+0x8C).
+- **The wait:** `SmackDoFrame` sets the handle's +0x448 and adds a frame's bytes × 1024 to the
+  sound's +0x20 (its overflow carried into +0x24 in steps of 256 000 bytes, the sum unchanged).
+  `SmackWait` with the flag set lets the frame through once `(+0x20 >> 10) + +0x24 ≤ position + 8`,
+  clearing it; without it at once. So frame 0 goes at the open (without sound 67 ms later) and
+  frame k once k frames' sound less 8 bytes has played: `3DOLOGO.SMK`'s frames at 0, 77, 144,
+  210, 277 … ms (the buffer's Play at 10), its close at 5 343 ms at 1 ms steps (5 350 at 10 ms;
+  without sound 5 427 and 5 670); `H3INTRO.SMK`'s in 161.66 s (without sound 169.8 s at 10 ms
+  steps). The silent path's 67 or 70 ms a frame would put the picture behind its sound by up to
+  8 s at H3Intro's end; with the sound the frames keep its time exactly.
+- **Not modelled** (`SmackSound`, *provisional*): the ring and its refills, the end mark and the
+  silence padding, the reset of the frames' sound to the ring's bytes when it runs ahead
+  (0x10006131): no clip of the game reaches them (the first frame's sound fills the buffer, and
+  each frame brings its own); the synthetic samples' few hundred bytes a frame do, so their wait
+  lines are not compared.
+
+### 11.3 The end and a skip
+
+`smacker_tick` closes the clip right after its last `SmackDoFrame` (before the fade), and
+`SmackClose` stops and releases the buffer at once (0x10009CA0: `Stop`, `Release`); a skip closes
+it the same way. So the sound plays from the buffer's Play to the close: the track's first bytes,
+as decoded (`smackprobe wait`'s played file is the track's first so many bytes at every step), and
+the last frame's never: 66 ms at the start's clips (silence there), 100 ms at `HSANIM` and
+`LOSEGAME`, audible. **CLT-Q125** (the user, 2026-11-15: fix, decision 34): the client plays the
+track out after its clip's last frame (`Op::Closed`), the cut the comparisons' (the replay's
+`closed` lines); a skip stops it (`Op::Quiet`). A Bink clip: `BinkClose` with the clip's close
+(the full-screen path pauses and closes both handles), its frames timed by `BinkWait` alone (the
+clock, from the first frame's time, and `BinkPause`'s flag +0xE4: the sound never moves them);
+its sound starts with Miles' first buffer (*provisional*: the client's at the first frame; T5b2
+reads it on the game's run).
+
+### 11.4 The volume
+
+`SmackVolumePan(h, 0xFE000, 3640 × setting, 0x8000)` → 0x10009DF0: `SetVolume` with entry
+`min(v, 0x8000) × 127 >> 15` of a table of `2000 log10(i / 127)` hundredths of a decibel
+(0x100148E8, 128 words; 0 is −10 000), `SetPan` with entry 2 × 63 of it (−7: the middle). So the
+gain is `i / 127`: 0, 14, 28, 42, 56, 70, 84, 98, 112, 126 for the settings 0 to 9
+(`h3_view::clip_sound::volume`; T2's 71 to 127 from the setting 5 were the Miles path's, §8.2).
+The probe's volume lines are the table's entries (−517 at the setting 5, −7 at 9).
+
+### 11.5 The check
+
+`smackprobe wait <vid> <entry> <step> <volume> <out>` (`clients/capture/README.md`, "The clips'
+sound clock"): `SmackSoundUseDirectSound` with a stand-in DirectSound (`vsound.h`: a buffer's
+cursor at its Play's place plus the clock's milliseconds × the bytes a second / 1000, whole
+samples, around the buffer; the write cursor the play cursor: an ideal device), `SMACKW32`'s
+`timeGetTime` pointed at the probe's clock and its `timeSetEvent` made never to fire (the
+service runs from the game's calls alone, as on the harness's frozen clock), the clip opened and
+set as the game sets it, then `smacker_tick` at every reading of a clock stepped by `<step>` ms
+(again at one reading until `SmackWait` holds a frame back). `smacker-check.sh` runs it at 1, 5,
+7, 10 and 16 ms (`smacker-dll.py`: `<stem>.wait<step>`, the volume as the table's index, the Play,
+each frame, the close with the bytes played, which must be the track's first) against
+`h3-view video --smacker`'s model (`SmackSound`): every line of `3DOLOGO`, `NWCLOGO`, `H3INTRO`,
+`HSANIM`, `HSLOOP` and `LOSEGAME` (30 files, `H3INTRO`'s 2 426 frames each) as the DLL's at the
+first run of the model. The replay with sound (`h3-view shell --steps … --effects 5`) lists
+`sound`, `quiet` and `closed` with their times: the Smacker start's main menu at 180.42 s at 10 ms
+steps (without sound 189.59 s).
+
+### 11.6 `game_init` (0x4ED650, named `game_samples_load` until T5b1)
+
+The game's initialisation: the managers, the settings, the data folder and its archives, every
+text table and the game's other loads, the video archives, the CD status, `button.wav` (its one
+sample), the screen asked for. It plays nothing and starts no driver: the clips' sound depends on
+the driver `sound_digital_start` gives the DLLs when `game_main` starts the sound manager, and on
+the effects setting.
+
+### 11.7 For T5b2
+
+- `xdd.dll`: the stand-in DirectSound for `SMACKW32` in the game's runs (the game's
+  `SmackSoundUseMSS` import pointed at `SmackSoundUseDirectSound` with it, its `timeSetEvent` and
+  Miles' timer kept from firing), and Bink's Miles calls on the clock (`BINKW32`'s
+  `GetProcAddress` of the sample functions answered by the hooks), each clip sound's Play, stop
+  and volume logged; `binkprobe` on the same Miles stand-in (when its first buffer loads).
+- The `start` group's sound recipes (`start-bink-sound`, `start-smacker-sound`, a skip), recorded
+  and compared with the replay's `sound`, `quiet` and `closed` lines; the frames exact.

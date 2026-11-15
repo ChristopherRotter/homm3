@@ -528,7 +528,7 @@ fn the_import_types_increment_12_s_classes() {
     // under RoE's rules alike.
     let mut map = increment_12_map();
     map.objects.drain(3..5);
-    let raw = read_back(&w::write_in(&map, w::Format::RoE).unwrap());
+    let mut raw = read_back(&w::write_in(&map, w::Format::RoE).unwrap());
     let setup = import(&raw, &ROE).unwrap();
     setup.validate(&ROE).unwrap();
     assert!(setup.map.objects.iter().all(|o| o.object_type.is_some()));
@@ -539,4 +539,13 @@ fn the_import_types_increment_12_s_classes() {
             removable: true
         }
     );
+    // Its random stack is refused too, by RoE's byte code (level 1's 0xFE below its "none").
+    let Body::Garrison { army, .. } = &mut raw.objects[1].body else {
+        unreachable!()
+    };
+    army[2] = Some(Stack {
+        creature: 0xFE,
+        count: 1,
+    });
+    assert_eq!(import(&raw, &ROE).err(), Some(ImportError::RandomStack(1)));
 }
