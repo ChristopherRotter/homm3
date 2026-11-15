@@ -1946,6 +1946,12 @@ visit marks on `HeroOnMap` (T115a).
 before the rows (it needs no garrison hero; T28a widens its target); T25 in the town lane's paths
 alone, so it never waits on E08's merges; each env entry with its command's task (two bumps, each
 the AI lane's `cross-lane` consent).
+- *As built (T29a, decision 96: T29 in two):* the builds map gains red's Dungeon "Pit" (a horde,
+  the Portal, the Grail), the neutral Rampart "Grove", red's Valeska and a Guardhouse red owns, so
+  §47's and §55's scripted replays play on it (`builds-month-s1`, `-rows-s1`, `-siege-s1`); the
+  census in `h3-map`'s `original_data` walks every count of the 160 maps to day 29 (`played_growth`;
+  the draws read from the game: the kinds from their events, a garrison week's level from the
+  garrison). T29b: the properties and the week workload.
 
 ### 57. Increment 3's exit criteria (accepted at `TWN-Q14`, decision 83; the epic's list)
 

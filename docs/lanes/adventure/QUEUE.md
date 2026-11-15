@@ -22,6 +22,17 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-15 (the town lane, E09 T29a, `town/e09-t29a`, `cross-lane` with the user's consent, E09
+  decision 96; **your paths changed, for your review; no version moved**): the builds map
+  `fixtures/maps/e09-builds-36.h3m` (`h3-map`'s `builds_map.rs`) gains red's Dungeon "Pit" (town
+  4), the neutral Rampart "Grove" (town 5), red's Valeska (hero 2) and red's Guardhouse, every
+  existing id kept; the six `builds-*` replays re-recorded from their commands (hash lines only)
+  and three new scripted ones (`builds-month-s1`, `-rows-s1`, `-siege-s1`; their notes in
+  `h3-cli`'s `tests/adventure_replays.rs`); `day-start-builds-36` re-baselined at 858 034 (+51.7 %
+  on `master`, no code changed: the map's two towns). `h3-map`'s `original_data` gains the census
+  of growth to day 29 (`played_growth`; the whole check 17 s in debug). Nothing to act on; a new map
+  object near the Keep or the Pit's paths moves those replays.
+
 - 2026-11-14 (the town lane, E09 T28b2, `town/e09-t28b2`, `cross-lane` with the user's consent, E09
   decision 95; **your paths changed, for your review; protocol v67, no other version**): a
   garrison hero defends its town (TWN-SIE-001's rows 1 and 3; GAM-BAT-001, -003 amended).

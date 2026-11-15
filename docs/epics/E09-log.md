@@ -3874,3 +3874,58 @@ data and the four manuals staged then (28 files, SHA-256 checked against the PC'
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
 request is the record.
+
+### T29a — the scripted replays on the builds map and the census of growth to day 29 (2026-11-15)
+
+One session, the user present at the start; branch `town/e09-t29a`, `cross-lane` (the adventure
+lane's `h3-map` `src/tests/builds_map.rs` and `examples/original_data.rs`, the replays, their notes
+in `h3-cli`'s `tests/adventure_replays.rs`, `fixtures/maps/`, the workload); the benches README's
+row in `shared/e09-t29a-benches`. Starting point: `master` at 6b3087d (#930 to #933 merged; the
+setup found CI's fingerprint, the light gates). The user's computer was connected at the start
+only: the original data and the four manuals staged then (28 files, SHA-256 checked against the
+PC's), used for the census and the scoped verify. T29 **in two, T29a now** (decision 96, the
+user; the agent recommended three parts, the replays first).
+
+- **The builds map** (`fixtures/maps/e09-builds-36.h3m`, `builds_map.rs`), every existing id kept:
+  red's Dungeon "Pit" (town 4: a Fort, the Warren and the Mushroom Rings, the Portal of Summoning,
+  the Guardian of Earth, an empty garrison), the neutral Rampart "Grove" (town 5: a Fort, the
+  Centaur Stables and the Dwarf Cottage, six Centaurs), red's Valeska (hero 2, four pikemen) on
+  (3, 10), off every path of the six replays (on (4, 8) `builds-s262-d14`'s Orrin walked onto her),
+  red's Guardhouse owned at the start (the Pit's Portal holds its fourteen Pikemen from the setup,
+  checked). The map test's "town not in the store" is town 6 now.
+- **Replays:** the six `builds-*` re-recorded from their commands (only the map hash, the
+  checkpoints and the final hashes moved). Three new, scripted (`crates/h3-cli/tests/
+  adventure_replays.rs`' notes): `builds-month-s1` (the Keep's horde built, four weeks to day 29:
+  week 3 a creature's, the Grove's garrison week in weeks 2, 3 and 5, the Pit's Portal each week,
+  month 2 a Plague; every count checked by hand against §41 to §46 first: the Pit's Troglodytes
+  14, 45, 76, 107, then (138 − 31) ÷ 2 = 53), `builds-rows-s1` (three Royal Griffins and four
+  Griffins from the Upg. Griffin Tower's one count, `Enter` with the absorb, the Portal's fourteen
+  Pikemen, a week in the garrison, `Leave` with full points, Valeska's `Enter`, `Swap`),
+  `builds-siege-s1` (Valeska at the gate beside Orrin in the garrison: Yog's battle outside, then
+  his siege of Orrin alone, the walls shot, his level-up answered, the Keep captured). The
+  siege's battles are `h3_sim::bots::aggressor`'s commands for each side, written by a scratch
+  generator (a throwaway `h3-cli` test that also expands `goto` lines into paths; not committed).
+- **Bench:** `day-start-builds-36` 858 034 Ir against `master`'s 565 557 measured in the same
+  sandbox (+51.7 %, re-baselined): no code changed; the same functions with six towns' growth
+  (`TownGrowth::of`, `week_growth`), the Grove's `garrison_week` and the Pit's `summon` reached.
+- **The census** (`h3-map`'s `original_data`, exit criterion 11; `played_growth`, `growth_in`,
+  `growth_at`, `first_creatures`, `portals`, `inputs_seen`): every one of the 160 games that build
+  (seed 0) is played by `EndTurn` alone to day 29, each town's fourteen counts checked after every
+  `EndTurn` against the census's own walk: the setup's first creatures (1 464 towns, those no
+  day-1 event fired in), each week's growth by its own sum of §41 and the week's bonus, halved
+  for a neutral town; each neutral town's garrison week by the level whose stacks grew (a
+  creature's growth, else an error; its two counts lose it); month 2's kind (a creature's
+  doubling by `quirk.town.creature_month_exact`, the Plague by
+  `quirk.town.neutral_plague_full_growth`); each town event's buildings (T19c2's `fire`) with their
+  first creatures and its creatures. All 160 hold, in 17 s in debug: 1 468 towns, 5 872 town weeks
+  (562 normal, 74 a creature's, 4 a building's), 1 571 garrison weeks grown and 745 not, 77
+  creature months, 12 Plagues, 83 normal; 28 events' builds' first creatures, 85 events' creatures
+  added and 128 lost; the largest count on day 29 222. What the towns read: 889 owned, 77 a Citadel
+  or Castle, 51 a horde, 10 a Grail building, 6 the owner's dwellings; none a share, a Legion or a
+  standing Portal of an owner (the builds map's replays and the unit tests hold those). Two
+  mutations of the walk (the Castle's bonus dropped, the neutral halving dropped) fail it on the
+  first map.
+- **Versions:** none moved.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
+request is the record.
