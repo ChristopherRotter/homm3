@@ -17,7 +17,8 @@ use crate::effects;
 use crate::raise::mark_corpses;
 use crate::{
     BattleState, CastTarget, CastTargets, Command, CommandError, Event, EventKind, SpellSet,
-    StackId, Status, castable_spells, creature_cast_spell, creature_cast_targets, stack_spell,
+    StackId, Status, Viewer, castable_spells, creature_cast_spell, creature_cast_targets,
+    observe_as, stack_spell,
 };
 
 const ORB: BattleEffect = BattleEffect::NoCasting;
@@ -415,4 +416,39 @@ fn a_spell_level_limit_bars_creature_casts_and_the_archangels_raise() {
     let s = BattleState::start(&r, &setup, 3, &mut events).unwrap();
     assert_eq!(periodic(&events), 0);
     assert_eq!(s.periodic_rounds(BattleSide::Attacker), u8::MAX);
+}
+
+// ---------------------------------------------------------------- what every viewer sees
+
+// covers: BAT-MAG-061, BAT-MAG-062
+#[test]
+fn every_viewer_sees_which_hero_forbids_casting_and_each_heros_level_limit() {
+    let r = ruleset();
+    let s = arena(
+        &r,
+        [wearer(&r, &[ORB]), wearer(&r, &[CLOAK])],
+        &[("fixed", 10, 5, 5)],
+        &[("fixed", 10, 9, 5)],
+        1,
+    );
+    for viewer in [
+        Viewer::Side(BattleSide::Attacker),
+        Viewer::Side(BattleSide::Defender),
+        Viewer::Spectator,
+    ] {
+        let seen = observe_as(&s, &r, viewer);
+        assert_eq!(seen.forbids_casting, [true, false]);
+        assert_eq!(seen.spell_level_limit, [None, Some(2)]);
+    }
+    // Without a hero, and with one that has neither.
+    let s = arena(
+        &r,
+        [None, wearer(&r, &[])],
+        &[("fixed", 10, 5, 5)],
+        &[("fixed", 10, 9, 5)],
+        1,
+    );
+    let seen = observe_as(&s, &r, Viewer::Spectator);
+    assert_eq!(seen.forbids_casting, [false, false]);
+    assert_eq!(seen.spell_level_limit, [None, None]);
 }

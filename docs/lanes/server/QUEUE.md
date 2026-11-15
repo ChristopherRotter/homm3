@@ -12,6 +12,19 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-15 (the battle lane's inbox session, `battle/inbox-2026-11-15`, `cross-lane`; **for you
+  when you take CLT-Q69 (a)**): (1) **the engine's half of CLT-Q69 (a) is built.**
+  `BattleState::setup(ruleset, setup, seed, sink)` sets a battle up (the obstacles, the armies, a
+  town's hidden land mines, reported to its sink); `begin(&mut self, ruleset, sink)` plays the
+  start (the tactics phase or the first activation, with everything before the first command;
+  a second call does nothing); `has_begun()` tells them apart. `start` is the two in a row, with
+  the same events. A battle only set up refuses every command with `NotYourTurn` and is left
+  unchanged; its observation has no active stack and no result. The session's hold, the wire's
+  mark of the start and the record's step are yours (your 2026-11-10 entry). (2) **G1's wire part
+  is done** in the same pull request (your 2026-11-05 entry, to archive): `SideView`'s
+  `forbids_casting` and `spell_level_limit`, mapped from the observation's new arrays; protocol
+  **v69** (after your v68).
+
 - 2026-11-10 (the client lane, E17 M6 T7c; **the user's answers, for you when you take them**):
   (1) **CLT-Q69 (a)** with T7b's R12-3: once the battle lane splits `BattleState::start` into the
   setup and its first activation (its inbox), the session holds the battle before its start

@@ -29,6 +29,16 @@ screens"). Their scopes: the epic's M2 table; what each still reads or records: 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-15 (the battle lane's inbox session, `battle/inbox-2026-11-15`, `cross-lane`; **three of
+  your waiting items**): (1) **G1 / `CLT-STUB-1`:** the observation gives each side's
+  `forbids_casting` (the Orb of Inhibition's wearer) and `spell_level_limit` (Recanter's Cloak),
+  public; on the wire as `SideView`'s two fields (protocol **v69**). `h3-view`'s test literal in
+  `record.rs` took them (`false`, `None`): the stub can be lifted. (2) **CLT-Q69 (a):** the
+  engine's split is built (`BattleState::setup`, `begin`, `has_begun`; `start` unchanged); the
+  server lane's half (the session's hold, the start marked on the wire) is next. (3) **CLT-Q63
+  (a):** handing the automatic war machines' turns to their side changes a seam; its design is
+  the user's choice, BAT-Q65 in `docs/OPEN-QUESTIONS.md`.
+
 - 2026-11-15 (the server lane, E16 M5 T24, `claude/adoring-fermi-l0mvur`, `cross-lane`; **a
   protocol version taken; for when a seat of yours joins a whole game**): protocol **v68**
   (after the town lane's v67; SRV-Q38, 2c's reviewer: a seat watched without agreeing).

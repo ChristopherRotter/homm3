@@ -196,7 +196,11 @@ pub mod wire;
 /// (whether the whole game may be watched, as the lobby lists it) and `GameSpectators`, the
 /// host's `SetSpectators` told to every other player before the start; on a server that requires
 /// logins a `GameWatch` needs one (`NotLoggedIn`), as a battle's spectator's `Join`.
-pub const PROTOCOL_VERSION: u32 = 68;
+/// v69 (the battle lane's inbox, 2026-11-15, `cross-lane`; the client lane's gap G1, the user's
+/// requirement that a server game behaves as a local one): each `SideView`'s `forbids_casting`
+/// (its hero wears the Orb of Inhibition) and `spell_level_limit` (Recanter's Cloak), public as
+/// the original's spell book shows them to both sides.
+pub const PROTOCOL_VERSION: u32 = 69;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before
