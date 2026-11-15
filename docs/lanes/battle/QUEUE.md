@@ -22,6 +22,25 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-11-15 (the adventure lane, E08 T118b2, `adventure/e08-t118b2`; **the bank battle's design,
+  accepted by the user; for your review before E08 T124a builds it in your crate, `cross-lane`**;
+  `docs/epics/E08-design.md` §13, draft `docs/lanes/adventure/adr-drafts/0022-increment-13.md`; E08
+  decisions 343, 344): one setup flag `BattleSetup::creature_bank` (`shared/`, E08 T122, with every
+  exhaustive literal's `false` in your crates); with it **no tactics phase** (BAT-TAC-001; the flag
+  in the state, since `setup` and `begin` may be apart), **no obstacles** (`generate_setup_obstacles`
+  none; a setup with obstacles or a siege beside the flag refused, a new `SetupError`), **no war
+  machine set up** (listed ones checked, not placed, not in the outcome) **with the Ammo Cart's
+  supply kept** for a side listing one (BAT-WAR-004's bank case only; your r3 point on a destroyed
+  cart stays yours), and **the layout**: a Tier 2 `[battle]` parameter `bank_positions` (attacker
+  (6, 3), (10, 3), (5, 5), (8, 5), (11, 5), (6, 7), (10, 7); defender (15, 0), (15, 10), (2, 10),
+  (2, 0), (15, 5), (2, 5), (8, 0); 0x63D0E0), each side's stacks by their ordinal among the filled
+  slots, the formation ignored, compiler-checked so no placement fails (BAT-SET-001). Not in the
+  observation (decision 344). Versions in T124a: battle state hash v56, battle part v8, pack
+  format v53, your golden replays rehashed. **Yours to add when a scenario first needs one:** a
+  `creature_bank` key in the scenario files and battle replays (with the replay format's bump).
+  Also: D-67 corrected (E08 decision 342): `adventure_battle` gives a human's levels at 0x4AE324
+  before a bank's reward; of its 14 callers only `bank_battle_reward` passes the flag.
+
 - 2026-11-15 (the adventure lane, E08 T118a, `adventure/e08-t118a`; **the creature bank battle,
   for your review**; survey `docs/rules/surveys/E08-banks.md` §5, the epic's decision 338): the
   user gave the bank battle to the adventure lane, `cross-lane`, in E08 increment 13, after a

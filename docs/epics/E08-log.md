@@ -17598,3 +17598,58 @@ preamble).
 **Docs:** decision 340 in the epic, T118b1's line, T118b2 queued (the original T118b entry to
 `QUEUE-ARCHIVE.md`). **Verify:** docs only: the docs gates (`check-docs`, `check-lane`,
 `doc-drift`). No code, version or replay moved; CI's run on the pull request is the record.
+
+### Increment 13, round 1: T118b2, the game side of the design note, the drafts and the checkpoint (2026-11-15, `adventure/e08-t118b2`)
+
+Baseline: `master` 396f6f8 (#952, T118b1, merged before the start). Docs only; staged the
+executable (SHA-256 checked) for two code readings. The user's cut at the start (decision 341,
+`AskUserQuestion`): **whole** (not the recommendation, two parts: the bank battle with D-67 and
+their drafts, then the env, batch E13, the cut and the exit criteria).
+
+**Two code readings** (capstone over `Heroes3.exe`; five address-map entries): (1) the 14 calls of
+`adventure_battle` 0x4AD470: only `bank_battle_reward`'s (0x4ABEDB) pushes the bank flag 1, every
+other caller 0, `visit_hero`'s (0x4A2933) among them, so a hero met on a bank's entrance fights an
+ordinary battle and the planned batch row was dropped; (2) **D-67's order:** `adventure_battle`
+takes its full path when either side's player is human (0x4AD500, 0x4AD51C) and gives the
+attacker's levels after the battle's screen at 0x4AE324, before it returns to
+`bank_battle_reward`, whose own `hero_level_up` (0x4AC473) then finds nothing; only without a
+human (0x4270C0's battle without a screen, from 0x4AD5EE, returning at 0x4AD69B) do the levels
+follow the reward. T118a had read the routine alone. Asked at once (`AskUserQuestion`): **the
+levels first** (decision 342, recommended, replacing 337): no exception; the reward a won
+battle's rest. Corrected in the same change: survey `E08-banks.md` §0, §6 (a correction note),
+§9, §10, §11's E13-6, §12's ADV-BNK-005, §13; the design note's preamble, §7 and §8; the 0016
+draft's status, context and reward.
+
+**The design note** `E08-design.md` part D (§13 to §21): §13 the bank battle, one setup flag
+`BattleSetup::creature_bank` (`shared/`) and its four rules in `h3-battle` (`cross-lane`): no
+tactics phase, no obstacles (the generator none, a setup with obstacles or a siege refused), no
+war machines set up with the Ammo Cart's supply kept (0x43F9E1 reads the artifact), the layout by
+ordinal at a Tier 2 parameter `bank_positions` (0x63D0E0's hexes as (column, row), compiler-checked);
+D-69 by BAT-GEO-002 (VCMI's second table likely the same cells), the flag not in the observation,
+no scenario or replay key yet. §14 `Defender::Bank` instead of `BattleStart::bank` (no literal of the
+town lane's siege changes), the setup, the deck for the two sea banks from the coast too, the
+seeds as every battle's (the original's tile seed unmatched), the end after Necromancy. §15 the
+reward as `Rest::Won` after the levels, GAM-DEC-007 rest (3) amended. §16 no game-level view, a new
+mark told with the hint after it, the wire unchanged (the fold serves banks: checked), protocol
+v69. §17 the env v8 and replay format v16 kept; `e08-banks-36.h3m` with random and scripted
+replays; `BANKS`, `Step::Bank`, `check_banks`; `e08-banks-144.h3m` with `reach-banks-xl-144`,
+`build-banks-xl-144`, `random-play-banks-36`. §18 versions (adventure part v21, map import v24,
+adventure state hash v26; the battle lane's v56 and v8, pack format v53 in T124a; the game state
+hash stays). §19 batch E13 (E13-3 extended with the Ammo Cart, E13-6 corrected, E13-11 the hero's
+tile, E13-12 a flight and a water walker at a Shipwreck). §20 the shared and `cross-lane` work, the
+cut T119 to T126, nine exit criteria. §21 risks.
+
+**The drafts** `docs/lanes/adventure/adr-drafts/`: `0017-increment-13.md` (points 1, 2, 4, 6, 9,
+10, 11), `0022-increment-13.md` (points 2, 3, 6, 7 and a new point 8, the creature bank battle;
+ADR-0013 point 5's line), each with the consequences, alternatives and history lines;
+`0016-increment-13.md` corrected.
+
+**The checkpoint** (ADV-Q54, one round of three; decisions 343 to 345): the note and the three
+drafts accepted with every agent's call as written; the bank flag not in the battle's observation;
+the cut as proposed. All as recommended.
+
+**Docs:** decisions 341 to 345 in the epic with the tasks T119 to T126; ADV-Q54 in
+`QUESTIONS-ANSWERED.md`; T118b2's entry to `QUEUE-ARCHIVE.md`, T119 queued; the battle lane's inbox
+told (the seam, the rules, T124a, the keys theirs, D-67's correction). **Verify:** docs only: the
+docs gates (`check-docs`, `check-lane`, `doc-drift`) and `check-exe-map`. No code, version or replay
+moved; CI's run on the pull request is the record.
