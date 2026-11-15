@@ -34,6 +34,17 @@ what each still reads or records: design §6.4.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-15 (the server lane, E16 M5 T24, `claude/adoring-fermi-l0mvur`, `cross-lane`; **a
+  protocol version taken; for when a seat of yours joins a whole game**): protocol **v68**
+  (after the town lane's v67; SRV-Q38, 2c's reviewer: a seat watched without agreeing).
+  `GameJoined` gains `spectators` (whether the game may be watched, as the lobby lists it:
+  taking the seat agrees to it), and the new numbered `GameSpectators { n, open }` tells
+  every player but the host the host's `SetSpectators` before the start (the host still gets
+  `SpectatorsSet`), so a seat that does not agree may leave before the start: show both if you
+  show the lobby's flag. On a server that requires logins a `GameWatch` now needs one
+  (`NotLoggedIn`), as a battle's spectator's `Join`. Nothing of yours breaks (your matches
+  have wildcards); `GameSpectators` takes its number in a seat's record.
+
 - 2026-11-14 (the server lane, E16 M5 T21a and T22a, `claude/festive-albattani-mdvj1a`,
   `cross-lane`; **a protocol version taken; for when you show a whole game to someone who does
   not play it**): protocol **v66**. The user (SRV-Q36): a whole game's spectator sees **every

@@ -132,6 +132,7 @@ lr_schedule = "constant"
         ("", ["ppo.shaping=true", "ppo.truncation_penalty=0"], "`shaping` needs"),
         ("", ["ppo.imitation_coef=-1"], "`imitation_coef` must not be negative"),
         ("", ["ppo.imitation_horizon=-1"], "`imitation_horizon` must not be negative"),
+        ("", ["ppo.imitation_teacher=best.pt"], "`imitation_teacher` needs `imitation_coef`"),
         ("", ["ppo.lr"], "table.key=value"),
         ("seed = [", [], "not TOML"),
         ("", ["ppo.lr_schedule=cosine"], "linear or constant"),
@@ -903,6 +904,40 @@ def test_increment_8s_annealed_arm_is_the_quarter_rate_falling_to_structure_1s_f
     assert learning_rate(anneal, 1_600_000) == pytest.approx(floor, rel=1e-12)
     assert learning_rate(anneal, anneal.samples) == pytest.approx(floor, rel=1e-12)
     assert learning_rate(anneal, 800_000) == pytest.approx((low.lr + floor) / 2, rel=1e-12)
+
+
+def test_increment_8s_anchor_is_structure_1s_run_taught_by_its_best() -> None:
+    # E25 T34 (the user, 2026-11-15): the KL anchor is the first 2 M samples of #2's own run
+    # (`e25-imitate-structure.toml`, from T27's clone) at T31's update speed, the ladders cut,
+    # with #2 as the imitation loss's teacher: its rate and the loss's weight #2's run's at the
+    # same samples.
+    configs = PYTHON / "configs"
+    structure, anchor = (
+        load_config((configs / f"{n}.toml").read_text())
+        for n in ("e25-imitate-structure", "e25-anchor")
+    )
+    trainable(anchor)
+    assert structure.imitation_teacher == "" and Config().imitation_teacher == ""
+    assert anchor.imitation_teacher == "runs/e25-structure-1/best.pt"
+    assert (anchor.samples, anchor.lr_horizon, anchor.gate_every) == (2_000_000, 20_000_000, 10**7)
+    assert (anchor.accumulate, anchor.chunk_align) == (4, 32)
+    assert (anchor.ladder_episodes, anchor.ladder_final_episodes) == (1, 0)
+    assert (
+        dataclasses.replace(
+            anchor,
+            samples=structure.samples,
+            lr_horizon=structure.lr_horizon,
+            accumulate=structure.accumulate,
+            chunk_align=structure.chunk_align,
+            imitation_teacher="",
+            ladder_episodes=structure.ladder_episodes,
+            ladder_final_episodes=structure.ladder_final_episodes,
+        )
+        == structure
+    )
+    for s in (0, 1_000_000, 2_000_000):
+        assert learning_rate(anchor, s) == learning_rate(structure, s)
+        assert imitation_weight(anchor, s) == imitation_weight(structure, s)
 
 
 def test_the_league_draws_scores_and_retires() -> None:

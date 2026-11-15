@@ -2124,6 +2124,19 @@ pub enum ServerMessage {
         /// command numbered at or below it is a resend and applies nothing; none before the
         /// seat's first.
         last: Option<u32>,
+        /// Whether the game may be watched (E16 M5 T24, v68, SRV-Q38): its spectator setting
+        /// (the creator's, the host's until the start, then the one it started with) on a server
+        /// that takes spectators, as the lobby lists it; taking the seat agrees to it.
+        spectators: bool,
+    },
+    /// The host changed the whole game's spectator setting before the start (E16 M5 T24, v68,
+    /// SRV-Q38): told to every other player, numbered in its sequence, so that a seat which does
+    /// not agree leaves before the start (the host is answered `SpectatorsSet`).
+    GameSpectators {
+        /// The viewer's message number.
+        n: u32,
+        /// Whether the game takes spectators now.
+        open: bool,
     },
     /// A player asked to pause the whole game (E16 M5 T8b, v46; a battle's `PauseAsked`): told
     /// to every player, for the host to decide; the host's ask pauses it (`Goodbye { Paused }`).

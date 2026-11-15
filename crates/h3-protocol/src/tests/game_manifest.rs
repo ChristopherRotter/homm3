@@ -222,7 +222,7 @@ fn a_game_records_header_round_trips_in_serdes_default_form() {
 }
 
 /// E16 M5 T8a (v45): a seat's `GameJoined` carries the game's manifest, as its record's header;
-/// its last number since T8b (v46).
+/// its last number since T8b (v46), whether it may be watched since T24 (v68).
 #[test]
 fn a_seats_joined_round_trips_in_serdes_default_form() {
     let manifest = manifest(&RULES, golden_map());
@@ -232,6 +232,7 @@ fn a_seats_joined_round_trips_in_serdes_default_form() {
         token: Some("t".into()),
         manifest: manifest.clone(),
         last: Some(5),
+        spectators: true,
     };
     round_trips(&joined);
     let text = serde_json::to_string(&joined).unwrap();
@@ -239,7 +240,7 @@ fn a_seats_joined_round_trips_in_serdes_default_form() {
     assert_eq!(
         text,
         format!(
-            r#"{{"GameJoined":{{"game":4,"player":1,"token":"t","manifest":{manifest},"last":5}}}}"#
+            r#"{{"GameJoined":{{"game":4,"player":1,"token":"t","manifest":{manifest},"last":5,"spectators":true}}}}"#
         )
     );
 }

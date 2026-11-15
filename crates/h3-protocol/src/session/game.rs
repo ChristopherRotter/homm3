@@ -974,7 +974,8 @@ impl<'r> GameSession<'r> {
     /// `Session::suspend`: the host's sweep, its seats stayed empty), an entry: whether it paused.
     /// A seat's join resumes it.
     pub fn suspend(&mut self, out: &mut Vec<Outbound>) -> bool {
-        if self.phase() != Phase::Running || self.seated() {
+        // A void game's host ends it (E16 M5 T24, as `pause`).
+        if self.phase() != Phase::Running || self.seated() || self.void() {
             return false;
         }
         self.halt(out);
@@ -1057,6 +1058,7 @@ impl<'r> GameSession<'r> {
         }
         let held = seats.iter().all(|seat| seat.holder.is_some());
         let manifest = self.manifest.clone();
+        let spectators = self.may_be_watched();
         out.push(reply(
             conn,
             &ServerMessage::GameJoined {
@@ -1065,6 +1067,7 @@ impl<'r> GameSession<'r> {
                 token,
                 manifest,
                 last,
+                spectators,
             },
         ));
         let (player, mut frames) = (PlayerId::new(player), Vec::new());
@@ -1153,14 +1156,16 @@ impl<'r> GameSession<'r> {
     }
 
     /// `Pause` (E16 M5 T8b, as a battle's): the host's pauses the running game; another seat's is
-    /// told to every player (`GamePauseAsked`), once until the game moves on.
+    /// told to every player (`GamePauseAsked`), once until the game moves on. A void game pauses
+    /// no more (E16 M5 T24, 2c's reviewer: voided in the host's step before the message, its host
+    /// ends it): `NotStarted`, as its commands.
     fn pause(&mut self, conn: ConnId, seq: u32, out: &mut Vec<Outbound>) {
         let Some(player) = self.seat_of(conn) else {
             return out.push(game_unseated(conn, seq));
         };
         let mut frames = Vec::new();
         // A paused game's seats are not held: a seat asks only in a game that started and runs.
-        if !self.started {
+        if !self.started || self.void() {
             self.reject(player, seq, GameReject::NotStarted {}, &mut frames);
         } else if self.host == Some(player) {
             return self.halt(out);
@@ -1252,6 +1257,14 @@ impl<'r> GameSession<'r> {
             }
             let message = |n| ServerMessage::SpectatorsSet { n, seq, open };
             self.viewers[player.index()].post(player, message, &mut frames);
+            // Every other player is told (SRV-Q38 (b)), so that a seat which does not agree
+            // leaves before the start; one not seated yet learns it by its `GameJoined`.
+            for (other, viewer) in players().zip(&mut self.viewers) {
+                if other != player {
+                    let message = |n| ServerMessage::GameSpectators { n, open };
+                    viewer.post(other, message, &mut frames);
+                }
+            }
         }
         self.route(frames, out);
     }
@@ -1267,6 +1280,12 @@ impl<'r> GameSession<'r> {
     /// takes any, and it is not paused. A full game still lists as taking them.
     pub const fn takes_spectators(&self) -> bool {
         self.watchable && self.watchers_limit > 0 && !self.paused
+    }
+
+    /// Whether the game may be watched (E16 M5 T24, SRV-Q38): its setting on a host that takes
+    /// spectators, paused or not; a seat's `GameJoined` names it.
+    pub const fn may_be_watched(&self) -> bool {
+        self.watchable && self.watchers_limit > 0
     }
 
     /// How many spectators watch (E16 M5 T22a).

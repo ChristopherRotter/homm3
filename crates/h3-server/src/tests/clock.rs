@@ -7,7 +7,10 @@
 //! by its default at its limit, the other player told the game waits, then no more. The end-to-end
 //! game (T19, 2b's closure): two clients play a golden replay's opening on a timed game, a turn run
 //! out, a battle between their heroes under the chess clocks and two level-ups held and answered,
-//! through a restart in the battle and another in the hold, to the golden replay's state.
+//! through a restart in the battle and another in the hold, to the golden replay's state. The
+//! end-to-end spectator (T24, 2c's closure): a spectator watches a timed game through a restart,
+//! a turn run out while nobody plays, and a battle stalled until the server's commands in it pass
+//! their bound and void the game.
 
 use std::fs;
 use std::time::Duration;
@@ -16,11 +19,15 @@ use h3_contracts::PlayerId;
 use h3_game::{Actor, SystemCommand};
 use h3_protocol::session::game::{Allowance, Clock, GameEntry};
 use h3_protocol::wire::game::{GameClock, GameCommand, GameEvent, OfferClock, Timer};
-use h3_protocol::wire::{ClientMessage, Command, ServerMessage};
+use h3_protocol::wire::{ClientMessage, Command, GoodbyeReason, ServerMessage};
 use tokio::time::Instant;
 
-use super::whole::{MONSTER_REPLAY, duel_map, map_listed, next, rejoined, started_on};
-use super::{fast, root};
+use super::watch::{numbers, watch, watched};
+use super::whole::{
+    MONSTER_REPLAY, duel_map, goodbye_after, map_listed, map_listed_as, next, rejoined, started_on,
+    started_with, voided,
+};
+use super::{fast, greeted, root};
 use crate::client::Client;
 use crate::config::{self, Config};
 use crate::journal::whole as journal;
@@ -198,7 +205,7 @@ async fn a_turn_runs_out_at_its_end_and_a_restart_keeps_the_time_left() {
     // (its clock ran since the restore, its seat empty); it runs out at its end.
     let restarted = Instant::now();
     let running = start(&config).await.unwrap();
-    let mut b = super::greeted(&running).await;
+    let mut b = greeted(&running).await;
     rejoined(&mut b, game, (1, &t1)).await;
     let back = told(&mut b).await;
     let Some(Timer {
@@ -478,7 +485,7 @@ async fn restarted(
     let running = start(config).await.unwrap();
     let mut taken = Vec::new();
     for player in 0..2 {
-        let mut client = super::greeted(&running).await;
+        let mut client = greeted(&running).await;
         let (last, _) = rejoined(&mut client, game, (player, &tokens[usize::from(player)])).await;
         assert_eq!(last, Some(lasts[usize::from(player)]), "player {player}");
         let clock = told(&mut client).await;
@@ -719,4 +726,173 @@ async fn two_clients_play_a_timed_game_through_a_duel_held_level_ups_and_restart
     .unwrap();
     assert_eq!(reopened.state().state_hash(), replayed.final_hash);
     assert_eq!(reopened.state().day(), 3);
+}
+
+/// The clock each player's seat was last told, among a spectator's messages `seen` (E16 M5 T24).
+fn last_watched(seen: &[ServerMessage]) -> [Option<GameClock>; 2] {
+    [0, 1].map(|player| {
+        (watched(seen, player).iter().rev()).find_map(|m| match m {
+            ServerMessage::GameClock { clock, .. } => Some(*clock),
+            _ => None,
+        })
+    })
+}
+
+/// The server's own commands in one battle in T24's test: above the monster's answers while its
+/// fighter plays, below what a battle both of whose sides the server plays takes to end.
+const SYSTEM_BOUND: u32 = 4;
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_spectator_watches_a_timed_game_through_a_restart_to_a_stalled_battles_void() {
+    // 2c's closure (E16 M5 T24; SRV-Q35, SRV-Q36): three seconds a turn, the game open to
+    // spectators.
+    let turn_ms = 2 * TURN_MS;
+    let (offer, golden) = timed(
+        "duel-map",
+        MONSTER_REPLAY,
+        clock(turn_ms, 60_000, Allowance::DEFAULT),
+    );
+    let config = Config {
+        limits: config::Limits {
+            system_commands_per_battle: SYSTEM_BOUND,
+            ..fast()
+        },
+        ..with(vec![offer])
+    };
+    let data = &config.server.data;
+    let running = start(&config).await.unwrap();
+    let (mut a, mut b, game, tokens) = started_with(&running, "duel-map", Some(true)).await;
+    // A spectator watches from the first player's first turn: each player's view, the first's
+    // turn running.
+    let mut s = greeted(&running).await;
+    let begun = watch(&mut s, game, 1).await;
+    let [Some(first), _] = last_watched(&begun) else {
+        panic!("no clock watched: {begun:?}")
+    };
+    assert!(
+        matches!(first.turn, Some(Timer { running: true, .. })),
+        "{first:?}"
+    );
+    // The opening's first five days to the second player's end of its turn; the server stops in
+    // the first player's turn. The spectator was told each player's last clock as its seat was,
+    // and the stop.
+    let cut = 13;
+    assert!(matches!(
+        golden.commands[cut],
+        (Actor::Player(p), h3_game::GameCommand::EndTurn) if p.index() == 1
+    ));
+    play([&mut a, &mut b], &golden, 0..=cut).await;
+    let spectating = tokio::spawn(read_until(s, |m| {
+        matches!(m, ServerMessage::Goodbye { .. })
+    }));
+    let told = stopped(running, [a, b]).await;
+    let (_, seen) = spectating.await.unwrap();
+    let shutdown = ServerMessage::Goodbye {
+        reason: GoodbyeReason::Shutdown,
+    };
+    assert_eq!(seen.last(), Some(&shutdown));
+    let watched_last = last_watched(&seen);
+    assert!(told[0].is_some(), "the first player was told its turn");
+    for (player, clock) in told.iter().enumerate() {
+        if clock.is_some() {
+            assert_eq!(watched_last[player], *clock, "player {player}");
+        }
+    }
+    let had = told[0].and_then(|c| c.turn).unwrap().left_ms;
+    // Restarted, the game is watched again, numbered afresh: the first player's turn on from at
+    // most what it had (a stop counts no time). The seats are re-taken, their numbers kept.
+    let running = start(&config).await.unwrap();
+    map_listed_as(&running, game, Some(h3_protocol::wire::Phase::Running)).await;
+    let mut s = greeted(&running).await;
+    let again = watch(&mut s, game, 1).await;
+    let k = u32::try_from(again.len()).unwrap();
+    assert_eq!(numbers(&again), (1..=k).collect::<Vec<_>>());
+    let [Some(back), _] = last_watched(&again) else {
+        panic!("no clock watched: {again:?}")
+    };
+    assert!(back.turn.is_some_and(|t| t.left_ms <= had), "{back:?}");
+    let mut a = greeted(&running).await;
+    let (last_a, _) = rejoined(&mut a, game, (0, &tokens[0])).await;
+    let mut b = greeted(&running).await;
+    let (last_b, _) = rejoined(&mut b, game, (1, &tokens[1])).await;
+    assert_eq!(
+        (last_a, last_b),
+        (
+            Some(last_of(&golden, 0, cut)),
+            Some(last_of(&golden, 1, cut))
+        )
+    );
+    // The first player sends nothing: its turn runs out and the system ends it (the replay's
+    // next command). The second player moves its hero onto a wandering monster and gives its
+    // first battle command, then sends nothing: its turn runs out in the battle, the server's
+    // computer plays its side too, and past their bound the game is void, its seats and its
+    // spectator told so.
+    let _ = told_where(&mut b, |c| c.turn.is_some_and(|t| t.running)).await;
+    let fights = 16;
+    play([&mut a, &mut b], &golden, cut + 2..=fights).await;
+    let spectating = tokio::spawn(read_until(s, |m| {
+        matches!(m, ServerMessage::Goodbye { .. })
+    }));
+    for client in [&mut a, &mut b] {
+        assert_eq!(goodbye_after(client).await, GoodbyeReason::CommandLimit);
+    }
+    let (mut s, seen) = spectating.await.unwrap();
+    let void = ServerMessage::Goodbye {
+        reason: GoodbyeReason::CommandLimit,
+    };
+    assert_eq!(seen.last(), Some(&void));
+    assert_eq!(s.recv().await, None, "closed after the goodbye");
+    let before = &seen[..seen.len() - 1];
+    assert_eq!(numbers(before)[0], k + 1, "numbered on");
+    let ran_out = (watched(before, 1).iter()).any(|m| {
+        matches!(m, ServerMessage::GameClock { clock, .. }
+            if matches!(clock.turn, Some(Timer { left_ms: 0, .. })))
+    });
+    assert!(ran_out, "the spectator saw the fighter's turn run out");
+    map_listed_as(&running, game, None).await;
+    running.shutdown().await;
+    // The void journal: the system's end of the first player's turn, the fighter's commands, the
+    // time to its turn's end, then the computer's commands for its side; the server's commands in
+    // the battle exactly its bound, the last of them the journal's last.
+    let prefix = format!("{game}-");
+    let journal = (voided(data).into_iter())
+        .find(|name| name.starts_with(&prefix))
+        .unwrap();
+    let read = journal::read(&data.join("void").join(&journal))
+        .unwrap()
+        .entries;
+    let ended = system(SystemCommand::EndTurn {
+        player: PlayerId::new(0),
+    });
+    let ended = read.iter().position(|e| *e == ended).unwrap();
+    let last = (read.iter())
+        .rposition(|e| matches!(e, GameEntry::Numbered(..)))
+        .unwrap();
+    assert!(
+        matches!(&read[last], GameEntry::Numbered(p, n, _) if (p.raw(), *n) == (1, 16)),
+        "{:?}",
+        read[last]
+    );
+    assert!(ended < last);
+    let fighter = PlayerId::new(1);
+    let played = (read[last..].iter())
+        .position(|e| system_battle(e, fighter))
+        .unwrap();
+    assert!(
+        (read[last..last + played].iter()).any(|e| matches!(e, GameEntry::Elapsed(_))),
+        "{:?}",
+        &read[last..]
+    );
+    let opened = (read.iter())
+        .position(|e| matches!(e, GameEntry::Numbered(p, 15, _) if p.raw() == 1))
+        .unwrap();
+    let systems = (read[opened..].iter())
+        .filter(|e| matches!(e, GameEntry::Command(Actor::System, _)))
+        .count();
+    assert_eq!(systems, usize::try_from(SYSTEM_BOUND).unwrap());
+    let final_ = (read.iter().rev()).find(|e| !matches!(e, GameEntry::Checkpoint(_)));
+    assert!(
+        matches!(final_, Some(GameEntry::Command(Actor::System, _))),
+        "{final_:?}"
+    );
 }

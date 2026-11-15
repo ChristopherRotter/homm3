@@ -152,7 +152,9 @@ impl Counts {
     /// Follows the game after an accepted command (and its build): the command's count
     /// (`counted`, [`Counts::of`]'s before it) taken, then each player's turn counted afresh at
     /// each of its turns, and a battle's count dropped once that battle is no longer its open one;
-    /// the game void when the system's count in a battle still open reached its bound.
+    /// the game void when the system's count in a battle still open reached its bound, decided
+    /// afresh at each command (E16 M5 T24, 2c's reviewer: a restore under a lowered bound voids
+    /// a battle still open, never one long over).
     pub(super) fn sync(&mut self, state: &GameState, counted: Option<Counted>) {
         let add = |held: Option<(BattleKey, u32)>, key| {
             let spent = held.filter(|(k, _)| *k == key).map_or(0, |(_, n)| n);
@@ -189,9 +191,10 @@ impl Counts {
         let mut open = players.filter_map(|player| own_battle(state, player).map(BattleKey::of));
         if let Some((key, spent)) = self.system {
             if open.any(|held| held == key) {
-                self.void |= spent >= self.bounds.system_per_battle;
+                self.void = spent >= self.bounds.system_per_battle;
             } else {
                 self.system = None;
+                self.void = false;
             }
         }
     }

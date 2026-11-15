@@ -131,6 +131,13 @@ def test_random_plays_the_report_set_against_a_bot() -> None:
     assert 0.0 <= first["win_rate"] <= 1.0 and first["interval"] >= 0.0
     with pytest.raises(ValueError, match="episodes per kind"):
         report(make, per_kind=REPORT_V1_ENVS + 1)
+    # E25 T34: one kind alone plays the whole set's episodes and agents for it, its rates its own.
+    hero = report(make, opponent="aggressor", per_kind=2, max_steps=300, kinds=["hero"])
+    assert hero["games"] == 4 and hero["by_kind"] == {"hero": first["by_kind"]["hero"]}
+    assert hero["kinds"] == {"hero": first["kinds"]["hero"]}
+    assert hero["win_rate"] == pytest.approx(first["kinds"]["hero"])
+    with pytest.raises(ValueError, match="kinds are"):
+        report(make, per_kind=2, kinds=["wandering"])
 
 
 def test_random_attacks_the_system_actor_on_the_neutral_set() -> None:
