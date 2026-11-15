@@ -1,6 +1,127 @@
-# E16 — archive: closed milestones M1 to M4 and M6, M5's closed increments
+# E16 — archive: the closed milestones M1 to M6 (M5 by its part 1 and increments)
 
 Moved out of `E16-server.md` on 2026-10-24, verbatim, so that the epic file holds the goals, the decisions, the milestone outline, the autonomy contract and the risks. Order as in the epic: task lists, exit criteria, review lists.
+
+## M5 part 2c (refined 2026-11-14, SRV-Q35; closed 2026-11-15, SRV-Q38)
+
+The epic's "M5 part 2" as it stood at 2c's closure (its 2a and 2b already archived below), then the part's "Not in part 2", verbatim.
+
+Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisions, tasks and review list are in `E16-archive.md` ("M5 part 1 tasks", "Review list for the M5 part 1 checkpoint"), the done tasks in full in `E16-log.md`. **2a closed 2026-11-13** (SRV-Q30: the review list as built, the reviewer's major finding into 2b and 2c): its scope, tasks and review list are in `E16-archive.md` ("M5 part 2a", "Review list for the M5 2a checkpoint"). **2b closed 2026-11-14** (SRV-Q34: the reviewer's findings fixed in T19 but one, which 2c builds first; the review list as built): its scope, the user's decisions (SRV-Q31 to SRV-Q33), tasks and review list are in `E16-archive.md` ("M5 part 2b", "Review list for the M5 2b checkpoint").
+
+**Three increments** (2a and 2b closed, above), each closed by a fresh reviewer agent and the user's checkpoint (SRV-Q29):
+
+- **2c Spectators and long journals** (refined 2026-11-14, SRV-Q35; the spectator's shape
+  SRV-Q36, T21a): a spectator shown every player's view, no engine change (SRV-Q36 replaced the
+  plan of a `Viewer::Spectator` through every context's projections); spectators on the whole game's wire (a battle's rules: the game's
+  limit, the host's setting, nothing journaled); long journals measured (an XL game's restore and
+  verification after many days) and the case for state saves (ADR-0004 point 9) written down,
+  with the restart's cost (every whole journal re-run before the server listens) and the
+  session's in-memory copy of a game's commands, which a game of connections never reads (2a's
+  reviewer, SRV-Q30). **The user's decisions** (SRV-Q35):
+  - **A battle both of whose sides the system plays** (2b's reviewer's finding 3: a side timed
+    out or past its bound against a monster, or both sides of a battle between players; the
+    engine has no round limit, nor VCMI): **past a bound on the system's commands in one battle
+    the whole game is void**, as a hosted battle past `commands_per_game` (`Goodbye {
+    CommandLimit }`, its journal to `<data>/void/`); `drive` takes a bounded number of steps per
+    call, the rest due at once. Not the agent's recommendation (the attacker's forced retreat at
+    a round bound, `cross-lane` in `h3-battle` and `h3-game`).
+  - **The spectator sees everything, by the host's choice:** an all-seeing spectator for the
+    games its host opens to it; every context's projection gains a full view; ADR-0017 point 2
+    (today "public facts only") and `docs/06-security.md` (ADR-0008's model) amended in a
+    `shared:` change. Not the agent's recommendation (public facts only, as ADR-0017 says). Its
+    shape refined with the user in T21a.
+  - **The spectator's shape** (T21a, SRV-Q36): **each player's view**, not one merged full view
+    (the agent's recommendation) nor the whole state: the spectator is shown every player's own
+    view, each player's messages as its seat is sent them (snapshot, events, reveals, the
+    battle's snapshots, clock, turns; never a token), named by the player, numbered in the
+    spectator's own sequence; nothing no player sees (the unexplored map, a neutral thing out of
+    every player's sight) shows. A battle shows as each player's side sees it. **The creator's
+    flag before the start** (as a battle's: `CreateMapGame`'s, `SetSpectators` until the start),
+    **closed by default**, the lobby showing it, so taking a seat agrees to it; the server's
+    `spectators_per_game` caps it. **A ranked game never** opens to it. **Live, no delay.**
+    ADR-0017 point 2 and ADR-0018 point 7 amended, `docs/06-security.md` too (T21a). **The
+    consent** (T24, SRV-Q38 (b), 2c's reviewer): the host's change before the start told to every
+    other player (`GameSpectators`), each seat's `GameJoined` naming the setting (protocol v68).
+
+**2c's tasks** (about half a context each; T20 first):
+
+- **T20 A battle both of whose sides the system plays made to end** done 2026-11-14
+  (`E16-log.md`: `CommandBounds::system_per_battle`, `[limits] system_commands_per_battle`
+  10 000, `GameSession::void`, `drive` at most 64 steps per call; protocol v65).
+- **T21a The all-seeing spectator's design** done 2026-11-14 (SRV-Q36: each player's view, the
+  creator's flag, never ranked, live; ADR-0017 point 2, ADR-0018 point 7 and
+  `docs/06-security.md` amended in the lane's pull request, `cross-lane` by the user's choice;
+  `E16-log.md`). **T21b dropped** (SRV-Q36: no engine view to build); T22 cut in two (the user).
+- **T22a Spectators in the whole game's session** done 2026-11-14 (protocol v66; `E16-log.md`:
+  `GameWatch`, `GameWatching`, `GameWatched` spliced from each player's frame in `route`,
+  `session::game::Spectators`, `GameEntry::Watchable`, `SetSpectators` with `NotHost` and
+  `AlreadyStarted`, `CreateMapGame`'s and `MapGameInfo`'s `spectators`; `h3-server` takes none
+  yet).
+- **T22b Spectators hosted** done 2026-11-14 (protocol stays v66; `E16-log.md`: the creator's
+  flag into the lobby and the session, `Lobby::update_map`'s flag, `GameSession::takes_spectators`,
+  `registry::watch_map`, a watcher bound while it watches, `tests/watch.rs`).
+- **T23 Long journals measured** done 2026-11-14 (`E16-design.md` §15, `E16-log.md`:
+  `h3-server-journals`, a year on the XL fixtures by the random agent and at a seat's bound; no
+  state saves now; SRV-Q37: remedies (a) to (c) in T23b).
+- **T23b The long journals' remedies** done 2026-11-14 (SRV-Q37, §15's (a) to (c); no wire or
+  format change; `E16-log.md`: `rerun` releases its entries, `GameJournal::commands` none for a
+  game of connections and `accepted` counted, `[server] whole_checkpoint_every` 250; the XL
+  year at the bound re-run in 0.16 s, not 0.75, its restored session 2.1 MiB, not 114).
+- **T24 2c's closure** done 2026-11-15 (#938; the checkpoint passed after the user looked at the
+  fixes, SRV-Q38): the end-to-end test (a spectator watching a timed game through a restart, a
+  stalled battle voiding its game), `docs/06-security.md` (`cross-lane`), the reviewer agent (two
+  major, three minor findings, two nits: all fixed or documented, protocol v68), the inbox
+  cleared as the user chose; M5 closes at the checkpoint (and with it E16's milestones:
+  BACKLOG's status in a `shared/` change; "Later" stays).
+
+**Not in part 2** (SRV-Q29): concurrent battles (they need simultaneous turns, which ADR-0017
+point 7 designs for and does not build; 2a keeps only T7b's open battle by identity), removing a
+player and a game's end (E10's victory and defeat), computer players on the map (E13), ranked
+whole games (a ladder of maps, after E28's ranked battles), the attack and shot previews (the
+client lane's 2026-11-04 request, when online battles need them).
+
+## Review list for the M5 2c checkpoint (passed 2026-11-15, SRV-Q38)
+
+**Review list for the M5 2c checkpoint** (built so far; the reviewer and the user at T24):
+
+- T24 (the reviewer's findings, SRV-Q38): the consent as (b), the user's choice (`GameSpectators`
+  to every other player, numbered and recorded, a player not seated yet told by its `GameJoined`;
+  the flag `may_be_watched`: the setting on a host that takes spectators, paused or not, as the
+  lobby's); `GameWatch` behind the login gate; the void decided afresh at each command (a lowered
+  bound at a restart voids only a battle still open); a void game's host pause `NotStarted` and
+  the sweep's `suspend` nothing; the spectator's queue documented, not resized; the end-to-end
+  test in `clock.rs` beside T19's, the bound 4 measured as between the monster's answers and a
+  battle's end; the fold gate's parts for `kinds` and `garrison_heroes` (from the inbox's review).
+
+- T23b: `GameJournal::commands` an `Option` (none for a game of connections, the in-process
+  host's kept for its tests) beside the count `accepted`, rather than no copy at all; a whole
+  game's interval 250 a server's setting beside the battles' 25 (a game keeps its own), a
+  divergence found up to 250 commands later; the re-run's entries released by `shrink_to_fit`;
+  (d), (e) and (g) left for later (T24 documents them).
+- T23: the measurement kept in the repo (`h3_server::measure`, the binary `h3-server-journals`
+  with a counting global allocator, `unsafe` in an adapter's binary; not a `bench-check`
+  workload: wall time and heap, §15's numbers); the journal built from the agent's commands as
+  a game of connections journals them (not through `handle`), untimed; the flood by tactics
+  switches; the fixtures' two seats, eight scaled by commands; no state saves (§15's case).
+- T22b: no protocol step (the server hosts what v66 defined); a paused whole game refuses a
+  watch `NoSpectators` (as a paused battle a spectator), an unknown game and a paused battle
+  `NoSuchGame`, a running battle's session `NoSuchGame` (the registry cannot tell it from a
+  whole game); the listing's flag `takes_spectators` (open, a limit above 0, not paused; a full
+  game still listed taking them, as a battle); a restored game's limit the configuration's now,
+  its setting the journal's; a watch binds as a join (`bound` counted).
+- T22a: `GameWatched`'s frame spliced from the player's frame's text, not encoded from the
+  message (no decode, no clone; a test holds it to serde's form); a watch's start numbered as
+  each player's last message; a spectator has no record of its own (`FetchRecord` is
+  `NotSeated`); a watcher may not take a seat (`AlreadyJoined`, it leaves first); the setting
+  journaled only when open (`Watchable`, additive: `GAME_JOURNAL_FORMAT_VERSION` stays 1);
+  in-process nobody watches (`NoSpectators`).
+- T21a (SRV-Q36): the spectator's messages are each player's as its seat is sent them, wrapped
+  with the player and renumbered (the players' numbers stay the players'), rather than a merged
+  view; a whole game closed to spectators by default (a battle's are open by default).
+- T20: the system's bound counts every system battle command in a battle (an unowned side's
+  answers to a seat too), not only those while both sides are the system's; its default 10 000
+  (measured most 505); `DRIVE_STEPS` 64; `CommandLimit` and `NotStarted` widened (v65) rather
+  than new variants; a void game's journal moves to `<data>/void/` as a battle's.
 
 ## M5 part 2b (refined 2026-11-13, SRV-Q31; closed 2026-11-14, SRV-Q34)
 
