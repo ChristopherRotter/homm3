@@ -21,8 +21,9 @@ from T27's 16 M clone, #2's start):
 
 - **T34 — Training regimes: the search at play and the KL anchor to #2** (refined 2026-11-15,
   decision 3, T32's read; the arms the user's, of four offered: not #2 distilled into a fresh
-  96 × 6, whose best case is #2's level, nor straight to T35; **prepared: (a) the sandbox's once
-  #2's `best.pt` is uploaded, (b) the user's GPU**).
+  96 × 6, whose best case is #2's level, nor straight to T35; **(a) done** 2026-11-15, `E25-log.md`
+  T34: no gain at N 16 (0.508 against #2's sampled 0.511) nor N 64 on the hero battles (+0.003,
+  inside the interval), so the long run is PPO's; **(b) the user's GPU next**).
   - **(a) The search at play** (the sandbox's CPU, no GPU hours): `h3env.search --report` with #2
     (`runs/e25-structure-1/best.pt`) over its side's worlds (ADR-0025 point 12a), T1c's settings
     (N 16, W 8, k 16, seed 1, T1a's terminal), against the fair actor on the report set v1 (500
