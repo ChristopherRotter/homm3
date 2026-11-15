@@ -456,7 +456,7 @@ pub(super) async fn started_on(
 }
 
 /// [`started_on`], the game open to spectators as `spectators` says (E16 M5 T22b).
-async fn started_with(
+pub(super) async fn started_with(
     running: &Running,
     offer: &str,
     spectators: Option<bool>,
@@ -789,7 +789,7 @@ async fn whole_games_refuse_out_of_place_and_go_when_abandoned() {
 }
 
 /// The names of the journals in `data`'s void.
-fn voided(data: &std::path::Path) -> Vec<String> {
+pub(super) fn voided(data: &std::path::Path) -> Vec<String> {
     let names = fs::read_dir(data.join("void")).into_iter().flatten();
     let names = names.map(|e| e.unwrap().file_name().to_string_lossy().into_owned());
     names.collect()

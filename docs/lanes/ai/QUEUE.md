@@ -15,45 +15,68 @@ the probes about 20 hours of the user's GPU; **T30 done** 2026-11-10, the analys
 `E25-log.md` T30; **T31 done** 2026-11-10, the update's speed, `E25-log.md` T31: 98 to 67 s an
 update; **T33 done** 2026-11-13, PPO's settings, `E25-log.md` T33: no continuation from #2 gains,
 the annealed one level at 0.503 ± 0.002, so #2 sits at this setup's plateau and T35's long run
-starts from T32's best clone):
+starts from T32's best clone; **T32 done** 2026-11-15, the architectures, `E25-log.md` T32: no arm
+leads the control by 0.02 (the best +0.009), so `hexconv` 96 × 6 stays and T35's long run starts
+from T27's 16 M clone, #2's start):
 
-- **T32 — Architecture probes on the cloning bench with its ladder** (refined 2026-11-13,
-  decision 3, T30's ranking, T33's read; the arms the user's, "mixed"; **prepared, the user's GPU
-  next**). One bench run, `configs/distill/e25-arch.toml` (test `test_increment_8s_architecture_
-  bench_is_t26bs_with_three_arms_beside_its_control`): T26b's sweep (the fair actor teaching on
-  `e25-neutral.toml`'s mix, 4 M samples, two passes, seed 7, the held-out set of 16 384
-  decisions) with four `hexconv` normalised students, each with the mask, the order and the
-  attack hex, warm-up 131 072, decay 0.01: the control `hexconv-n-96x6-a` (T26b's winner, #2's
-  network, 1e-3; T26b's 0.755 at 4 M again), `-96x6-lr2` the control at 2e-3, `-128x6` wider
-  (about 1.34 times the control's sample-pass, T24's grid), `-64x10` deeper (about 1.1 times).
-  At the end each student's ladder against both system actors on the report set v1 and on the
-  neutral set v1 (500 a kind, T27's).
-  - **The measures:** (a) the held-out agreement at 4 M, by category, beside the entry's
-    cross-entropy, the value's explained variance, the µs a sample-pass and the peak MB (the curve
-    every 0.5 M); (b) the ladders (± 0.019 against the fair actor).
-  - **The rule, stated before it runs:** an arm replaces the control as the long run's network
-    if it leads it by at least 0.02 agreement at 4 M (T26b's margin) and its ladder against the
-    fair actor lies no more than the interval (0.019) below the control's; of several, the
-    highest agreement (within 0.01 of it, the cheaper). Else the control stays, and T35's long run
-    starts from T27's 16 M clone of it (`runs/clone-3/students/hexconv-n-96x6-a.pt`, #2's start).
-    The rate arm leading the control by at least 0.01 sets 2e-3 for the winner's long clone. A
-    new network's long clone (16 M on T27's bench, about 6 to 8 hours) comes before T35's run;
-    T34's distillation of #2 into it beside.
-  - **Budget:** about 7 hours (the students' passes 4 M × 2 at about 683, 683, 917 and 757 µs:
-    6.8 hours; the teacher about 4 minutes; the ladders about 20), in parts under 2 hours:
-    Ctrl-C, then `--resume`. Decision 3's 8 hours for the architectures. The peak about 4 GB
-    (`-128x6`, T24's grid with T26b's keys), under the cap; a wider winner's PPO chunks need
-    timing at T35 (the control's peak 5.5 GB at 1 024 rows, T31).
-  - **The user's commands** (from `python/`):
+- **T34 — Training regimes: the search at play and the KL anchor to #2** (refined 2026-11-15,
+  decision 3, T32's read; the arms the user's, of four offered: not #2 distilled into a fresh
+  96 × 6, whose best case is #2's level, nor straight to T35; **prepared: (a) the sandbox's once
+  #2's `best.pt` is uploaded, (b) the user's GPU**).
+  - **(a) The search at play** (the sandbox's CPU, no GPU hours): `h3env.search --report` with #2
+    (`runs/e25-structure-1/best.pt`) over its side's worlds (ADR-0025 point 12a), T1c's settings
+    (N 16, W 8, k 16, seed 1, T1a's terminal), against the fair actor on the report set v1 (500
+    a kind and seat), #2's sampled policy beside it on the same episodes; then N 64 on the hero
+    battles' first 200 a seat (`--kinds hero`, new). T1c found no gain with `t7-1` (its values
+    told the actions apart by hundredths); #2's critic explains 0.80 of the returns' variance
+    (T33), and the hero battles hold its margin (T30). The search runs `hexconv` (test
+    `test_the_report_searches_a_structured_network_on_the_kinds_asked`); 56 ms a decision at N 16
+    on the sandbox's 4 cores with #2's network size (T1c's `t7-1` 42).
+    - **The measures:** the search's and the sampled policy's win rate and value, by kind and
+      seat; the cost a decision, the fallbacks, the truncations (a world scores a cut 0, T1c).
+    - **The rule, stated before it runs:** the search **gains** if its win rate lies above the
+      sampled policy's by more than the interval (0.019 on the report set; 0.031 on the hero
+      battles alone, 1 000 games): then T35's question is the search at play as the agent
+      (exit criterion 2 allows it) or expert iteration (design §14's T8d, the search in Rust).
+      Within it: T1c's verdict holds for #2 too, and the long run is PPO's.
+    - **Budget:** about 1.8 hours at N 16 (T1c's 113 637 decisions at 56 ms), about 1 at N 64.
+  - **(b) The KL anchor to #2** (the user's GPU): `configs/e25-anchor.toml` (test
+    `test_increment_8s_anchor_is_structure_1s_run_taught_by_its_best`): #2's own run
+    (`e25-imitate-structure.toml`: from T27's clone, seed 1, the imitation loss at 0.5 falling to
+    0 at 10 M) with #2 as the loss's teacher (`[ppo] imitation_teacher`, new: a saved network's
+    draws label the learner's decisions, from a generator of its own, checkpointed; test
+    `test_a_network_teacher_labels_the_learners_decisions_with_its_own_draws`), so the term is in
+    expectation the cross-entropy to #2's policy; its first 2 M samples at #2's run's rate and
+    weight, T31's update speed. Its first rollout is #2's run's (the same start, seed and draws).
+    - **The measures, T33's:** (a) the fixed head-to-head against #2 (score and standard error,
+      about 0.002); (b) the ladders against both system actors (500 a kind, ± 0.019) and on the
+      neutral set; (c) the update records: the teacher's agreement (the learner's draw against
+      #2's), the imitation loss (its floor #2's entropy, about 1.0 nats), entropy, KL, clip,
+      beside #2's run's first 2 M (T33's table: the fair actor's agreement 0.70, entropy 0.70,
+      KL 0.012).
+    - **The rule, stated before it runs:** (a) within two standard errors of 0.5 or above, with
+      (b) inside #2's interval: the anchor brings T27's clone to #2's level in a tenth of #2's
+      samples, and T35 weighs a long run from the clone taught by #2 (its samples spent past #2's
+      level) against #2's regime; below by more than two standard errors: 2 M of the anchor do
+      not reach #2, and the long run keeps #2's regime (the fair actor's loss ending at its
+      horizon); (a)'s distance and (c)'s curves say how far it got.
+    - **Budget:** about 2 hours (79 updates of about 71 s, T33's, and #2's pass in the rollouts,
+      a few per cent; the measures about 15 minutes). Parts under 2 hours: Ctrl-C, then
+      `--resume`. With (a) on the sandbox, decision 3's 3 hours for the regimes.
+  - **The user's commands** (from `python/`; `--device cuda` on the user's card):
 
-        uv run --group train python -m h3env.train.distill --teacher system --config configs/distill/e25-arch.toml --out runs/arch-1
-        uv run --group train python -m h3env.train.distill --resume runs/arch-1
+        uv run --group train python -m h3env.train --config configs/e25-anchor.toml --init-from runs/clone-3/students/hexconv-n-96x6-a.pt --out runs/e25-anchor-1
+        uv run --group train python -m h3env.train --resume runs/e25-anchor-1
+        uv run --group train python -m h3env.train.gate --candidate runs/e25-anchor-1/checkpoint.pt --best runs/e25-structure-1/best.pt --device cuda --fixed --json runs/e25-anchor-1/head-to-head.json
+        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-anchor-1/checkpoint.pt --opponents system,system-all-seeing --device cuda --json runs/e25-anchor-1/ladder.json
+        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-anchor-1/checkpoint.pt --set neutral-v1 --device cuda --json runs/e25-anchor-1/neutral.json
 
-    The upload: `runs/arch-1/report.json` and `metrics.jsonl` (the networks stay on the user's
-    machine). **Acceptance:** the report committed as `python/records/distill/arch-1.json`, the
-    read in `E25-log.md` T32, the long run's network named for T35, T32 closed.
-- **T34 to T36** (the epic file's table, ranked by T30's read in `E25-log.md` T30): the regimes
-  (#2 distilled into T32's best, a KL anchor, the search at play on the hero battles); the
+    The upload: for (a) `runs/e25-structure-1/best.pt`; for (b) the run's `record.json`,
+    `metrics.jsonl`, `head-to-head.json`, `ladder.json`, `neutral.json` (no network).
+    **Acceptance:** the records committed (`python/records/e25-anchor-1.json`, (b)'s measures
+    under `python/records/anchor/`, (a)'s under `python/records/search/e25-structure-1-*.json`),
+    the read in `E25-log.md` T34, T34 closed, T35 next.
+- **T35 and T36** (the epic file's table, ranked by T30's read in `E25-log.md` T30): the
   probes' checkpoint (with the outcome's weight in training as its question; the long run's
   settings from T33's ranking: the rate annealed to its floor by the end, the imitation loss
   ending at its horizon); the long run. Each is refined here when it is next. **A `hexconv` run

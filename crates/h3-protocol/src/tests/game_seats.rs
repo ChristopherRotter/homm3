@@ -118,6 +118,7 @@ pub(super) fn joined_after(
         token,
         manifest: s.manifest().clone(),
         last,
+        spectators: s.may_be_watched(),
     }
 }
 

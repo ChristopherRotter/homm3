@@ -511,6 +511,9 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--opponent", default="system", help="--report: an engine seat")
     p.add_argument("--set", default="report-v1", help="--report: report-v1 or neutral-v1")
     p.add_argument("--per-kind", type=int, default=500, help="--report: episodes per kind")
+    p.add_argument(
+        "--kinds", help="--report: only these of the set's kinds (comma-separated, e.g. hero)"
+    )
     p.add_argument("--no-sampled", action="store_true", help="--report: the search alone")
     p.add_argument("--json", help="--report: write the results here")
     return p
@@ -574,6 +577,8 @@ def measure(args) -> dict:
         raise SystemExit("--report needs --best (a saved network)")
     policy = network(args)
     settings = dict(opponent=args.opponent, per_kind=args.per_kind, held_out=args.set)
+    if args.kinds:
+        settings["kinds"] = args.kinds.split(",")
     make = search(policy, args.simulations, args.worlds, args.k, true_worlds=args.true_worlds)
     out = {
         "settings": {

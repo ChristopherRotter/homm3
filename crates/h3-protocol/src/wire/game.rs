@@ -101,7 +101,7 @@ pub enum Formation {
 
 /// The adventure map as one player sees it (`h3_adventure::AdventureState::observe`,
 /// ADV-FOG-004 to ADV-FOG-006): its tiles by what the player explored, the heroes, objects and
-/// boats it sees, and what it knows of objects.
+/// boats it sees, what it knows of objects, its team's kind marks and its own garrison heroes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Adventure {
