@@ -133,6 +133,7 @@ lr_schedule = "constant"
         ("", ["ppo.imitation_coef=-1"], "`imitation_coef` must not be negative"),
         ("", ["ppo.imitation_horizon=-1"], "`imitation_horizon` must not be negative"),
         ("", ["ppo.imitation_teacher=best.pt"], "`imitation_teacher` needs `imitation_coef`"),
+        ("", ["ppo.win_bonus=-0.1"], "`win_bonus` must not be negative"),
         ("", ["ppo.lr"], "table.key=value"),
         ("seed = [", [], "not TOML"),
         ("", ["ppo.lr_schedule=cosine"], "linear or constant"),
@@ -938,6 +939,19 @@ def test_increment_8s_anchor_is_structure_1s_run_taught_by_its_best() -> None:
     for s in (0, 1_000_000, 2_000_000):
         assert learning_rate(anchor, s) == learning_rate(structure, s)
         assert imitation_weight(anchor, s) == imitation_weight(structure, s)
+
+
+def test_increment_8s_win_bonus_probe_is_the_annealed_arm_with_the_bonus() -> None:
+    # E25 T35 (the user, 2026-11-15): the probe of the outcome's weight is T33's annealed arm
+    # (`e25-continue-anneal.toml`, the one level with #2) with `win_bonus` 0.1 alone.
+    configs = PYTHON / "configs"
+    anneal, bonus = (
+        load_config((configs / f"{n}.toml").read_text())
+        for n in ("e25-continue-anneal", "e25-win-bonus")
+    )
+    trainable(bonus)
+    assert Config().win_bonus == anneal.win_bonus == 0.0 and bonus.win_bonus == 0.1
+    assert dataclasses.replace(bonus, win_bonus=0.0) == anneal
 
 
 def test_the_league_draws_scores_and_retires() -> None:
