@@ -128,9 +128,10 @@ The tutorial (`.tut`) is left out: its towns are E09-towns.md §1.1's 1 468 less
 ### 2.1 Where they are
 
 Each player record holds two hero types (+0x28, +0x2C; −1 empty): the player's offers in every
-tavern it opens, its towns' and the map's (the manual: "This rumor is identical in all of your
-town taverns"; the wiki's RoE note that the map's taverns once had other heroes is an older
-patch's). An offered type is reserved (0x40): no other draw gives it, no other player is offered
+tavern it opens, its towns' and the map's (the code has no other store; the manual says only
+that two heroes are in each tavern and change each week, and the rumour is the one "identical in
+all of your town taverns"; the wiki's RoE note that the map's taverns once had other heroes is an
+older patch's). An offered type is reserved (0x40): no other draw gives it, no other player is offered
 it. The tavern dialog shows the two offers (portrait, name, level, class, its artifacts' count),
 the first present one selected (`tavern_dialog` 0x5D7EC0).
 
@@ -292,7 +293,7 @@ fill, one creature as a replacement).
 
 | Point | Reading | VCMI 1.7.5 | Wiki / manual |
 |---|---|---|---|
-| Offers per player, all taverns | yes | `TavernHeroesPool` per player | manual: the same in all taverns |
+| Offers per player, all taverns | yes | `TavernHeroesPool` per player | manual: two in each tavern |
 | Slot 0 native | the chosen faction's classes when they weigh | `pickClassFor(isNative)`: the player's `castle` | wiki: "the faction the player started as" |
 | Weights | HCTRAITS' columns | HCTRAITS (legacy data) | — |
 | Other offer's class | avoided while others are free | avoided (any class in the tavern) | — |
