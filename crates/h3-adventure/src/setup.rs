@@ -195,8 +195,9 @@ pub enum Holds {
     /// the map gives it, stacks by slot (a count of 0 an empty slot, so none at all is an empty
     /// garrison), valid as an army's but for none at all, no war machine; and whether its troops
     /// may be taken out (the map's byte from AB on, true on an RoE map; the original keeps it
-    /// through a capture, survey `E08-garrisons-bonuses.md` §5). The game writes the army on its
-    /// object when it is built (T114a); its owner is the object's ([`ObjectSetup::owner`]).
+    /// through a capture, survey `E08-garrisons-bonuses.md` §5). Its army as it stands is what
+    /// its last battle left, else this one (`AdventureState::garrison_army`, E08 T114a1); its
+    /// owner is the object's ([`ObjectSetup::owner`]).
     Garrison {
         /// The troops.
         army: Vec<ArmyStack>,

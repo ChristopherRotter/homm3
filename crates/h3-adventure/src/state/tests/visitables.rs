@@ -320,6 +320,60 @@ fn a_fountain_of_fortune_gives_its_weeks_value_and_its_team_knows_it() {
     assert_ne!(s.state_hash(), hash);
 }
 
+// covers: ADV-BON-003, ADV-BON-002
+#[test]
+fn each_fountain_of_fortune_gives_its_own_value_under_the_one_mark_of_every_fountain() {
+    let rules = visitable_rules(true);
+    // Two Fountains, (1, 1) the first in object order and (2, 1) the second, with distinct values
+    // so that a visit's luck names its fountain's place.
+    let objects = [("t:fountain", ONTO[0], 1), ("t:fountain", ONTO[1], 1)];
+    let mut s = state(&rules, &objects);
+    s.fortunes = Some(Arc::from([3, -1].as_slice()));
+    // The second first, around the first (over (1, 2), not from above): its own value, the
+    // second's.
+    let (outcome, events) = go(&mut s, &rules, &[p(1, 2), ONTO[1]], (1, 0));
+    assert_eq!(outcome, AdventureOutcome::default());
+    assert_eq!(s.hero(HERO).unwrap().pos, ONTO[1]);
+    assert_eq!(told(&events), []);
+    assert_eq!(s.visit_marks(HERO).bonuses().once, [once(5, 0, -1)]);
+    // The first the same week, before a battle: the kind's once-mark is one for every Fountain,
+    // so nothing, told; the team knows both, visited.
+    let (outcome, events) = go(&mut s, &rules, &ONTO[..1], (1, 0));
+    assert_eq!(outcome, AdventureOutcome::default());
+    let held = nothing(&rules, "t:fountain", ONTO[0], NothingWhy::Visited);
+    assert_eq!(told(&events), [held]);
+    assert_eq!(s.visit_marks(HERO).bonuses().once, [once(5, 0, -1)]);
+    let known = s.observe(&rules.0, &rules.1, RED).known;
+    assert_eq!(
+        known
+            .iter()
+            .map(|k| (k.anchor, &k.known))
+            .collect::<Vec<_>>(),
+        [(ONTO[0], &Known::Visited), (ONTO[1], &Known::Visited)]
+    );
+    // After a battle's end the first gives its own value.
+    s.clear_battle_bonuses(&rules.0, &rules.1, &[HERO]);
+    let (_, events) = again(&mut s, &rules, (1, 0));
+    assert_eq!(told(&events), []);
+    assert_eq!(s.visit_marks(HERO).bonuses().once, [once(5, 0, 3)]);
+    // The week's redraw (until the first's value changes) clears no mark: nothing, told.
+    let mut draws = stream();
+    let value = (0..12)
+        .find_map(|_| {
+            s.start_week(&rules.0, &rules.1, &mut draws, &mut Vec::new());
+            Some(s.fortunes.as_deref().unwrap()[0]).filter(|&v| v != 3)
+        })
+        .unwrap();
+    let (_, events) = again(&mut s, &rules, (2, 0));
+    assert_eq!(told(&events), [held]);
+    assert_eq!(s.visit_marks(HERO).bonuses().once, [once(5, 0, 3)]);
+    // After the next battle's end, the new value.
+    s.clear_battle_bonuses(&rules.0, &rules.1, &[HERO]);
+    let (_, events) = again(&mut s, &rules, (2, 0));
+    assert_eq!(told(&events), []);
+    assert_eq!(s.visit_marks(HERO).bonuses().once, [once(5, 0, value)]);
+}
+
 // covers: ADV-BON-003
 #[test]
 fn a_map_without_a_fountain_has_no_values_to_draw() {
@@ -362,6 +416,30 @@ fn a_magic_well_fills_the_spell_points_once_a_day_and_marks_no_full_hero() {
     // The next day's start drops the mark: it fills again.
     s.start_day(&rules.0, &rules.1, &[]);
     assert!(s.visit_marks(HERO).timed().is_empty());
+    assert!(again(&mut s, &rules, (2, 0)).0.hero.is_some());
+}
+
+// covers: ADV-BON-006
+#[test]
+fn a_second_magic_well_the_same_day_finds_the_types_day_mark_held() {
+    let rules = visitable_rules(true);
+    let well = rules.1.object_type_by_key("t:well").unwrap();
+    let mut s = state(&rules, &[("t:well", ONTO[0], 1), ("t:well", ONTO[1], 1)]);
+    // Filled at the first: the day mark, the type's.
+    let (outcome, events) = go(&mut s, &rules, &ONTO[..1], (1, 3));
+    let set = HeroGains::changes(HERO, vec![HeroChange::SetSpellPoints(10)]);
+    assert_eq!(outcome.hero, Some(set));
+    assert_eq!(told(&events), [kind_known(&rules, "t:well")]);
+    assert_eq!(s.visit_marks(HERO).timed(), [well]);
+    // The second the same day, its points spent: nothing, told as visited, the one mark kept.
+    let (outcome, events) = go(&mut s, &rules, &ONTO[1..], (1, 0));
+    assert_eq!(s.hero(HERO).unwrap().pos, ONTO[1]);
+    assert_eq!(outcome, AdventureOutcome::default());
+    let visited = nothing(&rules, "t:well", ONTO[1], NothingWhy::Visited);
+    assert_eq!(told(&events), [visited]);
+    assert_eq!(s.visit_marks(HERO).timed(), [well]);
+    // The next day the second fills.
+    s.start_day(&rules.0, &rules.1, &[]);
     assert!(again(&mut s, &rules, (2, 0)).0.hero.is_some());
 }
 
@@ -451,6 +529,45 @@ fn the_stables_give_the_weeks_movement_once_and_upgrade_at_every_visit() {
     assert!(s.visit_marks(HERO).timed().is_empty());
     again(&mut s, &rules, (1, 0));
     assert_eq!(s.visit_marks(HERO).timed(), [stables]);
+}
+
+// covers: ADV-BON-005, HER-ADV-003
+#[test]
+fn a_second_stables_the_same_week_gives_no_movement_but_still_upgrades() {
+    let rules = visitable_rules(true);
+    let stables = rules.1.object_type_by_key("t:stables").unwrap();
+    let mut s = state(
+        &rules,
+        &[("t:stables", ONTO[0], 1), ("t:stables", ONTO[1], 1)],
+    );
+    s.hero_mut(HERO).unwrap().army = vec![stack(0, PIKEMAN, 5)];
+    let (_, max) = points(&s);
+    go(&mut s, &rules, &ONTO[..1], (1, 0));
+    assert_eq!(points(&s).1, max + 400);
+    // New Pikemen, then the second Stables: the week mark (the type's) is held, so the step's
+    // price alone (the maximum kept, the points left lower), one mark, its 400 land points once.
+    s.hero_mut(HERO).unwrap().army.push(stack(3, PIKEMAN, 2));
+    let before = points(&s);
+    let (outcome, events) = go(&mut s, &rules, &ONTO[1..], (1, 0));
+    assert_eq!(s.hero(HERO).unwrap().pos, ONTO[1]);
+    assert_eq!(outcome, AdventureOutcome::default());
+    let after = points(&s);
+    assert_eq!(after.1, before.1);
+    assert!(after.0 < before.0, "{before:?} {after:?}");
+    assert_eq!(s.visit_marks(HERO).timed(), [stables]);
+    assert_eq!(s.visit_marks(HERO).week_land_points(&rules.1), 400);
+    // Still the upgrade, told; nothing else.
+    let upgraded = AdventureEventKind::CreaturesUpgraded {
+        hero: HERO,
+        slot: 3,
+        from: PIKEMAN,
+        to: GNOLL,
+    };
+    assert_eq!(told(&events), [upgraded]);
+    assert_eq!(
+        s.hero(HERO).unwrap().army,
+        [stack(0, GNOLL, 5), stack(3, GNOLL, 2)]
+    );
 }
 
 // covers: ADV-BON-008

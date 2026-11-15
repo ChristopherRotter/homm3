@@ -340,8 +340,8 @@ pub enum ObjectKind {
     },
     /// A garrison (E08 T113a, increment 12's design note §1; ADV-GAR-001, the original's classes
     /// 33 and 219 by subclass): ownable, entered; its army, its removable flag and its owner the
-    /// map's. Its visit (the exchange, the battle, the capture: ADV-GAR-002, -003) comes with
-    /// T114a; until then a step onto its entrance is refused as any unbuilt visit's.
+    /// map's. Its visit: the battle and the capture since E08 T114a1 (ADV-GAR-002), the exchange
+    /// since T114a2 (ADV-GAR-003).
     Garrison {
         /// Whether a battle on its entrance is fought without magic (the original's subclass 1;
         /// ADV-GAR-005).

@@ -16498,3 +16498,1003 @@ session.
   (coverage 606 s, determinism 335 s, bench-check 359 s with every count as before, original-data
   22 s), `h3-cli`'s suite too.
 - **Versions:** none (no engine behaviour changed; `emptied_springs` is a read).
+
+### Increment 12, round 8: T117, the audit; increment 12 closed; increment 13 refined (2026-11-15, `adventure/e08-t117`)
+
+**The cut** (decision 332, the user at T117's start): whole, in one session, the work spread over
+sub-agents (not two parts, recommended, nor three). **Baseline:** `master` 8026f16 (#937; T116c's
+#934 and the town lane's #935 and #937 merged before the start); the original data staged at the
+start (the two LODs, the executable, `maps.tar`, `extracted.tar`; SHA-256 checked against the
+PC's). The VM restarted while the setup's baseline ran its full verify (lost; the tools, the staged
+files and the worktree kept); CI's full verify of the same code (8026f16) passed, so `master` is
+green.
+
+**The audit** (design §19), on `master`'s code: criteria 1 to 5 (the garrisons) and 6 to 9 (the
+bonus visitables and the views) handed at once to two fresh read-only sub-agents (a table per
+clause, no build), criterion 10 by the main session; the gaps' tests then written by two fixer
+sub-agents in their own worktrees, one per family, the rule texts and the wording by the main
+session. **No defect**: the code agrees with every criterion and its rule entries.
+
+1. The seventeen classes typed by subclass and the packs of their expansions, the random stack
+   refused, a count of 0 an empty slot: tested (`h3-map`'s `tests/garrisons_bonuses.rs`,
+   `h3-pack-adventure`'s tests); the census by the original data (`original_data`, the scoped
+   verify `--with-original-data` here). **Partial:** an RoE map's random stack (its byte code):
+   added.
+2. The exchange of a team's garrison, the battle at once with the owner's side or unowned guards,
+   an empty one's flag with its reveal, the survivors of a lost battle: tested (both crates).
+   **Partial:** the winner's levels before the flag and the exchange by the property's oracle and
+   `garrisons-won-s1` alone; the reveal after a won battle unasserted; the unsplit defender at the
+   adventure level only: all three added.
+3. The one owner rule, D-61, the listing and the split's range, the decision and the armies held
+   together: tested. **Wording:** "the town lane's reuse agreed": built since E09 T28a (the
+   reference and the owner rule's lookup; a town's two bars outside a decision): worded as built;
+   ADR-0017 point 6 said the same of the town's rows and named "a sixth visit's rest" for the
+   exchange after a won battle, which `Rest::Won` gives: both worded as built (`shared/e08-t117`,
+   #939).
+4. A walk crosses its team's garrisons, visits the one at its end, revisits it; every other one a
+   destination: tested. **Partial:** a flight, and a guard beside the entrance before the
+   exchange: both added. **Wording:** a flight passes over every garrison's entrance as over any
+   entered object's tile (ADV-MOV-009: the code reading and batch E5's E5-11, a border gate's
+   entrance flown over); criterion 4 and ADV-GAR-004 said "every other garrison is a destination",
+   true of a walker's path: worded as built (the flight over a garrison not observed; the inbox's
+   A-13 note for the increment that revisits flying). The reach's workloads at their baselines
+   (below).
+5. The anti-magic garrison's own battle and a hero's in it: tested (the battle lane's no casts,
+   BAT-TER-004). **Partial:** attacking out of one with magic, by the adventure's query and the
+   property alone: a game test added.
+6. The ten `bonus` kinds and the Fountain, once until the next battle, the Idol's and the Temple's
+   days: tested. **Partial:** only the first Fountain's value visited (a second's own value, one
+   mark for every Fountain, the week's redraw: added); each mark its own battle source by
+   `h3-heroes`' derivation and the Tomb alone (two marks of a game through `battle_hero`, each its
+   own `EffectSource::Visit` line: added).
+7. The movement objects, the Swan Pond, the Stables, the Well, the Springs: tested. **Partial
+   (minor):** a second Well the same day and a second Stables the same week (the mark by type):
+   added.
+8. The double product's survivors in full width, A-44's two sides: tested. **Partial:** the
+   Sirens' experience with Learning and a level gained, and the cover test's count of a Sirens
+   visit after a battle (counted, never asserted; it reached 2 and 3): both added.
+9. The views, the kind marks, the hygiene of the Fountain's value and the Springs, the events:
+   tested. **Wording:** §10's list leaves out §12.8's owner-only `BonusChanged`, `OnceMarkChanged`
+   and `TimedMarkChanged`; a change of a Visions holder's reach is untold (`TWN-STUB-13`); a
+   battle's public lines show the luck a visit gave its hero (CLT-Q40): worded as built.
+10. Every new rule has its id, sources and markers (`check-rules`, 492 rules); `ADV-QUIRK-46` and
+    `-47` in the ledger, now named by ADV-BON-008's and GAM-BAT-014's `quirks`; the gates: CI's
+    full verify on the increment's last code (above), the four new workloads baselined (T116c);
+    batch E12 run and scored (T110, T111). **Statuses:** ADV-BON-002 to -009 were `verified` by
+    T115b; **ADV-GAR-003, -004 and -005 `verified` now** (batch E12a observes both branches of
+    each: an own removable and an own non-removable garrison's exchange, E12-1 and E12-3; an own
+    garrison crossed and an empty neutral one a path's end, E12-1 and E12-2; attacked in an
+    anti-magic garrison and attacking out of one, E12-4). Still `implemented`, by design:
+    ADV-GAR-001 (the random stack's refusal decision 299's, not the original's), ADV-GAR-002 (an
+    owned garrison's battle and a lost one's survivors unobserved), ADV-GAR-006 (no view row),
+    ADV-BON-001 (the twelve entered kinds' modes by the class list, decision 317) and GAM-DEC-009
+    (the levels before the exchange unobserved).
+
+**Other findings, fixed:** the rule texts' stale names and lines: ADV-GAR-001 ("the exchange
+comes with T114a2"), ADV-GAR-003 (the town's bar owner "until then refused": built by E09 T28a),
+ADV-BON-001 and HER-ADV-003 (`HeroOnMap::timed`, `h3_adventure::drop_timed`,
+`week_land_points`: `VisitMarks`' methods), HER-ADV-008 (`HeroOnMap::bonuses`; "every mark"
+cleared: the Sirens' kept with `ADV-QUIRK-46` off), GAM-DEC-007's third rest (a map garrison's
+flag and exchange); doc comments (`Holds::Garrison`'s army, the garrison kind's "comes with T114a",
+`check_managing` without the exchange, `Together::Exchange`'s town rows); `covers:` and `rule:`
+markers (ADV-OBJ-003 on the crossed garrison's test, ADV-BON-005, -006 and HER-ADV-003 on
+`week_land_points` and `start_day`). The client lane's correction of `E08-economy.md` §7.2
+(0x6972B8 the scenario's end flag, not a network client's; the inbox's note of 2026-11-12) made.
+
+**Tests** (new unless named; `h3-adventure`'s `state/tests/`, `h3-game`'s `src/tests/`):
+`garrisons.rs` (adventure) `a_flyer_passes_over_every_garrison_and_visits_its_team_s_where_its_flight_ends`,
+`a_guarded_garrison_of_the_hero_s_team_meets_its_guard_first_then_its_exchange`, extended
+`a_garrison_battle_s_end_keeps_the_survivors_or_flags_it_after_the_levels` (the reveal: none where
+the scouting radius explored the disk, 21 tiles from a reset fog); `garrisons.rs` (game)
+`a_won_garrison_s_flag_and_exchange_wait_for_the_winner_s_level_up`,
+`a_neutral_garrison_s_single_stack_defends_unsplit_in_its_slot`,
+`a_hero_attacking_out_of_an_anti_magic_garrison_fights_with_magic`; `visitables.rs` (adventure)
+`each_fountain_of_fortune_gives_its_own_value_under_the_one_mark_of_every_fountain`,
+`a_second_magic_well_the_same_day_finds_the_types_day_mark_held`,
+`a_second_stables_the_same_week_gives_no_movement_but_still_upgrades`; `visitables.rs` (game)
+`each_once_mark_reaches_the_battle_hero_as_its_own_visits_source` (a Tomb's and an Idol's marks, two
+lines, no sum), `the_sirens_experience_grows_with_learning_and_brings_its_level` (Expert Learning,
++15 %, the level-up after `GainExperience`); extended `h3-map`'s
+`the_import_types_increment_12_s_classes` (an RoE map's random byte code) and the cover test
+`the_plans_visit_the_bonus_visitables` (the Sirens after a battle asserted; a thin margin at 512
+cases: raise the count, not the draw, if it is lost). Helpers: `garrison_rules_with(skills)`
+(game), a local `fly` (adventure).
+
+**Left, recorded:** a map garrison's view at level 2 and a neutral one's through Taverns (the
+town lane's `town/tests/view.rs` holds the Tavern's setup); the flight over a garrison observed
+(the A-13 note); a guarded own garrison's held exchange through the game (the adventure's test and
+the property).
+
+**Agent's calls** (change freely): the server lane's review of 2026-11-13 (a garrison named by its
+object index on the wire, `ArmyRef::MapGarrison`, `Decision::Exchange`, `ExchangeOpened`): **kept
+as built** (objects are only appended, so the index tells only the map's order; `docs/06-security.md`
+names the exception; no server change needed), the note archived; the flight over a garrison as
+ADV-MOV-009's general rule, not a question (a code reading and an observation of an entered
+object's tile flown over; none of a garrison).
+
+**The benchmarks** (criterion 10): `cargo xtask bench-check --lane adventure` on `master` 8026f16:
+every workload inside its gate, the reach's six −0.36 % to +0.06 % (`reach-garrisons-xl-144` at its
+count), the random games' −0.19 % to +0.11 %. Six stood above +1 % with no code of this branch:
+re-baselined, each with its reason in its description:
+
+| Workload | Baseline | `master` | Since |
+|---|---|---|---|
+| `fork-dwellings-xl-144` | 376 600 055 | 384 100 055 (+1.99 %) | T96b2, 2026-11-05 |
+| `fork-rewards-36` | 274 700 397 | 279 500 397 (+1.75 %) | E09 T26a2, 2026-11-12 |
+| `month-start-xl-144` | 38 183 596 | 38 797 121 (+1.61 %) | T86b2, 2026-11-03 |
+| `fork-economy-xl-144` | 378 700 075 | 383 800 075 (+1.35 %) | E09 T26a2 |
+| `fork-sea-xl-144` | 380 400 055 | 385 500 055 (+1.34 %) | E09 T26a2 |
+| `fork-meeting-xl-144` | 378 700 055 | 383 500 055 (+1.27 %) | E09 T26a2 |
+
+The forks' shape the same (malloc and free 56 %, the heroes' clone 14 %, `AdventureEnv::fork`
+10 %): about 50 to 75 Ir a fork more, the state's blocks added since (T115a's visit marks, T115b's
+Fountains' values and Springs, E09 T28a's towns' garrison heroes), each an `Option` of a shared
+block copied per fork. The month's start: `start_month` 96 % as before (`event_at` 14 %), the
+objects and state of increments 10 to 12 and E09 since T86b2. The others below +1 % kept.
+
+**Increment 12 closed** (2026-11-15): its intro, its decisions 295–332 (decision 332 T117's cut;
+none was moved early) and its task list, T117's line done, moved verbatim to `E08-archive.md`
+("Increment 12 — garrisons and the bonus visitables"; the archive's title and intro now name
+increments 1 to 12); a row in the closed increments' table (T107–T117, decisions 295–332). **The
+design note** moved below ("Increment 12's design note at its closure"), §19's criteria 3, 4 and 9
+worded as built and round 8 marked done; `E08-design.md` keeps a pointer until T118b writes
+increment 13's note.
+
+**Increment 13 refined** (ADV-Q52, asked interactively during T117; decisions 333, 334) from T97c's
+census (the shipped maps unchanged): the creature banks (recommended: the sketch's item 13, 2 137
+objects on 148 maps), the information objects (on 155), the trades and services (on 149), or the
+Prison and the Market of Time with the adventure spells: **the user chose the banks**; the first
+round a survey, then the ADR amendment drafts with the design note and the cut (recommended), not
+the survey alone. The sketch: item 13 placed, the quests stay item 14.
+
+**The queue:** T117's entry and the "Tasks" text's increment 12 chronicle moved to
+`QUEUE-ARCHIVE.md`; **T118a** (the survey) and **T118b** (the drafts, the design note, the cut;
+the checkpoint) queued; fourteen inbox notes nobody has to act on any more moved to
+`QUEUE-ARCHIVE.md` (the other lanes' notes of changes in this lane's paths, built on by T116a to
+T116c; the town lane's plan for T114a, T115a and the order; CLT-Q40's visits by once-mark, done by
+T115a; the server lane's index review, kept as built; the harness notes; an informational
+decision); the A-13 note gains the garrison's flight. ADV-Q52 recorded in `QUESTIONS-ANSWERED.md`.
+
+**Verify:** see the HANDOFF's session entry (the scoped verify `--with-original-data` on the
+final tree).
+**Versions:** none (tests, docs, markers and baselines; no engine behaviour changed).
+
+#### Increment 12's design note at its closure (moved by T117)
+
+The note as T116c left it, every section built (T109 to T116c), with T117's corrections (§19's
+criteria 3, 4 and 9 worded as built, round 8 marked done); its § numbers are the ones the code's
+comments cite as "increment 12's design note".
+
+Increment 12's note: garrisons and the bonus visitables (E08 decision 295). Increment 11's note
+(the teleporters) is in `E08-log.md` ("Increment 11's design note at its closure", moved by T107),
+increments 9's and 10's beside it (moved by T87c and T97c); the code's comments cite these notes as
+"increment N's design note §M".
+
+A handover, not binding (`docs/adr/README.md`): the working detail behind increment 12's
+amendments, drafted in the lane's `adr-drafts/` by T108b and applied to ADR-0013, ADR-0016 and
+ADR-0017 by T112 with batch E12's outcome (the drafts then deleted); written from T108a's survey and the answers at ADV-Q48 and
+ADV-Q49 (the epic's decisions 295, 299–303). A building task adds an *As built* line to the section
+it builds; the note moves to `E08-log.md` when the increment closes. Facts and sources: survey
+`docs/rules/surveys/E08-garrisons-bonuses.md` (§ numbers are the survey's unless they name this
+note); the proposed rule ids are the survey's §9.3 and §13.
+
+Written whole by T108b (decision 304): **part A** the content (`h3-adventure`'s kinds,
+`h3-pack-adventure`, the packs), **part B** the map (`h3-map`, `h3-adventure`), **part C** the
+visit marks on the hero on the map and the hero model's inputs (`h3-adventure`, `h3-heroes`),
+**part D** the game, the env, batch E12 and the cut (`h3-game`, `h3-sim`'s replay, the gates).
+ADR-0015 needs no amendment (no crate, no import draw). *Agent's call (change freely)* marks a
+choice the user could change; **the checkpoint** (ADV-Q50, T108b; decisions 305–309) accepted the
+note and the drafts with two changes, written in: the battle bonuses' once-marks a short dynamic
+list, not a fixed set (306), and every visit's effect on the hero **on the map**, the battle
+bonuses moved there from the details (307; part C).
+
+**The checkpoints' answers** this note builds on: the content as the sketch's item 12 (decision
+295); the garrisons as the original (299: D-59 the path crosses only its team's garrisons, with no
+visit on the way; D-60 the entrance's tile decides the battle without spells; D-61 no merge into
+an ally's or a non-removable garrison's stack; the anti-magic kinds in the base pack, 219's in the
+AB pack; a random stack refused at the import, a count of 0 an empty slot); the bonus visitables as
+the original (300: D-62 the Spring per entrance, D-63 the Stables' upgrade at every visit, D-64 the
+Sirens' double product); A-44 a `fix-optional` flag and A-45 always fixed (301); the kind marks in
+this increment (302); batch E12 before the build (303). And ADV-Q50's (decisions 305–309): the
+exchange a decision with a direct army reference and one owner rule (305, part D §13); the
+once-marks a short dynamic list with the seam's `u8` mark (306); the battle bonuses and the day's
+and the week's marks on the hero on the map, the hero model taking them as inputs (307); A-44's
+fix one Sirens mark kept through battles (308); the cut and every other agent's call as written
+(309).
+
+##### Part A — the content (the adventure part, its packs)
+
+###### 1. The garrison kind (`h3-adventure`'s `ObjectKind`; ADV-GAR-001)
+
+- **`garrison { anti_magic }`**: ownable, entered, **visitable from above** (the original's
+  `object_classes_from_above` 0x63AB00 lists 33 and 219, survey §2: so a horizontal one is entered
+  from the three tiles above and the three below, a vertical one from its left and right columns;
+  the template's own blocked tiles close the rest). Four types: 33.0 and 33.1 (horizontal), 219.0
+  and 219.1 (vertical), `anti_magic` for subclass 1. Their masks are the map's templates', as
+  every kind's (one template per class and subclass, one entrance, §1.1).
+- **Not weekly, no draw, no parameter beyond the flag.** What a garrison holds (its army, its
+  removable flag) is the map's (§2 of this note's part B), its owner the ownable objects' block.
+- The battle background's ownable classes (`h3_map`'s `codes::scenery`, GAM-BAT-011) gain **219**,
+  which the original makes 33 (survey §9.2's gap), as 220 joined for the abandoned mine.
+- *As built* (T113a, `adventure/e08-t113a`; decision 319): `ObjectKind::Garrison { anti_magic }`
+  (hash tag 37), ownable (`ObjectKind::ownable`), so entered by the part's rule; no `effect` until
+  T114a (a step onto its entrance refused, `Visit`; the reach ends before it). The pack table
+  `garrison = { anti_magic = true }` (`false` if left out). 219 in `codes::scenery` moves to T113b
+  with the import (the queue's entry had put it in T113a; §19's table has it in T113b).
+
+###### 2. The bonus kinds (ADV-BON-001; survey §10.2)
+
+Six kinds for the fifteen classes, none ownable or guarded by the kind, each one type (subclass 0,
+no body in the file; the templates' masks as the map's). Entered or visited from a neighbour by
+the class (the original's `object_classes_not_entered` 0x63AA58, `E08-objects.md` §2.1): **visited
+from a neighbour** the Buoy (11), the Mermaids (52) and the Sirens (92); **entered** the other
+twelve, the Fountain of Fortune (30), the Idol of Fortune (38) and the Magic Well (49) among them.
+Visitable from above (`object_classes_from_above` 0x63AB00) the Buoy alone. *Corrected by T111*
+(batch E12, survey §15; ADV-Q51, decision 317): first written from the templates' blocked tile
+(survey §1.2), which says nothing of the mode; the hero stood on the Wells and the Idol and visited
+the Sirens, the Buoy and the Mermaids from the neighbouring water.
+
+- **`bonus { mark, days, points, drain, kind_mark }`** (ten classes: the Buoy, the Swan Pond, the
+  Faerie Ring, the Fountain of Youth, the Idol of Fortune, the Mermaids, the Oasis, the Rally Flag,
+  the Temple, the Watering Hole): `mark` the battle bonus's once-mark (part C §12); `days` the
+  morale and the luck by the day of the week (1 to 7), seven pairs; `points` the movement added to
+  the points left **and** the day's maximum (0 none: the Oasis 800, the Fountain of Youth, the
+  Rally Flag and the Watering Hole 400); `drain` the points left set to 0 (the Swan Pond);
+  `kind_mark` whether its visit sets the team's kind mark (§3's list). The pack writes a constant
+  pair once (`morale = 1`), the Idol and the Temple their week (`days = [[0, 1], [1, 0], …]`: the
+  Idol odd days luck, even days morale, day 7 both; the Temple +1 on days 1 to 6, +2 on day 7).
+  *Agent's call:* one kind with a week of amounts, not three kinds (a constant bonus, the Idol, the
+  Temple): the original's handlers differ only in these numbers, and a by-day pair is data.
+- **`fountain_of_fortune { mark, values }`** (30): the luck its visit adds is the fountain's
+  value, drawn among `values` (−1, 1, 2, 3; equal chances) when the game is built and at each
+  week's start (§5, §8.2; ADV-BON-003).
+- **`magic_well { day_mark }`** (49): the spell points to the hero's maximum, once a day per hero
+  (any Well): the day mark (part C §12.4).
+- **`magic_spring`** (48): the spell points to twice the maximum, **per entrance**, once a week
+  (D-62): no mark, the entrances' state (§5). Two entrances, (1,0) and (0,0) from the anchor.
+- **`stables { week_mark, points, from, to }`** (94): at the first visit of a week `points`
+  (400; `movement_bonus_stables` 0x698A94, movement.txt row 6) to the points left and the day's
+  maximum and to every day's land points until the week ends (the week mark with its land points,
+  part C §12.4); at **every** visit every slot of `from` (Cavaliers) becomes `to` (Champions) when
+  the army holds `from` with a count above 0 (D-63). `from` and `to` are base-pack creatures.
+- **`sirens { mark, keep }`** (92): each stack above one creature keeps `keep` of its count (the
+  original's 0.7 as the ratio 7 / 10, §9 of this note), the experience the lost hit points × the
+  Learning factor; its mark lasts until the next battle under `faithful` (A-44, `ADV-QUIRK-46`).
+- **Not entered from water and never on it** but the Buoy, the Mermaids and the Sirens, which
+  stand on water only (§1.2) and are reached only from a boat (ADV-PIK-018's passage, D-46), each
+  visited from a neighbouring water tile (ADV-SEA-005: the step's price paid, the hero staying in
+  its boat; the Buoy from any of the eight, the Mermaids and the Sirens not from the three above).
+- *Agent's call:* the values (+800, +400, 0.7, the Fountain's four) are the kinds' parameters, not
+  constants in code; the original holds them as immediates (§10.2's last paragraph) but a pack may
+  change them, as the Whirlpool's divisor (increment 11's note §1).
+- *As built* (T113a): `ObjectKind::{Bonus { mark, days, points, drain }, FountainOfFortune { mark,
+  values }, MagicWell, MagicSpring, Stables { points, from, to }, Sirens { mark, keep }}` (hash tags
+  38 to 43), none with an `effect` until T115b. `days` is `[(morale, luck); BONUS_DAYS]` (7, day 1
+  first); the pack writes `bonus = { mark, morale, luck, points, drain }` (one pair for every day)
+  or `bonus = { mark, days = [[m, l], …], points, drain }` (seven pairs). *Agent's calls:* the Magic
+  Well's and the Stables' `day_mark` and `week_mark` are no field (their kind names the lifetime,
+  the type is the mark, part C §12.4, decision 307); the Sirens' `keep` a pair (7, 10); checks: a
+  bonus not both `points` and `drain`, a part whose week has more days than seven refused (the
+  synthetic pack's five-day week passes), the Fountain's values as written, the Stables' points
+  from 1 and two distinct creatures not war machines, the Sirens' numerator at most the
+  denominator (from 1). The marks any `u8` (no bound: `BattleBonuses::MARKS` stays the Tomb's and
+  the Pyramid's until T115a moves the bonuses).
+
+###### 3. The packs and the kind marks' list
+
+- **The base (RoE) pack:** garrisons 33.0 and 33.1 (the anti-magic one stands on 9 RoE-format
+  objects, decision 299) and the fifteen bonus classes (all stand on RoE-format maps, §1.2, §10.9);
+  **the AB pack:** 219.0 and 219.1. SoD adds none.
+- **Names and pictures:** the types' names from `ObjNames.txt` (the harvest's check, as T103a's
+  against both `Objects.txt` and the executable's class lists); the templates stay the map's.
+- **The kind marks** (decision 302; ADV-BON-009): a type flag `kind_mark` in the part for every
+  type whose visit sets the original's `kinds_visited` (game +0x4E344 + k, `structs.toml`): the
+  twelve of the fifteen (all but the Fountain of Fortune, the Stables and the Sirens; the Fountain
+  marks itself per object, §8.2) and increment 7's built kinds that set one (the Garden of
+  Revelation 32, the Learning Stone 100, the Library 41, the Marletto Tower 23, the Mercenary Camp
+  51, the Schools of Magic 47 and War 107, the Star Axis 61, the Witch Hut 113, the Tree of
+  Knowledge 102, the three Shrines 88 to 90, the University 104). The Hill Fort (35, k 14) is not
+  built (not in increment 12). *Agent's call:* the flag on the type (each original kind is one
+  class here, one type each); a second type of one class would share its class's mark by its
+  own entry, which no pack has.
+- *As built* (T113a): `ObjectType::kind_mark` and `ObjectTypeDef::kind_mark` (the pack's
+  `kind_mark = true` beside `from_above`, `false` if left out; hashed after `from_above` for every
+  type); base's 17 types after the Whirlpool (2 garrisons, the fifteen by class), ab's 2 after its
+  dwellings (`garrison_vertical`, `anti_magic_garrison_vertical`), all four garrisons named
+  "Garrison" (ObjNames.txt's rows 33 and 219); 26 types with the flag. The check against the
+  original data (`h3-pack-adventure`'s `original_data`, check 6): each subclass SoD's `Objects.txt`
+  lists for the seventeen classes, listed by AB's too, has its one type (its kind by class, a
+  garrison's flag by subclass), `ObjNames.txt`'s name (trimmed: rows 11 and 14 end in a tab),
+  the class lists' visit and from above, the Stables' points `movement.txt`'s Stables row (400);
+  the kind-marked types exactly the reading's 26. It passes on the staged installation (19 types)
+  and fails on a perturbed visit, points or kind mark.
+
+##### Part B — the map (`h3-map`, `h3-adventure`)
+
+###### 4. The import (`h3-map`; map import v22)
+
+- **Garrisons (33, 219):** the body (`docs/formats/h3m.md`'s row "33, 219 garrison"): the owner
+  (ADV-OWN-002: a colour the map does not play refused, as now; 0xFF neutral), the seven stacks by
+  the import's army rules (a count of 0 an empty slot; the count's 16 bits read whole, as
+  ADV-QUIRK-19's handling: the original sign-extends, no shipped garrison comes near), the
+  removable byte from AB on (non-zero true), true on an RoE map; the 8 unused bytes dropped. **A
+  random stack** (a creature code below the format's "none" in the random range) is refused,
+  `ImportError::RandomStack` (decision 299: the original resolves none, survey §9.2), as a placed
+  hero's. Class 219 maps to its own types (not to 33's: the AB pack holds them).
+- **The fifteen:** typed by class (subclass 0), no body (VCMI's `readGeneric`); a Buoy, Mermaids or
+  Sirens off water, or another of the fifteen on water, is imported as the map has it (the editor
+  allows neither; the passage decides who reaches it).
+- `MAP_IMPORT_VERSION` 22 (E09 T11 took 20, T103b 21). The census's numbers (§1) are the import's
+  test on the shipped maps (`--with-original-data`).
+- *As built* (T113b, `adventure/e08-t113b`; decisions 321, 322): `codes.rs`' `GARRISONS`,
+  `VERTICAL_GARRISONS` (past subclass 1 `Subclass`) and `BONUS_VISITABLES` (each at subclass 0;
+  *agent's call*: another subclass `Subclass`, as the garrisons' past 1); `import::garrison` into
+  **`Holds::Garrison { army, removable }`**, which §5 had for T114a: the import needs a place for
+  the body, so the setup's variant, its check (`check_troops`: none, or an army with no war
+  machine; shared with a reward's creatures) and its hash (tag 11) came here, adventure state hash
+  **v22** (decision 321, as T83a's abandoned mines' sets); a count of 0 is filtered before the
+  random-stack test, so a random code with no creatures is an empty slot; `ImportError::RandomStack`.
+  219 in `codes::scenery`. An owned garrison is revealed around at the start by the existing
+  `reveal_owned` (ADV-OWN-002). The census in `h3-map`'s `original_data` (`increment_12`, checked
+  against survey §1's tables): every number as §1. **The server lane's question** (decision 322):
+  9 typed twins on 5 shipped maps, each a ground or Favorable Winds of two pictures differing only
+  in `drawn`; kept, and the setup (`AdventureState::new`'s name check) refuses a ground, a ground
+  of the sea or a hole that differs from an earlier one of its type and anchor in anything else
+  (`SharedAnchor`); the server lane's inbox has the reading.
+
+###### 5. The state (`h3-adventure`; adventure state hash v22)
+
+- **A garrison's army** is written on its object when the game is built (`army_left`, the
+  persistent table, as a town's garrison since E09 T8a1: `Holds::Garrison { army, removable }` in
+  the object's setup, checked by the army rules, built by T113b with the import, §4; an empty army
+  written empty), its owner in the
+  ownable objects' block (`owners`, ADV-OWN-002), its **removable flag** static: the object's
+  (`garrison_set_owner` keeps it, survey §5), so the static map's, which its hash covers. No new
+  per-game block for garrisons.
+- **The Fountains' values**, one signed value per fountain by its place among the static map's
+  fountains (a new list, in object order), a block `fortunes` of the adventure state: none for a
+  map without one, else drawn when the game is built and at each week's step (§8.2), one block the
+  forks share, the week's step making a new one.
+- **The Springs' entrances**: one "full" bit per entrance of every Spring (the static map's
+  springs list, each entrance by its tile, in object order then the template's walk), a block
+  `springs` that stands **only while some entrance is emptied**: none when the game is built and
+  after each week's step (every entrance full), as increment 10's dwellings' block (note §6
+  there): a visit that empties one makes it, the forks share it. *Agent's call:* by entrance tile,
+  not the original's counter mod 32 (the counter only feeds the hint's per-player mark, survey
+  §10.6, and a 33rd Spring's shared bit is hint data: not reproduced).
+- **The kind marks** (decision 302): in the per-player block `Flags` (ADR-0016 point 1, the
+  Cartographer types bought and the keys), a list of the types marked, each with its player bits
+  (the original's byte per kind), set for every player of the visitor's team (the visitor alone
+  until E10's teams, `economy::allied`). None until a first mark, as now.
+- **The visit marks are the hero on the map's** (part C; decision 307): the battle bonuses (the
+  unmarked morale and luck and the once-marks with their amounts, moved from the details) and the
+  day's and the week's marks, on `HeroOnMap`, dropped when the hero leaves the map (the user: no
+  visit's effect carries over to a hero that leaves the map and is hired again).
+- **The day of the week** is the game's (its calendar): `AdventureState::apply` (and the revisit,
+  which runs through it) takes it as an input beside the visitor's stream (ADR-0017 point 1; the
+  Idol's and the Temple's amounts, §8.1). *Agent's call:* an input, not a copy in the adventure's
+  state (one fact, one place).
+- The hash (v22): each hero on the map's battle bonuses and timed marks (part C), the fortunes,
+  the springs' block (each entrance as it stands, so no block and a block of full entrances hash
+  alike), the kind marks.
+- *As built* (T114a1, `adventure/e08-t114a1`; decision 323): **the army is not written at the
+  build** (*agent's call*, against the first bullet): `AdventureState::garrison_army` reads
+  `army_left` and else the map's `Holds::Garrison` army, as a mine's guards (`mine_guards`) and a
+  pile's (`guards_left`) already do, so the build and a fork carry nothing new and the hash moves
+  only once a battle writes the survivors (a won battle or a draw an empty army). No version
+  moved: the adventure state hash's v23 stays with T115 (the heroes' marks, the fortunes, the
+  springs, the kind marks).
+- *As built* (T115b, decision 327): `AdventureState::fortunes` (`Option<Arc<[i8]>>`, by the place
+  among `StaticMap::fountains`, drawn in `economy::first_week` and `refill_weekly` as a third list of
+  `in_object_order`, `Drawn::Fountain`); `springs` **the emptied entrances' tiles, sorted**
+  (*agent's call*, against the bullet's bit per entrance of a static list: no static list, and no
+  block and an empty one hash alike), dropped by `start_week`; the kind marks the flags' `kinds`
+  beside `bought` (hashed after the keys); `Weekday` (`CalendarParams::weekday`) passed as
+  `apply`'s `(player, weekday, draws)` and `visit_held`'s `(weekday, draws)`. Adventure state hash
+  v24 (the fortunes and the springs after the dwellings, `hash_visitables`). The fork workloads +24
+  to +28 Ir a fork (the two empty `Option<Arc>`; +0.6 to +1.1 % against `master`).
+
+###### 6. The garrison's visit, battle and capture (ADV-GAR-002; survey §3 to §5)
+
+The step onto the entrance (entered, so the move ends there, ADV-OBJ-003; a guard beside it is met
+first, decision 279) visits it with the hero's owner:
+
+1. **Its team's garrison** (owned by the visitor's team; a neutral one is nobody's): the exchange
+   (§7 of part D; `AdventureOutcome::exchange`).
+2. **Another's or a neutral one holding a creature** (any slot with a creature; the count not
+   read, survey §3: a count of 0 is an empty slot at the import, so unreachable): a battle at once,
+   **no question** (`AdventureOutcome::battle`): the defender the garrison's army as it stands,
+   **unsplit**, its owner's side without a hero for an owned one (`Defender::Garrison`, as an owned
+   mine's guards: its owner plays it outside its turn, batch E9's E9-2) or unowned guards for a
+   neutral one (`Defender::Guards`); fought on the entrance (its terrain, no special field), with
+   `BattleStart::anti_magic` for an anti-magic garrison (part D §14).
+3. **Won, or nothing to fight:** the garrison's army emptied (a win leaves none), **flagged** for
+   the visitor's owner (ADV-OWN-001 amended: `ObjectFlagged`, the flag's reveal of `flag_radius`, 3,
+   around the entrance), then the exchange (§7 of part D). After a battle the flag is the battle's
+   end's (as a mine's, `end_mine_battle`), and the exchange is a **visit's rest** given once the
+   winner's levels are answered (the original's `hero_level_up` call before the dialog, survey §3
+   step 3; part D §13, GAM-DEC-007 amended); nothing when the winner left the map.
+4. **Lost or fled:** the garrison keeps its survivors (written back as a mine's guards), its owner
+   unchanged; the attacker's end as any battle's.
+
+A garrison's army changes only by its battles and its exchange. **A defeat** (a player defeated
+makes its garrisons neutral with their armies, `player_defeated` 0x4F11A0, survey §5) is E10's: no
+defeat is built; ADV-GAR-002's text names it for E10.
+
+*As built* (T114a1; decision 323): `state/garrisons.rs`' `visit_garrison` (`Effect::Garrison`),
+`garrison_battle` (`Defender::Garrison` for an owned one, `Defender::Guards` for a neutral one,
+`battle_at` on the entrance), `end_garrison_battle` (from `end_unowned_battle`: survivors by slot
+as the army, or none and `reward_after` after a win) and `give_won`'s garrison arm (`flag_won`, as
+a mine's: the flag after the winner's levels). Steps 1 and 3's exchange is `ADV-STUB-17` until
+T114a2: a team's garrison's visit, an empty one's capture and a won one's flag open nothing more.
+The survivors' change is told with T114b (`GarrisonChanged`, §15): until then no event and no view
+of a map garrison's army.
+
+###### 7. The passage and the reach (ADV-GAR-004, ADV-OBJ-003 amended; D-59 as the original)
+
+- **A garrison of the mover's team is crossed** by a path and a move without a visit, as a border
+  gate by its key's holders (ADV-VIS-005): `visit_at` with the mover's owner answers `pass` for a
+  garrison whose owner is of the owner's team, so the reach treats its entrance as a tile like any
+  other, on the way or at the end, and the search goes on from it in every direction (the kind is
+  visitable from above, §1). `MoveHero`'s steps over it take no visit; **at the move's end** it is
+  visited (the exchange), as the original's planned destination (survey §7, `hero_move_step`'s case
+  33). Any other garrison (another team's, a neutral one, empty or not) is a destination: the
+  search reaches it and goes no further, the move ends there and visits it.
+- **Every player's path as a human's** (the original's mouse mode; the engine plays every seat so:
+  the computer's paths through other garrisons and its visits on the way are E10's).
+- **Standing in it:** a hero standing on an entrance is met or fought there as any hero (a tile
+  holding a hero is a destination, GAM-BAT-004, GAM-MET-001; the garrison's army does not join it);
+  it leaves the entrance in any direction the kind allows; `Revisit` (ADV-TEL-008) visits the
+  garrison again (the exchange for its team's).
+- **The hot path:** the test is in the reach's visitable branch only (`visit_at`, reached for a
+  tile an object covers), one owner read for a garrison's entrance; the walking loop is unchanged.
+  Measured against `master` right after the first build (`homm3-bench-regression`; part D §16).
+- *As built* (T114a1): `visit_at`'s `pass` for `Effect::Garrison` is the owner's team
+  (`allied`); `StepVisit::visited_at_end` (not passed, or a garrison) decides the visit where a
+  move ends: `move_hero` asks it of the last step's tile when the step met nothing (walking and
+  flying alike), and `visit_held` (a guard beside the entrance fought first) asks it in place of
+  `!pass`; the reach and the passage table are unchanged (a passed garrison is a gate's free
+  tile). `Revisit` still leaves a passed garrison out (its `!pass` filter): the exchange's revisit
+  comes with T114a2. The reach's five workloads against `master`: the log's T114a1 record.
+
+###### 8. The bonus visitables' visits (ADV-BON-002 to -007; survey §10.1 to §10.6)
+
+Every visit reads the hero's marks first (part C) and, when its mark is set, gives nothing and
+tells so (`NothingGained`, `why: Visited`; the original's "visited" message). Each kind's visit,
+after the kind mark (§3) where the survey's table §10.2 sets it on every visit:
+
+1. **`bonus`**: the day's pair (§5's input) on the hero's once-mark (part C: the mark recorded
+   with its amounts); then `points` to the hero's points left and its day's
+   maximum (saturating; the original's 32 bits unbounded), or with `drain` the points left set to
+   0 and the maximum kept (`MovementChanged`); then the kind mark.
+2. **`fountain_of_fortune`**: first the fountain's knowledge for the visitor's team on every visit
+   (`Visits::known`, ADV-VIS-006: the original's tile team bits, which the hint reads); then,
+   unmarked, the luck its value gives, on its once-mark. **The value** is drawn
+   uniformly among `values` from the setup stream in the build's first-week walk (with the weekly
+   objects and the camps, in object order) and from the game's stream in each week's step (the
+   weekly pass, in object order; survey §10.6: among classes 54, 55, 78, 109, 112); a value of 0 is
+   impossible (the part requires `values` non-zero, distinct, at least one).
+3. **`magic_well`**: unmarked (the day mark), with spell points below the hero's maximum
+   (`h3_heroes::max_mana`, HER-MAN-001): `HeroChange::SetSpellPoints(maximum)` and the day mark
+   (its type, part C); at or above: `NothingGained { why: Full }`, **no mark** (so the hero may drink again that day after
+   casting); the kind mark when not marked before (§10.2).
+4. **`magic_spring`**: the kind mark on every visit; the entrance's state (§5): emptied this week
+   `NothingGained { why: Emptied }`; full, with spell points below twice the maximum:
+   `SetSpellPoints(2 × maximum)` (saturating at the 16 bits) and the entrance emptied; at or above:
+   `NothingGained { why: Full }`, the entrance stays full. The other entrance keeps its own state
+   (D-62).
+5. **`stables`**: the week mark clear: `points` to the points left and the maximum
+   (`MovementChanged`) and the week mark (its type, part C); the week mark set:
+   no movement. Then **every visit**: when a slot holds `from` with a count above 0, every slot of
+   `from` becomes `to`, its count kept (`CreaturesUpgraded`, a slot each). No price.
+6. **`sirens`**: §9.
+
+Points and the day's maximum are `HeroOnMap`'s (ADR-0016 point 3), so a later boarding or landing
+with the Admiral's Hat divides by the raised maximum (A-28's proportion; batch E12's E12-15).
+**`Revisit`** visits an entered one again (ADV-TEL-008; its rules unchanged: no step, no points):
+the twelve entered, the Wells and the Idol too (batch E12's E12-14, E12-11); the Buoy, the Mermaids
+and the Sirens, visited from a neighbour, are never stood on (§2, decision 317).
+
+*As built* (T115b, decision 327): `state/visitables.rs` (`visit_bonus`, `visit_fortune`,
+`visit_well`, `visit_spring`, `visit_stables`, `visit_sirens`), `Effect::{Bonus, Fortune, Well,
+Spring, Stables, Sirens}`. The kind marks' points as §10.2 and `E08-rewards.md` §5: a `bonus` kind's
+with its gain, the Well's when not marked, the Spring's every visit; increment 7's gifts once the
+hero is admitted and unmarked (the Schools before the gold, the Tree before its price), the Shrines'
+and Witch Huts' first, the University's at its visit (*agent's call*: the original's after its
+dialog). The Fountain's and the Spring's team knowledge as `Known::Visited` (`AdventureObservation::
+known`; *agent's call*: a variant of its own, not `Emptied`). The Stables' "nothing" when neither the
+movement nor an upgrade (the original's 136).
+
+###### 9. The Sirens (ADV-BON-008; survey §10.5; D-64, A-44, A-45)
+
+- **The losses**, slot by slot in slot order: a stack of more than one creature keeps
+  **trunc(count × keep)** computed as the original's double product: `kernel::num::Real` of the
+  count times `Real` 7 ÷ `Real` 10 (the correctly rounded quotient is the double nearest 0.7, the
+  original's constant 0x63E688), truncated (`Real::trunc_to_i64`); no 16-bit cut (A-45 fixed: the
+  survivors in full width, `ADV-QUIRK-47` recorded as fixed); a lone creature is kept. *Agent's
+  call:* `Real` (ADR-0003's audited surface) rather than an exact integer form: none was found that
+  equals the double product (74 892 counts below 3 000 000 differ from the exact tenths, §10.5),
+  and an integer emulation of the rounding would be a second float model. The count fits a `Real`
+  exactly (below 2^53; the stack's most is 1 000 000).
+- **The experience:** the lost creatures' hit points summed (64-bit, saturating to `u32`) and
+  given through `h3_heroes::gained_experience` (HER-EXP-001's form with Learning: the battle's,
+  survey §10.5), with its levels (`give_levels`, HER-EXP-002's cap); told
+  (`SirensLoss` per slot that lost, then the hero's change), or nothing lost (no `SirensLoss`, the
+  experience 0: the original's message 134).
+- **The mark** is set either way. **A-44, `ADV-QUIRK-46`** (`fix-optional`, decision 301): on
+  (`faithful`) the mark is a battle bonus's and cleared at the next battle's end, so the hero visits
+  any Sirens again after each battle (the original, VCMI); off (`strict-fixed`) the battle's end
+  keeps it, so a hero visits Sirens once (the wiki's bug fixed). **Decided** (308): the fix keeps the
+  original's one mark for every Sirens (a hero that visited one never visits another), the
+  smallest change from the original's bit; not one mark per Sirens object (as HotA's per-object
+  rule may be, unread). The game's clear keeps the marks the part names as outliving a battle
+  under the profile (part C §12.3; decision 308).
+- *As built* (T115b, decision 327): `sirens_keep` (`Real` of the count times `Real` 7 ÷ `Real` 10,
+  truncated, **at least one**: *agent's call*, a pack's smaller part would empty a slot; 90 keeps 62,
+  170 keeps 118, 46 812 keeps 32 768); **the experience is the game's** (*agent's call*: the hit
+  points are the battle part's, which `h3-adventure` does not read, ADR-0005's layers): the visit
+  returns the losses (`AdventureOutcome::drowned`, `Drowned`), `GameState::give_drowned` sums the
+  hit points (saturating, as GAM-BAT-002) through `gained_experience` and gives them with the levels.
+  The flag `quirk.adventure.sirens_again_after_battle` (`QuirkFlag(41)`) came in its own `shared/`
+  pull request first (#909; the base faithful ruleset hash moved, §17); `clear_battle_bonuses`
+  takes the core and the part and keeps every Sirens kind's mark with it off.
+
+###### 10. Information (ADV-GAR-006, ADV-BON-009; ADR-0016 point 6)
+
+- **A garrison:** its type (the anti-magic flag in it: the picture) and owner (the flag) to every
+  viewer that sees it (ADV-OWN-003); **its army at the viewer's level** (survey §8:
+  `garrison_popup` 0x416F80): 3 for the owner's team or a viewer one of whose heroes has Visions at
+  level 3 within reach of the entrance, else the viewer's towns with a standing Tavern, at most 2,
+  shown as the town's garrison by TWN-VEW-002/-003 (`h3_game::GarrisonView`; the game's view, part
+  D §15); its removable flag to the owner's team only (the original shows it in the exchange, to
+  the visitor); a neutral garrison by the viewer's taverns or Visions alone.
+- **The bonus visitables:** their type to every viewer that sees them; **the kind marks** the
+  viewer's team holds (an observation's list of types: the hint's bonus line); the Fountain of
+  Fortune's knowledge by object (`known`); **never** a Fountain's value (the visitor learns it as
+  its hero's bonus) nor a Spring's entrances' state (increment 9's precedent: a weekly object's
+  contents never show, `ObjectView::visited` says "visited once"; a Spring's `known` says the
+  same). The hero's marks and their amounts, its day's and week's marks: in the owner's view of
+  its hero on the map (`OwnHeroView`).
+- **Events** (each new variant breaks `h3-protocol`'s build until mapped: the global trap):
+  `GarrisonChanged` and `GarrisonStackSeen` (part D §15) to every viewer that sees the garrison,
+  at every change of its army or its viewer's level, as the town's `TownChanged` and
+  `TownStackSeen`; `MovementChanged { hero, movement, max_movement }` (owner alone; a part of
+  `SRV-STUB-2` lifted for these visits); `SirensLoss { hero, slot, creature, count }` and
+  `CreaturesUpgraded { hero, slot, from, to }` (owner alone, as `WhirlpoolLoss`); `NothingGained
+  { hero, object_type, anchor, why }` (`Visited`, `Full`, `Emptied`; owner alone); `KindKnown {
+  object_type }` (to each player of the team that did not hold the mark, as `ObjectMarked`).
+  *Agent's call:* one `NothingGained` with a reason rather than `ObjectEmpty` widened (the client
+  draws three different messages).
+- `docs/06-security.md`'s lines (the round's `shared/` task): a garrison's army by the levels; a
+  Fountain's value and a Spring's state hidden; the kind marks the team's.
+- *As built* (T115b, decision 327): the four events as listed (`NothingWhy`), owner alone but
+  `KindKnown`, to the team's players that gained it; `AdventureObservation::kinds` (the types in
+  type order, `kinds_known`); `Known::Visited`; not in `AdventureReveal` (the marks are no tile's).
+  `h3-protocol` v61 (the server lane's T16 and T17 and the town lane's T27 took v58 to v60 first): the wire's four events, `NothingWhy`, `Adventure::kinds`, `Known::Visited`, the
+  fold (`KindKnown` inserted, `SirensLoss` as `WhirlpoolLoss`, `CreaturesUpgraded` the slot's
+  creature, `NothingGained` nothing).
+
+###### 11. Ids, quirks and seams (parts A and B)
+
+Rules: **ADV-GAR-001** (the objects, §1, §4), **-002** (the visit, the battle, the capture, §6),
+**-003** (the exchange, part D §13), **-004** (the passage, §7), **-005** (the anti-magic battle,
+part D §14), **-006** (what a viewer sees, §10); **ADV-BON-001** (the objects, §2, §4), **-002**
+(the battle bonuses, §8.1), **-003** (the Fountain's value, §8.2), **-004** (the movement objects,
+§8.1), **-005** (the Stables, §8.5), **-006** (the Well, §8.3), **-007** (the Spring, §8.4), **-008**
+(the Sirens, §9), **-009** (what a viewer sees, the kind marks, §3, §10). Amended: ADV-OWN-001 to
+-003, ADV-OBJ-003, ADV-VIS-006, ADV-MOV-002 (the maximum raised), ADV-WEK (the Fountain's draws in
+the week's pass), GAM-BAT-011 (219). Quirks: **`ADV-QUIRK-46`** (A-44, `fix-optional`, on in
+`faithful`), **`ADV-QUIRK-47`** (A-45, fixed in every profile, no flag: the ledger records it as
+A-9's are). No stub: nothing in the increment's code is left incomplete (the defeat's neutral
+garrisons and the computer's garrison visits are E10's, named in their rules). No seam changes:
+`h3-contracts`' `EffectSource::Visit { mark }` and `BattleSetup.anti_magic` exist.
+
+##### Part C — the visit marks on the hero on the map, and the hero model's inputs (ADR-0013, ADR-0016 point 3)
+
+###### 12. The battle bonuses and the timed marks on `HeroOnMap` (HER-ADV-008 amended; decisions 306, 307)
+
+1. **Where** (decision 307, the user at ADV-Q50 (3) and (6)): **every visit's effect lives on the
+   hero on the map** (`HeroOnMap`, ADR-0016 point 3), not in the details: no visit's effect carries
+   over to a hero that leaves the map and is hired again. So increment 7's battle bonuses
+   (`h3_heroes::BattleBonuses` in `HeroDetails::bonuses`, ADR-0013 point 1) **move** to the hero on
+   the map with increment 12's, and `h3-heroes` takes them as **inputs** where it derives from
+   them. Every way off the map built today is a battle's end, which clears them anyway; dismissal,
+   a tavern's rehire (E09) and the garrison hero (E09's increment 3) then start a hero without
+   them. *Not read:* whether the original's rehire clears the status bits (the user's call stands).
+2. **The battle bonuses** (`HeroOnMap::bonuses`, an adventure type; decision 306): the morale and
+   the luck no once-mark names (a Pandora's Box's, an event's: the battle's "temporary" sources),
+   each held saturating as now (A-9's class); and **a short dynamic list of once-marks**, each
+   entry the mark and the morale and luck its visit gave, sorted by mark and unique, **no fixed
+   count** (the user: content beyond SoD may add visitables; a hero visits few before a battle).
+   The mark is a `u8` named by the content (decision 306: the seam's
+   `EffectSource::Visit { mark: u8 }` unchanged, at most 256 kinds of once-mark across all content);
+   the Tomb's 0 and the Pyramid's 1 kept, increment 12's twelve 2 to 13 in the original's bit order
+   (the Buoy 2, the Swan Pond 3, the Idol 4, the Fountain of Fortune 5, the Watering Hole 6, the
+   Oasis 7, the Temple 8, the Faerie Ring 9, the Fountain of Youth 10, the Mermaids 11, the Rally
+   Flag 12, the Sirens 13: the original's 2 to 8, 13 to 16, 20). The amounts are kept per mark
+   (survey §10.3: the Fountain's value is the week's and the Idol's and the Temple's the day's, so
+   content cannot give them back); the original's several bits per kind (the Fountain's four, the
+   Idol's and the Temple's two) encode an amount the entry keeps.
+3. **The changes** are the adventure's own, as a hero's points are: a visit adds its pair on its
+   mark only while the mark is not in the list (else nothing, `NothingGained`), the reward record's
+   bonus half (Pandora's Box, events) adds to the unmarked sums (ADR-0013 point 15.2's order kept:
+   the bonuses after the spell points, before the artifacts); a battle's end clears both heroes'
+   bonuses but the marks the part names as outliving a battle under the profile (A-44's flag off:
+   the Sirens' mark; decision 308). `h3-heroes`' `HeroChange::Bonus` and `ClearBonuses` leave
+   (their callers, increment 7's Warrior's Tomb, Pyramid, Pandora's Box and events, move to the
+   adventure's change), and `HeroDetails::bonuses` with them.
+4. **The timed marks** (`HeroOnMap::timed`): the object types whose day's or week's mark the hero
+   holds, sorted (the Magic Well's type, a day; the Stables', a week: each kind names its lifetime,
+   decision 307: by type, no numbering). The adventure's **day start** drops every hero's day
+   marks, its **week start** every hero's week marks (before the turn's points). **The week's land
+   points** are derived, not stored: the `points` of every week-marked type's kind (the Stables'
+   400).
+5. **`derive_battle_hero`** (ADR-0013 point 15.1 amended) takes the hero's battle bonuses as an
+   explicit input from the game (beside the details): the unmarked morale and luck as the
+   temporary source, as now; each once-mark's non-zero morale and luck as
+   `EffectSource::Visit { mark }` (the client lane's CLT-Q40 carry, its inbox of 2026-11-03: the
+   original's +0x105 lines); the battle sums and bounds them (BAT-MOR-001, BAT-LCK-001). A mark of
+   no amount (the Sirens') gives no effect. The input is `h3-heroes`' plain type (the unmarked pair
+   and a slice of (mark, morale, luck)), so `h3-heroes` still knows no object and no adventure type.
+6. **`land_points`** (HER-ADV-003 amended) takes **the week's land points** as an input, added
+   after the growth and the worn artifacts, saturating (`hero_max_land_movement` 0x4E4990 adds the
+   Stables' 400 last while bit 1 holds, survey §10.4), as `sea_points` takes the Lighthouses'
+   (HER-ADV-009's input); on land only.
+7. **The hashes:** the game state hash (v28) loses the details' bonuses; the adventure state hash
+   (v22) gains each hero on the map's bonuses and timed marks. The owner sees them in its
+   `OwnHeroView` (ADR-0016 point 6), no longer in the details' view.
+8. *As built* (T115a, decision 326): `h3_adventure::HeroBonuses` (2) and `VisitMarks` (a hero's
+   bonuses and timed marks, one record with `add`, `add_once`, `add_timed`, `clear_bonuses`,
+   `drop_timed`, `week_land_points`; `ObjectKind::timed_mark`, `MarkLifetime`); **not two fields
+   of `HeroOnMap`** (*agent's call*, measured: +11 to +15 % on every fork workload, one shared
+   pointer a hero still +2.7 to +4 %) but one state block of the heroes on the map that hold any,
+   by hero id (`AdventureState::visit_marks`; an entry dropped once empty, `leave_marks` at a
+   removal; every workload within +1.6 %). The input is `h3_heroes::BattleBonuses<'_>` with a
+   borrowed slice of `VisitBonus` (5), `land_points`' fourth argument (6). The changes are told
+   after a command as `BonusChanged`, `OnceMarkChanged` and `TimedMarkChanged` (the owner's, after
+   `MovementChanged`; `AdventureEventKind` is `Copy`, so no list rides on it); the view's
+   `OwnHeroView::bonuses`, `::timed`. Game state hash v31, adventure state hash v23, protocol
+   v57. The Sirens' kept mark (3) waits for its visit (T115b).
+
+##### Part D — the game, the env, batch E12 and the cut (`h3-game`)
+
+###### 13. The exchange: a decision, the army reference and the one owner rule (ADV-GAR-003, GAM-DEC-009, GAM-MAN-001 amended)
+
+- **A new decision kind, `Exchange`** (GAM-DEC-009): the visiting hero and the garrison, its owner's
+  alone, holding no one else, blocking its owner's `EndTurn` like a meeting, closed by `Close`
+  (the army dialog's answer). While it stands the owner's `Manage::Army` commands may name
+  **the hero's army and the garrison's** (a new `Together::Exchange`, as a meeting's two heroes and
+  an army dialog's hero and group, GAM-MAN-001). The commands change the state at once (no copy, so
+  nothing is written back at the close); the close only closes. It opens at the visit (§6 of part
+  B, a team's garrison, or one just taken) and as the visit's rest after a won battle
+  (`Rest::Exchange`, GAM-DEC-007 amended: a sixth rest, given after the winner's levels). The
+  original runs it modally (`garrison_exchange_dialog` 0x5D1130).
+- **The army reference** (agreed with the town lane, its inbox; E09 decision 67, the town lane's
+  survey `E09-growth.md` §15): **`ArmyRef::MapGarrison(index)`**, the garrison by its object index,
+  a sibling of `ArmyRef::Garrison(TownId)` (a town's, the town lane's to admit in E09 increment 3:
+  its upper bar `Garrison(town)` without a garrison hero, `Hero(garrison hero)` with one). The
+  exchange of both is **one `Together::Exchange { hero, army }`** with the stationary army's
+  reference, so the town screen's rows reuse the decision kind or its `Together` (the town lane's
+  call in T22), and `ArmyCommandError::Garrison` is lifted for an army the open exchange holds.
+- **The one owner rule** (`h3-adventure`'s army commands, ADR-0016 point 3 amended): each army
+  named has a **bar owner**: a hero's its owner; a map garrison's its owner when **removable**,
+  none when not (the original passes −1, survey §6); a town's garrison its town's owner (the town
+  lane's); the group its dialog's owner. A command takes a stack only from a bar of the acting
+  player; into a bar of another owner, none included, only a **move or a split into an empty
+  slot**; never a merge into, a swap with, or a dismissal of such a bar's stack (D-61); a hero's
+  last stack never leaves it (ADV-ARM-002); a stationary army may be emptied. Refused, typed
+  (`ArmyCommandError::NotOwn`, `::OnlyEmpty`), nothing changed. So an own removable garrison takes
+  the army dialog's full rules; a non-removable own one (the only restricted case until E10's
+  teams) only takes stacks into its empty slots: troops left there are its owner's, never taken
+  back. **Decided** (305): the direct reference with a decision (not the Leave Guards dialog's copied
+  group, `Holder::Mine`): the town lane's proposal, one rule for both stationary armies, and every
+  view current after each command (the fold's gate).
+- **Its view** (the owner's): the garrison by type and anchor, its army by slot, its removable
+  flag; told by `ExchangeOpened` (as `LeaveGuardsOpened`), the slots by the commands'
+  `StackChanged` (owner alone) and by `GarrisonChanged` to the other viewers (§15).
+- *As built* (T114a2, `adventure/e08-t114a2`, whole with the user's consent, decision 324):
+  `AdventureOutcome::exchange` (`Exchange`: the hero, the garrison's object index, type and anchor)
+  from `visit_garrison` (a team's garrison; an empty one after its flag) and `give_won` (after the
+  flag; none for a winner no longer on the map); **no `Rest::Exchange`** (*agent's call*, the
+  queue's alternative): the won battle's rest (`Rest::Won`) already waits for the winner's levels,
+  so its outcome opens the exchange as a dwelling's hire question after its guards, and no rest
+  tag moves (ADR-0017 point 6's "sixth rest" reads as this rest's outcome; T117's audit words it).
+  `Decision::Exchange` (hash tag 8; **game state hash v29**), `Together::Exchange { hero, army }`
+  (a map garrison outside its exchange `NotTogether`, another one `DecisionOpen`, the group
+  `NoGroup`), `GameEvent::ExchangeOpened { player, hero, garrison, object_type, anchor, removable }`
+  then each stack as `StackChanged` (`GameEvent` is `Copy`, so the army follows as the commands'
+  own event), `DecisionView::Exchange` with the **object index** beside type and anchor (*agent's
+  call*: the wire's command names the garrison by index, `h3-protocol` maps commands without the
+  state, so the owner's view gives it). The one owner rule in `state/manage.rs` (`held` returns the
+  bar's ownership; `NotOwn` before the plan, `OnlyEmpty` before the command's own rule, a slot
+  past the army's left to `NoSlot`; `ArmyCommandError::NoGarrison` for an index holding none), the
+  garrison's army written through `army_left`. `Revisit` takes `visited_at_end`. The build forced
+  two of T114b's pieces here: the replay text's `m<index>:<slot>` (**adventure replay format
+  v13**) and `h3-protocol`'s mapping (`cross-lane`, protocol v52: the wire's `MapGarrison`, the
+  three errors, the decision and its event, the fold of the owner's decision).
+
+###### 14. The battles (GAM-BAT-001 amended, ADV-GAR-005; D-60 as the original)
+
+- **A garrison's battle** is built as an owned mine's (`Defender::Garrison`: an army without a hero,
+  its owner's side, played outside its turn) or a guarded object's (`Defender::Guards`, the neutral
+  seat's); its terrain the entrance tile's, its background by the scenery (GAM-BAT-011 with 219).
+  Its end writes the defender's survivors back on the garrison (`GarrisonChanged`), and a win flags
+  it and holds the exchange (§13).
+- **Anti-magic:** `BattleStart::anti_magic` (new) is set when **the battle's tile is an anti-magic
+  garrison's entrance**: the garrison's own battle and a hero standing in one attacked by another
+  (`tile_special_ground` 0x4FCE20's two cases, survey §4; the battle's tile is the defender's); the
+  game sets `BattleSetup.anti_magic` from it (BAT-TER-002, built by the battle lane: every cast of
+  both sides refused). A hero attacking out of a garrison (the defender beside it) fights with
+  magic (the attacker's tile is not the battle's).
+- *As built* (T114a1; decision 323): **a query, not a field** (*agent's call*, against the first
+  bullet's `BattleStart::anti_magic`): `AdventureState::anti_magic(part, tile)` answers whether
+  the tile is an anti-magic garrison's entrance, and `start_battle` sets `BattleSetup.anti_magic`
+  from it with the start's tile (the defender's); no `BattleStart` literal changes, so the town
+  lane's siege and its tests and the server lane's mapping stay untouched, and the flag reaches
+  viewers through the battle's own observation (ADR-0022 point 6). A siege never stands on a
+  garrison.
+- **The battle's end clears both heroes' battle bonuses** (GAM-BAT-014 amended: now the
+  adventure's change of its heroes on the map, the game calling it), keeping the marks the part
+  names as outliving a battle under the profile (§12.3; A-44, decision 308). The battle's setup
+  takes each hero's bonuses from the hero on the map for `derive_battle_hero` (§12.5).
+
+###### 15. The day, the week and the views (`h3-game`; GAM-CAL amended, ADV-GAR-006)
+
+- **The day's start:** the adventure's day step drops every hero on the map's day marks;
+  **the week's start:** its week marks (before the turn's day points are computed, so a new
+  week's first day has no Stables' 400), then the adventure's week step refills every Spring's entrance (drops `springs`) and draws each
+  Fountain's value in the weekly pass (§8.2), in object order with the Windmills, Gardens and
+  camps (ADR-0017 points 3 and 4).
+- **The weekday** passed to `AdventureState::apply` is the calendar's day of the week (1 to 7,
+  the original's game +0x1F63E).
+- **A map garrison's view** is the game's, as a town's (the levels need the viewer's taverns and
+  heroes' Visions, which the game holds): `GameObservation`'s map garrisons by object (type and
+  anchor), each `GarrisonView` (TWN-VEW-002, -003: `garrison_view` and the tavern and Visions
+  levels, `hero_visions_level` with Visions' parameters from the town part, the town lane's inbox
+  note of 2026-11-06), its removable flag to the owner's team. Told by `GarrisonChanged {
+  player, object_type, anchor, owner, level, slots }` with a `GarrisonStackSeen` per stack, at
+  every change: a battle's end, an exchange's command, a capture, and whenever a viewer's level
+  changes (its towns' Taverns, a hero's Visions in reach: the town lane's `TownChanged` triggers,
+  one function for both). *Agent's call:* the town lane's events' shape for the map's garrisons
+  rather than `GuardsChanged`'s (a mine's hint), since the levels are the same.
+  *As built (T114b, decision 325):* `h3-game`'s `garrisons.rs`: `MapGarrisonView` (type, anchor,
+  owner, the town's `GarrisonView`, `removable` to the owner's team) in `GameObservation::
+  garrisons` and `GameReveal::garrisons` (explored since the grid), in object order, the map's
+  ownable objects holding `Holds::Garrison`; the levels by the town lane's `tavern_level`,
+  `visions` and `in_visions` (now `pub(crate)`), Visions from the garrison's entrance.
+  `GarrisonChanged { player, object_type, anchor, owner, level, slots, removable }` (the flag added
+  for the new owner's team at a capture) and `GarrisonStackSeen { player, object_type, anchor,
+  stack, slot }`, each to its viewer alone; `garrisons::Told` (before and after, a recording sink
+  only) at a garrison battle's end (`state/battle.rs`, the battle's tile's garrison by the now
+  public `AdventureState::garrison_at`) and an exchange's army command (`state/manage.rs`'
+  `garrison_told`), held in the town lane's `town::Told` for the Taverns' triggers (a Tavern's
+  build, a town's capture: `every`'s players' views of every garrison, told after the towns');
+  a capture through `AdventureOutcome::garrison_flagged` (`visit_garrison`'s empty arm,
+  `give_won`'s), told to every viewer that sees it before `ExchangeOpened` (`garrisons::
+  tell_all`). Visions' reach: `TWN-STUB-13` extended. The wire (protocol v54, after the town lane's v53): `MapGarrison` (its
+  `place`), the two events, the fold's `put_garrison` (a garrison not seen yet put in its place).
+  No version but the protocol's moved; no replay changed (no fixture map holds a garrison).
+- **The kind marks** in the observation: the types the viewer's team holds (`AdventureObservation`,
+  `KindKnown` when one is added).
+
+###### 16. The env, replays, fixtures, properties, benchmarks
+
+- **The env** (the AI lane's; `AdventureEnv`): no new action: `Exchange` is answered by the close
+  role the army dialog uses, so **action encoding v8 stays** (*agent's call*; else v9, `cross-lane`).
+  Random play closes it; a scripted replay exchanges. The observation's additions are the AI
+  lane's to encode (no flat encoding, decision 187). The env's `apply` passes the weekday.
+- **Replays:** no new command; a management line naming a map garrison's bar needs the replay
+  text's `MapGarrison` reference: **adventure replay format v13**. Two new maps written by
+  `h3_map::writer` (its seventeen classes, T109's writer work): **`e08-garrisons-36.h3m`** (owned,
+  neutral, empty, armed, non-removable and anti-magic garrisons in passages between two players'
+  starts; a level-1 hero of each beside one) and **`e08-bonuses-36.h3m`** (each of the fifteen,
+  the sea's three on a strait, two Springs, two Fountains, Stables with Cavaliers in reach). Golden
+  replays: random play on each (three each, seeds per `adventure_replays.rs`) and scripted ones
+  (the exchange's moves and refusals, a garrison won and its exchange after the levels, the
+  passage through an own garrison, the Sirens twice around a battle in both profiles, a Spring's
+  two entrances, the Stables twice in a week and a new week). Every golden replay's hash lines
+  move with the hashes (`homm3-rerecord-replays`).
+- **Properties** (`h3-map`'s `play.rs`): the seventeen kinds in the plans (`GARRISONS`, `BONUSES`),
+  `Step::Exchange` with arbitrary army commands; `check_garrisons` (an army only changes by its
+  battle or the exchange; the owner rule never broken; a non-removable garrison's stacks never
+  leave), `check_bonuses` (a mark set once per battle; the amounts the visit's; the day's and the
+  week's marks cleared at their steps; the points and the maximum raised together; the Sirens'
+  survivors at least one, never more); the views follow (`check_told` for `GarrisonChanged`);
+  fixed cases (256) that visit every class.
+  *As built* (T116b1, decision 329: the garrisons; the fifteen in T116b2): `GARRISONS` (33.0, 33.1,
+  219.0, 219.1; an RoE map's vertical one laid as its horizontal twin), `GarrisonPlan` (owner,
+  army, removable flag), `Step::Exchange`, `check_garrisons` with `check_garrison_battle_end` and
+  the exchange in `check_decisions`; the fixed cases 512, the oracles run inside them
+  (`the_plans_cross_fight_and_exchange_at_garrisons`); `check_told`'s `GarrisonChanged` (T114b)
+  unchanged, now met by the plans' garrisons.
+  *As built* (T116b2, decision 330): `BONUSES` (the twelve on land by the original's templates,
+  one to five near the heroes; the Buoy, the Mermaids and the Sirens one tile each on the strait,
+  as the Whirlpools: the original's three columns do not fit its narrowest), Cavaliers beside a
+  Stables, `Step::Bonus`; `check_bonuses` (the once-marks only grow but at a battle's end, which
+  keeps the Sirens' with `ADV-QUIRK-46` off, at most one joining a command, with the kind's
+  amounts; the timed marks dropped at the day's and the week's steps; a visit's movement, spell
+  points, upgrades and Sirens' part, `sirens_kept` read apart from the engine's double product;
+  the kind marks only grow, each told); `landing`, `check_legal`, `check_revisits` and
+  `check_conservation` take the visits' events and gains; the hygiene property ends at the
+  viewer's own visit of a Fountain (its value the build's draw) or a Spring emptied in one game, and
+  at an exchange of a garrison whose index `vary` moved; the fixed cases 512
+  (`the_plans_visit_the_bonus_visitables`).
+- **Benchmarks** (`homm3-bench-regression`): the passage in the reach first (T114a, right after
+  its first build): `reach-xl-144` and `reach-lifted-xl-144` against `master` (no garrison: flat),
+  a new **`reach-garrisons-xl-144`** (an XL map with garrisons across its passages, owned by the
+  mover, another and none); `random-play-garrisons-36` and `random-play-bonuses-36`; the forks
+  carrying the new blocks (`fork-bonuses-xl-144`, a Spring emptied and the fortunes). The hero
+  on the map's growth (two small lists, empty for most heroes) is measured in the fork and play
+  workloads.
+  *As built* (T116c, decision 331): `e08-garrisons-bonuses-144.h3m` (`garrisons_bonuses_xl_map.rs`:
+  one level, five rows of four regions, the census's most of each class on one map, 16 horizontal
+  and 11 vertical garrisons on every way between two regions but four, the fifteen at their most,
+  193; ten heroes, 177 gnoll stacks); `reach-garrisons-xl-144` (seed 4: 9 000 walkers' queries, 9.2 %
+  reaching a garrison's entrance, 4.9 % an own side's, crossed), `fork-bonuses-xl-144` (`h3 adventure
+  bench`'s `--spring 1`: the heroes seek the Springs until a visit empties one, the forks then
+  carrying it with the Fountains' values; random play's seven days end at the week's refill),
+  `random-play-garrisons-36` (seed 7), `random-play-bonuses-36` (seed 6), each baselined at its
+  first count; the reach's five at their counts. The hero on the map's growth is T115a's state
+  block by hero id, not two lists (measured there on every fork and play workload).
+- `--with-original-data`: the census's numbers (§1) and the import of all 160 shipped maps with
+  the seventeen classes typed (4 323 objects become typed on 159 maps: their entrances end paths,
+  so the shipped-map counts in `original_data.rs` move once).
+
+###### 17. Versions, rule ids, quirks
+
+| Version | From | To | By |
+|---|---|---|---|
+| adventure ruleset part | v19 | **v20** | T113a: the six bonus kinds, `garrison`, `kind_mark` (done) |
+| map import | v21 | **v22** | T113b: the seventeen classes, the garrison's body (done) |
+| adventure state hash | v21 | **v22** | T113b: `Holds::Garrison` in the static map (done; decision 321) |
+| adventure state hash | v22 | **v23** | T114a, T115a, T115b: the heroes' bonuses and timed marks, the fortunes, the springs, the kind marks |
+| game state hash | v27 | **v28** | T114a (`Exchange`, `Rest::Exchange`), T115a (the details lose the bonuses); *as built* v28 was E09 T25a's, v29 T114a2's (the exchange, no new rest) |
+| adventure replay format | v12 | **v13** | T114b: `MapGarrison` in management lines; *as built* T114a2's (the build needs it) |
+| env action encoding | v8 | v8 | none (§16) |
+| `h3-protocol` | v40 | the server lane's | the mapping, `cross-lane` in T114b and T115b; *as built* v52 T114a2's (the exchange), v53 E09 T26a2's (the week's kind), v54 T114b's (the views and their events) |
+
+Unmoved: the pack format (no core change). *Corrected* (T115b, decision 327): `ADV-QUIRK-46`'s
+flag is a profile flag, so the base faithful ruleset hash moved (0x4373…86a3 to 0xb5c0…73f9; no
+encoding change, `RULESET_HASH_VERSION` 53 kept), in its own `shared/` pull request (#909). As built
+too: adventure state hash v24 and protocol v61 (T115b). The ids: part B §11 and part
+C §12 (HER-ADV-003, HER-ADV-008 amended; HER-MAN-001 read), GAM-DEC-009 new, GAM-DEC-007,
+GAM-MAN-001, GAM-BAT-001, GAM-BAT-014, GAM-CAL amended; `ADV-QUIRK-46`, `-47`; decisions 304 to
+309 (next 310).
+**The numbers are the next after today's, not reserved:** the town lane's E09 increment 3 plans
+the same next ones (its T22a note: the game state hash for the week's kind, map import v22 for
+`GameSetup`'s `roe` flag, pack format v52 for its two `HeroEffect` kinds, which increment 12 does
+not touch), so whichever task merges first takes a number and the other rebases and bumps again
+(the town lane's `TRAPS.md`; E09 T22b's cut orders its bumps with these).
+
+###### 18. Batch E12
+
+Survey §12's sixteen rows in two runs, with one added row; on the client lane's harness in SoD on
+Easy, hot seat, from maps `h3-experiment` writes:
+
+- **E12a** (the garrisons, day 1, two players): E12-1 to E12-6.
+- **E12b** (the bonus visitables, days 1 to 7 and the next week's first, one player): E12-7 to
+  E12-16, and **E12-17** (added): Red's hero without gold visits a School of War (refused: no
+  gold), then the hint over a second School of War (the kind mark set before the gold test,
+  `E08-rewards.md` §6.1: the bonus line shown). It checks one of increment 7's set points, which
+  decision 302 builds from that reading.
+- **Predictions added** to E12-4 (Blue's hero attacks from a tile beside the garrison: no cast for
+  either; a second battle where Red's hero in the garrison attacks Blue beside it: casts allowed,
+  §14), to E12-10 (the second hero's Champions after its own visit the same week: upgraded, no
+  points) and to E12-13 (the day's maximum after the Swan Pond kept at the Oasis's raised value).
+- **The writer and the spec** (T109; the spec `h3-experiment`'s, battle-owned, `cross-lane`; the
+  writer this lane's): the garrisons by class and subclass with an owner, an army and the removable
+  byte; the fifteen classes by template; a hero's spell points and army at the start; a second
+  player's hero (E12-4).
+- **The harness** (T110; `clients/capture/`, common): reads of a hero's +0x105, +0x11A, +0x11B,
+  +0x49, +0x4D, +0x18 and of a tile's word (the Fountain's value, the Spring's bit 6), ending turns
+  to a given day; the hint's text (E24's `visits` reads it). The rows' verdicts (T111) fold into
+  the ADRs at the `shared/` task (T112).
+- *Scored* (T111, survey §15): **every row as read** (D-59 to D-64 and A-44 confirmed, the raised
+  maximum and the Hat's proportion by it as the original; the attack's and the meeting's steps
+  paid, as built). Beyond the rows the visit modes of §2 were the templates', not the original's
+  class list: corrected there and in §8 (ADV-Q51, decision 317).
+
+###### 19. Shared and `cross-lane` work; the building tasks; the exit criteria
+
+**Shared and `cross-lane`:** the `shared/` task (T112, `cross-lane`, as increment 11's T102): the
+three drafts applied with batch E12's outcome; `docs/03-domain.md`'s terms (map garrison, exchange,
+bar owner, anti-magic garrison, bonus visitable, once-mark and its amounts, day mark, week mark,
+kind mark, the Fountain's value, a Spring's entrance); `docs/06-security.md`'s lines (§10). No core
+or contract change. `cross-lane` elsewhere: batch E12's spec (`h3-experiment`, T109), the harness
+(common, T110), `h3-protocol`'s mapping of the new events, decision, reference and details (T114b,
+T115b: the server lane's inbox first, or `cross-lane` in the same pull request). **The inboxes:**
+the town lane's (the army reference agreed, now: §13; the versions' order; the views' triggers,
+§15), the server lane's (the wire items, `SRV-STUB-2`'s part, T114b), the AI lane's (v8 kept, the
+weekday in `apply`, the new decision answered by its close role), the client lane's (CLT-Q40's
+amounts, T115a), the map client lane's (the seventeen types, the garrison's view, the kind marks
+for the hint, T113a and T115b).
+*As built* (T112, `shared/e08-t112`, `cross-lane`; decision 318): the three drafts in ADR-0013
+(points 1, 2, 13.1, 15.1, 15.2), ADR-0016 (points 1, 3, 4, 5, 6) and ADR-0017 (points 1, 2, 3, 4,
+6, 9, 10, 11), each with batch E12's rows cited, and deleted; the index's Read-when cells; the
+glossary's terms (a Fountain's value and a Spring's entrance among them, the battle bonuses' line
+amended); `docs/06-security.md`'s increment 12 section (§10's lines and the exchange's
+validation); `EffectSource::Visit`'s doc comment; the experiments README's visit modes (decision
+317). No version moved.
+
+**The building tasks**, in rounds of one or two (ids continue the epic's; each task's cut
+confirmed at its start). **Batch E12 runs before the build and before the shared task** (decision
+303), so the ADRs are applied once with the rows' verdicts:
+
+| Round | Tasks | Content |
+|---|---|---|
+| 2 | **T109** | Batch E12's maps: the writer's seventeen classes (the garrison's body, the fifteen by template), the spec's fields (`cross-lane`), the two specs and templates (§18) |
+| 3 | **T110** + **T111** | T110: the harness's reads, the recipes, the runs E12a and E12b. T111: scored (survey §15) |
+| 4 | **T112** | `shared/` (`cross-lane`): the three ADRs with T111's outcome, the glossary, `docs/06-security.md` |
+| 5 | **T113** | T113a: the kinds, the packs, the kind marks' flag, the harvest's check (§1 to §3; part v20). T113b: the import, the random stack's refusal, 219 in the background's classes (§4; map import v22); a step onto them refused as any unbuilt visit's until T114 and T115 |
+| 6 | **T114** | T114a: the garrisons' state, visit, battle, capture, anti-magic, the passage with the reach's measure against `master`, the exchange's decision, `ArmyRef::MapGarrison` and the owner rule (§5 to §7, §13, §14; game state hash v28, adventure state hash v22). T114b: the views and their events (`GarrisonChanged`), the replay format v13, the env's close, `h3-protocol`'s mapping (`cross-lane`), the town lane's inbox |
+| 7 | **T115** | T115a: the battle bonuses moved to the hero on the map as the dynamic list, increment 7's Tomb, Pyramid, Pandora's Box and events moved with them, the timed marks, `derive_battle_hero`'s and `land_points`' inputs, the battle's clear and the day's and the week's drops (§12, §14, §15; the client lane's inbox). T115b: the fifteen's visits, the Fountain's block and draws, the Springs' block, the Sirens (`ADV-QUIRK-46`, `-47` entries), the kind marks, the weekday in `apply`, the events and views (§8 to §10) |
+| 8 | **T116** + **T117** | T116: the two maps, their replays and properties, the benchmarks, `--with-original-data` (§16). T117: the audit against the exit criteria; increment 12 closed; increment 13 refined (both done: T116a to T116c, T117 whole) |
+
+*Agent's call:* the garrisons before the bonus visitables (they share nothing but the import and
+the versions; the town lane's T22 waits on the army reference built, not only agreed), each a round
+of two.
+
+**Increment 12's exit criteria:**
+1. The seventeen classes import typed by the packs of their expansions (33's and the fifteen in
+   the base pack, 219's in the AB pack); a random stack in a garrison is refused, a count of 0 is an
+   empty slot; the census holds (ADV-GAR-001, ADV-BON-001).
+2. A garrison of the visitor's team opens the exchange; another armed one is fought at once, unsplit,
+   its owner's side or unowned guards; a won or empty one is flagged with its reveal, then the
+   exchange after the winner's levels; a lost battle leaves the survivors (ADV-GAR-002, ADV-OWN-001).
+3. The exchange's commands follow the one owner rule: an own removable garrison the army dialog's
+   rules, a non-removable one only moves and splits into its empty slots (D-61); the town lane's
+   reuse agreed and built (E09 T28a: `ArmyRef` and the owner rule's lookup, a town's two bars
+   admitted outside a decision) (ADV-GAR-003, GAM-DEC-009, GAM-MAN-001). *Worded as built at T117.*
+4. A path and a move cross the mover's team's garrisons without a visit and visit the one at their
+   end; every other garrison is a walker's destination (D-59; a flight passes over it as over any
+   entered object's tile, ADV-MOV-009); the reach's workloads hold their baselines (ADV-GAR-004,
+   ADV-OBJ-003). *Worded as built at T117.*
+5. A battle on an anti-magic garrison's entrance, its own or a hero's standing on it, has no casts
+   (D-60; ADV-GAR-005).
+6. The ten `bonus` kinds and the Fountain give their morale and luck once until the next battle,
+   by the day (the Idol, the Temple) and the week's value (the Fountain); each mark reaches the
+   battle as its own source (ADV-BON-002, -003, HER-ADV-008).
+7. The movement objects raise the points left and the day's maximum, the Swan Pond empties the
+   points; the Stables give the week's movement once and upgrade at every visit (D-63); the Well
+   fills to the maximum once a day, a full hero unmarked; each Spring entrance to twice it once a
+   week (D-62) (ADV-BON-004 to -007, HER-ADV-003).
+8. The Sirens keep the double product's survivors (D-64) in full width (A-45), give the experience
+   with its levels, and are visited again after a battle only with `ADV-QUIRK-46` on (A-44)
+   (ADV-BON-008).
+9. A viewer sees a garrison's owner and its army at its level, the removable flag only in its
+   owner's team; the kind marks its team holds; on the map never a Fountain's value or a Spring's
+   state (a battle's public lines show the luck a visit gave its hero, CLT-Q40); the events as §10
+   and §12.8 list (the owner's `BonusChanged`, `OnceMarkChanged`, `TimedMarkChanged`), a change
+   of a Visions holder's reach untold (`TWN-STUB-13`) (ADV-GAR-006, ADV-BON-009). *Worded as built
+   at T117.*
+10. Every new rule has its id, source and tests; `ADV-QUIRK-46` and `-47` recorded; the gates pass
+    (coverage, determinism with the new and rehashed replays, the benchmarks at their baselines and
+    the new ones baselined); batch E12 run and scored (T111), the consensus rows `verified`.
+
+###### 20. Risks and open points
+
+- **Two lanes in the same crates:** the town lane's E09 increment 3 (T22 on) builds the town
+  screen's exchange on §13's reference and touches `h3-game`'s decisions and `h3-adventure`'s army
+  commands; whichever builds first, the other reuses it (E09 decision 67). The versions of §17 are
+  taken in merge order. The weekday parameter of `apply` (T115b) touches every caller: a wide,
+  mechanical change in its own commit, the town lane told first.
+- **The reach's visitable branch** gains an owner read for garrisons: flat on the maps without
+  them, measured on `reach-garrisons-xl-144`.
+- **4 323 objects stop being inert** on 159 shipped maps: the entrances become destinations, so
+  any test that used one of these classes as a plain blocker breaks (`TRAPS.md`), and the
+  shipped-map counts move once (T113b, T116).
+- **The bonuses move** (decision 307): increment 7's Tomb, Pyramid, Pandora's Box and events, the
+  battle's clear (GAM-BAT-014), `derive_battle_hero`'s callers (the game's battle setup, the
+  siege's defender, the tests) and `h3-protocol`'s details mapping change in one task (T115a), its
+  own commit, the server and town lanes told first. **A garrison hero** (E09's increment 3) needs
+  its bonuses and timed marks kept while it stands in a town's garrison if it leaves the heroes on
+  the map (the town lane's call; its inbox).
+- **A-44's fix** (decision 308: one mark for every Sirens under `strict-fixed`) cannot be checked
+  by a batch row (SoD reproduces the bug).
+- **Not read** (survey §3, §7, §10): the computer's garrison visits and paths (`ai_garrison_visit`
+  0x524370; E10), network play, the pictures and sounds (E24), the garrison dialog's drawing of
+  the removable flag; whether anything ends the move after a won garrison battle beyond the visit's
+  end (increment 3's battle rules hold).
+- **Not in increment 12** (decision 295): the trades and services, the information objects, the
+  Prison, the Market of Time, creature banks, quests, the adventure spells, simultaneous play,
+  towns (E09), a computer player's routes (E10), a defeat's neutral garrisons (E10).
