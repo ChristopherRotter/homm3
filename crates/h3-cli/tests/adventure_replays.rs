@@ -666,11 +666,16 @@
 //! garrison; red's day-1 event of the Shipyard, skipped for want of water, and the Resource Silo;
 //! blue's every-day 500 gold), blue's main Conflux "Nexus" (a Capitol, the Altar of Water
 //! forbidden) and blue's Tower "Spire" (the Capitol's requirements; blue's day-2 event of the
-//! Capitol). Scripted, recorded with `h3 adventure run --map fixtures/maps/e09-builds-36.h3m --seed
-//! 1 --checkpoint-every N --script <script> --record <replay>` (N 3, 1 and 2 in the order below: a
-//! checkpoint a day, a command, a day); a replay holds no refused command, so each refusal of a
-//! build is `h3-map`'s test `each_refused_build_on_the_builds_map_changes_nothing` (the Capitol
-//! refused while another stands among them):
+//! Capitol); since E09 T29a (increment 3's gates) red's Dungeon "Pit" (a Fort, the Warren and its
+//! horde, the Portal of Summoning, the Grail's Guardian of Earth), the neutral Rampart "Grove" (a
+//! Fort, two dwellings, six Centaurs), red's Valeska (hero 2, four pikemen) on (3, 10) and red's
+//! Guardhouse owned at the start (the Portal's Pikemen); the six replays below re-recorded then
+//! from their commands (only hash lines moved). Scripted, recorded with `h3 adventure run --map
+//! fixtures/maps/e09-builds-36.h3m --seed 1 --checkpoint-every N --script <script> --record
+//! <replay>` (N 3, 1 and 2 in the order below: a checkpoint a day, a command, a day; T29a's three
+//! 2, 1 and 2); a replay holds no refused command, so each refusal of a build is `h3-map`'s test
+//! `each_refused_build_on_the_builds_map_changes_nothing` (the Capitol refused while another
+//! stands among them):
 //!
 //! - `builds-week-s1`: one build a day in the Harbour for a week (TWN-BLD-001, the mark
 //!   TWN-BLD-004): the Shipyard (its water; the day-1 event's Marketplace and Blacksmith left the
@@ -689,6 +694,27 @@
 //!   (no dwelling stands, so they are lost, TWN-EVT-004), the weekly gift on day 8;
 //!   the Spire's Capitol on day 2 beside the Nexus' (T-8, TWN-EVT-003), so that blue's halls pay
 //!   8 000 gold a day from day 3; the Keep's event of blue's never fires (red's town).
+//! - `builds-month-s1` (E09 T29a; design note §47's growth through a month): red builds the
+//!   Keep's horde (the Upg. Griffin Bastion, no first creatures, TWN-GRO-005) on day 1, then both
+//!   players end their turns to day 29: four weeks of growth (TWN-GRO-001, -003: the Keep's Castle
+//!   and its horde, red's Guardhouse counting at the Pikemen, the Pit's horde and Grail: its
+//!   Troglodytes 14, 45, 76, 107), week 3 a creature's (not one of the towns'), the Grove's
+//!   garrison week (TWN-GRO-006: Dwarves in week 2, Centaurs in week 3, Dwarves again in week 5,
+//!   each taken from its level's count) and its halved growth, the Pit's Portal drawn each week
+//!   (TWN-GRO-007), and month 2 a Plague (TWN-GRO-004: each count less its growth, halved; the
+//!   Grove's less its full growth, `TWN-QUIRK-9`).
+//! - `builds-rows-s1` (E09 T29a; design note §55's recruitment and rows): on day 1 Orrin visits
+//!   the Keep and red buys three Royal Griffins and four Griffins from the Upg. Griffin Tower's one
+//!   count into the town's garrison (TWN-REC-001), Orrin enters it, absorbing them (TWN-ROW-002),
+//!   red buys the Pit's Portal's fourteen Pikemen (TWN-REC-002) and Valeska walks near; a week in
+//!   the garrison (TWN-ROW-005); on day 8 Orrin leaves with his full points and walks off
+//!   (TWN-ROW-003), Valeska visits and enters, Orrin comes back and the two swap (TWN-ROW-004).
+//! - `builds-siege-s1` (E09 T29a; design note §54): Orrin enters the Keep's garrison and Valeska
+//!   stands on its entrance; on blue's day 1 Yog attacks her there, beside the garrison hero a
+//!   battle outside the town (row 1, GAM-BAT-001: no walls), wins and she leaves the map; then he
+//!   besieges Orrin alone (row 3, TWN-SIE-001: the walls), wins, answers his level-up, and the
+//!   Keep is captured (TWN-CAP-003). Each battle's commands are `h3_sim::bots::aggressor`'s for
+//!   the side to act (a scratch generator, not committed).
 //!
 //! Random play with builds (E09 T19c1, the env's action encoding v9: the random agent draws each
 //! listed build), recorded with `--map fixtures/maps/e09-builds-36.h3m --seed N --agent-seed N

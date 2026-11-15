@@ -22,13 +22,13 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x121134829a0bbdf0",
-    "0x23363416889937b7",
-    "0xc41c1df4d8f93c97",
-    "0xb1681df4ad1a98a4",
-    "0xa7830973c4ebc036",
-    "0x92ca7cb6bd7ed001",
-    "0xc1c1a6c12e1183fe",
+    "0xdf30373d049611a9",
+    "0x1f45740b59da0dbc",
+    "0x26bcf1dceab6c4e7",
+    "0x338279293474fefa",
+    "0xcaa54d8296207405",
+    "0x82715e5510c44dea",
+    "0x27a17a6133719e5f",
 ]
 
 [replay]
@@ -64,9 +64,9 @@ checkpoint_every = 3
 
 [map]
 path = "fixtures/maps/e09-builds-36.h3m"
-hash = "0x147b89367ea763a3"
+hash = "0x36e954b6f38638d8"
 import_version = 23
 
 [result]
 day = 8
-final_hash = "0xc1c1a6c12e1183fe"
+final_hash = "0x27a17a6133719e5f"

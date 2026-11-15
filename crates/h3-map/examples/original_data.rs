@@ -53,7 +53,14 @@
 //! checked against the census's own walk of TWN-EVT-001 and -003 from the towns' records before
 //! their events, the events counted by why they fire or not and their buildings by what became of
 //! each; and the fixed towns' events in the survey's order (`E09-construction.md` §10) checked
-//! against its census (57 built, 30 skipped as standing, 27 without a requirement).
+//! against its census (57 built, 30 skipped as standing, 27 without a requirement). Since E09
+//! T29a (the town epic's increment 3, design §47) every such game is also played by `EndTurn`
+//! alone to day 29, each town's fourteen counts checked after every `EndTurn` against the
+//! census's own walk of growth (TWN-GRO-001 to -006, TWN-EVT-004; design §41 to §46: the setup's
+//! first creatures, each week's growth and bonus, the neutral garrison weeks read from the
+//! garrisons, month 2's kind, the town events' builds and creatures), the owners' standing
+//! Portals after each week against their dwellings (TWN-GRO-007), and what of the growth's sum
+//! the towns read counted.
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -101,6 +108,7 @@ struct Peaks(
     ChannelCensus,
     TownEvents,
     Increment12,
+    Growth,
 );
 
 /// The census of the channels the game's build gives (E08 T104, [`built_channels`]; ADV-TEL-002,
@@ -470,6 +478,7 @@ fn main() -> ExitCode {
     failures += teleporter_differences(&peaks);
     failures += increment_12_differences(&peaks.11);
     failures += town_event_differences(&peaks.10);
+    failures += growth_differences(&peaks.12);
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
         println!("  {outcome}: {}", maps.len());
@@ -670,6 +679,10 @@ fn check(
             if name.eq_ignore_ascii_case("Tutorial.tut") {
                 tutorial(&game, rules)?;
             }
+            // E09 T29a: growth played by `EndTurn` alone to day 29 (increment 3's exit
+            // criterion 11).
+            played_growth(game.clone(), rules, &mut peaks.12)
+                .map_err(|e| format!("growth: {e}"))?;
             // E09 T19c2: the town events played by `EndTurn` alone (exit criterion 6).
             played_town_events(&setup, game, rules, &mut peaks.10)
                 .map_err(|e| format!("played: {e}"))?;
@@ -3231,4 +3244,640 @@ fn town_event_differences(census: &TownEvents) -> usize {
         );
         1
     }
+}
+
+/// The census of growth played (E09 T29a, [`played_growth`]; increment 3's exit criterion 11,
+/// design §47): its counts, and the weeks' and months' kinds by name.
+#[derive(Default)]
+struct Growth(BTreeMap<&'static str, usize>, BTreeMap<String, usize>);
+
+/// The days every map is played for growth (E09 T29a, [`played_growth`]): four weeks, then month
+/// 2's first day (day 29) to its end.
+const GROWTH_DAYS: u32 = 29;
+
+/// The creature at a count index of `record` (index `level - 1` the level's base, `level - 1 + 7`
+/// its upgrade), the census's own reading of the store's layout.
+fn growth_creature(record: &h3_towns::TownRecord, index: usize) -> Option<CreatureTypeId> {
+    let levels = h3_towns::CREATURE_INDEXES / 2;
+    let level = record.creatures.get(index % levels)?;
+    if index < levels {
+        Some(level.base)
+    } else {
+        level.upgrade
+    }
+}
+
+/// What a town's growth reads besides its record (TWN-GRO-001's inputs, design §41), the census's
+/// own gathering from the game: its owner, the owner's highest share, the Legion of its visitor
+/// and its garrison hero, the owner's dwellings by the index of their first creature.
+struct GrowthIn {
+    owned: bool,
+    share_bp: u32,
+    legion: [u32; 7],
+    dwellings: [u32; h3_towns::CREATURE_INDEXES],
+}
+
+/// `town`'s [`GrowthIn`] in `game`.
+fn growth_in(
+    game: &GameState,
+    rules: &GameRuleset,
+    town: TownId,
+    record: &h3_towns::TownRecord,
+) -> Result<GrowthIn, String> {
+    let (adventure, core) = (game.adventure(), rules.core());
+    let object = (adventure.map().town_object(town)).ok_or("a town without its object")?;
+    let mut inputs = GrowthIn {
+        owned: false,
+        share_bp: 0,
+        legion: [0; 7],
+        dwellings: [0; h3_towns::CREATURE_INDEXES],
+    };
+    let Some(owner) = adventure.owner(object) else {
+        return Ok(inputs);
+    };
+    inputs.owned = true;
+    let details = |id| {
+        game.hero(id)
+            .ok_or_else(|| format!("hero {id:?} without details"))
+    };
+    let garrisoned = (adventure.town_heroes().iter()).map(|(_, hero)| hero);
+    for hero in adventure.heroes().iter().chain(garrisoned) {
+        if hero.owner == owner {
+            let share = h3_heroes::owner_town_growth(details(hero.id)?, core);
+            inputs.share_bp = inputs.share_bp.max(u32::from(share));
+        }
+    }
+    let held = (adventure.town_heroes().iter())
+        .find(|(t, _)| *t == town)
+        .map(|(_, hero)| hero.id);
+    for hero in adventure.town_visitor(town).into_iter().chain(held) {
+        let legion = h3_heroes::town_growth(details(hero)?, core);
+        for (sum, &n) in inputs.legion.iter_mut().zip(&legion) {
+            *sum += u32::from(n);
+        }
+    }
+    let levels = h3_towns::CREATURE_INDEXES / 2;
+    for &dwelling in adventure.map().dwellings() {
+        if adventure.owner(dwelling) != Some(owner) {
+            continue;
+        }
+        let kind = (adventure.map().objects()[dwelling].object_type)
+            .and_then(|ty| rules.adventure().object_type(ty))
+            .map(|ty| &ty.kind);
+        let Some(ObjectKind::Dwelling { creatures, .. }) = kind else {
+            continue;
+        };
+        let Some(&first) = creatures.first() else {
+            continue;
+        };
+        for (level, creatures) in record.creatures.iter().enumerate() {
+            if creatures.base == first {
+                inputs.dwellings[level] += 1;
+                if creatures.upgrade.is_some() {
+                    inputs.dwellings[level + levels] += 1;
+                }
+            } else if creatures.upgrade == Some(first) {
+                inputs.dwellings[level + levels] += 1;
+            }
+        }
+    }
+    Ok(inputs)
+}
+
+/// A dwelling's growth at `index` (TWN-GRO-001, design §41), the census's own sum: none without
+/// the index's dwelling ever built or at a base index whose upgraded dwelling is; the creature's
+/// growth g, + g with a standing fort level 3, + g ÷ 2 with level 2; an owned town's share of
+/// both and the Legion; the first ever-built horde of the index; the owner's dwellings; then + the
+/// sum ÷ 2 with a Grail building ever built; at most `MAX_AVAILABLE`.
+fn growth_at(
+    town: &h3_towns::Town,
+    record: &h3_towns::TownRecord,
+    core: &h3_content::Ruleset,
+    index: usize,
+    inputs: &GrowthIn,
+) -> u32 {
+    let levels = h3_towns::CREATURE_INDEXES / 2;
+    let (level, upgraded) = (index % levels, index >= levels);
+    let built: Vec<&h3_towns::Building> = (town.built().iter())
+        .filter_map(|id| record.building(id))
+        .collect();
+    let dwelling = |upgraded| {
+        built.iter().any(|b| {
+            b.roles
+                .dwelling
+                .is_some_and(|d| usize::from(d.level) == level + 1 && d.upgraded == upgraded)
+        })
+    };
+    let Some(creature) = growth_creature(record, index) else {
+        return 0;
+    };
+    if !dwelling(upgraded) || (!upgraded && dwelling(true)) {
+        return 0;
+    }
+    let Some(info) = core.creature(creature) else {
+        return 0;
+    };
+    let g = u32::from(info.growth);
+    let standing = town.standing(record);
+    let fort = (standing.iter())
+        .filter_map(|id| record.building(id)?.roles.fort)
+        .max()
+        .unwrap_or(0);
+    let castle = match fort {
+        3 => g,
+        2 => g / 2,
+        _ => 0,
+    };
+    let mut sum = u64::from(g + castle);
+    if inputs.owned {
+        sum += u64::from(g + castle) * u64::from(inputs.share_bp) / 10_000;
+        sum += u64::from(inputs.legion[level]);
+    }
+    let horde = (town.built().iter()).find(|&id| {
+        record
+            .building(id)
+            .and_then(|b| b.roles.horde)
+            .is_some_and(|h| usize::from(h.level) == level + 1 && h.upgraded == upgraded)
+    });
+    if horde.is_some() {
+        sum += u64::from(info.horde_growth);
+    }
+    sum += u64::from(inputs.dwellings[index]);
+    if built.iter().any(|b| b.roles.grail) {
+        sum += sum / 2;
+    }
+    u32::try_from(sum.min(u64::from(h3_towns::MAX_AVAILABLE))).unwrap_or(0)
+}
+
+/// `count` plus `n`, at most `MAX_AVAILABLE` (`TWN-QUIRK-8`).
+fn saturated(count: u16, n: u32) -> u16 {
+    let max = u32::from(h3_towns::MAX_AVAILABLE);
+    u16::try_from((u32::from(count) + n).min(max)).unwrap_or(h3_towns::MAX_AVAILABLE)
+}
+
+/// A dwelling's first creatures (TWN-GRO-005, design §46), the census's own walk: each building
+/// of `built` (newly ever built, in index order) of role `dwelling`, base ones first: a base
+/// dwelling sets its index's count to its creature's growth, an upgraded one its index's to the
+/// base index's and the base's to 0.
+fn first_creatures(
+    counts: &mut [u16; h3_towns::CREATURE_INDEXES],
+    record: &h3_towns::TownRecord,
+    core: &h3_content::Ruleset,
+    built: h3_towns::BuildingSet,
+) {
+    let levels = h3_towns::CREATURE_INDEXES / 2;
+    for upgraded in [false, true] {
+        for id in built.iter() {
+            let Some(d) = record.building(id).and_then(|b| b.roles.dwelling) else {
+                continue;
+            };
+            if d.upgraded != upgraded {
+                continue;
+            }
+            let level = usize::from(d.level) - 1;
+            if upgraded {
+                counts[level + levels] = counts[level];
+                counts[level] = 0;
+            } else if let Some(info) =
+                (record.creatures.get(level)).and_then(|c| core.creature(c.base))
+            {
+                counts[level] = info.growth.min(h3_towns::MAX_AVAILABLE);
+            }
+        }
+    }
+}
+
+/// The towns' counts a game keeps while played by `EndTurn` alone to [`GROWTH_DAYS`] (E09 T29a;
+/// TWN-GRO-001 to -007, TWN-EVT-004; design §47's gates), checked after every `EndTurn` (an error
+/// fails the map) against the census's own walk of design §41 to §46 from the counts at the
+/// start: on a week's first day each town's growth ([`growth_at`], with [`growth_in`]) and the
+/// week's bonus (`WeekStarted`'s kind; halved in a neutral town), then each neutral town's
+/// garrison week (its level read from the garrison's change: the level's two counts lose what it
+/// gained, which must be a creature's growth), then on a month's first day the month's
+/// (`MonthStarted`'s kind: a creature's doubles, the Plague takes the growth and halves, by the
+/// quirk flags); at each town event fired its buildings (the census's [`fire`]) with their first
+/// creatures ([`first_creatures`]) and its creatures. Also checked: no count above the bound,
+/// each owned town's standing Portal after a week a creature of its owner's dwellings at its
+/// growth (none without dwellings), and the setup's first creatures of every town no day-1 event
+/// fired in. The inputs are read after the step: nothing they read (the owners, the heroes and
+/// their artifacts, the dwellings' owners) moves in a game played by `EndTurn` alone.
+fn played_growth(
+    mut game: GameState,
+    rules: &GameRuleset,
+    census: &mut Growth,
+) -> Result<(), String> {
+    let (part, core) = (rules.towns(), rules.core());
+    let towns = u16::try_from(game.towns().len()).map_err(|_| "too many towns")?;
+    let ids: Vec<TownId> = (0..towns).map(TownId::new).collect();
+    let record = |town: &h3_towns::Town| {
+        part.town(town.faction())
+            .ok_or_else(|| "a town of a faction without a record".to_owned())
+    };
+    let get = |game: &GameState, id: TownId| {
+        game.towns()
+            .get(id)
+            .cloned()
+            .ok_or_else(|| format!("town {}: no record", id.raw()))
+    };
+    let counts = &mut census.0;
+    let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+    add("Portals holding a dwelling's creature", 0);
+    add("Portals empty without a dwelling", 0);
+    // The setup's first creatures (TWN-GRO-005), in the towns no day-1 event fired in.
+    let started: BTreeSet<TownId> = (game.turn_group().to_vec().into_iter())
+        .flat_map(|player| game.town_events_at_start(player))
+        .map(|(town, _)| town)
+        .collect();
+    let mut now: Vec<h3_towns::Town> = Vec::new();
+    for &id in &ids {
+        let town = get(&game, id)?;
+        let rec = record(&town)?;
+        if !started.contains(&id) {
+            let mut expected = [0; h3_towns::CREATURE_INDEXES];
+            first_creatures(&mut expected, rec, core, town.built());
+            if &expected != town.available_all() {
+                return Err(format!(
+                    "town {}: the setup's counts {:?}, the first creatures' walk {expected:?}",
+                    id.raw(),
+                    town.available_all()
+                ));
+            }
+            add("towns whose setup's first creatures are checked", 1);
+        }
+        now.push(town);
+    }
+    let mut predicted: Vec<[u16; h3_towns::CREATURE_INDEXES]> =
+        now.iter().map(|t| *t.available_all()).collect();
+    let mut sink = Vec::new();
+    while game.day() <= GROWTH_DAYS {
+        let day = game.day();
+        let garrisons: Vec<Option<Vec<h3_contracts::ArmyStack>>> = (ids.iter())
+            .map(|&id| {
+                let object = game.adventure().map().town_object(id)?;
+                game.adventure().owner(object).is_none().then(|| {
+                    game.adventure()
+                        .town_garrison(object)
+                        .unwrap_or_default()
+                        .to_vec()
+                })
+            })
+            .collect();
+        let player = (game.turn_group().iter().copied())
+            .find(|&player| game.is_acting(player))
+            .ok_or_else(|| format!("day {day}: no player acting"))?;
+        let end = h3_game::apply(
+            &mut game,
+            rules,
+            Actor::Player(player),
+            GameCommand::EndTurn,
+            &mut sink,
+        );
+        end.map_err(|e| format!("day {day}: EndTurn refused: {e:?}"))?;
+        let mut week = h3_game::WeekKind::Normal;
+        let mut week_started = false;
+        for event in sink.drain(..) {
+            match event {
+                GameEvent::WeekStarted { week: number, kind } => {
+                    (week, week_started) = (kind, true);
+                    if number == 2 {
+                        inputs_seen(&game, rules, &ids, &now, &mut add)?;
+                    }
+                    *census
+                        .1
+                        .entry(format!("week {}", week_name(&kind)))
+                        .or_default() += 1;
+                    let bonus = part
+                        .params()
+                        .map_or(0, |p| u32::from(p.week.creature_bonus));
+                    for (i, &id) in ids.iter().enumerate() {
+                        let rec = record(&now[i])?;
+                        let inputs = growth_in(&game, rules, id, rec)?;
+                        for (index, count) in predicted[i].iter_mut().enumerate() {
+                            let g = growth_at(&now[i], rec, core, index, &inputs);
+                            if g == 0 {
+                                continue;
+                            }
+                            let creature = growth_creature(rec, index);
+                            let more = match kind {
+                                h3_game::WeekKind::Creature(c) if creature == Some(c) => bonus,
+                                h3_game::WeekKind::Of { creatures, bonus }
+                                    if creatures.contains(&creature) =>
+                                {
+                                    u32::from(bonus)
+                                }
+                                _ => 0,
+                            };
+                            let gain = if inputs.owned {
+                                g + more
+                            } else {
+                                (g + more) / 2
+                            };
+                            *count = saturated(*count, gain);
+                        }
+                        add("town weeks walked", 1);
+                    }
+                    // The neutral towns' garrison weeks (TWN-GRO-006), read from the garrisons.
+                    for (i, &id) in ids.iter().enumerate() {
+                        let Some(was) = &garrisons[i] else { continue };
+                        let object = (game.adventure().map().town_object(id)).ok_or("no object")?;
+                        let is = game.adventure().town_garrison(object).unwrap_or_default();
+                        let rec = record(&now[i])?;
+                        let total =
+                            |army: &[h3_contracts::ArmyStack], c: &h3_towns::CreatureLevel| {
+                                (army.iter())
+                                    .filter(|s| {
+                                        s.creature == c.base || Some(s.creature) == c.upgrade
+                                    })
+                                    .map(|s| s.count)
+                                    .sum::<u32>()
+                            };
+                        let grown: Vec<(usize, u32)> = (rec.creatures.iter().enumerate())
+                            .filter_map(|(level, c)| {
+                                let (a, b) = (total(was, c), total(is, c));
+                                (b > a).then_some((level, b - a))
+                            })
+                            .collect();
+                        match grown[..] {
+                            [] => add("neutral garrison weeks without growth", 1),
+                            [(level, n)] => {
+                                let c = &rec.creatures[level];
+                                let growths = [Some(c.base), c.upgrade].map(|c| {
+                                    c.and_then(|c| core.creature(c))
+                                        .map(|i| u32::from(i.growth))
+                                });
+                                if !growths.contains(&Some(n)) {
+                                    return Err(format!(
+                                        "day {}: town {}: the garrison grew {n} at level {}",
+                                        game.day(),
+                                        id.raw(),
+                                        level + 1
+                                    ));
+                                }
+                                let levels = h3_towns::CREATURE_INDEXES / 2;
+                                for index in [level, level + levels] {
+                                    let lost = u32::from(predicted[i][index]).saturating_sub(n);
+                                    predicted[i][index] = u16::try_from(lost).unwrap_or(0);
+                                }
+                                add("neutral garrison weeks grown", 1);
+                            }
+                            _ => {
+                                return Err(format!(
+                                    "day {}: town {}: the garrison grew at levels {grown:?}",
+                                    game.day(),
+                                    id.raw()
+                                ));
+                            }
+                        }
+                    }
+                }
+                GameEvent::MonthStarted { kind, .. } => {
+                    let name = match kind {
+                        h3_game::MonthKind::Normal => "normal".to_owned(),
+                        h3_game::MonthKind::Plague => "the Plague".to_owned(),
+                        h3_game::MonthKind::Creature(c) => {
+                            format!("a creature's ({})", creature_name(core, c))
+                        }
+                    };
+                    *census.1.entry(format!("month {name}")).or_default() += 1;
+                    let quirks = core.quirks();
+                    let exact = quirks.is_enabled(h3_content::CREATURE_MONTH_EXACT);
+                    let full = quirks.is_enabled(h3_content::NEUTRAL_PLAGUE_FULL_GROWTH);
+                    let of = matches!(week, h3_game::WeekKind::Of { .. });
+                    for (i, &id) in ids.iter().enumerate() {
+                        let rec = record(&now[i])?;
+                        let inputs = growth_in(&game, rules, id, rec)?;
+                        let levels = h3_towns::CREATURE_INDEXES / 2;
+                        for (index, held) in predicted[i].iter_mut().enumerate() {
+                            let g = growth_at(&now[i], rec, core, index, &inputs);
+                            if g == 0 {
+                                continue;
+                            }
+                            let count = u32::from(*held);
+                            let next = match kind {
+                                h3_game::MonthKind::Creature(c) if !of => {
+                                    let level = &rec.creatures[index % levels];
+                                    let doubled = if exact {
+                                        growth_creature(rec, index) == Some(c)
+                                    } else {
+                                        level.base == c || level.upgrade == Some(c)
+                                    };
+                                    if doubled { count * 2 } else { count }
+                                }
+                                h3_game::MonthKind::Plague => {
+                                    let lost = if inputs.owned || full { g } else { g / 2 };
+                                    count.saturating_sub(lost) / 2
+                                }
+                                _ => count,
+                            };
+                            *held = saturated(0, next);
+                        }
+                        add("town months walked", 1);
+                    }
+                }
+                GameEvent::TownEventFired { town, event, .. } => {
+                    let i = usize::from(town.raw());
+                    let statics = (game.towns().town_static(town)).ok_or("no town static")?;
+                    let fired = (statics.events.get(usize::from(event))).ok_or("no event")?;
+                    let water = game.adventure().map().town_boat_spot(town).is_some();
+                    let (after, _) = fire(&now[i], part, fired, water)?;
+                    let rec = record(&after)?;
+                    let new = after.built().difference(now[i].built());
+                    first_creatures(&mut predicted[i], rec, core, new);
+                    add(
+                        "first creatures of the town events' builds",
+                        usize::from(!new.is_empty()),
+                    );
+                    let levels = h3_towns::CREATURE_INDEXES / 2;
+                    let dwelling = |level: usize, upgraded: bool| {
+                        (after.built().iter()).any(|id| {
+                            (rec.building(id).and_then(|b| b.roles.dwelling)).is_some_and(|d| {
+                                usize::from(d.level) == level + 1 && d.upgraded == upgraded
+                            })
+                        })
+                    };
+                    for (level, &n) in fired.creatures.iter().enumerate() {
+                        if n == 0 || level >= rec.creatures.len() {
+                            continue;
+                        }
+                        let index = if dwelling(level, true) {
+                            level + levels
+                        } else if dwelling(level, false) {
+                            level
+                        } else {
+                            add("town events' creatures lost (no dwelling)", 1);
+                            continue;
+                        };
+                        predicted[i][index] = saturated(predicted[i][index], u32::from(n));
+                        add("town events' creatures added", 1);
+                    }
+                    now[i] = after;
+                }
+                _ => {}
+            }
+        }
+        // The game's counts against the walk's, and the store's builds against the census's.
+        for (i, &id) in ids.iter().enumerate() {
+            let town = get(&game, id)?;
+            if town.built() != now[i].built() {
+                return Err(format!(
+                    "day {}: town {}: built otherwise",
+                    game.day(),
+                    id.raw()
+                ));
+            }
+            if town.available_all() != &predicted[i] {
+                return Err(format!(
+                    "day {}: town {}: the counts {:?}, the walk's {:?}",
+                    game.day(),
+                    id.raw(),
+                    town.available_all(),
+                    predicted[i]
+                ));
+            }
+            now[i] = town;
+        }
+        if week_started {
+            portals(&game, rules, &now, &mut add)?;
+        }
+    }
+    let largest = predicted.iter().flatten().copied().max().unwrap_or(0);
+    let peak = census.0.entry("the largest count on day 29").or_default();
+    *peak = (*peak).max(usize::from(largest));
+    census
+        .0
+        .entry("maps played to day 29")
+        .and_modify(|n| *n += 1)
+        .or_insert(1);
+    *census.0.entry("towns walked").or_default() += ids.len();
+    Ok(())
+}
+
+/// Counts, at week 2's start, what of a dwelling's growth (design §41) the towns read: a standing
+/// fort level 2 or 3, an ever-built horde and Grail building, an owner's share, a Legion and the
+/// owner's dwellings.
+fn inputs_seen(
+    game: &GameState,
+    rules: &GameRuleset,
+    ids: &[TownId],
+    now: &[h3_towns::Town],
+    add: &mut impl FnMut(&'static str, usize),
+) -> Result<(), String> {
+    let part = rules.towns();
+    for (&id, town) in ids.iter().zip(now) {
+        let record = part.town(town.faction()).ok_or("no record")?;
+        let inputs = growth_in(game, rules, id, record)?;
+        let roles: Vec<h3_towns::BuildingRoles> = (town.built().iter())
+            .filter_map(|b| record.building(b).map(|b| b.roles))
+            .collect();
+        let fort = (town.standing(record).iter())
+            .filter_map(|b| record.building(b)?.roles.fort)
+            .max();
+        add("towns read with their owner", usize::from(inputs.owned));
+        add(
+            "towns read with a Citadel or a Castle standing",
+            usize::from(fort >= Some(2)),
+        );
+        add(
+            "towns read with a horde ever built",
+            usize::from(roles.iter().any(|r| r.horde.is_some())),
+        );
+        add(
+            "towns read with a Grail building ever built",
+            usize::from(roles.iter().any(|r| r.grail)),
+        );
+        add(
+            "towns read with an owner's share",
+            usize::from(inputs.share_bp > 0),
+        );
+        add(
+            "towns read with a Legion",
+            usize::from(inputs.legion.iter().any(|&n| n > 0)),
+        );
+        add(
+            "towns read with the owner's dwellings",
+            usize::from(inputs.dwellings.iter().any(|&n| n > 0)),
+        );
+    }
+    Ok(())
+}
+
+/// Checks each owned town's standing Portal of Summoning after a week's start (TWN-GRO-007,
+/// design §45): a creature of its owner's dwellings' (never a camp) at its growth, none when the
+/// owner has no dwelling with creatures.
+fn portals(
+    game: &GameState,
+    rules: &GameRuleset,
+    now: &[h3_towns::Town],
+    add: &mut impl FnMut(&'static str, usize),
+) -> Result<(), String> {
+    let (part, core, adventure) = (rules.towns(), rules.core(), game.adventure());
+    for (i, town) in now.iter().enumerate() {
+        let id = TownId::new(u16::try_from(i).map_err(|_| "too many towns")?);
+        let record = part.town(town.faction()).ok_or("no record")?;
+        let standing = town.standing(record);
+        let portal = (standing.iter()).any(|b| record.building(b).is_some_and(|b| b.roles.portal));
+        let owner = (adventure.map().town_object(id)).and_then(|o| adventure.owner(o));
+        let (true, Some(owner)) = (portal, owner) else {
+            continue;
+        };
+        let offer: Vec<CreatureTypeId> = (adventure.map().dwellings().iter())
+            .filter(|&&d| adventure.owner(d) == Some(owner))
+            .filter_map(|&d| {
+                let ty = adventure.map().objects()[d].object_type?;
+                match &rules.adventure().object_type(ty)?.kind {
+                    ObjectKind::Dwelling { creatures, .. } => Some(creatures.clone()),
+                    _ => None,
+                }
+            })
+            .flatten()
+            .collect();
+        match town.portal() {
+            None if offer.is_empty() => add("Portals empty without a dwelling", 1),
+            Some(s)
+                if offer.contains(&s.creature)
+                    && core.creature(s.creature).map(|c| c.growth) == Some(s.count) =>
+            {
+                add("Portals holding a dwelling's creature", 1);
+            }
+            held => {
+                return Err(format!(
+                    "day {}: town {}: the Portal holds {held:?}, the offer {offer:?}",
+                    game.day(),
+                    id.raw()
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// A week's kind's name for the census (a creature by its key).
+fn week_name(kind: &h3_game::WeekKind) -> &'static str {
+    match kind {
+        h3_game::WeekKind::Normal => "normal",
+        h3_game::WeekKind::Creature(_) => "a creature's",
+        h3_game::WeekKind::Of { .. } => "a building's",
+    }
+}
+
+/// A creature's key, or its handle when the core lacks it.
+fn creature_name(core: &h3_content::Ruleset, creature: CreatureTypeId) -> String {
+    core.creature_key(creature)
+        .map_or_else(|| format!("{creature:?}"), |key| key.as_str().to_owned())
+}
+
+/// Prints the census of growth played (E09 T29a, [`played_growth`]); every map's walk is checked
+/// as it plays, so this reports no difference of its own.
+fn growth_differences(census: &Growth) -> usize {
+    println!(
+        "  growth played by EndTurn alone to day {GROWTH_DAYS} (seed {SEED}), each town's counts \
+         checked after every EndTurn against the census's walk of design §41 to §46:"
+    );
+    for (what, n) in &census.0 {
+        println!("    {what}: {n}");
+    }
+    for (what, n) in &census.1 {
+        println!("    {what}: {n}");
+    }
+    0
 }
