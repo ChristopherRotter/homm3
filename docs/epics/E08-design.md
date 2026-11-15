@@ -25,10 +25,12 @@ T118b2 accepts the note and the drafts.
 **The checkpoints' answers** this note builds on: the content as the sketch's item 13 (decision
 333); the survey whole (335); D-65, D-66 and D-68 as the original (336: the original's table, the
 Naga Bank's sulfur and the Imp Cache's 2 Mercury; the Crypt's and the sea banks' question first,
-the team's mark after a yes; the artifacts relics first); **D-67 as the original** (337: a won
-bank's reward before the winner's levels, an exception to GAM-DEC-007 point 3); the bank battle
-the adventure lane's, `cross-lane`, after a `shared/` change of `BattleSetup` (338); batch E13
-before the build (339); this note's cut by side (340).
+the team's mark after a yes; the artifacts relics first); D-67 as the original (337: a won
+bank's reward before the winner's levels), **replaced by decision 342** after T118b2's re-reading
+(the original gives a human's levels inside `adventure_battle` before the reward: the levels
+first, as GAM-DEC-007 point 3; survey §6's correction); the bank battle the adventure lane's,
+`cross-lane`, after a `shared/` change of `BattleSetup` (338); batch E13 before the build (339);
+this note's cut by side (340); T118b2 whole (341).
 
 **A correction to the survey** (T118b1; survey §1, §4 and §10 corrected in the same change): the
 banks' **visit modes are the original's class lists**, not the templates' blocked entrance the
@@ -222,11 +224,13 @@ bank's entrance (decision 268). By the kind's question:
   entrance's tile (where the hero stands for the ten entered kinds; the Shipwreck's water tile
   from the coast or a boat).
 - **`BattleStart::bank`**, a new field, true for this battle only: the game sets the setup's bank
-  battle from it (part D; the seam a `shared/` change, decision 338). **By the battle's cause, not
-  by its tile:** the original's flag is `adventure_battle`'s last argument, 1 from
+  battle from it (part D; the seam a `shared/` change, decision 338). *Refined by T118b2* (§14):
+  `Defender::Bank` instead, by the same cause, so no `BattleStart` literal changes. **By the
+  battle's cause, not by its tile:** the original's flag is `adventure_battle`'s last argument, 1 from
   `bank_battle_reward` alone (a monster's battle passes 0, survey §5), so a hero met on an entered
   bank's entrance fights an ordinary battle, unlike the anti-magic garrison's battle, whose tile
-  decides (D-60). Part D settles the other callers' argument or adds a batch row.
+  decides (D-60). Part D settles the other callers' argument (§14: a code reading, every other
+  caller passes 0).
 - **The battlefield** (`BattleStart::battlefield`, GAM-BAT-001 amended in part D): a `deck`
   kind's battle is on the sea terrain's deck, as with one hero in a boat (`sea_battle_ground`
   counting the bank as one boat at least): the Shipwreck from the coast and from a boat, the
@@ -238,13 +242,16 @@ bank's entrance (decision 268). By the kind's question:
 - **The end** (`end_unowned_battle`'s bank case): lost or retreated, the guards' survivors by slot
   stay as its army left, the bank not looted, asked again at the next visit (the hero leaves the
   map as after any lost battle); a draw leaves none standing, not looted (§6's case); won, the
-  reward at once (§8). The hint's change goes to the teams that visited it (§10).
+  reward after the winner's levels (§8, as corrected). The hint's change goes to the teams that
+  visited it (§10).
 
 ### 8. The reward, the map's half (ADV-BNK-005; survey §6; D-67 and D-68 the original)
 
-- **Won, in the battle end's own outcome, not as `reward_after`** (D-67: before the winner's
-  levels, the exception to GAM-DEC-007 point 3; its game half, where the levels wait for the army
-  dialog, is part D's): the bank's record given as a reward record (ADV-RWD-001,
+- *Corrected by T118b2* (decision 342; survey §6's correction): **won, as a won guards' battle's
+  rest** (`AdventureOutcome::reward_after`, `Rest::Won` of the entrance, GAM-DEC-007 point 3),
+  given after the winner's levels by `give_won`'s bank case, read when given; no exception and no
+  rest of its own. *As T118b1 wrote it (replaced):* won, in the battle end's own outcome, not as
+  `reward_after` (D-67: before the winner's levels). The record as before (ADV-RWD-001,
   `give_record`'s form):
   - **the creature**, when the level has one: its stack onto the hero's army as `army_add_stack`
     (ADV-ARM-007: the first stack of the creature within a stack's most, else the first free
@@ -324,12 +331,310 @@ bank's entrance (decision 268). By the kind's question:
 
 ## Part D — the game, the env, batch E13 and the cut (`h3-game`; T118b2)
 
-Written by T118b2: the bank battle's seam (`BattleSetup` in `h3-contracts`, a `shared/` change,
-and its ADR draft; the battle's rules: no tactics phase, no obstacles, no war machines on the
-field, the layout by the stacks' ordinals, D-69); D-67's exception to GAM-DEC-007 point 3 (the
-levels after the reward and its army dialog; `BattleStart::bank`, §7); GAM-BAT-001 (the deck,
-§7); the env, replays, maps, properties and benchmarks (the shipped-map workloads, §9's hot path,
-a bank XL); versions; batch E13 (survey §11's rows with this note's additions: the hero's tile at
-an entered bank, a flight over a Shipwreck and a water walker from the coast, the flag at a
-hero's battle on a bank's entrance); the shared and `cross-lane` work, the building tasks' cut,
-the exit criteria and the risks (RoE's table unread, §2); ADR-0017's draft.
+Written by T118b2 (whole, decision 341): the bank battle's seam and rules (§13) with
+`0022-increment-13.md`; the game's battle (§14); the reward after the levels (§15, D-67 corrected,
+decision 342); the observation and the wire (§16); the env, replays, maps, properties and
+benchmarks (§17); versions and ids (§18); batch E13 (§19); the shared and `cross-lane` work, the
+cut and the exit criteria (§20); risks (§21); with `0017-increment-13.md`.
+
+### 13. The bank battle: the seam and the battle's rules (survey §5; draft `0022-increment-13.md`)
+
+- **The seam** (`h3-contracts`, `shared/`, decision 338): **`BattleSetup::creature_bank: bool`**,
+  the original's flag (battle +0x53C5, H3API's `creatureBank`), default `false`, public. *Agent's
+  call:* one flag, as the original's, not a field per rule: the four rules below come together in
+  every bank and never apart, and fields per rule would let a caller pass a mix no battle of the
+  original has (ADR-0022's argument against hero-like effects on the setup). Every exhaustive
+  `BattleSetup` literal gains `creature_bank: false` in the same change (mechanical: the battle
+  lane's crates and tests, `h3-files`, `h3-pack-battle`'s scenario, `h3-sim`).
+- **The battle's rules** with the flag (`h3-battle`, `cross-lane`, the battle lane reviews):
+  1. **No tactics phase** (BAT-TAC-001 amended, its "no tactics in creature banks" now a rule;
+     `battle_start` 0x462C5D): `begin` opens none whatever the heroes' Tactics; the levels stay
+     the heroes' (private, as now). The flag is the battle state's, since `setup` and `begin` may
+     be apart (CLT-Q69 (a)).
+  2. **No obstacles** (BAT-GEO-004 amended; `battle_obstacles` 0x4662B3):
+     `generate_setup_obstacles` gives none for such a setup, as for a town with a fort, and the
+     setup **refuses** obstacles or a siege beside the flag (a new `SetupError` variant; *agent's
+     call*: a caller's mistake refused, not dropped; no bank stands at a town).
+  3. **No war machines on the field** (BAT-WAR-001 amended; `battle_war_machine_stacks`
+     0x463758): each side's listed machines are checked as now, then neither set up nor in the
+     outcome, as a side's without a hero, so the hero keeps them whatever the battle (HER-WAR-002
+     loses only a destroyed one). **The Ammo Cart's supply stays** (BAT-WAR-004 amended: the
+     original's test at 0x43F9E1 reads the hero's artifact, not the stack; the wiki agrees): a
+     side whose listed machines include an ammo supply is supplied for the whole battle as by a
+     living cart. Only the bank's case: whether a destroyed cart supplies in other battles stays
+     the battle lane's open point (its queue, "War machines", r3).
+  4. **The layout** (BAT-SET-001 amended; 0x4636B7, `bank_battle_hexes` 0x63D0E0): each side's
+     stacks in slot order take, by their **ordinal among the filled slots**, the battle part's
+     **`bank_positions`**, the formation ignored; each its stack's position (a two-hex stack's
+     rear hex, its front one column toward the enemy, BAT-GEO-002). The positions are a new
+     Tier 2 battle parameter beside the formations (`packs/base/battle.toml`'s `[battle]`), as
+     (column, row): the attacker (6, 3), (10, 3), (5, 5), (8, 5), (11, 5), (6, 7), (10, 7), the
+     defender (15, 0), (15, 10), (2, 10), (2, 0), (15, 5), (2, 5), (8, 0) (the original's hexes
+     57, 61, 90, 93, 96, 125, 129 and 15, 185, 172, 2, 100, 87, 8). The compiler checks
+     `army_slots` positions a side, each standable and distinct, and that two-hex footprints on
+     all fourteen lie on the field and share no hex, so a bank's placement cannot fail. *Agent's
+     call:* content, as the formations, and the table's hex as the place, not a closest-free
+     search (no obstacle or machine can stand there). Gap-filled with the code reading as its
+     source, or harvested, by the battle lane's form; checked against 0x63D0E0 when the original
+     data are staged.
+- **D-69** (a two-hex guard at 172, 2 or 87): by BAT-GEO-002 the guard at 172 covers 172 and 171,
+  at 2 covers 2 and 1, at 87 covers 87 and 86, the cells VCMI's second table (171, 1, 86) names if
+  VCMI's position of a two-hex defender is its front hex (*unverified*). The engine keeps the
+  original's one table; batch E13's E13-4 records the Griffins' hexes.
+- **Unchanged in a bank:** the battlefield (the tile's or the deck, §14), morale and luck, retreat
+  (the guards' side has no hero to retreat or surrender), the computer's choices for the guards
+  (the neutral seat's `h3_battle_ai::choose`; whether the original's battle AI reads +0x53C5 is
+  unread, §21).
+- **Visibility** (*agent's call*; the checkpoint's question): the flag is public but does not
+  join the battle's observation. Each effect shows in the battle itself (the places, no
+  obstacles, no phase, no machines, a supplied shooter's shots not falling), so the observation,
+  its flat encoding, the C ABI and the wire stay, unlike ADR-0022 point 6's anti-magic flag,
+  which a viewer needs for the refused book.
+- **Not in increment 13:** a `creature_bank` key in the battle's scenario files and battle replays
+  (no bank battle reaches either; *agent's call*: the battle lane adds both, with the replay
+  format's bump, when a scenario needs one; its inbox told).
+
+### 14. The game's battle (ADV-BNK-004's game half; GAM-BAT-001 amended)
+
+- **`Defender::Bank { army }`** (*agent's call*, refining §7's `BattleStart::bank`): the bank's
+  guards as they stand, by slot, unowned, without a hero, the system actor's side as
+  `Defender::Guards`'. Still by the battle's cause (only a bank's accepted question builds it),
+  and no `BattleStart` literal changes, so the town lane's siege code and its tests stay
+  untouched (T114a1's reason for the anti-magic query). `start_battle` sets `creature_bank` from
+  it; its arms in `h3-game`'s two matches and `Defender::owner` are the adventure lane's.
+- **The other callers** (settled by a code reading, T118b2; `docs/exe/map.toml`): of the 14 calls
+  of `adventure_battle` 0x4AD470, only `bank_battle_reward`'s (0x4ABEDB) pushes the bank flag 1;
+  `visit_hero`'s (0x4A2933), `monster_battle`'s, the guarded artifact's, resource's and scroll's,
+  Pandora's Box's, `event_fire`'s, the dwelling's, the mine's, `visit_object`'s, `town_visit`'s two
+  and one in 0x4ACD70 (0x4ACF47) push 0. So a hero met on an entered bank's entrance fights an
+  ordinary battle, as §7 says; part D's planned batch row for it is dropped.
+- **The setup** as a guards' battle's: the attacker's army, battle hero with its bonuses, war
+  machines (listed, not set up, §13), formation (ignored by the layout), funds, human flag and
+  colour; the defender's army the guards. **The battlefield** (GAM-BAT-001 amended): a land kind's
+  the tile's, as any guards' battle (its terrain, the coast's shore, a special ground on it); a
+  **`deck` kind's** (the Shipwreck, the Derelict Ship) the sea's terrain on the deck,
+  `sea_battle_ground` with the boats counted as at least one, from the coast (the hero on land
+  beside a Shipwreck) and from a boat; a special ground on the tile replacing the battlefield as
+  at sea. The background and the attacker's own ground as any battle's (GAM-BAT-011, -013).
+- **Seeds** (ADR-0017 point 4): the battle's own seed the attacking player's stream's next draw,
+  as every battle's; the obstacles' seed as now (the tile's under `ADV-QUIRK-5`, else the
+  stream's draw after it), the generator giving none (*agent's call*: as a fortified siege, no
+  case in the game). The original's s = 170 101 x + … (survey §5) has no counterpart: the battle's
+  draws are the engine's own, and the original's use of a battle's stored seed is unread
+  (`E08-battles.md` §4.2).
+- **The end** (`end_battle`'s unowned branch, `end_unowned_battle`'s bank case): as §7 and §8,
+  after the battle's experience, Necromancy and Eagle Eye (`heroes_after_battle`) and the
+  bonuses' clear (GAM-BAT-014: a looted search's −1 cleared with them); so Necromancy's raised
+  creatures stand in the army before the reward's creature joins, as in the original
+  (`battle_end` raises at 0x47776E, the reward follows the battle).
+
+### 15. The reward after the winner's levels (D-67 corrected; GAM-DEC-007 amended)
+
+- **The correction** (survey §6's note; the user's decision 342, replacing 337): for a human the
+  original gives the winner's levels inside `adventure_battle` (0x4AE324, after the battle's
+  screen), before `bank_battle_reward`'s reward; that routine's own `hero_level_up` (0x4AC473)
+  matters only after the computer's battle without a screen (0x4270C0, no human on either side;
+  E10's). So the original's human order is GAM-DEC-007 point 3's: **no exception.**
+- **As built for every guarded object since T63b:** a won bank's end holds its reward as the
+  visit's rest (`AdventureOutcome::reward_after` with the entrance, `Rest::Won`, tag 2), given
+  after the winner's levels (GAM-BAT-008) by `give_won`'s bank case (§8's record: the creature
+  joined or the army dialog's group, the artifacts read when given, so a level's skills cannot
+  change what fits but positions taken meanwhile do, the resources), then the loot. The army
+  dialog's `Close` loses what is left (GAM-DEC-004). No new rest kind, no game state hash change.
+- A draw empties the guards and gives nothing (§7); a yes at a bank without guards standing gives
+  the reward at once, with no battle and no levels (§6).
+- **GAM-DEC-007 amended:** rest (3) lists a creature bank's reward and loot (ADV-BNK-005).
+
+### 16. The observation, the events and the wire (ADV-BNK-006's game half)
+
+- **No game-level view:** a bank's hint is the adventure observation's `ObjectView` (`visited`
+  and `guards`, §10), which `GameObservation` carries as it is; no new struct field.
+- **The events' order at a new mark:** `ObjectMarked`, then the bank's hint as `GuardsChanged`
+  (the word and the creature; none when looted or none stand) to the same players, so a team
+  learns the word at the mark (§10's declined attack). Then the battle's end and the loot send
+  `GuardsChanged` to the teams that visited, as §10 says.
+- **The wire** (`h3-protocol`, the server lane's): nothing to map. The events are existing
+  variants, the offers `Fight` and `Search` existing kinds, `Defender` not on the wire; the
+  fold (`wire/game/fold.rs`) sets `visited` at `ObjectMarked` and `guards` at `GuardsChanged` for
+  any object by type and anchor, so it serves banks unchanged (checked at T118b2). Protocol v69
+  stays.
+- **`docs/06-security.md`** (the `shared/` task): increment 13's lines (§10's hidden facts: the
+  level, the counts, the upgrade, the artifacts and the reward until the battle and the win; the
+  team's mark and hint; the once-bonus to the owner).
+
+### 17. The env, replays, maps, properties, benchmarks
+
+- **The env** (the AI lane's `AdventureEnv`): no new action. The question is answered by the
+  offers' answers (`Fight`, `Search`), the battle by its commands, the army dialog by `Close` and
+  the management commands, so **action encoding v8 stays**; random play answers them; no flat
+  encoding (decision 187). The AI lane's inbox told (nothing moves).
+- **Replays:** no new command or reference: **adventure replay format v16 stays.** A new map
+  written by `h3_map::writer` (its five classes, T119): **`e08-banks-36.h3m`** (the eleven kinds
+  beside two players' starts, the land ones on grass and dirt, a coast with a Shipwreck beside
+  land, a Derelict Ship off it and a boat; a hero of each player with a full army, one near a
+  level). Golden replays: random play on it (three, seeds per `adventure_replays.rs`) and scripted
+  ones: a declined attack and a declined search (the marks and the hints for both players), a won
+  Griffin Conservatory with a full army past a level (the level-up, then the army dialog), a lost
+  battle and the revisit (the survivors' layout), two looted Crypts and a looted Shipwreck (−1,
+  −2, cleared by a battle), the Shipwreck fought from the coast and the Derelict Ship from the
+  boat (the deck), a flight across the Shipwreck. Every golden replay's hash lines move with the
+  adventure state hash and, from T124a, the battle state hash and the battle part's hash
+  (`homm3-rerecord-replays`; the battle lane's replays with theirs).
+- **Properties** (`h3-map`'s `play.rs`): `BANKS` in the plans (the eleven near the heroes, the sea
+  kinds on the strait, as the Whirlpools'), `Step::Bank` (a move onto or toward one, the offer's
+  answer); `check_banks`: a bank's draw and guards never change but by its battle; looted only
+  by a won battle (or a yes without guards), never fought again; a won bank's gains, artifacts
+  and joined or lost creatures exactly its level's; no `LevelUpOpened` or `LevelGained` of the
+  winner after the reward's first event; a bank battle's start has no obstacles, no tactics phase,
+  no war machine and the layout's hexes; the once-marks at most one per kind until the next
+  battle; `check_told` for the mark's `GuardsChanged`; the hygiene property varies a bank's hidden draw
+  and ends at the viewer's team's mark or battle of it. Fixed cases (512) that visit every kind. The
+  battle lane's battle properties gain bank setups (T124a, `cross-lane`).
+- **Benchmarks** (`homm3-bench-regression`): the Shipwreck's passage in the reach first (T125a,
+  right after its first build): `reach-xl-144`, `reach-sea-xl-144` and `reach-lifted-xl-144`
+  against `master` (no Shipwreck: flat); a new XL map **`e08-banks-144.h3m`** (144 × 144 with a
+  sea: the census's most banks on one map, 106 as *Thousand Islands*, every kind, the sea kinds on
+  its sea, many Shipwrecks beside land; a monster on every hundredth free land tile) with
+  **`reach-banks-xl-144`** (walkers and flyers, the Shipwrecks met from the coast and crossed),
+  **`build-banks-xl-144`** (the game's build with its draws, as `build-gates-xl-144`) and
+  **`random-play-banks-36`** on the 36 map (the visits, the bank battles' setup, the rewards).
+  No fork workload: a fork carries no new block (§4). The battle lane's workloads against
+  `master` for T124a's setup branch (flat expected).
+- `--with-original-data`: the census (§1), the import of all 160 shipped maps with the five
+  classes typed (2 137 objects on 148 maps: their entrances end paths, so `original_data.rs`'
+  shipped-map counts move once), each shipped map built with its banks drawn, the seventh pack
+  check (§2), the bank positions against 0x63D0E0.
+
+### 18. Versions, rule ids, quirks, stubs
+
+| Version | From | To | By |
+|---|---|---|---|
+| adventure ruleset part | v20 | **v21** | T123a: the kind `bank` (hash tag 44) |
+| map import | v23 | **v24** | T123b: the five classes typed |
+| adventure state hash | v25 | **v26** | T124b: `Resolved::Bank`, the banks' guards in the static map |
+| battle state hash (the battle lane's) | v55 | **v56** | T124a, `cross-lane`: the flag in the state |
+| battle ruleset part (the battle lane's) | v7 | **v8** | T124a, `cross-lane`: `bank_positions` |
+| pack format (shared, the battle file) | v52 | **v53** | T124a, `cross-lane`: `bank_positions` in `[battle]` |
+| game state hash | v32 | v32 | none (§15: no new rest; the sub-hashes fold in as values) |
+| adventure replay format | v16 | v16 | none (§17) |
+| env action encoding | v8 | v8 | none (§17) |
+| `h3-protocol` | v69 | v69 | none (§16) |
+| battle replay format (the AI lane's) | v32 | v32 | none (§13: no key yet) |
+
+The numbers are the next after today's, not reserved: whichever lane merges first takes one and
+the other bumps again (the battle lane's E26 and E11 work move the battle's versions too).
+**Rules:** ADV-BNK-001 to -006 (parts A to C), GAM-BAT-001 and GAM-DEC-007 amended (§14, §15),
+the battle lane's BAT-SET-001, BAT-TAC-001, BAT-GEO-004, BAT-WAR-001 and BAT-WAR-004 amended
+(§13, written by T124a with the battle lane's review). **Quirks:** none. **Stubs:** none new
+(ADV-STUB-12 lifted, §9). **Disputes:** D-67 dissolved by the correction (decision 342), D-69 for
+batch E13. **Decisions:** 341, 342 (next 343).
+
+### 19. Batch E13
+
+Survey §11's ten rows in one run, as planned (SoD on Easy, hot seat, two players, days 1 to 3, a
+map `h3-experiment` writes), with this part's changes:
+
+- **E13-3** extended: Red's hero also brings an Ammo Cart and a stack of Archers: after their
+  first shot their shots are unchanged (the supply without a cart on the field, §13), beside the
+  predicted hexes, no tactics phase, no obstacles, no Ballista.
+- **E13-6** predicts the corrected order (survey §11 as corrected): the level-up first, then the
+  reward's message and the army dialog with the Angels.
+- **E13-11** (added; §6 and the note's correction of the visit modes): Red's hero steps onto a Cyclops
+  Stockpile's entrance and declines, then answers yes and wins: where the hero stands at the
+  question, after the decline and after the battle (the entrance each time; the move ended
+  there); a second hero visits the Shipwreck from the coast (on land throughout).
+- **E13-12** (added; §9, `E08-sea.md` §16): a hero with Angel Wings flies across a Shipwreck's water
+  tile to the water beyond it (passed, no visit, no question); a hero with Boots of Levitation
+  walks the coast toward it (visited from the neighbour, the hero on land) and cannot take a path
+  across it.
+- **Dropped:** the bank flag at a hero's battle on a bank's entrance (§14: the code reading).
+- **The writer and the spec** (T119; the spec `h3-experiment`'s, battle-owned, `cross-lane`; the
+  writer this lane's): the five classes by template, no body; what the spec lacks of a hero at the
+  start (secondary skills, war machines and artifacts are there for the battle's heroes; the
+  adventure hero's checked first), a boat (E13-5). **The harness** (T120; `clients/capture/`,
+  common): reads of the banks' records (game +0x4E3DC, 0x6C each), a hero's +0x105 and +0x11A
+  (E12's may serve), the battle's stack hexes and shots at the start and after a shot (the battle
+  capture's), the dialogs' order, the hero's tile. The verdicts (T121, survey §15) fold into the
+  drafts at the `shared/` task (T122).
+
+### 20. Shared and `cross-lane` work; the building tasks; the exit criteria
+
+**Shared and `cross-lane`:** the `shared/` task (T122, `cross-lane`): the three drafts applied with
+batch E13's outcome (ADR-0016, ADR-0017, ADR-0022 with ADR-0013 point 5's line); the seam's field
+`BattleSetup::creature_bank` with every exhaustive literal's `false` (mechanical, its own commit,
+the battle and AI lanes told first); `docs/03-domain.md`'s terms (creature bank, a bank's level,
+looted, bank battle, bank positions); `docs/06-security.md`'s lines (§16). `cross-lane` elsewhere:
+batch E13's spec (`h3-experiment`, T119), the harness (common, T120), the battle crate's rules, the
+battle pack and the battle's golden replays (T124a, the battle lane reviewing). **No** `h3-protocol`
+change (§16). **The inboxes:** the battle lane's (the seam's shape and the rules, §13; T124a's
+plan and versions; D-67's correction for its record; the scenario and replay keys theirs to add),
+the AI lane's (nothing moves: v8, no observation flag), the map client lane's (the eleven types
+and the hint, T123a and T125a), the client lane's (informational: a bank battle's layout without
+war machines and obstacles comes in the battle's observation as any).
+
+**The building tasks**, in rounds of one or two (ids continue the epic's; each task's cut confirmed
+at its start). **Batch E13 runs before the build and before the shared task** (decision 339), so
+the ADRs are applied once with the rows' verdicts:
+
+| Round | Tasks | Content |
+|---|---|---|
+| 2 | **T119** | Batch E13's map: the writer's five classes (by template, no body), the spec's fields (`cross-lane`), the spec and the template (§19) |
+| 3 | **T120** + **T121** | T120: the harness's reads, the recipe, the run. T121: scored (survey §15) |
+| 4 | **T122** | `shared/` (`cross-lane`): the three drafts with T121's outcome, `BattleSetup::creature_bank` and its literals, the glossary, `docs/06-security.md` |
+| 5 | **T123** | T123a: the kind, the packs, the seventh original-data check (§1, §2; part v21). T123b: the import and the writer's classes for fixtures (§3; map import v24); a step onto a bank refused as any unbuilt visit's until T124b |
+| 6 | **T124** | T124a (`cross-lane`, first): the bank battle in `h3-battle` and the battle pack (§13; battle state hash v56, battle part v8, pack format v53; the battle's properties, golden replays and bench). T124b: the state and the draw (§4, §5; adventure state hash v26), the visit and its offers (§6), the battle's two halves (§7, §14: `Defender::Bank`, the flag, the deck), the reward as a won battle's rest (§8, §15), the once-marks (§12) |
+| 7 | **T125** | T125a: the hint and its events (§10, §16), the Shipwreck's passage with the reach's measure against `master` (§9; ADV-STUB-12 lifted). T125b: the two maps, the replays, the properties, the benchmarks, `--with-original-data` (§17) |
+| 8 | **T126** | The audit against the exit criteria; increment 13 closed; increment 14 refined |
+
+*Agent's call:* the battle crate's half before the map's battle (T124a merged first, so T124b's
+tests see the layout), the passage with the views (both small, each measured or told).
+
+**Increment 13's exit criteria:**
+1. The five classes import typed by the base pack's eleven kinds, one entrance each (the
+   Shipwreck visited from a neighbour and from above, the ten entered); the census holds; the
+   seventh pack check passes against CrBanks.txt and the executable's tables (ADV-BNK-001).
+2. The game's build draws each bank once from the setup stream in object order: the level by its
+   chances, the artifacts relics first from the one pool, the split by the original's rule, the
+   upgrade by its chance where it can change a stack; never again (ADV-BNK-002).
+3. An attack kind marks the team at once and asks unless looted; a search kind asks first, looted
+   or not, and marks after a yes; a looted search gives its −1 morale once per kind until the
+   next battle; `Revisit` visits an entered bank again (ADV-BNK-003, HER-ADV-008; D-66).
+4. A yes fights at once the guards as they stand, unowned, at the entrance; a hero met on a bank's
+   entrance fights an ordinary battle; the sea banks fight on the deck, the Shipwreck from the
+   coast too (ADV-BNK-004, GAM-BAT-001).
+5. A bank battle has no tactics phase and no obstacles, sets up no war machine and keeps the Ammo
+   Cart's supply, and places each side's stacks by their ordinal at the bank positions (BAT-SET-001,
+   BAT-TAC-001, BAT-GEO-004, BAT-WAR-001, BAT-WAR-004; D-69 as batch E13 found).
+6. Lost or retreated, the survivors stay and the bank is not looted; won, after the winner's
+   levels, the creature joins or opens the army dialog, the artifacts come in the record's order
+   (relics first), the resources are gained, and the bank stays looted (ADV-BNK-005, GAM-DEC-007;
+   D-67 corrected, D-68).
+7. The Shipwreck's water entrance is a walker's and water walker's visit from the coast and a
+   flight's pass; the reach's workloads hold their baselines (ADV-MOV-009, ADV-SEA-002;
+   ADV-STUB-12 lifted).
+8. A viewer sees a bank's type and, by its team's mark, the hint (not visited; visited; the word
+   and the creature); never the level, the counts, the upgrade, the artifacts or the reward
+   before the battle and the win; the events as §10 and §16 (ADV-BNK-006, ADV-VIS-006).
+9. Every new rule has its id, source and tests; the gates pass (coverage, determinism with the new
+   and rehashed replays of both lanes, the benchmarks at their baselines and the new ones
+   baselined); batch E13 run and scored (T121), the consensus rows `verified`.
+
+### 21. Risks and open points
+
+- **Two lanes in `h3-battle`:** the battle lane's E26 and E11 work and T124a's change of its setup,
+  versions and golden replays; whichever merges first, the other rebases and bumps (§18). The
+  seam's literals (T122) touch the battle and AI lanes' crates in one mechanical commit.
+- **RoE unread:** RoE's `CrBanks.txt` and RoE's battle (the flag's sites) are not read (§2): the
+  base pack takes SoD Complete's table and rules for RoE maps; E11's T1 may revisit.
+- **D-69** stays open until E13-4; a second table would be battle content beside the first.
+- **The original's battle AI in a bank:** whether the computer's choices read +0x53C5 is unread;
+  the guards play by `h3_battle_ai::choose` as any neutral side.
+- **The computer's quick battle** (0x4270C0: the reward before the levels) and its answers
+  (`ai_fight_answer`, `ai_join_without_room`) are E10's; the engine plays every player as a human.
+- **2 137 objects stop being inert** on 148 shipped maps: any test that used one of the five
+  classes as a plain blocker breaks (`TRAPS.md`), and the shipped-map counts move once (T123b,
+  T125b).
+- **The reach's water branch** gains the Shipwreck's case (§9): flat on maps without one, measured
+  on `reach-banks-xl-144`.
+- **Not read:** network play's branch of `adventure_battle` (0x4AD725 to 0x4AE18F), the stored seed's
+  use inside the battle, the reward message's texts and the hint's pictures (the clients').

@@ -74,15 +74,18 @@ into the catalog with its sources and tests.
   middle, the guards round it) by the order of their filled slots. Lost or retreated: the guards'
   survivors stay, the bank is not looted.
 - **The reward** (§6): won, the creatures join (else the army dialog), the artifacts are given,
-  the resources paid, the bank marked looted for good (never removed), **then** the winner's
-  levels.
+  the resources paid, the bank marked looted for good (never removed). *Corrected by T118b2:* a
+  human's winner has its levels already, inside `adventure_battle` (0x4AE324) before the reward;
+  `bank_battle_reward`'s own `hero_level_up` last gives only a battle without a human's.
 - **What a viewer sees** (§7): the kind's name and "(Not visited)", or for a visiting team
   "(Visited)" once looted or the guards' total as a size word (E24's reading).
 - **Disputes** (§9): D-65 (VCMI's data: the Naga Bank's gems, the Imp Cache's first level without
   its 2 Mercury), D-66 (the Crypt's and the ships' question first, even when looted, and the mark
-  after the yes), D-67 (the reward before the winner's levels), D-68 (the artifacts' order), D-69
+  after the yes), D-67 (the reward and the winner's levels; *corrected by T118b2*: no dispute for
+  a human, §6), D-68 (the artifacts' order), D-69
   (a two-hex guard on the left corners). No quirk candidate. **The checkpoint** (§13, decisions
-  336 to 339): the original in D-65, D-66, D-68 and D-67 (the reward before the levels); the bank
+  336 to 339): the original in D-65, D-66, D-68 and D-67 (the reward before the levels; decision 342
+  after the correction: the levels first, the original's human path); the bank
   battle the adventure lane's, `cross-lane`; batch E13 before the build.
 
 ## 1. The census (the five classes)
@@ -312,11 +315,23 @@ Won, in this order (0x4AC3C7 to 0x4AC473):
 4. **The resources**, wood to gold, to the hero's owner (`give_resource`: 32-bit add, a negative
    result 0).
 5. The bank **looted** (the word's bit 25), never removed.
-6. **The winner's levels** (`hero_level_up` 0x4DA720) last.
+6. `hero_level_up` 0x4DA720 last (0x4AC473), unconditionally.
 
 No experience is given by the reward itself. VCMI gives its reward after the levels
-(`heroLevelUpDone`), and so does the engine for every won battle's rest (GAM-DEC-007 point 3):
-D-67.
+(`heroLevelUpDone`), and so does the engine for every won battle's rest (GAM-DEC-007 point 3).
+
+**Corrected by T118b2** (a re-reading of `adventure_battle` 0x4AD470; D-67): step 6 is not where a
+human's winner levels. `adventure_battle` takes its full path when either side's player is human
+(`player_id_is_human` 0x4CE940 at 0x4AD500 and 0x4AD51C), and after the battle's screen gives the
+attacking hero's levels at 0x4AE324 (and the defender's at 0x4AE37C to 0x4AE42C), before it
+returns to `bank_battle_reward`, as for every battle (`E08-progression.md` §2.5, GAM-BAT-008); the
+battle's experience came in `battle_end` (0x477747). So for a human the order is the battle's
+levels, then steps 1 to 5, and step 6 finds nothing to give. Only when neither side is human
+(no network flag) does `adventure_battle` resolve the battle without its screen (0x4270C0 at
+0x4AD5EE) and return at 0x4AD69B before 0x4AE324: then step 6 gives the computer's levels after
+its reward (E10's). T118a read step 6 alone; the user's decision 337 (the reward first) rested on
+it and was replaced by decision 342 (the levels first, the original's human path, as VCMI and
+GAM-DEC-007 point 3). Batch E13's E13-6 records the dialogs' order.
 
 ## 7. What a viewer sees
 
@@ -373,7 +388,9 @@ the owner's (its hero's status).
   point 3 (every won battle's rest: the Pyramid, the guarded piles, Pandora's Box, the garrisons)
   the levels first. Nothing the reward gives changes a level-up or the reverse (the levels' draws
   and offers do not read the army, the artifacts or the treasury), so only the dialogs' order
-  differs. Batch E13 can record it.
+  differs. Batch E13 can record it. *Corrected by T118b2* (§6's note): for a human the original
+  gives the levels first too (inside `adventure_battle`, 0x4AE324), so the sources agree; the
+  reading above holds only for a battle without a human (E10's). Decision 342.
 - **D-68 (the artifacts' order):** relics first in the original (the record's vector, the order
   they are given, so the equipped positions and the backpack's order); VCMI treasure first.
   Visible only with Dragon Utopia (several classes) and a hero whose positions fill up.
@@ -416,7 +433,8 @@ not decided.
 - **Decisions:** the question, a pending offer of the visitor's owner (GAM-DEC-001: two kinds or
   one with the bank's kind), declining keeps nothing; the battle (GAM-BAT-001); the reward's army
   dialog when the army has no room; the winner's levels (GAM-DEC-002) after the reward (D-67 as
-  the original, decision 337: an exception to GAM-DEC-007 point 3's order).
+  the original, decision 337: an exception to GAM-DEC-007 point 3's order; *corrected by T118b2*,
+  decision 342: the levels first, the reward a won battle's rest).
 - **Events:** the offer and its answer; a looted bank told (`ObjectEmpty`'s use, or the Pyramid's
   `Known::Emptied` path); the morale mark (`HeroChange::Bonus` with its once-mark); the battle's
   events; the reward's (`CreaturesJoined`, the artifacts received, the resources gained, as a
@@ -457,7 +475,7 @@ the drawn record first (game +0x4E3DC, `creature_bank_record`) and predicts from
 | E13-3 | §5 | Red's hero with Expert Tactics, a Ballista and 3 stacks attacks a Dwarven Treasury | the battle's stacks and hexes; a tactics phase; obstacles; war machines | 57, 61, 90 for Red's (by ordinal), 15, 185, 172, 2, 100 for the guards; no tactics, no obstacles, no Ballista |
 | E13-4 | §5, D-69 | Red attacks a Griffin Conservatory (two-hex guards) | each guard stack's two hexes | the hexes of 15, 185, 172, 2, 100 under the battle's footprint rule (VCMI's 171 for the third) |
 | E13-5 | §5 | Red attacks the Shipwreck from the coast; a second hero from a boat a Derelict Ship | the battlefield | the deck both times |
-| E13-6 | §6, D-67 | Red's hero, its army full and near a level, wins a Griffin Conservatory | the dialogs' order; the army after | the army dialog with the Angels before the level-up (VCMI: the level first) |
+| E13-6 | §6, D-67 | Red's hero, its army full and near a level, wins a Griffin Conservatory | the dialogs' order; the army after | the level-up before the reward and its army dialog with the Angels (*corrected by T118b2*, §6; VCMI the same) |
 | E13-7 | §6, D-68 | Red's hero with full body positions wins a Dragon Utopia | the backpack's order | relics first (VCMI: treasure first) |
 | E13-8 | §4 | after E13-6 Red revisits the looted Conservatory; another hero says yes at two looted Crypts and a looted Shipwreck, then fights | messages; +0x11A and the bits 9 to 11 before and after the battle | the deserted message, nothing else; −1, then −1 more only for the Shipwreck (−2); 0 after the battle |
 | E13-9 | §5 | Red's weak hero attacks an Imp Cache and retreats | the record after; the hint | the survivors in the record, not looted; the hint by the survivors |
@@ -488,7 +506,8 @@ A family **ADV-BNK**:
   no tactics, no obstacles, no war machines on the field, the layout); lost or retreated: the
   survivors stay, not looted.
 - **ADV-BNK-005** the reward: the creatures (room, else the army dialog), the artifacts in the
-  record's order, the resources; looted for good; then the winner's levels (D-67, decision 337).
+  record's order, the resources; looted for good; after the winner's levels, as every won guards' battle's rest (D-67 corrected,
+  decision 342; decision 337 before it).
 - **ADV-BNK-006** what a viewer sees: the kind, the team's visit, looted or the guards' size word
   (ADV-VIS-006 amended); the marks to the owner.
 
@@ -521,4 +540,5 @@ the original** (not as recommended): the creatures with their army dialog, the a
 resources before the winner's levels, a bank's exception to GAM-DEC-007 point 3 for T118b to
 design; (3) the bank battle **built by the adventure lane, `cross-lane`**, after a `shared/` change
 of the seam, the battle lane's inbox told (as recommended); (4) **batch E13 before the build** (as
-recommended).
+recommended). *(2) replaced* at T118b2 (2026-11-15, decision 342) after §6's correction: the
+levels first, the original's human path (as recommended then).

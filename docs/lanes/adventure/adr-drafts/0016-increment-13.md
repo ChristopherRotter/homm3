@@ -1,17 +1,17 @@
 # ADR-0016 amendment (draft): increment 13, creature banks (the map side)
 
-- Status: **Draft** (E08 T118b1, 2026-11-15), for the checkpoint after T118b2 (decision 334: the
-  user accepts the drafts before anything is built). Drafted from the survey
-  `docs/rules/surveys/E08-banks.md` and the user's answers at ADV-Q52 and ADV-Q53 (E08 decisions
-  333, 335 to 339), then into ADR-0016 through the round's `shared/` pull request with batch E13's
-  outcome.
+- Status: **Draft** (E08 T118b1, 2026-11-15; the reward corrected by T118b2), for the checkpoint
+  after T118b2 (decision 334: the user accepts the drafts before anything is built). Drafted from
+  the survey `docs/rules/surveys/E08-banks.md` and the user's answers at ADV-Q52 and ADV-Q53 (E08
+  decisions 333, 335 to 339) and at T118b2 (342: D-67 corrected), then into ADR-0016 through the
+  round's `shared/` pull request with batch E13's outcome.
 - Amends: ADR-0016 points 1, 4 and 6 (each text below goes in after the point's increment 12
   part); its consequences, alternatives and revision history. Points 2, 3 and 5 are unchanged: a
   bank adds no grid and no reveal, and its once-marks are the hero on the map's list as built
   (ADR-0013 point 1 as amended for increment 12).
 - Detail: `docs/epics/E08-design.md` parts A to C (§1 to §12). The game's side (the bank battle's
-  setup, the reward before the winner's levels, the env, batch E13) is part D and
-  `0017-increment-13.md` (T118b2), with the battle seam's draft.
+  setup, the reward after the winner's levels, the env, batch E13) is part D and
+  `0017-increment-13.md` (T118b2), the battle seam `0022-increment-13.md`.
 - ADR-0015 needs no amendment: no crate; the import draws nothing, the build draws a bank as it
   draws increment 7's objects. ADR-0013 needs none either: the three once-marks are content.
 
@@ -25,8 +25,8 @@ level drawn when the game is built (its guards, split into stacks, one of them p
 and its reward: resources, a creature, artifacts); a visit asks to attack (or, for the Crypt and
 the two sea banks, to search first), the guards fight at once in a battle of their own setup, and
 a won bank gives its reward and stays on the map looted. The user chose the original in every
-dispute (D-65 to D-68; E08 decisions 336, 337), D-67's reward before the winner's levels among
-them.
+dispute (D-65 to D-68; E08 decisions 336, 337); for D-67 T118b2's re-reading found the original's
+human order the levels first, then the reward (decision 342, replacing 337's reward first).
 
 ## Decision
 
@@ -72,11 +72,11 @@ and 85, 24, 84 and 25 at subclass 0; another subclass is refused, no body is rea
   yes), never by the tile, so a battle between heroes on an entered bank's entrance is ordinary;
   the sea banks' on the sea terrain's deck, from the coast too. Lost or retreated, the survivors
   stay as its guards and it is not looted; with no guards standing, a yes gives the reward at
-  once. The battle's setup and its rules are ADR-0017's and the battle seam's (part D).
-- **The reward** (ADV-BNK-005; D-67 the original): won, the reward comes with the battle's end
-  itself, **before the winner's levels** (ADR-0017's order, part D): the creature onto the army or
-  into the army dialog, the artifacts in the record's order (relics first), the resources; then
-  the bank is looted.
+  once. The battle's setup and its rules are ADR-0017's and ADR-0022's (part D, their drafts).
+- **The reward** (ADV-BNK-005; D-67 the original, as corrected): won, the reward is the visit's
+  rest of a won guards' battle, **after the winner's levels** (ADR-0017 point 6, decision 342): the
+  creature onto the army or into the army dialog, the artifacts in the record's order (relics
+  first), the resources; then the bank is looted.
 - **The Shipwreck's passage** (ADV-MOV-009, ADV-SEA-002 amended; ADV-STUB-12 lifted): its water
   entrance is, for a hero not in a boat, a step from a stop node on land (the visit from the
   coast) and a flight's pass from land or water, as an empty boat's tile (the original's class 85
@@ -107,6 +107,6 @@ beside `Fight` and `Search`; the bank battle marked by its tile, as the anti-mag
 
 **Revision history**, a line: points 1, 4 and 6 amended for E08 increment 13, creature banks: the
 banks' draws, guards, loot and team marks in the existing blocks; the kind bank with its question,
-levels, looted once-bonus, deck and coast, its draw, visit, battle start and end, its reward before
+levels, looted once-bonus, deck and coast, its draw, visit, battle start and end, its reward after
 the winner's levels, the Shipwreck's coast passage; what a viewer sees of a bank by its team's
 visit. Drafted in E08 T118b1 (survey `E08-banks.md`).

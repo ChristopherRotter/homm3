@@ -4,28 +4,22 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 done 2026-11-15, decision 340; T118b2 below). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 and T118b2 done 2026-11-15, decisions 340 to 342; the checkpoint ADV-Q54, decisions 343 to 345: the note, the drafts and the cut T119 to T126 accepted). Round 2 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T118b2 — the game side of the design note, ADR-0017's draft and the cut** (decisions 334,
-340; as T98b2 for increment 11)
+**E08 T119 — batch E13's map: the writer's five classes, the spec's fields, the spec** (round 2;
+decisions 339, 343, 345; as T109 for increment 12)
 
-- **Scope:** `E08-design.md` part D (from §13): the bank battle's seam (`BattleSetup` in
-  `h3-contracts`, a `shared/` change first, decision 338; its ADR draft, likely ADR-0022's, which
-  holds the setup's anti-magic flag) and the battle crate's rules (no tactics phase, no
-  obstacles, no war machines on the field, the layout by the stacks' ordinals, D-69), set from
-  part B §7's `BattleStart::bank`; D-67's exception to GAM-DEC-007 point 3 (the winner's levels
-  after the reward and its army dialog, part B §8); GAM-BAT-001 (the deck, §7); the env, replays,
-  maps, properties and benchmarks (the shipped-map workloads, §9's hot path, a bank XL); versions;
-  batch E13's spec and recipe in the cut (survey §11 with part D's additions listed at the note's
-  end); the `shared/` and `cross-lane` work, the building tasks' cut, the exit criteria, the
-  risks; `adr-drafts/0017-increment-13.md`; then the checkpoint with the user (the whole note, the
-  drafts, the agent's calls of parts A to D, the cut).
-- **Inputs:** `E08-design.md` parts A to C and `adr-drafts/0016-increment-13.md` (T118b1); the
-  survey `docs/rules/surveys/E08-banks.md` (§5, §6, §9 to §11); decisions 333 to 340; ADR-0017,
-  ADR-0013 point 5, ADR-0022, ADR-0023 (the seam's fields), ADR-0027 (the setup's adventure
-  facts); the battle lane's inbox note of 2026-11-15 and any answer; T108b's 0017 draft as the
-  form (`gh api` at 6276854100).
-- **Depends on:** T118b1 (done). **Status:** ready (docs only).
+- **Scope:** design note `E08-design.md` §19, §20's round 2: `h3_map::writer` writes the five
+  bank classes by template (class 16 by subclass 0 to 6, 85, 24, 84, 25; no body);
+  `h3-experiment`'s spec gains them by template and what its adventure hero lacks at the start
+  (secondary skills, war machines and artifacts: check the battle hero's fields first), a boat
+  for E13-5 (battle-owned: `cross-lane` with the user's consent, label it); the spec and the
+  template of run **E13** (survey §11's E13-1 to E13-10 with §19's changes: E13-3 extended,
+  E13-6 corrected, E13-11 and E13-12 added; two players, days 1 to 3).
+- **Inputs:** survey `docs/rules/surveys/E08-banks.md` §1 (the templates), §11 (the rows); design
+  note §19; T109a's and T109b's records in `E08-log.md` as the form.
+- **Depends on:** T118b2 (done). **Status:** ready (the original data: the executable and both
+  tars, to compile the map and check it in the editor's reader; confirm the cut at its start).
 
 ## Inbox
 
