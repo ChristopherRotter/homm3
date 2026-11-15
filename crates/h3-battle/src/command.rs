@@ -209,7 +209,12 @@ fn plan<'r>(
     command: Command,
 ) -> Result<Plan<'r>, CommandError> {
     let Some((id, mover)) = state.active_stack() else {
-        return Err(CommandError::BattleOver);
+        // A battle only set up is nobody's turn yet (CLT-Q69 (a)).
+        return Err(if state.has_begun() {
+            CommandError::BattleOver
+        } else {
+            CommandError::NotYourTurn
+        });
     };
     // rule: BAT-MAG-026
     if mover.controller() != actor {

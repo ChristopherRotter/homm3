@@ -242,6 +242,8 @@ pub(crate) mod tests {
             periodic_rounds: 0,
             summoned: None,
             cost_change: 0,
+            forbids_casting: false,
+            spell_level_limit: None,
             human: false,
             colour: None,
             hero: None,

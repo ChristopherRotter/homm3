@@ -14,50 +14,14 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
   records, or kept until a batch row shows the original's outcome; exit criterion 2 rests on it;
   (2) increment 2 (the guess's prior and memory) from T4's numbers (`E26-log.md` T4: the fair
   actor wins 0.500 against the all-seeing one, so the guess gains little win rate on random
-  armies); (3) the closure of increment 1 (move it to `E26-archive.md`). *Depends on:* the
+  armies), with BAT-STUB-19 (found 2026-11-15: the world guesses the other hero's spell defences,
+  which the viewer's cast candidates show for a stack that side controls); (3) the closure of increment 1 (move it to `E26-archive.md`). *Depends on:* the
   user. *Status:* waiting (the user).
 
 ## Inbox
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
-- 2026-11-13 (the adventure lane, E08 T115a, `adventure/e08-t115a`, `cross-lane` with the user's
-  consent; **informational**): `h3_heroes::HeroDetails` lost `bonuses` (the battle bonuses are the
-  hero on the map's) and `derive_battle_hero(details, bonuses, ruleset)` takes them as its second
-  argument (`h3_heroes::BattleBonuses::NONE` for none, else the unmarked pair as the temporary
-  source and each once-mark as `EffectSource::Visit { mark }`): `h3-pack-battle`'s tests lost the
-  literals' `bonuses` line and pass `NONE`. No battle rule or hash moved.
-
-- 2026-11-10 (the client lane, E17 M6 T7c; **the user's answers, for you when you take them**):
-  (1) **CLT-Q69 (a), drawing a battle's start:** what the start does before the first turn (a
-  siege's turrets and Catapult acting on their own in round 1, a first-acting Wraith's mana
-  drain, a first stack's regeneration or opening spells, a freeze) is not drawn, because every
-  viewer's first snapshot is taken after it (the engine has no state before
-  `BattleState::start`). The user chose an engine split: `BattleState::start` as the setup and
-  its first activation, so the server lane's session can hold the battle before its start until
-  every seat is held (its inbox has its half). The client then plays the start's `Events` as a
-  command without a command; until then it opens the battle as the start left it. (2)
-  **CLT-Q63 (a):** the user wants the original's retreat test at an automatic war machine's turn
-  copied (your entry of 2026-11-06 below): once the engine hands that turn to the side's
-  controller, or asks the test there, the client asks a human Auto Combat's question at it;
-  nothing changes in the client until then.
-
-- 2026-11-09 (the server lane, before E16 M5 T3c; **the user's decision**; informational): **`h3-cli`'s
-  library moved into the new crate `h3-files`**, yours as `h3-cli` is (`lanes.toml`; ADR-0005's
-  amendment): the pack and scenario loaders, the battle replay file, the commands' text form and
-  `verify_file`, verbatim (`CliError` is `h3_files::FileError`). `h3-cli` keeps `run_random`,
-  the AI's and the adventure's commands and re-exports the rest, so its callers and tests are
-  unchanged; a change to the replay file format goes to `crates/h3-files/src/lib.rs` now.
-
-- 2026-11-06 (the adventure lane, E08 T98a2, branch `adventure/e08-t98a2`; informational): **`random_between` 0x50B230 draws nothing when its bounds are equal** (read whole: it returns the bound before `crt_rand`, 0x50B236). The Catapult's automatic aim among one weakest wall (`catapult_tie_draw` 0x473DA0) therefore takes no draw in the original, where `h3_battle::siege`'s `aim_with` draws `rng.range_inclusive(1, 1)` (a `below(1)` that consumes one value): the outcome is the same, only the stream's position differs (matters only where a sequence's draws are matched). **For the epic E11's catalogue (RoE and AB):** the adventure map's space key revisits the entered object under a hero at no points in SoD's executable with no version test; the wiki says it does not work in RoE (survey `docs/rules/surveys/E08-teleporters.md` §11).
-- 2026-11-06 (the client lane, E17 M6 T5b2a): **the original's retreat test at an automatic
-  war machine's turn.** The battle loop runs `ai_battle_action` 0x477EE0 for every stack that
-  acts on its own (0x4744CF), the Ballista included when its hero lacks Artillery or it has no
-  hero (`stack_automatic` 0x474BF0, 0x474C59; the map's "The automatic Ballista takes this path"
-  at 0x4221F0). So the retreat test (BAT-AI-024) is asked at that turn first: a computer side
-  retreats there, a human's side is asked (CLT-Q63). The engine plays the automatic Ballista
-  itself (BAT-WAR-002) and asks no test there. Arrow towers not read. A cross-lane PR from the
-  client lane could follow once CLT-Q63 is answered.
 - 2026-11-05 (the client lane, E17 M6 T5b1; informational unless you take it): **a walk of the
   original's computer the engine's chooses differently.** In `clients/situations/seq-auto-cast.toml`
   (`seq-cast.toml`'s battle: the attacker's Champions first, speed 9, Orrin with Bless only;
@@ -68,48 +32,17 @@ Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure ar
   at the Champions' turn, Bless at the Marksmen's). Not compared further: the recording's
   commands are the original's. A candidate for E23's divergence checks if the walker's scoring
   should match here.
-- 2026-11-05 (the client lane, E17 M6 T5a, gap G1; **the user's requirement**: a server game
-  behaves exactly as a local one; with the server lane's wire): **a public per-side fact of the
-  heroes' casting limits.** The original's book
-  shows the Orb of Inhibition's box naming its wearer (GENRLTXT 684) and Recanter's Cloak's
-  limit (537) to both sides (`docs/epics/E17-design.md` §12.17); a seat's observation holds only
-  its own hero's `no_casting` and `level_limit` (`OwnHero`, private, ADR-0013 point 9). Asked:
-  each side's in `SideView` (whether its hero forbids casting, its spell level limit), public as
-  the original shows them; the server lane maps it (a version). Until then a server's client
-  shows the entry's box where a local one shows the Orb's or the Cloak's (the client's
-  `CLT-STUB-1`); local play is exact.
-- 2026-11-05 (the town lane, E09 T8b1, `town/e09-t8b1`; **for a task of yours when RoE and AB
-  rules are played**, `TWN-STUB-8`): the base pack's walled Stronghold (a Citadel or a Castle)
-  draws the usual natural obstacles in a siege (TWN-SIE-005, `h3_towns::siege_obstacles`; the
-  SoD pack clears it). The game cannot draw them yet: `generate_setup_obstacles` places none at a
-  fort and `generate_battlefield_obstacles` knows no walls, so an obstacle on a wall hex makes
-  `BattleState::start` refuse the siege (`SetupError::InvalidSiege`). The original's 0x466010
-  keeps each obstacle hex off a blocked hex (the walls get the blocked bit first, 0x4662E3) and
-  takes a branch for a siege of town type 6 on the game's version (0x466147 to 0x466194, not read;
-  `installation.md` §7.26). Wanted: that branch read and a draw that keeps off the walls (a
-  siege-aware `generate_*`, or the walls' hexes as an input); the game then calls it for a siege
-  whose town draws natural obstacles (`h3_game`'s `town::siege_setup`, `TWN-STUB-8`).
-- 2026-11-04 (the town lane, E09 T7b2a, `town/e09-t7b2a`; **a failing property case on `master`'s
-  code, for a task of yours**): a local `cargo test --workspace` found a case of `h3-battle`'s
-  `tests::properties::a_world_shows_its_viewer_the_battle_and_reads_nothing_hidden`
-  (`properties.rs:3370`): the defender's observation at round 2 of a siege (a Castle town, fort 1)
-  differs between the battle and its world. Independent of T7b2a (`h3-battle` depends on nothing
-  it changed); reproduced by appending `cc 4cad6d100daee416d444b56e63fed21f1c92753203fcb88c33ec2cee9d69f1ec`
-  to the property's regression file (not committed).
-- 2026-11-03 (the town lane, E09 T5b1; **a doc to correct**, no rule): `docs/formats/installation.md` §7.27's
-  defending hero's bonuses name the Fortress' building 21 the Blood Obelisk and 22 the Glyphs of Fear; by the
-  text files' rows and the requirements (22 needs 21) 21 is the Glyphs of Fear and 22 the Blood Obelisk. The
-  values stand as read (21 +2 attack, 22 +2 defense: the code and VCMI; the game's descriptions say the reverse,
-  E09 TD-8, decision 30). The same section's "which buildings that mask holds is not read" (the keep, 0x5BF4F0)
-  is now read: the faction's building list less the forbidden, never the Village Hall (survey
-  `E09-towns.md` §16.4).
-- 2026-11-03 (CLT-Q40's request, carried by BAT-Q64; **a rule to check**, a code reading: compare
-  with the wiki and VCMI): the original's Angelic Alliance joins the alignments when *any* hero of
-  the side's player wears it, on the map or in a town (+0x54B2 from `player_hero_wears_artifact`
-  0x4BACB0, read at 0x463AE2; the stacks' update reads it at 0x4697F2), where BAT-HER-007 takes the
-  battle's hero's.
 
-- 2026-10-22 (E23 T4c's blind check; a rule to confirm): the original's end routine 0x444510 returns early only for Disrupting Ray (47), so a dispel or Cure that reaches Acid Breath (80) may end it; BAT-MAG-010 keeps every permanent effect. Read the dispels' callers or play a batch row (Cure on a stack under Acid Breath) and align BAT-MAG-010 or record why not.
+- **For E11, when RoE and AB rules are played** (from the town lane's `TWN-STUB-8`, 2026-11-05;
+  the branch read 2026-11-15): a siege-aware obstacle draw for the base pack's walled Stronghold
+  (TWN-SIE-005, `h3_towns::siege_obstacles`), which the game then calls (`h3_game`'s
+  `town::siege_setup`). The original (`installation.md` §7.27, "The Stronghold's branch in the
+  placement"): every obstacle hex off a blocked hex (the 11 wall hexes have the bit), and the
+  anchor plus the type's width below its row's wall hex less 2 (row 5's 96 taken as 93), checked
+  on the anchor's row only. The engine's draw is VCMI's (BAT-GEO-004) and places none at a fort
+  (`generate_setup_obstacles`), while `BattleState::start` refuses an obstacle on a wall hex
+  (`SetupError::InvalidSiege`): the wall hexes and the gate row's exception as the siege field's
+  data, a draw that keeps to them, and a test per row.
 
 - **For E23 (the original's battle AI), to read with it:** the original's pathfinder 0x4B3400 is read (§7.40, §7.41) and built (`pathfinder.rs`, E23 T1c): the walks and the berserk turn follow it. `aim.rs`'s threat records (0x422B20, the turrets' and the Ballista's turns) still search on their own (flyers by hex distance, no marks, no first-in-first-out): move them onto `pathfinder::Search`'s marks (BAT-Q53) with the computer's walker (T3). T1b's readings at risk from T1c: S-11's three outcomes, a berserk flyer ending on a hex it passed over, the war machine aimed at by its front, a walk beyond the speed into its side's seen pit (`E23-log.md`). The automatic Catapult's aim with Ballistics (the computer's and hidden battles': the gate first, §7.29) is not modelled: the agent aims. The moat avoidance's further "automatic" cases (0x474BF0: a hidden battle, an options flag, a remote turn; BAT-SIE-022). BAT-Q33 (who commands a side) decides with it.
 
@@ -121,7 +54,7 @@ Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure ar
 
 - **The surrender's price:** the halving before the discount (0x47506B; one Pixie at 10 %: 10, not 11) is not observed; the temporary creatures are left out since batch 2g SP (BAT-FLE-002).
 
-- **Numbers and draws:** BAT-MAG-058 takes the larger of a cast Fire Shield and the creature's own, the original the cast one first (no difference with the base values; r2b); the physical damage's stage 1 runs its hero step also at a rate of 0, rounding through `f32` (0x44371C; a difference only above 2^24; r2a); the original rolls also at a chance of 0 or 100 and walks an area's stacks from the last to the first (only the random stream differs; r1); the obstacle generator is not draw-exact (BAT-GEO-004 is VCMI's: the original draws one `rand()` per tried type and anchor, 91 usual types, 34 absolute, 151 anchors, through the C runtime's generator; its Stronghold siege branch 0x466147 is not modelled; does it keep an obstacle off another's free anchor? ADV-QUIRK-5's "layouts match the original's" needs both).
+- **Numbers and draws:** BAT-MAG-058 takes the larger of a cast Fire Shield and the creature's own, the original the cast one first (no difference with the base values; r2b); the physical damage's stage 1 runs its hero step also at a rate of 0, rounding through `f32` (0x44371C; a difference only above 2^24; r2a); the original rolls also at a chance of 0 or 100 and walks an area's stacks from the last to the first (only the random stream differs; r1); the automatic Catapult's tie among one weakest wall draws `range_inclusive(1, 1)`, one value, where the original's `random_between` 0x50B230 draws nothing for equal bounds (0x50B236; the adventure lane, 2026-11-06: the outcome the same); the obstacle generator is not draw-exact (BAT-GEO-004 is VCMI's: the original draws one `rand()` per tried type and anchor, 91 usual types, 34 absolute, 151 anchors, through the C runtime's generator; its Stronghold siege branch 0x466147 is not modelled; does it keep an obstacle off another's free anchor? ADV-QUIRK-5's "layouts match the original's" needs both).
 
 - **Other readings:** the corpse limit of 14 per hex (not modelled; it also bounds the Pit Lord's search); the stack bit `0x4000000` set after a creature's cast; a `rebirth` creature with several casts (data only); BAT-QUIRK-17's later variant, a sacrificed Phoenix reborn right after the sacrifice (BAT-Q18); the creature flag bit `0x800` (Arch Mage, Beholder, Evil Eye; `h3-harvest`); the Faerie Dragon's key path under the Orb refuses a Chain Lightning at the caster's side's stacks, which the engine offers (BAT-Q32 (1)); the knights' Curse stays at 25 % and mastery 0 until a statistics batch (BAT-Q28 row 13); Q43 (the sprite offset). From E04c's security review: whether the turrets' counts (BAT-SIE-016) show the town's building count where the original does not (its tower window is unread), and how long one command runs with many rounds of turret turns inside it (no bound measured).
 
