@@ -1706,7 +1706,7 @@ cells (`build::still_cells`); `Reading::Original` (`check::frames_read`, `h3-vie
 ## 10. The start's pictures (M2 T5a, 2026-11-14)
 
 Read in `Heroes3.exe` (0x44DD20, 0x6030E0; the map), `SMACKW32.DLL` (`SmackWait` 0x10007840,
-`SmackNextFrame` 0x10006440, `SmackToBufferRect` 0x100072D0 in part) and `BINKW32.DLL`
+`SmackNextFrame` 0x10006440, `SmackToBufferRect` 0x100072D0: whole at T5a2) and `BINKW32.DLL`
 (`BinkGetRects` 0x10006380 with 0x10006650 and 0x100067B0) with capstone, and checked on the
 original's frames: `h3shell.py run --once` of the `start` group in this sandbox (as kept: the
 skips, `start-bink` 25 min, `start-smacker` 21 min, its second run's form). Built:
@@ -1765,17 +1765,51 @@ Video 0); `Videos` reads `shell-videos.vid` after `battle-videos.vid` when `VIDE
   rectangle, which the game shows again. (A half with no marked cell would leave the caller's
   buffer as it was; none occurs: every rectangle is a bounding rectangle of whole cells, so both
   halves of a cut hold one of its edges' marked cells.)
-- **`SmackToBufferRect`** (glanced at, *inferred* in its detail; *not built*: T5a2): it pops
-  rectangles from a list of at most four, first in first out; the list is filled from an
-  iterator over the decoder's state (0x10012760, some 400 instructions, its state filled by
-  `SmackDoFrame`: *not read*) by 0x10007410, which seems to join the iterator's rectangles while
-  their bounding box stays within 1.25 times their areas and to align them to 8 pixels across,
-  and 0x10007680 (*not read*). The game's union of them is the same arithmetic as Bink's.
-  3DOLogo's frames and the skips are exact with the clip's whole rectangle shown;
-  `H3INTRO.SMK`'s 23 frames are not (`start-smacker`'s clip line).
-- **The comparisons** (`h3shell.py drawn --group start`): 11 of the 12 lines exact
-  (`start-plain`, `start-bink`'s logo, clips and menu, every skip's shots, `start-smacker`'s
-  menu); `start-smacker`'s clip line differs only in those 23 frames. The Bink decoder of a
+- **`SmackToBufferRect`** (0x100072D0; read whole at T5a2 with 0x10007410, 0x10007680, the
+  iterator 0x10012760 and the decoder's map 0x10011AB0; built: `h3_smacker::Rects`, the map
+  `h3_smacker::Frame::spans`; checked against the DLL on every frame: `smackprobe rects`):
+  - *The map* (the decoder state's +0x38): a byte for every 16 blocks in decoding order (64 pixels
+    of a row of blocks, running on into the next row where the width is no multiple of 64). The
+    block routines' prologues keep two counts from 0: each run adds its whole length to the first
+    (uncut at the frame's end); when the second is not past it, a written run sets the spans from
+    the second's to the first's rounded up, a skipped run clears them to the first's rounded down,
+    the second then the span's start reached; after the last run the span at the second is
+    cleared. So a span is 1 when it holds a written block; a last run past the end marks spans
+    past it, and spans past the second keep an earlier frame's bytes (0 at the start: the state is
+    allocated zeroed by `SmackToBuffer`).
+  - *The iterator* (state +0x20 to +0x34, set back by each decode): the next run of changed spans,
+    cut at a row's end (its rest then the next run, at x 0 of the next row; a clip narrower than a
+    span gives a row a run). The rest looks at the next two spans as one word: when the first is
+    unchanged and the second changed, the unchanged one joins the run.
+  - *The filler* (stage +0x408: 1 set by `SmackDoFrame`'s decode, 2 filling, 3 done): from the run
+    held, the next runs joined while the box over them (from the first's top to the latest's
+    bottom) is at most the sum of their areas × 5 / 4 (each rounded down); the run that does not
+    fit is held for the next rectangle. The box aligned to 8 pixels of the buffer: the left edge
+    down where that stays right of the clip's place, the width up where the clip has more room
+    than that. A frame without changed spans: none, or with a new palette an empty rectangle at
+    (0, 0) and then the held run (an earlier frame's) again. The buffer's type the game passes
+    (0x69FE20: 0xC0000000 or 0x80000000) takes this path (1 would join every run, 2 give none).
+  - *The list* (+0x4C8, +0x4CC; at most four as left, top, right, bottom): filled from the filler
+    until four or none more, each new one joined to the first that shares a whole edge with it,
+    again and again by the joined one's index (which, after a removal moved it down, names the
+    one after it); the first taken into +0x380 to +0x38C, first in first out.
+  - *The game's reads* (`video_show`): the last rectangle after the first call whatever it
+    returned (a frame with none shows the last frame's last one again), then one per call until 0;
+    their union by the same arithmetic as Bink's (`shown_union`), already in the back buffer
+    (`SmackToBuffer` was given the clip's place 0x69FE00, 0x69FE04).
+  - *Found*, all within CLT-Q124's fix (decision 32: the client shows each frame's whole
+    rectangle; the DLL's for the comparisons): the word read, the union from (0, 0) after a
+    palette-only frame, the box's bottom the latest run's. A third join of one rectangle can make
+    the DLL's copy run backwards and fault (no clip of the game reaches it: the filler gives the
+    runs top to bottom); `Rects` stops the join there. Not ported: the types 1 and 2 and the
+    interlaced and doubled clips (the header's flags 2 and 4), which the game does not use.
+  - *Checked* (`clients/scripts/smacker-check.sh`): every call of every frame of the shell's eight
+    clips, AB's `Credits.smk` and the eight synthetic samples (36 to 60 wide: their spans
+    run on across the rows), the clip at (0, 0) and at (83, 187), as the DLL's; `H3INTRO.SMK` meets the palette-only frame twice and frames
+    without changes 97 times.
+- **The comparisons** (`h3shell.py drawn --group start`): all 12 lines exact since T5a2
+  (`start-smacker`'s clip line differed in 23 of `H3INTRO.SMK`'s frames until SMACKW32's
+  rectangles were built). The Bink decoder of a
   comparison reads as the DLL (`Reading::Original`, CLT-Q68: without it two pixels of NWCLogo
   differ from frame 19 on); each frame is copied onto the back buffer as the DLL copies it
   (`h3_bink::copies`; a Smacker frame's written blocks), so the cells a frame leaves keep what

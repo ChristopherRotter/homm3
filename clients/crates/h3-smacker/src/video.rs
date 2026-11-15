@@ -150,7 +150,10 @@ impl Decoder {
                 palette: [0; 768],
                 flags: 0,
                 written: vec![false; ((width >> 2) * (height >> 2)) as usize],
-                spans: vec![0; (((width >> 2) * (height >> 2) + RUNS[63] + 15) / 16 + 1) as usize],
+                spans: vec![
+                    0;
+                    (((width >> 2) * (height >> 2) + RUNS[63]).div_ceil(16) + 1) as usize
+                ],
             },
         })
     }
@@ -456,7 +459,7 @@ mod tests {
         let frames = decode(&h, &[first.bytes(), second.bytes()]);
         let one = frames[0].as_ref().unwrap();
         assert_eq!(one.spans()[..13], [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]);
-        assert_eq!(one.spans().len(), (64 + RUNS[63] as usize + 15) / 16 + 1);
+        assert_eq!(one.spans().len(), (64 + RUNS[63] as usize).div_ceil(16) + 1);
         let two = frames[1].as_ref().unwrap();
         assert_eq!(two.spans()[..13], [1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0]);
     }

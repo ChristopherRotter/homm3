@@ -13,14 +13,10 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M2 T5a2 to T8
+#### E27 M2 T5b to T8
 
-T5a2 the Smacker clips' rectangles (decision 32, design §10: `SMACKW32.DLL`'s `SmackToBufferRect`,
-its list and iterator read and ported into `h3-smacker`, the game's union over them for the
-comparisons through `h3_view::shell::start::shown_union`; `start-smacker`'s clip exact, its 23
-frames of `H3INTRO.SMK`; `smackprobe` where it reaches the DLL); T5b the start's sound (decision
-31: the clips' sound at the effects setting, decision 27, through `HostSound::play_clip`, with the
-window; how much of a Smacker clip's queued sound plays at its end, design §8.4; the 3DO logo's
+T5b the start's sound (decision 31: the clips' sound at the effects setting, decision 27, through
+`HostSound::play_clip`, with the window; how much of a Smacker clip's queued sound plays at its end, design §8.4; the 3DO logo's
 sound path and volume; `game_samples_load` read; the start recorded with a recipe's `sound =
 true`); T6 the main menu, New Game's and Load Game's menus, Quit (the main menu `Built::Whole`:
 the replay's presses and keys reach the screen, `shell::replay`'s `Step::Input`); T7 Multiplayer

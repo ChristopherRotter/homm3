@@ -257,7 +257,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   every byte tree and marks no frame a key frame in its size: on either the DLL faults or decodes
   other pixels (design §7.3; FFmpeg's handling stays the unit tests'). Its 16-bit copy keeps a
   skipped block's colours after a palette change (CLT-Q119: `check::original_16` is the
-  comparisons' copy, never the shell's).
+  comparisons' copy, never the shell's). Its rectangles (`h3_smacker::Rects`, E27 M2 T5a2) are
+  the DLL's state machine field by field, kept from frame to frame (the decoder's map in
+  `Frame::spans` too): a change shows only in the `.rects` lines of `smacker-check.sh`, so run it
+  after one; `smackprobe`'s text output needs binary mode (`"wb"`: Wine's `"w"` writes CRLF).
 - The clips' sound (E27 M2 T2, design §8): the probes need the stand-in Miles (`mss/MSS32.DLL`,
   `setup.sh`), which runs the DLLs' timers only when pumped. `SMACKW32.DLL` hands Miles whole
   words and flushes a track's tail only after a frame without its packet, so a synthetic Smacker
