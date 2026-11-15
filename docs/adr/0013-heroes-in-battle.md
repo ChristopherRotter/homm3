@@ -137,7 +137,9 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    public (but at a town the defender's option to retreat, which only the defender sees: ADR-0023
    point 2), and so are the hero's morale and luck effects with their sources and each stack's
    unclamped morale and luck (CLT-Q40, BAT-Q64: as VCMI's descriptions of any stack list the enemy
-   hero's); other skill levels, bonuses, effects, spell book, funds and the surrender price are private
+   hero's), and whether the hero forbids casting and its spell level limit (the Orb of Inhibition,
+   Recanter's Cloak: the original's spell book names them to both sides; the client lane's G1);
+   other skill levels, bonuses, effects, spell book, funds and the surrender price are private
    to the hero's side, which sees them in its own observation (`observe` reads the ruleset, Q37).
    Hidden battlefield objects (E04b) use the same owner-side projection (ADR-0004).
 10. **Encodings.** E04a extends the dense action encoding (v8: heals, `EndTactics`, Retreat,
@@ -521,3 +523,9 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   bonuses passed in; the clear's kept marks. Drafted in E08 T108b (survey
   `E08-garrisons-bonuses.md` §10); batch E12's outcome (T111, survey §15) folded in: every tested
   point as drafted.
+- 2026-11-15 (the battle lane's inbox; the user, at the session's start: the client lane's G1,
+  its requirement that a server game behaves as a local one): point 9 amended. A hero's casting
+  limits (whether it forbids casting, its spell level limit) are public, as the original's spell
+  book names the Orb of Inhibition's wearer and shows Recanter's Cloak's limit to both sides
+  (GENRLTXT 684, 537; `docs/epics/E17-design.md` §12.17): the observation's `forbids_casting` and
+  `spell_level_limit`, the wire's `SideView` (protocol v69), kept by a search agent's worlds.

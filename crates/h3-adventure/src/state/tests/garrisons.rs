@@ -9,6 +9,8 @@
 
 use std::sync::Arc;
 
+use h3_content::SecondarySkillDef;
+
 use super::revisits::{revisit, revisitable};
 use super::teleporters::{BLUE, HERO, RED, Rules, p, stack, walk};
 use super::*;
@@ -16,7 +18,8 @@ use crate::army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
 use crate::command::{BattleStart, Defender, Exchange};
 use crate::ruleset::{BONUS_DAYS, ObjectKindDef, ObjectTypeDef, Visit};
 use crate::testing::{
-    GNOLL, PIKEMAN, WOLF, hero_at, hero_details, key, movement_rules_with, started, stream, world,
+    FLYING, GNOLL, PIKEMAN, WOLF, hero_at, hero_details, hero_skills, key, movement_rules_with,
+    started, stream, world,
 };
 
 /// [`movement_rules_with`] (faithful) with one type of each of increment 12's seven kinds: the
@@ -92,10 +95,15 @@ pub(super) fn bonus_rules() -> Rules {
 /// [`movement_rules_with`] (faithful) with a garrison `t:garrison` and an anti-magic one
 /// `t:anti_garrison`, both entered and from above (ADV-GAR-001); the part's flag radius 3.
 fn garrison_rules() -> Rules {
+    garrison_rules_with(Vec::new())
+}
+
+/// [`garrison_rules`] with the core's secondary skills `skills` ([`hero_skills`]: a flyer's).
+fn garrison_rules_with(skills: Vec<SecondarySkillDef>) -> Rules {
     movement_rules_with(
         true,
         32,
-        |_| {},
+        |core| core.skills = skills,
         |part| {
             let ty = |k: &str, anti_magic| ObjectTypeDef {
                 key: key(k),
@@ -205,7 +213,7 @@ fn after_steps(events: &[AdventureEvent]) -> Vec<AdventureEventKind> {
 
 const GNOLLS: [ArmyStack; 1] = [stack(2, GNOLL, 30)];
 
-// covers: ADV-GAR-004
+// covers: ADV-GAR-004, ADV-OBJ-003
 #[test]
 fn a_garrison_of_the_mover_s_team_is_crossed_and_every_other_is_a_destination() {
     let rules = garrison_rules();
@@ -351,7 +359,7 @@ fn an_empty_garrison_of_another_team_is_flagged_with_its_reveal() {
     }
 }
 
-// covers: ADV-GAR-002
+// covers: ADV-GAR-002, ADV-OWN-001
 #[test]
 fn a_garrison_battle_s_end_keeps_the_survivors_or_flags_it_after_the_levels() {
     let rules = garrison_rules();
@@ -397,6 +405,7 @@ fn a_garrison_battle_s_end_keeps_the_survivors_or_flags_it_after_the_levels() {
         assert_eq!((fought.owner(0), fought.garrison_army(0)), (owner, &[][..]));
         let mut events = Vec::new();
         let mut gone = fought.clone();
+        let mut fogged = fought.clone();
         let given = fought.give_won(
             (&rules.0, &rules.1, &details[..]),
             (HERO, ENTRANCE),
@@ -413,6 +422,24 @@ fn a_garrison_battle_s_end_keeps_the_survivors_or_flags_it_after_the_levels() {
                 owner: RED,
             }
         );
+        // Its reveal of the flag radius 3 around the entrance (ADV-OWN-001), told with the tiles
+        // red had not explored: none here (its hero's radius 5 saw them); on a fog laid anew, the
+        // radius-3 disk's 21 tiles on the map (7 a row on the corridor's 3 rows).
+        let revealed = |count| AdventureEventKind::TilesRevealed {
+            object_type: ty,
+            count,
+        };
+        assert_eq!((events[1].kind, events.len()), (revealed(0), 2));
+        fogged.explored[usize::from(RED.raw())] = BitGrid::new(12, 3, 1);
+        let mut events = Vec::new();
+        fogged.give_won(
+            (&rules.0, &rules.1, &details[..]),
+            (HERO, ENTRANCE),
+            &mut events,
+        );
+        assert_eq!(events[1].kind, revealed(21));
+        assert!(fogged.is_explored(RED, p(0, 0)) && fogged.is_explored(RED, p(6, 2)));
+        assert!(!fogged.is_explored(RED, p(7, 1)));
         gone.heroes.retain(|h| h.id != HERO);
         let given = gone.give_won(
             (&rules.0, &rules.1, &details[..]),
@@ -461,6 +488,103 @@ fn a_passed_garrison_of_the_hero_s_team_is_revisited_into_its_exchange() {
     let (outcome, events) = revisit(&mut state, &rules, (RED, HERO), &mut stream()).unwrap();
     assert_eq!((outcome, events), (exchange(&rules, "t:garrison"), vec![]));
     assert_eq!(state.hero(HERO).unwrap().movement, points);
+}
+
+/// Red's hero [`HERO`], an Expert flyer, flies `path` (under [`garrison_rules_with`]'s
+/// [`hero_skills`]): the outcome and the events.
+fn fly(
+    state: &mut AdventureState,
+    rules: &Rules,
+    path: &[Pos],
+) -> (AdventureOutcome, Vec<AdventureEvent>) {
+    let heroes = [
+        Arc::new(hero_details(&[])),
+        Arc::new(hero_details(&[(FLYING, 3)])),
+    ];
+    let command = AdventureCommand::MoveHero {
+        hero: HERO,
+        path: path.to_vec(),
+    };
+    let mut events = Vec::new();
+    let outcome = state
+        .apply(
+            &rules.0,
+            &rules.1,
+            &heroes,
+            (RED, Weekday::FIRST, &mut stream()),
+            &command,
+            &mut events,
+        )
+        .unwrap();
+    (outcome, events)
+}
+
+// covers: ADV-GAR-004, ADV-MOV-009
+#[test]
+fn a_flyer_passes_over_every_garrison_and_visits_its_team_s_where_its_flight_ends() {
+    let rules = garrison_rules_with(hero_skills());
+    let own = garrison(&rules, "t:garrison", ENTRANCE, Some(RED), &GNOLLS);
+    let neutral = garrison(&rules, "t:garrison", ENTRANCE, None, &GNOLLS);
+    // Over its team's garrison or a neutral armed one: no visit, no battle, nothing told but the
+    // steps, the garrison unchanged (a flight passes over an entered object's tile).
+    for (owner, object) in [(Some(RED), own.clone()), (None, neutral)] {
+        let mut state = corridor(&rules, vec![object]);
+        let (outcome, events) = fly(&mut state, &rules, &east(5));
+        assert_eq!(outcome, AdventureOutcome::default(), "{owner:?}");
+        assert_eq!(after_steps(&events), [], "{owner:?}");
+        assert_eq!(state.hero(HERO).unwrap().pos, p(5, 1));
+        assert_eq!(
+            (state.owner(0), state.garrison_army(0)),
+            (owner, &GNOLLS[..])
+        );
+    }
+    // A flight that ends on its team's garrison visits it: its exchange, nothing else told.
+    let mut state = corridor(&rules, vec![own]);
+    let (outcome, events) = fly(&mut state, &rules, &east(3));
+    assert_eq!(
+        (outcome, after_steps(&events)),
+        (exchange(&rules, "t:garrison"), vec![])
+    );
+    assert_eq!(state.hero(HERO).unwrap().pos, ENTRANCE);
+}
+
+// covers: ADV-GAR-004, ADV-MON-006
+#[test]
+fn a_guarded_garrison_of_the_hero_s_team_meets_its_guard_first_then_its_exchange() {
+    let rules = garrison_rules();
+    let details = [Arc::new(hero_details(&[]))];
+    // The monster on (4, 1), savage and never fleeing, guards the entrance on (3, 1)
+    // (ADV-MON-005); the garrison at object index 0, the monster at 1.
+    let heroes = vec![
+        hero_at(1, 0, p(0, 1), &[PIKEMAN]),
+        hero_at(2, 1, p(11, 1), &[PIKEMAN]),
+    ];
+    let rows = [CORRIDOR[0], "ggggMggggggg", CORRIDOR[2]];
+    let mut setup = world(&rows, 1, heroes);
+    let monster = setup.map.objects[0].monster.as_mut().unwrap();
+    (monster.disposition, monster.never_flees) = (4, true);
+    let own = garrison(&rules, "t:garrison", ENTRANCE, Some(RED), &GNOLLS);
+    setup.map.objects.insert(0, own);
+    let mut state = started(&rules, &setup).unwrap();
+    // The step onto the entrance ends the move: the guard's battle, the garrison's visit held for
+    // after it (decision 279), not crossed.
+    let (outcome, _) = walk(&mut state, &rules, &east(3), &mut stream()).unwrap();
+    assert_eq!(state.hero(HERO).unwrap().pos, ENTRANCE);
+    assert_eq!((outcome.visit_after, outcome.exchange), (Some(HERO), None));
+    assert!(outcome.battle.is_some());
+    // Won: the monster leaves the map; the held visit is the exchange.
+    let parts = (&rules.0, &rules.1, &details[..]);
+    let mut events = Vec::new();
+    state.end_unowned_battle(parts, (HERO, p(4, 1)), (&[], true), &mut events);
+    assert!(state.is_removed(1));
+    let held = state.visit_held(
+        parts,
+        (RED, HERO),
+        (Weekday::FIRST, &mut stream()),
+        &mut events,
+    );
+    assert_eq!(held, exchange(&rules, "t:garrison"));
+    assert_eq!(state.owner(0), Some(RED));
 }
 
 /// A slot of `army`.

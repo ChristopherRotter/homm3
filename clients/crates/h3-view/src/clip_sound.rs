@@ -2,10 +2,13 @@
 //! (`h3_bink::audio`) or of a Smacker clip's tracks (`h3_smacker::sound`), each the game's DLL's
 //! (`clients/scripts/bink-check.sh`, `smacker-check.sh`), and the volume a clip plays at.
 //!
-//! **The volume** (`docs/epics/E27-design.md` §8): the game plays a Smacker clip in a dialog at
-//! its effects setting (`SmackVolumePan` with 3640 times the setting, 0 to 9, at 0x598CBE), which
-//! `SMACKW32.DLL` takes to Miles' scale (0x10008110: `(min(v, 0x8000) × 1270 / 0x8000 + 5) /
-//! 10`). It never sets a Bink clip's volume (no `BinkSetVolume`; Miles' master volume untouched),
+//! **The volume** (`docs/epics/E27-design.md` §8, §11): the game plays a Smacker clip in a dialog
+//! at its effects setting (`SmackVolumePan` with 3640 times the setting, 0 to 9, at 0x598CBE).
+//! `SMACKW32.DLL` plays it through the DirectSound buffer Miles lends it (the game's Miles answers
+//! its preference 15 with 0), whose volume it sets from a table of 2000 log10(i / 127) hundredths
+//! of a decibel at `i = min(v, 0x8000) × 127 >> 15` (0x10009DF0): the gain i / 127 (E27 M2 T5b1;
+//! T2's `(min(v, 0x8000) × 1270 / 0x8000 + 5) / 10`, 0x10008110, is the Miles path the probes'
+//! stand-in takes, one higher from the setting 5 on). It never sets a Bink clip's volume (no `BinkSetVolume`; Miles' master volume untouched),
 //! so `BINKW32.DLL`'s Miles sample keeps 127 (0x1000FE4D): the start's clips play at full volume
 //! whatever the setting. The client plays every clip at the effects setting (CLT-Q121, decision
 //! 27), the original's full volume for the comparisons only ([`Bugs::Original`]).
@@ -111,16 +114,16 @@ impl ClipSound {
     }
 }
 
-/// The volume on Miles' scale (0 to 127) a clip's sound plays at, by the effects setting (0 to
-/// 9): a Smacker clip's as `SMACKW32.DLL` scales the game's 3640 × setting; a Bink clip's the
-/// same, 127 in the original's ([`Bugs::Original`], CLT-Q121).
+/// The volume (0 to 127, the gain over 127) a clip's sound plays at, by the effects setting (0
+/// to 9): a Smacker clip's as `SMACKW32.DLL` takes the game's 3640 × setting to its DirectSound
+/// buffer's; a Bink clip's the same, 127 in the original's ([`Bugs::Original`], CLT-Q121).
 #[must_use]
 pub fn volume(format: Format, effects: u8, bugs: Bugs) -> u8 {
     if format == Format::Bink && bugs == Bugs::Original {
         return 127;
     }
     let v = (3640 * u32::from(effects)).min(0x8000);
-    u8::try_from((v * 1270 / 0x8000 + 5) / 10).unwrap_or(127)
+    u8::try_from((v * 127) >> 15).unwrap_or(127)
 }
 
 #[cfg(test)]
@@ -207,7 +210,7 @@ mod tests {
         let smacker: Vec<u8> = (0..10)
             .map(|s| volume(Format::Smacker, s, Bugs::Original))
             .collect();
-        assert_eq!(smacker, [0, 14, 28, 42, 56, 71, 85, 99, 113, 127]);
+        assert_eq!(smacker, [0, 14, 28, 42, 56, 70, 84, 98, 112, 126]);
         assert_eq!(volume(Format::Bink, 4, Bugs::Original), 127);
         assert_eq!(volume(Format::Bink, 4, Bugs::Fixed), 56);
         assert_eq!(volume(Format::Smacker, 200, Bugs::Fixed), 127);

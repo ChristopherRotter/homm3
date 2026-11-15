@@ -13606,4 +13606,5 @@ fn the_plans_visit_the_bonus_visitables() {
     assert!(b.weekdays.iter().all(|&n| n > 0), "{b:?}");
     assert!(b.sirens.iter().all(|&n| n > 0), "{b:?}");
     assert!(b.cleared > 0 && b.dropped.iter().all(|&n| n > 0), "{b:?}");
+    assert!(b.sirens_after_battle.iter().all(|&n| n > 0), "{b:?}");
 }

@@ -1557,7 +1557,7 @@ impl AdventureState {
     /// First, since E08 T115a, every hero on the map drops its timed marks of a day (the Magic
     /// Well's; increment 12's design note §12.4, §15; ADV-BON-006), told as the command's
     /// [`crate::AdventureEventKind::TimedMarkChanged`].
-    // rule: ADV-FOG-003, ADV-BON-001
+    // rule: ADV-FOG-003, ADV-BON-001, ADV-BON-006
     pub fn start_day(
         &mut self,
         core: &Ruleset,
