@@ -12,7 +12,9 @@ palette the DLL holds (768 bytes), the formats `h3_smacker::check::raw` and `ori
 Then (E27 M2 T2) `smackprobe.exe audio` with the stand-in Miles (clients/capture/mss32.c): the
 samples the DLL hands Miles for each track the header describes, into <out>/<stem>.t<k>.pcm
 (`h3_smacker::check::sound`'s format); the DLL takes a sample handle per such track in their
-order, so the n-th handle's file is the n-th described track's.
+order, so the n-th handle's file is the n-th described track's. Then (E27 M2 T5a2)
+`smackprobe.exe rects` in the game's 5-6-5 type: every frame's SmackToBufferRect calls, the clip
+at (0, 0) into <out>/<stem>.rects and at (83, 187) into <out>/<stem>.shifted.rects.
 
     python3 -I clients/scripts/smacker-dll.py <in.smk> <out dir>
 
@@ -68,6 +70,14 @@ def main():
             out = os.path.join(tmp, f"frames.{extension}")
             run(["wine", "smackprobe.exe", "frames", f"{rel}\\clip.vid", name, kind,
                  f"{rel}\\frames.{extension}"], game, env, out)
+            with open(out, "rb") as f, open(os.path.join(target, f"{stem}.{extension}"), "wb") as g:
+                g.write(f.read())
+        # SmackToBufferRect's rectangles (E27 M2 T5a2) where `h3-view video` puts the clip
+        # (its RECTS_AT).
+        for extension, left, top in (("rects", 0, 0), ("shifted.rects", 83, 187)):
+            out = os.path.join(tmp, f"frames.{extension}")
+            run(["wine", "smackprobe.exe", "rects", f"{rel}\\clip.vid", name, "C0000000",
+                 str(left), str(top), f"{rel}\\frames.{extension}"], game, env, out)
             with open(out, "rb") as f, open(os.path.join(target, f"{stem}.{extension}"), "wb") as g:
                 g.write(f.read())
         tracks = [k for k in range(7) if len(data) >= 76 + 4 * k

@@ -37,6 +37,8 @@ pub struct Frame {
     flags: u8,
     /// Which blocks the frame's decoding wrote (mono, full or fill: not skipped), row by row.
     written: Vec<bool>,
+    /// `SMACKW32.DLL`'s map of changed spans ([`Frame::spans`]), kept from frame to frame.
+    spans: Vec<u8>,
 }
 
 impl Frame {
@@ -84,6 +86,32 @@ impl Frame {
     pub fn written(&self) -> &[bool] {
         &self.written
     }
+
+    /// `SMACKW32.DLL`'s map of what the frame changed (E27 M2 T5a2, design §10), which its
+    /// `SmackToBufferRect` reads ([`crate::Rects`]): a byte for every 16 blocks in the order
+    /// they are decoded (64 pixels of a row of blocks, running on into the next row when the
+    /// width is not a multiple of 64), 1 where the span holds a written block. The DLL's
+    /// decoder (0x10011AB0, its block routines' prologues such as 0x1000F9B0 and 0x1000FF10)
+    /// writes it run by run with two counts from 0: each run adds its whole length to the
+    /// first (FFmpeg's `block_runs`, uncut at the frame's end); when the second is not past it,
+    /// a written run sets the spans from the second's to the first's rounded up and a skipped
+    /// run clears them to the first's rounded down, the second then the span's start reached;
+    /// after the last run the span at the second is cleared. So a span is 1 when it holds a
+    /// written block, a last run past the frame's end marks spans past it, and spans past the
+    /// second keep what an earlier frame left (0 before the first).
+    #[must_use]
+    pub fn spans(&self) -> &[u8] {
+        &self.spans
+    }
+}
+
+/// Sets `spans[from..to]` to `value`, the bounds cut at the map's end (never reached: the map
+/// holds a frame's spans and a last run's longest overshoot).
+fn mark(spans: &mut [u8], from: u32, to: u32, value: u8) {
+    let count = to.saturating_sub(from) as usize;
+    for span in spans.iter_mut().skip(from as usize).take(count) {
+        *span = value;
+    }
 }
 
 /// Decodes a clip's frames in order, each over the one before.
@@ -122,6 +150,7 @@ impl Decoder {
                 palette: [0; 768],
                 flags: 0,
                 written: vec![false; ((width >> 2) * (height >> 2)) as usize],
+                spans: vec![0; (((width >> 2) * (height >> 2) + RUNS[63] + 15) / 16 + 1) as usize],
             },
         })
     }
@@ -145,9 +174,20 @@ impl Decoder {
         self.frame.written.fill(false);
         let mut bits = Bits::new(packet.video);
         let mut block = 0;
+        // The DLL's two counts of its map (0x10014D34, 0x10014D30; `Frame::spans`).
+        let (mut ran, mut spanned) = (0_u32, 0_u32);
         while block < self.blocks {
             let kind = self.trees.types.code(&mut bits)?;
             let mut run = RUNS[((kind >> 2) & 0x3F) as usize];
+            ran += run;
+            if spanned <= ran {
+                let (to, value) = match kind & 3 {
+                    SKIP => (ran >> 4, 0),
+                    _ => (ran.div_ceil(16), 1),
+                };
+                mark(&mut self.frame.spans, spanned >> 4, to, value);
+                spanned = to << 4;
+            }
             let mode = match kind & 3 {
                 FULL if self.smk4 => {
                     if bits.left() < 1 {
@@ -179,6 +219,7 @@ impl Decoder {
                 block += 1;
             }
         }
+        mark(&mut self.frame.spans, spanned >> 4, (spanned >> 4) + 1, 0);
         Ok(&self.frame)
     }
 
@@ -374,6 +415,50 @@ mod tests {
         h.version = Version::Smk4;
         let frames = decode(&h, &[vec![0xFF; 4]]);
         assert_eq!(frames[0], Err(Error::Invalid("code past the end")));
+    }
+
+    #[test]
+    fn the_dll_s_map_marks_each_span_its_runs_touch() {
+        // 64 × 16: 4 spans of 16 blocks. The first frame fills 3 blocks, skips 13 and 16, fills
+        // 17 and then 128 past the frame's end (its spans marked to the run's end); the second
+        // fills 1 and skips 59 and 4, its last span cleared after the runs, the spans past it
+        // kept from the first.
+        let fill = |run| kind(3, run, 0x11);
+        let skip = |run| kind(SKIP, run, 0);
+        let h = header(
+            64,
+            16,
+            [
+                &[],
+                &[],
+                &[],
+                &[
+                    fill(2),
+                    skip(12),
+                    skip(15),
+                    fill(16),
+                    fill(59),
+                    fill(0),
+                    skip(58),
+                    skip(3),
+                ],
+            ],
+        );
+        let mut first = Video::new(&h);
+        for value in [fill(2), skip(12), skip(15), fill(16), fill(59)] {
+            first.code(TYPES, value);
+        }
+        let mut second = Video::new(&h);
+        second
+            .code(TYPES, fill(0))
+            .code(TYPES, skip(58))
+            .code(TYPES, skip(3));
+        let frames = decode(&h, &[first.bytes(), second.bytes()]);
+        let one = frames[0].as_ref().unwrap();
+        assert_eq!(one.spans()[..13], [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]);
+        assert_eq!(one.spans().len(), (64 + RUNS[63] as usize + 15) / 16 + 1);
+        let two = frames[1].as_ref().unwrap();
+        assert_eq!(two.spans()[..13], [1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0]);
     }
 
     #[test]
