@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "100 000 forks of the env on the dwellings XL map once a visit has written a dwelling (E08 T96b2, increment 10's design note §14: `--dwelling 1`, a player's heroes seek the dwellings, the random agent answers; the forks carry the dwellings' week block, shared): the play stops after 11 steps, on day 1; 3 766 Ir a fork (fork-economy-xl-144's 3 708: the dwellings' and the camps' blocks are reference counts), 51 % in malloc and free, 14 % cloning the heroes; counts only inside h3_cli::adventure::bench::fork_workload"
+description = "100 000 forks of the env on the dwellings XL map once a visit has written a dwelling (E08 T96b2, increment 10's design note §14: `--dwelling 1`, a player's heroes seek the dwellings, the random agent answers; the forks carry the dwellings' week block, shared): the play stops after 11 steps, on day 1; 3 766 Ir a fork (fork-economy-xl-144's 3 708: the dwellings' and the camps' blocks are reference counts), 51 % in malloc and free, 14 % cloning the heroes; counts only inside h3_cli::adventure::bench::fork_workload; E08 T117 re-baselined at 384 100 055 (+1.99 % on `master` 8026f16 with no code changed: the shape the same, malloc and free 56 %, the heroes' clone 14 %, `AdventureEnv::fork` 10 %; a fork copies the state's blocks added since the baseline, among them T115a's visit marks, T115b's Fountains' values and Springs, E09 T28a's towns' garrison heroes, each an `Option` of a shared block)"
 args = [
     "adventure",
     "bench",
@@ -28,5 +28,5 @@ args = [
     "1",
 ]
 collect = "*fork_workload*"
-instructions = 376600055
+instructions = 384100055
 threshold_percent = 2

@@ -252,8 +252,9 @@ pub(crate) enum Together {
     /// An open army dialog's hero, with its group (GAM-DEC-004).
     Dialog(HeroId),
     /// An open exchange's hero with the stationary army it exchanges with (GAM-DEC-009, E08
-    /// T114a2; increment 12's design note §13): a map garrison's (`ArmyRef::MapGarrison`); the
-    /// town lane's town screen may hold a town's garrison so (E09 increment 3).
+    /// T114a2; increment 12's design note §13): a map garrison's (`ArmyRef::MapGarrison`). A
+    /// town's bars meet outside any decision instead (E09 T28a: `Together::Alone`,
+    /// `GameState::admits_army`).
     Exchange {
         /// The visiting hero.
         hero: HeroId,
