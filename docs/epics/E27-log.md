@@ -688,5 +688,20 @@ stood in. **The cut:** offered in two (Smacker, then Bink), the user kept T5b2 w
 - **Built, the client:** the replay's `sound` lines with the volume (`clip_sound::volume` of the
   clip's format) and its `closed` lines; `h3_view::shell::start`'s Bink sound from its first
   frame no longer *provisional* (design §12.2).
-- **The comparisons:** BINK_RESULTS
+- **The comparisons:** every new recipe exact at its first recording, its two runs the same:
+  `start-smacker-sound` (2 586 frames, the main menu at 180 420 ms; three Smacker voices),
+  `start-skip-key-sound`, `start-skip-left-sound` (NWCLOGO.BIK's sound from 5 500 to the press
+  at 12 000), `start-bink-sound` (the logo's 69 frames closing at 5 343 ms, NWCLOGO.BIK 5 493 to
+  18 430, H3INTRO.BIK 18 580 to 180 250, the menu at 180 400); `drawn --group start` 10 recipes,
+  30 lines exact. `smacker-check.sh` as before (110 comparisons, the 30 `wait` files);
+  `bink-check.sh` every frame and track as before and the four game clips with a track
+  (`NWCLOGO`, `H3INTRO`, `LOSEGAME`, `H3X1intr`) loading Miles' first buffer in their first
+  frame (67 200 bytes of sound there; the game's Miles buffer 36 864 for 16-bit stereo, half
+  taken for `H3X1intr`'s 8-bit track, *provisional*). `check.sh` and the scoped verify with the
+  original data green.
+- **Found:** `H3X1intr`'s 8-bit track doubles Bink's threshold, so at a 16-bit track's Miles
+  buffer it would never load (design §12.2; to read where AB's intro plays, §6.4); a Bink clip's
+  last bytes under a buffer never reach Miles (NWCLOGO's last 0.12 s; §12.4): the original's
+  sound ends with its clip either way, and decision 34's fix (the client plays the track out)
+  covers it, so no new question.
 - **The agent's calls** (*provisional*, M2's review list items 34 to 37).

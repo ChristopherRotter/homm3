@@ -1986,12 +1986,14 @@ audio 0x10005A90, Bink's thread 0x100054D0) with capstone; built `xdd.dll`'s 7. 
   loaded), lock (the buffer and its size), unlock (`AIL_load_sample_buffer`), volume (`v × 127 /
   0x7FFF`), pause (`AIL_stop_sample`, `AIL_resume_sample`), close (the buffers freed,
   `AIL_release_sample_handle`). BINKW32 never calls `AIL_start_sample`: Miles starts a
-  double-buffered sample with its first load; nor `AIL_sample_status`, `AIL_serve`,
+  double-buffered sample with its first load (Miles' double buffering as documented, *not read*
+  in `MSS32.DLL`); nor `AIL_sample_status`, `AIL_serve`,
   `AIL_end_sample`, `AIL_set_sample_pan`, `AIL_set_sample_user_data` or `AIL_get_preference`,
   which it loads.
 - **The service** (0x10005270): with its lock free (+0x254) and the ring holding more than a
-  buffer (+0x250 > +0x280, the system's +0x24), while Miles gives a buffer: the ring's bytes
-  (at most a buffer; an 8-bit track converted, 0x10005430) copied into it and loaded. It runs in
+  buffer (+0x250 > +0x280, the system's +0x24) on entry, while Miles gives a buffer: the ring's
+  bytes (at most a buffer, the last load of a run partial; an 8-bit track converted,
+  0x10005430) copied into it and loaded, the threshold not tested again until the next entry. It runs in
   `BinkDoFrame` before and after the frame's audio is decoded into the ring (0x10005A03,
   0x10005BE2), in `BinkCopyToBuffer`, `BinkWait` and others, and on Bink's own thread
   (0x100054D0: every 3 ms its read-ahead, the service in 8 rounds of 16). Only `BinkDoFrame`
@@ -2000,8 +2002,9 @@ audio 0x10005A90, Bink's thread 0x100054D0) with capstone; built `xdd.dll`'s 7. 
   buffer, whichever thread runs it: on any clock, at that frame's time.
 - **The game's clips:** the four with a track (`NWCLOGO`, `H3INTRO`, `LOSEGAME`, AB's
   `H3X1intr`; the battle's have none) carry 67 200 bytes of sound in their first frame (0.76 s;
-  the ring's 16-bit samples, its capacity 67 328), then 5 760 a frame (`binkprobe start`: the
-  ring after the first `BinkDoFrame` 67 200 less the loads). The game's Miles under the harness
+  the ring's 16-bit samples, its capacity 67 328), then about 5 760 a frame (`binkprobe start`:
+  the ring after the first `BinkDoFrame` 67 200 less the loads; `NWCLOGO` 1 146 596 bytes in
+  all, `binkprobe sound`). The game's Miles under the harness
   answers 36 864 bytes for a 16-bit stereo track (0.42 s; `bink-minimum 36864 22050`), so the
   first buffer loads in the first frame: `h3_view::shell::start`'s rule (the client's sound from
   the first frame, no longer *provisional*), checked by `bink-check.sh` for each clip with a
@@ -2029,14 +2032,19 @@ same lines from the replay's `sound <file> t<ms> v<volume>`, `quiet` and `closed
 `clip_sound::volume` under `Bugs::Original`: 70 for Smacker at 5, 127 for Bink, CLT-Q121) and
 compares them as it compares shots. The original's voice ends where its clip closes, by a skip
 or after its last frame: the client's `Op::Closed` is the comparisons' end (CLT-Q125's cut).
-START_BINK_RESULT
+`start-bink-sound` (two runs the same): the 3DO logo timed by its sound (69 frames, its close at
+5 343 ms at 1 ms steps), NWCLOGO.BIK's sound from its first frame at 5 493 to its close at
+18 430, H3INTRO.BIK's from 18 580 to 180 250, the main menu at 180 400 (180 480 silent). `drawn
+--group start`: the group's 10 recipes, 30 lines (shots, clips, voices) exact, the four sound
+recipes each at its first recording.
 
 ### 12.4 The end of a Bink clip's sound, and what is not modelled
 
-- **The tail:** the service loads only while the ring holds more than a buffer, so a clip's last
-  bytes (under a buffer) never reach Miles: `NWCLOGO`'s 31 loads hold 1 142 784 of its 1 184 640
-  bytes, its last 0.47 s never played; the loaded ones run out at about the close (the harness's
-  `bink-dry` at `NWCLOGO`'s and `H3INTRO`'s release). The original's sound then ends with its
+- **The tail:** the service enters only while the ring holds more than a buffer, so a clip's
+  last bytes (a buffer or less) may never reach Miles: `NWCLOGO`'s 31 loads (the second a
+  partial 30 336 at the first frame) hold 1 136 256 of its 1 146 596 bytes, its last 0.12 s
+  never played; on the harness the loaded ones run out 55 ms before its close (`bink-dry` at
+  its release; `H3INTRO`'s too). The original's sound then ends with its
   clip's close either way; the client plays the track out (decision 34, CLT-Q125's fix: a clip's
   track, either format), the cut the comparisons' (`closed`).
 - **Not modelled:** the harness's Bink sample plays its buffers back to back with no device
