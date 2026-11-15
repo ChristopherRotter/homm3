@@ -19,7 +19,9 @@
 //!   [`BenchResult::visits`]); on a map with dwellings (E08 T96b2: `e08-dwellings-144.h3m`) a
 //!   purchase writes the dwellings' week block until the week's refill ([`BenchResult::dwellings`]);
 //!   with `--dwelling 1` (E08 T96b2) a player's heroes seek the dwellings and the play stops when a
-//!   visit writes one, so the forks carry the block.
+//!   visit writes one, so the forks carry the block; with `--spring 1` (E08 T116c) they seek the
+//!   Magic Springs and the play stops when a visit empties one, so the forks carry the Springs'
+//!   block ([`BenchResult::springs`]) beside the Fountains of Fortune's values.
 //! * `manage` (E08 T52): a player's heroes seek each other until a meeting opens, then both
 //!   heroes' management listing `--queries` times, inside [`management_queries`]
 //!   (`h3_game::legal_management` and every split range between the two armies).
@@ -53,7 +55,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
-use h3_adventure::Pos;
+use h3_adventure::{ObjectKind, Pos};
 use h3_battle::LegalCommands;
 use h3_contracts::{HeroId, PlayerId};
 use h3_game::{
@@ -119,6 +121,9 @@ pub struct BenchOptions {
     pub meeting: bool,
     /// `fork`: the play stops when a visit writes a dwelling (within the day limit; E08 T96b2).
     pub dwelling: bool,
+    /// `fork`: the play stops when a visit empties a Magic Spring (within the day limit; E08
+    /// T116c).
+    pub spring: bool,
     /// `manage`: how many times both heroes' listing is asked for (E08 T52).
     pub queries: u32,
 }
@@ -144,6 +149,9 @@ pub struct BenchResult {
     /// `fork`: the games whose forks carried the dwellings' week block (E08 T96b2: a purchase,
     /// free creatures or a guards' battle left a dwelling below its week since the last refill).
     pub dwellings: u64,
+    /// `fork`: the games whose forks carried the Springs' block (E08 T116c: a visit emptied a
+    /// Magic Spring's entrance this week).
+    pub springs: u64,
     /// `fork`: the heroes in boats at the forks, over the games (E08 T75b: the forks carry the
     /// boats' records with a boat aboard).
     pub afloat: u64,
@@ -182,6 +190,7 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
         meetings: 0,
         visits: 0,
         dwellings: 0,
+        springs: 0,
         afloat: 0,
         creature_months: 0,
         added: 0,
@@ -207,7 +216,9 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
                 let steps = if options.meeting {
                     until_meeting(&mut env, g)
                 } else if options.dwelling {
-                    until_dwelling(&mut env, g)
+                    until_sought(&mut env, g, Sought::Dwelling)
+                } else if options.spring {
+                    until_sought(&mut env, g, Sought::Spring)
                 } else if options.battle {
                     until_battle(&mut env)
                 } else {
@@ -218,6 +229,7 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
                 result.meetings += u64::from(meeting(&env).is_some());
                 result.visits += u64::from(env.state().adventure().visits().is_some());
                 result.dwellings += u64::from(env.state().adventure().dwellings_written());
+                result.springs += u64::from(!env.state().adventure().emptied_springs().is_empty());
                 let heroes = env.state().adventure().heroes();
                 let afloat = heroes.iter().filter(|h| h.boat.is_some()).count();
                 result.afloat += u64::try_from(afloat).unwrap_or(u64::MAX);
@@ -287,6 +299,7 @@ fn builds(rules: &GameRuleset, setup: &GameSetup, options: &BenchOptions) -> Res
         meetings: 0,
         visits: 0,
         dwellings: 0,
+        springs: 0,
         afloat: 0,
         creature_months: 0,
         added: 0,
@@ -461,12 +474,58 @@ fn seek_own(env: &AdventureEnv, player: PlayerId) -> Action {
     best.map_or_else(Action::end_turn, |(_, action)| action)
 }
 
-/// Play until a visit writes a dwelling or the episode ends (`fork` with `dwelling`; E08 T96b2):
-/// on the map the acting player's heroes seek the dwellings ([`seek_dwelling`]); its offers (the
-/// flag's hire question, the guards' question, the hire dialog), level-ups, meetings, army dialogs
-/// and battles, and the neutral seat's battles, are the env's random agent's (agent seed
-/// `agent_seed`): the steps played. Random play seldom reaches a dwelling on a large map.
-fn until_dwelling(env: &mut AdventureEnv, agent_seed: u64) -> u64 {
+/// What the `fork` workload's heroes seek before the forks (E08 T96b2, T116c).
+#[derive(Debug, Clone, Copy)]
+enum Sought {
+    /// The dwellings, until a visit writes one (`--dwelling 1`).
+    Dwelling,
+    /// The Magic Springs, until a visit empties one's entrance (`--spring 1`).
+    Spring,
+}
+
+impl Sought {
+    /// Whether a visit has found it: a dwelling written, a Spring's entrance emptied.
+    fn found(self, state: &GameState) -> bool {
+        match self {
+            Self::Dwelling => state.adventure().dwellings_written(),
+            Self::Spring => !state.adventure().emptied_springs().is_empty(),
+        }
+    }
+
+    /// The entrances sought: each dwelling's; each Magic Spring's first (either of its two
+    /// empties itself alone).
+    fn entrances(self, env: &AdventureEnv) -> Vec<Pos> {
+        let map = env.state().adventure().map();
+        let objects = map.objects();
+        match self {
+            Self::Dwelling => map
+                .dwellings()
+                .iter()
+                .filter_map(|&index| objects[index].entrance(map))
+                .collect(),
+            Self::Spring => {
+                let part = env.rules().adventure();
+                let spring = |object: &&h3_adventure::MapObject| {
+                    (object.object_type)
+                        .and_then(|id| part.object_type(id))
+                        .is_some_and(|t| t.kind == ObjectKind::MagicSpring)
+                };
+                (objects.iter())
+                    .filter(spring)
+                    .filter_map(|object| object.entrance(map))
+                    .collect()
+            }
+        }
+    }
+}
+
+/// Play until a visit finds what is `sought` or the episode ends (`fork` with `dwelling`, E08
+/// T96b2; with `spring`, E08 T116c): on the map the acting player's heroes seek it
+/// ([`seek_entrance`]); its offers (the flag's hire question, the guards' question, the hire
+/// dialog), level-ups, meetings, army dialogs and battles, and the neutral seat's battles, are the
+/// env's random agent's (agent seed `agent_seed`): the steps played. Random play seldom reaches a
+/// given object on a large map.
+fn until_sought(env: &mut AdventureEnv, agent_seed: u64, sought: Sought) -> u64 {
     let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
     let mut steps = 0;
     loop {
@@ -474,7 +533,7 @@ fn until_dwelling(env: &mut AdventureEnv, agent_seed: u64) -> u64 {
             break;
         };
         let state = env.state();
-        if state.adventure().dwellings_written() {
+        if sought.found(state) {
             break;
         }
         let action = match (seat, env.phase(seat)) {
@@ -485,7 +544,7 @@ fn until_dwelling(env: &mut AdventureEnv, agent_seed: u64) -> u64 {
                     && state.meeting(player).is_none()
                     && state.hire_dialog(player).is_none() =>
             {
-                seek_dwelling(env, player)
+                seek_entrance(env, player, &sought.entrances(env))
             }
             _ => choose(env, seat, &mut rng),
         };
@@ -498,19 +557,13 @@ fn until_dwelling(env: &mut AdventureEnv, agent_seed: u64) -> u64 {
     steps
 }
 
-/// The acting player's step toward a dwelling (E08 T96b2): of its heroes' legal moves the one that
-/// ends nearest (in steps, on the same level) to a dwelling's entrance other than the tile its hero
-/// stands on (a hero does not revisit the object it stands on), the first slot's and tile's on a
-/// tie, an entrance itself (a visit) nearest of all; `EndTurn` when no move gets nearer than its
-/// hero stands.
-fn seek_dwelling(env: &AdventureEnv, player: PlayerId) -> Action {
+/// The acting player's step toward one of `entrances` (E08 T96b2: a dwelling's; T116c: a Magic
+/// Spring's): of its heroes' legal moves the one that ends nearest (in steps, on the same level)
+/// to an entrance other than the tile its hero stands on (a hero does not revisit the object it
+/// stands on), the first slot's and tile's on a tie, an entrance itself (a visit) nearest of all;
+/// `EndTurn` when no move gets nearer than its hero stands.
+fn seek_entrance(env: &AdventureEnv, player: PlayerId, entrances: &[Pos]) -> Action {
     let state = env.state();
-    let map = state.adventure().map();
-    let entrances: Vec<Pos> = map
-        .dwellings()
-        .iter()
-        .filter_map(|&index| map.objects()[index].entrance(map))
-        .collect();
     let mut best: Option<(u16, Action)> = None;
     for slot in 0..HERO_SLOTS {
         let (Some(hero), Some(reach)) = (

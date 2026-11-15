@@ -22,6 +22,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   play's seed, the fork's siege seed) and the `*-towns-36` workloads move. Search seeds with a
   throwaway `#[ignore]` test in release, its `CARGO_TARGET_DIR` outside the worktree: only
   `/target` is ignored, and `git add -A` took a `target-rel/` (E09 T27).
+- **A new golden adventure replay moves three counts in the server lane's tests** (E09 T29a's
+  CI): `h3-protocol`'s `tests/game_fold.rs` (`golden`) and `tests/game_session.rs` (the
+  restores), `h3-server`'s `tests/record.rs`; their fold, query and session gates also play every
+  replay. The scoped verify runs neither crate: after adding a replay run `cargo test
+  --no-fail-fast -p h3-protocol -p h3-server` (CI's test run stops at the first failing binary).
 - **The scoped verify's clippy skips `h3-sim`** (E09 T27's CI: a one-element `for` in a town-map
   test): after a change there run `cargo clippy --workspace --all-targets -- -D warnings`.
 - **A hire dialog's creatures for the env come from `GameState::hire_stock`** (E09 T27): a new

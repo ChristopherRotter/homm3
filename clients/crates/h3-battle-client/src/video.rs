@@ -231,6 +231,50 @@ fn decode_smacker(name: &str, bytes: &[u8]) -> Result<(Vec<h3_smacker::Frame>, b
     Ok((frames, clean))
 }
 
+/// Where `SmackToBuffer` puts a clip for its rectangles' check (E27 M2 T5a2), each with its
+/// file's extension: at the buffer's corner, and at a left edge off the DLL's 8-pixel grid
+/// (`H3Intro`'s top). `smacker-dll.py` runs `smackprobe rects` at the same places.
+const RECTS_AT: [(&str, [u32; 2]); 2] = [("rects", [0, 0]), ("shifted.rects", [83, 187])];
+
+/// A clip's rectangles in `smackprobe rects`' text: a line a frame, its number, then for each
+/// call whether it took a rectangle and the last one after it, `<took>:<x>,<y>,<w>,<h>`.
+fn rects_text(calls: &[Vec<(bool, h3_smacker::Rect)>]) -> Vec<u8> {
+    let mut out = String::new();
+    for (n, frame) in calls.iter().enumerate() {
+        out.push_str(&n.to_string());
+        for &(took, [x, y, w, h]) in frame {
+            out.push_str(&format!(" {}:{x},{y},{w},{h}", u8::from(took)));
+        }
+        out.push('\n');
+    }
+    out.into_bytes()
+}
+
+/// Compares two texts line by line (a frame a line); prints the outcome and the first line
+/// that differs.
+fn compare_lines(name: &str, ours: &[u8], reference: &[u8]) -> bool {
+    let (ours, reference) = (
+        String::from_utf8_lossy(ours),
+        String::from_utf8_lossy(reference),
+    );
+    let (a, b): (Vec<&str>, Vec<&str>) = (ours.lines().collect(), reference.lines().collect());
+    let differ: Vec<usize> = (0..a.len().max(b.len()))
+        .filter(|&n| a.get(n) != b.get(n))
+        .collect();
+    match differ.first() {
+        None => println!("{name}: as the reference, all {} frames", a.len()),
+        Some(&n) => println!(
+            "{name}: {} of {} frames differ from the reference, the first {n}: {:?}, the \
+             reference {:?}",
+            differ.len(),
+            a.len().max(b.len()),
+            a.get(n).copied().unwrap_or(""),
+            b.get(n).copied().unwrap_or(""),
+        ),
+    }
+    differ.is_empty()
+}
+
 /// Compares `ours` (`count` frames) with the reference's bytes frame by frame; prints the
 /// verdict.
 fn compare(name: &str, count: usize, ours: &[u8], reference: &[u8]) -> bool {
@@ -388,6 +432,12 @@ fn video(options: &Options) -> Result<bool, String> {
                 for (k, sound) in h3_smacker::check::sound(bytes).map_err(|e| format!("{e:?}"))? {
                     outputs.push((format!("t{k}.pcm"), sound));
                 }
+                // `SmackToBufferRect`'s rectangles (E27 M2 T5a2), compared frame by frame.
+                for (extension, at) in RECTS_AT {
+                    let calls =
+                        h3_smacker::check::rects(bytes, at).map_err(|e| format!("{e:?}"))?;
+                    outputs.push((extension.to_owned(), rects_text(&calls)));
+                }
                 (outputs, frames.len())
             }
         };
@@ -404,7 +454,11 @@ fn video(options: &Options) -> Result<bool, String> {
                     Kind::Bink if extension == "yuv" => name.clone(),
                     _ => format!("{name} ({extension})"),
                 };
-                good &= compare(&label, count, &ours, &reference);
+                good &= if extension.ends_with("rects") {
+                    compare_lines(&label, &ours, &reference)
+                } else {
+                    compare(&label, count, &ours, &reference)
+                };
             }
         }
     }
@@ -535,6 +589,18 @@ mod tests {
         assert_eq!(sixteen, original_16(&frames, Format::Rgb565));
         let sound = h3_smacker::check::sound(&h3_smacker::build::sample(5)).unwrap();
         assert_eq!(fs::read(dir.join("sample-5.t0.pcm")).unwrap(), sound[0].1);
+        // SmackToBufferRect's calls (E27 M2 T5a2), at the corner and shifted.
+        for (extension, at) in RECTS_AT {
+            let calls = h3_smacker::check::rects(&h3_smacker::build::sample(5), at).unwrap();
+            let text = fs::read(dir.join(format!("sample-5.{extension}"))).unwrap();
+            assert_eq!(text, rects_text(&calls));
+            assert!(text.starts_with(b"0 1:"));
+        }
+        // Compared line by line (the probe's CRLF read as LF): a line that differs or lacks
+        // fails.
+        assert!(compare_lines("x", b"0 1:0,0,4,4\n", b"0 1:0,0,4,4\r\n"));
+        assert!(!compare_lines("x", b"0 1\n1 0\n", b"0 1\n1 1\n"));
+        assert!(!compare_lines("x", b"0 1\n1 0\n", b"0 1\n"));
         let reference = Options {
             reference: Some(dir.clone()),
             ..options

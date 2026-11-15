@@ -1,0 +1,32 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "100 000 forks of the env on the garrisons and bonuses XL map once a visit has emptied a Magic Spring (E08 T116c, increment 12's design note §16: `--spring 1`, a player's heroes seek the Springs, the random agent answers): the play stops after 2 steps, on day 1 (red's first hero at the Spring anchored seven tiles east of it), and the forks carry the Springs' block (one entrance emptied), the eleven Fountains of Fortune's values, the kind marks and the visits block, each one reference count; 4 299 Ir a fork (fork-dwellings-xl-144's 3 766 with eight heroes: ten here, each hero's record cloned, 15 %), 58 % in malloc and free; counts only inside h3_cli::adventure::bench::fork_workload; baselined at its first count"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-garrisons-bonuses-144.h3m",
+    "--workload",
+    "fork",
+    "--games",
+    "1",
+    "--days",
+    "7",
+    "--forks",
+    "100000",
+    "--seed",
+    "1",
+    "--spring",
+    "1",
+]
+collect = "*fork_workload*"
+instructions = 429900386
+threshold_percent = 2

@@ -27,6 +27,14 @@
          last the timers 256 times more (the ring's tail), then SmackClose. The stand-in writes each sample handle's loads to <out>.<n>.pcm (the
          track's samples as the DLL decoded them: Miles' volume and pan act on playback, not on
          them) and every call to <out>.log.
+     smackprobe rects <vid> <entry> <type> <left> <top> <out>
+         (E27 M2 T5a2) SmackToBuffer at (<left>, <top>) of a buffer of (left + width) x
+         (top + height) pixels of type <type>, then per frame (as `frames`) SmackDoFrame and
+         SmackToBufferRect with <type> as the game's video_show 0x5979D0 passes it (the buffer's
+         type, 0x69FE20), called until it returns 0, then SmackNextFrame. <out> gets one line per
+         frame: the frame, then for every call " <returned>:<x>,<y>,<w>,<h>", the handle's last
+         rectangle after it (+0x380 to +0x38C; the game reads it after its first call whatever
+         that returned).
 
    The x87 control word: main sets the game's 0x27F (Heroes3.exe's CRT; mingw-w64 starts at
    0x37F), as binkprobe does, so that any floating point in the DLL rounds as in the game. */
@@ -42,6 +50,8 @@ typedef void(WINAPI *to_buffer_fn)(void *, DWORD, DWORD, DWORD, DWORD, void *, D
 static open_fn smack_open;
 static one_fn smack_do_frame, smack_next_frame, smack_close;
 static to_buffer_fn smack_to_buffer;
+typedef DWORD(WINAPI *to_buffer_rect_fn)(void *, DWORD);
+static to_buffer_rect_fn smack_to_buffer_rect;
 typedef BYTE(WINAPI *use_mss_fn)(void *);
 typedef void(WINAPI *volume_fn)(void *, DWORD, DWORD, DWORD);
 typedef void(WINAPI *record_fn)(const char *);
@@ -69,10 +79,11 @@ static int load(void)
     smack_next_frame = (one_fn)GetProcAddress(dll, "_SmackNextFrame@4");
     smack_close = (one_fn)GetProcAddress(dll, "_SmackClose@4");
     smack_to_buffer = (to_buffer_fn)GetProcAddress(dll, "_SmackToBuffer@28");
+    smack_to_buffer_rect = (to_buffer_rect_fn)GetProcAddress(dll, "_SmackToBufferRect@8");
     smack_use_mss = (use_mss_fn)GetProcAddress(dll, "_SmackSoundUseMSS@4");
     smack_volume_pan = (volume_fn)GetProcAddress(dll, "_SmackVolumePan@16");
     if (!smack_open || !smack_do_frame || !smack_next_frame || !smack_close ||
-        !smack_to_buffer || !smack_use_mss || !smack_volume_pan) {
+        !smack_to_buffer || !smack_to_buffer_rect || !smack_use_mss || !smack_volume_pan) {
         fprintf(stderr, "smackprobe: an export is missing\n");
         return 0;
     }
@@ -158,6 +169,50 @@ static int frames(const char *vid, const char *entry, DWORD type, const char *ou
     return 0;
 }
 
+static void last_rect(FILE *f, void *h, DWORD returned)
+{
+    fprintf(f, " %lu:%lu,%lu,%lu,%lu", (unsigned long)returned, (unsigned long)FIELD(h, 0x380),
+            (unsigned long)FIELD(h, 0x384), (unsigned long)FIELD(h, 0x388),
+            (unsigned long)FIELD(h, 0x38C));
+}
+
+static int rects(const char *vid, const char *entry, DWORD type, DWORD left, DWORD top,
+                 const char *out)
+{
+    void *h;
+    DWORD w, ht, n, i, pitch, got;
+    BYTE *buf;
+    FILE *f;
+    if (!open_archive(vid) || !(h = open_entry(entry, 0))) {
+        fprintf(stderr, "smackprobe: %s not opened\n", entry);
+        return 1;
+    }
+    w = FIELD(h, 4);
+    ht = FIELD(h, 8);
+    n = FIELD(h, 0xC) + (FIELD(h, 0x14) & 1);
+    pitch = (type ? 2 : 1) * (left + w);
+    buf = calloc(pitch, top + ht);
+    f = fopen(out, "wb");
+    if (!buf || !f)
+        return 1;
+    smack_to_buffer(h, left, top, pitch, top + ht, buf, type);
+    for (i = 0; i < n; i++) {
+        smack_do_frame(h);
+        fprintf(f, "%lu", (unsigned long)i);
+        do {
+            got = smack_to_buffer_rect(h, type);
+            last_rect(f, h, got);
+        } while (got);
+        fprintf(f, "\n");
+        smack_next_frame(h);
+    }
+    fclose(f);
+    printf("%s: %lu x %lu, %lu frames\n", entry, (unsigned long)w, (unsigned long)ht,
+           (unsigned long)n);
+    smack_close(h);
+    return 0;
+}
+
 /* The driver SmackSoundUseMSS is given: the stand-in never reads it, and the DLL reads only its
    +0xA0 (Miles' DirectSound object), on the DirectSound path the stand-in's preference avoids. */
 static BYTE driver[0x400];
@@ -213,7 +268,11 @@ int main(int argc, char **argv)
         return frames(argv[2], argv[3], strtoul(argv[4], NULL, 16), argv[5]);
     if (argc == 5 && !strcmp(argv[1], "audio"))
         return audio(argv[2], argv[3], argv[4]);
+    if (argc == 8 && !strcmp(argv[1], "rects"))
+        return rects(argv[2], argv[3], strtoul(argv[4], NULL, 16), strtoul(argv[5], NULL, 10),
+                     strtoul(argv[6], NULL, 10), argv[7]);
     fprintf(stderr, "usage: smackprobe frames <vid> <entry> <type> <out>\n"
-                    "       smackprobe audio <vid> <entry> <out>\n");
+                    "       smackprobe audio <vid> <entry> <out>\n"
+                    "       smackprobe rects <vid> <entry> <type> <left> <top> <out>\n");
     return 2;
 }

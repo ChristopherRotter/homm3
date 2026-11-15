@@ -25,7 +25,7 @@ adventure).
 |---|---|
 | `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`), its `VIDEO.VID` the user's `original-data/battle-videos.vid` (the result window's clips, E17 M5 T4b2b) and `original-data/shell-videos.vid` (the shell's 13 clips, E27 M1 T2) joined into one archive (either alone when only it is staged; an empty archive without both, and it says which); builds `xdd.dll`, `binkprobe.exe`, `smackprobe.exe` and the stand-in Miles (`mss/MSS32.DLL`, E27 M2 T2); writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures, the spell book's page turns without their videos) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
 | `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** (BINKW32.DLL's too) and the **forced rolls** (below). |
-| `smackprobe.c` | Our `smackprobe.exe` (E27 M2 T1): the game's `SMACKW32.DLL` run on a video archive's Smacker clips as a black box: every frame as the DLL leaves it in the buffer (8 bits, 5-5-5 or 5-6-5) and its palette (below, "The clips"). |
+| `smackprobe.c` | Our `smackprobe.exe` (E27 M2 T1): the game's `SMACKW32.DLL` run on a video archive's Smacker clips as a black box: every frame as the DLL leaves it in the buffer (8 bits, 5-5-5 or 5-6-5) and its palette, the sound it hands Miles (T2) and every frame's `SmackToBufferRect` rectangles (T5a2; below, "The clips"). |
 | `mss32.c`, `mss32.def`, `mss32.rc` | Our stand-in for Miles' `MSS32.DLL` (E27 M2 T2), built into the run directory's `mss/` (the game's own stays beside `Heroes3.exe`): the probes load it before a DLL asks for Miles, and it writes the sound the DLL hands Miles to files (below, "The clips' sound"). |
 | `binkprobe.c` | Our `binkprobe.exe` (E17 M5 T4b2b): the game's `BINKW32.DLL` run on a video archive's clips as a black box, its clock ours: every frame as the DLL copies it (5-6-5, YUY2, …), the result window's playback by the millisecond, the DLL's dequantizers (below, "The clips"); at the game's x87 control word 0x27F (E17 M6 T6c1). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
@@ -1403,6 +1403,15 @@ Each frame (the ring frame too) as the buffer holds it after `SmackDoFrame`, the
 the DLL's palette; `<out>.info` the frame's number and the new-palette flag. Wine maps names
 ignoring case: an output named as an existing file of another case overwrites it.
 `clients/scripts/smacker-check.sh` compares `h3-smacker` with it (`smacker-dll.py`).
+
+`smackprobe rects` (E27 M2 T5a2, design §10) gives what the game's `video_show` reads from
+`SmackToBufferRect`: the clip put at a place of a buffer of the game's type, then per frame
+`SmackDoFrame` and the calls until one returns 0, each written as `<returned>:<x>,<y>,<w>,<h>`
+(the handle's last rectangle after it), a line a frame (`h3_smacker::check::rects` the same):
+
+```
+wine smackprobe.exe rects 'Data\VIDEO.VID' H3INTRO C0000000 80 187 h3intro.rects   # H3Intro's place
+```
 
 ### The clips' sound
 

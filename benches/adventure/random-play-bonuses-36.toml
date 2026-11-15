@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "5 random-vs-random games of 28 days on the bonuses map (E08 T116c, increment 12's design note §16; T116a's e08-bonuses-36.h3m: each of the fifteen bonus visitables, two Magic Springs and two Fountains of Fortune, the sea's three on a strait with two boats, eight heroes); seed 6 by a search of seeds 1 to 8 for the most kind marks at the games' ends (20) and Springs emptied (4): 1 561 steps; about 1 677 000 Ir a step, 97 % inside Reach::search (the agent's legal moves of the eight heroes at every step, 81 %), AdventureState::visit_at 1.9 %; counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply); baselined at its first count"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-bonuses-36.h3m",
+    "--workload",
+    "play",
+    "--games",
+    "5",
+    "--days",
+    "28",
+    "--seed",
+    "6",
+]
+collect = "*adventure*random_rollout*"
+instructions = 2617736246
+threshold_percent = 2

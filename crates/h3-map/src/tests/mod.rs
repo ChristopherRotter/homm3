@@ -18,6 +18,7 @@ mod encode;
 mod fixtures;
 mod full_maps;
 mod garrisons_bonuses;
+mod garrisons_bonuses_xl_map;
 mod garrisons_map;
 mod gates_map;
 mod import;

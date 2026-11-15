@@ -27,9 +27,9 @@
 //! those above it, the screen there keeping an older frame until a later union covers it;
 //! CLT-Q124, decision 32: the client shows the clip's whole rectangle, the union the
 //! comparisons'). `NWCLogo`'s Bink copy (400 × 300, clip 29: `video_show`'s own case) is drawn at the
-//! back buffer's corner and stretched onto the whole screen by DirectDraw. *Not built:* the
-//! Smacker clips' rectangles (`SMACKW32.DLL`'s, T5a2): their whole rectangle is shown, so
-//! `H3INTRO.SMK` differs from the original in 23 of its frames' small boxes.
+//! back buffer's corner and stretched onto the whole screen by DirectDraw. A Smacker clip's
+//! rectangles are `SMACKW32.DLL`'s (`h3_smacker::Rects`, E27 M2 T5a2), already in the back
+//! buffer: `SmackToBuffer` was given the clip's place.
 //!
 //! **The ends.** A clip's last frame is decoded but not shown: the clips with the clip table's
 //! +0xA (28 to 31) end in the window manager's fade (0x602C50 with 1, 4, 0 → 0x6030E0): the back
@@ -450,6 +450,9 @@ pub struct Picture<'c, 'a> {
     /// Each Bink clip's rectangles of its last frame (`h3_bink::rects`), the first kept from a
     /// frame before when the last marked nothing (the DLL leaves it in the handle).
     rects: [Vec<h3_bink::Rect>; 3],
+    /// Each Smacker clip's `SmackToBufferRect` (`h3_smacker::Rects`, at its place in the back
+    /// buffer; a Bink clip's unused), drained when its frame is shown.
+    smack: [h3_smacker::Rects; 3],
     /// What a fade fades: the back buffer as the game's fade copies it (`Bugs::Original`), the
     /// screen as shown (`Bugs::Fixed`, CLT-Q123); taken at its first step.
     fading: Option<Pixels>,
@@ -510,9 +513,12 @@ impl<'c, 'a> Picture<'c, 'a> {
     ) -> Self {
         let mut places = [[0; 4]; 3];
         let mut kept = [None, None, None];
+        let mut smack = [const { h3_smacker::Rects::new([0, 0], [0, 0]) }; 3];
         for ((k, part), source) in Part::ALL.iter().enumerate().zip(sources) {
             if let Some((source, header)) = source {
-                places[k] = place(*part, part.codec(bink_video), header.size);
+                let [x, y, w, h] = place(*part, part.codec(bink_video), header.size);
+                places[k] = [x, y, w, h];
+                smack[k] = h3_smacker::Rects::new([w, h], [x, y]);
                 kept[k] = Some(source);
             }
         }
@@ -526,6 +532,7 @@ impl<'c, 'a> Picture<'c, 'a> {
             bugs,
             decoded: [0; 3],
             rects: [Vec::new(), Vec::new(), Vec::new()],
+            smack,
             fading: None,
         }
     }
@@ -593,7 +600,23 @@ impl<'c, 'a> Picture<'c, 'a> {
             }
             return;
         }
-        let bink = matches!(self.sources[part as usize], Some(Source::Bink { .. }));
+        let k = part as usize;
+        if let (Some(Source::Smacker { decoder, .. }), Bugs::Original) =
+            (&self.sources[k], self.bugs)
+        {
+            // `SmackToBufferRect`'s rectangles' union as the game takes it, in the back
+            // buffer already (CLT-Q124: the comparisons'; never none: the game reads one).
+            let shown: Vec<h3_bink::Rect> = self.smack[k]
+                .shown(decoder.frame())
+                .iter()
+                .map(|r| r.map(|v| i32::try_from(v).unwrap_or(i32::MAX)))
+                .collect();
+            let [rx, ry, rw, rh] = shown_union(&shown).unwrap_or_default().map(i64::from);
+            self.screen
+                .copy_rect(&self.back, [rx, ry, rx + rw, ry + rh]);
+            return;
+        }
+        let bink = matches!(self.sources[k], Some(Source::Bink { .. }));
         if bink && self.bugs == Bugs::Original {
             // The DLL's rectangles' union as the game takes it (CLT-Q124: the comparisons').
             if let Some([rx, ry, rw, rh]) = shown_union(&self.rects[part as usize]) {
@@ -643,6 +666,7 @@ impl<'c, 'a> Picture<'c, 'a> {
                     .ok_or(order)?
                     .and_then(|packet| decoder.decode(&packet).map(|_| ()))
                     .map_err(PictureError::Smacker)?;
+                self.smack[k].decoded();
                 let frame = decoder.frame();
                 let w = frame.width() as usize;
                 let palette = frame.palette();

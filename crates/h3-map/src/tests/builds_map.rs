@@ -20,6 +20,8 @@
 
 use std::path::PathBuf;
 
+use super::dwellings::LINES;
+use super::economy_map::owned;
 use super::play::FAITHFUL;
 use super::towns_map::{at, entrance, town, with_army};
 use crate::import::codes;
@@ -39,11 +41,14 @@ const NAME: &str = "e09-builds-36.h3m";
 
 /// Faction codes (`TOWNTYPE.TXT`, the writer's subclasses).
 const CASTLE: u32 = 0;
+const RAMPART: u32 = 1;
 const TOWER: u32 = 2;
+const DUNGEON: u32 = 5;
 const CONFLUX: u32 = 8;
 
-/// Creature codes: Pikemen, Gorgons.
+/// Creature codes: Pikemen, Centaurs, Gorgons.
 const PIKEMAN: u16 = 0;
+const CENTAUR: u16 = 14;
 const GORGON: u16 = 102;
 
 /// Building bits (`docs/formats/h3m.md`, "Town buildings").
@@ -57,6 +62,10 @@ const MARKETPLACE: u8 = 8;
 const SILO: u8 = 9;
 const MAGE_GUILD_1: u8 = 11;
 const SHIPYARD: u8 = 16;
+/// The Grail's building (a Dungeon's Guardian of Earth) and the second of the faction's special
+/// buildings (a Dungeon's Portal of Summoning).
+const GRAIL: u8 = 17;
+const PORTAL: u8 = 19;
 /// Level 1's dwelling (a Conflux's Magic Lantern), level 2's (its Altar of Air), level 3's (its
 /// Altar of Water) and level 3's upgraded one (a Castle's Upg. Griffin Tower).
 const DWELLING_1: u8 = 22;
@@ -65,12 +74,18 @@ const DWELLING_3: u8 = 28;
 const UPGRADED_3: u8 = 29;
 /// Level 4's dwelling (a Castle's Barracks, which the Griffin Tower requires).
 const DWELLING_4: u8 = 31;
+/// Level 1's horde (a Dungeon's Mushroom Rings).
+const HORDE_1: u8 = 24;
 
 /// The towns' positions by `TownId` (each entered two columns left of it): red's Harbour by the
-/// sea and Keep inland, blue's Nexus and Spire.
-const TOWNS: [(u8, u8); 4] = [(10, 29), (10, 12), (30, 8), (30, 20)];
-/// The heroes' tiles: red's Orrin, blue's Yog.
-const HEROES: [(u8, u8); 2] = [(4, 20), (14, 14)];
+/// sea and Keep inland, blue's Nexus and Spire, then (E09 T29a) red's Dungeon "Pit" and the
+/// neutral Rampart "Grove".
+const TOWNS: [(u8, u8); 6] = [(10, 29), (10, 12), (30, 8), (30, 20), (20, 27), (22, 4)];
+/// The heroes' tiles by hero id: red's Orrin, blue's Yog, then (E09 T29a) red's Valeska.
+const HEROES: [(u8, u8); 3] = [(4, 20), (14, 14), (3, 10)];
+/// Red's Guardhouse (E09 T29a; `dwellings.rs`' first line, visited on its position), owned at
+/// the start: the Pit's Portal draws its Pikemen.
+const GUARDHOUSE: (u8, u8) = (24, 27);
 /// The sea: the rows from this one down (the Harbour's entrance two rows above it).
 const SEA: u8 = 31;
 
@@ -110,6 +125,15 @@ fn event(players: u8, first_day: u16, interval: u16, resources: [i32; 7]) -> w::
     }
 }
 
+/// A garrison of `stacks` in its first slots.
+fn garrison(stacks: &[(u16, u16)]) -> [Option<(u16, u16)>; w::ARMY_SLOTS] {
+    let mut army = [None; w::ARMY_SLOTS];
+    for (slot, &stack) in army.iter_mut().zip(stacks) {
+        *slot = Some(stack);
+    }
+    army
+}
+
 /// Red's and blue's bits in an event's players.
 const RED: u8 = 1;
 const BLUE: u8 = 2;
@@ -138,7 +162,15 @@ const fn gift(wood: i32, ore: i32, gold: i32) -> [i32; 7] {
 ///   - blue's main Conflux "Nexus" on (30, 8): the Capitol, a Fort, a Tavern, the Marketplace,
 ///     the Blacksmith, the Magic Lantern and the Altar of Air; the Altar of Water forbidden;
 ///   - blue's Tower "Spire" on (30, 20): the Capitol's requirements; event 0 blue's once
-///     on day 2, the Capitol.
+///     on day 2, the Capitol;
+///   - (E09 T29a, increment 3's gates, design note §47, §55) red's Dungeon "Pit" on (20, 27): a
+///     Fort, the Warren and its horde (the Mushroom Rings), the Portal of Summoning and the Grail's
+///     Guardian of Earth, an empty garrison;
+///   - the neutral Rampart "Grove" on (22, 4): a Fort, the Centaur Stables and the Dwarf Cottage,
+///     six Centaurs in its garrison (its garrison week, TWN-GRO-006).
+/// - (E09 T29a) Red's Valeska (hero 2) on (3, 10) with four pikemen, a short walk from the Keep;
+///   red's Guardhouse on (24, 27), owned at the start (the Pit's Portal draws its Pikemen,
+///   TWN-GRO-007).
 fn map() -> w::Map {
     let mut players: [Option<w::Player>; w::PLAYERS] = Default::default();
     players[0] = Some(w::Player {
@@ -151,12 +183,12 @@ fn map() -> w::Map {
         computer: true,
         towns: 1 << CONFLUX,
     });
-    let [orrin, yog] = HEROES;
+    let [orrin, yog, valeska] = HEROES;
     let mut objects = vec![
         w::MapObject::Hero(with_army(orrin, 0, 0, &[(PIKEMAN, 10)])),
         w::MapObject::Hero(with_army(yog, 1, 96, &[(GORGON, 5)])),
     ];
-    let [harbour, keep, nexus, spire] = TOWNS;
+    let [harbour, keep, nexus, spire, pit, grove] = TOWNS;
     let capitol_requirements = [
         CITY_HALL,
         CASTLE_BUILDING,
@@ -232,11 +264,32 @@ fn map() -> w::Map {
             }],
             ..town(spire, Some(TOWER), Some(1))
         },
+        w::AnyTown {
+            name: Some("Pit".into()),
+            garrison: Some([None; w::ARMY_SLOTS]),
+            buildings: custom(&[FORT, DWELLING_1, HORDE_1, PORTAL, GRAIL], &[]),
+            ..town(pit, Some(DUNGEON), Some(0))
+        },
+        w::AnyTown {
+            name: Some("Grove".into()),
+            garrison: Some(garrison(&[(CENTAUR, 6)])),
+            buildings: custom(&[FORT, DWELLING_1, DWELLING_2], &[]),
+            ..town(grove, Some(RAMPART), None)
+        },
     ];
     objects.extend(towns.map(w::MapObject::AnyTown));
+    objects.push(w::MapObject::Hero(with_army(
+        valeska,
+        0,
+        1,
+        &[(PIKEMAN, 4)],
+    )));
+    objects.push(owned(LINES[0], GUARDHOUSE, w::OwnedBody::Owner(Some(0))));
     w::Map {
         name: "Builds".into(),
-        description: "E09 T19a: builds, the Shipyard's water, the town events".into(),
+        description: "E09 T19a: builds, the Shipyard's water, the town events; T29a: growth, \
+                      recruitment, the rows"
+            .into(),
         size: 36,
         terrain: w::Terrain::Grass,
         patches: vec![w::Patch {
@@ -365,7 +418,14 @@ fn the_builds_map_is_committed_as_written() {
     let fixed = |code| TownFaction::Fixed(faction(code));
     assert_eq!(
         factions,
-        [fixed(CASTLE), fixed(CASTLE), fixed(CONFLUX), fixed(TOWER)]
+        [
+            fixed(CASTLE),
+            fixed(CASTLE),
+            fixed(CONFLUX),
+            fixed(TOWER),
+            fixed(DUNGEON),
+            fixed(RAMPART)
+        ]
     );
     let adventure = FAITHFUL.adventure();
     let town_type = adventure.object_type_by_key("base:town");
@@ -384,6 +444,8 @@ fn the_builds_map_is_committed_as_written() {
             (tiles[1], Some(red)),
             (tiles[2], Some(blue)),
             (tiles[3], Some(blue)),
+            (tiles[4], Some(red)),
+            (tiles[5], None),
         ]
     );
     let sets: Vec<_> = setup
@@ -425,12 +487,24 @@ fn the_builds_map_is_committed_as_written() {
                 slot_set(&[DWELLING_3]),
             ),
             (slot_set(&requirements), SlotSet::EMPTY),
+            (
+                slot_set(&[FORT, DWELLING_1, HORDE_1, PORTAL, GRAIL]),
+                SlotSet::EMPTY
+            ),
+            (slot_set(&[FORT, DWELLING_1, DWELLING_2]), SlotSet::EMPTY),
         ]
     );
     let names: Vec<_> = setup.towns.iter().map(|t| t.name.as_deref()).collect();
     assert_eq!(
         names,
-        [Some("Harbour"), Some("Keep"), Some("Nexus"), Some("Spire")]
+        [
+            Some("Harbour"),
+            Some("Keep"),
+            Some("Nexus"),
+            Some("Spire"),
+            Some("Pit"),
+            Some("Grove")
+        ]
     );
     let (wood, ore, gold) = (
         resource("base:wood"),
@@ -473,6 +547,7 @@ fn the_builds_map_is_committed_as_written() {
         ]
     );
     assert!(setup.towns[2].events.is_empty());
+    assert!(setup.towns[4].events.is_empty() && setup.towns[5].events.is_empty());
     assert_eq!(
         setup.towns[3].events,
         [TownEventSetup {
@@ -528,6 +603,29 @@ fn the_builds_map_is_committed_as_written() {
         (spot(0), spot(1), spot(2), spot(3)),
         (Some(Pos::new(7, SEA.into(), 0)), None, None, None)
     );
+    // E09 T29a: the Pit's Portal holds the Guardhouse's Pikemen from the setup (red owns the
+    // dwelling at the start, TWN-GRO-007), its Warren's first Troglodytes (TWN-GRO-005); the
+    // Grove's garrison its six Centaurs; Valeska is red's second hero.
+    let pit = state.towns().get(TownId::new(4)).unwrap();
+    let portal = pit.portal().unwrap();
+    assert_eq!(
+        (
+            core.creature_key(portal.creature).unwrap().as_str(),
+            portal.count
+        ),
+        ("base:pikeman", 14)
+    );
+    assert!(built(4).contains(&"guardian_of_earth".to_owned()));
+    assert!(built(4).contains(&"portal_of_summoning".to_owned()));
+    assert!(built(4).contains(&"mushroom_rings".to_owned()));
+    let grove = state.adventure().map().town_object(TownId::new(5)).unwrap();
+    assert_eq!(state.adventure().owner(grove), None);
+    assert_eq!(
+        state.adventure().town_garrison(grove).map(<[_]>::len),
+        Some(1)
+    );
+    let valeska = state.adventure().hero(HeroId::new(2)).unwrap();
+    assert_eq!((valeska.owner, valeska.pos), (red, at(HEROES[2])));
 }
 
 /// Blue's Yog's path to `to` in `state` (blue's turn), within what blue has explored.
@@ -591,7 +689,7 @@ fn each_refused_build_on_the_builds_map_changes_nothing() {
     );
     refused(
         &mut state,
-        (0, 4),
+        (0, 6),
         tavern,
         town(TownCommandError::UnknownTown),
     );

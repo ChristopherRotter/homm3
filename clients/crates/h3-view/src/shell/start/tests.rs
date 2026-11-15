@@ -363,9 +363,15 @@ fn a_smacker_frame_is_copied_whole_or_as_the_dll_copies_it() {
             }
             picture.apply(Op::Show(Part::Logo)).unwrap();
             let [x, y, _, _] = place(Part::Logo, Codec::Smacker, header.size).map(i64::from);
+            // The original's screen shows only the DLL's rectangles (the next test): its copy
+            // is the back buffer's.
+            let drawn = match bugs {
+                Bugs::Fixed => picture.screen(),
+                Bugs::Original => picture.back(),
+            };
             let shown: Vec<u16> = (0..h)
                 .flat_map(|r| (0..w).map(move |c| (c, r)))
-                .map(|(c, r)| picture.screen().pixel(x + c as i64, y + r as i64).unwrap())
+                .map(|(c, r)| drawn.pixel(x + c as i64, y + r as i64).unwrap())
                 .collect();
             let want: Vec<u16> = match bugs {
                 // Every pixel through the last frame's palette.
@@ -491,6 +497,73 @@ fn a_bink_frame_shows_its_rectangles_union_as_the_game_takes_it() {
     // The original's fade takes the back buffer, what the screen did not show included.
     picture.apply(Op::Fade(0)).unwrap();
     assert_eq!(picture.screen(), picture.back());
+}
+
+#[test]
+fn the_original_shows_a_smacker_frame_s_rectangles_from_smackw32() {
+    use h3_smacker::build::{self, FrameSpec, Header as SmackHeader, TREES, TreeSpec, Video};
+    // 64 × 8 (a span a row): the first frame fills both rows, the second only the first.
+    let (top, bottom) = (3 | 15 << 2 | 0x40 << 8, 3 | 15 << 2 | 0x80 << 8);
+    let skip = 2 | 15 << 2;
+    let h = SmackHeader::new(
+        64,
+        8,
+        [None, None, None, Some(TreeSpec::of(&[top, bottom, skip]))],
+    );
+    let frame = |runs: [u32; 2]| {
+        let mut video = Video::new(&h);
+        for value in runs {
+            video.code(TREES[3], value);
+        }
+        FrameSpec::video(video.bytes())
+    };
+    // Colours 0x40 and 0x80 white and red.
+    let colours = [
+        build::Op::Skip(64),
+        build::Op::New([63, 63, 63]),
+        build::Op::Skip(63),
+        build::Op::New([63, 0, 0]),
+    ];
+    let first = FrameSpec {
+        palette: Some(build::palette(&colours)),
+        ..frame([top, bottom])
+    };
+    let bytes = build::file(&h, &[first, frame([bottom, skip])]);
+    let clip = h3_smacker::Clip::parse(&bytes).unwrap();
+    let header = Header {
+        size: [64, 8],
+        frames: 2,
+        pace: SMACK,
+    };
+    let [x, y, _, _] = place(Part::Logo, Codec::Smacker, header.size).map(i64::from);
+    for bugs in [Bugs::Fixed, Bugs::Original] {
+        let source = Source::Smacker {
+            reader: alloc::boxed::Box::new(clip.reader()),
+            decoder: alloc::boxed::Box::new(h3_smacker::Decoder::new(&clip).unwrap()),
+        };
+        let mut picture = Picture::new(
+            black(),
+            [Some((source, header)), None, None],
+            None,
+            false,
+            bugs,
+        );
+        // The first frame decoded and not shown, the second shown.
+        picture.apply(Op::Frame(Part::Logo, 0)).unwrap();
+        picture.apply(Op::Frame(Part::Logo, 1)).unwrap();
+        picture.apply(Op::Show(Part::Logo)).unwrap();
+        let row = |r: i64| picture.screen().pixel(x, y + r).unwrap();
+        assert_ne!(row(0), 0, "{bugs:?}");
+        // The second frame's rectangle is its first row: the original leaves the first
+        // frame's second row off the screen.
+        match bugs {
+            Bugs::Fixed => assert_eq!(picture.screen(), picture.back()),
+            Bugs::Original => {
+                assert_eq!(row(4), 0);
+                assert_ne!(picture.back().pixel(x, y + 4), Some(0));
+            }
+        }
+    }
 }
 
 #[test]

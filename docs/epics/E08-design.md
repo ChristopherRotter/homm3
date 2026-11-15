@@ -661,6 +661,16 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
   carrying the new blocks (`fork-bonuses-xl-144`, a Spring emptied and the fortunes). The hero
   on the map's growth (two small lists, empty for most heroes) is measured in the fork and play
   workloads.
+  *As built* (T116c, decision 331): `e08-garrisons-bonuses-144.h3m` (`garrisons_bonuses_xl_map.rs`:
+  one level, five rows of four regions, the census's most of each class on one map, 16 horizontal
+  and 11 vertical garrisons on every way between two regions but four, the fifteen at their most,
+  193; ten heroes, 177 gnoll stacks); `reach-garrisons-xl-144` (seed 4: 9 000 walkers' queries, 9.2 %
+  reaching a garrison's entrance, 4.9 % an own side's, crossed), `fork-bonuses-xl-144` (`h3 adventure
+  bench`'s `--spring 1`: the heroes seek the Springs until a visit empties one, the forks then
+  carrying it with the Fountains' values; random play's seven days end at the week's refill),
+  `random-play-garrisons-36` (seed 7), `random-play-bonuses-36` (seed 6), each baselined at its
+  first count; the reach's five at their counts. The hero on the map's growth is T115a's state
+  block by hero id, not two lists (measured there on every fork and play workload).
 - `--with-original-data`: the census's numbers (§1) and the import of all 160 shipped maps with
   the seventeen classes typed (4 323 objects become typed on 159 maps: their entrances end paths,
   so the shipped-map counts in `original_data.rs` move once).

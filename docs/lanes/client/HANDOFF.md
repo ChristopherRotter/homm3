@@ -7,20 +7,20 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
   to 32). **M1 closed** (2026-11-13; M1's tasks in `E27-archive.md`; the catalogue `E27-design.md`
   §1 to §6). **M2 T1 to T4 done** (2026-11-13 to 14: `h3-smacker`, the clips' sound, the Bink
-  copy, the shell's frame, the LODs' tables, `h3shell.py drawn`; design §7 to §9). **M2 T5a done**
-  (2026-11-14, decisions 31, 32): `h3_view::shell::start` (the clips timed on the game's clock and
-  drawn into a back buffer and a screen), `h3_bink::rects` (`BinkGetRects`), the replay's start,
-  `h3-view shell --video-quality`; 11 of the `start` group's 12 lines exact; design §10. **Next:
-  M2 T5a2** (`SMACKW32`'s rectangles: `start-smacker`'s clip, 23 frames), then T5b (the start's
-  sound), T6, T7. Decisions to carry: the dialogs' input one implementation (20; `h3_ui::input`);
-  the shell's code as the battle's, the score the engine's (21); decision 22's fixes; every pixel
-  of a Smacker clip through its palette (24); every clip's sound at the effects setting (27);
-  every Bink frame whole, the comparisons through `Target` (28); the start's fade from the screen
-  as shown, a frame's whole rectangle shown (32). Open pull request: **#932**
-  (`client/e27-m2-t5a`) (watch it until it merges). E17 done (`E17-archive.md`, `E17-log.md`; its
-  open threads: the epic's "Placed at the closure", the queue's inbox). E28 and E29 are backlog
-  sketches. Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`;
-  ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`.
+  copy, the shell's frame, the LODs' tables, `h3shell.py drawn`; design §7 to §9). **M2 T5a and
+  T5a2 done** (2026-11-14 to 15, decisions 31, 32): `h3_view::shell::start` (the clips timed on
+  the game's clock, drawn into a back buffer and a screen), `h3_bink::rects`, `h3_smacker::Rects`
+  (`SMACKW32`'s `SmackToBufferRect`, as the DLL's on every call), the replay's start; the `start`
+  group's 12 lines exact; design §10. **Next: M2 T5b** (the start's sound), then T6, T7, T8.
+  Decisions to carry: the dialogs' input one implementation (20; `h3_ui::input`); the shell's
+  code as the battle's, the score the engine's (21); decision 22's fixes; every pixel of a
+  Smacker clip through its palette (24); every clip's sound at the effects setting (27); every
+  Bink frame whole, the comparisons through `Target` (28); the start's fade from the screen as
+  shown, a frame's whole rectangle shown (32). Open pull request: **#936** (`client/e27-m2-t5a2`) (watch it until it merges). E17 done
+  (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
+  queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
+  gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
+  `clients/capture/README.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*`, `E27*` (since E17 closed: #866) and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
@@ -51,6 +51,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-15, E27 M2 T5a2 (done; `client/e27-m2-t5a2`).** One task, as queued. The original
+  data staged at once (64 files, checked by SHA-256); the baseline passed. Read `SMACKW32.DLL`'s
+  `SmackToBufferRect` whole (the filler, the list's join, the iterator over the decoder's map of
+  changed spans) and the game's reads in `video_show`; built `h3_smacker::Rects`,
+  `Frame::spans`, `check::rects`, `smackprobe rects` and the `.rects` lines of
+  `smacker-check.sh`. Every call of every frame as the DLL's at the first run; `drawn --group
+  start` 12 of 12 exact (recorded). No new question (the DLL's oddities fall under CLT-Q124's
+  fix). Record: `E27-log.md`, "M2 T5a2".
 - **2026-11-14, E27 M2 T5a (done; `client/e27-m2-t5a`).** T5 cut in two with the user
   (decision 31). The original data staged at once (64 files, checked by SHA-256); the baseline
   died in its coverage step (CI's green `master` stood in). Recorded the `start` group once for
@@ -66,10 +74,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `mp-tcp` again (masked) and `menu-sound` (a press does not wait for `button.wav`). `drawn`: 3
   shots exact (the main menu at rest), the rest stop at T5's or T6's screens. `check.sh` with the
   data staged. Record: `E27-log.md`, "M2 T4".
-- **2026-11-14, E27 M2 T3b (done; `client/e27-m2-t3b`).** One task, no cut. The original data
-  staged at once (64 files, checked by SHA-256); the baseline passed. Built `h3_battle_client::lods`
-  (`Lod`, `Reader`, `Lods`) and moved every LOD reader of the crate onto it (`render`, `battle`,
-  `sequences`, `motion`, `log`, `text`, `sprite`, the binary's `situation` and `harvest`); `h3-view
-  gate` measures the start; `h3_assets::archive::inventory` on a `LodTable`. Measured against
-  `master`'s binary: the start 145 → 1.3 ms, a battle still's peak memory 243 → 28 MiB, the same
-  PNG. `check.sh` with the data staged. Record: `E27-log.md`, "M2 T3b".

@@ -1,0 +1,80 @@
+commands = [
+    "0 move 0 4,19,0 4,18,0 4,17,0 4,16,0 5,15,0 6,14,0 7,13,0 8,12,0",
+    "0 town heroes 1 enter",
+    "0 move 2 4,11,0 5,12,0 6,13,0 7,13,0 8,12,0",
+    "0 end-turn",
+    "1 move 1 13,14,0 12,14,0 11,14,0 10,14,0 9,13,0",
+    "1 move 1 8,12,0",
+    "1 battle move 73",
+    "0 battle move 78",
+    "1 battle attack 1 76",
+    "1 move 1 8,12,0",
+    "1 battle shoot-wall 0",
+    "1 battle move 91",
+    "0 battle move 95",
+    "1 battle shoot-wall 1",
+    "1 battle attack 2 93",
+    "0 battle attack 0 95",
+    "1 answer level-up first",
+    "1 end-turn",
+]
+checkpoints = [
+    "0xed82330349c94db2",
+    "0x1e69634324a89002",
+    "0x6da87ab407ebfec9",
+    "0x829b853c106fb69e",
+    "0x3cd08468e7b0eb77",
+    "0xf2c3ac0c96e389bf",
+    "0x2686607d0ac85b9e",
+    "0x0a5cee8df68a960e",
+    "0x6be5c87838e63986",
+    "0x020c00217f458f11",
+    "0x9e25aa2664d5d44a",
+    "0x06b7591af48bdb66",
+    "0x690b2f2ac1014fca",
+    "0xdaf61240bde297d7",
+    "0x07f6615d4886acea",
+    "0x166061f604f71e6e",
+    "0x7d4f25ee6768b3b5",
+    "0xe0dab05a7212811d",
+]
+
+[replay]
+format = 16
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0xb5c01c8736eb73f9"
+adventure_ruleset_hash = "0x505f48af68ec73ca"
+town_ruleset_hash = "0x0d7be940b64312a6"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 32
+adventure_state_hash_version = 25
+checkpoint_every = 1
+
+[map]
+path = "fixtures/maps/e09-builds-36.h3m"
+hash = "0x36e954b6f38638d8"
+import_version = 23
+
+[result]
+day = 2
+final_hash = "0xe0dab05a7212811d"
