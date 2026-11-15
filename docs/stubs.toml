@@ -55,6 +55,12 @@ where  = "crates/h3-battle/src/aim.rs::pick"
 reason = "The computer's shooter (0x41EB80; BAT-AI-002, BAT-WAR-008) takes the living stacks of the side its controller fights, whoever controls them: a hypnotized shooter (BAT-MAG-026) is among them and may pick itself, a shot the engine refuses (NotAnEnemy), so choose and choose_fair both fall back to Defend (ADR-0027 point 3). Found by E26 T3's property (h3-battle-ai's the_fair_choice_is_legal_and_reads_nothing_hidden_in_random_battles, game 40: the attacker's hero hypnotized the defender's Lich, whose area shot in round 3 aims at its own hex); the properties tolerate this case only (their marker). The shooter's side of BAT-STUB-10 (BAT-Q58, where the walker leaves itself out): the same cut, or the original's outcome once a batch row shows it"
 epic   = "E26"
 
+[[stub]]
+id     = "BAT-STUB-19"
+where  = "crates/h3-battle/src/world.rs::determinized"
+reason = "A world guesses the other side's hero's spell defences and negation of immunities (BAT-MAG-063 to BAT-MAG-066, private: ADR-0013 point 9), but its viewer's observation of the battle shows them through one count: a helpful caster the viewer commands counts the spells its cast could draw for a stack the other side controls (BAT-MAG-050: a hypnotized stack of the viewer's takes its controller's hero's defences, BAT-Q26 accepts that the count shows them). So the world's count for such a stack can differ from the battle's (the town lane's case of 2026-11-04, now in the property's regression file: the hero-less defender's helpful random caster and its own stack hypnotized by the attacker, whose hero has a spell immunity). The property a_world_shows_its_viewer_the_battle_and_reads_nothing_hidden compares those counts only when that hero has neither (its marker). Lifted by E26 increment 2's memory of what the side has seen, or a world that keeps the defences the viewer's own casts meet"
+epic   = "E26"
+
 # --- adventure (ADV-STUB-<n>) ---
 
 [[stub]]
@@ -171,7 +177,7 @@ epic   = "E09"
 [[stub]]
 id     = "TWN-STUB-8"
 where  = "crates/h3-game/src/town/siege.rs::siege_setup"
-reason = "A walled town whose faction's record draws natural obstacles in a siege (TWN-SIE-005, h3_towns::siege_obstacles: the base pack's Stronghold with a Citadel or a Castle, as RoE and AB play it; the SoD pack's override clears it, so the full pack set never meets it) gets none (E09 T8b1): the battle's generator (generate_setup_obstacles) places none at a town with a fort, and generate_battlefield_obstacles knows no walls, while the original's placement (0x466010) keeps every obstacle hex off a blocked hex (the walls) and takes a branch for a siege of town type 6 on the game's version that is not read (0x466147 to 0x466194; docs/formats/installation.md section 7.26). Lifted by a siege-aware draw in h3-battle (the battle lane's inbox) after that branch is read"
+reason = "A walled town whose faction's record draws natural obstacles in a siege (TWN-SIE-005, h3_towns::siege_obstacles: the base pack's Stronghold with a Citadel or a Castle, as RoE and AB play it; the SoD pack's override clears it, so the full pack set never meets it) gets none (E09 T8b1): the battle's generator (generate_setup_obstacles) places none at a town with a fort, and generate_battlefield_obstacles knows no walls, while the original's placement (0x466010) keeps every obstacle hex off a blocked hex (the walls) and, under RoE or AB rules in a Stronghold with a Citadel or a Castle, keeps the anchor plus the type's width below its row's wall hex less 2 (0x466147 to 0x466194, read 2026-11-15; docs/formats/installation.md section 7.27). Lifted by a siege-aware draw in h3-battle (the battle lane's queue, for E11)"
 epic   = "E09"
 
 [[stub]]

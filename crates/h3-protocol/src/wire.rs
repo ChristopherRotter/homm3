@@ -859,6 +859,12 @@ pub struct SideView {
     pub summoned: Option<u16>,
     /// The change of its hero's spell costs from the creatures in the armies (0 without a hero).
     pub cost_change: i8,
+    /// Its hero forbids every cast (the Orb of Inhibition, BAT-MAG-061; v69, the client lane's
+    /// gap G1): public, as the original's spell book names the Orb's wearer to both sides.
+    pub forbids_casting: bool,
+    /// Its hero's spell level limit (Recanter's Cloak, BAT-MAG-062; v69, G1): `None` without one
+    /// or without a hero; public, as the original's spell book shows it to both sides.
+    pub spell_level_limit: Option<u8>,
     /// Its player is human (v32, ADR-0023 point 7).
     pub human: bool,
     /// Its player's colour, 0 red to 7 pink, for viewers (v35, CLT-Q6): `None` no player or not

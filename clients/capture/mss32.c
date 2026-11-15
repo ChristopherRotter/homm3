@@ -18,7 +18,15 @@
    The probe's own exports:
      MssRecord(path)  each sample handle's loads to <path>.<handle>.pcm (the bytes in order) and
                       every call to <path>.log;
-     MssPump()        calls the started timers' callbacks once; the number of buffers loaded. */
+     MssPump()        calls the started timers' callbacks once; the number of buffers loaded;
+     MssMinimum(n)    (E27 M2 T5b2) the least buffer size AIL_minimum_sample_buffer_size answers
+                      from then on (4096 before: the game's Miles gives its own, which sets when
+                      BINKW32.DLL loads its first buffer);
+     MssLoads()       (E27 M2 T5b2) the buffers loaded so far;
+     MssHold(on)      (E27 M2 T5b2) on: a loaded buffer stays full (nothing plays), so
+                      AIL_sample_buffer_ready answers -1 once both are loaded, as Miles' does
+                      while both play; BINKW32.DLL's service loads while the answer is a buffer
+                      (0x10005270), so with the buffers always free it would load for ever. */
 #include <windows.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -33,6 +41,7 @@ typedef void(__stdcall *timer_fn)(DWORD);
 typedef struct {
     int used;
     int next; /* the buffer reported free: the other one than the last loaded */
+    int full[2]; /* MssHold: loaded */
 } Sample;
 
 static Sample samples[MAX_SAMPLES];
@@ -40,6 +49,8 @@ static FILE *pcm[MAX_SAMPLES];
 static timer_fn timers[MAX_TIMERS];
 static int started[MAX_TIMERS];
 static DWORD loads;
+static DWORD minimum = 4096;
+static int hold;
 static char record[MAX_PATH];
 static FILE *log_file;
 
@@ -79,10 +90,25 @@ int __stdcall MssPump(void)
     return (int)(loads - before);
 }
 
+void __stdcall MssMinimum(DWORD n)
+{
+    minimum = n;
+}
+
+int __stdcall MssLoads(void)
+{
+    return (int)loads;
+}
+
+void __stdcall MssHold(int on)
+{
+    hold = on;
+}
+
 DWORD __stdcall AIL_minimum_sample_buffer_size(void *driver, long rate, long format)
 {
     note("minimum %ld %ld", rate, format);
-    return 4096;
+    return minimum;
 }
 
 void *__stdcall AIL_allocate_sample_handle(void *driver)
@@ -92,6 +118,7 @@ void *__stdcall AIL_allocate_sample_handle(void *driver)
         if (!samples[i].used) {
             samples[i].used = 1;
             samples[i].next = 0;
+            samples[i].full[0] = samples[i].full[1] = 0;
             note("allocate %d", i);
             return &samples[i];
         }
@@ -125,7 +152,11 @@ void __stdcall AIL_set_sample_user_data(void *s, DWORD index, long value)
 void __stdcall AIL_set_sample_volume(void *s, long volume) { note("volume %d %ld", index_of(s), volume); }
 void __stdcall AIL_set_sample_pan(void *s, long pan) { note("pan %d %ld", index_of(s), pan); }
 void __stdcall AIL_serve(void) {}
-long __stdcall AIL_sample_buffer_ready(void *s) { return ((Sample *)s)->next; }
+long __stdcall AIL_sample_buffer_ready(void *s)
+{
+    Sample *p = (Sample *)s;
+    return hold && p->full[p->next] ? -1 : p->next;
+}
 
 void __stdcall AIL_load_sample_buffer(void *s, DWORD n, const void *buffer, DWORD length)
 {
@@ -144,6 +175,8 @@ void __stdcall AIL_load_sample_buffer(void *s, DWORD n, const void *buffer, DWOR
     }
     loads++;
     samples[i].next = (int)(n ^ 1);
+    if (n < 2)
+        samples[i].full[n] = 1;
 }
 
 void __stdcall AIL_end_sample(void *s) { note("end %d", index_of(s)); }

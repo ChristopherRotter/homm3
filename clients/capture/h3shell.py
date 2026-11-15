@@ -38,13 +38,17 @@ A recipe (a `[[recipe]]` of shell/<group>.toml): `id`, `what` (the catalogue's s
   frozen    false: the clock runs in real time until a step freezes it (default true)
   sound     true: the game plays its sounds (h3drive's `sound`: an audio driver, the effects at
             volume 5, the samples on the virtual clock), each sample started kept as a line
-            `<id> sound<k> t<ms> ch<channel> <length>ms x<loops>` (E27 M2 T4; default false)
+            `<id> sound<k> t<ms> ch<channel> <length>ms x<loops>` (E27 M2 T4; default false),
+            and (E27 M2 T5b2) each clip's sound, its track on the virtual clock too (xdd.dll's
+            7.), as `<id> voice<k> <smacker|bink> t<start>-<end> v<volume>` (`clip_voices`),
+            compared by `drawn` with the viewer's
   steps     the steps, in order (`STEPS`)
 Every run starts from setup.sh's registry (the settings key removed and written again: what a
 run saved never reaches the next), no HiScore.dat, the listed maps and saves.
 """
 
 import hashlib
+import math
 import os
 import re
 import shutil
@@ -296,6 +300,18 @@ class Run:
         """The clock's reads since the last command: the game's and the clips' (xdd.dll's 5.)."""
         a = self.game.ack(need=True)
         return a[2] + a[11]
+
+    def check_clip_sound(self):
+        """A sound run's clips played on xdd.dll's devices (E27 M2 T5b2): its 7.'s three Smacker
+        hooks and Bink's 11 Miles functions in place, no call the hooks could not follow."""
+        a = self.game.ack(need=True)
+        if a[13] != 3:
+            raise RuntimeError(f"xdd.dll put {a[13]} of the clips' 3 Smacker sound hooks in place")
+        if a[14] != len(BINK_CALLS):
+            raise RuntimeError(f"xdd.dll answered {a[14]} of Bink's {len(BINK_CALLS)} Miles "
+                               "functions (the sound never started?)")
+        if a[9]:
+            raise RuntimeError(f"xdd.dll could not follow {a[9]} sample calls")
 
     def busy_wait(self, timeout=60.0):
         """Waits until the game waits on the clock: IDLE_READS reads since the last command (the
@@ -588,6 +604,12 @@ class Run:
                 for k, (t, channel, length, loops) in enumerate(h3drive.sounds(self.game), 1):
                     self.kept.append((f"sound{k}", "sound", t - FROZEN_AT,
                                       (channel, length, loops)))
+                # E27 M2 T5b2: each clip's sound (xdd.dll's 7.), its device on the clock.
+                self.check_clip_sound()
+                for k, (codec, start, end, volume) in enumerate(
+                        clip_voices(self.game.clock_dir / "clipsound"), 1):
+                    self.kept.append((f"voice{k}", "voice", start,
+                                      (codec, end, volume)))
         except Exception:
             try:
                 self.game.dump(self.out / "failed.xwd")
@@ -608,6 +630,63 @@ def clip_entry(lines):
     return (len(lines), lines[0][0], lines[-1][0], whole)
 
 
+# The Miles functions xdd.dll's 7. answers for BINKW32.DLL (its `bink_calls`).
+BINK_CALLS = ("minimum_sample_buffer_size", "allocate_sample_handle", "init_sample",
+              "set_sample_type", "set_sample_playback_rate", "set_sample_volume", "stop_sample",
+              "resume_sample", "sample_buffer_ready", "load_sample_buffer",
+              "release_sample_handle")
+
+
+def volume_index(hundredths):
+    """The index i of SMACKW32's volume table (0x100148E8: 2000 log10(i / 127), truncated; 0 is
+    -10000) holding a DirectSound volume (as clients/scripts/smacker-dll.py's)."""
+    for i in range(128):
+        if (-10000 if i == 0 else int(2000 * math.log10(i / 127))) == hundredths:
+            return i
+    return f"unknown{hundredths}"
+
+
+def clip_voices(path):
+    """The clips' sound as xdd.dll's 7. logs it (E27 M2 T5b2; `<time> <call> <a> <b>` lines):
+    (codec, start, end, volume) per voice in the order they began, the times from the frozen
+    start, `end` None while it still played at the run's end. A Smacker clip's voice is its
+    DirectSound buffer (`create` at SmackOpen): from its first `play` (the DLL's sound service)
+    to its `stop` (SmackClose stops and releases it), its volume as the index of SMACKW32's
+    table (0 to 127, `h3_view::clip_sound::volume`'s); a Bink clip's its Miles sample
+    (`bink-allocate` at BinkOpen): from its first load (`bink-play`) to its pause (`bink-stop`,
+    a skip) or its release (BinkClose), its volume Miles' 0 to 127. A buffer or sample closed
+    before it played is no voice."""
+    try:
+        text = path.read_text()
+    except OSError:
+        return []
+    voices, current = [], {}
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) != 4:
+            continue
+        t, what = int(parts[0]) - FROZEN_AT, parts[1]
+        a = int(parts[2])
+        codec = "bink" if what.startswith("bink-") else "smacker"
+        what = what.removeprefix("bink-")
+        if what in ("create", "allocate"):
+            current[codec] = {"codec": codec, "volume": None, "start": None, "end": None}
+            continue
+        voice = current.get(codec)
+        if voice is None:
+            continue
+        if what == "volume":
+            voice["volume"] = volume_index(a) if codec == "smacker" else a
+        elif what == "play" and voice["start"] is None:
+            voice["start"] = t
+            voices.append(voice)
+        elif what in ("stop", "release") and voice["start"] is not None and voice["end"] is None:
+            voice["end"] = t
+        if what == "release":
+            current.pop(codec)
+    return [(v["codec"], v["start"], v["end"], v["volume"]) for v in voices]
+
+
 def kept_line(ident, entry, other=None):
     name, kind, t, d = entry
     if kind == "shot":
@@ -615,6 +694,9 @@ def kept_line(ident, entry, other=None):
     elif kind == "sound":
         channel, length, loops = d
         line = f"{ident} {name} t{t} ch{channel} {length}ms x{loops}"
+    elif kind == "voice":
+        codec, end, volume = d
+        line = f"{ident} {name} {codec} t{t}-{'' if end is None else end} v{volume}"
     else:
         n, first, last, whole = d
         line = f"{ident} {name} clip {n}@{first}-{last} {whole}"
@@ -803,10 +885,21 @@ def drawn_recipe(recipe, out):
     if done.returncode != 0:
         return None, None, ((done.stdout + done.stderr).strip().splitlines() or ["no output"])[-1]
     masks = shot_masks(recipe["steps"])
-    lines, clips, stop = {}, {}, None
+    lines, clips, stop, voices = {}, {}, None, []
     for line in (frames / "replay.txt").read_text().splitlines():
         kind, name, rest = line.split(" ", 2)
-        if kind == "shot":
+        if kind == "sound":
+            # E27 M2 T5b2: `sound <file> t<ms> v<volume>`, ended by its `quiet` (a skip) or
+            # `closed` (the last frame) line: the original's voices (`clip_voices`).
+            t, volume = rest.split()
+            codec = "bink" if name.upper().endswith(".BIK") else "smacker"
+            voices.append({"file": name, "codec": codec, "start": int(t.lstrip("t")),
+                           "end": None, "volume": int(volume.lstrip("v"))})
+        elif kind in ("quiet", "closed"):
+            ended = next((v for v in voices if v["file"] == name and v["end"] is None), None)
+            if ended is not None:
+                ended["end"] = int(rest.lstrip("t"))
+        elif kind == "shot":
             t = int(rest.lstrip("t"))
             pix = load_565(frames / f"{name}.565")
             lines[name] = kept_line(ident, (name, "shot", t, digest(pix, masks.get(name, []))))
@@ -821,6 +914,10 @@ def drawn_recipe(recipe, out):
     for name, frames_of in clips.items():
         lines[name] = kept_line(ident, (name, "clip", frames_of[0][0], clip_entry(frames_of)))
     order = list(masks)
+    for k, v in enumerate(voices, 1):
+        order.append(f"voice{k}")
+        lines[f"voice{k}"] = kept_line(ident, (f"voice{k}", "voice", v["start"],
+                                               (v["codec"], v["end"], v["volume"])))
     return dict(sorted(lines.items(), key=lambda kv: order.index(kv[0]))), stop, None
 
 
@@ -833,6 +930,8 @@ def compared(ident, name, ours, original):
         return "exact"
     mine = ours.split(" ", 2)[2].split()
     theirs = forms[0].split(" ", 2)[2].split()
+    if name.startswith("voice"):
+        return f"not the original's ({' '.join(theirs)}: the viewer's {' '.join(mine)})"
     if mine[-1] == theirs[-1]:
         return f"the original's pixels at {mine[0]}, not {theirs[0]}"
     note = ""

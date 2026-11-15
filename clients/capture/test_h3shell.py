@@ -77,6 +77,42 @@ class Kept(unittest.TestCase):
         sample = ("sound1", "sound", 120, (2, 87, 1))
         self.assertEqual(h3shell.kept_line("m", sample), "m sound1 t120 ch2 87ms x1")
 
+    def test_a_voice(self):
+        # E27 M2 T5b2: a clip's sound, its end empty while it still played.
+        self.assertEqual(h3shell.kept_line("r", ("voice1", "voice", 10, ("smacker", 2000, 70))),
+                         "r voice1 smacker t10-2000 v70")
+        self.assertEqual(h3shell.kept_line("r", ("voice2", "voice", 5493, ("bink", None, 127))),
+                         "r voice2 bink t5493- v127")
+
+    def test_the_clips_sound_log_gives_each_voice_once(self):
+        # xdd.dll's 7.: a Smacker clip's buffer (its Play from the service, its Stop and Release
+        # at SmackClose), a Bink clip's sample (its first load, a pause at a skip, its release),
+        # one closed before it played (no voice); the times from the frozen start.
+        at = h3shell.FROZEN_AT
+        log = [f"{at} use 0 0", f"{at} create 45056 88200", f"{at} timer 75 65561",
+               f"{at} pan -7 0", f"{at} volume -517 0", f"{at + 10} play 0 1",
+               f"{at + 5000} play 0 1", f"{at + 5343} timer-killed 1 0",
+               f"{at + 5343} stop 40348 0", f"{at + 5343} release 0 0",
+               f"{at + 5493} bink-minimum 2048 22050", f"{at + 5493} bink-allocate 0 0",
+               f"{at + 5493} bink-volume 127 0", f"{at + 5493} bink-load 0 2048",
+               f"{at + 5493} bink-play 0 88200", f"{at + 5560} bink-load 1 2048",
+               f"{at + 12000} bink-stop 0 0", f"{at + 12000} bink-release 0 0",
+               f"{at + 13000} create 45056 88200", f"{at + 13000} stop 0 0",
+               f"{at + 13000} release 0 0", "a torn line"]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "clipsound"
+            path.write_text("".join(line + "\n" for line in log))
+            self.assertEqual(h3shell.clip_voices(path),
+                             [("smacker", 10, 5343, 70), ("bink", 5493, 12000, 127)])
+            self.assertEqual(h3shell.clip_voices(Path(tmp) / "none"), [])
+
+    def test_a_volume_index_inverts_smackw32s_table(self):
+        self.assertEqual(h3shell.volume_index(-517), 70)
+        self.assertEqual(h3shell.volume_index(0), 127)
+        self.assertEqual(h3shell.volume_index(-6), 126)
+        self.assertEqual(h3shell.volume_index(-10000), 0)
+        self.assertEqual(h3shell.volume_index(1), "unknown1")
+
     def test_a_mask_leaves_its_box_out_of_the_digest(self):
         a = np.zeros((600, 800), dtype=np.uint16)
         b = a.copy()

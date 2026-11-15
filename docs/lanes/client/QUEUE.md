@@ -13,19 +13,11 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M2 T5b2 to T8
+#### E27 M2 T6 to T8
 
-T5b2 the start's sound on the game's run (decision 33; design §11.7): `vsound.h`'s stand-in
-DirectSound in `xdd.dll` for `SMACKW32` (the game's `SmackSoundUseMSS` import pointed at
-`SmackSoundUseDirectSound` with it, `SMACKW32`'s `timeSetEvent` and Miles' timer kept from
-firing), Bink's Miles sample calls (`BINKW32`'s `GetProcAddress` of them answered by hooks on the
-clock), each clip sound's Play, stop and volume logged; `binkprobe` on the same Miles stand-in
-(when its first buffer loads: `Op::Sound`'s Bink time is *provisional*); the `start` group's sound
-recipes (`start-bink-sound`, `start-smacker-sound`, a skip) recorded and compared by `drawn` (the
-replay's `sound`, `quiet`, `closed` lines; the frames exact). T6 the main menu, New Game's and
-Load Game's menus, Quit (the main menu `Built::Whole`: the replay's presses and keys reach the
-screen, `shell::replay`'s `Step::Input`); T7 Multiplayer and the hot seat's names (after T6); T8
-M2's closure and M3's refinement (after T7). Each screen's task runs `h3shell.py drawn` and
+T6 the main menu, New Game's and Load Game's menus, Quit (the main menu `Built::Whole`: the
+replay's presses and keys reach the screen, `shell::replay`'s `Step::Input`); T7 Multiplayer and
+the hot seat's names (after T6); T8 M2's closure and M3's refinement (after T7). Each screen's task runs `h3shell.py drawn` and
 records it (`--record`; the runbook's "The shell's screens"). Their scopes: the epic's M2 table;
 what each still reads or records: design §6.4.
 
@@ -33,6 +25,16 @@ what each still reads or records: design §6.4.
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
+
+- 2026-11-15 (the battle lane's inbox session, `battle/inbox-2026-11-15`, `cross-lane`; **three of
+  your waiting items**): (1) **G1 / `CLT-STUB-1`:** the observation gives each side's
+  `forbids_casting` (the Orb of Inhibition's wearer) and `spell_level_limit` (Recanter's Cloak),
+  public; on the wire as `SideView`'s two fields (protocol **v69**). `h3-view`'s test literal in
+  `record.rs` took them (`false`, `None`): the stub can be lifted. (2) **CLT-Q69 (a):** the
+  engine's split is built (`BattleState::setup`, `begin`, `has_begun`; `start` unchanged); the
+  server lane's half (the session's hold, the start marked on the wire) is next. (3) **CLT-Q63
+  (a):** handing the automatic war machines' turns to their side changes a seam; its design is
+  the user's choice, BAT-Q65 in `docs/OPEN-QUESTIONS.md`.
 
 - 2026-11-15 (the server lane, E16 M5 T24, `claude/adoring-fermi-l0mvur`, `cross-lane`; **a
   protocol version taken; for when a seat of yours joins a whole game**): protocol **v68**

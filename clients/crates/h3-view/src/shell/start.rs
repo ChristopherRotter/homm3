@@ -52,8 +52,10 @@
 //! play cursor, not by `SmackWait`'s clock ([`SmackSound`]): frame 0 at once, the buffer's Play at
 //! the DLL's sound service's next run (10 ms of the clock after its last), each later frame once
 //! the bytes played + 8 reach that many frames' sound. A Bink clip's frames keep their clock
-//! (`BinkWait` reads only it); its sound starts with its first frame (*provisional*: when
-//! `BINKW32.DLL` loads Miles' first buffer, read at T5b2). Either stops at its clip's close: a
+//! (`BinkWait` reads only it); its sound starts when `BINKW32.DLL` loads Miles' first buffer
+//! (T5b2, design §12.2), in the `BinkDoFrame` of the first frame whose sound takes the DLL's ring
+//! past one of Miles' buffers: the first frame, as every game clip's carries 0.76 s of sound
+//! (`bink-check.sh`'s `start` lines, `binkprobe start`). Either stops at its clip's close: a
 //! skip ([`Op::Quiet`]) or the last frame, before the fade ([`Op::Closed`]: the last frame's
 //! sound never plays, CLT-Q125; decision 34: the client plays the track out, the cut the
 //! comparisons'). [`Op::Sound`] says when it starts; the
@@ -564,7 +566,7 @@ impl Start {
         if let Some(sound) = playing.sound.as_mut() {
             sound.frame(now);
         } else if playing.audible && !playing.sounding {
-            // A Bink clip's sound with its first frame (*provisional*, module doc).
+            // A Bink clip's sound with its first frame (module doc: Miles' first buffer).
             playing.sounding = true;
             ops.push(Op::Sound(part));
         }

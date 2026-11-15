@@ -1479,7 +1479,10 @@ are 10 ms earlier (the Smacker copy's open fell inside a clock step; its kept li
   with a recipe's `sound = true` (h3shell's since M2 T4: the effects at volume 5, each sample's
   start kept). M2 T4's `menu-sound`: a main menu button's press and New Game's Back each start a
   151 ms sample at the press (`button.wav`'s length), and the menu after it shows at the silent
-  recipes' times with their pixels: a press does not wait for its sample (T6).
+  recipes' times with their pixels: a press does not wait for its sample (T6). M2 T5b2: the clips'
+  sound on the clock too (§12); AB's intro (`H3X1intr`, an 8-bit track) recorded with sound
+  where it plays (E20's prologue) reads the game's Miles buffer for an 8-bit track
+  (`bink-minimum`, §12.2: at a 16-bit track's size its sound would never start).
 - **The fades** (§5.3 to §5.5): 0x602C50 (1, 4, 0) is read as a redraw (*inferred*), but
   `opt-restart`'s `fade` clip and `end-conquest`'s `to-scores` record fades: M4 reads it.
 - **The edit field** (§2.6, §2.7: typing 0x5BAC50, the caret, the limit; *not read*): M2's hot
@@ -1936,10 +1939,115 @@ the effects setting.
 
 ### 11.7 For T5b2
 
-- `xdd.dll`: the stand-in DirectSound for `SMACKW32` in the game's runs (the game's
-  `SmackSoundUseMSS` import pointed at `SmackSoundUseDirectSound` with it, its `timeSetEvent` and
-  Miles' timer kept from firing), and Bink's Miles calls on the clock (`BINKW32`'s
-  `GetProcAddress` of the sample functions answered by the hooks), each clip sound's Play, stop
-  and volume logged; `binkprobe` on the same Miles stand-in (when its first buffer loads).
-- The `start` group's sound recipes (`start-bink-sound`, `start-smacker-sound`, a skip), recorded
-  and compared with the replay's `sound`, `quiet` and `closed` lines; the frames exact.
+Done at T5b2: §12.
+
+## 12. The start's sound on the game's run (M2 T5b2, 2026-11-15)
+
+Read in `SMACKW32.DLL` (`SmackSoundUseMSS` 0x100079F0 whole, the DirectSound open's timer
+0x10009864) and `BINKW32.DLL` (`BinkSetSoundSystem` 0x10004960, `BinkOpenMiles` 0x1000F970, its
+sound system 0x1000FB80 to 0x1000FE57, the sound service 0x10005270, its callers, `BinkDoFrame`'s
+audio 0x10005A90, Bink's thread 0x100054D0) with capstone; built `xdd.dll`'s 7. (the runbook's
+"The clips' sound on the game's run"), `binkprobe start`, the stand-in Miles' `MssMinimum`,
+`MssHold`, `MssLoads`; `h3shell.py`'s voices, the replay's volume and `closed` lines.
+
+### 12.1 Smacker
+
+- **The game's path:** `SmackSoundUseMSS(driver)` keeps the driver (0x10015E40), loads
+  `MSS32.DLL` and 24 of its functions by name at its first call (0x10007A5A on, among them
+  `AIL_lock`, `AIL_unlock` and the timer's four), asks preference 15 and, on 0 (the game's Miles),
+  calls `SmackSoundUseDirectSound` with the driver's +0xA0; a later call asks again. The
+  DirectSound open (0x10009750) of the first track makes the sound timer: with Miles' `AIL_lock`
+  loaded (0x100148D4) Miles' (`AIL_register_timer` of `_ailcallback`, 13 a second, started),
+  else `timeSetEvent(75, 25, TimerFunc, 0, periodic)`; `AIL_lock` and `AIL_unlock` (when loaded)
+  bracket its DirectSound calls.
+- **On the harness:** `xdd.dll` points the game's import at a hook that calls
+  `SmackSoundUseDirectSound(&vsound)`, so the DLL never loads Miles' functions: its timer is
+  `timeSetEvent`'s, which never fires (its import a stub), and no lock brackets the calls (the
+  game's main thread alone makes them then). The service, position and wait run from the game's
+  calls on the virtual clock, as in `smackprobe wait`; the cursor is the ideal device's (§11.5).
+  The game's run: `use`, the buffer (45 056 bytes, 88 200 a second, flags 0x18080), the timer
+  (75 ms), pan −7, volume −517 (the table's 70 at the setting 5), Play 10 ms after the open.
+- **Recorded** (two runs each the same; `drawn` exact): `start-smacker-sound`, the three Smacker
+  clips timed by their sound, the main menu at 180 420 ms (189 590 silent), 2 586 frames
+  exact; the voices 3DOLOGO 10 to 5 350 ms (the close at 10 ms steps), NWCLOGO.SMK 5 510 to
+  18 450, H3INTRO.SMK 18 610 to 180 270, each at 70; `start-skip-key-sound`, Space at 2 000 ms:
+  the logo's sound from 10 ms to the skip (its `before` shot not the silent run's: its frames
+  follow the sound).
+
+### 12.2 Bink
+
+- **The sound system:** `sound_digital_start`'s `BinkSetSoundSystem(BinkOpenMiles, driver)`
+  calls `BinkOpenMiles(driver)` at once (0x1000498F), which loads `MSS32.DLL` and 20 functions by
+  name (`GetProcAddress`; skipped once loaded, 0x10026B0C) and returns its open (0x1000FB80). A
+  clip with a track opens its sound in `BinkOpen`: a sample allocated, its two buffers of
+  `AIL_minimum_sample_buffer_size(driver, rate, format)` rounded up to 16 bytes each (+0x48;
+  doubled for an 8-bit track, +0x24), the sample initialised, its type (16-bit stereo: 3), rate
+  and volume 127 (0x1000FDF0). The system's calls: ready (`AIL_sample_buffer_ready`, kept until
+  loaded), lock (the buffer and its size), unlock (`AIL_load_sample_buffer`), volume (`v × 127 /
+  0x7FFF`), pause (`AIL_stop_sample`, `AIL_resume_sample`), close (the buffers freed,
+  `AIL_release_sample_handle`). BINKW32 never calls `AIL_start_sample`: Miles starts a
+  double-buffered sample with its first load (Miles' double buffering as documented, *not read*
+  in `MSS32.DLL`); nor `AIL_sample_status`, `AIL_serve`,
+  `AIL_end_sample`, `AIL_set_sample_pan`, `AIL_set_sample_user_data` or `AIL_get_preference`,
+  which it loads.
+- **The service** (0x10005270): with its lock free (+0x254) and the ring holding more than a
+  buffer (+0x250 > +0x280, the system's +0x24) on entry, while Miles gives a buffer: the ring's
+  bytes (at most a buffer, the last load of a run partial; an 8-bit track converted,
+  0x10005430) copied into it and loaded, the threshold not tested again until the next entry. It runs in
+  `BinkDoFrame` before and after the frame's audio is decoded into the ring (0x10005A03,
+  0x10005BE2), in `BinkCopyToBuffer`, `BinkWait` and others, and on Bink's own thread
+  (0x100054D0: every 3 ms its read-ahead, the service in 8 rounds of 16). Only `BinkDoFrame`
+  fills the ring (each block decoded, at most its declared size and the ring's room), so the
+  first load comes in the `BinkDoFrame` of the first frame whose sound takes the ring past a
+  buffer, whichever thread runs it: on any clock, at that frame's time.
+- **The game's clips:** the four with a track (`NWCLOGO`, `H3INTRO`, `LOSEGAME`, AB's
+  `H3X1intr`; the battle's have none) carry 67 200 bytes of sound in their first frame (0.76 s;
+  the ring's 16-bit samples, its capacity 67 328), then about 5 760 a frame (`binkprobe start`:
+  the ring after the first `BinkDoFrame` 67 200 less the loads; `NWCLOGO` 1 146 596 bytes in
+  all, `binkprobe sound`). The game's Miles under the harness
+  answers 36 864 bytes for a 16-bit stereo track (0.42 s; `bink-minimum 36864 22050`), so the
+  first buffer loads in the first frame: `h3_view::shell::start`'s rule (the client's sound from
+  the first frame, no longer *provisional*), checked by `bink-check.sh` for each clip with a
+  track (`<stem>.start`). `H3X1intr`'s track is 8-bit stereo (flags 0xA000, not the others'
+  0xE000): Bink doubles its threshold (the ring's samples are 16-bit), so at a 16-bit track's
+  36 864 bytes it would need 73 728, more than the ring holds, and never load (silent); the
+  check gives the probe the same 0.42 s in the track's own bytes, 18 432 (*provisional*: no run
+  of the game showed Miles' answer for an 8-bit track; AB's intro plays outside the start). The
+  game's Miles on another machine may give other sizes (*provisional*: the harness's alone is
+  read); any under 67 200 bytes for 16-bit stereo gives the same start.
+- **On the harness:** `xdd.dll` answers the 11 functions BINKW32 calls (by its `GetProcAddress`
+  import): the real Miles allocates, sets up and releases the sample and gives the size, the
+  buffers play on the virtual clock from the first load, one after the other at the sample's
+  bytes a second (88 200), a pause holding them; Miles never gets a buffer, so the null sink
+  plays nothing. The ring's later loads follow (a buffer every 0.42 s), compared nowhere.
+- **Recorded:** `start-skip-left-sound` (two runs the same; `drawn` exact): the logo's sound 10
+  to 5 350 ms, NWCLOGO.BIK's from 5 500 (its first frame) to the press at 12 000 (the pause, then
+  the release at the same reading); `start-bink-sound`: §12.3.
+
+### 12.3 The comparisons
+
+`h3shell.py` keeps each clip's sound as `voice<k> <smacker|bink> t<start>-<end> v<volume>`
+(`clip_voices`; the volume the index of SMACKW32's table, or Miles' 0 to 127); `drawn` builds the
+same lines from the replay's `sound <file> t<ms> v<volume>`, `quiet` and `closed` (the volume
+`clip_sound::volume` under `Bugs::Original`: 70 for Smacker at 5, 127 for Bink, CLT-Q121) and
+compares them as it compares shots. The original's voice ends where its clip closes, by a skip
+or after its last frame: the client's `Op::Closed` is the comparisons' end (CLT-Q125's cut).
+`start-bink-sound` (two runs the same): the 3DO logo timed by its sound (69 frames, its close at
+5 343 ms at 1 ms steps), NWCLOGO.BIK's sound from its first frame at 5 493 to its close at
+18 430, H3INTRO.BIK's from 18 580 to 180 250, the main menu at 180 400 (180 480 silent). `drawn
+--group start`: the group's 10 recipes, 30 lines (shots, clips, voices) exact, the four sound
+recipes each at its first recording.
+
+### 12.4 The end of a Bink clip's sound, and what is not modelled
+
+- **The tail:** the service enters only while the ring holds more than a buffer, so a clip's
+  last bytes (a buffer or less) may never reach Miles: `NWCLOGO`'s 31 loads (the second a
+  partial 30 336 at the first frame) hold 1 136 256 of its 1 146 596 bytes, its last 0.12 s
+  never played; on the harness the loaded ones run out 55 ms before its close (`bink-dry` at
+  its release; `H3INTRO`'s too). The original's sound then ends with its
+  clip's close either way; the client plays the track out (decision 34, CLT-Q125's fix: a clip's
+  track, either format), the cut the comparisons' (`closed`).
+- **Not modelled:** the harness's Bink sample plays its buffers back to back with no device
+  latency, an underrun's next load starting a new run at its own time; the real Miles' buffer
+  size on another machine; Smacker's ring and underrun as §11.2. None changes a frame or a voice
+  of the recipes.

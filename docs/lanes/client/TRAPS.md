@@ -282,12 +282,19 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - The clips' sound (E27 M2 T5b1, design §11): with a track and the sound on, `SMACKW32.DLL` times
   a Smacker clip's frames by its DirectSound buffer's cursor, not by `SmackWait`'s clock (frame 0
   at once, 66.66 ms a frame after), so a change to the start's timing needs both paths
-  (`SmackSound`, `smack_wait`), and a harness run with `sound = true` plays such a clip in real
-  time until T5b2's device is in `xdd.dll` (its frames then are no reference). `SmackSound` holds
+  (`SmackSound`, `smack_wait`); a harness run with `sound = true` plays such a clip on `xdd.dll`'s
+  stand-in device since T5b2 (the runbook's "The clips' sound on the game's run"). `SmackSound` holds
   only while the buffer never runs dry (every clip of the game): a synthetic clip with a small
   track takes the DLL's underrun path, so its `wait` lines are not compared (`video.rs`'s
   `wait_text`). The game's sound volume is DirectSound's table, not Miles' (T2's formula was the
-  stand-in's path).
+  stand-in's path). `xdd.dll` and the stand-in Miles (E27 M2 T5b2): `vsound.h`'s 64-bit
+  divisions pull in libgcc's helpers, which a DLL links shared (`libgcc_s_dw2-1.dll`, not in the
+  run directory: the game then never starts, no ack, an empty `wine.log`), so `setup.sh` links
+  `xdd.dll` with `-static-libgcc` (`objdump -p` lists only KERNEL32 and msvcrt). The stand-in
+  Miles' buffers are always free, and `BINKW32.DLL`'s service loads while Miles gives a buffer
+  (0x10005270), so a probe giving Bink a sound system needs `MssHold` (a loaded buffer stays
+  full) or `BinkDoFrame` never returns. Probes under Wine beside a running capture: a prefix of
+  their own (`WINEPREFIX`), as the capture's `wineserver -k` ends every process of its prefix.
 - Coverage counts regions: an `if let Some(x) = s.get_mut(i) { … }` without `else` leaves one
   uncovered when the index is always inside (route such writes through one helper whose outside
   case a test takes, `h3_bink`'s `dsp::set`), and a `const fn` evaluated only at compile time is
@@ -299,7 +306,7 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `h3drive`'s 20 reads alone (`Run.busy_wait`: the game's reads and the clips', still growing
   20 ms later); an input that starts a load takes a `settle`. The game draws its cursor at the
   pointer only on a later tick (every input steps the clock). A clip shows at most one frame a
-  step: step long waits in increments (`step:<ms>:<by>`). `xdd.dll`'s ack has 13 fields: a stale
+  step: step long waits in increments (`step:<ms>:<by>`). `xdd.dll`'s ack has 15 fields (E27 M2 T5b2): a stale
   one in any instance's run directory fails every run (rerun `setup.sh`, or copy the new
   `xdd.dll` into each instance). A shot and a clip of one recipe never share a name (their kept
   lines collide). The sandbox's VM restarts end every run and agent: `--record` keeps each recipe

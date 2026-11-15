@@ -116,6 +116,17 @@ refinement decides whether to port it, Q58); interface-only differences.
 - **T6 onwards: the differences built**, battle first in this lane, the others as queue entries of
   their lanes. Refined after T4.
 
+## Leads for T3 (from the lanes' inboxes)
+
+- **The adventure map's space key** (the adventure lane, E08 T98a2, 2026-11-06): it revisits the
+  entered object under a hero at no points in SoD's executable, with no version test; the wiki
+  says it does not work in RoE (survey `docs/rules/surveys/E08-teleporters.md` §11).
+- **The walled Stronghold's natural obstacles** (the town lane's `TWN-STUB-8`; survey S-29): under
+  RoE or AB rules a Stronghold with a Citadel or Castle draws the usual obstacles in a siege, its
+  anchors kept left of their row's wall hex (`installation.md` §7.27, "The Stronghold's branch in
+  the placement", read 2026-11-15). The engine's draw knows no walls: the battle lane's queue holds
+  the siege-aware draw for when RoE and AB rules are played.
+
 ## Exit criteria
 
 1. Both builds catalogued with hashes; `scripts/exe.py` reads all three.

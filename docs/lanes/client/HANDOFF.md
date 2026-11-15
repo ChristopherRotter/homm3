@@ -15,14 +15,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   sound a Smacker clip's frames follow its DirectSound cursor (`SmackSound`, as `SMACKW32`'s at
   every frame of the six game clips with a track: `smackprobe wait` on `capture/vsound.h`), the
   window plays the clips' sound (`--effects`), the last frame's sound played out (CLT-Q125);
-  design §11. **Next: M2 T5b2** (the same device in `xdd.dll`, the start recorded with sound),
-  then T6, T7, T8.
+  design §11. **M2 T5b2 done** (2026-11-15): `xdd.dll`'s 7. plays the clips' sound on the
+  virtual clock (`vsound.h` for `SMACKW32`, Bink's Miles functions answered), `binkprobe start`
+  (Bink's first buffer in its first frame), the clips' voices compared; four sound recipes of
+  `start` recorded and exact; design §12. **Next: M2 T6** (the main menu and its menus), then
+  T7, T8.
   Decisions to carry: the dialogs' input one implementation (20; `h3_ui::input`); the shell's
   code as the battle's, the score the engine's (21); decision 22's fixes; every pixel of a
   Smacker clip through its palette (24); every clip's sound at the effects setting (27); every
   Bink frame whole, the comparisons through `Target` (28); the start's fade from the screen as
   shown, a frame's whole rectangle shown (32); a clip's track played out after its last frame
-  (34). Open pull request: **#945** (`client/e27-m2-t5b1`) (watch it until it merges). E17 done
+  (34). Open pull request: `client/e27-m2-t5b2`, T5b2's (watch it until it merges). E17 done
   (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -57,6 +60,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-15, E27 M2 T5b2 (done; `client/e27-m2-t5b2`).** Offered in two (Smacker, Bink), the
+  user kept it whole. The original data staged at once (64 files, checked by SHA-256); the VM
+  restarted in the baseline's coverage (CI's green `master` stood in). Read `SmackSoundUseMSS`,
+  `BinkOpenMiles` and Bink's sound service; built `xdd.dll`'s 7., `binkprobe start`, the
+  stand-in Miles' `MssHold`, the voices in `h3shell.py` and the replay. Every new recipe exact at
+  its first recording. No new question. Record: `E27-log.md`, "M2 T5b2".
 - **2026-11-15, E27 M2 T5b1 (done; `client/e27-m2-t5b1`).** T5b kept whole at first, then cut at
   the game's run with the user (decision 33) once a test run showed `SMACKW32`'s frames following
   a real-time sound cursor under Wine. The original data staged at once (64 files, checked by
@@ -72,11 +81,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `smacker-check.sh`. Every call of every frame as the DLL's at the first run; `drawn --group
   start` 12 of 12 exact (recorded). No new question (the DLL's oddities fall under CLT-Q124's
   fix). Record: `E27-log.md`, "M2 T5a2".
-- **2026-11-14, E27 M2 T5a (done; `client/e27-m2-t5a`).** T5 cut in two with the user
-  (decision 31). The original data staged at once (64 files, checked by SHA-256); the baseline
-  died in its coverage step (CI's green `master` stood in). Recorded the `start` group once for
-  its frames (as kept); read 0x44DD20, the fade, `SmackWait`, `BinkGetRects` and the game's union
-  of the rectangles; built `h3_view::shell::start`, `h3_bink::rects` and `copies`, the replay's
-  start, `--video-quality`, `Videos`' shell stand-in. 11 of 12 exact; `start-smacker`'s clip
-  waits for SMACKW32's rectangles (T5a2, the cut offered). CLT-Q123, CLT-Q124 fixed (decision
-  32). Record: `E27-log.md`, "M2 T5a".
