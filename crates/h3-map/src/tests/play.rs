@@ -51,7 +51,7 @@ use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
     BuildingSet, ChestChoice, ChoiceKind, Consent, DecisionView, GameCommand, GameCommandError,
     GameEvent, GameRuleset, GameState, HeroChange, HireAnswer, HireSeen, HireTarget, HireView,
-    Manage, NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer, SlotState, TownCommand,
+    Manage, MonthKind, NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer, SlotState, TownCommand,
     TownHeroChange, UniversityAnswer, Viewer, apply, hire_range, legal_commands, legal_management,
     legal_moves, observe, split_range,
 };
@@ -1716,7 +1716,9 @@ pub(super) fn town() -> impl Strategy<Value = TownPlan> {
 /// its buildings (the hall's tests do not apply: a Capitol, a Grail's building, a Shipyard
 /// without water, a building standing or another of its event's supersedes among them,
 /// TWN-EVT-003, T-8) and creatures by level (TWN-EVT-004, E09 T26a1: added to the counts, which
-/// no view shows before E09 T26b).
+/// no view shows before E09 T26b), up to 19 or (E09 T29b, one level in 21) the file's most, 65 535,
+/// so that the counts meet their bound ([`check_invariants`], `TWN-QUIRK-8`) and grow, double,
+/// halve and sell there.
 fn town_events() -> impl Strategy<Value = Vec<TownEvent>> {
     let event = (timed_event(), vec(0u8..41, 0..=3), vec(0u16..=20, 7)).prop_map(
         |(event, slots, creatures)| {
@@ -1724,6 +1726,10 @@ fn town_events() -> impl Strategy<Value = Vec<TownEvent>> {
             for slot in slots {
                 buildings[usize::from(slot / 8)] |= 1 << (slot % 8);
             }
+            let creatures: Vec<u16> = creatures
+                .into_iter()
+                .map(|count| if count == 20 { u16::MAX } else { count })
+                .collect();
             TownEvent {
                 event,
                 buildings,
@@ -7957,6 +7963,7 @@ const CAMP_NOT_RANDOM: [&str; 6] = [
 fn check_towns(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
+    command: &GameCommand,
     events: &[GameEvent],
 ) -> Result<(), TestCaseError> {
     let (adventure, part) = (after.adventure(), rules.towns());
@@ -8098,10 +8105,37 @@ fn check_towns(
                     ..
                 } if army == ArmyRef::Garrison(town) || Some(army) == held)
             });
+        // E09 T29b (design §55): a purchase lowers what it sold by its amount, never more than was
+        // held: a purchase never drives a count below 0 (`check_hire` refuses one above the most;
+        // `bought` is also a management's or a hero's move into the garrison: no amount).
+        let amount = match *command {
+            GameCommand::Answer(Answer::Hire(HireAnswer::Buy { amount, .. })) if bought => {
+                Some(amount)
+            }
+            _ => None,
+        };
+        let fired = events
+            .iter()
+            .any(|e| matches!(*e, GameEvent::TownEventFired { town: t, .. } if t == town));
+        // E09 T29b (design §47): the Plague never raises a count: its month takes the week's
+        // growth again and halves (TWN-GRO-004, `TWN-QUIRK-9` on or off), so a town no event of the
+        // command reached holds at most each count it held before the week.
+        let plague = events.iter().any(|e| {
+            matches!(e, GameEvent::MonthStarted {
+                kind: MonthKind::Plague,
+                ..
+            })
+        });
+        if plague && !fired && built.is_empty() {
+            prop_assert!(
+                (0..h3_towns::CREATURE_INDEXES).all(|i| new.available(i) <= old.available(i)),
+                "{:?}: the Plague raised {:?} to {:?}",
+                town,
+                old.available_all(),
+                new.available_all()
+            );
+        }
         if old.available_all() != new.available_all() {
-            let fired = events
-                .iter()
-                .any(|e| matches!(*e, GameEvent::TownEventFired { town: t, .. } if t == town));
             prop_assert!(
                 week || !built.is_empty() || fired || bought,
                 "{:?}'s counts moved without a week, a build, an event or a purchase",
@@ -8117,6 +8151,8 @@ fn check_towns(
                     town,
                     lowered
                 );
+                let (was, is) = (old.available(lowered[0]), new.available(lowered[0]));
+                prop_assert_eq!(amount, Some(u32::from(was - is)), "{:?}", town);
             }
         }
         if old.portal() != new.portal() {
@@ -8138,7 +8174,9 @@ fn check_towns(
             });
             let bought = bought
                 && matches!((old.portal(), new.portal()), (Some(o), Some(n))
-                    if o.creature == n.creature && n.count < o.count);
+                    if o.creature == n.creature
+                        && n.count < o.count
+                        && amount == Some(u32::from(o.count - n.count)));
             prop_assert!(
                 week || !built.is_empty() || !captured.is_empty() || flagged || bought,
                 "{:?}'s Portal moved without a week, a build, a capture, a flag or a purchase",
@@ -8458,6 +8496,23 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
         prop_assert_eq!(state.adventure().town_garrison(index), Some(&[][..]));
         prop_assert!(!hero.army.is_empty() && valid(&hero.army), "{:?}", hero);
         prop_assert_eq!(state.adventure().owner(index), Some(hero.owner));
+    }
+    // E09 T29b (design §47): no town's count and no Portal's above `MAX_AVAILABLE` (they
+    // saturate, `TWN-QUIRK-8`; the plans' town events give up to 65 535 of a level, [`town_events`]).
+    for place in 0..state.towns().len() {
+        let town = state.towns().get(town_id(place)).unwrap();
+        prop_assert!(
+            town.available_all()
+                .iter()
+                .all(|&count| count <= h3_towns::MAX_AVAILABLE)
+                && town
+                    .portal()
+                    .is_none_or(|p| p.count <= h3_towns::MAX_AVAILABLE),
+            "{:?}: {:?}, {:?}",
+            town_id(place),
+            town.available_all(),
+            town.portal()
+        );
     }
     // E08 T75b: the boats' invariants (increment 8's design note §6; ADV-SEA-001).
     let adventure = state.adventure();
@@ -11049,7 +11104,7 @@ proptest! {
             check_conservation(rules, (&before, &state), &command, &events)?;
             check_mine_guards(rules, (&before, &state))?;
             check_week(rules, (&before, &state), &events)?;
-            check_towns(rules, (&before, &state), &events)?;
+            check_towns(rules, (&before, &state), &command, &events)?;
             // E08 T106b1: the teleporters' jumps and visits, the Whirlpools' losses.
             check_jumps(rules, (&before, &state), (player, &command), &events, &channels)?;
             check_whirlpool_losses(rules, (&before, &state), &command, &events)?;
@@ -11104,6 +11159,56 @@ proptest! {
             prop_assert_eq!(state.state_hash(), fork.state_hash());
         }
         prop_assert_eq!(fork.adventure().map().channels(), fresh.adventure().map().channels());
+    }
+
+    /// A fork's week is its parent's (E09 T29b, the town epic's design note §47): from a random
+    /// game's state the turns end (a battle or an open decision played as [`Step::Town`] plays
+    /// them) until a step starts a week. A fork made just before that step crosses it first and
+    /// leaves its parent as it was (its hash, and its towns' counts and Portals read out before:
+    /// the store is shared until the fork's first write); the parent crossing it then gives the
+    /// same result, events, state and hash, each town's week among them (its growth, a neutral
+    /// garrison's week, the Portal's draw, a month's after it: TWN-GRO-002 to -007).
+    #[test]
+    fn a_forks_week_is_its_parents(
+        plan in plan(),
+        strict in any::<bool>(),
+        seed in any::<u64>(),
+        steps in steps(),
+        n in any::<u16>(),
+    ) {
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let (mut state, _, _) = play(&plan, rules, seed, &steps);
+        let counts = |state: &GameState| -> Vec<([u16; h3_towns::CREATURE_INDEXES], Option<h3_towns::Summoned>)> {
+            (0..state.towns().len())
+                .map(|place| state.towns().get(town_id(place)).unwrap())
+                .map(|town| (*town.available_all(), town.portal()))
+                .collect()
+        };
+        for k in 0..512u16 {
+            let step = if options(&state, rules).contains(&GameCommand::EndTurn) {
+                Step::EndTurn
+            } else {
+                Step::Town(n.wrapping_add(k))
+            };
+            let (hash, held) = (state.state_hash(), counts(&state));
+            let mut fork = state.clone();
+            let mut forked = Vec::new();
+            let result = advance(&mut fork, rules, &step, &mut forked);
+            if !forked.iter().any(|e| matches!(e, GameEvent::WeekStarted { .. })) {
+                state = fork;
+                continue;
+            }
+            prop_assert_eq!(state.state_hash(), hash);
+            prop_assert_eq!(counts(&state), held);
+            let mut events = Vec::new();
+            prop_assert_eq!(advance(&mut state, rules, &step, &mut events), result);
+            prop_assert_eq!(&events, &forked);
+            prop_assert_eq!(&state, &fork);
+            prop_assert_eq!(state.state_hash(), fork.state_hash());
+            prop_assert_eq!(counts(&state), counts(&fork));
+            return Ok(());
+        }
+        prop_assert!(false, "no week started within 512 steps");
     }
 
     /// Determinism: the same map file, seed and commands give the same states, events and hashes,
@@ -12498,9 +12603,16 @@ struct Besieged {
     towns: usize,
     entered: usize,
     undefended: [usize; 2],
-    sieges: [usize; 2],
-    won: [usize; 2],
-    lost: [usize; 2],
+    /// By the defence: the garrison alone, a visitor, (E09 T29b) a garrison hero alone, a visitor
+    /// beside a garrison hero (its battle outside the town, TWN-SIE-001, -002 amended by T28b2).
+    sieges: [usize; 4],
+    won: [usize; 4],
+    lost: [usize; 4],
+    /// E09 T29b: the hero moves accepted (`Enter`, `Leave`, `Swap`; TWN-ROW-002 to -004).
+    rows: [usize; 3],
+    /// E09 T29b: the Plague's months, and the weeks after which a town holds a count at its bound.
+    plagues: usize,
+    saturated: usize,
     merges: usize,
     captures: usize,
     limited: usize,
@@ -12545,9 +12657,27 @@ impl Besieged {
                     }
                 }
                 GameEvent::BattleStarted { heroes, tile, .. } if town_at(*tile).is_some() => {
-                    let visitor = usize::from(heroes[1].is_some());
-                    self.sieges[visitor] += 1;
-                    self.open.push((heroes[0].unwrap(), visitor));
+                    let i = town_at(*tile).unwrap();
+                    let place = map.towns().iter().position(|&t| t == i).unwrap();
+                    let held = before.adventure().town_hero(town_id(place)).map(|h| h.id);
+                    let defence = match (heroes[1], held) {
+                        (None, _) => 0,
+                        (Some(hero), Some(held)) if hero == held => 2,
+                        (Some(_), Some(_)) => 3,
+                        (Some(_), None) => 1,
+                    };
+                    self.sieges[defence] += 1;
+                    self.open.push((heroes[0].unwrap(), defence));
+                }
+                GameEvent::MonthStarted {
+                    kind: MonthKind::Plague,
+                    ..
+                } => self.plagues += 1,
+                GameEvent::WeekStarted { .. } => {
+                    self.saturated += usize::from((0..map.towns().len()).any(|place| {
+                        let town = after.towns().get(town_id(place)).unwrap();
+                        town.available_all().contains(&h3_towns::MAX_AVAILABLE)
+                    }));
                 }
                 GameEvent::BattleEnded { heroes, result, .. } => {
                     let siege = self.open.iter().position(|&(h, _)| Some(h) == heroes[0]);
@@ -12599,6 +12729,14 @@ impl Besieged {
             )
         });
         self.merges += usize::from(merged);
+        if let GameCommand::Town(TownCommand::Heroes { change, .. }) = *command {
+            let row = match change {
+                TownHeroChange::Enter => 0,
+                TownHeroChange::Leave => 1,
+                TownHeroChange::Swap => 2,
+            };
+            self.rows[row] += 1;
+        }
         let part = rules.towns();
         self.limited += (0..map.towns().len())
             .map(town_id)
