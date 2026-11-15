@@ -2,7 +2,8 @@
 //! each player's frames wrapped as `GameWatched` in the spectator's own numbering, while what the
 //! players hear stays what they hear unwatched (a golden replay beside its in-process twin); a
 //! late watcher starts from each player's view as a re-taken seat would; the creator's setting,
-//! its host's change until the start, its refusals, and the setting the game started with
+//! its host's change until the start (told to every other player, and named in each seat's
+//! `GameJoined`, since T24: SRV-Q38), its refusals, and the setting the game started with
 //! journaled.
 
 use std::string::String;
@@ -282,8 +283,27 @@ fn the_creators_setting_decides_and_a_spectator_neither_plays_nor_sits() {
         to(&send(&mut s, S, other), S),
         [refused(Refusal::NoSuchGame)]
     );
-    send(&mut s, conn(0), join(0, None));
+    // A seat's `GameJoined` names the setting (SRV-Q38 (b)).
+    let joined_as = |out: &[Outbound], conn, open| {
+        let told = to(out, conn);
+        assert!(
+            matches!(told[0], ServerMessage::GameJoined { spectators, .. } if spectators == open),
+            "{told:?}"
+        );
+    };
+    joined_as(&send(&mut s, conn(0), join(0, None)), conn(0), false);
     let set = |seq, open| ClientMessage::SetSpectators { seq, open };
+    // The host's change is told to every other player, in its own sequence (SRV-Q38 (b)): here
+    // the second player's record, whose seat nobody holds yet.
+    let told_other = |s: &GameSession<'_>, open| {
+        let record = s.record(PlayerId::new(1)).unwrap();
+        let n = u32::try_from(record.lines().count() - 1).unwrap();
+        let told = ServerMessage::GameSpectators { n, open };
+        assert_eq!(
+            record.lines().last(),
+            Some(codec::encode_text(&told).as_str())
+        );
+    };
     assert_eq!(
         to(&send(&mut s, S, set(1, true)), S),
         [ServerMessage::GameRejected {
@@ -302,6 +322,7 @@ fn the_creators_setting_decides_and_a_spectator_neither_plays_nor_sits() {
         }]
     ));
     assert!(s.watchable() && s.takes_spectators());
+    told_other(&s, true);
     // Two may watch, a third is refused; a spectator watches once and takes no seat; a seat's
     // connection does not watch.
     assert!(matches!(
@@ -348,9 +369,11 @@ fn the_creators_setting_decides_and_a_spectator_neither_plays_nor_sits() {
     assert_eq!(to(&out, S), [closed]);
     assert!(out.iter().any(|o| o.to == S && o.close));
     assert_eq!((s.spectators(), s.watchable()), (0, false));
-    // Another seat may not change it; once the game started, nobody may.
+    told_other(&s, false);
+    // Another seat may not change it; once the game started, nobody may. Re-opened, the second
+    // seat's join names it.
     send(&mut s, conn(0), set(7, true));
-    send(&mut s, conn(1), join(1, None));
+    joined_as(&send(&mut s, conn(1), join(1, None)), conn(1), true);
     assert!(s.started());
     let rejected = |n, seq, code| ServerMessage::GameRejected { n, seq, code };
     let told = to(&send(&mut s, conn(1), set(8, false)), conn(1));
@@ -394,7 +417,7 @@ fn the_creators_setting_decides_and_a_spectator_neither_plays_nor_sits() {
     let mut closed =
         GameSession::new(rules, &setup, 3, manifest(rules, MAP), OPTIONS, token).unwrap();
     send(&mut closed, conn(0), join(0, None));
-    send(&mut closed, conn(1), join(1, None));
+    joined_as(&send(&mut closed, conn(1), join(1, None)), conn(1), false);
     let entries: Vec<GameEntry> = closed.drain_entries().collect();
     assert!(!entries.contains(&GameEntry::Watchable));
     let back = GameSession::reopen(

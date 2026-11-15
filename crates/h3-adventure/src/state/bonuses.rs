@@ -178,7 +178,7 @@ impl VisitMarks {
     /// The week's land points (E08 T115a; increment 12's design note §12.4, HER-ADV-003's input):
     /// the points of every week-marked type's kind (the Stables' 400), saturating; derived, not
     /// stored.
-    // rule: ADV-BON-001
+    // rule: ADV-BON-001, ADV-BON-005, HER-ADV-003
     pub fn week_land_points(&self, part: &AdventureRuleset) -> u32 {
         self.timed
             .iter()

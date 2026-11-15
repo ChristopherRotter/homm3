@@ -550,7 +550,9 @@ In this order, once a day for the whole game (not per player):
    new week** runs (`new_day_week_events` 0x4C8780, §7.3); then, when the week of the month is
    past 4, it becomes 1 and **the new month** runs (`new_month` 0x4C8F40, §7.4). The week's
    counter is raised inside the new week (0x4C8A1D), so a month starts on the first day of every
-   fifth week: days 29, 57, 85 and so on. A network client (global 0x6972B8 set) skips both.
+   fifth week: days 29, 57, 85 and so on. Once the scenario has ended (`scenario_ended`
+   0x6972B8 set, with `scenario_result` 0x699510) both are skipped (corrected at E08 T117 from
+   the client lane's E27 M1 T1b3b reading; read before as a network client's flag).
 2. Each town's byte +2 is cleared (difficulty 2 or more, or a human in its owner's team, 0x42B9E0)
    or counts down (E09; its meaning not read).
 3. Every hero record (156) loses the day's spells and the flags of the day (T34b's reading, ADV-MOV).

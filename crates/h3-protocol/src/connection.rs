@@ -226,6 +226,7 @@ impl Connection {
                 true,
                 ClientMessage::Join { .. }
                 | ClientMessage::GameJoin { .. }
+                | ClientMessage::GameWatch { .. }
                 | ClientMessage::CreateGame { .. }
                 | ClientMessage::CreateMapGame { .. },
             ) if !self.anonymous && self.account.is_none() => refused(Refusal::NotLoggedIn),

@@ -805,6 +805,8 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             player: 1,
             message: std::boxed::Box::new(ServerMessage::GamePauseAsked { n: 9, player: 0 }),
         },
+        // E16 M5 T24 (SRV-Q38): the host's change told to the other players.
+        ServerMessage::GameSpectators { n: 4, open: true },
     ]);
     out
 }

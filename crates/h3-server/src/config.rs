@@ -52,7 +52,7 @@
 //! commands_per_game = 10000          # a game that reaches it without an end is void
 //! commands_per_turn = 1000           # a whole game's seat: its map commands in one of its turns
 //! commands_per_battle = 4000         # a whole game's seat: its commands in one of its battles
-//! system_commands_per_battle = 10000 # the server's in one battle of a whole game; past: void
+//! system_commands_per_battle = 10000 # the server's in one battle of a whole game; reached: void
 //!
 //! [[offer]]                          # what a client may create a game from; at least one
 //! id = "duel"                        # as `CreateGame` names it

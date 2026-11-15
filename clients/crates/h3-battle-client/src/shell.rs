@@ -21,6 +21,15 @@
 //! LODs), from Bink or with `--video-quality low` from their Smacker copies (the setting Bink
 //! Video 0, CLT-Q96). The replay draws them as the DLLs copy them (`Bugs::Original`), the window
 //! whole, on the window's own clock.
+//!
+//! **The sound** (E27 M2 T5b1): `--effects <0..9>` is the effects setting (the window's default
+//! 5, the game's; the replay's 0, the harness's silent runs). Above 0, with a sound device (the
+//! window's) or none needed (the replay), the clips play with their sound: a Smacker clip's frames
+//! then follow it (`h3_view::shell::start::SmackSound`), and the window plays each clip's track
+//! from its start (`HostSound::play_clip`, at `h3_view::clip_sound::volume`) until a skip stops
+//! it, or whole once its clip ran to its end (CLT-Q125, decision 34: the original cuts the last
+//! frame's sound at the close); the replay lists each start, skip and close in `replay.txt`
+//! (`sound <file> t<ms>`, `quiet <file> t<ms>`, `closed <file> t<ms>`).
 
 use std::fs;
 use std::io::{self, BufRead};
@@ -74,13 +83,15 @@ pub struct Options {
     intro: bool,
     /// The setting Bink Video (Video Quality High: the start's Bink clips).
     bink_video: bool,
+    /// The effects setting (0 to 9), when given.
+    effects: Option<u8>,
     install: PathBuf,
 }
 
 impl Options {
     /// Parses `[--script <file> | --steps <file> --frames <dir> [--pointer <x>,<y>]
     /// [--input-step <ms>] | --window [--scale <n>]] [--no-intro] [--video-quality high|low]
-    /// [--install <dir>]`; the installation defaults to `$H3_INSTALL`, then the repository's
+    /// [--effects <0..9>] [--install <dir>]`; the installation defaults to `$H3_INSTALL`, then the repository's
     /// `original-data/install`.
     ///
     /// # Errors
@@ -95,6 +106,7 @@ impl Options {
         let (mut script, mut steps, mut frames, mut install) = (None, None, None, None);
         let (mut pointer, mut input_step, mut scale) = (None, None, None);
         let (mut intro, mut window, mut bink_video) = (true, false, true);
+        let mut effects = None;
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -112,6 +124,15 @@ impl Options {
                 "--scale" => scale = Some(number(&value()?)?),
                 "--window" => window = true,
                 "--no-intro" => intro = false,
+                "--effects" => {
+                    let v = value()?;
+                    effects = Some(
+                        v.parse::<u8>()
+                            .ok()
+                            .filter(|e| *e <= 9)
+                            .ok_or_else(|| format!("shell: effects `{v}` (0 to 9)"))?,
+                    );
+                }
                 "--video-quality" => {
                     bink_video = match value()?.as_str() {
                         "high" => true,
@@ -156,6 +177,7 @@ impl Options {
             mode,
             intro,
             bink_video,
+            effects,
             install: install
                 .or(env)
                 .unwrap_or_else(|| manifest.join("../../../original-data/install")),
@@ -338,6 +360,29 @@ fn parse_clips(bytes: &[Option<Vec<u8>>; 3]) -> [Option<Parsed<'_>>; 3] {
 }
 
 impl Parsed<'_> {
+    /// The clip's sound in bytes a second (E27 M2 T5b1), none without a track: a Smacker clip's
+    /// first track present, as `SMACKW32.DLL` counts it (16-bit and stereo doubling the rate);
+    /// a Bink clip's first.
+    fn sound(&self) -> Option<u32> {
+        match self {
+            Self::Smacker(clip) => clip
+                .tracks
+                .iter()
+                .find(|t| t.rate != 0 && t.flags & 0x40 != 0)
+                .map(|t| {
+                    t.rate * (1 + u32::from(t.flags >> 5 & 1)) * (1 + u32::from(t.flags >> 4 & 1))
+                }),
+            Self::Bink(clip) => clip.tracks.first().map(|t| u32::from(t.rate) * 4),
+        }
+    }
+
+    const fn format(&self) -> h3_view::clip_sound::Format {
+        match self {
+            Self::Smacker(_) => h3_view::clip_sound::Format::Smacker,
+            Self::Bink(_) => h3_view::clip_sound::Format::Bink,
+        }
+    }
+
     /// What the start's timing takes of the header (a Smacker clip's ring frame not counted, as
     /// the handle's +0xC).
     fn header(&self) -> Header {
@@ -359,13 +404,18 @@ impl Parsed<'_> {
     }
 }
 
-/// The start from its clips at 0 ms, and its picture (`bugs` the DLLs' copies or whole frames).
+/// The start from its clips at 0 ms, and its picture (`bugs` the DLLs' copies or whole frames);
+/// with `sound` the clips play with their sound (E27 M2 T5b1).
 fn start_of<'c, 'a>(
     parsed: &'c [Option<Parsed<'a>>; 3],
     rim: Option<&'c Pixels>,
     bink_video: bool,
     bugs: Bugs,
+    sound: bool,
 ) -> Result<((Start, Vec<Op>), Picture<'c, 'a>), String> {
+    let sounds = parsed
+        .each_ref()
+        .map(|p| p.as_ref().filter(|_| sound).and_then(Parsed::sound));
     let headers = parsed.each_ref().map(|p| p.as_ref().map(Parsed::header));
     // The residues as the DLL reads them for the comparisons (CLT-Q68).
     let reading = match bugs {
@@ -408,7 +458,7 @@ fn start_of<'c, 'a>(
     let black = Pixels::new(WIDTH, HEIGHT, FORMAT).ok_or("no 800 × 600 screen")?;
     let picture = Picture::new(black, sources, rim, bink_video, bugs);
     let mut ops = Vec::new();
-    let start = Start::new(headers, bink_video, 0, &mut ops);
+    let start = Start::with_sound(headers, sounds, bink_video, 0, &mut ops);
     Ok(((start, ops), picture))
 }
 
@@ -491,8 +541,14 @@ fn replay_steps(options: &Options, drawer: &Drawer) -> Result<(), String> {
         [None, None, None]
     };
     let clips = parse_clips(&bytes);
-    let (start, mut picture) =
-        start_of(&clips, drawer.rim.as_ref(), options.bink_video, drawer.bugs)?;
+    let sound = options.effects.unwrap_or(0) > 0;
+    let (start, mut picture) = start_of(
+        &clips,
+        drawer.rim.as_ref(),
+        options.bink_video,
+        drawer.bugs,
+        sound,
+    )?;
     let mut applied = 0;
     let shell = Shell::new(options.intro);
     let mut r = Replay::new(shell, *pointer, *input_step, Some(start));
@@ -526,6 +582,18 @@ fn replay_steps(options: &Options, drawer: &Drawer) -> Result<(), String> {
             break;
         }
     }
+    // The clips' sound (E27 M2 T5b1): when each started and stopped.
+    for (op, t) in r.ops().iter().zip(r.op_times()) {
+        match op {
+            Op::Sound(part) => {
+                listing.push(format!("sound {} t{t}", part.file(options.bink_video)))
+            }
+            Op::Quiet(part) => {
+                listing.push(format!("quiet {} t{t}", part.file(options.bink_video)))
+            }
+            _ => {}
+        }
+    }
     let listing: String = listing.iter().map(|l| format!("{l}\n")).collect();
     print!("{listing}");
     write(&frames.join("replay.txt"), listing.as_bytes())
@@ -541,9 +609,52 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
         [None, None, None]
     };
     let clips = parse_clips(&bytes);
-    let ((mut start, mut ops), mut picture) =
-        start_of(&clips, drawer.rim.as_ref(), options.bink_video, drawer.bugs)?;
+    // The sound (E27 M2 T5b1): the effects above 0 and a device, else the clips silent (the
+    // game opens no track without a driver, and its Smacker clips keep their clock).
+    let effects = options.effects.unwrap_or(5);
+    let mut host = if effects > 0 && options.intro {
+        match crate::audio::HostSound::open(drawer.bugs) {
+            Ok(host) => Some(host),
+            Err(e) => {
+                eprintln!("h3-view shell: no sound ({e})");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    // Each clip's track decoded beside the window (H3Intro's takes seconds), taken at its start.
+    let mut samples = [0, 1, 2].map(|k| {
+        let format = clips[k].as_ref()?.format();
+        let bytes = bytes[k].clone()?;
+        host.as_ref()?;
+        thread::Builder::new()
+            .name("h3-view shell's clip sound".to_owned())
+            .spawn(move || {
+                let samples = match format {
+                    h3_view::clip_sound::Format::Smacker => {
+                        h3_view::clip_sound::ClipSound::smacker(&bytes)
+                            .ok()
+                            .and_then(|tracks| tracks.into_iter().next())
+                    }
+                    h3_view::clip_sound::Format::Bink => {
+                        h3_view::clip_sound::ClipSound::bink(&bytes).ok().flatten()
+                    }
+                };
+                samples.map(|s| (s, format))
+            })
+            .ok()
+    });
+    let mut streams: [Option<usize>; 3] = [None; 3];
+    let ((mut start, mut ops), mut picture) = start_of(
+        &clips,
+        drawer.rim.as_ref(),
+        options.bink_video,
+        drawer.bugs,
+        host.is_some(),
+    )?;
     let mut applied = 0;
+    let mut heard = 0;
     if start.ended() {
         let _ = shell.end(Ended::Start);
     }
@@ -594,6 +705,33 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
         }
         if shell.screen() == Screen::Start {
             start.read(now(&win), &mut ops);
+        }
+        // The clips' sound started and stopped as the ops say.
+        if let Some(host) = host.as_mut() {
+            for op in ops.get(heard..).unwrap_or_default() {
+                match *op {
+                    Op::Sound(part) => {
+                        let decoded = samples[part as usize].take().and_then(|t| t.join().ok());
+                        if let Some(Some((sound, format))) = decoded {
+                            let volume = h3_view::clip_sound::volume(format, effects, drawer.bugs);
+                            streams[part as usize] = host.play_clip(&sound, volume).ok();
+                        }
+                    }
+                    // A skip stops the sound; the close after the last frame cuts it in the
+                    // original's only (CLT-Q125, decision 34: the track plays out).
+                    Op::Quiet(part) | Op::Closed(part)
+                        if matches!(op, Op::Quiet(_)) || drawer.bugs == Bugs::Original =>
+                    {
+                        if let Some(stream) = streams[part as usize].take() {
+                            host.stop_clip(stream);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        heard = ops.len();
+        if shell.screen() == Screen::Start {
             dirty |= applied < ops.len();
             catch_up(&mut picture, &ops, &mut applied)?;
             if start.ended() {
@@ -676,6 +814,11 @@ mod tests {
         assert!(none.bink_video);
         assert!(!parse(&["--video-quality", "low"]).unwrap().bink_video);
         assert!(parse(&["--video-quality", "high"]).unwrap().bink_video);
+        // E27 M2 T5b1: the effects setting, 0 to 9.
+        assert_eq!(none.effects, None);
+        assert_eq!(parse(&["--effects", "5"]).unwrap().effects, Some(5));
+        assert!(parse(&["--effects", "10"]).is_err());
+        assert!(parse(&["--effects", "x"]).is_err());
         let refused = [
             &["--script"][..],
             &["--intro"],

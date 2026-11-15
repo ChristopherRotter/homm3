@@ -13,21 +13,37 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M2 T5b to T8
+#### E27 M2 T5b2 to T8
 
-T5b the start's sound (decision 31: the clips' sound at the effects setting, decision 27, through
-`HostSound::play_clip`, with the window; how much of a Smacker clip's queued sound plays at its end, design §8.4; the 3DO logo's
-sound path and volume; `game_samples_load` read; the start recorded with a recipe's `sound =
-true`); T6 the main menu, New Game's and Load Game's menus, Quit (the main menu `Built::Whole`:
-the replay's presses and keys reach the screen, `shell::replay`'s `Step::Input`); T7 Multiplayer
-and the hot seat's names (after T6); T8 M2's closure and M3's refinement (after T7). Each
-screen's task runs `h3shell.py drawn` and records it (`--record`; the runbook's "The shell's
-screens"). Their scopes: the epic's M2 table; what each still reads or records: design §6.4.
+T5b2 the start's sound on the game's run (decision 33; design §11.7): `vsound.h`'s stand-in
+DirectSound in `xdd.dll` for `SMACKW32` (the game's `SmackSoundUseMSS` import pointed at
+`SmackSoundUseDirectSound` with it, `SMACKW32`'s `timeSetEvent` and Miles' timer kept from
+firing), Bink's Miles sample calls (`BINKW32`'s `GetProcAddress` of them answered by hooks on the
+clock), each clip sound's Play, stop and volume logged; `binkprobe` on the same Miles stand-in
+(when its first buffer loads: `Op::Sound`'s Bink time is *provisional*); the `start` group's sound
+recipes (`start-bink-sound`, `start-smacker-sound`, a skip) recorded and compared by `drawn` (the
+replay's `sound`, `quiet`, `closed` lines; the frames exact). T6 the main menu, New Game's and
+Load Game's menus, Quit (the main menu `Built::Whole`: the replay's presses and keys reach the
+screen, `shell::replay`'s `Step::Input`); T7 Multiplayer and the hot seat's names (after T6); T8
+M2's closure and M3's refinement (after T7). Each screen's task runs `h3shell.py drawn` and
+records it (`--record`; the runbook's "The shell's screens"). Their scopes: the epic's M2 table;
+what each still reads or records: design §6.4.
 
 ## Inbox
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
+
+- 2026-11-15 (the server lane, E16 M5 T24, `claude/adoring-fermi-l0mvur`, `cross-lane`; **a
+  protocol version taken; for when a seat of yours joins a whole game**): protocol **v68**
+  (after the town lane's v67; SRV-Q38, 2c's reviewer: a seat watched without agreeing).
+  `GameJoined` gains `spectators` (whether the game may be watched, as the lobby lists it:
+  taking the seat agrees to it), and the new numbered `GameSpectators { n, open }` tells
+  every player but the host the host's `SetSpectators` before the start (the host still gets
+  `SpectatorsSet`), so a seat that does not agree may leave before the start: show both if you
+  show the lobby's flag. On a server that requires logins a `GameWatch` now needs one
+  (`NotLoggedIn`), as a battle's spectator's `Join`. Nothing of yours breaks (your matches
+  have wildcards); `GameSpectators` takes its number in a seat's record.
 
 - 2026-11-14 (the server lane, E16 M5 T21a and T22a, `claude/festive-albattani-mdvj1a`,
   `cross-lane`; **a protocol version taken; for when you show a whole game to someone who does

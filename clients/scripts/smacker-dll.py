@@ -14,7 +14,12 @@ samples the DLL hands Miles for each track the header describes, into <out>/<ste
 (`h3_smacker::check::sound`'s format); the DLL takes a sample handle per such track in their
 order, so the n-th handle's file is the n-th described track's. Then (E27 M2 T5a2)
 `smackprobe.exe rects` in the game's 5-6-5 type: every frame's SmackToBufferRect calls, the clip
-at (0, 0) into <out>/<stem>.rects and at (83, 187) into <out>/<stem>.shifted.rects.
+at (0, 0) into <out>/<stem>.rects and at (83, 187) into <out>/<stem>.shifted.rects. Then (E27 M2
+T5b1), for a clip with a track, `smackprobe.exe wait` (the stand-in DirectSound of
+clients/capture/vsound.h on the probe's clock) at the steps of `h3-view video`'s WAIT_STEPS, the
+effects setting 5: its log's volume (as the index into SMACKW32's table of 2000 log10(i / 127)),
+the buffer's Play, each frame decoded and the close (with the track's bytes played, which must be
+the first of the track's samples) into <out>/<stem>.wait<step>, times from the clip's open.
 
     python3 -I clients/scripts/smacker-dll.py <in.smk> <out dir>
 
@@ -26,7 +31,41 @@ import os
 import struct
 import subprocess
 import sys
+import math
 import tempfile
+
+# h3-view video's WAIT_STEPS (E27 M2 T5b1).
+WAIT_STEPS = (1, 5, 7, 10, 16)
+
+
+def volume_index(hundredths):
+    """The index i of SMACKW32's volume table (0x100148E8: 2000 log10(i / 127), truncated; 0 is
+    -10000) holding a DirectSound volume."""
+    for i in range(128):
+        if (-10000 if i == 0 else int(2000 * math.log10(i / 127))) == hundredths:
+            return i
+    return f"unknown{hundredths}"
+
+
+def wait_text(log, played, track):
+    """`smackprobe wait`'s log as `h3-view video` writes its model's: times from the open."""
+    lines, start = [], None
+    for line in open(log):
+        t, what, *rest = line.split()
+        t = int(t)
+        if what == "open":
+            start = t
+        elif start is None:
+            continue
+        elif what == "volume":
+            lines.append(f"{t - start} volume {volume_index(int(rest[0]))}")
+        elif what in ("play", "frame"):
+            lines.append(f"{t - start} {what}" + (f" {rest[0]}" if what == "frame" else ""))
+        elif what == "stop":
+            heard = open(played, "rb").read()
+            ok = track is None or track.startswith(heard)
+            lines.append(f"{t - start} stop {len(heard)}" + ("" if ok else " not-the-track"))
+    return "".join(line + "\n" for line in lines)
 
 
 def archive(name, data):
@@ -91,6 +130,15 @@ def main():
                     if os.path.exists(pcm):
                         with open(pcm, "rb") as f:
                             g.write(f.read())
+            # The frames' times with the sound on (E27 M2 T5b1).
+            first = os.path.join(tmp, "sound.0.pcm")
+            track = open(first, "rb").read() if os.path.exists(first) else None
+            for step in WAIT_STEPS:
+                out = os.path.join(tmp, f"wait{step}")
+                run(["wine", "smackprobe.exe", "wait", f"{rel}\\clip.vid", name, str(step), "5",
+                     f"{rel}\\wait{step}"], game, env, out + ".wait")
+                with open(os.path.join(target, f"{stem}.wait{step}"), "w") as g:
+                    g.write(wait_text(out + ".wait", out + ".played", track))
 
 
 if __name__ == "__main__":
