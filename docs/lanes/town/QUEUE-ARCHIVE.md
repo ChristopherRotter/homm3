@@ -3,6 +3,93 @@
 Inbox notes that left the queue, verbatim, with where their work went (`docs/08-work-process.md`,
 "Keeping the start-of-session reading small"). Read only when a doc points here.
 
+## 2026-11-15 — increment 3's inbox notes, acted on or answered: archived at E09 T30
+
+Each note verbatim, after the line saying where its work went (E09 decision 102).
+
+*Answered by the user at E09 T30 (`TWN-Q15` (4), decision 101: projected below level 3), queued as T31:*
+
+- 2026-11-14 (the server lane, E16 M5 T24, its review of your T28a's wire; **a question for
+  you, low**): `GarrisonEntered { hero, town, pos }` goes to every viewer of the town's entrance
+  (`town/rows.rs`, `observe.rs`' pass-through), so a viewer below the level that shows
+  `TownOwnerFacts::garrison_hero` is told by name that the hero went into that town's garrison,
+  while `docs/06-security.md`'s town part says the moves are told "as heroes leaving and
+  entering the map". It is inferable there (the hero vanishes from the entrance), so the
+  choice is yours: project it to a non-owner as `HeroRemoved` (and `GarrisonLeft` as a hero
+  coming into sight), or say in that line that the move is public because the map shows it.
+  Nothing in `h3-protocol` changes either way (the fold already reads both).
+
+*Acted on by T28a and T28b1 (the garrison hero's marks held in `Holds::Town`, their drops, its land points):*
+
+- 2026-11-13 (the adventure lane, E08 T115a, `adventure/e08-t115a`, `cross-lane`; **for your T28a
+  and T28b, the garrison hero's marks**, your inbox note of 2026-11-11 (2)): a hero's battle
+  bonuses and timed marks are `h3_adventure::VisitMarks`, one record (`bonuses()`, `timed()`,
+  `add`, `add_once`, `add_timed`, `clear_bonuses`, `drop_timed(part, MarkLifetime)`,
+  `week_land_points(part)`), kept for the heroes on the map in **one state block by hero id**,
+  not in `HeroOnMap` (`AdventureState::visit_marks`, `change_marks`; measured: fields on the hero
+  cost every fork +11 to +15 %). A garrison hero leaving the heroes on the map takes its record
+  (`visit_marks`, public, then `leave_marks`, crate-visible: your `src/town*` modules reach it;
+  `state/bonuses.rs`) and holds it in `Holds::Town`; the day's and week's drops are `VisitMarks::drop_timed` per record,
+  and its land points take `week_land_points` (`day_points`' new last argument). Coming back onto
+  the map it gives the record back through `change_marks`. `derive_battle_hero` takes the
+  bonuses beside the details (`h3_heroes::BattleBonuses`; your `town/tests/siege.rs` passes
+  `NONE`); a siege's defending hero on the map gets its own from `GameState::battle_hero`.
+  Versions: adventure state hash v23, game state hash v31 (the details without the bonuses).
+  Also (informational): CI on #906 found a case of `h3-map`'s `every_step_keeps_the_commands_
+  invariants` failing on `master` 202aa3f: your T26b's `TownChanged` after a town event's
+  creatures, with no build, was not among the views the turn's town-event oracle drops; it drops
+  them after a `TownEventFired` now too (the case in `proptest-regressions/tests/play.txt`).
+
+*Acted on by T27 (`HireSource::Town`, `HireTarget::Garrison`; TWN-REC-001):*
+
+- 2026-11-05 (the adventure lane, E08 T95b, `adventure/e08-t95b`; **for a town's recruitment,
+  E09 decision 4**): the hire dialog is built to be reused (increment 10's design note §13,
+  "E09's reuse"). `h3_adventure::HireDialog { target: HireTarget, source: HireSource }`: extend
+  `HireSource` with a town's dwelling and `HireTarget` with the garrison; the map's purchase rule
+  stays one (`AdventureState::hire_stock`, `hire_room`, `check_hire` → `HirePurchase`, `hire`;
+  ADV-HIR-002), and so does the game's decision (`h3-game`'s `state/hire.rs`: `Decision::Hire`,
+  `Answer::Hire(HireAnswer::{Buy, Close})`, the legal set of each creature's most, `hire_range`,
+  `DecisionView::Hire`, `GameState::hire_dialog`; GAM-DEC-008). The env's four purchases (action
+  encoding v7) take the source's order, so a town's dwelling of up to four creatures needs no
+  new entry. Game state hash v25 is T95b's.
+
+*Acted on by T25a and T26a1 (the owner's dwellings by their first creature in a town's growth, TWN-GRO-001):*
+
+- 2026-11-04 (the adventure lane, E08 T94b, `adventure/e08-t94b`; **for the towns' external
+  dwellings' growth**; its versions half done by E09 T8a1, v21): A dwelling's counts and guards as
+  they stand:
+  `AdventureState::dwelling_counts` and `dwelling_guards` (by object index; none of a block while
+  every dwelling is as its week began); the week's refill of every dwelling is the first step of
+  `AdventureState::start_week`, before the weekly objects and the camps, reading no week's or
+  month's kind (ADV-DWL-003; your towns' growth is separate, survey `E08-dwellings.md` §6.1).
+
+*Acted on by T25a and T26a1 (as the note above):*
+
+- 2026-11-04 (the adventure lane, E08 T94a, `adventure/e08-t94a`; **for the towns' external
+  dwellings' growth**, E09 survey §8.3; adventure design note §11): the static map lists the
+  dwellings in object order (`StaticMap::dwellings`, `dwelling_index`; a random dwelling not tied
+  to a town is resolved into its drawn faction's and level's dwelling when the game is built, so
+  it is listed as a placed one; since E09 T11 one tied to a town too), their owners are `AdventureState::owner` (ownable since T93a, the
+  setup's owner at the start) and their creatures the kind's (`ObjectKind::Dwelling::creatures`,
+  each creature's faction the core's). Their counts and guards come with T94b (adventure state hash
+  v20). A random dwelling tied to a town resolves since E09 T11, after the towns' draws (ADR-0017
+  point 4).
+
+*Acted on by T27 (the hire dialog reused):*
+
+- 2026-11-03 (the adventure lane, E08 T87c, ADV-Q41; **for your increment 3's recruitment, nothing
+  to build now**): E08's increment 10 is dwellings and hiring (decision 231): the map's creature
+  dwellings (17, 20), the random dwellings with a faction set and the Refugee Camp, their weekly
+  creatures and **the hire dialog**, built in the adventure lane first (E09 decision 4); the random
+  dwellings tied to a random town resolve since E09 T11. Its survey (T88a,
+  `docs/rules/surveys/E08-dwellings.md`) and design note (T88b) come first; this lane's inbox is
+  told when the hire dialog lands.
+
+*Acted on by T24, T25b1 and T26a2 (`StreamId::TOWNS`, TWN-GRO-002 to -004):*
+
+- (ADR-0017 point 4; E08 decision 197) The week's creature, drawn from a stream of its own, and the
+  Plague's effect on towns. Increment 3.
+
 ## 2026-11-14 — E08 T116b1's note on the plans' town purchases: read at E09 T28b2's start
 
 Informational (nothing to do); T28b2 met no plan purchase that it changed.

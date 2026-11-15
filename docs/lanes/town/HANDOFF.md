@@ -4,18 +4,18 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E09** (towns): increments 1 and 2 closed (T10, T20; `E09-archive.md`, design notes Parts A
-  to D). **Increment 3** (growth, recruitment and the army rows; decisions 64–97): the survey
-  (T21), the drafts and Part E §37 to §58 (T22a, T22b), the cut (`TWN-Q13`, `TWN-Q14`), batch
-  TWN-3 (T23), the `shared/` task (T24), growth T25a to T26b (decisions 86 to 91), T27
-  (decision 92: recruitment), T28a to T28b2 (decisions 93 to 95: the rows), T29a (decision 96:
-  the builds map's replays, the census to day 29), **T29b** (decision 97, whole: the properties,
-  the plans' hero moves, `month-start-builds-36`). **Next:** T30 (the audit against §57's exit
-  criteria, the closure, increment 4 refined; `QUEUE.md`). The Tavern is increment 4, the guild
-  and the services 5, travel and the Grail 6. Waiting elsewhere: `TWN-STUB-8` (the battle lane's
-  inbox), `TWN-STUB-6` and `-13` (increment 5), `TWN-STUB-2` (the victory conditions).
-- **Open pull requests:** #942 (`shared/e09-t29b-benches`, the benches README's row; merges
-  first) and #946 (T29b's, `town/e09-t29b`, `cross-lane`); watch both until they merge.
+- **E09** (towns): increments 1 to 3 closed (T10, T20, T30; `E09-archive.md`, design notes Parts A
+  to E). **Increment 4** (the Tavern; decisions 98–102, `TWN-Q15`): refined at T30 as sketched:
+  the Tavern's hire (two offers a player from the shared pool by the classes' tavern weights, the
+  price, the most heroes, the week's refresh, the heroes that lost, retreated or surrendered
+  offered again, the map's customized heroes), the Thieves' Guild's overview by taverns owned and
+  the Den of Thieves. **Next:** T31 (the garrison moves below level 3, decision 101; code,
+  `cross-lane`), then T32 (the survey, its checkpoint `TWN-Q16`) and T33 (the drafts, Part F from
+  §59, the cut); `QUEUE.md`. The guild and the services are increment 5, travel and the Grail 6.
+  Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment
+  5), `TWN-STUB-2` (the victory conditions).
+- **Open pull requests:** #957 (`town/e09-t30`, docs) and #956 (`shared/e09-t30-readme`, the
+  README's row); watch both until they merge.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -27,7 +27,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   map import v23, replay format v16 by T28a), the env's (v11 by T28a) and the protocol's (v67 by
   T28b2) are bumped `cross-lane` (each task's record in `E09-log.md`). Shared, from T24: core
   ruleset hash v53, pack format v52, quirk flags 41, `StreamId::TOWNS` (7).
-- **Ids** (next): questions `TWN-Q15`; decisions 98; quirks `TWN-QUIRK-12`; stubs `TWN-STUB-15`
+- **Ids** (next): questions `TWN-Q16`; decisions 103; quirks `TWN-QUIRK-12`; stubs `TWN-STUB-15`
   (`-11`, `-12` planned by design §34); rules: design §55's all built; experiment batch `TWN-4`;
   disputes `TD-18`; quirk candidates `T-14`. ADR-0028 is the lane's; no drafts wait.
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at
@@ -38,6 +38,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-15 — T30: the audit, increment 3 closed, increment 4 refined
+
+Baseline 396f6f8 (#942 to #953 merged; the setup's baseline lost to a VM restart, CI's green runs
+on `master` stand for it). T30 whole (the user, decision 98; `TWN-Q15`, all four as recommended).
+The user's computer was connected at the start only: the original data and the four manuals
+staged then (28 files, SHA-256 checked), used for the scoped verify on `master`'s code (no failing
+step; the census to day 29 as T29a's). The eleven criteria hold; nine rules behind batch TWN-3's
+rows `verified`; the garrison moves' names below level 3 queued as T31 (decision 101). Increment 3
+archived; increment 4 the Tavern as sketched (decisions 99, 100, 102); seven inbox notes archived.
+Docs only; PRs #957 and #956 (the README's row).
 
 ### 2026-11-15 — T29b: the properties, the plans' hero moves, the month workload
 
@@ -60,14 +71,3 @@ for the census and the scoped verify. `cross-lane`: `h3-map`'s builds map (the P
 Valeska, a Guardhouse) and `original_data` (the census: 160 maps to day 29 against its own walk),
 the six `builds-*` replays re-recorded and three new, `day-start-builds-36` re-baselined (+51.7 %,
 the map). No version moved. Note in the adventure lane's inbox. T29b queued.
-
-### 2026-11-14 — T28b2: a garrison hero defends; T-5; the town's views
-
-Baseline 0872fc6 (#924 merged; the setup's baseline lost to a VM restart, CI's green run on
-`master` stands for it). T28b2 whole (the user, decision 95; two parts were recommended). The
-user's computer was connected at the start: the original data and the four manuals staged then
-(28 files, SHA-256 checked), used for the scoped verify and a third reading of `town_defended`.
-`cross-lane`: `h3-adventure`'s `end_battle`, `raise`, `change_marks`; `h3-game`'s battle end and
-`town_told`; `h3-map`'s view property; `h3-protocol` (v67). A hygiene case found failing on
-`master` too (a map garrison's index), fixed by the adventure lane's #929, merged in. Notes in the
-adventure's and the server's inboxes. T29 next. PR #930.

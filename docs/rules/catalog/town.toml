@@ -1012,7 +1012,7 @@ numeric  = "integer"
 id       = "TWN-GRO-001"
 title    = "A dwelling's growth a week"
 context  = "town"
-status   = "implemented"
+status   = "verified"
 summary  = "What a town's dwelling at a creature index (index level - 1 the level's creature, level - 1 + 7 its upgrade) grows a week, summed in the original's order and held at 32 767 (TWN-QUIRK-8): none without the index's dwelling ever built (a building of role `dwelling` of its level and upgrade flag) and none at a base index whose level's upgraded dwelling is ever built; g the index's creature's core `growth`; + g with a standing fort level 3 (the Castle), + g / 2 with level 2 (the Citadel), the Fort nothing; for an owned town + (g + the castle's) x the owner's share in basis points / 10 000 (truncated; the Statue of Legion's 5 000, the highest `owner_town_growth` among the owner's heroes) + the level's Legion (`town_growth` of the town's heroes, each hero once); + the index's creature's `horde_growth` with a horde of the index ever built (role `horde`, the upgraded horde at the upgrade's index); + the owner's dwellings on the map whose kind's first creature is the index's (a base creature's at its upgrade's index too); then with a `grail` building ever built + the sum so far / 2 (truncated). A neutral town has no share and no Legion. E09 T25a (design section 41): `h3_towns::growth(town, part, core, index, &GrowthInputs)`; the week, the month, the garrison week and the Portal read the rule (T25b). E09 T26a1: the game computes the inputs once a week (h3-game's town/growth.rs `inputs`): the owner from the adventure, the share the highest `h3_heroes::owner_town_growth` of the owner's heroes on the map, the Legion the visitor's `h3_heroes::town_growth` (ADR-0013 point 16.4: each worn type once, a combination's parts counting), the dwellings the owner's on the map by their kind's first creature. E09 T28b1 (TWN-ROW-005): the share over the owner's heroes on the map and its garrison heroes (the original's `player_hero_wears_artifact` 0x4BACB0: the player's list, then its towns' +0xC heroes), the Legion the visitor's plus the garrison hero's, summed by level."
 numeric  = "integer"
 
@@ -1025,6 +1025,7 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E09-batch-3a.md and E09-batch-3a-run2.md, batch TWN-3 row TWN-3-2 (the capture harness, 2026-11-11; scored in survey E09-growth.md section 17): a Castle town with the Castle, the Griffin Bastion and the Grail, the Statue elsewhere and Legs of Legion on its visitor, two flagged Guardhouses, grew 66, 48 and 36 at levels 1 to 3, exactly the reading's sums ((14 + 14 + 14 + 2) x 1.5, (9 + 9 + 9 + 5) x 1.5, (7 + 7 + 7 + 3) x 1.5)"
   confidence = "high"
+  note       = "Marked verified by E09 T30 (the audit of increment 3's exit criteria, criterion 11): row TWN-3-2 matches the sum in every read of both runs (the castle, the Statue's share on the base and the castle, the visitor's Legion, the first horde, the owner's dwellings at a growing index, the Grail on the whole). Not played by the batch: the Citadel's half, a neutral town's inputs, a garrison hero's Legion (the code reading)."
 
   [[rule.source]]
   kind       = "vcmi"
@@ -1067,7 +1068,7 @@ numeric  = "integer"
 id       = "TWN-GRO-003"
 title    = "A town's week of growth"
 context  = "town"
-status   = "implemented"
+status   = "verified"
 quirks   = ["TWN-QUIRK-8"]
 summary  = "On a week's first day (the month's first too, before the month), every town's indexes whose growth g (TWN-GRO-001) is above 0 gain g, + the week's bonus when the index's creature is one of the week's (a creature's week: that creature alone, the part's `creature_bonus`, the original's 5; a `week_of` building's week: either creature of its level, the level's base creature's core growth, the Imp's 15), halved (truncated, after the bonus) in a town without an owner, the count held at 32 767 (TWN-QUIRK-8); a normal week names no creature. The Portal and the indexes that grow nothing are untouched. E09 T25b1 (design section 42): `h3_towns::week_growth(town, part, core, &WeekKind, &GrowthInputs)` and the week's kind `h3_towns::WeekKind` (`Normal`, `Creature`, `Of`, hashed 0, 1 and the creature, 2 and its two creatures and the bonus); E09 T26a1: the game calls it in `TownId` order on a week's first day after WeekStarted and before the adventure's week step (h3-game's town/growth.rs `grow_week`, GAM-CAL-002); since E09 T26a2 with the week's kind the game drew (TWN-GRO-002)."
 numeric  = "integer"
@@ -1081,6 +1082,7 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E09-batch-3a.md and E09-batch-3a-run2.md, batch TWN-3 rows TWN-3-1 to TWN-3-3 (the capture harness, 2026-11-11, every week forced normal; scored in survey E09-growth.md section 17): an owned town's indexes grew their whole growth a week (K1, K2 7 on day 1, 37 at month 1 week 4; G1 14, 9, 7 to 80, 57, 43 at week 2), a neutral town's half (N1 42 and 25 to 49 and 29 at growths 14 and 9)"
   confidence = "high"
+  note       = "Marked verified by E09 T30 (criterion 11): rows TWN-3-1 to TWN-3-3 match an owned town's whole week and a neutral town's half in every read of both runs. Not played (every week forced normal): a creature's or a `week_of` building's bonus and the 32 767 bound (the code reading)."
 
   [[rule.source]]
   kind       = "vcmi"
@@ -1098,7 +1100,7 @@ numeric  = "integer"
 id       = "TWN-GRO-004"
 title    = "A town's month of growth"
 context  = "town"
-status   = "implemented"
+status   = "verified"
 quirks   = ["TWN-QUIRK-8", "TWN-QUIRK-9", "TWN-QUIRK-10"]
 summary  = "On a month's first day, after the week's growth (TWN-GRO-003) and the month's kind (GAM-CAL-003), every town's indexes whose growth g (TWN-GRO-001, unhalved, no week's bonus) is above 0: in a creature's month of c, unless the week is a `week_of` building's (the month is then its level's base creature's, which spawns on the map and doubles no town's count), the count doubles, held at 32 767 (TWN-QUIRK-8), when the index's creature is c, and with `quirk.town.creature_month_exact` off when c is either creature of the index's level (TWN-QUIRK-10); in the Plague the count less g (at least 0), then halved (truncated), and with `quirk.town.neutral_plague_full_growth` off a town without an owner loses g / 2 (what its week added), so every town keeps half of its count before the week (TWN-QUIRK-9). A normal month, the Portal and the indexes that grow nothing are untouched. E09 T25b1 (design section 43): `h3_towns::month(town, part, core, MonthGrowth, &WeekKind, &GrowthInputs)`, the month's kind as the towns read it `h3_towns::MonthGrowth` (`Normal`, `Creature`, `Plague`). E09 T26a1: the game maps its own `MonthKind` to it and calls it in `TownId` order after MonthStarted and before the adventure's month step, with the week's inputs (h3-game's town/growth.rs `grow_month`, GAM-CAL-002); since E09 T26a2 with the month's first week's kind, so that the month after a `week_of` week (its creature's, GAM-CAL-003) doubles nothing."
 numeric  = "integer"
@@ -1112,6 +1114,7 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E09-batch-3a.md and E09-batch-3a-run2.md, batch TWN-3 rows TWN-3-1 and TWN-3-3 (the capture harness, 2026-11-11, the second month forced the Griffin's and the third the Plague; scored in survey E09-growth.md section 17): the Griffin's month left the Royal Griffins' 47 (K1) and doubled the Griffins' 47 to 94 (K2), the exact creature after the week's growth; the Plague left an owned town 53 and 30 (half of 106 and 61 before the week) and a neutral one 17 and 10 (max(0, 42 + 7 - 14) / 2, max(0, 25 + 4 - 9) / 2); VCMI's level rule and doubled growth and VCMI's and the wiki's halving after the week refuted"
   confidence = "high"
+  note       = "Marked verified by E09 T30 (criterion 11): rows TWN-3-1 and TWN-3-3 match a creature's month (the exact creature, after the week) and the Plague in an owned and a neutral town (half of the count before the week) in every read of both runs. Not played: a month after a `week_of` week (the code reading)."
 
   [[rule.source]]
   kind       = "vcmi"
@@ -1129,7 +1132,7 @@ numeric  = "integer"
 id       = "TWN-GRO-005"
 title    = "A dwelling's first creatures"
 context  = "town"
-status   = "implemented"
+status   = "verified"
 summary  = "When a build makes a dwelling ever built (a command's, a town event's, or the game's setup, which builds the start's buildings in id order), its index gets its first creatures, before any week: each base dwelling (role `dwelling`, not upgraded) first, in index order, sets its index's count to its creature's core growth (the count before overwritten); then each upgraded one sets its index's count to its base index's and the base index's to 0. No castle, horde, Legion or Grail until the week; a horde adds nothing at once. So a town starts with each built dwelling's base growth at its standing dwelling's index. E09 T25a (design sections 40 and 46): `h3_towns::Towns::build` (with the core) and `h3_towns::town_setup`."
 numeric  = "integer"
 
@@ -1137,6 +1140,12 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 6): town_build (0x5BE930 at 0x5BEB7E to 0x5BEBE5) sets a base dwelling's (30 to 36) index count to its creature's growth (+0x44) alone; an upgraded dwelling (37 to 43) writes the upgrade's growth, then overwrites it with the base count and zeroes the base; a horde adds nothing; the setup builds the start's buildings the same way in id order (survey E09-towns.md section 5.3)"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-3a.md and E09-batch-3a-run2.md, batch TWN-3 rows TWN-3-1 and TWN-3-2 (the capture harness, 2026-11-11; scored in survey E09-growth.md section 17): on day 1 each dwelling built at the start held its base creature's growth alone at its standing index (G1's 14, 9 and 7; K1's 7 at the Royal Griffins' index 9, its base index 0; K2's 7 at the Griffins' index 2)"
+  confidence = "high"
+  note       = "Added by E09 T30 (the audit of increment 3's exit criteria, criterion 11): the setup's first creatures, base and upgraded, as the rule says; marked verified. Not played by the batch: a command's and an event's build (the code reading)."
 
   [[rule.source]]
   kind       = "vcmi"
@@ -1154,7 +1163,7 @@ numeric  = "integer"
 id       = "TWN-GRO-006"
 title    = "A neutral town's garrison week"
 context  = "town"
-status   = "implemented"
+status   = "verified"
 summary  = "On a week's first day, after the adventure's week step, each town without an owner, in `TownId` order, from the towns' stream: `below(out_of)` under the odds (the original's 80 in 101 with a standing fort level, else 40) or nothing; n = min(the weeks since the start, the parameters' 8), S the sum of three `range_inclusive(0, n + 1)`, the level the first of the weights 2, 3, 4, 5, 4, 3 that S does not exceed, S lessened by each passed, else level 7 (S <= 2 level 1, <= 5 level 2, <= 9 level 3, <= 14 level 4, <= 18 level 5, <= 21 level 6); the creature the faction's base of the level, its upgrade when the garrison holds the upgrade, its count the creature's core growth; room is a stack of the creature or a free slot (the army's rule, ADV-ARM-007), else the stack of least AI value x count below the new stack's (the first of equal ones in slot order) is cleared and the new stack takes its slot, else nothing more happens (no draw after the sums); the stack merges into the creature's or takes the first free slot; the level's base and upgraded counts each lose the count (at least 0); for a base creature `range_inclusive(1, 100)` at most 5 turns every stack of it into the upgrade. An owned town's garrison never grows. A level the record lacks, a creature growing none and a growth above a stack's most add nothing (the engine's). E09 T25b2 (design section 44): `h3_towns::garrison_week(town, part, core, weeks, garrison, rules, draws) -> Option<GarrisonWeek { stacks, town }>`. E09 T26b: the game's `town::garrison::garrison_weeks` (h3-game) with the adventure part's army slots and a stack's most, the garrison written with `AdventureState::set_town_garrison` and the town into the store, each view it changed told with the towns' day (TWN-VEW-002)."
 numeric  = "integer"
 
@@ -1167,6 +1176,7 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E09-batch-3a.md and E09-batch-3a-run2.md, batch TWN-3 row TWN-3-4 (the capture harness, 2026-11-11, eight weeks, every draw logged; scored in survey E09-growth.md section 17): a replay of the reading over the logged draws predicted all 48 garrisons and 8 counts in each run: the odds by a standing fort, the sums and the weights' levels, the creature with its growth, the least AI value x count cleared first, a garrison with no weaker stack left alone with no draw after the sums, the counts lowered, the upgrade draw for a base creature only; level 7 at n 8"
   confidence = "high"
+  note       = "Marked verified by E09 T30 (criterion 11): row TWN-3-4's replay of the reading over the logged draws predicted all 56 reads of each run. Not reached: the tie of two least stacks (survey E09-growth.md section 17)."
 
   [[rule.source]]
   kind       = "vcmi"
@@ -1184,7 +1194,7 @@ numeric  = "integer"
 id       = "TWN-GRO-007"
 title    = "The Portal of Summoning's draw"
 context  = "town"
-status   = "implemented"
+status   = "verified"
 summary  = "A town's Portal of Summoning (a standing building of role `portal`; the Dungeon's) holds one creature of its owner's dwellings on the map (classes 17 and 20, never a Refugee Camp) with a count. A draw: without a standing Portal nothing (no draw); without such a dwelling the Portal is emptied (no draw); else a dwelling `below(n)` in object order, then one of its creatures `below(k)`: the Portal holds that creature, its count the creature's core growth, set, not added (what was not hired is gone); a dwelling without creatures leaves the Portal as it was. No castle, horde, Grail, week, month or Plague touches the count. Drawn (E09 decisions 71 and 82; the game's, E09 T26b) each week after the neutral garrisons in `TownId` order, at the Portal's build, when its owner flags a dwelling while it is empty, and at a capture that finds it empty; never in a town without an owner. E09 T25b2 (design section 45): `h3_towns::summon(town, part, core, offer, draws) -> Town`, `offer` the owner's dwellings' creature lists. E09 T26b (h3-game's `town::portal`): the week's draws from the towns' stream; a build that makes the Portal stand (`h3_towns::has_portal`) draws it, a command's from its player's stream after the checks and the payment, a town event's from the towns' stream, the setup's from the setup stream after every other placeholder; a visit that flags a dwelling (`AdventureOutcome::flagged_dwelling`) draws each of its player's towns' Portals that hold nothing, in `TownId` order, from the player's stream after the visit's draws; a capture draws a Portal that holds nothing from the capturer's stream after the capture's own draws (decision 82); each change told to the owner (TWN-VEW-004)."
 numeric  = "integer"
 
@@ -1197,6 +1207,7 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E09-batch-3a.md and E09-batch-3a-run2.md, batch TWN-3 row TWN-3-5 (the capture harness, 2026-11-11; scored in survey E09-growth.md section 17): no creature on day 1 and after three flags, the first drawn at the town screen (a dwelling, then its creature), one draw a week, the count the creature's growth set and never accumulated (8 or 14 as the Harpy Loft or a Guardhouse was drawn), the Plague's first day not halving it"
   confidence = "high"
+  note       = "Marked verified by E09 T30 (criterion 11): row TWN-3-5 matches the count set to the drawn creature's growth each week, never accumulated, and the Plague not halving it, in both runs. The original's first draw at the town screen is replaced by the draws at the build and the flag (E09 decision 71), as the summary says."
 
   [[rule.source]]
   kind       = "vcmi"
@@ -1221,7 +1232,7 @@ numeric  = "integer"
 id       = "TWN-REC-001"
 title    = "Recruitment at a town's dwelling or horde"
 context  = "town"
-status   = "implemented"
+status   = "verified"
 summary  = "A town's owner, in its turn without an open decision, recruits at a building of its town (`TownCommand::Recruit { town, building }`; no hero, no visit: the town screen opens from the town list): a standing building (ever built, no ever-built building superseding it) of role `dwelling` or `horde` sells its level's creature index (`level - 1`, `+ 7` upgraded), refused typed (the town not the store's `UnknownTown`, another player's `NotOwner`, a building the record lacks `UnknownBuilding`, of no selling role `NotRecruiting`, not standing or a base index whose level's upgraded dwelling was ever built `NotStanding`), each refusal changing nothing. It opens the hire dialog (GAM-DEC-008) of that index, its target the town's garrison (the upper bar; never the visitor's army; T28a the garrison hero's), at a count of 0 too. The dialog sells the index's creature with its count; an upgraded index its upgrade, then its base creature, both from the index's one count. A purchase is checked in this order: the creature one of the source's (`NotOffered`), the amount from 1 to the count (`Amount`), the garrison's room (`NoRoom`: a stack of the creature within a stack's most, else a free slot, ADV-ARM-007), the treasury (`CannotPay`: the core's cost times the amount); then the price is paid, the count lowered by the amount, the creatures joined into the garrison (`StackChanged` of its slot to the owner; every viewer's changed view of the town told), and a one-creature dialog closes. The legal commands list, per own town in `TownId` order after its builds, a recruitment at each building that opens a dialog, in the record's order (`h3_towns::recruiting`). E09 T27: `h3_towns::recruit_source`, `recruiting`, `recruit_stock`, `check_recruit`, `recruit`; h3-game's `town::recruit`; the adventure's `HireSource::Town`, `HireTarget::Garrison`, `check_join`."
 numeric  = "integer"
 
@@ -1229,6 +1240,12 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 8): town_screen_proc 0x5D3240 at its building clicks (a dwelling 30 to 43 the hire of index id - 30, a horde 18, 19, 24, 25 its level's index by horde1_hire_levels 0x68A364 and horde2_hire_levels 0x68A378, the Fort's list fort_dialog_hire 0x5DCE50); recruit_dialog_init_town 0x551560 (read whole): the creature of town_creatures[faction x 14 + i] with a pointer to the town's count +0x16 + 2i, for i >= 7 the base creature too with the same count, the upgrade selected first; the army town_garrison_army 0x5C1460 (the garrison hero's, else the town's), the garrison's no-room message; the purchase the hire dialog's (recruit_dialog_proc 0x550940)"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-3b.md and E09-batch-3b-run2.md, batch TWN-3 row TWN-3-6 (the capture harness under Wine, 2026-11-11, E09 T23; scored in survey E09-growth.md section 17): the upgraded Guardhouse's hire offered 14 Halberdiers and 14 Pikemen from one count; 2 Halberdiers bought went into T's garrison hero's army (its own garrison empty), the count 12, 150 gold paid; at U, with its visitor V beside, 1 Pikeman went into U's own garrison and V's army was unchanged"
+  confidence = "high"
+  note       = "Added by E09 T30 (criterion 11): the dialog's two creatures from one count, the price and the target (the garrison hero's army, else the garrison, never the visitor's) as the rule says; marked verified. Not played by the batch: the refusals (the code reading; h3-game's town/tests/recruit.rs)."
 
   [[rule.source]]
   kind       = "vcmi"
@@ -1303,7 +1320,7 @@ numeric  = "integer"
 id       = "TWN-ROW-002"
 title    = "The visitor into the garrison"
 context  = "town"
-status   = "implemented"
+status   = "verified"
 summary  = "The town's owner, in its turn with no decision open, moves its visitor of the town into the town's garrison (`TownCommand::Heroes` with `Enter`): refused with a garrison hero there (`GarrisonHeld`) or no visitor of its own (`NoVisitor`); the town's garrison joins the visitor's army, each garrison stack in slot order onto the army's first stack of its creature, else into its first empty slot, else the army's own first two stacks of one creature merged, the later into the earlier, and the slot tried again, all or nothing: refused when no slot frees (`ArmiesDoNotFit`, the original's GENRLTXT 276) or a stack would pass a stack's most (`TooManyCreatures`). Then the hero's whole record leaves the map into the town (its army, points, day's maximum, formation, flag; its marks kept by hero id), the garrison is empty, the viewers of the entrance see a hero leave the map (`GarrisonEntered`), its owner moves its own view into its garrison heroes, each changed slot told and the town's changed views. Each refusal changes nothing. A garrison hero is off the map: no tile, reach, meeting or visit, not the town's visitor, in no hero slot of the env. E09 T28a: `AdventureState::move_town_hero`, `absorb`."
 numeric  = "integer"
 
@@ -1311,6 +1328,12 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 9): town_garrison_click 0x5D4C10's case 7, town_visitor_to_garrison 0x4B9FC0 with army_absorb 0x44B620 (read whole: per garrison slot onto the hero's stack of its creature, else the first empty slot, else the hero's own two stacks of one creature merged, the later into the earlier, the slot tried again; none frees a slot, GENRLTXT 276 and nothing changed); the hero to the town's +0xC, +0x10 -1, off the map and out of the player's list"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-3b.md and E09-batch-3b-run2.md, batch TWN-3 row TWN-3-6 (the capture harness under Wine, 2026-11-11, E09 T23; scored in survey E09-growth.md section 17): G's portrait, then the garrison's, moved G into T's empty garrison (T's garrison hero G, no visitor, no message); at U, V's move with its four stacks beside U's garrison of four other creatures was refused with GENRLTXT 276 and changed nothing"
+  confidence = "high"
+  note       = "Added by E09 T30 (criterion 11): the move and its all-or-nothing refusal (`ArmiesDoNotFit`) as the rule says; marked verified. Not played by the batch: the absorb's merge of the hero's own stacks and `TooManyCreatures` (the code reading)."
 
   [[rule.source]]
   kind       = "vcmi"
@@ -1378,7 +1401,7 @@ numeric  = "integer"
 id       = "TWN-ROW-005"
 title    = "A garrison hero's day and income"
 context  = "town"
-status   = "implemented"
+status   = "verified"
 summary  = "A garrison hero keeps its day off the map as on it: at its owner's turn start, after the owner's heroes on the map, each of its garrison heroes in `TownId` order gets the day's land points for its army and details, its week marks' points included (the Stables' 400), which are also its day's maximum, what was left lost (ADV-MOV-002; it entered from the entrance, on land); its day marks drop at each day's start and its week marks at each week's (the marks kept by hero id, E08 T115a); its spell points as every hero's (HER-MAN-002). Its owner gains its `daily_income` each day (artifacts, Estates, specialty: GAM-RES-004), and on a week's first day the weekly resources of the upper bar of each town it owns, the garrison hero's army or else the town's garrison, count with its heroes' armies, each creature type once (the Crystal Dragons' 3 crystal; GAM-RES-005). Growth reads its Statue's share and its Legion (TWN-GRO-001). Not here: its reveal (off the map; the town's own radius covers the entrance). E09 T28b1: `AdventureState::start_town_heroes` from `start_turn`, `drop_timed_marks` over the block, `upper_bars` in `income`, `GameState::pay_income` and the growth's inputs over `town_heroes`."
 numeric  = "integer"
 
@@ -1391,6 +1414,7 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E09-batch-3b.md and E09-batch-3b-run2.md, batch TWN-3 row TWN-3-6 (the capture harness under Wine, 2026-11-11, E09 T23): G, moved into T's garrison after spending 100 points on day 1, had 1 630 on Red's day 2, the maximum of Z, its twin with the same army that never moved"
   confidence = "high"
+  note       = "Marked verified by E09 T30 (criterion 11): row TWN-3-6 matches the points at its owner's turn start (1 630 in both runs, as its twin on the map). Not played: a garrison hero's spell points, marks' drops, income and weekly resources (the code reading)."
 
   [[rule.source]]
   kind       = "vcmi"

@@ -3992,3 +3992,135 @@ two parts, the properties first), with a new month workload in place of counting
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
 request is the record.
+
+### T30 — the audit; increment 3 closed; increment 4 refined (2026-11-15)
+
+One session, the user present at the start; branch `town/e09-t30`, docs only, with the README's
+row in `shared/e09-t30-readme`. Starting point: `master` at 396f6f8 (#942, #946, #949, #952 and
+#953 merged; CI green there). The user's computer was connected at the start only: the original
+data and the four manuals staged then (28 files, SHA-256 checked against the PC's). The VM
+restarted during the setup's baseline (`uptime`); CI's green runs on `master` stand for it, and
+`cargo xtask verify --scope town --summary --with-original-data` ran on `master`'s code for the
+audit. **At its start** (the user, asked with a first look at the audit, `TWN-Q15`): T30 whole
+(decision 98), increment 4's scope and first round (decisions 99, 100) and the server lane's
+question on the garrison moves (decision 101).
+
+**The audit of increment 3's exit criteria** (`E09-archive.md`; design note §57), on `master`'s
+code:
+
+1. **The part, the counts, the first creatures.** `h3-towns`' `the_growth_roles_compile_as_given`
+   (the roles `horde`, `portal`, `week_of`, a record's `roe` and the growth's parameters; part v5,
+   v6 by T28a), `twn_quirk_8_a_town_s_counts_saturate_at_the_bound`,
+   `the_counts_the_portal_and_a_record_are_written_to_one_town` (store v3);
+   `a_built_dwelling_gives_its_first_creatures` and the setup's custom set (TWN-GRO-005), the game's
+   `a_built_dwelling_gives_its_first_creatures_in_the_game` (a command's build) and
+   `a_town_event_s_creatures_join_its_dwelling_s_count_after_its_buildings` (an event's); the plans'
+   `check_invariants` holds every count at most `MAX_AVAILABLE` with events giving 65 535 (T29b).
+   **Holds.**
+2. **A dwelling's growth and the week.** `h3-towns`' growth tests (the castle and the Citadel's
+   half, the Statue's share and the Legion, the first horde, the map's dwellings at a growing
+   index, the Grail on the whole, the bound) and the week's (`a_week_adds_each_growing_index_s_
+   growth_halved_without_an_owner`, the creature's bonus before the halving); the game's
+   `a_towns_inputs_are_its_owners_share_its_visitors_legion_and_its_owners_dwellings`,
+   `every_town_grows_its_week_on_the_week_s_first_day_a_neutral_one_half`, the garrison hero's
+   `a_garrison_hero_s_legion_and_statue_count_in_its_owner_s_towns_growth` (T28b1). **Holds.**
+3. **The week's kind and the month.** `h3-towns`' `a_week_s_draw_is_a_creature_s_one_time_in_four_
+   never_on_a_month_s_first`, `on_roe_a_week_never_names_a_record_without_roe`,
+   `the_first_week_of_building_overwrites_the_draw_every_week`, the month's
+   `a_creature_s_month_doubles_its_creature_s_counts_after_the_week`, `the_plague_takes_the_growth_
+   then_halves` and the two flags' (`twn_quirk_10_off_…`, `twn_quirk_9_off_…`); the game's
+   `a_creature_s_week_is_drawn_from_the_towns_stream_told_and_grown` (`WeekStarted`, the
+   observation's week), `a_town_s_week_leaves_the_game_s_stream_where_it_was`,
+   `a_building_s_week_is_every_week_and_makes_the_month_its_creature_s_without_doubling`,
+   `a_month_doubles_its_creature_s_counts_and_the_plague_halves_after_the_week`. **Holds.**
+4. **The garrison week, the Portal, the events' creatures.** `h3-towns`' `garrison` (nine) and
+   `portal` (five) tests; the game's `a_neutral_town_s_garrison_grows_each_week_from_the_towns_
+   stream_and_is_told`, the Portal's seven (each week in an owned town, a command's and an event's
+   build, the setup's, a flagged dwelling, a capture that finds it empty, a capture that keeps
+   it), the events' creatures (above); `TWN-STUB-10` lifted (T26a1). **Holds.**
+5. **Recruitment.** `h3-towns`' `recruit` (eleven: every source, refusal and stock, the one count,
+   the Portal's); the game's `town/tests/recruit.rs` (the dialog the owner's alone, every refused
+   recruitment and purchase changing nothing, the purchase into the garrison, the Portal's, an
+   upgraded index's two creatures from one count, the legal recruitments following the builds)
+   and `a_town_s_purchase_joins_its_garrison_hero_s_army`; GAM-DEC-008 amended. **Holds.**
+6. **The rows.** `h3-adventure`'s `the_town_s_bars_follow_the_one_owner_rule` (`town/rows/tests.rs`)
+   and the game's `the_owner_manages_its_town_s_bars_outside_a_decision`; E08's army reference
+   and owner rule as agreed (T114a). **Holds.**
+7. **The garrison hero's moves and day.** `h3-adventure`'s `the_visitor_enters_the_garrison_with_
+   its_whole_record_and_the_garrison_s_creatures`, `entering_is_refused_with_a_garrison_hero_
+   another_s_visitor_or_no_room`, `the_garrison_hero_leaves_onto_the_entrance_with_its_points_
+   kept`, `leaving_is_refused_without_a_garrison_hero_a_free_entrance_room_or_an_army`,
+   `the_visitor_and_the_garrison_hero_swap_with_their_armies`, `a_garrison_hero_gets_its_day_s_
+   points_at_its_owner_s_turn_and_drops_its_marks`, `a_town_s_upper_bar_gives_its_owner_the_week_
+   s_resources_once_with_its_heroes`; the game's `a_garrison_hero_s_income_and_points_are_those_it_
+   had_on_the_map`, `each_refusal_of_a_move_is_the_town_command_s_own`. **Holds.**
+8. **What a garrison hero changes.** The game's siege tests (`a_garrison_hero_alone_defends_its_
+   town_s_siege_with_its_own_army`, `a_garrison_hero_keeps_its_town_as_the_winner_and_leaves_the_
+   game_beaten`, `beside_a_garrison_hero_its_visitor_fights_at_the_gate_and_the_town_stands`,
+   `beside_a_garrison_hero_the_visitor_s_battle_at_the_gate_is_no_siege`),
+   `twn_quirk_11_a_garrison_hero_without_a_stack_does_not_defend`, `a_town_s_views_show_its_
+   garrison_hero_s_army_and_its_mark`; the plans' cover test counts garrison heroes defending
+   alone (16) and beside a visitor (9), won and lost (T29b). **Holds** for the views; **the gap:**
+   the moves' events (below).
+9. **The views.** The game's `town/tests/view.rs` and the views' tests of T26b, T27 and T28b2 (the
+   owner's counts, Portal and hire dialog; the week's kind public in `WeekStarted` and the
+   observation); the plans' `town_views_move_as_the_events_say` and the hygiene's
+   `vary_changes_the_towns_the_viewer_never_sees_only` with growth, recruits and garrison heroes;
+   `h3-protocol`'s fold gate over the 89 golden adventure replays (the server lane's). **Holds.**
+10. **The env and the replays.** Action encoding v11 (`RECRUIT`, v10 by T27; `TOWN_HEROES`, v11 by
+    T28a): `h3-sim`'s town map tests (`the_env_plays_the_town_map_to_its_end_of_days`,
+    `town_map_rollouts_and_forks_are_deterministic`), `a_hire_dialog_is_answered_through_the_env`,
+    the mask property's `check_town_heroes`; replay format v16 (`town recruit`, `town heroes`): the
+    builds map's `builds-month-s1`, `builds-rows-s1` and `builds-siege-s1` (T29a) play growth
+    through a month, recruitment and the three moves. **Holds.**
+11. **Rules, quirks, gates, batch TWN-3.** TWN-GRO-001 to -007, TWN-REC-001, -002, TWN-ROW-001 to
+    -005 with their ids, sources and tests (`check-rules` passes); `TWN-QUIRK-8` to `-11` in
+    `quirks-town.md`, each with its regression test. The gates on `master`'s code here: coverage (111 gated
+    files in the four logic crates, no exclusion); determinism (debug, release and native, the 89
+    golden adventure replays among them); the census of `original_data` (all 160 maps to day 29,
+    T29a's counts unchanged: 1 468 towns, 5 872 town weeks, 1 571 garrison weeks grown and 745
+    not, 28 events' builds' first creatures, 85 events' creatures added and 128 lost, the largest
+    count 222); the benchmarks (all 34 workloads inside their gates, from −1.14 %
+    `day-start-towns-36` to +0.98 % `siege-towns-36`), the month
+    workload `month-start-builds-36` baselined by T29b (decision 97: the user's pick of a month
+    workload, so the criterion's "week workload" is **worded as built**). Batch TWN-3 run and
+    scored (T23, survey `E09-growth.md` §17: every row as the reading). **The gap fixed** (below).
+    **Holds.**
+
+**The gaps.** (1) Criterion 11 wants the consensus rows `verified` (E08's audits' wording), but
+every rule behind batch TWN-3's rows stayed `implemented`: TWN-GRO-001 (row 2), -003 (rows 1 to 3),
+-004 (rows 1 and 3), -006 (row 4), -007 (row 5) and TWN-ROW-005 (row 6) cite their rows and match
+them in every read of both runs: now `verified`, each with a note naming what no row played (the
+code reading holds those). TWN-GRO-005 (the setup's first creatures, rows 1 and 2 on day 1: T25a's
+record named row 2, the catalog did not), TWN-REC-001 (row 6's hire: two creatures from one
+count, the price, the garrison hero's army, never the visitor's) and TWN-ROW-002 (row 6's move and
+its refusal, GENRLTXT 276) cited no row though row 6 or rows 1 and 2 played them: the observation
+added, `verified`. Stay `implemented`: TWN-GRO-002 (the batch forced the draws), TWN-REC-002 (no
+Portal purchase played), TWN-ROW-001, -003, -004 (no bar move, leave or swap played), TWN-EVT-004
+and TWN-VEW-004. (2) The server lane's inbox note of 2026-11-14: `GarrisonEntered` and
+`GarrisonLeft` name the hero to every viewer of the town's entrance, below level 3 too, where
+`docs/06-security.md`'s town part says the moves are told as heroes leaving and entering the map:
+decided by the user (`TWN-Q15` (4), decision 101: projected below level 3), queued as **T31**
+(code). **Left open, by design:** `TWN-STUB-2` (the Grail, increment 6 and E10), `TWN-STUB-6` and
+`-13` (increment 5), `TWN-STUB-8` (the battle lane's inbox).
+
+**Increment 3 closed** (2026-11-15): its section (the refinement's note, decisions 64 to 97, the
+task list with T30's line and the exit criteria with criterion 11 worded as built) moved verbatim
+to `E09-archive.md` (checked by script: every line of the old epic in the new epic or the archive,
+but the six edited ones); its design note's Part E stays in `E09-design.md`, as Parts A to D
+(decision 40). The README's row (3 of 6) in `shared/e09-t30-readme`.
+
+**Increment 4 refined** (`TWN-Q15`; decisions 98 to 102): the Tavern as sketched (decision 99);
+the survey with its checkpoint, then the drafts with Part F and the cut (decision 100); T31 first
+(decision 101). The inbox's seven notes that increment 3 acted on or answered (the server lane's
+question, E08 T115a's marks, T95b's hire dialog, T94a's and T94b's dwellings, ADV-Q41's
+recruitment, the week's creature) archived with where their work went (`QUEUE-ARCHIVE.md`); the
+Tavern's three (the tavern weights, `Marshland Menace`'s heroes, `ADV-STUB-9`) kept for T32. The
+queue holds T31, T32 and T33.
+
+**Verify:** the engine's code is `master`'s. `cargo xtask verify --scope town --summary
+--with-original-data` on `master`'s code with no failing step (coverage 14.5 minutes, determinism
+9.6, bench-check 9.8, original-data 0.9; `deny` and `ffi-smoke` skipped by the scope); on the
+branch the docs gates (`check-docs`, `check-rules`, `check-stubs`, `doc-drift --base
+origin/master`) and `check-lane --base origin/master` (the town lane's paths and the common ones);
+`shared/e09-t30-readme` `check-lane` and `check-docs`. CI on the pull requests is the record.
