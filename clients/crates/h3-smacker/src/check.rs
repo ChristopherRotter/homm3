@@ -6,7 +6,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use crate::{Clip, Decoder, Error, Frame};
+use crate::{Clip, Decoder, Error, Frame, Rect, Rects};
 
 /// Every frame of the Smacker file `bytes` decoded in order, those that fail left out (FFmpeg
 /// outputs none for them; the next decodes over what they left).
@@ -96,6 +96,32 @@ pub fn original_16(frames: &[Frame], format: Format) -> Vec<u8> {
         out.extend_from_slice(palette);
     }
     out
+}
+
+/// Every frame's rectangles as `SMACKW32.DLL`'s `SmackToBufferRect` gives them (E27 M2 T5a2;
+/// `smackprobe rects`): the clip put at `at` of its buffer, each frame that decodes in order
+/// ([`Rects::decoded`]), then the calls until one takes none: for each whether it took one and
+/// the last rectangle after it ([`Rects::last`]).
+pub fn rects(bytes: &[u8], at: [u32; 2]) -> Result<Vec<Vec<(bool, Rect)>>, Error> {
+    let clip = Clip::parse(bytes)?;
+    let mut decoder = Decoder::new(&clip)?;
+    let mut rects = Rects::new([clip.width, clip.height], at);
+    let mut out = Vec::new();
+    for packet in clip.reader().flatten() {
+        if let Ok(frame) = decoder.decode(&packet) {
+            rects.decoded();
+            let mut calls = Vec::new();
+            loop {
+                let took = rects.next(frame);
+                calls.push((took, rects.last()));
+                if !took {
+                    break;
+                }
+            }
+            out.push(calls);
+        }
+    }
+    Ok(out)
 }
 
 /// Every track's sound decoded in order (E27 M2 T2), as the DLL hands it to Miles

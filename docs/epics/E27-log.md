@@ -584,3 +584,37 @@ the start (64 files, checked by SHA-256 against the user's computer). The sandbo
   logo, NWCLogo stretched); `cargo xtask check-exe-map`.
 - **The agent's calls** (*provisional*, M2's review list items 21 to 26).
 
+
+## M2 T5a2 — SMACKW32's rectangles: SmackToBufferRect ported, the start exact (2026-11-15)
+
+On `client/e27-m2-t5a2`, the user present at the start; `master` at `6b3087d` (#932 merged). Kept
+whole (one task, as queued). The original data staged at once (64 files, checked by SHA-256
+against the user's computer); the sandbox's baseline (`verify-once.sh clients`) green.
+
+- **Read** (capstone over `SMACKW32.DLL`, `Heroes3.exe`; design §10): `SmackToBufferRect`
+  0x100072D0, its filler 0x10007410, the list's join 0x10007680, the iterator 0x10012760 (some 90
+  instructions, not 400: a walk over a byte map), `SmackDoFrame` 0x10005C70 (the filler's stage),
+  the decoder 0x10011AB0 and its block routines' prologues (the map of changed spans, 16 blocks a
+  byte), `SmackToBuffer` 0x10006B00 (the state allocated zeroed, the clip's place) and `SmackOpen`'s
+  flags (interlaced and doubled clips); in the game, `video_show` 0x5979D0's Smacker reads (the
+  first call's result unchecked) and the buffer type 0x69FE20 (0x5971F0, 0x598C11; map entry new).
+- **Built, `h3-smacker`:** `Frame::spans` (the decoder's map, kept from frame to frame), `Rects`
+  (`new`, `decoded`, `next`, `last`, `shown`), `check::rects`. 9 tests.
+- **Built, `h3-view`:** `Picture` keeps a `Rects` per part at its place; a Smacker frame shown
+  under `Bugs::Original` is the union of `Rects::shown` (`shown_union`), under `Bugs::Fixed` its
+  whole rectangle as before (decision 32). 1 test; the Smacker copy test reads the back buffer
+  for the original's.
+- **Built, the harness:** `smackprobe rects` (`SmackToBuffer` at a place, every frame's calls);
+  `smacker-dll.py` runs it at (0, 0) and (83, 187); `h3-view video --smacker` writes
+  `<stem>.rects` and `<stem>.shifted.rects` and compares them line by line.
+- **The comparisons:** every call of every frame of the shell's eight Smacker clips, AB's
+  `Credits.smk` and the eight samples (`smacker-check.sh`) at both places as the DLL's at the first
+  run (`H3INTRO.SMK` meets the palette-only frame twice and 97 frames
+  without changes); `drawn --group start` 12 of 12 exact (`start-smacker`'s clip line now
+  `e5023928774ec68b`, recorded).
+- **Found** (design §10; all within CLT-Q124's fix, decision 32, so no new question): the iterator
+  reads a word for a byte (an unchanged span joins a run before a changed one); a palette-only
+  frame gives an empty rectangle at (0, 0) and then an earlier frame's run (the union from the
+  buffer's corner); the box's bottom is the latest run's; a third join of one rectangle would
+  make the DLL's copy fault (unreachable from the filler's order; `Rects` stops there).
+- **The agent's calls** (*provisional*, M2's review list items 27 to 29).
