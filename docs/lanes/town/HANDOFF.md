@@ -14,7 +14,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   §59, the cut); `QUEUE.md`. The guild and the services are increment 5, travel and the Grail 6.
   Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment
   5), `TWN-STUB-2` (the victory conditions).
-- **Open pull requests:** #NNN (`town/e09-t30`, docs) and #MMM (`shared/e09-t30-readme`, the
+- **Open pull requests:** #957 (`town/e09-t30`, docs) and #956 (`shared/e09-t30-readme`, the
   README's row); watch both until they merge.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
@@ -48,7 +48,7 @@ staged then (28 files, SHA-256 checked), used for the scoped verify on `master`'
 step; the census to day 29 as T29a's). The eleven criteria hold; nine rules behind batch TWN-3's
 rows `verified`; the garrison moves' names below level 3 queued as T31 (decision 101). Increment 3
 archived; increment 4 the Tavern as sketched (decisions 99, 100, 102); seven inbox notes archived.
-Docs only; PRs #NNN and #MMM (the README's row).
+Docs only; PRs #957 and #956 (the README's row).
 
 ### 2026-11-15 — T29b: the properties, the plans' hero moves, the month workload
 
