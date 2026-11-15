@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "the reachable-tiles query of every walking hero of the acting player at each step of 2 random games of 28 days on the garrisons and bonuses XL map (E08 T116c, increment 12's design note §16: 144 x 144 with a sea on its last twelve columns, cut by rock into five rows of four regions, every way between two regions a map garrison, the shipped maps' most of each class on one map: 16 horizontal and 11 vertical, red's, blue's and neutral in turn, 5 empty, 3 not removable, 6 anti-magic; the shipped maps' most of each of the fifteen bonus visitables, 193; ten heroes, two beside boats; 177 gnoll stacks, one on every hundredth free land tile); seed 4 by a search of seeds 1 to 24 for the most queries reaching an own garrison's entrance (2 747 steps, 21 battles, a garrison captured): 9 000 walkers' queries, about 139 k Ir each, 825 of them (9.2 %) reaching a garrison's entrance, 442 (4.9 %) one of their own side's, which the search crosses (ADV-GAR-004); 94 % inside h3_game::legal::legal_moves, Reach::search 62 % itself, AdventureState::visit_at 1.0 %; counts only inside h3_cli::adventure::bench::reach_queries; baselined at its first count"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-garrisons-bonuses-144.h3m",
+    "--workload",
+    "reach",
+    "--games",
+    "2",
+    "--days",
+    "28",
+    "--seed",
+    "4",
+]
+collect = "*reach_queries*"
+instructions = 1247962909
+threshold_percent = 2

@@ -117,6 +117,13 @@ impl AdventureState {
             .map_or_else(Vec::new, |flags| flags.kinds(player).collect())
     }
 
+    /// The Magic Springs' entrances emptied this week, by tile, sorted (ADV-BON-007): none while
+    /// every entrance is full (E08 T116c: what the `fork` benchmark's forks carry with
+    /// `--spring 1`). Never shown (ADR-0016 point 6).
+    pub fn emptied_springs(&self) -> &[Pos] {
+        self.springs.as_deref().map_or(&[], Vec::as_slice)
+    }
+
     /// A `bonus` kind's visit by `player`'s hero `hero` (ADV-BON-002, ADV-BON-004; increment 12's
     /// design note §8.1; survey §10.2): while the hero does not hold `mark`, the day's pair
     /// `(morale, luck)` under it (the hero on the map's once-marks with their amounts, T115a), then
