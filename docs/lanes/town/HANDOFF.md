@@ -47,7 +47,7 @@ T29b whole (the user, decision 97; two parts were recommended), with `month-star
 for the week workload (the user's pick). The user's computer was connected at the start only:
 the original data and the four manuals staged then (28 files, SHA-256 checked), used for the
 scoped verify. `cross-lane`: `h3-map`'s `play.rs` (the counts' bound, the Plague, a purchase's
-amount, a fork's week; `Step::Town`'s hero moves; three oracles taught a garrison hero that
+amount, a fork's week; `Step::Town`'s hero moves; five oracles taught a garrison hero that
 defends) and `view.rs`, the workload. No version moved. Note in the adventure lane's inbox. T30
 next. PRs #942 and #946.
 
