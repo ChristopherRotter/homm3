@@ -3693,4 +3693,7 @@ server lane's queue"; the inbox's waiting notes as the user chose (below).
   is reached, not passed (`docs/06-security.md`, `config.rs`, `TRAPS.md`).
 - **The checkpoint** (SRV-Q38, the user, 2026-11-15): the consent as (b); the other findings the
   lane's; **M5 stays open until the user has looked at the fixes**; nothing new planned for the
-  lane after it (the six inbox notes wait for their triggers).
+  lane after it (the six inbox notes wait for their triggers). The user merged #938 and then
+  closed it (2026-11-15): **2c closed, and with it M5 and E16's milestones**; the epic's "M5 part
+  2" moved to `E16-archive.md` ("M5 part 2c", "Review list for the M5 2c checkpoint"), BACKLOG's
+  status in a `shared/` pull request.

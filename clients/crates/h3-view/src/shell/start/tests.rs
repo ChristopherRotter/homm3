@@ -8,8 +8,8 @@ use h3_render::Bugs;
 use h3_render::screen::Screen as Pixels;
 
 use super::{
-    Codec, FADE_STEP, Header, Op, Pace, Part, Picture, PictureError, SmackSchedule, Source, Start,
-    place, shown_union, smack_period, smack_wait,
+    Codec, FADE_STEP, Header, Op, Pace, Part, Picture, PictureError, SmackSchedule, SmackSound,
+    Source, Start, place, shown_union, smack_period, smack_wait,
 };
 use crate::compose::FORMAT;
 
@@ -274,6 +274,12 @@ fn the_picture_carries_out_the_ops() {
     let mut picture = Picture::new(black(), sources, Some(&rim), true, Bugs::Fixed);
     assert!(picture.screen().pixels().iter().all(|&p| p == 0));
     picture.apply(Op::Rim).unwrap();
+    // The sound's ops leave the buffers (E27 M2 T5b1).
+    let (back, screen) = (picture.back().clone(), picture.screen().clone());
+    picture.apply(Op::Sound(Part::Logo)).unwrap();
+    picture.apply(Op::Quiet(Part::Logo)).unwrap();
+    picture.apply(Op::Closed(Part::Logo)).unwrap();
+    assert_eq!((picture.back(), picture.screen()), (&back, &screen));
     assert!(picture.back().pixels().iter().all(|&p| p == 0x1234));
     assert!(picture.screen().pixels().iter().all(|&p| p == 0));
     picture.apply(Op::Frame(Part::Intro, 0)).unwrap();
@@ -642,4 +648,134 @@ fn a_smacker_frame_past_the_last_or_cut_short_is_refused() {
             assert!(matches!(last, Err(PictureError::Smacker(_))), "{last:?}");
         }
     }
+}
+
+/// The start's clips' sound: 22 050 Hz, 16-bit, stereo.
+const TRACK: u32 = 88_200;
+
+fn sound_at(seen: &[(u32, Op)], op: Op) -> Vec<u32> {
+    seen.iter()
+        .filter(|(_, o)| *o == op)
+        .map(|(t, _)| *t)
+        .collect()
+}
+
+#[test]
+fn with_its_sound_a_smacker_clip_follows_the_bytes_played() {
+    // 3DOLOGO.SMK as `smackprobe wait` played it (E27 M2 T5b1): frame 0 at the open, the Play 10
+    // ms later, frame k once k frames' sound (5 879.4 bytes each) less 8 bytes have played.
+    for (step, firsts, last) in [
+        (1, [0, 77, 144, 210, 277], 5343),
+        (10, [0, 80, 150, 210, 280], 5350),
+        (7, [0, 84, 154, 217, 287], 5348),
+    ] {
+        let mut ops = Vec::new();
+        let headers = [header(81, SMACK), None, None];
+        let mut start = Start::with_sound(headers, [Some(TRACK), None, None], true, 0, &mut ops);
+        let mut seen: Vec<(u32, Op)> = ops.into_iter().map(|op| (0, op)).collect();
+        seen.extend(run(&mut start, step, 6000, &[]));
+        let frames = frames_at(&seen, Part::Logo);
+        assert_eq!(frames.len(), 81);
+        assert_eq!(frames[..5], firsts, "{step}");
+        assert_eq!(frames[80], last, "{step}");
+        assert_eq!(
+            sound_at(&seen, Op::Sound(Part::Logo)),
+            [if step == 7 { 14 } else { 10 }]
+        );
+        // The close (the original's sound cut, CLT-Q125), before the fade.
+        let closed = seen
+            .iter()
+            .position(|(_, op)| *op == Op::Closed(Part::Logo))
+            .unwrap();
+        assert_eq!(seen[closed], (last, Op::Closed(Part::Logo)));
+        assert_eq!(seen[closed + 1].1, Op::Fade(0));
+        assert!(sound_at(&seen, Op::Quiet(Part::Logo)).is_empty());
+    }
+    // Silent, the same clip keeps SmackWait's clock.
+    let mut ops = Vec::new();
+    let mut start = Start::with_sound(
+        [header(81, SMACK), None, None],
+        [None; 3],
+        true,
+        0,
+        &mut ops,
+    );
+    let seen = run(&mut start, 1, 6000, &[]);
+    assert_eq!(frames_at(&seen, Part::Logo)[..2], [67, 134]);
+    assert!(sound_at(&seen, Op::Sound(Part::Logo)).is_empty());
+    assert!(sound_at(&seen, Op::Quiet(Part::Logo)).is_empty());
+}
+
+#[test]
+fn the_dll_s_position_is_carried_on_by_the_clock_between_the_service_s_runs() {
+    let mut s = SmackSound::new(TRACK, 6666);
+    assert_eq!(s.played(), None);
+    assert_eq!(s.heard_by(50), 0);
+    // The open's reading: the service runs, nothing to play; the frame fills the ring.
+    assert_eq!(s.wait(0), (true, false));
+    s.frame(0);
+    // Throttled until 10 ms after its run; then the Play.
+    assert_eq!(s.wait(9), (false, false));
+    assert_eq!(s.wait(10), (false, true));
+    assert_eq!(s.played(), Some(10));
+    // At 20 the service reads 880 bytes (whole samples); at 25 the position is carried on from
+    // them by the clock.
+    assert_eq!(s.position(20), (880, false));
+    assert_eq!(s.position(25), (880 + 441, false));
+    // Never back: at 29 the service has not run again (1 321 + 352), at 30 it reads 1 764.
+    assert_eq!(s.position(29), (1673, false));
+    assert_eq!(s.position(30), (1764, false));
+    assert_eq!(s.heard_by(76), 5820);
+    assert_eq!(s.wait(76), (false, false));
+    assert_eq!(s.wait(77), (true, false));
+    // Around the buffer (45 056 bytes): the bytes keep counting.
+    let mut t = 77;
+    while t < 2000 {
+        t += 10;
+        let _ = s.wait(t);
+    }
+    assert_eq!(s.heard, s.heard_by(t));
+    assert!(s.heard > 45_056 * 3);
+    assert_eq!(s.size, 45_056);
+}
+
+#[test]
+fn a_skip_stops_the_sound_and_a_bink_clip_sounds_from_its_first_frame() {
+    let headers = [header(81, SMACK), header(30, BINK), None];
+    let sounds = [Some(TRACK), Some(TRACK), None];
+    // A skip of the 3DO logo after its Play: the sound stops, then the fade.
+    let mut ops = Vec::new();
+    let mut start = Start::with_sound(headers, sounds, true, 0, &mut ops);
+    let seen = run(&mut start, 10, 3000, &[500]);
+    let quiet = seen
+        .iter()
+        .position(|(_, op)| *op == Op::Quiet(Part::Logo))
+        .unwrap();
+    assert_eq!(seen[quiet].0, 500);
+    assert_eq!(seen[quiet + 1].1, Op::Fade(0));
+    // Skipped at the open's reading, before its Play: nothing sounded, nothing to stop.
+    let mut ops = Vec::new();
+    let mut start = Start::with_sound(headers, sounds, true, 0, &mut ops);
+    start.skip(0, &mut ops);
+    assert!(!ops.contains(&Op::Quiet(Part::Logo)));
+    // Run through: NWCLogo's sound with its first frame, stopped at its last, its frames by its
+    // clock as without sound.
+    let mut ops = Vec::new();
+    let mut start = Start::with_sound(headers, sounds, true, 0, &mut ops);
+    let seen = run(&mut start, 1, 20_000, &[]);
+    let first = frames_at(&seen, Part::Nwc);
+    assert_eq!(sound_at(&seen, Op::Sound(Part::Nwc)), [first[0]]);
+    assert_eq!(sound_at(&seen, Op::Closed(Part::Nwc)), [first[29]]);
+    assert_eq!(first[1] - first[0], 66);
+    // H3Intro is skipped at once: its sound stops with it.
+    let headers = [header(1, SMACK), header(1, BINK), header(100, BINK)];
+    let mut ops = Vec::new();
+    let mut start = Start::with_sound(headers, [None, None, Some(TRACK)], true, 0, &mut ops);
+    let mut seen = run(&mut start, 10, 900, &[]);
+    assert!(seen.iter().any(|(_, op)| *op == Op::Sound(Part::Intro)));
+    let mut ops = Vec::new();
+    start.skip(1000, &mut ops);
+    seen.extend(ops.into_iter().map(|op| (1000, op)));
+    assert_eq!(seen.last(), Some(&(1000, Op::Quiet(Part::Intro))));
+    assert!(start.ended());
 }

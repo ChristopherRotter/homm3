@@ -618,3 +618,43 @@ against the user's computer); the sandbox's baseline (`verify-once.sh clients`) 
   buffer's corner); the box's bottom is the latest run's; a third join of one rectangle would
   make the DLL's copy fault (unreachable from the filler's order; `Rects` stops there).
 - **The agent's calls** (*provisional*, M2's review list items 27 to 29).
+
+## M2 T5b1 — the start's sound without the game's run: SMACKW32's frames by its sound, the probes' DirectSound (2026-11-15)
+
+On `client/e27-m2-t5b1`, the user present; `master` at `8026f16` (#937 merged; #936, T5a2,
+merged before it). The original data staged at once (64 files, checked by SHA-256 against the
+user's computer); the sandbox's baseline (`verify-once.sh clients`) green. **The cut:** offered at
+the start (the readings and the build, then the recording), the user kept T5b whole; the first
+experiment (`h3shell.py run` of the 3DO logo with `sound = true`: frames at 30, 40, 50 … ms
+against 350, 420, 490 … silent) showed `SMACKW32`'s frames following a real-time sound cursor
+under Wine, and the user cut it at the game's run (decision 33).
+
+- **Read** (design §11): `smacker_open_in_dialog`'s tracks and volume (0x69FE58; the 3DO logo
+  on the same path), `video_open_in_dialog`'s unread 0x694D58, `sound_digital_start`'s
+  `SmackSoundUseMSS` and `BinkSetSoundSystem`; in `SMACKW32` the DirectSound path (preference 15
+  0 with the game's Miles), the track's buffer, the sound service, the position, `SmackWait` with
+  a track, `SmackClose`'s stop, the volume table (`2000 log10(i / 127)`); in `BINKW32` `BinkWait`
+  (the clock and the pause flag only) and the Miles functions `BinkOpenMiles` loads; `game_init`
+  (`game_samples_load` renamed: the game's initialisation). The map: 0x4ED650, 0x5997D0 rewritten,
+  0x694D58 and 0x69FE58 new.
+- **Built, the harness:** `capture/vsound.h` (a stand-in DirectSound on a given clock, its log and
+  its played bytes), `smackprobe wait` (`SMACKW32`'s WINMM imports at the probe's clock, its timer
+  never firing, `smacker_tick` at each reading); `smacker-dll.py` runs it at 1, 5, 7, 10 and 16 ms
+  steps (`<stem>.wait<step>`), `h3-view video --smacker` writes the model's and compares them line
+  by line; `h3shell.py drawn` passes `--effects 5` for a `sound` recipe.
+- **Built, `h3-view`:** `shell::start::SmackSound` (`new`, `wait`, `frame`, `played`,
+  `heard_by`), `Start::with_sound`, `Op::Sound`, `Op::Quiet`, `Op::Closed`, `Replay::op_times`;
+  `clip_sound::volume` the DirectSound path's (one lower from the setting 5). 4 tests.
+- **Built, `h3-battle-client`:** `h3-view shell --effects <0..9>`; the window opens the host's
+  sound (none: silent, the Smacker clips on `SmackWait`'s clock), decodes each clip's track on a
+  thread, plays it at `Op::Sound`, stops it at `Op::Quiet` (and at `Op::Closed` under
+  `Bugs::Original` only); the replay lists `sound`, `quiet` and `closed` with their times.
+- **The comparisons:** `smacker-check.sh`: every `wait` line of the six game clips with a track
+  (`3DOLOGO`, `NWCLOGO`, `H3INTRO`, `HSANIM`, `HSLOOP`, `LOSEGAME`) at the five steps as the
+  DLL's at the model's first run; the played bytes the track's first at every step; the synthetic
+  samples' tracks run the DLL's buffer dry (its underrun path, not modelled): their wait lines
+  are not compared. The window under Xvfb with SDL's disk driver: the 3DO logo's sound from 0.2 s
+  after the device opens, NWCLogo's after the fade.
+- **Asked and answered:** CLT-Q125 (the last frame's sound cut at a clip's close: the client
+  plays the track out, decision 34).
+- **The agent's calls** (*provisional*, M2's review list items 30 to 33).

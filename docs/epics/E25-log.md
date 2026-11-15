@@ -1963,3 +1963,32 @@ an entry only where a task builds on it.
   them); `configs/e25-anchor.toml`. The search runs `hexconv` with the legal mask as it is (its
   test new): 56 ms a decision at N 16 on the sandbox's 4 cores with an untrained network of #2's
   size (T1c's `t7-1` 42 ms), so the report set at N 16 about 1.8 hours.
+- **(a) The search at play, N 16** (the sandbox's CPU, 2026-11-15, commit `6f4e3a9`, #940's
+  head, clean; `python/records/search/e25-structure-1-system-16.json`): #2's `best.pt` uploaded
+  (`e25-structure-1`, promoted #2, 20 022 456 samples), T1c's settings (N 16, W 8, k 16, seed 1)
+  against the fair actor on the report set v1, #2's sampled policy on the same episodes:
+
+  | | Fair actor | Hero (attacking, defending) | Siege hero | Siege garrison | Value |
+  |---|---:|---:|---:|---:|---:|
+  | #2 sampled | 0.511 ± 0.019 | 0.507 (0.707, 0.306) | 0.525 (0.580, 0.470) | 0.500 (0.940, 0.060) | +0.027 |
+  | #2 with the search, N 16 | 0.508 ± 0.018 | 0.504 (0.711, 0.296) | 0.523 (0.580, 0.466) | 0.495 (0.938, 0.052) | +0.024 |
+  | `t7-1` (T1c): sampled, the search | 0.374, 0.373 | | | | −0.101, −0.100 |
+
+  The sampled row is T28's final ladder of #2 exactly (the same episodes and draws). The
+  search's cost 46 ms a decision (93 431 decisions in 72 minutes), 138 fallbacks (a cast the
+  guessed world made legal), no truncation; the sampled policy 18 minutes.
+- **By the rule:** the search lies 0.003 below the sampled policy, inside the interval (0.019),
+  the hero battles 0.003 below (inside their 0.031): T1c's verdict holds for #2, whose critic
+  explains 0.80 of the returns' variance where `t7-1`'s told the actions apart by hundredths.
+  N 64 on the hero battles' first 200 a seat next, for the depth.
+- **(a) N 64 on the hero battles** (the same commit and network; `python/records/search/
+  e25-structure-1-system-64-hero-200.json`; `--kinds hero --per-kind 200`, 400 games): the
+  search 0.508 ± 0.043, +0.029 (attacking 0.740, defending 0.275), #2 sampled 0.505, +0.024
+  (0.745, 0.265); 129 ms a decision (12 374 decisions in 27 minutes), 13 fallbacks, no
+  truncation.
+- **(a)'s read:** four times the simulations gain +0.003 where the margin lies, inside the
+  interval, as N 16 lost 0.003: **the search at play gains nothing on #2 at either depth**, as it
+  gained nothing on `t7-1` (T1c), so the better critic does not make the tree pay. By the rule
+  the long run is PPO's: neither the search at play as the agent nor expert iteration is T35's
+  question. What #2 lacks is not a deeper look on its own evaluation (T1c: nor the hidden
+  information). (a) done; (b) the user's GPU.

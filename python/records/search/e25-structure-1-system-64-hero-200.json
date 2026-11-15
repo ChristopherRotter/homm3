@@ -1,0 +1,106 @@
+{
+ "settings": {
+  "best": "runs/e25-structure-1/best.pt",
+  "simulations": 64,
+  "worlds": 8,
+  "true_worlds": false,
+  "k": 16,
+  "opponent": "system",
+  "per_kind": 200,
+  "held_out": "report-v1",
+  "kinds": [
+   "hero"
+  ]
+ },
+ "search": {
+  "win_rate": 0.5075000000000001,
+  "interval": 0.04337399624198813,
+  "value": 0.028709731073759032,
+  "kinds": {
+   "hero": 0.5075000000000001
+  },
+  "games": 400,
+  "skipped": 0,
+  "truncated": 0.0,
+  "seconds": 1592.7079755410005,
+  "by_kind": {
+   "hero": {
+    "attacker": {
+     "episodes": 200,
+     "skipped": 0,
+     "win_rate": 0.74,
+     "reward": 0.11039452600758523,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 200,
+       "win_rate": 0.74
+      }
+     }
+    },
+    "defender": {
+     "episodes": 200,
+     "skipped": 0,
+     "win_rate": 0.275,
+     "reward": -0.052975063860067166,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 200,
+       "win_rate": 0.275
+      }
+     }
+    }
+   }
+  },
+  "costs": {
+   "decisions": 12374,
+   "simulations": 789888,
+   "evaluations": 703881,
+   "fallbacks": 13,
+   "ms_per_decision": 128.71407592864074
+  }
+ },
+ "sampled": {
+  "win_rate": 0.505,
+  "interval": 0.04298336306060753,
+  "value": 0.023959001334151256,
+  "kinds": {
+   "hero": 0.505
+  },
+  "games": 400,
+  "skipped": 0,
+  "truncated": 0.0,
+  "seconds": 87.18124109600103,
+  "by_kind": {
+   "hero": {
+    "attacker": {
+     "episodes": 200,
+     "skipped": 0,
+     "win_rate": 0.745,
+     "reward": 0.11439361939672381,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 200,
+       "win_rate": 0.745
+      }
+     }
+    },
+    "defender": {
+     "episodes": 200,
+     "skipped": 0,
+     "win_rate": 0.265,
+     "reward": -0.0664756167284213,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 200,
+       "win_rate": 0.265
+      }
+     }
+    }
+   }
+  }
+ }
+}

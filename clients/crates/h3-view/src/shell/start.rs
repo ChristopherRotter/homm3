@@ -45,6 +45,21 @@
 //! Either way the sequence ends. An input during a fade is lost (the next clip flushes the input
 //! queue; after `H3Intro`'s fade the menu would take it: not modelled).
 //!
+//! **The sound** (E27 M2 T5b1, design §11): with the sound on (a digital driver and the effects
+//! setting above 0: `smacker_open_in_dialog` 0x598AF0 opens a Smacker clip's tracks then, 0x69FE58)
+//! a clip's track plays from its first sample. A Smacker clip's sound goes through the
+//! DirectSound buffer Miles lends `SMACKW32.DLL`, and its frames are then timed by that buffer's
+//! play cursor, not by `SmackWait`'s clock ([`SmackSound`]): frame 0 at once, the buffer's Play at
+//! the DLL's sound service's next run (10 ms of the clock after its last), each later frame once
+//! the bytes played + 8 reach that many frames' sound. A Bink clip's frames keep their clock
+//! (`BinkWait` reads only it); its sound starts with its first frame (*provisional*: when
+//! `BINKW32.DLL` loads Miles' first buffer, read at T5b2). Either stops at its clip's close: a
+//! skip ([`Op::Quiet`]) or the last frame, before the fade ([`Op::Closed`]: the last frame's
+//! sound never plays, CLT-Q125; decision 34: the client plays the track out, the cut the
+//! comparisons'). [`Op::Sound`] says when it starts; the
+//! cursor is an ideal device's (it moves on the clock, no lead), as the probes' stand-in
+//! DirectSound (`clients/capture/vsound.h`).
+//!
 //! Pure: the times are the caller's clock readings (the replay's, `super::replay`; the window's).
 
 use alloc::vec::Vec;
@@ -193,6 +208,155 @@ pub fn smack_wait(schedule: &mut SmackSchedule, now: u32, period: u32) -> bool {
     true
 }
 
+/// The service's least gap (`SMACKW32.DLL` 0x10008F50: it runs at a reading 10 ms or more after
+/// its last run, and not before).
+const SERVICE_GAP: u32 = 10;
+
+/// A Smacker clip's sound as `SMACKW32.DLL` times the clip's frames by it (E27 M2 T5b1, design
+/// §11; checked against the DLL's on every frame by `smackprobe wait`, `smacker-check.sh`): its
+/// DirectSound buffer (half a second of the track, 0x10009750) played on an ideal device, the
+/// DLL's sound service (0x10008F50: the cursor read, at most every 10 ms), its position
+/// (0x100096A0: the bytes played as the service last saw them, carried on by the clock since that
+/// value was first seen) and `SmackWait`'s test (0x10007840: a frame waits while the frames'
+/// sound so far exceeds the position + 8). The DLL's ring and its refills are not modelled: the
+/// buffer never runs dry in a clip (the first frame's sound fills it), so the position never
+/// reaches the bytes written.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SmackSound {
+    /// The track's bytes a second (the sound's +0x14).
+    rate: u32,
+    /// A frame's bytes × 1024 (+0x1C).
+    per_frame: u64,
+    /// The buffer's bytes (+0x44).
+    size: u32,
+    /// The service's next run (0x100148E4), none before its first.
+    next: Option<u32>,
+    /// A frame's sound in the DLL's ring (the first frame decoded).
+    filled: bool,
+    /// The clock at the buffer's Play.
+    played: Option<u32>,
+    /// The play cursor as the service last read it (+0x78) and the bytes it has passed.
+    cursor: u32,
+    heard: u32,
+    /// The position's last value (+0x84), when it was first seen (+0x88), and its most (+0x8C).
+    last: u32,
+    at: u32,
+    most: u32,
+    /// The handle's +0x448: a frame decoded, the next waits on the sound.
+    held: bool,
+    /// The frames' sound so far × 1024 (+0x20, +0x24).
+    due: u64,
+}
+
+impl SmackSound {
+    /// A clip's sound of `rate` bytes a second, its frame time `period` in 10 µs, at its open.
+    #[must_use]
+    pub const fn new(rate: u32, period: u32) -> Self {
+        Self {
+            rate,
+            per_frame: ((rate as u64) << 10) * period as u64 / 100_000,
+            size: ((rate >> 1) + 0xFFF) & !0xFFF,
+            next: None,
+            filled: false,
+            played: None,
+            cursor: 0,
+            heard: 0,
+            last: 0,
+            at: 0,
+            most: 0,
+            held: false,
+            due: 0,
+        }
+    }
+
+    /// The DLL's sound service at `now`: whether it started the buffer playing.
+    fn service(&mut self, now: u32) -> bool {
+        if self.next.is_some_and(|next| now < next) {
+            return false;
+        }
+        self.next = Some(now.wrapping_add(SERVICE_GAP));
+        match self.played {
+            None if self.filled => {
+                self.played = Some(now);
+                true
+            }
+            None => false,
+            Some(since) => {
+                // The ideal device: the clock's milliseconds times the bytes a second, whole
+                // samples (4 bytes), around the buffer.
+                let moved = u64::from(now.wrapping_sub(since)) * u64::from(self.rate) / 1000;
+                let at = u32::try_from((moved & !3) % u64::from(self.size)).unwrap_or(0);
+                let passed = if at >= self.cursor {
+                    at - self.cursor
+                } else {
+                    self.size - self.cursor + at
+                };
+                self.heard = self.heard.wrapping_add(passed);
+                self.cursor = at;
+                false
+            }
+        }
+    }
+
+    /// The bytes played at `now` as the DLL's position takes them.
+    fn position(&mut self, now: u32) -> (u32, bool) {
+        let started = self.service(now);
+        let seen = self.heard;
+        let mut at = seen;
+        if seen == self.last && seen != 0 {
+            let more = u64::from(now.wrapping_sub(self.at)) * u64::from(self.rate) / 1000;
+            at = seen.wrapping_add(u32::try_from(more).unwrap_or(u32::MAX));
+        } else {
+            self.last = seen;
+            self.at = now;
+        }
+        self.most = self.most.max(at);
+        (self.most, started)
+    }
+
+    /// `SmackWait` at `now`: whether the frame goes through, and whether the buffer started.
+    pub fn wait(&mut self, now: u32) -> (bool, bool) {
+        let mut started = self.service(now);
+        if !self.held {
+            return (true, started);
+        }
+        let (at, s) = self.position(now);
+        started |= s;
+        let due = u32::try_from(self.due >> 10).unwrap_or(u32::MAX);
+        if due > at.wrapping_add(8) {
+            return (false, started);
+        }
+        self.held = false;
+        (true, started)
+    }
+
+    /// `SmackDoFrame` at `now` after [`SmackSound::wait`] let the frame through: its service
+    /// (which never starts the buffer: `SmackWait`'s ran at the same reading, and the service runs
+    /// at most once in 10 ms), then the frame's sound.
+    pub fn frame(&mut self, now: u32) {
+        let _ = self.service(now);
+        self.held = true;
+        self.due += self.per_frame;
+        self.filled = true;
+    }
+
+    /// The clock when the buffer began to play, if it has.
+    #[must_use]
+    pub const fn played(&self) -> Option<u32> {
+        self.played
+    }
+
+    /// The bytes the ideal device has played by `now` (the sound heard when the clip closes
+    /// then: the track's first so many, `smackprobe wait`'s played file).
+    #[must_use]
+    pub fn heard_by(&self, now: u32) -> u32 {
+        self.played.map_or(0, |since| {
+            let moved = u64::from(now.wrapping_sub(since)) * u64::from(self.rate) / 1000;
+            u32::try_from(moved & !3).unwrap_or(u32::MAX)
+        })
+    }
+}
+
 /// What the game does to its buffers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Op {
@@ -210,6 +374,13 @@ pub enum Op {
     /// A fade's step: the screen the back buffer with each channel's level shifted down so many
     /// bits (0 to 2).
     Fade(u8),
+    /// The clip's sound starts, from its first sample (E27 M2 T5b1).
+    Sound(Part),
+    /// The clip's sound stops: its clip stopped by a skip.
+    Quiet(Part),
+    /// The clip closed after its last frame: the original's sound stops there, its last frame's
+    /// sound unplayed (CLT-Q125); the client's plays its track out (decision 34).
+    Closed(Part),
 }
 
 /// A clip playing: its part and header, the frames let through so far, Smacker's schedule or
@@ -221,6 +392,10 @@ struct Playing {
     done: u32,
     smack: SmackSchedule,
     first: Option<u32>,
+    /// With the sound on: a Smacker clip's sound clock, or a Bink clip's sound to start.
+    sound: Option<SmackSound>,
+    audible: bool,
+    sounding: bool,
 }
 
 /// What the start is doing.
@@ -242,6 +417,8 @@ enum State {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Start {
     headers: [Option<Header>; 3],
+    /// With the sound on, each clip's sound in bytes a second (none: silent or no track).
+    sounds: [Option<u32>; 3],
     bink_video: bool,
     state: State,
 }
@@ -257,8 +434,23 @@ impl Start {
         now: u32,
         ops: &mut Vec<Op>,
     ) -> Self {
+        Self::with_sound(headers, [None; 3], bink_video, now, ops)
+    }
+
+    /// [`Start::new`] with the sound on (E27 M2 T5b1): `sounds` each clip's track in bytes a
+    /// second (none for a clip without one); a Smacker clip's frames then follow its sound
+    /// ([`SmackSound`]), and [`Op::Sound`] and [`Op::Quiet`] say when each clip's sound plays.
+    #[must_use]
+    pub fn with_sound(
+        headers: [Option<Header>; 3],
+        sounds: [Option<u32>; 3],
+        bink_video: bool,
+        now: u32,
+        ops: &mut Vec<Op>,
+    ) -> Self {
         let mut start = Self {
             headers,
+            sounds,
             bink_video,
             state: State::Ended,
         };
@@ -294,12 +486,20 @@ impl Start {
             self.state = State::Ended;
             return;
         };
+        let rate = self.sounds[part as usize];
+        let sound = match (rate, header.pace) {
+            (Some(rate), Pace::Smacker(period)) => Some(SmackSound::new(rate, period)),
+            _ => None,
+        };
         let playing = Playing {
             part,
             header,
             done: 0,
             smack: SmackSchedule::default(),
             first: None,
+            sound,
+            audible: rate.is_some(),
+            sounding: false,
         };
         if part == Part::Intro {
             // `video_play_framed`: the rim onto the back buffer, a tick of the clip, the whole
@@ -340,9 +540,17 @@ impl Start {
         let Playing {
             part, header, done, ..
         } = playing;
-        let due = match header.pace {
-            Pace::Smacker(period) => smack_wait(&mut playing.smack, now, period),
-            Pace::Bink { num, den } => {
+        let due = match (header.pace, playing.sound.as_mut()) {
+            (_, Some(sound)) => {
+                let (due, started) = sound.wait(now);
+                if started {
+                    playing.sounding = true;
+                    ops.push(Op::Sound(part));
+                }
+                due
+            }
+            (Pace::Smacker(period), None) => smack_wait(&mut playing.smack, now, period),
+            (Pace::Bink { num, den }, None) => {
                 let start = *playing.first.get_or_insert(now);
                 let at = u64::from(done) * 1000 * u64::from(den) / u64::from(num.max(1));
                 u64::from(now.wrapping_sub(start)) >= at
@@ -353,8 +561,19 @@ impl Start {
             return;
         }
         ops.push(Op::Frame(part, done));
+        if let Some(sound) = playing.sound.as_mut() {
+            sound.frame(now);
+        } else if playing.audible && !playing.sounding {
+            // A Bink clip's sound with its first frame (*provisional*, module doc).
+            playing.sounding = true;
+            ops.push(Op::Sound(part));
+        }
         if done + 1 >= header.frames {
-            // The last frame: decoded, not shown; the clip closed and the fade (+0xA).
+            // The last frame: decoded, not shown; the clip closed (its sound cut) and the fade
+            // (+0xA).
+            if playing.sounding {
+                ops.push(Op::Closed(part));
+            }
             self.fade(now, part.next(), ops);
         } else {
             ops.push(Op::Show(part));
@@ -394,12 +613,16 @@ impl Start {
     /// An input that stops a clip (a key down but F4, a left or a right press) at `now`: the
     /// full-screen clips fade, `H3Intro` stops at once; the sequence ends. Nothing during a fade.
     pub fn skip(&mut self, now: u32, ops: &mut Vec<Op>) {
-        match self.state {
-            State::Playing(Playing {
-                part: Part::Intro, ..
-            }) => self.state = State::Ended,
-            State::Playing(_) => self.fade(now, None, ops),
-            State::Fading { .. } | State::Ended => {}
+        let State::Playing(playing) = self.state else {
+            return;
+        };
+        if playing.sounding {
+            ops.push(Op::Quiet(playing.part));
+        }
+        if playing.part == Part::Intro {
+            self.state = State::Ended;
+        } else {
+            self.fade(now, None, ops);
         }
     }
 }
@@ -570,6 +793,7 @@ impl<'c, 'a> Picture<'c, 'a> {
             Op::Show(part) => self.show(part),
             Op::ShowAll => self.screen.clone_from(&self.back),
             Op::Fade(shift) => self.fade(shift),
+            Op::Sound(_) | Op::Quiet(_) | Op::Closed(_) => {}
         }
         Ok(())
     }
