@@ -15,7 +15,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   and the services 5, travel and the Grail 6. Waiting elsewhere: `TWN-STUB-8` (the battle lane's
   inbox), `TWN-STUB-6` and `-13` (increment 5), `TWN-STUB-2` (the victory conditions).
 - **Open pull requests:** #942 (`shared/e09-t29b-benches`, the benches README's row; merges
-  first) and T29b's (branch `town/e09-t29b`, `cross-lane`); watch both until they merge.
+  first) and #946 (T29b's, `town/e09-t29b`, `cross-lane`); watch both until they merge.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -49,7 +49,7 @@ the original data and the four manuals staged then (28 files, SHA-256 checked), 
 scoped verify. `cross-lane`: `h3-map`'s `play.rs` (the counts' bound, the Plague, a purchase's
 amount, a fork's week; `Step::Town`'s hero moves; three oracles taught a garrison hero that
 defends) and `view.rs`, the workload. No version moved. Note in the adventure lane's inbox. T30
-next. PRs #942 and T29b's.
+next. PRs #942 and #946.
 
 ### 2026-11-15 — T29a: the scripted replays on the builds map, the census of growth
 
