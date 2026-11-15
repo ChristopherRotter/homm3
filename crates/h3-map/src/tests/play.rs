@@ -51,9 +51,9 @@ use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
     BuildingSet, ChestChoice, ChoiceKind, Consent, DecisionView, GameCommand, GameCommandError,
     GameEvent, GameRuleset, GameState, HeroChange, HireAnswer, HireSeen, HireTarget, HireView,
-    Manage, MonthKind, NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer, SlotState, TownCommand,
-    TownHeroChange, UniversityAnswer, Viewer, apply, hire_range, legal_commands, legal_management,
-    legal_moves, observe, split_range,
+    Manage, MonthKind, NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer, SlotState,
+    TownCommand, TownHeroChange, UniversityAnswer, Viewer, apply, hire_range, legal_commands,
+    legal_management, legal_moves, observe, split_range,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::collection::vec;
@@ -3509,7 +3509,9 @@ fn hire(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -
 }
 
 /// [`Step::Town`] (E09 T9b1; the town epic's design note §18): in a battle as [`fight`] (a
-/// siege's too, either side's); an open decision settled as [`seek`] settles it; on the map the
+/// siege's too, either side's); an open decision settled as [`seek`] settles it; (E09 T29b) a
+/// listed hero move between an own town's bars in five steps of eight (`Enter` in three, `Leave`
+/// and `Swap` in one each); on the map the
 /// `n`-th of its options that end on a town's entrance (its own entered, TWN-VIS-001; another
 /// player's or a neutral one captured or besieged, TWN-CAP-001, TWN-SIE-001; another team's
 /// visitor besieged with the garrison merged, TWN-SIE-002), in three steps of four of a town not
@@ -3532,6 +3534,21 @@ fn visit_town(
     }
     if let Some(answer) = settle(state, legal, n) {
         return answer;
+    }
+    // E09 T29b: a listed hero move at an own town (TWN-ROW-002 to -004), `Enter` in three steps
+    // of eight, `Leave` and `Swap` in one each, so that garrison heroes defend sieges alone and
+    // beside a visitor (TWN-SIE-001, -002 amended).
+    let wanted = match n % 8 {
+        0 | 2 | 4 => Some(TownHeroChange::Enter),
+        1 => Some(TownHeroChange::Leave),
+        3 => Some(TownHeroChange::Swap),
+        _ => None,
+    };
+    let row = legal.iter().find(|c| {
+        matches!(c, GameCommand::Town(TownCommand::Heroes { change, .. }) if Some(*change) == wanted)
+    });
+    if let Some(row) = row {
+        return row.clone();
     }
     let towns: Vec<(TilePos, bool)> = map
         .towns()
@@ -8121,10 +8138,13 @@ fn check_towns(
         // growth again and halves (TWN-GRO-004, `TWN-QUIRK-9` on or off), so a town no event of the
         // command reached holds at most each count it held before the week.
         let plague = events.iter().any(|e| {
-            matches!(e, GameEvent::MonthStarted {
-                kind: MonthKind::Plague,
-                ..
-            })
+            matches!(
+                e,
+                GameEvent::MonthStarted {
+                    kind: MonthKind::Plague,
+                    ..
+                }
+            )
         });
         if plague && !fired && built.is_empty() {
             prop_assert!(
@@ -9939,8 +9959,9 @@ fn check_dwelling_battle_end(
 /// level): no hero's level is above its experience's, nor its experience above the bound (the
 /// threshold after the highest level, less one) or the scenario's level limit's threshold (or its
 /// own level's, if higher); a hero has a pending level only while a level-up of its owner is open
-/// for it, of the level after its own. At most one level-up is open, its hero on the map, and the
-/// game waits for its owner (ADR-0017 point 6) and for no one else.
+/// for it, of the level after its own. At most one level-up is open, its hero on the map or (E09
+/// T29b) in a town's garrison, and the game waits for its owner (ADR-0017 point 6) and for no one
+/// else.
 fn check_progression(rules: &GameRuleset, state: &GameState) -> Result<(), TestCaseError> {
     let params = rules.core().hero_params().unwrap();
     let thresholds = &params.experience;
@@ -9957,7 +9978,13 @@ fn check_progression(rules: &GameRuleset, state: &GameState) -> Result<(), TestC
         prop_assert!(Some(player) == waiting || state.level_up(player).is_none());
     }
     if let Some(view) = open {
-        let owner = state.adventure().hero(view.hero).map(|h| h.owner);
+        // E09 T29b: or a garrison hero's, which wins its siege's defence (TWN-SIE-001 amended;
+        // the plans' `Step::Town` enters the garrisons since T29b).
+        let adventure = state.adventure();
+        let owner = adventure.hero(view.hero).map(|h| h.owner).or_else(|| {
+            let mut held = adventure.town_heroes().iter().map(|(_, h)| h);
+            held.find(|h| h.id == view.hero).map(|h| h.owner)
+        });
         prop_assert_eq!(owner, waiting, "{:?}", view);
     }
     for (index, details) in state.heroes().iter().enumerate() {
@@ -11162,8 +11189,8 @@ proptest! {
     }
 
     /// A fork's week is its parent's (E09 T29b, the town epic's design note §47): from a random
-    /// game's state the turns end (a battle or an open decision played as [`Step::Town`] plays
-    /// them) until a step starts a week. A fork made just before that step crosses it first and
+    /// game's state the turns end (a battle played as [`Step::Fight`] plays it, an open decision,
+    /// a meeting or an army dialog answered by a legal command) until a step starts a week. A fork made just before that step crosses it first and
     /// leaves its parent as it was (its hash, and its towns' counts and Portals read out before:
     /// the store is shared until the fork's first write); the parent crossing it then gives the
     /// same result, events, state and hash, each town's week among them (its growth, a neutral
@@ -11187,8 +11214,10 @@ proptest! {
         for k in 0..512u16 {
             let step = if options(&state, rules).contains(&GameCommand::EndTurn) {
                 Step::EndTurn
+            } else if battle_of(&state, actor(&state)).is_some() {
+                Step::Fight(n.wrapping_add(k))
             } else {
-                Step::Town(n.wrapping_add(k))
+                Step::Legal(n.wrapping_add(k))
             };
             let (hash, held) = (state.state_hash(), counts(&state));
             let mut fork = state.clone();
@@ -12597,7 +12626,10 @@ fn the_plans_visit_dwellings_from_a_boat() {
 /// way; and the Capitols the limit took (TWN-CAP-002); since E09 T18b2b the builds (TWN-BLD-001,
 /// through `Step::Legal`, since E09 T19b [`Step::Build`]) and the days' marks the day's start
 /// cleared (TWN-BLD-004); since E09 T19b the town events (TWN-EVT-001 to -003): those that fired,
-/// gave, took, and named a building standing (not built again), and the buildings they built.
+/// gave, took, and named a building standing (not built again), and the buildings they built;
+/// since E09 T29b the sieges of a garrison hero alone and the battles of a visitor beside one
+/// (TWN-SIE-001, -002 amended), each won and lost, the hero moves (TWN-ROW-002 to -004), the
+/// Plague's months and the weeks that leave a count at its bound (`TWN-QUIRK-8`).
 #[derive(Debug, Default)]
 struct Besieged {
     towns: usize,
@@ -12764,8 +12796,11 @@ impl Besieged {
 /// merged, and wins and loses both, and the Capitol's limit takes a Capitol, and (E09 T18b2b) its
 /// owners build (since E09 T19b by [`Step::Build`]'s runs too) and the day's start clears the
 /// marks, and (E09 T19b) the towns' events fire, give, take, build, and skip a building standing,
-/// so the properties above ([`check_towns`], [`check_timed`], the entrances in
-/// [`check_invariants`], the forks' store, the listed builds of [`check_town_builds`]) see each.
+/// and (E09 T29b) heroes enter, leave and swap at the garrisons ([`visit_town`]), which then
+/// defend sieges alone and beside a visitor, and the Plague comes and the counts meet their bound,
+/// so the properties above ([`check_towns`], [`check_timed`], the entrances and the counts' bound
+/// in [`check_invariants`], the forks' store and week, the listed builds of
+/// [`check_town_builds`]) see each.
 #[test]
 fn the_plans_capture_and_besiege_towns() {
     use proptest::strategy::ValueTree;
@@ -12803,6 +12838,9 @@ fn the_plans_capture_and_besiege_towns() {
     assert!(b.captures > b.undefended.iter().sum::<usize>(), "{b:?}");
     assert!(b.built.iter().all(|&n| n > 0) && b.cleared > 0, "{b:?}");
     assert!(b.fired.iter().all(|&n| n > 0), "{b:?}");
+    // E09 T29b: the hero moves, and the Plague and the bound met by the towns' counts.
+    assert!(b.rows.iter().all(|&n| n > 0), "{b:?}");
+    assert!(b.plagues > 0 && b.saturated > 0, "{b:?}");
 }
 
 /// What the plans' games did at the teleporters (E08 T106b1; increment 11's design note §14): the
