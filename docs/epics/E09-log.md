@@ -4184,7 +4184,7 @@ start (29 files, SHA-256 checked against the PC's). Survey `docs/rules/surveys/E
   returning offer: set at a retreat or a surrender, cleared at its owner's turn end and at a hire),
   the customised types' reader and their application to every type before the first draw, the
   banned skills' readers (none on the hire's path), the Thieves' Guild's rows and parts by the
-  tavern count and the Den of Thieves' 99. Thirteen map entries added, four rewritten.
+  tavern count and the Den of Thieves' 99. Fifteen map entries added, four rewritten.
 - **The SoD Conflux rule** is dead in this build (edition 3, never written): a lead for E11 in
   the battle lane's inbox.
 - **Compared:** VCMI 1.7.5 (`HeroPoolProcessor`, `TavernHeroesPool`, the removed hero,

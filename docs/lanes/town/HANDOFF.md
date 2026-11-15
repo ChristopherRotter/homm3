@@ -15,9 +15,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `QUEUE.md`. The guild and the services are increment 5, travel and the Grail 6.
   Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment
   5), `TWN-STUB-2` (the victory conditions).
-- **Open pull requests:** #959 (`shared/e09-t31-security`, the security doc's line; merges first),
-  then T31's (`town/e09-t31`, `cross-lane`), then T32's (`town/e09-t32`, docs, stacked on T31's:
-  after T31's squash, `git rebase --onto origin/master <T31's head>`); watch all until they merge.
+- **Open pull requests:** #961 (`town/e09-t31`, `cross-lane`; its security line merged as #959),
+  then #962 (`town/e09-t32`, docs, its base `town/e09-t31`: after #961's squash, `git rebase
+  --onto origin/master <#961's head>` and the base changed to `master`); watch both until they
+  merge.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
