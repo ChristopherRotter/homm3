@@ -8770,10 +8770,21 @@ fn armies(state: &GameState) -> Vec<(HeroId, Vec<h3_contracts::ArmyStack>)> {
     all
 }
 
+/// A hero on the map or (E09 T28a) a town's garrison hero, by id (E09 T29b: a garrison hero
+/// defends its town's siege, TWN-SIE-001 amended).
+fn hero_anywhere(state: &GameState, id: HeroId) -> Option<&h3_adventure::HeroOnMap> {
+    let adventure = state.adventure();
+    adventure.hero(id).or_else(|| {
+        let mut held = adventure.town_heroes().iter().map(|(_, h)| h);
+        held.find(|h| h.id == id)
+    })
+}
+
 /// Conservation for a command that ended a battle (E08 T19a; GAM-BAT-002, -003, -005): only one
 /// ends; heroes other than the battle's keep their armies; a battle hero that did not win leaves
 /// the map, told as its removal, and one that stays keeps a nonempty army whose stacks fit its
-/// slots; a treasury changes only by a surrender's price: the surrendering side's owner pays, the
+/// slots (E09 T29b: a garrison hero that wins its siege's defence stays in the garrison, its army
+/// kept even empty, E09 decision 95); a treasury changes only by a surrender's price: the surrendering side's owner pays, the
 /// other side's owner gains what was paid. The heroes' details (E08 T19a2a; GAM-BAT-002, -004)
 /// change exactly as the changes told to their owners, only the battle's heroes', only the
 /// winner that stays gains experience, and artifacts only move between the two or leave with a
@@ -8816,15 +8827,16 @@ fn check_battle_end(
             continue;
         };
         let won = result.winner().map(|w| w.index()) == Some(side);
-        let stays = after.adventure().hero(hero);
+        let stays = hero_anywhere(after, hero);
         prop_assert!(won || stays.is_none(), "{:?} did not win but stays", hero);
         prop_assert_eq!(stays.is_none(), removed.contains(&hero));
         if let Some(stays) = stays {
-            prop_assert!(!stays.army.is_empty());
+            let held = after.adventure().hero(hero).is_none();
+            prop_assert!(held || !stays.army.is_empty());
             prop_assert!(stays.army.iter().all(|s| s.count > 0 && s.slot < 7));
         }
     }
-    let owner = |id: Option<HeroId>| before.adventure().hero(id.unwrap()).unwrap().owner;
+    let owner = |id: Option<HeroId>| hero_anywhere(before, id.unwrap()).unwrap().owner;
     let mut paid = None;
     for event in events {
         match *event {
@@ -10039,7 +10051,8 @@ fn experience_cap(rules: &GameRuleset, state: &GameState, level: u8) -> u32 {
 
 /// The heroes' part of [`check_battle_end`] (E08 T19a2a): each change goes to one of the
 /// battle's heroes and is told to its owner; every other hero's details stay; a battle hero's
-/// experience grows by the gains it is told (only one that stays on the map gains), its spell
+/// experience grows by the gains it is told (only one that stays on the map, since E09 T29b or in
+/// its town's garrison, gains), its spell
 /// points become the last it is told, its artifacts change in number by the ones it is told it
 /// received and lost, its level, primary and secondary skills by the levels it is told it gained
 /// (E08 T30: only one that stays on the map, each the next level), and nothing else of it
@@ -10058,7 +10071,7 @@ fn check_heroes_after_battle(
     for event in events {
         if let GameEvent::HeroChanged { player, hero, .. } = *event {
             prop_assert!(fought.contains(&hero), "{:?} changed", hero);
-            prop_assert_eq!(player, before.adventure().hero(hero).unwrap().owner);
+            prop_assert_eq!(player, hero_anywhere(before, hero).unwrap().owner);
         }
     }
     for (i, (b, a)) in before.heroes().iter().zip(after.heroes()).enumerate() {
@@ -10075,7 +10088,8 @@ fn check_heroes_after_battle(
         // The rest of the details (level, primary and secondary skills, spells, bonuses) by the
         // changes and levels told, in order.
         let mut told = (**b).clone();
-        let stays = after.adventure().hero(id).is_some();
+        // E09 T29b: on the map or in its town's garrison ([`hero_anywhere`]).
+        let stays = hero_anywhere(after, id).is_some();
         for event in events {
             match *event {
                 GameEvent::HeroChanged { hero, change, .. } if hero == id => match change {
@@ -10118,7 +10132,7 @@ fn check_heroes_after_battle(
                     skill,
                 } if hero == id => {
                     prop_assert!(stays, "{:?} levelled", id);
-                    prop_assert_eq!(player, before.adventure().hero(id).unwrap().owner);
+                    prop_assert_eq!(player, hero_anywhere(before, id).unwrap().owner);
                     prop_assert_eq!(level, told.level + 1);
                     // The offers' levels after the last level told are the hero's (one command
                     // may give several levels).
