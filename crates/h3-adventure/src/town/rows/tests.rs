@@ -175,6 +175,7 @@ fn row(
             player,
             (town, MOST),
             change,
+            Viewers::NONE,
             &mut events,
         )
         .map(|slots| (slots, events));
@@ -259,6 +260,7 @@ fn the_visitor_enters_the_garrison_with_its_whole_record_and_the_garrison_s_crea
                 hero: VISITOR,
                 town: TOWN,
                 pos: ENTRANCE,
+                named: Viewers::NONE.with(RED),
             },
             seen_by,
         }]
@@ -406,6 +408,7 @@ fn the_garrison_hero_leaves_onto_the_entrance_with_its_points_kept() {
                 hero: VISITOR,
                 town: TOWN,
                 pos: ENTRANCE,
+                named: Viewers::NONE.with(RED),
             },
             seen_by: Viewers::NONE.with(RED).with(BLUE),
         }]
@@ -535,6 +538,7 @@ fn leaving_is_refused_without_a_garrison_hero_a_free_entrance_room_or_an_army() 
             RED,
             (TOWN, 1),
             TownHeroMove::Leave,
+            Viewers::NONE,
             &mut Vec::new()
         ),
         Err(TownHeroError::TooManyHeroes)
@@ -591,6 +595,7 @@ fn the_visitor_and_the_garrison_hero_swap_with_their_armies() {
                     hero: OTHER,
                     town: TOWN,
                     pos: ENTRANCE,
+                    named: Viewers::NONE.with(RED),
                 },
                 seen_by,
             },
@@ -599,6 +604,7 @@ fn the_visitor_and_the_garrison_hero_swap_with_their_armies() {
                     hero: VISITOR,
                     town: TOWN,
                     pos: ENTRANCE,
+                    named: Viewers::NONE.with(RED),
                 },
                 seen_by,
             },
@@ -924,4 +930,85 @@ fn a_garrison_hero_s_battle_ends_in_its_town() {
         }]
     );
     assert_eq!(state.upper_bar(TOWN), []);
+}
+
+/// E09 T31 (decision 101, `TWN-Q15` (4)): a garrison move is told by name to its owner and to the
+/// viewers the game names (those that see the town's garrison hero: TWN-VEW-003's level 3), to
+/// every other viewer of the entrance as the original's map shows it, a hero leaving the map or
+/// coming into sight there.
+// covers: TWN-ROW-002, TWN-ROW-003
+#[test]
+fn a_garrison_move_names_its_hero_only_to_the_viewers_that_see_the_garrison_hero() {
+    let rules = rules();
+    let mut state = at_town(&rules, vec![], vec![stack(0, PEASANT, 4)]);
+    let (red, blue) = (Viewers::NONE.with(RED), Viewers::NONE.with(BLUE));
+    let mut events = Vec::new();
+    for (change, named) in [
+        (TownHeroMove::Enter, blue),
+        (TownHeroMove::Leave, Viewers::NONE),
+        (TownHeroMove::Enter, Viewers::NONE),
+        (TownHeroMove::Leave, blue),
+    ] {
+        let rules = (&rules.0, &rules.1);
+        state
+            .move_town_hero(rules, RED, (TOWN, MOST), change, named, &mut events)
+            .unwrap();
+    }
+    let entered = |named| AdventureEventKind::GarrisonEntered {
+        hero: VISITOR,
+        town: TOWN,
+        pos: ENTRANCE,
+        named,
+    };
+    let left = |named| AdventureEventKind::GarrisonLeft {
+        hero: VISITOR,
+        town: TOWN,
+        pos: ENTRANCE,
+        named,
+    };
+    // The owner is always named, a named viewer only among those that see the entrance.
+    let both = red.union(blue);
+    let kinds: Vec<_> = events.iter().map(|e| (e.kind, e.seen_by)).collect();
+    assert_eq!(
+        kinds,
+        [
+            (entered(both), both),
+            (left(red), both),
+            (entered(red), both),
+            (left(both), both),
+        ]
+    );
+    let told = |viewer| -> Vec<AdventureEventKind> {
+        events
+            .iter()
+            .filter_map(|e| e.project(viewer))
+            .map(|e| e.kind)
+            .collect()
+    };
+    assert_eq!(
+        told(RED),
+        [entered(red), left(red), entered(red), left(red)]
+    );
+    assert_eq!(
+        told(BLUE),
+        [
+            entered(blue),
+            AdventureEventKind::HeroStepped {
+                hero: VISITOR,
+                from: None,
+                to: Some(ENTRANCE),
+                seen_from: Viewers::NONE,
+                seen_to: blue,
+            },
+            AdventureEventKind::HeroRemoved {
+                hero: VISITOR,
+                pos: ENTRANCE,
+            },
+            left(blue),
+        ]
+    );
+    // A player that does not see the entrance is told nothing, named or not.
+    let green = PlayerId::new(2);
+    assert_eq!(state.viewers(&rules.0, RED, ENTRANCE), both);
+    assert_eq!(told(green), []);
 }

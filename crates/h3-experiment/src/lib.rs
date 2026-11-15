@@ -229,7 +229,7 @@ pub struct MapSpec {
     pub underground: Option<UndergroundSpec>,
     /// Objects without a body (`[[map.object]]`, E08 T32a): the Cartographers; since E08 T36a
     /// the trees and the Border Gates; later increments' (the list at [`ObjectSpec::picture`]),
-    /// since E08 T109a the fifteen bonus visitables.
+    /// since E08 T109a the fifteen bonus visitables, since E08 T119 the creature banks.
     #[serde(default)]
     pub object: Vec<ObjectSpec>,
     /// The scenario's level limit (E08 T32a; 0, the default: none).
@@ -709,7 +709,15 @@ pub struct ObjectSpec {
     /// Rally Flag `AVXrlly0`, the Stables `AVXstbl0`, the Temple `AVStmpl0`, the Watering Hole
     /// `AVXwtrh0` (`at` and the three west of it); on water the Buoy `AVSbuoy0`, the Mermaids
     /// `AVXmerm0` and the Sirens `AVXsirn0`; since E08 T109b increment 7's School of War
-    /// `AVSwar20`, 4 × 3, entered at the tile west of `at`).
+    /// `AVSwar20`, 4 × 3, entered at the tile west of `at`; since E08 T119 the creature banks
+    /// ([`h3_map::writer::BANK_OBJECTS`]; survey `docs/rules/surveys/E08-banks.md` §1), each with
+    /// one entrance, which its picture also blocks: the Cyclops Stockpile `AVXbnk10`, the Dwarven
+    /// Treasury `AVXbnk20`, the Griffin Conservatory `AVXbnk30` and the Imp Cache `AVXbnk40`
+    /// (these two entered at `at`), the Medusa Stores `AVXbnk50`, the Naga Bank `AVXbnk60`, the
+    /// Dragon Fly Hive `AVXbnk70`, the Crypt `AVXgyds0`, `AVXgyne0` or `AVXgysn0` (by the second
+    /// terrain mask sand; dirt, grass, swamp; snow), Dragon Utopia `AVSutop0` (6 × 3), the others entered at the tile west of
+    /// `at`; on water the Derelict Ship `AVAdlic0` and the Shipwreck `AVAwrek0`, visited at the
+    /// tile west of `at`, or `AVAwre20`, at `at`. No picture's terrains are checked).
     pub picture: String,
     /// The object's position, `[column, row]`: the picture's bottom-right tile (the land
     /// Cartographer covers it and the tile west of it, its entrance; a Border Gate it and the two
@@ -886,6 +894,11 @@ pub struct HeroSpec {
     /// Army as (creature, count), one to seven stacks (none with [`HeroSpec::defaults`]).
     #[serde(default)]
     pub army: Vec<(String, u16)>,
+    /// The army's slots, one for each of [`HeroSpec::army`]'s stacks in its order (E08 T119:
+    /// batch E13's E13-3, a bank battle placing the stacks by their ordinal among the filled
+    /// slots), each below 7 and distinct; none (the default): slots 0 onwards.
+    #[serde(default)]
+    pub slots: Vec<u8>,
     /// Worn artifacts by slot name ([`SLOT_NAMES`]); replaces the hero type's (so no spell book
     /// unless listed).
     #[serde(default)]
@@ -2069,6 +2082,7 @@ fn hero(
             || h.experience != 0
             || !h.skills.is_empty()
             || !h.army.is_empty()
+            || !h.slots.is_empty()
             || !h.artifacts.is_empty()
             || !h.backpack.is_empty()
             || h.fill_backpack.is_some()
@@ -2112,12 +2126,29 @@ fn hero(
     if h.army.is_empty() || h.army.len() > ARMY_SLOTS {
         return Err(format!("{} army stacks (1–{ARMY_SLOTS})", h.army.len()));
     }
+    let slots: Vec<usize> = if h.slots.is_empty() {
+        (0..h.army.len()).collect()
+    } else if h.slots.len() != h.army.len() {
+        return Err(format!(
+            "{} slots for {} army stacks",
+            h.slots.len(),
+            h.army.len()
+        ));
+    } else {
+        h.slots.iter().map(|&s| usize::from(s)).collect()
+    };
     let mut army = [None; ARMY_SLOTS];
-    for (slot, (name, count)) in h.army.iter().enumerate() {
+    for (&slot, (name, count)) in slots.iter().zip(&h.army) {
         if *count == 0 {
             return Err(format!("empty stack of {name}"));
         }
-        army[slot] = Some((lookup(&tables.creatures, name, "creature")? as u16, *count));
+        let place = army
+            .get_mut(slot)
+            .ok_or_else(|| format!("army slot {slot} (0–{})", ARMY_SLOTS - 1))?;
+        if place.is_some() {
+            return Err(format!("two stacks in army slot {slot}"));
+        }
+        *place = Some((lookup(&tables.creatures, name, "creature")? as u16, *count));
     }
     let mut worn = [None; ARTIFACT_SLOTS];
     for (slot_name, artifact) in &h.artifacts {
@@ -2702,12 +2733,16 @@ fn hero_summary(h: &HeroSpec, hero: &Hero, tables: &Tables) -> String {
             .collect::<Vec<_>>()
             .join(", ")
     };
-    let army = h
+    let mut army = h
         .army
         .iter()
         .map(|(c, n)| format!("{n} {c}"))
         .collect::<Vec<_>>()
         .join(", ");
+    if !h.slots.is_empty() {
+        let slots: Vec<String> = h.slots.iter().map(u8::to_string).collect();
+        let _ = write!(army, " (slots {})", slots.join(", "));
+    }
     let mut artifacts = h
         .artifacts
         .iter()
@@ -2919,6 +2954,16 @@ mod tests {
                  111100000000000000000000000000000000000000000000 111111111 000100000 110 0 0 0",
                 "AVXsirn0.def 000111111111111111111111111111111111111111111111 \
                  010000000000000000000000000000000000000000000000 100000000 100000000 92 0 0 0",
+                // Four creature banks (E08 T119): the Griffin Conservatory (entered at its
+                // anchor), the Crypt, Dragon Utopia, the Shipwreck.
+                "AVXbnk30.def 001111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 011111111 16 2 0 0",
+                "AVXgyne0.def 000111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 111111111 000010101 84 0 0 0",
+                "AVSutop0.def 100011111000001100001111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 111111111 011111111 25 0 0 0",
+                "AVAwrek0.def 001111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 100000000 100000000 85 0 0 0",
             ]
             .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
             .to_vec(),
@@ -5307,5 +5352,149 @@ mod tests {
         assert!(err.contains("two objects on the tile (7, 4)"), "{err}");
         let err = fails("at = [24, 10]", "at = [21, 4]");
         assert!(err.contains("two objects on the tile"), "{err}");
+    }
+    const BANKS: &str = r#"
+        [map]
+        name = "Banks"
+        description = "d"
+        terrain = "grass"
+
+        [[map.patch]]
+        terrain = "water"
+        from = [30, 0]
+        to = [35, 35]
+
+        [[map.object]]
+        picture = "AVXbnk30"
+        at = [8, 4]
+        grid = { columns = 2, step = [4, 1] }
+
+        [[map.object]]
+        picture = "avxgyne0.def"
+        at = [8, 10]
+
+        [[map.object]]
+        picture = "AVSutop0"
+        at = [20, 10]
+
+        [[map.object]]
+        picture = "AVAwrek0"
+        at = [33, 10]
+
+        [[map.object]]
+        picture = "AVXboat1"
+        at = [33, 14]
+
+        [[encounter]]
+        id = "E1"
+        title = "The banks"
+        [encounter.hero]
+        type = "Orrin"
+        specialty = "skill Archery"
+        at = [4, 30]
+        primary = [1, 1, 1, 1]
+        skills = [["Archery", 3]]
+        army = [["Pikeman", 10], ["Archangel", 1]]
+        slots = [2, 6]
+        artifacts = { "war machine 1" = "Ballista" }
+    "#;
+
+    #[test]
+    fn builds_increment_13_s_objects() {
+        // E08 T119 (batch E13): the banks by picture, two Griffin Conservatories in a grid, a
+        // boat near the Shipwreck; the hero with a skill, a war machine and its stacks in slots 2
+        // and 6.
+        let spec = parse(BANKS).expect("spec");
+        let (map, text) = build(&spec, &tables(), "b.h3m").expect("build");
+        let hero = map
+            .objects
+            .iter()
+            .find_map(|o| match o {
+                MapObject::Hero(h) => Some(h),
+                _ => None,
+            })
+            .expect("the hero");
+        let mut army = [None; ARMY_SLOTS];
+        army[2] = Some((0, 10));
+        army[6] = Some((1, 1));
+        assert_eq!(hero.army, Some(army));
+        assert!(
+            text.contains("10 Pikeman, 1 Archangel (slots 2, 6)"),
+            "{text}"
+        );
+        let plains: Vec<(u32, u32, (u8, u8))> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Plain(p) => Some((p.template.class, p.template.subclass, p.tile)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            plains,
+            [
+                (16, 2, (8, 4)),
+                (16, 2, (12, 4)),
+                (84, 0, (8, 10)),
+                (25, 0, (20, 10)),
+                (85, 0, (33, 10)),
+                (8, 1, (33, 14)),
+            ]
+        );
+        assert!(
+            plains[..5]
+                .iter()
+                .all(|p| h3_map::writer::BANK_OBJECTS.contains(&p.0))
+        );
+        // Written and read back without a body (`h3-map`'s banks test writes RoE's too).
+        let bytes = h3_map::writer::write(&map).expect("writes");
+        let raw = h3_map::parse(&bytes, &h3_map::Limits::default()).expect("reads back");
+        let banks: Vec<&h3_map::model::Object> = raw
+            .objects
+            .iter()
+            .filter(|o| {
+                let t = &raw.templates[usize::try_from(o.template).unwrap()];
+                h3_map::writer::BANK_OBJECTS.contains(&t.class)
+            })
+            .collect();
+        assert_eq!(banks.len(), 5);
+        assert!(banks.iter().all(|o| o.body == h3_map::model::Body::None));
+    }
+
+    #[test]
+    fn rejects_mistakes_in_increment_13_s_objects() {
+        let t = tables();
+        let fails = |from: &str, to: &str| {
+            assert!(BANKS.contains(from), "{from}");
+            let spec = parse(&BANKS.replacen(from, to, 1)).expect("spec");
+            build(&spec, &t, "b.h3m").expect_err(to)
+        };
+        // A hero on a bank's entrance: the Griffin Conservatory's anchor, the Crypt's west
+        // neighbour, Dragon Utopia's; a bank on another's blocked tile; a picture not in the
+        // tables.
+        for at in ["at = [8, 4]", "at = [7, 10]", "at = [19, 10]"] {
+            let err = fails("at = [4, 30]", at);
+            assert!(err.contains("two objects on the tile"), "{at}: {err}");
+        }
+        let err = fails("at = [20, 10]", "at = [9, 10]");
+        assert!(err.contains("two objects on the tile"), "{err}");
+        let err = fails("picture = \"AVSutop0\"", "picture = \"AVXbnk10\"");
+        assert!(err.contains("AVXbnk10"), "{err}");
+        // The army's slots: one each, below 7, distinct; none with `defaults`.
+        let err = fails("slots = [2, 6]", "slots = [2]");
+        assert!(err.contains("1 slots for 2 army stacks"), "{err}");
+        let err = fails("slots = [2, 6]", "slots = [2, 7]");
+        assert!(err.contains("army slot 7 (0–6)"), "{err}");
+        let err = fails("slots = [2, 6]", "slots = [6, 6]");
+        assert!(err.contains("two stacks in army slot 6"), "{err}");
+        let defaults = BANKS.replace(
+            "primary = [1, 1, 1, 1]\n        skills = [[\"Archery\", 3]]\n        army = [[\"Pikeman\", 10], [\"Archangel\", 1]]\n",
+            "defaults = true\n",
+        );
+        let spec =
+            parse(&defaults.replace("artifacts = { \"war machine 1\" = \"Ballista\" }\n", ""))
+                .expect("spec");
+        let err = build(&spec, &t, "b.h3m").expect_err("slots with defaults");
+        assert!(err.contains("lists no army"), "{err}");
     }
 }

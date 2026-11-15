@@ -32,7 +32,14 @@ fn enter(rules: &GameRuleset, game: &mut GameState, hero: HeroId) -> Vec<ArmySta
     let (adventure, _) = game.adventure_with_heroes();
     let parts = (rules.core(), rules.adventure());
     adventure
-        .move_town_hero(parts, BLUE, (T1, 8), TownHeroMove::Enter, &mut Vec::new())
+        .move_town_hero(
+            parts,
+            BLUE,
+            (T1, 8),
+            TownHeroMove::Enter,
+            Viewers::NONE,
+            &mut Vec::new(),
+        )
         .unwrap();
     let held = adventure.town_hero(T1).unwrap();
     assert_eq!(held.id, hero);

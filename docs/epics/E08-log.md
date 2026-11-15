@@ -17653,3 +17653,98 @@ the cut as proposed. All as recommended.
 told (the seam, the rules, T124a, the keys theirs, D-67's correction). **Verify:** docs only: the
 docs gates (`check-docs`, `check-lane`, `doc-drift`) and `check-exe-map`. No code, version or replay
 moved; CI's run on the pull request is the record.
+
+### Increment 13, round 2: T119, batch E13's map: the writer's banks, the spec's fields and the spec (2026-11-15, `adventure/e08-t119`, `cross-lane`)
+
+Baseline: `master` db8406b (#955 and #957 merged; CI green on it, standing in for the sandbox's
+baseline, stopped in its coverage step to free the disk: 12 GB left). Staged: the executable,
+`H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar` (SHA-256 checked against the PC's).
+**The cut** (decision 346): whole, not the recommendation (two parts, as T109a and T109b); the
+`cross-lane` change of `h3-experiment` consented at the same start.
+
+**The writer** (`h3_map::writer`): `BANK_OBJECTS` (16, 24, 25, 84, 85) among `PLAIN_OBJECTS` (47
+classes; no body, as the game's maps), `CREATURE_BANK_OBJECT` and `BANK_SUBCLASSES`: class 16 past
+subclass 6 refused (`creature bank subclass`; the game indexes its kinds' table by it unchecked,
+survey §3). Tests (`tests/banks.rs`): the eleven kinds' fourteen pictures (the Crypt's three, the
+Shipwreck's two) read back as written in SoD and RoE, no body; the masks as the game's (one
+visitable tile on the bottom row, at `at` or west of it, which the template also blocks; the first
+terrain mask every terrain for the land banks, water for the ships; the second, the editor's menu
+and VCMI's allowed terrains, every land terrain but the Medusa Stores' subterranean, each Crypt's
+its group; the Hive's anchor passable; Dragon Utopia's 6 × 3 footprint); the subclass refusal; the
+import as it reads them until T123b: no type, no body, the blocked tiles and one entrance, the setup
+valid under SoD's and RoE's rules.
+
+**The spec** (`h3-experiment`, battle-owned, `cross-lane` with the user's consent): `[[map.object]]`
+takes the banks by picture through `Tables::plains` (the doc of `ObjectSpec::picture` and of
+`Tables::plains` lists them with their entrances); **`HeroSpec::slots`** (*agent's call*): the
+army's slots, one per `army` stack, each below 7 and distinct (E13-3's ordinal against the slot
+needs a gap, which the spec could not leave), refused with `defaults`, named in the template. The
+skills, war machines (`war machine 1` to `4`), worn artifacts and boats were there already (the
+survey's "what the spec lacks"). Tests: `builds_increment_13_s_objects` (two Conservatories in a
+grid, the Crypt, Utopia, the Shipwreck, a boat; the hero's stacks in slots 2 and 6; written and
+read back without a body), `rejects_mistakes_in_increment_13_s_objects` (a hero on three kinds'
+entrances, a bank on another's tile, a picture not in the tables, the slots' three refusals, slots
+with `defaults`); the tables' test with five bank lines. The experiments README: "Increment 13's
+objects", the `slots` field, the batch table's row E08 13.
+
+**The spec `E08-batch-13`** (72 × 72 grass, a lake (27, 36) to (44, 58), three rock pockets; SoD on
+Easy, hot seat, days 1 and 2; stamp 23ef005b; 27 banks, at least two of each kind, and a boat):
+Red's seven heroes, Blue's four. E13-1 every record and word at the start with each record's index
+predicted by the walk (level, row, column), and a restart rule when no Imp Cache of I2 to I4 is of
+level 1 or both Utopias hold four relics (at most five starts); Blue's hints over the declined S1
+and C1 and the retreated I1. E13-2 Adela (20 Archangels) declines the Stockpile S1 (6, 8) and the
+Crypt C1 (10, 8); E13-11 she steps onto S2 (14, 8), declines, Space, yes, wins (on the entrance
+throughout, 836). E13-9 Uland's 20 Wood Elves shoot and retreat at I1 (10, 4). E13-3 Tyris (Expert
+Tactics, a Ballista and an Ammo Cart, tight formation, Archangels, Pikemen, Swordsmen and Archers in
+slots 0, 2, 4, 6) at the Dwarven Treasury T1 (10, 20): no tactics phase, no obstacles, no machine,
+57, 61, 90, 93 by ordinal, the Archers' 12 shots after a shot; E13-10 on day 2 the same hero at
+the Imp Cache of level 1 (I2 to I4) and the Naga Bank N1 (8, 24). E13-4 and E13-6 Loynis (seven
+stacks, 900 experience) at the Griffin Conservatory G2 (12, 34): the Griffins' hexes, the level-ups
+before the reward's message and the army dialog; E13-8's deserted revisit by Space. E13-7 Coronius
+(every body position worn, 20 Archangels at 40 Attack and Defense) wins U1 (or U2) into the
+backpack, then the Crypts C2 (20, 44) and C3 (24, 44); E13-8 on day 2 he searches C3 (−1), C2
+(nothing more) and the looted Shipwreck W1 from the coast (−2), then fights a Peasant (0). E13-5
+Cuthbert visits W1 (27, 46) from the coast (the deck; on land throughout, E13-11's second part);
+Adelaide boards the boat (27, 51) and on day 2 sails onto the Derelict Ship D1 (30, 54) (the deck).
+E13-12 Blue's Alagar and Astral with Angel Wings fly over a Shipwreck's water entrance from land (P1)
+and from water (P2), Daremyth with Boots of Levitation finds no path across W4 and visits it from
+the coast (P3). **Changes from design §19** (*agent's calls*, the header says so): days 1 and 2;
+E13-4 read in E13-6's battle; E13-8's searches by E13-7's hero; E13-12's flights end on land
+beyond the water.
+
+**The walks and the fog** (a throwaway script outside the repo, on the spec and `Objects.txt`'s
+masks; not committed): every walk's tiles and price recomputed (100 and 141, the Peasant's zone and
+every object's tiles avoided, ADV-OBJ-004: the banks of classes 16, 24, 25 and 84 entered only from
+the side or from below, never left upward); every click target explored at its moment (radius 5);
+the points by the armies. A first layout entered most banks from above: redone. The map compiled
+with the staged tables and was imported and played two days by `h3 adventure run` (in `target/`,
+not committed).
+
+**The review** (a fresh agent against survey §1 to §7 and §11, design §9, §13 and §19,
+ADV-OBJ-003, -004, ADV-SEA-002 and the masks; 14 findings, all taken): (1) Red's hints were read
+over the entrance the hero stood on: over the bank's other tile instead (the hint makes no
+entrance test), Blue's too; (2) the retreat comes at E13-9's next turn, after the guards may have
+struck: the counts read just before it, an adjacent guard attacked instead of shot; (3) about 7 of
+the 14 class-16 banks but the Hives upgraded, not "half of 20"; (4) E13-2's level 2 to 4; (5)
+E13-6's levels 3, 4, 5 or 5 by G2's level; (6) E13-7's worn artifacts and backpack read before (a
+starting bonus's artifact); (7) E13-10's level-1 Imp Cache missing in 34 % of draws: the restart
+rule; (8) the record indices predicted; (9) the skills taken at level-ups noted, a Logistics
+raising day 2's points; (10) the Space fallback's 200; (11) a tactics phase ended without a move
+if one opens; (12) ADVEVENT 34's strongest guard (Cyclops Kings, Battle Dwarves when drawn); (13)
+`battle_war_machine_stacks` 0x463600, its skip at 0x463758; (14) the changes from design §19
+stated, E13-7's "in that case U2", P3's conditional tile. Found right: every mask and entrance,
+every walk's price and the points left, the fog, the land points, the splits and rewards per
+level, the message ids, the dialogs' order, the hexes, the flag's four effects, the morale bits.
+
+**For T120** (the queue's entry): the harness's reads (the banks' vector, the words, +0x105 and
++0x11A, the hint over a tile, the backpack's order, the battle's opening with every hex a stack
+covers, the shots, the dialogs' order, Space), the recipe with its choices by the day-1 records and
+its battle steps, the run, the template filled.
+
+**Versions:** none moved (the writer's list grew; the import reads the five classes as before).
+
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data`
+passed every step it runs but `check-lane` (by design on a `cross-lane` branch; `cargo xtask
+check-lane --cross-lane` ok); deny and ffi-smoke skipped by the scope. `cargo check --workspace
+--all-targets` and clippy with `-D warnings` on `h3-map` and `h3-experiment` clean. CI's full
+verify on the pull request is the record.

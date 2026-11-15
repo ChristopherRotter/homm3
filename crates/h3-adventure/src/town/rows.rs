@@ -219,7 +219,10 @@ impl AdventureState {
 
     /// Makes `player`'s hero move `change` at `town` (TWN-ROW-002 to -004; the town epic's design
     /// note §53), `most` the most heroes a player has on the map (the town part's), each checked
-    /// whole first:
+    /// whole first. `named` are the viewers that see the town's garrison hero (the game's: its
+    /// owner's team and TWN-VEW-003's Visions within reach; E09 T31): of the viewers of the
+    /// entrance, they and `player` are told the move by name, every other one as a hero leaving or
+    /// entering the map ([`AdventureEvent::project`]).
     ///
     /// - [`TownHeroMove::Enter`] (TWN-ROW-002; the original's `town_visitor_to_garrison` 0x4B9FC0
     ///   with `army_absorb` 0x44B620): the player's visitor becomes the town's garrison hero, the
@@ -228,7 +231,7 @@ impl AdventureState {
     ///   ([`TownHeroError::NoVisitor`]), the armies' refusals. Its record leaves the map into the
     ///   town with its army, points, day's maximum, formation and flag (its marks stay where they
     ///   are, by hero id), the garrison is written empty, and the viewers of its tile are told
-    ///   ([`AdventureEventKind::GarrisonEntered`], as a hero's leaving the map).
+    ///   ([`AdventureEventKind::GarrisonEntered`]; as a hero's leaving the map but by name).
     /// - [`TownHeroMove::Leave`] (TWN-ROW-003; `town_hero_out_click` 0x5D5220,
     ///   `town_garrison_to_visitor` 0x5BE390): the player's garrison hero comes out onto the
     ///   entrance as the town's visitor, its record as it was kept (its points included), on land.
@@ -237,7 +240,7 @@ impl AdventureState {
     ///   ([`TownHeroError::EntranceHeld`]), `most` heroes of the player's on the map already
     ///   ([`TownHeroError::TooManyHeroes`]), an army without a stack ([`TownHeroError::EmptyArmy`]:
     ///   T-5's case only). Told to its owner and the viewers of the tile
-    ///   ([`AdventureEventKind::GarrisonLeft`], as a hero's entering the map).
+    ///   ([`AdventureEventKind::GarrisonLeft`]; as a hero's entering the map but by name).
     /// - [`TownHeroMove::Swap`] (TWN-ROW-004; `town_swap_heroes` 0x5BE450): the player's visitor
     ///   and garrison hero change places, each with its army and record. Refused, in this order:
     ///   no garrison hero of the player's ([`TownHeroError::NoGarrisonHero`]), no visitor of the
@@ -258,21 +261,23 @@ impl AdventureState {
         player: PlayerId,
         (town, most): (TownId, u8),
         change: TownHeroMove,
+        named: Viewers,
         sink: &mut S,
     ) -> Result<Vec<ArmySlot>, TownHeroError> {
+        let named = named.with(player);
         match change {
             TownHeroMove::Enter => {
                 let entering = self.check_enter(part, player, town)?;
-                Ok(self.enter(core, part, town, entering, sink))
+                Ok(self.enter((core, part), (town, named), entering, sink))
             }
             TownHeroMove::Leave => {
                 let entrance = self.check_leave(player, (town, most))?;
-                self.leave(core, player, (town, entrance), sink);
+                self.leave(core, player, (town, entrance, named), sink);
                 Ok(Vec::new())
             }
             TownHeroMove::Swap => {
                 let (at, entrance) = self.check_swap(player, town)?;
-                self.swap(core, player, (town, entrance), at, sink);
+                self.swap(core, player, (town, entrance, named), at, sink);
                 Ok(Vec::new())
             }
         }
@@ -299,12 +304,11 @@ impl AdventureState {
         Ok(Entering { index, at, army })
     }
 
-    /// `Enter`, checked ([`Self::check_enter`]).
+    /// `Enter`, checked ([`Self::check_enter`]), told by name to `named` (its owner among them).
     fn enter<S: Sink>(
         &mut self,
-        core: &Ruleset,
-        part: &AdventureRuleset,
-        town: TownId,
+        (core, part): (&Ruleset, &AdventureRuleset),
+        (town, named): (TownId, Viewers),
         Entering { index, at, army }: Entering,
         sink: &mut S,
     ) -> Vec<ArmySlot> {
@@ -333,6 +337,7 @@ impl AdventureState {
                 hero: id,
                 town,
                 pos,
+                named: named.intersection(seen_by),
             },
             seen_by,
         });
@@ -363,12 +368,12 @@ impl AdventureState {
         Ok(entrance)
     }
 
-    /// `Leave`, checked ([`Self::check_leave`]).
+    /// `Leave`, checked ([`Self::check_leave`]), told by name to `named` (its owner among them).
     fn leave<S: Sink>(
         &mut self,
         core: &Ruleset,
         player: PlayerId,
-        (town, entrance): (TownId, Pos),
+        (town, entrance, named): (TownId, Pos, Viewers),
         sink: &mut S,
     ) {
         let seen_by = self.viewers(core, player, entrance);
@@ -381,6 +386,7 @@ impl AdventureState {
                 hero: id,
                 town,
                 pos: entrance,
+                named: named.intersection(seen_by),
             },
             seen_by,
         });
@@ -396,12 +402,12 @@ impl AdventureState {
         Ok((at, entrance))
     }
 
-    /// `Swap`, checked ([`Self::check_swap`]).
+    /// `Swap`, checked ([`Self::check_swap`]), told by name to `named` (its owner among them).
     fn swap<S: Sink>(
         &mut self,
         core: &Ruleset,
         player: PlayerId,
-        (town, entrance): (TownId, Pos),
+        (town, entrance, named): (TownId, Pos, Viewers),
         at: usize,
         sink: &mut S,
     ) {
@@ -412,16 +418,19 @@ impl AdventureState {
         let (visitor, held) = (entering.id, leaving.id);
         place(block, town, entering);
         arrive(heroes, leaving, entrance);
+        let named = named.intersection(seen_by);
         for kind in [
             AdventureEventKind::GarrisonEntered {
                 hero: visitor,
                 town,
                 pos: entrance,
+                named,
             },
             AdventureEventKind::GarrisonLeft {
                 hero: held,
                 town,
                 pos: entrance,
+                named,
             },
         ] {
             sink.emit(AdventureEvent { kind, seen_by });

@@ -4,24 +4,43 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 and T118b2 done 2026-11-15, decisions 340 to 342; the checkpoint ADV-Q54, decisions 343 to 345: the note, the drafts and the cut T119 to T126 accepted). Round 2 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 and T118b2 done 2026-11-15, decisions 340 to 342; the checkpoint ADV-Q54, decisions 343 to 345: the note, the drafts and the cut T119 to T126 accepted). Round 2: T119 done 2026-11-15 (`adventure/e08-t119`, `cross-lane`, whole: decision 346; the writer's banks, the spec's pictures and `slots`, batch E13's spec). Round 3 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T119 — batch E13's map: the writer's five classes, the spec's fields, the spec** (round 2;
-decisions 339, 343, 345; as T109 for increment 12)
+**E08 T120 + T121 — batch E13's harness, recipe and run; scored** (round 3; decisions 339,
+345, 346; as T110 and T111 for increment 12)
 
-- **Scope:** design note `E08-design.md` §19, §20's round 2: `h3_map::writer` writes the five
-  bank classes by template (class 16 by subclass 0 to 6, 85, 24, 84, 25; no body);
-  `h3-experiment`'s spec gains them by template and what its adventure hero lacks at the start
-  (secondary skills, war machines and artifacts: check the battle hero's fields first), a boat
-  for E13-5 (battle-owned: `cross-lane` with the user's consent, label it); the spec and the
-  template of run **E13** (survey §11's E13-1 to E13-10 with §19's changes: E13-3 extended,
-  E13-6 corrected, E13-11 and E13-12 added; two players, days 1 to 3).
-- **Inputs:** survey `docs/rules/surveys/E08-banks.md` §1 (the templates), §11 (the rows); design
-  note §19; T109a's and T109b's records in `E08-log.md` as the form.
-- **Depends on:** T118b2 (done). **Status:** ready (the original data: the executable and both
-  tars, to compile the map and check it in the editor's reader; confirm the cut at its start).
+- **Scope:** design note `E08-design.md` §19's harness and §20's round 3. **T120** (the capture
+  harness, `clients/capture/`, common): the reads batch E13's spec asks for (the banks' records
+  at game +0x4E3D8, 0x6C bytes each, and their objects' words; a hero's +0x105 bits 9 to 11 and
+  +0x11A, E12's reads may serve; the hint over a tile; the backpack's order; the battle's stacks
+  with every hex they cover at the opening, the tactics phase, the obstacles, the war machines,
+  the battlefield, a stack's shots before and after a shot; the questions, messages and dialogs
+  in order, the army dialog's two bars; Space on a hero's tile), the recipe
+  `clients/capture/batches/E08-batch-13.toml` with its choices by the day-1 records (E13-7's
+  Utopia, E13-10's Imp Cache) and its battle steps (E13-3's Defends and the Archers' shot,
+  E13-9's shot and retreat), the run(s), the template filled into
+  `experiments/results/E08-batch-13.md`. **T121** (docs): survey `E08-banks.md` §15, each row's
+  verdict against the predictions; D-65, D-66, D-68, D-69 and the new rows' findings; the
+  consensus rows' rules toward `verified` at T123 and T124; the checkpoint with the user.
+- **Inputs:** `experiments/specs/E08-batch-13.toml` (compiled with `h3-experiment`, stamp in the
+  template), T119's record in `E08-log.md`, T110's and T111's records as the form; the client
+  lane's `clients/capture/README.md`.
+- **Depends on:** T119 (done). **Status:** ready (the original data: the executable, the LODs,
+  both tars, the client lane's harness setup; confirm the cut at its start).
 
 ## Inbox
+
+- 2026-11-15 (the town lane, E09 T31, `town/e09-t31`, `cross-lane` with the user's consent, E09
+  decision 101; **your paths changed, for your review; no version moved**): `command.rs`'s
+  `AdventureEventKind::GarrisonEntered` and `GarrisonLeft` have a field `named: Viewers`, the
+  viewers told the move by name (the owner's team and, from the game, a viewer whose view of the
+  town is at level 3 by Visions); `observe.rs`' `AdventureEvent::project` tells any other viewer
+  `HeroRemoved` at the entrance and `HeroStepped { from: None, to: Some(entrance), .. }` (a hero
+  coming into sight) in their place, as a step's unseen ends are left out. `h3-map`'s
+  `tests/view.rs`: `views_move_as_the_events_say` checks each viewer's projection of every garrison
+  move (`check_garrison_moves`, beside `check_jump_ends`). No hash, replay or format moved (events
+  are not hashed). A new constructor of either event passes `named` (`Viewers::NONE` names the
+  owner alone: `move_town_hero` adds it).
 
 - 2026-11-15 (the town lane, E09 T29b, `town/e09-t29b`, `cross-lane` with the user's consent, E09
   decision 97; **your paths changed, for your review; no version moved, no engine code**):

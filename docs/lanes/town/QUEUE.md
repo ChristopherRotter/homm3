@@ -9,35 +9,11 @@ to 102); done tasks in `E09-log.md`; increments 1 to 3 (closed by T10, T20 and T
 `E09-archive.md`. Each task's cut confirmed at its start; every entry's acceptance includes the
 Definition of Done (`docs/05-testing.md`).
 
-**E09 T31 — the garrison moves below level 3** (decision 101, `TWN-Q15` (4); the server lane's
-note of 2026-11-14, `QUEUE-ARCHIVE.md`): `GarrisonEntered { hero, town, pos }` and `GarrisonLeft`
-go to every viewer of the town's entrance (`h3-adventure`'s `town/rows.rs` emits them seen by the
-entrance's viewers, `observe.rs` passes them through), so a viewer that does not see the town's
-garrison hero (below TWN-VEW-001's level 3) learns by name that the hero went into, or came out
-of, that town's garrison. Such a viewer is told `GarrisonEntered` as `HeroRemoved` at the
-entrance and `GarrisonLeft` as a hero coming into sight there (SRV-Q26 (c)'s); the owner's team
-and a viewer at level 3 keep the named events. With: where the level-3 test is read (the town's
-view level is the game's: `h3-game`'s `town/view.rs`), TWN-ROW-002's to -004's summaries and the
-events' doc comments (`docs/06-security.md`'s town part already says so, its "Events" line:
-the code comes into line with it), the told-views and hygiene properties (`h3-map`), the fold
-gate (`h3-protocol`: the fold reads both, nothing moves there), a note to the server lane's inbox. `cross-lane` where it touches the adventure lane's paths
-(`observe.rs`, `h3-map`'s plans; the user's consent at its start). **At its start:** confirm the
-cut. **Status:** next.
-
-**E09 T32 — increment 4's survey** (decision 100): the code reading of `Heroes3.exe` (the
-tavern's two offers and their draw by the classes' tavern weights, the pool shared between the
-players, the week's refresh and a hired offer's replacement, the price and the most heroes, the
-hired hero's place, the heroes that lost, retreated or surrendered offered again and with what,
-the map's customized heroes in the pool and a hired type's banned skill, the Thieves' Guild's
-levels by taverns owned, the Den of Thieves), the wiki and VCMI 1.7.5 compared, a census of the
-160 shipped maps (their hero settings, the customized and unavailable heroes, the taverns), the
-disputes and quirk candidates, batch TWN-4's rows; the inbox's three Tavern notes. Docs only:
-`docs/rules/surveys/E09-tavern.md`, its checkpoint `TWN-Q16`. **Needs** the original data
-staged. **At its start:** confirm the cut. **Status:** queued.
-
 **E09 T33 — increment 4's drafts, Part F and the cut** (decision 100): the ADR amendment drafts
 with the survey's checkpoint answered, the design note's Part F from §59, the cut into building
-tasks and the exit criteria; the user's acceptance before anything is built. **Status:** queued.
+tasks and the exit criteria; the user's acceptance before anything is built. With the survey's checkpoint
+(`TWN-Q16`, decisions 103–107): the map's Tavern (class 95) in the cut, `cross-lane`; batch
+TWN-4's rows (survey §9) placed in the cut. **At its start:** confirm the cut. **Status:** next.
 
 ## Inbox
 
@@ -114,11 +90,14 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
 - (adventure archive, 2026-10-03, E04a T3a) Not harvested: the spells' town chances and the hero
   classes' tavern weights (RoE lacks the Conflux column: an override kind or a per-faction table).
   Increment 4, the Tavern (weights: only the tavern's draw reads them, survey `E09-towns.md`
-  §4.4), increment 5 (chances).
+  §4.4; read by T32: `E09-tavern.md` §2.2, the Complete's file has the nine columns), increment 5
+  (chances).
 - (adventure queue, 2026-10-20, T24a2b1) `Marshland Menace` gives 15 hero types a map-wide
-  experience of 2 000 that only its taverns reach. Increment 4, the Tavern.
+  experience of 2 000 that only its taverns reach. Increment 4, the Tavern (read by T32:
+  `E09-tavern.md` §5, the customised types applied before the first draw).
 - (`ADV-STUB-9`, E10's) A Tavern town to hire a retreated hero again: a fact of the battle's
-  retreat setup. Increment 4, the Tavern, with E10.
+  retreat setup. Increment 4, the Tavern, with E10 (read by T32: `E09-tavern.md` §4, the owner's
+  tavern at once).
 - (ADR-0013 point 13.6; E08 decision 199, A-30) The Castle's Lighthouse building (sea movement).
   Increment 5.
 - (adventure archive, 2026-10-14, T19a2b) The Necropolis buildings' +10/+20 % Necromancy

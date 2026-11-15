@@ -425,12 +425,24 @@ fn adventure(kind: AdventureEventKind) -> AdventureEvent {
             hero: hero.raw(),
             pos: pos(p),
         },
-        K::GarrisonEntered { hero, town, pos: p } => AdventureEvent::GarrisonEntered {
+        // A viewer below TWN-VEW-003's level 3 is told the move otherwise (E09 T31,
+        // `h3_adventure::AdventureEvent::project`): `named` is the viewer alone.
+        K::GarrisonEntered {
+            hero,
+            town,
+            pos: p,
+            named: _,
+        } => AdventureEvent::GarrisonEntered {
             hero: hero.raw(),
             town: town.raw(),
             pos: pos(p),
         },
-        K::GarrisonLeft { hero, town, pos: p } => AdventureEvent::GarrisonLeft {
+        K::GarrisonLeft {
+            hero,
+            town,
+            pos: p,
+            named: _,
+        } => AdventureEvent::GarrisonLeft {
             hero: hero.raw(),
             town: town.raw(),
             pos: pos(p),

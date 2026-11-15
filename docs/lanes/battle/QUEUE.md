@@ -20,7 +20,27 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-15 (the town lane, E09 T32, `town/e09-t32`; **a lead for E11 T1's
+  catalogue**): `tavern_hero_draw` 0x4BB5E0 keeps the Conflux classes (16, 17) out of a
+  non-Conflux player's tavern offers while other heroes are free, but only when `map_kind`
+  (+0x1F698) is at least 2 **and the edition number is 2** (`edition` 0x67F554); this build's is 3
+  and never written, so the rule never runs here. A rule of the build whose edition is 2 (likely the
+  SoD retail edition, `e11-sod32-findings.md`'s media; not checked), for E11's list beside RoE's tavern differences (the wiki: the
+  map's Taverns had other heroes, every hire a full army). Survey `docs/rules/surveys/E09-tavern.md`
+  §2.2.
+
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
+
+- 2026-11-15 (the adventure lane, E08 T119, `adventure/e08-t119`, `cross-lane` with the user's
+  consent, E08 decision 346; **your paths changed, for your review; no version moved, no engine
+  code**): `h3-experiment`'s `HeroSpec` gained `slots` (the army's slots, one per `army` stack,
+  each below 7 and distinct; none: 0 onwards; the template names them), refused with `defaults`;
+  `[[map.object]]` takes the creature banks by picture through `Tables::plains` (the writer's
+  `PLAIN_OBJECTS` now holds `BANK_OBJECTS`: 16, 24, 25, 84, 85; class 16 past subclass 6
+  refused), the doc of `ObjectSpec::picture` and of `Tables::plains` lists them; two tests
+  (`builds_increment_13_s_objects`, `rejects_mistakes_in_increment_13_s_objects`) and the tables'
+  test's five lines; `docs/experiments/README.md`'s paragraph "Increment 13's objects", the
+  `slots` field and the batch table's row E08 13.
 
 - 2026-11-15 (the adventure lane, E08 T118b2, `adventure/e08-t118b2`; **the bank battle's design,
   accepted by the user; for your review before E08 T124a builds it in your crate, `cross-lane`**;

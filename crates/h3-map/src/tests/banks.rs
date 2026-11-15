@@ -1,0 +1,277 @@
+//! The experiment writer's creature banks (E08 T119: batch E13's maps; increment 13's design note
+//! §3, §19, survey `docs/rules/surveys/E08-banks.md` §1): the five classes without a body, class
+//! 16 by subclass 0 to 6, the Crypt's three pictures and the Shipwreck's two, read back as written
+//! in SoD and RoE, their templates' masks as the game's; a subclass of 16 past 6 refused; and the
+//! import as it reads them until T123b types them: each a blocker without a type (its blocked mask
+//! and its one entrance), the setup valid.
+
+use super::import::{ROE, SOD};
+use super::limits;
+use crate::model::{Body, RawMap};
+use crate::writer as w;
+use crate::{import, read};
+use h3_adventure::Holds;
+
+/// The game's `Objects.txt` lines of the land banks (`H3bitmap.lod`'s, RoE's as SoD's): class 16
+/// by subclass, the Cyclops Stockpile (0), the Dwarven Treasury (1), the Griffin Conservatory (2),
+/// the Imp Cache (3), the Medusa Stores (4), the Naga Bank (5) and the Dragon Fly Hive (6); the
+/// Crypt (84) by its second terrain mask, sand, dirt, grass and swamp, and snow (the first
+/// allows every terrain); Dragon Utopia (25).
+pub(super) const LAND_BANKS: [&str; 11] = [
+    "AVXbnk10.def 001111111111111111111111111111111111111111111111 \
+     010000000000000000000000000000000000000000000000 111111111 011111111 16 0 0 0",
+    "AVXbnk20.def 000111111111111111111111111111111111111111111111 \
+     010000000000000000000000000000000000000000000000 111111111 011111111 16 1 0 0",
+    "AVXbnk30.def 001111111111111111111111111111111111111111111111 \
+     100000000000000000000000000000000000000000000000 111111111 011111111 16 2 0 0",
+    "AVXbnk40.def 001111111111111111111111111111111111111111111111 \
+     100000000000000000000000000000000000000000000000 111111111 011111111 16 3 0 0",
+    "AVXbnk50.def 001111111111111111111111111111111111111111111111 \
+     010000000000000000000000000000000000000000000000 111111111 010111111 16 4 0 0",
+    "AVXbnk60.def 001111111111111111111111111111111111111111111111 \
+     010000000000000000000000000000000000000000000000 111111111 011111111 16 5 0 0",
+    "AVXbnk70.def 101111111111111111111111111111111111111111111111 \
+     010000000000000000000000000000000000000000000000 111111111 011111111 16 6 0 0",
+    "AVXgyds0.def 000111111111111111111111111111111111111111111111 \
+     010000000000000000000000000000000000000000000000 111111111 000000010 84 0 0 0",
+    "AVXgyne0.def 000111111111111111111111111111111111111111111111 \
+     010000000000000000000000000000000000000000000000 111111111 000010101 84 0 0 0",
+    "AVXgysn0.def 000111111111111111111111111111111111111111111111 \
+     010000000000000000000000000000000000000000000000 111111111 000001000 84 0 0 0",
+    "AVSutop0.def 100011111000001100001111111111111111111111111111 \
+     010000000000000000000000000000000000000000000000 111111111 011111111 25 0 0 0",
+];
+
+/// The game's `Objects.txt` lines of the sea banks: the Derelict Ship (24) and the Shipwreck's
+/// two pictures (85), entered at the anchor's west neighbour and at the anchor.
+pub(super) const WATER_BANKS: [&str; 3] = [
+    "AVAdlic0.def 001111111111111111111111111111111111111111111111 \
+     010000000000000000000000000000000000000000000000 100000000 100000000 24 0 0 0",
+    "AVAwrek0.def 001111111111111111111111111111111111111111111111 \
+     010000000000000000000000000000000000000000000000 100000000 100000000 85 0 0 0",
+    "AVAwre20.def 001111111111111111111111111111111111111111111111 \
+     100000000000000000000000000000000000000000000000 100000000 100000000 85 0 0 0",
+];
+
+fn template(line: &str) -> w::ObjectTemplate {
+    w::ObjectTemplate::from_objects_txt(line).unwrap()
+}
+
+fn plain(tile: (u8, u8), line: &str) -> w::MapObject {
+    w::MapObject::Plain(w::Plain {
+        tile,
+        template: template(line),
+    })
+}
+
+/// The land banks' tiles: three a row from (6, 4), six columns and four rows apart.
+fn land_tile(i: u8) -> (u8, u8) {
+    (6 + 6 * (i % 3), 4 + 4 * (i / 3))
+}
+
+/// The sea banks' tiles.
+const WATER_TILES: [(u8, u8); 3] = [(28, 6), (28, 12), (28, 18)];
+
+/// A 36 × 36 grass map, columns 24 to 35 water, Red and Blue playing: Red's hero at (2, 30), the
+/// land banks, then the sea banks.
+fn banks_map() -> w::Map {
+    let mut players: [Option<w::Player>; w::PLAYERS] = Default::default();
+    for player in &mut players[..2] {
+        *player = Some(w::Player {
+            human: true,
+            computer: true,
+            towns: 1,
+        });
+    }
+    let mut objects = vec![super::economy::hero((2, 30), 0, 0)];
+    objects.extend(
+        LAND_BANKS
+            .iter()
+            .zip(0u8..)
+            .map(|(line, i)| plain(land_tile(i), line)),
+    );
+    objects.extend(
+        WATER_BANKS
+            .iter()
+            .zip(WATER_TILES)
+            .map(|(line, tile)| plain(tile, line)),
+    );
+    w::Map {
+        name: "Creature banks".into(),
+        description: "E08 T119".into(),
+        size: 36,
+        terrain: w::Terrain::Grass,
+        patches: vec![w::Patch {
+            terrain: w::Terrain::Water,
+            from: (24, 0),
+            to: (35, 35),
+        }],
+        roads: vec![],
+        players,
+        objects,
+        underground: None,
+        level_limit: 0,
+        banned_skills: Vec::new(),
+        events: Vec::new(),
+        teams: None,
+    }
+}
+
+fn read_back(bytes: &[u8]) -> RawMap {
+    read(&w::gzip(bytes), &limits()).unwrap()
+}
+
+/// Each object's class, subclass and tile after the hero.
+fn placed(m: &RawMap) -> Vec<(u32, u32, (u8, u8))> {
+    m.objects[1..]
+        .iter()
+        .map(|o| {
+            let t = &m.templates[usize::try_from(o.template).unwrap()];
+            (t.class, t.subclass, (o.pos.x, o.pos.y))
+        })
+        .collect()
+}
+
+fn expected() -> Vec<(u32, u32, (u8, u8))> {
+    let land = [
+        (16, 0),
+        (16, 1),
+        (16, 2),
+        (16, 3),
+        (16, 4),
+        (16, 5),
+        (16, 6),
+        (84, 0),
+        (84, 0),
+        (84, 0),
+        (25, 0),
+    ];
+    let mut expected: Vec<_> = land
+        .iter()
+        .zip(0u8..)
+        .map(|(&(class, subclass), i)| (class, subclass, land_tile(i)))
+        .collect();
+    expected.extend(
+        [(24, 0), (85, 0), (85, 0)]
+            .iter()
+            .zip(WATER_TILES)
+            .map(|(&(class, subclass), tile)| (class, subclass, tile)),
+    );
+    expected
+}
+
+#[test]
+fn the_banks_read_back_as_written() {
+    let map = banks_map();
+    for format in [w::Format::Sod, w::Format::RoE] {
+        let m = read_back(&w::write_in(&map, format).unwrap());
+        assert_eq!(placed(&m), expected(), "{format:?}");
+        // No body: the game's maps hold none for the five classes (survey §1).
+        assert!(m.objects[1..].iter().all(|o| o.body == Body::None));
+    }
+    assert!(w::BANK_OBJECTS.iter().all(|c| w::PLAIN_OBJECTS.contains(c)));
+    let m = read_back(&w::write(&map).unwrap());
+    let template_of = |i: usize| &m.templates[usize::try_from(m.objects[1 + i].template).unwrap()];
+    // The templates as the game's (survey §1): one visitable tile on the bottom row, at the
+    // anchor or the tile west of it, which the template also blocks; the first terrain mask every
+    // terrain for the land banks, water for the ships; the second (the editor's menu, VCMI's
+    // allowed terrains) every land terrain but the Medusa Stores' subterranean, each Crypt's its
+    // group.
+    let entrance = |i: usize| {
+        let t = template_of(i);
+        let row = t.visitable[5];
+        assert_eq!(row.count_ones(), 1, "bank {i}");
+        assert!(t.visitable[..5].iter().all(|&b| b == 0), "bank {i}");
+        assert_eq!(t.passable[5] & row, 0, "bank {i} blocks its entrance");
+        row
+    };
+    let at_anchor = 0x80;
+    let west = 0x40;
+    let entrances: Vec<u8> = (0..LAND_BANKS.len() + WATER_BANKS.len())
+        .map(entrance)
+        .collect();
+    assert_eq!(
+        entrances,
+        [
+            west, west, at_anchor, at_anchor, west, west, west, west, west, west, west, west, west,
+            at_anchor
+        ]
+    );
+    let land = LAND_BANKS.len();
+    assert!((0..land).all(|i| template_of(i).terrains == 0x1ff));
+    assert!((land..entrances.len()).all(|i| template_of(i).terrains == 0x100));
+    let menus: Vec<u16> = (0..land).map(|i| template_of(i).editor_terrains).collect();
+    assert_eq!(
+        menus,
+        [
+            0xff, 0xff, 0xff, 0xff, 0xbf, 0xff, 0xff, 0x002, 0x015, 0x008, 0xff
+        ]
+    );
+    // The Dragon Fly Hive leaves its anchor passable; Dragon Utopia blocks three tiles of the
+    // bottom row west of its anchor, five of the row above and four of the third.
+    assert_eq!(template_of(6).passable[5], 0xbf);
+    let utopia = template_of(10);
+    assert_eq!(
+        [utopia.passable[3], utopia.passable[4], utopia.passable[5]],
+        [0x0f, 0x83, 0x8f]
+    );
+}
+
+#[test]
+fn the_writer_refuses_a_bank_subclass_past_6() {
+    // The game indexes the kinds' table by class 16's subclass without a test (survey §3).
+    let mut map = banks_map();
+    let w::MapObject::Plain(plain) = &mut map.objects[7] else {
+        unreachable!()
+    };
+    assert_eq!(plain.template.subclass, 6);
+    plain.template.subclass = 7;
+    assert_eq!(
+        w::write(&map),
+        Err(w::WriteError::OutOfRange {
+            what: "creature bank subclass",
+            value: 7
+        })
+    );
+    // The other classes' subclasses are their templates' (subclass 0 in the game's).
+    let w::MapObject::Plain(plain) = &mut map.objects[7] else {
+        unreachable!()
+    };
+    plain.template.subclass = 6;
+    let w::MapObject::Plain(crypt) = &mut map.objects[9] else {
+        unreachable!()
+    };
+    crypt.template.subclass = 7;
+    assert!(w::write(&map).is_ok());
+}
+
+// covers: ADV-OBJ-001
+#[test]
+fn the_import_reads_the_banks_as_blockers_until_t123b() {
+    // Until T123b types them (increment 13's design note §3), the five classes import as the
+    // shipped maps' banks do: without a type or a body, their template's blocked tiles and the
+    // one entrance as the footprint; the setup validates under SoD's and RoE's rules.
+    let map = banks_map();
+    for (format, rules) in [(w::Format::Sod, &*SOD), (w::Format::RoE, &*ROE)] {
+        let raw = read_back(&w::write_in(&map, format).unwrap());
+        let setup = import(&raw, rules).unwrap();
+        setup.validate(rules).unwrap();
+        assert_eq!(
+            setup.map.objects.len(),
+            LAND_BANKS.len() + WATER_BANKS.len()
+        );
+        for (object, (_, _, (x, y))) in setup.map.objects.iter().zip(expected()) {
+            assert_eq!(object.object_type, None);
+            assert_eq!(object.holds, Holds::Nothing);
+            assert_eq!(object.owner, None);
+            assert_eq!(
+                (object.anchor.x, object.anchor.y),
+                (u16::from(x), u16::from(y))
+            );
+            let entrance: Vec<_> = object.visitable.offsets().collect();
+            assert_eq!(entrance.len(), 1);
+            let (column, row) = entrance[0];
+            assert!(object.blocked.contains(column, row));
+        }
+    }
+}

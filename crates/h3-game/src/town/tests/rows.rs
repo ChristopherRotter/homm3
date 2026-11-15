@@ -133,6 +133,7 @@ fn a_hero_move_is_the_town_s_owner_s_and_tells_what_it_changes() {
             hero,
             town: T0,
             pos: Pos::new(1, 1, 0),
+            named: h3_adventure::Viewers::NONE.with(RED),
         },
         seen_by: h3_adventure::Viewers::NONE.with(RED).with(BLUE),
     });

@@ -172,11 +172,13 @@ fn adventure_back(e: w::AdventureEvent, alone: Viewers) -> K {
             hero: id(hero),
             town: TownId::new(town),
             pos: pos_back(pos),
+            named: alone,
         },
         A::GarrisonLeft { hero, town, pos } => K::GarrisonLeft {
             hero: id(hero),
             town: TownId::new(town),
             pos: pos_back(pos),
+            named: alone,
         },
         A::CreaturesJoined {
             hero,
@@ -1265,16 +1267,31 @@ pub(super) fn every_event() -> Vec<GameEvent> {
         },
         K::KeyGained { key: 4 },
         K::HeroRemoved { hero, pos: at },
-        // E09 T28a (v64).
+        // E09 T28a (v64). E09 T31: named to both, then to player 0 alone (player 1 is told a
+        // hero leaving the map and one coming into sight).
         K::GarrisonEntered {
             hero,
             town: TownId::new(2),
             pos: at,
+            named: seen_by,
         },
         K::GarrisonLeft {
             hero,
             town: TownId::new(2),
             pos: at,
+            named: seen_by,
+        },
+        K::GarrisonEntered {
+            hero,
+            town: TownId::new(2),
+            pos: at,
+            named: Viewers::NONE.with(P0),
+        },
+        K::GarrisonLeft {
+            hero,
+            town: TownId::new(2),
+            pos: at,
+            named: Viewers::NONE.with(P0),
         },
         K::CreaturesJoined {
             hero,
