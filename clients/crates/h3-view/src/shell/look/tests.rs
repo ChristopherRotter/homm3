@@ -1,4 +1,4 @@
-//! The shell's looks' tests (E27 M2 T4, T6a): the layout file and the main menu.
+//! The shell's looks' tests (E27 M2 T4, T6a, T6b1): the layout file and the menus.
 
 use alloc::string::String;
 
@@ -6,7 +6,7 @@ use h3_render::Bugs;
 use h3_ui::ui::Draw;
 
 use super::{look, names, parse_layout};
-use crate::shell::menu::tests::main_menu;
+use crate::shell::menu::tests::{game_type, main_menu};
 use crate::shell::{Game, Screen};
 
 const LAYOUT: &str = include_str!("../../../../../layouts/shell.toml");
@@ -30,6 +30,7 @@ fn the_main_menu_is_its_background_and_five_buttons_in_their_first_frame() {
         mirrored: false,
         player: None,
     };
+    assert_eq!((shown.stale.len(), shown.over.len()), (0, 0));
     assert_eq!(
         shown.draws,
         [
@@ -44,11 +45,49 @@ fn the_main_menu_is_its_background_and_five_buttons_in_their_first_frame() {
     let _ = menu.right([643, 70]);
     let popup = look(&layout, Screen::MainMenu, Some(&menu)).unwrap();
     assert!(!popup.cursor);
-    assert!(popup.draws.len() > shown.draws.len());
-    // The screens not built yet show nothing, nor the main menu without its state.
+    assert!(!popup.over.is_empty());
+    assert_eq!(popup.draws.len(), shown.draws.len());
+    // The screens not built yet show nothing, nor a menu without its state or with another's.
     assert_eq!(look(&layout, Screen::Start, Some(&menu)), None);
     assert_eq!(look(&layout, Screen::GameType(Game::New), None), None);
+    assert_eq!(
+        look(&layout, Screen::GameType(Game::New), Some(&menu)),
+        None
+    );
     assert_eq!(look(&layout, Screen::MainMenu, None), None);
+}
+
+#[test]
+fn a_game_type_menu_is_its_background_its_title_and_its_buttons() {
+    // E27 M2 T6b1: Load Game's title Load Game's; Single's top rows stale once hovered in the
+    // original's profile (CLT-Q118).
+    let layout = parse_layout(LAYOUT).unwrap();
+    let mut menu = game_type(Game::Load, Bugs::Original);
+    let shown = look(&layout, Screen::GameType(Game::Load), Some(&menu)).unwrap();
+    assert_eq!(shown.background, "GamSelBk.pcx");
+    assert_eq!(
+        shown.draws[0],
+        Draw::Picture {
+            picture: "loadgame.pcx".into(),
+            x: 114,
+            y: 312,
+            player: None,
+            size: Some([300, 48]),
+        }
+    );
+    assert_eq!(shown.draws.len(), 6);
+    assert_eq!(
+        look(&layout, Screen::GameType(Game::New), Some(&menu)),
+        None
+    );
+    let _ = menu.moved([649, 65]);
+    let hovered = look(&layout, Screen::GameType(Game::Load), Some(&menu)).unwrap();
+    assert_eq!(hovered.stale.len(), 1);
+    // The main menu's layout has no titles: its dialog is its own for either game.
+    assert_eq!(
+        layout.main_menu.dialog_for(Game::Load),
+        layout.main_menu.dialog
+    );
 }
 
 #[test]
@@ -65,6 +104,13 @@ fn the_shell_s_assets_are_named_once() {
             "mmenuhs.def",
             "mmenucr.def",
             "mmenuqt.def",
+            "newgame.pcx",
+            "gtsingl.def",
+            "gtcampn.def",
+            "gttutor.def",
+            "gtmulti.def",
+            "gtback.def",
+            "loadgame.pcx",
             "diboxbck.pcx",
             "dialgbox.def",
             "Box64x30.pcx",
@@ -79,7 +125,7 @@ fn the_shell_s_assets_are_named_once() {
     // A name given twice in another case is kept once.
     let mut twice = layout;
     twice.cursor.def = String::from("MMENUNG.DEF");
-    assert_eq!(names(&twice).len(), 15);
+    assert_eq!(names(&twice).len(), 22);
 }
 
 #[test]

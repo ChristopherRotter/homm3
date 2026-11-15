@@ -1,5 +1,5 @@
-//! The replay's tests (E27 M2 T4, T6a): the harness's step words, its clock, the stops and the
-//! main menu's inputs.
+//! The replay's tests (E27 M2 T4, T6a, T6b1): the harness's step words, its clock, the stops and
+//! the menus' inputs.
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -11,9 +11,10 @@ use super::{
     ClipEnd, INPUT_STEP, Input, Replay, Step, Stop, Take, UNTIL_LIMIT, UNTIL_STEP, parse, shown,
     skips,
 };
-use crate::shell::menu::tests::main_menu;
+use crate::shell::menu::Kind as MenuKind;
+use crate::shell::menu::tests::menus;
 use crate::shell::start::{Header, Op, Pace, Part, Start};
-use crate::shell::{Ended, Game, Kind, Request, Screen, Shell};
+use crate::shell::{Choice, Ended, Game, Kind, Request, Screen, Shell};
 
 fn names(list: &[&str]) -> Vec<String> {
     list.iter().map(|s| (*s).to_string()).collect()
@@ -193,7 +194,7 @@ fn replay(intro: bool, steps: &[&str]) -> (Vec<String>, Option<Stop>, Replay) {
             [400, 300],
             INPUT_STEP,
             None,
-            &main_menu(Bugs::Original),
+            &menus(Bugs::Original),
         ),
         steps,
     )
@@ -322,13 +323,14 @@ fn what_the_viewer_cannot_do_stops_the_replay() {
     }
     // `until` checks, then steps: 20 ms waited three times.
     assert_eq!(replay(false, &["until:new_game_menu:20"]).2.time(), 30);
-    // A screen not built yet (New Game's menu until T6b): nothing drawn or waited for on it;
-    // the pointer moves over it.
+    // A screen not built yet (the multiplayer dialog until T7): nothing drawn or waited for on
+    // it; the pointer moves over it.
     let mut shell = Shell::new(false);
     shell.end(Ended::MainMenu(Request::NewGame)).unwrap();
-    let not_built = Some(Stop::NotBuilt(Screen::GameType(Game::New)));
+    shell.end(Ended::GameType(Choice::Multiplayer)).unwrap();
+    let not_built = Some(Stop::NotBuilt(Screen::Multiplayer(Game::New)));
     for steps in [
-        &["until:new_game_menu"][..],
+        &["until:multiplayer"][..],
         &["shot:menu"],
         &["clip:c:10:1"],
         &["key:space"],
@@ -339,7 +341,7 @@ fn what_the_viewer_cannot_do_stops_the_replay() {
             [0, 0],
             INPUT_STEP,
             None,
-            &main_menu(Bugs::Original),
+            &menus(Bugs::Original),
         );
         let (seen, got, _) = replay_from(r, steps);
         assert!(seen.is_empty(), "{steps:?}");
@@ -367,7 +369,7 @@ fn the_start_plays_on_the_replay_s_clock_and_ends_at_the_main_menu() {
         [400, 300],
         INPUT_STEP,
         Some(start(3)),
-        &main_menu(Bugs::Original),
+        &menus(Bugs::Original),
     );
     assert_eq!(r.ops(), [Op::Black]);
     assert!(r.start().is_some());
@@ -391,7 +393,7 @@ fn the_start_plays_on_the_replay_s_clock_and_ends_at_the_main_menu() {
         [400, 300],
         INPUT_STEP,
         None,
-        &main_menu(Bugs::Original),
+        &menus(Bugs::Original),
     );
     assert_eq!((r.screen(), r.ops()), (Screen::MainMenu, &[][..]));
 }
@@ -405,7 +407,7 @@ fn a_press_or_a_key_skips_the_start_and_a_move_does_not() {
         [400, 300],
         INPUT_STEP,
         Some(start(100)),
-        &main_menu(Bugs::Original),
+        &menus(Bugs::Original),
     );
     let (seen, stop, r) = replay_from(
         r,
@@ -441,7 +443,7 @@ fn a_press_or_a_key_skips_the_start_and_a_move_does_not() {
         [400, 300],
         INPUT_STEP,
         Some((sounding, ops)),
-        &main_menu(Bugs::Original),
+        &menus(Bugs::Original),
     );
     let (_, stop, r) = replay_from(r, &["step:2000:10", "key:space", "until:main_menu"]);
     assert_eq!(stop, None);
@@ -477,7 +479,7 @@ fn a_press_or_a_key_skips_the_start_and_a_move_does_not() {
             [400, 300],
             INPUT_STEP,
             Some(start(100)),
-            &main_menu(Bugs::Original),
+            &menus(Bugs::Original),
         );
         let (_, stop, r) = replay_from(r, &["step:500:10", input, "step:300:10"]);
         assert_eq!(stop, None);
@@ -507,7 +509,7 @@ fn the_caller_s_failure_ends_the_replay() {
             [0, 0],
             INPUT_STEP,
             None,
-            &main_menu(Bugs::Original),
+            &menus(Bugs::Original),
         );
         let mut count = 0;
         let mut take = |_: &Replay, _: Take<'_>| {
@@ -565,7 +567,10 @@ fn the_main_menu_takes_the_harness_s_inputs() {
     ] {
         let (_, _, r) = replay(false, steps);
         assert_eq!(r.screen(), Screen::GameType(Game::New), "{steps:?}");
-        assert_eq!(r.menu(), None);
+        assert_eq!(
+            r.menu().map(super::Menu::kind),
+            Some(MenuKind::GameType(Game::New))
+        );
     }
     // The question's OK ends the shell.
     let (_, _, r) = replay(false, &["key:Escape", "key:Return"]);
@@ -580,7 +585,7 @@ fn with_the_effects_on_each_press_s_sample_is_listed() {
         [400, 300],
         INPUT_STEP,
         None,
-        &main_menu(Bugs::Original),
+        &menus(Bugs::Original),
     )
     .with_sound(151);
     let (_, _, r) = replay_from(r, &["until:main_menu", "click:643,70"]);
@@ -590,7 +595,58 @@ fn with_the_effects_on_each_press_s_sample_is_listed() {
         .map(|p| (p.time, p.channel, p.length))
         .collect();
     assert_eq!(played, [(0, 0, 151)]);
+    // Then Back's press 100 ms later, the first still playing: the next channel (`sound2`).
+    let (_, _, r) = replay_from(
+        r,
+        &["check:new_game_menu", "click:645,517", "check:main_menu"],
+    );
+    let played: Vec<(u32, usize)> = r.samples().iter().map(|p| (p.time, p.channel)).collect();
+    assert_eq!(played, [(0, 0), (100, 1)]);
     // Without the effects none is listed.
     let (_, _, r) = replay(false, &["click:643,70"]);
     assert!(r.samples().is_empty());
+}
+
+#[test]
+fn the_game_type_menus_take_the_harness_s_inputs() {
+    // `menu-new`: New Game's menu opens with none hovered, the pointer where the click left it.
+    let (seen, stop, r) = replay(
+        false,
+        &[
+            "until:main_menu",
+            "click:643,70",
+            "check:new_game_menu",
+            "shot:menu",
+            "move:649,65",
+            "down:649,65",
+            "move:300,560",
+            "up",
+            "right:649,180",
+            "shot:popup",
+            "right-up",
+        ],
+    );
+    assert_eq!(stop, None);
+    assert_eq!(seen[0], "Shot(\"menu\") t100 [643, 70]");
+    let menu = r.menu().unwrap();
+    assert_eq!(menu.kind(), MenuKind::GameType(Game::New));
+    assert_eq!(menu.hovered(), Some(102));
+    // Back's click and Load Game's Escape: the main menu again, opened anew.
+    for steps in [
+        &["click:643,70", "click:645,517"][..],
+        &["click:645,192", "check:load_game_menu", "key:Escape"],
+    ] {
+        let (_, stop, r) = replay(false, steps);
+        assert_eq!((stop, r.screen()), (None, Screen::MainMenu), "{steps:?}");
+        assert_eq!(r.menu().unwrap().hovered(), None);
+    }
+    // Single: the scenario screen, no menu on it (M3's).
+    let (_, _, r) = replay(false, &["key:n", "key:s"]);
+    assert_eq!(r.screen(), Screen::Scenario(Game::New, Kind::Single));
+    assert_eq!(r.menu(), None);
+    let (_, _, r) = replay(false, &["key:l", "key:m"]);
+    assert_eq!(r.screen(), Screen::Multiplayer(Game::Load));
+    // A key no command takes in the menu changes nothing.
+    let (_, _, r) = replay(false, &["key:n", "key:n"]);
+    assert_eq!(r.screen(), Screen::GameType(Game::New));
 }

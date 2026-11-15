@@ -2280,3 +2280,26 @@ original = [{ at = "HELP:6:1" }]
 [[key]]
 id = "shell.main-menu.help.quit"
 original = [{ at = "HELP:7:1" }]
+
+# New Game's and Load Game's menus' buttons' right-click help (E27 M2 T6b1: game_type_menu_help
+# 0x6A6BF8, Help.txt's records 10 to 14 by the button's id - 100: Single, Campaign, Multiplayer,
+# Tutorial, Back; Load Game's the same records).
+[[key]]
+id = "shell.game-type.help.single"
+original = [{ at = "HELP:10:1" }]
+
+[[key]]
+id = "shell.game-type.help.campaign"
+original = [{ at = "HELP:11:1" }]
+
+[[key]]
+id = "shell.game-type.help.multiplayer"
+original = [{ at = "HELP:12:1" }]
+
+[[key]]
+id = "shell.game-type.help.tutorial"
+original = [{ at = "HELP:13:1" }]
+
+[[key]]
+id = "shell.game-type.help.back"
+original = [{ at = "HELP:14:1" }]

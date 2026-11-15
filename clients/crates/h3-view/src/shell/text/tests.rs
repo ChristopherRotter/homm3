@@ -16,7 +16,7 @@ fn a_screen_is_described_by_its_name_its_task_and_its_words() {
     );
     assert_eq!(
         describe(Screen::GameType(Game::Load)),
-        "load-game-menu [E27 M2 T6b]: single multiplayer campaign tutorial back"
+        "load-game-menu [E27 M2 T6b1]: single multiplayer campaign tutorial back"
     );
     assert_eq!(
         describe(Screen::Multiplayer(Game::New)),

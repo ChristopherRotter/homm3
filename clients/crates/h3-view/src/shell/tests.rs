@@ -45,6 +45,14 @@ const REQUESTS: [Request; 7] = [
     Request::MainMenu,
 ];
 
+const CHOICES: [Choice; 5] = [
+    Choice::Single,
+    Choice::Campaign,
+    Choice::Multiplayer,
+    Choice::Tutorial,
+    Choice::Back,
+];
+
 /// Every ending.
 fn endings() -> Vec<Ended> {
     let mut all = Vec::from([
@@ -64,16 +72,7 @@ fn endings() -> Vec<Ended> {
             Ended::Play(PlayEnd::Request(request)),
         ]);
     }
-    all.extend(
-        [
-            Choice::Single,
-            Choice::Campaign,
-            Choice::Multiplayer,
-            Choice::Tutorial,
-            Choice::Back,
-        ]
-        .map(Ended::GameType),
-    );
+    all.extend(CHOICES.map(Ended::GameType));
     all
 }
 
@@ -241,7 +240,7 @@ fn each_screen_names_the_task_that_builds_it() {
     }
     assert_eq!(Screen::Start.task(), "E27 M2 T5");
     assert_eq!(Screen::MainMenu.task(), "E27 M2 T6a");
-    assert_eq!(Screen::GameType(Game::New).task(), "E27 M2 T6b");
+    assert_eq!(Screen::GameType(Game::New).task(), "E27 M2 T6b1");
     assert_eq!(Screen::Multiplayer(Game::Load).task(), "E27 M2 T7");
     assert_eq!(Screen::Scenario(Game::New, Kind::Single).task(), "E27 M3");
     assert_eq!(Screen::Play { restart: true }.task(), "E24 M5");
@@ -249,7 +248,7 @@ fn each_screen_names_the_task_that_builds_it() {
 }
 
 #[test]
-fn the_start_and_the_main_menu_are_built() {
+fn the_start_the_main_menu_and_the_game_type_menus_are_built() {
     let built: Vec<(Screen, Built)> = screens()
         .into_iter()
         .map(|s| (s, s.built()))
@@ -259,7 +258,9 @@ fn the_start_and_the_main_menu_are_built() {
         built,
         [
             (Screen::Start, Built::Whole),
-            (Screen::MainMenu, Built::Whole)
+            (Screen::MainMenu, Built::Whole),
+            (Screen::GameType(Game::New), Built::Whole),
+            (Screen::GameType(Game::Load), Built::Whole)
         ]
     );
 }
@@ -276,4 +277,10 @@ fn the_ids_are_the_originals() {
     assert_eq!(ids, [101, 102, 103, 104, 105, 107, 108]);
     assert_eq!(Choice::Single as u16, 100);
     assert_eq!(Choice::Back as u16, 104);
+    // A game type menu's button names its command by its id (E27 M2 T6b1).
+    for choice in CHOICES {
+        assert_eq!(Choice::of(choice as u16), Some(choice));
+    }
+    assert_eq!(Choice::of(99), None);
+    assert_eq!(Choice::of(105), None);
 }

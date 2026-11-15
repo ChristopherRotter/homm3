@@ -745,3 +745,38 @@ screen, by pictures and sound, or whole; the user took the cut by screen (decisi
   Enter ending it). Tests: `h3-view` 660, `h3-ui` 100, `h3-battle-client` 184 with the data staged; coverage 100 %.
 - **Asked and answered:** CLT-Q126 (fixed: the five drawn in their order; decision 36).
 - **The agent's calls** (*provisional*, M2's review list items 38 to 44).
+
+## M2 T6b1 — New Game's and Load Game's menus taking their inputs: one menu for both kinds, the stale rows (2026-11-15)
+
+On `client/e27-m2-t6b1`, the user present at the start; `master` at `f8ad850` (#958 merged; CI's
+`Clients` and engine runs green). The original data staged at once (64 files, checked by SHA-256
+against the user's computer: one digest of the sorted lists). The setup's baseline failed in its
+coverage step on "H3sprite.lod: not found" (the clone had only the engine's files: the lane's
+step 3, `cp -rn`, comes after the setup) and the VM restarted later; CI's green run stood in.
+**The cut:** T6b offered whole or cut at the stubs; the user took the cut (decision 37).
+
+- **Read** (design §14): `game_type_menu_proc` 0x4D5940 whole again (no 0x602C50 call; the hover
+  by `dialog_item_id_at`, the title included; the redraw of 100 to 105 in the dialog's order and
+  its two rectangles; the right press's records 10 to 14; every command ending it),
+  `game_type_menu_create`'s item order (title, Single, Campaign, Tutorial, Multiplayer, Back) and
+  its title a 16-bit picture.
+- **Recorded** (`menu-new`, `menu-load`, `menu-sound` played again: every kept line as kept,
+  frames compared): the menu opening with none hovered under the pointer; Single's rows 4 to 6 and
+  Back's 567 to 569 keeping the frame the button's own loop last showed whole (66 and 105 pixels).
+- **Built, pure** (`h3-view`): `shell::menu::Menu` for both kinds (`MainMenu` gone: `Kind`,
+  `Menus`, `Did::ended` the shell's `Ended`, `Boxes::question` an option), the original's stale
+  rows as `Stale` layers (`Menu::stale`, `outside`), `dialog_draws` and `box_draws`; the keys'
+  `Command::Choice` in `Context::GameType` (S, M, C, T, Escape: `single` to `back`); `Choice::of`;
+  `look::MenuLayout` (`redrawn`, `titles`, `dialog_for`), `Look::stale` and `over`; the replay
+  opening whichever menu its screen is; the layout's `[game_type]` and the main menu's `redrawn`.
+- **Built, the adapters** (`h3-battle-client`'s `shell`): the three menus' boxes
+  (`shell.game-type.help.*` in `keys.toml`: `Help.txt` 10 to 14), the stale rows copied over the
+  frame, the window's events to whichever menu shows (opened at each screen change, the music asked
+  for at each).
+- **Found:** the window never got N or L (`h3_sdl::Key` lacked them: T6a's window check tried
+  Escape and Enter only); `Key::L` and `Key::N` added (the foundation, additive).
+- **The comparisons:** `menu-new` 27 of 27 exact, `menu-load` 27 of 27, `menu-sound` 5 of 5
+  (`sound2`: Back's press at 100 ms on channel 1), all at the first run; every other recipe as
+  recorded. Recorded in `shell/drawn.txt`. The window checked under Xvfb (New Game's menu by the
+  mouse, a help popup, Escape back, the hotkeys once focused by a click).
+- **No new question.** **The agent's calls** (*provisional*, M2's review list items 45 to 50).

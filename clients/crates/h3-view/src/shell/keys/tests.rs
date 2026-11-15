@@ -7,6 +7,7 @@ use h3_ui::keys::{Command as _, Keys};
 
 use super::{Command, Context};
 use crate::message;
+use crate::shell::Choice;
 
 #[test]
 fn the_main_menu_s_hotkeys_and_the_box_s_keys_are_the_original_s() {
@@ -33,6 +34,25 @@ fn the_main_menu_s_hotkeys_and_the_box_s_keys_are_the_original_s() {
 }
 
 #[test]
+fn the_game_type_menus_hotkeys_are_the_original_s() {
+    // E27 M2 T6b1: S, M, C, T and Escape; C and Escape are other buttons' over the main menu.
+    let keys = Keys::<Command>::original();
+    let on = |context, key| keys.command(context, false, key);
+    for (key, choice) in [
+        ("S", Choice::Single),
+        ("M", Choice::Multiplayer),
+        ("C", Choice::Campaign),
+        ("T", Choice::Tutorial),
+        ("Escape", Choice::Back),
+    ] {
+        assert_eq!(on(Context::GameType, key), Some(Command::Choice(choice)));
+    }
+    assert_eq!(on(Context::MainMenu, "C"), Some(Command::Button(104)));
+    assert_eq!(on(Context::GameType, "N"), None);
+    assert_eq!(on(Context::MainMenu, "S"), None);
+}
+
+#[test]
 fn the_commands_have_names_in_the_shell_s_table() {
     assert_eq!(Command::TABLE, "shell");
     let names: Vec<String> = Command::all().into_iter().map(Command::name).collect();
@@ -44,11 +64,20 @@ fn the_commands_have_names_in_the_shell_s_table() {
             "high-scores",
             "credits",
             "quit",
+            "single",
+            "multiplayer",
+            "campaign",
+            "tutorial",
+            "back",
             "box-ok",
             "box-cancel"
         ]
     );
     assert_eq!(Command::from_name("quit"), Some(Command::Button(105)));
+    assert_eq!(
+        Command::from_name("back"),
+        Some(Command::Choice(Choice::Back))
+    );
     // A button without a hotkey has no name.
     assert_eq!(Command::Button(1).name(), "");
     // A user's file rebinds them.

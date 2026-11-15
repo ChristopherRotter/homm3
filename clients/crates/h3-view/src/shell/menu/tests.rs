@@ -1,5 +1,6 @@
-//! The main menu's tests (E27 M2 T6a): its hover, presses, hotkeys, help popups and Quit's
-//! question, as `menu-main`, `menu-quit` and `menu-sound` recorded them.
+//! The menus' tests (E27 M2 T6a, T6b1): their hover, presses, hotkeys, help popups and the main
+//! menu's Quit's question, as `menu-main`, `menu-quit`, `menu-new`, `menu-load` and `menu-sound`
+//! recorded them.
 
 use alloc::collections::BTreeMap;
 use alloc::vec;
@@ -7,13 +8,16 @@ use alloc::vec::Vec;
 
 use h3_assets::fnt::{Font, Glyph};
 use h3_render::Bugs;
-use h3_ui::ui::Draw;
+use h3_ui::ui::{Dialog, Draw};
 
-use super::{BOX_PLAYER, BUTTONS, Boxes, Did, MainMenu, QUIT};
+use super::{
+    BOX_PLAYER, BUTTONS, Boxes, Did, GAME_TYPE_BUTTONS, Kind, Menu, Menus, QUIT, Stale, TITLE,
+    outside,
+};
 use crate::message::{self, Key, Style};
-use crate::shell::Request;
 use crate::shell::keys::{Command, Context};
-use crate::shell::look::parse_layout;
+use crate::shell::look::{ShellLayout, parse_layout};
+use crate::shell::{Choice, Ended, Game, Request, Screen};
 
 const LAYOUT: &str = include_str!("../../../../../layouts/shell.toml");
 
@@ -34,9 +38,9 @@ fn font(advance: i32, height: u8) -> Font {
     }
 }
 
-/// The main menu as the shell's layout has it, its boxes laid out in fonts of 8-wide glyphs.
-pub(crate) fn main_menu(bugs: Bugs) -> MainMenu {
-    let layout = parse_layout(LAYOUT).unwrap();
+/// A menu's boxes laid out in fonts of 8-wide glyphs: each of `buttons`' help, and Quit's
+/// question when `question`.
+fn boxes(layout: &ShellLayout, bugs: Bugs, buttons: [u16; 5], question: bool) -> Boxes {
     let (medium, small) = (font(8, 16), font(5, 10));
     let laid = |text: &str, style| {
         message::layout(
@@ -48,38 +52,89 @@ pub(crate) fn main_menu(bugs: Bugs) -> MainMenu {
             (BOX_PLAYER, bugs),
         )
     };
-    let help: BTreeMap<u16, _> = BUTTONS
+    let help: BTreeMap<u16, _> = buttons
         .iter()
         .map(|&id| (id, laid("{Help}\n\nThe help.", Style::Popup)))
         .collect();
-    let boxes = Boxes {
-        question: laid("Quit?", Style::OkCancel),
+    Boxes {
+        question: question.then(|| laid("Quit?", Style::OkCancel)),
         help,
-    };
-    MainMenu::new(layout.main_menu.dialog.clone(), boxes, [400, 300], bugs)
+    }
 }
 
-/// The frames the five buttons are drawn in, in their order (whatever the order drawn).
-fn frames(menu: &MainMenu) -> Vec<u32> {
+/// The main menu as the shell's layout has it, its boxes laid out in fonts of 8-wide glyphs.
+pub(crate) fn main_menu(bugs: Bugs) -> Menu {
+    let layout = parse_layout(LAYOUT).unwrap();
+    let menu = &layout.main_menu;
+    Menu::new(
+        Kind::Main,
+        menu.dialog.clone(),
+        menu.redrawn.clone(),
+        boxes(&layout, bugs, BUTTONS, true),
+        [400, 300],
+        bugs,
+    )
+}
+
+/// New Game's or Load Game's menu as the shell's layout has it.
+pub(crate) fn game_type(game: Game, bugs: Bugs) -> Menu {
+    let layout = parse_layout(LAYOUT).unwrap();
+    let menu = &layout.game_type;
+    Menu::new(
+        Kind::GameType(game),
+        menu.dialog_for(game),
+        menu.redrawn.clone(),
+        boxes(&layout, bugs, GAME_TYPE_BUTTONS, false),
+        [400, 300],
+        bugs,
+    )
+}
+
+/// The three menus as they open.
+pub(crate) fn menus(bugs: Bugs) -> Menus {
+    Menus {
+        main: main_menu(bugs),
+        new_game: game_type(Game::New, bugs),
+        load_game: game_type(Game::Load, bugs),
+    }
+}
+
+/// The main menu's DEFs in their order.
+const MAIN_DEFS: [&str; 5] = [
+    "mmenung.def",
+    "mmenulg.def",
+    "mmenuhs.def",
+    "mmenucr.def",
+    "mmenuqt.def",
+];
+/// A game type menu's DEFs by id (Single, Campaign, Multiplayer, Tutorial, Back).
+const GAME_TYPE_DEFS: [&str; 5] = [
+    "gtsingl.def",
+    "gtcampn.def",
+    "gtmulti.def",
+    "gttutor.def",
+    "gtback.def",
+];
+
+/// The frames the buttons `defs` are drawn in (whatever the order drawn).
+fn frames_of(menu: &Menu, defs: [&str; 5]) -> Vec<u32> {
     let draws = menu.draws("PLAYERS.PAL");
-    [
-        "mmenung.def",
-        "mmenulg.def",
-        "mmenuhs.def",
-        "mmenucr.def",
-        "mmenuqt.def",
-    ]
-    .iter()
-    .map(|name| {
-        draws
-            .iter()
-            .find_map(|d| match d {
-                Draw::Button { def, frame, .. } if def == name => Some(*frame),
-                _ => None,
-            })
-            .unwrap()
-    })
-    .collect()
+    defs.iter()
+        .map(|name| {
+            draws
+                .iter()
+                .find_map(|d| match d {
+                    Draw::Button { def, frame, .. } if def == name => Some(*frame),
+                    _ => None,
+                })
+                .unwrap()
+        })
+        .collect()
+}
+
+/// The main menu's five buttons' frames, in their order.
+fn frames(menu: &Menu) -> Vec<u32> {
+    frames_of(menu, MAIN_DEFS)
 }
 
 const CHANGED: Did = Did {
@@ -102,12 +157,12 @@ fn ended(request: Request) -> Did {
     Did {
         changed: false,
         sample: false,
-        ended: Some(request),
+        ended: Some(Ended::MainMenu(request)),
     }
 }
 
 /// The OK's and Cancel's middles in the question's box.
-fn box_buttons(menu: &MainMenu) -> ([i32; 2], [i32; 2]) {
+fn box_buttons(menu: &Menu) -> ([i32; 2], [i32; 2]) {
     let middle = |id| {
         let open = match &menu.over {
             super::Over::Question(open) => open,
@@ -159,7 +214,7 @@ fn a_press_draws_the_button_pressed_with_its_sample_and_the_release_over_it_ends
         assert_eq!(menu.press(point), SAMPLE);
         assert!(frames(&menu).contains(&1));
         let did = menu.release();
-        assert_eq!(did.ended, Some(request), "{point:?}");
+        assert_eq!(did.ended, Some(Ended::MainMenu(request)), "{point:?}");
         assert!(did.changed);
     }
 }
@@ -184,7 +239,10 @@ fn a_release_off_the_button_gives_no_command_and_the_hover_is_taken_again() {
     assert_eq!(menu.right_release(), NOTHING);
     // The right button's release ends a hold as the left's does (CLT-Q72 (a)).
     let _ = menu.press([643, 414]);
-    assert_eq!(menu.right_release().ended, Some(Request::Credits));
+    assert_eq!(
+        menu.right_release().ended,
+        Some(Ended::MainMenu(Request::Credits))
+    );
 }
 
 #[test]
@@ -226,7 +284,10 @@ fn the_hotkeys_press_their_buttons_and_click_at_the_key_up() {
     assert_eq!(menu.key(Command::Button(101), "N"), SAMPLE);
     assert_eq!(frames(&menu)[0], 1);
     assert_eq!(menu.key_up("X"), NOTHING);
-    assert_eq!(menu.key_up("N").ended, Some(Request::NewGame));
+    assert_eq!(
+        menu.key_up("N").ended,
+        Some(Ended::MainMenu(Request::NewGame))
+    );
     // Not a menu's button, or a box's key over the menu: nothing.
     let mut menu = main_menu(Bugs::Original);
     assert_eq!(menu.key(Command::Button(1), "Q"), NOTHING);
@@ -311,7 +372,7 @@ fn the_menu_opens_again_as_it_first_opened() {
 }
 
 /// The DEFs of the five buttons in the order they are drawn.
-fn order(menu: &MainMenu) -> Vec<alloc::string::String> {
+fn order(menu: &Menu) -> Vec<alloc::string::String> {
     menu.draws("PLAYERS.PAL")
         .iter()
         .filter_map(|d| match d {
@@ -326,13 +387,7 @@ fn order(menu: &MainMenu) -> Vec<alloc::string::String> {
 fn a_button_redrawn_alone_shows_over_its_neighbours_in_the_original_s_profile() {
     // `load-press`: Load Game pressed is drawn alone, over High Scores' top rows, until the
     // hover's change draws the five in their order (CLT-Q126).
-    let in_order = [
-        "mmenung.def",
-        "mmenulg.def",
-        "mmenuhs.def",
-        "mmenucr.def",
-        "mmenuqt.def",
-    ];
+    let in_order = MAIN_DEFS;
     let load_last = [
         "mmenung.def",
         "mmenuhs.def",
@@ -386,4 +441,251 @@ fn a_hold_names_its_item() {
         }),
         101
     );
+}
+
+#[test]
+fn a_main_menu_without_its_question_quits_at_once() {
+    // As a lobby's start does (0x4FB9F0: no question there).
+    let mut menu = main_menu(Bugs::Fixed);
+    menu.boxes.question = None;
+    let _ = menu.key(Command::Button(QUIT), "Escape");
+    assert_eq!(
+        menu.key_up("Escape").ended,
+        Some(Ended::MainMenu(Request::Quit))
+    );
+    assert!(!menu.asking());
+}
+
+/// A game type menu's five buttons' frames, by id.
+fn game_frames(menu: &Menu) -> Vec<u32> {
+    frames_of(menu, GAME_TYPE_DEFS)
+}
+
+/// The items in the order a game type menu draws them: its title, then its DEFs.
+fn drawn(menu: &Menu) -> Vec<alloc::string::String> {
+    menu.dialog_draws("PLAYERS.PAL")
+        .iter()
+        .map(|d| match d {
+            Draw::Button { def, .. } => def.clone(),
+            Draw::Picture { picture, .. } => picture.clone(),
+            other => panic!("{other:?}"),
+        })
+        .collect()
+}
+
+#[test]
+fn a_game_type_menu_draws_its_title_and_its_buttons_in_the_order_it_added_them() {
+    let new = game_type(Game::New, Bugs::Fixed);
+    assert_eq!(
+        drawn(&new),
+        [
+            "newgame.pcx",
+            "gtsingl.def",
+            "gtcampn.def",
+            "gttutor.def",
+            "gtmulti.def",
+            "gtback.def"
+        ]
+    );
+    // Load Game's the same dialog, its title Load Game's.
+    assert_eq!(
+        drawn(&game_type(Game::Load, Bugs::Fixed))[0],
+        "loadgame.pcx"
+    );
+    assert_eq!(new.kind(), Kind::GameType(Game::New));
+    assert_eq!(new.context(), Context::GameType);
+    assert_eq!(new.box_draws("PLAYERS.PAL"), []);
+}
+
+#[test]
+fn a_game_type_menu_s_hover_takes_the_item_under_the_mouse_its_title_too() {
+    // `menu-new`'s hovers: Single, Multiplayer, Campaign, Tutorial and Back in frame 3.
+    let mut menu = game_type(Game::New, Bugs::Original);
+    assert_eq!(game_frames(&menu), [0; 5]);
+    for (point, id, at) in [
+        ([649, 65], 100, 0),
+        ([649, 180], 102, 2),
+        ([646, 298], 101, 1),
+        ([647, 412], 103, 3),
+        ([645, 517], 104, 4),
+    ] {
+        assert_eq!(menu.moved(point), CHANGED);
+        assert_eq!(menu.hovered(), Some(id));
+        let mut want = vec![0; 5];
+        want[at] = 3;
+        assert_eq!(game_frames(&menu), want);
+    }
+    // The title is an item under the mouse: the buttons lose their hover.
+    assert_eq!(menu.moved([200, 330]), CHANGED);
+    assert_eq!(
+        (menu.hovered(), game_frames(&menu)),
+        (Some(TITLE), vec![0; 5])
+    );
+    assert_eq!(menu.moved([300, 560]), CHANGED);
+    assert_eq!(menu.hovered(), None);
+}
+
+#[test]
+fn a_game_type_menu_s_buttons_end_it_with_their_command() {
+    for game in [Game::New, Game::Load] {
+        for (point, choice) in [
+            ([649, 65], Choice::Single),
+            ([649, 180], Choice::Multiplayer),
+            ([646, 298], Choice::Campaign),
+            ([647, 412], Choice::Tutorial),
+            ([645, 517], Choice::Back),
+        ] {
+            let mut menu = game_type(game, Bugs::Original);
+            let _ = menu.moved(point);
+            assert_eq!(menu.press(point), SAMPLE);
+            let did = menu.release();
+            assert_eq!(did.ended, Some(Ended::GameType(choice)), "{point:?}");
+        }
+    }
+    // Released off: no command, the hover taken again (`single-left`).
+    let mut menu = game_type(Game::New, Bugs::Original);
+    let _ = menu.moved([649, 65]);
+    let _ = menu.press([649, 65]);
+    let _ = menu.moved([300, 560]);
+    assert_eq!(menu.release(), CHANGED);
+    assert_eq!((menu.hovered(), game_frames(&menu)), (None, vec![0; 5]));
+}
+
+#[test]
+fn a_game_type_menu_s_hotkeys_press_and_click_its_buttons() {
+    let mut menu = game_type(Game::Load, Bugs::Original);
+    // `menu-load`'s Escape: Back.
+    assert_eq!(menu.key(Command::Choice(Choice::Back), "Escape"), SAMPLE);
+    assert_eq!(game_frames(&menu)[4], 1);
+    assert_eq!(
+        menu.key_up("Escape").ended,
+        Some(Ended::GameType(Choice::Back))
+    );
+    let mut menu = game_type(Game::New, Bugs::Original);
+    assert_eq!(menu.key(Command::Choice(Choice::Tutorial), "T"), SAMPLE);
+    assert_eq!(
+        menu.key_up("T").ended,
+        Some(Ended::GameType(Choice::Tutorial))
+    );
+    // The main menu's commands do nothing here, nor a game type menu's on the main menu.
+    let mut menu = game_type(Game::New, Bugs::Original);
+    assert_eq!(menu.key(Command::Button(101), "C"), NOTHING);
+    let mut main = main_menu(Bugs::Original);
+    assert_eq!(main.key(Command::Choice(Choice::Campaign), "C"), NOTHING);
+}
+
+#[test]
+fn a_game_type_menu_s_right_press_shows_its_button_s_help() {
+    let mut menu = game_type(Game::New, Bugs::Original);
+    assert_eq!(menu.right([649, 65]), CHANGED);
+    assert!(!menu.cursor());
+    assert_eq!(menu.context(), Context::GameType);
+    assert!(!menu.box_draws("PLAYERS.PAL").is_empty());
+    assert_eq!(menu.right_release(), CHANGED);
+    // The title has no help.
+    assert_eq!(menu.right([200, 330]), NOTHING);
+}
+
+#[test]
+fn a_game_type_menu_s_button_without_a_command_ends_nothing() {
+    // A layout's button whose id is no game type command.
+    let layout = parse_layout(LAYOUT).unwrap();
+    let mut dialog: Dialog = layout.game_type.dialog_for(Game::New);
+    for item in &mut dialog.items {
+        if let h3_ui::ui::Item::Button(b) = item
+            && b.id == 100
+        {
+            b.id = 99;
+        }
+    }
+    let mut menu = Menu::new(
+        Kind::GameType(Game::New),
+        dialog,
+        Vec::new(),
+        boxes(&layout, Bugs::Fixed, GAME_TYPE_BUTTONS, false),
+        [0, 0],
+        Bugs::Fixed,
+    );
+    let _ = menu.press([649, 65]);
+    assert_eq!(menu.release().ended, None);
+}
+
+#[test]
+fn the_rows_a_redraw_does_not_show_keep_the_frame_last_shown_whole() {
+    // CLT-Q118 (`menu-new`): Single's rows 4 to 6 and Back's 567 to 569 lie outside the
+    // redraw's rectangle; they keep the frame its own loop last showed whole.
+    let single = |frame: u32| Draw::Button {
+        def: "gtsingl.def".into(),
+        frame,
+        x: 545,
+        y: 4,
+        mirrored: false,
+        player: None,
+    };
+    let mut menu = game_type(Game::New, Bugs::Original);
+    assert_eq!(menu.stale("PLAYERS.PAL"), []);
+    // The hover's redraw: Single in frame 3 inside the rectangle, its top rows still frame 0.
+    let _ = menu.moved([649, 65]);
+    let strip = |frame| Stale {
+        rects: vec![[545, 4, 209, 3]],
+        draws: vec![single(frame)],
+    };
+    assert_eq!(menu.stale("PLAYERS.PAL"), [strip(0)]);
+    // The press shows its box whole: nothing stale.
+    let _ = menu.press([649, 65]);
+    assert_eq!(menu.stale("PLAYERS.PAL"), []);
+    // Moved off (drawn up, hovered: frame 3, shown whole), released: the hover gone, the rows
+    // keep frame 3 (`single-left`).
+    let _ = menu.moved([300, 560]);
+    let _ = menu.release();
+    assert_eq!(menu.stale("PLAYERS.PAL"), [strip(3)]);
+    // Back alike at its bottom rows.
+    let _ = menu.moved([645, 517]);
+    let _ = menu.press([645, 517]);
+    let _ = menu.moved([300, 560]);
+    let _ = menu.release();
+    let stale = menu.stale("PLAYERS.PAL");
+    assert_eq!(stale.len(), 2);
+    assert_eq!(stale[1].rects, [[582, 567, 127, 4]]);
+    // The client's profile draws every button whole; the main menu's buttons all lie inside.
+    let mut fixed = game_type(Game::New, Bugs::Fixed);
+    let _ = fixed.moved([649, 65]);
+    assert_eq!(fixed.stale("PLAYERS.PAL"), []);
+    let mut main = main_menu(Bugs::Original);
+    let _ = main.moved([643, 70]);
+    assert_eq!(main.stale("PLAYERS.PAL"), []);
+}
+
+#[test]
+fn a_rectangle_s_parts_outside_others_are_its_rows_and_columns_around_them() {
+    // Apart: whole; covered: nothing; a hole: above, below, left and right of it.
+    assert_eq!(outside([0, 0, 10, 10], &[[20, 20, 5, 5]]), [[0, 0, 10, 10]]);
+    assert!(outside([0, 0, 10, 10], &[[-1, -1, 20, 20]]).is_empty());
+    assert_eq!(
+        outside([0, 0, 10, 10], &[[2, 3, 4, 5]]),
+        [[0, 0, 10, 3], [0, 8, 10, 2], [0, 3, 2, 5], [6, 3, 4, 5]]
+    );
+    // Two rectangles in turn; one touching an edge leaves no empty part.
+    assert_eq!(
+        outside([0, 0, 10, 10], &[[0, 2, 10, 10], [0, 0, 5, 2]]),
+        [[5, 0, 5, 2]]
+    );
+    assert_eq!(outside([0, 0, 10, 10], &[]), [[0, 0, 10, 10]]);
+}
+
+#[test]
+fn the_menus_open_by_their_screen() {
+    let all = menus(Bugs::Original);
+    for (screen, kind) in [
+        (Screen::MainMenu, Kind::Main),
+        (Screen::GameType(Game::New), Kind::GameType(Game::New)),
+        (Screen::GameType(Game::Load), Kind::GameType(Game::Load)),
+    ] {
+        let menu = all.opened(screen, [1, 2]).unwrap();
+        assert_eq!((menu.kind(), menu.kind().screen()), (kind, screen));
+        assert_eq!(menu.pointer, [1, 2]);
+    }
+    assert_eq!(all.opened(Screen::Credits, [0, 0]), None);
+    assert_eq!(Kind::Main.buttons(), BUTTONS);
+    assert_eq!(Kind::GameType(Game::Load).buttons(), GAME_TYPE_BUTTONS);
 }

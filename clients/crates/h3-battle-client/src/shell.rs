@@ -15,9 +15,10 @@
 //! - **In a window** (T4: `--window`): the built screens drawn (`h3_view::shell::look`), the
 //!   others black until their task, the cursor the shell's arrow; the words still read from
 //!   standard input. Closing the window ends it. The main menu takes the mouse and its hotkeys
-//!   (T6a: `h3_view::shell::menu`, the key table `h3_view::shell::keys`), plays each press's
-//!   sample (`button.wav`) and its music (`MAINMENU.MP3`, looping, as `main_menu_run` asks for
-//!   it).
+//!   (T6a: `h3_view::shell::menu`, the key table `h3_view::shell::keys`), New Game's and Load
+//!   Game's menus theirs (T6b1), each press playing its sample (`button.wav`); the music
+//!   (`MAINMENU.MP3`, looping) is asked for as each menu opens, as `main_menu_run` and
+//!   `game_type_menu_run` ask for it (the track playing goes on).
 //!
 //! `--no-intro` starts at the main menu (the setting `Show Intro` off); else the start's clips
 //! play first (T5a: `h3_view::shell::start`, read from the video archives, `introrim.pcx` from the
@@ -36,8 +37,10 @@
 //! sample as the harness logs the original's (`sample button.wav t<ms> ch<k> <length>ms x1`:
 //! `h3_view::shell::samples`).
 //!
-//! The main menu's boxes (T6a): Quit's question and the buttons' help, their texts the user's
-//! tables' through the key catalogue (`shell.main-menu.*`), laid out at the start.
+//! The menus' boxes (T6a, T6b1): Quit's question and the buttons' help, their texts the user's
+//! tables' through the key catalogue (`shell.main-menu.*`, `shell.game-type.help.*`), laid out at
+//! the start. The replay draws a game type menu's rows its redraw does not show as last shown
+//! (CLT-Q118: `h3_view::shell::menu::Stale`, the original's profile).
 
 use std::fs;
 use std::io::{self, BufRead};
@@ -57,12 +60,12 @@ use h3_ui::text::Args;
 use h3_view::batch::Batch;
 use h3_view::compose::FORMAT;
 use h3_view::message::{self, Style};
-use h3_view::shell::keys::{Command, MAIN_MENU};
+use h3_view::shell::keys::{Command, GAME_TYPE, MAIN_MENU};
 use h3_view::shell::look::{self, ShellLayout};
-use h3_view::shell::menu::{self, Boxes, MainMenu};
+use h3_view::shell::menu::{self, Boxes, Kind, Menu, Menus};
 use h3_view::shell::replay::{self, INPUT_STEP, Replay, Stop, Take};
 use h3_view::shell::start::{self as clips, Header, Op, Pace, Part, Picture, Source, Start};
-use h3_view::shell::{Ended, Screen, Shell, text};
+use h3_view::shell::{Ended, Game, Screen, Shell, text};
 
 use crate::assets;
 use crate::lods::Lods;
@@ -288,8 +291,8 @@ struct Drawer {
     /// what the back buffer held).
     rim: Option<Pixels>,
     videos: Videos,
-    /// The main menu as it opens: its dialog and its boxes laid out (T6a).
-    menu: MainMenu,
+    /// The menus as they open: their dialogs and their boxes laid out (T6a, T6b1).
+    menus: Menus,
     /// The press sample, when the sound archives hold it.
     button: Option<Pcm>,
 }
@@ -308,7 +311,7 @@ impl Drawer {
         for (name, bytes) in names.iter().zip(lods.batch(&names)?) {
             batch.add(name, &bytes).map_err(|e| e.to_string())?;
         }
-        let menu = main_menu(&layout, &batch, &lods, install, bugs)?;
+        let menus = menus(&layout, &batch, &lods, install, bugs)?;
         let mut lines = Vec::new();
         let button = crate::audio::clips(install, &[BUTTON_ENTRY.to_owned()], &mut lines)?
             .into_values()
@@ -339,7 +342,7 @@ impl Drawer {
             bugs,
             rim,
             videos: Videos::open(install),
-            menu,
+            menus,
             button,
         })
     }
@@ -357,13 +360,14 @@ impl Drawer {
         Part::ALL.map(|part| self.videos.read(part.file(bink_video)).ok())
     }
 
-    /// The frame of `screen` (the main menu as `menu` is), the cursor at `pointer` if any and
-    /// shown: a built screen's background copied whole, its dialog over it; another's black.
+    /// The frame of `screen` (a menu as `menu` is), the cursor at `pointer` if any and shown: a
+    /// built screen's background copied whole, its dialog over it, the rows a redraw left as last
+    /// shown (the original's profile), the box over them; another's black.
     fn frame(
         &self,
         screen: Screen,
         pointer: Option<[i32; 2]>,
-        menu: Option<&MainMenu>,
+        menu: Option<&Menu>,
     ) -> Result<Pixels, String> {
         let mut pixels = Pixels::new(WIDTH, HEIGHT, FORMAT).ok_or("no 800 × 600 screen")?;
         let mut cursor = true;
@@ -374,6 +378,19 @@ impl Drawer {
                 .ok_or_else(|| format!("{}: not loaded", shown.background))?;
             draw_image(&mut pixels, background, 0, 0);
             for draw in &shown.draws {
+                h3_ui::paint::draw(&mut pixels, draw, &self.batch, self.bugs)?;
+            }
+            for stale in &shown.stale {
+                let mut kept = Pixels::new(WIDTH, HEIGHT, FORMAT).ok_or("no 800 × 600 screen")?;
+                draw_image(&mut kept, background, 0, 0);
+                for draw in &stale.draws {
+                    h3_ui::paint::draw(&mut kept, draw, &self.batch, self.bugs)?;
+                }
+                for &rect in &stale.rects {
+                    copy_rect(&mut pixels, &kept, rect);
+                }
+            }
+            for draw in &shown.over {
                 h3_ui::paint::draw(&mut pixels, draw, &self.batch, self.bugs)?;
             }
             cursor = shown.cursor;
@@ -391,16 +408,32 @@ impl Drawer {
     }
 }
 
-/// The main menu as it opens (T6a): the layout's dialog, Quit's question and the buttons' help
-/// laid out in the batch's fonts, their texts the user's tables' (`shell.main-menu.quit`,
-/// `shell.main-menu.help.<button>`), framed in the viewing player's colours.
-fn main_menu(
+/// `from`'s pixels inside `rect` (left, top, width, height; clipped to the screen) copied onto
+/// `to` (both 800 × 600).
+fn copy_rect(to: &mut Pixels, from: &Pixels, [x, y, w, h]: [i32; 4]) {
+    let clamp = |v: i32, most: u32| usize::try_from(v.clamp(0, most as i32)).unwrap_or(0);
+    let (left, right) = (clamp(x, WIDTH), clamp(x.saturating_add(w), WIDTH));
+    let (top, bottom) = (clamp(y, HEIGHT), clamp(y.saturating_add(h), HEIGHT));
+    let width = WIDTH as usize;
+    let source = from.pixels();
+    let target = to.pixels_mut();
+    for row in top..bottom {
+        let span = row * width + left..row * width + right;
+        target[span.clone()].copy_from_slice(&source[span]);
+    }
+}
+
+/// The menus as they open (T6a, T6b1): the layout's dialogs, Quit's question and the buttons'
+/// help laid out in the batch's fonts, their texts the user's tables' (`shell.main-menu.quit`,
+/// `shell.main-menu.help.<button>`, `shell.game-type.help.<button>`: Load Game's the same as New
+/// Game's), framed in the viewing player's colours.
+fn menus(
     layout: &ShellLayout,
     batch: &Batch,
     lods: &Lods,
     install: &Path,
     bugs: Bugs,
-) -> Result<MainMenu, String> {
+) -> Result<Menus, String> {
     let tables = assets::load(&assets::default_dir(), assets::ALL)?;
     let exe = crate::text::executable(install)?;
     let catalogue = crate::log::catalogue(&tables, lods, &exe)?;
@@ -430,16 +463,43 @@ fn main_menu(
             (id, laid(&key, Style::Popup))
         })
         .collect();
-    let boxes = Boxes {
-        question: laid("shell.main-menu.quit", Style::OkCancel),
-        help,
-    };
-    Ok(MainMenu::new(
+    let main = Menu::new(
+        Kind::Main,
         layout.main_menu.dialog.clone(),
-        boxes,
+        layout.main_menu.redrawn.clone(),
+        Boxes {
+            question: Some(laid("shell.main-menu.quit", Style::OkCancel)),
+            help,
+        },
         PARK,
         bugs,
-    ))
+    );
+    let game_help: std::collections::BTreeMap<u16, _> = GAME_TYPE
+        .iter()
+        .map(|&(choice, name, _)| {
+            let key = format!("shell.game-type.help.{name}");
+            (choice as u16, laid(&key, Style::Popup))
+        })
+        .collect();
+    let game_type = |game| {
+        let look = &layout.game_type;
+        Menu::new(
+            Kind::GameType(game),
+            look.dialog_for(game),
+            look.redrawn.clone(),
+            Boxes {
+                question: None,
+                help: game_help.clone(),
+            },
+            PARK,
+            bugs,
+        )
+    };
+    Ok(Menus {
+        main,
+        new_game: game_type(Game::New),
+        load_game: game_type(Game::Load),
+    })
 }
 
 /// A start clip parsed.
@@ -648,7 +708,7 @@ fn replay_steps(options: &Options, drawer: &Drawer) -> Result<(), String> {
     )?;
     let mut applied = 0;
     let shell = Shell::new(options.intro);
-    let mut r = Replay::new(shell, *pointer, *input_step, Some(start), &drawer.menu);
+    let mut r = Replay::new(shell, *pointer, *input_step, Some(start), &drawer.menus);
     if sound && let Some(ms) = drawer.button_ms() {
         r = r.with_sound(ms);
     }
@@ -775,7 +835,8 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     );
     let mut presses: Vec<usize> = Vec::new();
     let keys = Keys::<Command>::original();
-    let mut menu = drawer.menu.opened(PARK);
+    // The menu on the screen, opened as its screen shows (`on`: the screen it was opened for).
+    let mut menu: Option<Menu> = None;
     let ((mut start, mut ops), mut picture) = start_of(
         &clips,
         drawer.rim.as_ref(),
@@ -788,7 +849,7 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     if start.ended() {
         let _ = shell.end(Ended::Start);
     }
-    let mut on_menu = false;
+    let mut on: Option<Screen> = None;
     println!("{}", text::describe(shell.screen()));
     let (sender, words) = mpsc::channel();
     // Standard input's reader, beside the window's loop (as the connection's I/O thread, `net`).
@@ -819,14 +880,6 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     };
     let (mut pointer, mut dirty, mut cursor_hidden) = (None, true, false);
     loop {
-        // The main menu shown anew: opened at the pointer, its music asked for.
-        if shell.screen() == Screen::MainMenu && !on_menu {
-            menu = drawer.menu.opened(pointer.unwrap_or(PARK));
-            if let Some(host) = host.as_mut() {
-                let _ = host.request(MAIN_MUSIC, false);
-            }
-        }
-        on_menu = shell.screen() == Screen::MainMenu;
         let playing = shell.screen() == Screen::Start;
         for event in win.wait(if playing { 5 } else { 50 }) {
             let mut did = menu::Did::default();
@@ -835,7 +888,7 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
                 Event::Pointer(at) => {
                     pointer = at.map(|(x, y)| [x, y]);
                     dirty |= drawn;
-                    if let (true, Some(at)) = (on_menu, pointer) {
+                    if let (Some(menu), Some(at)) = (menu.as_mut(), pointer) {
                         did = menu.moved(at);
                     }
                 }
@@ -843,24 +896,11 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
                 Event::Key(_) | Event::Click { down: true, .. } if playing => {
                     start.skip(now(&win), &mut ops);
                 }
-                Event::Click { down, at: (x, y) } if on_menu => {
-                    did = if down {
-                        menu.press([x, y])
-                    } else {
-                        menu.release()
-                    };
-                }
-                Event::Key(Key::RightButton) if on_menu => {
-                    did = menu.right(pointer.unwrap_or(PARK));
-                }
-                Event::KeyUp(Key::RightButton) if on_menu => did = menu.right_release(),
-                Event::Key(key) if on_menu => {
-                    if let Some(command) = keys.command(menu.context(), false, key.name()) {
-                        did = menu.key(command, key.name());
+                event => {
+                    if let Some(menu) = menu.as_mut() {
+                        did = on_menu(menu, &keys, &event, pointer.unwrap_or(PARK));
                     }
                 }
-                Event::KeyUp(key) if on_menu => did = menu.key_up(key.name()),
-                _ => {}
             }
             dirty |= did.changed;
             if did.sample
@@ -874,13 +914,14 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
                 };
                 presses.extend(host.play_clip(&sound, volume).ok());
             }
-            if let Some(request) = did.ended {
-                let _ = shell.end(Ended::MainMenu(request));
+            if let Some(ended) = did.ended {
+                let _ = shell.end(ended);
                 println!("{}", text::describe(shell.screen()));
                 if shell.screen() == Screen::End {
                     return Ok(());
                 }
-                on_menu = false;
+                on = None;
+                menu = None;
                 dirty = true;
             }
         }
@@ -936,30 +977,63 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             }
         }
         while let Ok(line) = words.try_recv() {
+            let before = shell.screen();
             println!("{}", text::answer(&mut shell, &line));
             if shell.screen() == Screen::End {
                 return Ok(());
             }
-            on_menu &= shell.screen() == Screen::MainMenu;
+            if shell.screen() != before {
+                on = None;
+                menu = None;
+            }
             dirty = true;
         }
         // The help popup hides the cursor (`popup_run_held`): the hardware one too.
-        let hidden = on_menu && !menu.cursor();
+        let hidden = menu.as_ref().is_some_and(|m| !m.cursor());
         if !drawn && hidden != cursor_hidden {
             let image = (!hidden).then(|| drawer.hardware.clone());
             win.set_cursor(image)?;
             cursor_hidden = hidden;
         }
+        // A screen shown anew (the start's end, a menu's, a word's): its menu opened at the
+        // pointer, before it is drawn, its music asked for (the track playing goes on:
+        // E24-design §3.11).
+        if on != Some(shell.screen()) {
+            on = Some(shell.screen());
+            menu = drawer.menus.opened(shell.screen(), pointer.unwrap_or(PARK));
+            if let (Some(host), true) = (host.as_mut(), menu.is_some()) {
+                let _ = host.request(MAIN_MUSIC, false);
+            }
+            dirty = true;
+        }
         if dirty {
             let frame = if shell.screen() == Screen::Start {
                 picture.screen().clone()
             } else {
-                let shown = (shell.screen() == Screen::MainMenu).then_some(&menu);
-                drawer.frame(shell.screen(), pointer.filter(|_| drawn), shown)?
+                drawer.frame(shell.screen(), pointer.filter(|_| drawn), menu.as_ref())?
             };
             win.present(&frame.xrgb())?;
             dirty = false;
         }
+    }
+}
+
+/// A window's event to the menu on the screen: the left button's press and release, the right
+/// button's (its help), a hotkey's key down through the shell's key table and its key up.
+fn on_menu(menu: &mut Menu, keys: &Keys<Command>, event: &Event, pointer: [i32; 2]) -> menu::Did {
+    match event {
+        Event::Click {
+            down: true,
+            at: (x, y),
+        } => menu.press([*x, *y]),
+        Event::Click { down: false, .. } => menu.release(),
+        Event::Key(Key::RightButton) => menu.right(pointer),
+        Event::KeyUp(Key::RightButton) => menu.right_release(),
+        Event::Key(key) => keys
+            .command(menu.context(), false, key.name())
+            .map_or_else(menu::Did::default, |command| menu.key(command, key.name())),
+        Event::KeyUp(key) => menu.key_up(key.name()),
+        _ => menu::Did::default(),
     }
 }
 

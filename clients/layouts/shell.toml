@@ -32,9 +32,11 @@ cursor = "crdeflt.def"
 # of its own over the loop's GamSelBk.pcx; its five DEF buttons (group 0, four frames: 0, pressed
 # 1, disabled 2, selected 3, the hover) in this order, their rectangles from main_menu_layout
 # 0x63FF28. Their hotkeys are the shell's key table's (h3_view::shell::keys), their help the
-# user's Help.txt's (E27 M2 T6a).
+# user's Help.txt's (E27 M2 T6a). The hover's redraw shows (520, 4, 250, 567), all five inside it
+# (main_menu_proc 0x4FBACD).
 [main_menu]
 background = "GamSelBk.pcx"
+redrawn = [[520, 4, 250, 567]]
 
 [main_menu.dialog]
 place = [0, 0]
@@ -73,3 +75,61 @@ id = 105
 def = "mmenuqt.def"
 at = [586, 469]
 size = [114, 102]
+
+# New Game's and Load Game's menu (§2.4: game_type_menu_create 0x4D54C0, one dialog; E27 M2 T6b1):
+# at (0, 0, 800, 600) over the loop's GamSelBk.pcx; its items in the order it adds them (the order
+# the redraw draws them: Multiplayer after Tutorial): the title picture 105 (300 x 48, by the
+# menu's game: game_type_menu_titles 0x6780E8), then the DEF buttons Single, Campaign, Tutorial
+# (none of the three with the CD notice, not on Complete), Multiplayer and Back, their rectangles
+# from game_type_menu_layout 0x63E6B0. The hover's redraw shows (526, 7, 250, 560) and the title's
+# rectangle (game_type_menu_proc 0x4D5AC6): Single's rows 4 to 6 and Back's 567 to 569 lie outside
+# (CLT-Q118). Hotkeys: the shell's key table; help: Help.txt 10 to 14.
+[game_type]
+background = "GamSelBk.pcx"
+redrawn = [[526, 7, 250, 560], [114, 312, 300, 48]]
+titles = ["newgame.pcx", "loadgame.pcx"]
+
+[game_type.dialog]
+place = [0, 0]
+
+[[game_type.dialog.items]]
+kind = "picture"
+id = 105
+picture = "newgame.pcx"
+at = [114, 312]
+size = [300, 48]
+
+[[game_type.dialog.items]]
+kind = "button"
+id = 100
+def = "gtsingl.def"
+at = [545, 4]
+size = [209, 123]
+
+[[game_type.dialog.items]]
+kind = "button"
+id = 101
+def = "gtcampn.def"
+at = [541, 233]
+size = [211, 131]
+
+[[game_type.dialog.items]]
+kind = "button"
+id = 103
+def = "gttutor.def"
+at = [545, 358]
+size = [205, 108]
+
+[[game_type.dialog.items]]
+kind = "button"
+id = 102
+def = "gtmulti.def"
+at = [568, 120]
+size = [162, 120]
+
+[[game_type.dialog.items]]
+kind = "button"
+id = 104
+def = "gtback.def"
+at = [582, 464]
+size = [127, 107]
