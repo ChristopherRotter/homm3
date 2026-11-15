@@ -359,7 +359,10 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   experience, primary and secondary skills, artifacts and spells all the hero type's own, as the
   map editor places a hero; the spec then lists none of them, and `primary` is required only
   without it),
-  `experience`, `primary`, `skills` (`[name, level]`), `army` (`[creature, count]`), `artifacts`
+  `experience`, `primary`, `skills` (`[name, level]`), `army` (`[creature, count]`), `slots`
+  (E08 T119: the army's slots, one per stack in `army`'s order, each below 7 and distinct; none:
+  0 onwards; batch E13's bank battle places the stacks by their ordinal among the filled slots),
+  `artifacts`
   (slot name → artifact; slots are checked against `ARTRAITS.TXT`), `backpack` (artifact names,
   carried but not worn; E04b batch 2f), `fill_backpack` (E08 T56: an artifact filling the
   backpack after `backpack` up to 64, batch E7's full backpacks), `spells` (`SPTRAITS.TXT`

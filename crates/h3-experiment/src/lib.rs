@@ -894,6 +894,11 @@ pub struct HeroSpec {
     /// Army as (creature, count), one to seven stacks (none with [`HeroSpec::defaults`]).
     #[serde(default)]
     pub army: Vec<(String, u16)>,
+    /// The army's slots, one for each of [`HeroSpec::army`]'s stacks in its order (E08 T119:
+    /// batch E13's E13-3, a bank battle placing the stacks by their ordinal among the filled
+    /// slots), each below 7 and distinct; none (the default): slots 0 onwards.
+    #[serde(default)]
+    pub slots: Vec<u8>,
     /// Worn artifacts by slot name ([`SLOT_NAMES`]); replaces the hero type's (so no spell book
     /// unless listed).
     #[serde(default)]
@@ -2077,6 +2082,7 @@ fn hero(
             || h.experience != 0
             || !h.skills.is_empty()
             || !h.army.is_empty()
+            || !h.slots.is_empty()
             || !h.artifacts.is_empty()
             || !h.backpack.is_empty()
             || h.fill_backpack.is_some()
@@ -2120,12 +2126,29 @@ fn hero(
     if h.army.is_empty() || h.army.len() > ARMY_SLOTS {
         return Err(format!("{} army stacks (1–{ARMY_SLOTS})", h.army.len()));
     }
+    let slots: Vec<usize> = if h.slots.is_empty() {
+        (0..h.army.len()).collect()
+    } else if h.slots.len() != h.army.len() {
+        return Err(format!(
+            "{} slots for {} army stacks",
+            h.slots.len(),
+            h.army.len()
+        ));
+    } else {
+        h.slots.iter().map(|&s| usize::from(s)).collect()
+    };
     let mut army = [None; ARMY_SLOTS];
-    for (slot, (name, count)) in h.army.iter().enumerate() {
+    for (&slot, (name, count)) in slots.iter().zip(&h.army) {
         if *count == 0 {
             return Err(format!("empty stack of {name}"));
         }
-        army[slot] = Some((lookup(&tables.creatures, name, "creature")? as u16, *count));
+        let place = army
+            .get_mut(slot)
+            .ok_or_else(|| format!("army slot {slot} (0–{})", ARMY_SLOTS - 1))?;
+        if place.is_some() {
+            return Err(format!("two stacks in army slot {slot}"));
+        }
+        *place = Some((lookup(&tables.creatures, name, "creature")? as u16, *count));
     }
     let mut worn = [None; ARTIFACT_SLOTS];
     for (slot_name, artifact) in &h.artifacts {
@@ -2710,12 +2733,16 @@ fn hero_summary(h: &HeroSpec, hero: &Hero, tables: &Tables) -> String {
             .collect::<Vec<_>>()
             .join(", ")
     };
-    let army = h
+    let mut army = h
         .army
         .iter()
         .map(|(c, n)| format!("{n} {c}"))
         .collect::<Vec<_>>()
         .join(", ");
+    if !h.slots.is_empty() {
+        let slots: Vec<String> = h.slots.iter().map(u8::to_string).collect();
+        let _ = write!(army, " (slots {})", slots.join(", "));
+    }
     let mut artifacts = h
         .artifacts
         .iter()
@@ -5368,15 +5395,33 @@ mod tests {
         primary = [1, 1, 1, 1]
         skills = [["Archery", 3]]
         army = [["Pikeman", 10], ["Archangel", 1]]
+        slots = [2, 6]
         artifacts = { "war machine 1" = "Ballista" }
     "#;
 
     #[test]
     fn builds_increment_13_s_objects() {
         // E08 T119 (batch E13): the banks by picture, two Griffin Conservatories in a grid, a
-        // boat near the Shipwreck; the hero with a skill and a war machine.
+        // boat near the Shipwreck; the hero with a skill, a war machine and its stacks in slots 2
+        // and 6.
         let spec = parse(BANKS).expect("spec");
-        let (map, _) = build(&spec, &tables(), "b.h3m").expect("build");
+        let (map, text) = build(&spec, &tables(), "b.h3m").expect("build");
+        let hero = map
+            .objects
+            .iter()
+            .find_map(|o| match o {
+                MapObject::Hero(h) => Some(h),
+                _ => None,
+            })
+            .expect("the hero");
+        let mut army = [None; ARMY_SLOTS];
+        army[2] = Some((0, 10));
+        army[6] = Some((1, 1));
+        assert_eq!(hero.army, Some(army));
+        assert!(
+            text.contains("10 Pikeman, 1 Archangel (slots 2, 6)"),
+            "{text}"
+        );
         let plains: Vec<(u32, u32, (u8, u8))> = map
             .objects
             .iter()
@@ -5435,5 +5480,21 @@ mod tests {
         assert!(err.contains("two objects on the tile"), "{err}");
         let err = fails("picture = \"AVSutop0\"", "picture = \"AVXbnk10\"");
         assert!(err.contains("AVXbnk10"), "{err}");
+        // The army's slots: one each, below 7, distinct; none with `defaults`.
+        let err = fails("slots = [2, 6]", "slots = [2]");
+        assert!(err.contains("1 slots for 2 army stacks"), "{err}");
+        let err = fails("slots = [2, 6]", "slots = [2, 7]");
+        assert!(err.contains("army slot 7 (0–6)"), "{err}");
+        let err = fails("slots = [2, 6]", "slots = [6, 6]");
+        assert!(err.contains("two stacks in army slot 6"), "{err}");
+        let defaults = BANKS.replace(
+            "primary = [1, 1, 1, 1]\n        skills = [[\"Archery\", 3]]\n        army = [[\"Pikeman\", 10], [\"Archangel\", 1]]\n",
+            "defaults = true\n",
+        );
+        let spec =
+            parse(&defaults.replace("artifacts = { \"war machine 1\" = \"Ballista\" }\n", ""))
+                .expect("spec");
+        let err = build(&spec, &t, "b.h3m").expect_err("slots with defaults");
+        assert!(err.contains("lists no army"), "{err}");
     }
 }
