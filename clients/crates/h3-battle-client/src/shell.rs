@@ -12,9 +12,12 @@
 //!   harness's dumps), listed in `<dir>/replay.txt` (`shot <name> t<ms>`, `clip <name> t<ms>`, and
 //!   `stop <k> <why>` when step `k` is one the viewer cannot take). `h3shell.py drawn` compares
 //!   them with the original's shots.
-//! - **In a window** (T4: `--window`): the built screens drawn (`h3_view::shell::look`, the main
-//!   menu at rest), the others black until their task, the cursor the shell's arrow; the words
-//!   still read from standard input. Closing the window ends it.
+//! - **In a window** (T4: `--window`): the built screens drawn (`h3_view::shell::look`), the
+//!   others black until their task, the cursor the shell's arrow; the words still read from
+//!   standard input. Closing the window ends it. The main menu takes the mouse and its hotkeys
+//!   (T6a: `h3_view::shell::menu`, the key table `h3_view::shell::keys`), plays each press's
+//!   sample (`button.wav`) and its music (`MAINMENU.MP3`, looping, as `main_menu_run` asks for
+//!   it).
 //!
 //! `--no-intro` starts at the main menu (the setting `Show Intro` off); else the start's clips
 //! play first (T5a: `h3_view::shell::start`, read from the video archives, `introrim.pcx` from the
@@ -29,7 +32,12 @@
 //! from its start (`HostSound::play_clip`, at `h3_view::clip_sound::volume`) until a skip stops
 //! it, or whole once its clip ran to its end (CLT-Q125, decision 34: the original cuts the last
 //! frame's sound at the close); the replay lists each start, skip and close in `replay.txt`
-//! (`sound <file> t<ms>`, `quiet <file> t<ms>`, `closed <file> t<ms>`).
+//! (`sound <file> t<ms>`, `quiet <file> t<ms>`, `closed <file> t<ms>`), and (T6a) each press's
+//! sample as the harness logs the original's (`sample button.wav t<ms> ch<k> <length>ms x1`:
+//! `h3_view::shell::samples`).
+//!
+//! The main menu's boxes (T6a): Quit's question and the buttons' help, their texts the user's
+//! tables' through the key catalogue (`shell.main-menu.*`), laid out at the start.
 
 use std::fs;
 use std::io::{self, BufRead};
@@ -38,14 +46,20 @@ use std::process::ExitCode;
 use std::sync::mpsc;
 use std::thread;
 
+use h3_assets::wav::Pcm;
 use h3_render::Bugs;
 use h3_render::blit::draw_image;
 use h3_render::screen::Screen as Pixels;
-use h3_sdl::{Config, CursorImage, Event, Window};
+use h3_sdl::{Config, CursorImage, Event, Key, Window};
 use h3_ui::cursor::Cursor;
+use h3_ui::keys::Keys;
+use h3_ui::text::Args;
 use h3_view::batch::Batch;
 use h3_view::compose::FORMAT;
+use h3_view::message::{self, Style};
+use h3_view::shell::keys::{Command, MAIN_MENU};
 use h3_view::shell::look::{self, ShellLayout};
+use h3_view::shell::menu::{self, Boxes, MainMenu};
 use h3_view::shell::replay::{self, INPUT_STEP, Replay, Stop, Take};
 use h3_view::shell::start::{self as clips, Header, Op, Pace, Part, Picture, Source, Start};
 use h3_view::shell::{Ended, Screen, Shell, text};
@@ -254,6 +268,14 @@ fn words(intro: bool, script: Option<&Path>) -> ExitCode {
 
 /// `H3Intro`'s frame (`start_clips` 0x4EE7A6 hands it to `video_play_framed`).
 const RIM: &str = "introrim.pcx";
+/// The buttons' press sample (`button_sample` 0x694DA4, loaded at 0x4EDA51), and its entry in the
+/// sound archives (their names without the extension).
+const BUTTON: &str = "button.wav";
+const BUTTON_ENTRY: &str = "BUTTON";
+/// Its volume (`button_press` 0x45688F: 64, on Miles' scale).
+const BUTTON_VOLUME: u8 = 64;
+/// The menus' music (`main_menu_run` 0x4FB6E0: "MainMenu", `MAINMENU.MP3`).
+const MAIN_MUSIC: &str = "MainMenu";
 
 /// The shell's layout, its assets and its cursor: what draws a frame.
 struct Drawer {
@@ -266,6 +288,10 @@ struct Drawer {
     /// what the back buffer held).
     rim: Option<Pixels>,
     videos: Videos,
+    /// The main menu as it opens: its dialog and its boxes laid out (T6a).
+    menu: MainMenu,
+    /// The press sample, when the sound archives hold it.
+    button: Option<Pcm>,
 }
 
 impl Drawer {
@@ -282,6 +308,11 @@ impl Drawer {
         for (name, bytes) in names.iter().zip(lods.batch(&names)?) {
             batch.add(name, &bytes).map_err(|e| e.to_string())?;
         }
+        let menu = main_menu(&layout, &batch, &lods, install, bugs)?;
+        let mut lines = Vec::new();
+        let button = crate::audio::clips(install, &[BUTTON_ENTRY.to_owned()], &mut lines)?
+            .into_values()
+            .next();
         let rim = batch.picture(RIM).and_then(|pcx| {
             let mut pixels = Pixels::new(WIDTH, HEIGHT, FORMAT)?;
             draw_image(&mut pixels, pcx, 0, 0);
@@ -308,7 +339,16 @@ impl Drawer {
             bugs,
             rim,
             videos: Videos::open(install),
+            menu,
+            button,
         })
+    }
+
+    /// The press sample's length in ms (as the harness logs it: its frames at its rate, rounded
+    /// up), none without it.
+    fn button_ms(&self) -> Option<u32> {
+        let pcm = self.button.as_ref()?;
+        Some(h3_view::sound::length_ms(pcm.frames() as u64, pcm.rate))
     }
 
     /// The start's clips' bytes from the video archives (none for a clip no archive holds: the
@@ -317,11 +357,17 @@ impl Drawer {
         Part::ALL.map(|part| self.videos.read(part.file(bink_video)).ok())
     }
 
-    /// The frame of `screen`, the cursor at `pointer` if any: a built screen's background copied
-    /// whole, its dialog over it; another's black.
-    fn frame(&self, screen: Screen, pointer: Option<[i32; 2]>) -> Result<Pixels, String> {
+    /// The frame of `screen` (the main menu as `menu` is), the cursor at `pointer` if any and
+    /// shown: a built screen's background copied whole, its dialog over it; another's black.
+    fn frame(
+        &self,
+        screen: Screen,
+        pointer: Option<[i32; 2]>,
+        menu: Option<&MainMenu>,
+    ) -> Result<Pixels, String> {
         let mut pixels = Pixels::new(WIDTH, HEIGHT, FORMAT).ok_or("no 800 × 600 screen")?;
-        if let Some(shown) = look::look(&self.layout, screen) {
+        let mut cursor = true;
+        if let Some(shown) = look::look(&self.layout, screen, menu) {
             let background = self
                 .batch
                 .picture(&shown.background)
@@ -330,12 +376,70 @@ impl Drawer {
             for draw in &shown.draws {
                 h3_ui::paint::draw(&mut pixels, draw, &self.batch, self.bugs)?;
             }
+            cursor = shown.cursor;
         }
-        if let Some([x, y]) = pointer {
+        if let Some([x, y]) = pointer.filter(|_| cursor) {
+            // The original's bug: the mouse's x rounded down to even first (0x50CE04, E17
+            // design §9.9: fixed, reproduced for the comparisons only, as the battle's).
+            let x = match self.bugs {
+                Bugs::Original => x & !1,
+                Bugs::Fixed => x,
+            };
             self.cursor.draw(&mut pixels, x, y);
         }
         Ok(pixels)
     }
+}
+
+/// The main menu as it opens (T6a): the layout's dialog, Quit's question and the buttons' help
+/// laid out in the batch's fonts, their texts the user's tables' (`shell.main-menu.quit`,
+/// `shell.main-menu.help.<button>`), framed in the viewing player's colours.
+fn main_menu(
+    layout: &ShellLayout,
+    batch: &Batch,
+    lods: &Lods,
+    install: &Path,
+    bugs: Bugs,
+) -> Result<MainMenu, String> {
+    let tables = assets::load(&assets::default_dir(), assets::ALL)?;
+    let exe = crate::text::executable(install)?;
+    let catalogue = crate::log::catalogue(&tables, lods, &exe)?;
+    let font = |name: &str| {
+        batch
+            .font(name)
+            .ok_or_else(|| format!("{name}: not loaded"))
+    };
+    let fonts = (
+        font(&layout.message.font)?,
+        font(&layout.message.caption_font)?,
+    );
+    let laid = |key: &str, style| {
+        message::layout(
+            &layout.message,
+            fonts,
+            &catalogue.text(key, &Args::new()),
+            style,
+            None,
+            (menu::BOX_PLAYER, bugs),
+        )
+    };
+    let help = MAIN_MENU
+        .iter()
+        .map(|&(id, name, _)| {
+            let key = format!("shell.main-menu.help.{name}");
+            (id, laid(&key, Style::Popup))
+        })
+        .collect();
+    let boxes = Boxes {
+        question: laid("shell.main-menu.quit", Style::OkCancel),
+        help,
+    };
+    Ok(MainMenu::new(
+        layout.main_menu.dialog.clone(),
+        boxes,
+        PARK,
+        bugs,
+    ))
 }
 
 /// A start clip parsed.
@@ -487,13 +591,6 @@ fn stopped(k: usize, stop: &Stop) -> String {
     match stop {
         Stop::Harness(verb) => format!("stop {k} harness {verb}"),
         Stop::Unknown(name) => format!("stop {k} unknown {name}"),
-        Stop::AtRest(screen) => {
-            format!(
-                "stop {k} at-rest {} ({})",
-                text::name(*screen),
-                screen.task()
-            )
-        }
         Stop::NotBuilt(screen) => {
             format!(
                 "stop {k} not-built {} ({})",
@@ -551,14 +648,17 @@ fn replay_steps(options: &Options, drawer: &Drawer) -> Result<(), String> {
     )?;
     let mut applied = 0;
     let shell = Shell::new(options.intro);
-    let mut r = Replay::new(shell, *pointer, *input_step, Some(start));
+    let mut r = Replay::new(shell, *pointer, *input_step, Some(start), &drawer.menu);
+    if sound && let Some(ms) = drawer.button_ms() {
+        r = r.with_sound(ms);
+    }
     for (k, step) in parsed.iter().enumerate() {
         let mut take = |r: &Replay, t: Take<'_>| -> Result<(), String> {
             catch_up(&mut picture, r.ops(), &mut applied)?;
             let pixels = if r.screen() == Screen::Start {
                 picture.screen().clone()
             } else {
-                drawer.frame(r.screen(), Some(r.pointer()))?
+                drawer.frame(r.screen(), Some(r.pointer()), r.menu())?
             };
             match t {
                 Take::Shot(name) => {
@@ -600,6 +700,13 @@ fn replay_steps(options: &Options, drawer: &Drawer) -> Result<(), String> {
         };
         listing.push(line);
     }
+    // The press samples (T6a), as the harness logs the original's.
+    for p in r.samples() {
+        listing.push(format!(
+            "sample {BUTTON} t{} ch{} {}ms x1",
+            p.time, p.channel, p.length
+        ));
+    }
     let listing: String = listing.iter().map(|l| format!("{l}\n")).collect();
     print!("{listing}");
     write(&frames.join("replay.txt"), listing.as_bytes())
@@ -616,9 +723,10 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     };
     let clips = parse_clips(&bytes);
     // The sound (E27 M2 T5b1): the effects above 0 and a device, else the clips silent (the
-    // game opens no track without a driver, and its Smacker clips keep their clock).
+    // game opens no track without a driver, and its Smacker clips keep their clock); the menus'
+    // samples and music with it (T6a).
     let effects = options.effects.unwrap_or(5);
-    let mut host = if effects > 0 && options.intro {
+    let mut host = if effects > 0 {
         match crate::audio::HostSound::open(drawer.bugs) {
             Ok(host) => Some(host),
             Err(e) => {
@@ -652,6 +760,22 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             .ok()
     });
     let mut streams: [Option<usize>; 3] = [None; 3];
+    // The menus' music decoded beside the window (T6a), added once decoded (the music waits for
+    // it); the presses' samples on streams of their own, each removed once played.
+    let install = options.install.clone();
+    let mut music = host.as_ref().and_then(|_| {
+        thread::Builder::new()
+            .name("h3-view shell's music".to_owned())
+            .spawn(move || crate::audio::mp3(&install, "MAINMENU", &mut Vec::new()))
+            .ok()
+    });
+    let music_volume = h3_view::options::sound_volume(
+        h3_view::sound::MUSIC_VOLUME,
+        h3_view::options::Settings::FIRST_RUN.music,
+    );
+    let mut presses: Vec<usize> = Vec::new();
+    let keys = Keys::<Command>::original();
+    let mut menu = drawer.menu.opened(PARK);
     let ((mut start, mut ops), mut picture) = start_of(
         &clips,
         drawer.rim.as_ref(),
@@ -664,6 +788,7 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     if start.ended() {
         let _ = shell.end(Ended::Start);
     }
+    let mut on_menu = false;
     println!("{}", text::describe(shell.screen()));
     let (sender, words) = mpsc::channel();
     // Standard input's reader, beside the window's loop (as the connection's I/O thread, `net`).
@@ -692,22 +817,86 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     let now = |win: &Window| {
         u32::try_from(win.ticks_ns().saturating_sub(began) / 1_000_000).unwrap_or(u32::MAX)
     };
-    let (mut pointer, mut dirty) = (None, true);
+    let (mut pointer, mut dirty, mut cursor_hidden) = (None, true, false);
     loop {
+        // The main menu shown anew: opened at the pointer, its music asked for.
+        if shell.screen() == Screen::MainMenu && !on_menu {
+            menu = drawer.menu.opened(pointer.unwrap_or(PARK));
+            if let Some(host) = host.as_mut() {
+                let _ = host.request(MAIN_MUSIC, false);
+            }
+        }
+        on_menu = shell.screen() == Screen::MainMenu;
         let playing = shell.screen() == Screen::Start;
         for event in win.wait(if playing { 5 } else { 50 }) {
+            let mut did = menu::Did::default();
             match event {
                 Event::Quit => return Ok(()),
                 Event::Pointer(at) => {
                     pointer = at.map(|(x, y)| [x, y]);
                     dirty |= drawn;
+                    if let (true, Some(at)) = (on_menu, pointer) {
+                        did = menu.moved(at);
+                    }
                 }
                 Event::Redraw => dirty = true,
                 Event::Key(_) | Event::Click { down: true, .. } if playing => {
                     start.skip(now(&win), &mut ops);
                 }
+                Event::Click { down, at: (x, y) } if on_menu => {
+                    did = if down {
+                        menu.press([x, y])
+                    } else {
+                        menu.release()
+                    };
+                }
+                Event::Key(Key::RightButton) if on_menu => {
+                    did = menu.right(pointer.unwrap_or(PARK));
+                }
+                Event::KeyUp(Key::RightButton) if on_menu => did = menu.right_release(),
+                Event::Key(key) if on_menu => {
+                    if let Some(command) = keys.command(menu.context(), false, key.name()) {
+                        did = menu.key(command, key.name());
+                    }
+                }
+                Event::KeyUp(key) if on_menu => did = menu.key_up(key.name()),
                 _ => {}
             }
+            dirty |= did.changed;
+            if did.sample
+                && let (Some(host), Some(pcm)) = (host.as_mut(), drawer.button.as_ref())
+            {
+                let volume = h3_view::options::sound_volume(BUTTON_VOLUME, effects);
+                let sound = h3_view::clip_sound::ClipSound {
+                    rate: pcm.rate,
+                    channels: pcm.channels,
+                    samples: pcm.samples.clone(),
+                };
+                presses.extend(host.play_clip(&sound, volume).ok());
+            }
+            if let Some(request) = did.ended {
+                let _ = shell.end(Ended::MainMenu(request));
+                println!("{}", text::describe(shell.screen()));
+                if shell.screen() == Screen::End {
+                    return Ok(());
+                }
+                on_menu = false;
+                dirty = true;
+            }
+        }
+        if let Some(host) = host.as_mut() {
+            if music.as_ref().is_some_and(thread::JoinHandle::is_finished) {
+                let decoded = music.take().and_then(|t| t.join().ok());
+                let _ = host.add_track(MAIN_MUSIC, decoded.and_then(Result::ok).flatten());
+            }
+            host.service(music_volume);
+            presses.retain(|&stream| {
+                let playing = host.clip_playing(stream);
+                if !playing {
+                    host.stop_clip(stream);
+                }
+                playing
+            });
         }
         if shell.screen() == Screen::Start {
             start.read(now(&win), &mut ops);
@@ -751,13 +940,22 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             if shell.screen() == Screen::End {
                 return Ok(());
             }
+            on_menu &= shell.screen() == Screen::MainMenu;
             dirty = true;
+        }
+        // The help popup hides the cursor (`popup_run_held`): the hardware one too.
+        let hidden = on_menu && !menu.cursor();
+        if !drawn && hidden != cursor_hidden {
+            let image = (!hidden).then(|| drawer.hardware.clone());
+            win.set_cursor(image)?;
+            cursor_hidden = hidden;
         }
         if dirty {
             let frame = if shell.screen() == Screen::Start {
                 picture.screen().clone()
             } else {
-                drawer.frame(shell.screen(), pointer.filter(|_| drawn))?
+                let shown = (shell.screen() == Screen::MainMenu).then_some(&menu);
+                drawer.frame(shell.screen(), pointer.filter(|_| drawn), shown)?
             };
             win.present(&frame.xrgb())?;
             dirty = false;

@@ -13,13 +13,16 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M2 T6 to T8
+#### E27 M2 T6b to T8
 
-T6 the main menu, New Game's and Load Game's menus, Quit (the main menu `Built::Whole`: the
-replay's presses and keys reach the screen, `shell::replay`'s `Step::Input`); T7 Multiplayer and
-the hot seat's names (after T6); T8 M2's closure and M3's refinement (after T7). Each screen's task runs `h3shell.py drawn` and
-records it (`--record`; the runbook's "The shell's screens"). Their scopes: the epic's M2 table;
-what each still reads or records: design §6.4.
+T6b New Game's and Load Game's menus on T6a's machinery (`h3_view::shell::menu`'s pattern: the
+game type menu's dialog, `newgame.pcx` or `loadgame.pcx`, its five buttons' hover, press, release
+off, popups `Help.txt` 10 to 14 and hotkeys S, M, C, T, Escape; Back; CLT-Q118's stale rows for
+the comparisons only), the Campaign, Tutorial, High Scores and Credits stubs (decisions 7, 9);
+exact against `menu-new`, `menu-load` and `menu-sound` whole (`sound2` on channel 1); T7
+Multiplayer and the hot seat's names (after T6b); T8 M2's closure and M3's refinement (after T7).
+Each screen's task runs `h3shell.py drawn` and records it (`--record`; the runbook's "The shell's
+screens"). Their scopes: the epic's M2 table; what each still reads or records: design §6.4.
 
 ## Inbox
 

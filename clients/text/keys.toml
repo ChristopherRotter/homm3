@@ -2252,3 +2252,31 @@ first = 0
 count = 8
 column = 0
 optional = true
+
+# The game shell's main menu (E27 M2 T6a; docs/epics/E27-design.md §2.3, §13): Quit's question
+# (GENRLTXT 70, a box of style 2 with OK and Cancel) and each button's help, its right press's
+# popup (style 4): `main_menu_help` 0x6A6C20's right-click texts, Help.txt's second column of
+# records 3 to 7 in the buttons' order.
+[[key]]
+id = "shell.main-menu.quit"
+original = [{ at = "GENRLTXT:70" }]
+
+[[key]]
+id = "shell.main-menu.help.new-game"
+original = [{ at = "HELP:3:1" }]
+
+[[key]]
+id = "shell.main-menu.help.load-game"
+original = [{ at = "HELP:4:1" }]
+
+[[key]]
+id = "shell.main-menu.help.high-scores"
+original = [{ at = "HELP:5:1" }]
+
+[[key]]
+id = "shell.main-menu.help.credits"
+original = [{ at = "HELP:6:1" }]
+
+[[key]]
+id = "shell.main-menu.help.quit"
+original = [{ at = "HELP:7:1" }]
