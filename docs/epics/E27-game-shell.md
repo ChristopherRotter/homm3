@@ -269,6 +269,20 @@ The user, 2026-11-15 (M2 T5b's start; `CLT-Q125`):
     audible); the client plays the track out after its clip's end (`Op::Closed`), a skip still
     stopping it (`Op::Quiet`); the cut for the comparisons only (the replay's `closed` lines).
 
+The user, 2026-11-15 (M2 T6a; `CLT-Q126`):
+
+35. **T6 cut by screen** (the agent's recommendation; the cut offered: by screen, by pictures and
+    sound, or whole): T6a the main menu whole and Quit's question (the menus' machinery: the
+    menu's state, the dialogs' input in the replay and the window, the help popups, the message
+    box, `button.wav`, `MAINMENU.MP3`; `menu-main`, `menu-quit` and `menu-sound`'s lines up to New
+    Game's menu); T6b New Game's and Load Game's menus on it (CLT-Q118's rows for the
+    comparisons), the Campaign, Tutorial, High Scores and Credits stubs, `menu-new`, `menu-load`
+    and `menu-sound` whole.
+36. **The main menu's buttons drawn in their order** (CLT-Q126; design §13.3): the original
+    redraws a pressed or released button alone, so a pressed Load Game shows over High Scores'
+    top two rows until a hover change redraws the five; the client draws them in their order
+    always, the original's order for the comparisons only.
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -365,8 +379,9 @@ recorded again in the sandbox (`h3shell.py run`), with the sound sequences its t
 | T5a2 | The Smacker clips' rectangles (decision 32; design §10): `SMACKW32.DLL`'s `SmackToBufferRect` read (its list, 0x10007410, 0x10007680, the iterator 0x10012760 and the state `SmackDoFrame` fills) and ported into `h3-smacker`, the game's union over them for the comparisons (`shown_union`); `start-smacker`'s clip exact (its 23 frames of `H3INTRO.SMK`); checked against the DLL where the probe reaches it (`smackprobe`) | **done** 2026-11-15: `h3_smacker::Rects` (`SmackToBufferRect`, its filler, list and iterator) and `Frame::spans` (the decoder's map), as the DLL's on every call of every frame (`smackprobe rects`, `smacker-check.sh`); `Picture` shows their union under `Bugs::Original`; `drawn --group start` 12 of 12 exact; log "M2 T5a2", design §10 |
 | T5b1 | The start's sound without the game's run (decisions 31, 33): the readings (the 3DO logo's sound path and volume, `game_samples_load`, a Smacker clip's end, the frames with sound), a stand-in DirectSound in the probes, the client's pacing with sound checked against the DLL; the clips' sound at the effects setting through `HostSound::play_clip` in the window | **done** 2026-11-15 (decision 34; CLT-Q125): `h3_view::shell::start::SmackSound`, `Start::with_sound`, `Op::Sound`, `Quiet`, `Closed`, `Replay::op_times`; `clip_sound::volume` the DirectSound path's; `h3-view shell --effects` and the window's sound; `smackprobe wait`, `capture/vsound.h`, `smacker-check.sh`'s `wait` lines: the six game clips with a track as the DLL's at 1, 5, 7, 10 and 16 ms steps; `game_init` read; log "M2 T5b1", design §11 |
 | T5b2 | The start's sound on the game's run (decision 33; design §11.7): the stand-in DirectSound in `xdd.dll` for `SMACKW32` (its `timeSetEvent` and Miles' timer kept from firing), Bink's Miles sample calls on the harness's clock, each clip sound's Play, stop and volume logged; `binkprobe` on the same Miles stand-in; the `start` group's sound recipes recorded and compared (`drawn`: the replay's `sound`, `quiet` and `closed` lines; the frames exact) | **done** 2026-11-15: `xdd.dll`'s 7. (`clock/clipsound`, the ack's fields 14 and 15), `binkprobe start` and the stand-in Miles' `MssMinimum`, `MssHold`, `MssLoads`; `h3shell.py`'s voices, the replay's volume and `closed` lines; Bink's sound from Miles' first buffer read (its first frame), `bink-check.sh`'s `start` lines; four sound recipes recorded, `drawn --group start` 10 recipes, 30 lines exact; log "M2 T5b2", design §12 |
-| T6 | The main menu, New Game's and Load Game's menus, Quit's question (§2.3 to §2.5): hover, press, release off, popups, hotkeys, `button.wav`, `MAINMENU.MP3`, the buttons redrawn whole (CLT-Q118); Campaign and Tutorial stubs (decisions 7, 9), High Scores and Credits stubs until M4; exact against `menus` with its sound | after T4 |
-| T7 | Multiplayer's first stage (decision 10's stub, CLT-Q101) and the hot seat's names (§2.6, §2.7: the edit field read first, two 21-letter names recorded, Enter pressing OK, CLT-Q107), Load Game's multiplayer; the scenario screen a stub (M3); exact against `multiplayer` | after T6 |
+| T6a | The main menu and Quit's question (§2.3, §2.5; decision 35): hover, press, release off, the help popups, hotkeys, `button.wav`, `MAINMENU.MP3`; exact against `menu-main`, `menu-quit` and `menu-sound` up to New Game's menu, its sample compared | **done** 2026-11-15 (decision 36; CLT-Q126): `h3_view::shell::menu` (`MainMenu`, `Boxes`, `Did`), `shell::keys` (the table `[shell]`), `shell::samples` (category 3's handles as the harness numbers them); the replay's main menu and `with_sound`, `look` with the menu's state; the window's mouse, hotkeys, samples and music; `h3shell.py drawn` compares the samples; `menu-main` 26 of 26, `menu-quit` 7 of 7, `menu-sound`'s shot and `sound1` exact; log "M2 T6a", design §13 |
+| T6b | New Game's and Load Game's menus (§2.4): their hover, press, release off, popups, hotkeys and Back, the buttons redrawn whole (CLT-Q118); Campaign and Tutorial stubs (decisions 7, 9), High Scores and Credits stubs until M4; exact against `menu-new`, `menu-load` and `menu-sound` whole (`sound2`) | after T6a |
+| T7 | Multiplayer's first stage (decision 10's stub, CLT-Q101) and the hot seat's names (§2.6, §2.7: the edit field read first, two 21-letter names recorded, Enter pressing OK, CLT-Q107), Load Game's multiplayer; the scenario screen a stub (M3); exact against `multiplayer` | after T6b |
 | T8 | M2's closure: a fresh reviewer, the review list, M3's refinement (M3 T0: the loading bar, the scenario list's maps, decision 8; §6.4's recipes for M3) | after T7 |
 
 **M2's review list** (the agent's calls, *provisional*, for T8): (1) `h3-smacker`'s shape (T1):
@@ -442,7 +457,24 @@ to back from the first load (no device latency, no underrun's silence), the real
 given a buffer; (36) a clip's sound compared as its voice (the codec, its start and end, its
 volume), not its bytes (the tracks are the DLLs' since T2, the Smacker device's cursor since
 T5b1); (37) Bink's first load in the first frame checked against the harness's Miles buffer
-size alone (36 864 bytes), the client keeping the first frame.
+size alone (36 864 bytes), the client keeping the first frame. T6a: (38) `MainMenu`'s shape
+(`h3_view::shell::menu`): the boxes laid out by the caller once (`Boxes`: their texts fixed at
+the start), what is open over the menu one enum (none, a help popup, the question), `Did`'s three
+fields (drawn again, the sample, the end); the hover taken again at a hold's end and at the
+question's close (recorded, not read); a left press or release closing a help popup without
+reaching the menu; (39) the shell's key table `[shell]` (`h3_ui::keys::VIEWERS` gains it): the
+main menu's hotkeys and the box's OK and Cancel, no window keys of its own yet (their Escape is
+Quit's here); (40) `samples::Samples`: category 3's eight handles, the next in turn's start and
+step *inferred*, the effects' stop by a menu's music not modelled (a request for the track
+playing is dropped), the press sample's length given by the adapter (`Replay::with_sound`); (41)
+the replay's main menu kept for the run and opened anew each time it shows; `Built::AtRest` and
+`Stop::AtRest` gone (a screen not built takes the pointer's moves only); (42) the shell's layout
+gains `player_palette` and `[message]` (the battle's literals), the boxes framed in red
+(`menu::BOX_PLAYER`); (43) the window: `MAINMENU.MP3` decoded on a thread, asked for each time the
+main menu shows, at the first run's music setting (no `--music` flag); each press's sample on a
+stream of its own, removed once played; the host's sound opened whenever the effects are above
+0 (with the intro only before); the hardware cursor hidden under a help popup; (44) `drawn`
+compares a sound recipe's samples (`sound<k>`) with the viewer's `sample` lines.
 
 ## Dependencies and boundaries
 

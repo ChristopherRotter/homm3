@@ -1268,7 +1268,10 @@ python3 h3shell.py drawn [--group menus] [--only menu-main] [--record]   # the v
 - **Sound** (E27 M2 T4): a recipe with `sound = true` runs as h3drive's sound runs (below,
   "Sound": Wine's ALSA driver over the null sink, the effects at volume 5, the samples on the
   virtual clock); each sample started is kept as `<id> sound<k> t<ms> ch<channel> <length>ms
-  x<loops>` after the recipe's shots (`menu-sound`: the menus' presses).
+  x<loops>` after the recipe's shots (`menu-sound`: the menus' presses). Since E27 M2 T6a `drawn`
+  compares them with the viewer's `sample <file> t<ms> ch<k> <length>ms x<loops>` lines (the
+  presses' samples on category 3's handles, numbered as `xdd.dll` numbers the original's:
+  `h3_view::shell::samples`).
 - **Masks** (E27 M2 T4): `mask:<x0>,<y0>,<x1>,<y1>` leaves its box (x1, y1 excluded) out of the
   digests of every later shot and clip, the original's and the viewer's (`drawn`), until
   `unmask`: what the machine draws, TCP/IP's address in `mp-tcp`. A mask changes the recipe's

@@ -38,7 +38,8 @@ A recipe (a `[[recipe]]` of shell/<group>.toml): `id`, `what` (the catalogue's s
   frozen    false: the clock runs in real time until a step freezes it (default true)
   sound     true: the game plays its sounds (h3drive's `sound`: an audio driver, the effects at
             volume 5, the samples on the virtual clock), each sample started kept as a line
-            `<id> sound<k> t<ms> ch<channel> <length>ms x<loops>` (E27 M2 T4; default false),
+            `<id> sound<k> t<ms> ch<channel> <length>ms x<loops>` (E27 M2 T4; default false;
+            compared by `drawn` with the viewer's since E27 M2 T6a),
             and (E27 M2 T5b2) each clip's sound, its track on the virtual clock too (xdd.dll's
             7.), as `<id> voice<k> <smacker|bink> t<start>-<end> v<volume>` (`clip_voices`),
             compared by `drawn` with the viewer's
@@ -885,10 +886,17 @@ def drawn_recipe(recipe, out):
     if done.returncode != 0:
         return None, None, ((done.stdout + done.stderr).strip().splitlines() or ["no output"])[-1]
     masks = shot_masks(recipe["steps"])
-    lines, clips, stop, voices = {}, {}, None, []
+    lines, clips, stop, voices, samples = {}, {}, None, [], []
     for line in (frames / "replay.txt").read_text().splitlines():
         kind, name, rest = line.split(" ", 2)
-        if kind == "sound":
+        if kind == "sample":
+            # E27 M2 T6a: `sample <file> t<ms> ch<k> <length>ms x<loops>`, a press's sample as
+            # xdd.dll logs the original's (`sounds`): its `sound<k>` lines.
+            t, channel, length, loops = rest.split()
+            samples.append((int(t.lstrip("t")), (int(channel.removeprefix("ch")),
+                                                 int(length.removesuffix("ms")),
+                                                 int(loops.lstrip("x")))))
+        elif kind == "sound":
             # E27 M2 T5b2: `sound <file> t<ms> v<volume>`, ended by its `quiet` (a skip) or
             # `closed` (the last frame) line: the original's voices (`clip_voices`).
             t, volume = rest.split()
@@ -914,6 +922,9 @@ def drawn_recipe(recipe, out):
     for name, frames_of in clips.items():
         lines[name] = kept_line(ident, (name, "clip", frames_of[0][0], clip_entry(frames_of)))
     order = list(masks)
+    for k, (t, d) in enumerate(samples, 1):
+        order.append(f"sound{k}")
+        lines[f"sound{k}"] = kept_line(ident, (f"sound{k}", "sound", t, d))
     for k, v in enumerate(voices, 1):
         order.append(f"voice{k}")
         lines[f"voice{k}"] = kept_line(ident, (f"voice{k}", "voice", v["start"],
@@ -930,7 +941,7 @@ def compared(ident, name, ours, original):
         return "exact"
     mine = ours.split(" ", 2)[2].split()
     theirs = forms[0].split(" ", 2)[2].split()
-    if name.startswith("voice"):
+    if name.startswith(("voice", "sound")):
         return f"not the original's ({' '.join(theirs)}: the viewer's {' '.join(mine)})"
     if mine[-1] == theirs[-1]:
         return f"the original's pixels at {mine[0]}, not {theirs[0]}"
@@ -982,8 +993,6 @@ def drawn_command(rest):
         kept = {name: line for (i, name), line in read_kept(recipe["group"]).items() if i == ident}
         verdicts, changed = [], []
         for name, original in kept.items():
-            if name.startswith("sound"):
-                continue
             shots += 1
             ours = lines.get(name)
             verdict = compared(ident, name, ours, original)

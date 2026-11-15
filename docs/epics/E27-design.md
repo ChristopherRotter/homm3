@@ -2051,3 +2051,79 @@ recipes each at its first recording.
   latency, an underrun's next load starting a new run at its own time; the real Miles' buffer
   size on another machine; Smacker's ring and underrun as §11.2. None changes a frame or a voice
   of the recipes.
+
+## 13. The main menu taking its inputs (M2 T6a, 2026-11-15)
+
+Read in `Heroes3.exe` (`main_menu_proc` 0x4FB710 whole, `def_button_message`'s loop 0x456328 to
+0x4564D3, `button_press` 0x456860) and taken from the recordings: the harness's `menu-main`,
+`menu-quit` and `menu-sound` played again in the sandbox (every kept line as kept), their frames
+compared pixel by pixel with the viewer's. Built: `h3_view::shell::menu`, `::keys`, `::samples`
+(the epic's T6a row).
+
+### 13.1 The procedure
+
+- **Each message** (0x4FB910): the tick 0x4ED490; with the window manager's +0x48, 0x602C50 (0,
+  4, 0). Then by type:
+- **A right press on a button** (+0xC bit 0x200, subtype 0xC or 0xE, id 101 to 105; not in a
+  lobby's start): `message_box` of style 4 with `main_menu_help`'s right-click text, entry id −
+  101 (0x6A6C24 + 8 k: `Help.txt` records 3 to 7, column 1). The DEF button turns a right press
+  into 0x200/0xE and does not go down (0x4567AD): the popup shows over the button as hovered
+  (`menu-main`'s `*-popup`). `popup_run_held` hides the cursor and drops every message until the
+  right release, a left press or a left release.
+- **A command** (0x200/0xD, 101 to 105): 101 to 104 set the window manager's +0x38 to the id and
+  end; 105 pauses the videos (0x5977A0), asks GENRLTXT 70 in a box of style 2 (not in a lobby's
+  start), resumes them (0x597850) and ends only on 0x7805 (OK).
+- **A move** (type 4): `dialog_item_id_at` against `main_menu_hovered`; on a change the five lose
+  state 0x10 (`dialog_item_send` subtype 6), the new one gains it (subtype 5).
+- **Then** (0x4FBACD): on a change, or a clip's frame due (0x597930), the items 101 to 105 redrawn
+  in order (vtable +0x14), (520, 4, 250, 567) shown (all five inside it), `video_show`.
+- **The end** (0x4FBB0F): the message becomes 0x200/10/10 and the procedure answers 2; a lobby's
+  start ends it with 101 after 10 s (0x4FBB2C, `> 0x2710`).
+
+### 13.2 The press and the hold
+
+- `button_press` (0x456860): the state's bit 1; `button.wav` (0x694DA4) at volume 0x40, played
+  once (+0x30 1), in category 3 (+0x28: the creature sounds' handles 6 to 13) through
+  `play_sample`, the sound manager's +0x84 1 meanwhile (*not read*); the button drawn (vtable
+  +0x10) and its box shown at once; the message 0x200/0xC.
+- The loop (0x456338): every message first to the mouse manager (vtable +8: the cursor); a move
+  inside a button not pressed presses it again (its sample again), outside a pressed one releases
+  it (drawn, shown); the left or the right release (0x10, 0x40) ends it: pressed, the button
+  drawn up and its command 0x200/0xD returned; released off, the release returned as it is,
+  which the procedure ignores.
+- **Recorded, not read:** after a hold ends the menu shows the hover taken at the pointer
+  (`*-left`: all five in frame 0, the pointer off them), and after the question closes too
+  (`cancelled`, `escaped`: Quit back in frame 0 with the pointer on the box's Cancel). The
+  procedure gets no move from either path read; the client takes a move at the pointer there.
+- **The key path** (0x45659F, 0x4564D6): the hotkey's key down presses the button (its sample),
+  its key up clicks: N, L, H, C and Escape for 101 to 105 (`menu-quit`'s `question-key`).
+
+### 13.3 What the recordings add (the comparisons' rules)
+
+- **The cursor at an even x** (E17's 0x50CE04, design §9.9 there): `menu-main`'s hover and press
+  shots and every `menu-quit` shot point at odd x (643, 359, 441): the original draws the arrow a
+  pixel left. The shell's frame rounds the x down under `Bugs::Original` only, as the battle's.
+- **A button redrawn alone** (CLT-Q126, decision 36): Load Game's DEF canvases reach rows 251 and
+  252, High Scores' first two; the press draws Load Game alone over them (`load-press`: 2 pixels),
+  until a hover change redraws the five in order. The client draws them in order always; the
+  comparisons draw the button redrawn alone last.
+- **The boxes** (`menu-quit`, `*-popup`): framed in red (player 0, the viewing player at the main
+  menu), centred, the help's text at x 20 as the executable sets it (CLT-Q28 (1): the client's
+  centred); the question's box draws the cursor (the arrow), the popup none. Every one exact at
+  the first run.
+- **The sample** (`menu-sound`'s `sound1`): New Game's press at its click's time, 151 ms
+  (`button.wav`'s frames at its rate, rounded up), the harness's channel 0. The harness numbers
+  the handles in the order it first sees them; `play_sample` takes category 3's first handle whose
+  sample is done, else the next in turn (*inferred*: its start and step), so `menu-sound`'s
+  `sound2` (Back's press 100 ms later, the first still playing) is channel 1: T6b's.
+- **The music** (`main_menu_run`: "MainMenu", loop count 0): a request for the track playing is
+  dropped (`play_music` 0x59AD43) before the effects' stop (0x59ADAC), so the presses' samples are
+  never cut by a menu's opening after the first. The harness logs no music: the window plays it,
+  the comparisons have none.
+
+### 13.4 Not built (the agent's calls, *provisional*)
+
+The first pass's disk check (free space below 5 MB: GENRLTXT 708 and the end; the client has no
+such limit), the CD notice (GENRLTXT 730, 107 with 763, 746 or 747: not on Complete), a DirectPlay
+lobby's start (§2.10), the 0x602C50 call with the window manager's +0x48 (*not read*), the
+videos' pause around the question (clip 33 draws nothing, CLT-Q86).

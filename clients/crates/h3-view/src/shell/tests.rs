@@ -240,6 +240,8 @@ fn each_screen_names_the_task_that_builds_it() {
         assert_eq!(task.is_empty(), screen == Screen::End, "{screen:?}");
     }
     assert_eq!(Screen::Start.task(), "E27 M2 T5");
+    assert_eq!(Screen::MainMenu.task(), "E27 M2 T6a");
+    assert_eq!(Screen::GameType(Game::New).task(), "E27 M2 T6b");
     assert_eq!(Screen::Multiplayer(Game::Load).task(), "E27 M2 T7");
     assert_eq!(Screen::Scenario(Game::New, Kind::Single).task(), "E27 M3");
     assert_eq!(Screen::Play { restart: true }.task(), "E24 M5");
@@ -247,7 +249,7 @@ fn each_screen_names_the_task_that_builds_it() {
 }
 
 #[test]
-fn the_start_is_built_whole_and_the_main_menu_at_rest() {
+fn the_start_and_the_main_menu_are_built() {
     let built: Vec<(Screen, Built)> = screens()
         .into_iter()
         .map(|s| (s, s.built()))
@@ -257,7 +259,7 @@ fn the_start_is_built_whole_and_the_main_menu_at_rest() {
         built,
         [
             (Screen::Start, Built::Whole),
-            (Screen::MainMenu, Built::AtRest)
+            (Screen::MainMenu, Built::Whole)
         ]
     );
 }

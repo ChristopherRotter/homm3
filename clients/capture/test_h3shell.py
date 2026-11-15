@@ -142,6 +142,10 @@ class Kept(unittest.TestCase):
                          "the original's pixels at t20, not t10")
         self.assertTrue(h3shell.compared("m", "zz-none", "m a t10 cd", "m a t10 ab")
                         .startswith("not the original's"))
+        # E27 M2 T6a: a press's sample is compared as a line, its fields named.
+        self.assertEqual(h3shell.compared("m", "sound1", "m sound1 t0 ch1 151ms x1",
+                                          "m sound1 t0 ch0 151ms x1"),
+                         "not the original's (t0 ch0 151ms x1: the viewer's t0 ch1 151ms x1)")
 
     def test_two_runs_that_differ_keep_both(self):
         a, b = ("menu", "shot", 10, "ab"), ("menu", "shot", 20, "ab")

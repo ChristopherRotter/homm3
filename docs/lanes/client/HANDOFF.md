@@ -5,27 +5,22 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 32). **M1 closed** (2026-11-13; M1's tasks in `E27-archive.md`; the catalogue `E27-design.md`
-  §1 to §6). **M2 T1 to T4 done** (2026-11-13 to 14: `h3-smacker`, the clips' sound, the Bink
-  copy, the shell's frame, the LODs' tables, `h3shell.py drawn`; design §7 to §9). **M2 T5a and
-  T5a2 done** (2026-11-14 to 15, decisions 31, 32): `h3_view::shell::start` (the clips timed on
-  the game's clock, drawn into a back buffer and a screen), `h3_bink::rects`, `h3_smacker::Rects`
-  (`SMACKW32`'s `SmackToBufferRect`, as the DLL's on every call), the replay's start; the `start`
-  group's 12 lines exact; design §10. **M2 T5b1 done** (2026-11-15, decisions 33, 34): with
-  sound a Smacker clip's frames follow its DirectSound cursor (`SmackSound`, as `SMACKW32`'s at
-  every frame of the six game clips with a track: `smackprobe wait` on `capture/vsound.h`), the
-  window plays the clips' sound (`--effects`), the last frame's sound played out (CLT-Q125);
-  design §11. **M2 T5b2 done** (2026-11-15): `xdd.dll`'s 7. plays the clips' sound on the
-  virtual clock (`vsound.h` for `SMACKW32`, Bink's Miles functions answered), `binkprobe start`
-  (Bink's first buffer in its first frame), the clips' voices compared; four sound recipes of
-  `start` recorded and exact; design §12. **Next: M2 T6** (the main menu and its menus), then
-  T7, T8.
+  to 36). **M1 closed** (2026-11-13; `E27-archive.md`; the catalogue `E27-design.md` §1 to §6).
+  **M2 T1 to T5b2 done** (2026-11-13 to 15: `h3-smacker`, the clips' sound, the Bink copy, the
+  shell's frame, the LODs' tables, `h3shell.py drawn`, the start's pictures and sound on the
+  game's clock and run; the `start` group's 30 lines exact; design §7 to §12). **M2 T6a done**
+  (2026-11-15, decisions 35, 36): the main menu takes its inputs (`h3_view::shell::menu`: hover,
+  press, release off, hotkeys through the table `[shell]`, the help popups, Quit's question; the
+  press samples as the sound manager plays them, `shell::samples`; the window's music); `drawn`
+  compares the samples; `menu-main` 26 of 26, `menu-quit` 7 of 7, `menu-sound`'s T6a lines exact;
+  design §13. **Next: M2 T6b** (New Game's and Load Game's menus, the stubs), then T7, T8.
   Decisions to carry: the dialogs' input one implementation (20; `h3_ui::input`); the shell's
   code as the battle's, the score the engine's (21); decision 22's fixes; every pixel of a
   Smacker clip through its palette (24); every clip's sound at the effects setting (27); every
   Bink frame whole, the comparisons through `Target` (28); the start's fade from the screen as
   shown, a frame's whole rectangle shown (32); a clip's track played out after its last frame
-  (34). Open pull request: `client/e27-m2-t5b2`, T5b2's (watch it until it merges). E17 done
+  (34); the main menu's buttons drawn in their order (36). Open pull request:
+  `client/e27-m2-t6a`, T6a's (watch it until it merges). E17 done
   (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -39,7 +34,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `CLT-STUB-4` (no Auto Combat switch in a live game's battle) and `CLT-STUB-5` (a hot-seat
   battle between two of the host's humans) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q126,
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q127,
   CLT-STUB-6.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens) and the 40 non-campaign MP3s; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
@@ -60,6 +55,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-15, E27 M2 T6a (done; `client/e27-m2-t6a`).** T6 cut by screen with the user
+  (decision 35). The original data staged at once (64 files, checked by SHA-256); the VM restarted
+  in the baseline's coverage step (CI's green `master` stood in) and again in `check.sh`'s
+  (TRAPS: coverage with the data staged). Read `main_menu_proc` whole, the button's loop and
+  `button_press`; recorded `menu-main`, `menu-quit`, `menu-sound` again for their frames; built
+  the menu, its keys, its samples, the window's input and music. Every T6a line exact; CLT-Q126
+  answered (decision 36). Record: `E27-log.md`, "M2 T6a".
 - **2026-11-15, E27 M2 T5b2 (done; `client/e27-m2-t5b2`).** Offered in two (Smacker, Bink), the
   user kept it whole. The original data staged at once (64 files, checked by SHA-256); the VM
   restarted in the baseline's coverage (CI's green `master` stood in). Read `SmackSoundUseMSS`,
@@ -73,11 +75,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   wait, the close and the volume; built `vsound.h`, `smackprobe wait`, `SmackSound`, the new ops,
   `--effects`, the window's sound. The six game clips' frames with sound as the DLL's at five
   steps at the first run; CLT-Q125 answered (decision 34). Record: `E27-log.md`, "M2 T5b1".
-- **2026-11-15, E27 M2 T5a2 (done; `client/e27-m2-t5a2`).** One task, as queued. The original
-  data staged at once (64 files, checked by SHA-256); the baseline passed. Read `SMACKW32.DLL`'s
-  `SmackToBufferRect` whole (the filler, the list's join, the iterator over the decoder's map of
-  changed spans) and the game's reads in `video_show`; built `h3_smacker::Rects`,
-  `Frame::spans`, `check::rects`, `smackprobe rects` and the `.rects` lines of
-  `smacker-check.sh`. Every call of every frame as the DLL's at the first run; `drawn --group
-  start` 12 of 12 exact (recorded). No new question (the DLL's oddities fall under CLT-Q124's
-  fix). Record: `E27-log.md`, "M2 T5a2".

@@ -320,6 +320,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   left out of the viewer's steps (its `stop <k>` counts the viewer's). The window under Xvfb:
   SDL's default renderer (EGL over Mesa) dumps black with `xwd`; `SDL_RENDER_DRIVER=software`
   shows it (the hardware cursor is never in the dump).
+- **Coverage with the original data staged restarts the sandbox's VM** (E27 M2 T5b2 and T6a: the
+  setup's baseline and `check.sh`, three runs, one build job or two; every step before coverage
+  passed): run the coverage as CI does, `H3_INSTALL` an empty folder (the staged-data tests
+  skip; peak memory about 2 GB of 8), with `source scripts/llvm-tools.sh && llvm_tools_env` and
+  `check.sh`'s `cargo llvm-cov` line, and the staged-data tests on their own without coverage
+  (`RUST_TEST_THREADS=1 cargo test -p h3-battle-client`). CI's green run on `master` stands in for
+  a lost baseline.
 - **Sandbox routines as a skill:** GitHub (pull requests and CI by REST), waiting for long jobs, worktrees for concurrent fixers, VM restarts: the skill `homm3-sandbox-session`.
 - **The sound tests** (E17 M7 T4): the battle client's tests open SDL's dummy audio driver
   (`h3_sdl::Audio::open_driver`) through `audio::tests::dummy`, which holds one lock for the

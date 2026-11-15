@@ -277,7 +277,7 @@ pub fn lengths(
 
 /// The sound archives' entries `wanted` (upper-cased), decoded; a missing or undecodable one
 /// noted in `lines`.
-fn clips(
+pub(crate) fn clips(
     install: &Path,
     wanted: &[String],
     lines: &mut Vec<String>,
@@ -1002,7 +1002,11 @@ fn stops_on(c: &Channel, cue: &Cue) -> bool {
 
 /// The MP3 `stem` of the installation's `MP3` folder (found ignoring case), decoded; none, noted in
 /// `lines`, when it is missing or holds no audio.
-fn mp3(install: &Path, stem: &str, lines: &mut Vec<String>) -> Result<Option<Music>, String> {
+pub(crate) fn mp3(
+    install: &Path,
+    stem: &str,
+    lines: &mut Vec<String>,
+) -> Result<Option<Music>, String> {
     let file = format!("{stem}.mp3");
     match find_ci(install, "MP3").and_then(|d| find_ci(&d, &file)) {
         Ok(path) => {
