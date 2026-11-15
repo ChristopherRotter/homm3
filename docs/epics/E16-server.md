@@ -312,7 +312,9 @@ Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisio
     flag before the start** (as a battle's: `CreateMapGame`'s, `SetSpectators` until the start),
     **closed by default**, the lobby showing it, so taking a seat agrees to it; the server's
     `spectators_per_game` caps it. **A ranked game never** opens to it. **Live, no delay.**
-    ADR-0017 point 2 and ADR-0018 point 7 amended, `docs/06-security.md` too (T21a).
+    ADR-0017 point 2 and ADR-0018 point 7 amended, `docs/06-security.md` too (T21a). **The
+    consent** (T24, SRV-Q38 (b), 2c's reviewer): the host's change before the start told to every
+    other player (`GameSpectators`), each seat's `GameJoined` naming the setting (protocol v68).
 
 **2c's tasks** (about half a context each; T20 first):
 
@@ -338,13 +340,23 @@ Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisio
   format change; `E16-log.md`: `rerun` releases its entries, `GameJournal::commands` none for a
   game of connections and `accepted` counted, `[server] whole_checkpoint_every` 250; the XL
   year at the bound re-run in 0.16 s, not 0.75, its restored session 2.1 MiB, not 114).
-- **T24 2c's closure:** an end-to-end test (a spectator watching a timed game through a restart,
-  a stalled battle voiding its game), `docs/06-security.md` (`cross-lane`; T20's and the
-  spectator's lines written in T21a, the hosting's own left), the reviewer agent,
-  the user's checkpoint; M5 closes with it (and with it E16's milestones: BACKLOG's status in a
-  `shared/` change; "Later" stays).
+- **T24 2c's closure** built 2026-11-15, **the checkpoint open** (SRV-Q38: the user looks at the
+  fixes first): the end-to-end test (a spectator watching a timed game through a restart, a
+  stalled battle voiding its game), `docs/06-security.md` (`cross-lane`), the reviewer agent (two
+  major, three minor findings, two nits: all fixed or documented, protocol v68), the inbox
+  cleared as the user chose; M5 closes at the checkpoint (and with it E16's milestones:
+  BACKLOG's status in a `shared/` change; "Later" stays).
 
 **Review list for the M5 2c checkpoint** (built so far; the reviewer and the user at T24):
+
+- T24 (the reviewer's findings, SRV-Q38): the consent as (b), the user's choice (`GameSpectators`
+  to every other player, numbered and recorded, a player not seated yet told by its `GameJoined`;
+  the flag `may_be_watched`: the setting on a host that takes spectators, paused or not, as the
+  lobby's); `GameWatch` behind the login gate; the void decided afresh at each command (a lowered
+  bound at a restart voids only a battle still open); a void game's host pause `NotStarted` and
+  the sweep's `suspend` nothing; the spectator's queue documented, not resized; the end-to-end
+  test in `clock.rs` beside T19's, the bound 4 measured as between the monster's answers and a
+  battle's end; the fold gate's parts for `kinds` and `garrison_heroes` (from the inbox's review).
 
 - T23b: `GameJournal::commands` an `Option` (none for a game of connections, the in-process
   host's kept for its tests) beside the count `accepted`, rather than no copy at all; a whole

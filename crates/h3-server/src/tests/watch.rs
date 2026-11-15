@@ -178,8 +178,16 @@ async fn a_spectator_sees_every_seats_messages_and_watches_again_after_a_restart
     };
     b.send(&join).await.unwrap();
     let joined = b.recv().await;
+    // Its join names the setting it agrees to (E16 M5 T24, SRV-Q38).
     assert!(
-        matches!(joined, Some(ServerMessage::GameJoined { player: 1, .. })),
+        matches!(
+            joined,
+            Some(ServerMessage::GameJoined {
+                player: 1,
+                spectators: true,
+                ..
+            })
+        ),
         "{joined:?}"
     );
     let of_b = until_answer(&mut b, 1).await;

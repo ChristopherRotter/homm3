@@ -774,8 +774,8 @@ async fn a_spectator_watches_a_timed_game_through_a_restart_to_a_stalled_battles
         "{first:?}"
     );
     // The opening's first five days to the second player's end of its turn; the server stops in
-    // the first player's turn. The spectator was told each player's clocks as its seat was, and
-    // the stop.
+    // the first player's turn. The spectator was told each player's last clock as its seat was,
+    // and the stop.
     let cut = 13;
     assert!(matches!(
         golden.commands[cut],
@@ -852,7 +852,8 @@ async fn a_spectator_watches_a_timed_game_through_a_restart_to_a_stalled_battles
     map_listed_as(&running, game, None).await;
     running.shutdown().await;
     // The void journal: the system's end of the first player's turn, the fighter's commands, the
-    // time to its turn's end, then the computer's commands for its side; the last the bound's.
+    // time to its turn's end, then the computer's commands for its side; the server's commands in
+    // the battle exactly its bound, the last of them the journal's last.
     let prefix = format!("{game}-");
     let journal = (voided(data).into_iter())
         .find(|name| name.starts_with(&prefix))
@@ -882,6 +883,13 @@ async fn a_spectator_watches_a_timed_game_through_a_restart_to_a_stalled_battles
         "{:?}",
         &read[last..]
     );
+    let opened = (read.iter())
+        .position(|e| matches!(e, GameEntry::Numbered(p, 15, _) if p.raw() == 1))
+        .unwrap();
+    let systems = (read[opened..].iter())
+        .filter(|e| matches!(e, GameEntry::Command(Actor::System, _)))
+        .count();
+    assert_eq!(systems, usize::try_from(SYSTEM_BOUND).unwrap());
     let final_ = (read.iter().rev()).find(|e| !matches!(e, GameEntry::Checkpoint(_)));
     assert!(
         matches!(final_, Some(GameEntry::Command(Actor::System, _))),
