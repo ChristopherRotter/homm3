@@ -1981,3 +1981,14 @@ an entry only where a task builds on it.
   the hero battles 0.003 below (inside their 0.031): T1c's verdict holds for #2, whose critic
   explains 0.80 of the returns' variance where `t7-1`'s told the actions apart by hundredths.
   N 64 on the hero battles' first 200 a seat next, for the depth.
+- **(a) N 64 on the hero battles** (the same commit and network; `python/records/search/
+  e25-structure-1-system-64-hero-200.json`; `--kinds hero --per-kind 200`, 400 games): the
+  search 0.508 ± 0.043, +0.029 (attacking 0.740, defending 0.275), #2 sampled 0.505, +0.024
+  (0.745, 0.265); 129 ms a decision (12 374 decisions in 27 minutes), 13 fallbacks, no
+  truncation.
+- **(a)'s read:** four times the simulations gain +0.003 where the margin lies, inside the
+  interval, as N 16 lost 0.003: **the search at play gains nothing on #2 at either depth**, as it
+  gained nothing on `t7-1` (T1c), so the better critic does not make the tree pay. By the rule
+  the long run is PPO's: neither the search at play as the agent nor expert iteration is T35's
+  question. What #2 lacks is not a deeper look on its own evaluation (T1c: nor the hidden
+  information). (a) done; (b) the user's GPU.

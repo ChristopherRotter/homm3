@@ -32,12 +32,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   sits at this setup's plateau**. **T32 done** (`E25-log.md` T32, `records/distill/arch-1.json`):
   at 4 M the control 0.752, 2e-3 0.760, 128 × 6 0.761, 64 × 10 0.753, the ladders inside the
   control's interval: `hexconv` 96 × 6 stays, T35's long run starts from T27's 16 M clone (#2's
-  start). **T34 prepared** (`QUEUE.md`; the arms the user's): (a) the search at play with #2 on
-  the sandbox's CPU (about 3 hours; **needs #2's `best.pt` uploaded**), (b) the KL anchor,
-  `configs/e25-anchor.toml` (`[ppo] imitation_teacher`, #2 teaching T27's clone, 2 M; **the
-  user's GPU, about 2 hours**). Then T35, the probes' checkpoint.
-- **Open pull requests:** the one of `claude/stoic-gauss-p3cmdq` (T32's close, T34's
-  preparation). Merged: #910 (T33's close, T32's preparation).
+  start). **T34 in progress** (`QUEUE.md`; the arms the user's): (a) **done**, the search at play
+  gains nothing on #2 (N 16 0.508 against its sampled 0.511; N 64 on the hero battles +0.003),
+  so the long run is PPO's; (b) the KL anchor, `configs/e25-anchor.toml` (`[ppo]
+  imitation_teacher`, #2 teaching T27's clone, 2 M): **the user's GPU next, about 2 hours**.
+  Then T35, the probes' checkpoint.
+- **Open pull requests:** the one of `claude/stoic-gauss-p3cmdq` (T34's (a)). Merged: #940
+  (T32's close, T34's preparation).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -57,9 +58,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   not committed: the report holds every evaluation). No setup script: `uv sync --group train`
   and `cargo build --release -p h3-ffi` (53 s) in the background; the Python suite 264 (3.3
   minutes). The user chose T34's arms (the search at play, the KL anchor). #940 merged; #2's
-  `best.pt` uploaded (in `python/runs/`, ignored). **In progress:** (a) N 16 done (no gain,
-  committed), N 64 on the hero battles running in the sandbox (`--kinds hero --per-kind 200`;
-  lost with the sandbox: rerun it); (b) the user's GPU.
+  `best.pt` uploaded (in `python/runs/`, ignored): (a) run in the sandbox, N 16 72 minutes and
+  the sampled policy 18, N 64 on the hero battles 27; (b) the user's GPU.
 
 ### 2026-11-13 — E25 T33 closed, T32 prepared
 
