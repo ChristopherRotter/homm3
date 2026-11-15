@@ -1,0 +1,773 @@
+# Experiment batch E13 (E08 T119; decisions 339, 343, 345, 346): increment 13's plan, the creature
+# banks (survey docs/rules/surveys/E08-banks.md §11 with docs/epics/E08-design.md §19's changes), in
+# SoD on Easy, hot seat, days 1 and 2 (Red's turn, then Blue's). Build: docs/experiments/README.md.
+# Predictions are for the agent who evaluates the results; the template never shows them.
+#
+# | row    | settles                                   | the reading (faithful)                       | the other source(s)                     |
+# | E13-1  | §2, §3: the draw at a new game            | each record a level's row of §2; five stacks | VCMI 1.7.5: the same chances and split  |
+# |        |                                           | split as §3, at most slot 2 upgraded (class  | (written out in its config); the Naga   |
+# |        |                                           | 16 only, never the Dragon Flies)             | Bank's gems, the Imp Cache's no Mercury |
+# | E13-2  | §4, §7, D-66: a declined Stockpile and a  | the Stockpile's guards' size word for Red,   | VCMI: every visit scouts, so the Crypt  |
+# |        | declined Crypt                            | "(Not visited)" for Blue; the Crypt "(Not    | shows its guards to Red too             |
+# |        |                                           | visited)" for both (no mark)                 |                                         |
+# | E13-3  | §5, design §13: the bank flag's rules     | no tactics phase, no obstacles, no war       | VCMI and the wiki the same; the cart's  |
+# |        |                                           | machine; Red's stacks by ordinal at 57, 61,  | supply: the wiki (passive effects stay) |
+# |        |                                           | 90, 93; the Archers' shots unchanged         |                                         |
+# | E13-4  | §5, D-69: two-hex guards                  | the Griffins at 15, 185, 172, 2, 100 by the  | VCMI's wide table: 171, 1 for the third |
+# |        |                                           | footprint rule (14-15, 184-185, 171-172, 1-2,| and fourth                              |
+# |        |                                           | 99-100)                                      |                                         |
+# | E13-5  | §5: the sea banks' battlefield            | the deck, from the coast and from a boat     | VCMI the same                           |
+# | E13-6  | §6, D-67 corrected: the dialogs' order    | the level-ups first, then the reward's       | VCMI the same                           |
+# |        |                                           | message and the army dialog with the Angels  |                                         |
+# | E13-7  | §6, D-68: Dragon Utopia's artifacts       | the backpack relics first                    | VCMI: treasure first                    |
+# | E13-8  | §4: looted banks                          | the Conservatory deserted, nothing more; −1  | VCMI: no question for a looted search;  |
+# |        |                                           | for the first Crypt, none for the second, −1 | the same −1 per kind                    |
+# |        |                                           | for the Shipwreck; 0 after the next battle   |                                         |
+# | E13-9  | §5: a retreat                             | the survivors in the record, not looted; the | VCMI and the wiki the same              |
+# |        |                                           | hint by the survivors                        |                                         |
+# | E13-10 | §2, D-65: the rewards' resources          | the Naga Bank's sulfur; the Imp Cache's 2    | VCMI: gems; no Mercury                  |
+# |        |                                           | Mercury at level 1                           |                                         |
+# | E13-11 | design §6, §3: where the hero stands      | on the entrance at the question, after the   | VCMI the same; the wiki silent          |
+# |        |                                           | decline and after the battle; the Shipwreck  |                                         |
+# |        |                                           | visited from the coast, the hero on land     |                                         |
+# | E13-12 | design §9, `E08-sea.md` §16: the          | a flight passes over its water entrance from | untested in the original (E8c tested a  |
+# |        | Shipwreck's water tile                    | land and from water; a water walker visits   | boat's tile); VCMI unread               |
+# |        |                                           | from the coast and has no path across        |                                         |
+#
+# **The draw is the game's** (survey §3): the level, the artifacts and the upgrade are drawn when
+# the game starts, so every row reads the drawn records first (E13-1; the banks' vector at game
+# +0x4E3D8, begin +0x4E3DC, 0x6C bytes a record: the guards +0x0, the resources +0x38, the creature
+# +0x54 and its count +0x58, the artifacts' vector +0x5C, begin +0x60, end +0x64) and predicts from
+# them. The object's word on its entrance holds the record's index in bits 13 to 24, the visited
+# marks in bits 5 to 12 (bit 5 Red, bit 6 Blue) and the looted mark in bit 25.
+#
+# **The pictures** (docs/experiments/README.md, "Increment 13's objects"; each entrance on the
+# picture's bottom row, blocked and entered or visited): the Cyclops Stockpile `AVXbnk10`, the
+# Medusa Stores `AVXbnk50` and the Naga Bank `AVXbnk60` cover `at` and the tile west of it,
+# entered at the western one; the Griffin Conservatory `AVXbnk30` and the Imp Cache `AVXbnk40`
+# the same two, entered at `at`; the Dwarven Treasury `AVXbnk20` and the Crypt `AVXgyne0` `at` and
+# the two tiles west of it, entered at the middle one; the Dragon Fly Hive `AVXbnk70` the tile west
+# of `at`, entered there; Dragon Utopia `AVSutop0` the three tiles west of `at` (the nearest, `at`
+# − 1, its entrance; `at` itself passable), five west of the tile above `at` and `at` with three
+# west of it two rows up; on water the Derelict Ship `AVAdlic0` and the Shipwreck `AVAwrek0` `at` and the tile
+# west of it, the western one the entrance, the Shipwreck `AVAwre20` the same two, `at` the
+# entrance. A step onto an entered bank's entrance ends the move there (the hero stands on it);
+# none of them is entered from the three tiles above its entrance, nor left upward (ADV-OBJ-004:
+# classes 16, 24, 25 and 84 are not in `object_classes_from_above` 0x63AB00), so every walk below
+# comes from the side or from below. The Shipwreck is visited from a neighbouring tile, from above
+# too, the hero staying where it is.
+#
+# **The heroes.** Red has seven, Blue four. A step costs 100 on grass and water, 141 diagonally
+# (priced by hand: the banks import as blockers until T123b, so no reach query prices a step onto
+# one); Archangels or Titans give 2 000 land points a day, Wood Elves 1 700, an army whose slowest
+# is a Pikeman or an Archer 1 560, a boat 1 500 (packs/base/adventure.toml `land_points`,
+# `sea_points`); boarding leaves 0 points (no Admiral's Hat). A visit from a neighbouring tile pays
+# the step (ADV-OBJ-003). A hero's scouting radius is 5 (ADV-FOG-002: dx² + dy² ≤ 30), so every
+# target is explored at its click. No hero has a skill but E13-3's Tactics, no artifact but the
+# war machines, wings, boots and E13-7's worn set; the experience thresholds are 1 000, 2 000,
+# 3 200, 4 600, 6 200 (packs/base/core.toml).
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact (E13-7's backpack) or a resource; the template asks for gold, and an artifact on a
+# moving hero goes under "anything odd".
+
+[map]
+name = "E08 batch E13"
+description = "Engine-generated experiment map (E08, batch E13): creature banks: the records drawn at the start, declined banks and their hints, the bank battle's layout without tactics, obstacles or war machines, the sea banks' deck, the dialogs after a win, Dragon Utopia's artifacts, looted banks, a retreat, the rewards' resources, the Shipwreck's water tile. Hot seat, Red and Blue human; difficulty Easy; follow the results template."
+size = 72
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-13.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), at the start of Blue's turn (save 2) and at the start of Red's day 2 (save 3).",
+    "Most records are the game's memory: a hero's tile, its movement points (hero +0x4D), army, experience, level, status bits (+0x105) and morale byte (+0x11A), its worn artifacts and backpack; a bank's record (the banks' vector at game +0x4E3D8, 0x6C bytes each) and its object's word (the visited bits 5 to 12, the record's index 13 to 24, the looted bit 25); the questions, messages and dialogs in their order; the treasury; the path's marks after one click; the hint (the status bar's text over a tile); and as a battle opens its stacks with their hexes, the tactics phase, the obstacles, the war machines and the battlefield. The capture harness reads them (`clients/capture/batches/E08-batch-13.toml`, E08 T120). Played by hand, read the screens instead and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show), then again (the hero goes). A bank's question: answer as the procedure says (yes: attack or search; no: leave).",
+    "Battles against a bank's guards by auto combat unless the procedure says otherwise. A level-up's dialog: take the left skill. An army dialog (a reward's creatures with no room): note both bars, then close it with OK without a move.",
+    "Order: day 1, Red's turn: E13-1's reads, E13-2, E13-9, E13-3, E13-6, E13-7, E13-5 (the coast and the boarding); end the turn. Blue's turn: E13-1's Blue reads, E13-12; end the turn. Day 2, Red's turn: E13-10 (in E13-3's encounter), E13-5's Derelict Ship, E13-8 (in E13-7's encounter); end the turn. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- The lake (E13-5, E13-8): water from (27, 36) to (44, 58); column 26 is the coast ---------------
+
+[[map.patch]]
+terrain = "water"
+from = [27, 36]
+to = [44, 58]
+
+# --- E13-12's three pockets, closed by rock: P1 one water tile, P2 three, P3 one -------------------
+
+[[map.patch]]
+terrain = "rock"
+from = [48, 2]
+to = [52, 8]
+
+[[map.patch]]
+terrain = "grass"
+from = [50, 3]
+to = [50, 3]
+
+[[map.patch]]
+terrain = "water"
+from = [49, 4]
+to = [50, 4]
+
+[[map.patch]]
+terrain = "grass"
+from = [50, 5]
+to = [50, 6]
+
+[[map.patch]]
+terrain = "rock"
+from = [54, 2]
+to = [58, 9]
+
+[[map.patch]]
+terrain = "grass"
+from = [56, 3]
+to = [56, 3]
+
+[[map.patch]]
+terrain = "water"
+from = [56, 4]
+to = [56, 6]
+
+[[map.patch]]
+terrain = "water"
+from = [55, 5]
+to = [55, 5]
+
+[[map.patch]]
+terrain = "grass"
+from = [56, 7]
+to = [56, 8]
+
+[[map.patch]]
+terrain = "rock"
+from = [60, 2]
+to = [64, 7]
+
+[[map.patch]]
+terrain = "grass"
+from = [62, 3]
+to = [62, 3]
+
+[[map.patch]]
+terrain = "water"
+from = [61, 4]
+to = [62, 4]
+
+[[map.patch]]
+terrain = "grass"
+from = [62, 5]
+to = [62, 6]
+
+# --- E13-2, E13-11: the Stockpile S1 (entrance (6, 8)), the Crypt C1 ((10, 8)), the Stockpile S2 ((14, 8))
+
+[[map.object]]
+picture = "AVXbnk10"
+at = [7, 8]
+
+[[map.object]]
+picture = "AVXgyne0"
+at = [11, 8]
+
+[[map.object]]
+picture = "AVXbnk10"
+at = [15, 8]
+
+# --- E13-9: the Imp Cache I1 (entrance (10, 4)) ---------------------------------------------------
+
+[[map.object]]
+picture = "AVXbnk40"
+at = [10, 4]
+
+# --- E13-3, E13-10: the Dwarven Treasury T1 ((10, 20)), the Imp Caches I2 ((14, 21)), I3 ((7, 21)), I4 ((12, 24)), the Naga Bank N1 ((8, 24))
+
+[[map.object]]
+picture = "AVXbnk20"
+at = [11, 20]
+
+[[map.object]]
+picture = "AVXbnk40"
+at = [14, 21]
+
+[[map.object]]
+picture = "AVXbnk40"
+at = [7, 21]
+
+[[map.object]]
+picture = "AVXbnk40"
+at = [12, 24]
+
+[[map.object]]
+picture = "AVXbnk60"
+at = [9, 24]
+
+# --- E13-4, E13-6, E13-8: the Griffin Conservatory G2 ((12, 34)) ------------------------------------
+
+[[map.object]]
+picture = "AVXbnk30"
+at = [12, 34]
+
+# --- E13-7, E13-8: Dragon Utopia U1 ((16, 44)) and U2 ((16, 50)), the Crypts C2 ((20, 44)) and C3 ((24, 44))
+
+[[map.object]]
+picture = "AVSutop0"
+at = [17, 44]
+
+[[map.object]]
+picture = "AVSutop0"
+at = [17, 50]
+
+[[map.object]]
+picture = "AVXgyne0"
+at = [21, 44]
+
+[[map.object]]
+picture = "AVXgyne0"
+at = [25, 44]
+
+# --- E13-5, E13-8, E13-11: the Shipwreck W1 ((27, 46)), the boat ((27, 51)), the Derelict Ships D1 ((30, 54)) and D2 ((39, 40))
+
+[[map.object]]
+picture = "AVAwrek0"
+at = [28, 46]
+
+[[map.object]]
+picture = "AVXboat1"
+at = [28, 51]
+
+[[map.object]]
+picture = "AVAdlic0"
+at = [31, 54]
+
+[[map.object]]
+picture = "AVAdlic0"
+at = [40, 40]
+
+# --- E13-12: the Shipwrecks W2 ((50, 4)), W3 ((56, 5)), W4 ((62, 4)) in the pockets -----------------
+
+[[map.object]]
+picture = "AVAwre20"
+at = [50, 4]
+
+[[map.object]]
+picture = "AVAwre20"
+at = [56, 5]
+
+[[map.object]]
+picture = "AVAwre20"
+at = [62, 4]
+
+# --- E13-1's other banks, two of each kind on the map: T2, G1, M1, M2, N2, F1, F2 on row 64 --------
+
+[[map.object]]
+picture = "AVXbnk20"
+at = [6, 64]
+
+[[map.object]]
+picture = "AVXbnk30"
+at = [12, 64]
+
+[[map.object]]
+picture = "AVXbnk50"
+at = [18, 64]
+
+[[map.object]]
+picture = "AVXbnk50"
+at = [24, 64]
+
+[[map.object]]
+picture = "AVXbnk60"
+at = [30, 64]
+
+[[map.object]]
+picture = "AVXbnk70"
+at = [36, 64]
+
+[[map.object]]
+picture = "AVXbnk70"
+at = [42, 64]
+
+# --- E13-8's battle: one Peasant at (24, 48) (its zone (23, 47) to (25, 49)) ----------------------
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [24, 48]
+
+# --- E13-1 (the records) and the Blue reads of E13-2 and E13-9 -------------------------------------
+
+[[encounter]]
+id = "E13-1"
+title = "Every bank's record at the start (E13-1); Blue's hints over the declined Stockpile and Crypt (E13-2) and the Imp Cache left after a retreat (E13-9)"
+questions = ["ADV-BNK-001", "ADV-BNK-002", "ADV-BNK-006", "D-65", "D-66", "D-68"]
+procedure = [
+    "**E13-1.** Day 1, Red's turn, first, before any hero moves: read every bank's record and its object's word (27 banks, by entrance): I1 (10, 4), S1 (6, 8), C1 (10, 8), S2 (14, 8), T1 (10, 20), I2 (14, 21), I3 (7, 21), N1 (8, 24), I4 (12, 24), G2 (12, 34), U1 (16, 44), C2 (20, 44), C3 (24, 44), W1 (27, 46), U2 (16, 50), D1 (30, 54), D2 (39, 40), W2 (50, 4), W3 (56, 5), W4 (62, 4), T2 (5, 64), G1 (12, 64), M1 (17, 64), M2 (23, 64), N2 (29, 64), F1 (35, 64), F2 (41, 64). For each: the guards by slot (creature, count), the resources (wood, mercury, ore, sulfur, crystal, gems, gold), the creature and its count, the artifacts in the vector's order (name; class), the word's record index.",
+    "**Blue's turn** (day 1, after Red's): E13-1 (Blue's Melodia at (8, 5)) does not move. Hover each tile and note the hint: the Stockpile S1 (6, 8), the Crypt C1 (10, 8), the Imp Cache I1 (10, 4). Also read the three words' visited bits.",
+]
+record = [
+    { table = ["bank", "entrance", "guards by slot", "resources", "creature × count", "artifacts (name; class)", "record index"], rows = 27 },
+    { field = "Blue's hints: S1 (6, 8); C1 (10, 8); I1 (10, 4)" },
+    { field = "the words' visited bits on Blue's turn: S1; C1; I1" },
+    { field = "anything odd" },
+]
+predictions = """
+E13-1 (survey §2, §3; `bank_draw` 0x47AD90 per bank in the walk's order by entrance: level, row,
+column; the record's index in that order, 0 to 26):
+
+- **The level** by its chances 30, 30, 30, 10 (1 to 30 level 1 …); each record one row of §2's
+  table, its five stacks split as §3: **class 16 and the sea banks five equal stacks** (the
+  level's count ÷ 5): the Stockpile 4/6/8/10 Cyclopes, the Treasury 10/15/20/30 Dwarves, the
+  Conservatory 10/20/30/40 Griffins, the Imp Cache 20/30/40/60 Imps, the Medusa Stores 4/6/8/10,
+  the Naga Bank 2/3/4/6, the Hive 6/9/12/18 Dragon Flies, the Shipwreck 2/3/5/10 Wights, the
+  Derelict Ship 4/6/8/12 Water Elementals; **the Crypt** level 1 Skeleton 10, Walking Dead 10,
+  Walking Dead 10, Skeleton 10, Skeleton 10; level 2 Skeleton 13, Walking Dead 10, Wight 5,
+  Walking Dead 10, Skeleton 12; levels 3 and 4 four stacks unsplit, 20 Skeletons, 20 Walking
+  Dead, 10 Wights, 5 or 10 Vampires; **Dragon Utopia** four stacks unsplit, Green, Red, Gold and
+  Black Dragons 8, 5, 2, 1 / 8, 6, 3, 2 / 8, 6, 4, 3 / 8, 7, 6, 5.
+- **The upgrade** (r ≤ 50, drawn for every bank): only class 16's slot 2 (Cyclops King, Battle
+  Dwarf, Royal Griffin, Familiar, Medusa Queen, Naga Queen), about half of the 20 class-16 banks;
+  **the Hive's Dragon Flies never** (already the upgrade); none for the Crypt, Utopia and the
+  ships (0 %).
+- **The rewards** by the level: the Stockpile 4/6/8/10 of each resource but gold; the Treasury
+  2/3/5/10 crystal and 2 500/4 000/5 000/7 500 gold; the Conservatory 1/2/3/4 Angels; **the Imp
+  Cache 2/3/4/6 mercury and 1 000/1 500/2 000/3 000** (VCMI: no mercury at level 1); the Medusa
+  Stores 5/6/8/10 sulfur and 2 000 to 5 000; **the Naga Bank 8/12/16/24 sulfur** (VCMI gems) and
+  4 000/6 000/8 000/12 000; the Hive 4/6/8/12 Wyverns; the Shipwreck 2 000 to 5 000 (level 3 a
+  treasure, level 4 a minor); the Derelict Ship 3 000/3 000/4 000/6 000 (levels 2 and 3 a
+  treasure, 4 a minor); the Crypt 1 500/2 000/2 500/5 000 (levels 3 and 4 a treasure); Utopia
+  20 000 to 50 000 with **the relics first in the vector** (D-68): level 1 a relic, a major, a
+  minor, a treasure; level 2 two relics, a major, a minor; level 3 three relics, a major; level
+  4 four relics (VCMI: treasure first).
+- Every word's visited bits and looted bit clear at the start.
+
+Blue's reads (survey §7, `creature_bank_hint` 0x40D3F0: the kind's name, "(Not visited)" unless
+the player's bit is set): **S1, C1 and I1 all "(Not visited)"** for Blue, Blue's bit 6 clear on
+all three (Red's bit 5 set on S1 and I1 by then, clear on C1, E13-2 and E13-9).
+"""
+[encounter.hero]
+type = "Melodia"
+specialty = "spell Fortune"
+owner = "blue"
+at = [8, 5]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- E13-2 and E13-11 (A) ---------------------------------------------------------------------------
+
+[[encounter]]
+id = "E13-2"
+title = "A declined Cyclops Stockpile and a declined Crypt, their hints for Red (E13-2); a Stockpile declined, visited again and won: where the hero stands (E13-11)"
+questions = ["D-66", "ADV-BNK-003", "ADV-BNK-006", "ADV-VIS-006"]
+procedure = [
+    "**E13-2.** Day 1, Red's turn, after E13-1's reads: E13-2 stands at (6, 10) with twenty Archangels. Read its points. Click the Stockpile S1's entrance (6, 8) twice: E13-2 walks onto it. Note every question and message in order and answer the question **no**. Note E13-2's tile and points, S1's word, and the hint over S1.",
+    "Click the Crypt C1's entrance (10, 8) twice: E13-2 walks onto it. Note every question and message and answer **no**. Note E13-2's tile and points, C1's word and the hint over C1.",
+    "**E13-11.** Click the Stockpile S2's entrance (14, 8) twice: E13-2 walks onto it. Note every question and message, E13-2's tile and points at the question, and answer **no**. Note E13-2's tile, points and S2's word.",
+    "Press Space (the visit of the tile the hero stands on). Note every question and message; if nothing comes, step to (14, 9) and back onto (14, 8) and note that. Answer the question **yes**. As the battle opens note each side's stacks and their hexes; then auto combat. After it note every dialog and message in order (the level-ups: the left skill), then E13-2's tile, points, army and experience, S2's word, the hint over S2 and Red's treasury before and after.",
+]
+record = [
+    { field = "E13-2 before: points; Red's treasury" },
+    { field = "S1: questions and messages (in order)" },
+    { field = "after no at S1: E13-2's tile; points; S1's word (bits 5 to 12, 25); the hint over S1" },
+    { field = "C1: questions and messages (in order)" },
+    { field = "after no at C1: E13-2's tile; points; C1's word; the hint over C1" },
+    { field = "S2: questions and messages; at the question E13-2's tile; points" },
+    { field = "after no at S2: E13-2's tile; points; S2's word" },
+    { field = "Space on S2: questions and messages (or the step off and back)" },
+    { field = "the battle as it opens: E13-2's stacks (creature, count, hexes); the guards' (creature, count, hexes)" },
+    { field = "after the battle: dialogs and messages in order; E13-2's tile; points; army; experience" },
+    { field = "after it: S2's word; the hint over S2; Red's treasury" },
+    { field = "anything odd" },
+]
+predictions = """
+E13-2 (survey §4, §7; D-66):
+
+- **S1** (`visit_creature_bank` 0x4A15A0): the walk (6, 9), (6, 8), 200 (from below: the banks
+  are not entered from the three tiles above, ADV-OBJ-004); the team's mark first, then the
+  question (ADVEVENT 32 with the name); no: nothing more. E13-2 **on (6, 8), 1 800**;
+  S1's word bit 5 set (Red), bit 6 and 25 clear. **The hint over S1** for Red: the name and "("
+  the guards' total's size word (20 to 49 Lots, 50 Horde: levels 1 to 3 Lots, 4 Horde) and the
+  only creature's plural name ("Cyclopes"), or GENRLTXT 44 when slot 2 holds Cyclops Kings ")".
+- **C1** (`visit_search_bank` 0x4AC490): the walk (7, 9), (8, 9), (9, 9), (10, 8), 482; the
+  question first (ADVEVENT 119); no: **nothing, not even the mark**. E13-2 on (10, 8), 1 318; C1's word
+  unchanged (bits 5 to 12 clear); the hint over C1 **"(Not visited)"**. **VCMI 1.7.5:** every
+  visit scouts the bank: the Crypt's guards shown to Red.
+
+E13-11 (design §6, D-66; the move ends on an entered object's entrance):
+
+- **S2:** the walk (11, 9), (12, 9), (13, 9), (14, 8), 482; E13-2 **on (14, 8), 836 at the
+  question**; no: on (14, 8), 836; S2's word bit 5 set.
+- **Space** visits the tile again (the attack kind: the marks set, not looted, the question):
+  the question again, nothing else; yes: the battle at (14, 8) (§5): E13-2's Archangel 20 at
+  hex 57; the five guard stacks at 15, 185, 172, 2, 100 (slots 0 to 4; a Cyclops King stack at
+  172). Won by auto combat (losses possible). Then the levels (the battle's experience the slain
+  Cyclopes' hit points, 70 each: 1 400 to 3 500, so level 2 or 3: each level-up's dialog), then
+  the reward's message (ADVEVENT 34: the Cyclopes, the resources), the resources gained (4, 6, 8
+  or 10 each of wood, mercury, ore, sulfur, crystal and gems, as S2's record), S2 looted (bit
+  25). E13-2 **still on (14, 8), 836**; the hint over S2 **"(Visited)"**.
+"""
+[encounter.hero]
+type = "Adela"
+specialty = "spell Bless"
+at = [6, 10]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 20]]
+
+# --- E13-9 (G) --------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E13-9"
+title = "A weak hero attacks an Imp Cache and retreats: the record after, the hint"
+questions = ["ADV-BNK-004", "ADV-BNK-005", "ADV-BNK-006"]
+procedure = [
+    "Day 1, Red's turn, after E13-2: E13-9 stands at (12, 4) with twenty Wood Elves. Read its points and I1's record. Click the Imp Cache I1's entrance (10, 4) twice: E13-9 walks onto it. Note every question and message and answer **yes**.",
+    "As the battle opens note each side's stacks and their hexes. At E13-9's first turn: shoot the guard stack nearest the Wood Elves (note which, and how many die); if the guards act first, note what they do. Then **retreat** (the retreat button, then yes). Note the battle's end.",
+    "After it: I1's record (the guards by slot) and its word, whether E13-9 is still on the map, and the hint over I1.",
+]
+record = [
+    { field = "E13-9 before: points; I1's record (guards by slot)" },
+    { field = "I1: questions and messages" },
+    { field = "the battle as it opens: E13-9's stacks and hexes; the guards' (creature, count, hexes)" },
+    { field = "the shot: the target; the guards' losses; anything the guards did before it" },
+    { field = "the retreat: the battle's end" },
+    { field = "after it: I1's record (guards by slot); I1's word; E13-9 on the map?; the hint over I1" },
+    { field = "anything odd" },
+]
+predictions = """
+- The walk (11, 4), (10, 4), 200 (1 500 left of 1 700); the mark first, the question; yes: the battle. E13-9's Wood
+  Elves at hex 57; the guards at 15, 185, 172, 2, 100 (a Familiar stack at 172 when drawn).
+- **The retreat** (survey §5; design §7): `adventure_battle` returns another winner, so the
+  record keeps **the guards' survivors by slot**: the shot stack less its dead, the others as
+  drawn (a Familiar stack as Familiars, not reverted, unlike a monster's A-6); **not looted** (bit
+  25 clear), bit 5 set. E13-9 leaves the map (a retreated hero, to the Tavern's pool).
+- **The hint over I1** for Red by the survivors: the size word of their total (Lots 20 to 49,
+  Horde 50 to 99, Throng 100 to 249, Swarm 250 to 499) and "Imps", or GENRLTXT 44 with Familiars.
+  Blue's "(Not visited)" (E13-1's Blue read).
+"""
+[encounter.hero]
+type = "Uland"
+specialty = "spell Cure"
+at = [12, 4]
+primary = [1, 1, 1, 1]
+army = [["Wood Elf", 20]]
+
+# --- E13-3 and E13-10 (B) ---------------------------------------------------------------------------
+
+[[encounter]]
+id = "E13-3"
+title = "The bank battle's rules: Expert Tactics, a Ballista, an Ammo Cart and four stacks in slots 0, 2, 4, 6 against a Dwarven Treasury (E13-3); day 2: an Imp Cache of level 1 and a Naga Bank won, the treasury (E13-10)"
+questions = ["BAT-TAC-001", "BAT-GEO-004", "BAT-WAR-001", "BAT-WAR-004", "BAT-SET-001", "ADV-BNK-004", "D-65", "ADV-BNK-005"]
+procedure = [
+    "**E13-3.** Day 1, Red's turn, after E13-9: E13-3 stands at (10, 22) with Expert Tactics, a Ballista and an Ammo Cart, in tight formation, its army in slots 0, 2, 4 and 6: ten Archangels, twenty Pikemen, ten Swordsmen, ten Archers. Read its points. Click the Dwarven Treasury T1's entrance (10, 20) twice: E13-3 walks onto it; answer the question **yes**.",
+    "As the battle opens, before any stack acts: whether a tactics phase opens; each side's stacks (creature, count, hexes); the obstacles (none, or each); the war machines on the field (each). Then play: at each Red stack's turn before the Archers' first: Defend. At the Archers' first turn note their shots, shoot any guard stack, and note their shots again. Then auto combat to the end.",
+    "After it note the dialogs and messages in order, E13-3's tile, points and army, and Red's treasury.",
+    "**E13-10, day 2, Red's turn, first:** E13-3 stands on (10, 20). From E13-1's records pick the Imp Cache of level 1 (twenty Imps a stack, 1 000 gold and 2 Mercury) among I2 (14, 21), I3 (7, 21) and I4 (12, 24), the first in that order; if none is level 1, I2. Read Red's treasury, walk onto its entrance (twice), answer **yes**, auto combat; read the treasury after the reward.",
+    "Then the Naga Bank N1 (8, 24): read the treasury, walk onto its entrance, **yes**, auto combat; read the treasury after.",
+]
+record = [
+    { field = "E13-3 before: points" },
+    { field = "the battle as it opens: a tactics phase?; E13-3's stacks (creature, count, hexes); the guards' (creature, count, hexes)" },
+    { field = "the obstacles; the war machines on the field" },
+    { field = "the Archers' shots before their first shot; after it" },
+    { field = "after the battle: dialogs and messages in order; E13-3's tile; points; army; Red's treasury" },
+    { field = "E13-10: the Imp Cache taken (its record's level); E13-3's points at the start of day 2" },
+    { field = "the Imp Cache: Red's treasury before; the reward's message; the treasury after" },
+    { field = "the Naga Bank N1: Red's treasury before; the reward's message; the treasury after" },
+    { field = "anything odd" },
+]
+predictions = """
+E13-3 (survey §5, design §13; the flag +0x53C5 set by `bank_battle_reward` alone):
+
+- The walk (10, 21), (10, 20), 200: **1 360** (1 560: Pikemen and Archers, speed 4).
+- **No tactics phase** (`battle_start` 0x462C5D: the flag; BAT-TAC-001) although E13-3's Tactics
+  exceed the guards' none; **no obstacles** (`battle_obstacles` 0x4662B3); **no war machine on
+  the field** (`battle_war_machine_stacks` 0x463758 skips the Ballista, the Ammo Cart, the tent
+  and the Catapult). VCMI 1.7.5 the same; the wiki the same.
+- **The layout** (0x4636B7, `bank_battle_hexes` 0x63D0E0) by the ordinal among the filled slots,
+  the formation ignored: **Archangel 57, Pikeman 61, Swordsman 90, Archer 93** (slots 0, 2, 4, 6);
+  the guards in slot order at **15, 185, 172, 2, 100** (a Battle Dwarf stack at 172 when drawn).
+  An ordinary battle would have put a tight formation's four stacks elsewhere (and the slot, not
+  the ordinal, would have left 61 and 93 apart).
+- **The Archers' shots:** 12 before, **12 after** the shot (BAT-WAR-004: the Ammo Cart's supply
+  is read from the hero's artifact, 0x43F9E1, not from a cart on the field; the wiki: passive
+  effects stay). Without the supply: 11.
+- Won; then the levels (the slain Dwarves' 20 hit points each: 1 000 to 3 000), the reward's
+  message, the crystal and gold of T1's level; E13-3 on (10, 20) with 1 360.
+
+E13-10 (survey §2; D-65):
+
+- Day 2: E13-3's points the day's for its army (1 560 while Pikemen or Archers live).
+- **The Imp Cache** of level 1: **+1 000 gold and +2 mercury** (CrBanks.txt; the wiki); VCMI
+  1.7.5 the gold only. At another level its own row (3/4/6 mercury: no dispute).
+- **The Naga Bank:** **sulfur** 8/12/16/24 and gold 4 000/6 000/8 000/12 000 by N1's level, no
+  gems (VCMI: gems, the HD mod's change).
+- The walks (off T1 downward only, ADV-OBJ-004): to I2 (11, 21), (12, 21), (13, 22), (14, 21),
+  523; to I3 (9, 21), (8, 21), (7, 21), 341; to I4 (10, 21), (11, 22), (12, 23), (13, 24), (12,
+  24), 623; then to N1's entrance (8, 24) from I2 805, from I3 400, from I4 482 (entered from
+  (7, 24) or the row below): both fit the day.
+"""
+[encounter.hero]
+type = "Tyris"
+specialty = "creature Cavalier"
+at = [10, 22]
+primary = [10, 10, 1, 1]
+skills = [["Tactics", 3]]
+army = [["Archangel", 10], ["Pikeman", 20], ["Swordsman", 10], ["Archer", 10]]
+slots = [0, 2, 4, 6]
+artifacts = { "war machine 1" = "Ballista", "war machine 2" = "Ammo Cart" }
+tight = true
+
+# --- E13-4, E13-6, E13-8's first part (E) -----------------------------------------------------------
+
+[[encounter]]
+id = "E13-6"
+title = "A full army near a level wins a Griffin Conservatory: the two-hex guards' hexes (E13-4), the dialogs' order (E13-6); the looted Conservatory visited again (E13-8)"
+questions = ["D-67", "D-69", "GAM-DEC-007", "GAM-DEC-004", "ADV-BNK-005", "BAT-SET-001"]
+procedure = [
+    "Day 1, Red's turn, after E13-3: E13-6 stands at (12, 36) with seven stacks (Archangels and Titans, ten each, slots 0 to 6: the army full) and 900 experience. Read its points, experience and level. Click the Griffin Conservatory G2's entrance (12, 34) twice: E13-6 walks onto it; answer **yes**.",
+    "**E13-4.** As the battle opens: each side's stacks (creature, count) and **every hex each stack covers** (two for a Griffin). Then auto combat.",
+    "**E13-6.** After the battle note every dialog and message **in order** (each level-up: the left skill; the reward's message; the army dialog: both bars, then OK without a move). Then E13-6's tile, points, army, experience and level.",
+    "**E13-8 (the first part).** Press Space on (12, 34) (if nothing comes, step to (12, 35) and back). Note every question and message.",
+]
+record = [
+    { field = "E13-6 before: points; experience; level" },
+    { field = "the battle as it opens: E13-6's stacks (creature, count, hexes)" },
+    { table = ["guard slot", "creature", "count", "hexes covered"], rows = 5 },
+    { table = ["#", "dialog or message (each level-up; the reward's message; the army dialog's two bars)"], rows = 6 },
+    { field = "after OK: E13-6's tile; points; army; experience; level" },
+    { field = "E13-8: Space on G2: questions and messages" },
+    { field = "anything odd" },
+]
+predictions = """
+E13-4 (survey §5, D-69; design §13):
+
+- E13-6's stacks at **57, 61, 90, 93, 96, 125, 129** (slots 0 to 6).
+- The guards in slot order at **15, 185, 172, 2, 100**, each two-hex stack covering its position
+  and the hex one column toward the attacker (BAT-GEO-002): **14-15, 184-185, 171-172, 1-2,
+  99-100** (a Royal Griffin stack at 171-172 when drawn). VCMI 1.7.5's wide table puts the third
+  and fourth at 171 and 1: the same cells if VCMI's position is a two-hex defender's front hex
+  (unverified).
+
+E13-6 (survey §6 as corrected by T118b2; D-67; GAM-DEC-007 point 3):
+
+- The walk (12, 35), (12, 34), 200: 1 800. Won by auto combat without a lost stack.
+- **The order:** first **the level-ups** (`adventure_battle`'s 0x4AE324 for a human: the battle's
+  experience the slain Griffins' 25 hit points each, 1 250 to 5 000, so from 900 at least level 3,
+  at level 4's draw level 5: one dialog per level), **then the reward's message** (ADVEVENT 34,
+  the strongest guard's name, Royal Griffins when drawn, and the Angels: 1 to 4 by G2's level),
+  **then the army dialog** (the army full, no Angels in it): E13-6's seven stacks in the hero's bar,
+  the Angels in the dialog's own; OK loses them. VCMI the same order. (Decision 337's reading,
+  replaced: the reward first.)
+- After OK: E13-6 on (12, 34), 1 800; its army unchanged.
+
+E13-8, the first part (survey §4): Space visits G2 again: the mark, then looted: **ADVEVENT 33**
+(the deserted message with the name), **nothing else** (no question, no battle).
+"""
+[encounter.hero]
+type = "Loynis"
+specialty = "spell Prayer"
+at = [12, 36]
+experience = 900
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10], ["Titan", 10], ["Archangel", 10], ["Titan", 10], ["Archangel", 10], ["Titan", 10], ["Archangel", 10]]
+
+# --- E13-7 and E13-8's second part (F) --------------------------------------------------------------
+
+[[encounter]]
+id = "E13-7"
+title = "Every body position full, Dragon Utopia won: the backpack's order (E13-7); two Crypts won; day 2: the two looted Crypts and the looted Shipwreck searched, then a battle (E13-8)"
+questions = ["D-68", "ADV-BNK-003", "ADV-BNK-005", "HER-ADV-008", "GAM-BAT-014"]
+procedure = [
+    "**E13-7.** Day 1, Red's turn, after E13-6: E13-7 stands at (16, 47) with twenty Archangels and an artifact at every body position (the backpack empty). From E13-1's records take U1 (16, 44) unless its artifacts are four relics and U2's are not; then U2 (16, 50). Read Red's treasury. Walk onto its entrance (twice) and answer **yes**; auto combat.",
+    "After it note every dialog and message in order (the level-ups: the left skill), then E13-7's worn artifacts, **its backpack in order** (each artifact's name) and Red's treasury.",
+    "Walk onto the Crypt C2's entrance (20, 44), answer **yes**, auto combat; then onto C3's (24, 44), **yes**, auto combat. Note each reward's message and the backpack after. If the day's points run out, do the rest first on day 2.",
+    "**E13-8, day 2, Red's turn, after E13-10 and E13-5's Derelict Ship:** E13-7 stands on C3 (24, 44). Read its status bits 9 to 11 (+0x105) and morale byte (+0x11A). Press Space (or step to (24, 45) and back), answer **yes**; note the messages, the bits and the byte. Walk onto C2's entrance (20, 44), **yes**; the same notes.",
+    "Walk to (26, 45) on the coast, then click the Shipwreck W1's entrance (27, 46) (looted by E13-5 on day 1); answer **yes**; the same notes and E13-7's tile.",
+    "Click the Peasant at (24, 48): E13-7 attacks it; auto combat. Note the bits and the byte after the battle.",
+]
+record = [
+    { field = "E13-7 before: points; the Utopia taken (U1 or U2); Red's treasury" },
+    { field = "the battle as it opens: the guards (creature, count, hexes)" },
+    { field = "after it: dialogs and messages in order" },
+    { field = "E13-7's worn artifacts after; its backpack in order (names; class each); Red's treasury" },
+    { field = "C2 and C3: the reward's messages; the backpack after; E13-7's points after C3" },
+    { field = "E13-8 day 2, before: +0x105 bits 9, 10, 11; +0x11A" },
+    { field = "C3 again: questions and messages; bits; +0x11A" },
+    { field = "C2 again: questions and messages; bits; +0x11A" },
+    { field = "W1 from (26, 45): questions and messages; E13-7's tile; bits; +0x11A" },
+    { field = "the Peasant: the battle's result; bits; +0x11A after" },
+    { field = "anything odd" },
+]
+predictions = """
+E13-7 (survey §6, D-68; ADR-0013 point 15.4):
+
+- The walk to U1 (16, 46), (16, 45), (16, 44), 300 (U2: (17, 47), (18, 48), (18, 49), (17, 50),
+  (16, 50), 582); the question ADVEVENT 47; the four dragon stacks at 15, 185, 172, 2 (the corners), two hexes
+  each. Won by auto combat (Attack and Defense 40).
+- After the levels, the message (ADVEVENT 34: Black Dragons, the strongest, then the artifacts and
+  the gold), then each artifact by `hero_give_artifact` in the record's order: every body
+  position full, so **the backpack in the record's order: the relics first**, then the major,
+  minor and treasure of its level (D-68; VCMI 1.7.5 lists treasure first, so its backpack would
+  start with the lowest class). The worn ones unchanged; the gold of the level (20 000 to 50 000).
+- The Crypts: their question ADVEVENT 119, won; 1 500 to 5 000 each; a treasure at levels 3 and 4
+  appended to the backpack. Points: from U1 to C2 (17, 44), (18, 44), (19, 45), (20, 44), 482,
+  to C3 (21, 45), (22, 45), (23, 45), (24, 44), 482: 736 left (from U2 823 to C2: 113 left).
+
+E13-8, day 2 (survey §4: `visit_search_bank`, the looted branch; HER-ADV-008):
+
+- Before: bits 9 to 11 clear, +0x11A 0 (the day-1 battles left nothing).
+- **C3 again** (Space): the question first (ADVEVENT 119), yes: the mark, then the second text
+  (ADVEVENT 120: found nothing, morale drops); **bit 10 set, +0x11A −1** (0xFF).
+- **C2:** the walk (23, 45), (22, 45), (21, 45), (20, 44), 482; the same question and message;
+  **nothing more** (bit 10 already set): −1.
+- **W1** from (26, 45) (the walk (21, 45) to (26, 45), 641; the visit's step paid, 141): the
+  question (ADVEVENT 122), yes: the message (ADVEVENT 123); **bit 9 set, +0x11A −2** (0xFE);
+  E13-7 **stays on (26, 45)**.
+- **The Peasant** (the zone entered at (25, 47) by (25, 46), 241): won; **bits 9 to 11 clear and
+  +0x11A 0** after the battle (GAM-BAT-014). VCMI 1.7.5: a looted search gives its −1 at once
+  without a question, once per kind: the same −1, −1, −2, 0.
+"""
+[encounter.hero]
+type = "Coronius"
+specialty = "spell Slayer"
+at = [16, 47]
+primary = [40, 40, 1, 1]
+army = [["Archangel", 20]]
+
+[encounter.hero.artifacts]
+"head" = "Helm of the Alabaster Unicorn"
+"shoulders" = "Recanter's Cloak"
+"neck" = "Necklace of Swiftness"
+"right hand" = "Centaurs Axe"
+"left hand" = "Shield of the Dwarven Lords"
+"torso" = "Breastplate of Petrified Wood"
+"right ring" = "Quiet Eye of the Dragon"
+"left ring" = "Still Eye of the Dragon"
+"feet" = "Boots of Polarity"
+"misc 1" = "Clover of Fortune"
+"misc 2" = "Cards of Prophecy"
+"misc 3" = "Ladybird of Luck"
+"misc 4" = "Badge of Courage"
+"misc 5" = "Crest of Valor"
+
+# --- E13-5 and E13-11's second part (C, D) ----------------------------------------------------------
+
+[[encounter]]
+id = "E13-5"
+title = "The Shipwreck attacked from the coast: the battlefield, where the hero stands (E13-5, E13-11); a hero boards a boat and, on day 2, attacks a Derelict Ship from it (E13-5)"
+questions = ["ADV-BNK-004", "GAM-BAT-001", "ADV-MOV-009", "ADV-SEA-002"]
+procedure = [
+    "Day 1, Red's turn, after E13-7: E13-5 stands at (26, 46) on the coast with ten Archangels; the Shipwreck W1's entrance (27, 46) is the water tile east of it. Read its points. Click W1's entrance (27, 46) twice. Note E13-5's tile and points at the question, every question and message; answer **yes**.",
+    "As the battle opens: the battlefield (the background: a deck, a shore, grass, …), the obstacles, each side's stacks. Auto combat. After it: the dialogs and messages in order, E13-5's tile and points, W1's word.",
+    "E13-5b stands at (26, 51) with ten Archangels beside an empty boat on (27, 51). Click the boat twice: E13-5b boards it. Note its tile, points and whether it is aboard. End Red's turn after E13-5b.",
+    "**Day 2, Red's turn, after E13-10:** E13-5b in its boat on (27, 51): read its points. Click the Derelict Ship D1's entrance (30, 54) twice: it sails onto it. Note every question and message; answer **yes**. As the battle opens: the battlefield and the obstacles. Auto combat; after it E13-5b's tile and the dialogs.",
+]
+record = [
+    { field = "E13-5 before: points" },
+    { field = "W1: at the question E13-5's tile; points; questions and messages" },
+    { field = "the W1 battle as it opens: the battlefield; obstacles; the stacks" },
+    { field = "after it: dialogs and messages; E13-5's tile; points; W1's word" },
+    { field = "E13-5b: the boarding: its tile; points; aboard?" },
+    { field = "day 2: E13-5b's points; D1: questions and messages" },
+    { field = "the D1 battle as it opens: the battlefield; obstacles" },
+    { field = "after it: E13-5b's tile; dialogs and messages" },
+    { field = "anything odd" },
+]
+predictions = """
+E13-5 and E13-11's second part (survey §4, §5; design §7, §9, §14):
+
+- **W1 from the coast** (`hero_step_allowed` 0x481BE0: a class 85 entrance from land): E13-5
+  **stays on (26, 46)** at the question and after the battle, on land throughout (E13-11); the
+  visit's step paid: **1 900**. The question ADVEVENT 122; yes: the mark, the battle.
+- **The battlefield: the ship's deck** (`CmBkDeck`: the class sets the ship flag +0x53C6, also
+  from the coast; `E08-sea.md` §6), no obstacles, the guards (Wights) at 15, 185, 172, 2, 100.
+  Won; the gold of W1's level (2 000 to 5 000; a treasure at 3, a minor at 4); W1 looted (bit 25).
+- **E13-5b:** the step onto (27, 51) boards (100): aboard, **0 points** (no Admiral's Hat).
+  Day 2: **1 500** (the sea's); the sail (27, 52), (28, 53), (29, 54), (30, 54), 482 (entered
+  from the west: the Derelict Ship is not entered from above); the question ADVEVENT
+  41, yes: the battle **on the deck** (a hero in a boat, and the class's flag), no obstacles;
+  won: the gold of D1's level (3 000 to 6 000, a treasure at 2 and 3, a minor at 4); E13-5b on
+  (30, 54) in its boat. VCMI 1.7.5 the same battlefield.
+"""
+[encounter.hero]
+type = "Cuthbert"
+specialty = "spell Weakness"
+at = [26, 46]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10]]
+
+[[encounter.also]]
+type = "Adelaide"
+specialty = "spell Frost Ring"
+name = "E13-5b"
+at = [26, 51]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10]]
+
+# --- E13-12 (Blue: H1, H2, I) -----------------------------------------------------------------------
+
+[[encounter]]
+id = "E13-12"
+title = "A flight over a Shipwreck's water entrance, from land and from water; a water walker beside one: no path across, the visit from the coast"
+questions = ["ADV-MOV-009", "ADV-SEA-002", "ADV-STUB-12", "D-46"]
+procedure = [
+    "Day 1, Blue's turn, after E13-1's Blue reads. **P1:** E13-12 (Angel Wings, ten Pikemen) stands at (50, 3) in a rock pocket; south of it the Shipwreck W2's entrance (50, 4) on the only water tile, then grass (50, 5) and (50, 6). Read its points. Click (50, 5) once: note the path's marks (or none). If a path shows, click again; note every question and message on the way, E13-12's tile and points and W2's word.",
+    "**P2:** E13-12b (Angel Wings, ten Pikemen) stands at (56, 3); south of it three water tiles (56, 4) to (56, 6), the Shipwreck W3's entrance the middle one (56, 5), then grass (56, 7) and (56, 8). Click (56, 7) once: note the marks; if a path shows, click again; the same notes (W3's word).",
+    "**P3:** E13-12c (Boots of Levitation, ten Pikemen) stands at (62, 3); south of it the Shipwreck W4's entrance (62, 4) on the only water tile, then grass (62, 5) and (62, 6). Click (62, 5) once: note the marks (or none). If a path shows, click again and note where it stops. Then click W4's entrance (62, 4) twice: note E13-12c's tile and points, every question and message; answer **no**. Note its tile, points and W4's word. End Blue's turn.",
+]
+record = [
+    { field = "P1: E13-12's points; the marks to (50, 5) (tiles, or none)" },
+    { field = "P1: the walk: questions and messages; E13-12's tile; points; W2's word" },
+    { field = "P2: E13-12b's points; the marks to (56, 7)" },
+    { field = "P2: the walk: questions and messages; E13-12b's tile; points; W3's word" },
+    { field = "P3: E13-12c's points; the marks to (62, 5) (or none); if walked, where it stopped" },
+    { field = "P3: W4's visit: E13-12c's tile and points at the question; questions and messages" },
+    { field = "after no: E13-12c's tile; points; W4's word" },
+    { field = "anything odd" },
+]
+predictions = """
+Design §9 (ADV-STUB-12 lifted; ADV-MOV-009, ADV-SEA-002 amended); survey `E08-sea.md` §16's
+re-read: class 85 is exempt from the flying-only branch (0x4B27FB) as a boat (8) and a hero (34),
+and 0x4B2CF3's jump for a class not entered reaches the flying copy, which a boat's tile gets
+(E8-17d from land, E8-17e from water: both crossed):
+
+- **P1, from land:** a path over: marks (50, 4), (50, 5); the flight 100 a tile (Angel Wings'
+  level 3): E13-12 on **(50, 5), 1 360**; no question, no visit, W2's word unchanged.
+- **P2, from water:** a path over (56, 4), (56, 5), (56, 6), (56, 7): **(56, 7), 1 160**; no
+  question, W3's word unchanged.
+- **P3, a water walker** (`E08-sea.md` §15: the water walker's search keeps 34, 8 and 85; design
+  §9: the entrance a step from a stop node on land, never a water walk's pass): **no path** to
+  (62, 5). The click on (62, 4): the visit from the coast, E13-12c **stays on (62, 3)**, the step
+  paid (**1 460**); the question ADVEVENT 122; no: nothing, no mark (W4's bits clear).
+- Untested in the original before (E8c had a boat on the tile); VCMI 1.7.5 unread for both.
+"""
+[encounter.hero]
+type = "Alagar"
+specialty = "spell Ice Bolt"
+owner = "blue"
+at = [50, 3]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "shoulders" = "Angel Wings" }
+
+[[encounter.also]]
+type = "Astral"
+specialty = "spell Hypnotize"
+owner = "blue"
+name = "E13-12b"
+at = [56, 3]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "shoulders" = "Angel Wings" }
+
+[[encounter.also]]
+type = "Daremyth"
+specialty = "spell Fortune"
+owner = "blue"
+name = "E13-12c"
+at = [62, 3]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "feet" = "Boots of Levitation" }
