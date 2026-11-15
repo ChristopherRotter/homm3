@@ -363,14 +363,19 @@ fn vary(
     // `OWNABLE`) though neutral at load, with no owner in its body. (E08 T97b1) Not a dwelling's
     // (whose body is `Owned`) nor a random dwelling's: the import builds one entered from water
     // and `lay_out` lays it out there (survey `E08-dwellings.md` §17). (E09 T9b2b) A town's
-    // entrance too, as the plans lay them out (`play.rs`'s `towns_laid_out`).
+    // entrance too, as the plans lay them out (`play.rs`'s `towns_laid_out`). (E09 T29b, a gap of
+    // `master`'s found by the setup's baseline) A map garrison's, ownable since E08 T116b1
+    // (`garrisons_laid_out`).
     let entrances: Vec<Spot> = m
         .objects
         .iter()
         .filter(|o| {
             matches!(
                 o.body,
-                Body::Mine { .. } | Body::AbandonedMine(_) | Body::Owned { .. }
+                Body::Mine { .. }
+                    | Body::AbandonedMine(_)
+                    | Body::Owned { .. }
+                    | Body::Garrison { .. }
             ) && !(DWELLINGS.0..DWELLINGS.0 + DWELLINGS.1)
                 .contains(&(usize::try_from(o.template - 1).unwrap() / BLOCKERS.len()))
         })
