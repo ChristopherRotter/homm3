@@ -16655,8 +16655,12 @@ T116c; the town lane's plan for T114a, T115a and the order; CLT-Q40's visits by 
 T115a; the server lane's index review, kept as built; the harness notes; an informational
 decision); the A-13 note gains the garrison's flight. ADV-Q52 recorded in `QUESTIONS-ANSWERED.md`.
 
-**Verify:** see the HANDOFF's session entry (the scoped verify `--with-original-data` on the
-final tree).
+**Verify:** the scoped verify `--with-original-data` on the final tree passed every step it runs
+(fmt, clippy, check-arch, -rules (492), -stubs, -docs, -exe-map, -lane, coverage 892 s,
+determinism 544 s with the golden replays unchanged, bench-check 560 s with every adventure
+workload inside its gate and the six new baselines at their counts, doc-drift, original-data
+56 s); the fixers ran their crates' tests, `fmt` and `clippy` apart. `h3-cli`, `h3-files` and
+`h3-sim` (outside the scope) untouched.
 **Versions:** none (tests, docs, markers and baselines; no engine behaviour changed).
 
 #### Increment 12's design note at its closure (moved by T117)
