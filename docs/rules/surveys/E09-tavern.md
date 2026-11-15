@@ -193,7 +193,7 @@ E11).
   hard-coded in the dialog, as in the town screen's move out, TWN-ROW-003's `most_heroes`), or, in
   a town's tavern, **a visitor in the town** (+0x10; the manual: "You cannot hire a hero if you
   currently have another hero visiting the town"). A computer player's dialog hides the button
-  (its hires are its own: 0x431800, E13). The town's tavern opens from the town screen's Tavern
+  (its hires are its own code, not read: E13). The town's tavern opens from the town screen's Tavern
   building (5, or Castle's Brotherhood 22 over it).
 - **A town's hire** (`town_tavern_hire`): the slot found, 2 500 gold taken, `hero_place` at the
   town's position (+5 to +7: its entrance, E09-towns.md §2.4) with the flag that clears bits 17
@@ -351,7 +351,7 @@ else one of the two (TD-19). Its RNG is a stream per player (`getRandomGenerator
 class while types are free (`random_between(1, 0)`: not reachable, every weight is 5 or 6); a
 hired returning offer's bit 17 (cleared by the hire).
 
-**Open points:** the computer's hires (0x431800 and its siblings; E13), whether it uses the map's
+**Open points:** the computer's hires (its own functions that read the price; E13), whether it uses the map's
 Taverns (the wiki: it does not); the tavern dialog's dismiss-handler question (T-14); the three
 per-player Thieves' Guild parts' contents (VCMI and the manual name them); the rumours (text, no
 rule; decision 99); the network's paths.
@@ -379,8 +379,8 @@ both); the Thieves' Guild window's capture.
 ## 10. Not read
 
 The tutorial's fixed classes (`tavern_new_heroes`' branch on +0x1F69D), a campaign's carried
-heroes (`hero_setup_redraw_by_class` 0x486110), the computer's hire logic (0x431360 to
-0x431BD0, 0x527710 to 0x52A960), the network (0x4821B7), the rumours' draw (0x4C8D48, E24's), the
+heroes (`hero_setup_redraw_by_class` 0x486110), the computer's hire logic (the other readers of
+`hero_price`), the network (0x4821B7), the rumours' draw (0x4C8D48, E24's), the
 tavern dialog's dismiss handler, the Thieves' Guild window's per-player parts 2 to 4.
 
 ## 11. The checkpoint (T32; `TWN-Q16`, the user, 2026-11-15)
