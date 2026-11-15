@@ -263,7 +263,7 @@ bank's entrance (decision 268). By the kind's question:
 ### 9. The Shipwreck's passage (ADV-STUB-12 lifted; ADV-MOV-009, ADV-SEA-002 amended)
 
 - The original's step and search take class 85's water entrance as a boat's (`hero_step_allowed`
-  0x481D0D, `pathfinder_expand` 0x4B26D6 and 0x4B29AC; `E08-sea.md` §3.1, §4.1, §15). So a
+  0x481D0D, `pathfinder_expand` 0x4B26D6 and 0x4B29AC; `E08-sea.md` §3.1, §4.1, §8.1, §15). So a
   `coast` kind's entrance on water is, for a hero not in a boat, **a step from a stop node on
   land** (walking, water walking or flying: the visit from the neighbour, the hero staying on
   land) and **a flight's pass** from land or from water (as an empty boat's tile, batch E8c's
