@@ -1,0 +1,55 @@
+# E25 T34's KL anchor (increment 8, decision 3's training regimes; the user, 2026-11-15):
+# `e25-imitate-structure.toml` (the run of `e25-structure-1` #2: from T27's clone, the imitation
+# loss at 0.5 falling to 0 at 10 M, seed 1) with the loss's teacher #2 itself instead of the fair
+# actor (`imitation_teacher`: its draws label the learner's decisions, so the term is in
+# expectation the cross-entropy to #2's policy, its KL plus #2's entropy), its first 2 M samples
+# (`lr_horizon` 20 M: the rate, the entropy bonus and the loss's weight #2's run's at the same
+# samples), at T31's update speed. Every learning row costs one more pass of #2 in the rollouts.
+# The ladders cut (measured after the run, as T33's). About 2 hours on the GTX 1070. From
+# python/:
+#
+#   uv run --group train python -m h3env.train --config configs/e25-anchor.toml --init-from runs/clone-3/students/hexconv-n-96x6-a.pt --out runs/e25-anchor-1
+#
+# Ctrl-C stops it at the next update boundary, checkpointed; each later part:
+#
+#   uv run --group train python -m h3env.train --resume runs/e25-anchor-1
+
+seed = 1
+samples = 2_000_000
+
+[env]
+kinds = [78, 2, 100, 50, 25, 3]
+
+[network]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 6
+mask_input = true
+order = true
+attack_hex = true
+tactics_rounds = 3
+
+[ppo]
+lr_horizon = 20_000_000
+accumulate = 4
+chunk_align = 32
+shaping = true
+entropy_floor = 0.0
+imitation_coef = 0.5
+imitation_horizon = 10_000_000
+imitation_teacher = "runs/e25-structure-1/best.pt"
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 1
+ladder_final_episodes = 0

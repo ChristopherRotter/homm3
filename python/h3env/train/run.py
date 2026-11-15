@@ -184,6 +184,12 @@ class Config:
     #: imitation_floor`, then stays; 1 holds it at `imitation_coef` throughout. 0 (the default):
     #: to 0, as before T33.
     imitation_floor: float = field(default=0.0, metadata=_in("ppo"))
+    #: The imitation loss's teacher (E25 T34, the KL anchor): a saved network (a run's `best.pt`,
+    #: read with `evaluate.load`; a path from where the run starts) whose draws label the
+    #: learner's decisions instead of the fair system actor's choices, so the term's expectation
+    #: is the cross-entropy to its policy (the KL to it plus its entropy). "" (the default): the
+    #: fair system actor (`ppo.TEACHER`), as before T34.
+    imitation_teacher: str = field(default="", metadata=_in("ppo"))
     max_grad_norm: float = field(default=0.5, metadata=_in("ppo"))
     #: What a battle cut at `max_steps` costs each learning side (E06 T5c, the user's amendment
     #: of decision 10): its last transition gets `-truncation_penalty` and ends there, instead of
@@ -452,6 +458,8 @@ def resolve(config: Config) -> Config:
             "`checkpoint_minutes`, `pfsp_power`, `truncation_penalty` and `imitation_coef` must "
             "not be negative"
         )
+    if c.imitation_teacher and not c.imitation_coef:
+        problems.append("`imitation_teacher` needs `imitation_coef` above 0")
     if c.lr_schedule not in ("linear", "constant"):
         problems.append("`lr_schedule` is linear or constant")
     floors = (c.lr_floor, c.entropy_floor, c.imitation_floor, c.self_play)
