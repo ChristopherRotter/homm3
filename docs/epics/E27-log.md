@@ -705,3 +705,43 @@ stood in. **The cut:** offered in two (Smacker, then Bink), the user kept T5b2 w
   sound ends with its clip either way, and decision 34's fix (the client plays the track out)
   covers it, so no new question.
 - **The agent's calls** (*provisional*, M2's review list items 34 to 37).
+
+## M2 T6a — the main menu taking its inputs: hover, press, hotkeys, help popups, Quit's question, the press samples (2026-11-15)
+
+On `client/e27-m2-t6a`, the user present at the start; `master` at `396f6f8` (#953 merged). The
+original data staged at once (64 files, checked by SHA-256 against the user's computer). The
+sandbox's VM restarted in the baseline's coverage step (CI's green `Clients` run on `396f6f8`
+stood in) and again in `check.sh`'s, one build job; the coverage then passed as CI runs it (the
+staged-data tests skipped) and those tests on their own (TRAPS). **The cut:** T6 offered by
+screen, by pictures and sound, or whole; the user took the cut by screen (decision 35).
+
+- **Read** (design §13): `main_menu_proc` 0x4FB710 whole (the right press's popup, the commands,
+  Quit's question, the hover, the redraw of the five and its rectangle, the end), the DEF
+  button's loop 0x456328 to 0x4564D3 (every message to the mouse manager first, the moves off
+  and on, the release returned as it is off the button), `button_press` 0x456860 (`button.wav`
+  at volume 0x40, once, category 3).
+- **Recorded** (the harness's `menu-main`, `menu-quit`, `menu-sound` played again, every kept
+  line as kept; their frames compared with the viewer's): the hover taken again after a hold's
+  release and the question's close; the popup over the hovered button, the cursor hidden; the
+  boxes framed in red; the cursor at an even x (E17's 0x50CE04); a pressed Load Game over High
+  Scores' top two rows (CLT-Q126).
+- **Built, pure** (`h3-view`): `shell::menu` (`MainMenu`: the dialog's input through
+  `h3_ui::input`, the hover, the help popups and the question over it, `Boxes`, `Did`, the
+  original's draw order behind `Bugs::Original`), `shell::keys` (the table `[shell]`: N, L, H, C,
+  Escape; the box's Enter and Escape; `h3_ui::keys::VIEWERS` gains it), `shell::samples`
+  (category 3's handles, the harness's numbers); the replay's main menu (the harness's inputs as
+  the game gets them, `with_sound`, `samples`), `look` with the menu's state and the cursor's
+  show; `Built::AtRest` and `Stop::AtRest` gone; the layout's `player_palette` and `[message]`.
+- **Built, the adapters** (`h3-battle-client`'s `shell`): the boxes laid out from the user's
+  tables (`shell.main-menu.quit`, `shell.main-menu.help.*` in `keys.toml`), the frames with the
+  menu's state and the cursor's even x for the comparisons, the replay's `sample` lines; the
+  window's mouse, right button and hotkeys, each press's sample, `MAINMENU.MP3` (decoded on a
+  thread, asked for at each main menu), the hardware cursor hidden under a popup. `h3shell.py
+  drawn` compares the samples with the original's `sound<k>` lines; one test.
+- **The comparisons:** `menu-main` 26 of 26 exact, `menu-quit` 7 of 7, `menu-sound`'s `menu` and
+  `sound1` (New Game's press at 0 ms, channel 0, 151 ms); its `new`, `back` and `sound2`, and
+  `menu-new`, `menu-load`, `menu-tutorial`, are T6b's (New Game's menu not built). Recorded in
+  `shell/drawn.txt`. The window checked under Xvfb (the hover, a popup, the question by Escape,
+  Enter ending it). Tests: `h3-view` 660, `h3-ui` 100, `h3-battle-client` 184 with the data staged; coverage 100 %.
+- **Asked and answered:** CLT-Q126 (fixed: the five drawn in their order; decision 36).
+- **The agent's calls** (*provisional*, M2's review list items 38 to 44).

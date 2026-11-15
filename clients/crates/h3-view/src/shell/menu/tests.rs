@@ -373,3 +373,17 @@ fn a_button_redrawn_alone_shows_over_its_neighbours_in_the_original_s_profile() 
     let _ = menu.right_release();
     assert_eq!(order(&menu)[4], "mmenuhs.def");
 }
+
+#[test]
+fn a_hold_names_its_item() {
+    use h3_ui::input::Held;
+    // The menu has no DEF pictures; a picture's hold names its item as a button's does.
+    assert_eq!(super::held_id(&Held::Picture { id: 7, over: true }), 7);
+    assert_eq!(
+        super::held_id(&Held::Button {
+            id: 101,
+            over: false
+        }),
+        101
+    );
+}

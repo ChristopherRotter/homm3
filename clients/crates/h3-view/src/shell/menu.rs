@@ -25,8 +25,8 @@
 //!   a release redraw the button alone (`button_press`, 0x4563BB, 0x456467), the hover's change
 //!   all five in their order (0x4FBAEB); Load Game's frames reach two rows into High Scores',
 //!   so a pressed Load Game shows over High Scores until the next hover change. The client draws
-//!   the five in their order always (CLT-Q126, *provisional*: the recommendation, as CLT-Q118's);
-//!   the original's ([`Bugs::Original`]) draws the button redrawn alone last.
+//!   the five in their order always (CLT-Q126, decision 36: fixed, as CLT-Q118's); the original's
+//!   ([`Bugs::Original`]) draws the button redrawn alone last, for the comparisons only.
 //!
 //! The boxes are laid out by the caller ([`Boxes`]: their texts are the user's tables'), framed in
 //! red (the viewing player at the main menu, recorded at M1 T2: `menu-quit`, `menu-main`).
