@@ -658,3 +658,50 @@ under Wine, and the user cut it at the game's run (decision 33).
 - **Asked and answered:** CLT-Q125 (the last frame's sound cut at a clip's close: the client
   plays the track out, decision 34).
 - **The agent's calls** (*provisional*, M2's review list items 30 to 33).
+
+## M2 T5b2 — the start's sound on the game's run: xdd.dll's devices, Bink's first buffer (2026-11-15)
+
+On `client/e27-m2-t5b2`, the user present at the start; `master` at `ba827cc` (#945 merged). The
+original data staged at once (64 files, checked by SHA-256 against the user's computer). The
+sandbox's VM restarted during the baseline's coverage step: CI's green `Clients` run on `ba827cc`
+stood in. **The cut:** offered in two (Smacker, then Bink), the user kept T5b2 whole.
+
+- **Read** (design §12): `SmackSoundUseMSS` whole (Miles' 24 functions loaded at its first call,
+  preference 15, the DirectSound path) and the DirectSound open's timer (Miles' with `AIL_lock`
+  loaded, else `timeSetEvent(75, 25)`); `BinkSetSoundSystem` (the open called at once),
+  `BinkOpenMiles` (20 Miles functions by name) and its sound system (two buffers of Miles' least
+  size, volume 127, no `AIL_start_sample`), the sound service (while the ring holds more than a
+  buffer and Miles gives one), its callers (`BinkDoFrame` before and after the audio,
+  `BinkCopyToBuffer`, `BinkWait`, Bink's thread), `BinkDoFrame`'s audio into the ring.
+- **Built, the harness:** `xdd.dll`'s 7. (`vsound.h` handed to `SmackSoundUseDirectSound` in
+  place of `SmackSoundUseMSS`, `SMACKW32`'s `timeSetEvent` and `timeKillEvent` stubs; Bink's 11
+  Miles functions answered through its `GetProcAddress` import, the buffers on the virtual
+  clock; `clock/clipsound`; the ack's fields 14 and 15), `-static-libgcc` for it (`vsound.h`'s
+  64-bit divisions would import `libgcc_s_dw2-1.dll` and the game never start); `vsound.h`'s
+  cursor without a played file and its brief log; the stand-in Miles' `MssMinimum`, `MssHold`
+  (its always-free buffers loop Bink's service for ever), `MssLoads`; `binkprobe start`;
+  `bink-dll.py`'s `<stem>.start` and `bink-check.sh`'s check (the first load in the first frame,
+  at the harness's 36 864 bytes); `h3drive.py`'s 15 fields; `h3shell.py`'s voices
+  (`clip_voices`, `check_clip_sound`, `kept_line`'s `voice`, `drawn`'s from the replay), 3
+  tests; the recipes `start-bink-sound`, `start-smacker-sound`, `start-skip-key-sound`,
+  `start-skip-left-sound`.
+- **Built, the client:** the replay's `sound` lines with the volume (`clip_sound::volume` of the
+  clip's format) and its `closed` lines; `h3_view::shell::start`'s Bink sound from its first
+  frame no longer *provisional* (design §12.2).
+- **The comparisons:** every new recipe exact at its first recording, its two runs the same:
+  `start-smacker-sound` (2 586 frames, the main menu at 180 420 ms; three Smacker voices),
+  `start-skip-key-sound`, `start-skip-left-sound` (NWCLOGO.BIK's sound from 5 500 to the press
+  at 12 000), `start-bink-sound` (the logo's 69 frames closing at 5 343 ms, NWCLOGO.BIK 5 493 to
+  18 430, H3INTRO.BIK 18 580 to 180 250, the menu at 180 400); `drawn --group start` 10 recipes,
+  30 lines exact. `smacker-check.sh` as before (110 comparisons, the 30 `wait` files);
+  `bink-check.sh` every frame and track as before and the four game clips with a track
+  (`NWCLOGO`, `H3INTRO`, `LOSEGAME`, `H3X1intr`) loading Miles' first buffer in their first
+  frame (67 200 bytes of sound there; the game's Miles buffer 36 864 for 16-bit stereo, half
+  taken for `H3X1intr`'s 8-bit track, *provisional*). `check.sh` and the scoped verify with the
+  original data green.
+- **Found:** `H3X1intr`'s 8-bit track doubles Bink's threshold, so at a 16-bit track's Miles
+  buffer it would never load (design §12.2; to read where AB's intro plays, §6.4); a Bink clip's
+  last bytes under a buffer never reach Miles (NWCLOGO's last 0.12 s; §12.4): the original's
+  sound ends with its clip either way, and decision 34's fix (the client plays the track out)
+  covers it, so no new question.
+- **The agent's calls** (*provisional*, M2's review list items 34 to 37).

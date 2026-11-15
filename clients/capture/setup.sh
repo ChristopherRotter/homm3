@@ -99,9 +99,11 @@ else
 fi
 chmod -R u+w "$game"
 
-# 3. xdd.dll: DirectDrawCreate forwarded to Wine's ddraw, and the virtual clock (xdd.c).
-i686-w64-mingw32-gcc -O2 -Wall -shared -o "$game/xdd.dll" "$root/clients/capture/xdd.c" \
-    "$root/clients/capture/xdd.def" -Wl,--enable-stdcall-fixup
+# 3. xdd.dll: DirectDrawCreate forwarded to Wine's ddraw, and the virtual clock (xdd.c);
+# libgcc linked in (E27 M2 T5b2: vsound.h's 64-bit divisions would import libgcc_s_dw2-1.dll,
+# which the run directory lacks, and the game would not start).
+i686-w64-mingw32-gcc -O2 -Wall -shared -static-libgcc -o "$game/xdd.dll" \
+    "$root/clients/capture/xdd.c" "$root/clients/capture/xdd.def" -Wl,--enable-stdcall-fixup
 # binkprobe.exe (E17 M5 T4b2b): BINKW32.DLL run on the clips as a black box (binkprobe.c);
 # smackprobe.exe (E27 M2 T1) the same for SMACKW32.DLL (smackprobe.c).
 i686-w64-mingw32-gcc -O2 -Wall -o "$game/binkprobe.exe" "$root/clients/capture/binkprobe.c"

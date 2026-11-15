@@ -13,12 +13,16 @@
    that changes what plays is appended to the log (`vsound_log`, a line each: the clock, the
    call, its numbers), and every byte the cursor passes, as the buffer then held it, to the
    played file (`vsound_played`): the sound a listener hears, up to the clock's last reading
-   (`vsound_flush`). Not modelled: the primary buffer (SMACKW32 sets its format only for a
+   (`vsound_flush`; with no played file, as in xdd.dll's runs, the cursor moves the same and
+   nothing is written). Not modelled: the primary buffer (SMACKW32 sets its format only for a
    DirectSound it made itself), notifications, 3D, duplicates. */
 #include <dsound.h>
 
 static DWORD (*vsound_now)(void);
 static FILE *vsound_log, *vsound_played;
+/* T5b2: set, the log leaves out the lock and unlock lines (xdd.dll's game runs: a clip's refills,
+   a few a second, compared nowhere). */
+static int vsound_brief;
 
 struct vbuffer {
     IDirectSoundBufferVtbl *lpVtbl;
@@ -46,13 +50,16 @@ static DWORD vcursor(struct vbuffer *b)
     return (DWORD)((b->from + moved) % b->size);
 }
 
-/* The bytes the cursor passed since the last flush, as the buffer holds them. */
+/* The bytes the cursor passed since the last flush, as the buffer holds them (to the played file
+   when there is one: T5b2's game runs keep none, the cursor moving all the same). */
 static void vflush(struct vbuffer *b)
 {
     DWORD at = vcursor(b);
-    if (!vsound_played || at == b->heard)
+    if (at == b->heard)
         return;
-    if (at > b->heard) {
+    if (!vsound_played) {
+        /* nothing written */
+    } else if (at > b->heard) {
         fwrite(b->data + b->heard, 1, at - b->heard, vsound_played);
     } else {
         fwrite(b->data + b->heard, 1, b->size - b->heard, vsound_played);
@@ -61,7 +68,7 @@ static void vflush(struct vbuffer *b)
     b->heard = at;
 }
 
-static void vsound_flush(void)
+static inline void vsound_flush(void)
 {
     int i;
     for (i = 0; i < VBUFFERS; i++)
@@ -71,6 +78,8 @@ static void vsound_flush(void)
 
 static void vnote(const char *what, long a, long b)
 {
+    if (vsound_brief && (!strcmp(what, "lock") || !strcmp(what, "unlock")))
+        return;
     if (vsound_log)
         fprintf(vsound_log, "%lu %s %ld %ld\n", (unsigned long)vsound_now(), what, a, b);
 }

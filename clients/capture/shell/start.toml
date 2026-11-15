@@ -39,3 +39,36 @@ id = "start-skip-right"
 what = "§2.1: a right press skips H3Intro and ends the sequence"
 registry = { "Show Intro" = 1 }
 steps = ["step:40000:10", "shot:before", "right:400,300", "right-up", "until:main_menu", "shot:menu"]
+
+# E27 M2 T5b2 (design §11, §12): the start with the sound on (h3drive's `sound`: the effects at
+# 5), each clip's track on xdd.dll's devices on the frozen clock (its 7.): a Smacker clip's
+# frames follow its DirectSound buffer's cursor, a Bink clip's sound starts with Miles' first
+# buffer; each clip's sound kept as a `voice` line (its start, its end, its volume).
+
+[[recipe]]
+id = "start-bink-sound"
+what = "§11, §12: start-bink with the sound on: 3DOLogo timed by its sound, NWCLogo and H3Intro (Bink) with theirs"
+registry = { "Show Intro" = 1 }
+sound = true
+steps = ["clip:logo:6000:1", "clip-until:clips:main_menu:10:200000", "shot:menu"]
+
+[[recipe]]
+id = "start-smacker-sound"
+what = "§11, §12: start-smacker with the sound on: the three Smacker clips timed by their sound"
+registry = { "Show Intro" = 1, "Bink Video" = 0 }
+sound = true
+steps = ["clip-until:clips:main_menu:10:200000", "shot:menu"]
+
+[[recipe]]
+id = "start-skip-key-sound"
+what = "§11.3: a key skips 3DOLogo with the sound on: its sound stops at the skip"
+registry = { "Show Intro" = 1 }
+sound = true
+steps = ["step:2000:10", "shot:before", "key:space", "until:main_menu", "shot:menu"]
+
+[[recipe]]
+id = "start-skip-left-sound"
+what = "§11.3, §12: a left press skips NWCLogo (Bink) with the sound on: its sound stops at the skip"
+registry = { "Show Intro" = 1 }
+sound = true
+steps = ["step:12000:10", "shot:before", "click:400,300", "until:main_menu", "shot:menu"]

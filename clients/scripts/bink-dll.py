@@ -17,6 +17,11 @@ E27 M2 T2: a file with an audio track gets its first track's sound too, as the D
 (`binkprobe sound`: BinkAudioDecompress on each frame's packet as BinkDoFrame calls it), beside
 <out.yuv> as <stem>.pcm (16-bit little-endian, `h3_bink::check::sound`'s format); with
 `--sound-tables` the decoder's tables (`binkprobe sound-tables`, `check::sound_tables`'s).
+E27 M2 T5b2: such a file also gets <stem>.start, the frame (from 1) whose BinkDoFrame loads
+Miles' first buffer when the clip plays with the sound on (`binkprobe start` on the stand-in
+Miles, its least buffer as the game's Miles answers it, `miles_buffer`): the frame the clip's
+sound starts at, which `h3_view::shell::start` takes to be the first; `none` when the DLL's ring
+never holds more than a buffer (the synthetic samples' few hundred bytes).
 
 The run directory is $H3_RUN/game (default original-data/wine/game), the Wine prefix
 $WINEPREFIX (default ~/.wine-h3): `clients/capture/setup.sh` makes both.
@@ -27,6 +32,31 @@ import struct
 import subprocess
 import sys
 import tempfile
+
+# The least buffer the game's Miles gives BINKW32.DLL for a clip's track (22 050 Hz, 16-bit,
+# stereo: AIL_minimum_sample_buffer_size, xdd.dll's `bink-minimum` in the harness's sound runs,
+# E27 M2 T5b2; E27-design §12.2): 0.42 s of such a track.
+MILES_BUFFER = 36864
+
+
+def miles_buffer(data):
+    """Miles' least buffer for the file's first track: MILES_BUFFER's time in the track's own
+    bytes (*provisional* for any other format: the game's runs show 16-bit stereo alone; AB's
+    `H3X1intr.bik` is 8-bit stereo, flags 0xA000, so half). The track's flags: 0x4000 16-bit,
+    0x2000 stereo."""
+    n = struct.unpack("<I", data[40:44])[0]
+    _, flags = struct.unpack("<HH", data[44 + 4 * n:48 + 4 * n])
+    return MILES_BUFFER * (2 if flags & 0x4000 else 1) * (2 if flags & 0x2000 else 1) // 4
+
+
+def first_load(text):
+    """`binkprobe start`'s output: the frame whose BinkDoFrame loaded Miles' first buffer (none:
+    never loaded)."""
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) == 5 and parts[1] == "frame" and int(parts[4]) > 0:
+            return int(parts[2])
+    return None
 
 
 def archive(name, data):
@@ -103,6 +133,12 @@ def main():
                  f"{rel}\\sound.pcm"], game, env, pcm)
             with open(pcm, "rb") as f, open(os.path.splitext(target)[0] + ".pcm", "wb") as g:
                 g.write(f.read())
+            start = os.path.join(tmp, "start.txt")
+            run(["wine", "binkprobe.exe", "start", f"{rel}\\clip.vid", name,
+                 str(miles_buffer(data)), f"{rel}\\start.txt"], game, env, start)
+            frame = first_load(open(start).read())
+            with open(os.path.splitext(target)[0] + ".start", "w") as g:
+                g.write(f"{'none' if frame is None else frame}\n")
     with open(target, "wb") as f:
         f.write(yuv)
 

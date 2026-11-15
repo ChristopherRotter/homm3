@@ -25,6 +25,18 @@
          BinkGetRects gives on the handle the game asks after the frame; <out>.screen the
          buffer as the screen would show it (the frame's rects copied) after each drawn frame.
 
+     binkprobe start <vid> <entry> <minimum> <out>
+         (E27 M2 T5b2) When the clip's sound starts: the stand-in Miles (mss\MSS32.DLL, loaded
+         first, as smackprobe's `audio`) given to the DLL as sound_digital_start gives the game's
+         (BinkSetSoundSystem(BinkOpenMiles, driver), 0x5997D0), its least buffer size <minimum>
+         (the game's Miles' answer, xdd.dll's `bink-minimum`), the entry opened as `play` opens
+         a clip (flags 0), then at each millisecond the game's tick (BinkWait, BinkDoFrame,
+         BinkCopyToBuffer, BinkNextFrame; the last frame closes it). The DLL's sound service
+         (0x10005270) loads Miles' first buffer once its ring holds more than a buffer (the
+         handle's +0x250 against +0x280), which only BinkDoFrame fills (the stand-in's buffers
+         stay full once loaded, MssHold: nothing plays, two loads at most); <out> gets
+         "threshold <+0x280> ring <+0x238>", then per frame "<ms> frame <k> <+0x250 after
+         BinkDoFrame> <the buffers loaded so far>", and "<ms> closed".
      binkprobe tables <vid> <entry> <out>
          Opens the entry (BinkOpen builds the DLL's tables at its first call, 0x10001E70) and
          writes the dequantization tables the inverse DCT multiplies by (E17 M6 T6c1): the
@@ -115,8 +127,27 @@ static int hook_clock(HMODULE dll)
 
 static HMODULE dll;
 
+/* `start`'s (E27 M2 T5b2): BINKW32's sound system and the stand-in Miles' exports. */
+typedef int(WINAPI *sound_system_fn)(void *, void *);
+typedef void(WINAPI *minimum_fn)(DWORD);
+typedef int(WINAPI *loads_fn)(void);
+typedef void(WINAPI *hold_fn)(int);
+static sound_system_fn bink_sound_system;
+static void *bink_open_miles;
+static minimum_fn mss_minimum;
+static loads_fn mss_loads;
+static hold_fn mss_hold;
+
 static int load(void)
 {
+    /* The stand-in Miles first (`start`): BinkOpenMiles' LoadLibraryA("MSS32.DLL") then finds it
+       loaded; the other modes give the DLL no sound system, so it never asks for Miles. */
+    HMODULE mss = LoadLibraryA("mss\\MSS32.DLL");
+    if (mss) {
+        mss_minimum = (minimum_fn)GetProcAddress(mss, "MssMinimum");
+        mss_loads = (loads_fn)GetProcAddress(mss, "MssLoads");
+        mss_hold = (hold_fn)GetProcAddress(mss, "MssHold");
+    }
     LoadLibraryA("winmm.dll");
     dll = LoadLibraryA("BINKW32.DLL");
     if (!dll) {
@@ -130,6 +161,8 @@ static int load(void)
     bink_copy = (copy_fn)GetProcAddress(dll, "_BinkCopyToBuffer@28");
     bink_rects = (rects_fn)GetProcAddress(dll, "_BinkGetRects@8");
     bink_close = (close_fn)GetProcAddress(dll, "_BinkClose@4");
+    bink_sound_system = (sound_system_fn)GetProcAddress(dll, "_BinkSetSoundSystem@8");
+    bink_open_miles = (void *)GetProcAddress(dll, "_BinkOpenMiles@4");
     if (!bink_open || !bink_do_frame || !bink_wait || !bink_next_frame || !bink_copy ||
         !bink_rects || !bink_close) {
         fprintf(stderr, "binkprobe: an export is missing\n");
@@ -318,6 +351,70 @@ static int play(const char *vid, const char *start_name, const char *loop_name, 
     return 0;
 }
 
+/* `start` (E27 M2 T5b2): the driver BinkOpenMiles is given; the stand-in never reads it. */
+static BYTE driver[0x400];
+
+static int start(const char *vid, const char *entry, DWORD minimum, const char *out)
+{
+    void *h;
+    DWORD w, ht, t, n;
+    WORD *buf;
+    FILE *f;
+    if (!mss_minimum || !mss_loads || !mss_hold || !bink_sound_system || !bink_open_miles) {
+        fprintf(stderr, "binkprobe: no stand-in mss\\MSS32.DLL (setup.sh builds it) or no "
+                        "BinkSetSoundSystem\n");
+        return 1;
+    }
+    mss_minimum(minimum);
+    /* Miles' buffers stay full once loaded (nothing plays here): the service loads while
+       AIL_sample_buffer_ready gives a buffer, so the first two loads are all there is. */
+    mss_hold(1);
+    if (!bink_sound_system(bink_open_miles, driver)) {
+        fprintf(stderr, "binkprobe: BinkSetSoundSystem refused the stand-in\n");
+        return 1;
+    }
+    if (!open_archive(vid))
+        return 1;
+    clock_now = 0;
+    if (!(h = open_entry(entry, 0)))
+        return 1;
+    w = FIELD(h, 0);
+    ht = FIELD(h, 4);
+    n = FIELD(h, 8);
+    buf = calloc(w * ht, 2);
+    f = fopen(out, "wb");
+    if (!buf || !f)
+        return 1;
+    fprintf(f, "threshold %lu ring %lu\n", (unsigned long)FIELD(h, 0x280),
+            (unsigned long)FIELD(h, 0x238));
+    for (t = 0; t < 600000; t++) {
+        int k;
+        clock_now = t;
+        for (k = 0; k < 64; k++) {
+            DWORD frame, ring;
+            if (bink_wait(h))
+                break;
+            bink_do_frame(h);
+            ring = FIELD(h, 0x250);
+            bink_copy(h, buf, (int)(w * 2), (int)ht, 0, 0, 0);
+            frame = FIELD(h, 0xC);
+            fprintf(f, "%lu frame %lu %lu %d\n", (unsigned long)t, (unsigned long)frame,
+                    (unsigned long)ring, mss_loads());
+            if (frame >= n) {
+                bink_close(h);
+                fprintf(f, "%lu closed\n", (unsigned long)t);
+                fclose(f);
+                printf("%s: %lu frames, closed at %lu ms\n", entry, (unsigned long)n,
+                       (unsigned long)t);
+                return 0;
+            }
+            bink_next_frame(h);
+        }
+    }
+    fprintf(stderr, "binkprobe: %s not done in 600 s\n", entry);
+    return 1;
+}
+
 /* The entry's bytes, read whole (its size up to the next entry's offset or the archive's end). */
 static BYTE *read_entry(const char *name, DWORD *size)
 {
@@ -464,6 +561,8 @@ int main(int argc, char **argv)
         return play(argv[2], argv[3], argv[4], strtoul(argv[5], NULL, 0),
                     strtoul(argv[6], NULL, 0), argv[7], argc >= 9 ? strtoul(argv[8], NULL, 0) : 0,
                     argc == 10 ? strtoul(argv[9], NULL, 0) : 0);
+    if (argc == 6 && !strcmp(argv[1], "start"))
+        return start(argv[2], argv[3], strtoul(argv[4], NULL, 10), argv[5]);
     if (argc == 5 && !strcmp(argv[1], "tables"))
         return tables(argv[2], argv[3], argv[4]);
     if (argc == 5 && !strcmp(argv[1], "sound"))
@@ -473,6 +572,7 @@ int main(int argc, char **argv)
     if (argc == 5 && !strcmp(argv[1], "cdft"))
         return run_cdft((int)strtoul(argv[2], NULL, 0), argv[3], argv[4]);
     fprintf(stderr, "usage: binkprobe frames <vid> <entry> <type> <out>\n"
+                    "       binkprobe start <vid> <entry> <minimum> <out>\n"
                     "       binkprobe tables <vid> <entry> <out>\n"
                     "       binkprobe play <vid> <start> <loop|-> <type> <ms> <out> [<first> [<redraws>]]\n"
                     "       binkprobe sound <vid> <entry> <out>\n"

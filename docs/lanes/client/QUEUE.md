@@ -13,19 +13,11 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M2 T5b2 to T8
+#### E27 M2 T6 to T8
 
-T5b2 the start's sound on the game's run (decision 33; design §11.7): `vsound.h`'s stand-in
-DirectSound in `xdd.dll` for `SMACKW32` (the game's `SmackSoundUseMSS` import pointed at
-`SmackSoundUseDirectSound` with it, `SMACKW32`'s `timeSetEvent` and Miles' timer kept from
-firing), Bink's Miles sample calls (`BINKW32`'s `GetProcAddress` of them answered by hooks on the
-clock), each clip sound's Play, stop and volume logged; `binkprobe` on the same Miles stand-in
-(when its first buffer loads: `Op::Sound`'s Bink time is *provisional*); the `start` group's sound
-recipes (`start-bink-sound`, `start-smacker-sound`, a skip) recorded and compared by `drawn` (the
-replay's `sound`, `quiet`, `closed` lines; the frames exact). T6 the main menu, New Game's and
-Load Game's menus, Quit (the main menu `Built::Whole`: the replay's presses and keys reach the
-screen, `shell::replay`'s `Step::Input`); T7 Multiplayer and the hot seat's names (after T6); T8
-M2's closure and M3's refinement (after T7). Each screen's task runs `h3shell.py drawn` and
+T6 the main menu, New Game's and Load Game's menus, Quit (the main menu `Built::Whole`: the
+replay's presses and keys reach the screen, `shell::replay`'s `Step::Input`); T7 Multiplayer and
+the hot seat's names (after T6); T8 M2's closure and M3's refinement (after T7). Each screen's task runs `h3shell.py drawn` and
 records it (`--record`; the runbook's "The shell's screens"). Their scopes: the epic's M2 table;
 what each still reads or records: design §6.4.
 
