@@ -12,11 +12,11 @@ use crate::shell::{Game, Kind, Screen, Shell};
 fn a_screen_is_described_by_its_name_its_task_and_its_words() {
     assert_eq!(
         describe(Screen::MainMenu),
-        "main-menu [E27 M2 T6]: new-game load-game high-scores credits quit"
+        "main-menu [E27 M2 T6a]: new-game load-game high-scores credits quit"
     );
     assert_eq!(
         describe(Screen::GameType(Game::Load)),
-        "load-game-menu [E27 M2 T6]: single multiplayer campaign tutorial back"
+        "load-game-menu [E27 M2 T6b]: single multiplayer campaign tutorial back"
     );
     assert_eq!(
         describe(Screen::Multiplayer(Game::New)),
@@ -138,7 +138,7 @@ fn a_word_the_screen_does_not_take_is_refused_with_the_words_it_takes() {
     let mut shell = Shell::new(false);
     assert_eq!(
         answer(&mut shell, "begin"),
-        "not on main-menu: begin (main-menu [E27 M2 T6]: new-game load-game high-scores \
+        "not on main-menu: begin (main-menu [E27 M2 T6a]: new-game load-game high-scores \
          credits quit)"
     );
     assert_eq!(shell.screen(), Screen::MainMenu);

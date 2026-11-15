@@ -21,8 +21,8 @@ use alloc::vec::Vec;
 use core::fmt;
 
 /// The viewers' tables in a user's file, by name: `[map]` the adventure map's, `[battle]` the
-/// battle's (E24 M3 T1b).
-pub const VIEWERS: [&str; 2] = ["map", "battle"];
+/// battle's (E24 M3 T1b), `[shell]` the game shell's (E27 M2 T6a: its menus' hotkeys).
+pub const VIEWERS: [&str; 3] = ["map", "battle", "shell"];
 
 /// The adapter's names of the Control keys, held with a key (`Ctrl+`) and never bound alone.
 pub const CONTROL: [&str; 2] = ["LeftCtrl", "RightCtrl"];

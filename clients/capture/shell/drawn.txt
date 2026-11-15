@@ -1,8 +1,40 @@
 # E27 M2 T4: the viewer's shots and clips of the shell's recipes (h3shell.py drawn --record): per shot
 # `<id> <shot> t<ms> <digest>`, per clip `<id> <clip> clip <frames>@<first>-<last> <digest>`, as shell/kept/; numbers only.
 menu-main menu t0 e62581b7ce362971
-menu-main new-hover t100 215342b6c73e5986
+menu-main new-hover t100 6e8f0ea5816c0deb
+menu-main new-press t200 a90db9abb661b7f0
+menu-main new-left t400 e41a9f4a11e12d84
+menu-main new-popup t500 4c4537049d8e371b
+menu-main new-closed t600 6e8f0ea5816c0deb
+menu-main load-hover t700 4ba9ef571b35733e
+menu-main load-press t800 1816478ecc71cb2f
+menu-main load-left t1000 e41a9f4a11e12d84
+menu-main load-popup t1100 0408052d5429ed35
+menu-main load-closed t1200 4ba9ef571b35733e
+menu-main scores-hover t1300 0b7ad0bf5cac246b
+menu-main scores-press t1400 0cd8e22ced4bece9
+menu-main scores-left t1600 e41a9f4a11e12d84
+menu-main scores-popup t1700 1a4964f2a416766a
+menu-main scores-closed t1800 0b7ad0bf5cac246b
+menu-main credits-hover t1900 44edb6091a86758a
+menu-main credits-press t2000 4388d626563301f3
+menu-main credits-left t2200 e41a9f4a11e12d84
+menu-main credits-popup t2300 f223e50c1acd7b50
+menu-main credits-closed t2400 44edb6091a86758a
+menu-main quit-hover t2500 b4dc042cfa8704c2
+menu-main quit-press t2600 ad5aa6268ea628b5
+menu-main quit-left t2800 e41a9f4a11e12d84
+menu-main quit-popup t2900 68b2ea0d60633e92
+menu-main quit-closed t3000 b4dc042cfa8704c2
 menu-sound menu t0 e62581b7ce362971
+menu-sound sound1 t0 ch0 151ms x1
+menu-quit question t100 904f2db6a9ea3893
+menu-quit ok-hover t200 8587292d0487725a
+menu-quit cancel-hover t300 774c96763a61e4a9
+menu-quit cancel-press t400 65ca31146a0ff817
+menu-quit cancelled t500 a72aa181856c8601
+menu-quit question-key t600 d56232933276d789
+menu-quit escaped t700 a72aa181856c8601
 start-plain menu t0 e62581b7ce362971
 start-bink logo clip 68@0-5977 860a3323c1a880b2
 start-bink clips clip 2519@6000-180480 94fba25cd372b2ba

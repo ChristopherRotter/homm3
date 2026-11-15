@@ -218,7 +218,7 @@ fn a_users_file_is_checked() {
         ("[battle]\npause = [", None),
         (
             "pause = [\"P\"]",
-            Some("`pause` is no viewer's table; the tables: map, battle".to_string()),
+            Some("`pause` is no viewer's table; the tables: map, battle, shell".to_string()),
         ),
         (
             "battle = 1",

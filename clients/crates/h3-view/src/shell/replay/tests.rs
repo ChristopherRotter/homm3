@@ -1,13 +1,17 @@
-//! The replay's tests (E27 M2 T4): the harness's step words, its clock and the stops.
+//! The replay's tests (E27 M2 T4, T6a): the harness's step words, its clock, the stops and the
+//! main menu's inputs.
 
 use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
+use h3_render::Bugs;
+
 use super::{
     ClipEnd, INPUT_STEP, Input, Replay, Step, Stop, Take, UNTIL_LIMIT, UNTIL_STEP, parse, shown,
     skips,
 };
+use crate::shell::menu::tests::main_menu;
 use crate::shell::start::{Header, Op, Pace, Part, Start};
 use crate::shell::{Ended, Game, Kind, Request, Screen, Shell};
 
@@ -184,7 +188,13 @@ fn the_probes_names_are_the_shell_s_screens() {
 /// What a replay of `steps` hands over, each moment with its time and pointer, and how it ends.
 fn replay(intro: bool, steps: &[&str]) -> (Vec<String>, Option<Stop>, Replay) {
     replay_from(
-        Replay::new(Shell::new(intro), [400, 300], INPUT_STEP, None),
+        Replay::new(
+            Shell::new(intro),
+            [400, 300],
+            INPUT_STEP,
+            None,
+            &main_menu(Bugs::Original),
+        ),
         steps,
     )
 }
@@ -273,7 +283,7 @@ fn what_the_viewer_cannot_do_stops_the_replay() {
             screen: Screen::MainMenu,
         })
     };
-    let cases: [(bool, &[&str], Option<Stop>); 8] = [
+    let cases: [(bool, &[&str], Option<Stop>); 6] = [
         (
             false,
             &["poke:game+4:00"],
@@ -304,12 +314,6 @@ fn what_the_viewer_cannot_do_stops_the_replay() {
             &["until:new_game_menu:20"],
             not_shown(&["new_game_menu"]),
         ),
-        (
-            false,
-            &["down:643,70"],
-            Some(Stop::AtRest(Screen::MainMenu)),
-        ),
-        (false, &["key:Escape"], Some(Stop::AtRest(Screen::MainMenu))),
     ];
     for (intro, steps, stop) in cases {
         let (seen, got, _) = replay(intro, steps);
@@ -318,7 +322,8 @@ fn what_the_viewer_cannot_do_stops_the_replay() {
     }
     // `until` checks, then steps: 20 ms waited three times.
     assert_eq!(replay(false, &["until:new_game_menu:20"]).2.time(), 30);
-    // A screen not built yet (New Game's menu until T6): nothing drawn or waited for on it.
+    // A screen not built yet (New Game's menu until T6b): nothing drawn or waited for on it;
+    // the pointer moves over it.
     let mut shell = Shell::new(false);
     shell.end(Ended::MainMenu(Request::NewGame)).unwrap();
     let not_built = Some(Stop::NotBuilt(Screen::GameType(Game::New)));
@@ -327,8 +332,15 @@ fn what_the_viewer_cannot_do_stops_the_replay() {
         &["shot:menu"],
         &["clip:c:10:1"],
         &["key:space"],
+        &["move:1,2", "up"],
     ] {
-        let r = Replay::new(shell.clone(), [0, 0], INPUT_STEP, None);
+        let r = Replay::new(
+            shell.clone(),
+            [0, 0],
+            INPUT_STEP,
+            None,
+            &main_menu(Bugs::Original),
+        );
         let (seen, got, _) = replay_from(r, steps);
         assert!(seen.is_empty(), "{steps:?}");
         assert_eq!(got, not_built, "{steps:?}");
@@ -350,7 +362,13 @@ fn start(frames: u32) -> (Start, Vec<Op>) {
 fn the_start_plays_on_the_replay_s_clock_and_ends_at_the_main_menu() {
     // A clip's frames 67 ms apart at 1 ms steps; three frames, the fade's 150 ms after the
     // last: each clip 351 ms; the menu at 1053 ms.
-    let r = Replay::new(Shell::new(true), [400, 300], INPUT_STEP, Some(start(3)));
+    let r = Replay::new(
+        Shell::new(true),
+        [400, 300],
+        INPUT_STEP,
+        Some(start(3)),
+        &main_menu(Bugs::Original),
+    );
     assert_eq!(r.ops(), [Op::Black]);
     assert!(r.start().is_some());
     let (seen, stop, r) = replay_from(r, &["clip:logo:300:1", "clip-until:clips:main_menu:1"]);
@@ -368,7 +386,13 @@ fn the_start_plays_on_the_replay_s_clock_and_ends_at_the_main_menu() {
     assert_eq!(frames, 9);
     assert_eq!(r.ops().last(), Some(&Op::Black));
     // Without the start's clips the start ends at once.
-    let r = Replay::new(Shell::new(true), [400, 300], INPUT_STEP, None);
+    let r = Replay::new(
+        Shell::new(true),
+        [400, 300],
+        INPUT_STEP,
+        None,
+        &main_menu(Bugs::Original),
+    );
     assert_eq!((r.screen(), r.ops()), (Screen::MainMenu, &[][..]));
 }
 
@@ -376,7 +400,13 @@ fn the_start_plays_on_the_replay_s_clock_and_ends_at_the_main_menu() {
 fn a_press_or_a_key_skips_the_start_and_a_move_does_not() {
     // A key at 2000 ms (the 3DO logo's): its fade from 2000, the input's step to 2100, the
     // fade's last two steps, the main menu at 2200 (`start-skip-key`'s times).
-    let r = Replay::new(Shell::new(true), [400, 300], INPUT_STEP, Some(start(100)));
+    let r = Replay::new(
+        Shell::new(true),
+        [400, 300],
+        INPUT_STEP,
+        Some(start(100)),
+        &main_menu(Bugs::Original),
+    );
     let (seen, stop, r) = replay_from(
         r,
         &[
@@ -411,6 +441,7 @@ fn a_press_or_a_key_skips_the_start_and_a_move_does_not() {
         [400, 300],
         INPUT_STEP,
         Some((sounding, ops)),
+        &main_menu(Bugs::Original),
     );
     let (_, stop, r) = replay_from(r, &["step:2000:10", "key:space", "until:main_menu"]);
     assert_eq!(stop, None);
@@ -441,7 +472,13 @@ fn a_press_or_a_key_skips_the_start_and_a_move_does_not() {
             panic!("{input}")
         };
         assert_eq!(skips(&i), skips_it, "{input}");
-        let r = Replay::new(Shell::new(true), [400, 300], INPUT_STEP, Some(start(100)));
+        let r = Replay::new(
+            Shell::new(true),
+            [400, 300],
+            INPUT_STEP,
+            Some(start(100)),
+            &main_menu(Bugs::Original),
+        );
         let (_, stop, r) = replay_from(r, &["step:500:10", input, "step:300:10"]);
         assert_eq!(stop, None);
         let menu = if skips_it {
@@ -465,7 +502,13 @@ fn a_release_with_nothing_held_passes_on_a_screen_at_rest() {
 #[test]
 fn the_caller_s_failure_ends_the_replay() {
     for (step, after) in [("shot:menu", 0), ("clip:c:30", 0), ("clip:c:30", 1)] {
-        let mut r = Replay::new(Shell::new(false), [0, 0], INPUT_STEP, None);
+        let mut r = Replay::new(
+            Shell::new(false),
+            [0, 0],
+            INPUT_STEP,
+            None,
+            &main_menu(Bugs::Original),
+        );
         let mut count = 0;
         let mut take = |_: &Replay, _: Take<'_>| {
             count += 1;
@@ -481,4 +524,73 @@ fn the_caller_s_failure_ends_the_replay() {
             "{step}"
         );
     }
+}
+
+#[test]
+fn the_main_menu_takes_the_harness_s_inputs() {
+    // `menu-main`'s New Game: the hover, the press, the release off it, the popup.
+    let (seen, stop, r) = replay(
+        false,
+        &[
+            "until:main_menu",
+            "move:643,70",
+            "down:643,70",
+            "move:300,560",
+            "up",
+            "shot:left",
+            "right:643,70",
+            "shot:popup",
+            "right-up",
+        ],
+    );
+    assert_eq!(stop, None);
+    assert_eq!(seen.len(), 2);
+    let menu = r.menu().unwrap();
+    assert_eq!((menu.hovered(), menu.cursor()), (Some(101), true));
+    assert_eq!(r.time(), 600);
+    // `menu-quit`: Quit's question by the button, cancelled; again by Escape, escaped.
+    let (_, stop, r) = replay(false, &["click:643,520", "check:main_menu"]);
+    assert_eq!(stop, None);
+    assert!(r.menu().unwrap().asking());
+    let (_, _, r) = replay(false, &["key:Escape", "key-down:Escape", "key-up:Escape"]);
+    assert!(!r.menu().unwrap().asking());
+    // A key no command takes changes nothing; a hotkey, typed or given, ends the menu.
+    let (_, stop, r) = replay(false, &["key:F4", "type:1"]);
+    assert_eq!((stop, r.screen()), (None, Screen::MainMenu));
+    for steps in [
+        &["click:643,70"][..],
+        &["type:n"],
+        &["key:n"],
+        &["key-down:N", "key-up:N"],
+    ] {
+        let (_, _, r) = replay(false, steps);
+        assert_eq!(r.screen(), Screen::GameType(Game::New), "{steps:?}");
+        assert_eq!(r.menu(), None);
+    }
+    // The question's OK ends the shell.
+    let (_, _, r) = replay(false, &["key:Escape", "key:Return"]);
+    assert_eq!(r.screen(), Screen::End);
+}
+
+#[test]
+fn with_the_effects_on_each_press_s_sample_is_listed() {
+    // `menu-sound`: New Game's press at 0 ms, on the harness's first channel.
+    let r = Replay::new(
+        Shell::new(false),
+        [400, 300],
+        INPUT_STEP,
+        None,
+        &main_menu(Bugs::Original),
+    )
+    .with_sound(151);
+    let (_, _, r) = replay_from(r, &["until:main_menu", "click:643,70"]);
+    let played: Vec<(u32, usize, u32)> = r
+        .samples()
+        .iter()
+        .map(|p| (p.time, p.channel, p.length))
+        .collect();
+    assert_eq!(played, [(0, 0, 151)]);
+    // Without the effects none is listed.
+    let (_, _, r) = replay(false, &["click:643,70"]);
+    assert!(r.samples().is_empty());
 }
