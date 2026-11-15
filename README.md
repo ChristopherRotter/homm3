@@ -40,20 +40,33 @@ Licensed **GPL-2.0-or-later** ([LICENSE](LICENSE), [ADR-0009](docs/adr/0009-lice
 ## Status
 
 The project is developed incrementally, in parallel work lanes ([docs/BACKLOG.md](docs/BACKLOG.md)
-has the epics in order, each lane's state is in `docs/lanes/<lane>/HANDOFF.md`). As of 2026-10-24:
+has every epic in order, each lane's state is in `docs/lanes/<lane>/HANDOFF.md`). As of 2026-11-15.
 
-| Area | State |
-|---|---|
-| Battle: heroes, secondary skills, artifacts, specialties, battle magic, sieges, special battlefields | done (E03, E04a–c) |
-| Content pipeline: packs `base`/`ab`/`sod` harvested from the game's tables, synthetic test packs | done (E02) |
-| The original's battle AI (the computer's tactical policy), read from the executable | done (E23) |
-| Battle environment for RL: batch API, C ABI, Python binding (`h3env`), encounter distribution | done (E05) |
-| Training: PPO self-play, league, evaluation gate, ladders against scripted bots | in progress (E06) |
-| Adventure map core on real `.h3m` maps: movement, fog of war, objects, monsters, heroes, army management | in progress (E08) |
-| Server: protocol, lobbies, accounts, ranked ladders, discovery | in progress (E16; M0–M4, M6 done) |
-| Battle client (SDL 3, assets from your own copy; frame-exact comparison against the original) | in progress (E17) |
-| Adventure map client | in progress (E24; stills done) |
-| Next: historical rules of RoE and AB (E11); then towns and economy, adventure AI, map generator, campaigns | planned |
+Progress is the share of an epic's refined increments (**I**) or milestones (**M**) that are closed;
+epics whose later increments are still sketches grow as those get refined, so their bar can step back.
+
+| Epic | What | Lane | Progress | State |
+|---|---|---|---|---|
+| [E01](docs/epics/E01-walking-skeleton.md) | Walking skeleton: minimal battle end to end | battle | `██████████` done | 2026-09-30 |
+| [E02](docs/epics/E02-content-pipeline.md) | Content pipeline: packs `base`/`ab`/`sod` harvested from the game's tables | battle | `██████████` done | 2026-10-01 |
+| [E03](docs/epics/E03-battle-core.md) | Battle core (RoE rules) | battle | `██████████` done | 2026-10-01 |
+| [E04a–c](docs/epics/E04c-sieges-and-battlefields.md) | Battle: heroes, skills, artifacts, magic, sieges, special battlefields | battle | `██████████` done | 2026-10-05 to 10-16 |
+| [E05](docs/epics/E05-battle-env.md) | Battle environment for RL: batch API, C ABI, Python binding (`h3env`) | ai | `██████████` done | 2026-10-20 |
+| [E23](docs/epics/E23-original-battle-ai.md) | The original's battle AI, read from the executable | battle | `██████████` done | 2026-10-24 |
+| [E06](docs/epics/E06-battle-ai.md) | Battle AI v1: PPO self-play, league, evaluation gate, ladders | ai | `██████████` done | 2026-10-27 |
+| [E17](docs/epics/E17-clients.md) | Battle client (SDL 3, assets from your copy, frame-exact against the original) | client | `██████████` done (M0–M7) | 2026-11-12 |
+| [E16](docs/epics/E16-server.md) | Server: protocol, lobbies, accounts, ranked ladders, whole games, spectators | server | `██████████` done (M0–M6) | 2026-11-15 |
+| [E08](docs/epics/E08-adventure-map.md) | Adventure map core on real `.h3m` maps: movement, fog, objects, monsters, heroes, garrisons | adventure | `█████████░` 12/13 I | creature banks (I13) next; later increments sketched |
+| [E24](docs/epics/E24-map-client.md) | Adventure map client | map-client | `██████░░░░` 3/5 M | M1–M3 closed (stills, map moving, adventure screen); M4 next |
+| [E26](docs/epics/E26-fair-system-actor.md) | Fair system actor: the original's AI on what its side may know | battle | `█████░░░░░` 1/2 I | increment 1 built; checkpoint with you next |
+| [E09](docs/epics/E09-towns.md) | Towns and economy | town | `███░░░░░░░` 2/6 I | I3 (growth, recruitment) in progress; Tavern, guild, travel and Grail follow |
+| [E27](docs/epics/E27-game-shell.md) | Game shell: menus, scenario setup, load/save, options, start clips | client | `██░░░░░░░░` 1/4 M | M2 (start and menus) in progress |
+| [E25](docs/epics/E25-battle-ai-v2.md) | Battle AI v2: beat the faithful system actor | ai | `▓▓▓▓▓▓▓░░░` 7 I done, open-ended | shaped at each checkpoint |
+| [E11](docs/epics/E11-historical-rules.md) | Historical rules of RoE and AB | battle | `░░░░░░░░░░` planned | waits for the original media of the older editions |
+
+Not started yet (sketches in the backlog): game orchestration beyond the import (E10), map-object
+long tail (E12), adventure AI (E13), map generator (E14), web portal (E21), packaging and hosting
+(E22), ranked play in the native client (E28), HD layouts (E29), campaigns (E20), save import (E19).
 
 ## Quick start
 

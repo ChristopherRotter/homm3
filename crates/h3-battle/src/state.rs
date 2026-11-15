@@ -1116,7 +1116,28 @@ impl BattleState {
     /// if a tactics phase runs, the first `TurnStarted` and anything that happens before the
     /// first command (a bad-morale
     /// freeze, BAT-MOR-004; war machines acting, BAT-WAR-002/003; even the end of the battle).
+    /// It is [`BattleState::setup`] followed by [`BattleState::begin`], with the same events in
+    /// the same order.
     pub fn start<S: Sink>(
+        ruleset: &BattleRuleset,
+        setup: &BattleSetup,
+        seed: u64,
+        sink: &mut S,
+    ) -> Result<Self, SetupError> {
+        let mut state = Self::setup(ruleset, setup, seed, sink)?;
+        state.begin(ruleset, sink);
+        Ok(state)
+    }
+
+    /// Sets a battle up without beginning it (CLT-Q69 (a)): validates the setup against the
+    /// ruleset, places the obstacles and the armies (BAT-SET-001, BAT-GEO-003), lays a town's
+    /// hidden land mines (BAT-SIE-007, reported to `sink`) and seeds the battle RNG stream from
+    /// `seed`. The tactics phase or the first activation, and everything that happens before the
+    /// first command, wait for [`BattleState::begin`]: until then no stack is active, every
+    /// command is refused with [`CommandError::NotYourTurn`](crate::CommandError::NotYourTurn)
+    /// and a viewer's observation shows the battle as its start finds it (a session can hold it
+    /// so until every seat is held, and play the start's events on it).
+    pub fn setup<S: Sink>(
         ruleset: &BattleRuleset,
         setup: &BattleSetup,
         seed: u64,
@@ -1338,16 +1359,34 @@ impl BattleState {
         if let Some(mines) = mines {
             obstacles::lay_unseen(&mut state, mines, sink);
         }
+        Ok(state)
+    }
+
+    /// Begins a battle [`BattleState::setup`] set up (CLT-Q69 (a)), reporting the events of the
+    /// start to `sink`: either the tactics phase starts (BAT-TAC-001) or the first stack is
+    /// activated, with anything that happens before the first command (a bad-morale freeze,
+    /// BAT-MOR-004; war machines acting, BAT-WAR-002/003; even the end of the battle). `ruleset`
+    /// is the one the battle was set up with. A battle that has begun is left as it is.
+    pub fn begin<S: Sink>(&mut self, ruleset: &BattleRuleset, sink: &mut S) {
+        if self.has_begun() {
+            return;
+        }
         // rule: BAT-TAC-001
-        if let Some(phase) = tactics::phase(ruleset, &state.heroes) {
+        if let Some(phase) = tactics::phase(ruleset, &self.heroes) {
             // Round 0: the tactics phase; `EndTactics` starts round 1 (BAT-TAC-002).
-            tactics::begin(&mut state, phase, sink);
+            tactics::begin(self, phase, sink);
         } else {
             // The first activation runs without the freezing checks (BAT-MOR-004, BAT-MAG-060);
             // round 1 starts without a `RoundStarted` event.
-            turn::activate_first(&mut state, ruleset, sink);
+            turn::activate_first(self, ruleset, sink);
         }
-        Ok(state)
+    }
+
+    /// Whether the battle has begun ([`BattleState::begin`]): a battle only set up
+    /// ([`BattleState::setup`]) has no active stack, no tactics phase and no result; a begun one
+    /// always has one of them.
+    pub const fn has_begun(&self) -> bool {
+        self.active.is_some() || self.tactics.is_some() || self.result.is_some()
     }
 
     /// The timed effects on stacks, by stack and spell (public, ADR-0014 point 8).

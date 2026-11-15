@@ -38,10 +38,12 @@ use proptest::test_runner::Config;
 
 use super::support::{CREATURES, Rate, add_turret, hero, masteries, ruleset_from};
 use crate::event::StrikeFlags;
+use crate::magic::Defences;
 use crate::{
-    BattleState, CastTarget, CastTargets, Command, Event, EventKind, Hex, LegalCommands, SpellSet,
-    StackId, Viewer, apply, cast_targets, castable_spells, creature_cast_targets, legal_commands,
-    observe, observe_as, project, project_as, second_targets, validate,
+    BattleState, CastTarget, CastTargets, Command, CommandError, Event, EventKind, Hex,
+    LegalCommands, SpellSet, StackId, Viewer, apply, cast_targets, castable_spells,
+    creature_cast_targets, legal_commands, observe, observe_as, project, project_as,
+    second_targets, validate,
 };
 
 /// The test ruleset with frequent good and bad morale and luck (a 4-sided die) and the quirk
@@ -1599,11 +1601,12 @@ proptest! {
             let seen = observe(&state, &r, viewer);
             prop_assert_eq!(&seen, &observe(&twin, &r, viewer));
             prop_assert_eq!(&spectator, &observe_as(&twin, &r, Viewer::Spectator));
-            // The hidden magic in force (BAT-MAG-061 to BAT-MAG-066): the hero's casting limits,
-            // its stacks' spell defences and its negation of immunities change, and the battle's
-            // limits with them. The other side's observation shows of it only what its own
-            // caster may cast at each stack (BAT-MAG-050): the casts its commands may not make
-            // (BAT-Q26). A spectator sees none of it.
+            // The magic in force (BAT-MAG-061 to BAT-MAG-066): the hero's casting limits, its
+            // stacks' spell defences and its negation of immunities change, and the battle's
+            // limits with them. The casting limits are public (the client lane's G1): the other
+            // side and a spectator see the twin's. Of the rest the other side's observation shows
+            // only what its own caster may cast at each stack (BAT-MAG-050): the casts its
+            // commands may not make (BAT-Q26). A spectator sees none of it.
             for hero in twin.heroes[side.index()].iter_mut() {
                 let m = &mut hero.magic;
                 m.no_casting = !m.no_casting;
@@ -1619,10 +1622,22 @@ proptest! {
                 twin.anti_magic,
             );
             let mut other = observe(&twin, &r, viewer);
+            let mut watched = observe_as(&twin, &r, Viewer::Spectator);
+            // covers: BAT-MAG-061, BAT-MAG-062
+            if let Some(h) = twin.heroes[side.index()] {
+                for o in [&other, &watched] {
+                    prop_assert_eq!(o.forbids_casting[side.index()], h.magic.no_casting);
+                    prop_assert_eq!(o.spell_level_limit[side.index()], Some(level));
+                }
+            }
+            for o in [&mut other, &mut watched] {
+                o.forbids_casting = seen.forbids_casting;
+                o.spell_level_limit = seen.spell_level_limit;
+            }
             prop_assert!(commander == Some(viewer) || other.cast_candidates == [0; crate::STACK_CAPACITY]);
             other.cast_candidates = seen.cast_candidates;
             prop_assert_eq!(&seen, &other);
-            prop_assert_eq!(&spectator, &observe_as(&twin, &r, Viewer::Spectator));
+            prop_assert_eq!(&spectator, &watched);
         }
         // A town's Escape Tunnel is its defender's (BAT-SIE-024, BAT-Q50 (4)): the same game at
         // the town with the tunnel flipped looks the same to the attacker and a spectator, and to
@@ -3370,6 +3385,42 @@ proptest! {
 proptest! {
     #![proptest_config(Config { cases: 48, ..Config::default() })]
 
+    /// A battle set up and then begun is the battle started (CLT-Q69 (a)): the same events in the
+    /// same order and the same state. Before its begin it has not begun, shows no active stack and
+    /// no result, refuses every command of either side with `NotYourTurn` and is left unchanged;
+    /// a second begin changes nothing and reports nothing.
+    #[test]
+    fn a_battle_set_up_then_begun_is_the_battle_started(
+        (att, def, ground, seed, _steps, hidden) in arb_game(),
+    ) {
+        let r = lively();
+        let setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
+        let mut started = Vec::new();
+        let state = BattleState::start(&r, &setup, seed, &mut started).unwrap();
+        let mut events = Vec::new();
+        let mut held = BattleState::setup(&r, &setup, seed, &mut events).unwrap();
+        prop_assert!(!held.has_begun());
+        let before = held.state_hash();
+        for viewer in BattleSide::BOTH {
+            let seen = observe(&held, &r, viewer);
+            prop_assert_eq!((seen.active, seen.result), (None, None));
+            for cmd in [Command::Wait, Command::Defend, Command::Retreat, Command::EndTactics] {
+                prop_assert_eq!(
+                    apply(&mut held, &r, viewer, cmd, &mut crate::NoopSink),
+                    Err(CommandError::NotYourTurn)
+                );
+            }
+        }
+        prop_assert_eq!(held.state_hash(), before);
+        held.begin(&r, &mut events);
+        prop_assert!(held.has_begun());
+        prop_assert_eq!(&events, &started);
+        prop_assert_eq!(held.state_hash(), state.state_hash());
+        held.begin(&r, &mut events);
+        prop_assert_eq!(&events, &started);
+        prop_assert_eq!(held.state_hash(), state.state_hash());
+    }
+
     /// A world (E06 T8, ADR-0025 point 12a) at every step of arbitrary games, for both sides: its
     /// viewer's observation is the battle's; a twin that differs in the stream, the other side's
     /// hero's private part and the templates its book gives makes the same world; the world
@@ -3387,7 +3438,21 @@ proptest! {
             for viewer in BattleSide::BOTH {
                 let other = viewer.opponent();
                 let world = state.determinized(&r, viewer, None, turn).unwrap();
-                prop_assert_eq!(observe(&world, &r, viewer), observe(&state, &r, viewer));
+                let mut seen = observe(&world, &r, viewer);
+                let battle = observe(&state, &r, viewer);
+                // stub: BAT-STUB-19
+                // The other hero's defences and negation are guessed: the viewer's caster's
+                // candidates for a stack that hero's side controls follow the guess.
+                if state.heroes[other.index()]
+                    .is_some_and(|h| h.magic.negates || h.magic.defences != Defences::default())
+                {
+                    for (i, s) in state.stacks.iter().enumerate() {
+                        if s.controller() == other {
+                            seen.cast_candidates[i] = battle.cast_candidates[i];
+                        }
+                    }
+                }
+                prop_assert_eq!(seen, battle);
                 let mut twin = state.clone();
                 twin.reseed(seed ^ 0x5eed);
                 if let Some(h) = twin.heroes[other.index()].as_mut() {

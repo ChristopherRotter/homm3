@@ -1,0 +1,219 @@
+{
+ "settings": {
+  "best": "runs/e25-structure-1/best.pt",
+  "simulations": 16,
+  "worlds": 8,
+  "true_worlds": false,
+  "k": 16,
+  "opponent": "system",
+  "per_kind": 500,
+  "held_out": "report-v1"
+ },
+ "search": {
+  "win_rate": 0.507985399370169,
+  "interval": 0.018470402416199887,
+  "value": 0.02384132343150016,
+  "kinds": {
+   "hero": 0.5037114228456914,
+   "siege_hero": 0.523,
+   "siege_garrison": 0.49505210420841683
+  },
+  "games": 2998,
+  "skipped": 2,
+  "truncated": 0.0,
+  "seconds": 4312.8526000090005,
+  "by_kind": {
+   "hero": {
+    "attacker": {
+     "episodes": 499,
+     "skipped": 1,
+     "win_rate": 0.7114228456913828,
+     "reward": 0.0922915374081888,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 499,
+       "win_rate": 0.7114228456913828
+      }
+     }
+    },
+    "defender": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.296,
+     "reward": -0.04505966049898416,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 500,
+       "win_rate": 0.296
+      }
+     }
+    }
+   },
+   "siege_hero": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.58,
+     "reward": -0.015725315148476512,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_hero": {
+       "episodes": 500,
+       "win_rate": 0.58
+      }
+     }
+    },
+    "defender": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.466,
+     "reward": 0.0831819436524147,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_hero": {
+       "episodes": 500,
+       "win_rate": 0.466
+      }
+     }
+    }
+   },
+   "siege_garrison": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.938,
+     "reward": 0.14633579162636307,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_garrison": {
+       "episodes": 500,
+       "win_rate": 0.938
+      }
+     }
+    },
+    "defender": {
+     "episodes": 499,
+     "skipped": 1,
+     "win_rate": 0.052104208416833664,
+     "reward": -0.1363980282300557,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_garrison": {
+       "episodes": 499,
+       "win_rate": 0.052104208416833664
+      }
+     }
+    }
+   }
+  },
+  "costs": {
+   "decisions": 93431,
+   "simulations": 1490016,
+   "evaluations": 1568675,
+   "fallbacks": 138,
+   "ms_per_decision": 46.16083098767005
+  }
+ },
+ "sampled": {
+  "win_rate": 0.5109842542227311,
+  "interval": 0.01857304084223895,
+  "value": 0.026522842141169414,
+  "kinds": {
+   "hero": 0.5067074148296593,
+   "siege_hero": 0.5249999999999999,
+   "siege_garrison": 0.500060120240481
+  },
+  "games": 2998,
+  "skipped": 2,
+  "truncated": 0.0,
+  "seconds": 1051.957607411,
+  "by_kind": {
+   "hero": {
+    "attacker": {
+     "episodes": 499,
+     "skipped": 1,
+     "win_rate": 0.7074148296593187,
+     "reward": 0.09625310622872356,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 499,
+       "win_rate": 0.7074148296593187
+      }
+     }
+    },
+    "defender": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.306,
+     "reward": -0.04507684401003644,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 500,
+       "win_rate": 0.306
+      }
+     }
+    }
+   },
+   "siege_hero": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.58,
+     "reward": -0.011430478902067989,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_hero": {
+       "episodes": 500,
+       "win_rate": 0.58
+      }
+     }
+    },
+    "defender": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.47,
+     "reward": 0.08522334133211552,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_hero": {
+       "episodes": 500,
+       "win_rate": 0.47
+      }
+     }
+    }
+   },
+   "siege_garrison": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.94,
+     "reward": 0.1501393088195473,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_garrison": {
+       "episodes": 500,
+       "win_rate": 0.94
+      }
+     }
+    },
+    "defender": {
+     "episodes": 499,
+     "skipped": 1,
+     "win_rate": 0.06012024048096192,
+     "reward": -0.131110292578019,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_garrison": {
+       "episodes": 499,
+       "win_rate": 0.06012024048096192
+      }
+     }
+    }
+   }
+  }
+ }
+}

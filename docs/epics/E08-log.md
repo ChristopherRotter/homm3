@@ -17502,3 +17502,62 @@ of two.
 - **Not in increment 12** (decision 295): the trades and services, the information objects, the
   Prison, the Market of Time, creature banks, quests, the adventure spells, simultaneous play,
   towns (E09), a computer player's routes (E10), a defeat's neutral garrisons (E10).
+
+### Increment 13, round 1: T118a, the creature banks survey and the checkpoint (2026-11-15, `adventure/e08-t118a`)
+
+Whole (decision 335, the user at its start after the reading was measured: the content and the
+draw about 2 KB of code, the visit, the battle and the reward about 3 KB; two parts had been
+recommended). Baseline: `master` a9e6ef5 (#941, T117, and #942 merged before the start); the
+setup's full baseline was lost to a VM restart, CI's green run on `master` stands (a docs-only
+task). Staged the executable, `maps.tar` and `extracted.tar` (SHA-256 checked). Survey
+`docs/rules/surveys/E08-banks.md`:
+
+- **The census** (§1, a throwaway example over `h3_map::read`, deleted): 2 137 banks on 148 of the
+  160 maps, eleven kinds (class 16's subclasses 0 to 6: 1 215 on 143 maps; 85: 401 / 69; 84:
+  277 / 97; 24: 170 / 58; 25: 74 / 55), on maps of all three versions; one blocked entrance per
+  template (visited from a neighbour); 24 and 85 on water (183 Shipwrecks and 11 Derelict Ships
+  beside land); no body in the map file.
+- **The content** (§2, `crbanks_load` 0x47AB30 read whole): CrBanks.txt's four levels per kind
+  (chance, guard counts, upgrade chance, resources, a creature count, artifact counts by class);
+  the guards' and the reward's creature types from the executable's tables (0x6702A0, 0x67037C),
+  the Dragon Fly Hive's guards the upgraded Dragon Flies; the records' layouts (`structs.toml`).
+- **The draw** (§3, `bank_draw` 0x47AD90 and the setup's five cases): the level, the artifacts
+  relics first, the split into five stacks by a fixed rule (four types: none), one stack upgraded
+  (slot 2 for one type) at the level's chance; never drawn again.
+- **The visit** (§4): class 16 and Dragon Utopia mark the team's visit at once, tell a looted bank,
+  else ask to attack; the Crypt and the sea banks (`visit_search_bank` 0x4AC490) ask to search
+  first, a looted one too, mark the visit only after a yes, and a looted one costs −1 morale until
+  the next battle, once per kind (the hero's bits 9 to 11).
+- **The battle** (§5, `bank_battle_reward` 0x4ABDC0, renamed from `reward_creatures`): the
+  record's army without a hero at the bank's tile (24 and 85 on the deck), the seed from the tile,
+  the bank flag (+0x53C5, H3API's `creatureBank`): no tactics, no obstacles, no war machines on the
+  field, the layout table 0x63D0E0 by the stacks' ordinals; lost: the survivors stay.
+- **The reward** (§6): the creatures (else the army dialog), the artifacts, the resources, looted,
+  then the winner's levels. **What a viewer sees** (§7): E24's hint.
+- **VCMI and the wiki** (§8): VCMI 1.7.5's rewardable banks and its two layouts; two data rows
+  differ (the Naga Bank's gems, the Imp Cache's missing 2 Mercury: a throwaway comparison).
+- **Disputes** D-65 to D-69, no quirk candidate (§9); the interfaces' sketch (§10), batch E13's
+  ten rows (§11), the ids ADV-BNK-001 to -006 with the amendments (§12), the checkpoint (§13).
+
+**The checkpoint** (ADV-Q53, `AskUserQuestion`, one round; decisions 336–339): D-65, D-66 and
+D-68 the original; **D-67 the reward before the winner's levels, as the original** (not the
+recommendation: a bank's exception to GAM-DEC-007 point 3 for T118b); the bank battle the
+adventure lane's, `cross-lane`, after a `shared/` seam change; batch E13 before the build.
+
+**The address map:** 25 new entries (7 functions: `bank_record`, `visit_creature_bank`,
+`visit_dragon_utopia`, `visit_search_bank`, `bank_draw`, `bank_vector_insert` inferred,
+`hero_owner_is_human`; 14 sites: the five setup cases, the five visit cases, four of the bank
+flag in the battle's setup; 4 tables:
+`bank_battle_hexes`, `bank_guard_creatures`, `bank_reward_creatures`, `creature_bank_kinds`
+with H3API's `H3CreatureBankSetup`); `reward_creatures` read whole and renamed
+`bank_battle_reward`; `crbanks_load` and `creature_bank_kinds_pointer` read,
+`adventure_battle`, `battle_war_machine_stacks` and `setup_map_objects` extended; `structs.toml`:
+`creature_bank_kind`, `creature_bank_level`, `creature_bank_record`, the battle manager's +0x53C5
+as `creature_bank`. `scripts/exe.py check` agrees with the executable; every cited address is
+covered.
+
+**The inboxes:** the battle lane's (the bank battle's needs, for its review; D-69 for it).
+**The queue:** the T118a entry moved verbatim to `QUEUE-ARCHIVE.md`; T118b ready.
+
+**Verify:** docs and the address map only: the docs gates and `scripts/exe.py check`. No code,
+version or replay moved; CI's run on the pull request is the record.

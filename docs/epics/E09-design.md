@@ -1952,6 +1952,12 @@ the AI lane's `cross-lane` consent).
   census in `h3-map`'s `original_data` walks every count of the 160 maps to day 29 (`played_growth`;
   the draws read from the game: the kinds from their events, a garrison week's level from the
   garrison). T29b: the properties and the week workload.
+- *As built (T29b, decision 97, whole):* the properties in `h3-map`'s plans (the counts' bound in
+  `check_invariants` with town events giving 65 535 of a level; the Plague and a purchase's
+  amount in `check_towns`; `a_forks_week_is_its_parents`), `Step::Town` playing the hero moves
+  so that garrison heroes defend sieges alone and beside a visitor (the cover test counts each,
+  won and lost); the week workload is `month-start-builds-36` (the step that starts day 29:
+  week 5 and month 2 over the six towns), `day-start-builds-36` already timing a week's first day.
 
 ### 57. Increment 3's exit criteria (accepted at `TWN-Q14`, decision 83; the epic's list)
 

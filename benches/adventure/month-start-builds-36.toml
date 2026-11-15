@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "E09 T29b (decision 97, the town epic's design note §47 and exit criterion 11: the week workload): the step that starts day 29 (the last EndTurn of day 28: week 5 and month 2, the towns' week and then their month, the adventure's week and month steps, the towns' income, then red's turn start with its town events) in each of 16 random games of 28 days on the builds map (e09-builds-36.h3m, six towns since E09 T29a: red's Dungeon with a horde, the Portal and the Grail, a neutral Rampart with its garrison week); seed 1's months: 2 Plagues, 6 a creature's (36 monsters added), 8 normal; the fork that tries the step is dropped before it, as day-start-builds-36's; about 164 000 Ir a start, 61 % the creature months' walk over the free land tiles (AdventureState::start_month), the towns' week 8.5 % (h3_game::town::growth::grow_week, h3_towns::week::week_growth 6.7 %, TownGrowth::of 4.8 %), the towns' month 3.7 % (grow_month, h3_towns::week::month 3.3 %: the doubling and the Plague), the store's copies of the towns 11 %; counts only inside h3_cli::adventure::bench::day_start_step; a new workload, no code changed (master's code)"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e09-builds-36.h3m",
+    "--workload",
+    "day-start",
+    "--games",
+    "16",
+    "--days",
+    "28",
+    "--seed",
+    "1",
+]
+collect = "*day_start_step*"
+instructions = 2620845
+threshold_percent = 2

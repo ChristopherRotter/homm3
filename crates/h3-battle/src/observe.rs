@@ -142,6 +142,17 @@ pub struct Observation {
     /// The change of each side's hero's spell costs from the creatures in the armies, indexed by
     /// [`BattleSide::index`] (BAT-MAG-054; public through the armies; 0 without a hero).
     pub cost_change: [i8; 2],
+    /// Whether each side's hero forbids every cast (the Orb of Inhibition's `no_casting`,
+    /// BAT-MAG-061), indexed by [`BattleSide::index`]; `false` without a hero. Public, as the
+    /// original's spell book names the Orb's wearer to both sides (GENRLTXT 684,
+    /// `docs/epics/E17-design.md` §12.17; the client lane's gap G1); the viewer's own is also in
+    /// [`own_hero`](Self::own_hero).
+    pub forbids_casting: [bool; 2],
+    /// Each side's hero's spell level limit (Recanter's Cloak, BAT-MAG-062), indexed by
+    /// [`BattleSide::index`]; `None` without one or without a hero. Public, as the original's
+    /// spell book shows the Cloak's limit to both sides (GENRLTXT 537, `docs/epics/E17-design.md`
+    /// §12.17; G1); the viewer's own is also in [`own_hero`](Self::own_hero).
+    pub spell_level_limit: [Option<u8>; 2],
     /// The private part of the viewer's own hero, if the viewer is led by one.
     pub own_hero: Option<OwnHeroView>,
     /// Each side's hero's morale and luck effects with their sources (its morale and luck
@@ -257,6 +268,16 @@ pub fn observe_as(state: &BattleState, ruleset: &BattleRuleset, viewer: Viewer) 
         heroes: BattleSide::BOTH.map(|side| state.hero(side)),
         cost_change: BattleSide::BOTH
             .map(|side| state.heroes[side.index()].map_or(0, |h| h.magic.cost_change)),
+        // rule: BAT-MAG-061, BAT-MAG-062
+        forbids_casting: state
+            .heroes
+            .each_ref()
+            .map(|h| h.as_ref().is_some_and(|h| h.magic.no_casting)),
+        spell_level_limit: state.heroes.each_ref().map(|h| {
+            h.as_ref()
+                .map(|h| h.magic.level_limit)
+                .filter(|&l| l != u8::MAX)
+        }),
         own_hero: side
             .and_then(|side| state.heroes[side.index()])
             .map(|h| own_hero(state, ruleset, &h, seat)),

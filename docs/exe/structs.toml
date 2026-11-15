@@ -146,7 +146,7 @@ fields = [
   { offset = 0x53BC, name = "map_tile", type = "map_tile*", summary = "the adventure map tile of the battle (H3API mapitem)", confidence = "read", refs = ["installation.md §7.26"] },
   { offset = 0x53C0, name = "special_field", type = "i32", summary = "special battlefield: -1 none, 0 the shore, 1 Magic Plains, 2 Cursed Ground, 3 Holy Ground, 4 Evil Fog, 5 Clover Field, 6 Lucid Pools, 7 Fiery Fields, 8 Rocklands, 9 Magic Clouds", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.21", "installation.md §7.26"] },
   { offset = 0x53C4, name = "anti_magic_garrison", type = "u8", summary = "set at the start for object 33 subtype 1: no cast of either side (0x41F890)", confidence = "read", refs = ["installation.md §7.21", "installation.md §7.26"] },
-  { offset = 0x53C5, name = "no_obstacles", type = "u8", summary = "set by the side setup 0x463C48; the obstacle routine then places none (which battles set it not read)", confidence = "read", refs = ["installation.md §7.26"] },
+  { offset = 0x53C5, name = "creature_bank", type = "u8", summary = "the bank flag (H3API creatureBank; E08 T118a: adventure_battle's last argument, 1 for a creature bank's battle, stored by battle_side_setup 0x463C48): no obstacles (battle_obstacles 0x466290), no tactics phase (0x462C5D), the bank layout and no war machines (battle_war_machine_stacks 0x463600, 0x4636B7, 0x463758)", confidence = "read", refs = ["installation.md §7.26", "rules/surveys/E08-banks.md §5"] },
   { offset = 0x53C6, name = "on_ship", type = "u8", summary = "a battle on a ship (a hero in a boat, a Shipwreck or Derelict Ship): the deck picture, water terrain", confidence = "read", refs = ["installation.md §7.26"] },
   { offset = 0x53C8, name = "siege_town", type = "town*", summary = "the town the battle is at, null elsewhere: its faction's native terrain becomes the battlefield's (0x4643B3); a siege is +0x132F4 > 0 (0x4646D4, 0x4662D5)", confidence = "read", refs = ["installation.md §7.26"] },
   { offset = 0x53CC, name = "heroes", type = "hero*[2]", summary = "each side's hero, null without one", confidence = "read", refs = ["installation.md §7.21"] },
@@ -791,6 +791,46 @@ fields = [
   { offset = 0x4, name = "army", type = "army", summary = "the garrison's army: creature types +0x4 to +0x1F (-1 none), counts +0x20 to +0x3B; fought as it stands and changed in place by the exchange", confidence = "read", refs = ["rules/surveys/E08-garrisons-bonuses.md §4", "rules/surveys/E08-garrisons-bonuses.md §6"] },
   { offset = 0x3C, name = "removable", type = "u8", summary = "1 when its troops may be taken out (always on an RoE map); 0 makes the exchange's owner -1 (garrison_exchange_dialog 0x5D1130)", confidence = "read", refs = ["rules/surveys/E08-garrisons-bonuses.md §6"] },
   { offset = 0x3D, name = "entrance", type = "u8[3]", summary = "the entrance's column, row and level (the level's low 4 bits read)", confidence = "read", refs = ["rules/surveys/E08-garrisons-bonuses.md §2"] },
+]
+
+
+[[struct]]
+name = "creature_bank_kind"
+size = 0x190
+summary = "A creature bank kind of creature_bank_kinds 0x695038 (eleven: class 16's subclasses 0-6, the Shipwreck 7, the Derelict Ship 8, the Crypt 9, Dragon Utopia 10), filled by crbanks_load 0x47AB30 (E08 T118a)."
+refs = ["rules/surveys/E08-banks.md §2"]
+h3api = "H3CreatureBankSetup"
+fields = [
+  { offset = 0x0, name = "name", type = "H3String", summary = "the kind's name (CrBanks.txt's record 2 + 4 k, column 0); the map hint's", confidence = "read", refs = ["rules/surveys/E08-banks.md §2"] },
+  { offset = 0x10, name = "levels", type = "creature_bank_level[4]", summary = "the four levels, 0x60 bytes each", confidence = "read", refs = ["rules/surveys/E08-banks.md §2"] },
+]
+
+[[struct]]
+name = "creature_bank_level"
+size = 0x60
+summary = "One level of a creature bank kind (E08 T118a; crbanks_load 0x47AB30, bank_draw 0x47AD90 copies it into a record)."
+refs = ["rules/surveys/E08-banks.md §2"]
+fields = [
+  { offset = 0x0, name = "guards", type = "army", summary = "the guards before the split: types +0x0 (bank_guard_creatures 0x6702A0), counts +0x1C (columns 3, 6, 8, 10)", confidence = "read", refs = ["rules/surveys/E08-banks.md §2"] },
+  { offset = 0x38, name = "resources", type = "i32[7]", summary = "wood, mercury, ore, sulfur, crystal, gems, gold (columns 13-19)", confidence = "read", refs = ["rules/surveys/E08-banks.md §2"] },
+  { offset = 0x54, name = "creature", type = "i32", summary = "the reward's creature (bank_reward_creatures 0x67037C), -1 when its count is 0", confidence = "read", refs = ["rules/surveys/E08-banks.md §2"] },
+  { offset = 0x58, name = "creature_count", type = "i8", summary = "the reward's creature count (column 20)", confidence = "read", refs = ["rules/surveys/E08-banks.md §2"] },
+  { offset = 0x59, name = "chance", type = "i8", summary = "the level's chance in percent (column 2)", confidence = "read", refs = ["rules/surveys/E08-banks.md §3"] },
+  { offset = 0x5A, name = "upgrade_chance", type = "i8", summary = "the chance in percent that the draw upgrades one stack (column 5)", confidence = "read", refs = ["rules/surveys/E08-banks.md §3"] },
+  { offset = 0x5B, name = "artifacts", type = "i8[4]", summary = "the artifacts by class: treasure, minor, major, relic (columns 22-25)", confidence = "read", refs = ["rules/surveys/E08-banks.md §2"] },
+]
+
+[[struct]]
+name = "creature_bank_record"
+size = 0x6C
+summary = "A creature bank on the map (E08 T118a): the vector at game +0x4E3D8 (begin +0x4E3DC), the object's word's bits 13-24 its index (bank_record 0x405DF0), bit 25 looted, bits 5-12 the players' visits; drawn by bank_draw 0x47AD90 at a new game."
+refs = ["rules/surveys/E08-banks.md §2", "rules/surveys/E08-banks.md §3"]
+fields = [
+  { offset = 0x0, name = "guards", type = "army", summary = "the guards after the split and the upgrade; the battle's defender, its survivors kept", confidence = "read", refs = ["rules/surveys/E08-banks.md §3", "rules/surveys/E08-banks.md §5"] },
+  { offset = 0x38, name = "resources", type = "i32[7]", summary = "the reward's resources, wood to gold", confidence = "read", refs = ["rules/surveys/E08-banks.md §6"] },
+  { offset = 0x54, name = "creature", type = "i32", summary = "the reward's creature, -1 none", confidence = "read", refs = ["rules/surveys/E08-banks.md §6"] },
+  { offset = 0x58, name = "creature_count", type = "i8", summary = "the reward's creature count", confidence = "read", refs = ["rules/surveys/E08-banks.md §6"] },
+  { offset = 0x5C, name = "artifacts", type = "vector<i32>", summary = "the reward's artifacts, relics first (begin +0x60, end +0x64)", confidence = "read", refs = ["rules/surveys/E08-banks.md §3", "rules/surveys/E08-banks.md §6"] },
 ]
 
 [[struct]]

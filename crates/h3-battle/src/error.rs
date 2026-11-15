@@ -226,7 +226,8 @@ impl core::error::Error for SetupError {}
 pub enum CommandError {
     /// The battle is already over.
     BattleOver,
-    /// It is not the actor's turn (the active stack belongs to the other side).
+    /// It is not the actor's turn (the active stack belongs to the other side), or no one's yet:
+    /// the battle is set up but has not begun (`BattleState::setup`, CLT-Q69 (a)).
     NotYourTurn,
     /// The active stack has already waited this round, or the round's wait phase has begun
     /// (BAT-TRN-002).

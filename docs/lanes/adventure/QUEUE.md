@@ -4,34 +4,7 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey and the ADR amendment drafts first (T118a, T118b below). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E08 T118a — the creature banks survey** (decision 334; as T108a for increment 12: survey file
-`docs/rules/surveys/E08-banks.md`)
-
-- **Scope:** the census of classes 16 (by subclass), 24, 25, 84 and 85 on the 160 shipped maps
-  (T97c's counts in `E08-log.md`, T97c: 2 137 objects on 148 maps); their `.h3m` bodies and
-  templates (`docs/formats/h3m.md`, VCMI 1.7.5's reader); the banks' configurations in the
-  original data (the text tables the harvest reads: each bank's levels, their chances, guards and
-  rewards); the original's code (`docs/exe/README.md`, `scripts/exe.py`): the draw of a bank's
-  level, guards and reward at a new game (and at a week's or a month's start, if any), the visit
-  (the question, the battle against the guards, the reward: resources, artifacts, creatures
-  through the army dialog 0x4ABDC0), the bank emptied, a revisit and a lost battle; the bank
-  battle (the battle's bank flag +0x53C5: no war machines, no tactics phase, the guards' own
-  layout; the battle lane's: its queue's "War machines" note); what a viewer sees (a bank's
-  visited state, its guards' size word); VCMI's and the wiki's rules; disputes `D-<n>` from 65,
-  reading quirk candidates `A-<n>` from 46; the proposed rule ids; the batch's plan (E13) on the
-  client lane's harness (decision 334's agent's call); what the bank battle needs, told to the
-  battle lane's inbox. Likely in parts (the content and the draw; the visit, the battle and the
-  reward), confirmed with the user at its start, the reading measured first.
-- **Inputs:** decisions 333, 334; ADR-0015 to -0017 (ADR-0016 points 3, 4 and 6, ADR-0017's
-  decisions and rests), ADR-0013 (the hero's derived properties); increment 3's monsters and
-  battles on the map (the neutral seat), increment 7's rewards (the shared reward record, the
-  artifacts), increment 10's hire dialog (creatures joining an army); `E08-archive.md` decision
-  127 (T55a3's measure: the five banks about 3 000 instructions and the battle's bank flag, which
-  `BattleSetup` lacks); the battle lane's queue ("War machines"); the lane's `TRAPS.md`.
-- **Depends on:** T117 (done). **Status:** ready (the original data and the shipped maps:
-  staging per `docs/08-work-process.md`, "Cloud sandbox").
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b below). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T118b — the ADR amendment drafts, the design note and the cut** (decision 334)
 
@@ -40,12 +13,31 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   derived properties or of the battle's setup), increment 13's design note `E08-design.md` (its
   parts by side), the building tasks' cut and the exit criteria; the checkpoint with the user (the
   note, the drafts, the agent's calls, the cut).
-- **Inputs:** the survey `docs/rules/surveys/E08-banks.md` (the proposed ids, the interfaces'
-  sketch, the open points); decisions 333, 334 and T118a's checkpoint's; ADR-0015 to -0017; the
-  battle lane's answer on the bank battle (its inbox); T108b's drafts as the form.
-- **Depends on:** T118a. **Status:** after T118a (docs only).
+- **Inputs:** the survey `docs/rules/surveys/E08-banks.md` (§9's open points, §10 the interfaces'
+  sketch, §11 batch E13, §12 the proposed ids); decisions 333 to 339 (D-65, D-66, D-68 as the
+  original; **D-67 as the original: a won bank's reward before the winner's levels**, an exception
+  to GAM-DEC-007 point 3 to design; the bank battle the adventure lane's, `cross-lane`, after a
+  `shared/` change of `BattleSetup`; batch E13 before the build, its spec and recipe in the cut);
+  ADR-0015 to -0017, ADR-0013 (the three once-marks); the battle lane's inbox note of 2026-11-15
+  (the bank battle's needs) and any answer; T108b's drafts as the form.
+- **Depends on:** T118a (done). **Status:** ready (docs only).
 
 ## Inbox
+
+- 2026-11-15 (the town lane, E09 T29b, `town/e09-t29b`, `cross-lane` with the user's consent, E09
+  decision 97; **your paths changed, for your review; no version moved, no engine code**):
+  `h3-map`'s `play.rs`: `Step::Town` (`visit_town`) gives a listed `TownCommand::Heroes` move at
+  an own town in five steps of eight, so every property's and cover test's games with town runs
+  moved (all of `h3-map`'s tests pass, the properties also at 240 cases); `town_events` gives
+  65 535 of a level where it drew 20; `check_invariants` bounds the towns' counts;
+  `check_towns` takes the command (the Plague, a purchase's amount); a new property
+  `a_forks_week_is_its_parents`; `hero_anywhere` (a hero on the map or a garrison hero) in
+  `check_battle_end`, `check_heroes_after_battle`, `check_conservation` and `check_progression`,
+  and `check_isolation` exempting the battle's garrison hero, which met a garrison hero
+  defending, raising and levelling up. `view.rs`' `vary` keeps a map garrison's entrance land (a case
+  of `master`'s, `OwnedOnWater`; your E08 T116b1's ownable garrisons were not in its
+  `entrances`). A new workload `benches/adventure/month-start-builds-36.toml` (the step that
+  starts day 29 on the builds map), its README row by #942.
 
 - 2026-11-13 (the client lane, E27 M1 T3, `client/e27-m1-t3`; **for E10's victory conditions,
   nothing to do before it**): the original's "defeat a hero" victory (code 5,
