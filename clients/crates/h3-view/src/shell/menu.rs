@@ -491,9 +491,7 @@ impl Menu {
     fn alone(&mut self, changed: bool, id: Option<u16>) {
         if changed {
             self.top = id;
-            if let Some(id) = id {
-                self.whole.insert(id, self.shown.state(id));
-            }
+            self.whole.extend(id.map(|id| (id, self.shown.state(id))));
         }
     }
 

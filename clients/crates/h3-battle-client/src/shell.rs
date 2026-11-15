@@ -880,15 +880,6 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     };
     let (mut pointer, mut dirty, mut cursor_hidden) = (None, true, false);
     loop {
-        // A menu shown anew: opened at the pointer, its music asked for (the track playing goes
-        // on: E24-design §3.11).
-        if on != Some(shell.screen()) {
-            on = Some(shell.screen());
-            menu = drawer.menus.opened(shell.screen(), pointer.unwrap_or(PARK));
-            if let (Some(host), true) = (host.as_mut(), menu.is_some()) {
-                let _ = host.request(MAIN_MUSIC, false);
-            }
-        }
         let playing = shell.screen() == Screen::Start;
         for event in win.wait(if playing { 5 } else { 50 }) {
             let mut did = menu::Did::default();
@@ -1003,6 +994,17 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             let image = (!hidden).then(|| drawer.hardware.clone());
             win.set_cursor(image)?;
             cursor_hidden = hidden;
+        }
+        // A screen shown anew (the start's end, a menu's, a word's): its menu opened at the
+        // pointer, before it is drawn, its music asked for (the track playing goes on:
+        // E24-design §3.11).
+        if on != Some(shell.screen()) {
+            on = Some(shell.screen());
+            menu = drawer.menus.opened(shell.screen(), pointer.unwrap_or(PARK));
+            if let (Some(host), true) = (host.as_mut(), menu.is_some()) {
+                let _ = host.request(MAIN_MUSIC, false);
+            }
+            dirty = true;
         }
         if dirty {
             let frame = if shell.screen() == Screen::Start {

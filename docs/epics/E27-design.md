@@ -2127,3 +2127,66 @@ The first pass's disk check (free space below 5 MB: GENRLTXT 708 and the end; th
 such limit), the CD notice (GENRLTXT 730, 107 with 763, 746 or 747: not on Complete), a DirectPlay
 lobby's start (§2.10), the 0x602C50 call with the window manager's +0x48 (*not read*), the
 videos' pause around the question (clip 33 draws nothing, CLT-Q86).
+
+## 14. New Game's and Load Game's menus taking their inputs (M2 T6b1, 2026-11-15)
+
+Read in `Heroes3.exe` (`game_type_menu_proc` 0x4D5940 whole again, `game_type_menu_create`
+0x4D54C0's items) and taken from the recordings: the harness's `menu-new`, `menu-load` and
+`menu-sound` played again in the sandbox (every kept line as kept), their frames compared pixel by
+pixel with the viewer's. Built on §13's machinery: `h3_view::shell::menu::Menu` for both kinds
+(the epic's T6b1 row).
+
+### 14.1 The procedure, against the main menu's
+
+- **Each message:** the tick 0x4ED490 only; no 0x602C50 call (the main menu's, §13.1).
+- **A right press** (+0xC bit 0x200, subtype 0xC or 0xE) on 100 to 104: `message_box` of style 4
+  with `game_type_menu_help`'s right-click text of id − 100 (0x6A6BFC + 8 k: `Help.txt` records
+  10 to 14); Load Game's the same records. The title (105) has none.
+- **A command** (0x200/0xD, 100 to 104): the window manager's +0x38 set to the id and the end,
+  Back among them; no question.
+- **A move** (type 4): `dialog_item_id_at` against `game_type_menu_hovered`, so the title picture
+  is an item under the mouse too: on a change 100 to 104 lose state 0x10 (with the CD notice only
+  102 and 104) and the new item gains it (105 included; a picture draws nothing for it).
+- **Then** (0x4D5AB6): on a change, or a clip's frame due, items 100 to 105 redrawn through the
+  dialog's vtable +0x14 in the order the dialog holds them (title, Single, Campaign, Tutorial,
+  Multiplayer, Back: `game_type_menu_create`'s order), (526, 7, 250, 560) and the title's (114,
+  312, 300, 48) shown, `video_show`. The end as the main menu's.
+- **The title** is a 16-bit picture (`H3DlgPcx16` 0x450690, flags 0x800): `newgame.pcx` and
+  `loadgame.pcx` are 24-bit, drawn opaque.
+
+### 14.2 The rows the redraw does not show (CLT-Q118's, the comparisons' rule)
+
+The screen keeps what was last shown there. A DEF button's own loop (§13.2: the press, a hold's
+move off or on, the release) draws the button alone and shows its box, the item's rectangle,
+whole; the hover's redraw shows only the rectangles above. Single's box (545, 4, 209, 123) reaches
+rows 4 to 6 above (526, 7, 250, 560), Back's (582, 464, 127, 107) rows 567 to 570 below it, so
+those rows show the frame the button's loop last showed whole, or the opening's frame 0 until it
+ran once. Recorded: `single-hover` (Single in frame 3, its rows 4 to 6 still frame 0),
+`single-press` (frame 1, the rows alike: frame 1's top rows are frame 0's), `single-left` (the
+release off it drew it up hovered, frame 3, and showed it; then the hover's change redrew it in
+frame 0 inside the rectangle only: rows 4 to 6 stay frame 3 from then on, 66 pixels), Back's the
+same at rows 567 to 569 (105 pixels). The client draws every button whole (decision 22); the
+original's profile keeps, for each button whose box reaches outside the rectangles, its state at
+its last whole show and draws those rows from it (`Menu::stale`, the adapter's copy over the
+background; *provisional*: no other item reaches the rows here). The main menu's five lie inside
+its rectangle (520, 4, 250, 567): none stale there.
+
+### 14.3 What the recordings add
+
+- **A menu opens with none hovered** (`menu-new`'s `menu`, `menu-sound`'s `new`): the pointer left
+  over Single by New Game's click, Single in frame 0 until the first move, as the main menu
+  (§13.2).
+- **The sample** (`menu-sound`'s `sound2`): Back's press 100 ms after New Game's, the first
+  sample still playing: the harness's channel 1, 151 ms (§13.3's rule).
+- **The boxes:** the help popups framed in red and centred as the main menu's; every one exact at
+  the first run.
+- **Back** (`menu-new`'s `back`, `menu-sound`'s `back`) and Load Game's Escape (`menu-load`'s
+  `back`): the main menu again, opened anew (none hovered), the pointer where the click left it.
+
+### 14.4 Not built (the agent's calls, *provisional*)
+
+The CD notice's menu (Single, Campaign and Tutorial not created, only 102 and 104's hover
+cleared: not on Complete), the clip's due frames' redraws (clip 33 draws nothing, CLT-Q86), the
+tutorial flag's clearing at the creation (no tutorial mode, CLT-Q84). New Game's Campaign and
+Tutorial and the main menu's High Scores and Credits lead to the frame's stand-ins until T6b2's
+stubs (decision 37).

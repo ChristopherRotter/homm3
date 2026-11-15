@@ -82,8 +82,12 @@ pub enum Key {
     H,
     /// K (E24 M3 T6b1: the adventure map's hotkeys).
     K,
+    /// L (E27 M2 T6b1: the main menu's Load Game).
+    L,
     /// M.
     M,
+    /// N (E27 M2 T6b1: the main menu's New Game).
+    N,
     /// O.
     O,
     /// P.
@@ -183,7 +187,9 @@ impl Key {
             SDLK_F => Self::F,
             SDLK_H => Self::H,
             SDLK_K => Self::K,
+            SDLK_L => Self::L,
             SDLK_M => Self::M,
+            SDLK_N => Self::N,
             SDLK_O => Self::O,
             SDLK_P => Self::P,
             SDLK_Q => Self::Q,
@@ -242,7 +248,9 @@ impl Key {
             Self::F => "F",
             Self::H => "H",
             Self::K => "K",
+            Self::L => "L",
             Self::M => "M",
+            Self::N => "N",
             Self::O => "O",
             Self::P => "P",
             Self::Q => "Q",
@@ -286,7 +294,7 @@ impl Key {
     }
 
     /// Every key a table may name, in the enum's order: all but [`Key::Other`].
-    pub const ALL: [Self; 52] = [
+    pub const ALL: [Self; 54] = [
         Self::Escape,
         Self::Space,
         Self::Right,
@@ -300,7 +308,9 @@ impl Key {
         Self::F,
         Self::H,
         Self::K,
+        Self::L,
         Self::M,
+        Self::N,
         Self::O,
         Self::P,
         Self::Q,
@@ -1370,6 +1380,9 @@ mod tests {
         assert_eq!(Key::from_name("PageUp"), Some(Key::PageUp));
         assert_eq!(Key::from_name("Ctrl"), None);
         assert_eq!(Key::of(SDLK_LCTRL), Some(Key::LeftCtrl));
+        // E27 M2 T6b1: the main menu's N and L.
+        assert_eq!(Key::of(SDLK_N).map(Key::name), Some("N"));
+        assert_eq!(Key::of(SDLK_L).map(Key::name), Some("L"));
         assert_eq!(Key::of(SDLK_F11), Some(Key::F11));
         assert_eq!(Key::of(SDLK_KP_7), Some(Key::Keypad7));
         assert_eq!(Key::from_name("Keypad3"), Some(Key::Keypad3));

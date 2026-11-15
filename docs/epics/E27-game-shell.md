@@ -283,6 +283,15 @@ The user, 2026-11-15 (M2 T6a; `CLT-Q126`):
     top two rows until a hover change redraws the five; the client draws them in their order
     always, the original's order for the comparisons only.
 
+The user, 2026-11-15 (M2 T6b's start):
+
+37. **T6b cut at the stubs** (the agent's recommendation; offered: the cut or whole): T6b1 New
+    Game's and Load Game's menus on T6a's machinery (the reading, `menu-new`, `menu-load` and
+    `menu-sound` recorded again and exact, CLT-Q118's rows for the comparisons); T6b2 the
+    Campaign, Tutorial, High Scores and Credits stubs, each a message box in the client's own
+    words: the client's first own strings, so its language pack (`clients/text/en.json`) and its
+    loading come with them.
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -380,8 +389,9 @@ recorded again in the sandbox (`h3shell.py run`), with the sound sequences its t
 | T5b1 | The start's sound without the game's run (decisions 31, 33): the readings (the 3DO logo's sound path and volume, `game_samples_load`, a Smacker clip's end, the frames with sound), a stand-in DirectSound in the probes, the client's pacing with sound checked against the DLL; the clips' sound at the effects setting through `HostSound::play_clip` in the window | **done** 2026-11-15 (decision 34; CLT-Q125): `h3_view::shell::start::SmackSound`, `Start::with_sound`, `Op::Sound`, `Quiet`, `Closed`, `Replay::op_times`; `clip_sound::volume` the DirectSound path's; `h3-view shell --effects` and the window's sound; `smackprobe wait`, `capture/vsound.h`, `smacker-check.sh`'s `wait` lines: the six game clips with a track as the DLL's at 1, 5, 7, 10 and 16 ms steps; `game_init` read; log "M2 T5b1", design §11 |
 | T5b2 | The start's sound on the game's run (decision 33; design §11.7): the stand-in DirectSound in `xdd.dll` for `SMACKW32` (its `timeSetEvent` and Miles' timer kept from firing), Bink's Miles sample calls on the harness's clock, each clip sound's Play, stop and volume logged; `binkprobe` on the same Miles stand-in; the `start` group's sound recipes recorded and compared (`drawn`: the replay's `sound`, `quiet` and `closed` lines; the frames exact) | **done** 2026-11-15: `xdd.dll`'s 7. (`clock/clipsound`, the ack's fields 14 and 15), `binkprobe start` and the stand-in Miles' `MssMinimum`, `MssHold`, `MssLoads`; `h3shell.py`'s voices, the replay's volume and `closed` lines; Bink's sound from Miles' first buffer read (its first frame), `bink-check.sh`'s `start` lines; four sound recipes recorded, `drawn --group start` 10 recipes, 30 lines exact; log "M2 T5b2", design §12 |
 | T6a | The main menu and Quit's question (§2.3, §2.5; decision 35): hover, press, release off, the help popups, hotkeys, `button.wav`, `MAINMENU.MP3`; exact against `menu-main`, `menu-quit` and `menu-sound` up to New Game's menu, its sample compared | **done** 2026-11-15 (decision 36; CLT-Q126): `h3_view::shell::menu` (`MainMenu`, `Boxes`, `Did`), `shell::keys` (the table `[shell]`), `shell::samples` (category 3's handles as the harness numbers them); the replay's main menu and `with_sound`, `look` with the menu's state; the window's mouse, hotkeys, samples and music; `h3shell.py drawn` compares the samples; `menu-main` 26 of 26, `menu-quit` 7 of 7, `menu-sound`'s shot and `sound1` exact; log "M2 T6a", design §13 |
-| T6b | New Game's and Load Game's menus (§2.4): their hover, press, release off, popups, hotkeys and Back, the buttons redrawn whole (CLT-Q118); Campaign and Tutorial stubs (decisions 7, 9), High Scores and Credits stubs until M4; exact against `menu-new`, `menu-load` and `menu-sound` whole (`sound2`) | after T6a |
-| T7 | Multiplayer's first stage (decision 10's stub, CLT-Q101) and the hot seat's names (§2.6, §2.7: the edit field read first, two 21-letter names recorded, Enter pressing OK, CLT-Q107), Load Game's multiplayer; the scenario screen a stub (M3); exact against `multiplayer` | after T6b |
+| T6b1 | New Game's and Load Game's menus (§2.4; decision 37): their hover, press, release off, popups, hotkeys and Back, the buttons redrawn whole (CLT-Q118); exact against `menu-new`, `menu-load` and `menu-sound` whole (`sound2`) | **done** 2026-11-15: `h3_view::shell::menu::Menu` for both kinds (`Kind`, `Menus`, `Stale`, `outside`; `MainMenu` gone), the keys' `Command::Choice` and `Context::GameType`, `look::MenuLayout` (`redrawn`, `titles`, `dialog_for`) and `Look`'s `stale` and `over`; the replay and the window on whichever menu shows; `menu-new` 27 of 27, `menu-load` 27 of 27, `menu-sound` 5 of 5 exact at the first run; log "M2 T6b1", design §14 |
+| T6b2 | The stubs (decision 37): New Game's Campaign and Tutorial (decisions 7, 9), the main menu's High Scores and Credits until M4, each a message box in the client's own words, back to its menu; the client's language pack (`clients/text/en.json`, E17 design §9.2) and its loading | after T6b1 |
+| T7 | Multiplayer's first stage (decision 10's stub, CLT-Q101) and the hot seat's names (§2.6, §2.7: the edit field read first, two 21-letter names recorded, Enter pressing OK, CLT-Q107), Load Game's multiplayer; the scenario screen a stub (M3); exact against `multiplayer` | after T6b2 |
 | T8 | M2's closure: a fresh reviewer, the review list, M3's refinement (M3 T0: the loading bar, the scenario list's maps, decision 8; §6.4's recipes for M3) | after T7 |
 
 **M2's review list** (the agent's calls, *provisional*, for T8): (1) `h3-smacker`'s shape (T1):
@@ -474,7 +484,19 @@ gains `player_palette` and `[message]` (the battle's literals), the boxes framed
 main menu shows, at the first run's music setting (no `--music` flag); each press's sample on a
 stream of its own, removed once played; the host's sound opened whenever the effects are above
 0 (with the intro only before); the hardware cursor hidden under a help popup; (44) `drawn`
-compares a sound recipe's samples (`sound<k>`) with the viewer's `sample` lines.
+compares a sound recipe's samples (`sound<k>`) with the viewer's `sample` lines. T6b1: (45) one
+`Menu` for the main menu and the game type menus (`menu::Kind`; `Menus` the three as they open,
+by screen), `Did::ended` the shell's `Ended`, `Boxes::question` an option (a main menu without it
+quits at once, as a lobby's start); (46) the hover by `Dialog::item_at` (the title picture an item
+too, as `dialog_item_id_at`), the five buttons' hover cleared by the kind's list; (47) CLT-Q118's
+rows as layers: each button's state at its last whole show kept, the rows outside the layout's
+`redrawn` rectangles drawn from it over the background by the adapter (`Look::stale`, between the
+dialog and the box, `Look::over`), the button's box its layout rectangle; (48) the layout's
+`[game_type]` (its items in the creation order, `redrawn`, `titles` by game; the main menu's
+`redrawn` too), `MenuLayout::dialog_for` setting the title; (49) the keys' `Command::Choice`
+(`single`, `multiplayer`, `campaign`, `tutorial`, `back` in `[shell]`) in `Context::GameType`;
+(50) the window opens a menu at each screen change (a word or a menu's end) and asks for
+"MainMenu" at each, the host dropping a request for the track playing.
 
 ## Dependencies and boundaries
 

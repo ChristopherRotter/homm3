@@ -13,14 +13,18 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   press, release off, hotkeys through the table `[shell]`, the help popups, Quit's question; the
   press samples as the sound manager plays them, `shell::samples`; the window's music); `drawn`
   compares the samples; `menu-main` 26 of 26, `menu-quit` 7 of 7, `menu-sound`'s T6a lines exact;
-  design §13. **Next: M2 T6b** (New Game's and Load Game's menus, the stubs), then T7, T8.
+  design §13. **M2 T6b1 done** (2026-11-15, decision 37: T6b cut at the stubs): New Game's and Load
+  Game's menus on the same `shell::menu::Menu` (`Kind`, `Menus`; the original's stale rows,
+  CLT-Q118, as `Stale` layers); `menu-new` 27 of 27, `menu-load` 27 of 27, `menu-sound` 5 of 5
+  exact; `h3_sdl::Key` gained L and N; design §14. **Next: M2 T6b2** (the Campaign, Tutorial, High
+  Scores and Credits stubs, the client's own language pack `clients/text/en.json`), then T7, T8.
   Decisions to carry: the dialogs' input one implementation (20; `h3_ui::input`); the shell's
   code as the battle's, the score the engine's (21); decision 22's fixes; every pixel of a
   Smacker clip through its palette (24); every clip's sound at the effects setting (27); every
   Bink frame whole, the comparisons through `Target` (28); the start's fade from the screen as
   shown, a frame's whole rectangle shown (32); a clip's track played out after its last frame
   (34); the main menu's buttons drawn in their order (36). Open pull request:
-  `client/e27-m2-t6a`, T6a's (watch it until it merges). E17 done
+  `client/e27-m2-t6b1`, T6b1's (watch it until it merges). E17 done
   (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -55,6 +59,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-15, E27 M2 T6b1 (done; `client/e27-m2-t6b1`).** T6b cut at the stubs with the user
+  (decision 37). The original data staged at once (64 files, checked by SHA-256); the baseline
+  failed on the client's files not yet copied (step 3 comes after the setup), then the VM
+  restarted (CI's green `master` stood in). Read `game_type_menu_proc` again; recorded `menu-new`,
+  `menu-load`, `menu-sound` again; built the game type menus on one `Menu`, the stale rows, the
+  keys, the window; every T6b1 line exact at the first run. Found and fixed the window's missing N
+  and L. No new question. Record: `E27-log.md`, "M2 T6b1".
 - **2026-11-15, E27 M2 T6a (done; `client/e27-m2-t6a`).** T6 cut by screen with the user
   (decision 35). The original data staged at once (64 files, checked by SHA-256); the VM restarted
   in the baseline's coverage step (CI's green `master` stood in) and again in `check.sh`'s
@@ -68,10 +79,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `BinkOpenMiles` and Bink's sound service; built `xdd.dll`'s 7., `binkprobe start`, the
   stand-in Miles' `MssHold`, the voices in `h3shell.py` and the replay. Every new recipe exact at
   its first recording. No new question. Record: `E27-log.md`, "M2 T5b2".
-- **2026-11-15, E27 M2 T5b1 (done; `client/e27-m2-t5b1`).** T5b kept whole at first, then cut at
-  the game's run with the user (decision 33) once a test run showed `SMACKW32`'s frames following
-  a real-time sound cursor under Wine. The original data staged at once (64 files, checked by
-  SHA-256); the baseline passed. Read the clips' sound path, the DLL's sound service, position and
-  wait, the close and the volume; built `vsound.h`, `smackprobe wait`, `SmackSound`, the new ops,
-  `--effects`, the window's sound. The six game clips' frames with sound as the DLL's at five
-  steps at the first run; CLT-Q125 answered (decision 34). Record: `E27-log.md`, "M2 T5b1".
