@@ -1,0 +1,53 @@
+# E25 T35's probe of the outcome's weight (the user, 2026-11-15, at the probes' checkpoint;
+# decision 6 amended for it): T33's annealed arm (`e25-continue-anneal.toml`: 2 M samples from
+# `e25-structure-1` #2, a quarter of the rate falling to #2's floor, the bonus at 0, seed 1) with
+# `win_bonus` 0.1: a decided battle's last transition gains 0.1 for its side's win and loses it
+# for its loss, beside reward v1 (in [-1, 1]; #2's hero battles about +-0.09 a seat). T30: #2
+# keeps more army than the fair actor in the hero battles but wins as often. The evaluation
+# stays on reward v1. About 2 hours on the GTX 1070. From python/:
+#
+#   uv run --group train python -m h3env.train --config configs/e25-win-bonus.toml --init-from runs/e25-structure-1/best.pt --out runs/e25-win-bonus-1
+#
+# Ctrl-C stops it at the next update boundary, checkpointed; each later part:
+#
+#   uv run --group train python -m h3env.train --resume runs/e25-win-bonus-1
+
+seed = 1
+samples = 2_000_000
+
+[env]
+kinds = [78, 2, 100, 50, 25, 3]
+
+[network]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 6
+mask_input = true
+order = true
+attack_hex = true
+tactics_rounds = 3
+
+[ppo]
+lr = 6.25e-5
+lr_floor = 0.2
+lr_horizon = 2_000_000
+accumulate = 4
+chunk_align = 32
+shaping = true
+entropy_coef = 0.0
+win_bonus = 0.1
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 1
+ladder_final_episodes = 0

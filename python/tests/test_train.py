@@ -46,6 +46,7 @@ from h3env.train.ppo import (  # noqa: E402
     TEACHER_STREAM,
     Trainer,
     episode_entries,
+    outcome,
     padded,
     save,
 )
@@ -839,6 +840,42 @@ def test_the_imitation_loss_pulls_the_learner_to_the_teacher_while_its_weight_la
     assert len(calls) == small["rollout"] and not trainer.rollout.labelled
     assert "teacher_rows" not in roll and stats["imitation_coef"] == 0.0
     trainer.batch.close()
+
+
+def test_an_outcome_is_a_win_a_loss_or_neither_for_its_side() -> None:
+    # E25 T35: the win bonus's sign; an escape is the escaper's loss (`gate.WINS`).
+    results = [
+        _ffi.RESULT_ATTACKER,
+        _ffi.RESULT_DEFENDER,
+        _ffi.RESULT_DRAW,
+        _ffi.RESULT_ATTACKER_RETREATED,
+        _ffi.RESULT_DEFENDER_SURRENDERED,
+    ]
+    for side, expected in ((0, [1, -1, 0, -1, 1]), (1, [-1, 1, 0, 1, -1])):
+        got = outcome(np.array(results), np.full(len(results), side))
+        np.testing.assert_array_equal(got, np.array(expected, np.float32))
+
+
+def test_the_win_bonus_weighs_only_each_decided_battles_last_transitions() -> None:
+    # E25 T35 (`[ppo] win_bonus`): the same rollout (the bonus changes no play), its rewards the
+    # plain run's but on the closed terminal transitions of decided battles, each off by the bonus
+    # either way (a draw by none); a cut battle keeps its truncation penalty alone.
+    config = {**IMITATE, "rollout": 48}
+    plain, weighed = Trainer(Config(**config)), Trainer(Config(**config, win_bonus=0.25))
+    plain.collect()
+    weighed.collect()
+    p, r = plain.rollout, weighed.rollout
+    for name in ("obs", "entry", "side", "closed", "terminal", "truncated"):
+        np.testing.assert_array_equal(getattr(p, name), getattr(r, name), err_msg=name)
+    diff = r.reward.astype(np.float64) - p.reward
+    moved = np.abs(diff) > 1e-6
+    assert moved.any()
+    assert not (moved & ~(r.closed & r.terminal)).any()
+    np.testing.assert_allclose(np.abs(diff[moved]), 0.25, atol=1e-6)
+    cut = plain.config.truncation_penalty > 0 and (p.reward <= -plain.config.truncation_penalty)
+    assert not (moved & cut).any()
+    plain.batch.close()
+    weighed.batch.close()
 
 
 def test_an_accumulated_update_steps_as_its_whole_minibatches_do() -> None:
