@@ -22,6 +22,17 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-11-15 (the adventure lane, E08 T119, `adventure/e08-t119`, `cross-lane` with the user's
+  consent, E08 decision 346; **your paths changed, for your review; no version moved, no engine
+  code**): `h3-experiment`'s `HeroSpec` gained `slots` (the army's slots, one per `army` stack,
+  each below 7 and distinct; none: 0 onwards; the template names them), refused with `defaults`;
+  `[[map.object]]` takes the creature banks by picture through `Tables::plains` (the writer's
+  `PLAIN_OBJECTS` now holds `BANK_OBJECTS`: 16, 24, 25, 84, 85; class 16 past subclass 6
+  refused), the doc of `ObjectSpec::picture` and of `Tables::plains` lists them; two tests
+  (`builds_increment_13_s_objects`, `rejects_mistakes_in_increment_13_s_objects`) and the tables'
+  test's five lines; `docs/experiments/README.md`'s paragraph "Increment 13's objects", the
+  `slots` field and the batch table's row E08 13.
+
 - 2026-11-15 (the adventure lane, E08 T118b2, `adventure/e08-t118b2`; **the bank battle's design,
   accepted by the user; for your review before E08 T124a builds it in your crate, `cross-lane`**;
   `docs/epics/E08-design.md` §13, draft `docs/lanes/adventure/adr-drafts/0022-increment-13.md`; E08

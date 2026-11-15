@@ -4,6 +4,21 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-15, E08 T119: done whole, decision 346; the record in `E08-log.md`, T120 + T121 queued.)* **E08 T119 — batch E13's map: the writer's five classes, the spec's fields, the spec** (round 2;
+decisions 339, 343, 345; as T109 for increment 12)
+
+- **Scope:** design note `E08-design.md` §19, §20's round 2: `h3_map::writer` writes the five
+  bank classes by template (class 16 by subclass 0 to 6, 85, 24, 84, 25; no body);
+  `h3-experiment`'s spec gains them by template and what its adventure hero lacks at the start
+  (secondary skills, war machines and artifacts: check the battle hero's fields first), a boat
+  for E13-5 (battle-owned: `cross-lane` with the user's consent, label it); the spec and the
+  template of run **E13** (survey §11's E13-1 to E13-10 with §19's changes: E13-3 extended,
+  E13-6 corrected, E13-11 and E13-12 added; two players, days 1 to 3).
+- **Inputs:** survey `docs/rules/surveys/E08-banks.md` §1 (the templates), §11 (the rows); design
+  note §19; T109a's and T109b's records in `E08-log.md` as the form.
+- **Depends on:** T118b2 (done). **Status:** ready (the original data: the executable and both
+  tars, to compile the map and check it in the editor's reader; confirm the cut at its start).
+
 *(Moved 2026-11-15, E08 T118b2: done whole, decision 341; D-67 corrected, decision 342; the checkpoint ADV-Q54, decisions 343–345; the record in `E08-log.md`.)* **E08 T118b2 — the game side of the design note, ADR-0017's draft and the cut** (decisions 334,
 340; as T98b2 for increment 11)
 
