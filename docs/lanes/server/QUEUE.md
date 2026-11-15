@@ -4,9 +4,9 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md`; M0 to M4, M6 and M5 part 1 are closed (checkpoints SRV-Q12, -Q16, -Q18, -Q22, -Q24, -Q28, M5 2a's SRV-Q30; M6 is discovery, ADR-0021, detail in `E16-design.md` §12); the done tasks are in `E16-log.md`, the milestone chronicle in `QUEUE-ARCHIVE.md`. Work under the autonomy contract (`HANDOFF.md`). Wire changes bump `PROTOCOL_VERSION`, journal changes `JOURNAL_FORMAT_VERSION` (current values: `HANDOFF.md`). The inbox after M6 was done 2026-10-19 (`E16-log.md`).
+Epic: `docs/epics/E16-server.md`; **every milestone is closed** (M0 to M6; checkpoints SRV-Q12, -Q16, -Q18, -Q22, -Q24, -Q28, and M5's increments SRV-Q30, -Q34 and -Q38 on 2026-11-15; M6 is discovery, ADR-0021, detail in `E16-design.md` §12); the done tasks are in `E16-log.md`, the closed scopes and review lists in `E16-archive.md`, the milestone chronicle in `QUEUE-ARCHIVE.md`. Work under the autonomy contract (`HANDOFF.md`). Wire changes bump `PROTOCOL_VERSION`, journal changes `JOURNAL_FORMAT_VERSION` (current values: `HANDOFF.md`).
 
-**M5 part 2** (refined 2026-11-12, SRV-Q29): 2a and 2b closed (SRV-Q30, SRV-Q34), 2c refined 2026-11-14 (SRV-Q35): its tasks T20 to T24 and their state in the epic's "M5 part 2"; T20 to T24 built; **T24's checkpoint open** (SRV-Q38: the reviewer's findings fixed, protocol v68; the user looks at the fixes, then M5 and E16's milestones close). The part's chronicle up to T22a: `QUEUE-ARCHIVE.md`, "M5 part 2's chronicle". SRV-Q19's turn timer (the inbox's 2026-10-12 note) stays for the ranked battles.
+**No task is queued** (the user, SRV-Q38): E16's "Later" holds the deferred work, and the inbox below holds the notes that wait for a trigger; a new milestone is refined with the user when one comes due. SRV-Q19's turn timer (the inbox's 2026-10-12 note) stays for the ranked battles.
 
 The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS for the client lane's browser.
 
