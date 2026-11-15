@@ -4,8 +4,9 @@
 //! what a viewer may learn there in `view.rs` (E08 T8b2b); the writer's reward objects and RoE
 //! maps read back and imported in `rewards.rs` (E08 T56); its sea objects in `sea.rs` (E08 T67);
 //! its teleporters in `teleporters.rs` (E08 T99a); its garrisons and bonus visitables in
-//! `garrisons_bonuses.rs` (E08 T109a).
+//! `garrisons_bonuses.rs` (E08 T109a); its creature banks in `banks.rs` (E08 T119).
 
+mod banks;
 mod bonuses_map;
 mod builds_map;
 mod dwellings;
