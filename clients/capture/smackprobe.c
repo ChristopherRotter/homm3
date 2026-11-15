@@ -42,6 +42,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "vsound.h"
 
 typedef void *(WINAPI *open_fn)(HANDLE, DWORD, DWORD);
 typedef DWORD(WINAPI *one_fn)(void *);
@@ -57,6 +58,8 @@ typedef void(WINAPI *volume_fn)(void *, DWORD, DWORD, DWORD);
 typedef void(WINAPI *record_fn)(const char *);
 typedef int(WINAPI *pump_fn)(void);
 static use_mss_fn smack_use_mss;
+static one_fn smack_wait;
+static use_mss_fn smack_use_ds;
 static volume_fn smack_volume_pan;
 static record_fn mss_record;
 static pump_fn mss_pump;
@@ -82,8 +85,11 @@ static int load(void)
     smack_to_buffer_rect = (to_buffer_rect_fn)GetProcAddress(dll, "_SmackToBufferRect@8");
     smack_use_mss = (use_mss_fn)GetProcAddress(dll, "_SmackSoundUseMSS@4");
     smack_volume_pan = (volume_fn)GetProcAddress(dll, "_SmackVolumePan@16");
+    smack_wait = (one_fn)GetProcAddress(dll, "_SmackWait@4");
+    smack_use_ds = (use_mss_fn)GetProcAddress(dll, "_SmackSoundUseDirectSound@4");
     if (!smack_open || !smack_do_frame || !smack_next_frame || !smack_close ||
-        !smack_to_buffer || !smack_to_buffer_rect || !smack_use_mss || !smack_volume_pan) {
+        !smack_to_buffer || !smack_to_buffer_rect || !smack_use_mss || !smack_volume_pan ||
+        !smack_wait || !smack_use_ds) {
         fprintf(stderr, "smackprobe: an export is missing\n");
         return 0;
     }
@@ -258,6 +264,130 @@ static int audio(const char *vid, const char *entry, const char *out)
     return 0;
 }
 
+
+/* `wait` (E27 M2 T5b1): the probe's clock, which SMACKW32.DLL reads through its own WINMM
+   imports once they point here; its sound timer (timeSetEvent) is made and never fires, so the
+   DLL's sound service runs only from the calls the game makes (SmackWait, SmackDoFrame,
+   SmackNextFrame), as on the frozen clock of the harness. */
+static DWORD clock_now;
+static DWORD WINAPI probe_time(void)
+{
+    return clock_now;
+}
+static DWORD vsound_clock(void)
+{
+    return clock_now;
+}
+static UINT WINAPI probe_set_event(UINT delay, UINT resolution, LPTIMECALLBACK f, DWORD_PTR user,
+                                   UINT kind)
+{
+    (void)f;
+    (void)user;
+    vnote("timer", (long)delay, (long)(resolution | kind << 16));
+    return 1;
+}
+static UINT WINAPI probe_kill_event(UINT id)
+{
+    vnote("timer-killed", (long)id, 0);
+    return TIMERR_NOERROR;
+}
+
+/* Points the module's import of WINMM.dll's `name` (found by the address it holds: SMACKW32's
+   import table has no names left once bound) at `to`. */
+static int redirect(HMODULE mod, const char *name, void *to)
+{
+    BYTE *base = (BYTE *)mod;
+    IMAGE_NT_HEADERS *nt = (IMAGE_NT_HEADERS *)(base + ((IMAGE_DOS_HEADER *)base)->e_lfanew);
+    IMAGE_DATA_DIRECTORY *dir = &nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    IMAGE_IMPORT_DESCRIPTOR *d = (IMAGE_IMPORT_DESCRIPTOR *)(base + dir->VirtualAddress);
+    FARPROC real = GetProcAddress(GetModuleHandleA("winmm.dll"), name);
+    for (; real && d->Name; d++) {
+        IMAGE_THUNK_DATA *slot = (IMAGE_THUNK_DATA *)(base + d->FirstThunk);
+        if (lstrcmpiA((const char *)(base + d->Name), "winmm.dll"))
+            continue;
+        for (; slot->u1.Function; slot++) {
+            DWORD old;
+            if (slot->u1.Function != (DWORD)(ULONG_PTR)real)
+                continue;
+            VirtualProtect(&slot->u1.Function, 4, PAGE_READWRITE, &old);
+            slot->u1.Function = (DWORD)(ULONG_PTR)to;
+            VirtualProtect(&slot->u1.Function, 4, old, &old);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int wait(const char *vid, const char *entry, DWORD step, DWORD volume, const char *out)
+{
+    char path[MAX_PATH];
+    void *h;
+    DWORD w, ht, n, start, spins;
+    BYTE *buf;
+    HMODULE dll = GetModuleHandleA("SMACKW32.DLL");
+    if (!step || !redirect(dll, "timeGetTime", (void *)probe_time) ||
+        !redirect(dll, "timeSetEvent", (void *)probe_set_event) ||
+        !redirect(dll, "timeKillEvent", (void *)probe_kill_event)) {
+        fprintf(stderr, "smackprobe: SMACKW32.DLL's WINMM imports not found\n");
+        return 1;
+    }
+    start = clock_now = 1000000;
+    vsound_now = vsound_clock;
+    snprintf(path, sizeof path, "%s.wait", out);
+    vsound_log = fopen(path, "w");
+    snprintf(path, sizeof path, "%s.played", out);
+    vsound_played = fopen(path, "wb");
+    if (!vsound_log || !vsound_played)
+        return 1;
+    if (!smack_use_ds(&vsound)) {
+        fprintf(stderr, "smackprobe: SmackSoundUseDirectSound refused the stand-in\n");
+        return 1;
+    }
+    if (!open_archive(vid) || !(h = open_entry(entry, 0xFE000))) {
+        fprintf(stderr, "smackprobe: %s not opened\n", entry);
+        return 1;
+    }
+    vnote("open", 0, 0);
+    smack_volume_pan(h, 0xFE000, 3640 * volume, 0x8000);
+    w = FIELD(h, 4);
+    ht = FIELD(h, 8);
+    n = FIELD(h, 0xC);
+    buf = calloc(w, ht);
+    if (!buf)
+        return 1;
+    smack_to_buffer(h, 0, 0, w, ht, buf, 0);
+    /* smacker_tick 0x598EB0 at every reading: SmackWait, then SmackDoFrame and, before the
+       last frame, SmackNextFrame; the last closed. A frozen clock lets the game's loop call it
+       again at once, so a reading takes frames until SmackWait holds one back. */
+    for (;;) {
+        for (spins = 0; spins < 64; spins++) {
+            DWORD k;
+            if (smack_wait(h))
+                break;
+            smack_do_frame(h);
+            k = FIELD(h, 0x374);
+            fprintf(vsound_log, "%lu frame %lu\n", (unsigned long)clock_now, (unsigned long)k);
+            if (k + 1 >= n) {
+                smack_close(h);
+                vnote("closed", 0, 0);
+                printf("%s: %lu frames, closed at %lu ms\n", entry, (unsigned long)n,
+                       (unsigned long)(clock_now - start));
+                vsound_flush();
+                fclose(vsound_log);
+                fclose(vsound_played);
+                return 0;
+            }
+            smack_next_frame(h);
+        }
+        clock_now += step;
+        vsound_flush();
+        if (clock_now - start > 600000) {
+            fprintf(stderr, "smackprobe: %s not done in 600 s\n", entry);
+            return 1;
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     unsigned short cw = 0x27F;
@@ -271,8 +401,12 @@ int main(int argc, char **argv)
     if (argc == 8 && !strcmp(argv[1], "rects"))
         return rects(argv[2], argv[3], strtoul(argv[4], NULL, 16), strtoul(argv[5], NULL, 10),
                      strtoul(argv[6], NULL, 10), argv[7]);
+    if (argc == 7 && !strcmp(argv[1], "wait"))
+        return wait(argv[2], argv[3], strtoul(argv[4], NULL, 10), strtoul(argv[5], NULL, 10),
+                    argv[6]);
     fprintf(stderr, "usage: smackprobe frames <vid> <entry> <type> <out>\n"
                     "       smackprobe audio <vid> <entry> <out>\n"
-                    "       smackprobe rects <vid> <entry> <type> <left> <top> <out>\n");
+                    "       smackprobe rects <vid> <entry> <type> <left> <top> <out>\n"
+                    "       smackprobe wait <vid> <entry> <step ms> <volume> <out>\n");
     return 2;
 }

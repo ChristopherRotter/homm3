@@ -279,6 +279,15 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   of the DLLs' rectangles (`h3_bink::rects`, `shown_union`), `NWCLogo` is stretched from the
   corner, and the fade copies the back buffer. A `start-*` run takes 20 to 25 minutes; `drawn`
   over the group about a minute (`H3INTRO`'s 2 426 frames decoded in order).
+- The clips' sound (E27 M2 T5b1, design §11): with a track and the sound on, `SMACKW32.DLL` times
+  a Smacker clip's frames by its DirectSound buffer's cursor, not by `SmackWait`'s clock (frame 0
+  at once, 66.66 ms a frame after), so a change to the start's timing needs both paths
+  (`SmackSound`, `smack_wait`), and a harness run with `sound = true` plays such a clip in real
+  time until T5b2's device is in `xdd.dll` (its frames then are no reference). `SmackSound` holds
+  only while the buffer never runs dry (every clip of the game): a synthetic clip with a small
+  track takes the DLL's underrun path, so its `wait` lines are not compared (`video.rs`'s
+  `wait_text`). The game's sound volume is DirectSound's table, not Miles' (T2's formula was the
+  stand-in's path).
 - Coverage counts regions: an `if let Some(x) = s.get_mut(i) { … }` without `else` leaves one
   uncovered when the index is always inside (route such writes through one helper whose outside
   case a test takes, `h3_bink`'s `dsp::set`), and a `const fn` evaluated only at compile time is

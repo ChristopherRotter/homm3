@@ -795,6 +795,10 @@ def drawn_recipe(recipe, out):
         args += ["--video-quality", "low"]
     if "input_step" in recipe:
         args += ["--input-step", str(recipe["input_step"])]
+    # E27 M2 T5b1: a sound recipe's effects (h3drive's volume 5): the clips with their sound, its
+    # starts and stops listed (`sound`, `quiet`; compared from T5b2 on).
+    if recipe.get("sound", False):
+        args += ["--effects", str(h3drive.SOUND_VOLUME)]
     done = subprocess.run(args, capture_output=True, text=True)
     if done.returncode != 0:
         return None, None, ((done.stdout + done.stderr).strip().splitlines() or ["no output"])[-1]

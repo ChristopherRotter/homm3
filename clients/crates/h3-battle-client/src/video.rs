@@ -236,6 +236,74 @@ fn decode_smacker(name: &str, bytes: &[u8]) -> Result<(Vec<h3_smacker::Frame>, b
 /// (`H3Intro`'s top). `smacker-dll.py` runs `smackprobe rects` at the same places.
 const RECTS_AT: [(&str, [u32; 2]); 2] = [("rects", [0, 0]), ("shifted.rects", [83, 187])];
 
+/// The clock steps (ms) `smackprobe wait` and the model play a clip with its sound at (E27 M2
+/// T5b1); `smacker-dll.py` runs the probe at the same steps, the effects setting 5.
+const WAIT_STEPS: [u32; 5] = [1, 5, 7, 10, 16];
+
+/// A Smacker clip played full screen with its sound on (E27 M2 T5b1;
+/// `h3_view::shell::start::SmackSound`), a reading every `step` ms from its open at 0, in
+/// `smacker-dll.py`'s text of `smackprobe wait`'s log: `0 volume <v>` (the DirectSound volume's
+/// index, `clip_sound::volume` at the effects setting 5), then `<t> play` (the buffer's Play),
+/// `<t> frame <k>` (a frame decoded) and `<t> stop <bytes>` (the close: the track's bytes
+/// played). None for a clip without a track, or one whose first frame's sound does not fill the
+/// DLL's buffer (half a second): the model's limit (`SmackSound`: the buffer never runs dry, as
+/// in every clip of the game; the synthetic samples' few hundred bytes a frame run it dry, the
+/// DLL's underrun path, not modelled).
+fn wait_text(clip: &h3_smacker::Clip<'_>, step: u32) -> Option<Vec<u8>> {
+    use h3_view::shell::start::{SmackSound, smack_period};
+    use std::fmt::Write as _;
+    // The first track present is the one the frames wait on (`SmackOpen`'s +0x444); its bytes
+    // a second as the DLL takes them (16-bit and stereo doubling the rate).
+    let (k, &track) = clip
+        .tracks
+        .iter()
+        .enumerate()
+        .find(|(_, t)| t.rate != 0 && t.flags & 0x40 != 0)?;
+    let rate =
+        track.rate * (1 + u32::from(track.flags >> 5 & 1)) * (1 + u32::from(track.flags >> 4 & 1));
+    let first = clip.reader().next()?.ok()?;
+    let filled = match h3_smacker::sound::decode(track, first.audio[k]?).ok()?? {
+        h3_smacker::Samples::Sixteen(s) => s.len() * 2,
+        h3_smacker::Samples::Eight(s) => s.len(),
+    };
+    if filled < usize::try_from(((rate >> 1) + 0xFFF) & !0xFFF).ok()? {
+        return None;
+    }
+    let frames = u32::try_from(clip.frames() - usize::from(clip.ring())).ok()?;
+    let mut sound = SmackSound::new(rate, smack_period(clip.rate));
+    let volume = h3_view::clip_sound::volume(
+        h3_view::clip_sound::Format::Smacker,
+        5,
+        h3_render::Bugs::Original,
+    );
+    let mut text = format!("0 volume {volume}\n");
+    let mut now = 0u32;
+    let mut k = 0;
+    loop {
+        // smacker_tick at a reading, again until SmackWait holds a frame back (the probe's 64).
+        for _ in 0..64 {
+            let (due, started) = sound.wait(now);
+            if started {
+                let _ = writeln!(text, "{now} play");
+            }
+            if !due {
+                break;
+            }
+            sound.frame(now);
+            let _ = writeln!(text, "{now} frame {k}");
+            if k + 1 >= frames {
+                let _ = writeln!(text, "{now} stop {}", sound.heard_by(now));
+                return Some(text.into_bytes());
+            }
+            k += 1;
+        }
+        now += step;
+        if now > 600_000 {
+            return None;
+        }
+    }
+}
+
 /// A clip's rectangles in `smackprobe rects`' text: a line a frame, its number, then for each
 /// call whether it took a rectangle and the last one after it, `<took>:<x>,<y>,<w>,<h>`.
 fn rects_text(calls: &[Vec<(bool, h3_smacker::Rect)>]) -> Vec<u8> {
@@ -438,6 +506,13 @@ fn video(options: &Options) -> Result<bool, String> {
                         h3_smacker::check::rects(bytes, at).map_err(|e| format!("{e:?}"))?;
                     outputs.push((extension.to_owned(), rects_text(&calls)));
                 }
+                // The frames' times with the sound on (E27 M2 T5b1), line by line.
+                let clip = h3_smacker::Clip::parse(bytes).map_err(|e| format!("{e:?}"))?;
+                for step in WAIT_STEPS {
+                    if let Some(text) = wait_text(&clip, step) {
+                        outputs.push((format!("wait{step}"), text));
+                    }
+                }
                 (outputs, frames.len())
             }
         };
@@ -454,7 +529,7 @@ fn video(options: &Options) -> Result<bool, String> {
                     Kind::Bink if extension == "yuv" => name.clone(),
                     _ => format!("{name} ({extension})"),
                 };
-                good &= if extension.ends_with("rects") {
+                good &= if extension.ends_with("rects") || extension.starts_with("wait") {
                     compare_lines(&label, &ours, &reference)
                 } else {
                     compare(&label, count, &ours, &reference)
