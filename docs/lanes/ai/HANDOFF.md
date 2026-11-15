@@ -56,7 +56,10 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 - #910 merged. The user uploaded T32's `report.json` and `metrics.jsonl` (no CRLF; the metrics
   not committed: the report holds every evaluation). No setup script: `uv sync --group train`
   and `cargo build --release -p h3-ffi` (53 s) in the background; the Python suite 264 (3.3
-  minutes). The user chose T34's arms (the search at play, the KL anchor).
+  minutes). The user chose T34's arms (the search at play, the KL anchor). #940 merged; #2's
+  `best.pt` uploaded (in `python/runs/`, ignored). **In progress:** (a) N 16 done (no gain,
+  committed), N 64 on the hero battles running in the sandbox (`--kinds hero --per-kind 200`;
+  lost with the sandbox: rerun it); (b) the user's GPU.
 
 ### 2026-11-13 — E25 T33 closed, T32 prepared
 
