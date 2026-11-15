@@ -21,6 +21,20 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-15 (the town lane, E09 T29b, `town/e09-t29b`, `cross-lane` with the user's consent, E09
+  decision 97; **your paths changed, for your review; no version moved, no engine code**):
+  `h3-map`'s `play.rs`: `Step::Town` (`visit_town`) gives a listed `TownCommand::Heroes` move at
+  an own town in five steps of eight, so every property's and cover test's games with town runs
+  moved (all of `h3-map`'s tests pass, the properties also at 240 cases); `town_events` gives
+  65 535 of a level where it drew 20; `check_invariants` bounds the towns' counts;
+  `check_towns` takes the command (the Plague, a purchase's amount); a new property
+  `a_forks_week_is_its_parents`; `hero_anywhere` (a hero on the map or a garrison hero) in
+  `check_battle_end`, `check_heroes_after_battle` and `check_progression`, which met a garrison
+  hero defending and levelling up. `view.rs`' `vary` keeps a map garrison's entrance land (a case
+  of `master`'s, `OwnedOnWater`; your E08 T116b1's ownable garrisons were not in its
+  `entrances`). A new workload `benches/adventure/month-start-builds-36.toml` (the step that
+  starts day 29 on the builds map), its README row by #942.
+
 - 2026-11-15 (the town lane, E09 T29a, `town/e09-t29a`, `cross-lane` with the user's consent, E09
   decision 96; **your paths changed, for your review; no version moved**): the builds map
   `fixtures/maps/e09-builds-36.h3m` (`h3-map`'s `builds_map.rs`) gains red's Dungeon "Pit" (town

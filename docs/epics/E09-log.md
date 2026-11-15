@@ -3933,3 +3933,57 @@ user; the agent recommended three parts, the replays first).
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
 request is the record.
+
+### T29b — the properties and the month workload (2026-11-15)
+
+One session, the user present at the start; branch `town/e09-t29b`, `cross-lane` (the adventure
+lane's `h3-map` `src/tests/play.rs`, `view.rs` and their `proptest-regressions`, the workload in
+`benches/adventure/`); the benches README's row in `shared/e09-t29b-benches` (#942). Starting
+point: `master` at 8026f16 (#934 to #937 merged; the setup's full baseline passed every step but
+coverage, whose test run met the hygiene case below). The user's computer was connected at the
+start only: the original data and the four manuals staged then (28 files, SHA-256 checked against
+the PC's), used for the scoped verify. T29b **whole** (decision 97, the user; the agent recommended
+two parts, the properties first), with a new month workload in place of counting
+`day-start-builds-36`.
+
+- **The properties** (`h3-map`'s plans, design §47 and §55): `check_invariants` holds every
+  town's fourteen counts and its Portal's at most `MAX_AVAILABLE` (`TWN-QUIRK-8`), the plans'
+  town events giving the file's most (65 535) of a level in one level of 21 (`town_events`: a
+  drawn 20 becomes 65 535, the draws unchanged), so that counts meet the bound and grow, double,
+  halve and sell there; `check_towns` holds that the Plague never raises a count of a town no
+  event of the command reached (`MonthStarted`'s Plague: the week's growth taken again, then
+  halved) and that a purchase lowers what it sold by its `Buy`'s amount (an index's count or the
+  Portal's), never more than it held; a new property `a_forks_week_is_its_parents` ends the turns
+  (a battle played as `Step::Fight`, a decision, meeting or dialog answered by a legal command)
+  until a step starts a week, crosses it first on a fork, which leaves the parent's hash and its
+  towns' counts and Portals as read out before, then on the parent: the same result, events,
+  state and hash (every case reaches a week within 512 steps, asserted). T28a's invariants stand.
+- **A garrison hero's siege reached:** the plans entered a garrison twice in the 512 games of
+  `the_plans_capture_and_besiege_towns` and never besieged a garrison hero. `Step::Town`
+  (`visit_town`) now gives a listed hero move at an own town in five steps of eight (`Enter` in
+  three, `Leave` and `Swap` in one each); its cover test counts the sieges by the defence (the
+  garrison alone, a visitor, a garrison hero alone, a visitor beside a garrison hero), each won and
+  lost, the hero moves, the Plagues and the weeks that leave a count at its bound, all above 0:
+  `sieges: [34, 30, 16, 9]`, `won: [17, 9, 3, 5]`, `lost: [16, 18, 10, 4]`, `rows: [144, 95, 31]`,
+  `plagues: 41`, `saturated: 14`.
+- **Three oracle gaps the new games met** (the plans' oracles, no engine change):
+  `check_progression` took a level-up's hero from the map only (a garrison hero that wins its
+  defence levels up: its owner's level-up, as T28b2's `held.rs` plays); `check_battle_end` and
+  `check_heroes_after_battle` read the battle's heroes from the map only (a garrison hero that wins
+  stays in the garrison, its army kept even empty, decision 95; found by a stress of 240 cases,
+  its case in `proptest-regressions/tests/play.txt`): `hero_anywhere` reads either.
+- **A gap of `master`'s** (the setup's baseline, the coverage step's test run on 8026f16): the
+  hygiene property's other game (`view.rs`' `vary`) flooded a map garrison's entrance (an ownable
+  object since E08 T116b1), which the import refuses (`OwnedOnWater`); its `entrances` keep a
+  garrison's land as a mine's (the case in `proptest-regressions/tests/view.txt`).
+- **Stress:** the properties of `play.rs` and `view.rs` at 240 cases (five times their 48) pass.
+- **Bench:** `month-start-builds-36` (new, `benches/adventure/`) baselined at 2 620 845 Ir: the
+  step that starts day 29 in each of 16 random games of 28 days on the builds map (seed 1's
+  months: 2 Plagues, 6 a creature's with 36 monsters, 8 normal), 61 % the creature months' walk
+  (`AdventureState::start_month`), the towns' week 8.5 %, their month 3.7 % (`h3_towns::week::
+  month` 3.3 %). No code changed: every other workload as on `master` (the setup's bench-check
+  on 8026f16: all inside their gates, `fork-dwellings-xl-144` +1.99 % as the adventure lane noted).
+- **Versions:** none moved.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
+request is the record.

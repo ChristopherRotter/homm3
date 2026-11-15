@@ -11,23 +11,19 @@ drafts T22a and T22b with Part E §37 to §58 and the cut (`TWN-Q13`, `TWN-Q14`;
 the drafts accepted), batch TWN-3 (T23, decision 84), the `shared/` task (T24, decision 85: the
 ADRs, the stream, the effects and flags); the build's T25a (decision 86), T25b1 (decision 87),
 T25b2 (decision 88), T26a1 (decision 89), T26a2 (decision 90), T26b (decision 91) and T27
-(decision 92), T28a (decision 93), T28b1 (decision 94), T28b2 (decision 95), T29a (decision 96). The building rounds follow the cut of design note §56
+(decision 92), T28a (decision 93), T28b1 (decision 94), T28b2 (decision 95), T29a (decision 96), T29b (decision
+97). The building rounds follow the cut of design note §56
 (decision 83): the build, E08's increment 12 merging in
 parallel (each `cross-lane` number the next at merge). Each task's cut confirmed at its start;
 every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T29b, T30 — the rest of the build** (decision 83; design note §56 round 8; T29 cut in two at
-its start, decision 96: T29a done 2026-11-15, `E09-log.md`): **T29b** the properties and the
-benchmarks (§47, §55): in `h3-map`'s plans (the adventure lane's files, `cross-lane`; the town
-lane's `TRAPS.md`, "The property plans") no count above `MAX_AVAILABLE`, the Plague never raising
-a count, a fork's week equal to its parent's, a purchase never driving a count below 0, the
-garrison hero's siege reached by the plans (T28a's invariants stand: no hero both on the map and
-in a garrison, a garrison hero's town's garrison empty); a week workload (a day-start of a week's
-first day on the builds map, which since T29a grows six towns with a horde, a Grail, a Portal
-and a neutral garrison week) baselined, its row in the benches README (`shared/`); the other
-workloads at their baselines (skill `homm3-bench-regression`). **T30** the audit against §57's
-exit criteria, increment 3 closed, increment 4 (the Tavern) refined. **Depends on:** T29a's pull
-request merged. **At its start:** confirm T29b's cut. **Status:** T29b next.
+**E09 T30 — the audit and the closure** (decision 83; design note §56 round 8; T29 done
+2026-11-15 in two, decisions 96 and 97, `E09-log.md`): the audit against §57's exit criteria
+(each with its evidence: the rules' tests, the properties, the replays, the census, the
+benchmarks, batch TWN-3's verdicts), increment 3 closed (its scope, decisions and task list to
+`E09-archive.md`), increment 4 (the Tavern) refined with the user (the inbox's Tavern notes:
+the tavern weights, `Marshland Menace`'s heroes, `ADV-STUB-9`'s retreated hero). **Depends on:**
+T29b's pull requests merged (#942 first). **At its start:** confirm T30's cut. **Status:** next.
 
 ## Inbox
 
