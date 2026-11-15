@@ -7,8 +7,9 @@
 //! The other side's hero keeps its public part ([`HeroView`]: type, primary skills, mana, the
 //! round's casts, the war machines it commands, whether it carries a book) and whatever the battle
 //! shows of it (no retreat, its spell-cost change, what it forbids every caster: no cast, no spell
-//! above a level, which the viewer meets in its own casts; its morale and luck effects with their
-//! sources, public since CLT-Q40); its private part comes from the guess.
+//! above a level, which the viewer meets in its own casts and the observation shows; its morale
+//! and luck effects with their sources, public since CLT-Q40); its private part comes from the
+//! guess.
 //! Its stream is re-seeded, its hidden spell obstacles are placed again by their rule, a spell a
 //! random caster the viewer does not control drew is drawn again, its Escape Tunnel and its retreat
 //! facts are what the viewer may know of them (none). The templates of the stacks its spells would
@@ -18,7 +19,10 @@
 //! one the hero cast before; whether its opening spells are still due follows the public turns
 //! (a side's first stack activated outside the tactics phase); the number and value of its
 //! hidden obstacles stay (the cast is public, the hexes are not; their number follows the
-//! caster's mastery: AI-STUB-1, with the last drawn spells of the stacks not active).
+//! caster's mastery: AI-STUB-1, with the last drawn spells of the stacks not active); the other
+//! hero's spell defences and negation are guessed, so the spells a helpful caster of the viewer's
+//! could draw for a stack the other side controls (a hypnotized one of the viewer's) can be
+//! counted otherwise than the battle's observation counts them (BAT-MAG-050; BAT-STUB-19).
 
 use alloc::vec::Vec;
 
@@ -62,8 +66,15 @@ impl BattleState {
             guessed.view = record.view;
             guessed.no_retreat = record.no_retreat;
             guessed.magic.cost_change = record.magic.cost_change;
+            // rule: BAT-MAG-061, BAT-MAG-062
+            // Whether it forbids casting and its level limit are public (the client lane's G1).
+            guessed.magic.no_casting = record.magic.no_casting;
+            guessed.magic.level_limit = record.magic.level_limit;
             // rule: BAT-MAG-068
             guessed.magic.opening_due &= !first_turn_taken(self, other);
+            // stub: BAT-STUB-19
+            // Its spell defences and negation come from the guess (private), though the viewer's
+            // cast candidates for a stack it controls show them.
             world.heroes[other.index()] = Some(guessed);
             // What binds every cast stays the battle's (BAT-MAG-061, BAT-MAG-062: an Orb of
             // Inhibition, Recanter's Cloak; the viewer meets it in its own casts); whether a

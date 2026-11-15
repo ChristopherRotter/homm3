@@ -3494,7 +3494,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.20): 0x440500 puts Acid Breath (80) in a living struck stack's pending spell if its defense is above 0, without the test; 0x5A1E70 lowers the defense by 3 to at least 0, with no duration"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.20): 0x440500 puts Acid Breath (80) in a living struck stack's pending spell if its defense is above 0, without the test; 0x5A1E70 lowers the defense by 3 to at least 0, with no duration; re-read 2026-11-15 (§7.10, \"Dispels and Cure against Acid Breath\"): Dispel ends the spells 0 to 80 but Poison, Cure's list leaves Acid Breath out, and with no duration the end routine 0x444510 returns at once for it, so no dispel, Cure or death gives the defense back"
   confidence = "high"
 
   [[rule.source]]
@@ -3888,7 +3888,7 @@ id       = "BAT-MAG-061"
 title    = "No casting (the Orb of Inhibition)"
 context  = "battle"
 status   = "verified"
-summary  = "While a hero in the battle has a NoCasting effect (either side's; the Orb of Inhibition, HER-BAT-015) neither side casts: a hero's spell is refused (CastingForbidden, after the round's cast check), no creature casts or raises as its action (CannotCast; the Archangel, the Pit Lord), no periodic cast happens (the Enchanters: their side's count stays). A random caster still draws its spell at its activation (BAT-MAG-049; the original's draw does not ask) but may not cast it, unless its creature has `ignores_magic_block`: the Faerie Dragon casts under the Orb, as the F key does in the original (its path asks no 'magic allowed' test, installation.md §7.21) and the wiki says (the user, BAT-Q32 (2)); batch 2e's row OI tried the cursor, which the Orb stops. Not modelled: on the key path a Chain Lightning refuses the caster's side's stacks and the area spells take any hex (BAT-Q32 (1)). The strike's creature magic (BAT-MAG-040 to BAT-MAG-047) is no cast and stays. At an anti-magic garrison (BattleSetup.anti_magic, BAT-TER-002) the same holds without a hero's effect (BAT-TER-004)."
+summary  = "While a hero in the battle has a NoCasting effect (either side's; the Orb of Inhibition, HER-BAT-015; which hero has it is public, the observation's `forbids_casting`, as the original's book names the Orb's wearer: the client lane's G1, 2026-11-15) neither side casts: a hero's spell is refused (CastingForbidden, after the round's cast check), no creature casts or raises as its action (CannotCast; the Archangel, the Pit Lord), no periodic cast happens (the Enchanters: their side's count stays). A random caster still draws its spell at its activation (BAT-MAG-049; the original's draw does not ask) but may not cast it, unless its creature has `ignores_magic_block`: the Faerie Dragon casts under the Orb, as the F key does in the original (its path asks no 'magic allowed' test, installation.md §7.21) and the wiki says (the user, BAT-Q32 (2)); batch 2e's row OI tried the cursor, which the Orb stops. Not modelled: on the key path a Chain Lightning refuses the caster's side's stacks and the area spells take any hex (BAT-Q32 (1)). The strike's creature magic (BAT-MAG-040 to BAT-MAG-047) is no cast and stays. At an anti-magic garrison (BattleSetup.anti_magic, BAT-TER-002) the same holds without a hero's effect (BAT-TER-004)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3921,7 +3921,7 @@ id       = "BAT-MAG-062"
 title    = "The spell level limit (Recanter's Cloak)"
 context  = "battle"
 status   = "verified"
-summary  = "While a hero in the battle has a SpellLevelLimit effect (either side's; Recanter's Cloak: 2, HER-BAT-015) no spell above the smallest such level takes part: a hero's spell above it is refused (SpellLevelBarred, after the round's cast check and BAT-MAG-061), and it affects no stack whoever casts it (BAT-MAG-005: before every other test, positive spells too): a creature's cast has no target, a periodic cast does not count, the strike's ability spells above it do nothing (Stone Gaze 3, Paralyze 4, Age 5), an Archangel raises nothing (its test is Resurrection's, level 4). The Pit Lord's raise has no spell test and stays. A special battlefield's limit joins the heroes' (BAT-TER-004)."
+summary  = "While a hero in the battle has a SpellLevelLimit effect (either side's; Recanter's Cloak: 2, HER-BAT-015; each hero's limit is public, the observation's `spell_level_limit`, as the original's book shows it: G1, 2026-11-15) no spell above the smallest such level takes part: a hero's spell above it is refused (SpellLevelBarred, after the round's cast check and BAT-MAG-061), and it affects no stack whoever casts it (BAT-MAG-005: before every other test, positive spells too): a creature's cast has no target, a periodic cast does not count, the strike's ability spells above it do nothing (Stone Gaze 3, Paralyze 4, Age 5), an Archangel raises nothing (its test is Resurrection's, level 4). The Pit Lord's raise has no spell test and stays. A special battlefield's limit joins the heroes' (BAT-TER-004)."
 numeric  = "integer"
 
   [[rule.source]]

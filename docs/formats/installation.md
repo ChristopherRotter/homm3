@@ -650,6 +650,17 @@ report: high for the code; rare in play, it takes Rust Dragons); neither VCMI no
 compared. The engine keeps Acid Breath as an effect and accepts such a stack, a cast that does
 nothing (BAT-MAG-016): it does not follow this yet: BAT-Q28.
 
+**Dispels and Cure against Acid Breath** (read 2026-11-15, the inbox's entry of 2026-10-22).
+Dispel's handler (0x5A15E5 to 0x5A15F8) and its Expert loop over the affectable stacks (0x5A1673
+to 0x5A1686) call 0x444510 for every spell 0 to 80 but Poison (71); Cure's 0x446500 for a list
+without Disrupting Ray and Acid Breath; Dispel Helpful Spells only for positive spells (0x5A17AC).
+Acid Breath leaves no duration (its handler never calls the apply routine, above), so 0x444510
+returns at once for it (0x444520: a duration not above 0); were one there, its default case
+(0x4447C1) would only drop the spell from the active list +0x420 and give nothing back. So no
+dispel, no Cure and no death gives Acid Breath's defense back: BAT-MAG-010 and BAT-MAG-046 hold
+as built. What stays is BAT-Q28 row 12 (the aim below Expert) and the engine's listing of Acid
+Breath among a stack's effects, which the original's active list never holds (for viewers only).
+
 **Cure** (case at 0x5A17E6; 0x446500 per stack): first resets Slow's stored factor and the
 hit points (an aged stack's are recomputed, T7), then ends Curse, Weakness, Sorrow, Misfortune,
 Slow, Berserk, Hypnotize, Forgetfulness, Blind, Stone Gaze, Poison, Disease, Paralyze and Age
@@ -2474,12 +2485,25 @@ and the defending hero's mastery of Land Mine (0x4663BE; §7.28). Then no natura
 under SoD rules; under older rules only a Stronghold with a Citadel or Castle (no moat there) goes on
 to the usual obstacles.
 
+**The Stronghold's branch in the placement** (read 2026-11-15, the town lane's inbox of
+2026-11-05, `TWN-STUB-8`). After its usual tests (§7.26's review re-read) 0x466010 adds one
+(0x466147 to 0x466194) when the game's version (`[game]+0x1F698`, H3API's `mapKind`) is below 2
+(RoE, AB), the fort level +0x132F4 is at least 2 and the town's type (+0x53C8's byte +4) is 6:
+the anchor (a hex index) plus the type's width (+5) must be below the wall hex of the anchor's row
+(0x63BD00 by anchor / 17; row 5's 96 is taken as 93, three columns more before the gate) less 2,
+else another anchor is drawn. Only the anchor's row is measured, not the rows above it that the
+obstacle also covers; the wall hexes themselves are kept off by their blocked bit 0x2, which the
+usual test (flags 0x3F) already reads. Under SoD rules the branch is skipped, and no siege reaches
+0x466010 (above). The engine's draw is VCMI's (BAT-GEO-004) and knows no walls: a siege-aware
+draw for the base pack's Stronghold is queued for E11 (the battle lane's `QUEUE.md`).
+
 **The war machines and the turrets** (0x463600, per side). In a battle with a fort level above 0:
 the attacker's Catapult (creature 145) on hex 119 (every hero has one); the defender gets no
 Ballista; the First Aid Tent and the Ammo Cart as elsewhere. With a Citadel or Castle the defender
 gets the **keep**: an Arrow Tower stack (creature 149) at the off-field position 254, whose count
 is 0x5BF4F0's result: 4 + the number of building ids 0–43 the town has built among its mask +0x160
-(which buildings that mask holds is not read); with a Castle also the **upper and lower towers** at
+(the faction's building list less the forbidden ones, so never the Village Hall: survey
+`E09-towns.md` §16.4, the town lane's reading of 2026-11-03); with a Castle also the **upper and lower towers** at
 255 and 251, each with half the keep's count rounded up. The turret records +0x13D78 (three of
 0x24 bytes; 0x466C50) hold each turret's picture and position from the town type's record
 (0x63CF88, 32 bytes). `CRTRAITS.TXT`: the Arrow Tower 100 hit points, attack 10, defense 5, damage
@@ -2495,8 +2519,10 @@ army (Ballista, Ammo Cart, Tent, Catapult): the engine follows the code (survey 
 tested). The hero's attack, defense, power and mana are kept (+0x13DE8 to +0x13DF4), then raised by
 the town's buildings, by the town type: Tower with its Grail (building 26) +150 mana; Inferno with
 building 21 (Brimstone Stormclouds) +2 power; Dungeon with its Grail +12 power; Stronghold with its
-Grail +20 attack; Fortress with building 21 (Blood Obelisk) +2 attack, building 22 (Glyphs of Fear)
-+2 defense and its Grail +10 attack and +10 defense. The battle's end (0x4776E1 to 0x477719)
+Grail +20 attack; Fortress with building 21 (Glyphs of Fear) +2 attack, building 22 (Blood Obelisk)
++2 defense (the names by the text files' rows and the requirements, 22 needing 21; the values as
+read, the code's and VCMI's, where the game's descriptions say the reverse: E09 TD-8, decision 30)
+and its Grail +10 attack and +10 defense. The battle's end (0x4776E1 to 0x477719)
 restores the attack, defense and power, and sets the mana to the smaller of the mana left and the
 mana before the battle.
 
@@ -2984,6 +3010,16 @@ town's defender never surrenders, with the Escape Tunnel neither; it retreats on
 tunnel; the attacker of a town keeps both. `vcmi` (1.7.5, `battleCanFlee`,
 `battleCanSurrender`): the same; the `wiki` (Combat: "a hero defending a town cannot surrender
 (or flee)"; Escape Tunnel: "retreat (but not surrender)").
+
+**The Angelic Alliance's join** (read 2026-11-15, CLT-Q40's request). The side setup sets each
+side's flag +0x54B2 (0x463AC4 to 0x463AE2) from `player_hero_wears_artifact` 0x4BACB0 with
+artifact 129 on the side's player: whether *any* hero of that player wears it, on the map or in one
+of its towns, the battle's hero or not; a side without a player (id below 0) gets 0 (0x463AFD).
+0x469750 hands the flag of the stack's controller's side to `stack_morale` 0x43E000 (0x4697F2), so
+a heroless side of such a player (a town's garrison) joins the alignments too. VCMI 1.7.5 gives
+`NONEVIL_ALIGNMENT_MIX` to the wearer alone (`config/artifacts.json`, no propagator: the wearer's
+army), the wiki's alignment page to "a hero" who has it; the engine follows them (BAT-HER-007,
+`h3-heroes`' groups of the battle's hero): a conflict of sources, BAT-Q66.
 
 **Morale and luck** (0x469750, re-read whole; 0x44AE60, 0x44B2D0). At the battle's start
 (0x462E19) and after every action (0x479D16) 0x469750 recomputes, for every record in use of both
