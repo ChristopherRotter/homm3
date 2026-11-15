@@ -17561,3 +17561,40 @@ covered.
 
 **Verify:** docs and the address map only: the docs gates and `scripts/exe.py check`. No code,
 version or replay moved; CI's run on the pull request is the record.
+
+### Increment 13, round 1: T118b1, the map side of the design note and ADR-0016's draft (2026-11-15, `adventure/e08-t118b1`)
+
+Baseline: `master` 08c0a2b (#950, T118a, merged before the start). Docs only, nothing staged (the
+survey holds the readings). The user's cut at the start (decision 340, `AskUserQuestion`): **by
+side** (recommended; as T98b1 and T98b2): this task the map side, T118b2 the game side and the
+checkpoint. Not chosen: the game side first; whole.
+
+**The design note** `E08-design.md` for increment 13, parts A to C (§1 to §12): **A** the content
+(§1 the kind `bank { question, levels, looted, deck, coast }` for the eleven, the split and the
+upgrade's slot rules in code, hash tag 44; §2 the base pack's eleven types and a seventh
+original-data check against CrBanks.txt, the executable's two creature tables and the class
+lists); **B** the map (§3 the import, class 16 by subclass and the four others at subclass 0, no
+body, the writer; §4 the state, no new block: the draw as `Resolved::Bank`, the guards on the
+object, the survivors and the loot in increment 7's block, the team's marks as its knowledge; §5
+the draw in `resolve_rewards`' second walk from the one artifact pool, the level, the artifacts
+relics first, the split, the upgrade; §6 the two visit flows with `OfferKind::Fight` and `Search`
+reused; §7 the battle's map half, `BattleStart::bank` by the cause, not the tile, the deck; §8 the
+reward in the battle end's own outcome, before the levels, as a reward record; §9 the Shipwreck's
+coast passage, ADV-STUB-12 lifted; §10 the view by the team's mark through `ObjectView::visited`
+and `guards`, no new event; §11 ids and versions); **C** (§12) the looted searches' once-marks 14
+to 16, no hero model change. Part D's list for T118b2 closes the note.
+
+**A correction to the survey** (§1, §10, §12 and §0 corrected): the banks' visit modes are the
+class lists' (`object_classes_not_entered` 0x63AA58, `object_classes_from_above` 0x63AB00, as
+decision 317 ruled for increment 12), not the templates' blocked entrance: the Shipwreck visited
+from a neighbour and from above, class 16's seven, 24, 25 and 84 entered; VCMI 1.7.5's
+`creatureBanks.json` agrees (`blockedVisitable` on the Shipwreck alone). No new question (decision
+317's rule); batch E13 records the hero's tile (part D).
+
+**The draft** `docs/lanes/adventure/adr-drafts/0016-increment-13.md` (points 1, 4, 6 with the
+consequences, alternatives and history lines). ADR-0013 and ADR-0015 need none (the note's
+preamble).
+
+**Docs:** decision 340 in the epic, T118b1's line, T118b2 queued (the original T118b entry to
+`QUEUE-ARCHIVE.md`). **Verify:** docs only: the docs gates (`check-docs`, `check-lane`,
+`doc-drift`). No code, version or replay moved; CI's run on the pull request is the record.

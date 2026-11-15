@@ -4,23 +4,28 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b below). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 done 2026-11-15, decision 340; T118b2 below). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T118b — the ADR amendment drafts, the design note and the cut** (decision 334)
+**E08 T118b2 — the game side of the design note, ADR-0017's draft and the cut** (decisions 334,
+340; as T98b2 for increment 11)
 
-- **Scope:** as T108b for increment 12: the drafts `adr-drafts/0016-increment-13.md` and
-  `0017-increment-13.md` (and ADR-0013's or ADR-0014's if the survey finds a change of the hero's
-  derived properties or of the battle's setup), increment 13's design note `E08-design.md` (its
-  parts by side), the building tasks' cut and the exit criteria; the checkpoint with the user (the
-  note, the drafts, the agent's calls, the cut).
-- **Inputs:** the survey `docs/rules/surveys/E08-banks.md` (§9's open points, §10 the interfaces'
-  sketch, §11 batch E13, §12 the proposed ids); decisions 333 to 339 (D-65, D-66, D-68 as the
-  original; **D-67 as the original: a won bank's reward before the winner's levels**, an exception
-  to GAM-DEC-007 point 3 to design; the bank battle the adventure lane's, `cross-lane`, after a
-  `shared/` change of `BattleSetup`; batch E13 before the build, its spec and recipe in the cut);
-  ADR-0015 to -0017, ADR-0013 (the three once-marks); the battle lane's inbox note of 2026-11-15
-  (the bank battle's needs) and any answer; T108b's drafts as the form.
-- **Depends on:** T118a (done). **Status:** ready (docs only).
+- **Scope:** `E08-design.md` part D (from §13): the bank battle's seam (`BattleSetup` in
+  `h3-contracts`, a `shared/` change first, decision 338; its ADR draft, likely ADR-0022's, which
+  holds the setup's anti-magic flag) and the battle crate's rules (no tactics phase, no
+  obstacles, no war machines on the field, the layout by the stacks' ordinals, D-69), set from
+  part B §7's `BattleStart::bank`; D-67's exception to GAM-DEC-007 point 3 (the winner's levels
+  after the reward and its army dialog, part B §8); GAM-BAT-001 (the deck, §7); the env, replays,
+  maps, properties and benchmarks (the shipped-map workloads, §9's hot path, a bank XL); versions;
+  batch E13's spec and recipe in the cut (survey §11 with part D's additions listed at the note's
+  end); the `shared/` and `cross-lane` work, the building tasks' cut, the exit criteria, the
+  risks; `adr-drafts/0017-increment-13.md`; then the checkpoint with the user (the whole note, the
+  drafts, the agent's calls of parts A to D, the cut).
+- **Inputs:** `E08-design.md` parts A to C and `adr-drafts/0016-increment-13.md` (T118b1); the
+  survey `docs/rules/surveys/E08-banks.md` (§5, §6, §9 to §11); decisions 333 to 340; ADR-0017,
+  ADR-0013 point 5, ADR-0022, ADR-0023 (the seam's fields), ADR-0027 (the setup's adventure
+  facts); the battle lane's inbox note of 2026-11-15 and any answer; T108b's 0017 draft as the
+  form (`gh api` at 6276854100).
+- **Depends on:** T118b1 (done). **Status:** ready (docs only).
 
 ## Inbox
 
