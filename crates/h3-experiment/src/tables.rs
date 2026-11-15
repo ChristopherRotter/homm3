@@ -89,7 +89,7 @@ pub struct Tables {
     /// [`PLAIN_OBJECTS`]: the Cartographers, E08 T32a; since E08 T67 the boats, the sea's
     /// pickups but the bottle, the holes; since E08 T89a the Refugee Camp; since E08 T99a the
     /// teleporters; since E08 T109a the fifteen bonus visitables; since E08 T109b the School of
-    /// War), in the file's order.
+    /// War; since E08 T119 the creature banks), in the file's order.
     pub plains: Vec<ObjectTemplate>,
     /// Town templates (`Objects.txt`, class [`TOWN_OBJECT`]) as (faction, template; E04c T5b).
     pub towns: Vec<(u32, ObjectTemplate)>,
@@ -370,7 +370,9 @@ mod tests {
              AVXmn8b0.def {mask} 45 7 0 0\nAvTCave.def {mask} 103 0 0 0\n\
              AVXwhrl0.def {mask} 111 0 0 1\nAVCgar20.def {mask} 33 1 0 0\n\
              avcvgarm.def {mask} 219 1 0 0\nAVXmags0.def {mask} 48 0 0 0\n\
-             AVXsirn0.def {mask} 92 0 0 0\n"
+             AVXsirn0.def {mask} 92 0 0 0\nAVXbnk70.def {mask} 16 6 0 0\n\
+             AVXgyne0.def {mask} 84 0 0 0\nAVSutop0.def {mask} 25 0 0 0\n\
+             AVAdlic0.def {mask} 24 0 0 0\nAVAwre20.def {mask} 85 0 0 0\n"
         );
         let (heroes, creatures) = (table(&["Orrin"]), table(&["Pikeman"]));
         let (skills, spells) = (table(&["Archery"]), table(&["Combat Spells", "Bless"]));
@@ -403,7 +405,7 @@ mod tests {
             .collect();
         assert_eq!(grounds, [("AVXcf0.def", 222), ("AVXcg5.def", 223)]);
         // The Cartographers (E08 T32a); the Refugee Camp (E08 T89a); the teleporters (E08 T99a);
-        // two bonus visitables (E08 T109a).
+        // two bonus visitables (E08 T109a); the five bank classes (E08 T119).
         let plains: Vec<_> = t.plains.iter().map(|p| (p.def.as_str(), p.class)).collect();
         assert_eq!(
             plains,
@@ -416,7 +418,12 @@ mod tests {
                 ("AvTCave.def", 103),
                 ("AVXwhrl0.def", 111),
                 ("AVXmags0.def", 48),
-                ("AVXsirn0.def", 92)
+                ("AVXsirn0.def", 92),
+                ("AVXbnk70.def", 16),
+                ("AVXgyne0.def", 84),
+                ("AVSutop0.def", 25),
+                ("AVAdlic0.def", 24),
+                ("AVAwre20.def", 85)
             ]
         );
         // A mine and a Lighthouse (E08 T78); a dwelling and a random dwelling (E08 T89a); the

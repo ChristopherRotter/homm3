@@ -45,6 +45,10 @@
 //! flags ([`OwnedBody::Garrison`]) and the fifteen bonus visitables ([`BONUS_OBJECTS`]) as
 //! [`Plain`] objects.
 //!
+//! Since E08 T119 (batch E13's maps, increment 13's design note §19) it writes the creature banks
+//! ([`BANK_OBJECTS`]: class 16 by subclass, the Derelict Ship, Dragon Utopia, the Crypt and the
+//! Shipwreck) as [`Plain`] objects, without a body as the game's maps.
+//!
 //! Since E09 T9a (the town map, design note `docs/epics/E09-design.md` §18) it writes a town of
 //! any kind ([`AnyTown`]: random towns with their alignments, a player's main town in the header,
 //! a name, random garrison stacks) and random heroes ([`RandomHero`]); since E09 T19a (design
@@ -257,12 +261,27 @@ pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228
 /// (0 to 2 in every version, 3 to 7 in SoD); the Subterranean Gate (103) and the Whirlpool (111),
 /// subclass 0, its six tiles all blocked and visitable, on water. Since E08 T109a increment 12's
 /// bonus visitables ([`BONUS_OBJECTS`]). Since E08 T109b increment 7's School of War (107; no
-/// body, batch E12's E12-17: a refused visit's kind mark, decision 313). On either level (a
-/// level's objects, [`Underground::objects`]).
-pub const PLAIN_OBJECTS: [u32; 42] = [
-    8, 11, 13, 14, 22, 28, 29, 30, 31, 38, 43, 44, 45, 48, 49, 52, 55, 56, 63, 64, 78, 82, 86, 92,
-    94, 96, 100, 101, 103, 104, 105, 107, 108, 109, 110, 111, 112, 124, 135, 137, 155, 212,
+/// body, batch E12's E12-17: a refused visit's kind mark, decision 313). Since E08 T119 increment
+/// 13's creature banks ([`BANK_OBJECTS`]). On either level (a level's objects,
+/// [`Underground::objects`]).
+pub const PLAIN_OBJECTS: [u32; 47] = [
+    8, 11, 13, 14, 16, 22, 24, 25, 28, 29, 30, 31, 38, 43, 44, 45, 48, 49, 52, 55, 56, 63, 64, 78,
+    82, 84, 85, 86, 92, 94, 96, 100, 101, 103, 104, 105, 107, 108, 109, 110, 111, 112, 124, 135,
+    137, 155, 212,
 ];
+/// Object classes of the creature banks (E08 T119: batch E13; survey
+/// `docs/rules/surveys/E08-banks.md` §1, no body in RoE, AB or SoD), among [`PLAIN_OBJECTS`]: the
+/// seven banks of class 16 by subclass ([`BANK_SUBCLASSES`]: the Cyclops Stockpile 0, the Dwarven
+/// Treasury 1, the Griffin Conservatory 2, the Imp Cache 3, the Medusa Stores 4, the Naga Bank 5,
+/// the Dragon Fly Hive 6), the Derelict Ship (24), Dragon Utopia (25), the Crypt (84) and the
+/// Shipwreck (85), each subclass 0. Every template has one visitable tile, which it also blocks;
+/// the two ships stand on water.
+pub const BANK_OBJECTS: [u32; 5] = [16, 24, 25, 84, 85];
+/// Object class of the seven creature banks told apart by subclass (E08 T119).
+pub const CREATURE_BANK_OBJECT: u32 = 16;
+/// How many subclasses [`CREATURE_BANK_OBJECT`] has: the game indexes its kinds' table by the
+/// subclass without a test (survey `E08-banks.md` §3), so the writer refuses a higher one.
+pub const BANK_SUBCLASSES: u32 = 7;
 /// Object classes of the fifteen bonus visitables (E08 T109a: batch E12; survey
 /// `docs/rules/surveys/E08-garrisons-bonuses.md` §1.2, no body, subclass 0), among
 /// [`PLAIN_OBJECTS`]: the Buoy (11), the Swan Pond (14), the Faerie Ring (28), the Fountain of
@@ -1124,10 +1143,13 @@ fn validate_ground(ground: &Ground) -> Result<(), WriteError> {
 }
 
 fn validate_plain(plain: &Plain) -> Result<(), WriteError> {
-    if PLAIN_OBJECTS.contains(&plain.template.class) {
-        Ok(())
+    let template = &plain.template;
+    if !PLAIN_OBJECTS.contains(&template.class) {
+        Err(out_of_range("plain object class", template.class))
+    } else if template.class == CREATURE_BANK_OBJECT && template.subclass >= BANK_SUBCLASSES {
+        Err(out_of_range("creature bank subclass", template.subclass))
     } else {
-        Err(out_of_range("plain object class", plain.template.class))
+        Ok(())
     }
 }
 

@@ -329,6 +329,21 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   also takes increment 7's School of War `AVSwar20` (no body; it blocks `at`'s two west tiles,
   the four of the row above ending on `at` and the middle two of the row above that, and is
   entered at the tile west of `at`, not from above).
+  **Increment 13's objects** (E08 T119, batch E13; survey `docs/rules/surveys/E08-banks.md` §1,
+  increment 13's design note §19): `[[map.object]]` takes the creature banks by picture (no body;
+  the level, the guards and the reward are drawn by the game at the start, never the map's): the
+  Cyclops Stockpile `AVXbnk10`, the Dwarven Treasury `AVXbnk20`, the Griffin Conservatory
+  `AVXbnk30`, the Imp Cache `AVXbnk40`, the Medusa Stores `AVXbnk50`, the Naga Bank `AVXbnk60` and
+  the Dragon Fly Hive `AVXbnk70` (class 16 by subclass), the Crypt `AVXgyds0`, `AVXgyne0` or
+  `AVXgysn0` (by the second terrain mask sand; dirt, grass, swamp; snow), and Dragon Utopia `AVSutop0`; on water the Derelict
+  Ship `AVAdlic0` and the Shipwreck `AVAwrek0` or `AVAwre20`. Each has one entrance on its bottom
+  row, which its picture also blocks: at `at` for the Griffin Conservatory, the Imp Cache and
+  `AVAwre20`, else the tile west of `at`. A hero steps onto every land bank's entrance and onto
+  the Derelict Ship's from a boat, and visits the Shipwreck from a neighbouring tile (the coast or
+  a boat; `object_classes_not_entered` lists 85 alone, design note §3). The writer refuses class
+  16 past subclass 6 (the game indexes its kinds' table by it unchecked). A hero's skills, war
+  machines (`"war machine 1"` to `4`) and worn artifacts are `[encounter.hero]`'s as for a battle,
+  a boat an `AVXboat0` to `AVXboat2` beside the hero's tile.
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `level` (E08
   T22a1: 1 puts the encounter's heroes and opponent on the underground; the template says so),
   `procedure`
