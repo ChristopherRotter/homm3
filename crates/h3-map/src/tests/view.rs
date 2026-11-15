@@ -867,6 +867,74 @@ fn check_jump_ends(
     Ok(())
 }
 
+/// What `viewer` is told of the garrison moves among a command's `events` (E09 T31, decision 101;
+/// TWN-ROW-002 to -004): a viewer of the entrance whose view of the town is at its top level
+/// (TWN-VEW-003; `seen`, its observation after the command: a move changes no viewer's level of
+/// its town) is told the move by name, as the viewer alone; any other is told a hero leaving the
+/// map or coming into sight on the entrance, so that the name reaches nobody who does not see
+/// the town's garrison hero.
+fn check_garrison_moves(
+    viewer: PlayerId,
+    seen: &GameObservation,
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let alone = Viewers::NONE.with(viewer);
+    for event in events {
+        let GameEvent::Adventure(AdventureEvent { kind, seen_by }) = *event else {
+            continue;
+        };
+        let top = |town| {
+            let top = |view: &TownView| view.town == town && view.owner_facts.is_some();
+            seen.towns.iter().any(top)
+        };
+        let kind = match kind {
+            AdventureEventKind::GarrisonEntered {
+                hero, town, pos, ..
+            } => {
+                if top(town) {
+                    AdventureEventKind::GarrisonEntered {
+                        hero,
+                        town,
+                        pos,
+                        named: alone,
+                    }
+                } else {
+                    AdventureEventKind::HeroRemoved { hero, pos }
+                }
+            }
+            AdventureEventKind::GarrisonLeft {
+                hero, town, pos, ..
+            } => {
+                if top(town) {
+                    AdventureEventKind::GarrisonLeft {
+                        hero,
+                        town,
+                        pos,
+                        named: alone,
+                    }
+                } else {
+                    AdventureEventKind::HeroStepped {
+                        hero,
+                        from: None,
+                        to: Some(pos),
+                        seen_from: Viewers::NONE,
+                        seen_to: alone,
+                    }
+                }
+            }
+            _ => continue,
+        };
+        let told = seen_by
+            .contains(viewer)
+            .then_some(GameEvent::Adventure(AdventureEvent {
+                kind,
+                seen_by: alone,
+            }));
+        prop_assert_eq!(project(event, Viewer::Player(viewer)), told, "{:?}", event);
+    }
+    Ok(())
+}
+
 /// What a viewer is shown of the teleporters (E08 T106b2; increment 11's design note §10): each
 /// kind is public where the viewer sees it, so its type (a monolith's channel, the picture's
 /// colour) and its own tiles, and nothing else: no owner, guards, mark or tile of another object,
@@ -3093,7 +3161,8 @@ proptest! {
     /// shown of the dwellings and the camps ([`check_hire_sources`]), at the start too; (E09
     /// T9b2a) on the plans' towns, and what each is shown of them ([`check_town_views`]); (E08
     /// T106b2) on the plans' teleporters, what each is told of the jumps ([`check_jump_ends`]) and
-    /// shown of the teleporters ([`check_teleporter_views`]).
+    /// shown of the teleporters ([`check_teleporter_views`]); (E09 T31) and of the garrison moves
+    /// ([`check_garrison_moves`]).
     #[test]
     fn views_move_as_the_events_say(
         plan in plan(),
@@ -3131,6 +3200,8 @@ proptest! {
                 // E08 T106b2: the jumps' ends and the teleporters, to every player.
                 check_jump_ends(&state, player, &after, &events)?;
                 check_teleporter_views(rules, &after)?;
+                // E09 T31: the garrison moves, by name only to a viewer that sees the garrison.
+                check_garrison_moves(player, &after, &events)?;
                 *view = after;
             }
         }

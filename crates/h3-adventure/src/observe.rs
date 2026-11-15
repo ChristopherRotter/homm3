@@ -673,9 +673,11 @@ const fn boat_view(boat: &Boat) -> BoatView {
 
 impl AdventureEvent {
     /// The event as `viewer` may see it, or `None` if it is not among the players who see it
-    /// (ADR-0016 point 6): a step's tile where the viewer does not see the hero is left out. The
-    /// projection's viewers are the viewer alone: who else sees an event tells which tiles other
-    /// players have explored.
+    /// (ADR-0016 point 6): a step's tile where the viewer does not see the hero is left out, and
+    /// (E09 T31) a garrison move is told by name only to a viewer in its `named`, to any other as
+    /// a hero leaving the map ([`AdventureEventKind::HeroRemoved`]) or coming into sight
+    /// ([`AdventureEventKind::HeroStepped`] with no tile it came from). The projection's viewers
+    /// are the viewer alone: who else sees an event tells which tiles other players have explored.
     pub fn project(&self, viewer: PlayerId) -> Option<Self> {
         let alone = Viewers::NONE.with(viewer);
         self.seen_by.contains(viewer).then(|| Self {
@@ -708,6 +710,49 @@ impl AdventureEvent {
                     seen_from: seen_from.intersection(alone),
                     seen_to: seen_to.intersection(alone),
                 },
+                // A garrison move (E09 T31, TWN-ROW-002 to -004; `docs/06-security.md`, "Towns"):
+                // by name to a viewer that sees the town's garrison hero, else as the original's
+                // map shows it, a hero leaving the map or coming into sight on the entrance.
+                AdventureEventKind::GarrisonEntered {
+                    hero,
+                    town,
+                    pos,
+                    named,
+                } => {
+                    if named.contains(viewer) {
+                        AdventureEventKind::GarrisonEntered {
+                            hero,
+                            town,
+                            pos,
+                            named: alone,
+                        }
+                    } else {
+                        AdventureEventKind::HeroRemoved { hero, pos }
+                    }
+                }
+                AdventureEventKind::GarrisonLeft {
+                    hero,
+                    town,
+                    pos,
+                    named,
+                } => {
+                    if named.contains(viewer) {
+                        AdventureEventKind::GarrisonLeft {
+                            hero,
+                            town,
+                            pos,
+                            named: alone,
+                        }
+                    } else {
+                        AdventureEventKind::HeroStepped {
+                            hero,
+                            from: None,
+                            to: Some(pos),
+                            seen_from: Viewers::NONE,
+                            seen_to: alone,
+                        }
+                    }
+                }
                 AdventureEventKind::ObjectRemoved { .. }
                 | AdventureEventKind::TilesRevealed { .. }
                 | AdventureEventKind::KeyGained { .. }
@@ -716,8 +761,6 @@ impl AdventureEvent {
                 | AdventureEventKind::OnceMarkChanged { .. }
                 | AdventureEventKind::TimedMarkChanged { .. }
                 | AdventureEventKind::HeroRemoved { .. }
-                | AdventureEventKind::GarrisonEntered { .. }
-                | AdventureEventKind::GarrisonLeft { .. }
                 | AdventureEventKind::CreaturesJoined { .. }
                 | AdventureEventKind::EventFired { .. }
                 | AdventureEventKind::MonsterChanged { .. }

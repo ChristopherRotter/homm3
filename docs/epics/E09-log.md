@@ -4124,3 +4124,48 @@ queue holds T31, T32 and T33.
 branch the docs gates (`check-docs`, `check-rules`, `check-stubs`, `doc-drift --base
 origin/master`) and `check-lane --base origin/master` (the town lane's paths and the common ones);
 `shared/e09-t30-readme` `check-lane` and `check-docs`. CI on the pull requests is the record.
+
+### T31 — the garrison moves below level 3 (2026-11-15)
+
+One session, the user present at the start; branch `town/e09-t31`, `cross-lane` with the user's
+consent (the adventure lane's `h3-adventure` `command.rs` and `observe.rs` and `h3-map`'s
+`src/tests/view.rs`; the server lane's `h3-protocol` `src/map/game/event.rs` and
+`src/tests/game_event.rs`). Starting point: `master` at db8406b (#956, #957 merged). The user's
+computer was connected at the start only: the original data and the four manuals staged then (28
+files, SHA-256 checked against the PC's) with `H3MAPED.HLP`, for the scoped verify and T32. The
+user chose the design at the start (`AskUserQuestion`; recommended): **the events carry who is
+named, the projection decides**, over the town code emitting two events per move (the raw
+stream would then split by other players' hidden Visions, which the hygiene property compares).
+
+- **The events:** `GarrisonEntered` and `GarrisonLeft` carry `named: Viewers`, the viewers told
+  the move by name. `AdventureState::move_town_hero` takes it from the game, adds the moving
+  player (the owner is always named) and keeps those of the entrance's viewers.
+  `AdventureEvent::project` tells a viewer in `named` the event with itself alone, any other
+  viewer of the entrance `HeroRemoved { hero, pos }` for `GarrisonEntered` and
+  `HeroStepped { hero, from: None, to: Some(pos) }` (a hero coming into sight, the shape a step
+  from an unseen tile already has; SRV-Q26 (c)) for `GarrisonLeft`; a swap's two events alike.
+- **The level-3 test** (`h3-game`'s `town::view::named`): the players whose view of the town
+  (`Seer::view`, the observation's) is at TWN-VEW-003's top level: its owner's team and a player
+  one of whose heroes sees its entrance by Visions, among those that explored a tile of it (so a
+  player with the entrance only on its fringe under `ADV-QUIRK-1` is not named, as it has no view
+  of the town). Nobody for a sink that keeps nothing (`Sink::RECORDS`), as `Told::before`. A move
+  changes no viewer's level of its own town (the moving hero is the owner's).
+- **The wire:** unchanged. `h3-protocol`'s mapping ignores `named` (a projected event names the
+  viewer alone); the fold already read both forms (a hero coming into sight stays `SRV-STUB-3`).
+  No protocol version.
+- **Tests:** the adventure's `a_garrison_move_names_its_hero_only_to_the_viewers_that_see_the_garrison_hero`
+  (the four branches, a viewer that does not see the entrance told nothing); the game's
+  `a_garrison_move_names_the_owners_team_and_the_heroes_whose_visions_reach_it` (Visions' reach,
+  a neutral town, a missing town, the no-op sink); `h3-map`'s `views_move_as_the_events_say` now
+  checks each viewer's projection of every garrison move against its observation after the
+  command (`check_garrison_moves`: by name exactly when its view of the town is at the top
+  level); `h3-protocol`'s `every_event` names each garrison event to both players and to player 0
+  alone. A stress of `views_move_as_the_events_say` at 240 cases (five times its 48) passed, the
+  plans telling 58 moves by name and 72 as heroes leaving or coming into sight.
+- **Docs:** TWN-ROW-002 to -004's summaries, the events' doc comments, `docs/06-security.md`'s
+  town "Events" line (by name only to the viewers that see the garrison hero); notes in the
+  adventure and server lanes' inboxes (the server lane's question of 2026-11-14 answered).
+- **Versions:** none moved (events are not hashed; the wire is unchanged).
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
+request is the record.

@@ -30,6 +30,18 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-15 (the town lane, E09 T31, `town/e09-t31`, `cross-lane` with the user's consent, E09
+  decision 101; **your paths changed, for your review; no version moved**): `command.rs`'s
+  `AdventureEventKind::GarrisonEntered` and `GarrisonLeft` have a field `named: Viewers`, the
+  viewers told the move by name (the owner's team and, from the game, a viewer whose view of the
+  town is at level 3 by Visions); `observe.rs`' `AdventureEvent::project` tells any other viewer
+  `HeroRemoved` at the entrance and `HeroStepped { from: None, to: Some(entrance), .. }` (a hero
+  coming into sight) in their place, as a step's unseen ends are left out. `h3-map`'s
+  `tests/view.rs`: `views_move_as_the_events_say` checks each viewer's projection of every garrison
+  move (`check_garrison_moves`, beside `check_jump_ends`). No hash, replay or format moved (events
+  are not hashed). A new constructor of either event passes `named` (`Viewers::NONE` names the
+  owner alone: `move_town_hero` adds it).
+
 - 2026-11-15 (the town lane, E09 T29b, `town/e09-t29b`, `cross-lane` with the user's consent, E09
   decision 97; **your paths changed, for your review; no version moved, no engine code**):
   `h3-map`'s `play.rs`: `Step::Town` (`visit_town`) gives a listed `TownCommand::Heroes` move at
