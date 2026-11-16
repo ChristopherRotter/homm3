@@ -132,6 +132,13 @@ pub struct BattleSetup {
     pub battlefield: Option<ContentKey>,
     /// The battle is at an anti-magic garrison (E04c): neither side casts (BAT-MAG-061). Public.
     pub anti_magic: bool,
+    /// The battle is a creature bank's (E08 increment 13, ADR-0022 point 8; the original's battle
+    /// +0x53C5): no tactics phase, no obstacles, no war machines on the field (an ammo supply
+    /// kept), each side's stacks at the battle part's bank positions by their ordinal among the
+    /// filled slots, the formation ignored. Set by whoever starts the battle from its cause (a
+    /// bank's guards defending), never from the tile. Public, but not in the observation: each
+    /// effect shows in the battle itself (ADR-0022 point 6).
+    pub creature_bank: bool,
     /// The town, if the battle is fought at one (E04c, ADR-0023), with or without a fort: the
     /// defender is the town's side. Derived before the seam from the town's buildings and the
     /// map, as the battlefield is; the defending hero's town bonuses are already on its
