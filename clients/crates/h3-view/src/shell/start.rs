@@ -11,25 +11,28 @@
 //! Video on (Video Quality High), else from their Smacker copies (CLT-Q96); a clip that does not
 //! open ends the sequence. Then the main menu.
 //!
-//! **The frames' times.** `SMACKW32.DLL`'s `SmackWait` (0x10007840, read; no sound track) counts
-//! in 10 µs (the clock's milliseconds × 100): its first call sets the first frame's due time to
-//! the call's time + the frame time and waits; a call at or after the due time lets the frame
-//! through and sets the next due time to the call's time + the frame time, unless the call came
-//! between one and two frame times late (an unsigned comparison of a negative difference:
-//! [`smack_wait`]), when it is the due time + the frame time. So a Smacker clip's frames are due
-//! from the last one let through: at 1 ms steps 67 ms apart at a frame time of 66.66 ms, at
-//! 10 ms steps 70. `BINKW32.DLL`'s `BinkWait` lets frame p through once the clock reaches the
-//! first frame's time + ⌊1000 p / rate⌋ ms (E17 M5 T4b2b's measure, [`crate::clip`]): Bink keeps
-//! its rate. The game's loop decodes a frame let through into the back buffer and shows what
-//! changed (`video_show` 0x5979D0): a Smacker clip's rectangles from `SmackToBufferRect`, a Bink
-//! clip's from `BinkGetRects` (`h3_bink::rects`), the union of each list as the game's own
-//! arithmetic takes it ([`shown_union`]: a lower rectangle further left cuts off the right of
-//! those above it, the screen there keeping an older frame until a later union covers it;
-//! CLT-Q124, decision 32: the client shows the clip's whole rectangle, the union the
-//! comparisons'). `NWCLogo`'s Bink copy (400 × 300, clip 29: `video_show`'s own case) is drawn at the
-//! back buffer's corner and stretched onto the whole screen by DirectDraw. A Smacker clip's
-//! rectangles are `SMACKW32.DLL`'s (`h3_smacker::Rects`, E27 M2 T5a2), already in the back
-//! buffer: `SmackToBuffer` was given the clip's place.
+//! **The frames' times.** `SMACKW32.DLL`'s `SmackWait` (0x10007840, read; no sound track) counts in
+//! 10 µs (the clock's milliseconds × 100): its first call sets the first frame's due time to the
+//! call's time + the frame time and waits; a call at or after the due time lets the frame through
+//! and sets the next due time to the call's time + the frame time, unless the call came between one
+//! and two frame times late (an unsigned comparison of a negative difference: [`smack_wait`]), when
+//! it is the due time + the frame time. So a Smacker clip's frames are due from the last one let
+//! through: at 1 ms steps 67 ms apart at a frame time of 66.66 ms, at 10 ms steps 70. That drift is
+//! the original's profile's ([`Bugs::Original`], the comparisons'); in the client's (CLT-Q129 (b),
+//! the user, 2026-11-16: fix) each frame is due a frame time after the last one's due time, at any
+//! step (`H3INTRO.SMK` silent then ends as with its sound, about 161.7 s in, not 169.8 s at 10 ms
+//! steps). `BINKW32.DLL`'s `BinkWait` lets frame p through once the clock reaches the first frame's
+//! time + ⌊1000 p / rate⌋ ms (E17 M5 T4b2b's measure, [`crate::clip`]): Bink keeps its rate. The
+//! game's loop decodes a frame let through into the back buffer and shows what changed
+//! (`video_show` 0x5979D0): a Smacker clip's rectangles from `SmackToBufferRect`, a Bink clip's
+//! from `BinkGetRects` (`h3_bink::rects`), the union of each list as the game's own arithmetic
+//! takes it ([`shown_union`]: a lower rectangle further left cuts off the right of those above it,
+//! the screen there keeping an older frame until a later union covers it; CLT-Q124, decision 32:
+//! the client shows the clip's whole rectangle, the union the comparisons'). `NWCLogo`'s Bink copy
+//! (400 × 300, clip 29: `video_show`'s own case) is drawn at the back buffer's corner and stretched
+//! onto the whole screen by DirectDraw. A Smacker clip's rectangles are `SMACKW32.DLL`'s
+//! (`h3_smacker::Rects`, E27 M2 T5a2), already in the back buffer: `SmackToBuffer` was given the
+//! clip's place.
 //!
 //! **The ends.** A clip's last frame is decoded but not shown: the clips with the clip table's
 //! +0xA (28 to 31) end in the window manager's fade (0x602C50 with 1, 4, 0 → 0x6030E0): the back
@@ -190,8 +193,13 @@ pub struct SmackSchedule {
 }
 
 /// One call of `SmackWait` at `now` ms with the frame time `period` (10 µs): whether a frame goes
-/// through. The arithmetic is the DLL's, on 32-bit words.
-pub fn smack_wait(schedule: &mut SmackSchedule, now: u32, period: u32) -> bool {
+/// through, in the profile `bugs`. The arithmetic is the DLL's, on 32-bit words. In the
+/// original's profile ([`Bugs::Original`], the comparisons') the next frame is due a period after
+/// the call that let this one through, as the DLL dates it (a clip's pace drifts with the
+/// clock's step: module doc); in the client's ([`Bugs::Fixed`], CLT-Q129 (b)) a period after this
+/// one's due time, every frame on its time whatever the step (a reading late by several periods
+/// lets the frames due through at once, as Bink's wait does).
+pub fn smack_wait(schedule: &mut SmackSchedule, now: u32, period: u32, bugs: Bugs) -> bool {
     let now = now.wrapping_mul(100);
     let Some(next) = schedule.next else {
         schedule.next = Some(now.wrapping_add(period));
@@ -203,10 +211,9 @@ pub fn smack_wait(schedule: &mut SmackSchedule, now: u32, period: u32) -> bool {
     let after = next.wrapping_add(period);
     // The DLL compares `now - after` with the period unsigned: a call before `after` (the usual
     // case) gives a huge difference, so the next frame is due a period after this call.
-    schedule.next = Some(if now.wrapping_sub(after) > period {
-        now.wrapping_add(period)
-    } else {
-        after
+    schedule.next = Some(match bugs {
+        Bugs::Original if now.wrapping_sub(after) > period => now.wrapping_add(period),
+        Bugs::Original | Bugs::Fixed => after,
     });
     true
 }
@@ -423,21 +430,25 @@ pub struct Start {
     /// With the sound on, each clip's sound in bytes a second (none: silent or no track).
     sounds: [Option<u32>; 3],
     bink_video: bool,
+    /// The profile: a silent Smacker clip's pace ([`smack_wait`]).
+    bugs: Bugs,
     state: State,
 }
 
 impl Start {
     /// The start at its first reading of the clock (`now`), each clip's header (none for a clip
-    /// that does not open) and the setting Bink Video: the screen black, `3DOLogo` opened. The
-    /// ops of that reading go to `ops`.
+    /// that does not open), the setting Bink Video and the profile `bugs` (a silent Smacker
+    /// clip's pace, [`smack_wait`]): the screen black, `3DOLogo` opened. The ops of that reading
+    /// go to `ops`.
     #[must_use]
     pub fn new(
         headers: [Option<Header>; 3],
         bink_video: bool,
+        bugs: Bugs,
         now: u32,
         ops: &mut Vec<Op>,
     ) -> Self {
-        Self::with_sound(headers, [None; 3], bink_video, now, ops)
+        Self::with_sound(headers, [None; 3], bink_video, bugs, now, ops)
     }
 
     /// [`Start::new`] with the sound on (E27 M2 T5b1): `sounds` each clip's track in bytes a
@@ -448,6 +459,7 @@ impl Start {
         headers: [Option<Header>; 3],
         sounds: [Option<u32>; 3],
         bink_video: bool,
+        bugs: Bugs,
         now: u32,
         ops: &mut Vec<Op>,
     ) -> Self {
@@ -455,6 +467,7 @@ impl Start {
             headers,
             sounds,
             bink_video,
+            bugs,
             state: State::Ended,
         };
         ops.push(Op::Black);
@@ -552,7 +565,9 @@ impl Start {
                 }
                 due
             }
-            (Pace::Smacker(period), None) => smack_wait(&mut playing.smack, now, period),
+            (Pace::Smacker(period), None) => {
+                smack_wait(&mut playing.smack, now, period, self.bugs)
+            }
             (Pace::Bink { num, den }, None) => {
                 let start = *playing.first.get_or_insert(now);
                 let at = u64::from(done) * 1000 * u64::from(den) / u64::from(num.max(1));

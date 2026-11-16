@@ -487,7 +487,7 @@ fn start(frames: u32) -> (Start, Vec<Op>) {
         pace: Pace::Smacker(6666),
     };
     let mut ops = Vec::new();
-    (Start::new([Some(header); 3], false, 0, &mut ops), ops)
+    (Start::new([Some(header); 3], false, Bugs::Original, 0, &mut ops), ops)
 }
 
 #[test]
@@ -567,7 +567,7 @@ fn a_press_or_a_key_skips_the_start_and_a_move_does_not() {
         pace: Pace::Smacker(6666),
     };
     let mut ops = Vec::new();
-    let sounding = Start::with_sound([Some(header); 3], [Some(88_200); 3], false, 0, &mut ops);
+    let sounding = Start::with_sound([Some(header); 3], [Some(88_200); 3], false, Bugs::Original, 0, &mut ops);
     let r = Replay::new(
         Shell::new(true),
         [400, 300],

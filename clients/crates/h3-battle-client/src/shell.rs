@@ -23,8 +23,9 @@
 //! `--no-intro` starts at the main menu (the setting `Show Intro` off); else the start's clips
 //! play first (T5a: `h3_view::shell::start`, read from the video archives, `introrim.pcx` from the
 //! LODs), from Bink or with `--video-quality low` from their Smacker copies (the setting Bink
-//! Video 0, CLT-Q96). The replay draws them as the DLLs copy them (`Bugs::Original`), the window
-//! whole, on the window's own clock.
+//! Video 0, CLT-Q96). The replay draws them as the DLLs copy them and paces a silent Smacker clip
+//! as `SmackWait` does (`Bugs::Original`), the window whole and each frame on its time
+//! (CLT-Q129 (b)), on the window's own clock.
 //!
 //! **The sound** (E27 M2 T5b1): `--effects <0..9>` is the effects setting (the window's default
 //! 5, the game's; the replay's 0, the harness's silent runs). Above 0, with a sound device (the
@@ -675,7 +676,7 @@ fn start_of<'c, 'a>(
     let black = Pixels::new(WIDTH, HEIGHT, FORMAT).ok_or("no 800 × 600 screen")?;
     let picture = Picture::new(black, sources, rim, bink_video, bugs);
     let mut ops = Vec::new();
-    let start = Start::with_sound(headers, sounds, bink_video, 0, &mut ops);
+    let start = Start::with_sound(headers, sounds, bink_video, bugs, 0, &mut ops);
     Ok(((start, ops), picture))
 }
 

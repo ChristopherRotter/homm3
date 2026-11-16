@@ -1731,7 +1731,10 @@ Video 0); `Videos` reads `shell-videos.vid` after `battle-videos.vid` when `VIDE
   and two frame times late (an unsigned comparison of a negative difference), then to the due time
   + the frame time; `SmackNextFrame` clears the frame's flag. So at 1 ms steps 67 ms a frame
   (3DOLogo's frames at 67 (k + 1) ms: frames 0 to 3 black, the first change at 335 ms), at 10 ms
-  steps 70 (`start-smacker`'s 189.59 s). Bink's: frame p once the clock reaches the first frame's
+  steps 70 (`start-smacker`'s 189.59 s). **CLT-Q129 (b)** (the user, 2026-11-16: fix): in the
+  client's profile each frame is due a frame time after the last one's due time, whatever the
+  step (3DOLogo's last at 5 400 ms at 10 ms steps); the drift the comparisons' (`Bugs::Original`;
+  `h3_view::shell::start::smack_wait`). Bink's: frame p once the clock reaches the first frame's
   time + ⌊1000 p / rate⌋ (E17's measure), the first at the clip's first tick (NWCLogo's at the
   logo's black, 5 577 ms; 6 043 shown at 6 050). The ends: `start-bink`'s menu at 180 480 ms,
   `start-smacker`'s at 189 590 (its second kept run; the first run's 10 ms later from H3Intro on).
@@ -1881,7 +1884,9 @@ waits for the same device in `xdd.dll` (T5b2).
   210, 277 … ms (the buffer's Play at 10), its close at 5 343 ms at 1 ms steps (5 350 at 10 ms;
   without sound 5 427 and 5 670); `H3INTRO.SMK`'s in 161.66 s (without sound 169.8 s at 10 ms
   steps). The silent path's 67 or 70 ms a frame would put the picture behind its sound by up to
-  8 s at H3Intro's end; with the sound the frames keep its time exactly.
+  8 s at H3Intro's end; with the sound the frames keep its time exactly. The client's silent path
+  keeps the frame time too (CLT-Q129 (b), §10: `H3INTRO.SMK` about 161.7 s at any step), the
+  DLL's drift the comparisons'.
 - **Not modelled** (`SmackSound`, *provisional*): the ring and its refills, the end mark and the
   silence padding, the reset of the frames' sound to the ring's bytes when it runs ahead
   (0x10006131): no clip of the game reaches them (the first frame's sound fills the buffer, and
