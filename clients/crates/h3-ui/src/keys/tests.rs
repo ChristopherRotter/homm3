@@ -161,13 +161,31 @@ fn chords_read_and_write() {
         Chord::parse("F5"),
         Ok(Chord {
             ctrl: false,
+            shift: false,
             key: "F5".into()
         })
     );
-    for text in ["Ctrl+Up", "F5", "Escape"] {
+    // E27 M2 T7b: Shift chords, after Ctrl's.
+    assert_eq!(
+        Chord::parse("Shift+Tab"),
+        Ok(Chord::new(false, "Tab").with_shift(true))
+    );
+    assert_eq!(
+        Chord::parse("Ctrl+Shift+Up"),
+        Ok(Chord::new(true, "Up").with_shift(true))
+    );
+    for text in ["Ctrl+Up", "F5", "Escape", "Shift+Tab", "Ctrl+Shift+Up"] {
         assert_eq!(Chord::parse(text).unwrap().to_string(), text);
     }
-    for bad in ["", "Ctrl+", "Shift+Up", "Page Up", "Ctrl+Ctrl+Up"] {
+    for bad in [
+        "",
+        "Ctrl+",
+        "Shift+",
+        "Shift+Ctrl+Up",
+        "Page Up",
+        "Ctrl+Ctrl+Up",
+        "Shift+Shift+Up",
+    ] {
         assert_eq!(
             Chord::parse(bad),
             Err(format!("`{bad}` is not a key, or Ctrl+ and a key")),
@@ -292,4 +310,32 @@ fn the_keys_bound_are_the_adapters() {
                 .to_string()
         )
     );
+    // E27 M2 T7b: the Shifts likewise, and left out of the keys there are.
+    let known = [known.as_slice(), &["LeftShift", "RightShift"]].concat();
+    let shift = Keys::<Test>::with_file("[battle]\npause = [\"RightShift\"]").unwrap();
+    assert_eq!(
+        shift.check(&known),
+        Err(
+            "`pause`: RightShift: Shift is held with a key (`Shift+`), not bound alone".to_string()
+        )
+    );
+    assert_eq!(
+        unknown.check(&known),
+        Err("`pause`: Backspace: no such key; the keys: Up, Down, F5, Escape, Return".to_string())
+    );
+}
+
+#[test]
+fn a_shift_chord_is_matched_exactly() {
+    let keys = Keys::<Test>::with_file("[battle]\npause = [\"Shift+F5\"]").unwrap();
+    let f5 = Chord::new(false, "F5");
+    assert_eq!(
+        keys.chord_command(Over::Nothing, &f5.clone().with_shift(true)),
+        Some(Test::Pause)
+    );
+    assert_eq!(keys.chord_command(Over::Nothing, &f5), None);
+    assert_eq!(keys.command(Over::Nothing, false, "F5"), None);
+    // Up is Go(0)'s alone, not with Shift.
+    let up = Chord::new(false, "Up").with_shift(true);
+    assert_eq!(keys.chord_command(Over::Nothing, &up), None);
 }

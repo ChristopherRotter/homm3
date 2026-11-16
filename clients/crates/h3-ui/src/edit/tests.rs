@@ -152,3 +152,67 @@ fn each_character_is_typed_by_its_us_key() {
         assert_eq!(scan_of(c).map(character), Some(c), "{}", char::from(c));
     }
 }
+
+#[test]
+fn the_client_types_what_the_keyboard_prints_in_the_fonts_code_page() {
+    // E27 M2 T7b: the window's text input, accented letters and Windows-1252's marks typed.
+    let mut edit = focused("", 6);
+    for c in "Jürg€".chars() {
+        assert!(edit.typed(c));
+    }
+    assert_eq!((edit.text(), edit.caret()), ("Jürg€", 5));
+    // Five characters in six, whatever their bytes in UTF-8.
+    assert!(edit.typed('x'));
+    assert_eq!(edit.text(), "Jürg€");
+    let mut edit = focused("", 21);
+    // No glyph, a control, a brace: taken, nothing put in.
+    for c in ['Ł', '\u{81}', '\n', '\u{7f}', '{', '}', '😀'] {
+        assert!(edit.typed(c), "{c:?}");
+    }
+    assert_eq!(edit.text(), "");
+    for c in ['ß', 'é', 'Ž', '™', ' ', '~', '`', '\u{a0}'] {
+        assert!(typable(c), "{c:?}");
+    }
+    for c in ['Ł', '\u{9d}', '\t', '{', '}'] {
+        assert!(!typable(c), "{c:?}");
+    }
+}
+
+#[test]
+fn the_client_s_caret_keys_count_characters() {
+    let mut edit = focused("Jü", 21);
+    assert!(edit.caret_key(Caret::Left));
+    assert!(edit.typed('ö'));
+    assert_eq!((edit.text(), edit.caret()), ("Jöü", 2));
+    assert!(edit.caret_key(Caret::Delete));
+    assert_eq!((edit.text(), edit.caret()), ("Jö", 2));
+    assert!(edit.caret_key(Caret::Delete));
+    assert!(edit.caret_key(Caret::Right));
+    assert_eq!((edit.text(), edit.caret()), ("Jö", 2));
+    assert!(edit.caret_key(Caret::BackSpace));
+    assert_eq!((edit.text(), edit.caret()), ("J", 1));
+    assert!(edit.caret_key(Caret::Home));
+    assert!(edit.caret_key(Caret::BackSpace));
+    assert!(edit.caret_key(Caret::Left));
+    assert_eq!((edit.text(), edit.caret()), ("J", 0));
+    assert!(edit.caret_key(Caret::Right));
+    assert!(edit.caret_key(Caret::End));
+    assert_eq!(edit.caret(), 1);
+    // Every one by the original's key of its scan code alike.
+    for (caret, code) in Caret::ALL
+        .into_iter()
+        .zip([HOME, END, LEFT, RIGHT, DELETE, BACKSPACE])
+    {
+        let (mut by_key, mut by_command) = (focused("abc", 21), focused("abc", 21));
+        assert!(by_key.key(Scan::plain(LEFT)) && by_command.caret_key(Caret::Left));
+        assert!(by_key.key(Scan::plain(code)));
+        assert!(by_command.caret_key(caret));
+        assert_eq!(by_key, by_command, "{caret:?}");
+    }
+    // Neither without the focus.
+    let mut edit = Edit::new("Jö", 21);
+    assert_eq!(edit.caret(), 2);
+    assert!(!edit.caret_key(Caret::BackSpace));
+    assert!(!edit.typed('a'));
+    assert_eq!(edit.text(), "Jö");
+}

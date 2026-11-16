@@ -852,3 +852,36 @@ whole (decision 38).
   T7b (SDL's text input, the edits' keys in the key table). CLT-STUB-6 (the network modes),
   commented in `docs/stubs.toml` as the lane's others. **The agent's calls** (*provisional*,
   M2's review list items 56 to 64).
+
+## M2 T7b — the edits typing as the keyboard prints: SDL's text input, the edits' keys in the key table (2026-11-16)
+
+On `client/e27-m2-t7b`, the user present at the start; `master` at `929ef3c` (#972 merged; CI's
+`Clients` and engine runs green). The original data staged at once (64 files, checked by SHA-256
+against the user's computer: one digest of the sorted lists), `cp -rn` into the clone right after
+the setup started; the setup's baseline stopped by a watcher as it reached coverage (fmt, clippy,
+the doc tests and deny passed), CI's green `master` standing in. Kept whole (the seam offered,
+the pure part and the window, not needed).
+
+- **Nothing read** (decision 39; the original's side is §16.1's). `smalfont.fnt`'s glyph widths
+  read from the LOD: every byte from 0x20 to 0xFF has a glyph of some width.
+- **Built, pure** (`h3-ui`, `h3-view`): `h3_ui::edit::Caret`, `Edit::caret_key`, `Edit::typed`,
+  `typable` (the text, caret and room in characters; `Edit::key` through them); `h3_ui::keys`'
+  Shift chords (`Chord::shift`, `with_shift`, `Shift+` and `Ctrl+Shift+`, `Keys::chord_command`,
+  `SHIFT` refused alone); `shell::keys`' `Context::Edit`, `Command::Edit`, `Command::Ring`, the
+  tables `EDIT` and `RING`, `command_for` (Shift's fallback), `shifted`; `Multiplayer::typing`,
+  `contexts`, `typed`, the client's profile taking commands (`HotSeat::edit_command`, OK disabled
+  moving on) and the original's scan codes (`HotSeat::edit_key`, CLT-Q107's Fixed branch gone
+  from it); `Front::contexts`, `typing`, `typed`; the replay's `Given::Typed` and Shift chords.
+- **Built, the adapters:** `h3_sdl::Window::set_text_input` and `typed` (a repeat's text left
+  out), `Key::Tab`, `BackSpace`, `Delete`, `LeftShift`, `RightShift`; the shell window turning
+  text input on while an edit types, the characters merged with the events (`shell::merged`), the
+  keys' commands with Shift as held.
+- **The comparisons:** `drawn`: 91 recipes as recorded (235 shots drawn, all exact). The window
+  under Xvfb with a German layout: `zyüöäß`, `"`, `é` by the dead acute, a capital by Caps Lock,
+  the caret keys, the hot seat's ring and Enter (design §17.3). This sandbox's Xvfb ignores
+  every keymap change at run time (setxkbmap, xmodmap, xkbcomp): the layout was its default by a
+  copied `xkb` directory (TRAPS).
+- **Gates:** `check.sh --no-coverage` with the data staged (`RUST_TEST_THREADS=1`), the coverage as
+  CI runs it (100 %: two regions found and closed, `Chord`'s `Display` and the original's Escape
+  in the hot seat), the scoped verify.
+- **No new question.** **The agent's calls** (*provisional*, M2's review list items 65 to 71).

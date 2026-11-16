@@ -46,7 +46,10 @@
 //! Multiplayer dialog and the hot seat's names (T7): their hints, help and title the user's
 //! tables' (`shell.multiplayer.*`, `shell.hot-seat.*`), the network modes' notice and the scenario
 //! screen's stub the client's (`shell.stub.network`, `shell.stub.scenario`); the window gives the
-//! dialogs' edits each key down as the original reads it (`h3_sdl::Window::scans`). The replay
+//! dialogs' edits each key down as the original reads it (`h3_sdl::Window::scans`; the original's
+//! profile's) and, since T7b (decision 39), the text the keys print while an edit types (SDL's
+//! text input, `h3_sdl::Window::typed`: the system's layout), the edits' keys and the hot seat's
+//! ring through the key table with Shift as held (`keys::command_for`). The replay
 //! draws a game type menu's rows its redraw does not show as last shown (CLT-Q118:
 //! `h3_view::shell::menu::Stale`, the original's profile).
 
@@ -68,7 +71,7 @@ use h3_ui::text::Args;
 use h3_view::batch::Batch;
 use h3_view::compose::FORMAT;
 use h3_view::message::{self, Style};
-use h3_view::shell::keys::{Command, GAME_TYPE, MAIN_MENU};
+use h3_view::shell::keys::{self as shell_keys, Command, GAME_TYPE, MAIN_MENU};
 use h3_view::shell::look::{self, ShellLayout};
 use h3_view::shell::menu::{self, Boxes, Front, Kind, Menu, Menus};
 use h3_view::shell::multiplayer::{self, Multiplayer, Texts};
@@ -937,24 +940,30 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     let (mut pointer, mut dirty, mut cursor_hidden) = (None, true, false);
     loop {
         let playing = shell.screen() == Screen::Start;
+        // The edits' typing (T7b): text input while one has the focus.
+        win.set_text_input(front.as_ref().is_some_and(Front::typing));
         let events = win.wait(if playing { 5 } else { 50 });
-        let scans = win.scans().to_vec();
-        for (event, scan) in events.into_iter().zip(scans) {
+        for given in merged(events, win.scans(), win.typed()) {
             let mut did = menu::Did::default();
-            match event {
-                Event::Quit => return Ok(()),
-                Event::Pointer(at) => {
+            match given {
+                Given::Typed(c) => {
+                    if let Some(front) = front.as_mut() {
+                        did = front.typed(c);
+                    }
+                }
+                Given::Event(Event::Quit, _) => return Ok(()),
+                Given::Event(Event::Pointer(at), _) => {
                     pointer = at.map(|(x, y)| [x, y]);
                     dirty |= drawn;
                     if let (Some(front), Some(at)) = (front.as_mut(), pointer) {
                         did = front.moved(at);
                     }
                 }
-                Event::Redraw => dirty = true,
-                Event::Key(_) | Event::Click { down: true, .. } if playing => {
+                Given::Event(Event::Redraw, _) => dirty = true,
+                Given::Event(Event::Key(_) | Event::Click { down: true, .. }, _) if playing => {
                     start.skip(now(&win), &mut ops);
                 }
-                event => {
+                Given::Event(event, scan) => {
                     if let Some(front) = front.as_mut() {
                         did = on_front(front, &keys, (&event, scan), pointer.unwrap_or(PARK));
                     }
@@ -1081,9 +1090,35 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     }
 }
 
+/// What the window gave in one wait, in order (T7b): its events, each keyboard key down with its
+/// scan code, and the characters its text input typed between them.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Given {
+    /// An event and, for a keyboard key down, its scan code.
+    Event(Event, Option<KeyScan>),
+    /// A character typed.
+    Typed(char),
+}
+
+/// A wait's `events` with their `scans` and the characters `typed` among them (each with the
+/// number of events before it, `h3_sdl::Window::typed`), in order.
+fn merged(events: Vec<Event>, scans: &[Option<KeyScan>], typed: &[(usize, char)]) -> Vec<Given> {
+    let mut given = Vec::with_capacity(events.len() + typed.len());
+    let mut typed = typed.iter().copied().peekable();
+    for (i, (event, &scan)) in events.into_iter().zip(scans).enumerate() {
+        while let Some((_, c)) = typed.next_if(|&(at, _)| at <= i) {
+            given.push(Given::Typed(c));
+        }
+        given.push(Given::Event(event, scan));
+    }
+    given.extend(typed.map(|(_, c)| Given::Typed(c)));
+    given
+}
+
 /// A window's event to what takes the inputs on the screen: the left button's press and release,
 /// the right button's (wherever the mouse is: at `pointer`), a key's down (with its scan code, the
-/// dialogs' edits', T7) and up through the key table.
+/// dialogs' edits' in the original's profile, T7; its command with Shift as held, T7b) and up
+/// through the key table.
 fn on_front(
     front: &mut Front,
     keys: &Keys<Command>,
@@ -1099,7 +1134,8 @@ fn on_front(
         Event::Key(Key::RightButton) => front.right(pointer),
         Event::KeyUp(Key::RightButton) => front.right_release(),
         Event::Key(key) => {
-            let command = keys.command(front.context(), false, key.name());
+            let shift = scan.is_some_and(|s| s.shift);
+            let command = shell_keys::command_for(keys, &front.contexts(), shift, key.name());
             let scan = scan.map(|s| h3_ui::edit::Scan {
                 code: s.code,
                 shift: s.shift,
@@ -1115,7 +1151,40 @@ fn on_front(
 mod tests {
     use std::path::PathBuf;
 
-    use super::{Mode, Options, PARK};
+    use super::{Given, Mode, Options, PARK, merged};
+    use h3_sdl::{Event, Key, KeyScan};
+    use h3_ui::keys::Keys;
+    use h3_view::shell::keys::Command;
+
+    #[test]
+    fn the_shell_s_keys_are_the_adapter_s() {
+        // E27 M2 T7b: the edits' keys and the ring among them (Tab, BackSpace, Delete, Shift+Tab).
+        let known: Vec<&str> = Key::ALL.iter().map(|k| k.name()).collect();
+        assert_eq!(Keys::<Command>::original().check(&known), Ok(()));
+    }
+
+    #[test]
+    fn the_typed_characters_come_between_the_events() {
+        let scan = Some(KeyScan {
+            code: 0x1E,
+            shift: false,
+        });
+        let events = vec![Event::Key(Key::A), Event::KeyUp(Key::A), Event::Redraw];
+        let scans = [scan, None, None];
+        assert_eq!(
+            merged(events, &scans, &[(0, 'x'), (1, 'a'), (3, 'b'), (3, 'c')]),
+            [
+                Given::Typed('x'),
+                Given::Event(Event::Key(Key::A), scan),
+                Given::Typed('a'),
+                Given::Event(Event::KeyUp(Key::A), None),
+                Given::Event(Event::Redraw, None),
+                Given::Typed('b'),
+                Given::Typed('c'),
+            ]
+        );
+        assert_eq!(merged(Vec::new(), &[], &[(0, 'é')]), [Given::Typed('é')]);
+    }
 
     fn parse(args: &[&str]) -> Result<Options, String> {
         let args: Vec<String> = args.iter().map(|a| String::from(*a)).collect();

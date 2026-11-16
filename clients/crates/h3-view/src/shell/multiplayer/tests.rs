@@ -1,8 +1,12 @@
 use super::*;
 use alloc::format;
 
+use h3_ui::edit::Caret;
+use h3_ui::keys::Keys;
+
 use crate::message::{self, Style};
 use crate::shell::Game;
+use crate::shell::keys;
 use crate::shell::look::parse_layout;
 use crate::shell::menu::BOX_PLAYER;
 use crate::shell::menu::tests::{font, game_type};
@@ -59,11 +63,26 @@ const fn edit_at(k: i32) -> [i32; 2] {
     [417, 187 + 30 * k]
 }
 
+/// `text` typed as the profile takes it: the window's text input in the client's, each US key's
+/// scan code in the original's.
 fn typed(m: &mut Multiplayer, text: &str) {
-    for c in text.bytes() {
-        let scan = edit::scan_of(c);
-        assert!(m.key(scan, None, "x").changed, "{}", char::from(c));
+    for c in text.chars() {
+        let did = if m.bugs == Bugs::Fixed {
+            m.typed(c)
+        } else {
+            let scan = u8::try_from(c).ok().and_then(edit::scan_of);
+            m.key(scan, None, "x")
+        };
+        assert!(did.changed, "{c}");
     }
+}
+
+/// A key down as the window or a replay gives it (E27 M2 T7b): `name` (`shift+` holding Shift)
+/// read as the original reads it and through the shell's default key table.
+fn down(m: &mut Multiplayer, name: &str) -> Did {
+    let (shift, bare) = keys::shifted(name);
+    let command = keys::command_for(&Keys::original(), &m.contexts(), shift, bare);
+    m.key(keys::scan(name), command, bare)
 }
 
 fn plain(code: u8) -> Option<Scan> {
@@ -156,7 +175,7 @@ fn hot_seat_opens_the_names_with_the_dialogs_name() {
     typed(&mut m, "Anna");
     assert_eq!(m.name(), "Anna");
     // Enter is not the name's, nor any hotkey here.
-    assert_eq!(m.key(plain(edit::RETURN), None, "Return"), Did::default());
+    assert_eq!(down(&mut m, "Return"), Did::default());
     let did = click(&mut m, HOT);
     assert!(did.changed && did.ended.is_none());
     assert_eq!(m.context(), Context::HotSeat);
@@ -187,36 +206,92 @@ fn hot_seat_opens_the_names_with_the_dialogs_name() {
 
 #[test]
 fn the_names_move_round_their_ring_and_ok_needs_two() {
+    // Both profiles alike: by scan code in the original's, by the key table in the client's.
+    for bugs in [Bugs::Fixed, Bugs::Original] {
+        let mut m = opened(bugs);
+        click(&mut m, HOT);
+        typed(&mut m, "a");
+        let focus = |m: &Multiplayer| m.hot_seat().unwrap().focus();
+        assert!(down(&mut m, "Tab").changed);
+        assert_eq!(focus(&m), 1);
+        typed(&mut m, "b");
+        assert!(m.hot_seat().unwrap().ok_enabled());
+        down(&mut m, "BackSpace");
+        assert!(!m.hot_seat().unwrap().ok_enabled());
+        typed(&mut m, "c");
+        down(&mut m, "Up");
+        assert_eq!(focus(&m), 0);
+        down(&mut m, "shift+Tab");
+        assert_eq!(focus(&m), 7);
+        down(&mut m, "Down");
+        assert_eq!(focus(&m), 0);
+        // A press on an edit gives it the focus.
+        assert!(m.press(edit_at(3)).changed);
+        assert_eq!(focus(&m), 3);
+        assert!(m.press(edit_at(3)).changed);
+        assert_eq!(focus(&m), 3);
+        assert_eq!(m.hot_seat().unwrap().names(), ["a", "c"], "{bugs:?}");
+    }
+}
+
+#[test]
+fn the_client_types_what_the_keyboard_prints() {
+    // E27 M2 T7b (decision 39): the window's text input, the edits' keys through the key table.
     let mut m = opened(Bugs::Fixed);
+    assert!(m.typing());
+    assert_eq!(m.contexts(), [Context::Edit, Context::Multiplayer]);
+    typed(&mut m, "Jörg");
+    assert_eq!(m.name(), "Jörg");
+    assert!(down(&mut m, "Home").changed);
+    typed(&mut m, "ß");
+    assert!(down(&mut m, "End").changed);
+    assert!(down(&mut m, "BackSpace").changed);
+    assert_eq!(m.name(), "ßJör");
+    // A brace is no change; the scan codes are not read (Tab is nothing here).
+    assert!(!m.typed('{').changed);
+    assert_eq!(m.key(plain(0x1E), None, "A"), Did::default());
+    assert_eq!(down(&mut m, "Tab"), Did::default());
+    assert_eq!(m.name(), "ßJör");
+    // The hot seat's edits alike; Enter with OK disabled moves on (hot-seat-ok's command).
     click(&mut m, HOT);
-    typed(&mut m, "a");
-    let focus = |m: &Multiplayer| m.hot_seat().unwrap().focus();
-    assert!(m.key(plain(edit::TAB), None, "Tab").changed);
-    assert_eq!(focus(&m), 1);
-    typed(&mut m, "b");
-    assert!(m.hot_seat().unwrap().ok_enabled());
-    m.key(plain(edit::BACKSPACE), None, "BackSpace");
-    assert!(!m.hot_seat().unwrap().ok_enabled());
-    typed(&mut m, "c");
-    m.key(plain(edit::UP), None, "Up");
-    assert_eq!(focus(&m), 0);
-    m.key(
-        Some(Scan {
-            code: edit::TAB,
-            shift: true,
-        }),
-        None,
-        "shift+Tab",
+    assert_eq!(m.contexts(), [Context::Edit, Context::HotSeat]);
+    down(&mut m, "Left");
+    typed(&mut m, "é");
+    let draws = m.draws("");
+    assert_eq!(
+        edit_of(&draws, NAMES[0]),
+        Some((String::from("ßJöér"), Some(4)))
     );
-    assert_eq!(focus(&m), 7);
-    m.key(plain(edit::DOWN), None, "Down");
-    assert_eq!(focus(&m), 0);
-    // A press on an edit gives it the focus.
-    assert!(m.press(edit_at(3)).changed);
-    assert_eq!(focus(&m), 3);
-    assert!(m.press(edit_at(3)).changed);
-    assert_eq!(focus(&m), 3);
-    assert_eq!(m.hot_seat().unwrap().names(), ["a", "c"]);
+    assert!(down(&mut m, "Return").changed);
+    assert_eq!(m.hot_seat().unwrap().focus(), 1);
+    typed(&mut m, "Ån");
+    assert!(m.hot_seat().unwrap().ok_enabled());
+    for caret in [Caret::Left, Caret::Delete] {
+        assert!(m.key(None, Some(Command::Edit(caret)), "x").changed);
+    }
+    assert_eq!(m.hot_seat().unwrap().names(), ["ßJöér", "Å"]);
+    assert!(m.hot_seat().unwrap().ok_enabled());
+    // A help popup over the names takes no text.
+    m.right(OK_AT);
+    assert!(!m.typing());
+    assert_eq!(m.typed('x'), Did::default());
+    m.right_release();
+    // Nor the notice; nor the original's profile, whose edits read scan codes.
+    let mut m = opened(Bugs::Fixed);
+    click(&mut m, IPX);
+    assert_eq!((m.typing(), m.contexts()), (false, vec![Context::Question]));
+    assert_eq!(m.typed('x'), Did::default());
+    let mut m = opened(Bugs::Original);
+    assert_eq!(
+        (m.typing(), m.contexts()),
+        (false, vec![Context::Multiplayer])
+    );
+    assert_eq!(m.typed('x'), Did::default());
+    assert_eq!(
+        m.key(None, Some(Command::Edit(Caret::Home)), "Home"),
+        Did::default()
+    );
+    assert_eq!(m.name(), "");
 }
 
 #[test]
@@ -226,11 +301,11 @@ fn enter_presses_an_enabled_ok_but_in_the_originals_profile() {
     click(&mut m, HOT);
     typed(&mut m, "a");
     // OK disabled: Enter moves on.
-    m.key(plain(edit::RETURN), Some(Command::Dialog(OK)), "Return");
+    down(&mut m, "Return");
     assert_eq!(m.hot_seat().unwrap().focus(), 1);
     typed(&mut m, "b");
-    let down = m.key(plain(edit::RETURN), Some(Command::Dialog(OK)), "Return");
-    assert!(down.changed && down.sample);
+    let pressed = down(&mut m, "Return");
+    assert!(pressed.changed && pressed.sample);
     let up = m.key_up("Return");
     assert_eq!(up.ended, Some(Ended::Multiplayer(true)));
     assert_eq!(m.names(), ["a", "b"]);
@@ -238,9 +313,9 @@ fn enter_presses_an_enabled_ok_but_in_the_originals_profile() {
     let mut m = opened(Bugs::Original);
     click(&mut m, HOT);
     typed(&mut m, "a");
-    m.key(plain(edit::TAB), None, "Tab");
+    down(&mut m, "Tab");
     typed(&mut m, "b");
-    m.key(plain(edit::RETURN), Some(Command::Dialog(OK)), "Return");
+    down(&mut m, "Return");
     assert_eq!(m.hot_seat().unwrap().focus(), 2);
     assert_eq!(m.key_up("Return").ended, None);
 }
@@ -255,16 +330,17 @@ fn ok_and_cancel_end_or_close_the_names() {
     let did = click(&mut m, BACK);
     assert!(did.changed && did.ended.is_none());
     assert!(m.hot_seat().is_none());
-    // Escape: the edit leaves it, Cancel's hotkey takes it.
+    // Escape: the edit leaves it, Cancel's hotkey takes it (with Shift too); in the original's
+    // profile its edit refuses the scan code first.
     click(&mut m, HOT);
-    let down = m.key(
-        plain(edit::ESCAPE),
-        Some(Command::Dialog(HOT_SEAT_CANCEL)),
-        "Escape",
-    );
-    assert!(down.sample);
+    assert!(down(&mut m, "shift+Escape").sample);
     m.key_up("Escape");
     assert!(m.hot_seat().is_none());
+    let mut original = opened(Bugs::Original);
+    click(&mut original, HOT);
+    assert!(down(&mut original, "Escape").sample);
+    original.key_up("Escape");
+    assert!(original.hot_seat().is_none());
     // Another command does nothing there.
     click(&mut m, HOT);
     assert_eq!(
@@ -272,7 +348,7 @@ fn ok_and_cancel_end_or_close_the_names() {
         Did::default()
     );
     typed(&mut m, "a");
-    m.key(plain(edit::TAB), None, "Tab");
+    down(&mut m, "Tab");
     typed(&mut m, "b");
     // Released by the right button (its own loop, CLT-Q72 (a)).
     m.moved(OK_AT);

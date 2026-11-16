@@ -5,36 +5,25 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 36). **M1 closed** (2026-11-13; `E27-archive.md`; the catalogue `E27-design.md` §1 to §6).
-  **M2 T1 to T5b2 done** (2026-11-13 to 15: `h3-smacker`, the clips' sound, the Bink copy, the
-  shell's frame, the LODs' tables, `h3shell.py drawn`, the start's pictures and sound on the
-  game's clock and run; the `start` group's 30 lines exact; design §7 to §12). **M2 T6a done**
-  (2026-11-15, decisions 35, 36): the main menu takes its inputs (`h3_view::shell::menu`: hover,
-  press, release off, hotkeys through the table `[shell]`, the help popups, Quit's question; the
-  press samples as the sound manager plays them, `shell::samples`; the window's music); `drawn`
-  compares the samples; `menu-main` 26 of 26, `menu-quit` 7 of 7, `menu-sound`'s T6a lines exact;
-  design §13. **M2 T6b1 done** (2026-11-15, decision 37: T6b cut at the stubs): New Game's and Load
-  Game's menus on the same `shell::menu::Menu` (`Kind`, `Menus`; the original's stale rows,
-  CLT-Q118, as `Stale` layers); `menu-new` 27 of 27, `menu-load` 27 of 27, `menu-sound` 5 of 5
-  exact; `h3_sdl::Key` gained L and N; design §14. **M2 T6b2 done** (2026-11-16): the Campaign,
-  Tutorial, High Scores and Credits stubs, each a notice in the client's own words over its menu
-  (`Built::Stub`, `menu::STUBS`; the replay stops at them), the client's own pack
-  `clients/text/en.json` asked between the player's and the original's (`text::own_pack`, the
-  gate's check); every recipe as recorded; design §15. **M2 T7 done** (2026-11-16, kept whole:
-  decision 38): the Multiplayer dialog's first stage and the hot seat's names
-  (`h3_view::shell::multiplayer`, `menu::Front`, `menu::Hovers`), the edit field (`h3_ui::edit`,
-  `Draw::Edit`, the caret in `h3_render::text`), the window's scan codes (`h3_sdl::Window::scans`),
-  the network modes' notice (CLT-STUB-6) and the scenario screen's stub; `edit-keys` and
-  `hotseat-long` recorded, the `multiplayer` group's 113 drawn shots exact; CLT-Q128 fixed
-  (decision 40); design §16. **Next: M2 T7b** (the edits typing as the keyboard prints, decision
-  39, CLT-Q127), then T8 (M2's closure).
+  to 40). **M1 closed** (2026-11-13; `E27-archive.md`; the catalogue `E27-design.md` §1 to §6).
+  **M2 T1 to T7b done** (2026-11-13 to 16; the epic's M2 table, `E27-log.md`, design §7 to §17):
+  `h3-smacker`, the clips' sound, the Bink copy, the shell's frame, the LODs' tables,
+  `h3shell.py drawn`, the start's pictures and sound; the main menu, New Game's and Load Game's
+  menus, the stubs and the client's own pack; the Multiplayer dialog's first stage, the hot seat's
+  names and the edit; T7b (decision 39): the edits type what the keyboard prints in the client's
+  profile (SDL's text input, `h3_sdl::Window::typed`; Windows-1252's characters), their keys and
+  the hot seat's ring as the shell's key table's commands (`Context::Edit`, Shift chords in
+  `h3_ui::keys`, `shell::keys::command_for`), the original's scan codes for the comparisons.
+  `drawn`: 91 recipes as recorded, 235 shots drawn, all exact. **Next: M2 T8** (M2's closure: a
+  fresh reviewer, the review list's 71 items, M3's refinement).
   Decisions to carry: the dialogs' input one implementation (20; `h3_ui::input`); the shell's
   code as the battle's, the score the engine's (21); decision 22's fixes; every pixel of a
   Smacker clip through its palette (24); every clip's sound at the effects setting (27); every
   Bink frame whole, the comparisons through `Target` (28); the start's fade from the screen as
   shown, a frame's whole rectangle shown (32); a clip's track played out after its last frame
-  (34); the main menu's buttons drawn in their order (36). Open pull request:
-  `client/e27-m2-t7`, T7's (watch it until it merges). E17 done
+  (34); the main menu's buttons drawn in their order (36); the edits type what the keyboard
+  prints, the original's US table for the comparisons (39). Open pull request:
+  `client/e27-m2-t7b`, T7b's (watch it until it merges). E17 done
   (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -69,6 +58,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-16, E27 M2 T7b (done; `client/e27-m2-t7b`).** Kept whole. The original data staged
+  at once (64 files, checked by SHA-256); the baseline stopped by a watcher before coverage. Built
+  the edits' text input and their keys in the key table on T7's edit; `drawn` as recorded; the
+  window typed under a German layout, once Xvfb took it as its default keymap (it ignores
+  changes at run time: TRAPS). Coverage closed at 100 % (two regions). No new question. Record:
+  `E27-log.md`, "M2 T7b".
 - **2026-11-16, E27 M2 T7 (done; `client/e27-m2-t7`).** Kept whole (decision 38). The original
   data staged at once (64 files, checked by SHA-256); the baseline stopped by a watcher before
   coverage. Read the edit whole and the text drawer's caret; recorded the group again with
@@ -83,10 +78,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   Built the stubs on T6b1's menu (a stub's screen is its menu opened anew under a style-1 notice)
   and the client's own pack with its check; `drawn` all as recorded; the four notices checked in
   the window. No new question. Record: `E27-log.md`, "M2 T6b2".
-- **2026-11-15, E27 M2 T6b1 (done; `client/e27-m2-t6b1`).** T6b cut at the stubs with the user
-  (decision 37). The original data staged at once (64 files, checked by SHA-256); the baseline
-  failed on the client's files not yet copied (step 3 comes after the setup), then the VM
-  restarted (CI's green `master` stood in). Read `game_type_menu_proc` again; recorded `menu-new`,
-  `menu-load`, `menu-sound` again; built the game type menus on one `Menu`, the stale rows, the
-  keys, the window; every T6b1 line exact at the first run. Found and fixed the window's missing N
-  and L. No new question. Record: `E27-log.md`, "M2 T6b1".

@@ -27,9 +27,12 @@
 //!
 //! The Multiplayer dialog (E27 M2 T7) opens over the game type menu as it ended and takes the
 //! inputs as a menu does; a key is also given as the original reads it (`super::keys::scan`: its
-//! edits type by scan code), a typed text a key a character by the US key that types it, Shift
-//! held for a capital or a shifted mark (as `xdotool type` types). Its network modes' notice is
-//! the client's stub: a replay stops there ([`Stop::Stub`]).
+//! edits type by scan code in the original's profile), a typed text a key a character by the US
+//! key that types it, Shift held for a capital or a shifted mark (as `xdotool type` types). In
+//! the client's profile (E27 M2 T7b) an edit that types takes each character of a typed text as
+//! the window's text input gives it, between its key's down and up (`Front::typed`), and a key's
+//! command is asked with Shift as `shift+` holds it (`super::keys::command_for`). Its network
+//! modes' notice is the client's stub: a replay stops there ([`Stop::Stub`]).
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -304,9 +307,11 @@ enum Given {
     Release,
     Right([i32; 2]),
     RightRelease,
-    /// A key down: the key table's name and as the original reads it.
-    Key(String, Option<Scan>),
+    /// A key down: the key table's name, whether Shift is held, and as the original reads it.
+    Key(String, bool, Option<Scan>),
     KeyUp(String),
+    /// A character the window's text input gives (E27 M2 T7b).
+    Typed(char),
 }
 
 /// What takes the inputs on `screen` opened at `pointer` when the screen is built whole (none on
@@ -537,12 +542,19 @@ impl Replay {
     /// An input of the harness's to the menu on the screen, as what it gives the game in order,
     /// until the menu ends.
     fn on_menu(&mut self, input: &Input) {
+        // The adapter's name of a recipe's key (a letter upper-cased) and whether Shift holds it.
         let key = |name: &str| {
-            if name.chars().count() == 1 {
-                name.to_uppercase()
+            let (shift, bare) = keys::shifted(name);
+            let bare = if bare.chars().count() == 1 {
+                bare.to_uppercase()
             } else {
-                String::from(name)
-            }
+                String::from(bare)
+            };
+            (bare, shift)
+        };
+        let down = |name: &str| {
+            let (bare, shift) = key(name);
+            Given::Key(bare, shift, keys::scan(name))
         };
         let given: Vec<Given> = match input {
             Input::Move(at) => vec![Given::Moved(*at)],
@@ -551,21 +563,34 @@ impl Replay {
             Input::Up => vec![Given::Release],
             Input::Right(at) => vec![Given::Moved(*at), Given::Right(*at)],
             Input::RightUp => vec![Given::RightRelease],
-            Input::Key(name) => vec![
-                Given::Key(key(name), keys::scan(name)),
-                Given::KeyUp(key(name)),
-            ],
-            Input::KeyDown(name) => vec![Given::Key(key(name), keys::scan(name))],
-            Input::KeyUp(name) => vec![Given::KeyUp(key(name))],
-            Input::Type(text) => text
-                .chars()
-                .flat_map(|c| {
-                    let name = key(&String::from(c));
+            Input::Key(name) => vec![down(name), Given::KeyUp(key(name).0)],
+            Input::KeyDown(name) => vec![down(name)],
+            Input::KeyUp(name) => vec![Given::KeyUp(key(name).0)],
+            Input::Type(text) => {
+                for c in text.chars() {
+                    // A character's key: the original reads its US key's scan code; an edit that
+                    // types in the client's profile takes the character itself.
                     let scan = u8::try_from(c).ok().and_then(edit::scan_of);
-                    [Given::Key(name.clone(), scan), Given::KeyUp(name)]
-                })
-                .collect(),
+                    let name = key(&String::from(c)).0;
+                    let shift = scan.is_some_and(|s| s.shift);
+                    let typing = self.front.as_ref().is_some_and(Front::typing);
+                    let mut given = vec![Given::Key(name.clone(), shift, scan)];
+                    if typing {
+                        given.push(Given::Typed(c));
+                    }
+                    given.push(Given::KeyUp(name));
+                    if self.give_all(given) {
+                        return;
+                    }
+                }
+                return;
+            }
         };
+        self.give_all(given);
+    }
+
+    /// Each of `given` in order, each press's sample listed, until the menu ends: whether it did.
+    fn give_all(&mut self, given: Vec<Given>) -> bool {
         for g in given {
             let did = self.give(g);
             if did.sample
@@ -575,9 +600,10 @@ impl Replay {
             }
             if let Some(ended) = did.ended {
                 self.end(ended);
-                return;
+                return true;
             }
         }
+        false
     }
 
     /// One thing given to what takes the inputs on the screen (there is one while its inputs are
@@ -595,11 +621,12 @@ impl Replay {
                 Given::Release => front.release(),
                 Given::Right(at) => front.right(at),
                 Given::RightRelease => front.right_release(),
-                Given::Key(name, scan) => {
-                    let command = keys.command(front.context(), false, &name);
+                Given::Key(name, shift, scan) => {
+                    let command = keys::command_for(keys, &front.contexts(), shift, &name);
                     front.key(scan, command, &name)
                 }
                 Given::KeyUp(name) => front.key_up(&name),
+                Given::Typed(c) => front.typed(c),
             })
     }
 

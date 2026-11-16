@@ -2321,11 +2321,11 @@ the pointer at the close); the scenario screen (a new game's, a load's: Load Gam
 leads there) is a stub over its game type menu until M3. Enter in a hot seat's edit presses an
 enabled OK (CLT-Q107); with OK disabled it moves on, as the original's. A menu opening anew
 takes the hover at its first move (CLT-Q128, decision 40: the statics for the comparisons only).
-Typing is to follow the keyboard's own layout (CLT-Q127, decision 39: T7b); until then it follows
-the original's US table: the window gives the edits each key's set 1 scan code and Shift
-(`h3_sdl`'s `Window::scans`, SDL's scan code by the key's place), the replay a recipe's key names
-and typed characters so (`shell::keys::scan`, `h3_ui::edit::scan_of`: the US layout, as
-`xdotool`).
+Typing follows the keyboard's own layout in the client's profile (CLT-Q127, decision 39: T7b,
+§17). The original's US table stays for the comparisons: the window gives the edits each key's
+set 1 scan code and Shift (`h3_sdl`'s `Window::scans`, SDL's scan code by the key's place), the
+replay a recipe's key names and typed characters so (`shell::keys::scan`, `h3_ui::edit::scan_of`:
+the US layout, as `xdotool`).
 
 ### 16.4 Not built (the agent's calls, *provisional*)
 
@@ -2333,3 +2333,67 @@ Stage 2 and every network path (decision 10, E28); the CD notice (Hot Seat absen
 of a transfer's `RMT*SC.BIN`; the session list and its refresh; `Network Default Name` as a
 setting (no client settings yet: the name starts empty); the edit's scroll and line check (no
 edit built needs them, §16.1); its disabled colour; a key's repeats (the shell's window takes none).
+
+## 17. The edits typing as the keyboard prints (M2 T7b, 2026-11-16)
+
+Decision 39 (CLT-Q127 (b)) built in the client's profile; the original's side is §16.1's, its
+scan codes kept for the comparisons. Nothing read. Built in `h3_ui::edit`, `h3_ui::keys`,
+`h3_view::shell::{keys, multiplayer, menu, replay}`, `h3_sdl` and the battle client's shell
+window.
+
+### 17.1 The characters
+
+- **The window's text input** (`h3_sdl::Window::set_text_input`, SDL's `SDL_StartTextInput`; the
+  characters in `Window::typed`, each with the number of the wait's events before it) is on while
+  an edit takes text (`Front::typing`: in the client's profile, the Multiplayer dialog's name with
+  nothing over the dialog, the hot seat's focused edit without a popup; never under a popup or the
+  network's notice, never in the original's profile) and off otherwise. What the keys print is
+  the system's: its layout, Shift, Caps Lock, AltGr, dead keys and an input method's compositions.
+  A held key's repeats type nothing (the shell's window takes no repeats: the text of a repeat it
+  leaves out is left out too).
+- **The edit** (`Edit::typed`): a character goes in at the caret unless the text with its
+  terminator would reach the room (20 characters in 21, as the original's) or the fonts cannot
+  draw it (`edit::typable`: Windows-1252's printable characters, the controls and the braces left
+  out; every byte from 0x20 to 0xFF has a glyph of some width in `smalfont.fnt`, read from the
+  LOD). The text, the caret and the room count characters (one byte each in the code page; the
+  draw encodes them, `encode_1252`).
+- A character's key down still reaches the key table while an edit types (no dialog with an edit
+  binds a letter; *provisional*).
+
+### 17.2 The keys
+
+Commands of the shell's key table (`[shell]` in a user's key file), the original's keys by
+default:
+
+| Command | Keys | Taken |
+|---|---|---|
+| `edit-home`, `edit-end`, `edit-left`, `edit-right` | Home, End, Left, Right | while an edit types (`Context::Edit`) |
+| `edit-delete`, `edit-backspace` | Delete, BackSpace | while an edit types |
+| `hot-seat-next` | Tab, Down | over the hot seat's names |
+| `hot-seat-previous` | Shift+Tab, Up | over the hot seat's names |
+| `hot-seat-ok` | Return | over the hot seat's names: OK enabled presses it (CLT-Q107), disabled moves on (the original's Enter) |
+
+- **The lookup** (`shell::keys::command_for`): `Context::Edit` first while an edit types, then the
+  dialog's own (`Front::contexts`); the chord with Shift as held, else, with Shift held and that
+  chord bound nowhere there, the key alone (Shift and Escape still cancel, Shift and Home goes
+  home, as before T7b when the shell read no Shift).
+- **Shift chords** in `h3_ui::keys` (additive): `Chord::shift`, `Shift+` in a key file after
+  `Ctrl+` (`Ctrl+Shift+Up`), `Keys::chord_command` matching exactly; the Shifts never bound alone
+  (`keys::SHIFT`, as Control). The window's new keys: Tab, BackSpace, Delete, LeftShift and
+  RightShift (`h3_sdl::Key`).
+- **The keypad's** navigation keys are not bound: SDL names them alike in either Num Lock state,
+  and with Num Lock on they type their digits.
+
+### 17.3 The replay and the checks
+
+- **The original's profile** (every `drawn` comparison) as T7 built it: scan codes by the US
+  table. `drawn`: 91 recipes as recorded, 235 shots drawn, all exact (`multiplayer`'s 113 among
+  them).
+- **The client's profile** in the replay (the tests): a recipe's typed text gives each character
+  between its key's down and up as the window's text input would, where an edit types; `key:`
+  with `shift+` asks the chord with Shift.
+- **The window under a German layout** (Xvfb, the keymap `de(basic)` as its default: TRAPS):
+  the keys by their places typed `zyüöäß`, Shift and 2 a `"`, the dead acute and e an `é`, Caps
+  Lock a capital; Home, Delete, End and BackSpace as the table's commands; the hot seat's Tab,
+  Shift and Tab, and Enter pressing an enabled OK (the scenario screen's stub).
+
