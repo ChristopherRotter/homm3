@@ -580,6 +580,13 @@ the AI lane's (nothing moves: v8, no observation flag), the map client lane's (t
 and the hint, T123a and T125a), the client lane's (informational: a bank battle's layout without
 war machines and obstacles comes in the battle's observation as any).
 
+*As built* (T122, `shared/e08-t122`, `cross-lane`; decision 350): the three drafts in ADR-0016
+points 1, 4, 6, ADR-0017 points 1, 2, 4, 6, 9 to 11 and ADR-0022 points 2, 3, 6, 7, 8 (ADR-0013
+point 5's line), each citing batch E13's rows, VCMI's second table among ADR-0022's alternatives;
+the glossary's five terms; `docs/06-security.md`'s lines; `BattleSetup::creature_bank` with its
+two exhaustive literals (the battle lane's scenario and replay document; every other the
+default), the battle lane's inbox told.
+
 **The building tasks**, in rounds of one or two (ids continue the epic's; each task's cut confirmed
 at its start). **Batch E13 runs before the build and before the shared task** (decision 339), so
 the ADRs are applied once with the rows' verdicts:
