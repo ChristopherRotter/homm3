@@ -2584,9 +2584,13 @@ def open_tavern(game, mem):
     opens."""
     if screen_kind(mem) != "town":
         raise RuntimeError(f"`tavern`: no town screen shows ({screen_kind(mem)})")
-    shown = [i for i in mem.dialog_items() if i["id"] in TAVERN_BUILDINGS and i["state"] == 0x6]
+    # The state 0x6 (shown, active), bit 0x1 aside (read 0x7 after a portrait's click: E09 T34's
+    # first run); the Castle's Brotherhood item stands at 0x4 while not built.
+    shown = [i for i in mem.dialog_items() if i["id"] in TAVERN_BUILDINGS
+             and i["state"] & 0x6 == 0x6]
     if len(shown) != 1:
-        raise RuntimeError(f"`tavern`: the town screen shows {len(shown)} Taverns")
+        raise RuntimeError(f"`tavern`: the town screen shows {len(shown)} Taverns "
+                           f"({[(i['id'], hex(i['state'])) for i in mem.dialog_items() if i['id'] in TAVERN_BUILDINGS]})")
     x, y, width, height = shown[0]["box"]
     game.click(x + width // 2, y + height // 2, 0.5)
     game.move(*PARK)

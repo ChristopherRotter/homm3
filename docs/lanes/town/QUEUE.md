@@ -5,28 +5,22 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 ## Tasks
 
 Epic: `docs/epics/E09-towns.md` (increment 4: the Tavern, refined at T30, `TWN-Q15`, decisions 98
-to 122; its drafts accepted at T33b, `TWN-Q18`); done tasks in `E09-log.md`; increments 1 to 3
+to 124; its drafts accepted at T33b, `TWN-Q18`; batch TWN-4 scored by T34); done tasks in `E09-log.md`; increments 1 to 3
 (closed by T10, T20 and T30) in `E09-archive.md`. The building tasks are the design note's
 `E09-design.md` §79 (round by round, with the order against E08's increment 13); each task's cut
 confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`) and the exit criteria it serves (the epic's list, decision 121).
-
-**E09 T34 — batch TWN-4** (round 2; design §78, survey §9 and §13): the spec
-`experiments/specs/E09-batch-4*.toml` and its template over a fixture map (the writer's Tavern,
-class 95, and Den of Thieves, class 97: `cross-lane` in the adventure lane's writer, as E08 T119's
-banks); the harness's reads (the player record's offers +0x28 and +0x2C, a hero's +0x105, the
-pool's states game +0x4DF18, the Thieves' Guild window's places and parts) and steps (a retreat and
-a surrender in a recipe: the battle lane's harness has both); the recipe, the runs, the scoring
-of the eight rows (row 7 with TD-23's and T-17's records). Needs the original data and the client
-lane's harness set-up (`claude/lane-client-status.md`'s staging list). **At its start:** confirm
-the cut (likely two parts, as T23). **Status:** next.
 
 **E09 T35 — `shared/`** (round 3; `cross-lane`; design §79): the four drafts
 `adr-drafts/*-increment-4.md` moved into ADR-0013, -0016, -0017, -0028 with T34's verdicts;
 `StreamId::TAVERNS`; the flags of `TWN-QUIRK-12` (T-16) and `-13` (T-17), `fix-optional`, on in
 `faithful` (`h3-content`, the pack format, the packs' artifacts); the glossary (the tavern heroes,
 the away record, the returning mark, the Thieves' Guild, the Den of Thieves); `docs/06-security.md`'s
-town lines (design §75). In merge order with E08's T122. **Status:** queued.
+town lines (design §75). In merge order with E08's T122. **At its start:** batch TWN-4's two
+points the reading missed (survey §14; T34's record): the new day clears the returning mark of every
+hero record after the week, and gives every hero record (offers and heroes out of the game too) its
+day's spell points: put to the user with the drafts (design §63, §67, §68; recommended: as the
+original). **Status:** next.
 
 **E09 T36 — the town part v7** (round 4; design §60): the tavern weights per faction record and
 the hire's price, `HCTRAITS.TXT`'s tavern columns harvested (`h3-harvest`, `cross-lane`), the
@@ -80,8 +74,6 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   through `h3-towns`' projections too (a town's view at a spectator's level), in a `cross-lane`
   pull request with the user's consent, asking your lane's review; nothing for you to build. Your
   two notes of 2026-11-10 (`town_offer`, `town_events_at_start`) go to E16 M5 T11.
-
-- 2026-11-12 (the adventure lane, E08 T110, `adventure/e08-t110`; the capture harness, informational, for your next batch): `h3drive.gold_bonus` now clicks each row's arrow until the memory reads Gold (a heroless town player has no Artifact in its row); `hint_at` parks the mouse and reads until two reads agree; `play_turns` gives no order once the battle is decided; a recipe's `+anything odd` is kept beside the notes. New steps and reads: `clients/capture/README.md`, "Garrisons and the bonus visitables".
 
 - 2026-11-11 (the adventure lane, `adventure/srv-q26-reveal`, `cross-lane` with the user's consent;
   **in your paths, for information**): SRV-Q26 (a)'s query `h3_game::reveal` names the towns a

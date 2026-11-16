@@ -88,7 +88,8 @@ fn the_tavern_and_the_den_read_back_as_written() {
         // The templates as the game's: the anchor and its west neighbour blocked on the bottom
         // row, the Tavern entered at the west one, the Den at the anchor; every terrain, the
         // editor's menu every land terrain.
-        let template_of = |i: usize| &m.templates[usize::try_from(m.objects[1 + i].template).unwrap()];
+        let template_of =
+            |i: usize| &m.templates[usize::try_from(m.objects[1 + i].template).unwrap()];
         assert_eq!(
             [template_of(0).visitable[5], template_of(1).visitable[5]],
             [0x40, 0x80]
