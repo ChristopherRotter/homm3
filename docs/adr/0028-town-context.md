@@ -9,7 +9,8 @@
 - Amends with it: ADR-0015, ADR-0016, ADR-0017, ADR-0023 (E09 increment 1's amendments, each in
   its revision history or status line); ADR-0016 and ADR-0017 again with increment 2's (E09 T15,
   2026-11-07; `TWN-Q10`, decision 48); ADR-0013, ADR-0016, ADR-0017 and ADR-0023 with increment
-  3's (E09 T24, 2026-11-12; `TWN-Q14`, decision 83).
+  3's (E09 T24, 2026-11-12; `TWN-Q14`, decision 83); ADR-0013, ADR-0016 and ADR-0017 with
+  increment 4's (E09 T35a, 2026-11-16; `TWN-Q18`, `TWN-Q19`, decisions 121, 126, 127).
 - Working detail: the survey `docs/rules/surveys/E09-towns.md` (§0's findings, §15 batch TWN-1),
   the design note `docs/epics/E09-design.md` (T2b); increment 2's the survey
   `docs/rules/surveys/E09-construction.md` (§13 batch TWN-2) and the design note's Part D (T13).
@@ -176,6 +177,21 @@ same record (the day's construction, the available creatures, the guild's spells
    content: `horde` harvested from the executable's horde table, `portal` and `week_of` the
    harvest's gap-fill roles (the Dungeon's and the Inferno's specials), the parameters tier-2 data
    of the reading.
+   **Increment 4** (the Tavern; E09 decisions 99, 110) gives each town record its **tavern
+   weights**: per hero class of the core (by key) the weight of that class in a tavern's draw for a
+   player of the record's faction (`HCTRAITS.TXT`'s tavern column of the faction: 5 or 6 a class in
+   this build's data, each column summing to 100; survey `E09-tavern.md` §2.2). A class the record
+   does not list weighs 0; the compiler refuses a class the core lacks, a class listed twice and a
+   record whose weights sum to 0. An edition without Conflux has no Conflux record, so RoE's missing
+   column needs no override (the inbox's E04a T3a note). The parameters gain the **hire's price**
+   (resources of the core: 2 500 gold, `hero_price` 0x67814C, the same for every hire and every
+   edition; tier-2 data of the reading). The role `tavern` (increment 1) names the building that
+   opens a town's tavern; `most_heroes` (increment 3) bounds the hire. The content: the weights
+   harvested from both LODs' `HCTRAITS.TXT` (the base pack's eight records, the AB pack's Conflux;
+   `h3-harvest`, `cross-lane`), the price tier-2 data. Batch TWN-4 (E09 T34; survey `E09-tavern.md`
+   §14) read the weights through the draws' ranges: 12 for a faction's two classes in slot 0, 100
+   less the avoided class's 5 or 6 in slot 1 and at a replacement, the Conflux classes weighing in
+   every such draw (TWN-4-1, -2, -8), and the price 2 500 gold at every hire (TWN-4-2).
 6. **Seams.** `h3-towns` and `h3-adventure` never import each other; `h3-game` reads both. The
    only new contract type of increment 1 is `TownId`. The siege's facts cross to the battle as
    ADR-0023's `Siege` (point 7). From increment 5 a town's service reads a hero's details by
@@ -210,6 +226,18 @@ same record (the day's construction, the available creatures, the guild's spells
    the player as the hire dialog's (`HireError`'s offer and amount), one vocabulary for both
    sources. No new contract type: the adventure's `HireSource` and `HireTarget` name the town by
    `TownId` and the index as a plain number.
+   **Increment 4's hire** (TWN-TAV-003; E09 decision 111) adds the town command's fourth variant,
+   **`TownCommand::Hire { town, slot }`** (the town screen's tavern: `town_tavern_click` 0x5D82B0,
+   `town_tavern_hire` 0x5C12E0): `h3-towns` checks the town's part (a standing building of role
+   `tavern`, `has_tavern`) and names the price (the part's), each refusal typed
+   (`TownCommandError`); the adventure checks the entrance (no visitor) and places the hired hero
+   there; the game checks the turn, the owner, that no decision is open, the slot's offer, the
+   player's heroes on the map against `most_heroes` and the treasury, then pays, places, marks the
+   pool and draws the slot's replacement, in one infallible application (ADR-0017 point 10; batch
+   TWN-4's TWN-4-6: the button disabled with a visitor and at 8 heroes on the map, a garrison hero
+   not counted). The adventure map's Tavern (class 95) hires through the game's tavern decision
+   (ADR-0017 point 6), not a town command: `h3-towns` takes no part in it but the part's price. No
+   new contract type: the slot is a plain number (0 or 1).
 7. **The siege's facts and the editions by the packs** (decisions 14 and 20): `h3-towns` derives
    `Siege` (ADR-0023 point 2, E09's amendment) from the town and its faction's record; no game version exists.
    The faction's record holds the moat's kind (absent, harmless, damaging) and whether a siege
@@ -220,9 +248,19 @@ same record (the day's construction, the available creatures, the guild's spells
    Conflux is the AB pack's faction, so the factions a random town or a Random choice may take
    are the ruleset's factions with a town record (eight with the base pack alone, nine with AB),
    within the map's allowed set for a player (ADR-0017 point 1).
-8. **The hero pool is the game's** (decision 18; ADR-0017 point 1): `h3-towns` holds no hero
-   and no pool; the Tavern (increment 4) is a town's building whose hire the game composes from
-   the pool and the store.
+8. **The hero pool is the game's** (decision 18; ADR-0017 point 1): `h3-towns` holds no hero, no
+   pool and no tavern heroes. A town's **Tavern** is a building of role `tavern` whose hire the game
+   composes (point 6) from the pool, the players' two tavern heroes each (the survey's offers), the
+   store of heroes and the adventure's placement; the draw's weights are the part's (point 5).
+   **The Thieves' Guild** (increment 4's information; TWN-TAV-007 to -009; E09 decisions 6, 99) is a
+   projection the game composes (ADR-0017 point 2), as a town's view: its level is the number of the
+   viewer's towns where `has_tavern` holds (a standing building of role `tavern`, the Castle's
+   Brotherhood of the Sword among them; `player_tavern_count` 0x4CCE30), counted to 5; `h3-towns`
+   gives that predicate and each town's garrison, nothing else. The rows' values and the per-player
+   parts read what the game holds (the treasuries, the day's gold, the store of heroes) and the
+   adventure's owners, heroes and armies; no town state moves. Batch TWN-4's TWN-4-7 (E09 T34) saw
+   the level so: 2, 4, 6, 8 and 9 rows at one to five towns with a Tavern, a Castle with its Tavern
+   and the Brotherhood counted once.
 9. **Versions owned by the town lane:** `h3-towns`' state hash and the town part's hash (v1 when
    the crate is created). Its changes bump the adventure lane's versions it touches (the game
    state hash, the import, the adventure replay format) in `cross-lane` pull requests.
@@ -240,6 +278,19 @@ same record (the day's construction, the available creatures, the guild's spells
    `cross-lane`: the game state hash (the hire dialog's town sources and target), the adventure
    state hash (a town's garrison hero, ADR-0016 point 3), the adventure replay format (`town
    recruit`, the hero moves), the env's action encoding (ADR-0017 point 8) and the protocol.
+   **Increment 4** bumps the town ruleset part (v7: the tavern weights, the hire's price); the town
+   state hash does not move (nothing of the tavern is the town's). The adventure lane's versions it
+   moves (`cross-lane`): the game state hash (the pool's statuses and records, the players' factions
+   and tavern heroes), the adventure ruleset part (the kinds `Tavern` and `DenOfThieves`; the
+   adventure state hash does not move, the kinds hold no state), the map import (classes 95 and 97,
+   the map-wide hero entries in the setup), the adventure replay format (the hire, the tavern
+   decision's answers, the dismissal); the protocol (the server lane's: the hire, the dismissal, the
+   tavern decision, the tavern heroes' view and its events, a hired hero's appearance, the Thieves'
+   Guild's request and a Den's view) and the env's action encoding (the AI lane's: the town's hire,
+   then the tavern decision's answers); each `cross-lane`. The Den of Thieves' kind moves the
+   adventure ruleset part and the map import with the Tavern's, in one task. `shared/` (E09 T35b):
+   the kernel's `StreamId::TAVERNS` and the quirk flags of `TWN-QUIRK-12` and `-13` (no version
+   moves: the profiles' ruleset hashes do).
 
 ## Consequences
 
@@ -269,6 +320,14 @@ same record (the day's construction, the available creatures, the guild's spells
   measured against `day-start-builds-36`.
 - Increment 3's recruitment reads the counts from the store at each view and purchase (no copy in
   the dialog); a purchase writes one town and one army.
+- Increment 4: two `shared/` pull requests after batch TWN-4 (E09 T35, cut in two at its start,
+  decision 125): T35a this ADR's and the three amendments' text (ADR-0013, ADR-0016, ADR-0017),
+  `docs/03-domain.md`'s terms, `docs/06-security.md`'s section; T35b the taverns' stream and the two
+  quirk flags. `cross-lane` after them: the harvest of `HCTRAITS.TXT`'s tavern columns
+  (`h3-harvest`, the battle lane's), the game's pool and slots (the game state hash), the
+  adventure's kinds and placement, the import, the replay format, the protocol and the env; the
+  golden replays re-recorded. The town part costs nothing a day: a fill reads its weights, a hire
+  its price and `has_tavern`.
 
 ## Alternatives considered
 
@@ -295,6 +354,9 @@ same record (the day's construction, the available creatures, the guild's spells
   two sources of one fact; the executable's lists are direct); the day's mark as the day of the
   town's last build (no write at the day's start: two states that play alike would hash apart;
   the original's flag is kept).
+- Increment 4 (`TWN-Q17`): the tavern weights in the core's hero classes, a weight per faction (a
+  `shared/` change, and an override for RoE's missing Conflux column); a pending decision for the
+  town's hire too (the town screen's tavern needs no answer, as the town's rows).
 
 ## Revision history
 
@@ -320,3 +382,12 @@ same record (the day's construction, the available creatures, the guild's spells
   and `TownCommand::Recruit`; the versions; the Consequences. Drafted in E09 T22a and T22b
   (design note `E09-design.md` Part E); batch TWN-3 (T23, survey `E09-growth.md` §17) confirmed
   every row, so no point changed.
+- 2026-11-16 (E09 T35a `shared/`; `TWN-Q15` to `TWN-Q19`, decisions 99 to 127): points 5, 6, 8 and 9
+  amended for increment 4, the Tavern (with ADR-0013 points 14.5 and 16.5, ADR-0016 points 3, 4, 6
+  and ADR-0017 points 1 to 4, 6, 8 to 11): the tavern weights and the hire's price;
+  `TownCommand::Hire`; the pool's tavern heroes the game's and the Thieves' Guild's level by the
+  taverns; the versions (the adventure state hash unmoved, as the design note's §77); the header,
+  the Consequences and Alternatives. Drafted in E09 T33a and T33b (design note `E09-design.md` Part
+  F); batch TWN-4 (T34, survey `E09-tavern.md` §14) confirmed every row, so no point of this ADR
+  changed; the two points the reading missed were decided at T35's start (decisions 126, 127;
+  ADR-0017 point 3).

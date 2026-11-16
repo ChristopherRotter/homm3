@@ -251,6 +251,16 @@ are computed before the seam (03-domain). The seam must change once for E04a and
     4. **Hero changes** grow by what a move, an assembly and a disassembly need (a placed
        artifact, a removal at a position, the swap's return); a move between two heroes is checked
        on both before either changes.
+    5. **A tavern hero's backpack equipped** (E09 increment 4; TWN-TAV-002; the original's
+       `tavern_new_heroes` 0x4C8450 with `hero_equip_artifact` 0x4E2A00): a pure function of the
+       details and the ruleset, applied as hero changes (point 2) when a week's or the start's fill
+       offers the hero: each backpack artifact, from the last place to the first, goes to the first
+       free position that takes it (14.1's locks, `first_position`), leaving the backpack; one no
+       free position takes stays. A combination equipped so applies its effects as any equip
+       (`gives_spell_book`); none is assembled. A replacement and a returning hero are not equipped
+       (the original's `tavern_slot_replace` 0x4C86A0 and `hero_leave_game` 0x4D9EC0 do not; batch
+       TWN-4's TWN-4-5, E09 T34: a dismissed hero drawn as a replacement came back with its Clover
+       of Fortune still in the backpack).
 15. **Rewards are `h3-heroes`' rules** (E08 increment 7; pure functions of the details, the
     ruleset and explicit inputs; the adventure reads them through these functions and returns the
     changes, the game applies them, point 12's pattern):
@@ -338,6 +348,15 @@ are computed before the seam (03-domain). The seam must change once for E04a and
        TWN-3-2). Pack format v52 (`h3-content`'s `HeroEffect::TownGrowth { level, amount }` and
        `HeroEffect::OwnerTownGrowth { bp }`, core ruleset hash v53; the base pack's five pieces,
        the SoD pack's Statue).
+    5. **A hero off the map** (E09 increment 4: a tavern hero, a hero out of the game) regains its
+       day's spell points as every hero of the store (16.3; E09 decision 127, amending TD-20's
+       spell-point half of decision 104: the original's `new_day` gives all its 156 records
+       `hero_mana_regained`, 0x4C8237; batch TWN-4's TWN-4-3, E09 T34: a returning offer's kept 4
+       spell points were 5 the next day). Its spell points are also set full (HER-MAN-001's maximum)
+       when a fill offers it, when it is drawn as a replacement and when it leaves the game without
+       returning (ADR-0017 point 11; batch TWN-4's TWN-4-2 and TWN-4-4); a returning hero keeps its
+       own at the leave. Its day's points come from point 13's derivation over the army the game
+       keeps for it (ADR-0017 point 3).
 
 ## Consequences
 
@@ -532,3 +551,9 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   `spell_level_limit`, the wire's `SideView` (protocol v69), kept by a search agent's worlds.
 - 2026-11-16 (E08 T122, `shared/`, `cross-lane`): point 5 notes the setup's `creature_bank`
   (ADR-0022 point 8, the creature bank battle).
+- 2026-11-16 (E09 T35a `shared/`; E09 decisions 99, 109, 113, 127; `TWN-Q18`, `TWN-Q19`): points
+  14.5 and 16.5 added for E09 increment 4, the Tavern: a tavern hero's backpack equipped at a fill;
+  a hero off the map regaining its day's spell points as every record (TD-20's spell-point half
+  amended at T35's start, decision 127). Drafted in E09 T33a (design note `E09-design.md` §63, §67);
+  batch TWN-4's outcome (T34, survey `E09-tavern.md` §14: every row as read; the day's spell points
+  read in the code after the runs) folded in.
