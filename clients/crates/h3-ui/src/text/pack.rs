@@ -150,6 +150,23 @@ impl Pack {
         }
         problems
     }
+
+    /// The client's own keys of `keys` (those without an original form, E27 M2 T6b2) this pack
+    /// gives no message the lookup ends at for every argument: `<key>`, or a plural key's
+    /// `<key>_other` (`Catalogue::text` falls back to them within a pack); for the client's own
+    /// pack, whose keys no other pack is sure to give.
+    #[must_use]
+    pub fn lacks(&self, keys: &Keys) -> Vec<String> {
+        keys.keys
+            .iter()
+            .filter(|(id, key)| {
+                key.original.is_empty()
+                    && !self.messages.contains_key(id.as_str())
+                    && !(key.plural && self.messages.contains_key(&format!("{id}_other")))
+            })
+            .map(|(id, _)| id.clone())
+            .collect()
+    }
 }
 
 /// `text` with each run of quotes made one, as the executable's text tables' reader does once it

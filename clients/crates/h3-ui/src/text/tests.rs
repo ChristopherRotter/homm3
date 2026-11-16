@@ -570,6 +570,43 @@ fn packs_are_checked_against_the_keys() {
     );
 }
 
+#[test]
+fn a_pack_lacks_the_client_s_own_keys_it_gives_no_last_form_of() {
+    // E27 M2 T6b2: the keys without an original form; a plural one's `_other` will do, its
+    // `_one` alone not; a context's form alone not.
+    let keys = Keys::parse(
+        r#"
+[[key]]
+id = "own.count"
+plural = true
+[[key]]
+id = "own.who"
+contexts = ["male"]
+[[key]]
+id = "own.title"
+[[key]]
+id = "theirs"
+original = [{ at = "T:0" }]
+"#,
+        &BTreeMap::new(),
+    )
+    .unwrap();
+    let lacks = |json: &str| Pack::from_json("en", json).unwrap().lacks(&keys);
+    assert_eq!(lacks("{}"), ["own.count", "own.title", "own.who"]);
+    assert_eq!(
+        lacks(r#"{ "own": { "count_one": "a", "who_male": "b", "title": "c" } }"#),
+        ["own.count", "own.who"]
+    );
+    assert_eq!(
+        lacks(r#"{ "own": { "count_other": "a", "who": "b", "title": "c" } }"#),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        lacks(r#"{ "own": { "count": "a", "who": "b", "title": "c" } }"#),
+        Vec::<String>::new()
+    );
+}
+
 fn catalogue() -> Catalogue {
     let player = r#"{ "battle": { "log": { "hit_few": "{{n}} by {{count}} few {{who}}" } },
                       "pronoun_female": "she ({{context}})" }"#;

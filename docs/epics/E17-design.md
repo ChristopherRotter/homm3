@@ -3556,9 +3556,10 @@ text` and the gate's check; the formats in `clients/README.md` ("The string cata
 - **Lookup** goes through the packs by priority (the player's, the client's own, the original's)
   and in each tries `<key>_<context>_<category>`, `<key>_<context>_other`, `<key>_<context>`,
   `<key>_<category>`, `<key>_other`, `<key>`: a pack that lacks a form falls back within itself
-  before the next pack is asked, and a key no pack has shows as itself. The client has no strings
-  of its own yet (lobby, accounts, options come later): its pack, `clients/text/<lang>.json`, is
-  committed when the first one appears, in any language.
+  before the next pack is asked, and a key no pack has shows as itself. The client's own pack,
+  `clients/text/en.json`, came with its first own strings (E27 M2 T6b2: the shell's stubs'
+  notices; lobby, accounts and options later): the keys without original forms, beside the key
+  catalogue, each of which it must give (E27 design §15).
 - **Values:** a number is written in decimal digits with `-` before a negative one (as `%d`); a
   placeholder without a value stays visible as `{{name}}`.
 

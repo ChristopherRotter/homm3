@@ -2303,3 +2303,21 @@ original = [{ at = "HELP:13:1" }]
 [[key]]
 id = "shell.game-type.help.back"
 original = [{ at = "HELP:14:1" }]
+
+# The client's own texts (E27 M2 T6b2, decision 37): no original form, their messages in the
+# client's own pack beside this file (`en.json`; E17 design §9.2), which must give each one.
+#
+# The stubs' notices: a box of style 1 over the menu each is chosen from, until its screen is
+# built (New Game's Campaign until E20, its Tutorial until the engine's tutorial mode, CLT-Q84;
+# the main menu's High Scores and Credits until E27 M4).
+[[key]]
+id = "shell.stub.campaigns"
+
+[[key]]
+id = "shell.stub.tutorial"
+
+[[key]]
+id = "shell.stub.high-scores"
+
+[[key]]
+id = "shell.stub.credits"

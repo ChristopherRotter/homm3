@@ -39,8 +39,12 @@
 //!
 //! The menus' boxes (T6a, T6b1): Quit's question and the buttons' help, their texts the user's
 //! tables' through the key catalogue (`shell.main-menu.*`, `shell.game-type.help.*`), laid out at
-//! the start. The replay draws a game type menu's rows its redraw does not show as last shown
-//! (CLT-Q118: `h3_view::shell::menu::Stale`, the original's profile).
+//! the start. The stubs (T6b2): New Game's Campaign and Tutorial and the main menu's High Scores
+//! and Credits show a notice in the client's own words (`shell.stub.*`, its own pack
+//! `clients/text/en.json`) over the menu they were chosen from, in the window; its OK goes back to
+//! that menu. The replay stops at them (the original shows its own screens there). The replay
+//! draws a game type menu's rows its redraw does not show as last shown (CLT-Q118:
+//! `h3_view::shell::menu::Stale`, the original's profile).
 
 use std::fs;
 use std::io::{self, BufRead};
@@ -426,7 +430,8 @@ fn copy_rect(to: &mut Pixels, from: &Pixels, [x, y, w, h]: [i32; 4]) {
 /// The menus as they open (T6a, T6b1): the layout's dialogs, Quit's question and the buttons'
 /// help laid out in the batch's fonts, their texts the user's tables' (`shell.main-menu.quit`,
 /// `shell.main-menu.help.<button>`, `shell.game-type.help.<button>`: Load Game's the same as New
-/// Game's), framed in the viewing player's colours.
+/// Game's), and the stubs' notices (T6b2: `shell.stub.<screen>`, the client's own pack's, style
+/// 1), framed in the viewing player's colours.
 fn menus(
     layout: &ShellLayout,
     batch: &Batch,
@@ -495,10 +500,18 @@ fn menus(
             bugs,
         )
     };
+    let notices = menu::STUBS
+        .iter()
+        .map(|&(screen, _, _)| {
+            let key = format!("shell.stub.{}", text::name(screen));
+            (screen, laid(&key, Style::Ok))
+        })
+        .collect();
     Ok(Menus {
         main,
         new_game: game_type(Game::New),
         load_game: game_type(Game::Load),
+        notices,
     })
 }
 

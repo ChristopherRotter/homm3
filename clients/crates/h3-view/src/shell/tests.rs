@@ -248,7 +248,7 @@ fn each_screen_names_the_task_that_builds_it() {
 }
 
 #[test]
-fn the_start_the_main_menu_and_the_game_type_menus_are_built() {
+fn the_start_the_main_menu_and_the_game_type_menus_are_built_four_screens_stubs() {
     let built: Vec<(Screen, Built)> = screens()
         .into_iter()
         .map(|s| (s, s.built()))
@@ -259,6 +259,10 @@ fn the_start_the_main_menu_and_the_game_type_menus_are_built() {
         [
             (Screen::Start, Built::Whole),
             (Screen::MainMenu, Built::Whole),
+            (Screen::Campaigns, Built::Stub),
+            (Screen::Tutorial, Built::Stub),
+            (Screen::HighScores, Built::Stub),
+            (Screen::Credits, Built::Stub),
             (Screen::GameType(Game::New), Built::Whole),
             (Screen::GameType(Game::Load), Built::Whole)
         ]

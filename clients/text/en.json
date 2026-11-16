@@ -1,0 +1,10 @@
+{
+  "shell": {
+    "stub": {
+      "campaigns": "{Campaign}\n\nThe campaigns are not available yet.",
+      "tutorial": "{Tutorial}\n\nThe tutorial is not available yet.",
+      "high-scores": "{High Scores}\n\nThe high scores are not available yet.",
+      "credits": "{Credits}\n\nThe credits are not available yet."
+    }
+  }
+}

@@ -1,6 +1,6 @@
 //! The menus' tests (E27 M2 T6a, T6b1): their hover, presses, hotkeys, help popups and the main
 //! menu's Quit's question, as `menu-main`, `menu-quit`, `menu-new`, `menu-load` and `menu-sound`
-//! recorded them.
+//! recorded them; the stubs' notices over them (T6b2).
 
 use alloc::collections::BTreeMap;
 use alloc::vec;
@@ -11,8 +11,8 @@ use h3_render::Bugs;
 use h3_ui::ui::{Dialog, Draw};
 
 use super::{
-    BOX_PLAYER, BUTTONS, Boxes, Did, GAME_TYPE_BUTTONS, Kind, Menu, Menus, QUIT, Stale, TITLE,
-    outside,
+    BOX_PLAYER, BUTTONS, Boxes, Did, GAME_TYPE_BUTTONS, Kind, Menu, Menus, QUIT, STUBS, Stale,
+    TITLE, outside,
 };
 use crate::message::{self, Key, Style};
 use crate::shell::keys::{Command, Context};
@@ -90,12 +90,29 @@ pub(crate) fn game_type(game: Game, bugs: Bugs) -> Menu {
     )
 }
 
-/// The three menus as they open.
+/// The three menus as they open, and the four stubs' notices (E27 M2 T6b2).
 pub(crate) fn menus(bugs: Bugs) -> Menus {
+    let layout = parse_layout(LAYOUT).unwrap();
+    let (medium, small) = (font(8, 16), font(5, 10));
+    let notices = STUBS
+        .iter()
+        .map(|&(screen, _, _)| {
+            let notice = message::layout(
+                &layout.message,
+                (&medium, &small),
+                "Not yet.",
+                Style::Ok,
+                None,
+                (BOX_PLAYER, bugs),
+            );
+            (screen, notice)
+        })
+        .collect();
     Menus {
         main: main_menu(bugs),
         new_game: game_type(Game::New, bugs),
         load_game: game_type(Game::Load, bugs),
+        notices,
     }
 }
 
@@ -161,27 +178,32 @@ fn ended(request: Request) -> Did {
     }
 }
 
+/// The middle of the button `id` in the box over the menu (the question or a notice).
+fn box_button(menu: &Menu, id: u16) -> [i32; 2] {
+    let open = match &menu.over {
+        super::Over::Question(open) | super::Over::Notice(open) => open,
+        _ => panic!("no box"),
+    };
+    let b = open
+        .message
+        .dialog
+        .items
+        .iter()
+        .find_map(|i| match i {
+            h3_ui::ui::Item::Button(b) if b.id == id => Some(b),
+            _ => None,
+        })
+        .unwrap();
+    let [x, y] = open.message.dialog.place;
+    [x + b.at[0] + b.size[0] / 2, y + b.at[1] + b.size[1] / 2]
+}
+
 /// The OK's and Cancel's middles in the question's box.
 fn box_buttons(menu: &Menu) -> ([i32; 2], [i32; 2]) {
-    let middle = |id| {
-        let open = match &menu.over {
-            super::Over::Question(open) => open,
-            _ => panic!("no question"),
-        };
-        let b = open
-            .message
-            .dialog
-            .items
-            .iter()
-            .find_map(|i| match i {
-                h3_ui::ui::Item::Button(b) if b.id == id => Some(b),
-                _ => None,
-            })
-            .unwrap();
-        let [x, y] = open.message.dialog.place;
-        [x + b.at[0] + b.size[0] / 2, y + b.at[1] + b.size[1] / 2]
-    };
-    (middle(message::YES), middle(message::NO))
+    (
+        box_button(menu, message::YES),
+        box_button(menu, message::NO),
+    )
 }
 
 #[test]
@@ -685,7 +707,74 @@ fn the_menus_open_by_their_screen() {
         assert_eq!((menu.kind(), menu.kind().screen()), (kind, screen));
         assert_eq!(menu.pointer, [1, 2]);
     }
-    assert_eq!(all.opened(Screen::Credits, [0, 0]), None);
+    assert_eq!(all.opened(Screen::Lost, [0, 0]), None);
     assert_eq!(Kind::Main.buttons(), BUTTONS);
     assert_eq!(Kind::GameType(Game::Load).buttons(), GAME_TYPE_BUTTONS);
+}
+
+#[test]
+fn a_stub_s_screen_is_its_menu_opened_anew_under_its_notice() {
+    // E27 M2 T6b2: Campaign and Tutorial over New Game's menu, High Scores and Credits over the
+    // main menu; none hovered, the cursor shown, the box's keys taken.
+    let all = menus(Bugs::Fixed);
+    let layout = parse_layout(LAYOUT).unwrap();
+    for (screen, kind, _) in STUBS {
+        let menu = all.opened(screen, [5, 6]).unwrap();
+        assert_eq!((menu.kind(), menu.screen()), (kind, screen));
+        assert_eq!((menu.pointer, menu.hovered()), ([5, 6], None));
+        assert_eq!(menu.context(), Context::Question);
+        assert!(menu.cursor() && !menu.asking());
+        assert!(!menu.box_draws(&layout.player_palette).is_empty());
+        let shown = crate::shell::look::look(&layout, screen, Some(&menu)).unwrap();
+        assert_eq!(shown.over, menu.box_draws(&layout.player_palette));
+        // Not the menu's own screen.
+        assert_eq!(
+            crate::shell::look::look(&layout, kind.screen(), Some(&menu)),
+            None
+        );
+    }
+    // A stub without its notice opens nothing (the frame's stand-in).
+    let without = Menus {
+        notices: Vec::new(),
+        ..all
+    };
+    assert_eq!(without.opened(Screen::Credits, [0, 0]), None);
+}
+
+#[test]
+fn a_stub_s_notice_takes_the_box_s_inputs_and_its_ok_ends_the_screen() {
+    let all = menus(Bugs::Original);
+    for (screen, _, end) in STUBS {
+        let ended = Did {
+            ended: Some(end),
+            ..NOTHING
+        };
+        let mut menu = all.opened(screen, [400, 300]).unwrap();
+        let ok = box_button(&menu, message::OK);
+        // The menu's own inputs do nothing under it: its buttons, its hotkeys, the help.
+        assert_eq!(menu.moved([643, 304]), NOTHING);
+        assert_eq!(menu.hovered(), None);
+        assert_eq!(menu.key(Command::Button(103), "H"), NOTHING);
+        assert_eq!(menu.key(Command::Choice(Choice::Back), "Escape"), NOTHING);
+        assert_eq!(menu.right(ok), NOTHING);
+        assert_eq!(menu.right_release(), NOTHING);
+        assert_eq!(menu.press([0, 0]), NOTHING);
+        // No Cancel: Escape does nothing.
+        assert_eq!(menu.key(Command::Message(Key::Cancel), "Escape"), NOTHING);
+        // The OK pressed (its sample), off and on, released off it: still open.
+        assert_eq!(menu.press(ok), SAMPLE);
+        assert_eq!(menu.moved([0, 0]), CHANGED);
+        assert_eq!(menu.release(), CHANGED);
+        assert_eq!(menu.release(), NOTHING);
+        // Released over it: the screen ends.
+        let _ = menu.press(ok);
+        assert_eq!(menu.release(), ended, "{screen:?}");
+        // By Enter, and by the right button's release ending the OK's hold.
+        let mut menu = all.opened(screen, [400, 300]).unwrap();
+        assert_eq!(menu.key(Command::Message(Key::Ok), "Return"), SAMPLE);
+        assert_eq!(menu.key_up("Return"), ended);
+        let mut menu = all.opened(screen, [400, 300]).unwrap();
+        let _ = menu.press(ok);
+        assert_eq!(menu.right_release(), ended);
+    }
 }
