@@ -893,27 +893,15 @@ impl<'c, 'a> Picture<'c, 'a> {
                     .and_then(|packet| decoder.decode(&packet).map(|_| ()))
                     .map_err(PictureError::Smacker)?;
                 self.smack[k].decoded();
-                let frame = decoder.frame();
-                let w = frame.width() as usize;
-                let palette = frame.palette();
-                let colour = |index: u8| {
-                    let at = 3 * usize::from(index);
-                    let [r, g, b] = [0, 1, 2].map(|c| u16::from(palette[at + c]));
-                    (r >> 3) << 11 | (g >> 2) << 5 | b >> 3
-                };
-                let written = frame.written();
-                for (at, &index) in frame.pixels().iter().enumerate() {
-                    let (x, y) = (at % w.max(1), at / w.max(1));
-                    let block = (y / 4) * (w / 4) + x / 4;
-                    let copied = match bugs {
-                        Bugs::Fixed => true,
-                        Bugs::Original => written.get(block).copied().unwrap_or(false),
-                    };
-                    let at = (y0 + y) * width + x0 + x;
-                    if let Some(pixel) = back.get_mut(at).filter(|_| copied && x0 + x < width) {
-                        *pixel = colour(index);
-                    }
-                }
+                // The DLL's copy, its written blocks (CLT-Q119: the comparisons'), or every
+                // pixel (decision 24).
+                decoder.frame().copy_16(
+                    h3_smacker::check::Format::Rgb565,
+                    bugs == Bugs::Fixed,
+                    back,
+                    width,
+                    [x0, y0],
+                );
             }
             Source::Bink {
                 clip,
