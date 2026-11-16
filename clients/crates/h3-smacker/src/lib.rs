@@ -1,9 +1,10 @@
-//! A Smacker video decoder for the original game's clips (E27 M2 T1; decision 5, CLT-Q80): the
-//! Smacker file (`.smk`, [`Clip`], its frames read in order by a [`Reader`]) and its video
-//! ([`Decoder`]): bytes in, 8-bit indexed frames and their palettes out. Colours, timing,
-//! drawing and the sound are the viewer's (the audio tracks' packets are skipped: E27 M2 T2).
-//! The rectangles `SMACKW32.DLL` gives for what a frame changed ([`Rects`], E27 M2 T5a2) are
-//! ported from a reading of the DLL's code (`rects.rs`).
+//! A Smacker decoder for the original game's clips (E27 M2 T1; decision 5, CLT-Q80): the
+//! Smacker file (`.smk`, [`Clip`], its frames read in order by a [`Reader`]), its video
+//! ([`Decoder`]: bytes in, 8-bit indexed frames and their palettes out; [`Frame::copy_16`] the
+//! 16-bit copy `SMACKW32.DLL` writes) and its audio tracks' sound ([`sound`], E27 M2 T2: each
+//! packet's [`Samples`]). Timing, drawing and playing are the viewer's. The rectangles
+//! `SMACKW32.DLL` gives for what a frame changed ([`Rects`], E27 M2 T5a2) are ported from a
+//! reading of the DLL's code (`rects.rs`).
 //!
 //! **Origin.** Ported from FFmpeg 6.1.1 (<https://ffmpeg.org>): the demuxer's header, frame table
 //! and frames (`libavformat/smacker.c`, Copyright (c) 2006 Konstantin Shishkov; its

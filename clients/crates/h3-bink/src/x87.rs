@@ -17,9 +17,18 @@
 //! constants' at 2^-23 or above; each value is a sum of products of at most two such factors on
 //! a coefficient, and rounding keeps a value a multiple of its operands' smallest place, so a
 //! nonzero value is at least 2^-76 (a difference of two such multiples) and under 2^40 (a pass
-//! multiplies by at most 2.62 and adds eight terms). So there is no overflow, underflow or
+//! multiplies by at most 2.62 and adds eight terms). So the DCT has no overflow, underflow or
 //! denormal to model; zero's sign is not kept (it never reaches a pixel: `fistp` of either zero
 //! is 0, and a zero only ever adds or multiplies). *Provisional*.
+//!
+//! That argument is the DCT's alone. Since E27 M2 T2 the same `X` carries the sound's
+//! arithmetic too ([`crate::audio`]): its band scales (`10^(0.0664 q)`, about 10^17 at the
+//! quantizer byte 255), the coefficients they scale, a block's binary32 ends (any finite value)
+//! and the FFT over them. On an
+//! extreme file the DLL's values there could overflow (an infinity) or underflow (a subnormal or
+//! zero) where `X` keeps its exponent and goes on, so the samples would differ from the DLL's;
+//! no panic follows (the exponent is an `i32` far from its ends), and no game clip or synthetic
+//! sample reaches such a value (`bink-check.sh`'s samples are the DLL's). *Provisional*.
 //!
 //! Public only for the integration test `tests/x87.rs`, which checks it against the hardware's
 //! IEEE arithmetic (the crate's own sources hold no floating point; `h3-view`'s purity test).
