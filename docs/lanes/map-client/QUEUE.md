@@ -28,7 +28,8 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
   0x4CC7D0: the view, the selection, the panels, the music and the sounds); another player's turn
   out of the viewer's sight: the status window's kind 5 (`AdStatNx.pcx`, `crest58.def`,
   `HourSand.def`, `HourGlas.def`, 0x453250; design §4.8) with its tile, hint and cursors
-  (0x40DEB0, §4.10); the new day (the date's step, built at M3 T5b2, from its cause), the week's
+  (0x40DEB0, §4.10; read at T1a, built with T1b: out of sight it takes no time on the virtual
+  clock, design §5.1); the new day (the date's step, built at M3 T5b2, from its cause), the week's
   and the month's start and their messages (the adventure's message box, the first of T2's
   family: its frame, the text through the catalogue, its pictures and buttons, its sounds and
   place; the week's and month's names are the client's to draw: the engine sends `WeekStarted`
@@ -45,8 +46,10 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 - **Scope:** a computer player's moves where the viewer sees them (the view's scroll to them,
   their walk at the computer's speed, `enemyMoveTime` in VCMI's terms; read, not assumed; the
   system options' Computer Walk Speed and Blackout Computer, the client lane's note of
-  2026-11-12), over T1a's kind 5; a new sequence recorded in the original (a computer player's
-  turn in sight).
+  2026-11-12); the status window's kind 5 over them, its tile, hint and cursors (read at T1a,
+  design §5.1: on the virtual clock a computer's turn out of sight takes no time, so only a walk
+  in sight shows it); a new sequence recorded in the original (a computer player's turn in
+  sight).
 - **Acceptance:** as T1a's.
 - **Depends on:** T1a. **Status:** waiting.
 

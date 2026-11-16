@@ -1,0 +1,28 @@
+0 view 0 0 0
+0 objects 0
+0 cycles 0 0
+0 cursor 1 0 700 300
+0 buttons 0 1
+0 points 1560
+100 screen 679,356,743,388
+160 view -5 -4 0
+160 cursor 0 0 700 300
+160 points 1500
+160 hero 4 4 0 2
+160 date 2 1 1
+160 screen 8,8,790,591
+200 cycles 1 1
+260 screen 614,400,789,566
+360 screen 614,400,789,566
+400 cycles 2 2
+460 screen 614,401,789,566
+600 cycles 3 3
+800 cycles 4 4
+800 screen 368,367,432,397
+860 objects 2
+860 cursor 1 0 700 300
+860 screen 240,172,709,436
+1000 cycles 5 5
+1040 objects 3
+1040 screen 288,241,371,345
+1200 cycles 6 6

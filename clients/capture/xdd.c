@@ -193,6 +193,11 @@ static struct site sites[] = {
     {"month_kind", 0x4C8F5E, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
     /* a creature's month's creature: month_creatures 0x63E678[random_between(0, 11)] */
     {"month_creature", 0x4C8FA5, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* E24 M4 T1a (design §5): the week's name, random_between(0, 14) into week_creature at every
+       week's start (a creature's week overwrites it with its creature), ArrayTxt's records 43 to
+       57; a normal month's, random_between(0, 9) into month_creature, records 32 to 41 */
+    {"week_name", 0x4C87A6, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    {"month_name", 0x4C8FCC, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
     /* logged: a neutral town's garrison week, random_between(0, 100) below 80 with a Fort,
        Citadel or Castle standing, else below 40, in the towns' order */
     {"garrison_chance_fort", 0x4C8E09, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 1},

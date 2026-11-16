@@ -1,0 +1,11 @@
+# The turn's end on the first month's last day (E24 M4 T1a; clients/map/sequences.toml
+# `turn-month` and the others; E24 design §5): `seq-turn`'s map with a second hero of Red's,
+# selected (the date written is drawn by a selection's redraw), End Turn starting the next month.
+size = 36
+terrain = "grass"
+heroes = [{ at = [4, 4], class = 2 }, { at = [6, 7], class = 5 }, { at = [32, 32], owner = 1 }]
+select = { hero = [6, 7] }
+towns = [{ at = [8, 3], faction = 0, owner = 0, buildings = "fort" }]
+view = [0, 0, 0]
+hidden = [[12, 12, 35, 35]]
+date = [1, 4, 7]

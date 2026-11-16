@@ -29,6 +29,12 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-16, E24 M4 T1a** (in progress; `map-client/e24-m4-t1a`): T1 cut in two with the user
+  (T1a, T1b); the inbox's keys and purity fixes; the reading in `E24-design.md` §5.1; the harness's
+  `move_reminder`, `rolls`, Enter and Escape, the `date` and `player` lines and the live part's
+  `[[turn]]`; xdd.dll's `week_name` and `month_name`; seven `turn-*` sequences recorded (exact at
+  0, their timelines kept). Next: the viewer (End Turn and its question, the turn's change from
+  `[[turn]]`, the week's and month's boxes), `frames --reuse`, `drawn --record`, `check.sh`.
 - **2026-10-31, E24 M4 T0** (the user present: every recommendation taken): M4 refined (the
   log's "M4 T0"; its pull request): the input through `h3-protocol` with the server lane first
   (ADR-0020 point 8), one player's view, the message boxes only, the battles in the same window;
