@@ -317,3 +317,9 @@ T7a1):
   for it; `h3-game`'s `Together::Exchange { hero, army }` holds a stationary `ArmyRef` (a town's
   garrison may be its `army`), and `Together::admits` refuses a map garrison its decision does not
   hold (`DecisionOpen`; alone `NotTogether`). Design note §13's *As built* (`E08-design.md`).
+
+## 2026-11-16 — archived at E09 T34
+
+Used by batch TWN-4's recipes (E09 T34; the gold bonus, `hint_at`).
+
+- 2026-11-12 (the adventure lane, E08 T110, `adventure/e08-t110`; the capture harness, informational, for your next batch): `h3drive.gold_bonus` now clicks each row's arrow until the memory reads Gold (a heroless town player has no Artifact in its row); `hint_at` parks the mouse and reads until two reads agree; `play_turns` gives no order once the battle is decided; a recipe's `+anything odd` is kept beside the notes. New steps and reads: `clients/capture/README.md`, "Garrisons and the bonus visitables".

@@ -4307,3 +4307,67 @@ Ids: questions next 19, decisions next 123, disputes next TD-24, quirk candidate
 **Verify:** docs only: the docs gates (`check-docs`, `check-rules`, `check-stubs`,
 `check-exe-map`, `check-lane --base origin/master`, `doc-drift --base origin/master`); CI on the
 pull request is the record.
+
+### T34 — batch TWN-4: the writer's Tavern and Den, the harness's taverns and guild, three maps run twice, the scoring (2026-11-16)
+
+One session, the user present at the start; branch `town/e09-t34`, `cross-lane` (the user's consent
+at the start: `h3-map`'s writer is the adventure lane's, `h3-experiment` the battle lane's; the
+capture harness is common). Starting point: `master` at 77c2eec (#969 merged; the setup's baseline
+ran only the light gates: CI's fingerprint on `master`'s code). The user's computer was connected
+at the start only: the client lane's 64 files and the four manuals and two help files staged (70,
+SHA-256 checked, one digest of the sorted lists). **Kept whole** (decision 123; the agent
+recommended three parts as E08 T119 to T121).
+
+- **The writer** (`h3_map::writer`, `cross-lane`): `TAVERN_OBJECT` (95) and
+  `DEN_OF_THIEVES_OBJECT` (97) among `PLAIN_OBJECTS`, no body; `tests/taverns.rs` reads them back
+  in SoD and RoE (the masks as the game's: the Tavern entered west of its anchor, the Den at it)
+  and imports them as blockers until T39a. `h3-experiment` (`cross-lane`): the pictures
+  `AVXtvrn0`, `AVXdend0` in `ObjectSpec`'s docs, the tables' fixture, a build test. The
+  experiments README's paragraph and its batch row.
+- **The harness** (`clients/capture/`, common; README "Taverns and the Thieves' Guild"): the tavern
+  dialog (vtable 0x643980: offers 5, 6; Recruit 12; the guild 11; close 30720; the status line 14,
+  its texts TvrnInfo.txt's) and the Thieves' Guild window (0x643764: the flags by place and row,
+  the columns' colours at +0x60, the parts' items 750 + c, 1/10/20/30 + c, the tactic's text,
+  850 + c), both read live under Wine by two probes; the reads `offers:`, `offer:`, `pool`,
+  `heroes:<colour>`, `tavern`, `guild`, `hovered`, `hero[<name>]:offer`, `:class`, `:returning`,
+  `:owner`, `town:x,y:visitor:<detail>`, `:guild_spells`, `start_draws`; the actions `tavern`,
+  `hover`, the hero screen's `dismiss`; a step `town = [x, y]` (a town from the town list, no
+  hero); a step's `resources`, `mana`, `narrow_pool`; a field `<encounter>|<field>`. xdd.dll logs
+  `tavern_class`, `tavern_type` and `leave_slot` with their ranges (the address map's three
+  `*_draw` sites). Fixes: auto combat that ends before a human stack's turn (the stale active stack
+  kept it pressing `a`), a portrait's selection frame read 0x7 after a dialog closed. A stale
+  `xdd.dll` now fails the sequences' count of redirected calls: rebuild it with `setup.sh` (the
+  other lanes' inboxes told).
+- **The specs and recipes:** `experiments/specs/E09-batch-4a.toml` (stamp in its template; rows 1,
+  2, 6, 8: four Castles of Red's with the Tavern and the Mage Guild, eight weeks by the written
+  date, then three hires and the Recruit button), `-4b.toml` (rows 3, 4, 5: the date written to day
+  6, a retreat in Red's turn and one in Blue's, a surrender, a loss to 30 Black Dragons, a
+  dismissal from the narrowed pool, two hires), `-4c.toml` (row 7: R1's Tavern from the list, four
+  neutral towns with Taverns taken, the Den of Thieves; the resources written); recipes
+  `clients/capture/batches/E09-batch-4a.toml` (19 steps, about 2 minutes), `-4b.toml` (13 steps,
+  about 1.5), `-4c.toml` (6 steps, about 1.5).
+- **The runs:** two of each, recorded (`experiments/results/E09-batch-4a.md`, `-4a-run2.md`,
+  `-4b.md`, `-4b-run2.md`, `-4c.md`, `-4c-run2.md`); 4b's and 4c's runs the same record for
+  record (the game's generator reseeded alike), 4a's offers drawn anew. Probes (not recorded): the
+  tavern dialog's and the guild window's items, the hero_in after the tavern, 4a's eighth week
+  alone.
+- **The scoring** (survey §14): every row as the reading in every read of both runs: slot 0 of the
+  faction over 1-12, slot 1 another class over 1-94 (all 32 slot-1 draws: the Conflux classes
+  weigh; TWN-4-8), full armies; the hire on the entrance, the guild's spells with a book, the
+  replacement at once with one creature over 94 or 95; Recruit refused with a visitor (TvrnInfo 2)
+  and at 8 on the map (TvrnInfo 1), the garrison hero counted in neither; TD-18 (the day-7
+  fugitive kept, the day-6 one released and here drawn again with a full army); the surrender's
+  army kept, the loss's type free with 1 creature, 2 000 points over the cleared army and 10
+  spell points (T-16's reading); T-14 (a dismissed hero's artifacts back with it); TD-23 and T-17
+  (the best hero by army power, the artifacts row by the backpacks, the army row and the best
+  creature with R1's garrison). **Not predicted, read in the code:** `new_day` clears bit 17 of
+  every hero record after the week (0x4C80CF) and gives every record its day's spell points
+  (0x4C8237): for T35's checkpoint (design §63, §67, §68; recommended as the original).
+
+**The queue:** T34 out; T35 next (with the two points). The adventure, client and map-client lanes'
+inboxes told the harness's change (rebuild `xdd.dll`), the adventure lane's the writer's two
+classes. No version moved. Ids: questions next 19, decisions next 125, disputes next TD-24, quirk
+candidates next T-18.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; `cargo xtask
+check-lane --cross-lane`; `cargo test -p h3-experiment`; CI on the pull request is the record.

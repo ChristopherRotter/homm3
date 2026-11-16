@@ -49,6 +49,10 @@
 //! ([`BANK_OBJECTS`]: class 16 by subclass, the Derelict Ship, Dragon Utopia, the Crypt and the
 //! Shipwreck) as [`Plain`] objects, without a body as the game's maps.
 //!
+//! Since E09 T34 (batch TWN-4's maps, increment 4's design note `docs/epics/E09-design.md` §78)
+//! it writes the adventure map's Tavern ([`TAVERN_OBJECT`]) and the Den of Thieves
+//! ([`DEN_OF_THIEVES_OBJECT`]) as [`Plain`] objects, without a body as the game's maps.
+//!
 //! Since E09 T9a (the town map, design note `docs/epics/E09-design.md` §18) it writes a town of
 //! any kind ([`AnyTown`]: random towns with their alignments, a player's main town in the header,
 //! a name, random garrison stacks) and random heroes ([`RandomHero`]); since E09 T19a (design
@@ -262,13 +266,21 @@ pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228
 /// subclass 0, its six tiles all blocked and visitable, on water. Since E08 T109a increment 12's
 /// bonus visitables ([`BONUS_OBJECTS`]). Since E08 T109b increment 7's School of War (107; no
 /// body, batch E12's E12-17: a refused visit's kind mark, decision 313). Since E08 T119 increment
-/// 13's creature banks ([`BANK_OBJECTS`]). On either level (a level's objects,
-/// [`Underground::objects`]).
-pub const PLAIN_OBJECTS: [u32; 47] = [
+/// 13's creature banks ([`BANK_OBJECTS`]). Since E09 T34 increment 4's Tavern (95) and Den of
+/// Thieves (97; batch TWN-4, survey `docs/rules/surveys/E09-tavern.md` §3, §6: no body, subclass
+/// 0). On either level (a level's objects, [`Underground::objects`]).
+pub const PLAIN_OBJECTS: [u32; 49] = [
     8, 11, 13, 14, 16, 22, 24, 25, 28, 29, 30, 31, 38, 43, 44, 45, 48, 49, 52, 55, 56, 63, 64, 78,
-    82, 84, 85, 86, 92, 94, 96, 100, 101, 103, 104, 105, 107, 108, 109, 110, 111, 112, 124, 135,
-    137, 155, 212,
+    82, 84, 85, 86, 92, 94, 95, 96, 97, 100, 101, 103, 104, 105, 107, 108, 109, 110, 111, 112, 124,
+    135, 137, 155, 212,
 ];
+/// Object class of the adventure map's Tavern (E09 T34; among [`PLAIN_OBJECTS`], no body): a
+/// human hires its player's two tavern offers there onto the Tavern's visitable tile (survey
+/// `docs/rules/surveys/E09-tavern.md` §3).
+pub const TAVERN_OBJECT: u32 = 95;
+/// Object class of the Den of Thieves (E09 T34; among [`PLAIN_OBJECTS`], no body): its visit
+/// opens the Thieves' Guild with everything shown (survey `E09-tavern.md` §6).
+pub const DEN_OF_THIEVES_OBJECT: u32 = 97;
 /// Object classes of the creature banks (E08 T119: batch E13; survey
 /// `docs/rules/surveys/E08-banks.md` §1, no body in RoE, AB or SoD), among [`PLAIN_OBJECTS`]: the
 /// seven banks of class 16 by subclass ([`BANK_SUBCLASSES`]: the Cyclops Stockpile 0, the Dwarven

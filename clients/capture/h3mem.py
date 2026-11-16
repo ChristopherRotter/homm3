@@ -262,6 +262,20 @@ TACTICS_PHASE = 0x13D68
 # (u32 +0x105: bit 21 a Warrior's Tomb's penalty taken, bit 12 a looted Pyramid's), the morale
 # and luck bonuses until the next battle's end (i8 +0x11A, +0x11B).
 SPELL_POINTS, STATUS, MORALE_BONUS, LUCK_BONUS = 0x18, 0x105, 0x11A, 0x11B
+# E09 T34 (batch TWN-4; survey docs/rules/surveys/E09-tavern.md §2, §4): the status flags' bit 17
+# a returning offer (hero_leave_game 0x4D9EC0 sets it after a retreat or a surrender; cleared at
+# its owner's turn end and by a hire's hero_place), bit 18 in a boat; a hero's type (i32 +0x1A,
+# its record's index) and class (i32 +0x30, hero_class_name 0x4D8F70); a player's two tavern
+# offers (i32 +0x28, +0x2C: hero types, -1 empty); the game's hero pool (i8 +0x4DF18 by type: -1
+# free, a colour its owner's, 0x40 reserved, 0x41 a prisoner's) and the types' colour masks (u8
+# +0x4DFB4); the hero info table (a pointer at 0x67DCE8, 0x5C bytes a type: the small portrait's
+# name +0x30, the large one's +0x34) and the classes (a pointer at 0x67DCEC, 0x40 bytes a class:
+# the name +0x4).
+RETURNING_BIT, BOAT_BIT = 1 << 17, 1 << 18
+HERO_TYPE, HERO_CLASS, PLAYER_OFFERS = 0x1A, 0x30, 0x28
+POOL, POOL_MASKS, POOL_RESERVED, POOL_PRISONER = 0x4DF18, 0x4DFB4, 0x40, 0x41
+HERO_INFO_POINTER, HERO_INFO_SIZE, SMALL_PORTRAIT = 0x67DCE8, 0x5C, 0x30
+HERO_CLASSES_POINTER, HERO_CLASS_SIZE, HERO_CLASS_NAME = 0x67DCEC, 0x40, 0x4
 # Game (E08 T57; structs.toml, game): the Universities' vector (begin +0x4E3CC, end +0x4E3D0),
 # four i32 skills each, indexed by a University's tile word's bits 13-24 (university_skills
 # 0x405E10).
@@ -296,6 +310,9 @@ PATH_SHOWN = 0x4C
 # and 5-byte records at game +0x1FBD4 and +0x1FBE4: the quest at +0, the visitors' bits at +4;
 # quest_log_state 0x4039B0).
 PLAYER_TOWNS, PLAYER_TOWN, PLAYER_TOWN_LIST, HERO_ASLEEP = 0x3E, 0x3F, 0x40, 0x11C
+# E09 T34: a town's guild spells (i32[30] +0x44, six a level) and the spells each level shows
+# (i8[5] +0xBC; structs.toml "town").
+TOWN_GUILD_SPELLS, TOWN_GUILD_COUNTS = 0x44, 0xBC
 ADVENTURE_DIALOG, HERO_TOP, TOWN_TOP = 0x44, 0x64, 0x68
 QUEST_VECTORS = ((0x1FBD4, 19), (0x1FBE4, 5))
 # The lists' contents (E24 M3 T4a; design §4.5 of E24): a hero's portrait (u8 +0x34, an index into
@@ -783,6 +800,8 @@ class Mem:
             # E08 T79b (batch E9b): the day's income and the Mystical Gardens' mask.
             "income": dict(zip(RESOURCES, struct.unpack_from("<7i", raw, PLAYER_INCOME))),
             "gardens": struct.unpack_from("<I", raw, PLAYER_GARDENS)[0],
+            # E09 T34 (batch TWN-4): the two tavern offers (hero types, -1 empty).
+            "offers": list(struct.unpack_from("<2i", raw, PLAYER_OFFERS)),
         }
 
     def is_human(self, colour):
@@ -833,7 +852,31 @@ class Mem:
             "status": struct.unpack_from("<I", raw, STATUS)[0],
             "morale_bonus": struct.unpack_from("<b", raw, MORALE_BONUS)[0],
             "luck_bonus": struct.unpack_from("<b", raw, LUCK_BONUS)[0],
+            # E09 T34 (batch TWN-4): the type and the class.
+            "type": struct.unpack_from("<i", raw, HERO_TYPE)[0],
+            "class": struct.unpack_from("<i", raw, HERO_CLASS)[0],
         }
+
+    def pool(self):
+        """E09 T34 (batch TWN-4): the hero pool's states by type (game +0x4DF18, i8: -1 free, a
+        colour its owner's, 0x40 reserved, 0x41 a prisoner's)."""
+        return list(struct.unpack(f"<{HERO_COUNT}b", self.read(self.game() + POOL, HERO_COUNT)))
+
+    def write_pool_state(self, hero_type, state):
+        """E09 T34 (batch TWN-4's narrowed pool): one type's pool state."""
+        self.write_bytes(self.game() + POOL + hero_type, struct.pack("<b", state))
+
+    def class_name(self, hero_class):
+        """E09 T34: a hero class's name from the game's class table (0x67DCEC)."""
+        record = self.u32(HERO_CLASSES_POINTER) + HERO_CLASS_SIZE * hero_class
+        return self.c_string(self.u32(record + HERO_CLASS_NAME), 32)
+
+    def portrait_types(self):
+        """E09 T34 (the Thieves' Guild's best hero): each type's small portrait's name (the
+        hero info table's +0x30, lower case) and its type."""
+        table = self.u32(HERO_INFO_POINTER)
+        return {self.c_string(self.u32(table + HERO_INFO_SIZE * t + SMALL_PORTRAIT), 16).lower(): t
+                for t in range(HERO_COUNT)}
 
     def artifact_name(self, artifact):
         """An artifact's name from the game's artifact setup table (E08 T32b1)."""
@@ -2361,7 +2404,12 @@ def town_fields(index, at, raw):
             "recruits": list(struct.unpack_from("<14h", raw, TOWN_RECRUITS)),
             "portal": [struct.unpack_from("<i", raw, TOWN_PORTAL_CREATURE)[0],
                        struct.unpack_from("<h", raw, TOWN_PORTAL_COUNT)[0]],
-            "dwellings": list(struct.unpack_from("<14i", raw, TOWN_DWELLINGS))}
+            "dwellings": list(struct.unpack_from("<14i", raw, TOWN_DWELLINGS)),
+            # E09 T34 (batch TWN-4): the spells its guild shows (+0x44, six slots a level; the
+            # first +0xBC[level] of each level's built ones).
+            "guild_spells": [sp for level in range(5)
+                             for sp in struct.unpack_from("<6i", raw, TOWN_GUILD_SPELLS + 24 * level)
+                             [:raw[TOWN_GUILD_COUNTS + level]] if sp >= 0]}
 
 
 def adventure_state(mem):

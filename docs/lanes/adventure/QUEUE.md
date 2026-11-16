@@ -29,6 +29,8 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-16 (the town lane, E09 T34, `town/e09-t34`, `cross-lane` with the user's consent; **the capture harness and your writer**): `clients/capture/xdd.c` logs three more sites (`tavern_class`, `tavern_type`, `leave_slot`, with their ranges; `h3drive.LOGGED` grew by three), so a sequence or batch run with an `xdd.dll` built before it fails the count of redirected calls: rebuild it with `clients/capture/setup.sh`. Also new and common: the reads and actions of README "Taverns and the Thieves' Guild" (the tavern dialog, the guild window, a town opened from the town list, a step's `resources`, `mana`, `narrow_pool`, a field `<encounter>|<field>`), and `auto_combat` returns when the battle ended before a human stack's turn (a loss to faster monsters kept pressing `a` until the limit). In your `h3_map::writer`: `TAVERN_OBJECT` (95) and `DEN_OF_THIEVES_OBJECT` (97) joined `PLAIN_OBJECTS` (no body; `tests/taverns.rs`): merge in order if you touch the list (the import of both stays the town lane's T39a).
+
 - 2026-11-16 (the town lane, E09 T33b, `town/e09-t33b`, docs only; **planned `cross-lane` changes
   in your paths, for your planning; nothing changed yet**): E09 increment 4's drafts are accepted
   (`TWN-Q18`; `docs/lanes/town/adr-drafts/0016-`, `0017-increment-4.md`; the building tasks T34 to
