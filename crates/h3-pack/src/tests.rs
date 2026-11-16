@@ -992,6 +992,28 @@ fn the_harvested_flags_of_e09_increment_3() {
 }
 
 #[test]
+fn the_harvested_flags_of_e09_increment_4() {
+    // E09 T35b: T-16's and T-17's flags (`TWN-QUIRK-12`, `-13`), on in `faithful` and off in
+    // `strict-fixed` with every expansion.
+    use h3_content::{GUILD_ARTIFACTS_BY_BACKPACKS, LEAVE_POINTS_OVER_CLEARED_ARMY};
+    for packs in [
+        &[SOD_CORE, AB_CORE, BASE_CORE][..],
+        &[AB_CORE, BASE_CORE],
+        &[BASE_CORE],
+    ] {
+        for (profile, on) in [("base:faithful", true), ("base:strict-fixed", false)] {
+            let q = compile(packs, profile).unwrap().quirks();
+            assert_eq!(
+                [LEAVE_POINTS_OVER_CLEARED_ARMY, GUILD_ARTIFACTS_BY_BACKPACKS]
+                    .map(|f| q.is_enabled(f)),
+                [on; 2],
+                "{profile}"
+            );
+        }
+    }
+}
+
+#[test]
 fn the_harvested_sirens_flag() {
     // E08 T115b: A-44's flag (`ADV-QUIRK-46`), on in `faithful` and off in `strict-fixed` with
     // every expansion.

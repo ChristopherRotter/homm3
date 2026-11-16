@@ -129,6 +129,8 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.town.creature_month_exact",
     "quirk.town.neutral_plague_full_growth",
     "quirk.adventure.sirens_again_after_battle",
+    "quirk.town.leave_points_over_cleared_army",
+    "quirk.town.guild_artifacts_by_backpacks",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -346,6 +348,23 @@ pub const NEUTRAL_PLAGUE_FULL_GROWTH: QuirkFlag = QuirkFlag(40);
 /// `fix-optional`; read by the adventure's battle clear from E08 T115b.
 pub const SIRENS_AGAIN_AFTER_BATTLE: QuirkFlag = QuirkFlag(41);
 
+/// TWN-QUIRK-12 (T-16, E09 decision 116; design `E09-design.md` §67, batch TWN-4's TWN-4-4): a
+/// hero that leaves the game without returning (a loss, a draw, the capture's leave, the
+/// dismissal) takes as its points left and the day's maximum the land maximum the original
+/// computes after clearing its army (`hero_leave_game` 0x4D9EC0 refills the points before it
+/// places the one creature, so `hero_max_land_movement` 0x4E4990 starts from the empty slots'
+/// speed 20, the land table's most). Off: the land maximum of the one creature it keeps. Seen
+/// only when the type is drawn as a replacement and hired in the same turn. Class
+/// `fix-optional`; read by `h3-game`'s leave from E09 T38b.
+pub const LEAVE_POINTS_OVER_CLEARED_ARMY: QuirkFlag = QuirkFlag(42);
+
+/// TWN-QUIRK-13 (T-17, E09 decision 117; survey `E09-tavern.md` §13, batch TWN-4's TWN-4-7):
+/// the Thieves' Guild's artifacts row counts each player's heroes' backpacks alone
+/// (`hero_worn_count` 0x4D9070 with argument 1 skips every worn position). Off: the worn and the
+/// backpack's artifacts (VCMI's). Information only, no state touched. Class `fix-optional`; read
+/// by `h3-game`'s Thieves' Guild from E09 T39b.
+pub const GUILD_ARTIFACTS_BY_BACKPACKS: QuirkFlag = QuirkFlag(43);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -388,13 +407,23 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 42);
+        assert_eq!(REGISTRY.len(), 44);
         assert_eq!(
             [
                 REGISTRY.lookup("quirk.town.creature_month_exact"),
                 REGISTRY.lookup("quirk.town.neutral_plague_full_growth"),
             ],
             [Some(CREATURE_MONTH_EXACT), Some(NEUTRAL_PLAGUE_FULL_GROWTH)]
+        );
+        assert_eq!(
+            [
+                REGISTRY.lookup("quirk.town.leave_points_over_cleared_army"),
+                REGISTRY.lookup("quirk.town.guild_artifacts_by_backpacks"),
+            ],
+            [
+                Some(LEAVE_POINTS_OVER_CLEARED_ARMY),
+                Some(GUILD_ARTIFACTS_BY_BACKPACKS)
+            ]
         );
         assert_eq!(
             [
@@ -575,7 +604,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 42);
+        assert_eq!(REGISTRY.len(), 44);
         assert_eq!(
             [
                 REGISTRY.names[9],
@@ -589,7 +618,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..42).filter(|i| ![9, 10, 14, 30].contains(i)))
+                .eq((0..44).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

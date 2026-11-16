@@ -148,3 +148,29 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: faithful = the original's, strict-fixed = the original's
 - Regression test: `crates/h3-game/src/town/tests/rows.rs`, `twn_quirk_11_a_garrison_hero_without_a_stack_does_not_defend`; `crates/h3-adventure/src/town/rows/tests.rs`, `a_garrison_hero_alone_defends_its_town_s_siege_with_its_own_army` (its last part) and `a_garrison_hero_s_battle_ends_in_its_town`
 - Decided by / date: the user, 2026-11-02 (TWN-Q2; the epic's decision 12); entered by E09 T28b2, 2026-11-14
+
+### TWN-QUIRK-12 — A leave's movement points over the cleared army
+- Class: fix-optional (the user, 2026-11-16, TWN-Q18, T-16: "fix-optional flag, on in faithful"; the epic's decision 116)
+- Context / rules affected: town, TWN-TAV-006 (a hero that leaves the game; planned, E09 T38b), GAM-BAT-003 and the capture's leave (amended by T38b), TWN-TAV-004 (the replacement)
+- Original behavior: `hero_leave_game` (0x4D9EC0) frees a hero that leaves without returning (a loss, a draw, the capture's leave, the dismissal), refills its spell points and its movement points, then puts one creature of its first starting stack into its emptied army: the refill runs while the seven slots are empty, so `hero_max_land_movement` (0x4E4990) starts from the empty slots' speed, 20, the land table's most (with the hero's Logistics and artifacts), whatever the one creature's speed.
+- Intended/expected behavior: with the flag off the points left and the day's maximum are the land maximum of the one creature the hero keeps.
+- Impact: gameplay, small: the points are seen only when the freed type is drawn as a replacement and hired in the same turn (a week's or a start's fill sets them again at the owner's turn start, design `E09-design.md` §68); such a hero walks with the table's most on its first day.
+- Community status: the wiki is silent; VCMI 1.7.5 gives every tavern offer its movement at each day's start (survey `docs/rules/surveys/E09-tavern.md` §8, TD-20), its leave's points not read.
+- Sources: code reading of `hero_leave_game` 0x4D9EC0 (E09 T32, the refill's order by T33a; survey `docs/rules/surveys/E09-tavern.md` §4; design `E09-design.md` §67); batch TWN-4's row TWN-4-4 (`experiments/results/E09-batch-4b.md`, `-4b-run2.md`: TWN-4-4b lost, its 1 Centaur with 2 000 points of 2 000; survey §14).
+- Flag: `quirk.town.leave_points_over_cleared_army` (`LEAVE_POINTS_OVER_CLEARED_ARMY`, registry position 42, E09 T35b)
+- Defaults: faithful = on (the cleared army's), strict-fixed = off (the one creature's)
+- Regression test: planned with the leave (E09 T38b, `crates/h3-game`'s pool tests, both settings)
+- Decided by / date: the user, 2026-11-16 (TWN-Q18; decision 116); the flag added and the entry made by E09 T35b, 2026-11-16
+
+### TWN-QUIRK-13 — The Thieves' Guild counts the backpacks' artifacts alone
+- Class: fix-optional (the user, 2026-11-16, TWN-Q18, T-17: a `fix-optional` flag over the agent's `preserve`; the epic's decision 117)
+- Context / rules affected: town, TWN-TAV-008 (the Thieves' Guild's rows; planned, E09 T39b)
+- Original behavior: the Thieves' Guild's artifacts row (`thieves_guild_row_value` 0x5DEE70, at 0x5DEFF8) sums over a player's heroes on the map the backpack's count (`hero_backpack_count` 0x4D90C0) and `hero_worn_count` (0x4D9070) with argument 1, which counts nothing with that argument (its flag's test at 0x4D9090 skips every position; with 0, the tavern dialog's, it counts the worn artifacts but the spell book and the war machines): a hero's worn artifacts never count.
+- Intended/expected behavior: with the flag off the row counts the worn and the backpack's artifacts (VCMI's).
+- Impact: information only, no state touched: which player the row ranks first (batch TWN-4's TWN-4-7: one artifact in a backpack ranks above three worn).
+- Community status: VCMI 1.7.5 counts the worn artifacts and the backpack's (survey `docs/rules/surveys/E09-tavern.md` §13); the wiki is silent.
+- Sources: code reading of `thieves_guild_fill` 0x5DDA10, `thieves_guild_row_value` 0x5DEE70 and `hero_worn_count` 0x4D9070 (E09 T33b; survey `docs/rules/surveys/E09-tavern.md` §13, T-17); batch TWN-4's row TWN-4-7 (`experiments/results/E09-batch-4c.md`, `-4c-run2.md`: artifacts 1st Blue, one in a backpack against Red's three worn; survey §14).
+- Flag: `quirk.town.guild_artifacts_by_backpacks` (`GUILD_ARTIFACTS_BY_BACKPACKS`, registry position 43, E09 T35b)
+- Defaults: faithful = on (the backpacks alone), strict-fixed = off (the worn and the backpack's)
+- Regression test: planned with the guild (E09 T39b, `crates/h3-game`'s Thieves' Guild tests, both settings)
+- Decided by / date: the user, 2026-11-16 (TWN-Q18; decision 117); the flag added and the entry made by E09 T35b, 2026-11-16
