@@ -4426,3 +4426,43 @@ next 129.
 **Verify:** `cargo xtask check-docs`, `cargo xtask doc-drift`, `cargo xtask check-lane
 --cross-lane`, `cargo xtask verify --scope town --summary`; docs only, so CI runs `check-lane` and
 the docs gates; the pull request is the record.
+
+### T35b — `shared/`: the taverns' stream, the flags of `TWN-QUIRK-12` and `-13`, the profiles' hashes (2026-11-17)
+
+One session, the user present at the start; branch `shared/e09-t35b`, `cross-lane` (`h3-kernel`
+and `h3-content` shared; the harvester and the packs the battle lane's, the golden replays the
+adventure lane's, the bot reports the AI lane's, one test literal the server lane's). Starting
+point: `master` at 4f4fbbc (#976, T35a's, merged; the setup's baseline verified the code,
+e3cedff5, after a VM restart). The user's computer was connected at the start only: the four
+LODs, both executables, the two tars and the three saves staged (11 files, SHA-256 checked against
+the PC's), for T35b and T36. **Kept whole** with the `cross-lane` consent (decision 129); T36 after
+it in the same session (decision 130).
+
+- **`h3-kernel`:** `StreamId::TAVERNS = Self(8)` in the closed list (decision 115), the two tests'
+  named lists extended; KER-RNG-001's summary names the streams 6 to 8 (it stopped at 5).
+- **`h3-content`:** `quirk.town.leave_points_over_cleared_army` (`QuirkFlag(42)`,
+  `LEAVE_POINTS_OVER_CLEARED_ARMY`, T-16) and `quirk.town.guild_artifacts_by_backpacks` (43,
+  `GUILD_ARTIFACTS_BY_BACKPACKS`, T-17): the registry's 44 positions, its two tests; read from
+  T38b and T39b. No encoding changed: `RULESET_HASH_VERSION` 53 and the pack format v52 kept.
+- **`h3-pack`:** `the_harvested_flags_of_e09_increment_4` (on in `faithful`, off in `strict-fixed`,
+  every expansion). **The harvester's** two profiles and `packs/base/core.toml`'s two profile
+  lines; the harvester re-run on the staged installation wrote the same packs (the synthetic packs
+  name no town flag, as before).
+- **The ledger:** `TWN-QUIRK-12` and `-13` entered (`quirks-town.md`; confirmed by batch TWN-4's
+  TWN-4-4 and TWN-4-7; their regression tests with T38b and T39b; decision 131).
+- **Replays and records:** the base faithful ruleset hash moved 0xb5c01c8736eb73f9 to
+  **0x6ba8109889b34a25** (the flags' bits; `strict-fixed`'s 0xb0c378a75ff70a5b and the synthetic
+  0x876dc0d92f71fae2 kept: the bits off and no town flag). The 86 golden adventure replays on it
+  re-recorded from their commands by a scratch script: only `ruleset_hash` moved; the three
+  strict-fixed ones and the ten battle replays unchanged; all 99 verified (`h3 adventure verify`,
+  `h3 verify`). `h3-server`'s record literal; the AI lane's `bots-report-v1.json` and
+  `bots-neutral-v1.json` regenerated: only `engine.core` moved.
+- **Also:** the battle and adventure lanes' HANDOFF version lines; the adventure lane's inbox (the
+  replays' header in its paths).
+
+**The queue:** T35b out; T36 next (its cut confirmed, decision 130). Ids: decisions next 132.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`, `cargo xtask
+check-lane --cross-lane`, `cargo check --workspace --all-targets`, `cargo test -p h3-kernel -p
+h3-content -p h3-pack -p h3-harvest -p h3-server -p h3-protocol`; CI on the pull request is the
+record.
