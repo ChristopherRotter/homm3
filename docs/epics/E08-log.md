@@ -17932,3 +17932,80 @@ alone this session. **Baseline:** `master` 7d0cfd0 (#970 merged). Nothing staged
   built*; decision 350 and the task's line; the queue (T122 out, T123 in).
 
 **Versions:** none moved. T123 (round 5, its cut at its start) next.
+
+### Increment 13, round 5: T123a, the kind, the packs and the check against the original data (2026-11-16, `adventure/e08-t123a`, `cross-lane`)
+
+**The cut** (decision 351; asked at the start, `AskUserQuestion`): T123a alone in this session, one
+pull request, `cross-lane` for the AI lane's two bots tables (asked when `check-lane` named them;
+as decisions 283 and 319); T123b next, alone (the writer's half was T119's). **Baseline:** `master`
+c149390 (#971, T122's merge; CI's fingerprint, so the setup ran the light gates only). The original
+data staged from the user's repo folder (the four LODs, both executables, `maps.tar`,
+`extracted.tar`; SHA-256 checked, one digest of the sorted lists), the `extracted/` tables copied
+by hand after the setup (`cp -rn`; the setup copies `H3bitmap` only).
+
+- **The kind** (`h3-adventure`'s new `ruleset/banks.rs`; design §1): `ObjectKind::Bank(Bank)`,
+  `ObjectKindDef::Bank(BankDef)`; `Bank { question, levels, looted, deck, coast }`,
+  `BankQuestion::{Attack, Search}`, `BankLevel { chance, guards, upgrade, resources, creature,
+  artifacts }` (the guards before the split; `artifacts: [u8; 4]` by `BANK_ARTIFACT_CLASSES`,
+  treasure, minor, major, relic), `BANK_LEVELS`, `BANK_GUARDS`, `MAX_BANK_REWARD` (127), all
+  exported. Hash tag 44 (the question, the levels as length and each, the looted bonus as 0 or 1
+  and the bonus, the two flags). **Adventure ruleset part v21.** No effect: a step onto one is
+  refused as any unbuilt visit's until T124b. The compile's checks (`compile_bank`): one to four
+  levels, the chances each from 1 and together 100 (`check_chances`, now shared with the
+  rewards), one to four distinct guards, none a war machine, counts from 1, the upgrade at most
+  100, the resources as a gift's, the reward no war machine and its count 1 to 127, `looted`
+  only with `search`; in `compile_object_types` `coast` only on a type visited from a neighbour.
+  *Agent's calls:* once every pack is in (`check_bank` in `check_object_types`) every guard count
+  at most the part's `max_stack_count` and every level's stacks after the split within the army's
+  slots (`bank_stacks`: five for one to three named stacks, else the four; survey §3's split);
+  the kind wrapped in a struct, as the chest's and the Pyramid's, in a module of its own.
+- **The pack syntax** (`h3-pack-adventure`): a sub-table `[object_type.bank]` after the type's
+  keys with `question`, `levels` (each level an inline table on one line: `chance`, `guards =
+  [{ creature, count }]`, optional `upgrade`, `resources`, `creature = { creature, count }`,
+  `artifacts = { treasure, minor, major, relic }`), `looted = { morale, mark }`, `deck`, `coast`
+  (false if left out); in the format's doc block.
+- **The packs** (design §2): `base` the eleven after the Watering Hole in the original's kind
+  order (`cyclops_stockpile` … `dragon_fly_hive` for class 16's subclasses, `shipwreck`,
+  `derelict_ship`, `crypt`, `dragon_utopia`), written from `CrBanks.txt` and the executable's two
+  tables by a scratch script and checked by hand against survey §2's table; the Shipwreck
+  neighbour-visited and from above, the ten entered; the searches' marks 14 (Shipwreck), 15
+  (Crypt), 16 (Derelict Ship); `ab` and `sod` none. Each with its sources in the pack's comments.
+- **The check against the original data** (`h3-pack-adventure`'s `original_data`, check 7,
+  `banks`; `CrBanks.txt` from AB's `H3ab_bmp`, the same file as H3bitmap's): each of the eleven
+  kinds has its one `base` bank type named the kind's first record's column 0, no other bank type
+  exists, its four levels equal the records as `crbanks_load` builds them (the original's `atoi`
+  for the chances; the guards by the four count columns with `bank_guard_creatures` by position,
+  the reward with `bank_reward_creatures`, through the core's original ids; the resources in the
+  original's order by key), the visit and from above the class lists', the question, the looted
+  bonus, the deck and the coast by class. It passes on the staged installation ("11 bank types
+  match CrBanks.txt's 11 kinds' four levels, …") and fails on four perturbations (the Naga Bank's
+  sulfur as gems, a deck on the Crypt, the Shipwreck not from above, a renamed Griffin
+  Conservatory with a Dragon Fly Hive's guard changed).
+- **Tests:** `h3-adventure`'s `ruleset/tests/banks.rs` (the kind compiled with its levels and no
+  effect, not ownable or weekly; every check's text and the unknown references; the guards against
+  `max_stack_count` and the army's slots once split; every parameter in the hash);
+  `h3-pack-adventure`'s `tests/banks.rs` (`parses_the_creature_bank_kind`: every field, the
+  defaults, the syntax and key errors; `the_base_pack_types_the_creature_banks_of_increment_13`:
+  the eleven in order with their names, questions, visits, marks, flags, last guards and rewards,
+  every chance column, the upgrades, the Imp Cache's, Crypt's and Dragon Utopia's levels whole,
+  D-65's sulfur), the type count (base + 11); `h3-map`'s `the_typed_classes_import_as_their_object_types`
+  leaving the eleven out until T123b imports them (found by the scoped verify's coverage run).
+- **Rules:** ADV-BNK-001 new, `verified` (CrBanks.txt, the code reading, VCMI 1.7.5's
+  `creatureBanks.json`, batch E13's E13-1, E13-2, E13-11, E13-5, E13-12 as observations).
+- **Replays and records:** the 89 adventure goldens re-recorded from their commands (a scratch
+  script, `h3 adventure run --script` with each header's options): commands, days and line counts
+  unchanged; every header's `adventure_ruleset_hash` moved (to `0xa5809e7fd9e842dd`), and in the 28
+  duel, garrisons and sea replays the checkpoints and final hash (base's new types come before
+  ab's and sod's, as at T113a); nothing else. `h3-protocol`'s and `h3-server`'s tests pass on them.
+  **The AI lane's** two bots tables regenerated in release: only `engine.adventure` moved.
+- **Docs:** design §1's and §2's *As built*, §18's row; decision 351 and the task's line; the queue
+  (T123 out, archived verbatim; T123b in alone); `OVERVIEW.md`'s part line; the map client lane's
+  inbox (the eleven types).
+- **Gates:** the scoped verify with the original data: every step passing but `check-lane`
+  (`cross-lane` by design; `check-lane --cross-lane` passes) and coverage, whose run met
+  `h3-map`'s typed classes' test (fixed above; the coverage step then rerun alone, passing);
+  determinism, bench-check and the original-data checks (check 7 among them) passed on the first
+  run. `cargo check --workspace --all-targets` and clippy clean.
+
+**Versions:** adventure ruleset part v21. The game state hash, the adventure state hash, the map
+import and the replay format unchanged. T123b next.

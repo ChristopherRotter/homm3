@@ -1956,11 +1956,11 @@ impl CanonicalHash for ObjectType {
     /// part v16 30 dwelling, 31 random dwelling, 32 Refugee Camp; since part v17 33 town; since
     /// part v18 34 monolith, 35 Subterranean Gate, 36 Whirlpool; since part v20 37 garrison, 38
     /// bonus, 39 Fountain of Fortune, 40 Magic Well, 41 Magic Spring, 42 Stables, 43 Sirens; since
-    /// part v21 44 creature bank) and
-    /// parameters (a pickup's own tag, 0 resource, 1 one of, 2 paired, then its fields in order; a
-    /// monster's levels as 0 for none, else 1, low, high; a ground's battlefield key, since part
-    /// v10 whether it takes the native price away; an artifact's classes as 0 for none, else 1
-    /// and the classes; a Witch Hut's two skill lists; a University's offers and price; a
+    /// part v21 44 creature bank) and parameters (a pickup's own tag, 0 resource, 1 one of, 2
+    /// paired, then its fields in order; a monster's levels as 0 for none, else 1, low, high; a
+    /// ground's battlefield key, since part v10 whether it takes the native price away; an
+    /// artifact's classes as 0 for none, else 1 and the classes; a Witch Hut's two skill lists; a
+    /// University's offers and price; a
     /// message's whether it leaves; a mine's and an abandoned mine's battle terrain as 0 for none,
     /// else 1 and the terrain; a Shipyard's price, boat type and offsets as length and each column
     /// and row; since part v19 a town's boat offsets as a Shipyard's; a Garden's gifts as a price; a dwelling's creatures as length and handles, its
