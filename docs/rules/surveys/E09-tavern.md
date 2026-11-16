@@ -333,7 +333,8 @@ else one of the two (TD-19). Its RNG is a stream per player (`getRandomGenerator
 - **TD-20 — the offers' daily points.** The reading: movement at the owner's turn start, spell
   points only at a draw or a leave; VCMI: movement and the day's spell point regain for every
   offer each day. Impact: a returning offer's spell points when hired days later. Recommended: the
-  reading.
+  reading. (Its spell-point half refuted by the code read after batch TWN-4, §14: every record
+  regains each day, as VCMI's; decision 127.)
 - **TD-21 — the hero limits.** The reading: 8 on the map, garrison heroes not counted, a constant;
   VCMI: the same 8 on the map and a total cap of its settings. The town part's `most_heroes` (8,
   TWN-ROW-003) already holds the reading. Recommended: the reading, one bound.
@@ -591,4 +592,6 @@ and gives every record its day's spell points (below).**
 
 Both for T35's checkpoint (design note §63, §67, §68; the drafts `adr-drafts/0017-increment-4.md`):
 recommended as the original (faithful), the new day's clear of the mark after the week and the
-day's spell points over every hero record.
+day's spell points over every hero record. **Decided at T35's start** (`TWN-Q19`, the
+epic's decisions 126 and 127): both as the original, in ADR-0017 point 3 and ADR-0013 point 16.5
+(E09 T35a).

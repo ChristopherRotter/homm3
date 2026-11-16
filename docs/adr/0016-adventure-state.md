@@ -317,6 +317,26 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    (batch TWN-3's TWN-3-6: a purchase joins the garrison hero's army); the adventure gives the
    room of the target (the room rule ADV-ARM-007, ADV-HIR-002) and joins the creatures into it,
    the counts being the town's (ADR-0028 point 6).
+   **E09's increment 4** (TWN-TAV-003, -006; E09 decisions 109, 111, 112): **a hero placed in
+   play**. The adventure **places** a hero the game hires (ADR-0017 point 1): onto a town's
+   entrance, where it becomes the town's visitor (the original's `hero_place` 0x4D7900, `hero_show`;
+   batch TWN-4's TWN-4-2, E09 T34: each hired hero on its town's entrance as the visitor, with the
+   army it was offered with), or onto the adventure map's Tavern's visited tile (point 4), refused,
+   typed, when a hero already stands there; the hero joins its owner's heroes on the map with the
+   **away record** the game gives (its army, its points left and the day's maximum, its formation
+   and tactics flag; no battle bonuses, no timed marks). No reveal: neither hire reveals around the
+   hero (the reading: `town_tavern_hire` 0x5C12E0 and `map_tavern_hire` 0x4D7890 read whole, no
+   reveal call; the town's own radius and the visitor's walk explored the tiles), and nothing is
+   visited. **A hero that leaves the map** (a battle's, a capture's empty garrison hero's, a
+   dismissal's) **hands back its away record** to the game (its army, points, formation and tactics
+   flag as they were; its battle bonuses and timed marks dropped, E08 decision 307), which keeps or
+   clears its parts by the leave's kind (ADR-0017 point 11). A dismissal removes a hero on the map
+   as a lost hero's removal does: its boat freed (ADV-SEA-006), the object under it restored (a
+   town's visitor gone), told as `HeroRemoved` to its owner and to the players that see its tile.
+   The adventure checks the dismissal's map half (the hero not on a town's entrance); the game the
+   rest (its player, its last hero, ADR-0017 point 1). The setup's stand rule (ADV-MAP-001's
+   `StandError::Visited`) is unchanged: only a hire places a hero on a tile its object is visited
+   from.
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
    answers the `docs/03` question). An object is its static part (position, template masks of
    blocked and visitable tiles, object type), a kind from a closed enum in `h3-adventure` with
@@ -628,6 +648,26 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
        or the garrison as a mine's guards).
      - **E09's increment 2 adds no visit rule**: a build is the town command (ADR-0017 point 1),
        never a step, and needs no hero in the town (the original builds from the town list).
+   - **E09's kind `Tavern`** (increment 4; class 95; E09 decision 106; survey `E09-tavern.md` §3):
+     **visited from a neighbour** (its entrance blocked, VCMI's `blockVisit`), not visitable from
+     above as the template says, no owner, no mark, no draw. A step toward its entrance from a
+     neighbouring tile visits it (the move ends, the hero stays on the tile before) and the visit's
+     outcome (ADR-0017 point 10) opens **the game's tavern decision** for the visitor's owner
+     (ADR-0017 point 6): every hero visits, the original's computer's own paths being E13's. A hero
+     standing on the entrance (a hero hired there) hides the Tavern: a step onto that tile meets or
+     fights the hero, as on an owned object's entrance (point 3), and a `Revisit` of a hero standing
+     on it visits nothing (the original's case 95 skips the visit when the visitor stands on the
+     visited tile, 0x4AA183). The import maps class 95 to it (the 93 Taverns on 47 shipped maps,
+     survey §1); the writer writes it.
+   - **E09's kind `DenOfThieves`** (increment 4; class 97; E09 decision 99; survey `E09-tavern.md`
+     §6): an **entered** object (its template's entrance passable, visited from the sides and below,
+     not from above), no owner, no mark, no draw, no parameter: every visit (a step onto its
+     entrance, a `Revisit`) is the same. The visit's outcome (ADR-0017 point 10) asks the game for
+     the **Thieves' Guild at everything** for the visitor's owner (`visit_object`'s case 97: its
+     message, then `thieves_guild_new` 0x5C8190 with 99; batch TWN-4's TWN-4-7, E09 T34: the
+     message, then all nine rows), which the game tells it (ADR-0017 point 2); the adventure holds
+     nothing of it. The import maps class 97 to it (227 Dens on 107 shipped maps, survey §1); the
+     writer writes it.
    - **Increment 10's kinds** (the import maps classes 17, 20, 78 and 216 to 218; every one
      entered, none visitable from above):
      - **Dwellings** (`dwelling`: one to four creatures in the original's order, its own
@@ -955,6 +995,16 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    (TWN-VEW-001, level 3) shows a garrison hero and its army as the garrison; its owner sees its
    garrison heroes among its own heroes, each with its town in place of a tile, and nobody sees
    one on the map.
+   **From E09 increment 4** a hired hero's appearance is told as a hero's coming into sight: to its
+   owner, and to every player that sees its tile (ADV-FOG-004, ADV-FOG-005, as a step's `seen_to`),
+   by the game's `HeroHired` (ADR-0017 point 2), which names the hero, its type, its owner and its
+   tile, so a viewer's fold adds it as the map shows it (no gap of `SRV-STUB-3`'s kind); its tavern
+   slot is named to its owner alone. The owner's own view of the hero (its army, formation and
+   tactics flag, its details) is the tavern slot's view it held, its points told by
+   `MovementChanged` as for any own hero. A dismissal is told as a removal (`HeroRemoved`, as a
+   battle's loser: its owner and the players that see its tile). A Den of Thieves' visit tells the
+   visitor's owner alone (the guild's view is the viewer's, ADR-0017 point 2). The away records are
+   the game's and never shown but as the tavern slots' views.
    From increment 10 every viewer that sees a **dwelling** sees its type (so its name and
    creatures; a random dwelling's drawn type, footprint and moved anchor, as the original draws
    it) and its owner; **never its counts or guards** (the original's hint and popup show neither,
@@ -1076,6 +1126,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   v24, adventure state hash v26: the banks' draws and guards in the static map), so on 148 of the
   160 shipped maps their entrances become destinations (ten kinds entered, the Shipwreck visited
   from a neighbour or the coast) and a flight crosses a Shipwreck's water tile.
+- E09's increment 4: the kinds `Tavern` and `DenOfThieves` bump the adventure ruleset part and the
+  map import (classes 95 and 97, the town lane's task, `cross-lane`, after increment 13's v24); the
+  adventure state hash does not move (neither kind holds state; the away records are the game's). A
+  hire's placement and a dismissal's removal reuse a hero's arrival and a lost hero's removal (no
+  new event of the adventure's); the census counts the shipped maps that import whole once both
+  classes do (E09 design §78).
 
 ## Alternatives considered
 
@@ -1168,6 +1224,9 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   before T118b1); the levels' stacks pre-split in the data (VCMI's form) instead of the original's
   split rule; two kinds (attack, search) instead of one; a bank offer kind beside `Fight` and
   `Search`; the bank battle marked by its tile, as the anti-magic garrison's.
+- E09's increment 4 (`TWN-Q16`): the adventure map's Tavern left to E08's trades and services (E09
+  decision 106); the Tavern visited from above, as its template says (the original blocks its
+  entrance, VCMI's `blockVisit`).
 
 ## Revision history
 
@@ -1300,3 +1359,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   reward after the winner's levels, the Shipwreck's coast passage; what a viewer sees of a bank
   by its team's visit. Drafted in E08 T118b1 (survey `E08-banks.md`; the reward corrected by
   T118b2); batch E13's outcome (T121, survey §14: every row as read) folded in.
+- 2026-11-16 (E09 T35a `shared/`; E09 decisions 99, 105, 106, 109, 111, 112, 118, 119; `TWN-Q16` to
+  `TWN-Q18`): points 3, 4 and 6 amended for E09 increment 4, the Tavern: a hero placed by a hire
+  with the game's away record and handed back at a leave, the dismissal's removal; the kinds
+  `Tavern` (visited from a neighbour) and `DenOfThieves` (entered, the Thieves' Guild at
+  everything); a hired hero's appearance, a dismissal and a Den's view told; the Consequences and
+  Alternatives. Drafted in E09 T33a and T33b (design note `E09-design.md` Part F); batch TWN-4's
+  outcome (T34, survey `E09-tavern.md` §14: every row as read) folded in; placed after E08 increment
+  13's text (T122, merged first).
