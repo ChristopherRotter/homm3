@@ -182,7 +182,13 @@ fn an_input_waits_for_the_menu_during_a_fade_no_clip_follows() {
     let start = Start::new(headers, true, Bugs::Fixed, 0, &mut ops);
     let (kept_at, end) = kept(start, Some(50));
     assert_eq!((kept_at.first(), kept_at.len(), end), (Some(&50), 15, 200));
-    let start = Start::new([header(2, SMACK), None, None], true, Bugs::Original, 0, &mut ops);
+    let start = Start::new(
+        [header(2, SMACK), None, None],
+        true,
+        Bugs::Original,
+        0,
+        &mut ops,
+    );
     let (kept_at, end) = kept(start, None);
     assert_eq!(kept_at, (end - 150..end).step_by(10).collect::<Vec<_>>());
 }
@@ -254,7 +260,13 @@ fn the_clips_play_in_order_each_ending_in_a_fade() {
 #[test]
 fn a_fade_step_waits_for_its_50_ms_and_one_reading_takes_one_step() {
     let mut ops = Vec::new();
-    let mut start = Start::new([header(1, BINK), None, None], true, Bugs::Original, 0, &mut ops);
+    let mut start = Start::new(
+        [header(1, BINK), None, None],
+        true,
+        Bugs::Original,
+        0,
+        &mut ops,
+    );
     assert_eq!(ops, [Op::Black, Op::Frame(Part::Logo, 0), Op::Fade(0)]);
     for (now, want) in [
         (FADE_STEP - 1, &[][..]),
@@ -301,7 +313,13 @@ fn a_skip_fades_a_full_screen_clip_and_stops_h3intro_at_once() {
     assert!(start.ended());
     // A clip that does not open ends the sequence where it would begin.
     let mut ops = Vec::new();
-    let start = Start::new([None, header(2, BINK), header(2, BINK)], true, Bugs::Original, 0, &mut ops);
+    let start = Start::new(
+        [None, header(2, BINK), header(2, BINK)],
+        true,
+        Bugs::Original,
+        0,
+        &mut ops,
+    );
     assert!(start.ended());
     assert_eq!(ops, [Op::Black]);
 }
@@ -765,7 +783,14 @@ fn with_its_sound_a_smacker_clip_follows_the_bytes_played() {
     ] {
         let mut ops = Vec::new();
         let headers = [header(81, SMACK), None, None];
-        let mut start = Start::with_sound(headers, [Some(TRACK), None, None], true, Bugs::Original, 0, &mut ops);
+        let mut start = Start::with_sound(
+            headers,
+            [Some(TRACK), None, None],
+            true,
+            Bugs::Original,
+            0,
+            &mut ops,
+        );
         let mut seen: Vec<(u32, Op)> = ops.into_iter().map(|op| (0, op)).collect();
         seen.extend(run(&mut start, step, 6000, &[]));
         let frames = frames_at(&seen, Part::Logo);
@@ -865,7 +890,14 @@ fn a_skip_stops_the_sound_and_a_bink_clip_sounds_from_its_first_frame() {
     // H3Intro is skipped at once: its sound stops with it.
     let headers = [header(1, SMACK), header(1, BINK), header(100, BINK)];
     let mut ops = Vec::new();
-    let mut start = Start::with_sound(headers, [None, None, Some(TRACK)], true, Bugs::Original, 0, &mut ops);
+    let mut start = Start::with_sound(
+        headers,
+        [None, None, Some(TRACK)],
+        true,
+        Bugs::Original,
+        0,
+        &mut ops,
+    );
     let mut seen = run(&mut start, 10, 900, &[]);
     assert!(seen.iter().any(|(_, op)| *op == Op::Sound(Part::Intro)));
     let mut ops = Vec::new();

@@ -948,7 +948,11 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
         // The edits' typing (T7b): text input while one has the focus.
         win.set_text_input(front.as_ref().is_some_and(Front::typing));
         let events = win.wait(if playing { 5 } else { 50 });
-        let mut inputs = if playing { Vec::new() } else { mem::take(&mut kept) };
+        let mut inputs = if playing {
+            Vec::new()
+        } else {
+            mem::take(&mut kept)
+        };
         inputs.extend(merged(events, win.scans(), win.typed()));
         for given in inputs {
             let mut did = menu::Did::default();

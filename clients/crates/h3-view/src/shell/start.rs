@@ -581,9 +581,7 @@ impl Start {
                 }
                 due
             }
-            (Pace::Smacker(period), None) => {
-                smack_wait(&mut playing.smack, now, period, self.bugs)
-            }
+            (Pace::Smacker(period), None) => smack_wait(&mut playing.smack, now, period, self.bugs),
             (Pace::Bink { num, den }, None) => {
                 let start = *playing.first.get_or_insert(now);
                 let at = u64::from(done) * 1000 * u64::from(den) / u64::from(num.max(1));

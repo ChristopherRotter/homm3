@@ -487,7 +487,10 @@ fn start(frames: u32) -> (Start, Vec<Op>) {
         pace: Pace::Smacker(6666),
     };
     let mut ops = Vec::new();
-    (Start::new([Some(header); 3], false, Bugs::Original, 0, &mut ops), ops)
+    (
+        Start::new([Some(header); 3], false, Bugs::Original, 0, &mut ops),
+        ops,
+    )
 }
 
 #[test]
@@ -567,7 +570,14 @@ fn a_press_or_a_key_skips_the_start_and_a_move_does_not() {
         pace: Pace::Smacker(6666),
     };
     let mut ops = Vec::new();
-    let sounding = Start::with_sound([Some(header); 3], [Some(88_200); 3], false, Bugs::Original, 0, &mut ops);
+    let sounding = Start::with_sound(
+        [Some(header); 3],
+        [Some(88_200); 3],
+        false,
+        Bugs::Original,
+        0,
+        &mut ops,
+    );
     let r = Replay::new(
         Shell::new(true),
         [400, 300],
@@ -648,7 +658,10 @@ fn an_input_during_the_last_fade_reaches_the_main_menu() {
         &menus(Bugs::Original),
     );
     let (_, stop, r) = replay_from(r, &["step:960:1", "move:1,2", "step:2000:1"]);
-    assert_eq!((stop, r.screen(), r.pointer()), (None, Screen::MainMenu, [1, 2]));
+    assert_eq!(
+        (stop, r.screen(), r.pointer()),
+        (None, Screen::MainMenu, [1, 2])
+    );
 }
 
 #[test]
