@@ -19,52 +19,51 @@ starts from T32's best clone; **T32 done** 2026-11-15, the architectures, `E25-l
 leads the control by 0.02 (the best +0.009), so `hexconv` 96 × 6 stays and T35's long run starts
 from T27's 16 M clone, #2's start; **T34 done** 2026-11-15, the regimes, `E25-log.md` T34: the
 search at play gains nothing on #2 at N 16 or N 64, the KL anchor brings T27's clone to #2's level
-in 2 M, 0.496 ± 0.002 head to head; **T35, the probes' checkpoint**: the outcome's weight
-probed first):
+in 2 M, 0.496 ± 0.002 head to head; **T35 done** 2026-11-16, the probes' checkpoint, `E25-log.md`
+T35: the outcome's weight (`win_bonus` 0.1) moves nothing, 0.5007 ± 0.0019 head to head, reward
+v1 stays; **T36, the long run**: the anchor resumed to 20 M):
 
-- **T35 — The probes' checkpoint** (the user, 2026-11-15; `E25-log.md` T35): of four offered
-  (the anchor resumed to 20 M; the anchor's regime or #2's at 40 M), **the outcome's weight
-  probed first**, decision 6 amended (T30's read: #2 keeps more army than the fair actor in the
-  hero battles but wins as often; reward v1 prices the army, the target counts the wins).
-  **Prepared, the user's GPU next.**
-  - **The probe** `e25-win-bonus-1` (`configs/e25-win-bonus.toml`, test
-    `test_increment_8s_win_bonus_probe_is_the_annealed_arm_with_the_bonus`): T33's annealed arm
-    (2 M from #2, a quarter of the rate falling to #2's floor, the bonus at 0, seed 1; level with
-    #2 at 0.5029 ± 0.0020) with `[ppo] win_bonus` 0.1 (new: a decided battle's last transition
-    of each learning side gains 0.1 for its side's win and loses it for its loss, a draw 0, a cut
-    battle none; tests `test_the_win_bonus_weighs_only_each_decided_battles_last_transitions`,
-    `test_an_outcome_is_a_win_a_loss_or_neither_for_its_side`). Reward v1 lies in [-1, 1], #2's
-    hero battles about ±0.09 a seat: the bonus about a seat's value. The evaluation stays
-    reward v1.
-  - **The measures, T33's:** (a) the fixed head-to-head against #2; (b) the ladders against both
-    system actors (500 a kind, ± 0.019; the hero battles' seats against #2's 0.707 and 0.306)
-    and on the neutral set; (c) the update records (entropy, KL, clip, the attacker's wins by
-    kind) beside `e25-continue-anneal-1`'s.
-  - **The rule, stated before it runs:** (a) above the annealed arm's 0.5029 by more than two
-    combined standard errors (about 0.006, so at least 0.509), with (b) a positive value against
-    the fair actor and the neutral set's above the fair actor's own +0.285: the bonus pays, and
-    the long run trains with it (its size, start and length agreed then). Within: the bonus moves
-    nothing at this rate and length, reward v1 stays, and the long run is one of the three
-    offered. Below by more than two: the bonus costs; reward v1 stays.
-  - **Budget:** about 2 hours (T33's round 2: 79 updates, 114 minutes; the measures about 10),
-    beyond decision 3's 20 by about 1. Parts under 2 hours: Ctrl-C, then `--resume`.
-  - **The user's commands** (from `python/`; `--device cuda` on the user's card):
+- **T36 — The long run and its checkpoint** (refined 2026-11-16, decision 4; the user's choice
+  at T35, of four offered: not #2's regime nor the anchor's at 40 M, about 37 and 42 hours, nor
+  E25 closed on #2): **`e25-anchor-1` resumed from 2 M to 20 M**, its config as built for 20 M
+  (`configs/e25-anchor.toml`: #2's settings with #2 for the fair actor as the imitation loss's
+  teacher: T27's clone, the loss 0.5 falling to 0 at 10 M, the rate 2.5e-4 annealed to its floor
+  1.25e-5 at 20 M, reward v1; T34 (b) at 2 M: #2's level, 0.496 ± 0.002 head to head, its
+  entropy 1.35). T35's read: the outcome's weight moves nothing, reward v1
+  stays. **Prepared, the user's GPU next.**
+  - **Its question:** does a taught run pass #2's plateau once the teacher's loss ends (T34 (b)
+    reached #2's level in 2 M, leaving 18 M; T33: PPO from #2 itself did not pass it).
+  - **The measures:** (a) the fixed head-to-head of the run's promoted network (`best.pt`)
+    against #2 (± 0.002); (b) its ladders (500 a kind): the report set against all five
+    opponents and the neutral set; (c) the update records (the teacher's agreement, the
+    entropy, KL, clip) beside #2's run at the same samples. If the run's last gate rejected its
+    learner, (a) and (b)'s system rows for `checkpoint.pt` too.
+  - **The rule, stated before it runs** (decision 1 of increment 8): against the faithful
+    (all-seeing) actor a win rate beyond its interval (the rate less its 95 % half-width above
+    0.5, about 0.519 at 500 a kind) and a positive value, decision 1's other parts kept (the
+    neutral set's value above +0.285, a win rate above 0.5 and a positive value against Random,
+    Aggressor and Greedy; the fair actor beside): **the aim met**, the network the current best,
+    E25's exit criteria checked at the checkpoint. Not met, but (a) above #2 by more than two
+    standard errors (at least 0.504): the current best, E25's next step at the checkpoint. Within
+    or below: #2 stays; the taught regime does not pass the plateau at 20 M; the checkpoint
+    decides between closing E25 on #2 and another lever (expert iteration in Rust, an exploiter
+    league).
+  - **Budget:** about 19 hours (T34 (b): 2 M in 129 minutes with the teacher, 260 samples a
+    second, to 10 M; then T33's 300 without it; the two gates at 10 M and 20 M; the measures
+    about 20 minutes). Parts under 2 hours: Ctrl-C, then the same `--resume` line (its `--set`
+    a no-op once applied).
+  - **The user's commands** (from `python/`; the run's directory and #2's `best.pt` as T34
+    left them):
 
-        uv run --group train python -m h3env.train --config configs/e25-win-bonus.toml --init-from runs/e25-structure-1/best.pt --out runs/e25-win-bonus-1
-        uv run --group train python -m h3env.train --resume runs/e25-win-bonus-1
-        uv run --group train python -m h3env.train.gate --candidate runs/e25-win-bonus-1/checkpoint.pt --best runs/e25-structure-1/best.pt --device cuda --fixed --json runs/e25-win-bonus-1/head-to-head.json
-        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-win-bonus-1/checkpoint.pt --opponents system,system-all-seeing --device cuda --json runs/e25-win-bonus-1/ladder.json
-        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-win-bonus-1/checkpoint.pt --set neutral-v1 --device cuda --json runs/e25-win-bonus-1/neutral.json
+        uv run --group train python -m h3env.train --resume runs/e25-anchor-1 --set samples=20_000_000
+        uv run --group train python -m h3env.train.gate --candidate runs/e25-anchor-1/best.pt --best runs/e25-structure-1/best.pt --device cuda --fixed --json runs/e25-anchor-1/head-to-head-20m.json
+        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-anchor-1/best.pt --device cuda --json runs/e25-anchor-1/ladder-20m.json
+        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-anchor-1/best.pt --set neutral-v1 --device cuda --json runs/e25-anchor-1/neutral-20m.json
 
-    The upload: `record.json`, `metrics.jsonl`, `head-to-head.json`, `ladder.json`,
-    `neutral.json` (no network). **Acceptance:** the record and the measures committed
-    (`python/records/e25-win-bonus-1.json`, `python/records/win-bonus/`), the read in
-    `E25-log.md` T35, the long run agreed with the user, T36 refined.
-- **T36 — The long run and its checkpoint** (after T35). The long run's settings from T33's
-  ranking: the rate annealed to its floor by the end, the imitation loss ending at its horizon.
-  **A `hexconv` run on the GTX 1070** sets `[ppo] accumulate = 4` and `chunk_align = 32` (T31;
-  cuDNN's autotuner is on by default): its update 0.68 of T28's; another network or card: time
-  it first (`python -m h3env.train.speed`, its `--sweep`).
+    The upload: `record.json`, `metrics.jsonl`, the three measures (no network). **Acceptance:**
+    the record committed (`python/records/e25-anchor-1.json` replaced: the same run, its 20 M
+    segments), the measures under `python/records/anchor/` (`e25-anchor-1-*-20m.json`), the
+    read in `E25-log.md` T36, E25's next step agreed with the user.
 
 ## Inbox
 
