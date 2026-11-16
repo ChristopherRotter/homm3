@@ -133,3 +133,230 @@ id = 104
 def = "gtback.def"
 at = [582, 464]
 size = [127, 107]
+
+# The Multiplayer dialog's first stage (§2.6: multiplayer_dialog_init 0x50E050, its stage 1
+# multiplayer_stage_types 0x50EFC0; E27 M2 T7): at (173, 55), 454 x 490, over the screen as the
+# game type menu left it; a shadow (recorded: `mp-new`; its constructor's flags are 0, so the
+# shadow comes from how it is shown, not read). Its items in the order it adds them: mupopup.pcx (100);
+# the DEF buttons Hot Seat (102, without the CD notice), IPX, TCP/IP, Modem, Direct Connect,
+# Online (101), Cancel (124: its item 64 x 48 over its 32 rows, CLT-Q89); the player's name, an
+# edit (125: smalfont.fnt, colour 4, left, 21 with its terminator); the status line (123:
+# colour 1 made with the flag 8, so drawn in 3; centred; its box filled with entry 32); the map's
+# picture over the list (129). Stage 2's Host, Join, Search, headings, scroll bar and rows are not
+# built (decision 10, CLT-STUB-6). Hints and help: Help.txt 264 + id - 100 (the key catalogue).
+[multiplayer]
+place = [173, 55]
+shadow = [454, 490]
+
+[[multiplayer.items]]
+kind = "picture"
+id = 100
+picture = "mupopup.pcx"
+at = [0, 0]
+size = [454, 490]
+
+[[multiplayer.items]]
+kind = "button"
+id = 102
+def = "muBhot.def"
+at = [373, 78]
+size = [64, 48]
+
+[[multiplayer.items]]
+kind = "button"
+id = 103
+def = "muBipx.def"
+at = [373, 135]
+size = [64, 48]
+
+[[multiplayer.items]]
+kind = "button"
+id = 104
+def = "muBtcp.def"
+at = [373, 192]
+size = [64, 48]
+
+[[multiplayer.items]]
+kind = "button"
+id = 105
+def = "muBmodm.def"
+at = [373, 249]
+size = [64, 48]
+
+[[multiplayer.items]]
+kind = "button"
+id = 106
+def = "muBdrct.def"
+at = [373, 306]
+size = [64, 48]
+
+[[multiplayer.items]]
+kind = "button"
+id = 101
+def = "mubonl.def"
+at = [373, 363]
+size = [64, 48]
+
+[[multiplayer.items]]
+kind = "button"
+id = 124
+def = "muBcanc.def"
+at = [373, 424]
+size = [64, 48]
+
+[[multiplayer.items]]
+kind = "label"
+id = 125
+at = [19, 436]
+size = [334, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[multiplayer.items]]
+kind = "label"
+id = 123
+at = [8, 465]
+size = [438, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 1
+
+[[multiplayer.items]]
+kind = "picture"
+id = 129
+picture = "mumap.pcx"
+at = [16, 77]
+size = [338, 335]
+
+# The hot seat's names (§2.7: hot_seat_dialog_init 0x511E20; E27 M2 T7): at (218, 96), 363 x 407,
+# a shadow (its flags 0x12). muhotsea.pcx (500); the title (517: GENRLTXT 447, bigfont.fnt,
+# colour 4 made with the flag 8, centred); eight name edits (509 to 516: smalfont.fnt, colour 4,
+# left, 21 with the terminator); OK (519: mubchck.def, Enter, disabled until two names) and Cancel
+# (520: mubcanc.def, Escape); the status line (518, as the Multiplayer dialog's).
+[hot_seat]
+place = [218, 96]
+shadow = [363, 407]
+
+[[hot_seat.items]]
+kind = "picture"
+id = 500
+picture = "muhotsea.pcx"
+at = [0, 0]
+size = [363, 407]
+
+[[hot_seat.items]]
+kind = "label"
+id = 517
+at = [0, 30]
+size = [363, 150]
+font = "bigfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+
+[[hot_seat.items]]
+kind = "label"
+id = 509
+at = [59, 82]
+size = [281, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[hot_seat.items]]
+kind = "label"
+id = 510
+at = [59, 112]
+size = [281, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[hot_seat.items]]
+kind = "label"
+id = 511
+at = [59, 142]
+size = [281, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[hot_seat.items]]
+kind = "label"
+id = 512
+at = [59, 172]
+size = [281, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[hot_seat.items]]
+kind = "label"
+id = 513
+at = [59, 202]
+size = [281, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[hot_seat.items]]
+kind = "label"
+id = 514
+at = [59, 232]
+size = [281, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[hot_seat.items]]
+kind = "label"
+id = 515
+at = [59, 262]
+size = [281, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[hot_seat.items]]
+kind = "label"
+id = 516
+at = [59, 292]
+size = [281, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[hot_seat.items]]
+kind = "button"
+id = 519
+def = "mubchck.def"
+at = [95, 338]
+size = [64, 32]
+
+[[hot_seat.items]]
+kind = "button"
+id = 520
+def = "mubcanc.def"
+at = [205, 338]
+size = [64, 32]
+
+[[hot_seat.items]]
+kind = "label"
+id = 518
+at = [10, 382]
+size = [343, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 1

@@ -314,7 +314,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   and T3): brief a sub-agent to write its results to a file as it goes (a run's log, a findings
   file), so a restart loses only the step in progress. A reviewer of many shots reads them as
   contact sheets (six a sheet at half scale, the changed box marked) with full-size crops on
-  demand, not shot by shot (M1 T3: 383 shots in 76 sheets).
+  demand, not shot by shot (M1 T3: 383 shots in 76 sheets). **The game's disk check** (E27 M2 T7): the main
+  menu's first pass reads the drive's free space in 32 bits, signed (`main_menu_proc`, 0x50C7A0),
+  and below 5 MB shows GENRLTXT 708 and quits; with the free bytes between 2 GiB and 4 GiB + 5 MB
+  modulo 4 GiB every run fails at `until:main_menu` (the display: "Insufficient Disk Space"). A
+  ballast file moves it: `fallocate -l 3G ballast` took 21.47 GB free (read as −1.2 MB) to
+  about 1 GB; free space changes with every build, so check `df -B1 /` before a long run.
 - **The shell's viewer side** (E27 M2 T4): `h3shell.py drawn` runs the release `h3-view`
   (rebuild it after a change, or it compares the old one); a recipe's `mask` steps are Python's,
   left out of the viewer's steps (its `stop <k>` counts the viewer's). The window under Xvfb:

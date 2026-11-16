@@ -809,3 +809,44 @@ task on T6a's and T6b1's machinery).
   Game's for Campaign and Tutorial, the main menu's for High Scores and Credits), its OK by the
   mouse and by Enter back to that menu opened anew, the hotkeys T and H.
 - **No new question.** **The agent's calls** (*provisional*, M2's review list items 51 to 55).
+
+## M2 T7 — the Multiplayer dialog's first stage and the hot seat's names: the edit field, the network's notice, the scenario screen's stub (2026-11-16)
+
+On `client/e27-m2-t7`, the user present at the start; `master` at `fcc19e7` (#967 merged; CI's
+runs green). The original data staged at once (64 files, checked by SHA-256 against the user's
+computer: one digest of the sorted lists), `cp -rn` into the clone right after the setup started;
+the setup's baseline stopped by a watcher as it reached coverage (fmt, clippy, the doc tests and
+deny passed), CI's green `master` standing in. The cut at the dialogs offered (T7a, T7b), kept
+whole (decision 38).
+
+- **Read** (design §16): the edit whole (`edit_create` 0x5BA920, its vtable 0x642D40, `edit_proc`,
+  `edit_key`, the input manager's table and translation 0x4EC8C0 and 0x4EC6F0, the character's
+  filter, `edit_text_store`, `edit_refuses_key`, `edit_draw`) and the text drawer's caret
+  (`text_draw`, `text_draw_line`); the dialogs' texts' arguments (the status lines' fill, their
+  last argument 8 not the state's bit 8), `dialog_item_at`, `dialog_item_enable` (0x20, not 8);
+  the menus' hover statics' only writers.
+- **Recorded** (`h3shell.py run --group multiplayer --record`): the group's eight recipes as kept,
+  both runs the same; two added, `edit-keys` (21 shots: the caret, the keys, the US table, the
+  limit, no blink, the name not kept) and `hotseat-long` (5: two 21-letter names hold 20 each,
+  shown apart in the advanced options). One run failed on the game's own disk check (the free
+  space read as a signed 32-bit number: TRAPS), a 3 GiB ballast file then.
+- **Built, pure** (`h3-render`, `h3-ui`, `h3-view`): `text::draw_text_caret`; `h3_ui::edit`
+  (`Edit`, `Scan`, `character`, `scan_of`), `Draw::Edit` and `Draw::Fill`;
+  `h3_view::shell::multiplayer` (`Multiplayer`, `HotSeat`, `Texts`: stage 1, the hover and the
+  status line, the popups, the network's notice, the hot seat's ring, OK by two names, Enter by
+  decision 22), `menu::Front` (a menu or the dialog), `menu::Hovers` (CLT-Q128), the scenario
+  screen's stub (`STUBS`' six, `stub_name`), `keys::scan` and the dialogs' hotkeys
+  (`Command::Dialog`, `Context::Multiplayer`, `Context::HotSeat`), the replay through `Front`
+  (scan codes for keys and typed text, `hotseat_names`, `Stop::Stub`), `Built` for the dialog
+  and the scenario screen, the layout's `[multiplayer]` and `[hot_seat]`.
+- **Built, the adapters:** `h3_sdl::Window::scans` (`KeyScan`, `set1`); `h3-battle-client`'s
+  shell: the texts from the key catalogue (`shell.multiplayer.*`, `shell.hot-seat.*`; the own
+  `shell.stub.network`, `shell.stub.scenario`), the window's loop through `Front` with the scans.
+- **The comparisons:** `drawn --group multiplayer`: 113 shots drawn, all exact (the rest where the
+  replay stops by design: the network's notice, the scenario's stub, the harness's own steps);
+  every other group as recorded. Fixed on the way: the dialog's shadow, the status lines' fill and
+  colour, the hover after a hold, the menus' statics.
+- **Questions:** CLT-Q127 (typing by the original's US table), CLT-Q128 (the menus' hover kept from
+  their last opening), both built as the original's meanwhile. CLT-STUB-6 (the network modes),
+  commented in `docs/stubs.toml` as the lane's others. **The agent's calls** (*provisional*,
+  M2's review list items 56 to 64).

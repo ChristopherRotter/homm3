@@ -248,7 +248,7 @@ fn each_screen_names_the_task_that_builds_it() {
 }
 
 #[test]
-fn the_start_the_main_menu_and_the_game_type_menus_are_built_four_screens_stubs() {
+fn the_menus_and_the_multiplayer_dialog_are_built_the_others_stubs_or_not() {
     let built: Vec<(Screen, Built)> = screens()
         .into_iter()
         .map(|s| (s, s.built()))
@@ -264,7 +264,17 @@ fn the_start_the_main_menu_and_the_game_type_menus_are_built_four_screens_stubs(
             (Screen::HighScores, Built::Stub),
             (Screen::Credits, Built::Stub),
             (Screen::GameType(Game::New), Built::Whole),
-            (Screen::GameType(Game::Load), Built::Whole)
+            (Screen::Multiplayer(Game::New), Built::Whole),
+            (Screen::Scenario(Game::New, Kind::Single), Built::Stub),
+            (Screen::Scenario(Game::New, Kind::Campaign), Built::Stub),
+            (Screen::Scenario(Game::New, Kind::Multiplayer), Built::Stub),
+            (Screen::Scenario(Game::New, Kind::Tutorial), Built::Stub),
+            (Screen::GameType(Game::Load), Built::Whole),
+            (Screen::Multiplayer(Game::Load), Built::Whole),
+            (Screen::Scenario(Game::Load, Kind::Single), Built::Stub),
+            (Screen::Scenario(Game::Load, Kind::Campaign), Built::Stub),
+            (Screen::Scenario(Game::Load, Kind::Multiplayer), Built::Stub),
+            (Screen::Scenario(Game::Load, Kind::Tutorial), Built::Stub)
         ]
     );
 }

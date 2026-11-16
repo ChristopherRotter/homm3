@@ -2,6 +2,7 @@
 //! menu's Quit's question, as `menu-main`, `menu-quit`, `menu-new`, `menu-load` and `menu-sound`
 //! recorded them; the stubs' notices over them (T6b2).
 
+use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -11,10 +12,11 @@ use h3_render::Bugs;
 use h3_ui::ui::{Dialog, Draw};
 
 use super::{
-    BOX_PLAYER, BUTTONS, Boxes, Did, GAME_TYPE_BUTTONS, Kind, Menu, Menus, QUIT, STUBS, Stale,
-    TITLE, outside,
+    BOX_PLAYER, BUTTONS, Boxes, Did, Front, GAME_TYPE_BUTTONS, Hovers, Kind, Menu, Menus, QUIT,
+    STUBS, Stale, TITLE, outside, stub_name,
 };
 use crate::message::{self, Key, Style};
+use crate::shell::Kind as ScenarioKind;
 use crate::shell::keys::{Command, Context};
 use crate::shell::look::{ShellLayout, parse_layout};
 use crate::shell::{Choice, Ended, Game, Request, Screen};
@@ -22,7 +24,7 @@ use crate::shell::{Choice, Ended, Game, Request, Screen};
 const LAYOUT: &str = include_str!("../../../../../layouts/shell.toml");
 
 /// A font of `advance`-wide glyphs `height` high.
-fn font(advance: i32, height: u8) -> Font {
+pub(crate) fn font(advance: i32, height: u8) -> Font {
     Font {
         height,
         y_offset: 0,
@@ -113,6 +115,7 @@ pub(crate) fn menus(bugs: Bugs) -> Menus {
         new_game: game_type(Game::New, bugs),
         load_game: game_type(Game::Load, bugs),
         notices,
+        multiplayer: crate::shell::multiplayer::tests::multiplayer(bugs),
     }
 }
 
@@ -388,9 +391,9 @@ fn the_menu_opens_again_as_it_first_opened() {
     let mut menu = first.clone();
     let _ = menu.moved([643, 70]);
     let _ = menu.right([643, 70]);
-    let again = menu.opened([400, 300]);
+    let again = menu.opened([400, 300], Hovers::default());
     assert_eq!(again, first);
-    assert_eq!(menu.opened([1, 2]).pointer, [1, 2]);
+    assert_eq!(menu.opened([1, 2], Hovers::default()).pointer, [1, 2]);
 }
 
 /// The DEFs of the five buttons in the order they are drawn.
@@ -703,11 +706,11 @@ fn the_menus_open_by_their_screen() {
         (Screen::GameType(Game::New), Kind::GameType(Game::New)),
         (Screen::GameType(Game::Load), Kind::GameType(Game::Load)),
     ] {
-        let menu = all.opened(screen, [1, 2]).unwrap();
+        let menu = all.opened(screen, [1, 2], Hovers::default()).unwrap();
         assert_eq!((menu.kind(), menu.kind().screen()), (kind, screen));
         assert_eq!(menu.pointer, [1, 2]);
     }
-    assert_eq!(all.opened(Screen::Lost, [0, 0]), None);
+    assert_eq!(all.opened(Screen::Lost, [0, 0], Hovers::default()), None);
     assert_eq!(Kind::Main.buttons(), BUTTONS);
     assert_eq!(Kind::GameType(Game::Load).buttons(), GAME_TYPE_BUTTONS);
 }
@@ -719,17 +722,23 @@ fn a_stub_s_screen_is_its_menu_opened_anew_under_its_notice() {
     let all = menus(Bugs::Fixed);
     let layout = parse_layout(LAYOUT).unwrap();
     for (screen, kind, _) in STUBS {
-        let menu = all.opened(screen, [5, 6]).unwrap();
+        let menu = all.opened(screen, [5, 6], Hovers::default()).unwrap();
         assert_eq!((menu.kind(), menu.screen()), (kind, screen));
         assert_eq!((menu.pointer, menu.hovered()), ([5, 6], None));
         assert_eq!(menu.context(), Context::Question);
         assert!(menu.cursor() && !menu.asking());
         assert!(!menu.box_draws(&layout.player_palette).is_empty());
-        let shown = crate::shell::look::look(&layout, screen, Some(&menu)).unwrap();
+        let shown =
+            crate::shell::look::look(&layout, screen, Some(&Front::Menu(Box::new(menu.clone()))))
+                .unwrap();
         assert_eq!(shown.over, menu.box_draws(&layout.player_palette));
         // Not the menu's own screen.
         assert_eq!(
-            crate::shell::look::look(&layout, kind.screen(), Some(&menu)),
+            crate::shell::look::look(
+                &layout,
+                kind.screen(),
+                Some(&Front::Menu(Box::new(menu.clone())))
+            ),
             None
         );
     }
@@ -738,7 +747,10 @@ fn a_stub_s_screen_is_its_menu_opened_anew_under_its_notice() {
         notices: Vec::new(),
         ..all
     };
-    assert_eq!(without.opened(Screen::Credits, [0, 0]), None);
+    assert_eq!(
+        without.opened(Screen::Credits, [0, 0], Hovers::default()),
+        None
+    );
 }
 
 #[test]
@@ -749,7 +761,7 @@ fn a_stub_s_notice_takes_the_box_s_inputs_and_its_ok_ends_the_screen() {
             ended: Some(end),
             ..NOTHING
         };
-        let mut menu = all.opened(screen, [400, 300]).unwrap();
+        let mut menu = all.opened(screen, [400, 300], Hovers::default()).unwrap();
         let ok = box_button(&menu, message::OK);
         // The menu's own inputs do nothing under it: its buttons, its hotkeys, the help.
         assert_eq!(menu.moved([643, 304]), NOTHING);
@@ -770,11 +782,102 @@ fn a_stub_s_notice_takes_the_box_s_inputs_and_its_ok_ends_the_screen() {
         let _ = menu.press(ok);
         assert_eq!(menu.release(), ended, "{screen:?}");
         // By Enter, and by the right button's release ending the OK's hold.
-        let mut menu = all.opened(screen, [400, 300]).unwrap();
+        let mut menu = all.opened(screen, [400, 300], Hovers::default()).unwrap();
         assert_eq!(menu.key(Command::Message(Key::Ok), "Return"), SAMPLE);
         assert_eq!(menu.key_up("Return"), ended);
-        let mut menu = all.opened(screen, [400, 300]).unwrap();
+        let mut menu = all.opened(screen, [400, 300], Hovers::default()).unwrap();
         let _ = menu.press(ok);
         assert_eq!(menu.right_release(), ended);
+    }
+}
+
+#[test]
+fn the_front_is_a_menu_or_the_multiplayer_dialog_over_its_menu() {
+    // E27 M2 T7.
+    let all = menus(Bugs::Fixed);
+    let mut front = all
+        .front(Screen::GameType(Game::New), None, [400, 300])
+        .unwrap();
+    assert_eq!(front.context(), Context::GameType);
+    assert!(front.moved([649, 180]).changed);
+    assert_eq!(front.hovers().game_type, Some(102));
+    // A key without a command does nothing to a menu.
+    assert_eq!(front.key(None, None, "Q"), Did::default());
+    assert!(front.press([649, 180]).changed);
+    let did = front.release();
+    assert_eq!(did.ended, Some(Ended::GameType(Choice::Multiplayer)));
+    // The dialog opens over the menu as it ended; none without a menu before it.
+    assert_eq!(
+        all.front(Screen::Multiplayer(Game::New), None, [0, 0]),
+        None
+    );
+    let mut dialog = all
+        .front(Screen::Multiplayer(Game::New), Some(front), [649, 180])
+        .unwrap();
+    assert_eq!(dialog.context(), Context::Multiplayer);
+    assert_eq!(dialog.hovers().game_type, Some(102));
+    assert!(dialog.moved([578, 157]).changed);
+    assert!(dialog.right([578, 157]).changed);
+    assert!(dialog.right_release().changed);
+    assert!(dialog.key(h3_ui::edit::scan_of(b'a'), None, "A").changed);
+    assert_eq!(dialog.key_up("A"), Did::default());
+    assert!(dialog.press([578, 503]).changed);
+    assert_eq!(dialog.release().ended, Some(Ended::Multiplayer(false)));
+    // New Game's menu again: its procedure's last item still Multiplayer, so the pointer over
+    // it is no change and it is not drawn hovered (CLT-Q128).
+    let mut menu = all
+        .front(Screen::GameType(Game::New), Some(dialog), [649, 180])
+        .unwrap();
+    assert!(!menu.moved([649, 180]).changed);
+    assert!(menu.moved([643, 70]).changed);
+    let Front::Menu(m) = &menu else {
+        panic!("a menu")
+    };
+    assert_eq!(m.hovered(), Some(100));
+    // Its right press and release through the front.
+    assert!(menu.right([643, 70]).changed);
+    assert!(menu.right_release().changed);
+    assert_eq!(menu.key_up("S"), Did::default());
+    // The main menu's static is its own.
+    let main = all.front(Screen::MainMenu, Some(menu), [0, 0]).unwrap();
+    assert_eq!(
+        main.hovers(),
+        Hovers {
+            main: None,
+            game_type: Some(100)
+        }
+    );
+    let Front::Menu(m) = main else {
+        panic!("a menu")
+    };
+    assert_eq!(m.hovered(), None);
+}
+
+#[test]
+fn the_scenario_screen_is_a_stub_over_its_game_type_menu() {
+    // E27 M2 T7, until M3: from Single, Campaign, Tutorial or the Multiplayer dialog.
+    assert_eq!(
+        stub_name(Screen::Scenario(Game::Load, ScenarioKind::Tutorial)),
+        "scenario"
+    );
+    assert_eq!(stub_name(Screen::Credits), "credits");
+    let all = menus(Bugs::Fixed);
+    for (screen, game) in [
+        (
+            Screen::Scenario(Game::New, ScenarioKind::Multiplayer),
+            Game::New,
+        ),
+        (
+            Screen::Scenario(Game::Load, ScenarioKind::Campaign),
+            Game::Load,
+        ),
+    ] {
+        let mut menu = all.opened(screen, [0, 0], Hovers::default()).unwrap();
+        assert_eq!((menu.kind(), menu.screen()), (Kind::GameType(game), screen));
+        let ended = [
+            menu.key(Command::Message(Key::Ok), "Return"),
+            menu.key_up("Return"),
+        ];
+        assert_eq!(ended[1].ended, Some(Ended::Scenario(false)));
     }
 }
