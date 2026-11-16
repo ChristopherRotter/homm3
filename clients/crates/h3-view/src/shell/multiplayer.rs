@@ -172,7 +172,10 @@ impl Part {
 
     /// The item under the mouse at `point` (`dialog_item_at` 0x5FF3E0): the last in order whose
     /// box holds it, not hidden (the texts' `flags` argument 8, their +0x14, is not the state
-    /// the search tests: drawn in their own colour, `mp-new`, `hotseat-names`).
+    /// the search tests: drawn in their own colour, `mp-new`, `hotseat-names`). Not
+    /// `h3_ui::ui::Dialog::item_taking`, which skips a disabled item: the hot seat's OK disabled
+    /// (`dialog_item_enable`'s 0x20) keeps its hint and popup here, as recorded (design §16.2;
+    /// M2's review compared the two over both dialogs, the only difference that OK).
     fn item_at(&self, point: [i32; 2]) -> Option<u16> {
         let [x, y] = [
             point[0] - self.dialog.place[0],
@@ -562,7 +565,7 @@ impl Multiplayer {
         let hints = &self.texts.hints;
         match &mut self.over {
             Over::Help(_) => Did::default(),
-            Over::Notice(open) => changed(open.moved(point)),
+            Over::Notice(open) => Did::of_box(open.moved(point)),
             Over::HotSeat(h) if h.help.is_some() => Did::default(),
             Over::HotSeat(h) => moved(&mut h.part, point, hints),
             Over::Nothing => moved(&mut self.part, point, hints),
@@ -574,7 +577,7 @@ impl Multiplayer {
         self.pointer = point;
         match &mut self.over {
             Over::Help(_) => self.close_help(),
-            Over::Notice(open) => pressed(open.press(point)),
+            Over::Notice(open) => Did::box_press(open.press(point)),
             Over::HotSeat(h) if h.help.is_some() => {
                 h.help = None;
                 Did::CHANGED
@@ -587,9 +590,9 @@ impl Multiplayer {
                     }
                     return Did::CHANGED;
                 }
-                held(h.part.input.press(&h.part.dialog, &mut h.part.shown, point))
+                Did::held(h.part.input.press(&h.part.dialog, &mut h.part.shown, point))
             }
-            Over::Nothing => held(self.part.input.press(
+            Over::Nothing => Did::held(self.part.input.press(
                 &self.part.dialog,
                 &mut self.part.shown,
                 point,
@@ -677,7 +680,7 @@ impl Multiplayer {
         match &mut self.over {
             Over::Help(_) => Did::default(),
             Over::Notice(open) => match command {
-                Some(Command::Message(key)) => pressed(open.key(key, by)),
+                Some(Command::Message(key)) => Did::box_press(open.key(key, by)),
                 _ => Did::default(),
             },
             Over::HotSeat(h) if h.help.is_some() => Did::default(),
@@ -692,7 +695,7 @@ impl Multiplayer {
                 }
                 match command {
                     Some(Command::Dialog(id @ (OK | HOT_SEAT_CANCEL))) => {
-                        held(h.part.input.key(&mut h.part.shown, id, by))
+                        Did::held(h.part.input.key(&mut h.part.shown, id, by))
                     }
                     _ => Did::default(),
                 }
@@ -709,7 +712,7 @@ impl Multiplayer {
                 }
                 match command {
                     Some(Command::Dialog(CANCEL)) => {
-                        held(self.part.input.key(&mut self.part.shown, CANCEL, by))
+                        Did::held(self.part.input.key(&mut self.part.shown, CANCEL, by))
                     }
                     _ => Did::default(),
                 }
@@ -818,43 +821,11 @@ impl Multiplayer {
 /// back), else the hover.
 fn moved(part: &mut Part, point: [i32; 2], hints: &BTreeMap<u16, String>) -> Did {
     if part.input.holds_button() {
-        let did = part.input.moved(&part.dialog, &mut part.shown, point);
-        return Did {
-            changed: did.changed,
-            sample: did.button_sound,
-            ended: None,
-        };
+        return Did::held(part.input.moved(&part.dialog, &mut part.shown, point));
     }
     Did {
         changed: part.hover(point, hints),
         ..Did::default()
-    }
-}
-
-/// A button going down (or its loop's change) as the dialog's: drawn again, its sample.
-const fn held(did: h3_ui::input::Did) -> Did {
-    Did {
-        changed: did.changed,
-        sample: did.button_sound,
-        ended: None,
-    }
-}
-
-/// A box's outcome as the dialog's: drawn again.
-fn changed(outcome: Outcome) -> Did {
-    Did {
-        changed: outcome != Outcome::Nothing,
-        ..Did::default()
-    }
-}
-
-/// A box's button going down: drawn again with its press sample.
-fn pressed(outcome: Outcome) -> Did {
-    let down = outcome == Outcome::Changed;
-    Did {
-        changed: down,
-        sample: down,
-        ended: None,
     }
 }
 
