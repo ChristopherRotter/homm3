@@ -339,3 +339,78 @@ fn a_shift_chord_is_matched_exactly() {
     let up = Chord::new(false, "Up").with_shift(true);
     assert_eq!(keys.chord_command(Over::Nothing, &up), None);
 }
+
+/// A viewer that asks two contexts for one key down (E27 M2's review: the shell's edit before its
+/// dialog), and one apart.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Typing {
+    Home,
+    Next,
+    Back,
+}
+
+/// Where it takes its keys: an edit, its dialog's ring (asked after the edit), a menu.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Field {
+    Edit,
+    Ring,
+    Menu,
+}
+
+impl Command for Typing {
+    type Context = Field;
+    const TABLE: &'static str = "shell";
+
+    fn all() -> Vec<Self> {
+        vec![Self::Home, Self::Next, Self::Back]
+    }
+
+    fn name(self) -> String {
+        match self {
+            Self::Home => "home".into(),
+            Self::Next => "next".into(),
+            Self::Back => "back".into(),
+        }
+    }
+
+    fn defaults() -> Vec<(Self, Vec<Chord>)> {
+        vec![
+            (Self::Home, chords(&["Home"])),
+            (Self::Next, chords(&["Tab"])),
+            (Self::Back, chords(&["Escape"])),
+        ]
+    }
+
+    fn context(self) -> Option<Field> {
+        Some(match self {
+            Self::Home => Field::Edit,
+            Self::Next => Field::Ring,
+            Self::Back => Field::Menu,
+        })
+    }
+
+    fn asked_together(a: Field, b: Field) -> bool {
+        a == b || matches!((a, b), (Field::Edit, Field::Ring) | (Field::Ring, Field::Edit))
+    }
+}
+
+#[test]
+fn contexts_asked_together_share_no_chord() {
+    // The edit's key on the ring's Tab would shadow it: refused, either way round.
+    assert_eq!(
+        Keys::<Typing>::with_file("[shell]\nhome = [\"Tab\"]"),
+        Err("[shell] Tab is bound to both `home` and `next`".to_string())
+    );
+    assert_eq!(
+        Keys::<Typing>::with_file("[shell]\nnext = [\"Home\"]"),
+        Err("[shell] Home is bound to both `home` and `next`".to_string())
+    );
+    // A menu's key is never asked with the edit's.
+    let file = "[shell]\nhome = [\"Escape\"]\nback = [\"Escape\"]";
+    let keys = Keys::<Typing>::with_file(file).unwrap();
+    assert_eq!(keys.command(Field::Edit, false, "Escape"), Some(Typing::Home));
+    assert_eq!(keys.command(Field::Menu, false, "Escape"), Some(Typing::Back));
+    // The default: a context asked alone (the test viewer's dialog and screen share Escape).
+    assert!(Test::asked_together(Over::Dialog, Over::Dialog));
+    assert!(!Test::asked_together(Over::Nothing, Over::Dialog));
+}

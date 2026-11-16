@@ -2387,7 +2387,10 @@ default:
 - **The lookup** (`shell::keys::command_for`): `Context::Edit` first while an edit types, then the
   dialog's own (`Front::contexts`); the chord with Shift as held, else, with Shift held and that
   chord bound nowhere there, the key alone (Shift and Escape still cancel, Shift and Home goes
-  home, as before T7b when the shell read no Shift).
+  home, as before T7b when the shell read no Shift). Since M2's review a user's file binding one
+  chord to an edit's key and to its dialog's (the Multiplayer dialog's, the hot seat's) is
+  refused as within one context (`h3_ui::keys::Command::asked_together`, the shell's `Edit` with
+  either): `edit-home = ["Tab"]` would have shadowed the ring.
 - **Shift chords** in `h3_ui::keys` (a `Shift+` chord, a parse error before, now parses: a change
   for the map's table, its inbox told): `Chord::shift`, `Shift+` in a key file after
   `Ctrl+` (`Ctrl+Shift+Up`), `Keys::chord_command` matching exactly; the Shifts never bound alone
