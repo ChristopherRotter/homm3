@@ -1,0 +1,395 @@
+# E08 batch E13 played by the capture harness (E08 T120; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-13.toml as steps, on Easy, the starting bonus gold, with T120's
+# reads (README, "Creature banks"). Hot seat, Red and Blue human. In the spec's order: day 1,
+# Red: E13-1's records and the draws' check, E13-2 with E13-11, E13-9, E13-3, E13-6 with E13-4
+# and E13-8's first part, E13-7, E13-5 (the coast and the boarding); Blue: E13-1's Blue reads,
+# E13-12; day 2, Red: E13-10, E13-5's Derelict Ship, E13-8.
+#
+# A bank's record and word are read by its entrance (`bank:x,y[:part]`, live; under a hero
+# standing there, its record's word). The draws' check is the recipe's `[[require]]` with
+# `starts = 5` (at most five starts, then the last played); the banks E13-7 and E13-10 take are
+# the steps' `pick` (the first that meets the record's condition, else the first). Each
+# bank's visit notes its dialogs in order (`order`) and the hero's tile and points at the question
+# (`questions:at`); each battle its stacks with every hex they cover (`opening:cover`), its
+# obstacles (`blocked`), war machines (`opening:machines`) and battlefield (`opening:field`).
+# E13-3's battle plays `{ shoot = "Archer", then = "auto" }` (the other stacks defend until the
+# Archers' first turn, their shots read before and after their shot), E13-9's `{ shoot = "Wood
+# Elf", then = "retreat" }`.
+
+spec = "experiments/specs/E08-batch-13.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+starts = 5
+
+[[require]]
+what = "an Imp Cache of level 1 (1000 gold) among I2, I3, I4"
+any = [[14, 21], [7, 21], [12, 24]]
+bank = { gold = 1000 }
+
+[[require]]
+what = "U1 or U2 with fewer than four relics"
+any = [[16, 44], [16, 50]]
+bank = { relics_below = 4 }
+
+# --- Day 1, Red: E13-1's records (before any hero moves) -------------------------------------------
+
+[[step]]
+encounter = "E13-1"
+hero = "E13-2"
+record = { "the starts needed (1 to 5)" = "starts", "row:bank" = { rows = [
+    ["text:I1", "text:(10, 4)", "bank:10,4:guards", "bank:10,4:resources", "bank:10,4:creature", "bank:10,4:artifacts", ["bank:10,4:index", "bank:10,4:bits"]],
+    ["text:S1", "text:(6, 8)", "bank:6,8:guards", "bank:6,8:resources", "bank:6,8:creature", "bank:6,8:artifacts", ["bank:6,8:index", "bank:6,8:bits"]],
+    ["text:C1", "text:(10, 8)", "bank:10,8:guards", "bank:10,8:resources", "bank:10,8:creature", "bank:10,8:artifacts", ["bank:10,8:index", "bank:10,8:bits"]],
+    ["text:S2", "text:(14, 8)", "bank:14,8:guards", "bank:14,8:resources", "bank:14,8:creature", "bank:14,8:artifacts", ["bank:14,8:index", "bank:14,8:bits"]],
+    ["text:T1", "text:(10, 20)", "bank:10,20:guards", "bank:10,20:resources", "bank:10,20:creature", "bank:10,20:artifacts", ["bank:10,20:index", "bank:10,20:bits"]],
+    ["text:I2", "text:(14, 21)", "bank:14,21:guards", "bank:14,21:resources", "bank:14,21:creature", "bank:14,21:artifacts", ["bank:14,21:index", "bank:14,21:bits"]],
+    ["text:I3", "text:(7, 21)", "bank:7,21:guards", "bank:7,21:resources", "bank:7,21:creature", "bank:7,21:artifacts", ["bank:7,21:index", "bank:7,21:bits"]],
+    ["text:N1", "text:(8, 24)", "bank:8,24:guards", "bank:8,24:resources", "bank:8,24:creature", "bank:8,24:artifacts", ["bank:8,24:index", "bank:8,24:bits"]],
+    ["text:I4", "text:(12, 24)", "bank:12,24:guards", "bank:12,24:resources", "bank:12,24:creature", "bank:12,24:artifacts", ["bank:12,24:index", "bank:12,24:bits"]],
+    ["text:G2", "text:(12, 34)", "bank:12,34:guards", "bank:12,34:resources", "bank:12,34:creature", "bank:12,34:artifacts", ["bank:12,34:index", "bank:12,34:bits"]],
+    ["text:U1", "text:(16, 44)", "bank:16,44:guards", "bank:16,44:resources", "bank:16,44:creature", "bank:16,44:artifacts", ["bank:16,44:index", "bank:16,44:bits"]],
+    ["text:C2", "text:(20, 44)", "bank:20,44:guards", "bank:20,44:resources", "bank:20,44:creature", "bank:20,44:artifacts", ["bank:20,44:index", "bank:20,44:bits"]],
+    ["text:C3", "text:(24, 44)", "bank:24,44:guards", "bank:24,44:resources", "bank:24,44:creature", "bank:24,44:artifacts", ["bank:24,44:index", "bank:24,44:bits"]],
+    ["text:W1", "text:(27, 46)", "bank:27,46:guards", "bank:27,46:resources", "bank:27,46:creature", "bank:27,46:artifacts", ["bank:27,46:index", "bank:27,46:bits"]],
+    ["text:U2", "text:(16, 50)", "bank:16,50:guards", "bank:16,50:resources", "bank:16,50:creature", "bank:16,50:artifacts", ["bank:16,50:index", "bank:16,50:bits"]],
+    ["text:D1", "text:(30, 54)", "bank:30,54:guards", "bank:30,54:resources", "bank:30,54:creature", "bank:30,54:artifacts", ["bank:30,54:index", "bank:30,54:bits"]],
+    ["text:D2", "text:(39, 40)", "bank:39,40:guards", "bank:39,40:resources", "bank:39,40:creature", "bank:39,40:artifacts", ["bank:39,40:index", "bank:39,40:bits"]],
+    ["text:W2", "text:(50, 4)", "bank:50,4:guards", "bank:50,4:resources", "bank:50,4:creature", "bank:50,4:artifacts", ["bank:50,4:index", "bank:50,4:bits"]],
+    ["text:W3", "text:(56, 5)", "bank:56,5:guards", "bank:56,5:resources", "bank:56,5:creature", "bank:56,5:artifacts", ["bank:56,5:index", "bank:56,5:bits"]],
+    ["text:W4", "text:(62, 4)", "bank:62,4:guards", "bank:62,4:resources", "bank:62,4:creature", "bank:62,4:artifacts", ["bank:62,4:index", "bank:62,4:bits"]],
+    ["text:T2", "text:(5, 64)", "bank:5,64:guards", "bank:5,64:resources", "bank:5,64:creature", "bank:5,64:artifacts", ["bank:5,64:index", "bank:5,64:bits"]],
+    ["text:G1", "text:(12, 64)", "bank:12,64:guards", "bank:12,64:resources", "bank:12,64:creature", "bank:12,64:artifacts", ["bank:12,64:index", "bank:12,64:bits"]],
+    ["text:M1", "text:(17, 64)", "bank:17,64:guards", "bank:17,64:resources", "bank:17,64:creature", "bank:17,64:artifacts", ["bank:17,64:index", "bank:17,64:bits"]],
+    ["text:M2", "text:(23, 64)", "bank:23,64:guards", "bank:23,64:resources", "bank:23,64:creature", "bank:23,64:artifacts", ["bank:23,64:index", "bank:23,64:bits"]],
+    ["text:N2", "text:(29, 64)", "bank:29,64:guards", "bank:29,64:resources", "bank:29,64:creature", "bank:29,64:artifacts", ["bank:29,64:index", "bank:29,64:bits"]],
+    ["text:F1", "text:(35, 64)", "bank:35,64:guards", "bank:35,64:resources", "bank:35,64:creature", "bank:35,64:artifacts", ["bank:35,64:index", "bank:35,64:bits"]],
+    ["text:F2", "text:(41, 64)", "bank:41,64:guards", "bank:41,64:resources", "bank:41,64:creature", "bank:41,64:artifacts", ["bank:41,64:index", "bank:41,64:bits"]],
+] } }
+note = { "the date at the start" = "date", "the game's version" = "map_kind", "the difficulty" = "difficulty" }
+
+# --- Day 1, Red: E13-2 and E13-11 (A) ---------------------------------------------------------------
+
+[[step]]
+encounter = "E13-2"
+hero = "E13-2"
+record = { "E13-2 before: points; Red's treasury" = ["text:points: ", "hero:points", "text:treasury: ", "treasury"] }
+note = { "E13-2 worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E13-2"
+hero = "E13-2"
+walk = [6, 8]
+answer = "no"
+battle = "auto"
+record = { "S1: questions and messages (in order)" = ["text:the path: ", "path_tiles", "text:in order: ", "order"], "after no at S1: E13-2's tile; points; S1's word (bits 5 to 12, 25); the hint over (7, 8)" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:S1: ", "bank:6,8:bits"] }
+
+[[step]]
+encounter = "E13-2"
+hero = "E13-2"
+hint = [[7, 8]]
+record = { "+after no at S1: E13-2's tile; points; S1's word (bits 5 to 12, 25); the hint over (7, 8)" = ["text:the hint: ", "hints"] }
+
+[[step]]
+encounter = "E13-2"
+hero = "E13-2"
+walk = [10, 8]
+answer = "no"
+battle = "auto"
+record = { "C1: questions and messages (in order)" = ["text:the path: ", "path_tiles", "text:in order: ", "order"], "after no at C1: E13-2's tile; points; C1's word; the hint over (11, 8)" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:C1: ", "bank:10,8:bits"] }
+
+[[step]]
+encounter = "E13-2"
+hero = "E13-2"
+hint = [[11, 8]]
+record = { "+after no at C1: E13-2's tile; points; C1's word; the hint over (11, 8)" = ["text:the hint: ", "hints"] }
+
+[[step]]
+encounter = "E13-2"
+hero = "E13-2"
+walk = [14, 8]
+answer = "no"
+battle = "auto"
+record = { "S2: questions and messages; at the question E13-2's tile; points" = ["text:the path: ", "path_tiles", "text:in order: ", "order", "text:at the question: ", "questions:at"], "after no at S2: E13-2's tile; points; S2's word" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:S2: ", "bank:14,8:bits"] }
+
+# E13-11: Space on S2's entrance, the visit again (the attack kind: the question; yes: the battle).
+[[step]]
+encounter = "E13-2"
+hero = "E13-2"
+key = "space"
+answer = "yes"
+battle = "auto"
+level_up = "left"
+record = { "Space on S2: questions and messages (or the step off and back)" = ["text:the key: ", "key", "text:in order: ", "order", "text:at the question: ", "questions:at"], "the battle as it opens: E13-2's stacks (creature, count, hexes); the guards' (creature, count, hexes)" = ["opening:cover", "text:tactics phase: ", "tactics", "text:obstacles: ", "blocked", "text:war machines: ", "opening:machines", "text:field: ", "opening:field"], "after the battle: dialogs and messages in order; E13-2's tile; points; army; experience" = ["text:in order: ", "order", "text:the level-ups: ", "level_up_dialogs", "text:the messages' pictures: ", "message_pictures", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:army: ", "hero:slots", "text:experience: ", "hero:experience", "text:skills: ", "hero:skills"], "after it: S2's word; the hint over (15, 8); Red's treasury" = ["text:S2: ", "bank:14,8", "text:treasury before: ", "before:treasury", "text:after: ", "treasury"] }
+
+[[step]]
+encounter = "E13-2"
+hero = "E13-2"
+hint = [[15, 8]]
+record = { "+after it: S2's word; the hint over (15, 8); Red's treasury" = ["text:the hint: ", "hints"] }
+
+# --- Day 1, Red: E13-9 (G) ----------------------------------------------------------------------------
+
+[[step]]
+encounter = "E13-9"
+hero = "E13-9"
+record = { "E13-9 before: points; I1's record (guards by slot)" = ["text:points: ", "hero:points", "text:I1: ", "bank:10,4:guards"] }
+note = { "E13-9 worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E13-9"
+hero = "E13-9"
+walk = [10, 4]
+answer = "yes"
+battle = { shoot = "Wood Elf", then = "retreat" }
+record = { "I1: questions and messages" = ["text:the path: ", "path_tiles", "text:in order: ", "order", "text:at the question: ", "questions:at"], "the battle as it opens: E13-9's stacks and hexes; the guards' (creature, count, hexes)" = ["opening:cover", "text:tactics phase: ", "tactics", "text:obstacles: ", "blocked", "text:war machines: ", "opening:machines", "text:shots: ", "opening:shots"], "the shot: the target; the guards' losses; anything the guards did before it" = ["text:the Elves: ", "shoot:action", "text:shots: ", "shoot:shots_before", "text:then: ", "shoot:shots_after", "text:the guards as the Elves' turn came: ", "shoot:before", "text:after the shot: ", "shoot:after"], "just before the retreat: each guard stack's count by slot" = "shoot:before_retreat", "the retreat: the battle's end" = ["text:winner: ", "winner", "text:retreated: ", "retreated", "text:the stacks at the end: ", "stacks:end", "text:then: ", "order"], "after it: I1's record (guards by slot); I1's word; E13-9 on the map?; the hint over I1" = ["text:I1: ", "bank:10,4:guards", "text:word: ", "bank:10,4:bits", "text:on the map: ", "hero:on_map"] }
+
+[[step]]
+encounter = "E13-9"
+hero = "E13-3"
+hint = [[9, 4]]
+record = { "+after it: I1's record (guards by slot); I1's word; E13-9 on the map?; the hint over I1" = ["text:the hint (E13-3 selected): ", "hints"] }
+
+# --- Day 1, Red: E13-3 (B) ----------------------------------------------------------------------------
+
+[[step]]
+encounter = "E13-3"
+hero = "E13-3"
+record = { "E13-3 before: points" = "hero:points" }
+note = { "E13-3 at the start: skills; army slots; formation; worn" = ["hero:skills", "hero:slots", "hero:flags", "hero:artifacts"] }
+
+[[step]]
+encounter = "E13-3"
+hero = "E13-3"
+walk = [10, 20]
+answer = "yes"
+battle = { shoot = "Archer", then = "auto" }
+level_up = "left"
+record = { "the battle as it opens: a tactics phase?; E13-3's stacks (creature, count, hexes); the guards' (creature, count, hexes)" = ["text:tactics phase: ", "tactics", "text:stacks: ", "opening:cover"], "the obstacles; the war machines on the field" = ["text:obstacles: ", "blocked", "text:war machines: ", "opening:machines", "text:field: ", "opening:field"], "the Archers' shots before their first shot; after it" = ["text:at the opening: ", "opening:shots", "text:the turn: ", "shoot"], "after the battle: dialogs and messages in order; E13-3's tile; points; army; Red's treasury" = ["text:the path: ", "path_tiles", "text:in order: ", "order", "text:the level-ups: ", "level_up_dialogs", "text:the messages' pictures: ", "message_pictures", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:army: ", "hero:slots", "text:skills: ", "hero:skills", "text:treasury before: ", "before:treasury", "text:after: ", "treasury"] }
+
+# --- Day 1, Red: E13-6 with E13-4 and E13-8's first part (E) ------------------------------------------
+
+[[step]]
+encounter = "E13-6"
+hero = "E13-6"
+record = { "E13-6 before: points; experience; level" = ["text:points: ", "hero:points", "text:experience: ", "hero:experience", "text:level: ", "hero:level"] }
+note = { "E13-6 worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E13-6"
+hero = "E13-6"
+walk = [12, 34]
+answer = "yes"
+battle = "auto"
+level_up = "left"
+record = { "the battle as it opens: E13-6's stacks (creature, count, hexes)" = ["opening:cover:attacker", "text:tactics phase: ", "tactics", "text:obstacles: ", "blocked"], "row:guard slot" = "opening:cover_rows:defender", "row:#" = "order:rows", "after OK: E13-6's tile; points; army; experience; level" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:army: ", "hero:slots", "text:experience: ", "hero:experience", "text:level: ", "hero:level", "text:the level-ups: ", "level_up_dialogs", "text:the messages' pictures: ", "message_pictures", "text:at the question: ", "questions:at"] }
+
+[[step]]
+encounter = "E13-6"
+hero = "E13-6"
+key = "space"
+answer = "no"
+battle = "auto"
+record = { "E13-8: Space on G2: questions and messages" = ["text:the key: ", "key", "text:in order: ", "order", "text:pictures: ", "message_pictures", "text:G2: ", "bank:12,34:bits"] }
+
+# --- Day 1, Red: E13-7 (F) ------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E13-7"
+hero = "E13-7"
+record = { "E13-7 before: points; worn artifacts; backpack; the Utopia taken (U1 or U2); Red's treasury" = ["text:points: ", "hero:points", "text:worn: ", "hero:artifacts:classes", "text:backpack: ", "hero:backpack:classes", "text:treasury: ", "treasury"] }
+
+[[step]]
+encounter = "E13-7"
+hero = "E13-7"
+walk = "pick"
+pick = { among = [[16, 44], [16, 50]], bank = { relics_below = 4 } }
+answer = "yes"
+battle = "auto"
+level_up = "left"
+record = { "+E13-7 before: points; worn artifacts; backpack; the Utopia taken (U1 or U2); Red's treasury" = ["text:taken: ", "pick"], "the battle as it opens: the guards (creature, count, hexes)" = ["opening:cover:defender", "text:E13-7: ", "opening:cover:attacker", "text:obstacles: ", "blocked"], "after it: dialogs and messages in order" = ["text:the path: ", "path_tiles", "text:in order: ", "order", "text:the level-ups: ", "level_up_dialogs", "text:the messages' pictures: ", "message_pictures"], "E13-7's worn artifacts after; its backpack in order (names; class each); Red's treasury" = ["text:worn: ", "hero:artifacts:classes", "text:backpack: ", "hero:backpack:classes", "text:treasury before: ", "before:treasury", "text:after: ", "treasury", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E13-7"
+hero = "E13-7"
+walk = [20, 44]
+answer = "yes"
+battle = "auto"
+level_up = "left"
+record = { "+C2 and C3: the reward's messages; the backpack after; E13-7's points after C3" = ["text:C2: ", "order", "text:pictures: ", "message_pictures", "text:treasury: ", "treasury", "text:backpack: ", "hero:backpack:classes", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E13-7"
+hero = "E13-7"
+only_if = { at = [20, 44], points_at_least = 482 }
+walk = [24, 44]
+answer = "yes"
+battle = "auto"
+level_up = "left"
+record = { "+C2 and C3: the reward's messages; the backpack after; E13-7's points after C3" = ["text:C3: ", "order", "text:pictures: ", "message_pictures", "text:treasury: ", "treasury", "text:backpack: ", "hero:backpack:classes", "text:points: ", "hero:points"] }
+
+# --- Day 1, Red: E13-5 and E13-11's second part (C, D) --------------------------------------------------
+
+[[step]]
+encounter = "E13-5"
+hero = "E13-5"
+record = { "E13-5 before: points" = "hero:points" }
+note = { "E13-5 worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E13-5"
+hero = "E13-5"
+walk = [27, 46]
+answer = "yes"
+battle = "auto"
+level_up = "left"
+record = { "W1: at the question E13-5's tile; points; questions and messages" = ["text:at the question: ", "questions:at", "text:the path: ", "path_tiles", "text:in order: ", "order"], "the W1 battle as it opens: the battlefield; obstacles; the stacks" = ["text:field: ", "opening:field", "text:obstacles: ", "blocked", "text:war machines: ", "opening:machines", "text:stacks: ", "opening:cover"], "after it: dialogs and messages; E13-5's tile; points; W1's word" = ["text:in order: ", "order", "text:pictures: ", "message_pictures", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:W1: ", "bank:27,46:bits", "text:treasury before: ", "before:treasury", "text:after: ", "treasury"] }
+
+[[step]]
+encounter = "E13-5"
+hero = "E13-5b"
+walk = [27, 51]
+record = { "E13-5b: the boarding: its tile; points; aboard?" = ["text:points before: ", "before:hero:points", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:aboard: ", "hero:in_boat", "text:messages: ", "order"] }
+
+[[step]]
+end_turn = true
+encounter = "E13-1"
+
+# --- Day 1, Blue: E13-1's Blue reads, E13-12 (H1, H2, I) --------------------------------------------------
+
+[[step]]
+encounter = "E13-1"
+hero = "E13-1"
+hint = [[7, 8], [11, 8], [9, 4]]
+record = { "Blue's hints: S1 (7, 8); C1 (11, 8); I1 (9, 4)" = "hints", "the words' visited bits on Blue's turn: S1; C1; I1" = ["text:S1: ", "bank:6,8:bits", "text:C1: ", "bank:10,8:bits", "text:I1: ", "bank:10,4:bits"] }
+
+[[step]]
+encounter = "E13-12"
+hero = "E13-12"
+walk = [50, 5]
+again_if = { marks = "any" }
+answer = "no"
+battle = "auto"
+record = { "P1: E13-12's points; the marks to (50, 5) (tiles, or none)" = ["text:points: ", "before:hero:points", "text:marks: ", "path_tiles", "text:colours: ", "mark"], "P1: the walk: questions and messages; E13-12's tile; points; W2's word" = ["text:clicked again: ", "again", "text:in order: ", "order", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:W2: ", "bank:50,4:bits"] }
+
+[[step]]
+encounter = "E13-12"
+hero = "E13-12b"
+walk = [56, 7]
+again_if = { marks = "any" }
+answer = "no"
+battle = "auto"
+record = { "P2: E13-12b's points; the marks to (56, 7)" = ["text:points: ", "before:hero:points", "text:marks: ", "path_tiles", "text:colours: ", "mark"], "P2: the walk: questions and messages; E13-12b's tile; points; W3's word" = ["text:clicked again: ", "again", "text:in order: ", "order", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:W3: ", "bank:56,5:bits"] }
+
+[[step]]
+encounter = "E13-12"
+hero = "E13-12c"
+walk = [62, 5]
+again_if = { marks = "any" }
+answer = "no"
+battle = "auto"
+record = { "P3: E13-12c's points; the marks to (62, 5) (or none); if walked, where it stopped" = ["text:points: ", "before:hero:points", "text:marks: ", "path_tiles", "text:clicked again: ", "again", "text:tile: ", "hero:tile", "text:points after: ", "hero:points", "text:in order: ", "order"] }
+
+[[step]]
+encounter = "E13-12"
+hero = "E13-12c"
+walk = [62, 4]
+answer = "no"
+battle = "auto"
+record = { "P3: W4's visit: E13-12c's tile and points at the question; questions and messages" = ["text:at the question: ", "questions:at", "text:the path: ", "path_tiles", "text:in order: ", "order"], "after no: E13-12c's tile; points; W4's word" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:W4: ", "bank:62,4:bits"] }
+
+[[step]]
+end_turn = true
+encounter = "E13-1"
+
+# --- Day 2, Red: E13-10 (in E13-3's encounter) -------------------------------------------------------------
+
+[[step]]
+encounter = "E13-3"
+hero = "E13-3"
+walk = "pick"
+pick = { among = [[14, 21], [7, 21], [12, 24]], bank = { gold = 1000 } }
+answer = "yes"
+battle = "auto"
+level_up = "left"
+record = { "E13-10: the Imp Cache taken (its record's level); E13-3's points at the start of day 2" = ["text:taken: ", "pick", "text:points: ", "before:hero:points", "text:day's points: ", "before:hero:day_points", "text:tile: ", "before:hero:tile"], "the Imp Cache: Red's treasury before; the reward's message; the treasury after" = ["text:before: ", "before:treasury", "text:the path: ", "path_tiles", "text:in order: ", "order", "text:pictures: ", "message_pictures", "text:after: ", "treasury"] }
+
+[[step]]
+encounter = "E13-3"
+hero = "E13-3"
+walk = [8, 24]
+answer = "yes"
+battle = "auto"
+level_up = "left"
+record = { "the Naga Bank N1: Red's treasury before; the reward's message; the treasury after" = ["text:before: ", "before:treasury", "text:the path: ", "path_tiles", "text:in order: ", "order", "text:pictures: ", "message_pictures", "text:after: ", "treasury", "text:E13-3 then: ", "hero:tile", "hero:points"] }
+
+# --- Day 2, Red: E13-5's Derelict Ship ------------------------------------------------------------------------
+
+[[step]]
+encounter = "E13-5"
+hero = "E13-5b"
+walk = [30, 54]
+answer = "yes"
+battle = "auto"
+level_up = "left"
+record = { "day 2: E13-5b's points; D1: questions and messages" = ["text:points: ", "before:hero:points", "text:aboard: ", "before:hero:in_boat", "text:the path: ", "path_tiles", "text:at the question: ", "questions:at", "text:in order: ", "order"], "the D1 battle as it opens: the battlefield; obstacles" = ["text:field: ", "opening:field", "text:obstacles: ", "blocked", "text:stacks: ", "opening:cover"], "after it: E13-5b's tile; dialogs and messages" = ["text:tile: ", "hero:tile", "text:aboard: ", "hero:in_boat", "text:pictures: ", "message_pictures", "text:treasury before: ", "before:treasury", "text:after: ", "treasury", "text:D1: ", "bank:30,54:bits"] }
+
+# --- Day 2, Red: E13-8 (in E13-7's encounter) -----------------------------------------------------------------
+
+# C3 on day 2 first when day 1 did not pay it (E13-7 still on C2's entrance).
+[[step]]
+encounter = "E13-7"
+hero = "E13-7"
+only_if = { at = [20, 44] }
+skip_quietly = true
+walk = [24, 44]
+answer = "yes"
+battle = "auto"
+level_up = "left"
+record = { "+C2 and C3: the reward's messages; the backpack after; E13-7's points after C3" = ["text:C3 on day 2: ", "order", "text:pictures: ", "message_pictures", "text:backpack: ", "hero:backpack:classes", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E13-7"
+hero = "E13-7"
+record = { "E13-8 day 2, before: +0x105 bits 9, 10, 11; +0x11A" = ["text:bit 9: ", "hero:bit:9", "text:bit 10: ", "hero:bit:10", "text:bit 11: ", "hero:bit:11", "text:+0x11A: ", "hero:morale_bonus", "text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E13-7"
+hero = "E13-7"
+key = "space"
+answer = "yes"
+battle = "auto"
+record = { "C3 again: questions and messages; bits; +0x11A" = ["text:the key: ", "key", "text:in order: ", "order", "text:bit 9: ", "hero:bit:9", "text:bit 10: ", "hero:bit:10", "text:bit 11: ", "hero:bit:11", "text:+0x11A: ", "hero:morale_bonus", "text:C3: ", "bank:24,44:bits"] }
+
+[[step]]
+encounter = "E13-7"
+hero = "E13-7"
+walk = [20, 44]
+answer = "yes"
+battle = "auto"
+record = { "C2 again: questions and messages; bits; +0x11A" = ["text:the path: ", "path_tiles", "text:in order: ", "order", "text:bit 9: ", "hero:bit:9", "text:bit 10: ", "hero:bit:10", "text:bit 11: ", "hero:bit:11", "text:+0x11A: ", "hero:morale_bonus", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E13-7"
+hero = "E13-7"
+walk = [26, 45]
+answer = "no"
+battle = "auto"
+record = { "+W1 from (26, 45): questions and messages; E13-7's tile; bits; +0x11A" = ["text:the walk to (26, 45): ", "path_tiles", "text:then: ", "hero:tile", "hero:points"] }
+
+[[step]]
+encounter = "E13-7"
+hero = "E13-7"
+walk = [27, 46]
+answer = "yes"
+battle = "auto"
+record = { "+W1 from (26, 45): questions and messages; E13-7's tile; bits; +0x11A" = ["text:W1: ", "questions:at", "text:in order: ", "order", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:bit 9: ", "hero:bit:9", "text:bit 10: ", "hero:bit:10", "text:bit 11: ", "hero:bit:11", "text:+0x11A: ", "hero:morale_bonus"] }
+
+[[step]]
+encounter = "E13-7"
+hero = "E13-7"
+walk = [24, 48]
+answer = { join = "no", flee = "yes", other = "no" }
+battle = "auto"
+level_up = "left"
+record = { "the Peasant: the battle's result; bits; +0x11A after" = ["text:the path: ", "path_tiles", "text:winner: ", "winner", "text:in order: ", "order", "text:bit 9: ", "hero:bit:9", "text:bit 10: ", "hero:bit:10", "text:bit 11: ", "hero:bit:11", "text:+0x11A: ", "hero:morale_bonus", "text:tile: ", "hero:tile"] }

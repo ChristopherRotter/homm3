@@ -207,6 +207,14 @@ VISIT_RULES = {
 # its data from +0x40. The classes: a mine 53, the banks, the Shrines 88-90, a Tree 102, a Witch
 # Hut 113, a Seer's Hut 83, a Quest Guard 215; a Keymaster's Tent 10 is a visit rule's.
 MINES, MINE_SIZE, BANKS, BANK_SIZE, KEYMASTERS = 0x4E38C, 0x40, 0x4E3DC, 0x6C, 0x4E364
+# E08 T120 (batch E13; structs.toml creature_bank_record): a bank's record beyond its guards: the
+# reward's resources (i32[7] +0x38, wood to gold), creature (i32 +0x54, -1 none) and count (i8
+# +0x58), the artifacts' vector (begin +0x60, end +0x64, an i32 id each, relics first). The
+# artifact setup record's class (u32 +0xC; H3API's H3ArtifactSetup type: 1 special, 2 treasure,
+# 4 minor, 8 major, 16 relic).
+BANK_RESOURCES, BANK_CREATURE, BANK_COUNT, BANK_ARTIFACTS = 0x38, 0x54, 0x58, 0x60
+ARTIFACT_CLASS = 0xC
+ARTIFACT_CLASSES = {1: "special", 2: "treasure", 4: "minor", 8: "major", 16: "relic"}
 WITCH_KIND, TREE_KIND, SHRINE_KIND = 12, 18, 19
 HERO_SPELLS, HERO_TREES, BANK_LOOTED = 0x430, 0x6B, 1 << 25
 QUEST_VTABLE, QUEST_VTABLE_SIZE, QUEST_VARIANT = 0x64174C, 0x3C, 0x38
@@ -437,6 +445,10 @@ FIELDS = {
     "count": 0x4C,
     "army_slot": 0x5C,  # E08 T57 (batch E7's openings): the army slot the stack came from
     "speed": 0xC4,  # E08 T32b1: a plan's move in reach
+    # E08 T120 (batch E13's E13-3, E13-9): the shots left (the creature record's copy +0x74,
+    # its shots +0x64; H3API's H3CreatureInformation numberShots), lowered by each shot unless
+    # the side's Ammo Cart supplies it.
+    "shots": 0xD8,
     # The count the box shows while it is not -1 (E17 M3 T5b, design §4.3): the count before a
     # strike's kills, set by `stack_take_damage` (0x4440DB), -1 again at the end of
     # `strike_animation` (0x46935A).
@@ -827,6 +839,31 @@ class Mem:
         """An artifact's name from the game's artifact setup table (E08 T32b1)."""
         record = self.u32(ARTIFACT_TABLE_POINTER) + ARTIFACT_SIZE * artifact
         return self.c_string(self.u32(record), 64)
+
+    def artifact_class(self, artifact):
+        """An artifact's class from the artifact setup table (E08 T120, batch E13's rewards):
+        `treasure`, `minor`, `major`, `relic` or `special` (the record's +0xC; another value as
+        its number)."""
+        record = self.u32(ARTIFACT_TABLE_POINTER) + ARTIFACT_SIZE * artifact
+        kind = self.u32(record + ARTIFACT_CLASS)
+        return ARTIFACT_CLASSES.get(kind, str(kind))
+
+    def bank(self, index):
+        """A creature bank's record by its index (E08 T120, batch E13's E13-1; game +0x4E3DC,
+        0x6C bytes: structs.toml's creature_bank_record): {index, guards: [[creature, count]] by
+        slot (an empty slot [-1, 0]), resources (wood to gold), creature (-1 none), count,
+        artifacts (ids in the vector's order)}."""
+        record = self.u32(self.game() + BANKS) + BANK_SIZE * index
+        raw = self.read(record, BANK_SIZE)
+        types, counts = struct.unpack_from("<7i", raw, 0), struct.unpack_from("<7i", raw, 28)
+        begin, end = struct.unpack_from("<II", raw, BANK_ARTIFACTS)
+        size = end - begin if begin and 0 <= end - begin <= 64 else 0
+        return {"index": index, "guards": [[t, c] for t, c in zip(types, counts)],
+                "resources": list(struct.unpack_from("<7i", raw, BANK_RESOURCES)),
+                "creature": struct.unpack_from("<i", raw, BANK_CREATURE)[0],
+                "count": struct.unpack_from("<b", raw, BANK_COUNT)[0],
+                "artifacts": list(struct.unpack(f"<{size // 4}i", self.read(begin, size)))
+                if size else []}
 
     def spell_name(self, spell):
         """A spell's name from the game's spell table (E08 T47a)."""

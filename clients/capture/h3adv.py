@@ -858,6 +858,117 @@ def end_tactics_phase(game, mem, end):
     game.move(*BATTLE_PARK)
 
 
+# The combat cursor's shot frames (CRCOMBAT.DEF: 3 a shot, 15 a shot at half damage; VCMI's
+# Cursor::Combat SHOOT and SHOOT_PENALTY), beside its sword frames 7 to 14 (MELEE_FRAMES).
+SHOT_FRAMES = (3, 15)
+
+
+def adjacent_enemy(mem, active):
+    """E08 T120 (batch E13's E13-9): the other side's living stack beside the active stack's
+    hexes (the nearest record first), None for none: a shooter beside one shoots no more."""
+    board = mem.hexes()
+    own = {h["hex"] for h in board if h["stack"] == active}
+    near = {n for h in own for d in STRIKE_OFFSETS if (n := neighbour(h, d)) is not None}
+    found = sorted({tuple(board[n]["stack"]) for n in near
+                    if board[n]["stack"] is not None and board[n]["stack"][0] != active[0]})
+    alive = {(s["side"], s["record"]): s for s in living(mem)}
+    return next((alive[f] for f in found if f in alive), None)
+
+
+def shoot(game, mem, active, aim):
+    """E08 T120 (batch E13's E13-3, E13-9): the active stack shoots the stack `aim`: the mouse on
+    each of the target's hexes until the combat cursor shows a shot (SHOT_FRAMES), clicked there.
+    Returns what it did."""
+    board, seen = mem.hexes(), []
+    hexes = [h["hex"] for h in board if h["stack"] == [aim["side"], aim["record"]]]
+    for attempt in range(STRIKE_PASSES):
+        if attempt:
+            time.sleep(STRIKE_PAUSE)
+        for target in hexes:
+            x, y = h3drive.hex_point(target)
+            game.move(x, y)
+            time.sleep(HOVER)
+            cursor = mem.globals()["cursor"]
+            seen.append(cursor[1] if cursor else None)
+            if cursor and cursor[0] == COMBAT_CURSOR and cursor[1] in SHOT_FRAMES:
+                game.click(x, y, 0.2)
+                return (f"shoots {aim['count']} {mem.creature_name(aim['creature'], aim['count'])}"
+                        f" at hex {target} (cursor frame {cursor[1]})")
+    game.dump(game.out / "no-shot-cursor.xwd")
+    raise RuntimeError(f"no shot cursor over hexes {hexes} (cursor frames {seen}; the display: "
+                       f"{game.out / 'no-shot-cursor.xwd'})")
+
+
+def guards_by_slot(mem, side=1):
+    """E08 T120: a side's stacks by army slot as they stand (`slot 0: 18 Imps, ...`)."""
+    return ", ".join(f"slot {s['army_slot']}: {s['count']} "
+                     f"{mem.creature_name(s['creature'], s['count'])}"
+                     for s in sorted(mem.stacks(), key=lambda s: (s["army_slot"], s["record"]))
+                     if s["side"] == side and s["creature"] not in MACHINES) or "none"
+
+
+def shoot_turn(game, mem, plan, end):
+    """E08 T120 (batch E13's E13-3, E13-9): the plan `{ shoot = "<creature>", then }` for the
+    attacker: every other attacking stack defends until the shooter's first turn; at it the
+    shooter's shots are read, the other side's stacks, then it shoots the nearest of them (or,
+    with one beside it, attacks that one: strike), and its shots are read again once its turn is
+    over. With `then = "retreat"` the attacker's next turn reads the defender's stacks by slot and
+    retreats (the confirmation's OK clicked); `auto` is played by `fight`. Returns {shots_before,
+    shots_after, action, before (the defender's stacks as the shooter's turn came), after (as it
+    ended), before_retreat, retreated}."""
+    done = {}
+    while True:
+        if time.monotonic() > end:
+            raise TimeoutError(f"no turn of the {plan['shoot']}")
+        if find_button(game, "battle_ok"):
+            return done
+        active = mem.globals()["active"]
+        stack = next((s for s in mem.stacks() if [s["side"], s["record"]] == active), None)
+        if active is None or stack is None or stack["creature"] in MACHINES or active[0] != 0:
+            time.sleep(0.1)
+            continue
+        time.sleep(TURN_SETTLE)
+        if mem.globals()["active"] != active or mem.globals()["decided"]:
+            continue
+        if mem.creature_name(stack["creature"]) != plan["shoot"] and not done:
+            game.key("d", 0.3)
+            print(f"plan: attacker {mem.creature_name(stack['creature'])} defends",
+                  file=sys.stderr, flush=True)
+        elif not done:
+            done["shots_before"] = stack["shots"]
+            done["before"] = guards_by_slot(mem)
+            near = adjacent_enemy(mem, active)
+            aim = near or nearest_enemy(mem, stack)
+            done["action"] = (strike(game, mem, active, aim) + " (beside the shooter)") if near \
+                else shoot(game, mem, active, aim)
+            game.move(*BATTLE_PARK)
+            wait_for(lambda a=active: mem.globals()["active"] != a or find_button(game, "battle_ok"),
+                     "the shooter's turn over", 30)
+            time.sleep(0.5)
+            after = next((s for s in mem.stacks() if [s["side"], s["record"]] == active), None)
+            done["shots_after"] = after["shots"] if after else None
+            done["after"] = guards_by_slot(mem)
+            print(f"plan: attacker {plan['shoot']} {done['action']}; shots "
+                  f"{done['shots_before']} then {done['shots_after']}", file=sys.stderr,
+                  flush=True)
+            if plan["then"] == "auto":
+                return done
+            continue
+        else:
+            done["before_retreat"] = guards_by_slot(mem)
+            game.key(BATTLE_KEYS["retreat"], 1.0)
+            found = find_button(game, "ok")
+            if not found:
+                raise RuntimeError("no confirmation after the retreat key")
+            click_button(game, "ok", found[0])
+            game.move(*BATTLE_PARK)
+            done["retreated"] = True
+            return done
+        game.move(*BATTLE_PARK)
+        wait_for(lambda a=active: mem.globals()["active"] != a or find_button(game, "battle_ok"),
+                 "the next stack's turn", 30)
+
+
 def fight(game, mem, plan, limit=300.0):
     """Plays the battle on the screen as `plan` says and returns its record: the stacks at the
     start and the end, the outcome and how it was played. `plan`: "auto" (auto combat: the
@@ -879,7 +990,13 @@ def fight(game, mem, plan, limit=300.0):
     Ballistics) is waited out: the side's first stack that is not a machine retreats."""
     if plan is None:
         raise RuntimeError("a battle the step does not plan (`battle`)")
-    if isinstance(plan, dict) and "book" in plan:
+    if isinstance(plan, dict) and "shoot" in plan:
+        # E08 T120 (batch E13's E13-3, E13-9): `{ shoot = "<creature>", then = "auto" |
+        # "retreat" }` (shoot_turn).
+        if set(plan) != {"shoot", "then"} or plan["then"] not in ("auto", "retreat"):
+            raise ValueError(f"unknown battle plan `{plan}`")
+        action, side = "shoot", 0
+    elif isinstance(plan, dict) and "book" in plan:
         # E08 T110 (batch E12a's E12-4): `{ book = "Bless", then = "attack" }`, optionally
         # `place = <k>` (book_turns).
         if set(plan) - {"book", "then", "place"} or plan.get("then") not in ("auto", "attack"):
@@ -908,14 +1025,29 @@ def fight(game, mem, plan, limit=300.0):
               "sides": mem.battle_sides(), "stops": [],
               # E08 T57: every stack's record at the opening (army slot, morale, luck, ...).
               "opening": [{k: st[k] for k in ("side", "army_slot", "hex", "creature", "count",
-                                                "morale", "luck")} for st in mem.stacks()]}
+                                                "morale", "luck", "shots")}
+                          for st in mem.stacks()]}
+    # E08 T120 (batch E13's E13-4): every hex each stack covers at the opening (a two-hex
+    # stack's two: the hex records' stack reference, h3mem.hexes).
+    cover = {}
+    for h in mem.hexes():
+        if h["stack"] is not None:
+            cover.setdefault(tuple(h["stack"]), []).append(h["hex"])
+    for st, raw in zip(record["opening"], mem.stacks()):
+        st["hexes"] = cover.get((raw["side"], raw["record"]), [])
     end = time.monotonic() + limit
     # E08 T47a (batch E6's E6-6): a tactics phase (battle manager +0x13D68 at the start) is ended
     # at once, as the templates say: its message's OK, then its Start button.
     record["tactics"] = mem.tactics_phase()
     if record["tactics"]:
         end_tactics_phase(game, mem, end)
-    if action == "book":
+    if action == "shoot":
+        record["shoot"] = shoot_turn(game, mem, plan, end)
+        if find_button(game, "battle_ok"):
+            pass
+        elif plan["then"] == "auto":
+            auto_combat(game, mem, end)
+    elif action == "book":
         record["books"] = book_turns(game, mem, plan, end)
         if find_button(game, "battle_ok"):
             pass
@@ -1043,7 +1175,7 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
     events = {"dialogs": 0, "questions": [], "battles": [], "level_ups": [],
               "level_up_dialogs": [], "messages": [], "screens": [], "actions": [],
               "choices": [], "message_pictures": [], "town_screen": False,
-              "unknown_screens": []}
+              "unknown_screens": [], "order": []}
     choices = [level_up] if isinstance(level_up, str) else list(level_up)
     picks = [] if choice is None else [choice] if isinstance(choice, str) else list(choice)
     last, since, known = None, time.monotonic(), time.monotonic()
@@ -1056,6 +1188,10 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
             # opens (`hires`: `opening`, before any click) and as the actions leave it (`after`,
             # None when they closed it), then closed by its Close.
             events["screens"].append(kind)
+            # E08 T120 (batch E13's E13-6): every dialog in the order it came (`order`), an army
+            # dialog with both bars as it opened (army_bars).
+            events["order"].append(f"army dialog ({army_bars(mem, index)})" if kind == "army"
+                                   else f"{kind} screen")
             if kind == "hire":
                 events.setdefault("hires", []).append({"opening": mem.recruit_dialog()})
             if kind == "exchange":
@@ -1120,6 +1256,7 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
             if opening and "at_opening" not in events:
                 events["at_opening"] = {w: value({"after": {}}, w, mem) for w in opening}
             events["battles"].append({**fight(game, mem, battle), "hero_tile": at})
+            events["order"].append(f"battle (the hero on {tile_name(at)})")
             # E09 T3b: the screen known up to the battle's end (a long battle left `known` stale
             # for the screen checks above).
             last, since, known = None, time.monotonic(), time.monotonic()
@@ -1146,6 +1283,7 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
                 else:
                     record["taken"] = offer_text(shown["left"])
                 known_dialogs.append(record)
+                events["order"].append(f"level-up ({record['hero']}, level {record['level']})")
             elif oks and not waiting:
                 click_button(game, "ok", oks[0])
                 events["dialogs"] += 1
@@ -1179,12 +1317,17 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
             if said not in ("yes", "no"):
                 raise RuntimeError(f"a question ({record or 'its text not identified'}, {kind}) "
                                    "the step does not answer (`answer`)")
+            # E08 T120 (batch E13's E13-11): where the hero stands as the question shows.
+            hero = mem.hero(index)
             events["questions"].append({"record": record, "kind": kind, "answer": said,
+                                        "tile": hero["tile"], "points": hero["points"],
                                         **size_word(record, mem)})
+            events["order"].append(f"question {record or '?'} ({said})")
             click_button(game, *(("ok", oks[0]) if said == "yes" else ("cancel", cancels[0])))
             last, since = None, time.monotonic()
             continue
         if oks:
+            events["order"].append(f"message {message_record(mem)}")
             events["messages"].append(message_record(mem))
             events["message_pictures"].append(pictures_text(mem))
             click_button(game, "ok", oks[0])
@@ -1356,7 +1499,7 @@ def press(game, mem, name, key, answer=None, battle=None, level_up="left"):
 PRESSES_LIMIT = 60  # presses at most in one step
 # The events of each press gathered into the step's (`messages`, `battles`, … read as a walk's).
 PRESS_EVENTS = ("messages", "message_pictures", "questions", "battles", "level_ups",
-                "level_up_dialogs", "screens", "exchanges", "choices")
+                "level_up_dialogs", "screens", "exchanges", "choices", "order")
 
 
 def presses(game, mem, name, key, plan, answer=None, battle=None, level_up="left"):
@@ -2125,6 +2268,32 @@ def shown_counts(mem, part, heroes=None):
     return ", ".join(f"{k}: {t}" for k, t in shown if t) or "none"
 
 
+def army_bars(mem, index):
+    """E08 T120 (batch E13's E13-6): the army dialog's two bars as it shows them, slot by slot:
+    each slot's count (SHOWN_COUNTS) and its picture's frame (items 115-121, 140-146), the
+    creature named by the frame less the offset the hero's lower bar gives (a creature's
+    portrait frame against the hero's slot 0: `offset 2`): `upper 0: 3 Angels; lower 0: 10
+    Archangels, ...`."""
+    items = {i["id"]: i for i in mem.dialog_items()}
+    texts = {k: (v.get("text") or "").strip() for k, v in items.items() if v["state"] & SHOWN}
+    hero = mem.hero(index)
+    first = next(((k, t) for k, (t, c) in enumerate(hero["slots"]) if t >= 0), None)
+    offset = None
+    if first is not None and (140 + first[0]) in items:
+        offset = items[140 + first[0]]["frame"] - first[1]
+    out = []
+    for part, picture, count in (("upper", 115, 108), ("lower", 140, 133)):
+        for k in range(7):
+            shown = texts.get(count + k)
+            if not shown:
+                continue
+            frame = items.get(picture + k, {}).get("frame")
+            name = (mem.creature_name(frame - offset, 2) if offset is not None
+                    and frame is not None else f"frame {frame}")
+            out.append(f"{part} {k}: {shown} {name}")
+    return "; ".join(out) + (f" (portrait offset {offset})" if offset is not None else "")
+
+
 def shown_backpack(mem):
     """The hero screen's five backpack places as it shows them, left to right (their pictures'
     frames: the artifacts' ids), `empty` for an empty place."""
@@ -2487,6 +2656,14 @@ def hero_value(mem, hero, field):
             or "none"
     if field == "backpack":
         return ", ".join(mem.artifact_name(a) for a in hero["backpack"]) or "none"
+    # E08 T120 (batch E13's E13-7): the backpack in its order with each artifact's class.
+    if field == "backpack:classes":
+        return ", ".join(f"{mem.artifact_name(a)} ({mem.artifact_class(a)})"
+                         for a in hero["backpack"]) or "none"
+    if field == "artifacts:classes":
+        return ", ".join(f"{mem.artifact_name(a)} ({slot}; {mem.artifact_class(a)})"
+                         for slot, a in hero["worn"].items()
+                         if not slot.startswith("war machine") and slot != "spell book") or "none"
     # E08 T32b2: the worn artifacts but the war machines and the spell book (every hero wears a
     # Catapult): what a starting bonus can give.
     if field == "equipment":
@@ -2710,6 +2887,81 @@ def garrison_text(mem, x, y, z=0, part=None):
             f"removable {fields['removable']}; entrance {fields['entrance']}")
 
 
+def bank_at(mem, x, y, z=0):
+    """E08 T120 (batch E13): the creature bank whose entrance is (x, y, z): its record
+    (h3mem.bank) by the entrance's word (bits 13-24 the index), with the word, the class and the
+    hero standing there (the word under it, h3mem.tile_word); None for no bank's entrance."""
+    tile = mem.tile_word(x, y, z)
+    kind, word, hero = tile["class"], tile["word"], None
+    if "hero" in tile:
+        kind, word, hero = tile["under_class"], tile["under_word"], mem.hero(tile["hero"])["name"]
+    if kind not in h3mem.BANK_CLASSES:
+        return None
+    return {**mem.bank(word >> 13 & 0xFFF), "word": word, "class": kind, "hero": hero}
+
+
+def bank_text(mem, x, y, z=0, part=None):
+    """A creature bank's record by its entrance (E08 T120, batch E13's E13-1; bank_at): `record
+    4; guards 0: 4 Cyclopes, ...; resources 4 wood, ..., 0 gold; creature none; artifacts none;
+    word 0x00008000 (visited none, looted no)`; `bank:x,y[,level]:<part>` one of `index`,
+    `guards`, `resources`, `creature`, `artifacts` (`Angel Wings (relic), ...`, in the vector's
+    order), `bits` (the word's visited marks by colour, bits 5-12, and the looted bit 25; the
+    word in hex) or `word`; `(under <hero>)` when a hero stands on the entrance; `none` without a
+    bank there."""
+    found = bank_at(mem, x, y, z)
+    if found is None:
+        return "none"
+    word = found["word"]
+    visited = [COLOURS[c] for c in range(8) if word >> 5 + c & 1]
+    fields = {
+        "index": str(found["index"]),
+        "guards": army_slots_text(mem, found["guards"]),
+        "resources": ", ".join(f"{n} {k}" for k, n in zip(h3mem.RESOURCES, found["resources"])),
+        "creature": (f"{found['count']} {mem.creature_name(found['creature'], found['count'])}"
+                     if found["creature"] >= 0 else "none"),
+        "artifacts": ", ".join(f"{mem.artifact_name(a)} ({mem.artifact_class(a)})"
+                               for a in found["artifacts"]) or "none",
+        "bits": (f"visited {', '.join(visited) or 'none'}, looted "
+                 f"{'yes' if word & h3mem.BANK_LOOTED else 'no'} (word {word:#010x})"),
+        "word": f"{word:#010x}",
+    }
+    under = f" (under {found['hero']})" if found["hero"] else ""
+    if part:
+        return fields[part] + under
+    return (f"record {fields['index']}; guards {fields['guards']}; resources "
+            f"{fields['resources']}; creature {fields['creature']}; artifacts "
+            f"{fields['artifacts']}; {fields['bits']}{under}")
+
+
+def bank_meets(mem, tile, need):
+    """E08 T120 (batch E13's draws): whether the bank whose entrance is `tile` meets `need`:
+    `gold = <n>` its reward's gold, `relics_below = <n>` fewer relics among its artifacts."""
+    found = bank_at(mem, *tile)
+    if found is None:
+        raise ValueError(f"no creature bank's entrance at {tile_name(tile)}")
+    for key, want in need.items():
+        if key == "gold":
+            if found["resources"][6] != want:
+                return False
+        elif key == "relics_below":
+            if sum(mem.artifact_class(a) == "relic" for a in found["artifacts"]) >= want:
+                return False
+        else:
+            raise ValueError(f"`bank = {need}`: gold or relics_below")
+    return True
+
+
+def bank_pick(mem, pick):
+    """E08 T120 (batch E13's E13-7, E13-10): a step's `pick = { among = [[x, y], ...], bank = {
+    ... } }`: the first tile whose bank meets `bank` (bank_meets), else the first; returns the
+    tile and its account (`14,21 (the first that meets gold = 1000)`)."""
+    among = [list(t) for t in pick["among"]]
+    for tile in among:
+        if bank_meets(mem, tile, pick["bank"]):
+            return tile, f"{tile_name(tile)} (the first that meets {pick['bank']})"
+    return among[0], f"{tile_name(among[0])} (none meets {pick['bank']}: the first)"
+
+
 def dwelling_text(mem, x, y, z=0, part=None):
     """A dwelling's record by its entrance (E08 T90, batches E10a, E10b; h3mem.dwellings, game
     +0x4E39C): `record 3; class 20.1; owner none; creatures 0: 14 Pikemen (the slots with a
@@ -2823,6 +3075,24 @@ def text_parts(mem, text, tile):
                        mem.owned_name(dwelling["owner"])))
     for colour in range(8):
         pieces.append((f"owned-by text of {COLOURS[colour]}", mem.owned_name(colour)))
+    # E08 T120 (batch E13; survey E08-banks.md §7, creature_bank_hint 0x40D3F0): a creature
+    # bank's hint by its parts: the kinds' names (CRBANKS.TXT's rows), the army size words
+    # (ARRAYTXT 174 to 201), GENRLTXT 44 (several creatures) and the guards' plural names.
+    # (Under a hero standing on the entrance: the bank's word from its record, object_tile.)
+    bank = object_tile(mem, x, y, z)
+    if bank["class"] in h3mem.BANK_CLASSES:
+        try:
+            rows = h3lod.table("CRBANKS.TXT")
+            pieces += [(f"CRBANKS row {k} name", r[0]) for k, r in enumerate(rows)
+                       if k >= 2 and r and r[0].strip()]
+            sizes = h3lod.table("ARRAYTXT.TXT")
+            pieces += [(f"ARRAYTXT {k}", sizes[k][0]) for k in range(174, 202) if k < len(sizes)]
+            pieces.append(("GENRLTXT 44", h3lod.table("GENRLTXT.TXT")[44][0]))
+        except (KeyError, OSError, IndexError):
+            pass
+        guards = mem.bank(bank["word"] >> 13 & 0xFFF)["guards"]
+        for creature in sorted({t for t, c in guards if t >= 0}):
+            pieces.append((f"creature {creature} plural", mem.creature_name(creature, 2)))
     # E08 T110 (batch E12b's E12-16, E12-17): the visit marks (GENRLTXT 353 visited, 354 not
     # visited) and the bonus lines (XTRAINFO's records, E24 design §4.11) by their records.
     for name, rows in (("GENRLTXT", (353, 354)), ("XTRAINFO", None)):
@@ -3112,7 +3382,8 @@ def object_word_text(mem, tile):
 LIVE_READS = ("explored", "word", "object", "monster", "aggression", "never_flees", "boat",
               "boats", "drawn", "boat_record", "mine", "tile", "income", "gardens", "growth",
               "town", "towns",  # E09 T3b: the towns' records
-              "dwelling", "teams", "objects", "access", "camp", "hire")  # E08 T90
+              "dwelling", "teams", "objects", "access", "camp", "hire",  # E08 T90
+              "bank")  # E08 T120
 
 
 def observations(what):
@@ -3278,6 +3549,19 @@ def value(obs, what, mem):
         return ", ".join(q["kind"] for q in obs.get("questions", [])) or "none"
     if what == "questions":
         return ", ".join(q["record"] or "?" for q in obs.get("questions", [])) or "none"
+    if what == "starts":
+        # E08 T120 (batch E13's E13-1): the new games started for the recipe's `require`.
+        return STARTS_TEXT[0] or "1"
+    if what == "order":
+        # E08 T120 (batch E13's E13-6): the step's dialogs in the order they came; as table rows
+        # (`order:rows`: the number, the dialog).
+        return "; ".join(obs.get("order", [])) or "none"
+    if what == "order:rows":
+        return [[str(k), d] for k, d in enumerate(obs.get("order", []), 1)]
+    if what == "questions:at":
+        # E08 T120 (batch E13's E13-11): each question with the hero's tile and points then.
+        return ", ".join(f"{q['record'] or '?'} ({q['answer']}) on {tile_name(q['tile'])} with "
+                         f"{q['points']}" for q in obs.get("questions", [])) or "none"
     if what == "answers":
         # E08 T100b (batch E11b's E11-14): each question's record with the answer given.
         return ", ".join(f"{q['record'] or '?'}: {q['answer']}"
@@ -3335,6 +3619,48 @@ def value(obs, what, mem):
     # counts a screen shows under an army's slots; the hero screen's five backpack places.
     if what == "tactics":
         return yes[battles[-1]["tactics"]] if battles else "no battle"
+    # E08 T120 (batch E13): the last battle's stacks at its opening with every hex each covers
+    # (`opening:cover[:<side>]`: `attacker slot 0: 10 Archangels 57 | defender slot 0: 10
+    # Griffins 14-15`; `opening:cover_rows:<side>` as table rows: slot, creature, count, hexes),
+    # its war machines (`opening:machines`: `attacker Ballista at 52`, `none`), each shooter's
+    # shots (`opening:shots`), and the `shoot` plan's turn (`shoot[:<part>]`).
+    if m := re.match(r"opening:(cover|cover_rows)(?::(attacker|defender))?$", what):
+        if not battles:
+            return "no battle" if m.group(1) == "cover" else []
+        side = SIDES.index(m.group(2)) if m.group(2) else None
+        found = sorted((s for s in battles[-1]["opening"] if side in (None, s["side"])),
+                       key=lambda s: (s["side"], s["army_slot"], s["hex"]))
+        span = lambda s: "-".join(map(str, sorted(s["hexes"]))) or "none"  # noqa: E731
+        if m.group(1) == "cover_rows":
+            return [[str(s["army_slot"]), mem.creature_name(s["creature"], s["count"]),
+                     str(s["count"]), span(s)] for s in found]
+        return " | ".join(
+            f"{SIDES[k]} " + ", ".join(f"slot {s['army_slot']}: {s['count']} "
+                                     f"{mem.creature_name(s['creature'], s['count'])} {span(s)}"
+                                     for s in found if s["side"] == k)
+            for k in (0, 1) if any(s["side"] == k for s in found))
+    if what == "opening:machines":
+        if not battles:
+            return "no battle"
+        return ", ".join(f"{SIDES[s['side']]} {mem.creature_name(s['creature'], 1)} at "
+                         f"{'-'.join(map(str, sorted(s['hexes'])))}"
+                         for s in battles[-1]["opening"] if s["creature"] in MACHINES) or "none"
+    if what == "opening:shots":
+        if not battles:
+            return "no battle"
+        return ", ".join(f"{SIDES[s['side']]} {s['count']} "
+                         f"{mem.creature_name(s['creature'], s['count'])} {s['shots']}"
+                         for s in battles[-1]["opening"] if s["shots"] > 0) or "none"
+    if m := re.match(r"shoot(?::(shots_before|shots_after|action|before|after|before_retreat))?$",
+                     what):
+        turn = next((b["shoot"] for b in reversed(battles) if "shoot" in b), None)
+        if turn is None:
+            return "no shot"
+        if m.group(1):
+            return str(turn.get(m.group(1), "none"))
+        return (f"shots {turn.get('shots_before')} then {turn.get('shots_after')}; "
+                f"{turn.get('action')}; the defender before {turn.get('before')}, after "
+                f"{turn.get('after')}")
     # E08 T57 (batch E7): the last battle's stacks at its opening as table rows (side, slot, hex,
     # creature, count: a record of `rows`), and their morale or luck as set at the start
     # (`morale:start[:<side>]`: `20 Pikemen -3, 10 Centaurs -3`).
@@ -3544,6 +3870,14 @@ def value(obs, what, mem):
     # E08 T110 (batch E12a): a garrison's record by its entrance (`garrison:x,y[,level][:part]`,
     # garrison_text), live; the bars of each garrison exchange the step's walk opened, as it
     # opened (`at 8,3: upper 0: 2 Pikemen; lower 0: 10 Archangels`).
+    # E08 T120 (batch E13): a creature bank's record and word by its entrance
+    # (`bank:x,y[,level][:part]`, bank_text), live; the step's `pick` (bank_pick).
+    if m := re.match(r"bank:(\d+),(\d+)(?:,(\d))?(?::(index|guards|resources|creature|"
+                     r"artifacts|bits|word))?$", what):
+        return bank_text(mem, int(m.group(1)), int(m.group(2)), int(m.group(3) or 0),
+                         m.group(4))
+    if what == "pick":
+        return obs.get("pick", "none")
     if m := re.match(r"garrison:(\d+),(\d+)(?:,(\d))?(?::(owner|stacks|removable|entrance|"
                      r"index))?$", what):
         return garrison_text(mem, int(m.group(1)), int(m.group(2)), int(m.group(3) or 0),
@@ -3895,17 +4229,25 @@ def expand(step, mem):
 def unmet(recipe, mem):
     """The recipe's `[[require]]` entries the game does not meet (E08 T57, the spec's restart
     rule): each `{ each = {...}, holds = "artifact" }` needs one of its tiles' objects to hold
-    an artifact by its word."""
+    an artifact by its word; since E08 T120 (batch E13's draws) each `{ any = [[x, y], ...], bank
+    = { gold = <n> | relics_below = <n> } }` one of its banks to meet it (bank_meets)."""
     missing = []
     for need in recipe.get("require", []):
+        if "bank" in need:
+            if set(need) - {"any", "bank", "what"}:
+                raise ValueError(f"`require = {need}`: any, bank and what")
+            if not any(bank_meets(mem, t, need["bank"]) for t in need["any"]):
+                missing.append(need.get("what", f"{need['any']}: {need['bank']}"))
+            continue
         if need.get("holds") != "artifact":
-            raise ValueError(f"`require = {need}`: only holds = \"artifact\"")
+            raise ValueError(f"`require = {need}`: only holds = \"artifact\" or a bank's")
         if not any(held_artifact(mem.object_at(*t)) is not None for t in each_tiles(need["each"])):
             missing.append(need.get("what", str(need["each"])))
     return missing
 
 
 RESTARTS = 20  # new games at most until the `require` entries are met
+STARTS_TEXT = [""]  # E08 T120: the starts the last start_game took, with each one's misses
 
 
 def start_game(game, map_path, recipe, restarts):
@@ -3913,7 +4255,8 @@ def start_game(game, map_path, recipe, restarts):
     difficulty checked in memory) and returns the game's memory (a fresh h3mem.Mem); since E08
     T57 again, up to RESTARTS times in all, until its draws meet the recipe's `require` (each
     new game that misses added to `restarts`). The batch's first start and, since E09 T3b, each
-    `new_game` step."""
+    `new_game` step. Since E08 T120 (batch E13: "at most five starts, then go on with the last")
+    a recipe's `starts = <n>` plays the n-th start whatever its draws (its misses noted too)."""
     difficulty = recipe.get("difficulty", "normal")
     while True:
         game.start(map_path)
@@ -3924,9 +4267,17 @@ def start_game(game, map_path, recipe, restarts):
             raise RuntimeError(f"the game's difficulty is {mem.difficulty()}, not {difficulty}")
         # E08 T57: a new game whose draws miss what the recipe requires is started again.
         missing = unmet(recipe, mem)
+        tries = [m for m in restarts]
+        STARTS_TEXT[0] = (f"{len(tries) + 1}" + (" (" + "; ".join(
+            f"start {k}: {', '.join(m)} missing" for k, m in enumerate(tries, 1)) + ")"
+            if tries else ""))
         if not missing:
             return mem
         restarts.append(missing)
+        if "starts" in recipe and len(restarts) >= int(recipe["starts"]):
+            restarts[-1] = [*missing, "played all the same (the recipe's `starts`)"]
+            STARTS_TEXT[0] += f"; start {len(restarts)}: {', '.join(missing)} missing, played"
+            return mem
         if len(restarts) >= RESTARTS:
             raise RuntimeError(f"{RESTARTS} new games, none met the recipe's `require`")
         game.stop()
@@ -4087,9 +4438,10 @@ def batch(recipe_path, map_path=None, out=None):
                 skip, only = None, step.get("only_if")
                 if only not in (None, "aboard") and not (
                         isinstance(only, dict) and "at" in only
-                        and set(only) <= {"at", "empty", "occupied"}):
+                        and set(only) <= {"at", "empty", "occupied", "points_at_least"}):
                     raise ValueError(f"`only_if = {only!r}`: \"aboard\" or {{ at = [x, y] }}, "
-                                     "with empty = [x, y] or occupied = [x, y]")
+                                     "with empty = [x, y], occupied = [x, y] or "
+                                     "points_at_least = <n>")
                 if only == "aboard" and not before["hero"]["status"] & h3mem.IN_BOAT:
                     skip = f"not played: {step['hero']} is not in a boat"
                 if isinstance(only, dict):
@@ -4098,6 +4450,12 @@ def batch(recipe_path, map_path=None, out=None):
                         skip = (f"not played: {step['hero']} stands on "
                                 f"{','.join(map(str, before['hero']['tile']))}, not "
                                 f"{','.join(map(str, at))}")
+                    # E08 T120 (batch E13's E13-7): `points_at_least = <n>` plays it only while
+                    # the hero has that many points left (a walk the day may not pay).
+                    if "points_at_least" in only and not skip \
+                            and before["hero"]["points"] < int(only["points_at_least"]):
+                        skip = (f"not played: {step['hero']} has {before['hero']['points']} "
+                                f"points, fewer than {only['points_at_least']}")
                     for want in ("empty", "occupied"):
                         if want in only and not skip:
                             tile = [*only[want], 0][:3]
@@ -4115,10 +4473,16 @@ def batch(recipe_path, map_path=None, out=None):
                     # E08 T100b (batch E11b's E11-16): `walk = "off"` steps onto the hero's first
                     # open neighbour (off_tile), chosen as the step starts.
                     target = off_tile(mem, step["hero"]) if step["walk"] == "off" else step["walk"]
+                    picked = None
+                    if step["walk"] == "pick":
+                        # E08 T120 (batch E13's E13-7, E13-10): the bank the draws chose.
+                        target, picked = bank_pick(mem, step["pick"])
                     obs = walk(game, mem, step["hero"], target, step.get("answer"),
                                step.get("battle"), step.get("level_up", "left"),
                                step.get("actions"), step.get("choice"), step.get("once", False),
                                step.get("again_if"), step.get("at_opening"))
+                    if picked:
+                        obs["pick"] = picked
                     if prepared:
                         # E08 T57: the route set by `ready` makes the first click walk.
                         obs["first_click_walked"] &= not prepared.pop("clicked")
@@ -4221,14 +4585,21 @@ def batch(recipe_path, map_path=None, out=None):
     finally:
         game.stop()
         log.close()
+    played = [m for m in restarts if m and m[-1].startswith("played all the same")]
+    again = [m for m in restarts if m not in played]
+    if played:
+        again = again + played[:-1] if len(played) > 1 else again
     header = (f"> Played by the capture harness on {date.today().isoformat()} "
               f"(`clients/capture/h3adv.py batch {shown(recipe_path)}`): "
               "the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, "
               f"difficulty {recipe.get('difficulty', 'normal').capitalize()}, the starting bonus "
               f"{'gold' if recipe.get('gold') else 'random'}, Show Route on; read from the game's "
               "memory."
-              + (f" Started again {len(restarts)} time(s) for the recipe's `require` "
-                 f"({'; '.join(', '.join(m) for m in restarts)} missing)." if restarts else "")
+              + (f" Started again {len(again)} time(s) for the recipe's `require` "
+                 f"({'; '.join(', '.join(m) for m in again)} missing)." if again else "")
+              # E08 T120: the last start the recipe's `starts` played though it missed.
+              + (f" The last start missed {', '.join(played[-1][:-1])} too and was played all "
+                 "the same (the recipe's `starts`)." if played else "")
               # E09 T3b: the new games the recipe's steps started (batch TWN-1's games 2, 3).
               + (f" The map started anew {games} more time(s) by the recipe's `new_game` steps "
                  "(new games, no save loaded)."
