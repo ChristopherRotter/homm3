@@ -25,20 +25,31 @@
 //! `base`, 219's in `ab`), named `ObjNames.txt`'s row, entered and visited from above as the class
 //! lists say; the Stables' points `movement.txt`'s Stables row; and the types with a kind mark
 //! exactly the twelve bonus classes' and increment 7's fourteen that the original's
-//! `kinds_visited` holds. Fails with the mismatches of the first check that has any.
+//! `kinds_visited` holds. Since E08 T123a the creature banks (increment 13's design note §2;
+//! survey `docs/rules/surveys/E08-banks.md` §1, §2, §4, §5): each of the original's eleven kinds
+//! (class 16's subclasses 0 to 6, then 85, 24, 84 and 25) has exactly one bank type in `base`,
+//! named its first `CrBanks.txt` record's column 0, and no other bank type exists; its levels equal
+//! the kind's four records (the chance, the guards by the four count columns with the creatures of
+//! `bank_guard_creatures` by position, a count of 0 no stack; the upgrade chance; the seven
+//! resources; the reward's count with `bank_reward_creatures`' creature, 0 none; the four artifact
+//! counts); it is entered and visited from above as the class lists say; a search exactly for 24,
+//! 84 and 85 (with a looted bonus exactly then), on the deck exactly for 24 and 85, from the coast
+//! exactly for 85. Fails with the mismatches of the first check that has any.
 //!
 //! `cargo run -p h3-pack-adventure --example original_data -- original-data/install`
 //!
-//! The text tables are read from `<install>/../extracted/H3ab_bmp` (AB's) and, for the
-//! teleporters, `<install>/../extracted/H3bitmap` (SoD's). The installation copy is only read.
+//! The text tables are read from `<install>/../extracted/H3ab_bmp` (AB's; `CrBanks.txt` is the same
+//! file in both) and, for the teleporters, `<install>/../extracted/H3bitmap` (SoD's). The installation copy is only read.
 //! Without its files the check is skipped with a note.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use h3_adventure::{AdventureRuleset, MonolithWay, ObjectKind, ObjectType, Visit};
-use h3_content::{CreatureTypeId, Ruleset};
+use h3_adventure::{
+    AdventureRuleset, BankLevel, BankQuestion, MonolithWay, ObjectKind, ObjectType, Visit,
+};
+use h3_content::{CreatureTypeId, ResourceId, Ruleset};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 
 /// The executable's table of class 17's creatures, by subclass (its virtual address).
@@ -112,6 +123,39 @@ const KIND_MARKED: [(u32, &str); 14] = [
     (113, "witch_hut"),
 ];
 
+/// The executable's creature bank guards, five `i32`s a kind, −1 ending (E08 T123a).
+const BANK_GUARD_CREATURES: u32 = 0x0067_02A0;
+/// The executable's creature bank reward creatures, one `i32` a kind, −1 none.
+const BANK_REWARD_CREATURES: u32 = 0x0067_037C;
+/// The original's eleven bank kinds by class and subclass, in its kinds' order k 0 to 10
+/// (`creature_bank_kinds` 0x695038; `setup_map_objects`' cases: 16 by subclass, 85 as 7, 24 as 8,
+/// 84 as 9, 25 as 10).
+const BANK_KINDS: [Class; 11] = [
+    (16, 0),
+    (16, 1),
+    (16, 2),
+    (16, 3),
+    (16, 4),
+    (16, 5),
+    (16, 6),
+    (85, 0),
+    (24, 0),
+    (84, 0),
+    (25, 0),
+];
+/// `CrBanks.txt`'s guard count columns, one per guard slot.
+const BANK_GUARD_COLUMNS: [usize; 4] = [3, 6, 8, 10];
+/// The resources in the original's order (the record's +0x38, `CrBanks.txt`'s columns 13 to 19).
+const RESOURCES: [&str; 7] = [
+    "base:wood",
+    "base:mercury",
+    "base:ore",
+    "base:sulfur",
+    "base:crystal",
+    "base:gems",
+    "base:gold",
+];
+
 /// An original object class and subclass.
 type Class = (u32, u32);
 
@@ -134,6 +178,7 @@ fn main() -> ExitCode {
         sod_texts.join("Objects.txt"),
         sod_texts.join("ObjNames.txt"),
         sod_texts.join("movement.txt"),
+        texts.join("CrBanks.txt"),
     ];
     if let Some(missing) = files.iter().find(|f| !f.is_file()) {
         println!(
@@ -157,7 +202,7 @@ fn main() -> ExitCode {
 }
 
 /// Runs the checks; the summary, or the first check's mismatches.
-fn check(files: &[PathBuf; 7]) -> Result<String, Vec<String>> {
+fn check(files: &[PathBuf; 8]) -> Result<String, Vec<String>> {
     let read = |path: &PathBuf| {
         std::fs::read(path).map_err(|e| vec![format!("{} does not read: {e}", path.display())])
     };
@@ -394,10 +439,30 @@ fn check(files: &[PathBuf; 7]) -> Result<String, Vec<String>> {
         stables,
     )?;
 
+    // 7. The creature banks (E08 T123a).
+    let guards = table(
+        BANK_GUARD_CREATURES,
+        5 * BANK_KINDS.len(),
+        "bank_guard_creatures",
+    )?;
+    let rewards = table(
+        BANK_REWARD_CREATURES,
+        BANK_KINDS.len(),
+        "bank_reward_creatures",
+    )?;
+    let banks = banks(
+        &core,
+        &part,
+        &lines(&files[7])?,
+        [&guards, &rewards],
+        &creatures,
+        [&not_entered, &from_above],
+    )?;
+
     Ok(format!(
         "{} dwelling types match {} CrGen1 + {} CrGen4 rows, their Objects.txt footprints and \
          the executable's creatures; the {} factions' random dwelling tables match the \
-         original's derivation ({} outcomes); {teleporters}; {bonuses}",
+         original's derivation ({} outcomes); {teleporters}; {bonuses}; {banks}",
         types.len(),
         rows[0].1.len(),
         rows[1].1.len(),
@@ -667,6 +732,206 @@ fn garrisons_and_bonuses(
         sod.len(),
         marked.len()
     ))
+}
+
+/// Check 7 (E08 T123a): the bank types against `CrBanks.txt` (`records`), the executable's guard
+/// and reward creatures (`tables`, through the core's original ids `creatures`) and its class
+/// lists (`lists`: not entered, from above).
+fn banks(
+    core: &Ruleset,
+    part: &AdventureRuleset,
+    records: &[String],
+    tables: [&[i32]; 2],
+    creatures: &BTreeMap<i32, CreatureTypeId>,
+    lists: [&[i32]; 2],
+) -> Result<String, Vec<String>> {
+    let fields = |r: usize| -> Vec<&str> {
+        records
+            .get(r)
+            .map_or_else(Vec::new, |line| line.split('\t').collect())
+    };
+    // The original's `atoi`: the leading digits ("30%" is 30), 0 for none.
+    let number = |field: Option<&&str>| -> u32 {
+        let text = field.map_or("", |f| f.trim());
+        let digits = text.len() - text.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+        text[..digits].parse().unwrap_or(0)
+    };
+    let byte = |n: u32| u8::try_from(n).unwrap_or(u8::MAX);
+    let resources = RESOURCES
+        .iter()
+        .map(|key| {
+            core.resources()
+                .iter()
+                .position(|r| r.key.as_str() == *key)
+                .and_then(ResourceId::from_index)
+        })
+        .collect::<Option<Vec<_>>>()
+        .ok_or_else(|| vec!["the core lacks a resource of the original's seven".to_owned()])?;
+    let creature = |code: i32| creatures.get(&code).copied();
+    let mut mismatches = Vec::new();
+    let mut checked = Vec::new();
+    for (k, &(class, sub)) in BANK_KINDS.iter().enumerate() {
+        let first = fields(2 + 4 * k);
+        let name = first.first().map_or("", |n| n.trim());
+        let found = part
+            .object_types()
+            .iter()
+            .filter(|t| matches!(t.kind, ObjectKind::Bank(_)) && t.name == name)
+            .filter(|t| t.key.pack() == "base")
+            .collect::<Vec<_>>();
+        let [ty] = found.as_slice() else {
+            mismatches.push(format!(
+                "class {class} subclass {sub} ({name:?}) has {} bank types in base, not one",
+                found.len()
+            ));
+            continue;
+        };
+        checked.push(ty.key.as_str().to_owned());
+        let ObjectKind::Bank(bank) = &ty.kind else {
+            unreachable!("filtered");
+        };
+        // The levels as the original's load builds them (crbanks_load 0x47AB30).
+        let mut levels = Vec::new();
+        for l in 0..4 {
+            let f = fields(2 + 4 * k + l);
+            let mut guards = Vec::new();
+            for (slot, column) in BANK_GUARD_COLUMNS.into_iter().enumerate() {
+                let count = number(f.get(column));
+                let code = tables[0].get(5 * k + slot).copied().unwrap_or(-1);
+                if count > 0 {
+                    match creature(code) {
+                        Some(c) => guards.push((c, count)),
+                        None => mismatches.push(format!(
+                            "{name} level {}: guard slot {slot}'s creature {code} does not map",
+                            l + 1
+                        )),
+                    }
+                }
+            }
+            let reward = number(f.get(20));
+            let code = tables[1].get(k).copied().unwrap_or(-1);
+            let reward = match (reward, creature(code)) {
+                (0, _) => None,
+                (n, Some(c)) => Some((c, byte(n))),
+                (_, None) => {
+                    mismatches.push(format!(
+                        "{name} level {}: the reward's creature {code} does not map",
+                        l + 1
+                    ));
+                    None
+                }
+            };
+            levels.push(BankLevel {
+                chance: byte(number(f.get(2))),
+                guards,
+                upgrade: byte(number(f.get(5))),
+                resources: (0..7)
+                    .filter_map(|i| {
+                        let amount = number(f.get(13 + i));
+                        (amount > 0).then(|| (resources[i], amount))
+                    })
+                    .collect(),
+                creature: reward,
+                artifacts: [22, 23, 24, 25].map(|c| byte(number(f.get(c)))),
+            });
+        }
+        let code = i32::try_from(class).expect("a class fits");
+        let search = matches!(class, 24 | 84 | 85);
+        let expected = (
+            if lists[0].contains(&code) {
+                Visit::Neighbour
+            } else {
+                Visit::Enter
+            },
+            lists[1].contains(&code),
+            if search {
+                BankQuestion::Search
+            } else {
+                BankQuestion::Attack
+            },
+            search,
+            matches!(class, 24 | 85),
+            class == 85,
+        );
+        let found = (
+            ty.visit,
+            ty.from_above,
+            bank.question,
+            bank.looted.is_some(),
+            bank.deck,
+            bank.coast,
+        );
+        if found != expected {
+            mismatches.push(format!(
+                "{}: (visit, from above, question, looted, deck, coast) {found:?} in the pack, \
+                 {expected:?} in the original",
+                ty.key.as_str()
+            ));
+        }
+        for (l, (pack, original)) in bank.levels.iter().zip(&levels).enumerate() {
+            if pack != original {
+                mismatches.push(format!(
+                    "{} level {}: {} in the pack, {} in CrBanks.txt",
+                    ty.key.as_str(),
+                    l + 1,
+                    level_text(core, pack),
+                    level_text(core, original)
+                ));
+            }
+        }
+        if bank.levels.len() != levels.len() {
+            mismatches.push(format!(
+                "{}: {} levels in the pack, {} in CrBanks.txt",
+                ty.key.as_str(),
+                bank.levels.len(),
+                levels.len()
+            ));
+        }
+    }
+    // No other bank type.
+    for ty in part.object_types() {
+        if matches!(ty.kind, ObjectKind::Bank(_)) && !checked.iter().any(|k| k == ty.key.as_str()) {
+            mismatches.push(format!(
+                "{} is a bank type of no original kind",
+                ty.key.as_str()
+            ));
+        }
+    }
+    done(mismatches)?;
+    Ok(format!(
+        "{} bank types match CrBanks.txt's {} kinds' four levels, the executable's guard and \
+         reward creatures and its class lists",
+        checked.len(),
+        BANK_KINDS.len()
+    ))
+}
+
+/// A bank level, for messages: the chance, the guards by key, the upgrade, the resources, the
+/// creature and the artifacts.
+fn level_text(core: &Ruleset, level: &BankLevel) -> String {
+    let guards = level
+        .guards
+        .iter()
+        .map(|&(c, n)| format!("{} {n}", creature_key(core, c)))
+        .collect::<Vec<_>>();
+    let resources = level
+        .resources
+        .iter()
+        .map(|&(r, n)| {
+            let key = core
+                .resources()
+                .get(r.index())
+                .map_or("?", |r| r.key.as_str());
+            format!("{key} {n}")
+        })
+        .collect::<Vec<_>>();
+    format!(
+        "{}% {guards:?} upgrade {}% {resources:?} creature {:?} artifacts {:?}",
+        level.chance,
+        level.upgrade,
+        level.creature.map(|(c, n)| (creature_key(core, c), n)),
+        level.artifacts
+    )
 }
 
 /// `Err` with the mismatches if there are any.

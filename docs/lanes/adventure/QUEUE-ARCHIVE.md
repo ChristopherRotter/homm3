@@ -4,6 +4,27 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-16, E08 T123a: T123a done alone, decision 351, `cross-lane` for the AI lane's two bots tables; the record in `E08-log.md`; T123b queued alone.)* **E08 T123 — the kind, the packs, the check; the import and the writer** (round 5; design
+`E08-design.md` §1 to §3, §18; as T113a and T113b for increment 12)
+
+- **Scope:** T123a (`adventure/e08-t123a`, likely `cross-lane` for the base pack's
+  `adventure.toml` and `h3-pack-adventure`'s check): the kind `bank { question, levels, looted,
+  deck, coast }` in `h3-adventure` (ADV-BNK-001; hash tag 44; the compile's checks, design §1),
+  the eleven types in the base pack with survey §2's table (D-65 the original) and the
+  executable's creature tables, the seventh original-data check against `CrBanks.txt` and
+  0x6702A0 / 0x67037C (design §2; adventure ruleset part v21). T123b (`adventure/e08-t123b`):
+  `codes::object_type`'s class 16 by subclass 0 to 6 and 85, 24, 84, 25 (another subclass
+  `ImportError::Subclass`, no body), the writer's classes for fixtures, the census; a step onto a
+  bank refused as any unbuilt visit's until T124b (design §3; map import v24). The rules'
+  `observation` sources from batch E13 (survey §14: ADV-BNK-001 by E13-1, E13-2, E13-11, E13-5,
+  E13-12).
+- **Inputs:** design §1 to §3, §18; survey `E08-banks.md` §1, §2, §14; T113a's and T113b's records
+  in `E08-log.md` as the form; the town lane's inbox note below (its T37b and T39a come after
+  T123's map import v24).
+- **Depends on:** T122 (merged). **Status:** ready; the cut confirmed at its start (T123a and
+  T123b apart, as T113, or whole). The check needs `CrBanks.txt` (AB's extracted `H3ab_bmp`) and
+  `Heroes3.exe` staged.
+
 *(Moved 2026-11-16, E08 T122: done whole, decision 350; the record in `E08-log.md`; only two literals were exhaustive, so the AI lane was not told; T123 queued.)* **E08 T122 — the `shared/` task** (round 4; decisions 338, 343, 345, 348; as T112 for
 increment 12; `shared/e08-t122`, `cross-lane`)
 

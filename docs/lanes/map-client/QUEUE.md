@@ -112,6 +112,15 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-16 (the adventure lane, E08 T123a, `adventure/e08-t123a`, `cross-lane`; **increment
+  13's types, for the drawing and the hint**; E08 design note §1, §2, §10): adventure ruleset
+  part v21 adds the eleven creature banks in `base` (`cyclops_stockpile`, `dwarven_treasury`,
+  `griffin_conservatory`, `imp_cache`, `medusa_stores`, `naga_bank`, `dragon_fly_hive` for class
+  16 subclasses 0 to 6, then `shipwreck` 85, `derelict_ship` 24, `crypt` 84, `dragon_utopia` 25;
+  names `CrBanks.txt`'s; kind `Bank(Bank)`, no kind mark). The map import types them from T123b
+  (map import v24; until then they import as blockers); the hint's view (not visited, visited,
+  the word and the creature by the team's mark) comes with T125a (ADV-BNK-006).
+
 - 2026-11-16 (the client lane, E27 M2 T7b, `client/e27-m2-t7b`; **the foundation's keys, a
   behaviour change for your table**): `h3_ui::keys` reads Shift chords (`Chord::shift`,
   `Shift+` after `Ctrl+` in a key file, `Keys::chord_command`; the Shifts refused alone like
