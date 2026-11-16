@@ -47,6 +47,7 @@ fields = [
   { offset = 0xCC, name = "defense", type = "i32", summary = "defense (Defend bonus included)", confidence = "read", refs = ["installation.md §7.9", "installation.md §7.11"] },
   { offset = 0xD0, name = "min_damage", type = "i32", summary = "minimum damage", confidence = "read", refs = ["installation.md §7.9", "installation.md §7.20"] },
   { offset = 0xD4, name = "max_damage", type = "i32", summary = "maximum damage", confidence = "read", refs = ["installation.md §7.9", "installation.md §7.20"] },
+  { offset = 0xD8, name = "shots", type = "i32", summary = "the shots left (the creature record's copy, its +0x64): stack_shot 0x43F900 lowers it after the shot's animation (0x43FA03) unless the side's hero wears the Ammo Cart (hero_wears_artifact 5, 0x43F9FA); the capture harness reads it (E08 T120, batch E13's E13-3, E13-9)", confidence = "read", refs = ["rules/surveys/E08-banks.md §5"] },
   { offset = 0xDC, name = "casts_left", type = "i32", summary = "the creature's casts left this battle", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0xE9, name = "struck", type = "u8", summary = "strike_animation: struck (a hit or a defence)", confidence = "inferred", refs = ["epics/E17-design.md §7"] },
   { offset = 0xEA, name = "killed", type = "u8", summary = "strike_animation: killed (the death group)", confidence = "inferred", refs = ["epics/E17-design.md §7"] },
@@ -572,6 +573,7 @@ refs = ["epics/E08-log.md T32b1"]
 h3api = "H3ArtifactSetup"
 fields = [
   { offset = 0x0, name = "name", type = "char*", summary = "the artifact's name; observed in the running game (h3mem.py: Ballista, Catapult, Centaurs Axe), not read", confidence = "inferred", refs = ["epics/E08-log.md T32b1"] },
+  { offset = 0xC, name = "class", type = "u32", summary = "the class: 1 special, 2 treasure, 4 minor, 8 major, 16 relic (H3API's type); observed in the running game, the 14 artifacts of batch E13's first run as ARTRAITS.TXT's class column has them (E08 T120), not read", confidence = "inferred", refs = ["epics/E08-log.md T120"] },
 ]
 
 [[struct]]

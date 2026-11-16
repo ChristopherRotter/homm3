@@ -118,6 +118,7 @@ encounter = "E13-2"
 hero = "E13-2"
 key = "space"
 answer = "yes"
+expect = { dialogs = true }
 battle = "auto"
 level_up = "left"
 record = { "Space on S2: questions and messages (or the step off and back)" = ["text:the key: ", "key", "text:in order: ", "order", "text:at the question: ", "questions:at"], "the battle as it opens: E13-2's stacks (creature, count, hexes); the guards' (creature, count, hexes)" = ["opening:cover", "text:tactics phase: ", "tactics", "text:obstacles: ", "blocked", "text:war machines: ", "opening:machines", "text:field: ", "opening:field"], "after the battle: dialogs and messages in order; E13-2's tile; points; army; experience" = ["text:in order: ", "order", "text:the level-ups: ", "level_up_dialogs", "text:the messages' pictures: ", "message_pictures", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:army: ", "hero:slots", "text:experience: ", "hero:experience", "text:skills: ", "hero:skills"], "after it: S2's word; the hint over (15, 8); Red's treasury" = ["text:S2: ", "bank:14,8", "text:treasury before: ", "before:treasury", "text:after: ", "treasury"] }
@@ -141,6 +142,7 @@ encounter = "E13-9"
 hero = "E13-9"
 walk = [10, 4]
 answer = "yes"
+expect = { dialogs = true }
 battle = { shoot = "Wood Elf", then = "retreat" }
 record = { "I1: questions and messages" = ["text:the path: ", "path_tiles", "text:in order: ", "order", "text:at the question: ", "questions:at"], "the battle as it opens: E13-9's stacks and hexes; the guards' (creature, count, hexes)" = ["opening:cover", "text:tactics phase: ", "tactics", "text:obstacles: ", "blocked", "text:war machines: ", "opening:machines", "text:shots: ", "opening:shots"], "the shot: the target; the guards' losses; anything the guards did before it" = ["text:the Elves: ", "shoot:action", "text:shots: ", "shoot:shots_before", "text:then: ", "shoot:shots_after", "text:the guards as the Elves' turn came: ", "shoot:before", "text:after the shot: ", "shoot:after"], "just before the retreat: each guard stack's count by slot" = "shoot:before_retreat", "the retreat: the battle's end" = ["text:winner: ", "winner", "text:retreated: ", "retreated", "text:the stacks at the end: ", "stacks:end", "text:then: ", "order"], "after it: I1's record (guards by slot); I1's word; E13-9 on the map?; the hint over I1" = ["text:I1: ", "bank:10,4:guards", "text:word: ", "bank:10,4:bits", "text:on the map: ", "hero:on_map"] }
 
@@ -163,6 +165,7 @@ encounter = "E13-3"
 hero = "E13-3"
 walk = [10, 20]
 answer = "yes"
+expect = { dialogs = true }
 battle = { shoot = "Archer", then = "auto" }
 level_up = "left"
 record = { "the battle as it opens: a tactics phase?; E13-3's stacks (creature, count, hexes); the guards' (creature, count, hexes)" = ["text:tactics phase: ", "tactics", "text:stacks: ", "opening:cover"], "the obstacles; the war machines on the field" = ["text:obstacles: ", "blocked", "text:war machines: ", "opening:machines", "text:field: ", "opening:field"], "the Archers' shots before their first shot; after it" = ["text:at the opening: ", "opening:shots", "text:the turn: ", "shoot"], "after the battle: dialogs and messages in order; E13-3's tile; points; army; Red's treasury" = ["text:the path: ", "path_tiles", "text:in order: ", "order", "text:the level-ups: ", "level_up_dialogs", "text:the messages' pictures: ", "message_pictures", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:army: ", "hero:slots", "text:skills: ", "hero:skills", "text:treasury before: ", "before:treasury", "text:after: ", "treasury"] }
@@ -180,6 +183,7 @@ encounter = "E13-6"
 hero = "E13-6"
 walk = [12, 34]
 answer = "yes"
+expect = { dialogs = true }
 battle = "auto"
 level_up = "left"
 record = { "the battle as it opens: E13-6's stacks (creature, count, hexes)" = ["opening:cover:attacker", "text:tactics phase: ", "tactics", "text:obstacles: ", "blocked"], "row:guard slot" = "opening:cover_rows:defender", "row:#" = "order:rows", "after OK: E13-6's tile; points; army; experience; level" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:army: ", "hero:slots", "text:experience: ", "hero:experience", "text:level: ", "hero:level", "text:the level-ups: ", "level_up_dialogs", "text:the messages' pictures: ", "message_pictures", "text:at the question: ", "questions:at"] }
@@ -189,6 +193,7 @@ encounter = "E13-6"
 hero = "E13-6"
 key = "space"
 answer = "no"
+expect = { dialogs = true }
 battle = "auto"
 record = { "E13-8: Space on G2: questions and messages" = ["text:the key: ", "key", "text:in order: ", "order", "text:pictures: ", "message_pictures", "text:G2: ", "bank:12,34:bits"] }
 
@@ -205,6 +210,7 @@ hero = "E13-7"
 walk = "pick"
 pick = { among = [[16, 44], [16, 50]], bank = { relics_below = 4 } }
 answer = "yes"
+expect = { dialogs = true }
 battle = "auto"
 level_up = "left"
 record = { "+E13-7 before: points; worn artifacts; backpack; the Utopia taken (U1 or U2); Red's treasury" = ["text:taken: ", "pick"], "the battle as it opens: the guards (creature, count, hexes)" = ["opening:cover:defender", "text:E13-7: ", "opening:cover:attacker", "text:obstacles: ", "blocked"], "after it: dialogs and messages in order" = ["text:the path: ", "path_tiles", "text:in order: ", "order", "text:the level-ups: ", "level_up_dialogs", "text:the messages' pictures: ", "message_pictures"], "E13-7's worn artifacts after; its backpack in order (names; class each); Red's treasury" = ["text:worn: ", "hero:artifacts:classes", "text:backpack: ", "hero:backpack:classes", "text:treasury before: ", "before:treasury", "text:after: ", "treasury", "text:points: ", "hero:points"] }
@@ -214,6 +220,7 @@ encounter = "E13-7"
 hero = "E13-7"
 walk = [20, 44]
 answer = "yes"
+expect = { dialogs = true }
 battle = "auto"
 level_up = "left"
 record = { "+C2 and C3: the reward's messages; the backpack after; E13-7's points after C3" = ["text:C2: ", "order", "text:pictures: ", "message_pictures", "text:treasury: ", "treasury", "text:backpack: ", "hero:backpack:classes", "text:points: ", "hero:points"] }
@@ -224,6 +231,7 @@ hero = "E13-7"
 only_if = { at = [20, 44], points_at_least = 482 }
 walk = [24, 44]
 answer = "yes"
+expect = { dialogs = true }
 battle = "auto"
 level_up = "left"
 record = { "+C2 and C3: the reward's messages; the backpack after; E13-7's points after C3" = ["text:C3: ", "order", "text:pictures: ", "message_pictures", "text:treasury: ", "treasury", "text:backpack: ", "hero:backpack:classes", "text:points: ", "hero:points"] }
@@ -241,6 +249,7 @@ encounter = "E13-5"
 hero = "E13-5"
 walk = [27, 46]
 answer = "yes"
+expect = { dialogs = true }
 battle = "auto"
 level_up = "left"
 record = { "W1: at the question E13-5's tile; points; questions and messages" = ["text:at the question: ", "questions:at", "text:the path: ", "path_tiles", "text:in order: ", "order"], "the W1 battle as it opens: the battlefield; obstacles; the stacks" = ["text:field: ", "opening:field", "text:obstacles: ", "blocked", "text:war machines: ", "opening:machines", "text:stacks: ", "opening:cover"], "after it: dialogs and messages; E13-5's tile; points; W1's word" = ["text:in order: ", "order", "text:pictures: ", "message_pictures", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:W1: ", "bank:27,46:bits", "text:treasury before: ", "before:treasury", "text:after: ", "treasury"] }
@@ -310,6 +319,7 @@ hero = "E13-3"
 walk = "pick"
 pick = { among = [[14, 21], [7, 21], [12, 24]], bank = { gold = 1000 } }
 answer = "yes"
+expect = { dialogs = true }
 battle = "auto"
 level_up = "left"
 record = { "E13-10: the Imp Cache taken (its record's level); E13-3's points at the start of day 2" = ["text:taken: ", "pick", "text:points: ", "before:hero:points", "text:day's points: ", "before:hero:day_points", "text:tile: ", "before:hero:tile"], "the Imp Cache: Red's treasury before; the reward's message; the treasury after" = ["text:before: ", "before:treasury", "text:the path: ", "path_tiles", "text:in order: ", "order", "text:pictures: ", "message_pictures", "text:after: ", "treasury"] }
@@ -319,6 +329,7 @@ encounter = "E13-3"
 hero = "E13-3"
 walk = [8, 24]
 answer = "yes"
+expect = { dialogs = true }
 battle = "auto"
 level_up = "left"
 record = { "the Naga Bank N1: Red's treasury before; the reward's message; the treasury after" = ["text:before: ", "before:treasury", "text:the path: ", "path_tiles", "text:in order: ", "order", "text:pictures: ", "message_pictures", "text:after: ", "treasury", "text:E13-3 then: ", "hero:tile", "hero:points"] }
@@ -330,6 +341,7 @@ encounter = "E13-5"
 hero = "E13-5b"
 walk = [30, 54]
 answer = "yes"
+expect = { dialogs = true }
 battle = "auto"
 level_up = "left"
 record = { "day 2: E13-5b's points; D1: questions and messages" = ["text:points: ", "before:hero:points", "text:aboard: ", "before:hero:in_boat", "text:the path: ", "path_tiles", "text:at the question: ", "questions:at", "text:in order: ", "order"], "the D1 battle as it opens: the battlefield; obstacles" = ["text:field: ", "opening:field", "text:obstacles: ", "blocked", "text:stacks: ", "opening:cover"], "after it: E13-5b's tile; dialogs and messages" = ["text:tile: ", "hero:tile", "text:aboard: ", "hero:in_boat", "text:pictures: ", "message_pictures", "text:treasury before: ", "before:treasury", "text:after: ", "treasury", "text:D1: ", "bank:30,54:bits"] }
@@ -344,6 +356,7 @@ only_if = { at = [20, 44] }
 skip_quietly = true
 walk = [24, 44]
 answer = "yes"
+expect = { dialogs = true }
 battle = "auto"
 level_up = "left"
 record = { "+C2 and C3: the reward's messages; the backpack after; E13-7's points after C3" = ["text:C3 on day 2: ", "order", "text:pictures: ", "message_pictures", "text:backpack: ", "hero:backpack:classes", "text:points: ", "hero:points"] }
@@ -358,6 +371,7 @@ encounter = "E13-7"
 hero = "E13-7"
 key = "space"
 answer = "yes"
+expect = { dialogs = true }
 battle = "auto"
 record = { "C3 again: questions and messages; bits; +0x11A" = ["text:the key: ", "key", "text:in order: ", "order", "text:bit 9: ", "hero:bit:9", "text:bit 10: ", "hero:bit:10", "text:bit 11: ", "hero:bit:11", "text:+0x11A: ", "hero:morale_bonus", "text:C3: ", "bank:24,44:bits"] }
 
@@ -366,6 +380,7 @@ encounter = "E13-7"
 hero = "E13-7"
 walk = [20, 44]
 answer = "yes"
+expect = { dialogs = true }
 battle = "auto"
 record = { "C2 again: questions and messages; bits; +0x11A" = ["text:the path: ", "path_tiles", "text:in order: ", "order", "text:bit 9: ", "hero:bit:9", "text:bit 10: ", "hero:bit:10", "text:bit 11: ", "hero:bit:11", "text:+0x11A: ", "hero:morale_bonus", "text:points: ", "hero:points"] }
 
@@ -382,6 +397,7 @@ encounter = "E13-7"
 hero = "E13-7"
 walk = [27, 46]
 answer = "yes"
+expect = { dialogs = true }
 battle = "auto"
 record = { "+W1 from (26, 45): questions and messages; E13-7's tile; bits; +0x11A" = ["text:W1: ", "questions:at", "text:in order: ", "order", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:bit 9: ", "hero:bit:9", "text:bit 10: ", "hero:bit:10", "text:bit 11: ", "hero:bit:11", "text:+0x11A: ", "hero:morale_bonus"] }
 
@@ -390,6 +406,7 @@ encounter = "E13-7"
 hero = "E13-7"
 walk = [24, 48]
 answer = { join = "no", flee = "yes", other = "no" }
+expect = { dialogs = true }
 battle = "auto"
 level_up = "left"
 record = { "the Peasant: the battle's result; bits; +0x11A after" = ["text:the path: ", "path_tiles", "text:winner: ", "winner", "text:in order: ", "order", "text:bit 9: ", "hero:bit:9", "text:bit 10: ", "hero:bit:10", "text:bit 11: ", "hero:bit:11", "text:+0x11A: ", "hero:morale_bonus", "text:tile: ", "hero:tile"] }

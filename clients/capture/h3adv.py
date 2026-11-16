@@ -68,7 +68,11 @@ Since E08 T110 (batches E12a, E12b): a garrison's exchange as a screen (`garriso
 and the observations garrison:x,y[:part], garrison_dialogs, bar:selected[:before], bar:clicks,
 creature_windows, anti_magic, book:<side>, fountain:x,y, spring:x,y, hero:bit:<n>,
 hero:word:<offset>, cast, hints, popup:lines and dialog:items|boxes (the README's "Garrisons and
-the bonus visitables").
+the bonus visitables"). Since E08 T120 (batch E13): a `[[require]]`'s `bank`, a recipe's `starts`,
+a step's `walk = "pick"` with `pick`, the battle plan `{ shoot, then }`, `only_if`'s
+`points_at_least`, and the observations bank:x,y[:part], starts, pick, order, order:rows,
+questions:at, opening:cover, opening:cover_rows, opening:machines, opening:shots, shoot[:part],
+hero:backpack:classes and hero:artifacts:classes (the README's "Creature banks").
 
 Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe,
 open_hero_screen, equip; since E08 T47a screen_kind, click_item, right_click, run_actions,
@@ -942,8 +946,21 @@ def shoot_turn(game, mem, plan, end):
             done["action"] = (strike(game, mem, active, aim) + " (beside the shooter)") if near \
                 else shoot(game, mem, active, aim)
             game.move(*BATTLE_PARK)
-            wait_for(lambda a=active: mem.globals()["active"] != a or find_button(game, "battle_ok"),
-                     "the shooter's turn over", 30)
+            # The next stack's turn, not the shot's animation: the active stack reads none while
+            # the shot plays, and the shots drop after it (stack_shot 0x43FA03, unless the side's
+            # hero wears the Ammo Cart: hero_wears_artifact(5) at 0x43F9FA; E08 T120's first run
+            # read the drop's moment too early).
+            # A good morale's turn again (the stack active again after none): over too.
+            seen_none, until = False, time.monotonic() + 30
+            while time.monotonic() < until and not find_button(game, "battle_ok"):
+                now = mem.globals()["active"]
+                seen_none |= now is None
+                if now is not None and (now != active or seen_none):
+                    break
+                time.sleep(0.1)
+            else:
+                if time.monotonic() >= until:
+                    done["note"] = "no other stack's turn within 30 s of the shot"
             time.sleep(0.5)
             after = next((s for s in mem.stacks() if [s["side"], s["record"]] == active), None)
             done["shots_after"] = after["shots"] if after else None
@@ -2268,30 +2285,32 @@ def shown_counts(mem, part, heroes=None):
     return ", ".join(f"{k}: {t}" for k, t in shown if t) or "none"
 
 
+CREATURES = 150  # the creature table's records (structs.toml: 0x6703B8, 150 of them)
+
+
 def army_bars(mem, index):
-    """E08 T120 (batch E13's E13-6): the army dialog's two bars as it shows them, slot by slot:
-    each slot's count (SHOWN_COUNTS) and its picture's frame (items 115-121, 140-146), the
-    creature named by the frame less the offset the hero's lower bar gives (a creature's
-    portrait frame against the hero's slot 0: `offset 2`): `upper 0: 3 Angels; lower 0: 10
-    Archangels, ...`."""
+    """E08 T120 (batch E13's E13-6): the army dialog's two bars as it shows them: each slot's
+    count (SHOWN_COUNTS); the lower bar's creatures the hero's army's (its slots), the upper bar's
+    named by the dialog's title (army_full_dialog_create 0x5D0B40: GENRLTXT 36 with the first
+    stack's creature; its record by h3lod.identify, the creature by the longest of the game's
+    creature names in it; the bars' pictures are no portraits' frames: E08 T120's first run):
+    `the title GENRLTXT:36 (Angels); upper 0: 4; lower 0: 10 Archangels, ...`."""
     items = {i["id"]: i for i in mem.dialog_items()}
     texts = {k: (v.get("text") or "").strip() for k, v in items.items() if v["state"] & SHOWN}
+    title = mem.dialog_text() or ""
+    names = {mem.creature_name(c, n): c for c in range(CREATURES) for n in (1, 2)}
+    named = max((n for n in names if n and n in title), key=len, default=None)
     hero = mem.hero(index)
-    first = next(((k, t) for k, (t, c) in enumerate(hero["slots"]) if t >= 0), None)
-    offset = None
-    if first is not None and (140 + first[0]) in items:
-        offset = items[140 + first[0]]["frame"] - first[1]
-    out = []
-    for part, picture, count in (("upper", 115, 108), ("lower", 140, 133)):
+    out = [f"the title {h3lod.identify(title) or '?'} ({named or 'no creature named'})"]
+    for part, count in (("upper", 108), ("lower", 133)):
         for k in range(7):
             shown = texts.get(count + k)
             if not shown:
                 continue
-            frame = items.get(picture + k, {}).get("frame")
-            name = (mem.creature_name(frame - offset, 2) if offset is not None
-                    and frame is not None else f"frame {frame}")
-            out.append(f"{part} {k}: {shown} {name}")
-    return "; ".join(out) + (f" (portrait offset {offset})" if offset is not None else "")
+            creature = hero["slots"][k][0] if part == "lower" else -1
+            out.append(f"{part} {k}: {shown}"
+                       + (f" {mem.creature_name(creature, 2)}" if creature >= 0 else ""))
+    return "; ".join(out)
 
 
 def shown_backpack(mem):
@@ -3077,8 +3096,8 @@ def text_parts(mem, text, tile):
         pieces.append((f"owned-by text of {COLOURS[colour]}", mem.owned_name(colour)))
     # E08 T120 (batch E13; survey E08-banks.md §7, creature_bank_hint 0x40D3F0): a creature
     # bank's hint by its parts: the kinds' names (CRBANKS.TXT's rows), the army size words
-    # (ARRAYTXT 174 to 201), GENRLTXT 44 (several creatures) and the guards' plural names.
-    # (Under a hero standing on the entrance: the bank's word from its record, object_tile.)
+    # (ARRAYTXT 174 to 201), GENRLTXT 44 (several creatures), 203 ("guarded by") and the
+    # creatures' plural names. (Under a hero standing on the entrance: its class, object_tile.)
     bank = object_tile(mem, x, y, z)
     if bank["class"] in h3mem.BANK_CLASSES:
         try:
@@ -3087,12 +3106,13 @@ def text_parts(mem, text, tile):
                        if k >= 2 and r and r[0].strip()]
             sizes = h3lod.table("ARRAYTXT.TXT")
             pieces += [(f"ARRAYTXT {k}", sizes[k][0]) for k in range(174, 202) if k < len(sizes)]
-            pieces.append(("GENRLTXT 44", h3lod.table("GENRLTXT.TXT")[44][0]))
+            general = h3lod.table("GENRLTXT.TXT")
+            pieces += [(f"GENRLTXT {k}", general[k][0]) for k in (44, 203)]  # 203 "guarded by"
         except (KeyError, OSError, IndexError):
             pass
-        guards = mem.bank(bank["word"] >> 13 & 0xFFF)["guards"]
-        for creature in sorted({t for t, c in guards if t >= 0}):
-            pieces.append((f"creature {creature} plural", mem.creature_name(creature, 2)))
+        # Every creature's plural (a tile beside the entrance holds no record's index: batch
+        # E13's second run read I1's guards by a wrong one).
+        pieces += [(f"creature {c} plural", mem.creature_name(c, 2)) for c in range(CREATURES)]
     # E08 T110 (batch E12b's E12-16, E12-17): the visit marks (GENRLTXT 353 visited, 354 not
     # visited) and the bonus lines (XTRAINFO's records, E24 design §4.11) by their records.
     for name, rows in (("GENRLTXT", (353, 354)), ("XTRAINFO", None)):
@@ -4023,7 +4043,9 @@ def oddities(obs, expect):
         notes.append(f"the path to {obs['target']} was {'/'.join(obs['path']) or 'not shown'}, "
                      f"not all {expect['path']}")
     if obs.get("dialogs") and not expect.get("dialogs"):
-        notes.append(f"{obs['dialogs']} dialog(s) after the walk to {obs['target']}")
+        # E08 T120: a key step's (Space on a bank: its reward's message) names the key.
+        notes.append(f"{obs['dialogs']} dialog(s) after the walk to {obs['target']}" if "target"
+                     in obs else f"{obs['dialogs']} dialog(s) after the key")
     if obs.get("days_waited"):
         notes.append(f"the walk to {obs['target']} waited {obs['days_waited']} day(s) before its "
                      "step: beyond the day's points")

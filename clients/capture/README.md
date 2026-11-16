@@ -977,6 +977,36 @@ tile (a Magic Well's or the Idol's: the hero **stands on** them after the visit,
 Buoy, the Mermaids and the Sirens at sea, visited from the neighbouring water tile), so a visit
 again there is Space.
 
+**Creature banks** (E08 T120, batch E13; `docs/rules/surveys/E08-banks.md` §11). `bank:x,y[,level]`
+a creature bank's record by its entrance (game +0x4E3DC, 0x6C bytes: `h3mem.bank`, the index the
+entrance word's bits 13-24; under a hero standing there, the word under it): `record 4; guards
+0: 4 Cyclopes, ...; resources 4 wood, ..., 0 gold; creature none; artifacts none; visited red,
+looted no (word 0xfc00803f)`, or one part (`:index`, `:guards`, `:resources`, `:creature`,
+`:artifacts` with each class from the artifact setup record's +0xC, `:bits`, `:word`).
+`hero:backpack:classes` and `hero:artifacts:classes` add the classes. **The draws:** a recipe's
+`[[require]]` `{ any = [[x, y], ...], bank = { gold = <n> | relics_below = <n> } }` starts the
+game again until one of the banks meets it, and `starts = <n>` plays the n-th start whatever its
+draws (`starts`: how many, each one's misses); a step's `walk = "pick"` with `pick = { among =
+[[x, y], ...], bank = {...} }` walks to the first bank that meets it, else the first (`pick`).
+**A visit's order:** `order` every dialog of the step as it came (`question ADVEVENT:32 (yes);
+battle (the hero on 14,8); level-up (E13-2, level 2); message ADVEVENT:34; army dialog (the title
+GENRLTXT:36 (Angels); upper 0: 4; lower 0: 10 Archangels, ...)`), `order:rows` as table rows;
+`questions:at` the hero's tile and points as each question showed. An army dialog's bars are no
+portraits' frames: its upper creature is the title's, the lower the hero's slots. **A battle's
+opening:** `opening:cover[:<side>]` every hex each stack covers (`slot 0: 40 Griffins 14-15`),
+`opening:cover_rows:<side>` as rows (slot, creature, count, hexes), `opening:machines` the war
+machines on the field (`none`), `opening:shots` each shooter's shots (battle stack +0xD8). **The
+plan `{ shoot = "<creature>", then = "auto" | "retreat" }`:** every other attacking stack
+defends until the shooter's first turn; then its shots, the defender's stacks by slot, a shot
+at the nearest enemy (the cursor's shot frames 3 and 15; with an enemy beside it a melee
+strike), and once another stack's turn came the shots again (they drop after the shot's
+animation, unless the Ammo Cart: stack_shot 0x43FA03; the first run read them during it); with
+`retreat` the next turn reads the defender's stacks (`shoot:before_retreat`) and retreats.
+`shoot[:shots_before|shots_after|action|before|after|before_retreat]`. A bank's hint names its
+parts (`[CRBANKS row 2 name] ([GENRLTXT 203] [ARRAYTXT 185] [GENRLTXT 44])`: the kind, "Guarded
+by", the size word, "creatures" or a creature's plural). `only_if`'s `points_at_least = <n>`
+plays a step only with that many points left.
+
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`
 records its probes from the part of the screen that tells it apart (`--also`: the same screen in
