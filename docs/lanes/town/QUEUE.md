@@ -5,15 +5,23 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 ## Tasks
 
 Epic: `docs/epics/E09-towns.md` (increment 4: the Tavern, refined at T30, `TWN-Q15`, decisions 98
-to 102); done tasks in `E09-log.md`; increments 1 to 3 (closed by T10, T20 and T30) in
+to 113); done tasks in `E09-log.md`; increments 1 to 3 (closed by T10, T20 and T30) in
 `E09-archive.md`. Each task's cut confirmed at its start; every entry's acceptance includes the
 Definition of Done (`docs/05-testing.md`).
 
-**E09 T33 — increment 4's drafts, Part F and the cut** (decision 100): the ADR amendment drafts
-with the survey's checkpoint answered, the design note's Part F from §59, the cut into building
-tasks and the exit criteria; the user's acceptance before anything is built. With the survey's checkpoint
-(`TWN-Q16`, decisions 103–107): the map's Tavern (class 95) in the cut, `cross-lane`; batch
-TWN-4's rows (survey §9) placed in the cut. **At its start:** confirm the cut. **Status:** next.
+**E09 T33b — increment 4's information, the cut and the checkpoint** (decisions 100, 108): the
+drafts' second half (`docs/lanes/town/adr-drafts/*-increment-4.md`: the Thieves' Guild from a
+town's tavern and the map's Tavern by the taverns owned, the Den of Thieves (class 97, the
+adventure's kinds, `cross-lane`), the views and events of the tavern heroes, the hire, the
+replacement, a hero's return and a placed hero, the tavern decision's view, the env's entries for
+`Hire`, the tavern answers and `Dismiss`, the protocol); the design note's Part F from §72 (the
+gates: a taverns map, its replays, the pool's invariants as properties, the census of the first
+offers; batch TWN-4's rows of survey §9 placed; the building tasks with their order against E08's
+increment 13; the exit criteria; the risks); then the checkpoint **`TWN-Q18`**: both halves'
+drafts, the taverns' stream (decision 113), T-16 and TD-22 (design §67, §69), the cut. After it:
+tell the adventure lane's inbox the planned `cross-lane` changes in its paths (design §71). Docs
+only; the executable helps for the Thieves' Guild's per-player parts (survey §10). **At its
+start:** confirm the cut. **Status:** next.
 
 ## Inbox
 

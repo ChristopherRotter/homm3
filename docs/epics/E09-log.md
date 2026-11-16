@@ -4203,3 +4203,54 @@ start (29 files, SHA-256 checked against the PC's). Survey `docs/rules/surveys/E
 
 **Verify:** the docs gates (`check-docs`, `check-rules`, `check-stubs`, `check-exe-map`,
 `check-lane --base origin/master`, `doc-drift --base origin/master`).
+
+### T33a — the hire's drafts and the design note's Part F, §59 to §71 (2026-11-16)
+
+Decision 100's second task, cut in two at its start (the user, `TWN-Q17`'s first round, decision
+108: the hire now, the information with the cut and the checkpoint next; recommended over T33
+whole and over every draft first). Branch `town/e09-t33a`, docs only (the drafts, the design note,
+the survey's §12, the address map, the epic, the log, the answered questions, the lane's queue and
+HANDOFF). Starting point: `master` at f6dd6d3 (#964; #961 and #962 merged; CI green on
+`master`'s run). The user's computer was connected at the start: the executable, `h3maped.exe`,
+the four LODs, `maps.tar`, `extracted.tar`, the saves, the four manuals and the two help files
+staged (18 files, SHA-256 checked, one digest of the sorted lists).
+
+**The ADR-level choices** (`TWN-Q17`'s second round, four; decisions 109–112, each as
+recommended): a hero type's record made at its first offer and kept by type; the tavern weights in
+the town part's faction records; a town command for a town's tavern, a decision for the map's; the
+dismissal in this increment.
+
+**Read for it** (survey §12; three map entries added, one extended): the hero screen's dismissal
+(`hero_screen_refresh` 0x4E1A50's button 129: refused from the town screen and the tavern dialog,
+for a town's visitor, for the loss condition's hero, view-only, and for a player's one hero without
+a town; `hero_mission_critical` 0x5F2A40, `hero_screen_no_dismiss` 0x698A90, `hero_screen_show`'s
+callers' flag); `hero_place` and `hero_show` have no reveal; `hero_leave_game`'s refill of the
+points comes after the army is cleared, so `hero_max_land_movement` starts from speed 20 (T-16).
+VCMI 1.7.5's hero window (its dismissal button's tests: no visitor test, TD-22) and server pack
+(ownership only); VCMI's object config (the Tavern visited from a neighbour, `blockVisit`).
+
+**Written:**
+- **The drafts**, the hire's half (T33b adds the information's): `docs/lanes/town/adr-drafts/`
+  `0028-increment-4.md` (the tavern weights and the price, `TownCommand::Hire`, the pool's tavern
+  heroes, the versions), `0017-increment-4.md` (the commands, the pool's records and away records,
+  the players' factions and slots, the draw, the taverns' week and the start's fill, the slots over
+  a turn, the taverns' stream, the tavern decision, the hire's application, a hero that leaves the
+  game, the versions), `0016-increment-4.md` (a hero placed by a hire and its away record, the
+  dismissal's removal, the kind `Tavern`), `0013-increment-4.md` (a tavern hero's backpack
+  equipped at a fill, its spell points off the map).
+- **The design note** Part F, §59 to §71: scope and choices (§59), the part v7 (§60), the pool's
+  records and the slots (§61), the draw (§62), the fills (§63), the town's hire (§64), the
+  replacement (§65), the map's Tavern (§66), a hero that leaves the game (§67), the slots over a
+  turn (§68), the dismissal (§69), the map's hero settings (§70), ids, versions and the open points
+  for T33b (§71).
+- **New ids:** dispute TD-22 (the dismissal's visitor test); quirk candidate T-16 (a leave's points
+  over the cleared army); stubs planned `TWN-STUB-15`, `-16`; rules planned TWN-TAV-001 to -006,
+  GAM-DEC-010, GAM-MAN-003.
+- **The agent's calls** (decision 113), for `TWN-Q18`.
+
+**The queue:** T33a out, T33b in. No version moved. Ids: questions next 18, decisions next 114,
+disputes next TD-23, quirk candidates next T-17.
+
+**Verify:** docs only: the docs gates (`check-docs`, `check-rules`, `check-stubs`,
+`check-exe-map`, `check-lane --base origin/master`, `doc-drift --base origin/master`); CI on the
+pull request is the record.

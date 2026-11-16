@@ -5,7 +5,8 @@ them: the epic's decision 40). Increment 2's note (construction, decision 37) is
 §36, written by T13 (2026-11-07), kept at increment 2's closure (T20, 2026-11-11) as Parts A to C
 were. Increment 3's note (growth, recruitment and the army rows, decision 65) is Part E, §37 to
 §58, written by T22a and T22b (2026-11-11), kept at increment 3's closure (T30, 2026-11-15). Increment
-4's note joins as Part F, its sections numbered from §59 (decision 102).
+4's note (the Tavern, decision 102) is Part F from §59: the hire §59 to §71 by T33a (2026-11-16),
+the information, the gates and the cut from §72 by T33b.
 
 Increment 1's note: towns on the map (the epic's decision 5). A handover, not binding
 (`docs/adr/README.md`): the working detail behind ADR-0028 and E09's amendments of ADR-0015,
@@ -2015,3 +2016,326 @@ the AI lane's `cross-lane` consent).
 - **The legal sets grow:** a `Recruit` per standing dwelling of every own town each step (the
   env's masks; the AI lane's step cap already bounds the revisit loops).
 - **Open:** a garrison hero's reveal (§53; only after a Cover of Darkness).
+
+## Part F — increment 4: the Tavern
+
+Increment 4's note (the Tavern; the epic's decisions 99, 100, 102), written by T33a (the hire,
+§59 to §71) and T33b (the information, the views, the env, the gates, the cut and the exit
+criteria, from §72) from the survey `docs/rules/surveys/E09-tavern.md` (§ numbers are the
+survey's unless they name this note) and the answers at `TWN-Q16` (decisions 103 to 107) and
+`TWN-Q17` (decisions 109 to 112). A handover, not binding: the drafts
+`docs/lanes/town/adr-drafts/*-increment-4.md` hold the decisions, accepted at T33b's checkpoint
+(`TWN-Q18`) before anything is built. *Agent's call (change freely)* marks a choice of this
+note's (decision 113) that the task building it may still change.
+
+### 59. The hire: scope, sources and choices (T33a)
+
+The note's first half (decision 108: T33a the hire, T33b the information and the cut), written
+from the survey §2 to §5 and §12 (the dismissal, read by T33a), the address map and the code as
+it stands (`h3-game`'s `town/pool.rs`, `setup.rs`, `state/battle.rs`; `h3-towns`' `command.rs`,
+`view.rs`).
+
+- **This half builds:** the part's tavern weights and price (§60), the pool's records, away
+  records and the players' two tavern heroes (§61), the draw (§62), the start's and the week's
+  fills (§63), the town's hire (§64), the replacement (§65), the adventure map's Tavern (§66), a
+  hero that leaves the game and the heroes that come back (§67), the tavern heroes over a turn
+  (§68), the dismissal (§69), the map's hero settings (§70); ids, versions, open points (§71).
+- **Not this half's:** the Thieves' Guild, the Den of Thieves, the views and events, the env, the
+  gates, the cut and the exit criteria (T33b). **Not this increment's:** a hired hero learning
+  the town's guild spells (increment 5, `TWN-STUB-15`); the computer's hires and its choice to
+  retreat (E13; `ADV-STUB-9`, E10); a defeated player's heroes and tavern (`player_defeated`
+  0x4F13C6, E10); the loss condition's hero at a dismissal (E10, `TWN-STUB-16`); the tutorial's
+  fixed classes and a campaign's carried heroes (not followed); the rumours (decision 99).
+- **`TWN-Q17`** (one round of four, each as recommended): a hero type's record made at its first
+  draw and kept by type (decision 109; not chosen: every record at the build, a fresh record at
+  each draw); the tavern weights in the town part's faction records (decision 110; not chosen:
+  the core's hero classes); a town command for a town's tavern and a decision for the map's
+  (decision 111; not chosen: a decision for both); the dismissal in this increment (decision 112;
+  not chosen: later).
+- **Read by T33a** (survey §12 and the address map): the dismissal's button and its five refusals
+  (`hero_screen_refresh` 0x4E1A50, `hero_mission_critical` 0x5F2A40, `hero_screen_no_dismiss`
+  0x698A90); neither hire reveals (`hero_place` 0x4D7900 and `hero_show` 0x4D75D0 read whole, no
+  reveal call); a leave without bit 17 refills the points after clearing the army, so
+  `hero_max_land_movement` 0x4E4990 starts from speed 20 (T-16, §67).
+- **The agent's calls** (decision 113, each for `TWN-Q18`): the taverns' stream (§63); the away
+  record in the pool (§61); a Random faction no start read drawn at the first fill (§61); a
+  player without a faction weighted evenly (§62); the start's fill after the build's last draw
+  (§63); a new record's points (§67); `ADV-STUB-9` left to E10 whole; T-15 closed as unreachable
+  (§65).
+
+### 60. The town part: the tavern weights and the hire's price (TWN-TAV-001's data; `h3-towns`, `h3-pack-towns`; part v7)
+
+- **`TownRecord::tavern`**: per hero class of the core its weight in that faction's taverns;
+  `towns.toml` gives `[town.tavern]` as class key = weight (a `u8`), compiled to a dense list by
+  the core's class index (a class not given 0). The compiler refuses a class the core lacks
+  (`UnknownHeroClass`), a class given twice and a record whose weights sum to 0 (the draw would
+  have nothing to weigh). *Agent's call:* in the record, not in the parameters: the column is the
+  faction's (decision 110).
+- **`TownParams::hire_price`**: resources of the core, as a building's cost (2 500 gold,
+  `hero_price` 0x67814C; tier-2 data of the reading, every edition and difficulty, the
+  computer's hires too).
+- **The harvest** (`h3-harvest`, `cross-lane`, original data): `HCTRAITS.TXT`'s tavern columns,
+  Castle to Conflux, by the class rows (0 Knight to 17 Elementalist, the core's order): the base
+  pack's eight records from `H3bitmap.lod`'s file, the AB pack's Conflux from `H3ab_bmp.lod`'s
+  (both files the same nine columns in this build). RoE's file lacks the Conflux column; an RoE
+  edition (E11) has no Conflux record, so nothing overrides. The weights read 5 or 6 a class and
+  sum to 100 a column (§2.2); the harvest's test pins both.
+- **The roles and the bound** stay: `tavern` (a standing Tavern or Castle's Brotherhood,
+  `has_tavern`, increment 1) opens a town's tavern; `most_heroes` (8, increment 3) bounds the
+  hire. Part v7 (the record's field, the parameter).
+
+### 61. The pool's records and the players' tavern heroes (TWN-SET-005, TWN-SET-001 amended; `h3-game`'s `town/pool.rs`, `state.rs` `cross-lane`)
+
+- **The statuses** gain **`Offered`**: a tavern hero's type, out of every draw, its player the
+  slot's (the original's 0x40, which also marks a type the map does not allow: the engine keeps
+  `Out` apart, *agent's call*). A type is `Free`, `Taken(colour)` (on the map or in a garrison),
+  `Offered`, `Prisoner` or `Out`.
+- **A type's record** (decision 109): `HeroPool`'s entry gains the type's `HeroId` once it has a
+  record. The build gives the placed and generated heroes theirs as now (the setup's order, then
+  the main towns' heroes); a draw that offers a type without one **makes it**: the next id (one
+  past the store's last), its details GAM-HER-001's defaults under the type's map-wide entry
+  (§70), its level seed (GAM-HER-002), its spell points full, from the stream of that draw (§63,
+  §65). From then on the type keeps its id: its details stay in the store whatever happens to the
+  hero, and the pool names that id at every later draw of the type, by any player.
+- **The away record** (*agent's call*, ADR-0016's draft point 3): beside a recorded type off the
+  map the pool keeps what the adventure keeps of a hero on the map: its points left and the day's
+  maximum, its formation and tactics flag, and its army (meaningful only while the type is a
+  tavern hero: every draw replaces it). A placement hands it to the adventure; a leave hands it
+  back (§67). A garrison hero has none: the adventure keeps its record in its town (ADR-0016
+  point 3).
+- **Each player** gains **its faction** (`Option<FactionId>`: TWN-SET-001's resolved choice, kept;
+  none without a choice) and **its two tavern heroes**: two slots, each a `HeroId` or empty, and
+  each a **returning mark** (the original's bit 17 of +0x105). *Agent's call:* a Random choice
+  that no start reads (`needs_faction` false: no main town, no random hero, no random town of
+  its own) stays undrawn at the build and is drawn at the player's first fill from the taverns'
+  stream, before its slot 0, so the setup stream does not move for any map.
+- **Where:** the pool, its records' away parts, the factions and the slots are one block,
+  `Arc<HeroPool>` as today: shared by forks, copied on a write (a fill, a hire, a leave, a
+  turn's end that clears a mark). The store of heroes grows at a new record (its outer list
+  copied once on a fork's write, as a hero's change copies it now); the level seeds' block
+  (`Progression`, static until now) grows with it. *Bench:* a fork still counts the same
+  references; the week's fill is one pass over the classes and types per slot (156 types, 18
+  classes): `day-start-builds-36` and `month-start-builds-36` move and are re-baselined.
+- **The hash** (the game state hash, `cross-lane`): the pool's encoding gains per type its record
+  (its id and away record) and per player its faction and its two slots with their marks; the
+  taverns' stream's position (§63).
+
+### 62. The draw (TWN-TAV-001; `h3-game`'s `town/tavern.rs`, new; `tavern_hero_draw` 0x4BB5E0)
+
+A pure function of the pool, the core, the part and its arguments: the player's colour and
+faction, the class to avoid (the other slot's hero's, or none), whether only its faction's
+classes count (slot 0), and the stream; it returns a type or none and takes nothing (the caller
+marks the type `Offered`).
+
+1. Per hero class in the core's order: its **count**, the types of the class that are `Free` and
+   whose mask holds the colour (TWN-SET-005's masks, SoD's disposed heroes); its **weight**, the
+   faction's record's tavern weight of the class (§60). *Agent's call:* a player without a
+   faction (a setup without towns) weighs every class 1 and has no own faction.
+2. No class with a count: no type, no draw.
+3. A class with no count weighs 0.
+4. The class to avoid weighs 0 while another class has a count.
+5. Own faction only (slot 0): when a class of the player's faction (the class record's faction)
+   still weighs anything, every other class weighs 0.
+6. A total weight of 0 (not reachable with the shipped data: every weight is 5 or 6): no type,
+   no draw (*agent's call*, the original's `random_between(1, 0)`).
+7. Else a class by one draw of 1 to the total over the classes in order (the first whose running
+   sum reaches it), then the n-th counted type of the class in type order, n one draw of 1 to its
+   count: two draws, the original's order.
+
+The SoD edition's Conflux rule (step 3 of the reading) is not modelled: dead in this build
+(edition 3), E11's lead. The forced class (the tutorial's) is not followed.
+
+### 63. The fills: the game's start and the week (TWN-TAV-002; GAM-CAL-002 amended)
+
+- **The release** (the week only; `new_day_week_events` 0x4C8780): per player in player order,
+  slot 0 then slot 1, a slot holding a hero whose returning mark is clear lets it go: its type
+  `Free` (its record and away record kept), the slot empty. A returning hero stays (TD-18,
+  decision 103).
+- **The fill** (`tavern_new_heroes` 0x4C8450), per player in player order (every player: none is
+  defeated before E10), slot 0 then slot 1, each **empty** slot: the draw (§62) with the other
+  slot's hero's class to avoid (none when that slot is empty) and own faction only for slot 0;
+  a type found is `Offered` and the slot holds its hero id, its record made when it has none
+  (§61). Then the type's **full starting army** (GAM-SET-001: the first stack's count, each later
+  slot's roll and count; a rolled war machine's artifact worn at the first free position that
+  takes it, as GAM-HER-001), replacing its away army; its **backpack equipped** (ADR-0013's draft
+  point 14.5: each artifact from the last place to the first into the first free position that
+  takes it); its spell points full (HER-MAN-001). Its points are set at its owner's turn start
+  (§68).
+- **The stream** (*agent's call*, for `TWN-Q18`): **the taverns' stream**, `StreamId::TAVERNS`, a
+  new named kernel stream (8, beside `TOWNS`; a `shared/` change as T24's `TOWNS`), for both
+  fills: no existing draw of any stream moves, so the replays keep their outcomes but for the new
+  state. Per filled slot: the class, the type, a new record's draws (its default experience or a
+  custom experience's levels at load, GAM-SET-002; then its level seed), then the army. The
+  alternative, the towns' stream (decision 75: "every weekly town draw"), would shift every later
+  week's kind, garrison and Portal draws.
+- **When:** the week's, in a new week's day start after the towns' week (its kind, the neutral
+  garrisons, the Portals) and before the adventure's week step (the original's: after the towns'
+  growth, before the dwellings); the fill reads only the pool, so its place moves no other state.
+  The game's start's (`new_game_heroes`' taverns, 0x4C00C0, after the main towns' heroes): in
+  `GameState::new` after the setup stream's last draw (the Portals') and the adventure's start of
+  the game, before day 1's start-of-day step (*agent's call*).
+- **Told** (T33b): each player's changed slots to that player.
+
+### 64. The town's hire (TWN-TAV-003; `TownCommand::Hire { town, slot }`; `town_tavern_hire` 0x5C12E0)
+
+- **`h3-towns`:** `TownCommand::Hire { town: TownId, slot: u8 }` (the fourth variant); a check
+  `h3_towns::tavern(town, part)`: a standing building of role `tavern` (`has_tavern`), else
+  `TownCommandError::NoTavern`; the owner's check as the build's (`NotOwner`); the price, the
+  part's `hire_price`.
+- **The game** (`town/tavern.rs`): the actor the town's owner, in its turn, no decision open
+  (GAM-DEC-001); the slot 0 or 1 (`UnknownSlot`) holding a hero (`EmptySlot`); the player's heroes
+  on the map below `most_heroes` (the garrison heroes not counted; TWN-ROW-003's `TooManyHeroes`);
+  no visitor on the town's entrance (TWN-ROW-003's `EntranceHeld`, the adventure's visitor
+  query); the treasury holding the price (`GameCommandError::CannotPay`, after the town's checks,
+  as the build's). Each refusal typed: nothing changes, nothing is drawn.
+- **The application** (infallible, ADR-0017 point 10; the original's order): the price paid; the
+  adventure places the hero on the town's entrance as its visitor with its away record (ADR-0016's
+  draft point 3); its type `Taken` by the player's colour, the colour's bit added to its mask
+  (`hero_place`); the slot's returning mark cleared (`hero_place`'s flag clears bits 17 and 18);
+  the guild's spells not taught until increment 5 (`TWN-STUB-15`, `town_heroes_learn_spells`
+  0x5BE030); the replacement drawn into the slot (§65). No reveal (§59).
+- **The legal commands** (GAM-DEC-001's set with no decision open): per own town with a standing
+  Tavern in `TownId` order, after its recruitments, a `Hire` for each slot that passes every
+  check. **Replay** (the adventure replay format, `cross-lane`): `town hire <town> <slot>`.
+
+### 65. The replacement (TWN-TAV-004; `tavern_slot_replace` 0x4C86A0)
+
+At once after a hire (the town's or the map's), the hired slot: the draw (§62) with the other
+slot's hero's class to avoid and **any faction**, from **the hirer's stream** after the hire's
+checks (ADR-0017 point 4); the type `Offered`, a new record's draws when it has none; its army
+**one creature of its type's first starting stack** (GAM-SET-001's first stack at a count of 1,
+no draw; `draw_starting_army` 0x4C9730 with its one-creature flag); its spell points full; **no
+backpack equipping and no points set**: its points are its away record's until its owner's next
+turn start (§68; T-16 for a record a leave refilled, §67). No type free: the slot stays empty.
+**T-15** (a war machine as the first starting stack) is not reachable by construction: the core's
+hero type keeps its war machines apart from its starting stacks, whose first is a creature
+(GAM-SET-001's `HeroType::war_machines`); no ledger row (*agent's call*, decision 107's note
+closed).
+
+### 66. The adventure map's Tavern (class 95; the kind `Tavern`; GAM-DEC-010; `map_tavern_visit` 0x5D7E90, `map_tavern_hire` 0x4D7890)
+
+- **The kind** (ADR-0016's draft point 4; the adventure lane's paths, `cross-lane`): **visited
+  from a neighbour** (VCMI's `blockVisit`), no owner, no mark, no draw; a step toward its entrance
+  visits it and opens **the tavern decision** for the visitor's owner. A hero standing on its
+  entrance hides it (a step meets or fights the hero) and a `Revisit` there visits nothing (the
+  original skips case 95 when the visitor stands on the visited tile). Every player's hero
+  visits (the original's computer uses its own code, E13). Its rule id is the adventure lane's,
+  given by the building task.
+- **The decision** (`Decision::Tavern { owner, hero, object }`): answered `Hire { slot }` or
+  `Close`. A hire is checked as the town's (§64) **without** the visitor test and the town's
+  checks, and is refused while any hero stands on the Tavern's entrance (`Occupied`; VCMI's, the
+  original never reaches it); a refused answer is typed and leaves the decision open. The
+  application as the town's, the hero placed on the Tavern's entrance, no guild spells; then the
+  replacement (§65) and the decision **closes** (one hire a visit, the original's dialog).
+- **The import** (map import, `cross-lane`): class 95 typed (the 93 Taverns on 47 maps, §1); the
+  writer writes it. Which of the 47 maps import whole once the Den of Thieves is typed too is
+  T33b's census.
+- **Replay:** `answer tavern hire <slot>`, `answer tavern close`. Its view and the env (T33b).
+
+### 67. A hero that leaves the game (TWN-TAV-006; GAM-BAT-003 and the capture's leave amended; `hero_leave_game` 0x4D9EC0; T-16)
+
+Every path off the map: a battle's (a loser, a retreat, a surrender, both after a draw, a winner
+left with created stacks only), the capture's empty garrison hero (`TWN-QUIRK-11`) and the
+dismissal (§69). In the battle's end the game composes it after the adventure's end (which
+removes the heroes and hands back their away records) and after the heroes' part (each side's
+hero keeps the spell points it has left, its war machines' artifacts lost, GAM-BAT-002), so the
+leave's own writes come last, as the original's after the battle.
+
+1. **Its away record** back in the pool (ADR-0016's draft point 3): its battle bonuses and timed
+   marks dropped (E08 decision 307), its formation and tactics flag kept.
+2. **After a retreat or a surrender** (the battle's `Retreat(side)` or `Surrender(side)`, its
+   side's hero): into its owner's tavern at once: a slot drawn, one draw of two from **its
+   owner's stream** (its own command ended the battle), the other slot when that one's returning
+   mark is set (so a third returning hero replaces one of two); that slot's hero, if any, goes
+   `Free`; the type `Offered`, the slot holding it, its mark set. **A surrendered hero keeps its
+   army** (its side's survivors, as the adventure's end left them), **a retreated hero keeps one
+   creature** of its type's first starting stack; both keep their points left, the day's maximum
+   and their spell points as the battle left them (TD-19, decision 104).
+3. **Every other leave** (a loss, a draw, the capture's, the dismissal): the type `Free`; the
+   army cleared to one creature of its first starting stack (unseen: a later draw replaces it);
+   the spell points full (HER-MAN-001; through `h3-heroes`' change); the points left and the
+   day's maximum **the land maximum the original computes over the cleared army**: from the empty
+   slots' starting speed, 20, the land table's most (with the hero's Logistics and artifacts).
+   **T-16** (quirk candidate, for `TWN-Q18`): those points are seen only when the type is drawn as
+   a replacement and hired in the same turn (a fill's points are set at the turn start first);
+   recommended: the reading under a `fix-optional` flag (on in `faithful`; off, the land maximum of
+   its one creature).
+4. **What it keeps:** its record (level, experience, skills, spells) and the artifacts it holds
+   then: a beaten hero those the winner had no room for (GAM-BAT-004), a retreated or surrendered
+   hero all of them (the battle's capture returns at once), a dismissed hero all of them (decision
+   105; row TWN-4-5 confirms the dialog strips nothing).
+5. **A new record's points** (*agent's call*): the land maximum of the army its first draw gives
+   it (the original sets every record's at the new game with its full starting army; only a
+   replacement hired in its first turn could tell).
+
+A defeated player's heroes and slots (`player_defeated`) are E10's. Told (T33b): `HeroRemoved`
+as now, the owner's slot changes. `ADV-STUB-9` stays E10's whole: the Tavern fact of the retreat
+facts is `has_tavern` over the owner's towns other than the battle's, ready, but only a computer's
+hero reads the facts.
+
+### 68. The tavern heroes over a turn (TWN-TAV-005; ADV-MOV-002's derivation; `next_player_turn` 0x4C6FE0)
+
+- **At its owner's turn start**, after the player's heroes on the map and before its garrison
+  heroes (the original's order; none draws, so the order is the reading's for the record), each
+  tavern hero's day's maximum and points left set to its land points: `h3-heroes`' derivation
+  (ADR-0013 point 13) over its details and its away army, as a hero on the map's. **No spell
+  point is regained** off the map (TD-20, decision 104): they are set only at a draw and at a
+  non-returning leave.
+- **At its owner's turn end** (`EndTurn`, 0x4C705D after the victory tests) its two slots'
+  returning marks are cleared. So a hero that came back in its owner's own turn goes at the next
+  week's release, and one that came back after that turn ended (another player's attack) stays
+  through the next day's start, a week's release included (TD-18).
+
+### 69. The dismissal (GAM-MAN-003; `Manage::Dismiss { hero }`; decision 112; survey §12)
+
+- **The checks:** the actor's hero (`NotYourHero`), in its turn, no decision open (GAM-DEC-001);
+  on the map (a garrison hero is not: the town screen offers no dismissal, `NotOnMap`); not
+  standing on a town's entrance (`InTown`: the original's visitor test; **TD-22**, VCMI's button
+  does not test it, recommended the reading, for `TWN-Q18`); not the player's last hero on the map
+  while it owns no town (`LastHero`). The loss condition's "lose this hero" waits for E10's
+  scenarios (`TWN-STUB-16`). The adventure checks the map half (the entrance), the game the rest.
+- **The application:** the leave (§67, a non-returning one): the adventure removes the hero (its
+  boat freed, ADV-SEA-006; `HeroRemoved` to its owner and the players that see its tile), the type
+  `Free` with its record and every artifact (decision 105). No draw.
+- **The legal commands:** per own hero on the map in hero order, after its management commands,
+  a `Dismiss` when it passes. **Replay:** `manage dismiss <hero>`. The env (T33b).
+
+### 70. The map's hero settings (GAM-HER-001, TWN-SET-005 amended; `GameSetup`, the import `cross-lane`)
+
+- **The customised types** (SoD's map-wide entries, §5): `GameSetup` gains `custom_types:
+  Vec<(HeroTypeId, HeroDetailsSetup)>`, every flagged type's entry (the import from `h3-map`'s
+  `custom_heroes`, which it merges into a placed hero's body today; the placed heroes keep theirs).
+  A record made at a draw takes its type's entry over GAM-HER-001's defaults; so `Marshland
+  Menace`'s 15 Fortress types are offered at 2 000 experience (their levels at load at their first
+  draw, from that draw's stream). The setup checks an entry's type is the ruleset's and once.
+- **The masks** (SoD's disposed heroes): the draw's count reads them (§62); a placement adds its
+  colour's bit (§64).
+- **Banned skills** do not touch a hired hero's starting skills (the reading; VCMI agrees):
+  nothing to build; a test pins a type with a banned starting skill offered with it.
+- **Not in the pool**, as built: `Out` (not allowed), `Prisoner`, the placed heroes' `Taken`.
+
+### 71. The hire's ids, versions and open points (for T33b)
+
+- **Rules** planned: TWN-TAV-001 to -006 (a new area, the Tavern), GAM-DEC-010 (the tavern
+  decision), GAM-MAN-003 (the dismissal), the adventure lane's kind `Tavern` (its id at the
+  building task); amended TWN-SET-001 (the faction kept; a Random choice drawn at the first fill),
+  TWN-SET-005 (`Offered`, the records, the away records), GAM-HER-001 and GAM-HER-002 (a record
+  made at a draw), GAM-SET-001 (the one-creature form), GAM-BAT-003 and the capture's leave (the
+  leave of §67), GAM-CAL-002 (the taverns' week), ADV-MOV-002 (the tavern heroes' points beside
+  the heroes' on the map).
+- **Stubs:** `TWN-STUB-15` (a hire's guild spells, increment 5), `TWN-STUB-16` (a dismissal of the
+  loss condition's hero, E10); `ADV-STUB-9`'s reason updated when built. **Quirk candidate:**
+  T-16. **Dispute:** TD-22.
+- **Versions** (this half's): the town part v7; the game state hash; the adventure ruleset part
+  and state hash (the kind `Tavern`); the map import (class 95, the setup's customised types);
+  the adventure replay format (`town hire`, `answer tavern`, `manage dismiss`); shared:
+  `StreamId::TAVERNS`. T33b adds the protocol's and the env's.
+- **Open for T33b:** the views and events (the owner's two tavern heroes with their details,
+  army and points; the hire, the replacement, a hero's return; a placed hero to the players that
+  see its tile; the tavern decision's view); the env's entries (`Hire`, the tavern answers,
+  `Dismiss`); the Thieves' Guild from a town's tavern and the map's Tavern and the Den of Thieves
+  (class 97, §6); the gates (a taverns map and its replays, the pool's invariants as properties:
+  a type in at most one slot, `Offered` exactly when in a slot, `Taken` exactly when on the map or
+  in a garrison; the census of the 160 maps' first offers); batch TWN-4's rows (§9) placed; the
+  building tasks and their order with E08's increment 13; the exit criteria; the checkpoint
+  `TWN-Q18` (both halves' drafts, the taverns' stream, T-16, TD-22, the cut).
