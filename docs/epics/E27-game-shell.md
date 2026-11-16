@@ -61,7 +61,8 @@ The user, 2026-11-12 (M0; the questions `CLT-Q79` to `CLT-Q83`, `lanes/client/QU
    choices is settled at M4's T0 with the adventure lane), the original's `.GM1`
    saves not listed (E19); the original's entries the client cannot serve (the network modes, the
    tutorial) are decided at T1a from the reading, each a `CLT-Q`; which maps the scenario list
-   shows (8 of the 160 shipped maps import whole today) is decided at M3's T0.
+   shows (8 of the 160 shipped maps import whole today) is decided at M3's T0 (decision 44: all
+   160).
 
 The user, 2026-11-12 (M1 T1a1; `CLT-Q84` to `CLT-Q86`):
 
@@ -309,6 +310,32 @@ The user, 2026-11-16 (M2 T7; `CLT-Q127`, `CLT-Q128`):
 40. **A menu opening anew takes the hover at its first move** (CLT-Q128 (b)): the original's
     statics (the item the pointer left the menu over is no change there) for the comparisons only.
 
+The user, 2026-11-16 (M2 T8, M2's closure; `CLT-Q129` to `CLT-Q136`):
+
+41. **T8 kept whole** (the cut offered: M2's closure first, M3's refinement in a later session),
+    sub-agents used for the bounded jobs: the recordings, two fresh reviewers, the fixers.
+42. **M2's review list accepted with the reviewers' changes, fixed in T8** (offered: the first
+    M3 task, or split): the window's start skipped by F4 no more; `message::Open` on
+    `h3_ui::input` (decision 20); one copy of the DLL's 16-bit frames; the shell window reading
+    the user's key file; the music with the effects at 0; the replay stopping under the network
+    notice; key conflicts across contexts asked together; the stale rows under the Multiplayer
+    dialog; the shared `Did` helpers; the glyphs' widths measured; the stale headers and
+    comments.
+43. **The oddities the review found** (each as recommended): the silent Smacker clips' pace from
+    their due times in the client's profile, `SmackWait`'s drift for the comparisons only
+    (CLT-Q129 (b)); an input in `H3Intro`'s end fade reaches the main menu, as the original's
+    (CLT-Q130 (a)); the caret not blinking, as the original's (CLT-Q131 (a)); no disk check in
+    the client (CLT-Q132 (a)); the edit's two flaws that never show not built (CLT-Q133). Built
+    in T8.
+44. **M3 refined** (M3 T0): the scenario list shows all 160 shipped maps, as the original's
+    (CLT-Q134 (a): all import and validate since E08 T97b1; the objects not yet built stay inert),
+    each read whole (`h3_map::read`, 160 maps in about 0.15 s: no header-only read, no engine
+    change; *provisional*); Begin builds and validates the engine's `GameSetup`, shows the loading
+    bar, then a notice (a `CLT-STUB`) and back to the menu, the setup kept for E24 M5 (CLT-Q135
+    (a)); Options move to M4 with the menu in play, one dialog over the map client's screen
+    (CLT-Q136 (a)); M3's task table as proposed (below); the load and save modes are M4's, each
+    of design §6.4's recipe fixes the task's that builds its screen.
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -341,7 +368,7 @@ SoD) the shipped installation decides; E11 owns historical differences.
 - **Load Game and Save Game:** the lists, the dialogs, the engine's adventure record as the file
   (decision 8).
 - **Options:** the system options dialog (volumes, speeds, the original's settings), wherever the
-  original reaches it (T1b). From E17 (placed at its M7 T4): the volume settings (0x5996C0) and a
+  original reaches it (T1b: the adventure screen alone; M4's with the menu in play, decision 44). From E17 (placed at its M7 T4): the volume settings (0x5996C0) and a
   track resuming where it stopped (0x59AA82), the client's own options beside the original's
   (CLT-Q25's step of a two-hex stack one hex back by the mouse, a gameplay option off by
   default); `lanes/client/NOTES.md`, "Options and layouts". The settings in the client's own
@@ -374,9 +401,9 @@ tasks are refined here.
 |---|---|
 | M0 | Refinement with the user (done 2026-11-12: decisions 4 to 8, CLT-Q79 to CLT-Q83) |
 | M1 | (closed 2026-11-13) **Reading and captures:** the catalogue of the original's screens, each with its entry points, transitions, assets, texts (table and record) and sounds; the clips cut from the user's `VIDEO.VID`; the harness on every screen and its captures; the traps list; the questions the reading finds |
-| M2 | (refined 2026-11-13) **The start and the menus:** the Smacker decoder (decision 5); the clips at start and their sound; start-up loading by the LODs' tables (CLT-Q2); the main menu, New Game, Load Game's choice, Multiplayer and the hot seat's names, Quit's question, their hover, press, sounds and music, exact against the captures; the shell's state machine with a headless driver (the text client first, E17's pattern) |
-| M3 | **A game's setup:** scenario selection, the players' setup, the advanced options, the game's begin (the filled `GameSetup` to E24 M5; the stubs of decision 6); Options |
-| M4 | **Around play:** Save and Load (the engine's record), the system menu in play (with the map-client lane), the end of a scenario's screens, high scores, credits |
+| M2 | (closed 2026-11-16) **The start and the menus:** the Smacker decoder (decision 5); the clips at start and their sound; start-up loading by the LODs' tables (CLT-Q2); the main menu, New Game, Load Game's choice, Multiplayer and the hot seat's names, Quit's question, their hover, press, sounds and music, exact against the captures; the shell's state machine with a headless driver (the text client first, E17's pattern) |
+| M3 | (refined 2026-11-16) **A game's setup:** scenario selection, the players' setup, the advanced options, the game's begin (the filled `GameSetup` kept for E24 M5, CLT-Q135; the stubs of decision 6) |
+| M4 | **Around play:** Save and Load (the engine's record), the system menu in play and Options, one dialog (with the map-client lane; decision 44), the end of a scenario's screens, high scores, credits |
 
 ### M1 — reading and captures (closed 2026-11-13)
 
@@ -409,7 +436,7 @@ recorded again in the sandbox (`h3shell.py run`), with the sound sequences its t
 | T6b1 | New Game's and Load Game's menus (§2.4; decision 37): their hover, press, release off, popups, hotkeys and Back, the buttons redrawn whole (CLT-Q118); exact against `menu-new`, `menu-load` and `menu-sound` whole (`sound2`) | **done** 2026-11-15: `h3_view::shell::menu::Menu` for both kinds (`Kind`, `Menus`, `Stale`, `outside`; `MainMenu` gone), the keys' `Command::Choice` and `Context::GameType`, `look::MenuLayout` (`redrawn`, `titles`, `dialog_for`) and `Look`'s `stale` and `over`; the replay and the window on whichever menu shows; `menu-new` 27 of 27, `menu-load` 27 of 27, `menu-sound` 5 of 5 exact at the first run; log "M2 T6b1", design §14 |
 | T6b2 | The stubs (decision 37): New Game's Campaign and Tutorial (decisions 7, 9), the main menu's High Scores and Credits until M4, each a message box in the client's own words, back to its menu; the client's language pack (`clients/text/en.json`, E17 design §9.2) and its loading | **done** 2026-11-16: `Built::Stub`; `shell::menu`'s `STUBS`, `Menu::screen`, the notice over the menu (`Menus::notices`, opened by the stub's screen), its OK the screen's end; the replay stops at a stub; `clients/text/en.json` (`shell.stub.*`), `text::own_pack` (`OWN_PACK`, `Pack::lacks`), the catalogue's order (the player's, the client's, the original's) in `log::catalogue` and `h3-view text`, the gate's check; every recipe as recorded, the four notices checked in the window; log "M2 T6b2", design §15 |
 | T7 | Multiplayer's first stage (decision 10's stub, CLT-Q101) and the hot seat's names (§2.6, §2.7: the edit field read first, two 21-letter names recorded, Enter pressing OK, CLT-Q107), Load Game's multiplayer; the scenario screen a stub (M3); exact against `multiplayer` | **done** 2026-11-16 (decisions 38 to 40; CLT-Q127, CLT-Q128; CLT-STUB-6): `h3_ui::edit` (the edit's keys by scan code through the original's US table), `Draw::Edit`, `Draw::Fill`, `h3_render::text::draw_text_caret`, `h3_sdl::Window::scans`; `h3_view::shell::multiplayer` (`Multiplayer`, `HotSeat`, `Texts`), `menu::Front`, `menu::Hovers` (decision 40: the original's profile only), the scenario screen's stub, `Stop::Stub`; `edit-keys` and `hotseat-long` recorded (20 letters a name, never joined); the `multiplayer` group's 113 drawn shots exact; log "M2 T7", design §16 |
-| T7b | The edits' typing as the keyboard prints (decision 39, CLT-Q127): SDL's text input in the window (`h3_sdl`: started while an edit has the focus, its text events), the characters kept to the font's code page; the edits' keys (Home, End, Left, Right, Delete, BackSpace; the hot seat's Tab, Shift and Tab, Up, Down, Enter) as commands of the shell's key table (Shift chords in `h3_ui::keys`, additive; the window's keys for Tab, BackSpace, Delete and the Shifts); the replay typing characters in the client's profile, the original's scan codes in its own; `drawn` as recorded, the window checked with a layout other than the US one | **done** 2026-11-16: `h3_ui::edit` (`Caret`, `Edit::caret_key`, `Edit::typed`, `typable`: Windows-1252's printable characters but the braces, counted in characters), `h3_ui::keys` (`Chord::shift`, `Shift+`, `Keys::chord_command`, `SHIFT`); `shell::keys` (`Context::Edit`, `Command::Edit`, `Command::Ring`, `command_for`, `shifted`), `Multiplayer::typing`, `contexts`, `typed`, `Front`'s, the replay's typed characters; `h3_sdl` (`Window::set_text_input`, `Window::typed`, `Key::Tab`, `BackSpace`, `Delete`, `LeftShift`, `RightShift`), the shell window's text input; `drawn` as recorded; the window typed under a German layout; log "M2 T7b", design §17 |
+| T7b | The edits' typing as the keyboard prints (decision 39, CLT-Q127): SDL's text input in the window (`h3_sdl`: started while an edit has the focus, its text events), the characters kept to the font's code page; the edits' keys (Home, End, Left, Right, Delete, BackSpace; the hot seat's Tab, Shift and Tab, Up, Down, Enter) as commands of the shell's key table (Shift chords in `h3_ui::keys`: a `Shift+` chord now parses, a change for the map's table, its inbox told; the window's keys for Tab, BackSpace, Delete and the Shifts); the replay typing characters in the client's profile, the original's scan codes in its own; `drawn` as recorded, the window checked with a layout other than the US one | **done** 2026-11-16: `h3_ui::edit` (`Caret`, `Edit::caret_key`, `Edit::typed`, `typable`: Windows-1252's printable characters but the braces, counted in characters), `h3_ui::keys` (`Chord::shift`, `Shift+`, `Keys::chord_command`, `SHIFT`); `shell::keys` (`Context::Edit`, `Command::Edit`, `Command::Ring`, `command_for`, `shifted`), `Multiplayer::typing`, `contexts`, `typed`, `Front`'s, the replay's typed characters; `h3_sdl` (`Window::set_text_input`, `Window::typed`, `Key::Tab`, `BackSpace`, `Delete`, `LeftShift`, `RightShift`), the shell window's text input; `drawn` as recorded; the window typed under a German layout; log "M2 T7b", design §17 |
 | T8 | M2's closure: a fresh reviewer, the review list, M3's refinement (M3 T0: the loading bar, the scenario list's maps, decision 8; §6.4's recipes for M3) | after T7b |
 
 **M2's review list** (the agent's calls, *provisional*, for T8): (1) `h3-smacker`'s shape (T1):
@@ -562,6 +589,31 @@ the window's text beside its events (`Window::typed`, each character with the nu
 before it) rather than an `Event` of its own (the map client matches `Event` exhaustively), a
 repeat's text left out with its key down; (71) the keypad's navigation keys unbound.
 
+### M3 — a game's setup (refined 2026-11-16, M3 T0 at M2 T8)
+
+Decisions 4, 6 and 44 bind it: the scenario screen fills the engine's `GameSetup` through the
+engine's own functions (4); what the engine lacks is drawn and chosen, its effect a `CLT-STUB`
+(6); every shipped map listed, each read whole, Begin's hand-over a notice until E24 M5, Options
+M4's (44). Each screen is exact against its group's shots (`scenario`, `advanced`; recorded again
+at M2 T8), with the sound sequences its task records; each of design §6.4's recipe fixes is
+recorded by the task that builds its screen (`h3shell.py run --only <id> --record`). The
+catalogue: design §3; the shell's frame, menus, edits and the hot seat's names: M2's
+(`E27-archive.md`).
+
+| Task | Scope | Status |
+|---|---|---|
+| T1 | The scenario screen's frame and list (§3.1 to §3.4, §3.8): the dialog in its new-game mode (a single scenario, the hot seat), the maps of the installation copy's `Maps` read whole (decision 44), the rows and columns, the sort, the size filters, the list's keys and scroll, the hints and the right press's popups; exact against `scn-new`, `scn-list-keys`, `scn-sort`, `scn-filter`, `scn-right` (§6.4: `up-past-top` with Page Up first; GENRLTXT 503 in a shot) | next |
+| T2 | The information panel, the difficulty, Begin and Back (§3.5, §3.6): the map's name, description, victory and loss, the players' flags and the size, the difficulty's buttons and the rating, `difficulty_names`' text source (§6.4); exact against `scn-info`, `scn-difficulty`, `scn-begin-none` (its `what` corrected: 530 is a filter's), `scn-begin-filter` | after T1 |
+| T3 | The advanced options of a single player (§3.12 to §3.15): the rows, the town's, hero's and bonus's arrows, the handicap, the flags, the turn's duration, the popups and the hover; the choices into `GameSetup` (§3.9: `GameSetup::offer`, the faction choice), the bonus, the handicap and the timer drawn and chosen, each effect a `CLT-STUB` (decision 6); exact against `adv-single-town`, `adv-single-hero`, `adv-single-rest`, `adv-single-maps` (§6.4: `popup-hero-arrow` on row 2's arrow) | after T2 |
+| T4 | The advanced options in the hot seat (§3.14): two to eight humans, the flags' cycle, the names from the Multiplayer dialog (`Multiplayer::names`, M2's item 61); exact against `adv-hotseat`, `adv-hotseat-rows`, `adv-hotseat-two` | after T3 |
+| T5 | The random map's tab (§3.16; CLT-Q92: drawn, its generator a stub); exact against `adv-random` (§6.4: Begin after `tab-again`) | after T4 |
+| T6 | The game's begin (§3.17, §2.1; CLT-Q95, CLT-Q135): the setup built and validated by the engine (a refusal shown), the loading bar (`loadbar.pcx`, `loadprog.def`; the client's steps), the begin's notice (a `CLT-STUB`) and back to the menu, the setup kept for E24 M5 (the map-client lane's inbox); exact against `adv-begin` and `adv-hotseat-begin` up to the bar | after T5 |
+| T7 | M3's closure: a fresh reviewer, the review list, M4's refinement (M4 T0: the saves' record and its extension, decision 8; Options with the menu in play, CLT-Q136; the load and save modes with §6.4's recipes for them) | after T6 |
+
+**M3's review list** (the agent's calls, *provisional*, for T7): (1) the maps read whole at the
+scenario screen's opening (`h3_map::read`: the 160 in about 0.15 s in release, 2026-11-16), no
+header-only read in `h3-map`.
+
 ## Dependencies and boundaries
 
 - **E17 closed** (2026-11-12): the compositor, SDL adapter, fonts and string catalogue are used as
@@ -584,6 +636,10 @@ repeat's text left out with its key down; (71) the keypad's navigation keys unbo
 - **`VIDEO.VID` is 629 MB**, over the staging limit: the shell's clips are copied into an
   archive of their own on the user's computer (done: `shell-videos.vid`, design §1), the computer
   online for it; T1b3b found no clip beyond it (design §5.9).
-- **The engine imports 8 of the 160 shipped maps whole** (2026-11-12): the scenario list either
-  shows maps that cannot start yet or differs from the original's (decision 8: M3's T0).
+- **Inert objects on the listed maps** (2026-11-16): all 160 shipped maps import and validate
+  (8 at M0), but the objects the adventure lane has not built yet stand as blockers (creature
+  banks on 148 maps among them); the list shows every map as the original's (decision 44), so a
+  game's begin starts maps that cannot yet be played as the original's. A game's build may refuse
+  a map on some seeds (the census's seed: three maps, a random dwelling resolved past the edge):
+  M3's begin shows the engine's refusal.
 - **Unknown size:** the screens are listed from the code at M1; M2 to M4 are a sketch until then.
