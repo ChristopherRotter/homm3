@@ -1432,6 +1432,9 @@ impl ScenarioDef {
             terrain,
             battlefield: self.battlefield.clone(),
             anti_magic: self.anti_magic,
+            // No bank battle reaches a battle replay or a scenario yet: the key is the battle lane's
+            // to add when one first needs it (E08 increment 13's design note §13).
+            creature_bank: false,
             siege: self
                 .siege
                 .as_ref()

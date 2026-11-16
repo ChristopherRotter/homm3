@@ -538,6 +538,8 @@ mod tests {
                 "shell.stub.campaigns",
                 "shell.stub.credits",
                 "shell.stub.high-scores",
+                "shell.stub.network",
+                "shell.stub.scenario",
                 "shell.stub.tutorial",
             ]
         );

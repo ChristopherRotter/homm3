@@ -282,12 +282,12 @@ fn the_line_drawer_skips_glyphs_left_of_the_box_and_stops_at_its_right() {
         x: -1,
         y: 0,
     };
-    draw_line(&mut screen, &f, &colours(), text, line, area, 13);
+    draw_line(&mut screen, &f, &colours(), text, line, area, (13, None));
     assert_eq!(rows(&screen), [".AAA.."]);
     // A line above the box is not drawn.
     let mut screen = Screen::new(6, 2, PixelFormat::RGB565).unwrap();
     let low = TextBox { y: 1, ..area };
-    draw_line(&mut screen, &f, &colours(), text, line, low, 13);
+    draw_line(&mut screen, &f, &colours(), text, line, low, (13, None));
     assert_eq!(rows(&screen), ["......", "......"]);
 }
 
@@ -358,4 +358,144 @@ fn a_line_with_no_place_to_break_ends_every_measure() {
     // A width of 0: no glyph fits anywhere.
     assert_eq!(line_count(&font(), b"xx", 0, Bugs::Original), 2);
     assert_eq!(wrapped_width(&font(), b"xx", 0), 0);
+}
+
+/// A font two rows high for the caret (E27 M2 T7): `x` ink in its first row, `_` ink in its
+/// second, so the caret shows under the glyphs.
+fn caret_font() -> Font {
+    let mut f = font();
+    f.height = 2;
+    f.glyphs[usize::from(b'x')] = glyph(0, 1, 0, &[INK, 0]);
+    f.glyphs[usize::from(b'_')] = glyph(0, 1, 0, &[0, INK]);
+    f
+}
+
+/// `text` drawn with `caret` into a `w` × 2 box at `left` of a screen `screen` wide.
+fn with_caret(
+    font: &Font,
+    text: &str,
+    [screen_width, left, w]: [i32; 3],
+    alignment: u32,
+    caret: Option<usize>,
+) -> Vec<String> {
+    let size = |v: i32| u32::try_from(v).unwrap();
+    let mut screen = Screen::new(size(screen_width), 2, PixelFormat::RGB565).unwrap();
+    let area = TextBox {
+        x: left,
+        y: 0,
+        width: w,
+        height: 2,
+    };
+    let style = TextStyle {
+        font,
+        colours: &colours(),
+        colour: 4,
+        alignment,
+        bugs: Bugs::Fixed,
+    };
+    draw_text_caret(&mut screen, text.as_bytes(), area, style, caret);
+    rows(&screen)
+}
+
+#[test]
+fn the_caret_lies_over_its_glyph_or_after_the_last() {
+    let f = caret_font();
+    // Over the glyph of its index (0x4B53C6).
+    assert_eq!(
+        with_caret(&f, "xxx", [5, 0, 5], 0, Some(1)),
+        ["AAA..", ".A..."]
+    );
+    // At its count: after the last glyph (0x4B544C).
+    assert_eq!(
+        with_caret(&f, "xxx", [5, 0, 5], 0, Some(3)),
+        ["AAA..", "...A."]
+    );
+    // Past it, or none: no caret.
+    assert_eq!(
+        with_caret(&f, "xxx", [5, 0, 5], 0, Some(4)),
+        ["AAA..", "....."]
+    );
+    assert_eq!(
+        with_caret(&f, "xxx", [5, 0, 5], 0, None),
+        ["AAA..", "....."]
+    );
+    // It moves with the line's alignment.
+    assert_eq!(
+        with_caret(&f, "x", [5, 0, 5], align::CENTRE, Some(0)),
+        ["..A..", "..A.."]
+    );
+}
+
+#[test]
+fn the_caret_counts_braces_and_takes_the_highlight_only_after_the_last_glyph() {
+    let f = caret_font();
+    // Index 1 is the highlighted glyph; the caret over it is plain.
+    assert_eq!(
+        with_caret(&f, "{x}x", [3, 0, 3], 0, Some(1)),
+        ["HA.", "A.."]
+    );
+    // A brace's index draws none.
+    assert_eq!(
+        with_caret(&f, "{x}x", [3, 0, 3], 0, Some(2)),
+        ["HA.", "..."]
+    );
+    // After the last glyph, in the highlight still open.
+    assert_eq!(with_caret(&f, "{xx", [3, 0, 3], 0, Some(3)), ["HH.", "..H"]);
+}
+
+#[test]
+fn the_caret_of_an_empty_text_lies_at_the_boxs_corner() {
+    let mut f = caret_font();
+    f.y_offset = 1;
+    // No alignment, no y offset (0x4B54BC): the glyph's own rows from the box's top.
+    assert_eq!(
+        with_caret(&f, "", [5, 1, 4], align::CENTRE, Some(0)),
+        [".....", ".A..."]
+    );
+    assert_eq!(with_caret(&f, "", [5, 1, 4], 0, None), [".....", "....."]);
+}
+
+#[test]
+fn the_caret_stops_with_the_line_at_the_boxs_edges() {
+    let f = caret_font();
+    // The line stops before a glyph past the box's right edge: the caret at the pen there.
+    let mut screen = Screen::new(4, 2, PixelFormat::RGB565).unwrap();
+    let narrow = TextBox {
+        x: 0,
+        y: 0,
+        width: 2,
+        height: 2,
+    };
+    let whole = Line {
+        from: 0,
+        len: 3,
+        x: 0,
+        y: 0,
+    };
+    draw_line(
+        &mut screen,
+        &f,
+        &colours(),
+        b"xxx",
+        whole,
+        narrow,
+        (13, Some(2)),
+    );
+    assert_eq!(rows(&screen), ["AA..", "..A."]);
+    // No glyph of the line left of the box drawn: the caret at the pen (0x4B5306).
+    let mut screen = Screen::new(3, 2, PixelFormat::RGB565).unwrap();
+    let area = TextBox {
+        x: 1,
+        y: 0,
+        width: 2,
+        height: 2,
+    };
+    let line = Line {
+        from: 0,
+        len: 1,
+        x: -1,
+        y: 0,
+    };
+    draw_line(&mut screen, &f, &colours(), b"x", line, area, (13, Some(5)));
+    assert_eq!(rows(&screen), ["...", "A.."]);
 }

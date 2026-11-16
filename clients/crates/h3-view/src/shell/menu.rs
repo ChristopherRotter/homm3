@@ -13,7 +13,12 @@
 //!   does not follow them. *Recorded, not read* (`menu-main`'s and `menu-new`'s `*-left`,
 //!   `menu-quit`'s `cancelled`): once a hold ends (the release, a key's release) and once the
 //!   question closes, the hover is the item under the pointer again, as at a move there. A menu
-//!   opens with none hovered, the pointer where it is (`menu-new`'s `menu`: over Single).
+//!   opens with none hovered, the pointer where it is (`menu-new`'s `menu`: over Single). The
+//!   last item is a static each procedure alone writes, never cleared as its menu opens again
+//!   (E27 M2 T7: `edit-keys`' `reopened`, Multiplayer chosen again after the dialog's Escape stays
+//!   in frame 0): an item the pointer left the menu over is no change when the menu shows again.
+//!   **Fixed** (CLT-Q128, decision 40): a menu opening anew takes the item under the pointer at
+//!   its first move; the original's statics ([`Hovers`]) for the comparisons only.
 //! - **A press** (`button_press` 0x456860): the button drawn pressed with its sample
 //!   (`button.wav`, [`Did::sample`]); the command at the release over it (0x200/0xD), none off it;
 //!   a hotkey's key down presses it, its key up clicks it.
@@ -67,7 +72,8 @@ use h3_ui::input::{Held, Input};
 use h3_ui::ui::{Dialog, Draw, Item, Shown, State};
 
 use super::keys::{Command, Context};
-use super::{Choice, Ended, Game, Request, Screen};
+use super::multiplayer::Multiplayer;
+use super::{Choice, Ended, Game, Kind as ScenarioKind, Request, Screen};
 use crate::message::{self, MessageBox, Open, Outcome};
 
 /// The player whose colours frame the menus' boxes: the viewing player there, red (0).
@@ -83,14 +89,40 @@ pub const GAME_TYPE_BUTTONS: [u16; 5] = [100, 101, 102, 103, 104];
 /// A game type menu's title picture (105: `newgame.pcx` or `loadgame.pcx`).
 pub const TITLE: u16 = 105;
 
-/// The client's stubs (E27 M2 T6b2): each screen, the menu its notice shows over and the notice's
-/// OK's ending.
-pub const STUBS: [(Screen, Kind, Ended); 4] = [
+/// The client's stubs (E27 M2 T6b2, T7): each screen, the menu its notice shows over and the
+/// notice's OK's ending. The scenario screen's (until M3) shows over the game type menu it was
+/// reached from (by Single, Campaign, Tutorial or the Multiplayer dialog), its OK back there.
+pub const STUBS: [(Screen, Kind, Ended); 10] = [
     (Screen::Campaigns, Kind::GameType(Game::New), Ended::Back),
     (Screen::Tutorial, Kind::GameType(Game::New), Ended::Back),
     (Screen::HighScores, Kind::Main, Ended::Done),
     (Screen::Credits, Kind::Main, Ended::Done),
+    scenario(Game::New, ScenarioKind::Single),
+    scenario(Game::New, ScenarioKind::Multiplayer),
+    scenario(Game::Load, ScenarioKind::Single),
+    scenario(Game::Load, ScenarioKind::Multiplayer),
+    scenario(Game::Load, ScenarioKind::Campaign),
+    scenario(Game::Load, ScenarioKind::Tutorial),
 ];
+
+/// The scenario screen's stub of `game` and `kind`.
+const fn scenario(game: Game, kind: ScenarioKind) -> (Screen, Kind, Ended) {
+    (
+        Screen::Scenario(game, kind),
+        Kind::GameType(game),
+        Ended::Scenario(false),
+    )
+}
+
+/// A stub's name in its notice's key (`shell.stub.<name>`): the driver's name of its screen
+/// ([`super::text::name`]), `scenario` for each of the scenario screen's.
+#[must_use]
+pub fn stub_name(screen: Screen) -> alloc::string::String {
+    match screen {
+        Screen::Scenario(..) => alloc::string::String::from("scenario"),
+        _ => super::text::name(screen),
+    }
+}
 
 /// Which menu.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -166,7 +198,8 @@ pub struct Did {
 }
 
 impl Did {
-    const CHANGED: Self = Self {
+    /// Drawn again, nothing else.
+    pub(crate) const CHANGED: Self = Self {
         changed: true,
         sample: false,
         ended: None,
@@ -193,6 +226,8 @@ pub struct Menu {
     shown: Shown,
     input: Input,
     hovered: Option<u16>,
+    /// Both procedures' statics as they are (this one's `hovered`).
+    hovers: Hovers,
     pointer: [i32; 2],
     over: Over,
     boxes: Boxes,
@@ -202,6 +237,27 @@ pub struct Menu {
     /// Each button's state when its box was last shown whole (the opening's, else its own loop's
     /// draws): the rows outside `redrawn` keep it (the original's profile).
     whole: BTreeMap<u16, State>,
+}
+
+/// The menus' last items under the mouse (`main_menu_hovered` 0x67FA60, `game_type_menu_hovered`
+/// 0x6780F0, New Game's and Load Game's one procedure): statics their procedures alone write,
+/// carried from a menu to the next (E27 M2 T7; CLT-Q128: read by the original's profile alone).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Hovers {
+    /// The main menu's.
+    pub main: Option<u16>,
+    /// The game type menus'.
+    pub game_type: Option<u16>,
+}
+
+impl Hovers {
+    /// The static of `kind`'s procedure.
+    const fn of(self, kind: Kind) -> Option<u16> {
+        match kind {
+            Kind::Main => self.main,
+            Kind::GameType(_) => self.game_type,
+        }
+    }
 }
 
 /// The button a hold names.
@@ -233,6 +289,7 @@ impl Menu {
             shown: Shown::default(),
             input: Input::new(bugs),
             hovered: None,
+            hovers: Hovers::default(),
             pointer,
             over: Over::Nothing,
             boxes,
@@ -242,17 +299,30 @@ impl Menu {
         }
     }
 
-    /// The menu opened again with the pointer at `pointer`: none hovered, nothing held or open.
+    /// The menu opened again with the pointer at `pointer`, nothing held or open, none drawn
+    /// hovered; in the original's profile its procedure's last item `hovers`' (CLT-Q128: fixed,
+    /// none in the client's).
     #[must_use]
-    pub fn opened(&self, pointer: [i32; 2]) -> Self {
-        Self::new(
+    pub fn opened(&self, pointer: [i32; 2], hovers: Hovers) -> Self {
+        let mut menu = Self::new(
             self.kind,
             self.dialog.clone(),
             self.redrawn.clone(),
             self.boxes.clone(),
             pointer,
             self.bugs,
-        )
+        );
+        if self.bugs == Bugs::Original {
+            menu.hovered = hovers.of(self.kind);
+        }
+        menu.hovers = hovers;
+        menu
+    }
+
+    /// The menus' last items under the mouse, as this one leaves them.
+    #[must_use]
+    pub const fn hovers(&self) -> Hovers {
+        self.hovers
     }
 
     /// The menu as the stub `screen` shows it (E27 M2 T6b2): `notice` open over it, its OK ending
@@ -542,6 +612,10 @@ impl Menu {
             return Did::default();
         }
         self.hovered = now;
+        match self.kind {
+            Kind::Main => self.hovers.main = now,
+            Kind::GameType(_) => self.hovers.game_type = now,
+        }
         self.top = None;
         for id in self.kind.buttons() {
             self.select(id, false);
@@ -640,24 +714,50 @@ pub struct Menus {
     pub load_game: Menu,
     /// The stubs' notices by their screen ([`STUBS`]; E27 M2 T6b2), laid out (style 1).
     pub notices: Vec<(Screen, MessageBox)>,
+    /// The Multiplayer dialog as it opens (E27 M2 T7), over no menu yet.
+    pub multiplayer: Multiplayer,
 }
 
 impl Menus {
-    /// The menu `screen` shows, opened with the pointer at `pointer`: a menu's screen its menu, a
-    /// stub's ([`STUBS`]) the menu it was chosen from with the stub's notice over it; none for
-    /// another screen, or a stub without its notice.
+    /// The menu `screen` shows, opened with the pointer at `pointer` and the procedures' last
+    /// items `hovers`: a menu's screen its menu, a stub's ([`STUBS`]) the menu it was chosen from
+    /// with the stub's notice over it; none for another screen, or a stub without its notice.
     #[must_use]
-    pub fn opened(&self, screen: Screen, pointer: [i32; 2]) -> Option<Menu> {
+    pub fn opened(&self, screen: Screen, pointer: [i32; 2], hovers: Hovers) -> Option<Menu> {
         let kind = match screen {
             Screen::MainMenu => Kind::Main,
             Screen::GameType(game) => Kind::GameType(game),
             _ => {
                 let &(_, kind, _) = STUBS.iter().find(|&&(s, _, _)| s == screen)?;
                 let (_, notice) = self.notices.iter().find(|(s, _)| *s == screen)?;
-                return Some(self.menu(kind).opened(pointer).stub(screen, notice.clone()));
+                let menu = self.menu(kind).opened(pointer, hovers);
+                return Some(menu.stub(screen, notice.clone()));
             }
         };
-        Some(self.menu(kind).opened(pointer))
+        Some(self.menu(kind).opened(pointer, hovers))
+    }
+
+    /// What takes the inputs on `screen` as it shows, the pointer at `pointer`, `previous` what
+    /// took them on the screen before: a menu's or a stub's menu ([`Menus::opened`]); the
+    /// Multiplayer dialog over the game type menu `previous` left (E27 M2 T7); none for another
+    /// screen.
+    #[must_use]
+    pub fn front(
+        &self,
+        screen: Screen,
+        previous: Option<Front>,
+        pointer: [i32; 2],
+    ) -> Option<Front> {
+        let hovers = previous.as_ref().map(Front::hovers).unwrap_or_default();
+        match (screen, previous) {
+            (Screen::Multiplayer(_), Some(Front::Menu(menu))) => Some(Front::Multiplayer(
+                Box::new(self.multiplayer.opened(*menu, pointer)),
+            )),
+            (Screen::Multiplayer(_), _) => None,
+            _ => self
+                .opened(screen, pointer, hovers)
+                .map(|m| Front::Menu(Box::new(m))),
+        }
     }
 
     /// The menu of `kind`.
@@ -666,6 +766,98 @@ impl Menus {
             Kind::Main => &self.main,
             Kind::GameType(Game::New) => &self.new_game,
             Kind::GameType(Game::Load) => &self.load_game,
+        }
+    }
+}
+
+/// What takes the inputs on a built screen (E27 M2 T7): a menu, or the Multiplayer dialog.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Front {
+    /// A menu (a stub's menu under its notice among them).
+    Menu(Box<Menu>),
+    /// The Multiplayer dialog over its menu.
+    Multiplayer(Box<Multiplayer>),
+}
+
+impl Front {
+    /// The menus' last items under the mouse as it leaves them (the Multiplayer dialog's: its
+    /// menu's).
+    #[must_use]
+    pub fn hovers(&self) -> Hovers {
+        match self {
+            Self::Menu(m) => m.hovers(),
+            Self::Multiplayer(m) => m.under().map(Menu::hovers).unwrap_or_default(),
+        }
+    }
+
+    /// Where it takes its keys.
+    #[must_use]
+    pub const fn context(&self) -> Context {
+        match self {
+            Self::Menu(m) => m.context(),
+            Self::Multiplayer(m) => m.context(),
+        }
+    }
+
+    /// The mouse moved to `point`.
+    pub fn moved(&mut self, point: [i32; 2]) -> Did {
+        match self {
+            Self::Menu(m) => m.moved(point),
+            Self::Multiplayer(m) => m.moved(point),
+        }
+    }
+
+    /// The left button pressed at `point`.
+    pub fn press(&mut self, point: [i32; 2]) -> Did {
+        match self {
+            Self::Menu(m) => m.press(point),
+            Self::Multiplayer(m) => m.press(point),
+        }
+    }
+
+    /// The left button released.
+    pub fn release(&mut self) -> Did {
+        match self {
+            Self::Menu(m) => m.release(),
+            Self::Multiplayer(m) => m.release(),
+        }
+    }
+
+    /// The right button pressed at `point`.
+    pub fn right(&mut self, point: [i32; 2]) -> Did {
+        match self {
+            Self::Menu(m) => m.right(point),
+            Self::Multiplayer(m) => m.right(point),
+        }
+    }
+
+    /// The right button released.
+    pub fn right_release(&mut self) -> Did {
+        match self {
+            Self::Menu(m) => m.right_release(),
+            Self::Multiplayer(m) => m.right_release(),
+        }
+    }
+
+    /// A key down: as the original reads it (`scan`, the dialogs' edits'), the key table's
+    /// command for it here (`command`) and its name `by`.
+    pub fn key(
+        &mut self,
+        scan: Option<h3_ui::edit::Scan>,
+        command: Option<Command>,
+        by: &str,
+    ) -> Did {
+        match self {
+            Self::Menu(m) => command.map_or(Did::default(), |c| m.key(c, by)),
+            Self::Multiplayer(m) => m.key(scan, command, by),
+        }
+    }
+
+    /// The key `by` released.
+    pub fn key_up(&mut self, by: &str) -> Did {
+        match self {
+            Self::Menu(m) => m.key_up(by),
+            Self::Multiplayer(m) => m.key_up(by),
         }
     }
 }

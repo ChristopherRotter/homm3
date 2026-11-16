@@ -90,6 +90,34 @@ pub enum Draw {
         /// The item is disabled (its state's bit 8).
         disabled: bool,
     },
+    /// A text item's background colour (`text_item_draw` 0x5BC5F0 with its +0x48; E27 M2 T7: the
+    /// shell's status lines): its box filled with that entry of the palette (`game_palette16`'s,
+    /// `game.pal` in the screen's colours; 0x44E4C0), drawn before its text.
+    Fill {
+        /// Its left edge, top edge, width and height.
+        rect: [i32; 4],
+        /// The palette (`game.pal`).
+        palette: String,
+        /// The entry.
+        entry: u32,
+    },
+    /// A dialog's edit (`H3DlgEdit`, `edit_draw` 0x5BB400; E27 M2 T7, [`crate::edit`]) with no
+    /// picture of its own: its text in the item's box, font, colour and alignment, as a label's
+    /// (an edit is a text item, 0x5BA96F), and the caret `_` at its index while it has the focus
+    /// (`TextDraw`'s last argument, `h3_render::text::draw_text_caret`). A disabled edit's colour
+    /// (3, 0x5BB5DD) is not built: no edit built is disabled.
+    Edit {
+        /// The item: its box, font and how the text is drawn.
+        item: Label,
+        /// Its left edge.
+        x: i32,
+        /// Its top edge.
+        y: i32,
+        /// The text.
+        text: String,
+        /// The caret's index in the text, with the focus.
+        caret: Option<u32>,
+    },
     /// An interface DEF item drawn with another DEF's frame (E17 M6 T2a1, CLT-Q36): frame `frame`
     /// of `frames`' group 0 (frame 0 when the group has no such frame) in `def`'s colours, by the
     /// plain drawer with runs skipped, as [`Draw::Button`] draws its own.

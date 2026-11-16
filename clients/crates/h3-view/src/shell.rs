@@ -8,7 +8,8 @@
 //! on the shell's own clock, for the comparison with the original's shots (E27 M2 T4). [`menu`]
 //! is the main menu taking its inputs, [`keys`] the shell's key table and [`samples`] its press
 //! samples as the original's sound manager plays them (E27 M2 T6a); New Game's and Load Game's
-//! menus take theirs on the same machinery (E27 M2 T6b1).
+//! menus take theirs on the same machinery (E27 M2 T6b1); [`multiplayer`] the Multiplayer
+//! dialog's first stage and the hot seat's names (E27 M2 T7).
 //!
 //! **The loop** (§2.2): at its top the screen asked for (`screen_request` 0x6976D8: the request
 //! play ended with, [`PlayEnd::Request`]) is taken by the main menu's switch (0x4EEC0D): none or
@@ -34,13 +35,15 @@
 //! screens themselves come with T5 to T7, M3, M4, E20 and E24 M5; [`Screen::built`] says how much
 //! of each is drawn so far (T4: the main menu at rest; T5a: the start, [`start`]; T6b2: the
 //! campaigns' selection, the tutorial, High Scores and Credits as the client's stubs, a notice
-//! over the menu they were chosen from).
+//! over the menu they were chosen from; T7: the Multiplayer dialog, and the scenario screen as a
+//! stub until M3).
 
 use core::fmt;
 
 pub mod keys;
 pub mod look;
 pub mod menu;
+pub mod multiplayer;
 pub mod replay;
 pub mod samples;
 pub mod start;
@@ -199,7 +202,7 @@ pub enum Built {
     /// built.
     Stub,
     /// Drawn and taking its inputs (the start since T5a, the main menu since T6a, the game type
-    /// menus since T6b1).
+    /// menus since T6b1, the Multiplayer dialog and the hot seat's names since T7).
     Whole,
 }
 
@@ -238,14 +241,19 @@ impl Screen {
     }
 
     /// How much of the screen is built ([`look::look`] draws it unless [`Built::Not`]): the start,
-    /// the main menu and the game type menus (E27 M2 T5a, T6a, T6b1); the campaigns' selection,
-    /// the tutorial, High Scores and Credits the client's stubs (T6b2: until E20, CLT-Q84's
-    /// tutorial mode and M4); the others a stand-in until their task ([`Screen::task`]).
+    /// the main menu, the game type menus and the Multiplayer dialog (E27 M2 T5a, T6a, T6b1, T7);
+    /// the campaigns' selection, the tutorial, High Scores, Credits and the scenario screen the
+    /// client's stubs (T6b2, T7: until E20, CLT-Q84's tutorial mode, M4 and M3); the others a
+    /// stand-in until their task ([`Screen::task`]).
     #[must_use]
     pub const fn built(self) -> Built {
         match self {
-            Self::Start | Self::MainMenu | Self::GameType(_) => Built::Whole,
-            Self::Campaigns | Self::Tutorial | Self::HighScores | Self::Credits => Built::Stub,
+            Self::Start | Self::MainMenu | Self::GameType(_) | Self::Multiplayer(_) => Built::Whole,
+            Self::Campaigns
+            | Self::Tutorial
+            | Self::HighScores
+            | Self::Credits
+            | Self::Scenario(..) => Built::Stub,
             _ => Built::Not,
         }
     }

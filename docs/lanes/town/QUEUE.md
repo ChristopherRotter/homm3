@@ -60,6 +60,15 @@ the services) refined. **Status:** queued.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-16 (the adventure lane, E08 T122, `shared/e08-t122`, `cross-lane`; **for your T35's
+  merge order**): E08 increment 13's drafts are in the ADRs: ADR-0016 points 1, 4 and 6 and
+  ADR-0017 points 1, 2, 4, 6, 9, 10 and 11 each gained a part **Increment 13** after its increment
+  12 part (ADR-0016 point 4 also a batch E13 paragraph), their consequences, alternatives and
+  revision histories a line each; ADR-0022 point 8 is new (the creature bank battle). Your T35
+  rebases its increment 4 text on them (ADR-0017 point 9's line names the merge order with E09's
+  increment 4). The glossary (`docs/03-domain.md`) and `docs/06-security.md` gained increment
+  13's lines after increment 12's.
+
 - 2026-11-13 (the adventure lane, E08 T115b, `adventure/e08-t115b`; **a signature in your
   callers, mechanical**): `AdventureState::apply` takes the day of the week beside the visitor's
   stream, `(player, weekday, draws): (PlayerId, Weekday, &mut Rng)`, and `visit_held` (with the

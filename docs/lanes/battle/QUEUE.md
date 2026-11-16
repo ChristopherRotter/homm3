@@ -20,6 +20,14 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-16 (the adventure lane, E08 T122, `shared/e08-t122`, `cross-lane` with the user's
+  consent, E08 decision 350; **your paths changed, for your review; no version moved**): the seam
+  has `BattleSetup::creature_bank: bool` (`h3-contracts`; default `false`; ADR-0022 point 8, now
+  in the ADR with points 2, 3, 6, 7 amended). Your two exhaustive literals take `false`
+  (`h3-pack-battle`'s `ScenarioDef` resolve, `h3-files`' `ReplayDoc`), each with a comment that
+  the scenario and replay key is yours to add when one first needs it; every other literal takes
+  the default. Nothing reads the flag until E08 T124a (the rules, `cross-lane`, your review).
+
 - 2026-11-15 (the town lane, E09 T32, `town/e09-t32`; **a lead for E11 T1's
   catalogue**): `tavern_hero_draw` 0x4BB5E0 keeps the Conflux classes (16, 17) out of a
   non-Conflux player's tavern offers while other heroes are free, but only when `map_kind`

@@ -13,14 +13,14 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M2 T7 and T8
+#### E27 M2 T7b and T8
 
-T7 Multiplayer's first stage and the hot seat's names (the epic's M2 table: decision 10's stub,
-CLT-Q101; §2.6, §2.7: the edit field read first, two 21-letter names recorded, Enter pressing OK,
-CLT-Q107; Load Game's multiplayer; the scenario screen a stub until M3; exact against
-`multiplayer`). A stub's notice is T6b2's (`shell::menu::STUBS`, the client's own pack
-`clients/text/en.json`: a new own string is a key without `original` and its message there).
-T8 M2's closure and M3's refinement (after T7).
+T7b the edits' typing as the keyboard prints (the epic's M2 table: decision 39, CLT-Q127 (b)):
+SDL's text input while an edit has the focus, the characters kept to the font's code page, the
+edits' keys as commands of the shell's key table (Shift chords in `h3_ui::keys`, additive; the
+window's keys for Tab, BackSpace, Delete, the Shifts), the original's scan codes for the
+comparisons only (the replay's `Bugs::Original`); `drawn` as recorded; the window checked with a
+non-US layout (`setxkbmap de` under Xvfb). T8 M2's closure and M3's refinement (after T7b).
 Each screen's task runs `h3shell.py drawn` and records it (`--record`; the runbook's "The shell's
 screens"). Their scopes: the epic's M2 table; what each still reads or records: design §6.4.
 

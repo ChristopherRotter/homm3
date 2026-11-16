@@ -7,7 +7,8 @@ notes as "increment N's design note §M".
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 13's
 amendments, drafted in the lane's `adr-drafts/` and applied to the ADRs by the round's `shared/`
-task with batch E13's outcome (the drafts then deleted); written from T118a's survey and the
+task with batch E13's outcome (the drafts then deleted: applied by T122 to ADR-0016 points 1, 4,
+6, ADR-0017 points 1, 2, 4, 6, 9 to 11, ADR-0022 points 2, 3, 6, 7, 8 and ADR-0013 point 5); written from T118a's survey and the
 answers at ADV-Q52 and ADV-Q53 (the epic's decisions 333 to 339). A building task adds an *As
 built* line to the section it builds; the note moves to `E08-log.md` when the increment closes.
 Facts and sources: survey `docs/rules/surveys/E08-banks.md` (§ numbers are the survey's unless
@@ -332,12 +333,12 @@ bank's entrance (decision 268). By the kind's question:
 ## Part D — the game, the env, batch E13 and the cut (`h3-game`; T118b2)
 
 Written by T118b2 (whole, decision 341): the bank battle's seam and rules (§13) with
-`0022-increment-13.md`; the game's battle (§14); the reward after the levels (§15, D-67 corrected,
+the draft for ADR-0022 point 8 (applied by T122); the game's battle (§14); the reward after the levels (§15, D-67 corrected,
 decision 342); the observation and the wire (§16); the env, replays, maps, properties and
 benchmarks (§17); versions and ids (§18); batch E13 (§19); the shared and `cross-lane` work, the
-cut and the exit criteria (§20); risks (§21); with `0017-increment-13.md`.
+cut and the exit criteria (§20); risks (§21); with the draft for ADR-0017 (applied by T122).
 
-### 13. The bank battle: the seam and the battle's rules (survey §5; draft `0022-increment-13.md`)
+### 13. The bank battle: the seam and the battle's rules (survey §5; ADR-0022 point 8)
 
 - **The seam** (`h3-contracts`, `shared/`, decision 338): **`BattleSetup::creature_bank: bool`**,
   the original's flag (battle +0x53C5, H3API's `creatureBank`), default `false`, public. *Agent's
@@ -380,7 +381,10 @@ cut and the exit criteria (§20); risks (§21); with `0017-increment-13.md`.
 - **D-69** (a two-hex guard at 172, 2 or 87): by BAT-GEO-002 the guard at 172 covers 172 and 171,
   at 2 covers 2 and 1, at 87 covers 87 and 86, the cells VCMI's second table (171, 1, 86) names if
   VCMI's position of a two-hex defender is its front hex (*unverified*). The engine keeps the
-  original's one table; batch E13's E13-4 records the Griffins' hexes.
+  original's one table; batch E13's E13-4 records the Griffins' hexes. *Dissolved* (T121, survey
+  §14): the Griffins on 14-15, 184-185, 171-172, 1-2, 99-100 and the attacker's two-hex stacks on
+  57-58 …, each the table's hex as its rear; VCMI names the front hex (read at T121), so its wide
+  table covers the same defender cells.
 - **Unchanged in a bank:** the battlefield (the tile's or the deck, §14), morale and luck, retreat
   (the guards' side has no hero to retreat or surrender), the computer's choices for the guards
   (the neutral seat's `h3_battle_ai::choose`; whether the original's battle AI reads +0x53C5 is
@@ -527,7 +531,7 @@ the other bumps again (the battle lane's E26 and E11 work move the battle's vers
 the battle lane's BAT-SET-001, BAT-TAC-001, BAT-GEO-004, BAT-WAR-001 and BAT-WAR-004 amended
 (§13, written by T124a with the battle lane's review). **Quirks:** none. **Stubs:** none new
 (ADV-STUB-12 lifted, §9). **Disputes:** D-67 dissolved by the correction (decision 342), D-69 for
-batch E13. **Decisions:** 341, 342 (next 343).
+batch E13 (*dissolved* by it, survey §14). **Decisions:** 341, 342 (next 343).
 
 ### 19. Batch E13
 
@@ -554,8 +558,12 @@ map `h3-experiment` writes), with this part's changes:
   adventure hero's checked first), a boat (E13-5). **The harness** (T120; `clients/capture/`,
   common): reads of the banks' records (game +0x4E3DC, 0x6C each), a hero's +0x105 and +0x11A
   (E12's may serve), the battle's stack hexes and shots at the start and after a shot (the battle
-  capture's), the dialogs' order, the hero's tile. The verdicts (T121, survey §15) fold into the
+  capture's), the dialogs' order, the hero's tile. The verdicts (T121, survey §14) fold into the
   drafts at the `shared/` task (T122).
+- *Scored* (T121, survey `E08-banks.md` §14): **every row as predicted** (D-65, D-66, D-68
+  confirmed, D-67's correction confirmed, D-69 dissolved); E13-3's hero fought loose (the map's
+  tight flag reaches no placed hero, `ADV-QUIRK-8`), so §13's formation ignored rests on the reading
+  and VCMI.
 
 ### 20. Shared and `cross-lane` work; the building tasks; the exit criteria
 
@@ -572,6 +580,13 @@ the AI lane's (nothing moves: v8, no observation flag), the map client lane's (t
 and the hint, T123a and T125a), the client lane's (informational: a bank battle's layout without
 war machines and obstacles comes in the battle's observation as any).
 
+*As built* (T122, `shared/e08-t122`, `cross-lane`; decision 350): the three drafts in ADR-0016
+points 1, 4, 6, ADR-0017 points 1, 2, 4, 6, 9 to 11 and ADR-0022 points 2, 3, 6, 7, 8 (ADR-0013
+point 5's line), each citing batch E13's rows, VCMI's second table among ADR-0022's alternatives;
+the glossary's five terms; `docs/06-security.md`'s lines; `BattleSetup::creature_bank` with its
+two exhaustive literals (the battle lane's scenario and replay document; every other the
+default), the battle lane's inbox told.
+
 **The building tasks**, in rounds of one or two (ids continue the epic's; each task's cut confirmed
 at its start). **Batch E13 runs before the build and before the shared task** (decision 339), so
 the ADRs are applied once with the rows' verdicts:
@@ -579,7 +594,7 @@ the ADRs are applied once with the rows' verdicts:
 | Round | Tasks | Content |
 |---|---|---|
 | 2 | **T119** | Batch E13's map: the writer's five classes (by template, no body), the spec's fields (`cross-lane`), the spec and the template (§19) |
-| 3 | **T120** + **T121** | T120: the harness's reads, the recipe, the run. T121: scored (survey §15) |
+| 3 | **T120** + **T121** | T120: the harness's reads, the recipe, the run. T121: scored (survey §14) |
 | 4 | **T122** | `shared/` (`cross-lane`): the three drafts with T121's outcome, `BattleSetup::creature_bank` and its literals, the glossary, `docs/06-security.md` |
 | 5 | **T123** | T123a: the kind, the packs, the seventh original-data check (§1, §2; part v21). T123b: the import and the writer's classes for fixtures (§3; map import v24); a step onto a bank refused as any unbuilt visit's until T124b |
 | 6 | **T124** | T124a (`cross-lane`, first): the bank battle in `h3-battle` and the battle pack (§13; battle state hash v56, battle part v8, pack format v53; the battle's properties, golden replays and bench). T124b: the state and the draw (§4, §5; adventure state hash v26), the visit and its offers (§6), the battle's two halves (§7, §14: `Defender::Bank`, the flag, the deck), the reward as a won battle's rest (§8, §15), the once-marks (§12) |
@@ -626,7 +641,7 @@ tests see the layout), the passage with the views (both small, each measured or 
   seam's literals (T122) touch the battle and AI lanes' crates in one mechanical commit.
 - **RoE unread:** RoE's `CrBanks.txt` and RoE's battle (the flag's sites) are not read (§2): the
   base pack takes SoD Complete's table and rules for RoE maps; E11's T1 may revisit.
-- **D-69** stays open until E13-4; a second table would be battle content beside the first.
+- ~~**D-69**~~ dissolved by E13-4 (survey §14): one table, the stack's rear hex its position.
 - **The original's battle AI in a bank:** whether the computer's choices read +0x53C5 is unread;
   the guards play by `h3_battle_ai::choose` as any neutral side.
 - **The computer's quick battle** (0x4270C0: the reward before the levels) and its answers

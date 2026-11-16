@@ -20,15 +20,21 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   Tutorial, High Scores and Credits stubs, each a notice in the client's own words over its menu
   (`Built::Stub`, `menu::STUBS`; the replay stops at them), the client's own pack
   `clients/text/en.json` asked between the player's and the original's (`text::own_pack`, the
-  gate's check); every recipe as recorded; design §15. **Next: M2 T7** (Multiplayer's first stage
-  and the hot seat's names), then T8 (M2's closure).
+  gate's check); every recipe as recorded; design §15. **M2 T7 done** (2026-11-16, kept whole:
+  decision 38): the Multiplayer dialog's first stage and the hot seat's names
+  (`h3_view::shell::multiplayer`, `menu::Front`, `menu::Hovers`), the edit field (`h3_ui::edit`,
+  `Draw::Edit`, the caret in `h3_render::text`), the window's scan codes (`h3_sdl::Window::scans`),
+  the network modes' notice (CLT-STUB-6) and the scenario screen's stub; `edit-keys` and
+  `hotseat-long` recorded, the `multiplayer` group's 113 drawn shots exact; CLT-Q128 fixed
+  (decision 40); design §16. **Next: M2 T7b** (the edits typing as the keyboard prints, decision
+  39, CLT-Q127), then T8 (M2's closure).
   Decisions to carry: the dialogs' input one implementation (20; `h3_ui::input`); the shell's
   code as the battle's, the score the engine's (21); decision 22's fixes; every pixel of a
   Smacker clip through its palette (24); every clip's sound at the effects setting (27); every
   Bink frame whole, the comparisons through `Target` (28); the start's fade from the screen as
   shown, a frame's whole rectangle shown (32); a clip's track played out after its last frame
   (34); the main menu's buttons drawn in their order (36). Open pull request:
-  `client/e27-m2-t6b2`, T6b2's (watch it until it merges). E17 done
+  `client/e27-m2-t7`, T7's (watch it until it merges). E17 done
   (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -39,11 +45,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **Checkpoints** per milestone (below), a fresh reviewer agent first (at M1 T3: one per area, the
   shots as contact sheets). **Open:** none. Answered, waiting on other lanes: CLT-Q63 (a), Q65 (b), Q69 (a) (the queue's inbox,
   "E17's leftovers"). `CLT-STUB-1` (a server's seat lacks the other hero's Orb and Cloak),
-  `CLT-STUB-4` (no Auto Combat switch in a live game's battle) and `CLT-STUB-5` (a hot-seat
-  battle between two of the host's humans) are commented in `docs/stubs.toml` until
+  `CLT-STUB-4` (no Auto Combat switch in a live game's battle), `CLT-STUB-5` (a hot-seat
+  battle between two of the host's humans) and `CLT-STUB-6` (the Multiplayer dialog's network
+  modes) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q127,
-  CLT-STUB-6.
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q129, CLT-STUB-7.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens) and the 40 non-campaign MP3s; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -63,6 +69,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-16, E27 M2 T7 (done; `client/e27-m2-t7`).** Kept whole (decision 38). The original
+  data staged at once (64 files, checked by SHA-256); the baseline stopped by a watcher before
+  coverage. Read the edit whole and the text drawer's caret; recorded the group again with
+  `edit-keys` and `hotseat-long` (a run failed on the game's disk check: TRAPS); built the edit,
+  the dialog, the hot seat, the notices; every drawn shot exact after the shadow, the status
+  lines, the hover after a hold and the menus' statics. CLT-Q127, CLT-Q128 asked and answered
+  (b): CLT-Q128 fixed here, CLT-Q127 queued as T7b. Record:
+  `E27-log.md`, "M2 T7".
 - **2026-11-16, E27 M2 T6b2 (done; `client/e27-m2-t6b2`).** Kept whole. The original data staged
   at once (64 files, checked by SHA-256), copied into the clone right after the setup started;
   its baseline stopped before coverage (TRAPS), CI's green `master` on the same commit stood in.
@@ -76,10 +90,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `menu-load`, `menu-sound` again; built the game type menus on one `Menu`, the stale rows, the
   keys, the window; every T6b1 line exact at the first run. Found and fixed the window's missing N
   and L. No new question. Record: `E27-log.md`, "M2 T6b1".
-- **2026-11-15, E27 M2 T6a (done; `client/e27-m2-t6a`).** T6 cut by screen with the user
-  (decision 35). The original data staged at once (64 files, checked by SHA-256); the VM restarted
-  in the baseline's coverage step (CI's green `master` stood in) and again in `check.sh`'s
-  (TRAPS: coverage with the data staged). Read `main_menu_proc` whole, the button's loop and
-  `button_press`; recorded `menu-main`, `menu-quit`, `menu-sound` again for their frames; built
-  the menu, its keys, its samples, the window's input and music. Every T6a line exact; CLT-Q126
-  answered (decision 36). Record: `E27-log.md`, "M2 T6a".

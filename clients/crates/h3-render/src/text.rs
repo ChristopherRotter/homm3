@@ -17,8 +17,15 @@
 //! word's first glyph fits; [`Bugs::Fixed`] starts the next line at that glyph, aligns the line by
 //! its own width and takes the first glyph whatever its width.
 //!
-//! What the executable does that this does not: a caret (`_`) for an input field (the drawer's
-//! last argument, −1 in the battle); writing past the screen's edge (the glyph drawer does not
+//! **The caret** (E27 M2 T7, [`draw_text_caret`]; `docs/epics/E27-design.md` §16): the drawer's
+//! last argument, −1 everywhere but an edit with the focus (`edit_draw` 0x5BB400). The glyph `_`
+//! is drawn over the glyph whose index in its line is the caret (counted from the first glyph
+//! drawn, braces counted: 0x4B53C6), in the colour without the highlight; after the line's last
+//! glyph when the caret is its count (0x4B544C), with the highlight; at a line's start when no
+//! glyph of it is drawn (0x4B5306); and for an empty text at the box's corner, without the font's
+//! y offset or the alignment (0x4B54BC).
+//!
+//! What the executable does that this does not: writing past the screen's edge (the glyph drawer does not
 //! clip, so its callers keep texts inside it; here the screen clips); and a line that starts with
 //! a glyph of 128 or above with a negative left space, or ends too wide with one with a negative
 //! right space: there the line's width takes that space at the glyph's value minus 256 (a
@@ -98,6 +105,18 @@ pub struct TextStyle<'a> {
 
 /// Draws `text` into `area` of `screen` in `style`: `TextDraw` (0x4B5490).
 pub fn draw_text(screen: &mut Screen, text: &[u8], area: TextBox, style: TextStyle<'_>) {
+    draw_text_caret(screen, text, area, style, None);
+}
+
+/// [`draw_text`] with an edit's caret (`TextDraw`'s last argument; none for −1): the glyph `_` at
+/// the glyph of index `caret` in each line (E27 M2 T7; the module's "The caret").
+pub fn draw_text_caret(
+    screen: &mut Screen,
+    text: &[u8],
+    area: TextBox,
+    style: TextStyle<'_>,
+    caret: Option<usize>,
+) {
     let TextStyle {
         font,
         colours,
@@ -130,6 +149,21 @@ pub fn draw_text(screen: &mut Screen, text: &[u8], area: TextBox, style: TextSty
         }
     }
     let colour = colour_entry(colour);
+    let caret = caret.map(to_i64);
+    if text.is_empty() {
+        // An empty text (0x4B54BC): the caret at the box's corner, no y offset, no alignment.
+        if caret.is_some() {
+            glyph(
+                screen,
+                font,
+                colours,
+                b'_',
+                [i64::from(area.x), i64::from(area.y)],
+                colour,
+            );
+        }
+        return;
+    }
     let screen_bottom = i64::from(screen.height()) - i64::from(area.y) - i64::from(font.y_offset);
     let mut i = 0;
     // Each line (0x4B5598): it stops at the text's end or below the box. The screen's bottom
@@ -223,7 +257,7 @@ pub fn draw_text(screen: &mut Screen, text: &[u8], area: TextBox, style: TextSty
             x: i64::from(area.x) + offset,
             y: i64::from(area.y) + top,
         };
-        draw_line(screen, font, colours, text, line, area, colour);
+        draw_line(screen, font, colours, text, line, area, (colour, caret));
         top += fh;
         if skip {
             i += 1;
@@ -242,7 +276,8 @@ struct Line {
 
 /// The line drawer (0x4B5260): down by the font's y offset, right by a negative left space of its
 /// first glyph; not drawn unless it lies inside the box's height; glyphs left of the box skipped;
-/// it ends before the first glyph that would pass the box's right edge.
+/// it ends before the first glyph that would pass the box's right edge. The caret, if any, as the
+/// module says (0x4B5306, 0x4B53C6, 0x4B544C).
 fn draw_line(
     screen: &mut Screen,
     font: &Font,
@@ -250,7 +285,7 @@ fn draw_line(
     text: &[u8],
     line: Line,
     area: TextBox,
-    colour: u32,
+    (colour, caret): (u32, Option<i64>),
 ) {
     let at = |i: i64| byte(text, line.from + i);
     let (mut x, y) = (line.x, line.y + i64::from(font.y_offset));
@@ -268,6 +303,12 @@ fn draw_line(
         x += i64::from(font.glyph(at(n)).advance());
         n += 1;
     }
+    let first = n;
+    if n == line.len && caret.is_some() {
+        // No glyph left to draw (0x4B5306): the caret at the line's start.
+        glyph(screen, font, colours, b'_', [x, y], colour);
+        return;
+    }
     let mut highlight = 0;
     while n < line.len {
         let c = at(n);
@@ -277,7 +318,7 @@ fn draw_line(
             _ => {
                 let advance = i64::from(font.glyph(c).advance());
                 if x + advance > right {
-                    return;
+                    break;
                 }
                 glyph(
                     screen,
@@ -287,10 +328,24 @@ fn draw_line(
                     [x, y],
                     colour.wrapping_add(highlight),
                 );
+                if caret == Some(n - first) {
+                    glyph(screen, font, colours, b'_', [x, y], colour);
+                }
                 x += advance;
             }
         }
         n += 1;
+    }
+    if caret == Some(n - first) {
+        // After the last glyph drawn (0x4B544C), the highlight's colour.
+        glyph(
+            screen,
+            font,
+            colours,
+            b'_',
+            [x, y],
+            colour.wrapping_add(highlight),
+        );
     }
 }
 

@@ -18,7 +18,7 @@ use h3_render::blit::{
 };
 use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::screen::Screen;
-use h3_render::text::{TextBox, TextStyle, draw_text};
+use h3_render::text::{TextBox, TextStyle, draw_text_caret};
 
 use crate::sprite::Sprite;
 use crate::text::encode_1252;
@@ -62,8 +62,11 @@ pub fn names(draw: &Draw) -> Vec<&str> {
             item.font.as_str(),
             item.font_palette.as_str(),
         ],
-        Draw::Label { item, .. } => alloc::vec![item.font.as_str(), item.font_palette.as_str()],
+        Draw::Label { item, .. } | Draw::Edit { item, .. } => {
+            alloc::vec![item.font.as_str(), item.font_palette.as_str()]
+        }
         Draw::Darken { .. } => Vec::new(),
+        Draw::Fill { palette, .. } => alloc::vec![palette.as_str()],
         Draw::Creature { def, .. } => alloc::vec![def.as_str()],
         Draw::Shared { def, frames, .. } => alloc::vec![def.as_str(), frames.as_str()],
     }
@@ -137,6 +140,24 @@ pub fn draw(
             );
         }
         Draw::Darken { rect } => darken(screen, *rect),
+        Draw::Fill {
+            rect: [x, y, w, h],
+            palette,
+            entry,
+        } => {
+            let colours = assets.palette(palette).ok_or_else(|| palette.clone())?;
+            let colours = ScreenPalette::new(colours, screen.format());
+            let pixel = usize::try_from(*entry)
+                .ok()
+                .and_then(|e| colours.0.get(e))
+                .copied()
+                .ok_or_else(|| alloc::format!("{palette}: no entry {entry}"))?;
+            for row in i64::from(*y)..i64::from(y.saturating_add(*h)) {
+                for column in i64::from(*x)..i64::from(x.saturating_add(*w)) {
+                    screen.set(column, row, pixel);
+                }
+            }
+        }
         Draw::Text { item, x, y, text } => {
             // 0x5BC7F0: the item's picture, opaque (0x44FDB0), at most the item's size of it
             // (E17 M5 T3a: `spelroll.pcx` is a column wider), then its text (0x5BC5F0 →
@@ -161,7 +182,7 @@ pub fn draw(
                 font,
                 (item.colour, item.align),
                 area,
-                text,
+                (text, None),
                 bugs,
             )?;
         }
@@ -183,7 +204,36 @@ pub fn draw(
             };
             let colour = item.colour.saturating_add(if *disabled { 2 } else { 0 });
             let font = (&item.font, &item.font_palette);
+            let text = (text.as_str(), None);
             text_in(screen, assets, font, (colour, item.align), area, text, bugs)?;
+        }
+        Draw::Edit {
+            item,
+            x,
+            y,
+            text,
+            caret,
+        } => {
+            // `edit_draw` 0x5BB400 (E27 M2 T7) without a picture or a saved background: the text
+            // in the item's box in its colour, the caret with the focus.
+            let area = TextBox {
+                x: *x,
+                y: *y,
+                width: item.size[0],
+                height: item.size[1],
+            };
+            let font = (&item.font, &item.font_palette);
+            let caret = caret.and_then(|c| usize::try_from(c).ok());
+            let text = (text.as_str(), caret);
+            text_in(
+                screen,
+                assets,
+                font,
+                (item.colour, item.align),
+                area,
+                text,
+                bugs,
+            )?;
         }
         Draw::Shared {
             def,
@@ -305,13 +355,21 @@ pub fn reach(draw: &Draw, assets: &impl Assets) -> Option<[i32; 4]> {
             ))
         }
         Draw::Darken { rect: [x, y, w, h] } => Some(rect(*x, *y, [*w, *h])),
+        Draw::Fill {
+            rect: [x, y, w, h],
+            palette,
+            ..
+        } => {
+            assets.palette(palette)?;
+            Some(rect(*x, *y, [*w, *h]))
+        }
         Draw::Text { item, x, y, .. } => {
             // The picture opaque inside the box (0x5BC7F0), the text over it.
             assets.picture(&item.picture)?;
             assets.palette(&item.font_palette)?;
             Some(text_reach(assets.font(&item.font)?, *x, *y, item.size))
         }
-        Draw::Label { item, x, y, .. } => {
+        Draw::Label { item, x, y, .. } | Draw::Edit { item, x, y, .. } => {
             assets.palette(&item.font_palette)?;
             Some(text_reach(assets.font(&item.font)?, *x, *y, item.size))
         }
@@ -385,14 +443,14 @@ fn button_frame<'a>(
 }
 
 /// `text` in `area` by the text drawer (0x4B5490), in a font and the palette its colours come
-/// from, with a colour argument and an alignment.
+/// from, with a colour argument and an alignment, and the caret's index if any (E27 M2 T7).
 fn text_in(
     screen: &mut Screen,
     assets: &impl Assets,
     (font, palette): (&String, &String),
     (colour, alignment): (u32, u32),
     area: TextBox,
-    text: &str,
+    (text, caret): (&str, Option<usize>),
     bugs: Bugs,
 ) -> Result<(), String> {
     let font = assets.font(font).ok_or_else(|| font.clone())?;
@@ -405,7 +463,7 @@ fn text_in(
         alignment,
         bugs,
     };
-    draw_text(screen, &encode_1252(text).0, area, style);
+    draw_text_caret(screen, &encode_1252(text).0, area, style, caret);
     Ok(())
 }
 

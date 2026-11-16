@@ -92,11 +92,13 @@ fn sprite() -> Sprite {
     }
 }
 
-/// Glyph `1` inks its one pixel (a 1 × 1 font).
+/// Glyphs `1` and `_` (the caret) ink their one pixel (a 1 × 1 font).
 fn font() -> Font {
     let mut glyphs = vec![Glyph::default(); 256];
-    glyphs[usize::from(b'1')].width = 1;
-    glyphs[usize::from(b'1')].pixels = vec![0xFF];
+    for c in *b"1_" {
+        glyphs[usize::from(c)].width = 1;
+        glyphs[usize::from(c)].pixels = vec![0xFF];
+    }
     Font {
         height: 1,
         y_offset: 0,
@@ -405,6 +407,50 @@ fn reach_is_the_rectangle_each_drawer_can_change() {
     assert_eq!(reach(&label("f.fnt", "game.pal"), &s), Some([-2, 4, 0, 5]));
     assert_eq!(reach(&label("no.fnt", "game.pal"), &s), None);
     assert_eq!(reach(&label("f.fnt", "no.pal"), &s), None);
+    let edit = |font: &str| Draw::Edit {
+        item: label_item(font, "game.pal"),
+        x: -2,
+        y: 4,
+        text: "1".into(),
+        caret: Some(1),
+    };
+    assert_eq!(reach(&edit("f.fnt"), &s), Some([-2, 4, 0, 5]));
+    assert_eq!(reach(&edit("no.fnt"), &s), None);
+}
+
+#[test]
+fn an_edit_draws_its_text_and_its_caret() {
+    // E27 M2 T7: the label's text in its colour, the caret `_` at its index.
+    let s = store();
+    let edit = |text: &str, caret| Draw::Edit {
+        item: label_item("f.fnt", "game.pal"),
+        x: 0,
+        y: 0,
+        text: text.into(),
+        caret,
+    };
+    assert_eq!(names(&edit("1", None)), ["f.fnt", "game.pal"]);
+    let drawn = |item: &Draw| {
+        let mut out = screen(2);
+        draw(&mut out, item, &s, Bugs::Fixed).unwrap();
+        out.pixels().to_vec()
+    };
+    let white = FORMAT.pack(WHITE);
+    assert_eq!(drawn(&edit("1", None)), [white, 0]);
+    assert_eq!(drawn(&edit("1", Some(1))), [white, white]);
+    assert_eq!(drawn(&edit("", Some(0))), [white, 0]);
+    assert_eq!(drawn(&edit("", None)), [0, 0]);
+    let no_font = Draw::Edit {
+        item: label_item("no.fnt", "game.pal"),
+        x: 0,
+        y: 0,
+        text: "1".into(),
+        caret: None,
+    };
+    assert_eq!(
+        draw(&mut screen(2), &no_font, &s, Bugs::Fixed),
+        Err("no.fnt".to_string())
+    );
 }
 
 #[test]
@@ -785,4 +831,26 @@ fn a_shared_frame_is_the_other_defs_in_the_items_colours() {
     };
     assert!(draw(&mut out, &no_frames, &s, Bugs::Fixed).is_err());
     assert_eq!(reach(&no_frames, &s), None);
+}
+
+#[test]
+fn a_fill_sets_its_box_to_an_entry_of_its_palette() {
+    // E27 M2 T7: a text item's background colour (`text_item_draw` 0x5BC5F0).
+    let s = store();
+    let fill = |palette: &str, entry| Draw::Fill {
+        rect: [1, 0, 1, 1],
+        palette: palette.into(),
+        entry,
+    };
+    assert_eq!(names(&fill("game.pal", 11)), ["game.pal"]);
+    assert_eq!(reach(&fill("game.pal", 11), &s), Some([1, 0, 2, 1]));
+    assert_eq!(reach(&fill("no.pal", 11), &s), None);
+    let mut out = screen(2);
+    draw(&mut out, &fill("game.pal", 11), &s, Bugs::Fixed).unwrap();
+    assert_eq!(out.pixels(), [0, FORMAT.pack(BLUE)]);
+    assert_eq!(
+        draw(&mut out, &fill("no.pal", 11), &s, Bugs::Fixed),
+        Err("no.pal".to_string())
+    );
+    assert!(draw(&mut out, &fill("game.pal", 300), &s, Bugs::Fixed).is_err());
 }

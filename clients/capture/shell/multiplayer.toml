@@ -123,3 +123,36 @@ steps = [
   "move:578,157", "shot:host-hover", "move:578,214", "shot:join-hover",
   "move:578,495", "shot:cancel-hover", "click:578,495", "shot:stage1",
 ]
+
+# E27 M2 T7: the edit field (design §16; edit_key 0x5BAC50, edit_draw 0x5BB400, text_draw's caret):
+# the Multiplayer dialog's name edit, focused at the open, its caret, its keys, its limit (21 with
+# the terminator: 20 letters), no blink while the clock runs.
+[[recipe]]
+id = "edit-keys"
+what = "§16: the name edit's caret and keys: typing, capitals by Shift, the US table's symbols, Left, Right, Home, End, Delete, BackSpace, the 20-letter limit, a click, a reopening"
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer", "shot:open",
+  "step:2000:100", "shot:later",
+  "type:Anna", "shot:typed", "step:1000:100", "shot:typed-later",
+  "key:Left", "key:Left", "shot:left-2", "key:Home", "shot:home", "key:Left", "shot:home-left",
+  "key:Delete", "shot:deleted", "key:Right", "shot:right", "key:End", "shot:end", "key:Right", "shot:end-right",
+  "key:BackSpace", "shot:backspace", "key:Home", "key:BackSpace", "shot:home-backspace", "key:End",
+  "type:b1!@ -=[];',./\\", "shot:symbols",
+  "type:WXYZwxyz0123456789", "shot:full", "key:Home", "type:Q", "shot:full-insert",
+  "key:Tab", "shot:tab", "key:Return", "shot:return",
+  "click:250,500", "shot:clicked", "move:400,560", "shot:moved",
+  "key:Escape", "check:new_game_menu", "click:649,180", "check:multiplayer", "shot:reopened",
+]
+
+# E27 M2 T7: two names of 21 letters (design §6.4: 21 bytes a name in hot_seat_names; the edits
+# take 20 letters), through OK to the scenario screen and its advanced options' rows.
+[[recipe]]
+id = "hotseat-long"
+what = "§2.7, §16: two 21-letter names typed (the first in the dialog's edit), OK, the scenario screen and the advanced options' names"
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
+  "type:Abcdefghijklmnopqrstu", "shot:name-typed",
+  "click:578,157", "check:hotseat_names", "shot:names",
+  "key:Tab", "type:Vwxyzabcdefghijklmnop", "shot:second-typed",
+  "click:345,450", "until:scenario_list", "shot:scenario", "click:514,519", "shot:advanced",
+]

@@ -1399,7 +1399,7 @@ clock frozen from the game's first read, the digests in `shell/kept/<group>.txt`
 |---|---|---|---|---|
 | `start` | §2.1 | 6 | 9, 3 | Show Intro off; the clips with Bink Video 1 and 0; one skip way per recipe: 3DOLogo by a key (Space), NWCLogo by a left press, H3Intro by a right press |
 | `menus` | §2.3 to §2.5 | 5 | 88, 1 | each button's hover, press, release off it, popup; Quit's question; the tutorial's load |
-| `multiplayer` | §2.6, §2.7 | 8 | 129, 3 | stage 1 over New and Load Game's menus, the hot seat's names, the other modes' stage 2 |
+| `multiplayer` | §2.6, §2.7 | 10 | 155, 3 | stage 1 over New and Load Game's menus, the hot seat's names, the other modes' stage 2; since M2 T7 the edit's keys and two 21-letter names (§16) |
 | `scores` | §2.8, §2.9 | 4 | 43, 8 | both tabs and the creatures' steps, Reset, the credits' scroll whole and ended early |
 | `scenario` | §3.1 to §3.11 | 13 | 178, 2 | new, load and save modes; the list, sorts, filters, the panel's marks, Begin's messages |
 | `advanced` | §3.12 to §3.18 | 11 | 205, 2 | single and hot seat (two to eight), every row's arrows, the popups, the random map's tab, the begin |
@@ -1485,11 +1485,12 @@ are 10 ms earlier (the Smacker copy's open fell inside a clock step; its kept li
   (`bink-minimum`, §12.2: at a 16-bit track's size its sound would never start).
 - **The fades** (§5.3 to §5.5): 0x602C50 (1, 4, 0) is read as a redraw (*inferred*), but
   `opt-restart`'s `fade` clip and `end-conquest`'s `to-scores` record fades: M4 reads it.
-- **The edit field** (§2.6, §2.7: typing 0x5BAC50, the caret, the limit; *not read*): M2's hot
-  seat names task reads it, with the `hotseat-*` shots.
+- **The edit field** (§2.6, §2.7: typing 0x5BAC50, the caret, the limit): read and recorded at
+  M2 T7 (§16.1, `edit-keys`).
 - **The names' length** (§2.7): 21 characters against 21 bytes each (0xAC = 4 + 8 × 21), so a
   name of 21 letters may lack its terminator; M2's hot seat task records two 21-letter names first
-  and asks a CLT-Q if they join.
+  and asks a CLT-Q if they join. Recorded at M2 T7 (`hotseat-long`): an edit holds 20, the names
+  never join (§16.2).
 - **The requests** (§2.2): `adventure_key_down`'s 101, 102, 107, 108 and `adventure_command`'s
   107: M4 reads them with the map-client lane.
 - **The lost screen's first frame** (§5.4): shown 700 ms before the second, maybe the frozen clock
@@ -2235,3 +2236,100 @@ commands and the loop's switches take them (§2.2, §2.4) as T3a and T6b1 built 
 - **Not built** (*provisional*): a pack chosen by language (only `en.json`; a localized
   installation's own text keeps its language, the client's strings stay English), a player's pack
   in the windows.
+
+## 16. The Multiplayer dialog and the hot seat's names taking their inputs (M2 T7, 2026-11-16)
+
+Read from `Heroes3.exe` (the edit's code whole, the dialogs' items' arguments again) and recorded
+again (`multiplayer`, two recipes added: `edit-keys`, `hotseat-long`). Built in
+`h3_view::shell::multiplayer` and `h3_ui::edit`.
+
+### 16.1 The edit (`H3DlgEdit`: `Create` 0x5BA920, vtable 0x642D40)
+
+- **Create** (sixteen arguments): a text item first (`text_item_create` 0x5BC280), then the room
+  with the terminator (+0x5A, 21 in both dialogs), the caret (+0x58) at the text's end, the first
+  shown character (+0x6A) 0, the focus (+0x6D) clear; the text box (+0x5C to +0x62) the item's own
+  box, inset by the border's two arguments only with a border of 4 (none here). Both dialogs' edits:
+  `smalfont.fnt`, colour 4, left, no picture.
+- **The vtable:** +0x08 the item's procedure 0x5BB150 (a key to +0x3C while shown and not
+  disabled; a press inside focuses it, `dialog_set_focus` 0x5FF490, as 0x200/0xC; the 0x200
+  messages 3 text, 7 its pointer, 51 the room, 64 the focus by id); +0x10 `edit_draw` 0x5BB400;
+  +0x28 and +0x2C focus and unfocus (+0x38 0x5BAB50 with 1 or 0; the hot seat's +0x2C is
+  `hot_seat_edit_check`); +0x3C `edit_key` 0x5BAC50 (the Multiplayer name's
+  `multiplayer_name_key` 0x50ED60, the hot seat's `hot_seat_edit_key` 0x50DF60); +0x40 0x5BBA20
+  refuses scan codes 1 (Escape), 0x0F (Tab) and 0x1C (Enter): `edit_key` answers 0 and the dialog
+  takes them.
+- **`edit_key`** (only with the focus): by scan code (the switch 0x5BAD1A) Home (71) to 0, Left
+  (75) back one, Right (77) on one up to the length, End (79) to the length, Delete (83) the
+  character at the caret removed; any other key translated (0x4EC6F0: the input manager's table
+  at its +0x848, built by 0x4EC8C0 as a fixed US layout: a word a scan code, the low byte the
+  character, upper-case letters, Backspace 0x7F, Tab 9, Enter 0x0A, Escape 0x1B; the backtick,
+  Ctrl, the Shifts, Alt, Caps Lock, Num Lock and the keypad's digits none; F1 to F12 their whole
+  word; without Shift, the event's +0xC & 3, a letter in lower case; with it the US shifted digits
+  and marks, `[` and `]` unchanged); 0x7F removes the character before the caret; else nothing
+  when the text and its terminator would reach the room (`len + 1 >= room`: 20 letters in 21) or
+  the character is none, a function key's or a brace (0x5BABA0); else put in at the caret, the
+  caret on one; then, unless +0x68 is 3, `text_line_count` of the text *before* the character at
+  the box's width above one line undoes it (an off-by-one: the 21st character's check measures 20);
+  the text stored (0x5BB660: the blink's 360 ms toggle of +0x6C, which nothing reads; in mode 3 the
+  first shown character moved so the text up to the caret fits); drawn and shown with +0x6E; the
+  event becomes 0x200/0xC (answer 2: taken). +0x68 is never written (the item is not zeroed): every
+  edit built holds its room of the widest glyph in its box (20 × `M`, 260 px of `smalfont.fnt`, in
+  281 and 334 px), so neither the scroll nor the line check bites.
+- **`edit_draw`:** its picture or saved background (none here), then `text_draw` 0x4B5490 of the
+  text in the text box, its colour (3 when disabled), its alignment, and the caret with the focus
+  (−1 without). **The caret** (`text_draw` 0x4B54BC, `text_draw_line` 0x4B5306, 0x4B53C6,
+  0x4B544C): the glyph `_` over the glyph whose index in its line is the caret (in the colour
+  without the highlight), after the last glyph drawn when the caret is their count (with it), at a
+  line's start when none of it is drawn; an empty text's at the box's corner with neither the y
+  offset nor the alignment.
+- **Recorded** (`edit-keys`, every line as read): the caret `_` from the open (the name has the
+  focus), not blinking; Home, End, Left, Right, Delete, BackSpace; capitals by Shift; `b1!@
+  -=[];',./\` typed; 20 characters, the rest refused; Tab and Enter typing nothing; a click in it
+  moving no caret; after Escape and a reopening the name empty again (`Network Default Name` is
+  not written back by a cancel).
+
+### 16.2 The dialogs
+
+- **The Multiplayer dialog** casts a shadow (recorded; its constructor's flags are 0). Its status
+  line (123) and the hot seat's (518): `smalfont.fnt`, colour 1, centred, their box filled with
+  `game.pal`'s entry 0x20 (black: `text_item_draw` 0x5BC5F0's +0x48 through `game_palette16`,
+  0x44E4C0) under the text. The texts' last argument 8 (the title 517 too) is not their state's
+  bit 8 (`dialog_item_at` 0x5FF3E0 tests +0x16): they draw in their own colour (white).
+- **Hints:** records 264 + id − 100 for the items 100 to 124 (`dialog_items_set_hints` 0x5FF8E0):
+  the picture's (264) and the status line's (287) are empty, the name's edit (125) and the map's
+  picture (129) have none: over them the status line empties. The hot seat's edits 559, OK 560,
+  Cancel 561; OK's and Cancel's right-click texts are empty, so their popups show their hints
+  (`dialog_right_click` 0x5FF790). Disabling (`dialog_item_enable` 0x5FE940) sets the state's 0x20,
+  which `dialog_item_at` does not skip: a disabled OK keeps its hint and popup.
+- **The hover** changes the status line only when the item under the mouse changes (+0x4C); a held
+  button's moves are its own loop's; *recorded*: once a hold ends (`*-left`, the hot seat's
+  Cancel), the dialog on top takes the pointer's place as a move.
+- **The menu under the dialog** stays as it ended; the menus' last items are statics no opening
+  clears (`main_menu_hovered` 0x67FA60, `game_type_menu_hovered` 0x6780F0, written by their
+  procedures alone, `refs`): reopened after the dialog's Escape, New Game's menu does not draw
+  Multiplayer hovered under the pointer left on it (`edit-keys`' `reopened`; CLT-Q128: fixed,
+  decision 40).
+- **Two names of 21 letters** (`hotseat-long`; §6.4's question): each edit holds 20, the 21st
+  refused, so a stored name (21 bytes) always ends; the advanced options show the two apart (each
+  cut to its row). No question.
+
+### 16.3 What the client does otherwise (decisions 10, 20, 22)
+
+Hot Seat works; IPX, TCP/IP, Modem, Direct Connect and Online show the network's notice in the
+client's words (`CLT-STUB-6`, style 1), the dialog then on stage 1 (its status line the hint under
+the pointer at the close); the scenario screen (a new game's, a load's: Load Game's multiplayer
+leads there) is a stub over its game type menu until M3. Enter in a hot seat's edit presses an
+enabled OK (CLT-Q107); with OK disabled it moves on, as the original's. A menu opening anew
+takes the hover at its first move (CLT-Q128, decision 40: the statics for the comparisons only).
+Typing is to follow the keyboard's own layout (CLT-Q127, decision 39: T7b); until then it follows
+the original's US table: the window gives the edits each key's set 1 scan code and Shift
+(`h3_sdl`'s `Window::scans`, SDL's scan code by the key's place), the replay a recipe's key names
+and typed characters so (`shell::keys::scan`, `h3_ui::edit::scan_of`: the US layout, as
+`xdotool`).
+
+### 16.4 Not built (the agent's calls, *provisional*)
+
+Stage 2 and every network path (decision 10, E28); the CD notice (Hot Seat absent); the deletion
+of a transfer's `RMT*SC.BIN`; the session list and its refresh; `Network Default Name` as a
+setting (no client settings yet: the name starts empty); the edit's scroll and line check (no
+edit built needs them, §16.1); its disabled colour; a key's repeats (the shell's window takes none).

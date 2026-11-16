@@ -17788,7 +17788,7 @@ two, the first missing a level-1 Imp Cache; U1 taken every time, I3 the level-1 
 time). The template filled from the third run (`experiments/results/E08-batch-13.md`), the agent's
 lines in E13-3's, E13-9's and E13-6's last lines.
 
-**Raw observations** (unscored; T121 scores them, survey §15; the three runs alike unless said):
+**Raw observations** (unscored; T121 scores them, survey §14; the three runs alike unless said):
 **E13-1:** every record by entrance, the index order I1 0, W2 1, W4 2, W3 3, S1 4, C1 5, S2 6, T1 7,
 I3 8, I2 9, N1 10, I4 11, G2 12, D2 13, U1 14, C2 15, C3 16, W1 17, U2 18, D1 19, T2 20 to F2 26;
 class 16 and the ships five equal stacks, slot 2 alone upgraded (never a Hive's); the Crypt's
@@ -17835,3 +17835,100 @@ Battle Dwarves (E13-3) moved and struck before the Archers' turn; the Utopia bra
 Crypt's day-2 C3 never played (U1 had fewer than four relics in each run).
 
 **Versions:** none moved (the harness, the recipe, the filled template, docs).
+
+### Increment 13, round 3: T121, batch E13 scored and the checkpoint (2026-11-16, `adventure/e08-t121`)
+
+Baseline: `master` 77c2eec (#968, T120, merged; CI green on `master`). Docs only; whole (the
+queue's cut: one survey section and its checkpoint); nothing staged (the text tables read in the
+user's `original-data/extracted/` in place; VCMI 1.7.5's battle files fetched from
+raw.githubusercontent.com).
+
+**Scored** (survey `E08-banks.md` §14; it is §14, not the planned §15: the survey ended at §13)
+from T120's filled template and its record of the runs: **every row as predicted.** E13-1 every
+record's index by entrance, each a level's row, the split and the upgrade on slot 2 alone (4 of 14
+class-16 banks, never a Hive), the Imp Cache's 2 mercury and the Naga Bank's sulfur (**D-65**),
+Utopia's vector relics first (**D-68**); E13-2 the Stockpile's mark at once and its hint by size
+word, the declined Crypt unmarked and "(Not visited)" (**D-66**); E13-11 the hero on S2's entrance
+through the question, the decline, the key's second question and the battle; E13-9 the survivors
+by slot after the retreat, not looted, the hint by them; E13-3 no tactics phase, obstacles or war
+machines, the four stacks by their ordinal on 57-58, 61, 90, 93, the Archers' 12 shots kept;
+E13-4 the Griffins on 14-15, 184-185, 171-172, 1-2, 99-100 (**D-69 dissolved**); E13-6 the
+level-ups, the reward's message, then its army dialog (**D-67's correction**); E13-7 the backpack
+relics first (**D-68**); E13-8 the looted searches' −1, −1, −2 and the battle's clear; E13-5 the
+deck from the coast and from a boat; E13-10 +2 mercury and +16 sulfur (**D-65**); E13-12 both
+flights over the Shipwreck's water entrance, no water walk's path, the visit from above.
+
+**Read for the verdicts:** VCMI 1.7.5's `Unit::occupiedHex` (a two-hex unit's second hex behind
+its position: an attacker's − 1, a defender's + 1), `CBattleInfoCallback::getAvailableHex`,
+`BattleHex::getClosestTile` and `AccessibilityInfo::accessible` (a stack whose footprint does not
+fit moves to the closest hex that does; columns 0 and 16 side columns): its `creatureBankWide`
+(171, 1, 86) covers the original's defender cells; its two-hex attackers stand on 56-57 …, one
+column nearer their edge than the original's 57-58 (VCMI's). `BattleLayout::createLayout`: the
+bank layouts have one list a side, so no formation. The text rows by the user's tables: GENRLTXT
+203 the hint's guarded-by text, ARRAYTXT 185 and 194 the lower-case size words for 20 to 49 and
+250 to 499, GENRLTXT 7 the townless warning.
+
+**Beyond the rows:** E13-3's hero fought loose (+0x48 2: `ADV-QUIRK-8`, the map's tight flag
+reaches no placed hero), so the bank's formation ignored rests on the reading and VCMI (the
+checkpoint); GENRLTXT 7 after the first battle (E10's, as batches E9 to E12); the reward message's
+pictures as read in the reverse of the giving order (the client's); the record after a win (guards
+emptied, resources left, looted) and after a retreat; the draws' spread (no evidence against the
+chances). The rules toward `verified` listed by task (T123a, T124a, T124b, T125a); for T122 every
+drafted point holds, ADR-0022's alternatives gain VCMI's second table.
+
+**The checkpoint** (ADV-Q55, `AskUserQuestion`; the epic's decisions 348, 349): the outcome
+accepted for T122 (recommended); the formation ignored built on the reading and VCMI
+(recommended), not a tight-hero row first. Docs: survey §0, §9 (D-69), §11, §14 (new), its
+sources; design §13 (D-69), §18's disputes, §19 (*Scored*), §20's table, §21; the epic's
+decisions and T121's line; the queue (T121 out, T122 in); the lane HANDOFF.
+
+**Versions:** none moved (documents only).
+
+### Increment 13, round 4: T122, the `shared/` task (2026-11-16, `shared/e08-t122`, `cross-lane`)
+
+**The cut** (decision 350; asked at the start, `AskUserQuestion`, with the consent to the
+`cross-lane` change): whole, one `shared/` pull request, as T112, the seam's field in its own
+commit after the docs. Not chosen: two pull requests (the ADRs and docs, then the field); the docs
+alone this session. **Baseline:** `master` 7d0cfd0 (#970 merged). Nothing staged; a workspace
+`cargo check` and xtask's gates.
+
+- **The ADRs** (the three drafts accepted at ADV-Q54, decision 343, applied with batch E13's
+  outcome, survey `E08-banks.md` §14, decision 348; then deleted with their folder):
+  **ADR-0022** points 2 (the seam's `creature_bank`, set from the battle's cause), 3 (no
+  obstacles, the refusal beside the flag), 6 (public, not in the observation), 7 (the five rules
+  amended) and the new **point 8** (the creature bank battle: its four rules with their addresses,
+  a paragraph of batch E13's rows: E13-3 for the four and the ordinals, E13-4 and E13-7 for the
+  cells, E13-5 for the deck, the formation's part on the reading and VCMI), a consequence, the
+  draft's alternatives plus **VCMI's second table** (`creatureBankWide`, D-69 dissolved) and a
+  first revision history. **ADR-0013** point 5's last sentence and a history line.
+  **ADR-0016** points 1 (a part **Increment 13's objects**), 4 (a part **Increment 13's kinds**:
+  the bank, the draw, the visit, the battle, the reward, the Shipwreck's passage; then a batch E13
+  paragraph as increment 12's) and 6 (a bank's view by the team's mark; E13-2, E13-9), a
+  consequence, an alternative, the history. **ADR-0017** points 1 (no command; E13-11), 2 (the
+  hint, no game-level view), 4 (the draws at the build, the battle's seeds; E13-1), 6 (no
+  decision kind, the reward a won battle's rest after the levels; E13-6, E13-7), 9 (the versions,
+  in merge order with E09's increment 4), 10 (the outcomes; E13-10, E13-7), 11 (`Defender::Bank`
+  and the flag by the cause, the deck; E13-11, E13-5, E13-9, E13-3), a consequence, an
+  alternative, the history. The index's Read-when cells of ADR-0016, -0017 and -0022 and
+  ADR-0022's status. *Agent's calls* (change freely): each point cites the rows that confirmed it
+  (T112's); ADR-0016's battle line points at ADR-0017 point 11 and ADR-0022 point 8 for the
+  draft's "part D, their drafts"; ADR-0017 point 9 adds the merge order with E09's increment 4.
+- **The glossary** (`docs/03-domain.md`): creature bank, a bank's level, looted (the adventure's
+  line), bank battle and bank positions (the battle's, after the formation).
+- **`docs/06-security.md`**: increment 13's lines (design §10, §16: the hint by the team's mark,
+  the hidden level, counts, upgrade, artifacts and reward, the draws server-only, the team's
+  marks by kind, the owner's offer, loot, reward and once-bonus, the flag public but not
+  observed).
+- **The seam** (its own commit): `BattleSetup::creature_bank: bool` with its doc comment. Only two
+  literals were exhaustive, both the battle lane's: `h3-pack-battle`'s `ScenarioDef` resolve and
+  `h3-files`' `ReplayDoc` take `false` with a comment (the scenario and replay key theirs to add);
+  every other literal, the AI lane's `h3-sim` and the clients' included, takes the default. The
+  battle lane's inbox told; the AI lane has nothing to act on (no note); the town lane's inbox
+  told the ADRs' new parts, for its T35's rebase. Checked: `cargo check
+  --workspace --all-targets`, clippy and tests of the changed crates, xtask's docs gates,
+  `check-lane --cross-lane`; the clients' workspace has no `BattleSetup` literal (its SDL build
+  left to CI's clients run).
+- **Docs**: design note header, part D's intro and §13's title repointed to the ADRs, §20's *As
+  built*; decision 350 and the task's line; the queue (T122 out, T123 in).
+
+**Versions:** none moved. T123 (round 5, its cut at its start) next.
