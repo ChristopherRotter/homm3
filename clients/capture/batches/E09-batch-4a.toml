@@ -1,0 +1,203 @@
+# E09 batch TWN-4, part a, played by the capture harness (E09 T34; h3adv.py batch): the procedure
+# of experiments/specs/E09-batch-4a.toml as steps, on Easy, hot seat, Red and Blue human, the
+# starting bonus Gold. Row TWN-4-1's (and -8's) offers on Red's day 1 and at each of seven weeks'
+# starts; in the eighth week rows TWN-4-6 and TWN-4-2.
+#
+# The reads (README, "Taverns and the Thieves' Guild"): `offer:<colour>:<slot>` an offer's hero
+# record (name, class, type, army, points of the day's, spell points, artifacts, returning),
+# `start_draws:tavern` and `turn_draws:tavern` the taverns' draws xdd.dll logged at the game's
+# start and in the last end turn (`tavern_class v of 1-total`, `tavern_type v of 1-n`), `draws`
+# those of the step. The weeks as batch TWN-3's: the date written to the week's last day
+# (`date`), then Red's and Blue's end turns. On a town screen `tavern = true` opens the tavern
+# dialog, `click = ["offer:0"]` selects slot 0, `["recruit"]` hires, `["close"]` closes it,
+# `hover = "recruit"` puts the mouse over Recruit and records the status line's record
+# (`hovered`), `tavern:recruit` reads the button; `town = [x, y]` opens a town from the town list
+# (no visitor).
+
+spec = "experiments/specs/E09-batch-4a.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- TWN-4-1: the offers on day 1 -------------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-4-1"
+hero = "TWN-4-1"
+[step.record]
+"row:week" = ["text:M1 W1 (the start)", "offer:red:0", "offer:red:1", "offer:blue:0", "offer:blue:1", "start_draws:tavern"]
+[step.note]
+"the game's version; the pool's states" = ["map_kind", "pool"]
+
+[[step]]
+encounter = "TWN-4-1"
+date = [1, 1, 7]
+end_turn = true
+
+[[step]]
+encounter = "TWN-4-1"
+end_turn = true
+[step.record]
+"row:week" = ["text:M1 W2", "offer:red:0", "offer:red:1", "offer:blue:0", "offer:blue:1", "turn_draws:tavern"]
+[step.note]
+"M1 W2: the date" = "date"
+
+[[step]]
+encounter = "TWN-4-1"
+date = [1, 2, 7]
+end_turn = true
+
+[[step]]
+encounter = "TWN-4-1"
+end_turn = true
+[step.record]
+"row:week" = ["text:M1 W3", "offer:red:0", "offer:red:1", "offer:blue:0", "offer:blue:1", "turn_draws:tavern"]
+[step.note]
+"M1 W3: the date" = "date"
+
+[[step]]
+encounter = "TWN-4-1"
+date = [1, 3, 7]
+end_turn = true
+
+[[step]]
+encounter = "TWN-4-1"
+end_turn = true
+[step.record]
+"row:week" = ["text:M1 W4", "offer:red:0", "offer:red:1", "offer:blue:0", "offer:blue:1", "turn_draws:tavern"]
+[step.note]
+"M1 W4: the date" = "date"
+
+[[step]]
+encounter = "TWN-4-1"
+date = [1, 4, 7]
+end_turn = true
+
+[[step]]
+encounter = "TWN-4-1"
+end_turn = true
+[step.record]
+"row:week" = ["text:M2 W1", "offer:red:0", "offer:red:1", "offer:blue:0", "offer:blue:1", "turn_draws:tavern"]
+[step.note]
+"M2 W1: the date" = "date"
+
+[[step]]
+encounter = "TWN-4-1"
+date = [2, 1, 7]
+end_turn = true
+
+[[step]]
+encounter = "TWN-4-1"
+end_turn = true
+[step.record]
+"row:week" = ["text:M2 W2", "offer:red:0", "offer:red:1", "offer:blue:0", "offer:blue:1", "turn_draws:tavern"]
+[step.note]
+"M2 W2: the date" = "date"
+
+[[step]]
+encounter = "TWN-4-1"
+date = [2, 2, 7]
+end_turn = true
+
+[[step]]
+encounter = "TWN-4-1"
+end_turn = true
+[step.record]
+"row:week" = ["text:M2 W3", "offer:red:0", "offer:red:1", "offer:blue:0", "offer:blue:1", "turn_draws:tavern"]
+[step.note]
+"M2 W3: the date" = "date"
+
+[[step]]
+encounter = "TWN-4-1"
+date = [2, 3, 7]
+end_turn = true
+
+[[step]]
+encounter = "TWN-4-1"
+end_turn = true
+[step.record]
+"row:week" = ["text:M2 W4", "offer:red:0", "offer:red:1", "offer:blue:0", "offer:blue:1", "turn_draws:tavern"]
+[step.note]
+"M2 W4: the date" = "date"
+
+# --- TWN-4-6 and TWN-4-2: in the eighth week, R1 with its visitor, the hire of slot 0 ---------------------
+
+[[step]]
+encounter = "TWN-4-6"
+hero = "TWN-4-6"
+walk = [7, 10]
+expect = { question = "none", battle = false }
+[[step.actions]]
+tavern = true
+record = { "R1 with TWN-4-6 its visitor (Red 6 on the map): Recruit; the status line over it" = ["tavern:recruit", "text:Red on the map: ", "heroes:red"] }
+[[step.actions]]
+hover = "recruit"
+record = { "+R1 with TWN-4-6 its visitor (Red 6 on the map): Recruit; the status line over it" = ["text:the status line: ", "hovered"] }
+[[step.actions]]
+click = ["close"]
+[[step.actions]]
+hero_in = true
+record = { "TWN-4-6 into R1's garrison: R1's garrison hero and visitor; Red's heroes on the map" = ["messages", "text:garrison hero: ", "town:7,10:garrison_hero", "text:visitor: ", "town:7,10:visitor", "text:Red on the map: ", "heroes:red"] }
+[[step.actions]]
+tavern = true
+record = { "R1 without a visitor (Red 5 on the map, a garrison hero): Recruit" = "tavern:recruit" }
+[[step.actions]]
+click = ["offer:0"]
+record = { "TWN-4-2|R1, slot 0 selected: the dialog; the offer" = ["tavern", "offer:red:0"] }
+[[step.actions]]
+click = ["recruit"]
+record = { "TWN-4-2|R1, slot 0 hired: the hired hero (R1's visitor: offer, tile, spells); R1's guild spells; Red's two slots; Red's gold" = ["town:7,10:visitor:offer", "text:on ", "town:7,10:visitor:tile", "text:its spells: ", "town:7,10:visitor:spells", "text:R1's guild: ", "town:7,10:guild_spells", "text:Red's slot 0: ", "offer:red:0", "text:slot 1: ", "offer:red:1", "text:Red's gold: ", "treasury:red"] }
+[[step.actions]]
+tavern = true
+record = { "R1 after the hire (the hired hero its visitor; Red 6 on the map): Recruit; the status line over it" = ["tavern:recruit", "text:Red on the map: ", "heroes:red"] }
+[[step.actions]]
+hover = "recruit"
+record = { "+R1 after the hire (the hired hero its visitor; Red 6 on the map): Recruit; the status line over it" = ["text:the status line: ", "hovered"] }
+[step.record]
+"TWN-4-2|R1's step: the taverns' draws" = "draws:tavern"
+[step.note]
+"R1's visit: the screens; how the town screen closed" = ["screens", "town_screen_closed"]
+"R1's visit: screens not known by their vtable" = "unknown_screens"
+
+# --- TWN-4-2: R2 from the list, the hire of slot 1 ---------------------------------------------------------
+
+[[step]]
+encounter = "TWN-4-2"
+town = [15, 10]
+[[step.actions]]
+tavern = true
+note = { "R2, no visitor (Red 6 on the map): Recruit" = "tavern:recruit" }
+[[step.actions]]
+click = ["offer:1"]
+record = { "R2, slot 1 selected: the dialog; the offer" = ["tavern", "offer:red:1"] }
+[[step.actions]]
+click = ["recruit"]
+record = { "R2, slot 1 hired: the hired hero (R2's visitor: offer, tile, spells); R2's guild spells; Red's two slots; Red's gold" = ["town:15,10:visitor:offer", "text:on ", "town:15,10:visitor:tile", "text:its spells: ", "town:15,10:visitor:spells", "text:R2's guild: ", "town:15,10:guild_spells", "text:Red's slot 0: ", "offer:red:0", "text:slot 1: ", "offer:red:1", "text:Red's gold: ", "treasury:red"] }
+[step.record]
+"R2's step: the taverns' draws" = "draws:tavern"
+
+# --- TWN-4-6: R3 from the list (7 on the map), a hire there; R4 (8 on the map) ------------------------------
+
+[[step]]
+encounter = "TWN-4-6"
+town = [23, 10]
+[[step.actions]]
+tavern = true
+record = { "R3 from the list, no visitor (Red 7 on the map, a garrison hero in R1): Recruit; Red's heroes on the map after a hire there" = ["tavern:recruit", "text:Red on the map before: ", "heroes:red"] }
+[[step.actions]]
+click = ["offer:0"]
+[[step.actions]]
+click = ["recruit"]
+record = { "+R3 from the list, no visitor (Red 7 on the map, a garrison hero in R1): Recruit; Red's heroes on the map after a hire there" = ["text:after the hire: ", "heroes:red"], "TWN-4-2|R3, slot 0 hired: the hired hero (R3's visitor: offer, tile); Red's two slots; Red's gold; the draws" = ["town:23,10:visitor:offer", "text:on ", "town:23,10:visitor:tile", "text:Red's slot 0: ", "offer:red:0", "text:slot 1: ", "offer:red:1", "text:Red's gold: ", "treasury:red"] }
+[step.record]
+"+TWN-4-2|R3, slot 0 hired: the hired hero (R3's visitor: offer, tile); Red's two slots; Red's gold; the draws" = ["text:the draws: ", "draws:tavern"]
+
+[[step]]
+encounter = "TWN-4-6"
+town = [31, 10]
+[[step.actions]]
+tavern = true
+record = { "R4 from the list, no visitor (Red 8 on the map, a garrison hero in R1): Recruit; the status line over it; Red's heroes on the map" = ["tavern:recruit", "text:Red on the map: ", "heroes:red", "text:R1's garrison hero: ", "town:7,10:garrison_hero"] }
+[[step.actions]]
+hover = "recruit"
+record = { "+R4 from the list, no visitor (Red 8 on the map, a garrison hero in R1): Recruit; the status line over it; Red's heroes on the map" = ["text:the status line: ", "hovered"] }

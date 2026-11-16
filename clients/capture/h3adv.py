@@ -420,6 +420,10 @@ def auto_combat(game, mem, end, stall=10.0):
     combat's computer acts in the same millisecond); never while auto combat runs, which a
     second key would stop."""
     while True:
+        if find_button(game, "battle_ok"):
+            # E09 T34 (batch TWN-4b's loss to 30 Black Dragons): over before a human stack's
+            # turn, the last active stack still in memory.
+            return
         while mem.globals()["active"] is None:
             if find_button(game, "battle_ok"):
                 return  # over before any stack's turn
@@ -1247,14 +1251,21 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
             # the hall's close: nothing built) before the town screen.
             if actions and not events["actions"]:
                 events["actions"] = run_actions(game, mem, index, actions)
-                for left, item in (("build", "cancel"), ("hall", "close"), ("hire", "close")):
-                    if screen_kind(mem) == left:
-                        click_item(game, mem, item, {"": index})
+                close_left(game, mem, index)  # E09 T34: the guild and the tavern too
             events["town_screen_closed"] = close_town_screen(game, mem)
             if events["town_screen_closed"] == "open":
                 game.dump(game.out / "town-screen.xwd")
                 raise RuntimeError("the town screen does not close (its item 30720, "
                                    f"TOWN_SCREEN_KEY; the display: {game.out / 'town-screen.xwd'})")
+            last, since, known = None, time.monotonic(), time.monotonic()
+            continue
+        if kind == "guild":
+            # E09 T34 (batch TWN-4: the Den of Thieves): the Thieves' Guild window read as it
+            # shows (`guilds`: guild_state) and closed.
+            events["screens"].append(kind)
+            events["order"].append("guild window")
+            events.setdefault("guilds", []).append(guild_state(mem))
+            click_item(game, mem, "close", {"": index})
             last, since, known = None, time.monotonic(), time.monotonic()
             continue
         if (vtable := unknown_vtable(mem)) and vtable not in events["unknown_screens"]:
@@ -1950,7 +1961,11 @@ SCREEN_ITEMS = {
     "hall": {"close": 30720},
     "build": {"build": 30722, "cancel": 30721},
     "hire": {"max": 532, "recruit": 30722, "close": 30721, "slider": 559},
+    # E09 T34 (batch TWN-4): the tavern dialog and the Thieves' Guild window (below).
+    "tavern": {"offer": 5, "guild": 11, "recruit": 12, "close": 30720},
+    "guild": {"close": 30720},
 }
+SCREEN_ITEMS["hero"]["dismiss"] = 129  # E09 T34: hero_screen_proc's button 129 (GENRLTXT 23)
 # The counts each screen shows under its army slots (text items, first id): the hero screen's
 # 61-67, the exchange's 65-71 and 72-78, the army dialog's 108-114 and 133-139.
 SHOWN_COUNTS = {("hero", "army"): 61, ("exchange", "left army"): 65,
@@ -1960,7 +1975,36 @@ SPLIT_SLIDER, SPLIT_COUNTS = 6, (4, 5)
 SHOWN = 0x4  # an item's state bit while it is drawn (an empty slot's count, an empty place: clear)
 QUESTION = (30725, 30726)  # a message's yes and no
 EXCHANGE_MANAGER, EXCHANGE_HEROES = 0x6A3D30, 0x40  # swap_manager_create 0x5AE500: this
-SCREEN_ACTIONS = ("click", "right", "slider", "amount", "hall", "slot", "hero_in", "building")
+SCREEN_ACTIONS = ("click", "right", "slider", "amount", "hall", "slot", "hero_in", "building",
+                  "tavern", "hover")
+# E09 T34 (batch TWN-4; survey docs/rules/surveys/E09-tavern.md §3, §6, §13), read live under
+# Wine. The tavern dialog (tavern_dialog 0x5D7EC0, its procedure 0x5D7B30; vtable 0x643980, the
+# dialog at 0x6AA9EC): the offers' portraits 5 and 6 (a click selects one: the dialog's +0x60
+# the slot), their selection frames 8 and 9 (shown, state 0x6, around the selected), the
+# Thieves' Guild button 11, Recruit 12 (state 0x6 enabled; disabled with 0x8 or 0x20 set),
+# close 30720, the description 7, the status line 14 (tavern_dialog_hint 0x5D7920: Recruit's
+# refusal text while the mouse is over it). It opens from the town screen's Tavern (building 5,
+# or the Castle's Brotherhood of the Sword 22 over it).
+TAVERN_VTABLE, TAVERN_SELECTED, TAVERN_STATUS = 0x643980, 0x60, 14
+TAVERN_FRAMES, TAVERN_BUILDINGS = (8, 9), (5, 22)
+SCREEN_KINDS[TAVERN_VTABLE] = "tavern"
+# The Thieves' Guild window (thieves_guild_new 0x5C8190, thieves_guild_fill 0x5DDA10; vtable
+# 0x643764, 800 x 600): its columns' colours at +0x60 (i32 each, the players in the game in
+# colour order); the flags (itgflags.def, id 65535, frame the colour) at (253 + 66 x place +
+# offset, 41 + 32 x row), place 0 the first; per column c the best hero's portrait 750 + c (its
+# small portrait, HPS*.pcx), its Attack, Defense, Power and Knowledge 1 + c, 10 + c, 20 + c,
+# 30 + c (text), the tactic a text item (id 65535) at (251 + 66 x c, 452), the best creature
+# 850 + c (twcrport.def, frame the creature + 2); close 30720. The rows: 0 towns, 1 heroes, 2
+# gold, 3 wood and ore, 4 the rare resources, 5 obelisks, 6 artifacts, 7 army strength, 8 income.
+GUILD_VTABLE, GUILD_COLUMNS = 0x643764, 0x60
+# The item kinds by vtable (observed): a DEF's frame (h3mem.PICTURE_VTABLE, H3DlgDef), a PCX
+# picture (H3DlgPcx), a text (h3mem.TEXT_VTABLE).
+DEF_ITEM, PICTURE_ITEM, TEXT_ITEM = h3mem.PICTURE_VTABLE, 0x63BA94, h3mem.TEXT_VTABLE
+SCREEN_KINDS[GUILD_VTABLE] = "guild"
+GUILD_ROWS = ("towns", "heroes", "gold", "wood and ore", "rare resources", "obelisks",
+              "artifacts", "army", "income")
+GUILD_X, GUILD_PLACE, GUILD_Y, GUILD_ROW = 253, 66, 41, 32
+GUILD_HERO, GUILD_SKILLS, GUILD_CREATURE, GUILD_TACTIC_Y = 750, (1, 10, 20, 30), 850, 452
 
 
 # A message box's pictures by their DEF (E08 T57; observed at a Treasure Chest under Wine): a
@@ -2356,7 +2400,9 @@ def run_actions(game, mem, step_hero, actions):
     <building id>` (the hall's slot showing it clicked: the building's dialog), since E09 T23
     `hero_in = true` (the town screen's visitor moved into the garrison: its portrait, then the
     garrison's) and `building = <building id>` (the town screen's building clicked: a dwelling's
-    hire dialog), or none (only reads); a question that comes is
+    hire dialog), since E09 T34 `tavern = true` (the town screen's Tavern: the tavern dialog) and
+    `hover = "<item>"` (the mouse over the item until the screen's status line changes: its
+    record, `hovered`), or none (only reads); a question that comes is
     answered with the action's `answer`, a message's OK clicked (its record kept). `record` and
     `note` read right after the action, as a step's do (the step's hero before and after it).
     Returns each action's observation: what it clicked, the questions' and messages' records,
@@ -2407,6 +2453,10 @@ def run_actions(game, mem, step_hero, actions):
             pass_dialogs(game, mem, obs, action.get("answer"), heroes)
         if "building" in action:
             open_building(game, mem, int(action["building"]))  # E09 T23: a dwelling's hire
+        if action.get("tavern"):
+            open_tavern(game, mem)  # E09 T34: the town screen's Tavern
+        if "hover" in action:
+            obs["hovered"] = hover_status(game, mem, action["hover"])  # E09 T34
         if "amount" in action:
             hire_amount(game, mem, int(action["amount"]))  # E08 T90: the hire dialog's slider
         if "slider" in action:
@@ -2475,7 +2525,9 @@ def hero_into_garrison(game, mem):
     lower, upper = ((x + 29, y + 32) for x, y in TOWN_PORTRAITS)
     town_hover(game, mem, *lower)
     game.click(*lower, 0.5)
-    wait_for(lambda: item_state(mem, TOWN_VISITOR_FRAME) == 0x6,
+    # E09 T34 (batch TWN-4a: after the tavern dialog closed) the frame's state read 0x7 (bit 0x1
+    # set besides): shown is enough.
+    wait_for(lambda: (item_state(mem, TOWN_VISITOR_FRAME) or 0) & SHOWN,
              "`hero_in`: the visitor's portrait was not selected", 3.0)
     town_hover(game, mem, *upper)
     game.click(*upper, 1.0)
@@ -2524,6 +2576,220 @@ def open_building(game, mem, building):
     wait_for(lambda: screen_kind(mem) == "hire", lambda: f"`building = {building}`: no hire "
              f"dialog opened ({screen_kind(mem)})", 5.0)
     quiet_screen(game)
+
+
+def open_tavern(game, mem):
+    """E09 T34 (batch TWN-4): on the town screen, a click on the Tavern (building 5, or the
+    Castle's Brotherhood of the Sword 22 drawn over it: the shown one) and the tavern dialog it
+    opens."""
+    if screen_kind(mem) != "town":
+        raise RuntimeError(f"`tavern`: no town screen shows ({screen_kind(mem)})")
+    shown = [i for i in mem.dialog_items() if i["id"] in TAVERN_BUILDINGS and i["state"] == 0x6]
+    if len(shown) != 1:
+        raise RuntimeError(f"`tavern`: the town screen shows {len(shown)} Taverns")
+    x, y, width, height = shown[0]["box"]
+    game.click(x + width // 2, y + height // 2, 0.5)
+    game.move(*PARK)
+    wait_for(lambda: screen_kind(mem) == "tavern", lambda: "`tavern`: no tavern dialog opened "
+             f"({screen_kind(mem)}; building {shown[0]['id']} clicked)", 5.0)
+    quiet_screen(game)
+
+
+# E09 T34: each screen's status line (its text item) for `hover`, and the tables its texts come
+# from before h3lod's (the tavern's: TvrnInfo.txt, tavern_dialog_hint's 0x6A5E40 to 0x6A5E48).
+STATUS_ITEMS = {"tavern": TAVERN_STATUS, "town": TOWN_STATUS}
+STATUS_TABLES = {"tavern": ("TVRNINFO.TXT",)}
+
+
+def hover_status(game, mem, name, limit=5.0):
+    """E09 T34 (batch TWN-4: the tavern's Recruit): the mouse moved onto the item `name` of the
+    screen showing (from the screen's middle, a pixel either way in turn) until the screen's
+    status line (STATUS_ITEMS) changes; its text as the record it was written from (the screen's
+    STATUS_TABLES first, then h3lod.identify; `[other: n characters]`, ADR-0009: never the
+    text)."""
+    kind = screen_kind(mem)
+    if kind not in STATUS_ITEMS:
+        raise RuntimeError(f"`hover = {name!r}`: no status line known on the {kind} screen")
+    x, y = item_centre(mem, item_id(mem, kind, name, {"": None}))
+    shown = mem.dialog()["box"]
+    game.move(shown[0] + 8, shown[1] + 8)
+    time.sleep(0.4)
+    before = item_text(mem, STATUS_ITEMS[kind])
+    end, k, text = time.monotonic() + limit, 0, None
+    while time.monotonic() < end:
+        game.move(x + k % 2, y)
+        k += 1
+        time.sleep(0.25)
+        if (text := item_text(mem, STATUS_ITEMS[kind])) and text != before:
+            break
+    game.move(*PARK)
+    if not text or text == before:
+        return "unchanged"
+    for name in STATUS_TABLES.get(kind, ()):
+        if hits := h3lod.matches(name, text):
+            return f"{name.split('.')[0]}:{hits[0]}"
+    return h3lod.identify(text) or f"[other: {len(text)} characters]"
+
+
+def def_name(mem, item):
+    """E09 T34: the resource name of a picture item's or a DEF item's object (+0x4: `itgflags.def`,
+    `HPS000Kn.pcx`), lower case; empty for other items."""
+    if item["vtable"] not in (PICTURE_ITEM, DEF_ITEM) or item["def"] < 0x10000:
+        return ""
+    return mem.c_string(item["def"] + 4, 16).lower()
+
+
+def tavern_state(mem):
+    """E09 T34 (batch TWN-4): the tavern dialog showing, None without it: the offers it shows
+    (the slots whose portraits 5, 6 show), the slot selected (its +0x60 and the selection frame
+    shown), Recruit's state."""
+    if screen_kind(mem) != "tavern":
+        return None
+    items = {i["id"]: i for i in mem.dialog_items()}
+    recruit = items.get(SCREEN_ITEMS["tavern"]["recruit"])
+    return {"shown": [k for k in (0, 1) if items.get(5 + k, {}).get("state", 0) & SHOWN],
+            "selected": mem.i32(mem.dialog()["at"] + TAVERN_SELECTED),
+            "framed": [k for k, f in enumerate(TAVERN_FRAMES)
+                       if items.get(f, {}).get("state", 0) & SHOWN],
+            "recruit": None if recruit is None else recruit["state"]}
+
+
+def recruit_text(state):
+    """E09 T34: Recruit's look (`enabled (state 0x6)`, `disabled (state 0x2e)`, `hidden`)."""
+    if state is None:
+        return "no Recruit"
+    if not state & SHOWN:
+        return f"hidden (state {state:#x})"
+    return f"{'disabled' if state & BUILD_GREYED else 'enabled'} (state {state:#x})"
+
+
+def guild_state(mem):
+    """E09 T34 (batch TWN-4; survey E09-tavern.md §6, §13): the Thieves' Guild window showing, None
+    without it: each row's places (the flags' colours by place, from the first; the rows without
+    flags not shown), the columns' colours (+0x60, as many as the shown places' headers 800 to
+    807) and per column its parts as shown: the best hero (its portrait's type), the four primary
+    skills (text), the tactic (its text's record) and the best creature (twcrport's frame - 2)."""
+    if screen_kind(mem) != "guild":
+        return None
+    shown = mem.dialog()
+    x0, y0 = shown["box"][:2]
+    items = mem.dialog_items()
+    by_id = {i["id"]: i for i in items if i["id"] != 0xFFFF}
+    columns = sum(1 for i in items if 800 <= i["id"] < 808 and i["state"] & SHOWN)
+    colours = [mem.i32(shown["at"] + GUILD_COLUMNS + 4 * c) for c in range(columns)]
+    rows = {}
+    for item in items:
+        if item["vtable"] == DEF_ITEM and def_name(mem, item) == "itgflags.def" \
+                and item["state"] & SHOWN:
+            x, y = item["box"][0] - x0, item["box"][1] - y0
+            row, place = (y - GUILD_Y) // GUILD_ROW, (x - GUILD_X) // GUILD_PLACE
+            rows.setdefault(row, {}).setdefault(place, []).append(item["frame"])
+    portraits = None
+    parts = []
+    for c, colour in enumerate(colours):
+        part = {"colour": colour}
+        hero = by_id.get(GUILD_HERO + c)
+        if hero and hero["state"] & SHOWN and def_name(mem, hero).startswith("hps"):
+            portraits = portraits or mem.portrait_types()
+            part["hero"] = portraits.get(def_name(mem, hero))
+        skills = [by_id.get(k + c) for k in GUILD_SKILLS]
+        if all(i and i["vtable"] == TEXT_ITEM and i["state"] & SHOWN for i in skills):
+            part["skills"] = [i["text"] for i in skills]
+        tactic = [i for i in items if i["id"] == 0xFFFF and i["vtable"] == TEXT_ITEM
+                  and i["state"] & SHOWN and i["box"][1] - y0 == GUILD_TACTIC_Y
+                  and abs(i["box"][0] - x0 - (GUILD_X - 2 + GUILD_PLACE * c)) <= 4]
+        if tactic:
+            part["tactic"] = h3lod.identify(tactic[0]["text"] or "") or \
+                f"[other: {len(tactic[0]['text'] or '')} characters]"
+        creature = by_id.get(GUILD_CREATURE + c)
+        if creature and creature["state"] & SHOWN and def_name(mem, creature) == "twcrport.def":
+            part["creature"] = creature["frame"] - 2
+        parts.append(part)
+    return {"columns": colours, "rows": {r: rows[r] for r in sorted(rows)}, "parts": parts}
+
+
+def guild_text(mem, state, part="all"):
+    """E09 T34: the guild's record (guild_state): `rows` (`towns: 1st red, blue; heroes: 1st red,
+    2nd blue`), `parts` (`red: hero TWN-4-7s (Orrin), skills 5 5 1 1, tactic GENRLTXT:n,
+    creature Archangel; blue: ...`), `all` both (`2 rows: ...; parts: ...`); `no guild`."""
+    if state is None:
+        return "no guild"
+    places = ("1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th")
+    rows = "; ".join(
+        f"{GUILD_ROWS[r] if 0 <= r < len(GUILD_ROWS) else f'row {r}'}: " + ", ".join(
+            f"{places[p] if 0 <= p < 8 else p} " + "+".join(COLOURS[c] if 0 <= c < 8 else str(c)
+                                                          for c in colours)
+            for p, colours in sorted(state["rows"][r].items()))
+        for r in state["rows"])
+    shown = []
+    for part in state["parts"]:
+        got = []
+        if "hero" in part:
+            t = part["hero"]
+            got.append("hero none" if t is None else
+                       f"hero {mem.hero(t)['name']} (type {t})")
+        if "skills" in part:
+            got.append("skills " + " ".join(part["skills"]))
+        if "tactic" in part:
+            got.append(f"tactic {part['tactic']}")
+        if "creature" in part:
+            got.append(f"creature {mem.creature_name(part['creature'], 1)}")
+        colour = COLOURS[part["colour"]] if 0 <= part["colour"] < 8 else str(part["colour"])
+        shown.append(f"{colour}: {', '.join(got) or 'nothing'}")
+    parts = "; ".join(shown) or "none"
+    if part == "rows":
+        return rows or "none"
+    if part == "parts":
+        return parts
+    return f"{len(state['rows'])} rows: {rows or 'none'}; parts: {parts}"
+
+
+def open_town_screen(game, mem, entrance):
+    """E09 T34 (batch TWN-4: a town's tavern without a visitor): the current player's town whose
+    entrance is `entrance` ([x, y] or [x, y, level]) selected from the town list (select_town) and
+    its row clicked again: its screen."""
+    x, y, z = [*entrance, 0][:3]
+    colour = mem.current_player()
+    town = mem.town_at(x, y, z)
+    if town is None or town["owner"] != colour:
+        raise ValueError(f"`town = {entrance}`: no town of the current player's there")
+    select_town(game, mem, town["index"])
+    towns = mem.town_list(colour)
+    lx, ly, step, rows = TOWN_LIST
+    row = towns.index(town["index"])
+    game.click(lx, ly + step * (min(row, rows - 1) if len(towns) > rows else row), 1.0)
+    game.move(*PARK)
+    wait_for(lambda: screen_kind(mem) == "town", lambda: f"`town = {entrance}`: its screen did "
+             f"not open ({screen_kind(mem)})", 5.0)
+    quiet_screen(game)
+
+
+def town_step(game, mem, entrance, actions):
+    """E09 T34 (batch TWN-4): a step `town = [x, y]` (no hero): the current player's town opened
+    from the town list (open_town_screen), the step's `actions` played on its screen
+    (run_actions), what they left open closed (CLOSE_AFTER), the town screen closed."""
+    open_town_screen(game, mem, entrance)
+    done = run_actions(game, mem, None, actions)
+    close_left(game, mem, None)
+    closed = close_town_screen(game, mem)
+    if closed == "open":
+        raise RuntimeError("the town screen does not close")
+    game.wait("adventure", 10)
+    return {"town": entrance, "actions": done, "town_screen": True, "town_screen_closed": closed,
+            "screens": ["town"], "messages": [], "message_pictures": []}
+
+
+# E09 T34: what a town screen's actions may leave open, closed in this order before the town
+# screen (a building's dialog by its Cancel, the hall by its close: nothing built; the guild
+# window, then the tavern dialog: nothing hired).
+CLOSE_AFTER = (("guild", "close"), ("tavern", "close"), ("build", "cancel"), ("hall", "close"),
+               ("hire", "close"))
+
+
+def close_left(game, mem, index):
+    for left, item in CLOSE_AFTER:
+        if screen_kind(mem) == left:
+            click_item(game, mem, item, {"": index})
 
 
 def hall_text(obs, what, mem):
@@ -2616,10 +2882,11 @@ LEVELS = ("none", "basic", "advanced", "expert")
 
 def snapshot(mem, index):
     """What a step's record may read before and after it: the hero by index and every player's
-    resources by colour."""
-    hero = mem.hero(index)
+    resources by colour; since E09 T34 (a `town` step: no hero) `index` may be None (no hero,
+    the players with heroes or towns)."""
+    hero = None if index is None else mem.hero(index)
     players = {COLOURS[c]: mem.player(c)["resources"] for c in range(8) if mem.player(c)["heroes"]
-               or c == hero["owner"]}
+               or (hero and c == hero["owner"]) or (hero is None and mem.town_list(c))}
     return {"hero": hero, "resources": players}
 
 
@@ -2740,7 +3007,84 @@ def hero_value(mem, hero, field):
         return place_name(hero["tile"])
     if field == "at":
         return tile_name(hero["tile"])
+    # E09 T34 (batch TWN-4): the class (+0x30, its name from the game's table), whether it is a
+    # returning offer (status bit 17), the owner (`red`, `none`), and an offer's summary (`offer`:
+    # name and class, army, points left of the day's, spell points, the artifacts' count worn
+    # but the war machines and the spell book and in the backpack, returning).
+    if field == "class":
+        return f"{mem.class_name(hero['class'])} ({hero['class']})"
+    if field == "returning":
+        return "yes" if hero["status"] & h3mem.RETURNING_BIT else "no"
+    if field == "owner":
+        return COLOURS[hero["owner"]] if 0 <= hero["owner"] < 8 else "none"
+    if field == "offer":
+        worn = sum(1 for slot in hero["worn"]
+                   if not slot.startswith("war machine") and slot != "spell book")
+        return (f"{hero['name']} ({mem.class_name(hero['class'])}, type {hero['index']}): "
+                f"{army_text(mem, hero['army'])}; points {hero['points']} of "
+                f"{hero['day_points']}; spell points {hero['spell_points']}; artifacts worn "
+                f"{worn}, backpack {len(hero['backpack'])}"
+                + ("; returning" if hero["status"] & h3mem.RETURNING_BIT else ""))
     raise ValueError(f"unknown hero detail `{field}`")
+
+
+POOL_STATES = {-1: "free", h3mem.POOL_RESERVED: "reserved", h3mem.POOL_PRISONER: "a prisoner's"}
+
+
+def pool_state_text(state):
+    """E09 T34: a hero type's pool state (game +0x4DF18): `free`, `reserved`, `red`, …"""
+    if 0 <= state < 8:
+        return COLOURS[state]
+    return POOL_STATES.get(state, f"{state:#x}")
+
+
+def tavern_value(mem, what, obs):
+    """E09 T34 (batch TWN-4; survey E09-tavern.md §2 to §6): `offers:<colour>` the player's two
+    offers (player +0x28, +0x2C: `slot 0: Christian (Knight), slot 1: Kalt (Planeswalker)`,
+    `empty`); `offer:<colour>:<slot>[:<detail>]` the hero record in that slot (hero_value: the
+    default `offer`); `pool:<name>` a hero's type's pool state, `pool` the states' counts; the
+    tavern dialog showing (`tavern`: the shown offers, the selected slot, Recruit;
+    `tavern:recruit`); the Thieves' Guild (`guild`, `guild:rows`, `guild:parts`: the window
+    showing, else the step's last one, a Den's); `hovered` an action's `hover` record. None when
+    `what` is none of these."""
+    if m := re.match(r"offers:([a-z]+)$", what):
+        offers = mem.player(COLOURS.index(m.group(1)))["offers"]
+        return ", ".join(f"slot {k}: " + ("empty" if t < 0 else
+                                         f"{mem.hero(t)['name']} "
+                                         f"({mem.class_name(mem.hero(t)['class'])})")
+                         for k, t in enumerate(offers))
+    if m := re.match(r"offer:([a-z]+):([01])(?::(.+))?$", what):
+        t = mem.player(COLOURS.index(m.group(1)))["offers"][int(m.group(2))]
+        return "empty" if t < 0 else hero_value(mem, mem.hero(t), m.group(3) or "offer")
+    if m := re.match(r"heroes:(" + "|".join(COLOURS) + r")$", what):
+        # The player's heroes on the map (player +0x1, the list: a garrison hero is off it).
+        heroes = mem.player(COLOURS.index(m.group(1)))["heroes"]
+        return f"{len(heroes)}: " + ", ".join(mem.hero(h)["name"] for h in heroes) \
+            if heroes else "0"
+    if what.startswith("pool:"):
+        return pool_state_text(mem.pool()[any_hero_named(mem, what[5:])["index"]])
+    if what == "pool":
+        counts = {}
+        for state in mem.pool():
+            counts[pool_state_text(state)] = counts.get(pool_state_text(state), 0) + 1
+        return ", ".join(f"{k} {v}" for k, v in sorted(counts.items()))
+    if what in ("tavern", "tavern:recruit"):
+        state = tavern_state(mem)
+        if state is None:
+            return "no tavern"
+        if what == "tavern:recruit":
+            return recruit_text(state["recruit"])
+        return (f"offers shown {', '.join(map(str, state['shown'])) or 'none'}; selected "
+                f"{state['selected']} (framed {', '.join(map(str, state['framed'])) or 'none'}); "
+                f"Recruit {recruit_text(state['recruit'])}")
+    if what in ("guild", "guild:rows", "guild:parts"):
+        state = guild_state(mem)
+        if state is None and obs.get("guilds"):
+            state = obs["guilds"][-1]
+        return guild_text(mem, state, what.partition(":")[2] or "all")
+    if what == "hovered":
+        return obs.get("hovered", "none")
+    return None
 
 
 def pool_experience(mem):
@@ -3240,6 +3584,15 @@ def town_text(mem, x, y, z, part):
     if part == "garrison_hero":
         hero = town["garrison_hero"]
         return mem.hero(hero)["name"] if hero >= 0 else "none"
+    # E09 T34 (batch TWN-4): a detail of the visitor or the garrison hero (`visitor:<detail>`,
+    # hero_value: a hired hero's `spells`, `tile`, `offer`), and the spells the guild shows
+    # (+0x44, six slots a level, as many as +0xBC counts for each built level).
+    if part.startswith(("visitor:", "garrison_hero:")):
+        who, detail = part.split(":", 1)
+        hero = town["visiting_hero" if who == "visitor" else "garrison_hero"]
+        return hero_value(mem, mem.hero(hero), detail) if hero >= 0 else "none"
+    if part == "guild_spells":
+        return ", ".join(mem.spell_name(sp) for sp in town["guild_spells"]) or "none"
     return slot_text(mem, *town["army"][int(part.split(":")[1])])
 
 
@@ -3501,8 +3854,11 @@ def value(obs, what, mem):
         return mem.map_kind()  # E08 T57: RoE, AB or SoD (game +0x1F698)
     if what == "date":
         return "month {}, week {}, day {}".format(*mem.date())
-    if what in ("draws", "turn_draws") or what.startswith(("draws:", "turn_draws:")):
-        return draws_text(obs, what)  # E09 T23 (batch TWN-3)
+    if what in ("draws", "turn_draws", "start_draws") \
+            or what.startswith(("draws:", "turn_draws:", "start_draws:")):
+        return draws_text(obs, what)  # E09 T23 (batch TWN-3); E09 T34 the start's
+    if (got := tavern_value(mem, what, obs)) is not None:
+        return got  # E09 T34 (batch TWN-4)
     if what == "kinds":
         # E09 T23 (batch TWN-3): the week's and the month's kinds and creatures as the game holds
         # them (week_kind 0x697750, week_creature 0x6983FC, month_kind 0x698834, month_creature
@@ -4001,7 +4357,8 @@ def value(obs, what, mem):
     # the step); over every town the every-built sets that differ from the built ones and the
     # owned towns' garrisons (towns_text).
     if m := re.match(r"town:(\d+),(\d+)(?:,(\d))?:(owner|visitor|built|every|mark|garrison|"
-                     r"slot:[0-6]|counts|count:\d+|portal|garrison_hero|dwellings)$", what):
+                     r"slot:[0-6]|counts|count:\d+|portal|garrison_hero|dwellings|guild_spells|"
+                     r"(?:visitor|garrison_hero):.+)$", what):
         return town_text(mem, int(m.group(1)), int(m.group(2)), int(m.group(3) or 0), m.group(4))
     if what in ("towns:every_vs_built", "towns:owned_garrisons"):
         return towns_text(mem, what.split(":")[1])
@@ -4309,6 +4666,38 @@ def start_game(game, map_path, recipe, restarts):
         game.stop()
 
 
+def prepare(mem, step):
+    """E09 T34 (batch TWN-4): what a step writes into the game before it plays: `resources = {
+    <colour> = [wood, mercury, ore, sulfur, crystal, gems, gold] }` (player +0x9C), `mana = {
+    "<hero>" = <n> }` (a hero's spell points, +0x18: a fugitive's kept points told apart from a
+    refill) and `narrow_pool = true` (every free hero type of the pool, game +0x4DF18 -1, marked
+    reserved, 0x40, as a map that allows no other: a type freed later is the only one a draw
+    finds; survey E09-tavern.md §9's "a map with few free types"; a list of heroes' names leaves
+    their types free)."""
+    for colour, amounts in step.get("resources", {}).items():
+        if len(amounts) != 7:
+            raise ValueError(f"`resources.{colour}`: seven amounts, wood to gold")
+        mem.write_resources(COLOURS.index(colour), amounts)
+    for name, mana in step.get("mana", {}).items():
+        mem.write_mana(any_hero_named(mem, name)["index"], int(mana))
+    if narrow := step.get("narrow_pool"):
+        # `narrow_pool = ["<name>", ...]` leaves those heroes' types free.
+        kept = {any_hero_named(mem, name)["index"] for name in narrow} \
+            if isinstance(narrow, list) else set()
+        for t, state in enumerate(mem.pool()):
+            if state == -1 and t not in kept:
+                mem.write_pool_state(t, h3mem.POOL_RESERVED)
+
+
+def any_hero_named(mem, name):
+    """E09 T34: the hero record named `name` among all 156, on the map or not (a hero in a tavern
+    or out of the game keeps its record); exactly one."""
+    found = [h for h in mem.all_heroes() if h["name"] == name]
+    if len(found) != 1:
+        raise KeyError(f"{len(found)} hero records named {name!r}")
+    return found[0]
+
+
 def force_draws(game, rolls=None, roll=None):
     """E09 T23 (batch TWN-3): the adventure map's draws forced through xdd.dll (h3drive.ROLLS; the
     runbook's "Forced rolls"): `rolls = { <name> = <value> | "natural" }` makes every later draw
@@ -4329,16 +4718,27 @@ def force_draws(game, rolls=None, roll=None):
 
 def logged_draws(game):
     """E09 T23 (batch TWN-3): the draws xdd.dll logged since the game started (its file `draws`,
-    `name value` per line; h3drive.LOGGED), as (name, value) pairs in order."""
+    `name value` per line; h3drive.LOGGED), as (name, value) pairs in order; since E09 T34 (batch
+    TWN-4) a draw logged with its range (`name value low high`: the taverns' draws) as (name,
+    `value of low-high`)."""
     path = Path(game.clock_dir) / "draws"
     if not path.exists():
         return []
-    return [(line.split()[0], int(line.split()[1])) for line in path.read_text().splitlines()
-            if len(line.split()) == 2]
+    found = []
+    for line in path.read_text().splitlines():
+        words = line.split()
+        if len(words) == 2:
+            found.append((words[0], int(words[1])))
+        elif len(words) == 4:
+            found.append((words[0], f"{words[1]} of {words[2]}-{words[3]}"))
+    return found
 
 
 # E09 T23: the draws logged during the batch's last end-turn step (`turn_draws`).
 TURN_DRAWS = []
+# E09 T34 (batch TWN-4): the draws logged before the batch's first step (`start_draws`: the
+# game's start, its taverns' first fill among them).
+START_DRAWS = []
 
 
 def draws_text(obs, what):
@@ -4346,7 +4746,8 @@ def draws_text(obs, what):
     garrison_sum_1 0, …`, `none`), or those whose name starts with a prefix (`draws:portal`);
     `turn_draws[:<prefix>]` those of the batch's last end-turn step (a later step's record)."""
     prefix = what.split(":", 1)[1] if ":" in what else ""
-    drawn = TURN_DRAWS if what.startswith("turn_draws") else obs.get("draws", [])
+    drawn = TURN_DRAWS if what.startswith("turn_draws") else START_DRAWS \
+        if what.startswith("start_draws") else obs.get("draws", [])
     return ", ".join(f"{n} {v}" for n, v in drawn if n.startswith(prefix)) or "none"
 
 
@@ -4382,6 +4783,7 @@ def batch(recipe_path, map_path=None, out=None):
         restarts = []
         mem = start_game(game, map_path, recipe, restarts)
         force_draws(game, recipe.get("rolls"))  # E09 T23: the recipe's, at each new game
+        START_DRAWS[:] = logged_draws(game)  # E09 T34
         # The generator reads `mem` at each step's expansion (a closure over this function's
         # variable, not its value at the start): after a `new_game` step the next steps expand
         # with the new game's memory (E09 T3b).
@@ -4393,6 +4795,7 @@ def batch(recipe_path, map_path=None, out=None):
                 force_draws(game, step.get("rolls"), step.get("roll"))
                 if "date" in step:
                     mem.write_date(*step["date"])
+                prepare(mem, step)  # E09 T34: resources, spell points, the narrowed pool
             drawn = len(logged_draws(game))
             if step.get("new_game"):
                 # E09 T3b (batch TWN-1's games 2 and 3): the game stopped and the map started
@@ -4424,6 +4827,15 @@ def batch(recipe_path, map_path=None, out=None):
                         raise RuntimeError(f"`to_day = {step['to_day']}`: day "
                                            f"{absolute_day(mem)} passed it")
                     obs["player"] = end_turn(game, mem, obs)
+                obs["after"] = {"resources": {COLOURS[c]: mem.player(c)["resources"]
+                                              for c in range(8) if mem.player(c)["heroes"]}}
+            elif "town" in step:
+                # E09 T34 (batch TWN-4): a town's screen from the town list (no hero), its
+                # `actions` played there; `record` and `note` as an end-turn step's, the actions'
+                # read right after each.
+                if "hero" in step:
+                    raise ValueError("a `town` step has no `hero`: it opens the town from the list")
+                obs = town_step(game, mem, step["town"], step.get("actions", []))
                 obs["after"] = {"resources": {COLOURS[c]: mem.player(c)["resources"]
                                               for c in range(8) if mem.player(c)["heroes"]}}
             elif step.get("look"):
@@ -4584,23 +4996,29 @@ def batch(recipe_path, map_path=None, out=None):
             log.flush()
             print(json.dumps(obs), flush=True)
             for field, got in obs["record"].items():
+                # E09 T34 (batch TWN-4a): `<encounter>|<field>` fills another encounter's field
+                # (one step's reads serving two rows).
+                encounter, plus = step["encounter"], "+" if field.startswith("+") else ""
+                if "|" in field and not field.startswith("row:"):
+                    encounter, field = field[len(plus):].split("|", 1)
+                    field = plus + field
                 if obs.get("skipped") and not field.startswith(("row:", "+")) \
-                        and (step["encounter"], field) in values:
+                        and (encounter, field) in values:
                     # E08 T100a (batch E11a's E11-8: two branches of a row, one played): a skipped
                     # step leaves a field another step filled.
                     continue
                 if field.startswith("row:"):
                     # E08 T68b: rows added to the table whose first column is named so.
-                    values.setdefault((step["encounter"], "rows:" + field[4:]), []).extend(got)
+                    values.setdefault((encounter, "rows:" + field[4:]), []).extend(got)
                     continue
                 if field.startswith("+"):
                     # E08 T57: a field several steps add to, `; ` between (`none` left out).
-                    key = (step["encounter"], field[1:])
+                    key = (encounter, field[1:])
                     if got != "none" or key not in values:
                         values[key] = got if values.get(key, "none") == "none" \
                             else f"{values[key]}; {got}"
                     continue
-                values[(step["encounter"], field)] = got
+                values[(encounter, field)] = got
             for note in oddities(obs, step.get("expect", {})):
                 notes.setdefault(step["encounter"], []).append(note)
             # E08 T32b2: `note` reads like `record`, under "anything odd" unless it reads `none`

@@ -1,0 +1,250 @@
+# Experiment batch TWN-4, part a (E09 T34; design note §78, survey
+# docs/rules/surveys/E09-tavern.md §2, §3, §9 rows TWN-4-1, -2, -6 and -8): the taverns' offers
+# over eight weeks, the town's hire and its replacement, and the Recruit button, in SoD on Easy,
+# hot seat. Parts b and c (`E09-batch-4b.toml`, `-4c.toml`) hold the other rows. Build:
+# docs/experiments/README.md. Predictions are for the agent who evaluates the results; the
+# template never shows them. "The reading" is the survey's code reading of Heroes3.exe (the engine
+# follows it, faithful); VCMI's is VCMI 1.7.5 as the survey summarises it (§7).
+#
+# | row     | settles            | the reading                            | otherwise               |
+# | TWN-4-1 | §2 (the week's     | slot 0 a class of the player's faction | the wiki: the same; the |
+# |         | fill)              | each week; the two classes differ;     | manual: two heroes that |
+# |         |                    | full starting armies                   | change each week        |
+# | TWN-4-2 | §3 (the hire, the  | at once, any faction, the other's      | VCMI: the same          |
+# |         | replacement)       | class avoided, one creature; the hero  |                         |
+# |         |                    | on the entrance, the guild's spells    |                         |
+# | TWN-4-6 | §3 (Recruit)       | disabled at 8 heroes on the map        | VCMI: two caps (TD-21)  |
+# |         |                    | whatever the garrison, and with a      |                         |
+# |         |                    | visitor                                |                         |
+# | TWN-4-8 | §2.2 (the edition) | a Conflux class now and then in slot   | the SoD retail's rule   |
+# |         |                    | 1 (edition 3: the Conflux classes      | (edition 2): no Conflux |
+# |         |                    | weigh 5 in the draw)                   | class for a non-Conflux |
+# |         |                    |                                        | player                  |
+#
+# **The draws** (survey §2.2): xdd.dll logs each tavern draw with its range (the capture harness,
+# E09 T34: `tavern_class v of 1-total`, `tavern_type v of 1-n`): a class by random_between(1,
+# the weights' total), then a type of the class by random_between(1, its free types). The
+# weights are `HCTRAITS.TXT`'s tavern column of the player's faction: Castle's (Red's) 6 for the
+# Knight, Cleric, Ranger, Druid, Alchemist, Wizard, Barbarian, Battle Mage, Beastmaster and Witch,
+# 5 for the other eight (the two Conflux classes among them); Stronghold's (Blue's) 6 for the
+# Knight, Cleric, Ranger, Alchemist, Demoniac, Death Knight, Overlord, Barbarian, Battle Mage and
+# Beastmaster, 5 for the other eight. So slot 0 (own faction only) totals 12 (the faction's two
+# classes, 6 each); slot 1 (any class, slot 0's avoided) 100 less the avoided class's weight, 94
+# with the Conflux classes weighing, 84 without.
+#
+# **The weeks** (as batch TWN-3): the harness writes the date (game +0x1F63E) to the week's last
+# day before each pair of end turns (Red's, Blue's), so each pair starts a week: M1 W2, W3, W4, M2
+# W1, W2, W3, W4. Nobody hires before the eighth week.
+#
+# **The towns** (`[[map.town]]`, map row 10, entrances 8 columns apart from column 7): R1 (7, 10),
+# R2 (15, 10), R3 (23, 10) and R4 (31, 10), Red's Castles with the Fort, the Tavern and the Mage
+# Guild level 1, garrisons empty; Blue's B (27, 28), a Stronghold with the Fort.
+#
+# **The heroes:** Red's TWN-4-6 (Edric) south of R1 at (7, 11); TWN-4-1, -2 and TWN-4-6a to -6c
+# far off on row 30, never moving: Red 6 heroes on the map. Blue's TWN-4-1b at (30, 32).
+
+[map]
+name = "E09 batch TWN-4a"
+description = "Engine-generated experiment map (E09, batch TWN-4, part a): the taverns' offers over eight weeks, the town's hire and its replacement, the Recruit button. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E09-batch-4a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, Red and Blue both human, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above.",
+    "The records are the game's memory: a player's two tavern offers (player record +0x28, +0x2C: hero types), each offer's hero record (game +0x21620 + 0x492 x type: its army +0x91, points +0x4D of the day's +0x49, spell points +0x18, class +0x30), the hero pool (game +0x4DF18). The capture harness reads them, writes the date for the weeks and logs the taverns' draws (`clients/capture/batches/E09-batch-4a.toml`, E09 T34). Played by hand the tavern dialog shows the two offers (portrait, name, level, class).",
+    "Tiles are (column, row) from 0 at the top left; a town's entrance is the tile a hero visits. A step: click the target once (the path's marks show), then again (the hero goes).",
+    "Order: the offers on Red's day 1; then each week: end Red's turn and Blue's (by hand: play the days through), the offers on Red's new turn, eight weeks in all; then, in the eighth week, the hires and the Recruit button (TWN-4-6, TWN-4-2).",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- the towns --------------------------------------------------------------------------------
+
+[[map.town]]  # R1
+entrance = [7, 10]
+faction = "castle"
+owner = "red"
+buildings = ["fort", "tavern", "mage guild 1"]
+garrison = []
+
+[[map.town]]  # R2
+entrance = [15, 10]
+faction = "castle"
+owner = "red"
+buildings = ["fort", "tavern", "mage guild 1"]
+garrison = []
+
+[[map.town]]  # R3
+entrance = [23, 10]
+faction = "castle"
+owner = "red"
+buildings = ["fort", "tavern", "mage guild 1"]
+garrison = []
+
+[[map.town]]  # R4
+entrance = [31, 10]
+faction = "castle"
+owner = "red"
+buildings = ["fort", "tavern", "mage guild 1"]
+garrison = []
+
+[[map.town]]  # B
+entrance = [27, 28]
+faction = "stronghold"
+owner = "blue"
+buildings = ["fort"]
+garrison = []
+
+# --- TWN-4-1 and TWN-4-8: the offers over eight weeks -------------------------------------------
+
+[[encounter]]
+id = "TWN-4-1"
+title = "The two players' tavern offers over eight weeks (rows TWN-4-1 and TWN-4-8)"
+questions = ["TWN-TAV-001", "TWN-TAV-002"]
+procedure = [
+    "Red's turn, day 1, before any hero moves: read Red's and Blue's two offers (each: the hero, its class, army, points, spell points, artifacts) and the draws the game's start made.",
+    "Then each week (eight in all): write the date to the week's last day, end Red's turn and Blue's; on Red's new turn read the four offers again and the draws of the week's start.",
+]
+record = [
+    { table = ["week", "Red's slot 0", "Red's slot 1", "Blue's slot 0", "Blue's slot 1", "the taverns' draws (class, type; with their ranges)"], rows = 8 },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (survey §2.2, §2.3): at the start and each week every slot is released and
+  filled anew, Red's slot 0, slot 1, then Blue's (the log: four pairs `tavern_class`,
+  `tavern_type` a week). **Slot 0 a class of the player's faction** every week (Red's Knight or
+  Cleric, Blue's Barbarian or Battle Mage), its class draw's range **1-12**; **slot 1 another
+  class** (never slot 0's), any faction, its range **1-94** (100 less slot 0's class, 6 for every
+  one of these four classes); the type within the class drawn uniformly over its free types (the
+  type draw's range their count: no placed hero's type, no type offered). Every offer: **a full
+  starting army** (`draw_starting_army` with the one-creature flag clear: its type's first stack
+  with a count in its range, a second with 88 in 100, a third with 25 in 100 of those), its spell
+  points Knowledge x 10 (x the Intelligence factor), no returning mark. A type may come again in a
+  later week (released types are free for every draw).
+- **Row TWN-4-8** (survey §2.2, finding 6): the edition is 3 in this build, so **the Conflux
+  classes (Planeswalker, Elementalist) weigh 5** in both players' slot 1: every slot-1 range is
+  94, and over the 32 slot draws a Conflux class shows now and then in a slot 1 (about one draw in
+  nine). The SoD retail's rule (the edition 2) would give 84 and no Conflux class.
+- **VCMI** (`TavernHeroesPool`, survey §7): the same weights, slot 0 the faction, the other's
+  class avoided, Conflux heroes for any player; both slots changed each week.
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+name = "TWN-4-1"
+at = [4, 30]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.also]]
+type = "Gurnisson"
+specialty = "creature Ballista"
+owner = "blue"
+name = "TWN-4-1b"
+at = [30, 32]
+primary = [1, 1, 1, 1]
+army = [["Goblin", 1]]
+
+# --- TWN-4-6: the Recruit button ------------------------------------------------------------------
+
+[[encounter]]
+id = "TWN-4-6"
+title = "The Recruit button: a visitor in the town; Red's heroes on the map with a garrison hero (5, 7, 8)"
+questions = ["TWN-TAV-003"]
+procedure = [
+    "In the eighth week, Red's turn. TWN-4-6 stands south of R1 at (7, 11): step north onto the entrance (R1's screen opens; Red has 6 heroes on the map). Click the Tavern: note Recruit (enabled or greyed) and the status line with the mouse over it. Close the tavern.",
+    "Click TWN-4-6's portrait (the lower bar), then the upper one (the town's flag): it moves into the garrison (Red: 5 on the map). Click the Tavern again: note Recruit. Hire slot 0 (TWN-4-2's first hire). Click the Tavern again: note Recruit and the status line over it. Close the tavern and the town screen.",
+    "After TWN-4-2's hire in R2 (Red: 7 on the map, TWN-4-6 in R1's garrison): open R3's screen from the town list (no visitor), click the Tavern: note Recruit; hire slot 0 (Red: 8 on the map).",
+    "Open R4's screen from the town list (no visitor), click the Tavern: note Recruit and the status line over it. Close.",
+]
+record = [
+    { field = "R1 with TWN-4-6 its visitor (Red 6 on the map): Recruit; the status line over it" },
+    { field = "TWN-4-6 into R1's garrison: R1's garrison hero and visitor; Red's heroes on the map" },
+    { field = "R1 without a visitor (Red 5 on the map, a garrison hero): Recruit" },
+    { field = "R1 after the hire (the hired hero its visitor; Red 6 on the map): Recruit; the status line over it" },
+    { field = "R3 from the list, no visitor (Red 7 on the map, a garrison hero in R1): Recruit; Red's heroes on the map after a hire there" },
+    { field = "R4 from the list, no visitor (Red 8 on the map, a garrison hero in R1): Recruit; the status line over it; Red's heroes on the map" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (survey §3; the Recruit button 0x5D81EE, the hint `tavern_dialog_hint`
+  0x5D7920): R1 with a visitor: **disabled**, the status line the visitor's refusal text; into
+  the garrison: R1's garrison hero TWN-4-6, no visitor, Red 5 on the map (a garrison hero is off
+  the list); **enabled** (gold enough, an offer selected, 5 below 8, no visitor); after the hire,
+  the hired hero R1's visitor: **disabled** (the visitor); R3 (7 on the map, 8 heroes with the
+  garrison hero): **enabled**, a hire there brings Red to 8 on the map; R4 (8 on the map):
+  **disabled**, the status line the 8-heroes refusal (with 8 in its text): the garrison hero not
+  counted either way.
+- **VCMI** (TD-21, survey §8): a hire is refused with 8 heroes on the map and also with 16 in all
+  (the garrison heroes counted); a visitor refuses a town's hire as well.
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+name = "TWN-4-6"
+at = [7, 11]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.also]]
+type = "Valeska"
+specialty = "creature Archer"
+name = "TWN-4-6a"
+at = [10, 30]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.also]]
+type = "Sylvia"
+specialty = "skill Navigation"
+name = "TWN-4-6b"
+at = [13, 30]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.also]]
+type = "Christian"
+specialty = "creature Ballista"
+name = "TWN-4-6c"
+at = [16, 30]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- TWN-4-2: the hire and its replacement -----------------------------------------------------------
+
+[[encounter]]
+id = "TWN-4-2"
+title = "A hire from each slot: the hired hero's tile and spells, the slot's replacement"
+questions = ["TWN-TAV-003", "TWN-TAV-004"]
+procedure = [
+    "In the eighth week, Red's turn, in R1 (TWN-4-6's visit, after it moved into the garrison): click the Tavern, select slot 0 and note the offer; click Recruit. Note the hired hero (on R1's entrance? its spells against R1's guild's), Red's two slots now (the replacement in slot 0), Red's gold, and the draws.",
+    "Open R2's screen from the town list (no visitor): click the Tavern, select slot 1 and note the offer; click Recruit. Note the same.",
+    "In R3 (TWN-4-6's third step): the hire of slot 0 there; note the same.",
+]
+record = [
+    { field = "R1, slot 0 selected: the dialog; the offer" },
+    { field = "R1, slot 0 hired: the hired hero (R1's visitor: offer, tile, spells); R1's guild spells; Red's two slots; Red's gold" },
+    { field = "R1's step: the taverns' draws" },
+    { field = "R2, slot 1 selected: the dialog; the offer" },
+    { field = "R2, slot 1 hired: the hired hero (R2's visitor: offer, tile, spells); R2's guild spells; Red's two slots; Red's gold" },
+    { field = "R2's step: the taverns' draws" },
+    { field = "R3, slot 0 hired: the hired hero (R3's visitor: offer, tile); Red's two slots; Red's gold; the draws" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (survey §3, `town_tavern_hire` 0x5C12E0, `tavern_slot_replace` 0x4C86A0): each
+  hire takes 2 500 gold; the hired hero stands on the town's **entrance** as its visitor (R1 (7,
+  10), R2 (15, 10), R3 (23, 10)), with the army it was offered with (the week's full one), and
+  **learns the town's guild spells when it has a spell book** (a Cleric's, a Battle Mage's...: its
+  spells then include R1's level-1 spells; a hero without a book learns none). **The slot is
+  refilled at once**: one draw pair, the class range **100 less the other slot's class weight** (94
+  or 95 in Castle's column; any faction: not own faction only), the new offer of another class
+  than the other slot's, with **one creature** (its type's first starting stack, count 1), its
+  spell points full.
+- **VCMI** (`TavernHeroesPool`, `CGameHandler::hireHero`): the same replacement (a new hero at
+  once, one creature, the other's class avoided); the hero placed on the town's visitable tile.
+"""
+[encounter.hero]
+type = "Rion"
+specialty = "skill First Aid"
+name = "TWN-4-2"
+at = [7, 30]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]

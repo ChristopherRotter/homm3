@@ -120,7 +120,10 @@ PARK = (618, 593)
 # read by a recipe's `draws` (h3adv.py; xdd.dll's file `draws`, `name value` per line).
 LOGGED = ("ray_aim", "garrison_chance_fort", "garrison_chance", "garrison_sum_1",
           "garrison_sum_2", "garrison_sum_3", "garrison_upgrade", "portal_dwelling",
-          "portal_creature")
+          "portal_creature",
+          # E09 T34 (batch TWN-4): the taverns' draws, each line `name value low high` (the
+          # bounds of its random_between): a tavern draw's class and type, a returning hero's slot.
+          "tavern_class", "tavern_type", "leave_slot")
 
 ROLLS = {
     "good_morale": (1, 24),  # random(1, 24) <= morale after an action: another turn

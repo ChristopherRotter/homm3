@@ -1,0 +1,159 @@
+# E09 batch TWN-4, part b, played by the capture harness (E09 T34; h3adv.py batch): the procedure
+# of experiments/specs/E09-batch-4b.toml as steps, on Easy, hot seat, Red and Blue human, the
+# starting bonus Gold. Rows TWN-4-3 and TWN-4-4 on days 6 to 8 (the date written to day 6 at the
+# first step), row TWN-4-5 on day 8.
+#
+# The reads (README, "Taverns and the Thieves' Guild"): `offers:red` Red's two offers by name and
+# class, `hero[<name>]:offer` a hero's record as an offer's (army, points of the day's, spell
+# points, artifacts, returning), `:owner`, `:returning`, `pool:<name>` its type's pool state,
+# `pool` the states' counts, `draws:leave_slot` and `draws:tavern` the step's logged draws with
+# their ranges. A step's `mana` writes spell points before it plays (a kept value told apart from
+# a refill); `narrow_pool = [<names>]` marks every free type reserved but those. A battle's plan
+# (`battle`): `retreat`, `surrender` (the attacker), `defender retreat`, `auto`.
+
+spec = "experiments/specs/E09-batch-4b.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- Red's day 1, written to day 6 ------------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-4-3"
+hero = "TWN-4-3"
+date = [1, 1, 6]
+[step.record]
+"before (Red's day 1, written to day 6): Red's offers; the pool states" = ["offers:red", "text:pool: TWN-4-3: ", "pool:TWN-4-3", "text:-3f: ", "pool:TWN-4-3f", "text:-4: ", "pool:TWN-4-4", "text:-4b: ", "pool:TWN-4-4b", "text:-5: ", "pool:TWN-4-5"]
+[step.note]
+"the game's version; the date; the pool's states" = ["map_kind", "date", "pool"]
+
+# --- TWN-4-3 retreats from the Gnolls ----------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-4-3"
+hero = "TWN-4-3"
+mana = { "TWN-4-3" = 3 }
+walk = [5, 20]
+battle = "retreat"
+expect = { battle = true }
+[step.record]
+"TWN-4-3 retreats (day 6, Red's turn): Red's offers; its record; its pool state; the slot's draw" = ["offers:red", "text:TWN-4-3: ", "hero[TWN-4-3]:offer", "text:owner: ", "hero[TWN-4-3]:owner", "text:points before the battle: ", "before:hero:points", "text:pool: ", "pool:TWN-4-3", "text:the draw: ", "draws:leave_slot"]
+[step.note]
+"TWN-4-3's battle: the dialogs in order; messages" = ["order", "messages"]
+
+# --- TWN-4-4 surrenders to TWN-4-4x --------------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-4-4"
+hero = "TWN-4-4"
+mana = { "TWN-4-4" = 2 }
+walk = [5, 26]
+battle = "surrender"
+expect = { battle = true }
+[step.record]
+"TWN-4-4 surrenders (day 6): Red's offers; its record; its pool state; Red's gold before and after; the slot's draw" = ["offers:red", "text:TWN-4-4: ", "hero[TWN-4-4]:offer", "text:owner: ", "hero[TWN-4-4]:owner", "text:points before the battle: ", "before:hero:points", "text:pool: ", "pool:TWN-4-4", "text:Red before: ", "before:treasury:red", "text:after: ", "treasury:red", "text:the draw: ", "draws:leave_slot"]
+[step.note]
+"TWN-4-4's battle: the dialogs in order; messages" = ["order", "messages"]
+
+# --- TWN-4-4b loses to the Black Dragons ------------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-4-4"
+hero = "TWN-4-4b"
+mana = { "TWN-4-4b" = 1 }
+walk = [13, 26]
+battle = "auto"
+expect = { battle = true }
+[step.record]
+"TWN-4-4b loses (day 6): its record; its pool state; Red's offers; the battle's winner" = ["text:TWN-4-4b: ", "hero[TWN-4-4b]:offer", "text:owner: ", "hero[TWN-4-4b]:owner", "text:points before the battle: ", "before:hero:points", "text:pool: ", "pool:TWN-4-4b", "offers:red", "text:winner: ", "winner"]
+[step.note]
+"TWN-4-4b's battle: the dialogs in order; messages" = ["order", "messages"]
+
+# --- Blue's day 6, Red's day 7 ---------------------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-4-3"
+end_turn = true
+[step.record]
+"Blue's turn, day 6: the returning marks of TWN-4-3 and TWN-4-4" = ["text:TWN-4-3: ", "hero[TWN-4-3]:returning", "text:TWN-4-4: ", "hero[TWN-4-4]:returning", "offers:red"]
+
+[[step]]
+encounter = "TWN-4-3"
+end_turn = true
+[step.record]
+"Red's day 7: Red's offers; TWN-4-3's and TWN-4-4's points (of the day's)" = ["offers:red", "text:TWN-4-3: ", "hero[TWN-4-3]:points", "text:of: ", "hero[TWN-4-3]:day_points", "text:TWN-4-4: ", "hero[TWN-4-4]:points", "text:of: ", "hero[TWN-4-4]:day_points"]
+[step.note]
+"Red's day 7: the date" = "date"
+
+# --- Blue's day 7: TWN-4-3b attacks TWN-4-3f, who retreats --------------------------------------------------
+
+[[step]]
+encounter = "TWN-4-3"
+mana = { "TWN-4-3f" = 4 }
+end_turn = true
+
+[[step]]
+encounter = "TWN-4-3"
+hero = "TWN-4-3b"
+walk = [12, 20]
+battle = "defender retreat"
+expect = { battle = true }
+[step.record]
+"TWN-4-3f retreats (day 7, Blue's turn): Red's offers; its record; the pool states; the slot's draw" = ["offers:red", "text:TWN-4-3f: ", "hero[TWN-4-3f]:offer", "text:owner: ", "hero[TWN-4-3f]:owner", "text:pool: TWN-4-3: ", "pool:TWN-4-3", "text:-3f: ", "pool:TWN-4-3f", "text:-4: ", "pool:TWN-4-4", "text:; the draw: ", "draws:leave_slot"]
+[step.note]
+"TWN-4-3f's battle: the dialogs in order; messages; the date" = ["order", "messages", "date"]
+
+# --- Red's day 8: week 2 ------------------------------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-4-3"
+end_turn = true
+[step.record]
+"Red's day 8 (week 2): Red's offers; the pool states; the week's draws" = ["offers:red", "text:slot 0: ", "offer:red:0", "text:slot 1: ", "offer:red:1", "text:pool: TWN-4-3: ", "pool:TWN-4-3", "text:-3f: ", "pool:TWN-4-3f", "text:-4: ", "pool:TWN-4-4", "text:-4b: ", "pool:TWN-4-4b", "text:; the draws: ", "turn_draws:tavern"]
+[step.note]
+"Red's day 8: the date" = "date"
+
+# --- TWN-4-5: the dismissal, the narrowed pool, two hires -----------------------------------------------------
+
+[[step]]
+encounter = "TWN-4-5"
+hero = "TWN-4-5"
+narrow_pool = ["TWN-4-4b"]
+[step.record]
+"before: TWN-4-5's artifacts (worn, backpack); the pool narrowed (its states)" = ["text:worn: ", "hero[TWN-4-5]:artifacts", "text:backpack: ", "hero[TWN-4-5]:backpack", "text:pool: ", "pool"]
+
+[[step]]
+encounter = "TWN-4-5"
+hero = "TWN-4-5"
+screen = "hero"
+[[step.actions]]
+click = ["dismiss"]
+answer = "yes"
+record = { "TWN-4-5 dismissed: the question; its owner, pool state, artifacts, army; the pool's states" = ["questions", "text:owner: ", "hero[TWN-4-5]:owner", "text:pool: ", "pool:TWN-4-5", "text:worn: ", "hero[TWN-4-5]:artifacts", "text:backpack: ", "hero[TWN-4-5]:backpack", "text:army: ", "hero[TWN-4-5]:army", "text:points: ", "hero[TWN-4-5]:points", "text:spell points: ", "hero[TWN-4-5]:spell_points", "text:pool: ", "pool"] }
+
+[[step]]
+encounter = "TWN-4-5"
+town = [7, 10]
+[[step.actions]]
+tavern = true
+[[step.actions]]
+click = ["offer:0"]
+note = { "R1, slot 0 selected: the dialog; Red's offers" = ["tavern", "offers:red"] }
+[[step.actions]]
+click = ["recruit"]
+record = { "the first hire (R1, slot 0): the hired hero; Red's slot 0 now (the replacement); the draws" = ["text:hired: ", "town:7,10:visitor:offer", "text:; slot 0: ", "offer:red:0", "text:worn: ", "offer:red:0:artifacts", "text:backpack: ", "offer:red:0:backpack", "text:class: ", "offer:red:0:class", "text:; slot 1: ", "offer:red:1"] }
+[step.record]
+"+the first hire (R1, slot 0): the hired hero; Red's slot 0 now (the replacement); the draws" = ["text:the draws: ", "draws:tavern"]
+
+[[step]]
+encounter = "TWN-4-5"
+town = [15, 10]
+[[step.actions]]
+tavern = true
+[[step.actions]]
+click = ["offer:0"]
+[[step.actions]]
+click = ["recruit"]
+record = { "the second hire (R2, slot 0): the hired hero; Red's slot 0 now (the replacement); the draws" = ["text:hired: ", "town:15,10:visitor:offer", "text:; slot 0: ", "offer:red:0", "text:worn: ", "offer:red:0:artifacts", "text:backpack: ", "offer:red:0:backpack", "text:class: ", "offer:red:0:class", "text:; slot 1: ", "offer:red:1"] }
+[step.record]
+"+the second hire (R2, slot 0): the hired hero; Red's slot 0 now (the replacement); the draws" = ["text:the draws: ", "draws:tavern", "text:; the pool: ", "pool"]

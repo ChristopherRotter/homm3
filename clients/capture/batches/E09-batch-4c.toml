@@ -1,0 +1,99 @@
+# E09 batch TWN-4, part c, played by the capture harness (E09 T34; h3adv.py batch): the procedure
+# of experiments/specs/E09-batch-4c.toml as steps, on Easy, hot seat, Red and Blue human, the
+# starting bonus Gold. Row TWN-4-7 on Red's day 1.
+#
+# The resources are written before the first read (a step's `resources`, player +0x9C: wood,
+# mercury, ore, sulfur, crystal, gems, gold). R1 is opened from the town list (`town = [x, y]`:
+# no hero visits it); N2 to N5 by the walk that takes each (its town screen opens). On a town
+# screen `tavern = true` clicks the Tavern (the tavern dialog), `click = ["guild"]` its Thieves'
+# Guild button; `guild` reads the window showing (each row's places by the flags' colours, each
+# player's parts: README, "Taverns and the Thieves' Guild"); the walk then closes the guild, the
+# tavern and the town screen. The Den's window is read as it shows during the walk (`guilds`) and
+# closed by the harness.
+
+spec = "experiments/specs/E09-batch-4c.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- one tavern: R1 from the town list -------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-4-7"
+town = [7, 10]
+resources = { red = [5, 10, 5, 10, 10, 10, 20000], blue = [20, 1, 20, 1, 1, 1, 10000] }
+[[step.actions]]
+tavern = true
+note = { "R1's tavern dialog" = "tavern" }
+[[step.actions]]
+click = ["guild"]
+record = { "one tavern (R1): the rows' places; the parts" = "guild" }
+[step.note]
+"the game's version; Red's and Blue's resources" = ["map_kind", "text:red: ", "treasury:red", "text:blue: ", "treasury:blue"]
+
+# --- two to five taverns: N2 to N5 taken -----------------------------------------------------------
+
+[[step]]
+encounter = "TWN-4-7"
+hero = "TWN-4-7a"
+walk = [15, 10]
+expect = { question = "none", battle = false }
+[[step.actions]]
+tavern = true
+[[step.actions]]
+click = ["guild"]
+record = { "two taverns (N2 taken): the rows' places; the parts" = "guild" }
+[step.note]
+"N2's owner; how the screens closed" = ["town:15,10:owner", "town_screen_closed"]
+
+[[step]]
+encounter = "TWN-4-7"
+hero = "TWN-4-7b"
+walk = [23, 10]
+expect = { question = "none", battle = false }
+[[step.actions]]
+tavern = true
+[[step.actions]]
+click = ["guild"]
+record = { "three taverns (N3 taken): the rows' places; the parts" = "guild" }
+[step.note]
+"N3's owner" = "town:23,10:owner"
+
+[[step]]
+encounter = "TWN-4-7"
+hero = "TWN-4-7c"
+walk = [31, 10]
+expect = { question = "none", battle = false }
+[[step.actions]]
+tavern = true
+[[step.actions]]
+click = ["guild"]
+record = { "four taverns (N4 taken): the rows' places; the parts" = "guild" }
+[step.note]
+"N4's owner" = "town:31,10:owner"
+
+[[step]]
+encounter = "TWN-4-7"
+hero = "TWN-4-7f"
+walk = [39, 10]
+expect = { question = "none", battle = false }
+[[step.actions]]
+tavern = true
+[[step.actions]]
+click = ["guild"]
+record = { "five taverns (N5 taken): the rows' places; the parts" = "guild" }
+[step.note]
+"N5's owner; Red's resources" = ["town:39,10:owner", "treasury:red"]
+
+# --- the Den of Thieves ------------------------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-4-7"
+hero = "TWN-4-7d"
+walk = [52, 10]
+expect = { question = "none", battle = false }
+[step.record]
+"the Den of Thieves: its message; the rows' places; the parts" = ["messages", "guild"]
+[step.note]
+"the Den's visit: the dialogs in order" = "order"
+"the Den's visit: screens not known by their vtable" = "unknown_screens"

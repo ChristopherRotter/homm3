@@ -38,7 +38,9 @@
    4. Logged draws (E17 M3 T7c-3, *provisional*): a site marked `logged` (Chain Lightning's
       rays turning in `ray_aim`) appends each of its draws, as returned, to <H3CLOCK>\draws, one
       line "<site> <value>", so the frame check can draw the same rays; the file starts empty
-      with the game. Nothing is forced there unless the harness asks, as at any site.
+      with the game. Nothing is forced there unless the harness asks, as at any site. A site
+      logged with its range (E09 T34: `logged` 2, the taverns' draws) writes "<site> <value>
+      <low> <high>", the bounds of its random_between(low, high).
    5. The clips' clock (E17 M5 T4b2b, *provisional*): BINKW32.DLL reads WINMM's timeGetTime
       itself to pace a clip (`BinkWait`), so its import slot is pointed at the same clock
       (bink_time, which does not count as the game's reads); the ack's eighth field is 1 when
@@ -130,7 +132,7 @@ struct site {
     long value;       /* what they return */
     int fixed;        /* the site's other draws return `otherwise` */
     long otherwise;
-    int logged;       /* its draws go to <H3CLOCK>\draws */
+    int logged;       /* its draws go to <H3CLOCK>\draws (2: with their range, E09 T34) */
     long queue[QUEUE]; /* E17 M4 T2c-2: the next draws' values, in order (`roll <site> a,b,..`) */
     int queued;       /* how many */
     int taken;        /* how many of them were drawn */
@@ -205,6 +207,13 @@ static struct site sites[] = {
        then one of its creatures, rand() mod their number */
     {"portal_dwelling", 0x5BD825, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 1},
     {"portal_creature", 0x5BD86E, CRT_RAND, 0, 0, 0, 0, 0, 1},
+    /* E09 T34 (batch TWN-4; survey docs/rules/surveys/E09-tavern.md §2.2, §4), logged with their
+       range: tavern_hero_draw 0x4BB5E0's class, random_between(1, the class weights' total),
+       and its type, random_between(1, the drawn class's free types); hero_leave_game
+       0x4D9EC0's tavern slot after a retreat or a surrender, random_between(0, 1) */
+    {"tavern_class", 0x4BB7AA, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 2},
+    {"tavern_type", 0x4BB7CF, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 2},
+    {"leave_slot", 0x4DA1C6, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 2},
 };
 #define SITES (sizeof sites / sizeof *sites)
 
@@ -301,7 +310,10 @@ static int forced(DWORD back, int draw, int ranged, int low, int high)
         if (s->logged) {
             FILE *f = fopen(draws_path, "a");
             if (f) {
-                fprintf(f, "%s %d\n", s->name, draw);
+                if (s->logged == 2 && ranged)
+                    fprintf(f, "%s %d %d %d\n", s->name, draw, low, high);
+                else
+                    fprintf(f, "%s %d\n", s->name, draw);
                 fclose(f);
             }
         }
