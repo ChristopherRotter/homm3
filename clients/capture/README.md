@@ -1720,6 +1720,11 @@ creature's cast it holds the background alone outside the caster).
 
 ## Traps
 
+- A battle plan that ends in auto combat hands over at a human side's turn (E08 T120, batch E13's
+  third run): the key `a` pressed during the computer's turn can be lost while the turn's own
+  change looks like auto combat starting, and the battle then waits at the next human turn. A
+  stack's state read after its action waits for another stack's turn, not for the active stack to
+  change: it reads none while a shot plays, and the shots drop after the animation.
 - The game draws its own cursor: the recipes park it (the battle's at (618, 593) since M3
   T4b-2b-1, beside the log's item, which the set compares), and probes stay clear of its picture
   where it rests (the battle's nearest, 34 px right on its row and 15 px above it).

@@ -916,8 +916,9 @@ def shoot_turn(game, mem, plan, end):
     attacker: every other attacking stack defends until the shooter's first turn; at it the
     shooter's shots are read, the other side's stacks, then it shoots the nearest of them (or,
     with one beside it, attacks that one: strike), and its shots are read again once its turn is
-    over. With `then = "retreat"` the attacker's next turn reads the defender's stacks by slot and
-    retreats (the confirmation's OK clicked); `auto` is played by `fight`. Returns {shots_before,
+    over. At the attacker's next turn, with `then = "retreat"`, the defender's stacks are read by
+    slot and it retreats (the confirmation's OK clicked); with `auto` `fight` turns auto combat
+    on there. Returns {shots_before,
     shots_after, action, before (the defender's stacks as the shooter's turn came), after (as it
     ended), before_retreat, retreated}."""
     done = {}
@@ -968,9 +969,12 @@ def shoot_turn(game, mem, plan, end):
             print(f"plan: attacker {plan['shoot']} {done['action']}; shots "
                   f"{done['shots_before']} then {done['shots_after']}", file=sys.stderr,
                   flush=True)
-            if plan["then"] == "auto":
-                return done
             continue
+        elif plan["then"] == "auto":
+            # The attacker's next turn: auto combat's key then (a key during the computer's
+            # turn may be lost while the turn's own change looks like auto combat started:
+            # batch E13's third run waited out the battle at the Archangels' next turn).
+            return done
         else:
             done["before_retreat"] = guards_by_slot(mem)
             game.key(BATTLE_KEYS["retreat"], 1.0)
