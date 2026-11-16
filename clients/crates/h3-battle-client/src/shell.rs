@@ -49,13 +49,14 @@
 //! that menu. The replay stops at them (the original shows its own screens there). The
 //! Multiplayer dialog and the hot seat's names (T7): their hints, help and title the user's
 //! tables' (`shell.multiplayer.*`, `shell.hot-seat.*`), the network modes' notice and the scenario
-//! screen's stub the client's (`shell.stub.network`, `shell.stub.scenario`); the window gives the
-//! dialogs' edits each key down as the original reads it (`h3_sdl::Window::scans`; the original's
-//! profile's) and, since T7b (decision 39), the text the keys print while an edit types (SDL's
-//! text input, `h3_sdl::Window::typed`: the system's layout), the edits' keys and the hot seat's
-//! ring through the key table with Shift as held (`keys::command_for`). The replay
-//! draws a game type menu's rows its redraw does not show as last shown (CLT-Q118:
-//! `h3_view::shell::menu::Stale`, the original's profile).
+//! screen's stub the client's (`shell.stub.network`, `shell.stub.scenario`); the window, the
+//! client's profile alone since T7b (decision 39), gives the dialogs' edits the text the keys
+//! print while an edit types (SDL's text input, `h3_sdl::Window::typed`: the system's layout),
+//! the edits' keys and the hot seat's ring through the key table with Shift as held
+//! (`h3_sdl::Window::scans`, `keys::command_for`), no scan code (the original's profile's
+//! typing, by the US table, is the replay's alone: M2's review). The replay draws a game type
+//! menu's rows its redraw does not show as last shown (CLT-Q118: `h3_view::shell::menu::Stale`,
+//! the original's profile).
 
 use std::fs;
 use std::io::{self, BufRead};
@@ -1126,10 +1127,10 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
 }
 
 /// What the window gave in one wait, in order (T7b): its events, each keyboard key down with its
-/// scan code, and the characters its text input typed between them.
+/// Shift, and the characters its text input typed between them.
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Given {
-    /// An event and, for a keyboard key down, its scan code.
+    /// An event and, for a keyboard key down, its Shift.
     Event(Event, Option<KeyScan>),
     /// A character typed.
     Typed(char),
@@ -1162,9 +1163,9 @@ fn merged(events: Vec<Event>, scans: &[Option<KeyScan>], typed: &[(usize, char)]
 }
 
 /// A window's event to what takes the inputs on the screen: the left button's press and release,
-/// the right button's (wherever the mouse is: at `pointer`), a key's down (with its scan code, the
-/// dialogs' edits' in the original's profile, T7; its command with Shift as held, T7b) and up
-/// through the key table.
+/// the right button's (wherever the mouse is: at `pointer`), a key's down (its command with Shift
+/// as held, T7b; no scan code: the window runs the client's profile, whose edits type the text
+/// input, M2's review) and up through the key table.
 fn on_front(
     front: &mut Front,
     keys: &Keys<Command>,
@@ -1182,11 +1183,7 @@ fn on_front(
         Event::Key(key) => {
             let shift = scan.is_some_and(|s| s.shift);
             let command = shell_keys::command_for(keys, &front.contexts(), shift, key.name());
-            let scan = scan.map(|s| h3_ui::edit::Scan {
-                code: s.code,
-                shift: s.shift,
-            });
-            front.key(scan, command, key.name())
+            front.key(None, command, key.name())
         }
         Event::KeyUp(key) => front.key_up(key.name()),
         _ => menu::Did::default(),
@@ -1241,10 +1238,7 @@ mod tests {
 
     #[test]
     fn the_typed_characters_come_between_the_events() {
-        let scan = Some(KeyScan {
-            code: 0x1E,
-            shift: false,
-        });
+        let scan = Some(KeyScan { shift: false });
         let events = vec![Event::Key(Key::A), Event::KeyUp(Key::A), Event::Redraw];
         let scans = [scan, None, None];
         assert_eq!(

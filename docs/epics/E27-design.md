@@ -2334,9 +2334,9 @@ takes the hover at its first move (CLT-Q128, decision 40: the statics for the co
 Typing follows the keyboard's own layout in the client's profile (CLT-Q127, decision 39: T7b,
 §17). The original's US table stays for the comparisons: the replay gives the edits a recipe's
 key names and typed characters as scan codes (`shell::keys::scan`, `h3_ui::edit::scan_of`: the US
-layout, as `xdotool`). The window gives each key's set 1 scan code and Shift (`h3_sdl`'s
-`Window::scans`, SDL's scan code by the key's place); since T7b it runs the client's profile
-alone, so only the Shift is read.
+layout, as `xdotool`). The window gives each key down's Shift (`h3_sdl`'s `Window::scans`); it
+gave its set 1 scan code too until M2's review, which dropped it: since T7b the window runs the
+client's profile alone, which never reads it.
 
 ### 16.4 Not built (the agent's calls, *provisional*)
 
