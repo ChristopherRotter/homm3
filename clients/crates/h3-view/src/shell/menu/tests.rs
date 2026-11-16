@@ -823,12 +823,22 @@ fn the_front_is_a_menu_or_the_multiplayer_dialog_over_its_menu() {
     assert_eq!(dialog.key_up("A"), Did::default());
     assert!(dialog.press([578, 503]).changed);
     assert_eq!(dialog.release().ended, Some(Ended::Multiplayer(false)));
-    // New Game's menu again: its procedure's last item still Multiplayer, so the pointer over
-    // it is no change and it is not drawn hovered (CLT-Q128).
+    // New Game's menu again: the pointer over Multiplayer drawn hovered at the first move
+    // (CLT-Q128, fixed); in the original's profile its procedure's last item is still
+    // Multiplayer, so that move is no change.
+    let original = menus(Bugs::Original);
+    let mut kept = original
+        .front(
+            Screen::GameType(Game::New),
+            Some(dialog.clone()),
+            [649, 180],
+        )
+        .unwrap();
+    assert!(!kept.moved([649, 180]).changed);
     let mut menu = all
         .front(Screen::GameType(Game::New), Some(dialog), [649, 180])
         .unwrap();
-    assert!(!menu.moved([649, 180]).changed);
+    assert!(menu.moved([649, 180]).changed);
     assert!(menu.moved([643, 70]).changed);
     let Front::Menu(m) = &menu else {
         panic!("a menu")
@@ -861,6 +871,7 @@ fn the_scenario_screen_is_a_stub_over_its_game_type_menu() {
         "scenario"
     );
     assert_eq!(stub_name(Screen::Credits), "credits");
+    assert_eq!(super::scenario(Game::New, ScenarioKind::Single), STUBS[4]);
     let all = menus(Bugs::Fixed);
     for (screen, game) in [
         (

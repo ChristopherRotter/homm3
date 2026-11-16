@@ -16,8 +16,9 @@
 //!   opens with none hovered, the pointer where it is (`menu-new`'s `menu`: over Single). The
 //!   last item is a static each procedure alone writes, never cleared as its menu opens again
 //!   (E27 M2 T7: `edit-keys`' `reopened`, Multiplayer chosen again after the dialog's Escape stays
-//!   in frame 0): an item the pointer left the menu over is no change when the menu shows again
-//!   ([`Hovers`]; CLT-Q128, built as the original's meanwhile).
+//!   in frame 0): an item the pointer left the menu over is no change when the menu shows again.
+//!   **Fixed** (CLT-Q128, decision 40): a menu opening anew takes the item under the pointer at
+//!   its first move; the original's statics ([`Hovers`]) for the comparisons only.
 //! - **A press** (`button_press` 0x456860): the button drawn pressed with its sample
 //!   (`button.wav`, [`Did::sample`]); the command at the release over it (0x200/0xD), none off it;
 //!   a hotkey's key down presses it, its key up clicks it.
@@ -240,7 +241,7 @@ pub struct Menu {
 
 /// The menus' last items under the mouse (`main_menu_hovered` 0x67FA60, `game_type_menu_hovered`
 /// 0x6780F0, New Game's and Load Game's one procedure): statics their procedures alone write,
-/// carried from a menu to the next (E27 M2 T7, CLT-Q128).
+/// carried from a menu to the next (E27 M2 T7; CLT-Q128: read by the original's profile alone).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Hovers {
     /// The main menu's.
@@ -299,7 +300,8 @@ impl Menu {
     }
 
     /// The menu opened again with the pointer at `pointer`, nothing held or open, none drawn
-    /// hovered; its procedure's last item `hovers`' (CLT-Q128).
+    /// hovered; in the original's profile its procedure's last item `hovers`' (CLT-Q128: fixed,
+    /// none in the client's).
     #[must_use]
     pub fn opened(&self, pointer: [i32; 2], hovers: Hovers) -> Self {
         let mut menu = Self::new(
@@ -310,7 +312,9 @@ impl Menu {
             pointer,
             self.bugs,
         );
-        menu.hovered = hovers.of(self.kind);
+        if self.bugs == Bugs::Original {
+            menu.hovered = hovers.of(self.kind);
+        }
         menu.hovers = hovers;
         menu
     }

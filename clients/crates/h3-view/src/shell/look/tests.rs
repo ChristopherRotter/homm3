@@ -182,3 +182,33 @@ fn a_layout_not_the_shell_s_is_refused() {
     assert!(parse_layout("[cursor]\ndef = \"a.def\"\nframe = 0\n").is_err());
     assert!(parse_layout(&LAYOUT.replace("[main_menu]", "[main_menu]\nextra = 1")).is_err());
 }
+
+#[test]
+fn the_multiplayer_dialog_shows_over_its_menu() {
+    // E27 M2 T7: the menu as it ended, the dialog's draws after its own, a popup over them.
+    let layout = parse_layout(LAYOUT).unwrap();
+    let menu = game_type(Game::New, Bugs::Fixed);
+    let mut dialog =
+        crate::shell::multiplayer::tests::multiplayer(Bugs::Fixed).opened(menu.clone(), [400, 300]);
+    let screen = Screen::Multiplayer(Game::New);
+    let front = Front::Multiplayer(Box::new(dialog.clone()));
+    let shown = look(&layout, screen, Some(&front)).unwrap();
+    assert_eq!(shown.background, "GamSelBk.pcx");
+    let under = menu.dialog_draws(&layout.player_palette);
+    assert_eq!(shown.draws[..under.len()], under[..]);
+    assert!(shown.draws.len() > under.len());
+    assert!(shown.over.is_empty() && shown.cursor);
+    dialog.right([578, 157]);
+    let front = Front::Multiplayer(Box::new(dialog));
+    let popup = look(&layout, screen, Some(&front)).unwrap();
+    assert!(!popup.over.is_empty() && !popup.cursor);
+    // Not on another screen; none without a menu under it.
+    assert_eq!(
+        look(&layout, Screen::GameType(Game::New), Some(&front)),
+        None
+    );
+    let bare = Front::Multiplayer(Box::new(crate::shell::multiplayer::tests::multiplayer(
+        Bugs::Fixed,
+    )));
+    assert_eq!(look(&layout, screen, Some(&bare)), None);
+}

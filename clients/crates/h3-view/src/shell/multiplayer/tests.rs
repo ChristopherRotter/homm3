@@ -395,3 +395,22 @@ fn cancel_and_escape_end_the_dialog() {
     // A key up that holds nothing.
     assert_eq!(m.key_up("F1"), Did::default());
 }
+
+#[test]
+fn the_right_button_releases_a_held_button_and_the_notice_answers_every_input() {
+    // A button held by the left button and released by the right (CLT-Q72 (a)).
+    let mut m = opened(Bugs::Fixed);
+    m.moved(HOT);
+    m.press(HOT);
+    assert!(m.right_release().changed);
+    assert!(m.hot_seat().is_some());
+    // The notice: a release with nothing held; its OK pressed, left and released off it.
+    let mut m = opened(Bugs::Fixed);
+    click(&mut m, IPX);
+    assert_eq!(m.release(), Did::default());
+    let ok = notice_ok(&m);
+    m.press(ok);
+    assert!(m.moved([5, 5]).changed);
+    assert!(m.release().changed);
+    assert!(m.noticing());
+}

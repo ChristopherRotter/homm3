@@ -847,6 +847,8 @@ whole (decision 38).
   every other group as recorded. Fixed on the way: the dialog's shadow, the status lines' fill and
   colour, the hover after a hold, the menus' statics.
 - **Questions:** CLT-Q127 (typing by the original's US table), CLT-Q128 (the menus' hover kept from
-  their last opening), both built as the original's meanwhile. CLT-STUB-6 (the network modes),
+  their last opening), asked in the session and both answered (b), fixed (decisions 39, 40):
+  CLT-Q128's fix built here (the statics in the original's profile alone), CLT-Q127's queued as
+  T7b (SDL's text input, the edits' keys in the key table). CLT-STUB-6 (the network modes),
   commented in `docs/stubs.toml` as the lane's others. **The agent's calls** (*provisional*,
   M2's review list items 56 to 64).

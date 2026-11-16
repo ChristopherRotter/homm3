@@ -2307,7 +2307,8 @@ again (`multiplayer`, two recipes added: `edit-keys`, `hotseat-long`). Built in
 - **The menu under the dialog** stays as it ended; the menus' last items are statics no opening
   clears (`main_menu_hovered` 0x67FA60, `game_type_menu_hovered` 0x6780F0, written by their
   procedures alone, `refs`): reopened after the dialog's Escape, New Game's menu does not draw
-  Multiplayer hovered under the pointer left on it (`edit-keys`' `reopened`; CLT-Q128).
+  Multiplayer hovered under the pointer left on it (`edit-keys`' `reopened`; CLT-Q128: fixed,
+  decision 40).
 - **Two names of 21 letters** (`hotseat-long`; §6.4's question): each edit holds 20, the 21st
   refused, so a stored name (21 bytes) always ends; the advanced options show the two apart (each
   cut to its row). No question.
@@ -2318,11 +2319,13 @@ Hot Seat works; IPX, TCP/IP, Modem, Direct Connect and Online show the network's
 client's words (`CLT-STUB-6`, style 1), the dialog then on stage 1 (its status line the hint under
 the pointer at the close); the scenario screen (a new game's, a load's: Load Game's multiplayer
 leads there) is a stub over its game type menu until M3. Enter in a hot seat's edit presses an
-enabled OK (CLT-Q107); with OK disabled it moves on, as the original's. Typing follows the
-original's US table (CLT-Q127) and the menus' statics are kept (CLT-Q128), both as the original's
-until answered. The window gives the edits each key's set 1 scan code and Shift (`h3_sdl`'s
-`Window::scans`, SDL's scan code by the key's place); the replay gives a recipe's key names and
-typed characters so (`shell::keys::scan`, `h3_ui::edit::scan_of`: the US layout, as `xdotool`).
+enabled OK (CLT-Q107); with OK disabled it moves on, as the original's. A menu opening anew
+takes the hover at its first move (CLT-Q128, decision 40: the statics for the comparisons only).
+Typing is to follow the keyboard's own layout (CLT-Q127, decision 39: T7b); until then it follows
+the original's US table: the window gives the edits each key's set 1 scan code and Shift
+(`h3_sdl`'s `Window::scans`, SDL's scan code by the key's place), the replay a recipe's key names
+and typed characters so (`shell::keys::scan`, `h3_ui::edit::scan_of`: the US layout, as
+`xdotool`).
 
 ### 16.4 Not built (the agent's calls, *provisional*)
 

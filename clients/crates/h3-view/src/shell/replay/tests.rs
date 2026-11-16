@@ -195,6 +195,7 @@ fn the_probes_names_are_the_shell_s_screens() {
     assert_eq!(shown(mp, true, "hotseat_names"), Some(true));
     assert_eq!(shown(mp, true, "multiplayer"), Some(false));
     assert_eq!(shown(mp, false, "hotseat_names"), Some(false));
+    assert_eq!(shown(Screen::MainMenu, true, "hotseat_names"), Some(false));
 }
 
 #[test]

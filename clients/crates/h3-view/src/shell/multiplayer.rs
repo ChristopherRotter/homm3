@@ -671,33 +671,28 @@ impl Multiplayer {
         };
         if let Some(id) = clicked {
             let hot_seat = matches!(self.over, Over::HotSeat(_));
-            let next = match (hot_seat, id) {
-                (false, HOT_SEAT) => Some(Over::HotSeat(Box::new(HotSeat::new(
+            self.over = match (hot_seat, id) {
+                (false, HOT_SEAT) => Over::HotSeat(Box::new(HotSeat::new(
                     self.hot_seat.clone(),
                     self.name.text(),
                     &self.texts.title,
                     self.bugs,
-                )))),
-                // stub: CLT-STUB-6 (the network modes, E28)
-                (false, id) if id == ONLINE || NETWORK.contains(&id) => Some(Over::Notice(
-                    Box::new(Open::new(self.texts.network.clone())),
-                )),
-                (true, HOT_SEAT_CANCEL) => Some(Over::Nothing),
+                ))),
                 (false, CANCEL) => {
                     did.ended = Some(Ended::Multiplayer(false));
                     return did;
                 }
+                // stub: CLT-STUB-6 (the network modes, E28): every other button of stage 1.
+                (false, _) => Over::Notice(Box::new(Open::new(self.texts.network.clone()))),
                 (true, OK) => {
                     self.names = self.hot_seat().map(HotSeat::names).unwrap_or_default();
                     did.ended = Some(Ended::Multiplayer(true));
                     return did;
                 }
-                _ => None,
+                // The hot seat's other button, Cancel.
+                (true, _) => Over::Nothing,
             };
-            if let Some(next) = next {
-                self.over = next;
-                did.changed = true;
-            }
+            did.changed = true;
         }
         let (pointer, hints) = (self.pointer, &self.texts.hints);
         did.changed |= match &mut self.over {

@@ -89,13 +89,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Client lane (`CLT-Q<n>`)
 
-#### CLT-Q127 — The edits type by the original's US table (E27 M2 T7)
-
-**Context.** Read and recorded (`docs/epics/E27-design.md` §16; `edit-keys`): the game's edits (the multiplayer name, the hot seat's eight names; later the save's name and the high score's) type by the key's scan code through a fixed US table of the executable's own (0x4EC8C0, 0x4EC6F0), whatever the system's keyboard layout: on a German keyboard the key marked Z types `y`, `ß`, `ü`, `ö`, `ä` type `-`, `[`, `;`, `'`, and no accented letter can be typed at all; Caps Lock is not read (capitals only with Shift); the backtick types nothing; `[` and `]` have no shifted forms. Their own keys (Home, End, the arrows, Delete, BackSpace; the hot seat's Tab, Shift+Tab, Up, Down, Enter) are fixed by scan code too, outside the key table. Built as the original's. **Options:** (a) copy; (b) fix: the window's text input in the system's layout (SDL's text events: what the keys print, Caps Lock and dead keys included), kept to the characters the font draws (code page 1252: accented letters typed), the edits' own keys through the shell's key table; the original's table for the comparisons only; (c) (b) as an option, the original's the default. **Recommendation:** (b): typing what the keyboard shows is what a player expects, and the edits' names reach the players' names and the saves.
-
-#### CLT-Q128 — A menu's hover is kept from its last opening (E27 M2 T7)
-
-**Context.** Read and recorded (design §16; `edit-keys`' `reopened`): the main menu's and the game type menus' last item under the mouse are statics their procedures alone write (`main_menu_hovered` 0x67FA60, `game_type_menu_hovered` 0x6780F0), never cleared when the menu opens again. So after the Multiplayer dialog's Escape, New Game's menu opens with Multiplayer still the last item: the pointer over it is no change, and Multiplayer is not drawn hovered until the pointer leaves it and comes back (the same after Back over the button that left the main menu). Built as the original's in both profiles. **Options:** (a) copy; (b) fix: a menu opening anew takes the item under the pointer at its first move (drawn hovered); the original's statics for the comparisons only. **Recommendation:** (b).
+(no open questions)
 
 ### Map client lane (`MCL-Q<n>`)
 

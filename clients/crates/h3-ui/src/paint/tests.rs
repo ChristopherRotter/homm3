@@ -832,3 +832,25 @@ fn a_shared_frame_is_the_other_defs_in_the_items_colours() {
     assert!(draw(&mut out, &no_frames, &s, Bugs::Fixed).is_err());
     assert_eq!(reach(&no_frames, &s), None);
 }
+
+#[test]
+fn a_fill_sets_its_box_to_an_entry_of_its_palette() {
+    // E27 M2 T7: a text item's background colour (`text_item_draw` 0x5BC5F0).
+    let s = store();
+    let fill = |palette: &str, entry| Draw::Fill {
+        rect: [1, 0, 1, 1],
+        palette: palette.into(),
+        entry,
+    };
+    assert_eq!(names(&fill("game.pal", 11)), ["game.pal"]);
+    assert_eq!(reach(&fill("game.pal", 11), &s), Some([1, 0, 2, 1]));
+    assert_eq!(reach(&fill("no.pal", 11), &s), None);
+    let mut out = screen(2);
+    draw(&mut out, &fill("game.pal", 11), &s, Bugs::Fixed).unwrap();
+    assert_eq!(out.pixels(), [0, FORMAT.pack(BLUE)]);
+    assert_eq!(
+        draw(&mut out, &fill("no.pal", 11), &s, Bugs::Fixed),
+        Err("no.pal".to_string())
+    );
+    assert!(draw(&mut out, &fill("game.pal", 300), &s, Bugs::Fixed).is_err());
+}
