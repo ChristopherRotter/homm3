@@ -7,7 +7,8 @@ notes as "increment N's design note §M".
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 13's
 amendments, drafted in the lane's `adr-drafts/` and applied to the ADRs by the round's `shared/`
-task with batch E13's outcome (the drafts then deleted); written from T118a's survey and the
+task with batch E13's outcome (the drafts then deleted: applied by T122 to ADR-0016 points 1, 4,
+6, ADR-0017 points 1, 2, 4, 6, 9 to 11, ADR-0022 points 2, 3, 6, 7, 8 and ADR-0013 point 5); written from T118a's survey and the
 answers at ADV-Q52 and ADV-Q53 (the epic's decisions 333 to 339). A building task adds an *As
 built* line to the section it builds; the note moves to `E08-log.md` when the increment closes.
 Facts and sources: survey `docs/rules/surveys/E08-banks.md` (§ numbers are the survey's unless
@@ -332,12 +333,12 @@ bank's entrance (decision 268). By the kind's question:
 ## Part D — the game, the env, batch E13 and the cut (`h3-game`; T118b2)
 
 Written by T118b2 (whole, decision 341): the bank battle's seam and rules (§13) with
-`0022-increment-13.md`; the game's battle (§14); the reward after the levels (§15, D-67 corrected,
+the draft for ADR-0022 point 8 (applied by T122); the game's battle (§14); the reward after the levels (§15, D-67 corrected,
 decision 342); the observation and the wire (§16); the env, replays, maps, properties and
 benchmarks (§17); versions and ids (§18); batch E13 (§19); the shared and `cross-lane` work, the
-cut and the exit criteria (§20); risks (§21); with `0017-increment-13.md`.
+cut and the exit criteria (§20); risks (§21); with the draft for ADR-0017 (applied by T122).
 
-### 13. The bank battle: the seam and the battle's rules (survey §5; draft `0022-increment-13.md`)
+### 13. The bank battle: the seam and the battle's rules (survey §5; ADR-0022 point 8)
 
 - **The seam** (`h3-contracts`, `shared/`, decision 338): **`BattleSetup::creature_bank: bool`**,
   the original's flag (battle +0x53C5, H3API's `creatureBank`), default `false`, public. *Agent's

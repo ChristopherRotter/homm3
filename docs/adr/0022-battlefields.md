@@ -34,10 +34,15 @@ soon (E08 increment 3), so the seam and its data must suit the adventure lane's 
    the key against its ruleset at setup (an unknown key is a setup error) and never derives the
    battlefield. Whoever starts a battle derives it (the adventure lane's orchestrator, which can
    keep the key with its object types: the original's order is the survey's §4); the sieges add
-   their own field at their increment, through an amendment or their own ADR.
+   their own field at their increment, through an amendment or their own ADR. E08 increment 13
+   adds **`creature_bank: bool`**: the battle is a creature bank's, with point 8's rules; default
+   false; set by whoever starts the battle from the battle's cause (the adventure lane's
+   orchestrator: a bank's guards defending, never the tile).
 3. **Obstacles stay before the seam** (BAT-GEO-003): the generator takes the battlefield and picks
    from the battlefield's types when it has its own, else the terrain's; for a battlefield with
-   fixed hexes it returns them as one absolute obstacle without a type and nothing else.
+   fixed hexes it returns them as one absolute obstacle without a type and nothing else. For a
+   creature bank's setup it gives none (as for a town with a fort), and the setup refuses
+   obstacles or a siege beside the flag (point 8).
 4. **The battle applies the battlefield's effects** where the original reads the field: morale and
    luck when they are materialised (a battlefield change is part of the stack's own sum, before
    the side's caps and the creatures' minimums; set to 0 replaces everything, 0x43E000,
@@ -52,8 +57,38 @@ soon (E08 increment 3), so the seam and its data must suit the adventure lane's 
    shared core helper if it needs the same test.
 6. **Visibility.** The battlefield and the anti-magic flag are public (the original shows the
    picture and refuses the book openly): they join the observation, its flat encoding and the wire.
+   The creature bank flag is public but not in the observation: each of its effects shows in the
+   battle itself (the places, no obstacles, no phase, no machines on the field, a supplied
+   shooter's shots), so it joins neither the observation, its flat encoding, the C ABI nor the
+   wire, unlike the anti-magic flag, which a viewer needs for the refused book.
 7. **Rule ids.** Battlefield rules are `BAT-TER-002` onwards (the terrain area); BAT-GEO-004 is
-   amended for the type choice.
+   amended for the type choice. The creature bank's rules (point 8) amend BAT-SET-001,
+   BAT-TAC-001, BAT-GEO-004, BAT-WAR-001 and BAT-WAR-004.
+8. **The creature bank battle** (E08 increment 13). The original marks a creature bank's battle
+   by one flag (the battle manager's +0x53C5, H3API's `creatureBank`), `adventure_battle`'s last
+   argument, which only `bank_battle_reward` sets; four of the battle's sites read it (survey
+   `E08-banks.md` §5). With `creature_bank` the battle:
+   - opens **no tactics phase**, whatever the heroes' Tactics (their levels stay theirs; 0x462C5D);
+   - has **no obstacles** (point 3; 0x4662B3);
+   - sets up **no war machine** of either side (0x463758): the listed ones are checked, then
+     neither placed nor in the outcome, as a side's without a hero, so they cannot be destroyed;
+     a side whose listed machines include an ammo supply is **supplied** for the whole battle as
+     by a living cart (the Ammo Cart's passive test reads the hero's artifact, not the stack,
+     0x43F9E1);
+   - places each side's stacks in slot order at the battle part's **bank positions** by their
+     ordinal among the filled slots, the formation ignored, each its stack's position (a two-hex
+     stack's rear hex; 0x4636B7, `bank_battle_hexes` 0x63D0E0). The positions are a Tier 2
+     battle parameter beside the formations (seven a side, the original's table), checked by the
+     compiler so that no placement can fail.
+
+   Batch E13 (survey `E08-banks.md` §14) confirmed the four with E13-3 (Expert Tactics and no
+   phase, no obstacles, the Ballista, the Ammo Cart and the Catapult worn and none on the field,
+   the Archers' shots supplied, the stacks by their ordinal), the positions' cells with E13-4 and
+   E13-7 (each two-hex stack on the table's hex as its rear) and the deck's with E13-5. The
+   formation's part rests on the reading and VCMI (E13-3's hero fought loose, `ADV-QUIRK-8`).
+
+   The flag is battle state (a set-up battle begins later, CLT-Q69 (a)). Everything else is any
+   battle's: the battlefield, morale and luck, retreat, the computer's choices.
 
 ## Consequences
 
@@ -69,6 +104,14 @@ soon (E08 increment 3), so the seam and its data must suit the adventure lane's 
   47 types only special battlefields use.
 - Enforced by tests per rule, the compiler's checks of the battlefield data, setup errors for an
   unknown battlefield, and the observation hygiene test.
+- The creature bank battle (point 8): versions: the battle state hash and the battle part's hash
+  (the battle lane's) and the pack format (shared: the battle file's `bank_positions`); the
+  battle lane's golden replays rehashed. The shared change is the one field in `h3-contracts`
+  with every exhaustive `BattleSetup` literal's `false` (mechanical, the battle, AI and adventure
+  lanes' crates). No change to the observation, its encoding, the C ABI, the battle replay format
+  or the wire; the battle's scenario files and replays get a `creature_bank` key when a scenario
+  first needs one (the battle lane's). Enforced by a test per rule, the compiler's checks of the
+  positions, the setup's refusal and the battle's properties with bank setups.
 
 ## Alternatives considered
 
@@ -83,3 +126,25 @@ soon (E08 increment 3), so the seam and its data must suit the adventure lane's 
   raise anyway.
 - The anti-magic garrison as a thirteenth battlefield: the original combines it with the shore.
 - The boats' fixed hexes added by the battle at setup: a second place that places obstacles.
+- For the creature bank battle: a field per rule (no tactics, no obstacles, no machines, a
+  layout): a caller could pass a mix no original battle has, and every caller would derive four
+  facts from one cause.
+- The bank's rules left to the caller (no obstacles drawn, no machines listed, Tactics passed as
+  0, a layout as desired hexes): the Ammo Cart's supply would be lost with the listed cart, the
+  heroes' Tactics falsified, and the layout cannot be expressed through the formations.
+- `Formation::Bank`: the formation is the army's, kept on the map, and a bank ignores it.
+- The bank positions in code: against ADR-0006's data-first tiers, beside the formations' data.
+- VCMI's second table for two-hex guards (its layout `creatureBankWide`: 171, 1, 86 where the one
+  table has 172, 2, 87): under the footprint rule (BAT-GEO-002) a two-hex stack at the table's hex
+  as its rear covers the cells VCMI names by the front hex, as batch E13's E13-4 found (survey
+  `E08-banks.md` §14, D-69 dissolved), so the original's one table serves both.
+- The creature bank flag in the observation, as the anti-magic flag: no viewer reads it; the
+  protocol, the flat encoding and the C ABI would move for nothing.
+
+## Revision history
+
+- 2026-11-16 (E08 T122, `shared/`, `cross-lane`; the user at ADV-Q54 and ADV-Q55, E08 decisions
+  338, 343, 344, 348): point 8 added and points 2, 3, 6, 7 amended for E08 increment 13 (the
+  creature bank battle: `creature_bank`, its four rules, the bank positions); ADR-0013 point 5
+  noted. Drafted in E08 T118b2 (survey `E08-banks.md` §5); batch E13's outcome (T121, survey §14:
+  every row as read) folded in, the alternatives gaining VCMI's second table (D-69 dissolved).
