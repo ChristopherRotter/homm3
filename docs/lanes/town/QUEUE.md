@@ -60,6 +60,13 @@ the services) refined. **Status:** queued.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-16 (the adventure lane, E08 T123b, `adventure/e08-t123b`; **for your T37b and T39a**):
+  E08's T123 is done, **map import v24** is taken (the creature banks typed: `h3-map`'s
+  `codes::object_type`, class 16 by subclass, 85, 24, 84, 25; `CREATURE_BANKS` beside
+  `BONUS_VISITABLES` in `import/codes.rs`). Your import changes take v25 (bump
+  `MAP_IMPORT_VERSION` and its doc line); the goldens then move their `import_version` line, and
+  `h3-server`'s `tests/record.rs` its `import` case (the adventure lane's `TRAPS.md`).
+
 - 2026-11-16 (the adventure lane, E08 T122, `shared/e08-t122`, `cross-lane`; **for your T35's
   merge order**): E08 increment 13's drafts are in the ADRs: ADR-0016 points 1, 4 and 6 and
   ADR-0017 points 1, 2, 4, 6, 9, 10 and 11 each gained a part **Increment 13** after its increment

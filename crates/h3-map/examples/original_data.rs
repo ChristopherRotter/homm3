@@ -23,7 +23,9 @@
 //! since E08 T94b the weeks it gives: the dwellings' counts and guards and the Refugee Camps'
 //! creatures and counts (checked); since E08 T96b2 each resolved random dwelling's entrance on the
 //! map (checked) and the most dwellings, random dwellings and Refugee Camps on one map; since E08
-//! T97b1 the typed dwellings entered from water.
+//! T97b1 the typed dwellings entered from water. Since E08 T123b the creature banks (16 by
+//! subclass, 24, 25, 84, 85), each checked to import as its type, by version, level and entrance,
+//! their maps and the most on one map (checked against survey `E08-banks.md` §1).
 //! Since E09 T7a1 the towns, the players' starts, the random heroes, the heroes moved onto a
 //! town's entrance (TWN-SET-010) and the pool's inputs of the maps that import; since E09 T7b1 the
 //! random heroes are drawn. Since E09 T8a1 the towns are typed (their owners at load and
@@ -109,6 +111,7 @@ struct Peaks(
     TownEvents,
     Increment12,
     Growth,
+    Increment13,
 );
 
 /// The census of the channels the game's build gives (E08 T104, [`built_channels`]; ADV-TEL-002,
@@ -264,6 +267,38 @@ const SURVEY_BONUSES: [(u32, &str, [usize; 2], usize, usize); 15] = [
 const SURVEY_GARRISONS_MOST: [(u32, usize); 2] = [(33, 16), (219, 11)];
 /// The survey's maps holding a garrison, and a bonus visitable (§1.1, §1.2).
 const SURVEY_INCREMENT_12_MAPS: (usize, usize) = (61, 159);
+
+/// The census of increment 13's creature banks (E08 T123b, [`increment_13`]; survey
+/// `docs/rules/surveys/E08-banks.md` §1): by class and subclass the objects on maps of each
+/// version (RoE, AB, SoD), those underground, those entered from water and those of them beside
+/// land (a land tile among the entrance's eight neighbours), and the maps holding them; then the
+/// maps holding a bank, the maps holding one of class 16 and the most banks on one map.
+#[derive(Default)]
+struct Increment13(BTreeMap<(u32, u32), [usize; BANK_COUNTS]>, [usize; 3]);
+
+/// How many counts [`Increment13`] keeps by class and subclass: the three versions' objects,
+/// underground, from water, beside land, the maps.
+const BANK_COUNTS: usize = 7;
+
+/// The survey's banks by class and subclass (§1: 2 137 on 148 maps), each its type's key in the
+/// `base` pack: the objects on maps of RoE, AB and SoD, underground, entered from water, of those beside land, and
+/// the maps holding them.
+const SURVEY_BANKS: [((u32, u32), &str, [usize; BANK_COUNTS]); 11] = [
+    ((16, 0), "cyclops_stockpile", [32, 64, 72, 28, 0, 0, 90]),
+    ((16, 1), "dwarven_treasury", [47, 99, 105, 57, 0, 0, 106]),
+    ((16, 2), "griffin_conservatory", [39, 56, 33, 7, 0, 0, 62]),
+    ((16, 3), "imp_cache", [36, 77, 80, 55, 0, 0, 100]),
+    ((16, 4), "medusa_stores", [36, 73, 71, 63, 0, 0, 93]),
+    ((16, 5), "naga_bank", [30, 53, 67, 26, 0, 0, 87]),
+    ((16, 6), "dragon_fly_hive", [46, 52, 47, 25, 0, 0, 83]),
+    ((24, 0), "derelict_ship", [24, 91, 55, 9, 170, 11, 58]),
+    ((25, 0), "dragon_utopia", [8, 43, 23, 16, 0, 0, 55]),
+    ((84, 0), "crypt", [51, 124, 102, 20, 0, 0, 97]),
+    ((85, 0), "shipwreck", [63, 246, 92, 14, 401, 183, 69]),
+];
+/// The survey's maps holding a bank, those holding one of class 16, and the most banks on one map
+/// (§1: *Thousand Islands* and its allied twin).
+const SURVEY_INCREMENT_13: [usize; 3] = [148, 143, 106];
 
 /// The census of the dwellings the game's build gives (E08 T94a, [`built_dwellings`]): its
 /// counts, and the resolved random dwellings by faction (the core's index) and level.
@@ -477,6 +512,7 @@ fn main() -> ExitCode {
     // E08 T106c: the rest of the survey's census (§1).
     failures += teleporter_differences(&peaks);
     failures += increment_12_differences(&peaks.11);
+    failures += increment_13_differences(&peaks.13);
     failures += town_event_differences(&peaks.10);
     failures += growth_differences(&peaks.12);
     println!("h3-map: every static layer imports and validates; the import by outcome:");
@@ -638,6 +674,7 @@ fn check(
         peaks.note(most_of(class), n, name);
     }
     increment_12(&map, &setup.map, rules, &mut peaks.11)?;
+    increment_13(&map, &setup.map, rules, &mut peaks.13)?;
     if map.header.version == Version::RoE {
         let counts = &mut peaks.5;
         roe(&map, base, &mut |what, n| {
@@ -1682,6 +1719,148 @@ fn increment_12_differences(census: &Increment12) -> usize {
         get(GARRISON_OWNERS[0]),
         get(GARRISON_OWNERS[1]),
         get(LARGEST_GARRISON_STACK),
+    );
+    differences
+}
+
+/// Counts increment 13's creature banks (E08 T123b; increment 13's design note §3, survey
+/// `E08-banks.md` §1), each checked to import as its class and subclass's type (class 16 by
+/// subclass, 85, 24, 84 and 25 at subclass 0), a bank with one entrance, nothing held and no
+/// owner; an error names the first that does not.
+fn increment_13(
+    raw: &RawMap,
+    setup: &MapSetup,
+    rules: &GameRuleset,
+    census: &mut Increment13,
+) -> Result<(), String> {
+    let part = rules.adventure();
+    let version = match raw.header.version {
+        Version::RoE => 0,
+        Version::Ab => 1,
+        Version::Sod => 2,
+    };
+    let water = |x: u16, y: u16, level: u8| {
+        let index = (usize::from(level) * usize::from(setup.height) + usize::from(y))
+            * usize::from(setup.width)
+            + usize::from(x);
+        x < setup.width
+            && y < setup.height
+            && setup.tiles.get(index).is_some_and(|t| {
+                matches!(
+                    part.passage(t.terrain),
+                    Some(h3_adventure::Passage::Water(_))
+                )
+            })
+    };
+    let land =
+        |x: u16, y: u16, level: u8| x < setup.width && y < setup.height && !water(x, y, level);
+    let mut kinds = BTreeSet::<(u32, u32)>::new();
+    let mut banks = 0;
+    for ((placed, class), object) in placed(raw).zip(&setup.objects) {
+        if !matches!(class, 16 | 24 | 25 | 84 | 85) {
+            continue;
+        }
+        let subclass = usize::try_from(placed.template)
+            .ok()
+            .and_then(|i| raw.templates.get(i))
+            .map_or(u32::MAX, |t| t.subclass);
+        let ty = object.object_type.and_then(|id| part.object_type(id));
+        let key = ty.map_or("", |ty| ty.key.as_str());
+        let expected = SURVEY_BANKS
+            .iter()
+            .find(|b| b.0 == (class, subclass))
+            .map(|b| b.1);
+        let entrances: Vec<_> = object.visitable.offsets().collect();
+        let fits = ty.is_some_and(|ty| matches!(ty.kind, ObjectKind::Bank(_)))
+            && object.holds == Holds::Nothing
+            && object.owner.is_none()
+            && entrances.len() == 1;
+        if key.strip_prefix("base:") != expected || !fits {
+            return Err(format!(
+                "an object of class {class} subclass {subclass} at {:?} imports as {key:?} \
+                 holding {:?}",
+                object.anchor, object.holds
+            ));
+        }
+        let (column, row) = entrances[0];
+        let a = object.anchor;
+        let (x, y) = (a.x - u16::from(column), a.y - u16::from(row));
+        let counts = census.0.entry((class, subclass)).or_default();
+        counts[version] += 1;
+        counts[3] += usize::from(a.level > 0);
+        if water(x, y, a.level) {
+            counts[4] += 1;
+            let beside = (-1i32..=1).any(|dy| {
+                (-1i32..=1).any(|dx| {
+                    let nx = u16::try_from(i32::from(x) + dx).ok();
+                    let ny = u16::try_from(i32::from(y) + dy).ok();
+                    matches!((nx, ny), (Some(nx), Some(ny)) if land(nx, ny, a.level))
+                })
+            });
+            counts[5] += usize::from(beside);
+        }
+        kinds.insert((class, subclass));
+        banks += 1;
+    }
+    for kind in &kinds {
+        census.0.entry(*kind).or_default()[6] += 1;
+    }
+    census.1[0] += usize::from(banks > 0);
+    census.1[1] += usize::from(kinds.iter().any(|&(class, _)| class == 16));
+    census.1[2] = census.1[2].max(banks);
+    Ok(())
+}
+
+/// Increment 13's census against the survey's (§1; E08 T123b): the banks by class and subclass,
+/// version, level and entrance, their maps, and the most on one map. Prints each difference and
+/// the census; returns how many differences there are.
+fn increment_13_differences(census: &Increment13) -> usize {
+    const WHAT: [&str; BANK_COUNTS] = [
+        "on RoE maps",
+        "on AB maps",
+        "on SoD maps",
+        "underground",
+        "entered from water",
+        "entered from water beside land",
+        "maps with",
+    ];
+    let mut differences = 0;
+    let mut differ = |what: &str, found: usize, survey: usize| {
+        if found != survey {
+            println!("h3-map: the census's {what} ({found}) is not the survey's ({survey})");
+            differences += 1;
+        }
+    };
+    for ((class, subclass), key, counts) in SURVEY_BANKS {
+        let found = census
+            .0
+            .get(&(class, subclass))
+            .copied()
+            .unwrap_or_default();
+        for ((what, found), survey) in WHAT.iter().zip(found).zip(counts) {
+            differ(&format!("{key} {what}"), found, survey);
+        }
+    }
+    let others = census
+        .0
+        .keys()
+        .filter(|kind| !SURVEY_BANKS.iter().any(|b| b.0 == **kind))
+        .count();
+    differ("other classes and subclasses of banks", others, 0);
+    let [maps, class_16, most] = census.1;
+    differ("maps with a bank", maps, SURVEY_INCREMENT_13[0]);
+    differ(
+        "maps with a bank of class 16",
+        class_16,
+        SURVEY_INCREMENT_13[1],
+    );
+    differ("most banks on one map", most, SURVEY_INCREMENT_13[2]);
+    let banks: usize = census.0.values().map(|n| n[0] + n[1] + n[2]).sum();
+    let from_water: usize = census.0.values().map(|n| n[4]).sum();
+    println!(
+        "  increment 13 (checked): {banks} creature banks of {} types on {maps} maps \
+         ({class_16} with class 16), {from_water} entered from water, at most {most} on one map",
+        census.0.len()
     );
     differences
 }

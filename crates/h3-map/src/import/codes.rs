@@ -243,6 +243,20 @@ const BONUS_VISITABLES: [(u32, &str); 15] = [
     (110, "base:watering_hole"),
 ];
 
+/// Class 16 by subclass (E08 T123b; increment 13's design note §3, ADV-BNK-001; survey
+/// `E08-banks.md` §1): the seven land banks of the original's kinds 0 to 6 (`creature_bank_kinds`
+/// 0x695038). A subclass past 6 is one the class does not define: the original indexes its kinds'
+/// table by it without a test, and no shipped map has one (survey §1, §3).
+const CREATURE_BANKS: [&str; 7] = [
+    "base:cyclops_stockpile",
+    "base:dwarven_treasury",
+    "base:griffin_conservatory",
+    "base:imp_cache",
+    "base:medusa_stores",
+    "base:naga_bank",
+    "base:dragon_fly_hive",
+];
+
 /// Class 44 by subclass (E08 T103b): the one-way exits.
 const MONOLITH_EXITS: [&str; 8] = [
     "base:monolith_exit_0",
@@ -570,6 +584,17 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         // rule: ADV-GAR-001
         33 => by_subclass(&GARRISONS),
         219 => by_subclass(&VERTICAL_GARRISONS),
+        // E08 T123b (increment 13's design note §3): the creature banks, none with a body; class 16
+        // by subclass, the four others at subclass 0.
+        // rule: ADV-BNK-001
+        16 => by_subclass(&CREATURE_BANKS),
+        // The four of a class of their own, the original's kinds 7 to 10, each its one type at
+        // subclass 0, the only one `Objects.txt` lists (a subclass past 0 is one the class does
+        // not define, as the bonus visitables').
+        85 => by_subclass(&["base:shipwreck"]),
+        24 => by_subclass(&["base:derelict_ship"]),
+        84 => by_subclass(&["base:crypt"]),
+        25 => by_subclass(&["base:dragon_utopia"]),
         // rule: ADV-BON-001
         _ => match BONUS_VISITABLES.binary_search_by_key(&class, |&(c, _)| c) {
             Ok(i) => by_subclass(&[BONUS_VISITABLES[i].1]),
