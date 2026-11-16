@@ -390,7 +390,11 @@ impl Command for Typing {
     }
 
     fn asked_together(a: Field, b: Field) -> bool {
-        a == b || matches!((a, b), (Field::Edit, Field::Ring) | (Field::Ring, Field::Edit))
+        a == b
+            || matches!(
+                (a, b),
+                (Field::Edit, Field::Ring) | (Field::Ring, Field::Edit)
+            )
     }
 }
 
@@ -408,8 +412,14 @@ fn contexts_asked_together_share_no_chord() {
     // A menu's key is never asked with the edit's.
     let file = "[shell]\nhome = [\"Escape\"]\nback = [\"Escape\"]";
     let keys = Keys::<Typing>::with_file(file).unwrap();
-    assert_eq!(keys.command(Field::Edit, false, "Escape"), Some(Typing::Home));
-    assert_eq!(keys.command(Field::Menu, false, "Escape"), Some(Typing::Back));
+    assert_eq!(
+        keys.command(Field::Edit, false, "Escape"),
+        Some(Typing::Home)
+    );
+    assert_eq!(
+        keys.command(Field::Menu, false, "Escape"),
+        Some(Typing::Back)
+    );
     // The default: a context asked alone (the test viewer's dialog and screen share Escape).
     assert!(Test::asked_together(Over::Dialog, Over::Dialog));
     assert!(!Test::asked_together(Over::Nothing, Over::Dialog));

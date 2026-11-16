@@ -255,7 +255,13 @@ fn the_multiplayer_dialog_and_the_hot_seat_take_the_harness_s_inputs() {
     let opened = ["click:643,70", "click:649,180", "click:578,214"];
     let (_, stop, r) = replay(false, &[&opened[..], &["move:100,110"]].concat());
     assert_eq!((stop, r.pointer()), (None, [100, 110]));
-    for input in ["key:Return", "click:400,300", "right:400,300", "up", "type:a"] {
+    for input in [
+        "key:Return",
+        "click:400,300",
+        "right:400,300",
+        "up",
+        "type:a",
+    ] {
         let (_, stop, r) = replay(false, &[&opened[..], &[input]].concat());
         assert_eq!(
             stop,
