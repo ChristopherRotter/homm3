@@ -801,8 +801,11 @@ fn the_front_is_a_menu_or_the_multiplayer_dialog_over_its_menu() {
     assert_eq!(front.context(), Context::GameType);
     assert!(front.moved([649, 180]).changed);
     assert_eq!(front.hovers().game_type, Some(102));
-    // A key without a command does nothing to a menu.
+    // A key without a command does nothing to a menu, nor a character.
     assert_eq!(front.key(None, None, "Q"), Did::default());
+    assert!(!front.typing());
+    assert_eq!(front.contexts(), [Context::GameType]);
+    assert_eq!(front.typed('q'), Did::default());
     assert!(front.press([649, 180]).changed);
     let did = front.release();
     assert_eq!(did.ended, Some(Ended::GameType(Choice::Multiplayer)));
@@ -819,7 +822,11 @@ fn the_front_is_a_menu_or_the_multiplayer_dialog_over_its_menu() {
     assert!(dialog.moved([578, 157]).changed);
     assert!(dialog.right([578, 157]).changed);
     assert!(dialog.right_release().changed);
-    assert!(dialog.key(h3_ui::edit::scan_of(b'a'), None, "A").changed);
+    // Its name types (E27 M2 T7b: the client's profile, the window's text input).
+    assert!(dialog.typing());
+    assert_eq!(dialog.contexts(), [Context::Edit, Context::Multiplayer]);
+    assert!(dialog.typed('a').changed);
+    assert_eq!(dialog.key(None, None, "A"), Did::default());
     assert_eq!(dialog.key_up("A"), Did::default());
     assert!(dialog.press([578, 503]).changed);
     assert_eq!(dialog.release().ended, Some(Ended::Multiplayer(false)));

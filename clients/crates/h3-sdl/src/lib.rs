@@ -118,10 +118,20 @@ pub enum Key {
     PageDown,
     /// End.
     End,
+    /// Tab (E27 M2 T7b: the hot seat's ring).
+    Tab,
+    /// BackSpace (E27 M2 T7b: an edit's).
+    BackSpace,
+    /// Delete (E27 M2 T7b: an edit's).
+    Delete,
     /// The left Control key.
     LeftCtrl,
     /// The right Control key.
     RightCtrl,
+    /// The left Shift key (E27 M2 T7b: held with a key, `Shift+`, never bound alone).
+    LeftShift,
+    /// The right Shift key (E27 M2 T7b).
+    RightShift,
     /// F1.
     F1,
     /// F2.
@@ -205,8 +215,13 @@ impl Key {
             SDLK_PAGEUP => Self::PageUp,
             SDLK_PAGEDOWN => Self::PageDown,
             SDLK_END => Self::End,
+            SDLK_TAB => Self::Tab,
+            SDLK_BACKSPACE => Self::BackSpace,
+            SDLK_DELETE => Self::Delete,
             SDLK_LCTRL => Self::LeftCtrl,
             SDLK_RCTRL => Self::RightCtrl,
+            SDLK_LSHIFT => Self::LeftShift,
+            SDLK_RSHIFT => Self::RightShift,
             SDLK_F1 => Self::F1,
             SDLK_F2 => Self::F2,
             SDLK_F3 => Self::F3,
@@ -266,8 +281,13 @@ impl Key {
             Self::PageUp => "PageUp",
             Self::PageDown => "PageDown",
             Self::End => "End",
+            Self::Tab => "Tab",
+            Self::BackSpace => "BackSpace",
+            Self::Delete => "Delete",
             Self::LeftCtrl => "LeftCtrl",
             Self::RightCtrl => "RightCtrl",
+            Self::LeftShift => "LeftShift",
+            Self::RightShift => "RightShift",
             Self::F1 => "F1",
             Self::F2 => "F2",
             Self::F3 => "F3",
@@ -294,7 +314,7 @@ impl Key {
     }
 
     /// Every key a table may name, in the enum's order: all but [`Key::Other`].
-    pub const ALL: [Self; 54] = [
+    pub const ALL: [Self; 59] = [
         Self::Escape,
         Self::Space,
         Self::Right,
@@ -326,8 +346,13 @@ impl Key {
         Self::PageUp,
         Self::PageDown,
         Self::End,
+        Self::Tab,
+        Self::BackSpace,
+        Self::Delete,
         Self::LeftCtrl,
         Self::RightCtrl,
+        Self::LeftShift,
+        Self::RightShift,
         Self::F1,
         Self::F2,
         Self::F3,
@@ -434,6 +459,11 @@ pub struct Window {
     /// Each event of the last [`Window::wait`]'s keyboard key down as the original reads it
     /// (E27 M2 T7), none for every other event.
     scans: Vec<Option<KeyScan>>,
+    /// Whether SDL's text input is on (E27 M2 T7b).
+    text_input: bool,
+    /// The characters the last [`Window::wait`]'s text input typed, each with the number of
+    /// events given before it (E27 M2 T7b).
+    typed: Vec<(usize, char)>,
 }
 
 /// A keyboard key down as the original's input manager reads it (E27 M2 T7: a dialog's edit types
@@ -573,6 +603,8 @@ impl Window {
                 focused: true,
                 focus_changes: Vec::new(),
                 scans: Vec::new(),
+                text_input: false,
+                typed: Vec::new(),
             };
             // The window's pixels per point, from its size at one point per frame pixel: the
             // display's usable area in pixels decides the scale (integers only).
@@ -666,6 +698,36 @@ impl Window {
         &self.scans
     }
 
+    /// Whether the window takes text input (E27 M2 T7b, decision 39: a dialog's edit has the
+    /// focus): SDL's text events, what the keys print in the system's layout (Caps Lock, dead keys
+    /// and an input method's compositions included), come as [`Window::typed`]; off when the
+    /// window opens. A held key's repeats type nothing while [`Window::set_key_repeats`] keeps
+    /// them out, as its key downs.
+    pub fn set_text_input(&mut self, on: bool) {
+        if on == self.text_input {
+            return;
+        }
+        // SAFETY: plain SDL calls on the window.
+        let done = unsafe {
+            if on {
+                SDL_StartTextInput(self.window)
+            } else {
+                SDL_StopTextInput(self.window)
+            }
+        };
+        if done {
+            self.text_input = on;
+        }
+    }
+
+    /// The characters the last [`Window::wait`]'s text input typed (E27 M2 T7b), in order, each
+    /// with the number of the wait's events that came before it (so `(0, c)` came before its
+    /// first event): SDL's UTF-8 text, character by character; none with text input off.
+    #[must_use]
+    pub fn typed(&self) -> &[(usize, char)] {
+        &self.typed
+    }
+
     /// SDL's clock: nanoseconds since SDL started.
     #[must_use]
     pub fn ticks_ns(&self) -> u64 {
@@ -679,11 +741,28 @@ impl Window {
         let mut events = Vec::new();
         self.focus_changes.clear();
         self.scans.clear();
+        self.typed.clear();
+        // Whether the last key down was a repeat left out (its text left out too).
+        let mut repeat_left_out = false;
         // SAFETY: SDL_Event is plain data; SDL fills it.
         let mut ev: SDL_Event = unsafe { std::mem::zeroed() };
         // SAFETY: as above.
         let mut got = unsafe { SDL_WaitEventTimeout(&mut ev, int(timeout_ms)) };
         while got {
+            // SAFETY: the union's member is the one its type names; SDL keeps a text event's
+            // string alive until the next poll.
+            unsafe {
+                match SDL_EventType(ev.r#type) {
+                    SDL_EVENT_KEY_DOWN => repeat_left_out = ev.key.repeat && !self.repeats,
+                    SDL_EVENT_TEXT_INPUT
+                        if self.text_input && !repeat_left_out && !ev.text.text.is_null() =>
+                    {
+                        let typed = CStr::from_ptr(ev.text.text).to_string_lossy();
+                        self.typed.extend(typed.chars().map(|c| (events.len(), c)));
+                    }
+                    _ => {}
+                }
+            }
             if let Some(e) = self.translate(&mut ev) {
                 // SAFETY: the union's member is the one its type names.
                 let scan = unsafe {
@@ -1471,7 +1550,13 @@ mod tests {
         assert_eq!(Key::of(SDLK_KP_7), Some(Key::Keypad7));
         assert_eq!(Key::from_name("Keypad3"), Some(Key::Keypad3));
         assert_eq!(Key::of(SDLK_KP_5), None);
-        assert_eq!(Key::of(SDLK_TAB), None);
+        // E27 M2 T7b: Tab, BackSpace, Delete and the Shifts.
+        assert_eq!(Key::of(SDLK_TAB), Some(Key::Tab));
+        assert_eq!(Key::of(SDLK_BACKSPACE).map(Key::name), Some("BackSpace"));
+        assert_eq!(Key::of(SDLK_DELETE), Some(Key::Delete));
+        assert_eq!(Key::of(SDLK_RSHIFT).map(Key::name), Some("RightShift"));
+        assert_eq!(Key::from_name("LeftShift"), Some(Key::LeftShift));
+        assert_eq!(Key::of(SDLK_INSERT), None);
         // A key no table names (E17 M5 T8b2): after every named one, found by no name.
         assert!(Key::ALL.iter().all(|&k| k < Key::Other));
         assert_eq!(Key::from_name(Key::Other.name()), None);

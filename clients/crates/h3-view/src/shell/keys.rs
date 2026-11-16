@@ -11,8 +11,18 @@
 //!   (`message_box_build` 0x4F6990), Enter its OK and Escape its Cancel, as the battle's box.
 //! - **The Multiplayer dialog** (`multiplayer_dialog_init` 0x50E050; E27 M2 T7): Escape its
 //!   Cancel (124); **the hot seat's names** (`hot_seat_dialog_init` 0x511E20): Enter its OK (519),
-//!   Escape its Cancel (520). Their edits take their keys first, by scan code
-//!   ([`super::multiplayer`], `h3_ui::edit`: [`scan`] reads a recipe's or the adapter's name so).
+//!   Escape its Cancel (520).
+//! - **An edit's own keys** (E27 M2 T7b, decision 39: the client's profile): Home, End, Left,
+//!   Right, Delete and BackSpace, taken while an edit has the focus ([`Context::Edit`], asked
+//!   before its dialog's); **the hot seat's ring** (`hot_seat_edit_key` 0x50DF60): Tab and Down to
+//!   the next edit, Shift and Tab and Up to the previous. The keypad's navigation keys are left
+//!   unbound (*provisional*: with Num Lock on they type their digits). In the original's profile
+//!   the edits take their keys by scan code instead ([`super::multiplayer`], `h3_ui::edit`:
+//!   [`scan`] reads a recipe's or the adapter's name so), these commands unused.
+//!
+//! A key down's command ([`command_for`]): the chord with Shift as held, else, with Shift held
+//! and that chord unbound, the key alone (*provisional*: Shift and a hotkey pressed its button
+//! before T7b too, when the shell read no Shift); Ctrl is not read.
 //!
 //! The window's own keys (`h3_ui::keys::Window`: the music, fullscreen, …) are not the shell's
 //! yet (*provisional*): their Escape is the main menu's Quit here.
@@ -20,8 +30,8 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use h3_ui::edit::{self, Scan};
-use h3_ui::keys::{self, Chord};
+use h3_ui::edit::{self, Caret, Scan};
+use h3_ui::keys::{self, Chord, Keys};
 
 use super::Choice;
 use crate::message;
@@ -39,6 +49,9 @@ pub enum Context {
     Multiplayer,
     /// The hot seat's names (E27 M2 T7).
     HotSeat,
+    /// An edit with the focus, in the client's profile (E27 M2 T7b): its own keys, asked before
+    /// its dialog's.
+    Edit,
 }
 
 /// The shell's commands.
@@ -53,6 +66,10 @@ pub enum Command {
     /// A dialog's button, as the main menu's (E27 M2 T7: the Multiplayer dialog's and the hot
     /// seat's, by id).
     Dialog(u16),
+    /// An edit's own key (E27 M2 T7b: the client's profile).
+    Edit(Caret),
+    /// The hot seat's ring: to the next edit (`true`) or the previous (E27 M2 T7b).
+    Ring(bool),
 }
 
 /// The main menu's buttons with a hotkey, by id, with their names and the original's keys.
@@ -89,29 +106,59 @@ const MESSAGE: [(message::Key, &str, &str); 2] = [
     (message::Key::Cancel, "box-cancel", "Escape"),
 ];
 
+/// An edit's own keys (E27 M2 T7b), with their names and keys (the original's scan codes', by the
+/// adapter's names).
+pub const EDIT: [(Caret, &str, &str); 6] = [
+    (Caret::Home, "edit-home", "Home"),
+    (Caret::End, "edit-end", "End"),
+    (Caret::Left, "edit-left", "Left"),
+    (Caret::Right, "edit-right", "Right"),
+    (Caret::Delete, "edit-delete", "Delete"),
+    (Caret::BackSpace, "edit-backspace", "BackSpace"),
+];
+
+/// The hot seat's ring (E27 M2 T7b), with its names and the original's keys
+/// (`hot_seat_edit_key` 0x50DF60).
+pub const RING: [(bool, &str, [&str; 2]); 2] = [
+    (true, "hot-seat-next", ["Tab", "Down"]),
+    (false, "hot-seat-previous", ["Shift+Tab", "Up"]),
+];
+
 impl Command {
-    /// Its name and its default key.
-    fn entry(self) -> (String, &'static str) {
+    /// Its name and its default chords.
+    fn entry(self) -> (String, Vec<Chord>) {
+        let one = |key: &str| alloc::vec![Chord::new(false, key)];
         let found = match self {
             Self::Button(id) => MAIN_MENU
                 .iter()
                 .find(|&&(b, _, _)| b == id)
-                .map(|&(_, name, key)| (name, key)),
+                .map(|&(_, name, key)| (name, one(key))),
             Self::Choice(c) => GAME_TYPE
                 .iter()
                 .find(|&&(g, _, _)| g == c)
-                .map(|&(_, name, key)| (name, key)),
+                .map(|&(_, name, key)| (name, one(key))),
             Self::Message(k) => MESSAGE
                 .iter()
                 .find(|&&(m, _, _)| m == k)
-                .map(|&(_, name, key)| (name, key)),
+                .map(|&(_, name, key)| (name, one(key))),
             Self::Dialog(id) => DIALOGS
                 .iter()
                 .find(|&&(d, _, _, _)| d == id)
-                .map(|&(_, name, key, _)| (name, key)),
+                .map(|&(_, name, key, _)| (name, one(key))),
+            Self::Edit(c) => EDIT
+                .iter()
+                .find(|&&(e, _, _)| e == c)
+                .map(|&(_, name, key)| (name, one(key))),
+            Self::Ring(next) => RING
+                .iter()
+                .find(|&&(r, _, _)| r == next)
+                .map(|(_, name, keys)| {
+                    let chords = keys.iter().filter_map(|k| Chord::parse(k).ok()).collect();
+                    (*name, chords)
+                }),
         };
-        let (name, key) = found.unwrap_or(("", ""));
-        (String::from(name), key)
+        let (name, chords) = found.unwrap_or(("", Vec::new()));
+        (String::from(name), chords)
     }
 }
 
@@ -120,12 +167,14 @@ impl keys::Command for Command {
     const TABLE: &'static str = "shell";
 
     /// Every command, in the table's order: the main menu's buttons, the game type menus', the
-    /// box's.
+    /// box's, the dialogs', an edit's own keys, the hot seat's ring.
     fn all() -> Vec<Self> {
         let mut all: Vec<Self> = MAIN_MENU.map(|(id, _, _)| Self::Button(id)).into();
         all.extend(GAME_TYPE.map(|(c, _, _)| Self::Choice(c)));
         all.extend(MESSAGE.map(|(k, _, _)| Self::Message(k)));
         all.extend(DIALOGS.map(|(id, _, _, _)| Self::Dialog(id)));
+        all.extend(EDIT.map(|(c, _, _)| Self::Edit(c)));
+        all.extend(RING.map(|(next, _, _)| Self::Ring(next)));
         all
     }
 
@@ -136,21 +185,50 @@ impl keys::Command for Command {
 
     /// The original's keys.
     fn defaults() -> Vec<(Self, Vec<Chord>)> {
-        Self::all()
-            .into_iter()
-            .map(|c| (c, alloc::vec![Chord::new(false, c.entry().1)]))
-            .collect()
+        Self::all().into_iter().map(|c| (c, c.entry().1)).collect()
     }
 
     /// The main menu's buttons over the main menu, a game type menu's over it, the box's keys
-    /// over a box, a dialog's over it.
+    /// over a box, a dialog's over it, an edit's while it has the focus, the ring over the hot
+    /// seat's names.
     fn context(self) -> Option<Context> {
         Some(match self {
             Self::Button(_) => Context::MainMenu,
             Self::Choice(_) => Context::GameType,
             Self::Message(_) => Context::Question,
             Self::Dialog(id) => DIALOGS.iter().find(|&&(d, _, _, _)| d == id)?.3,
+            Self::Edit(_) => Context::Edit,
+            Self::Ring(_) => Context::HotSeat,
         })
+    }
+}
+
+/// The command a key down gives (E27 M2 T7b) where `contexts` take keys, the first first (an
+/// edit's own keys before its dialog's): the key `key` (the adapter's name) with Shift as held;
+/// with Shift held and no context binding that chord, the key alone (*provisional*).
+#[must_use]
+pub fn command_for(
+    keys: &Keys<Command>,
+    contexts: &[Context],
+    shift: bool,
+    key: &str,
+) -> Option<Command> {
+    let chord = Chord::new(false, key);
+    let find = |chord: &Chord| {
+        contexts
+            .iter()
+            .find_map(|&context| keys.chord_command(context, chord))
+    };
+    find(&chord.clone().with_shift(shift)).or_else(|| shift.then(|| find(&chord)).flatten())
+}
+
+/// A key's name as a recipe (`xdotool`) or the adapter gives it, `shift+` (any case) holding
+/// Shift (E27 M2 T7b): whether Shift is held, and the key's own name.
+#[must_use]
+pub fn shifted(name: &str) -> (bool, &str) {
+    match name.get(..6) {
+        Some(prefix) if prefix.eq_ignore_ascii_case("shift+") => (true, &name[6..]),
+        _ => (false, name),
     }
 }
 
@@ -183,10 +261,7 @@ const NAMED: [(&str, u8); 18] = [
 /// whatever its case); the function keys by their codes; none for another name.
 #[must_use]
 pub fn scan(name: &str) -> Option<Scan> {
-    let (shift, key) = match name.get(..6) {
-        Some(prefix) if prefix.eq_ignore_ascii_case("shift+") => (true, &name[6..]),
-        _ => (false, name),
-    };
+    let (shift, key) = shifted(name);
     let code = if let Some(&(_, code)) = NAMED.iter().find(|(n, _)| *n == key) {
         code
     } else if let Some(n) = key.strip_prefix('F').and_then(|n| n.parse::<u8>().ok()) {
