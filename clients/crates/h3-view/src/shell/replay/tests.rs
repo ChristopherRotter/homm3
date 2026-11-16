@@ -623,6 +623,35 @@ fn a_press_or_a_key_skips_the_start_and_a_move_does_not() {
 }
 
 #[test]
+fn an_input_during_the_last_fade_reaches_the_main_menu() {
+    // CLT-Q130 (a): `H3Intro`'s fade from 903 ms (its third frame at 1 ms steps): the N given at
+    // 960 waits and opens New Game's menu once the main menu is up; given at 300, during the 3DO
+    // logo's fade (NWCLogo's loop flushes the queue), it is lost.
+    for (at, screen) in [(960, Screen::GameType(Game::New)), (300, Screen::MainMenu)] {
+        let r = Replay::new(
+            Shell::new(true),
+            [400, 300],
+            INPUT_STEP,
+            Some(start(3)),
+            &menus(Bugs::Original),
+        );
+        let wait = format!("step:{at}:1");
+        let (_, stop, r) = replay_from(r, &[&wait, "key:n", "step:2000:1"]);
+        assert_eq!((stop, r.screen()), (None, screen), "{at}");
+    }
+    // A move there moves the pointer at once, nothing kept.
+    let r = Replay::new(
+        Shell::new(true),
+        [400, 300],
+        INPUT_STEP,
+        Some(start(3)),
+        &menus(Bugs::Original),
+    );
+    let (_, stop, r) = replay_from(r, &["step:960:1", "move:1,2", "step:2000:1"]);
+    assert_eq!((stop, r.screen(), r.pointer()), (None, Screen::MainMenu, [1, 2]));
+}
+
+#[test]
 fn a_release_with_nothing_held_passes_on_a_screen_at_rest() {
     // `start-skip-right`: the right press skipped H3Intro, its release reaches the main menu.
     let (seen, stop, r) = replay(false, &["right-up", "up", "key-up:space", "shot:menu"]);

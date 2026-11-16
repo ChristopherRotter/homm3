@@ -45,8 +45,10 @@
 //! **Skipping** (as the first run's reading is not the client's, CLT-Q85: never the first run): a
 //! key down but F4, a left or a right press stops the clip playing. The full-screen clips then
 //! fade from what the back buffer holds; `H3Intro` stops at once (`video_stop_all`, no fade).
-//! Either way the sequence ends. An input during a fade is lost (the next clip flushes the input
-//! queue; after `H3Intro`'s fade the menu would take it: not modelled).
+//! Either way the sequence ends. An input during a fade is lost when a clip follows (its loop
+//! flushes the input queue first); when none does, the main menu takes it as it opens
+//! (CLT-Q130 (a), the user, 2026-11-16: as the original, in both profiles; [`Start::keeps_input`],
+//! the caller keeping the inputs for the menu).
 //!
 //! **The sound** (E27 M2 T5b1, design §11): with the sound on (a digital driver and the effects
 //! setting above 0: `smacker_open_in_dialog` 0x598AF0 opens a Smacker clip's tracks then, 0x69FE58)
@@ -487,6 +489,20 @@ impl Start {
         match self.state {
             State::Playing(Playing { part, .. }) => Some(part),
             _ => None,
+        }
+    }
+
+    /// Whether an input given now waits for the main menu (CLT-Q130 (a), the user: as the
+    /// original): during a fade after which no clip opens (`H3Intro`'s end, a skipped clip's, or
+    /// one before a clip that does not open, *provisional*: the game's data never has one) the
+    /// game's input queue keeps it, and the menu takes it as it opens; before a next clip that
+    /// clip's loop flushes the queue (the input lost). The caller keeps such inputs and gives
+    /// them to the menu.
+    #[must_use]
+    pub fn keeps_input(&self) -> bool {
+        match self.state {
+            State::Fading { then, .. } => then.is_none_or(|p| self.headers[p as usize].is_none()),
+            _ => false,
         }
     }
 

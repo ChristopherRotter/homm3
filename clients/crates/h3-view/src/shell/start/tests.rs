@@ -152,6 +152,41 @@ fn a_silent_smacker_clip_drifts_with_the_step_in_the_originals_profile_alone() {
     assert_eq!((third(Bugs::Original), third(Bugs::Fixed)), (201, 200));
 }
 
+/// The readings (every 10 ms) at which `start` keeps an input for the main menu, and the end.
+fn kept(mut start: Start, skip: Option<u32>) -> (Vec<u32>, u32) {
+    let (mut ops, mut kept, mut now) = (Vec::new(), Vec::new(), 0);
+    while !start.ended() {
+        assert!(!start.keeps_input() || start.playing().is_none());
+        now += 10;
+        start.read(now, &mut ops);
+        if skip == Some(now) {
+            start.skip(now, &mut ops);
+        }
+        if start.keeps_input() {
+            kept.push(now);
+        }
+    }
+    assert!(!start.keeps_input());
+    (kept, now)
+}
+
+#[test]
+fn an_input_waits_for_the_menu_during_a_fade_no_clip_follows() {
+    // CLT-Q130 (a): the next clip's loop flushes the input queue; with none the menu takes it.
+    // H3Intro's fade alone, its 150 ms before the menu.
+    let mut ops = Vec::new();
+    let headers = [header(2, SMACK), header(2, BINK), header(2, BINK)];
+    let (kept_at, end) = kept(Start::new(headers, true, Bugs::Original, 0, &mut ops), None);
+    assert_eq!(kept_at, (end - 150..end).step_by(10).collect::<Vec<_>>());
+    // A skipped logo's fade ends the start; so does one before a clip that does not open.
+    let start = Start::new(headers, true, Bugs::Fixed, 0, &mut ops);
+    let (kept_at, end) = kept(start, Some(50));
+    assert_eq!((kept_at.first(), kept_at.len(), end), (Some(&50), 15, 200));
+    let start = Start::new([header(2, SMACK), None, None], true, Bugs::Original, 0, &mut ops);
+    let (kept_at, end) = kept(start, None);
+    assert_eq!(kept_at, (end - 150..end).step_by(10).collect::<Vec<_>>());
+}
+
 #[test]
 fn the_clips_play_in_order_each_ending_in_a_fade() {
     let mut ops = Vec::new();

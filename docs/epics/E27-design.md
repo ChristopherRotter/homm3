@@ -1745,7 +1745,13 @@ Video 0); `Videos` reads `shell-videos.vid` after `battle-videos.vid` when `VIDE
   loop, never on the frozen clock), then the back buffer filled black and shown 50 ms after the
   third: 3DOLogo's last frame at 5 427 ms, the steps at 5 427, 5 477, 5 527, the black and
   NWCLogo's first frame at 5 577. A clip's last frame is decoded but not shown before it (the
-  fade's first step shows it). `H3Intro` skipped stops at once (`video_stop_all`, no fade).
+  fade's first step shows it). `H3Intro` skipped stops at once (`video_stop_all`, no fade). An
+  input during a fade is lost when a clip follows (its loop flushes the input queue first, §2.1);
+  during a fade after which none opens (`H3Intro`'s end, a skipped clip's) the queue keeps it and
+  the main menu acts on it. **CLT-Q130 (a)** (the user, 2026-11-16: as the original, both
+  profiles): the replay and the window give the menu those inputs, in order, as it opens
+  (`Start::keeps_input`; *provisional*, not read: the menu's loop takes them as it would live
+  ones at its first pass, the moves not kept, the pointer where it is).
 - **NWCLogo's Bink copy** (clip 29, 400 × 300): 0x44DD20 leaves it at (0, 0) of the back buffer
   (every other clip centred), and `video_show` blits that corner stretched onto the whole screen
   (DirectDraw's `Blt`, Wine's nearest pixel: each pixel doubled). The fade copies the back buffer,

@@ -25,7 +25,8 @@
 //! LODs), from Bink or with `--video-quality low` from their Smacker copies (the setting Bink
 //! Video 0, CLT-Q96). The replay draws them as the DLLs copy them and paces a silent Smacker clip
 //! as `SmackWait` does (`Bugs::Original`), the window whole and each frame on its time
-//! (CLT-Q129 (b)), on the window's own clock.
+//! (CLT-Q129 (b)), on the window's own clock. Both give the main menu the inputs of the fade
+//! before it (CLT-Q130 (a), `Start::keeps_input`).
 //!
 //! **The sound** (E27 M2 T5b1): `--effects <0..9>` is the effects setting (the window's default
 //! 5, the game's; the replay's 0, the harness's silent runs). Above 0, with a sound device (the
@@ -56,6 +57,7 @@
 
 use std::fs;
 use std::io::{self, BufRead};
+use std::mem;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::mpsc;
@@ -939,12 +941,16 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
         u32::try_from(win.ticks_ns().saturating_sub(began) / 1_000_000).unwrap_or(u32::MAX)
     };
     let (mut pointer, mut dirty, mut cursor_hidden) = (None, true, false);
+    // The inputs given during the start's last fade, the main menu's first (CLT-Q130 (a)).
+    let mut kept: Vec<Given> = Vec::new();
     loop {
         let playing = shell.screen() == Screen::Start;
         // The edits' typing (T7b): text input while one has the focus.
         win.set_text_input(front.as_ref().is_some_and(Front::typing));
         let events = win.wait(if playing { 5 } else { 50 });
-        for given in merged(events, win.scans(), win.typed()) {
+        let mut inputs = if playing { Vec::new() } else { mem::take(&mut kept) };
+        inputs.extend(merged(events, win.scans(), win.typed()));
+        for given in inputs {
             let mut did = menu::Did::default();
             match given {
                 Given::Typed(c) => {
@@ -961,6 +967,11 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
                     }
                 }
                 Given::Event(Event::Redraw, _) => dirty = true,
+                // During the start's last fade an input waits for the main menu, which opens
+                // at its end (`Start::keeps_input`).
+                Given::Event(event, scan) if playing && start.keeps_input() => {
+                    kept.push(Given::Event(event, scan));
+                }
                 // A key down or a press goes to the clip, which only some stop (F4 does not).
                 Given::Event(event @ (Event::Key(_) | Event::Click { down: true, .. }), _)
                     if playing =>

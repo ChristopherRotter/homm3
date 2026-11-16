@@ -8,7 +8,8 @@
 //!
 //! The start (E27 M2 T5a) plays on the same clock: each step's reading of it runs the start's
 //! timing ([`super::start::Start`]), whose ops the caller carries out ([`Replay::ops`]); an input
-//! that stops a clip is the start's ([`Start::skip`]); its end shows the main menu.
+//! that stops a clip is the start's ([`Start::skip`]); its end shows the main menu, which takes
+//! the inputs given during the fade before it (CLT-Q130 (a), [`Start::keeps_input`]).
 //!
 //! The main menu (E27 M2 T6a) and the game type menus (T6b1) take the inputs as the harness gives
 //! them ([`super::menu`]): a `click` is a move there, a press and a release, a `down` or a `right`
@@ -298,6 +299,9 @@ pub struct Replay {
     /// The press sample's length in ms, with the effects on.
     sample_ms: Option<u32>,
     samples: Samples,
+    /// The inputs given during the start's last fade, for the main menu as it opens (CLT-Q130
+    /// (a): [`Start::keeps_input`]).
+    kept: Vec<Input>,
 }
 
 /// What a menu is given, in order (an input of the harness's may be several).
@@ -377,6 +381,7 @@ impl Replay {
             keys: Keys::original(),
             sample_ms: None,
             samples: Samples::default(),
+            kept: Vec::new(),
         }
     }
 
@@ -476,8 +481,9 @@ impl Replay {
             Step::Input(input) if self.screen() == Screen::Start => {
                 if let Input::Move(at) = input {
                     self.pointer = *at;
-                }
-                if skips(input) {
+                } else if self.start.as_ref().is_some_and(Start::keeps_input) {
+                    self.kept.push(input.clone());
+                } else if skips(input) {
                     let (time, ops) = (self.time, &mut self.ops);
                     self.start
                         .iter_mut()
@@ -524,11 +530,17 @@ impl Replay {
         self.ended();
     }
 
-    /// The start's end taken: the main menu.
+    /// The start's end taken: the main menu, given the inputs its last fade kept, in order
+    /// (CLT-Q130 (a); *provisional*: those that reach a screen without a menu are dropped).
     fn ended(&mut self) {
         if self.start.as_ref().is_some_and(Start::ended) {
             self.start = None;
             self.end(Ended::Start);
+            for input in core::mem::take(&mut self.kept) {
+                if self.front.is_some() {
+                    self.on_menu(&input);
+                }
+            }
         }
     }
 
