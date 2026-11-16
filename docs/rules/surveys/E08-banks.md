@@ -1,10 +1,10 @@
 # E08 creature banks survey (E08 T118a)
 
-Date: 2026-11-15. Scope: E08 increment 13 (decisions 333, 334), input for T118b's ADR amendment
-drafts, the design note and the cut. **Whole** (the user at T118a's start, decision 335, after the
-reading was measured: the content and the draw about 2 KB of code, the visit, the battle and the
-reward about 3 KB). Input, not rules (`README.md`): a fact becomes binding when a task writes it
-into the catalog with its sources and tests.
+Date: 2026-11-15 (§14, batch E13 scored: 2026-11-16, T121). Scope: E08 increment 13 (decisions 333,
+334), input for T118b's ADR amendment drafts, the design note and the cut. **Whole** (the user at
+T118a's start, decision 335, after the reading was measured: the content and the draw about 2 KB of
+code, the visit, the battle and the reward about 3 KB). Input, not rules (`README.md`): a fact
+becomes binding when a task writes it into the catalog with its sources and tests.
 
 **Sources** (retrieved 2026-11-15):
 
@@ -34,7 +34,9 @@ into the catalog with its sources and tests.
   rewardable objects with guards), `config/gameConfig.json` (`combat.layouts`:
   `creatureBankNarrow`, `creatureBankWide`), `lib/battle/BattleLayout.cpp`,
   `lib/mapObjects/CRewardableObject.cpp` (the visit, the battle's end, the reward after the
-  levels), `lib/mapping/MapFormatH3M.cpp` (`readBank`).
+  levels), `lib/mapping/MapFormatH3M.cpp` (`readBank`); at T121 (retrieved 2026-11-16, §14) also
+  `lib/battle/Unit.cpp`, `BattleInfo.cpp`, `CBattleInfoCallback.cpp`, `BattleHex.cpp` and
+  `AccessibilityInfo.cpp` (a two-hex unit's hexes and its placement).
 - `wiki`: <https://heroes.thelazy.net/index.php/Crypt> (the layout, the war machines, the morale),
   the search results' pages of the Cyclops Stockpile, the Imp Cache and the Naga Bank
   (<https://heroes.thelazy.net/index.php/Cyclops_stockpile>,
@@ -87,6 +89,11 @@ into the catalog with its sources and tests.
   336 to 339): the original in D-65, D-66, D-68 and D-67 (the reward before the levels; decision 342
   after the correction: the levels first, the original's human path); the bank
   battle the adventure lane's, `cross-lane`; batch E13 before the build.
+- **Batch E13** (§14, T121): every row as predicted. D-65, D-66 and D-68 confirmed as the
+  original, D-67's correction confirmed (the levels, then the reward and its army dialog), D-69
+  dissolved (one table; a two-hex stack's rear hex its position: VCMI's second table names the
+  same defender cells). No new dispute or quirk. The bank's formation ignored rests on the reading
+  and VCMI (the batch's hero was loose, `ADV-QUIRK-8`).
 
 ## 1. The census (the five classes)
 
@@ -399,7 +406,8 @@ the owner's (its hero's status).
   86). Which hexes such a stack covers is the battle's footprint rule (the battle lane's
   BAT-SET-001: a defender's position its rear hex, its front one column toward the attacker); the
   two may describe the same cells under different conventions. Batch E13 records the Griffins'
-  hexes.
+  hexes. *Dissolved by batch E13* (§14, E13-4): the original's cells 14-15, 184-185, 171-172, 1-2,
+  99-100, its one table under BAT-GEO-002; VCMI's wide table covers the same defender cells.
 - **No quirk candidate.** Considered and not candidates: the third texts never shown (messages
   only), the Dragon Fly Hive's 50 % without effect (no rule changes), the RoE elementals' dead
   branch (unreachable), the visited mark only after a yes (D-66: the original's design, as the
@@ -466,7 +474,9 @@ Increment 13's batch, **batch E13**, runs on the client lane's harness in SoD on
 from maps `h3-experiment` writes (`docs/experiments/README.md`), as batches E3 to E12; its spec
 and recipe are tasks of T118b's cut. One run, days 1 to 3, two players (the second for nothing
 but the hint's other team). The level and the upgrade are drawn at the start, so each row reads
-the drawn record first (game +0x4E3DC, `creature_bank_record`) and predicts from it.
+the drawn record first (game +0x4E3DC, `creature_bank_record`) and predicts from it. *Run* by
+T120 (days 1 and 2, design §19's E13-11 and E13-12 added), *scored* in §14 (T121): every row as
+predicted.
 
 | Row | Settles | Setup | Record | The reading predicts |
 |---|---|---|---|---|
@@ -542,3 +552,89 @@ design; (3) the bank battle **built by the adventure lane, `cross-lane`**, after
 of the seam, the battle lane's inbox told (as recommended); (4) **batch E13 before the build** (as
 recommended). *(2) replaced* at T118b2 (2026-11-15, decision 342) after §6's correction: the
 levels first, the original's human path (as recommended then).
+
+## 14. Batch E13 scored (T121)
+
+Scored on 2026-11-16 (E08 T121; docs only) from the recorded run
+`experiments/results/E08-batch-13.md` (T120: three runs, the third filled; runs 2 and 3 alike in
+every rule-level record, the others' differences the draws': each start draws anew, run 1 one
+start, runs 2 and 3 two, the first without a level-1 Imp Cache), played by the capture harness
+(`clients/capture/batches/E08-batch-13.toml`, 41 steps) in SoD 4.0 on Easy, hot seat, and read
+from the game's memory. Each row against §11's prediction with design §19's changes and the
+spec's predictions (`experiments/specs/E08-batch-13.toml`: the tiles, the points, the hexes; the
+texts by table and line). The rows as the spec's encounters hold them: E13-4 in E13-6's battle,
+E13-8 in E13-6's and E13-7's, E13-10 in E13-3's, E13-11 in E13-2's and E13-5's.
+
+| Row | Predicted | Observed | Verdict |
+|---|---|---|---|
+| E13-1 (§2, §3; D-65, D-68) | the records in the walk's order by entrance (I1 0, W2 1, W4 2, W3 3, S1 4 … F2 26); each a level's row of §2; class 16 and the ships five equal stacks, the Crypt's levels 1 and 2 split by §3's rule, its 3 and 4 and Utopia four stacks; an upgrade only on class 16's slot 2, never a Hive's; the Imp Cache's level 1 with 2 mercury, the Naga Bank's sulfur; Utopia's artifacts relics first; every word clear | every index as predicted; seven banks at level 1, seven at 2, twelve at 3, one at 4; C1 and C3 (the Crypt's levels 1 and 2) 10, 10, 10, 10, 10 and 13, 10, 5, 10, 12, C2 (level 3) four stacks 20, 20, 10, 5, U1 8, 6, 3, 2 and U2 8, 5, 2, 1 dragons; slot 2 upgraded on 4 of the 14 class-16 banks but the Hives (Familiars in I1, I2, I4, Battle Dwarves in T1), on no Hive, Crypt, Utopia or ship; I3 and I4 (level 1) 1 000 gold and 2 mercury, I2 4, I1 6; N1 16 sulfur, N2 8, no gems; U1 relic, relic, major, minor, U2 relic, major, minor, treasure; the ships' and Crypts' treasures at their levels; every word's bits clear, the index in bits 13 to 24 | confirmed: §2's table, §3's walk, split and upgrade slot; **D-65** both rows as the original (VCMI's gems and its Imp Cache without mercury are not the original's); **D-68** the vector relics first. Four upgrades of 14 at 50 %: p ≈ 0.09 for so few, no evidence against the chance |
+| E13-2 (§4, §7; D-66) | S1 the mark first, ADVEVENT 32; no: on (6, 8) with 1 800, bit 5; Red's hint the size word and the Cyclopes; C1 ADVEVENT 119 first; no: no mark, on (10, 8) with 1 318, the hint "(Not visited)"; Blue "(Not visited)" over S1, C1, I1 (VCMI: every visit scouts) | S1 ADVEVENT 32 (no), on (6, 8) with 1 800, bit 5 set; Red's hint over (7, 8) the name, then in parentheses GENRLTXT 203, ARRAYTXT 185 (the size word's third form, 20 to 49) and the Cyclopes' plural; C1 ADVEVENT 119 (no), on (10, 8) with 1 318, its word unchanged, Red's hint the name and GENRLTXT 354; Blue's hints over S1, C1 and I1 the name and GENRLTXT 354, Blue's bit 6 clear on the three, Red's bit 5 set on S1 and I1 | **D-66 confirmed**: a declined Crypt marks and shows nothing, a declined Stockpile marks its team at once (VCMI's scouting at every visit is not the original's); the hint as §7, its text whole as E24's reading (`army_description_text` 0x40ABE0: GENRLTXT 203 and the lower-case size word; §7's "(Lots of Cyclopes)" a shorthand) |
+| E13-11 (design §6; D-66) | S2's question with E13-2 on (14, 8) at 836; no: there, 836, bit 5; Space: the question again, nothing else; yes: the battle at (14, 8), the Archangels at 57, the guards at 15, 185, 172, 2, 100; won: the levels, then ADVEVENT 34 with S2's resources; on (14, 8) with 836, S2 looted, the hint "(Visited)"; the Shipwreck from the coast: the hero on land throughout | ADVEVENT 32 on (14, 8) with 836; no: there, 836, bit 5 set; Space (the hero unmoved): ADVEVENT 32 again; yes: the battle at once, the Archangels on 57-58, the Cyclopes at 15, 185, 172, 2, 100; won: two level-ups (2 100 experience, the Cyclopes' 70 each), GENRLTXT 7, ADVEVENT 34 with 6 of each resource but gold; on (14, 8) with 836; S2 looted (bit 25), its record's guards emptied, the treasury +6 each; Red's hint over (15, 8) GENRLTXT 353. E13-5 on (26, 46) at W1's question and after its battle (E13-5's row) | confirmed: an entered bank's move ends on its entrance, the hero stays there through the question, the decline and the battle; `Revisit` (the key) asks again (decision 268). GENRLTXT 7 E10's (below) |
+| E13-9 (§5) | on (10, 4) with 1 500; the mark, the question; yes: the Elves at 57, the guards at 15, 185, 172, 2, 100; retreated: the record the survivors by slot as before the retreat, Familiars as Familiars, not looted, bit 5; E13-9 off the map; Red's hint by the survivors' size word or GENRLTXT 44; Blue "(Not visited)" | ADVEVENT 32 (yes) on (10, 4) with 1 500; the Elves 57, the guards at 15, 185, 172 (Familiars), 2, 100; the shot at slot 3's Imps on hex 2 (60 → 35; shots 24 then 23, no cart), slot 2's Familiars 51 by the retreat; retreated (the defender the winner): the record 60, 60, 51 Familiars, 35, 60, as before the retreat, not looted, bit 5 set; E13-9 off the map; Red's hint GENRLTXT 203, ARRAYTXT 194 (250 to 499: the survivors' 266) and GENRLTXT 44; Blue's GENRLTXT 354 | confirmed: the survivors stay as a garrison's, an upgraded stack as its own creature (unlike a monster's A-6); the hint by the survivors |
+| E13-3 (§5; design §13) | the walk 200: 1 360; no tactics phase though Expert Tactics; no obstacles; no war machine on the field; Archangel 57, Pikeman 61, Swordsman 90, Archer 93 (slots 0, 2, 4, 6 by their ordinal), the guards at 15, 185, 172, 2, 100; the Archers' shots 12, then 12 (without the supply 11); won: the levels, ADVEVENT 34 with T1's crystal and gold | no phase (the hero's tactics toggle on, +0x48 bit 1), no obstacles, no war machine on the field (the Ballista, the Ammo Cart and the Catapult worn); the stacks on 57-58, 61, 90, 93; the Dwarves at 15, 185, 172 (Battle Dwarves), 2, 100; the Archers' shots 12 and 12 (runs 2 and 3); won: one level-up (1 500 experience), ADVEVENT 34 with 3 crystal and 4 000 gold; on (10, 20) with 1 360 | confirmed: BAT-TAC-001, BAT-GEO-004, BAT-WAR-001, BAT-WAR-004 (the supply without a cart on the field) and the bank layout by the ordinal (61 for slot 2, not the slot's 90). The hero fought **loose** (+0x48 2: the map's tight flag reaches no placed hero in the original, `ADV-QUIRK-8`), so the formation's part rests on the reading and VCMI (below) |
+| E13-4 (§5, D-69; design §13) | E13-6's stacks at 57, 61, 90, 93, 96, 125, 129; each two-hex Griffin stack its position and the hex one column toward the attacker: 14-15, 184-185, 171-172, 1-2, 99-100 | exactly so (the Archangels on 57-58, 90-91, 96-97, 129-130, the Titans on 61, 93, 125); the same cells for U1's dragons (14-15, 184-185, 171-172, 1-2, E13-7) and D1's Water Elementals (14-15 … 99-100, E13-5) | **D-69 dissolved**: one table and BAT-GEO-002's footprint (a two-hex stack's position its rear hex, its front one column toward the enemy) give the original's cells on both sides. VCMI 1.7.5 (read at T121: `Unit::occupiedHex`, `CBattleInfoCallback::getAvailableHex`, `BattleHex::getClosestTile`, `AccessibilityInfo::accessible`) names a unit's front hex with the second behind it and moves a stack whose footprint does not fit (columns 0 and 16 are side columns) to the closest hex that does: its `creatureBankWide` (171, 1, 86) covers the original's defender cells; its two-hex attackers stand one column nearer their edge (56-57, 89-90, 95-96, 128-129), VCMI's, not the original's |
+| E13-6 (§6; D-67 corrected) | on (12, 34) with 1 800; the level-ups first (3 750 experience: from 900 to level 5 at G2's level 3), then ADVEVENT 34 with the Angels, then the army dialog (the seven stacks below, the Angels above); OK loses them | ADVEVENT 32 (yes), the battle, four level-ups, ADVEVENT 34 (the Angels' picture), the army dialog (GENRLTXT 36's Angels, 3 above, the seven stacks below); after OK the army unchanged, 4 650 experience, level 5, on (12, 34) with 1 800 | **D-67's correction confirmed** (decision 342): the levels, then the reward's message, then its army dialog (GAM-DEC-007 point 3; VCMI the same) |
+| E13-7 (§6; D-68) | U1 by 300: 1 700; ADVEVENT 47; the dragons at 15, 185, 172, 2, two hexes each; after the levels ADVEVENT 34; the backpack the record's order, relics first; the worn unchanged; the level's gold; C2 and C3 ADVEVENT 119, their gold, a treasure appended at levels 3 and 4; 736 left | U1 (fewer than four relics in every run, U2 never taken), 1 700; ADVEVENT 47 (yes), the dragons on 14-15, 184-185, 171-172, 1-2; three level-ups, ADVEVENT 34; the backpack Thunder Helmet, Sentinel's Shield (relics), Sword of Hellfire (major), Crown of the Supreme Magi (minor), the worn unchanged, +30 000 gold; C2 ADVEVENT 119, a level-up, +2 500 and its treasure appended; C3 +2 000; 736 left | **D-68 confirmed**: the artifacts given in the record's order, relics first (VCMI's treasure first is not the original's) |
+| E13-8 (§4; HER-ADV-008) | G2 again: ADVEVENT 33, nothing else. Day 2: bits 9 to 11 clear, +0x11A 0; C3 by Space: ADVEVENT 119, yes: 120, bit 10, −1; C2: the same and nothing more (−1); W1 from (26, 45): 122, 123, bit 9, −2, on (26, 45) with 736; the Peasant's battle: all clear, 0 (VCMI: the same values without the question) | G2 by the key: ADVEVENT 33 alone; day 2 as predicted: C3 119 (yes), 120, bit 10, −1; C2 (482: 1 518) 119, 120, −1; W1 from (26, 45) 122 (yes), 123, bits 9 and 10, −2, on (26, 45) with 736; the Peasant (its zone at (25, 47)): bits 9 to 11 clear, 0 | confirmed: **D-66**'s searches (the question first, looted too; the −1 once per kind until the next battle, GAM-BAT-014's clear); the attack kind's looted visit told and nothing more |
+| E13-5 (§5; design §7, §14) | W1 from the coast: on (26, 46) at the question and after, 1 900; ADVEVENT 122; the deck (the ship flag), no obstacles, the Wights at 15, 185, 172, 2, 100; won, W1's gold, looted. E13-5b aboard with 0; day 2 1 500, sails to (30, 54) with 1 018: ADVEVENT 41, the deck, no obstacles, D1's gold and treasure, aboard | W1 ADVEVENT 122 on (26, 46) with 1 900; terrain water, ship flag 1, no obstacles, no war machine, the Wights at 15, 185, 172, 2, 100; +2 000 gold, W1 looted, E13-5 on (26, 46); E13-5b aboard on (27, 51) with 0; day 2 1 500, ADVEVENT 41 on (30, 54) with 1 018, the deck, the Water Elementals on 14-15 … 99-100; +3 000 gold and Crest of Valor, aboard on (30, 54) | confirmed: GAM-BAT-001's deck for both sea banks, the Shipwreck's from the coast too |
+| E13-10 (§2; D-65) | the first level-1 Imp Cache: +1 000 gold, +2 mercury; N1 the sulfur of its level, no gems | I3 (7, 21), level 1: +1 000 gold, +2 mercury; N1 (level 3): +8 000 gold, +16 sulfur, the gems unchanged; E13-3 1 560 on day 2, 819 after both | **D-65 confirmed** (both rows, as E13-1's records) |
+| E13-12 (design §9; ADV-STUB-12, D-46) | P1 from land: marks (50, 4), (50, 5), on (50, 5) with 1 360, no visit; P2 from water: (56, 4) to (56, 7), 1 160, no visit; P3 the water walker: no path to (62, 5); W4 visited from (62, 3), 1 460, ADVEVENT 122; no: no mark | exactly so: both flights' marks green, no question on the way, W2's and W3's words unchanged; P3 no marks; W4's question with the hero on (62, 3) at 1 460, its bits clear after the no | confirmed: the Shipwreck's water entrance a flight's pass from land and from water, never a water walk's; visited from the coast and **from above** (P3; E13-8's W1 from (26, 45)): ADV-STUB-12 lifted as design §9 (D-46 stays the Derelict Ship's) |
+
+**The disputes:** D-65 the original (E13-1, E13-10), D-66 the original (E13-2, E13-8, E13-12's
+W4), D-68 the original (E13-1, E13-7), D-67's correction (decision 342) confirmed (E13-6), D-69
+dissolved (E13-4). No new dispute, no quirk candidate.
+
+**Beyond the rows:**
+- **The formation in a bank** (E13-3): the spec's tight hero fought loose, as every placed hero in
+  the original (`map_hero_setup` 0x486590 writes none of +0x48; `E08-battles.md` §6.4,
+  `ADV-QUIRK-8`, fixed in the engine). The row shows the bank's table replacing a loose army's
+  edge column, not a tight one's. The formation ignored rests on the code reading (0x4636B7 takes
+  `bank_battle_hexes` with no formation test, §5) and VCMI 1.7.5 (`BattleLayout::createLayout`
+  takes a layout's `attackerUnits` whatever the formation when it has no loose or tight lists, and
+  `creatureBankNarrow` and `-Wide` have none): two sources agree. The engine keeps a map's tight
+  flag (`ADV-QUIRK-8`), so its bank must ignore it, as design §13 and the ADR-0022 draft have it.
+  A tight hero in a bank needs the hero screen's button (0x4DD587) in a later batch; none planned.
+- **GENRLTXT 7** (the warning to a player without towns) after E13-11's battle, between the
+  level-ups and the reward's message, as after the first battles of batches E9, E10a, E11 and
+  E12a: E10's defeat, the harness's known message; nothing for the build.
+- **The reward message's pictures** (E13-2, E13-3, E13-5, E13-7, E13-10) as read: the gold first,
+  then the other resources from gems to wood, then the artifacts last to first, the reverse of the
+  order they are given (the dialog's list, by the four helpers §6 did not read, or the harness's
+  order of reading it). The client's (E24's message); the engine's events follow the record's
+  order (design §8). Nothing for the build.
+- **The record after the battle:** won (E13-2's S2), its guards emptied, its resources left in it,
+  the looted bit set; retreated (E13-9), the survivors by slot (a killed stack's slot emptied, runs
+  1 and 2). The engine's looted mark and army left (design §4) say the same.
+- **The guards play as any side** (E13-3's Battle Dwarves, speed 5, struck before the Archers'
+  turn; E13-9's Familiars): nothing bank-specific.
+- **The draws:** the 27 levels' seven, seven, twelve and one against chances 30, 30, 30, 10 (χ² ≈
+  3.3, three degrees: no evidence against); each start draws anew (the recipe's restart). The
+  engine draws from its setup stream (design §5); nothing for the build.
+- **Not played:** U2 (U1 held fewer than four relics in every run) and the Crypt C3 first on day 2
+  (day 1 paid it).
+
+**The rules toward `verified`:** every row agrees with the reading, so each rule below, built and
+tested, takes the batch as its `observation` source and is `verified` at once.
+- T123a: ADV-BNK-001 (E13-1's kinds and levels; the entrances, E13-2, E13-11, E13-5, E13-12).
+- T124a: BAT-SET-001's bank case (E13-3's ordinals, E13-4's and E13-7's cells, E13-5's deck),
+  BAT-TAC-001, BAT-GEO-004, BAT-WAR-001 and BAT-WAR-004 (E13-3). The formation's part stays the
+  reading's and VCMI's (no row).
+- T124b: ADV-BNK-002 (E13-1), ADV-BNK-003 and HER-ADV-008 (E13-2, E13-8, E13-11, E13-12's W4),
+  ADV-BNK-004 and GAM-BAT-001 (E13-9, E13-5, E13-11), ADV-BNK-005 and GAM-DEC-007 (E13-6, E13-7,
+  E13-10, E13-2's S2).
+- T125a: ADV-BNK-006 and ADV-VIS-006 (E13-2, E13-9, E13-1's Blue reads), ADV-MOV-009 and
+  ADV-SEA-002 (E13-12).
+
+**For T122** (the drafts with this outcome): every point the rows test holds as drafted: ADR-0016
+points 1, 4 and 6 (the draw, the two flows and their marks, the survivors, the loot, the coast and
+the passage, the hint), ADR-0017 (the offers, the reward a won battle's rest after the levels, the
+deck), ADR-0022 point 8 (the four rules; the positions as each stack's rear hex). **Added:**
+ADR-0022's alternatives gain VCMI's second table for two-hex guards (D-69: the same cells under the
+footprint rule, E13-4). No point changes.
+
+**The checkpoint** (ADV-Q55, `AskUserQuestion`, one round of two; the epic's decisions 348, 349):
+(1) the outcome for T122, accepted (recommended): the drafts applied as written, ADR-0022's
+alternatives gaining VCMI's second table (decision 348; not chosen: the user's review of the drafts
+first); (2) the formation ignored in a bank built on the reading and VCMI (recommended; decision
+349): BAT-SET-001's bank case cites batch E13 for the ordinals and the cells, the reading and VCMI
+for the formation's part. Not chosen: a batch row with a tight hero before T124a.

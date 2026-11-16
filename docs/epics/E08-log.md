@@ -17748,3 +17748,138 @@ passed every step it runs but `check-lane` (by design on a `cross-lane` branch; 
 check-lane --cross-lane` ok); deny and ffi-smoke skipped by the scope. `cargo check --workspace
 --all-targets` and clippy with `-D warnings` on `h3-map` and `h3-experiment` clean. CI's full
 verify on the pull request is the record.
+
+### Increment 13, round 3: T120, batch E13's harness, recipe and runs (2026-11-16, `adventure/e08-t120`)
+
+Baseline: `master` f6dd6d3 (#960, T119, merged; CI green on it; the setup's full baseline was
+stopped in its coverage step to free the CPUs for the game, CI's run stands for it). Staged: the
+executable, the five DLLs, the four LODs, both `.snd`, `H3ab_ahd.vid`, `battle-videos.vid`,
+`maps.tar`, `extracted.tar` (SHA-256 checked, one digest of the sorted list). **The cut**
+(decision 347): T120 alone, T121 next (recommended).
+
+**The harness** (`clients/capture/h3adv.py`, `h3mem.py`, common; README "Creature banks";
+`docs/exe/structs.toml`: the battle stack's shots +0xD8, read in `stack_shot` 0x43FA03, and the
+artifact setup's class +0xC, observed): `bank:x,y[:part]` a bank's record by its entrance (the
+guards, the resources, the creature and count, the artifacts with their classes in the vector's
+order, the word's visited and looted bits; under a hero standing there); the draws' check as
+`[[require]]` `{ any, bank = { gold | relics_below } }` with a recipe's `starts` (the n-th start
+played whatever it drew; the observation `starts`); a step's `walk = "pick"` (`pick`: the first bank that
+meets its condition, else the first); every dialog of a step in order (`order`, `order:rows`) and
+the hero's tile and points at each question (`questions:at`); a battle's opening with every hex
+each stack covers (`opening:cover`, `opening:cover_rows`), the war machines on the field and each
+shooter's shots; the plan `{ shoot, then = "auto" | "retreat" }` (the other attacking stacks
+defend until the shooter's first turn, its shots read before and after its shot, the nearest
+enemy shot or one beside it struck; at the attacker's next turn auto combat or the retreat with
+the defender's stacks by slot); `only_if`'s `points_at_least`; `hero:backpack:classes`,
+`hero:artifacts:classes`; a bank hint by its parts (CRBANKS' names, ARRAYTXT 174 to 201, GENRLTXT
+44 and 203 "Guarded by", the creatures' plurals). The harness check passed (23 steps).
+
+**The recipe** `clients/capture/batches/E08-batch-13.toml` (41 steps: day 1 Red 27, Blue 6, day 2
+Red 8) and **three runs**. Fixed between them (each a read, not a rule): the first run read the
+Wood Elves' and the Archers' shots during the shot's animation (24 then 24: the drop comes after
+it; the plan now waits for another stack's turn, a good morale's turn again included); the army
+dialog's bar items hold no portraits' frames (the upper creature is now the title's, GENRLTXT 36);
+a bank hint over a tile beside the entrance took a wrong record's guards (every creature's plural
+named now); the third run's first try waited out E13-3's battle (auto combat's key during the
+computer's turn after the shot: it now comes at the attacker's next turn); a key step's messages
+no longer stop `oddities`. **Runs 2 and 3 agree in every rule-level record**; 170 of 241 filled
+records are equal, the others the draws' (each start draws anew: run 1 one start, runs 2 and 3
+two, the first missing a level-1 Imp Cache; U1 taken every time, I3 the level-1 Imp Cache every
+time). The template filled from the third run (`experiments/results/E08-batch-13.md`), the agent's
+lines in E13-3's, E13-9's and E13-6's last lines.
+
+**Raw observations** (unscored; T121 scores them, survey §14; the three runs alike unless said):
+**E13-1:** every record by entrance, the index order I1 0, W2 1, W4 2, W3 3, S1 4, C1 5, S2 6, T1 7,
+I3 8, I2 9, N1 10, I4 11, G2 12, D2 13, U1 14, C2 15, C3 16, W1 17, U2 18, D1 19, T2 20 to F2 26;
+class 16 and the ships five equal stacks, slot 2 alone upgraded (never a Hive's); the Crypt's
+levels 1 and 2 split, 3 and 4 four stacks; Utopia four dragon stacks; the Imp Cache's level 1 1 000
+gold and 2 mercury (3/4/6 at 2/3/4); the Naga Bank's sulfur 8, 12, 16 by its level (no gems); Utopia's artifacts
+relics first (U2 of run 1: relic, major, minor, treasure); every word's bits clear at the start
+(the index in bits 13 to 24: `0xfc00001f` to `0xfc03401f`). Blue's hints over S1, C1 and I1: the name and
+GENRLTXT 354 each, Blue's bit 6 clear, Red's bit 5 set on S1 and I1, clear on C1. **E13-2:** S1
+ADVEVENT 32 (no), E13-2 on (6, 8) with 1 800, bit 5 set; the hint "(GENRLTXT 203, the size word
+ARRAYTXT 185, the plural or GENRLTXT 44)" (Cyclopes, or creatures with Kings); C1 ADVEVENT 119
+(no), on (10, 8) with 1 318, **no bit**, the hint GENRLTXT 354. **E13-11:** S2's question with E13-2
+on (14, 8) at 836; Space: the question again, yes: the battle at once (Archangels 57-58, the guards
+15, 185, 172, 2, 100), **the level-ups, GENRLTXT 7, then ADVEVENT 34** with the resources, E13-2
+still on (14, 8) with 836, S2 looted (bit 25), its record's guards empty, the hint GENRLTXT 353.
+**E13-9:** the guards at 15, 185, 172, 2, 100, the Elves at 57; the shot 24 then 23; the retreat:
+the record keeps the survivors by slot (a killed stack's slot emptied; Familiars as Familiars),
+bit 5 set, not looted, E13-9 off the map; the hint by the survivors' size word (Horde, Swarm,
+Throng). **E13-3:** no tactics phase, no obstacles, no war machine on the field (the hero wears
+the Ballista and the Ammo Cart), the four stacks at **57-58, 61, 90, 93** (slots 0, 2, 4, 6), the
+guards at 15, 185, 172, 2, 100; **the Archers' shots 12 then 12** (runs 2, 3); the level-ups,
+then ADVEVENT 34 (crystal and gold), E13-3 on (10, 20) with 1 360. **E13-6, E13-4:** the seven
+stacks at 57-58, 61, 90-91, 93, 96-97, 125, 129-130; **the Griffins on 14-15, 184-185, 171-172, 1-2,
+99-100**; the order: the question, the battle, four level-ups, ADVEVENT 34 (the Angels), **then
+the army dialog** (GENRLTXT 36, Angels; upper 3 or 4, the lower the seven stacks), OK: the army
+unchanged, on (12, 34) with 1 800. **E13-8 (first part):** Space on G2: ADVEVENT 33, nothing more.
+**E13-7:** U1 (16, 44), the dragons on 14-15, 184-185, 171-172, 1-2; ADVEVENT 47, the level-ups,
+ADVEVENT 34; **the backpack in the vector's order, relics first** (relic, relic, major, minor;
+the message's pictures list them in the reverse order); C2 and C3 ADVEVENT 119, their gold, 736
+points left. **E13-8 (day 2):** before: bits 9 to 11 clear, +0x11A 0; C3 by Space: ADVEVENT 119
+(yes), 120, **bit 10 set, −1**; C2: 119, 120, **−1** (nothing more); W1 from (26, 45): ADVEVENT 122
+(yes), 123, **bit 9 set, −2**, the hero on (26, 45) with 736 (the visit's step paid); the
+Peasant's battle (no question): **all clear, 0**. **E13-5, E13-11 (second part):** W1 from the
+coast: ADVEVENT 122 with E13-5 on (26, 46) at 1 900, **the deck** (terrain water, ship flag 1),
+no obstacles, the Wights at 15, 185, 172, 2, 100, E13-5 on (26, 46) after; E13-5b boarded with 0
+points; day 2 1 500, D1's ADVEVENT 41 at (30, 54) with 1 018, the deck, the Water Elementals on
+14-15, 184-185, 171-172, 1-2, 99-100, E13-5b aboard on (30, 54). **E13-10:** I3 (7, 21) of level 1:
+**+1 000 gold, +2 mercury**; N1: **+sulfur** and gold of its level. **E13-12:** P1 the path (50, 4),
+(50, 5), on (50, 5) with 1 360, W2 untouched; P2 (56, 4) to (56, 7), 1 160, W3 untouched; P3 **no
+path** to (62, 5); W4 from (62, 3): ADVEVENT 122 at 1 460 (no), no mark.
+
+**For T121:** GENRLTXT 7 (the townless warning) comes between the level-ups and the reward's
+message on the first day-1 battle (E13-11's), as E12a's walk had it; the bank battle's
+Battle Dwarves (E13-3) moved and struck before the Archers' turn; the Utopia branch U2 and the
+Crypt's day-2 C3 never played (U1 had fewer than four relics in each run).
+
+**Versions:** none moved (the harness, the recipe, the filled template, docs).
+
+### Increment 13, round 3: T121, batch E13 scored and the checkpoint (2026-11-16, `adventure/e08-t121`)
+
+Baseline: `master` 77c2eec (#968, T120, merged; CI green on `master`). Docs only; whole (the
+queue's cut: one survey section and its checkpoint); nothing staged (the text tables read in the
+user's `original-data/extracted/` in place; VCMI 1.7.5's battle files fetched from
+raw.githubusercontent.com).
+
+**Scored** (survey `E08-banks.md` §14; it is §14, not the planned §15: the survey ended at §13)
+from T120's filled template and its record of the runs: **every row as predicted.** E13-1 every
+record's index by entrance, each a level's row, the split and the upgrade on slot 2 alone (4 of 14
+class-16 banks, never a Hive), the Imp Cache's 2 mercury and the Naga Bank's sulfur (**D-65**),
+Utopia's vector relics first (**D-68**); E13-2 the Stockpile's mark at once and its hint by size
+word, the declined Crypt unmarked and "(Not visited)" (**D-66**); E13-11 the hero on S2's entrance
+through the question, the decline, the key's second question and the battle; E13-9 the survivors
+by slot after the retreat, not looted, the hint by them; E13-3 no tactics phase, obstacles or war
+machines, the four stacks by their ordinal on 57-58, 61, 90, 93, the Archers' 12 shots kept;
+E13-4 the Griffins on 14-15, 184-185, 171-172, 1-2, 99-100 (**D-69 dissolved**); E13-6 the
+level-ups, the reward's message, then its army dialog (**D-67's correction**); E13-7 the backpack
+relics first (**D-68**); E13-8 the looted searches' −1, −1, −2 and the battle's clear; E13-5 the
+deck from the coast and from a boat; E13-10 +2 mercury and +16 sulfur (**D-65**); E13-12 both
+flights over the Shipwreck's water entrance, no water walk's path, the visit from above.
+
+**Read for the verdicts:** VCMI 1.7.5's `Unit::occupiedHex` (a two-hex unit's second hex behind
+its position: an attacker's − 1, a defender's + 1), `CBattleInfoCallback::getAvailableHex`,
+`BattleHex::getClosestTile` and `AccessibilityInfo::accessible` (a stack whose footprint does not
+fit moves to the closest hex that does; columns 0 and 16 side columns): its `creatureBankWide`
+(171, 1, 86) covers the original's defender cells; its two-hex attackers stand on 56-57 …, one
+column nearer their edge than the original's 57-58 (VCMI's). `BattleLayout::createLayout`: the
+bank layouts have one list a side, so no formation. The text rows by the user's tables: GENRLTXT
+203 the hint's guarded-by text, ARRAYTXT 185 and 194 the lower-case size words for 20 to 49 and
+250 to 499, GENRLTXT 7 the townless warning.
+
+**Beyond the rows:** E13-3's hero fought loose (+0x48 2: `ADV-QUIRK-8`, the map's tight flag
+reaches no placed hero), so the bank's formation ignored rests on the reading and VCMI (the
+checkpoint); GENRLTXT 7 after the first battle (E10's, as batches E9 to E12); the reward message's
+pictures as read in the reverse of the giving order (the client's); the record after a win (guards
+emptied, resources left, looted) and after a retreat; the draws' spread (no evidence against the
+chances). The rules toward `verified` listed by task (T123a, T124a, T124b, T125a); for T122 every
+drafted point holds, ADR-0022's alternatives gain VCMI's second table.
+
+**The checkpoint** (ADV-Q55, `AskUserQuestion`; the epic's decisions 348, 349): the outcome
+accepted for T122 (recommended); the formation ignored built on the reading and VCMI
+(recommended), not a tight-hero row first. Docs: survey §0, §9 (D-69), §11, §14 (new), its
+sources; design §13 (D-69), §18's disputes, §19 (*Scored*), §20's table, §21; the epic's
+decisions and T121's line; the queue (T121 out, T122 in); the lane HANDOFF.
+
+**Versions:** none moved (documents only).

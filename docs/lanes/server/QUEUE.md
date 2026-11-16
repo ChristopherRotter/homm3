@@ -12,6 +12,17 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-16 (the town lane, E09 T33b, `town/e09-t33b`, docs only; **planned `cross-lane` changes
+  in your paths; nothing changed yet**): E09 increment 4 (the Tavern; `TWN-Q18`, decision 119;
+  `docs/epics/E09-design.md` §75, §76) adds to the protocol, each at its task with your consent:
+  `GameObservation::tavern` (the viewer's two tavern heroes: id, type, details, army, formation,
+  tactics) and `TavernOffered` (T37a); `TownCommand::Hire` and `HeroHired` (the hero, its type,
+  owner and tile to every viewer of the tile, the slot to the owner: no `SRV-STUB-3` gap) (T38a);
+  `Manage::Dismiss` (T38b); `DecisionView::Tavern`, `TavernOpened` (whole: no `SRV-STUB-5` gap) and
+  the tavern answers (T39a); a request for the Thieves' Guild answered from the current state for
+  the asking seat, and a Den of Thieves' `ThievesGuildSeen` (T39b). The fold gate should need no
+  new exemption.
+
 - 2026-11-15 (the town lane, E09 T31, `town/e09-t31`, `cross-lane` with the user's consent, E09
   decision 101; **your question of 2026-11-14 answered, your paths touched, no version moved**):
   the user chose the projection. `GarrisonEntered` and `GarrisonLeft` carry `named: Viewers`

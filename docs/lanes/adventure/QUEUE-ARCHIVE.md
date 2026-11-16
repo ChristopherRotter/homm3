@@ -4,6 +4,41 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-16, E08 T121: done whole, docs only; the record in `E08-log.md`; the survey section is §14, not §15: the survey ended at §13; T122 queued.)* **E08 T121 — batch E13 scored; the checkpoint** (round 3; decisions 339, 345, 347; as T111 for
+increment 12; docs only)
+
+- **Scope:** survey `E08-banks.md` §15, each row's verdict against the spec's predictions (the
+  spec's `predictions` per encounter; design §19's changes); D-65, D-66, D-68, D-69 and the new
+  rows' findings (E13-11, E13-12); the consensus rows' rules toward `verified` at T123 and T124;
+  the checkpoint with the user (the drafts' changes for T122, any new dispute or quirk).
+- **Inputs:** `experiments/results/E08-batch-13.md` (the third run's template filled; its
+  `anything odd` lines), T120's record in `E08-log.md` (the three runs, their draws, the raw
+  observations and the harness's fixes between them), T111's record as the form.
+- **Depends on:** T120 (done). **Status:** ready (nothing staged: the records are in the repo;
+  the executable only for a reading a verdict needs).
+
+*(Moved 2026-11-16, E08 T120: T120 done alone, decision 347; the record in `E08-log.md`, T121 queued alone.)* **E08 T120 + T121 — batch E13's harness, recipe and run; scored** (round 3; decisions 339,
+345, 346; as T110 and T111 for increment 12)
+
+- **Scope:** design note `E08-design.md` §19's harness and §20's round 3. **T120** (the capture
+  harness, `clients/capture/`, common): the reads batch E13's spec asks for (the banks' records
+  at game +0x4E3D8, 0x6C bytes each, and their objects' words; a hero's +0x105 bits 9 to 11 and
+  +0x11A, E12's reads may serve; the hint over a tile; the backpack's order; the battle's stacks
+  with every hex they cover at the opening, the tactics phase, the obstacles, the war machines,
+  the battlefield, a stack's shots before and after a shot; the questions, messages and dialogs
+  in order, the army dialog's two bars; Space on a hero's tile), the recipe
+  `clients/capture/batches/E08-batch-13.toml` with its choices by the day-1 records (E13-7's
+  Utopia, E13-10's Imp Cache) and its battle steps (E13-3's Defends and the Archers' shot,
+  E13-9's shot and retreat), the run(s), the template filled into
+  `experiments/results/E08-batch-13.md`. **T121** (docs): survey `E08-banks.md` §15, each row's
+  verdict against the predictions; D-65, D-66, D-68, D-69 and the new rows' findings; the
+  consensus rows' rules toward `verified` at T123 and T124; the checkpoint with the user.
+- **Inputs:** `experiments/specs/E08-batch-13.toml` (compiled with `h3-experiment`, stamp in the
+  template), T119's record in `E08-log.md`, T110's and T111's records as the form; the client
+  lane's `clients/capture/README.md`.
+- **Depends on:** T119 (done). **Status:** ready (the original data: the executable, the LODs,
+  both tars, the client lane's harness setup; confirm the cut at its start).
+
 *(Moved 2026-11-15, E08 T119: done whole, decision 346; the record in `E08-log.md`, T120 + T121 queued.)* **E08 T119 — batch E13's map: the writer's five classes, the spec's fields, the spec** (round 2;
 decisions 339, 343, 345; as T109 for increment 12)
 

@@ -278,14 +278,15 @@ fill, one creature as a replacement).
   (`hero_army_power` and the towns' garrisons), 8 gold income. Each ranks the players not
   defeated, with their flags.
 - **Per player** (not defeated), by the count: from 1 its **best hero** (the greatest
-  `hero_army_power`), its portrait; from 2, 3 and 4 a further part each (the second from player
-  +0x34; their contents not read: VCMI's and the manual's labels below).
+  `hero_army_power`), its portrait; from 2, 3 and 4 a further part each (read by T33b, §13: the
+  best hero's primary skills, the player's tactic, its best creature).
 - **VCMI 1.7.5** (`obtainPlayersStats`, `getThievesGuildInfo`): towns and heroes from 0, the best
   hero from 1, gold, wood and ore and the best hero's details from 2, the rare resources,
   obelisks and the personality (the computer's AI tactic; none for a human) from 3, artifacts,
   army strength and the best creature (by AI value) from 4, income from 5; a Den of Thieves 20
   (everything); the count its THIEVES_GUILD_ACCESS bonuses (a tavern each). **The same
-  thresholds** as the reading; VCMI's best hero is its own `findBestHero` (not compared).
+  thresholds** as the reading; VCMI's best hero is its own `findBestHero` (compared by T33b, §13:
+  TD-23).
 - The view is the viewer's alone (a projection, decision 6): what it shows of other players is the
   information.
 
@@ -353,9 +354,9 @@ class while types are free (`random_between(1, 0)`: not reachable, every weight 
 hired returning offer's bit 17 (cleared by the hire).
 
 **Open points:** the computer's hires (its own functions that read the price; E13), whether it uses the map's
-Taverns (the wiki: it does not); the tavern dialog's dismiss-handler question (T-14); the three
-per-player Thieves' Guild parts' contents (VCMI and the manual name them); the rumours (text, no
-rule; decision 99); the network's paths.
+Taverns (the wiki: it does not); the tavern dialog's dismiss-handler question (T-14); the rumours
+(text, no rule; decision 99); the network's paths. The three per-player Thieves' Guild parts: read
+by T33b (§13, with TD-23 and T-17).
 
 ## 9. Batch TWN-4's rows (for T33's cut; run as TWN-1 to TWN-3, on the capture harness)
 
@@ -367,7 +368,7 @@ rule; decision 99); the network's paths.
 | TWN-4-4 | §4 | a hero surrenders, another retreats, a third loses | the offers, their armies, spell and movement points; the lost one's later draw | the surrendered with its army, the fled with one creature, both with their points; the lost one free |
 | TWN-4-5 | T-14 | a hero with artifacts dismissed, the type then drawn (a map with few free types) | its artifacts when offered again | the reading: kept |
 | TWN-4-6 | §3 | 8 heroes on the map and a garrison hero; a visitor in the town | the Recruit button | disabled at 8 on the map whatever the garrison; disabled with the visitor |
-| TWN-4-7 | §6 | a player with 1 to 5 taverns; a Den of Thieves | the guild's rows and per-player parts | §6's thresholds; the Den everything |
+| TWN-4-7 | §6, §13, TD-23, T-17 | a player with 1 to 5 taverns; a Den of Thieves; a hero with worn artifacts only beside one with a backpack; a player whose most experienced hero is not its strongest; a town garrison stronger than its owner's heroes | the guild's rows' places and per-player parts | §6's thresholds; the Den everything; the artifacts row by the backpacks alone; the best hero by army power; the army row and the best creature with the town's garrison |
 | TWN-4-8 | §2.2 | a Castle player on an SoD map with Conflux heroes allowed, many weeks | slot 1's classes | a Conflux class now and then (the edition 3) |
 
 **Not rows:** the weights (data), the price and the 8 (constants read), the bans (no reader on
@@ -382,7 +383,8 @@ both); the Thieves' Guild window's capture.
 The tutorial's fixed classes (`tavern_new_heroes`' branch on +0x1F69D), a campaign's carried
 heroes (`hero_setup_redraw_by_class` 0x486110), the computer's hire logic (the other readers of
 `hero_price`), the network (0x4821B7), the rumours' draw (0x4C8D48, E24's), the
-tavern dialog's dismiss handler, the Thieves' Guild window's per-player parts 2 to 4.
+tavern dialog's dismiss handler, the Thieves' Guild window's hints (`thieves_guild_hint` 0x5C9710:
+the names over the portraits; presentation). The window's per-player parts: read by T33b (§13).
 
 ## 11. The checkpoint (T32; `TWN-Q16`, the user, 2026-11-15)
 
@@ -431,3 +433,58 @@ player's one hero without a town, a mission-critical hero and a garrison held in
 window; it does not test a town's visitor (a dispute only of the button: TD-22 noted, recommended
 the reading). The other callers of `hero_screen_show` (the adventure map's hero list and its
 selected hero, the exchange) not read for their flag.
+
+## 13. The Thieves' Guild's rows and parts (read by T33b, 2026-11-16)
+
+`thieves_guild_fill` 0x5DDA10 read from its rows' loop to its end, `thieves_guild_row_value`
+0x5DEE70 read whole, `thieves_guild_rank_sort` 0x5DF160 and the window's handler
+`thieves_guild_proc` 0x5C9930 at its clicks.
+
+- **The players:** those still in the game (game +0x1F636 by colour clear), in colour order, a
+  column each; a player out of the game values −1 in every row, ranks last and is not drawn.
+- **A row's places:** every player's value sorted from the highest (`thieves_guild_rank_sort`: an
+  exchange sort, so the order within equal values is not the colour order); equal values share a
+  place, their flags in one column (0x5DDE9F to 0x5DDEDF). Only the places show, never a value.
+- **The values** (beyond §6): towns, the towns whose owner is the player; heroes, its heroes on
+  the map (player +0x1: a garrison hero is off the list, `E09-log.md` T22b); the resources, its
+  treasury; obelisks, §6's; **artifacts**, over its heroes on the map the backpack's count
+  (`hero_backpack_count` 0x4D90C0 with 1: +0x3D4) plus `hero_worn_count` 0x4D9070 with 1, which
+  counts **nothing** with that argument (its flag's test skips every position, 0x4D9090; with 0,
+  the tavern dialog's, it counts the worn artifacts but the spell book and the four war machines):
+  the row ranks the backpacks alone (**T-17**); **army**, over its heroes on the map
+  `hero_army_power` 0x427650 (the army's AI value times the Attack and Defense factor, truncated)
+  plus, for each of its towns that `town_defended` 0x5BDFE0 holds (a visitor, or a creature in
+  the shown army), the value of the army `town_garrison_army` 0x5C1460 shows (the garrison hero's,
+  else the town's) without a factor (`army_power` 0x427690 with no hero: the 32-bit sum);
+  **income**, `player_gold_income` 0x4C7930 with 1 (the day's gold: the gold mines, the towns and
+  their garrison heroes, the gold artifacts, each listed hero's own; the computer's difficulty
+  factor and the handicap, neither modelled here).
+- **The parts** (each from its count; a Den's 99 shows all four): **1** the player's best hero:
+  over its heroes on the map in its list's order the greatest `hero_army_power`, a strictly greater
+  one replacing (the first of equals; a power of 0 is never chosen; none without heroes), shown by
+  its portrait (its type); **2** that hero's four primary skills (+0x476 to +0x479), each shown
+  clamped to 0–99; **3** the player's tactic (player +0x34, `ai_type`: a computer's drawn at the
+  new game, 3 for a human) as a line of text: the computer's play (E13), no rule; **4** its best
+  creature: over the armies its towns show (`town_garrison_army`, in its town list's order), then
+  its heroes' on the map, the creature with the greatest AI value (creature record +0x40), a
+  strictly greater one replacing; none without a creature; shown by its portrait.
+- **The clicks** (`thieves_guild_proc`): a best hero's portrait opens its hero screen and a best
+  creature's its creature dialog **only in the viewer's own column**; another player's opens
+  nothing (its hint names it, `thieves_guild_hint` 0x5C9710).
+- **VCMI 1.7.5** (`lib/gameState/GameStatistics.cpp`, `CGameState::obtainPlayersStats`): the best
+  hero the one with the most experience (`findBestHero`, the first of equals); artifacts the worn
+  and the backpack's (`getNumberOfArts`); army the heroes' strengths without the garrison heroes
+  (`getArmyStrength`'s default) and no town's own garrison; the best creature over the heroes'
+  armies only; income the owned objects' daily gold; the places as the reading (`getRank`). The
+  manuals name the report only ("compares your performance against those of your opponents").
+- **TD-23 — the best hero, the army row and the best creature.** The reading: by army power, the
+  towns' shown armies in both; VCMI: by experience, the heroes' armies only (no garrison hero in
+  the army row). Impact: which hero's portrait and skills, and which ranks, a viewer sees
+  (information only). Recommended: the reading (batch row TWN-4-7).
+- **T-17 — the artifacts row ranks the backpacks alone** (quirk candidate): `hero_worn_count`'s
+  argument 1 turns its count off, so a hero's worn artifacts never count (VCMI counts them).
+  Information only, no state touched. Recommended: the original's, no flag (`preserve`), row
+  TWN-4-7 confirming.
+- **Decided at `TWN-Q18`** (the user, 2026-11-16; the epic's decisions 117, 118): TD-23 the
+  reading; T-17 a `fix-optional` flag (`TWN-QUIRK-13`: the backpacks alone in `faithful`, the
+  worn and the backpack's off), not the agent's `preserve`.
