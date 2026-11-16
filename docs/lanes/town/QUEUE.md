@@ -5,23 +5,61 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 ## Tasks
 
 Epic: `docs/epics/E09-towns.md` (increment 4: the Tavern, refined at T30, `TWN-Q15`, decisions 98
-to 113); done tasks in `E09-log.md`; increments 1 to 3 (closed by T10, T20 and T30) in
-`E09-archive.md`. Each task's cut confirmed at its start; every entry's acceptance includes the
-Definition of Done (`docs/05-testing.md`).
+to 122; its drafts accepted at T33b, `TWN-Q18`); done tasks in `E09-log.md`; increments 1 to 3
+(closed by T10, T20 and T30) in `E09-archive.md`. The building tasks are the design note's
+`E09-design.md` §79 (round by round, with the order against E08's increment 13); each task's cut
+confirmed at its start; every entry's acceptance includes the Definition of Done
+(`docs/05-testing.md`) and the exit criteria it serves (the epic's list, decision 121).
 
-**E09 T33b — increment 4's information, the cut and the checkpoint** (decisions 100, 108): the
-drafts' second half (`docs/lanes/town/adr-drafts/*-increment-4.md`: the Thieves' Guild from a
-town's tavern and the map's Tavern by the taverns owned, the Den of Thieves (class 97, the
-adventure's kinds, `cross-lane`), the views and events of the tavern heroes, the hire, the
-replacement, a hero's return and a placed hero, the tavern decision's view, the env's entries for
-`Hire`, the tavern answers and `Dismiss`, the protocol); the design note's Part F from §72 (the
-gates: a taverns map, its replays, the pool's invariants as properties, the census of the first
-offers; batch TWN-4's rows of survey §9 placed; the building tasks with their order against E08's
-increment 13; the exit criteria; the risks); then the checkpoint **`TWN-Q18`**: both halves'
-drafts, the taverns' stream (decision 113), T-16 and TD-22 (design §67, §69), the cut. After it:
-tell the adventure lane's inbox the planned `cross-lane` changes in its paths (design §71). Docs
-only; the executable helps for the Thieves' Guild's per-player parts (survey §10). **At its
-start:** confirm the cut. **Status:** next.
+**E09 T34 — batch TWN-4** (round 2; design §78, survey §9 and §13): the spec
+`experiments/specs/E09-batch-4*.toml` and its template over a fixture map (the writer's Tavern,
+class 95, and Den of Thieves, class 97: `cross-lane` in the adventure lane's writer, as E08 T119's
+banks); the harness's reads (the player record's offers +0x28 and +0x2C, a hero's +0x105, the
+pool's states game +0x4DF18, the Thieves' Guild window's places and parts) and steps (a retreat and
+a surrender in a recipe: the battle lane's harness has both); the recipe, the runs, the scoring
+of the eight rows (row 7 with TD-23's and T-17's records). Needs the original data and the client
+lane's harness set-up (`claude/lane-client-status.md`'s staging list). **At its start:** confirm
+the cut (likely two parts, as T23). **Status:** next.
+
+**E09 T35 — `shared/`** (round 3; `cross-lane`; design §79): the four drafts
+`adr-drafts/*-increment-4.md` moved into ADR-0013, -0016, -0017, -0028 with T34's verdicts;
+`StreamId::TAVERNS`; the flags of `TWN-QUIRK-12` (T-16) and `-13` (T-17), `fix-optional`, on in
+`faithful` (`h3-content`, the pack format, the packs' artifacts); the glossary (the tavern heroes,
+the away record, the returning mark, the Thieves' Guild, the Den of Thieves); `docs/06-security.md`'s
+town lines (design §75). In merge order with E08's T122. **Status:** queued.
+
+**E09 T36 — the town part v7** (round 4; design §60): the tavern weights per faction record and
+the hire's price, `HCTRAITS.TXT`'s tavern columns harvested (`h3-harvest`, `cross-lane`), the
+packs; TWN-TAV-001's data. **Status:** queued.
+
+**E09 T37 — the pool in the game** (round 5; `cross-lane`; design §61 to §63, §68, §70, §75):
+T37a the pool's `Offered`, the records at a first draw, the away records, the players' factions
+and slots (game state hash), the draw and the fills from the taverns' stream (TWN-TAV-001, -002;
+GAM-CAL-002), the slots over a turn (TWN-TAV-005), `GameObservation::tavern` and `TavernOffered`,
+the protocol, the replays re-recorded, the week's bench; T37b the map's customised types
+(GAM-HER-001, TWN-SET-005; `GameSetup`, the import after E08's T123). **Status:** queued.
+
+**E09 T38 — the hire and the leaves** (round 6; `cross-lane`; design §64, §65, §67, §69, §75,
+§76): T38a `TownCommand::Hire` (TWN-TAV-003), the adventure's placement, the replacement
+(TWN-TAV-004), `HeroHired`, the legal commands, `town hire`, the env's `HIRE` (v12), the protocol;
+T38b a hero that leaves the game (TWN-TAV-006; GAM-BAT-003, the capture's leave;
+`TWN-QUIRK-12`), the returns (TD-18, TD-19), the dismissal (GAM-MAN-003, TD-22, `manage dismiss`;
+no env entry), the protocol; in merge order with E08's T124b. **Status:** queued.
+
+**E09 T39 — the map's objects and the information** (round 7; `cross-lane`, after E08's T123;
+design §66, §73 to §76): T39a the kinds `Tavern` and `DenOfThieves` (the adventure part, classes
+95 and 97 imported and written), the tavern decision (GAM-DEC-010, `TavernOpened`, `answer
+tavern`, the env's answers by role v13); T39b the Thieves' Guild (TWN-TAV-007 to -009: the query,
+the Den's `ThievesGuildSeen`, TD-23, `TWN-QUIRK-13`, `TWN-STUB-17`, `-18`; the adventure's power
+and the day's gold made public), the protocol's request. **Status:** queued.
+
+**E09 T40 — the gates** (round 8; design §78): the taverns map and its scripted replays, the
+census of the 160 maps' first offers and of the maps classes 95 and 97 unblock, the pool's
+properties, the benchmarks, `--with-original-data`. **Status:** queued.
+
+**E09 T41 — the audit** (round 8): against the exit criteria; increment 4 closed (the archive,
+the README's epic row in the session's `shared/` pull request); increment 5 (the mage guild and
+the services) refined. **Status:** queued.
 
 ## Inbox
 

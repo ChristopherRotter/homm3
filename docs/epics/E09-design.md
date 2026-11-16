@@ -2057,11 +2057,11 @@ it stands (`h3-game`'s `town/pool.rs`, `setup.rs`, `state/battle.rs`; `h3-towns`
   0x698A90); neither hire reveals (`hero_place` 0x4D7900 and `hero_show` 0x4D75D0 read whole, no
   reveal call); a leave without bit 17 refills the points after clearing the army, so
   `hero_max_land_movement` 0x4E4990 starts from speed 20 (T-16, §67).
-- **The agent's calls** (decision 113, each for `TWN-Q18`): the taverns' stream (§63); the away
-  record in the pool (§61); a Random faction no start read drawn at the first fill (§61); a
-  player without a faction weighted evenly (§62); the start's fill after the build's last draw
-  (§63); a new record's points (§67); `ADV-STUB-9` left to E10 whole; T-15 closed as unreachable
-  (§65).
+- **The agent's calls** (decision 113, each confirmed at `TWN-Q18`, decisions 115 to 122): the
+  taverns' stream (§63); the away record in the pool (§61); a Random faction no start read drawn
+  at the first fill (§61); a player without a faction weighted evenly (§62); the start's fill
+  after the build's last draw (§63); a new record's points (§67); `ADV-STUB-9` left to E10 whole;
+  T-15 closed as unreachable (§65).
 
 ### 60. The town part: the tavern weights and the hire's price (TWN-TAV-001's data; `h3-towns`, `h3-pack-towns`; part v7)
 
@@ -2161,7 +2161,7 @@ The SoD edition's Conflux rule (step 3 of the reading) is not modelled: dead in 
   point 14.5: each artifact from the last place to the first into the first free position that
   takes it); its spell points full (HER-MAN-001). Its points are set at its owner's turn start
   (§68).
-- **The stream** (*agent's call*, for `TWN-Q18`): **the taverns' stream**, `StreamId::TAVERNS`, a
+- **The stream** (decision 115, `TWN-Q18`): **the taverns' stream**, `StreamId::TAVERNS`, a
   new named kernel stream (8, beside `TOWNS`; a `shared/` change as T24's `TOWNS`), for both
   fills: no existing draw of any stream moves, so the replays keep their outcomes but for the new
   state. Per filled slot: the class, the type, a new record's draws (its default experience or a
@@ -2256,9 +2256,9 @@ leave's own writes come last, as the original's after the battle.
    the spell points full (HER-MAN-001; through `h3-heroes`' change); the points left and the
    day's maximum **the land maximum the original computes over the cleared army**: from the empty
    slots' starting speed, 20, the land table's most (with the hero's Logistics and artifacts).
-   **T-16** (quirk candidate, for `TWN-Q18`): those points are seen only when the type is drawn as
+   **T-16** (`TWN-QUIRK-12`, decision 116): those points are seen only when the type is drawn as
    a replacement and hired in the same turn (a fill's points are set at the turn start first);
-   recommended: the reading under a `fix-optional` flag (on in `faithful`; off, the land maximum of
+   built as the reading under a `fix-optional` flag (on in `faithful`; off, the land maximum of
    its one creature).
 4. **What it keeps:** its record (level, experience, skills, spells) and the artifacts it holds
    then: a beaten hero those the winner had no room for (GAM-BAT-004), a retreated or surrendered
@@ -2291,7 +2291,7 @@ hero reads the facts.
 - **The checks:** the actor's hero (`NotYourHero`), in its turn, no decision open (GAM-DEC-001);
   on the map (a garrison hero is not: the town screen offers no dismissal, `NotOnMap`); not
   standing on a town's entrance (`InTown`: the original's visitor test; **TD-22**, VCMI's button
-  does not test it, recommended the reading, for `TWN-Q18`); not the player's last hero on the map
+  does not test it: the reading, decision 118); not the player's last hero on the map
   while it owns no town (`LastHero`). The loss condition's "lose this hero" waits for E10's
   scenarios (`TWN-STUB-16`). The adventure checks the map half (the entrance), the game the rest.
 - **The application:** the leave (§67, a non-returning one): the adventure removes the hero (its
@@ -2361,10 +2361,11 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   `hero_worn_count` 0x4D9070, `army_power` 0x427690, `thieves_guild_proc` 0x5C9930 at its clicks.
   New: **TD-23** (the best hero by army power and the towns' armies in the army row and the best
   creature, against VCMI's experience and heroes only) and **T-17** (the artifacts row ranks the
-  backpacks alone: `hero_worn_count`'s argument 1 counts nothing), both for `TWN-Q18`.
-- **The agent's calls** (each for `TWN-Q18`): the owner's tavern heroes always in its observation
-  (§75); the guild a query, a Den's view an event (§73, §74); the places' order within a tie by
-  player id (§73); the dismissal without an env entry (§76).
+  backpacks alone: `hero_worn_count`'s argument 1 counts nothing), both settled at `TWN-Q18`
+  (decisions 117, 118).
+- **The agent's calls** (each confirmed at `TWN-Q18`, decisions 119 to 122): the owner's tavern
+  heroes always in its observation (§75); the guild a query, a Den's view an event (§73, §74); the
+  places' order within a tie by player id (§73); the dismissal without an env entry (§76).
 
 ### 73. The Thieves' Guild (TWN-TAV-007 to -009; `h3-game`'s `town/thieves.rs`, new; `thieves_guild_fill` 0x5DDA10)
 
@@ -2372,7 +2373,7 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   Option<ThievesGuildView>` (the town lane's `src/town*`; exported from `lib.rs`, `cross-lane`),
   and `thieves_guild_at(state, rules, viewer, level)` for a Den's visit (§74). Nothing is stored:
   the original's window is a snapshot when it opens.
-- **When it answers** (TWN-TAV-007; *agent's call*): while the viewer's turn runs
+- **When it answers** (TWN-TAV-007; decision 119): while the viewer's turn runs
   (`GameState::is_acting`) and it owns a town with a standing Tavern (`has_tavern`), or its open
   decision is a tavern decision (§66); otherwise none. The level: its towns with a Tavern, counted
   to 5 (`player_tavern_count`; the popup's `tavern_level` stops at 2: a sibling counting further,
@@ -2381,7 +2382,9 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   5, in the original's order: 0 towns (owned, the adventure's owners), 1 heroes (on the map; a
   garrison hero is not), 2 gold, 3 wood and ore, 4 mercury, sulfur, crystal and gems (the
   treasury), 5 obelisks visited (0 for every player until increment 6, `TWN-STUB-17`), 6
-  artifacts (over its heroes on the map, the backpacks' counts alone: **T-17**), 7 army strength
+  artifacts (over its heroes on the map, the backpacks' counts alone under `TWN-QUIRK-13`, T-17's
+  `fix-optional` flag, decision 117: on in `faithful`; off, the worn and the backpack's
+  artifacts, VCMI's), 7 army strength
   (over its heroes on the map the power the wandering monsters read, ADV-MON-007's
   `h3_adventure::power`, made public `cross-lane`; plus each of its towns with a visitor or a
   creature in the army it shows, the garrison hero's or its own, that army's plain value, the
@@ -2401,7 +2404,7 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   one replacing (**TD-23**: VCMI's heroes only). From 3 the original shows the player's tactic:
   not shown (`TWN-STUB-18`; the computer's play is E13's).
 - **Tests:** each threshold (0 to 5 and a Den); a tie's shared place; the artifacts row with worn
-  artifacts only (T-17); a garrison hero and a town's own garrison in the army row and as the best
+  artifacts only (`TWN-QUIRK-13` both ways); a garrison hero and a town's own garrison in the army row and as the best
   creature; the first of two equal heroes; none for a player without heroes; a primary skill past
   99 clamped; the query's none outside the turn and without a Tavern; the map Tavern's level 0.
 
@@ -2423,7 +2426,7 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
 
 ### 75. The views and events (both halves; `docs/06-security.md`'s town section by the `shared/` task)
 
-- **The tavern heroes** (*agent's call*): `GameObservation::tavern`, the viewer's two slots, each
+- **The tavern heroes** (decision 119): `GameObservation::tavern`, the viewer's two slots, each
   `Option<TavernHeroView>`: the hero's id, its type, its details (`Arc<HeroDetails>`), its army by
   slot, its formation and tactics flag (what the tavern dialog and the view-only hero screen
   show); no points and no returning mark (the original shows neither; the hired hero's points
@@ -2468,7 +2471,7 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   `HIRE + s`, s < 2 (the town by its entrance in the tile head, the building head 0; one action per
   listed `Hire`); v13 maps the tavern decision onto the answers by role (`Hire { slot: 0 }` the
   first, `Hire { slot: 1 }` the second, `Close` the closing role; no new entry), or one bump with
-  v12 when they land together. **No entry for `Dismiss`** (*agent's call*: a management command,
+  v12 when they land together. **No entry for `Dismiss`** (decision 120: a management command,
   E08 decision 99, as the army commands); a client's command. The guild is a query the AI lane
   may read; no observation encoding moves (the adventure's observation is the game's struct).
 - **The legal commands** (`h3-game`'s `legal.rs`, `cross-lane`): after a town's builds and
@@ -2505,10 +2508,12 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   | adventure replay format | `town hire`; `manage dismiss`; `answer tavern` | T38a, T38b, T39a | adventure, `cross-lane` |
   | env action encoding v12, v13 | `HIRE` + 2 (tile head); the tavern answers by role | T38a, T39a | AI lane, `cross-lane` |
   | protocol | the commands, events, views and the guild's request | T37a, T38a, T38b, T39a, T39b | server lane, `cross-lane` |
-  | shared | `StreamId::TAVERNS`; T-16's quirk flag | T35 | shared |
+  | shared | `StreamId::TAVERNS`; the flags of `TWN-QUIRK-12`, `-13` | T35 | shared |
   | town state hash, adventure state hash | none (nothing of the tavern is the town's; the kinds hold no state) | — | — |
 
-- **Quirks:** T-16 and T-17 by `TWN-Q18` (`TWN-QUIRK-12` and `-13` when recorded). **Stubs:**
+- **Quirks** (`quirks-town.md`, recorded by the tasks that build them): `TWN-QUIRK-12` T-16
+  (`fix-optional`, on in `faithful`; T38b) and `-13` T-17 (`fix-optional`, on in `faithful`;
+  T39b), decisions 116 and 117; their flags shared (T35). **Stubs:**
   `TWN-STUB-15` (a hire's guild spells, increment 5), `-16` (the loss condition's hero at a
   dismissal, E10), `-17` (the obelisks row, increment 6), `-18` (the guild's personality, E13);
   `ADV-STUB-9`'s reason updated at T38b. **Disputes:** TD-22, TD-23. **Inbox notes** after the
@@ -2558,7 +2563,7 @@ import v24, the bank kinds); T38b's leave and E08's T124b both end battles in `s
 | Round | Tasks | Content |
 |---|---|---|
 | 2 | **T34** | Batch TWN-4 (§78): the spec and template (the writer's Tavern and Den for the fixture, `cross-lane` as T119's banks), the harness's reads and the retreat and surrender steps, the recipe, the runs, the scoring. Needs the original data and the client lane's harness set-up. Cut at its start |
-| 3 | **T35** | `shared/` (`cross-lane`): the four drafts applied with T34's verdicts; `StreamId::TAVERNS`; T-16's quirk flag (`h3-content`, pack format) with the packs' artifacts; the glossary (the tavern heroes, the away record, the returning mark, the Thieves' Guild, the Den of Thieves); `docs/06-security.md`'s town lines (§75). In merge order with E08's T122 |
+| 3 | **T35** | `shared/` (`cross-lane`): the four drafts applied with T34's verdicts; `StreamId::TAVERNS`; the quirk flags of `TWN-QUIRK-12` and `-13` (`h3-content`, pack format) with the packs' artifacts; the glossary (the tavern heroes, the away record, the returning mark, the Thieves' Guild, the Den of Thieves); `docs/06-security.md`'s town lines (§75). In merge order with E08's T122 |
 | 4 | **T36** | The town part (the town lane's paths; the harvest `cross-lane`): the tavern weights and the price (part v7, TWN-TAV-001's data), `HCTRAITS.TXT`'s tavern columns harvested, the packs |
 | 5 | **T37** | The pool in the game (`cross-lane`): T37a the pool's `Offered`, the records at a first draw, the away records, the players' factions and slots (game state hash), the draw and the fills from the taverns' stream (TWN-TAV-001, -002; GAM-CAL-002), the turn's points and marks (TWN-TAV-005), `GameObservation::tavern` and `TavernOffered`, the protocol, the replays re-recorded, the week's bench; T37b the map's customised types (GAM-HER-001, TWN-SET-005; `GameSetup`, the import) |
 | 6 | **T38** | The hire and the leaves (`cross-lane`): T38a the town's hire (`TownCommand::Hire`, TWN-TAV-003), the adventure's placement, the replacement (TWN-TAV-004), `HeroHired`, the legal commands, `town hire`, the env's `HIRE` (v12), the protocol; T38b a hero that leaves the game (TWN-TAV-006; GAM-BAT-003, the capture's leave; T-16), the returns (TD-18, TD-19), the dismissal (GAM-MAN-003, TD-22, `manage dismiss`), the protocol |
@@ -2571,7 +2576,7 @@ takes an offer); the leaves with the hire (both write the pool's statuses; T38b 
 hired hero can leave in the replays); the map's objects after E08's import bump; the guild last
 (it reads every other part, nothing reads it).
 
-### 80. Increment 4's exit criteria (for `TWN-Q18`; the epic's list once accepted)
+### 80. Increment 4's exit criteria (accepted at `TWN-Q18`, decision 121; the epic's list)
 
 1. The town part's tavern weights and the hire's price compile from the packs (part v7); each
    player holds its faction and its two slots; the pool's `Offered`, a type's record made at its
@@ -2588,7 +2593,7 @@ hired hero can leave in the replays); the map's objects after E08's import bump;
 4. A hero that leaves the game keeps its record by type; a retreated or surrendered hero comes
    back into its owner's tavern at once (its slot drawn, TD-19; its army as read; its points and
    spell points kept); every other leave frees the type with full spell points and the cleared
-   army's land maximum as T-16 decides (TWN-TAV-006; GAM-BAT-003).
+   army's land maximum under `TWN-QUIRK-12` (TWN-TAV-006; GAM-BAT-003).
 5. The tavern heroes' points at their owner's turn start, no spell point regained off the map,
    the returning marks cleared at its turn's end (TWN-TAV-005; TD-20).
 6. The dismissal with its refusals (TD-22) frees its hero with every artifact (GAM-MAN-003;
@@ -2597,7 +2602,7 @@ hired hero can leave in the replays); the map's objects after E08's import bump;
    experience) (GAM-HER-001, TWN-SET-005).
 8. The Thieves' Guild answers in the viewer's turn by its taverns (and at a map Tavern), a Den's
    visit at everything: the rows its level shows as places, the best hero, its primary skills and
-   the best creature as TD-23 decides, the artifacts row as T-17 decides; the obelisks row 0
+   the best creature by TD-23's reading, the artifacts row under `TWN-QUIRK-13`; the obelisks row 0
    (`TWN-STUB-17`), no personality (`TWN-STUB-18`) (TWN-TAV-007 to -009).
 9. Classes 95 and 97 import and play (93 Taverns on 47 maps, 227 Dens on 107).
 10. The views: the owner's two tavern heroes, every change told (`TavernOffered`), a hired hero's
@@ -2606,8 +2611,8 @@ hired hero can leave in the replays); the map's objects after E08's import bump;
     request.
 11. The env plays the town's hire and the tavern decision (encodings v12, v13); the replays record
     the hire, the tavern answers and the dismissal.
-12. Every new rule has its id, source and tests; T-16 and T-17 recorded in the ledger as
-    `TWN-Q18` decides; the gates pass (coverage; determinism with the re-recorded replays; the
+12. Every new rule has its id, source and tests; `TWN-QUIRK-12` (T-16) and `-13` (T-17) recorded
+    with their flags; the gates pass (coverage; determinism with the re-recorded replays; the
     census of the 160 maps' first offers; the properties of the pool; the benchmarks at their
     baselines, the week's re-baselined); batch TWN-4 run and scored, its consensus rows
     `verified`.

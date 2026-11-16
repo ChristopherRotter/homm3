@@ -1,6 +1,7 @@
 # Draft: ADR-0013 amended for E09 increment 4 (a tavern hero's details)
 
-- Status: **Draft**, written by E09 T33a (2026-11-16), asked at T33b's checkpoint (`TWN-Q18`);
+- Status: **Draft**, written by E09 T33a (2026-11-16), **accepted** at T33b's checkpoint
+  (`TWN-Q18`, decisions 114 to 122);
   then moved into `docs/adr/0013-heroes-in-battle.md` by the increment's `shared/` task. T33b
   adds nothing here (the Thieves' Guild reads a hero's primary skills and army power, both
   derived already).

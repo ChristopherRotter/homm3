@@ -2,12 +2,13 @@
 
 - Status: **Draft**, the hire's half written by E09 T33a (2026-11-16), the information's half
   (the Thieves' Guild's view, the Den of Thieves, the views and events, the env) by T33b
-  (2026-11-16), asked at its checkpoint (`TWN-Q18`); then moved into
+  (2026-11-16), **accepted** at its checkpoint (`TWN-Q18`, decisions 114 to 122); then moved into
   `docs/adr/0017-game-orchestration.md` by the increment's `shared/` task with batch TWN-4's
   verdicts.
 - Decisions: the epic's 99, 103 to 107 (`TWN-Q16`), 108, 109 to 112 (`TWN-Q17`), 113 (T33a's
-  agent's calls: among them **the taverns' stream**, a new named kernel stream, which T33b's
-  checkpoint confirms or replaces by the towns' stream), 114 and `TWN-Q18`'s.
+  agent's calls: among them **the taverns' stream**, a new named kernel stream, confirmed at
+  `TWN-Q18`: decision 115), 114 to 122 (`TWN-Q18`: T-16 and T-17 `fix-optional`, TD-22 and TD-23
+  the reading, the views, the env, the cut).
 - Working detail: survey `docs/rules/surveys/E09-tavern.md` §2 to §6, §12, §13; design note
   `docs/epics/E09-design.md` Part F §59 to §80.
 
@@ -86,7 +87,10 @@ at 2, 6 at 3, 8 at 4, all 9 from 5: towns, heroes, gold, wood and ore, the four 
 obelisks visited, artifacts, army strength, gold income), each as its places, from the highest
 value, equal values sharing a place (in player order within it), never a value; per player from
 level 1 its best hero's type, from 2 that hero's four primary skills (each 0 to 99), from 4 its
-best creature (survey `E09-tavern.md` §6, §13: TD-23, T-17). The player's tactic (from 3) is the
+best creature (survey `E09-tavern.md` §6, §13; TD-23 the reading, decision 118: the best hero
+by army power, the towns' shown armies in the army row and the best creature). The artifacts row
+ranks the backpacks alone under `TWN-QUIRK-13` (T-17, decision 117: `fix-optional`, on in
+`faithful`; off, the worn and the backpack's artifacts, VCMI's). The player's tactic (from 3) is the
 computer's play and not shown (`TWN-STUB-18`); the obelisks row reads 0 for every player until
 increment 6 places the obelisks (`TWN-STUB-17`). A defeated player's column is E10's (every
 player is in the game until then). The guild shows nothing a click opens: another player's best
@@ -118,8 +122,8 @@ before the next group's turn starts.
 ## Point 4, after E09 increment 3's draws ("… The towns' stream is server-only (point 5) and hashed with the state.")
 
 **E09's increment 4** draws from **the taverns' stream** (`StreamId::TAVERNS`, a new named kernel
-stream beside `TOWNS`, a `shared/` change; the agent's call, E09 decision 113: no existing draw
-moves, so the replays' outcomes keep but for the new state) at the game's start's fill and at
+stream beside `TOWNS`, a `shared/` change; E09 decisions 113 and 115: no existing draw moves,
+so the replays' outcomes keep but for the new state) at the game's start's fill and at
 every week's fill, per filled slot in this order: the class, the type, a new record's draws (its
 experience or its levels at load, then its level seed), then its army (the first count, then each
 later slot's roll and, when given, its count; the original's `draw_starting_army` 0x4C9730 order).
@@ -177,7 +181,8 @@ keeps one creature of its type's first starting stack; both keep their points le
 maximum and their spell points as they were. **Every other leave** frees the type: the spell
 points full (HER-MAN-001's maximum) and the points left and the day's maximum the land maximum,
 which the original computes after clearing the army (`hero_max_land_movement` 0x4E4990 from the
-empty slots' start, speed 20: the table's most; quirk candidate T-16 for T33b's checkpoint), the
+empty slots' start, speed 20: the table's most) under `TWN-QUIRK-12` (T-16, decision 116:
+`fix-optional`, on in `faithful`; off, the land maximum of the one creature it keeps), the
 type free for any player's later draw, which gives it a new army. A new record's points are the
 land maximum of the army its first draw gives it (the original sets every record's at the new
 game with its full starting army; the agent's call). `ADV-STUB-9`'s retreat facts stay E10's whole
@@ -207,7 +212,7 @@ and the adventure replay format (`town hire`, `answer tavern`, `manage dismiss`)
 `Manage::Dismiss`, the tavern decision and its answers, the observation's tavern heroes,
 `TavernOffered`, `HeroHired`, `TavernOpened`, `ThievesGuildSeen`, the guild's request and answer)
 and the env's action encoding (point 8: v12, v13; the AI lane's, `cross-lane`). Shared:
-`StreamId::TAVERNS`. The numbers are the next at merge, in order with E08's increment 13.
+`StreamId::TAVERNS` (decision 115) and the quirk flags of `TWN-QUIRK-12` and `-13`. The numbers are the next at merge, in order with E08's increment 13.
 
 ## Revision history, a new item (when moved)
 

@@ -1,11 +1,12 @@
 # Draft: ADR-0016 amended for E09 increment 4 (the Tavern)
 
 - Status: **Draft**, the hire's half written by E09 T33a (2026-11-16), the information's half
-  (the Den of Thieves' kind, the views) by T33b (2026-11-16), asked at its checkpoint
-  (`TWN-Q18`); then moved into `docs/adr/0016-adventure-state.md` by the increment's `shared/`
+  (the Den of Thieves' kind, the views) by T33b (2026-11-16), **accepted** at its checkpoint
+  (`TWN-Q18`, decisions 114 to 122); then moved into `docs/adr/0016-adventure-state.md` by the increment's `shared/`
   task. Every change here is in the adventure lane's paths: `cross-lane`, merged in order with
   its pull requests (E08's increment 13 amends points 4 and 6 too).
-- Decisions: the epic's 99, 105, 106, 109, 111, 112, 113 and `TWN-Q18`'s.
+- Decisions: the epic's 99, 105, 106, 109, 111, 112, 113, 118 (TD-22: the dismissal's visitor
+  test), 119 (the views).
 - Working detail: survey `docs/rules/surveys/E09-tavern.md` §3, §4, §6, §12, §13; design note
   `docs/epics/E09-design.md` Part F §64, §66, §67, §69, §72 to §74.
 

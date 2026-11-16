@@ -1,13 +1,14 @@
 # Draft: ADR-0028 amended for E09 increment 4 (the Tavern)
 
 - Status: **Draft**, the hire's half written by E09 T33a (2026-11-16), the information's half by
-  T33b (2026-11-16, the Thieves' Guild), asked at T33b's checkpoint (`TWN-Q18`) before anything
-  is built; then moved into `docs/adr/0028-town-context.md` by the increment's `shared/` task
+  T33b (2026-11-16, the Thieves' Guild), **accepted** at T33b's checkpoint (`TWN-Q18`, decisions
+  114 to 122) before anything is built; then moved into `docs/adr/0028-town-context.md` by the increment's `shared/` task
   with batch TWN-4's verdicts (as increments 2's T15 and 3's T24).
 - Decisions: the epic's 99 (content), 103 to 107 (the survey's checkpoint, `TWN-Q16`), 108 (T33
   in two), 109 to 112 (`TWN-Q17`: a hero type's record at its first draw, the tavern weights in the
-  town part, the hire's two shapes, the dismissal), 113 (T33a's agent's calls), 114 (T33b whole)
-  and `TWN-Q18`'s.
+  town part, the hire's two shapes, the dismissal), 113 (T33a's agent's calls), 114 to 122
+  (T33b whole; `TWN-Q18`: the taverns' stream, T-16, T-17, TD-22, TD-23, the views, the env, the
+  cut).
 - Working detail: the survey `docs/rules/surveys/E09-tavern.md` (§2 to §6, §12, §13), the design
   note `docs/epics/E09-design.md` Part F (§59 to §71 the hire, §72 to §80 the information, the
   views, the env, the cut). Each block below says where it goes in the ADR.

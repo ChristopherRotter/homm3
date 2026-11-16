@@ -485,3 +485,6 @@ selected hero, the exchange) not read for their flag.
   argument 1 turns its count off, so a hero's worn artifacts never count (VCMI counts them).
   Information only, no state touched. Recommended: the original's, no flag (`preserve`), row
   TWN-4-7 confirming.
+- **Decided at `TWN-Q18`** (the user, 2026-11-16; the epic's decisions 117, 118): TD-23 the
+  reading; T-17 a `fix-optional` flag (`TWN-QUIRK-13`: the backpacks alone in `faithful`, the
+  worn and the backpack's off), not the agent's `preserve`.

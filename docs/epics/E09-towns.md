@@ -1,6 +1,6 @@
 # E09 — Towns
 
-Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63), increment 3 (growth, recruitment and the army rows) on 2026-11-15 (T30; decisions 64–97), all three in `E09-archive.md`; increment 4 (the Tavern) refined the same day (TWN-Q15, decisions 98–102), T33b next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
+Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63), increment 3 (growth, recruitment and the army rows) on 2026-11-15 (T30; decisions 64–97), all three in `E09-archive.md`; increment 4 (the Tavern) refined the same day (TWN-Q15, decisions 98–102), its drafts accepted at T33b (TWN-Q18, decisions 114–122), T34 next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
 
 ## Goal
 
@@ -94,12 +94,75 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
      unreachable; T-16 (design §67: a `fix-optional` flag, on in `faithful`) and TD-22 (survey
      §12: the reading) as recommended for the checkpoint.
 
+### Decisions at T33b's start and checkpoint (2026-11-16, the user; TWN-Q18)
+
+114. **T33b whole** (the user at its start, `AskUserQuestion`): the information, the views, the env,
+     the gates, batch TWN-4's rows, the cut and the exit criteria, then the checkpoint, in one
+     session and one docs-only pull request, as T22b. Not chosen: T33b1 (the information, the
+     views, the env and the protocol: the drafts made whole) then T33b2 (the gates, the cut, the
+     checkpoint), the agent's recommendation; the drafts first, then the plan.
+115. **The taverns' stream** (recommended): a new named kernel stream `StreamId::TAVERNS` for the
+     start's and the week's fills (decision 113's call). Not chosen: the towns' stream.
+116. **T-16, a non-returning leave's points over the cleared army** (recommended):
+     `TWN-QUIRK-12`, `fix-optional`, on in `faithful` (off: the land maximum of its one
+     creature). Not chosen: `preserve` without a flag; fixed without a flag.
+117. **T-17, the Thieves' Guild's artifacts row by the backpacks alone** (survey `E09-tavern.md`
+     §13): `TWN-QUIRK-13`, `fix-optional`, on in `faithful` (off: the worn and the backpack's
+     artifacts, VCMI's). Not chosen: `preserve` without a flag (the agent's recommendation:
+     information only); fixed without a flag.
+118. **TD-22 and TD-23: the reading for both** (recommended): the dismissal refused for a town's
+     visitor; the guild's best hero by army power, the towns' shown armies in the army row and the
+     best creature. Not chosen: VCMI's for both; TD-22 the reading and TD-23 VCMI's.
+119. **The views** (recommended; design §73, §75): a player's two tavern heroes always in its own
+     observation, every change told (`TavernOffered`); the Thieves' Guild a query answered in the
+     viewer's turn by its taverns (or at a map Tavern); a Den of Thieves' view an event. Not
+     chosen: the tavern heroes only while the player owns a Tavern or stands at a map Tavern; the
+     guild in every observation, told by events.
+120. **The env** (recommended; design §76): `HIRE` + 2 (v12) and the tavern decision's answers by
+     role (v13); no entry for `Dismiss` (a management command, E08 decision 99). Not chosen: a
+     `Dismiss` entry per hero slot.
+121. **The cut and the exit criteria as written** (recommended; design §79, §80): T34 to T41 in
+     seven rounds, each task's own cut at its start; the twelve criteria below. Not chosen: the
+     builds before batch TWN-4.
+122. *Agent's calls (change freely):* the places' order within a tie by player id; the guild in
+     the viewer's turn only and at level 0 at a map Tavern without a town tavern; `TavernHeroView`
+     without points or returning mark; `HeroHired` carrying the hero's type, owner and tile to every
+     viewer of the tile; the Den an entered object; the personality and the obelisks row as stubs
+     (`TWN-STUB-18`, `-17`).
+
+### Exit criteria (accepted at `TWN-Q18`, decision 121; design note §80)
+
+1. The town part's tavern weights and the hire's price compile (part v7); each player's faction
+   and two slots; the pool's `Offered`, records made at a first draw and kept by type, the away
+   records (TWN-SET-001, -005).
+2. The draw by the weights from the taverns' stream; the start's and every week's fill (full army,
+   backpack equipped, spell points full); the week's release sparing a returning offer
+   (TWN-TAV-001, -002; GAM-CAL-002; TD-18).
+3. The town's and the map Tavern's hire, every refusal typed and changing nothing; the
+   replacement from the hirer's stream with one creature (TWN-TAV-003, -004; GAM-DEC-010).
+4. A hero that leaves the game keeps its record; a retreat or a surrender returns it at once
+   (TD-19); every other leave frees the type under `TWN-QUIRK-12` (TWN-TAV-006; GAM-BAT-003).
+5. The tavern heroes' points at the turn start, no spell point off the map, the marks cleared at
+   the turn's end (TWN-TAV-005; TD-20).
+6. The dismissal with its refusals (TD-22), its hero freed with every artifact (GAM-MAN-003).
+7. The map's customised types reach a record made at a draw (GAM-HER-001).
+8. The Thieves' Guild by the viewer's taverns and a Den's everything: the rows as places, the best
+   hero, its skills, the best creature (TD-23), the artifacts row under `TWN-QUIRK-13`;
+   `TWN-STUB-17`, `-18` (TWN-TAV-007 to -009).
+9. Classes 95 and 97 import and play.
+10. The views and their events; the fold gate without a new gap; the protocol.
+11. The env plays the hire and the tavern decision (v12, v13); the replays record the hire, the
+    tavern answers and the dismissal.
+12. Every new rule has its id, source and tests; `TWN-QUIRK-12`, `-13` recorded; the gates pass;
+    batch TWN-4 run and scored, its consensus rows `verified`.
+
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
 - **T30** the audit of increment 3's exit criteria, its closure, this refinement. Done 2026-11-15 (decisions 98–102; `E09-log.md`).
 - **T31** the garrison moves below level 3 (decision 101). Done 2026-11-15 (the projection; `E09-log.md`).
 - **T32** the survey (decision 100), with its checkpoint (`TWN-Q16`). Done 2026-11-15 (decisions 103–107; `E09-log.md`).
-- **T33** the ADR amendment drafts, the design note's Part F, the cut and the exit criteria (decision 100), in two (decision 108): **T33a** the hire's: done 2026-11-16 (`TWN-Q17`, decisions 109–113; the drafts `adr-drafts/*-increment-4.md`, Part F §59 to §71; `E09-log.md`). **T33b** the information's, the cut, the exit criteria and the checkpoint `TWN-Q18`; the building tasks follow from the cut.
+- **T33** the ADR amendment drafts, the design note's Part F, the cut and the exit criteria (decision 100), in two (decision 108): **T33a** the hire's: done 2026-11-16 (`TWN-Q17`, decisions 109–113; the drafts `adr-drafts/*-increment-4.md`, Part F §59 to §71; `E09-log.md`). **T33b** the information's, the cut, the exit criteria and the checkpoint: done 2026-11-16 (whole, decision 114; `TWN-Q18`, decisions 115–122; the drafts accepted; Part F §72 to §81; survey §13; `E09-log.md`).
+- **T34** batch TWN-4 (round 2). **T35** `shared/`: the drafts applied, `StreamId::TAVERNS`, the two quirk flags (round 3). **T36** the town part v7 (round 4). **T37** T37a the pool, the draw and the fills, T37b the map's customised types (round 5). **T38** T38a the town's hire and the replacement, T38b the leaves, the returns and the dismissal (round 6). **T39** T39a the Tavern and the Den of Thieves with the tavern decision, T39b the Thieves' Guild (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
 
 ## Risks
 

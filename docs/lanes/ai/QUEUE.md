@@ -73,6 +73,18 @@ E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last p
 lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's fair system actor
 (folded into T14).
 
+**From the town lane** (E09 T33b):
+
+- 2026-11-16 (the town lane, E09 T33b, `town/e09-t33b`, docs only; **planned `cross-lane` changes
+  in your paths; nothing changed yet**): E09 increment 4 (the Tavern; `TWN-Q18`, decision 120;
+  `docs/epics/E09-design.md` §76) appends to the adventure's action encoding `HIRE + s`, s < 2
+  (a town's tavern hero of slot s, the town by its entrance in the tile head; v12, T38a) and maps
+  the map Tavern's decision onto the answers by role (its two hires the first and second, its
+  `Close` the closing role; v13, T39a); no entry for the dismissal (a management command). The
+  Thieves' Guild is a query (`h3_game::thieves_guild`, T39b) your agents may read; the observation
+  struct gains the viewer's two tavern heroes (`GameObservation::tavern`, T37a). Each with your
+  consent at its task.
+
 **From the server lane** (E16 M5 T14):
 
 - 2026-11-13 (the server lane, E16 M5 T14, `claude/quirky-mccarthy-pgu2o6`, `cross-lane` with
