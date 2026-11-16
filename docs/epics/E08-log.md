@@ -17788,7 +17788,7 @@ two, the first missing a level-1 Imp Cache; U1 taken every time, I3 the level-1 
 time). The template filled from the third run (`experiments/results/E08-batch-13.md`), the agent's
 lines in E13-3's, E13-9's and E13-6's last lines.
 
-**Raw observations** (unscored; T121 scores them, survey §15; the three runs alike unless said):
+**Raw observations** (unscored; T121 scores them, survey §14; the three runs alike unless said):
 **E13-1:** every record by entrance, the index order I1 0, W2 1, W4 2, W3 3, S1 4, C1 5, S2 6, T1 7,
 I3 8, I2 9, N1 10, I4 11, G2 12, D2 13, U1 14, C2 15, C3 16, W1 17, U2 18, D1 19, T2 20 to F2 26;
 class 16 and the ships five equal stacks, slot 2 alone upgraded (never a Hive's); the Crypt's
@@ -17835,3 +17835,51 @@ Battle Dwarves (E13-3) moved and struck before the Archers' turn; the Utopia bra
 Crypt's day-2 C3 never played (U1 had fewer than four relics in each run).
 
 **Versions:** none moved (the harness, the recipe, the filled template, docs).
+
+### Increment 13, round 3: T121, batch E13 scored and the checkpoint (2026-11-16, `adventure/e08-t121`)
+
+Baseline: `master` 77c2eec (#968, T120, merged; CI green on `master`). Docs only; whole (the
+queue's cut: one survey section and its checkpoint); nothing staged (the text tables read in the
+user's `original-data/extracted/` in place; VCMI 1.7.5's battle files fetched from
+raw.githubusercontent.com).
+
+**Scored** (survey `E08-banks.md` §14; it is §14, not the planned §15: the survey ended at §13)
+from T120's filled template and its record of the runs: **every row as predicted.** E13-1 every
+record's index by entrance, each a level's row, the split and the upgrade on slot 2 alone (4 of 14
+class-16 banks, never a Hive), the Imp Cache's 2 mercury and the Naga Bank's sulfur (**D-65**),
+Utopia's vector relics first (**D-68**); E13-2 the Stockpile's mark at once and its hint by size
+word, the declined Crypt unmarked and "(Not visited)" (**D-66**); E13-11 the hero on S2's entrance
+through the question, the decline, the key's second question and the battle; E13-9 the survivors
+by slot after the retreat, not looted, the hint by them; E13-3 no tactics phase, obstacles or war
+machines, the four stacks by their ordinal on 57-58, 61, 90, 93, the Archers' 12 shots kept;
+E13-4 the Griffins on 14-15, 184-185, 171-172, 1-2, 99-100 (**D-69 dissolved**); E13-6 the
+level-ups, the reward's message, then its army dialog (**D-67's correction**); E13-7 the backpack
+relics first (**D-68**); E13-8 the looted searches' −1, −1, −2 and the battle's clear; E13-5 the
+deck from the coast and from a boat; E13-10 +2 mercury and +16 sulfur (**D-65**); E13-12 both
+flights over the Shipwreck's water entrance, no water walk's path, the visit from above.
+
+**Read for the verdicts:** VCMI 1.7.5's `Unit::occupiedHex` (a two-hex unit's second hex behind
+its position: an attacker's − 1, a defender's + 1), `CBattleInfoCallback::getAvailableHex`,
+`BattleHex::getClosestTile` and `AccessibilityInfo::accessible` (a stack whose footprint does not
+fit moves to the closest hex that does; columns 0 and 16 side columns): its `creatureBankWide`
+(171, 1, 86) covers the original's defender cells; its two-hex attackers stand on 56-57 …, one
+column nearer their edge than the original's 57-58 (VCMI's). `BattleLayout::createLayout`: the
+bank layouts have one list a side, so no formation. The text rows by the user's tables: GENRLTXT
+203 the hint's guarded-by text, ARRAYTXT 185 and 194 the lower-case size words for 20 to 49 and
+250 to 499, GENRLTXT 7 the townless warning.
+
+**Beyond the rows:** E13-3's hero fought loose (+0x48 2: `ADV-QUIRK-8`, the map's tight flag
+reaches no placed hero), so the bank's formation ignored rests on the reading and VCMI (the
+checkpoint); GENRLTXT 7 after the first battle (E10's, as batches E9 to E12); the reward message's
+pictures as read in the reverse of the giving order (the client's); the record after a win (guards
+emptied, resources left, looted) and after a retreat; the draws' spread (no evidence against the
+chances). The rules toward `verified` listed by task (T123a, T124a, T124b, T125a); for T122 every
+drafted point holds, ADR-0022's alternatives gain VCMI's second table.
+
+**The checkpoint** (ADV-Q55, `AskUserQuestion`; the epic's decisions 348, 349): the outcome
+accepted for T122 (recommended); the formation ignored built on the reading and VCMI
+(recommended), not a tight-hero row first. Docs: survey §0, §9 (D-69), §11, §14 (new), its
+sources; design §13 (D-69), §18's disputes, §19 (*Scored*), §20's table, §21; the epic's
+decisions and T121's line; the queue (T121 out, T122 in); the lane HANDOFF.
+
+**Versions:** none moved (documents only).

@@ -4,6 +4,19 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-16, E08 T121: done whole, docs only; the record in `E08-log.md`; the survey section is §14, not §15: the survey ended at §13; T122 queued.)* **E08 T121 — batch E13 scored; the checkpoint** (round 3; decisions 339, 345, 347; as T111 for
+increment 12; docs only)
+
+- **Scope:** survey `E08-banks.md` §15, each row's verdict against the spec's predictions (the
+  spec's `predictions` per encounter; design §19's changes); D-65, D-66, D-68, D-69 and the new
+  rows' findings (E13-11, E13-12); the consensus rows' rules toward `verified` at T123 and T124;
+  the checkpoint with the user (the drafts' changes for T122, any new dispute or quirk).
+- **Inputs:** `experiments/results/E08-batch-13.md` (the third run's template filled; its
+  `anything odd` lines), T120's record in `E08-log.md` (the three runs, their draws, the raw
+  observations and the harness's fixes between them), T111's record as the form.
+- **Depends on:** T120 (done). **Status:** ready (nothing staged: the records are in the repo;
+  the executable only for a reading a verdict needs).
+
 *(Moved 2026-11-16, E08 T120: T120 done alone, decision 347; the record in `E08-log.md`, T121 queued alone.)* **E08 T120 + T121 — batch E13's harness, recipe and run; scored** (round 3; decisions 339,
 345, 346; as T110 and T111 for increment 12)
 
