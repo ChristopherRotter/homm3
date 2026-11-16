@@ -112,6 +112,16 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-16 (the client lane, E27 M2 T7b, `client/e27-m2-t7b`; **the foundation's keys, a
+  behaviour change for your table**): `h3_ui::keys` reads Shift chords (`Chord::shift`,
+  `Shift+` after `Ctrl+` in a key file, `Keys::chord_command`; the Shifts refused alone like
+  Control, `keys::SHIFT`), and `h3_sdl::Key` gained `Tab`, `BackSpace`, `Delete`, `LeftShift`
+  and `RightShift`; `Event` is unchanged (the window's text input comes as
+  `Window::typed`, off unless `set_text_input` turns it on). The map window reads no Shift, so a
+  `Shift+` chord in `[map]` now parses but never matches (before: a parse error): read Shift
+  (`h3_sdl::KeyScan::shift` from `Window::scans`) or refuse such chords in your table. The
+  chord parser's error text is unchanged (your test reads it).
+
 - 2026-11-15 (the server lane, E16 M5 T24, `claude/adoring-fermi-l0mvur`, `cross-lane`; **a
   protocol version taken; for when a seat of yours joins a whole game**): protocol **v68**
   (after the town lane's v67; SRV-Q38, 2c's reviewer: a seat watched without agreeing).

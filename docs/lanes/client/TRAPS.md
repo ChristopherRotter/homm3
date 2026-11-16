@@ -327,7 +327,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   shows it (the hardware cursor is never in the dump). With no window manager the window takes
   `xdotool`'s keys only once a click focused it. `h3_sdl::Key` names a fixed set of keys: a hotkey
   whose key has no variant there reaches the replay but never the window (E27 M2 T6b1: the main
-  menu's N and L), so a new screen's hotkeys are checked in the window too.
+  menu's N and L), so a new screen's hotkeys are checked in the window too. **A keyboard layout
+  under Xvfb** (E27 M2 T7b): this sandbox's Xvfb ignores every keymap change at run time
+  (`setxkbmap`, `xmodmap`, `xkbcomp` all exit 0 and change nothing); start it with the layout
+  as its default instead: copy `/usr/share/X11/xkb`, replace the copy's `symbols/us` by a file
+  whose default `xkb_symbols "basic"` includes `de(basic)`, and pass `-xkbdir <copy>`. Then
+  `xdotool key <keycode>` types by the key's place (29 `z`, 34 `ü`, 21 the dead acute); SDL's
+  text events compose dead keys with `LANG=C.UTF-8`.
 - **Coverage with the original data staged restarts the sandbox's VM** (E27 M2 T5b2 and T6a: the
   setup's baseline and `check.sh`, three runs, one build job or two; every step before coverage
   passed): run the coverage as CI does, `H3_INSTALL` an empty folder (the staged-data tests

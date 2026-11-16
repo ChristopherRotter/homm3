@@ -4,8 +4,11 @@
 //! viewer's own; the map's: `h3-map-view`'s `keys`, the battle's: `h3-view`'s). A user's file
 //! overrides the defaults command by command ([`Keys::with_file`]), each viewer's in a table of its
 //! own ([`VIEWERS`]). A key is named as the adapter names it (`h3-sdl`'s `Key::name`: `Up`,
-//! `PageUp`, `F5`, …), `Ctrl+` holding either Control key with it; the adapter checks the names
-//! ([`Keys::check`]). A chord matches exactly: a key with Ctrl held is not the key alone. Both
+//! `PageUp`, `F5`, …), `Ctrl+` holding either Control key with it, `Shift+` either Shift key (E27
+//! M2 T7b: the hot seat's Shift and Tab; `Ctrl+Shift+` both); the adapter checks the names
+//! ([`Keys::check`]). A chord matches exactly: a key with Ctrl or Shift held is not the key
+//! alone ([`Keys::chord_command`]; a viewer that reads Shift decides what an unbound Shift chord
+//! gives). Both
 //! windows' own keys are the same ([`Window`]: the function keys and Esc, the user at E24 M3 T0;
 //! pause, a frame on, restart and vsync with Ctrl since E17 M6 T4b2a, the user, 2026-11-04: the
 //! original's battle takes F5 to F8 alone).
@@ -26,6 +29,10 @@ pub const VIEWERS: [&str; 3] = ["map", "battle", "shell"];
 
 /// The adapter's names of the Control keys, held with a key (`Ctrl+`) and never bound alone.
 pub const CONTROL: [&str; 2] = ["LeftCtrl", "RightCtrl"];
+
+/// The adapter's names of the Shift keys, held with a key (`Shift+`, E27 M2 T7b) and never bound
+/// alone.
+pub const SHIFT: [&str; 2] = ["LeftShift", "RightShift"];
 
 /// A viewer's commands: what its keys do.
 pub trait Command: Copy + Ord {
@@ -155,47 +162,58 @@ impl Window {
     }
 }
 
-/// A key and whether Ctrl is held with it.
+/// A key and whether Ctrl and Shift are held with it.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Chord {
     /// Either Control key held.
     pub ctrl: bool,
+    /// Either Shift key held (E27 M2 T7b).
+    pub shift: bool,
     /// The key's name (the adapter's).
     pub key: String,
 }
 
 impl Chord {
-    /// The key `key`, with Ctrl held or not.
+    /// The key `key`, with Ctrl held or not, without Shift.
     #[must_use]
     pub fn new(ctrl: bool, key: &str) -> Self {
         Self {
             ctrl,
+            shift: false,
             key: key.to_string(),
         }
     }
 
-    /// `Ctrl+<key>` or `<key>`.
+    /// The same chord with Shift held or not (E27 M2 T7b).
+    #[must_use]
+    pub const fn with_shift(mut self, shift: bool) -> Self {
+        self.shift = shift;
+        self
+    }
+
+    /// `[Ctrl+][Shift+]<key>`.
     ///
     /// # Errors
     /// An empty key, or one with a `+` or white space in it.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let (ctrl, key) = text
+        let (ctrl, rest) = text
             .strip_prefix("Ctrl+")
             .map_or((false, text), |key| (true, key));
+        let (shift, key) = rest
+            .strip_prefix("Shift+")
+            .map_or((false, rest), |key| (true, key));
         if key.is_empty() || key.contains(|c: char| c == '+' || c.is_whitespace()) {
             return Err(format!("`{text}` is not a key, or Ctrl+ and a key"));
         }
-        Ok(Self::new(ctrl, key))
+        Ok(Self::new(ctrl, key).with_shift(shift))
     }
 }
 
 impl fmt::Display for Chord {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.ctrl {
-            write!(f, "Ctrl+{}", self.key)
-        } else {
-            f.write_str(&self.key)
-        }
+        let ctrl = if self.ctrl { "Ctrl+" } else { "" };
+        let shift = if self.shift { "Shift+" } else { "" };
+        write!(f, "{ctrl}{shift}{}", self.key)
     }
 }
 
@@ -294,11 +312,17 @@ impl<C: Command> Keys<C> {
         Ok(Self { bound, by_chord })
     }
 
-    /// The command a key gives in `context`, with Ctrl held or not.
+    /// The command a key gives in `context`, with Ctrl held or not (and Shift not).
     #[must_use]
     pub fn command(&self, context: C::Context, ctrl: bool, key: &str) -> Option<C> {
+        self.chord_command(context, &Chord::new(ctrl, key))
+    }
+
+    /// The command `chord` gives in `context`, exactly (E27 M2 T7b: Shift chords).
+    #[must_use]
+    pub fn chord_command(&self, context: C::Context, chord: &Chord) -> Option<C> {
         self.by_chord
-            .get(&Chord::new(ctrl, key))?
+            .get(chord)?
             .iter()
             .copied()
             .find(|c| c.context().is_none_or(|x| x == context))
@@ -314,7 +338,7 @@ impl<C: Command> Keys<C> {
     }
 
     /// Every key the table binds is one the adapter knows (`known`, its names) and not Control
-    /// alone ([`CONTROL`]: Ctrl+ holds it).
+    /// or Shift alone ([`CONTROL`], [`SHIFT`]: Ctrl+ and Shift+ hold them).
     ///
     /// # Errors
     /// The first chord that is not, with its command; for an unknown key the keys there are.
@@ -327,11 +351,17 @@ impl<C: Command> Keys<C> {
                     command.name()
                 ));
             }
+            if SHIFT.contains(&key) {
+                return Err(format!(
+                    "`{}`: {chord}: Shift is held with a key (`Shift+`), not bound alone",
+                    command.name()
+                ));
+            }
             if !known.contains(&key) {
                 let names: Vec<&str> = known
                     .iter()
                     .copied()
-                    .filter(|k| !CONTROL.contains(k))
+                    .filter(|k| !CONTROL.contains(k) && !SHIFT.contains(k))
                     .collect();
                 return Err(format!(
                     "`{}`: {chord}: no such key; the keys: {}",

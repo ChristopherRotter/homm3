@@ -3,9 +3,10 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use h3_ui::keys::{Command as _, Keys};
+use h3_ui::edit::Caret;
+use h3_ui::keys::{Chord, Command as _, Keys};
 
-use super::{Command, Context};
+use super::{Command, Context, command_for, shifted};
 use crate::message;
 use crate::shell::Choice;
 
@@ -73,7 +74,15 @@ fn the_commands_have_names_in_the_shell_s_table() {
             "box-cancel",
             "multiplayer-cancel",
             "hot-seat-ok",
-            "hot-seat-cancel"
+            "hot-seat-cancel",
+            "edit-home",
+            "edit-end",
+            "edit-left",
+            "edit-right",
+            "edit-delete",
+            "edit-backspace",
+            "hot-seat-next",
+            "hot-seat-previous"
         ]
     );
     assert_eq!(Command::from_name("quit"), Some(Command::Button(105)));
@@ -133,4 +142,73 @@ fn the_dialogs_hotkeys_are_taken_over_their_dialogs() {
     // An id without a hotkey: no name, no context.
     assert_eq!(Command::Dialog(1).name(), "");
     assert_eq!(Command::Dialog(1).context(), None);
+}
+
+#[test]
+fn an_edit_s_keys_and_the_ring_are_commands_with_shift_chords() {
+    // E27 M2 T7b: the edits' own keys while one types, the ring over the hot seat's names.
+    let keys = Keys::<Command>::original();
+    let typing = [Context::Edit, Context::HotSeat];
+    let on = |shift, key| command_for(&keys, &typing, shift, key);
+    for (key, caret) in [
+        ("Home", Caret::Home),
+        ("End", Caret::End),
+        ("Left", Caret::Left),
+        ("Right", Caret::Right),
+        ("Delete", Caret::Delete),
+        ("BackSpace", Caret::BackSpace),
+    ] {
+        assert_eq!(on(false, key), Some(Command::Edit(caret)));
+        // With Shift held and that chord unbound: the key alone.
+        assert_eq!(on(true, key), Some(Command::Edit(caret)));
+    }
+    assert_eq!(on(false, "Tab"), Some(Command::Ring(true)));
+    assert_eq!(on(false, "Down"), Some(Command::Ring(true)));
+    assert_eq!(on(true, "Tab"), Some(Command::Ring(false)));
+    assert_eq!(on(false, "Up"), Some(Command::Ring(false)));
+    assert_eq!(on(false, "Return"), Some(Command::Dialog(519)));
+    assert_eq!(on(true, "Escape"), Some(Command::Dialog(520)));
+    assert_eq!(on(false, "A"), None);
+    assert_eq!(on(true, "A"), None);
+    // Not over the menus, nor the ring over the Multiplayer dialog.
+    assert_eq!(
+        command_for(&keys, &[Context::MainMenu], false, "Home"),
+        None
+    );
+    assert_eq!(
+        command_for(&keys, &[Context::Edit, Context::Multiplayer], false, "Tab"),
+        None
+    );
+    assert_eq!(Command::Edit(Caret::Home).context(), Some(Context::Edit));
+    assert_eq!(Command::Ring(false).context(), Some(Context::HotSeat));
+    assert_eq!(
+        keys.chords()
+            .into_iter()
+            .filter(|(c, _)| *c == Command::Ring(false))
+            .map(|(_, k)| k.clone())
+            .collect::<Vec<_>>(),
+        [
+            Chord::new(false, "Tab").with_shift(true),
+            Chord::new(false, "Up")
+        ]
+    );
+    // A user's file binds them by name, Shift chords too; an exact chord wins over the key alone.
+    let keys = Keys::<Command>::with_file(
+        "[shell]\nedit-home = [\"Shift+Left\"]\nhot-seat-previous = [\"PageUp\"]\n",
+    )
+    .unwrap();
+    let on = |shift, key| command_for(&keys, &typing, shift, key);
+    assert_eq!(on(true, "Left"), Some(Command::Edit(Caret::Home)));
+    assert_eq!(on(false, "Left"), Some(Command::Edit(Caret::Left)));
+    assert_eq!(on(false, "Home"), None);
+    assert_eq!(on(true, "Tab"), Some(Command::Ring(true)));
+    assert_eq!(on(false, "PageUp"), Some(Command::Ring(false)));
+}
+
+#[test]
+fn a_name_s_shift_is_read_off_it() {
+    assert_eq!(shifted("shift+Tab"), (true, "Tab"));
+    assert_eq!(shifted("Shift+a"), (true, "a"));
+    assert_eq!(shifted("Tab"), (false, "Tab"));
+    assert_eq!(shifted("shift"), (false, "shift"));
 }
