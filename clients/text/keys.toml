@@ -2304,6 +2304,98 @@ original = [{ at = "HELP:13:1" }]
 id = "shell.game-type.help.back"
 original = [{ at = "HELP:14:1" }]
 
+# The Multiplayer dialog (E27 M2 T7; docs/epics/E27-design.md §2.6, §16): each button's hint, the
+# status line's at a move over it (dialog_mouse_move 0x5FF6E0: Help.txt's first column), and its
+# right press's popup (style 4, dialog_right_click 0x5FF790: the second column); records 264 +
+# id - 100 (dialog_items_set_hints 0x5FF8E0 from group 4: Online 101, Hot Seat 102, IPX, TCP/IP,
+# Modem, Direct Connect, Cancel 124).
+[[key]]
+id = "shell.multiplayer.hint.online"
+original = [{ at = "HELP:265:0" }]
+
+[[key]]
+id = "shell.multiplayer.help.online"
+original = [{ at = "HELP:265:1" }]
+
+[[key]]
+id = "shell.multiplayer.hint.hot-seat"
+original = [{ at = "HELP:266:0" }]
+
+[[key]]
+id = "shell.multiplayer.help.hot-seat"
+original = [{ at = "HELP:266:1" }]
+
+[[key]]
+id = "shell.multiplayer.hint.ipx"
+original = [{ at = "HELP:267:0" }]
+
+[[key]]
+id = "shell.multiplayer.help.ipx"
+original = [{ at = "HELP:267:1" }]
+
+[[key]]
+id = "shell.multiplayer.hint.tcp-ip"
+original = [{ at = "HELP:268:0" }]
+
+[[key]]
+id = "shell.multiplayer.help.tcp-ip"
+original = [{ at = "HELP:268:1" }]
+
+[[key]]
+id = "shell.multiplayer.hint.modem"
+original = [{ at = "HELP:269:0" }]
+
+[[key]]
+id = "shell.multiplayer.help.modem"
+original = [{ at = "HELP:269:1" }]
+
+[[key]]
+id = "shell.multiplayer.hint.direct-connect"
+original = [{ at = "HELP:270:0" }]
+
+[[key]]
+id = "shell.multiplayer.help.direct-connect"
+original = [{ at = "HELP:270:1" }]
+
+[[key]]
+id = "shell.multiplayer.hint.cancel"
+original = [{ at = "HELP:288:0" }]
+
+[[key]]
+id = "shell.multiplayer.help.cancel"
+original = [{ at = "HELP:288:1" }]
+
+# The hot seat's names (E27 M2 T7; §2.7): the title (GENRLTXT 447), each edit's hint and help
+# (Help.txt 559), OK's and Cancel's hints (560, 561), their help their hint (their right-click
+# texts are empty: dialog_right_click falls back to the hint).
+[[key]]
+id = "shell.hot-seat.title"
+original = [{ at = "GENRLTXT:447" }]
+
+[[key]]
+id = "shell.hot-seat.hint.name"
+original = [{ at = "HELP:559:0" }]
+
+[[key]]
+id = "shell.hot-seat.help.name"
+original = [{ at = "HELP:559:1" }]
+
+[[key]]
+id = "shell.hot-seat.hint.ok"
+original = [{ at = "HELP:560:0" }]
+
+[[key]]
+id = "shell.hot-seat.help.ok"
+original = [{ at = "HELP:560:0" }]
+
+[[key]]
+id = "shell.hot-seat.hint.cancel"
+original = [{ at = "HELP:561:0" }]
+
+[[key]]
+id = "shell.hot-seat.help.cancel"
+original = [{ at = "HELP:561:0" }]
+
 # The client's own texts (E27 M2 T6b2, decision 37): no original form, their messages in the
 # client's own pack beside this file (`en.json`; E17 design §9.2), which must give each one.
 #
@@ -2321,3 +2413,12 @@ id = "shell.stub.high-scores"
 
 [[key]]
 id = "shell.stub.credits"
+
+# E27 M2 T7: the network modes' notice over the Multiplayer dialog (IPX, TCP/IP, Modem, Direct
+# Connect and Online: decision 10, CLT-STUB-6, until E28) and the scenario screen's (until M3),
+# over the game type menu it is reached from.
+[[key]]
+id = "shell.stub.network"
+
+[[key]]
+id = "shell.stub.scenario"

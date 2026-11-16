@@ -24,6 +24,12 @@
 //! keys stop the replay). A stub's screen (E27 M2 T6b2: the client's notice, not the original's
 //! screen) is one not built here: no menu opens on it. The real-time pauses (`settle`, `wait`)
 //! pass no time on the frozen clock.
+//!
+//! The Multiplayer dialog (E27 M2 T7) opens over the game type menu as it ended and takes the
+//! inputs as a menu does; a key is also given as the original reads it (`super::keys::scan`: its
+//! edits type by scan code), a typed text a key a character by the US key that types it, Shift
+//! held for a capital or a shifted mark (as `xdotool type` types). Its network modes' notice is
+//! the client's stub: a replay stops there ([`Stop::Stub`]).
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -32,8 +38,10 @@ use alloc::vec::Vec;
 
 use h3_ui::keys::Keys;
 
-use super::keys::Command;
-use super::menu::{Did, Menu, Menus};
+use h3_ui::edit::{self, Scan};
+
+use super::keys::{self, Command};
+use super::menu::{Did, Front, Menus};
 use super::samples::{Played, Samples};
 use super::start::{Op, Start};
 use super::{Built, Ended, Game, Screen, Shell};
@@ -215,15 +223,16 @@ fn clip_step(s: &str, number: impl Fn(&str) -> Result<u32, String>) -> Result<u3
     }
 }
 
-/// Whether `screen` is the one the harness's probes call `name`; none for a name the viewer does
-/// not know.
+/// Whether `screen` is the one the harness's probes call `name`, `hot_seat` whether the hot seat's
+/// names show over the Multiplayer dialog (E27 M2 T7); none for a name the viewer does not know.
 #[must_use]
-pub fn shown(screen: Screen, name: &str) -> Option<bool> {
+pub fn shown(screen: Screen, hot_seat: bool, name: &str) -> Option<bool> {
     Some(match name {
         "main_menu" => screen == Screen::MainMenu,
         "new_game_menu" => screen == Screen::GameType(Game::New),
         "load_game_menu" => screen == Screen::GameType(Game::Load),
-        "multiplayer" => matches!(screen, Screen::Multiplayer(_)),
+        "multiplayer" => matches!(screen, Screen::Multiplayer(_)) && !hot_seat,
+        "hotseat_names" => matches!(screen, Screen::Multiplayer(_)) && hot_seat,
         "scenario_list" => matches!(screen, Screen::Scenario(..)),
         "high_scores" => screen == Screen::HighScores,
         _ => return None,
@@ -254,6 +263,9 @@ pub enum Stop {
     Unknown(String),
     /// The screen on is not built yet: nothing on it changes, nothing is drawn.
     NotBuilt(Screen),
+    /// The client's stub's notice shows over the screen (E27 M2 T7: the network modes',
+    /// `CLT-STUB-6`): not the original's screen.
+    Stub(Screen),
     /// None of the screens shows (at the end of the wait, for `until` and `clip-until`).
     NotShown {
         /// The screens' names.
@@ -274,10 +286,11 @@ pub struct Replay {
     ops: Vec<Op>,
     /// Each op's time (E27 M2 T5b1: the sound's start and stop are listed with theirs).
     times: Vec<u32>,
-    /// The menus as they open (E27 M2 T6a, T6b1).
+    /// The menus as they open (E27 M2 T6a, T6b1) and the Multiplayer dialog (T7).
     menus: Menus,
-    /// The menu on the screen as it is, while one shows (opened anew each time its screen shows).
-    menu: Option<Menu>,
+    /// What takes the inputs on the screen as it is, while one is built (opened anew each time
+    /// its screen shows).
+    front: Option<Front>,
     keys: Keys<Command>,
     /// The press sample's length in ms, with the effects on.
     sample_ms: Option<u32>,
@@ -291,15 +304,22 @@ enum Given {
     Release,
     Right([i32; 2]),
     RightRelease,
-    Key(String),
+    /// A key down: the key table's name and as the original reads it.
+    Key(String, Option<Scan>),
     KeyUp(String),
 }
 
-/// The menu of `screen` opened at `pointer` when the screen is built whole (none on a stub's: its
-/// notice is the client's).
-fn whole(menus: &Menus, screen: Screen, pointer: [i32; 2]) -> Option<Menu> {
+/// What takes the inputs on `screen` opened at `pointer` when the screen is built whole (none on
+/// a stub's: its notice is the client's), `previous` what took them before (the Multiplayer
+/// dialog's menu).
+fn whole(
+    menus: &Menus,
+    screen: Screen,
+    previous: Option<Front>,
+    pointer: [i32; 2],
+) -> Option<Front> {
     (screen.built() == Built::Whole)
-        .then(|| menus.opened(screen, pointer))
+        .then(|| menus.front(screen, previous, pointer))
         .flatten()
 }
 
@@ -337,7 +357,7 @@ impl Replay {
             let _ = shell.end(Ended::Start);
         }
         let times = vec![0; ops.len()];
-        let menu = whole(menus, shell.screen(), pointer);
+        let front = whole(menus, shell.screen(), None, pointer);
         Self {
             shell,
             time: 0,
@@ -346,7 +366,7 @@ impl Replay {
             start,
             ops,
             times,
-            menu,
+            front,
             menus: menus.clone(),
             keys: Keys::original(),
             sample_ms: None,
@@ -361,10 +381,20 @@ impl Replay {
         self
     }
 
+    /// What takes the inputs on the screen as it is (a menu, the Multiplayer dialog), while one
+    /// shows.
+    #[must_use]
+    pub const fn front(&self) -> Option<&Front> {
+        self.front.as_ref()
+    }
+
     /// The menu on the screen as it is, while one shows.
     #[must_use]
-    pub const fn menu(&self) -> Option<&Menu> {
-        self.menu.as_ref()
+    pub fn menu(&self) -> Option<&super::menu::Menu> {
+        match &self.front {
+            Some(Front::Menu(m)) => Some(m.as_ref()),
+            _ => None,
+        }
     }
 
     /// The samples started so far, with the effects on.
@@ -422,9 +452,11 @@ impl Replay {
         match step {
             Step::Until { screens, limit } => Ok(self.until(screens, *limit)),
             Step::Check(name) => Ok(self.known(core::slice::from_ref(name)).or_else(|| {
-                (shown(self.screen(), name) != Some(true)).then(|| Stop::NotShown {
-                    screens: alloc::vec![name.clone()],
-                    screen: self.screen(),
+                (shown(self.screen(), self.hot_seat(), name) != Some(true)).then(|| {
+                    Stop::NotShown {
+                        screens: alloc::vec![name.clone()],
+                        screen: self.screen(),
+                    }
                 })
             })),
             Step::Step { ms, by } => {
@@ -450,7 +482,7 @@ impl Replay {
                 self.tick(self.input_step);
                 Ok(None)
             }
-            Step::Input(input) if self.menu.is_some() => {
+            Step::Input(input) if self.front.is_some() => {
                 self.on_menu(input);
                 self.tick(self.input_step);
                 Ok(None)
@@ -495,10 +527,11 @@ impl Replay {
     }
 
     /// The screen on ended with `ended` (never refused here: a menu's endings are its screen's);
-    /// the next screen's menu opened anew, none for another screen.
+    /// the next screen's menu or dialog opened anew, none for another screen.
     fn end(&mut self, ended: Ended) {
         let _ = self.shell.end(ended);
-        self.menu = whole(&self.menus, self.screen(), self.pointer);
+        let previous = self.front.take();
+        self.front = whole(&self.menus, self.screen(), previous, self.pointer);
     }
 
     /// An input of the harness's to the menu on the screen, as what it gives the game in order,
@@ -518,14 +551,18 @@ impl Replay {
             Input::Up => vec![Given::Release],
             Input::Right(at) => vec![Given::Moved(*at), Given::Right(*at)],
             Input::RightUp => vec![Given::RightRelease],
-            Input::Key(name) => vec![Given::Key(key(name)), Given::KeyUp(key(name))],
-            Input::KeyDown(name) => vec![Given::Key(key(name))],
+            Input::Key(name) => vec![
+                Given::Key(key(name), keys::scan(name)),
+                Given::KeyUp(key(name)),
+            ],
+            Input::KeyDown(name) => vec![Given::Key(key(name), keys::scan(name))],
             Input::KeyUp(name) => vec![Given::KeyUp(key(name))],
             Input::Type(text) => text
                 .chars()
                 .flat_map(|c| {
                     let name = key(&String::from(c));
-                    [Given::Key(name.clone()), Given::KeyUp(name)]
+                    let scan = u8::try_from(c).ok().and_then(edit::scan_of);
+                    [Given::Key(name.clone(), scan), Given::KeyUp(name)]
                 })
                 .collect(),
         };
@@ -543,45 +580,55 @@ impl Replay {
         }
     }
 
-    /// One thing given to the menu on the screen (there is one while its inputs are given).
+    /// One thing given to what takes the inputs on the screen (there is one while its inputs are
+    /// given).
     fn give(&mut self, given: Given) -> Did {
         let (keys, pointer) = (&self.keys, &mut self.pointer);
-        self.menu
+        self.front
             .as_mut()
-            .map_or(Did::default(), |menu| match given {
+            .map_or(Did::default(), |front| match given {
                 Given::Moved(at) => {
                     *pointer = at;
-                    menu.moved(at)
+                    front.moved(at)
                 }
-                Given::Press(at) => menu.press(at),
-                Given::Release => menu.release(),
-                Given::Right(at) => menu.right(at),
-                Given::RightRelease => menu.right_release(),
-                Given::Key(name) => match keys.command(menu.context(), false, &name) {
-                    Some(command) => menu.key(command, &name),
-                    None => Did::default(),
-                },
-                Given::KeyUp(name) => menu.key_up(&name),
+                Given::Press(at) => front.press(at),
+                Given::Release => front.release(),
+                Given::Right(at) => front.right(at),
+                Given::RightRelease => front.right_release(),
+                Given::Key(name, scan) => {
+                    let command = keys.command(front.context(), false, &name);
+                    front.key(scan, command, &name)
+                }
+                Given::KeyUp(name) => front.key_up(&name),
             })
+    }
+
+    /// Whether the hot seat's names show (E27 M2 T7).
+    fn hot_seat(&self) -> bool {
+        matches!(&self.front, Some(Front::Multiplayer(m)) if m.hot_seat().is_some())
     }
 
     /// A name the viewer does not know among `screens`.
     fn known(&self, screens: &[String]) -> Option<Stop> {
         screens
             .iter()
-            .find(|name| shown(self.screen(), name).is_none())
+            .find(|name| shown(self.screen(), false, name).is_none())
             .map(|name| Stop::Unknown(name.clone()))
     }
 
-    /// The screen on, when it is not built whole (a stub's is the client's, not the original's).
+    /// The screen on, when it is not built whole (a stub's is the client's, not the original's),
+    /// or under the client's notice (the network modes').
     fn unbuilt(&self) -> Option<Stop> {
-        (self.screen().built() != Built::Whole).then(|| Stop::NotBuilt(self.screen()))
+        let noticing = matches!(&self.front, Some(Front::Multiplayer(m)) if m.noticing());
+        (self.screen().built() != Built::Whole)
+            .then(|| Stop::NotBuilt(self.screen()))
+            .or_else(|| noticing.then(|| Stop::Stub(self.screen())))
     }
 
     fn any_shown(&self, screens: &[String]) -> bool {
         screens
             .iter()
-            .any(|name| shown(self.screen(), name) == Some(true))
+            .any(|name| shown(self.screen(), self.hot_seat(), name) == Some(true))
     }
 
     /// `until`: as the harness, checked then stepped, `limit / UNTIL_STEP + 1` times.

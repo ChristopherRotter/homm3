@@ -292,6 +292,23 @@ The user, 2026-11-15 (M2 T6b's start):
     words: the client's first own strings, so its language pack (`clients/text/en.json`) and its
     loading come with them.
 
+The user, 2026-11-16 (M2 T7's start):
+
+38. **T7 kept whole** (the cut offered: the edit field, the 21-letter names recorded and
+    Multiplayer's first stage first; the hot seat's names, Load Game's multiplayer and the
+    scenario screen's stub second).
+
+The user, 2026-11-16 (M2 T7; `CLT-Q127`, `CLT-Q128`):
+
+39. **The edits type what the keyboard prints** (CLT-Q127 (b)): the window's text input in the
+    system's layout (SDL's text events: Caps Lock and dead keys included), kept to the characters
+    the font draws (code page 1252: accented letters typed), the edits' own keys (Home, End, the
+    arrows, Delete, BackSpace; the hot seat's Tab, Shift and Tab, Up, Down, Enter) through the
+    shell's key table; the original's US table by scan code for the comparisons only. Built at
+    T7b.
+40. **A menu opening anew takes the hover at its first move** (CLT-Q128 (b)): the original's
+    statics (the item the pointer left the menu over is no change there) for the comparisons only.
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -391,8 +408,9 @@ recorded again in the sandbox (`h3shell.py run`), with the sound sequences its t
 | T6a | The main menu and Quit's question (§2.3, §2.5; decision 35): hover, press, release off, the help popups, hotkeys, `button.wav`, `MAINMENU.MP3`; exact against `menu-main`, `menu-quit` and `menu-sound` up to New Game's menu, its sample compared | **done** 2026-11-15 (decision 36; CLT-Q126): `h3_view::shell::menu` (`MainMenu`, `Boxes`, `Did`), `shell::keys` (the table `[shell]`), `shell::samples` (category 3's handles as the harness numbers them); the replay's main menu and `with_sound`, `look` with the menu's state; the window's mouse, hotkeys, samples and music; `h3shell.py drawn` compares the samples; `menu-main` 26 of 26, `menu-quit` 7 of 7, `menu-sound`'s shot and `sound1` exact; log "M2 T6a", design §13 |
 | T6b1 | New Game's and Load Game's menus (§2.4; decision 37): their hover, press, release off, popups, hotkeys and Back, the buttons redrawn whole (CLT-Q118); exact against `menu-new`, `menu-load` and `menu-sound` whole (`sound2`) | **done** 2026-11-15: `h3_view::shell::menu::Menu` for both kinds (`Kind`, `Menus`, `Stale`, `outside`; `MainMenu` gone), the keys' `Command::Choice` and `Context::GameType`, `look::MenuLayout` (`redrawn`, `titles`, `dialog_for`) and `Look`'s `stale` and `over`; the replay and the window on whichever menu shows; `menu-new` 27 of 27, `menu-load` 27 of 27, `menu-sound` 5 of 5 exact at the first run; log "M2 T6b1", design §14 |
 | T6b2 | The stubs (decision 37): New Game's Campaign and Tutorial (decisions 7, 9), the main menu's High Scores and Credits until M4, each a message box in the client's own words, back to its menu; the client's language pack (`clients/text/en.json`, E17 design §9.2) and its loading | **done** 2026-11-16: `Built::Stub`; `shell::menu`'s `STUBS`, `Menu::screen`, the notice over the menu (`Menus::notices`, opened by the stub's screen), its OK the screen's end; the replay stops at a stub; `clients/text/en.json` (`shell.stub.*`), `text::own_pack` (`OWN_PACK`, `Pack::lacks`), the catalogue's order (the player's, the client's, the original's) in `log::catalogue` and `h3-view text`, the gate's check; every recipe as recorded, the four notices checked in the window; log "M2 T6b2", design §15 |
-| T7 | Multiplayer's first stage (decision 10's stub, CLT-Q101) and the hot seat's names (§2.6, §2.7: the edit field read first, two 21-letter names recorded, Enter pressing OK, CLT-Q107), Load Game's multiplayer; the scenario screen a stub (M3); exact against `multiplayer` | after T6b2 |
-| T8 | M2's closure: a fresh reviewer, the review list, M3's refinement (M3 T0: the loading bar, the scenario list's maps, decision 8; §6.4's recipes for M3) | after T7 |
+| T7 | Multiplayer's first stage (decision 10's stub, CLT-Q101) and the hot seat's names (§2.6, §2.7: the edit field read first, two 21-letter names recorded, Enter pressing OK, CLT-Q107), Load Game's multiplayer; the scenario screen a stub (M3); exact against `multiplayer` | **done** 2026-11-16 (decisions 38 to 40; CLT-Q127, CLT-Q128; CLT-STUB-6): `h3_ui::edit` (the edit's keys by scan code through the original's US table), `Draw::Edit`, `Draw::Fill`, `h3_render::text::draw_text_caret`, `h3_sdl::Window::scans`; `h3_view::shell::multiplayer` (`Multiplayer`, `HotSeat`, `Texts`), `menu::Front`, `menu::Hovers` (decision 40: the original's profile only), the scenario screen's stub, `Stop::Stub`; `edit-keys` and `hotseat-long` recorded (20 letters a name, never joined); the `multiplayer` group's 113 drawn shots exact; log "M2 T7", design §16 |
+| T7b | The edits' typing as the keyboard prints (decision 39, CLT-Q127): SDL's text input in the window (`h3_sdl`: started while an edit has the focus, its text events), the characters kept to the font's code page; the edits' keys (Home, End, Left, Right, Delete, BackSpace; the hot seat's Tab, Shift and Tab, Up, Down, Enter) as commands of the shell's key table (Shift chords in `h3_ui::keys`, additive; the window's keys for Tab, BackSpace, Delete and the Shifts); the replay typing characters in the client's profile, the original's scan codes in its own; `drawn` as recorded, the window checked with a layout other than the US one | after T7 |
+| T8 | M2's closure: a fresh reviewer, the review list, M3's refinement (M3 T0: the loading bar, the scenario list's maps, decision 8; §6.4's recipes for M3) | after T7b |
 
 **M2's review list** (the agent's calls, *provisional*, for T8): (1) `h3-smacker`'s shape (T1):
 the frames read in order by a `Reader` (the palette is cumulative), a frame's written blocks in
@@ -505,7 +523,26 @@ notices' words (a title in the highlight braces, one sentence) and their keys by
 screen names (`shell.stub.<screen>`); (54) the client's own pack beside the key catalogue
 (`text::OWN_PACK`, English only), every key without an original form required in it
 (`Pack::lacks`: `<key>` or a plural key's `<key>_other`), a fault an error at a client's start
-and in the gate; (55) no player's pack in the windows yet (only `h3-view text --pack`).
+and in the gate; (55) no player's pack in the windows yet (only `h3-view text --pack`). T7: (56) the
+edit field in `h3-ui` (`h3_ui::edit`: `Edit`, its keys by scan code through the original's US
+table, `scan_of` its inverse for the harness's typing), drawn as `Draw::Edit` over the dialog's
+label of its box (`Edit::place`), not an item kind of its own (`Item` is matched whole in the map
+client's crate); (57) the window's keys as the original reads them a side channel of
+`h3_sdl::Window` (`scans`, one an event of a wait; `KeyScan`, `set1`), not a field of
+`Event::Key` (matched whole in the map client's window); (58) the status lines' fill a
+`Draw::Fill` before their label; (59) `menu::Front` (a menu or the Multiplayer dialog) the one
+thing the replay and the window give the inputs to; the dialog holding the game type menu as it
+ended (`Multiplayer::under`), the hot seat a part of it, the probe `hotseat_names` by it; (60) the
+network modes' notice and the scenario screen's stub in the client's words
+(`shell.stub.network`, `shell.stub.scenario`), the replay stopping under the notice
+(`Stop::Stub`), the scenario's stub over the game type menu it is reached from (six `STUBS`, one
+key); (61) the hot seat's names kept in the dialog after its OK (`Multiplayer::names`) for M3; the
+dialog's name not kept as a setting (no `Network Default Name` yet), empty at each opening; (62)
+the Multiplayer dialog's shadow in its layout (recorded; its constructor's flags are 0, how it
+comes not read); (63) the hover taken again after a hold's end in both dialogs (recorded, as the
+menus'); Enter with OK disabled moving on as the original's (decision 22 names an enabled OK);
+(64) the menus' last items carried from menu to menu (`Hovers`), read by the original's profile
+alone (decision 40).
 
 ## Dependencies and boundaries
 

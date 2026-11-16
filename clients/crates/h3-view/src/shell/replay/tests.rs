@@ -12,6 +12,7 @@ use super::{
     ClipEnd, INPUT_STEP, Input, Replay, Step, Stop, Take, UNTIL_LIMIT, UNTIL_STEP, parse, shown,
     skips,
 };
+use crate::shell::menu::Front;
 use crate::shell::menu::Kind as MenuKind;
 use crate::shell::menu::tests::menus;
 use crate::shell::start::{Header, Op, Pace, Part, Start};
@@ -163,28 +164,95 @@ fn a_step_not_the_harness_s_is_refused() {
 
 #[test]
 fn the_probes_names_are_the_shell_s_screens() {
-    assert_eq!(shown(Screen::MainMenu, "main_menu"), Some(true));
-    assert_eq!(shown(Screen::Start, "main_menu"), Some(false));
+    assert_eq!(shown(Screen::MainMenu, false, "main_menu"), Some(true));
+    assert_eq!(shown(Screen::Start, false, "main_menu"), Some(false));
     assert_eq!(
-        shown(Screen::GameType(Game::New), "new_game_menu"),
+        shown(Screen::GameType(Game::New), false, "new_game_menu"),
         Some(true)
     );
     assert_eq!(
-        shown(Screen::GameType(Game::Load), "load_game_menu"),
+        shown(Screen::GameType(Game::Load), false, "load_game_menu"),
         Some(true)
     );
     assert_eq!(
-        shown(Screen::Multiplayer(Game::Load), "multiplayer"),
+        shown(Screen::Multiplayer(Game::Load), false, "multiplayer"),
         Some(true)
     );
     assert_eq!(
-        shown(Screen::Scenario(Game::New, Kind::Single), "scenario_list"),
+        shown(
+            Screen::Scenario(Game::New, Kind::Single),
+            false,
+            "scenario_list"
+        ),
         Some(true)
     );
-    assert_eq!(shown(Screen::HighScores, "high_scores"), Some(true));
-    assert_eq!(shown(Screen::MainMenu, "multiplayer"), Some(false));
-    assert_eq!(shown(Screen::MainMenu, "scenario_list"), Some(false));
-    assert_eq!(shown(Screen::MainMenu, "adventure"), None);
+    assert_eq!(shown(Screen::HighScores, false, "high_scores"), Some(true));
+    assert_eq!(shown(Screen::MainMenu, false, "multiplayer"), Some(false));
+    assert_eq!(shown(Screen::MainMenu, false, "scenario_list"), Some(false));
+    assert_eq!(shown(Screen::MainMenu, false, "adventure"), None);
+    // The hot seat's names over the Multiplayer dialog (E27 M2 T7).
+    let mp = Screen::Multiplayer(Game::New);
+    assert_eq!(shown(mp, true, "hotseat_names"), Some(true));
+    assert_eq!(shown(mp, true, "multiplayer"), Some(false));
+    assert_eq!(shown(mp, false, "hotseat_names"), Some(false));
+    assert_eq!(shown(Screen::MainMenu, true, "hotseat_names"), Some(false));
+}
+
+#[test]
+fn the_multiplayer_dialog_and_the_hot_seat_take_the_harness_s_inputs() {
+    // E27 M2 T7: the dialog over New Game's menu as it ended; typing by scan code, capitals with
+    // Shift; the names' ring; OK to the scenario screen's stub.
+    let steps = [
+        "until:main_menu",
+        "click:643,70",
+        "click:649,180",
+        "check:multiplayer",
+        "right:578,157",
+        "right-up",
+        "type:Ab",
+        "key:BackSpace",
+        "click:578,157",
+        "check:hotseat_names",
+        "key:Tab",
+        "type:C",
+        "key:shift+Tab",
+        "down:345,450",
+        "up",
+        "until:scenario_list",
+    ];
+    // The scenario screen is a stub (M3): waiting for it stops the replay there.
+    let (_, stop, r) = replay(false, &steps);
+    let scenario = Screen::Scenario(Game::New, Kind::Multiplayer);
+    assert_eq!(
+        (stop, r.screen()),
+        (Some(Stop::NotBuilt(scenario)), scenario)
+    );
+    let (_, stop, r) = replay(false, &steps[..13]);
+    assert_eq!(stop, None);
+    let Some(Front::Multiplayer(m)) = r.front() else {
+        panic!("the dialog")
+    };
+    let hot_seat = m.hot_seat().unwrap();
+    assert_eq!(
+        (hot_seat.names(), hot_seat.focus()),
+        (vec![String::from("A"), String::from("C")], 0)
+    );
+    assert_eq!(r.menu(), None);
+    // A network mode's notice is the client's: a shot under it stops the replay.
+    let (seen, stop, _) = replay(
+        false,
+        &[
+            "click:643,70",
+            "click:649,180",
+            "click:578,214",
+            "shot:failed",
+        ],
+    );
+    assert!(seen.is_empty());
+    assert_eq!(stop, Some(Stop::Stub(Screen::Multiplayer(Game::New))));
+    // Escape ends the dialog: New Game's menu again.
+    let (_, stop, r) = replay(false, &["click:643,70", "click:649,180", "key:Escape"]);
+    assert_eq!((stop, r.screen()), (None, Screen::GameType(Game::New)));
 }
 
 /// What a replay of `steps` hands over, each moment with its time and pointer, and how it ends.
@@ -324,14 +392,15 @@ fn what_the_viewer_cannot_do_stops_the_replay() {
     }
     // `until` checks, then steps: 20 ms waited three times.
     assert_eq!(replay(false, &["until:new_game_menu:20"]).2.time(), 30);
-    // A screen not built yet (the multiplayer dialog until T7): nothing drawn or waited for on
-    // it; the pointer moves over it.
+    // A screen not built yet (play until E24 M5): nothing drawn or waited for on it; the pointer
+    // moves over it.
     let mut shell = Shell::new(false);
     shell.end(Ended::MainMenu(Request::NewGame)).unwrap();
-    shell.end(Ended::GameType(Choice::Multiplayer)).unwrap();
-    let not_built = Some(Stop::NotBuilt(Screen::Multiplayer(Game::New)));
+    shell.end(Ended::GameType(Choice::Single)).unwrap();
+    shell.end(Ended::Scenario(true)).unwrap();
+    let not_built = Some(Stop::NotBuilt(Screen::Play { restart: false }));
     for steps in [
-        &["until:multiplayer"][..],
+        &["until:main_menu"][..],
         &["shot:menu"],
         &["clip:c:10:1"],
         &["key:space"],
@@ -592,7 +661,7 @@ fn the_main_menu_takes_the_harness_s_inputs() {
         let (_, _, r) = replay(false, steps);
         assert_eq!(r.screen(), Screen::GameType(Game::New), "{steps:?}");
         assert_eq!(
-            r.menu().map(super::Menu::kind),
+            r.menu().map(crate::shell::menu::Menu::kind),
             Some(MenuKind::GameType(Game::New))
         );
     }
@@ -655,14 +724,25 @@ fn the_game_type_menus_take_the_harness_s_inputs() {
     let menu = r.menu().unwrap();
     assert_eq!(menu.kind(), MenuKind::GameType(Game::New));
     assert_eq!(menu.hovered(), Some(102));
-    // Back's click and Load Game's Escape: the main menu again, opened anew.
-    for steps in [
-        &["click:643,70", "click:645,517"][..],
-        &["click:645,192", "check:load_game_menu", "key:Escape"],
+    // Back's click and Load Game's Escape: the main menu again, opened anew, its procedure's
+    // last item the one New Game or Load Game was chosen by (CLT-Q128), none drawn hovered.
+    for (steps, last) in [
+        (&["click:643,70", "click:645,517"][..], 101),
+        (
+            &["click:645,192", "check:load_game_menu", "key:Escape"],
+            102,
+        ),
     ] {
         let (_, stop, r) = replay(false, steps);
         assert_eq!((stop, r.screen()), (None, Screen::MainMenu), "{steps:?}");
-        assert_eq!(r.menu().unwrap().hovered(), None);
+        let menu = r.menu().unwrap();
+        assert_eq!(menu.hovered(), Some(last));
+        assert!(
+            !menu
+                .dialog_draws("")
+                .iter()
+                .any(|d| matches!(d, h3_ui::ui::Draw::Button { frame: 3, .. }))
+        );
     }
     // Single: the scenario screen, no menu on it (M3's).
     let (_, _, r) = replay(false, &["key:n", "key:s"]);

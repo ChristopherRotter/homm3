@@ -6,7 +6,9 @@
 //! are drawn as they are ([`super::menu`]): their buttons in their states, a game type menu's title
 //! by its game, the rows its redraw does not show as last shown in the original's profile
 //! (CLT-Q118), the box open over them; the help popup hides the cursor. A stub's screen (T6b2) is
-//! the menu it was chosen from with the stub's notice over it.
+//! the menu it was chosen from with the stub's notice over it. The Multiplayer dialog (T7) shows
+//! over the game type menu as that menu left the screen, the hot seat's names over it, a popup or
+//! the network's notice over them ([`super::multiplayer`]).
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -14,7 +16,7 @@ use alloc::vec::Vec;
 use h3_ui::ui::{Dialog, Draw, Shown};
 use serde::Deserialize;
 
-use super::menu::{Kind, Menu, Stale, TITLE};
+use super::menu::{Front, Kind, Stale, TITLE};
 use super::{Game, Screen};
 use crate::message::MessageLayout;
 
@@ -35,6 +37,11 @@ pub struct ShellLayout {
     pub main_menu: MenuLayout,
     /// New Game's and Load Game's menu (§2.4: `game_type_menu_create` 0x4D54C0; E27 M2 T6b1).
     pub game_type: MenuLayout,
+    /// The Multiplayer dialog's first stage (§2.6: `multiplayer_dialog_init` 0x50E050; E27 M2
+    /// T7): its items in the order it adds them, its edit a label.
+    pub multiplayer: Dialog,
+    /// The hot seat's names (§2.7: `hot_seat_dialog_init` 0x511E20), its edits labels.
+    pub hot_seat: Dialog,
 }
 
 /// A cursor's DEF and frame.
@@ -108,27 +115,50 @@ pub fn parse_layout(text: &str) -> Result<ShellLayout, String> {
     for menu in [&mut layout.main_menu, &mut layout.game_type] {
         menu.dialog = menu.dialog.clone().expanded();
     }
+    for dialog in [&mut layout.multiplayer, &mut layout.hot_seat] {
+        *dialog = dialog.clone().expanded();
+    }
     Ok(layout)
 }
 
 /// What `screen` shows, none when it is not built yet ([`Screen::built`]) or without its state
-/// `menu` (the screen's own: a menu's, or a stub's menu under its notice, E27 M2 T6b2): its
-/// buttons as they are, the stale rows and the box over them ([`Menu::dialog_draws`],
-/// [`Menu::stale`], [`Menu::box_draws`]).
+/// `front` (the screen's own: a menu's, or a stub's menu under its notice, E27 M2 T6b2; the
+/// Multiplayer dialog over its menu, T7): its buttons as they are, the stale rows and the box
+/// over them ([`super::menu::Menu::dialog_draws`], [`super::menu::Menu::stale`],
+/// [`super::menu::Menu::box_draws`]); the dialogs over the menu.
 #[must_use]
-pub fn look(layout: &ShellLayout, screen: Screen, menu: Option<&Menu>) -> Option<Look> {
-    let menu = menu.filter(|m| m.screen() == screen)?;
+pub fn look(layout: &ShellLayout, screen: Screen, front: Option<&Front>) -> Option<Look> {
+    let players = &layout.player_palette;
+    let (menu, dialog) = match front? {
+        Front::Menu(menu) => (menu.as_ref(), None),
+        Front::Multiplayer(dialog) => (dialog.under()?, Some(dialog)),
+    };
+    let screen_on = if dialog.is_some() {
+        matches!(screen, Screen::Multiplayer(_))
+    } else {
+        menu.screen() == screen
+    };
+    if !screen_on {
+        return None;
+    }
     let background = match menu.kind() {
         Kind::GameType(_) => &layout.game_type.background,
         Kind::Main => &layout.main_menu.background,
     };
-    let players = &layout.player_palette;
+    let mut draws = menu.dialog_draws(players);
+    let (over, cursor) = match dialog {
+        Some(d) => {
+            draws.extend(d.draws(players));
+            (d.box_draws(players), d.cursor())
+        }
+        None => (menu.box_draws(players), menu.cursor()),
+    };
     Some(Look {
         background: background.clone(),
-        draws: menu.dialog_draws(players),
+        draws,
         stale: menu.stale(players),
-        over: menu.box_draws(players),
-        cursor: menu.cursor(),
+        over,
+        cursor,
     })
 }
 
@@ -145,6 +175,11 @@ pub fn names(layout: &ShellLayout) -> Vec<String> {
             names.extend(h3_ui::paint::names(&draw).into_iter().map(String::from));
         }
         names.extend(menu.titles.iter().cloned());
+    }
+    for dialog in [&layout.multiplayer, &layout.hot_seat] {
+        for draw in dialog.draws(&Shown::default(), "") {
+            names.extend(h3_ui::paint::names(&draw).into_iter().map(String::from));
+        }
     }
     let m = &layout.message;
     names.extend(

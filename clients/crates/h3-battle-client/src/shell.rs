@@ -42,7 +42,11 @@
 //! the start. The stubs (T6b2): New Game's Campaign and Tutorial and the main menu's High Scores
 //! and Credits show a notice in the client's own words (`shell.stub.*`, its own pack
 //! `clients/text/en.json`) over the menu they were chosen from, in the window; its OK goes back to
-//! that menu. The replay stops at them (the original shows its own screens there). The replay
+//! that menu. The replay stops at them (the original shows its own screens there). The
+//! Multiplayer dialog and the hot seat's names (T7): their hints, help and title the user's
+//! tables' (`shell.multiplayer.*`, `shell.hot-seat.*`), the network modes' notice and the scenario
+//! screen's stub the client's (`shell.stub.network`, `shell.stub.scenario`); the window gives the
+//! dialogs' edits each key down as the original reads it (`h3_sdl::Window::scans`). The replay
 //! draws a game type menu's rows its redraw does not show as last shown (CLT-Q118:
 //! `h3_view::shell::menu::Stale`, the original's profile).
 
@@ -57,7 +61,7 @@ use h3_assets::wav::Pcm;
 use h3_render::Bugs;
 use h3_render::blit::draw_image;
 use h3_render::screen::Screen as Pixels;
-use h3_sdl::{Config, CursorImage, Event, Key, Window};
+use h3_sdl::{Config, CursorImage, Event, Key, KeyScan, Window};
 use h3_ui::cursor::Cursor;
 use h3_ui::keys::Keys;
 use h3_ui::text::Args;
@@ -66,7 +70,8 @@ use h3_view::compose::FORMAT;
 use h3_view::message::{self, Style};
 use h3_view::shell::keys::{Command, GAME_TYPE, MAIN_MENU};
 use h3_view::shell::look::{self, ShellLayout};
-use h3_view::shell::menu::{self, Boxes, Kind, Menu, Menus};
+use h3_view::shell::menu::{self, Boxes, Front, Kind, Menu, Menus};
+use h3_view::shell::multiplayer::{self, Multiplayer, Texts};
 use h3_view::shell::replay::{self, INPUT_STEP, Replay, Stop, Take};
 use h3_view::shell::start::{self as clips, Header, Op, Pace, Part, Picture, Source, Start};
 use h3_view::shell::{Ended, Game, Screen, Shell, text};
@@ -364,18 +369,19 @@ impl Drawer {
         Part::ALL.map(|part| self.videos.read(part.file(bink_video)).ok())
     }
 
-    /// The frame of `screen` (a menu as `menu` is), the cursor at `pointer` if any and shown: a
-    /// built screen's background copied whole, its dialog over it, the rows a redraw left as last
-    /// shown (the original's profile), the box over them; another's black.
+    /// The frame of `screen` (a menu or the Multiplayer dialog as `front` is), the cursor at
+    /// `pointer` if any and shown: a built screen's background copied whole, its dialog over it,
+    /// the rows a redraw left as last shown (the original's profile), the box over them;
+    /// another's black.
     fn frame(
         &self,
         screen: Screen,
         pointer: Option<[i32; 2]>,
-        menu: Option<&Menu>,
+        front: Option<&Front>,
     ) -> Result<Pixels, String> {
         let mut pixels = Pixels::new(WIDTH, HEIGHT, FORMAT).ok_or("no 800 × 600 screen")?;
         let mut cursor = true;
-        if let Some(shown) = look::look(&self.layout, screen, menu) {
+        if let Some(shown) = look::look(&self.layout, screen, front) {
             let background = self
                 .batch
                 .picture(&shown.background)
@@ -503,15 +509,46 @@ fn menus(
     let notices = menu::STUBS
         .iter()
         .map(|&(screen, _, _)| {
-            let key = format!("shell.stub.{}", text::name(screen));
+            let key = format!("shell.stub.{}", menu::stub_name(screen));
             (screen, laid(&key, Style::Ok))
         })
         .collect();
+    // The Multiplayer dialog's and the hot seat's texts (T7).
+    let mut hints = std::collections::BTreeMap::new();
+    let mut help = std::collections::BTreeMap::new();
+    let texted = multiplayer::TEXTED
+        .iter()
+        .map(|&(id, name)| (id, "multiplayer", name))
+        .chain(
+            multiplayer::HOT_SEAT_TEXTED
+                .iter()
+                .map(|&(id, name)| (id, "hot-seat", name)),
+        );
+    for (id, dialog, name) in texted {
+        let hint = catalogue.text(&format!("shell.{dialog}.hint.{name}"), &Args::new());
+        hints.insert(id, hint);
+        help.insert(
+            id,
+            laid(&format!("shell.{dialog}.help.{name}"), Style::Popup),
+        );
+    }
+    let texts = Texts {
+        hints,
+        help,
+        network: laid("shell.stub.network", Style::Ok),
+        title: catalogue.text("shell.hot-seat.title", &Args::new()),
+    };
     Ok(Menus {
         main,
         new_game: game_type(Game::New),
         load_game: game_type(Game::Load),
         notices,
+        multiplayer: Multiplayer::new(
+            layout.multiplayer.clone(),
+            layout.hot_seat.clone(),
+            texts,
+            bugs,
+        ),
     })
 }
 
@@ -671,6 +708,10 @@ fn stopped(k: usize, stop: &Stop) -> String {
                 screen.task()
             )
         }
+        Stop::Stub(screen) => format!(
+            "stop {k} stub {} (the client's notice: CLT-STUB-6, E28)",
+            text::name(*screen)
+        ),
         Stop::NotShown { screens, screen } => {
             format!(
                 "stop {k} not-shown {} on {}",
@@ -731,7 +772,7 @@ fn replay_steps(options: &Options, drawer: &Drawer) -> Result<(), String> {
             let pixels = if r.screen() == Screen::Start {
                 picture.screen().clone()
             } else {
-                drawer.frame(r.screen(), Some(r.pointer()), r.menu())?
+                drawer.frame(r.screen(), Some(r.pointer()), r.front())?
             };
             match t {
                 Take::Shot(name) => {
@@ -848,8 +889,10 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     );
     let mut presses: Vec<usize> = Vec::new();
     let keys = Keys::<Command>::original();
-    // The menu on the screen, opened as its screen shows (`on`: the screen it was opened for).
-    let mut menu: Option<Menu> = None;
+    // What takes the inputs on the screen, opened as its screen shows (`on`: the screen it was
+    // opened for; `previous`: what took them before, the Multiplayer dialog's menu).
+    let mut front: Option<Front> = None;
+    let mut previous: Option<Front> = None;
     let ((mut start, mut ops), mut picture) = start_of(
         &clips,
         drawer.rim.as_ref(),
@@ -894,15 +937,17 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     let (mut pointer, mut dirty, mut cursor_hidden) = (None, true, false);
     loop {
         let playing = shell.screen() == Screen::Start;
-        for event in win.wait(if playing { 5 } else { 50 }) {
+        let events = win.wait(if playing { 5 } else { 50 });
+        let scans = win.scans().to_vec();
+        for (event, scan) in events.into_iter().zip(scans) {
             let mut did = menu::Did::default();
             match event {
                 Event::Quit => return Ok(()),
                 Event::Pointer(at) => {
                     pointer = at.map(|(x, y)| [x, y]);
                     dirty |= drawn;
-                    if let (Some(menu), Some(at)) = (menu.as_mut(), pointer) {
-                        did = menu.moved(at);
+                    if let (Some(front), Some(at)) = (front.as_mut(), pointer) {
+                        did = front.moved(at);
                     }
                 }
                 Event::Redraw => dirty = true,
@@ -910,8 +955,8 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
                     start.skip(now(&win), &mut ops);
                 }
                 event => {
-                    if let Some(menu) = menu.as_mut() {
-                        did = on_menu(menu, &keys, &event, pointer.unwrap_or(PARK));
+                    if let Some(front) = front.as_mut() {
+                        did = on_front(front, &keys, (&event, scan), pointer.unwrap_or(PARK));
                     }
                 }
             }
@@ -934,7 +979,7 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
                     return Ok(());
                 }
                 on = None;
-                menu = None;
+                previous = front.take();
                 dirty = true;
             }
         }
@@ -997,12 +1042,15 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             }
             if shell.screen() != before {
                 on = None;
-                menu = None;
+                previous = front.take();
             }
             dirty = true;
         }
         // The help popup hides the cursor (`popup_run_held`): the hardware one too.
-        let hidden = menu.as_ref().is_some_and(|m| !m.cursor());
+        let hidden = front.as_ref().is_some_and(|f| match f {
+            Front::Menu(m) => !m.cursor(),
+            Front::Multiplayer(m) => !m.cursor(),
+        });
         if !drawn && hidden != cursor_hidden {
             let image = (!hidden).then(|| drawer.hardware.clone());
             win.set_cursor(image)?;
@@ -1013,8 +1061,10 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
         // E24-design §3.11).
         if on != Some(shell.screen()) {
             on = Some(shell.screen());
-            menu = drawer.menus.opened(shell.screen(), pointer.unwrap_or(PARK));
-            if let (Some(host), true) = (host.as_mut(), menu.is_some()) {
+            front = drawer
+                .menus
+                .front(shell.screen(), previous.take(), pointer.unwrap_or(PARK));
+            if let (Some(host), true) = (host.as_mut(), front.is_some()) {
                 let _ = host.request(MAIN_MUSIC, false);
             }
             dirty = true;
@@ -1023,7 +1073,7 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             let frame = if shell.screen() == Screen::Start {
                 picture.screen().clone()
             } else {
-                drawer.frame(shell.screen(), pointer.filter(|_| drawn), menu.as_ref())?
+                drawer.frame(shell.screen(), pointer.filter(|_| drawn), front.as_ref())?
             };
             win.present(&frame.xrgb())?;
             dirty = false;
@@ -1031,21 +1081,32 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     }
 }
 
-/// A window's event to the menu on the screen: the left button's press and release, the right
-/// button's (its help), a hotkey's key down through the shell's key table and its key up.
-fn on_menu(menu: &mut Menu, keys: &Keys<Command>, event: &Event, pointer: [i32; 2]) -> menu::Did {
+/// A window's event to what takes the inputs on the screen: the left button's press and release,
+/// the right button's (wherever the mouse is: at `pointer`), a key's down (with its scan code, the
+/// dialogs' edits', T7) and up through the key table.
+fn on_front(
+    front: &mut Front,
+    keys: &Keys<Command>,
+    (event, scan): (&Event, Option<KeyScan>),
+    pointer: [i32; 2],
+) -> menu::Did {
     match event {
         Event::Click {
             down: true,
             at: (x, y),
-        } => menu.press([*x, *y]),
-        Event::Click { down: false, .. } => menu.release(),
-        Event::Key(Key::RightButton) => menu.right(pointer),
-        Event::KeyUp(Key::RightButton) => menu.right_release(),
-        Event::Key(key) => keys
-            .command(menu.context(), false, key.name())
-            .map_or_else(menu::Did::default, |command| menu.key(command, key.name())),
-        Event::KeyUp(key) => menu.key_up(key.name()),
+        } => front.press([*x, *y]),
+        Event::Click { down: false, .. } => front.release(),
+        Event::Key(Key::RightButton) => front.right(pointer),
+        Event::KeyUp(Key::RightButton) => front.right_release(),
+        Event::Key(key) => {
+            let command = keys.command(front.context(), false, key.name());
+            let scan = scan.map(|s| h3_ui::edit::Scan {
+                code: s.code,
+                shift: s.shift,
+            });
+            front.key(scan, command, key.name())
+        }
+        Event::KeyUp(key) => front.key_up(key.name()),
         _ => menu::Did::default(),
     }
 }

@@ -157,6 +157,11 @@ epic   = "E16"
 # where  = "clients/crates/h3-battle-client/src/battle.rs::Ground::load_game"
 # reason = "A hot-seat battle between two of the host's humans (the M7 review's R3-5, E17 M7 T4; the user, 2026-11-11: not built now) is not played: a whole game's battle played live through its host's game makes the seat's player's side alone human here (one header, one player), the other side the host's to play; the original plays such a battle on one combat screen, both sides by mouse. Lifted with E24 M5 (hot seat): a seat over both players of a battle, each command played as its side's player's, or another answer then"
 # epic   = "E17"
+# [[stub]]
+# id     = "CLT-STUB-6"
+# where  = "clients/crates/h3-view/src/shell/multiplayer.rs::Multiplayer::clicked"
+# reason = "The Multiplayer dialog's network modes (IPX, TCP/IP, Modem, Direct Connect, Online; E27 decision 10, CLT-Q87 (a)) show a notice in the client's words and leave the dialog on its first stage: stage 2 (Host, Join, Search, the session list, their dialogs), DirectPlay and ProgressBar's transfer are not built, and Online never ends the client. Lifted when E28 decides how the project's network play enters the shell"
+# epic   = "E27"
 
 # --- map-client (MCL-STUB-<n>) ---
 
