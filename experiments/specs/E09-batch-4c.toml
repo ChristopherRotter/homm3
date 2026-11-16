@@ -1,0 +1,214 @@
+# Experiment batch TWN-4, part c (E09 T34; design note §78, survey
+# docs/rules/surveys/E09-tavern.md §6, §9 row TWN-4-7, §13): the Thieves' Guild by the viewer's
+# taverns (1 to 5) and the Den of Thieves, in SoD on Easy, hot seat. Parts a and b
+# (`E09-batch-4a.toml`, `-4b.toml`) hold the other seven rows. Build: docs/experiments/README.md.
+# Predictions are for the agent who evaluates the results; the template never shows them. "The
+# reading" is the survey's code reading of Heroes3.exe (the engine follows it, faithful; TD-23 the
+# reading, T-17 the flag `TWN-QUIRK-13` on in `faithful`: decisions 117, 118); VCMI's is VCMI 1.7.5
+# as the survey summarises it (§13).
+#
+# | row     | settles                  | the reading                         | otherwise              |
+# | TWN-4-7 | §6's thresholds, §13,    | 2/4/6/8/9 rows at 1/2/3/4/5 taverns | VCMI: the best hero by |
+# |         | TD-23, T-17              | (the Den all); the artifacts row by | experience; worn and   |
+# |         |                          | the backpacks alone; the best hero  | backpack artifacts;    |
+# |         |                          | by army power; the army row and the | the heroes' armies     |
+# |         |                          | best creature with the towns' shown | only                   |
+# |         |                          | armies                              |                        |
+#
+# **The players** (only Red and Blue play; the guild ranks the players in the game): Red, the
+# viewer, the Castle; Blue the Stronghold. Every value the rows rank is set so that each row's
+# places are known: the resources written by the harness before the first read (`resources`:
+# Red's gold 20 000, wood 5, ore 5, mercury 10, sulfur 10, crystal 10, gems 10; Blue's gold
+# 10 000, wood 20, ore 20, the rare four 1 each), no obelisk anywhere.
+#
+# **Red's towns** (`[[map.town]]`, map row 10, entrances 8 columns apart from column 7): R1 (7,
+# 10) Red's Castle with the Tavern, a garrison of 10 Archangels (the army row's and the best
+# creature's town army); four neutral towns with a Tavern and an empty garrison, each taken by a
+# hero of Red's that walks in (a tavern more each): N2 (15, 10) Rampart, N3 (23, 10) Tower, N4
+# (31, 10) Stronghold, N5 (39, 10) Castle with the Tavern and the Brotherhood of the Sword (the
+# Castle's building that `player_tavern_count` also counts). Blue's town B (55, 40), Stronghold,
+# its garrison empty, no Tavern.
+#
+# **The heroes:** Red's TWN-4-7s (the strongest: 10 Champions, Attack 5, Defense 5, no
+# experience; three worn artifacts, the backpack empty) and TWN-4-7e (the most experienced: 30 000
+# experience, 1 Pikeman, Attack 1, Defense 1) far off, never moving; TWN-4-7a, -7b, -7c and -7f
+# (1 Pikeman each, nothing worn) south of N2 to N5; TWN-4-7d (the same) south of the Den of
+# Thieves (52, 10), entered at
+# its anchor from (52, 11). Blue's TWN-4-7x (20 Champions, Attack 1, Defense 1, one artifact in
+# the backpack, nothing worn).
+
+[map]
+name = "E09 batch TWN-4c"
+description = "Engine-generated experiment map (E09, batch TWN-4, part c): the Thieves' Guild by the number of taverns and at the Den of Thieves. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 72
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E09-batch-4c.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, Red and Blue both human, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above.",
+    "Set the players' resources as the encounter says (the capture harness writes them, player record +0x9C; by hand: the console or a trainer, or note the resources each player has and score the rows by them).",
+    "The Thieves' Guild opens from a town's Tavern (the town screen's Tavern building, then the Thieves' Guild button) and at the Den of Thieves; it shows each row's places by the players' flags and, per player, its best hero's portrait and primary skills, its tactic and its best creature, by the viewer's taverns. Note each row's places (the colours in each place, from the first) and each player's parts.",
+    "Tiles are (column, row) from 0 at the top left; a town's entrance is the tile a hero visits. A step: click the target once (the path's marks show), then again (the hero goes).",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- the towns --------------------------------------------------------------------------------
+
+[[map.town]]  # R1: Red's, the Tavern, 10 Archangels
+entrance = [7, 10]
+faction = "castle"
+owner = "red"
+buildings = ["fort", "tavern"]
+garrison = [["Archangel", 10]]
+
+[[map.town]]  # N2
+entrance = [15, 10]
+faction = "rampart"
+owner = "neutral"
+buildings = ["tavern"]
+garrison = []
+
+[[map.town]]  # N3
+entrance = [23, 10]
+faction = "tower"
+owner = "neutral"
+buildings = ["tavern"]
+garrison = []
+
+[[map.town]]  # N4
+entrance = [31, 10]
+faction = "stronghold"
+owner = "neutral"
+buildings = ["tavern"]
+garrison = []
+
+[[map.town]]  # N5: the Brotherhood of the Sword over the Tavern
+entrance = [39, 10]
+faction = "castle"
+owner = "neutral"
+buildings = ["tavern", "brotherhood of the sword"]
+garrison = []
+
+[[map.town]]  # B: Blue's, no Tavern
+entrance = [55, 40]
+faction = "stronghold"
+owner = "blue"
+buildings = ["fort"]
+garrison = []
+
+[[map.object]]  # the Den of Thieves, entered at its anchor
+picture = "AVXdend0"
+at = [52, 10]
+
+# --- TWN-4-7: the Thieves' Guild ------------------------------------------------------------------
+
+[[encounter]]
+id = "TWN-4-7"
+title = "The Thieves' Guild at 1 to 5 taverns and at the Den of Thieves: the rows' places and the players' parts"
+questions = ["TWN-TAV-007", "TWN-TAV-008", "TWN-TAV-009"]
+procedure = [
+    "Red's turn, day 1. Set the resources (Red: gold 20 000, wood 5, ore 5, the rare four 10 each; Blue: gold 10 000, wood 20, ore 20, the rare four 1 each).",
+    "Open R1's town screen from the town list (no hero visits it), click the Tavern, then the Thieves' Guild button: note each row's places and each player's parts (one tavern). Close the guild, the tavern and the town screen.",
+    "TWN-4-7a stands south of N2 at (15, 11): step north onto the entrance (the town is taken, its screen opens). Click the Tavern, then the Thieves' Guild: note the rows and the parts (two taverns). Close them.",
+    "The same with TWN-4-7b at N3 (23, 11) (three taverns), TWN-4-7c at N4 (31, 11) (four) and TWN-4-7f at N5 (39, 11) (five).",
+    "TWN-4-7d stands south of the Den of Thieves at (52, 11): step north onto it; note its message, then the guild's rows and parts. Close it.",
+]
+record = [
+    { field = "one tavern (R1): the rows' places; the parts" },
+    { field = "two taverns (N2 taken): the rows' places; the parts" },
+    { field = "three taverns (N3 taken): the rows' places; the parts" },
+    { field = "four taverns (N4 taken): the rows' places; the parts" },
+    { field = "five taverns (N5 taken): the rows' places; the parts" },
+    { field = "the Den of Thieves: its message; the rows' places; the parts" },
+    { field = "anything odd" },
+]
+predictions = """
+The values (survey §6, §13): **towns** Red 1 (R1), then 2 to 5 as N2 to N5 are taken, Blue 1;
+**heroes** on the map Red 7, Blue 1; **gold** Red 20 000, Blue 10 000; **wood and ore** Red 10,
+Blue 40; **the rare four** Red 40, Blue 4; **obelisks** none; **artifacts** (the backpacks; the
+worn count nothing, T-17) Red 0, Blue 1; **army** (`hero_army_power`: the army's AI value, a
+sum of value x count, times sqrt((1 + 0.05 D)(1 + 0.05 A)), truncated; plus each town that
+`town_defended` holds, a visitor or a creature in its shown army, that army's value without a
+factor): Red's heroes 10 Champions x 2 100 x 1.25 = 26 250 and six of 1 Pikeman, 84 each, R1's
+10 Archangels 87 760 (N2 to N5: defended by their visitors, an empty army: 0), about 114 500;
+Blue's hero 20 Champions x 2 100 x 1.05 = 44 100, its town undefended: 0; **income** (the day's
+gold: each town's hall) Red 500 a town (500 to 2 500), Blue 500.
+- **The reading** (`thieves_guild_fill`): **one tavern**: 2 rows, towns 1st Red and Blue (equal),
+  heroes 1st Red, 2nd Blue; the parts: each player's best hero only: **Red's TWN-4-7s** (Orrin:
+  the greatest army power, not the most experienced TWN-4-7e), Blue's TWN-4-7x. **Two**: 4 rows,
+  towns 1st Red (2 against 1), heroes as before, gold 1st Red, wood and ore 1st Blue; the parts
+  add the best hero's four primary skills (Red's **5 5 1 1**, TWN-4-7s's; Blue's 1 1 1 1).
+  **Three**: 6 rows, the rare resources 1st Red, obelisks 1st Red and Blue (equal); the parts add
+  the tactic (both human: the same line). **Four**: 8 rows, **artifacts 1st Blue, 2nd Red** (the
+  backpacks alone: 1 against 0, though Red's hero wears three), **army 1st Red** (R1's
+  Archangels counted); the parts add the best creature: **Red's Archangel** (R1's garrison: the
+  towns' shown armies first, then the heroes'), Blue's Champion. **Five**: 9 rows, income 1st Red.
+  **The Den**: its message (ADVEVENT 142), then the window with 99: every row and every part, as
+  at five. The places only, never a value; equal values one place, both flags in it.
+- **VCMI** (`obtainPlayersStats`, survey §13; TD-23, T-17): the same thresholds and places for
+  towns, heroes, gold, wood and ore, the rare four, obelisks and income; but the best hero by
+  experience (**Red's TWN-4-7e**, its skills 1 1 1 1), **artifacts 1st Red** (the worn counted:
+  Red's three against Blue's one), **army 1st Blue** (the heroes' armies only: about 26 750
+  against 44 100) and **Red's best creature the Champion** (the heroes' armies only).
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+name = "TWN-4-7s"
+at = [60, 30]
+primary = [5, 5, 1, 1]
+army = [["Champion", 10]]
+artifacts = { "misc 1" = "Badge of Courage", "misc 2" = "Clover of Fortune", "misc 3" = "Cards of Prophecy" }
+[[encounter.also]]
+type = "Valeska"
+specialty = "creature Archer"
+name = "TWN-4-7e"
+at = [60, 34]
+experience = 30000
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.also]]
+type = "Edric"
+specialty = "creature Griffin"
+name = "TWN-4-7a"
+at = [15, 11]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.also]]
+type = "Sylvia"
+specialty = "skill Navigation"
+name = "TWN-4-7b"
+at = [23, 11]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.also]]
+type = "Sorsha"
+specialty = "creature Swordsman"
+name = "TWN-4-7c"
+at = [31, 11]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.also]]
+type = "Tyris"
+specialty = "creature Cavalier"
+name = "TWN-4-7f"
+at = [39, 11]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.also]]
+type = "Rion"
+specialty = "skill First Aid"
+name = "TWN-4-7d"
+at = [52, 11]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.also]]
+type = "Tazar"
+specialty = "skill Armorer"
+owner = "blue"
+name = "TWN-4-7x"
+at = [50, 44]
+primary = [1, 1, 1, 1]
+army = [["Champion", 20]]
+backpack = ["Ladybird of Luck"]

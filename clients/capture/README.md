@@ -1007,6 +1007,49 @@ parts (`[CRBANKS row 2 name] ([GENRLTXT 203] [ARRAYTXT 185] [GENRLTXT 44])`: the
 by", the size word, "creatures" or a creature's plural). `only_if`'s `points_at_least = <n>`
 plays a step only with that many points left.
 
+**Taverns and the Thieves' Guild** (E09 T34, batch TWN-4; `docs/rules/surveys/E09-tavern.md` §2
+to §6, §13). **The offers:** `offers:<colour>` a player's two (player +0x28, +0x2C: `slot 0:
+Christian (Knight), slot 1: empty`), `offer:<colour>:<slot>[:<detail>]` the hero record in a slot
+(records are by type, game +0x21620 + 0x492 x type), by default as `hero[<name>]:offer` gives any
+hero's: `Kalt (Planeswalker, type 135): 1 Pixie; points 1500 of 1500; spell points 20; artifacts
+worn 0, backpack 0; returning` (the worn count leaves out the war machines and the spell book;
+`returning` the status bit 17 of +0x105); `hero[<name>]:class`, `:returning`, `:owner` (`none`
+for a hero out of the game: its record keeps everything). `pool:<name>` the hero's type's pool
+state (game +0x4DF18: `free`, `reserved` 0x40, `a prisoner's` 0x41, a colour), `pool` the states'
+counts; `heroes:<colour>` the player's heroes on the map (player +0x1: a garrison hero is off
+the list). **The draws:** xdd.dll logs `tavern_class` and `tavern_type` (tavern_hero_draw's
+random_between(1, the class weights' total) and (1, the class's free types)) and `leave_slot`
+(hero_leave_game's random_between(0, 1)) with their ranges, `name value low high` in `draws`:
+read as `tavern_class 37 of 1-94`; `start_draws[:<prefix>]` the draws before the batch's first
+step (the game's start: the taverns' first fill). **The tavern dialog** (vtable 0x643980;
+tavern_dialog 0x5D7EC0, read live under Wine): a town screen's action `tavern = true` clicks its
+Tavern (building 5, or the Castle's Brotherhood 22 over it); there `click = ["offer:0"]` (the
+portraits 5 and 6) selects an offer, `["recruit"]` (12) hires, `["guild"]` (11) opens the Thieves'
+Guild, `["close"]` (30720) closes it; `tavern` reads it (`offers shown 0, 1; selected 0 (framed
+0); Recruit enabled (state 0x6)`), `tavern:recruit` the button (`disabled (state 0x2e)`: bit 0x8
+or 0x20), and an action `hover = "recruit"` puts the mouse on it until the status line (item 14)
+changes, its record `hovered` (`GENRLTXT:n`, never the text). **The Thieves' Guild** (vtable
+0x643764, 800 x 600): `guild` reads it (`9 rows: towns: 1st red, 2nd blue; ...; obelisks: 1st
+blue+red; parts: red: hero TWN-4-7s (type 0), skills 5 5 1 1, tactic GENRLTXT:500, creature
+Archangel; blue: ...`; `guild:rows`, `guild:parts`): each flag (itgflags.def, id 65535, frame its
+colour) at x 253 + 66 x place + an offset, y 41 + 32 x row; per column c (its colour at the
+window's +0x60) the best hero's portrait 750 + c (its small portrait's name, the hero info
+table's +0x30, gives the type), the four primary skills' texts 1 + c, 10 + c, 20 + c, 30 + c, the
+tactic a text at (251 + 66 x c, 452) and the best creature 850 + c (twcrport.def, frame the
+creature + 2); a part not shown has no item. A walk that opens the window (the Den of Thieves,
+after its message ADVEVENT 142) reads it (`guilds`; `guild` reads the step's last) and closes it
+(30720). **Without a hero:** a step `town = [x, y]` opens the current player's town from the
+town list (selected, then its row clicked again), plays its `actions` on the town screen and
+closes what they left open (the guild, the tavern, a building's dialog, the hall) and the
+screen; `town:x,y:visitor:<detail>` and `:garrison_hero:<detail>` read that hero
+(`hero[<name>]:`'s details: a hired hero's `offer`, `tile`, `spells`), `:guild_spells` the
+spells the guild shows (+0x44, six a level, +0xBC of each). **A step's writes before it plays:**
+`resources = { <colour> = [wood, mercury, ore, sulfur, crystal, gems, gold] }`, `mana = {
+"<hero>" = <n> }` (spell points), `narrow_pool = true | ["<hero>", ...]` (every free type of the
+pool marked reserved but the named heroes' types: a map that allows no other type). The hero
+screen's `click = ["dismiss"]` (129) asks GENRLTXT 23; `answer = "yes"` dismisses. A record's
+field `<encounter>|<field>` fills another encounter's field (one step's reads for two rows).
+
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`
 records its probes from the part of the screen that tells it apart (`--also`: the same screen in

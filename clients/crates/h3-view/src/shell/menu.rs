@@ -799,6 +799,33 @@ impl Front {
         }
     }
 
+    /// Where a key down is asked for its command, in order (E27 M2 T7b: an edit's own keys before
+    /// its dialog's, `super::keys::command_for`).
+    #[must_use]
+    pub fn contexts(&self) -> Vec<Context> {
+        match self {
+            Self::Menu(m) => alloc::vec![m.context()],
+            Self::Multiplayer(m) => m.contexts(),
+        }
+    }
+
+    /// Whether an edit takes the window's text input (E27 M2 T7b, the client's profile).
+    #[must_use]
+    pub const fn typing(&self) -> bool {
+        match self {
+            Self::Menu(_) => false,
+            Self::Multiplayer(m) => m.typing(),
+        }
+    }
+
+    /// A character the window's text input typed (E27 M2 T7b).
+    pub fn typed(&mut self, c: char) -> Did {
+        match self {
+            Self::Menu(_) => Did::default(),
+            Self::Multiplayer(m) => m.typed(c),
+        }
+    }
+
     /// The mouse moved to `point`.
     pub fn moved(&mut self, point: [i32; 2]) -> Did {
         match self {
@@ -839,8 +866,9 @@ impl Front {
         }
     }
 
-    /// A key down: as the original reads it (`scan`, the dialogs' edits'), the key table's
-    /// command for it here (`command`) and its name `by`.
+    /// A key down: as the original reads it (`scan`, the dialogs' edits' in the original's
+    /// profile), the key table's command for it here (`command`, [`Front::contexts`]) and its
+    /// name `by`.
     pub fn key(
         &mut self,
         scan: Option<h3_ui::edit::Scan>,

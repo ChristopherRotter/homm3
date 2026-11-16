@@ -23,9 +23,20 @@
 //!   (`edit-keys`' `later` shots).
 //!
 //! The edit draws as a label with its caret ([`Edit::place`]: [`Draw::Edit`]).
+//!
+//! **The client's profile** (E27 M2 T7b, decision 39; CLT-Q127 (b)): the edit types what the
+//! keyboard prints, not the original's US table. Its own keys come as commands of the viewer's
+//! key table ([`Caret`], [`Edit::caret_key`]: what the original's keys with those scan codes do),
+//! its characters as the window's text input gives them ([`Edit::typed`]: the system's layout,
+//! Caps Lock and dead keys included), kept to what the installation's fonts draw ([`typable`]:
+//! Windows-1252's printable characters, every one with a glyph in `smalfont.fnt`, braces left
+//! out as the original's). The text is the characters themselves, the caret and the limit count
+//! characters (one byte each in the fonts' code page). The original's scan codes
+//! ([`Edit::key`]) stay for the comparisons only.
 
 use alloc::string::String;
 
+use crate::text::encode_1252;
 use crate::ui::Draw;
 
 /// Escape's scan code (not the edit's: its dialog's Cancel).
@@ -143,6 +154,46 @@ pub fn scan_of(c: u8) -> Option<Scan> {
     })
 }
 
+/// An edit's own keys as commands (E27 M2 T7b: the client's profile, through the viewer's key
+/// table), each what the original's key of that scan code does ([`Edit::key`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Caret {
+    /// The caret to the start (Home).
+    Home,
+    /// The caret to the end (End).
+    End,
+    /// The caret back one (the left arrow).
+    Left,
+    /// The caret on one, up to the end (the right arrow).
+    Right,
+    /// The character at the caret removed (Delete).
+    Delete,
+    /// The character before the caret removed (BackSpace).
+    BackSpace,
+}
+
+impl Caret {
+    /// Every one, in order.
+    pub const ALL: [Self; 6] = [
+        Self::Home,
+        Self::End,
+        Self::Left,
+        Self::Right,
+        Self::Delete,
+        Self::BackSpace,
+    ];
+}
+
+/// Whether the window's text input may put `c` in an edit (E27 M2 T7b): a character of
+/// Windows-1252, the code page of the installation's fonts (every one of its printable characters
+/// has a glyph in `smalfont.fnt`), neither a control (its undefined bytes decode as C1 controls)
+/// nor a brace (the text drawer's colour switches; the original refuses them too, 0x5BABA0).
+#[must_use]
+pub fn typable(c: char) -> bool {
+    let mut one = [0u8; 4];
+    !c.is_control() && !matches!(c, '{' | '}') && encode_1252(c.encode_utf8(&mut one)).1.is_empty()
+}
+
 /// An edit's state: its text, its caret, its limit and its focus.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Edit {
@@ -160,7 +211,7 @@ impl Edit {
     pub fn new(text: &str, limit: usize) -> Self {
         Self {
             text: String::from(text),
-            caret: text.len(),
+            caret: text.chars().count(),
             limit,
             focused: false,
         }
@@ -172,7 +223,7 @@ impl Edit {
         &self.text
     }
 
-    /// The caret's index.
+    /// The caret's index, in characters.
     #[must_use]
     pub const fn caret(&self) -> usize {
         self.caret
@@ -195,31 +246,68 @@ impl Edit {
         if !self.focused || matches!(scan.code, ESCAPE | TAB | RETURN) {
             return false;
         }
-        let len = self.text.len();
-        self.caret = self.caret.min(len);
         match scan.code {
-            HOME => self.caret = 0,
-            LEFT => self.caret = self.caret.saturating_sub(1),
-            RIGHT if self.caret < len => self.caret += 1,
-            END => self.caret = len,
-            DELETE if self.caret < len => {
-                self.text.remove(self.caret);
-            }
-            RIGHT | DELETE => {}
+            HOME => self.caret_key(Caret::Home),
+            LEFT => self.caret_key(Caret::Left),
+            RIGHT => self.caret_key(Caret::Right),
+            END => self.caret_key(Caret::End),
+            DELETE => self.caret_key(Caret::Delete),
             _ => match character(scan) {
-                RUB_OUT if self.caret > 0 => {
-                    self.caret -= 1;
-                    self.text.remove(self.caret);
-                }
-                RUB_OUT | 0 | b'{' | b'}' => {}
-                _ if len + 1 >= self.limit => {}
-                c => {
-                    self.text.insert(self.caret, char::from(c));
-                    self.caret += 1;
-                }
+                RUB_OUT => self.caret_key(Caret::BackSpace),
+                0 | b'{' | b'}' => true,
+                c => self.typed(char::from(c)),
             },
         }
+    }
+
+    /// One of its own keys (E27 M2 T7b: the client's key table's command; the original's by scan
+    /// code, [`Edit::key`]): whether the edit took it (only with the focus).
+    pub fn caret_key(&mut self, caret: Caret) -> bool {
+        if !self.focused {
+            return false;
+        }
+        let len = self.text.chars().count();
+        self.caret = self.caret.min(len);
+        match caret {
+            Caret::Home => self.caret = 0,
+            Caret::Left => self.caret = self.caret.saturating_sub(1),
+            Caret::Right => self.caret = (self.caret + 1).min(len),
+            Caret::End => self.caret = len,
+            Caret::Delete if self.caret < len => {
+                self.text.remove(self.byte(self.caret));
+            }
+            Caret::BackSpace if self.caret > 0 => {
+                self.caret -= 1;
+                self.text.remove(self.byte(self.caret));
+            }
+            Caret::Delete | Caret::BackSpace => {}
+        }
         true
+    }
+
+    /// A character typed (E27 M2 T7b: the window's text input; the original's by its table,
+    /// [`Edit::key`]): put in at the caret, the caret on one, unless the text with its terminator
+    /// would reach the limit or the fonts cannot draw it ([`typable`]); whether the edit took it
+    /// (only with the focus).
+    pub fn typed(&mut self, c: char) -> bool {
+        if !self.focused {
+            return false;
+        }
+        let len = self.text.chars().count();
+        self.caret = self.caret.min(len);
+        if typable(c) && len + 1 < self.limit {
+            self.text.insert(self.byte(self.caret), c);
+            self.caret += 1;
+        }
+        true
+    }
+
+    /// The text's byte index of its character `at` (its length past the last).
+    fn byte(&self, at: usize) -> usize {
+        self.text
+            .char_indices()
+            .nth(at)
+            .map_or(self.text.len(), |(b, _)| b)
     }
 
     /// The edit's item `id` in `draws` (its dialog's, where the edit is a label) drawn as the

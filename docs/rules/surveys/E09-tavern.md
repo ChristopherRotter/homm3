@@ -184,7 +184,8 @@ E11).
   and releases one that came back in its owner's own turn.
 - **The offers' points:** at each of its owner's turn starts its two offers get their current and
   maximum movement points (`next_player_turn`, its map entry's reading); spell points only at a
-  draw (above) or a leave (§4).
+  draw (above) or a leave (§4). *Amended by batch TWN-4 (§14):* the new day also gives every hero
+  record its day's spell points, and clears bit 17 of every record after the week's release.
 
 ## 3. The hire (`town_tavern_click` 0x5D82B0, `map_tavern_visit` 0x5D7E90, the tavern dialog, `town_tavern_hire` 0x5C12E0, `map_tavern_hire` 0x4D7890)
 
@@ -358,7 +359,7 @@ Taverns (the wiki: it does not); the tavern dialog's dismiss-handler question (T
 (text, no rule; decision 99); the network's paths. The three per-player Thieves' Guild parts: read
 by T33b (§13, with TD-23 and T-17).
 
-## 9. Batch TWN-4's rows (for T33's cut; run as TWN-1 to TWN-3, on the capture harness)
+## 9. Batch TWN-4's rows (for T33's cut; run by T34 on the capture harness, scored in §14)
 
 | Row | Settles | Setup | Record | The reading predicts |
 |---|---|---|---|---|
@@ -488,3 +489,106 @@ selected hero, the exchange) not read for their flag.
 - **Decided at `TWN-Q18`** (the user, 2026-11-16; the epic's decisions 117, 118): TD-23 the
   reading; T-17 a `fix-optional` flag (`TWN-QUIRK-13`: the backpacks alone in `faithful`, the
   worn and the backpack's off), not the agent's `preserve`.
+
+## 14. Batch TWN-4 scored (T34, 2026-11-16)
+
+Two runs of each part (the capture harness under Wine, the Complete 4.0 executable in SoD on Easy,
+hot seat, Red and Blue human; `experiments/results/E09-batch-4a.md`, `-4b.md`, `-4c.md`, the main
+records, and their `-run2.md`). The predictions are the specs' (`experiments/specs/E09-batch-4a.toml`
+to `-4c.toml`). The harness (E09 T34; `clients/capture/README.md`, "Taverns and the Thieves' Guild")
+reads the offers (player +0x28, +0x2C), every hero record by name on the map or off it, the pool
+(game +0x4DF18), the tavern dialog and the Thieves' Guild window from memory, opens a town from the
+town list, and xdd.dll logs the taverns' draws **with their ranges** (`tavern_class` 0x4BB7AA,
+`tavern_type` 0x4BB7CF, `leave_slot` 0x4DA1C6): each class draw's range is the total of the weights
+it drew over. Row TWN-4-5's "map with few free types" is the harness's narrowed pool (every free
+type marked 0x40 but the lost hero's: the map format's allowed set is not in the writer). **Every
+row as the reading, in every read of both runs; no reading refuted. Two points the reading had not
+listed, read in the code after the runs: the new day clears the returning mark of every hero record
+and gives every record its day's spell points (below).**
+
+- **TWN-4-1 (§2.2, §2.3).** Eight weeks a run (the start and seven weeks by the written date), the
+  four offers read on Red's turn: **slot 0 of the player's faction every time** (Red's 16 a Castle
+  class, Knight or Cleric; Blue's 16 a Stronghold one, Barbarian or Battle Mage), **its class draw
+  over 1-12 every time** (the faction's two classes, 6 each: own faction only); **slot 1 another
+  class than slot 0's every time** (any faction: a Castle class in Red's slot 1 at run 2's M2 W2),
+  its range **1-94 every time** (100 less the avoided class's 6). The type draws' ranges the class's
+  free types (Red's Knights 1-3: five placed, Lord Haart not allowed; the Clerics 1-7). Every offer
+  a **full starting army** (the first stack in its range; a second in 27 and 32 of the 32 offers of
+  the two runs, 88 in 100 expected; a third in 5 and 1: Drakon's three stacks of Gnolls, Cuthbert's
+  Griffins), its spell points Knowledge x 10 x the Intelligence factor (Andra 25), no returning
+  mark; types came again (Tyris, Sir Mullich and Gird three times in run 1). **Confirmed** (the
+  wiki's slot 0, VCMI's draw).
+- **TWN-4-8 (§2.2, finding 6).** **All 32 slot-1 class draws of the two runs over 1-94**: the two
+  Conflux classes weigh 5 for both players (the edition 2's rule would give 84). Conflux heroes
+  offered in slot 1: Ciele (run 1, the start), Kalt and Inteus (run 2), and as replacements (TWN-4-2:
+  Inteus, Kalt, Brissa). **The reading confirmed**: the SoD retail's rule is dead in this build.
+- **TWN-4-2 (§3).** Three hires a run (R1 slot 0, R2 slot 1, R3 slot 0), each 2 500 gold: the hired
+  hero **on the town's entrance** as its visitor (7, 10; 15, 10; 23, 10), the army it was offered
+  with; **a hero with a spell book learned the town's guild spells** (run 1's Clavius, run 2's
+  Xarfax with its own Fireball besides; the debug run's Fafner), a Knight none. **The slot refilled
+  at once**: one draw pair, the class range **95 with the other slot's class weighing 5** (a Death
+  Knight, a Demoniac, a Heretic, an Elementalist), **94 with it weighing 6** (a Wizard, a Witch),
+  any faction (a Demoniac, a Witch, a Death Knight, Conflux classes), each new offer **one creature**
+  of its first starting stack (1 Imp, 1 Gremlin, 1 Pikeman, 1 Gnoll, 1 Skeleton, 1 Pixie) with its
+  spell points full. **Confirmed.**
+- **TWN-4-6 (§3, TD-21).** Both runs alike: R1 with a visitor **disabled** (state 0xE; the status
+  line TvrnInfo row 2, "a Hero in this town"); the visitor into the garrison (Red 5 on the map, the
+  garrison hero off the list); **enabled**; after the hire, the hired hero the visitor: **disabled**
+  (row 2); R3 at **7 on the map with a garrison hero** (8 heroes): **enabled**, a hire there to 8;
+  R4 at **8 on the map**: **disabled** (TvrnInfo row 1, "%d Heroes"). **Confirmed**: the garrison
+  hero counts in neither case (VCMI's cap of 16 in all is not the original's; TD-21 as decided).
+- **TWN-4-3 (§4, TD-18).** Both runs alike (the same draws: the game's generator is reseeded the
+  same way at each start and day). Day 6, Red's turn: TWN-4-3's retreat put it in slot 1
+  (`leave_slot` 1), 1 Pikeman, its points 1 530 of 1 630 and spell points 3 as they were, marked;
+  **on Blue's day 6 both marks clear** (Red's turn end); on Red's day 7 its points 1 560 of 1 560 (the
+  turn start's, TD-20). Day 7, Blue's turn: TWN-4-3f's retreat into slot 1 (`leave_slot` 1, neither
+  marked) freed TWN-4-3 (pool free), 1 Pikeman, spell points 4, marked. **Day 8 (week 2): TWN-4-3f
+  still in slot 1** (its one Pikeman); slot 0's TWN-4-4 (day 6) **released and drawn anew**: the
+  week's one Red draw pair (`tavern_class 3 of 1-6`, the Cleric avoided; `tavern_type 7 of 1-8`)
+  picked Tyris again in both runs, now with a full new army (14 Pikemen, 7 Archers, 2 Griffins) and
+  10 spell points in place of its kept 4 Swordsmen, 3 Monks and 2: a release, then a draw. **The
+  reading confirmed**; VCMI's release of both refuted (TD-18 as decided).
+- **TWN-4-4 (§4).** TWN-4-4's surrender (1 200 gold) into **the other slot** (`leave_slot` 1 drew
+  TWN-4-3's marked slot: slot 0 taken), **its army kept** (4 Swordsmen, 3 Monks), points 1 530 and
+  spell points 2 as they were, marked. TWN-4-4b's loss to 30 Black Dragons: owner none, **its type
+  free**, no slot (Red's offers unchanged), **1 Centaur** (its first starting stack, not its 2
+  Pikemen), **points 2 000 of 2 000** (the land maximum over the cleared army: the refill comes
+  before the one creature, T-16's reading) and **spell points 10** (refilled from 1). TWN-4-5's
+  replacements (below) drew it later with its record. **Confirmed.**
+- **TWN-4-5 (§4, §12, T-14).** Dismissed (GENRLTXT 23, yes): owner none, its type free, **the Badge
+  of Courage worn and the Clover of Fortune in the backpack kept**, 1 Gremlin, points 2 000 and
+  spell points 10 refilled. With the pool narrowed to TWN-4-5's and TWN-4-4b's types, the first
+  hire's replacement **drew TWN-4-5** (`tavern_class 11 of 1-12`: the Ranger's 6 and the
+  Alchemist's 6, the other slot a Cleric) with its two artifacts as they were (no equipping at a
+  replacement: the Clover still in the backpack) and 1 Gremlin; the second hire drew TWN-4-4b
+  (`1-6`, the Ranger alone), 1 Centaur; the hired TWN-4-5 took its artifacts onto the map. **The
+  reading confirmed: T-14 holds** (a dismissed hero's artifacts go back into the pool with it).
+- **TWN-4-7 (§6, §13, TD-23, T-17).** Both runs alike, every read as the spec predicted: 2, 4, 6,
+  8, 9 rows at one to five taverns (the Castle's Brotherhood with the Tavern counted once, N5) and
+  9 at the Den (its message ADVEVENT 142); the parts from 1 (the best hero), 2 (its skills), 3 (the
+  tactic: both human, GENRLTXT 500) and 4 (the best creature). **The best hero Red's TWN-4-7s**
+  (the strongest army) and its skills **5 5 1 1**, not the most experienced TWN-4-7e's; **artifacts
+  1st Blue** (one in a backpack against Red's three worn: the backpacks alone, T-17); **army 1st
+  Red** and **Red's best creature the Archangel** (R1's garrison counted). Equal values share a
+  place (towns at one tavern, obelisks). **The reading confirmed; VCMI's best hero, artifacts, army
+  and best creature refuted** (TD-23, T-17 as decided).
+
+**Not predicted, read in the code after the runs** (`new_day` 0x4C7FE0, read at these sites):
+
+- **The returning mark lasts until the next new day at most.** After the week's and the month's
+  events (0x4C8017, 0x4C8031) every hero record (156: 0x4C80CF to 0x4C80FD) has bits 0 and 17 of
+  +0x105 cleared (the address map's E08 T34b reading): TWN-4-3f's mark was gone on Red's day 8 (its
+  prediction said "until Red's turn ends"). §2.3 listed only the owner's turn end and a hire. The
+  week's release (before the clear) keeps a marked offer, so TD-18 stands; a difference shows only
+  for a second leave into the same tavern on a later day before its owner's turn ends (the slot
+  `leave_slot` avoids).
+- **Every hero record regains its day's spell points** (0x4C8237: the 156 records, on the map or
+  not): 1 plus Mysticism and the mana artifacts (`hero_mana_regained` 0x4E3F40), up to Knowledge x
+  10 x the Intelligence factor, the Wizard's Well's full: TWN-4-3f's kept 4 were 5 on day 8. §2.3's
+  "spell points only at a draw or a leave" is wrong for the days between: a tavern offer (a
+  returning one with its kept points, a week's below its maximum) and a hero out of the game gain
+  them every day.
+
+Both for T35's checkpoint (design note §63, §67, §68; the drafts `adr-drafts/0017-increment-4.md`):
+recommended as the original (faithful), the new day's clear of the mark after the week and the
+day's spell points over every hero record.

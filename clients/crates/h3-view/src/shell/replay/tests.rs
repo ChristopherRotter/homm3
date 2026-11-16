@@ -255,6 +255,43 @@ fn the_multiplayer_dialog_and_the_hot_seat_take_the_harness_s_inputs() {
     assert_eq!((stop, r.screen()), (None, Screen::GameType(Game::New)));
 }
 
+#[test]
+fn the_client_s_replay_types_characters_and_reads_shift_chords() {
+    // E27 M2 T7b: in the client's profile a typed text is the window's text input (`ö` typed,
+    // no US key needed), the edits' keys and the ring the key table's commands.
+    let steps = [
+        "until:main_menu",
+        "click:643,70",
+        "click:649,180",
+        "type:Jö",
+        "key:Home",
+        "type:ß",
+        "click:578,157",
+        "key:Tab",
+        "type:C",
+        "key:shift+Tab",
+        "key:End",
+        "key:BackSpace",
+    ];
+    let menus = menus(Bugs::Fixed);
+    let r = Replay::new(Shell::new(false), [400, 300], INPUT_STEP, None, &menus);
+    let (_, stop, r) = replay_from(r, &steps);
+    assert_eq!(stop, None);
+    let Some(Front::Multiplayer(m)) = r.front() else {
+        panic!("the dialog")
+    };
+    assert_eq!(m.name(), "ßJö");
+    let hot_seat = m.hot_seat().unwrap();
+    assert_eq!(
+        (hot_seat.names(), hot_seat.focus()),
+        (vec![String::from("ßJ"), String::from("C")], 0)
+    );
+    // A text typed where nothing types: its keys alone, which give nothing on a menu.
+    let r = Replay::new(Shell::new(false), [400, 300], INPUT_STEP, None, &menus);
+    let (_, stop, r) = replay_from(r, &["until:main_menu", "type:x"]);
+    assert_eq!((stop, r.screen()), (None, Screen::MainMenu));
+}
+
 /// What a replay of `steps` hands over, each moment with its time and pointer, and how it ends.
 fn replay(intro: bool, steps: &[&str]) -> (Vec<String>, Option<Stop>, Replay) {
     replay_from(

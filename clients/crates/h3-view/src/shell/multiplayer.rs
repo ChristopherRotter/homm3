@@ -20,6 +20,12 @@
 //!   then OK enabled while more than one holds a name. **Enter presses an enabled OK**
 //!   (CLT-Q107, decision 22: fixed; the original's to the next edit for the comparisons only,
 //!   [`Bugs::Original`]); with OK disabled it moves on, as the original's.
+//! - **Typing** (E27 M2 T7b, decision 39; CLT-Q127 (b)): in the client's profile the edit with
+//!   the focus takes the window's text input ([`Multiplayer::typed`]: what the keyboard prints)
+//!   and its own keys and the ring as the shell's key table's commands (`Command::Edit`,
+//!   `Command::Ring`, asked in [`Multiplayer::contexts`]' order); hot-seat-ok with OK disabled
+//!   moves on as Enter does. In the original's profile the edits take each key's scan code
+//!   (`h3_ui::edit::Edit::key`) and no text.
 //! - **The hover** (`dialog_mouse_move` 0x5FF6E0): a move puts the hint of the item under the
 //!   mouse (`dialog_item_at` 0x5FF3E0: the last in order whose box holds it; a button disabled by
 //!   0x20 kept) in the status line when that item changes,
@@ -39,6 +45,8 @@ use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
+
+use alloc::vec;
 
 use h3_render::Bugs;
 use h3_ui::edit::{self, Edit, Scan};
@@ -316,20 +324,43 @@ impl HotSeat {
         self.check();
     }
 
-    /// A key down `scan` to the focused edit (`hot_seat_edit_key` 0x50DF60): whether it took it.
+    /// The edit after (`true`) or before the focused one in the ring.
+    const fn ring(&self, next: bool) -> usize {
+        if next {
+            (self.focus + 1) % 8
+        } else {
+            (self.focus + 7) % 8
+        }
+    }
+
+    /// A key down `scan` to the focused edit in the original's profile (`hot_seat_edit_key`
+    /// 0x50DF60): whether it took it.
     fn edit_key(&mut self, scan: Scan) -> bool {
-        let previous = (self.focus + 7) % 8;
-        let next = (self.focus + 1) % 8;
         match (scan.code, scan.shift) {
-            (edit::TAB, true) | (edit::UP, _) => self.focus_on(previous),
-            (edit::RETURN, _) if self.bugs == Bugs::Fixed && self.ok_enabled() => return false,
-            (edit::TAB | edit::RETURN | edit::DOWN, _) => self.focus_on(next),
+            (edit::TAB, true) | (edit::UP, _) => self.focus_on(self.ring(false)),
+            (edit::TAB | edit::RETURN | edit::DOWN, _) => self.focus_on(self.ring(true)),
             _ => {
                 if !self.edits[self.focus].key(scan) {
                     return false;
                 }
                 self.check();
             }
+        }
+        true
+    }
+
+    /// A key table's command to the focused edit and the ring in the client's profile (E27 M2
+    /// T7b): whether it took it. OK's with OK disabled moves on (Enter's, as the original's);
+    /// with OK enabled it is OK's hotkey (CLT-Q107).
+    fn edit_command(&mut self, command: Option<Command>) -> bool {
+        match command {
+            Some(Command::Edit(caret)) => {
+                self.edits[self.focus].caret_key(caret);
+                self.check();
+            }
+            Some(Command::Ring(next)) => self.focus_on(self.ring(next)),
+            Some(Command::Dialog(OK)) if !self.ok_enabled() => self.focus_on(self.ring(true)),
+            _ => return false,
         }
         true
     }
@@ -441,6 +472,52 @@ impl Multiplayer {
             Over::Notice(_) => Context::Question,
             Over::HotSeat(_) => Context::HotSeat,
             Over::Nothing | Over::Help(_) => Context::Multiplayer,
+        }
+    }
+
+    /// Whether an edit with the focus takes the window's text input (E27 M2 T7b): in the client's
+    /// profile, the name's with nothing over the dialog, the hot seat's focused one with no popup
+    /// over it.
+    #[must_use]
+    pub const fn typing(&self) -> bool {
+        matches!(self.bugs, Bugs::Fixed)
+            && match &self.over {
+                Over::Nothing => true,
+                Over::HotSeat(h) => h.help.is_none(),
+                Over::Help(_) | Over::Notice(_) => false,
+            }
+    }
+
+    /// Where a key down is asked for its command, in order (E27 M2 T7b): an edit's own keys
+    /// while one types ([`Multiplayer::typing`]), then [`Multiplayer::context`].
+    #[must_use]
+    pub fn contexts(&self) -> Vec<Context> {
+        if self.typing() {
+            vec![Context::Edit, self.context()]
+        } else {
+            vec![self.context()]
+        }
+    }
+
+    /// A character the window's text input typed (E27 M2 T7b, the client's profile): to the edit
+    /// with the focus while one types (the hot seat's OK then checked).
+    pub fn typed(&mut self, c: char) -> Did {
+        if !self.typing() {
+            return Did::default();
+        }
+        let edit = match &mut self.over {
+            Over::HotSeat(h) => &mut h.edits[h.focus],
+            _ => &mut self.name,
+        };
+        let before = edit.clone();
+        edit.typed(c);
+        let changed = *edit != before;
+        if let Over::HotSeat(h) = &mut self.over {
+            h.check();
+        }
+        Did {
+            changed,
+            ..Did::default()
         }
     }
 
@@ -592,9 +669,11 @@ impl Multiplayer {
     }
 
     /// A key down: `scan` as the original reads it, `command` the key table's for it in
-    /// [`Multiplayer::context`], `by` its name (whose release clicks). The focused edit takes it
-    /// first; a key it leaves presses its hotkey's button.
+    /// [`Multiplayer::contexts`], `by` its name (whose release clicks). The focused edit takes it
+    /// first (by `scan` in the original's profile, by `command` in the client's); a key it leaves
+    /// presses its hotkey's button.
     pub fn key(&mut self, scan: Option<Scan>, command: Option<Command>, by: &str) -> Did {
+        let original = self.bugs == Bugs::Original;
         match &mut self.over {
             Over::Help(_) => Did::default(),
             Over::Notice(open) => match command {
@@ -603,7 +682,12 @@ impl Multiplayer {
             },
             Over::HotSeat(h) if h.help.is_some() => Did::default(),
             Over::HotSeat(h) => {
-                if scan.is_some_and(|s| h.edit_key(s)) {
+                let taken = if original {
+                    scan.is_some_and(|s| h.edit_key(s))
+                } else {
+                    h.edit_command(command)
+                };
+                if taken {
                     return Did::CHANGED;
                 }
                 match command {
@@ -615,7 +699,12 @@ impl Multiplayer {
             }
             Over::Nothing => {
                 // The name's edit (`multiplayer_name_key` 0x50ED60: Enter is not its).
-                if scan.is_some_and(|s| self.name.key(s)) {
+                let taken = match (original, command) {
+                    (true, _) => scan.is_some_and(|s| self.name.key(s)),
+                    (false, Some(Command::Edit(caret))) => self.name.caret_key(caret),
+                    (false, _) => false,
+                };
+                if taken {
                     return Did::CHANGED;
                 }
                 match command {

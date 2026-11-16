@@ -30,6 +30,7 @@ mod sea;
 mod sea_map;
 mod sea_xl_map;
 mod strategy;
+mod taverns;
 mod teleporters;
 mod teleporters_map;
 mod teleporters_xl_map;

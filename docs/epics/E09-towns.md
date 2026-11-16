@@ -1,6 +1,6 @@
 # E09 — Towns
 
-Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63), increment 3 (growth, recruitment and the army rows) on 2026-11-15 (T30; decisions 64–97), all three in `E09-archive.md`; increment 4 (the Tavern) refined the same day (TWN-Q15, decisions 98–102), its drafts accepted at T33b (TWN-Q18, decisions 114–122), T34 next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
+Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63), increment 3 (growth, recruitment and the army rows) on 2026-11-15 (T30; decisions 64–97), all three in `E09-archive.md`; increment 4 (the Tavern) refined the same day (TWN-Q15, decisions 98–102), its drafts accepted at T33b (TWN-Q18, decisions 114–122), batch TWN-4 run and scored by T34 (decisions 123, 124), T35 next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
 
 ## Goal
 
@@ -130,6 +130,21 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
      viewer of the tile; the Den an entered object; the personality and the obelisks row as stubs
      (`TWN-STUB-18`, `-17`).
 
+### Decisions at T34's start (2026-11-16, the user)
+
+123. **T34 whole** (the user at its start, `AskUserQuestion`): the writer's Tavern and Den, the
+     specs, the harness's reads and steps, the recipes, the runs and the scoring in one session
+     and one pull request. Not chosen: three parts as E08's T119 to T121 (recommended: the map and
+     specs; the harness and the runs; the scoring), two by subject, two by stage. The `cross-lane`
+     changes of `h3-map`'s writer and `h3-experiment` consented (recommended).
+124. *Agent's calls (change freely):* three maps (4a the offers over eight weeks, the hires and the
+     Recruit button; 4b the leaves and the dismissal over days 6 to 8; 4c the Thieves' Guild); the
+     taverns' draws logged by xdd.dll with their ranges (row TWN-4-8 settled by each class draw's
+     total, not by chance); the narrowed pool written by the harness in place of a map's allowed
+     heroes (the writer's `Map` holds none; 46 constructors); spell points written before the
+     leaves (kept against refilled) and the resources before the guild's reads; a fresh agent's
+     review of the specs skipped (the runs checked the setups).
+
 ### Exit criteria (accepted at `TWN-Q18`, decision 121; design note §80)
 
 1. The town part's tavern weights and the hire's price compile (part v7); each player's faction
@@ -162,7 +177,11 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
 - **T31** the garrison moves below level 3 (decision 101). Done 2026-11-15 (the projection; `E09-log.md`).
 - **T32** the survey (decision 100), with its checkpoint (`TWN-Q16`). Done 2026-11-15 (decisions 103–107; `E09-log.md`).
 - **T33** the ADR amendment drafts, the design note's Part F, the cut and the exit criteria (decision 100), in two (decision 108): **T33a** the hire's: done 2026-11-16 (`TWN-Q17`, decisions 109–113; the drafts `adr-drafts/*-increment-4.md`, Part F §59 to §71; `E09-log.md`). **T33b** the information's, the cut, the exit criteria and the checkpoint: done 2026-11-16 (whole, decision 114; `TWN-Q18`, decisions 115–122; the drafts accepted; Part F §72 to §81; survey §13; `E09-log.md`).
-- **T34** batch TWN-4 (round 2). **T35** `shared/`: the drafts applied, `StreamId::TAVERNS`, the two quirk flags (round 3). **T36** the town part v7 (round 4). **T37** T37a the pool, the draw and the fills, T37b the map's customised types (round 5). **T38** T38a the town's hire and the replacement, T38b the leaves, the returns and the dismissal (round 6). **T39** T39a the Tavern and the Den of Thieves with the tavern decision, T39b the Thieves' Guild (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
+- **T34** batch TWN-4 (round 2): done 2026-11-16 (whole, decisions 123, 124; specs
+  `experiments/specs/E09-batch-4a.toml` to `-4c.toml`, two runs each in `experiments/results/`;
+  every row as the reading, survey §14; two points the reading missed, the new day's clear of the
+  returning mark and the day's spell points of every hero record, for T35's checkpoint; the writer's
+  classes 95 and 97, `cross-lane`; `E09-log.md`). **T35** `shared/`: the drafts applied, `StreamId::TAVERNS`, the two quirk flags (round 3). **T36** the town part v7 (round 4). **T37** T37a the pool, the draw and the fills, T37b the map's customised types (round 5). **T38** T38a the town's hire and the replacement, T38b the leaves, the returns and the dismissal (round 6). **T39** T39a the Tavern and the Den of Thieves with the tavern decision, T39b the Thieves' Guild (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
 
 ## Risks
 
