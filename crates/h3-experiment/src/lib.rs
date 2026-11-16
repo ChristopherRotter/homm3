@@ -229,7 +229,8 @@ pub struct MapSpec {
     pub underground: Option<UndergroundSpec>,
     /// Objects without a body (`[[map.object]]`, E08 T32a): the Cartographers; since E08 T36a
     /// the trees and the Border Gates; later increments' (the list at [`ObjectSpec::picture`]),
-    /// since E08 T109a the fifteen bonus visitables, since E08 T119 the creature banks.
+    /// since E08 T109a the fifteen bonus visitables, since E08 T119 the creature banks, since E09
+    /// T34 the Tavern and the Den of Thieves.
     #[serde(default)]
     pub object: Vec<ObjectSpec>,
     /// The scenario's level limit (E08 T32a; 0, the default: none).
@@ -717,7 +718,10 @@ pub struct ObjectSpec {
     /// Dragon Fly Hive `AVXbnk70`, the Crypt `AVXgyds0`, `AVXgyne0` or `AVXgysn0` (by the second
     /// terrain mask sand; dirt, grass, swamp; snow), Dragon Utopia `AVSutop0` (6 × 3), the others entered at the tile west of
     /// `at`; on water the Derelict Ship `AVAdlic0` and the Shipwreck `AVAwrek0`, visited at the
-    /// tile west of `at`, or `AVAwre20`, at `at`. No picture's terrains are checked).
+    /// tile west of `at`, or `AVAwre20`, at `at`; since E09 T34 increment 4's Tavern `AVXtvrn0`
+    /// ([`h3_map::writer::TAVERN_OBJECT`], entered at the tile west of `at`) and Den of Thieves
+    /// `AVXdend0` ([`h3_map::writer::DEN_OF_THIEVES_OBJECT`], entered at `at`), each blocking
+    /// `at` and the tile west of it. No picture's terrains are checked).
     pub picture: String,
     /// The object's position, `[column, row]`: the picture's bottom-right tile (the land
     /// Cartographer covers it and the tile west of it, its entrance; a Border Gate it and the two
@@ -2964,6 +2968,11 @@ mod tests {
                  010000000000000000000000000000000000000000000000 111111111 011111111 25 0 0 0",
                 "AVAwrek0.def 001111111111111111111111111111111111111111111111 \
                  010000000000000000000000000000000000000000000000 100000000 100000000 85 0 0 0",
+                // The Tavern and the Den of Thieves (E09 T34).
+                "AVXtvrn0.def 001111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 111111111 011111111 95 0 0 0",
+                "AVXdend0.def 001111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 011111111 97 0 0 0",
             ]
             .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
             .to_vec(),
@@ -5459,6 +5468,51 @@ mod tests {
             .collect();
         assert_eq!(banks.len(), 5);
         assert!(banks.iter().all(|o| o.body == h3_map::model::Body::None));
+    }
+
+    #[test]
+    fn builds_the_tavern_and_the_den() {
+        // E09 T34 (batch TWN-4): the map's Tavern and Den of Thieves by picture, a hero on each
+        // entrance refused (the Tavern's west of `at`, the Den's at `at`), written without a body.
+        let spec = BANKS.replacen(
+            "[[map.object]]\n        picture = \"AVXboat1\"",
+            "[[map.object]]\n        picture = \"AVXtvrn0\"\n        at = [26, 20]\n\n        \
+             [[map.object]]\n        picture = \"avxdend0.def\"\n        at = [26, 24]\n\n        \
+             [[map.object]]\n        picture = \"AVXboat1\"",
+            1,
+        );
+        let (map, _) = build(&parse(&spec).expect("spec"), &tables(), "t.h3m").expect("build");
+        let found: Vec<(u32, (u8, u8))> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Plain(p) => Some((p.template.class, p.tile)),
+                _ => None,
+            })
+            .filter(|(class, _)| [95, 97].contains(class))
+            .collect();
+        assert_eq!(found, [(95, (26, 20)), (97, (26, 24))]);
+        for at in ["at = [25, 20]", "at = [26, 24]", "at = [25, 24]"] {
+            let err = build(
+                &parse(&spec.replacen("at = [4, 30]", at, 1)).expect("spec"),
+                &tables(),
+                "t.h3m",
+            )
+            .expect_err(at);
+            assert!(err.contains("two objects on the tile"), "{at}: {err}");
+        }
+        let bytes = h3_map::writer::write(&map).expect("writes");
+        let raw = h3_map::parse(&bytes, &h3_map::Limits::default()).expect("reads back");
+        assert_eq!(
+            raw.objects
+                .iter()
+                .filter(|o| {
+                    let t = &raw.templates[usize::try_from(o.template).unwrap()];
+                    [95, 97].contains(&t.class) && o.body == h3_map::model::Body::None
+                })
+                .count(),
+            2
+        );
     }
 
     #[test]
