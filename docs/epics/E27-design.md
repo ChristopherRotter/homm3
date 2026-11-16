@@ -2284,7 +2284,9 @@ again (`multiplayer`, two recipes added: `edit-keys`, `hotseat-long`). Built in
   first shown character moved so the text up to the caret fits); drawn and shown with +0x6E; the
   event becomes 0x200/0xC (answer 2: taken). +0x68 is never written (the item is not zeroed): every
   edit built holds its room of the widest glyph in its box (20 × `M`, 260 px of `smalfont.fnt`, in
-  281 and 334 px), so neither the scroll nor the line check bites.
+  281 and 334 px), so neither the scroll nor the line check bites. *Measured* (M2's review, the
+  installation's `smalfont.fnt` through `h3_assets::fnt`): no glyph from 0x20 to 0xFF advances
+  more than `M`'s 13 px; 0x85 `…`, 0x89 `‰`, 0x97 `—` and 0x99 `™` as much, every other less.
 - **`edit_draw`:** its picture or saved background (none here), then `text_draw` 0x4B5490 of the
   text in the text box, its colour (3 when disabled), its alignment, and the caret with the focus
   (−1 without). **The caret** (`text_draw` 0x4B54BC, `text_draw_line` 0x4B5306, 0x4B53C6,
@@ -2366,7 +2368,7 @@ window.
   terminator would reach the room (20 characters in 21, as the original's) or the fonts cannot
   draw it (`edit::typable`: Windows-1252's printable characters, the controls and the braces left
   out; every byte from 0x20 to 0xFF has a glyph of some width in `smalfont.fnt`, read from the
-  LOD). The text, the caret and the room count characters (one byte each in the code page; the
+  LOD; the widest 13 px, `M`'s, so 20 of any fit the boxes as in §16.1: measured at M2's review). The text, the caret and the room count characters (one byte each in the code page; the
   draw encodes them, `encode_1252`).
 - A character's key down still reaches the key table while an edit types (no dialog with an edit
   binds a letter; *provisional*).
