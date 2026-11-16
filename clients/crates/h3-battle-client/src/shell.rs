@@ -960,8 +960,13 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
                     }
                 }
                 Given::Event(Event::Redraw, _) => dirty = true,
-                Given::Event(Event::Key(_) | Event::Click { down: true, .. }, _) if playing => {
-                    start.skip(now(&win), &mut ops);
+                // A key down or a press goes to the clip, which only some stop (F4 does not).
+                Given::Event(event @ (Event::Key(_) | Event::Click { down: true, .. }), _)
+                    if playing =>
+                {
+                    if skips_start(&event) {
+                        start.skip(now(&win), &mut ops);
+                    }
                 }
                 Given::Event(event, scan) => {
                     if let Some(front) = front.as_mut() {
@@ -1100,6 +1105,17 @@ enum Given {
     Typed(char),
 }
 
+/// Whether a window's event stops a start's clip: a key down but F4 (`h3_view`'s rule,
+/// [`clips::key_skips`], the replay's too), a left press, a right press (the adapter's
+/// [`Key::RightButton`]).
+fn skips_start(event: &Event) -> bool {
+    match event {
+        Event::Key(key) => clips::key_skips(key.name()),
+        Event::Click { down, .. } => *down,
+        _ => false,
+    }
+}
+
 /// A wait's `events` with their `scans` and the characters `typed` among them (each with the
 /// number of events before it, `h3_sdl::Window::typed`), in order.
 fn merged(events: Vec<Event>, scans: &[Option<KeyScan>], typed: &[(usize, char)]) -> Vec<Given> {
@@ -1151,7 +1167,7 @@ fn on_front(
 mod tests {
     use std::path::PathBuf;
 
-    use super::{Given, Mode, Options, PARK, merged};
+    use super::{Given, Mode, Options, PARK, merged, skips_start};
     use h3_sdl::{Event, Key, KeyScan};
     use h3_ui::keys::Keys;
     use h3_view::shell::keys::Command;
@@ -1161,6 +1177,31 @@ mod tests {
         // E27 M2 T7b: the edits' keys and the ring among them (Tab, BackSpace, Delete, Shift+Tab).
         let known: Vec<&str> = Key::ALL.iter().map(|k| k.name()).collect();
         assert_eq!(Keys::<Command>::original().check(&known), Ok(()));
+    }
+
+    #[test]
+    fn every_key_but_f4_and_a_press_stop_the_start_as_in_the_replay() {
+        // The review of M2 (fix 1): F4 skipped the start in the window, not in the original or
+        // the replay.
+        for &key in Key::ALL.iter() {
+            assert_eq!(skips_start(&Event::Key(key)), key != Key::F4, "{key:?}");
+        }
+        assert!(skips_start(&Event::Key(Key::RightButton)));
+        assert!(skips_start(&Event::Click {
+            down: true,
+            at: (1, 2)
+        }));
+        for event in [
+            Event::Click {
+                down: false,
+                at: (1, 2),
+            },
+            Event::KeyUp(Key::Escape),
+            Event::Pointer(Some((1, 2))),
+            Event::Redraw,
+        ] {
+            assert!(!skips_start(&event), "{event:?}");
+        }
     }
 
     #[test]

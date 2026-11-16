@@ -9,7 +9,7 @@ use h3_render::screen::Screen as Pixels;
 
 use super::{
     Codec, FADE_STEP, Header, Op, Pace, Part, Picture, PictureError, SmackSchedule, SmackSound,
-    Source, Start, place, shown_union, smack_period, smack_wait,
+    Source, Start, key_skips, place, shown_union, smack_period, smack_wait,
 };
 use crate::compose::FORMAT;
 
@@ -70,6 +70,14 @@ fn the_frame_times_are_the_headers() {
         ["3DOLOGO.SMK", "NWCLOGO.SMK", "H3INTRO.SMK"]
     );
     assert_eq!(Part::ALL.map(Part::index), [28, 29, 30]);
+}
+
+#[test]
+fn every_key_but_f4_stops_a_clip() {
+    // The window's rule and the replay's (the review of M2, fix 1: the window skipped on F4).
+    for (name, skips) in [("F4", false), ("f4", false), ("F3", true), ("Escape", true)] {
+        assert_eq!(key_skips(name), skips, "{name}");
+    }
 }
 
 #[test]

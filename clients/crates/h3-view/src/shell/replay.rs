@@ -329,11 +329,12 @@ fn whole(
 }
 
 /// Whether an input stops a start's clip (`video_play_fullscreen`'s and `video_play_framed`'s
-/// loops): a key down but F4 (scan code 0x3E), a left or a right press.
+/// loops): a key down but F4 ([`super::start::key_skips`], the window's rule too), a left or a
+/// right press.
 #[must_use]
 pub fn skips(input: &Input) -> bool {
     match input {
-        Input::Key(name) | Input::KeyDown(name) => !name.eq_ignore_ascii_case("F4"),
+        Input::Key(name) | Input::KeyDown(name) => super::start::key_skips(name),
         Input::Type(text) => !text.is_empty(),
         Input::Click(_) | Input::Down(_) | Input::Right(_) => true,
         Input::Move(_) | Input::Up | Input::RightUp | Input::KeyUp(_) => false,

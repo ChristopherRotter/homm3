@@ -630,6 +630,15 @@ impl Start {
     }
 }
 
+/// Whether the key down named `name` (the adapter's name, case ignored) stops a start's clip
+/// (`video_play_fullscreen`'s and `video_play_framed`'s loops): every key but F4 (scan code
+/// 0x3E). A left or a right press always does ([`Start::skip`]). The one rule of the replay's
+/// inputs (`super::replay::skips`) and the window's.
+#[must_use]
+pub fn key_skips(name: &str) -> bool {
+    !name.eq_ignore_ascii_case("F4")
+}
+
 /// A clip's decoding for [`Picture`].
 #[derive(Debug, Clone)]
 pub enum Source<'c, 'a> {
