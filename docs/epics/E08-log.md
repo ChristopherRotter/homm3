@@ -17883,3 +17883,52 @@ sources; design §13 (D-69), §18's disputes, §19 (*Scored*), §20's table, §2
 decisions and T121's line; the queue (T121 out, T122 in); the lane HANDOFF.
 
 **Versions:** none moved (documents only).
+
+### Increment 13, round 4: T122, the `shared/` task (2026-11-16, `shared/e08-t122`, `cross-lane`)
+
+**The cut** (decision 350; asked at the start, `AskUserQuestion`, with the consent to the
+`cross-lane` change): whole, one `shared/` pull request, as T112, the seam's field in its own
+commit after the docs. Not chosen: two pull requests (the ADRs and docs, then the field); the docs
+alone this session. **Baseline:** `master` 7d0cfd0 (#970 merged). Nothing staged; a workspace
+`cargo check` and xtask's gates.
+
+- **The ADRs** (the three drafts accepted at ADV-Q54, decision 343, applied with batch E13's
+  outcome, survey `E08-banks.md` §14, decision 348; then deleted with their folder):
+  **ADR-0022** points 2 (the seam's `creature_bank`, set from the battle's cause), 3 (no
+  obstacles, the refusal beside the flag), 6 (public, not in the observation), 7 (the five rules
+  amended) and the new **point 8** (the creature bank battle: its four rules with their addresses,
+  a paragraph of batch E13's rows: E13-3 for the four and the ordinals, E13-4 and E13-7 for the
+  cells, E13-5 for the deck, the formation's part on the reading and VCMI), a consequence, the
+  draft's alternatives plus **VCMI's second table** (`creatureBankWide`, D-69 dissolved) and a
+  first revision history. **ADR-0013** point 5's last sentence and a history line.
+  **ADR-0016** points 1 (a part **Increment 13's objects**), 4 (a part **Increment 13's kinds**:
+  the bank, the draw, the visit, the battle, the reward, the Shipwreck's passage; then a batch E13
+  paragraph as increment 12's) and 6 (a bank's view by the team's mark; E13-2, E13-9), a
+  consequence, an alternative, the history. **ADR-0017** points 1 (no command; E13-11), 2 (the
+  hint, no game-level view), 4 (the draws at the build, the battle's seeds; E13-1), 6 (no
+  decision kind, the reward a won battle's rest after the levels; E13-6, E13-7), 9 (the versions,
+  in merge order with E09's increment 4), 10 (the outcomes; E13-10, E13-7), 11 (`Defender::Bank`
+  and the flag by the cause, the deck; E13-11, E13-5, E13-9, E13-3), a consequence, an
+  alternative, the history. The index's Read-when cells of ADR-0016, -0017 and -0022 and
+  ADR-0022's status. *Agent's calls* (change freely): each point cites the rows that confirmed it
+  (T112's); ADR-0016's battle line points at ADR-0017 point 11 and ADR-0022 point 8 for the
+  draft's "part D, their drafts"; ADR-0017 point 9 adds the merge order with E09's increment 4.
+- **The glossary** (`docs/03-domain.md`): creature bank, a bank's level, looted (the adventure's
+  line), bank battle and bank positions (the battle's, after the formation).
+- **`docs/06-security.md`**: increment 13's lines (design §10, §16: the hint by the team's mark,
+  the hidden level, counts, upgrade, artifacts and reward, the draws server-only, the team's
+  marks by kind, the owner's offer, loot, reward and once-bonus, the flag public but not
+  observed).
+- **The seam** (its own commit): `BattleSetup::creature_bank: bool` with its doc comment. Only two
+  literals were exhaustive, both the battle lane's: `h3-pack-battle`'s `ScenarioDef` resolve and
+  `h3-files`' `ReplayDoc` take `false` with a comment (the scenario and replay key theirs to add);
+  every other literal, the AI lane's `h3-sim` and the clients' included, takes the default. The
+  battle lane's inbox told; the AI lane has nothing to act on (no note); the town lane's inbox
+  told the ADRs' new parts, for its T35's rebase. Checked: `cargo check
+  --workspace --all-targets`, clippy and tests of the changed crates, xtask's docs gates,
+  `check-lane --cross-lane`; the clients' workspace has no `BattleSetup` literal (its SDL build
+  left to CI's clients run).
+- **Docs**: design note header, part D's intro and §13's title repointed to the ADRs, §20's *As
+  built*; decision 350 and the task's line; the queue (T122 out, T123 in).
+
+**Versions:** none moved. T123 (round 5, its cut at its start) next.

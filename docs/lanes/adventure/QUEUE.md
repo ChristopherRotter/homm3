@@ -4,25 +4,28 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 and T118b2 done 2026-11-15, decisions 340 to 342; the checkpoint ADV-Q54, decisions 343 to 345: the note, the drafts and the cut T119 to T126 accepted). Round 2: T119 done 2026-11-15 (`adventure/e08-t119`, `cross-lane`, whole: decision 346; the writer's banks, the spec's pictures and `slots`, batch E13's spec). Round 3: T120 done 2026-11-16 (`adventure/e08-t120`, alone: decision 347; the harness's reads, the recipe, three runs, the template filled); T121 done 2026-11-16 (`adventure/e08-t121`, whole, docs only: survey `E08-banks.md` §14, every row as predicted; the checkpoint ADV-Q55, decisions 348, 349). Round 4: T122 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 and T118b2 done 2026-11-15, decisions 340 to 342; the checkpoint ADV-Q54, decisions 343 to 345: the note, the drafts and the cut T119 to T126 accepted). Round 2: T119 done 2026-11-15 (`adventure/e08-t119`, `cross-lane`, whole: decision 346; the writer's banks, the spec's pictures and `slots`, batch E13's spec). Round 3: T120 done 2026-11-16 (`adventure/e08-t120`, alone: decision 347; the harness's reads, the recipe, three runs, the template filled); T121 done 2026-11-16 (`adventure/e08-t121`, whole, docs only: survey `E08-banks.md` §14, every row as predicted; the checkpoint ADV-Q55, decisions 348, 349). Round 4: T122 done 2026-11-16 (`shared/e08-t122`, `cross-lane`, whole: decision 350; the three drafts in ADR-0013, -0016, -0017, -0022 with batch E13's rows, the glossary, the security lines, `BattleSetup::creature_bank`). Round 5: T123 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T122 — the `shared/` task** (round 4; decisions 338, 343, 345, 348; as T112 for
-increment 12; `shared/e08-t122`, `cross-lane`)
+**E08 T123 — the kind, the packs, the check; the import and the writer** (round 5; design
+`E08-design.md` §1 to §3, §18; as T113a and T113b for increment 12)
 
-- **Scope:** design note `E08-design.md` §20's shared work. The three accepted drafts applied
-  (`adr-drafts/0016-`, `0017-`, `0022-increment-13.md`: ADR-0016 points 1, 4, 6; ADR-0017 points
-  1, 2, 4, 6, 9 to 11; ADR-0022 points 2, 3, 6, 7 and the new point 8, with ADR-0013 point 5's
-  line) with batch E13's outcome (survey `E08-banks.md` §14: the rows cited; ADR-0022's
-  alternatives gain VCMI's second table for two-hex guards, decision 348), then the drafts
-  deleted; the seam's field `BattleSetup::creature_bank: bool` (`h3-contracts`) with every
-  exhaustive literal's `false` (mechanical, its own commit; the battle and AI lanes told first);
-  `docs/03-domain.md`'s terms (creature bank, a bank's level, looted, bank battle, bank
-  positions); `docs/06-security.md`'s lines (design §16).
-- **Inputs:** the drafts; design §13, §16, §20; T112's record in `E08-log.md` as the form; the
-  town lane's inbox note below (its T35 amends ADR-0016 and -0017 too: whichever merges first,
-  the other rebases).
-- **Depends on:** T121 (done). **Status:** ready; the cut confirmed at its start (whole as T112,
-  or the ADRs and docs first, then the seam's field). Nothing staged.
+- **Scope:** T123a (`adventure/e08-t123a`, likely `cross-lane` for the base pack's
+  `adventure.toml` and `h3-pack-adventure`'s check): the kind `bank { question, levels, looted,
+  deck, coast }` in `h3-adventure` (ADV-BNK-001; hash tag 44; the compile's checks, design §1),
+  the eleven types in the base pack with survey §2's table (D-65 the original) and the
+  executable's creature tables, the seventh original-data check against `CrBanks.txt` and
+  0x6702A0 / 0x67037C (design §2; adventure ruleset part v21). T123b (`adventure/e08-t123b`):
+  `codes::object_type`'s class 16 by subclass 0 to 6 and 85, 24, 84, 25 (another subclass
+  `ImportError::Subclass`, no body), the writer's classes for fixtures, the census; a step onto a
+  bank refused as any unbuilt visit's until T124b (design §3; map import v24). The rules'
+  `observation` sources from batch E13 (survey §14: ADV-BNK-001 by E13-1, E13-2, E13-11, E13-5,
+  E13-12).
+- **Inputs:** design §1 to §3, §18; survey `E08-banks.md` §1, §2, §14; T113a's and T113b's records
+  in `E08-log.md` as the form; the town lane's inbox note below (its T37b and T39a come after
+  T123's map import v24).
+- **Depends on:** T122 (merged). **Status:** ready; the cut confirmed at its start (T123a and
+  T123b apart, as T113, or whole). The check needs `CrBanks.txt` (AB's extracted `H3ab_bmp`) and
+  `Heroes3.exe` staged.
 
 ## Inbox
 

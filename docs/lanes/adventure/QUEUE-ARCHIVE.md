@@ -4,6 +4,24 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-16, E08 T122: done whole, decision 350; the record in `E08-log.md`; only two literals were exhaustive, so the AI lane was not told; T123 queued.)* **E08 T122 — the `shared/` task** (round 4; decisions 338, 343, 345, 348; as T112 for
+increment 12; `shared/e08-t122`, `cross-lane`)
+
+- **Scope:** design note `E08-design.md` §20's shared work. The three accepted drafts applied
+  (`adr-drafts/0016-`, `0017-`, `0022-increment-13.md`: ADR-0016 points 1, 4, 6; ADR-0017 points
+  1, 2, 4, 6, 9 to 11; ADR-0022 points 2, 3, 6, 7 and the new point 8, with ADR-0013 point 5's
+  line) with batch E13's outcome (survey `E08-banks.md` §14: the rows cited; ADR-0022's
+  alternatives gain VCMI's second table for two-hex guards, decision 348), then the drafts
+  deleted; the seam's field `BattleSetup::creature_bank: bool` (`h3-contracts`) with every
+  exhaustive literal's `false` (mechanical, its own commit; the battle and AI lanes told first);
+  `docs/03-domain.md`'s terms (creature bank, a bank's level, looted, bank battle, bank
+  positions); `docs/06-security.md`'s lines (design §16).
+- **Inputs:** the drafts; design §13, §16, §20; T112's record in `E08-log.md` as the form; the
+  town lane's inbox note below (its T35 amends ADR-0016 and -0017 too: whichever merges first,
+  the other rebases).
+- **Depends on:** T121 (done). **Status:** ready; the cut confirmed at its start (whole as T112,
+  or the ADRs and docs first, then the seam's field). Nothing staged.
+
 *(Moved 2026-11-16, E08 T121: done whole, docs only; the record in `E08-log.md`; the survey section is §14, not §15: the survey ended at §13; T122 queued.)* **E08 T121 — batch E13 scored; the checkpoint** (round 3; decisions 339, 345, 347; as T111 for
 increment 12; docs only)
 
