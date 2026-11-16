@@ -33,7 +33,8 @@
 //! the client's profile (E27 M2 T7b) an edit that types takes each character of a typed text as
 //! the window's text input gives it, between its key's down and up (`Front::typed`), and a key's
 //! command is asked with Shift as `shift+` holds it (`super::keys::command_for`). Its network
-//! modes' notice is the client's stub: a replay stops there ([`Stop::Stub`]).
+//! modes' notice is the client's stub: a replay stops at a shot or a wait under it, and at any
+//! input but a move ([`Stop::Stub`]; M2's review: an input fed the notice before).
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -494,6 +495,16 @@ impl Replay {
                 self.tick(self.input_step);
                 Ok(None)
             }
+            // The network modes' notice is the client's (M2's review of E27): as on a stub's
+            // screen, the pointer moves under it; any other input is not the original's.
+            Step::Input(input) if self.noticing() => match input {
+                Input::Move(at) => {
+                    self.pointer = *at;
+                    self.tick(self.input_step);
+                    Ok(None)
+                }
+                _ => Ok(Some(Stop::Stub(self.screen()))),
+            },
             Step::Input(input) if self.front.is_some() => {
                 self.on_menu(input);
                 self.tick(self.input_step);
@@ -656,13 +667,17 @@ impl Replay {
             .map(|name| Stop::Unknown(name.clone()))
     }
 
+    /// Whether the client's notice (the network modes') shows over the Multiplayer dialog.
+    fn noticing(&self) -> bool {
+        matches!(&self.front, Some(Front::Multiplayer(m)) if m.noticing())
+    }
+
     /// The screen on, when it is not built whole (a stub's is the client's, not the original's),
     /// or under the client's notice (the network modes').
     fn unbuilt(&self) -> Option<Stop> {
-        let noticing = matches!(&self.front, Some(Front::Multiplayer(m)) if m.noticing());
         (self.screen().built() != Built::Whole)
             .then(|| Stop::NotBuilt(self.screen()))
-            .or_else(|| noticing.then(|| Stop::Stub(self.screen())))
+            .or_else(|| self.noticing().then(|| Stop::Stub(self.screen())))
     }
 
     fn any_shown(&self, screens: &[String]) -> bool {

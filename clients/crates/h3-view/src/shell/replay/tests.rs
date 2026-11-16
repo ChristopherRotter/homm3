@@ -250,6 +250,23 @@ fn the_multiplayer_dialog_and_the_hot_seat_take_the_harness_s_inputs() {
     );
     assert!(seen.is_empty());
     assert_eq!(stop, Some(Stop::Stub(Screen::Multiplayer(Game::New))));
+    // M2's review: under it a move moves the pointer alone; any other input stops the replay,
+    // the notice left as it was (Enter would close it).
+    let opened = ["click:643,70", "click:649,180", "click:578,214"];
+    let (_, stop, r) = replay(false, &[&opened[..], &["move:100,110"]].concat());
+    assert_eq!((stop, r.pointer()), (None, [100, 110]));
+    for input in ["key:Return", "click:400,300", "right:400,300", "up", "type:a"] {
+        let (_, stop, r) = replay(false, &[&opened[..], &[input]].concat());
+        assert_eq!(
+            stop,
+            Some(Stop::Stub(Screen::Multiplayer(Game::New))),
+            "{input}"
+        );
+        assert!(
+            matches!(r.front(), Some(Front::Multiplayer(m)) if m.noticing()),
+            "{input}"
+        );
+    }
     // Escape ends the dialog: New Game's menu again.
     let (_, stop, r) = replay(false, &["click:643,70", "click:649,180", "key:Escape"]);
     assert_eq!((stop, r.screen()), (None, Screen::GameType(Game::New)));
