@@ -9,7 +9,7 @@ use h3_render::screen::Screen as Pixels;
 
 use super::{
     Codec, FADE_STEP, Header, Op, Pace, Part, Picture, PictureError, SmackSchedule, SmackSound,
-    Source, Start, place, shown_union, smack_period, smack_wait,
+    Source, Start, key_skips, place, shown_union, smack_period, smack_wait,
 };
 use crate::compose::FORMAT;
 
@@ -73,6 +73,14 @@ fn the_frame_times_are_the_headers() {
 }
 
 #[test]
+fn every_key_but_f4_stops_a_clip() {
+    // The window's rule and the replay's (the review of M2, fix 1: the window skipped on F4).
+    for (name, skips) in [("F4", false), ("f4", false), ("F3", true), ("Escape", true)] {
+        assert_eq!(key_skips(name), skips, "{name}");
+    }
+}
+
+#[test]
 fn smack_wait_lets_a_frame_through_a_period_after_the_last() {
     // The first call sets the due time and waits; at 1 ms steps the frames go 67 ms apart, at
     // 10 ms steps 70 (the recordings' `start-bink` logo and `start-smacker`'s 70 ms).
@@ -80,7 +88,7 @@ fn smack_wait_lets_a_frame_through_a_period_after_the_last() {
         let mut s = SmackSchedule::default();
         let gone: Vec<u32> = (0..=400 / step)
             .map(|k| k * step)
-            .filter(|&t| smack_wait(&mut s, t, 6666))
+            .filter(|&t| smack_wait(&mut s, t, 6666, Bugs::Original))
             .collect();
         let want: Vec<u32> = (1..=400 / apart).map(|k| k * apart).collect();
         assert_eq!(gone, want, "{step} ms steps");
@@ -88,17 +96,108 @@ fn smack_wait_lets_a_frame_through_a_period_after_the_last() {
     // A call between one and two periods late keeps the schedule (the due time + a period):
     // the next frame goes at once.
     let mut s = SmackSchedule::default();
-    assert!(!smack_wait(&mut s, 0, 6666));
-    assert!(smack_wait(&mut s, 150, 6666));
-    assert!(smack_wait(&mut s, 150, 6666));
-    assert!(!smack_wait(&mut s, 150, 6666));
+    assert!(!smack_wait(&mut s, 0, 6666, Bugs::Original));
+    assert!(smack_wait(&mut s, 150, 6666, Bugs::Original));
+    assert!(smack_wait(&mut s, 150, 6666, Bugs::Original));
+    assert!(!smack_wait(&mut s, 150, 6666, Bugs::Original));
+}
+
+#[test]
+fn smack_wait_in_the_clients_profile_keeps_each_frame_on_its_time() {
+    // CLT-Q129 (b): a frame a period after the last one's due time, at any step: the first
+    // reading at or past k × 66.66 ms lets frame k − 1 through.
+    for step in [1, 7, 10] {
+        let mut s = SmackSchedule::default();
+        let last = 400 / step * step;
+        let gone: Vec<u32> = (0..=400 / step)
+            .map(|k| k * step)
+            .filter(|&t| smack_wait(&mut s, t, 6666, Bugs::Fixed))
+            .collect();
+        let want: Vec<u32> = (1..)
+            .map(|k: u32| (6666 * k).div_ceil(100 * step) * step)
+            .take_while(|&t| t <= last)
+            .collect();
+        assert_eq!(gone, want, "{step} ms steps");
+    }
+    // A reading several periods late lets each frame due through, one a call (the DLL's would
+    // date the next from it: one frame, then a period on).
+    let mut s = SmackSchedule::default();
+    assert!(!smack_wait(&mut s, 0, 6666, Bugs::Fixed));
+    assert!((0..3).all(|_| smack_wait(&mut s, 200, 6666, Bugs::Fixed)));
+    assert!(!smack_wait(&mut s, 200, 6666, Bugs::Fixed));
+    let mut s = SmackSchedule::default();
+    assert!(!smack_wait(&mut s, 0, 6666, Bugs::Original));
+    assert!(smack_wait(&mut s, 200, 6666, Bugs::Original));
+    assert!(!smack_wait(&mut s, 200, 6666, Bugs::Original));
+}
+
+#[test]
+fn a_silent_smacker_clip_drifts_with_the_step_in_the_originals_profile_alone() {
+    // 81 frames at 10 ms steps: the DLL's 70 ms a frame (the last at 5 670 ms, design §11.2's
+    // 3DO logo), the client's a frame time each (the last at 81 × 66.66 = 5 399.5: 5 400).
+    for (bugs, second, last) in [(Bugs::Original, 140, 5670), (Bugs::Fixed, 140, 5400)] {
+        let mut ops = Vec::new();
+        let mut start = Start::new([header(81, SMACK), None, None], true, bugs, 0, &mut ops);
+        let seen = run(&mut start, 10, 7000, &[]);
+        let frames = frames_at(&seen, Part::Logo);
+        assert_eq!(frames.len(), 81, "{bugs:?}");
+        assert_eq!((frames[1], frames[80]), (second, last), "{bugs:?}");
+    }
+    // At 1 ms steps the two part from the third frame on (201 ms against 200).
+    let third = |bugs| {
+        let mut ops = Vec::new();
+        let mut start = Start::new([header(81, SMACK), None, None], true, bugs, 0, &mut ops);
+        frames_at(&run(&mut start, 1, 300, &[]), Part::Logo)[2]
+    };
+    assert_eq!((third(Bugs::Original), third(Bugs::Fixed)), (201, 200));
+}
+
+/// The readings (every 10 ms) at which `start` keeps an input for the main menu, and the end.
+fn kept(mut start: Start, skip: Option<u32>) -> (Vec<u32>, u32) {
+    let (mut ops, mut kept, mut now) = (Vec::new(), Vec::new(), 0);
+    while !start.ended() {
+        assert!(!start.keeps_input() || start.playing().is_none());
+        now += 10;
+        start.read(now, &mut ops);
+        if skip == Some(now) {
+            start.skip(now, &mut ops);
+        }
+        if start.keeps_input() {
+            kept.push(now);
+        }
+    }
+    assert!(!start.keeps_input());
+    (kept, now)
+}
+
+#[test]
+fn an_input_waits_for_the_menu_during_a_fade_no_clip_follows() {
+    // CLT-Q130 (a): the next clip's loop flushes the input queue; with none the menu takes it.
+    // H3Intro's fade alone, its 150 ms before the menu.
+    let mut ops = Vec::new();
+    let headers = [header(2, SMACK), header(2, BINK), header(2, BINK)];
+    let (kept_at, end) = kept(Start::new(headers, true, Bugs::Original, 0, &mut ops), None);
+    assert_eq!(kept_at, (end - 150..end).step_by(10).collect::<Vec<_>>());
+    // A skipped logo's fade ends the start; so does one before a clip that does not open.
+    let start = Start::new(headers, true, Bugs::Fixed, 0, &mut ops);
+    let (kept_at, end) = kept(start, Some(50));
+    assert_eq!((kept_at.first(), kept_at.len(), end), (Some(&50), 15, 200));
+    let start = Start::new(
+        [header(2, SMACK), None, None],
+        true,
+        Bugs::Original,
+        0,
+        &mut ops,
+    );
+    let (kept_at, end) = kept(start, None);
+    assert_eq!(kept_at, (end - 150..end).step_by(10).collect::<Vec<_>>());
 }
 
 #[test]
 fn the_clips_play_in_order_each_ending_in_a_fade() {
     let mut ops = Vec::new();
     let headers = [header(3, SMACK), header(2, BINK), header(2, BINK)];
-    let mut start = Start::new(headers, true, 0, &mut ops);
+    let mut start = Start::new(headers, true, Bugs::Original, 0, &mut ops);
     assert_eq!(ops, [Op::Black]);
     assert_eq!(start.playing(), Some(Part::Logo));
     assert!(start.bink_video());
@@ -161,7 +260,13 @@ fn the_clips_play_in_order_each_ending_in_a_fade() {
 #[test]
 fn a_fade_step_waits_for_its_50_ms_and_one_reading_takes_one_step() {
     let mut ops = Vec::new();
-    let mut start = Start::new([header(1, BINK), None, None], true, 0, &mut ops);
+    let mut start = Start::new(
+        [header(1, BINK), None, None],
+        true,
+        Bugs::Original,
+        0,
+        &mut ops,
+    );
     assert_eq!(ops, [Op::Black, Op::Frame(Part::Logo, 0), Op::Fade(0)]);
     for (now, want) in [
         (FADE_STEP - 1, &[][..]),
@@ -184,7 +289,7 @@ fn a_skip_fades_a_full_screen_clip_and_stops_h3intro_at_once() {
     // The logo skipped at 2000 ms by a reading every 10 ms: its fade, the menu at 2150.
     let headers = [header(100, SMACK), header(100, BINK), header(100, BINK)];
     let mut ops = Vec::new();
-    let mut start = Start::new(headers, true, 0, &mut ops);
+    let mut start = Start::new(headers, true, Bugs::Original, 0, &mut ops);
     let seen = run(&mut start, 10, 10_000, &[2000]);
     assert_eq!(seen.last(), Some(&(2150, Op::Black)));
     assert_eq!(seen.iter().filter(|(_, op)| *op == Op::Fade(0)).count(), 1);
@@ -194,6 +299,7 @@ fn a_skip_fades_a_full_screen_clip_and_stops_h3intro_at_once() {
     let mut start = Start::new(
         [header(2, SMACK), header(2, BINK), header(50, BINK)],
         true,
+        Bugs::Original,
         0,
         &mut ops,
     );
@@ -207,7 +313,13 @@ fn a_skip_fades_a_full_screen_clip_and_stops_h3intro_at_once() {
     assert!(start.ended());
     // A clip that does not open ends the sequence where it would begin.
     let mut ops = Vec::new();
-    let start = Start::new([None, header(2, BINK), header(2, BINK)], true, 0, &mut ops);
+    let start = Start::new(
+        [None, header(2, BINK), header(2, BINK)],
+        true,
+        Bugs::Original,
+        0,
+        &mut ops,
+    );
     assert!(start.ended());
     assert_eq!(ops, [Op::Black]);
 }
@@ -671,7 +783,14 @@ fn with_its_sound_a_smacker_clip_follows_the_bytes_played() {
     ] {
         let mut ops = Vec::new();
         let headers = [header(81, SMACK), None, None];
-        let mut start = Start::with_sound(headers, [Some(TRACK), None, None], true, 0, &mut ops);
+        let mut start = Start::with_sound(
+            headers,
+            [Some(TRACK), None, None],
+            true,
+            Bugs::Original,
+            0,
+            &mut ops,
+        );
         let mut seen: Vec<(u32, Op)> = ops.into_iter().map(|op| (0, op)).collect();
         seen.extend(run(&mut start, step, 6000, &[]));
         let frames = frames_at(&seen, Part::Logo);
@@ -697,6 +816,7 @@ fn with_its_sound_a_smacker_clip_follows_the_bytes_played() {
         [header(81, SMACK), None, None],
         [None; 3],
         true,
+        Bugs::Original,
         0,
         &mut ops,
     );
@@ -745,7 +865,7 @@ fn a_skip_stops_the_sound_and_a_bink_clip_sounds_from_its_first_frame() {
     let sounds = [Some(TRACK), Some(TRACK), None];
     // A skip of the 3DO logo after its Play: the sound stops, then the fade.
     let mut ops = Vec::new();
-    let mut start = Start::with_sound(headers, sounds, true, 0, &mut ops);
+    let mut start = Start::with_sound(headers, sounds, true, Bugs::Original, 0, &mut ops);
     let seen = run(&mut start, 10, 3000, &[500]);
     let quiet = seen
         .iter()
@@ -755,13 +875,13 @@ fn a_skip_stops_the_sound_and_a_bink_clip_sounds_from_its_first_frame() {
     assert_eq!(seen[quiet + 1].1, Op::Fade(0));
     // Skipped at the open's reading, before its Play: nothing sounded, nothing to stop.
     let mut ops = Vec::new();
-    let mut start = Start::with_sound(headers, sounds, true, 0, &mut ops);
+    let mut start = Start::with_sound(headers, sounds, true, Bugs::Original, 0, &mut ops);
     start.skip(0, &mut ops);
     assert!(!ops.contains(&Op::Quiet(Part::Logo)));
     // Run through: NWCLogo's sound with its first frame, stopped at its last, its frames by its
     // clock as without sound.
     let mut ops = Vec::new();
-    let mut start = Start::with_sound(headers, sounds, true, 0, &mut ops);
+    let mut start = Start::with_sound(headers, sounds, true, Bugs::Original, 0, &mut ops);
     let seen = run(&mut start, 1, 20_000, &[]);
     let first = frames_at(&seen, Part::Nwc);
     assert_eq!(sound_at(&seen, Op::Sound(Part::Nwc)), [first[0]]);
@@ -770,7 +890,14 @@ fn a_skip_stops_the_sound_and_a_bink_clip_sounds_from_its_first_frame() {
     // H3Intro is skipped at once: its sound stops with it.
     let headers = [header(1, SMACK), header(1, BINK), header(100, BINK)];
     let mut ops = Vec::new();
-    let mut start = Start::with_sound(headers, [None, None, Some(TRACK)], true, 0, &mut ops);
+    let mut start = Start::with_sound(
+        headers,
+        [None, None, Some(TRACK)],
+        true,
+        Bugs::Original,
+        0,
+        &mut ops,
+    );
     let mut seen = run(&mut start, 10, 900, &[]);
     assert!(seen.iter().any(|(_, op)| *op == Op::Sound(Part::Intro)));
     let mut ops = Vec::new();

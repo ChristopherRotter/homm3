@@ -15,27 +15,31 @@
 //! - **In a window** (T4: `--window`): the built screens drawn (`h3_view::shell::look`), the
 //!   others black until their task, the cursor the shell's arrow; the words still read from
 //!   standard input. Closing the window ends it. The main menu takes the mouse and its hotkeys
-//!   (T6a: `h3_view::shell::menu`, the key table `h3_view::shell::keys`), New Game's and Load
-//!   Game's menus theirs (T6b1), each press playing its sample (`button.wav`); the music
-//!   (`MAINMENU.MP3`, looping) is asked for as each menu opens, as `main_menu_run` and
-//!   `game_type_menu_run` ask for it (the track playing goes on).
+//!   (T6a: `h3_view::shell::menu`, the key table `h3_view::shell::keys`; since M2's review the
+//!   user's file over it as the battle window's, `--keys`, else `keys.toml` here: its `[shell]`),
+//!   New Game's and Load Game's menus theirs (T6b1), each press playing its sample
+//!   (`button.wav`); the music (`MAINMENU.MP3`, looping) is asked for as each menu opens, as
+//!   `main_menu_run` and `game_type_menu_run` ask for it (the track playing goes on).
 //!
 //! `--no-intro` starts at the main menu (the setting `Show Intro` off); else the start's clips
 //! play first (T5a: `h3_view::shell::start`, read from the video archives, `introrim.pcx` from the
 //! LODs), from Bink or with `--video-quality low` from their Smacker copies (the setting Bink
-//! Video 0, CLT-Q96). The replay draws them as the DLLs copy them (`Bugs::Original`), the window
-//! whole, on the window's own clock.
+//! Video 0, CLT-Q96). The replay draws them as the DLLs copy them and paces a silent Smacker clip
+//! as `SmackWait` does (`Bugs::Original`), the window whole and each frame on its time
+//! (CLT-Q129 (b)), on the window's own clock. Both give the main menu the inputs of the fade
+//! before it (CLT-Q130 (a), `Start::keeps_input`).
 //!
 //! **The sound** (E27 M2 T5b1): `--effects <0..9>` is the effects setting (the window's default
-//! 5, the game's; the replay's 0, the harness's silent runs). Above 0, with a sound device (the
-//! window's) or none needed (the replay), the clips play with their sound: a Smacker clip's frames
-//! then follow it (`h3_view::shell::start::SmackSound`), and the window plays each clip's track
-//! from its start (`HostSound::play_clip`, at `h3_view::clip_sound::volume`) until a skip stops
-//! it, or whole once its clip ran to its end (CLT-Q125, decision 34: the original cuts the last
-//! frame's sound at the close); the replay lists each start, skip and close in `replay.txt`
-//! (`sound <file> t<ms>`, `quiet <file> t<ms>`, `closed <file> t<ms>`), and (T6a) each press's
-//! sample as the harness logs the original's (`sample button.wav t<ms> ch<k> <length>ms x1`:
-//! `h3_view::shell::samples`).
+//! 5, the game's; the replay's 0, the harness's silent runs). The window opens its sound device
+//! for the effects or the music (a first run's setting) above 0 (M2's review). With the effects
+//! above 0, with a sound device (the window's) or none needed (the replay), the clips play with
+//! their sound: a Smacker clip's frames then follow it (`h3_view::shell::start::SmackSound`), and
+//! the window plays each clip's track from its start (`HostSound::play_clip`, at
+//! `h3_view::clip_sound::volume`) until a skip stops it, or whole once its clip ran to its end
+//! (CLT-Q125, decision 34: the original cuts the last frame's sound at the close); the replay
+//! lists each start, skip and close in `replay.txt` (`sound <file> t<ms>`, `quiet <file> t<ms>`,
+//! `closed <file> t<ms>`), and (T6a) each press's sample as the harness logs the original's
+//! (`sample button.wav t<ms> ch<k> <length>ms x1`: `h3_view::shell::samples`).
 //!
 //! The menus' boxes (T6a, T6b1): Quit's question and the buttons' help, their texts the user's
 //! tables' through the key catalogue (`shell.main-menu.*`, `shell.game-type.help.*`), laid out at
@@ -45,16 +49,18 @@
 //! that menu. The replay stops at them (the original shows its own screens there). The
 //! Multiplayer dialog and the hot seat's names (T7): their hints, help and title the user's
 //! tables' (`shell.multiplayer.*`, `shell.hot-seat.*`), the network modes' notice and the scenario
-//! screen's stub the client's (`shell.stub.network`, `shell.stub.scenario`); the window gives the
-//! dialogs' edits each key down as the original reads it (`h3_sdl::Window::scans`; the original's
-//! profile's) and, since T7b (decision 39), the text the keys print while an edit types (SDL's
-//! text input, `h3_sdl::Window::typed`: the system's layout), the edits' keys and the hot seat's
-//! ring through the key table with Shift as held (`keys::command_for`). The replay
-//! draws a game type menu's rows its redraw does not show as last shown (CLT-Q118:
-//! `h3_view::shell::menu::Stale`, the original's profile).
+//! screen's stub the client's (`shell.stub.network`, `shell.stub.scenario`); the window, the
+//! client's profile alone since T7b (decision 39), gives the dialogs' edits the text the keys
+//! print while an edit types (SDL's text input, `h3_sdl::Window::typed`: the system's layout),
+//! the edits' keys and the hot seat's ring through the key table with Shift as held
+//! (`h3_sdl::Window::scans`, `keys::command_for`), no scan code (the original's profile's
+//! typing, by the US table, is the replay's alone: M2's review). The replay draws a game type
+//! menu's rows its redraw does not show as last shown (CLT-Q118: `h3_view::shell::menu::Stale`,
+//! the original's profile).
 
 use std::fs;
 use std::io::{self, BufRead};
+use std::mem;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::mpsc;
@@ -115,13 +121,16 @@ pub struct Options {
     /// The effects setting (0 to 9), when given.
     effects: Option<u8>,
     install: PathBuf,
+    /// The window's key file (`--keys`; else `keys.toml` here if there is one: its `[shell]`
+    /// table, M2's review of E27, as the battle window's `[battle]`).
+    keys: Option<PathBuf>,
 }
 
 impl Options {
     /// Parses `[--script <file> | --steps <file> --frames <dir> [--pointer <x>,<y>]
-    /// [--input-step <ms>] | --window [--scale <n>]] [--no-intro] [--video-quality high|low]
-    /// [--effects <0..9>] [--install <dir>]`; the installation defaults to `$H3_INSTALL`, then the repository's
-    /// `original-data/install`.
+    /// [--input-step <ms>] | --window [--scale <n>] [--keys <file>]] [--no-intro]
+    /// [--video-quality high|low] [--effects <0..9>] [--install <dir>]`; the installation
+    /// defaults to `$H3_INSTALL`, then the repository's `original-data/install`.
     ///
     /// # Errors
     /// An unknown argument, a flag without its value, or two modes.
@@ -135,7 +144,7 @@ impl Options {
         let (mut script, mut steps, mut frames, mut install) = (None, None, None, None);
         let (mut pointer, mut input_step, mut scale) = (None, None, None);
         let (mut intro, mut window, mut bink_video) = (true, false, true);
-        let mut effects = None;
+        let (mut effects, mut keys) = (None, None);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -151,6 +160,7 @@ impl Options {
                 "--pointer" => pointer = Some(point(&value()?)?),
                 "--input-step" => input_step = Some(number(&value()?)?),
                 "--scale" => scale = Some(number(&value()?)?),
+                "--keys" => keys = Some(PathBuf::from(value()?)),
                 "--window" => window = true,
                 "--no-intro" => intro = false,
                 "--effects" => {
@@ -190,6 +200,7 @@ impl Options {
             "--steps",
         )?;
         lone(!window && scale.is_some(), "--scale", "--window")?;
+        lone(!window && keys.is_some(), "--keys", "--window")?;
         let mode = match (steps, frames) {
             (Some(steps), Some(frames)) => Mode::Replay {
                 steps,
@@ -210,6 +221,7 @@ impl Options {
             install: install
                 .or(env)
                 .unwrap_or_else(|| manifest.join("../../../original-data/install")),
+            keys,
         })
     }
 }
@@ -675,7 +687,7 @@ fn start_of<'c, 'a>(
     let black = Pixels::new(WIDTH, HEIGHT, FORMAT).ok_or("no 800 × 600 screen")?;
     let picture = Picture::new(black, sources, rim, bink_video, bugs);
     let mut ops = Vec::new();
-    let start = Start::with_sound(headers, sounds, bink_video, 0, &mut ops);
+    let start = Start::with_sound(headers, sounds, bink_video, bugs, 0, &mut ops);
     Ok(((start, ops), picture))
 }
 
@@ -839,11 +851,14 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
         [None, None, None]
     };
     let clips = parse_clips(&bytes);
-    // The sound (E27 M2 T5b1): the effects above 0 and a device, else the clips silent (the
-    // game opens no track without a driver, and its Smacker clips keep their clock); the menus'
-    // samples and music with it (T6a).
+    // The sound (E27 M2 T5b1): the clips and the presses' samples with the effects above 0 and
+    // a device, else silent (the game opens no track without a driver, and its Smacker clips
+    // keep their clock); the menus' music (T6a) at the music setting (a first run's: no client
+    // settings yet) with the device, opened for the effects or the music above 0 (M2's review of
+    // E27: the music needed the effects before).
     let effects = options.effects.unwrap_or(5);
-    let mut host = if effects > 0 {
+    let music_setting = h3_view::options::Settings::FIRST_RUN.music;
+    let mut host = if effects > 0 || music_setting > 0 {
         match crate::audio::HostSound::open(drawer.bugs) {
             Ok(host) => Some(host),
             Err(e) => {
@@ -854,11 +869,13 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     } else {
         None
     };
+    // The clips and the presses heard: the effects above 0 and the device.
+    let effects_heard = effects > 0 && host.is_some();
     // Each clip's track decoded beside the window (H3Intro's takes seconds), taken at its start.
     let mut samples = [0, 1, 2].map(|k| {
         let format = clips[k].as_ref()?.format();
         let bytes = bytes[k].clone()?;
-        host.as_ref()?;
+        effects_heard.then_some(())?;
         thread::Builder::new()
             .name("h3-view shell's clip sound".to_owned())
             .spawn(move || {
@@ -886,12 +903,12 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             .spawn(move || crate::audio::mp3(&install, "MAINMENU", &mut Vec::new()))
             .ok()
     });
-    let music_volume = h3_view::options::sound_volume(
-        h3_view::sound::MUSIC_VOLUME,
-        h3_view::options::Settings::FIRST_RUN.music,
-    );
+    let music_volume = h3_view::options::sound_volume(h3_view::sound::MUSIC_VOLUME, music_setting);
     let mut presses: Vec<usize> = Vec::new();
-    let keys = Keys::<Command>::original();
+    // The user's key file over the defaults, every key one the adapter knows (M2's review of
+    // E27: the battle window's `load_keys`, the shell's `[shell]` table).
+    let (keys, keys_from) = crate::window::load_keys::<Command>(options.keys.as_deref())?;
+    eprintln!("h3-view shell: keys: {keys_from}");
     // What takes the inputs on the screen, opened as its screen shows (`on`: the screen it was
     // opened for; `previous`: what took them before, the Multiplayer dialog's menu).
     let mut front: Option<Front> = None;
@@ -901,7 +918,7 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
         drawer.rim.as_ref(),
         options.bink_video,
         drawer.bugs,
-        host.is_some(),
+        effects_heard,
     )?;
     let mut applied = 0;
     let mut heard = 0;
@@ -938,12 +955,20 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
         u32::try_from(win.ticks_ns().saturating_sub(began) / 1_000_000).unwrap_or(u32::MAX)
     };
     let (mut pointer, mut dirty, mut cursor_hidden) = (None, true, false);
+    // The inputs given during the start's last fade, the main menu's first (CLT-Q130 (a)).
+    let mut kept: Vec<Given> = Vec::new();
     loop {
         let playing = shell.screen() == Screen::Start;
         // The edits' typing (T7b): text input while one has the focus.
         win.set_text_input(front.as_ref().is_some_and(Front::typing));
         let events = win.wait(if playing { 5 } else { 50 });
-        for given in merged(events, win.scans(), win.typed()) {
+        let mut inputs = if playing {
+            Vec::new()
+        } else {
+            mem::take(&mut kept)
+        };
+        inputs.extend(merged(events, win.scans(), win.typed()));
+        for given in inputs {
             let mut did = menu::Did::default();
             match given {
                 Given::Typed(c) => {
@@ -960,8 +985,18 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
                     }
                 }
                 Given::Event(Event::Redraw, _) => dirty = true,
-                Given::Event(Event::Key(_) | Event::Click { down: true, .. }, _) if playing => {
-                    start.skip(now(&win), &mut ops);
+                // During the start's last fade an input waits for the main menu, which opens
+                // at its end (`Start::keeps_input`).
+                Given::Event(event, scan) if playing && start.keeps_input() => {
+                    kept.push(Given::Event(event, scan));
+                }
+                // A key down or a press goes to the clip, which only some stop (F4 does not).
+                Given::Event(event @ (Event::Key(_) | Event::Click { down: true, .. }), _)
+                    if playing =>
+                {
+                    if skips_start(&event) {
+                        start.skip(now(&win), &mut ops);
+                    }
                 }
                 Given::Event(event, scan) => {
                     if let Some(front) = front.as_mut() {
@@ -971,6 +1006,7 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             }
             dirty |= did.changed;
             if did.sample
+                && effects_heard
                 && let (Some(host), Some(pcm)) = (host.as_mut(), drawer.button.as_ref())
             {
                 let volume = h3_view::options::sound_volume(BUTTON_VOLUME, effects);
@@ -1091,13 +1127,24 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
 }
 
 /// What the window gave in one wait, in order (T7b): its events, each keyboard key down with its
-/// scan code, and the characters its text input typed between them.
+/// Shift, and the characters its text input typed between them.
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Given {
-    /// An event and, for a keyboard key down, its scan code.
+    /// An event and, for a keyboard key down, its Shift.
     Event(Event, Option<KeyScan>),
     /// A character typed.
     Typed(char),
+}
+
+/// Whether a window's event stops a start's clip: a key down but F4 (`h3_view`'s rule,
+/// [`clips::key_skips`], the replay's too), a left press, a right press (the adapter's
+/// [`Key::RightButton`]).
+fn skips_start(event: &Event) -> bool {
+    match event {
+        Event::Key(key) => clips::key_skips(key.name()),
+        Event::Click { down, .. } => *down,
+        _ => false,
+    }
 }
 
 /// A wait's `events` with their `scans` and the characters `typed` among them (each with the
@@ -1116,9 +1163,9 @@ fn merged(events: Vec<Event>, scans: &[Option<KeyScan>], typed: &[(usize, char)]
 }
 
 /// A window's event to what takes the inputs on the screen: the left button's press and release,
-/// the right button's (wherever the mouse is: at `pointer`), a key's down (with its scan code, the
-/// dialogs' edits' in the original's profile, T7; its command with Shift as held, T7b) and up
-/// through the key table.
+/// the right button's (wherever the mouse is: at `pointer`), a key's down (its command with Shift
+/// as held, T7b; no scan code: the window runs the client's profile, whose edits type the text
+/// input, M2's review) and up through the key table.
 fn on_front(
     front: &mut Front,
     keys: &Keys<Command>,
@@ -1136,11 +1183,7 @@ fn on_front(
         Event::Key(key) => {
             let shift = scan.is_some_and(|s| s.shift);
             let command = shell_keys::command_for(keys, &front.contexts(), shift, key.name());
-            let scan = scan.map(|s| h3_ui::edit::Scan {
-                code: s.code,
-                shift: s.shift,
-            });
-            front.key(scan, command, key.name())
+            front.key(None, command, key.name())
         }
         Event::KeyUp(key) => front.key_up(key.name()),
         _ => menu::Did::default(),
@@ -1149,9 +1192,9 @@ fn on_front(
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
-    use super::{Given, Mode, Options, PARK, merged};
+    use super::{Given, Mode, Options, PARK, merged, skips_start};
     use h3_sdl::{Event, Key, KeyScan};
     use h3_ui::keys::Keys;
     use h3_view::shell::keys::Command;
@@ -1161,14 +1204,41 @@ mod tests {
         // E27 M2 T7b: the edits' keys and the ring among them (Tab, BackSpace, Delete, Shift+Tab).
         let known: Vec<&str> = Key::ALL.iter().map(|k| k.name()).collect();
         assert_eq!(Keys::<Command>::original().check(&known), Ok(()));
+        // M2's review of E27: the window's table as the battle window's, the defaults without a
+        // file here; a file named that is not there refused.
+        let (keys, from) = crate::window::load_keys::<Command>(None).unwrap();
+        assert_eq!((keys, from.as_str()), (Keys::original(), "the defaults"));
+        assert!(crate::window::load_keys::<Command>(Some(Path::new("no/such/keys.toml"))).is_err());
+    }
+
+    #[test]
+    fn every_key_but_f4_and_a_press_stop_the_start_as_in_the_replay() {
+        // The review of M2 (fix 1): F4 skipped the start in the window, not in the original or
+        // the replay.
+        for &key in Key::ALL.iter() {
+            assert_eq!(skips_start(&Event::Key(key)), key != Key::F4, "{key:?}");
+        }
+        assert!(skips_start(&Event::Key(Key::RightButton)));
+        assert!(skips_start(&Event::Click {
+            down: true,
+            at: (1, 2)
+        }));
+        for event in [
+            Event::Click {
+                down: false,
+                at: (1, 2),
+            },
+            Event::KeyUp(Key::Escape),
+            Event::Pointer(Some((1, 2))),
+            Event::Redraw,
+        ] {
+            assert!(!skips_start(&event), "{event:?}");
+        }
     }
 
     #[test]
     fn the_typed_characters_come_between_the_events() {
-        let scan = Some(KeyScan {
-            code: 0x1E,
-            shift: false,
-        });
+        let scan = Some(KeyScan { shift: false });
         let events = vec![Event::Key(Key::A), Event::KeyUp(Key::A), Event::Redraw];
         let scans = [scan, None, None];
         assert_eq!(
@@ -1232,6 +1302,12 @@ mod tests {
             parse(&["--window", "--scale", "2"]).unwrap().mode,
             Mode::Window(Some(2))
         );
+        // M2's review of E27: the window's key file.
+        assert_eq!(none.keys, None);
+        assert_eq!(
+            parse(&["--window", "--keys", "k.toml"]).unwrap().keys,
+            Some(PathBuf::from("k.toml"))
+        );
         assert!(none.bink_video);
         assert!(!parse(&["--video-quality", "low"]).unwrap().bink_video);
         assert!(parse(&["--video-quality", "high"]).unwrap().bink_video);
@@ -1252,6 +1328,8 @@ mod tests {
             &["--steps", "s", "--frames", "f", "--pointer", "x,2"],
             &["--input-step", "x"],
             &["--scale", "2"],
+            &["--keys", "k.toml"],
+            &["--window", "--keys"],
             &["--video-quality", "medium"],
         ];
         for args in refused {

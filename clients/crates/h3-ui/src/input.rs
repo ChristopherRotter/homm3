@@ -2,7 +2,9 @@
 //! DEF buttons and DEF pictures (its boxes and bars) by the mouse, its default button held by a
 //! key, and the item whose help the right press asks for. One implementation for the battle's
 //! dialogs and the shell's (CLT-Q102: "the code is shared, not built twice"); moved from the combat
-//! options dialog (`h3_view::options`, E17 M6 T4a to M7 T2), which keeps its clicks.
+//! options dialog (`h3_view::options`, E17 M6 T4a to M7 T2), which keeps its clicks. The message
+//! boxes' buttons run on it too since M2's review (`h3_view::message::Open`: Quit's question,
+//! the stubs' and the network's notices, the battle's boxes).
 //!
 //! The original's rules, as read for the combat options (E17 design §12.12) and the system options
 //! (E27 design §4.2):

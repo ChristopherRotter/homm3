@@ -205,6 +205,34 @@ impl Did {
         ended: None,
     };
 
+    /// A box's outcome over a menu or the Multiplayer dialog: drawn again on a change.
+    pub(crate) fn of_box(outcome: Outcome) -> Self {
+        Self {
+            changed: outcome != Outcome::Nothing,
+            ..Self::default()
+        }
+    }
+
+    /// A box's button going down: drawn again with its press sample.
+    pub(crate) fn box_press(outcome: Outcome) -> Self {
+        let down = outcome == Outcome::Changed;
+        Self {
+            changed: down,
+            sample: down,
+            ended: None,
+        }
+    }
+
+    /// The shared input's answer (a button going down, or its loop's change): drawn again, its
+    /// sample.
+    pub(crate) const fn held(did: h3_ui::input::Did) -> Self {
+        Self {
+            changed: did.changed,
+            sample: did.button_sound,
+            ended: None,
+        }
+    }
+
     fn with(self, other: Self) -> Self {
         Self {
             changed: self.changed || other.changed,
@@ -454,16 +482,12 @@ impl Menu {
         self.pointer = point;
         match &mut self.over {
             Over::Help(_) => Did::default(),
-            Over::Question(open) | Over::Notice(open) => changed(open.moved(point)),
+            Over::Question(open) | Over::Notice(open) => Did::of_box(open.moved(point)),
             Over::Nothing if self.input.holds_button() => {
                 let held = self.held();
                 let did = self.input.moved(&self.dialog, &mut self.shown, point);
                 self.alone(did.changed, held);
-                Did {
-                    changed: did.changed,
-                    sample: did.button_sound,
-                    ended: None,
-                }
+                Did::held(did)
             }
             Over::Nothing => self.hover(),
         }
@@ -474,16 +498,12 @@ impl Menu {
         self.pointer = point;
         match &mut self.over {
             Over::Help(_) => self.close_help(),
-            Over::Question(open) | Over::Notice(open) => pressed(open.press(point)),
+            Over::Question(open) | Over::Notice(open) => Did::box_press(open.press(point)),
             Over::Nothing => {
                 let did = self.input.press(&self.dialog, &mut self.shown, point);
                 let held = self.held();
                 self.alone(did.changed, held);
-                Did {
-                    changed: did.changed,
-                    sample: did.button_sound,
-                    ended: None,
-                }
+                Did::held(did)
             }
         }
     }
@@ -543,7 +563,7 @@ impl Menu {
     pub fn key(&mut self, command: Command, by: &str) -> Did {
         match (&mut self.over, command, self.kind) {
             (Over::Question(open) | Over::Notice(open), Command::Message(key), _) => {
-                pressed(open.key(key, by))
+                Did::box_press(open.key(key, by))
             }
             (Over::Nothing, Command::Button(id), Kind::Main) if BUTTONS.contains(&id) => {
                 self.hotkey(id, by)
@@ -585,11 +605,7 @@ impl Menu {
     fn hotkey(&mut self, id: u16, by: &str) -> Did {
         let did = self.input.key(&mut self.shown, id, by);
         self.alone(did.changed, Some(id));
-        Did {
-            changed: did.changed,
-            sample: did.button_sound,
-            ended: None,
-        }
+        Did::held(did)
     }
 
     /// The button the mouse or a key holds.
@@ -919,24 +935,6 @@ pub fn outside(rect: [i32; 4], shown: &[[i32; 4]]) -> Vec<[i32; 4]> {
             .collect();
     }
     parts
-}
-
-/// A box's outcome as the menu's: drawn again.
-fn changed(outcome: Outcome) -> Did {
-    Did {
-        changed: outcome != Outcome::Nothing,
-        ..Did::default()
-    }
-}
-
-/// A box's button going down: drawn again with its press sample.
-fn pressed(outcome: Outcome) -> Did {
-    let down = outcome == Outcome::Changed;
-    Did {
-        changed: down,
-        sample: down,
-        ended: None,
-    }
 }
 
 #[cfg(test)]

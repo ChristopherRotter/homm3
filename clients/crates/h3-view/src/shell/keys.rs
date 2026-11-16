@@ -22,7 +22,8 @@
 //!
 //! A key down's command ([`command_for`]): the chord with Shift as held, else, with Shift held
 //! and that chord unbound, the key alone (*provisional*: Shift and a hotkey pressed its button
-//! before T7b too, when the shell read no Shift); Ctrl is not read.
+//! before T7b too, when the shell read no Shift); Ctrl is not read. A user's file binding one
+//! chord to an edit's key and to its dialog's is refused, as within one context (M2's review).
 //!
 //! The window's own keys (`h3_ui::keys::Window`: the music, fullscreen, …) are not the shell's
 //! yet (*provisional*): their Escape is the main menu's Quit here.
@@ -200,6 +201,14 @@ impl keys::Command for Command {
             Self::Edit(_) => Context::Edit,
             Self::Ring(_) => Context::HotSeat,
         })
+    }
+
+    /// An edit's own keys and its dialog's, the Multiplayer dialog's or the hot seat's: one key
+    /// down asks both ([`command_for`] in `Front::contexts`' order), so a user's file binding a
+    /// chord in both is refused (M2's review of E27: `edit-home = ["Tab"]` shadowed the ring).
+    fn asked_together(a: Context, b: Context) -> bool {
+        let dialog = |c| matches!(c, Context::Multiplayer | Context::HotSeat);
+        a == b || (a == Context::Edit && dialog(b)) || (b == Context::Edit && dialog(a))
     }
 }
 

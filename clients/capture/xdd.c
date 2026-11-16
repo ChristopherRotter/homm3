@@ -47,9 +47,10 @@
       it is. Without it a clip ran in real time while the game's clock stood still. SMACKW32.DLL
       reads it as well (E27 M1 T2: the start's 3DO logo, the score screen's and the lost
       screen's clips are Smacker ones), so its slot points at bink_time too; the ack's eleventh
-      field is 1 when it does. Its timeSetEvent timers stay in real time (none paces a frame
-      the game draws: Smacker's own sound, which the harness never plays). The clips' reads of
-      that clock are counted apart, the ack's twelfth field (since the last command): in a
+      field is 1 when it does. Without H3SOUND its timeSetEvent timers stay in real time (none
+      paces a frame the game draws: they serve Smacker's sound, which then never plays; with
+      H3SOUND section 7. plays it and points timeSetEvent at a timer never fired). The clips'
+      reads of that clock are counted apart, the ack's twelfth field (since the last command): in a
       full-screen Bink clip the game's loop leaves the waiting to BinkWait and reads no clock
       itself, so the harness takes these for the game being idle there.
       BinkGetSummary (E27 M1 T2): the game asks a full-screen clip's summary at its end (did it
@@ -86,8 +87,9 @@
    7. The clips' sound on the virtual clock (E27 M2 T5b2, *provisional*; E27-design §12): with
       H3SOUND set, a clip's track plays on the virtual clock too, its calls logged to
       <H3CLOCK>\clipsound, one line each "<time> <call> <a> <b>". SMACKW32.DLL times a Smacker
-      clip's frames by the play cursor of the DirectSound buffer Miles lends it (§11), which
-      Wine moves in real time: Heroes3.exe's import of SmackSoundUseMSS goes through
+      clip's frames by the play cursor of its DirectSound buffer (the DLL's own, made on the
+      DirectSound object Miles opened: §11.1), which Wine moves in real time: Heroes3.exe's
+      import of SmackSoundUseMSS goes through
       use_mss_hook, which gives the DLL's SmackSoundUseDirectSound vsound.h's stand-in (its
       cursor on the virtual clock, an ideal device) instead of Miles' object (the game's Miles
       answers preference 15 with 0 and goes there itself), so the DLL never loads Miles'

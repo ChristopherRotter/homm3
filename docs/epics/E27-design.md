@@ -1731,7 +1731,10 @@ Video 0); `Videos` reads `shell-videos.vid` after `battle-videos.vid` when `VIDE
   and two frame times late (an unsigned comparison of a negative difference), then to the due time
   + the frame time; `SmackNextFrame` clears the frame's flag. So at 1 ms steps 67 ms a frame
   (3DOLogo's frames at 67 (k + 1) ms: frames 0 to 3 black, the first change at 335 ms), at 10 ms
-  steps 70 (`start-smacker`'s 189.59 s). Bink's: frame p once the clock reaches the first frame's
+  steps 70 (`start-smacker`'s 189.59 s). **CLT-Q129 (b)** (the user, 2026-11-16: fix): in the
+  client's profile each frame is due a frame time after the last one's due time, whatever the
+  step (3DOLogo's last at 5 400 ms at 10 ms steps); the drift the comparisons' (`Bugs::Original`;
+  `h3_view::shell::start::smack_wait`). Bink's: frame p once the clock reaches the first frame's
   time + ⌊1000 p / rate⌋ (E17's measure), the first at the clip's first tick (NWCLogo's at the
   logo's black, 5 577 ms; 6 043 shown at 6 050). The ends: `start-bink`'s menu at 180 480 ms,
   `start-smacker`'s at 189 590 (its second kept run; the first run's 10 ms later from H3Intro on).
@@ -1742,7 +1745,13 @@ Video 0); `Videos` reads `shell-videos.vid` after `battle-videos.vid` when `VIDE
   loop, never on the frozen clock), then the back buffer filled black and shown 50 ms after the
   third: 3DOLogo's last frame at 5 427 ms, the steps at 5 427, 5 477, 5 527, the black and
   NWCLogo's first frame at 5 577. A clip's last frame is decoded but not shown before it (the
-  fade's first step shows it). `H3Intro` skipped stops at once (`video_stop_all`, no fade).
+  fade's first step shows it). `H3Intro` skipped stops at once (`video_stop_all`, no fade). An
+  input during a fade is lost when a clip follows (its loop flushes the input queue first, §2.1);
+  during a fade after which none opens (`H3Intro`'s end, a skipped clip's) the queue keeps it and
+  the main menu acts on it. **CLT-Q130 (a)** (the user, 2026-11-16: as the original, both
+  profiles): the replay and the window give the menu those inputs, in order, as it opens
+  (`Start::keeps_input`; *provisional*, not read: the menu's loop takes them as it would live
+  ones at its first pass, the moves not kept, the pointer where it is).
 - **NWCLogo's Bink copy** (clip 29, 400 × 300): 0x44DD20 leaves it at (0, 0) of the back buffer
   (every other clip centred), and `video_show` blits that corner stretched onto the whole screen
   (DirectDraw's `Blt`, Wine's nearest pixel: each pixel doubled). The fade copies the back buffer,
@@ -1881,7 +1890,9 @@ waits for the same device in `xdd.dll` (T5b2).
   210, 277 … ms (the buffer's Play at 10), its close at 5 343 ms at 1 ms steps (5 350 at 10 ms;
   without sound 5 427 and 5 670); `H3INTRO.SMK`'s in 161.66 s (without sound 169.8 s at 10 ms
   steps). The silent path's 67 or 70 ms a frame would put the picture behind its sound by up to
-  8 s at H3Intro's end; with the sound the frames keep its time exactly.
+  8 s at H3Intro's end; with the sound the frames keep its time exactly. The client's silent path
+  keeps the frame time too (CLT-Q129 (b), §10: `H3INTRO.SMK` about 161.7 s at any step), the
+  DLL's drift the comparisons'.
 - **Not modelled** (`SmackSound`, *provisional*): the ring and its refills, the end mark and the
   silence padding, the reset of the frames' sound to the ring's bytes when it runs ahead
   (0x10006131): no clip of the game reaches them (the first frame's sound fills the buffer, and
@@ -2273,7 +2284,9 @@ again (`multiplayer`, two recipes added: `edit-keys`, `hotseat-long`). Built in
   first shown character moved so the text up to the caret fits); drawn and shown with +0x6E; the
   event becomes 0x200/0xC (answer 2: taken). +0x68 is never written (the item is not zeroed): every
   edit built holds its room of the widest glyph in its box (20 × `M`, 260 px of `smalfont.fnt`, in
-  281 and 334 px), so neither the scroll nor the line check bites.
+  281 and 334 px), so neither the scroll nor the line check bites. *Measured* (M2's review, the
+  installation's `smalfont.fnt` through `h3_assets::fnt`): no glyph from 0x20 to 0xFF advances
+  more than `M`'s 13 px; 0x85 `…`, 0x89 `‰`, 0x97 `—` and 0x99 `™` as much, every other less.
 - **`edit_draw`:** its picture or saved background (none here), then `text_draw` 0x4B5490 of the
   text in the text box, its colour (3 when disabled), its alignment, and the caret with the focus
   (−1 without). **The caret** (`text_draw` 0x4B54BC, `text_draw_line` 0x4B5306, 0x4B53C6,
@@ -2323,9 +2336,9 @@ takes the hover at its first move (CLT-Q128, decision 40: the statics for the co
 Typing follows the keyboard's own layout in the client's profile (CLT-Q127, decision 39: T7b,
 §17). The original's US table stays for the comparisons: the replay gives the edits a recipe's
 key names and typed characters as scan codes (`shell::keys::scan`, `h3_ui::edit::scan_of`: the US
-layout, as `xdotool`). The window gives each key's set 1 scan code and Shift (`h3_sdl`'s
-`Window::scans`, SDL's scan code by the key's place); since T7b it runs the client's profile
-alone, so only the Shift is read.
+layout, as `xdotool`). The window gives each key down's Shift (`h3_sdl`'s `Window::scans`); it
+gave its set 1 scan code too until M2's review, which dropped it: since T7b the window runs the
+client's profile alone, which never reads it.
 
 ### 16.4 Not built (the agent's calls, *provisional*)
 
@@ -2355,7 +2368,7 @@ window.
   terminator would reach the room (20 characters in 21, as the original's) or the fonts cannot
   draw it (`edit::typable`: Windows-1252's printable characters, the controls and the braces left
   out; every byte from 0x20 to 0xFF has a glyph of some width in `smalfont.fnt`, read from the
-  LOD). The text, the caret and the room count characters (one byte each in the code page; the
+  LOD; the widest 13 px, `M`'s, so 20 of any fit the boxes as in §16.1: measured at M2's review). The text, the caret and the room count characters (one byte each in the code page; the
   draw encodes them, `encode_1252`).
 - A character's key down still reaches the key table while an edit types (no dialog with an edit
   binds a letter; *provisional*).
@@ -2376,7 +2389,10 @@ default:
 - **The lookup** (`shell::keys::command_for`): `Context::Edit` first while an edit types, then the
   dialog's own (`Front::contexts`); the chord with Shift as held, else, with Shift held and that
   chord bound nowhere there, the key alone (Shift and Escape still cancel, Shift and Home goes
-  home, as before T7b when the shell read no Shift).
+  home, as before T7b when the shell read no Shift). Since M2's review a user's file binding one
+  chord to an edit's key and to its dialog's (the Multiplayer dialog's, the hot seat's) is
+  refused as within one context (`h3_ui::keys::Command::asked_together`, the shell's `Edit` with
+  either): `edit-home = ["Tab"]` would have shadowed the ring.
 - **Shift chords** in `h3_ui::keys` (a `Shift+` chord, a parse error before, now parses: a change
   for the map's table, its inbox told): `Chord::shift`, `Shift+` in a key file after
   `Ctrl+` (`Ctrl+Shift+Up`), `Keys::chord_command` matching exactly; the Shifts never bound alone

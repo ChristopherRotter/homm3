@@ -14,7 +14,8 @@
 //! original's battle takes F5 to F8 alone).
 //! A viewer with dialogs over its screen takes some keys only while one is open
 //! ([`Command::context`]: the battle's spell book, message box and aim), so a key may give one
-//! command in each. Common to both viewers and generic over their commands since E24 M3 T1a, the
+//! command in each; contexts one key down asks in turn are checked as one
+//! ([`Command::asked_together`], E27 M2's review: the shell's edit before its dialog). Common to both viewers and generic over their commands since E24 M3 T1a, the
 //! battle's window through it since T1b; a screen to rebind them comes with the options dialog.
 
 use alloc::collections::BTreeMap;
@@ -53,8 +54,18 @@ pub trait Command: Copy + Ord {
     fn defaults() -> Vec<(Self, Vec<Chord>)>;
 
     /// The context it is taken in; none for every one (the window's own keys that work whatever
-    /// is open). Two commands that can be taken in one context never share a chord.
+    /// is open). Two commands that can be taken in one context never share a chord, nor two in
+    /// contexts asked together ([`Command::asked_together`]).
     fn context(self) -> Option<Self::Context>;
+
+    /// Whether one key down can ask both contexts, the first and then the other (E27 M2's review:
+    /// the shell asks an edit's own keys before its dialog's, so a chord bound in both would give
+    /// the edit's alone): a chord bound in both is refused as in one. By default a context is
+    /// asked alone (*provisional*).
+    #[must_use]
+    fn asked_together(a: Self::Context, b: Self::Context) -> bool {
+        a == b
+    }
 
     /// The command a name gives.
     #[must_use]
@@ -217,8 +228,8 @@ impl fmt::Display for Chord {
     }
 }
 
-/// The table: each command's chords; a chord bound to two commands only where no context takes
-/// both.
+/// The table: each command's chords; a chord bound to two commands only where no key down can find
+/// both (no context takes both, no two contexts asked together do).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Keys<C> {
     /// Each command's chords, in the table's order (a command without one left out).
@@ -250,7 +261,7 @@ impl<C: Command> Keys<C> {
     /// # Errors
     /// The parser's message, a name that is no viewer's table or no command, a value that is no
     /// table or no list of chords, a chord that does not read or is bound to two commands one
-    /// context takes.
+    /// context takes (or two contexts asked together, [`Command::asked_together`]).
     pub fn with_file(text: &str) -> Result<Self, String> {
         let file: toml::Table = toml::from_str(text).map_err(|e| e.to_string())?;
         for (name, value) in &file {
@@ -374,10 +385,11 @@ impl<C: Command> Keys<C> {
     }
 }
 
-/// Whether one context can take both commands: neither has one of its own, or they have the same.
+/// Whether one key down can find both commands: neither has a context of its own, or their
+/// contexts are asked together ([`Command::asked_together`]: the same one by default).
 fn together<C: Command>(a: C, b: C) -> bool {
     match (a.context(), b.context()) {
-        (Some(x), Some(y)) => x == y,
+        (Some(x), Some(y)) => C::asked_together(x, y),
         _ => true,
     }
 }
