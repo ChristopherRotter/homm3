@@ -33,7 +33,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31: 98 to 67 s an update).
   **T36 prepared**: the user chose `e25-anchor-1` resumed from 2 M to 20 M (#2 teaching to
   10 M); **the user's GPU next, about 19 hours** (the commands, rule and measures in `QUEUE.md`).
-- **Open pull requests:** the one of `claude/adoring-turing-tl1huu` (T35's close, T36's
+- **Open pull requests:** #965 (`claude/adoring-turing-tl1huu`: T35's close, T36's
   preparation). Merged: #948 (T34's (a)), #954 (T34's close, T35's probe).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
