@@ -169,6 +169,17 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
        carries over to a hero that leaves the map and is hired again.
      - **The day of the week** is the game's calendar's: an input of the adventure's command
        application (ADR-0017 point 1), never copied into the adventure's state.
+   - **Increment 13's objects** (E08 decision 333): **no new block.**
+     - **What the build drew** for a creature bank is the static map's: the level's index and the
+       artifacts in the draw's order (relics first), beside every other object's drawn contents;
+       the level's resources and creature are read from the kind by the index, never copied.
+     - **Its guards as drawn** (split and upgraded) are the object's guards, as a guarded pile's,
+       in the static map; a battle's survivors are its **army left** in increment 7's block (none
+       after a draw).
+     - **Looted** is its **emptied** mark in increment 7's block, as a looted Pyramid's: a bank
+       never leaves the map.
+     - **A team's visit** is the per-player **knowledge** of objects in increment 7's block, set
+       for every player of the visitor's team.
 
    A fork is `Clone`: a few reference increments plus the plain arrays. The structures are
    hand-rolled in `h3-adventure` (no persistent-collections dependency) and move to the kernel
@@ -790,6 +801,57 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      fifteen's visit modes: the hero stood on the Wells and the Idol and visited the Sirens, the
      Buoy and the Mermaids from the neighbouring water, as the class lists above say, not the
      templates' blocked tiles (ADV-Q51, E08 decision 317).
+   - **Increment 13's kinds** (the import maps class 16 by subclass 0 to 6 and 85, 24, 84 and 25
+     at subclass 0; another subclass is refused, no body is read):
+     - **The bank** (`bank`; ADV-BNK-001): one kind for the eleven (the Cyclops Stockpile, the
+       Dwarven Treasury, the Griffin Conservatory, the Imp Cache, the Medusa Stores, the Naga Bank,
+       the Dragon Fly Hive, the Shipwreck, the Derelict Ship, the Crypt, Dragon Utopia), all in the
+       base pack, with its **question** (attack: class 16 and Dragon Utopia; search: the Crypt and
+       the two sea banks), one to four **levels** as data (a chance, one to four guard creatures
+       with counts, an upgrade chance, resources, a reward creature and count, artifact counts by
+       class: the original's `CrBanks.txt` with the executable's creature tables, D-65 the
+       original), a search kind's **looted** once-bonus, the sea banks' **deck** and the
+       Shipwreck's **coast**. Its visit mode is the original's class lists' (E08 decision 317's
+       rule): **the Shipwreck visited from a neighbour** and from above, **the ten others
+       entered** (the hero stands on the entrance), none from above. Not ownable, not weekly.
+     - **The draw** (ADV-BNK-002), when the game is built, from the setup stream in object order
+       with increment 7's rewards: the level (one draw over the chances); the artifacts, **relics
+       first**, then majors, minors and treasures (D-68 the original), from the one pool of the
+       random artifacts, chests and finds; the guards split by the original's rule for the
+       level's number of creatures (five stacks for one, the Crypt's two fixed patterns, none from
+       four on); the upgrade of the rule's slot by its chance, for a creature with an upgrade.
+       Never again.
+     - **The visit** (ADV-BNK-003; D-66 the original): an attack kind marks the visitor's team at
+       once, tells a looted one so and does nothing more, else asks (a pending offer of the
+       visitor's owner; declined, nothing more); a search kind asks first, looted or not, and only
+       a yes marks the team; a looted one's search gives its once-bonus (−1 morale until the end
+       of the hero's next battle, once per kind while the mark is held). `Revisit` visits an
+       entered bank again under these rules.
+     - **The battle** (ADV-BNK-004): a yes fights at once the guards as they stand, unowned and
+       without a hero, at the entrance's tile; the battle is marked as a bank's by its cause (the
+       visit's yes), never by the tile, so a battle between heroes on an entered bank's entrance
+       is ordinary; the sea banks' on the sea terrain's deck, from the coast too. Lost or
+       retreated, the survivors stay as its guards and it is not looted; with no guards standing,
+       a yes gives the reward at once. The battle's setup and its rules are ADR-0017's (point 11)
+       and ADR-0022's (point 8).
+     - **The reward** (ADV-BNK-005; D-67 the original, as corrected): won, the reward is the
+       visit's rest of a won guards' battle, **after the winner's levels** (ADR-0017 point 6, E08
+       decision 342): the creature onto the army or into the army dialog, the artifacts in the
+       record's order (relics first), the resources; then the bank is looted.
+     - **The Shipwreck's passage** (ADV-MOV-009, ADV-SEA-002 amended; ADV-STUB-12 lifted): its
+       water entrance is, for a hero not in a boat, a step from a stop node on land (the visit
+       from the coast) and a flight's pass from land or water, as an empty boat's tile (the
+       original's class 85 tests); a hero in a boat visits it from the water. The Derelict Ship
+       stays a sea object visited only from a boat (D-46).
+     Batch E13 (E08 T120, T121; survey `E08-banks.md` §14) confirmed every row of it as the
+     original's: the kinds, levels and draws in the walk's order (E13-1), D-65 (E13-1, E13-10: the
+     Naga Bank without gems, the Imp Cache's 2 Mercury), D-66 (E13-2, E13-8, E13-11 and E13-12's
+     Shipwreck: a declined attack kind marked at once, a declined search kind not, a looted search
+     asked and its −1 once per kind, `Revisit` asking again), D-68 (E13-1, E13-7: relics first),
+     D-67's correction (E13-6: the levels, then the reward and its army dialog), the survivors as
+     its guards after a retreat, an upgraded stack as its own creature (E13-9), the deck from the
+     coast and from a boat (E13-5) and the Shipwreck's water entrance a flight's pass and a visit
+     from the coast and from above, never a water walk's (E13-12).
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
@@ -924,6 +986,16 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    army to every viewer that sees it, at its level. Batch E12's E12-16 read the hint so (the name
    and "not visited" before a visit; the bonus line and "visited" for the visitor after; nothing
    over an unexplored tile). `docs/06-security.md` lists it (E08 T112).
+   From increment 13 every viewer that sees a **creature bank** sees its type, and by its team's
+   visit mark what the original's hint shows: not visited; visited and looted or with no guards
+   standing; or the word of the guards' total count with their creature when every stack is of
+   one (as a mine's guards, without their stacks). The mark and that view are live for every team
+   that visited (a battle's survivors, the loot). The level, the counts, the upgrade, the
+   artifacts and the reward stay hidden until the battle and the win. A looted visit, the offer,
+   the reward and the once-bonus are told to the visitor's owner alone; a team's new marks to its
+   players; the hint's change to the players whose team visited it. Batch E13 read the hint so
+   (E13-2: the size word and the creature for the visitor's team, "not visited" for the other;
+   E13-9: by the survivors). `docs/06-security.md` lists it (E08 T122).
 
 ## Consequences
 
@@ -1000,6 +1072,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   the kind marks), so on 159 of the 160 shipped maps their entrances become destinations and the
   passages' garrisons crossable; the army commands gain the owner rule the town's rows reuse; the
   adventure's command application takes the day of the week.
+- Increment 13: the five classes become typed objects (adventure ruleset part v21, map import
+  v24, adventure state hash v26: the banks' draws and guards in the static map), so on 148 of the
+  160 shipped maps their entrances become destinations (ten kinds entered, the Shipwreck visited
+  from a neighbour or the coast) and a flight crosses a Shipwreck's water tile.
 
 ## Alternatives considered
 
@@ -1086,6 +1162,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   details as the original's records keep them (a fixed set of 32 once-marks with their amounts,
   the day's and the week's marks beside them); the fifteen's visit modes from the templates'
   blocked tiles (the design before batch E12, ADV-Q51).
+- Increment 13 (ADV-Q53): VCMI's Naga Bank gems and an Imp Cache without its 2 Mercury (D-65), a
+  mark at every visit and a looted search's morale without a question (D-66), the artifacts
+  treasure first (D-68); the banks' visit modes from the templates' blocked entrance (the survey
+  before T118b1); the levels' stacks pre-split in the data (VCMI's form) instead of the original's
+  split rule; two kinds (attack, search) instead of one; a bank offer kind beside `Fight` and
+  `Search`; the bank battle marked by its tile, as the anti-magic garrison's.
 
 ## Revision history
 
@@ -1211,3 +1293,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   hidden. Drafted in E08 T108b (survey `E08-garrisons-bonuses.md`); batch E12's outcome (T111,
   §15: every row as read) folded in, the fifteen's visit modes by the original's class lists
   (ADV-Q51).
+- 2026-11-16 (E08 T122 `shared/`, `cross-lane`; the user at ADV-Q52 to ADV-Q55, E08 decisions
+  333, 335 to 339, 342, 343, 348): points 1, 4 and 6 amended for E08 increment 13, creature banks:
+  the banks' draws, guards, loot and team marks in the existing blocks; the kind bank with its
+  question, levels, looted once-bonus, deck and coast, its draw, visit, battle start and end, its
+  reward after the winner's levels, the Shipwreck's coast passage; what a viewer sees of a bank
+  by its team's visit. Drafted in E08 T118b1 (survey `E08-banks.md`; the reward corrected by
+  T118b2); batch E13's outcome (T121, survey §14: every row as read) folded in.

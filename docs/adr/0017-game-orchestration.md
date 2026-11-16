@@ -157,6 +157,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    (`Manage::Army`), naming the hero's army and **`ArmyRef::MapGarrison(object)`**, a sibling of a
    town's `ArmyRef::Garrison(town)`. The adventure's command application takes **the day of the
    week** (1 to 7, the calendar's) beside the acting player's stream: every caller passes it.
+   **Increment 13** (creature banks; E08 decision 333) adds **no command**: a bank is visited by
+   `MoveHero`'s last step onto its entrance (the ten entered kinds) or toward it (the Shipwreck,
+   from the coast too) and by `Revisit` on an entered one; its question is answered with the
+   offers' answers, its battle with the battle's commands, its reward's army dialog with `Close`
+   and the management commands (batch E13's E13-11: the move ends on the entrance, the hero stays
+   there through the question, and `Revisit` asks again).
 2. **Actors and viewers.** `Actor::Player(PlayerId)` for every player command, also a bot's;
    `Actor::System` for the trusted layer that hosts the game only (the server's session layer,
    the env), never for a player, with its own closed set of commands (end a player's turn,
@@ -204,6 +210,9 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    owner's team, a hero with Visions at level 3 within reach of the entrance, else the viewer's
    towns with a Tavern, at most 2), and its removable flag to the owner's team; and the types
    whose kind the viewer's team has marked (ADR-0016 point 6).
+   From increment 13 a viewer sees a **creature bank**'s type and, by its team's visit mark, the
+   original's hint, the adventure observation's object view (ADR-0016 point 6); no game-level view
+   is added. A team's new mark is told with the hint after it.
 3. **Turn groups.** A day is a schedule: an ordered list of turn groups, each a set of players
    who act together. A group's turn starts with each context's start-of-turn step for its
    players and ends when each of them has ended its turn or left the game. After the last group
@@ -401,6 +410,16 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    E12-12 saw the original's values new only at a week's start; its later weeks alike in every
    run, so the original's draw does not follow the new game's seed, which no profile reproduces
    (as E11-15's `rand()`): the engine draws from its own streams.
+   **Increment 13's draws** are setup placeholders, drawn from the setup stream when the game is
+   built, in the second walk with the chests, the gifts, the Shrines, the finds and the Pyramid, in
+   object order: per bank its level by the chances, its artifacts by class (relics first) from the
+   one pool of the random artifacts, then its upgrade's chance where the upgrade's slot holds a
+   creature with an upgrade. No visit, battle or reward of increment 13 draws. **A bank battle's
+   seeds** are every battle's: its own seed the attacking player's stream's next draw, its
+   obstacles' seed as above, the generator giving none; the original's seed of the bank's tile
+   (170 101 x + 223 252 y + 250 037 z + 82 037) has no counterpart, since the engine's battle
+   draws are its own. Batch E13's E13-1 found the original's records in the walk's order (each
+   start drawing anew, the 27 levels against their chances with no evidence against them).
 5. **Seeds are server-only** (E08 decision 9). The master seed and the stream positions are
    authoritative state: in the state hash (which never reaches a client either), never in an
    observation or event, never seeded from client data; the observation-hygiene and
@@ -575,6 +594,18 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    not the decision (E09 decisions 67 and 80, the town's two rows above; E09 T28a): an own
    town's two bars are admitted outside any decision, with `ArmyRef::Garrison(town)` or the
    garrison hero's army as the stationary bar. The bonus visitables ask nothing.
+
+   **Increment 13 adds no decision kind.** A bank's question is an offer of the visitor's owner,
+   `Fight` for the attack kinds and `Search` for the search kinds, routed by the object's kind
+   when accepted (as `Fight` routes a mine's); a yes opens the battle at once (point 11), or with
+   no guards standing gives the reward at once. A won bank's reward is **a won battle's rest**
+   (GAM-DEC-007's third, `Rest::Won` of the entrance), given once the winner's levels are
+   answered: the creature onto the army or into the army dialog (GAM-DEC-004), the artifacts read
+   when given, the resources, then the loot. This is the original's order for a human, whose
+   levels come inside the battle's call (`adventure_battle` 0x4AE324) before
+   `bank_battle_reward`'s reward (E08 decision 342, replacing 337; survey `E08-banks.md` §6,
+   D-67); every player answers as a human (point 1). Batch E13 confirmed it (E13-6: the level-ups,
+   then the reward's message, then its army dialog; E13-7: the artifacts in the record's order).
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -703,6 +734,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    map import (v22) and the adventure replay format (v13: the map garrison's reference in a
    management line); the env's action encoding stays v8 (the exchange is answered by the close
    role). The numbers are the next at merge, after E09's increment 3 where it merges first.
+   **Increment 13** bumps the adventure state hash (v26: the banks' draws and guards), the
+   adventure ruleset part (v21: the kind) and the map import (v24: the five classes); the game
+   state hash, the adventure replay format (v16) and the env's action encoding (v8) stay. The
+   battle lane's battle state hash and battle part and the shared pack format move with the bank
+   battle (ADR-0022 point 8), in its `cross-lane` task. The numbers are the next at merge, in
+   merge order with E09's increment 4.
 10. **Gains and costs cross by outcome.** A context's `apply` returns an outcome: the resources
     its command gains for the actor and the offers it opens, each with its price. The context
     never sees a treasury. The game adds the gains after the context applied (gains cannot fail,
@@ -781,6 +818,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     Sirens' experience are hero changes the game applies through `h3-heroes`, the experience's
     levels given as every gain's (batch E12's E12-7: 310 experience for the lost hit points). No
     price, no gain of resources.
+    **Increment 13's outcomes:** a won bank's end holds its reward as the visit's rest
+    (`reward_after`); the reward is a reward record's outcome (ADV-RWD-001): the creature's join
+    or its group without room, the artifacts as hero changes, the resources as gains, the loot the
+    adventure's own change; a looted search's once-bonus is the adventure's own change of the hero
+    on the map (ADR-0013 point 1 as amended for increment 12). Batch E13's E13-10 and E13-7 saw
+    the level's resources and artifacts so.
 11. **Battles through the game** (increment 3; ADR-0013 point 5). The game builds the
     `BattleSetup`: the armies from the adventure (a monster's stacks by its split), each hero's
     `BattleHero` and war machines from `h3-heroes`, the battlefield from the tile in the
@@ -881,6 +924,18 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     input (ADR-0013 point 15.1); the battle's end has the adventure clear both heroes' battle
     bonuses but the once-marks the part names as outliving a battle under the profile
     (GAM-BAT-014 amended; the Sirens' with `ADV-QUIRK-46` off: A-44, decision 308; E12-8).
+    **Increment 13's battles** (GAM-BAT-001 amended): a bank's guards defend as
+    **`Defender::Bank`**, as they stand, unowned and without a hero (the neutral seat's side), at
+    the entrance's tile; the game sets the setup's **`creature_bank`** from that defender, so the
+    battle is a bank's by its cause, never by its tile (a hero met on a bank's entrance fights an
+    ordinary battle: of the original's 14 calls of `adventure_battle`, only the bank's passes its
+    flag). The attacker's war machines are listed as always and set up by no one (the battle's
+    rule, ADR-0022 point 8). A bank of a deck kind (the Shipwreck, the Derelict Ship) fights on the
+    sea terrain's deck, from the coast too. Its end: lost or retreated, the survivors stay with the
+    bank; won, the reward after the winner's levels (point 6). Batch E13 confirmed it: the battle
+    at the entrance (E13-11), the deck for both sea banks, the Shipwreck's from the coast (E13-5),
+    the survivors left by slot after a retreat (E13-9), the worn machines not on the field
+    (E13-3).
 
 ## Consequences
 
@@ -972,6 +1027,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   from the hero on the map for a battle's setup and cleared by the adventure; the env's encoding
   stays v8. Each new event, the decision's view, the reference and the fields moved from the
   details to the hero on the map break `h3-protocol`'s build until mapped (`cross-lane`).
+- Increment 13: a defender kind and the setup's bank flag (no decision kind, no rest kind, no
+  command; the game state hash stays); its battles change the battle lane's setup (ADR-0022 point
+  8, `cross-lane`); nothing changes on the wire (the events, the offers and the views are existing
+  ones), in the replay format or in the env's encoding.
 
 ## Alternatives considered
 
@@ -1057,6 +1116,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   which the original's modal dialog does not allow); a new action for the exchange in the env;
   the day of the week kept in the adventure's state; the day's and the week's clears for every
   hero of the store (the marks in the details).
+- Increment 13 (ADV-Q53, T118b2): the reward before the winner's levels, a bank's exception to
+  GAM-DEC-007 point 3 with the levels held until its army dialog closes (decision 337, on the
+  survey's first reading; replaced by 342 when the re-reading found the original's human order
+  the rest's); `BattleStart::bank`, a field (every literal, the town lane's siege among them,
+  would change); the bank battle marked by its tile; a bank offer kind beside `Fight` and
+  `Search`; the original's tile seed for the bank battle.
 
 ## Revision history
 
@@ -1187,3 +1252,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   timed-out player's side), each naming its player and applied as that player's command; the
   hold judges them as the player's; refused from a player (`SystemOnly`); not listed among the
   legal commands (GAM-SYS-001 to GAM-SYS-003).
+- 2026-11-16 (E08 T122 `shared/`, `cross-lane`; the user at ADV-Q52 to ADV-Q55, E08 decisions
+  333, 335 to 339, 341 to 343, 348): points 1, 2, 4, 6, 9, 10 and 11 amended for E08 increment
+  13, creature banks: no command; the banks' hint in the observation; the banks' draws when the
+  game is built; no decision kind, the reward a won battle's rest after the levels (D-67
+  corrected); the versions; the outcomes; `Defender::Bank` and the setup's bank flag by the
+  battle's cause, the deck. Drafted in E08 T118b2 (survey `E08-banks.md`, corrected); batch E13's
+  outcome (T121, survey §14: every row as read) folded in.

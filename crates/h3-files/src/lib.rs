@@ -702,6 +702,9 @@ impl ReplayDoc {
                     .transpose()
                     .map_err(|e| FileError::Format(e.to_string()))?,
                 anti_magic: f.setup.anti_magic,
+                // No bank battle reaches a battle replay or a scenario yet: the key is the battle lane's
+                // to add when one first needs it (E08 increment 13's design note §13).
+                creature_bank: false,
                 siege: f
                     .setup
                     .siege

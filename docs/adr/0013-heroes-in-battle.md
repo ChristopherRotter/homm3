@@ -123,7 +123,8 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    and `Surrender(side)`. `BattleOutcome` reports facts — per-stack start and end counts, the
    surrender cost, per-hero results, rounds — and the orchestrator applies the consequences
    (casualties, captured artifacts, experience, Necromancy). Later epics add only enum variants;
-   E04c adds the reserved optional fields `siege` on setup and outcome and a battlefield kind.
+   E04c adds the reserved optional fields `siege` on setup and outcome and a battlefield kind;
+   E08 increment 13 adds the setup's `creature_bank` (ADR-0022 point 8).
 6. **Battle-long hero effects are applied at setup** to the stacks' base stats; morale and luck
    effects become side modifiers (ADR-0012 pool, capacity sized by construction).
 7. **Phases and commands.** A tactics phase (round 0) reuses `Move` with cycling activations plus
@@ -529,3 +530,5 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   book names the Orb of Inhibition's wearer and shows Recanter's Cloak's limit to both sides
   (GENRLTXT 684, 537; `docs/epics/E17-design.md` §12.17): the observation's `forbids_casting` and
   `spell_level_limit`, the wire's `SideView` (protocol v69), kept by a search agent's worlds.
+- 2026-11-16 (E08 T122, `shared/`, `cross-lane`): point 5 notes the setup's `creature_bank`
+  (ADR-0022 point 8, the creature bank battle).
