@@ -8,7 +8,7 @@ Epic: E24, the adventure map client. **M1 (stills of the map view) closed 2026-1
 (the map moving) closed 2026-10-28**; **M3 (the adventure screen) closed 2026-10-31** (their
 scope, decisions, tasks and review lists: `docs/epics/E24-archive.md`; their cuts' history:
 `QUEUE-ARCHIVE.md`). **M4 (the engine's games shown) refined 2026-10-31** (M4 T0, with the user:
-`docs/epics/E24-map-client.md`, M4's scope, decisions and exit): Part A (T1, T2) the original's
+`docs/epics/E24-map-client.md`, M4's scope, decisions and exit): Part A (T1a, T1b, T2) the original's
 reactions to a game's events, its memory the live part; Part B (T3, T4) the engine's games
 through `h3-protocol`'s whole-game record (ADR-0020 point 8), after the server lane builds it;
 Part C (T5) the battles handed to the battle client's viewer. Tasks in order, each about half a
@@ -18,24 +18,37 @@ context; a task that grows is cut at a seam agreed with the user. Code readings 
 (`clients/capture/README.md`), never in git. Every oddity of the original a reading or a capture
 finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
-### E24 M4 T1 — the turn's change
+### E24 M4 T1a — the turn's end and the next day
 
-- **Scope:** read and build what the original shows when a turn changes, the live part from its
-  memory (`h3mem.py`, additive): End Turn's click (the button's action, its question when a hero
-  can still move), the turn's end and the next player's start; the new day (the date's step,
-  built at M3 T5b2, from its cause), the week's and the month's start and their messages (the
-  week's and month's names are the client's to draw: the engine sends `WeekStarted` and
-  `MonthStarted` with the kind only; a comparison reads the original's from its memory); another
-  player's turn: the status window's kind 5 (`AdStatNx.pcx`, `crest58.def`, `HourSand.def`,
-  `HourGlas.def`, 0x453250; design §4.8) with its tile, hint and cursors (0x40DEB0, §4.10), and
-  a computer player's moves where the viewer sees them (the view's scroll to them, their walk at
-  the computer's speed, `enemyMoveTime` in VCMI's terms; read, not assumed). New sequences
-  recorded in the original (a day's end, a week's and a month's start, a computer player's turn;
-  the inbox's harness change first: `setup.sh` again).
+- **Scope** (T1 cut in two by the user, 2026-11-16, at T1a's start: this and T1b): read and build
+  what the original shows when a turn changes, the live part from its memory (`h3mem.py`,
+  additive): End Turn's click and key (`adventure_command` 0x409A70's 12, E) and its question when
+  a hero can still move (Move Reminder: `message_box` 0x4F6570's Yes/No with GENRLTXT's text); the
+  turn's end and the next player's start (`next_player_turn` 0x4C6FE0, `player_turn_start`
+  0x4CC7D0: the view, the selection, the panels, the music and the sounds); another player's turn
+  out of the viewer's sight: the status window's kind 5 (`AdStatNx.pcx`, `crest58.def`,
+  `HourSand.def`, `HourGlas.def`, 0x453250; design §4.8) with its tile, hint and cursors
+  (0x40DEB0, §4.10); the new day (the date's step, built at M3 T5b2, from its cause), the week's
+  and the month's start and their messages (the adventure's message box, the first of T2's
+  family: its frame, the text through the catalogue, its pictures and buttons, its sounds and
+  place; the week's and month's names are the client's to draw: the engine sends `WeekStarted`
+  and `MonthStarted` with the kind only; a comparison reads the original's from its memory). New
+  sequences recorded in the original (a day's end, a week's and a month's start, the question
+  answered both ways; the inbox's harness changes first: `setup.sh` again).
 - **Acceptance:** the readings in a new `E24-design.md` §5; the new sequences exact on the whole
   screen and `h3map.py drawn` all the same; `clients/scripts/check.sh` all gates; every oddity an
   `MCL-Q<n>`.
-- **Depends on:** T0 (done). **Status:** next (likely cut at its start with the user).
+- **Depends on:** T0 (done). **Status:** in progress (2026-11-16).
+
+### E24 M4 T1b — a computer player's moves in sight
+
+- **Scope:** a computer player's moves where the viewer sees them (the view's scroll to them,
+  their walk at the computer's speed, `enemyMoveTime` in VCMI's terms; read, not assumed; the
+  system options' Computer Walk Speed and Blackout Computer, the client lane's note of
+  2026-11-12), over T1a's kind 5; a new sequence recorded in the original (a computer player's
+  turn in sight).
+- **Acceptance:** as T1a's.
+- **Depends on:** T1a. **Status:** waiting.
 
 ### E24 M4 T2 — a visit's results
 
@@ -50,9 +63,9 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
   the map recorded (MCL-Q14: if the stale mana bar shows, the client shows the slot whole, the
   original's behind `--bugs original`). New sequences recorded in the original, the harness
   giving the answers.
-- **Acceptance:** as T1's.
-- **Depends on:** T0 (independent of T1). **Status:** waiting (likely cut at its start with the
-  user, by dialog family).
+- **Acceptance:** as T1a's.
+- **Depends on:** T1a (its message box; independent of T1b). **Status:** waiting (likely cut at
+  its start with the user, by dialog family).
 
 ### E24 M4 T3 — a record's start
 
@@ -84,7 +97,7 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
   visual moment from its recording; a golden adventure replay as a record viewed to its end, its
   battles skipped to their results until T5.
 - **Acceptance:** the scripted games exact; `drawn` all the same; `check.sh` all gates.
-- **Depends on:** T1, T2, T3. **Status:** waiting.
+- **Depends on:** T1a, T1b, T2, T3. **Status:** waiting.
 
 ### E24 M4 T5 — the battles handed over
 
@@ -105,7 +118,7 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
   T4b2: the transitions sounded unclean; MCL-Q11's `HORSE20` to `HORSE29` listened to for its
   (c)); M4 archived.
 - **Acceptance:** M4's exit (the epic) met; the review list accepted by the user.
-- **Depends on:** T1 to T5. **Status:** waiting.
+- **Depends on:** T1a to T5. **Status:** waiting.
 
 ## Inbox
 
@@ -120,16 +133,6 @@ while the work waits.
   names `CrBanks.txt`'s; kind `Bank(Bank)`, no kind mark). The map import types them from T123b
   (map import v24; until then they import as blockers); the hint's view (not visited, visited,
   the word and the creature by the team's mark) comes with T125a (ADV-BNK-006).
-
-- 2026-11-16 (the client lane, E27 M2 T7b, `client/e27-m2-t7b`; **the foundation's keys, a
-  behaviour change for your table**): `h3_ui::keys` reads Shift chords (`Chord::shift`,
-  `Shift+` after `Ctrl+` in a key file, `Keys::chord_command`; the Shifts refused alone like
-  Control, `keys::SHIFT`), and `h3_sdl::Key` gained `Tab`, `BackSpace`, `Delete`, `LeftShift`
-  and `RightShift`; `Event` is unchanged (the window's text input comes as
-  `Window::typed`, off unless `set_text_input` turns it on). The map window reads no Shift, so a
-  `Shift+` chord in `[map]` now parses but never matches (before: a parse error): read Shift
-  (`h3_sdl::KeyScan::shift` from `Window::scans`) or refuse such chords in your table. The
-  chord parser's error text is unchanged (your test reads it).
 
 - 2026-11-16 (the town lane, E09 T34, `town/e09-t34`; **the capture harness, rebuild `xdd.dll`**): `clients/capture/xdd.c` logs three more sites (`tavern_class`, `tavern_type`, `leave_slot`, with their ranges; `h3drive.LOGGED` grew by three), so a sequence or batch run with an `xdd.dll` built before it fails the count of redirected calls: rebuild it with `clients/capture/setup.sh`. Also new and common: the reads and actions of README "Taverns and the Thieves' Guild" (the tavern dialog, the guild window, a town opened from the town list, a step's `resources`, `mana`, `narrow_pool`, a field `<encounter>|<field>`), and `auto_combat` returns when the battle ended before a human stack's turn (a loss to faster monsters kept pressing `a` until the limit).
 
@@ -159,6 +162,7 @@ while the work waits.
   lobby's `MapGameInfo::spectators` says whether a game takes them. `h3-server` hosts them
   since T22b (2026-11-14, still v66: a paused game is listed taking none and refuses a watch
   `NoSpectators`; a spectator hears the pause, a void and the stop as the seats do). Nothing to build until you want a spectator's screen.
+
 - 2026-11-14 (the server lane, E16 M5 T20, `claude/sweet-gauss-ngra43`; **a protocol version
   taken**): protocol **v65** (after the town lane's E09 T28a's v64): a whole game is void when the server's own
   commands in one of its battles reach `[limits] system_commands_per_battle` (10 000) with the
@@ -167,6 +171,7 @@ while the work waits.
   journal goes to the void, it leaves the lobby; an in-process `GameSession` that is void
   (`GameSession::void`) rejects every command `GameReject::NotStarted {}`. No new message or
   field. Show the goodbye's reason for a whole game too if you show it; nothing else to build.
+
 - 2026-11-14 (the client lane, E27 M2 T3a, `client/e27-m2-t3a`; **for your information, an
   addition to `h3-ui`, nothing changed**): `h3_ui::input` (`Input`, `Held`, `Did`), a dialog's
   press, hold and release of its DEF buttons and DEF pictures (boxes, bars) and its button held by
@@ -174,6 +179,7 @@ while the work waits.
   original's profile (`Bugs::Original`) clicks a picture at a release anywhere, the client's over
   it alone (E27 decision 20, CLT-Q102). The battle's combat options use it; the shell's dialogs
   will. Use it for a dialog of the map's if it fits.
+
 - 2026-11-14 (the server lane, E16 M5 T19, `claude/gracious-maxwell-gu6rjb`; **a protocol
   version taken**): protocol **v63** (after T18's v62), 2b's reviewer's findings:
   `GameReject::WaitingForLevelUp {}` no longer names whose level-up holds the game (SRV-Q31:
@@ -184,6 +190,7 @@ while the work waits.
   computer plays the side at once); the join that starts a game now tells every player its clock
   as it runs (before, the first turn's timer looked stopped until the next reading). Nothing else
   to build.
+
 - 2026-11-14 (the adventure lane, E08 T115b, `adventure/e08-t115b`; **for the bonus visitables'
   hint, nothing to do before it**; design note §10): protocol **v61**: the observation's `kinds`
   (the object types whose kind mark the viewer's team holds, in type order: the hint's bonus line,
@@ -192,6 +199,7 @@ while the work waits.
   Spring's entrances' state); the hero's own once-marks and timed marks in its own view (T115a's
   `bonuses`, `timed`: "visited" or "not visited" for the selected hero). The visits' messages:
   `NothingGained` (`Visited`, `Full`, `Emptied`), `SirensLoss`, `CreaturesUpgraded`.
+
 - 2026-11-13 (the server lane, E16 M5 T15, `server/e16-m5-t15`; **for showing `GameClock`,
   nothing to do before it**): the original's turn timer is read in `docs/epics/E16-timer-survey.md`:
   the warnings' schedule and texts in the adventure screen's chat line (§3: "<SYSTEM>:" with
@@ -259,6 +267,7 @@ while the work waits.
   `GameAnswer::TownOffer` (`possible`, `buildable`, `payable` bit sets). A whole game's start now
   tells a player its town events of the build (day 1's of the first group) in one `GameEvents` after
   its `GameSnapshot`, before its turn (record format **v5**).
+
 - 2026-11-12 (the client lane, E27 M1 T1b3a, `client/e27-m1-t1b3a`; for the adventure screen's
   options, when E24 builds them): the system options (E27's, opened by the adventure screen's
   item 10) set settings that play reads: Walk Speed, Computer Walk Speed and Blackout Computer
@@ -267,6 +276,7 @@ while the work waits.
   screen), the volumes; Autosave has no item (`E27-design.md` §4.5: each one's readers). The
   shell keeps them in the user's `settings.toml` beside the combat options' (*provisional*,
   M4); Load, Main Menu, Quit and Restart end play through the shell's request (§4.3).
+
 - 2026-11-12 (the adventure lane, E08 T113b, `adventure/e08-t113b`; **the nineteen types are
   imported**, for the drawing and the hint): map import v22 types T113a's nineteen (the four
   garrisons by class 33 and 219 and subclass, the fifteen bonus visitables at subclass 0), so
@@ -274,6 +284,7 @@ while the work waits.
   a garrison's army and removable flag are in its setup (`Holds::Garrison`), their view comes
   with T114b (ADV-GAR-006). A shipped map may hold two grounds (or Favorable Winds) of one type
   on one anchor with different pictures (nine on five maps; their `drawn` tiles differ).
+
 - 2026-11-12 (the adventure lane, E08 T113a, `adventure/e08-t113a`, `cross-lane`; **increment
   12's types, for the drawing and the hint**; E08 design note §1 to §3): adventure ruleset part
   v20 adds the garrisons (`base:garrison` 33.0, `base:anti_magic_garrison` 33.1,
@@ -328,6 +339,7 @@ while the work waits.
   M3); where the hot seat's clock (the original ends a human's turn when it runs out) lives is
   yours to place at M5, agreed with E27 M3's T0. A colour's flag in the hot seat passes it to the
   next player, the two swapping (CLT-Q94).
+
 - 2026-11-12 (the client lane, E27 M0, branch `client/e27-m0`; **for your M5**, informational
   until then): E27 (the game shell) is refined (`docs/epics/E27-game-shell.md`). Its scenario
   screen hands a hot-seat game over as the engine's own `h3_game::GameSetup`, filled (CLT-Q79:
@@ -335,6 +347,7 @@ while the work waits.
   map's file) is agreed with you at E27 M3's T0 within the existing crates. The system menu in
   play (save, load, restart, main menu, quit) draws over your adventure screen at E27 M4, agreed
   with you then. The campaign screens moved to E20 (CLT-Q82).
+
 - 2026-11-12 (the client lane, E17 M7 T4, branch `client/e17-m7-t4`; **for your M4 T5 and M5**;
   E17 closes with it): **the hosted battle after M7's review**, design §13.2 to §13.6.
   (1) **The element borrows** its `Ground` and your game (`Prepared<'g>`, `Hosted<'g>`; the
@@ -486,13 +499,6 @@ while the work waits.
   events; what it cannot fold yet is stubbed (`SRV-STUB-1` the tiles a reveal shows, `-2` to
   `-11`, `-14` a battle's last snapshot; the fold's gate, `h3-protocol`'s
   `tests/game_fold.rs`). The 55 golden replays make 26 MB of records, the largest 1.4 MB.
-- 2026-11-10 (the client lane, E17 M6 T7b, branch `client/e17-m6-t7b`; for you to take or
-  leave): `clients/crates/h3-map-view/tests/purity.rs` has two more holes (its reviewer's R11-3),
-  besides the two of T6a's entry below: `dependencies` reads only the `[dependencies]` table, so
-  a `[dependencies.<k>]` or `[target.<cfg>.dependencies]` table goes unchecked, and the deny
-  check matches each lint as a substring (`clippy::panic_in_result_fn` passes for
-  `clippy::panic`). `h3-view`'s and `h3-ui`'s copies have the fix (`parts`, `dependency`,
-  `dependencies`, `names`) and its test lines.
 
 - 2026-11-10 (the adventure lane, E08 T105b2, branch `adventure/e08-t105b2`; **one new command,
   for the space key**): `h3_adventure::AdventureCommand::Revisit { hero }` visits the entered
@@ -508,6 +514,7 @@ while the work waits.
   Hat spares. The jump itself is `HeroTeleported`, the hero in its boat. A boat's step onto a
   Whirlpool's tile is now a visit (it was refused). Nothing to act on before E24 shows a turn's
   moves.
+
 - 2026-11-09 (the adventure lane, E08 T105a1, branch `adventure/e08-t105a1`; **two new events,
   for the views**): `h3_adventure::AdventureEventKind` gains `HeroTeleported { hero, from, to,
   seen_from, seen_to }` (a monolith's or a gate's jump: `HeroStepped`'s fields and projection, a
@@ -516,6 +523,7 @@ while the work waits.
   (a one-way exit or a gate without a pair, the hero's owner's alone: the original's ADVEVENT 70
   for a monolith, 153 for a gate, chosen by the object's kind). The Whirlpool's loss event comes
   with T105a2, the battle at an exit with T105b. Nothing to act on before E24 shows a turn's moves.
+
 - 2026-11-09 (the adventure lane, E08 T104, branch `adventure/e08-t104`; **a refusal, for the
   viewer's map list**): the game's build now refuses a teleporter with a visitable tile off its
   surface (`h3_adventure::SetupError::TeleporterSurface(object index)`, A-42, `ADV-QUIRK-44`): a
@@ -523,6 +531,7 @@ while the work waits.
   the 160 shipped maps is refused; a crafted map the original may load is. The channels and the
   gates' pairs are the static map's (`StaticMap::channels`), the server's alone: never a view's
   (ADR-0016 point 6). Nothing to act on before the jump's events (T105a).
+
 - 2026-11-07 (the adventure lane, E08 T103a, branch `adventure/e08-t103a`; **the teleporters'
   types, for when E24 draws them**): `h3_adventure::ObjectKind` has three new variants,
   `Monolith { channel: u8, way: MonolithWay }` (`Entrance`, `Exit`, `TwoWay`; the original's classes
@@ -531,6 +540,7 @@ while the work waits.
   `base:subterranean_gate`, `base:whirlpool` (adventure ruleset part v18). The import maps the
   classes to them in T103b (map import v21); until then they import as blockers. No view changes:
   a viewer sees the type as for any object (ADV-FOG-004); a jump's events come with T105a.
+
 - 2026-11-07 (the town lane, E09 T14b, branch `town/e09-t14`; the capture harness, informational):
   `h3adv` plays a walk's `actions` on the town screen when it opens (then closes what they left
   open), with the new actions `hall = true` (a click on the shown hall building, items 10 to 13: the
@@ -541,9 +551,11 @@ while the work waits.
   `actions` behaves as before. Learned: the panel's hall picture opens nothing; a map whose players
   are all allies ends at a visit's close (an enemy is needed). The harness check passed after.
   `clients/capture/README.md`, "The hall and the build".
-- 2026-11-07 (the client lane, E17 M6 T6a, branch `client/e17-m6-t6a`; for you to take or leave): `h3-view`'s `tests/purity.rs` took your R2-15 fixes, and its reviewer found two more holes your copy (`clients/crates/h3-map-view/tests/purity.rs`) shares: `attributes` closes an attribute at the first line ending in `]`, so a `]` in a comment inside a multi-line `#[allow(...)]` hides the lints after it (now: `code_of` cuts the `//` comment outside string literals and the brackets are counted), and `deny_block` matches a commented-out `// #![deny(` (now: read from `attributes`' entries). `h3-view`'s copy has both fixes and their tests.
+
 - 2026-11-07 (the adventure lane, E08 T100b, branch `adventure/e08-t100b`; the capture harness, informational): `h3adv` gains a `key` step's `repeat = { most, first, until = { with } }` (the key pressed again and again, a row each: `presses`, `presses:<columns>`, `presses:changed`), a recipe's `[places]` (`hero:place`, `hero:at`), a step `look = "<hero>"` (the view centred by the minimap, nobody selected; its `before:` reads before the scroll), `walk = "off"` (the first open neighbour), `only_if`'s `empty` and `occupied`, and the observations `whirlpools` (`h3mem.whirlpools`: game +0x4E77C's vector, begin and end at +0x4E780), `tile:x0,y0..x1,y1`, `tile:from`, `tile:here`, `tile:hero[<name>]`, `answers`, `selected`, `target`. No behaviour of an existing step changes. Observed: the selected hero is lifted off its tile's record after its move and at its turn's start, and a scroll of the view puts it back (a tile read depends on the last scroll). `clients/capture/README.md`, "Teleporters and Replay Opponent Turn".
+
 - 2026-11-06 (the adventure lane, E08 T100a, branch `adventure/e08-t100a`; the capture harness, informational): `h3adv` gains a step's `replay` (Replay Opponent Turn: the panel's Adventure Options button, the map dialog's item 9; its dialog vtable 0x63A610, item 5; played on the frozen clock, stepped 20 ms, the flag 0x696A04; `dumps = "every"`) and `at_opening` (reads as a step's first battle opens), `only_if = { at = [x, y] }`, `again_if = { marks = "any" }`, and the observations `replay`, `replay:views`, `replay:watched`, `replay:options`, `view:before`, `view:after`, `view:size`, `explored:x0,y0..x1,y1`, `at_opening:`, `battles`, `exchange`, `army:rows`, `hero:in_boat`. Behaviour changes: a `key` step plays what the key brings by the step's `answer`, `battle` and `level_up` (it stopped at a battle before); a skipped step leaves a field another step filled (it wrote "not played" over it). `clients/capture/README.md`, "Teleporters and Replay Opponent Turn".
+
 - 2026-11-06 (the town lane, E09 T8c1 and T8c2, `town/e09-t8c1` (#750, merged) and
   `town/e09-t8c2`; **for the map's towns, when E24 draws them**): the observation carries them.
   `h3_adventure::ObjectView::town: Option<TownId>` links a seen object to its town;
@@ -558,18 +570,8 @@ while the work waits.
   T8c2). What each viewer sees: `docs/06-security.md`, "Towns"; the popup: survey
   `E09-towns.md` §12.3; design note `E09-design.md` §12, §17.
 
-- 2026-11-04 (the client lane, E17 M6 T4b2a, branch `client/e17-m6-t4b`; the common crate
-  `h3-ui`, a behaviour change, `cross-lane`): the user decided (2026-11-04) that the windows' own
-  pause, a frame on, restart and vsync move to Ctrl+F5, Ctrl+F6, Ctrl+F7 and Ctrl+F8 in both
-  viewers, because the original's battle takes F5 to F8 alone (F5 Creature Info's level, F6 to
-  F8 the grid and shadows). `h3_ui::keys::Window` gains `ctrl` and `chord` (the default chord;
-  `key` stays the key's name); `h3_map_view::keys`' defaults take `w.chord()`, its tests and the
-  usage name the new chords (built on that branch). The music, the effects, the cursor's kind,
-  fullscreen and Esc are unchanged; a user's `keys.toml` still overrides any. Informational
-  unless `docs/epics/E24-design.md` §3's keys bullet (F5 pause, F6 the next frame, F7 restart, F8
-  vsync) should say so: the map lane's file.
-
 - 2026-11-04 (the adventure lane, E08 T94a, `adventure/e08-t94a`; **your M4 T0 request (2), for the random dwellings**): a random dwelling not tied to a town (216 to 218) resolves when the game is built (the setup stream, before every other draw of the static map): its `ObjectView::object_type` is the drawn dwelling type, its `anchor` the original's moved one (the type's shift: only the Angel Portal's, 1; it may lie one column past the map's right edge, x == width, where only its free cell is) and `blocked`/`visitable` the type's footprint, its `owner` the map's; nothing tells a viewer it was random. One tied to a town stays an untyped blocker until E09 (ADV-STUB-13).
+
 - 2026-11-03 (the adventure lane, E08 T90, branch `adventure/e08-t90`; the capture harness, informational): `h3adv` and `h3mem` gain the dwellings' records (`dwelling:x,y`, game +0x4E39C), `teams`, `objects:` and `access:` (a rectangle's map objects with class and subclass, its tiles' blocked and visitable bits), `camp:x,y`, the hire dialog as a screen (vtable 0x640C4C; `hire`, `hire:opening`, `hire:after`; actions `click = ["max", "recruit"]`, `amount = <n>`), a step's `hint = [x, y]` and `popup = [x, y]`, `opening:defender`, `ai_turns`. Behaviour change: `end_turn` now waits out a computer player's turn (it returned during it); nothing changes on maps with humans only. `clients/capture/README.md`, "Dwellings, the hire dialog and a computer player's turn".
 
 - 2026-11-03 (the town lane, E09 T3b, branch `town/e09-t3b`; the capture harness, informational
@@ -584,6 +586,7 @@ while the work waits.
   --map` fills the template beside the map when its stamp matches (no cargo build). A town's
   visitor (+0x10) reads −1 while its hero is the selected one. The harness check passed before and
   after. `clients/capture/README.md`, "Towns (E09 T3b)".
+
 - 2026-11-02 (the battle lane, E26 T5; for a computer side in your battles, when you add one):
   call the fair system actor `h3_battle_ai::choose_fair` by default (ADR-0027 point 4 as
   amended; the user, AI-Q10), the all-seeing `choose` only as a game's option.

@@ -138,6 +138,28 @@ impl keys::Command for Command {
     }
 }
 
+/// Every chord of `keys` the map can tell apart (the client lane's E27 M2 T7b note): the map reads
+/// no Shift, as the original's adventure map, whose keys go by their scan code and Ctrl alone
+/// (`adventure_key_down` 0x408C40's modifiers 0xC; the hotkeys by scan code, design §4.13), so a
+/// key with Shift held gives what the key alone gives and a `Shift+` chord, which `h3_ui::keys`
+/// parses, would never match: refused.
+///
+/// # Errors
+/// The first `Shift+` chord, with its command.
+pub fn refuse_shift(table: &Keys) -> Result<(), String> {
+    use keys::Command as _;
+    table
+        .chords()
+        .into_iter()
+        .find(|(_, chord)| chord.shift)
+        .map_or(Ok(()), |(command, chord)| {
+            Err(format!(
+                "`{}`: {chord}: the map reads no Shift (a key with Shift held is the key alone)",
+                command.name()
+            ))
+        })
+}
+
 /// A panel's hotkey's name in a user's file.
 const fn hotkey_name(key: Hotkey) -> &'static str {
     match key {

@@ -173,7 +173,10 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   and in the original compared frame by frame, the original's visual moment (the objects'
   phases, the clock) taken from its recording.
 - **Tasks** (the queue has each in full): T0, M4 refined (**done** 2026-10-31); T1, the turn's
-  change; T2, a visit's results; T3, a record's start (after the server lane's whole-game record
+  change, cut in two by the user at its start (2026-11-16): T1a, the turn's end and the next day
+  (End Turn and its question, another player's turn out of sight, the new day, week and month
+  and their messages: the first message box), T1b, a computer player's moves in sight; T2, a
+  visit's results; T3, a record's start (after the server lane's whole-game record
   and the adventure lane's object identity); T4, a record played; T5, the battles handed over
   (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
   with the user.

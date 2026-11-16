@@ -37,7 +37,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_map_view::damage::{Held, tidy};
-use h3_map_view::keys::{Command, Keys};
+use h3_map_view::keys::{Command, Keys, refuse_shift};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
 use h3_map_view::sound;
@@ -181,6 +181,7 @@ fn load_keys(path: Option<&Path>) -> Result<(Keys, String), String> {
     };
     let known: Vec<&str> = Key::ALL.iter().map(|k| k.name()).collect();
     keys.check(&known).map_err(|e| format!("{from}: {e}"))?;
+    refuse_shift(&keys).map_err(|e| format!("{from}: {e}"))?;
     Ok((keys, from))
 }
 

@@ -241,3 +241,24 @@ fn a_users_file_is_checked() {
         }
     }
 }
+
+#[test]
+fn a_shift_chord_is_refused() {
+    // The map reads no Shift (the client lane's E27 M2 T7b note): the defaults have none, a
+    // user's `Shift+` chord is refused with its command, Ctrl+Shift+ too.
+    assert_eq!(refuse_shift(&Keys::original()), Ok(()));
+    let plain = Keys::with_file("[map]\nend-turn = [\"E\", \"Ctrl+E\"]").unwrap();
+    assert_eq!(refuse_shift(&plain), Ok(()));
+    for (chord, shown) in [("Shift+E", "Shift+E"), ("Ctrl+Shift+E", "Ctrl+Shift+E")] {
+        let text = format!("[map]\nend-turn = [\"E\", \"{chord}\"]");
+        let keys = Keys::with_file(&text).unwrap();
+        assert_eq!(
+            refuse_shift(&keys),
+            Err(format!(
+                "`end-turn`: {shown}: the map reads no Shift (a key with Shift held is the key \
+                 alone)"
+            )),
+            "{chord}"
+        );
+    }
+}

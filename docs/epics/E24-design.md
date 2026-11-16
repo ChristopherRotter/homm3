@@ -1216,11 +1216,14 @@ frames recorded. The first draw differed only at the walks' ends (the late redra
   chords (a key by `h3_sdl::Key`'s name, `Ctrl+` holding either Control key). Defaults: the
   original's eight direction keys (§3.4) for the hero's steps and with Ctrl for the scroll; the
   window's own on the function keys and Esc (F5 pause, F6 the next frame while paused, F7
-  restart, F8 vsync, F11 fullscreen, Esc quit), because the original's map takes the arrows,
-  Home, End and the page keys and nearly every letter (M3's hotkeys), so `h3-view window`'s P,
-  →, Home, F and V would clash there. A chord matches exactly (Ctrl and F5 is not F5). A user's
-  `keys.toml` (`--keys`, else the working directory's) replaces the chords of each command it
-  names; a chord bound twice, an unknown command or key, or Control alone is refused at the start.
+  restart, F8 vsync, F11 fullscreen, Esc quit; pause, a frame on, restart and vsync with Ctrl
+  since E17 M6 T4b2a, the user, 2026-11-04: the original's battle takes F5 to F8 alone), because
+  the original's map takes the arrows, Home, End and the page keys and nearly every letter (M3's
+  hotkeys), so `h3-view window`'s P, →, Home, F and V would clash there. A chord matches exactly
+  (Ctrl and F5 is not F5). A user's `keys.toml` (`--keys`, else the working directory's) replaces
+  the chords of each command it names; a chord bound twice, an unknown command or key, or Control
+  alone is refused at the start, and since E24 M4 T1a a `Shift+` chord (the map reads no Shift,
+  as the original's: `keys::refuse_shift`).
 - **Measured** (the sandbox, Xvfb, scale 1): a frame shows a median 5 to 9 ms after its time, p95
   8 to 11 ms (the software renderer's present; at scale 2, 21 and 35); every frame read back
   exact (log: M2 T4a).
