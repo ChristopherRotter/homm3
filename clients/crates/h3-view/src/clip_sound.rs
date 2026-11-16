@@ -4,9 +4,10 @@
 //!
 //! **The volume** (`docs/epics/E27-design.md` §8, §11): the game plays a Smacker clip in a dialog
 //! at its effects setting (`SmackVolumePan` with 3640 times the setting, 0 to 9, at 0x598CBE).
-//! `SMACKW32.DLL` plays it through the DirectSound buffer Miles lends it (the game's Miles answers
-//! its preference 15 with 0), whose volume it sets from a table of 2000 log10(i / 127) hundredths
-//! of a decibel at `i = min(v, 0x8000) × 127 >> 15` (0x10009DF0): the gain i / 127 (E27 M2 T5b1;
+//! `SMACKW32.DLL` plays it through a DirectSound buffer of its own, made on the DirectSound
+//! object Miles opened (the game's Miles answers its preference 15 with 0; design §11.1), whose
+//! volume it sets from a table of 2000 log10(i / 127) hundredths of a decibel at
+//! `i = min(v, 0x8000) × 127 >> 15` (0x10009DF0): the gain i / 127 (E27 M2 T5b1;
 //! T2's `(min(v, 0x8000) × 1270 / 0x8000 + 5) / 10`, 0x10008110, is the Miles path the probes'
 //! stand-in takes, one higher from the setting 5 on). It never sets a Bink clip's volume (no `BinkSetVolume`; Miles' master volume untouched),
 //! so `BINKW32.DLL`'s Miles sample keeps 127 (0x1000FE4D): the start's clips play at full volume

@@ -1523,7 +1523,8 @@ wine binkprobe.exe cdft 1024 in.f32 out.f32                   # the FFT alone (n
 ### The clips' sound clock
 
 E27 M2 T5b1 (`docs/epics/E27-design.md` §11): with a track `SMACKW32.DLL` times a clip's frames
-by the play cursor of the DirectSound buffer Miles lends it, which Wine moves in real time, so a
+by the play cursor of its own DirectSound buffer (made on the DirectSound object Miles opened:
+design §11.1), which Wine moves in real time, so a
 capture with `sound = true` played a Smacker clip off the frozen clock (a test of the 3DO logo:
 frames at 30, 40, 50 … ms against 350, 420, 490 … silent) until T5b2 put the same device into
 `xdd.dll` (below, "The clips' sound on the game's run"). The probe runs the DLL on a stand-in:

@@ -47,9 +47,10 @@
 //!
 //! **The sound** (E27 M2 T5b1, design §11): with the sound on (a digital driver and the effects
 //! setting above 0: `smacker_open_in_dialog` 0x598AF0 opens a Smacker clip's tracks then, 0x69FE58)
-//! a clip's track plays from its first sample. A Smacker clip's sound goes through the
-//! DirectSound buffer Miles lends `SMACKW32.DLL`, and its frames are then timed by that buffer's
-//! play cursor, not by `SmackWait`'s clock ([`SmackSound`]): frame 0 at once, the buffer's Play at
+//! a clip's track plays from its first sample. A Smacker clip's sound goes through a DirectSound
+//! buffer `SMACKW32.DLL` makes on the DirectSound object Miles opened (design §11.1), and its
+//! frames are then timed by that buffer's play cursor, not by `SmackWait`'s clock
+//! ([`SmackSound`]): frame 0 at once, the buffer's Play at
 //! the DLL's sound service's next run (10 ms of the clock after its last), each later frame once
 //! the bytes played + 8 reach that many frames' sound. A Bink clip's frames keep their clock
 //! (`BinkWait` reads only it); its sound starts when `BINKW32.DLL` loads Miles' first buffer

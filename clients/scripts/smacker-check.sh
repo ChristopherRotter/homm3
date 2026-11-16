@@ -5,8 +5,12 @@
 # when staged) and the synthetic samples of eight seeds with `h3-view video --smacker`, decodes the
 # same files with the DLL under Wine (scripts/smacker-dll.py: smackprobe.exe, 8-bit and 5-6-5),
 # and compares them frame by frame: the colour indices and palettes, and the original's 5-6-5 copy,
-# and (E27 M2 T2) each track's sound as the DLL hands it to Miles (`smackprobe audio` with the
-# stand-in MSS32.DLL; exit 1 on a difference). About 5 minutes after the release build, most of it H3INTRO.SMK
+# (E27 M2 T2) each track's sound as the DLL hands it to Miles (`smackprobe audio` with the
+# stand-in MSS32.DLL), (E27 M2 T5a2) every frame's rectangles as SmackToBufferRect gives them
+# (`smackprobe rects`, the clip at (0, 0) and at (83, 187)) and (E27 M2 T5b1) a clip with a track
+# timed by its sound (`smackprobe wait` on the stand-in DirectSound at each of `h3-view video`'s
+# steps: the volume, the Play, each frame and the close); exit 1 on a difference. About 5 minutes
+# after the release build, most of it H3INTRO.SMK
 # (2 426 frames, decoded by the DLL twice); about 5 GB written (H3INTRO's 16-bit frames alone 1.1 GB
 # each side): delete clients/out/smacker after a run in a small sandbox.
 #
@@ -14,7 +18,8 @@
 #
 # Needs the capture harness's run directory and Wine prefix (clients/capture/setup.sh, the
 # original data staged: SMACKW32.DLL, smackprobe.exe). Writes into clients/out/smacker
-# (gitignored): the files, ours (<stem>.pal8, <stem>.565) and the DLL's (dll/<stem>.*).
+# (gitignored): the files, ours (<stem>.pal8, <stem>.565, <stem>.t<k>.pcm, <stem>.rects,
+# <stem>.shifted.rects, <stem>.wait<step>) and the DLL's (dll/<stem>.*, the same names).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
