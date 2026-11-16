@@ -176,6 +176,22 @@
 //! # stables = { points = 400, from = "cavalier", to = "champion" } # points from 1; two
 //! #                                # distinct core creatures, neither a war machine
 //! # sirens = { mark = 13, keep = [7, 10] } # the part of a count kept, numerator <= denominator
+//! # E08 T123a, increment 13's creature banks (ADV-BNK-001), as a sub-table after the type's keys:
+//! # [object_type.bank]
+//! # question = "attack"            # or "search" (the question first, the team's mark after)
+//! # levels = [                     # one to four, each an inline table on one line, the chances
+//! #     { chance = 100, guards = [{ creature = "imp", count = 10 }], resources = { gold = 500 } },
+//! # ]                              # (percent, each from 1) adding up to 100; guards: one to
+//! #                                # four distinct creatures, no war machine, counts from 1,
+//! #                                # unsplit; optional: upgrade = 50 (percent, 0 to 100),
+//! #                                # resources (none if left out), creature = { creature =
+//! #                                # "angel", count = 1 } (count 1 to 127), artifacts =
+//! #                                # { treasure = 1, minor = 0, major = 0, relic = 2 } (by
+//! #                                # class, each 0 to 255, 0 if left out)
+//! # looted = { morale = -1, mark = 14 } # a search's only: a looted one's once-bonus
+//! # deck = true                    # its battle on the sea terrain's deck (false if left out)
+//! # coast = true                   # visit = "neighbour" only: its water entrance visited from the
+//! #                                # coast (false if left out)
 //! # kind_mark = true               # on the type, beside `from_above` (false if left out): its
 //! #                                # visit sets the visitor's team's kind mark (ADV-BON-009)
 //!
@@ -203,11 +219,12 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 
 use h3_adventure::{
-    AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef,
-    CalendarParams, ChestDef, DWELLING_LEVELS, DwellingParams, FindContentDef, FindDef, GiftDef,
-    Gives, MonolithWay, MonsterParamsDef, MonthParamsDef, ObjectKindDef, ObjectTypeDef, OnceBonus,
-    Passage, PickupDef, PrimarySkill, PyramidDef, RandomDwellingDef, RiverDef, RoadDef,
-    StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef, TurnDef, Visit,
+    AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, BankDef,
+    BankLevelDef, BankQuestion, BattleTerrainsDef, CalendarParams, ChestDef, DWELLING_LEVELS,
+    DwellingParams, FindContentDef, FindDef, GiftDef, Gives, MonolithWay, MonsterParamsDef,
+    MonthParamsDef, ObjectKindDef, ObjectTypeDef, OnceBonus, Passage, PickupDef, PrimarySkill,
+    PyramidDef, RandomDwellingDef, RiverDef, RoadDef, StartingResourcesDef, TerrainMovementDef,
+    TerrainWalkerDef, TurnDef, Visit,
 };
 use h3_content::{ArtifactClass, ContentKey, KeyError, PackManifest, Ruleset};
 use h3_pack::PackError;
@@ -497,6 +514,7 @@ struct ObjectTypeDto {
     magic_spring: Option<EmptyDto>,
     stables: Option<StablesDto>,
     sirens: Option<SirensDto>,
+    bank: Option<BankDto>,
 }
 
 #[derive(Deserialize)]
@@ -559,6 +577,53 @@ struct StablesDto {
 struct SirensDto {
     mark: u8,
     keep: [u32; 2],
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BankDto {
+    question: QuestionDto,
+    levels: Vec<BankLevelDto>,
+    looted: Option<BonusDto>,
+    #[serde(default)]
+    deck: bool,
+    #[serde(default)]
+    coast: bool,
+}
+
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+enum QuestionDto {
+    Attack,
+    Search,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BankLevelDto {
+    chance: u8,
+    guards: Vec<GuardDto>,
+    #[serde(default)]
+    upgrade: u8,
+    #[serde(default)]
+    resources: BTreeMap<String, u32>,
+    creature: Option<GuardDto>,
+    #[serde(default)]
+    artifacts: BankArtifactsDto,
+}
+
+/// A bank level's artifacts by class, each 0 if left out.
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+struct BankArtifactsDto {
+    #[serde(default)]
+    treasure: u8,
+    #[serde(default)]
+    minor: u8,
+    #[serde(default)]
+    major: u8,
+    #[serde(default)]
+    relic: u8,
 }
 
 #[derive(Deserialize)]
@@ -1184,6 +1249,37 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
         mark: s.mark,
         keep: (s.keep[0], s.keep[1]),
     }));
+    if let Some(b) = t.bank {
+        let mut levels = Vec::with_capacity(b.levels.len());
+        for l in b.levels {
+            let a = l.artifacts;
+            levels.push(BankLevelDef {
+                chance: l.chance,
+                guards: l
+                    .guards
+                    .iter()
+                    .map(|g| Ok((reference(pack, &g.creature)?, g.count)))
+                    .collect::<Result<_, KeyError>>()?,
+                upgrade: l.upgrade,
+                resources: amounts(l.resources)?,
+                creature: l
+                    .creature
+                    .map(|c| Ok::<_, KeyError>((reference(pack, &c.creature)?, c.count)))
+                    .transpose()?,
+                artifacts: [a.treasure, a.minor, a.major, a.relic],
+            });
+        }
+        kinds.push(ObjectKindDef::Bank(BankDef {
+            question: match b.question {
+                QuestionDto::Attack => BankQuestion::Attack,
+                QuestionDto::Search => BankQuestion::Search,
+            },
+            levels,
+            looted: b.looted.map(OnceBonus::from),
+            deck: b.deck,
+            coast: b.coast,
+        }));
+    }
     let [kind] = <[ObjectKindDef; 1]>::try_from(kinds)
         .map_err(|_| AdventurePackError::ObjectKind(t.id.clone()))?;
     Ok(ObjectTypeDef {

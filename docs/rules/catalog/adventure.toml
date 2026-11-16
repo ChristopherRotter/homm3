@@ -3990,3 +3990,34 @@ numeric  = "integer"
   ref        = "experiments/results/E08-batch-12b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-12; survey E08-garrisons-bonuses.md section 15): E12-16 (the bonus line after a visit), E12-17 (the School's kind mark set before the gold test)"
   retrieved  = "2026-11-12"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-BNK-001"
+title    = "The creature banks' kind"
+context  = "adventure"
+status   = "verified"
+summary  = "One kind, `bank`, for the eleven creature banks (increment 13's design note sections 1 and 2; E08 T123a, adventure ruleset part v21), none ownable or weekly, none with a kind mark: its question, `attack` (the team's mark at once, then the question unless looted: class 16's seven kinds and Dragon Utopia) or `search` (the question first, looted or not, the mark after a yes: the Crypt, the Shipwreck and the Derelict Ship); one to four levels in the table's order, each with its chance in percent (each from 1, together 100), its guards before the split (one to four distinct creatures, none a war machine, each count from 1 to the part's `max_stack_count`, every level's stacks after the split within the army's slots: five for one to three named stacks, else the four), its upgrade chance (0 to 100), the resources a win gives (distinct, each from 1), the reward's creature and count (none, or 1 to 127, no war machine) and its artifact counts by class (treasure, minor, major, relic, each 0 to 255); a search kind's looted once-bonus (-1 morale under the marks 14 to 16, part C section 12; only a search's); whether its battle is fought on the sea terrain's deck; whether its water entrance is reached from the coast (only on a type visited from a neighbour). The base pack holds the eleven in the original's kind order (class 16 subclasses 0 to 6, then 85, 24, 84, 25), their levels CrBanks.txt's records and the executable's creature tables (D-65 the original: the Imp Cache's level 1 with 2 mercury, the Naga Bank's sulfur); the Shipwreck visited from a neighbour and from above, the ten others entered and not from above (the original's class lists, the design note's correction). A seventh check against the original data (`h3-pack-adventure`'s `original_data`) compares every type with CrBanks.txt and the executable. The import (class 16 by subclass, 85, 24, 84, 25) comes with T123b; until T124b a step onto a bank is refused as any unbuilt visit's."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "CrBanks.txt (H3ab_bmp and H3bitmap hold the same file; survey E08-banks.md section 2): the eleven kinds' four records each (the chance column 2, the guard counts columns 3, 6, 8, 10, the upgrade chance column 5, the resources columns 13 to 19, the reward count column 20, the artifacts columns 22 to 25)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-banks.md sections 1 to 5): crbanks_load 0x47AB30, bank_guard_creatures 0x6702A0, bank_reward_creatures 0x67037C, creature_bank_kinds 0x695038; visit_creature_bank 0x4A15A0, visit_dragon_utopia 0x4A2140, visit_search_bank 0x4AC490 (the two questions, the status bits 9 to 11); the ship flag +0x53C6 by class for 24 and 85; object_classes_not_entered 0x63AA58 (85), object_classes_from_above 0x63AB00 (85)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/creatureBanks.json (VCMI 1.7.5; survey E08-banks.md section 8): the eleven banks' levels, blockedVisitable and coastVisitable on the Shipwreck alone"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/creatureBanks.json"
+  retrieved  = "2026-11-15"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-13.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-16; survey E08-banks.md section 14): E13-1 (the 27 banks' records, each a level of CrBanks.txt's; D-65), the hero standing on the entered banks' entrances (E13-2, E13-11) and visiting the Shipwreck from the coast (E13-5, E13-12)"
+  retrieved  = "2026-11-16"
+  confidence = "high"

@@ -1920,6 +1920,215 @@ from_above = false
 kind_mark = true
 bonus = { mark = 6, morale = 1, points = 400 }
 
+# ADV-BNK-001 (E08 T123a, increment 13's design note sections 1 and 2; survey E08-banks.md
+# sections 1, 2 and 4): the eleven creature banks, one type each, in the original's kind order k 0
+# to 10 (creature_bank_kinds 0x695038: class 16 by subclass 0 to 6, then 85, 24, 84 and 25; no
+# body in the file), all on RoE-format maps. Names: CrBanks.txt's kind records' column 0 (AB's
+# H3ab_bmp; H3bitmap's is the same file). The levels are CrBanks.txt's four records a kind (record
+# 2 + 4k + l; crbanks_load 0x47AB30): the chance (column 2; every kind 30, 30, 30, 10), the guards'
+# counts unsplit (columns 3, 6, 8, 10; a 0 no stack), the upgrade chance (column 5), the resources
+# (columns 13 to 19), the reward creature's count (column 20; 0 none) and the artifacts by class
+# (columns 22 to 25); the creatures are the executable's (bank_guard_creatures 0x6702A0, five a
+# kind, by position; bank_reward_creatures 0x67037C), by the core's original ids (the text's
+# plurals are not our names). D-65 the original (E08 decision 336, E13-1, E13-10). Visited from a
+# neighbour the Shipwreck alone, also from above (object_classes_not_entered 0x63AA58,
+# object_classes_from_above 0x63AB00); the ten others entered, the hero standing on the entrance
+# (the design note's correction; E13-2, E13-11). The question: attack for class 16 and Dragon
+# Utopia (visit_creature_bank 0x4A15A0, visit_dragon_utopia 0x4A2140), search for the Crypt and the
+# two sea banks (visit_search_bank 0x4AC490), whose looted search gives -1 morale under the marks
+# 14 to 16 (the status bits 9 to 11, design note part C section 12). The sea banks fight on the
+# deck (the ship flag +0x53C6, by class). No kind mark (kinds_visited holds no bank; the hint reads
+# the tile's team bits). The split, the upgrade's slot and the draws are code (ADV-BNK-002); their
+# visits come with T124b.
+#
+# Cyclops Stockpile (class 16 subclass 0, k 0): Cyclopes; the six resources but gold.
+[[object_type]]
+id = "cyclops_stockpile"
+name = "Cyclops Stockpile"
+visit = "enter"
+from_above = false
+
+[object_type.bank]
+question = "attack"
+levels = [
+    { chance = 30, guards = [{ creature = "cyclops", count = 20 }], upgrade = 50, resources = { wood = 4, mercury = 4, ore = 4, sulfur = 4, crystal = 4, gems = 4 } },
+    { chance = 30, guards = [{ creature = "cyclops", count = 30 }], upgrade = 50, resources = { wood = 6, mercury = 6, ore = 6, sulfur = 6, crystal = 6, gems = 6 } },
+    { chance = 30, guards = [{ creature = "cyclops", count = 40 }], upgrade = 50, resources = { wood = 8, mercury = 8, ore = 8, sulfur = 8, crystal = 8, gems = 8 } },
+    { chance = 10, guards = [{ creature = "cyclops", count = 50 }], upgrade = 50, resources = { wood = 10, mercury = 10, ore = 10, sulfur = 10, crystal = 10, gems = 10 } },
+]
+
+# Dwarven Treasury (class 16 subclass 1, k 1): Dwarves; crystal and gold.
+[[object_type]]
+id = "dwarven_treasury"
+name = "Dwarven Treasury"
+visit = "enter"
+from_above = false
+
+[object_type.bank]
+question = "attack"
+levels = [
+    { chance = 30, guards = [{ creature = "dwarf", count = 50 }], upgrade = 50, resources = { crystal = 2, gold = 2500 } },
+    { chance = 30, guards = [{ creature = "dwarf", count = 75 }], upgrade = 50, resources = { crystal = 3, gold = 4000 } },
+    { chance = 30, guards = [{ creature = "dwarf", count = 100 }], upgrade = 50, resources = { crystal = 5, gold = 5000 } },
+    { chance = 10, guards = [{ creature = "dwarf", count = 150 }], upgrade = 50, resources = { crystal = 10, gold = 7500 } },
+]
+
+# Griffin Conservatory (class 16 subclass 2, k 2): Griffins; Angels (bank_reward_creatures 12).
+[[object_type]]
+id = "griffin_conservatory"
+name = "Griffin Conservatory"
+visit = "enter"
+from_above = false
+
+[object_type.bank]
+question = "attack"
+levels = [
+    { chance = 30, guards = [{ creature = "griffin", count = 50 }], upgrade = 50, creature = { creature = "angel", count = 1 } },
+    { chance = 30, guards = [{ creature = "griffin", count = 100 }], upgrade = 50, creature = { creature = "angel", count = 2 } },
+    { chance = 30, guards = [{ creature = "griffin", count = 150 }], upgrade = 50, creature = { creature = "angel", count = 3 } },
+    { chance = 10, guards = [{ creature = "griffin", count = 200 }], upgrade = 50, creature = { creature = "angel", count = 4 } },
+]
+
+# Imp Cache (class 16 subclass 3, k 3): Imps; mercury and gold (level 1's 2 mercury, D-65).
+[[object_type]]
+id = "imp_cache"
+name = "Imp Cache"
+visit = "enter"
+from_above = false
+
+[object_type.bank]
+question = "attack"
+levels = [
+    { chance = 30, guards = [{ creature = "imp", count = 100 }], upgrade = 50, resources = { mercury = 2, gold = 1000 } },
+    { chance = 30, guards = [{ creature = "imp", count = 150 }], upgrade = 50, resources = { mercury = 3, gold = 1500 } },
+    { chance = 30, guards = [{ creature = "imp", count = 200 }], upgrade = 50, resources = { mercury = 4, gold = 2000 } },
+    { chance = 10, guards = [{ creature = "imp", count = 300 }], upgrade = 50, resources = { mercury = 6, gold = 3000 } },
+]
+
+# Medusa Stores (class 16 subclass 4, k 4): Medusae; sulfur and gold.
+[[object_type]]
+id = "medusa_stores"
+name = "Medusa Stores"
+visit = "enter"
+from_above = false
+
+[object_type.bank]
+question = "attack"
+levels = [
+    { chance = 30, guards = [{ creature = "medusa", count = 20 }], upgrade = 50, resources = { sulfur = 5, gold = 2000 } },
+    { chance = 30, guards = [{ creature = "medusa", count = 30 }], upgrade = 50, resources = { sulfur = 6, gold = 3000 } },
+    { chance = 30, guards = [{ creature = "medusa", count = 40 }], upgrade = 50, resources = { sulfur = 8, gold = 4000 } },
+    { chance = 10, guards = [{ creature = "medusa", count = 50 }], upgrade = 50, resources = { sulfur = 10, gold = 5000 } },
+]
+
+# Naga Bank (class 16 subclass 5, k 5): Nagas; sulfur and gold (column 16, D-65).
+[[object_type]]
+id = "naga_bank"
+name = "Naga Bank"
+visit = "enter"
+from_above = false
+
+[object_type.bank]
+question = "attack"
+levels = [
+    { chance = 30, guards = [{ creature = "naga", count = 10 }], upgrade = 50, resources = { sulfur = 8, gold = 4000 } },
+    { chance = 30, guards = [{ creature = "naga", count = 15 }], upgrade = 50, resources = { sulfur = 12, gold = 6000 } },
+    { chance = 30, guards = [{ creature = "naga", count = 20 }], upgrade = 50, resources = { sulfur = 16, gold = 8000 } },
+    { chance = 10, guards = [{ creature = "naga", count = 30 }], upgrade = 50, resources = { sulfur = 24, gold = 12000 } },
+]
+
+# Dragon Fly Hive (class 16 subclass 6, k 6): Dragon Flies, already the upgraded fly (105), so
+# its 50 % never changes them (survey section 3); Wyverns (bank_reward_creatures 108).
+[[object_type]]
+id = "dragon_fly_hive"
+name = "Dragon Fly Hive"
+visit = "enter"
+from_above = false
+
+[object_type.bank]
+question = "attack"
+levels = [
+    { chance = 30, guards = [{ creature = "dragon_fly", count = 30 }], upgrade = 50, creature = { creature = "wyvern", count = 4 } },
+    { chance = 30, guards = [{ creature = "dragon_fly", count = 45 }], upgrade = 50, creature = { creature = "wyvern", count = 6 } },
+    { chance = 30, guards = [{ creature = "dragon_fly", count = 60 }], upgrade = 50, creature = { creature = "wyvern", count = 8 } },
+    { chance = 10, guards = [{ creature = "dragon_fly", count = 90 }], upgrade = 50, creature = { creature = "wyvern", count = 12 } },
+]
+
+# Shipwreck (class 85, k 7): Wights; gold, a treasure at level 3, a minor at 4. Visited from a
+# neighbour and from above, its water entrance from the coast (E13-5, E13-12); a search, looted
+# -1 morale under mark 14 (status bit 9); fought on the deck.
+[[object_type]]
+id = "shipwreck"
+name = "Shipwreck"
+visit = "neighbour"
+from_above = true
+
+[object_type.bank]
+question = "search"
+levels = [
+    { chance = 30, guards = [{ creature = "wight", count = 10 }], resources = { gold = 2000 } },
+    { chance = 30, guards = [{ creature = "wight", count = 15 }], resources = { gold = 3000 } },
+    { chance = 30, guards = [{ creature = "wight", count = 25 }], resources = { gold = 4000 }, artifacts = { treasure = 1 } },
+    { chance = 10, guards = [{ creature = "wight", count = 50 }], resources = { gold = 5000 }, artifacts = { minor = 1 } },
+]
+looted = { morale = -1, mark = 14 }
+deck = true
+coast = true
+
+# Derelict Ship (class 24, k 8): Water Elementals; gold, a treasure at levels 2 and 3, a minor at
+# 4. A search, looted -1 morale under mark 16 (status bit 11); fought on the deck (E13-5b).
+[[object_type]]
+id = "derelict_ship"
+name = "Derelict Ship"
+visit = "enter"
+from_above = false
+
+[object_type.bank]
+question = "search"
+levels = [
+    { chance = 30, guards = [{ creature = "water_elemental", count = 20 }], resources = { gold = 3000 } },
+    { chance = 30, guards = [{ creature = "water_elemental", count = 30 }], resources = { gold = 3000 }, artifacts = { treasure = 1 } },
+    { chance = 30, guards = [{ creature = "water_elemental", count = 40 }], resources = { gold = 4000 }, artifacts = { treasure = 1 } },
+    { chance = 10, guards = [{ creature = "water_elemental", count = 60 }], resources = { gold = 6000 }, artifacts = { minor = 1 } },
+]
+looted = { morale = -1, mark = 16 }
+deck = true
+
+# Crypt (class 84, k 9): Skeletons, Walking Dead, Wights, Vampires; gold, a treasure at levels 3
+# and 4. A search, looted -1 morale under mark 15 (status bit 10; E13-8).
+[[object_type]]
+id = "crypt"
+name = "Crypt"
+visit = "enter"
+from_above = false
+
+[object_type.bank]
+question = "search"
+levels = [
+    { chance = 30, guards = [{ creature = "skeleton", count = 30 }, { creature = "walking_dead", count = 20 }], resources = { gold = 1500 } },
+    { chance = 30, guards = [{ creature = "skeleton", count = 25 }, { creature = "walking_dead", count = 20 }, { creature = "wight", count = 5 }], resources = { gold = 2000 } },
+    { chance = 30, guards = [{ creature = "skeleton", count = 20 }, { creature = "walking_dead", count = 20 }, { creature = "wight", count = 10 }, { creature = "vampire", count = 5 }], resources = { gold = 2500 }, artifacts = { treasure = 1 } },
+    { chance = 10, guards = [{ creature = "skeleton", count = 20 }, { creature = "walking_dead", count = 20 }, { creature = "wight", count = 10 }, { creature = "vampire", count = 10 }], resources = { gold = 5000 }, artifacts = { treasure = 1 } },
+]
+looted = { morale = -1, mark = 15 }
+
+# Dragon Utopia (class 25, k 10): Green, Red, Gold and Black Dragons; gold and the four classes'
+# artifacts, relics first when drawn (D-68, E13-7).
+[[object_type]]
+id = "dragon_utopia"
+name = "Dragon Utopia"
+visit = "enter"
+from_above = false
+
+[object_type.bank]
+question = "attack"
+levels = [
+    { chance = 30, guards = [{ creature = "green_dragon", count = 8 }, { creature = "red_dragon", count = 5 }, { creature = "gold_dragon", count = 2 }, { creature = "black_dragon", count = 1 }], resources = { gold = 20000 }, artifacts = { treasure = 1, minor = 1, major = 1, relic = 1 } },
+    { chance = 30, guards = [{ creature = "green_dragon", count = 8 }, { creature = "red_dragon", count = 6 }, { creature = "gold_dragon", count = 3 }, { creature = "black_dragon", count = 2 }], resources = { gold = 30000 }, artifacts = { minor = 1, major = 1, relic = 2 } },
+    { chance = 30, guards = [{ creature = "green_dragon", count = 8 }, { creature = "red_dragon", count = 6 }, { creature = "gold_dragon", count = 4 }, { creature = "black_dragon", count = 3 }], resources = { gold = 40000 }, artifacts = { major = 1, relic = 3 } },
+    { chance = 10, guards = [{ creature = "green_dragon", count = 8 }, { creature = "red_dragon", count = 7 }, { creature = "gold_dragon", count = 6 }, { creature = "black_dragon", count = 5 }], resources = { gold = 50000 }, artifacts = { relic = 4 } },
+]
+
 # ADV-DWL-005 (E08 T93a, increment 10's design note section 2): what a random dwelling of level n
 # of the faction becomes. The original derives it (random_dwellings_resolve 0x502B60 steps 3 and
 # 4; survey E08-dwellings.md section 3.2): town_creatures 0x6747B4[faction x 14 + level], the

@@ -17,6 +17,7 @@ use h3_content::{
 };
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
+use super::banks::{Bank, BankDef, check_bank, compile_bank};
 use super::rewards::{
     Chest, ChestDef, Find, FindDef, Gift, GiftDef, Pyramid, PyramidDef, Resources, check_pyramid,
     compile_artifact_classes, compile_chest, compile_find, compile_gift, compile_pyramid,
@@ -406,6 +407,12 @@ pub enum ObjectKind {
         /// the numerator at most it (the original's 0.7 as 7 / 10, design note §9).
         keep: (u32, u32),
     },
+    /// A creature bank (E08 T123a, increment 13's design note §1; ADV-BNK-001, the original's
+    /// class 16 by subclass 0 to 6, the Shipwreck 85, the Derelict Ship 24, the Crypt 84 and
+    /// Dragon Utopia 25): its question, its levels, a looted search's bonus, the deck and the
+    /// coast. Drawn when the game is built, visited, fought and rewarded from T124b
+    /// (ADV-BNK-002 to -005).
+    Bank(Bank),
 }
 
 /// How long a hero holds a timed mark (E08 T115a; increment 12's design note §12.4): the
@@ -646,12 +653,15 @@ impl ObjectKind {
             // typed; the monoliths' and the gates' jump came with T105a1 (increment 11's design
             // note §7), the Whirlpool's with T105a2 (its loss first, note §8). E08 T113a:
             // increment 12's seven kinds are typed; the garrisons' visits came with T114a1, the
-            // bonus visitables' with T115b (increment 12's design note §8, §9).
+            // bonus visitables' with T115b (increment 12's design note §8, §9). E08 T123a: the
+            // creature banks are typed; their visit comes with T124b (increment 13's design note
+            // §6).
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
             | Self::Hole
-            | Self::RandomDwelling => None,
+            | Self::RandomDwelling
+            | Self::Bank(_) => None,
         }
     }
 
@@ -1045,6 +1055,9 @@ pub enum ObjectKindDef {
         /// The part kept, (numerator, denominator).
         keep: (u32, u32),
     },
+    /// [`ObjectKind::Bank`] (E08 T123a): its checks [`BankDef`]'s; `coast` only on a type
+    /// visited from a neighbour.
+    Bank(BankDef),
 }
 
 /// An object type as a pack defines it.
@@ -1227,6 +1240,13 @@ pub(super) fn compile_object_types(
         {
             return Err(invalid("a teleporter is not entered"));
         }
+        // A bank's coast is a water entrance reached from the land beside it (E08 T123a,
+        // increment 13's design note §1, §9: the Shipwreck, class 85, the one bank on the
+        // original's `object_classes_not_entered` 0x63AA58).
+        // rule: ADV-BNK-001
+        if matches!(&kind, ObjectKind::Bank(bank) if bank.coast) && def.visit != Visit::Neighbour {
+            return Err(invalid("a bank's coast is not a neighbour-visited one's"));
+        }
         tables.types.push(ObjectType {
             key: def.key.clone(),
             name: def.name.clone(),
@@ -1245,7 +1265,9 @@ pub(super) fn compile_object_types(
 /// produce one resource, that with an abandoned mine every core resource has its mine (its daily
 /// amount, [`super::AdventureRuleset::mine_daily`]) and that its guards fit a stack; since E08
 /// T93a that a Refugee Camp has a creature to draw, as a random monster; since E08 T113a that a
-/// week has no day a bonus's days do not name (its seven, increment 12's design note §2).
+/// week has no day a bonus's days do not name (its seven, increment 12's design note §2); since
+/// E08 T123a that a creature bank's guards fit a stack and, split, the army
+/// ([`super::banks::check_bank`]).
 // rule: ADV-MIN-001
 pub(super) fn check_object_types(
     core: &Ruleset,
@@ -1296,6 +1318,10 @@ pub(super) fn check_object_types(
                     reason,
                 }
             })?;
+        }
+        // rule: ADV-BNK-001
+        if let ObjectKind::Bank(bank) = &ty.kind {
+            check_bank(bank, army_slots, max_stack_count).map_err(|reason| invalid(ty, reason))?;
         }
         if let ObjectKind::Monster {
             levels: Some(levels),
@@ -1824,6 +1850,7 @@ fn compile_kind(
                 })
             }
         }
+        ObjectKindDef::Bank(def) => compile_bank(scope, def)?.map(ObjectKind::Bank),
     })
 }
 
@@ -1928,7 +1955,8 @@ impl CanonicalHash for ObjectType {
     /// abandoned mine, 25 Lighthouse, 26 Shipyard, 27 Windmill, 28 Water Wheel, 29 Garden; since
     /// part v16 30 dwelling, 31 random dwelling, 32 Refugee Camp; since part v17 33 town; since
     /// part v18 34 monolith, 35 Subterranean Gate, 36 Whirlpool; since part v20 37 garrison, 38
-    /// bonus, 39 Fountain of Fortune, 40 Magic Well, 41 Magic Spring, 42 Stables, 43 Sirens) and
+    /// bonus, 39 Fountain of Fortune, 40 Magic Well, 41 Magic Spring, 42 Stables, 43 Sirens; since
+    /// part v21 44 creature bank) and
     /// parameters (a pickup's own tag, 0 resource, 1 one of, 2 paired, then its fields in order; a
     /// monster's levels as 0 for none, else 1, low, high; a ground's battlefield key, since part
     /// v10 whether it takes the native price away; an artifact's classes as 0 for none, else 1
@@ -1941,7 +1969,7 @@ impl CanonicalHash for ObjectType {
     /// 1 exit, 2 two-way; a Whirlpool's divisor; a garrison's anti-magic flag; a bonus's mark, its
     /// seven days' morale and luck, its points and drain; a Fountain of Fortune's mark and values
     /// as length and each; a Stables' points and creatures; a Sirens' mark and keep as numerator
-    /// and denominator; the others' fields in order).
+    /// and denominator; a creature bank's as [`Bank`]'s hash says; the others' fields in order).
     fn hash_into(&self, h: &mut StateHasher) {
         self.key.as_str().hash_into(h);
         self.name.as_str().hash_into(h);
@@ -2200,6 +2228,10 @@ impl CanonicalHash for ObjectType {
                 h.write_u8(*mark);
                 h.write_u32(*numerator);
                 h.write_u32(*denominator);
+            }
+            ObjectKind::Bank(bank) => {
+                h.write_u8(44);
+                bank.hash_into(h);
             }
         }
     }
