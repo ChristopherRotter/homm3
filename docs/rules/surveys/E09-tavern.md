@@ -407,3 +407,27 @@ decisions 103 to 107, each as recommended:
   stack is a creature); the SoD edition's Conflux rule (§2.2) to E11 as a lead (the battle lane's
   inbox); batch TWN-4's rows (§9) for T33's cut, run as TWN-1 to TWN-3 were.
 
+
+## 12. The dismissal (read by T33a, 2026-11-16; decision 112)
+
+The hero screen's button 129 dismisses (its result 0x81: `hero_leave_game` 0x4D9EC0 with (1, 0),
+0x4E19C2; a lost hero's path, §4, without bit 17). `hero_screen_refresh` 0x4E1A50 enables it
+(0x4E1C2B) unless:
+
+- the caller passed its flag (`hero_screen_no_dismiss` 0x698A90 from `hero_screen_show`'s edx):
+  the town screen (the visitor's and the garrison hero's portraits, `town_garrison_click`
+  0x5D4EBF, 0x5D4F13) and the tavern dialog (an offer's screen, 0x5D7D7D) pass 1, so a garrison
+  hero, off the player's list, is never dismissed;
+- the hero stands on a town's entrance, its visitor (0x4E1A6B to 0x4E1A7A: the tile's kept class
+  98 with its entrance bit);
+- `hero_mission_critical` 0x5F2A40 holds: the loss condition "lose this hero" names its type, or
+  a campaign's scenario keeps it (out of scope);
+- the screen is view-only (`hero_screen_view_only` 0x6AA9D8);
+- the player owns no town (player +0x3E) and has one hero on the map (+0x1).
+
+The dialog asks first (GENRLTXT 23; presentation). Nothing on this path strips the hero's
+artifacts (T-14, decision 105). VCMI 1.7.5 (`CHeroWindow::update`) blocks the button for a
+player's one hero without a town, a mission-critical hero and a garrison held in an exchange
+window; it does not test a town's visitor (a dispute only of the button: TD-22 noted, recommended
+the reading). The other callers of `hero_screen_show` (the adventure map's hero list and its
+selected hero, the exchange) not read for their flag.
