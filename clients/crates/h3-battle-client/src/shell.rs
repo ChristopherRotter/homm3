@@ -15,10 +15,11 @@
 //! - **In a window** (T4: `--window`): the built screens drawn (`h3_view::shell::look`), the
 //!   others black until their task, the cursor the shell's arrow; the words still read from
 //!   standard input. Closing the window ends it. The main menu takes the mouse and its hotkeys
-//!   (T6a: `h3_view::shell::menu`, the key table `h3_view::shell::keys`), New Game's and Load
-//!   Game's menus theirs (T6b1), each press playing its sample (`button.wav`); the music
-//!   (`MAINMENU.MP3`, looping) is asked for as each menu opens, as `main_menu_run` and
-//!   `game_type_menu_run` ask for it (the track playing goes on).
+//!   (T6a: `h3_view::shell::menu`, the key table `h3_view::shell::keys`; since M2's review the
+//!   user's file over it as the battle window's, `--keys`, else `keys.toml` here: its `[shell]`),
+//!   New Game's and Load Game's menus theirs (T6b1), each press playing its sample
+//!   (`button.wav`); the music (`MAINMENU.MP3`, looping) is asked for as each menu opens, as
+//!   `main_menu_run` and `game_type_menu_run` ask for it (the track playing goes on).
 //!
 //! `--no-intro` starts at the main menu (the setting `Show Intro` off); else the start's clips
 //! play first (T5a: `h3_view::shell::start`, read from the video archives, `introrim.pcx` from the
@@ -29,15 +30,16 @@
 //! before it (CLT-Q130 (a), `Start::keeps_input`).
 //!
 //! **The sound** (E27 M2 T5b1): `--effects <0..9>` is the effects setting (the window's default
-//! 5, the game's; the replay's 0, the harness's silent runs). Above 0, with a sound device (the
-//! window's) or none needed (the replay), the clips play with their sound: a Smacker clip's frames
-//! then follow it (`h3_view::shell::start::SmackSound`), and the window plays each clip's track
-//! from its start (`HostSound::play_clip`, at `h3_view::clip_sound::volume`) until a skip stops
-//! it, or whole once its clip ran to its end (CLT-Q125, decision 34: the original cuts the last
-//! frame's sound at the close); the replay lists each start, skip and close in `replay.txt`
-//! (`sound <file> t<ms>`, `quiet <file> t<ms>`, `closed <file> t<ms>`), and (T6a) each press's
-//! sample as the harness logs the original's (`sample button.wav t<ms> ch<k> <length>ms x1`:
-//! `h3_view::shell::samples`).
+//! 5, the game's; the replay's 0, the harness's silent runs). The window opens its sound device
+//! for the effects or the music (a first run's setting) above 0 (M2's review). With the effects
+//! above 0, with a sound device (the window's) or none needed (the replay), the clips play with
+//! their sound: a Smacker clip's frames then follow it (`h3_view::shell::start::SmackSound`), and
+//! the window plays each clip's track from its start (`HostSound::play_clip`, at
+//! `h3_view::clip_sound::volume`) until a skip stops it, or whole once its clip ran to its end
+//! (CLT-Q125, decision 34: the original cuts the last frame's sound at the close); the replay
+//! lists each start, skip and close in `replay.txt` (`sound <file> t<ms>`, `quiet <file> t<ms>`,
+//! `closed <file> t<ms>`), and (T6a) each press's sample as the harness logs the original's
+//! (`sample button.wav t<ms> ch<k> <length>ms x1`: `h3_view::shell::samples`).
 //!
 //! The menus' boxes (T6a, T6b1): Quit's question and the buttons' help, their texts the user's
 //! tables' through the key catalogue (`shell.main-menu.*`, `shell.game-type.help.*`), laid out at
@@ -118,13 +120,16 @@ pub struct Options {
     /// The effects setting (0 to 9), when given.
     effects: Option<u8>,
     install: PathBuf,
+    /// The window's key file (`--keys`; else `keys.toml` here if there is one: its `[shell]`
+    /// table, M2's review of E27, as the battle window's `[battle]`).
+    keys: Option<PathBuf>,
 }
 
 impl Options {
     /// Parses `[--script <file> | --steps <file> --frames <dir> [--pointer <x>,<y>]
-    /// [--input-step <ms>] | --window [--scale <n>]] [--no-intro] [--video-quality high|low]
-    /// [--effects <0..9>] [--install <dir>]`; the installation defaults to `$H3_INSTALL`, then the repository's
-    /// `original-data/install`.
+    /// [--input-step <ms>] | --window [--scale <n>] [--keys <file>]] [--no-intro]
+    /// [--video-quality high|low] [--effects <0..9>] [--install <dir>]`; the installation
+    /// defaults to `$H3_INSTALL`, then the repository's `original-data/install`.
     ///
     /// # Errors
     /// An unknown argument, a flag without its value, or two modes.
@@ -138,7 +143,7 @@ impl Options {
         let (mut script, mut steps, mut frames, mut install) = (None, None, None, None);
         let (mut pointer, mut input_step, mut scale) = (None, None, None);
         let (mut intro, mut window, mut bink_video) = (true, false, true);
-        let mut effects = None;
+        let (mut effects, mut keys) = (None, None);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -154,6 +159,7 @@ impl Options {
                 "--pointer" => pointer = Some(point(&value()?)?),
                 "--input-step" => input_step = Some(number(&value()?)?),
                 "--scale" => scale = Some(number(&value()?)?),
+                "--keys" => keys = Some(PathBuf::from(value()?)),
                 "--window" => window = true,
                 "--no-intro" => intro = false,
                 "--effects" => {
@@ -193,6 +199,7 @@ impl Options {
             "--steps",
         )?;
         lone(!window && scale.is_some(), "--scale", "--window")?;
+        lone(!window && keys.is_some(), "--keys", "--window")?;
         let mode = match (steps, frames) {
             (Some(steps), Some(frames)) => Mode::Replay {
                 steps,
@@ -213,6 +220,7 @@ impl Options {
             install: install
                 .or(env)
                 .unwrap_or_else(|| manifest.join("../../../original-data/install")),
+            keys,
         })
     }
 }
@@ -842,11 +850,14 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
         [None, None, None]
     };
     let clips = parse_clips(&bytes);
-    // The sound (E27 M2 T5b1): the effects above 0 and a device, else the clips silent (the
-    // game opens no track without a driver, and its Smacker clips keep their clock); the menus'
-    // samples and music with it (T6a).
+    // The sound (E27 M2 T5b1): the clips and the presses' samples with the effects above 0 and
+    // a device, else silent (the game opens no track without a driver, and its Smacker clips
+    // keep their clock); the menus' music (T6a) at the music setting (a first run's: no client
+    // settings yet) with the device, opened for the effects or the music above 0 (M2's review of
+    // E27: the music needed the effects before).
     let effects = options.effects.unwrap_or(5);
-    let mut host = if effects > 0 {
+    let music_setting = h3_view::options::Settings::FIRST_RUN.music;
+    let mut host = if effects > 0 || music_setting > 0 {
         match crate::audio::HostSound::open(drawer.bugs) {
             Ok(host) => Some(host),
             Err(e) => {
@@ -857,11 +868,13 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     } else {
         None
     };
+    // The clips and the presses heard: the effects above 0 and the device.
+    let effects_heard = effects > 0 && host.is_some();
     // Each clip's track decoded beside the window (H3Intro's takes seconds), taken at its start.
     let mut samples = [0, 1, 2].map(|k| {
         let format = clips[k].as_ref()?.format();
         let bytes = bytes[k].clone()?;
-        host.as_ref()?;
+        effects_heard.then_some(())?;
         thread::Builder::new()
             .name("h3-view shell's clip sound".to_owned())
             .spawn(move || {
@@ -889,12 +902,12 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             .spawn(move || crate::audio::mp3(&install, "MAINMENU", &mut Vec::new()))
             .ok()
     });
-    let music_volume = h3_view::options::sound_volume(
-        h3_view::sound::MUSIC_VOLUME,
-        h3_view::options::Settings::FIRST_RUN.music,
-    );
+    let music_volume = h3_view::options::sound_volume(h3_view::sound::MUSIC_VOLUME, music_setting);
     let mut presses: Vec<usize> = Vec::new();
-    let keys = Keys::<Command>::original();
+    // The user's key file over the defaults, every key one the adapter knows (M2's review of
+    // E27: the battle window's `load_keys`, the shell's `[shell]` table).
+    let (keys, keys_from) = crate::window::load_keys::<Command>(options.keys.as_deref())?;
+    eprintln!("h3-view shell: keys: {keys_from}");
     // What takes the inputs on the screen, opened as its screen shows (`on`: the screen it was
     // opened for; `previous`: what took them before, the Multiplayer dialog's menu).
     let mut front: Option<Front> = None;
@@ -904,7 +917,7 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
         drawer.rim.as_ref(),
         options.bink_video,
         drawer.bugs,
-        host.is_some(),
+        effects_heard,
     )?;
     let mut applied = 0;
     let mut heard = 0;
@@ -992,6 +1005,7 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             }
             dirty |= did.changed;
             if did.sample
+                && effects_heard
                 && let (Some(host), Some(pcm)) = (host.as_mut(), drawer.button.as_ref())
             {
                 let volume = h3_view::options::sound_volume(BUTTON_VOLUME, effects);
@@ -1181,7 +1195,7 @@ fn on_front(
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     use super::{Given, Mode, Options, PARK, merged, skips_start};
     use h3_sdl::{Event, Key, KeyScan};
@@ -1193,6 +1207,11 @@ mod tests {
         // E27 M2 T7b: the edits' keys and the ring among them (Tab, BackSpace, Delete, Shift+Tab).
         let known: Vec<&str> = Key::ALL.iter().map(|k| k.name()).collect();
         assert_eq!(Keys::<Command>::original().check(&known), Ok(()));
+        // M2's review of E27: the window's table as the battle window's, the defaults without a
+        // file here; a file named that is not there refused.
+        let (keys, from) = crate::window::load_keys::<Command>(None).unwrap();
+        assert_eq!((keys, from.as_str()), (Keys::original(), "the defaults"));
+        assert!(crate::window::load_keys::<Command>(Some(Path::new("no/such/keys.toml"))).is_err());
     }
 
     #[test]
@@ -1289,6 +1308,12 @@ mod tests {
             parse(&["--window", "--scale", "2"]).unwrap().mode,
             Mode::Window(Some(2))
         );
+        // M2's review of E27: the window's key file.
+        assert_eq!(none.keys, None);
+        assert_eq!(
+            parse(&["--window", "--keys", "k.toml"]).unwrap().keys,
+            Some(PathBuf::from("k.toml"))
+        );
         assert!(none.bink_video);
         assert!(!parse(&["--video-quality", "low"]).unwrap().bink_video);
         assert!(parse(&["--video-quality", "high"]).unwrap().bink_video);
@@ -1309,6 +1334,8 @@ mod tests {
             &["--steps", "s", "--frames", "f", "--pointer", "x,2"],
             &["--input-step", "x"],
             &["--scale", "2"],
+            &["--keys", "k.toml"],
+            &["--window", "--keys"],
             &["--video-quality", "medium"],
         ];
         for args in refused {
