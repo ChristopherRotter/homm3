@@ -1,13 +1,14 @@
 # Draft: ADR-0016 amended for E09 increment 4 (the Tavern)
 
-- Status: **Draft**, the hire's half written by E09 T33a (2026-11-16); T33b adds the
-  information's half (the Den of Thieves' kind, the views) and asks the checkpoint (`TWN-Q18`);
-  then moved into `docs/adr/0016-adventure-state.md` by the increment's `shared/` task. Every
-  change here is in the adventure lane's paths: `cross-lane`, merged in order with its pull
-  requests.
-- Decisions: the epic's 99, 105, 106, 109, 111, 112, 113.
-- Working detail: survey `docs/rules/surveys/E09-tavern.md` §3, §4, §12; design note
-  `docs/epics/E09-design.md` Part F §64, §66, §67, §69.
+- Status: **Draft**, the hire's half written by E09 T33a (2026-11-16), the information's half
+  (the Den of Thieves' kind, the views) by T33b (2026-11-16), **accepted** at its checkpoint
+  (`TWN-Q18`, decisions 114 to 122); then moved into `docs/adr/0016-adventure-state.md` by the increment's `shared/`
+  task. Every change here is in the adventure lane's paths: `cross-lane`, merged in order with
+  its pull requests (E08's increment 13 amends points 4 and 6 too).
+- Decisions: the epic's 99, 105, 106, 109, 111, 112, 113, 118 (TD-22: the dismissal's visitor
+  test), 119 (the views).
+- Working detail: survey `docs/rules/surveys/E09-tavern.md` §3, §4, §6, §12, §13; design note
+  `docs/epics/E09-design.md` Part F §64, §66, §67, §69, §72 to §74.
 
 ## Point 3, after E09 increment 3's garrison hero ("… the counts being the town's (ADR-0028 point 6).")
 
@@ -43,14 +44,30 @@ hero on a tile its object is visited from.
   on it visits nothing (the original's case 95 skips the visit when the visitor stands on the
   visited tile, 0x4AA183). The import maps class 95 to it (the 93 Taverns on 47 shipped maps,
   survey §1); the writer writes it.
+- **E09's kind `DenOfThieves`** (increment 4; class 97; E09 decision 99; survey `E09-tavern.md`
+  §6): an **entered** object (its template's entrance passable, visited from the sides and below,
+  not from above), no owner, no mark, no draw, no parameter: every visit (a step onto its
+  entrance, a `Revisit`) is the same. The visit's outcome (ADR-0017 point 10) asks the game for
+  the **Thieves' Guild at everything** for the visitor's owner (`visit_object`'s case 97: its
+  message, then `thieves_guild_new` 0x5C8190 with 99), which the game tells it (ADR-0017 point
+  2); the adventure holds nothing of it. The import maps class 97 to it (227 Dens on 107 shipped
+  maps, survey §1); the writer writes it.
 
 ## Point 6, a new sentence
 
 **From E09 increment 4** a hired hero's appearance is told as a hero's coming into sight: to its
-owner, and to every player that sees its tile (the original shows it on the map; T33b's views
-give the events and their fields). Its away record and its tavern slot are its owner's (T33b).
+owner, and to every player that sees its tile (ADV-FOG-004, ADV-FOG-005, as a step's
+`seen_to`), by the game's `HeroHired` (ADR-0017 point 2), which names the hero, its type, its
+owner and its tile, so a viewer's fold adds it as the map shows it (no gap of `SRV-STUB-3`'s
+kind); its tavern slot is named to its owner alone. The owner's own view of the hero (its army,
+formation and tactics flag, its details) is the tavern slot's view it held, its points told by
+`MovementChanged` as for any own hero. A dismissal is told as a removal (`HeroRemoved`, as a
+battle's loser: its owner and the players that see its tile). A Den of Thieves' visit tells the
+visitor's owner alone (the guild's view is the viewer's, ADR-0017 point 2). The away records are
+the game's and never shown but as the tavern slots' views.
 
 ## Revision history, a new item (when moved)
 
 - 2026-11-xx (E09 increment 4's `shared/` task): points 3, 4, 6 (a hero placed by a hire and its
-  away record, the dismissal's removal, the kind `Tavern`; T33b's Den of Thieves and views).
+  away record, the dismissal's removal, the kinds `Tavern` and `DenOfThieves`, a hired hero's
+  appearance and a Den's view told).

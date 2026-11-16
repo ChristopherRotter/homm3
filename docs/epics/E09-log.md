@@ -4254,3 +4254,56 @@ disputes next TD-23, quirk candidates next T-17.
 **Verify:** docs only: the docs gates (`check-docs`, `check-rules`, `check-stubs`,
 `check-exe-map`, `check-lane --base origin/master`, `doc-drift --base origin/master`); CI on the
 pull request is the record.
+
+### T33b — the information's drafts, Part F §72 to §81, the cut, the checkpoint (2026-11-16)
+
+Decision 108's second half, kept whole at its start (the user, decision 114; the agent had
+proposed T33b1, the information, the views, the env and the protocol, then T33b2, the gates, the
+cut and the checkpoint). Branch `town/e09-t33b`, docs only (the drafts, the design note, the
+survey's §13, the address map, the epic, the log, the answered questions, the lane's queue and
+HANDOFF, three lanes' inboxes). Starting point: `master` at fcc19e7 (#966 merged; CI green on
+`master`'s run). The user's computer was connected at the start: the executable, `h3maped.exe`,
+the four LODs, `maps.tar`, `extracted.tar`, the saves, the four manuals and the two help files
+staged (18 files, SHA-256 checked, one digest of the sorted lists).
+
+**Read for it** (survey §13; five address-map entries added, one extended):
+`thieves_guild_fill` 0x5DDA10 to its end (the per-player parts: 1 the best hero by
+`hero_army_power`, the first of equals; 2 its four primary skills clamped to 0–99; 3 the player's
+`ai_type` as text; 4 the best creature by AI value over the towns' shown armies then the heroes'),
+`thieves_guild_row_value` 0x5DEE70 whole (the towns by owner, the heroes on the map, the
+treasury's sums, the backpacks alone, the heroes' powers plus the defended towns' plain army
+values, the day's gold), `thieves_guild_rank_sort` 0x5DF160 (an exchange sort, ties sharing a
+place), `hero_worn_count` 0x4D9070 (its argument 1 counts nothing: T-17), `army_power` 0x427690,
+`thieves_guild_proc` 0x5C9930 (a portrait opens a screen only in the viewer's column). VCMI 1.7.5's
+`GameStatistics.cpp` and `obtainPlayersStats` (the best hero by experience, worn and backpack
+artifacts, the heroes' armies only: TD-23, T-17), its object config (the Den of Thieves entered,
+not `blockVisit`); the RoE manual (the report named only).
+
+**Written:**
+- **The drafts**, now whole and accepted: `0028-increment-4.md` (the Thieves' Guild's level by
+  `has_tavern`, the versions), `0017-increment-4.md` (point 2: the tavern heroes' view and
+  `TavernOffered`, `HeroHired`, the guild's query and its view, a Den's `ThievesGuildSeen`; point
+  6: `TavernOpened` and the decision's view whole; point 8: `HIRE` + 2 and the tavern answers by
+  role, no `Dismiss` entry; points 9 to 11: the versions, a Den's outcome, `TWN-QUIRK-12`),
+  `0016-increment-4.md` (the kind `DenOfThieves`, a hired hero's appearance and a dismissal told),
+  `0013-increment-4.md` (status only).
+- **The design note** Part F §72 to §81: scope and choices (§72), the Thieves' Guild (§73), the
+  Den of Thieves (§74), the views and events (§75), the env and the protocol (§76), the
+  increment's ids, versions, quirks and stubs (§77), the gates and batch TWN-4 (§78), the building
+  tasks T34 to T41 with the order against E08's increment 13 (§79), the exit criteria (§80), the
+  risks (§81).
+- **The checkpoint** `TWN-Q18` (two rounds, seven questions; decisions 115–121, each as
+  recommended but T-17: a `fix-optional` flag over the agent's `preserve`): the taverns' stream,
+  T-16 and T-17 (`TWN-QUIRK-12`, `-13`, both `fix-optional`, on in `faithful`), TD-22 and TD-23 the
+  reading, the views, the env, the cut and the exit criteria; the agent's calls of 122.
+- **New ids:** dispute TD-23; quirk candidate T-17; quirks planned `TWN-QUIRK-12`, `-13`; stubs
+  planned `TWN-STUB-17` (the obelisks row), `-18` (the guild's personality); rules planned
+  TWN-TAV-007 to -009.
+
+**The queue:** T33b out; T34 next, T35 to T41 queued. The adventure lane's inbox told the planned
+`cross-lane` changes in its paths, the AI lane's and the server lane's theirs. No version moved.
+Ids: questions next 19, decisions next 123, disputes next TD-24, quirk candidates next T-18.
+
+**Verify:** docs only: the docs gates (`check-docs`, `check-rules`, `check-stubs`,
+`check-exe-map`, `check-lane --base origin/master`, `doc-drift --base origin/master`); CI on the
+pull request is the record.

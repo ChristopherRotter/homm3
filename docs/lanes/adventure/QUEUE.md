@@ -21,6 +21,25 @@ increment 12; docs only)
 
 ## Inbox
 
+- 2026-11-16 (the town lane, E09 T33b, `town/e09-t33b`, docs only; **planned `cross-lane` changes
+  in your paths, for your planning; nothing changed yet**): E09 increment 4's drafts are accepted
+  (`TWN-Q18`; `docs/lanes/town/adr-drafts/0016-`, `0017-increment-4.md`; the building tasks T34 to
+  T41 in `docs/epics/E09-design.md` §79, the order against your increment 13 there). In your
+  paths, each `cross-lane` with the user's consent at its task: T35 amends ADR-0016 and -0017
+  (merge order with your T122); T37a the game state hash (the pool's `Offered`, records and away
+  records, the players' factions and tavern slots, `StreamId::TAVERNS`) and the week's step (the
+  taverns' week after the towns'); T37b `GameSetup`'s customised hero types and the import (after
+  your T123's map import v24); T38a the adventure's placement of a hired hero (ADR-0016 point 3:
+  a town's entrance or a map Tavern's visited tile, with its away record; `HeroHired`), `legal.rs`,
+  the replay format (`town hire`); T38b a hero that leaves the game composed after your battle's
+  end in `state/battle.rs` (merge order with your T124b), the dismissal `Manage::Dismiss`
+  (`manage dismiss`); T39a the kinds `Tavern` (class 95, visited from a neighbour) and
+  `DenOfThieves` (class 97, entered; every visit tells the game's Thieves' Guild) in the adventure
+  part, the import and the writer (after your T123); T39b `h3_adventure`'s `answer::power`
+  (ADV-MON-007) made public for the guild's army row and best hero, and the day's gold factored
+  out of `GameState::pay_income`. T34's fixture needs the writer's classes 95 and 97 (as your
+  T119's banks).
+
 - 2026-11-15 (the town lane, E09 T31, `town/e09-t31`, `cross-lane` with the user's consent, E09
   decision 101; **your paths changed, for your review; no version moved**): `command.rs`'s
   `AdventureEventKind::GarrisonEntered` and `GarrisonLeft` have a field `named: Viewers`, the
