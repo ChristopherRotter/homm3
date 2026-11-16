@@ -5,22 +5,25 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 ## Tasks
 
 Epic: `docs/epics/E09-towns.md` (increment 4: the Tavern, refined at T30, `TWN-Q15`, decisions 98
-to 124; its drafts accepted at T33b, `TWN-Q18`; batch TWN-4 scored by T34); done tasks in `E09-log.md`; increments 1 to 3
+to 128; its drafts accepted at T33b, `TWN-Q18`; batch TWN-4 scored by T34; the drafts in the ADRs
+by T35a, `TWN-Q19`); done tasks in `E09-log.md`; increments 1 to 3
 (closed by T10, T20 and T30) in `E09-archive.md`. The building tasks are the design note's
 `E09-design.md` §79 (round by round, with the order against E08's increment 13); each task's cut
 confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`) and the exit criteria it serves (the epic's list, decision 121).
 
-**E09 T35 — `shared/`** (round 3; `cross-lane`; design §79): the four drafts
-`adr-drafts/*-increment-4.md` moved into ADR-0013, -0016, -0017, -0028 with T34's verdicts;
-`StreamId::TAVERNS`; the flags of `TWN-QUIRK-12` (T-16) and `-13` (T-17), `fix-optional`, on in
-`faithful` (`h3-content`, the pack format, the packs' artifacts); the glossary (the tavern heroes,
-the away record, the returning mark, the Thieves' Guild, the Den of Thieves); `docs/06-security.md`'s
-town lines (design §75). In merge order with E08's T122. **At its start:** batch TWN-4's two
-points the reading missed (survey §14; T34's record): the new day clears the returning mark of every
-hero record after the week, and gives every hero record (offers and heroes out of the game too) its
-day's spell points: put to the user with the drafts (design §63, §67, §68; recommended: as the
-original). **Status:** next.
+**E09 T35b — `shared/`, the code** (round 3; `cross-lane`; design §77, §79; T35 cut in two at its
+start, decision 125; T35a, the ADRs, done): `StreamId::TAVERNS` (8, `h3-kernel`'s closed list and its
+two tests); the flags of `TWN-QUIRK-12` (T-16, the leave's land maximum over the cleared army) and
+`-13` (T-17, the guild's artifacts row by the backpacks), `fix-optional`, on in `faithful`, off in
+`strict-fixed` (`h3-content`'s `QuirkFlag(42)`, `(43)`; no encoding changes, so no version moves:
+the profiles' ruleset hashes do, as E08 T115b's Sirens flag; the harvester's profiles and the packs
+re-harvested: the profiles' lines only); the golden
+replays' `ruleset_hash` rehashed, the AI lane's bot reports and `h3-server`'s tamper test's line
+(skill `homm3-rerecord-replays`), as E09 T24 did for increment 3 (`E09-log.md`, T24). The ADRs
+already name both (ADR-0017 points 4, 9, 11; ADR-0028 point 9); the flags' names and their
+ledger entries in `quirks-town.md` are T35b's. Needs the original data (the harvest). Before
+T37a. **Status:** next.
 
 **E09 T36 — the town part v7** (round 4; design §60): the tavern weights per faction record and
 the hire's price, `HCTRAITS.TXT`'s tavern columns harvested (`h3-harvest`, `cross-lane`), the
@@ -29,7 +32,9 @@ packs; TWN-TAV-001's data. **Status:** queued.
 **E09 T37 — the pool in the game** (round 5; `cross-lane`; design §61 to §63, §68, §70, §75):
 T37a the pool's `Offered`, the records at a first draw, the away records, the players' factions
 and slots (game state hash), the draw and the fills from the taverns' stream (TWN-TAV-001, -002;
-GAM-CAL-002), the slots over a turn (TWN-TAV-005), `GameObservation::tavern` and `TavernOffered`,
+GAM-CAL-002), the slots over a turn and every day's clear of the marks (TWN-TAV-005; decision 126; the
+day's spell points of every record already built, decision 127: told as an own hero's,
+`SRV-STUB-6`, §75), `GameObservation::tavern` and `TavernOffered`,
 the protocol, the replays re-recorded, the week's bench; T37b the map's customised types
 (GAM-HER-001, TWN-SET-005; `GameSetup`, the import after E08's T123). **Status:** queued.
 

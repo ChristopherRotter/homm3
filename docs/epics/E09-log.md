@@ -4371,3 +4371,58 @@ candidates next T-18.
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; `cargo xtask
 check-lane --cross-lane`; `cargo test -p h3-experiment`; CI on the pull request is the record.
+
+### T35a — `shared/`: increment 4's drafts into the ADRs, the glossary and the security section (2026-11-16)
+
+One session, the user present at the start; branch `shared/e09-t35a`, `cross-lane` (the ADRs and
+`docs/03`, `docs/06` shared; the adventure lane's inbox common; T35 planned `shared/` and
+`cross-lane` at `TWN-Q18`). Starting point: `master` at a1d2c71 (#973, T34's, merged; the setup's
+baseline verified the code, 9ccb68f4). The user's computer was connected at the start only: the
+executable, the editor, both bitmap LODs, the two tars and the three saves staged (9 files, SHA-256
+checked against the PC's), for T35b and T36. **Cut in two** at the start (`TWN-Q19`, decision 125:
+T35a the docs, T35b the code), and batch TWN-4's two points the reading missed answered as the
+original (decisions 126, 127).
+
+- **ADR-0013:** points 14.5 (a tavern hero's backpack equipped at a fill; TWN-4-5's replacement
+  with its Clover still in the backpack) and 16.5 (a hero off the map regains its day's spell
+  points with every record: decision 127; the draft's "no spell point by the day" replaced).
+- **ADR-0016:** point 3 (a hire's placement, the away record, the leave's hand-back, the
+  dismissal's removal; TWN-4-2), point 4 (the kinds `Tavern` and `DenOfThieves` after E09's kind
+  `Town`; TWN-4-7's Den), point 6 (after E09 increment 3's view); a Consequences line (the kinds'
+  bumps, the adventure state hash unmoved) and an Alternatives line (decision 106).
+- **ADR-0017:** points 1 (the two commands, the pool's records, away records, factions, slots and
+  marks, the draw; TWN-4-1, -2, -5, -6, -8), 2 (the tavern heroes' view and events, the guild's
+  query and view; TWN-4-7), 3 (the taverns' week and the start's fill; **every day's start clears
+  the marks** and **the day's spell points reach every record**, decisions 126, 127; the turn's
+  points and the turn end's clear; TWN-4-1, -3), 4 (the taverns' stream, the replacement's and a
+  return's draws; TWN-4-2, -4), 6 (the tavern decision), 8 (the env), 9 (the versions), 10 (a
+  Den's outcome, a hire's application; TWN-4-2's guild spells), 11 (a hero that leaves the game;
+  TWN-4-3 to -5); a Consequences and an Alternatives line. Each part after E09 increment 3's, so
+  before E08's increment 10 to 13 parts where the points interleave (T122 merged first).
+- **ADR-0028:** points 5 (the weights and the price; TWN-4-1, -2, -8), 6 (`TownCommand::Hire`;
+  TWN-4-6), 8 (replaced: the pool's tavern heroes the game's, the guild's level by the taverns;
+  TWN-4-7), 9 (the versions); the header's amendments, a Consequences and an Alternatives line.
+- **Corrected against the design note:** the drafts' ADR-0017 and ADR-0028 point 9 named an
+  adventure state hash bump for the kind `Tavern`; §77's table has none (the kinds hold no state),
+  so both points say so (decision 128). The shared change of T35b moves no version (a flag moves
+  the profiles' ruleset hashes, not `RULESET_HASH_VERSION` nor the pack format: E08 T115b's Sirens
+  flag); the cut's question had said "v54", corrected in `TWN-Q19`'s record, decision 125 and the
+  queue.
+- **A throwaway check** found every draft sentence verbatim in its ADR but those that cite a batch
+  row, carry decision 126 or 127, or name a moved anchor ("below" → "point 4", ADR-0016 point 4
+  for the Tavern's hiding). The drafts deleted.
+- **Also:** `docs/adr/README.md`'s status and Read-when cells (0013, 0016, 0017, 0028);
+  `docs/03-domain.md`'s Hero pool amended and five terms (tavern heroes, away record, returning
+  mark, Thieves' Guild, Den of Thieves); `docs/06-security.md`'s section "The Tavern and the
+  Thieves' Guild (E09 increment 4)"; the design note's §61, §68 (the day's clear, the regain), §75
+  (the tavern views' spell points told as an own hero's: `SRV-STUB-6`'s gap, for T37a), §77, §79,
+  §80 item 5 and the epic's exit criterion 5; the survey's TD-20 and §14; the adventure lane's
+  inbox (the ADRs in its paths, the two decisions for T37a's `state/day.rs`).
+
+**The queue:** T35 → T35b (the code: `StreamId::TAVERNS`, the two flags, the packs' profiles, the
+replays' `ruleset_hash`), T37a's entry gains the day's clear. Ids: questions next 20, decisions
+next 129.
+
+**Verify:** `cargo xtask check-docs`, `cargo xtask doc-drift`, `cargo xtask check-lane
+--cross-lane`, `cargo xtask verify --scope town --summary`; docs only, so CI runs `check-lane` and
+the docs gates; the pull request is the record.

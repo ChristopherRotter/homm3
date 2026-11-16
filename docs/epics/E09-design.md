@@ -2024,8 +2024,9 @@ Increment 4's note (the Tavern; the epic's decisions 99, 100, 102), written by T
 criteria, from §72) from the survey `docs/rules/surveys/E09-tavern.md` (§ numbers are the
 survey's unless they name this note) and the answers at `TWN-Q16` (decisions 103 to 107) and
 `TWN-Q17` (decisions 109 to 112). A handover, not binding: the drafts
-`docs/lanes/town/adr-drafts/*-increment-4.md` hold the decisions, accepted at T33b's checkpoint
-(`TWN-Q18`) before anything is built. *Agent's call (change freely)* marks a choice of this
+`docs/lanes/town/adr-drafts/*-increment-4.md` held the decisions, accepted at T33b's checkpoint
+(`TWN-Q18`) before anything is built, and moved into ADR-0013, -0016, -0017 and -0028 by T35a
+(2026-11-16, with batch TWN-4's verdicts and decisions 126, 127). *Agent's call (change freely)* marks a choice of this
 note's (decision 113) that the task building it may still change.
 
 ### 59. The hire: scope, sources and choices (T33a)
@@ -2111,7 +2112,7 @@ it stands (`h3-game`'s `town/pool.rs`, `setup.rs`, `state/battle.rs`; `h3-towns`
   stream, before its slot 0, so the setup stream does not move for any map.
 - **Where:** the pool, its records' away parts, the factions and the slots are one block,
   `Arc<HeroPool>` as today: shared by forks, copied on a write (a fill, a hire, a leave, a
-  turn's end that clears a mark). The store of heroes grows at a new record (its outer list
+  turn's end or a day's start that clears a mark, decision 126). The store of heroes grows at a new record (its outer list
   copied once on a fork's write, as a hero's change copies it now); the level seeds' block
   (`Progression`, static until now) grows with it. *Bench:* a fork still counts the same
   references; the week's fill is one pass over the classes and types per slot (156 types, 18
@@ -2278,13 +2279,21 @@ hero reads the facts.
 - **At its owner's turn start**, after the player's heroes on the map and before its garrison
   heroes (the original's order; none draws, so the order is the reading's for the record), each
   tavern hero's day's maximum and points left set to its land points: `h3-heroes`' derivation
-  (ADR-0013 point 13) over its details and its away army, as a hero on the map's. **No spell
-  point is regained** off the map (TD-20, decision 104): they are set only at a draw and at a
+  (ADR-0013 point 13) over its details and its away army, as a hero on the map's. **Its spell
+  points regain at the day's start** with every record of the store (`GameState::regain_mana`,
+  HER-MAN-002, unchanged: decision 127 at T35's start amended TD-20's spell-point half, decision
+  104, after batch TWN-4's code reading, survey §14); besides, they are set full at a draw and at a
   non-returning leave.
 - **At its owner's turn end** (`EndTurn`, 0x4C705D after the victory tests) its two slots'
   returning marks are cleared. So a hero that came back in its owner's own turn goes at the next
   week's release, and one that came back after that turn ended (another player's attack) stays
   through the next day's start, a week's release included (TD-18).
+- **At every day's start** (decision 126, T35's start; survey §14: the original's `new_day`
+  0x4C80CF to 0x4C80FD) every player's two marks are cleared, after the taverns' week when one
+  runs: a mark lasts until its owner's turn ends or the next day starts, whichever comes first;
+  the week's release, before the clear, still spares a hero that came back after its owner's
+  turn ended. The clear writes the pool's block only when a mark is set (a fork's day costs
+  nothing more otherwise).
 
 ### 69. The dismissal (GAM-MAN-003; `Manage::Dismiss { hero }`; decision 112; survey §12)
 
@@ -2463,7 +2472,10 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   the pool's statuses, the away records and the returning marks are never shown.
 - **The fold gate** (`h3-protocol`'s `game_fold`): the tavern heroes fold from `TavernOffered`,
   `HeroHired`, `HeroRemoved`; the guild is not in the observation. A returning hero's points
-  (kept from the battle) are not in the tavern view, so nothing waits on them.
+  (kept from the battle) are not in the tavern view, so nothing waits on them. **From decision
+  127** (T35's start) a tavern hero's spell points, in its details, regain at the day's start with
+  no event, as an own hero's on the map (`regain_mana` tells nothing): the gate's `spell points`
+  part (`SRV-STUB-6`) covers the tavern views too, or T37a tells both (with the server lane).
 
 ### 76. The env and the protocol
 
@@ -2508,7 +2520,7 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   | adventure replay format | `town hire`; `manage dismiss`; `answer tavern` | T38a, T38b, T39a | adventure, `cross-lane` |
   | env action encoding v12, v13 | `HIRE` + 2 (tile head); the tavern answers by role | T38a, T39a | AI lane, `cross-lane` |
   | protocol | the commands, events, views and the guild's request | T37a, T38a, T38b, T39a, T39b | server lane, `cross-lane` |
-  | shared | `StreamId::TAVERNS`; the flags of `TWN-QUIRK-12`, `-13` | T35 | shared |
+  | shared | `StreamId::TAVERNS`; the flags of `TWN-QUIRK-12`, `-13` (no version moves: the profiles' ruleset hashes do) | T35b | shared |
   | town state hash, adventure state hash | none (nothing of the tavern is the town's; the kinds hold no state) | — | — |
 
 - **Quirks** (`quirks-town.md`, recorded by the tasks that build them): `TWN-QUIRK-12` T-16
@@ -2563,7 +2575,7 @@ import v24, the bank kinds); T38b's leave and E08's T124b both end battles in `s
 | Round | Tasks | Content |
 |---|---|---|
 | 2 | **T34** | Batch TWN-4 (§78): the spec and template (the writer's Tavern and Den for the fixture, `cross-lane` as T119's banks), the harness's reads and the retreat and surrender steps, the recipe, the runs, the scoring. Needs the original data and the client lane's harness set-up. Cut at its start |
-| 3 | **T35** | `shared/` (`cross-lane`): the four drafts applied with T34's verdicts; `StreamId::TAVERNS`; the quirk flags of `TWN-QUIRK-12` and `-13` (`h3-content`, pack format) with the packs' artifacts; the glossary (the tavern heroes, the away record, the returning mark, the Thieves' Guild, the Den of Thieves); `docs/06-security.md`'s town lines (§75). In merge order with E08's T122 |
+| 3 | **T35** | Cut in two at its start (decision 125): **T35a** the docs, **T35b** the code. `shared/` (`cross-lane`): the four drafts applied with T34's verdicts; `StreamId::TAVERNS`; the quirk flags of `TWN-QUIRK-12` and `-13` (`h3-content`, pack format) with the packs' artifacts; the glossary (the tavern heroes, the away record, the returning mark, the Thieves' Guild, the Den of Thieves); `docs/06-security.md`'s town lines (§75). In merge order with E08's T122 |
 | 4 | **T36** | The town part (the town lane's paths; the harvest `cross-lane`): the tavern weights and the price (part v7, TWN-TAV-001's data), `HCTRAITS.TXT`'s tavern columns harvested, the packs |
 | 5 | **T37** | The pool in the game (`cross-lane`): T37a the pool's `Offered`, the records at a first draw, the away records, the players' factions and slots (game state hash), the draw and the fills from the taverns' stream (TWN-TAV-001, -002; GAM-CAL-002), the turn's points and marks (TWN-TAV-005), `GameObservation::tavern` and `TavernOffered`, the protocol, the replays re-recorded, the week's bench; T37b the map's customised types (GAM-HER-001, TWN-SET-005; `GameSetup`, the import) |
 | 6 | **T38** | The hire and the leaves (`cross-lane`): T38a the town's hire (`TownCommand::Hire`, TWN-TAV-003), the adventure's placement, the replacement (TWN-TAV-004), `HeroHired`, the legal commands, `town hire`, the env's `HIRE` (v12), the protocol; T38b a hero that leaves the game (TWN-TAV-006; GAM-BAT-003, the capture's leave; T-16), the returns (TD-18, TD-19), the dismissal (GAM-MAN-003, TD-22, `manage dismiss`), the protocol |
@@ -2594,8 +2606,9 @@ hired hero can leave in the replays); the map's objects after E08's import bump;
    back into its owner's tavern at once (its slot drawn, TD-19; its army as read; its points and
    spell points kept); every other leave frees the type with full spell points and the cleared
    army's land maximum under `TWN-QUIRK-12` (TWN-TAV-006; GAM-BAT-003).
-5. The tavern heroes' points at their owner's turn start, no spell point regained off the map,
-   the returning marks cleared at its turn's end (TWN-TAV-005; TD-20).
+5. The tavern heroes' points at their owner's turn start, their spell points regained each day
+   as every record's (decision 127), the returning marks cleared at its turn's end and at every
+   day's start (decision 126) (TWN-TAV-005; TD-20).
 6. The dismissal with its refusals (TD-22) frees its hero with every artifact (GAM-MAN-003;
    decision 105).
 7. The map's customised hero types reach a record made at a draw (`Marshland Menace`'s 2 000

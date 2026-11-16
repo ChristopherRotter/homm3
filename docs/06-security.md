@@ -222,6 +222,46 @@ hygiene and told-views properties check it with growth, recruits and garrison he
   only to the viewers that see the town's garrison hero (its view's level 3: the owner's team,
   Visions within reach; E09 T31), and the town's change to its viewers.
 
+### The Tavern and the Thieves' Guild (E09 increment 4)
+
+ADR-0017 points 1 to 4, 6, 10 and 11, ADR-0016 points 3, 4 and 6, ADR-0028 points 6 and 8 (E09
+decisions 103, 109, 111, 112, 115 to 119, 126; the design note `epics/E09-design.md` §61 to §69, §73
+to §75; rules TWN-TAV-001 to -009, GAM-DEC-010, GAM-MAN-003). The build tasks (E09 T37 to T39)
+implement it; `h3-game`'s view tests and the hygiene and told-views properties check it with tavern
+heroes, hires, leaves and the guild.
+
+- **The owner's alone:** a player's two tavern heroes (each the hero's id, type, details, army by
+  slot, formation and tactics flag; no points, no returning mark), whether or not it owns a Tavern,
+  and their changes (`TavernOffered`) after a week's release and fill, a hire's replacement and a
+  hero's return. Never another player's.
+- **Never shown:** the pool's statuses (which types are free, offered to another player, taken or
+  out of the game), the away records and the returning marks; a leave without a return tells nothing
+  beyond the hero's removal.
+- **The taverns' stream is server-only** (ADR-0017 point 5): the fills are told only as their
+  offers, never their draws. A hire's replacement draws from the hirer's stream and a return's slot
+  from its owner's, each after every check, so a refused hire draws nothing.
+- **The hire is the owner's** (`GameCommand::Town(TownCommand::Hire { town, slot })`): the actor
+  must own the town and be in its turn with no open decision; the town must have a standing Tavern
+  and no visitor, the slot the actor's own tavern hero; the actor's heroes on the map must be fewer
+  than the part's `most_heroes` (a garrison hero not counted) and its own treasury pay the part's
+  price; the command names neither price nor hero nor tile. The map Tavern's hire is an answer of
+  the actor's own open tavern decision, checked the same way without the visitor test (a hero on the
+  Tavern's visited tile refuses it). A refused hire changes nothing.
+- **The dismissal is the owner's** (`Manage::Dismiss { hero }`): the actor's own hero on the map, in
+  its turn with no open decision, not a town's visitor, not its last hero on the map while it owns
+  no town; a refusal changes nothing.
+- **A hired hero** is seen as any hero on the map: `HeroHired` (the hero, its type, owner and tile)
+  to the owner and every player that sees the tile, its slot to the owner alone; the owner's view of
+  it is the tavern slot's it held. A dismissal is told as a removal (`HeroRemoved`) to the owner and
+  the players that see its tile.
+- **The Thieves' Guild** shows, at the viewer's level (its towns with a Tavern counted to 5, as the
+  original's window), the places of every player in the game in each row it shows, equal values
+  sharing a place, **never the values**; by level, each player's best hero's type, then its four
+  primary skills, then its best creature; never a player's tactic nor a screen of another player's hero or creature. It
+  is a query answered only in the viewer's turn while it owns a town with a Tavern or has a tavern
+  decision open; a Den of Thieves' visit tells its visitor's owner alone the guild at everything
+  (`ThievesGuildSeen`). It changes nothing and draws nothing.
+
 ## Denial of service and resource limits
 
 - Bounded command size and count per turn; bounded work per command (path search limits, list lengths).
