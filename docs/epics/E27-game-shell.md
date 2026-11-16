@@ -441,9 +441,10 @@ checkpoint's batch lacks still loaded as it is drawn (`Battle::compose`, the cur
 read of its range; `sprite` needs all four archives; (14) `h3_assets::archive::inventory` takes a
 `LodTable` (the common crate's one caller the gate). T4: (15) the replay's shape
 (`h3_view::shell::replay`): the harness's step words read in Rust, the masks left to Python; the
-probes' names mapped to the shell's screens (`replay::shown`), a name it lacks, a screen
-`Built::Not`, a press or a key on one `Built::AtRest` and the harness's own steps stop the replay
-(no shot drawn from a screen the recipe did not reach); (16) the shell's layout
+probes' names mapped to the shell's screens (`replay::shown`), a name it lacks, a shot, a press,
+a release or a key on a screen not `Built::Whole` (a stub's too since T6b2; `Built::AtRest` gone
+at T6a, item 41) and the harness's own steps stop the replay (no shot drawn from a screen the
+recipe did not reach); (16) the shell's layout
 (`clients/layouts/shell.toml`): each built screen its background copied whole and an `h3_ui`
 dialog, the cursor `crdeflt.def`'s frame 0 with its hot spot at the corner; (17) `drawn`'s two
 comparisons: `exact` against the original's kept line (pixels and time), regressions against
@@ -458,10 +459,11 @@ caller's parsed clips), the replay keeping the ops' log for its caller (`Replay:
 start's clips read from the video archives and `introrim.pcx` from the LODs at the command's
 start, a clip missing or unreadable ending the sequence where it would play, as the original's;
 `Videos` taking `shell-videos.vid` after `battle-videos.vid` (no `VIDEO.VID`); (23) the window's
-start on `win.ticks_ns()` from the window's opening, a key or a left press skipping (no right
-press in `h3_sdl`'s events); (24) `--video-quality high|low` for the setting Bink Video, `drawn`
-passing `low` for a recipe's `Bink Video = 0`; (25) a release with nothing held passes on a screen
-at rest (`start-skip-right`'s right release on the main menu); (26) DirectDraw's stretch of
+start on `win.ticks_ns()` from the window's opening, a key, a left or a right press skipping
+(the right one `h3_sdl`'s `Key::RightButton`; F4 too, unlike the original and the replay: T8's
+review); (24) `--video-quality high|low` for the setting Bink Video, `drawn`
+passing `low` for a recipe's `Bink Video = 0`; (25) a release with nothing held passes on the main
+menu (`start-skip-right`'s right release; at rest until T6a, its menu's input since); (26) DirectDraw's stretch of
 `NWCLogo` as Wine's nearest pixel in 16.16 fixed point (the captures' only reference). T5a2:
 (27) `h3_smacker::Rects` the handle's fields as the DLL keeps them, one call a `next`, the
 decoder's map in `Frame::spans` (kept from frame to frame); only the game's buffer types (not 1
@@ -473,8 +475,8 @@ and wait on an ideal device (the cursor moves with the clock, no lead, whole sam
 cursor the play cursor), the ring, its refills and its underrun not modelled (no game clip runs
 the buffer dry; the samples' wait lines left uncompared); (31) the probe's stand-in DirectSound
 (`vsound.h`) given straight to `SmackSoundUseDirectSound`, not through a Miles stand-in, its sound
-timer made and never fired; (32) a Bink clip's sound from its first frame until T5b2 reads Miles'
-first buffer; (33) `--effects` (the window's 5, the replay's 0), the window's tracks decoded on
+timer made and never fired; (32) a Bink clip's sound from its first frame (read at T5b2: Miles'
+first buffer loads there, item 37); (33) `--effects` (the window's 5, the replay's 0), the window's tracks decoded on
 threads at its start and taken at each clip's `Op::Sound`; with no sound device the clips play
 silent and their Smacker frames keep `SmackWait`'s clock (the game opens no track without a
 driver). T5b2: (34) `xdd.dll`'s Smacker device the probe's (`vsound.h`, an ideal device), handed
@@ -486,25 +488,28 @@ given a buffer; (36) a clip's sound compared as its voice (the codec, its start 
 volume), not its bytes (the tracks are the DLLs' since T2, the Smacker device's cursor since
 T5b1); (37) Bink's first load in the first frame checked against the harness's Miles buffer
 size alone (36 864 bytes), the client keeping the first frame. T6a: (38) `MainMenu`'s shape
-(`h3_view::shell::menu`): the boxes laid out by the caller once (`Boxes`: their texts fixed at
-the start), what is open over the menu one enum (none, a help popup, the question), `Did`'s three
+(`h3_view::shell::menu`; `Menu` since T6b1, item 45): the boxes laid out by the caller once
+(`Boxes`: their texts fixed at the start), what is open over the menu one enum (none, a help
+popup, the question; a stub's notice since T6b2), `Did`'s three
 fields (drawn again, the sample, the end); the hover taken again at a hold's end and at the
 question's close (recorded, not read); a left press or release closing a help popup without
 reaching the menu; (39) the shell's key table `[shell]` (`h3_ui::keys::VIEWERS` gains it): the
 main menu's hotkeys and the box's OK and Cancel, no window keys of its own yet (their Escape is
-Quit's here); (40) `samples::Samples`: category 3's eight handles, the next in turn's start and
+Quit's here); the window takes the defaults alone, no user's key file read (`Keys::original`;
+T8's review); (40) `samples::Samples`: category 3's eight handles, the next in turn's start and
 step *inferred*, the effects' stop by a menu's music not modelled (a request for the track
 playing is dropped), the press sample's length given by the adapter (`Replay::with_sound`); (41)
-the replay's main menu kept for the run and opened anew each time it shows; `Built::AtRest` and
+the replay's main menu (`Menus` and a `Front` since T6b1, T7) kept for the run and opened anew
+each time it shows; `Built::AtRest` and
 `Stop::AtRest` gone (a screen not built takes the pointer's moves only); (42) the shell's layout
 gains `player_palette` and `[message]` (the battle's literals), the boxes framed in red
 (`menu::BOX_PLAYER`); (43) the window: `MAINMENU.MP3` decoded on a thread, asked for each time the
-main menu shows, at the first run's music setting (no `--music` flag); each press's sample on a
+main menu shows (each menu since T6b1, item 50), at the first run's music setting (no `--music` flag); each press's sample on a
 stream of its own, removed once played; the host's sound opened whenever the effects are above
 0 (with the intro only before); the hardware cursor hidden under a help popup; (44) `drawn`
 compares a sound recipe's samples (`sound<k>`) with the viewer's `sample` lines. T6b1: (45) one
 `Menu` for the main menu and the game type menus (`menu::Kind`; `Menus` the three as they open,
-by screen), `Did::ended` the shell's `Ended`, `Boxes::question` an option (a main menu without it
+by screen; the stubs' notices and the Multiplayer dialog too since T6b2, T7), `Did::ended` the shell's `Ended`, `Boxes::question` an option (a main menu without it
 quits at once, as a lobby's start); (46) the hover by `Dialog::item_at` (the title picture an item
 too, as `dialog_item_id_at`), the five buttons' hover cleared by the kind's list; (47) CLT-Q118's
 rows as layers: each button's state at its last whole show kept, the rows outside the layout's
@@ -529,7 +534,8 @@ table, `scan_of` its inverse for the harness's typing), drawn as `Draw::Edit` ov
 label of its box (`Edit::place`), not an item kind of its own (`Item` is matched whole in the map
 client's crate); (57) the window's keys as the original reads them a side channel of
 `h3_sdl::Window` (`scans`, one an event of a wait; `KeyScan`, `set1`), not a field of
-`Event::Key` (matched whole in the map client's window); (58) the status lines' fill a
+`Event::Key` (matched whole in the map client's window; since T7b the window, always the
+client's profile, reads only its Shift: T8's review); (58) the status lines' fill a
 `Draw::Fill` before their label; (59) `menu::Front` (a menu or the Multiplayer dialog) the one
 thing the replay and the window give the inputs to; the dialog holding the game type menu as it
 ended (`Multiplayer::under`), the hot seat a part of it, the probe `hotseat_names` by it; (60) the
