@@ -2047,3 +2047,43 @@ an entry only where a task builds on it.
   gate and the ladders on reward v1), `configs/e25-win-bonus.toml` (T33's annealed arm with the
   bonus 0.1: reward v1 lies in [-1, 1], #2's hero battles about ±0.09 a seat). The measures, the
   rule and the budget as the AI queue stated them before the run.
+- **The probe** (the user's GPU, 2026-11-15, commit `26f5679` (#954's merge), clean;
+  `e25-win-bonus-1`, the record `python/records/e25-win-bonus-1.json`, the measures
+  `python/records/win-bonus/`): `--init-from` #2, seed 1, 2 010 602 samples in 79 updates, 114
+  minutes, 298 samples a second (an update 71 s); the run's own end gate rejected the learner
+  (386 pairs, 0.510, Elo +6.8). Its first update is the annealed arm's (KL 0.027, entropy 0.97):
+  the two pair at their start.
+
+  | Measure | `e25-win-bonus-1` | `e25-continue-anneal-1` | #2 |
+  |---|---|---|---|
+  | (a) head to head against #2 | **0.5007 ± 0.0019** (+0.4 SE; pairs 115, 1, 3 763, 0, 121; Elo +0.5) | 0.5029 ± 0.0020 | |
+  | (b) fair actor | 0.516 ± 0.019 (+0.027) | 0.513 (+0.027) | 0.511 (+0.027) |
+  | hero, siege hero, siege garrison | 0.514, 0.526, 0.502 | 0.513, 0.518, 0.506 | 0.509, 0.519, 0.505 |
+  | hero attacking, defending (the value attacking) | 0.717, 0.310 (+0.0945) | 0.711, 0.314 (+0.0947) | 0.707, 0.306 |
+  | all-seeing (value) | 0.512 ± 0.019 (+0.026) | 0.508 (+0.023) | 0.507 (+0.026) |
+  | neutral set's value | +0.304 (0.995) | +0.304 (0.991) | +0.302 |
+  | (c) KL, clip (the last 20 updates) | 0.0027, 0.028 | 0.0027, 0.028 | 0.0025, 0.03 |
+  | entropy (the first update, the last 20, the peak; the run's mean) | 0.97, 0.96, 1.04 at 1.02 M; 0.992 | 0.97, 0.98, 1.06 at 0.49 M; 1.017 | 1.00 at its end |
+  | explained variance (the last 20; the run's value loss) | 0.85 (0.0029) | 0.80 (0.0017) | 0.78 |
+  | self-play attacker's wins, hero and siege hero | 0.701, 0.565 | 0.705, 0.564 | |
+
+- **The read, by the rule stated before it ran:** (a) lies 0.0022 below the annealed arm's 0.5029
+  (−0.8 of their combined errors; the rule asked 0.509), (b) every row inside #2's interval, the
+  neutral set's above the fair actor's +0.285: **within, the bonus moves nothing at this rate and
+  length; reward v1 stays**, and the long run is one of the three offered.
+  1. **What the bonus moved is the critic, not the wins:** the explained variance 0.80 to 0.85
+     (the outcome is what the state predicts best; the value loss up with the returns' range) and
+     the entropy a little (−0.025 over the run, its end 0.96 against 0.98). The hero battles'
+     seats +0.006 and −0.004 against the annealed arm's, the attacking seat's value level: no
+     trade of army for wins shows, and T30's gap (more army, the same wins) stays.
+  2. **The probe's reach:** at the annealed quarter rate the learner stays at #2's distance (KL
+     0.0027 the last 20, the annealed arm's); a larger weight or a whole run with it are not
+     shown, only this one at #2's end.
+  3. **Increment 8's levers, all inside #2's interval:** the network's size (T32, under 0.01),
+     PPO's settings (T33, the plateau), the search at play (T34 (a)), the anchor (T34 (b), #2's
+     level in 2 M), the outcome's weight (T35). The probes used about 21 of decision 3's 20 hours
+     (T35's 2).
+- **The long run** (the user, 2026-11-16, of the four offered: the anchor resumed to 20 M, #2's
+  regime or the anchor's at 40 M, E25 closed on #2): **`e25-anchor-1` resumed from 2 M to
+  20 M** (T36), its config as built for 20 M. Its rule, measures and budget as the AI queue
+  stated them before the run. **T35 closed** 2026-11-16.

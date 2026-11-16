@@ -4,6 +4,47 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E25 increment 8, T35** (moved 2026-11-16, done: `E25-log.md` T35; T35 closed):
+
+- **T35 — The probes' checkpoint** (the user, 2026-11-15; `E25-log.md` T35): of four offered
+  (the anchor resumed to 20 M; the anchor's regime or #2's at 40 M), **the outcome's weight
+  probed first**, decision 6 amended (T30's read: #2 keeps more army than the fair actor in the
+  hero battles but wins as often; reward v1 prices the army, the target counts the wins).
+  **Prepared, the user's GPU next.**
+  - **The probe** `e25-win-bonus-1` (`configs/e25-win-bonus.toml`, test
+    `test_increment_8s_win_bonus_probe_is_the_annealed_arm_with_the_bonus`): T33's annealed arm
+    (2 M from #2, a quarter of the rate falling to #2's floor, the bonus at 0, seed 1; level with
+    #2 at 0.5029 ± 0.0020) with `[ppo] win_bonus` 0.1 (new: a decided battle's last transition
+    of each learning side gains 0.1 for its side's win and loses it for its loss, a draw 0, a cut
+    battle none; tests `test_the_win_bonus_weighs_only_each_decided_battles_last_transitions`,
+    `test_an_outcome_is_a_win_a_loss_or_neither_for_its_side`). Reward v1 lies in [-1, 1], #2's
+    hero battles about ±0.09 a seat: the bonus about a seat's value. The evaluation stays
+    reward v1.
+  - **The measures, T33's:** (a) the fixed head-to-head against #2; (b) the ladders against both
+    system actors (500 a kind, ± 0.019; the hero battles' seats against #2's 0.707 and 0.306)
+    and on the neutral set; (c) the update records (entropy, KL, clip, the attacker's wins by
+    kind) beside `e25-continue-anneal-1`'s.
+  - **The rule, stated before it runs:** (a) above the annealed arm's 0.5029 by more than two
+    combined standard errors (about 0.006, so at least 0.509), with (b) a positive value against
+    the fair actor and the neutral set's above the fair actor's own +0.285: the bonus pays, and
+    the long run trains with it (its size, start and length agreed then). Within: the bonus moves
+    nothing at this rate and length, reward v1 stays, and the long run is one of the three
+    offered. Below by more than two: the bonus costs; reward v1 stays.
+  - **Budget:** about 2 hours (T33's round 2: 79 updates, 114 minutes; the measures about 10),
+    beyond decision 3's 20 by about 1. Parts under 2 hours: Ctrl-C, then `--resume`.
+  - **The user's commands** (from `python/`; `--device cuda` on the user's card):
+
+        uv run --group train python -m h3env.train --config configs/e25-win-bonus.toml --init-from runs/e25-structure-1/best.pt --out runs/e25-win-bonus-1
+        uv run --group train python -m h3env.train --resume runs/e25-win-bonus-1
+        uv run --group train python -m h3env.train.gate --candidate runs/e25-win-bonus-1/checkpoint.pt --best runs/e25-structure-1/best.pt --device cuda --fixed --json runs/e25-win-bonus-1/head-to-head.json
+        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-win-bonus-1/checkpoint.pt --opponents system,system-all-seeing --device cuda --json runs/e25-win-bonus-1/ladder.json
+        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-win-bonus-1/checkpoint.pt --set neutral-v1 --device cuda --json runs/e25-win-bonus-1/neutral.json
+
+    The upload: `record.json`, `metrics.jsonl`, `head-to-head.json`, `ladder.json`,
+    `neutral.json` (no network). **Acceptance:** the record and the measures committed
+    (`python/records/e25-win-bonus-1.json`, `python/records/win-bonus/`), the read in
+    `E25-log.md` T35, the long run agreed with the user, T36 refined.
+
 **E25 increment 8, T34** (moved 2026-11-15, done: `E25-log.md` T34; T34 closed):
 
 - **T34 — Training regimes: the search at play and the KL anchor to #2** (refined 2026-11-15,
