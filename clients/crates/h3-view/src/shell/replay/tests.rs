@@ -3,6 +3,7 @@
 
 use alloc::format;
 use alloc::string::{String, ToString};
+use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_render::Bugs;
@@ -346,6 +347,29 @@ fn what_the_viewer_cannot_do_stops_the_replay() {
         let (seen, got, _) = replay_from(r, steps);
         assert!(seen.is_empty(), "{steps:?}");
         assert_eq!(got, not_built, "{steps:?}");
+    }
+    // A stub's screen (E27 M2 T6b2) is the client's: shown to `until` and `check`, but no menu
+    // opens on it and the replay stops at its shots and inputs as at one not built.
+    let (seen, got, r) = replay(
+        false,
+        &[
+            "until:main_menu",
+            "click:643,304",
+            "check:high_scores",
+            "move:1,2",
+        ],
+    );
+    assert!(seen.is_empty());
+    assert_eq!(
+        (got, r.screen(), r.menu()),
+        (None, Screen::HighScores, None)
+    );
+    for steps in [&["shot:scores"][..], &["key:Return"], &["clip:c:10:1"]] {
+        let mut all = vec!["until:main_menu", "click:643,304"];
+        all.extend(steps);
+        let (seen, got, _) = replay(false, &all);
+        assert!(seen.is_empty(), "{steps:?}");
+        assert_eq!(got, Some(Stop::NotBuilt(Screen::HighScores)), "{steps:?}");
     }
 }
 

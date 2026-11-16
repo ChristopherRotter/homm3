@@ -2188,5 +2188,50 @@ its rectangle (520, 4, 250, 567): none stale there.
 The CD notice's menu (Single, Campaign and Tutorial not created, only 102 and 104's hover
 cleared: not on Complete), the clip's due frames' redraws (clip 33 draws nothing, CLT-Q86), the
 tutorial flag's clearing at the creation (no tutorial mode, CLT-Q84). New Game's Campaign and
-Tutorial and the main menu's High Scores and Credits lead to the frame's stand-ins until T6b2's
-stubs (decision 37).
+Tutorial and the main menu's High Scores and Credits lead to T6b2's stubs (decision 37; §15).
+
+## 15. The stubs and the client's own pack (M2 T6b2, 2026-11-16)
+
+Nothing read: the stubs are the client's own (decision 37); the menus end with the buttons'
+commands and the loop's switches take them (§2.2, §2.4) as T3a and T6b1 built them.
+
+### 15.1 The stubs
+
+- **Which:** New Game's Campaign (the campaigns' selection, E20: decision 7) and Tutorial (the
+  engine's tutorial mode, CLT-Q84: decision 9), the main menu's High Scores (§2.8) and Credits
+  (§2.9) until M4. Load Game's Campaign and Tutorial lead to the scenario screen's load (M3), not
+  to a stub.
+- **What:** the menu ends with the button's command as the original's; the screen on is then the
+  stub's (`Screen::built`, `Built::Stub`): the menu it was chosen from opened anew (none hovered,
+  the pointer where it is) with a box of style 1 (an OK alone) over it, centred and framed in
+  red as the menus' boxes, its text the client's own pack's `shell.stub.<screen>` (the driver's
+  names: `campaigns`, `tutorial`, `high-scores`, `credits`). The box takes the inputs as Quit's
+  question does (a press, a hold's move off and on, the release over the OK, the right release
+  ending its hold, Enter; the menu's buttons, hotkeys and help popups none under it); its OK ends
+  the screen (`Ended::Back`: New Game's menu; `Ended::Done`: the main menu), which opens anew.
+  The window's music goes on (the menus' track).
+- **The replay:** a stub is not the original's screen (it shows the campaigns' selection, the
+  tutorial's load, its High Scores, its credits there), so no menu opens on it and the replay
+  stops at its first shot, clip or input but a move, as at a screen not built (`stop <k>
+  not-built <screen> (<task>)`): `menu-tutorial` stops at its `clip:load` as before. No kept line
+  changes.
+- **The words** (the agent's, *provisional*): a title in the highlight braces, as the help
+  popups' (TextDraw's markup, E17 design §3.6), and one sentence: "{Campaign}" and "The campaigns
+  are not available yet.", and so for the tutorial, the high scores and the credits.
+
+### 15.2 The client's own pack
+
+- **The file:** `clients/text/en.json`, beside the key catalogue (`h3_battle_client::text::
+  OWN_PACK`): the messages of the keys without `original` forms (`shell.stub.*` so far), English,
+  nested JSON with i18next's conventions (E17 design §9.2). Its language is its name, as a
+  player's pack's.
+- **Its check** (`text::own_pack`): an entry no key names, a placeholder its key lacks, or a key
+  of the client's own it gives no last form of (`h3_ui::text::pack::Pack::lacks`: `<key>`, or a
+  plural key's `<key>_other`, where a lookup ends within a pack) is an error: a client does not
+  start with a fault in its own pack, as with the original's text, and the gate lists it.
+- **The order:** the player's pack (only `h3-view text --pack` takes one so far), the client's
+  own, the original's: `h3_battle_client::log::catalogue` (every client's catalogue: the shell's,
+  the battle's windows and renders) and `h3-view text`.
+- **Not built** (*provisional*): a pack chosen by language (only `en.json`; a localized
+  installation's own text keeps its language, the client's strings stay English), a player's pack
+  in the windows.

@@ -42,8 +42,17 @@
 //!   and the rows outside the rectangles as last shown ([`Menu::stale`]), for the comparisons
 //!   only.
 //!
-//! The boxes are laid out by the caller ([`Boxes`]: their texts are the user's tables'), framed in
-//! red (the viewing player at the menus, recorded at M1 T2: `menu-quit`, `menu-main`).
+//! - **The stubs** (E27 M2 T6b2, decision 37; [`STUBS`]): New Game's Campaign and Tutorial (until
+//!   E20 and the engine's tutorial mode, decisions 7 and 9) and the main menu's High Scores and
+//!   Credits (until M4) end their menu as the original's do, and their screen shows that menu
+//!   opened anew with a notice over it, a box of style 1 in the client's own words (its language
+//!   pack's `shell.stub.<screen>`, by the driver's names: `campaigns`, `tutorial`,
+//!   `high-scores`, `credits`); the notice takes the box's inputs as Quit's question does, and
+//!   its OK ends the screen (back to New Game's menu, or to the main menu), which opens anew.
+//!
+//! The boxes are laid out by the caller ([`Boxes`]: their texts are the user's tables', the
+//! notices' the client's), framed in red (the viewing player at the menus, recorded at M1 T2:
+//! `menu-quit`, `menu-main`).
 //! *Not built* (design §13, §14): the first pass's disk check (GENRLTXT 708) and the CD notice
 //! (a game type menu then without Single, Campaign and Tutorial), a DirectPlay lobby's start; the
 //! menus' clip 33 draws nothing (CLT-Q86).
@@ -73,6 +82,15 @@ pub const QUIT: u16 = 105;
 pub const GAME_TYPE_BUTTONS: [u16; 5] = [100, 101, 102, 103, 104];
 /// A game type menu's title picture (105: `newgame.pcx` or `loadgame.pcx`).
 pub const TITLE: u16 = 105;
+
+/// The client's stubs (E27 M2 T6b2): each screen, the menu its notice shows over and the notice's
+/// OK's ending.
+pub const STUBS: [(Screen, Kind, Ended); 4] = [
+    (Screen::Campaigns, Kind::GameType(Game::New), Ended::Back),
+    (Screen::Tutorial, Kind::GameType(Game::New), Ended::Back),
+    (Screen::HighScores, Kind::Main, Ended::Done),
+    (Screen::Credits, Kind::Main, Ended::Done),
+];
 
 /// Which menu.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -132,6 +150,8 @@ enum Over {
     Help(u16),
     /// Quit's question.
     Question(Box<Open>),
+    /// A stub's notice (E27 M2 T6b2): its OK ends the stub's screen.
+    Notice(Box<Open>),
 }
 
 /// What an input did.
@@ -165,6 +185,8 @@ impl Did {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Menu {
     kind: Kind,
+    /// The screen it shows on: its kind's, or a stub's under its notice.
+    screen: Screen,
     dialog: Dialog,
     /// The rectangles the hover's redraw shows.
     redrawn: Vec<[i32; 4]>,
@@ -205,6 +227,7 @@ impl Menu {
     ) -> Self {
         Self {
             kind,
+            screen: kind.screen(),
             dialog,
             redrawn,
             shown: Shown::default(),
@@ -232,17 +255,32 @@ impl Menu {
         )
     }
 
+    /// The menu as the stub `screen` shows it (E27 M2 T6b2): `notice` open over it, its OK ending
+    /// the screen as [`STUBS`] says.
+    fn stub(mut self, screen: Screen, notice: MessageBox) -> Self {
+        self.screen = screen;
+        self.over = Over::Notice(Box::new(Open::new(notice)));
+        self
+    }
+
     /// Which menu it is.
     #[must_use]
     pub const fn kind(&self) -> Kind {
         self.kind
     }
 
-    /// Where the menu takes its keys: itself, or the question over it (the popup takes none).
+    /// The screen it shows on: its kind's ([`Kind::screen`]), or a stub's under the stub's notice
+    /// ([`STUBS`]).
+    #[must_use]
+    pub const fn screen(&self) -> Screen {
+        self.screen
+    }
+
+    /// Where the menu takes its keys: itself, or the box over it (the popup takes none).
     #[must_use]
     pub const fn context(&self) -> Context {
         match (&self.over, self.kind) {
-            (Over::Question(_), _) => Context::Question,
+            (Over::Question(_) | Over::Notice(_), _) => Context::Question,
             (Over::Nothing | Over::Help(_), Kind::Main) => Context::MainMenu,
             (Over::Nothing | Over::Help(_), Kind::GameType(_)) => Context::GameType,
         }
@@ -287,7 +325,7 @@ impl Menu {
         let open = match &self.over {
             Over::Nothing => None,
             Over::Help(id) => self.boxes.help.get(id),
-            Over::Question(open) => Some(&open.message),
+            Over::Question(open) | Over::Notice(open) => Some(&open.message),
         };
         open.map(|m| m.dialog.draws(&m.shown, players))
             .unwrap_or_default()
@@ -346,7 +384,7 @@ impl Menu {
         self.pointer = point;
         match &mut self.over {
             Over::Help(_) => Did::default(),
-            Over::Question(open) => changed(open.moved(point)),
+            Over::Question(open) | Over::Notice(open) => changed(open.moved(point)),
             Over::Nothing if self.input.holds_button() => {
                 let held = self.held();
                 let did = self.input.moved(&self.dialog, &mut self.shown, point);
@@ -366,7 +404,7 @@ impl Menu {
         self.pointer = point;
         match &mut self.over {
             Over::Help(_) => self.close_help(),
-            Over::Question(open) => pressed(open.press(point)),
+            Over::Question(open) | Over::Notice(open) => pressed(open.press(point)),
             Over::Nothing => {
                 let did = self.input.press(&self.dialog, &mut self.shown, point);
                 let held = self.held();
@@ -384,7 +422,7 @@ impl Menu {
     pub fn release(&mut self) -> Did {
         match &mut self.over {
             Over::Help(_) => self.close_help(),
-            Over::Question(open) => {
+            Over::Question(open) | Over::Notice(open) => {
                 let outcome = open.release();
                 self.answered(outcome)
             }
@@ -413,15 +451,15 @@ impl Menu {
     }
 
     /// The right button released: the help popup closed; a button the mouse holds released as by
-    /// the left button (its own loop, CLT-Q72 (a)), in the question's box too.
+    /// the left button (its own loop, CLT-Q72 (a)), in a box over the menu too.
     pub fn right_release(&mut self) -> Did {
         match &mut self.over {
             Over::Help(_) => self.close_help(),
-            Over::Question(open) if open.holds_mouse() => {
+            Over::Question(open) | Over::Notice(open) if open.holds_mouse() => {
                 let outcome = open.release();
                 self.answered(outcome)
             }
-            Over::Question(_) => Did::default(),
+            Over::Question(_) | Over::Notice(_) => Did::default(),
             Over::Nothing => {
                 let held = self.held();
                 let did = self.input.right_release(&mut self.shown);
@@ -434,7 +472,9 @@ impl Menu {
     /// A key down giving `command` (the key `by`, whose release clicks).
     pub fn key(&mut self, command: Command, by: &str) -> Did {
         match (&mut self.over, command, self.kind) {
-            (Over::Question(open), Command::Message(key), _) => pressed(open.key(key, by)),
+            (Over::Question(open) | Over::Notice(open), Command::Message(key), _) => {
+                pressed(open.key(key, by))
+            }
             (Over::Nothing, Command::Button(id), Kind::Main) if BUTTONS.contains(&id) => {
                 self.hotkey(id, by)
             }
@@ -458,7 +498,7 @@ impl Menu {
                     ..Did::default()
                 }
             }
-            Over::Question(open) => {
+            Over::Question(open) | Over::Notice(open) => {
                 let outcome = open.key_up(by);
                 self.answered(outcome)
             }
@@ -558,12 +598,19 @@ impl Menu {
         }
     }
 
-    /// The question's box after an input: its OK ends the menu with Quit, its Cancel closes it
-    /// (the hover taken again).
+    /// The box over the menu after an input: the question's OK ends the menu with Quit, its
+    /// Cancel closes it (the hover taken again); a stub's notice's OK ends the stub's screen.
     fn answered(&mut self, outcome: Outcome) -> Did {
         match outcome {
             Outcome::Nothing => Did::default(),
             Outcome::Changed => Did::CHANGED,
+            Outcome::Closed(_) if matches!(self.over, Over::Notice(_)) => Did {
+                ended: STUBS
+                    .iter()
+                    .find(|&&(screen, _, _)| screen == self.screen)
+                    .map(|&(_, _, ended)| ended),
+                ..Did::default()
+            },
             Outcome::Closed(message::YES) => Did {
                 ended: Some(Ended::MainMenu(Request::Quit)),
                 ..Did::default()
@@ -582,7 +629,7 @@ impl Menu {
     }
 }
 
-/// The menus as they open: the main menu, New Game's and Load Game's.
+/// The menus as they open: the main menu, New Game's and Load Game's, and the stubs' notices.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Menus {
     /// The main menu.
@@ -591,19 +638,35 @@ pub struct Menus {
     pub new_game: Menu,
     /// Load Game's menu.
     pub load_game: Menu,
+    /// The stubs' notices by their screen ([`STUBS`]; E27 M2 T6b2), laid out (style 1).
+    pub notices: Vec<(Screen, MessageBox)>,
 }
 
 impl Menus {
-    /// The menu `screen` is, opened with the pointer at `pointer`; none for another screen.
+    /// The menu `screen` shows, opened with the pointer at `pointer`: a menu's screen its menu, a
+    /// stub's ([`STUBS`]) the menu it was chosen from with the stub's notice over it; none for
+    /// another screen, or a stub without its notice.
     #[must_use]
     pub fn opened(&self, screen: Screen, pointer: [i32; 2]) -> Option<Menu> {
-        let menu = match screen {
-            Screen::MainMenu => &self.main,
-            Screen::GameType(Game::New) => &self.new_game,
-            Screen::GameType(Game::Load) => &self.load_game,
-            _ => return None,
+        let kind = match screen {
+            Screen::MainMenu => Kind::Main,
+            Screen::GameType(game) => Kind::GameType(game),
+            _ => {
+                let &(_, kind, _) = STUBS.iter().find(|&&(s, _, _)| s == screen)?;
+                let (_, notice) = self.notices.iter().find(|(s, _)| *s == screen)?;
+                return Some(self.menu(kind).opened(pointer).stub(screen, notice.clone()));
+            }
         };
-        Some(menu.opened(pointer))
+        Some(self.menu(kind).opened(pointer))
+    }
+
+    /// The menu of `kind`.
+    const fn menu(&self, kind: Kind) -> &Menu {
+        match kind {
+            Kind::Main => &self.main,
+            Kind::GameType(Game::New) => &self.new_game,
+            Kind::GameType(Game::Load) => &self.load_game,
+        }
     }
 }
 

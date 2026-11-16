@@ -390,7 +390,7 @@ recorded again in the sandbox (`h3shell.py run`), with the sound sequences its t
 | T5b2 | The start's sound on the game's run (decision 33; design §11.7): the stand-in DirectSound in `xdd.dll` for `SMACKW32` (its `timeSetEvent` and Miles' timer kept from firing), Bink's Miles sample calls on the harness's clock, each clip sound's Play, stop and volume logged; `binkprobe` on the same Miles stand-in; the `start` group's sound recipes recorded and compared (`drawn`: the replay's `sound`, `quiet` and `closed` lines; the frames exact) | **done** 2026-11-15: `xdd.dll`'s 7. (`clock/clipsound`, the ack's fields 14 and 15), `binkprobe start` and the stand-in Miles' `MssMinimum`, `MssHold`, `MssLoads`; `h3shell.py`'s voices, the replay's volume and `closed` lines; Bink's sound from Miles' first buffer read (its first frame), `bink-check.sh`'s `start` lines; four sound recipes recorded, `drawn --group start` 10 recipes, 30 lines exact; log "M2 T5b2", design §12 |
 | T6a | The main menu and Quit's question (§2.3, §2.5; decision 35): hover, press, release off, the help popups, hotkeys, `button.wav`, `MAINMENU.MP3`; exact against `menu-main`, `menu-quit` and `menu-sound` up to New Game's menu, its sample compared | **done** 2026-11-15 (decision 36; CLT-Q126): `h3_view::shell::menu` (`MainMenu`, `Boxes`, `Did`), `shell::keys` (the table `[shell]`), `shell::samples` (category 3's handles as the harness numbers them); the replay's main menu and `with_sound`, `look` with the menu's state; the window's mouse, hotkeys, samples and music; `h3shell.py drawn` compares the samples; `menu-main` 26 of 26, `menu-quit` 7 of 7, `menu-sound`'s shot and `sound1` exact; log "M2 T6a", design §13 |
 | T6b1 | New Game's and Load Game's menus (§2.4; decision 37): their hover, press, release off, popups, hotkeys and Back, the buttons redrawn whole (CLT-Q118); exact against `menu-new`, `menu-load` and `menu-sound` whole (`sound2`) | **done** 2026-11-15: `h3_view::shell::menu::Menu` for both kinds (`Kind`, `Menus`, `Stale`, `outside`; `MainMenu` gone), the keys' `Command::Choice` and `Context::GameType`, `look::MenuLayout` (`redrawn`, `titles`, `dialog_for`) and `Look`'s `stale` and `over`; the replay and the window on whichever menu shows; `menu-new` 27 of 27, `menu-load` 27 of 27, `menu-sound` 5 of 5 exact at the first run; log "M2 T6b1", design §14 |
-| T6b2 | The stubs (decision 37): New Game's Campaign and Tutorial (decisions 7, 9), the main menu's High Scores and Credits until M4, each a message box in the client's own words, back to its menu; the client's language pack (`clients/text/en.json`, E17 design §9.2) and its loading | after T6b1 |
+| T6b2 | The stubs (decision 37): New Game's Campaign and Tutorial (decisions 7, 9), the main menu's High Scores and Credits until M4, each a message box in the client's own words, back to its menu; the client's language pack (`clients/text/en.json`, E17 design §9.2) and its loading | **done** 2026-11-16: `Built::Stub`; `shell::menu`'s `STUBS`, `Menu::screen`, the notice over the menu (`Menus::notices`, opened by the stub's screen), its OK the screen's end; the replay stops at a stub; `clients/text/en.json` (`shell.stub.*`), `text::own_pack` (`OWN_PACK`, `Pack::lacks`), the catalogue's order (the player's, the client's, the original's) in `log::catalogue` and `h3-view text`, the gate's check; every recipe as recorded, the four notices checked in the window; log "M2 T6b2", design §15 |
 | T7 | Multiplayer's first stage (decision 10's stub, CLT-Q101) and the hot seat's names (§2.6, §2.7: the edit field read first, two 21-letter names recorded, Enter pressing OK, CLT-Q107), Load Game's multiplayer; the scenario screen a stub (M3); exact against `multiplayer` | after T6b2 |
 | T8 | M2's closure: a fresh reviewer, the review list, M3's refinement (M3 T0: the loading bar, the scenario list's maps, decision 8; §6.4's recipes for M3) | after T7 |
 
@@ -496,7 +496,16 @@ dialog and the box, `Look::over`), the button's box its layout rectangle; (48) t
 `redrawn` too), `MenuLayout::dialog_for` setting the title; (49) the keys' `Command::Choice`
 (`single`, `multiplayer`, `campaign`, `tutorial`, `back` in `[shell]`) in `Context::GameType`;
 (50) the window opens a menu at each screen change (a word or a menu's end) and asks for
-"MainMenu" at each, the host dropping a request for the track playing.
+"MainMenu" at each, the host dropping a request for the track playing. T6b2: (51) the stubs as
+screens of their own (`Built::Stub`), each the menu it was chosen from opened anew under its
+notice (`Menu::screen`, the box `Over::Notice`, `STUBS`, `Menus::notices`), not a box the menu
+opens over itself (the shell's frame keeps the original's switches; the hover under the notice
+lost); (52) the replay stops at a stub as at a screen not built (no menu opened on it); (53) the
+notices' words (a title in the highlight braces, one sentence) and their keys by the driver's
+screen names (`shell.stub.<screen>`); (54) the client's own pack beside the key catalogue
+(`text::OWN_PACK`, English only), every key without an original form required in it
+(`Pack::lacks`: `<key>` or a plural key's `<key>_other`), a fault an error at a client's start
+and in the gate; (55) no player's pack in the windows yet (only `h3-view text --pack`).
 
 ## Dependencies and boundaries
 

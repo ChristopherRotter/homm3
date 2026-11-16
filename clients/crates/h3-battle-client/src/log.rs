@@ -21,17 +21,21 @@ use h3_view::tables::Tables;
 use crate::lods::Lods;
 use crate::text;
 
-/// The catalogue of the original's text: the committed key catalogue over `tables`' creatures, its
-/// pack read from the text tables of `archives` (the base archive's copies first, §3.1). A key the
-/// tables do not give is an error: the gate lists such problems.
+/// The client's catalogue: the committed key catalogue over `tables`' creatures, the client's own
+/// pack beside it (E27 M2 T6b2: `clients/text/en.json`, its texts the original has none of), then
+/// the original's pack read from the text tables of `archives` (the base archive's copies first,
+/// §3.1). A key the tables do not give, or a fault of the client's pack, is an error: the gate
+/// lists such problems.
 pub fn catalogue(tables: &Tables, archives: &Lods, exe: &[u8]) -> Result<Catalogue, String> {
-    let keys = text::read_keys(&text::default_keys(), tables)?;
+    let path = text::default_keys();
+    let keys = text::read_keys(&path, tables)?;
+    let own = text::own_pack(&path, &keys)?;
     let texts = text::tables(&keys, |name| archives.lookup(name), exe)?;
     let (original, problems) = Pack::original(&keys, &texts);
     match problems.first() {
         Some(problem) => Err(format!("the original's text: {problem}")),
         None => Ok(Catalogue {
-            packs: vec![original],
+            packs: vec![own, original],
         }),
     }
 }
