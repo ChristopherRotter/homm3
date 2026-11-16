@@ -25,23 +25,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   +0.285; 0.552 head to head against `e25-imitate-1` #2): exit criterion 1 met on its point
   estimates, the faithful actor's win rate inside its interval; 217 samples a second, 28 hours a
   20 M on the GTX 1070. The GPU's memory capped at 90 % of the card (`gpu.cap`, `TRAPS.md`).
-  **Increment 8: probes, then one long run** (the epic file; the probes about 20 hours of the
-  user's GPU). **T30 done** (`E25-log.md` T30): the margin lies in the hero battles, sharpening
-  +0.011, no encoding change asked. **T31 done**: a `hexconv` run sets `accumulate = 4`,
-  `chunk_align = 32` (98 to 67 s an update). **T33 done**: no continuation from #2 gains; **#2
-  sits at this setup's plateau**. **T32 done** (`E25-log.md` T32, `records/distill/arch-1.json`):
-  at 4 M the control 0.752, 2e-3 0.760, 128 × 6 0.761, 64 × 10 0.753, the ladders inside the
-  control's interval: `hexconv` 96 × 6 stays, T35's long run starts from T27's 16 M clone (#2's
-  start). **T34 done** (`E25-log.md` T34): the search at play gains nothing on #2 (N 16 0.508
-  against its sampled 0.511; N 64 on the hero battles +0.003), so the long run is PPO's; the KL
-  anchor (`[ppo] imitation_teacher`, #2 teaching T27's clone) reaches #2's level in 2 M (0.496 ±
-  0.002 head to head, 0.503 against the fair actor), its entropy 1.35 (mass-covering).
-  **T35 in progress** (the probes' checkpoint; `QUEUE.md`): the user chose to probe the
-  outcome's weight first, decision 6 amended: `configs/e25-win-bonus.toml` (`[ppo] win_bonus`
-  0.1 on T33's annealed arm; **the user's GPU next, about 2 hours**); the long run agreed on its
-  read (T36).
-- **Open pull requests:** the one of `claude/stoic-gauss-p3cmdq` (T34's close, T35's probe).
-  Merged: #940 (T32's close, T34's preparation), #948 (T34's (a)).
+  **Increment 8: probes, then one long run** (the epic file; `E25-log.md` T30 to T35): no probe
+  moved #2 past its interval: the network's size (T32, `hexconv` 96 × 6 stays), PPO's settings
+  (T33, #2 at its setup's plateau), the search at play (T34 (a)), the KL anchor (T34 (b),
+  `[ppo] imitation_teacher`: #2 teaching T27's clone reaches #2's level in 2 M), the outcome's
+  weight (T35, `[ppo] win_bonus` 0.1: 0.5007 ± 0.0019 head to head, reward v1 stays). A
+  `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31: 98 to 67 s an update).
+  **T36 prepared**: the user chose `e25-anchor-1` resumed from 2 M to 20 M (#2 teaching to
+  10 M); **the user's GPU next, about 19 hours** (the commands, rule and measures in `QUEUE.md`).
+- **Open pull requests:** #965 (`claude/adoring-turing-tl1huu`: T35's close, T36's
+  preparation). Merged: #948 (T34's (a)), #954 (T34's close, T35's probe).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -54,6 +47,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-16 — E25 T35 closed, T36 prepared
+
+- #954 merged. The user uploaded `e25-win-bonus-1`'s `record.json`, `metrics.jsonl` and the three
+  measures (the measures with CRLF, stripped; the update records read from `metrics.jsonl`, not
+  committed). The probe within (0.5007 head to head): reward v1 stays. The user chose the long
+  run of four offered: the anchor resumed to 20 M. Only `uv sync --group dev` and the records'
+  test run (no code changed).
 
 ### 2026-11-15 — E25 T32 closed, T34 prepared
 
@@ -74,11 +75,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   script run: cargo-llvm-cov, llvm-tools and llvm-20 installed by hand for the scoped verify,
   `origin/master` fetched first (`check-lane` read a stale base); `uv sync --group train` for
   T32's config test.
-
-### 2026-11-11 — E25 T33 (round 1 read, round 2 prepared)
-
-- #843 merged. The session linked to the user's computer: round 1's outcomes read in place
-  (`python/runs/`, `device_bash`), the twelve measure files staged to the sandbox and committed;
-  the user chose round 2's arm. The VM restarted early (the setup's baseline lost, CI's green
-  `master` stood for it); `cargo build --release -p h3-ffi` 2 minutes, `uv sync --group train`
-  about 10; the scoped verify 11 minutes, the Python suite 259 (2.9 minutes).

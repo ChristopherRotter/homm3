@@ -32,7 +32,9 @@
 //!
 //! Each screen names the task that builds it ([`Screen::task`]): the frame holds them all, the
 //! screens themselves come with T5 to T7, M3, M4, E20 and E24 M5; [`Screen::built`] says how much
-//! of each is drawn so far (T4: the main menu at rest; T5a: the start, [`start`]).
+//! of each is drawn so far (T4: the main menu at rest; T5a: the start, [`start`]; T6b2: the
+//! campaigns' selection, the tutorial, High Scores and Credits as the client's stubs, a notice
+//! over the menu they were chosen from).
 
 use core::fmt;
 
@@ -191,6 +193,11 @@ pub enum Ended {
 pub enum Built {
     /// Not drawn: a stand-in until its task.
     Not,
+    /// The client's stub (E27 M2 T6b2, decision 37): a notice in the client's own words over the
+    /// menu it was chosen from, its OK the screen's end ([`menu::Menus::opened`]); drawn and
+    /// taking its inputs, but not the original's screen, so a replay stops at it as at one not
+    /// built.
+    Stub,
     /// Drawn and taking its inputs (the start since T5a, the main menu since T6a, the game type
     /// menus since T6b1).
     Whole,
@@ -231,12 +238,14 @@ impl Screen {
     }
 
     /// How much of the screen is built ([`look::look`] draws it unless [`Built::Not`]): the start,
-    /// the main menu and the game type menus (E27 M2 T5a, T6a, T6b1); the others a stand-in until
-    /// their task ([`Screen::task`]).
+    /// the main menu and the game type menus (E27 M2 T5a, T6a, T6b1); the campaigns' selection,
+    /// the tutorial, High Scores and Credits the client's stubs (T6b2: until E20, CLT-Q84's
+    /// tutorial mode and M4); the others a stand-in until their task ([`Screen::task`]).
     #[must_use]
     pub const fn built(self) -> Built {
         match self {
             Self::Start | Self::MainMenu | Self::GameType(_) => Built::Whole,
+            Self::Campaigns | Self::Tutorial | Self::HighScores | Self::Credits => Built::Stub,
             _ => Built::Not,
         }
     }

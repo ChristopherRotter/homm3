@@ -1,6 +1,8 @@
 //! The string catalogue in the adapters (E17 M3 T4b-1, `docs/epics/E17-design.md` §9): the key
 //! catalogue `clients/text/keys.toml`, the original's text read from the installation's text
-//! tables through it, a player's language pack, and the command `h3-view text`.
+//! tables through it, the client's own language pack beside it (`clients/text/en.json`, E27 M2
+//! T6b2: the texts the original has none of), a player's language pack, and the command `h3-view
+//! text`. The packs are asked in this order: the player's, the client's own, the original's.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -21,6 +23,29 @@ use crate::lods::{BITMAPS, Lods};
 /// The committed key catalogue.
 pub fn default_keys() -> PathBuf {
     assets::clients_dir().join("text").join("keys.toml")
+}
+
+/// The client's own language pack's file, beside the key catalogue (E27 M2 T6b2; E17 design §9.2:
+/// committed with the client's first own string, in English).
+pub const OWN_PACK: &str = "en.json";
+
+/// The client's own pack beside the key catalogue at `catalogue` ([`OWN_PACK`]): read and checked
+/// against its keys `keys`: an entry no key names, a placeholder its key lacks, or a key of the
+/// client's own (no original form) it gives no last form of ([`Pack::lacks`]) is an error.
+pub fn own_pack(catalogue: &Path, keys: &Keys) -> Result<Pack, String> {
+    let path = catalogue.with_file_name(OWN_PACK);
+    let (pack, problems) = read_pack(&path, keys)?;
+    let mut wrong: Vec<String> = problems.iter().map(ToString::to_string).collect();
+    wrong.extend(
+        pack.lacks(keys)
+            .iter()
+            .map(|id| format!("`{id}`: not given")),
+    );
+    if wrong.is_empty() {
+        Ok(pack)
+    } else {
+        Err(format!("{}: {}", path.display(), wrong.join("; ")))
+    }
 }
 
 /// The artifacts the family `artifact` names (E17 M6 T5a): the original's 141 (0 to 140, the
@@ -231,8 +256,8 @@ fn arguments(given: &[(String, String)]) -> Args {
     })
 }
 
-/// Runs `h3-view text`: every key's forms from the original (and the player's pack), or one
-/// key's text.
+/// Runs `h3-view text`: every key's forms from the packs (the player's, the client's own, the
+/// original's), or one key's text.
 pub fn run(options: &Options) -> ExitCode {
     match text(options) {
         Ok(lines) => {
@@ -263,6 +288,7 @@ fn text(options: &Options) -> Result<Vec<String>, String> {
         lines.extend(problems.iter().map(|p| format!("{}: {p}", path.display())));
         catalogue.packs.push(pack);
     }
+    catalogue.packs.push(own_pack(&options.keys, &keys)?);
     catalogue.packs.push(original);
     if options.log {
         lines.extend(
@@ -495,6 +521,41 @@ mod tests {
             "HOTRAITS", "MINENAME", "PRISKILL", "SEERHUT", "SKILLLEV", "SPTRAITS", "WALLS",
         ];
         assert_eq!(names, BTreeSet::from(tables));
+    }
+
+    /// The client's own pack (E27 M2 T6b2) gives every key of the committed catalogue that the
+    /// original's tables do not, and nothing else; one beside another catalogue is checked
+    /// against that one's keys.
+    #[test]
+    fn the_client_s_own_pack_gives_its_keys() {
+        let assets = assets::load(&assets::default_dir(), assets::ALL).unwrap();
+        let keys = read_keys(&default_keys(), &assets).unwrap();
+        let own = own_pack(&default_keys(), &keys).unwrap();
+        let ids: Vec<&str> = own.messages.keys().map(String::as_str).collect();
+        assert_eq!(
+            ids,
+            [
+                "shell.stub.campaigns",
+                "shell.stub.credits",
+                "shell.stub.high-scores",
+                "shell.stub.tutorial",
+            ]
+        );
+        let dir = std::env::temp_dir().join(format!("h3-view-own-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let catalogue = dir.join("keys.toml");
+        let keys =
+            Keys::parse("[[key]]\nid = \"a\"\n[[key]]\nid = \"b\"", &BTreeMap::new()).unwrap();
+        assert!(own_pack(&catalogue, &keys).is_err());
+        fs::write(dir.join(OWN_PACK), r#"{ "a": "x", "c": "y" }"#).unwrap();
+        let wrong = own_pack(&catalogue, &keys).unwrap_err();
+        assert!(
+            wrong.ends_with("en.json: `c`: no key has this name; `b`: not given"),
+            "{wrong}"
+        );
+        fs::write(dir.join(OWN_PACK), r#"{ "a": "x", "b": "y" }"#).unwrap();
+        assert_eq!(own_pack(&catalogue, &keys).unwrap().messages.len(), 2);
+        fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

@@ -235,6 +235,13 @@ fn gate(options: &Options) -> Result<(), String> {
         original.messages.len(),
         texts.len()
     );
+    // The client's own pack beside the catalogue (E27 M2 T6b2): every entry a key's, every key
+    // without an original form given.
+    let own = text::own_pack(&options.keys, &keys)?;
+    println!(
+        "gate: the client's own pack: {} messages, every own key given",
+        own.messages.len()
+    );
     // The battle log's lines (E17 M3 T4b-2a): composed from the original's text, every argument
     // in its place (a catalogue without the log's keys, as the tests' own, has none to compose).
     if keys.keys.contains_key("battle.log.damage") {
@@ -751,11 +758,13 @@ mod tests {
         fs::write(tables.join("base.toml"), &base).unwrap();
         fs::write(tables.join("ab.toml"), header("ab", "\"base\"")).unwrap();
         fs::write(tables.join("sod.toml"), header("sod", "\"ab\"")).unwrap();
-        // The key catalogue: a key and the creatures' names in the archives' `t.txt`.
+        // The key catalogue: a key and the creatures' names in the archives' `t.txt`; the
+        // client's own pack beside it, its own key `b` (E27 M2 T6b2).
         let keys = root.join("keys.toml");
+        fs::write(root.join(text::OWN_PACK), r#"{ "b": "B" }"#).unwrap();
         fs::write(
             &keys,
-            "[[key]]\nid = \"a\"\noriginal = [{ at = \"T:0\" }]\n\
+            "[[key]]\nid = \"a\"\noriginal = [{ at = \"T:0\" }]\n[[key]]\nid = \"b\"\n\
              [[family]]\nid = \"creature\"\ntable = \"T\"\nfirst = 0\nforms = { one = 0 }\n",
         )
         .unwrap();
@@ -775,6 +784,10 @@ mod tests {
         assert!(
             report.contains("3 names appear more than once (3 with identical bytes, 0 different)")
         );
+        // A key of the client's own its pack does not give fails the gate.
+        fs::write(root.join(text::OWN_PACK), "{}").unwrap();
+        assert!(gate(&options).unwrap_err().contains("`b`: not given"));
+        fs::write(root.join(text::OWN_PACK), r#"{ "b": "B" }"#).unwrap();
         // A key the text tables lack fails the gate, and so does a table no archive holds.
         fs::write(
             &keys,

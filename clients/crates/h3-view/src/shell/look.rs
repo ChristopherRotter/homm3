@@ -5,7 +5,8 @@
 //! arrow at the pointer). The main menu (E27 M2 T6a) and New Game's and Load Game's menus (T6b1)
 //! are drawn as they are ([`super::menu`]): their buttons in their states, a game type menu's title
 //! by its game, the rows its redraw does not show as last shown in the original's profile
-//! (CLT-Q118), the box open over them; the help popup hides the cursor.
+//! (CLT-Q118), the box open over them; the help popup hides the cursor. A stub's screen (T6b2) is
+//! the menu it was chosen from with the stub's notice over it.
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -13,7 +14,7 @@ use alloc::vec::Vec;
 use h3_ui::ui::{Dialog, Draw, Shown};
 use serde::Deserialize;
 
-use super::menu::{Menu, Stale, TITLE};
+use super::menu::{Kind, Menu, Stale, TITLE};
 use super::{Game, Screen};
 use crate::message::MessageLayout;
 
@@ -110,15 +111,16 @@ pub fn parse_layout(text: &str) -> Result<ShellLayout, String> {
     Ok(layout)
 }
 
-/// What `screen` shows, none when it is not built yet ([`Screen::built`]) or, for a menu, without
-/// its state `menu` (the screen's own): its buttons as they are, the stale rows and the box over
-/// them ([`Menu::dialog_draws`], [`Menu::stale`], [`Menu::box_draws`]).
+/// What `screen` shows, none when it is not built yet ([`Screen::built`]) or without its state
+/// `menu` (the screen's own: a menu's, or a stub's menu under its notice, E27 M2 T6b2): its
+/// buttons as they are, the stale rows and the box over them ([`Menu::dialog_draws`],
+/// [`Menu::stale`], [`Menu::box_draws`]).
 #[must_use]
 pub fn look(layout: &ShellLayout, screen: Screen, menu: Option<&Menu>) -> Option<Look> {
-    let menu = menu.filter(|m| m.kind().screen() == screen)?;
-    let background = match screen {
-        Screen::GameType(_) => &layout.game_type.background,
-        _ => &layout.main_menu.background,
+    let menu = menu.filter(|m| m.screen() == screen)?;
+    let background = match menu.kind() {
+        Kind::GameType(_) => &layout.game_type.background,
+        Kind::Main => &layout.main_menu.background,
     };
     let players = &layout.player_palette;
     Some(Look {

@@ -780,3 +780,32 @@ step 3, `cp -rn`, comes after the setup) and the VM restarted later; CI's green 
   recorded. Recorded in `shell/drawn.txt`. The window checked under Xvfb (New Game's menu by the
   mouse, a help popup, Escape back, the hotkeys once focused by a click).
 - **No new question.** **The agent's calls** (*provisional*, M2's review list items 45 to 50).
+
+## M2 T6b2 — the stubs and the client's own pack: Campaign, Tutorial, High Scores and Credits as notices over their menus (2026-11-16)
+
+On `client/e27-m2-t6b2`, the user present at the start; `master` at `f6dd6d3` (#964 merged; CI's
+`Clients` and engine runs green). The original data staged at once (64 files, checked by SHA-256
+against the user's computer: one digest of the sorted lists), `cp -rn` into the clone right after
+the setup started; the setup's baseline stopped before its coverage step (TRAPS: coverage with the
+data staged restarts the VM), CI's green run on the same commit standing in. Kept whole (a small
+task on T6a's and T6b1's machinery).
+
+- **Nothing read:** the stubs are the client's own (decision 37; design §15).
+- **Built, pure** (`h3-view`, `h3-ui`): `shell::Built::Stub` (the campaigns' selection, the
+  tutorial, High Scores and Credits); `shell::menu::STUBS` (each stub's screen, the menu under it,
+  its OK's ending), `Menu::screen`, the notice as a box over the menu (`Over::Notice`: the box's
+  inputs as Quit's question, its OK the stub's end), `Menus::notices` and `Menus::opened` by the
+  stub's screen; `look::look` by the menu's screen and kind; the replay opening a menu only on a
+  screen built whole and stopping at a stub; `h3_ui::text::pack::Pack::lacks`.
+- **Built, the adapters** (`h3-battle-client`): the client's own pack `clients/text/en.json`
+  (`shell.stub.campaigns`, `.tutorial`, `.high-scores`, `.credits`; their keys in `keys.toml`
+  without original forms), `text::OWN_PACK` and `text::own_pack` (beside the key catalogue,
+  checked: entries, placeholders, every own key given), the catalogue's order (the player's, the
+  client's own, the original's) in `log::catalogue` and `h3-view text`, the gate's line for it;
+  the shell's notices laid out at the start (style 1, red).
+- **The comparisons:** `h3shell.py drawn`: 89 recipes, every one as recorded (122 shots drawn,
+  all exact); `menu-tutorial`, `scores-*` and `credits-*` stop where they did (`not-built`), so
+  `shell/drawn.txt` is unchanged. The window checked under Xvfb: each notice over its menu (New
+  Game's for Campaign and Tutorial, the main menu's for High Scores and Credits), its OK by the
+  mouse and by Enter back to that menu opened anew, the hotkeys T and H.
+- **No new question.** **The agent's calls** (*provisional*, M2's review list items 51 to 55).

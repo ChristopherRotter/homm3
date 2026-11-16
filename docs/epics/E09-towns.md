@@ -1,6 +1,6 @@
 # E09 — Towns
 
-Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63), increment 3 (growth, recruitment and the army rows) on 2026-11-15 (T30; decisions 64–97), all three in `E09-archive.md`; increment 4 (the Tavern) refined the same day (TWN-Q15, decisions 98–102), T31 next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
+Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63), increment 3 (growth, recruitment and the army rows) on 2026-11-15 (T30; decisions 64–97), all three in `E09-archive.md`; increment 4 (the Tavern) refined the same day (TWN-Q15, decisions 98–102), T33b next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
 
 ## Goal
 
@@ -67,12 +67,39 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
      T-15 for the packs' validation; the SoD edition's Conflux rule to E11 as a lead; batch TWN-4's
      rows for T33's cut.
 
+### Decisions at T33's start (2026-11-16, the user; TWN-Q17)
+
+108. **T33 in two** (recommended): T33a the hire (the offers and their draw, the week and the
+     start, the town's and the map Tavern's hire, the heroes that come back, the map's hero
+     settings: their drafts and Part F §59 to §71); T33b the information (the Thieves' Guild, the
+     Den of Thieves), the views, the env, the gates, batch TWN-4's rows, the building tasks and the
+     exit criteria, then the checkpoint. Not chosen: T33 whole; every draft first, the design
+     note's sections next.
+109. **A hero type's record at its first draw** (recommended): a type gets its hero id and details
+     the first time a tavern offers it and keeps them by type from then on (the original's 156
+     records: a hero that left the game comes back as it left); the store of heroes grows in play.
+     Not chosen: every allowed type's record at the build; a fresh record at every draw.
+110. **The tavern weights in the town part** (recommended): each faction's town record holds its
+     weight per hero class (`HCTRAITS.TXT`'s column); no shared change, no override for RoE's
+     missing Conflux column. Not chosen: the core's hero classes with a weight per faction.
+111. **The hire's two shapes** (recommended): a town's tavern by a town command (the town and the
+     slot, in the owner's turn, no decision); the map's Tavern by a decision its visit opens,
+     answered by a hire of one slot or a close. Not chosen: a decision for both.
+112. **The dismissal in increment 4** (recommended): a management command; its hero leaves the
+     game as a lost hero's does, its artifacts kept (decision 105). Not chosen: later.
+113. *Agent's calls (change freely; for T33b's checkpoint):* a new named kernel stream for the
+     taverns' fills (`StreamId::TAVERNS`); the away record in the pool; a Random faction no start
+     read drawn at the first fill; a player without a faction weighted evenly; the start's fill
+     after the build's last draw; a new record's points; `ADV-STUB-9` left to E10; T-15 closed as
+     unreachable; T-16 (design §67: a `fix-optional` flag, on in `faithful`) and TD-22 (survey
+     §12: the reading) as recommended for the checkpoint.
+
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
 - **T30** the audit of increment 3's exit criteria, its closure, this refinement. Done 2026-11-15 (decisions 98–102; `E09-log.md`).
 - **T31** the garrison moves below level 3 (decision 101). Done 2026-11-15 (the projection; `E09-log.md`).
 - **T32** the survey (decision 100), with its checkpoint (`TWN-Q16`). Done 2026-11-15 (decisions 103–107; `E09-log.md`).
-- **T33** the ADR amendment drafts, the design note's Part F, the cut and the exit criteria (decision 100); the building tasks follow from the cut.
+- **T33** the ADR amendment drafts, the design note's Part F, the cut and the exit criteria (decision 100), in two (decision 108): **T33a** the hire's: done 2026-11-16 (`TWN-Q17`, decisions 109–113; the drafts `adr-drafts/*-increment-4.md`, Part F §59 to §71; `E09-log.md`). **T33b** the information's, the cut, the exit criteria and the checkpoint `TWN-Q18`; the building tasks follow from the cut.
 
 ## Risks
 

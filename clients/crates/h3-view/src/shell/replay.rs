@@ -21,8 +21,9 @@
 //! its probes (`poke`, `press`, `point`, `until-button`, `games-time`, `freeze`), a screen name the
 //! viewer does not know, a screen not built yet ([`Screen::built`]: nothing on it changes by
 //! itself, and its shots would be a stand-in's; its moves are taken, its presses, releases and
-//! keys stop the replay). The real-time pauses (`settle`, `wait`) pass no time on the frozen
-//! clock.
+//! keys stop the replay). A stub's screen (E27 M2 T6b2: the client's notice, not the original's
+//! screen) is one not built here: no menu opens on it. The real-time pauses (`settle`, `wait`)
+//! pass no time on the frozen clock.
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -294,6 +295,14 @@ enum Given {
     KeyUp(String),
 }
 
+/// The menu of `screen` opened at `pointer` when the screen is built whole (none on a stub's: its
+/// notice is the client's).
+fn whole(menus: &Menus, screen: Screen, pointer: [i32; 2]) -> Option<Menu> {
+    (screen.built() == Built::Whole)
+        .then(|| menus.opened(screen, pointer))
+        .flatten()
+}
+
 /// Whether an input stops a start's clip (`video_play_fullscreen`'s and `video_play_framed`'s
 /// loops): a key down but F4 (scan code 0x3E), a left or a right press.
 #[must_use]
@@ -328,7 +337,7 @@ impl Replay {
             let _ = shell.end(Ended::Start);
         }
         let times = vec![0; ops.len()];
-        let menu = menus.opened(shell.screen(), pointer);
+        let menu = whole(menus, shell.screen(), pointer);
         Self {
             shell,
             time: 0,
@@ -489,7 +498,7 @@ impl Replay {
     /// the next screen's menu opened anew, none for another screen.
     fn end(&mut self, ended: Ended) {
         let _ = self.shell.end(ended);
-        self.menu = self.menus.opened(self.screen(), self.pointer);
+        self.menu = whole(&self.menus, self.screen(), self.pointer);
     }
 
     /// An input of the harness's to the menu on the screen, as what it gives the game in order,
@@ -564,9 +573,9 @@ impl Replay {
             .map(|name| Stop::Unknown(name.clone()))
     }
 
-    /// The screen on, when it is not built.
+    /// The screen on, when it is not built whole (a stub's is the client's, not the original's).
     fn unbuilt(&self) -> Option<Stop> {
-        (self.screen().built() == Built::Not).then(|| Stop::NotBuilt(self.screen()))
+        (self.screen().built() != Built::Whole).then(|| Stop::NotBuilt(self.screen()))
     }
 
     fn any_shown(&self, screens: &[String]) -> bool {

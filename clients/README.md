@@ -44,8 +44,9 @@ search the parent directories).
   with `h3_assets::wav` to SDL's own loader's samples (`clients/out/gate/sounds.tsv`), and every
   sound the tables name is one of them. Then the string catalogue (`--keys <file>`, default
   `clients/text/keys.toml`): every key's original forms are read from the text tables where the
-  game searches them, each row's `%s` and `%d` as the key names them, and the battle log's
-  sample lines compose from them. A debug build takes about ten times as long.
+  game searches them, each row's `%s` and `%d` as the key names them, the client's own pack beside
+  the catalogue gives every key of its own (E27 M2 T6b2), and the battle log's sample lines
+  compose from them. A debug build takes about ten times as long.
 - **The Bink clips** (E17 M5 T4b2a): `cargo run --release -p h3-battle-client -- video [<name>...]
   [--vid <file>] [--out <dir>] [--reference <dir>] [--sample <seed>]... [--original]` (from
   `clients/`) decodes a video archive's Bink clips (default the repository's
@@ -86,7 +87,9 @@ search the parent directories).
   Since M2 T5a the start's clips play first unless `--no-intro` (`h3_view::shell::start`: from the
   video archives, `shell-videos.vid` standing in for `VIDEO.VID`; `--video-quality low` plays the
   Smacker copies), in the replay as the DLLs show them, in the window whole; a key or a press
-  skips them.
+  skips them. The menus take their inputs since T6a and T6b1; since T6b2 New Game's Campaign and
+  Tutorial and the main menu's High Scores and Credits show the client's stub, a notice over
+  their menu whose OK goes back to it (the replay stops there: not the original's screens).
 - **A look at the drawers:** `cargo run --release -p h3-battle-client -- sprite CPKMAN.DEF --group 2
   --background CmBkGrMt.pcx [--mirror]` draws every frame of one group of a DEF side by side over
   a PCX, as the battle draws a stack, into `clients/out/sprite/` (the base archives searched
@@ -446,6 +449,14 @@ log's lines over the battle.
 - **The original's text** is read at run time from the user's tables through the catalogue, with
   the executable's rule (`one` for exactly 1); it is never committed, nor is a translation of it:
   a player may load a pack of their own, which the project neither ships nor hosts (CLT-Q7).
+- **The client's own pack** `clients/text/en.json` (committed since E27 M2 T6b2, with the
+  client's first own strings: the shell's stubs' notices, `shell.stub.*`) holds the messages of
+  the keys without `original` forms, beside the key catalogue (`h3_battle_client::text::own_pack`;
+  a pack beside another `--keys` file is that one's). The catalogue asks it after the player's
+  pack and before the original's (`h3-view text`, and every client's catalogue,
+  `h3_battle_client::log::catalogue`); an entry no key names, a placeholder its key lacks, or one
+  of the client's own keys it gives no last form of (`<key>`, a plural key's `<key>_other`:
+  `Pack::lacks`) is an error, which the gate checks too.
 
 ## Reference captures
 

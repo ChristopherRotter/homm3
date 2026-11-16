@@ -13,14 +13,13 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M2 T6b2 to T8
+#### E27 M2 T7 and T8
 
-T6b2 the stubs (decision 37; T6b1 built the game type menus): New Game's Campaign and Tutorial
-(decisions 7, 9) and the main menu's High Scores and Credits (until M4), each a message box in the
-client's own words over its menu, its OK back to that menu (opened anew); the client's first own
-strings, so its language pack `clients/text/en.json` (E17 design §9.2: committed with the first
-one) and its loading into the catalogue between the player's and the original's; `menu-tutorial`
-still stops (the tutorial's load, CLT-Q84). T7 Multiplayer and the hot seat's names (after T6b2);
+T7 Multiplayer's first stage and the hot seat's names (the epic's M2 table: decision 10's stub,
+CLT-Q101; §2.6, §2.7: the edit field read first, two 21-letter names recorded, Enter pressing OK,
+CLT-Q107; Load Game's multiplayer; the scenario screen a stub until M3; exact against
+`multiplayer`). A stub's notice is T6b2's (`shell::menu::STUBS`, the client's own pack
+`clients/text/en.json`: a new own string is a key without `original` and its message there).
 T8 M2's closure and M3's refinement (after T7).
 Each screen's task runs `h3shell.py drawn` and records it (`--record`; the runbook's "The shell's
 screens"). Their scopes: the epic's M2 table; what each still reads or records: design §6.4.
