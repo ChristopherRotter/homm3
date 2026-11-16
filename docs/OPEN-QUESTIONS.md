@@ -97,7 +97,27 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Town lane (`TWN-Q<n>`)
 
-(no open questions)
+### TWN-Q18 — Increment 4's checkpoint: both halves' drafts, the stream, T-16, T-17, TD-22, TD-23, the cut (E09 T33b)
+
+Context: the drafts `docs/lanes/town/adr-drafts/*-increment-4.md` (the hire's half by T33a, the
+information's by T33b) and the design note `docs/epics/E09-design.md` Part F (§59 to §81), to be
+accepted before anything is built (decision 100). Options, the recommendation first:
+1. **The taverns' stream:** a new kernel stream `StreamId::TAVERNS` (no existing draw moves) /
+   the towns' stream (no shared change; every later towns' draw moves).
+2. **T-16** (a non-returning leave's points over the cleared army, speed 20; design §67): a
+   `fix-optional` flag, on in `faithful` / `preserve`, no flag / fixed, no flag (its one
+   creature's land maximum).
+3. **T-17** (the guild's artifacts row ranks the backpacks alone; survey §13): `preserve`, no flag
+   (information only) / `fix-optional` / fixed (worn and backpack, VCMI's).
+4. **TD-22** (the dismissal's visitor test) and **TD-23** (the best hero by army power, the towns'
+   armies in the army row and the best creature): the reading for both / VCMI's for both / TD-22
+   the reading, TD-23 VCMI's.
+5. **The views** (§75): the owner's tavern heroes always in its observation, the guild a query in
+   its turn, a Den's view an event / the tavern heroes only while it owns a Tavern or at a map
+   Tavern / the guild in every observation, told by events.
+6. **The env** (§76): `HIRE` + 2 (v12) and the tavern answers by role (v13), no entry for
+   `Dismiss` / also a `Dismiss` entry per hero slot.
+7. **The cut and the exit criteria** (§79, §80): as written (T34 to T41) / changed.
 
 ## Answered
 

@@ -1,14 +1,15 @@
 # Draft: ADR-0017 amended for E09 increment 4 (the Tavern)
 
-- Status: **Draft**, the hire's half written by E09 T33a (2026-11-16); T33b adds the
-  information's half (the Thieves' Guild's view, the Den of Thieves, the views and events, the env)
-  and asks the checkpoint (`TWN-Q18`); then moved into `docs/adr/0017-game-orchestration.md` by
-  the increment's `shared/` task with batch TWN-4's verdicts.
+- Status: **Draft**, the hire's half written by E09 T33a (2026-11-16), the information's half
+  (the Thieves' Guild's view, the Den of Thieves, the views and events, the env) by T33b
+  (2026-11-16), asked at its checkpoint (`TWN-Q18`); then moved into
+  `docs/adr/0017-game-orchestration.md` by the increment's `shared/` task with batch TWN-4's
+  verdicts.
 - Decisions: the epic's 99, 103 to 107 (`TWN-Q16`), 108, 109 to 112 (`TWN-Q17`), 113 (T33a's
   agent's calls: among them **the taverns' stream**, a new named kernel stream, which T33b's
-  checkpoint confirms or replaces by the towns' stream).
-- Working detail: survey `docs/rules/surveys/E09-tavern.md` §2 to §5, §12; design note
-  `docs/epics/E09-design.md` Part F §59 to §71.
+  checkpoint confirms or replaces by the towns' stream), 114 and `TWN-Q18`'s.
+- Working detail: survey `docs/rules/surveys/E09-tavern.md` §2 to §6, §12, §13; design note
+  `docs/epics/E09-design.md` Part F §59 to §80.
 
 ## Point 1, after E09 increment 3's sentence "**The setup** gains **whether the map is RoE's** …"
 
@@ -59,6 +60,37 @@ only setups without towns lack one). The SoD edition's Conflux rule is not model
 build, E11's lead).
 **Increment 4's setup** gains, per hero type, the map's customised entry (above); nothing else:
 the masks, the allowed heroes and the prisoners are increment 1's.
+
+## Point 2, after E09 increment 3's sentence "… the hire dialog's view is its owner's, as on the map."
+
+**E09's increment 4** (the Tavern; TWN-TAV-002 to -009): **a player's two tavern heroes are its
+own** (as its treasury): its observation gives, by slot, each tavern hero's view (its id and type,
+its details, its army by slot, its formation and tactics flag: what the original's tavern dialog
+and its view-only hero screen show; no points, no returning mark), whether or not it owns a
+Tavern (the agent's call: they tell nothing of another player), and `TavernOffered` tells it a
+slot's new view (or its emptying) after every change: a week's release and fill (in player, then
+slot order, after the towns' week), a hire's replacement, a hero's return; the game's start's fill
+is the first observation's. **A hire** is told as `HeroHired` (the hero, its type, its owner, its
+tile; its slot to the owner alone) to the owner and to every player that sees the tile (ADR-0016
+point 6), after the price's `ResourcePaid` and before the replacement's `TavernOffered`; the
+owner's view of the hero moves from the slot to its heroes, its points by `MovementChanged`. **The
+Thieves' Guild** (TWN-TAV-007 to -009; ADR-0028 point 8) is a **query**, not a part of the
+observation (the original's window is a snapshot when it opens; an observation's view would need
+every command to tell every viewer's changed ranks): `h3_game::thieves_guild(state, rules,
+viewer)` answers while the viewer's turn runs and it owns a town with a standing Tavern, or its
+open decision is a tavern decision, at its level (its towns with a Tavern, counted to 5; 0 at a
+map Tavern without one: two rows and no part); otherwise none. A **Den of Thieves' visit** tells
+the visitor's owner the guild at everything (`ThievesGuildSeen`, the view in the event). **The
+guild's view:** the players in the game in id order; the rows its level shows (2 rows at 0 or 1, 4
+at 2, 6 at 3, 8 at 4, all 9 from 5: towns, heroes, gold, wood and ore, the four rare resources,
+obelisks visited, artifacts, army strength, gold income), each as its places, from the highest
+value, equal values sharing a place (in player order within it), never a value; per player from
+level 1 its best hero's type, from 2 that hero's four primary skills (each 0 to 99), from 4 its
+best creature (survey `E09-tavern.md` §6, §13: TD-23, T-17). The player's tactic (from 3) is the
+computer's play and not shown (`TWN-STUB-18`); the obelisks row reads 0 for every player until
+increment 6 places the obelisks (`TWN-STUB-17`). A defeated player's column is E10's (every
+player is in the game until then). The guild shows nothing a click opens: another player's best
+hero and creature open no screen (`thieves_guild_proc` 0x5C9930).
 
 ## Point 3, the day's start, after E09 increment 3's week text ("… the original's every hero record, `new_day` 0x4C80CF, 0x4C8D2A).")
 
@@ -111,11 +143,16 @@ refused while a hero stands on the Tavern's visited tile (VCMI's; the original n
 since a hero on the tile hides the Tavern from a step, ADR-0016 point 3); a refused answer is
 typed and leaves the decision open. A hire places the hero on the Tavern's visited tile, draws
 the slot's replacement and closes the decision (the original's dialog returns after one hire,
-`map_tavern_hire` 0x4D7890); no guild spells. Its view is the visitor's owner's: its two tavern
-heroes (T33b). The town's tavern opens no decision (the town command, point 1), as the town's
-two rows.
+`map_tavern_hire` 0x4D7890); no guild spells. Its view (`DecisionView::Tavern`) is the visitor
+and the Tavern by type and anchor, told whole by `TavernOpened` to the visitor's owner; the offers
+it hires from are that owner's tavern heroes (point 2), so no view of it waits on a later event.
+The town's tavern opens no decision (the town command, point 1), as the town's two rows.
 
-## Point 10, a new sentence
+## Point 10, two new sentences
+
+A visit's outcome may name **a Den of Thieves** (ADR-0016 point 4): the game composes the
+visitor's owner's Thieves' Guild at everything after the visit's other effects and tells it
+(point 2); nothing is paid or changed.
 
 A hire's application (the town's or the map Tavern's) is infallible once checked: the price
 paid, the hero placed by the adventure with its away record, its type taken by the player's
@@ -147,17 +184,34 @@ game with its full starting army; the agent's call). `ADV-STUB-9`'s retreat fact
 (only a computer's hero reads them; their Tavern fact is `has_tavern` over the owner's towns from
 increment 4 on).
 
+## Point 8, after E09 increment 3's entries ("… so the rows' stack moves are a client's.")
+
+**E09's increment 4** appends (`cross-lane`, the AI lane's paths, E09 decision 7) **the town's
+hire**: two entries, `HIRE + s` for the tavern hero of slot s, with the town by its entrance in
+the tile head (one action per `Hire` the legal commands list: a standing Tavern, no visitor, the
+heroes on the map below `most_heroes`, the price in the treasury; encoding v12). **The tavern
+decision** takes the answers by role (encoding v13, or with v12 when they land together): its
+`Hire { slot }` of slot 0 and 1 the first and second answers, its `Close` the closing role, each
+legal as the legal commands list it. **The dismissal has no entry** (a management command, as the
+army commands: E08 decision 99), nor has the Thieves' Guild (a query, no command): the AI lane may
+read the query for its agents.
+
 ## Point 9, after E09's rows
 
 **E09 increment 4** bumps the game state hash (the pool's statuses, ids and away records, the
 players' factions and tavern heroes, the taverns' stream), the adventure ruleset part and state
 hash (the kind `Tavern`, ADR-0016), the map import (class 95, the map-wide entries in the setup)
-and the adventure replay format (`hire`, the tavern decision's answers, `dismiss`), each
-`cross-lane`; the protocol and the env's encodings are T33b's. Shared: `StreamId::TAVERNS`.
+and the adventure replay format (`town hire`, `answer tavern`, `manage dismiss`), each
+`cross-lane`; the adventure ruleset part and the map import again for the Den of Thieves (class
+97, with the Tavern's task); the protocol (the server lane's, `cross-lane`: `TownCommand::Hire`,
+`Manage::Dismiss`, the tavern decision and its answers, the observation's tavern heroes,
+`TavernOffered`, `HeroHired`, `TavernOpened`, `ThievesGuildSeen`, the guild's request and answer)
+and the env's action encoding (point 8: v12, v13; the AI lane's, `cross-lane`). Shared:
+`StreamId::TAVERNS`. The numbers are the next at merge, in order with E08's increment 13.
 
 ## Revision history, a new item (when moved)
 
-- 2026-11-xx (E09 increment 4's `shared/` task; decisions 99, 103 to 113 and T33b's): points 1,
-  3, 4, 6, 9 to 11 (the hire, the dismissal, the pool's records and tavern heroes, the taverns'
-  week and stream, the tavern decision, a hero that leaves the game; T33b's information, views
-  and env).
+- 2026-11-xx (E09 increment 4's `shared/` task; decisions 99, 103 to 114 and `TWN-Q18`'s):
+  points 1 to 4, 6, 8 to 11 (the hire, the dismissal, the pool's records and tavern heroes, the
+  taverns' week and stream, the tavern decision, a hero that leaves the game; the tavern heroes'
+  view and events, the Thieves' Guild's query and a Den's view, the env's hire and answers).

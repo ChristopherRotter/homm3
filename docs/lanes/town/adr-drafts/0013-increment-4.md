@@ -1,7 +1,9 @@
 # Draft: ADR-0013 amended for E09 increment 4 (a tavern hero's details)
 
-- Status: **Draft**, written by E09 T33a (2026-11-16); T33b asks the checkpoint (`TWN-Q18`); then
-  moved into `docs/adr/0013-heroes-in-battle.md` by the increment's `shared/` task.
+- Status: **Draft**, written by E09 T33a (2026-11-16), asked at T33b's checkpoint (`TWN-Q18`);
+  then moved into `docs/adr/0013-heroes-in-battle.md` by the increment's `shared/` task. T33b
+  adds nothing here (the Thieves' Guild reads a hero's primary skills and army power, both
+  derived already).
 - Decisions: the epic's 99, 109 (a hero type's record at its first draw), 113.
 - Working detail: survey `docs/rules/surveys/E09-tavern.md` §2.3, §4; design note
   `docs/epics/E09-design.md` Part F §63, §67.
