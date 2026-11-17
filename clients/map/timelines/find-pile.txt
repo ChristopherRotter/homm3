@@ -1,0 +1,98 @@
+0 view 0 0 0
+0 objects 0
+0 cycles 0 0
+0 cursor 1 0 700 300
+0 buttons 0 1
+0 points 1700
+100 view -5 -4 0
+100 buttons 1 1
+100 points 1600
+100 screen 8,8,790,591
+165 screen 319,275,352,296
+230 screen 319,275,352,296
+295 screen 318,275,352,296
+360 screen 318,275,352,296
+425 screen 319,275,352,296
+490 screen 318,275,352,296
+555 screen 319,275,352,296
+620 objects 2
+620 screen 288,241,710,318
+800 objects 3
+800 cycles 1 1
+800 screen 288,241,308,249
+980 objects 4
+980 screen 288,240,307,249
+1000 cycles 2 2
+1160 objects 5
+1160 screen 288,240,305,249
+1200 cycles 3 3
+1340 objects 6
+1340 screen 288,241,307,249
+1400 cycles 4 4
+1520 objects 7
+1520 screen 288,241,307,249
+1600 cycles 5 5
+1700 objects 8
+1700 screen 289,240,308,249
+1800 cycles 6 6
+1880 objects 9
+1880 screen 288,240,308,249
+2000 cycles 7 7
+2060 objects 10
+2060 screen 288,241,307,249
+2200 cycles 8 8
+2240 objects 11
+2240 screen 288,241,308,249
+2400 cycles 9 9
+2420 objects 12
+2420 screen 288,240,307,249
+2600 objects 13
+2600 cycles 10 10
+2600 screen 288,240,305,249
+2780 objects 14
+2780 screen 288,241,307,249
+2800 cycles 11 11
+2960 objects 15
+2960 screen 288,241,307,249
+3000 cycles 12 12
+3140 objects 16
+3140 screen 289,240,308,249
+3200 cycles 13 13
+3320 objects 17
+3320 screen 288,240,308,249
+3400 cycles 14 14
+3500 objects 18
+3500 screen 288,241,307,249
+3600 cycles 15 15
+3680 objects 19
+3680 screen 288,241,308,249
+3800 cycles 16 16
+3860 objects 20
+3860 screen 288,240,307,249
+4000 cycles 17 17
+4040 objects 21
+4040 screen 288,240,305,249
+4200 cycles 18 18
+4220 objects 22
+4220 screen 288,241,307,249
+4400 objects 23
+4400 cycles 19 19
+4400 screen 288,241,307,249
+4580 objects 24
+4580 screen 289,240,308,249
+4600 cycles 20 20
+4760 objects 25
+4760 screen 288,240,308,249
+4800 cycles 21 21
+4940 objects 26
+4940 screen 288,241,307,249
+5000 cycles 22 22
+5120 objects 27
+5120 screen 288,241,790,566
+5200 cycles 23 23
+5300 objects 28
+5300 screen 288,240,307,249
+5400 cycles 24 24
+5480 objects 29
+5480 screen 288,240,305,249
+5600 cycles 25 25
