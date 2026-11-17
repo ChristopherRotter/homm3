@@ -18265,3 +18265,71 @@ hash lines `943a65ff…`).
 - **Replays:** none moved (no fixture map holds a bank; no hash, format or encoding changed).
 - **Docs:** design §6 to §8, §12, §14, §15's *As built*; decision 355 and the task's line; the
   queue (T124b2 archived verbatim, T125a in); `OVERVIEW.md`; the comments that said T124b2.
+
+### Increment 13, round 7: T125a, the hint and its events, the Shipwreck's passage (2026-11-17, `adventure/e08-t125a`)
+
+**The cut** (decision 356; asked at T125a's start, `AskUserQuestion`): T125a whole, in one pull
+request (recommended was two with the hint first, the passage and its bench in a later session;
+not chosen either: the passage first, or both as two pull requests in the session). Not
+`cross-lane`: every path the adventure lane's (`h3-adventure`) and the common ones (`stubs.toml`,
+the map client lane's inbox). **Baseline:** `master` 86d93af (#993, #994 merged; CI green on it;
+the setup's full run stopped at its coverage step for time, CI's green run standing in). The
+original data staged from the user's repo folder (the four LODs, both executables, `maps.tar`,
+`extracted.tar`; SHA-256 checked against the PC's, one digest of the sorted hashes `0ebe4cbf…`).
+
+- **The hint** (design §10; ADV-BNK-006): `object_view` asks `state/banks.rs`' `bank_view` for a
+  bank (the team's mark `knows`; with it the hint, `bank_hint` over `guards_left` unless looted, as
+  a `GuardsView` without the army) instead of the weekly mark and the mine's guards;
+  `observe::guards_hint` the mine's and the bank's one reading of `army_description_text` (the
+  creature when every stack is of one, the word of the total), `guards_view` now through it.
+- **The events** (§16): `mark_bank` replaces `learn` in `visit_bank` (an attack kind's, now with
+  the part) and `enter_bank` (a search kind's yes): the marks for every `allied` player not
+  holding them, `ObjectMarked` to them, then the hint as `GuardsChanged` to the same when it shows
+  guards; `end_bank_battle` (now with the part, the type and the sink, from
+  `end_unowned_battle`) tells the hint's change to every player knowing the bank (`tell_hint`:
+  the creature or the word changed, or none show). *Agent's calls:* no `GuardsChanged` at a mark
+  without a hint (looted, none standing) and none at the loot (looted only with none standing,
+  told at the battle's end); the marks for the team's players (the visitor alone until E10).
+- **The passage** (§9; ADV-STUB-12 lifted): `coast_visit` (the visit) and `is_coast_entrance`
+  (the test: the live tile visitable and the tile's last object a `coast` kind's bank), both
+  `#[cold]`, out of line; `check_step`'s water case (an empty boat boarded, else the coast's
+  visit, before the step across a top); `passage`'s water branch after the empty boat (from a
+  stop node the visit, a flight passing too; from a pass node a flight's pass, a water walk's
+  `Blocked`) and its step up off a closed top (a flight passes it); `StaticMap::coast_entrances`
+  (the coast kinds' visitable water tiles, listed in `list_economy`, not hashed), chained into the
+  walking search's empty boats' marking loop, so its `AFLOAT` case reaches them in `afloat` (a
+  hero, then an empty boat, then the coast's visit with the walker's drop); the layered search
+  through `passage`. The Derelict Ship stays D-46's.
+- **The measure** (`homm3-bench-regression`), right after the first build: `bench-check --lane
+  adventure` passed with `random-play-bonuses-36` over its gate (+2.11 %) and every reach and
+  random-play workload +1 to +2 %; against a `master` worktree (`target/wt-master`) per function
+  only `Reach::search` moved (+1.1 % `reach-xl-144`, +2.3 % `random-play-bonuses-36`). Four shapes
+  measured: without the setup's pass `reach-xl-144` +0.04 % (`master` +0.05 %); the entrances
+  chained into the boats' loop flat there; `afloat`'s third case alone +1.38 % on
+  `random-play-bonuses-36`, the same with the plain test instead of the visit. Kept: the chain and
+  the plain test; all 34 workloads inside their gates (the reach ones −0.79 % to +0.26 %, the
+  random-play ones −0.10 % to +1.66 %, the most `random-play-bonuses-36`; `fork-economy-xl-144`
+  +1.28 % as before); no baseline moved. The lesson in `TRAPS.md`.
+- **Tests:** `h3-adventure`'s `state/tests/banks.rs`: the existing nine's events (the mark and the
+  hint at an attack kind's visit and a search kind's yes, nothing at a held mark, the battle's
+  end's change, a looted visit's mark without a hint); seven new: the views of both players by
+  the mark (not visited, the word and the creature, the change of two creatures, nothing for an
+  unchanged hint, none after a win and the loot), a battle's end at a bank no team visited, the
+  Shipwreck visited from the coast by a walker, a flyer and a water walker (the points as the
+  reach gives them, the question first, nothing past the visit, the battle on the deck at its
+  entrance), the flight across it from land, from water and up off a closed top and the water
+  walk's refusals, the Derelict Ship closed, an entrance another object is visited from closed,
+  a Shipwreck placed on land a land neighbour's (no coast entrance), an entrance outside the
+  walker's window.
+- **Verify:** the scoped verify with original data, after merging `master` (#995, map import
+  v25): every step passing but coverage (the land case of `list_economy`'s water test, then
+  tested), then coverage passing on its own run; `bench-check` inside every gate
+  (`reach-xl-144` −0.00 % against #995's re-baseline).
+- **Rules:** ADV-BNK-006 new, `verified` (the code reading, batch E13's E13-2, E13-9, E13-12,
+  VCMI's config); ADV-VIS-006, ADV-OWN-003, ADV-MOV-009, ADV-MOV-010 and ADV-SEA-002 amended;
+  ADV-STUB-12 lifted (`docs/stubs.toml`).
+- **Replays:** none moved (no fixture map holds a bank; no hash, format or encoding changed); the
+  observation unchanged for every object but a visited bank.
+- **Docs:** design §9, §10, §16's *As built*; decision 356 and the task's line; the queue (T125a
+  archived verbatim, T125b in); `OVERVIEW.md`; `TRAPS.md` (the reach's pass); the map client
+  lane's inbox (the hint and the Shipwreck from the coast).

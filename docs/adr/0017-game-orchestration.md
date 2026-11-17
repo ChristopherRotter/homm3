@@ -272,8 +272,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    fill is the first observation's. **A hire** is told as `HeroHired` (the hero, its type, its
    owner, its tile; its slot to the owner alone) to the owner and to every player that sees the tile
    (ADR-0016 point 6), after the price's `ResourcePaid` and before the replacement's
-   `TavernOffered`; the owner's view of the hero moves from the slot to its heroes, its points by
-   `MovementChanged`. **The Thieves' Guild** (TWN-TAV-007 to -009; ADR-0028 point 8) is a **query**,
+   `TavernOffered`; the owner's view of the hero moves from the slot to its heroes, completed by
+   `HiredPartSeen`, to the owner alone, per part the slot's view did not show (E09 decision 141:
+   the levels last offered with the worn positions' count, the backpack past its first five places,
+   the learned spells), its points by `MovementChanged`. **The Thieves' Guild** (TWN-TAV-007 to -009; ADR-0028 point 8) is a **query**,
    not a part of the observation (the original's window is a snapshot when it opens; an
    observation's view would need every command to tell every viewer's changed ranks):
    `h3_game::thieves_guild(state, rules, viewer)` answers while the viewer's turn runs and it owns a
@@ -1501,3 +1503,7 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   the tavern view is the held hero screen's (no learned spells, no offered levels, the backpack's
   first five places and its count; the code reading of `tavern_dialog_proc` 0x5D7D7D, the manual
   and VCMI agreeing), `TavernOffered` with `TavernPartSeen` per part.
+- 2026-11-17 (E09 T38a1 `shared/`; E09 decision 141, `TWN-Q22`): point 2's increment 4 part: a
+  hire tells its owner what the tavern slot's view lacked (`HiredPartSeen`: the levels last offered
+  with the worn positions' count, the backpack past its first five places, the learned spells), so
+  that a fold of the slot's view is the hero's details whole (T37a's As built's note for T38a).

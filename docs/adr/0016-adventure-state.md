@@ -1000,8 +1000,9 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    by the game's `HeroHired` (ADR-0017 point 2), which names the hero, its type, its owner and its
    tile, so a viewer's fold adds it as the map shows it (no gap of `SRV-STUB-3`'s kind); its tavern
    slot is named to its owner alone. The owner's own view of the hero (its army, formation and
-   tactics flag, its details) is the tavern slot's view it held, its points told by
-   `MovementChanged` as for any own hero. A dismissal is told as a removal (`HeroRemoved`, as a
+   tactics flag, its details) is the tavern slot's view it held with the parts that view did not
+   show (`HiredPartSeen`, to the owner alone: E09 decision 141, ADR-0017 point 2), its points told
+   by `MovementChanged` as for any own hero. A dismissal is told as a removal (`HeroRemoved`, as a
    battle's loser: its owner and the players that see its tile). A Den of Thieves' visit tells the
    visitor's owner alone (the guild's view is the viewer's, ADR-0017 point 2). The away records are
    the game's and never shown but as the tavern slots' views.
@@ -1367,3 +1368,6 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   Alternatives. Drafted in E09 T33a and T33b (design note `E09-design.md` Part F); batch TWN-4's
   outcome (T34, survey `E09-tavern.md` §14: every row as read) folded in; placed after E08 increment
   13's text (T122, merged first).
+- 2026-11-17 (E09 T38a1 `shared/`; E09 decision 141, `TWN-Q22`): point 6's increment 4 part: the
+  owner's view of a hired hero is its tavern slot's with the parts that view did not show
+  (`HiredPartSeen`; ADR-0017 point 2).

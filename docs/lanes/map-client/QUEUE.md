@@ -121,6 +121,18 @@ reading and recordings, then the viewer's build, as T1b was).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-17 (the adventure lane, E08 T125a, `adventure/e08-t125a`; **a creature bank's hint and
+  the Shipwreck from the coast, for your hint and your moves**; E08 design note §9, §10, §16,
+  ADV-BNK-006): a bank's `ObjectView` now carries its team's mark (`visited`: "(Not visited)" when
+  false) and, with it, the guards' hint as a mine's without the army (`guards`: the word and the
+  creature, none for several; none when looted or none stand, "(Visited)"), as
+  `creature_bank_hint` 0x40D3F0. Its events: `ObjectMarked` then `GuardsChanged` at a mark set
+  anew (an attack kind's visit, a search kind's yes), `GuardsChanged` after a battle's end to the
+  teams that visited (no new variant; the protocol unchanged). The Shipwreck's water entrance is
+  visited from the coast by a walker, a water walker and a flyer (the hero stays on land: a
+  `MoveHero` path ending on that water tile, as onto an empty boat) and crossed by a flight; the
+  reachable tiles give it as a destination.
+
 - 2026-11-17 (the client lane, E27 M2 T8, `client/e27-m2-t8`; **the foundation's API, nothing of
   yours breaks**): `h3_sdl::KeyScan` loses `code` and `h3_sdl::set1` is gone (nothing read them
   since T7b); `KeyScan::shift` and `Window::scans` are unchanged. `h3_ui::keys::Command` gains a
