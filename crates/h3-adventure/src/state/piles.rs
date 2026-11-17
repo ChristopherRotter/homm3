@@ -169,7 +169,13 @@ impl AdventureState {
             ObjectKind::Garrison { .. } => {
                 self.end_garrison_battle(index, (hero, tile), (survivors, won))
             }
-            ObjectKind::Bank(_) => self.end_bank_battle(index, (hero, tile), (survivors, won)),
+            ObjectKind::Bank(_) => self.end_bank_battle(
+                part,
+                (index, object_type),
+                (hero, tile),
+                (survivors, won),
+                sink,
+            ),
             _ if self.object_at(index).guards.is_some() => {
                 let left = if won { Vec::new() } else { survivors.to_vec() };
                 self.army_left.set(index, Some(left));

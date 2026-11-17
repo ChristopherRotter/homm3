@@ -3,7 +3,8 @@
 //! `draws::resolve_rewards`' second walk in object order; their visit and its questions
 //! (ADV-BNK-003, §6), the battle's map half (ADV-BNK-004, §7, §14), its end and the reward after
 //! the winner's levels (ADV-BNK-005, §8, §15) and a looted search's once-bonus (HER-ADV-008, part
-//! C). The hint and its events come with T125a (§10, §16).
+//! C); since E08 T125a the team's marks and the hint with their events (ADV-BNK-006, §10, §16) and
+//! the Shipwreck's water entrance visited from the coast (ADV-MOV-009, ADV-SEA-002, §9).
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -14,10 +15,11 @@ use h3_heroes::{HeroDetails, HeroReward};
 use h3_kernel::Rng;
 
 use super::draws::ArtifactPool;
-use super::{AdventureState, Resolved};
+use super::{AdventureState, Resolved, StepVisit, allied};
 use crate::command::{
     AdventureEvent, AdventureEventKind, AdventureOutcome, Defender, Offer, OfferKind, Sink, Viewers,
 };
+use crate::observe::{GuardsView, guards_hint};
 use crate::ruleset::{
     AdventureRuleset, BANK_ARTIFACT_CLASSES, Bank, BankLevel, BankQuestion, ObjectTypeId,
 };
@@ -174,10 +176,11 @@ impl AdventureState {
     ///   ([`Self::enter_bank`]).
     ///
     /// Declined, nothing more: an attack kind's marks stay, the hero stays where the move ended.
-    /// The marks tell no event yet: the hint and its events are T125a's (design note §10, §16).
+    /// A mark set anew is told with the hint ([`Self::mark_bank`], E08 T125a).
     // rule: ADV-BNK-003, ADV-VIS-006
     pub(super) fn visit_bank<S: Sink>(
         &mut self,
+        part: &AdventureRuleset,
         (player, hero): (PlayerId, HeroId),
         (index, object_type): (usize, ObjectTypeId),
         bank: &Bank,
@@ -185,7 +188,7 @@ impl AdventureState {
     ) -> AdventureOutcome {
         match bank.question {
             BankQuestion::Attack => {
-                self.learn(player, index);
+                self.mark_bank(part, player, (index, object_type), sink);
                 if self.is_emptied(index) {
                     self.tell_looted(player, (index, object_type), sink);
                     return AdventureOutcome::default();
@@ -217,7 +220,7 @@ impl AdventureState {
         sink: &mut S,
     ) -> AdventureOutcome {
         if bank.question == BankQuestion::Search {
-            self.learn(player, index);
+            self.mark_bank(rules.1, player, (index, offer.object_type), sink);
         }
         if self.is_emptied(index) {
             self.tell_looted(player, (index, offer.object_type), sink);
@@ -288,16 +291,21 @@ impl AdventureState {
     /// its army left (an upgraded stack as its own creature), not looted, asked again at the next
     /// visit; a draw leaves none standing, not looted (the next yes gives the reward at once);
     /// won, none stand and the reward comes after the winner's levels
-    /// ([`AdventureOutcome::reward_after`] at `tile`, GAM-DEC-007: [`Self::bank_won`]).
-    // rule: ADV-BNK-004, ADV-BNK-005, GAM-DEC-007
-    pub(super) fn end_bank_battle(
+    /// ([`AdventureOutcome::reward_after`] at `tile`, GAM-DEC-007: [`Self::bank_won`]). Since E08
+    /// T125a the hint's change is told to the teams that visited it ([`Self::tell_hint`]).
+    // rule: ADV-BNK-004, ADV-BNK-005, GAM-DEC-007, ADV-BNK-006
+    pub(super) fn end_bank_battle<S: Sink>(
         &mut self,
-        index: usize,
+        part: &AdventureRuleset,
+        bank: (usize, ObjectTypeId),
         (hero, tile): (HeroId, Pos),
         (survivors, won): (&[ArmyStack], bool),
+        sink: &mut S,
     ) -> AdventureOutcome {
+        let before = self.bank_hint(part, bank.0);
         let left = if won { Vec::new() } else { survivors.to_vec() };
-        self.army_left.set(index, Some(left));
+        self.army_left.set(bank.0, Some(left));
+        self.tell_hint(part, bank, before, sink);
         AdventureOutcome {
             reward_after: won.then_some((hero, tile)),
             ..AdventureOutcome::default()
@@ -352,6 +360,161 @@ impl AdventureState {
         record
             .map(|record| self.give_record(rules, hero, &record, sink))
             .unwrap_or_default()
+    }
+
+    /// The marks of `player`'s team on the bank at `index` of type `object_type` (ADV-VIS-006,
+    /// ADV-BNK-006, E08 T125a; increment 13's design note §10, §16): each player of the team that
+    /// did not hold the mark learns it (the visitor alone until E10's teams), told
+    /// [`AdventureEventKind::ObjectMarked`], then the bank's hint as
+    /// [`AdventureEventKind::GuardsChanged`] to the same players, so a declined attack teaches its
+    /// team the guards' word. A bank looted or with none standing shows no hint, as before the
+    /// mark: nothing more to tell (*agent's call*, as a mine's guards: no event when the hint
+    /// stays). No mark set anew: no event.
+    // rule: ADV-VIS-006, ADV-BNK-006
+    fn mark_bank<S: Sink>(
+        &mut self,
+        part: &AdventureRuleset,
+        player: PlayerId,
+        (index, object_type): (usize, ObjectTypeId),
+        sink: &mut S,
+    ) {
+        let marked = (0..self.players)
+            .map(PlayerId::new)
+            .filter(|&p| allied(p, player) && !self.knows(p, index))
+            .fold(Viewers::NONE, Viewers::with);
+        if marked == Viewers::NONE {
+            return;
+        }
+        for p in (0..self.players).map(PlayerId::new) {
+            if marked.contains(p) {
+                self.learn(p, index);
+            }
+        }
+        let anchor = self.object_at(index).anchor;
+        sink.emit(AdventureEvent {
+            kind: AdventureEventKind::ObjectMarked {
+                object_type,
+                anchor,
+            },
+            seen_by: marked,
+        });
+        if let Some((creature, word)) = self.bank_hint(part, index) {
+            sink.emit(AdventureEvent {
+                kind: AdventureEventKind::GuardsChanged {
+                    object_type,
+                    anchor,
+                    creature,
+                    count_word: Some(word),
+                },
+                seen_by: marked,
+            });
+        }
+    }
+
+    /// Tells the hint of the bank `(index, object_type)` changed from `before` (ADV-BNK-006, E08
+    /// T125a; increment 13's design note §10, §16: a battle's end left other guards, fewer or none)
+    /// to every player whose team visited it, when its creature or its word changed or no guards
+    /// show any more ([`AdventureEventKind::GuardsChanged`]; none for the word then). The loot
+    /// tells nothing more: a bank is looted only with none standing, whose hint (none) its
+    /// battle's end told.
+    // rule: ADV-BNK-006
+    fn tell_hint<S: Sink>(
+        &self,
+        part: &AdventureRuleset,
+        (index, object_type): (usize, ObjectTypeId),
+        before: Option<(Option<CreatureTypeId>, u8)>,
+        sink: &mut S,
+    ) {
+        let after = self.bank_hint(part, index);
+        let told = (0..self.players)
+            .map(PlayerId::new)
+            .filter(|&p| self.knows(p, index))
+            .fold(Viewers::NONE, Viewers::with);
+        if after == before || told == Viewers::NONE {
+            return;
+        }
+        sink.emit(AdventureEvent {
+            kind: AdventureEventKind::GuardsChanged {
+                object_type,
+                anchor: self.object_at(index).anchor,
+                creature: after.and_then(|(creature, _)| creature),
+                count_word: after.map(|(_, word)| word),
+            },
+            seen_by: told,
+        });
+    }
+
+    /// The hint of the bank at `index` a viewer whose team visited it sees (ADV-BNK-006;
+    /// [`guards_hint`]: their creature when every stack is of one, the word of their total count);
+    /// none when it is looted or no guards stand.
+    fn bank_hint(
+        &self,
+        part: &AdventureRuleset,
+        index: usize,
+    ) -> Option<(Option<CreatureTypeId>, u8)> {
+        if self.is_emptied(index) {
+            return None;
+        }
+        guards_hint(part, self.guards_left(index))
+    }
+
+    /// `viewer`'s view of the bank at `index` (ADV-BNK-006, E08 T125a; increment 13's design note
+    /// §10): its team's mark ([`crate::ObjectView::visited`]) and, with the mark, the hint
+    /// ([`Self::bank_hint`]) as a [`GuardsView`] without the army. Never the level, the counts,
+    /// the upgrade, the artifacts or the reward.
+    // rule: ADV-BNK-006
+    pub(crate) fn bank_view(
+        &self,
+        part: &AdventureRuleset,
+        viewer: PlayerId,
+        index: usize,
+    ) -> (bool, Option<GuardsView>) {
+        let visited = self.knows(viewer, index);
+        let guards =
+            visited
+                .then(|| self.bank_hint(part, index))
+                .flatten()
+                .map(|(creature, count_word)| GuardsView {
+                    creature,
+                    count_word,
+                    army: None,
+                });
+        (visited, guards)
+    }
+
+    /// The visit of a `coast` kind's water entrance at `pos` by `player`'s hero, a step onto it
+    /// from a neighbour (ADV-MOV-009, ADV-SEA-002, E08 T125a; increment 13's design note §9; the
+    /// Shipwreck, the original's class 85, whose water entrance its step and its search take as an
+    /// empty boat's: `hero_step_allowed` 0x481D0D, `pathfinder_expand` 0x4B26D6 and 0x4B29AC,
+    /// survey `E08-sea.md` §15): the bank's visit, made from the tile before (a stop node on land,
+    /// whether the hero walks, water-walks or flies); none for every other tile. A water tile's
+    /// rare case, so out of the step's and the search's loops.
+    // rule: ADV-MOV-009, ADV-SEA-002
+    #[cold]
+    #[inline(never)]
+    pub(crate) fn coast_visit<'p>(
+        &self,
+        part: &'p AdventureRuleset,
+        player: PlayerId,
+        pos: Pos,
+    ) -> Option<StepVisit<'p>> {
+        if !self.is_coast_entrance(part, pos) {
+            return None;
+        }
+        self.visit_at(part, player, pos)
+    }
+
+    /// Whether `pos` is a `coast` kind's water entrance as the map stands now
+    /// ([`Self::coast_visit`]'s test, which the walking search asks alone): visitable, the object
+    /// visited from it (the last, ADV-OBJ-003) a bank of a `coast` kind. Out of line, as water is
+    /// the search's rare case.
+    #[cold]
+    #[inline(never)]
+    pub(crate) fn is_coast_entrance(&self, part: &AdventureRuleset, pos: Pos) -> bool {
+        self.live(pos, self.map.at(pos)).visitable
+            && self
+                .tile_object(part, pos)
+                .is_some_and(|(_, _, ty)| ty.kind.bank().is_some_and(|bank| bank.coast))
     }
 }
 
