@@ -905,7 +905,9 @@ def map_timeline(states):
             if key in state and last.get(key) != state[key]:
                 lines.append(f"{t} {key} " + " ".join(map(str, state[key])))
                 last[key] = state[key]
-        for key in ("hero", "walk"):
+        for key in ("hero", "walk", "date", "player"):
+            if key not in state:
+                continue
             if key in last and last[key] != state[key]:
                 # No hero selected (E24 M3 T6b1: a town chosen): the line without numbers.
                 lines.append(f"{t} {key} {' '.join(map(str, state[key]))}".rstrip())
@@ -926,9 +928,12 @@ def map_timeline(states):
 # T1b: `points`, the selected hero's movement points (its record's +0x4D, as if it had walked;
 # `None` for the address: written by `Mem.write_points`), so that a walk stops on the way or a hero
 # that boarded a boat (which takes the day's points) sails.
+# E24 M4 T1a: `move_reminder`, Move Reminder's setting (1: End Turn asks while a hero can move;
+# the harness's settings keep it off).
 OPTIONS = {"scroll_speed": (h3mem.SCROLL_SPEED, range(0, 3)),
            "hero_speed": (h3mem.WALK_SPEED, range(1, 5)),
-           "points": (None, range(0, 4000))}
+           "points": (None, range(0, 4000)),
+           "move_reminder": (h3mem.MOVE_REMINDER, range(0, 2))}
 # A sequence's inputs (T1a2), each at a millisecond of the sequence: a key pressed or released
 # (xdotool's names, X keysyms, `ctrl+` holding the Control key with it: `ctrl+Up` presses both,
 # releases both) and the pointer moved to a point of the screen (800 x 600); since T1b a left
@@ -941,10 +946,34 @@ INPUTS = ("keydown", "keyup", "pointer", "click", "press", "release")
 # does not know and exits 0, so a typo recorded a sequence without its input): the eight
 # direction keys, as `h3_map_view::sequence`'s DIRECTION_KEYS, with or without `ctrl+`; since
 # E24 M3 T6b1 the panels' buttons' hotkeys (`h3_map_view::timeline::Hotkey`'s letters); since
-# T6b3 Space (`space`: the selected hero chosen again, its tile visited).
+# T6b3 Space (`space`: the selected hero chosen again, its tile visited); since E24 M4 T1a a
+# message box's Enter and Escape (`Return`, `Escape`: its OK's and Cancel's hotkeys).
 DIRECTION_KEYS = ("Up", "Prior", "Right", "Next", "Down", "End", "Left", "Home")
 HOTKEYS = ("k", "u", "q", "z", "w", "m", "c", "a", "o", "h", "e")
-OTHER_KEYS = ("space",)
+OTHER_KEYS = ("space", "Return", "Escape")
+
+
+def force_rolls(game, name, value):
+    """Every draw of the roll `name` returns `value` (E24 M4 T1a; README "Forced rolls"); fails
+    when xdd.dll refused it."""
+    command = f"rolls {name} {value}"
+    before = (game.ack() or (0,) * h3drive.ACK_FIELDS)[6]
+    game.clock(command)
+    if game.ack(need=True)[6] > before:
+        raise RuntimeError(f"xdd.dll refused `{command}`")
+
+
+def turn_toml(mem, t):
+    """A turn's start in a sequence (E24 M4 T1a, design §5), a `[[turn]]` table of the live part:
+    its millisecond, the current player, its kingdom as the panels show it (`Mem.kingdom`), the
+    status window shown, and the week's and the month's kinds and names (`Mem.calendar`: the
+    week's message)."""
+    player = mem.current_player()
+    calendar = mem.calendar()
+    return (f"\n[[turn]]\nat = {t}\nplayer = {player}\n"
+            f"kingdom = {kingdom_toml(mem.kingdom(player))}\n"
+            f"status = {status_toml(mem, player)}\n"
+            f"week = {calendar['week']}\nmonth = {calendar['month']}\n")
 
 
 def known_key(name):
@@ -959,9 +988,16 @@ def sequence_inputs(entry):
     ranges; each input one of `INPUTS` at a millisecond from 1 to `ms` (0 is the still the frame
     check compares), in order of time, a key released only once pressed, the button likewise (no
     press or click while it is held: E24 M3 T7b2, F5-7), a pointer inside the screen. Returns the options [(address, value)] and the inputs by time {t: [(kind, value)]}."""
-    unknown = set(entry) - {"id", "situation", "ms", "why", "inputs", "status", *OPTIONS}
+    unknown = set(entry) - {"id", "situation", "ms", "why", "inputs", "status", "rolls",
+                            *OPTIONS}
     if unknown:
         raise ValueError(f"{entry['id']}: unknown keys {sorted(unknown)}")
+    # The rolls a sequence forces (E24 M4 T1a: the week's and the month's), every draw of each
+    # (`rolls <name> <value>`, README "Forced rolls").
+    for name, value in entry.get("rolls", {}).items():
+        if name not in h3drive.ROLLS or not isinstance(value, int) or isinstance(value, bool):
+            raise ValueError(f"{entry['id']}: the roll `{name} = {value!r}`: a roll of "
+                             f"h3drive.ROLLS and a whole number")
     # The status window's kind asked at 0 and its end (E24 M3 T5b2; design §4.9).
     if "status" in entry:
         status = entry["status"]
@@ -1070,6 +1106,8 @@ def sequence(entry, out):
         # step's end or a lift that centres the view; the live part at 0 keeps it as shown, the
         # timeline's `points` give memory's.
         shown = mem.kingdom(mem.current_player())
+        for name, value in entry.get("rolls", {}).items():
+            force_rolls(game, name, value)
         for address, value in options:
             if address is None:
                 index, _ = mem.selected()
@@ -1133,6 +1171,7 @@ def sequence(entry, out):
             counted.update(cycles=k, ticks=ticks)
             index, hero = mem.selected()
             s = {"t": t - t0, "view": list(mem.view()) + [mem.view_level()],
+                 "date": list(mem.date()), "player": mem.current_player(),
                  "objects": [mem.frame_steps() - base["objects"]], "cycles": list(ticks),
                  "cursor": mem.cursor(), "due": [d - t0 for d in mem.map_due()],
                  "hero": hero, "walk": mem.walk(), "arrows": mem.path_arrows(),
@@ -1148,6 +1187,9 @@ def sequence(entry, out):
 
         first = game.settled()
         states, last = [state(t0, first, None)], first
+        # Each turn's start the sequence reaches (E24 M4 T1a, design §5): its facts as memory
+        # holds them in the millisecond the current player or the date changed.
+        turns = []
         for i in range(entry["ms"]):
             t = game.clock("step 1", settle_reads=500)
             # Each step one millisecond (M2 T6a, the reviewer's R3-6): an input at a skipped one
@@ -1172,6 +1214,9 @@ def sequence(entry, out):
             states.append(state(t, pix, last))
             if "frame" in states[-1]:
                 last = pix
+            if [states[-1][k] for k in ("date", "player")] != [states[-2][k]
+                                                                 for k in ("date", "player")]:
+                turns.append(turn_toml(mem, t - t0))
     finally:
         # A key left down stays down on the display for the next game (T1a2); the game stopped
         # whatever the release meets (M2 T6a, the reviewer's R3-4).
@@ -1185,7 +1230,7 @@ def sequence(entry, out):
         finally:
             game.stop()
     (out / "live.toml").write_text("# The original's live part at the sequence's 0 (h3map.py "
-                                   "frames).\n" + live)
+                                   "frames).\n" + live + "".join(turns))
     with open(out / "states.jsonl", "w") as f, open(out / "frames.jsonl", "w") as g:
         for s in states:
             f.write(json.dumps(s) + "\n")

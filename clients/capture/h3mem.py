@@ -369,6 +369,11 @@ COMBAT_SPEED = 0x6987EC  # the setting, 0 to 2 (factors 0x63CF7C)
 # 0x63A66C), read at each scroll (view_scroll 0x4195C0); the hero's walk, 1 to 4 (M2 T1b). And
 # the scroll's last time (0x691674: the edge scroll waits 70 ms from it, 0x419820).
 SCROLL_SPEED, WALK_SPEED, SCROLL_TIME = 0x69878C, 0x69875C, 0x691674
+# The turn's change (E24 M4 T1a, design §5): Move Reminder's setting (End Turn's question,
+# `adventure_command` 0x409D31), the week's and the month's kinds and their names or creatures as
+# the new day drew them (`player_turn_start`'s message, 0x4CCB08).
+MOVE_REMINDER = 0x698778
+WEEK_KIND, WEEK_CREATURE, MONTH_KIND, MONTH_CREATURE = 0x697750, 0x6983FC, 0x698834, 0x697748
 # The walk (E24 M2 T1b, design §3.5): the manager's view offset (i32 +0xF4, +0xF8: added to every
 # tile's place, written by the walk's animation 0x480380 only), the moving hero's group (i32
 # +0x1FC: 0 to 4 standing, 5 to 9 walking) and frame (i32 +0x200: stepped by pass 9 after it drew
@@ -1078,6 +1083,14 @@ class Mem:
         """(month, week, day of the week), each from 1 (E17 H2)."""
         day, week, month = struct.unpack("<3H", self.read(self.game() + DATE, 6))
         return month, week, day
+
+    def calendar(self):
+        """The week's and the month's kinds and names (E24 M4 T1a, design §5): `[kind, name]`
+        each, as `player_turn_start`'s message reads them (the week: 0 normal, the name ArrayTxt's
+        43 + n; 1 a creature's, the creature; 2 the Deity's; the month: 0 normal, the name 32 + n; 1
+        a creature's, the creature; 2 the Plague)."""
+        return {"week": [self.i32(WEEK_KIND), self.i32(WEEK_CREATURE)],
+                "month": [self.i32(MONTH_KIND), self.i32(MONTH_CREATURE)]}
 
 
     def map_kind(self):

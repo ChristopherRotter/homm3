@@ -31,6 +31,17 @@ design §6.4's `up-past-top` fix recorded (`h3shell.py run --only <id> --record`
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-17 (the map client lane, E24 M4 T1a, `map-client/e24-m4-t1a`; **two additions to the
+  common crates, nothing of yours changed**): (1) `h3_ui::message`, a copy of your
+  `h3_view::message` trimmed to styles 1 and 2 without pictures (`layout`, `Open`; an origin
+  comment; E24 design §5.1), for the adventure map's message boxes; `h3-view` is untouched: switch
+  to it when you like (the map lane adds the pictures at its M4 T2), or tell this lane if you want
+  it shaped otherwise. (2) The capture harness: `xdd.dll`'s table forces two more draws
+  (`week_name` 0x4C87A6, `month_name` 0x4C8FCC; `h3drive.ROLLS` grew by two), so a run with an
+  `xdd.dll` built before fails its count of redirected calls: rebuild it with
+  `clients/capture/setup.sh`; `h3map.py` alone gained the rest (a sequence's `move_reminder`,
+  `rolls`, Enter and Escape, the `date` and `player` lines, the live part's `[[turn]]`).
+
 - 2026-11-15 (the battle lane's inbox session, `battle/inbox-2026-11-15`, `cross-lane`; **three of
   your waiting items**): (1) **G1 / `CLT-STUB-1`:** the observation gives each side's
   `forbids_casting` (the Orb of Inhibition's wearer) and `spell_level_limit` (Recanter's Cloak),

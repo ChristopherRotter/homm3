@@ -37,11 +37,11 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_map_view::damage::{Held, tidy};
-use h3_map_view::keys::{Command, Keys};
+use h3_map_view::keys::{Command, Context, Keys, refuse_shift};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
 use h3_map_view::sound;
-use h3_map_view::timeline::{self, Action, Cursor, Rules, Start, Unplayable};
+use h3_map_view::timeline::{self, Action, CURSOR_TYPE, Cursor, Rules, Start, Unplayable};
 use h3_render::Bugs;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
 use h3_ui::clock::Clock;
@@ -181,6 +181,7 @@ fn load_keys(path: Option<&Path>) -> Result<(Keys, String), String> {
     };
     let known: Vec<&str> = Key::ALL.iter().map(|k| k.name()).collect();
     keys.check(&known).map_err(|e| format!("{from}: {e}"))?;
+    refuse_shift(&keys).map_err(|e| format!("{from}: {e}"))?;
     Ok((keys, from))
 }
 
@@ -227,16 +228,21 @@ struct HeldKeys {
 }
 
 impl HeldKeys {
-    /// A key's down: whether it repeats and the command the table gives it with Ctrl as held;
-    /// none for a Control key itself.
-    fn down(&mut self, table: &Keys, key: Key) -> Option<(bool, Option<Command>)> {
+    /// A key's down: whether it repeats and the command the table gives it in `context` with
+    /// Ctrl as held; none for a Control key itself.
+    fn down(
+        &mut self,
+        table: &Keys,
+        key: Key,
+        context: Context,
+    ) -> Option<(bool, Option<Command>)> {
         let repeat = self.keys.contains_key(&key);
         if matches!(key, Key::LeftCtrl | Key::RightCtrl) {
             self.keys.insert(key, None);
             self.ctrl[usize::from(key == Key::RightCtrl)] = true;
             return None;
         }
-        let command = table.command((), self.ctrl.contains(&true), key.name());
+        let command = table.command(context, self.ctrl.contains(&true), key.name());
         if command.is_some() || !repeat {
             self.keys.insert(key, command);
         }
@@ -287,6 +293,7 @@ impl Look {
             cursor
         } else {
             Cursor {
+                kind: CURSOR_TYPE,
                 shown: false,
                 at: OFF,
                 frame: 0,
@@ -367,16 +374,16 @@ impl Frame {
 fn hardware(
     win: &mut Window,
     painter: &mut Painter<'_>,
-    set: &mut Option<(u32, bool)>,
+    set: &mut Option<([u32; 2], bool)>,
     cursor: Option<Cursor>,
 ) -> Result<bool, String> {
-    let want = cursor.map(|c| (c.frame, c.shown));
+    let want = cursor.map(|c| ([c.kind, c.frame], c.shown));
     if *set == want {
         return Ok(true);
     }
     let image = match cursor {
         Some(c) if c.shown => {
-            let image = painter.cursor_image(c.frame)?;
+            let image = painter.cursor_image(c.kind, c.frame)?;
             Some(CursorImage {
                 width: image.width,
                 height: image.height,
@@ -518,7 +525,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         frame: layout.frame,
     };
     // The hardware cursor as set (`None`: the system's hidden, as `Window::open` leaves it).
-    let mut hw: Option<(u32, bool)> = None;
+    let mut hw: Option<([u32; 2], bool)> = None;
     let mut clock = Clock::new(win.ticks_ns(), 0);
     let mut shown: Option<Frame> = None;
     let read = options.run.is_some_and(|(_, read)| read);
@@ -627,7 +634,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Event::Key(k) => k,
             };
-            let Some((repeat, command)) = held.down(&keys, key) else {
+            // A message box's keys while one shows (E24 M4 T1a: Escape its Cancel, not quit).
+            let boxed = shown
+                .as_ref()
+                .is_some_and(|f| f.change.drawn.message.is_some());
+            let Some((repeat, command)) = held.down(&keys, key, Context::of(boxed)) else {
                 continue;
             };
             // The map's keys, repeats too (a direction key's as a repeat: MCL-Q25); the window's
@@ -699,6 +710,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     | Command::Hero(_)
                     | Command::Panel(_)
                     | Command::Visit
+                    | Command::Message(_)
                     | Command::Window(Own::Frame),
                 )
                 | None => {}
@@ -751,7 +763,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     | Action::Release(_)
                     | Action::RightPress
                     | Action::RightRelease => 3,
-                    Action::Key(_) | Action::KeyUp(_) | Action::Visit | Action::Up => 4,
+                    Action::Key(_)
+                    | Action::KeyUp(_)
+                    | Action::BoxKey(_)
+                    | Action::BoxKeyUp(_)
+                    | Action::Visit
+                    | Action::Up => 4,
                 }] += 1;
                 replay.give(t, action);
             }
@@ -1146,7 +1163,7 @@ mod tests {
             .unwrap();
         assert_eq!(keys.check(&known), Ok(()));
         assert_eq!(
-            keys.command((), true, "F12"),
+            keys.command(Context::Map, true, "F12"),
             Some(Command::Window(Own::Quit))
         );
         let unknown = Keys::with_file("[map]\nrestart = [\"Backspace\"]").unwrap();
@@ -1157,7 +1174,7 @@ mod tests {
         );
         assert!(!message.contains("LeftCtrl"), "{message}");
         assert_eq!(
-            Chord::parse("Ctrl+Up").map(|c| Keys::original().command((), c.ctrl, &c.key)),
+            Chord::parse("Ctrl+Up").map(|c| Keys::original().command(Context::Map, c.ctrl, &c.key)),
             Ok(Some(Command::Scroll(Direction::North)))
         );
     }
@@ -1165,12 +1182,14 @@ mod tests {
     #[test]
     fn the_cursor_in_the_frame_by_the_look() {
         let cursor = Cursor {
+            kind: CURSOR_TYPE,
             frame: 33,
             at: [10, 20],
             shown: true,
         };
         // Drawn nowhere: one hidden cursor, whatever its point and frame (R2-9).
         let hidden = Cursor {
+            kind: CURSOR_TYPE,
             shown: false,
             at: OFF,
             frame: 0,
@@ -1219,18 +1238,18 @@ mod tests {
         let mut held = HeldKeys::default();
         let h = Key::from_name("H").unwrap();
         let next = Some(Command::Panel(timeline::Hotkey::NextHero));
-        assert_eq!(held.down(&table, h), Some((false, next)));
-        assert_eq!(held.down(&table, Key::LeftCtrl), None);
+        assert_eq!(held.down(&table, h, Context::Map), Some((false, next)));
+        assert_eq!(held.down(&table, Key::LeftCtrl, Context::Map), None);
         // Its repeat with Ctrl held gives nothing and keeps next hero's.
-        assert_eq!(held.down(&table, h), Some((true, None)));
+        assert_eq!(held.down(&table, h, Context::Map), Some((true, None)));
         assert_eq!(held.up(h), next);
         assert_eq!(held.up(Key::LeftCtrl), None);
         assert_eq!(held.up(h), None);
         // Ctrl+H down, Ctrl up, H's repeat: next hero's, released at H's up.
-        held.down(&table, Key::RightCtrl);
-        assert_eq!(held.down(&table, h), Some((false, None)));
+        held.down(&table, Key::RightCtrl, Context::Map);
+        assert_eq!(held.down(&table, h, Context::Map), Some((false, None)));
         held.up(Key::RightCtrl);
-        assert_eq!(held.down(&table, h), Some((true, next)));
+        assert_eq!(held.down(&table, h, Context::Map), Some((true, next)));
         assert_eq!(held.up(h), next);
     }
 

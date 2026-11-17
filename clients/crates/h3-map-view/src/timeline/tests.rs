@@ -246,6 +246,10 @@ fn start(situation: &str, speed: usize) -> Start {
         heroes: Vec::new(),
         index: None,
         chosen: crate::live::Chosen::default(),
+        player: 0,
+        move_reminder: false,
+        question: None,
+        turns: Vec::new(),
     }
 }
 
@@ -348,7 +352,8 @@ fn the_walks_frames_are_m2_t3bs() {
             "walk-queue",
             "walk-stop-key",
             "walk-stop-press",
-            "walk-stop-space"
+            "walk-stop-space",
+            "turn-question"
         ]
     );
 }
@@ -375,6 +380,10 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         heroes: Vec::new(),
         index: None,
         chosen: crate::live::Chosen::default(),
+        player: 0,
+        move_reminder: false,
+        question: None,
+        turns: Vec::new(),
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -530,6 +539,7 @@ fn the_cursor_follows_the_poll() {
         assert_eq!(
             s.cursor,
             Cursor {
+                kind: CURSOR_TYPE,
                 frame: 0,
                 at,
                 shown: true
@@ -577,6 +587,10 @@ fn what_it_cannot_play_yet() {
         heroes: Vec::new(),
         index: None,
         chosen: crate::live::Chosen::default(),
+        player: 0,
+        move_reminder: false,
+        question: None,
+        turns: Vec::new(),
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -712,6 +726,10 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         heroes: Vec::new(),
         index: None,
         chosen: crate::live::Chosen::default(),
+        player: 0,
+        move_reminder: false,
+        question: None,
+        turns: Vec::new(),
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
 }
@@ -1352,6 +1370,10 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         heroes: Vec::new(),
         index: None,
         chosen: crate::live::Chosen::default(),
+        player: 0,
+        move_reminder: false,
+        question: None,
+        turns: Vec::new(),
     }
 }
 
@@ -1879,7 +1901,7 @@ fn the_day_s_window_plays_its_sound_when_built() {
     assert!(effects(&mut l).is_empty());
     let week = Start {
         kingdom: Kingdom {
-            date: crate::live::Date {
+            date: Date {
                 month: 2,
                 week: 3,
                 day: 1,
@@ -1955,6 +1977,10 @@ fn hovering(live: bool, bugs: Bugs) -> Loop {
         heroes: Vec::new(),
         index: None,
         chosen: crate::live::Chosen::default(),
+        player: 0,
+        move_reminder: false,
+        question: None,
+        turns: Vec::new(),
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -2969,3 +2995,5 @@ fn a_hotkeys_up_during_a_hold_releases_its_button_in_the_client() {
         assert_eq!(l.keyed.is_empty(), fixed, "{bugs:?}");
     }
 }
+
+mod turns;

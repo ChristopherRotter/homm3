@@ -2349,3 +2349,49 @@ On `map-client/e24-m4-t0`, the user present in the chat; `master` at #626 (T7c2 
   the viewer reads), the adventure lane (the object identity, random objects' drawn types,
   MCL-Q21's refusals) and the client lane (the battle as a library entry).
 - **Checked:** `cargo xtask check-docs`, `check-lane --lane map-client`; nothing else changed.
+
+### M4 T1a — the turn's end and the next day (2026-11-16 to 17)
+
+On `map-client/e24-m4-t1a`, the user present at the start (the cut), then away; `master` at #976.
+Original data staged (63 files, SHA-256 checked against the PC's); the setup's baseline stopped
+at its coverage step (the client lane's trap), CI's green `master` standing in. The server behind
+the session stopped twice and the VM restarted three times; the work went on from the pushed
+commits each time.
+
+- **The cut** (the user, at the start): T1 in two, T1a this (End Turn and its question, the
+  turn's end, the next day, the week's and the month's messages) and T1b (a computer player's
+  moves in sight). The status window's kind 5 moved to T1b with its cursor and hint: on the
+  virtual clock a computer's turn out of sight takes no time (below), so only T1b's walks show it.
+- **The inbox first:** the map's key table refuses a `Shift+` chord (`keys::refuse_shift`: the map
+  reads no Shift, as the original's; the client lane's E27 M2 T7b note); `tests/purity.rs` took
+  `h3-view`'s four fixes (E17 M6 T6a, T7b); design §3's keys bullet names the Ctrl chords; the four
+  entries to `QUEUE-ARCHIVE.md`.
+- **Read** (design §5.1): End Turn (0x409D12), `next_player_turn` and `player_turn_start` in full,
+  a computer player's start and `covered_view_redraw`, kind 5's panel and step, the week's and the
+  month's messages (ArrayTxt 128 to 135, the names 32 to 41 and 43 to 57, the draws 0x4C87A6 and
+  0x4C8FCC). Two `docs/exe/map.toml` sites (`week_name_draw`, `month_name_draw`).
+- **Seen first:** with no town Red's first End Turn shows "you have lost your last town" with
+  Red's flag (the scenario's tests), its text starting with an empty player name in the harness's
+  game: a box with a picture, T2's (its queue entry says so); the situations give Red a town.
+- **The harness** (common, additive): `xdd.dll` forces `week_name` and `month_name`; a sequence's
+  `move_reminder` and `rolls`, Enter and Escape; the timeline's `date` and `player` lines; the live
+  part's `[[turn]]` tables (`Mem.calendar`). Seven sequences recorded, each exact at 0:
+  `turn-day`, `turn-question`, `turn-week`, `turn-week-creature`, `turn-month`,
+  `turn-month-creature`, `turn-plague` (situations `seq-turn`, `seq-turn-week`,
+  `seq-turn-month`). The game's disk check stopped four runs at `main_menu` (free bytes 3.99 GiB
+  modulo 4 GiB): a ballast file.
+- **Built** (a worker; design §5.1's *Built*): the common crate's `h3_ui::message` (the client
+  lane's `h3_view::message` trimmed to styles 1 and 2 without pictures; the client lane's inbox
+  told), the live part's `Turn`, the module `turn`, End Turn's question and the turn's change in
+  the timeline, a box's own loop, the box drawn by the binary, the key table's `Message` context;
+  seven catalogue keys and two families.
+- **Checked:** every frame of the seven sequences exact (22, 14, 16, 12, 9, 9, 9), the viewer's
+  timelines the recorded ones; `drawn` the 50 situations and 35 earlier sequences the same, then
+  `--record` (the seven joined); `RUST_TEST_THREADS=1 check.sh --no-coverage` all gates; coverage
+  outside `check.sh` 100 % lines, regions and functions; the window under Xvfb on `turn-question`
+  and `turn-week` (`--check 10`): every frame read back exact, live E, Escape and Enter as the
+  original's. No sound played (no audio device).
+- **Questions:** MCL-Q29 (the Deity's week names the Imp's growth for the Familiar), MCL-Q30 (the
+  new day's sound started twice). Recorded, not questions: a redraw's deadline already passed at
+  the turn's change moves on without an objects' step; the cursor drawn at the mouse at a box's
+  opening and close (E17 design §9.9's even x).

@@ -3,7 +3,9 @@
 //! workspace. `no_std` makes I/O, clocks, threads and the environment unavailable at compile
 //! time; this test keeps that in place: the library root carries the header, no source file
 //! relaxes a denied lint or brings `std` in outside the tests, and the crate depends only on what
-//! its allowlist names (a dependency's I/O would be reachable from a `no_std` crate too).
+//! its allowlist names (a dependency's I/O would be reachable from a `no_std` crate too). The
+//! copy's later fixes taken over at E24 M4 T1a (the client lane's notes: E17 M6 T6a's attributes
+//! and deny block, T7b's dependency tables and exact lint names, R11-3).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -28,10 +30,6 @@ const BINARY_ONLY: [(&str, &[&str]); 1] = [("h3-map-view", &["h3-formats", "h3-s
 /// Attributes every pure crate root carries.
 const REQUIRED: [&str; 2] = ["#![no_std]", "#![forbid(unsafe_code)]"];
 
-/// The lint groups that hold a denied lint: relaxing one relaxes them (every lint of `DENIED` is
-/// one of clippy's restriction lints; E24 M1 T6b, the reviewer's R2-15).
-const GROUPS: [&str; 1] = ["clippy::restriction"];
-
 /// Lints every pure crate root denies (the engine's logic header, `arch.toml` `logic_deny`).
 const DENIED: [&str; 10] = [
     "clippy::unwrap_used",
@@ -45,6 +43,10 @@ const DENIED: [&str; 10] = [
     "clippy::print_stderr",
     "clippy::exit",
 ];
+
+/// The lint groups that hold a denied lint: relaxing one relaxes them (every lint of `DENIED` is
+/// one of clippy's restriction lints; E24 M1 T6b, the reviewer's R2-15).
+const GROUPS: [&str; 1] = ["clippy::restriction"];
 
 fn crate_dir(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join(name)
@@ -69,47 +71,120 @@ fn walk(dir: &Path, binary: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// Each attribute of a source (`#[...]` or `#![...]`, over as many lines as it takes) with its
-/// first line's number.
+/// A line's code: the line up to its `//` comment (one inside a string literal is code), and its
+/// brackets' balance outside string literals (`[` counts 1, `]` −1).
+fn code_of(line: &str) -> (&str, i32) {
+    let (mut quoted, mut escaped, mut depth) = (false, false, 0);
+    let bytes = line.as_bytes();
+    for (i, &b) in bytes.iter().enumerate() {
+        match b {
+            _ if escaped => escaped = false,
+            b'\\' if quoted => escaped = true,
+            b'"' => quoted = !quoted,
+            b'/' if !quoted && bytes.get(i + 1) == Some(&b'/') => return (&line[..i], depth),
+            b'[' if !quoted => depth += 1,
+            b']' if !quoted => depth -= 1,
+            _ => {}
+        }
+    }
+    (line, depth)
+}
+
+/// Each attribute of a source (`#[...]` or `#![...]`, over as many lines as it takes: until its
+/// brackets close, comments left out; E17 M6 T6a, the reviewer: a `]` in a comment closed it)
+/// with its first line's number.
 fn attributes(lines: &[&str]) -> Vec<(usize, String)> {
     let mut found = Vec::new();
-    let mut open: Option<(usize, String)> = None;
+    let mut open: Option<(usize, String, i32)> = None;
     for (i, line) in lines.iter().enumerate() {
-        if open.is_none() && line.starts_with('#') {
-            open = Some((i + 1, String::new()));
+        let (code, balance) = code_of(line);
+        if open.is_none() && code.starts_with('#') {
+            open = Some((i + 1, String::new(), 0));
         }
-        if let Some((_, text)) = &mut open {
-            text.push_str(line);
-            if line.ends_with(']') {
-                found.extend(open.take());
+        if let Some((_, text, depth)) = &mut open {
+            text.push_str(code);
+            *depth += balance;
+            if *depth <= 0 {
+                found.extend(open.take().map(|(at, text, _)| (at, text)));
             }
         }
     }
-    found.extend(open);
+    found.extend(open.map(|(at, text, _)| (at, text)));
     found
 }
 
-/// The text of the root's `#![deny(...)]` attribute, or an empty string.
-fn deny_block(source: &str) -> &str {
-    source
-        .split_once("#![deny(")
-        .and_then(|(_, rest)| rest.split_once(")]"))
-        .map_or("", |(block, _)| block)
+/// The text of the root's `#![deny(...)]` attribute (its lines joined, comments left out; a
+/// commented-out one is none: E17 M6 T6a, the reviewer), or an empty string.
+fn deny_block(lines: &[&str]) -> String {
+    attributes(lines)
+        .into_iter()
+        .find_map(|(_, attribute)| {
+            let rest = attribute.strip_prefix("#![deny(")?;
+            Some(rest.trim_end_matches(']').trim_end_matches(')').to_owned())
+        })
+        .unwrap_or_default()
 }
 
-/// The keys of the manifest's `[dependencies]` table.
+/// A TOML key path's parts (`target.'cfg(unix)'.dependencies` gives `target`, `cfg(unix)`,
+/// `dependencies`): split at the dots outside quotes, the quotes and spaces left out.
+fn parts(path: &str) -> Vec<String> {
+    let mut out = vec![String::new()];
+    let mut quote = None;
+    for c in path.chars() {
+        match (quote, c) {
+            (None, '\'' | '"') => quote = Some(c),
+            (Some(q), _) if c == q => quote = None,
+            (None, '.') => out.push(String::new()),
+            (None, c) if c.is_whitespace() => {}
+            _ => {
+                if let Some(part) = out.last_mut() {
+                    part.push(c);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The dependency a full key path names: `dependencies.<key>` or
+/// `target.<cfg>.dependencies.<key>`, and anything under either.
+fn dependency(path: &[String]) -> Option<&str> {
+    match path {
+        [table, key, ..] if table == "dependencies" => Some(key),
+        [target, _, table, key, ..] if target == "target" && table == "dependencies" => Some(key),
+        _ => None,
+    }
+}
+
+/// The keys of the manifest's dependencies: the `[dependencies]` table's, a
+/// `[dependencies.<key>]` table's and a `[target.<cfg>.dependencies]` table's (E17 M6 T7b, R11-3:
+/// only the first was read).
 fn dependencies(manifest: &str) -> Vec<String> {
-    let mut keys = Vec::new();
-    let mut inside = false;
+    let mut keys: Vec<String> = Vec::new();
+    let mut table = Vec::new();
     for line in manifest.lines().map(str::trim) {
-        if line.starts_with('[') {
-            inside = line == "[dependencies]";
-        } else if inside && !line.is_empty() && !line.starts_with('#') {
-            let key = line.split(['=', '.']).next().unwrap_or_default().trim();
+        let path = if let Some(header) = line.strip_prefix('[') {
+            let header = header.trim_start_matches('[');
+            table = parts(header.split_once(']').map_or(header, |(h, _)| h));
+            table.clone()
+        } else if let Some((key, _)) = line.split_once('=').filter(|_| !line.starts_with('#')) {
+            table.iter().cloned().chain(parts(key)).collect()
+        } else {
+            continue;
+        };
+        if let Some(key) = dependency(&path)
+            && !keys.iter().any(|k| k == key)
+        {
             keys.push(key.to_owned());
         }
     }
     keys
+}
+
+/// The lints a deny block names, each exactly (E17 M6 T7b, R11-3: `clippy::panic_in_result_fn`
+/// passed for `clippy::panic`).
+fn names(block: &str) -> Vec<&str> {
+    block.split(',').map(str::trim).collect()
 }
 
 /// What is wrong with one source file of a pure crate.
@@ -117,15 +192,16 @@ fn violations(source: &str, root: bool) -> Vec<String> {
     let mut found = Vec::new();
     let lines: Vec<&str> = source.lines().map(str::trim).collect();
     if root {
-        // A line of its own each (a commented-out one is no attribute).
+        // A line of its own each (a commented-out one is no attribute; R2-15).
         for attribute in REQUIRED {
             if !lines.contains(&attribute) {
                 found.push(format!("missing `{attribute}`"));
             }
         }
-        let block = deny_block(source);
+        let block = deny_block(&lines);
+        let denied = names(&block);
         for lint in DENIED {
-            if !block.contains(lint) {
+            if !denied.contains(&lint) {
                 found.push(format!("`{lint}` is not denied"));
             }
         }
@@ -200,8 +276,14 @@ fn pure_crates_stay_pure() {
 
 #[test]
 fn the_checks_catch_what_they_should() {
-    assert_eq!(deny_block("#![deny(a, b)]\n"), "a, b");
-    assert_eq!(deny_block("no attribute"), "");
+    assert_eq!(deny_block(&["#![deny(a, b)]"]), "a, b");
+    assert_eq!(deny_block(&["no attribute"]), "");
+    assert_eq!(
+        deny_block(&["#![deny(", "a, // the first", "b", ")]"]),
+        "a, b"
+    );
+    // A deny block commented out denies nothing (E17 M6 T6a, the reviewer).
+    assert_eq!(deny_block(&["// #![deny(a)]", "#![forbid(b)]"]), "");
     assert_eq!(violations("", true).len(), REQUIRED.len() + DENIED.len());
     assert_eq!(
         violations("#[allow(clippy::unwrap_used)]\nfn f() {}", false).len(),
@@ -228,16 +310,62 @@ fn the_checks_catch_what_they_should() {
         violations("#[allow(\n  dead_code", false),
         Vec::<String>::new()
     );
+    // One left open to the end still counts; a `]` in a comment does not close one; a `//` in a
+    // string is no comment (E17 M6 T6a, the reviewer).
+    assert_eq!(violations("#[allow(\n  clippy::panic", false).len(), 1);
+    assert_eq!(
+        violations(
+            "#[allow(\n    dead_code, // see [1]\n    clippy::panic\n)]",
+            false
+        ),
+        ["line 1: relaxes a denied lint"]
+    );
+    assert_eq!(
+        violations(
+            "#[doc = \"http://a\"]\n#[allow(clippy::panic)]\nfn f() {}",
+            false
+        ),
+        ["line 2: relaxes a denied lint"]
+    );
     let commented = "// #![no_std]\n#![forbid(unsafe_code)]\n";
     assert!(
         violations(commented, true)
             .iter()
             .any(|v| v == "missing `#![no_std]`")
     );
+    let mut nested = Vec::new();
+    let root = std::env::temp_dir().join(format!("h3-map-view-purity-{}", std::process::id()));
+    fs::create_dir_all(root.join("bin")).unwrap();
+    fs::create_dir_all(root.join("module").join("bin")).unwrap();
+    fs::write(root.join("bin").join("main.rs"), "").unwrap();
+    fs::write(root.join("module").join("bin").join("part.rs"), "").unwrap();
+    sources(&root, &mut nested);
+    fs::remove_dir_all(&root).unwrap();
+    assert_eq!(nested, [root.join("module").join("bin").join("part.rs")]);
     assert_eq!(violations("extern crate std;", false).len(), 1);
     assert!(violations("#[cfg(test)]\nextern crate std;", false).is_empty());
     let manifest = "[package]\nname = \"x\"\n[dependencies]\n# c\na.workspace = true\nb = \"1\"\n\n[dev-dependencies]\nc = \"1\"\n";
     assert_eq!(dependencies(manifest), ["a", "b"]);
+    // A dependency's own table, a target's, a dotted key at the root; not a dev-dependency or
+    // the workspace's (E17 M6 T7b, R11-3).
+    let tables = "dotted.dependencies = 1\ndependencies.h = \"1\"\n[package]\nname = \"x\"\n\
+        [dependencies.d] # c\nversion = \"1\"\nfeatures = [\"x\"]\n\
+        [target.'cfg(unix)'.dependencies]\ne = { version = \"1\" }\n\
+        [target.\"cfg(any(unix, windows))\".dependencies.\"f\"]\nversion = \"1\"\n\
+        [target.x.dev-dependencies]\ng = \"1\"\n[dev-dependencies.i]\nversion = \"1\"\n\
+        [workspace.dependencies]\nj = \"1\"\n[[bin]]\nname = \"k\"\n# dependencies.l = 1\n";
+    assert_eq!(dependencies(tables), ["h", "d", "e", "f"]);
+    // The denied lints named exactly: a longer one with the same start is another.
+    let lookalike = "#![no_std]\n#![forbid(unsafe_code)]\n#![deny(clippy::panic_in_result_fn)]\n";
+    assert!(
+        violations(lookalike, true)
+            .iter()
+            .any(|v| v == "`clippy::panic` is not denied")
+    );
+    assert_eq!(
+        names(&deny_block(&["#![deny(", "a,", "b", ")]"])),
+        ["a", "b"]
+    );
     assert_eq!(
         names_binary_only("use h3_x;\nh3_y::f();\nh3_z", &["h3-x", "h3-y", "h3-z"]).len(),
         2

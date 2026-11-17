@@ -10,18 +10,49 @@
 //! battle takes F5 to F8 alone, and both windows' own keys stay the same); since
 //! E24 M3 T6b1 the panels' buttons' hotkeys (the original's letters K, U, Q, Z, W, M, C, A, O, H
 //! and E, design §4.13); since T6b3 Space (the selected hero chosen again and its tile visited,
-//! design §4.15).
+//! design §4.15); since E24 M4 T1a a message box's OK and Cancel (Enter and Escape, in the box's
+//! own [`Context`], the battle's way: Escape is the window's quit with no box open).
 
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 
 use h3_ui::keys::{self, Chord, Window};
+use h3_ui::message::Key;
 
 use crate::timeline::{Action, Direction, Hotkey};
 
 /// The map window's table of keys.
 pub type Keys = keys::Keys<Command>;
+
+/// Where the map takes a key (E24 M4 T1a): what is open over it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Context {
+    /// Nothing: the map's own keys and the window's.
+    Map,
+    /// A message box: its buttons' keys, and the window's own that work everywhere.
+    Message,
+}
+
+impl Context {
+    /// A message box's when one is open, else the map's.
+    #[must_use]
+    pub const fn of(message: bool) -> Self {
+        if message { Self::Message } else { Self::Map }
+    }
+}
+
+/// A message box's keys.
+const MESSAGE: [Key; 2] = [Key::Ok, Key::Cancel];
+
+/// A box key's name and the original's key (its button's hotkey, `message_box_build` 0x4F6990),
+/// as the battle's table names them.
+const fn message_key(key: Key) -> (&'static str, &'static str) {
+    match key {
+        Key::Ok => ("box-ok", "Return"),
+        Key::Cancel => ("box-cancel", "Escape"),
+    }
+}
 
 /// What a key does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -36,6 +67,9 @@ pub enum Command {
     /// The selected hero chosen again and the object it stands on visited (the original's Space,
     /// E24 M3 T6b3).
     Visit,
+    /// A message box's OK or Cancel (E24 M4 T1a): its key down presses the button, its key up
+    /// clicks it.
+    Message(Key),
     /// The window's own (the music and the effects since E24 M2 T5, the cursor's kind since T4b).
     Window(Window),
 }
@@ -62,6 +96,7 @@ impl Command {
             Self::Hero(d) => Some(Action::Step(d)),
             Self::Panel(key) => Some(Action::Key(key)),
             Self::Visit => Some(Action::Visit),
+            Self::Message(key) => Some(Action::BoxKey(key)),
             Self::Window(_) => None,
         }
     }
@@ -73,6 +108,7 @@ impl Command {
     pub const fn release(self) -> Option<Action> {
         match self {
             Self::Panel(key) => Some(Action::KeyUp(key)),
+            Self::Message(key) => Some(Action::BoxKeyUp(key)),
             Self::Scroll(_) | Self::Hero(_) | Self::Visit => Some(Action::Up),
             Self::Window(_) => None,
         }
@@ -80,17 +116,18 @@ impl Command {
 }
 
 impl keys::Command for Command {
-    /// The map takes every key alike (no dialog over it yet).
-    type Context = ();
+    /// The map's or a message box's (E24 M4 T1a).
+    type Context = Context;
     const TABLE: &'static str = "map";
 
     /// Every command, in the table's order: the scroll's eight directions, the hero's eight, the
-    /// panels' hotkeys, Space's, the window's own.
+    /// panels' hotkeys, Space's, the box's, the window's own.
     fn all() -> Vec<Self> {
         let mut all: Vec<Self> = Direction::ALL.into_iter().map(Self::Scroll).collect();
         all.extend(Direction::ALL.into_iter().map(Self::Hero));
         all.extend(Hotkey::ALL.map(Self::Panel));
         all.push(Self::Visit);
+        all.extend(MESSAGE.map(Self::Message));
         all.extend(Window::ALL.map(Self::Window));
         all
     }
@@ -102,6 +139,7 @@ impl keys::Command for Command {
             Self::Hero(d) => format!("hero-{}", direction_name(d)),
             Self::Panel(key) => hotkey_name(key).into(),
             Self::Visit => "visit".into(),
+            Self::Message(key) => message_key(key).0.into(),
             Self::Window(w) => w.name().into(),
         }
     }
@@ -126,16 +164,50 @@ impl keys::Command for Command {
             ));
         }
         defaults.push((Self::Visit, Vec::from([Chord::new(false, "Space")])));
+        for key in MESSAGE {
+            let chord = Chord::new(false, message_key(key).1);
+            defaults.push((Self::Message(key), Vec::from([chord])));
+        }
         for w in Window::ALL {
             defaults.push((Self::Window(w), Vec::from([w.chord()])));
         }
         defaults
     }
 
-    /// Every key in the one context.
-    fn context(self) -> Option<()> {
-        None
+    /// The window's own that work whatever is open everywhere; the box's in the box's context;
+    /// with nothing over the map the rest (quit, a frame on and restart among them: Escape is the
+    /// box's Cancel while one is open).
+    fn context(self) -> Option<Context> {
+        match self {
+            Self::Window(w) if w.everywhere() => None,
+            Self::Message(_) => Some(Context::Message),
+            Self::Scroll(_) | Self::Hero(_) | Self::Panel(_) | Self::Visit | Self::Window(_) => {
+                Some(Context::Map)
+            }
+        }
     }
+}
+
+/// Every chord of `keys` the map can tell apart (the client lane's E27 M2 T7b note): the map reads
+/// no Shift, as the original's adventure map, whose keys go by their scan code and Ctrl alone
+/// (`adventure_key_down` 0x408C40's modifiers 0xC; the hotkeys by scan code, design §4.13), so a
+/// key with Shift held gives what the key alone gives and a `Shift+` chord, which `h3_ui::keys`
+/// parses, would never match: refused.
+///
+/// # Errors
+/// The first `Shift+` chord, with its command.
+pub fn refuse_shift(table: &Keys) -> Result<(), String> {
+    use keys::Command as _;
+    table
+        .chords()
+        .into_iter()
+        .find(|(_, chord)| chord.shift)
+        .map_or(Ok(()), |(command, chord)| {
+            Err(format!(
+                "`{}`: {chord}: the map reads no Shift (a key with Shift held is the key alone)",
+                command.name()
+            ))
+        })
 }
 
 /// A panel's hotkey's name in a user's file.

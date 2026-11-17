@@ -46,6 +46,7 @@ fn live(kingdom: Kingdom, path: Vec<Arrow>) -> Live {
         hint: None,
         chosen: crate::live::Chosen::default(),
         pressed: Vec::new(),
+        turns: Vec::new(),
     }
 }
 

@@ -89,6 +89,7 @@ fn live(objects: usize) -> Live {
         hint: None,
         chosen: crate::live::Chosen::default(),
         pressed: Vec::new(),
+        turns: Vec::new(),
     }
 }
 

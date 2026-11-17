@@ -1216,11 +1216,14 @@ frames recorded. The first draw differed only at the walks' ends (the late redra
   chords (a key by `h3_sdl::Key`'s name, `Ctrl+` holding either Control key). Defaults: the
   original's eight direction keys (§3.4) for the hero's steps and with Ctrl for the scroll; the
   window's own on the function keys and Esc (F5 pause, F6 the next frame while paused, F7
-  restart, F8 vsync, F11 fullscreen, Esc quit), because the original's map takes the arrows,
-  Home, End and the page keys and nearly every letter (M3's hotkeys), so `h3-view window`'s P,
-  →, Home, F and V would clash there. A chord matches exactly (Ctrl and F5 is not F5). A user's
-  `keys.toml` (`--keys`, else the working directory's) replaces the chords of each command it
-  names; a chord bound twice, an unknown command or key, or Control alone is refused at the start.
+  restart, F8 vsync, F11 fullscreen, Esc quit; pause, a frame on, restart and vsync with Ctrl
+  since E17 M6 T4b2a, the user, 2026-11-04: the original's battle takes F5 to F8 alone), because
+  the original's map takes the arrows, Home, End and the page keys and nearly every letter (M3's
+  hotkeys), so `h3-view window`'s P, →, Home, F and V would clash there. A chord matches exactly
+  (Ctrl and F5 is not F5). A user's `keys.toml` (`--keys`, else the working directory's) replaces
+  the chords of each command it names; a chord bound twice, an unknown command or key, or Control
+  alone is refused at the start, and since E24 M4 T1a a `Shift+` chord (the map reads no Shift,
+  as the original's: `keys::refuse_shift`).
 - **Measured** (the sandbox, Xvfb, scale 1): a frame shows a median 5 to 9 ms after its time, p95
   8 to 11 ms (the software renderer's present; at scale 2, 21 and 35); every frame read back
   exact (log: M2 T4a).
@@ -2713,3 +2716,146 @@ frame as recorded, the status bar compared) and by the hero's tile read in the r
   the window's procedure waiting for a fade (MCL-Q26: the client's fix), the cursor without the
   focus (the system's arrow, the game's hidden: the window keeps its own), the videos, the right
   click's help texts (M4).
+
+## 5. The engine's games shown (M4, from T1a, 2026-11-16)
+
+### 5.1 The turn's end and the next day (M4 T1a)
+
+Read (T1 cut in two by the user at its start, 2026-11-16: T1a this, T1b a computer player's moves
+in sight): `adventure_command` 0x409A70's End Turn (0x409D12 to 0x409D84), `next_player_turn`
+0x4C6FE0 and `player_turn_start` 0x4CC7D0 in full, `covered_view_redraw` 0x4CA5B0, the
+adventure manager's computer turn (0x408B9A to 0x408C24), `status_other_turn_create` 0x453250 and
+its step 0x4536F0 (the panel's vtable 0x63BB44 +4), `arraytxt_load` 0x5B9CC0's tables to 0x5B9DCF,
+`new_day_week_events`' and `new_month`'s name draws (0x4C87A6, 0x4C8FCC); recorded by the harness
+(`turn-*` sequences, the situations `seq-turn`, `seq-turn-week`, `seq-turn-month`).
+
+- **End Turn** (item 12; its hotkey E, §4.13): outside the tutorial (game +0x1F69D clear), with a
+  hero to go to (`next_hero_exists` 0x4BAB90: `next_hero_find`'s hero able to move and awake) and
+  Move Reminder set (0x698778), `message_box` 0x4F6570 style 2 (OK 0x7805 and Cancel, E17 design
+  §7.19) with GENRLTXT 56; anything but OK ends the command there. Then `next_player_turn`.
+- **The turn's end** (`next_player_turn`, a human here): the scenario's tests (0x5F1610 to
+  0x4F2CE0: a map's first end with no town shows "you have lost your last town" with Red's flag,
+  a message box with a picture: T2's), each hero of the player's record +0x28 and +0x2C (its
+  tavern's) its flag bit 17 cleared; the turn timer stopped; with Autosave (0x698770) the status
+  bar's text GENRLTXT 108 (0x40B0E0), the save (0x4BEEA0) and the bar emptied; the record's +0x3D
+  (days left without a town) counted down when above 0; the town and the hero deselected
+  (0x417570, 0x4175A0: the hero put back, +0x3F and +4 −1). The next colour not out of the game
+  whose human flag (+0xE2) is the same as the last's (humans first, then computers); past the
+  last `new_day` 0x4C7FE0 (the date, the week's and the month's draws, the income) and the
+  colours again. The new player's heroes', its two tavern heroes' and its towns' visiting heroes'
+  movement points their maximum (+0x49, +0x4D; 0x4E4D90), a visiting hero's +0x11C cleared.
+- **A computer player's start** (+0xE2 or +0xE1 clear): `mouse_set_cursor(2, 0)` (0x4C74FE),
+  the hero list's update (0x419300 with 1, 0, 1), one of `AITheme0` to `AITheme2`
+  (`random_between(1, 3)` − 1) as the music, the status window's kind 8 asked, then
+  `covered_view_redraw` (sleep, move hero, cast and End Turn disabled: items 6, 7, 8, 12; with
+  Blackout Computer 0x698790 the covered view drawn; else the lists, the quest log, the chooser
+  with kind 8, which builds nothing, the resource bar, every item drawn and the screen shown), the
+  view not shown (`view_shown` 0x6989C0 0) and kind 0 asked: the next chooser builds kind 5 (§4.8:
+  kind 0 at a computer's turn). Its turn runs at the manager's next message
+  (`ai_player_turn` 0x525E80 at 0x408BD8), then `next_player_turn` again.
+- **Kind 5, another player's turn** (0x453250, read; its comparison is T1b's: below): the panel at
+  (614, 400), 176 × 166: 2000 `AdStatNx.pcx` (0, 0); 2001 `crest58.def` at (20, 51), 58 × 64, its
+  frame the current player; 2002 `HourSand.def` at (98, 51), 58 × 64, frame 0; 2003 `HourGlas.def`
+  at (98, 51), frame 0; for a human current player (a network's or a hot seat's other human) two
+  texts in `medfont.fnt` (colour 1, centred), GENRLTXT 631 at (0, 20) and the player's name at
+  (0, 123), each 176 × 31. The panel keeps, per colour, 1 000 plus the maximum movement points of
+  a computer player's heroes (0 for a human or a colour out of the game). Its step (the vtable's
+  +4, every 50 ms by +0x6C from +0x40): a new current player sets the crest's frame and its value
+  again; for a computer player the glass's frame +0x68 steps round its frames and the sand's +0x70
+  steps by one towards (value − the heroes' points left) × (frames − 1) / value (all but the last
+  frame without heroes); each drawn and shown at once. `status_panel_update` 0x402B90 calls it
+  during the computer's turn (0x42E301, 0x42EAB6, 0x42EF6F, 0x42F649, 0x42F86D, 0x5262A6).
+- **A human here's start** (0x4C7710): the input queue emptied (`input_flush` 0x4EC570), the shown
+  player and the viewing bit the current's; in a hot seat with more than one human the covered
+  view and GENRLTXT 14 (M5's handover); the view shown again, the minimap drawn (0x413790 with
+  1, 1, 0, 0, 0), the four buttons enabled, the turn timer started, then `player_turn_start`:
+  the scenario's tests and the timed events (their boxes: T2's), the resource bar (0x403F00 with
+  1, 1), the terrain's music at the view's middle (`adventure_view_enter` 0x419990, §3.11), the
+  screen redrawn whole (`adventure_full_update` 0x417420 with 0, 0), the date's window asked for
+  3 000 ms (kind 1) and chosen (1, 1, 0), the screen shown; with +0x3D at 0 or more a box style 1
+  with the player's flag (picture type 10) and ArrayTxt 128 (the days left) or 129 (the last day)
+  (T2's); the selection cleared (0x4175A0), then `hero_select` of `next_hero_find` with (0, 0, 1)
+  (centred, §4.13), else the first town's (+0x3E above 0: `town_select` +0x40 with 0, 1); next
+  hero's button (0x419450).
+- **The week's message** (0x4CCAE5): on a week's first day but the game's first (day 1 and not
+  week 1 of month 1), `newmonth.wav` on a month's first week, else `newweek.wav`
+  (`play_sound_async`, 30 000 ms, category 3, the sound manager's +0x84 set), the cursor the
+  default's frame 0, the adventure dialog's +0x6C set while a box style 1 (OK alone) shows the
+  text, cleared after: `message_box_proc` 0x4F08D0 calls `status_panel_update` with 1, so the
+  date's window steps behind the box (§4.9: the week's picture every 100 ms to its last frame).
+  The text (ArrayTxt's records as `arraytxt_load` copies them, records from 0 with the header):
+  on a month's first week with a normal week, the month's: kind 0 (`month_kind` 0x698834) 130
+  with the month's name, record 32 + `month_creature` 0x697748; 1, a creature's month, 131 with
+  the creature's singular name (the creature table's +0x14) its first letter upper-cased
+  (0x618B5F), twice; 2, the Plague, 132; else the week's: kind 0 (`week_kind` 0x697750) 133 with
+  the week's name, record 43 + `week_creature` 0x6983FC; 1 134 with the creature's name, upper-cased
+  first, twice; 2 (the Deity's) 135 with the Imp's (42) name twice, its +0x44, the Familiar's (43)
+  name and the Imp's +0x44 again. The names' draws: `random_between(0, 14)` at every week's start
+  (0x4C87A6, a creature's week overwrites it), `random_between(0, 9)` for a normal month
+  (0x4C8FCC); the harness forces them (`week_name`, `month_name`).
+- **Seen** (the recordings, on the virtual clock): a computer player's turn out of the viewer's
+  sight takes no virtual time: everything from End Turn's command to the next day's start
+  happens in its millisecond (the key's up, the click's), so the screens show Red's turn, then
+  the next day: the view centred on the first hero able to move, the date's window at its first
+  frame (the day's, or the week's picture at a week's start), the resource bar with the income,
+  the lists' movement bars full; at a week's start the box over it, the cursor the default's,
+  the date's window stepping every 100 ms behind the box while it is open, the map standing
+  still (its palettes stepping in memory: the redraw after the box shows them); the box's
+  hotkey's press draws OK pressed, its release closes the box and the map's idle step runs again
+  in that millisecond (the objects' step and the redraw were due). Kind 5 never shows there: it
+  is built from this reading with T1b, whose computer walks in sight take time and show it.
+- **The harness** (additive): a sequence's `move_reminder` and `rolls` (each draw of a roll its
+  value), Enter and Escape among its keys; the timeline's `date` and `player` lines where they
+  change; the live part's `[[turn]]` tables, one per turn's start the sequence reaches (its
+  millisecond, the current player, its kingdom, the status window shown, the week's and the
+  month's kinds and names: `Mem.calendar`), what the viewer takes for the next day in Part A
+  (Part B: the engine's events).
+- **Recorded, not read** (*provisional*): at the turn's change a redraw's deadline already passed
+  moves to 180 ms from now without an objects' step (`turn-question` at 1060: memory's deadline
+  820 became 1240, +0x100 unchanged; `turn-day` at 160, its deadline 180 still ahead, kept); a
+  box's opening and the cursor it restores draw the cursor at the mouse now (the click's point at
+  700, 711 drawn at 710).
+- **Built** (*provisional*): the common crate's `h3_ui::message` (a copy of the client lane's
+  `h3_view::message` trimmed to styles 1 and 2 without pictures, with an origin comment: `layout`,
+  `Open`); the live part's `Turn` and `Calendar` (`Live::turns`, the binary's `[[turn]]`); the
+  module `turn` (the tables' `[map.turn]`: the date's window asked 3 000 ms, `newweek.wav`,
+  `newmonth.wav`, the Deity's creatures 42 and 43; `starts_week`, `sound`, `question`,
+  `message`, the catalogue's keys `map.turn.end`, `map.turn.month`, `map.turn.month-creature`,
+  `map.turn.plague`, `map.turn.week`, `map.turn.week-creature`, `map.turn.week-deity` and the
+  families `month-name`, `week-name`; the Deity's growth the caller's, the binary's from
+  `CRTRAITS.TXT`'s column 11, its names not upper-cased: the reading names none); a sequence's
+  `move_reminder`, `rolls` (accepted), `Return` and `Escape` (`Action::BoxKey`, `BoxKeyUp`); the
+  timeline's `Start::player`, `move_reminder`, `question` and `turns` (`NextTurn`: the facts and
+  the week's box laid out), `Cursor::kind` (`CURSOR_TYPE`, `DEFAULT_CURSOR`), `Draw::message`,
+  `State::date` and `player` (the `date` and `player` lines, the `cursor` line's type),
+  `panels::id::END_TURN`; the loop's End Turn (the question, `Loop::turn_change` as read: the
+  kingdom the turn's, the selection's window memory's for the same hero or town else its
+  choice's, the turn's hero found by the mouse-over's facts else its choice, the whole screen
+  drawn, the date's window asked and built twice with its sound, the hero chosen centred or the
+  town, next hero's state, the deadline above, the week's sound and box), a box's own loop (the
+  map standing still, the week's box stepping the date's window, none while the mouse holds one
+  of its buttons; its presses with `button.wav`; its click closing it, Cancel and the week's OK
+  to the idle step, the question's OK to the turn's change; the rest of the millisecond's input
+  dropped at a box's opening and at a turn's start); the layout's `[message]` and `[cursor]`
+  `default_def`, `default_hot`; the key table's `Context` (`Map`, `Message`) and
+  `Command::Message` (`box-ok` Enter, `box-cancel` Escape: Escape the window's quit with no box
+  open). The binary: `Painter::boxes` (the question and each turn's message laid out in
+  `medfont.fnt`, framed in the viewer's colours, the text 5 pixels left of centre with `--bugs
+  original`, centred else: CLT-Q28), the box drawn over the scene, the default cursor drawn and
+  as the hardware one, the window's keys by the box's context. Not built: the gate's check of the
+  box's assets (the layout lists them, `AdventureLayout::names`), the tutorial's test (the viewer
+  plays none), the computer's turn shown and kind 5 (T1b).
+- **Checked:** `frames --only <id> --reuse` on the seven sequences: every frame exact (`turn-day`
+  22, `turn-question` 14, `turn-week` 16, `turn-week-creature` 12, `turn-month`,
+  `turn-month-creature`, `turn-plague` 9 each), the viewer's timelines the recorded ones line for
+  line (`<id>-frames.txt` kept); `drawn` the 50 situations and 35 sequences recorded before the
+  same, then `--record`; unit tests (the box's layout and buttons in `h3-ui`; the turn's texts by
+  kind, the Deity's among them; the turns replayed headless; the question cancelled and
+  answered, by keys and the mouse with their sounds; the week's box stepping the date; a box
+  emptying the queue; a turn's hero, town or nothing selected, one not given refused; the facts'
+  hero; the `[[turn]]` tables read and refused; the box's key context), 100 % coverage; the
+  window under Xvfb (`turn-question`, `turn-week`, `--check 10`): 60 of 60 frames read back
+  exact, 63 of 63 made as the same frame composed afresh, 59 of 59 changes the headless loop's;
+  live after `turn-question`'s inputs E's question opened (the new day's hero able to move),
+  Escape cancelled it without quitting, Enter's OK with no turn left did nothing (71 of 71
+  exact).

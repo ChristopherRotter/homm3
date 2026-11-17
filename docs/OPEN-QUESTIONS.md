@@ -93,7 +93,26 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Map client lane (`MCL-Q<n>`)
 
-(no open questions)
+#### MCL-Q29 — The Deity's week names the Imp's growth for the Familiar (E24 M4 T1a, a reading)
+
+`player_turn_start` 0x4CC7D0 writes the Deity's week (week kind 2, ArrayTxt 135) with the Imp's
+(42) name twice, its growth (the creature table's +0x44), the Familiar's (43) name and the Imp's
+growth again (0x4CCC8A to 0x4CCCB2: both growth arguments are +0x134C), so the Familiar's line
+shows the Imp's number. With the shipped data both are 15, so nothing shows; a pack whose numbers
+differ would show it. Built as the original's (design §5.1); no recording has a Deity's week.
+Options: (a) the original's everywhere; (b) the client shows the Familiar's own growth, the
+original's behind `--bugs original` for the comparisons. **Recommended (b)** (one argument, no
+difference with the shipped data). Blocks nothing.
+
+#### MCL-Q30 — The new day's sound started twice (E24 M4 T1a, a recording)
+
+At a turn's start the date's status window is built twice in the same millisecond (the chooser
+after `status_window_set_kind` and again at the next view draw, design §5.1 and §4.9), and each
+build starts `newday.wav` (`play_sound_async`, category 3), so two samples of it start together;
+whether Miles mixes them louder or the second replaces the first is not checked (the sandbox has
+no audio device, no sound run recorded it). Built as the original's. Options: (a) the original's;
+(b) the client starts it once, the original's behind `--bugs original`; (c) a sound run at T1b
+first, then (a) or (b). **Recommended (c), then (b) if two samples sound.** Blocks nothing.
 
 ### Town lane (`TWN-Q<n>`)
 

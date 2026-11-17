@@ -30,6 +30,8 @@ design `E08-design.md` §4 to §8, §12 to §15, §18, §20)
 
 ## Inbox
 
+- 2026-11-17 (the map client lane, E24 M4 T1a, `map-client/e24-m4-t1a`; **the capture harness, rebuild `xdd.dll`**): `clients/capture/xdd.c` forces two more draws (`week_name` 0x4C87A6, the week's name, and `month_name` 0x4C8FCC, a normal month's; `h3drive.ROLLS` grew by two), so a batch or sequence run with an `xdd.dll` built before fails the count of redirected calls: rebuild it with `clients/capture/setup.sh`. Nothing else of `h3adv` or `h3mem` changed in behaviour (`Mem.calendar` is new: the week's and the month's kinds and names).
+
 - 2026-11-17 (the town lane, E09 T36, `town/e09-t36`, `cross-lane` with the user's consent; **your replays' header, mechanical**): the town ruleset part v7 (the records' tavern weights, the hire's price) moved `town_ruleset_hash` 0x0d7be940b64312a6 to 0xabc9756b93a29a55 in all 89 replays (re-recorded from their commands, nothing else moved). As with T35b's note below: a replay recorded on a branch from before the merge carries the old line. `TownRecord::tavern` and `TownParams::hire_price` are read by no rule yet (E09 T37a, T38a).
 
 - 2026-11-17 (the town lane, E09 T35b, `shared/e09-t35b`, `cross-lane` with the user's consent; **your replays' header, mechanical**): two `quirk.town` flags (`QuirkFlag(42)`, `(43)`, on in `faithful`) moved the base faithful ruleset hash 0xb5c01c8736eb73f9 to 0x6ba8109889b34a25; your 86 replays on it keep commands and state hashes, only `ruleset_hash` moved (the three strict-fixed ones unchanged). A replay you record on a branch from before the merge carries the old line: re-record it or patch the line after merging `master`. `StreamId::TAVERNS` (8) is new, no draw yet (E09 T37a draws from it).

@@ -25,7 +25,7 @@ use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
 use h3_map_view::damage::{Held, History, drop_held};
 use h3_map_view::hover::Hover;
 use h3_map_view::layout::{AdventureLayout, CursorArt};
-use h3_map_view::live::{Buttons, Facing, Lifted, Live, Moment, Walking};
+use h3_map_view::live::{Buttons, Calendar, Facing, Lifted, Live, Moment, Walking};
 use h3_map_view::minimap::Shown;
 use h3_map_view::objects::{self, DrawLists, Shapes};
 use h3_map_view::scene::{self, Scene, TileIndex, ViewAt};
@@ -33,10 +33,14 @@ use h3_map_view::sequence::{self, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED, Sequ
 use h3_map_view::situation::Situation;
 use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
-use h3_map_view::timeline::{Action, Cursor, Direction, Draw, Hero, Start};
+use h3_map_view::timeline::{
+    Action, Cursor, DEFAULT_CURSOR, Direction, Draw, Hero, NextTurn, Start,
+};
+use h3_map_view::turn;
 use h3_render::Bugs;
 use h3_render::screen::{Screen, Widening};
 use h3_ui::cursor::{Cursor as Sprite, Image};
+use h3_ui::message::{self, MessageBox, Style};
 
 use crate::{files, render, situation};
 
@@ -124,6 +128,8 @@ pub fn for_sequence<'a>(
         (None, Vec::new())
     };
     let sound = painter.sound(hero.map(|h| h.at))?;
+    // End Turn's question and the turns' messages (E24 M4 T1a).
+    let (question, turns) = painter.boxes()?;
     let start = Start {
         view,
         size: i32::from(situation.size),
@@ -147,6 +153,10 @@ pub fn for_sequence<'a>(
         heroes: heroes(&painter.live),
         index: painter.selected,
         chosen: painter.live.chosen.clone(),
+        player: painter.live.viewer,
+        move_reminder: sequence.move_reminder()?,
+        question: Some(question),
+        turns,
     };
     Ok(Setup {
         painter,
@@ -202,6 +212,7 @@ pub fn for_situation<'a>(
     let hero = sequence::selected_hero(&painter.live).ok();
     painter.selected = sequence::selected_in(&painter.live).ok();
     let sound = painter.sound(hero.map(|h| h.at))?;
+    let (question, turns) = painter.boxes()?;
     let start = Start {
         view,
         size: i32::try_from(painter.art.size).unwrap_or(i32::MAX),
@@ -222,6 +233,11 @@ pub fn for_situation<'a>(
         heroes: heroes(&painter.live),
         index: painter.selected,
         chosen: painter.live.chosen.clone(),
+        player: painter.live.viewer,
+        // The harness's settings (E24 M4 T1a, *provisional*: the window's option is M5's).
+        move_reminder: false,
+        question: Some(question),
+        turns,
     };
     Ok(Setup {
         painter,
@@ -273,7 +289,8 @@ pub struct Painter<'a> {
     history: History,
     rects: Vec<[i32; 4]>,
     widening: Widening,
-    cursors: BTreeMap<u32, Sprite>,
+    /// The cursors' frames read, by the mouse manager's type and the frame.
+    cursors: BTreeMap<[u32; 2], Sprite>,
     /// A walk's hero (its index in the live part's heroes): each draw puts it where the draw has
     /// it, lifted or on its tile; none for a map that walks no hero.
     selected: Option<usize>,
@@ -344,7 +361,11 @@ impl<'a> Painter<'a> {
             cursors: BTreeMap::new(),
             selected: None,
         };
-        painter.add([assets.layout.cursor.def.to_ascii_uppercase()])?;
+        painter.add([
+            assets.layout.cursor.def.to_ascii_uppercase(),
+            assets.layout.cursor.default_def.to_ascii_uppercase(),
+            assets.layout.message.font.to_ascii_uppercase(),
+        ])?;
         painter.preload()?;
         Ok(painter)
     }
@@ -427,6 +448,41 @@ impl<'a> Painter<'a> {
             &self.assets.tables.records,
             &lists,
         ))
+    }
+
+    /// The boxes End Turn opens (E24 M4 T1a, design §5.1): its question (GENRLTXT 56, style 2) and
+    /// each of the live part's turns with its week's or month's message at a week's start (style
+    /// 1), laid out in the box's font, framed in the viewer's colours.
+    fn boxes(&self) -> Result<(Arc<MessageBox>, Vec<NextTurn>), String> {
+        let assets = self.assets;
+        let layout = &assets.layout.message;
+        let font = self
+            .batch
+            .font(&layout.font)
+            .ok_or_else(|| format!("{}: not decoded", layout.font))?;
+        let texts = &assets.tables.texts;
+        let framed = (self.live.viewer, assets.bugs);
+        let laid = |text: &str, style| Arc::new(message::layout(layout, font, text, style, framed));
+        let question = laid(&turn::question(texts), Style::OkCancel);
+        let art = &assets.tables.map.turn;
+        // The week of the Deity's growth, its first creature's, read when a turn needs it.
+        let deity = self.live.turns.iter().any(|t| t.week == Calendar::Special);
+        let growth = if deity {
+            crate::texts::growth(assets.archives, art.deity[0])?
+        } else {
+            0
+        };
+        let turns = self
+            .live
+            .turns
+            .iter()
+            .map(|t| NextTurn {
+                turn: t.clone(),
+                message: turn::message(texts, art, (t.kingdom.date, t.week, t.month), growth)
+                    .map(|text| laid(&text, Style::Ok)),
+            })
+            .collect();
+        Ok((question, turns))
     }
 
     /// Decodes the named assets not decoded yet.
@@ -527,7 +583,7 @@ impl<'a> Painter<'a> {
             .index
             .get(usize::from(z))
             .ok_or(format!("level {z} is not on the map"))?;
-        scene::scene_in(
+        let mut scene = scene::scene_in(
             index,
             &self.art,
             &self.live,
@@ -537,7 +593,17 @@ impl<'a> Painter<'a> {
             draw.view,
             assets.bugs,
         )
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+        // The message box over everything (E24 M4 T1a): its shadow and its items.
+        if let Some(message) = &draw.message {
+            let draws = message
+                .dialog
+                .draws(&message.shown, &assets.layout.player_palette);
+            scene
+                .draws
+                .extend(draws.into_iter().map(scene::Draw::Dialog));
+        }
+        Ok(scene)
     }
 
     /// A walk's part of a draw in the live part: the selected hero's tile and facing, lifted at
@@ -570,13 +636,19 @@ impl<'a> Painter<'a> {
     ) -> Result<Screen, String> {
         let mut screen = self.view(drawn, buttons)?.clone();
         let Cursor {
+            kind,
             frame,
             at: [x, y],
             shown,
         } = cursor;
         if shown {
             let assets = self.assets;
-            let cursor = cursor_in(&mut self.cursors, &self.batch, &assets.layout.cursor, frame)?;
+            let cursor = cursor_in(
+                &mut self.cursors,
+                &self.batch,
+                &assets.layout.cursor,
+                [kind, frame],
+            )?;
             cursor.draw(&mut screen, x, y);
         }
         Ok(screen)
@@ -599,7 +671,7 @@ impl<'a> Painter<'a> {
                 &mut self.cursors,
                 &self.batch,
                 &assets.layout.cursor,
-                cursor.frame,
+                [cursor.kind, cursor.frame],
             )?;
             sprite.draw(&mut screen, cursor.at[0], cursor.at[1]);
         }
@@ -641,6 +713,7 @@ impl<'a> Painter<'a> {
             cursor: None,
         });
         let Cursor {
+            kind,
             frame,
             at: [x, y],
             shown,
@@ -649,7 +722,12 @@ impl<'a> Painter<'a> {
             return Ok(());
         }
         let assets = self.assets;
-        let sprite = cursor_in(&mut self.cursors, &self.batch, &assets.layout.cursor, frame)?;
+        let sprite = cursor_in(
+            &mut self.cursors,
+            &self.batch,
+            &assets.layout.cursor,
+            [kind, frame],
+        )?;
         let rect = sprite.rect(x, y);
         if let Some(mut under) = screen.cut(rect) {
             let (left, top) = (rect[0].max(0), rect[1].max(0));
@@ -673,35 +751,48 @@ impl<'a> Painter<'a> {
         self.history.changed(a, b, out)
     }
 
-    /// The cursor's frame as an image (the hardware cursor's, E24 M2 T4b).
-    pub fn cursor_image(&mut self, frame: u32) -> Result<Image, String> {
+    /// The cursor's frame as an image (the hardware cursor's, E24 M2 T4b; since E24 M4 T1a by
+    /// the mouse manager's type too).
+    pub fn cursor_image(&mut self, kind: u32, frame: u32) -> Result<Image, String> {
         let assets = self.assets;
-        Ok(cursor_in(&mut self.cursors, &self.batch, &assets.layout.cursor, frame)?.image(FORMAT))
+        let sprite = cursor_in(
+            &mut self.cursors,
+            &self.batch,
+            &assets.layout.cursor,
+            [kind, frame],
+        )?;
+        Ok(sprite.image(FORMAT))
     }
 }
 
-/// The layout's cursor's frame, read once into `cursors`.
+/// The layout's cursor's frame, read once into `cursors`: the adventure cursor's, or the default
+/// one's (the mouse manager's type 0, a message box's: E24 M4 T1a).
 fn cursor_in<'c>(
-    cursors: &'c mut BTreeMap<u32, Sprite>,
+    cursors: &'c mut BTreeMap<[u32; 2], Sprite>,
     batch: &Batch,
     art: &CursorArt,
-    frame: u32,
+    [kind, frame]: [u32; 2],
 ) -> Result<&'c Sprite, String> {
-    match cursors.entry(frame) {
+    match cursors.entry([kind, frame]) {
         Entry::Occupied(known) => Ok(known.into_mut()),
         Entry::Vacant(new) => {
-            let [hx, hy] = usize::try_from(frame)
-                .ok()
-                .and_then(|f| art.hot.get(f).copied())
-                .unwrap_or_default();
+            let (def, [hx, hy]) = if kind == DEFAULT_CURSOR {
+                (&art.default_def, art.default_hot)
+            } else {
+                let hot = usize::try_from(frame)
+                    .ok()
+                    .and_then(|f| art.hot.get(f).copied())
+                    .unwrap_or_default();
+                (&art.def, hot)
+            };
             let hot = (
                 u32::try_from(hx).unwrap_or(0),
                 u32::try_from(hy).unwrap_or(0),
             );
             let sprite = batch
-                .sprite(&art.def.to_ascii_uppercase())
+                .sprite(&def.to_ascii_uppercase())
                 .and_then(|s| Sprite::read(s, frame, hot, FORMAT))
-                .ok_or_else(|| format!("{}: no frame {frame}", art.def))?;
+                .ok_or_else(|| format!("{def}: no frame {frame}"))?;
             Ok(new.insert(sprite))
         }
     }
