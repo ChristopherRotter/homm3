@@ -29,6 +29,11 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-17, E24 M4 T1b2** (in progress; the user at the start: **no cut**, T1b2 whole):
+  the computer's screen read (design §5.2's "The computer's screen": the minimap's shield
+  `aishield.pcx`, items 6, 7, 8, 12 disabled); the five `ai-*` recorded again here (all `ok`);
+  `h3map.py`'s sequences take `sound` (MCL-Q30's run). Next: the viewer's build (a worker),
+  speed 4 on the window's clock, the sound run, the docs and the PR.
 - **2026-11-17, E24 M4 T1b1** (the user present at the cut): T1b cut in two; `master`'s clients
   build fixed apart (#986, empty beside #988); the computer's turn read (design §5.2), the harness's `seed` (the game
   seeds its generator from the running clock) and kind 5's facts, five `ai-*` sequences recorded
