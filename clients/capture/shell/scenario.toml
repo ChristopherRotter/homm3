@@ -105,7 +105,7 @@ steps = [
 
 [[recipe]]
 id = "scn-difficulty"
-what = "§3.5, §3.2: the five difficulties (the rating), a held one; items 132 and 134"
+what = "§3.5, §3.2: the five difficulties (the rating), a held one; items 132 and 134; the screen opened again after Impossible (E27 M3 T2a: the opening's difficulty)"
 steps = [
   "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
   "move:790,300", "until:scenario_list", "move:790,300",
@@ -113,6 +113,7 @@ steps = [
   "click:553,478", "move:790,300", "shot:normal", "click:585,478", "move:790,300", "shot:hard",
   "click:617,478", "move:790,300", "shot:expert", "click:649,478", "move:790,300", "shot:impossible",
   "click:514,91", "move:790,300", "shot:impossible-list",
+  "click:667,555", "move:790,300", "until:new_game_menu", "click:649,65", "move:790,300", "until:scenario_list", "move:790,300", "shot:reopened",
 ]
 
 [[recipe]]
@@ -142,12 +143,14 @@ steps = [
 
 [[recipe]]
 id = "scn-begin-none"
-what = "§3.3, §3.6: no maps: the empty list; Begin's message (GENRLTXT 530)"
+what = "§3.3, §3.6: no maps: the empty list; Begin's message (GENRLTXT 530); the flags' strip's right press and a difficulty's press over it (E27 M3 T2b)"
 maps = []
 steps = [
   "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
   "step:500", "move:790,300", "shot:screen", "click:514,91", "move:790,300", "shot:list",
   "click:497,555", "shot:begin", "key:Return", "shot:closed",
+  "right:600,414", "shot:teams", "right-up", "shot:teams-closed",
+  "click:585,478", "move:790,300", "shot:hard",
 ]
 
 [[recipe]]
@@ -161,6 +164,19 @@ steps = [
   "click:371,68", "move:790,300", "shot:all",
   "step:500", "click:216,135", "shot:row-first", "click-wait:216,135:3000",
   "clip-until:load:adventure", "shot:map",
+]
+
+[[recipe]]
+id = "scn-empty-filter"
+what = "§3.4, §3.5 (E27 M3 T2b): a filter that leaves the list empty: the panel, the flags' strip's right press, a difficulty's press; the list filled again"
+maps = ["Arrogance.h3m"]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click:514,91", "move:790,300",
+  "click:324,68", "move:790,300", "shot:extra-large",
+  "right:600,414", "shot:teams", "right-up", "shot:teams-closed",
+  "click:585,478", "move:790,300", "shot:hard",
+  "click:371,68", "move:790,300", "shot:all",
 ]
 
 [[recipe]]

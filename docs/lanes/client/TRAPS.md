@@ -350,6 +350,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   building or capturing the path (`scripts/exe.py grep '\+ 0x1864\]'`): design §3.3's first
   showing with GENRLTXT 503 was a network game's alone, the constructor setting the flag (a
   harness hold built for it was never reached).
+- **The scenario screen draws the game's map, not the list's** (E27 M3 T2b): `scenario_info_draw`,
+  the flags and the teams' dialog read the game (`scenario_to_game` loads the selected map), and
+  `scenario_select` past the list does nothing, so a command that empties the list leaves the last
+  map's players drawn (design §21.2; the client keeps it in `Scenario::game`). The opening also
+  rebuilds the list and resets the difficulty from the record (§21.1): check what an opening
+  resets before carrying a choice across `Scenario::opened`.
 - **Coverage with the original data staged restarts the sandbox's VM** (E27 M2 T5b2 and T6a: the
   setup's baseline and `check.sh`, three runs, one build job or two; every step before coverage
   passed; E27 M3 T1a: a watcher that kills `verify-once.sh`'s tree at `== coverage` leaves

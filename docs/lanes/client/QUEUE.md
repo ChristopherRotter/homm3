@@ -9,24 +9,24 @@ decisions 4 to 8, CLT-Q79 to CLT-Q83; the clips: `E27-design.md` §1). M1 closed
 M2 2026-11-16 (T8); M3 (a game's setup) below, refined at M2 T8 (decision 44); M4 is refined at
 its T0. The original files: stage them from the user's `original-data/install/` (one large file
 per staging call; the user's computer must be online); never from the installation. The captures
-need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
+need the five DLLs (`MP3DEC.ASI` from the installation: the PC's `original-data/install` lacks it),
+`Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
 `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check;
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T2
+#### E27 M3 T2c
 
-T2 The information panel's rest, the difficulty, Begin and Back (the epic's M3 table; design
-§3.5, §3.6, §18.2, §19.5): the panel of every map (the description's scroll bar for a text too
-long for its box; the empty list's panel, which keeps the filter's size mark, §19.3; the teams'
-dialog of an empty list, §20.2's provisional none), the difficulty's presses (107 to 111) and the
-rating, the build's difficulty (`impossible-list`: the build sets `scenario_last_difficulty` from
-the selected record's +0x33C, 0x58314E), the victory's text of `scn-info`'s row-08 and row-15,
-Begin's messages (GENRLTXT 530 and the empty list's); exact against `scn-info` (19 of 21 now),
-`scn-difficulty` (3 of 8), `scn-begin-none` (0 of 4; its `what` corrected: 530 is a filter's),
-`scn-begin-filter` (3 of 6 up to its load). The screen's code: `h3_view::shell::scenario`; a new
-command says whether it redraws whole or the select's partial way (TRAPS, CLT-Q138). Then T3 to
-T7 as the M3 table lists them.
+T2c The description's scroll bar (the epic's M3 table, decision 50; design §18.1, §21.5): read
+`H3DlgScrollableText::Create` 0x5B9FB0's path for more lines than the box holds (0x5BA19E: the
+lines at width − 24, the bar's place, size and ticks, its arrows and keys, the text's redraw) and
+build it in `h3_view::shell::scenario` (an `h3_ui::scrollbar` as the list's, or the foundation's
+scrolling text if the map client needs one too: say which). No shipped map reaches it (the longest
+of the 159 descriptions fill the box's 7 lines), so the harness makes a map of its own: a shipped
+map's copy with a longer description, written at the run's start into the run directory's `Maps`
+(never committed, ADR-0009; a recipe's `maps` naming it, the viewer's `--maps` too), and a recipe
+of it (`scn-long-text`: the panel, the bar's arrows, its track, a drag, the list's selection
+moving off and back). Exact against that recipe. Then T3 to T7 as the M3 table lists them.
 
 ## Inbox
 
