@@ -13,8 +13,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   5, travel and the Grail 6. Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6`
   and `-13` (increment 5), `TWN-STUB-2` (the victory conditions).
 - **Open pull requests:** #984 (`shared/e09-t37a-tavern-view`, ADR-0017 point 2 and
-  `docs/06-security.md`, docs only; merge first) and T37a's (`town/e09-t37a`, `cross-lane`);
-  watch both until they merge.
+  `docs/06-security.md`, docs only; merge first) and #987 (T37a's `town/e09-t37a`, `cross-lane`;
+  `master` merged in after E08 T124a's #985, the replays re-recorded on it); watch both until they
+  merge.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
