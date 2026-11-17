@@ -131,8 +131,9 @@ pub use town::{TownHeroError, TownHeroMove, TownReveal};
 /// bonuses and timed marks ([`HeroBonuses`]). v24 (E08 T115b): the Fountains of Fortune's values,
 /// the Magic Springs' emptied entrances and the kind marks.
 /// v25 (E09 T28a, the town lane's, `cross-lane`): the towns' garrison heroes after the heroes on
-/// the map ([`AdventureState::town_heroes`]).
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 25;
+/// the map ([`AdventureState::town_heroes`]). v26 (E08 T124b1): the creature banks' draws in the
+/// static map, their guards as drawn and [`Resolved::Bank`] (tag 9).
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 26;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

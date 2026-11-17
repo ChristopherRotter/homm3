@@ -410,8 +410,8 @@ pub enum ObjectKind {
     /// A creature bank (E08 T123a, increment 13's design note §1; ADV-BNK-001, the original's
     /// class 16 by subclass 0 to 6, the Shipwreck 85, the Derelict Ship 24, the Crypt 84 and
     /// Dragon Utopia 25): its question, its levels, a looted search's bonus, the deck and the
-    /// coast. Drawn when the game is built, visited, fought and rewarded from T124b
-    /// (ADV-BNK-002 to -005).
+    /// coast. Drawn when the game is built since T124b1 (ADV-BNK-002); visited, fought and
+    /// rewarded from T124b2 (ADV-BNK-003 to -005).
     Bank(Bank),
 }
 
@@ -654,8 +654,8 @@ impl ObjectKind {
             // note §7), the Whirlpool's with T105a2 (its loss first, note §8). E08 T113a:
             // increment 12's seven kinds are typed; the garrisons' visits came with T114a1, the
             // bonus visitables' with T115b (increment 12's design note §8, §9). E08 T123a: the
-            // creature banks are typed; their visit comes with T124b (increment 13's design note
-            // §6).
+            // creature banks are typed, drawn since T124b1; their visit comes with T124b2
+            // (increment 13's design note §6).
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround

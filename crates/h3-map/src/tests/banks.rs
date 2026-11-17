@@ -3,8 +3,8 @@
 //! 16 by subclass 0 to 6, the Crypt's three pictures and the Shipwreck's two, read back as written
 //! in SoD and RoE, their templates' masks as the game's; a subclass of 16 past 6 refused. Since
 //! T123b (design note §3, map import v24) the import types them, class 16 by subclass and the four
-//! others at subclass 0, without a body (another subclass refused), the setup valid; until T124b a
-//! step onto a bank is refused as any unbuilt visit's.
+//! others at subclass 0, without a body (another subclass refused), the setup valid; until T124b2
+//! a step onto a bank is refused as any unbuilt visit's.
 
 use super::import::{ROE, SOD};
 use super::limits;
@@ -316,8 +316,8 @@ fn the_import_types_the_banks() {
 
 // covers: ADV-OBJ-003, ADV-BNK-001
 #[test]
-fn a_step_onto_a_bank_is_refused_until_t124b() {
-    // Until T124b builds the visit (increment 13's design note §6), a bank's entrance is refused
+fn a_step_onto_a_bank_is_refused_until_t124b2() {
+    // Until T124b2 builds the visit (increment 13's design note §6), a bank's entrance is refused
     // as any unbuilt visit's: the reach ends before it, and a step onto it is `Visit`, the state
     // unchanged. Red's hero is placed on the tile below each land bank's entrance (free: the
     // banks are four rows apart).

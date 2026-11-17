@@ -1,9 +1,10 @@
 //! The creature banks' kind (E08 T123a; ADR-0016 point 4, increment 13's design note §1;
 //! ADV-BNK-001): what a type of creature bank holds as data, its levels as the original's
 //! `CrBanks.txt` gives them before the split, and their compilation from the packs' keys. The
-//! draw when the game is built (the level, the artifacts, the split, the upgrade: ADV-BNK-002),
-//! the visit and the reward come with T124b; until then a step onto a bank is refused as any
-//! unbuilt visit's ([`super::ObjectKind::effect`]).
+//! draw when the game is built (the level, the artifacts, the split, the upgrade: ADV-BNK-002) is
+//! the static map's since T124b1 (`state::draws`); the visit and the reward come with T124b2;
+//! until then a step onto a bank is refused as any unbuilt visit's
+//! ([`super::ObjectKind::effect`]).
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
@@ -31,7 +32,7 @@ pub const MAX_BANK_REWARD: u8 = 127;
 
 /// The artifact classes a bank's level counts, in the table's order (`CrBanks.txt`'s columns 22
 /// to 25, the level's bytes +0x5B to +0x5E; survey §2): a level's [`BankLevel::artifacts`] by
-/// position. The draw takes them last first, the relics first (ADV-BNK-002, T124b).
+/// position. The draw takes them last first, the relics first (ADV-BNK-002, T124b1).
 pub const BANK_ARTIFACT_CLASSES: [ArtifactClass; 4] = [
     ArtifactClass::Treasure,
     ArtifactClass::Minor,

@@ -1,7 +1,7 @@
 //! Increment 13's kind in the ruleset part (E08 T123a, increment 13's design note §1): the
 //! creature bank with its question, levels, looted bonus, deck and coast, compiled, checked and in
-//! the hash (part v21). Its draw, visit, battle and reward come with T124b: until then it has no
-//! effect.
+//! the hash (part v21). Its draw is the static map's since T124b1; its visit, battle and reward
+//! come with T124b2: until then it has no effect.
 
 use h3_content::ArtifactClass;
 
@@ -130,7 +130,7 @@ fn a_creature_bank_compiles_with_its_levels_and_no_visit_yet() {
         coast: false,
     };
     assert_eq!(ty.kind, ObjectKind::Bank(expected));
-    // No visit until T124b: a step onto one is refused as any unbuilt visit's.
+    // No visit until T124b2: a step onto one is refused as any unbuilt visit's.
     assert_eq!(ty.kind.effect(), None);
     assert!(!ty.kind.ownable());
     assert!(!ty.kind.weekly());
