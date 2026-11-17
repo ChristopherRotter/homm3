@@ -265,7 +265,7 @@ fn the_menus_and_the_multiplayer_dialog_are_built_the_others_stubs_or_not() {
             (Screen::Credits, Built::Stub),
             (Screen::GameType(Game::New), Built::Whole),
             (Screen::Multiplayer(Game::New), Built::Whole),
-            (Screen::Scenario(Game::New, Kind::Single), Built::Stub),
+            (Screen::Scenario(Game::New, Kind::Single), Built::Whole),
             (Screen::Scenario(Game::New, Kind::Campaign), Built::Stub),
             (Screen::Scenario(Game::New, Kind::Multiplayer), Built::Stub),
             (Screen::Scenario(Game::New, Kind::Tutorial), Built::Stub),

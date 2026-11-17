@@ -5,27 +5,26 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 44). **M1 and M2 closed** (2026-11-13, 2026-11-16; `E27-archive.md`; the build record
-  `E27-log.md`; the readings `E27-design.md` §1 to §17): the start's clips and their sound
-  (`h3-smacker`, `h3-bink`), start-up loading by the LODs' tables, the main menu, New Game's and
-  Load Game's menus, Quit, the stubs and the client's own pack, the Multiplayer dialog's first
-  stage and the hot seat's names, the edits typing as the keyboard prints; `drawn` exact on every
-  recipe the shell builds. M2's closure (T8, decisions 41 to 43): two fresh reviewers, the review
-  list accepted with its changes fixed in T8, CLT-Q129 to CLT-Q133. **M3 refined** (decision 44:
-  every shipped map listed and read whole, Begin a notice after the loading bar with the setup
-  kept for E24 M5, Options moved to M4; CLT-Q134 to CLT-Q136). **Next: M3 T1** (the scenario
-  screen's frame and list). Decisions to carry: the dialogs' input one implementation (20;
-  `h3_ui::input`, `message::Open` on it since T8); the shell's code as the battle's, the score the
-  engine's (21); decision 22's fixes; every pixel of a Smacker clip through its palette (24);
-  every clip's sound at the effects setting (27); every Bink frame whole, the comparisons through
-  `Target` (28); the start's fade from the screen as shown (32); a clip's track played out (34);
-  the main menu's buttons drawn in their order (36); the edits type what the keyboard prints
-  (39); a menu opening anew takes the hover (40); a silent Smacker clip's frames from their due
-  times (43). Open pull request: `client/e27-m2-t8`, T8's (watch it until it merges). E17 done
-  (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
-  queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
-  gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
-  `clients/capture/README.md`.
+  to 46). **M1 and M2 closed** (2026-11-13, 2026-11-16; `E27-archive.md`; the build record
+  `E27-log.md`; the readings `E27-design.md` §1 to §17, M3's from §18): the start's clips and
+  their sound, start-up loading, the main menu, New Game's and Load Game's menus, Quit, the
+  stubs and the client's own pack, the Multiplayer dialog and the hot seat's names, the edits;
+  `drawn` exact on every recipe the shell builds. **M3** (refined at M2 T8, decision 44: every
+  shipped map listed and read whole, Begin a notice after the loading bar, Options to M4):
+  **T1a done** (2026-11-17, decisions 45 and 46: T1 cut in two; the scenario screen of a new
+  single scenario, the list hidden, the kept map's information panel; `scn-new` 30 of 31 exact;
+  CLT-Q137 (b): the adventure map's arrow after the busy cursor for the comparisons only).
+  **Next: M3 T1b** (the list: the queue). Decisions to carry: the dialogs' input one
+  implementation (20; `h3_ui::input`); the shell's code as the battle's (21); decision 22's
+  fixes; every pixel of a Smacker clip through its palette (24); every clip's sound at the
+  effects setting (27); every Bink frame whole (28); the start's fade from the screen as shown
+  (32); a clip's track played out (34); the main menu's buttons drawn in their order (36); the
+  edits type what the keyboard prints (39); a menu opening anew takes the hover (40); a silent
+  Smacker clip's frames from their due times (43). Open pull request: #982 (`client/e27-m3-t1a`), T1a's
+  (watch it until it merges). E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
+  epic's "Placed at the closure", the queue's inbox). E28 and E29 are backlog sketches.
+  Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+
+  drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*`, `E27*` (since E17 closed: #866) and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
@@ -36,7 +35,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   battle between two of the host's humans) and `CLT-STUB-6` (the Multiplayer dialog's network
   modes), `CLT-STUB-7` and `-8` (Campaign, Tutorial) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q137, CLT-STUB-9.
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q138, CLT-STUB-9.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens) and the 40 non-campaign MP3s; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -56,6 +55,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-17, E27 M3 T1a (done; `client/e27-m3-t1a`).** T1 cut in two with the user (decision
+  45). The original data staged at once (64 files and the manuals, checked by SHA-256); the
+  baseline stopped before coverage (`cargo-llvm-cov` survived the watcher: TRAPS). Read the
+  caption button, the scrolling text, the info panel's items and `difficulty_names`; built the
+  screen, its panel, buttons, hotkeys and popups, the maps read at the shell's start; `scn-new` 30
+  of 31 exact. CLT-Q137 asked and answered (b). M2's leftover found met (`Key::Other`). Record:
+  `E27-log.md`, "M3 T1a".
 - **2026-11-16 to 17, E27 M2 T8 (done; `client/e27-m2-t8`).** Kept whole, sub-agents for the
   bounded jobs (two fresh reviewers, two fixers in a worktree). The original data staged at once
   (64 files, checked by SHA-256); 88 of 91 recipes played again on the town lane's new `xdd.dll`
@@ -68,11 +74,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   window typed under a German layout, once Xvfb took it as its default keymap (it ignores
   changes at run time: TRAPS). Coverage closed at 100 % (two regions). No new question. Record:
   `E27-log.md`, "M2 T7b".
-- **2026-11-16, E27 M2 T7 (done; `client/e27-m2-t7`).** Kept whole (decision 38). The original
-  data staged at once (64 files, checked by SHA-256); the baseline stopped by a watcher before
-  coverage. Read the edit whole and the text drawer's caret; recorded the group again with
-  `edit-keys` and `hotseat-long` (a run failed on the game's disk check: TRAPS); built the edit,
-  the dialog, the hot seat, the notices; every drawn shot exact after the shadow, the status
-  lines, the hover after a hold and the menus' statics. CLT-Q127, CLT-Q128 asked and answered
-  (b): CLT-Q128 fixed here, CLT-Q127 queued as T7b. Record:
-  `E27-log.md`, "M2 T7".

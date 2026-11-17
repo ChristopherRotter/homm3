@@ -40,6 +40,7 @@ pub mod gate;
 pub mod live;
 pub mod lods;
 pub mod log;
+pub mod maps;
 pub mod motion;
 pub mod net;
 pub mod online;

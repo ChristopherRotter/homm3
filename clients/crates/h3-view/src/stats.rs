@@ -427,6 +427,7 @@ pub fn layout(
             size: [64, 30],
             frames: Frames::default(),
             hint: None,
+            caption: None,
         }));
     }
     // The status line (0x5F394D), empty.
@@ -457,6 +458,7 @@ pub fn layout(
             size: [48, 36],
             frames: Frames::default(),
             hint: None,
+            caption: None,
         }));
     } else if let Some(text) = &stats.ability {
         items.push(label(ABILITY, [20, 232], [192, 41], (font, 4, 0), text));

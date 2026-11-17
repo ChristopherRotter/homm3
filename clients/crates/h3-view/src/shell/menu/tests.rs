@@ -116,6 +116,7 @@ pub(crate) fn menus(bugs: Bugs) -> Menus {
         load_game: game_type(Game::Load, bugs),
         notices,
         multiplayer: crate::shell::multiplayer::tests::multiplayer(bugs),
+        scenario: crate::shell::scenario::tests::scenario(bugs),
     }
 }
 
@@ -861,7 +862,8 @@ fn the_front_is_a_menu_or_the_multiplayer_dialog_over_its_menu() {
         main.hovers(),
         Hovers {
             main: None,
-            game_type: Some(100)
+            game_type: Some(100),
+            arrow: super::Arrow::Default,
         }
     );
     let Front::Menu(m) = main else {
@@ -872,13 +874,22 @@ fn the_front_is_a_menu_or_the_multiplayer_dialog_over_its_menu() {
 
 #[test]
 fn the_scenario_screen_is_a_stub_over_its_game_type_menu() {
-    // E27 M2 T7, until M3: from Single, Campaign, Tutorial or the Multiplayer dialog.
+    // E27 M2 T7, until M3: from Single, Campaign, Tutorial or the Multiplayer dialog; a new
+    // single scenario's built since M3 T1a.
     assert_eq!(
         stub_name(Screen::Scenario(Game::Load, ScenarioKind::Tutorial)),
         "scenario"
     );
     assert_eq!(stub_name(Screen::Credits), "credits");
-    assert_eq!(super::scenario(Game::New, ScenarioKind::Single), STUBS[4]);
+    assert_eq!(
+        super::scenario(Game::New, ScenarioKind::Multiplayer),
+        STUBS[4]
+    );
+    assert!(
+        !STUBS
+            .iter()
+            .any(|&(s, _, _)| s == Screen::Scenario(Game::New, ScenarioKind::Single))
+    );
     let all = menus(Bugs::Fixed);
     for (screen, game) in [
         (
@@ -898,4 +909,40 @@ fn the_scenario_screen_is_a_stub_over_its_game_type_menu() {
         ];
         assert_eq!(ended[1].ended, Some(Ended::Scenario(false)));
     }
+}
+
+#[test]
+fn a_new_single_scenario_s_screen_takes_its_inputs_through_the_front() {
+    // E27 M3 T1a: opened from New Game's menu, the adventure map's arrow (CLT-Q137) and the
+    // menus' statics carried.
+    let all = menus(Bugs::Original);
+    let screen = Screen::Scenario(Game::New, ScenarioKind::Single);
+    let new_game = all.front(Screen::GameType(Game::New), None, [0, 0]);
+    let mut front = all.front(screen, new_game, [790, 300]).unwrap();
+    let Front::Scenario(_) = &front else {
+        panic!("the scenario screen")
+    };
+    assert_eq!(front.hovers().arrow, super::Arrow::Adventure);
+    assert_eq!(front.context(), Context::Scenario);
+    assert_eq!(front.contexts(), vec![Context::Scenario]);
+    assert!(!front.typing());
+    assert_eq!(front.typed('a'), Did::default());
+    assert_eq!(front.moved([1, 1]), Did::default());
+    assert!(front.press([667, 555]).sample);
+    assert_eq!(front.release().ended, Some(Ended::Scenario(false)));
+    assert!(front.right([667, 555]).changed);
+    assert!(front.right_release().changed);
+    assert!(
+        front
+            .key(None, Some(Command::Dialog(188)), "Escape")
+            .changed
+    );
+    assert_eq!(front.key_up("Escape").ended, Some(Ended::Scenario(false)));
+    // The menu loop's top sets the default arrow again before the main menu.
+    let back = all
+        .front(Screen::GameType(Game::New), Some(front), [0, 0])
+        .unwrap();
+    assert_eq!(back.hovers().arrow, super::Arrow::Adventure);
+    let main = all.front(Screen::MainMenu, Some(back), [0, 0]).unwrap();
+    assert_eq!(main.hovers().arrow, super::Arrow::Default);
 }

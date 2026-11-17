@@ -334,6 +334,7 @@ pub fn layout(layout: &ResultLayout, texts: &Texts, sides: &[Side; 2], player: u
         size: [64, 30],
         frames: Frames::default(),
         hint: None,
+        caption: None,
     }));
     let mut players = BTreeMap::new();
     players.insert(BACKGROUND, player);

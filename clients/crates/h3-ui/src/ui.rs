@@ -357,6 +357,58 @@ pub struct Button {
     /// M3 T6c-1), none for none.
     #[serde(default)]
     pub hint: Option<String>,
+    /// Its caption, a caption button's (E27 M3 T1a), none for a plain DEF button.
+    #[serde(default)]
+    pub caption: Option<Caption>,
+}
+
+/// A caption button's text (`H3DlgCaptionButton` 0x456A50, drawn by 0x456CA0; E27 M3 T1a: the
+/// scenario screen's panel buttons): after the button's frame, its text (the screen's, by the
+/// button's id) in the button's box by the text drawer, in its font, colour and alignment; the
+/// colour 2 more while the button is disabled (its +0x16 & 0x28), the box one pixel up while
+/// released and one pixel right while pressed.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Caption {
+    /// The font.
+    pub font: String,
+    /// The palette the font's colours come from.
+    pub font_palette: String,
+    /// The text drawer's colour argument (+0x6C).
+    pub colour: u32,
+    /// The text drawer's alignment (5: centred both ways).
+    pub align: u32,
+}
+
+impl Button {
+    /// Its caption's draw as `state` shows it, none without a caption or while hidden: the text
+    /// `text` at the button's corner `[x, y]` on the screen (0x456CA0).
+    #[must_use]
+    pub fn caption_draw(&self, state: State, [x, y]: [i32; 2], text: &str) -> Option<Draw> {
+        let caption = self.caption.as_ref().filter(|_| !state.hidden)?;
+        let (x, y) = if state.pressed {
+            (x.saturating_add(1), y)
+        } else {
+            (x, y.saturating_sub(1))
+        };
+        Some(Draw::Label {
+            item: Label {
+                id: self.id,
+                at: self.at,
+                size: self.size,
+                font: caption.font.clone(),
+                font_palette: caption.font_palette.clone(),
+                colour: caption.colour,
+                align: caption.align,
+                hint: None,
+                repeat: None,
+            },
+            x,
+            y,
+            text: String::from(text),
+            disabled: state.disabled,
+        })
+    }
 }
 
 /// A button's frame in each state: the constructor's frame (+0x34) and click frame (+0x38), the
@@ -666,94 +718,116 @@ impl Dialog {
                 player,
             })
         };
+        let captions = |item: &Item| match item {
+            Item::Button(b) => {
+                let text = shown.texts.get(&b.id).map_or("", String::as_str);
+                b.caption_draw(shown.state(b.id), place(b.at), text)
+            }
+            _ => None,
+        };
         let items = self
             .items
             .iter()
             .filter(|item| !shown.state(item.id()).hidden)
-            .filter_map(|item| match item {
-                Item::Picture(p) => {
-                    let [x, y] = place(p.at);
-                    Some(Draw::Picture {
-                        picture: shown.pictures.get(&p.id).unwrap_or(&p.picture).clone(),
-                        x,
-                        y,
-                        player: colours(p.id),
-                        size: p.size,
-                    })
-                }
-                Item::Button(b) => {
-                    let state = shown.state(b.id);
-                    let [x, y] = place(b.at);
-                    b.frame(state).map(|frame| Draw::Button {
-                        def: shown.defs.get(&b.id).unwrap_or(&b.def).clone(),
-                        frame,
-                        x,
-                        y,
-                        mirrored: false,
-                        player: colours(b.id),
-                    })
-                }
-                Item::Text(t) => {
-                    let [x, y] = place(t.at);
-                    Some(Draw::Text {
-                        item: t.clone(),
-                        x,
-                        y,
-                        text: shown.texts.get(&t.id).cloned().unwrap_or_default(),
-                    })
-                }
-                Item::Def(d) if d.creature => {
-                    let [x, y] = place(d.at);
-                    let def = shown.defs.get(&d.id).or(d.def.as_ref())?;
-                    Some(Draw::Creature {
-                        def: def.clone(),
-                        group: d.group,
-                        frame: shown.frames.get(&d.id).copied().unwrap_or(d.frame),
-                        x,
-                        y,
-                        size: d.size,
-                    })
-                }
-                Item::Def(
-                    d @ Def {
-                        frames_of: Some(frames),
-                        ..
-                    },
-                ) => {
-                    let [x, y] = place(d.at);
-                    Some(Draw::Shared {
-                        def: d.def.clone()?,
-                        frames: frames.clone(),
-                        frame: shown.frames.get(&d.id).copied().unwrap_or(d.frame),
-                        x,
-                        y,
-                    })
-                }
-                Item::Def(d) => {
-                    let [x, y] = place(d.at);
-                    let def = shown.defs.get(&d.id).or(d.def.as_ref())?;
-                    Some(Draw::Button {
-                        def: def.clone(),
-                        frame: shown.frames.get(&d.id).copied().unwrap_or(d.frame),
-                        x,
-                        y,
-                        mirrored: d.mirrored,
-                        player: colours(d.id),
-                    })
-                }
-                Item::Label(l) => {
-                    let [x, y] = place(l.at);
-                    Some(Draw::Label {
-                        item: l.clone(),
-                        x,
-                        y,
-                        text: shown.texts.get(&l.id).cloned().unwrap_or_default(),
-                        disabled: shown.state(l.id).disabled,
-                    })
-                }
-                Item::Area(_) => None,
+            .flat_map(|item| {
+                let caption = captions(item);
+                Self::item_draw(item, shown, &place, &colours)
+                    .into_iter()
+                    .chain(caption)
             });
         self.shadow_draws().into_iter().chain(items).collect()
+    }
+
+    /// One item's draw as `shown` (none for an area, or a button whose state draws no frame).
+    fn item_draw(
+        item: &Item,
+        shown: &Shown,
+        place: &impl Fn([i32; 2]) -> [i32; 2],
+        colours: &impl Fn(u16) -> Option<PlayerColours>,
+    ) -> Option<Draw> {
+        match item {
+            Item::Picture(p) => {
+                let [x, y] = place(p.at);
+                Some(Draw::Picture {
+                    picture: shown.pictures.get(&p.id).unwrap_or(&p.picture).clone(),
+                    x,
+                    y,
+                    player: colours(p.id),
+                    size: p.size,
+                })
+            }
+            Item::Button(b) => {
+                let state = shown.state(b.id);
+                let [x, y] = place(b.at);
+                b.frame(state).map(|frame| Draw::Button {
+                    def: shown.defs.get(&b.id).unwrap_or(&b.def).clone(),
+                    frame,
+                    x,
+                    y,
+                    mirrored: false,
+                    player: colours(b.id),
+                })
+            }
+            Item::Text(t) => {
+                let [x, y] = place(t.at);
+                Some(Draw::Text {
+                    item: t.clone(),
+                    x,
+                    y,
+                    text: shown.texts.get(&t.id).cloned().unwrap_or_default(),
+                })
+            }
+            Item::Def(d) if d.creature => {
+                let [x, y] = place(d.at);
+                let def = shown.defs.get(&d.id).or(d.def.as_ref())?;
+                Some(Draw::Creature {
+                    def: def.clone(),
+                    group: d.group,
+                    frame: shown.frames.get(&d.id).copied().unwrap_or(d.frame),
+                    x,
+                    y,
+                    size: d.size,
+                })
+            }
+            Item::Def(
+                d @ Def {
+                    frames_of: Some(frames),
+                    ..
+                },
+            ) => {
+                let [x, y] = place(d.at);
+                Some(Draw::Shared {
+                    def: d.def.clone()?,
+                    frames: frames.clone(),
+                    frame: shown.frames.get(&d.id).copied().unwrap_or(d.frame),
+                    x,
+                    y,
+                })
+            }
+            Item::Def(d) => {
+                let [x, y] = place(d.at);
+                let def = shown.defs.get(&d.id).or(d.def.as_ref())?;
+                Some(Draw::Button {
+                    def: def.clone(),
+                    frame: shown.frames.get(&d.id).copied().unwrap_or(d.frame),
+                    x,
+                    y,
+                    mirrored: d.mirrored,
+                    player: colours(d.id),
+                })
+            }
+            Item::Label(l) => {
+                let [x, y] = place(l.at);
+                Some(Draw::Label {
+                    item: l.clone(),
+                    x,
+                    y,
+                    text: shown.texts.get(&l.id).cloned().unwrap_or_default(),
+                    disabled: shown.state(l.id).disabled,
+                })
+            }
+            Item::Area(_) => None,
+        }
     }
 }
 
