@@ -18333,3 +18333,69 @@ original data staged from the user's repo folder (the four LODs, both executable
 - **Docs:** design §9, §10, §16's *As built*; decision 356 and the task's line; the queue (T125a
   archived verbatim, T125b in); `OVERVIEW.md`; `TRAPS.md` (the reach's pass); the map client
   lane's inbox (the hint and the Shipwreck from the coast).
+
+### Increment 13, round 7: T125b1, the banks maps and their replays (2026-11-18, `adventure/e08-t125b1`, `cross-lane`)
+
+**The cut** (decision 357; asked at T125b's start, `AskUserQuestion`, with the `cross-lane` consent
+for the server lane's counts of the golden adventure replays): T125b in two, the two maps and the
+replays first (recommended was three as increment 12's T116: the 36 map and its replays, the
+properties, the XL map with the benchmarks); T125b2 the properties, the benchmarks and
+`--with-original-data`. **Baseline:** `master` 45aed4c (#998, T125a, merged; CI green on it; the
+setup's `verify-once` found the engine code verified there, light gates only); `master`'s
+ae61c26 (E09 T38a1's ADRs, docs only) merged in. No original data staged: nothing of the import
+or the census moved.
+
+- **The banks map** (`fixtures/maps/e08-banks-36.h3m`; `h3-map`'s `tests/banks_map.rs`,
+  `the_banks_map_is_committed_as_written_and_imports_the_eleven`): SoD, 36 × 36 of grass, dirt on
+  columns 0 to 12, the sea on columns 27 to 35 with an island on columns 29 to 31, rows 13 to 17;
+  the eleven kinds (two Crypts) by entrance: the Griffin Conservatory (8, 8), the Imp Cache
+  (14, 8), the Cyclops Stockpile (3, 14), the Medusa Stores (9, 14), the Naga Bank (15, 14), the
+  Dwarven Treasury (5, 20), Dragon Utopia (13, 22), the Crypts (24, 10) and (24, 20), the Dragon
+  Fly Hive (20, 15), the Shipwreck (27, 15) beside the coast, the Derelict Ship (30, 25); a boat on
+  (27, 27). Seven red heroes each placed for a scripted replay (a full army of seven Castle stacks
+  without Angels and 900 experience below the Conservatory; ten swordsmen and ten archangels by
+  the Imp Cache; twenty-five archangels between the Crypts and the Shipwreck; fifteen by the boat;
+  Angel Wings in front of the Shipwreck), three blue ones. The test reads the file back, imports
+  each bank typed at its anchor, the heroes and the boat, and builds with every bank's guards
+  drawn. `banks.rs`' templates shared (`pub(super)`).
+- **The banks XL map** (`fixtures/maps/e08-banks-144.h3m`; `tests/banks_xl_map.rs`,
+  `the_banks_xl_map_is_committed_as_written_and_imports_its_banks`): SoD, 144 × 144 of grass with
+  the sea on columns 96 to 143; 106 banks (*Thousand Islands*' count, survey §1) in the census's
+  shares: the land's 78 one to a 6 × 6 cell by a stride of 101 through the 374 cells with no hero,
+  fourteen Shipwrecks along the coast (anchored on (97, 5 + 10k), their entrances beside the land,
+  a 3 × 3 island two columns beyond each), six Shipwrecks and eight Derelict Ships by a stride of 5
+  through the open sea's 168 cells; ten heroes as the garrisons XL map's, a flyer of each player
+  in front of a coast Shipwreck, a boat by a coast hero of each; 136 gnoll stacks on every
+  hundredth free land tile. The test checks the kinds' counts and anchors, each coast Shipwreck's
+  one entrance west of its anchor beside the coast, each flyer's path to its island across the
+  Shipwreck's two tiles, and the build's draws. Its benchmarks are T125b2's.
+- **The golden replays** (`adventure_replays.rs`' list; 98 now): random play `banks-s545-d28`,
+  `-s161-d28`, `-s804-d28` (a scratch probe over the seeds 1 to 1 500, the union of three
+  weighted towards the rare features: the once-marks of a Crypt and the Shipwreck and their clear,
+  the army dialog after a Conservatory, Dragon Utopia's four artifacts, a hero met on an entrance,
+  survivors fought again, a flight over the Shipwreck). Scripted (`--seed 1 --checkpoint-every 5
+  --script`): `banks-declined-s1` (an attack kind's mark and hint at once for red, then blue; a
+  search declined without a mark), `-griffins-s1` (won past levels 2 and 3, then the army dialog:
+  a stack dismissed, the Angel taken, closed), `-lost-s1` (ten swordsmen lose to the Imp Cache's
+  200; the three survivors fought by Sylvia at the layout's first three positions), `-looted-s1`
+  (both Crypts and the Shipwreck from the coast won; looted: −1, nothing, −1 more under marks 15
+  and 14; the Dragon Fly Hive's battle clears both; −1 again), `-sea-s1` (the boat boarded, the
+  Derelict Ship searched from it and won on the deck next day), `-flight-s1` (Tyris over the
+  Shipwreck's two tiles to the island and back, no visit). The moves from `legal_moves`' paths,
+  the battles from E23's `h3_battle_ai::choose` for both sides (a scratch probe, not committed).
+- *Found on the way* (nothing wrong in the rules): boarding a boat ends the hero's move (the sea
+  replay sails on day 2); the reach for a move is the owner's explored tiles, so a scripted hero
+  starts within sight of its banks (blue's Rion moved to (19, 20)); a declined search leaves no
+  mark and so no hint (the attack kind's decline does); the once-marks clear at the battle's end,
+  before its level-up is answered and the reward's creatures join; random play meets the Derelict
+  Ship in 3 of 1 500 games and the Shipwreck from a boat in 2 (the scripted replay holds the deck).
+- *Agent's calls (change freely):* the maps' layouts, heroes, armies and seeds; the Shipwreck's
+  island on both maps (a flight crosses only towards land); the XL map's shares.
+- **Gates:** `h3-map`'s two map tests; `h3-cli`'s `adventure_replays` over the 98; on the server
+  lane's paths (`cross-lane`, the user's consent): `h3-protocol`'s `tests::game_fold` (`golden`)
+  and `tests::game_session` (`restores`) and `h3-server`'s `tests::record` count 98 and pass over
+  all of them. The scoped verify (no original data): every step passing but `check-lane` (by
+  design for a `cross-lane` branch; `check-lane --cross-lane` ok), coverage, determinism and
+  `bench-check` among them; `cargo check --workspace --all-targets` and the clippy of `h3-cli`,
+  `h3-server`, `h3-protocol` and `h3-map` clean. The server lane's inbox told.
+- **Versions:** none.
