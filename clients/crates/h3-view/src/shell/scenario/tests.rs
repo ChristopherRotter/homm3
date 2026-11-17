@@ -43,6 +43,10 @@ pub(crate) fn texts(bugs: Bugs) -> Texts {
         with_standard: numbered("victory or standard", 11),
         losses: numbered("loss", 4),
         help: HELPED.iter().map(|&(id, n)| (id, laid(n))).collect(),
+        players: (0..9)
+            .flat_map(|p| (0..9).map(move |h| format!("{p}/{h}")))
+            .collect(),
+        sizes: ["S", "M", "L", "XL"].map(String::from).into(),
     }
 }
 
@@ -79,7 +83,13 @@ fn map(file: &str, name: &str) -> Entry {
 /// The screen as the shell's layout has it, over `entries`.
 pub(crate) fn scenario_of(entries: Vec<Entry>, bugs: Bugs) -> Scenario {
     let layout = parse_layout(LAYOUT).unwrap();
-    Scenario::new(layout.scenario.dialog, texts(bugs), entries, bugs)
+    Scenario::new(
+        layout.scenario.dialog,
+        layout.scenario.list,
+        texts(bugs),
+        entries,
+        bugs,
+    )
 }
 
 /// The screen over two maps, the kept one second.

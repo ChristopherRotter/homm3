@@ -637,6 +637,18 @@ fn menus(
                 (id, laid(&key, Style::Popup))
             })
             .collect(),
+        // The list's columns (T1b1): "%d/%d" by the players and the humans, the sizes' letters.
+        players: (0..9i64)
+            .flat_map(|p| (0..9i64).map(move |h| (p, h)))
+            .map(|(p, h)| {
+                let args = Args::new().number("players", p).number("humans", h);
+                catalogue.text("shell.scenario.players", &args)
+            })
+            .collect(),
+        sizes: ["small", "medium", "large", "extra-large"]
+            .iter()
+            .map(|s| text(&format!("shell.scenario.size.{s}")))
+            .collect(),
     };
     Ok(Menus {
         main,
@@ -651,6 +663,7 @@ fn menus(
         ),
         scenario: Scenario::new(
             layout.scenario.dialog.clone(),
+            layout.scenario.list.clone(),
             scenario_texts,
             crate::maps::entries(install),
             bugs,
@@ -1094,6 +1107,8 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
                 }
                 Given::Event(event, scan) => {
                     if let Some(front) = front.as_mut() {
+                        // The scenario list's double press is timed on the window's clock (T1b1).
+                        front.clock(now(&win));
                         did = on_front(front, &keys, (&event, scan), pointer.unwrap_or(PARK));
                     }
                 }
@@ -1214,6 +1229,9 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             // `random_between(1, 100) < 51` gives `gamselb1.pcx`.
             if let Some(Front::Scenario(s)) = front.as_mut() {
                 **s = s.as_ref().clone().with_background(background_draw());
+            }
+            if let Some(front) = front.as_mut() {
+                front.clock(now(&win));
             }
             if let (Some(host), true) = (host.as_mut(), front.is_some()) {
                 let _ = host.request(MAIN_MUSIC, false);

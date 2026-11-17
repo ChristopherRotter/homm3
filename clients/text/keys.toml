@@ -2518,6 +2518,39 @@ original = [{ at = "GENRLTXT:760" }]
 id = "shell.scenario.unnamed"
 original = [{ at = "GENRLTXT:509" }]
 
+# The scenario list (E27 M3 T1b1; design §3.2, §3.4; `scenario_dialog_redraw` 0x584550): the title
+# of a new game's screen (`scenario_titles` 0x6A8098: ArrayTxt.txt 229), the sizes' label, the
+# players column ("%d/%d", 0x679DC8: the colours anyone plays and those a human may), the size
+# column's letters (36, 72 and 108 tiles, another).
+[[key]]
+id = "shell.scenario.title"
+original = [{ at = "ARRAYTXT:229" }]
+
+[[key]]
+id = "shell.scenario.sizes"
+original = [{ at = "GENRLTXT:511" }]
+
+[[key]]
+id = "shell.scenario.players"
+args = { players = "number", humans = "number" }
+original = [{ at = "EXE:0x679DC8", printf = ["players", "humans"] }]
+
+[[key]]
+id = "shell.scenario.size.small"
+original = [{ at = "GENRLTXT:512" }]
+
+[[key]]
+id = "shell.scenario.size.medium"
+original = [{ at = "GENRLTXT:513" }]
+
+[[key]]
+id = "shell.scenario.size.large"
+original = [{ at = "GENRLTXT:514" }]
+
+[[key]]
+id = "shell.scenario.size.extra-large"
+original = [{ at = "GENRLTXT:515" }]
+
 # The difficulties' names (`difficulty_names` 0x6A77EC: `arraytxt_load` 0x5B9DED copies ArrayTxt.txt's
 # records 142 to 146, after the map sizes' 137 to 140; design §18.2).
 [[key]]

@@ -38,11 +38,15 @@ steps = [
 
 [[recipe]]
 id = "scn-list-keys"
-what = "§3.3, §3.4: the list as built (the kept map selected, at the top); the keys; the bar's arrows, track and thumb; a row press"
+what = "§3.3, §3.4: the list as built (the kept map selected, at the top); the keys, Up past the top row and at the list's first; the bar's arrows, track and thumb; a row press"
+# E27 M3 T1b1 (design §6.4): seven Page Ups bring the kept map's row (107: the top 106 after
+# `up-past-top`) to the list's first, where `up-at-first` presses Up again.
 steps = [
   "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
   "move:790,300", "until:scenario_list", "click:514,91", "move:790,300", "shot:list",
   "key:Down", "shot:down", "key:Up", "shot:up", "key:Up", "shot:up-past-top",
+  "key:Prior", "key:Prior", "key:Prior", "key:Prior", "key:Prior", "key:Prior", "key:Prior",
+  "shot:page-up-first", "key:Up", "shot:up-at-first",
   "key:Next", "shot:page-down", "key:Next", "shot:page-down-2", "key:Prior", "shot:page-up",
   "click:383,562", "shot:bar-down", "click:383,99", "shot:bar-up",
   "click:383,540", "shot:track-below", "click:383,120", "shot:track-above",
