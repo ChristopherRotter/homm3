@@ -115,8 +115,7 @@ const PACKS: [(&str, &str); 3] = [
     ),
     (
         "ab",
-        "Armageddon's Blade's town record, Conflux, its Visions creature, the Rogue, and its \
-         classes' tavern weights in the base records (overrides).",
+        "Armageddon's Blade: Conflux's record, the Rogue's Visions, its classes in the base taverns.",
     ),
     (
         "sod",

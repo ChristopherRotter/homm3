@@ -610,10 +610,10 @@ fn the_hash_is_pinned_and_follows_the_content() {
     assert_eq!(part.content_hash(), again.content_hash());
     assert_eq!(part.content_hash(), hash_of(&part));
     // The seventh encoding (v7): pinned, so a change of what it covers bumps the version.
-    assert_eq!(part.content_hash(), 0xe9d6_8ef9_f9d6_aaf3);
+    assert_eq!(part.content_hash(), 0x0f14_27ea_a4ad_9c09);
     assert_eq!(
         TownRuleset::empty(&core).content_hash(),
-        0xbf2f_d77e_fb5a_3d99
+        0x2bc5_8221_66bf_4786
     );
     let mut changed = packs();
     changed[0].towns[0].buildings[2].name = "Hall".into();

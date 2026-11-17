@@ -26,6 +26,7 @@ week_creature_chance = [1, 4]
 week_creature_bonus = 5
 garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], weeks = 8, upgrade = 5 }
 most_heroes = 8
+hire_price = { gold = 2500 }
 
 [[town]]
 faction = "castle"
@@ -40,6 +41,24 @@ creatures = [
   ["cavalier", "champion"],
   ["angel", "archangel"],
 ]
+
+  [town.tavern]
+  knight = 6
+  cleric = 6
+  ranger = 6
+  druid = 6
+  alchemist = 6
+  wizard = 6
+  demoniac = 5
+  heretic = 5
+  death_knight = 5
+  necromancer = 5
+  overlord = 5
+  warlock = 5
+  barbarian = 6
+  battle_mage = 6
+  beastmaster = 6
+  witch = 6
 
   [[town.building]]
   key = "mage_guild_level_1"
@@ -345,6 +364,24 @@ creatures = [
   ["unicorn", "war_unicorn"],
   ["green_dragon", "gold_dragon"],
 ]
+
+  [town.tavern]
+  knight = 6
+  cleric = 6
+  ranger = 6
+  druid = 6
+  alchemist = 6
+  wizard = 6
+  demoniac = 5
+  heretic = 5
+  death_knight = 5
+  necromancer = 5
+  overlord = 5
+  warlock = 5
+  barbarian = 6
+  battle_mage = 6
+  beastmaster = 6
+  witch = 6
 
   [[town.building]]
   key = "mage_guild_level_1"
@@ -669,6 +706,24 @@ creatures = [
   ["giant", "titan"],
 ]
 
+  [town.tavern]
+  knight = 6
+  cleric = 6
+  ranger = 6
+  druid = 6
+  alchemist = 6
+  wizard = 6
+  demoniac = 5
+  heretic = 5
+  death_knight = 5
+  necromancer = 5
+  overlord = 5
+  warlock = 5
+  barbarian = 6
+  battle_mage = 6
+  beastmaster = 6
+  witch = 6
+
   [[town.building]]
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
@@ -981,6 +1036,24 @@ creatures = [
   ["efreeti", "efreet_sultan"],
   ["devil", "arch_devil"],
 ]
+
+  [town.tavern]
+  knight = 5
+  cleric = 5
+  ranger = 5
+  druid = 5
+  alchemist = 5
+  wizard = 5
+  demoniac = 6
+  heretic = 6
+  death_knight = 6
+  necromancer = 6
+  overlord = 6
+  warlock = 6
+  barbarian = 6
+  battle_mage = 6
+  beastmaster = 6
+  witch = 6
 
   [[town.building]]
   key = "mage_guild_level_1"
@@ -1306,6 +1379,24 @@ creatures = [
   ["bone_dragon", "ghost_dragon"],
 ]
 
+  [town.tavern]
+  knight = 5
+  cleric = 5
+  ranger = 5
+  druid = 5
+  alchemist = 5
+  wizard = 5
+  demoniac = 6
+  heretic = 6
+  death_knight = 6
+  necromancer = 6
+  overlord = 6
+  warlock = 6
+  barbarian = 6
+  battle_mage = 6
+  beastmaster = 6
+  witch = 6
+
   [[town.building]]
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
@@ -1615,6 +1706,24 @@ creatures = [
   ["manticore", "scorpicore"],
   ["red_dragon", "black_dragon"],
 ]
+
+  [town.tavern]
+  knight = 5
+  cleric = 5
+  ranger = 5
+  druid = 5
+  alchemist = 5
+  wizard = 5
+  demoniac = 6
+  heretic = 6
+  death_knight = 6
+  necromancer = 6
+  overlord = 6
+  warlock = 6
+  barbarian = 6
+  battle_mage = 6
+  beastmaster = 6
+  witch = 6
 
   [[town.building]]
   key = "mage_guild_level_1"
@@ -1927,6 +2036,24 @@ creatures = [
   ["behemoth", "ancient_behemoth"],
 ]
 
+  [town.tavern]
+  knight = 6
+  cleric = 6
+  ranger = 6
+  druid = 5
+  alchemist = 6
+  wizard = 5
+  demoniac = 6
+  heretic = 5
+  death_knight = 6
+  necromancer = 5
+  overlord = 6
+  warlock = 5
+  barbarian = 6
+  battle_mage = 6
+  beastmaster = 6
+  witch = 5
+
   [[town.building]]
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
@@ -2222,6 +2349,24 @@ creatures = [
   ["wyvern", "wyvern_monarch"],
   ["hydra", "chaos_hydra"],
 ]
+
+  [town.tavern]
+  knight = 6
+  cleric = 6
+  ranger = 5
+  druid = 6
+  alchemist = 5
+  wizard = 6
+  demoniac = 5
+  heretic = 6
+  death_knight = 5
+  necromancer = 6
+  overlord = 5
+  warlock = 6
+  barbarian = 5
+  battle_mage = 6
+  beastmaster = 6
+  witch = 6
 
   [[town.building]]
   key = "mage_guild_level_1"
