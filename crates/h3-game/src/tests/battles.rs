@@ -426,9 +426,9 @@ fn a_battle_played_to_its_end_applies_its_outcome() {
         // copied on the write (both heroes are Orrin: blue's, placed last, took it).
         let orrin = game.hero(lost).unwrap().hero_type;
         let taken = Some(HeroStatus::Taken(1));
-        assert_eq!(before.hero_pool().status(orrin), taken);
+        assert_eq!(before.pool().status(orrin), taken);
         let free = Some(HeroStatus::Free);
-        assert_eq!(game.hero_pool().status(orrin), free);
+        assert_eq!(game.pool().status(orrin), free);
         assert!(!game.shares_pool(&before));
         let lost_at = before.adventure().hero(lost).unwrap().pos;
         let both = Viewers::NONE.with(RED).with(BLUE);

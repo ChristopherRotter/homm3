@@ -548,7 +548,7 @@ fn an_attackers_win_over_the_visitor_captures_the_town_after_the_winners_levels(
     // The visitor off the map, its type free again; the garrison's imps, which did not fight,
     // still in the town; the capture waits for red's level.
     assert!(won.adventure().hero(BLUE_HERO).is_none());
-    assert_eq!(won.hero_pool().status(blue_type), Some(HeroStatus::Free));
+    assert_eq!(won.pool().status(blue_type), Some(HeroStatus::Free));
     assert_eq!(garrison(&won), garrison(&game));
     assert!(won.level_up(RED).is_some() && !captured(&events));
     assert_eq!(won.adventure().owner(1), Some(BLUE));

@@ -69,6 +69,20 @@ impl Progression {
         }
     }
 
+    /// A new hero record's level seed drawn from `draws` (GAM-HER-002; E09 T37a, a tavern hero's
+    /// first draw, design note §61): the next hero id's, with its type's own sex.
+    // rule: GAM-HER-002
+    pub(crate) fn record(&mut self, draws: &mut Rng) {
+        let (low, high) = SEEDS;
+        let seed = u8::try_from(draws.range_inclusive(low, high)).unwrap_or(u8::MAX);
+        let mut seeds = core::mem::take(&mut self.seeds).into_vec();
+        seeds.push(seed);
+        self.seeds = seeds.into_boxed_slice();
+        let mut sexes = core::mem::take(&mut self.sexes).into_vec();
+        sexes.push(None);
+        self.sexes = sexes.into_boxed_slice();
+    }
+
     /// The sex the map gave `hero`, if any (GAM-BAT-012).
     pub(crate) fn sex(&self, hero: HeroId) -> Option<HeroSex> {
         self.sexes.get(usize::from(hero.raw())).copied().flatten()

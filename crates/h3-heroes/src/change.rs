@@ -10,6 +10,8 @@
 //! raised to a level). The battle bonuses (HER-ADV-008) left with E08 T115a: they are the hero on
 //! the map's, changed by the adventure (increment 12's design note §12.3).
 
+use alloc::vec::Vec;
+
 use h3_content::{
     ArtifactType, CreatureFlag, CreatureTypeId, MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId,
     SpellId,
@@ -20,7 +22,7 @@ use crate::details::{
 };
 use crate::error::ChangeError;
 use crate::level::{gained_under_limit, pending_levels};
-use crate::positions::{Position, equip, first_free, fits};
+use crate::positions::{Position, equip, first_free, first_position, fits};
 
 /// Where an artifact is in a hero's details.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -342,6 +344,40 @@ pub(crate) fn has_space(details: &HeroDetails, ruleset: &Ruleset) -> bool {
     ruleset
         .hero_params()
         .is_some_and(|params| details.backpack.len() < usize::from(params.backpack))
+}
+
+/// A tavern hero's backpack equipped when a fill offers it (ADR-0013 point 14.5; TWN-TAV-002, E09
+/// T37a; the original's `tavern_new_heroes` 0x4C8450 with `hero_equip_artifact` 0x4E2A00), as
+/// changes to apply in order ([`apply_change`]): each backpack artifact, from the last place to
+/// the first, goes to the first free position that takes it ([`crate::first_position`]:
+/// HER-ART-001's locks with the artifacts worn so far), a removal from the backpack then a
+/// placement there; one no free position takes stays. A combination so equipped applies its
+/// effects as any equip (Titan's Thunder's Spell Book, HER-ART-007); none is assembled. None
+/// for an empty backpack.
+// rule: TWN-TAV-002
+pub fn backpack_equipped(details: &HeroDetails, ruleset: &Ruleset) -> Vec<HeroChange> {
+    let mut changes = Vec::new();
+    if details.backpack.is_empty() {
+        return changes;
+    }
+    let mut scratch = details.clone();
+    for (index, &artifact) in details.backpack.iter().enumerate().rev() {
+        let Some(at) = first_position(&scratch, ruleset, artifact.artifact) else {
+            continue;
+        };
+        let moved = [
+            HeroChange::RemoveArtifact(ArtifactPlace::Backpack(index)),
+            HeroChange::PlaceArtifact {
+                artifact,
+                at: ArtifactPlace::Worn(at),
+            },
+        ];
+        for change in moved {
+            apply_change(&mut scratch, ruleset, change);
+            changes.push(change);
+        }
+    }
+    changes
 }
 
 /// The next artifact a defeated hero yields to the winner, with its place (HER-ART-004): the

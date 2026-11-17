@@ -59,8 +59,8 @@ mod spells;
 mod teach;
 
 pub use change::{
-    ArtifactPlace, HeroChange, apply_change, apply_change_limited, check_change, lost_war_machine,
-    next_capture,
+    ArtifactPlace, HeroChange, apply_change, apply_change_limited, backpack_equipped, check_change,
+    lost_war_machine, next_capture,
 };
 pub use choice::{ArmyWorth, TerrainShares, original_choice};
 pub use combine::{assemble_changes, check_assemble, check_disassemble, disassemble_changes};

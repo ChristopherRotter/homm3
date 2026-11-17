@@ -500,6 +500,9 @@ pub struct GameObservation {
     /// ADV-GAR-006, protocol v54): each garrison a tile of which it has explored, its object among
     /// [`Self::adventure`]'s by type and anchor.
     pub garrisons: Vec<MapGarrison>,
+    /// The viewer's two tavern heroes by slot (TWN-TAV-002; protocol v70, E09 T37a): each as the
+    /// tavern's held hero screen shows it, none for an empty slot. Another player's never show.
+    pub tavern: [Option<TavernHero>; 2],
     /// The battle of the viewer's first open decision, as its side sees it (GAM-BAT-001); other
     /// players' battles never show.
     pub battle: Option<super::Observation>,
@@ -911,6 +914,71 @@ pub struct Artifact {
     pub artifact: u16,
     /// The spell of a scroll; none for every other artifact (HER-ART-003).
     pub spell: Option<u16>,
+}
+
+/// What a tavern hero's owner sees of it without a list (`h3_game::TavernHero`; TWN-TAV-002,
+/// protocol v70, E09 T37a): the tavern dialog's and the offer's held hero screen's parts. Its
+/// learned spells, its offered levels and its points never show.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TavernHeroHead {
+    /// The hero's id.
+    pub id: u16,
+    /// Its hero type's handle.
+    pub hero_type: u16,
+    /// Its level.
+    pub level: u8,
+    /// Its experience points.
+    pub experience: u32,
+    /// Its base primary skills: attack, defense, power, knowledge.
+    pub primary: [u8; 4],
+    /// Its spell points.
+    pub mana: u16,
+    /// How many artifacts its backpack carries (its screen shows the first five).
+    pub carried: u16,
+    /// Its army's formation.
+    pub formation: Formation,
+    /// Its tactics flag.
+    pub tactics: bool,
+}
+
+/// A part of a tavern hero's view that is one of a list (`h3_game::TavernPart`; protocol v70):
+/// the army's stacks by slot, the secondary skills in order, the worn artifacts by position, then
+/// the backpack's first five places.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TavernPart {
+    /// A stack of its army.
+    Stack {
+        /// The stack.
+        stack: ArmyStack,
+    },
+    /// A secondary skill with its level.
+    Skill {
+        /// The skill and its level.
+        skill: SkillLevel,
+    },
+    /// An artifact at its place.
+    Artifact {
+        /// Where it is: a position, or one of the backpack's first places.
+        place: ArtifactPlace,
+        /// The artifact.
+        artifact: Artifact,
+    },
+}
+
+/// A tavern hero as its owner sees it (`h3_game::TavernHeroView`; TWN-TAV-002, protocol v70): its
+/// parts without a list, then its lists in [`TavernPart`]'s order.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TavernHero {
+    /// Its parts without a list.
+    pub hero: TavernHeroHead,
+    /// Its army, by slot.
+    pub army: Vec<ArmyStack>,
+    /// Its secondary skills with their levels, in order.
+    pub skills: Vec<SkillLevel>,
+    /// Its worn artifacts by position, then the backpack's first five, each with its place.
+    pub artifacts: Vec<(ArtifactPlace, Artifact)>,
 }
 
 /// The bonuses a hero on the map holds until the end of its next battle (HER-ADV-008; v57, E08

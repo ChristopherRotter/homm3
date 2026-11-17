@@ -124,6 +124,7 @@ pub use setup::{
 pub use state::{GameState, MonthKind, OpenBattle};
 pub use system::SystemCommand;
 pub use town::offer::TownOffer;
+pub use town::tavern::{TAVERN_BACKPACK_SHOWN, TavernHero, TavernHeroView, TavernPart};
 pub use town::view::{
     GarrisonStackView, GarrisonView, OWNER_LEVEL, TAVERN_LEVELS, TownBuildingsView, TownOwnerView,
     TownView,
@@ -164,5 +165,8 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// store of heroes' details without the battle bonuses (the hero on the map's since, in the
 /// adventure state hash v23; increment 12's design note §12.7). v32 (E09 T27): a hire
 /// dialog's town target and sources (its target's tag 1, the garrison's town; its source's tag 1,
-/// a town's index, and tag 2, its Portal; TWN-REC-001, -002, E09 design §49).
-pub const GAME_STATE_HASH_VERSION: u32 = 32;
+/// a town's index, and tag 2, its Portal; TWN-REC-001, -002, E09 design §49). v33 (E09 T37a): the
+/// taverns' stream after the towns'; the hero pool's offered status, each type's record and away
+/// record, each player's faction and two tavern slots with their returning marks (TWN-TAV-002,
+/// E09 design §61).
+pub const GAME_STATE_HASH_VERSION: u32 = 33;

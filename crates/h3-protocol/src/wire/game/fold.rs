@@ -32,8 +32,8 @@ use super::{
     Adventure, AdventureEvent, AdventureReveal, Amount, ArmyRef, ArmySlot, ArmyStack, Artifact,
     ArtifactPlace, Boat, Decision, GameEvent, GameObservation, GameReveal, Garrison, GarrisonHero,
     GarrisonStack, Guards, HeroChange, HeroDetails, LevelUp, MapGarrison, MapHero, Monster, Object,
-    ObjectRef, OwnMapHero, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, Tile, Town,
-    TownOwnerFacts,
+    ObjectRef, OwnMapHero, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, TavernHero,
+    TavernPart, Tile, Town, TownOwnerFacts,
 };
 use crate::wire::WireU64;
 
@@ -272,6 +272,32 @@ impl GameObservation {
                 let view = self.town_mut(town);
                 if let Some(facts) = view.and_then(|view| view.owner_facts.as_mut()) {
                     facts.income.push(Amount { resource, amount });
+                }
+            }
+            // The viewer's tavern hero in a slot, its parts following (E09 T37a, TWN-TAV-002):
+            // the slot's view replaced, its lists empty until its parts come.
+            GameEvent::TavernOffered {
+                player: _,
+                slot,
+                hero,
+            } => {
+                if let Some(view) = self.tavern.get_mut(usize::from(slot)) {
+                    *view = hero.map(|hero| TavernHero {
+                        hero,
+                        army: Vec::new(),
+                        skills: Vec::new(),
+                        artifacts: Vec::new(),
+                    });
+                }
+            }
+            GameEvent::TavernPartSeen {
+                player: _,
+                slot,
+                part,
+            } => {
+                let view = self.tavern.get_mut(usize::from(slot));
+                if let Some(view) = view.and_then(Option::as_mut) {
+                    view.see(part);
                 }
             }
             // The viewer's whole view of a map garrison, its stacks following (E08 T114b,
@@ -815,6 +841,18 @@ fn put_garrison(list: &mut Vec<MapGarrison>, view: MapGarrison) {
     match list.binary_search_by_key(&view.place(), MapGarrison::place) {
         Ok(at) => list[at] = view,
         Err(at) => list.insert(at, view),
+    }
+}
+
+impl TavernHero {
+    /// Adds a part of its view after the ones before it (`TavernPartSeen`, E09 T37a): to the list
+    /// of its kind.
+    pub(crate) fn see(&mut self, part: TavernPart) {
+        match part {
+            TavernPart::Stack { stack } => self.army.push(stack),
+            TavernPart::Skill { skill } => self.skills.push(skill),
+            TavernPart::Artifact { place, artifact } => self.artifacts.push((place, artifact)),
+        }
     }
 }
 

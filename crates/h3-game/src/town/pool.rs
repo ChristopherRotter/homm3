@@ -7,8 +7,8 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_content::{FactionId, HeroType, HeroTypeId, Ruleset};
-use h3_contracts::{HeroId, PlayerId};
+use h3_content::{FactionId, Formation, HeroType, HeroTypeId, Ruleset};
+use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
 use super::{FactionChoice, needs_faction};
@@ -21,19 +21,84 @@ pub(crate) enum HeroStatus {
     Free,
     /// Taken by the player of this colour: placed, drawn or reserved as its pick.
     Taken(u8),
+    /// A tavern hero (E09 T37a, design note §61): a player's slot holds it, so no draw gives it
+    /// (the original's 0x40, which also marks a type the map does not allow: kept apart, `Out`).
+    Offered,
     /// Taken as a prisoner's.
     Prisoner,
     /// Out of the game: the map does not allow it.
     Out,
 }
 
+/// What the pool keeps of a recorded hero type off the map (the away record; E09 T37a, design
+/// note §61, ADR-0016 point 3): what the adventure keeps of a hero on the map, its points left
+/// and the day's maximum (set at its owner's turn start, TWN-TAV-005), its formation and tactics
+/// flag and its army (every fill replaces it, TWN-TAV-002).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Away {
+    /// The movement points it has left today.
+    pub(crate) movement: u32,
+    /// The day's maximum.
+    pub(crate) max_movement: u32,
+    /// Its army's formation in battle.
+    pub(crate) formation: Formation,
+    /// Its tactics flag.
+    pub(crate) tactics: bool,
+    /// Its army, by slot.
+    pub(crate) army: Vec<ArmyStack>,
+}
+
+impl Away {
+    /// A new record's (the agent's call, design note §61): no points until its owner's turn
+    /// starts, the loose formation and the tactics flag on (as a hero placed on a map), `army`.
+    pub(crate) const fn new(army: Vec<ArmyStack>) -> Self {
+        Self {
+            movement: 0,
+            max_movement: 0,
+            formation: Formation::Loose,
+            tactics: true,
+            army,
+        }
+    }
+}
+
+/// A player's tavern part (E09 T37a, design note §61; TWN-SET-001 amended, TWN-TAV-002): its
+/// faction (TWN-SET-001's resolved choice, kept; none without a choice) and its two tavern heroes,
+/// each slot a hero type whose record the pool names (the agent's call: the slot names the type,
+/// its entry the record), with its returning mark (the original's bit 17 of the hero's +0x105).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct Tavern {
+    /// The player's faction.
+    pub(crate) faction: Option<FactionId>,
+    /// Its two tavern heroes' types by slot.
+    pub(crate) slots: [Option<HeroTypeId>; 2],
+    /// Each slot's returning mark (TD-18; set by a hero's return, E09 T38b).
+    pub(crate) returning: [bool; 2],
+}
+
+/// A hero type's entry in the pool.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Entry {
+    /// Where it stands.
+    status: HeroStatus,
+    /// The colours that may take it (bit `c`: colour `c`).
+    mask: u8,
+    /// Its record in the store of heroes once it has one (E09 T37a, decision 109): a placed or
+    /// generated hero's id from the build, a drawn type's from its first draw; kept from then on.
+    hero: Option<HeroId>,
+    /// Its away record while it is a tavern hero.
+    away: Option<Away>,
+}
+
 /// The hero pool (TWN-SET-005; ADR-0017's E09 paragraph): per hero type of the core ruleset, by
-/// its index, where it stands and its colour mask (bit `c`: colour `c` may take it; 0xFF unless
-/// the setup's masks restrict it). Built with the game ([`HeroPool::new`]), changed by the
-/// build's draws and when a hero leaves the map ([`HeroPool::free`]).
+/// its index, where it stands, its colour mask (bit `c`: colour `c` may take it; 0xFF unless
+/// the setup's masks restrict it) and since E09 T37a its record and away record; per player its
+/// tavern part. Built with the game ([`HeroPool::new`]), changed by the build's draws, the
+/// taverns' fills and when a hero leaves the map ([`HeroPool::free`]).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct HeroPool {
-    types: Vec<(HeroStatus, u8)>,
+    types: Vec<Entry>,
+    players: Vec<Tavern>,
 }
 
 impl HeroPool {
@@ -43,18 +108,25 @@ impl HeroPool {
     /// type taken by its owner's colour (an owner that is no player is the adventure context's
     /// check: skipped), every prisoner's taken as a prisoner, and last each player's pick
     /// reserved, taken by its colour (T-2, T-3 fixed: `TWN-QUIRK-2`, `TWN-QUIRK-3`). A type the
-    /// ruleset does not have is skipped.
+    /// ruleset does not have is skipped. No type has a record yet, every player an empty tavern.
     // rule: TWN-SET-005
     pub(crate) fn new(core: &Ruleset, setup: &GameSetup) -> Self {
+        let entry = Entry {
+            status: HeroStatus::Out,
+            mask: 0xFF,
+            hero: None,
+            away: None,
+        };
         let mut pool = Self {
-            types: vec![(HeroStatus::Out, 0xFF); core.hero_types().len()],
+            types: vec![entry; core.hero_types().len()],
+            players: vec![Tavern::default(); setup.players.len()],
         };
         for &id in &setup.allowed_heroes {
             pool.set(id, HeroStatus::Free);
         }
         for &(id, mask) in &setup.hero_masks {
             if let Some(entry) = pool.types.get_mut(id.index()) {
-                entry.1 &= mask;
+                entry.mask &= mask;
             }
         }
         // The placed heroes' and prisoners' types before any draw (T-3 fixed, `TWN-QUIRK-3`).
@@ -79,24 +151,25 @@ impl HeroPool {
     /// Where `id` stands; `None` for a type the ruleset does not have.
     #[cfg(test)]
     pub(crate) fn status(&self, id: HeroTypeId) -> Option<HeroStatus> {
-        self.types.get(id.index()).map(|&(status, _)| status)
+        self.types.get(id.index()).map(|entry| entry.status)
     }
 
     /// `id`'s colour mask; `None` for a type the ruleset does not have.
     #[cfg(test)]
     pub(crate) fn mask(&self, id: HeroTypeId) -> Option<u8> {
-        self.types.get(id.index()).map(|&(_, mask)| mask)
+        self.types.get(id.index()).map(|entry| entry.mask)
     }
 
     /// Sets where `id` stands (a type the ruleset does not have: nothing).
     fn set(&mut self, id: HeroTypeId, status: HeroStatus) {
         if let Some(entry) = self.types.get_mut(id.index()) {
-            entry.0 = status;
+            entry.status = status;
         }
     }
 
     /// `id` goes back free (TWN-SET-005: a hero that leaves the map, the original's 0x4D9EC0;
-    /// an unused pick after the main towns' heroes, [`super::main_town_heroes`]).
+    /// an unused pick after the main towns' heroes, [`super::main_town_heroes`]; a tavern hero the
+    /// week's release lets go, TWN-TAV-002). Its record and away record stay.
     pub(crate) fn free(&mut self, id: HeroTypeId) {
         self.set(id, HeroStatus::Free);
     }
@@ -104,6 +177,102 @@ impl HeroPool {
     /// `id` is taken by the player of `colour` (a drawn or picked hero's type, TWN-SET-007).
     pub(super) fn take(&mut self, id: HeroTypeId, colour: u8) {
         self.set(id, HeroStatus::Taken(colour));
+    }
+
+    /// `id` is a tavern hero (TWN-TAV-002).
+    pub(super) fn offer(&mut self, id: HeroTypeId) {
+        self.set(id, HeroStatus::Offered);
+    }
+
+    /// The build's records (E09 T37a, design note §61): each hero's type in hero order names its
+    /// hero's id (`types`: the setup's heroes, then the main towns'), the first hero of a type
+    /// where a setup repeats one.
+    pub(crate) fn record_heroes(&mut self, types: &[(HeroTypeId, &HeroType)]) {
+        for (&(id, _), hero) in types.iter().zip((0..=u16::MAX).map(HeroId::new)) {
+            if let Some(entry) = self.types.get_mut(id.index()) {
+                entry.hero.get_or_insert(hero);
+            }
+        }
+    }
+
+    /// Each player's faction, by player id (the build's, TWN-SET-001: `None` without a choice or
+    /// for a `Random` one its start does not read, drawn at its first fill, TWN-TAV-002).
+    pub(crate) fn set_factions(&mut self, factions: &[Option<FactionId>]) {
+        for (tavern, &faction) in self.players.iter_mut().zip(factions) {
+            tavern.faction = faction;
+        }
+    }
+
+    /// `id`'s record, if it has one.
+    pub(crate) fn record(&self, id: HeroTypeId) -> Option<HeroId> {
+        self.types.get(id.index()).and_then(|entry| entry.hero)
+    }
+
+    /// `id`'s record becomes `hero` (a first draw's, design note §61).
+    pub(super) fn set_record(&mut self, id: HeroTypeId, hero: HeroId) {
+        if let Some(entry) = self.types.get_mut(id.index()) {
+            entry.hero = Some(hero);
+        }
+    }
+
+    /// `id`'s away record, if it has one.
+    pub(crate) fn away(&self, id: HeroTypeId) -> Option<&Away> {
+        self.types
+            .get(id.index())
+            .and_then(|entry| entry.away.as_ref())
+    }
+
+    /// `id`'s away record to change, if it has one.
+    pub(crate) fn away_mut(&mut self, id: HeroTypeId) -> Option<&mut Away> {
+        self.types
+            .get_mut(id.index())
+            .and_then(|entry| entry.away.as_mut())
+    }
+
+    /// `id`'s army becomes `army` (a fill's, TWN-TAV-002): its away record's, a new one
+    /// ([`Away::new`]) for a type without.
+    pub(super) fn set_army(&mut self, id: HeroTypeId, army: Vec<ArmyStack>) {
+        if let Some(entry) = self.types.get_mut(id.index()) {
+            match &mut entry.away {
+                Some(away) => away.army = army,
+                None => entry.away = Some(Away::new(army)),
+            }
+        }
+    }
+
+    /// The players' tavern parts, by player id.
+    pub(crate) fn taverns(&self) -> &[Tavern] {
+        &self.players
+    }
+
+    /// `player`'s tavern part, if the player exists.
+    pub(crate) fn tavern(&self, player: PlayerId) -> Option<&Tavern> {
+        self.players.get(player.index())
+    }
+
+    /// `player`'s tavern part to change, if the player exists.
+    pub(crate) fn tavern_mut(&mut self, player: PlayerId) -> Option<&mut Tavern> {
+        self.players.get_mut(player.index())
+    }
+
+    /// The types `colour` may take that are free, in type order, with the ruleset's records.
+    pub(super) fn free_for<'r>(
+        &self,
+        core: &'r Ruleset,
+        colour: u8,
+    ) -> impl Iterator<Item = (HeroTypeId, &'r HeroType)> + use<'_, 'r> {
+        core.hero_types()
+            .iter()
+            .zip(&self.types)
+            .zip(0..)
+            .filter(move |&((_, entry), _)| {
+                entry.status == HeroStatus::Free
+                    && entry
+                        .mask
+                        .checked_shr(u32::from(colour))
+                        .is_some_and(|m| m & 1 == 1)
+            })
+            .filter_map(|((ty, _), index)| HeroTypeId::from_index(index).map(|id| (id, ty)))
     }
 
     /// The draw (TWN-SET-007; `hero_draw_of_faction` 0x4BB400, survey `E09-towns.md` §4.4): one
@@ -118,27 +287,15 @@ impl HeroPool {
         colour: u8,
         draws: &mut Rng,
     ) -> Option<(HeroTypeId, &'r HeroType)> {
-        let takeable = || {
-            core.hero_types()
-                .iter()
-                .zip(&self.types)
-                .zip(0..)
-                .filter(move |&((_, &(status, mask)), _)| {
-                    status == HeroStatus::Free
-                        && mask
-                            .checked_shr(u32::from(colour))
-                            .is_some_and(|m| m & 1 == 1)
-                })
-                .filter_map(|((ty, _), index)| HeroTypeId::from_index(index).map(|id| (id, ty)))
-        };
-        let of_faction: Vec<_> = takeable()
+        let of_faction: Vec<_> = self
+            .free_for(core, colour)
             .filter(|(_, ty)| {
                 core.hero_class(ty.class)
                     .is_some_and(|class| Some(class.faction) == faction)
             })
             .collect();
         let listed = if of_faction.is_empty() {
-            takeable().collect()
+            self.free_for(core, colour).collect()
         } else {
             of_faction
         };
@@ -150,13 +307,17 @@ impl HeroPool {
 }
 
 impl CanonicalHash for HeroPool {
-    /// The game state hash's encoding (v23, E09 T7b1): the number of types, then each type in
-    /// index order: where it stands (0 free, 1 taken and its colour, 2 a prisoner's, 3 out) and
-    /// its colour mask.
+    /// The game state hash's encoding (v23, E09 T7b1; v33, E09 T37a): the number of types, then
+    /// each type in index order: where it stands (0 free, 1 taken and its colour, 2 a prisoner's,
+    /// 3 out, since v33 4 offered) and its colour mask, since v33 its record (0 none, 1 and its id)
+    /// and its away record (0 none, 1 and its points left, the day's maximum, its formation, 1
+    /// tight, its tactics flag, its army's length and each stack's slot, creature and count);
+    /// since v33 the number of players, then each player's faction (0 none, 1 and its id), its two
+    /// slots (0 empty, 1 and the type) and their returning marks.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_len(self.types.len());
-        for &(status, mask) in &self.types {
-            match status {
+        for entry in &self.types {
+            match entry.status {
                 HeroStatus::Free => h.write_u8(0),
                 HeroStatus::Taken(colour) => {
                     h.write_u8(1);
@@ -164,8 +325,52 @@ impl CanonicalHash for HeroPool {
                 }
                 HeroStatus::Prisoner => h.write_u8(2),
                 HeroStatus::Out => h.write_u8(3),
+                HeroStatus::Offered => h.write_u8(4),
             }
-            h.write_u8(mask);
+            h.write_u8(entry.mask);
+            match entry.hero {
+                None => h.write_u8(0),
+                Some(hero) => {
+                    h.write_u8(1);
+                    h.write_u16(hero.raw());
+                }
+            }
+            match &entry.away {
+                None => h.write_u8(0),
+                Some(away) => {
+                    h.write_u8(1);
+                    h.write_u32(away.movement);
+                    h.write_u32(away.max_movement);
+                    h.write_bool(away.formation == Formation::Tight);
+                    h.write_bool(away.tactics);
+                    h.write_len(away.army.len());
+                    for stack in &away.army {
+                        h.write_u8(stack.slot);
+                        stack.creature.hash_into(h);
+                        h.write_u32(stack.count);
+                    }
+                }
+            }
+        }
+        h.write_len(self.players.len());
+        for tavern in &self.players {
+            match tavern.faction {
+                None => h.write_u8(0),
+                Some(faction) => {
+                    h.write_u8(1);
+                    faction.hash_into(h);
+                }
+            }
+            for (slot, &returning) in tavern.slots.iter().zip(&tavern.returning) {
+                match slot {
+                    None => h.write_u8(0),
+                    Some(hero_type) => {
+                        h.write_u8(1);
+                        hero_type.hash_into(h);
+                    }
+                }
+                h.write_bool(returning);
+            }
         }
     }
 }

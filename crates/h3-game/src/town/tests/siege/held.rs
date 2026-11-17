@@ -173,7 +173,7 @@ fn a_garrison_hero_keeps_its_town_as_the_winner_and_leaves_the_game_beaten() {
     assert_eq!(adventure.owner(1), Some(RED));
     assert_eq!(adventure.hero(HERO).unwrap().pos, OUTSIDE);
     assert!(garrison(&game).is_empty());
-    assert_eq!(game.hero_pool().status(hero_type), Some(HeroStatus::Free));
+    assert_eq!(game.pool().status(hero_type), Some(HeroStatus::Free));
 }
 
 // covers: TWN-SIE-001, TWN-VIS-002, GAM-BAT-001

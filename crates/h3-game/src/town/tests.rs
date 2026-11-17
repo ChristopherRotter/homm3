@@ -1033,4 +1033,5 @@ mod portal;
 mod recruit;
 mod rows;
 mod siege;
+mod tavern;
 mod view;

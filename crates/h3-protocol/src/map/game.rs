@@ -25,8 +25,9 @@ use h3_contracts::{ArmyStack as EngineStack, FortLevel};
 use h3_game::{
     DecisionView, GameRuleset, GameState, GarrisonStackView, GarrisonView, HeroInfo as EngineInfo,
     HireCreature as EngineCreature, HireSeen as EngineSeen, HireView, LevelUpView, MapGarrisonView,
-    MonthKind, PlayerView, SlotState as EngineSlot, TownBuildingsView, TownOwnerView, TownView,
-    Viewer, WeekKind,
+    MonthKind, PlayerView, SlotState as EngineSlot, TavernHero as EngineTavernHero,
+    TavernHeroView as EngineTavernView, TavernPart as EngineTavernPart, TownBuildingsView,
+    TownOwnerView, TownView, Viewer, WeekKind,
 };
 use h3_heroes::{
     ArtifactInstance, HeroDetails as EngineDetails, OfferLevels as EngineLevels,
@@ -41,8 +42,8 @@ use crate::wire::game::{
     Guards, HeroDetails, HeroInfo, Hire, HireCreature, HireSeen, HireTarget, Known,
     KnownObject as WireKnownObject, LevelUp, MapGarrison, MapHero, Monster, Month, Object,
     ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, RevealedArea,
-    RevealedView, SkillLevel, SlotState, Summoned, Tile, Town, TownBuildings, TownOwnerFacts,
-    UniversityVisit, VisitBonus, Week,
+    RevealedView, SkillLevel, SlotState, Summoned, TavernHero, TavernHeroHead, TavernPart, Tile,
+    Town, TownBuildings, TownOwnerFacts, UniversityVisit, VisitBonus, Week,
 };
 
 mod command;
@@ -120,6 +121,7 @@ pub(crate) fn observation(o: &h3_game::GameObservation) -> GameObservation {
         adventure,
         towns,
         garrisons,
+        tavern,
         battle,
     } = o;
     GameObservation {
@@ -139,7 +141,75 @@ pub(crate) fn observation(o: &h3_game::GameObservation) -> GameObservation {
         adventure: adventure_view(adventure),
         towns: towns.iter().map(town).collect(),
         garrisons: map_garrisons(garrisons),
+        tavern: tavern.each_ref().map(|view| view.as_ref().map(tavern_hero)),
         battle: battle.as_ref().map(crate::map::observation),
+    }
+}
+
+/// A tavern hero's parts without a list on the wire (protocol v70, E09 T37a).
+pub(super) const fn tavern_head(h: EngineTavernHero) -> TavernHeroHead {
+    let EngineTavernHero {
+        id,
+        hero_type,
+        level,
+        experience,
+        primary,
+        mana,
+        carried,
+        formation,
+        tactics,
+    } = h;
+    TavernHeroHead {
+        id: id.raw(),
+        hero_type: hero_type.raw(),
+        level,
+        experience,
+        primary,
+        mana,
+        carried,
+        formation: formation_of(formation),
+        tactics,
+    }
+}
+
+/// A part of a tavern hero's view on the wire (protocol v70).
+pub(super) fn tavern_part(part: EngineTavernPart) -> TavernPart {
+    match part {
+        EngineTavernPart::Stack(stack) => TavernPart::Stack {
+            stack: army_stack(stack),
+        },
+        EngineTavernPart::Skill { skill, level } => TavernPart::Skill {
+            skill: SkillLevel {
+                skill: skill.raw(),
+                level,
+            },
+        },
+        EngineTavernPart::Artifact { place, artifact: a } => TavernPart::Artifact {
+            place: command::artifact_place(place),
+            artifact: artifact(a),
+        },
+    }
+}
+
+/// A tavern hero on the wire (protocol v70): its head, then its lists as its parts give them.
+fn tavern_hero(view: &EngineTavernView) -> TavernHero {
+    let mut hero = TavernHero {
+        hero: tavern_head(view.hero),
+        army: Vec::new(),
+        skills: Vec::new(),
+        artifacts: Vec::new(),
+    };
+    for part in view.parts() {
+        hero.see(tavern_part(part));
+    }
+    hero
+}
+
+/// A formation on the wire.
+const fn formation_of(formation: EngineFormation) -> Formation {
+    match formation {
+        EngineFormation::Loose => Formation::Loose,
+        EngineFormation::Tight => Formation::Tight,
     }
 }
 

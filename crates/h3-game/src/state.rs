@@ -33,7 +33,7 @@ use crate::observe::LevelUpView;
 use crate::town::{self, HeroPool};
 use crate::treasury::Treasuries;
 use crate::{GAME_STATE_HASH_VERSION, GameRuleset, GameSetup, GameSetupError, TimedEventSetup};
-use levels::Progression;
+pub(crate) use levels::Progression;
 use rests::{Held, Rest};
 
 mod battle;
@@ -313,14 +313,19 @@ pub struct GameState {
     /// The towns' stream (`StreamId::TOWNS`, E09 T26a2; ADR-0017 point 4, E09 decision 75): the
     /// week's kind (TWN-GRO-002), so that a town's draw never moves the game's stream.
     towns_rng: Rng,
+    /// The taverns' stream (`StreamId::TAVERNS`, E09 T37a; decision 115, design note §63): the
+    /// taverns' fills (TWN-TAV-002), so that no other stream's draw moves.
+    taverns_rng: Rng,
     /// The store of heroes (GAM-HER-001, E08 T18b): every hero's details by id, each shared
     /// between forks and copied on its first write (ADR-0017 point 1). The list too is shared, so
     /// a fork costs one reference count (`bench-check`: a list per fork cost the XL fork
     /// benchmark about 10 %); a write copies the list of references and the one hero.
     heroes: Arc<Vec<Arc<HeroDetails>>>,
     /// The hero pool (TWN-SET-005, E09 T7b1; ADR-0017's E09 paragraph): per core hero type
-    /// whether it is free, taken or out and the colours that may take it. Shared by forks and
-    /// copied on a write (a hero that leaves the map).
+    /// whether it is free, taken, offered or out, the colours that may take it and since E09 T37a
+    /// its record and away record, per player its faction and its two tavern heroes (design note
+    /// §61). Shared by forks and copied on a write (a hero that leaves the map, a fill, a turn
+    /// start that changes a tavern hero's points, a clear of a set mark).
     pool: Arc<HeroPool>,
     /// The store of towns (ADR-0028 point 4, E09 T7b2a; design note §14): every town's record and
     /// static part by `TownId`, as the build made them (TWN-SET-002 to -004). Shared by forks (a
@@ -440,12 +445,24 @@ impl GameState {
             calendar: Calendar::new(setup, &towns),
             rng: Rng::for_stream(seed, StreamId::GAME),
             towns_rng: Rng::for_stream(seed, StreamId::TOWNS),
+            taverns_rng: Rng::for_stream(seed, StreamId::TAVERNS),
             heroes,
             pool: Arc::new(pool),
             towns,
             progression: Arc::new(progression),
             adventure,
         };
+        // E09 T37a: the start's fill (TWN-TAV-002), each `Random` choice no start read drawn at
+        // it (TWN-SET-001; design note §61).
+        let undrawn: Vec<Option<town::FactionSet>> = setup
+            .players
+            .iter()
+            .map(|player| match player.start.choice {
+                Some(town::FactionChoice::Random) => Some(player.start.factions),
+                _ => None,
+            })
+            .collect();
+        town::tavern::at_start(&mut state, rules, &undrawn);
         let mut start = StartSink(Vec::new());
         state.start_group(rules, &mut start);
         // Only a town's events fire into it, so a map with some has a calendar, not shared yet.
@@ -482,6 +499,8 @@ impl GameState {
     ) -> Result<(), GameCommandError> {
         self.check_ready(player)?;
         self.players[player.index()].acting = false;
+        // rule: TWN-TAV-005
+        town::tavern::clear_marks(self, Some(player));
         sink.emit(GameEvent::TurnEnded { player });
         if self.players.iter().any(|p| p.acting) {
             return Ok(());
@@ -1358,6 +1377,8 @@ impl GameState {
             self.players[player.index()].acting = true;
             self.adventure
                 .start_turn(rules.core(), rules.adventure(), &self.heroes, player);
+            // E09 T37a: its tavern heroes' points (TWN-TAV-005).
+            town::tavern::start_turn(self, rules, player);
             sink.emit(GameEvent::TurnStarted { player });
             self.fire_events(player, sink);
             town::fire_events(self, rules, player, sink);
@@ -1538,6 +1559,22 @@ impl GameState {
         self.progression.banned()
     }
 
+    /// The hero pool (TWN-SET-005, E09 T7b1).
+    pub(crate) fn pool(&self) -> &HeroPool {
+        &self.pool
+    }
+
+    /// What the taverns write (E09 T37a, TWN-TAV-002): the pool, the store of heroes, the level
+    /// seeds and the taverns' stream.
+    pub(crate) fn taverns(&mut self) -> town::tavern::Parts<'_> {
+        town::tavern::Parts {
+            pool: &mut self.pool,
+            heroes: &mut self.heroes,
+            progression: &mut self.progression,
+            draws: &mut self.taverns_rng,
+        }
+    }
+
     /// The adventure context's state.
     pub const fn adventure(&self) -> &AdventureState {
         &self.adventure
@@ -1626,10 +1663,12 @@ impl CanonicalHash for GameState {
     /// (0 a hero and its id), its source (0 an object: its index, type and anchor); since v29 (E08
     /// T114a2) 8 a map garrison's exchange: its owner, its hero, the garrison's object index (a
     /// `u32`), type and anchor; since v19 (E08 T63b) the rests in holding order, as length
-    /// and entries ([`Held`]'s encoding); the game's stream; since v30 the towns' stream; since v5 the store of heroes
+    /// and entries ([`Held`]'s encoding); the game's stream; since v30 the towns' stream; since v33 (E09 T37a) the taverns' stream;
+    /// since v5 the store of heroes
     /// (length, then each hero's details by id, [`hash_details`]); since v23 (E09 T7b1) the hero
     /// pool (`HeroPool`'s encoding: the number of types, then each type's status, 0 free, 1 taken
-    /// and the colour, 2 a prisoner's, 3 out, and its colour mask); since v24 (E09 T7b2a) the
+    /// and the colour, 2 a prisoner's, 3 out, since v33 4 offered, and its colour mask, since v33
+    /// its record and away record, then each player's faction and tavern slots); since v24 (E09 T7b2a) the
     /// store of towns (`h3_towns::Towns`' encoding: the town state hash version, the number of
     /// towns, each town's faction and ever-built and forbidden sets in `TownId` order, then each
     /// town's static part, its name and events); since v10 (E08 T29) the
@@ -1855,6 +1894,7 @@ impl CanonicalHash for GameState {
         }
         self.rng.hash_into(h);
         self.towns_rng.hash_into(h);
+        self.taverns_rng.hash_into(h);
         h.write_len(self.heroes.len());
         for details in self.heroes.iter() {
             hash_details(details, h);
@@ -2019,6 +2059,20 @@ impl GameState {
         Arc::make_mut(&mut store[usize::from(hero.raw())]).mana = mana;
     }
 
+    /// Sets `hero`'s backpack (tests of a tavern hero's fill, E09 T37a).
+    pub(crate) fn set_backpack(&mut self, hero: HeroId, backpack: Vec<ArtifactInstance>) {
+        let store = Arc::make_mut(&mut self.heroes);
+        Arc::make_mut(&mut store[usize::from(hero.raw())]).backpack = backpack;
+    }
+
+    /// Sets `player`'s returning mark of `slot` (tests of the week's release and the marks' clears,
+    /// E09 T37a; a return sets it from E09 T38b).
+    pub(crate) fn set_returning(&mut self, player: PlayerId, slot: usize) {
+        if let Some(tavern) = Arc::make_mut(&mut self.pool).tavern_mut(player) {
+            tavern.returning[slot] = true;
+        }
+    }
+
     /// Replaces the schedule (tests of turn groups larger than sequential play) and restarts the
     /// first group's turn (its players' timed and town events fire again: such tests have none).
     pub(crate) fn set_schedule(&mut self, rules: &GameRuleset, groups: Vec<Vec<PlayerId>>) {
@@ -2038,11 +2092,6 @@ impl GameState {
     /// A hero's level seed (GAM-HER-002).
     pub(crate) fn level_seed(&self, hero: HeroId) -> u8 {
         self.progression.seed(hero)
-    }
-
-    /// The hero pool (TWN-SET-005, E09 T7b1).
-    pub(crate) fn hero_pool(&self) -> &HeroPool {
-        &self.pool
     }
 
     /// Whether two games share their hero pool (a fork's is shared until a write copies it).

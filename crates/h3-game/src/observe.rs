@@ -22,6 +22,7 @@ use h3_heroes::{HeroDetails, PrimarySkill, SlotState};
 
 use crate::command::GameEvent;
 use crate::garrisons::{MapGarrisonView, garrison_views, revealed};
+use crate::town::tavern::TavernHeroView;
 use crate::town::view::{TownView, town_views, views_of};
 use crate::{GameRuleset, GameState, MonthKind, WeekKind};
 
@@ -81,6 +82,11 @@ pub struct GameObservation {
     /// and anchor, with its owner, its army at the viewer's level (TWN-VEW-002, -003) and, for its
     /// owner's team, its removable flag.
     pub garrisons: Vec<MapGarrisonView>,
+    /// The viewer's two tavern heroes by slot (TWN-TAV-002; E09 T37a, design note §75, decision
+    /// 134): each one's view as the tavern's held hero screen shows it, none for an empty slot;
+    /// shown whether or not the viewer owns a Tavern (they tell nothing of another player).
+    /// Another player's never show.
+    pub tavern: [Option<TavernHeroView>; 2],
     /// The battle of the viewer's first open decision, as the viewer's side sees it
     /// (`h3_battle::observe`, ADR-0013 point 9; GAM-BAT-001, E08 T19a); other players' battles
     /// never show.
@@ -347,6 +353,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
         adventure,
         towns,
         garrisons,
+        tavern: crate::town::tavern::views(state, player),
         battle: state.battle(player).and_then(|open| {
             open.side_of(player)
                 .map(|side| h3_battle::observe(open.state(), rules.battle(), side))
@@ -472,6 +479,8 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::TownChanged { player: owner, .. }
         | GameEvent::TownStackSeen { player: owner, .. }
         | GameEvent::TownIncomeSeen { player: owner, .. }
+        | GameEvent::TavernOffered { player: owner, .. }
+        | GameEvent::TavernPartSeen { player: owner, .. }
         | GameEvent::GarrisonChanged { player: owner, .. }
         | GameEvent::GarrisonStackSeen { player: owner, .. }
         | GameEvent::HeroChanged { player: owner, .. }

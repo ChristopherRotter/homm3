@@ -11,8 +11,8 @@ use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, ArmyRef, ArmySlot, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset,
     GameState, GarrisonStackView, GarrisonView, HeroInfo, LevelUpView, MapGarrisonView,
-    OWNER_LEVEL, TAVERN_LEVELS, TownBuildingsView, TownOwnerView, TownView, Viewer, apply,
-    legal_commands, legal_moves, observe, project,
+    OWNER_LEVEL, TAVERN_LEVELS, TavernHeroView, TavernPart, TownBuildingsView, TownOwnerView,
+    TownView, Viewer, apply, legal_commands, legal_moves, observe, project,
 };
 use h3_heroes::HeroDetails;
 use proptest::collection::vec;
@@ -1130,9 +1130,36 @@ fn check_told(
         .filter_map(|t| Some((t.town, t.garrison.army.clone()?)))
         .collect();
     let mut ended = false;
+    // E09 T37a: the viewer's tavern heroes as told, each slot's head then its parts.
+    let mut tavern = before.tavern.clone();
     let alone = Viewers::NONE.with(viewer);
     for event in told {
         match *event {
+            // E09 T37a (TWN-TAV-002): a slot's new hero, its lists following, the viewer's alone.
+            GameEvent::TavernOffered { player, slot, hero } => {
+                prop_assert_eq!(player, viewer);
+                let view = tavern.get_mut(usize::from(slot));
+                prop_assert!(view.is_some(), "{:?} of no slot", event);
+                *view.unwrap() = hero.map(|hero| TavernHeroView {
+                    hero,
+                    army: Vec::new(),
+                    skills: Vec::new(),
+                    artifacts: Vec::new(),
+                });
+            }
+            GameEvent::TavernPartSeen { player, slot, part } => {
+                prop_assert_eq!(player, viewer);
+                let view = tavern.get_mut(usize::from(slot)).and_then(Option::as_mut);
+                prop_assert!(view.is_some(), "{:?} without its slot's hero", event);
+                let view = view.unwrap();
+                match part {
+                    TavernPart::Stack(stack) => view.army.push(stack),
+                    TavernPart::Skill { skill, level } => view.skills.push((skill, level)),
+                    TavernPart::Artifact { place, artifact } => {
+                        view.artifacts.push((place, artifact));
+                    }
+                }
+            }
             GameEvent::HeroChanged { player, hero, .. }
             | GameEvent::CreaturesRaised { player, hero, .. }
             | GameEvent::LevelGained { player, hero, .. } => {
@@ -1954,6 +1981,21 @@ fn check_told(
             prop_assert!(changed.contains(&hero.id), "{:?} changed untold", was);
         }
     }
+    // E09 T37a: its tavern heroes as told, but for a new day's spell points (no event, as its
+    // heroes' above).
+    let rested = |view: &Option<TavernHeroView>| {
+        view.clone().map(|mut view| {
+            if after.day != before.day {
+                view.hero.mana = 0;
+            }
+            view
+        })
+    };
+    let (seen, folded): (Vec<_>, Vec<_>) = (
+        after.tavern.iter().map(rested).collect(),
+        tavern.iter().map(rested).collect(),
+    );
+    prop_assert_eq!(seen, folded, "the tavern heroes changed untold");
     prop_assert_eq!(after.month, month);
     prop_assert_eq!(after.week, week);
     prop_assert_eq!(after.day, day);
