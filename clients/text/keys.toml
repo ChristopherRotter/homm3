@@ -2701,6 +2701,81 @@ original = [{ at = "HELP:28:1" }]
 id = "shell.scenario.help.size"
 original = [{ at = "HELP:106:1" }]
 
+# M3 T1b2: the labels', the filters', the columns' and the bar's (337) right press; then the
+# teams' dialog's title and names (scenario_teams_dialog 0x576540).
+[[key]]
+id = "shell.scenario.help.description-label"
+original = [{ at = "HELP:22:1" }]
+
+[[key]]
+id = "shell.scenario.help.player-difficulty"
+original = [{ at = "HELP:49:1" }]
+
+[[key]]
+id = "shell.scenario.help.rating-label"
+original = [{ at = "HELP:50:1" }]
+
+[[key]]
+id = "shell.scenario.help.map-difficulty-label"
+original = [{ at = "HELP:51:1" }]
+
+[[key]]
+id = "shell.scenario.help.filter-small"
+original = [{ at = "HELP:54:1" }]
+
+[[key]]
+id = "shell.scenario.help.filter-medium"
+original = [{ at = "HELP:55:1" }]
+
+[[key]]
+id = "shell.scenario.help.filter-large"
+original = [{ at = "HELP:56:1" }]
+
+[[key]]
+id = "shell.scenario.help.filter-extra-large"
+original = [{ at = "HELP:57:1" }]
+
+[[key]]
+id = "shell.scenario.help.filter-all"
+original = [{ at = "HELP:58:1" }]
+
+[[key]]
+id = "shell.scenario.help.sort-players"
+original = [{ at = "HELP:107:1" }]
+
+[[key]]
+id = "shell.scenario.help.sort-size"
+original = [{ at = "HELP:108:1" }]
+
+[[key]]
+id = "shell.scenario.help.sort-version"
+original = [{ at = "HELP:109:1" }]
+
+[[key]]
+id = "shell.scenario.help.sort-name"
+original = [{ at = "HELP:110:1" }]
+
+[[key]]
+id = "shell.scenario.help.sort-victory"
+original = [{ at = "HELP:111:1" }]
+
+[[key]]
+id = "shell.scenario.help.sort-loss"
+original = [{ at = "HELP:112:1" }]
+
+[[key]]
+id = "shell.scenario.help.bar"
+original = [{ at = "HELP:254:1" }]
+
+[[key]]
+id = "shell.scenario.teams.title"
+original = [{ at = "GENRLTXT:658" }]
+
+[[key]]
+id = "shell.scenario.teams.team"
+args = { team = "number" }
+original = [{ at = "GENRLTXT:657", printf = ["team"] }]
+
 # The client's own texts (E27 M2 T6b2, decision 37): no original form, their messages in the
 # client's own pack beside this file (`en.json`; E17 design §9.2), which must give each one.
 #

@@ -527,7 +527,8 @@ last ones the players' rows', §3.13, §3.14).
   the random map's choice (+0x37F), shows 101, 361, the rows, the bar, the filters and the columns
   (a network guest's disabled), and the first time (+0x1864 clear) builds the list with the busy
   cursor, the screen redrawn and GENRLTXT 503 (reading the map files) drawn at (123, 122, 184, 25)
-  meanwhile. Its argument picks the list's kind (+0x66): 0 the files, 1 the random maps' (§3.16).
+  meanwhile (*corrected at M3 T1b2*, §20.3: the opening builds it; only a network game's message
+  1015 clears the flag). Its argument picks the list's kind (+0x66): 0 the files, 1 the random maps' (§3.16).
 - **The files** (`scenario_list_build` 0x582B40): the folder `maps` (new), `games` (load and
   save) or `random_maps` (the kind 1); the pattern by `scenario_file_patterns` 0x683458: `*.h3m`
   (new), `*.gm?` (load, save), `*.cgm` (the campaign's saves), `*.tut` and `*.tgm` (the tutorial's
@@ -2566,5 +2567,66 @@ mark's last whole frame, those it draws over them after, the strip as a stale re
 ### 19.6 Not built (T1b2 on)
 
 GENRLTXT 503 while the list is read (§3.3: drawn after the items, before the build; a shot of it
-needs the read held), the right press's popups on the columns, the filters, the bar and the
-labels and texts (`scn-right`), the flags' strip's teams dialog (0x576540); T2's items above.
+needs the read held; **corrected at T1b2, §20.3: a network game's alone**), the right press's
+popups on the columns, the filters, the bar and the labels and texts (`scn-right`), the flags'
+strip's teams dialog (0x576540); T2's items above.
+
+## 20. The right press and the teams' dialog (M3 T1b2, 2026-11-17)
+
+Read from `Heroes3.exe` (§3.8 completed, §3.3 corrected) and compared with `scn-right` (its
+original's frames played again as kept). The client: `h3_view::shell::scenario` (`HELPED`,
+`TEAMS`, `BAR`, `TeamsLook`, `Teams`, `teams_names`), the layout's `[scenario.teams]`,
+`h3_view::message::frame` (public now).
+
+### 20.1 The right press (`scenario_dialog_right_click` 0x5822D0)
+
+- Rows 142 to 159 nothing (true at once); 362 to 385 the players' popups (T3); 387 the teams'
+  dialog (§20.2); any other id, and 386 (case 4), `dialog_right_click` 0x5FF790 with the item's
+  hint (`Help.txt` record id − 83 for 104 to 344, §3.8), then 0x58AE80, the dialog's redraw
+  (vtable +0x14 with 0, 0xFFFF0001, 0xFFFF) and `scenario_dialog_redraw`: the client's whole
+  redraw as the popup closes.
+- The item is the last in order whose box holds the point (`dialog_item_at`): 134 (`MAP_SIZE`,
+  record 51) over 132 (record 49) at x 414 to 503, 132 from 504 to 664 (no recipe), 133 record
+  50; 105 the description's label, record 22; the filters 137 to 141 records 54 to 58; the
+  columns 190 to 195 records 107 to 112; the bar (337, created after the panel 101) record 254.
+  The flags 112 to 127 and the enemies' label 386 lie under the strip 387 (later in order): their
+  hints never show. The name, the description and the victory's and loss's texts are the
+  redraw's (the client's own ids): nothing, as recorded.
+
+### 20.2 The teams' dialog
+
+- **Built** (`scenario_teams_dialog_new` 0x5764D0 with 1 unless +0x65 or +0x64; then
+  `scenario_teams_dialog` 0x576540): the base (0x48FE60, flags 0x12: a shadow), the teams
+  (`scenario_teams_group` 0x576930): each colour that plays (game +0x1F6D0 not negative) and not
+  yet in a team starts one, every later colour that plays of its team (game +0x1F879) joins it;
+  the teams in the order of their first colour.
+- **Its items:** the frame (`dialog_frame_build` 0x48FF00: `diboxbck.pcx` tiles, `dialgbox.def`
+  in the DEF's own colours, not recoloured) at (272, (600 − h) / 2), 256 wide, h = ((50 × teams +
+  56) / 64 + 1) × 64 (4 teams: 320); the title GENRLTXT 658 (`medfont.fnt`, colour 1, alignment
+  1; its braces the highlight) at (10, 20, 236, 36); each team *k* from 0 "Team %d" (GENRLTXT
+  657) of *k* + 1 (`smalfont.fnt`, colour 1, alignment 1) at (10, 56 + 50 *k*, 236, 18) and its
+  colours' flags (`itgflags.def`, the colour's frame) 18 apart from x (256 − (18 *n* − 3)) / 2, at
+  y 76 + 50 *k*, 15 × 20.
+- **Run** modally (`dialog_run_modal`): the cursor shows (the arrow as it was); its procedure
+  (`scenario_popup_proc` 0x575430, the four players' popups' too) ends at the right button's
+  release (message 0x40) and ignores the rest (a pending network message ends it too). Then the
+  redraw as §20.1's.
+- *Provisional:* the client's ids for the original's −1 (the title 1, the names 2 on, the flags
+  10 on; the frame's from 200); no dialog without a selection (an empty list's panel: T2).
+
+### 20.3 GENRLTXT 503: a network game's alone (§3.3, §19.6 corrected)
+
+The toggle draws GENRLTXT 503 only with +0x1864 clear, and `scenario_slots_new` 0x57F740 (the
+constructor's) builds the list at the opening and sets it, as `scenario_slots_load` does: a
+single scenario's, the hot seat's and a load's first showing reads nothing. The flag is cleared
+only by `scenario_list_reread` 0x58B120, a network game's message 1015 (`scenario_network_message`
+0x5887A0, codes 1000 to 1084): the list read again with the busy cursor and 503 shown. So 503
+belongs to the network modes (`CLT-STUB-6`); no shot is possible before them. The client builds
+the list at its first showing (T1b1), which shows the same as the original's build at the
+opening.
+
+### 20.4 The recordings and the comparisons
+
+`scn-right` played again (both runs as kept); `drawn`: 30 of 30 exact (15 before: the columns,
+the filters, the bar, the two labels, the teams), recorded. The `scenario` group otherwise as
+recorded (`scn-new` 31, `scn-list-keys` 16, `scn-filter` 7 exact; the others as at T1b1).

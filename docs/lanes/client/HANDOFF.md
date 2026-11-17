@@ -5,7 +5,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 48). **M1 and M2 closed** (2026-11-13, 2026-11-16; `E27-archive.md`; the build record
+  to 49). **M1 and M2 closed** (2026-11-13, 2026-11-16; `E27-archive.md`; the build record
   `E27-log.md`; the readings `E27-design.md` §1 to §17, M3's from §18): the start's clips and
   their sound, start-up loading, the main menu, New Game's and Load Game's menus, Quit, the
   stubs and the client's own pack, the Multiplayer dialog and the hot seat's names, the edits;
@@ -13,18 +13,18 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   shipped map listed and read whole, Begin a notice after the loading bar, Options to M4):
   **T1a done** (2026-11-17, decisions 45 and 46: the frame and the information panel), **T1b1
   done** (2026-11-17, decision 47: T1b cut in two; the list, its sort, filters, keys and scroll
-  bar, `h3_ui::scrollbar`; 59 of 67 exact, the rest the ties' order; CLT-Q138 (b): decision 48).
-  **Next: M3 T1b2** (the list's right press, the teams dialog, GENRLTXT 503: the queue).
+  bar, `h3_ui::scrollbar`; 59 of 67 exact, the rest the ties' order; CLT-Q138 (b): decision 48),
+  **T1b2 done** (2026-11-17, decision 49: the right press's popups, the teams' dialog; `scn-right`
+  30 of 30 exact; GENRLTXT 503 a network game's alone, to `CLT-STUB-6`: design §20.3).
+  **Next: M3 T2** (the panel's rest, the difficulty, Begin's messages: the queue).
   Decisions to carry: the dialogs' input one
   implementation (20; `h3_ui::input`); the shell's code as the battle's (21); decision 22's
   fixes; every pixel of a Smacker clip through its palette (24); every clip's sound at the
   effects setting (27); every Bink frame whole (28); the start's fade from the screen as shown
   (32); a clip's track played out (34); the main menu's buttons drawn in their order (36); the
   edits type what the keyboard prints (39); a menu opening anew takes the hover (40); a silent
-  Smacker clip's frames from their due times (43). Open pull requests: #988
-  (`client/e27-m3-fix-message-caption`, `master`'s client build) and #990
-  (`client/e27-m3-t1b1`, T1b1's, stacked on it: rebase onto `master` once #988 merges): watch
-  both until they merge. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
+  Smacker clip's frames from their due times (43). Open pull request: T1b2's
+  (`client/e27-m3-t1b2`): watch it until it merges. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
   epic's "Placed at the closure", the queue's inbox). E28 and E29 are backlog sketches.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+
   drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`.
@@ -58,6 +58,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-17, E27 M3 T1b2 (done; `client/e27-m3-t1b2`).** T1b2 whole (decision 49). The PC's
+  64 files and the manuals staged at once (each checked by SHA-256). Read the right press's cases
+  and items, the teams' dialog whole; built the popups of the labels, filters, columns and bar and
+  the teams' dialog; `scn-right` 30 of 30 exact. GENRLTXT 503 found a network game's alone (a
+  harness hold built for it never reached, removed; the user told; TRAPS). Record: `E27-log.md`,
+  "M3 T1b2".
 - **2026-11-17, E27 M3 T1b1 (done; `client/e27-m3-t1b1`).** T1b cut in two with the user
   (decision 47). The PC's 64 files and the manuals staged at once (SHA-256 checked); `master`'s
   client build broken by #982 against #983: fixed in #988 first. Read `H3DlgScrollbar` whole and
@@ -72,9 +78,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   screen, its panel, buttons, hotkeys and popups, the maps read at the shell's start; `scn-new` 30
   of 31 exact. CLT-Q137 asked and answered (b). M2's leftover found met (`Key::Other`). Record:
   `E27-log.md`, "M3 T1a".
-- **2026-11-16 to 17, E27 M2 T8 (done; `client/e27-m2-t8`).** Kept whole, sub-agents for the
-  bounded jobs (two fresh reviewers, two fixers in a worktree). The original data staged at once
-  (64 files, checked by SHA-256); 88 of 91 recipes played again on the town lane's new `xdd.dll`
-  as kept (the full Smacker starts not played); the review's 17 findings fixed; `drawn` all exact; CLT-Q129 to CLT-Q136 asked and
-  answered; M2 archived, M3 refined; the README's row in `shared/e27-m2-closure` (#978). The VM
-  restarted twice and the disk filled once (TRAPS). Record: `E27-log.md`, "M2 T8".

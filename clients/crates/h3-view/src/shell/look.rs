@@ -18,7 +18,7 @@ use h3_ui::ui::{Dialog, Draw, Shown};
 use serde::Deserialize;
 
 use super::menu::{Arrow, Front, Kind, Stale, TITLE};
-use super::scenario::ListLook;
+use super::scenario::{ListLook, TeamsLook};
 use super::{Game, Screen};
 use crate::message::MessageLayout;
 
@@ -63,6 +63,8 @@ pub struct ScenarioLayout {
     pub dialog: Dialog,
     /// The list's rows as the redraw draws them and its scroll bar (E27 M3 T1b1).
     pub list: ListLook,
+    /// The teams' dialog of the flags' strip's right press (E27 M3 T1b2).
+    pub teams: TeamsLook,
 }
 
 /// A cursor's DEF and frame.
@@ -242,6 +244,7 @@ pub fn names(layout: &ShellLayout) -> Vec<String> {
         }
     }
     names.extend(super::scenario::list_names(&layout.scenario.list));
+    names.extend(super::scenario::teams_names(&layout.scenario.teams));
     let m = &layout.message;
     names.extend(
         [

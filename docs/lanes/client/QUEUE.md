@@ -14,18 +14,19 @@ need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the ha
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T1b2
+#### E27 M3 T2
 
-T1b2 The list's right press (the epic's M3 table; design §3.8, §19.6; decision 47): the popups
-of the columns, the filters and the bar (`Help.txt` record id − 83), a row's (nothing), the size
-mark's, the labels' and the texts' (`scn-right`: the map's and the rating's labels, the
-description, the name, the victory's and the loss's texts), the flags' strip's teams dialog (387,
-`scenario_teams_dialog` 0x576540, unread: a new game's variant); GENRLTXT 503 in a shot (§3.3,
-§19.6: drawn after the items and before the build; the harness needs a step inside the read);
-exact against `scn-right` (its original's frames from `h3shell.py run --only scn-right`). The
-screen's code: `h3_view::shell::scenario` (the list since T1b1; `Scenario::right`, `HELPED`,
-`Texts::help`), the partial redraw's rule (CLT-Q138, §19.4) for what a popup's close redraws.
-Then T2 to T7 as the M3 table lists them (T2's items found at T1b1: §19.5).
+T2 The information panel's rest, the difficulty, Begin and Back (the epic's M3 table; design
+§3.5, §3.6, §18.2, §19.5): the panel of every map (the description's scroll bar for a text too
+long for its box; the empty list's panel, which keeps the filter's size mark, §19.3; the teams'
+dialog of an empty list, §20.2's provisional none), the difficulty's presses (107 to 111) and the
+rating, the build's difficulty (`impossible-list`: the build sets `scenario_last_difficulty` from
+the selected record's +0x33C, 0x58314E), the victory's text of `scn-info`'s row-08 and row-15,
+Begin's messages (GENRLTXT 530 and the empty list's); exact against `scn-info` (19 of 21 now),
+`scn-difficulty` (3 of 8), `scn-begin-none` (0 of 4; its `what` corrected: 530 is a filter's),
+`scn-begin-filter` (3 of 6 up to its load). The screen's code: `h3_view::shell::scenario`; a new
+command says whether it redraws whole or the select's partial way (TRAPS, CLT-Q138). Then T3 to
+T7 as the M3 table lists them.
 
 ## Inbox
 

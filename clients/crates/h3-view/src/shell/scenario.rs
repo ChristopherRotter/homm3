@@ -17,9 +17,13 @@
 //!   (188, Escape) DEF buttons; a press holds a button in its own loop (`h3_ui::input`), its
 //!   sample with it, the command at the release over it. Back ends the screen (0x7801: New
 //!   Game's menu again). The hover changes nothing (no status line).
-//! - **A right press** (`scenario_dialog_right_click` 0x5822D0, §3.8): the item's `Help.txt`
+//! - **A right press** (`scenario_dialog_right_click` 0x5822D0, §3.8, §20): the item's `Help.txt`
 //!   right-click text (record id − 83) in a popup of style 4 while the right button is held, the
-//!   cursor hidden; none for an item without one, nor while the mouse holds a button.
+//!   cursor hidden; the list's bar's too (337: record 254); none for an item without one, a list
+//!   row, nor while the mouse holds a button. On the flags' strip (387) the teams' dialog
+//!   (`scenario_teams_dialog` 0x576540, M3 T1b2) while the right button is held, the cursor
+//!   showing: "Team %d" of each team of the colours that play, in the order of their first
+//!   colour, each with its colours' flags. The screen is redrawn whole as either closes.
 //!
 //! - **The list** (E27 M3 T1b1; §3.3, §3.4, §19): Show Available Scenarios (128) shows its panel,
 //!   title, sizes' label, rows, filters, columns and scroll bar (`scenario_list_toggle` 0x580A70,
@@ -40,11 +44,11 @@
 //!   the name then the file's name (CLT-Q90); the size's first press after the build descending
 //!   in the original's profile (its recorded key 1), ascending in the client's (CLT-Q91 (c)).
 //!
-//! *Not built yet:* GENRLTXT 503 while the list is read, the right press's popups on the list,
-//! its labels and texts, and the flags' strip's teams dialog (387: M3 T1b2), the difficulty's
-//! presses and Begin (T2: a double press begins nothing yet), the advanced options (129: T3), the
-//! random map (130: T5), a description too long for its box (its scroll bar: T2), the hot seat's
-//! and the load's modes (the client's stub until T4 and M4).
+//! *Not built yet:* the difficulty's presses and Begin (T2: a double press begins nothing yet),
+//! the advanced options (129: T3), the random map (130: T5), a description too long for its box
+//! (its scroll bar: T2), the hot seat's and the load's modes (the client's stub until T4 and M4),
+//! GENRLTXT 503 while the list is read again (a network game's message 1015 alone, `sub_58B120`
+//! 0x58B120: the network modes', `CLT-STUB-6`; design §20.3).
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -119,6 +123,12 @@ pub const PANEL_BACK: u16 = 1020;
 pub const ENEMIES_LABEL: u16 = 386;
 /// The flags' strip `scenario_team_flags` 0x585300 restores and shows (456, 402, 290, 25).
 pub const STRIP: [i32; 4] = [456, 402, 290, 25];
+/// The flags' strip as an item (387, over the flags and the enemies' label): its right press the
+/// teams' dialog (`scenario_teams_dialog` 0x576540).
+pub const TEAMS: u16 = 387;
+/// The list's scroll bar (337, `scrollbar_create` 0x5960D0; drawn beside the dialog's items): its
+/// right press the hint of `Help.txt`'s record 254, as an item's.
+pub const BAR: u16 = 337;
 /// The key the list is built in (`scenario_list_finish` 0x582E90: the version, then the name).
 pub const BUILT_KEY: u8 = 2;
 /// A second row press within this many milliseconds of the last begins (`scenario_row_click`
@@ -149,9 +159,11 @@ pub const LABELS: [(u16, &str); 14] = [
 /// rating, the allies, the enemies).
 pub const COLONED: [u16; 4] = [132, 133, 1013, 386];
 
-/// The items with a right press's popup in this task, by id, with their names in the key
-/// catalogue (`shell.scenario.help.<name>`: `Help.txt`'s record id − 83, its right-click text).
-pub const HELPED: [(u16, &str); 11] = [
+/// The items with a right press's popup, by id, with their names in the key catalogue
+/// (`shell.scenario.help.<name>`: `Help.txt`'s record id − 83, its right-click text): every item
+/// of 104 to 344 the screen has but the rows (none) and the flags (under the strip, [`TEAMS`]),
+/// and the bar ([`BAR`]).
+pub const HELPED: [(u16, &str); 27] = [
     (LIST, "list"),
     (ADVANCED, "advanced"),
     (RANDOM, "random"),
@@ -163,6 +175,22 @@ pub const HELPED: [(u16, &str); 11] = [
     (110, "expert"),
     (111, "impossible"),
     (SIZE, "size"),
+    (105, "description-label"),
+    (132, "player-difficulty"),
+    (133, "rating-label"),
+    (134, "map-difficulty-label"),
+    (137, "filter-small"),
+    (138, "filter-medium"),
+    (139, "filter-large"),
+    (140, "filter-extra-large"),
+    (141, "filter-all"),
+    (190, "sort-players"),
+    (191, "sort-size"),
+    (192, "sort-version"),
+    (193, "sort-name"),
+    (194, "sort-victory"),
+    (195, "sort-loss"),
+    (BAR, "bar"),
 ];
 
 /// The ratings by the chosen difficulty (`scenario_ratings` 0x683440), in percent.
@@ -355,7 +383,53 @@ pub struct Texts {
     pub players: Vec<String>,
     /// The list's size column (GENRLTXT 512 to 515): 36, 72 and 108 tiles, another.
     pub sizes: Vec<String>,
+    /// The teams' dialog (none: the strip's right press opens nothing).
+    pub teams: Option<Teams>,
 }
+
+/// The teams' dialog's look (`scenario_teams_dialog` 0x576540; the layout's `[scenario.teams]`):
+/// its frame's assets, the title and the first team's name and flag at their places in the
+/// dialog, the next team's `step` lower, a team's next flag `flag_step` to the right.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TeamsLook {
+    /// The background's tile (`diboxbck.pcx`).
+    pub background: String,
+    /// The frame's pieces (`dialgbox.def`, in its own colours).
+    pub frame: String,
+    /// The title (GENRLTXT 658: `medfont.fnt`, colour 1, alignment 1, at (10, 20, 236, 36)).
+    pub title: Label,
+    /// The first team's name ("Team %d", GENRLTXT 657: `smalfont.fnt`, at (10, 56, 236, 18)).
+    pub team: Label,
+    /// The first team's flags (`itgflags.def`, the colour's frame, at y 76, 15 × 20): their row
+    /// centred on the dialog (its x unused).
+    pub flag: Def,
+    /// A team's height (50).
+    pub step: i32,
+    /// A flag's width with the gap to the next (18).
+    pub flag_step: i32,
+}
+
+/// The teams' dialog's look and texts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Teams {
+    /// The look.
+    pub look: TeamsLook,
+    /// The title.
+    pub title: String,
+    /// The teams' names, the first team's first ("Team %d" of 1 to 8).
+    pub names: Vec<String>,
+}
+
+/// The teams' dialog's place and width (`scenario_teams_dialog` 0x576540: 272, 256; centred on
+/// the screen's 600 rows).
+const TEAMS_X: i32 = 272;
+const TEAMS_WIDTH: i32 = 256;
+/// Its title's id, its names' first and its flags' first (the original's are −1; the frame's
+/// from 200).
+const TEAMS_TITLE: u16 = 1;
+const TEAMS_NAME: u16 = 2;
+const TEAMS_FLAG: u16 = 10;
 
 /// The list's rows as the redraw draws them (`scenario_dialog_redraw` 0x584550; design §3.4):
 /// each cell's item at the first row, the rows `step` apart, the selection's texts in the colour
@@ -402,12 +476,27 @@ pub fn list_names(look: &ListLook) -> Vec<String> {
     names
 }
 
+/// Every asset the teams' dialog names (the adapter's batch at the shell's start): its frame's,
+/// its texts' fonts and palette, the flags' DEF.
+#[must_use]
+pub fn teams_names(look: &TeamsLook) -> Vec<String> {
+    let mut names = alloc::vec![look.background.clone(), look.frame.clone()];
+    for label in [&look.title, &look.team] {
+        names.push(label.font.clone());
+        names.push(label.font_palette.clone());
+    }
+    names.extend(look.flag.def.clone());
+    names
+}
+
 /// What is open over the screen.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Over {
     Nothing,
     /// An item's help popup, while the right button is held.
     Help(u16),
+    /// The teams' dialog (`scenario_teams_dialog` 0x576540), while the right button is held.
+    Teams(MessageBox),
 }
 
 /// The scenario screen as it shows.
@@ -597,10 +686,10 @@ impl Scenario {
         Context::Scenario
     }
 
-    /// Whether the cursor shows (a help popup hides it).
+    /// Whether the cursor shows (a help popup hides it; the teams' dialog runs with it).
     #[must_use]
     pub const fn cursor(&self) -> bool {
-        matches!(self.over, Over::Nothing)
+        matches!(self.over, Over::Nothing | Over::Teams(_))
     }
 
     /// The shell's clock is `ms`: a row's double press is timed on it, from the screen's opening
@@ -1060,6 +1149,7 @@ impl Scenario {
                 .get(id)
                 .map(|m| m.dialog.draws(&m.shown, players))
                 .unwrap_or_default(),
+            Over::Teams(m) => m.dialog.draws(&m.shown, players),
             Over::Nothing => Vec::new(),
         }
     }
@@ -1083,7 +1173,7 @@ impl Scenario {
         }
         match self.over {
             Over::Nothing => Did::held(self.input.moved(&self.dialog, &mut self.shown, point)),
-            Over::Help(_) => Did::default(),
+            Over::Help(_) | Over::Teams(_) => Did::default(),
         }
     }
 
@@ -1091,8 +1181,11 @@ impl Scenario {
     /// shared input's buttons (a hidden item takes no press).
     pub fn press(&mut self, point: [i32; 2]) -> Did {
         self.pointer = point;
-        if self.over != Over::Nothing {
-            return self.close_help();
+        match self.over {
+            Over::Nothing => {}
+            Over::Help(_) => return self.close_help(),
+            // The dialog's procedure (0x575430) takes the right release alone.
+            Over::Teams(_) => return Did::default(),
         }
         let inside = self.inside(point);
         if self.showing && self.row.is_none() && self.bar.contains(inside) {
@@ -1139,25 +1232,104 @@ impl Scenario {
                 self.clicked(did.changed, did.clicked)
             }
             Over::Help(_) => self.close_help(),
+            Over::Teams(_) => Did::default(),
         }
     }
 
-    /// The right button pressed at `point`: the help of the item there, unless the mouse holds a
-    /// button or the bar.
+    /// The right button pressed at `point` (`scenario_dialog_right_click` 0x5822D0): on the
+    /// flags' strip the teams' dialog, on the list's bar or another item its help, unless the
+    /// mouse holds a button or the bar.
     pub fn right(&mut self, point: [i32; 2]) -> Did {
         if self.over != Over::Nothing || self.input.holds_button() || self.bar.held() {
             return Did::default();
         }
-        match self
-            .item_at(point)
-            .filter(|id| self.texts.help.contains_key(id))
-        {
+        let on_bar = self.showing && self.bar.contains(self.inside(point));
+        let id = if on_bar {
+            Some(BAR)
+        } else {
+            self.item_at(point)
+        };
+        if id == Some(TEAMS) {
+            return self.teams_dialog().map_or_else(Did::default, |m| {
+                self.over = Over::Teams(m);
+                Did::CHANGED
+            });
+        }
+        match id.filter(|id| self.texts.help.contains_key(id)) {
             Some(id) => {
                 self.over = Over::Help(id);
                 Did::CHANGED
             }
             None => Did::default(),
         }
+    }
+
+    /// The teams' dialog of the entry selected (`scenario_teams_dialog` 0x576540, its teams
+    /// 0x576930): the colours that play grouped by team, the teams in the order of their first
+    /// colour, each team's name and its colours' flags in colour order; the dialog
+    /// [`TEAMS_WIDTH`] wide at x [`TEAMS_X`], ((50 × teams + 56) / 64 + 1) × 64 high, centred on
+    /// the screen's rows, casting a shadow (its flags 0x12), its frame in the DEF's own colours.
+    /// None without a selection (*provisional*: T2's empty list) or without the dialog's texts.
+    fn teams_dialog(&self) -> Option<MessageBox> {
+        let teams = self.texts.teams.as_ref()?;
+        let entry = self
+            .selected
+            .and_then(|i| self.listed.get(i))
+            .and_then(|&e| self.entries.get(e))?;
+        let mut groups: Vec<(u8, Vec<u8>)> = Vec::new();
+        for colour in (0..8u8).filter(|&c| entry.seats[usize::from(c)].plays()) {
+            let team = entry.teams[usize::from(colour)];
+            match groups.iter_mut().find(|(t, _)| *t == team) {
+                Some((_, colours)) => colours.push(colour),
+                None => groups.push((team, alloc::vec![colour])),
+            }
+        }
+        let look = &teams.look;
+        let count = i32::try_from(groups.len()).unwrap_or(0);
+        let height = ((look.step * count + 56) / 64 + 1) * 64;
+        let mut items = crate::message::frame(
+            (&look.background, &look.frame),
+            [i64::from(TEAMS_WIDTH), i64::from(height)],
+        );
+        let mut shown = Shown::default();
+        items.push(h3_ui::ui::Item::Label(Label {
+            id: TEAMS_TITLE,
+            ..look.title.clone()
+        }));
+        shown.texts.insert(TEAMS_TITLE, teams.title.clone());
+        let mut flag = TEAMS_FLAG;
+        for ((k, (_, colours)), name) in (0i32..).zip(&groups).zip(TEAMS_NAME..) {
+            let dy = look.step * k;
+            let [x, y] = look.team.at;
+            items.push(h3_ui::ui::Item::Label(Label {
+                id: name,
+                at: [x, y + dy],
+                ..look.team.clone()
+            }));
+            shown
+                .texts
+                .insert(name, text_at(&teams.names, usize::from(name - TEAMS_NAME)));
+            let n = i32::try_from(colours.len()).unwrap_or(0);
+            let mut x = (TEAMS_WIDTH - (look.flag_step * n - 3)) / 2;
+            for &colour in colours {
+                items.push(h3_ui::ui::Item::Def(Def {
+                    id: flag,
+                    at: [x, look.flag.at[1] + dy],
+                    ..look.flag.clone()
+                }));
+                shown.frames.insert(flag, u32::from(colour));
+                flag += 1;
+                x += look.flag_step;
+            }
+        }
+        Some(MessageBox {
+            dialog: Dialog {
+                place: [TEAMS_X, (600 - height) / 2],
+                shadow: Some([TEAMS_WIDTH, height]),
+                items,
+            },
+            shown,
+        })
     }
 
     /// The right button released: the popup closed; the bar or a button the mouse holds released
@@ -1167,7 +1339,7 @@ impl Scenario {
             return self.release();
         }
         match self.over {
-            Over::Help(_) => self.close_help(),
+            Over::Help(_) | Over::Teams(_) => self.close_help(),
             Over::Nothing => {
                 let did = self.input.right_release(&mut self.shown);
                 self.clicked(did.changed, did.clicked)
@@ -1200,7 +1372,7 @@ impl Scenario {
                 let did = self.input.key_up(&mut self.shown, by);
                 self.clicked(did.changed, did.clicked)
             }
-            Over::Help(_) => {
+            Over::Help(_) | Over::Teams(_) => {
                 let did = self.input.let_go(&mut self.shown, Some(by));
                 Did {
                     changed: did.changed,
@@ -1236,7 +1408,8 @@ impl Scenario {
             .map(h3_ui::ui::Item::id)
     }
 
-    /// The help popup closed, the screen redrawn whole (§3.8).
+    /// The help popup or the teams' dialog closed (0x58AE80, the dialog's redraw, then
+    /// `scenario_dialog_redraw`), the screen redrawn whole (§3.8).
     fn close_help(&mut self) -> Did {
         self.over = Over::Nothing;
         self.whole();
