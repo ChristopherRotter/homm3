@@ -897,7 +897,13 @@ closure, then M3's refinement in a later session), sub-agents for the bounded jo
 reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
 
 - **Played again** (`h3shell.py run`, every recipe twice against `kept/`, on the town lane's new
-  `xdd.dll`: `setup.sh` run anew, its inbox note archived): RECORDINGS. Nothing recorded anew.
+  `xdd.dll`: `setup.sh` run anew, its inbox note archived): 88 of the 91 recipes the same in both
+  runs and as kept (`end-score-press`, the first after a VM restart, 10 ms apart between its runs
+  once, a cold start, and as kept at its rerun); `start-bink` as kept in its second run, its first
+  showing one frame of the 3DO logo 1 ms late (5578 against 5577, the same picture; coverage and
+  a build ran beside it: TRAPS); `start-smacker` and `start-smacker-sound` not played (the two full
+  Smacker starts, about 50 minutes each, as M1 T3 left the full starts: the harness's change
+  cannot reach the start's clips, and `drawn` compares their every frame). Nothing recorded anew.
   The game's disk check (TRAPS) kept off by a ballast file sized before each recipe.
 - **Reviewer 1** (items 1 to 37): 33 kept, 4 changed (2, 10, 15, 23); its findings: F4 skipping
   the start in the window, `message::Open`'s own input loop (decision 20), the DLL's 16-bit copy
@@ -940,7 +946,10 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
   fixer A's gap (a key without an `h3_sdl::Key` variant reaches no window) into M3 T1.
 - **The comparisons:** `drawn` with the fixed viewer: 91 recipes, 235 shots drawn, all exact, as
   recorded.
-- **Gates:** GATES.
+- **Gates:** `RUST_TEST_THREADS=1 check.sh --no-coverage` with the data staged: every gate passed;
+  the coverage as CI runs it (`H3_INSTALL` empty): 100 % lines and regions once a dead guard in
+  `Replay::ended` was dropped (its region only); `cargo xtask verify --scope client --summary
+  --with-original-data`: no failing step (exit 2).
 - **The sandbox:** the VM restarted twice (about 23:17, under the Wine runs beside a parallel
   `cargo test` and rustc on 7 GB, and again at 00:46), and the disk filled once (the two
   checkouts' debug artifacts in one target, 14 GB, beside a coverage target of 5.7 GB): TRAPS.

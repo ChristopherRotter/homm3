@@ -58,8 +58,8 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 - **2026-11-16 to 17, E27 M2 T8 (done; `client/e27-m2-t8`).** Kept whole, sub-agents for the
   bounded jobs (two fresh reviewers, two fixers in a worktree). The original data staged at once
-  (64 files, checked by SHA-256); every recipe played again on the town lane's new `xdd.dll`, as
-  kept; the review's 17 findings fixed; `drawn` all exact; CLT-Q129 to CLT-Q136 asked and
+  (64 files, checked by SHA-256); 88 of 91 recipes played again on the town lane's new `xdd.dll`
+  as kept (the full Smacker starts not played); the review's 17 findings fixed; `drawn` all exact; CLT-Q129 to CLT-Q136 asked and
   answered; M2 archived, M3 refined; the README's row in `shared/e27-m2-closure` (#978). The VM
   restarted twice and the disk filled once (TRAPS). Record: `E27-log.md`, "M2 T8".
 - **2026-11-16, E27 M2 T7b (done; `client/e27-m2-t7b`).** Kept whole. The original data staged
