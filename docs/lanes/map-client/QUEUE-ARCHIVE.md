@@ -594,3 +594,19 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
   creature and split dialogs' items by name (`h3adv.SCREEN_ITEMS`); a step's `screen = "hero"`
   and `actions`; a battle's tactics phase ended at once in `fight` (its message's OK, then Start).
   The harness check gained Kit and Full (Blue's eight heroes): passed under Wine.
+
+### E24 M4 T1b2 — a computer player's moves in sight, played by the viewer
+
+- **Scope:** T1b cut in two by the user at its start (2026-11-17); T1b1 read and recorded it
+  (design §5.2, the log's "M4 T1b1"). The viewer plays the five `ai-*` sequences of
+  `clients/map/to-record.toml` exactly: a computer player's turn after End Turn from the
+  `[[turn]]` facts (kind 5 built, the view centred on the hero, the cursor hidden from its first
+  seen step) and the timeline (its walk from the `hero` and `walk` lines as M2's, at the
+  sequence's `computer_speed`; kind 5's step by §5.2's rule, checked against the `other` lines;
+  `blackout`), the next day's heroes from the `[[turn]]` tables' `heroes`; the minimap's shield
+  and the blank buttons of a computer's turn read first (`covered_view_redraw` without Blackout,
+  the minimap's draw in a computer's turn); speed 4's single draws on the client's clock; each
+  sequence then moved into `sequences.toml` (`to-record.toml` removed once empty), `drawn
+  --record`; MCL-Q30's sound run; MCL-Q31 built as the original's.
+- **Acceptance:** as T1a's.
+- **Depends on:** T1b1 (done 2026-11-17). **Status:** done 2026-11-17 (whole; the log's "M4 T1b2").

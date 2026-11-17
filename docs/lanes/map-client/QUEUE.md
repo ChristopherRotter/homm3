@@ -18,22 +18,6 @@ context; a task that grows is cut at a seam agreed with the user. Code readings 
 (`clients/capture/README.md`), never in git. Every oddity of the original a reading or a capture
 finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
-### E24 M4 T1b2 — a computer player's moves in sight, played by the viewer
-
-- **Scope:** T1b cut in two by the user at its start (2026-11-17); T1b1 read and recorded it
-  (design §5.2, the log's "M4 T1b1"). The viewer plays the five `ai-*` sequences of
-  `clients/map/to-record.toml` exactly: a computer player's turn after End Turn from the
-  `[[turn]]` facts (kind 5 built, the view centred on the hero, the cursor hidden from its first
-  seen step) and the timeline (its walk from the `hero` and `walk` lines as M2's, at the
-  sequence's `computer_speed`; kind 5's step by §5.2's rule, checked against the `other` lines;
-  `blackout`), the next day's heroes from the `[[turn]]` tables' `heroes`; the minimap's shield
-  and the blank buttons of a computer's turn read first (`covered_view_redraw` without Blackout,
-  the minimap's draw in a computer's turn); speed 4's single draws on the client's clock; each
-  sequence then moved into `sequences.toml` (`to-record.toml` removed once empty), `drawn
-  --record`; MCL-Q30's sound run; MCL-Q31 built as the original's.
-- **Acceptance:** as T1a's.
-- **Depends on:** T1b1 (done 2026-11-17). **Status:** next.
-
 ### E24 M4 T2 — a visit's results
 
 - **Scope:** read and build what the original shows when a visit or an event changes the game,
@@ -52,7 +36,7 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
   New sequences recorded in the original, the harness giving the answers.
 - **Acceptance:** as T1a's.
 - **Depends on:** T1a (done: `h3_ui::message`, styles 1 and 2 without pictures; T2 adds them).
-  **Status:** waiting (likely cut at its start with the user, by dialog family).
+  **Status:** next (likely cut at its start with the user, by dialog family).
 
 ### E24 M4 T3 — a record's start
 
@@ -78,7 +62,9 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 - **Scope:** a record's messages played over time: each event as T1 and T2 built it (the steps
   along the engine's paths as M2's walk, the reveals, the removals, the owners, the turns and
   days, the message boxes with the record's answers, the other players' turns as a computer
-  player's); the viewer's controls (pause, step, restart, a speed: the window's keys, new design,
+  player's, with what T1b2 left: several heroes and a boat in one computer's turn, its music
+  (`AITheme0` to `2`, design §5.1) and its walk's sounds, and speed 4's held draws shown on the
+  window's clock, which no recording can show: the steps come from the record); the viewer's controls (pause, step, restart, a speed: the window's keys, new design,
   each a review item). The check: scripted games (the same commands, no random draw between
   them) played in the engine and in the original, compared frame by frame, the original's
   visual moment from its recording; a golden adventure replay as a record viewed to its end, its

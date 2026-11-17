@@ -4,8 +4,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1**, **M2** and **M3** closed (`E24-archive.md`); the crate `clients/crates/h3-map-view`; 50 situations and 42 sequences exact on the whole screen (a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change needs"; `--bugs original` the comparisons' profile). **M4** refined (2026-10-31); T1a done (2026-11-17); **T1b cut in two by the user** (2026-11-17): **T1b1 done** (2026-11-17: a computer player's turn read, design §5.2; five `ai-*` sequences recorded twice, held in `clients/map/to-record.toml`), **next: T1b2** (the viewer plays them); T2 then T3 (waits for the adventure lane's object identity; the server lane's whole-game record is there), T5 for the client lane's battle entry. Open questions: **MCL-Q29**, **MCL-Q30** (its sound run is T1b2's), **MCL-Q31** (nothing blocked). Next id **MCL-Q32**.
-- **Open pull requests** (2026-11-17): T1b1's **#989** (`map-client/e24-m4-t1b1`, rebased onto `master` after #986 merged empty beside the client lane's #988 and the town lane's #987 mapped §5.1's addresses): check it first. Merged branches are the user's to delete (the proxy refuses it).
+- **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1**, **M2** and **M3** closed (`E24-archive.md`); the crate `clients/crates/h3-map-view`; 50 situations and 47 sequences exact on the whole screen (a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change needs"; `--bugs original` the comparisons' profile). **M4** refined (2026-10-31); T1a done (2026-11-17); T1b in two by the user: T1b1 and **T1b2 done** (2026-11-17: a computer player's turn in sight played by the viewer, its five `ai-*` sequences exact; speed 4's held draws on the window's clock; M4's review list started in the epic), **next: T2** (a visit's results; likely cut at its start with the user); then T3 (waits for the adventure lane's object identity; the server lane's whole-game record is there), T4 (has T1b2's gaps), T5 for the client lane's battle entry. Open questions: **MCL-Q29**, **MCL-Q30** (the sound run done: the new day sounds doubled; (b) recommended), **MCL-Q31** (nothing blocked). Next id **MCL-Q32**.
+- **Open pull requests** (2026-11-17): T1b2's (`map-client/e24-m4-t1b2`): check it first. Merged branches are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
 - **From E17** (`clients/README.md`; ADR-0020, ADR-0024): the decoders, the compositor, the SDL 3 adapter, the string catalogue, the gate, the harness (the original under Wine, `h3mem.py`, `h3map.py`: the runbook `clients/capture/README.md`).
@@ -29,11 +29,10 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
-- **2026-11-17, E24 M4 T1b2** (in progress; the user at the start: **no cut**, T1b2 whole):
-  the computer's screen read (design §5.2's "The computer's screen": the minimap's shield
-  `aishield.pcx`, items 6, 7, 8, 12 disabled); the five `ai-*` recorded again here (all `ok`);
-  `h3map.py`'s sequences take `sound` (MCL-Q30's run). Next: the viewer's build (a worker),
-  speed 4 on the window's clock, the sound run, the docs and the PR.
+- **2026-11-17, E24 M4 T1b2** (the user at the start: no cut): the computer's screen read
+  (the minimap's shield, kind 5's value), the five `ai-*` recorded again here, MCL-Q30's sound run
+  (`h3map.py`'s `sound`), the viewer's build by a worker (the log's "M4 T1b2"). Original data
+  staged (63 files) and a ballast file for the game's disk check (TRAPS). Nothing is waiting on the user's computer.
 - **2026-11-17, E24 M4 T1b1** (the user present at the cut): T1b cut in two; `master`'s clients
   build fixed apart (#986, empty beside #988); the computer's turn read (design §5.2), the harness's `seed` (the game
   seeds its generator from the running clock) and kind 5's facts, five `ai-*` sequences recorded
@@ -44,9 +43,4 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   and drawn exact, the viewer's turn's change by a worker (the log's "M4 T1a"); MCL-Q29, Q30.
   The server stopped twice and the VM restarted three times: the work resumed from the pushed
   commits. Original data staged (63 files) and a ballast file for the game's disk check (TRAPS).
-  Nothing is waiting on the user's computer.
-- **2026-10-31, E24 M4 T0** (the user present: every recommendation taken): M4 refined (the
-  log's "M4 T0"; its pull request): the input through `h3-protocol` with the server lane first
-  (ADR-0020 point 8), one player's view, the message boxes only, the battles in the same window;
-  inbox notes for the server, adventure and client lanes. No original data staged (docs only).
   Nothing is waiting on the user's computer.

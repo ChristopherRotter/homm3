@@ -2440,3 +2440,43 @@ baseline stopped at clippy: `master`'s Clients check was red.
   once the `[[turn]]` tables held the heroes.
 - **Questions:** MCL-Q31 (the view follows a computer's hero still under the fog). MCL-Q30's
   sound run moves to T1b2.
+
+### M4 T1b2 — a computer player's moves in sight, played by the viewer (2026-11-17)
+
+On `map-client/e24-m4-t1b2`, the user present at the start; `master` at #991. Original data
+staged from the PC (63 files, SHA-256 checked against the PC's: one digest of the sorted hashes,
+`9421f826…`); the setup's baseline stopped at its coverage step by a watcher (fmt, clippy, doc
+tests and deny passed), CI's green `master` standing in.
+
+- **No cut** (the user, at the start): T1b2 whole, though a seam was offered (the five sequences
+  first, speed 4's window and the sound run after).
+- **Read** (design §5.2's "The computer's screen"; `docs/exe/map.toml`): `covered_view_redraw`
+  0x4CA5B0 whole (now `read`), the new `ai_shield_draw` 0x4CA780 (the shield, `aishield.pcx`, over
+  the minimap's area), `minimap_draw`'s computer branch, `status_panel_set` 0x402C10 whole, the
+  adventure manager's +0x38C (`ai_shield_shown`, `structs.toml`). Kind 5's value corrected: 1 000
+  plus the **sum** of a computer's heroes' `hero_max_movement`, set for every colour when the
+  panel is built (§5.1, §5.2; the fog's first unseen steps leave it at the full value).
+- **The harness** (common, additive): kind 5's `[[turn]]` status keeps `value` (`Mem.status`:
+  the dialog's panel +0x98, its +0x44 per colour); `h3map.py`'s sequences take `sound` (a sound
+  run, its samples in `sounds.txt`). The five `ai-*` recorded again here (all `ok`), then
+  `ai-walk`, `ai-walk-slow` and `ai-walk-fog` once more for `value`.
+- **MCL-Q30's sound run** (`turn-day` with `sound = true`, a scratch sequence): `newday.wav`
+  starts twice at End Turn's millisecond on two channels (handles 7 and 8, 3 739 ms each): the new
+  day sounds doubled. MCL-Q30 updated, recommended (b); open for the user.
+- **Built** (a worker; design §5.2's *Built*): kind 5's panel and step, the computer's screen (the
+  four buttons disabled, the shield, the lists the viewer's), a computer's turn in the loop (the
+  busy cursor, its hero lifted and the view centred when seen, its walk from the recording's
+  `hero` lines at Computer Walk Speed 2 to 4, unseen steps taking no time, Blackout, the cursor
+  hidden from the first seen step, the next day with the `[[turn]]` table's heroes placed),
+  MCL-Q31 as the original's; speed 4's single draws held 20 ms each on the window's clock
+  (`HOLD_MS`, *provisional*, M4's review list, which starts here). Recorded, not read: the
+  redraws a computer's timed walk missed are caught up before the next day's whole redraw
+  (`ai-walk` at 1660). Not built (T4's entry has them): several heroes or a boat in one
+  computer's turn, its music and walk sounds, a hot seat's kind 5 texts; no recording can show
+  speed 4's held draws (no steps inside End Turn's millisecond).
+- **Checked:** the five sequences moved into `sequences.toml` (`to-record.toml` removed), every
+  frame exact (34, 50, 5, 5, 30) and the viewer's timelines the recorded ones, checked again by
+  the main session after the worker; `drawn` the rest the same, then `--record`;
+  `RUST_TEST_THREADS=1 check.sh --no-coverage` all gates; coverage outside `check.sh` 100 %
+  lines, regions and functions; the window under Xvfb (`--check 10`) on `ai-walk-fast`, `ai-walk`
+  and a scratch speed-4 walk (its 15 held draws read back exact).
