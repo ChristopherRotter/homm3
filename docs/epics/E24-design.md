@@ -3051,7 +3051,7 @@ two boxes: the client lane's reading of `scenario_condition_met` 0x4F2CE0 (E27 d
   | Learning Stone (100) | 143 with the experience (17, the points); 144 alone when visited | the experience, the marks, `hero_level_up` |
   | Star Axis (61) | 100 with Spell Power (33, subtype 1: "+1 …"); 101 alone when visited | +1 (Marletto Tower, the Garden of Revelation, the Mercenary Camp the same code: their records not read) |
   | Temple (96) | 140 with the good morale (14, no caption); 141 alone when visited | +1, +2 on the week's seventh day |
-  | Witch Hut (113) | 171 with the skill's name (`c_sprintf`) and the skill (20, 3 × skill + 3: Basic); 173 with the name alone when known or eight skills; 190 alone with none | the skill at Basic |
+  | Witch Hut (113) | 171 with the skill's name (`c_sprintf`) and the skill (20, 3 × skill + 3: Basic); with the name alone 172 when known (0x4A814F), 173 when eight skills (0x4A8183; T2a2 part B's reading, T2a1's had 173 for both); 190 alone with none | the skill at Basic |
   | Shrine (88 to 90) | `shrine_text_format` with ADVEVENT 127, 128 or 129 (by the level, `visit_object`'s) and the spell's name, with the spell (9); a refusal appends 174 (known), 131 (no Spell Book) or 130 (Wisdom) and shows no picture | the spell learned |
   | Magic Well (49) | 77, 78 or 79 alone | §10 of the bonuses' survey |
   | Sign (91) | the map's text, else RANDSIGN by its column mod 25 (`sign_default_texts`), alone | nothing (an Ocean Bottle, 59: then removed as a pile is, below) |
@@ -3081,6 +3081,39 @@ two boxes: the client lane's reading of `scenario_condition_met` 0x4F2CE0 (E27 d
   Bottle's removals are the same after their boxes (`artifact_pickup_remove`, 0x4A9B79). The
   rectangle is the view's middle seven tiles, where a hero visiting by a step stands beside the
   object (the view centred on the hero first).
+- **The rewards' boxes** (`grant_rewards` 0x49FA90's human path, read 2026-11-17 for T2a2): the
+  box's text starts as the map's (the function's first argument), its pictures a vector of (type,
+  subtype) pairs; a part pushes its picture and, when the box's text is empty, sets it to the
+  part's own line (ADVEVENT by `advevent_text_pointer`'s +0x20 + 4n, `%s` the hero's name). A box
+  is shown by `message_box_pictures` 0x4F7690 (centred) when a group ends holding a picture (after
+  the luck 0x4A0121, the resources 0x4A033C, the artifacts 0x4A04F1, the spells 0x4A0717, the
+  creatures) and when it holds eight (`reward_box_flush_full` 0x4A0B00), its text emptied after
+  each: **the map's text shows in the first box alone**, every later box opens with its first
+  part's text.
+
+  | Part (record) | Picture (type, subtype) | Its text |
+  |---|---|---|
+  | experience (+0x50 above 0; times the Learning, truncated) | 17, the amount | 175 "%s learns something." |
+  | primary skills (+0x78, each above 0) | 31 + the skill, the value | 175 |
+  | secondary skills (+0x80, each raised or learned) | 20, 3 × skill + 2 + level | 175 |
+  | spell points (+0x54, not 0) | 35, the amount | 176 below 0, else 177 |
+  | morale (+0x58, not 0) | 16 below 0, else 14 | 178, 179 |
+  | luck (+0x59, not 0) | 13 below 0, else 11 | 180, 181 |
+  | resources (+0x5C, seven, each not 0) | the resource, the amount (a loss less 100 000) | 182 a loss, else 183 |
+  | artifacts (+0x90, while the backpack holds fewer than 64) | 8, the artifact | 183 |
+  | spells (+0xA0, with a Spell Book, level at most 2 + Wisdom, not known) | 9, the spell | 184; 188 when the box holds a picture already (0x4A05C4), even over the map's text |
+  | creatures (+0xAC, seven slots) | 21, count << 16 \| creature | 185 for one (the singular), else 186 (the plural) |
+
+  After the creatures' box `army_dialog_with` takes those without room, then the experience is
+  given. Recorded (`find-event`: luck 1, mana 5, 500 gold, 5 Halberdiers, no text): the spell
+  points pushed first take the first slot (left), the luck the second (the harness's item order
+  lists them the other way); "Mephala gains magical energy." (177), "Mephala has found treasure."
+  (183), "Halberdiers join Mephala's army." (186). The resource bar shows the gold as the second
+  box opens (1060); the hero's slot (its movement bar), its luck, spell points and army show after
+  the last box (2260): the event fires inside the step (`hero_move_step` 0x481741), before the
+  step's end draws the slot. **An oddity:** two or more spells in the first box replace the map's
+  own text with 188 (an event or a Pandora's Box giving spells and nothing before them): the
+  map's text is lost; built as the original's (a question for the review list, not recorded).
 - **The turn's boxes:** at a turn's end with heroes but no town (`scenario_condition_met`, the
   days without a town −1 become 7) GENRLTXT 7, and at each later turn's start while the days run
   (`player_turn_start`, +0x3D at 0 or more) ArrayTxt 128 with the days left (129 on the last),
@@ -3089,9 +3122,10 @@ two boxes: the client lane's reading of `scenario_condition_met` 0x4F2CE0 (E27 d
   CLT-Q100, answered (b) for the client lane: the viewer names the player as the shell does, the
   empty name the comparisons' alone).
 - **Seen** (the recordings, hero speed 4, Enter's press at 1000 and release at 1060): the step and
-  the box in one millisecond (100: a step onto an entrance the object does not block moves the
-  hero there, the Windmill's, the Witch Hut's, the Temple's, the event's; a blocking one leaves the
-  hero beside it, the pile's, the artifact's, the sign's, the Stone's, the Axis's, the Shrine's),
+  the box in one millisecond (100: the step moves the hero onto the entrance, the Windmill's, the
+  Witch Hut's, the Temple's, the event's, and as their `hero` lines show the sign's, the Stone's,
+  the Axis's and the Shrine's; only the pile and the artifact, which block their tile, leave the
+  hero beside them: T2a2 part B's correction of T2a1's list),
   the view centred on the hero, the box over it with the default cursor; Enter's press draws OK
   pressed, its release closes the box and redraws (the objects' step due then). The boxes' places
   as the client lane's layout gives them: 320 × 384 at (240, 108) for a long text with a picture,
@@ -3129,8 +3163,9 @@ two boxes: the client lane's reading of `scenario_condition_met` 0x4F2CE0 (E27 d
   entrance word (the Windmill's resource bits 0 to 3 signed and amount 13 to 16, the Witch Hut's
   skill 13 to 19, a Shrine's spell 13 to 22), the hero's mark and the contents' "known" of the
   live part's `[hover]`, a sign's text from the map's body; `told`, the box's text and pictures as
-  §5.3's table; `visited`, the find as its visit leaves it; `gain`, what the panels show of the
-  visit), `town_lost` and `days_left` (the player's name the colour's, CLT-Q100 (b), empty with
+  §5.3's table (a known skill's Witch Hut 173 then: part B tells 172, the table corrected);
+  `visited`, the find as its visit leaves it; `gain`, what the panels show of the visit),
+  `town_lost` and `days_left` (the player's name the colour's, CLT-Q100 (b), empty with
   `--bugs original`; 129 at one day left, not read). The catalogue's keys `map.find.*` (23: the
   captions' formats and the finds' ADVEVENT records), `map.turn.town-lost`, `.days-left`,
   `.last-day` and the families `skill-level` (SKILLLEV 0 to 2), `sign` (RANDSIGN's 25); the tables'
@@ -3162,3 +3197,43 @@ two boxes: the client lane's reading of `scenario_condition_met` 0x4F2CE0 (E27 d
   and gains, the turn's two boxes by profile; the finds and `turn-no-town` replayed headless, a
   find told again, a gain at the close, the warning and the days left, the days' box before the
   week's), 100 % lines, regions and functions of both crates.
+- **Built** (M4 T2a2 part B, *provisional*): `finds` gains the Witch Hut's 172 (known) beside 173
+  (eight skills: the facts do not tell, so never), a pile (`Find::Pile`: the resource the
+  subclass, the amount the entrance word, gold's times 100; no box, `Find::found` its kind 6 with
+  ADVEVENT 113 and the name's first letter lower-cased), an artifact's plain pickup
+  (`Find::Artifact`: the `artifact-event` family's text and the picture; a pile or an artifact with
+  a message or guards is T2b's), the Magic Well (77, 78, 79 alone: the day mark from the facts, the
+  maximum `full_mana`, 10 × Knowledge without Intelligence; unit tests only), `Find::taken`,
+  `rewards` (the table above: `Reward`, each box with what shows as it opens, and the gain after
+  the last), `pickup` (the pickup's sound in turn from `pickup01`: the viewer's own choice for the
+  game's `random_between(1, 7)`, a review item). `Gain` holds the seven resources, the luck, the
+  spell points and the creatures joining (`joined`: the slot of their kind, else the first empty
+  one; none without room). The live part's `Status::Found` and the layout's `status_found` (the
+  panel above, resour82.def's 82 × 93 written into the layout); `status::window` draws it. The
+  tables' `[map.finds]` gain `found_ms` (5 000), `dissolve` (192, 160, 224 × 224), `dissolve_ms`
+  (65), `pickups` and `artifact_skills` (each artifact's primary skills from the packs, shown at a
+  pickup's end: `find-artifact`'s Centaurs Axe +2 Attack at 1580; the artifact taken as worn). The
+  timeline: `Found` gains `first` as a list (each box with its `Gain`), `again` optional, `found`,
+  `taken` (the object's index) and `event`; a key's step onto a taken find visits it from beside
+  (`Loop::visit_beside`: the hero lifted and turned, left on its tile, its points spent, its slot
+  and the minimap drawn): a pile's resources shown and kind 6 asked (the chooser's kind 6 until
+  `found_ms`), an artifact's box over the mouse shown; then `Loop::take`: the view drawn, the
+  object put in `Draw::gone`, the pickup's sound, the mouse hidden and `Draw::dissolve` (the draw
+  before, the rectangle, the step) at the start and every `dissolve_ms`, the palettes' deadline
+  moving with their cycling held, the actions given meanwhile waiting; eight steps on the view
+  without it, the gain left for the end (the artifact's skills), the step's end (`Loop::finish`)
+  and the idle step. An event's boxes (`message_box_pictures`, `h3_ui::message::pictures`) open one
+  after another; at an event on a walk's last tile the hero's slot is drawn after them, then the
+  scenario's test (*provisional*: its place after the boxes not read). The binary finds the events
+  by their objects (drawn nowhere, so on no tile's record), names the hero as the status window
+  does, rebuilds each level's index for the objects gone (a spare set kept for a dissolve's two
+  draws), and composes a dissolve's step from both draws with `h3_render::Screen::dissolve_rect`
+  (as it is; the window widens such a frame whole). Not built: a path's walk onto a pile or an
+  artifact (a key's step only), an event the map keeps after a visit (told once), an event's
+  guards, the Well's spell points on the panels, an artifact to the backpack.
+- **Checked** (M4 T2a2 part B): `frames --only <id> --reuse` on `find-pile`, `find-artifact` and
+  `find-event` (recorded in this sandbox): every frame exact (37, 13, 11), the viewer's timelines
+  the recorded ones line for line (98, 32, 40; `<id>-frames.txt` kept); the three moved into
+  `sequences.toml`, `to-record.toml` removed; `drawn` the 50 situations and 55 earlier sequences
+  the same, then `--record`; the window under Xvfb (`--check 10`) on `find-pile` (62 of 62
+  frames read back exact, its dissolve's frames among them) and `find-windmill` (54 of 54).

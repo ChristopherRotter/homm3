@@ -27,9 +27,10 @@ use crate::files;
 /// design §4.11); since T6a2b the owners' and contents' names (design §4.12: a colour's, a
 /// dwelling's, a resource's, a mine's, a bank's, a spell's, a Tree's price, a skill's, a seer's,
 /// an artifact's); since E24 M4 T1a a normal month's and week's names (`month-name.6`,
-/// `week-name.4`, design §5.1); since E24 M4 T2a2 a secondary skill's level's name and a default
-/// sign's text (`skill-level.0`, `sign.5`, design §5.3).
-pub const FAMILIES: [&str; 26] = [
+/// `week-name.4`, design §5.1); since E24 M4 T2a2 a secondary skill's level's name, a default
+/// sign's text and an artifact's pickup text (`skill-level.0`, `sign.5`, `artifact-event.7`,
+/// design §5.3).
+pub const FAMILIES: [&str; 27] = [
     "hero",
     "town-name",
     "map-hint",
@@ -56,6 +57,7 @@ pub const FAMILIES: [&str; 26] = [
     "week-name",
     "skill-level",
     "sign",
+    "artifact-event",
 ];
 
 /// The committed key catalogue (`clients/text/keys.toml`).

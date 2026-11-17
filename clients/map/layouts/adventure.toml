@@ -736,6 +736,49 @@ def = "HourGlas.def"
 at = [98, 51]
 size = [58, 64]
 
+# A resource found's status window (the kind 6, E24 M4 T2a2; design §5.3, AdStatOt.pcx built by
+# status_resource_create 0x451220): the text in smalfont.fnt (colour 4) at (10, 10), 156 x 146,
+# centred; with a resource its picture (resour82.def, the frame the resource) at ((176 - its
+# width) / 2, 50) and its amount (colour 1) at ((176 - its width) / 2, its height + 55), as wide as
+# it and the font's height (16), centred: resour82.def is 82 x 93 (*provisional*: its size
+# written here, the original's computed from the DEF).
+[status_found]
+place = [614, 400]
+
+[[status_found.items]]
+kind = "picture"
+id = 2000
+picture = "AdStatOt.pcx"
+at = [0, 0]
+size = [176, 166]
+
+[[status_found.items]]
+kind = "label"
+id = 2100
+at = [10, 10]
+size = [156, 146]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+
+[[status_found.items]]
+kind = "def"
+id = 2103
+def = "resour82.def"
+at = [47, 50]
+size = [82, 93]
+
+[[status_found.items]]
+kind = "label"
+id = 2102
+at = [47, 148]
+size = [82, 16]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 1
+
 # What the panels' logic needs (E24 M3 T2a, design §4.1): the buttons in the viewer's colours
 # (0x403F60), the underground button's DEF on the surface and underground (0x65F22C), sleep's while
 # the hero is awake and asleep (0x65F238); since E24 M4 T1b2 (design §5.2) the buttons a computer

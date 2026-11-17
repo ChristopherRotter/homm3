@@ -1,4 +1,4 @@
-# A turn's end and start without a town (E24 M4 T2a1; clients/map/to-record.toml `turn-no-town`;
+# A turn's end and start without a town (E24 M4 T2a1; clients/map/sequences.toml `turn-no-town`;
 # E24 design §5.3): Red's hero alone, no town, so End Turn warns that Red has lost its last town
 # (GENRLTXT 7 with Red's crest) and the next day tells the days left (ArrayTxt 128, the crest);
 # Blue's hero (a computer player's) far off in the fog, out of Red's sight.

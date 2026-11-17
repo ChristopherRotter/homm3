@@ -496,6 +496,55 @@ fn another_player_s_turn_s_window() {
     }
 }
 
+#[test]
+fn a_resource_found_s_window() {
+    // E24 M4 T2a2 part B: kind 6's panel, its text, the resource's frame and its amount
+    // (`find-pile`'s 70 000 gold); without a resource the text alone.
+    let layout = layout();
+    let found = |resource: i32| Kingdom {
+        status: Some(Status::Found(FoundStatus {
+            resource,
+            amount: 70_000,
+            text: "You find a small quantity of gold.".into(),
+        })),
+        ..Kingdom::default()
+    };
+    let (panel, shown) = window(
+        &layout,
+        &art(),
+        &lists(),
+        &live(found(6)),
+        &names(),
+        &texts(),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(panel.place, layout.status_found.place);
+    assert_eq!(
+        texts_of(&shown),
+        [
+            (id::FOUND_TEXT, "You find a small quantity of gold."),
+            (id::FOUND_AMOUNT, "70000")
+        ]
+    );
+    assert_eq!(shown.frames[&id::FOUND_PICTURE], 6);
+    for id in shown.frames.keys().chain(shown.texts.keys()) {
+        assert!(panel.item(*id).is_some(), "{id}");
+    }
+    let (_, shown) = window(
+        &layout,
+        &art(),
+        &lists(),
+        &live(found(-1)),
+        &names(),
+        &texts(),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(hidden(&shown), [id::FOUND_AMOUNT, id::FOUND_PICTURE]);
+    assert!(shown.frames.is_empty());
+}
+
 fn date_kingdom(frame: u32, [month, week, day]: [u16; 3]) -> Kingdom {
     Kingdom {
         status: Some(Status::Date(DateStatus { frame })),

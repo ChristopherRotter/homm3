@@ -995,3 +995,40 @@ inputs = [
     { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
     { at = 2000, keydown = "Return" }, { at = 2060, keyup = "Return" },
 ]
+
+[[sequence]]
+id = "find-pile"
+situation = "seq-find-pile"
+ms = 5600
+hero_speed = 4
+seed = 7
+why = "a gold pile picked up: the status window's kind 6 for 5 seconds, the pile dissolving"
+inputs = [
+    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
+]
+
+[[sequence]]
+id = "find-artifact"
+situation = "seq-find-artifact"
+ms = 1800
+hero_speed = 4
+seed = 7
+why = "an artifact picked up: its box, closed by Enter, then the artifact dissolving"
+inputs = [
+    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+]
+
+[[sequence]]
+id = "find-event"
+situation = "seq-find-event"
+ms = 2800
+hero_speed = 4
+seed = 7
+why = "an event's rewards: its boxes of pictures, each closed by Enter"
+inputs = [
+    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1600, keydown = "Return" }, { at = 1660, keyup = "Return" },
+    { at = 2200, keydown = "Return" }, { at = 2260, keyup = "Return" },
+]

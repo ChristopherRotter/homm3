@@ -194,7 +194,14 @@ town_days = 7
 # 35 frame 5; a secondary skill 20, the frame the subtype; a creature 21, the frame the creature +
 # 2; type 36, frame 6), the names as the recordings' boxes give them; the Learning Stone's
 # experience (visit_learning_stone 0x4A6330: 1000 times the hero's Learning, *provisional*: no
-# hero's skills known).
+# hero's skills known). Part B: a pile's kind 6 asked for 5000 ms (status_resource_set 0x416060);
+# an object taken (visit_resource_pile 0x4A4BE0, artifact_pickup_remove 0x49E170): the rectangle
+# (192, 160) 224 x 224 dissolved in steps of 65 ms (screen_dissolve 0x602DC0's argument), the
+# pickup's sound one of pickup01 to pickup07 (the game's random_between(1, 7) at 0x4A4D18; the
+# viewer's own choice, *provisional*: in turn). An artifact's primary skills, shown in the hero's
+# window at the pickup's end (find-artifact's Centaurs Axe, +2 Attack): [artifact, attack, defense,
+# power, knowledge], from the packs' `primary_skills` effects (packs/base, ab, sod core.toml;
+# *provisional*: the engine's in time, the artifact taken as worn).
 [map.finds]
 resources = "resour82.def"
 artifacts = "artifact.def"
@@ -207,6 +214,23 @@ secondary = "secsk82.def"
 creatures = "twcrport.def"
 gold = "resource.def"
 experience = 1000
+found_ms = 5000
+dissolve = [192, 160, 224, 224]
+dissolve_ms = 65
+pickups = [
+    "pickup01.wav", "pickup02.wav", "pickup03.wav", "pickup04.wav", "pickup05.wav", "pickup06.wav",
+    "pickup07.wav",
+]
+artifact_skills = [
+    [7, 2, 0, 0, 0], [8, 3, 0, 0, 0], [9, 4, 0, 0, 0], [10, 5, 0, 0, 0], [11, 6, 0, 0, 0],
+    [12, 12, -3, 0, 0], [13, 0, 2, 0, 0], [14, 0, 3, 0, 0], [15, 0, 4, 0, 0], [16, 0, 5, 0, 0],
+    [17, 0, 6, 0, 0], [18, -3, 12, 0, 0], [19, 0, 0, 0, 1], [20, 0, 0, 0, 2], [21, 0, 0, 0, 3],
+    [22, 0, 0, 0, 4], [23, 0, 0, 0, 5], [24, 0, 0, -2, 10], [25, 0, 0, 1, 0], [26, 0, 0, 2, 0],
+    [27, 0, 0, 3, 0], [28, 0, 0, 4, 0], [29, 0, 0, 5, 0], [30, 0, 0, 10, -2], [31, 1, 1, 1, 1],
+    [32, 2, 2, 2, 2], [33, 3, 3, 3, 3], [34, 4, 4, 4, 4], [35, 5, 5, 5, 5], [36, 6, 6, 6, 6],
+    [37, 1, 1, 0, 0], [38, 2, 2, 0, 0], [39, 3, 3, 0, 0], [40, 4, 4, 0, 0], [41, 0, 0, 1, 1],
+    [42, 0, 0, 2, 2], [43, 0, 0, 3, 3], [44, 0, 0, 4, 4], [128, 3, 3, 3, 6], [134, 6, 6, 6, 6],
+]
 
 [map.status]
 portraits = [

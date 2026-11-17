@@ -1,4 +1,4 @@
-# A find told (E24 M4 T2a1; clients/map/to-record.toml `find-temple`; E24 design §5.3):
+# A find told (E24 M4 T2a1; clients/map/sequences.toml `find-temple`; E24 design §5.3):
 # a Temple's morale (ADVEVENT 140, the good morale's picture).
 # Red's hero on (4, 4) steps right onto it (its entrance (5, 4)); Red's town out of the way,
 # so that no visit's scenario test warns of a town lost; Blue's hero far off in the fog.

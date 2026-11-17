@@ -1033,7 +1033,8 @@ original = [{ at = "GENRLTXT:388" }]
 # The finds' boxes (ADVEVENT's records; design §5.3's table): a Windmill's with its resource (170)
 # or empty (169); a Learning Stone's (143) or visited (144); a Star Axis's (100, 101); a Temple's
 # (140, 141); a Witch Hut's with the skill's name (the `secondary-skill` family) taught (171),
-# known or eight skills (173, as `visit_witch_hut` 0x4A8080 reads), deserted (190); a Shrine's: the
+# known (172, 0x4A814F), eight skills (173, 0x4A8183: `visit_witch_hut` 0x4A8080), deserted (190;
+# T2a2 part B's reading: part A had 173 for both); a Shrine's: the
 # executable's `shrine_text_format` 0x677750 with its level's text (127 to 129, `visit_object`'s by
 # the class) and the spell's name (`spell`), a refusal appended (174 known, 131 no Spell Book, 130
 # Wisdom). A sign without a text of its own: the `sign` family.
@@ -1077,6 +1078,11 @@ original = [{ at = "ADVEVENT:171", printf = ["skill"] }]
 [[key]]
 id = "map.find.witch-hut-known"
 args = { skill = "text" }
+original = [{ at = "ADVEVENT:172", printf = ["skill"] }]
+
+[[key]]
+id = "map.find.witch-hut-full"
+args = { skill = "text" }
 original = [{ at = "ADVEVENT:173", printf = ["skill"] }]
 
 [[key]]
@@ -1111,6 +1117,96 @@ original = [{ at = "ADVEVENT:131" }]
 [[key]]
 id = "map.find.shrine-wisdom"
 original = [{ at = "ADVEVENT:130" }]
+
+# Part B (E24 M4 T2a2; design §5.3): a pile's kind 6 (ADVEVENT 113 with the resource's name, its
+# first letter lower-cased: `visit_resource_pile` 0x4A4BE0); the Magic Well's (`visit_magic_well`
+# 0x4A3730: 77 the spell points restored, 78 drunk today, 79 at the maximum); an event's boxes
+# (`grant_rewards` 0x49FA90, the hero's name first): 175 the experience, a primary or a secondary
+# skill, 176 and 177 the spell points lost and gained, 178 and 179 the morale's, 180 and 181 the
+# luck's, 182 and 183 the resources lost and found (183 the artifacts' too), 184 a spell, 188 two or
+# more in a box, 185 one creature (its singular name) and 186 more (the plural). An artifact's
+# plain pickup: the `artifact-event` family.
+[[key]]
+id = "map.find.pile"
+args = { resource = "text" }
+original = [{ at = "ADVEVENT:113", printf = ["resource"] }]
+
+[[key]]
+id = "map.find.well"
+original = [{ at = "ADVEVENT:77" }]
+
+[[key]]
+id = "map.find.well-again"
+original = [{ at = "ADVEVENT:78" }]
+
+[[key]]
+id = "map.find.well-full"
+original = [{ at = "ADVEVENT:79" }]
+
+[[key]]
+id = "map.find.reward-experience"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:175", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-mana-lost"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:176", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-mana"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:177", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-morale-lost"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:178", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-morale"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:179", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-luck-lost"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:180", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-luck"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:181", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-treasure-lost"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:182", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-treasure"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:183", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-spell"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:184", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-spells"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:188", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-creature"
+args = { creature = "text", hero = "text" }
+original = [{ at = "ADVEVENT:185", printf = ["creature", "hero"] }]
+
+[[key]]
+id = "map.find.reward-creatures"
+args = { creatures = "text", hero = "text" }
+original = [{ at = "ADVEVENT:186", printf = ["creatures", "hero"] }]
 
 # A turn without a town (E24 M4 T2a2; design §5.3): at the turn's end GENRLTXT 7 with the player's
 # name (`scenario_condition_met` 0x4F2CE0), at each later day's start ArrayTxt 128 with the name and
@@ -2456,6 +2552,15 @@ optional = true
 id = "artifact"
 table = "ARTRAITS"
 first = 2
+column = 0
+optional = true
+
+# An artifact's plain pickup's text (ARTEVENT.TXT's record by the artifact, `artifact_pickup_texts`;
+# E24 M4 T2a2 part B, design §5.3): `artifact-event.<n>`. Only the map viewer lists it.
+[[family]]
+id = "artifact-event"
+table = "ARTEVENT"
+first = 0
 column = 0
 optional = true
 

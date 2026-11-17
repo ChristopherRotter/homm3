@@ -363,7 +363,10 @@ fn the_walks_frames_are_m2_t3bs() {
             "find-temple",
             "find-witch-hut",
             "find-shrine",
-            "find-sign"
+            "find-sign",
+            "find-pile",
+            "find-artifact",
+            "find-event"
         ]
     );
 }

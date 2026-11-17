@@ -134,6 +134,16 @@ def = "crest58.def"
 at = [20, 51]
 size = [58, 64]
 
+[status_found]
+place = [614, 400]
+
+[[status_found.items]]
+kind = "picture"
+id = 2000
+picture = "AdStatOt.pcx"
+at = [0, 0]
+size = [176, 166]
+
 [panels]
 coloured = [3]
 underground = ["iam010.def", "iam003.def"]
@@ -183,6 +193,8 @@ fn loads_a_layout_and_places_its_tiles() {
     // A computer player's turn's (E24 M4 T1b2): its panel, the buttons it disables, the shield.
     assert_eq!(layout.status_other.place, [614, 400]);
     assert_eq!(layout.panels.computer, [6, 7, 8, 12]);
+    // A resource found's (E24 M4 T2a2 part B).
+    assert_eq!(layout.status_found.items[0].id(), 2000);
     let names: Vec<String> = layout.names().into_iter().collect();
     assert_eq!(
         names,
