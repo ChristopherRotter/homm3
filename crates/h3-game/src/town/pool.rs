@@ -211,9 +211,10 @@ impl HeroPool {
     /// where a setup repeats one.
     pub(crate) fn record_heroes(&mut self, types: &[(HeroTypeId, &HeroType)]) {
         for (&(id, _), hero) in types.iter().zip((0..=u16::MAX).map(HeroId::new)) {
-            if let Some(record) = self.records.get_mut(id.index()) {
+            let record = self.records.get_mut(id.index());
+            record.into_iter().for_each(|record| {
                 record.hero.get_or_insert(hero);
-            }
+            });
         }
     }
 
@@ -232,9 +233,10 @@ impl HeroPool {
 
     /// `id`'s record becomes `hero` (a first draw's, design note §61).
     pub(super) fn set_record(&mut self, id: HeroTypeId, hero: HeroId) {
-        if let Some(record) = self.records.get_mut(id.index()) {
-            record.hero = Some(hero);
-        }
+        let record = self.records.get_mut(id.index());
+        record
+            .into_iter()
+            .for_each(|record| record.hero = Some(hero));
     }
 
     /// `id`'s away record, if it has one.
@@ -255,12 +257,41 @@ impl HeroPool {
     /// ([`Away::new`]) for a type without; its points stale, its record `full` as the fill left
     /// its spell points ([`Away::full`]).
     pub(super) fn set_army(&mut self, id: HeroTypeId, army: Vec<ArmyStack>, full: bool) {
-        if let Some(record) = self.records.get_mut(id.index()) {
-            let away = record.away.get_or_insert_with(|| Away::new(Vec::new()));
-            away.army = army;
-            away.stale = true;
-            away.full = full;
+        // A drawn type is the ruleset's.
+        let record = &mut self.records[id.index()];
+        let away = record.away.get_or_insert_with(|| Away::new(Vec::new()));
+        away.army = army;
+        away.stale = true;
+        away.full = full;
+    }
+
+    /// The week's release (TWN-TAV-002; `new_day_week_events` 0x4C8780, survey `E09-tavern.md`
+    /// §2.3; design note §63): per player in player order, slot 0 then slot 1, a slot holding a
+    /// hero whose returning mark is clear lets it go: its type free (its record and away record
+    /// kept), the slot empty. A returning hero stays (TD-18).
+    // rule: TWN-TAV-002
+    pub(super) fn release(&mut self) {
+        for tavern in &mut self.players {
+            for (slot, &returning) in tavern.slots.iter_mut().zip(&tavern.returning) {
+                let released = slot.filter(|_| !returning);
+                if let Some(id) = released {
+                    let entry = self.types.get_mut(id.index());
+                    entry.into_iter().for_each(|e| e.status = HeroStatus::Free);
+                    *slot = None;
+                }
+            }
         }
+    }
+
+    /// Whether a slot holds a hero whose returning mark is clear ([`Self::release`] frees it).
+    pub(super) fn releases(&self) -> bool {
+        let held = |t: &Tavern| {
+            t.slots
+                .iter()
+                .zip(t.returning)
+                .any(|(s, r)| s.is_some() && !r)
+        };
+        self.players.iter().any(held)
     }
 
     /// The records whose spell points are at their maximum, unchanged since ([`Away::full`]).
@@ -277,9 +308,8 @@ impl HeroPool {
     pub(super) fn class_counts(&self, classes: usize, colour: u8) -> Vec<u32> {
         let mut counts = vec![0_u32; classes];
         for entry in self.types.iter().filter(|e| e.takeable(colour)) {
-            if let Some(count) = counts.get_mut(entry.class.index()) {
-                *count += 1;
-            }
+            let count = counts.get_mut(entry.class.index());
+            count.into_iter().for_each(|count| *count += 1);
         }
         counts
     }

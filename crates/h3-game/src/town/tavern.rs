@@ -224,42 +224,19 @@ pub(crate) fn draw(
         let reached = left <= weight;
         left -= weight.min(left);
         reached
-    })?;
-    let nth = draws.range_inclusive(1, counts[class]);
-    let index = usize::try_from(nth - 1).unwrap_or(usize::MAX);
-    pool.nth_free(class, colour, index)
+    });
+    // The total's draw reaches a class with a weight, which has a count.
+    class.and_then(|class| {
+        let nth = draws.range_inclusive(1, counts[class]);
+        let index = usize::try_from(nth - 1).unwrap_or(usize::MAX);
+        pool.nth_free(class, colour, index)
+    })
 }
 
-/// The week's release (TWN-TAV-002; `new_day_week_events` 0x4C8780, survey §2.3; design note
-/// §63): per player in player order, slot 0 then slot 1, a slot holding a hero whose returning
-/// mark is clear lets it go: its type free (its record and away record kept), the slot empty. A
-/// returning hero stays (TD-18). The pool is written only when a slot is released.
-// rule: TWN-TAV-002
+/// The week's release ([`HeroPool::release`]), the pool written only when a slot is released.
 fn release(pool: &mut Arc<HeroPool>) {
-    let held = |t: &Tavern| {
-        t.slots
-            .iter()
-            .zip(t.returning)
-            .any(|(s, r)| s.is_some() && !r)
-    };
-    if !pool.taverns().iter().any(held) {
-        return;
-    }
-    let pool = Arc::make_mut(pool);
-    for player in (0..=u8::MAX).take(pool.taverns().len()).map(PlayerId::new) {
-        let Some(tavern) = pool.tavern(player).copied() else {
-            continue;
-        };
-        for (slot, (hero_type, returning)) in tavern.slots.iter().zip(tavern.returning).enumerate()
-        {
-            let Some(hero_type) = hero_type.filter(|_| !returning) else {
-                continue;
-            };
-            pool.free(hero_type);
-            if let Some(tavern) = pool.tavern_mut(player) {
-                tavern.slots[slot] = None;
-            }
-        }
+    if pool.releases() {
+        Arc::make_mut(pool).release();
     }
 }
 
@@ -286,27 +263,20 @@ fn fill(parts: Parts<'_>, rules: &GameRuleset, colours: &[u8], undrawn: &[Option
         progression,
         draws,
     } = parts;
-    for (player, &colour) in (0..=u8::MAX).map(PlayerId::new).zip(colours) {
-        let Some(&tavern) = pool.tavern(player) else {
-            continue;
-        };
-        let mut faction = tavern.faction;
-        if let Some(set) = undrawn
-            .get(player.index())
-            .copied()
-            .flatten()
-            .filter(|_| faction.is_none())
-        {
+    for (index, &colour) in colours.iter().enumerate() {
+        let player = PlayerId::new(u8::try_from(index).unwrap_or(u8::MAX));
+        let mut faction = pool.tavern(player).copied().unwrap_or_default().faction;
+        let set = undrawn.get(index).copied().flatten();
+        if let Some(set) = set.filter(|_| faction.is_none()) {
             let drawn = usize::try_from(draws.below(set.len())).unwrap_or(usize::MAX);
             faction = set.iter().nth(drawn);
-            if let Some(tavern) = Arc::make_mut(pool).tavern_mut(player) {
-                tavern.faction = faction;
-            }
+            let tavern = Arc::make_mut(pool).tavern_mut(player);
+            tavern
+                .into_iter()
+                .for_each(|tavern| tavern.faction = faction);
         }
         for slot in 0..2 {
-            let Some(tavern) = pool.tavern(player).copied() else {
-                break;
-            };
+            let tavern = pool.tavern(player).copied().unwrap_or_default();
             if tavern.slots[slot].is_some() {
                 continue;
             }
@@ -326,9 +296,9 @@ fn fill(parts: Parts<'_>, rules: &GameRuleset, colours: &[u8], undrawn: &[Option
             };
             let pool = Arc::make_mut(pool);
             pool.offer(hero_type);
-            if let Some(tavern) = pool.tavern_mut(player) {
-                tavern.slots[slot] = Some(hero_type);
-            }
+            let held = pool.tavern_mut(player);
+            held.into_iter()
+                .for_each(|tavern| tavern.slots[slot] = Some(hero_type));
             let store = Arc::make_mut(heroes);
             let made = pool.record(hero_type).is_none();
             let id = match pool.record(hero_type) {
@@ -343,9 +313,8 @@ fn fill(parts: Parts<'_>, rules: &GameRuleset, colours: &[u8], undrawn: &[Option
                     id
                 }
             };
-            let Some(details) = store.get_mut(usize::from(id.raw())).map(Arc::make_mut) else {
-                continue;
-            };
+            // A record's id indexes the store (the build's, or pushed above).
+            let details = Arc::make_mut(&mut store[usize::from(id.raw())]);
             let changes = h3_heroes::backpack_equipped(details, core);
             for &change in &changes {
                 h3_heroes::apply_change(details, core, change);
@@ -447,15 +416,12 @@ pub(crate) fn views(state: &GameState, player: PlayerId) -> [Option<TavernHeroVi
     let pool = state.pool();
     let slots = pool.tavern(player).map_or([None; 2], |t| t.slots);
     slots.map(|slot| {
-        let hero_type = slot?;
-        let id = pool.record(hero_type)?;
-        let away = pool.away(hero_type)?;
-        let details = state.heroes().get(usize::from(id.raw()))?;
-        Some(TavernHeroView::new(
-            id,
-            details,
-            (&away.army, away.formation, away.tactics),
-        ))
+        // A slot's type has its record and away record (the fill's).
+        let record = slot.and_then(|t| pool.record(t).zip(pool.away(t)));
+        record.and_then(|(id, away)| {
+            let details = state.heroes().get(usize::from(id.raw()));
+            details.map(|d| TavernHeroView::new(id, d, (&away.army, away.formation, away.tactics)))
+        })
     })
 }
 
@@ -471,25 +437,27 @@ pub(crate) fn start_turn(state: &mut GameState, rules: &GameRuleset, player: Pla
     let pool = state.pool();
     let slots = pool.tavern(player).map_or([None; 2], |t| t.slots);
     let points = slots.map(|slot| {
-        let hero_type = slot?;
-        let away = pool.away(hero_type).filter(|away| away.stale)?;
-        let id = pool.record(hero_type)?;
-        let details = state.heroes().get(usize::from(id.raw())).map(|d| &**d);
-        Some((
-            hero_type,
-            h3_adventure::day_points(core, part, details, &away.army, 0),
-        ))
+        let stale = slot.and_then(|t| pool.away(t).filter(|away| away.stale).map(|a| (t, a)));
+        stale.map(|(hero_type, away)| {
+            let id = pool.record(hero_type);
+            let details = id.and_then(|id| state.heroes().get(usize::from(id.raw())));
+            let details = details.map(|d| &**d);
+            (
+                hero_type,
+                h3_adventure::day_points(core, part, details, &away.army, 0),
+            )
+        })
     });
     if points.iter().all(Option::is_none) {
         return;
     }
     let pool = Arc::make_mut(state.taverns().pool);
     for (hero_type, points) in points.into_iter().flatten() {
-        if let Some(away) = pool.away_mut(hero_type) {
+        pool.away_mut(hero_type).into_iter().for_each(|away| {
             away.movement = points;
             away.max_movement = points;
             away.stale = false;
-        }
+        });
     }
 }
 
@@ -507,10 +475,11 @@ pub(crate) fn clear_marks(state: &mut GameState, player: Option<PlayerId>) {
     }
     let pool = Arc::make_mut(state.taverns().pool);
     for p in (0..=u8::MAX).take(pool.taverns().len()).map(PlayerId::new) {
-        if player.is_none_or(|player| player == p)
-            && let Some(tavern) = pool.tavern_mut(p)
-        {
-            tavern.returning = [false; 2];
-        }
+        let tavern = pool
+            .tavern_mut(p)
+            .filter(|_| player.is_none_or(|player| player == p));
+        tavern
+            .into_iter()
+            .for_each(|tavern| tavern.returning = [false; 2]);
     }
 }

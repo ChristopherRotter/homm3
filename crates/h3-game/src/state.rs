@@ -2068,9 +2068,8 @@ impl GameState {
     /// Sets `player`'s returning mark of `slot` (tests of the week's release and the marks' clears,
     /// E09 T37a; a return sets it from E09 T38b).
     pub(crate) fn set_returning(&mut self, player: PlayerId, slot: usize) {
-        if let Some(tavern) = Arc::make_mut(&mut self.pool).tavern_mut(player) {
-            tavern.returning[slot] = true;
-        }
+        let pool = Arc::make_mut(&mut self.pool);
+        (pool.tavern_mut(player).into_iter()).for_each(|tavern| tavern.returning[slot] = true);
     }
 
     /// Replaces the schedule (tests of turn groups larger than sequential play) and restarts the
