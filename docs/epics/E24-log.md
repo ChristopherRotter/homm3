@@ -2516,3 +2516,8 @@ tests and deny passed), CI's green `master` standing in.
   (40, 11: three boxes), `turn-no-town` (36, 10: GENRLTXT 7, then ArrayTxt 128); situations
   `seq-find-*` and `seq-turn-no-town`; their timelines and live parts in `map/timelines/`. Every
   box's texts and pictures as read; the pile's gold as the format stores it (700 is 70 000 gold).
+- **Checked:** `h3-map-view`'s tests at 100 % lines, regions and functions (`cargo llvm-cov -p
+  h3-map-view`, `H3_INSTALL` empty); the clients workspace's fmt and clippy clean; `cargo xtask
+  verify --scope map-client --summary --with-original-data` no failing step; `scripts/exe.py
+  check` and `cited` clean. No existing situation's map changes (every new branch needs a body or
+  an experience), so `drawn` was not run. PR #996.
