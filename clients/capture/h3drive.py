@@ -155,6 +155,10 @@ ROLLS = {
     "week_creature": (0, 0),
     "month_kind": (10, 1),
     "month_creature": (0, 0),
+    # E24 M4 T1a: the names of a normal week and month, random(0, 14) and random(0, 9) (values
+    # only: the k-th name of ArrayTxt's records 43 to 57, 32 to 41).
+    "week_name": (0, 0),
+    "month_name": (0, 0),
 }
 # How long `turn:` waits for the stack's turn (M3 T7a-2a): a human's stack waiting for an action
 # would keep the clock stepping for ever.

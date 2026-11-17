@@ -36,6 +36,8 @@ pub mod id {
     pub const CAST: u16 = 8;
     /// Next hero.
     pub const NEXT_HERO: u16 = 11;
+    /// End turn (E24 M4 T1a).
+    pub const END_TURN: u16 = 12;
     /// The hero list's arrows, up and down.
     pub const HEROES: [u16; 2] = [13, 14];
     /// The town list's arrows, up and down.

@@ -7,8 +7,8 @@ use h3_render::Bugs;
 use h3_ui::ui::Draw;
 
 use super::{look, names, parse_layout};
-use crate::shell::menu::Front;
 use crate::shell::menu::tests::{game_type, main_menu};
+use crate::shell::menu::{Arrow, Front};
 use crate::shell::{Game, Screen};
 
 const LAYOUT: &str = include_str!("../../../../../layouts/shell.toml");
@@ -135,6 +135,7 @@ fn the_shell_s_assets_are_named_once() {
         all,
         [
             "crdeflt.def",
+            "cradvntr.def",
             "GamSelBk.pcx",
             "mmenung.def",
             "mmenulg.def",
@@ -148,6 +149,8 @@ fn the_shell_s_assets_are_named_once() {
             "gtmulti.def",
             "gtback.def",
             "loadgame.pcx",
+            "gamselb0.pcx",
+            "gamselb1.pcx",
             "mupopup.pcx",
             "muBhot.def",
             "muBipx.def",
@@ -162,6 +165,19 @@ fn the_shell_s_assets_are_named_once() {
             "muhotsea.pcx",
             "bigfont.fnt",
             "mubchck.def",
+            "GSelPop1.pcx",
+            "scnrmpsz.def",
+            "itgflags.def",
+            "gspbutt.def",
+            "gspbut3.def",
+            "gspbut4.def",
+            "gspbut5.def",
+            "gspbut6.def",
+            "gspbut7.def",
+            "scnrbeg.def",
+            "scnrback.def",
+            "scnrvict.def",
+            "scnrloss.def",
             "diboxbck.pcx",
             "dialgbox.def",
             "Box64x30.pcx",
@@ -174,7 +190,7 @@ fn the_shell_s_assets_are_named_once() {
     // A name given twice in another case is kept once.
     let mut twice = layout;
     twice.cursor.def = String::from("MMENUNG.DEF");
-    assert_eq!(names(&twice).len(), 34);
+    assert_eq!(names(&twice).len(), 50);
 }
 
 #[test]
@@ -218,4 +234,42 @@ fn the_multiplayer_dialog_shows_over_its_menu() {
         Bugs::Fixed,
     )));
     assert_eq!(look(&layout, screen, Some(&bare)), None);
+}
+
+#[test]
+fn the_scenario_screen_shows_its_drawn_background_and_its_arrow() {
+    // E27 M3 T1a: the background by the draw (another index the first), the adventure map's
+    // arrow after its busy cursor (CLT-Q137), the popup over it hiding the cursor.
+    let layout = parse_layout(LAYOUT).unwrap();
+    let screen = Screen::Scenario(Game::New, crate::shell::Kind::Single);
+    let scenario = crate::shell::scenario::tests::scenario(Bugs::Original);
+    let hovers = crate::shell::menu::Hovers {
+        arrow: Arrow::Adventure,
+        ..Default::default()
+    };
+    let front = |s: &crate::shell::scenario::Scenario| Front::Scenario(Box::new(s.clone()));
+    let shown = look(&layout, screen, Some(&front(&scenario.opened(hovers)))).unwrap();
+    assert_eq!(shown.background, "gamselb0.pcx");
+    assert_eq!(shown.arrow, Arrow::Adventure);
+    assert!(shown.cursor && shown.over.is_empty() && shown.stale.is_empty());
+    let drawn = scenario.clone().with_background(1);
+    let shown = look(&layout, screen, Some(&front(&drawn))).unwrap();
+    assert_eq!(
+        (shown.background.as_str(), shown.arrow),
+        ("gamselb1.pcx", Arrow::Default)
+    );
+    let mut one = layout.clone();
+    one.scenario.backgrounds.truncate(1);
+    assert_eq!(
+        look(&one, screen, Some(&front(&drawn))).unwrap().background,
+        "gamselb0.pcx"
+    );
+    let mut none = layout.clone();
+    none.scenario.backgrounds.clear();
+    assert_eq!(look(&none, screen, Some(&front(&drawn))), None);
+    assert_eq!(look(&layout, Screen::MainMenu, Some(&front(&drawn))), None);
+    let mut held = scenario;
+    held.right([514, 91]);
+    let shown = look(&layout, screen, Some(&front(&held))).unwrap();
+    assert!(!shown.cursor && !shown.over.is_empty());
 }

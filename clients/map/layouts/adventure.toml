@@ -51,6 +51,11 @@ hot = [
     [14, 14], [20, 22], [20, 22], [20, 22], [20, 22], [6, 0], [16, 1], [22, 6], [16, 17],
     [6, 22], [0, 17], [0, 5], [0, 1], [0, 0], [12, 14], [20, 26],
 ]
+# The default cursor (the mouse manager's type 0, cursor_defs 0x67FF38; E24 M4 T1a): a message box
+# sets its frame 0 while it is open (mouse_set_cursor(0, 0) at 0x4F74AC), the cursor before restored
+# at its end; the frame's hot spot 0x67FF50's first.
+default_def = "crdeflt.def"
+default_hot = [0, 0]
 
 # The adventure screen's dialog (E24 M3 T2a; design §4.1: adventure_dialog_create 0x401510, the
 # manager's +0x44): at (0, 0), its items in the executable's order, each with its control id (the
@@ -698,3 +703,15 @@ repeat = { count = [4, 1], step = [36, 0] }
 coloured = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 underground = ["iam010.def", "iam003.def"]
 sleep = ["iam005.def", "iam011.def"]
+
+# The message box over the map (E24 M4 T1a; docs/epics/E24-design.md §5.1: End Turn's question, the
+# week's and the month's message; message_box 0x4F6570, E17 design §7.19): the battle's [message]
+# without its pictures, the executable's literals; h3_ui::message lays the box out from them.
+[message]
+background = "diboxbck.pcx"
+frame = "dialgbox.def"
+button_back = "Box64x30.pcx"
+ok = "iOkay.def"
+cancel = "iCancel.def"
+font = "medfont.fnt"
+font_palette = "game.pal"

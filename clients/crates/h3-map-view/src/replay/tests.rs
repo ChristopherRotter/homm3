@@ -78,6 +78,10 @@ fn idle() -> Replay {
         heroes: Vec::new(),
         index: None,
         chosen: crate::live::Chosen::default(),
+        player: 0,
+        move_reminder: false,
+        question: None,
+        turns: Vec::new(),
     };
     let actions = BTreeMap::from([
         (0, vec![Action::Scroll(Direction::East)]),
@@ -262,6 +266,10 @@ fn its_cues_are_handed_out_once() {
         heroes: Vec::new(),
         index: None,
         chosen: crate::live::Chosen::default(),
+        player: 0,
+        move_reminder: false,
+        question: None,
+        turns: Vec::new(),
     };
     let actions = BTreeMap::from([
         (1, vec![Action::Click(dest)]),

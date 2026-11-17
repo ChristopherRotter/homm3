@@ -5906,3 +5906,18 @@ to 43 (44 only as a map slot's none); at most 64 entries a list and 64 ids an en
 mask is 64 bits); an unterminated list ends at the image's end (truncated); creatures, growths,
 the silo's amounts and the garrison's values not negative, a horde's creature −1 or not negative;
 both chances at most 100; the instruction's bytes before its operand. Nothing copied (Q29).
+
+### 7.62 A creature bank's battle hexes (E08 T124a, 2026-11-17)
+
+Read for E08 increment 13's bank battle (`docs/rules/surveys/E08-banks.md` §5, `docs/epics/E08-design.md`
+§13; the address in `docs/exe/map.toml`). With the battle's creature bank flag (+0x53C5, H3API's
+`creatureBank`) the setup at 0x4636B7 puts each side's stacks, in slot order, on
+**`bank_battle_hexes` 0x63D0E0** by their ordinal among the filled slots, the formation unused:
+`i32` × 7 a side, the attacker first, 56 bytes. The table holds 57, 61, 90, 93, 96, 125, 129 and
+15, 185, 172, 2, 100, 87, 8 (`x = hex % 17`, `y = hex / 17`: the attacker's columns 6 and 10 of
+rows 3 and 7, 5, 8 and 11 of row 5; the defender's columns 15 and 2 of rows 0, 10 and 5, and
+column 8 of row 0). Each is a stack's position, a two-hex stack's rear hex with its front one
+column toward the enemy (BAT-GEO-002; batch E13's E13-4, survey §14). The reader is
+`h3_formats::exe::bank_hexes` (the build's `KnownBuild::bank_hexes_va`); `h3-harvest` reads it
+into `Inputs::bank_hexes` and writes `[battle]`'s `bank_positions` as `[x, y]` (`packs/README.md`).
+It checks each value is a hex number 0 to 255 (`FormatError` otherwise). Nothing copied (Q29).

@@ -866,6 +866,11 @@ pub(crate) fn battle_part_with(
             luck_dice: 24,
             good_luck_chances: vec![0, 0, 0],
             war_machine_positions: vec![[1, 3], [1, 1], [1, 9]],
+            bank_positions: [
+                [[6, 3], [10, 3], [5, 5], [8, 5], [11, 5], [6, 7], [10, 7]],
+                [[15, 0], [15, 10], [2, 10], [2, 0], [15, 5], [2, 5], [8, 0]],
+            ]
+            .map(|side| side[..usize::from(slots)].to_vec()),
             loose_formation: (1..=slots)
                 .map(|n| (0..n).map(|i| i * 11 / n).collect())
                 .collect(),

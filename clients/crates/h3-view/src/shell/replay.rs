@@ -303,6 +303,9 @@ pub struct Replay {
     /// The inputs given during the start's last fade, for the main menu as it opens (CLT-Q130
     /// (a): [`Start::keeps_input`]).
     kept: Vec<Input>,
+    /// The original's draws of the scenario screen's background, one an opening in order (E27 M3
+    /// T1a: a recipe's `backgrounds`), 0 once they run out.
+    backgrounds: alloc::collections::VecDeque<u8>,
 }
 
 /// What a menu is given, in order (an input of the harness's may be several).
@@ -383,6 +386,23 @@ impl Replay {
             sample_ms: None,
             samples: Samples::default(),
             kept: Vec::new(),
+            backgrounds: alloc::collections::VecDeque::new(),
+        }
+    }
+
+    /// The replay with the original's draws of the scenario screen's background (E27 M3 T1a:
+    /// `gamselb<n>.pcx`, one an opening in order; 0 once they run out).
+    #[must_use]
+    pub fn with_backgrounds(mut self, backgrounds: &[u8]) -> Self {
+        self.backgrounds = backgrounds.iter().copied().collect();
+        self
+    }
+
+    /// A scenario screen just opened takes the next draw of its background (0 once they run out).
+    fn draw_background(&mut self) {
+        if let Some(Front::Scenario(s)) = &mut self.front {
+            let n = self.backgrounds.pop_front().unwrap_or(0);
+            **s = s.as_ref().clone().with_background(n);
         }
     }
 
@@ -560,6 +580,7 @@ impl Replay {
         let _ = self.shell.end(ended);
         let previous = self.front.take();
         self.front = whole(&self.menus, self.screen(), previous, self.pointer);
+        self.draw_background();
     }
 
     /// An input of the harness's to the menu on the screen, as what it gives the game in order,

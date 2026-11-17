@@ -43,6 +43,9 @@ A recipe (a `[[recipe]]` of shell/<group>.toml): `id`, `what` (the catalogue's s
             and (E27 M2 T5b2) each clip's sound, its track on the virtual clock too (xdd.dll's
             7.), as `<id> voice<k> <smacker|bink> t<start>-<end> v<volume>` (`clip_voices`),
             compared by `drawn` with the viewer's
+  backgrounds  the scenario screen's background at each opening, in order, as the original drew
+            it under the harness (0 `gamselb0.pcx`, 1 `gamselb1.pcx`; E27 M3 T1a): the viewer's
+            (`drawn`) draws, never the game's (default 0 at every opening)
   steps     the steps, in order (`STEPS`)
 Every run starts from setup.sh's registry (the settings key removed and written again: what a
 run saved never reaches the next), no HiScore.dat, the listed maps and saves.
@@ -878,6 +881,9 @@ def drawn_recipe(recipe, out):
         args += ["--video-quality", "low"]
     if "input_step" in recipe:
         args += ["--input-step", str(recipe["input_step"])]
+    # E27 M3 T1a: the scenario screen's backgrounds as the original drew them, one an opening.
+    if recipe.get("backgrounds"):
+        args += ["--backgrounds", ",".join(str(int(b)) for b in recipe["backgrounds"])]
     # E27 M2 T5b1: a sound recipe's effects (h3drive's volume 5): the clips with their sound, its
     # starts and stops listed (`sound`, `quiet`; compared from T5b2 on).
     if recipe.get("sound", False):

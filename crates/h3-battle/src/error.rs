@@ -77,6 +77,9 @@ pub enum SetupError {
     /// The town's siege is not sound: a moat below a Citadel, or a natural obstacle on the walls,
     /// the moat or the town's mines (BAT-SIE-001).
     InvalidSiege,
+    /// A creature bank's battle brings natural obstacles or a siege (BAT-GEO-004, ADR-0022
+    /// point 8: it has neither).
+    InvalidCreatureBank,
     /// The battlefield picture's variant is above 2 (CLT-Q4).
     InvalidBackground,
     /// A side's player colour is above 7, or the defender's is the attacker's (CLT-Q6).
@@ -210,6 +213,9 @@ impl fmt::Display for SetupError {
             Self::InvalidSiege => f.write_str(
                 "the siege has a moat below a Citadel or an obstacle on its walls or moat",
             ),
+            Self::InvalidCreatureBank => {
+                f.write_str("a creature bank's battle has obstacles or is a siege")
+            }
             Self::InvalidBackground => f.write_str("the battlefield picture's variant is above 2"),
             Self::InvalidColour { side } => {
                 write!(f, "{side:?} colour is above 7 or the other side's")
@@ -440,6 +446,10 @@ mod tests {
         assert_eq!(
             SetupError::InvalidSiege.to_string(),
             "the siege has a moat below a Citadel or an obstacle on its walls or moat"
+        );
+        assert_eq!(
+            SetupError::InvalidCreatureBank.to_string(),
+            "a creature bank's battle has obstacles or is a siege"
         );
         assert_eq!(
             SetupError::InvalidBackground.to_string(),

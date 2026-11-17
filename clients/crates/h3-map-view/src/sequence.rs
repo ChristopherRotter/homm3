@@ -6,7 +6,8 @@
 //! ([`crate::timeline::Action`]) by the original's default keys (design §3.4): Ctrl and a direction
 //! key scroll the view, a direction key alone steps the selected hero, a key's release does
 //! nothing; since E24 M3 T6b1 a panel button's letter presses the button and its release clicks
-//! it, and the left button's press and release come apart. A walk's paths are the original's, from the recorded timeline ([`Sequence::paths`]),
+//! it, and the left button's press and release come apart; since E24 M4 T1a a message box's Enter
+//! and Escape press its OK and its Cancel. A walk's paths are the original's, from the recorded timeline ([`Sequence::paths`]),
 //! and its hero the live part's ([`selected`]): M2's walks are scripted (the epic's M2 decision).
 
 use alloc::collections::BTreeMap;
@@ -15,6 +16,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use h3_map::model::Pos;
+use h3_ui::message::Key;
 use serde::Deserialize;
 
 use crate::live::{Arrow, Live, LiveHero, Selected};
@@ -51,6 +53,13 @@ pub struct Sequence {
     /// The status window's kind the harness asks at 0 and its end, [kind, ms] (E24 M3 T5b2,
     /// design §4.9: 1 the date's, 2 the kingdom's; built afresh by 0's redraw).
     pub status: Option<[u32; 2]>,
+    /// Move Reminder's setting (E24 M4 T1a, design §5.1: 1, End Turn asks while a hero can still
+    /// move; 0 or none, the harness's settings, it does not).
+    pub move_reminder: Option<u32>,
+    /// The rolls the harness forces (E24 M4 T1a: the week's and the month's draws by name, each
+    /// draw's value): the viewer takes their outcome from the live part's `[[turn]]`, so it only
+    /// accepts them.
+    pub rolls: Option<BTreeMap<String, i64>>,
     /// The inputs in time order.
     #[serde(default)]
     pub inputs: Vec<Input>,
@@ -159,6 +168,21 @@ impl Sequence {
             .transpose()
     }
 
+    /// Move Reminder's setting (E24 M4 T1a), checked as the harness checks it: 0 or 1 (none 0).
+    ///
+    /// # Errors
+    /// Another value.
+    pub fn move_reminder(&self) -> Result<bool, String> {
+        match self.move_reminder {
+            None | Some(0) => Ok(false),
+            Some(1) => Ok(true),
+            Some(other) => Err(format!(
+                "{}: `move_reminder` {other} is not 0 or 1",
+                self.id
+            )),
+        }
+    }
+
     /// Whether the sequence walks a hero (a click, a direction key without Ctrl, the hero's
     /// options): its timeline needs the selected hero ([`selected`]) and its paths, its draws
     /// lift and move that hero ([`selected_index`]).
@@ -215,11 +239,12 @@ impl Sequence {
             }
             let action = if let Some(name) = &input.keydown {
                 down.push(name);
-                match (key(name), hotkey(name)) {
-                    (Some((true, direction)), _) => Action::Scroll(direction),
-                    (Some((false, direction)), _) => Action::Step(direction),
-                    (None, Some(hotkey)) => Action::Key(hotkey),
-                    (None, None) => (name == SPACE)
+                match (key(name), hotkey(name), box_key(name)) {
+                    (Some((true, direction)), _, _) => Action::Scroll(direction),
+                    (Some((false, direction)), _, _) => Action::Step(direction),
+                    (None, Some(hotkey), _) => Action::Key(hotkey),
+                    (None, None, Some(key)) => Action::BoxKey(key),
+                    (None, None, None) => (name == SPACE)
                         .then_some(Action::Visit)
                         .ok_or_else(|| failed(&format!("`{name}`: no key of the map's")))?,
                 }
@@ -230,7 +255,11 @@ impl Sequence {
                 down.remove(at);
                 // Another key's release is a message that does nothing (E24 M3 T6b3: it counts
                 // in the input ring).
-                hotkey(name).map_or(Action::Up, Action::KeyUp)
+                match (hotkey(name), box_key(name)) {
+                    (Some(hotkey), _) => Action::KeyUp(hotkey),
+                    (None, Some(key)) => Action::BoxKeyUp(key),
+                    (None, None) => Action::Up,
+                }
             } else {
                 // Exactly one kind (above): a release when none of the others.
                 input
@@ -399,6 +428,16 @@ fn hotkey(name: &str) -> Option<Hotkey> {
 
 /// Space by xdotool's name (E24 M3 T6b3: [`Action::Visit`]).
 const SPACE: &str = "space";
+
+/// A message box's hotkeys by xdotool's names (E24 M4 T1a: Enter the OK's, Escape the Cancel's,
+/// `message_box_build` 0x4F6990; [`Action::BoxKey`]).
+fn box_key(name: &str) -> Option<Key> {
+    match name {
+        "Return" => Some(Key::Ok),
+        "Escape" => Some(Key::Cancel),
+        _ => None,
+    }
+}
 
 /// A key's name: with Ctrl or not, and its direction.
 fn key(name: &str) -> Option<(bool, Direction)> {

@@ -104,6 +104,10 @@ pub struct BattleParams {
     /// supply, first aid; a two-hex machine's position is the hex behind it, BAT-GEO-002); the
     /// defender's are mirrored (BAT-WAR-001).
     pub war_machine_positions: [(u8, u8); WAR_MACHINE_KINDS],
+    /// A creature bank's positions `(x, y)` by side (attacker, defender) and the stack's ordinal
+    /// among the filled slots, the first `army_slots` of each side set (BAT-SET-001; see
+    /// [`BattleParams::bank_position`]).
+    bank_positions: [[(u8, u8); MAX_ARMY_SLOTS]; 2],
     /// Starting rows by formation ([`Formation::index`]), army size and stack index.
     formations: [[[u8; MAX_ARMY_SLOTS]; MAX_ARMY_SLOTS]; Formation::COUNT],
     /// Width in columns of the tactics zone by Tactics level difference minus one, each between
@@ -142,6 +146,21 @@ impl BattleParams {
         self.formations[formation.index()]
             .get(stacks - 1)
             .and_then(|rows| rows.get(index))
+            .copied()
+    }
+
+    /// The position `(x, y)` in a creature bank's battle of the stack of `side` (0 the attacker,
+    /// 1 the defender) whose ordinal among the side's filled slots is `ordinal` (BAT-SET-001; the
+    /// original's `bank_battle_hexes` 0x63D0E0, read by 0x4636B7): a two-hex stack's rear hex,
+    /// its front one column toward the enemy (BAT-GEO-002). The compiler checked that every
+    /// position and footprint is standable and that no two of either side share a hex.
+    pub fn bank_position(&self, side: usize, ordinal: usize) -> Option<(u8, u8)> {
+        if ordinal >= usize::from(self.army_slots) {
+            return None;
+        }
+        self.bank_positions
+            .get(side)
+            .and_then(|positions| positions.get(ordinal))
             .copied()
     }
 }
@@ -232,6 +251,42 @@ pub(crate) fn compile_battle(
     {
         *slot = (x, y);
     }
+    // rule: BAT-SET-001
+    // A creature bank's positions (ADR-0022 point 8): one per army slot a side, each a two-hex
+    // stack's rear hex with its front one column toward the enemy (x + 1 for the attacker, x - 1
+    // for the defender, BAT-GEO-002). Both hexes standable and no hex in two footprints of either
+    // side: a bank's battle has no obstacles, war machines or walls, so its placement never fails.
+    let mut bank_positions = [[(0, 0); MAX_ARMY_SLOTS]; 2];
+    let mut bank_hexes: BTreeSet<(usize, usize)> = BTreeSet::new();
+    let standable = |x: usize| x >= side && x < w - side;
+    for (attacker, (positions, out)) in [true, false]
+        .into_iter()
+        .zip(def.bank_positions.iter().zip(bank_positions.iter_mut()))
+    {
+        if positions.len() != slots {
+            return invalid("bank_positions needs one hex [x, y] per army slot for each side");
+        }
+        for (&[x, y], slot) in positions.iter().zip(out.iter_mut()) {
+            let (column, row) = (usize::from(x), usize::from(y));
+            let front = if attacker {
+                Some(column + 1)
+            } else {
+                column.checked_sub(1)
+            };
+            let Some(front) = front.filter(|&f| row < h && standable(column) && standable(f))
+            else {
+                return invalid(
+                    "bank positions must be standable, with a standable hex in front of each",
+                );
+            };
+            for hex in [(column, row), (front, row)] {
+                if !bank_hexes.insert(hex) {
+                    return invalid("bank positions overlap (as two-hex footprints)");
+                }
+            }
+            *slot = (x, y);
+        }
+    }
     let mut formations = [[[0u8; MAX_ARMY_SLOTS]; MAX_ARMY_SLOTS]; Formation::COUNT];
     for (table, out) in [&def.loose_formation, &def.tight_formation]
         .into_iter()
@@ -279,6 +334,7 @@ pub(crate) fn compile_battle(
         luck_dice: def.luck_dice,
         good_luck,
         war_machine_positions,
+        bank_positions,
         formations,
         tactics_zone_columns,
         surrender,
@@ -342,7 +398,11 @@ impl CanonicalHash for BattleParams {
         h.write_u8(b.luck_dice);
         h.write_u8(b.good_luck.len);
         h.write_bytes(&b.good_luck.chances);
-        for &(x, y) in &b.war_machine_positions {
+        for &(x, y) in b
+            .war_machine_positions
+            .iter()
+            .chain(b.bank_positions.iter().flatten())
+        {
             h.write_u8(x);
             h.write_u8(y);
         }

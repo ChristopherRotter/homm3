@@ -4,6 +4,66 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-17 (this lane, E24 M4 T1a done, the log's "M4 T1a"): its queue entry, verbatim:
+
+  ### E24 M4 T1a — the turn's end and the next day
+
+  - **Scope** (T1 cut in two by the user, 2026-11-16, at T1a's start: this and T1b): read and build
+    what the original shows when a turn changes, the live part from its memory (`h3mem.py`,
+    additive): End Turn's click and key (`adventure_command` 0x409A70's 12, E) and its question when
+    a hero can still move (Move Reminder: `message_box` 0x4F6570's Yes/No with GENRLTXT's text); the
+    turn's end and the next player's start (`next_player_turn` 0x4C6FE0, `player_turn_start`
+    0x4CC7D0: the view, the selection, the panels, the music and the sounds); another player's turn
+    out of the viewer's sight: the status window's kind 5 (`AdStatNx.pcx`, `crest58.def`,
+    `HourSand.def`, `HourGlas.def`, 0x453250; design §4.8) with its tile, hint and cursors
+    (0x40DEB0, §4.10; read at T1a, built with T1b: out of sight it takes no time on the virtual
+    clock, design §5.1); the new day (the date's step, built at M3 T5b2, from its cause), the week's
+    and the month's start and their messages (the adventure's message box, the first of T2's
+    family: its frame, the text through the catalogue, its pictures and buttons, its sounds and
+    place; the week's and month's names are the client's to draw: the engine sends `WeekStarted`
+    and `MonthStarted` with the kind only; a comparison reads the original's from its memory). New
+    sequences recorded in the original (a day's end, a week's and a month's start, the question
+    answered both ways; the inbox's harness changes first: `setup.sh` again).
+  - **Acceptance:** the readings in a new `E24-design.md` §5; the new sequences exact on the whole
+    screen and `h3map.py drawn` all the same; `clients/scripts/check.sh` all gates; every oddity an
+    `MCL-Q<n>`.
+  - **Depends on:** T0 (done). **Status:** in progress (2026-11-16).
+
+- 2026-11-16 (this lane, E24 M4 T1a): four inbox entries done, verbatim: the map's keys refuse a
+  `Shift+` chord (`h3_map_view::keys::refuse_shift`: the map reads no Shift, as the original's),
+  `tests/purity.rs` took `h3-view`'s four fixes, design §3's keys bullet names the Ctrl chords:
+
+  - 2026-11-16 (the client lane, E27 M2 T7b, `client/e27-m2-t7b`; **the foundation's keys, a
+    behaviour change for your table**): `h3_ui::keys` reads Shift chords (`Chord::shift`,
+    `Shift+` after `Ctrl+` in a key file, `Keys::chord_command`; the Shifts refused alone like
+    Control, `keys::SHIFT`), and `h3_sdl::Key` gained `Tab`, `BackSpace`, `Delete`, `LeftShift`
+    and `RightShift`; `Event` is unchanged (the window's text input comes as
+    `Window::typed`, off unless `set_text_input` turns it on). The map window reads no Shift, so a
+    `Shift+` chord in `[map]` now parses but never matches (before: a parse error): read Shift
+    (`h3_sdl::KeyScan::shift` from `Window::scans`) or refuse such chords in your table. The
+    chord parser's error text is unchanged (your test reads it).
+
+  - 2026-11-10 (the client lane, E17 M6 T7b, branch `client/e17-m6-t7b`; for you to take or
+    leave): `clients/crates/h3-map-view/tests/purity.rs` has two more holes (its reviewer's R11-3),
+    besides the two of T6a's entry below: `dependencies` reads only the `[dependencies]` table, so
+    a `[dependencies.<k>]` or `[target.<cfg>.dependencies]` table goes unchecked, and the deny
+    check matches each lint as a substring (`clippy::panic_in_result_fn` passes for
+    `clippy::panic`). `h3-view`'s and `h3-ui`'s copies have the fix (`parts`, `dependency`,
+    `dependencies`, `names`) and its test lines.
+
+  - 2026-11-07 (the client lane, E17 M6 T6a, branch `client/e17-m6-t6a`; for you to take or leave): `h3-view`'s `tests/purity.rs` took your R2-15 fixes, and its reviewer found two more holes your copy (`clients/crates/h3-map-view/tests/purity.rs`) shares: `attributes` closes an attribute at the first line ending in `]`, so a `]` in a comment inside a multi-line `#[allow(...)]` hides the lints after it (now: `code_of` cuts the `//` comment outside string literals and the brackets are counted), and `deny_block` matches a commented-out `// #![deny(` (now: read from `attributes`' entries). `h3-view`'s copy has both fixes and their tests.
+
+  - 2026-11-04 (the client lane, E17 M6 T4b2a, branch `client/e17-m6-t4b`; the common crate
+    `h3-ui`, a behaviour change, `cross-lane`): the user decided (2026-11-04) that the windows' own
+    pause, a frame on, restart and vsync move to Ctrl+F5, Ctrl+F6, Ctrl+F7 and Ctrl+F8 in both
+    viewers, because the original's battle takes F5 to F8 alone (F5 Creature Info's level, F6 to
+    F8 the grid and shadows). `h3_ui::keys::Window` gains `ctrl` and `chord` (the default chord;
+    `key` stays the key's name); `h3_map_view::keys`' defaults take `w.chord()`, its tests and the
+    usage name the new chords (built on that branch). The music, the effects, the cursor's kind,
+    fullscreen and Esc are unchanged; a user's `keys.toml` still overrides any. Informational
+    unless `docs/epics/E24-design.md` §3's keys bullet (F5 pause, F6 the next frame, F7 restart, F8
+    vsync) should say so: the map lane's file.
+
 - 2026-10-31 (this lane, E24 M4 T0): two inbox entries, verbatim. The adventure lane's became
   part of M4 T3's scope (the views it names; the week's and month's names in T1); the client
   lane's needed nothing:

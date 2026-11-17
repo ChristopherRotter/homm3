@@ -336,6 +336,16 @@ The user, 2026-11-16 (M2 T8, M2's closure; `CLT-Q129` to `CLT-Q136`):
     (CLT-Q136 (a)); M3's task table as proposed (below); the load and save modes are M4's, each
     of design §6.4's recipe fixes the task's that builds its screen.
 
+The user, 2026-11-17 (M3 T1's start):
+
+45. **T1 cut in two** (offered: T1a and T1b, T1 whole, or M2's leftover alone): the screen's
+    shots show the kept map's information panel from the first, so **T1a** builds the frame with
+    the panel (§3.5's drawing, T2's in the table before) and **T1b** the list; T2 keeps the
+    difficulty's presses, Begin's messages and the description's scroll bar.
+46. **The arrow after the scenario screen's busy cursor** (CLT-Q137 (b)): the client keeps the
+    default arrow; the original's adventure map's arrow (`cradvntr.def`, until the menu loop's
+    top) for the comparisons only. Built in T1a.
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -431,17 +441,24 @@ catalogue: design §3; the shell's frame, menus, edits and the hot seat's names:
 
 | Task | Scope | Status |
 |---|---|---|
-| T1 | The scenario screen's frame and list (§3.1 to §3.4, §3.8): the dialog in its new-game mode (a single scenario, the hot seat), the maps of the installation copy's `Maps` read whole (decision 44), the rows and columns, the sort, the size filters, the list's keys and scroll, the hints and the right press's popups; exact against `scn-new`, `scn-list-keys`, `scn-sort`, `scn-filter`, `scn-right` (§6.4: `up-past-top` with Page Up first; GENRLTXT 503 in a shot); M2's leftover (T8's fixer): a key `h3_sdl::Key` has no variant for (the letters, the digits) never reaches the window, so it skips no clip of the start as the original's every key but F4 does: a catch-all key in `h3_sdl` (common: the map-client lane's inbox) | next |
-| T2 | The information panel, the difficulty, Begin and Back (§3.5, §3.6): the map's name, description, victory and loss, the players' flags and the size, the difficulty's buttons and the rating, `difficulty_names`' text source (§6.4); exact against `scn-info`, `scn-difficulty`, `scn-begin-none` (its `what` corrected: 530 is a filter's), `scn-begin-filter` | after T1 |
+| T1a | The scenario screen's frame and its information panel (§3.1, §3.2, §3.5's drawing, §3.8; decision 45): the new-game mode of a single scenario, the list hidden; both backgrounds; the kept map's name, description, victory and loss, the flags, the size, the map's difficulty and the rating; the panel buttons (caption buttons), Begin and Back, their press, hold and popups; Back and Escape; the maps read whole; exact against `scn-new` but `list-shown`; M2's leftover (found met: `Key::Other`) | **done** 2026-11-17: `h3_view::shell::scenario` (`Scenario`, `Entry`, `Texts`, `sort`), `Front::Scenario`, `Menus::scenario`, `menu::Arrow` (CLT-Q137 (b), decision 46: the original's arrow for the comparisons only), `look::ScenarioLayout`, the replay's `with_backgrounds` (a recipe's `backgrounds`); `h3_ui::ui::Caption`; `h3-battle-client`'s `maps` and the shell's `--backgrounds`; the layout's `[scenario]`, `[adventure_cursor]`; the keys `shell.scenario.*`; `scn-new` 30 of 31 exact; log "M3 T1a", design §18 |
+| T1b | The list (§3.3, §3.4, §3.8): its panel and the toggle (128, GENRLTXT 503 in a shot), the rows and columns, the sort, the size filters, the list's keys and scroll, a row's press and double press, the right press's popups on the list, the labels and the texts, the flags' strip's teams dialog; exact against `scn-new`'s `list-shown`, `scn-list-keys`, `scn-sort`, `scn-filter`, `scn-right` (§6.4: `up-past-top` with Page Up first) | next |
+| T2 | The information panel's rest, the difficulty, Begin and Back (§3.5, §3.6): the panel of every map (the description's scroll bar, the empty list's panel), the difficulty's presses and the rating (`difficulty_names` read at T1a, design §18.2), Begin's messages; exact against `scn-info`, `scn-difficulty`, `scn-begin-none` (its `what` corrected: 530 is a filter's), `scn-begin-filter` | after T1b |
 | T3 | The advanced options of a single player (§3.12 to §3.15): the rows, the town's, hero's and bonus's arrows, the handicap, the flags, the turn's duration, the popups and the hover; the choices into `GameSetup` (§3.9: `GameSetup::offer`, the faction choice), the bonus, the handicap and the timer drawn and chosen, each effect a `CLT-STUB` (decision 6); exact against `adv-single-town`, `adv-single-hero`, `adv-single-rest`, `adv-single-maps` (§6.4: `popup-hero-arrow` on row 2's arrow) | after T2 |
 | T4 | The advanced options in the hot seat (§3.14): two to eight humans, the flags' cycle, the names from the Multiplayer dialog (`Multiplayer::names`, M2's item 61); exact against `adv-hotseat`, `adv-hotseat-rows`, `adv-hotseat-two` | after T3 |
 | T5 | The random map's tab (§3.16; CLT-Q92: drawn, its generator a stub); exact against `adv-random` (§6.4: Begin after `tab-again`) | after T4 |
 | T6 | The game's begin (§3.17, §2.1; CLT-Q95, CLT-Q135): the setup built and validated by the engine (a refusal shown), the loading bar (`loadbar.pcx`, `loadprog.def`; the client's steps), the begin's notice (a `CLT-STUB`) and back to the menu, the setup kept for E24 M5 (the map-client lane's inbox); exact against `adv-begin` and `adv-hotseat-begin` up to the bar | after T5 |
 | T7 | M3's closure: a fresh reviewer, the review list, M4's refinement (M4 T0: the saves' record and its extension, decision 8; Options with the menu in play, CLT-Q136; the load and save modes with §6.4's recipes for them) | after T6 |
 
-**M3's review list** (the agent's calls, *provisional*, for T7): (1) the maps read whole at the
-scenario screen's opening (`h3_map::read`: the 160 in about 0.15 s in release, 2026-11-16), no
-header-only read in `h3-map`.
+**M3's review list** (the agent's calls, *provisional*, for T7): (1) the maps read whole
+(`h3_map::read`: the 160 in about 0.15 s in release, 2026-11-16), no header-only read in
+`h3-map`; T1a reads them once, at the shell's start (the original at each opening); (2) T1a: what
+the redraw draws itself (the name, the texts and marks) and the original's unnamed items (its
+100s) as layout items of the client's own ids (1000 on, no hint or right press); (3) T1a: the
+background's draw given to the replay by a recipe's `backgrounds` (the original's under the
+harness), the window's from the system's randomness; (4) T1a: the description as one label of
+width − 3 while it fits (design §18.1); (5) T1a: the caption buttons as a `caption` of
+`h3_ui::ui::Button` (the foundation, additive).
 
 ## Dependencies and boundaries
 

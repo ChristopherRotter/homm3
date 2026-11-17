@@ -19,7 +19,7 @@ use h3_map_view::compose::compose;
 use h3_map_view::hover::{self, Facts};
 use h3_map_view::live::{
     Arrow, Boat, Buttons, Chosen, Drawn, Explored, Facing, Kingdom, Live, LiveBoat, LiveHero,
-    Moment, Status, TOWN_CLASS,
+    Moment, Status, TOWN_CLASS, Turn,
 };
 use h3_map_view::objects;
 use h3_map_view::scene::{self, Draw, ViewAt};
@@ -611,6 +611,18 @@ pub fn read_live(
             failed(
                 "`[chosen]` is not heroes = [{ hero, status, path = [[x, y, level, arrow]] } or \
                  {}] and towns = [{ at = [x, y, level], status } or {}]",
+            )
+        })?;
+    }
+    if let Some(value) = table.get("turn") {
+        // The turns' starts the recording reached (E24 M4 T1a, design §5.1).
+        let turns: Option<Vec<Turn>> = value
+            .as_array()
+            .and_then(|a| a.iter().map(Turn::read).collect());
+        live.turns = turns.ok_or_else(|| {
+            failed(
+                "`[[turn]]` is not at, player, kingdom = { ... }, status = { ... }, week = [kind, \
+                 n] and month = [kind, n]",
             )
         })?;
     }

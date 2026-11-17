@@ -1745,3 +1745,29 @@ T105b2 took adventure replay format v12.
   ADR-0015 to -0017, ADR-0013 (the three once-marks); the battle lane's inbox note of 2026-11-15
   (the bank battle's needs) and any answer; T108b's drafts as the form.
 - **Depends on:** T118a (done). **Status:** ready (docs only).
+
+## T124 (moved 2026-11-17, its battle half done as T124a: `adventure/e08-t124a`, decision 353; the rest queued as T124b)
+
+*(Moved verbatim; the record in `E08-log.md`, T124a.)*
+
+**E08 T124 — the bank battle; the state, the draw, the visit, the battle and the reward** (round 6;
+design `E08-design.md` §4 to §8, §12 to §15, §18, §20)
+
+- **Scope:** T124a (`adventure/e08-t124a`, `cross-lane`, first, the battle lane reviewing): the
+  bank battle in `h3-battle` with `BattleSetup::creature_bank` (§13: no tactics phase, no
+  obstacles and a setup refusing them or a siege beside the flag, no war machines on the field and
+  the Ammo Cart's supply kept, the layout by `bank_positions`; BAT-SET-001, BAT-TAC-001,
+  BAT-GEO-004, BAT-WAR-001, BAT-WAR-004 amended), the battle pack's `bank_positions` (pack format
+  v53, shared: likely a `shared/` part first), battle state hash v56, battle part v8, the battle's
+  properties, golden replays and bench. T124b (`adventure/e08-t124b`): the state and the draw (§4,
+  §5; adventure state hash v26, ADV-BNK-002), the visit and its offers (§6, ADV-BNK-003, D-66),
+  the battle's two halves (§7, §14: `Defender::Bank`, the flag, the deck; ADV-BNK-004,
+  GAM-BAT-001), the reward as a won battle's rest (§8, §15; ADV-BNK-005, GAM-DEC-007), the
+  once-marks (§12, HER-ADV-008). Each part's cut confirmed at its start; T124a merged before
+  T124b's tests.
+- **Inputs:** design §4 to §8, §12 to §15, §18's versions (the battle lane's E26 and E11 may have
+  taken the battle's numbers: bump past theirs); survey `E08-banks.md` §3 to §6, §14 (batch E13's
+  rows); ADR-0022 point 8, ADR-0016 and -0017's increment 13 parts; the battle lane's `TRAPS.md`
+  and HANDOFF (its open pull requests) before touching `h3-battle`.
+- **Depends on:** T123b (`adventure/e08-t123b`). **Status:** ready once T123b merges; T124a needs
+  the battle lane's state checked first (its queue's "War machines", r3).

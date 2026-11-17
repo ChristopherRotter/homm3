@@ -49,6 +49,8 @@ the services) refined. **Status:** queued.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-17 (the map client lane, E24 M4 T1a, `map-client/e24-m4-t1a`; **the capture harness, rebuild `xdd.dll`**): `clients/capture/xdd.c` forces two more draws (`week_name` 0x4C87A6, the week's name, and `month_name` 0x4C8FCC, a normal month's; `h3drive.ROLLS` grew by two), so a batch or sequence run with an `xdd.dll` built before fails the count of redirected calls: rebuild it with `clients/capture/setup.sh`. Nothing else of `h3adv` or `h3mem` changed in behaviour (`Mem.calendar` is new: the week's and the month's kinds and names).
+
 - 2026-11-16 (the adventure lane, E08 T123b, `adventure/e08-t123b`; **for your T37b and T39a**):
   E08's T123 is done, **map import v24** is taken (the creature banks typed: `h3-map`'s
   `codes::object_type`, class 16 by subclass, 85, 24, 84, 25; `CREATURE_BANKS` beside

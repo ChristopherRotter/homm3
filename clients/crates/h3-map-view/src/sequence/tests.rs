@@ -17,7 +17,7 @@ fn one(rest: &str) -> Sequence {
 #[test]
 fn reads_the_recorded_sequences() {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
-    assert_eq!(sequences.sequence.len(), 35);
+    assert_eq!(sequences.sequence.len(), 42);
     // The status window's kind asked at 0 (E24 M3 T5b2).
     let date = sequences.get("status-date-end").unwrap();
     assert_eq!(date.asked(), Ok(Some(Asked { kind: 1, end: 3000 })));
@@ -80,6 +80,41 @@ fn the_keys_and_the_clicks() {
         ])
     );
     assert!(!one("inputs = [{ at = 2, keydown = \"k\" }]").walks());
+    // A message box's Enter and Escape (E24 M4 T1a): its OK's and its Cancel's key, down and up.
+    let s = one(
+        "inputs = [{ at = 1, keydown = \"Return\" }, { at = 2, keyup = \"Return\" }, \
+         { at = 3, keydown = \"Escape\" }, { at = 4, keyup = \"Escape\" }]",
+    );
+    assert_eq!(
+        s.actions().unwrap(),
+        BTreeMap::from([
+            (1, vec![Action::BoxKey(Key::Ok)]),
+            (2, vec![Action::BoxKeyUp(Key::Ok)]),
+            (3, vec![Action::BoxKey(Key::Cancel)]),
+            (4, vec![Action::BoxKeyUp(Key::Cancel)]),
+        ])
+    );
+    assert!(!s.walks());
+}
+
+#[test]
+fn move_reminder_and_the_rolls() {
+    // E24 M4 T1a: Move Reminder 0 or 1 (none 0, the harness's settings); the rolls accepted.
+    let sequences = Sequences::parse(SEQUENCES).unwrap();
+    let question = sequences.get("turn-question").unwrap();
+    assert_eq!(question.move_reminder(), Ok(true));
+    assert_eq!(
+        sequences.get("turn-day").unwrap().move_reminder(),
+        Ok(false)
+    );
+    assert_eq!(one("move_reminder = 0").move_reminder(), Ok(false));
+    assert_eq!(
+        one("move_reminder = 2").move_reminder(),
+        Err("s: `move_reminder` 2 is not 0 or 1".into())
+    );
+    let week = sequences.get("turn-week").unwrap();
+    let rolls = week.rolls.as_ref().unwrap();
+    assert_eq!((rolls["week_chance"], rolls["week_name"]), (2, 4));
 }
 
 #[test]

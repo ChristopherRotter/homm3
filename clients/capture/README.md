@@ -1196,7 +1196,8 @@ frame at 0 is drawn and compared (`ours.png`,
 `<out>` defaults to `out/map-frames`. A new sequence is recorded twice, its second run `ok`
 (the first run's `timeline.txt` copied to `map/timelines/<id>.txt` by hand).
 
-**The mouse-over** (E24 M3 T6a1, design §4.10): every live part ends with a `[hover]` table,
+**The mouse-over** (E24 M3 T6a1, design §4.10): every live part ends with a `[hover]` table (since
+E24 M4 T1a followed by its `[[turn]]` tables, below),
 `Mem.hover`'s facts the cursor and the hints read that the map cannot give (each object's entrance
 word and army, the towns' names as `TownName.txt` records and their types, the heroes' record
 indices and own names, the viewer's lists, the teams, the guarded tiles, the selected hero's
@@ -1269,6 +1270,21 @@ the one shown before): the live part's `[chosen]` (before `[hover]`), which the 
 show. With `choose` several heroes may have a `path` (each one's destination). With no hero
 selected (a town chosen) the timeline's `hero` line has no numbers.
 
+**The turn's change** (E24 M4 T1a, design §5.1): a sequence's `move_reminder` (0 or 1, written with
+the speeds into Move Reminder's setting, `h3mem.MOVE_REMINDER` 0x698778; the harness's settings
+keep it off: End Turn then asks nothing), its `rolls` (a table of `h3drive.ROLLS`' names and whole
+numbers, each forced for every draw before the sequence's 0: "Forced rolls"; the week's and the
+month's kinds and names) and a situation's `date = [month, week, day]` (written once staged:
+`Mem.write_date`; the week's last day, so that End Turn starts the next week); the keys `Return`
+and `Escape` among the inputs (a message box's OK and Cancel: `keydown` presses the button,
+`keyup` clicks it). The timeline's `<ms> date <month> <week> <day>` and `<ms> player <colour>`
+lines where the date or the current player changes (none at 0), and the `cursor` line's type 0
+while a box shows its default cursor. In each millisecond the date or the current player changed
+`frames` appends a `[[turn]]` table to the live part, after `[hover]` (`turn_toml`: `at`, the
+current `player`, its `kingdom` as the panels show it, the `status` window shown, `week` and
+`month` as `[kind, name or creature]`, `Mem.calendar`), the facts the viewer's End Turn draws the
+next day from (`turn-*`; Part B: the engine's events).
+
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
 <out>/<id>/live.toml`: the map's timeline from the situation, this run's live part at 0 and the
@@ -1303,7 +1319,9 @@ python3 h3shell.py drawn [--group menus] [--only menu-main] [--record]   # the v
 
 - **A recipe** (`shell/<group>.toml`, `[[recipe]]`): `id`, `what` (the catalogue's section),
   `registry` (dwords over the base settings), `maps` (`"all"`, the default: the 160 shipped maps;
-  or a list), `games` (files of `original-data/games/`), `input_step` and `steps` (the docstring's
+  or a list), `games` (files of `original-data/games/`), `backgrounds` (the scenario screen's
+  background as the original drew it at each opening, 0 or 1: the viewer's alone, E27 M3 T1a),
+  `input_step` and `steps` (the docstring's
   `STEPS`: `until`, `check`, `step` (in increments: `step:<ms>:<by>`), `move`, `click`,
   `down`/`up`, `right`/`right-up`, `key`, `type`, `press`/`point` a dialog's button by its probes,
   `until-button`, `shot`, `clip`, `clip-until`; for a load, `settle` (the next input's real-time

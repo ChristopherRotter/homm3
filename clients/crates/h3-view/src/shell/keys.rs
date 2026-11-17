@@ -12,6 +12,9 @@
 //! - **The Multiplayer dialog** (`multiplayer_dialog_init` 0x50E050; E27 M2 T7): Escape its
 //!   Cancel (124); **the hot seat's names** (`hot_seat_dialog_init` 0x511E20): Enter its OK (519),
 //!   Escape its Cancel (520).
+//! - **The scenario screen** (`scenario_dialog_create` 0x579960; E27 M3 T1a): S Show Available
+//!   Scenarios (128), R Random Map (130), A Show Advanced Options (129), Enter Begin (186),
+//!   Escape Back (188).
 //! - **An edit's own keys** (E27 M2 T7b, decision 39: the client's profile): Home, End, Left,
 //!   Right, Delete and BackSpace, taken while an edit has the focus ([`Context::Edit`], asked
 //!   before its dialog's); **the hot seat's ring** (`hot_seat_edit_key` 0x50DF60): Tab and Down to
@@ -53,6 +56,8 @@ pub enum Context {
     /// An edit with the focus, in the client's profile (E27 M2 T7b): its own keys, asked before
     /// its dialog's.
     Edit,
+    /// The scenario screen with nothing over it (E27 M3 T1a).
+    Scenario,
 }
 
 /// The shell's commands.
@@ -93,11 +98,17 @@ pub const GAME_TYPE: [(Choice, &str, &str); 5] = [
 
 /// The dialogs' buttons with a hotkey (E27 M2 T7), by id, with their names, the original's keys
 /// (`multiplayer_dialog_init` 0x50E050, `hot_seat_dialog_init` 0x511E20: the buttons' scan
-/// codes 1 and 0x1C) and their dialog.
-pub const DIALOGS: [(u16, &str, &str, Context); 3] = [
+/// codes 1 and 0x1C; E27 M3 T1a, `scenario_dialog_create` 0x579960: the panel buttons' 0x1F, 0x13
+/// and 0x1E, Begin's 0x1C, Back's 1) and their dialog.
+pub const DIALOGS: [(u16, &str, &str, Context); 8] = [
     (124, "multiplayer-cancel", "Escape", Context::Multiplayer),
     (519, "hot-seat-ok", "Return", Context::HotSeat),
     (520, "hot-seat-cancel", "Escape", Context::HotSeat),
+    (128, "scenario-list", "S", Context::Scenario),
+    (130, "scenario-random", "R", Context::Scenario),
+    (129, "scenario-advanced", "A", Context::Scenario),
+    (186, "scenario-begin", "Return", Context::Scenario),
+    (188, "scenario-back", "Escape", Context::Scenario),
 ];
 
 /// A message box's keys with their names and the original's (as the battle's,

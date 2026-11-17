@@ -958,6 +958,47 @@ original = [{ at = "GENRLTXT:391" }]
 id = "word.enemies"
 original = [{ at = "GENRLTXT:392" }]
 
+# The turn's end and the next day (E24 M4 T1a; docs/epics/E24-design.md §5.1). End Turn's question
+# while a hero can still move (Move Reminder, a box of style 2: 0x409D12). The week's or the month's
+# message at a week's first day but the game's first (a box of style 1, 0x4CCAE5; ArrayTxt's
+# records as `arraytxt_load` 0x5B9CC0 copies them): a normal month's with its name (the
+# `month-name` family), a creature's month's with the creature's singular name, its first letter
+# upper-cased, twice, the Plague's; a normal week's with its name (`week-name`), a creature's week's
+# so, the week of the Deity's with its first creature's name twice, its growth signed (`%+d`, the
+# creature record's +0x44: written by the caller), its second creature's name and the growth again.
+[[key]]
+id = "map.turn.end"
+original = [{ at = "GENRLTXT:56" }]
+
+[[key]]
+id = "map.turn.month"
+args = { name = "text" }
+original = [{ at = "ARRAYTXT:130", printf = ["name"] }]
+
+[[key]]
+id = "map.turn.month-creature"
+args = { creature = "text" }
+original = [{ at = "ARRAYTXT:131", printf = ["creature", "creature"] }]
+
+[[key]]
+id = "map.turn.plague"
+original = [{ at = "ARRAYTXT:132" }]
+
+[[key]]
+id = "map.turn.week"
+args = { name = "text" }
+original = [{ at = "ARRAYTXT:133", printf = ["name"] }]
+
+[[key]]
+id = "map.turn.week-creature"
+args = { creature = "text" }
+original = [{ at = "ARRAYTXT:134", printf = ["creature", "creature"] }]
+
+[[key]]
+id = "map.turn.week-deity"
+args = { creature = "text", growth = "text", other = "text" }
+original = [{ at = "ARRAYTXT:135", printf = ["creature", "creature", "growth", "other", "growth"] }]
+
 # The spell book (E17 M5 T3a; design §7.17). A place's text (`spell_book_page` 0x59CE19, 0x59CEE1:
 # the executable's own formats): the spell's name, its level, the hero's mastery's short name when
 # it has one, the spell points' word and the cost.
@@ -1807,6 +1848,26 @@ count = 9
 column = 0
 optional = true
 
+# A normal month's and a normal week's names (ARRAYTXT.TXT's records after its "gMonthNames" and
+# "gWeekNames" rows, as `arraytxt_load` 0x5B9CC0 copies them; E24 M4 T1a): the month's message,
+# `month-name.<n>` (record 32 + n, `random_between(0, 9)` at 0x4C8FCC), the week's, `week-name.<n>`
+# (43 + n, `random_between(0, 14)` at 0x4C87A6). Only the map viewer lists them.
+[[family]]
+id = "month-name"
+table = "ARRAYTXT"
+first = 32
+count = 10
+column = 0
+optional = true
+
+[[family]]
+id = "week-name"
+table = "ARRAYTXT"
+first = 43
+count = 15
+column = 0
+optional = true
+
 # A hero's hint, over its slot of the hero list (0x40316A) or over it on the map (0x40BC89):
 # GENRLTXT's record 16 with its name and its class's name.
 [[key]]
@@ -2395,6 +2456,217 @@ original = [{ at = "HELP:561:0" }]
 [[key]]
 id = "shell.hot-seat.help.cancel"
 original = [{ at = "HELP:561:0" }]
+
+# The scenario screen (E27 M3 T1a; design §3.2, §3.5, §18; `scenario_dialog_create` 0x579960,
+# `scenario_info_draw` 0x5840F0): a label's word and colon (the executable's "%s:", 0x660D28) for
+# the player's difficulty, the rating, the allies and the enemies; the labels' words, the panel
+# buttons' captions; a map's name when it has none (GENRLTXT 509).
+[[key]]
+id = "shell.scenario.label"
+args = { word = "text" }
+original = [{ at = "EXE:0x660D28", printf = ["word"] }]
+
+[[key]]
+id = "shell.scenario.player-difficulty"
+original = [{ at = "GENRLTXT:493" }]
+
+[[key]]
+id = "shell.scenario.rating-label"
+original = [{ at = "GENRLTXT:219" }]
+
+[[key]]
+id = "shell.scenario.map-difficulty-label"
+original = [{ at = "GENRLTXT:495" }]
+
+[[key]]
+id = "shell.scenario.name-label"
+original = [{ at = "GENRLTXT:496" }]
+
+[[key]]
+id = "shell.scenario.description-label"
+original = [{ at = "GENRLTXT:497" }]
+
+[[key]]
+id = "shell.scenario.victory-label"
+original = [{ at = "GENRLTXT:498" }]
+
+[[key]]
+id = "shell.scenario.loss-label"
+original = [{ at = "GENRLTXT:499" }]
+
+[[key]]
+id = "shell.scenario.allies"
+original = [{ at = "GENRLTXT:391" }]
+
+[[key]]
+id = "shell.scenario.enemies"
+original = [{ at = "GENRLTXT:392" }]
+
+[[key]]
+id = "shell.scenario.list"
+original = [{ at = "GENRLTXT:501" }]
+
+[[key]]
+id = "shell.scenario.advanced"
+original = [{ at = "GENRLTXT:502" }]
+
+[[key]]
+id = "shell.scenario.random"
+original = [{ at = "GENRLTXT:760" }]
+
+[[key]]
+id = "shell.scenario.unnamed"
+original = [{ at = "GENRLTXT:509" }]
+
+# The difficulties' names (`difficulty_names` 0x6A77EC: `arraytxt_load` 0x5B9DED copies ArrayTxt.txt's
+# records 142 to 146, after the map sizes' 137 to 140; design §18.2).
+[[key]]
+id = "shell.scenario.difficulty.easy"
+original = [{ at = "ARRAYTXT:142" }]
+
+[[key]]
+id = "shell.scenario.difficulty.normal"
+original = [{ at = "ARRAYTXT:143" }]
+
+[[key]]
+id = "shell.scenario.difficulty.hard"
+original = [{ at = "ARRAYTXT:144" }]
+
+[[key]]
+id = "shell.scenario.difficulty.expert"
+original = [{ at = "ARRAYTXT:145" }]
+
+[[key]]
+id = "shell.scenario.difficulty.impossible"
+original = [{ at = "ARRAYTXT:146" }]
+
+# The rating of the chosen difficulty ("%d%%", 0x6831E4; `scenario_ratings` 0x683440).
+[[key]]
+id = "shell.scenario.rating"
+args = { rating = "number" }
+original = [{ at = "EXE:0x6831E4", printf = ["rating"] }]
+
+# The victories' texts (`victory_texts` 0x69FB70: VcDesc.txt's records, the standard's 0, a special
+# goal's its code + 1), a special goal's with the standard's ("%s %s %s", 0x6837B4: the goal's,
+# GENRLTXT 5, the standard's), and the losses' (`loss_texts` 0x69FC1C: LcDesc.txt's, the standard's 0).
+[[key]]
+id = "shell.scenario.victory.0"
+original = [{ at = "VCDESC:0" }]
+
+[[key]]
+id = "shell.scenario.victory.1"
+original = [{ at = "VCDESC:1" }]
+
+[[key]]
+id = "shell.scenario.victory.2"
+original = [{ at = "VCDESC:2" }]
+
+[[key]]
+id = "shell.scenario.victory.3"
+original = [{ at = "VCDESC:3" }]
+
+[[key]]
+id = "shell.scenario.victory.4"
+original = [{ at = "VCDESC:4" }]
+
+[[key]]
+id = "shell.scenario.victory.5"
+original = [{ at = "VCDESC:5" }]
+
+[[key]]
+id = "shell.scenario.victory.6"
+original = [{ at = "VCDESC:6" }]
+
+[[key]]
+id = "shell.scenario.victory.7"
+original = [{ at = "VCDESC:7" }]
+
+[[key]]
+id = "shell.scenario.victory.8"
+original = [{ at = "VCDESC:8" }]
+
+[[key]]
+id = "shell.scenario.victory.9"
+original = [{ at = "VCDESC:9" }]
+
+[[key]]
+id = "shell.scenario.victory.10"
+original = [{ at = "VCDESC:10" }]
+
+[[key]]
+id = "shell.scenario.victory.11"
+original = [{ at = "VCDESC:11" }]
+
+[[key]]
+id = "shell.scenario.with-standard"
+args = { goal = "text", or = "text", standard = "text" }
+original = [{ at = "EXE:0x6837B4", printf = ["goal", "or", "standard"] }]
+
+[[key]]
+id = "shell.scenario.or"
+original = [{ at = "GENRLTXT:5" }]
+
+[[key]]
+id = "shell.scenario.loss.0"
+original = [{ at = "LCDESC:0" }]
+
+[[key]]
+id = "shell.scenario.loss.1"
+original = [{ at = "LCDESC:1" }]
+
+[[key]]
+id = "shell.scenario.loss.2"
+original = [{ at = "LCDESC:2" }]
+
+[[key]]
+id = "shell.scenario.loss.3"
+original = [{ at = "LCDESC:3" }]
+
+# The right press's popups (`dialog_items_set_hints` from `scenario_hints` 0x6A6CA0: item i takes
+# Help.txt's record i - 83; its right-click text, style 4).
+[[key]]
+id = "shell.scenario.help.list"
+original = [{ at = "HELP:45:1" }]
+
+[[key]]
+id = "shell.scenario.help.advanced"
+original = [{ at = "HELP:46:1" }]
+
+[[key]]
+id = "shell.scenario.help.random"
+original = [{ at = "HELP:47:1" }]
+
+[[key]]
+id = "shell.scenario.help.begin"
+original = [{ at = "HELP:103:1" }]
+
+[[key]]
+id = "shell.scenario.help.back"
+original = [{ at = "HELP:105:1" }]
+
+[[key]]
+id = "shell.scenario.help.easy"
+original = [{ at = "HELP:24:1" }]
+
+[[key]]
+id = "shell.scenario.help.normal"
+original = [{ at = "HELP:25:1" }]
+
+[[key]]
+id = "shell.scenario.help.hard"
+original = [{ at = "HELP:26:1" }]
+
+[[key]]
+id = "shell.scenario.help.expert"
+original = [{ at = "HELP:27:1" }]
+
+[[key]]
+id = "shell.scenario.help.impossible"
+original = [{ at = "HELP:28:1" }]
+
+[[key]]
+id = "shell.scenario.help.size"
+original = [{ at = "HELP:106:1" }]
 
 # The client's own texts (E27 M2 T6b2, decision 37): no original form, their messages in the
 # client's own pack beside this file (`en.json`; E17 design §9.2), which must give each one.

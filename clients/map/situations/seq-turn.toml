@@ -1,0 +1,10 @@
+# The turn's end and the next day (E24 M4 T1a; clients/map/sequences.toml `turn-day` and the
+# turn's other sequences; E24 design §5): Red's hero and town in the open (a town, or the turn's
+# end warns that Red has lost its last one), Blue's hero (a computer player's) far off in the fog,
+# out of Red's sight and too far to come into it in a day.
+size = 36
+terrain = "grass"
+heroes = [{ at = [4, 4], class = 2 }, { at = [32, 32], owner = 1 }]
+towns = [{ at = [8, 3], faction = 0, owner = 0, buildings = "fort" }]
+view = [0, 0, 0]
+hidden = [[12, 12, 35, 35]]

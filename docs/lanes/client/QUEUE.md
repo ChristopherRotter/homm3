@@ -14,16 +14,17 @@ need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the ha
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T1
+#### E27 M3 T1b
 
-T1 The scenario screen's frame and list (the epic's M3 table; design §3.1 to §3.4, §3.8): the
-dialog in its new-game mode (a single scenario, the hot seat), the shipped maps read whole
-(decision 44), the rows, columns, sort, size filters, keys, scroll, hints and popups; exact
-against `scn-new`, `scn-list-keys`, `scn-sort`, `scn-filter`, `scn-right`, with design §6.4's
-`up-past-top` fix recorded (`h3shell.py run --only <id> --record`; the runbook's "The shell's
-screens"); with M2's leftover: a key without an `h3_sdl::Key` variant (the letters, the digits)
-reaching the window, so it skips the start as the original's (a catch-all key in `h3_sdl`, the
-map-client lane's inbox told). Then T2 to T7 as the M3 table lists them.
+T1b The list (the epic's M3 table; design §3.3, §3.4, §3.8, §18.3; decision 45): its panel and
+its toggle (Show Available Scenarios, 128; GENRLTXT 503 in a shot), the rows, columns, sort
+(`h3_view::shell::scenario::sort` is the list's order as built, CLT-Q90, CLT-Q91), size filters,
+keys, scroll bar, a row's press and double press, the right press's popups on the list, the
+labels and the texts (`scn-right`), the flags' strip's teams dialog (387, 0x576540); exact
+against `scn-new`'s `list-shown`, `scn-list-keys`, `scn-sort`, `scn-filter`, `scn-right`, with
+design §6.4's `up-past-top` fix recorded (`h3shell.py run --only <id> --record`; the runbook's
+"The shell's screens"). The screen's code: `h3_view::shell::scenario` (T1a's), the maps read by
+`h3-battle-client`'s `maps`. Then T2 to T7 as the M3 table lists them.
 
 ## Inbox
 
@@ -35,6 +36,17 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   viewer's two tavern heroes as the tavern's held hero screen shows them: `TavernHero`, its head
   `TavernHeroHead`, its lists) and the events `TavernOffered` and `TavernPartSeen`. `h3-view`'s
   `game_record/tests.rs` literal gained `tavern: [None, None]`.
+
+- 2026-11-17 (the map client lane, E24 M4 T1a, `map-client/e24-m4-t1a`; **two additions to the
+  common crates, nothing of yours changed**): (1) `h3_ui::message`, a copy of your
+  `h3_view::message` trimmed to styles 1 and 2 without pictures (`layout`, `Open`; an origin
+  comment; E24 design §5.1), for the adventure map's message boxes; `h3-view` is untouched: switch
+  to it when you like (the map lane adds the pictures at its M4 T2), or tell this lane if you want
+  it shaped otherwise. (2) The capture harness: `xdd.dll`'s table forces two more draws
+  (`week_name` 0x4C87A6, `month_name` 0x4C8FCC; `h3drive.ROLLS` grew by two), so a run with an
+  `xdd.dll` built before fails its count of redirected calls: rebuild it with
+  `clients/capture/setup.sh`; `h3map.py` alone gained the rest (a sequence's `move_reminder`,
+  `rolls`, Enter and Escape, the `date` and `player` lines, the live part's `[[turn]]`).
 
 - 2026-11-15 (the battle lane's inbox session, `battle/inbox-2026-11-15`, `cross-lane`; **three of
   your waiting items**): (1) **G1 / `CLT-STUB-1`:** the observation gives each side's

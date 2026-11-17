@@ -1457,6 +1457,10 @@ pub fn battle_params() -> BattleParamsDef {
         luck_dice: 24,
         good_luck_chances: vec![0, 0, 0],
         war_machine_positions: vec![[1, 3], [1, 1], [1, 9]],
+        bank_positions: [
+            vec![[6, 3], [10, 3], [5, 5], [8, 5], [11, 5], [6, 7], [10, 7]],
+            vec![[15, 0], [15, 10], [2, 10], [2, 0], [15, 5], [2, 5], [8, 0]],
+        ],
         loose_formation: vec![
             vec![5],
             vec![3, 7],

@@ -20,8 +20,16 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
     ];
     for (key, pad, d) in directions {
         for k in [key, pad] {
-            assert_eq!(keys.command((), true, k), Some(Command::Scroll(d)), "{k}");
-            assert_eq!(keys.command((), false, k), Some(Command::Hero(d)), "{k}");
+            assert_eq!(
+                keys.command(Context::Map, true, k),
+                Some(Command::Scroll(d)),
+                "{k}"
+            );
+            assert_eq!(
+                keys.command(Context::Map, false, k),
+                Some(Command::Hero(d)),
+                "{k}"
+            );
         }
     }
     for (key, command) in [
@@ -32,9 +40,13 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
         ("Escape", Window::Quit),
     ] {
         let command = Command::Window(command);
-        assert_eq!(keys.command((), false, key), Some(command), "{key}");
+        assert_eq!(
+            keys.command(Context::Map, false, key),
+            Some(command),
+            "{key}"
+        );
         // A chord matches exactly: Ctrl held is another chord.
-        assert_eq!(keys.command((), true, key), None, "{key}");
+        assert_eq!(keys.command(Context::Map, true, key), None, "{key}");
     }
     // Pause, a frame on, restart and vsync with Ctrl (the user, 2026-11-04, E17 M6 T4b2a: the
     // battle window's the same, where F5 to F8 alone are the original's).
@@ -45,10 +57,14 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
         ("F8", Window::Vsync),
     ] {
         let command = Command::Window(command);
-        assert_eq!(keys.command((), true, key), Some(command), "{key}");
-        assert_eq!(keys.command((), false, key), None, "{key}");
+        assert_eq!(
+            keys.command(Context::Map, true, key),
+            Some(command),
+            "{key}"
+        );
+        assert_eq!(keys.command(Context::Map, false, key), None, "{key}");
     }
-    assert_eq!(keys.command((), false, "P"), None);
+    assert_eq!(keys.command(Context::Map, false, "P"), None);
     // The panels' hotkeys (E24 M3 T6b1): the original's letters.
     for (key, hotkey) in [
         ("K", Hotkey::Kingdom),
@@ -63,12 +79,15 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
         ("H", Hotkey::NextHero),
         ("E", Hotkey::EndTurn),
     ] {
-        assert_eq!(keys.command((), false, key), Some(Command::Panel(hotkey)));
-        assert_eq!(keys.command((), true, key), None);
+        assert_eq!(
+            keys.command(Context::Map, false, key),
+            Some(Command::Panel(hotkey))
+        );
+        assert_eq!(keys.command(Context::Map, true, key), None);
     }
     // Every command bound, in the table's order: the map's twice (the key and the keypad's).
     let chords = keys.chords();
-    assert_eq!(chords.len(), 53);
+    assert_eq!(chords.len(), 55);
     let mut commands: Vec<Command> = chords.iter().map(|&(c, _)| c).collect();
     commands.dedup();
     assert_eq!(commands, Command::all());
@@ -77,13 +96,48 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
     assert_eq!(chords[16].1.to_string(), "Up");
     assert_eq!(chords[32].1.to_string(), "K");
     assert_eq!(chords[43].1.to_string(), "Space");
-    assert_eq!(chords[52].1.to_string(), "Escape");
+    assert_eq!(chords[44].1.to_string(), "Return");
+    assert_eq!(chords[54].1.to_string(), "Escape");
+}
+
+#[test]
+fn a_message_box_takes_its_keys_and_the_windows_own() {
+    // E24 M4 T1a: Enter and Escape the box's OK and Cancel in its context, the window's quit
+    // with nothing over the map; the window's keys that work everywhere in both.
+    let keys = Keys::original();
+    let (map, message) = (Context::of(false), Context::of(true));
+    assert_eq!((map, message), (Context::Map, Context::Message));
+    assert_eq!(
+        keys.command(message, false, "Return"),
+        Some(Command::Message(Key::Ok))
+    );
+    assert_eq!(
+        keys.command(message, false, "Escape"),
+        Some(Command::Message(Key::Cancel))
+    );
+    assert_eq!(keys.command(map, false, "Return"), None);
+    assert_eq!(
+        keys.command(map, false, "Escape"),
+        Some(Command::Window(Window::Quit))
+    );
+    assert_eq!(keys.command(message, false, "E"), None);
+    assert_eq!(keys.command(message, false, "Up"), None);
+    assert_eq!(
+        keys.command(message, false, "F2"),
+        Some(Command::Window(Window::Music))
+    );
+    assert_eq!(keys.command(message, true, "F6"), None);
+    let ok = Command::Message(Key::Ok);
+    assert_eq!(ok.action(), Some(Action::BoxKey(Key::Ok)));
+    assert_eq!(ok.release(), Some(Action::BoxKeyUp(Key::Ok)));
+    assert_eq!(ok.name(), "box-ok");
+    assert_eq!(Command::Message(Key::Cancel).name(), "box-cancel");
 }
 
 #[test]
 fn every_command_has_a_name_and_the_maps_its_action() {
     let all = Command::all();
-    assert_eq!(all.len(), 37);
+    assert_eq!(all.len(), 39);
     for &command in &all {
         assert_eq!(Command::from_name(&command.name()), Some(command));
     }
@@ -107,8 +161,9 @@ fn every_command_has_a_name_and_the_maps_its_action() {
             "visit"
         ]
     );
+    assert_eq!(names[28..30], ["box-ok", "box-cancel"]);
     assert_eq!(
-        names[28..],
+        names[30..],
         [
             "music",
             "effects",
@@ -156,37 +211,37 @@ fn a_users_file_overrides_command_by_command() {
     )
     .unwrap();
     assert_eq!(
-        keys.command((), false, "Space"),
+        keys.command(Context::Map, false, "Space"),
         Some(Command::Window(Window::Pause))
     );
     assert_eq!(
-        keys.command((), false, "P"),
+        keys.command(Context::Map, false, "P"),
         Some(Command::Window(Window::Pause))
     );
-    assert_eq!(keys.command((), true, "F5"), None);
+    assert_eq!(keys.command(Context::Map, true, "F5"), None);
     // Unbound.
-    assert_eq!(keys.command((), false, "Escape"), None);
-    assert_eq!(keys.command((), false, "Up"), None);
-    assert_eq!(keys.command((), false, "Keypad8"), None);
+    assert_eq!(keys.command(Context::Map, false, "Escape"), None);
+    assert_eq!(keys.command(Context::Map, false, "Up"), None);
+    assert_eq!(keys.command(Context::Map, false, "Keypad8"), None);
     assert_eq!(
-        keys.command((), false, "W"),
+        keys.command(Context::Map, false, "W"),
         Some(Command::Hero(Direction::North))
     );
     assert_eq!(
-        keys.command((), true, "W"),
+        keys.command(Context::Map, true, "W"),
         Some(Command::Scroll(Direction::North))
     );
     assert_eq!(
-        keys.command((), true, "Up"),
+        keys.command(Context::Map, true, "Up"),
         Some(Command::Scroll(Direction::North))
     );
     // The rest kept.
     assert_eq!(
-        keys.command((), true, "F6"),
+        keys.command(Context::Map, true, "F6"),
         Some(Command::Window(Window::Frame))
     );
     let chords = keys.chords();
-    assert_eq!(chords.len(), 52);
+    assert_eq!(chords.len(), 54);
     assert!(
         chords
             .iter()
@@ -225,7 +280,7 @@ fn a_users_file_is_checked() {
         ),
         (
             "[map]\npause = [\"Escape\"]",
-            Some("[map] Escape is bound to both `pause` and `quit`".to_string()),
+            Some("[map] Escape is bound to both `box-cancel` and `pause`".to_string()),
         ),
         (
             "[map]\nhero-east = [\"Ctrl+Up\"]",
@@ -239,5 +294,26 @@ fn a_users_file_is_checked() {
             // The parser's own message.
             None => assert!(got.is_err(), "{text}"),
         }
+    }
+}
+
+#[test]
+fn a_shift_chord_is_refused() {
+    // The map reads no Shift (the client lane's E27 M2 T7b note): the defaults have none, a
+    // user's `Shift+` chord is refused with its command, Ctrl+Shift+ too.
+    assert_eq!(refuse_shift(&Keys::original()), Ok(()));
+    let plain = Keys::with_file("[map]\nend-turn = [\"E\", \"Ctrl+E\"]").unwrap();
+    assert_eq!(refuse_shift(&plain), Ok(()));
+    for (chord, shown) in [("Shift+E", "Shift+E"), ("Ctrl+Shift+E", "Ctrl+Shift+E")] {
+        let text = format!("[map]\nend-turn = [\"E\", \"{chord}\"]");
+        let keys = Keys::with_file(&text).unwrap();
+        assert_eq!(
+            refuse_shift(&keys),
+            Err(format!(
+                "`end-turn`: {shown}: the map reads no Shift (a key with Shift held is the key \
+                 alone)"
+            )),
+            "{chord}"
+        );
     }
 }

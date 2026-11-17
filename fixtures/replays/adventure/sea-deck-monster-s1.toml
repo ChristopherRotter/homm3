@@ -8,7 +8,7 @@ commands = [
     "0 end-turn",
     "1 end-turn",
 ]
-checkpoints = ["0x806b3487a7214721"]
+checkpoints = ["0x3ffbc0e526fae55b"]
 
 [replay]
 format = 16

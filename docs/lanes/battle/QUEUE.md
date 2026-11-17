@@ -20,6 +20,24 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-17 (the adventure lane, E08 T124a, `adventure/e08-t124a`, `cross-lane` with the user's
+  consent, E08 decision 353; **your paths changed, for your review; your versions moved**): the
+  bank battle in your crates (design `E08-design.md` §13, its *As built*). `BattleState` holds
+  `creature_bank` and each side's `bank_supply` (battle state hash **v56**, after the anti-magic
+  flag); `begin` opens no tactics phase with it; `generate_setup_obstacles` gives none (nor the
+  boats' hexes) and `setup` refuses obstacles or a siege beside the flag (the new
+  `SetupError::InvalidCreatureBank`); `war_machines` sets up none, a listed ammo supply of a side
+  with a hero supplying it (`ammo_supplied` reads `bank_supply` beside a living cart: only the
+  bank's case of your r3); each stack at `BattleParams::bank_position(side, ordinal)`. The battle
+  part's `bank_positions` (**v8**, pack format **v53**, `packs/README.md`) is harvested from
+  0x63D0E0 by `h3_formats::exe::bank_hexes` (`installation.md` §7.62; `KnownBuild::bank_hexes_va`,
+  `Inputs::bank_hexes`), so the re-harvest checks it; the synthetic pack's by hand.
+  BAT-SET-001, BAT-TAC-001, BAT-GEO-004, BAT-WAR-001, BAT-WAR-004 amended; tests in
+  `src/tests/banks.rs`; the ten battle goldens rehashed (only hash lines and the version). Still
+  yours: a `creature_bank` key in the scenario files and battle replays (with the replay format's
+  bump) when one first needs it, and `h3-battle-ai`'s reading of the flag (the original's battle AI
+  and +0x53C5: unread, design §21).
+
 - 2026-11-16 (the adventure lane, E08 T122, `shared/e08-t122`, `cross-lane` with the user's
   consent, E08 decision 350; **your paths changed, for your review; no version moved**): the seam
   has `BattleSetup::creature_bank: bool` (`h3-contracts`; default `false`; ADR-0022 point 8, now
@@ -113,7 +131,7 @@ Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure ar
 
 - **The controller against the owner** (the engine mostly reads the owner; a hypnotized stack's morale and luck are the controller's since batch 2g HM): a hypnotized shooter's bows, which the original looks for on the controller's hero for the walls' halving (0x46751A to 0x46753A, BAT-SIE-008) and the distance's (0x467600, BAT-RNG-002), where the engine sets traits from the owner's hero at the start (`hero::trait_effects`; F-r2b-2); Hypnotize ending on the active stack mid-turn keeps the acting side until the next activation (0x4653AE), the engine hands the turn to the owner at once (r3); the battle's end with only hypnotized stacks left (unread; the engine counts them for their owner).
 
-- **War machines:** the original sets up none with the battle's bank flag (+0x53C5; 0x463758 to 0x46375D): the setup has no creature bank yet (a side without a hero brings none since 2026-10-24, BAT-WAR-001); the Ammo Cart's test is "the shooter's side's hero wears artifact 5" (0x43F9E1) without a test that the cart stands (BAT-WAR-004; r3); the original's Defend gives a war machine no bonus, nor any stack in the tactics phase (0x479722; does the engine?); the Genie's and the Enchanters' usefulness tests count a Ballista without shots as a shooter only under Q-0004, the original always (0x4428F0).
+- **War machines:** the original sets up none with the battle's bank flag (+0x53C5; 0x463758 to 0x46375D): built for a bank by E08 T124a (`BattleSetup::creature_bank`: none set up, a listed cart's supply kept; a side without a hero brings none since 2026-10-24, BAT-WAR-001); the Ammo Cart's test is "the shooter's side's hero wears artifact 5" (0x43F9E1) without a test that the cart stands (BAT-WAR-004; r3); the original's Defend gives a war machine no bonus, nor any stack in the tactics phase (0x479722; does the engine?); the Genie's and the Enchanters' usefulness tests count a Ballista without shots as a shooter only under Q-0004, the original always (0x4428F0).
 
 - **Turns** (batch 2g aligned the wait phase, the freeze's tie-break and the wait phase's turn start, and recorded the good morale before a re-entry, BAT-MOR-003): a `rebirth` creature a mine or Fire Wall kills on its way walks on and attacks after its rebirth (the original probably too, 0x478900; r5b); an active Phoenix killed by its own hero's cast and reborn stays the active stack (unread; r1); an active stack hit by a redirected Blind in its own turn finishes it (r2b); every routine that turns a stack (0x446720: the strike, the melee attack's struck stack, a walk's steps, the creature's cast, the flight, the teleporting move, the raise; §7.25) may measure at its turned front hex: the breath's second hex and the attack patterns are leads, the placement and the berserk shooter's distance (#150's call 2) unread.
 

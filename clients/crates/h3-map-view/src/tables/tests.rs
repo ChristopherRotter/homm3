@@ -106,6 +106,12 @@ frames = [10, 4, 8]
 step = 100
 sound = "newday.wav"
 
+[map.turn]
+asked = 3000
+week = "newweek.wav"
+month = "newmonth.wav"
+deity = [42, 43]
+
 [[terrain]]
 code = 0
 def = "dirttl.def"

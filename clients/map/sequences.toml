@@ -758,3 +758,85 @@ inputs = [
     { at = 300, click = [440, 344] }, { at = 300, pointer = [700, 300] },
     { at = 350, keydown = "space" }, { at = 360, keyup = "space" },
 ]
+
+# The turn's change (E24 M4 T1a, design §5): End Turn (its hotkey, its button) and Move
+# Reminder's question (answered by its hotkeys), Blue's turn out of Red's sight (a computer
+# player's: on the virtual clock the whole of it falls in End Turn's millisecond), the next day's
+# start; the week's and the month's starts with their messages, the draws forced (`rolls`: every
+# draw of each returns its value, README "Forced rolls"; the situation's `date` the week's or the
+# month's last day).
+
+[[sequence]]
+id = "turn-day"
+situation = "seq-turn"
+ms = 3600
+why = "End Turn's key: the turn's end, a computer player's turn out of sight, the next day's start and its date window"
+inputs = [{ at = 100, keydown = "e" }, { at = 160, keyup = "e" }]
+
+[[sequence]]
+id = "turn-question"
+situation = "seq-turn"
+ms = 2000
+move_reminder = 1
+why = "End Turn's question with a hero able to move: its key opens it, Escape cancels, the button opens it again, Enter ends the turn"
+inputs = [
+    { at = 100, keydown = "e" }, { at = 160, keyup = "e" },
+    { at = 400, keydown = "Escape" }, { at = 460, keyup = "Escape" },
+    { at = 700, click = [711, 372] },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+]
+
+[[sequence]]
+id = "turn-week"
+situation = "seq-turn-week"
+ms = 2400
+rolls = { week_chance = 2, week_name = 4 }
+why = "a normal week's start: its message over the week's date window, closed by Enter"
+inputs = [
+    { at = 100, keydown = "e" }, { at = 160, keyup = "e" },
+    { at = 1600, keydown = "Return" }, { at = 1660, keyup = "Return" },
+]
+
+[[sequence]]
+id = "turn-week-creature"
+situation = "seq-turn-week"
+ms = 1200
+rolls = { week_chance = 1, week_creature = 3, week_name = 4 }
+why = "a creature's week's start: its message, closed by Enter"
+inputs = [
+    { at = 100, keydown = "e" }, { at = 160, keyup = "e" },
+    { at = 800, keydown = "Return" }, { at = 860, keyup = "Return" },
+]
+
+[[sequence]]
+id = "turn-month"
+situation = "seq-turn-month"
+ms = 1200
+rolls = { week_chance = 2, week_name = 4, month_kind = 1, month_name = 6 }
+why = "a normal month's start: its message over the first week's date window, closed by Enter"
+inputs = [
+    { at = 100, keydown = "e" }, { at = 160, keyup = "e" },
+    { at = 800, keydown = "Return" }, { at = 860, keyup = "Return" },
+]
+
+[[sequence]]
+id = "turn-month-creature"
+situation = "seq-turn-month"
+ms = 1200
+rolls = { week_chance = 2, week_name = 4, month_kind = 7, month_creature = 1 }
+why = "a creature's month's start: its message, closed by Enter"
+inputs = [
+    { at = 100, keydown = "e" }, { at = 160, keyup = "e" },
+    { at = 800, keydown = "Return" }, { at = 860, keyup = "Return" },
+]
+
+[[sequence]]
+id = "turn-plague"
+situation = "seq-turn-month"
+ms = 1200
+rolls = { week_chance = 2, week_name = 4, month_kind = 10 }
+why = "the Plague's month's start: its message, closed by Enter"
+inputs = [
+    { at = 100, keydown = "e" }, { at = 160, keyup = "e" },
+    { at = 800, keydown = "Return" }, { at = 860, keyup = "Return" },
+]

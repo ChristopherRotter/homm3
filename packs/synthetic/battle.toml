@@ -25,6 +25,8 @@ bad_morale_chances = [2, 4, 6]              # BAT-MOR-004: morale -1..-3
 luck_dice = 24                              # BAT-LCK-002
 good_luck_chances = [1, 2, 3]               # BAT-LCK-002: luck +1..+3 (no bad luck before HotA)
 war_machine_positions = [[1, 3], [1, 1], [1, 9]]   # BAT-WAR-001: shooting, ammo, first aid
+# BAT-SET-001: a creature bank's hexes [x, y] by side and ordinal among the filled slots.
+bank_positions = { attacker = [[6, 3], [10, 3], [5, 5], [8, 5], [11, 5], [6, 7], [10, 7]], defender = [[15, 0], [15, 10], [2, 10], [2, 0], [15, 5], [2, 5], [8, 0]] }
 # BAT-SET-001: *_formation[n-1] = starting rows of an army with n stacks, in slot order.
 loose_formation = [
     [5],

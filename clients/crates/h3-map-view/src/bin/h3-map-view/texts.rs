@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
-use h3_map_view::{hover, panels, status};
+use h3_map_view::{hover, panels, status, turn};
 use h3_ui::text::Catalogue;
 use h3_ui::text::keys::{EXECUTABLE, Entry, Keys, KeysFile, Row, address_field};
 use h3_ui::text::pack::{Pack, Tables};
@@ -26,8 +26,9 @@ use crate::files;
 /// `hero-class.2`, `town-type.0`, `creature.13`); since T6a2a an object's bonus (`map-bonus.3`,
 /// design §4.11); since T6a2b the owners' and contents' names (design §4.12: a colour's, a
 /// dwelling's, a resource's, a mine's, a bank's, a spell's, a Tree's price, a skill's, a seer's,
-/// an artifact's).
-pub const FAMILIES: [&str; 22] = [
+/// an artifact's); since E24 M4 T1a a normal month's and week's names (`month-name.6`,
+/// `week-name.4`, design §5.1).
+pub const FAMILIES: [&str; 24] = [
     "hero",
     "town-name",
     "map-hint",
@@ -50,6 +51,8 @@ pub const FAMILIES: [&str; 22] = [
     "primary-skill",
     "artifact",
     "player-colour",
+    "month-name",
+    "week-name",
 ];
 
 /// The committed key catalogue (`clients/text/keys.toml`).
@@ -94,6 +97,7 @@ pub fn keys(text: &str, ids: &BTreeMap<String, usize>) -> Result<Keys, String> {
         .chain(status::KEYS)
         .chain(hover::KEYS)
         .chain(hover::contents::KEYS)
+        .chain(turn::KEYS)
     {
         let key = all
             .keys
@@ -179,6 +183,23 @@ pub fn tables(keys: &Keys, archives: &[LodArchive<'_>], exe: &[u8]) -> Result<Ta
     Ok(tables)
 }
 
+/// The growth of the creature `creature` (its record's +0x44: `CRTRAITS.TXT`'s Growth, column 11
+/// of its non-blank record from record 2, as the `creature` family's records; E24 M4 T1a, the week
+/// of the Deity's message, design §5.1) from `archives`.
+pub fn growth(archives: &[LodArchive<'_>], creature: u16) -> Result<i32, String> {
+    let name = "CRTRAITS.TXT";
+    let (_, bytes) = files::find(archives, name)?.ok_or_else(|| format!("no {name}"))?;
+    let table = TextTable::parse(&bytes).map_err(|e| format!("{name}: {e:?}"))?;
+    table
+        .records
+        .iter()
+        .skip(2)
+        .filter(|r| !r.iter().all(|f| f.trim().is_empty()))
+        .nth(usize::from(creature))
+        .and_then(|r| r.get(11)?.trim().parse().ok())
+        .ok_or_else(|| format!("{name}: no growth of creature {creature}"))
+}
+
 /// The executable's string at file offset `at`: at most 256 bytes to a NUL, each printable ASCII
 /// or a space; none for any other or without the NUL.
 fn exe_string(exe: &[u8], at: Option<usize>) -> Option<String> {
@@ -228,6 +249,7 @@ mod tests {
                 .chain(status::KEYS)
                 .chain(hover::KEYS)
                 .chain(hover::contents::KEYS)
+                .chain(turn::KEYS)
                 .collect();
             ids.extend(["hero.0", "hero.1", "town-name.0"]);
             ids.sort_unstable();

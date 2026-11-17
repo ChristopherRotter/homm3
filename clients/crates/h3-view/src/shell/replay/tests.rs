@@ -856,3 +856,37 @@ fn the_game_type_menus_take_the_harness_s_inputs() {
     let (_, _, r) = replay(false, &["key:n", "key:n"]);
     assert_eq!(r.screen(), Screen::GameType(Game::New));
 }
+
+#[test]
+fn the_scenario_screen_takes_the_original_s_background_draws_in_turn() {
+    // E27 M3 T1a: `scn-new`'s three openings, the third past the draws given (0).
+    let menus = menus(Bugs::Original);
+    let r = Replay::new(Shell::new(false), [400, 300], INPUT_STEP, None, &menus)
+        .with_backgrounds(&[1, 0]);
+    let open = [
+        "click:643,70",
+        "click:649,65",
+        "move:790,300",
+        "until:scenario_list",
+    ];
+    let mut steps = vec!["until:main_menu"];
+    steps.extend(open);
+    let (_, stop, r) = replay_from(r, &steps);
+    assert_eq!(stop, None);
+    let background = |r: &Replay| match r.front() {
+        Some(Front::Scenario(s)) => Some(s.background()),
+        _ => None,
+    };
+    assert_eq!(background(&r), Some(1));
+    let again = [
+        "click:667,555",
+        "move:790,300",
+        "until:new_game_menu",
+        "click:649,65",
+    ];
+    let (_, stop, r) = replay_from(r, &again);
+    assert_eq!((stop, background(&r)), (None, Some(0)));
+    let (_, stop, r) = replay_from(r, &again);
+    assert_eq!((stop, background(&r)), (None, Some(0)));
+    assert_eq!(r.screen(), Screen::Scenario(Game::New, Kind::Single));
+}

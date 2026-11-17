@@ -40,6 +40,9 @@ pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS + 1;
 
 /// The Catapult's war-machine kind: after the kinds the ruleset places (BAT-SIE-009).
 pub(crate) const CATAPULT_KIND: usize = WAR_MACHINE_KINDS;
+/// The ammunition supply's kind among the war machines (shooting machine 0, ammo supply 1, first
+/// aid 2; BAT-WAR-001).
+const AMMO_SUPPLY_KIND: usize = 1;
 
 /// The war machines' kinds in the order the original gives them records after the army (E04c
 /// T10a, `docs/formats/installation.md` §7.27; 0x463600): the siege's Catapult, the Ballista, the
@@ -86,7 +89,7 @@ const MAX_BACKGROUND: u8 = 2;
 const MAX_COLOUR: u8 = 7;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 55;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 56;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -373,7 +376,7 @@ fn war_machine_kind(
     } else if creature.flags.contains(CreatureFlag::Shooter) {
         Some(0)
     } else if has(|a| matches!(a, Ability::AmmoSupply)) {
-        Some(1)
+        Some(AMMO_SUPPLY_KIND)
     } else if has(|a| matches!(a, Ability::FirstAid { .. })) {
         Some(2)
     } else {
@@ -394,10 +397,11 @@ fn war_machines(
     (setup, siege): (&BattleSetup, Option<&SiegeState>),
     side: BattleSide,
     taken: &mut HexSet,
-) -> Result<[Option<Stack>; MAX_WAR_MACHINES], SetupError> {
+) -> Result<([Option<Stack>; MAX_WAR_MACHINES], bool), SetupError> {
     let params = ruleset.battle();
     let mut out: [Option<Stack>; MAX_WAR_MACHINES] = [None; MAX_WAR_MACHINES];
     let mut listed = [false; MAX_WAR_MACHINES];
+    let mut supplied = false;
     // rule: BAT-SIE-029
     let walled = siege.is_some_and(|s| s.fort >= h3_contracts::FortLevel::Fort);
     for &id in &setup.war_machines[side.index()] {
@@ -411,6 +415,14 @@ fn war_machines(
         // A side without a hero brings none (0x46374D to 0x463752; VCMI takes them from the
         // hero's artifacts too).
         if setup.heroes[side.index()].is_none() {
+            continue;
+        }
+        // rule: BAT-WAR-004
+        // A creature bank's battle sets up none (the original's 0x463758, ADR-0022 point 8): the
+        // hero keeps them, and a listed ammunition supply still supplies the side's shooters
+        // (the original's test at 0x43F9E1 reads the hero's artifact, not the stack).
+        if setup.creature_bank {
+            supplied |= kind == AMMO_SUPPLY_KIND;
             continue;
         }
         // With quirk BAT-QUIRK-23 a town with a fort sets up no Ballista for its defender (the
@@ -449,7 +461,7 @@ fn war_machines(
     if walled && side == BattleSide::Attacker && setup.heroes[side.index()].is_some() {
         out[CATAPULT_KIND] = catapult(ruleset, field, setup, taken)?;
     }
-    Ok(out)
+    Ok((out, supplied))
 }
 
 /// The attacker's Catapult at the siege field's hex (BAT-SIE-009; the original's 0x463600 sets
@@ -1044,6 +1056,15 @@ pub struct BattleState {
     pub(crate) battlefield: Option<BattlefieldId>,
     /// The battle is at an anti-magic garrison (BAT-MAG-061; public).
     pub(crate) anti_magic: bool,
+    /// The battle is a creature bank's (`BattleSetup::creature_bank`, ADR-0022 point 8; public,
+    /// not observed: each effect shows in the battle itself): no tactics phase (BAT-TAC-001), no
+    /// obstacles (BAT-GEO-004), no war machines on the field (BAT-WAR-001), the stacks at the
+    /// bank positions (BAT-SET-001). Kept apart from the setup, since `begin` may come later.
+    pub(crate) creature_bank: bool,
+    /// Each side whose hero listed an ammunition supply that a creature bank's battle keeps off
+    /// the field: its shooters are supplied as by a living cart (BAT-WAR-004; public, as the
+    /// cart another battle sets up on the field; not observed). Indexed by [`BattleSide::index`].
+    pub(crate) bank_supply: [bool; 2],
     /// The game's difficulty, 0 (Easy) to 4 (Impossible), and whether each side's player is
     /// human (ADR-0023 point 7; public): read only by the choices the battle makes for a side as
     /// the original's computer does (an automatic turret's desperate aim, BAT-SIE-023; the stops
@@ -1145,6 +1166,12 @@ impl BattleState {
     ) -> Result<Self, SetupError> {
         let params = ruleset.battle();
         let field = Field::new(params.field);
+        // rule: BAT-GEO-004
+        // A creature bank's battle has no obstacles and is never a siege (ADR-0022 point 8): a
+        // setup that brings either beside the flag is a caller's mistake, refused.
+        if setup.creature_bank && (!setup.obstacles.is_empty() || setup.siege.is_some()) {
+            return Err(SetupError::InvalidCreatureBank);
+        }
         let natural = NaturalObstacles::new(
             ruleset,
             field,
@@ -1212,6 +1239,7 @@ impl BattleState {
             .union(siege::placement_blocked(siege.as_ref()));
         let mut placed = [Stack::default(); STACK_CAPACITY];
         let mut len = 0;
+        let mut bank_supply = [false; 2];
         for side in BattleSide::BOTH {
             let side_start = len;
             let army = setup.army(side);
@@ -1243,22 +1271,36 @@ impl BattleState {
                 *entry = Some((*s, *creature));
             }
             // War machines take their fixed places first (BAT-WAR-001).
-            let machines = war_machines(ruleset, field, (setup, siege.as_ref()), side, &mut taken)?;
+            let (machines, supplied) =
+                war_machines(ruleset, field, (setup, siege.as_ref()), side, &mut taken)?;
+            bank_supply[side.index()] = supplied;
             let n = army.stacks.len();
             let column = match side {
                 BattleSide::Attacker => field.first_standable_column(),
                 BattleSide::Defender => field.last_standable_column(),
             };
             for (i, (s, creature)) in by_slot.iter().flatten().enumerate() {
-                // The compiler guarantees a formation row for every army size and index.
-                let row = params
-                    .formation_row(setup.formations[side.index()], n, i)
-                    .unwrap_or(0);
-                // rule: BAT-SET-001
-                let desired = field.hex(column, i32::from(row)).unwrap_or_default();
                 let two_hex = creature.flags.contains(CreatureFlag::TwoHex);
-                let position = closest_free(field, desired, two_hex, side, taken)
-                    .ok_or(SetupError::NoRoom { side, slot: s.slot })?;
+                // rule: BAT-SET-001
+                let position = if setup.creature_bank {
+                    // A creature bank's battle: the stack's ordinal among the filled slots names
+                    // its position (the original's 0x4636B7), the formation unused. The compiler
+                    // checked that every footprint fits, and nothing else stands on the field.
+                    params
+                        .bank_position(side.index(), i)
+                        .and_then(|(x, y)| field.hex(i32::from(x), i32::from(y)))
+                        .and_then(|p| field.footprint(p, two_hex, side))
+                        .filter(|fp| !fp.hexes().any(|h| taken.contains(h)))
+                        .map(|fp| fp.position())
+                } else {
+                    // The compiler guarantees a formation row for every army size and index.
+                    let row = params
+                        .formation_row(setup.formations[side.index()], n, i)
+                        .unwrap_or(0);
+                    let desired = field.hex(column, i32::from(row)).unwrap_or_default();
+                    closest_free(field, desired, two_hex, side, taken)
+                }
+                .ok_or(SetupError::NoRoom { side, slot: s.slot })?;
                 let stack = Stack::new(
                     ruleset,
                     setup,
@@ -1308,6 +1350,8 @@ impl BattleState {
             terrain: setup.terrain,
             battlefield,
             anti_magic: setup.anti_magic,
+            creature_bank: setup.creature_bank,
+            bank_supply,
             difficulty: setup.difficulty,
             human: setup.human,
             retreat: setup.retreat,
@@ -1372,7 +1416,9 @@ impl BattleState {
             return;
         }
         // rule: BAT-TAC-001
-        if let Some(phase) = tactics::phase(ruleset, &self.heroes) {
+        // None in a creature bank's battle, whatever the heroes' Tactics (the original's
+        // `battle_start` 0x462C5D).
+        if let Some(phase) = tactics::phase(ruleset, &self.heroes).filter(|_| !self.creature_bank) {
             // Round 0: the tactics phase; `EndTactics` starts round 1 (BAT-TAC-002).
             tactics::begin(self, phase, sink);
         } else {
@@ -1708,7 +1754,8 @@ impl BattleState {
     /// type after its hexes, the absolute obstacle's type after whether anchors belong. v43: a
     /// two-hex stack's position is its rear hex (BAT-GEO-002), so the same field hashes
     /// differently. v45 (E04c T2b): the special battlefield (presence flag + handle) and the
-    /// anti-magic flag after the terrain.
+    /// anti-magic flag after the terrain. v56 (E08 T124a): after the anti-magic flag the creature
+    /// bank flag and each side's bank supply.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }
@@ -1769,6 +1816,9 @@ impl CanonicalHash for BattleState {
         self.terrain.hash_into(h);
         self.battlefield.hash_into(h);
         h.write_bool(self.anti_magic);
+        // State hash v56 (E08 T124a): the creature bank flag and each side's supply.
+        h.write_bool(self.creature_bank);
+        self.bank_supply.iter().for_each(|&b| h.write_bool(b));
         h.write_u8(self.difficulty);
         self.human.iter().for_each(|&h_| h.write_bool(h_));
         for facts in &self.retreat {
