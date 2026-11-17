@@ -382,8 +382,11 @@ pub(crate) fn many(n: usize) -> Vec<Entry> {
     entries
 }
 
+/// A label's text or a flag's colour, with its place.
+type Placed<T> = Vec<(T, i32, i32)>;
+
 /// The teams' dialog's labels and flags drawn: (text, x, y) and (colour, x, y).
-fn teams_drawn(draws: &[Draw]) -> (Vec<(String, i32, i32)>, Vec<(u32, i32, i32)>) {
+fn teams_drawn(draws: &[Draw]) -> (Placed<String>, Placed<u32>) {
     let mut labels = Vec::new();
     let mut flags = Vec::new();
     for d in draws {
