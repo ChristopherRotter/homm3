@@ -257,6 +257,11 @@ fn refuses_a_layout_that_breaks_its_rules() {
             "`cradvntr.pcx` is not a .DEF name",
         ),
         (
+            "\"crdeflt.def\"",
+            "\"crdeflt.pcx\"",
+            "`crdeflt.pcx` is not a .DEF name",
+        ),
+        (
             "edges = 2",
             "edges = 3",
             "the cursor's hot spots end at frame 10: the arrow 0 or the edges 3 to 10 lie past \

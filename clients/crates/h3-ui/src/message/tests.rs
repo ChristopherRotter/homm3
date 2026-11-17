@@ -189,6 +189,15 @@ fn a_text_at_its_widest_wraps_there_and_its_height_stops_at_200() {
     // A text whose lines fit at its widest word: its widest line.
     let m = boxed("xxxx\nxx", Style::Ok, Bugs::Original);
     assert_eq!(label(&m, TEXT).size, [206, 32]);
+    // 7 lines of two such words (248 wide, 112 high): a box 320 x 256, a strip of tile at the
+    // right, none at the bottom.
+    let text = ["xxxxxxxxxxxxxxx"; 14].join(" ");
+    let m = boxed(&text, Style::Ok, Bugs::Original);
+    assert_eq!(m.dialog.shadow, Some([320, 256]));
+    assert_eq!(
+        tiles(&m),
+        [(200, [0, 0], [256, 256]), (201, [256, 0], [64, 256])]
+    );
 }
 
 #[test]

@@ -1588,7 +1588,7 @@ impl Loop {
         let selected = next.turn.kingdom.selected;
         let chosen_town = match selected {
             Selected::Town(i) => match self.chosen.towns.get(i).cloned().flatten() {
-                Some(chosen) => Some(chosen),
+                Some(chosen) => Some((i, chosen)),
                 None => return self.unbuilt(refused),
             },
             _ => None,
@@ -1623,7 +1623,9 @@ impl Loop {
             .filter(|_| selected == before)
             .or_else(|| match selected {
                 Selected::Hero(i) => self.chosen_hero(i).map(|c| Status::Hero(c.status.clone())),
-                Selected::Town(_) => chosen_town.as_ref().map(|c| Status::Town(c.status.clone())),
+                Selected::Town(_) => chosen_town
+                    .as_ref()
+                    .map(|(_, c)| Status::Town(c.status.clone())),
                 Selected::None => None,
             });
         self.kingdom = kingdom;
@@ -1661,11 +1663,7 @@ impl Loop {
                 self.draw(t);
                 self.look_again();
             }
-            (None, Some(chosen)) => {
-                if let Selected::Town(i) = selected {
-                    self.choose_town(t, i, chosen);
-                }
-            }
+            (None, Some((i, chosen))) => self.choose_town(t, i, chosen),
             (None, None) => {
                 (self.hero, self.index, self.selected_id) = (None, None, None);
                 self.buttons.move_hero = false;
@@ -1755,13 +1753,24 @@ impl Loop {
         {
             self.pointer = at;
         }
-        if let Action::Click(at) = action {
-            self.box_act(t, Action::Press(at), false)?;
-            return self.box_act(t, Action::Release(at), false);
-        }
-        let Some(boxed) = &mut self.boxed else {
-            return Ok(());
+        // A click a press and a release (a press never closes the box).
+        let closed = match action {
+            Action::Click(at) => {
+                self.box_input(t, Action::Press(at));
+                self.box_input(t, Action::Release(at))
+            }
+            _ => self.box_input(t, action),
         };
+        match closed {
+            Some(id) => self.close_box(t, id),
+            None => Ok(()),
+        }
+    }
+
+    /// An input's message to the open box ([`Loop::box_act`]): a button pressed or released
+    /// drawn and shown, a press with its sound; the id of the button whose click closes it.
+    fn box_input(&mut self, t: u32, action: Action) -> Option<u16> {
+        let boxed = self.boxed.as_mut()?;
         let before = pressed(&boxed.open);
         let outcome = match action {
             Action::Pointer(at) => boxed.open.moved(at),
@@ -1772,16 +1781,16 @@ impl Loop {
             _ => Outcome::Nothing,
         };
         match outcome {
-            Outcome::Nothing => Ok(()),
+            Outcome::Nothing => None,
             Outcome::Changed => {
                 let now = pressed(&boxed.open);
                 self.drawn.message = Some(Arc::new(boxed.open.message.clone()));
                 if now.is_some() && now != before {
                     self.press_sound(t);
                 }
-                Ok(())
+                None
             }
-            Outcome::Closed(id) => self.close_box(t, id),
+            Outcome::Closed(id) => Some(id),
         }
     }
 

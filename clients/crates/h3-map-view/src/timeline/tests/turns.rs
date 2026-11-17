@@ -385,6 +385,7 @@ fn a_box_empties_the_queue_as_it_opens() {
         ("Return", "Escape")
     );
     assert_eq!(l.close_box(3, OK), Ok(()));
+    assert_eq!(l.box_act(3, Action::Pointer([1, 1]), true), Ok(()));
 }
 
 #[test]
@@ -476,6 +477,21 @@ fn the_turns_hero_by_the_mouse_overs_facts() {
         (l.map_hero(0), l.map_hero(1), l.map_hero(2)),
         (Some(0), Some(1), None)
     );
+    // The turn's hero by them: its record index the mouse-over's selected one.
+    let mut ended = l.clone();
+    let day = Date {
+        month: 1,
+        week: 1,
+        day: 2,
+    };
+    ended.turns = Arc::new(vec![turn_on(day, Selected::Hero(0))]);
+    ended
+        .run(
+            1,
+            &[Action::Key(Hotkey::EndTurn), Action::KeyUp(Hotkey::EndTurn)],
+        )
+        .unwrap();
+    assert_eq!((ended.index, ended.selected_id), (Some(0), Some(16)));
     l.heroes.truncate(1);
     assert_eq!(l.map_hero(1), None);
     l.hover = None;
@@ -507,6 +523,40 @@ fn the_date_and_the_player_lines() {
     let lines = lines(&[first, l.state(1)], &BTreeMap::new());
     assert!(lines.contains(&"1 date 1 2 1".to_string()), "{lines:?}");
     assert!(lines.contains(&"1 player 1".to_string()), "{lines:?}");
+}
+
+#[test]
+fn a_turns_table_missing_or_wrong_is_none() {
+    let (_, _, _, live) = TURNING[2];
+    let table: toml::Table = live.parse().unwrap();
+    let turn = table["turn"].as_array().unwrap()[0]
+        .as_table()
+        .unwrap()
+        .clone();
+    assert_eq!(Turn::read(&toml::Value::Integer(1)), None);
+    let value = |text: &str| -> toml::Value {
+        let t: toml::Table = toml::from_str(&format!("v = {text}")).unwrap();
+        t["v"].clone()
+    };
+    for key in ["at", "player", "kingdom", "status", "week", "month"] {
+        let mut bad = turn.clone();
+        bad.remove(key);
+        assert_eq!(Turn::read(&toml::Value::Table(bad)), None, "without {key}");
+    }
+    for (key, text) in [
+        ("at", "-1"),
+        ("player", "-1"),
+        ("kingdom", "1"),
+        ("status", "1"),
+        ("week", "1"),
+        ("week", "[0, \"x\"]"),
+        ("week", "[\"x\", 0]"),
+        ("week", "[1, -1]"),
+    ] {
+        let mut bad = turn.clone();
+        bad.insert(key.into(), value(text));
+        assert_eq!(Turn::read(&toml::Value::Table(bad)), None, "{key} = {text}");
+    }
 }
 
 #[test]
