@@ -18064,3 +18064,68 @@ executables, `maps.tar`, `extracted.tar`; SHA-256 checked, one digest of the sor
 
 **Versions:** map import v24. The game state hash, the adventure state hash, the ruleset part and
 the replay format unchanged. Round 5 done; T124 next.
+
+### Increment 13, round 6: T124a, the bank battle (2026-11-17, `adventure/e08-t124a`, `cross-lane`)
+
+**The cut** (decision 353; asked at T124's start, `AskUserQuestion`): T124a whole, one pull
+request, `cross-lane` with the user's consent (the battle lane's crates, packs, docs and replays;
+the AI lane's bots tables); T124b its own cut next. **Baseline:** `master` fa42140 (#981; T123b's
+#977 merged before it; CI's fingerprint, so the setup ran the light gates only). The original data
+staged from the user's repo folder (the four LODs, both executables, `maps.tar`, `extracted.tar`;
+SHA-256 checked, one digest of the sorted lists `24d7b7eb…`, as T123b's). The battle lane: no open
+pull request (#949 merged 2026-11-15), its versions v55, v7, pack format v52, so T124a took v56,
+v8, v53 as planned.
+
+- **The table** (design §13 point 4): `bank_positions = { attacker, defender }` in `[battle]`
+  (`h3-pack-battle`'s DTO, `BattleParamsDef::bank_positions`, `BattleParams::bank_position(side,
+  ordinal)`; the hash after the war machines' positions, all 16 of each side: **battle part v8**;
+  **pack format v53**, `packs/README.md`). The compiler asks one position per army slot a side,
+  the hex and the one in front of it (x + 1 for the attacker, x − 1 for the defender) standable,
+  no hex in two footprints of either side (ten refusals tested; a 16-slot field passes).
+  *Agent's call:* **harvested**, not gap-filled: `h3_formats::exe::bank_hexes` reads
+  `bank_battle_hexes` 0x63D0E0 (`KnownBuild::bank_hexes_va`; `i32` × 7 a side, a hex 0 to 255),
+  `h3-harvest` writes it as `[x, y]` (`Inputs::bank_hexes`), so `verify --with-original-data`'s
+  re-harvest is the check against the executable (`exe.py data 0x63D0E0` read the same 14 hexes;
+  `installation.md` §7.62 new, `map.toml`'s entry). The synthetic pack's by hand.
+- **The rules** (`h3-battle`; ADR-0022 point 8): `BattleState::creature_bank` and `bank_supply`
+  (each side's), hashed after the anti-magic flag (**battle state hash v56**); `begin` opens no
+  tactics phase with the flag (BAT-TAC-001); `generate_setup_obstacles` gives none, the boats'
+  hexes neither (BAT-GEO-004), and `setup` refuses obstacles or a siege beside it
+  (`SetupError::InvalidCreatureBank`, one variant for both); `war_machines` checks a side's listed
+  machines, then sets up none, an ammo supply of a side with a hero setting its `bank_supply`
+  (BAT-WAR-001), which `ammo_supplied` reads beside a living cart (BAT-WAR-004: the bank's case
+  only, the battle lane's r3 stays open); each stack, in slot order, at the footprint of
+  `bank_position(side, ordinal)` (BAT-SET-001), the formation unused. *Agent's call:* the supply
+  public as the flag and not observed (another battle shows the cart on the field); the world of
+  a search agent copies both (a clone).
+- **Tests:** `h3-battle`'s `tests/banks.rs` (five: the layout with two-hex stacks on both sides,
+  57-58 and 14-15, 171-172, 99-100, slots 1, 3, 6 as ordinals 0 to 2, tight as loose, the edges
+  without the flag; no tactics phase with setup and begin apart; no obstacles, nor the boats',
+  the two refusals; no machine on the field, the hero's archers keeping 12 shots, the guards'
+  using theirs with a listed cart and no hero, a hero without a cart unsupplied, seven stacks
+  without the flag; the hash), the error's message, the pinned state hash (v56); `h3-content-
+  battle`'s bank cases (the refusals, the accessor, the hash's sensitivity, three golden part
+  hashes), `h3-formats`' synthetic image, `h3-harvest`'s `harvests_the_bank_positions`.
+- **Rules:** BAT-SET-001, BAT-TAC-001, BAT-GEO-004, BAT-WAR-001, BAT-WAR-004 amended (the code
+  reading, batch E13's rows and VCMI's layouts as sources).
+- **Replays:** the ten battle goldens rehashed from their stored setup and commands (a throwaway
+  test: only `battle_ruleset_hash`, `battle_state_hash_version`, the checkpoints and the final
+  hash moved); the 89 adventure goldens re-recorded from their commands (a scratch script): 44
+  moved only checkpoint and final hash lines (a battle's state in the game's hash), 45 nothing.
+  The AI lane's two bots tables regenerated: only `engine.battle` (`c14c573e9d2ee26f` →
+  `fdf3b53f6f885cde`).
+- **Docs:** design §13's *As built*, §18's rows; decision 353 and the task's line; the queue
+  (T124 out, archived verbatim; T124b in); the battle lane's HANDOFF versions, its queue's War
+  machines line and inbox (the rules, the versions, what stays theirs); the AI lane's inbox (the
+  tables).
+- **Gates:** the scoped verify `--scope battle --with-original-data`: every step passing but
+  `check-lane` (`cross-lane` by design; `check-lane --cross-lane` passes): fmt, clippy, the
+  checks, coverage, determinism, bench-check (the battle workloads inside their baselines) and the
+  original-data step (the re-harvest equal to the committed packs, `bank_positions` among them),
+  each on its first run. The adventure scope's run: ADVENTURE_GATES. `cargo clippy --workspace
+  --all-targets` clean; the tests of `h3-cli`, `h3-game`, `h3-sim`, `h3-protocol`, `h3-server`,
+  `h3-ffi` and `h3-map` pass. The client workspace builds `h3-battle`: CI's client job checks it.
+
+**Versions:** battle state hash v56, battle part v8, pack format v53 (the battle lane's and the
+shared one, `cross-lane`). The game state hash, the adventure state hash, the ruleset part, the
+map import and the replay format unchanged. T124b next.
