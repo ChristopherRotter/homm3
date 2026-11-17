@@ -36,8 +36,17 @@ reading and recordings, then the viewer's build, as T1b was).
   turn's end with no town (the player's flag, picture type 10; its text starts with an empty
   player name in the harness's game: whether a menu-started game names the player, read first)
   and `player_turn_start`'s days left (ArrayTxt 128, 129; design §5.1). **Depends on:** T1a
-  (done: `h3_ui::message`, styles 1 and 2 without pictures). **Status:** in progress
-  (2026-11-17, `map-client/e24-m4-t2a`).
+  (done: `h3_ui::message`, styles 1 and 2 without pictures). Cut again at its start (2026-11-17,
+  the fallback the user agreed with the cut): **T2a1**, the reading and the recordings
+  (`map-client/e24-m4-t2a`; design §5.3, the sequences in `clients/map/to-record.toml`), then
+  **T2a2**, the viewer: `h3_ui::message`'s pictures (the client lane's `h3_view::message`'s
+  `pictures` and its picture slots copied, as T1a did), the finds' boxes composed from their
+  facts (the map, the live part's entrance words and hero, the catalogue's records: ADVEVENT,
+  ARTEVENT, RANDSIGN, GENRLTXT, ArrayTxt), kind 6 and the pile's dissolve (an object taken: the
+  view drawn without it, `h3_render::Screen::dissolve_rect`), the turn's two boxes (CLT-Q100
+  (b): a single scenario's player named, the original's empty name behind `--bugs original`),
+  the sequences moved into `sequences.toml`. **Kind 7** (a text) is a network game's message
+  alone (`status_text_set` 0x416210): not M4's.
 - **T2b, the questions and choices** (an answer): Yes/No with pictures for the engine's offers
   (`h3_adventure::OfferKind`: a guard's passage, a monster's join free or for a price, its
   flight, a Cartographer's price; a guarded pile's question) and the choice box for its choices

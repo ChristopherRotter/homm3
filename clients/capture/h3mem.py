@@ -356,6 +356,12 @@ TOWN_RECRUITS, TOWN_PORTAL_CREATURE, TOWN_PORTAL_COUNT, TOWN_DWELLINGS = 0x16, 0
 # by their teams (+0x1F879) against the shown player's (0x69778C).
 STATUS_ASKED, STATUS_END, STATUS_NONE, STATUS_DATE_DEF = 0x398, 0x39C, 8, 2001
 OUT_OF_GAME, TEAMS, SHOWN_PLAYER, HALL_BITS = 0x1F636, 0x1F879, 0x69778C, (13, 12, 11)
+# The status window of a resource found (kind 6; E24 M4 T2a1, design §5.3): the manager's +0x3A0
+# the resource, +0x3A4 the amount, +0x3A8 the text (the game's string: its characters' pointer
+# at +0x4, its length at +0x8), as status_resource_set 0x416060 writes them for a pile's visit.
+FOUND_RESOURCE, FOUND_TEXT = 0x3A0, 0x3A8
+# The message box's buttons (message_box_build 0x4F6990; E17 design §7.19): 0x7801 to 0x780A.
+BOX_BUTTONS = range(0x7801, 0x780B)
 MOVE_HERO, NEXT_HERO, QUEST_LOG = 7, 11, 5
 # A path arrow's frame: 0 none, 1 to 25 a move today (green), 26 to 50 a later one (red).
 GREEN_FRAMES = range(1, 26)
@@ -1351,6 +1357,30 @@ class Mem:
     def status_shown(self):
         """The status window's kind shown (the manager's +0x394; E24 M3 T5b2)."""
         return self.i32(self.u32(ADVENTURE_MANAGER_POINTER) + STATUS_SHOWN)
+
+    def found(self):
+        """What the status window of a resource found shows (kind 6; E24 M4 T2a1, design §5.3):
+        {resource, amount, text}, the manager's +0x3A0, +0x3A4 and +0x3A8 (the last pile's)."""
+        manager = self.u32(ADVENTURE_MANAGER_POINTER)
+        resource, amount = struct.unpack("<ii", self.read(manager + FOUND_RESOURCE, 8))
+        chars, length = struct.unpack("<II", self.read(manager + FOUND_TEXT + 4, 8))
+        text = self.read(chars, length).decode("cp1252") if chars and 0 < length < 4096 else ""
+        return {"resource": resource, "amount": amount, "text": text}
+
+    def message_box(self):
+        """The message box on top (E24 M4 T2a1, design §5.3), None when the adventure dialog (or
+        nothing) is: its box (x, y, width, height), its text items' texts in item order (the
+        text, then the pictures' captions), its pictures (`dialog_pictures`: [def, frame,
+        caption]) and its buttons' ids (0x7801 to 0x780A)."""
+        shown = self.dialog()
+        if shown is None or shown["at"] == self.manager_field(ADVENTURE_DIALOG):
+            return None
+        items = self.dialog_items()
+        return {"box": shown["box"],
+                "texts": [i["text"] for i in items
+                          if i["vtable"] == TEXT_VTABLE and i["text"] is not None],
+                "pictures": [[p["def"], p["frame"], p["text"]] for p in self.dialog_pictures()],
+                "buttons": [i["id"] for i in items if i["id"] in BOX_BUTTONS]}
 
     def town(self, index):
         """The town `index` of the game's towns (E24 M3 T4a): its record's address, faction,

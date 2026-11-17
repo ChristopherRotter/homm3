@@ -3004,3 +3004,116 @@ into `sequences.toml`; situations `seq-turn-ai`,
   the four buttons, the shield, the sequence's options and `hero` lines);
   `RUST_TEST_THREADS=1 check.sh --no-coverage` all gates; coverage outside `check.sh` 100 % lines,
   regions and functions.
+
+### 5.3 The finds told (M4 T2a1)
+
+Read (T2 cut in four by the user at its start, 2026-11-17: T2a the finds told, T2b the questions
+and choices, T2c a level-up's choice, T2d the map changed by a visit; T2a cut again into T2a1, this
+reading and the recordings, and T2a2, the viewer): `message_box_picture` 0x4F4EB0 whole,
+`status_resource_set` 0x416060 and `status_text_set` 0x416210 whole, `status_resource_create`
+0x451220 but the amount's stream, `visit_resource_pile` 0x4A4BE0 whole, and the boxes of
+`visit_windmill` 0x4A7FC0, `visit_learning_stone` 0x4A6330, `visit_star_axis` 0x4A3DC0,
+`visit_temple` 0x4A6200, `visit_witch_hut` 0x4A8080, `visit_shrine` 0x4A5610 (its texts from
+`visit_object` 0x4A84F0), `visit_magic_well` 0x4A3730, a sign's case (0x4AA056) and the plain
+artifact pickup (`visit_artifact` 0x49F7E0, `artifact_pickup_remove` 0x49E170); `grant_rewards`
+0x49FA90's boxes located (their pictures' types; which text for which part not read). The turn's
+two boxes: the client lane's reading of `scenario_condition_met` 0x4F2CE0 (E27 design §5.1) and
+§5.1's of `player_turn_start` 0x4CC7D0. Recorded by the harness (the sequences in
+`clients/map/to-record.toml`, the situations `seq-find-*` and `seq-turn-no-town`).
+
+- **The box** (`message_box` 0x4F6570; E17 design §7.19, §12.21): every find told is a box of
+  style 1 (OK alone) at the screen's middle with at most three pictures (type, subtype), shown
+  only for a human here (each handler's last argument); Pandora's Box and an event
+  (`grant_rewards`) use `message_box_pictures` 0x4F7690, boxes of up to eight. No handler plays a
+  sound with its box. A box with pictures holds a hidden choice frame per picture (0x7809, then
+  0x780A: never drawn, as the client lane's box leaves it), one without only its OK.
+- **A picture** (`message_box_picture`, read whole; the slot's +0x8 its DEF, +0x18 its caption,
+  +0x28 its frame, the common tail the sizes as E17 read it): 0 to 6 `resour82.def`, the frame the
+  type, the caption the subtype above 0 (`decimal_format`), none for 0, below −100 000 the
+  subtype + 100 000, else GENRLTXT 4 with its negation; 8 `artifact.def`, the artifact's frame and
+  name; 9 the spell (E17's); 10 `crest58.def`, the colour's frame and name (`player_colour_names`);
+  11 to 16 the luck's and morale's (E17's: `ilck82.def`, `imrl82.def` frames 4, 3, 2, no caption);
+  17 `pskill.def` frame 4, the subtype (−1 GENRLTXT 443, 0 none); 20 `secsk82.def` frame the
+  subtype, the skill subtype ÷ 3 − 1 at the level subtype mod 3 (`skill_level_names`, a space,
+  the skill's name); 21 `twcrport.def` frame the creature (the subtype's low word) + 2, its count
+  the high word (0 the plural name alone, else `count_name_format` with the singular for 1, the
+  plural else; creatures 0 to 150, else no name); 22 to 30 a town's building
+  (`town_building_name` with type − 22, the subtype); 31 to 34 `pskill.def` frame type − 31, the
+  subtype 0 no caption, else `count_name_format` when its high word is 1, else
+  `plus_count_name_format`, with the skill's name (`primary_skill_names`); 35 `pskill.def` frame
+  5, `count_name_format` with GENRLTXT 388; 36 `resource.def` frame 6, its caption as the
+  resources'; 7, 18 and 19 `resour82.def` frame the type, no caption.
+- **The finds read** (each handler's human path; its record a line of ADVEVENT unless named):
+
+  | Object | Its box | Then |
+  |---|---|---|
+  | Windmill (112) | 170 with the resource (type the resource, subtype the amount); 169 alone when empty | the resource given |
+  | Learning Stone (100) | 143 with the experience (17, the points); 144 alone when visited | the experience, the marks, `hero_level_up` |
+  | Star Axis (61) | 100 with Spell Power (33, subtype 1: "+1 …"); 101 alone when visited | +1 (Marletto Tower, the Garden of Revelation, the Mercenary Camp the same code: their records not read) |
+  | Temple (96) | 140 with the good morale (14, no caption); 141 alone when visited | +1, +2 on the week's seventh day |
+  | Witch Hut (113) | 171 with the skill's name (`c_sprintf`) and the skill (20, 3 × skill + 3: Basic); 173 with the name alone when known or eight skills; 190 alone with none | the skill at Basic |
+  | Shrine (88 to 90) | `shrine_text_format` with ADVEVENT 127, 128 or 129 (by the level, `visit_object`'s) and the spell's name, with the spell (9); a refusal appends 174 (known), 131 (no Spell Book) or 130 (Wisdom) and shows no picture | the spell learned |
+  | Magic Well (49) | 77, 78 or 79 alone | §10 of the bonuses' survey |
+  | Sign (91) | the map's text, else RANDSIGN by its column mod 25 (`sign_default_texts`), alone | nothing (an Ocean Bottle, 59: then removed as a pile is, below) |
+  | Artifact (5, the plain pickup) | `artifact_pickup_texts` by the artifact, with the artifact (8) | the artifact given, then removed as a pile (the pickup's sound, the dissolve), `hero_level_up` |
+  | Resource pile (79) | none: the status window's kind 6 | removed (below) |
+  | Event (26), Pandora's Box (6) | `grant_rewards`' boxes: the luck (11, 13), morale (14, 16), experience (17), secondary skills (20), mana (35), the resources, the artifacts (8), the spells (9), the creatures (21) | §7.4 of the rewards' survey |
+
+- **Kind 6, a resource found** (`status_resource_set`, read whole; its only callers a pile's
+  visit and a guarded pile's): the resource, the amount and the text into the adventure manager's
+  +0x3A0, +0x3A4, +0x3A8, kind 6 asked until 5 000 ms from now, the chooser at once (1, 1, 1) and
+  the resource bar redrawn. The pile's text: ADVEVENT 113 with the resource's name, its first
+  letter lower-cased (`resource_names`, `c_sprintf`). Its panel (`status_resource_create`): at
+  (614, 400), 176 × 166; 2000 `AdStatOt.pcx`; 2100 the text in `smalfont.fnt` at (10, 10), 156 ×
+  146, colour 4, centred; with a resource (at least 0) 2103 `resour82.def` at ((176 − its width) /
+  2, 50), the resource's frame, and 2102 the amount (a decimal) in `smalfont.fnt` at ((176 − its
+  width) / 2, the DEF's height + 55), as wide as it and the font's height, colour 1, centred.
+- **Kind 7, a text** (`status_text_set`, read whole): asked only by a network game's send and
+  receive (0x4CB08E, 0x4CBDA3), until a millisecond ago, so it shows until the chooser picks
+  another; no visit asks it: not M4's (the network's chat, with live play).
+- **A pile taken** (`visit_resource_pile`, read whole): the owner gains the resource (gold the
+  word × 100); for a human kind 6; then the palette's cycling held off, the view drawn and shown
+  (`view_draw_here`, `view_show_step`), the pile removed (`remove_map_object`), and with the view
+  shown one of `pickup01` to `pickup07` (`random_between(1, 7)`, `pickup_sound_format`) started,
+  the mouse hidden, the rectangle (192, 160) 224 × 224 saved (`screen_save_rect`), the view drawn
+  again without the pile and that rectangle dissolved into it in steps of 65 ms
+  (`screen_dissolve`), the mouse shown and the cycling restored. An artifact's and an Ocean
+  Bottle's removals are the same after their boxes (`artifact_pickup_remove`, 0x4A9B79). The
+  rectangle is the view's middle seven tiles, where a hero visiting by a step stands beside the
+  object (the view centred on the hero first).
+- **The turn's boxes:** at a turn's end with heroes but no town (`scenario_condition_met`, the
+  days without a town −1 become 7) GENRLTXT 7, and at each later turn's start while the days run
+  (`player_turn_start`, +0x3D at 0 or more) ArrayTxt 128 with the days left (129 on the last),
+  each an OK box with the player's crest (10, the colour): both open with the player's name, empty
+  in a single scenario (", you have lost your last town. …", ", you only have 6 days left …":
+  CLT-Q100, answered (b) for the client lane: the viewer names the player as the shell does, the
+  empty name the comparisons' alone).
+- **Seen** (the recordings, hero speed 4, Enter's press at 1000 and release at 1060): the step and
+  the box in one millisecond (100: a step onto an entrance the object does not block moves the
+  hero there, the Windmill's, the Witch Hut's, the Temple's, the event's; a blocking one leaves the
+  hero beside it, the pile's, the artifact's, the sign's, the Stone's, the Axis's, the Shrine's),
+  the view centred on the hero, the box over it with the default cursor; Enter's press draws OK
+  pressed, its release closes the box and redraws (the objects' step due then). The boxes' places
+  as the client lane's layout gives them: 320 × 384 at (240, 108) for a long text with a picture,
+  448 wide for a longer one, 256 × 192 at (272, 204) for the sign's line alone. The pile: kind 6
+  and the first dissolve's step at 100, the next at 165 to 555 (65 ms each, only the pile's pixels
+  changing), the idle step at 620, kind 6 to 5 100. The artifact: the box closed at 1060 with the
+  dissolve's first step, the rest to 1515. The event: three boxes, each opening in the millisecond
+  the last closed (luck and mana with "<hero> gains magical energy.", the gold with "<hero> has
+  found treasure.", the creatures with "<creatures> join <hero>'s army.": ADVEVENT 175 to 188 by
+  the box's part). The turn: End Turn's release (160) opens GENRLTXT 7's box; Enter's release at
+  1060 ends the turn, Blue's unseen turn and the next day fall in that millisecond, and the days
+  left's box opens over the next day's whole redraw.
+- **The harness** (additive): the live part's `[[message]]` tables, one per box opened in a
+  sequence (`Mem.message_box`: its place, its texts, its pictures as DEF, frame and caption, its
+  buttons) and `[[found]]` tables, one per kind 6 built (`Mem.found`: the resource, the amount,
+  the text), after the `[[turn]]` tables; the situations' bodies (`h3_map_view::situation`: a
+  pile's `amount`, a Shrine's `spell`, a Witch Hut's `skills`, an event's `rewards`, a hero's
+  `experience`; the bodied objects among the writer's placed objects).
+- **For T2a2:** the box's pictures (`h3_ui::message` gains the client lane's slots and their
+  layout); each find's box composed from its facts (the map's object and body, the live part's
+  entrance word and hero; Part B the engine's events) through the catalogue (ADVEVENT, ARTEVENT,
+  RANDSIGN, GENRLTXT, ArrayTxt and the names' files); `grant_rewards`' texts and its boxes' parts
+  read; kind 6's panel and its 5 000 ms; an object taken (the level's index built again, the view
+  drawn without it, the dissolve by `h3_render::Screen::dissolve_rect`); the pickup's sound (the
+  roll at 0x4A4D18 forced or the viewer's own draw: a review item).

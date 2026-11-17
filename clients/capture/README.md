@@ -1318,6 +1318,21 @@ T1b2, the file removed). A run with an
 `xdd.dll` built before T1b1 fails as stale where it reads the acknowledgement whole (15 fields,
 not 16): rebuild it with `setup.sh`.
 
+**The finds told** (E24 M4 T2a1, design §5.3): in each millisecond a message box first shows (the
+window manager's top dialog not the adventure dialog, or another box's place, texts or pictures)
+`frames` appends a `[[message]]` table to the live part, after the `[[turn]]` tables
+(`message_toml`: `at`, its `box` as x, y, width and height, its `texts` in item order, the text
+and the pictures' captions, its `pictures` as `[DEF, frame, caption]`, its `buttons`' ids:
+`Mem.message_box`), and in each the status window's kind 6 (a resource found) is first built a
+`[[found]]` table (`at`, `resource`, `amount`, `text`: `Mem.found`, the adventure manager's +0x3A0
+to +0x3A8). A situation's object may carry the body the writer writes (`h3_map_view::situation`):
+a pile's `amount` (as the map stores it: gold is then ×100 in the game), a Shrine's `spell`, a
+Witch Hut's `skills` (one drawn), an event's `rewards` (a table: `experience`, `mana`, `morale`,
+`luck`, `resources`, `primary`, `skills`, `artifacts`, `spells`, `creatures`; written as an
+`[[objects]]` table, since an inline table cannot span lines); a hero its `experience` (the levels
+it reaches given at the start). T2a1's eleven (`find-*`, `turn-no-town`) wait in
+`map/to-record.toml` for T2a2.
+
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
 <out>/<id>/live.toml`: the map's timeline from the situation, this run's live part at 0 and the
