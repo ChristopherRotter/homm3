@@ -82,6 +82,19 @@ stands (part D's batch section).
   known creature and no war machine, `looted` only with `search`, `coast` only with `neighbour`.
   Hash tag 44; adventure ruleset part v21.
 
+*As built* (T123a, `adventure/e08-t123a`; decision 351): `ObjectKind::Bank(Bank)` and
+`ObjectKindDef::Bank(BankDef)` in `h3-adventure`'s `ruleset/banks.rs` (`BankQuestion`,
+`BankLevel` with `artifacts: [u8; 4]` by `BANK_ARTIFACT_CLASSES`, treasure to relic; `BANK_LEVELS`,
+`BANK_GUARDS`, `MAX_BANK_REWARD`), no effect (a step refused as any unbuilt visit's until T124b).
+The compile's texts as listed, `check_chances` shared with the rewards; *agent's calls:* each
+guard count at most the part's `max_stack_count` and every level's stacks after the split
+(`bank_stacks`: five for one to three named stacks, else the four) within the army's slots,
+checked once every pack is in (`check_bank`); the reward's creature no war machine either. The
+pack's syntax a sub-table `[object_type.bank]` after the type's keys, each level an inline table
+on one line (`{ chance, guards = [{ creature, count }], upgrade, resources, creature = { creature,
+count }, artifacts = { treasure, minor, major, relic } }`; upgrade, resources, creature and
+artifacts optional), `looted`, `deck`, `coast` (both false if left out).
+
 ### 2. The packs and the check against the original data
 
 - **All eleven in the base pack** (every kind lies on RoE-format maps, survey §1), ids
@@ -107,6 +120,14 @@ stands (part D's batch section).
   file, survey §2). Fails with the mismatches, as the six before it.
 - RoE's own `CrBanks.txt` is not read (no RoE installation before E11's T1): the base pack takes
   SoD Complete's table for RoE maps too (part D's risks).
+
+*As built* (T123a): the eleven in `packs/base/adventure.toml` after the Watering Hole, in kind
+order, written from `CrBanks.txt` and the two tables (the marks 14 Shipwreck, 15 Crypt, 16 Derelict
+Ship); the check (`banks`, check 7) also wants a looted bonus exactly on the three search kinds. It
+passes on the staged installation ("11 bank types match CrBanks.txt's 11 kinds' four levels, …")
+and failed as it should on four perturbations (the Naga Bank's sulfur as gems, a deck on the Crypt,
+the Shipwreck not from above, a renamed Griffin Conservatory with a Dragon Fly Hive's guard
+changed).
 
 ## Part B — the map (`h3-map`, `h3-adventure`)
 
@@ -513,7 +534,7 @@ cut and the exit criteria (§20); risks (§21); with the draft for ADR-0017 (app
 
 | Version | From | To | By |
 |---|---|---|---|
-| adventure ruleset part | v20 | **v21** | T123a: the kind `bank` (hash tag 44) |
+| adventure ruleset part | v20 | **v21** | T123a: the kind `bank` (hash tag 44); *done* |
 | map import | v23 | **v24** | T123b: the five classes typed |
 | adventure state hash | v25 | **v26** | T124b: `Resolved::Bank`, the banks' guards in the static map |
 | battle state hash (the battle lane's) | v55 | **v56** | T124a, `cross-lane`: the flag in the state |

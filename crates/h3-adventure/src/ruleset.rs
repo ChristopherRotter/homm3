@@ -28,10 +28,15 @@ use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
 use crate::ADVENTURE_RULESET_HASH_VERSION;
 
+mod banks;
 mod objects;
 mod rewards;
 mod starting;
 
+pub use banks::{
+    BANK_ARTIFACT_CLASSES, BANK_GUARDS, BANK_LEVELS, Bank, BankDef, BankLevel, BankLevelDef,
+    BankQuestion, MAX_BANK_REWARD,
+};
 pub use objects::{
     BONUS_DAYS, KEY_COLOURS, MAX_GAIN, MAX_PICKUP_AMOUNT, MarkLifetime, MonolithWay, ObjectKind,
     ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, Pickup, PickupDef, Visit,

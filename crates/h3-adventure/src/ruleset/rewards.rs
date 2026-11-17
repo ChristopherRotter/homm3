@@ -321,7 +321,10 @@ pub(super) fn compile_artifact_classes(
 }
 
 /// Chances in percent: each from 1, together `total` at most (`exact`: exactly).
-fn check_chances(chances: impl Iterator<Item = u8>, exact: bool) -> Result<u32, &'static str> {
+pub(super) fn check_chances(
+    chances: impl Iterator<Item = u8>,
+    exact: bool,
+) -> Result<u32, &'static str> {
     let mut sum = 0_u32;
     for chance in chances {
         if chance == 0 {

@@ -1,6 +1,6 @@
 # E09 — Towns
 
-Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63), increment 3 (growth, recruitment and the army rows) on 2026-11-15 (T30; decisions 64–97), all three in `E09-archive.md`; increment 4 (the Tavern) refined the same day (TWN-Q15, decisions 98–102), its drafts accepted at T33b (TWN-Q18, decisions 114–122), batch TWN-4 run and scored by T34 (decisions 123, 124), T35 next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
+Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63), increment 3 (growth, recruitment and the army rows) on 2026-11-15 (T30; decisions 64–97), all three in `E09-archive.md`; increment 4 (the Tavern) refined the same day (TWN-Q15, decisions 98–102), its drafts accepted at T33b (TWN-Q18, decisions 114–122), batch TWN-4 run and scored by T34 (decisions 123, 124), T35 cut in two at its start (TWN-Q19, decisions 125–128): T35a the ADRs done, T35b next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
 
 ## Goal
 
@@ -57,7 +57,8 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
      `fix-optional` flag.
 104. **TD-19 and TD-20** (recommended): the reading for both: a returning hero's slot random,
      sparing another returning offer; the offers' movement at their owner's turn start, spell
-     points only at a draw or a leave. Not chosen: VCMI's roles and daily regain.
+     points only at a draw or a leave. Not chosen: VCMI's roles and daily regain. (The spell-point
+     half amended by decision 127.)
 105. **T-14, a dismissed hero's artifacts** (recommended): the original's, not a quirk: they stay
      with the hero in the pool (row TWN-4-5 confirms). Not chosen: a `fix-optional` flag.
 106. **The map's Tavern in increment 4** (recommended): class 95 hires as a town's tavern onto its
@@ -145,6 +146,31 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
      leaves (kept against refilled) and the resources before the guild's reads; a fresh agent's
      review of the specs skipped (the runs checked the setups).
 
+### Decisions at T35's start (2026-11-16, the user; TWN-Q19)
+
+125. **T35 in two** (recommended; `AskUserQuestion`): **T35a** the docs (the four drafts into
+     ADR-0013, -0016, -0017 and -0028 with batch TWN-4's verdicts and decisions 126 and 127, the
+     glossary's terms, `docs/06-security.md`'s section; no code, no version moved), **T35b** the
+     code (`StreamId::TAVERNS`, the flags of `TWN-QUIRK-12` and `-13`, the profiles' ruleset hashes (no
+     version: asked as "v54", corrected after, as E08 T115b's flag), the packs' profiles, the golden replays' `ruleset_hash` and the bot reports),
+     before T37a. Not chosen: the code first; T35 whole (as T24).
+126. **The returning marks cleared at every day's start** (recommended; survey `E09-tavern.md` §14,
+     the original's `new_day` 0x4C80CF to 0x4C80FD): after the taverns' week when one runs, every
+     player's two marks, beside its turn's end and a hire (design §68); TD-18 stands (the week's
+     release comes first). Not chosen: the turn's end and the hire only (as drafted; not the
+     original's).
+127. **Every record's day's spell points** (recommended; survey §14, 0x4C8237): a tavern hero and a
+     hero out of the game regain their day's spell points with every record of the store
+     (HER-MAN-002 as built, ADR-0013 point 16.3), so TD-20's spell-point half (decision 104) is the
+     original's and VCMI's; its movement half stands. Not chosen: the spell points set only at a
+     draw and a leave (decision 104 as taken; not the original's).
+128. *Agent's calls (change freely):* ADR-0017 point 9 and ADR-0028 point 9 without the adventure
+     state hash (the drafts named it; design §77's table: the kinds hold no state); the marks'
+     clear after the taverns' week (only the release reads the marks at a day's start); short
+     Consequences and Alternatives lines in each of the four ADRs from the not-chosen options of
+     decisions 103 to 127; each draft sentence moved verbatim but where a batch row is cited, a
+     decision changes it or an anchor moved.
+
 ### Exit criteria (accepted at `TWN-Q18`, decision 121; design note §80)
 
 1. The town part's tavern weights and the hire's price compile (part v7); each player's faction
@@ -157,8 +183,9 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
    replacement from the hirer's stream with one creature (TWN-TAV-003, -004; GAM-DEC-010).
 4. A hero that leaves the game keeps its record; a retreat or a surrender returns it at once
    (TD-19); every other leave frees the type under `TWN-QUIRK-12` (TWN-TAV-006; GAM-BAT-003).
-5. The tavern heroes' points at the turn start, no spell point off the map, the marks cleared at
-   the turn's end (TWN-TAV-005; TD-20).
+5. The tavern heroes' points at the turn start, their spell points regained each day as every
+   record's (decision 127), the marks cleared at the turn's end and at every day's start (decision
+   126) (TWN-TAV-005; TD-20).
 6. The dismissal with its refusals (TD-22), its hero freed with every artifact (GAM-MAN-003).
 7. The map's customised types reach a record made at a draw (GAM-HER-001).
 8. The Thieves' Guild by the viewer's taverns and a Den's everything: the rows as places, the best
@@ -181,7 +208,11 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
   `experiments/specs/E09-batch-4a.toml` to `-4c.toml`, two runs each in `experiments/results/`;
   every row as the reading, survey §14; two points the reading missed, the new day's clear of the
   returning mark and the day's spell points of every hero record, for T35's checkpoint; the writer's
-  classes 95 and 97, `cross-lane`; `E09-log.md`). **T35** `shared/`: the drafts applied, `StreamId::TAVERNS`, the two quirk flags (round 3). **T36** the town part v7 (round 4). **T37** T37a the pool, the draw and the fills, T37b the map's customised types (round 5). **T38** T38a the town's hire and the replacement, T38b the leaves, the returns and the dismissal (round 6). **T39** T39a the Tavern and the Den of Thieves with the tavern decision, T39b the Thieves' Guild (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
+  classes 95 and 97, `cross-lane`; `E09-log.md`).
+- **T35** `shared/` (round 3), in two (decision 125): **T35a** the drafts into the four ADRs, the
+  glossary, `docs/06-security.md`: done 2026-11-16 (`TWN-Q19`, decisions 125–128: the marks cleared
+  at every day's start, every record's day's spell points; the drafts deleted; `E09-log.md`).
+  **T35b** `StreamId::TAVERNS`, the two quirk flags, the packs and the replays' hashes. **T36** the town part v7 (round 4). **T37** T37a the pool, the draw and the fills, T37b the map's customised types (round 5). **T38** T38a the town's hire and the replacement, T38b the leaves, the returns and the dismissal (round 6). **T39** T39a the Tavern and the Den of Thieves with the tavern decision, T39b the Thieves' Guild (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
 
 ## Risks
 

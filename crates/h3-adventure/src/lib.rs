@@ -75,13 +75,14 @@ pub use persistent::BitGrid;
 pub use reach::Reach;
 pub use ruleset::{
     AdventureCompileError, AdventurePack, AdventureParams, AdventureParamsDef, AdventureRuleset,
-    BONUS_DAYS, BattleTerrains, BattleTerrainsDef, CalendarParams, Chest, ChestDef,
+    BANK_ARTIFACT_CLASSES, BANK_GUARDS, BANK_LEVELS, BONUS_DAYS, Bank, BankDef, BankLevel,
+    BankLevelDef, BankQuestion, BattleTerrains, BattleTerrainsDef, CalendarParams, Chest, ChestDef,
     DWELLING_LEVELS, DwellingParams, Find, FindContent, FindContentDef, FindDef, Gift, GiftDef,
-    Gives, KEY_COLOURS, MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS, MAX_MONSTER_COUNT,
-    MAX_PICKUP_AMOUNT, MAX_PLAYERS, MarkLifetime, MonolithWay, MonsterParams, MonsterParamsDef,
-    MonthParams, MonthParamsDef, ObjectKind, ObjectKindDef, ObjectType, ObjectTypeDef,
-    ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef, Pyramid, PyramidDef, RandomDwellingDef,
-    RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind, StartingResources,
+    Gives, KEY_COLOURS, MAX_BANK_REWARD, MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS,
+    MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, MAX_PLAYERS, MarkLifetime, MonolithWay, MonsterParams,
+    MonsterParamsDef, MonthParams, MonthParamsDef, ObjectKind, ObjectKindDef, ObjectType,
+    ObjectTypeDef, ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef, Pyramid, PyramidDef,
+    RandomDwellingDef, RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind, StartingResources,
     StartingResourcesDef, TerrainMovement, TerrainMovementDef, TerrainWalker, TerrainWalkerDef,
     Turn, TurnDef, Visit, Weekday,
 };
@@ -152,5 +153,6 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 25;
 /// T18a): the town's boat offsets. v20 (E08 T113a): increment 12's seven kinds (the garrison with
 /// its anti-magic flag, the bonus with its mark, days, points and drain, the Fountain of Fortune
 /// with its mark and values, the Magic Well, the Magic Spring, the Stables with its points and
-/// creatures, the Sirens with its mark and keep) and every type's kind mark.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 20;
+/// creatures, the Sirens with its mark and keep) and every type's kind mark. v21 (E08 T123a):
+/// the creature bank's kind (its question, levels, looted bonus, deck and coast).
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 21;

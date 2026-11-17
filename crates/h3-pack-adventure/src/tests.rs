@@ -391,10 +391,11 @@ fn the_base_pack_types_the_objects_of_increment_2() {
     // Shipyard and the three weekly objects); E08 T93a: increment 10's 64 (the 62 RoE dwellings,
     // the Refugee Camp, the random dwelling); E09 T8a1: the town; E08 T103a: increment 11's
     // eleven (nine monoliths, the Subterranean Gate, the Whirlpool); E08 T113a: increment 12's
-    // seventeen (two garrisons, the fifteen bonus visitables).
+    // seventeen (two garrisons, the fifteen bonus visitables); E08 T123a: increment 13's eleven
+    // creature banks.
     assert_eq!(
         part.object_types().len(),
-        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64 + 1 + 11 + 17
+        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64 + 1 + 11 + 17 + 11
     );
     // E09 T8a1: one type for the classes 77 and 98, ownable and entered, not from above; E09
     // T18a: the original's two boat offsets (town_buildings_setup 0x5C08C0).
@@ -2791,3 +2792,5 @@ fn the_packs_type_the_garrisons_and_the_bonus_visitables_of_increment_12() {
         assert!(marked.contains(key), "{key}");
     }
 }
+
+mod banks;
