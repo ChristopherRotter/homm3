@@ -6,16 +6,12 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 
 Epic: `docs/epics/E09-towns.md` (increment 4: the Tavern, refined at T30, `TWN-Q15`, decisions 98
 to 128; its drafts accepted at T33b, `TWN-Q18`; batch TWN-4 scored by T34; the drafts in the ADRs
-by T35a, `TWN-Q19`; its code by T35b, decisions 129 to 131); done tasks in `E09-log.md`; increments 1 to 3
+by T35a, `TWN-Q19`; its code by T35b, decisions 129 to 131; the town part v7 by T36, decision
+132); done tasks in `E09-log.md`; increments 1 to 3
 (closed by T10, T20 and T30) in `E09-archive.md`. The building tasks are the design note's
 `E09-design.md` §79 (round by round, with the order against E08's increment 13); each task's cut
 confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`) and the exit criteria it serves (the epic's list, decision 121).
-
-**E09 T36 — the town part v7** (round 4; design §60): the tavern weights per faction record and
-the hire's price, `HCTRAITS.TXT`'s tavern columns harvested (`h3-harvest`, `cross-lane`), the
-packs; TWN-TAV-001's data. Kept whole at its start (decision 130; `cross-lane`: the harvester, the
-replays' `town_ruleset_hash`). **Status:** next.
 
 **E09 T37 — the pool in the game** (round 5; `cross-lane`; design §61 to §63, §68, §70, §75):
 T37a the pool's `Offered`, the records at a first draw, the away records, the players' factions
@@ -24,7 +20,8 @@ GAM-CAL-002), the slots over a turn and every day's clear of the marks (TWN-TAV-
 day's spell points of every record already built, decision 127: told as an own hero's,
 `SRV-STUB-6`, §75), `GameObservation::tavern` and `TavernOffered`,
 the protocol, the replays re-recorded, the week's bench; T37b the map's customised types
-(GAM-HER-001, TWN-SET-005; `GameSetup`, the import after E08's T123). **Status:** queued.
+(GAM-HER-001, TWN-SET-005; `GameSetup`, the import after E08's T123). TWN-TAV-001's catalog entry
+is T37a's (T36 built its data, decision 132). **Status:** next.
 
 **E09 T38 — the hire and the leaves** (round 6; `cross-lane`; design §64, §65, §67, §69, §75,
 §76): T38a `TownCommand::Hire` (TWN-TAV-003), the adventure's placement, the replacement
