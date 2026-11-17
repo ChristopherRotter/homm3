@@ -7,6 +7,12 @@
 //! later one passed over. During a sequence's inputs the cursor is the recording's, drawn in the
 //! frame (the system's is hidden over the window).
 //!
+//! A computer's steps at Computer Walk Speed 4 (E24 M4 T1b2, *provisional*) are drawn inside one
+//! millisecond of the map's clock: the window shows each of those draws (`Change::held`) for
+//! [`HOLD_MS`] of its own clock before the change itself, the map's clock held meanwhile, so the
+//! walk shows tile by tile; the check reads each back and compares it with the headless loop's
+//! draw of the same place in that millisecond (`timeline::play_held`).
+//!
 //! The map's live input (M2 T4b, *provisional*; design §3.10): past a sequence's inputs, and in a
 //! situation from the start, the keys and the mouse are the timeline's actions, given at the
 //! clock's millisecond (after the change shown: `Replay::give`) — the table's scroll and step
@@ -31,7 +37,7 @@
 //! (`timeline::play`) and compares each change shown with the headless loop's at its time. An
 //! adapter: the window is `h3-sdl`'s.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -62,6 +68,11 @@ const KEYS_FILE: &str = "keys.toml";
 
 /// The pointer's point once it left the window: off the frame, where no edge scrolls.
 const OFF: [i32; 2] = [-1, -1];
+
+/// How long the window shows each draw a millisecond of the map's clock holds before its last
+/// (E24 M4 T1b2, *provisional*, a review item: a computer's steps at speed 4, which the original
+/// shows as fast as it draws them), in milliseconds of the window's own clock.
+pub const HOLD_MS: u64 = 20;
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
@@ -313,6 +324,8 @@ struct Frame {
     change: Change,
     cursor: Cursor,
     widened: Widened,
+    /// Its place among its millisecond's held draws (E24 M4 T1b2); none for the change itself.
+    held: Option<usize>,
 }
 
 /// What making frames keeps (E24 M3 T2b1, T2b2): the microseconds each took, the widened frames
@@ -358,6 +371,7 @@ impl Frame {
             change,
             cursor,
             widened,
+            held: None,
         })
     }
 
@@ -422,6 +436,8 @@ struct Report {
     difference: Option<String>,
     /// The last read-back's output, the frame's place in it and its scale.
     geometry: Option<String>,
+    /// The frames shown of a millisecond's held draws (E24 M4 T1b2).
+    held: usize,
 }
 
 /// The changes shown checked against a headless play of the same start and actions: how many are
@@ -430,14 +446,20 @@ fn headless(
     rules: &Rules,
     start: &Start,
     actions: &BTreeMap<u32, Vec<Action>>,
-    shown: &[Change],
+    shown: &[(Change, Option<usize>)],
 ) -> Result<(usize, Option<String>), String> {
-    let until = shown.iter().map(|c| c.t).max().unwrap_or(0);
-    let states = timeline::play(rules.clone(), start, actions, until).map_err(unplayable)?;
+    let until = shown.iter().map(|(c, _)| c.t).max().unwrap_or(0);
+    let (states, held) =
+        timeline::play_held(rules.clone(), start, actions, until).map_err(unplayable)?;
     let mut same = 0;
     let mut first = None;
-    for c in shown {
-        let s = usize::try_from(c.t).ok().and_then(|t| states.get(t));
+    for (c, i) in shown {
+        // A held draw against the headless loop's of the same place in its millisecond (E24 M4
+        // T1b2).
+        let s = match i {
+            Some(i) => held.get(&c.t).and_then(|h| h.get(*i)),
+            None => usize::try_from(c.t).ok().and_then(|t| states.get(t)),
+        };
         if s.is_some_and(|s| s.drawn == c.drawn && s.cursor == c.cursor) {
             same += 1;
         } else {
@@ -548,7 +570,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut mouse: Option<[i32; 2]> = None;
     // Whether the window had the focus at the last look (the edge scroll's `app_active`).
     let mut focused = true;
-    let mut log: Vec<Change> = Vec::new();
+    let mut log: Vec<(Change, Option<usize>)> = Vec::new();
+    // A change's held draws still to show (E24 M4 T1b2), with their places, the change's own
+    // last; when the next is due on the window's clock, and the map's millisecond held meanwhile.
+    let mut pending: VecDeque<(Change, Option<usize>)> = VecDeque::new();
+    let mut hold: Option<(u64, u32)> = None;
     // The actions given: scrolls, steps, the pointer's moves, the mouse's button, hotkeys.
     let mut given = [0_usize; 5];
     let mut given_at: BTreeSet<u32> = BTreeSet::new();
@@ -564,20 +590,25 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         if stop_ns.is_some_and(|s| now.saturating_sub(started) >= s) {
             break;
         }
+        // The map's clock held at a change's millisecond while its held draws show.
+        if let Some((_, t)) = hold {
+            clock.seek(now, t);
+        }
         let mut input: Vec<Action> = Vec::new();
         if !look.live && live_after.is_some_and(|t| clock.ms(now) > t) {
             look.live = true;
             renew = true;
             input.extend(mouse.map(Action::Pointer));
         }
-        let timeout = next
-            .as_ref()
-            .and_then(|f| clock.until(now, f.change.t))
-            .map_or(WAIT_MS, |ns| {
-                u32::try_from(ns / 1_000_000)
-                    .unwrap_or(WAIT_MS)
-                    .min(WAIT_MS)
-            });
+        let timeout = match hold {
+            Some((due, _)) => Some(due.saturating_sub(now)),
+            None => next.as_ref().and_then(|f| clock.until(now, f.change.t)),
+        }
+        .map_or(WAIT_MS, |ns| {
+            u32::try_from(ns / 1_000_000)
+                .unwrap_or(WAIT_MS)
+                .min(WAIT_MS)
+        });
 
         let mut redraw = false;
         // The pointer's last move not yet given (a batch's moves are one).
@@ -687,6 +718,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     look.live = live_after.is_none();
                     (shown, renew) = (None, true);
                     log.clear();
+                    pending.clear();
+                    hold = None;
                     input.clear();
                     // A situation is live again at once: the mouse's point given anew (M2 T6a, the
                     // reviewer's R2-10).
@@ -820,6 +853,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 shown = Some(again);
             }
             let change = match &shown {
+                // The held draws still to show keep the next frame (E24 M4 T1b2).
+                Some(_) if !pending.is_empty() => Ok(next.as_ref().map(|f| f.change.clone())),
                 Some(f) => replay.after(f.change.t, LOOK_AHEAD_MS),
                 None => replay.at(0).map(Some),
             }
@@ -827,9 +862,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             next = match (next.take(), change) {
                 (Some(n), Some(c)) if n.change == c && n.shows(&c, look) => Some(n),
                 (old, c) => {
+                    // A held draw made again keeps its place (E24 M4 T1b2).
+                    let held = old.as_ref().and_then(|f| f.held);
                     maker.recycle(old);
-                    c.map(|c| Frame::of(&mut painter, c, look, (&win, &mut maker)))
-                        .transpose()?
+                    let mut made = c
+                        .map(|c| Frame::of(&mut painter, c, look, (&win, &mut maker)))
+                        .transpose()?;
+                    if let Some(f) = &mut made {
+                        f.held = held;
+                    }
+                    made
                 }
             };
         }
@@ -843,7 +885,27 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         let mut presented = false;
         // A later change may be due already: the latest is shown instead; if it shows what shows,
         // nothing new is presented (a redraw still is).
-        if let Some(d) = next.take_if(|f| f.change.t <= ms) {
+        let held_due = hold.is_none_or(|(due, _)| win.ticks_ns() >= due);
+        if let Some(mut d) = next.take_if(|f| f.change.t <= ms && held_due) {
+            // A change holding draws (E24 M4 T1b2): each shown first, the map's clock held at its
+            // millisecond, the change itself last.
+            if d.held.is_none() && !d.change.held.is_empty() {
+                let mut own = d.change.clone();
+                pending = std::mem::take(&mut own.held)
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, c)| (c, Some(i)))
+                    .collect();
+                pending.push_back((own, None));
+                hold = Some((0, d.change.t));
+                clock.seek(win.ticks_ns(), d.change.t);
+                if let Some((first, i)) = pending.pop_front() {
+                    maker.recycle(Some(d));
+                    d = Frame::of(&mut painter, first, look, (&win, &mut maker))?;
+                    d.held = i;
+                }
+            }
+            let ms = hold.map_or(ms, |(_, t)| t);
             let latest = replay.at(ms).map_err(unplayable)?;
             let change = if latest.t <= d.change.t {
                 d.change.clone()
@@ -856,7 +918,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 look.hardware = false;
             }
             if read {
-                log.push(change.clone());
+                log.push((change.clone(), d.held));
             }
             match &mut shown {
                 Some(s) if s.shows(&change, look) => {
@@ -872,6 +934,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     };
                     let back = texture.show(&mut win, &painter, &due, read)?;
                     presented = true;
+                    report.held += usize::from(due.held.is_some());
                     let late = clock.late(win.ticks_ns(), due.change.t) / 1000;
                     report.late_us.push(late);
                     if given_at.contains(&due.change.t) {
@@ -885,11 +948,24 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
             }
             let t = shown.as_ref().map_or(0, |f| f.change.t);
-            next = replay
-                .after(t, LOOK_AHEAD_MS)
-                .map_err(unplayable)?
-                .map(|c| Frame::of(&mut painter, c, look, (&win, &mut maker)))
-                .transpose()?;
+            next = match pending.pop_front() {
+                // The next held draw due after the hold on the window's clock; the change's own
+                // ends the hold, the map's clock running on from its millisecond.
+                Some((c, i)) => {
+                    hold = Some((win.ticks_ns().saturating_add(HOLD_MS * 1_000_000), t));
+                    let mut f = Frame::of(&mut painter, c, look, (&win, &mut maker))?;
+                    f.held = i;
+                    Some(f)
+                }
+                None => {
+                    hold = None;
+                    replay
+                        .after(t, LOOK_AHEAD_MS)
+                        .map_err(unplayable)?
+                        .map(|c| Frame::of(&mut painter, c, look, (&win, &mut maker)))
+                        .transpose()?
+                }
+            };
         }
         if redraw
             && !presented
@@ -921,10 +997,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         .map(|f| f.change.drawn.view)
         .unwrap_or(start.view);
     lines.push(format!(
-        "{what}, keys: {keys_from}; {} frames shown in {seconds} ms, {} times a later one shown instead, the map run \
+        "{what}, keys: {keys_from}; {} frames shown in {seconds} ms ({} of them held draws), {} times a later one shown instead, the map run \
          to {} ms; given: {scrolls} scrolls, {steps} steps, {moves} moves, {clicks} presses and \
          releases, {hotkeys} hotkeys; the view at ({}, {}, {})",
         report.late_us.len(),
+        report.held,
         report.skipped,
         replay.ran(),
         view.x,
