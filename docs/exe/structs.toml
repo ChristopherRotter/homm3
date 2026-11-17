@@ -562,6 +562,7 @@ fields = [
   { offset = 0x248, name = "ambient_sounds", type = "sound*[70]", summary = "the ambient sounds loaded on demand by ambient_sound_visit 0x418C10 (ambient_loop_names 0x65F794)", confidence = "read", refs = ["epics/E24-design.md §3.11"] },
   { offset = 0x360, name = "step_sounds", type = "sound*[10]", summary = "horse00.wav to horse09.wav (0x40747A): the walking hero's step sound by the terrain of its tile (hero_move_step 0x481344, hero_move_loop 0x407CD0), a hero in a boat's too", confidence = "read", refs = ["epics/E24-design.md §3.5", "epics/E24-design.md §3.11"] },
   { offset = 0x388, name = "step_sound_flying", type = "sound*", summary = "horse10.wav: the step sound of a hero flying (its Fly spell's +0x112 not -1, or Angel Wings); not in a boat (+0x105 bit 18 takes the terrain's)", confidence = "read", refs = ["epics/E24-design.md §3.5", "epics/E24-design.md §3.11"] },
+  { offset = 0x38C, name = "ai_shield_shown", type = "u32", summary = "set while the shield (aishield.pcx) covers the minimap in a computer's turn (ai_shield_draw 0x4CA780 sets it; adventure_full_update 0x417478 and a human's turn's minimap_draw 0x412D58 clear it): minimap_draw returns at once while a computer plays", confidence = "read", refs = ["epics/E24-design.md §5.2"] },
   { offset = 0x390, name = "walk_animating", type = "u8", summary = "set during a step's animation (hero_walk_animation 0x4803F0 to 0x4805A4): pass 9 steps the lifted hero's frame +0x200 while it is set", confidence = "read", refs = ["epics/E24-design.md §3.5"] },
 ]
 

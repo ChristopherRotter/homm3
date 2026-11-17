@@ -2941,6 +2941,20 @@ Blackout branch; recorded by the harness (`ai-walk`, `ai-walk-slow`, `ai-walk-fa
   `frames --sequences <file> --no-check` for sequences the viewer cannot play yet; the `player`
   line (an integer the timeline could not print: no earlier sequence changed the player across a
   millisecond).
+- **The computer's screen** (T1b2, read: `covered_view_redraw` 0x4CA5B0 and `ai_shield_draw`
+  0x4CA780 whole, `minimap_draw` 0x412C40 to its first tile): at a computer player's start (§5.1)
+  sleep, move hero, cast and End Turn are disabled (items 6, 7, 8, 12: their disabled frames, the
+  blank buttons); without Blackout Computer the lists and the quest log updated, the chooser asked
+  (kind 8: nothing built), the resource bar, every item drawn and the whole screen shown, all for
+  the viewing player (the lists, the quest log and the resource bar stay Red's through Blue's
+  turn); then, for a computer current player, the shield: `aishield.pcx` from its (0, 0) at the
+  minimap's area (630, 26, 144 × 144: the dialog's area 1), that area shown, and the manager's
+  +0x38C set. `minimap_draw` in a computer's turn (outside a network game) draws the shield when
+  +0x38C is clear and returns at once in every case, so every minimap draw of the turn (a hero's
+  choice, a step's view move) leaves it standing; `adventure_full_update` (0x417478) clears
+  +0x38C at the next human's start, whose minimap draw then draws the map. With Blackout
+  Computer the view is drawn covered between the same disabled buttons (not compared: the turn
+  falls in End Turn's millisecond).
 - **For T1b2** (the viewer): Blue's turn from the `[[turn]]` facts and the timeline (the walk from
   the `hero` and `walk` lines as M2's, the view by its corner rule, Computer Walk Speed from the
   sequence, the cursor hidden from the first seen step, kind 5's step by the rule above checked
