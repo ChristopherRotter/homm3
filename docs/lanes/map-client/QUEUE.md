@@ -18,29 +18,6 @@ context; a task that grows is cut at a seam agreed with the user. Code readings 
 (`clients/capture/README.md`), never in git. Every oddity of the original a reading or a capture
 finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
-### E24 M4 T1a — the turn's end and the next day
-
-- **Scope** (T1 cut in two by the user, 2026-11-16, at T1a's start: this and T1b): read and build
-  what the original shows when a turn changes, the live part from its memory (`h3mem.py`,
-  additive): End Turn's click and key (`adventure_command` 0x409A70's 12, E) and its question when
-  a hero can still move (Move Reminder: `message_box` 0x4F6570's Yes/No with GENRLTXT's text); the
-  turn's end and the next player's start (`next_player_turn` 0x4C6FE0, `player_turn_start`
-  0x4CC7D0: the view, the selection, the panels, the music and the sounds); another player's turn
-  out of the viewer's sight: the status window's kind 5 (`AdStatNx.pcx`, `crest58.def`,
-  `HourSand.def`, `HourGlas.def`, 0x453250; design §4.8) with its tile, hint and cursors
-  (0x40DEB0, §4.10; read at T1a, built with T1b: out of sight it takes no time on the virtual
-  clock, design §5.1); the new day (the date's step, built at M3 T5b2, from its cause), the week's
-  and the month's start and their messages (the adventure's message box, the first of T2's
-  family: its frame, the text through the catalogue, its pictures and buttons, its sounds and
-  place; the week's and month's names are the client's to draw: the engine sends `WeekStarted`
-  and `MonthStarted` with the kind only; a comparison reads the original's from its memory). New
-  sequences recorded in the original (a day's end, a week's and a month's start, the question
-  answered both ways; the inbox's harness changes first: `setup.sh` again).
-- **Acceptance:** the readings in a new `E24-design.md` §5; the new sequences exact on the whole
-  screen and `h3map.py drawn` all the same; `clients/scripts/check.sh` all gates; every oddity an
-  `MCL-Q<n>`.
-- **Depends on:** T0 (done). **Status:** in progress (2026-11-16).
-
 ### E24 M4 T1b — a computer player's moves in sight
 
 - **Scope:** a computer player's moves where the viewer sees them (the view's scroll to them,
@@ -51,7 +28,7 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
   in sight shows it); a new sequence recorded in the original (a computer player's turn in
   sight).
 - **Acceptance:** as T1a's.
-- **Depends on:** T1a. **Status:** waiting.
+- **Depends on:** T1a (done 2026-11-17). **Status:** next.
 
 ### E24 M4 T2 — a visit's results
 
@@ -64,11 +41,14 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
   object taken or a monster beaten (the map, the minimap and the panels redrawn); a flag raised
   (the owner's colour on the object and the minimap); a boat boarded and left; a spell cast on
   the map recorded (MCL-Q14: if the stale mana bar shows, the client shows the slot whole, the
-  original's behind `--bugs original`). New sequences recorded in the original, the harness
-  giving the answers.
+  original's behind `--bugs original`). The turn's boxes T1a left: the scenario's tests' "you
+  have lost your last town" at a turn's end with no town (the player's flag, picture type 10; its
+  text starts with an empty player name in the harness's game: whether a menu-started game names
+  the player, read first) and `player_turn_start`'s days left (ArrayTxt 128, 129; design §5.1).
+  New sequences recorded in the original, the harness giving the answers.
 - **Acceptance:** as T1a's.
-- **Depends on:** T1a (its message box; independent of T1b). **Status:** waiting (likely cut at
-  its start with the user, by dialog family).
+- **Depends on:** T1a (done: `h3_ui::message`, styles 1 and 2 without pictures; T2 adds them).
+  **Status:** waiting (likely cut at its start with the user, by dialog family).
 
 ### E24 M4 T3 — a record's start
 
