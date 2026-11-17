@@ -4683,11 +4683,18 @@ agent's calls: decision 142.
   stream with one imp of a 2 to 3 stack; the events, the parts and who sees them; each refusal
   changing nothing, `NotYourTurn` included; no type free leaving the slot empty, a sink keeping
   nothing reaching the same state); `h3-protocol`'s round trips (119 rejections, 43 kinds of
-  event) and `a_hire_folds_as_observe_shows_it` (a hire on three golden games, every viewer's
-  fold equal to `observe`).
+  event), `a_hire_folds_as_observe_shows_it` (a hire on three golden games, every viewer's fold
+  equal to `observe`) and `a_hire_moves_the_owners_slot_view_into_its_heroes` (by hand: a worn
+  artifact, the backpack's first places and its rest, a spell, another viewer). The first scoped
+  verify's coverage found the `Spell` part's closure unrun (no test hero had a spell):
+  `GameState::set_spells` (tests) and the parts test's spell.
 - **Catalog:** TWN-TAV-003 and -004 entered `verified` (the code reading, batch TWN-4's rows
   TWN-4-2, -5 and -6, VCMI, the manual).
 
-**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; the tests of
+`master` merged in once, after #998 (E08 T125a, no version moved) and #999 (the `shared/` half).
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data` (every step but
+`check-lane`, as on a `cross-lane` branch, and the coverage miss above, then the coverage step
+alone clean; `bench-check` inside every gate, `original-data` passed); the tests of
 `h3-cli`, `h3-protocol`, `h3-server`, `h3-sim`, `h3-map` and `cargo clippy --workspace
 --all-targets` on their own; CI on the pull requests is the record.
