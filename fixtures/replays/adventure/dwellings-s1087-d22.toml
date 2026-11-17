@@ -337,7 +337,7 @@ checkpoint_every = 25
 [map]
 path = "fixtures/maps/e08-dwellings-36.h3m"
 hash = "0xbbd135d542e15bc3"
-import_version = 24
+import_version = 25
 
 [result]
 day = 23

@@ -636,6 +636,7 @@ fn check(
         allowed_heroes: Vec::new(),
         hero_masks: Vec::new(),
         prisoners: Vec::new(),
+        custom_types: Vec::new(),
         roe: false,
     };
     let built = GameState::new(rules, &setup, SEED)

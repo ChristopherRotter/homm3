@@ -43,7 +43,7 @@ fn experienced(experience: u32) -> impl FnOnce(&mut GameSetup) {
 /// The levels at load as the hero model gives them: `start` (at level 1 and experience 0) gains
 /// `experience` under `limit`, then each level drawn from the seed byte `seed` and chosen by the
 /// original's choice with the setup's army worth and `shares`; the spell points full.
-fn oracle(
+pub(crate) fn oracle(
     rules: &GameRuleset,
     start: &HeroDetails,
     experience: u32,

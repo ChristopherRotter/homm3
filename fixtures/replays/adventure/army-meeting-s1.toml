@@ -18,9 +18,9 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xc3e78b96ee298e7d",
-    "0x95ac0058c039a1e1",
-    "0x3cf110e42faa90f9",
+    "0x206b79cce0ab4177",
+    "0x372f6219adf746f7",
+    "0x71cc5dfe33a71abb",
 ]
 
 [replay]
@@ -57,8 +57,8 @@ checkpoint_every = 5
 [map]
 path = "fixtures/maps/e08-army-12.h3m"
 hash = "0x40320993e64e5b23"
-import_version = 24
+import_version = 25
 
 [result]
 day = 2
-final_hash = "0xec359e3ab8909783"
+final_hash = "0x9585786905313d11"

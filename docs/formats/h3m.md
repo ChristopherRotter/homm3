@@ -446,8 +446,14 @@ the events (the first day + 1, as the timed events'); the adventure's town objec
 `base:town` whatever the subclass, with the body's owner byte as the object's owner, `0xFF`
 neutral and a colour nobody plays refused as every ownable object's, `ImportError::ObjectOwner`,
 and the formation byte as `Holds::Town`, 0 loose, any other tight). A random hero (class 70) is a placed hero without a type
-(`hero_type: None`; the map's custom-hero entries are not applied to it; an AB spell byte naming a
-spell gives that spell alone). A placed hero (not a prisoner) right of a town's entrance stands on
+(`hero_type: None`; the import cannot apply the map's custom-hero entries to it: the game does, by
+its drawn type, since E09 T37b; an AB spell byte naming a
+spell gives that spell alone). **The customised hero types** (v25, E09 T37b, GAM-HER-001): each
+map-wide entry that sets a field the game keeps (experience, primary and secondary skills,
+artifacts, spells, sex; a biography alone or nothing is left out) into `GameSetup::custom_types`
+by its type, as a placed hero's customisations over a body that sets none; a type code past the
+table refused (`UnknownCode`). The game gives every hero it builds of the type the entry (a
+random hero's, a main town's, a record the taverns offer). A placed hero (not a prisoner) right of a town's entrance stands on
 the entrance (TWN-SET-010; survey `E09-towns.md` §4.6); a town's entrance is blocked and visitable,
 so a hero on it is no hero in a town; on any other blocked tile of a town `HeroInTown` stays. The
 pool's inputs (survey §4.2): the allowed heroes (an RoE-format map's 128 bits and the 16 Conflux

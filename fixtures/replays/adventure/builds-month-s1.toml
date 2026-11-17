@@ -122,7 +122,7 @@ checkpoint_every = 2
 [map]
 path = "fixtures/maps/e09-builds-36.h3m"
 hash = "0x36e954b6f38638d8"
-import_version = 24
+import_version = 25
 
 [result]
 day = 29

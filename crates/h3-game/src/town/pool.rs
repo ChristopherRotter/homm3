@@ -176,6 +176,14 @@ impl HeroPool {
         self.types.get(id.index()).map(|entry| entry.status)
     }
 
+    /// Whether `id` is free (no hero on the map, in a garrison or a tavern has it, the map allows
+    /// it and no prison holds it; E09 T37b).
+    pub(crate) fn is_free(&self, id: HeroTypeId) -> bool {
+        self.types
+            .get(id.index())
+            .is_some_and(|entry| entry.status == HeroStatus::Free)
+    }
+
     /// `id`'s colour mask; `None` for a type the ruleset does not have.
     #[cfg(test)]
     pub(crate) fn mask(&self, id: HeroTypeId) -> Option<u8> {
@@ -231,8 +239,9 @@ impl HeroPool {
         self.records.get(id.index()).and_then(|record| record.hero)
     }
 
-    /// `id`'s record becomes `hero` (a first draw's, design note §61).
-    pub(super) fn set_record(&mut self, id: HeroTypeId, hero: HeroId) {
+    /// `id`'s record becomes `hero` (a first draw's, design note §61; since E09 T37b a customised
+    /// type's at the build).
+    pub(crate) fn set_record(&mut self, id: HeroTypeId, hero: HeroId) {
         let record = self.records.get_mut(id.index());
         record
             .into_iter()
