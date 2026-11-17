@@ -1058,7 +1058,10 @@ fn objects_with_their_bodies() {
     let MapObject::Pile(pile) = &map.objects[2] else {
         panic!("the pile after the heroes");
     };
-    assert_eq!((pile.tile, pile.amount, pile.guards.is_none()), ((5, 4), 700, true));
+    assert_eq!(
+        (pile.tile, pile.amount, pile.guards.is_none()),
+        ((5, 4), 700, true)
+    );
     let bodies: Vec<_> = map.objects[3..]
         .iter()
         .map(|o| match o {
