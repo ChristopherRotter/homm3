@@ -6,12 +6,34 @@
 use alloc::vec::Vec;
 
 use h3_adventure::Pos;
-use h3_content::Formation;
+use h3_content::{Formation, HeroType, HeroTypeId, Ruleset};
 use h3_contracts::PlayerId;
 use h3_kernel::Rng;
 
-use super::pool::Drawn;
+use super::pool::{Drawn, HeroPool};
 use crate::{GameHeroSetup, GameRuleset, GameSetup, GameSetupError, HeroArmy, HeroDetailsSetup};
+
+/// The customised types that get a record at the build (TWN-SET-005, GAM-HER-001; E09 T37b,
+/// decision 138, design note `E09-design.md` §70): each type of [`GameSetup::custom_types`] still
+/// free once the setup's heroes, the random heroes and the main towns' heroes took theirs (so
+/// neither a type the map does not allow nor a prisoner's), in type order, with its entry. The
+/// original sets up every type's hero from its record before the taverns' first fill
+/// (`placed_heroes_setup` 0x4CAE10), so a customised type is offered as the map sets it; the
+/// caller makes each record after the build's heroes.
+// rule: TWN-SET-005, GAM-HER-001
+pub(crate) fn custom_records<'s, 'r>(
+    setup: &'s GameSetup,
+    core: &'r Ruleset,
+    pool: &HeroPool,
+) -> Vec<((HeroTypeId, &'r HeroType), &'s HeroDetailsSetup)> {
+    core.hero_types()
+        .iter()
+        .enumerate()
+        .filter_map(|(index, ty)| HeroTypeId::from_index(index).map(|id| (id, ty)))
+        .filter(|&(id, _)| pool.is_free(id))
+        .filter_map(|(id, ty)| setup.custom_type(id).map(|entry| ((id, ty), entry)))
+        .collect()
+}
 
 /// Each main town's hero (TWN-SET-009; `main_town_heroes` 0x4CA040): for each player in id order
 /// (the players' colours strictly increase, so colour order, as the original's loop over colours

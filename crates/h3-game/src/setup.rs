@@ -90,6 +90,24 @@ pub struct HeroDetailsSetup {
     pub sex: Option<HeroSex>,
 }
 
+impl HeroDetailsSetup {
+    /// These customisations over `entry`, a customised type's map-wide one (E09 T37b, design note
+    /// `E09-design.md` §70; the original's `load_hero_body` 0x502374 to 0x5023E7 writes a body's
+    /// set fields over its type's record): each field these leave `None` takes `entry`'s. So a
+    /// hero merged twice is merged once (an imported placed hero's).
+    #[must_use]
+    pub fn over(&self, entry: &Self) -> Self {
+        Self {
+            experience: self.experience.or(entry.experience),
+            primary: self.primary.or(entry.primary),
+            skills: self.skills.clone().or_else(|| entry.skills.clone()),
+            artifacts: self.artifacts.clone().or_else(|| entry.artifacts.clone()),
+            spells: self.spells.clone().or_else(|| entry.spells.clone()),
+            sex: self.sex.or(entry.sex),
+        }
+    }
+}
+
 /// A hero's artifacts as a setup gives them.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct HeroArtifactsSetup {
@@ -149,6 +167,15 @@ pub struct GameSetup {
     pub hero_masks: Vec<(HeroTypeId, u8)>,
     /// The prisoners' hero types (the map's class 62; E09 T7a1): taken in the pool (TWN-SET-005).
     pub prisoners: Vec<HeroTypeId>,
+    /// The hero types the map customises map-wide, each with its entry (SoD's customised types,
+    /// `map_custom_heroes_read` 0x4C2CE0; E09 T37b, design note `E09-design.md` §70, decisions
+    /// 137, 138): every hero the build makes of such a type takes the entry under its own
+    /// customisations ([`HeroDetailsSetup::over`]: a placed hero, whose import merged it already;
+    /// a random hero by its drawn type; a main town's hero, TWN-SET-009), and the build makes a
+    /// record for each such type still free after them, which the taverns offer as it is
+    /// (GAM-HER-001, TWN-SET-005). Each type must be the ruleset's and named once; the order does
+    /// not matter.
+    pub custom_types: Vec<(HeroTypeId, HeroDetailsSetup)>,
     /// Whether the map is a Restoration of Erathia one (the h3m's format; E09 T26a2, design note
     /// `E09-design.md` §42): a creature's week then names only the town records' creatures that
     /// RoE has (TWN-GRO-002, [`h3_towns::TownRecord::roe`]). Read by nothing else.
@@ -234,7 +261,7 @@ pub(crate) type Prepared = (
     Vec<HeroDetails>,
     HeroPool,
     Vec<(Town, TownStatic)>,
-    Vec<GameHeroSetup>,
+    Vec<HeroDetailsSetup>,
 );
 
 /// Why a [`GameSetup`] cannot start a game.
@@ -248,7 +275,8 @@ pub enum GameSetupError {
     /// the index of the first offending player.
     Colour(usize),
     /// More heroes than a [`HeroId`] can name; the number (since E09 T7b2b the setup's heroes
-    /// and one per main town that generates a hero, TWN-SET-009).
+    /// and one per main town that generates a hero, TWN-SET-009; since E09 T37b also one per
+    /// customised type, the most records the build makes of them).
     Heroes(usize),
     /// The hero's type is not part of the ruleset.
     UnknownHeroType(HeroId),
@@ -257,6 +285,9 @@ pub enum GameSetupError {
     StartingArmy(HeroId),
     /// The hero's details break a rule of the hero model (`h3_heroes::validate`).
     Hero(HeroId, DetailsError),
+    /// A customised type's entry ([`GameSetup::custom_types`]) breaks a rule of the hero model on
+    /// its own, at experience 0 (E09 T37b): the first such entry's type and the rule.
+    CustomDetails(HeroTypeId, DetailsError),
     /// A banned skill is not the ruleset's (E08 T29).
     BannedSkill(SkillId),
     /// A banned spell is not the ruleset's (E08 T61b).
@@ -305,6 +336,9 @@ pub enum GameSetupError {
     /// (TWN-SET-007, `TWN-QUIRK-4`; E09 T7b1) or, since E09 T7b2b, its main town's hero
     /// (TWN-SET-009).
     NoFreeHero(PlayerId),
+    /// A customised type ([`GameSetup::custom_types`]) is not the ruleset's, or the setup names
+    /// it twice (E09 T37b); the first such entry's type.
+    CustomType(HeroTypeId),
     /// The adventure context rejects its part.
     Adventure(SetupError),
 }
@@ -327,6 +361,9 @@ impl fmt::Display for GameSetupError {
                 )
             }
             Self::Hero(hero, error) => write!(f, "hero {}: {error}", hero.raw()),
+            Self::CustomDetails(hero_type, error) => {
+                write!(f, "customised hero type {}: {error}", hero_type.raw())
+            }
             Self::BannedSkill(skill) => {
                 write!(f, "banned skill {} is not the ruleset's", skill.raw())
             }
@@ -370,6 +407,11 @@ impl fmt::Display for GameSetupError {
             Self::NoFreeHero(player) => {
                 write!(f, "player {} draws a hero with none free", player.index())
             }
+            Self::CustomType(hero_type) => write!(
+                f,
+                "customised hero type {} is unknown or named twice",
+                hero_type.raw()
+            ),
             Self::Adventure(error) => write!(f, "adventure: {error}"),
         }
     }
@@ -380,7 +422,7 @@ impl core::error::Error for GameSetupError {}
 impl GameSetup {
     /// Checks the setup: the game's part (a difficulty the ruleset has, players in colour order
     /// within the ruleset's players, banned skills, then spells and artifacts of the ruleset (E08
-    /// T29, T61b), the timed events (E08 T83a), the towns and the players' starts (E09 T7a2: since
+    /// T29, T61b), the customised types (E09 T37b), the timed events (E08 T83a), the towns and the players' starts (E09 T7a2: since
     /// E09 T8a1 one town record per town of the static map, then a fixed town's faction with a
     /// town record, a random town's alignment to a player's colour, each player's faction choice,
     /// main town (since E09 T8a1 one it owns; since E09 T7b2b with an entrance on the map when it
@@ -390,8 +432,9 @@ impl GameSetup {
     /// armies that can be drawn, the heroes' details by the hero model, E08 T18b), then the
     /// adventure context's part with its own checks (a main town's hero on an entrance a placed
     /// hero already stands on: `SetupError::HeroTile`, `TWN-QUIRK-6`). It builds the game as
-    /// [`GameState::new`] does, with the seed 0: whether a setup is valid does not depend on the
-    /// seed, since every starting army it can draw is valid when its hero type's army has a first
+    /// [`GameState::new`] does, with the seed 0 (since E09 T37b after the customised types'
+    /// entries: each the ruleset's type, named once, valid on its own at experience 0): whether a
+    /// setup is valid does not depend on the seed, since every starting army it can draw is valid when its hero type's army has a first
     /// stack and no more stacks than the army's slots (the core checks each stack's counts), and
     /// neither a drawn experience nor a war machine's artifact (worn only where its slot is free)
     /// makes the details invalid, nor do the levels at load (the details are checked at
@@ -416,6 +459,15 @@ impl GameSetup {
         GameState::new(rules, self, 0).map(drop)
     }
 
+    /// `hero_type`'s map-wide entry, if the setup customises it ([`Self::custom_types`]; E09
+    /// T37b): the first entry naming it.
+    pub(crate) fn custom_type(&self, hero_type: HeroTypeId) -> Option<&HeroDetailsSetup> {
+        self.custom_types
+            .iter()
+            .find(|(id, _)| *id == hero_type)
+            .map(|(_, entry)| entry)
+    }
+
     /// The adventure context's setup, the heroes' details, the hero pool, the towns' records by
     /// `TownId` and the main towns' heroes: the pool, the players' random factions and the random
     /// heroes' types drawn first from `draws` (TWN-SET-005, TWN-SET-001, TWN-SET-007, TWN-SET-008:
@@ -426,8 +478,11 @@ impl GameSetup {
     /// [`town::build_towns`]; the garrisons and, since E09 T11, the towns' factions into the
     /// adventure's setup, for its random dwellings tied to a town), then each starting army in
     /// hero id order, then each default experience in hero id order (GAM-HER-001), the main towns'
-    /// heroes last in both; a hero with a custom experience at experience 0, which
-    /// [`GameState::new`] gives it with its levels (GAM-SET-002).
+    /// heroes last in both and since E09 T37b the customised types' records after them (no
+    /// starting army; [`town::custom_records`]); a hero with a custom experience at experience 0,
+    /// which [`GameState::new`] gives it with its levels (GAM-SET-002). Each hero's details are its
+    /// own customisations over its type's map-wide entry ([`HeroDetailsSetup::over`]), the last
+    /// part each store hero's as built, by hero id.
     pub(crate) fn adventure_setup(
         &self,
         rules: &GameRuleset,
@@ -466,6 +521,26 @@ impl GameSetup {
         {
             return Err(GameSetupError::BannedArtifact(artifact));
         }
+        // rule: GAM-HER-001
+        // E09 T37b: each customised type the ruleset's and named once, its entry valid on its own
+        // at experience 0 (no draw); a hero that takes it has each field its own or the entry's
+        // (the hero model checks field by field), so the heroes' draws decide nothing here.
+        let mut named = Vec::with_capacity(self.custom_types.len());
+        for (type_id, entry) in &self.custom_types {
+            let hero_type = rules
+                .core()
+                .hero_type(*type_id)
+                .filter(|_| !named.contains(type_id))
+                .ok_or(GameSetupError::CustomType(*type_id))?;
+            named.push(*type_id);
+            let probe = HeroDetailsSetup {
+                experience: Some(0),
+                ..entry.clone()
+            };
+            let built = hero_details(rules.core(), &probe, (*type_id, hero_type), &[], draws);
+            h3_heroes::validate(&built, rules.core())
+                .map_err(|error| GameSetupError::CustomDetails(*type_id, error))?;
+        }
         if self.events.len() > usize::from(u16::MAX) + 1 {
             return Err(GameSetupError::Events(self.events.len()));
         }
@@ -477,13 +552,14 @@ impl GameSetup {
         {
             return Err(GameSetupError::Event(index));
         }
-        // E09 T7b2b: one hero more per main town that generates one (TWN-SET-009).
+        // E09 T7b2b: one hero more per main town that generates one (TWN-SET-009); E09 T37b: at
+        // most one record per customised type.
         let generating = self
             .players
             .iter()
             .filter(|player| player.start.main_town.is_some_and(|t| t.generates_hero))
             .count();
-        let count = self.heroes.len() + generating;
+        let count = self.heroes.len() + generating + self.custom_types.len();
         if count > usize::from(u16::MAX) + 1 {
             return Err(GameSetupError::Heroes(count));
         }
@@ -494,6 +570,8 @@ impl GameSetup {
         // E09 T37a: each type's record and each player's faction kept (design note §61).
         drawn.pool.record_heroes(&drawn.types);
         drawn.pool.set_factions(&drawn.factions);
+        // E09 T37b: a record for each customised type still free (decision 138).
+        let records = town::custom_records(self, rules.core(), &drawn.pool);
         let (garrisons, towns): (Vec<_>, Vec<_>) =
             town::build_towns(self, rules, &owners, &factions, draws)
                 .into_iter()
@@ -519,11 +597,32 @@ impl GameSetup {
             machines.push(((type_id, hero_type), given));
         }
         let mut details = Vec::with_capacity(count);
+        let mut customs = Vec::with_capacity(count);
         for ((hero, (hero_type, given)), index) in all().zip(machines).zip(0..=u16::MAX) {
-            let built = hero_details(rules.core(), &hero.details, hero_type, &given, draws);
+            // rule: GAM-HER-001
+            // E09 T37b: its own customisations over its type's map-wide entry (decision 137).
+            let custom = self
+                .custom_type(hero_type.0)
+                .map_or_else(|| hero.details.clone(), |entry| hero.details.over(entry));
+            let built = hero_details(rules.core(), &custom, hero_type, &given, draws);
             h3_heroes::validate(&built, rules.core())
                 .map_err(|error| GameSetupError::Hero(HeroId::new(index), error))?;
             details.push(built);
+            customs.push(custom);
+        }
+        // E09 T37b: the customised types' records after them, each its entry (checked above) with
+        // a drawn default experience when it has none, so valid; no army (a fill gives it).
+        for ((type_id, hero_type), entry) in records {
+            let id = HeroId::new(u16::try_from(details.len()).unwrap_or(u16::MAX));
+            details.push(hero_details(
+                rules.core(),
+                entry,
+                (type_id, hero_type),
+                &[],
+                draws,
+            ));
+            drawn.pool.set_record(type_id, id);
+            customs.push(entry.clone());
         }
         let setup = AdventureSetup {
             players,
@@ -556,7 +655,7 @@ impl GameSetup {
                 .collect::<Option<Vec<_>>>()
                 .unwrap_or_default(),
         };
-        Ok((setup, details, drawn.pool, towns, generated))
+        Ok((setup, details, drawn.pool, towns, customs))
     }
 }
 

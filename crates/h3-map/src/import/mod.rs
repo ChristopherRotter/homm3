@@ -18,7 +18,7 @@ use h3_adventure::{
     ObjectSetup, Pos, PrimarySkill, RewardRecord, ScholarGift, TileMask, TileSetup,
 };
 use h3_adventure::{DWELLING_LEVELS, ObjectKind, Passage};
-use h3_content::{CreatureTypeId, FactionId, Formation, ResourceId, SkillId, SpellId};
+use h3_content::{CreatureTypeId, FactionId, Formation, HeroTypeId, ResourceId, SkillId, SpellId};
 use h3_contracts::{ArmyStack, HeroSex, PlayerId, TownId};
 use h3_game::{
     DEFAULT_DIFFICULTY, GameHeroSetup, GameRuleset, GameSetup, HeroArmy, HeroArtifactsSetup,
@@ -295,6 +295,7 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
     let banned_artifacts = banned_artifacts(map, rules)?;
     let events = timed_events(map, rules, &colours)?;
     let (allowed_heroes, hero_masks, prisoners) = town::pool(map, rules, &prisoners)?;
+    let custom_types = custom_types(map, rules)?;
     Ok(GameSetup {
         players,
         difficulty: DEFAULT_DIFFICULTY,
@@ -309,6 +310,7 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
         allowed_heroes,
         hero_masks,
         prisoners,
+        custom_types,
         // rule: TWN-GRO-002
         roe: map.header.version == Version::RoE,
     })
@@ -1211,19 +1213,7 @@ fn hero(
     let hero_type = if random {
         None
     } else {
-        let key =
-            codes::HERO_TYPES
-                .get(usize::from(body.hero_type))
-                .ok_or(ImportError::UnknownCode {
-                    what: "hero type",
-                    code: u16::from(body.hero_type),
-                })?;
-        Some(
-            rules
-                .core()
-                .hero_type_by_key(key)
-                .ok_or(ImportError::MissingContent(key))?,
-        )
+        Some(hero_type_of(rules, body.hero_type)?)
     };
     let details = details(version, rules, hero_type, (body, custom))?;
     Ok(GameHeroSetup {
@@ -1239,6 +1229,49 @@ fn hero(
         details,
     })
 }
+
+/// The ruleset's hero type of a map's type code: a code past the table, or a type the ruleset
+/// lacks, refused.
+fn hero_type_of(rules: &GameRuleset, code: u8) -> Result<HeroTypeId, ImportError> {
+    let key = codes::HERO_TYPES
+        .get(usize::from(code))
+        .ok_or(ImportError::UnknownCode {
+            what: "hero type",
+            code: u16::from(code),
+        })?;
+    rules
+        .core()
+        .hero_type_by_key(key)
+        .ok_or(ImportError::MissingContent(key))
+}
+
+/// The map's customised hero types (SoD's map-wide entries, `map_custom_heroes_read` 0x4C2CE0;
+/// E09 T37b, design note `E09-design.md` §70; TWN-SET-005, GAM-HER-001): each entry in the map's
+/// order as a placed hero's customisations over a body that sets none ([`details`]), an entry
+/// that sets nothing the game keeps (the biography alone, or no field) left out. The game gives
+/// every hero of the type the entry: the placed heroes' already have it, merged here.
+// rule: GAM-HER-001
+fn custom_types(
+    map: &RawMap,
+    rules: &GameRuleset,
+) -> Result<Vec<(HeroTypeId, HeroDetailsSetup)>, ImportError> {
+    let bare = HeroBody {
+        sex: TYPE_SEX,
+        ..HeroBody::default()
+    };
+    let mut types = Vec::new();
+    for custom in &map.custom_heroes {
+        let id = hero_type_of(rules, custom.hero_type)?;
+        let entry = details(map.header.version, rules, Some(id), (&bare, Some(custom)))?;
+        if entry != HeroDetailsSetup::default() {
+            types.push((id, entry));
+        }
+    }
+    Ok(types)
+}
+
+/// A body's or an entry's sex code for the hero type's own (`hero_sex`).
+const TYPE_SEX: u8 = 0xFF;
 
 /// AB's one spell byte: no spell (the spell book empty), or the hero type's own.
 const NO_SPELL: u8 = 0xFF;
@@ -1256,7 +1289,7 @@ const TYPE_SPELL: u8 = 0xFE;
 fn details(
     version: Version,
     rules: &GameRuleset,
-    hero_type: Option<h3_content::HeroTypeId>,
+    hero_type: Option<HeroTypeId>,
     (body, custom): (&HeroBody, Option<&CustomHero>),
 ) -> Result<HeroDetailsSetup, ImportError> {
     let experience = body

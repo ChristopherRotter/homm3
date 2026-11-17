@@ -39,6 +39,24 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 - 2026-11-17 (the map client lane, E24 M4 T1b1, `map-client/e24-m4-t1b1`; **the capture harness, rebuild `xdd.dll`**): `clients/capture/xdd.c` takes a new command, `<seq> seed <value>` (its 8.: the main thread's C library seed set at its next clock read, so that a computer player's turn draws alike in every run; `Game.seed`, and `h3drive.to_scenario(game, seed=...)` seeds just before Begin), and its acknowledgement has a sixteenth field (the seeds set): `h3drive.ACK_FIELDS` is 16, so a run with an `xdd.dll` built before fails as stale where it reads the acknowledgement whole (a forced roll, a batch's or a sequence's checks, a seed): rebuild it with `clients/capture/setup.sh`. Nothing else of `h3drive`, `h3adv` or `h3mem` changed in behaviour (`Mem.other_turn` is new; `Mem.status_items` also returns kind 5's items, ids 2190 to 2193).
 
+- 2026-11-17 (the town lane, E09 T37b, `town/e09-t37b`, `cross-lane` with the user's consent;
+  **your paths changed, for your review**; design note `E09-design.md` §70 As built, decisions
+  137, 138): **map import v25** (`h3-map`: `GameSetup::custom_types` from SoD's map-wide entries
+  that set a field, a type code past the table refused; `hero_type_of` factored out of `hero`):
+  your next import change takes v26. `h3-game`'s `setup.rs`: `GameSetup::custom_types`,
+  `HeroDetailsSetup::over`, `GameSetupError::CustomType` and `CustomDetails` (checked after the
+  banned sets, before any draw), every hero's details its own over its type's entry (a random
+  hero's by its drawn type, a main town's), a record per customised type still free after the
+  build's heroes (`town::custom_records`), `Prepared`'s last part each store hero's
+  customisations as built; `state.rs`: the level seeds, sexes and levels at load read those (the
+  records last); `tests/mod.rs`' `levels` module and `levels::oracle` `pub(crate)` (the town tests
+  reuse the oracle). No hash version moved; the game state hash's encoding is unchanged. The 89
+  goldens re-recorded: `import_version` 25 in each, and `army-meeting-s1` and `army-dialog-s1`
+  moved their checkpoints and final hashes (`e08-army-12`'s engine-written entry of type 3 now
+  gives a record at the build); the bot reports unchanged. **A `GameSetup` literal** needs
+  `custom_types` (four did: `h3-cli`'s census, `h3-map`'s census example and `tests/rewards.rs`,
+  `h3-game`'s `tests::setup`).
+
 - 2026-11-17 (the town lane, E09 T37a, `town/e09-t37a`, `cross-lane` with the user's consent;
   **your paths changed, for your review**; design note `E09-design.md` §61 to §63, §68, §75 As
   built): **game state hash v33** (the taverns' stream after the towns'; the pool's offered status,

@@ -85,8 +85,10 @@ pub use parse::parse;
 /// Restoration of Erathia's (`GameSetup::roe`: a creature's week names only RoE's town records'
 /// creatures, TWN-GRO-002). v24 (E08 T123b): the creature banks typed, class 16 by subclass (the
 /// seven land kinds, a subclass past 6 refused) and 85, 24, 84 and 25 each at subclass 0 (a
-/// subclass past 0 refused), none with a body.
-pub const MAP_IMPORT_VERSION: u32 = 24;
+/// subclass past 0 refused), none with a body. v25 (E09 T37b): SoD's customised hero types into
+/// the game's setup (`GameSetup::custom_types`: each entry that sets a field the game keeps, as a
+/// placed hero's customisations; a type code past the table refused).
+pub const MAP_IMPORT_VERSION: u32 = 25;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

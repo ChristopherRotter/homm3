@@ -158,6 +158,13 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   `adventure().heroes()` instead. `crate::tests::setup()` allows none (no fill); `towns_setup`
   allows every type.
 
+- **A customised type still free has its record from the build** (E09 T37b,
+  `GameSetup::custom_types`): its id after the build's heroes, before any tavern record, so a test
+  counting `heroes()` meets it. The fixture maps built from `h3-map`'s `tests::sample`
+  (`fixtures.rs`) carry its map-wide entry for type 3 (a skill, a backpack artifact): a fixture map
+  that does not place type 3 (`e08-army-12`, `e08-xl-144`) gets that record, its default
+  experience moving the setup stream's later draws, and a new fixture map does too.
+
 - **A setup's towns match its map's** (E09 T8a1, `GameSetupError::TownCount`): a `GameSetup` whose static map has objects of the type `town` needs one `TownSetup` per such object, in object order; a test or tool that builds a game from a static layer alone gives each a neutral town record (`h3-map`'s census example and `h3-cli`'s `src/ai/census.rs` do).
 - **An `AdventureSetup` with towns gives one garrison and one faction per town** (`SetupError::Garrisons`, since E09 T11 `TownFactions`, checked first): a test that builds the adventure alone with towns sets both (`state/tests/towns.rs`' `town_setup`, `reach/tests.rs`); the game gives step 2's factions.
 - **The game's town tests give the part's dwellings and forts no map slot** (`town/tests.rs`'

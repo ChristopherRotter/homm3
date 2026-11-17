@@ -12,6 +12,17 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-17 (the town lane, E09 T37b, `town/e09-t37b`, `cross-lane` with the user's consent;
+  **your paths changed, for your review**): map import v25, so `tests/record.rs`' `import` case
+  reads `import_version = 25` (its broken case 24); `army-dialog-s1` moved with its map's new
+  record (`e08-army-12`'s customised type 3, built at the game's build): the checkpoint
+  `0xb614a339103038da` (its broken case `…8d0`) and the final hash `0x8a46cfc9c62f7d09`
+  (`…d00`), in the cases and the summary line. `GameSetupError` gained `CustomType` and
+  `CustomDetails` (a `GameRestoreError::Setup` payload; nothing of yours matches it).
+  `h3-protocol`'s `tests/game_bounds.rs`: the XL map's seed 13 (5 before: the map's record of
+  its customised type changed its games; 3, 4, 11, 13 and 23 of 1 to 24 reveal a whole map, 13
+  with the largest snapshot as measured).
+
 - 2026-11-17 (the adventure lane, E08 T124b1, `adventure/e08-t124b1`, `cross-lane` with the user's
   consent; **your paths changed, for your review**): adventure state hash v26 (the creature banks'
   draw in the static map). `tests/record.rs`' `army-dialog-s1` literals moved with the replay:
