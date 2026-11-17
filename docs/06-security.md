@@ -230,10 +230,12 @@ to §75; rules TWN-TAV-001 to -009, GAM-DEC-010, GAM-MAN-003). The build tasks (
 implement it; `h3-game`'s view tests and the hygiene and told-views properties check it with tavern
 heroes, hires, leaves and the guild.
 
-- **The owner's alone:** a player's two tavern heroes (each the hero's id, type, details, army by
-  slot, formation and tactics flag; no points, no returning mark), whether or not it owns a Tavern,
-  and their changes (`TavernOffered`) after a week's release and fill, a hire's replacement and a
-  hero's return. Never another player's.
+- **The owner's alone:** a player's two tavern heroes (each the hero's id, type, details as the
+  tavern's held hero screen shows them, army by slot, formation and tactics flag; no points, no
+  returning mark, no learned spells, no offered levels, the backpack's first five places and its
+  count; E09 decision 134), whether or not it owns a Tavern, and their changes (`TavernOffered` and
+  its `TavernPartSeen`s) after a week's release and fill, a hire's replacement and a hero's return.
+  Never another player's.
 - **Never shown:** the pool's statuses (which types are free, offered to another player, taken or
   out of the game), the away records and the returning marks; a leave without a return tells nothing
   beyond the hero's removal.
