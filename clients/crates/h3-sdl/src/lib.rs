@@ -456,8 +456,8 @@ pub struct Window {
     focused: bool,
     /// The focus's changes during the last [`Window::wait`], in order (E24 M3 T7b1).
     focus_changes: Vec<bool>,
-    /// Each event of the last [`Window::wait`]'s keyboard key down as the original reads it
-    /// (E27 M2 T7), none for every other event.
+    /// Each event of the last [`Window::wait`]'s keyboard key down with its Shift (E27 M2 T7),
+    /// none for every other event.
     scans: Vec<Option<KeyScan>>,
     /// Whether SDL's text input is on (E27 M2 T7b).
     text_input: bool,
@@ -466,52 +466,14 @@ pub struct Window {
     typed: Vec<(usize, char)>,
 }
 
-/// A keyboard key down as the original's input manager reads it (E27 M2 T7: a dialog's edit types
-/// by it, `h3_ui::edit`): its scan code (set 1, by the key's place, whatever the layout) and
-/// whether a Shift key is held.
+/// A keyboard key down's modifiers as a window reads them (E27 M2 T7, T7b: the shell's key table
+/// asks its chord with Shift as held). Its set 1 scan code went at M2's review (the original's US
+/// table types by it, which the window's profile never runs: its edits type SDL's text input,
+/// [`Window::typed`]; *provisional*).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct KeyScan {
-    /// The set 1 scan code (0 for a key the original's table has no place for).
-    pub code: u8,
     /// Either Shift key is held.
     pub shift: bool,
-}
-
-/// The set 1 scan code of SDL's scan code (a USB usage: the key's place), 0 for one the original
-/// reads no character or caret key from (its table, 0x4EC8C0, ends at F12, 0x58). The keypad's
-/// keys take their set 1 codes (its digits share the arrows', Home's, End's and Delete's), the
-/// right Ctrl and Alt the left ones'.
-#[must_use]
-pub fn set1(usage: u32) -> u8 {
-    const LETTERS: [u8; 26] = [
-        0x1E, 0x30, 0x2E, 0x20, 0x12, 0x21, 0x22, 0x23, 0x17, 0x24, 0x25, 0x26, 0x32, 0x31, 0x18,
-        0x19, 0x10, 0x13, 0x1F, 0x14, 0x16, 0x2F, 0x11, 0x2D, 0x15, 0x2C,
-    ];
-    // Usages 0x1E to 0x63: the digits, Enter, Escape, BackSpace, Tab, Space, the marks, Caps
-    // Lock, F1 to F12, the navigation keys, the keypad's.
-    const REST: [u8; 0x46] = [
-        0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, // 1 to 0
-        0x1C, 0x01, 0x0E, 0x0F, 0x39, // Enter, Escape, BackSpace, Tab, Space
-        0x0C, 0x0D, 0x1A, 0x1B, 0x2B, 0x2B, 0x27, 0x28, 0x29, 0x33, 0x34,
-        0x35, // - = [ ] \ # ; ' ` , . /
-        0x3A, // Caps Lock
-        0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x41, 0x42, 0x43, 0x44, 0x57, 0x58, // F1 to F12
-        0x00, 0x46, 0x00, // Print Screen, Scroll Lock, Pause
-        0x52, 0x47, 0x49, 0x53, 0x4F, 0x51, 0x4D, 0x4B, 0x50, 0x48, // Insert to Up
-        0x45, 0x35, 0x37, 0x4A, 0x4E, 0x1C, // Num Lock, the keypad's / * - + Enter
-        0x4F, 0x50, 0x51, 0x4B, 0x4C, 0x4D, 0x47, 0x48, 0x49, 0x52,
-        0x53, // the keypad's 1 to 0 and .
-    ];
-    match usage {
-        0x04..=0x1D => LETTERS[(usage - 0x04) as usize],
-        0x1E..=0x63 => REST[(usage - 0x1E) as usize],
-        0x64 => 0x56,
-        0xE0 | 0xE4 => 0x1D,
-        0xE1 => 0x2A,
-        0xE2 | 0xE6 => 0x38,
-        0xE5 => 0x36,
-        _ => 0,
-    }
 }
 
 /// The room left for the window's title bar and frame when it is sized to fit, in points.
@@ -689,10 +651,9 @@ impl Window {
         &self.focus_changes
     }
 
-    /// The last [`Window::wait`]'s events' keys as the original reads them (E27 M2 T7), one an
-    /// event in order: a keyboard key down's [`KeyScan`] for each [`Event::Key`] it gave (its
-    /// repeats too when they come), none for every other event (the right button's
-    /// [`Key::RightButton`] among them).
+    /// The last [`Window::wait`]'s events' modifiers (E27 M2 T7), one an event in order: a
+    /// keyboard key down's [`KeyScan`] for each [`Event::Key`] it gave (its repeats too when they
+    /// come), none for every other event (the right button's [`Key::RightButton`] among them).
     #[must_use]
     pub fn scans(&self) -> &[Option<KeyScan>] {
         &self.scans
@@ -767,7 +728,6 @@ impl Window {
                 // SAFETY: the union's member is the one its type names.
                 let scan = unsafe {
                     (SDL_EventType(ev.r#type) == SDL_EVENT_KEY_DOWN).then(|| KeyScan {
-                        code: set1(u32::try_from(ev.key.scancode.0).unwrap_or(0)),
                         shift: (ev.key.r#mod & SDL_KMOD_SHIFT) != SDL_Keymod(0),
                     })
                 };
@@ -1517,20 +1477,6 @@ mod tests {
         assert_eq!(fit(3840, 2072, 800, 600), 3);
         assert_eq!(fit(600, 400, 800, 600), 1);
         assert_eq!(fit(0, 0, 0, 0), 1);
-    }
-
-    #[test]
-    fn keys_take_their_set_1_codes_by_their_place() {
-        // E27 M2 T7: A, Z, 1, 0, Enter, the slash, F12, Home, Up, the keypad's 1 and full stop,
-        // the non-US backslash, the left Shift, the right Alt; a key past the table none.
-        let usages = [
-            0x04, 0x1D, 0x1E, 0x27, 0x28, 0x38, 0x45, 0x4A, 0x52, 0x59, 0x63, 0x64, 0xE1, 0xE6,
-            0x65,
-        ];
-        let codes = [
-            0x1E, 0x2C, 0x02, 0x0B, 0x1C, 0x35, 0x58, 0x47, 0x48, 0x4F, 0x53, 0x56, 0x2A, 0x38, 0,
-        ];
-        assert_eq!(usages.map(set1), codes);
     }
 
     #[test]

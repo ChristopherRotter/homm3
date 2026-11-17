@@ -4,6 +4,11 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-16 (E27 M2 T8: the town lane's inbox note, acted on: the harness set up anew with
+  `clients/capture/setup.sh` and every shell recipe played on the new `xdd.dll`; verbatim):
+
+  - 2026-11-16 (the town lane, E09 T34, `town/e09-t34`; **the capture harness, rebuild `xdd.dll`**): `clients/capture/xdd.c` logs three more sites (`tavern_class`, `tavern_type`, `leave_slot`, with their ranges; `h3drive.LOGGED` grew by three), so a sequence or batch run with an `xdd.dll` built before it fails the count of redirected calls: rebuild it with `clients/capture/setup.sh`. Also new and common: the reads and actions of README "Taverns and the Thieves' Guild" (the tavern dialog, the guild window, a town opened from the town list, a step's `resources`, `mana`, `narrow_pool`, a field `<encounter>|<field>`), and `auto_combat` returns when the battle ended before a human stack's turn (a loss to faster monsters kept pressing `a` until the limit).
+
 - 2026-11-14 (E27 M2 T3b done: its task entry and NOTES' two "Assets and archives" entries it took,
   verbatim; the record in `E27-log.md`, "M2 T3b"):
 

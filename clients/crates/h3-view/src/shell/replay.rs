@@ -8,7 +8,8 @@
 //!
 //! The start (E27 M2 T5a) plays on the same clock: each step's reading of it runs the start's
 //! timing ([`super::start::Start`]), whose ops the caller carries out ([`Replay::ops`]); an input
-//! that stops a clip is the start's ([`Start::skip`]); its end shows the main menu.
+//! that stops a clip is the start's ([`Start::skip`]); its end shows the main menu, which takes
+//! the inputs given during the fade before it (CLT-Q130 (a), [`Start::keeps_input`]).
 //!
 //! The main menu (E27 M2 T6a) and the game type menus (T6b1) take the inputs as the harness gives
 //! them ([`super::menu`]): a `click` is a move there, a press and a release, a `down` or a `right`
@@ -32,7 +33,8 @@
 //! the client's profile (E27 M2 T7b) an edit that types takes each character of a typed text as
 //! the window's text input gives it, between its key's down and up (`Front::typed`), and a key's
 //! command is asked with Shift as `shift+` holds it (`super::keys::command_for`). Its network
-//! modes' notice is the client's stub: a replay stops there ([`Stop::Stub`]).
+//! modes' notice is the client's stub: a replay stops at a shot or a wait under it, and at any
+//! input but a move ([`Stop::Stub`]; M2's review: an input fed the notice before).
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -298,6 +300,9 @@ pub struct Replay {
     /// The press sample's length in ms, with the effects on.
     sample_ms: Option<u32>,
     samples: Samples,
+    /// The inputs given during the start's last fade, for the main menu as it opens (CLT-Q130
+    /// (a): [`Start::keeps_input`]).
+    kept: Vec<Input>,
 }
 
 /// What a menu is given, in order (an input of the harness's may be several).
@@ -329,11 +334,12 @@ fn whole(
 }
 
 /// Whether an input stops a start's clip (`video_play_fullscreen`'s and `video_play_framed`'s
-/// loops): a key down but F4 (scan code 0x3E), a left or a right press.
+/// loops): a key down but F4 ([`super::start::key_skips`], the window's rule too), a left or a
+/// right press.
 #[must_use]
 pub fn skips(input: &Input) -> bool {
     match input {
-        Input::Key(name) | Input::KeyDown(name) => !name.eq_ignore_ascii_case("F4"),
+        Input::Key(name) | Input::KeyDown(name) => super::start::key_skips(name),
         Input::Type(text) => !text.is_empty(),
         Input::Click(_) | Input::Down(_) | Input::Right(_) => true,
         Input::Move(_) | Input::Up | Input::RightUp | Input::KeyUp(_) => false,
@@ -376,6 +382,7 @@ impl Replay {
             keys: Keys::original(),
             sample_ms: None,
             samples: Samples::default(),
+            kept: Vec::new(),
         }
     }
 
@@ -475,8 +482,9 @@ impl Replay {
             Step::Input(input) if self.screen() == Screen::Start => {
                 if let Input::Move(at) = input {
                     self.pointer = *at;
-                }
-                if skips(input) {
+                } else if self.start.as_ref().is_some_and(Start::keeps_input) {
+                    self.kept.push(input.clone());
+                } else if skips(input) {
                     let (time, ops) = (self.time, &mut self.ops);
                     self.start
                         .iter_mut()
@@ -487,6 +495,16 @@ impl Replay {
                 self.tick(self.input_step);
                 Ok(None)
             }
+            // The network modes' notice is the client's (M2's review of E27): as on a stub's
+            // screen, the pointer moves under it; any other input is not the original's.
+            Step::Input(input) if self.noticing() => match input {
+                Input::Move(at) => {
+                    self.pointer = *at;
+                    self.tick(self.input_step);
+                    Ok(None)
+                }
+                _ => Ok(Some(Stop::Stub(self.screen()))),
+            },
             Step::Input(input) if self.front.is_some() => {
                 self.on_menu(input);
                 self.tick(self.input_step);
@@ -523,11 +541,16 @@ impl Replay {
         self.ended();
     }
 
-    /// The start's end taken: the main menu.
+    /// The start's end taken: the main menu, given the inputs its last fade kept, in order
+    /// (CLT-Q130 (a); *provisional*: those that reach a screen without a menu are dropped).
     fn ended(&mut self) {
         if self.start.as_ref().is_some_and(Start::ended) {
             self.start = None;
             self.end(Ended::Start);
+            // With no menu on (none after the start today) `on_menu` gives nothing.
+            for input in core::mem::take(&mut self.kept) {
+                self.on_menu(&input);
+            }
         }
     }
 
@@ -643,13 +666,17 @@ impl Replay {
             .map(|name| Stop::Unknown(name.clone()))
     }
 
+    /// Whether the client's notice (the network modes') shows over the Multiplayer dialog.
+    fn noticing(&self) -> bool {
+        matches!(&self.front, Some(Front::Multiplayer(m)) if m.noticing())
+    }
+
     /// The screen on, when it is not built whole (a stub's is the client's, not the original's),
     /// or under the client's notice (the network modes').
     fn unbuilt(&self) -> Option<Stop> {
-        let noticing = matches!(&self.front, Some(Front::Multiplayer(m)) if m.noticing());
         (self.screen().built() != Built::Whole)
             .then(|| Stop::NotBuilt(self.screen()))
-            .or_else(|| noticing.then(|| Stop::Stub(self.screen())))
+            .or_else(|| self.noticing().then(|| Stop::Stub(self.screen())))
     }
 
     fn any_shown(&self, screens: &[String]) -> bool {

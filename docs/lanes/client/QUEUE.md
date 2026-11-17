@@ -5,27 +5,30 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 ## Tasks
 
 **E27, the game shell** (refined 2026-11-12, M0, with the user: `docs/epics/E27-game-shell.md`,
-decisions 4 to 8, CLT-Q79 to CLT-Q83; the clips: `E27-design.md` §1). M1 closed 2026-11-13 (T3);
-M2 (the start and the menus) below, refined at M1 T3; M3 and M4 are refined at their T0s. The original files: stage them from the user's
-`original-data/install/` (one large file per staging call; the user's computer must be online);
-never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd`
-and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates:
-`clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
-`cargo run -p h3-battle-client -- gate` from `clients/`.
+decisions 4 to 8, CLT-Q79 to CLT-Q83; the clips: `E27-design.md` §1). M1 closed 2026-11-13 (T3),
+M2 2026-11-16 (T8); M3 (a game's setup) below, refined at M2 T8 (decision 44); M4 is refined at
+its T0. The original files: stage them from the user's `original-data/install/` (one large file
+per staging call; the user's computer must be online); never from the installation. The captures
+need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
+`clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check;
+CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
+`clients/`.
 
-#### E27 M2 T8
+#### E27 M3 T1
 
-T8 M2's closure and M3's refinement (the epic's M2 table: a fresh reviewer, the review list
-items 1 to 71, M3 T0). T7b (the edits typing as the keyboard prints) done 2026-11-16.
-Each screen's task runs `h3shell.py drawn` and records it (`--record`; the runbook's "The shell's
-screens"). Their scopes: the epic's M2 table; what each still reads or records: design §6.4.
+T1 The scenario screen's frame and list (the epic's M3 table; design §3.1 to §3.4, §3.8): the
+dialog in its new-game mode (a single scenario, the hot seat), the shipped maps read whole
+(decision 44), the rows, columns, sort, size filters, keys, scroll, hints and popups; exact
+against `scn-new`, `scn-list-keys`, `scn-sort`, `scn-filter`, `scn-right`, with design §6.4's
+`up-past-top` fix recorded (`h3shell.py run --only <id> --record`; the runbook's "The shell's
+screens"); with M2's leftover: a key without an `h3_sdl::Key` variant (the letters, the digits)
+reaching the window, so it skips the start as the original's (a catch-all key in `h3_sdl`, the
+map-client lane's inbox told). Then T2 to T7 as the M3 table lists them.
 
 ## Inbox
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
-
-- 2026-11-16 (the town lane, E09 T34, `town/e09-t34`; **the capture harness, rebuild `xdd.dll`**): `clients/capture/xdd.c` logs three more sites (`tavern_class`, `tavern_type`, `leave_slot`, with their ranges; `h3drive.LOGGED` grew by three), so a sequence or batch run with an `xdd.dll` built before it fails the count of redirected calls: rebuild it with `clients/capture/setup.sh`. Also new and common: the reads and actions of README "Taverns and the Thieves' Guild" (the tavern dialog, the guild window, a town opened from the town list, a step's `resources`, `mana`, `narrow_pool`, a field `<encounter>|<field>`), and `auto_combat` returns when the battle ended before a human stack's turn (a loss to faster monsters kept pressing `a` until the limit).
 
 - 2026-11-15 (the battle lane's inbox session, `battle/inbox-2026-11-15`, `cross-lane`; **three of
   your waiting items**): (1) **G1 / `CLT-STUB-1`:** the observation gives each side's

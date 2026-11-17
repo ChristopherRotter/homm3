@@ -162,6 +162,16 @@ epic   = "E16"
 # where  = "clients/crates/h3-view/src/shell/multiplayer.rs::Multiplayer::clicked"
 # reason = "The Multiplayer dialog's network modes (IPX, TCP/IP, Modem, Direct Connect, Online; E27 decision 10, CLT-Q87 (a)) show a notice in the client's words and leave the dialog on its first stage: stage 2 (Host, Join, Search, the session list, their dialogs), DirectPlay and ProgressBar's transfer are not built, and Online never ends the client. Lifted when E28 decides how the project's network play enters the shell"
 # epic   = "E27"
+# [[stub]]
+# id     = "CLT-STUB-7"
+# where  = "clients/crates/h3-view/src/shell/menu.rs::STUBS"
+# reason = "New Game's Campaign (E27 decision 7, CLT-Q82) shows a notice in the client's words over its menu (Load Game's reaches the scenario screen's stub): the campaign selection, its in-between screens and clips are not built. Lifted by E20 (the campaigns)"
+# epic   = "E27"
+# [[stub]]
+# id     = "CLT-STUB-8"
+# where  = "clients/crates/h3-view/src/shell/menu.rs::STUBS"
+# reason = "New Game's Tutorial (E27 decision 9, CLT-Q84) shows a notice in the client's words over its menu: the engine has no tutorial mode (its flag's rules, about 45 sites, in BACKLOG's discovered work inbox). Lifted when the engine has a tutorial mode"
+# epic   = "E27"
 
 # --- map-client (MCL-STUB-<n>) ---
 

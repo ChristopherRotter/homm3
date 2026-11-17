@@ -30,8 +30,9 @@ use h3_render::Bugs;
 use h3_render::text::{line_count, widest_line, widest_word, wrapped_width};
 use serde::Deserialize;
 
+use h3_ui::input::{self, Input};
 use h3_ui::text::encode_1252;
-use h3_ui::ui::{Button, Def, Dialog, Frames, Item, Label, Picture as Image, Shown, State};
+use h3_ui::ui::{Button, Def, Dialog, Frames, Item, Label, Picture as Image, Shown};
 
 /// The text's item.
 pub const TEXT: u16 = 1;
@@ -688,87 +689,52 @@ pub enum Outcome {
     Closed(u16),
 }
 
-/// The box on the screen: its layout, its buttons' states and the button a press or a key holds.
+/// The box on the screen: its layout, its buttons' states and the button a press or a key holds
+/// (`h3_ui::input`, decision 20: the dialogs' one input; its buttons alone, no DEF picture of
+/// the frame taking a press).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Open {
     /// The laid-out box.
     pub message: MessageBox,
-    held: Option<Held>,
-}
-
-/// A button held down: by the mouse (whether the mouse is over it) or by its key.
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Held {
-    id: u16,
-    key: Option<String>,
-    over: bool,
+    input: Input,
 }
 
 impl Open {
     /// The box shown.
     #[must_use]
-    pub const fn new(message: MessageBox) -> Self {
+    pub fn new(message: MessageBox) -> Self {
         Self {
             message,
-            held: None,
+            input: Input::default(),
         }
     }
 
     /// The left button pressed at `point`: a button there goes down (the DEF button's handler
     /// 0x4564D6; E17 M3 T6c-2's).
     pub fn press(&mut self, point: [i32; 2]) -> Outcome {
-        if self.held.is_some() {
+        if self.message.dialog.button_at(point).is_none() {
             return Outcome::Nothing;
         }
-        match self.message.dialog.button_at(point) {
-            Some(id) => self.hold(Held {
-                id,
-                key: None,
-                over: true,
-            }),
-            None => Outcome::Nothing,
-        }
+        let MessageBox { dialog, shown } = &mut self.message;
+        outcome(self.input.press(dialog, shown, point))
     }
 
     /// The mouse moved to `point`: the button it holds follows it on or off.
     pub fn moved(&mut self, point: [i32; 2]) -> Outcome {
-        let Some(held) = self.held.as_ref().filter(|h| h.key.is_none()) else {
-            return Outcome::Nothing;
-        };
-        let over = self.message.dialog.button_at(point) == Some(held.id);
-        if over == held.over {
-            return Outcome::Nothing;
-        }
-        let id = held.id;
-        self.held = Some(Held {
-            id,
-            key: None,
-            over,
-        });
-        self.set_pressed(id, over);
-        Outcome::Changed
+        let MessageBox { dialog, shown } = &mut self.message;
+        outcome(self.input.moved(dialog, shown, point))
     }
 
     /// The left button released, or the right one while the mouse holds a button (the DEF
     /// button's own loop ends at either, `def_button_message` 0x456451 and 0x456338; E17 M7 T2,
-    /// CLT-Q72 (a)): the button it held clicks when the mouse is still over it.
+    /// CLT-Q72 (a)): the button it held clicks when the mouse is still over it, drawn up first.
     pub fn release(&mut self) -> Outcome {
-        match self.held.take_if(|h| h.key.is_none()) {
-            Some(h) if h.over => Outcome::Closed(h.id),
-            Some(h) => {
-                self.set_pressed(h.id, false);
-                Outcome::Changed
-            }
-            None => Outcome::Nothing,
-        }
+        outcome(self.input.release(&mut self.message.shown))
     }
 
     /// A key down giving `key` (the adapter's name of the key `by`, whose release clicks): its
     /// button goes down.
     pub fn key(&mut self, key: Key, by: &str) -> Outcome {
-        if self.held.is_some() {
-            return Outcome::Nothing;
-        }
         let ids: &[u16] = match key {
             Key::Ok => &[OK, YES],
             Key::Cancel => &[NO],
@@ -781,57 +747,39 @@ impl Open {
                 .any(|i| matches!(i, Item::Button(b) if b.id == **id))
         };
         match ids.iter().find(has) {
-            Some(&id) => self.hold(Held {
-                id,
-                key: Some(String::from(by)),
-                over: true,
-            }),
+            Some(&id) => outcome(self.input.key(&mut self.message.shown, id, by)),
             None => Outcome::Nothing,
         }
     }
 
-    /// A key up: the button its key held clicks (0x45659F).
+    /// A key up: the button its key held clicks (0x45659F), drawn up first.
     pub fn key_up(&mut self, key: &str) -> Outcome {
-        match self.held.take_if(|h| h.key.as_deref() == Some(key)) {
-            Some(h) => Outcome::Closed(h.id),
-            None => Outcome::Nothing,
-        }
+        outcome(self.input.key_up(&mut self.message.shown, key))
     }
 
     /// Whether the mouse holds a button down: its own loop runs until a release (`def_button_message`
     /// 0x45641C; E17 M7 T2, CLT-Q72 (a)), every key and the right press dropped, the moves only
     /// its own (it follows them on and off; the dialog's hints do not).
     #[must_use]
-    pub fn holds_mouse(&self) -> bool {
-        self.held.as_ref().is_some_and(|h| h.key.is_none())
+    pub const fn holds_mouse(&self) -> bool {
+        self.input.holds_button()
     }
 
-    /// Lets the button held by key `by` (none: by the mouse) go without its click, drawn up again
-    /// (a release a loop of its own took: CLT-Q39, E17 M6 T2a2b1, as the map's MCL-Q24).
+    /// Lets the button held by key `by` go without its click, drawn up again (a release a loop of
+    /// its own took: CLT-Q39, E17 M6 T2a2b1, as the map's MCL-Q24). A button the mouse holds is
+    /// never let go so (its own loop drops the right press: `h3_ui::input::Input::let_go`).
     pub fn let_go(&mut self, by: Option<&str>) -> Outcome {
-        match self.held.take_if(|h| h.key.as_deref() == by) {
-            Some(h) => {
-                self.set_pressed(h.id, false);
-                Outcome::Changed
-            }
-            None => Outcome::Nothing,
-        }
+        outcome(self.input.let_go(&mut self.message.shown, by))
     }
+}
 
-    fn hold(&mut self, held: Held) -> Outcome {
-        self.set_pressed(held.id, true);
-        self.held = Some(held);
-        Outcome::Changed
-    }
-
-    fn set_pressed(&mut self, id: u16, pressed: bool) {
-        self.message.shown.states.insert(
-            id,
-            State {
-                pressed,
-                ..State::default()
-            },
-        );
+/// The shared input's answer as the box's: a click closes it, a button drawn down or up changes
+/// it.
+const fn outcome(did: input::Did) -> Outcome {
+    match did.clicked {
+        Some(id) => Outcome::Closed(id),
+        None if did.changed => Outcome::Changed,
+        None => Outcome::Nothing,
     }
 }
 

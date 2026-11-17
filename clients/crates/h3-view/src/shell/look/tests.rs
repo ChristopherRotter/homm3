@@ -185,23 +185,30 @@ fn a_layout_not_the_shell_s_is_refused() {
 
 #[test]
 fn the_multiplayer_dialog_shows_over_its_menu() {
-    // E27 M2 T7: the menu as it ended, the dialog's draws after its own, a popup over them.
+    // E27 M2 T7: the menu as it ended, the dialog over it, a popup over them; since M2's review
+    // the dialog over the menu's stale rows too (the original's profile: Single hovered).
     let layout = parse_layout(LAYOUT).unwrap();
-    let menu = game_type(Game::New, Bugs::Fixed);
-    let mut dialog =
-        crate::shell::multiplayer::tests::multiplayer(Bugs::Fixed).opened(menu.clone(), [400, 300]);
+    let players = &layout.player_palette;
+    let mut menu = game_type(Game::New, Bugs::Original);
+    let _ = menu.moved([649, 65]);
+    let mut dialog = crate::shell::multiplayer::tests::multiplayer(Bugs::Original)
+        .opened(menu.clone(), [400, 300]);
     let screen = Screen::Multiplayer(Game::New);
     let front = Front::Multiplayer(Box::new(dialog.clone()));
     let shown = look(&layout, screen, Some(&front)).unwrap();
     assert_eq!(shown.background, "GamSelBk.pcx");
-    let under = menu.dialog_draws(&layout.player_palette);
-    assert_eq!(shown.draws[..under.len()], under[..]);
-    assert!(shown.draws.len() > under.len());
-    assert!(shown.over.is_empty() && shown.cursor);
+    assert_eq!(shown.draws, menu.dialog_draws(players));
+    assert_eq!(shown.stale.len(), 1);
+    assert_eq!(shown.stale, menu.stale(players));
+    assert_eq!(shown.over, dialog.draws(players));
+    assert!(!shown.over.is_empty() && shown.cursor);
     dialog.right([578, 157]);
-    let front = Front::Multiplayer(Box::new(dialog));
+    let front = Front::Multiplayer(Box::new(dialog.clone()));
     let popup = look(&layout, screen, Some(&front)).unwrap();
-    assert!(!popup.over.is_empty() && !popup.cursor);
+    let mut over = dialog.draws(players);
+    over.extend(dialog.box_draws(players));
+    assert!(over.len() > shown.over.len());
+    assert!(popup.over == over && !popup.cursor);
     // Not on another screen; none without a menu under it.
     assert_eq!(
         look(&layout, Screen::GameType(Game::New), Some(&front)),

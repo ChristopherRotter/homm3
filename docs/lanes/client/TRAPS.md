@@ -341,6 +341,17 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `check.sh`'s `cargo llvm-cov` line, and the staged-data tests on their own without coverage
   (`RUST_TEST_THREADS=1 cargo test -p h3-battle-client`). CI's green run on `master` stands in for
   a lost baseline.
+- **Captures beside builds: memory and disk** (E27 M2 T8): the VM restarted with the Wine runs
+  beside a parallel `cargo test` and rustc (7 GB of RAM), so beside captures every cargo command
+  runs as `CARGO_BUILD_JOBS=1 RUST_TEST_THREADS=1 nice`, and coverage only with no capture
+  running. The disk (about 43 GB usable) filled once: a worktree sharing the clone's
+  `CARGO_TARGET_DIR` keeps its own copy of every workspace crate (the debug target 14 GB), a
+  coverage target adds about 6 GB, and `start-bink`'s runs write its clip's frames twice. Delete
+  `llvm-cov-target` after a coverage run and a recipe's `clients/out/shell/<id>` once it played as
+  kept, and size the disk check's ballast (above) before each recipe of a long run. Under that
+  load `start-bink`'s 3DO logo (1 ms steps) once showed a frame 1 ms late in one of its two runs
+  (5578 against 5577, the same picture; the other as kept): play the start's recipes with
+  nothing else running.
 - **Sandbox routines as a skill:** GitHub (pull requests and CI by REST), waiting for long jobs, worktrees for concurrent fixers, VM restarts: the skill `homm3-sandbox-session`.
 - **The sound tests** (E17 M7 T4): the battle client's tests open SDL's dummy audio driver
   (`h3_sdl::Audio::open_driver`) through `audio::tests::dummy`, which holds one lock for the

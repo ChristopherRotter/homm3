@@ -55,10 +55,9 @@ pub enum Format {
 }
 
 /// The original's 16-bit copy of the frames, as `SMACKW32.DLL` writes it into the game's
-/// buffer (E27 M2 T1, found under Wine; CLT-Q119: for the comparisons only, the shell converts
-/// every pixel): each frame's written blocks ([`Frame::written`]) converted through its palette
-/// (each 8-bit level's top bits), every other pixel keeping its colour from the frames before
-/// (0 before the first), so a palette change leaves the skipped blocks' colours as they were.
+/// buffer ([`Frame::copy_16`] of the written blocks; CLT-Q119: for the comparisons only, the
+/// shell's client profile converts every pixel), into a buffer of the first frame's size (0
+/// before the first), so a palette change leaves the skipped blocks' colours as they were.
 /// Each frame's pixels as little-endian words row by row, then its palette.
 #[must_use]
 pub fn original_16(frames: &[Frame], format: Format) -> Vec<u8> {
@@ -69,31 +68,9 @@ pub fn original_16(frames: &[Frame], format: Format) -> Vec<u8> {
     let mut screen = vec![0u16; first.pixels().len()];
     let mut out = Vec::new();
     for frame in frames {
-        let palette = frame.palette();
-        let color = |index: u8| {
-            let at = 3 * usize::from(index);
-            let [r, g, b] = [0, 1, 2].map(|k| u16::from(palette[at + k]));
-            match format {
-                Format::Rgb555 => (r >> 3) << 10 | (g >> 3) << 5 | b >> 3,
-                Format::Rgb565 => (r >> 3) << 11 | (g >> 2) << 5 | b >> 3,
-            }
-        };
-        let row = width / 4;
-        for (block, _) in frame.written().iter().enumerate().filter(|(_, w)| **w) {
-            let start = (block / row) * 4 * width + (block % row) * 4;
-            for y in 0..4 {
-                for x in 0..4 {
-                    let at = start + y * width + x;
-                    if let (Some(pixel), Some(&index)) =
-                        (screen.get_mut(at), frame.pixels().get(at))
-                    {
-                        *pixel = color(index);
-                    }
-                }
-            }
-        }
+        frame.copy_16(format, false, &mut screen, width, [0, 0]);
         out.extend(screen.iter().flat_map(|p| p.to_le_bytes()));
-        out.extend_from_slice(palette);
+        out.extend_from_slice(frame.palette());
     }
     out
 }
@@ -208,6 +185,30 @@ mod tests {
         let large = super::frames(&build::sample(5)).unwrap();
         let mixed = original_16(&[frames[0].clone(), large[0].clone()], Format::Rgb565);
         assert_eq!(mixed.len(), 2 * size);
+    }
+
+    #[test]
+    fn a_frame_copies_at_its_place_cut_at_the_buffers_edges() {
+        let frames = frames();
+        let check = |buffer: &[u16], inside: &dyn Fn(usize) -> u16| {
+            for (k, &p) in buffer.iter().enumerate() {
+                let (x, y) = (k % 10, k / 10);
+                let want = if x >= 4 && y >= 1 { inside(x) } else { 0 };
+                assert_eq!(p, want, "{x}, {y}");
+            }
+        };
+        // Every pixel at (4, 1) of a buffer 10 wide and 4 high: the columns past 10 and the row
+        // past the 4th cut.
+        let mut buffer = vec![0u16; 40];
+        frames[0].copy_16(Format::Rgb565, true, &mut buffer, 10, [4, 1]);
+        check(&buffer, &|_| 0xFFFF);
+        // The written blocks alone (the DLL's): the second frame's first block, the skipped one
+        // keeping the first frame's colour.
+        frames[1].copy_16(Format::Rgb565, false, &mut buffer, 10, [4, 1]);
+        check(&buffer, &|x| if x < 8 { 0x7BEF } else { 0xFFFF });
+        // Every pixel (the client's): the skipped block's indices through the new palette too.
+        frames[1].copy_16(Format::Rgb565, true, &mut buffer, 10, [4, 1]);
+        check(&buffer, &|_| 0x7BEF);
     }
 
     #[test]

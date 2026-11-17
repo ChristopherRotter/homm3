@@ -18009,3 +18009,58 @@ by hand after the setup (`cp -rn`; the setup copies `H3bitmap` only).
 
 **Versions:** adventure ruleset part v21. The game state hash, the adventure state hash, the map
 import and the replay format unchanged. T123b next.
+
+### Increment 13, round 5: T123b, the import (2026-11-16, `adventure/e08-t123b`, `cross-lane`)
+
+**The cut** (decision 352; asked at the start, `AskUserQuestion`): whole, one pull request (no
+seam: the version, the re-record and the census follow from one change), `cross-lane` with the
+user's consent for `h3-server`'s `tests::record` (and the AI lane's bots tables, which nothing
+moved). **Baseline:** `master` b6d1afb (#975, T123a's merge; CI green, so the setup ran the light
+gates only). The original data staged from the user's repo folder (the four LODs, both
+executables, `maps.tar`, `extracted.tar`; SHA-256 checked, one digest of the sorted lists), the
+`extracted/` tables copied by hand after the setup.
+
+- **The import** (`h3-map`'s `import/codes.rs`; design §3): `CREATURE_BANKS`, class 16 by
+  subclass 0 to 6 (the original's kinds 0 to 6, `creature_bank_kinds` 0x695038), past 6
+  `ImportError::Subclass` (the original indexes its kinds' table by it without a test; no quirk,
+  none shipped); 85 `base:shipwreck`, 24 `base:derelict_ship`, 84 `base:crypt`, 25
+  `base:dragon_utopia` each through the subclass test at 0 (past 0 `Subclass`, as the bonus
+  visitables'). No body: nothing held (`Holds::Nothing`, the note's `Holds::None`), no owner;
+  `ImportError::Subclass`'s doc names the banks. **Map import v24** (`MAP_IMPORT_VERSION`'s doc
+  line).
+- **The census** (`h3-map`'s `original_data`: `increment_13`, `Increment13`, `SURVEY_BANKS`,
+  `SURVEY_INCREMENT_13`): every bank checked to import as its class and subclass's type, a bank
+  kind with one entrance, nothing held and no owner; by class and subclass the objects on RoE, AB
+  and SoD maps, underground, entered from water and of those beside land (a land tile among the
+  entrance's eight neighbours: the survey's 183 and 11 on the first run), the maps holding each;
+  the maps with a bank (148), with one of class 16 (143), the most on one map (106). Every count
+  as survey §1's table on its first run; the example's whole output otherwise as `master`'s (a
+  run of both, compared line by line).
+- **Tests:** `the_typed_classes_import_as_their_object_types` with the eleven cases (the banks'
+  exclusion gone: the uncounted types are increment 10's 84); `tests/banks.rs`'
+  `the_import_types_the_banks` (was `…_as_blockers_until_t123b`: the fourteen written banks typed
+  in SoD and RoE, nothing held, no owner, one blocked entrance; the subclasses past 6 and past 0
+  refused on the read map, the writer refusing 16.7) and `a_step_onto_a_bank_is_refused_until_t124b`
+  (the hero below each land bank's entrance: the reach ends before it and goes on beside, the
+  step is `AdventureCommandError::Visit { step: 0 }`, the state unchanged). No test used one of
+  the five classes as a plain blocker.
+- **Replays:** the 89 adventure goldens re-recorded from their commands (a scratch script,
+  `h3 adventure run --script` with each header's options): only `import_version` moved (23 to
+  24); no fixture map holds a bank, so no checkpoint or final hash (the import version is a
+  header, not hashed). `h3-server`'s `tests::record` `import` case edits 24 to 23 (`cross-lane`;
+  the server lane's inbox told); `h3-protocol`'s `tests::game_fold`, `tests::game_session` and
+  `h3-server`'s `tests::record` pass. The AI lane's bots tables record no import version:
+  unchanged.
+- **Docs:** design §3's *As built*, §18's row; decision 352 and the task's line; `h3m.md`'s import
+  (the heading at v24, increment 13's banks, T123b's census); ADV-OBJ-002 and ADV-BNK-001 amended;
+  the queue (T123b out, archived verbatim; T124 in); `OVERVIEW.md`'s import line; the inboxes of
+  the server lane (the test) and the town lane (v24 taken: its import changes take v25).
+- **Gates:** the scoped verify with the original data: every step passing but `check-lane`
+  (`cross-lane` by design; `check-lane --cross-lane` passes): fmt (the census's table written
+  without the pack prefix to keep one line a kind), clippy, the checks, coverage, determinism,
+  bench-check and
+  the original-data checks (the census among them) on the first run. `cargo check --workspace
+  --all-targets` clean.
+
+**Versions:** map import v24. The game state hash, the adventure state hash, the ruleset part and
+the replay format unchanged. Round 5 done; T124 next.

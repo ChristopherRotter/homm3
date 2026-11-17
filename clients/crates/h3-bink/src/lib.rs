@@ -1,6 +1,8 @@
 //! A Bink video decoder for the original game's clips (E17 M5 T4b2a; CLT-Q29): the Bink file
-//! (`.bik`, [`Clip`]) and its video of revision `b`, the one the game's battle clips use
-//! ([`Decoder`]): bytes in, YUV 4:2:0 frames out. Colours, timing and drawing are the viewer's.
+//! (`.bik`, [`Clip`]), its video of revision `b`, the one the game's clips use ([`Decoder`]:
+//! bytes in, YUV 4:2:0 frames out; [`Target`] and [`rects`] the copy and the rectangles the game
+//! gets from `BINKW32.DLL`) and its audio track's sound ([`audio`], E27 M2 T2: as the DLL
+//! decodes it). Colours, timing, drawing and playing are the viewer's.
 //!
 //! **Origin.** Ported from FFmpeg 6.1.1 (<https://ffmpeg.org>): the demuxer's header and frame
 //! index (`libavformat/bink.c`, Copyright (c) 2008-2010 Peter Ross, (c) 2009 Daniel Verkamp), the
@@ -42,9 +44,10 @@
 //! the picture's rows copied (`ff_reget_buffer`), so the block grid's rows below the picture
 //! (the chroma's rows 60 to 63 of a 120-row clip) hold another frame's pixels, which motion
 //! vectors copy into the picture. Here they keep the frame before's, as in the DLL and in
-//! FFmpeg when each frame is released before the next is decoded. Not ported: the other
-//! revisions (`f` to `k`, Huffman-coded), the alpha plane, the audio (its packets are skipped),
-//! Bink 2 and Smacker.
+//! FFmpeg when each frame is released before the next is decoded. The audio's format follows
+//! FFmpeg's `libavcodec/binkaudio.c`, its arithmetic the DLL's ([`audio`]'s origin). Not
+//! ported: the other revisions (`f` to `k`, Huffman-coded), the alpha plane, the audio's DCT
+//! coding (the DLL knows the RDFT's alone), Bink 2 and Smacker.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`, no floating point; never panics
 //! on any input (the property tests). Fixed-size tables and blocks are indexed directly where

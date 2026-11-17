@@ -250,6 +250,29 @@ fn the_multiplayer_dialog_and_the_hot_seat_take_the_harness_s_inputs() {
     );
     assert!(seen.is_empty());
     assert_eq!(stop, Some(Stop::Stub(Screen::Multiplayer(Game::New))));
+    // M2's review: under it a move moves the pointer alone; any other input stops the replay,
+    // the notice left as it was (Enter would close it).
+    let opened = ["click:643,70", "click:649,180", "click:578,214"];
+    let (_, stop, r) = replay(false, &[&opened[..], &["move:100,110"]].concat());
+    assert_eq!((stop, r.pointer()), (None, [100, 110]));
+    for input in [
+        "key:Return",
+        "click:400,300",
+        "right:400,300",
+        "up",
+        "type:a",
+    ] {
+        let (_, stop, r) = replay(false, &[&opened[..], &[input]].concat());
+        assert_eq!(
+            stop,
+            Some(Stop::Stub(Screen::Multiplayer(Game::New))),
+            "{input}"
+        );
+        assert!(
+            matches!(r.front(), Some(Front::Multiplayer(m)) if m.noticing()),
+            "{input}"
+        );
+    }
     // Escape ends the dialog: New Game's menu again.
     let (_, stop, r) = replay(false, &["click:643,70", "click:649,180", "key:Escape"]);
     assert_eq!((stop, r.screen()), (None, Screen::GameType(Game::New)));
@@ -487,7 +510,10 @@ fn start(frames: u32) -> (Start, Vec<Op>) {
         pace: Pace::Smacker(6666),
     };
     let mut ops = Vec::new();
-    (Start::new([Some(header); 3], false, 0, &mut ops), ops)
+    (
+        Start::new([Some(header); 3], false, Bugs::Original, 0, &mut ops),
+        ops,
+    )
 }
 
 #[test]
@@ -567,7 +593,14 @@ fn a_press_or_a_key_skips_the_start_and_a_move_does_not() {
         pace: Pace::Smacker(6666),
     };
     let mut ops = Vec::new();
-    let sounding = Start::with_sound([Some(header); 3], [Some(88_200); 3], false, 0, &mut ops);
+    let sounding = Start::with_sound(
+        [Some(header); 3],
+        [Some(88_200); 3],
+        false,
+        Bugs::Original,
+        0,
+        &mut ops,
+    );
     let r = Replay::new(
         Shell::new(true),
         [400, 300],
@@ -620,6 +653,38 @@ fn a_press_or_a_key_skips_the_start_and_a_move_does_not() {
         };
         assert_eq!(r.screen(), menu, "{input}");
     }
+}
+
+#[test]
+fn an_input_during_the_last_fade_reaches_the_main_menu() {
+    // CLT-Q130 (a): `H3Intro`'s fade from 903 ms (its third frame at 1 ms steps): the N given at
+    // 960 waits and opens New Game's menu once the main menu is up; given at 300, during the 3DO
+    // logo's fade (NWCLogo's loop flushes the queue), it is lost.
+    for (at, screen) in [(960, Screen::GameType(Game::New)), (300, Screen::MainMenu)] {
+        let r = Replay::new(
+            Shell::new(true),
+            [400, 300],
+            INPUT_STEP,
+            Some(start(3)),
+            &menus(Bugs::Original),
+        );
+        let wait = format!("step:{at}:1");
+        let (_, stop, r) = replay_from(r, &[&wait, "key:n", "step:2000:1"]);
+        assert_eq!((stop, r.screen()), (None, screen), "{at}");
+    }
+    // A move there moves the pointer at once, nothing kept.
+    let r = Replay::new(
+        Shell::new(true),
+        [400, 300],
+        INPUT_STEP,
+        Some(start(3)),
+        &menus(Bugs::Original),
+    );
+    let (_, stop, r) = replay_from(r, &["step:960:1", "move:1,2", "step:2000:1"]);
+    assert_eq!(
+        (stop, r.screen(), r.pointer()),
+        (None, Screen::MainMenu, [1, 2])
+    );
 }
 
 #[test]
