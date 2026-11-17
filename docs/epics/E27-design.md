@@ -1524,7 +1524,7 @@ holds what the check against the game's `SMACKW32.DLL` found (`clients/scripts/s
 
 - Ported: the header, the frame table and the trees (`smacker_read_header`), the frames in order
   with the palette's changes and the audio packets skipped (`smacker_read_packet`, the audio
-  streams discarded), the four header trees and the codes' cache (`smacker_decode_*`,
+  streams discarded; read since T2: `Packet::audio`, §8.2), the four header trees and the codes' cache (`smacker_decode_*`,
   `smk_get_code`), the blocks of both versions (`decode_frame`). The byte trees are walked bit by
   bit (FFmpeg builds lookup tables from the leaves' lengths: a tree read depth first is complete,
   so its codes are its paths). `H3INTRO.SMK` (2 426 frames of 640 × 360) decodes in 4 s in
@@ -1580,7 +1580,7 @@ screen is 5-6-5).
 
 - The audio tracks: the game's clips have track 0 at 22 050 Hz, flags 0xF0 (packed, present,
   16-bit, stereo; `Track`); the reader skips their packets (a decoded size first, FFmpeg's
-  `duration_size`). The probe opens no track: T2's DLL reading of the sound starts there.
+  `duration_size`; handed on since T2, §8.2). The probe opens no track: T2's DLL reading of the sound starts there.
 - The frame time: −6666 (`3DOLOGO`, `NWCLOGO`, `H3INTRO`) is 66.66 ms, −10000 (`HSANIM`,
   `HSLOOP`, `LOSEGAME`) 100 ms, −11111 AB's `Credits.smk`, 100 (`ProgressBar`, `CREDITS.SMK`)
   100 ms.
@@ -1599,8 +1599,8 @@ game's DLLs (`clients/scripts/smacker-check.sh`, `bink-check.sh`; the probes in
   records every buffer the DLL loads into a sample (`AIL_load_sample_buffer`, the bytes in order)
   and runs the DLL's Miles timers only when the probe pumps them, on the probe's thread. Its
   driver answers preference 15 (`DIG_USE_WAVEOUT`) with 1, so `SMACKW32.DLL` streams through the
-  double buffers; the game's driver answers 0 and the DLL writes the same ring into Miles'
-  DirectSound buffer (0x100095C0).
+  double buffers; the game's driver answers 0 and the DLL writes the same ring into a
+  DirectSound buffer of its own on Miles' DirectSound object (0x100095C0, §11.1).
 - **`smackprobe audio`**: `SmackSoundUseMSS`, `SmackOpen` with the tracks' flags 0xFE000,
   `SmackVolumePan` at the game's 3640 × 9, then every frame (the ring frame too), the timer
   pumped up to 64 times a frame and 256 times at the end: what the DLL hands Miles.
@@ -1731,7 +1731,10 @@ Video 0); `Videos` reads `shell-videos.vid` after `battle-videos.vid` when `VIDE
   and two frame times late (an unsigned comparison of a negative difference), then to the due time
   + the frame time; `SmackNextFrame` clears the frame's flag. So at 1 ms steps 67 ms a frame
   (3DOLogo's frames at 67 (k + 1) ms: frames 0 to 3 black, the first change at 335 ms), at 10 ms
-  steps 70 (`start-smacker`'s 189.59 s). Bink's: frame p once the clock reaches the first frame's
+  steps 70 (`start-smacker`'s 189.59 s). **CLT-Q129 (b)** (the user, 2026-11-16: fix): in the
+  client's profile each frame is due a frame time after the last one's due time, whatever the
+  step (3DOLogo's last at 5 400 ms at 10 ms steps); the drift the comparisons' (`Bugs::Original`;
+  `h3_view::shell::start::smack_wait`). Bink's: frame p once the clock reaches the first frame's
   time + ⌊1000 p / rate⌋ (E17's measure), the first at the clip's first tick (NWCLogo's at the
   logo's black, 5 577 ms; 6 043 shown at 6 050). The ends: `start-bink`'s menu at 180 480 ms,
   `start-smacker`'s at 189 590 (its second kept run; the first run's 10 ms later from H3Intro on).
@@ -1742,7 +1745,13 @@ Video 0); `Videos` reads `shell-videos.vid` after `battle-videos.vid` when `VIDE
   loop, never on the frozen clock), then the back buffer filled black and shown 50 ms after the
   third: 3DOLogo's last frame at 5 427 ms, the steps at 5 427, 5 477, 5 527, the black and
   NWCLogo's first frame at 5 577. A clip's last frame is decoded but not shown before it (the
-  fade's first step shows it). `H3Intro` skipped stops at once (`video_stop_all`, no fade).
+  fade's first step shows it). `H3Intro` skipped stops at once (`video_stop_all`, no fade). An
+  input during a fade is lost when a clip follows (its loop flushes the input queue first, §2.1);
+  during a fade after which none opens (`H3Intro`'s end, a skipped clip's) the queue keeps it and
+  the main menu acts on it. **CLT-Q130 (a)** (the user, 2026-11-16: as the original, both
+  profiles): the replay and the window give the menu those inputs, in order, as it opens
+  (`Start::keeps_input`; *provisional*, not read: the menu's loop takes them as it would live
+  ones at its first pass, the moves not kept, the pointer where it is).
 - **NWCLogo's Bink copy** (clip 29, 400 × 300): 0x44DD20 leaves it at (0, 0) of the back buffer
   (every other clip centred), and `video_show` blits that corner stretched onto the whole screen
   (DirectDraw's `Blt`, Wine's nearest pixel: each pixel doubled). The fade copies the back buffer,
@@ -1814,7 +1823,7 @@ Video 0); `Videos` reads `shell-videos.vid` after `battle-videos.vid` when `VIDE
     without changes 97 times.
 - **The comparisons** (`h3shell.py drawn --group start`): all 12 lines exact since T5a2
   (`start-smacker`'s clip line differed in 23 of `H3INTRO.SMK`'s frames until SMACKW32's
-  rectangles were built). The Bink decoder of a
+  rectangles were built; 30 lines with T5b2's sound recipes, §12.3). The Bink decoder of a
   comparison reads as the DLL (`Reading::Original`, CLT-Q68: without it two pixels of NWCLogo
   differ from frame 19 on); each frame is copied onto the back buffer as the DLL copies it
   (`h3_bink::copies`; a Smacker frame's written blocks), so the cells a frame leaves keep what
@@ -1881,7 +1890,9 @@ waits for the same device in `xdd.dll` (T5b2).
   210, 277 … ms (the buffer's Play at 10), its close at 5 343 ms at 1 ms steps (5 350 at 10 ms;
   without sound 5 427 and 5 670); `H3INTRO.SMK`'s in 161.66 s (without sound 169.8 s at 10 ms
   steps). The silent path's 67 or 70 ms a frame would put the picture behind its sound by up to
-  8 s at H3Intro's end; with the sound the frames keep its time exactly.
+  8 s at H3Intro's end; with the sound the frames keep its time exactly. The client's silent path
+  keeps the frame time too (CLT-Q129 (b), §10: `H3INTRO.SMK` about 161.7 s at any step), the
+  DLL's drift the comparisons'.
 - **Not modelled** (`SmackSound`, *provisional*): the ring and its refills, the end mark and the
   silence padding, the reset of the frames' sound to the ring's bytes when it runs ahead
   (0x10006131): no clip of the game reaches them (the first frame's sound fills the buffer, and
@@ -1900,8 +1911,7 @@ track out after its clip's last frame (`Op::Closed`), the cut the comparisons' (
 `closed` lines); a skip stops it (`Op::Quiet`). A Bink clip: `BinkClose` with the clip's close
 (the full-screen path pauses and closes both handles), its frames timed by `BinkWait` alone (the
 clock, from the first frame's time, and `BinkPause`'s flag +0xE4: the sound never moves them);
-its sound starts with Miles' first buffer (*provisional*: the client's at the first frame; T5b2
-reads it on the game's run).
+its sound starts with Miles' first buffer (the client's at the first frame: read at T5b2, §12.2).
 
 ### 11.4 The volume
 
@@ -2200,8 +2210,8 @@ commands and the loop's switches take them (§2.2, §2.4) as T3a and T6b1 built 
 
 - **Which:** New Game's Campaign (the campaigns' selection, E20: decision 7) and Tutorial (the
   engine's tutorial mode, CLT-Q84: decision 9), the main menu's High Scores (§2.8) and Credits
-  (§2.9) until M4. Load Game's Campaign and Tutorial lead to the scenario screen's load (M3), not
-  to a stub.
+  (§2.9) until M4. Load Game's Campaign and Tutorial lead to the scenario screen's load (M3; its
+  stub since T7, §16.3), not to a stub of their own.
 - **What:** the menu ends with the button's command as the original's; the screen on is then the
   stub's (`Screen::built`, `Built::Stub`): the menu it was chosen from opened anew (none hovered,
   the pointer where it is) with a box of style 1 (an OK alone) over it, centred and framed in
@@ -2274,7 +2284,9 @@ again (`multiplayer`, two recipes added: `edit-keys`, `hotseat-long`). Built in
   first shown character moved so the text up to the caret fits); drawn and shown with +0x6E; the
   event becomes 0x200/0xC (answer 2: taken). +0x68 is never written (the item is not zeroed): every
   edit built holds its room of the widest glyph in its box (20 × `M`, 260 px of `smalfont.fnt`, in
-  281 and 334 px), so neither the scroll nor the line check bites.
+  281 and 334 px), so neither the scroll nor the line check bites. *Measured* (M2's review, the
+  installation's `smalfont.fnt` through `h3_assets::fnt`): no glyph from 0x20 to 0xFF advances
+  more than `M`'s 13 px; 0x85 `…`, 0x89 `‰`, 0x97 `—` and 0x99 `™` as much, every other less.
 - **`edit_draw`:** its picture or saved background (none here), then `text_draw` 0x4B5490 of the
   text in the text box, its colour (3 when disabled), its alignment, and the caret with the focus
   (−1 without). **The caret** (`text_draw` 0x4B54BC, `text_draw_line` 0x4B5306, 0x4B53C6,
@@ -2322,10 +2334,11 @@ leads there) is a stub over its game type menu until M3. Enter in a hot seat's e
 enabled OK (CLT-Q107); with OK disabled it moves on, as the original's. A menu opening anew
 takes the hover at its first move (CLT-Q128, decision 40: the statics for the comparisons only).
 Typing follows the keyboard's own layout in the client's profile (CLT-Q127, decision 39: T7b,
-§17). The original's US table stays for the comparisons: the window gives the edits each key's
-set 1 scan code and Shift (`h3_sdl`'s `Window::scans`, SDL's scan code by the key's place), the
-replay a recipe's key names and typed characters so (`shell::keys::scan`, `h3_ui::edit::scan_of`:
-the US layout, as `xdotool`).
+§17). The original's US table stays for the comparisons: the replay gives the edits a recipe's
+key names and typed characters as scan codes (`shell::keys::scan`, `h3_ui::edit::scan_of`: the US
+layout, as `xdotool`). The window gives each key down's Shift (`h3_sdl`'s `Window::scans`); it
+gave its set 1 scan code too until M2's review, which dropped it: since T7b the window runs the
+client's profile alone, which never reads it.
 
 ### 16.4 Not built (the agent's calls, *provisional*)
 
@@ -2355,7 +2368,7 @@ window.
   terminator would reach the room (20 characters in 21, as the original's) or the fonts cannot
   draw it (`edit::typable`: Windows-1252's printable characters, the controls and the braces left
   out; every byte from 0x20 to 0xFF has a glyph of some width in `smalfont.fnt`, read from the
-  LOD). The text, the caret and the room count characters (one byte each in the code page; the
+  LOD; the widest 13 px, `M`'s, so 20 of any fit the boxes as in §16.1: measured at M2's review). The text, the caret and the room count characters (one byte each in the code page; the
   draw encodes them, `encode_1252`).
 - A character's key down still reaches the key table while an edit types (no dialog with an edit
   binds a letter; *provisional*).
@@ -2376,8 +2389,12 @@ default:
 - **The lookup** (`shell::keys::command_for`): `Context::Edit` first while an edit types, then the
   dialog's own (`Front::contexts`); the chord with Shift as held, else, with Shift held and that
   chord bound nowhere there, the key alone (Shift and Escape still cancel, Shift and Home goes
-  home, as before T7b when the shell read no Shift).
-- **Shift chords** in `h3_ui::keys` (additive): `Chord::shift`, `Shift+` in a key file after
+  home, as before T7b when the shell read no Shift). Since M2's review a user's file binding one
+  chord to an edit's key and to its dialog's (the Multiplayer dialog's, the hot seat's) is
+  refused as within one context (`h3_ui::keys::Command::asked_together`, the shell's `Edit` with
+  either): `edit-home = ["Tab"]` would have shadowed the ring.
+- **Shift chords** in `h3_ui::keys` (a `Shift+` chord, a parse error before, now parses: a change
+  for the map's table, its inbox told): `Chord::shift`, `Shift+` in a key file after
   `Ctrl+` (`Ctrl+Shift+Up`), `Keys::chord_command` matching exactly; the Shifts never bound alone
   (`keys::SHIFT`, as Control). The window's new keys: Tab, BackSpace, Delete, LeftShift and
   RightShift (`h3_sdl::Key`).

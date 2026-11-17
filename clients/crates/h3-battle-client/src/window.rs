@@ -372,18 +372,22 @@ fn online_server(args: &[String]) -> Result<crate::online::Server, String> {
 }
 
 /// The table of keys: the user's file (`--keys`, else `keys.toml` here if there is one; its
-/// `[battle]` table) over the defaults, every key it binds one the adapter knows; and where it
-/// came from (E24 M3 T1b, as the map window's).
-fn load_keys(path: Option<&Path>) -> Result<(Keys, String), String> {
+/// viewer's table, `[battle]` here, `[shell]` the shell window's since M2's review of E27) over
+/// the defaults, every key it binds one the adapter knows; and where it came from (E24 M3 T1b, as
+/// the map window's).
+pub(crate) fn load_keys<C: h3_ui::keys::Command>(
+    path: Option<&Path>,
+) -> Result<(h3_ui::keys::Keys<C>, String), String> {
     let here = Path::new(KEYS_FILE);
     let path = path.or_else(|| here.exists().then_some(here));
     let (keys, from) = match path {
         Some(path) => {
             let text = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-            let keys = Keys::with_file(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+            let keys = h3_ui::keys::Keys::with_file(&text)
+                .map_err(|e| format!("{}: {e}", path.display()))?;
             (keys, path.display().to_string())
         }
-        None => (Keys::original(), "the defaults".to_owned()),
+        None => (h3_ui::keys::Keys::original(), "the defaults".to_owned()),
     };
     let known: Vec<&str> = Key::ALL.iter().map(|k| k.name()).collect();
     keys.check(&known).map_err(|e| format!("{from}: {e}"))?;
@@ -2328,7 +2332,7 @@ impl<'g> Hosted<'g> {
 /// battle's first host (E17 M7 T3a2, [`Hosted`]), its window the battle's frame alone.
 fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut lines = Vec::new();
-    let (keys, keys_from) = load_keys(options.keys.as_deref())?;
+    let (keys, keys_from) = load_keys::<Do>(options.keys.as_deref())?;
     // The combat options' settings (E17 M6 T4a): the file's combat speed unless `--speed` gave
     // one.
     let (settings, settings_path, settings_from) = load_settings(options.settings.as_deref())?;
@@ -3838,9 +3842,9 @@ pub(crate) mod tests {
         let known: Vec<&str> = Key::ALL.iter().map(|k| k.name()).collect();
         assert_eq!(Keys::original().check(&known), Ok(()));
         // No file here: the defaults.
-        let (keys, from) = load_keys(None).unwrap();
+        let (keys, from) = load_keys::<Do>(None).unwrap();
         assert_eq!((keys, from.as_str()), (Keys::original(), "the defaults"));
-        assert!(load_keys(Some(Path::new("no/such/keys.toml"))).is_err());
+        assert!(load_keys::<Do>(Some(Path::new("no/such/keys.toml"))).is_err());
     }
 
     #[test]

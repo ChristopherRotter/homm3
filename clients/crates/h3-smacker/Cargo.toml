@@ -1,6 +1,6 @@
 [package]
 name = "h3-smacker"
-description = "A Smacker video decoder for the original game's clips: the .smk container and its video, ported from FFmpeg 6.1.1 (LGPL-2.1-or-later, here under the GPL-2.0-or-later). Bytes in, 8-bit indexed frames and their palettes out."
+description = "A Smacker decoder for the original game's clips: the .smk container, its video and its audio tracks' sound, ported from FFmpeg 6.1.1 (LGPL-2.1-or-later, here under the GPL-2.0-or-later), and SMACKW32.DLL's 16-bit copy and changed rectangles. Bytes in; 8-bit indexed frames and their palettes, the rectangles (Rects) and the samples (sound) out."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

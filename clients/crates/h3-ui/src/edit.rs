@@ -18,7 +18,9 @@
 //!   takes more lines than one in the box (0x5BB05D, its off-by-one included: it measures the text
 //!   without the new character), and the scroll of a text wider than its box (the edit's +0x68 of
 //!   3, never set: 0x5BB7E7): every edit built holds its limit of the widest glyph in its box
-//!   (20 × `M`, 260 px of `smalfont.fnt`, in boxes of 281 and 334 px). The caret's blink state
+//!   (20 × `M`, 260 px of `smalfont.fnt`, in boxes of 281 and 334 px; measured at E27 M2's
+//!   review: no byte from 0x20 to 0xFF advances more than `M`'s 13 px, 0x85, 0x89, 0x97 and
+//!   0x99 as much, so the client's Windows-1252 typing fits too). The caret's blink state
 //!   (+0x6C, 360 ms through 0x698998) is written and never read: the caret does not blink
 //!   (`edit-keys`' `later` shots).
 //!
@@ -288,7 +290,8 @@ impl Edit {
     /// A character typed (E27 M2 T7b: the window's text input; the original's by its table,
     /// [`Edit::key`]): put in at the caret, the caret on one, unless the text with its terminator
     /// would reach the limit or the fonts cannot draw it ([`typable`]); whether the edit took it
-    /// (only with the focus).
+    /// (only with the focus). The limit counts characters, not pixels: 20 of `smalfont.fnt`'s
+    /// widest glyph fit every box built (measured, the module's docs).
     pub fn typed(&mut self, c: char) -> bool {
         if !self.focused {
             return false;
