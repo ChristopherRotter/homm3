@@ -56,6 +56,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-16 to 17, E27 M2 T8 (done; `client/e27-m2-t8`).** Kept whole, sub-agents for the
+  bounded jobs (two fresh reviewers, two fixers in a worktree). The original data staged at once
+  (64 files, checked by SHA-256); every recipe played again on the town lane's new `xdd.dll`, as
+  kept; the review's 17 findings fixed; `drawn` all exact; CLT-Q129 to CLT-Q136 asked and
+  answered; M2 archived, M3 refined; the README's row in `shared/e27-m2-closure` (#978). The VM
+  restarted twice and the disk filled once (TRAPS). Record: `E27-log.md`, "M2 T8".
 - **2026-11-16, E27 M2 T7b (done; `client/e27-m2-t7b`).** Kept whole. The original data staged
   at once (64 files, checked by SHA-256); the baseline stopped by a watcher before coverage. Built
   the edits' text input and their keys in the key table on T7's edit; `drawn` as recorded; the
@@ -70,9 +76,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   lines, the hover after a hold and the menus' statics. CLT-Q127, CLT-Q128 asked and answered
   (b): CLT-Q128 fixed here, CLT-Q127 queued as T7b. Record:
   `E27-log.md`, "M2 T7".
-- **2026-11-16, E27 M2 T6b2 (done; `client/e27-m2-t6b2`).** Kept whole. The original data staged
-  at once (64 files, checked by SHA-256), copied into the clone right after the setup started;
-  its baseline stopped before coverage (TRAPS), CI's green `master` on the same commit stood in.
-  Built the stubs on T6b1's menu (a stub's screen is its menu opened anew under a style-1 notice)
-  and the client's own pack with its check; `drawn` all as recorded; the four notices checked in
-  the window. No new question. Record: `E27-log.md`, "M2 T6b2".

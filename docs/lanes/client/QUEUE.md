@@ -21,7 +21,9 @@ dialog in its new-game mode (a single scenario, the hot seat), the shipped maps 
 (decision 44), the rows, columns, sort, size filters, keys, scroll, hints and popups; exact
 against `scn-new`, `scn-list-keys`, `scn-sort`, `scn-filter`, `scn-right`, with design §6.4's
 `up-past-top` fix recorded (`h3shell.py run --only <id> --record`; the runbook's "The shell's
-screens"). Then T2 to T7 as the M3 table lists them.
+screens"); with M2's leftover: a key without an `h3_sdl::Key` variant (the letters, the digits)
+reaching the window, so it skips the start as the original's (a catch-all key in `h3_sdl`, the
+map-client lane's inbox told). Then T2 to T7 as the M3 table lists them.
 
 ## Inbox
 

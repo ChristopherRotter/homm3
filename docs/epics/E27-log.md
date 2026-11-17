@@ -885,3 +885,64 @@ the pure part and the window, not needed).
   CI runs it (100 %: two regions found and closed, `Chord`'s `Display` and the original's Escape
   in the hot seat), the scoped verify.
 - **No new question.** **The agent's calls** (*provisional*, M2's review list items 65 to 71).
+
+## M2 T8 — M2's closure: two fresh reviews, their fixes, every recipe played again, M3 refined (2026-11-16 to 17)
+
+On `client/e27-m2-t8`, the user present; `master` at `a1d2c71` (#973; T7b's #974 merged; CI
+green). Staged at once while the user's computer was online: the 64 files (one digest of the
+sorted lists, the same on both sides) and the four manuals and two help files. The setup's
+baseline stopped by the watcher at coverage (fmt, clippy, the doc tests and deny passed), CI's
+green `master` on the same commit standing in. **Kept whole** (decision 41; the cut offered: the
+closure, then M3's refinement in a later session), sub-agents for the bounded jobs: two fresh
+reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
+
+- **Played again** (`h3shell.py run`, every recipe twice against `kept/`, on the town lane's new
+  `xdd.dll`: `setup.sh` run anew, its inbox note archived): RECORDINGS. Nothing recorded anew.
+  The game's disk check (TRAPS) kept off by a ballast file sized before each recipe.
+- **Reviewer 1** (items 1 to 37): 33 kept, 4 changed (2, 10, 15, 23); its findings: F4 skipping
+  the start in the window, `message::Open`'s own input loop (decision 20), the DLL's 16-bit copy
+  twice, stale headers and comments; two oddities (CLT-Q129, CLT-Q130). Wording fixed in place:
+  items 15, 23, 25, 32; design §7.1, §7.5, §8.1, §10, §11.3.
+- **Reviewer 2** (items 38 to 71): 29 kept, 5 changed (39, 43, 57, 60, 65); its findings: no user
+  key file in the shell window, the music needing the effects, the window's unused scan codes,
+  the replay feeding the dialog under the network notice, conflicts across contexts asked
+  together, the stale rows' order, duplicated helpers, the glyphs' widths unmeasured, two stubs
+  unregistered (CLT-STUB-7, -8 added), the T7b row's "additive"; three oddities (CLT-Q131 to
+  CLT-Q133). Wording fixed: items 38, 39, 41, 43, 45, 57; design §15.1, §16.3, §17.2.
+- **The user's answers** (decisions 42 to 44): the fixes in T8; CLT-Q129 (b), CLT-Q130 (a),
+  CLT-Q131 (a), CLT-Q132 (a), CLT-Q133 not built; CLT-Q134 (a), CLT-Q135 (a), CLT-Q136 (a); M3's
+  table as proposed.
+- **The fixes, part A:** `h3_smacker::Frame::copy_16`, the one 16-bit copy (the DLL's written
+  blocks or every pixel), `check::original_16` and the start's picture on it;
+  `h3_view::shell::start::key_skips`, the start's one skip rule (every key but F4), the window's
+  `skips_start` on it; `message::Open` holding an `h3_ui::input::Input` (two invisible
+  differences: a click draws the button up before the box closes; `let_go(None)` lets go no held
+  button, no caller passes it); `smack_wait` taking the profile (CLT-Q129 (b): the client's dates
+  each silent Smacker frame from the last one's due time, the original's keeps the DLL's drift);
+  `Start::keeps_input` (CLT-Q130 (a), *provisional*: an input during a fade no clip follows
+  reaches the main menu as it opens, in order, moves not kept; the replay's and the window's
+  `kept`); the decoders' headers and descriptions, `x87`'s range note (the audio's scales to
+  about 10^17), the harness's comments, Smacker's own DirectSound buffer.
+- **The fixes, part B:** the shell window reads the user's key file as the battle window
+  (`--keys` or `keys.toml`, `[shell]`, `window::load_keys` now generic) and opens its sound device
+  for the effects or the music; `h3_sdl::KeyScan` keeps only `shift` (`code` and `set1` gone);
+  the replay stops at any input but a move under the network notice (`Stop::Stub`);
+  `h3_ui::keys::Command::asked_together` (a provided method; the shell's `Edit` asked with
+  `Multiplayer` and `HotSeat`); the Multiplayer dialog drawn in `Look::over`, after the stale
+  rows; `Did::of_box`, `Did::box_press`, `Did::held` shared by the menu and the dialog; the
+  dialogs' own search kept (it differs from `Dialog::item_taking` only at the hot seat's disabled
+  OK, whose hint and popup the original keeps); `smalfont.fnt` measured: no glyph from 0x20 to
+  0xFF wider than 'M' (13 px), so 20 of any fit the 281 px box. The map-client lane's inbox told.
+- **M3 refined** (M3 T0): the census (`h3-map`'s `original_data`): 160 of 160 shipped maps import
+  and validate, and each one's game builds at the census's seed; `h3_map::read` of the 160 in 139 to 181 ms in release
+  (a throwaway timer outside the repo); the loading bar read at M1 (design §2.1), M3 T6's; M3's
+  table T1 to T7 and its review list; the hand-over and Options in the map-client lane's inbox;
+  fixer A's gap (a key without an `h3_sdl::Key` variant reaches no window) into M3 T1.
+- **The comparisons:** `drawn` with the fixed viewer: 91 recipes, 235 shots drawn, all exact, as
+  recorded.
+- **Gates:** GATES.
+- **The sandbox:** the VM restarted twice (about 23:17, under the Wine runs beside a parallel
+  `cargo test` and rustc on 7 GB, and again at 00:46), and the disk filled once (the two
+  checkouts' debug artifacts in one target, 14 GB, beside a coverage target of 5.7 GB): TRAPS.
+- **Change freely** (the agent's): the census and font tools (`/home/claude/tools/`, outside the
+  repo); the review list's wording.
