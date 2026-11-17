@@ -70,7 +70,9 @@ fn a_main_towns_hero_stands_on_its_entrance_after_the_setups_heroes() {
     let mut drawn = Vec::new();
     for seed in 0..16 {
         let game = GameState::new(&rules, &setup, seed).unwrap();
-        assert_eq!(game.heroes().len(), 3);
+        // The setup's two heroes and the main town's; the store's later records are the start's
+        // tavern heroes' (E09 T37a).
+        assert_eq!(game.adventure().heroes().len(), 3);
         let on_map = game.adventure().hero(FIRST).unwrap();
         assert_eq!(
             (on_map.owner, on_map.pos, on_map.formation),
@@ -83,7 +85,7 @@ fn a_main_towns_hero_stands_on_its_entrance_after_the_setups_heroes() {
         let details = game.hero(FIRST).unwrap();
         let ty = details.hero_type;
         assert!(free.contains(&ty));
-        assert_eq!(game.hero_pool().status(ty), Some(HeroStatus::Taken(0)));
+        assert_eq!(game.pool().status(ty), Some(HeroStatus::Taken(0)));
         // Its type's starting army (GAM-SET-001) and the default details (GAM-HER-001).
         let first = &rules.core().hero_type(ty).unwrap().army[0];
         assert_eq!(on_map.army[0].creature, first.creature);
@@ -127,7 +129,7 @@ fn the_main_towns_heroes_come_in_player_order() {
                 .unwrap();
             pool.take(ty, colour);
             assert_eq!(game.hero(HeroId::new(id)).unwrap().hero_type, ty);
-            assert_eq!(game.hero_pool().status(ty), Some(HeroStatus::Taken(colour)));
+            assert_eq!(game.pool().status(ty), Some(HeroStatus::Taken(colour)));
         }
     }
 }
@@ -189,7 +191,7 @@ fn a_human_players_pick_goes_to_its_main_towns_hero() {
     for seed in 0..8 {
         let game = GameState::new(&rules, &setup, seed).unwrap();
         assert_eq!(game.hero(FIRST).unwrap().hero_type, sage);
-        assert_eq!(game.hero_pool().status(sage), Some(HeroStatus::Taken(0)));
+        assert_eq!(game.pool().status(sage), Some(HeroStatus::Taken(0)));
         // The pick draws nothing from the stream.
         let (heroes, _, drew) = step_3(&rules, &setup, seed);
         assert_eq!(heroes.unwrap()[0].hero_type, Some(sage));
@@ -230,7 +232,12 @@ fn a_computer_players_pick_stays_out_of_its_main_towns_draw_then_goes_back_free(
     for seed in 0..8 {
         let game = GameState::new(&rules, &setup, seed).unwrap();
         assert_eq!(game.hero(FIRST).unwrap().hero_type, gunner);
-        assert_eq!(game.hero_pool().status(sage), Some(HeroStatus::Free));
+        // Free, or offered by the start's fill (E09 T37a).
+        let status = game.pool().status(sage);
+        assert!(matches!(
+            status,
+            Some(HeroStatus::Free | HeroStatus::Offered)
+        ));
     }
     // With the pick the only free type, the computer's draw finds none (TWN-QUIRK-4).
     setup.allowed_heroes = vec![sage];
@@ -339,8 +346,13 @@ fn a_setup_without_a_generating_main_town_draws_nothing_in_step_3() {
     assert!(!drew);
     assert_eq!(pool.status(loner), Some(HeroStatus::Free));
     let game = GameState::new(&rules, &setup, 4).unwrap();
-    assert_eq!(game.heroes().len(), 2);
-    assert_eq!(game.hero_pool().status(loner), Some(HeroStatus::Free));
+    assert_eq!(game.adventure().heroes().len(), 2);
+    // Free, or offered by the start's fill (E09 T37a).
+    let status = game.pool().status(loner);
+    assert!(matches!(
+        status,
+        Some(HeroStatus::Free | HeroStatus::Offered)
+    ));
     // A main town's hero is then built as a placed one: with a human pick (which draws nothing),
     // the game is the one whose setup places that hero last, on the entrance, and generates none.
     let mut generated = generating(&rules);

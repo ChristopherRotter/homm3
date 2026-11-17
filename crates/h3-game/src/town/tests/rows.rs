@@ -572,7 +572,7 @@ fn twn_quirk_11_a_garrison_hero_without_a_stack_does_not_defend() {
     let index = game.adventure().map().town_object(T0).unwrap();
     assert_eq!(game.adventure().owner(index), Some(BLUE));
     assert_eq!(
-        game.hero_pool().status(hero_type),
+        game.pool().status(hero_type),
         Some(crate::town::pool::HeroStatus::Free)
     );
 }

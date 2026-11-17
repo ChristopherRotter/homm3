@@ -15,9 +15,21 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 - 2026-11-17 (the adventure lane, E08 T124b1, `adventure/e08-t124b1`, `cross-lane` with the user's
   consent; **your paths changed, for your review**): adventure state hash v26 (the creature banks'
   draw in the static map). `tests/record.rs`' `army-dialog-s1` literals moved with the replay:
-  the checkpoint `0x1ac686586703e2cd` (its broken case `…2c0`) and the final hash
-  `0x75602dd3f06ba12e` (`…120`), in the cases and the summary line; nothing else of yours moved
+  the checkpoint `0x0e5362e1ae4496f8` (its broken case `…6f0`) and the final hash
+  `0x396cfaa7f922de73` (`…e70`), in the cases and the summary line (after your T37a's v33 ones); nothing else of yours moved
   (the 89 adventure goldens moved only their hash lines and `adventure_state_hash_version`).
+
+- 2026-11-17 (the town lane, E09 T37a, `town/e09-t37a`, `cross-lane` with the user's consent;
+  **your paths changed, for your review**): **protocol v70**: `GameObservation::tavern` (the
+  viewer's two tavern heroes, `TavernHero { hero: TavernHeroHead, army, skills, artifacts }`: the
+  tavern's held hero screen, no learned spells, no offered levels, the backpack's first five places
+  and its count; E09 decision 134), `GameEvent::TavernOffered { player, slot, hero }` then
+  `TavernPartSeen { player, slot, part }` per stack, skill and artifact (decision 135), mapped and
+  folded (`wire/game/fold.rs`, `TavernHero::see`). The fold gate gained the part **tavern heroes**
+  (exact) and its **spell points** part covers the tavern views' too (`SRV-STUB-6`: a day's regain
+  tells nothing). `tests/record.rs`' `army-dialog-s1` checkpoint and final hash moved (game state
+  hash v33). For T38a: a hire's owner learns the hired hero's spells and offered levels from no
+  tavern view; its events will tell them (design §75's As built).
 
 - 2026-11-16 (the adventure lane, E08 T123b, `adventure/e08-t123b`, `cross-lane` with the user's
   consent; **your paths changed, for your review**): map import v24 (the creature banks typed).

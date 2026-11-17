@@ -18145,8 +18145,9 @@ at `check-exe-map`: with the executable staged it finds 14 addresses that `E24-d
 one `h3-map-view` comment) cite without an entry in `docs/exe/map.toml`, on `master` since the
 map client lane's #983. `master`'s CI skipped it (its code fingerprint was verified on #985's
 branch before #983 merged: only check-rules, check-stubs and check-docs ran), so #991's full
-verify fails on it, with `xtask`'s `exemap::tests::the_real_map_passes`: the map client lane's
-inbox told; theirs to fix (the user, 2026-11-17).
+verify failed on it, with `xtask`'s `exemap::tests::the_real_map_passes` (the user: the map
+client lane's to fix). Mapped on `master` by the town lane's #987 (from E24's §5.1) and the map
+client lane's #989 (their readings); `master` 8972c50 merged in, the goldens re-recorded on it.
 
 - **The state** (design §4): `Resolved::Bank { level, artifacts }` (the level's index into the
   kind's levels, the artifacts in the draw's order; hash tag 9), a bank's guards as drawn in
@@ -18190,7 +18191,7 @@ inbox told; theirs to fix (the user, 2026-11-17).
   said T124b.
 - **Gates:** the scoped verify `--scope adventure --with-original-data` on the final layout:
   every step passing but `check-lane` (`cross-lane` by design; `check-lane --cross-lane` passes)
-  and `check-exe-map` (red on `master`, above; CI's verify fails on it alone): fmt, clippy, the
+  and, before the merge of `master`, `check-exe-map` (above): fmt, clippy, the
   checks, coverage, determinism, bench-check (every workload inside its baseline) and the
   original-data step (the shipped maps built, their banks drawn). `cargo check --workspace
   --all-targets` clean; `h3-cli`'s `adventure_replays`, `h3-server`'s `tests::record`,

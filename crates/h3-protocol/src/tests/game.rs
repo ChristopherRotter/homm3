@@ -1033,7 +1033,50 @@ fn inverse_game(
         adventure: inverse(&g.adventure),
         towns: g.towns.iter().map(town_back).collect(),
         garrisons: g.garrisons.iter().map(map_garrison_back).collect(),
+        tavern: g.tavern.each_ref().map(|t| t.as_ref().map(tavern_back)),
         battle,
+    }
+}
+
+/// A tavern hero back in the engine's types (protocol v70, E09 T37a).
+fn tavern_back(t: &TavernHero) -> h3_game::TavernHeroView {
+    let h = t.hero;
+    h3_game::TavernHeroView {
+        hero: h3_game::TavernHero {
+            id: HeroId::new(h.id),
+            hero_type: Handle::from_raw(h.hero_type),
+            level: h.level,
+            experience: h.experience,
+            primary: h.primary,
+            mana: h.mana,
+            carried: h.carried,
+            formation: match h.formation {
+                Formation::Loose => EngineFormation::Loose,
+                Formation::Tight => EngineFormation::Tight,
+            },
+            tactics: h.tactics,
+        },
+        army: army_back(&t.army),
+        skills: t
+            .skills
+            .iter()
+            .map(|s| (Handle::from_raw(s.skill), s.level))
+            .collect(),
+        artifacts: t
+            .artifacts
+            .iter()
+            .map(|&(place, a)| {
+                let place = match place {
+                    ArtifactPlace::Worn { position } => {
+                        h3_heroes::ArtifactPlace::Worn(h3_heroes::Position(position.into()))
+                    }
+                    ArtifactPlace::Backpack { index } => {
+                        h3_heroes::ArtifactPlace::Backpack(index.into())
+                    }
+                };
+                (place, artifact_back(a))
+            })
+            .collect(),
     }
 }
 
@@ -1325,6 +1368,45 @@ pub(super) fn every_game_part(
             garrison(p(9, 4, 0), Some(1), 3),
             garrison(p(3, 4, 0), Some(0), 2),
             garrison(p(3, 2, 1), None, 0),
+        ],
+        // E09 T37a: an empty slot 0 and a tavern hero with every part in slot 1.
+        tavern: [
+            None,
+            Some(h3_game::TavernHeroView {
+                hero: h3_game::TavernHero {
+                    id: HeroId::new(44),
+                    hero_type: Handle::from_raw(17),
+                    level: 1,
+                    experience: 62,
+                    primary: [2, 1, 1, 1],
+                    mana: 10,
+                    carried: 7,
+                    formation: EngineFormation::Tight,
+                    tactics: false,
+                },
+                army: vec![EngineStack {
+                    slot: 0,
+                    creature: Handle::from_raw(3),
+                    count: 21,
+                }],
+                skills: vec![(Handle::from_raw(1), 2)],
+                artifacts: vec![
+                    (
+                        h3_heroes::ArtifactPlace::Worn(h3_heroes::Position(13)),
+                        h3_heroes::ArtifactInstance {
+                            artifact: Handle::from_raw(4),
+                            spell: None,
+                        },
+                    ),
+                    (
+                        h3_heroes::ArtifactPlace::Backpack(4),
+                        h3_heroes::ArtifactInstance {
+                            artifact: Handle::from_raw(1),
+                            spell: Some(Handle::from_raw(9)),
+                        },
+                    ),
+                ],
+            }),
         ],
         battle: Some(h3_battle::observe(&state, &ruleset, BattleSide::Attacker)),
     }

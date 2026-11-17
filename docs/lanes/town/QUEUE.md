@@ -7,21 +7,20 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 4: the Tavern, refined at T30, `TWN-Q15`, decisions 98
 to 128; its drafts accepted at T33b, `TWN-Q18`; batch TWN-4 scored by T34; the drafts in the ADRs
 by T35a, `TWN-Q19`; its code by T35b, decisions 129 to 131; the town part v7 by T36, decision
-132); done tasks in `E09-log.md`; increments 1 to 3
+132; the pool in the game by T37a, `TWN-Q20`, decisions 133 to 136); done tasks in `E09-log.md`; increments 1 to 3
 (closed by T10, T20 and T30) in `E09-archive.md`. The building tasks are the design note's
 `E09-design.md` §79 (round by round, with the order against E08's increment 13); each task's cut
 confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`) and the exit criteria it serves (the epic's list, decision 121).
 
 **E09 T37 — the pool in the game** (round 5; `cross-lane`; design §61 to §63, §68, §70, §75):
-T37a the pool's `Offered`, the records at a first draw, the away records, the players' factions
-and slots (game state hash), the draw and the fills from the taverns' stream (TWN-TAV-001, -002;
-GAM-CAL-002), the slots over a turn and every day's clear of the marks (TWN-TAV-005; decision 126; the
-day's spell points of every record already built, decision 127: told as an own hero's,
-`SRV-STUB-6`, §75), `GameObservation::tavern` and `TavernOffered`,
-the protocol, the replays re-recorded, the week's bench; T37b the map's customised types
-(GAM-HER-001, TWN-SET-005; `GameSetup`, the import after E08's T123). TWN-TAV-001's catalog entry
-is T37a's (T36 built its data, decision 132). **Status:** next.
+T37a done 2026-11-17 (decisions 133–136: the pool, the draw, the fills, the turn's points and
+marks, the views, `TavernOffered` with `TavernPartSeen`, protocol v70, game state hash v33;
+`E09-log.md`). **T37b** the map's customised types (GAM-HER-001, TWN-SET-005; `GameSetup`'s
+`custom_types`, the import after E08's T123: map import v25, design §70): a record made at a draw
+takes its type's map-wide entry over GAM-HER-001's defaults, a custom experience's levels at load
+from the draw's stream (§63's order puts the levels before the seed, but `faithful` levels read the
+seed: settle the order at the start). **Status:** next.
 
 **E09 T38 — the hire and the leaves** (round 6; `cross-lane`; design §64, §65, §67, §69, §75,
 §76): T38a `TownCommand::Hire` (TWN-TAV-003), the adventure's placement, the replacement
@@ -49,6 +48,8 @@ the services) refined. **Status:** queued.
 
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
+
+- 2026-11-17 (the map client lane, E24 M4 T1b1, `map-client/e24-m4-t1b1`; **the capture harness, rebuild `xdd.dll`**): `clients/capture/xdd.c` takes a new command, `<seq> seed <value>` (its 8.: the main thread's C library seed set at its next clock read, so that a computer player's turn draws alike in every run; `Game.seed`, and `h3drive.to_scenario(game, seed=...)` seeds just before Begin), and its acknowledgement has a sixteenth field (the seeds set): `h3drive.ACK_FIELDS` is 16, so a run with an `xdd.dll` built before fails as stale where it reads the acknowledgement whole (a forced roll, a batch's or a sequence's checks, a seed): rebuild it with `clients/capture/setup.sh`. Nothing else of `h3drive`, `h3adv` or `h3mem` changed in behaviour (`Mem.other_turn` is new; `Mem.status_items` also returns kind 5's items, ids 2190 to 2193).
 
 - 2026-11-17 (the map client lane, E24 M4 T1a, `map-client/e24-m4-t1a`; **the capture harness, rebuild `xdd.dll`**): `clients/capture/xdd.c` forces two more draws (`week_name` 0x4C87A6, the week's name, and `month_name` 0x4C8FCC, a normal month's; `h3drive.ROLLS` grew by two), so a batch or sequence run with an `xdd.dll` built before fails the count of redirected calls: rebuild it with `clients/capture/setup.sh`. Nothing else of `h3adv` or `h3mem` changed in behaviour (`Mem.calendar` is new: the week's and the month's kinds and names).
 

@@ -21,6 +21,7 @@ use h3_towns::{BuildingId, TownCommand, TownCommandError};
 use crate::manage::{Manage, ManageError};
 use crate::observe::HireSeen;
 use crate::system::SystemCommand;
+use crate::town::tavern::{TavernHero, TavernPart};
 use crate::town::view::{GarrisonStackView, TownBuildingsView};
 use crate::{GameRuleset, GameState, MonthKind, OpenBattle, WeekKind};
 
@@ -727,6 +728,31 @@ pub enum GameEvent {
         resource: ResourceId,
         /// Its amount a day.
         amount: u32,
+    },
+    /// A player's tavern hero in a slot changed (TWN-TAV-002; E09 T37a, design note §75,
+    /// decisions 134, 135): the slot's new hero as `player` sees it without its lists
+    /// ([`crate::TavernHeroView::hero`]), none when the slot was emptied, followed by a
+    /// [`Self::TavernPartSeen`] for each part of its view ([`crate::TavernHeroView::parts`]); its
+    /// view after them is the told one. Told after the week's release and fill, each changed slot
+    /// in player then slot order, after the towns' week, before the adventure's week step. The
+    /// game's start's fill is the first observation's. Seen by `player`.
+    TavernOffered {
+        /// The player told: the slot's owner.
+        player: PlayerId,
+        /// The slot: 0 or 1.
+        slot: u8,
+        /// Its hero, none for an emptied slot.
+        hero: Option<TavernHero>,
+    },
+    /// A part of a tavern hero's view (TWN-TAV-002; E09 T37a, decision 135), told after its
+    /// slot's [`Self::TavernOffered`], one per part in [`TavernPart`]'s order. Seen by `player`.
+    TavernPartSeen {
+        /// The player told: the slot's owner.
+        player: PlayerId,
+        /// The slot: 0 or 1.
+        slot: u8,
+        /// The part.
+        part: TavernPart,
     },
     /// A player's view of a map garrison changed (ADV-GAR-006; E08 T114b, increment 12's design
     /// note §10 and §15; SRV-Q26): the garrison's facts as `player` now sees it

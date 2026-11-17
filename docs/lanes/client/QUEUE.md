@@ -14,22 +14,39 @@ need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the ha
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T1b
+#### E27 M3 T1b2
 
-T1b The list (the epic's M3 table; design §3.3, §3.4, §3.8, §18.3; decision 45): its panel and
-its toggle (Show Available Scenarios, 128; GENRLTXT 503 in a shot), the rows, columns, sort
-(`h3_view::shell::scenario::sort` is the list's order as built, CLT-Q90, CLT-Q91), size filters,
-keys, scroll bar, a row's press and double press, the right press's popups on the list, the
-labels and the texts (`scn-right`), the flags' strip's teams dialog (387, 0x576540); exact
-against `scn-new`'s `list-shown`, `scn-list-keys`, `scn-sort`, `scn-filter`, `scn-right`, with
-design §6.4's `up-past-top` fix recorded (`h3shell.py run --only <id> --record`; the runbook's
-"The shell's screens"). The screen's code: `h3_view::shell::scenario` (T1a's), the maps read by
-`h3-battle-client`'s `maps`. Then T2 to T7 as the M3 table lists them.
+T1b2 The list's right press (the epic's M3 table; design §3.8, §19.6; decision 47): the popups
+of the columns, the filters and the bar (`Help.txt` record id − 83), a row's (nothing), the size
+mark's, the labels' and the texts' (`scn-right`: the map's and the rating's labels, the
+description, the name, the victory's and the loss's texts), the flags' strip's teams dialog (387,
+`scenario_teams_dialog` 0x576540, unread: a new game's variant); GENRLTXT 503 in a shot (§3.3,
+§19.6: drawn after the items and before the build; the harness needs a step inside the read);
+exact against `scn-right` (its original's frames from `h3shell.py run --only scn-right`). The
+screen's code: `h3_view::shell::scenario` (the list since T1b1; `Scenario::right`, `HELPED`,
+`Texts::help`), the partial redraw's rule (CLT-Q138, §19.4) for what a popup's close redraws.
+Then T2 to T7 as the M3 table lists them (T2's items found at T1b1: §19.5).
 
 ## Inbox
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
+
+- 2026-11-17 (the map client lane, E24 M4 T1b1, `map-client/e24-m4-t1b1`; **the capture harness,
+  rebuild `xdd.dll`**): `xdd.c` takes `<seq> seed <value>` (its
+  8.: the main thread's C library seed at its next clock read; `Game.seed`,
+  `h3drive.to_scenario(..., seed=)`), and its acknowledgement has a sixteenth field (the seeds
+  set): `h3drive.ACK_FIELDS` is 16, so a run with an `xdd.dll` built before fails as stale where it
+  reads the acknowledgement whole (a forced roll, a batch's or a sequence's checks, a seed):
+  rebuild it with `clients/capture/setup.sh` (`h3shell.py`'s recipes
+  run under `H3FROZEN` and need no seed). `h3mem`'s `status_items` also returns kind 5's items
+  (2190 to 2193), `Mem.other_turn` is new; `h3map.py` alone gained the rest.
+
+- 2026-11-17 (the town lane, E09 T37a, `town/e09-t37a`, `cross-lane`; **your test literal, and
+  for the shell's town screens later**): protocol **v70** adds `GameObservation::tavern` (the
+  viewer's two tavern heroes as the tavern's held hero screen shows them: `TavernHero`, its head
+  `TavernHeroHead`, its lists) and the events `TavernOffered` and `TavernPartSeen`. `h3-view`'s
+  `game_record/tests.rs` literal gained `tavern: [None, None]`.
 
 - 2026-11-17 (the map client lane, E24 M4 T1a, `map-client/e24-m4-t1a`; **two additions to the
   common crates, nothing of yours changed**): (1) `h3_ui::message`, a copy of your

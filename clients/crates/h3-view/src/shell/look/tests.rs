@@ -166,8 +166,21 @@ fn the_shell_s_assets_are_named_once() {
             "bigfont.fnt",
             "mubchck.def",
             "GSelPop1.pcx",
+            "SCSelBck.pcx",
+            "medfont.fnt",
             "scnrmpsz.def",
             "itgflags.def",
+            "scsmbut.def",
+            "scmdbut.def",
+            "sclgbut.def",
+            "scxlbut.def",
+            "scalbut.def",
+            "scbutt1.def",
+            "scbutt2.def",
+            "ScButCp.def",
+            "scbutt3.def",
+            "scbutt4.def",
+            "scbutt5.def",
             "gspbutt.def",
             "gspbut3.def",
             "gspbut4.def",
@@ -178,19 +191,21 @@ fn the_shell_s_assets_are_named_once() {
             "scnrback.def",
             "scnrvict.def",
             "scnrloss.def",
+            "ScSelC.def",
+            "SlideBuV.def",
+            "sliderV.pcx",
             "diboxbck.pcx",
             "dialgbox.def",
             "Box64x30.pcx",
             "iOkay.def",
             "iCancel.def",
-            "medfont.fnt",
             "PLAYERS.PAL",
         ]
     );
     // A name given twice in another case is kept once.
     let mut twice = layout;
     twice.cursor.def = String::from("MMENUNG.DEF");
-    assert_eq!(names(&twice).len(), 50);
+    assert_eq!(names(&twice).len(), 65);
 }
 
 #[test]
@@ -252,6 +267,17 @@ fn the_scenario_screen_shows_its_drawn_background_and_its_arrow() {
     assert_eq!(shown.background, "gamselb0.pcx");
     assert_eq!(shown.arrow, Arrow::Adventure);
     assert!(shown.cursor && shown.over.is_empty() && shown.stale.is_empty());
+    // E27 M3 T1b1: the original's partial redraw leaves the flags' strip as a stale rectangle
+    // (CLT-Q138): after a sort.
+    let mut sorted = scenario.clone();
+    for point in [[514, 91], [216, 106]] {
+        sorted.moved(point);
+        sorted.press(point);
+        sorted.release();
+    }
+    let shown = look(&layout, screen, Some(&front(&sorted))).unwrap();
+    assert_eq!(shown.stale.len(), 1);
+    assert_eq!(shown.stale[0].rects, [crate::shell::scenario::STRIP]);
     let drawn = scenario.clone().with_background(1);
     let shown = look(&layout, screen, Some(&front(&drawn))).unwrap();
     assert_eq!(

@@ -4510,3 +4510,72 @@ T35b's start.
 check-lane --cross-lane`, `cargo check --workspace --all-targets`, `cargo clippy --workspace
 --all-targets -- -D warnings`, `cargo test -p h3-harvest -p h3-protocol -p h3-server -p h3-cli -p
 h3-sim -p h3-game`; CI on the pull request is the record.
+
+### T37a — the pool in the game: the draw, the fills, the turn, the views (2026-11-17)
+
+The user present at the start; branch `town/e09-t37a`, `cross-lane` (the adventure lane's
+`h3-game` state, setup, commands, observation, `h3-heroes`, `h3-map`'s told-views property and
+the golden replays; the server lane's `h3-protocol` and `h3-server`'s record test; the client
+lane's `h3-view` test literal), with `shared/e09-t37a-tavern-view` (#984: ADR-0017 point 2,
+`docs/06-security.md`) merged first. Starting point: `master` at 2f6ed77 (#980, T36's, merged; CI's
+green run stood in for the setup's baseline, lost to a VM restart). The user's computer was
+connected at the start only: the four LODs, both executables, both tars, the three saves and the
+manuals and help file staged (15 files, the 11 data files SHA-256 checked). **Kept whole**
+(decision 133, over the recommended two parts). Two questions on the way (`TWN-Q20`): what the
+tavern shows (the user asked for a check first: the held hero screen, decision 134) and the
+events' shape (decision 135).
+
+- **The pool** (`town/pool.rs`, design §61): `HeroStatus::Offered`; per type its record and away
+  record (`Record` beside the small `Entry`: status, mask, class); per player a `Tavern` (faction,
+  two slots naming types, their returning marks); the build's records and factions kept
+  (`record_heroes`, `set_factions`); `Away`'s `stale` and `full` flags. **Game state hash v33**
+  (the pool's encoding, the taverns' stream after the towns').
+- **The draw** (`town/tavern.rs`, TWN-TAV-001, design §62): `draw` by the weights over the
+  classes with a count, the avoided class, own faction only; `HeroPool::class_counts`,
+  `nth_free`.
+- **The fills** (TWN-TAV-002, design §63): `at_start` (in `GameState::new` before the first
+  group's turn, each `Random` choice no start read drawn first) and `weekly` (after `grow_week`,
+  before the adventure's week step); per slot the type offered, a new record (`hero_details`' defaults,
+  `Progression::record`'s seed), the backpack equipped (`h3_heroes::backpack_equipped`, ADR-0013
+  point 14.5), the spell points full, the full starting army (`starting_army`, `wear_machines`).
+- **The turn** (TWN-TAV-005, design §68): `start_turn` derives a stale tavern hero's points;
+  `clear_marks` at `EndTurn` and every day's start; `regain_mana` skips the full records.
+- **The views and events** (design §75, decisions 134, 135): `GameObservation::tavern`,
+  `TavernHeroView` (`TavernHero`, army, skills, artifacts: the worn ones and the backpack's first
+  `TAVERN_BACKPACK_SHOWN`), `GameEvent::TavernOffered` and `TavernPartSeen`; **protocol v70** (the
+  wire's types, the mapping, the fold; the fold gate's part *tavern heroes*, its *spell points*
+  part over the tavern views under `SRV-STUB-6`); `h3-map`'s told-views property folds them.
+- **Also:** `h3_heroes::positions`' `first_free` and `fits` iterate the positions without
+  collecting them; `setup::hero_details` takes a `HeroDetailsSetup`; the level seeds a `Vec`.
+- **Tests:** `town/tests/tavern.rs` (the draw's weights, avoidance, own faction, masks, two draws
+  and none; the start's fill and its records; a `Random` choice drawn at the fill; the week's
+  release and the records' ids; TD-18's spared slot and the marks' clears; the turn's points and a
+  fork's shared pool; the backpack equipped and the spell points; the views, the week's events
+  folded, an emptied slot; the backpack's shown places; a fork's week); `h3-heroes`' backpack test;
+  `h3-protocol`'s round trips of the observation and every event; four town tests' expectations
+  (a type offered at the start, the store's tavern records).
+- **Catalog:** TWN-TAV-001, -002, -005 `verified` (batch TWN-4's TWN-4-1, -3, -8); TWN-SET-001,
+  -005, GAM-CAL-002, GAM-HER-001, -002 amended.
+- **Replays and benches:** the 89 golden adventure replays re-recorded from their commands (only
+  `game_state_hash_version`, the checkpoints and `final_hash` moved); `h3-server`'s record literals;
+  the bot reports unchanged (no part moved). `bench-check`: measured right after the first build,
+  the week-start workloads +25 to +186 %; one design pass (the regain's skip, the stale points, the
+  positions without allocation, a new record's spell points once, the seeds a `Vec`) brought them
+  to +99 % (`day-start-builds-36`), +63 % (`day-start-towns-36`), +17 % and +13 % (the XL day
+  starts), +34 % (`month-start-builds-36`) on `master` measured in the same sandbox, every other
+  counted function the same code: re-baselined with the reasons; `fork-towns-36` -5.9 % (the
+  heap's state) re-baselined; the other 28 inside the gate.
+- *Agent's calls* (decision 136): design §61 to §63, §68 and §75's As built.
+- **CI:** its first run met two things of `master`'s: `check-exe-map` (and xtask's
+  `the_real_map_passes`) on 14 addresses E24 M4 T1a cites without a map entry (`master`'s CI had
+  skipped the full verify for that code): twelve `docs/exe/map.toml` entries from E24's §5.1, the
+  map-client lane's inbox told; the Clients job's `h3-ui` build error, red on `master` too. And one
+  of this branch's: the fold of `TavernOffered`'s implicit `else` uncovered (fixed).
+
+**The queue:** T37a out; T37b next. Ids: decisions next 137, questions `TWN-Q21`.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`, `cargo xtask
+check-lane --cross-lane`, `cargo check --workspace --all-targets`, `cargo clippy --workspace
+--all-targets -- -D warnings`, `cargo test -p h3-protocol -p h3-server -p h3-sim -p h3-cli`, the
+clients' check; CI on the pull request is the record.
+

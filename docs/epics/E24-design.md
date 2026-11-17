@@ -2745,7 +2745,8 @@ its step 0x4536F0 (the panel's vtable 0x63BB44 +4), `arraytxt_load` 0x5B9CC0's t
   colours again. The new player's heroes', its two tavern heroes' and its towns' visiting heroes'
   movement points their maximum (+0x49, +0x4D; 0x4E4D90), a visiting hero's +0x11C cleared.
 - **A computer player's start** (+0xE2 or +0xE1 clear): `mouse_set_cursor(2, 0)` (0x4C74FE),
-  the hero list's update (0x419300 with 1, 0, 1), one of `AITheme0` to `AITheme2`
+  a shown path cleared and move hero disabled (`path_cancel` 0x419300 with 1, 0, 1; T1a's
+  reading had it the hero list's update, corrected at T1b1), one of `AITheme0` to `AITheme2`
   (`random_between(1, 3)` − 1) as the music, the status window's kind 8 asked, then
   `covered_view_redraw` (sleep, move hero, cast and End Turn disabled: items 6, 7, 8, 12; with
   Blackout Computer 0x698790 the covered view drawn; else the lists, the quest log, the chooser
@@ -2753,15 +2754,16 @@ its step 0x4536F0 (the panel's vtable 0x63BB44 +4), `arraytxt_load` 0x5B9CC0's t
   view not shown (`view_shown` 0x6989C0 0) and kind 0 asked: the next chooser builds kind 5 (§4.8:
   kind 0 at a computer's turn). Its turn runs at the manager's next message
   (`ai_player_turn` 0x525E80 at 0x408BD8), then `next_player_turn` again.
-- **Kind 5, another player's turn** (0x453250, read; its comparison is T1b's: below): the panel at
-  (614, 400), 176 × 166: 2000 `AdStatNx.pcx` (0, 0); 2001 `crest58.def` at (20, 51), 58 × 64, its
-  frame the current player; 2002 `HourSand.def` at (98, 51), 58 × 64, frame 0; 2003 `HourGlas.def`
-  at (98, 51), frame 0; for a human current player (a network's or a hot seat's other human) two
+- **Kind 5, another player's turn** (0x453250, read; its comparison is T1b's: below; the item ids
+  and the sand's and glass's fields corrected at T1b1, §5.2): the panel at (614, 400), 176 × 166:
+  2190 `AdStatNx.pcx` (0, 0); 2191 `crest58.def` at (20, 51), 58 × 64, its frame the current
+  player; 2192 `HourSand.def` at (98, 51), 58 × 64, frame 0; 2193 `HourGlas.def` at (98, 51),
+  frame 0; for a human current player (a network's or a hot seat's other human) two
   texts in `medfont.fnt` (colour 1, centred), GENRLTXT 631 at (0, 20) and the player's name at
   (0, 123), each 176 × 31. The panel keeps, per colour, 1 000 plus the maximum movement points of
   a computer player's heroes (0 for a human or a colour out of the game). Its step (the vtable's
   +4, every 50 ms by +0x6C from +0x40): a new current player sets the crest's frame and its value
-  again; for a computer player the glass's frame +0x68 steps round its frames and the sand's +0x70
+  again; for a computer player the sand's frame +0x68 steps round its frames and the glass's +0x70
   steps by one towards (value − the heroes' points left) × (frames − 1) / value (all but the last
   frame without heroes); each drawn and shown at once. `status_panel_update` 0x402B90 calls it
   during the computer's turn (0x42E301, 0x42EAB6, 0x42EF6F, 0x42F649, 0x42F86D, 0x5262A6).
@@ -2859,3 +2861,90 @@ its step 0x4536F0 (the panel's vtable 0x63BB44 +4), `arraytxt_load` 0x5B9CC0's t
   live after `turn-question`'s inputs E's question opened (the new day's hero able to move),
   Escape cancelled it without quitting, Enter's OK with no turn left did nothing (71 of 71
   exact).
+
+### 5.2 A computer player's moves in sight (M4 T1b1)
+
+Read (T1b cut in two by the user at its start, 2026-11-17: T1b1 the reading and the recordings,
+T1b2 the viewer playing them): `ai_player_turn` 0x525E80 to its heroes' turns, `ai_hero_turn`
+0x5261F0 to its walk, `ai_hero_walk` 0x42FEE0 and `ai_hero_step` 0x42FC50 around their calls,
+`step_seen` 0x480000 and `tile_or_neighbour_seen` 0x41A750 whole, kind 5's panel
+(`status_other_turn_create` 0x453250: its items) and its step (`status_other_turn_step` 0x4536F0)
+whole, `hero_select`'s computer branch (0x417DF0 to 0x418060), `covered_view_redraw` 0x4CA5B0's
+Blackout branch; recorded by the harness (`ai-walk`, `ai-walk-slow`, `ai-walk-fast`,
+`ai-walk-blackout`, `ai-walk-fog` in `clients/map/to-record.toml`; situations `seq-turn-ai`,
+`seq-turn-ai-fog`), each twice with the same timeline.
+
+- **The turn** (after §5.1's computer start, at the manager's next message): `ai_player_turn`
+  ticks the adventure (0x4ED490) and asks `status_window_choose` with 0, 1, 1: kind 5 built
+  (0x415F20), drawn and shown. Then its heroes one at a time (0x526A90 the next) through
+  `ai_hero_turn`, then a second pass over those with points left and awake; at its end
+  `adventure_hero_stop` with 0, 1 (the last hero put back on its tile) and the cursor shown again
+  (`mouse_show` 0x50D5B0 with 1); then `next_player_turn` (§5.1).
+- **A hero's turn** (`ai_hero_turn`): kind 5's step (`status_panel_update` with 0, 0x5262A6);
+  with points left `view_shown` is set when neither Blackout Computer nor a network game and the
+  viewer sees the hero's tile or a neighbour (`tile_or_neighbour_seen`: any of the nine tiles
+  inside the map with the viewing player's bit in its vision word), else cleared. A hero not yet
+  the player's selected one: the selected one put back (`adventure_hero_stop` 0, 1) and this one
+  selected with 1, 0, 1 (`hero_select`: lifted; when seen `view_shown` 1 and the view's corner
+  its tile less (9, 8), never clamped, so the map's border shows past an edge, the view drawn and
+  the screen shown at once; for a computer neither the lists nor the status window built again,
+  and the minimap's draw returns at once in a computer's turn, §4.4). Its planning and the walk's
+  choice after that are not read.
+- **The walk** (`ai_hero_walk`: each node of its path through `ai_hero_step`, no wait between
+  steps): a step the viewer sees (`step_seen`: the hero's tile or the step's destination, each or
+  a neighbour; never under Blackout Computer) hides the cursor (`mouse_hide` counts, so it stays
+  hidden until `ai_player_turn`'s `mouse_show` at the turn's end); then `hero_move_step` as a
+  human's (§3.5): `view_shown` for that step (its start or end tile seen; 0 for a computer under
+  Blackout), the hero's tile moved at the animation's start, the view's corner the new tile less
+  (9, 8) when shown, the frames at Computer Walk Speed (`option_computer_walk_speed` 0x698758 by
+  `walk_frame_pixels` and `walk_frame_times`: 2 three frames of 50 ms, 10, 12 and 10 pixels; 3
+  two frames of 50 ms, 16 pixels each; 4 one draw with no wait; 5, which the system options set
+  with Blackout, lies past the tables and was not recorded alone), the movement points taken after
+  the animation. An unseen step draws nothing and takes no time.
+- **Kind 5's step** (`status_other_turn_step`, read whole; §5.1's paragraph corrected by it: its
+  items are 2190 to 2193, and +0x68 is the sand's frame, +0x70 the glass's): nothing until the
+  clock is 50 ms (+0x6C) past its last step (+0x40); a new current player sets the crest's frame,
+  hides the sand and the glass for a human (the step ends there) or shows them for a computer,
+  whose value becomes 1 000 plus its heroes' maximum movement points, the glass at 0. For a
+  computer then: the points left summed over its heroes, at most the value; the glass one frame
+  up while below (value − left) × (n − 1) / value (n the glass's frames, 10), never down; the
+  sand one frame on, round its 10; both and the crest drawn and shown at once. Its callers in a
+  computer's turn: each hero's turn's start (above) and the planning's sites (0x42E301,
+  0x42EAB6, 0x42EF6F, 0x42F649, 0x42F86D; not read). Which one steps it during a walk is not
+  read: the recordings show one step at each seen step's first millisecond (a step lasts 100 or
+  150 ms, past the 50 ms gate) and none at the unseen ones, which fall in the panel's first
+  millisecond.
+- **Seen** (the recordings, seed 1, Computer Walk Speed 3 unless said): `ai-walk`: E's key up at
+  160, and in that millisecond Red's turn ends and Blue's starts: kind 5 (Blue's crest, sand and
+  glass at 0), the view centred on Blue's hero (at 0 on (5, 26); the view (−3, 18), the map's left
+  border showing), the minimap's place showing a shield, several of the panel's buttons blank,
+  no cursor (the busy one, the default's frame 2, hidden: the timeline's `cursor` line keeps its
+  type and frame), the first step's first frame drawn (the hero onto (6, 26), offset 16). Then a
+  step every 100 ms (its second frame at 50), the view one tile on and kind 5 stepped at each
+  step's start; 15 steps east, then north-east, to (20, 24) (the `points` line lags a step: the
+  price is taken after the animation); at 1660 Blue's
+  turn ends and Red's next day starts in that millisecond as in §5.1 (the view on Red's hero, the
+  adventure arrow again). `ai-walk-slow` (speed 2): the same path, a step every 150 ms (offsets
+  22, 10, 0), the turn's end at 2410. `ai-walk-fast` (speed 4) and `ai-walk-blackout`: the whole
+  turn in E's millisecond, their timelines the same as each other's and shaped as T1a's
+  `turn-day`; Blue's hero on (20, 24) the next day (the `[[turn]]` table's heroes). `ai-walk-fog`
+  (Blue's hero in Red's fog, x 0 to 9): its first three steps unseen (in E's millisecond), the
+  fourth, onto (9, 26), seen by the destination's explored neighbour: the view centred on a hero
+  under the fog (MCL-Q31); the next step brings it out, then as `ai-walk` to (20, 24), the turn's
+  end at 1360.
+- **The harness** (common, additive; the runbook's "A computer player's turn"): a sequence's
+  `computer_speed`, `blackout` and `seed` (`xdd.dll`'s 8.: the game seeds its generator once,
+  with the running clock's time, so without a seed no two runs of a computer's turn walk alike;
+  set before Begin and again at the sequence's 0); the timeline's `other` lines (kind 5's frames,
+  `Mem.other_turn`); the `[[turn]]` tables' `heroes` and `boats` (the heroes standing, as the live
+  part's: a computer's moves out of sight show there) and kind 5's `status` in them;
+  `frames --sequences <file> --no-check` for sequences the viewer cannot play yet; the `player`
+  line (an integer the timeline could not print: no earlier sequence changed the player across a
+  millisecond).
+- **For T1b2** (the viewer): Blue's turn from the `[[turn]]` facts and the timeline (the walk from
+  the `hero` and `walk` lines as M2's, the view by its corner rule, Computer Walk Speed from the
+  sequence, the cursor hidden from the first seen step, kind 5's step by the rule above checked
+  against the `other` lines), the shield in the minimap's place and the blank buttons read first
+  (`covered_view_redraw` without Blackout, the minimap's draw in a computer's turn); speed 4's
+  single draws shown on the client's clock (on the virtual clock they take none); MCL-Q30's sound
+  run.

@@ -18,6 +18,7 @@ use h3_ui::ui::{Dialog, Draw, Shown};
 use serde::Deserialize;
 
 use super::menu::{Arrow, Front, Kind, Stale, TITLE};
+use super::scenario::ListLook;
 use super::{Game, Screen};
 use crate::message::MessageLayout;
 
@@ -50,7 +51,7 @@ pub struct ShellLayout {
     pub scenario: ScenarioLayout,
 }
 
-/// The scenario screen: its two backgrounds and its dialog.
+/// The scenario screen: its two backgrounds, its dialog and its list's rows and bar.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ScenarioLayout {
@@ -60,6 +61,8 @@ pub struct ScenarioLayout {
     /// The dialog over it: the right-hand panel's picture, then the items in the order the
     /// constructor adds them, then what the redraw draws itself (the client's ids).
     pub dialog: Dialog,
+    /// The list's rows as the redraw draws them and its scroll bar (E27 M3 T1b1).
+    pub list: ListLook,
 }
 
 /// A cursor's DEF and frame.
@@ -165,10 +168,15 @@ pub fn look(layout: &ShellLayout, screen: Screen, front: Option<&Front>) -> Opti
             let background = backgrounds
                 .get(usize::from(scenario.background()))
                 .or_else(|| backgrounds.first())?;
+            // The flags' strip the original's partial redraw leaves (CLT-Q138).
+            let stale = scenario.stale_draws(players).map(|(rect, draws)| Stale {
+                rects: alloc::vec![rect],
+                draws,
+            });
             return matches!(screen, Screen::Scenario(..)).then(|| Look {
                 background: background.clone(),
                 draws: scenario.draws(players),
-                stale: Vec::new(),
+                stale: stale.into_iter().collect(),
                 over: scenario.box_draws(players),
                 cursor: scenario.cursor(),
                 arrow,
@@ -233,6 +241,7 @@ pub fn names(layout: &ShellLayout) -> Vec<String> {
             names.extend(h3_ui::paint::names(&draw).into_iter().map(String::from));
         }
     }
+    names.extend(super::scenario::list_names(&layout.scenario.list));
     let m = &layout.message;
     names.extend(
         [

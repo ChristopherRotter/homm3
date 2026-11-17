@@ -29,12 +29,17 @@ impl core::fmt::Display for Position {
 /// Each position's slot (HER-ART-001): the ruleset's artifact slots in their order, each its
 /// `count` times. [`HeroDetails::worn`] has one entry per position.
 pub fn positions(ruleset: &Ruleset) -> Vec<ArtifactSlotId> {
+    position_slots(ruleset).collect()
+}
+
+/// [`positions`] without collecting them (E09 T37a: a search for a free position allocated the
+/// list at every call).
+fn position_slots(ruleset: &Ruleset) -> impl Iterator<Item = ArtifactSlotId> + '_ {
     (0_u16..)
         .zip(ruleset.artifact_slots())
         .flat_map(|(raw, slot)| {
             core::iter::repeat_n(ArtifactSlotId::from_raw(raw), usize::from(slot.count))
         })
-        .collect()
 }
 
 /// The first position that takes `artifact` (HER-CHG-002): the lowest empty position of its slot
@@ -58,10 +63,9 @@ pub(crate) fn first_free(
     artifact: &ArtifactType,
 ) -> Option<Position> {
     // rule: HER-CHG-002
-    let free = positions(ruleset)
-        .iter()
+    let free = position_slots(ruleset)
         .zip(worn)
-        .position(|(&slot, item)| artifact.slot == Some(slot) && item.is_none());
+        .position(|(slot, item)| artifact.slot == Some(slot) && item.is_none());
     let worn = worn
         .iter()
         .flatten()
@@ -93,7 +97,7 @@ pub(crate) fn fits(
     artifact: &ArtifactType,
     at: Position,
 ) -> bool {
-    let slot = positions(ruleset).get(at.0).copied();
+    let slot = position_slots(ruleset).nth(at.0);
     let empty = worn.get(at.0).is_some_and(Option::is_none);
     let worn = worn
         .iter()

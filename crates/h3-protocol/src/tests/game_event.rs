@@ -745,6 +745,39 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             resource: Handle::from_raw(resource),
             amount,
         },
+        G::TavernOffered { player, slot, hero } => GameEvent::TavernOffered {
+            player: p(player),
+            slot,
+            hero: hero.map(|h| h3_game::TavernHero {
+                id: HeroId::new(h.id),
+                hero_type: Handle::from_raw(h.hero_type),
+                level: h.level,
+                experience: h.experience,
+                primary: h.primary,
+                mana: h.mana,
+                carried: h.carried,
+                formation: match h.formation {
+                    w::Formation::Loose => h3_content::Formation::Loose,
+                    w::Formation::Tight => h3_content::Formation::Tight,
+                },
+                tactics: h.tactics,
+            }),
+        },
+        G::TavernPartSeen { player, slot, part } => GameEvent::TavernPartSeen {
+            player: p(player),
+            slot,
+            part: match part {
+                w::TavernPart::Stack { stack } => h3_game::TavernPart::Stack(stack_back(stack)),
+                w::TavernPart::Skill { skill } => h3_game::TavernPart::Skill {
+                    skill: Handle::from_raw(skill.skill),
+                    level: skill.level,
+                },
+                w::TavernPart::Artifact { place, artifact } => h3_game::TavernPart::Artifact {
+                    place: place_back(place),
+                    artifact: artifact_back(artifact),
+                },
+            },
+        },
         G::GarrisonChanged {
             player,
             object_type,
@@ -1081,6 +1114,55 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             town: TownId::new(2),
             resource: Handle::from_raw(6),
             amount: 4000,
+        },
+        // E09 T37a: a slot's tavern hero, each kind of part, an emptied slot.
+        GameEvent::TavernOffered {
+            player: P0,
+            slot: 1,
+            hero: Some(h3_game::TavernHero {
+                id: HeroId::new(40),
+                hero_type: Handle::from_raw(12),
+                level: 2,
+                experience: 1200,
+                primary: [1, 2, 3, 4],
+                mana: 40,
+                carried: 6,
+                formation: h3_content::Formation::Loose,
+                tactics: true,
+            }),
+        },
+        GameEvent::TavernPartSeen {
+            player: P0,
+            slot: 1,
+            part: h3_game::TavernPart::Stack(EngineStack {
+                slot: 2,
+                creature,
+                count: 9,
+            }),
+        },
+        GameEvent::TavernPartSeen {
+            player: P0,
+            slot: 1,
+            part: h3_game::TavernPart::Skill {
+                skill: Handle::from_raw(5),
+                level: 3,
+            },
+        },
+        GameEvent::TavernPartSeen {
+            player: P0,
+            slot: 1,
+            part: h3_game::TavernPart::Artifact {
+                place: ArtifactPlace::Backpack(2),
+                artifact: ArtifactInstance {
+                    artifact: Handle::from_raw(7),
+                    spell: Some(Handle::from_raw(3)),
+                },
+            },
+        },
+        GameEvent::TavernOffered {
+            player: P0,
+            slot: 0,
+            hero: None,
         },
         GameEvent::TownChanged {
             player: P0,
@@ -1457,9 +1539,9 @@ pub(super) fn every_event() -> Vec<GameEvent> {
 fn every_event_maps_back_for_its_viewers_and_round_trips() {
     let all = every_event();
     let distinct: BTreeSet<String> = all.iter().map(kinds).collect();
-    // The game's 39 kinds of event (the adventure's as one; E08 T114a2: `ExchangeOpened`; T114b:
-    // `GarrisonChanged`, `GarrisonStackSeen`).
-    assert_eq!(distinct.len(), 39, "{distinct:?}");
+    // The game's 41 kinds of event (the adventure's as one; E08 T114a2: `ExchangeOpened`; T114b:
+    // `GarrisonChanged`, `GarrisonStackSeen`; E09 T37a: `TavernOffered`, `TavernPartSeen`).
+    assert_eq!(distinct.len(), 41, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);

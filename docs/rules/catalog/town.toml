@@ -417,7 +417,7 @@ id       = "TWN-SET-001"
 title    = "A player's factions at the start"
 context  = "town"
 status   = "implemented"
-summary  = "Each playing colour starts with a set of factions and a choice among them (the setup's `PlayerStart`, the seam whoever seats the players may change before the build, E09 decision 6). A map's import gives the set: the map's allowed towns (a bit per faction in the format's order, `TOWNTYPE.TXT`'s: Castle 0 to Fortress 7, Conflux 8 from AB on) that the ruleset has as factions with a town record; a bit past the nine names none. An RoE-format map's player whose eight bits are all set also has Conflux when the ruleset has it (E09 decision 14: the enabled expansions decide, not the map's format; the original's map-format test is the recorded deviation, TD-2); one restricted to fewer stays restricted. The choice is the set's faction when it holds exactly one, else Random; no starting-hero pick. With the start come the player's main town (the town whose entrance is the header's position, survey finding 3; one that is no town's entrance is refused, TWN-QUIRK-4), whether it generates the starting hero (the map's flag, an RoE map's always) and the random-hero flag. The game refuses (E09 T7a2, `GameSetup::validate`, `GameSetupError::Choice`) a player whose set holds a faction without a town record (so a draw always gives one, TWN-QUIRK-4), whose choice is a fixed faction outside its set or Random over an empty set, or who has no choice while its start needs a faction (a main town, the random-hero flag, a random hero of its own or a random town aligned to its colour; the agent's call); and a main town that is none of the setup's towns (`MainTown`). A Random choice is drawn when the game is built, uniform over the player's set, from the setup stream before every other draw, in player order (E09 T7b1, design note section 14; the resolved faction is not kept), when the player's start reads it (a main town, the random-hero flag, a random hero of its own or a random town aligned to its colour): a choice nothing reads draws nothing (the agent's call, E09 T7b1; the original draws every colour's, with no effect but on its stream). Not yet: a main town of another owner, refused once the towns have owners (E09 T8a, the user's cut of 2026-11-04). E09 T7a1 (design note sections 7 and 13): `h3_map::import` (`import/town.rs`, `starts`), `h3_game::PlayerStart`."
+summary  = "Each playing colour starts with a set of factions and a choice among them (the setup's `PlayerStart`, the seam whoever seats the players may change before the build, E09 decision 6). A map's import gives the set: the map's allowed towns (a bit per faction in the format's order, `TOWNTYPE.TXT`'s: Castle 0 to Fortress 7, Conflux 8 from AB on) that the ruleset has as factions with a town record; a bit past the nine names none. An RoE-format map's player whose eight bits are all set also has Conflux when the ruleset has it (E09 decision 14: the enabled expansions decide, not the map's format; the original's map-format test is the recorded deviation, TD-2); one restricted to fewer stays restricted. The choice is the set's faction when it holds exactly one, else Random; no starting-hero pick. With the start come the player's main town (the town whose entrance is the header's position, survey finding 3; one that is no town's entrance is refused, TWN-QUIRK-4), whether it generates the starting hero (the map's flag, an RoE map's always) and the random-hero flag. The game refuses (E09 T7a2, `GameSetup::validate`, `GameSetupError::Choice`) a player whose set holds a faction without a town record (so a draw always gives one, TWN-QUIRK-4), whose choice is a fixed faction outside its set or Random over an empty set, or who has no choice while its start needs a faction (a main town, the random-hero flag, a random hero of its own or a random town aligned to its colour; the agent's call); and a main town that is none of the setup's towns (`MainTown`). A Random choice is drawn when the game is built, uniform over the player's set, from the setup stream before every other draw, in player order (E09 T7b1, design note section 14; the resolved faction is not kept), when the player's start reads it (a main town, the random-hero flag, a random hero of its own or a random town aligned to its colour): a choice nothing reads draws nothing (the agent's call, E09 T7b1; the original draws every colour's, with no effect but on its stream). Not yet: a main town of another owner, refused once the towns have owners (E09 T8a, the user's cut of 2026-11-04). E09 T7a1 (design note sections 7 and 13): `h3_map::import` (`import/town.rs`, `starts`), `h3_game::PlayerStart`. Since E09 T37a the resolved choice is kept as the player's faction (the tavern's, TWN-TAV-001); a Random choice no start reads is drawn at the player's first fill, the game's start's, from the taverns' stream before its slot 0 (the agent's call, design note section 61), so the setup stream does not move."
 quirks   = ["TWN-QUIRK-4"]
 numeric  = "integer"
 
@@ -550,7 +550,7 @@ id       = "TWN-SET-005"
 title    = "The hero pool"
 context  = "town"
 status   = "implemented"
-summary  = "The game keeps a hero pool (ADR-0017's E09 paragraph; `GameState`'s, game state hash v23): per hero type of the core ruleset whether it is free, taken (by a colour, or as a prisoner) or out of the game, and the colours that may take it. Built with the game, before any draw: each type the map allows (`GameSetup::allowed_heroes`) free, the rest out; each type's colour mask the AND of the setup's masks of it (`GameSetup::hero_masks`, SoD's disposed heroes; 0xFF without one); then, whatever the allowed set, every placed hero's type taken by its owner's colour and every prisoner's taken as a prisoner (T-3 fixed, TWN-QUIRK-3), then each player's pick reserved, taken by its colour (T-2 fixed, TWN-QUIRK-2). A drawn hero's type is taken by its owner's colour at once (TWN-SET-007, -008); a pick that neither a random hero nor a human player's main-town hero took goes back free after the main towns' heroes (TWN-SET-009, E09 T7b2b; the agent's call, design note section 14); a hero that leaves the map in play (every hero a battle's end removes) goes back free. E09 T7b1 (design note section 14): `h3_game`'s `town::pool::HeroPool`, `GameState::new`, `end_battle`; the main towns' heroes' types taken since E09 T7b2b. Not yet: the tavern's draws and a defeated player's heroes (E09 increment 4)."
+summary  = "The game keeps a hero pool (ADR-0017's E09 paragraph; `GameState`'s, game state hash v23): per hero type of the core ruleset whether it is free, taken (by a colour, or as a prisoner) or out of the game, and the colours that may take it. Built with the game, before any draw: each type the map allows (`GameSetup::allowed_heroes`) free, the rest out; each type's colour mask the AND of the setup's masks of it (`GameSetup::hero_masks`, SoD's disposed heroes; 0xFF without one); then, whatever the allowed set, every placed hero's type taken by its owner's colour and every prisoner's taken as a prisoner (T-3 fixed, TWN-QUIRK-3), then each player's pick reserved, taken by its colour (T-2 fixed, TWN-QUIRK-2). A drawn hero's type is taken by its owner's colour at once (TWN-SET-007, -008); a pick that neither a random hero nor a human player's main-town hero took goes back free after the main towns' heroes (TWN-SET-009, E09 T7b2b; the agent's call, design note section 14); a hero that leaves the map in play (every hero a battle's end removes) goes back free. E09 T7b1 (design note section 14): `h3_game`'s `town::pool::HeroPool`, `GameState::new`, `end_battle`; the main towns' heroes' types taken since E09 T7b2b. Not yet: the tavern's draws and a defeated player's heroes (E09 increment 4). Since E09 T37a (design note section 61, game state hash v33): a type may be offered (a player's tavern slot holds it: no draw gives it, TWN-TAV-002); a type keeps the id of its record in the store of heroes once it has one (the placed and generated heroes' from the build, a drawn type's from its first draw) and, while it is a tavern hero, an away record (its points left and the day's maximum, its formation, its tactics flag, its army); per player its faction and its two tavern slots with their returning marks. A freed type keeps its record and away record."
 quirks   = ["TWN-QUIRK-2", "TWN-QUIRK-3"]
 numeric  = "integer"
 
@@ -1426,4 +1426,87 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "docs/epics/E09-design.md section 53: its day (the turn start after the heroes on the map, TownId order; the marks' drops), its income (daily_income with its owner's; the upper bar's weekly resources counted once with the heroes') and growth's inputs (E09 T28b1)"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-TAV-001"
+title    = "The tavern's draw"
+context  = "town"
+status   = "verified"
+summary  = "A tavern hero is drawn for a player's colour and faction, with a hero class to avoid and whether only the faction's classes count: per hero class in the core's order its count, the pool's free types of the class whose colour mask holds the colour (TWN-SET-005), and its weight, the faction's town record's tavern weight of the class (E09 T36, part v7; every class 1 for a player without a faction or a record, the agent's call). No class counted: no type and no draw. A class without a count weighs 0; the class to avoid weighs 0 while another class has a count; with own faction only, when a class of the faction still weighs anything, every other class weighs 0. A total of 0 (not reachable with the shipped weights, each 5 or 6): no type and no draw. Else a class by one draw of 1 to the total over the classes in order (the first whose running sum reaches it), then the n-th counted type of the class in type order, n one draw of 1 to its count. The SoD edition's Conflux rule is dead in this build; no class is forced. E09 T37a (design note section 62): h3_game's town::tavern::draw."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T32; survey E09-tavern.md section 2.2): tavern_hero_draw 0x4BB5E0 with the colour's chosen faction, HCTRAITS.TXT's tavern column (the class record +0x34), the free and takeable types per class (the mask +0x4DFB4), the class to avoid, own faction only, two random_between draws (the class over the total, the type over its count)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-4a.md and E09-batch-4a-run2.md, batch TWN-4 rows TWN-4-1 and TWN-4-8 (the capture harness under Wine, the Complete 4.0 executable in SoD, 2026-11-16, E09 T34; survey E09-tavern.md section 14): slot 0 of the player's faction every time, its class draw over 1-12; slot 1 another class, over 1-94 (100 less the avoided class's 6); the type draws over the class's free types; the Conflux classes weighing 5"
+  retrieved  = "2026-11-16"
+  confidence = "high"
+  note       = "Marked verified by E09 T37a: every row of TWN-4-1 and TWN-4-8 as the reading, which the draw implements."
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 62; E09 decision 115 (the taverns' stream)"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-TAV-002"
+title    = "The taverns' fills and the week's release"
+context  = "town"
+status   = "verified"
+summary  = "Each player has two tavern slots (TWN-SET-005), filled from the taverns' stream (StreamId::TAVERNS, E09 decision 115) at the game's start, in the build after the setup stream's last draw and the adventure's start of the game, and on every week's first day after the towns' growth and before the adventure's week step. The week first releases, per player in player order, slot 0 then 1, every slot whose hero's returning mark is clear (its type free, its record and away record kept; a returning hero stays, TD-18); then fills, per player in player order, slot 0 then 1, each empty slot: at the start first the faction of a Random choice no start read (TWN-SET-001); the draw (TWN-TAV-001) with the other slot's hero's class to avoid and own faction only for slot 0; the type offered and held by the slot; its record made when it has none (the next hero id, GAM-HER-001's defaults with the default experience, then its level seed, GAM-HER-002); its backpack equipped from its last place to its first, each artifact to the first free position that takes it (ADR-0013 point 14.5), its spell points full (HER-MAN-001); then its full starting army (GAM-SET-001, a rolled war machine's artifact worn as GAM-HER-001; none for a type with more starting slots than an army), replacing its away army. Its owner sees its two tavern heroes (GameObservation::tavern, the tavern's held hero screen: id, type, level, experience, primary skills, spell points, skills, worn artifacts, the backpack's first five places and its count, army, formation, tactics; no learned spells, no offered levels, E09 decision 134) and is told each slot the week changed (TavernOffered with the head, then TavernPartSeen per stack, skill and artifact; E09 decision 135). E09 T37a (design note sections 61, 63, 75): h3_game's town::tavern, h3_heroes::backpack_equipped."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T32; survey E09-tavern.md section 2.3): tavern_new_heroes 0x4C8450 (slot 0 then 1, an empty one; the other slot's class avoided, own faction for slot 0; the backpack equipped with hero_equip_artifact 0x4E2A00 from the last; the spell points; draw_starting_army's full army), new_day_week_events 0x4C8780 (the release of every unmarked slot, then the fills, after the towns' growth, before the dwellings), new_game_heroes 0x4C00C0 (the start's); tavern_dialog_proc 0x5D7D7D opening the offer's hero screen as a held popup (hero_screen_show, popup_run_held 0x4E1969: E09 T37a)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-4a.md, E09-batch-4b.md and their run2 records, batch TWN-4 rows TWN-4-1 and TWN-4-3 (the capture harness under Wine, the Complete 4.0 executable in SoD, 2026-11-16, E09 T34; survey E09-tavern.md section 14): every offer a full starting army and full spell points; a marked offer kept through the week's release, the unmarked one released and drawn anew with a new full army"
+  retrieved  = "2026-11-16"
+  confidence = "high"
+  note       = "Marked verified by E09 T37a: rows TWN-4-1 and TWN-4-3 as the reading. Not played: the backpack's equip at a fill (TWN-4-5 confirms none at a replacement, T38a's)."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 client/windows/GUIClasses.cpp CTavernWindow::HeroPortrait: the description (name, level, class, the artifacts' count less the spell book and the war machines) and the right click's CRClickPopupInt over the whole CHeroWindow"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/client/windows/GUIClasses.cpp"
+  retrieved  = "2026-11-17"
+  confidence = "high"
+  note       = "Agrees on what the tavern shows (E09 decision 134); the manual too (Section II, the Tavern: right-click a portrait for the hero's Hero Screen)."
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md sections 61, 63 and 75; E09 decisions 103, 115, 134 and 135"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-TAV-005"
+title    = "The tavern heroes over a turn"
+context  = "town"
+status   = "verified"
+summary  = "At its owner's turn start, after its heroes on the map and its garrison heroes, each tavern hero's day's maximum and points left become its land points (h3_adventure::day_points over its details and its away army; no week marks), written only where they change; its spell points regain at every day's start with every record of the store (HER-MAN-002, E09 decision 127). Its owner's turn end clears its two returning marks; every day's start clears every player's after the week's release (E09 decision 126); a clear writes only where a mark is set. Neither the points nor the marks show (the tavern view has neither). The marks are set by a hero's return from E09 T38b. E09 T37a (design note section 68): h3_game's town::tavern::start_turn and clear_marks."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T32, T34; survey E09-tavern.md sections 2.3, 14): next_player_turn 0x4C6FE0 sets the two offers' points after the player's heroes; 0x4C705D clears the current player's two marks after the victory tests; new_day 0x4C80CF to 0x4C80FD clears every record's mark after the week's events"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-4b.md and E09-batch-4b-run2.md, batch TWN-4 row TWN-4-3 (E09 T34; survey E09-tavern.md section 14): a returning offer's marks cleared at Red's turn end; on Red's next day its points 1 560 of 1 560, the turn start's; a mark gone at the next day's start"
+  retrieved  = "2026-11-16"
+  confidence = "high"
+  note       = "Marked verified by E09 T37a: TWN-4-3 as the reading (with decision 126's day-start clear)."
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 68; E09 decisions 126 and 127"
   confidence = "high"

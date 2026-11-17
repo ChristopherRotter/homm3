@@ -109,12 +109,12 @@ fn a_pick_no_random_hero_takes_goes_back_free() {
     setup.players[0].start.pick = Some(loner);
     // Red has the random-hero flag but no random hero (and no main town that generates one).
     let game = GameState::new(&rules, &setup, 3).unwrap();
-    assert_eq!(game.hero_pool().status(loner), Some(HeroStatus::Free));
+    assert_eq!(game.pool().status(loner), Some(HeroStatus::Free));
     // With a random hero it takes the pick, which stays taken.
     random(&mut setup, 0);
     let game = GameState::new(&rules, &setup, 3).unwrap();
     assert_eq!(game.hero(HeroId::new(0)).unwrap().hero_type, loner);
-    assert_eq!(game.hero_pool().status(loner), Some(HeroStatus::Taken(0)));
+    assert_eq!(game.pool().status(loner), Some(HeroStatus::Taken(0)));
 }
 
 // covers: TWN-SET-001
@@ -152,8 +152,9 @@ fn a_random_choice_is_drawn_from_its_factions() {
     let mut replay = Rng::for_stream(9, StreamId::SETUP);
     let chosen = [castle, other][usize::try_from(replay.below(2)).unwrap()];
     assert_eq!(faction_of(&rules, types[1].0), chosen);
-    // A choice nothing reads draws nothing (no main town, random-hero flag, random hero or
-    // aligned random town): the game is the one without it, as on the duel's map.
+    // A choice nothing reads draws nothing from the setup stream (no main town, random-hero flag,
+    // random hero or aligned random town): the game is the one without it, as on the duel's map,
+    // but for the taverns' fill, which draws it (E09 T37a, design note §61).
     let plain = setup_without_towns();
     let mut chosen = plain.clone();
     for player in &mut chosen.players {
@@ -161,7 +162,10 @@ fn a_random_choice_is_drawn_from_its_factions() {
         player.start.choice = Some(FactionChoice::Random);
     }
     let built = |s| GameState::new(&rules, s, 5).unwrap();
-    assert_eq!(built(&chosen), built(&plain));
+    let (a, b) = (built(&chosen), built(&plain));
+    assert_eq!((a.adventure(), a.heroes()), (b.adventure(), b.heroes()));
+    assert!(a.pool().taverns().iter().all(|t| t.faction.is_some()));
+    assert!(b.pool().taverns().iter().all(|t| t.faction.is_none()));
 }
 
 // covers: TWN-SET-008, TWN-SET-007
@@ -180,8 +184,8 @@ fn a_random_hero_takes_its_owners_pick_then_a_second_draws() {
         assert_eq!(game.hero(HeroId::new(0)).unwrap().hero_type, loner);
         assert_ne!(second, loner);
         assert_eq!(faction_of(&rules, second), castle);
-        assert_eq!(game.hero_pool().status(second), Some(HeroStatus::Taken(0)));
-        assert_eq!(game.hero_pool().status(loner), Some(HeroStatus::Taken(0)));
+        assert_eq!(game.pool().status(second), Some(HeroStatus::Taken(0)));
+        assert_eq!(game.pool().status(loner), Some(HeroStatus::Taken(0)));
     }
     // The same seed draws the same; the draws vary with the seed.
     let seconds: Vec<HeroTypeId> = (0..16).map(|seed| drawn(&rules, &setup, seed, 2)).collect();

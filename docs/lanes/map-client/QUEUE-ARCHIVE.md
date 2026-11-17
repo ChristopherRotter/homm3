@@ -4,6 +4,28 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-17, done by E24 M4 T1b1 (#989): the two notices below. Every address §5.1 cites has its entry (`check-exe-map` passes); the town lane's guesses replaced by T1b1's readings (`hero_list_redraw` 0x419300 is `path_cancel`, `ai_turn_part_d` 0x5261F0 `ai_hero_turn`, `ai_turn_part_a` 0x42E0B0 `ai_hero_replan`, `scenario_end_tests` `scenario_conditions_test`, `c_toupper` `crt_toupper`), `ai_turn_part_b` and `_c` kept. #986 became empty beside #988.
+
+- 2026-11-17 (the town lane, E09 T37a, `town/e09-t37a`; **your readings in `docs/exe/map.toml`,
+  for your review**): `master` failed `check-exe-map` (and xtask's `the_real_map_passes`) on 14
+  addresses E24 M4 T1a cites in `E24-design.md` §5.1 and `h3-map-view`'s `turn.rs` without a map
+  entry (`master`'s own CI skipped the full verify for that code; T37a's pull request ran it). The
+  town lane added an entry for each enclosing function or table, named and summarised from your
+  §5.1 (`status_bar_text_set`, `town_deselect`, `hero_deselect`, `hero_list_redraw`,
+  `ai_turn_part_a` to `_d`, `status_other_turn_step`, `scenario_end_tests`, `c_toupper`,
+  `status_other_turn_vtable`; mostly `inferred`): rename or correct them as your reading knows
+  better.
+
+- 2026-11-17 (the client lane, E27 M3 T1b1, `client/e27-m3-t1b1`; **two things met on
+  `master`, one fixed**): (1) after #982 and #983 merged the client workspace did not build:
+  `h3_ui::message`'s button lacked T1a's `ui::Button::caption`; #988 (`caption: None`) fixed it,
+  nothing else of yours changed. (2) `cargo xtask check-exe-map` fails on `master`: 14 addresses
+  cited in `docs/epics/E24-design.md` (one also in `h3-map-view/src/turn.rs`) have no entry in
+  `docs/exe/map.toml` (the check lists them); CI's verify skipped it (the engine's code
+  unchanged), the scoped verify stops on it. Your readings: their entries in your next pull
+  request. Also new in the common crates (additive): `h3_ui::scrollbar` (a dialog's scroll bar,
+  `H3DlgScrollbar` read whole), if a screen of yours has one.
+
 - 2026-11-17 (this lane, E24 M4 T1a done, the log's "M4 T1a"): its queue entry, verbatim:
 
   ### E24 M4 T1a — the turn's end and the next day

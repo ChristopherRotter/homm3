@@ -113,6 +113,18 @@ fn details<T: PartialEq>(
         .all(|(x, y)| x.details.as_ref().map(f) == y.details.as_ref().map(f))
 }
 
+/// Whether both views' tavern heroes agree on what `f` reads of them, slot by slot.
+fn tavern<T: PartialEq>(
+    a: &GameObservation,
+    b: &GameObservation,
+    f: impl Fn(&TavernHero) -> T + Copy,
+) -> bool {
+    a.tavern
+        .iter()
+        .zip(&b.tavern)
+        .all(|(x, y)| x.as_ref().map(f) == y.as_ref().map(f))
+}
+
 /// The parts, every field of the view in one of them, each with the stubs (`docs/stubs.toml`) of
 /// the gaps that let the fold differ there (SRV-Q26, SRV-Q27 (2)): the gate (E16 M5 T3c2).
 const PARTS: &[Part] = &[
@@ -184,7 +196,20 @@ const PARTS: &[Part] = &[
     Part {
         name: "spell points",
         stubs: &["SRV-STUB-6"],
-        agree: |a, b| details(a, b, |d| d.mana),
+        agree: |a, b| details(a, b, |d| d.mana) && tavern(a, b, |t| t.hero.mana),
+    },
+    // E09 T37a (v70): the tavern heroes, but for their spell points (a day's regain tells
+    // nothing, SRV-STUB-6, above).
+    Part {
+        name: "tavern heroes",
+        stubs: &[],
+        agree: |a, b| {
+            tavern(a, b, |t| {
+                let mut t = t.clone();
+                t.hero.mana = 0;
+                t
+            })
+        },
     },
     Part {
         name: "artifacts",

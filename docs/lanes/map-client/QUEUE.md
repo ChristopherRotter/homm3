@@ -18,17 +18,21 @@ context; a task that grows is cut at a seam agreed with the user. Code readings 
 (`clients/capture/README.md`), never in git. Every oddity of the original a reading or a capture
 finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
-### E24 M4 T1b — a computer player's moves in sight
+### E24 M4 T1b2 — a computer player's moves in sight, played by the viewer
 
-- **Scope:** a computer player's moves where the viewer sees them (the view's scroll to them,
-  their walk at the computer's speed, `enemyMoveTime` in VCMI's terms; read, not assumed; the
-  system options' Computer Walk Speed and Blackout Computer, the client lane's note of
-  2026-11-12); the status window's kind 5 over them, its tile, hint and cursors (read at T1a,
-  design §5.1: on the virtual clock a computer's turn out of sight takes no time, so only a walk
-  in sight shows it); a new sequence recorded in the original (a computer player's turn in
-  sight).
+- **Scope:** T1b cut in two by the user at its start (2026-11-17); T1b1 read and recorded it
+  (design §5.2, the log's "M4 T1b1"). The viewer plays the five `ai-*` sequences of
+  `clients/map/to-record.toml` exactly: a computer player's turn after End Turn from the
+  `[[turn]]` facts (kind 5 built, the view centred on the hero, the cursor hidden from its first
+  seen step) and the timeline (its walk from the `hero` and `walk` lines as M2's, at the
+  sequence's `computer_speed`; kind 5's step by §5.2's rule, checked against the `other` lines;
+  `blackout`), the next day's heroes from the `[[turn]]` tables' `heroes`; the minimap's shield
+  and the blank buttons of a computer's turn read first (`covered_view_redraw` without Blackout,
+  the minimap's draw in a computer's turn); speed 4's single draws on the client's clock; each
+  sequence then moved into `sequences.toml` (`to-record.toml` removed once empty), `drawn
+  --record`; MCL-Q30's sound run; MCL-Q31 built as the original's.
 - **Acceptance:** as T1a's.
-- **Depends on:** T1a (done 2026-11-17). **Status:** next.
+- **Depends on:** T1b1 (done 2026-11-17). **Status:** next.
 
 ### E24 M4 T2 — a visit's results
 
@@ -107,18 +111,6 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
-
-- 2026-11-17 (the adventure lane, E08 T124b1; **`master` red since your #983, every engine pull
-  request's CI with it**): (1) `cargo xtask check-exe-map` and `xtask`'s test
-  `exemap::tests::the_real_map_passes` fail: 14 addresses (12 functions and data items) cited in
-  `docs/epics/E24-design.md` (one also in `clients/crates/h3-map-view/src/turn.rs`) have no entry
-  in `docs/exe/map.toml` (`scripts/exe.py cited` lists them). `master`'s own CI skipped both: its
-  code fingerprint was verified on #985's branch before #983 merged, so it ran only check-rules,
-  check-stubs and check-docs; every pull request that changes engine code runs the full verify
-  and fails (#991, the adventure lane's T124b1, waits on it; the user, 2026-11-17: yours to map).
-  (2) The Clients workflow fails on `master` too: `crates/h3-ui/src/message.rs:313`, your message
-  box's `Button` literal, lacks the field `caption` the client lane's #982 added a minute before
-  your merge.
 
 - 2026-11-17 (the client lane, E27 M2 T8, `client/e27-m2-t8`; **the foundation's API, nothing of
   yours breaks**): `h3_sdl::KeyScan` loses `code` and `h3_sdl::set1` is gone (nothing read them

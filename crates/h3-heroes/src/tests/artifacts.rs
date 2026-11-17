@@ -679,3 +679,45 @@ proptest! {
         }
     }
 }
+
+// covers: TWN-TAV-002
+#[test]
+fn a_backpack_is_equipped_from_its_last_place_to_its_first() {
+    let r = artifacts_ruleset();
+    let a = |k| art(&r, k);
+    let equipped = |d: &HeroDetails| {
+        let mut d = d.clone();
+        let changes = backpack_equipped(&d, &r);
+        apply_all(&r, &mut d, &changes);
+        (d, changes.len())
+    };
+    // Misc 3 and 4 worn: the helm to the head, an eye to misc 5, then no misc for the Thunder.
+    let mut d = other(&r, &["t:eye", "t:tome"]);
+    d.backpack = vec![a("t:thunder"), a("t:eye"), a("t:helm")];
+    let (after, count) = equipped(&d);
+    assert_eq!(count, 4);
+    assert_eq!(after.backpack, vec![a("t:thunder")]);
+    assert_eq!(
+        (after.worn[0], after.worn[5]),
+        (Some(a("t:helm")), Some(a("t:eye")))
+    );
+    assert_eq!(after.worn[8], None);
+    // The Thunder equipped adds its Spell Book (HER-ART-007).
+    let mut d = other(&r, &[]);
+    d.backpack = vec![a("t:thunder")];
+    let (after, _) = equipped(&d);
+    assert_eq!(
+        (after.worn[3], after.worn[8]),
+        (Some(a("t:thunder")), Some(a("t:book")))
+    );
+    assert!(after.backpack.is_empty());
+    // The combination first (the last place) locks the head and the second ring: the helm stays.
+    let mut d = other(&r, &[]);
+    d.backpack = vec![a("t:helm"), a("t:circle")];
+    let (after, count) = equipped(&d);
+    assert_eq!(count, 2);
+    assert_eq!((after.worn[1], after.worn[0]), (Some(a("t:circle")), None));
+    assert_eq!(after.backpack, vec![a("t:helm")]);
+    // An empty backpack: no change.
+    assert!(backpack_equipped(&other(&r, &["t:eye"]), &r).is_empty());
+}
