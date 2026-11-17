@@ -9,6 +9,7 @@
 use alloc::boxed::Box;
 use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use h3_content::{LEVEL_UP_FROM_SEED, Ruleset, SkillId};
 use h3_contracts::{HeroId, HeroSex, PlayerId};
@@ -36,10 +37,10 @@ pub(crate) struct Progression {
     /// The skills the scenario bans, in id order, each once (HER-LVL-003).
     banned: Box<[SkillId]>,
     /// Each hero's level seed, by id (GAM-HER-002): server-only state (ADR-0017 point 5), never
-    /// in an observation or event.
-    seeds: Box<[u8]>,
+    /// in an observation or event. Since E09 T37a a list, which a tavern's new record grows.
+    seeds: Vec<u8>,
     /// Each hero's sex the map gave, by id (`None`: its type's own; GAM-BAT-012).
-    sexes: Box<[Option<HeroSex>]>,
+    sexes: Vec<Option<HeroSex>>,
 }
 
 impl Progression {
@@ -65,7 +66,7 @@ impl Progression {
             level_limit,
             banned: banned.into_iter().collect(),
             seeds,
-            sexes,
+            sexes: sexes.into_vec(),
         }
     }
 
@@ -75,12 +76,8 @@ impl Progression {
     pub(crate) fn record(&mut self, draws: &mut Rng) {
         let (low, high) = SEEDS;
         let seed = u8::try_from(draws.range_inclusive(low, high)).unwrap_or(u8::MAX);
-        let mut seeds = core::mem::take(&mut self.seeds).into_vec();
-        seeds.push(seed);
-        self.seeds = seeds.into_boxed_slice();
-        let mut sexes = core::mem::take(&mut self.sexes).into_vec();
-        sexes.push(None);
-        self.sexes = sexes.into_boxed_slice();
+        self.seeds.push(seed);
+        self.sexes.push(None);
     }
 
     /// The sex the map gave `hero`, if any (GAM-BAT-012).

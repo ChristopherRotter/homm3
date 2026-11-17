@@ -6,7 +6,6 @@
 //! [`GameEvent::TavernPartSeen`]; decisions 134, 135).
 
 use alloc::sync::Arc;
-use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_content::{FactionId, Formation, HeroClassId, HeroTypeId, Ruleset, SkillId};
@@ -179,12 +178,7 @@ pub(crate) fn draw(
     draws: &mut Rng,
 ) -> Option<HeroTypeId> {
     let classes = core.hero_classes();
-    let mut counts = vec![0_u32; classes.len()];
-    for (_, ty) in pool.free_for(core, colour) {
-        if let Some(count) = counts.get_mut(ty.class.index()) {
-            *count += 1;
-        }
-    }
+    let counts = pool.class_counts(classes.len(), colour);
     if counts.iter().all(|&count| count == 0) {
         return None;
     }
@@ -233,10 +227,7 @@ pub(crate) fn draw(
     })?;
     let nth = draws.range_inclusive(1, counts[class]);
     let index = usize::try_from(nth - 1).unwrap_or(usize::MAX);
-    pool.free_for(core, colour)
-        .filter(|(_, ty)| ty.class.index() == class)
-        .nth(index)
-        .map(|(id, _)| id)
+    pool.nth_free(class, colour, index)
 }
 
 /// The week's release (TWN-TAV-002; `new_day_week_events` 0x4C8780, survey §2.3; design note
@@ -339,6 +330,7 @@ fn fill(parts: Parts<'_>, rules: &GameRuleset, colours: &[u8], undrawn: &[Option
                 tavern.slots[slot] = Some(hero_type);
             }
             let store = Arc::make_mut(heroes);
+            let made = pool.record(hero_type).is_none();
             let id = match pool.record(hero_type) {
                 Some(id) => id,
                 None => {
@@ -354,13 +346,20 @@ fn fill(parts: Parts<'_>, rules: &GameRuleset, colours: &[u8], undrawn: &[Option
             let Some(details) = store.get_mut(usize::from(id.raw())).map(Arc::make_mut) else {
                 continue;
             };
-            for change in h3_heroes::backpack_equipped(details, core) {
+            let changes = h3_heroes::backpack_equipped(details, core);
+            for &change in &changes {
                 h3_heroes::apply_change(details, core, change);
             }
-            details.mana = h3_heroes::max_mana(details, core);
+            // A new record's defaults have them full already (GAM-HER-001).
+            if !(made && changes.is_empty()) {
+                details.mana = h3_heroes::max_mana(details, core);
+            }
             let (army, machines) = starting_army(ty, params, draws).unwrap_or_default();
             wear_machines(details, core, &machines);
-            pool.set_army(hero_type, army);
+            // Full unless a war machine's artifact raised the maximum after them (none of the
+            // packs' does).
+            let full = machines.is_empty() || details.mana >= h3_heroes::max_mana(details, core);
+            pool.set_army(hero_type, army, full);
         }
     }
 }
@@ -463,32 +462,33 @@ pub(crate) fn views(state: &GameState, player: PlayerId) -> [Option<TavernHeroVi
 /// The tavern heroes at `player`'s turn start (TWN-TAV-005; `next_player_turn` 0x4C6FE0, survey
 /// §2.3; design note §68), after its heroes on the map and its garrison heroes (none draws): each
 /// one's day's maximum and points left its land points, `h3_adventure::day_points` over its
-/// details and its away army (ADR-0013 point 13; no week marks). The pool is written only where
-/// they change.
+/// details and its away army (ADR-0013 point 13; no week marks), for each whose army or record
+/// changed since its points were set ([`super::pool::Away::stale`]: nothing else changes what the
+/// derivation reads off the map, so the others' are its value already).
 // rule: TWN-TAV-005
 pub(crate) fn start_turn(state: &mut GameState, rules: &GameRuleset, player: PlayerId) {
     let (core, part) = (rules.core(), rules.adventure());
     let pool = state.pool();
     let slots = pool.tavern(player).map_or([None; 2], |t| t.slots);
-    let points: Vec<(HeroTypeId, u32)> = slots
-        .iter()
-        .flatten()
-        .filter_map(|&hero_type| {
-            let away = pool.away(hero_type)?;
-            let id = pool.record(hero_type)?;
-            let details = state.heroes().get(usize::from(id.raw())).map(|d| &**d);
-            let points = h3_adventure::day_points(core, part, details, &away.army, 0);
-            (away.movement != points || away.max_movement != points).then_some((hero_type, points))
-        })
-        .collect();
-    if points.is_empty() {
+    let points = slots.map(|slot| {
+        let hero_type = slot?;
+        let away = pool.away(hero_type).filter(|away| away.stale)?;
+        let id = pool.record(hero_type)?;
+        let details = state.heroes().get(usize::from(id.raw())).map(|d| &**d);
+        Some((
+            hero_type,
+            h3_adventure::day_points(core, part, details, &away.army, 0),
+        ))
+    });
+    if points.iter().all(Option::is_none) {
         return;
     }
     let pool = Arc::make_mut(state.taverns().pool);
-    for (hero_type, points) in points {
+    for (hero_type, points) in points.into_iter().flatten() {
         if let Some(away) = pool.away_mut(hero_type) {
             away.movement = points;
             away.max_movement = points;
+            away.stale = false;
         }
     }
 }

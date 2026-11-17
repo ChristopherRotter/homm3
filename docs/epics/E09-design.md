@@ -2130,6 +2130,15 @@ it stands (`h3-game`'s `town/pool.rs`, `setup.rs`, `state/battle.rs`; `h3-towns`
 - **The hash** (the game state hash, `cross-lane`): the pool's encoding gains per type its record
   (its id and away record) and per player its faction and its two slots with their marks; the
   taverns' stream's position (§63).
+- *As built* (T37a, decisions 133, 136): `HeroStatus::Offered`; each pool entry its record
+  (`Option<HeroId>`: the build's placed and generated heroes' by type, the first of a repeated type,
+  a drawn type's from its first draw) and its away record (`Away`: points left, the day's maximum,
+  formation, tactics, army; a new one with no points, loose, tactics on); per player a `Tavern`
+  (faction, two slots and their marks): **a slot names its hero's type**, its entry the record (the
+  agent's call; the observation names the id). `Progression::record` grows the level seeds and the
+  sexes by one. The factions come from the build's resolved choices (`HeroPool::set_factions`); a
+  `Random` choice no start read is drawn at the start's fill. Game state hash **v33**: the pool's
+  encoding as above, the taverns' stream after the towns'.
 
 ### 62. The draw (TWN-TAV-001; `h3-game`'s `town/tavern.rs`, new; `tavern_hero_draw` 0x4BB5E0)
 
@@ -2155,6 +2164,8 @@ marks the type `Offered`).
 
 The SoD edition's Conflux rule (step 3 of the reading) is not modelled: dead in this build
 (edition 3), E11's lead. The forced class (the tutorial's) is not followed.
+- *As built* (T37a): `town::tavern::draw`, as the steps; a faction without a town record
+  weighs every class 1 too.
 
 ### 63. The fills: the game's start and the week (TWN-TAV-002; GAM-CAL-002 amended)
 
@@ -2186,6 +2197,16 @@ The SoD edition's Conflux rule (step 3 of the reading) is not modelled: dead in 
   `GameState::new` after the setup stream's last draw (the Portals') and the adventure's start of
   the game, before day 1's start-of-day step (*agent's call*).
 - **Told** (T33b): each player's changed slots to that player.
+- *As built* (T37a, decision 136): the release and the fill in `town::tavern` (`at_start`,
+  `weekly`); per filled slot the original's order: the type offered, a new record (the next id,
+  `setup::hero_details`' defaults with the experience drawn, then `Progression::record`'s seed),
+  the backpack equipped (`h3_heroes::backpack_equipped`, ADR-0013 point 14.5), the spell points full,
+  then `setup::starting_army` (empty for a type with more starting slots than an army) with
+  `setup::wear_machines`: the same draws as the text's order. The week's after `grow_week`, before
+  the adventure's week step; the neutral garrisons' week and the Portals stay after it, as built
+  before (the text's parenthesis named them before it). The start's after the build's state is
+  made (after the adventure's start of the game and of day 1, which read no tavern hero), before
+  the first group's turn; it releases nothing (no slot is held).
 
 ### 64. The town's hire (TWN-TAV-003; `TownCommand::Hire { town, slot }`; `town_tavern_hire` 0x5C12E0)
 
@@ -2304,6 +2325,10 @@ hero reads the facts.
   the week's release, before the clear, still spares a hero that came back after its owner's
   turn ended. The clear writes the pool's block only when a mark is set (a fork's day costs
   nothing more otherwise).
+- *As built* (T37a): `town::tavern::start_turn` after the adventure's turn start (its heroes
+  on the map and its garrison heroes; none draws); `clear_marks` at `EndTurn` for the player and
+  in the day's advance after the week's block for all, each writing only where a mark is set. No
+  mark is set before T38b (a test helper sets one).
 
 ### 69. The dismissal (GAM-MAN-003; `Manage::Dismiss { hero }`; decision 112; survey §12)
 
@@ -2486,6 +2511,21 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   127** (T35's start) a tavern hero's spell points, in its details, regain at the day's start with
   no event, as an own hero's on the map (`regain_mana` tells nothing): the gate's `spell points`
   part (`SRV-STUB-6`) covers the tavern views too, or T37a tells both (with the server lane).
+- *As built* (T37a, decisions 134, 135): **the view is the tavern's held hero screen's**
+  (`tavern_dialog_proc` 0x5D7D7D opens `hero_screen_show` as a held popup, 0x4E1969; the manual and
+  VCMI's `CTavernWindow` agree): `TavernHeroView { hero: TavernHero, army, skills, artifacts }`,
+  the head (`Copy`) the id, type, level, experience, primary skills, spell points, the backpack's
+  count (`carried`), formation and tactics; the artifacts worn by position, then the backpack's
+  first `TAVERN_BACKPACK_SHOWN` (5) places; **no learned spells, no offered levels** (not
+  `Arc<HeroDetails>` as drafted). `GameObservation::tavern: [Option<TavernHeroView>; 2]`.
+  **`TavernOffered { player, slot, hero: Option<TavernHero> }`** then **`TavernPartSeen { player,
+  slot, part: TavernPart }`** per stack, skill and artifact in that order (`GameEvent` stays
+  `Copy`), each slot whose view the week changed, for a recording sink only. Protocol **v70** (the
+  wire's `TavernHero`, `TavernHeroHead`, `TavernPart`, both events, their fold); the fold gate's
+  part **tavern heroes** exact, its **spell points** part (`SRV-STUB-6`) covering the tavern views'
+  too; `h3-map`'s told-views property folds them likewise. For T38a: a hire's owner learns the
+  hired hero's spells and offered levels from no tavern view, so its `HeroHired` (or parts after
+  it) must tell them for the fold to stay exact.
 
 ### 76. The env and the protocol
 

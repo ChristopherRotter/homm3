@@ -152,6 +152,12 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 
 ## The game's setup (`h3-game` `src/town*`, `setup.rs`)
 
+- **A setup that allows hero types builds tavern heroes** (E09 T37a): the start's fill offers up to
+  two types per player and makes their records after the setup's heroes, so a test reading
+  `heroes().len()` or a type's `Free` status after `GameState::new` meets them (`Offered`); count
+  `adventure().heroes()` instead. `crate::tests::setup()` allows none (no fill); `towns_setup`
+  allows every type.
+
 - **A setup's towns match its map's** (E09 T8a1, `GameSetupError::TownCount`): a `GameSetup` whose static map has objects of the type `town` needs one `TownSetup` per such object, in object order; a test or tool that builds a game from a static layer alone gives each a neutral town record (`h3-map`'s census example and `h3-cli`'s `src/ai/census.rs` do).
 - **An `AdventureSetup` with towns gives one garrison and one faction per town** (`SetupError::Garrisons`, since E09 T11 `TownFactions`, checked first): a test that builds the adventure alone with towns sets both (`state/tests/towns.rs`' `town_setup`, `reach/tests.rs`); the game gives step 2's factions.
 - **The game's town tests give the part's dwellings and forts no map slot** (`town/tests.rs`'
@@ -159,3 +165,17 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   `GameState::new` with `towns_mut().build(town, building, part, core, false)` (the first
   creatures come with it). An adventure object type a test needs (a dwelling, the months) goes
   through `rules_with_adventure`'s edit.
+
+## The taverns (`h3-game` `src/town/tavern.rs`, `pool.rs`)
+
+- **A write of a tavern hero's record or away army** (a fill; from T38 a return, a hire's
+  replacement) sets `Away::stale` and clears `Away::full` unless its spell points end at their
+  maximum: the turn start derives only stale points and the day's regain skips full records (E09
+  T37a: both cost the week-start benches tens of per cent). A placement on the map (T38a) hands
+  the away record to the adventure: drop it, or the regain skips a hero on the map.
+- **The week's fill is the week-start benches' largest part** (E09 T37a, re-baselined:
+  `day-start-builds-36` +99 % on `master`, the XL day starts +13 to +17 %): the draws' counting
+  pass, about 4 Ir a type per draw (an `Entry` without the records changed no count: callgrind
+  counts instructions, not cache misses), the first week's new records (`setup::hero_details`)
+  and the new tavern heroes' first points. A design change there: compare per function with
+  `master` (`homm3-bench-regression`).

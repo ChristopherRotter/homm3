@@ -303,10 +303,16 @@ impl GameState {
     // rule: HER-MAN-002
     fn regain_mana(&mut self, rules: &GameRuleset) {
         let core = rules.core();
+        // E09 T37a: a tavern record at its maximum since its fill stays as it is (`Away::full`).
+        let full = self.pool.full_records();
         let changed: Vec<(usize, u16)> = self
             .heroes
             .iter()
             .enumerate()
+            .filter(|&(index, _)| {
+                let id = u16::try_from(index).map(h3_contracts::HeroId::new);
+                id.is_ok_and(|id| full.binary_search(&id).is_err())
+            })
             .map(|(index, details)| (index, h3_heroes::day_mana(details, core)))
             .filter(|&(index, mana)| self.heroes[index].mana != mana)
             .collect();

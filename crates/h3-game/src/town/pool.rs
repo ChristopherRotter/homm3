@@ -7,7 +7,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_content::{FactionId, Formation, HeroType, HeroTypeId, Ruleset};
+use h3_content::{FactionId, Formation, HeroClassId, HeroType, HeroTypeId, Ruleset};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
@@ -46,6 +46,17 @@ pub(crate) struct Away {
     pub(crate) tactics: bool,
     /// Its army, by slot.
     pub(crate) army: Vec<ArmyStack>,
+    /// Whether its points need its owner's next turn start (TWN-TAV-005): its army or its record
+    /// changed since they were set (a fill; from E09 T38b a return). The turn start derives only
+    /// these: nothing else changes what the derivation reads while the type is off the map (E09
+    /// T37a, `bench-check`: a derivation at every turn start cost `day-start-builds-36` +11 %).
+    pub(crate) stale: bool,
+    /// Whether its record's spell points are at their maximum, its record unchanged since a fill
+    /// set them so (from E09 T38b also a leave without return): the day's regain leaves such a
+    /// record as it is (`h3_heroes::day_mana` never changes points at the maximum), so it skips
+    /// it (E09 T37a, `bench-check`: the regain over every tavern record cost `day-start-builds-36`
+    /// +55 %). A write of the record clears it.
+    pub(crate) full: bool,
 }
 
 impl Away {
@@ -58,6 +69,8 @@ impl Away {
             formation: Formation::Loose,
             tactics: true,
             army,
+            stale: true,
+            full: false,
         }
     }
 }
@@ -76,15 +89,22 @@ pub(crate) struct Tavern {
     pub(crate) returning: [bool; 2],
 }
 
-/// A hero type's entry in the pool.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// A hero type's entry in the pool: what a draw reads (its [`Record`] beside it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Entry {
     /// Where it stands.
     status: HeroStatus,
     /// The colours that may take it (bit `c`: colour `c`).
     mask: u8,
-    /// Its record in the store of heroes once it has one (E09 T37a, decision 109): a placed or
-    /// generated hero's id from the build, a drawn type's from its first draw; kept from then on.
+    /// Its hero class (the core's; the draw's counts read it without the hero types).
+    class: HeroClassId,
+}
+
+/// A hero type's record in the pool (E09 T37a, design note §61), beside its [`Entry`].
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct Record {
+    /// Its record in the store of heroes once it has one (decision 109): a placed or generated
+    /// hero's id from the build, a drawn type's from its first draw; kept from then on.
     hero: Option<HeroId>,
     /// Its away record while it is a tavern hero.
     away: Option<Away>,
@@ -98,6 +118,7 @@ struct Entry {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct HeroPool {
     types: Vec<Entry>,
+    records: Vec<Record>,
     players: Vec<Tavern>,
 }
 
@@ -111,14 +132,14 @@ impl HeroPool {
     /// ruleset does not have is skipped. No type has a record yet, every player an empty tavern.
     // rule: TWN-SET-005
     pub(crate) fn new(core: &Ruleset, setup: &GameSetup) -> Self {
-        let entry = Entry {
+        let entry = |ty: &HeroType| Entry {
             status: HeroStatus::Out,
             mask: 0xFF,
-            hero: None,
-            away: None,
+            class: ty.class,
         };
         let mut pool = Self {
-            types: vec![entry; core.hero_types().len()],
+            types: core.hero_types().iter().map(entry).collect(),
+            records: vec![Record::default(); core.hero_types().len()],
             players: vec![Tavern::default(); setup.players.len()],
         };
         for &id in &setup.allowed_heroes {
@@ -189,8 +210,8 @@ impl HeroPool {
     /// where a setup repeats one.
     pub(crate) fn record_heroes(&mut self, types: &[(HeroTypeId, &HeroType)]) {
         for (&(id, _), hero) in types.iter().zip((0..=u16::MAX).map(HeroId::new)) {
-            if let Some(entry) = self.types.get_mut(id.index()) {
-                entry.hero.get_or_insert(hero);
+            if let Some(record) = self.records.get_mut(id.index()) {
+                record.hero.get_or_insert(hero);
             }
         }
     }
@@ -205,39 +226,76 @@ impl HeroPool {
 
     /// `id`'s record, if it has one.
     pub(crate) fn record(&self, id: HeroTypeId) -> Option<HeroId> {
-        self.types.get(id.index()).and_then(|entry| entry.hero)
+        self.records.get(id.index()).and_then(|record| record.hero)
     }
 
     /// `id`'s record becomes `hero` (a first draw's, design note §61).
     pub(super) fn set_record(&mut self, id: HeroTypeId, hero: HeroId) {
-        if let Some(entry) = self.types.get_mut(id.index()) {
-            entry.hero = Some(hero);
+        if let Some(record) = self.records.get_mut(id.index()) {
+            record.hero = Some(hero);
         }
     }
 
     /// `id`'s away record, if it has one.
     pub(crate) fn away(&self, id: HeroTypeId) -> Option<&Away> {
-        self.types
+        self.records
             .get(id.index())
-            .and_then(|entry| entry.away.as_ref())
+            .and_then(|record| record.away.as_ref())
     }
 
     /// `id`'s away record to change, if it has one.
     pub(crate) fn away_mut(&mut self, id: HeroTypeId) -> Option<&mut Away> {
-        self.types
+        self.records
             .get_mut(id.index())
-            .and_then(|entry| entry.away.as_mut())
+            .and_then(|record| record.away.as_mut())
     }
 
-    /// `id`'s army becomes `army` (a fill's, TWN-TAV-002): its away record's, a new one
-    /// ([`Away::new`]) for a type without.
-    pub(super) fn set_army(&mut self, id: HeroTypeId, army: Vec<ArmyStack>) {
-        if let Some(entry) = self.types.get_mut(id.index()) {
-            match &mut entry.away {
-                Some(away) => away.army = army,
-                None => entry.away = Some(Away::new(army)),
+    /// `id`'s army becomes `army` at a fill (TWN-TAV-002): its away record's, a new one
+    /// ([`Away::new`]) for a type without; its points stale, its record `full` as the fill left
+    /// its spell points ([`Away::full`]).
+    pub(super) fn set_army(&mut self, id: HeroTypeId, army: Vec<ArmyStack>, full: bool) {
+        if let Some(record) = self.records.get_mut(id.index()) {
+            let away = record.away.get_or_insert_with(|| Away::new(Vec::new()));
+            away.army = army;
+            away.stale = true;
+            away.full = full;
+        }
+    }
+
+    /// The records whose spell points are at their maximum, unchanged since ([`Away::full`]), in
+    /// id order.
+    pub(crate) fn full_records(&self) -> Vec<HeroId> {
+        let mut full: Vec<HeroId> = self
+            .records
+            .iter()
+            .filter(|record| record.away.as_ref().is_some_and(|away| away.full))
+            .filter_map(|record| record.hero)
+            .collect();
+        full.sort_unstable();
+        full
+    }
+
+    /// Per core hero class by index, how many types of the class are free and may be taken by
+    /// `colour` (the tavern's draw, TWN-TAV-001).
+    pub(super) fn class_counts(&self, classes: usize, colour: u8) -> Vec<u32> {
+        let mut counts = vec![0_u32; classes];
+        for entry in self.types.iter().filter(|e| e.takeable(colour)) {
+            if let Some(count) = counts.get_mut(entry.class.index()) {
+                *count += 1;
             }
         }
+        counts
+    }
+
+    /// The `n`-th (from 0) type of `class` that is free and may be taken by `colour`, in type
+    /// order.
+    pub(super) fn nth_free(&self, class: usize, colour: u8, n: usize) -> Option<HeroTypeId> {
+        self.types
+            .iter()
+            .zip(0..)
+            .filter(|(entry, _)| entry.class.index() == class && entry.takeable(colour))
+            .nth(n)
+            .and_then(|(_, index)| HeroTypeId::from_index(index))
     }
 
     /// The players' tavern parts, by player id.
@@ -265,13 +323,7 @@ impl HeroPool {
             .iter()
             .zip(&self.types)
             .zip(0..)
-            .filter(move |&((_, entry), _)| {
-                entry.status == HeroStatus::Free
-                    && entry
-                        .mask
-                        .checked_shr(u32::from(colour))
-                        .is_some_and(|m| m & 1 == 1)
-            })
+            .filter(move |&((_, entry), _)| entry.takeable(colour))
             .filter_map(|((ty, _), index)| HeroTypeId::from_index(index).map(|id| (id, ty)))
     }
 
@@ -306,17 +358,29 @@ impl HeroPool {
     }
 }
 
+impl Entry {
+    /// Whether the type is free and `colour` may take it (its mask has the colour's bit).
+    fn takeable(&self, colour: u8) -> bool {
+        self.status == HeroStatus::Free
+            && self
+                .mask
+                .checked_shr(u32::from(colour))
+                .is_some_and(|m| m & 1 == 1)
+    }
+}
+
 impl CanonicalHash for HeroPool {
     /// The game state hash's encoding (v23, E09 T7b1; v33, E09 T37a): the number of types, then
     /// each type in index order: where it stands (0 free, 1 taken and its colour, 2 a prisoner's,
     /// 3 out, since v33 4 offered) and its colour mask, since v33 its record (0 none, 1 and its id)
     /// and its away record (0 none, 1 and its points left, the day's maximum, its formation, 1
-    /// tight, its tactics flag, its army's length and each stack's slot, creature and count);
+    /// tight, its tactics flag, whether its points are stale and its record full, its army's
+    /// length and each stack's slot, creature and count);
     /// since v33 the number of players, then each player's faction (0 none, 1 and its id), its two
     /// slots (0 empty, 1 and the type) and their returning marks.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_len(self.types.len());
-        for entry in &self.types {
+        for (entry, record) in self.types.iter().zip(&self.records) {
             match entry.status {
                 HeroStatus::Free => h.write_u8(0),
                 HeroStatus::Taken(colour) => {
@@ -328,14 +392,14 @@ impl CanonicalHash for HeroPool {
                 HeroStatus::Offered => h.write_u8(4),
             }
             h.write_u8(entry.mask);
-            match entry.hero {
+            match record.hero {
                 None => h.write_u8(0),
                 Some(hero) => {
                     h.write_u8(1);
                     h.write_u16(hero.raw());
                 }
             }
-            match &entry.away {
+            match &record.away {
                 None => h.write_u8(0),
                 Some(away) => {
                     h.write_u8(1);
@@ -343,6 +407,8 @@ impl CanonicalHash for HeroPool {
                     h.write_u32(away.max_movement);
                     h.write_bool(away.formation == Formation::Tight);
                     h.write_bool(away.tactics);
+                    h.write_bool(away.stale);
+                    h.write_bool(away.full);
                     h.write_len(away.army.len());
                     for stack in &away.army {
                         h.write_u8(stack.slot);

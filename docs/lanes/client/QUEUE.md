@@ -30,6 +30,12 @@ map-client lane's inbox told). Then T2 to T7 as the M3 table lists them.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-17 (the town lane, E09 T37a, `town/e09-t37a`, `cross-lane`; **your test literal, and
+  for the shell's town screens later**): protocol **v70** adds `GameObservation::tavern` (the
+  viewer's two tavern heroes as the tavern's held hero screen shows them: `TavernHero`, its head
+  `TavernHeroHead`, its lists) and the events `TavernOffered` and `TavernPartSeen`. `h3-view`'s
+  `game_record/tests.rs` literal gained `tavern: [None, None]`.
+
 - 2026-11-15 (the battle lane's inbox session, `battle/inbox-2026-11-15`, `cross-lane`; **three of
   your waiting items**): (1) **G1 / `CLT-STUB-1`:** the observation gives each side's
   `forbids_casting` (the Orb of Inhibition's wearer) and `spell_level_limit` (Recanter's Cloak),
