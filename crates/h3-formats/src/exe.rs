@@ -32,6 +32,9 @@ pub struct KnownBuild {
     pub wall_shots: WallShotTables,
     /// The towns' tables (E09 T5b2b1).
     pub towns: TownTables,
+    /// Virtual address of a creature bank's battle hexes, `i32` × [`BANK_STACKS`] per side, the
+    /// attacker first (`bank_battle_hexes`, E08 T124a).
+    pub bank_hexes_va: u32,
 }
 
 /// A one-byte immediate operand of an instruction: the instruction's address and its bytes before
@@ -387,6 +390,7 @@ pub const KNOWN_BUILDS: &[KnownBuild] = &[KnownBuild {
             opcode: &[0x83, 0xF8],
         },
     },
+    bank_hexes_va: 0x0063_D0E0,
 }];
 
 /// Size of one usual obstacle type record (§7.26).
@@ -522,6 +526,41 @@ pub fn obstacle_data_at(
         absolute,
         boats,
     })
+}
+
+/// The stacks a side places in a creature bank's battle, one hex each (`bank_battle_hexes`).
+pub const BANK_STACKS: usize = 7;
+
+/// Reads a creature bank's battle hexes of a known build (§7.62; E08 T124a): per side, the
+/// attacker first, the hex of the stack whose ordinal among the side's filled slots is the index
+/// (`bank_battle_hexes` 0x63D0E0, read by the battle's setup at 0x4636B7 when the battle's bank
+/// flag is set).
+///
+/// # Errors
+/// Unknown build, an unmapped table, a hex outside `0..=255`.
+pub fn bank_hexes(data: &[u8]) -> Result<[[u8; BANK_STACKS]; 2], FormatError> {
+    let (build, image) = identify(data)?;
+    bank_hexes_at(&image, build.bank_hexes_va)
+}
+
+/// Reads the bank hex table at `va` (exposed for tests with synthetic images).
+///
+/// # Errors
+/// As [`bank_hexes`], without the build check.
+pub fn bank_hexes_at(image: &PeImage<'_>, va: u32) -> Result<[[u8; BANK_STACKS]; 2], FormatError> {
+    let base = image.file_offset(va).ok_or(FormatError::OutOfRange {
+        what: "bank hex table address",
+        value: u64::from(va),
+    })?;
+    let mut out = [[0; BANK_STACKS]; 2];
+    for (i, hex) in out.iter_mut().flatten().enumerate() {
+        let value = le::i32_at(image.data, base + 4 * i, "bank hex table")?;
+        *hex = u8::try_from(value).map_err(|_| FormatError::OutOfRange {
+            what: "bank hex",
+            value: u64::from(value.unsigned_abs()),
+        })?;
+    }
+    Ok(out)
 }
 
 /// The siege's tables and constants of a build (§7.27, §7.28).
@@ -1389,6 +1428,31 @@ mod tests {
         ] {
             assert!(obstacle_data_at(&pe, &t).is_err());
         }
+    }
+
+    #[test]
+    fn reads_the_bank_hexes_from_a_synthetic_image() {
+        let hexes: [i32; 2 * BANK_STACKS] =
+            [57, 61, 90, 93, 96, 125, 129, 15, 185, 172, 2, 100, 87, 8];
+        let p: Vec<u8> = hexes.iter().flat_map(|h| h.to_le_bytes()).collect();
+        let img = build_test_image(1, &p);
+        let pe = PeImage::parse(&img).unwrap();
+        assert_eq!(
+            bank_hexes_at(&pe, 0x0040_1000).unwrap(),
+            [
+                [57, 61, 90, 93, 96, 125, 129],
+                [15, 185, 172, 2, 100, 87, 8]
+            ]
+        );
+        // A hex outside a byte, a table cut short, an unmapped table.
+        for bad in [-1i32, 256] {
+            let mut q = p.clone();
+            q[52..56].copy_from_slice(&bad.to_le_bytes());
+            let img = build_test_image(1, &q);
+            assert!(bank_hexes_at(&PeImage::parse(&img).unwrap(), 0x0040_1000).is_err());
+        }
+        assert!(bank_hexes_at(&pe, 0x0040_1004).is_err());
+        assert!(bank_hexes_at(&pe, 0x10).is_err());
     }
 
     #[test]

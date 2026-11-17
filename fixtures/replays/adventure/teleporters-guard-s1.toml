@@ -9,7 +9,7 @@ commands = [
     "0 end-turn",
     "1 end-turn",
 ]
-checkpoints = ["0xb75b9e05feb057c5"]
+checkpoints = ["0xe2b0bf5befb16223"]
 
 [replay]
 format = 16

@@ -82,6 +82,12 @@ pub struct BattleParamsDef {
     /// supply, first aid; a two-hex machine's position is the hex behind it, BAT-GEO-002); the
     /// defender's are mirrored (BAT-WAR-001).
     pub war_machine_positions: Vec<[u8; 2]>,
+    /// The hexes `[x, y]` of a creature bank's battle (pack format v53, E08 T124a; BAT-SET-001,
+    /// ADR-0022 point 8): `bank_positions[side][i]` is the position of the side's i-th stack by
+    /// its ordinal among the filled slots, the attacker first, one per army slot, not mirrored
+    /// (a two-hex stack's rear hex, its front one column toward the enemy, BAT-GEO-002; the
+    /// original's `bank_battle_hexes` 0x63D0E0).
+    pub bank_positions: [Vec<[u8; 2]>; 2],
     /// Starting rows of the loose formation: `loose_formation[n - 1][i]` is the row of the i-th
     /// stack (by slot order) of an army with `n` stacks (BAT-SET-001).
     pub loose_formation: Vec<Vec<u8>>,

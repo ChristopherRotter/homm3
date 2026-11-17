@@ -109,6 +109,10 @@ pub(crate) fn inputs() -> Inputs {
             garrison: Vec::new(),
             dwelling_2_chance: 30,
         },
+        bank_hexes: [
+            [57, 61, 90, 93, 96, 125, 129],
+            [15, 185, 172, 2, 100, 87, 8],
+        ],
         town_names: towns::Tables {
             neutral: single(&[]),
             special: single(&[]),
@@ -1084,6 +1088,19 @@ fn inconsistencies_are_errors() {
         error.contains("on a sod battlefield and on base"),
         "{error}"
     );
+}
+
+#[test]
+fn harvests_the_bank_positions() {
+    // The executable's hexes by side and ordinal as `[x, y]`, one per army slot (E08 T124a).
+    let h = harvest(&inputs(), &gap()).unwrap();
+    let (base, ab, sod) = (pack(&h, "base"), pack(&h, "ab"), pack(&h, "sod"));
+    assert!(base.battle.contains(
+        "bank_positions = { attacker = [[6, 3], [10, 3], [5, 5]], defender = [[15, 0], [15, 10], [2, 10]] }\n"
+    ));
+    let r = compile(&[base, ab, sod], "base:faithful").unwrap();
+    assert_eq!(r.battle().bank_position(1, 2), Some((2, 10)));
+    assert_eq!(r.battle().bank_position(1, 3), None);
 }
 
 #[test]

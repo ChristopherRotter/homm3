@@ -105,10 +105,11 @@ pub fn generate_obstacles(
 }
 
 /// Generates the obstacles of a battle of `setup` on its terrain and its special battlefield
-/// (BAT-GEO-004), or none without a terrain or at a town with a fort (BAT-SIE-001: none in a
+/// (BAT-GEO-004), or none without a terrain, at a town with a fort (BAT-SIE-001: none in a
 /// siege under SoD rules; the usual ones a Stronghold with a Citadel gets under older rules,
-/// survey S-29, are for whoever derives the siege). An unknown battlefield key counts as none
-/// (the setup refuses it when the battle starts).
+/// survey S-29, are for whoever derives the siege) or in a creature bank's battle (the original's
+/// `battle_obstacles` 0x4662B3, before the boats' hexes too; ADR-0022 point 8). An unknown
+/// battlefield key counts as none (the setup refuses it when the battle starts).
 pub fn generate_setup_obstacles(
     ruleset: &BattleRuleset,
     setup: &BattleSetup,
@@ -121,7 +122,7 @@ pub fn generate_setup_obstacles(
     let walled = setup.siege.is_some_and(|s| s.fort >= FortLevel::Fort);
     setup
         .terrain
-        .filter(|_| !walled)
+        .filter(|_| !walled && !setup.creature_bank)
         .map_or_else(Vec::new, |t| {
             generate_battlefield_obstacles(ruleset, t, battlefield, rng)
         })

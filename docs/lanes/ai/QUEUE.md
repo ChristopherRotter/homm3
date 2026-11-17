@@ -73,6 +73,16 @@ E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last p
 lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's fair system actor
 (folded into T14).
 
+**From the adventure lane** (E08 T124a):
+
+- 2026-11-17 (the adventure lane, E08 T124a, `adventure/e08-t124a`, `cross-lane` with the user's
+  consent, E08 decision 353; **your paths changed, for your information; none of your versions
+  moved**): the battle part's hash moved (v8, `bank_positions`; `engine.battle` `c14c573e9d2ee26f`
+  → `fdf3b53f6f885cde`), so both bots tables were regenerated (only their `engine` line moved;
+  the policy, the encodings and the C ABI unchanged). The battle state hash is v56 (a creature
+  bank's flag and supply; no observation field). Your run records under `python/records/` keep
+  the hash their runs used.
+
 **From the town lane** (E09 T33b):
 
 - 2026-11-16 (the town lane, E09 T33b, `town/e09-t33b`, docs only; **planned `cross-lane` changes

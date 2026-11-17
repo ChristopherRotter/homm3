@@ -4,29 +4,24 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 and T118b2 done 2026-11-15, decisions 340 to 342; the checkpoint ADV-Q54, decisions 343 to 345: the note, the drafts and the cut T119 to T126 accepted). Round 2: T119 done 2026-11-15 (`adventure/e08-t119`, `cross-lane`, whole: decision 346; the writer's banks, the spec's pictures and `slots`, batch E13's spec). Round 3: T120 done 2026-11-16 (`adventure/e08-t120`, alone: decision 347; the harness's reads, the recipe, three runs, the template filled); T121 done 2026-11-16 (`adventure/e08-t121`, whole, docs only: survey `E08-banks.md` §14, every row as predicted; the checkpoint ADV-Q55, decisions 348, 349). Round 4: T122 done 2026-11-16 (`shared/e08-t122`, `cross-lane`, whole: decision 350; the three drafts in ADR-0013, -0016, -0017, -0022 with batch E13's rows, the glossary, the security lines, `BattleSetup::creature_bank`). Round 5: T123a done 2026-11-16 (`adventure/e08-t123a`, `cross-lane`, alone: decision 351; the kind, the packs, the seventh check; part v21); T123b done 2026-11-16 (`adventure/e08-t123b`, `cross-lane`, whole: decision 352; the import, the census, map import v24). Round 6: T124 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 and T118b2 done 2026-11-15, decisions 340 to 342; the checkpoint ADV-Q54, decisions 343 to 345: the note, the drafts and the cut T119 to T126 accepted). Round 2: T119 done 2026-11-15 (`adventure/e08-t119`, `cross-lane`, whole: decision 346; the writer's banks, the spec's pictures and `slots`, batch E13's spec). Round 3: T120 done 2026-11-16 (`adventure/e08-t120`, alone: decision 347; the harness's reads, the recipe, three runs, the template filled); T121 done 2026-11-16 (`adventure/e08-t121`, whole, docs only: survey `E08-banks.md` §14, every row as predicted; the checkpoint ADV-Q55, decisions 348, 349). Round 4: T122 done 2026-11-16 (`shared/e08-t122`, `cross-lane`, whole: decision 350; the three drafts in ADR-0013, -0016, -0017, -0022 with batch E13's rows, the glossary, the security lines, `BattleSetup::creature_bank`). Round 5: T123a done 2026-11-16 (`adventure/e08-t123a`, `cross-lane`, alone: decision 351; the kind, the packs, the seventh check; part v21); T123b done 2026-11-16 (`adventure/e08-t123b`, `cross-lane`, whole: decision 352; the import, the census, map import v24). Round 6: T124a done 2026-11-17 (`adventure/e08-t124a`, `cross-lane`, whole: decision 353; the bank battle in `h3-battle`, the battle pack's `bank_positions`); T124b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T124 — the bank battle; the state, the draw, the visit, the battle and the reward** (round 6;
-design `E08-design.md` §4 to §8, §12 to §15, §18, §20)
+**E08 T124b — the state, the draw, the visit, the battle and the reward** (round 6; design
+`E08-design.md` §4 to §8, §12, §14, §15, §18, §20)
 
-- **Scope:** T124a (`adventure/e08-t124a`, `cross-lane`, first, the battle lane reviewing): the
-  bank battle in `h3-battle` with `BattleSetup::creature_bank` (§13: no tactics phase, no
-  obstacles and a setup refusing them or a siege beside the flag, no war machines on the field and
-  the Ammo Cart's supply kept, the layout by `bank_positions`; BAT-SET-001, BAT-TAC-001,
-  BAT-GEO-004, BAT-WAR-001, BAT-WAR-004 amended), the battle pack's `bank_positions` (pack format
-  v53, shared: likely a `shared/` part first), battle state hash v56, battle part v8, the battle's
-  properties, golden replays and bench. T124b (`adventure/e08-t124b`): the state and the draw (§4,
-  §5; adventure state hash v26, ADV-BNK-002), the visit and its offers (§6, ADV-BNK-003, D-66),
-  the battle's two halves (§7, §14: `Defender::Bank`, the flag, the deck; ADV-BNK-004,
-  GAM-BAT-001), the reward as a won battle's rest (§8, §15; ADV-BNK-005, GAM-DEC-007), the
-  once-marks (§12, HER-ADV-008). Each part's cut confirmed at its start; T124a merged before
-  T124b's tests.
-- **Inputs:** design §4 to §8, §12 to §15, §18's versions (the battle lane's E26 and E11 may have
-  taken the battle's numbers: bump past theirs); survey `E08-banks.md` §3 to §6, §14 (batch E13's
-  rows); ADR-0022 point 8, ADR-0016 and -0017's increment 13 parts; the battle lane's `TRAPS.md`
-  and HANDOFF (its open pull requests) before touching `h3-battle`.
-- **Depends on:** T123b (`adventure/e08-t123b`). **Status:** ready once T123b merges; T124a needs
-  the battle lane's state checked first (its queue's "War machines", r3).
+- **Scope:** (`adventure/e08-t124b`): the state and the draw (§4, §5; adventure state hash v26,
+  ADV-BNK-002), the visit and its offers (§6, ADV-BNK-003, D-66), the battle's two halves (§7,
+  §14: `Defender::Bank`, the flag set in the battle's setup, the deck; ADV-BNK-004, GAM-BAT-001),
+  the reward as a won battle's rest (§8, §15; ADV-BNK-005, GAM-DEC-007), the once-marks (§12,
+  HER-ADV-008). Likely large: its cut confirmed at its start (a seam: the state, the draw and the
+  visit first; the battle, the reward and the once-marks next).
+- **Inputs:** design §4 to §8, §12, §14, §15, §18's versions; §13's *As built* (T124a: the bank
+  battle as the battle crate runs it, `BattleParams::bank_position`, `SetupError::
+  InvalidCreatureBank` for a bank setup with obstacles or a siege, `generate_setup_obstacles`
+  giving none); survey `E08-banks.md` §3 to §6, §14 (batch E13's rows); ADR-0016 and -0017's
+  increment 13 parts; the lane's `TRAPS.md`.
+- **Depends on:** T124a (`adventure/e08-t124a`, merged first). **Status:** ready once T124a
+  merges.
 
 ## Inbox
 

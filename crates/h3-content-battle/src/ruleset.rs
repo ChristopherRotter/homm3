@@ -30,7 +30,7 @@ use crate::spell::{
 };
 
 /// Version of the battle part's hash encoding. Bump when the encoding below changes.
-pub const BATTLE_RULESET_HASH_VERSION: u32 = 7;
+pub const BATTLE_RULESET_HASH_VERSION: u32 = 8;
 
 /// Most spells with a summon effect in a ruleset (the battle keeps a side's stack of each
 /// creature its hero can summon from the battle's start, E04b T6b; four in the original).
@@ -513,15 +513,17 @@ impl Deref for BattleRuleset {
 }
 
 impl CanonicalHash for BattleRuleset {
-    /// Encoding v5 (E04c T7: the turrets in the siege field; v4: E04c T6, the wall shots' data in
+    /// Encoding v8 (E08 T124a: the bank positions after the war machines'; v7: the spells' AI
+    /// kinds and values; v5: E04c T7, the turrets in the siege field; v4: E04c T6, the wall shots' data in
     /// the siege field and records; v3: E04c T5;
     /// v2: E04c T2b, without sieges; v1: R01, without battlefields): version; the
     /// special battlefields (`Battlefield`'s encoding); obstacles (key, terrains as length +
     /// handles, battlefields as length + handles, width, height, blocked pairs, absolute flag); creatures in handle order (attack, defense, damage min and max, hit points, shots,
     /// casts, the abilities as length + each ability's encoding); the battle parameters in field
-    /// order (each roll table as length + all 8 entries, the war machine positions, the full
-    /// formation tables loose then tight, the tactics zone widths, the surrender as presence
-    /// flag + resource handle + percent, casts per round, side stack limit); spells in handle
+    /// order (each roll table as length + all 8 entries, the war machine positions, the bank
+    /// positions attacker then defender, all 16 of each side, the full formation tables loose
+    /// then tight, the tactics zone widths, the surrender as presence flag + resource handle +
+    /// percent, casts per round, side stack limit); spells in handle
     /// order (polarity, battle magic, counters, dispels, spares, `tests_as`, `summons`, the AI
     /// kinds and values, v7); the
     /// siege field as presence flag + its encoding; the siege records as length + each's. Neither

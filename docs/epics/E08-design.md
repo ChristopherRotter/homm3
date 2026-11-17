@@ -429,6 +429,19 @@ cut and the exit criteria (§20); risks (§21); with the draft for ADR-0017 (app
   (no bank battle reaches either; *agent's call*: the battle lane adds both, with the replay
   format's bump, when a scenario needs one; its inbox told).
 
+*As built* (T124a, `adventure/e08-t124a`, `cross-lane`; decision 353): the flag is
+`BattleState::creature_bank`, hashed with each side's `bank_supply` after the anti-magic flag
+(battle state hash v56); `begin` opens no tactics phase with it; `generate_setup_obstacles` gives
+none (the boats' hexes neither) and `setup` refuses obstacles or a siege beside it
+(`SetupError::InvalidCreatureBank`); `war_machines` sets up none, a listed ammo supply of a side
+with a hero setting its `bank_supply`, which `ammo_supplied` reads beside a living cart; each
+stack at `BattleParams::bank_position(side, ordinal)`'s footprint. `bank_positions` is
+**harvested** from 0x63D0E0 (`h3_formats::exe::bank_hexes`, `installation.md` §7.62; pack format
+v53, battle part v8), not gap-filled; the compiler asks both hexes of each footprint standable.
+Tests: `h3-battle`'s `tests/banks.rs` (the layout with two-hex stacks on both sides, the formation
+unused; the tactics phase with setup and begin apart; the obstacles, the boats and the refusals;
+the machines and the supply, a side without a hero or a cart unsupplied; the hash).
+
 ### 14. The game's battle (ADV-BNK-004's game half; GAM-BAT-001 amended)
 
 - **`Defender::Bank { army }`** (*agent's call*, refining §7's `BattleStart::bank`): the bank's
@@ -547,9 +560,9 @@ cut and the exit criteria (§20); risks (§21); with the draft for ADR-0017 (app
 | adventure ruleset part | v20 | **v21** | T123a: the kind `bank` (hash tag 44); *done* |
 | map import | v23 | **v24** | T123b: the five classes typed; *done* |
 | adventure state hash | v25 | **v26** | T124b: `Resolved::Bank`, the banks' guards in the static map |
-| battle state hash (the battle lane's) | v55 | **v56** | T124a, `cross-lane`: the flag in the state |
-| battle ruleset part (the battle lane's) | v7 | **v8** | T124a, `cross-lane`: `bank_positions` |
-| pack format (shared, the battle file) | v52 | **v53** | T124a, `cross-lane`: `bank_positions` in `[battle]` |
+| battle state hash (the battle lane's) | v55 | **v56** | T124a, `cross-lane`: the flag in the state; *done* |
+| battle ruleset part (the battle lane's) | v7 | **v8** | T124a, `cross-lane`: `bank_positions`; *done* |
+| pack format (shared, the battle file) | v52 | **v53** | T124a, `cross-lane`: `bank_positions` in `[battle]`; *done* |
 | game state hash | v32 | v32 | none (§15: no new rest; the sub-hashes fold in as values) |
 | adventure replay format | v16 | v16 | none (§17) |
 | env action encoding | v8 | v8 | none (§17) |
