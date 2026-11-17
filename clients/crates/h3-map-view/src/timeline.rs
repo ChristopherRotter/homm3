@@ -1570,9 +1570,8 @@ impl Loop {
     /// the next of [`Start::turns`] (none: not built, refused in a recording). The selected hero put
     /// back; the current player and the kingdom the turn's (the date, the resources, the heroes'
     /// rows and points, the towns, the selection, the lists' first slots), the status window shown
-    /// kept until it is built again, the selection's window its choice's when the live part gives
-    /// one, else the one before for the same hero or town (*provisional*: the engine's from Part
-    /// B); the input queue emptied (`input_flush` 0x4EC570). The screen redrawn whole
+    /// kept until it is built again, the selection's window the one before for the same hero or
+    /// town, else its choice's (*provisional*: the engine's from Part B); the input queue emptied (`input_flush` 0x4EC570). The screen redrawn whole
     /// (`adventure_full_update` 0x417420) with the date's window asked for the tables' time and
     /// built, its sound with it; then the turn's hero chosen (`hero_select` with 0, 0, 1: lifted,
     /// the view centred on it, the date's window built again, its path made again from its
@@ -1618,12 +1617,15 @@ impl Loop {
         let mut kingdom = turn.kingdom;
         kingdom.status = self.kingdom.status.take();
         kingdom.realm = self.kingdom.realm.take();
-        kingdom.selection = match selected {
-            Selected::Hero(i) => self.chosen_hero(i).map(|c| Status::Hero(c.status.clone())),
-            Selected::Town(_) => chosen_town.as_ref().map(|c| Status::Town(c.status.clone())),
-            Selected::None => None,
-        }
-        .or_else(|| window.filter(|_| selected == before));
+        // The window memory built for the same hero or town first: a map's start's choices
+        // (`Live::at_start`) are the map's, not the game's.
+        kingdom.selection = window
+            .filter(|_| selected == before)
+            .or_else(|| match selected {
+                Selected::Hero(i) => self.chosen_hero(i).map(|c| Status::Hero(c.status.clone())),
+                Selected::Town(_) => chosen_town.as_ref().map(|c| Status::Town(c.status.clone())),
+                Selected::None => None,
+            });
         self.kingdom = kingdom;
         self.flush = true;
         // The screen redrawn whole, the date's window asked and built.
@@ -1685,19 +1687,20 @@ impl Loop {
         Ok(())
     }
 
-    /// The map hero (its index among [`Start::heroes`]) of the kingdom's hero `i`: its choice's
-    /// when the live part gives one, else the one of its record index by the mouse-over's facts.
+    /// The map hero (its index among [`Start::heroes`]) of the kingdom's hero `i`: the one of its
+    /// record index by the mouse-over's facts (memory's), else its choice's (a recording's
+    /// `[chosen]`, or a map's start's).
     fn map_hero(&self, i: usize) -> Option<usize> {
-        if let Some(chosen) = self.chosen_hero(i) {
-            return Some(chosen.hero);
-        }
-        let facts = self.hover.as_ref()?.facts();
-        let id = facts.hero_list.get(i)?.0;
-        facts
-            .heroes
-            .iter()
-            .position(|h| h.0 == id)
-            .filter(|&index| index < self.heroes.len())
+        let by_facts = self.hover.as_ref().and_then(|hover| {
+            let facts = hover.facts();
+            let id = facts.hero_list.get(i)?.0;
+            facts
+                .heroes
+                .iter()
+                .position(|h| h.0 == id)
+                .filter(|&index| index < self.heroes.len())
+        });
+        by_facts.or_else(|| self.chosen_hero(i).map(|c| c.hero))
     }
 
     /// A message box opened (`message_box` 0x4F6570; E17 design §7.19): the default cursor's frame 0
