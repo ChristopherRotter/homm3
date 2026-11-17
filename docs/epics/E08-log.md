@@ -18186,3 +18186,13 @@ told; not this lane's to fix.
 - **Docs:** design §5's *As built*, §18's row, §20's round 6; decision 354 and the task's line;
   the queue (T124b archived verbatim, T124b2 in); `OVERVIEW.md`'s state line; the comments that
   said T124b.
+- **Gates:** the scoped verify `--scope adventure --with-original-data` on the final layout:
+  every step passing but `check-lane` (`cross-lane` by design; `check-lane --cross-lane` passes)
+  and `check-exe-map` (red on `master` with the executable staged, above): fmt, clippy, the
+  checks, coverage, determinism, bench-check (every workload inside its baseline) and the
+  original-data step (the shipped maps built, their banks drawn). `cargo check --workspace
+  --all-targets` clean; `h3-cli`'s `adventure_replays`, `h3-server`'s `tests::record`,
+  `h3-protocol`'s fold and session tests and `h3-sim`'s adventure tests pass.
+
+**Versions:** adventure state hash v26. The game state hash, the ruleset part, the map import,
+the replay format and the battle's versions unchanged. T124b2 next.
