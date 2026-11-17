@@ -927,6 +927,12 @@ fn the_derelict_ship_and_a_coast_tile_another_object_is_visited_from_stay_closed
     let mut s = fresh.clone();
     assert_eq!(walk(&rules, &mut s, &walker, &[x(1)]), Err(terrain));
     assert_eq!(reach_left(&rules, &fresh, &walker, x(1)), None);
+    // A Shipwreck placed on land: its entrance a land neighbour's (ADV-OBJ-003), no coast's.
+    let mut s = coast(&rules, "ggg", &[("t:shipwreck", 1)]);
+    assert!(s.map().coast_entrances().is_empty());
+    let (outcome, _) = walk(&rules, &mut s, &walker, &[x(1)]).unwrap();
+    assert_eq!(outcome.offer.map(|o| o.kind), Some(OfferKind::Search));
+    assert_eq!(s.hero(HERO).unwrap().pos, x(0));
     // A Shipwreck outside the walker's window (on the other level) changes nothing of its search.
     let mut setup = world(&["ggg", "g~g"], 2, vec![hero_at(1, 0, x(0), &[PEASANT])]);
     let below = Pos::new(1, 0, 1);

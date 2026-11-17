@@ -18319,7 +18319,12 @@ original data staged from the user's repo folder (the four LODs, both executable
   reach gives them, the question first, nothing past the visit, the battle on the deck at its
   entrance), the flight across it from land, from water and up off a closed top and the water
   walk's refusals, the Derelict Ship closed, an entrance another object is visited from closed,
-  an entrance outside the walker's window.
+  a Shipwreck placed on land a land neighbour's (no coast entrance), an entrance outside the
+  walker's window.
+- **Verify:** the scoped verify with original data, after merging `master` (#995, map import
+  v25): every step passing but coverage (the land case of `list_economy`'s water test, then
+  tested), then coverage passing on its own run; `bench-check` inside every gate
+  (`reach-xl-144` −0.00 % against #995's re-baseline).
 - **Rules:** ADV-BNK-006 new, `verified` (the code reading, batch E13's E13-2, E13-9, E13-12,
   VCMI's config); ADV-VIS-006, ADV-OWN-003, ADV-MOV-009, ADV-MOV-010 and ADV-SEA-002 amended;
   ADV-STUB-12 lifted (`docs/stubs.toml`).
