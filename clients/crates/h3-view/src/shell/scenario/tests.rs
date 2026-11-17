@@ -1082,6 +1082,12 @@ fn begin_over_an_empty_list_shows_its_message() {
     s.press(ok);
     assert!(s.right_release().changed);
     assert!(s.box_draws("PLAYERS.PAL").is_empty());
+    // Released off the OK: drawn up, the box stays.
+    click(&mut s, [497, 555]);
+    s.press(ok);
+    s.moved([10, 10]);
+    assert!(s.release().changed);
+    assert_eq!(s.context(), Context::Question);
     // The client's with no map at all (CLT-Q114 (b)); none without the text.
     let mut fixed = scenario_of(Vec::new(), Bugs::Fixed);
     assert!(click(&mut fixed, [497, 555]).changed);
