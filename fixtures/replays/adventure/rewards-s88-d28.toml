@@ -227,10 +227,10 @@ commands = [
 ]
 checkpoints = [
     "0xcc1a2eb4c2afc5ce",
-    "0x9e503709f1090446",
-    "0xa4c27426fd6d8c21",
+    "0x160c18dc5ebb2165",
+    "0xd7e9ce1a4fdf9145",
     "0x8c762c453b63a18c",
-    "0x4e0a9297296cfb34",
+    "0x4e27897c0a492474",
     "0x11972f4203245540",
     "0xd0a06e3f0fcbd89c",
     "0x4adea0093023061d",

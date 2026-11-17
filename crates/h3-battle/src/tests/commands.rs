@@ -375,12 +375,13 @@ fn state_hash_is_pinned() {
     // facts and the attacking hero's own ground (E23 T6). v54: the viewers' facts, the
     // battlefield picture's variant, each side's colour and a hero's sex (CLT-Q4, CLT-Q6). v55:
     // the heroes' morale and luck effects with their sources, a town's morale and luck buildings
-    // and each stack's unclamped morale and luck (CLT-Q40).
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 55);
+    // and each stack's unclamped morale and luck (CLT-Q40). v56: the creature bank flag and
+    // each side's bank supply (E08 T124a).
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 56);
     assert_eq!(
         s.siege.unwrap().turret(7),
         Some(StackId(u8::try_from(s.stacks().len() - 1).unwrap()))
     );
 }
 
-const GOLDEN: u64 = 0xd9e9_f060_4b78_58d1;
+const GOLDEN: u64 = 0x81c9_2640_f48b_1994;

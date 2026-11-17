@@ -90,13 +90,15 @@ fn has_ammunition(stack: &Stack) -> bool {
     stack.shots > 0 || stack.has(StackTraits::UNLIMITED_SHOTS)
 }
 
-/// Whether a living stack of `side` supplies ammunition (BAT-WAR-004).
+/// Whether a living stack of `side` supplies ammunition, or in a creature bank's battle the
+/// ammunition supply its hero listed and the battle kept off the field (BAT-WAR-004).
 // rule: BAT-WAR-004
 fn ammo_supplied(state: &BattleState, side: BattleSide) -> bool {
-    state
-        .stacks
-        .iter()
-        .any(|s| s.side == side && s.is_alive() && s.has(StackTraits::AMMO_SUPPLY))
+    state.bank_supply[side.index()]
+        || state
+            .stacks
+            .iter()
+            .any(|s| s.side == side && s.is_alive() && s.has(StackTraits::AMMO_SUPPLY))
 }
 
 /// The creatures of `stack` that count for the damage of its strikes: all, or for a forgetful

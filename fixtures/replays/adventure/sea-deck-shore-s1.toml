@@ -12,7 +12,7 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x3aed3b8c47c63638",
+    "0x4f5182222d8f8ae6",
     "0x1ee50fe6e3c48d0c",
 ]
 

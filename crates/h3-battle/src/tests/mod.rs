@@ -4,6 +4,7 @@
 mod abilities;
 mod actions;
 mod aim;
+mod banks;
 mod battlefields;
 mod casters;
 mod commands;
