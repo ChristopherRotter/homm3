@@ -7,7 +7,9 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_adventure::{AdventureSetup, Bans, HeroSetup, MapSetup, Pos, Seat, SetupError};
+use h3_adventure::{
+    AdventureParams, AdventureSetup, Bans, HeroSetup, MapSetup, Pos, Seat, SetupError,
+};
 use h3_content::{
     ArtifactTypeId, CreatureTypeId, Formation, HeroEffect, HeroType, HeroTypeId, ResourceId,
     Ruleset, SkillId, SpellId, StartingStack,
@@ -489,6 +491,9 @@ impl GameSetup {
         let mut drawn = town::draw_heroes(self, rules, &owners, draws)?;
         let factions = town::draw_towns(self, rules, &owners, &drawn.factions, draws);
         let generated = town::main_town_heroes(self, rules, &entrances, &mut drawn, draws)?;
+        // E09 T37a: each type's record and each player's faction kept (design note §61).
+        drawn.pool.record_heroes(&drawn.types);
+        drawn.pool.set_factions(&drawn.factions);
         let (garrisons, towns): (Vec<_>, Vec<_>) =
             town::build_towns(self, rules, &owners, &factions, draws)
                 .into_iter()
@@ -501,14 +506,8 @@ impl GameSetup {
             let id = HeroId::new(index);
             let (army, given) = match &hero.army {
                 HeroArmy::Custom(stacks) => (stacks.clone(), Vec::new()),
-                HeroArmy::Starting => {
-                    let first = hero_type
-                        .army
-                        .split_first()
-                        .filter(|_| hero_type.army.len() <= usize::from(params.army_slots()))
-                        .ok_or(GameSetupError::StartingArmy(id))?;
-                    draw_starting_army(first, hero_type, params.starting_stack_chances(), draws)
-                }
+                HeroArmy::Starting => starting_army(hero_type, params, draws)
+                    .ok_or(GameSetupError::StartingArmy(id))?,
             };
             heroes.push(HeroSetup {
                 id,
@@ -521,7 +520,7 @@ impl GameSetup {
         }
         let mut details = Vec::with_capacity(count);
         for ((hero, (hero_type, given)), index) in all().zip(machines).zip(0..=u16::MAX) {
-            let built = hero_details(rules.core(), hero, hero_type, &given, draws);
+            let built = hero_details(rules.core(), &hero.details, hero_type, &given, draws);
             h3_heroes::validate(&built, rules.core())
                 .map_err(|error| GameSetupError::Hero(HeroId::new(index), error))?;
             details.push(built);
@@ -587,14 +586,13 @@ const DEFAULT_EXPERIENCE: (u32, u32) = (40, 50);
 /// starting army gave (GAM-SET-001) at the first position that takes it, where one does (no worn
 /// artifact takes that slot); the maximum spell points (HER-MAN-001).
 // rule: GAM-HER-001
-fn hero_details(
+pub(crate) fn hero_details(
     core: &Ruleset,
-    hero: &GameHeroSetup,
+    custom: &HeroDetailsSetup,
     (type_id, hero_type): (HeroTypeId, &HeroType),
     machines: &[CreatureTypeId],
     draws: &mut Rng,
 ) -> HeroDetails {
-    let custom = &hero.details;
     let (worn, backpack) = custom.artifacts.as_ref().map_or_else(
         || {
             let book = core
@@ -636,6 +634,19 @@ fn hero_details(
         mana: 0,
         // None at a map's start (HER-ADV-008): a map holds no hero's bonuses.
     };
+    wear_machines(&mut details, core, machines);
+    details.mana = h3_heroes::max_mana(&details, core);
+    details
+}
+
+/// The artifact of each war machine in `machines` (a starting army's, GAM-SET-001) worn at the
+/// first position that takes it, where one does (GAM-HER-001; a worn one's slot takes no second:
+/// nothing). Since E09 T37a a tavern hero's fill too (TWN-TAV-002).
+pub(crate) fn wear_machines(
+    details: &mut HeroDetails,
+    core: &Ruleset,
+    machines: &[CreatureTypeId],
+) {
     for &machine in machines {
         let artifact = core
             .artifacts()
@@ -643,14 +654,33 @@ fn hero_details(
             .position(|a| a.war_machine == Some(machine))
             .and_then(ArtifactTypeId::from_index);
         let at = artifact.and_then(|id| {
-            h3_heroes::first_position(&details, core, id).map(|at| (at, ArtifactInstance::from(id)))
+            h3_heroes::first_position(details, core, id).map(|at| (at, ArtifactInstance::from(id)))
         });
         at.and_then(|(at, item)| details.worn.get_mut(at.0).map(|place| (place, item)))
             .into_iter()
             .for_each(|(place, item)| *place = Some(item));
     }
-    details.mana = h3_heroes::max_mana(&details, core);
-    details
+}
+
+/// A hero type's starting army drawn from `draws` ([`draw_starting_army`], GAM-SET-001) with the
+/// war machines it gave; `None` for a type without a first stack or with more starting slots than
+/// an army has (the setup refuses it, [`GameSetupError::StartingArmy`]). Since E09 T37a a tavern
+/// hero's fill too (TWN-TAV-002).
+pub(crate) fn starting_army(
+    hero_type: &HeroType,
+    params: &AdventureParams,
+    draws: &mut Rng,
+) -> Option<(Vec<ArmyStack>, Vec<CreatureTypeId>)> {
+    let first = hero_type
+        .army
+        .split_first()
+        .filter(|_| hero_type.army.len() <= usize::from(params.army_slots()))?;
+    Some(draw_starting_army(
+        first,
+        hero_type,
+        params.starting_stack_chances(),
+        draws,
+    ))
 }
 
 /// Draws a hero's starting army from its type's starting slots (GAM-SET-001): the first slot's

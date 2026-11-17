@@ -15,8 +15,8 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xb7250e1f49bcddb1",
-    "0xe91fe9457a59f3f4",
+    "0x706576b7efbcb922",
+    "0xfe6f556f4dc86657",
 ]
 
 [replay]
@@ -46,7 +46,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 32
+game_state_hash_version = 33
 adventure_state_hash_version = 25
 checkpoint_every = 5
 
@@ -57,4 +57,4 @@ import_version = 24
 
 [result]
 day = 2
-final_hash = "0xad2f057c62a9ae33"
+final_hash = "0x1aa980ba9f00c2c4"

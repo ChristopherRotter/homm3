@@ -754,36 +754,36 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x1ef5620717b7fc8f",
-    "0xcc1f6fbc5535df33",
-    "0xc92e028d8baaf8e4",
-    "0xdb648600213f0f33",
-    "0x39d555b0825213a3",
-    "0xeba8236e20927baa",
-    "0x19a43fc90e9625f5",
-    "0x7344dc51f75f3a68",
-    "0x1c87e877389ee9ba",
-    "0x4cec62fd264e28e3",
-    "0xa70131ca329285b0",
-    "0xf81186f0b5f5e538",
-    "0x9a75775890622de5",
-    "0xa548da9a33ea8577",
-    "0x12db8ad2e986bf37",
-    "0x84cdb1f686b12ba1",
-    "0x127a637465bb8183",
-    "0x0b17f9d9877a8c6e",
-    "0xc6e89c50ca024711",
-    "0xcfd720f1b8fe3615",
-    "0x56b4a3e3e3ceef66",
-    "0x8f189371a8f41295",
-    "0xa630ef9adc6f3969",
-    "0xab975ccfe631b036",
-    "0x12b28f8518cd2f34",
-    "0x33f304e4156c1897",
-    "0x553964b5d5ff27e5",
-    "0xd44d96dab7ff821a",
-    "0xb5df8567b4c22e91",
-    "0x968df7b78e4171a6",
+    "0xdb0abcedd860030b",
+    "0x052517294fc2b6b3",
+    "0x128937774ad41a30",
+    "0xde88f26e942854d3",
+    "0xca20ed273f4ab51b",
+    "0xd422c66ca3d5f866",
+    "0xad87caff18939c61",
+    "0xa69a1d170d3adfa0",
+    "0xc467c2ee85760b8a",
+    "0x9eaeb17d46c64e7b",
+    "0x864bdfb38da884dc",
+    "0x499bafbbddec3688",
+    "0x479be545bc20f32d",
+    "0x456a15ee9c6d411b",
+    "0x20b98307ecdf6fbf",
+    "0x7b4266c03176e765",
+    "0x5f7e71f1829fa27f",
+    "0xa133577419c547ba",
+    "0xb7334b52d2ffec89",
+    "0x059fe686056fc4d1",
+    "0x81d84c2df49cd776",
+    "0x3bc8940a92e7bd81",
+    "0x7603578203399f31",
+    "0xd5105b137f71cb62",
+    "0xf0152e248a6093ee",
+    "0x424eb86c9a25fd2c",
+    "0x2d986b4314344b40",
+    "0xad5c48e588b0bc30",
+    "0xf3ffadd36cea4a4d",
+    "0x45d0d8da57e0f3b0",
 ]
 
 [replay]
@@ -813,7 +813,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 32
+game_state_hash_version = 33
 adventure_state_hash_version = 25
 checkpoint_every = 25
 
@@ -824,4 +824,4 @@ import_version = 24
 
 [result]
 day = 29
-final_hash = "0x3286477a488bf510"
+final_hash = "0xde5aa626a73fc80b"

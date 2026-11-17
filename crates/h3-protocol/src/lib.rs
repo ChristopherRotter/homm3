@@ -200,7 +200,12 @@ pub mod wire;
 /// requirement that a server game behaves as a local one): each `SideView`'s `forbids_casting`
 /// (its hero wears the Orb of Inhibition) and `spell_level_limit` (Recanter's Cloak), public as
 /// the original's spell book shows them to both sides.
-pub const PROTOCOL_VERSION: u32 = 69;
+/// v70 (E09 T37a, the town lane's, `cross-lane`): a player's two tavern heroes
+/// (TWN-TAV-002): `GameObservation::tavern`, each as the tavern's held hero screen shows it
+/// (`TavernHero`: no learned spells, no offered levels, the backpack's first five places and its
+/// count), and `GameEvent::TavernOffered` (a slot's head) with `TavernPartSeen` per part after the
+/// week's release and fill.
+pub const PROTOCOL_VERSION: u32 = 70;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

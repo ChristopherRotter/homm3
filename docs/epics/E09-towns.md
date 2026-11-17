@@ -191,6 +191,36 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
      `most_heroes`, not read from 0x67814C; an empty price compiles (a free hire, as a building's
      free cost); TWN-TAV-001's catalog entry left to T37a, which builds the draw.
 
+### Decisions at T37a's start (2026-11-17, the user; TWN-Q20)
+
+133. **T37a whole** (the user; `AskUserQuestion`; the agent recommended two parts, the hidden
+     state and its rules first, the views, the events and the protocol second): one `cross-lane`
+     pull request. Not chosen: two parts; three (the start's fill, the week and the turn, the
+     views).
+134. **The tavern view is the held hero screen's** (the user, after the agent's check; survey §2.1,
+     `tavern_dialog_proc` 0x5D7D7D opening `hero_screen_show` as a held popup, 0x4E1969, the manual
+     and VCMI's `CTavernWindow` agreeing): `GameObservation::tavern`'s `TavernHeroView` holds the id,
+     the type, the level, the experience, the primary skills, the spell points, the skills, the worn
+     artifacts, **the backpack's first five places and its count**, the army, the formation and the
+     tactics flag; no learned spells (the spell book is a screen of its own), no offered levels.
+     Design §75's `details: Arc<HeroDetails>` amended. Not chosen: the screen's parts with the whole
+     backpack (recommended: simpler, a small leak); the whole details (§75 as drafted).
+135. **`TavernOffered` a head and one part event** (recommended; `GameEvent` stays `Copy`, design
+     §28's call): `TavernOffered { player, slot, hero: Option<TavernHero> }` with the view's parts
+     without a list, then `TavernPartSeen { player, slot, part }` per stack, skill and artifact
+     (worn by position, then the backpack's shown places) in that order; the fold exact, the
+     spell points under `SRV-STUB-6`. Not chosen: a typed event per kind; the head alone with a new
+     `SRV-STUB` gap (against exit criterion 10).
+136. *Agent's calls at T37a (change freely; design §61 to §63, §68 and §75's As built):* a slot
+     names its hero's type (its pool entry the record); a new record's away record has no points
+     until its owner's turn start, the loose formation and the tactics flag on; a type with no
+     valid starting army gets an empty one; the fill's steps in the original's order (the backpack,
+     the spell points, then the army: the same draws as §63's text); the week's fill after the
+     towns' growth and before the adventure's week step (the neutral garrisons and the Portals stay
+     after it, as built); the start's fill after the build's state is made, before the first
+     group's turn; the week tells a slot whose view changed; the five shown backpack places a
+     constant (`TAVERN_BACKPACK_SHOWN`).
+
 ### Exit criteria (accepted at `TWN-Q18`, decision 121; design note §80)
 
 1. The town part's tavern weights and the hire's price compile (part v7); each player's faction
@@ -233,7 +263,7 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
   glossary, `docs/06-security.md`: done 2026-11-16 (`TWN-Q19`, decisions 125–128: the marks cleared
   at every day's start, every record's day's spell points; the drafts deleted; `E09-log.md`).
   **T35b** `StreamId::TAVERNS`, the two quirk flags, the packs and the replays' hashes: done
-  2026-11-17 (whole, decisions 129, 131; the base faithful hash 0x6ba8109889b34a25; `E09-log.md`). **T36** the town part v7 (round 4): done 2026-11-17 (whole, decisions 130, 132; `E09-log.md`). **T37** T37a the pool, the draw and the fills, T37b the map's customised types (round 5). **T38** T38a the town's hire and the replacement, T38b the leaves, the returns and the dismissal (round 6). **T39** T39a the Tavern and the Den of Thieves with the tavern decision, T39b the Thieves' Guild (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
+  2026-11-17 (whole, decisions 129, 131; the base faithful hash 0x6ba8109889b34a25; `E09-log.md`). **T36** the town part v7 (round 4): done 2026-11-17 (whole, decisions 130, 132; `E09-log.md`). **T37** T37a the pool, the draw and the fills, the turn's points and marks, the views and the protocol: done 2026-11-17 (whole, decisions 133–136; game state hash v33, protocol v70; `E09-log.md`); T37b the map's customised types (round 5). **T38** T38a the town's hire and the replacement, T38b the leaves, the returns and the dismissal (round 6). **T39** T39a the Tavern and the Den of Thieves with the tavern decision, T39b the Thieves' Guild (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
 
 ## Risks
 

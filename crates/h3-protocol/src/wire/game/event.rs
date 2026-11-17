@@ -13,7 +13,10 @@ use serde::{Deserialize, Serialize};
 use super::{
     ArmySlot, ArmyStack, Artifact, ArtifactPlace, Formation, HireSeen, HireTarget, Month, Week,
 };
-use super::{GarrisonStack, OfferLevels, Pos, PrimarySkill, TownBuildings, VisitBonus};
+use super::{
+    GarrisonStack, OfferLevels, Pos, PrimarySkill, TavernHeroHead, TavernPart, TownBuildings,
+    VisitBonus,
+};
 use crate::wire::{Event, Outcome};
 
 /// One game event, projected for its viewer (`h3_game::GameEvent`).
@@ -203,6 +206,16 @@ pub enum GameEvent {
         town: u16,
         resource: u16,
         amount: u32,
+    },
+    TavernOffered {
+        player: u8,
+        slot: u8,
+        hero: Option<TavernHeroHead>,
+    },
+    TavernPartSeen {
+        player: u8,
+        slot: u8,
+        part: TavernPart,
     },
     GarrisonChanged {
         player: u8,

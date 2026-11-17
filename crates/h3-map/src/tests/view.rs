@@ -11,8 +11,8 @@ use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, ArmyRef, ArmySlot, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset,
     GameState, GarrisonStackView, GarrisonView, HeroInfo, LevelUpView, MapGarrisonView,
-    OWNER_LEVEL, TAVERN_LEVELS, TownBuildingsView, TownOwnerView, TownView, Viewer, apply,
-    legal_commands, legal_moves, observe, project,
+    OWNER_LEVEL, TAVERN_LEVELS, TavernHeroView, TavernPart, TownBuildingsView, TownOwnerView,
+    TownView, Viewer, apply, legal_commands, legal_moves, observe, project,
 };
 use h3_heroes::HeroDetails;
 use proptest::collection::vec;
@@ -778,7 +778,10 @@ fn check_same(
     viewer: PlayerId,
 ) -> Result<(), TestCaseError> {
     let seen = observe(a, rules, Viewer::Player(viewer));
-    prop_assert_eq!(&seen, &observe(b, rules, Viewer::Player(viewer)));
+    prop_assert_eq!(
+        without_tavern(seen.clone()),
+        without_tavern(observe(b, rules, Viewer::Player(viewer)))
+    );
     let actor = Actor::Player(viewer);
     prop_assert_eq!(
         legal_commands(a, rules, actor),
@@ -791,6 +794,27 @@ fn check_same(
         );
     }
     Ok(())
+}
+
+/// The viewer's observation without its tavern heroes (E09 T37a, TWN-TAV-002): its own, drawn from
+/// the taverns' stream and the pool, which the hygiene's variations change (the seed, the other
+/// players' types), as they would its heroes' drawn experience; `h3-game`'s tavern tests check
+/// that another player's never show.
+fn without_tavern(mut seen: GameObservation) -> GameObservation {
+    seen.tavern = [None, None];
+    seen
+}
+
+/// The told events without the viewer's tavern heroes' (E09 T37a; [`without_tavern`]).
+fn untavern(told: Vec<GameEvent>) -> Vec<GameEvent> {
+    told.into_iter()
+        .filter(|e| {
+            !matches!(
+                e,
+                GameEvent::TavernOffered { .. } | GameEvent::TavernPartSeen { .. }
+            )
+        })
+        .collect()
 }
 
 /// How many objects `viewer` knows what it learned of (E08 T64b; ADV-VIS-006: its `known`).
@@ -1130,9 +1154,36 @@ fn check_told(
         .filter_map(|t| Some((t.town, t.garrison.army.clone()?)))
         .collect();
     let mut ended = false;
+    // E09 T37a: the viewer's tavern heroes as told, each slot's head then its parts.
+    let mut tavern = before.tavern.clone();
     let alone = Viewers::NONE.with(viewer);
     for event in told {
         match *event {
+            // E09 T37a (TWN-TAV-002): a slot's new hero, its lists following, the viewer's alone.
+            GameEvent::TavernOffered { player, slot, hero } => {
+                prop_assert_eq!(player, viewer);
+                let view = tavern.get_mut(usize::from(slot));
+                prop_assert!(view.is_some(), "{:?} of no slot", event);
+                *view.unwrap() = hero.map(|hero| TavernHeroView {
+                    hero,
+                    army: Vec::new(),
+                    skills: Vec::new(),
+                    artifacts: Vec::new(),
+                });
+            }
+            GameEvent::TavernPartSeen { player, slot, part } => {
+                prop_assert_eq!(player, viewer);
+                let view = tavern.get_mut(usize::from(slot)).and_then(Option::as_mut);
+                prop_assert!(view.is_some(), "{:?} without its slot's hero", event);
+                let view = view.unwrap();
+                match part {
+                    TavernPart::Stack(stack) => view.army.push(stack),
+                    TavernPart::Skill { skill, level } => view.skills.push((skill, level)),
+                    TavernPart::Artifact { place, artifact } => {
+                        view.artifacts.push((place, artifact));
+                    }
+                }
+            }
             GameEvent::HeroChanged { player, hero, .. }
             | GameEvent::CreaturesRaised { player, hero, .. }
             | GameEvent::LevelGained { player, hero, .. } => {
@@ -1954,6 +2005,21 @@ fn check_told(
             prop_assert!(changed.contains(&hero.id), "{:?} changed untold", was);
         }
     }
+    // E09 T37a: its tavern heroes as told, but for a new day's spell points (no event, as its
+    // heroes' above).
+    let rested = |view: &Option<TavernHeroView>| {
+        view.clone().map(|mut view| {
+            if after.day != before.day {
+                view.hero.mana = 0;
+            }
+            view
+        })
+    };
+    let (seen, folded): (Vec<_>, Vec<_>) = (
+        after.tavern.iter().map(rested).collect(),
+        tavern.iter().map(rested).collect(),
+    );
+    prop_assert_eq!(seen, folded, "the tavern heroes changed untold");
     prop_assert_eq!(after.month, month);
     prop_assert_eq!(after.week, week);
     prop_assert_eq!(after.day, day);
@@ -2903,7 +2969,7 @@ proptest! {
                 // The other player's command did not do the same in both games.
                 break;
             }
-            let (ta, tb) = (told(&ea, viewer), told(&eb, viewer));
+            let (ta, tb) = (untavern(told(&ea, viewer)), untavern(told(&eb, viewer)));
             // E08 T96b1: what the viewer is shown of the dwellings and the camps, in both games
             // (the other's owners at load, armies and seed differ); (E09 T9b2b) and of the towns;
             // (E08 T106b2) and what it is told of the jumps.
@@ -4016,7 +4082,11 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
                 };
                 levels[0].extend(filter(&ea, level));
                 levels[1].extend(filter(&eb, level));
-                assert_eq!(told(&ea, blue), told(&eb, blue), "{profile}, seed {seed}");
+                assert_eq!(
+                    untavern(told(&ea, blue)),
+                    untavern(told(&eb, blue)),
+                    "{profile}, seed {seed}"
+                );
                 assert_eq!(a.waiting_for(), b.waiting_for());
                 check_same(&a, &b, rules, blue).unwrap();
             }

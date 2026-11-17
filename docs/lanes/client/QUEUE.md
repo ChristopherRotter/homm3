@@ -31,6 +31,12 @@ design §6.4's `up-past-top` fix recorded (`h3shell.py run --only <id> --record`
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-17 (the town lane, E09 T37a, `town/e09-t37a`, `cross-lane`; **your test literal, and
+  for the shell's town screens later**): protocol **v70** adds `GameObservation::tavern` (the
+  viewer's two tavern heroes as the tavern's held hero screen shows them: `TavernHero`, its head
+  `TavernHeroHead`, its lists) and the events `TavernOffered` and `TavernPartSeen`. `h3-view`'s
+  `game_record/tests.rs` literal gained `tavern: [None, None]`.
+
 - 2026-11-17 (the map client lane, E24 M4 T1a, `map-client/e24-m4-t1a`; **two additions to the
   common crates, nothing of yours changed**): (1) `h3_ui::message`, a copy of your
   `h3_view::message` trimmed to styles 1 and 2 without pictures (`layout`, `Open`; an origin

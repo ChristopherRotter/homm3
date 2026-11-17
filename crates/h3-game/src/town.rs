@@ -42,6 +42,7 @@ pub(crate) mod portal;
 pub(crate) mod recruit;
 pub(crate) mod rows;
 pub(crate) mod siege;
+pub(crate) mod tavern;
 pub(crate) mod view;
 
 pub(crate) use build::{adventure_reveal, build_towns, draw_towns, without_water};

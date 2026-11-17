@@ -18,7 +18,7 @@ use super::command::{artifact_place, slot};
 use super::town_buildings;
 use super::{
     army_stack, artifact, fort_level, garrison_stack, hire_seen, hire_target, month_kind, pos,
-    primary_skill, visit_bonus, week_kind,
+    primary_skill, tavern_head, tavern_part, visit_bonus, week_kind,
 };
 use crate::map::{from_engine, outcome};
 use crate::wire::game::{
@@ -339,6 +339,16 @@ fn event(e: &EngineEvent) -> GameEvent {
             town: town.raw(),
             resource: resource.raw(),
             amount,
+        },
+        EngineEvent::TavernOffered { player, slot, hero } => GameEvent::TavernOffered {
+            player: player.raw(),
+            slot,
+            hero: hero.map(tavern_head),
+        },
+        EngineEvent::TavernPartSeen { player, slot, part } => GameEvent::TavernPartSeen {
+            player: player.raw(),
+            slot,
+            part: tavern_part(part),
         },
         EngineEvent::GarrisonChanged {
             player,

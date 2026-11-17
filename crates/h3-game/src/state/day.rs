@@ -57,7 +57,9 @@ impl GameState {
     ///    setup's `roe`; E09 decision 75, so the game's stream stays as it was),
     ///    [`GameEvent::WeekStarted`] with it, then the towns' week (E09 T26a1, TWN-GRO-003: every
     ///    town's counts grown with its inputs and the week's kind, `town::growth`, TWN-GRO-001),
-    ///    then the adventure's week step with the game's stream
+    ///    then since E09 T37a the taverns' release and fill from the taverns' stream, each changed
+    ///    slot told to its player (TWN-TAV-002: `town::tavern::weekly`), then the adventure's week
+    ///    step with the game's stream
     ///    (`h3_adventure::AdventureState::start_week`: the weekly objects refilled, the monsters
     ///    grown; the map's dwellings read no week's kind, ADV-DWL-003), then the neutral towns'
     ///    garrison week and the Portals of Summoning, both from the towns' stream (E09 T26b,
@@ -68,7 +70,9 @@ impl GameState {
     ///    (E09 T26a1, TWN-GRO-004: a creature's month doubles, the Plague halves, with the week's
     ///    inputs and kind), then in a creature's month the adventure's month step with the game's
     ///    stream (`start_month`: its monsters added on free land tiles);
-    /// 4. the towns' day (E09 T18b1: [`h3_towns::Towns::start_day`], every town's day's mark
+    /// 4. since E09 T37a every player's returning marks cleared (TWN-TAV-005, decision 126:
+    ///    `town::tavern::clear_marks`, after the week's release reads them), then the towns' day
+    ///    (E09 T18b1: [`h3_towns::Towns::start_day`], every town's day's mark
     ///    cleared, TWN-BLD-004; the original's `new_day` towns' loop 0x4C8067, before its
     ///    income; since E09 T18b2a the views of the towns built in the day before told to their
     ///    viewers, `town::start_day`; since E09 T26b on a week's first day every view that the
@@ -78,7 +82,8 @@ impl GameState {
     /// 6. the adventure's start-of-day step (E08 T40: in `strict-fixed` each hero's reveal,
     ///    ADV-FOG-003).
     // rule: GAM-TRN-002, GAM-CAL-001, GAM-CAL-002, GAM-CAL-003, TWN-BLD-004, TWN-GRO-002
-    // rule: TWN-GRO-003, TWN-GRO-004, TWN-GRO-006, TWN-GRO-007, TWN-VEW-004
+    // rule: TWN-GRO-003, TWN-GRO-004, TWN-GRO-006, TWN-GRO-007, TWN-VEW-004, TWN-TAV-002
+    // rule: TWN-TAV-005
     pub(super) fn advance_day<S: Sink>(&mut self, rules: &GameRuleset, sink: &mut S) {
         let (core, part) = (rules.core(), rules.adventure());
         self.day = self.day.saturating_add(1);
@@ -115,6 +120,8 @@ impl GameState {
             }
             let inputs = town::growth::inputs(self, rules);
             town::growth::grow_week(self, rules, &inputs);
+            // E09 T37a: the taverns' release and fill (TWN-TAV-002), told to each player.
+            town::tavern::weekly(self, rules, sink);
             self.adventure
                 .start_week(core, part, &mut self.rng, &mut AdventureSink(sink));
             town::garrison::garrison_weeks(self, rules, since / week_days);
@@ -137,6 +144,8 @@ impl GameState {
                 }
             }
         }
+        // E09 T37a: every player's returning marks (TWN-TAV-005, decision 126).
+        town::tavern::clear_marks(self, None);
         town::start_day(self, rules, week, sink);
         self.pay_income(rules, week_start, sink);
         self.regain_mana(rules);
@@ -294,10 +303,16 @@ impl GameState {
     // rule: HER-MAN-002
     fn regain_mana(&mut self, rules: &GameRuleset) {
         let core = rules.core();
+        // E09 T37a: a tavern record at its maximum since its fill stays as it is (`Away::full`).
+        let full = self.pool.full_records();
         let changed: Vec<(usize, u16)> = self
             .heroes
             .iter()
             .enumerate()
+            .filter(|&(index, _)| {
+                let id = u16::try_from(index).map(h3_contracts::HeroId::new);
+                id.is_ok_and(|id| !full.contains(&id))
+            })
             .map(|(index, details)| (index, h3_heroes::day_mana(details, core)))
             .filter(|&(index, mana)| self.heroes[index].mana != mana)
             .collect();
