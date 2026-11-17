@@ -813,3 +813,17 @@ def = "SlideBuV.def"
 track = "sliderV.pcx"
 button = 16
 step = 18
+
+# The teams' dialog of the flags' strip's right press (387; M3 T1b2: scenario_teams_dialog
+# 0x576540, its teams 0x576930): 256 wide at x 272, ((50 × teams + 56) / 64 + 1) × 64 high,
+# centred on the rows; the frame (dialog_frame_build 0x48FF00) in the DEF's own colours; the
+# title (GENRLTXT 658), each team's name ("Team %d", GENRLTXT 657) 50 lower than the last, its
+# flags under it, 18 apart, their row centred (x from the code).
+[scenario.teams]
+background = "diboxbck.pcx"
+frame = "dialgbox.def"
+title = { id = 1, at = [10, 20], size = [236, 36], font = "medfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+team = { id = 2, at = [10, 56], size = [236, 18], font = "smalfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+flag = { id = 10, def = "itgflags.def", at = [0, 76], size = [15, 20] }
+step = 50
+flag_step = 18

@@ -160,7 +160,7 @@ epic   = "E16"
 # [[stub]]
 # id     = "CLT-STUB-6"
 # where  = "clients/crates/h3-view/src/shell/multiplayer.rs::Multiplayer::clicked"
-# reason = "The Multiplayer dialog's network modes (IPX, TCP/IP, Modem, Direct Connect, Online; E27 decision 10, CLT-Q87 (a)) show a notice in the client's words and leave the dialog on its first stage: stage 2 (Host, Join, Search, the session list, their dialogs), DirectPlay and ProgressBar's transfer are not built, and Online never ends the client. Lifted when E28 decides how the project's network play enters the shell"
+# reason = "The Multiplayer dialog's network modes (IPX, TCP/IP, Modem, Direct Connect, Online; E27 decision 10, CLT-Q87 (a)) show a notice in the client's words and leave the dialog on its first stage: stage 2 (Host, Join, Search, the session list, their dialogs), DirectPlay and ProgressBar's transfer are not built, and Online never ends the client; nor is the scenario list read again on a network game's message 1015 with GENRLTXT 503 shown (scenario_list_reread 0x58B120, E27 M3 T1b2: design section 20.3). Lifted when E28 decides how the project's network play enters the shell"
 # epic   = "E27"
 # [[stub]]
 # id     = "CLT-STUB-7"

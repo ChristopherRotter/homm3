@@ -1031,3 +1031,31 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
   sorted `sha256sum` lines without their paths' column); the setup's baseline stopped at coverage
   by the watcher (clippy over the workspace passed with #988's fix); the VM restarted once (files
   kept).
+
+## M3 T1b2 — the list's right press and the teams' dialog (2026-11-17)
+
+- **The cut** (decision 49): T1b2 whole, as the user chose; GENRLTXT 503's part fell away
+  (below).
+- **Read** (design §20): `scenario_dialog_right_click`'s 387 and default cases, the teams'
+  dialog whole (`scenario_teams_dialog_new` 0x5764D0, `scenario_teams_dialog` 0x576540,
+  `scenario_teams_group` 0x576930, `scenario_popup_proc` 0x575430, the base 0x48FE60), which item
+  a right press finds (134 over 132, the bar over the panel, the strip over the flags), the hint
+  records of the labels, filters, columns and bar; the toggle's 503 path to its flag's writers.
+- **Found:** GENRLTXT 503 shows only after a network game's message 1015 (`scenario_list_reread`
+  0x58B120): `scenario_slots_new` builds the list at the opening and sets +0x1864 (design §3.3
+  and §19.6 corrected, §20.3). Found by a harness hold built first (xdd.dll's call of
+  `scenario_list_build` at 0x5810DB redirected, `hold` and `release` steps, a viewer's reading
+  state): the hold was armed and never reached; all of it removed again, nothing of it committed.
+  The user told; the item to `CLT-STUB-6`.
+- **Built:** `HELPED` to 27 items (105, 132 to 134, 137 to 141, 190 to 195, the bar `BAR` 337,
+  checked before the items while the list shows); the teams' dialog (`TEAMS`, `Over::Teams`,
+  `TeamsLook`, `Teams`, `teams_names`; the cursor shows; a press, a move, a key change nothing;
+  the right release closes it with the whole redraw), `Texts::teams`, the layout's
+  `[scenario.teams]` and `ScenarioLayout::teams`, `h3_view::message::frame` public (the frame's
+  names as arguments); the keys `shell.scenario.help.*` (16 new), `shell.scenario.teams.title`
+  and `.team`; seven map entries new, three updated.
+- **Recorded and compared:** `scn-right` played again (both runs as kept); `drawn` 30 of 30
+  exact (15 before), recorded; the `scenario` group otherwise as recorded.
+- **The sandbox:** the PC's 64 files and the three manuals with `HEROES3.HLP` staged at once,
+  each checked against the PC's `sha256sum` (all as on the PC); the setup's baseline stopped at
+  coverage by the watcher; CI's green `master` stood in.

@@ -346,6 +346,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   whose default `xkb_symbols "basic"` includes `de(basic)`, and pass `-xkbdir <copy>`. Then
   `xdotool key <keycode>` types by the key's place (29 `z`, 34 `ü`, 21 the dead acute); SDL's
   text events compose dead keys with `LANG=C.UTF-8`.
+- **A flag a path tests, read in one function** (E27 M3 T1b2): grep every write of it before
+  building or capturing the path (`scripts/exe.py grep '\+ 0x1864\]'`): design §3.3's first
+  showing with GENRLTXT 503 was a network game's alone, the constructor setting the flag (a
+  harness hold built for it was never reached).
 - **Coverage with the original data staged restarts the sandbox's VM** (E27 M2 T5b2 and T6a: the
   setup's baseline and `check.sh`, three runs, one build job or two; every step before coverage
   passed; E27 M3 T1a: a watcher that kills `verify-once.sh`'s tree at `== coverage` leaves

@@ -357,6 +357,13 @@ The user, 2026-11-17 (M3 T1b's start):
     original's partial redraw (`scenario_select` with an unchanged selection: the size mark, the
     panel's edge over Begin, the flags' strip) for the comparisons only. Built in T1b1.
 
+The user, 2026-11-17 (M3 T1b2's start):
+
+49. **T1b2 whole** (offered: the popups and the teams dialog first with GENRLTXT 503's harness
+    step after, T1b2 whole, or the popups alone): one task. GENRLTXT 503 then proved a network
+    game's alone (design §20.3; the user told): no harness step, the item to the network modes
+    (`CLT-STUB-6`).
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -454,8 +461,8 @@ catalogue: design §3; the shell's frame, menus, edits and the hot seat's names:
 |---|---|---|
 | T1a | The scenario screen's frame and its information panel (§3.1, §3.2, §3.5's drawing, §3.8; decision 45): the new-game mode of a single scenario, the list hidden; both backgrounds; the kept map's name, description, victory and loss, the flags, the size, the map's difficulty and the rating; the panel buttons (caption buttons), Begin and Back, their press, hold and popups; Back and Escape; the maps read whole; exact against `scn-new` but `list-shown`; M2's leftover (found met: `Key::Other`) | **done** 2026-11-17: `h3_view::shell::scenario` (`Scenario`, `Entry`, `Texts`, `sort`), `Front::Scenario`, `Menus::scenario`, `menu::Arrow` (CLT-Q137 (b), decision 46: the original's arrow for the comparisons only), `look::ScenarioLayout`, the replay's `with_backgrounds` (a recipe's `backgrounds`); `h3_ui::ui::Caption`; `h3-battle-client`'s `maps` and the shell's `--backgrounds`; the layout's `[scenario]`, `[adventure_cursor]`; the keys `shell.scenario.*`; `scn-new` 30 of 31 exact; log "M3 T1a", design §18 |
 | T1b1 | The list (§3.3, §3.4; decision 47): its panel and the toggle (128), the rows and columns, the sort, the size filters, the list's keys and scroll bar, a row's press and double press; exact against `scn-new`'s `list-shown`, `scn-list-keys`, `scn-sort`, `scn-filter` (§6.4: `up-past-top` with Page Up first) | **done** 2026-11-17: `h3_ui::scrollbar` (`H3DlgScrollbar` read whole); the screen's list (`ListLook`, `sort_by`, `list_names`, `Scenario::clock`, `Front::clock`), the keys `Command::List`, the replay's Prior and Next, the viewer's `--maps`; CLT-Q138 (b), decision 48 (the original's partial redraw, for the comparisons); `scn-list-keys` recorded again; 59 of 67 exact, the 8 others the ties' order (decision 12); log "M3 T1b1", design §19 |
-| T1b2 | The list's right press (§3.8; decision 47): the popups on the columns, the filters, the bar, a row (nothing), the labels and the texts, the flags' strip's teams dialog (387, 0x576540); GENRLTXT 503 in a shot (design §19.6); exact against `scn-right` | next |
-| T2 | The information panel's rest, the difficulty, Begin and Back (§3.5, §3.6): the panel of every map (the description's scroll bar, the empty list's panel), the difficulty's presses and the rating (`difficulty_names` read at T1a, design §18.2), Begin's messages; exact against `scn-info`, `scn-difficulty`, `scn-begin-none` (its `what` corrected: 530 is a filter's), `scn-begin-filter` | after T1b |
+| T1b2 | The list's right press (§3.8; decision 47): the popups on the columns, the filters, the bar, a row (nothing), the labels and the texts, the flags' strip's teams dialog (387, 0x576540); GENRLTXT 503 in a shot (design §19.6); exact against `scn-right` | **done** 2026-11-17 (decision 49: whole): `HELPED` (the labels, the filters, the columns, the bar `BAR`), the teams' dialog (`TEAMS`, `TeamsLook`, `Teams`, the layout's `[scenario.teams]`, `h3_view::message::frame` public); `scn-right` 30 of 30 exact; GENRLTXT 503 found a network game's alone (design §20.3: to `CLT-STUB-6`, no shot); log "M3 T1b2", design §20 |
+| T2 | The information panel's rest, the difficulty, Begin and Back (§3.5, §3.6): the panel of every map (the description's scroll bar, the empty list's panel, the teams' dialog of an empty list), the difficulty's presses and the rating (`difficulty_names` read at T1a, design §18.2), Begin's messages; exact against `scn-info`, `scn-difficulty`, `scn-begin-none` (its `what` corrected: 530 is a filter's), `scn-begin-filter` | next |
 | T3 | The advanced options of a single player (§3.12 to §3.15): the rows, the town's, hero's and bonus's arrows, the handicap, the flags, the turn's duration, the popups and the hover; the choices into `GameSetup` (§3.9: `GameSetup::offer`, the faction choice), the bonus, the handicap and the timer drawn and chosen, each effect a `CLT-STUB` (decision 6); exact against `adv-single-town`, `adv-single-hero`, `adv-single-rest`, `adv-single-maps` (§6.4: `popup-hero-arrow` on row 2's arrow) | after T2 |
 | T4 | The advanced options in the hot seat (§3.14): two to eight humans, the flags' cycle, the names from the Multiplayer dialog (`Multiplayer::names`, M2's item 61); exact against `adv-hotseat`, `adv-hotseat-rows`, `adv-hotseat-two` | after T3 |
 | T5 | The random map's tab (§3.16; CLT-Q92: drawn, its generator a stub); exact against `adv-random` (§6.4: Begin after `tab-again`) | after T4 |
@@ -476,7 +483,9 @@ dialog item: a new `ui::Item` variant would change the map-client lane's code), 
 items; (7) T1b1: a row's double press timed on the shell's clock given by the window and the
 replay (`Front::clock`, the screen's opening its first time); (8) T1b1: the original's partial
 redraw reproduced from the items' order and a stale rectangle (design §19.4), not a screen kept
-between frames.
+between frames; (9) T1b2: the teams' dialog's items under the client's ids (the original's −1:
+the title 1, the names 2 on, the flags 10 on), none without a selection (T2's empty list), the
+list's bar's right press tested before the items' (design §20.1, §20.2).
 
 ## Dependencies and boundaries
 

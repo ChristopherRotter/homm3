@@ -47,6 +47,11 @@ pub(crate) fn texts(bugs: Bugs) -> Texts {
             .flat_map(|p| (0..9).map(move |h| format!("{p}/{h}")))
             .collect(),
         sizes: ["S", "M", "L", "XL"].map(String::from).into(),
+        teams: Some(Teams {
+            look: layout.scenario.teams.clone(),
+            title: String::from("Teams"),
+            names: (1..=8).map(|k| format!("Team {k}")).collect(),
+        }),
     }
 }
 
@@ -304,9 +309,8 @@ fn a_press_holds_a_button_and_back_ends_the_screen() {
 #[test]
 fn a_right_press_shows_the_item_s_help_while_held() {
     let mut s = scenario(Bugs::Original);
-    // The name drawn by the redraw takes no right press; nor does the flags' strip yet.
+    // The name drawn by the redraw takes no right press.
     assert_eq!(s.right([580, 57]), Did::default());
-    assert_eq!(s.right([600, 414]), Did::default());
     assert!(s.box_draws("PLAYERS.PAL").is_empty());
     assert!(s.right([514, 91]).changed);
     assert!(!s.cursor());
@@ -376,6 +380,103 @@ pub(crate) fn many(n: usize) -> Vec<Entry> {
     entries.push(map("Arrogance.h3m", "Arrogance"));
     sort(&mut entries);
     entries
+}
+
+/// A label's text or a flag's colour, with its place.
+type Placed<T> = Vec<(T, i32, i32)>;
+
+/// The teams' dialog's labels and flags drawn: (text, x, y) and (colour, x, y).
+fn teams_drawn(draws: &[Draw]) -> (Placed<String>, Placed<u32>) {
+    let mut labels = Vec::new();
+    let mut flags = Vec::new();
+    for d in draws {
+        match d {
+            Draw::Label { text, x, y, .. } => labels.push((text.clone(), *x, *y)),
+            Draw::Button {
+                def, frame, x, y, ..
+            } if def == "itgflags.def" => flags.push((*frame, *x, *y)),
+            _ => {}
+        }
+    }
+    (labels, flags)
+}
+
+#[test]
+fn the_strip_s_right_press_shows_the_teams_while_held() {
+    // Red and tan of one team, blue its own: two teams, ((100 + 56) / 64 + 1) × 64 = 192 high.
+    let mut s = scenario(Bugs::Original);
+    assert!(s.right([600, 414]).changed);
+    assert!(s.cursor(), "the teams' dialog runs with the cursor");
+    let draws = s.box_draws("PLAYERS.PAL");
+    let (labels, flags) = teams_drawn(&draws);
+    let (x, y) = (272, (600 - 192) / 2);
+    assert_eq!(
+        labels,
+        vec![
+            (String::from("Teams"), x + 10, y + 20),
+            (String::from("Team 1"), x + 10, y + 56),
+            (String::from("Team 2"), x + 10, y + 106),
+        ]
+    );
+    // A team's flags centred: (256 - (18 × 2 - 3)) / 2 = 111, then (256 - 15) / 2 = 120.
+    assert_eq!(
+        flags,
+        vec![
+            (0, x + 111, y + 76),
+            (2, x + 129, y + 76),
+            (1, x + 120, y + 126)
+        ]
+    );
+    // The frame in the DEF's own colours, a shadow under it.
+    assert!(draws.iter().any(|d| matches!(d, Draw::Darken { .. })));
+    // A left press, a release, a move and a key change nothing; the right release closes it.
+    assert_eq!(s.press([1, 1]), Did::default());
+    assert_eq!(s.release(), Did::default());
+    assert_eq!(s.moved([2, 2]), Did::default());
+    assert_eq!(s.key(Some(Command::Dialog(BACK)), "Escape"), Did::default());
+    assert_eq!(s.right([514, 91]), Did::default());
+    assert!(s.right_release().changed);
+    assert!(s.box_draws("PLAYERS.PAL").is_empty());
+    // Every colour its own team: one flag a team, as many teams as colours that play.
+    let mut solo = map("Arrogance.h3m", "Arrogance");
+    solo.teams = [0, 1, 2, 3, 4, 5, 6, 7];
+    let mut s = scenario_of(vec![solo], Bugs::Fixed);
+    s.right([600, 414]);
+    let (labels, flags) = teams_drawn(&s.box_draws("PLAYERS.PAL"));
+    let y = (600 - 256) / 2;
+    assert_eq!(labels.len(), 4);
+    assert_eq!(flags[2], (2, 272 + 120, y + 176));
+    // No dialog without its texts, nor without a selection.
+    let mut s = scenario(Bugs::Original);
+    s.texts.teams = None;
+    assert_eq!(s.right([600, 414]), Did::default());
+    let mut s = scenario_of(Vec::new(), Bugs::Original);
+    assert_eq!(s.right([600, 414]), Did::default());
+}
+
+#[test]
+fn the_list_s_items_and_bar_show_their_help() {
+    let mut s = shown(many(30), Bugs::Original);
+    // The columns, the filters, the labels and the bar; a row none.
+    for (point, id) in [
+        ([41, 106], 190),
+        ([216, 106], 193),
+        ([358, 106], 195),
+        ([183, 68], 137),
+        ([371, 68], 141),
+        ([383, 300], BAR),
+        ([459, 444], 134),
+        ([580, 444], 132),
+        ([707, 444], 133),
+    ] {
+        assert!(s.right(point).changed, "{point:?}");
+        assert_eq!(s.over, Over::Help(id), "{point:?}");
+        assert!(s.right_release().changed);
+    }
+    assert_eq!(s.right([216, 160]), Did::default());
+    // The bar's help only while the list shows.
+    let mut s = scenario_of(many(30), Bugs::Original);
+    assert_eq!(s.right([383, 300]), Did::default());
 }
 
 /// A click at `point`: the move, the press and the release.
@@ -812,4 +913,6 @@ fn the_entry_counts_its_players_and_the_list_names_its_assets() {
     let layout = parse_layout(LAYOUT).unwrap();
     let names = list_names(&layout.scenario.list);
     assert!(names.iter().any(|n| n == "ScSelC.def") && names.iter().any(|n| n == "sliderV.pcx"));
+    let names = teams_names(&layout.scenario.teams);
+    assert!(names.iter().any(|n| n == "dialgbox.def") && names.iter().any(|n| n == "itgflags.def"));
 }

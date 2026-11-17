@@ -293,7 +293,7 @@ fn build(
     let height = up64(used).clamp(BOX_LEAST[1], BOX_MOST[1]);
     let text_top = TEXT_TOP + (height - used) / 2;
     let place = [(SCREEN[0] - width) / 2, (SCREEN[1] - height) / 2];
-    let mut items = frame(layout, [width, height]);
+    let mut items = frame((&layout.background, &layout.frame), [width, height]);
     let last_piece = items.iter().map(Item::id).max().unwrap_or(BACKGROUND);
     let text_left = if centred {
         (width - text_width) / 2
@@ -567,11 +567,14 @@ impl Slot {
     }
 }
 
-/// The frame's items (0x48FF00) of a box `size` (multiples of 64): the background's tiles from
-/// [`BACKGROUND`] on, each cut to the box, then the frame's pieces: the four corners, the top
-/// and bottom edges, the left and right edges. A box of at most [`BOX_MOST`] has at most 47 (ids
-/// 200 to 246: none reaches the buttons' or the picture's).
-fn frame(layout: &MessageLayout, [width, height]: [i64; 2]) -> Vec<Item> {
+/// The frame's items (`dialog_frame_build` 0x48FF00) of a box `size` (multiples of 64), its
+/// background tile and frame pieces `(background, pieces)` (`diboxbck.pcx`, `dialgbox.def`): the
+/// background's tiles from [`BACKGROUND`] on, each cut to the box, then the frame's pieces: the
+/// four corners, the top and bottom edges, the left and right edges, in the DEF's own colours (a
+/// box recolours them itself). A box of at most [`BOX_MOST`] has at most 47 (ids 200 to 246: none
+/// reaches the buttons' or the picture's).
+#[must_use]
+pub fn frame((background, pieces): (&str, &str), [width, height]: [i64; 2]) -> Vec<Item> {
     let mut items = Vec::new();
     let mut next = BACKGROUND;
     let mut id = || {
@@ -584,7 +587,7 @@ fn frame(layout: &MessageLayout, [width, height]: [i64; 2]) -> Vec<Item> {
     let tile = |at: [i64; 2], size: [i64; 2], id: u16| {
         Item::Picture(Image {
             id,
-            picture: layout.background.clone(),
+            picture: String::from(background),
             at: [i32_of(at[0]), i32_of(at[1])],
             size: Some([i32_of(size[0]), i32_of(size[1])]),
             hint: None,
@@ -611,7 +614,7 @@ fn frame(layout: &MessageLayout, [width, height]: [i64; 2]) -> Vec<Item> {
     let piece = |at: [i64; 2], frame: u32, id: u16| {
         Item::Def(Def {
             id,
-            def: Some(layout.frame.clone()),
+            def: Some(String::from(pieces)),
             at: [i32_of(at[0]), i32_of(at[1])],
             size: [i32_of(PIECE), i32_of(PIECE)],
             frame,

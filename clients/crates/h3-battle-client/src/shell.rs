@@ -673,6 +673,17 @@ fn menus(
             .iter()
             .map(|s| text(&format!("shell.scenario.size.{s}")))
             .collect(),
+        // The teams' dialog (T1b2): its title and "Team %d" of 1 to 8.
+        teams: Some(scenario::Teams {
+            look: layout.scenario.teams.clone(),
+            title: text("shell.scenario.teams.title"),
+            names: (1..=8i64)
+                .map(|k| {
+                    let args = Args::new().number("team", k);
+                    catalogue.text("shell.scenario.teams.team", &args)
+                })
+                .collect(),
+        }),
     };
     Ok(Menus {
         main,
