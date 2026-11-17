@@ -1,0 +1,131 @@
+0 view 0 0 0
+0 objects 0
+0 cycles 0 0
+0 cursor 1 0 700 300
+0 buttons 0 1
+0 points 1500
+100 screen 679,356,743,388
+160 view 0 18 0
+160 cursor 0 2 700 300
+160 points 1260
+160 hero 9 26 0 2
+160 walk 7 1 16 0
+160 player 1
+160 other 1 0 0
+160 screen 8,8,790,572
+200 cycles 1 1
+210 walk 7 2 0 0
+210 screen 8,8,600,552
+260 view 1 18 0
+260 points 1160
+260 hero 10 26 0 2
+260 walk 7 3 16 0
+260 other 1 1 1
+260 screen 8,8,762,552
+310 walk 7 4 0 0
+310 screen 8,8,600,552
+360 view 2 18 0
+360 points 1060
+360 hero 11 26 0 2
+360 walk 7 5 16 0
+360 other 1 2 2
+360 screen 8,8,755,552
+400 cycles 2 2
+410 walk 7 6 0 0
+410 screen 8,8,600,552
+460 view 3 18 0
+460 points 960
+460 hero 12 26 0 2
+460 walk 7 7 16 0
+460 other 1 3 3
+460 screen 8,8,755,552
+510 walk 7 0 0 0
+510 screen 8,8,600,552
+560 view 4 18 0
+560 points 860
+560 hero 13 26 0 2
+560 walk 7 1 16 0
+560 other 1 4 4
+560 screen 8,8,753,552
+600 cycles 3 3
+610 walk 7 2 0 0
+610 screen 8,8,600,552
+660 view 5 18 0
+660 points 760
+660 hero 14 26 0 2
+660 walk 7 3 16 0
+660 other 1 5 5
+660 screen 8,8,752,552
+710 walk 7 4 0 0
+710 screen 8,8,600,552
+760 view 6 18 0
+760 points 660
+760 hero 15 26 0 2
+760 walk 7 5 16 0
+760 other 1 6 6
+760 screen 8,8,755,552
+800 cycles 4 4
+810 walk 7 6 0 0
+810 screen 8,8,600,552
+860 view 7 18 0
+860 points 560
+860 hero 16 26 0 2
+860 walk 7 7 16 0
+860 other 1 7 7
+860 screen 8,8,753,552
+910 walk 7 0 0 0
+910 screen 8,8,600,552
+960 view 8 18 0
+960 points 460
+960 hero 17 26 0 2
+960 walk 7 1 16 0
+960 other 1 8 7
+960 screen 8,8,742,552
+1000 cycles 5 5
+1010 walk 7 2 0 0
+1010 screen 8,8,600,552
+1060 view 9 18 0
+1060 points 360
+1060 hero 18 26 0 2
+1060 walk 7 3 16 0
+1060 other 1 9 7
+1060 screen 8,8,742,552
+1110 walk 7 4 0 0
+1110 screen 8,8,600,552
+1160 view 10 17 0
+1160 points 260
+1160 hero 19 25 0 1
+1160 walk 6 5 16 -16
+1160 other 1 0 8
+1160 screen 8,8,755,552
+1200 cycles 6 6
+1210 walk 6 6 0 0
+1210 screen 8,8,600,552
+1260 view 11 16 0
+1260 points 119
+1260 hero 20 24 0 1
+1260 walk 6 7 16 -16
+1260 other 1 1 8
+1260 screen 8,8,742,552
+1310 walk 6 0 0 0
+1310 screen 8,8,600,552
+1360 view -5 -4 0
+1360 objects 2
+1360 cursor 1 0 700 300
+1360 points 1500
+1360 hero 4 4 0 2
+1360 walk 2 0 0 0
+1360 date 1 1 2
+1360 player 0
+1360 other
+1360 screen 8,8,790,591
+1400 cycles 7 7
+1540 objects 3
+1540 screen 614,400,789,548
+1600 cycles 8 8
+1720 objects 4
+1720 screen 288,240,789,549
+1800 cycles 9 9
+1900 objects 5
+1900 screen 288,240,789,549
+2000 cycles 10 10

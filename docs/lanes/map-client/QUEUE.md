@@ -18,17 +18,21 @@ context; a task that grows is cut at a seam agreed with the user. Code readings 
 (`clients/capture/README.md`), never in git. Every oddity of the original a reading or a capture
 finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
-### E24 M4 T1b — a computer player's moves in sight
+### E24 M4 T1b2 — a computer player's moves in sight, played by the viewer
 
-- **Scope:** a computer player's moves where the viewer sees them (the view's scroll to them,
-  their walk at the computer's speed, `enemyMoveTime` in VCMI's terms; read, not assumed; the
-  system options' Computer Walk Speed and Blackout Computer, the client lane's note of
-  2026-11-12); the status window's kind 5 over them, its tile, hint and cursors (read at T1a,
-  design §5.1: on the virtual clock a computer's turn out of sight takes no time, so only a walk
-  in sight shows it); a new sequence recorded in the original (a computer player's turn in
-  sight).
+- **Scope:** T1b cut in two by the user at its start (2026-11-17); T1b1 read and recorded it
+  (design §5.2, the log's "M4 T1b1"). The viewer plays the five `ai-*` sequences of
+  `clients/map/to-record.toml` exactly: a computer player's turn after End Turn from the
+  `[[turn]]` facts (kind 5 built, the view centred on the hero, the cursor hidden from its first
+  seen step) and the timeline (its walk from the `hero` and `walk` lines as M2's, at the
+  sequence's `computer_speed`; kind 5's step by §5.2's rule, checked against the `other` lines;
+  `blackout`), the next day's heroes from the `[[turn]]` tables' `heroes`; the minimap's shield
+  and the blank buttons of a computer's turn read first (`covered_view_redraw` without Blackout,
+  the minimap's draw in a computer's turn); speed 4's single draws on the client's clock; each
+  sequence then moved into `sequences.toml` (`to-record.toml` removed once empty), `drawn
+  --record`; MCL-Q30's sound run; MCL-Q31 built as the original's.
 - **Acceptance:** as T1a's.
-- **Depends on:** T1a (done 2026-11-17). **Status:** next.
+- **Depends on:** T1b1 (done 2026-11-17). **Status:** next.
 
 ### E24 M4 T2 — a visit's results
 
@@ -105,28 +109,8 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
 ## Inbox
 
-- 2026-11-17 (the town lane, E09 T37a, `town/e09-t37a`; **your readings in `docs/exe/map.toml`,
-  for your review**): `master` failed `check-exe-map` (and xtask's `the_real_map_passes`) on 14
-  addresses E24 M4 T1a cites in `E24-design.md` §5.1 and `h3-map-view`'s `turn.rs` without a map
-  entry (`master`'s own CI skipped the full verify for that code; T37a's pull request ran it). The
-  town lane added an entry for each enclosing function or table, named and summarised from your
-  §5.1 (`status_bar_text_set`, `town_deselect`, `hero_deselect`, `hero_list_redraw`,
-  `ai_turn_part_a` to `_d`, `status_other_turn_step`, `scenario_end_tests`, `c_toupper`,
-  `status_other_turn_vtable`; mostly `inferred`): rename or correct them as your reading knows
-  better.
-
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
-
-- 2026-11-17 (the client lane, E27 M3 T1b1, `client/e27-m3-t1b1`; **two things met on
-  `master`, one fixed**): (1) after #982 and #983 merged the client workspace did not build:
-  `h3_ui::message`'s button lacked T1a's `ui::Button::caption`; #988 (`caption: None`) fixed it,
-  nothing else of yours changed. (2) `cargo xtask check-exe-map` fails on `master`: 14 addresses
-  cited in `docs/epics/E24-design.md` (one also in `h3-map-view/src/turn.rs`) have no entry in
-  `docs/exe/map.toml` (the check lists them); CI's verify skipped it (the engine's code
-  unchanged), the scoped verify stops on it. Your readings: their entries in your next pull
-  request. Also new in the common crates (additive): `h3_ui::scrollbar` (a dialog's scroll bar,
-  `H3DlgScrollbar` read whole), if a screen of yours has one.
 
 - 2026-11-17 (the client lane, E27 M2 T8, `client/e27-m2-t8`; **the foundation's API, nothing of
   yours breaks**): `h3_sdl::KeyScan` loses `code` and `h3_sdl::set1` is gone (nothing read them

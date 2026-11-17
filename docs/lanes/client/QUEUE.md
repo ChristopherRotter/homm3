@@ -32,6 +32,16 @@ Then T2 to T7 as the M3 table lists them (T2's items found at T1b1: §19.5).
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-17 (the map client lane, E24 M4 T1b1, `map-client/e24-m4-t1b1`; **the capture harness,
+  rebuild `xdd.dll`**): `xdd.c` takes `<seq> seed <value>` (its
+  8.: the main thread's C library seed at its next clock read; `Game.seed`,
+  `h3drive.to_scenario(..., seed=)`), and its acknowledgement has a sixteenth field (the seeds
+  set): `h3drive.ACK_FIELDS` is 16, so a run with an `xdd.dll` built before fails as stale where it
+  reads the acknowledgement whole (a forced roll, a batch's or a sequence's checks, a seed):
+  rebuild it with `clients/capture/setup.sh` (`h3shell.py`'s recipes
+  run under `H3FROZEN` and need no seed). `h3mem`'s `status_items` also returns kind 5's items
+  (2190 to 2193), `Mem.other_turn` is new; `h3map.py` alone gained the rest.
+
 - 2026-11-17 (the town lane, E09 T37a, `town/e09-t37a`, `cross-lane`; **your test literal, and
   for the shell's town screens later**): protocol **v70** adds `GameObservation::tavern` (the
   viewer's two tavern heroes as the tavern's held hero screen shows them: `TavernHero`, its head

@@ -166,7 +166,7 @@ TURN_LIMIT = 30000
 # The most values `roll:<name>:<a>,<b>,...` queues (xdd.c's QUEUE).
 QUEUE = 8
 # The fields of xdd.dll's ack (xdd.c's `control`; `Game.ack`).
-ACK_FIELDS = 15
+ACK_FIELDS = 16
 
 
 class Unreadable(RuntimeError):
@@ -586,7 +586,8 @@ class Game:
         clips' clock is the virtual one too, the clips' reads since the command and 1 when
         BinkGetSummary goes through xdd.dll's guard, (E27 M2 T5b2) with sound the clips' sound
         hooks (3: SmackSoundUseMSS and SMACKW32's two timers) and Bink's Miles functions answered
-        (11 once the sound started): ACK_FIELDS, padded with 0; None
+        (11 once the sound started), (E24 M4 T1b1) the generator's seeds set (`seed`):
+        ACK_FIELDS, padded with 0; None
         before the first. With `need` (a check reads it once so, R7-10) an error instead of None,
         and one naming a stale xdd.dll (built before xdd.c's last field) for fewer fields."""
         try:
@@ -599,6 +600,24 @@ class Game:
             raise RuntimeError(f"xdd.dll acknowledges {len(fields)} fields, not {ACK_FIELDS}: a "
                                f"stale xdd.dll in {GAME_DIR} (setup.sh builds it from xdd.c)")
         return tuple(fields + [0] * (ACK_FIELDS - len(fields))) if len(fields) >= 3 else None
+
+    def seed(self, value, timeout=10.0):
+        """Seeds the game's random generator with `value` (E24 M4 T1b1; xdd.c's 8.): the main
+        thread's C library seed, set at its next clock read; waits until xdd.dll set it."""
+        if not 0 <= value < 2 ** 32:
+            raise ValueError(f"a seed of 32 bits, not {value}")
+        before = (self.ack(need=True))[15]
+        self.seq += 1
+        tmp = self.clock_dir / "ctl.tmp"
+        tmp.write_text(f"{self.seq} seed {value}\n")
+        tmp.replace(self.clock_dir / "ctl")
+        end = time.monotonic() + timeout
+        while time.monotonic() < end:
+            a = self.ack()
+            if a and a[0] == self.seq and a[15] > before:
+                return
+            time.sleep(0.002)
+        raise TimeoutError(f"the seed {value} was not set (ack {self.ack()})")
 
     def roll(self, name, falls=True, count=1, value=None):
         """Forces the next `count` draws of the roll `name` (ROLLS) to make it fall, or fail (M3
@@ -709,9 +728,11 @@ def gold_bonus(game, players=2):
                            f"3 Random), not Gold for {players} players: a click was lost")
 
 
-def to_scenario(game, gold=False):
+def to_scenario(game, gold=False, seed=None):
     """From the start to the adventure map of the only map in Maps/ (a single scenario); with
-    `gold` (the battle recipes, E17 M5 T8a) every player's starting bonus Gold, else random."""
+    `gold` (the battle recipes, E17 M5 T8a) every player's starting bonus Gold, else random;
+    with `seed` (E24 M4 T1b1) the random generator seeded so just before Begin, so that the new
+    game draws its armies, heroes and objects alike in every run."""
     game.wait("main_menu", 90)
     game.click(640, 75, 1.0)  # New Game
     game.wait("new_game_menu")
@@ -719,6 +740,8 @@ def to_scenario(game, gold=False):
     game.wait("scenario_list")
     if gold:
         gold_bonus(game)
+    if seed is not None:
+        game.seed(seed)
     game.click(497, 553, 1.0)  # Begin
     game.move(700, 300)  # away from the edges: a cursor there scrolls the adventure map
     game.wait("adventure_map", 60)
