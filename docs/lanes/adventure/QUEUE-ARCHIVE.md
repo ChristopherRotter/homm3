@@ -1790,3 +1790,32 @@ design `E08-design.md` §4 to §8, §12 to §15, §18, §20)
   increment 13 parts; the lane's `TRAPS.md`.
 - **Depends on:** T124a (`adventure/e08-t124a`, merged first). **Status:** ready once T124a
   merges.
+
+## T124b2 (moved 2026-11-17, done whole: `adventure/e08-t124b2`, decision 355)
+
+**E08 T124b2 — the visit, the battle, the reward and the once-marks** (round 6; design
+`E08-design.md` §6 to §8, §12, §14, §15, §20; decision 354)
+
+- **Scope:** (`adventure/e08-t124b2`): the visit and its offers (§6, ADV-BNK-003, D-66: an attack
+  kind's team marks at once, then its question unless looted; a search kind's question first,
+  looted or not, the marks after a yes; `OfferKind::Fight` and `Search` routed by the kind;
+  `Revisit` on an entered bank), the battle's two halves (§7, §14: `Defender::Bank` with its arms
+  in `h3-game`'s two matches and `Defender::owner`, `start_battle` setting `creature_bank`, the
+  deck for a `deck` kind from the coast and from a boat; ADV-BNK-004, GAM-BAT-001), the end
+  (`end_unowned_battle`'s bank case: lost or retreated, the survivors stay; a draw empties them,
+  not looted), the reward as a won battle's rest after the winner's levels (§8, §15: `give_won`'s
+  bank case, the creature joined or the army dialog's group, the artifacts in the record's order,
+  the resources, then looted; a yes without guards standing gives it at once; ADV-BNK-005,
+  GAM-DEC-007), the looted search's once-marks 14 to 16 (§12, HER-ADV-008). No version planned
+  to move (game state hash v32, replay format v16, encoding v8, protocol v69 stay, §18); the
+  step onto a bank no longer refused (`h3-map`'s `a_step_onto_a_bank_is_refused_until_t124b2`
+  replaced). The hint and its events are T125a's.
+- **Inputs:** design §6 to §8, §12, §14, §15; §5's *As built* (T124b1: `Resolved::Bank`'s level
+  and artifacts, the guards as drawn in `MapObject::guards`, asking); §13's *As built* (T124a:
+  `BattleSetup::creature_bank`, `SetupError::InvalidCreatureBank`); survey `E08-banks.md` §4 to
+  §6, §14; ADR-0016 and -0017's increment 13 parts; the lane's `TRAPS.md` (the plans' oracles, a
+  command's exact events). The templates in code: the Pyramid's search (`records.rs`'
+  `search_pyramid`, `loot_pyramid`), the guarded piles' fight and reward (`piles.rs`), a mine's
+  `Fight` routing (`mines.rs`).
+- **Depends on:** T124b1 (`adventure/e08-t124b1`, merged first). **Status:** ready once T124b1
+  merges; its cut confirmed at its start.

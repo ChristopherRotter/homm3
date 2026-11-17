@@ -2,9 +2,8 @@
 //! ADV-BNK-001): what a type of creature bank holds as data, its levels as the original's
 //! `CrBanks.txt` gives them before the split, and their compilation from the packs' keys. The
 //! draw when the game is built (the level, the artifacts, the split, the upgrade: ADV-BNK-002) is
-//! the static map's since T124b1 (`state::banks`); the visit and the reward come with T124b2;
-//! until then a step onto a bank is refused as any unbuilt visit's
-//! ([`super::ObjectKind::effect`]).
+//! the static map's since T124b1 (`state::banks`), the visit, the battle and the reward since
+//! T124b2 (ADV-BNK-003 to -005, the same module).
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
@@ -12,10 +11,10 @@ use alloc::vec::Vec;
 use h3_content::{ArtifactClass, ContentKey, CreatureTypeId};
 use h3_kernel::{CanonicalHash, StateHasher};
 
-use super::Scope;
 use super::rewards::{
     Compiled, OnceBonus, Resources, check_chances, compile_resources, hash_resources,
 };
+use super::{ObjectKind, Scope};
 
 /// The most levels a creature bank has (increment 13's design note §1): the original's kinds'
 /// record holds four (`creature_bank_kinds` 0x695038, the levels at +0x10, 0x60 bytes each;
@@ -89,6 +88,16 @@ pub struct Bank {
     /// Whether its water entrance is reached from land and crossed by a flight as an empty
     /// boat's tile (a neighbour-visited kind's only: the Shipwreck, design note §9).
     pub coast: bool,
+}
+
+impl ObjectKind {
+    /// A creature bank's kind ([`Self::Bank`]), if this is one.
+    pub(crate) const fn bank(&self) -> Option<&Bank> {
+        match self {
+            Self::Bank(bank) => Some(bank),
+            _ => None,
+        }
+    }
 }
 
 /// [`BankLevel`] as a pack defines it: creatures and resources by key.

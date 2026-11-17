@@ -3,17 +3,17 @@
 //! 16 by subclass 0 to 6, the Crypt's three pictures and the Shipwreck's two, read back as written
 //! in SoD and RoE, their templates' masks as the game's; a subclass of 16 past 6 refused. Since
 //! T123b (design note §3, map import v24) the import types them, class 16 by subclass and the four
-//! others at subclass 0, without a body (another subclass refused), the setup valid; until T124b2
-//! a step onto a bank is refused as any unbuilt visit's.
+//! others at subclass 0, without a body (another subclass refused), the setup valid; since T124b2
+//! a step onto a land bank's entrance visits it (its question by its kind, then its battle).
 
 use super::import::{ROE, SOD};
 use super::limits;
 use crate::model::{Body, RawMap};
 use crate::writer as w;
 use crate::{ImportError, import, read};
-use h3_adventure::{AdventureCommand, AdventureCommandError, Holds, Pos};
-use h3_contracts::PlayerId;
-use h3_game::{Actor, GameCommand, GameCommandError, GameState, apply};
+use h3_adventure::{AdventureCommand, Holds, OfferKind, Pos};
+use h3_contracts::{BattleSide, PlayerId};
+use h3_game::{Actor, Answer, Consent, GameCommand, GameState, apply};
 
 /// The game's `Objects.txt` lines of the land banks (`H3bitmap.lod`'s, RoE's as SoD's): class 16
 /// by subclass, the Cyclops Stockpile (0), the Dwarven Treasury (1), the Griffin Conservatory (2),
@@ -314,16 +314,21 @@ fn the_import_types_the_banks() {
     }
 }
 
-// covers: ADV-OBJ-003, ADV-BNK-001
+// covers: ADV-OBJ-003, ADV-BNK-001, ADV-BNK-003, ADV-BNK-004
 #[test]
-fn a_step_onto_a_bank_is_refused_until_t124b2() {
-    // Until T124b2 builds the visit (increment 13's design note §6), a bank's entrance is refused
-    // as any unbuilt visit's: the reach ends before it, and a step onto it is `Visit`, the state
-    // unchanged. Red's hero is placed on the tile below each land bank's entrance (free: the
-    // banks are four rows apart).
+fn a_step_onto_a_land_bank_asks_by_its_kind_and_a_yes_fights_its_guards() {
+    // Since T124b2 (increment 13's design note §6, §7) a bank's entrance ends a path and is
+    // visited: class 16's seven kinds and Dragon Utopia mark Red at once and ask to fight, the
+    // Crypt asks to search first; declined, the hero stays on the entrance and `Revisit` asks
+    // again; a yes fights the guards as drawn there, unowned. Red's hero is placed on the tile
+    // below each land bank's entrance (free: the banks are four rows apart).
     let rules = &*SOD;
     let raw = read_back(&w::write(&banks_map()).unwrap());
     let setup = import(&raw, rules).unwrap();
+    let red = PlayerId::new(0);
+    let play = |state: &mut GameState, command| {
+        apply(state, rules, Actor::Player(red), command, &mut Vec::new()).unwrap();
+    };
     for (index, object) in setup.map.objects[..LAND_BANKS.len()].iter().enumerate() {
         let (column, row) = object.visitable.offsets().next().unwrap();
         let entrance = Pos::new(
@@ -331,37 +336,53 @@ fn a_step_onto_a_bank_is_refused_until_t124b2() {
             object.anchor.y - u16::from(row),
             0,
         );
-        let below = Pos::new(entrance.x, entrance.y + 1, 0);
         let mut setup = setup.clone();
-        setup.heroes[0].pos = below;
+        setup.heroes[0].pos = Pos::new(entrance.x, entrance.y + 1, 0);
         let mut state = GameState::new(rules, &setup, 1).unwrap();
         let hero = state.adventure().heroes()[0].id;
         let reach = state
             .adventure()
             .reach(rules.core(), rules.adventure(), state.heroes(), hero)
             .unwrap();
-        assert_eq!(reach.points_left(entrance), None, "{index}");
-        // The reach goes on along the free row below the entrances.
-        let beside = Pos::new(below.x + 1, below.y, 0);
-        assert!(reach.points_left(beside).is_some(), "{index}");
-        let before = state.clone();
-        let command = GameCommand::Adventure(AdventureCommand::MoveHero {
-            hero,
-            path: vec![entrance],
-        });
-        assert_eq!(
-            apply(
-                &mut state,
-                rules,
-                Actor::Player(PlayerId::new(0)),
-                command,
-                &mut Vec::new()
-            ),
-            Err(GameCommandError::Adventure(AdventureCommandError::Visit {
-                step: 0
-            })),
-            "{index}"
+        assert!(reach.points_left(entrance).is_some(), "{index}");
+        let path = vec![entrance];
+        play(
+            &mut state,
+            GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }),
         );
-        assert_eq!(state, before);
+        let crypt = (7..10).contains(&index);
+        let asked = if crypt {
+            OfferKind::Search
+        } else {
+            OfferKind::Fight
+        };
+        assert_eq!(state.decision(red).unwrap().kind, asked, "{index}");
+        assert_eq!(state.adventure().knows(red, index), !crypt, "{index}");
+        assert_eq!(state.adventure().heroes()[0].pos, entrance, "{index}");
+        let answer = |consent| GameCommand::Answer(Answer::Offer(consent));
+        play(&mut state, answer(Consent::Decline));
+        assert!(state.decision(red).is_none() && state.battle(red).is_none());
+        play(
+            &mut state,
+            GameCommand::Adventure(AdventureCommand::Revisit { hero }),
+        );
+        assert_eq!(state.decision(red).unwrap().kind, asked, "{index}");
+        play(&mut state, answer(Consent::Accept));
+        let battle = state.battle(red).unwrap();
+        assert_eq!(
+            (battle.tile(), battle.owners()),
+            (entrance, [Some(red), None])
+        );
+        let guards = state.adventure().guards_left(index).to_vec();
+        let defending: Vec<_> = battle
+            .state()
+            .stacks()
+            .iter()
+            .filter(|s| s.side == BattleSide::Defender)
+            .map(|s| (s.creature, s.count))
+            .collect();
+        let drawn: Vec<_> = guards.iter().map(|s| (s.creature, s.count)).collect();
+        assert_eq!(defending, drawn, "{index}");
+        assert!(state.adventure().knows(red, index), "{index}");
     }
 }

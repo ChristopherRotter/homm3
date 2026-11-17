@@ -1,7 +1,7 @@
 //! Increment 13's kind in the ruleset part (E08 T123a, increment 13's design note §1): the
 //! creature bank with its question, levels, looted bonus, deck and coast, compiled, checked and in
 //! the hash (part v21). Its draw is the static map's since T124b1; its visit, battle and reward
-//! come with T124b2: until then it has no effect.
+//! since T124b2 (its effect names the kind).
 
 use h3_content::ArtifactClass;
 
@@ -91,7 +91,7 @@ fn compiled(visit: Visit, bank: BankDef) -> ObjectType {
 
 // covers: ADV-BNK-001
 #[test]
-fn a_creature_bank_compiles_with_its_levels_and_no_visit_yet() {
+fn a_creature_bank_compiles_with_its_levels() {
     let core = core();
     let creature = |k: &str| core.creature_by_key(k).unwrap();
     let resource = |k: &str| {
@@ -129,9 +129,10 @@ fn a_creature_bank_compiles_with_its_levels_and_no_visit_yet() {
         deck: false,
         coast: false,
     };
-    assert_eq!(ty.kind, ObjectKind::Bank(expected));
-    // No visit until T124b2: a step onto one is refused as any unbuilt visit's.
-    assert_eq!(ty.kind.effect(), None);
+    assert_eq!(ty.kind, ObjectKind::Bank(expected.clone()));
+    // Its visit since T124b2 reads the kind (`state::banks`).
+    assert_eq!(ty.kind.effect(), Some(Effect::Bank(&expected)));
+    assert_eq!(ty.kind.bank(), Some(&expected));
     assert!(!ty.kind.ownable());
     assert!(!ty.kind.weekly());
     assert_eq!(ty.kind.timed_mark(), None);

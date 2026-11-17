@@ -480,6 +480,9 @@ pub(crate) enum Effect<'k> {
     /// Its question, then its guards or its reward record (Pandora's Box, ADV-PIK-013, E08
     /// T62b1).
     PandoraBox,
+    /// Its question by its kind's, its team's marks, then its guards or its reward (a creature
+    /// bank, ADV-BNK-003 to -005, E08 T124b2; increment 13's design note §6 to §8).
+    Bank(&'k Bank),
     /// Its question at every visit, then its guards or a looted one's luck (the Pyramid,
     /// ADV-TCH-008, E08 T62b1).
     Pyramid,
@@ -642,6 +645,7 @@ impl ObjectKind {
                 mark: *mark,
                 keep: *keep,
             }),
+            Self::Bank(bank) => Some(Effect::Bank(bank)),
             // E08 T61a: typed; an event is fired by a step, never visited (T62b2). E08 T72: the
             // grounds of the sea and the holes are never visited. E08 T83a: increment 9's seven
             // kinds are typed; the mines' visits came with T84a, the Lighthouses' and the weekly
@@ -654,14 +658,13 @@ impl ObjectKind {
             // note §7), the Whirlpool's with T105a2 (its loss first, note §8). E08 T113a:
             // increment 12's seven kinds are typed; the garrisons' visits came with T114a1, the
             // bonus visitables' with T115b (increment 12's design note §8, §9). E08 T123a: the
-            // creature banks are typed, drawn since T124b1; their visit comes with T124b2
-            // (increment 13's design note §6).
+            // creature banks are typed, drawn since T124b1, visited since T124b2 (increment 13's
+            // design note §6).
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
             | Self::Hole
-            | Self::RandomDwelling
-            | Self::Bank(_) => None,
+            | Self::RandomDwelling => None,
         }
     }
 

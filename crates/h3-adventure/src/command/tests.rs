@@ -1843,6 +1843,7 @@ fn defender_hero(battle: &BattleStart) -> HeroId {
         Defender::Monster { .. }
         | Defender::Guards { .. }
         | Defender::Monsters { .. }
-        | Defender::Garrison { .. } => panic!("no hero defends"),
+        | Defender::Garrison { .. }
+        | Defender::Bank { .. } => panic!("no hero defends"),
     }
 }
