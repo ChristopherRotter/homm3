@@ -4466,3 +4466,47 @@ it in the same session (decision 130).
 check-lane --cross-lane`, `cargo check --workspace --all-targets`, `cargo test -p h3-kernel -p
 h3-content -p h3-pack -p h3-harvest -p h3-server -p h3-protocol`; CI on the pull request is the
 record.
+
+### T36 — the town part v7: the tavern weights and the hire's price (2026-11-17)
+
+The same session as T35b, the user present at the start; branch `town/e09-t36` on T35b's
+(`shared/e09-t35b`, #979), `cross-lane` (the harvester and `packs/README.md` the battle lane's, the
+golden replays the adventure lane's). **Kept whole** (decision 130); the original data staged at
+T35b's start.
+
+- **`h3-towns`** (design §60): `TownDef::tavern` (class key, weight), compiled to
+  `TownRecord::tavern` (a `u8` per core class by `HeroClassId`, a class not given 0);
+  `TownPatch::tavern` changes or adds the classes it lists; `TownParamsDef::hire_price` and
+  `TownParams::hire_price` (core resources as a building's cost: each once, at least 1, empty for
+  free); the refusals `UnknownHeroClass`, a class outside the pack's closure, a class given twice
+  (a record's or a patch's), a record whose weights sum to 0 after the overrides, the price's
+  resource twice or 0. **Town ruleset part v7** (`TOWN_RULESET_HASH_VERSION`; the price after
+  `most_heroes`, each record's weights after its demoted Capitol), pins `0x0f14_27ea_a4ad_9c09` and
+  the empty part's `0x2bc5_8221_66bf_4786`.
+- **`h3-pack-towns`:** `hire_price = { gold = 2500 }` in `[town_params]`, a record's
+  `[town.tavern]` (class = weight), an override's `tavern = { … }`; the format's doc. The synthetic
+  packs: `hire_price = { coin = 2000 }`, `vale`'s Warden 7 and Sage 3, the expansion's override
+  the Sage's 4.
+- **The harvest** (`h3-harvest`, `cross-lane`): `heroes::class_taverns` (the columns after the
+  skills' weights, one per town); each record's faction column over its pack's closure (class i is
+  faction i / 2's; a 0 left out); the AB pack's overrides of the eight base records with the
+  Planeswalker's and the Elementalist's 5 (the base pack cannot name them); the gap-fill's
+  `[towns.tavern]` (`hire_price = 2500`, source `exe-hero-price`: `hero_price` 0x67814C). The
+  harvester re-run on the staged installation wrote `base` and `ab`; `sod` unchanged.
+- **Tests:** `h3-towns`' compile, refusal, message and hash tests; `h3-pack-towns`' synthetic record
+  and `the_original_taverns` (every SoD record 18 classes of 5 or 6 summing to 100, Castle's column
+  as survey §2.2, the base pack alone 16 classes summing to 90, the price 2 500 gold in both);
+  `h3-harvest`'s town test (the fixture's columns 4 to 6 with a 0: the records, the overrides).
+- **Replays:** the 89 golden adventure replays re-recorded from their commands (only
+  `town_ruleset_hash` moved, 0x0d7be940b64312a6 to 0xabc9756b93a29a55; all verify). The bot reports
+  record no town part: unchanged.
+- *Agent's calls* (decision 132): the overrides by class; the harvest from `H3bitmap.lod`'s file
+  (`H3ab_bmp.lod`'s byte-identical in this build); the price in the gap-fill; a free price
+  allowed; TWN-TAV-001's entry left to T37a. Design §60's *As built*.
+
+**The queue:** T36 out; T37 next (T37a the pool, the draw and the fills). Ids: decisions next 133.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`, `cargo xtask
+check-lane --cross-lane`, `cargo check --workspace --all-targets`, `cargo clippy --workspace
+--all-targets -- -D warnings`, `cargo test -p h3-harvest -p h3-protocol -p h3-server -p h3-cli -p
+h3-sim -p h3-game`; CI on the pull request is the record.

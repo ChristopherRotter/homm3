@@ -71,6 +71,19 @@ pub struct Towns {
     pub growth: TownGrowth,
     /// The town's two rows' parameter (E09 T28a, design §53).
     pub rows: TownRows,
+    /// The tavern's parameter (E09 T36, design §60).
+    pub tavern: TownTavern,
+}
+
+/// The tavern's `[town_params]` (E09 T36, design §60; survey `E09-tavern.md` §3): the hire's
+/// price, in the parameters' gold (the records' tavern weights are `HCTRAITS.TXT`'s).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownTavern {
+    /// Source ids.
+    pub sources: Vec<String>,
+    /// A hero's price at a tavern, in gold.
+    pub hire_price: u32,
 }
 
 /// The two rows' `[town_params]` (E09 T28a, design §53; survey `E09-growth.md` §9).
@@ -1074,6 +1087,7 @@ impl GapFill {
                         .chain(&t.visions.sources)
                         .chain(&t.growth.sources)
                         .chain(&t.rows.sources)
+                        .chain(&t.tavern.sources)
                         .chain(t.role.iter().flat_map(|r| &r.sources))
                 }));
         for r in refs {

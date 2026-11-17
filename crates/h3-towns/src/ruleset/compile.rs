@@ -1,13 +1,14 @@
 //! The town part's compiler (E09 increment 1's design note §2; increment 2's requirements, costs
 //! and role `shipyard`, design §24; increment 3's roles `horde`, `portal`, `week_of`, `roe` and
-//! the growth's parameters, design §38): the load order, each pack's parameters, records and
-//! overrides in it, then the checks across packs.
+//! the growth's parameters, design §38; increment 4's tavern weights and the hire's price, design
+//! §60): the load order, each pack's parameters, records and overrides in it, then the checks
+//! across packs.
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use h3_content::{ContentKey, CreatureTypeId, FactionId, ResourceId, Ruleset};
+use h3_content::{ContentKey, CreatureTypeId, FactionId, HeroClassId, ResourceId, Ruleset};
 use h3_contracts::{MAX_TOWN_BONUSES, Moat};
 
 use super::{
@@ -31,6 +32,8 @@ struct Entry {
     creatures: Vec<CreatureLevel>,
     buildings: Vec<Building>,
     roe: bool,
+    /// The tavern weights by the core's class index (checked once the overrides are applied).
+    tavern: Vec<u8>,
 }
 
 /// The pack being compiled: references resolve against the core within its dependency closure.
@@ -78,6 +81,34 @@ impl Scope<'_> {
             .creature_by_key(key.as_str())
             .ok_or_else(|| TownCompileError::UnknownCreature(String::from(key.as_str())))?;
         self.check(key).map(|()| id)
+    }
+
+    fn hero_class(&self, key: &ContentKey) -> Result<HeroClassId> {
+        let id = self
+            .core
+            .hero_classes()
+            .iter()
+            .position(|c| c.key == *key)
+            .and_then(HeroClassId::from_index)
+            .ok_or_else(|| TownCompileError::UnknownHeroClass(String::from(key.as_str())))?;
+        self.check(key).map(|()| id)
+    }
+
+    /// Sets the listed classes' tavern weights in `weights` (by the core's class index): a class
+    /// listed twice is refused.
+    fn tavern(&self, def: &[(ContentKey, u8)], faction: &str, weights: &mut [u8]) -> Result<()> {
+        let mut seen = BTreeSet::new();
+        for (key, weight) in def {
+            let class = self.hero_class(key)?;
+            if !seen.insert(class) {
+                return Err(invalid_town(
+                    faction,
+                    "a tavern weight's class is given twice",
+                ));
+            }
+            weights[class.index()] = *weight;
+        }
+        Ok(())
     }
 
     /// Amounts of resources in the core's order, or `None` when one is named twice or is 0.
@@ -170,6 +201,9 @@ pub(super) fn compile(
             }
             if let Some(silo) = &o.patch.silo {
                 entry.silo = scope.silo(silo, o.faction.as_str())?;
+            }
+            if let Some(tavern) = &o.patch.tavern {
+                scope.tavern(tavern, o.faction.as_str(), &mut entry.tavern)?;
             }
             entry.moat = o.patch.moat.unwrap_or(entry.moat);
             entry.siege_obstacles = o.patch.siege_obstacles.unwrap_or(entry.siege_obstacles);
@@ -264,6 +298,11 @@ fn compile_params(scope: &Scope<'_>, def: &TownParamsDef) -> Result<TownParams> 
             "the most heroes on the map needs at least 1",
         ));
     }
+    let hire_price = scope
+        .amounts(&def.hire_price)?
+        .ok_or(TownCompileError::InvalidParams(
+            "the hire's price gives each resource once, at least 1",
+        ))?;
     Ok(TownParams {
         gold,
         hall_gold: def.hall_gold,
@@ -278,6 +317,7 @@ fn compile_params(scope: &Scope<'_>, def: &TownParamsDef) -> Result<TownParams> 
         week: def.week,
         garrison_week: def.garrison_week.clone(),
         most_heroes: def.most_heroes,
+        hire_price,
     })
 }
 
@@ -347,6 +387,8 @@ fn compile_town(scope: &Scope<'_>, faction: FactionId, def: &TownDef) -> Result<
         })
         .collect::<Result<Vec<_>>>()?;
     let silo = scope.silo(&def.silo, name)?;
+    let mut tavern = alloc::vec![0; scope.core.hero_classes().len()];
+    scope.tavern(&def.tavern, name, &mut tavern)?;
     let buildings = compile_buildings(scope, name, &def.buildings, &creatures)?;
     check_roles(name, &buildings)?;
     Ok(Entry {
@@ -359,6 +401,7 @@ fn compile_town(scope: &Scope<'_>, faction: FactionId, def: &TownDef) -> Result<
         creatures,
         buildings,
         roe: def.roe,
+        tavern,
     })
 }
 
@@ -648,8 +691,12 @@ fn check_roles(faction: &str, buildings: &[Building]) -> Result<()> {
     Ok(())
 }
 
-/// The record with its demoted Capitol's building: the parameters' key, a hall-3 building.
+/// The record with its demoted Capitol's building (the parameters' key, a hall-3 building) and
+/// its tavern weights, which must weigh something (the draw would have nothing to weigh).
 fn finish(params: &TownParams, entry: Entry) -> Result<TownRecord> {
+    if entry.tavern.iter().all(|&w| w == 0) {
+        return Err(invalid_town(&entry.key, "the tavern weights sum to 0"));
+    }
     let capitol_demoted_to = entry
         .buildings
         .iter()
@@ -671,5 +718,6 @@ fn finish(params: &TownParams, entry: Entry) -> Result<TownRecord> {
         buildings: entry.buildings,
         capitol_demoted_to,
         roe: entry.roe,
+        tavern: entry.tavern,
     })
 }

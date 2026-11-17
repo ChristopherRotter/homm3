@@ -8,7 +8,7 @@ Human-editable content packs (ADR-0006). Keys are namespaced `pack:name`. Since 
 | `core.toml` | the `[pack]` manifest; resources, factions, terrains, creatures (identity and non-battle data: name, faction, level, speed, cost, growth, values, flags, upgrades, abilities outside battle), creature overrides' core halves, spell schools, spells (name, category, level, schools, cost, power, effect, `granted_by_name_only`), secondary skills, hero classes, heroes, hero overrides, artifact slots and their overrides, artifacts, `[hero_params]`, profiles | `h3-pack` into a `ContentPack`; `h3-content` into the core `Ruleset` |
 | `battle.toml` | no manifest (it belongs to its folder's `core.toml`): `[battle]`, special battlefields (v36), sieges (v37), obstacles, each creature's battle data (`[[creature]]` with its `id`: attack, defense, damage, hit points, shots, casts, abilities), creature overrides' battle halves (`target`, `fixes` and those fields), each spell's battle magic (`[[spell]]` with its `id`: polarity and every targeting and effect field) | `h3-pack-battle` into a `BattlePack`; `h3-content-battle` into the `BattleRuleset` on the core |
 | `adventure.toml` | the adventure map's data (owned by the adventure lane; format: `crates/h3-pack-adventure/src/lib.rs`) | `h3-pack-adventure` |
-| `towns.toml` | the town part's data: per faction a town record, the part's parameters (owned by the town lane, ADR-0028 point 5; format: `crates/h3-pack-towns/src/lib.rs`, from E09 T5a). The synthetic packs' are hand-written (E09 T5b2a), the original packs' harvested (E09 T5b2b2: `base` the eight RoE factions and the parameters, `ab` Conflux, `sod` the moats as SoD plays them) | `h3-pack-towns`; `h3-towns` into the `TownRuleset` on the core |
+| `towns.toml` | the town part's data: per faction a town record, the part's parameters (owned by the town lane, ADR-0028 point 5; format: `crates/h3-pack-towns/src/lib.rs`, from E09 T5a). The synthetic packs' are hand-written (E09 T5b2a), the original packs' harvested (E09 T5b2b2: `base` the eight RoE factions and the parameters, `ab` Conflux, `sod` the moats as SoD plays them; since E09 T36 each record's tavern weights from `HCTRAITS.TXT`, `ab`'s overrides adding its two classes to the base records, and the hire's price) | `h3-pack-towns`; `h3-towns` into the `TownRuleset` on the core |
 
 The TOML keys are the same in either file; the sections below show each table with all its
 fields, whichever file a field lives in. Every creature and every spell of a pack has a row in
@@ -719,7 +719,7 @@ layouts: `docs/formats/installation.md` §6–§7, `crates/h3-harvest/data/gapfi
   effect from the executable's flag word (installation.md §7.6), areas, Chain Lightning's chain
   and side and the target conditions from the gap-fill file (`[[spells.targeting]]`); the other kinds come
   with their tasks (E04b T3–T7). Town chances and AI values (E09); hero classes:
-  aggression and tavern weights (E09); hero availability (campaign heroes, Lord Haart the Knight
+  aggression (E09; their tavern weights are the town records', E09 T36); hero availability (campaign heroes, Lord Haart the Knight
   retired by the expansions; E08–E10).
 - Checked by experiment batch 1a (SoD, `experiments/results/E04a-batch-1a.md`): Artillery gives
   one Ballista shot at Basic and two at Expert (R6, R7; dispute D1 goes to VCMI and the wiki, not

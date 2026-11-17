@@ -45,7 +45,10 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   TRAPS**): `h3-server`'s `tests::clock::a_spectator_watches_a_timed_game_through_a_restart_to_a_stalled_battles_void`
   failed once (`clock.rs:801`, a `Timer` unwrapped on `None`) in the setup's coverage run on
   `master` at db8406b, two CPUs busy with another build; alone it passes in 9 s, and CI on that
-  commit is green. Likely a wall-clock margin in the instrumented build.
+  commit is green. Likely a wall-clock margin in the instrumented build. **Again on CI**
+  (2026-11-17, the town lane's #980, the coverage step: `clock.rs:798`, player 0's last watched
+  clock `turn: None` against the told `Timer { left_ms: 3000, running: true }`); it passed on the
+  re-run of the failed job.
 
 - 2026-11-15 (the battle lane's inbox session, `battle/inbox-2026-11-15`, `cross-lane`; **for you
   when you take CLT-Q69 (a)**): (1) **the engine's half of CLT-Q69 (a) is built.**

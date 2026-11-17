@@ -21,7 +21,11 @@
 //! table (its level by its creature's, upgraded for the upgrades' buildings), its growth checked
 //! equal to its creature's `horde_growth`, which the engine reads (one fact, held once); the gap-fill's
 //! roles `portal` and `week_of`; `roe = false` on the `ab` pack's records; the growth's
-//! parameters from the gap-fill.
+//! parameters from the gap-fill. Since E09 T36 (design §60; survey
+//! `docs/rules/surveys/E09-tavern.md` §2.2): each record's `[town.tavern]`, `HCTRAITS.TXT`'s
+//! column of its faction over the classes of its pack's closure (class i is faction i / 2's), the
+//! `ab` pack's overrides of the base records with its two classes' weights; the hire's price from
+//! the gap-fill.
 //!
 //! The files are compiled with `h3-pack-towns` on the harvested core files in every allowed
 //! combination before they are returned.
@@ -33,7 +37,7 @@ use h3_formats::exe::towns::{FactionTowns, HORDE_RECORDS, TOWN_CREATURES, TownDa
 use h3_formats::text::TextTable;
 
 use crate::gapfill::{GapFill, TownSiege, Towns};
-use crate::{Inputs, RESOURCE_COUNT, creature_rows, key_of, quote};
+use crate::{Inputs, RESOURCE_COUNT, creature_rows, heroes, key_of, quote};
 
 /// The buildings' text tables of `H3bitmap.lod`: the names (survey §16.7) and the costs.
 #[derive(Debug, Clone)]
@@ -111,7 +115,7 @@ const PACKS: [(&str, &str); 3] = [
     ),
     (
         "ab",
-        "Armageddon's Blade's town record, Conflux, and its Visions creature, the Rogue.",
+        "Armageddon's Blade: Conflux's record, the Rogue's Visions, its classes in the base taverns.",
     ),
     (
         "sod",
@@ -179,6 +183,9 @@ struct Ctx<'a> {
     resources: Vec<String>,
     /// The merged roles by faction (index) and building.
     roles: BTreeMap<(usize, u8), BTreeMap<String, toml::Value>>,
+    /// The hero classes in `HCTRAITS.TXT`'s order (E09 T36): each one's key, pack (its faction's,
+    /// class i of faction i / 2) and weight in each faction's taverns.
+    taverns: Vec<(String, &'static str, Vec<u8>)>,
 }
 
 /// Runs the town harvest: `(pack id, towns.toml text)` for `base`, `ab` and `sod`, checked to
@@ -278,6 +285,26 @@ pub fn harvest_towns(
     for f in &spec.moat.faction {
         faction_index(&f.faction)?;
     }
+    let ab_factions: BTreeSet<&str> = gap.ab.factions.iter().map(String::as_str).collect();
+    let pack_of = |f: usize| {
+        if ab_factions.contains(factions[f].as_str()) {
+            "ab"
+        } else {
+            "base"
+        }
+    };
+    let taverns = heroes::class_taverns(&inputs.hero_tables, factions.len())?
+        .into_iter()
+        .enumerate()
+        .map(|(i, (key, weights))| {
+            let f = i / 2;
+            if f < factions.len() {
+                Ok((key, pack_of(f), weights))
+            } else {
+                Err(format!("towns: hero class `{key}` has no town {f}"))
+            }
+        })
+        .collect::<Result<_, String>>()?;
     let ctx = Ctx {
         spec,
         tables: &inputs.town_names,
@@ -287,8 +314,8 @@ pub fn harvest_towns(
         horde_growth,
         resources,
         roles,
+        taverns,
     };
-    let ab_factions: BTreeSet<&str> = gap.ab.factions.iter().map(String::as_str).collect();
     let mut texts: BTreeMap<&str, String> =
         PACKS.iter().map(|&(id, line)| (id, header(line))).collect();
     let base = texts.entry("base").or_default();
@@ -297,13 +324,11 @@ pub fn harvest_towns(
         texts.entry(pack).or_default().push_str(&text);
     }
     for (f, t) in data.factions.iter().enumerate() {
-        let pack = if ab_factions.contains(factions[f].as_str()) {
-            "ab"
-        } else {
-            "base"
-        };
+        let pack = pack_of(f);
         let record = record(&ctx, f, t, pack)?;
         texts.entry(pack).or_default().push_str(&record);
+        let ab = texts.entry("ab").or_default();
+        ab.push_str(&tavern_override(&ctx, f, pack)?);
         let sod = texts.entry("sod").or_default();
         sod.push_str(&moat_override(&ctx, f, pack)?);
     }
@@ -376,7 +401,8 @@ fn params(ctx: &Ctx<'_>) -> Result<String, String> {
          week_creature_chance = [{}, {}]\n\
          week_creature_bonus = {}\n\
          garrison_week = {{ odds = [{}, {}], out_of = {}, weights = [{}], weeks = {}, upgrade = {} }}\n\
-         most_heroes = {}\n",
+         most_heroes = {}\n\
+         hire_price = {{ {} = {} }}\n",
         quote(gold),
         p.grail_gold,
         p.reveal_radius,
@@ -395,6 +421,8 @@ fn params(ctx: &Ctx<'_>) -> Result<String, String> {
         w.weeks,
         w.upgrade,
         ctx.spec.rows.most_heroes,
+        toml_key(gold),
+        ctx.spec.tavern.hire_price,
     ))
 }
 
@@ -424,6 +452,39 @@ fn sieges(ctx: &Ctx<'_>, f: usize) -> (TownSiege, TownSiege) {
         .iter()
         .find(|s| s.faction == ctx.factions[f])
         .map_or((moat.roe_ab, moat.sod), |s| (s.roe_ab, s.sod))
+}
+
+/// A record's tavern weights (E09 T36, design §60): the classes of the record's pack's closure
+/// that weigh in its faction's column, as `[town.tavern]`.
+fn tavern(ctx: &Ctx<'_>, f: usize, pack: &str) -> Result<String, String> {
+    let mut out = String::from("\n  [town.tavern]\n");
+    for (key, own, weights) in &ctx.taverns {
+        let w = weights[f];
+        if w > 0 && (*own == pack || *own == "base") {
+            let _ = writeln!(out, "  {} = {w}", toml_key(&reference(own, key, pack)?));
+        }
+    }
+    Ok(out)
+}
+
+/// The AB pack's override of a base faction's record (E09 T36): its classes' weights in that
+/// faction's taverns, which the base pack cannot name.
+fn tavern_override(ctx: &Ctx<'_>, f: usize, pack: &str) -> Result<String, String> {
+    let weights: Vec<String> = ctx
+        .taverns
+        .iter()
+        .filter(|(_, own, w)| *own == "ab" && w[f] > 0)
+        .map(|(key, _, w)| format!("{} = {}", toml_key(key), w[f]))
+        .collect();
+    if pack != "base" || weights.is_empty() {
+        return Ok(String::new());
+    }
+    let faction = reference(pack, &key_of(&ctx.factions[f]), "ab")?;
+    Ok(format!(
+        "\n[[town_override]]\nfaction = {}\ntavern = {{ {} }}\n",
+        quote(&faction),
+        weights.join(", ")
+    ))
 }
 
 /// The SoD pack's override of a faction's record, when SoD plays its siege otherwise.
@@ -679,6 +740,7 @@ fn record(ctx: &Ctx<'_>, f: usize, t: &FactionTowns, pack: &str) -> Result<Strin
     if pack == "ab" {
         out.push_str("roe = false\n");
     }
+    out.push_str(&tavern(ctx, f, pack)?);
     // The buildings, by id.
     let key = |id: &u8| quote(&buildings[id].key);
     let mut given: BTreeSet<u8> = BTreeSet::new();
