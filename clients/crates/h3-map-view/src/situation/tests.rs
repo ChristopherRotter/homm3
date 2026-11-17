@@ -1007,3 +1007,118 @@ fn a_shipped_map_loaded_whole_is_the_harnesss() {
     let unknown = alloc::format!("{PLAIN}colour = 3\n");
     assert!(Situation::parse(&unknown).unwrap_err().contains("colour"));
 }
+
+/// E24 M4 T2a1 (design §5.3): the objects with a body among the map's placed objects, after the
+/// heroes, each on its class (a pile's amount, a Shrine's spell, a Witch Hut's skills, an event's
+/// rewards), the rest the extras'; a hero's experience the writer's; a body its class does not
+/// take, two bodies, a skill past 27 and bodies with quests refused.
+#[test]
+fn objects_with_their_bodies() {
+    let line = |def: &str, class, subclass| {
+        ObjectTemplate::from_objects_txt(&format!(
+            "{def} {} {} 111111111 111111111 {class} {subclass} 0 0",
+            "1".repeat(48),
+            "0".repeat(48)
+        ))
+        .unwrap()
+    };
+    let templates = [
+        line("pile.def", 79, 6),
+        line("shrine.def", 88, 0),
+        line("hut.def", 113, 0),
+        line("event.def", 26, 0),
+        line("plain.def", 112, 0),
+    ];
+    let text = |objects: &str| {
+        format!(
+            "size = 36\nterrain = \"grass\"\nheroes = [{{ at = [4, 4], class = 1, experience = 3200 }}, {{ at = [34, 1], owner = 1 }}]\nview = [0, 0, 0]\n{objects}"
+        )
+    };
+    let given = text(
+        r#"objects = [
+    { def = "pile.def", at = [5, 4], amount = 700 },
+    { def = "plain.def", at = [9, 9] },
+    { def = "shrine.def", at = [5, 6], spell = 53 },
+    { def = "hut.def", at = [6, 8], skills = [2, 27] },
+    { def = "event.def", at = [5, 10], rewards = { luck = 1, mana = 10, resources = [0, 0, 0, 0, 0, 0, 500], skills = [[2, 1]], creatures = [[1, 5]] } },
+]"#,
+    );
+    let (map, extras) = Situation::parse(&given)
+        .unwrap()
+        .build(&BTreeMap::new(), &templates)
+        .unwrap();
+    assert_eq!(
+        extras.objects.iter().map(|o| o.tile).collect::<Vec<_>>(),
+        [(9, 9)]
+    );
+    let MapObject::Hero(red) = &map.objects[0] else {
+        panic!("Red's hero first");
+    };
+    assert_eq!(red.experience, Some(3200));
+    let MapObject::Pile(pile) = &map.objects[2] else {
+        panic!("the pile after the heroes");
+    };
+    assert_eq!(
+        (pile.tile, pile.amount, pile.guards.is_none()),
+        ((5, 4), 700, true)
+    );
+    let bodies: Vec<_> = map.objects[3..]
+        .iter()
+        .map(|o| match o {
+            MapObject::Reward(r) => (r.tile, r.body.clone()),
+            _ => panic!("a reward object"),
+        })
+        .collect();
+    let mut rewards = Rewards {
+        mana: 10,
+        luck: 1,
+        ..Rewards::default()
+    };
+    rewards.resources[6] = 500;
+    rewards.skills = vec![(2, 1)];
+    rewards.creatures = vec![Stack {
+        creature: 1,
+        count: 5,
+    }];
+    assert_eq!(
+        bodies,
+        [
+            ((5, 6), RewardBody::Shrine(Some(53))),
+            ((6, 8), RewardBody::WitchHut(Some([4, 0, 0, 8]))),
+            (
+                (5, 10),
+                RewardBody::Event(Event {
+                    message: None,
+                    rewards,
+                    players: 0xFF,
+                    computer: false,
+                    removed_after_visit: true,
+                })
+            ),
+        ]
+    );
+    let refused = |objects: &str| {
+        Situation::parse(&text(objects))
+            .unwrap()
+            .build(&BTreeMap::new(), &templates)
+            .unwrap_err()
+    };
+    assert_eq!(
+        refused(r#"objects = [{ def = "plain.def", at = [5, 4], amount = 7 }]"#),
+        "plain.def at [5, 4]: a body its class 112 does not take, or more than one"
+    );
+    assert_eq!(
+        refused(r#"objects = [{ def = "shrine.def", at = [5, 4], spell = 1, amount = 7 }]"#),
+        "shrine.def at [5, 4]: a body its class 88 does not take, or more than one"
+    );
+    assert_eq!(
+        refused(r#"objects = [{ def = "hut.def", at = [5, 4], skills = [28] }]"#),
+        "hut.def at [5, 4]: skill 28 past 27"
+    );
+    assert_eq!(
+        refused(
+            r#"objects = [{ def = "pile.def", at = [5, 4], amount = 7 }, { def = "plain.def", at = [7, 7], quest = { level = 2 } }]"#
+        ),
+        "a situation with both objects' bodies and quests"
+    );
+}

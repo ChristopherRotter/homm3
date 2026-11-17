@@ -63,7 +63,13 @@ pub fn entry(file: String, map: &RawMap) -> Entry {
             allow_standard,
             goal,
             ..
-        } => (Some(goal_code(goal)), allow_standard),
+        } => {
+            let code = goal_code(goal);
+            (
+                Some(code),
+                allow_standard || STANDARD_ALWAYS.contains(&code),
+            )
+        }
     };
     let loss = match map.loss {
         Loss::Standard => None,
@@ -93,6 +99,14 @@ pub fn entry(file: String, map: &RawMap) -> Entry {
         teams,
     }
 }
+
+/// The special goals whose standard victory the header's read always allows (E27 M3 T2a, design
+/// §21.1: `victory_standard_set` 0x4BF780, from the conditions' read 0x4C3555 with no colour
+/// defeated yet, outside a campaign): an artifact (0), the Grail (4) and an artifact's transport
+/// (10) unless a single colour is left (never at the read), a hero's defeat (5) always (VCMI
+/// 1.7.5 agrees for 5, `MapFormatH3M.cpp`: "H3 behavior"). The file's flag counts for the others
+/// (recorded: `scn-info` row-08 and row-15, two maps of goal 5 whose flag is clear).
+const STANDARD_ALWAYS: [u8; 4] = [0, 4, 5, 10];
 
 /// A special goal's code in the format (0 to 10).
 const fn goal_code(goal: VictoryGoal) -> u8 {
@@ -146,6 +160,15 @@ mod tests {
         assert_eq!(arrogance.local(), Some(0));
         // E27 M3 T1b1: the list's players column, "4/4" in `scn-list-keys` list.
         assert_eq!((arrogance.players(), arrogance.humans()), (4, 4));
+        // E27 M3 T2a: a hero's defeat allows the standard victory whatever the file's flag
+        // (`scn-info` row-08), a town's capture takes the file's.
+        let goal = |file: &str| {
+            let e = entries.iter().find(|e| e.file == file).unwrap();
+            (e.victory, e.standard)
+        };
+        assert_eq!(goal("Good Witch, Bad Witch.h3m"), (Some(5), true));
+        assert_eq!(goal("Thousand Islands.h3m"), (Some(5), true));
+        assert_eq!(goal("For Sale.h3m"), (Some(6), false));
         // A recipe's maps alone (`--maps`), any case; all without names.
         let names = [String::from("arrogance.H3M"), String::from("no such.h3m")];
         let named = named(entries.clone(), Some(&names));

@@ -21,10 +21,11 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_map::RawMap;
-use h3_map::model::{Mission, Stack};
+use h3_map::model::{Mission, Rewards, Stack};
 use h3_map::writer::{
-    AnyObject, Extras, GivenTile, Hero, Map, MapObject, ObjectTemplate, Patch, Player, RiverKind,
-    Road, RoadKind, Terrain, Town, TownBuildings, Underground,
+    AnyObject, EVENT_OBJECT, Event, Extras, GivenTile, Hero, Map, MapObject, ObjectTemplate, Patch,
+    Pile, Player, RewardBody, RewardObject, RiverKind, Road, RoadKind, SHRINE_OBJECTS, Terrain,
+    Town, TownBuildings, Underground, WITCH_HUT_OBJECT,
 };
 use serde::Deserialize;
 
@@ -314,6 +315,139 @@ pub struct ObjectSpec {
     /// A Seer's Hut's or a Quest Guard's quest (E24 M3 T6a2b); none without one.
     #[serde(default)]
     pub quest: Option<QuestSpec>,
+    /// A resource pile's amount (class 79; E24 M4 T2a1, design §5.3: gold in units, as the
+    /// writer's `Pile`); none the game's draw.
+    #[serde(default)]
+    pub amount: Option<u32>,
+    /// A Shrine's spell (88 to 90; T2a1); none the game's draw.
+    #[serde(default)]
+    pub spell: Option<u8>,
+    /// The skills a Witch Hut may teach (113; T2a1): one of them drawn; none the editor's.
+    #[serde(default)]
+    pub skills: Option<Vec<u8>>,
+    /// An event's rewards (26; T2a1): it fires for every colour, a human's hero alone, once.
+    #[serde(default)]
+    pub rewards: Option<RewardsSpec>,
+}
+
+impl ObjectSpec {
+    /// Whether it has a body the writer writes (E24 M4 T2a1): then it is one of the map's placed
+    /// objects, not the extras' (which take a template alone).
+    fn bodied(&self) -> bool {
+        self.amount.is_some()
+            || self.spell.is_some()
+            || self.skills.is_some()
+            || self.rewards.is_some()
+    }
+
+    /// Its body as the writer takes it (E24 M4 T2a1), on its template: a pile's amount, a
+    /// Shrine's spell, a Witch Hut's skills or an event's rewards, each on its own class.
+    fn placed(&self, template: &ObjectTemplate) -> Result<MapObject, String> {
+        let tile = (self.at[0], self.at[1]);
+        let class = template.class;
+        let reward = |body| {
+            Ok(MapObject::Reward(RewardObject {
+                tile,
+                template: template.clone(),
+                body,
+            }))
+        };
+        match (&self.amount, &self.spell, &self.skills, &self.rewards) {
+            (Some(amount), None, None, None) if class == PILE_CLASS => Ok(MapObject::Pile(Pile {
+                tile,
+                template: template.clone(),
+                amount: *amount,
+                guards: None,
+            })),
+            (None, Some(spell), None, None) if SHRINE_OBJECTS.contains(&class) => {
+                reward(RewardBody::Shrine(Some(*spell)))
+            }
+            (None, None, Some(skills), None) if class == WITCH_HUT_OBJECT => {
+                let mut mask = [0u8; 4];
+                for &s in skills {
+                    let byte = mask
+                        .get_mut(usize::from(s / 8))
+                        .filter(|_| s < 28)
+                        .ok_or_else(|| {
+                            format!("{} at {:?}: skill {s} past 27", self.def, self.at)
+                        })?;
+                    *byte |= 1 << (s % 8);
+                }
+                reward(RewardBody::WitchHut(Some(mask)))
+            }
+            (None, None, None, Some(r)) if class == EVENT_OBJECT => {
+                reward(RewardBody::Event(Event {
+                    message: None,
+                    rewards: r.writer(),
+                    players: 0xFF,
+                    computer: false,
+                    removed_after_visit: true,
+                }))
+            }
+            _ => Err(format!(
+                "{} at {:?}: a body its class {class} does not take, or more than one",
+                self.def, self.at
+            )),
+        }
+    }
+}
+
+/// An event's rewards (E24 M4 T2a1; the writer's `Rewards`).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RewardsSpec {
+    /// Experience.
+    #[serde(default)]
+    pub experience: u32,
+    /// Spell points.
+    #[serde(default)]
+    pub mana: i32,
+    /// Morale (−3 to 3).
+    #[serde(default)]
+    pub morale: i8,
+    /// Luck (−3 to 3).
+    #[serde(default)]
+    pub luck: i8,
+    /// Resources, in resource order.
+    #[serde(default)]
+    pub resources: [i32; 7],
+    /// Attack, defence, spell power, knowledge.
+    #[serde(default)]
+    pub primary: [u8; 4],
+    /// Secondary skills, [skill, level] each.
+    #[serde(default)]
+    pub skills: Vec<[u8; 2]>,
+    /// Artifacts.
+    #[serde(default)]
+    pub artifacts: Vec<u16>,
+    /// Spells.
+    #[serde(default)]
+    pub spells: Vec<u8>,
+    /// Creatures, [creature, count] each.
+    #[serde(default)]
+    pub creatures: Vec<[u16; 2]>,
+}
+
+impl RewardsSpec {
+    /// The writer's rewards.
+    fn writer(&self) -> Rewards {
+        Rewards {
+            experience: self.experience,
+            mana: self.mana,
+            morale: self.morale,
+            luck: self.luck,
+            resources: self.resources,
+            primary: self.primary,
+            skills: self.skills.iter().map(|&[s, l]| (s, l)).collect(),
+            artifacts: self.artifacts.clone(),
+            spells: self.spells.clone(),
+            creatures: self
+                .creatures
+                .iter()
+                .map(|&[creature, count]| Stack { creature, count })
+                .collect(),
+        }
+    }
 }
 
 /// A town (E24 M1 T5b1): its faction's template (`Objects.txt`'s first of class 98 and the
@@ -413,6 +547,9 @@ impl TownBuilt {
 /// The towns' class.
 const TOWN_CLASS: u32 = 98;
 
+/// A resource pile's class (E24 M4 T2a1; the writer's `Pile`).
+const PILE_CLASS: u32 = 79;
+
 /// A hero (E24 M1 T5a).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -461,6 +598,10 @@ pub struct HeroSpec {
     /// Its army's slots, [creature, count] each (+0x91, +0xAD), likewise; at most seven.
     #[serde(default)]
     pub army: Vec<[i32; 2]>,
+    /// Its experience as the map gives it (E24 M4 T2a1, design §5.3: the writer's; the game
+    /// gives the levels it reaches at the start, choosing for the human), none the type's.
+    #[serde(default)]
+    pub experience: Option<u32>,
 }
 
 impl HeroSpec {
@@ -609,6 +750,14 @@ impl Situation {
             }
         }
         let first = objects.len();
+        // The objects with a body are placed objects (E24 M4 T2a1), after the heroes and towns;
+        // the quests count the extras' objects by the situation's order, so none goes with them.
+        let mut bodied = Vec::new();
+        if self.objects.iter().any(ObjectSpec::bodied)
+            && self.objects.iter().any(|o| o.quest.is_some())
+        {
+            return Err("a situation with both objects' bodies and quests".into());
+        }
         for o in &self.objects {
             let template = templates
                 .iter()
@@ -618,6 +767,10 @@ impl Situation {
                         && o.subclass.is_none_or(|s| s == t.subclass)
                 })
                 .ok_or_else(|| format!("{}: no such template in Objects.txt", o.def))?;
+            if o.bodied() {
+                bodied.push(o.placed(template)?);
+                continue;
+            }
             objects.push(AnyObject {
                 level: 0,
                 tile: (o.at[0], o.at[1]),
@@ -656,6 +809,7 @@ impl Situation {
                 buildings: t.writer_buildings(),
             }));
         }
+        heroes.extend(bodied);
         let map = Map {
             name: "situation".into(),
             description: String::new(),
@@ -750,7 +904,7 @@ impl Situation {
                 hero_type,
                 class: h.class,
                 name: None,
-                experience: None,
+                experience: h.experience,
                 skills: None,
                 army: None,
                 tight_formation: false,

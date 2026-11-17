@@ -18,25 +18,48 @@ context; a task that grows is cut at a seam agreed with the user. Code readings 
 (`clients/capture/README.md`), never in git. Every oddity of the original a reading or a capture
 finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
-### E24 M4 T2 — a visit's results
+### E24 M4 T2 — a visit's results (cut in four by the user at its start, 2026-11-17)
 
-- **Scope:** read and build what the original shows when a visit or an event changes the game,
-  the live part from its memory: the adventure's message box (its dialog: the text through the
-  catalogue, the pictures of what was found, OK and Yes/No, its sounds, its place) for the finds
-  and questions the engine's visits make (a pile, a chest's or a School's choice, a guard's
-  question, an event's or a sign's text, creatures joining, a level-up's choice); the status
-  window's kind 6 (a resource found, 0x451220, 5 seconds) and kind 7 (a text, 0x451820); an
-  object taken or a monster beaten (the map, the minimap and the panels redrawn); a flag raised
-  (the owner's colour on the object and the minimap); a boat boarded and left; a spell cast on
-  the map recorded (MCL-Q14: if the stale mana bar shows, the client shows the slot whole, the
-  original's behind `--bugs original`). The turn's boxes T1a left: the scenario's tests' "you
-  have lost your last town" at a turn's end with no town (the player's flag, picture type 10; its
-  text starts with an empty player name in the harness's game: whether a menu-started game names
-  the player, read first) and `player_turn_start`'s days left (ArrayTxt 128, 129; design §5.1).
-  New sequences recorded in the original, the harness giving the answers.
-- **Acceptance:** as T1a's.
-- **Depends on:** T1a (done: `h3_ui::message`, styles 1 and 2 without pictures; T2 adds them).
-  **Status:** next (likely cut at its start with the user, by dialog family).
+Read and build what the original shows when a visit or an event changes the game, the live part
+from its memory, for the finds and questions the engine's visits make; new sequences recorded in
+the original, the harness giving the answers. **Acceptance** of each: as T1a's. Cut by dialog
+family (the user, 2026-11-17: the recommended cut; a part that grows is cut again into its
+reading and recordings, then the viewer's build, as T1b was).
+
+- **T2a, the finds told** (an OK alone): the adventure's message box with pictures
+  (`message_box_pictures` 0x4F7690, `message_with_pictures` 0x429110: up to eight, their
+  captions, the picture types the engine's finds give; its sounds, its place), the text through
+  the catalogue, for a find with nothing to answer (a pile with its message, a Campfire's or a
+  Windmill's resources, an artifact, an event's or a sign's text, a Learning Stone's experience);
+  the status window's kind 6 (a resource found, 0x451220, 5 seconds) and kind 7 (a text,
+  0x451820). The turn's boxes T1a left: the scenario's tests' "you have lost your last town" at a
+  turn's end with no town (the player's flag, picture type 10; its text starts with an empty
+  player name in the harness's game: whether a menu-started game names the player, read first)
+  and `player_turn_start`'s days left (ArrayTxt 128, 129; design §5.1). **Depends on:** T1a
+  (done: `h3_ui::message`, styles 1 and 2 without pictures). Cut again at its start (2026-11-17,
+  the fallback the user agreed with the cut): **T2a1**, the reading and the recordings
+  (`map-client/e24-m4-t2a`; design §5.3, the sequences in `clients/map/to-record.toml`), then
+  **T2a2**, the viewer: `h3_ui::message`'s pictures (the client lane's `h3_view::message`'s
+  `pictures` and its picture slots copied, as T1a did), the finds' boxes composed from their
+  facts (the map, the live part's entrance words and hero, the catalogue's records: ADVEVENT,
+  ARTEVENT, RANDSIGN, GENRLTXT, ArrayTxt), kind 6 and the pile's dissolve (an object taken: the
+  view drawn without it, `h3_render::Screen::dissolve_rect`), the turn's two boxes (CLT-Q100
+  (b): a single scenario's player named, the original's empty name behind `--bugs original`),
+  the sequences moved into `sequences.toml`. **Kind 7** (a text) is a network game's message
+  alone (`status_text_set` 0x416210): not M4's.
+- **T2b, the questions and choices** (an answer): Yes/No with pictures for the engine's offers
+  (`h3_adventure::OfferKind`: a guard's passage, a monster's join free or for a price, its
+  flight, a Cartographer's price; a guarded pile's question) and the choice box for its choices
+  (`Choice`: a chest's gold or experience, the Arena's and a School's two skills; the pictures
+  chosen by a click, the hidden frame a choice's mark), the answer the harness gives. **Depends
+  on:** T2a.
+- **T2c, a level-up's choice:** the level-up dialog (0x63FE60, `level_up`; the engine's
+  `DecisionView::LevelUp`): the primary skill gained, one or two secondary offers, its own layout.
+  **Depends on:** T2a.
+- **T2d, the map changed by a visit:** an object taken or a monster beaten (the map, the minimap
+  and the panels redrawn); a flag raised (the owner's colour on the object and the minimap); a
+  boat boarded and left; a spell cast on the map recorded (MCL-Q14: if the stale mana bar shows,
+  the client shows the slot whole, the original's behind `--bugs original`). **Depends on:** T1a.
 
 ### E24 M4 T3 — a record's start
 

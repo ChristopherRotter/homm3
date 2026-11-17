@@ -684,6 +684,8 @@ fn menus(
                 })
                 .collect(),
         }),
+        // Begin's message over an empty list (T2b: GENRLTXT 530).
+        no_maps: Some(laid("shell.scenario.no-maps", Style::Ok)),
     };
     Ok(Menus {
         main,

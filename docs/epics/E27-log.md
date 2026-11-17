@@ -1059,3 +1059,32 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
 - **The sandbox:** the PC's 64 files and the three manuals with `HEROES3.HLP` staged at once,
   each checked against the PC's `sha256sum` (all as on the PC); the setup's baseline stopped at
   coverage by the watcher; CI's green `master` stood in.
+
+## M3 T2a, T2b — the difficulty, the empty list and Begin's message (2026-11-17)
+
+- **The cut** (decision 50): T2 in three, T2a and T2b in this session, the description's scroll
+  bar T2c (no shipped map reaches it: the longest of the 159 descriptions fill the box's 7 lines).
+- **Read** (design §21): `scenario_difficulty_click` whole; the opening's list build and
+  `scenario_list_finish`'s +0x33C (each opening Normal: T1a's kept difficulty corrected);
+  `scenario_difficulty_show` 0x586060 and its constructor's call; `scenario_info_draw`'s early
+  return over an empty list; the filter's size mark (0x585EFB); `victory_standard_set` 0x4BF780
+  (the header's read sets the standard victory of goals 0, 4, 5 and 10; VCMI 1.7.5 compared);
+  `message_box_build`'s cursor kept and the default arrow set for its loop.
+- **Recorded:** `scn-difficulty` `reopened` (Normal after Impossible), `scn-begin-none` the
+  strip's right press (one team of the eight colours) and Hard pressed (selected, no rating),
+  `scn-empty-filter` new (the last map's teams over an emptied list, a press, All); both runs alike.
+- **Asked:** CLT-Q139 (the empty list's leftovers), answered (b): decision 51.
+- **Built:** `OPENING_DIFFICULTY` (was `KEPT_DIFFICULTY`; `opened` no longer carries the choice),
+  `choose`, `show_empty`, `begin`, the fields `chosen` and `game`, `Over::Notice` (its inputs as the
+  menus' boxes, the context `Question`, the default arrow through `hovers`), the flags hidden at
+  the build, the filter's size mark, the teams' dialog of the game's players
+  (`Texts::no_maps`); `h3-battle-client`: `maps::STANDARD_ALWAYS`, the box laid out from
+  `shell.scenario.no-maps` (GENRLTXT 530). Two map entries new, four updated.
+- **Compared:** `scn-info` 21 of 21 (19), `scn-difficulty` 9 of 9 (3 of 8), `scn-begin-none` 7 of
+  7 (0 of 4), `scn-begin-filter` 6 of 6 up to its load (3), `scn-empty-filter` 5 of 5; the
+  `scenario` and `advanced` groups otherwise as recorded.
+- **The sandbox:** the PC's 63 files of `original-data/` and `MP3DEC.ASI`, the four manuals and
+  three help files staged at once, each checked against the PC's `sha256sum`; `MP3DEC.ASI` is not
+  in the PC's `original-data/install` (from the installation: the HANDOFF's staging line). The
+  setup's baseline stopped at coverage by the watcher (its tests run under coverage: none ran);
+  CI's green `master` stood in.

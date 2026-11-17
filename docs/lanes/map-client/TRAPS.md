@@ -9,6 +9,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   computer's `[[turn]]` table holds the computer's `kingdom` (its selected hero, points and kind
   5's `value`, T1b2), while the panels (the lists, the quest log, the resource bar) stay the
   viewer's through its turn (design §5.2, "The computer's screen").
+- **A situation without a town of Red's warns** (E24 M4 T2a1, design §5.3): with heroes and no
+  town the scenario's test (at End Turn, and after an event's visit, a battle and the other
+  callers of `scenario_condition_met`) opens GENRLTXT 7's box, and every later turn's start the
+  days left's (ArrayTxt 128): a sequence that is not about them gives Red a town out of the way
+  (the `seq-find-*` situations). A pile's `amount` is the map's: gold in hundreds.
 - **A template's class in memory is the game's** (T5b1): the load turns the map's 219 into 33, 220 into 53, decorations 165–205 into others (§2.9), so `live.toml`'s `classes` differ from the map's with no random draw.
 - **A situation changed since its capture** shows as `STALE` in `drawn` (T6b: the kept live part records the situation's digest): capture it again (`set --only <id>`).
 - **A recording reads the tree as it goes** (M2 T2): each `frames --only` run loads `h3map.py`
