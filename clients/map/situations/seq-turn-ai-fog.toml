@@ -1,0 +1,11 @@
+# A computer player's walk coming into sight (E24 M4 T1b1; clients/map/to-record.toml
+# `ai-walk-fog`; E24 design §5.2): seq-turn-ai's map with Blue's hero in the fog of Red's view,
+# its first steps east unseen (no tile of theirs nor a neighbour explored by Red), the next ones
+# in sight.
+size = 36
+terrain = "grass"
+heroes = [{ at = [4, 4], class = 2 }, { at = [5, 26], owner = 1 }]
+towns = [{ at = [8, 3], faction = 0, owner = 0, buildings = "fort" }]
+objects = [{ def = "AVMsawg0.def", at = [33, 22], owner = 0 }]
+view = [0, 0, 0]
+hidden = [[0, 21, 9, 31]]

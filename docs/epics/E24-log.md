@@ -2395,3 +2395,48 @@ commits each time.
   new day's sound started twice). Recorded, not questions: a redraw's deadline already passed at
   the turn's change moves on without an objects' step; the cursor drawn at the mouse at a box's
   opening and close (E17 design §9.9's even x).
+
+### M4 T1b1 — a computer player's moves in sight, read and recorded (2026-11-17)
+
+On `map-client/e24-m4-t1b1`, the user present at the start (the cut); `master` at #985. Original
+data staged from the PC (63 files, SHA-256 checked against the PC's: one digest of the sorted
+lists, `9c890f81…`; the PC's own clone behind GitHub's, nothing uncommitted); the setup's
+baseline stopped at clippy: `master`'s Clients check was red.
+
+- **`master`'s clients build:** #982 (the client lane's E27 M3 T1a) gave `h3_ui::ui::Button` a
+  `caption` and #983 (T1a) built the message boxes' buttons without it; each was green alone.
+  Fixed apart, first: #986 (`map-client/fix-message-caption`, `caption: None`); the client lane's
+  #988 made the same fix, so #986 merged empty.
+- **The cut** (the user, at the start): T1b in two, T1b1 the reading and the recordings (the
+  sequences held in `clients/map/to-record.toml` until the viewer plays them), T1b2 the viewer.
+- **Read** (design §5.2): `ai_player_turn` to its heroes' turns, `ai_hero_turn` to its walk,
+  `ai_hero_walk` and `ai_hero_step` around their calls, `step_seen` and `tile_or_neighbour_seen`
+  whole, kind 5's panel and its step whole, `hero_select`'s computer branch. `docs/exe/map.toml`:
+  five new entries (`tile_or_neighbour_seen`, `ai_hero_walk`, `step_seen`,
+  `status_other_turn_step`, `ai_hero_turn`), `ai_boat_planning_caller` renamed `ai_hero_step`,
+  `status_other_turn_create`, `ai_player_turn`, `option_blackout_computer` and `view_shown`
+  amended; the addresses §5.1 cited without an entry (the town lane's #987 had mapped them from
+  §5.1 meanwhile, mostly `inferred`) now as read: `status_bar_text_set`, `town_deselect`,
+  `hero_deselect`, `path_cancel` (their `hero_list_redraw`), `ai_hero_turn` (`ai_turn_part_d`),
+  `ai_hero_replan` (`ai_turn_part_a`), `scenario_conditions_test`, `crt_toupper`,
+  `status_other_turn_vtable`; `ai_next_hero` and five planning sites of kind 5's step new. §5.1 corrected: kind 5's items are 2190 to 2193 (T1a's reading
+  had 2000 to 2003), +0x68 the sand's frame and +0x70 the glass's (swapped there), and 0x419300
+  clears a shown path (T1a had it the hero list's update).
+- **Seen first:** the game seeds its generator once, with the running clock's time, so two runs of
+  a computer's turn walked differently; with a Tavern in its town the computer hired a hero and
+  walked it into sight from the fog (a hero the live part does not hold): the situation gives Blue
+  no town.
+- **The harness** (common, additive): `xdd.dll`'s `seed` (its 8.: the main thread's C library
+  seed at its next clock read; the ack's sixteenth field), `Game.seed`, `to_scenario`'s `seed`;
+  a sequence's `computer_speed`, `blackout` and `seed`; kind 5's items read (`Mem.other_turn`,
+  `Mem.status`), the timeline's `other` lines, kind 5 and the heroes and boats in the `[[turn]]`
+  tables; `frames --sequences <file> --no-check`; the `player` line fixed (an integer
+  `map_timeline` could not print: T1a's sequences never changed the player across a
+  millisecond). The client, adventure and town lanes' inboxes told (rebuild `xdd.dll`).
+- **Recorded** (each twice, the second run `ok`, the frame at 0 exact): `ai-walk` (151 timeline
+  lines, 34 screens), `ai-walk-slow` (187, 50), `ai-walk-fast` and `ai-walk-blackout` (18, 5
+  each, alike), `ai-walk-fog` (131, 30); their timelines and live parts in `map/timelines/`;
+  situations `seq-turn-ai`, `seq-turn-ai-fog`. The live parts kept from a later run each (`ok`),
+  once the `[[turn]]` tables held the heroes.
+- **Questions:** MCL-Q31 (the view follows a computer's hero still under the fog). MCL-Q30's
+  sound run moves to T1b2.

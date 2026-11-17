@@ -108,7 +108,16 @@
       (a buffer played out with none after it), "bink-stop", "bink-resume" (BinkPause) and
       "bink-release" (BinkClose). The ack's fourteenth field counts the Smacker hooks (3: the
       import and the two timers), its fifteenth Bink's Miles functions answered (11, once
-      BinkOpenMiles has run: at the sound's start). */
+      BinkOpenMiles has run: at the sound's start).
+   8. The generator's seed (E24 M4 T1b1, *provisional*; the runbook, "The map's sequences"): the
+      game seeds the C library's generator once, with the clock's time as its window opens
+      (srand 0x617E4F at 0x4F7C40), and a computer player's turn draws from it (random_between
+      0x50B230 and rand 0x617E5C: the main thread's seed, +0x14 of its thread data, 0x61D303).
+      On the running clock that time and the draws before a sequence differ from run to run, so
+      the harness may seed it again:
+        <seq> seed <value>   the main thread's seed becomes <value> at its next clock read
+      The ack's sixteenth field counts the seeds set so. The DLL's load runs on the main thread
+      (DllMain, the process's first), whose id it keeps for this. */
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -117,9 +126,11 @@
 typedef DWORD(WINAPI *time_fn)(void);
 typedef int(__fastcall *between_fn)(int, int);
 typedef int(__cdecl *rand_fn)(void);
+typedef BYTE *(__cdecl *thread_data_fn)(void);
 
 #define RANDOM_BETWEEN 0x50B230u
 #define CRT_RAND 0x617E5Cu
+#define CRT_THREAD_DATA 0x61D303u /* 8.: the C library's per-thread data, its seed at +0x14 */
 
 /* The most values a `roll <site> a,b,...` queues. */
 #define QUEUE 8
@@ -243,10 +254,19 @@ static DWORD now(void)
 }
 
 static DWORD main_thread;  /* 6.: with sound only the main thread's reads count */
+static DWORD game_thread;  /* 8.: the main thread, whatever the sound */
+static volatile LONG seed_pending, seeds_set;
+static DWORD seed_value;
 
 static DWORD WINAPI virtual_time(void)
 {
     DWORD t;
+    if (seed_pending && GetCurrentThreadId() == game_thread) {
+        /* 8.: the game's own thread data, so its own generator. */
+        *(DWORD *)(((thread_data_fn)CRT_THREAD_DATA)() + 0x14) = seed_value;
+        InterlockedExchange(&seed_pending, 0);
+        InterlockedIncrement(&seeds_set);
+    }
     if (!main_thread || GetCurrentThreadId() == main_thread)
         InterlockedIncrement(&reads);
     EnterCriticalSection(&lock);
@@ -1149,6 +1169,16 @@ static DWORD WINAPI control(LPVOID unused)
                 if (!strcmp(command, "roll") || !strcmp(command, "rolls")) {
                     if (sscanf(line, "%lu %31s %31s %31s %ld", &seq, command, name, value, &count) >= 4)
                         force(command, name, value, count);
+                } else if (!strcmp(command, "seed")) {
+                    unsigned long v;
+                    if (sscanf(line, "%lu %31s %lu", &seq, command, &v) == 3) {
+                        EnterCriticalSection(&lock);
+                        seed_value = (DWORD)v;
+                        InterlockedExchange(&seed_pending, 1);
+                        LeaveCriticalSection(&lock);
+                    } else {
+                        refused++;
+                    }
                 } else {
                     sscanf(line, "%lu %31s %ld", &seq, command, &ms);
                     apply(command, ms);
@@ -1163,10 +1193,11 @@ static DWORD WINAPI control(LPVOID unused)
         LeaveCriticalSection(&lock);
         f = fopen(tmp_path, "w");
         if (f) {
-            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d %d %ld %d %ld %d %d %ld\n", applied,
+            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d %d %ld %d %ld %d %d %ld %ld\n", applied,
                     (unsigned long)t, (long)reads, (long)forced_draws, waiting, redirected,
                     (long)refused, bink_clock, sound_hooks, (long)unfollowed, smack_clock,
-                    (long)clip_reads, summary_hooked, smack_sound, (long)bink_sound);
+                    (long)clip_reads, summary_hooked, smack_sound, (long)bink_sound,
+                    (long)seeds_set);
             fclose(f);
             MoveFileExA(tmp_path, ack_path, MOVEFILE_REPLACE_EXISTING);
         }
@@ -1272,6 +1303,7 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
             fclose(f);
     }
     InitializeCriticalSection(&lock);
+    game_thread = GetCurrentThreadId(); /* 8.: DllMain runs on the main thread */
     {
         char at[16];
         DWORD m = GetEnvironmentVariableA("H3FROZEN", at, sizeof at);

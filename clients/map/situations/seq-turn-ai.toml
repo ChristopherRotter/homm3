@@ -1,0 +1,12 @@
+# A computer player's moves in sight (E24 M4 T1b1; clients/map/to-record.toml `ai-walk` and its
+# kin; E24 design §5.2): Red's hero and town in the open as in seq-turn, Blue's hero (a computer
+# player's) in Red's explored land below them, out of the view at 0, with a mine of Red's far to
+# its east (more than a day's walk). Blue has no town: with one the computer builds a Tavern and
+# hires a hero there, which walks into Red's sight from the fog (a hero the live part does not
+# hold).
+size = 36
+terrain = "grass"
+heroes = [{ at = [4, 4], class = 2 }, { at = [5, 26], owner = 1 }]
+towns = [{ at = [8, 3], faction = 0, owner = 0, buildings = "fort" }]
+objects = [{ def = "AVMsawg0.def", at = [33, 22], owner = 0 }]
+view = [0, 0, 0]

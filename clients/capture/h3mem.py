@@ -373,6 +373,15 @@ SCROLL_SPEED, WALK_SPEED, SCROLL_TIME = 0x69878C, 0x69875C, 0x691674
 # `adventure_command` 0x409D31), the week's and the month's kinds and their names or creatures as
 # the new day drew them (`player_turn_start`'s message, 0x4CCB08).
 MOVE_REMINDER = 0x698778
+# A computer player's turn (E24 M4 T1b1, design §5.2): Computer Walk Speed (2 to 5, the walk's
+# speed for a player not human: hero_walk_animation 0x480421) and Blackout Computer (1: the
+# enemy's moves not shown; settings_names 0x63FF7C, 0x63FFA8), each as the registry holds it.
+# Kind 5, another player's turn (status_other_turn_create 0x453250; ids from 2190, unlike the
+# other kinds' from 2000): its back (2190), its crest (DEF item 2191, its frame the current
+# player), its sand (2192) and its glass (2193), their frames its steps.
+COMPUTER_WALK_SPEED, BLACKOUT_COMPUTER = 0x698758, 0x698790
+STATUS_OTHER, STATUS_CREST, STATUS_SAND, STATUS_GLASS = 5, 2191, 2192, 2193
+STATUS_OTHER_ITEMS = range(2190, 2194)
 WEEK_KIND, WEEK_CREATURE, MONTH_KIND, MONTH_CREATURE = 0x697750, 0x6983FC, 0x698834, 0x697748
 # The walk (E24 M2 T1b, design §3.5): the manager's view offset (i32 +0xF4, +0xF8: added to every
 # tile's place, written by the walk's animation 0x480380 only), the moving hero's group (i32
@@ -1212,7 +1221,8 @@ class Mem:
         return self.game() + HEROES + HERO_SIZE * index
 
     def status_items(self):
-        """The status window's items in the adventure dialog (E24 M3 T5b1; ids from 2000): by id,
+        """The status window's items in the adventure dialog (E24 M3 T5b1; ids from 2000, kind 5's
+        from 2190: E24 M4 T1b1): by id,
         a list of each one's frame (a DEF item's, i32 +0x34) and text (None for an item that holds
         none), in the dialog's list's order."""
         dialog = self.manager_field(ADVENTURE_DIALOG)
@@ -1221,7 +1231,7 @@ class Mem:
             seen.add(item)
             raw = self.read(item, ITEM_TEXT + 12)
             ident = struct.unpack_from("<H", raw, ITEM_ID)[0]
-            if ident in STATUS_ITEMS:
+            if ident in STATUS_ITEMS or ident in STATUS_OTHER_ITEMS:
                 items.setdefault(ident, []).append(
                     (struct.unpack_from("<i", raw, PICTURE_FRAME)[0], self.item_text(raw)))
             item = struct.unpack_from("<I", raw, NEXT_ITEM)[0]
@@ -1274,7 +1284,20 @@ class Mem:
             return {"kind": kind, "frame": items[STATUS_DATE_DEF][0][0]}
         if kind == 2:
             return {"kind": kind, **self.realm(colour)}
+        if kind == STATUS_OTHER:
+            # Another player's turn (E24 M4 T1b1, design §5.2): its crest's, sand's and glass's
+            # frames.
+            crest, sand, glass = self.other_turn(items)
+            return {"kind": kind, "crest": crest, "sand": sand, "glass": glass}
         return {"kind": kind}
+
+    def other_turn(self, items=None):
+        """Kind 5's state while it is shown (E24 M4 T1b1, design §5.2): the frames of its crest,
+        its sand and its glass ([crest, sand, glass]); empty under any other kind."""
+        if self.status_shown() != STATUS_OTHER:
+            return []
+        items = self.status_items() if items is None else items
+        return [items[i][0][0] for i in (STATUS_CREST, STATUS_SAND, STATUS_GLASS)]
 
     def realm(self, colour):
         """The kingdom's status window as the game would build it now (E24 M3 T5b2, since T6b2

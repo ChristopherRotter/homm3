@@ -39,8 +39,10 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       screen changes (`h3-map-view sequences <id> --frames`, which also checks its timeline), the
       digests against clients/map/timelines/drawn.txt; the walks too since E24 M2 T3b. <dir>
       defaults to clients/out/map-drawn.
-  h3map.py frames [--only <id>] [--out <dir>] [--reuse]
-      every sequence of clients/map/sequences.toml (or one; E24 M2 T1a1): its situation staged
+  h3map.py frames [--only <id>] [--out <dir>] [--reuse] [--sequences <file>] [--no-check]
+      every sequence of clients/map/sequences.toml (or of <file>: E24 M4 T1b1, the sequences
+      recorded before the viewer plays them, with --no-check leaving out the frame check; or
+      one; E24 M2 T1a1): its situation staged
       as `still` stages it, its 0 set to the next millisecond (the palette tick's, the redraw's
       and the mouse poll's next times written there), then 1-ms steps to its `ms`, each screen
       whose view changed kept with the state memory holds; its timeline (the changes of the
@@ -251,17 +253,23 @@ def to_shipped(game, timeout=120.0):
     h3adv.dismiss(game)
 
 
-def started(map_path, run_dir, shipped=False, tries=2):
+def started(map_path, run_dir, shipped=False, tries=2, seed=None):
     """The original on the map's adventure screen (a single scenario). A game that crashes on its
     way there is started once more: the original's tavern rumour at a new game reads one entry past
     its table about once in 800 games (rumour_pick_text 0x4CCF20; E24 M1 T4a saw it). So is one
     whose Wine exits at once, before the main menu, writing nothing (E24 M1 T4b saw it once in a
-    set run, right after the game before it stopped)."""
+    set run, right after the game before it stopped). With `seed` (E24 M4 T1b1, a writer's
+    map only) the random generator seeded just before Begin (`h3drive.to_scenario`)."""
+    if shipped and seed is not None:
+        raise ValueError(f"{map_path}: a seed for a shipped map's start")
     for attempt in range(1, tries + 1):
         game = h3drive.Game(run_dir)
         game.start(map_path)
         try:
-            (to_shipped if shipped else h3drive.to_scenario)(game)
+            if shipped:
+                to_shipped(game)
+            else:
+                h3drive.to_scenario(game, seed=seed)
             return game
         except BaseException as err:
             # Any other failure on the way stops the game too, so that no later `Mem()` reads it
@@ -512,13 +520,13 @@ def still(situation_path, out=None, keep=False):
     return compare(situation_path, out, cap)
 
 
-def stage(situation_path, out):
+def stage(situation_path, out, seed=None):
     """Shows one situation in the original, up to its moment (E24 M2 T1a1: `capture`'s and
     `sequence`'s common part): its map written to `out` (`map.h3m`), the game started on it, the
     heroes walked, the explored tiles written, the view set, the path shown, the facings and the
     boats' colours written; the clock still running. Returns the game (the caller stops it; a
     failure here stops it first), its memory, the situation and the facings written
-    (`arrange`)."""
+    (`arrange`). With `seed` (E24 M4 T1b1) the new game starts from that seed (`started`)."""
     out.mkdir(parents=True, exist_ok=True)
     sit = tomllib.loads(situation_path.read_text())
     check_situation(situation_path, sit)
@@ -531,7 +539,8 @@ def stage(situation_path, out):
     if start and hidden:
         raise ValueError(f"{situation_path}: `hidden` with the start's explored tiles")
     # A map with an underground shows the level button enabled (E24 M3 T6b2): `adventure`'s wait.
-    game = started(map_path, out / "run", shipped="map" in sit or "underground" in sit)
+    game = started(map_path, out / "run", shipped="map" in sit or "underground" in sit,
+                   seed=seed)
     try:
         mem = game_mem(game)
         turn = arrange(game, mem, sit)
@@ -769,16 +778,18 @@ def ids_from(table, first):
     return [r[0] for r in h3lod.table(table)[first:] if any(f.strip() for f in r)]
 
 
-def status_toml(mem, colour):
+def status_toml(mem, colour, other=False):
     """`Mem.status` as `render --live`'s `status`, an inline TOML table (E24 M3 T5b1; design
     §4.8): a town's name as its record in `TownName.txt` (the catalogue's `town-name` family: the
     harness keeps numbers, never the text, ADR-0009); a hero's `own_name` 1 when its record's name
     is not its type's (a shipped map's hero: the viewer takes the map's). A town whose name the
     table lacks (a map's own) is the harness's failure (the town's own names are M4's), as is a
     kind the viewer does not draw yet (another player's turn, a message's: M4's), since the status
-    window is compared. The date's and the kingdom's (M3 T5b2) as `Mem.status` gives them."""
+    window is compared. The date's and the kingdom's (M3 T5b2) as `Mem.status` gives them. With
+    `other` (E24 M4 T1b1: a `[[turn]]` table's) another player's turn's too, kind 5 with its
+    crest's, sand's and glass's frames (`Mem.other_turn`; the viewer draws it from T1b2)."""
     status = mem.status(colour)
-    if status["kind"] not in STATUS_DRAWN:
+    if status["kind"] not in STATUS_DRAWN and not (other and status["kind"] == h3mem.STATUS_OTHER):
         raise RuntimeError(f"the status window shows the kind {status['kind']}: not drawn yet")
     if status["kind"] == 3:
         name = mem.hero(status["hero"])["name"]
@@ -897,7 +908,10 @@ def map_timeline(states):
     `<ms> hero <x> <y> <level> <facing>` (the current player's selected hero, `Mem.selected`),
     `<ms> walk <group> <frame> <x> <y>` (the moving hero's group and the frame pass 9 draws next,
     the view's pixel offset: `Mem.walk`) and `<ms> arrows <x>,<y>,<level>,<arrow> ...` (the path's
-    arrows left, `Mem.path_arrows`' order; nothing after `arrows` once none is left)."""
+    arrows left, `Mem.path_arrows`' order; nothing after `arrows` once none is left).
+    Since E24 M4 T1a `<ms> date <month> <week> <day>` and `<ms> player <colour>` where they
+    change; since T1b1 `<ms> other <crest> <sand> <glass>` (kind 5's frames, `Mem.other_turn`)
+    where they change while kind 5 is shown, `<ms> other` once it is not."""
     lines, last = [], {}
     for state in states:
         t = state["t"]
@@ -905,7 +919,7 @@ def map_timeline(states):
             if key in state and last.get(key) != state[key]:
                 lines.append(f"{t} {key} " + " ".join(map(str, state[key])))
                 last[key] = state[key]
-        for key in ("hero", "walk", "date", "player"):
+        for key in ("hero", "walk", "date", "player", "other"):
             if key not in state:
                 continue
             if key in last and last[key] != state[key]:
@@ -930,10 +944,15 @@ def map_timeline(states):
 # that boarded a boat (which takes the day's points) sails.
 # E24 M4 T1a: `move_reminder`, Move Reminder's setting (1: End Turn asks while a hero can move;
 # the harness's settings keep it off).
+# E24 M4 T1b1: `computer_speed` (Computer Walk Speed, 2 to 5; the harness's settings keep 3, the
+# first run's) and `blackout` (Blackout Computer, 0 or 1), a computer player's turn's options
+# (design §5.2), each written alone (the system options set Blackout with speed 5).
 OPTIONS = {"scroll_speed": (h3mem.SCROLL_SPEED, range(0, 3)),
            "hero_speed": (h3mem.WALK_SPEED, range(1, 5)),
            "points": (None, range(0, 4000)),
-           "move_reminder": (h3mem.MOVE_REMINDER, range(0, 2))}
+           "move_reminder": (h3mem.MOVE_REMINDER, range(0, 2)),
+           "computer_speed": (h3mem.COMPUTER_WALK_SPEED, range(2, 6)),
+           "blackout": (h3mem.BLACKOUT_COMPUTER, range(0, 2))}
 # A sequence's inputs (T1a2), each at a millisecond of the sequence: a key pressed or released
 # (xdotool's names, X keysyms, `ctrl+` holding the Control key with it: `ctrl+Up` presses both,
 # releases both) and the pointer moved to a point of the screen (800 x 600); since T1b a left
@@ -967,13 +986,17 @@ def turn_toml(mem, t):
     """A turn's start in a sequence (E24 M4 T1a, design §5), a `[[turn]]` table of the live part:
     its millisecond, the current player, its kingdom as the panels show it (`Mem.kingdom`), the
     status window shown, and the week's and the month's kinds and names (`Mem.calendar`: the
-    week's message)."""
+    week's message); since E24 M4 T1b1 the heroes and boats standing on the view's level as the
+    live part's (`Mem.map_heroes`: a computer player's moves out of sight, or before, show there;
+    the selected hero is lifted, the timeline's `hero` line's)."""
     player = mem.current_player()
     calendar = mem.calendar()
+    heroes, boats = mem.map_heroes(mem.view_level())
     return (f"\n[[turn]]\nat = {t}\nplayer = {player}\n"
             f"kingdom = {kingdom_toml(mem.kingdom(player))}\n"
-            f"status = {status_toml(mem, player)}\n"
-            f"week = {calendar['week']}\nmonth = {calendar['month']}\n")
+            f"status = {status_toml(mem, player, other=True)}\n"
+            f"week = {calendar['week']}\nmonth = {calendar['month']}\n"
+            f"heroes = {heroes}\nboats = {boats}\n")
 
 
 def known_key(name):
@@ -989,7 +1012,7 @@ def sequence_inputs(entry):
     check compares), in order of time, a key released only once pressed, the button likewise (no
     press or click while it is held: E24 M3 T7b2, F5-7), a pointer inside the screen. Returns the options [(address, value)] and the inputs by time {t: [(kind, value)]}."""
     unknown = set(entry) - {"id", "situation", "ms", "why", "inputs", "status", "rolls",
-                            *OPTIONS}
+                            "seed", *OPTIONS}
     if unknown:
         raise ValueError(f"{entry['id']}: unknown keys {sorted(unknown)}")
     # The rolls a sequence forces (E24 M4 T1a: the week's and the month's), every draw of each
@@ -1093,7 +1116,13 @@ def sequence(entry, out):
                    env=h3drive.env(), check=False, capture_output=True)
     subprocess.run(["xdotool", "mouseup", "1"], env=h3drive.env(), check=False,
                    capture_output=True)
-    game, mem, sit, turn = stage(situation_path, out)
+    # The generator's seed (E24 M4 T1b1, design §5.2): the new game's draws and a computer
+    # player's turn's the same in every run (xdd.c's 8.: set before Begin and again at 0).
+    seed = entry.get("seed")
+    if seed is not None and (not isinstance(seed, int) or isinstance(seed, bool)
+                             or not 0 <= seed < 2 ** 32):
+        raise ValueError(f"{entry['id']}: the seed `{seed!r}`: a whole number of 32 bits")
+    game, mem, sit, turn = stage(situation_path, out, seed=seed)
     down = set()
     try:
         kept.mkdir(parents=True)
@@ -1128,6 +1157,8 @@ def sequence(entry, out):
         h3drive.run("xset", "r", "off")
         game.clock("step 100")
         now = game.clock("freeze")
+        if seed is not None:
+            game.seed(seed)
         # As `capture`: a deadline the frozen clock passed is met at the next idle step first.
         h3adv.wait_for(lambda: min(mem.map_due()) > now,
                        lambda: f"the deadlines past the frozen clock at {now} ({mem.map_due()})")
@@ -1171,11 +1202,11 @@ def sequence(entry, out):
             counted.update(cycles=k, ticks=ticks)
             index, hero = mem.selected()
             s = {"t": t - t0, "view": list(mem.view()) + [mem.view_level()],
-                 "date": list(mem.date()), "player": mem.current_player(),
+                 "date": list(mem.date()), "player": [mem.current_player()],
                  "objects": [mem.frame_steps() - base["objects"]], "cycles": list(ticks),
                  "cursor": mem.cursor(), "due": [d - t0 for d in mem.map_due()],
                  "hero": hero, "walk": mem.walk(), "arrows": mem.path_arrows(),
-                 "buttons": mem.buttons()}
+                 "buttons": mem.buttons(), "other": mem.other_turn()}
             if index >= 0:
                 s["points"] = [mem.points(index)]
             box = None if before is None else view_changed(before, pix)
@@ -1312,8 +1343,9 @@ def reused(entry, here):
 
 
 def run_frames(rest):
-    """`frames [--only <id>] [--out <dir>]`: each sequence of `clients/map/sequences.toml` (or
-    one) recorded (`sequence`); its timeline against the one recorded in
+    """`frames [--only <id>] [--out <dir>] [--reuse] [--sequences <file>] [--no-check]`: each
+    sequence of `clients/map/sequences.toml` (or of `<file>`, E24 M4 T1b1; or one) recorded
+    (`sequence`); its timeline against the one recorded in
     `clients/map/timelines/<id>.txt` (`ok`, `CHANGED`, `new`), and the viewer's frame at 0 against
     the original's (the live part at 0 is a still's: exact, as the capture set). A run as recorded
     or new and exact at 0 keeps its live part at 0 as `timelines/<id>-live.toml` (for the frame
@@ -1322,11 +1354,16 @@ def run_frames(rest):
     only = rest[rest.index("--only") + 1] if "--only" in rest else None
     base = Path(rest[rest.index("--out") + 1]) if "--out" in rest else OUT_FRAMES
     reuse = "--reuse" in rest
-    entries = tomllib.loads(SEQUENCES.read_text())["sequence"]
+    # E24 M4 T1b1: sequences recorded before the viewer plays them (`--sequences
+    # map/to-record.toml`), their frame check left out (`--no-check`).
+    listed = (Path(rest[rest.index("--sequences") + 1]) if "--sequences" in rest
+              else SEQUENCES)
+    check = "--no-check" not in rest
+    entries = tomllib.loads(listed.read_text())["sequence"]
     if only:
         entries = [e for e in entries if e["id"] == only]
         if not entries:
-            sys.exit(f"no sequence `{only}` in {SEQUENCES.name}")
+            sys.exit(f"no sequence `{only}` in {listed.name}")
     failed = 0
     for e in entries:
         here = base / e["id"]
@@ -1354,6 +1391,8 @@ def run_frames(rest):
             shutil.copy(here / "live.toml", TIMELINES / f"{e['id']}-live.toml")
         # The frame check (T2; the walks since T3b): every kept screen against the viewer's at
         # its time.
+        if not check:
+            continue
         try:
             checked, said, frames, differ = frame_check(e, here)
         except Exception as err:  # noqa: BLE001 (any failure fails this sequence alone)

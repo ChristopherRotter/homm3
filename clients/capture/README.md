@@ -1285,6 +1285,29 @@ current `player`, its `kingdom` as the panels show it, the `status` window shown
 `month` as `[kind, name or creature]`, `Mem.calendar`), the facts the viewer's End Turn draws the
 next day from (`turn-*`; Part B: the engine's events).
 
+**A computer player's turn** (E24 M4 T1b1, design §5.2): a sequence's `computer_speed` (2 to 5,
+Computer Walk Speed, `h3mem.COMPUTER_WALK_SPEED` 0x698758; the harness's settings keep the first
+run's 3) and `blackout` (0 or 1, Blackout Computer, 0x698790), each written alone with the other
+options (the system options set Blackout with speed 5), and its `seed` (a whole number of 32
+bits): the game seeds the C library's generator once, with the running clock's time, and a
+computer player's turn draws from it (its heroes' walks, a hero hired), so `seed` has `xdd.dll`
+seed it again (its 8.: `Game.seed`, the ack's sixteenth field) just before Begin (the new game's
+armies, tavern heroes and objects) and once more at the sequence's 0 (the draws the staging made
+in real time); a sequence with a computer player's turn in sight gives one, or no two runs walk
+alike. While the status window shows kind 5 (another player's turn) the timeline has `<ms> other
+<crest> <sand> <glass>` where its frames change (`Mem.other_turn`: its DEF items 2191 to 2193;
+kind 5's ids run from 2190, the other kinds' from 2000) and `<ms> other` once another kind shows;
+the `hero`, `walk` and `points` lines follow the current player's selected hero, so a computer
+player's walk shows in them as a human's. A `[[turn]]` table holds kind 5 in its `status` and,
+since T1b1, the `heroes` and `boats` standing on the view's level (as the live part's: a computer
+player's moves out of sight show there; the selected hero is lifted, the `hero` line's). The
+`player` line prints since T1b1 (no earlier sequence changed the player across a millisecond).
+Sequences recorded before the viewer plays them wait in
+`map/to-record.toml`: `frames --sequences map/to-record.toml --no-check` records them (the frame
+check left out), each moved into `sequences.toml` once the viewer plays it. A run with an
+`xdd.dll` built before T1b1 fails as stale where it reads the acknowledgement whole (15 fields,
+not 16): rebuild it with `setup.sh`.
+
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
 <out>/<id>/live.toml`: the map's timeline from the situation, this run's live part at 0 and the

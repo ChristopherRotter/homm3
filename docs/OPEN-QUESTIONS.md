@@ -114,6 +114,19 @@ no audio device, no sound run recorded it). Built as the original's. Options: (a
 (b) the client starts it once, the original's behind `--bugs original`; (c) a sound run at T1b
 first, then (a) or (b). **Recommended (c), then (b) if two samples sound.** Blocks nothing.
 
+#### MCL-Q31 — The view follows a computer's hero still under the fog (E24 M4 T1b1, a recording)
+
+A computer hero's step counts as seen when the viewer has explored its start or its destination
+or any neighbour of either (`step_seen` 0x480000, `tile_or_neighbour_seen` 0x41A750; E24 design
+§5.2), so the view centres on a hero whose step ends on an unexplored tile next to the explored
+land: the screen shows the fog with the hero drawn under it, and the hero comes out only at its
+next step (`ai-walk-fog` at 160 and 260). It tells the viewer where an enemy hero stands under the
+fog one step early. Options: (a) the original's (the view moves one step before the hero shows);
+(b) the client moves the view only at a step whose start or end tile the viewer explored, the
+original's behind `--bugs original`. **Recommended (a)**: one tile of lead at the fog's edge,
+and the computer's walk then reads as one movement. Built as the original's meanwhile (T1b2).
+Blocks nothing.
+
 ### Town lane (`TWN-Q<n>`)
 
 (no open questions)
