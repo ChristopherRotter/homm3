@@ -78,8 +78,9 @@ struct Search<'s> {
     pricing: Pricing<'s>,
     hero: HeroId,
     owner: PlayerId,
-    /// Whether another hero stands on the slot's tile (on land, or on water in a boat) or an
-    /// empty boat lies there (E08 T73b: on water only, so a land tile's flag is a hero's).
+    /// Whether another hero stands on the slot's tile (on land, or on water in a boat), an empty
+    /// boat lies there (E08 T73b: on water only, so a land tile's flag is a hero's) or it is a
+    /// `coast` kind's water entrance (E08 T125a: [`StaticMap::coast_entrances`]).
     occupied: Vec<bool>,
     /// Whether the map holds a monster, so that a tile may be guarded (E08 T20a2b; since E08
     /// T83b2a a monster added in play counts): the search asks [`Search::guarded`] only then
@@ -206,9 +207,11 @@ impl Reach {
             passing_via: Vec::new(),
         };
         // Another hero's tile: a visit, which ends the path (GAM-BAT-004, GAM-MET-001); an empty
-        // boat's: a boarding, which does too (ADV-SEA-002, E08 T73b). Whether one of them lies on
-        // the window's water (another hero in a boat, an empty boat) decides whether the walking
-        // search looks at water at all (`bench-check`).
+        // boat's: a boarding, which does too (ADV-SEA-002, E08 T73b); a coast bank's water
+        // entrance: a visit (E08 T125a; marked in the boats' loop, chained: a pass of its own
+        // before the loop cost the walking search +1.9 %, `bench-check`). Whether one of them
+        // lies on the window's water (another hero in a boat, an empty boat, such an entrance)
+        // decides whether the walking search looks at water at all (`bench-check`).
         let mut occupied = vec![false; size];
         let mut afloat = false;
         for other in state.heroes().iter().filter(|h| h.id != hero.id) {
@@ -221,8 +224,12 @@ impl Reach {
             reach.unmark_visitors(state, hero, &mut occupied);
         }
         let boats = state.boats().map(|(_, boat)| boat);
-        for boat in boats.filter(|boat| !boat.aboard && !boat.gone) {
-            if let Some(slot) = reach.slot(boat.tile) {
+        let empty = boats.filter(|boat| !boat.aboard && !boat.gone);
+        let water = empty
+            .map(|boat| boat.tile)
+            .chain(map.coast_entrances().iter().copied());
+        for tile in water {
+            if let Some(slot) = reach.slot(tile) {
                 occupied[slot] = true;
                 afloat = true;
             }
@@ -394,12 +401,14 @@ impl Reach {
     }
 
     /// A walking hero's step from `from` onto the water tile of `next` in `dir` with `points`
-    /// (E08 T73b; increment 8's design note §9), where another hero stands in a boat or an empty
-    /// boat lies: as `MoveHero`'s `check_step`, not down across the top of an object's tile
-    /// (ADV-OBJ-004), a hero visited from `from` (GAM-BAT-004, GAM-MET-001) with the walker's drop,
-    /// else the boat boarded (ADV-SEA-002) with a boat's drop and the conversion
-    /// ([`Search::boarded`]); each a destination the search goes no further from. The step is
-    /// priced as the walker's from its land tile.
+    /// (E08 T73b; increment 8's design note §9), where another hero stands in a boat, an empty
+    /// boat lies or (E08 T125a) a `coast` kind's water entrance is: as `MoveHero`'s `check_step`,
+    /// not down across the top of an object's tile (ADV-OBJ-004), a hero visited from `from`
+    /// (GAM-BAT-004, GAM-MET-001) with the walker's drop, else the boat boarded (ADV-SEA-002) with
+    /// a boat's drop and the conversion ([`Search::boarded`]), else the bank visited from `from`
+    /// ([`AdventureState::is_coast_entrance`]: none where another object is visited from it) with
+    /// the walker's drop; each a destination the search goes no further from. The step is priced
+    /// as the walker's from its land tile.
     // rule: ADV-SEA-002, GAM-BAT-004, GAM-MET-001
     #[cold]
     #[inline(never)]
@@ -426,8 +435,12 @@ impl Reach {
             .any(|h| h.pos == pos && h.id != search.hero);
         let left = if hero {
             pricing.walking_left_after(&to, left)
-        } else {
+        } else if state.is_empty_boat(pos) {
             search.boarded(&to, left)
+        } else if state.is_coast_entrance(search.part, pos) {
+            pricing.walking_left_after(&to, left)
+        } else {
+            return;
         };
         self.improve((next, Node::Stop), left, dir as u8);
     }

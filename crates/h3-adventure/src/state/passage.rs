@@ -7,7 +7,9 @@
 //! this table repeats for walking. Since E08 T73 (increment 8, increment 8's design note §7) the
 //! table has a fourth column, a hero in a boat ([`Mode::Sail`]), and the rows of boats: boarding an
 //! empty boat, a hero in a boat, a landing onto a free coastal tile, and a water tile an object is
-//! visited from closed to a flight (D-46).
+//! visited from closed to a flight (D-46). Since E08 T125a (increment 13's design note §9) a
+//! `coast` kind's water entrance, the Shipwreck's, has the empty boat's rows: a visit from a stop
+//! node and a flight's pass.
 
 use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::Movement;
@@ -89,9 +91,11 @@ impl AdventureState {
     /// - rock: never; water (E08 T73, ADR-0016 point 4): a hero in a boat is visited from a stop
     ///   node and a flight passes it; an empty boat is boarded from a stop node
     ///   ([`Meets::Board`], ADV-SEA-002) and a flight passes it, a water walk never steps onto it
-    ///   from water; a tile an object is visited from (a pickup's, a monster's, a water
-    ///   Cartographer's, a blocker's) neither (D-46, confirmed by batch E8c: a flight neither ends
-    ///   on nor passes over it); a flight passes the rest, a water walk plain water (no object);
+    ///   from water; so is a `coast` kind's water entrance (the Shipwreck's, E08 T125a:
+    ///   [`AdventureState::coast_visit`]), visited instead of boarded; a tile any other object is
+    ///   visited from (a pickup's, a monster's, a water Cartographer's, a blocker's, the Derelict
+    ///   Ship's) neither (D-46, confirmed by batch E8c: a flight neither ends on nor passes over
+    ///   it); a flight passes the rest, a water walk plain water (no object);
     /// - land: another hero is visited from a stop node (another player's in a battle,
     ///   GAM-BAT-004; an own one in a meeting, GAM-MET-001, E08 T50) and a flight passes it; a
     ///   tile an object blocks a flight
@@ -103,9 +107,8 @@ impl AdventureState {
     ///   free tile is a stop.
     ///
     /// A water walk is a walk on land: what a flight passes there it may not enter. The original's
-    /// class 85 (the Shipwreck), whose water tile a flight passes (0x4B26D6), is an untyped
-    /// blocker here: its tile is closed as every other object's on water until creature banks type
-    /// it (ADV-STUB-12).
+    /// class 85 (the Shipwreck), whose water tile a flight passes (0x4B26D6), is the bank kind
+    /// marked `coast` since E08 T125a (ADV-STUB-12 lifted).
     // rule: ADV-MOV-007, ADV-MOV-008, ADV-MOV-009, ADV-MOV-010, ADV-OBJ-003, ADV-OBJ-004
     // rule: ADV-SEA-002, ADV-PIK-018
     pub(crate) fn passage<'p>(
@@ -140,7 +143,9 @@ impl AdventureState {
         // property).
         if dy == -1 && self.closed_above(part, from) {
             return match part.passage(tile.terrain) {
-                Some(Passage::Water(_)) if fly && tile.visitable => {
+                Some(Passage::Water(_))
+                    if fly && tile.visitable && self.coast_visit(part, player, pos).is_none() =>
+                {
                     Err(blocked(StandError::Blocked))
                 }
                 Some(Passage::Land(_) | Passage::Water(_)) if fly => Ok(pass),
@@ -196,9 +201,25 @@ impl AdventureState {
                         (Node::Pass, false) => Err(AdventureCommandError::Boat { step }),
                     };
                 }
-                // An object's tile on water only a boat reaches (D-46); plain water a flight and
-                // a water walk pass, an object's blocked cell only a flight.
-                // stub: ADV-STUB-12 (class 85's water tile, a flight's pass in the original)
+                // A `coast` kind's water entrance (the Shipwreck's, E08 T125a; increment 13's
+                // design note §9) as an empty boat's tile: visited from a stop node, whatever the
+                // mode, the hero staying on land; a flight passes it from land or water, a water
+                // walk never steps onto it from water.
+                if tile.visitable
+                    && let Some(object) = self.coast_visit(part, player, pos)
+                {
+                    return match (node, fly) {
+                        (Node::Stop, _) => Ok(Entry {
+                            tile,
+                            stop: Some(Some(Meets::Object(object))),
+                            pass: fly,
+                        }),
+                        (Node::Pass, true) => Ok(pass),
+                        (Node::Pass, false) => Err(blocked(StandError::Blocked)),
+                    };
+                }
+                // Any other object's tile on water only a boat reaches (D-46); plain water a
+                // flight and a water walk pass, an object's blocked cell only a flight.
                 let open = !tile.visitable && (fly || !tile.blocked);
                 return if open {
                     Ok(pass)
