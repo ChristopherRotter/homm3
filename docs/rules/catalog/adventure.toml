@@ -2132,7 +2132,7 @@ id       = "ADV-VIS-006"
 title    = "What a player knows of a visited object, and of its heroes' marks"
 context  = "adventure"
 status   = "implemented"
-summary  = "A visit tells its hero's owner, where the original sets the visitor's team's mark (the team's marks are the owner's knowledge until E10's teams), what the build drew for the object: a Shrine's spell and a Witch Hut's skill before their tests, a gift's drawn price (the Tree of Knowledge's) before its test, a University's skills when it opens, whether a Corpse, Wagon or Lean To is emptied at its visit and a Warrior's Tomb after its question; the owner keeps it (`AdventureObservation::known`: the object by type and anchor, while it is on the map; a find's emptying as it stands now). No other player learns it. The owner also sees each of its heroes' once-per-hero marks (`OwnHeroView::marks`, by type and anchor: a marked object stood on a tile the hero explored). E08 T62a: the state's visits' block (`Visits`), `AdventureState::observe`. Amended by E08 T84b1 (survey E08-economy.md §9.4; increment 9's design note §9): a weekly object's visit sets its visited marks first, before its gain or its empty message: a Windmill's and a Water Wheel's for every player of the visitor's team, a Mystical Garden's for the visitor's owner alone (its visitor's team since T84b2, below); each mark set anew is told to its player (`ObjectMarked`), a held one is not; never cleared, hint data the gain never reads (ADV-OWN-003 shows them; `Weekly::marks`). Amended by E08 T84b2 (the user, decision 222): a Mystical Garden's marks every player of the visitor's team too, as the Windmill's and the Water Wheel's (`ADV-QUIRK-35`, the original's own mask not reproduced; no difference until E10's teams). Since E08 T115b (increment 12's design note section 10) a Fountain of Fortune's and a Magic Spring's visit is known to the visitor's team on every visit (the original's tile team bits and the player record's +0xBC bit, which the hint reads) as `Known::Visited`: visited, nothing more, never the fountain's value nor the Spring's entrances' state."
+summary  = "A visit tells its hero's owner, where the original sets the visitor's team's mark (the team's marks are the owner's knowledge until E10's teams), what the build drew for the object: a Shrine's spell and a Witch Hut's skill before their tests, a gift's drawn price (the Tree of Knowledge's) before its test, a University's skills when it opens, whether a Corpse, Wagon or Lean To is emptied at its visit and a Warrior's Tomb after its question; the owner keeps it (`AdventureObservation::known`: the object by type and anchor, while it is on the map; a find's emptying as it stands now). No other player learns it. The owner also sees each of its heroes' once-per-hero marks (`OwnHeroView::marks`, by type and anchor: a marked object stood on a tile the hero explored). E08 T62a: the state's visits' block (`Visits`), `AdventureState::observe`. Amended by E08 T84b1 (survey E08-economy.md §9.4; increment 9's design note §9): a weekly object's visit sets its visited marks first, before its gain or its empty message: a Windmill's and a Water Wheel's for every player of the visitor's team, a Mystical Garden's for the visitor's owner alone (its visitor's team since T84b2, below); each mark set anew is told to its player (`ObjectMarked`), a held one is not; never cleared, hint data the gain never reads (ADV-OWN-003 shows them; `Weekly::marks`). Amended by E08 T84b2 (the user, decision 222): a Mystical Garden's marks every player of the visitor's team too, as the Windmill's and the Water Wheel's (`ADV-QUIRK-35`, the original's own mask not reproduced; no difference until E10's teams). Since E08 T115b (increment 12's design note section 10) a Fountain of Fortune's and a Magic Spring's visit is known to the visitor's team on every visit (the original's tile team bits and the player record's +0xBC bit, which the hint reads) as `Known::Visited`: visited, nothing more, never the fountain's value nor the Spring's entrances' state. Since E08 T124b2 a creature bank's visit sets the marks (ADV-BNK-003: an attack kind's at once, a search kind's after a yes), its knowledge only that it was visited (`Known::Visited`: never its level, its reward or whether it is looted); its hint by the mark is ADV-BNK-006's (T125a)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2161,7 +2161,7 @@ id       = "ADV-RWD-001"
 title    = "A reward record's parts and their order"
 context  = "adventure"
 status   = "verified"
-summary  = "A reward record (a Pandora's Box's, ADV-PIK-013; an event's, ADV-OBJ-007) gives its visitor's hero its hero half by `h3_heroes::grant` (HER-CHG-003: the experience computed first with the Learning before the record's skills, D-39, and given last; the primary skills above 0; each skill raised to its level, never lowered, D-37, a new one below eight; the spell points held in 0 to 999, D-38; the morale and luck to the battle bonuses; the artifacts the hero can receive, else lost, under ADV-QUIRK-22; the spells by book, Wisdom and knowledge); its resources, a positive amount gained and a negative one lost, never below 0 (GAM-RES-001); its creatures slot by slot onto the hero's army as `army_add_stack` (ADV-ARM-007: its first stack of the creature that takes them within a stack's most, else its first free slot), each told to the owner, and the stacks that find no room, at their slots in the record, as one group for one army dialog (GAM-DEC-004), what is left in it lost. The game gives the experience with its level-ups after the record, and with stacks without room after the army dialog closes (GAM-DEC-007, E08 T63b; before it, before the dialog). A record per object, with no bound on their number (A-19 not reproduced: ADV-QUIRK-28). E08 T62b1: `AdventureState::give_record`, `AdventureOutcome::losses`, `NoRoom::group`."
+summary  = "A reward record (a Pandora's Box's, ADV-PIK-013; an event's, ADV-OBJ-007) gives its visitor's hero its hero half by `h3_heroes::grant` (HER-CHG-003: the experience computed first with the Learning before the record's skills, D-39, and given last; the primary skills above 0; each skill raised to its level, never lowered, D-37, a new one below eight; the spell points held in 0 to 999, D-38; the morale and luck to the battle bonuses; the artifacts the hero can receive, else lost, under ADV-QUIRK-22; the spells by book, Wisdom and knowledge); its resources, a positive amount gained and a negative one lost, never below 0 (GAM-RES-001); its creatures slot by slot onto the hero's army as `army_add_stack` (ADV-ARM-007: its first stack of the creature that takes them within a stack's most, else its first free slot), each told to the owner, and the stacks that find no room, at their slots in the record, as one group for one army dialog (GAM-DEC-004), what is left in it lost. The game gives the experience with its level-ups after the record, and with stacks without room after the army dialog closes (GAM-DEC-007, E08 T63b; before it, before the dialog). A record per object, with no bound on their number (A-19 not reproduced: ADV-QUIRK-28). E08 T62b1: `AdventureState::give_record`, `AdventureOutcome::losses`, `NoRoom::group`. Since E08 T124b2 a creature bank's reward is given in this form (ADV-BNK-005): its level's creature as the record's one stack, its drawn artifacts as the hero half's, its resources, nothing else."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-22", "ADV-QUIRK-28"]
 
@@ -4047,3 +4047,81 @@ numeric  = "integer"
   ref        = "experiments/results/E08-batch-13.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-16; survey E08-banks.md section 14): E13-1 (the 27 banks' records in the walk's order, each a level of CrBanks.txt's; class 16 and the ships five equal stacks, the Crypt's levels 1 and 2 split as section 3, its 3 and 4 and Utopia four stacks; an upgrade only on class 16's slot 2, never a Hive's; Utopia's artifacts relics first), E13-7 (the artifacts given in the record's order)"
   retrieved  = "2026-11-16"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-BNK-003"
+title    = "A creature bank's visit: its question by its kind, the team's marks and a looted one"
+context  = "adventure"
+status   = "verified"
+summary  = "A creature bank is visited by a move's last step onto its entrance (the ten entered kinds: the move ends there, a guard beside it fighting first, decision 279) or toward the Shipwreck's from a neighbour (from a boat; from the coast and from above with the Shipwreck's passage, ADV-STUB-12, T125a), and by `Revisit` on an entered one's entrance (ADV-TEL-008); by its kind's question (increment 13's design note section 6; E08 T124b2). An attack kind (class 16's seven, Dragon Utopia) sets the visitor's team's marks at once (ADV-VIS-006: the owner's until E10's teams), then a looted one tells the owner so (`ObjectEmpty`) and asks nothing, else asks to fight (`OfferKind::Fight`); declined, nothing more, the marks staying. A search kind (the Crypt, the Derelict Ship, the Shipwreck) asks to search first, looted or not (`OfferKind::Search`); declined, nothing, no mark; accepted, the marks, then a looted one tells the owner so and gives the kind's looted once-bonus by its mark (HER-ADV-008: -1 morale until the end of the hero's next battle, marks 14 to 16, once per kind), else the battle (ADV-BNK-004), or with no guards standing (after a draw) the reward at once without a battle or levels (ADV-BNK-005). Both offers are routed by the object's kind when accepted, as a mine's `Fight` (no offer kind of their own: nothing changes on the wire, in the replays or the env); an attack kind looted while its question was open is told so too. Every player answers as a human (the computer's `ai_fight_answer` is E10's). The marks tell no event and the hint by them is ADV-BNK-006's (T125a); the owner's knowledge lists a visited bank as visited, nothing more (`Known::Visited`)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-banks.md section 4): visit_object 0x4A84F0 (the cases of 16, 25, 24, 84 and 85), visit_creature_bank 0x4A15A0 and visit_dragon_utopia 0x4A2140 (tile_mark_visited_by_team first; looted bit 25: ADVEVENT 33, GENRLTXT 425; else ADVEVENT 32, 47), visit_search_bank 0x4AC490 (the question first, ADVEVENT 41, 119, 122; the marks after a yes; looted: the second text, the hero status bits 9 to 11 at +0x105 and -1 morale at +0x11A)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-13.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-16; survey E08-banks.md section 14): E13-2 (a declined Stockpile marks its team, a declined Crypt nothing; D-66), E13-11 (the hero on the entrance through the question, the decline and the battle; Space asks again), E13-8 (a looted Utopia told and nothing more; two looted Crypts -1, a looted Shipwreck -2 in all, cleared by the next battle), E13-12 (W4 asked from the coast; no: no mark)"
+  retrieved  = "2026-11-16"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/creatureBanks.json (VCMI 1.7.5; survey E08-banks.md section 8): the flow (every visit marks the bank scouted first, D-66: not the original's for a search kind; a guarded bank asks; a looted one gives its onVisited at once), the morale -1 for one battle on a looted Crypt, Shipwreck and Derelict Ship, stacked once per kind"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/creatureBanks.json"
+  retrieved  = "2026-11-15"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-BNK-004"
+title    = "A creature bank's battle: the guards as they stand at the entrance, and its end"
+context  = "adventure"
+status   = "verified"
+summary  = "A yes at a creature bank whose guards stand fights them at once (increment 13's design note sections 7 and 14; E08 T124b2): the visitor's hero attacking as it stands against the guards as they stand, an earlier battle's survivors and an upgraded stack as its own creature, by slot, unsplit, unowned and without a hero (`Defender::Bank`, the system actor's side), at its entrance (where the hero stands for the ten entered kinds; the Shipwreck's water tile beside it). The game makes the setup a bank battle by that cause (`BattleSetup::creature_bank`, ADR-0022 point 8; the battle lane's BAT-SET-001, BAT-TAC-001, BAT-GEO-004, BAT-WAR-001, BAT-WAR-004), never by the tile: a hero met on a bank's entrance fights an ordinary battle (every other caller of the original's adventure_battle passes 0). A deck kind's battle (the Shipwreck, the Derelict Ship) is on the sea terrain's deck as with one hero in a boat, the bank counted as one boat at least (`sea_battle_ground`): from the coast and from a boat alike, a special ground on the tile replacing the deck; a land kind's where any battle on its tile is (GAM-BAT-001). The battle's seeds are the game's (ADR-0017 point 4; the original's stored seed has no counterpart). Its end (`end_unowned_battle`'s bank case, after the battle's experience, Necromancy, Eagle Eye and the bonuses' clear): lost or retreated, the guards' survivors by slot stay as its army left, not looted, asked again at the next visit (the hero leaves the map as after any lost battle); a draw leaves none standing, not looted; won, none stand and the reward comes after the winner's levels (ADV-BNK-005)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-banks.md section 5; docs/exe/map.toml): bank_battle_reward 0x4ABDC0 (adventure_battle 0x4AD470 at the entrance with the record's army, owner -1, no hero, the bank flag 1 at 0x4ABEDB; every other of its 14 callers pushes 0), battle_side_setup 0x4639F0 storing the flag at +0x53C5, the ship flag +0x53C6 by class for 24 and 85; a lost or retreated battle returns at once, the record keeping the survivors"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-13.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-16; survey E08-banks.md section 14): E13-9 (retreated: the record the survivors by slot, Familiars as Familiars, not looted), E13-5 (the Shipwreck from the coast and the Derelict Ship from a boat on the deck, no obstacles), E13-11 (the battle at once at the entrance, the guards at the bank positions)"
+  retrieved  = "2026-11-16"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/creatureBanks.json and config/gameConfig.json's creatureBankNarrow and creatureBankWide (VCMI 1.7.5; survey E08-banks.md section 8): a yes fights the guards on the bank's layout, no tactics, no obstacles, the war machines left out"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/creatureBanks.json"
+  retrieved  = "2026-11-15"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-BNK-005"
+title    = "A creature bank's reward after the winner's levels, then looted"
+context  = "adventure"
+status   = "verified"
+summary  = "A won battle against a creature bank holds its reward as the visit's rest (`AdventureOutcome::reward_after`, `Rest::Won` of the entrance, GAM-DEC-007 point 3), given after the winner's levels by `give_won`'s bank case (increment 13's design note sections 8 and 15; E08 T124b2; D-67 corrected, decision 342), read when given (nothing when it was looted meanwhile); a yes at a bank with no guards standing gives it at once, without a battle or levels. Its drawn level's reward as a reward record's (ADV-RWD-001's form): the creature, when the level has one, onto the hero's army as army_add_stack (ADV-ARM-007: onto its first stack of the creature within a stack's most, else its first free slot), else the outcome's group for the army dialog (GAM-DEC-004, what is left in it lost); the artifacts drawn for it in the draw's order, relics first (D-68: the body positions and the backpack fill in that order), each the hero cannot receive lost (ADR-0013 point 15.4); the level's resources as the owner's gains (GAM-RES-001); no experience, skill or spell. Then the bank is looted, staying on the map, and never fought again (ADV-BNK-003). The record's own order (the hero half, the resources, the creatures) stands against the original's (the creatures, the artifacts, the resources): none reads another's and only the army dialog is a decision (agent's call)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-banks.md section 6, as corrected by T118b2): bank_battle_reward 0x4AC3C7 to 0x4AC473 (ADVEVENT 34; army_add_stack with slot -1, else army_full_dialog 0x5D11D0; hero_give_artifact in the record's order; give_resource; the looted bit 25), after adventure_battle's levels for a human at 0x4AE324 (the computer's screenless battle 0x4270C0 is E10's)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-13.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-16; survey E08-banks.md section 14): E13-6 (the levels, then the reward's message, then its army dialog with the Angels; D-67 corrected), E13-7 (the artifacts in the record's order, relics first; D-68), E13-10 (the level's resources), E13-11 and E13-2's S2 (looted, its guards emptied, on the map)"
+  retrieved  = "2026-11-16"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/creatureBanks.json (VCMI 1.7.5; survey E08-banks.md section 8): a win gives the reward after the levels; its artifacts listed treasure first (D-68: not the original's)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/creatureBanks.json"
+  retrieved  = "2026-11-15"
+  confidence = "medium"

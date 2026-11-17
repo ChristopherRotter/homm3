@@ -18199,3 +18199,69 @@ client lane's #989 (their readings); `master` 8972c50 merged in, the goldens re-
 
 **Versions:** adventure state hash v26. The game state hash, the ruleset part, the map import,
 the replay format and the battle's versions unchanged. T124b2 next.
+
+### Increment 13, round 6: T124b2, the visit, the battle and the reward (2026-11-17, `adventure/e08-t124b2`)
+
+**The cut** (decision 355; asked at T124b2's start, `AskUserQuestion`): T124b2 whole, in one pull
+request (recommended was two by the win: the visit, the battle and its loss first with a won
+bank's reward a stub, then the reward; not chosen either: two at the offer, the step still refused
+until the second). Not `cross-lane`: every path the adventure lane's (`h3-adventure`, `h3-game`,
+`h3-map`). **Baseline:** `master` 8944673 (#991 merged; CI green, the setup's fingerprint so the
+light gates only, all passing). The original data staged from the user's repo folder (the four
+LODs, both executables, `maps.tar`, `extracted.tar`; SHA-256 checked, one digest of the sorted
+hash lines `943a65ff…`).
+
+- **The visit** (design §6; ADV-BNK-003): `Effect::Bank(&Bank)` (`ObjectKind::effect`), so a
+  bank's entrance ends a path and the step (or `Revisit`, ADV-TEL-008) visits it:
+  `state/banks.rs`' `visit_bank` by the kind's question, an attack kind's team marks at once
+  (`learn`, the owner's until E10) then `ObjectEmpty` when looted or `OfferKind::Fight`; a search
+  kind's `OfferKind::Search` first. The accepted offer (`enter_bank`), routed in `accept_offer` by
+  `bank_of` (after a mine's `Fight`, before the guarded piles'; before the finds' `Search`): a
+  search kind's marks; looted, `ObjectEmpty` and a search kind's `looted` once-bonus by its mark
+  (`give_once`, part C); else the battle, or with no guards standing the reward at once.
+- **The battle** (§7, §14; ADV-BNK-004, GAM-BAT-001): `Defender::Bank { army }` (its `owner` none;
+  `h3-adventure`'s test helper's arm), `bank_battle` at `pile_tile` (the entrance) with
+  `battle_at`, a deck kind's terrain and battlefield then `sea_battle_ground(part, tile, 1)` (the
+  bank one boat: a hero on land or in a boat gets the deck, never the two boats). `h3-game`'s
+  `start_battle`: the two matches' arms and `creature_bank: matches!(start.defender,
+  Defender::Bank { .. })` (the obstacles' stream draw kept, the generator giving none for the
+  flag, T124a). The end: `end_unowned_battle`'s `ObjectKind::Bank` arm before the guarded
+  objects' fallback (`end_bank_battle`: the survivors as `army_left`, none won and after a draw,
+  `reward_after` when won).
+- **The reward** (§8, §15; ADV-BNK-005, GAM-DEC-007): `give_won`'s bank arm before the beaten
+  objects' (`bank_won`: nothing once looted, the race of another player's yes at a bank without
+  guards while the winner's levels are open), `loot_bank` (`bank_record`: the drawn artifacts as a
+  record's hero half, the level's resources, its creature as one stack in slot 0; then
+  `give_record`, ADV-RWD-001's form, and the emptied mark). The readers `Resolved::bank` and
+  `ObjectKind::bank` sit in the banks' modules (`state::draws` untouched: T124b1's trap).
+- **The once-marks** (§12; HER-ADV-008): no code of their own; the packs' marks 14 to 16 (T123a).
+- **The observation:** a visited bank in the owner's `known` as `Known::Visited` (*agent's call*:
+  `Known::Emptied`, the default arm, would tell a looted bank from a draw's empty guards, which
+  the hint never does). The marks tell no `ObjectMarked` yet: the hint and its events are T125a's
+  (§10, §16), so the fold and `observe` stay alike.
+- **Agent's calls** (decision 355; change freely): the marks silent until T125a; an attack kind
+  looted while its question was open told so on the yes; the deck with the bank one boat; the
+  reward through `give_record`; `give_won` nothing once looted.
+- **Tests:** `h3-adventure`'s `state/tests/banks.rs` (nine: the attack kind's marks, question,
+  decline, `Revisit` and looted visit, `Known::Visited`; the search kind's question before its
+  marks; the battle's defender, tile and ground, the survivors fought next, no battle without the
+  hero; the deck from land and from a boat, a land kind's ground; the reward after a win, a second
+  `give_won` nothing, a looted visit; a creature without room as the group, lost artifacts, a level
+  without a creature; a draw's empty guards and the reward at once; the once-marks 15 and 14,
+  -2 in all, an attack kind's none, cleared by the battle's clear; a bank without its draw);
+  `ruleset/tests/banks.rs`' effect now the kind's; `h3-game`'s `tests/banks.rs` (four: the bank
+  positions by ordinal for both kinds' battles, the reward after the level-up, the army dialog,
+  a loss's survivors); `h3-map`'s `a_step_onto_a_land_bank_asks_by_its_kind_and_a_yes_fights_its_guards`
+  (the eleven land banks of the SoD packs: the reach, the question by kind, the marks, the
+  decline, `Revisit`, the battle against the guards as drawn) replacing
+  `a_step_onto_a_bank_is_refused_until_t124b2`.
+- **The measure** (`homm3-bench-regression`), right after the first build: `bench-check --lane
+  adventure` on the branch, all 34 workloads inside their gates (the reach ones -0.37 % to
+  +0.04 %, the random-play ones -0.16 % to +0.25 %, the most `fork-economy-xl-144` +1.28 %); no
+  baseline moved.
+- **Rules:** ADV-BNK-003, -004 and -005 new, `verified` (the code reading, VCMI's config, batch
+  E13's rows as survey §14 names them); GAM-BAT-001, GAM-DEC-007 and HER-ADV-008 amended with
+  batch E13 as a source; ADV-RWD-001 and ADV-VIS-006 amended.
+- **Replays:** none moved (no fixture map holds a bank; no hash, format or encoding changed).
+- **Docs:** design §6 to §8, §12, §14, §15's *As built*; decision 355 and the task's line; the
+  queue (T124b2 archived verbatim, T125a in); `OVERVIEW.md`; the comments that said T124b2.

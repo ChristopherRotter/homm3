@@ -253,6 +253,13 @@ bank's entrance (decision 268). By the kind's question:
   kind, or two.
 - Every player answers as a human (ADR-0017 point 1); the computer's answer (`ai_fight_answer`) is
   E10's.
+- *As built* (T124b2, decision 355): `state/banks.rs`' `visit_bank` (`Effect::Bank`, the step's
+  and `Revisit`'s) and `enter_bank` (the accepted `Fight` or `Search`, routed by `bank_of` in
+  `accept_offer` before the guarded piles' and the finds'); the marks silent (`ObjectMarked` and the
+  hint with T125a); the owner's `known` lists a visited bank as `Known::Visited` (*agent's call*:
+  `Known::Emptied` would tell looted from a draw's empty guards, which the hint never does); an
+  attack kind looted while its question was open told so (*agent's call*). The Shipwreck is visited
+  from a boat until T125a's passage (§9).
 
 ### 7. The battle, the map's half (ADV-BNK-004; survey §5)
 
@@ -282,6 +289,10 @@ bank's entrance (decision 268). By the kind's question:
   map as after any lost battle); a draw leaves none standing, not looted (§6's case); won, the
   reward after the winner's levels (§8, as corrected). The hint's change goes to the teams that
   visited it (§10).
+- *As built* (T124b2): `bank_battle` (`Defender::Bank` at `pile_tile`, the entrance; a deck kind's
+  terrain and battlefield replaced by `sea_battle_ground(…, 1)`, so a hero in a boat gets the deck,
+  never the two boats) and `end_bank_battle` (`end_unowned_battle`'s arm before the guarded objects'
+  fallback: the survivors, or none won and after a draw, as `army_left`).
 
 ### 8. The reward, the map's half (ADV-BNK-005; survey §6; D-67 and D-68 the original)
 
@@ -304,6 +315,11 @@ bank's entrance (decision 268). By the kind's question:
 - The record's own order (the hero half, the resources, the creatures) stands against the
   original's (the creatures, the artifacts, the resources): none reads another's (the army, the
   hero's artifacts, the treasury) and only the army dialog is a decision (*agent's call*).
+- *As built* (T124b2): `bank_won` (`give_won`'s arm before the beaten objects': nothing once
+  looted, the race of another player's yes while the winner's levels are open) and `loot_bank`
+  (`bank_record`: the drawn artifacts as the hero half, the level's resources, its creature as one
+  stack in slot 0; `give_record`; then the emptied mark); the readers `Resolved::bank` and
+  `ObjectKind::bank` in the banks' modules, `state::draws` untouched (T124b1's trap).
 
 ### 9. The Shipwreck's passage (ADV-STUB-12 lifted; ADV-MOV-009, ADV-SEA-002 amended)
 
@@ -366,6 +382,8 @@ bank's entrance (decision 268). By the kind's question:
   cleared at the end of its next battle (GAM-BAT-014); in battle each the source
   `EffectSource::Visit { mark }` (HER-ADV-008). Every hero takes them, a computer's too.
 - **ADR-0013 needs no amendment:** the marks are content and the list has no fixed count.
+- *As built* (T124b2): no code of its own: the packs' `looted` (T123a) given by `enter_bank`'s
+  `give_once`; tested with two kinds and the battle's clear (`state/tests/banks.rs`).
 
 ## Part D — the game, the env, batch E13 and the cut (`h3-game`; T118b2)
 
@@ -481,6 +499,9 @@ the machines and the supply, a side without a hero or a cart unsupplied; the has
   bonuses' clear (GAM-BAT-014: a looted search's −1 cleared with them); so Necromancy's raised
   creatures stand in the army before the reward's creature joins, as in the original
   (`battle_end` raises at 0x47776E, the reward follows the battle).
+- *As built* (T124b2): `start_battle`'s two matches and `creature_bank: matches!(start.defender,
+  Defender::Bank { .. })` (the obstacles' stream draw kept, the generator giving none);
+  `h3-game`'s `tests/banks.rs` reads the stacks at the bank positions from the open battle.
 
 ### 15. The reward after the winner's levels (D-67 corrected; GAM-DEC-007 amended)
 
@@ -498,6 +519,8 @@ the machines and the supply, a side without a hero or a cart unsupplied; the has
 - A draw empties the guards and gives nothing (§7); a yes at a bank without guards standing gives
   the reward at once, with no battle and no levels (§6).
 - **GAM-DEC-007 amended:** rest (3) lists a creature bank's reward and loot (ADV-BNK-005).
+- *As built* (T124b2): as written; `h3-game`'s `tests/banks.rs` checks the level before the gold
+  and the creature, and the army dialog for a creature without room.
 
 ### 16. The observation, the events and the wire (ADV-BNK-006's game half)
 
