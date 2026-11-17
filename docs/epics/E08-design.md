@@ -146,6 +146,16 @@ changed).
   of the five classes as a plain blocker breaks (`TRAPS.md`); the shipped-map workloads move once
   (part D).
 
+*As built* (T123b, `adventure/e08-t123b`, `cross-lane`; decision 352): `codes::CREATURE_BANKS` for
+class 16 by subclass and one arm each for 85, 24, 84 and 25 through the subclass test (past 0
+`Subclass`, as the bonus visitables'); no body, so `Holds::Nothing` (the note's `Holds::None`) and
+no owner. The census (`original_data`'s `increment_13`) checks every count of survey §1's table
+(by version, level and entrance, "beside land" a land tile among the entrance's eight neighbours)
+and found them all on its first run. A step onto a bank's entrance is `AdventureCommandError::
+Visit` (`visit_at` finds no built effect), the reach ending before it (`h3-map`'s `tests/banks.rs`).
+No test used one of the five classes as a plain blocker. Map import v24: the 89 adventure goldens'
+`import_version`, checkpoints and final hashes, and `h3-server`'s `tests::record`.
+
 ### 4. The state (`h3-adventure`; adventure state hash v26)
 
 **No new block** (ADR-0016 point 1): every part of a bank lives where a kind before it keeps the
@@ -535,7 +545,7 @@ cut and the exit criteria (§20); risks (§21); with the draft for ADR-0017 (app
 | Version | From | To | By |
 |---|---|---|---|
 | adventure ruleset part | v20 | **v21** | T123a: the kind `bank` (hash tag 44); *done* |
-| map import | v23 | **v24** | T123b: the five classes typed |
+| map import | v23 | **v24** | T123b: the five classes typed; *done* |
 | adventure state hash | v25 | **v26** | T124b: `Resolved::Bank`, the banks' guards in the static map |
 | battle state hash (the battle lane's) | v55 | **v56** | T124a, `cross-lane`: the flag in the state |
 | battle ruleset part (the battle lane's) | v7 | **v8** | T124a, `cross-lane`: `bank_positions` |

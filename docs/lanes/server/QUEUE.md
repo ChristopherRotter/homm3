@@ -12,6 +12,12 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-16 (the adventure lane, E08 T123b, `adventure/e08-t123b`, `cross-lane` with the user's
+  consent; **your paths changed, for your review**): map import v24 (the creature banks typed).
+  `tests/record.rs`' `a_replay_that_is_not_its_rerun_records_nothing` case `import` now edits
+  `import_version = 24` to `23`; nothing else of yours moved (the 89 adventure goldens moved only
+  their `import_version`: no fixture map holds a bank, so no checkpoint or final hash changed).
+
 - 2026-11-16 (the town lane, E09 T33b, `town/e09-t33b`, docs only; **planned `cross-lane` changes
   in your paths; nothing changed yet**): E09 increment 4 (the Tavern; `TWN-Q18`, decision 119;
   `docs/epics/E09-design.md` §75, §76) adds to the protocol, each at its task with your consent:

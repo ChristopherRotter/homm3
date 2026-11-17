@@ -1,16 +1,19 @@
 //! The experiment writer's creature banks (E08 T119: batch E13's maps; increment 13's design note
 //! §3, §19, survey `docs/rules/surveys/E08-banks.md` §1): the five classes without a body, class
 //! 16 by subclass 0 to 6, the Crypt's three pictures and the Shipwreck's two, read back as written
-//! in SoD and RoE, their templates' masks as the game's; a subclass of 16 past 6 refused; and the
-//! import as it reads them until T123b types them: each a blocker without a type (its blocked mask
-//! and its one entrance), the setup valid.
+//! in SoD and RoE, their templates' masks as the game's; a subclass of 16 past 6 refused. Since
+//! T123b (design note §3, map import v24) the import types them, class 16 by subclass and the four
+//! others at subclass 0, without a body (another subclass refused), the setup valid; until T124b a
+//! step onto a bank is refused as any unbuilt visit's.
 
 use super::import::{ROE, SOD};
 use super::limits;
 use crate::model::{Body, RawMap};
 use crate::writer as w;
-use crate::{import, read};
-use h3_adventure::Holds;
+use crate::{ImportError, import, read};
+use h3_adventure::{AdventureCommand, AdventureCommandError, Holds, Pos};
+use h3_contracts::PlayerId;
+use h3_game::{Actor, GameCommand, GameCommandError, GameState, apply};
 
 /// The game's `Objects.txt` lines of the land banks (`H3bitmap.lod`'s, RoE's as SoD's): class 16
 /// by subclass, the Cyclops Stockpile (0), the Dwarven Treasury (1), the Griffin Conservatory (2),
@@ -245,25 +248,46 @@ fn the_writer_refuses_a_bank_subclass_past_6() {
     assert!(w::write(&map).is_ok());
 }
 
-// covers: ADV-OBJ-001
+/// The bank types by object, in [`expected`]'s order.
+const TYPES: [&str; 14] = [
+    "base:cyclops_stockpile",
+    "base:dwarven_treasury",
+    "base:griffin_conservatory",
+    "base:imp_cache",
+    "base:medusa_stores",
+    "base:naga_bank",
+    "base:dragon_fly_hive",
+    "base:crypt",
+    "base:crypt",
+    "base:crypt",
+    "base:dragon_utopia",
+    "base:derelict_ship",
+    "base:shipwreck",
+    "base:shipwreck",
+];
+
+// covers: ADV-OBJ-002, ADV-BNK-001
 #[test]
-fn the_import_reads_the_banks_as_blockers_until_t123b() {
-    // Until T123b types them (increment 13's design note §3), the five classes import as the
-    // shipped maps' banks do: without a type or a body, their template's blocked tiles and the
-    // one entrance as the footprint; the setup validates under SoD's and RoE's rules.
+fn the_import_types_the_banks() {
+    // The five classes typed by the original's kinds (increment 13's design note §3): class 16 by
+    // subclass, 84, 25, 24 and 85 at subclass 0; without a body (nothing held, no owner) and with
+    // their template's blocked tiles and one entrance; the setup valid under SoD's and RoE's rules.
     let map = banks_map();
     for (format, rules) in [(w::Format::Sod, &*SOD), (w::Format::RoE, &*ROE)] {
+        let part = rules.adventure();
         let raw = read_back(&w::write_in(&map, format).unwrap());
         let setup = import(&raw, rules).unwrap();
         setup.validate(rules).unwrap();
-        assert_eq!(
-            setup.map.objects.len(),
-            LAND_BANKS.len() + WATER_BANKS.len()
-        );
-        for (object, (_, _, (x, y))) in setup.map.objects.iter().zip(expected()) {
-            assert_eq!(object.object_type, None);
+        assert_eq!(setup.map.objects.len(), TYPES.len());
+        for ((object, (_, _, (x, y))), key) in setup.map.objects.iter().zip(expected()).zip(TYPES) {
+            assert_eq!(object.object_type, part.object_type_by_key(key), "{key}");
+            let ty = part.object_type(object.object_type.unwrap()).unwrap();
+            assert!(
+                matches!(ty.kind, h3_adventure::ObjectKind::Bank(_)),
+                "{key}"
+            );
             assert_eq!(object.holds, Holds::Nothing);
-            assert_eq!(object.owner, None);
+            assert_eq!((object.owner, object.amount), (None, None));
             assert_eq!(
                 (object.anchor.x, object.anchor.y),
                 (u16::from(x), u16::from(y))
@@ -273,5 +297,71 @@ fn the_import_reads_the_banks_as_blockers_until_t123b() {
             let (column, row) = entrance[0];
             assert!(object.blocked.contains(column, row));
         }
+    }
+    // A subclass its class does not define: class 16's past 6 (the original indexes its kinds'
+    // table by it without a test, survey §3; the writer refuses it, so the read map is edited),
+    // the four others' past 0. Object 0 is the hero.
+    let raw = read_back(&w::write(&map).unwrap());
+    for (index, subclass) in [(7, 7), (8, 1), (11, 1), (12, 1), (13, 1)] {
+        let mut edited = raw.clone();
+        let template = usize::try_from(edited.objects[index].template).unwrap();
+        edited.templates[template].subclass = subclass;
+        assert_eq!(
+            import(&edited, &SOD).err(),
+            Some(ImportError::Subclass(index)),
+            "{index}"
+        );
+    }
+}
+
+// covers: ADV-OBJ-003, ADV-BNK-001
+#[test]
+fn a_step_onto_a_bank_is_refused_until_t124b() {
+    // Until T124b builds the visit (increment 13's design note §6), a bank's entrance is refused
+    // as any unbuilt visit's: the reach ends before it, and a step onto it is `Visit`, the state
+    // unchanged. Red's hero is placed on the tile below each land bank's entrance (free: the
+    // banks are four rows apart).
+    let rules = &*SOD;
+    let raw = read_back(&w::write(&banks_map()).unwrap());
+    let setup = import(&raw, rules).unwrap();
+    for (index, object) in setup.map.objects[..LAND_BANKS.len()].iter().enumerate() {
+        let (column, row) = object.visitable.offsets().next().unwrap();
+        let entrance = Pos::new(
+            object.anchor.x - u16::from(column),
+            object.anchor.y - u16::from(row),
+            0,
+        );
+        let below = Pos::new(entrance.x, entrance.y + 1, 0);
+        let mut setup = setup.clone();
+        setup.heroes[0].pos = below;
+        let mut state = GameState::new(rules, &setup, 1).unwrap();
+        let hero = state.adventure().heroes()[0].id;
+        let reach = state
+            .adventure()
+            .reach(rules.core(), rules.adventure(), state.heroes(), hero)
+            .unwrap();
+        assert_eq!(reach.points_left(entrance), None, "{index}");
+        // The reach goes on along the free row below the entrances.
+        let beside = Pos::new(below.x + 1, below.y, 0);
+        assert!(reach.points_left(beside).is_some(), "{index}");
+        let before = state.clone();
+        let command = GameCommand::Adventure(AdventureCommand::MoveHero {
+            hero,
+            path: vec![entrance],
+        });
+        assert_eq!(
+            apply(
+                &mut state,
+                rules,
+                Actor::Player(PlayerId::new(0)),
+                command,
+                &mut Vec::new()
+            ),
+            Err(GameCommandError::Adventure(AdventureCommandError::Visit {
+                step: 0
+            })),
+            "{index}"
+        );
+        assert_eq!(state, before);
     }
 }

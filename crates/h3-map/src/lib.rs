@@ -83,8 +83,10 @@ pub use parse::parse;
 /// 14, 28, 30, 31, 38, 48, 49, 52, 56, 64, 92, 94, 96, 110) typed, a subclass past 0 refused; 219
 /// ownable among a battle's surroundings. v23 (E09 T26a2): the setup's `roe`, the map's format
 /// Restoration of Erathia's (`GameSetup::roe`: a creature's week names only RoE's town records'
-/// creatures, TWN-GRO-002).
-pub const MAP_IMPORT_VERSION: u32 = 23;
+/// creatures, TWN-GRO-002). v24 (E08 T123b): the creature banks typed, class 16 by subclass (the
+/// seven land kinds, a subclass past 6 refused) and 85, 24, 84 and 25 each at subclass 0 (a
+/// subclass past 0 refused), none with a body.
+pub const MAP_IMPORT_VERSION: u32 = 24;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///
