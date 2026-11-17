@@ -1,0 +1,123 @@
+commands = [
+    "0 move 4 24,14,0 24,13,0 24,12,0 24,11,0 24,10,0",
+    "0 answer offer accept",
+    "0 battle attack 3 156",
+    "system battle move 81",
+    "system battle move 72",
+    "system battle move 148",
+    "system battle move 182",
+    "0 battle attack 2 180",
+    "system battle move 147",
+    "system battle move 109",
+    "system battle attack 0 165",
+    "0 battle attack 4 110",
+    "system battle attack 0 112",
+    "0 move 4 24,11,0 24,12,0 24,13,0 24,14,0 24,15,0 24,16,0 24,17,0 24,18,0 23,19,0 22,20,0 23,21,0 24,20,0",
+    "0 answer offer accept",
+    "0 battle attack 2 183",
+    "system battle move 177",
+    "system battle move 82",
+    "system battle attack 0 167",
+    "system battle move 5",
+    "0 battle attack 4 6",
+    "system battle move 94",
+    "system battle move 78",
+    "0 battle attack 3 76",
+    "system battle attack 0 78",
+    "0 answer level-up first",
+    "0 end-turn",
+    "1 end-turn",
+    "0 move 4 25,21,0 26,20,0 26,19,0 26,18,0 26,17,0 26,16,0 27,15,0",
+    "0 answer offer accept",
+    "0 battle attack 5 98",
+    "0 battle attack 3 156",
+    "system battle move 98",
+    "system battle move 180",
+    "system battle move 90",
+    "0 battle attack 4 106",
+    "system battle move 93",
+    "system battle move 126",
+    "0 battle attack 1 108",
+    "system battle attack 0 126",
+    "0 move 4 26,17,0 26,18,0 26,19,0 26,20,0 25,21,0 24,20,0",
+    "0 answer offer accept",
+    "0 end-turn",
+    "1 end-turn",
+    "0 move 4 23,21,0 22,20,0 22,19,0 22,18,0 22,17,0 22,16,0 22,15,0 22,14,0 22,13,0 22,12,0 23,11,0 24,10,0",
+    "0 answer offer accept",
+    "0 move 4 24,11,0 24,12,0 25,13,0 26,14,0 27,15,0",
+    "0 answer offer accept",
+    "0 end-turn",
+    "1 end-turn",
+    "0 move 4 25,14,0 24,14,0 23,14,0 22,14,0 21,15,0 20,15,0",
+    "0 answer offer accept",
+    "0 battle attack 5 98",
+    "system battle attack 0 81",
+    "system battle attack 0 115",
+    "system battle attack 0 114",
+    "system battle attack 0 97",
+    "0 battle attack 2 98",
+    "system battle attack 0 114",
+    "system battle attack 0 97",
+    "0 battle attack 4 98",
+    "0 answer level-up first",
+    "0 move 4 20,16,0 21,17,0 21,18,0 21,19,0 22,20,0 23,21,0 24,20,0",
+    "0 answer offer accept",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0x6fe2fbac291735b1",
+    "0x86cc095ddf9a9ac2",
+    "0x4a22250dcce80084",
+    "0xd087ddd985bdaaf4",
+    "0xf1e76056d5738d84",
+    "0x718eb8f6dba1d030",
+    "0xe5ed3a17abe182eb",
+    "0x8dc12b082f921544",
+    "0xc7c94439cf5a33df",
+    "0x21b4dc0c8a4903b0",
+    "0x15a16b56ae50ac5e",
+    "0x392b6a5a7b0bcf16",
+    "0x411b81451e6da7e3",
+]
+
+[replay]
+format = 16
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x6ba8109889b34a25"
+adventure_ruleset_hash = "0xa5809e7fd9e842dd"
+town_ruleset_hash = "0xabc9756b93a29a55"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 33
+adventure_state_hash_version = 26
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-banks-36.h3m"
+hash = "0xda3dd80d4aa94083"
+import_version = 25
+
+[result]
+day = 5
+final_hash = "0x0a91c441f3d573d0"
