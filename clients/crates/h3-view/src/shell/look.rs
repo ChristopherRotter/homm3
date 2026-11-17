@@ -168,10 +168,15 @@ pub fn look(layout: &ShellLayout, screen: Screen, front: Option<&Front>) -> Opti
             let background = backgrounds
                 .get(usize::from(scenario.background()))
                 .or_else(|| backgrounds.first())?;
+            // The flags' strip the original's partial redraw leaves (CLT-Q138).
+            let stale = scenario.stale_draws(players).map(|(rect, draws)| Stale {
+                rects: alloc::vec![rect],
+                draws,
+            });
             return matches!(screen, Screen::Scenario(..)).then(|| Look {
                 background: background.clone(),
                 draws: scenario.draws(players),
-                stale: Vec::new(),
+                stale: stale.into_iter().collect(),
                 over: scenario.box_draws(players),
                 cursor: scenario.cursor(),
                 arrow,

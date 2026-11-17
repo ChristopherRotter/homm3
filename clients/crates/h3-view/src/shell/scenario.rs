@@ -113,6 +113,12 @@ pub const FILTERS: [(u16, u32); 5] = [(137, 36), (138, 72), (139, 108), (140, 14
 /// The columns players, size, version, name, victory and loss (190 to 195) with their sort keys
 /// (`scenario_sort_click` 0x5870FA).
 pub const COLUMNS: [(u16, u8); 6] = [(190, 3), (191, 1), (192, 2), (193, 0), (194, 4), (195, 5)];
+/// The right-hand panel's picture (`GSelPop1.pcx`, drawn into the screen at once).
+pub const PANEL_BACK: u16 = 1020;
+/// The enemies' label ("%s:" of GENRLTXT 392).
+pub const ENEMIES_LABEL: u16 = 386;
+/// The flags' strip `scenario_team_flags` 0x585300 restores and shows (456, 402, 290, 25).
+pub const STRIP: [i32; 4] = [456, 402, 290, 25];
 /// The key the list is built in (`scenario_list_finish` 0x582E90: the version, then the name).
 pub const BUILT_KEY: u8 = 2;
 /// A second row press within this many milliseconds of the last begins (`scenario_row_click`
@@ -434,6 +440,11 @@ pub struct Scenario {
     row: Option<u16>,
     /// The mouse, as last moved or pressed.
     pointer: [i32; 2],
+    /// The original's profile: the last redraw was the partial one (`scenario_select` 0x585500
+    /// with the selection unchanged, 0x585A06), and the size mark as the last whole redraw drew
+    /// it (its state and frame): CLT-Q138.
+    partial: bool,
+    drawn_size: (State, u32),
     /// The shell's clock (ms) and the last row press's time with its entry in the shown list
     /// (+0x60; none for the screen's opening).
     now: u32,
@@ -482,6 +493,8 @@ impl Scenario {
             filter: 0,
             row: None,
             pointer: [0, 0],
+            partial: false,
+            drawn_size: (State::default(), 0),
             now: 0,
             last_row: None,
             kept: String::from(KEPT_MAP),
@@ -604,12 +617,14 @@ impl Scenario {
         let kept = self.kept_row();
         self.selected = kept.or_else(|| (!self.listed.is_empty()).then_some(0));
         self.show();
+        self.whole();
         self
     }
 
     /// The kept map's row in the shown list (`scenario_find_by_name` 0x58D3E0: its file's name).
     fn kept_row(&self) -> Option<usize> {
-        self.listed().position(|e| e.file.eq_ignore_ascii_case(&self.kept))
+        self.listed()
+            .position(|e| e.file.eq_ignore_ascii_case(&self.kept))
     }
 
     /// The list's items shown or hidden: its panel, title, sizes label, rows, filters and
@@ -645,6 +660,7 @@ impl Scenario {
         if self.showing {
             self.showing = false;
             self.list_items(false);
+            self.whole();
             return;
         }
         self.list_items(true);
@@ -654,8 +670,9 @@ impl Scenario {
             self.finish();
         }
         self.bar.reset(self.ticks());
-        self.bar.set_value(i32::try_from(self.top).unwrap_or(i32::MAX));
+        self.set_bar();
         self.show();
+        self.whole();
     }
 
     /// The list as built (`scenario_list_finish` 0x582E90): sorted by the version, the recorded
@@ -708,7 +725,11 @@ impl Scenario {
             self.key = key;
         }
         self.sort_list(key, self.descending);
+        // The sort redraws whole before the click selects its first row (0x5852BF), which it
+        // already is: the select's partial redraw (CLT-Q138).
+        self.whole();
         self.show();
+        self.partial = true;
     }
 
     /// A filter's press (`scenario_list_filter` 0x585D90): the shown list of the maps of `size`
@@ -720,6 +741,7 @@ impl Scenario {
         self.selected = (!self.listed.is_empty()).then_some(0);
         self.bar.reset(self.ticks());
         self.show();
+        self.whole();
     }
 
     /// The bar moved the top to `value` (`scenario_list_scrolled` 0x57C990).
@@ -727,6 +749,7 @@ impl Scenario {
         if let Some(value) = value {
             self.top = usize::try_from(value).unwrap_or(0);
             self.show();
+            self.partial = true;
         }
     }
 
@@ -742,6 +765,7 @@ impl Scenario {
             return;
         };
         let row = selected.checked_sub(self.top);
+        let before = self.selected;
         match scroll {
             Scroll::Up => {
                 let Some(new) = selected.checked_sub(1) else {
@@ -781,12 +805,21 @@ impl Scenario {
                 }
             }
         }
+        // The key redraws whole (0x587ED5), then selects: a selection that stays redraws part
+        // (CLT-Q138).
+        self.whole();
         self.show();
+        if self.selected == before {
+            self.partial = true;
+        } else {
+            self.whole();
+        }
     }
 
     /// The bar's value the top.
     fn set_bar(&mut self) {
-        self.bar.set_value(i32::try_from(self.top).unwrap_or(i32::MAX));
+        self.bar
+            .set_value(i32::try_from(self.top).unwrap_or(i32::MAX));
     }
 
     /// A row's click (`scenario_row_click` 0x5872E4): within the list, a second within
@@ -806,8 +839,26 @@ impl Scenario {
             return;
         }
         self.last_row = Some((self.now, Some(index)));
+        let same = self.selected == Some(index);
         self.selected = Some(index);
         self.show();
+        if same {
+            self.partial = true;
+        } else {
+            self.whole();
+        }
+    }
+
+    /// The screen redrawn whole: the size mark as it is now is the one drawn.
+    fn whole(&mut self) {
+        self.partial = false;
+        let frame = self.shown.frames.get(&SIZE).copied().unwrap_or(0);
+        self.drawn_size = (self.shown.state(SIZE), frame);
+    }
+
+    /// Whether the screen shows the partial redraw (the original's profile, the list showing).
+    fn stale(&self) -> bool {
+        self.partial && self.showing && self.bugs == Bugs::Original
     }
 
     /// What the information panel shows of the entry selected (`scenario_select` 0x585500, its
@@ -886,12 +937,50 @@ impl Scenario {
     /// its items, then with the list its bar and its rows.
     #[must_use]
     pub fn draws(&self, players: &str) -> Vec<Draw> {
-        let mut draws = self.dialog.draws(&self.shown, players);
+        let mut draws = if self.stale() {
+            // The partial redraw (CLT-Q138, the original's profile): the items it leaves as the
+            // last whole redraw drew them (the size mark's frame then), then those it draws again
+            // over them (0x585A06: the panel, the title, the filters, the columns; the redraw's
+            // own).
+            let (mut rest, mut again) = (self.shown.clone(), self.shown.clone());
+            for item in &self.dialog.items {
+                let id = item.id();
+                hide(if redrawn(id) { &mut rest } else { &mut again }, id);
+            }
+            let (state, frame) = self.drawn_size;
+            rest.states.insert(SIZE, state);
+            rest.frames.insert(SIZE, frame);
+            let mut draws = self.dialog.draws(&rest, players);
+            draws.extend(self.dialog.draws(&again, players));
+            draws
+        } else {
+            self.dialog.draws(&self.shown, players)
+        };
         if self.showing {
             draws.extend(self.bar.draws(self.dialog.place));
             draws.extend(self.row_draws());
         }
         draws
+    }
+
+    /// What the partial redraw leaves as the screen kept it (CLT-Q138, the original's profile):
+    /// the flags' strip ([`STRIP`]), restored from its copy of the background (the right-hand
+    /// panel) before the flags and the enemies' label are drawn again (`scenario_team_flags`
+    /// 0x585300, its copy kept at its first call), nothing drawn over it after: the allies'
+    /// label's colon loses its shadow there. Its rectangle and its draws over the background.
+    #[must_use]
+    pub fn stale_draws(&self, players: &str) -> Option<([i32; 4], Vec<Draw>)> {
+        if !self.stale() {
+            return None;
+        }
+        let mut strip = self.shown.clone();
+        for item in &self.dialog.items {
+            let id = item.id();
+            if id != PANEL_BACK && id != ENEMIES_LABEL && !(ALLIES..ENEMIES + 8).contains(&id) {
+                hide(&mut strip, id);
+            }
+        }
+        Some((STRIP, self.dialog.draws(&strip, players)))
     }
 
     /// The rows the redraw draws (`scenario_dialog_redraw` 0x584550): from the top, as many as
@@ -948,7 +1037,10 @@ impl Scenario {
                 entry.name.clone()
             };
             draws.push(text(&look.name, name));
-            draws.extend(mark(&look.victory, Some(entry.victory.map_or(11, u32::from))));
+            draws.extend(mark(
+                &look.victory,
+                Some(entry.victory.map_or(11, u32::from)),
+            ));
             draws.extend(mark(&look.loss, Some(entry.loss.map_or(3, u32::from))));
         }
         draws
@@ -1140,9 +1232,10 @@ impl Scenario {
             .map(h3_ui::ui::Item::id)
     }
 
-    /// The help popup closed.
+    /// The help popup closed, the screen redrawn whole (§3.8).
     fn close_help(&mut self) -> Did {
         self.over = Over::Nothing;
+        self.whole();
         Did::CHANGED
     }
 
@@ -1171,6 +1264,30 @@ impl Scenario {
         }
         did
     }
+}
+
+/// Whether the partial redraw (`scenario_select` 0x585500 with the selection unchanged, from
+/// 0x585A06) draws item `id` again: the list's panel, its title, the filters and the columns, and
+/// what the redraw draws itself (the client's ids but the right-hand panel and the constructor's
+/// labels).
+fn redrawn(id: u16) -> bool {
+    let own = (NAME..=RATING).contains(&id) || id == SIZES;
+    own || id == PANEL
+        || id == TITLE
+        || FILTERS.iter().any(|&(f, _)| f == id)
+        || COLUMNS.iter().any(|&(c, _)| c == id)
+}
+
+/// Item `id` hidden in `shown`, its other state bits kept.
+fn hide(shown: &mut Shown, id: u16) {
+    let state = shown.state(id);
+    shown.states.insert(
+        id,
+        State {
+            hidden: true,
+            ..state
+        },
+    );
 }
 
 /// The size mark's frame (`scnrmpsz.def`): 0 to 3 for 36, 72, 108 and 144 tiles, else 4.

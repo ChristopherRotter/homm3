@@ -200,8 +200,8 @@ impl Scrollbar {
         }
         self.mouse = mouse;
         let [y, h, button] = [self.look.at[1], self.look.size[1], self.look.button];
-        let over_track = (x..x + w).contains(&mouse[0])
-            && (y + button..y + h - button).contains(&mouse[1]);
+        let over_track =
+            (x..x + w).contains(&mouse[0]) && (y + button..y + h - button).contains(&mouse[1]);
         if over_track {
             self.drag(mouse[1]);
         }

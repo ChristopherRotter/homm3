@@ -186,6 +186,16 @@ fn it_draws_its_arrows_its_track_cut_to_it_and_its_thumb() {
             size: Some([16, 448]),
         }
     );
-    assert!(matches!(&draws[1], Draw::Button { frame: 2, x: 385, y: 576, .. }));
-    assert!(matches!(&draws[3], Draw::Button { frame: 4, y: 128, def, .. } if def == "SlideBuV.def"));
+    assert!(matches!(
+        &draws[1],
+        Draw::Button {
+            frame: 2,
+            x: 385,
+            y: 576,
+            ..
+        }
+    ));
+    assert!(
+        matches!(&draws[3], Draw::Button { frame: 4, y: 128, def, .. } if def == "SlideBuV.def")
+    );
 }
