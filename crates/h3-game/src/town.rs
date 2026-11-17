@@ -50,7 +50,7 @@ pub(crate) use capture::{capture, holds_capitol};
 pub(crate) use command::command;
 pub(crate) use day::start_day;
 pub(crate) use events::fire_events;
-pub(crate) use heroes::main_town_heroes;
+pub(crate) use heroes::{custom_records, main_town_heroes};
 pub(crate) use income::add_income;
 pub(crate) use offer::legal_builds;
 pub(crate) use pool::{HeroPool, draw_heroes};

@@ -1664,6 +1664,61 @@ fn the_body_wins_over_the_hero_types_map_wide_entry() {
     assert_eq!(d.spells, Some(vec![]));
 }
 
+// covers: GAM-HER-001, TWN-SET-005
+#[test]
+fn the_map_wide_entries_that_set_a_field_are_the_setups_customised_types() {
+    let core = SOD.core();
+    let id = |code: usize| core.hero_type_by_key(codes::HERO_TYPES[code]).unwrap();
+    let mut m = map();
+    m.custom_heroes = vec![
+        CustomHero {
+            hero_type: 112,
+            experience: Some(2000),
+            sex: 0xFF,
+            ..CustomHero::default()
+        },
+        // A biography alone: nothing the game keeps, left out.
+        CustomHero {
+            hero_type: 113,
+            biography: Some(Text(b"A life".to_vec())),
+            sex: 0xFF,
+            ..CustomHero::default()
+        },
+        CustomHero {
+            hero_type: 26,
+            sex: 1,
+            ..CustomHero::default()
+        },
+    ];
+    let setup = import(&m, &SOD).unwrap();
+    let experience = HeroDetailsSetup {
+        experience: Some(2000),
+        ..HeroDetailsSetup::default()
+    };
+    let female = HeroDetailsSetup {
+        sex: Some(HeroSex::Female),
+        ..HeroDetailsSetup::default()
+    };
+    assert_eq!(
+        setup.custom_types,
+        vec![(id(112), experience), (id(26), female)]
+    );
+    // The placed hero's own type is not customised: its details stay the body's.
+    assert_eq!(setup.heroes[0].details, HeroDetailsSetup::default());
+    // A type code past the table is refused.
+    m.custom_heroes = vec![CustomHero {
+        hero_type: 200,
+        ..CustomHero::default()
+    }];
+    assert_eq!(
+        import(&m, &SOD).unwrap_err(),
+        ImportError::UnknownCode {
+            what: "hero type",
+            code: 200
+        }
+    );
+}
+
 #[test]
 fn before_sod_experience_0_and_the_spell_byte_mean_the_types() {
     let roe = |experience| {

@@ -19,7 +19,7 @@ mod hiring;
 mod jumps;
 mod legal;
 mod level_ups;
-mod levels;
+pub(crate) mod levels;
 mod manage;
 mod mines;
 mod monsters;
@@ -985,6 +985,7 @@ pub(crate) fn setup() -> GameSetup {
         allowed_heroes: Vec::new(),
         hero_masks: Vec::new(),
         prisoners: Vec::new(),
+        custom_types: Vec::new(),
         roe: false,
     }
 }

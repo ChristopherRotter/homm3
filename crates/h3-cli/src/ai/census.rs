@@ -393,6 +393,7 @@ impl Accumulator {
             allowed_heroes: Vec::new(),
             hero_masks: Vec::new(),
             prisoners: Vec::new(),
+            custom_types: Vec::new(),
             roe: false,
         };
         // The seed draws the static layer's random contents, which no number here reads.
