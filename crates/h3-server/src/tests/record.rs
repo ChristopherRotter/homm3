@@ -228,13 +228,13 @@ fn a_replay_that_is_not_its_rerun_records_nothing() {
         ),
         (
             "import",
+            "import_version = 24",
             "import_version = 23",
-            "import_version = 22",
             "replay header mismatch: map.import_version",
         ),
         (
             "rules",
-            "ruleset_hash = \"0xb5c01c8736eb73f9\"",
+            "ruleset_hash = \"0x6ba8109889b34a25\"",
             "ruleset_hash = \"0x437388440d9286a0\"",
             "replay header mismatch: ruleset_hash",
         ),

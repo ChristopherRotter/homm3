@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b, T97b1, T103b, T113b; E09 T7a1, T8a1, T11; `MAP_IMPORT_VERSION` 22)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b, T97b1, T103b, T113b, T123b; E09 T7a1, T8a1, T11, T26a2; `MAP_IMPORT_VERSION` 24)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -306,6 +306,15 @@ content and draws nothing; it rejects what the current increment cannot represen
   subclass past 1 and a bonus visitable's past 0 (`Subclass`). The setup checks a garrison's
   troops as an army with no war machine, none at all allowed. 219 is ownable among a battle's
   surroundings (GAM-BAT-011).
+- **Increment 13's creature banks** (v24, E08 T123b, increment 13's design note §3; ADV-OBJ-002,
+  ADV-BNK-001): class 16 by subclass, the original's kinds 0 to 6 (`base:cyclops_stockpile`,
+  `base:dwarven_treasury`, `base:griffin_conservatory`, `base:imp_cache`, `base:medusa_stores`,
+  `base:naga_bank`, `base:dragon_fly_hive`), then 85 `base:shipwreck`, 24 `base:derelict_ship`, 84
+  `base:crypt` and 25 `base:dragon_utopia` at subclass 0; no body (the level, the guards and the
+  reward are drawn when the game is built, T124b; HotA's bank body is outside our formats), so
+  nothing held and no owner. Refused: class 16's subclass past 6 (`Subclass`: the original indexes
+  its kinds' table by it without a test; none shipped) and the four others' past 0. Until T124b a
+  step onto a bank is refused as any unbuilt visit's (`AdventureCommandError::Visit`).
 - **Placed heroes** (class 34): owner colour → player (a colour nobody plays is an error), hero
   type by original id → its key (the packs' `# original id`), the tile its template marks
   visitable (the editor's one column left of the position), the army's stacks by slot (creature by
@@ -551,6 +560,14 @@ removable, the largest stack 200; 16 of class 33 and 11 of 219 the most on one m
 bonus visitables on 159 maps by class, level, maps and most on one map as its §1.2. Typed twins
 (one type on one anchor): 9 on 5 maps, every one a ground or Favorable Winds of two pictures,
 alike but in the tiles they lie on (decision 322: the setup refuses any other difference).
+
+E08 T123b's census (import v24, seed 0): all 160 import, validate and build, every other count
+unchanged. The 2 137 creature banks on 148 maps (1 215 of class 16 on 143) are typed (checked),
+each with one entrance, nothing held and no owner: by class and subclass, the maps' version,
+level and entrance as survey `docs/rules/surveys/E08-banks.md` §1 (the land kinds entered on land;
+the 401 Shipwrecks and 170 Derelict Ships from water, 183 and 11 of them beside land, a land tile
+among the entrance's eight neighbours), the maps holding each kind, and 106 the most on one map
+(*Thousand Islands* and its allied twin). No other class or subclass of the five.
 
 E09 T19c2's census (the same import, seed 0; exit criterion 6 of the town epic's increment 2):
 all 160 import, validate, build and play by `EndTurn` alone (a week; the 29 maps with town

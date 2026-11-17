@@ -3907,6 +3907,13 @@ url = "docs/rules/surveys/E09-towns.md"
 retrieved = "2026-11-06"
 
 [[source]]
+id = "exe-hero-price"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/rules/surveys/E09-tavern.md 3; E09-design.md 60): a hero's price at a tavern is hero_price 0x67814C, 2 500 gold, which the town's hire (town_tavern_hire 0x5C12E0), the map Tavern's (map_tavern_hire 0x4D7890) and the tavern dialog read, the same for every edition and difficulty"
+url = "docs/rules/surveys/E09-tavern.md"
+retrieved = "2026-11-15"
+
+[[source]]
 id = "exe-town-rows"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/rules/surveys/E09-growth.md 9): the town screen's garrison hero out (town_garrison_click 0x5D4C10's case 8, town_hero_out_click 0x5D5220) is refused while the owner has 8 heroes on the map (the player record's count +1; GENRLTXT 19); VCMI 1.7.5 refuses at the map's heroes cap"
@@ -3979,6 +3986,12 @@ garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], w
 [towns.rows]
 sources = ["exe-town-rows"]
 most_heroes = 8
+
+# The tavern's [town_params] (TWN-TAV-003, E09 T36, design §60): a hero's price, in gold; the
+# records' tavern weights are HCTRAITS.TXT's columns (the town harvest).
+[towns.tavern]
+sources = ["exe-hero-price"]
+hire_price = 2500
 
 # Visions for the towns (TWN-VEW-003, E09 T8c2): its expert factor and least radius go into the
 # [town_params], the creatures that give it into their own pack's [town_visions] (the Rogue, AB's).

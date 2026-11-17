@@ -11,6 +11,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::bits::Bits;
+use crate::check::Format;
 use crate::clip::{Clip, Packet, Version};
 use crate::tree::Trees;
 use crate::{Error, MAX_HEIGHT, MAX_WIDTH};
@@ -102,6 +103,47 @@ impl Frame {
     #[must_use]
     pub fn spans(&self) -> &[u8] {
         &self.spans
+    }
+
+    /// The frame copied into a 16-bit buffer as `SMACKW32.DLL` writes it into the game's (E27 M2
+    /// T1, found under Wine; CLT-Q119, decision 24): each written block ([`Frame::written`])
+    /// converted through the frame's palette into `format` (each 8-bit level's top bits), every
+    /// other pixel of the buffer kept, so a palette change leaves the skipped blocks' colours as
+    /// they were; with `every` (the client's copy) every pixel of the frame. `buffer` holds
+    /// `pitch` words a row, the frame's top left at `at`; a pixel past a row's end or the
+    /// buffer's is not copied. Outside the whole blocks (a width or height not a multiple of 4,
+    /// no clip of the game's) only `every` copies.
+    pub fn copy_16(
+        &self,
+        format: Format,
+        every: bool,
+        buffer: &mut [u16],
+        pitch: usize,
+        at: [usize; 2],
+    ) {
+        let mut colours = [0u16; 256];
+        for (colour, rgb) in colours.iter_mut().zip(self.palette.chunks_exact(3)) {
+            let [r, g, b] = [0, 1, 2].map(|k| u16::from(rgb[k]));
+            *colour = match format {
+                Format::Rgb555 => (r >> 3) << 10 | (g >> 3) << 5 | b >> 3,
+                Format::Rgb565 => (r >> 3) << 11 | (g >> 2) << 5 | b >> 3,
+            };
+        }
+        let width = self.width as usize;
+        let row = width / 4;
+        let whole = [row * 4, (self.height as usize / 4) * 4];
+        for (y, line) in self.pixels.chunks(width.max(1)).enumerate() {
+            for (x, &index) in line.iter().enumerate() {
+                let copied = every
+                    || (x < whole[0]
+                        && y < whole[1]
+                        && self.written.get((y / 4) * row + x / 4) == Some(&true));
+                let to = (at[1] + y) * pitch + at[0] + x;
+                if let Some(pixel) = buffer.get_mut(to).filter(|_| copied && at[0] + x < pitch) {
+                    *pixel = colours[usize::from(index)];
+                }
+            }
+        }
     }
 }
 

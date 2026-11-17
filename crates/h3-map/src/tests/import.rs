@@ -445,6 +445,27 @@ fn the_typed_classes_import_as_their_object_types() {
     ] {
         cases.push((class, 0, format!("base:{key}")));
     }
+    // E08 T123b: the creature banks, class 16 by subclass (the original's kinds 0 to 6), then
+    // 85, 24, 84 and 25.
+    for (subclass, key) in (0..).zip([
+        "cyclops_stockpile",
+        "dwarven_treasury",
+        "griffin_conservatory",
+        "imp_cache",
+        "medusa_stores",
+        "naga_bank",
+        "dragon_fly_hive",
+    ]) {
+        cases.push((16, subclass, format!("base:{key}")));
+    }
+    for (class, key) in [
+        (85, "shipwreck"),
+        (24, "derelict_ship"),
+        (84, "crypt"),
+        (25, "dragon_utopia"),
+    ] {
+        cases.push((class, 0, format!("base:{key}")));
+    }
     let part = SOD.adventure();
     for (class, subclass, key) in &cases {
         let body = match class {
@@ -483,9 +504,9 @@ fn the_typed_classes_import_as_their_object_types() {
     }
     // Every object type of the original packs has its class, but increment 10's dwellings, Refugee
     // Camp and random dwelling (E08 T93a's content), whose classes the import types from T93b
-    // (`dwellings.rs`; since E08 T103b increment 11's teleporters and since E08 T113b increment
-    // 12's garrisons and bonus visitables are among the cases), and increment 13's eleven creature
-    // banks (E08 T123a's content), which the import types from T123b.
+    // (`dwellings.rs`; since E08 T103b increment 11's teleporters, since E08 T113b increment 12's
+    // garrisons and bonus visitables and since E08 T123b increment 13's creature banks are among
+    // the cases).
     let typed = part
         .object_types()
         .iter()
@@ -495,12 +516,11 @@ fn the_typed_classes_import_as_their_object_types() {
                 h3_adventure::ObjectKind::Dwelling { .. }
                     | h3_adventure::ObjectKind::RandomDwelling
                     | h3_adventure::ObjectKind::RefugeeCamp { .. }
-                    | h3_adventure::ObjectKind::Bank(_)
             )
         })
         .count();
     assert_eq!(cases.len(), typed);
-    assert_eq!(part.object_types().len() - typed, 82 + 2 + 11);
+    assert_eq!(part.object_types().len() - typed, 82 + 2);
     let town = import(&typed_map(98, 0, Body::None), &SOD).unwrap();
     assert_eq!(
         (town.map.objects[0].owner, &town.map.objects[0].holds),

@@ -490,3 +490,36 @@ fn the_right_button_releases_a_held_button_and_the_notice_answers_every_input() 
     assert!(m.release().changed);
     assert!(m.noticing());
 }
+
+#[test]
+fn the_hover_keeps_a_disabled_button_that_the_taking_search_skips() {
+    // M2's review (fix 7): the dialogs' search (`Part::item_at`) against `Dialog::item_taking`,
+    // every third pixel. The same item everywhere over the Multiplayer dialog and over the hot
+    // seat's names but at their OK while disabled: `dialog_item_at` 0x5FF3E0 does not test the
+    // 0x20 `dialog_item_enable` sets (design §16.2: its hint and popup kept, recorded), the state
+    // the dialogs keep as `disabled`, which `item_taking` reads as the bits 8 and 0x1000 (the
+    // spell book's) and skips. So the dialogs keep their own search.
+    let differ = |part: &Part| -> Vec<[i32; 2]> {
+        (0..600)
+            .step_by(3)
+            .flat_map(|y| (0..800).step_by(3).map(move |x| [x, y]))
+            .filter(|&p| part.item_at(p) != part.dialog.item_taking(p, &part.shown).map(Item::id))
+            .collect()
+    };
+    let mut m = opened(Bugs::Fixed);
+    assert_eq!(differ(&m.part), Vec::<[i32; 2]>::new());
+    click(&mut m, HOT);
+    let hot_seat = |m: &Multiplayer| match &m.over {
+        Over::HotSeat(h) => h.part.clone(),
+        _ => panic!("the names"),
+    };
+    let part = hot_seat(&m);
+    let at = differ(&part);
+    assert!(at.contains(&OK_AT));
+    assert!(at.iter().all(|&p| part.item_at(p) == Some(OK)));
+    typed(&mut m, "a");
+    down(&mut m, "Tab");
+    typed(&mut m, "b");
+    assert!(m.hot_seat().unwrap().ok_enabled());
+    assert_eq!(differ(&hot_seat(&m)), Vec::<[i32; 2]>::new());
+}

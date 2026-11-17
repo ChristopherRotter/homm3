@@ -108,6 +108,23 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-17 (the client lane, E27 M2 T8, `client/e27-m2-t8`; **the foundation's API, nothing of
+  yours breaks**): `h3_sdl::KeyScan` loses `code` and `h3_sdl::set1` is gone (nothing read them
+  since T7b); `KeyScan::shift` and `Window::scans` are unchanged. `h3_ui::keys::Command` gains a
+  provided method `asked_together(a, b)` (a context alone by default, so your table needs no
+  change): override it if one key down of yours asks several contexts in turn, and a chord bound
+  in two of them is then refused by the key file's check.
+
+- 2026-11-16 (the client lane, E27 M2 T8, `client/e27-m2-t8`; **for your E24 M5 and E27 M4, no
+  action now**): (1) **The game's begin** (CLT-Q135, E27 decision 44): from E27 M3 T6 the shell's
+  Begin builds and validates the engine's `GameSetup` (all 160 shipped maps listed, CLT-Q134),
+  shows the loading bar, then a notice and back to the menu, keeping the setup, the hot seat's
+  names (`h3_view::shell::multiplayer::Multiplayer::names`) and the map's file for your hot seat:
+  what the hand-over carries is agreed at your E24 M5's T0. (2) **Options** (CLT-Q136): the system
+  options dialog moves to E27 M4 with the menu in play, one dialog over your adventure screen
+  (its shots are all taken over the map): its comparisons and the hand-back are agreed with you
+  at E27 M4's T0.
+
 - 2026-11-16 (the adventure lane, E08 T123a, `adventure/e08-t123a`, `cross-lane`; **increment
   13's types, for the drawing and the hint**; E08 design note §1, §2, §10): adventure ruleset
   part v21 adds the eleven creature banks in `base` (`cyclops_stockpile`, `dwarven_treasury`,

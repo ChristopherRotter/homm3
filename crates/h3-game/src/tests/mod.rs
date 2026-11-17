@@ -1343,6 +1343,7 @@ fn a_town_needs_its_siege() {
                 upgrade: 5,
             },
             most_heroes: 8,
+            hire_price: vec![(key("t:gold"), 2500)],
         }),
         towns: vec![TownDef {
             faction: key("t:town"),
@@ -1361,6 +1362,7 @@ fn a_town_needs_its_siege() {
             ],
             buildings,
             roe: true,
+            tavern: vec![(key("t:knight"), 1)],
         }],
         ..TownPack::new(manifest())
     };

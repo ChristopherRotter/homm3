@@ -203,6 +203,37 @@ fn an_edit_s_keys_and_the_ring_are_commands_with_shift_chords() {
     assert_eq!(on(false, "Home"), None);
     assert_eq!(on(true, "Tab"), Some(Command::Ring(true)));
     assert_eq!(on(false, "PageUp"), Some(Command::Ring(false)));
+    // M2's review: an edit's keys are asked before its dialog's, so a chord bound in both is
+    // refused; the menus' are never asked with them.
+    let refused = [
+        (
+            "edit-home = [\"Tab\"]",
+            "Tab is bound to both `edit-home` and `hot-seat-next`",
+        ),
+        (
+            "edit-end = [\"Escape\"]",
+            "Escape is bound to both `multiplayer-cancel` and `edit-end`",
+        ),
+        (
+            "edit-left = [\"Return\"]",
+            "Return is bound to both `hot-seat-ok` and `edit-left`",
+        ),
+    ];
+    for (line, message) in refused {
+        let got = Keys::<Command>::with_file(&alloc::format!("[shell]\n{line}\n"));
+        assert_eq!(got, Err(alloc::format!("[shell] {message}")), "{line}");
+    }
+    let keys = Keys::<Command>::with_file("[shell]\nedit-home = [\"N\"]\n").unwrap();
+    assert_eq!(
+        command_for(&keys, &[Context::MainMenu], false, "N"),
+        Some(Command::Button(101))
+    );
+    assert_eq!(on_keys(&keys, "N"), Some(Command::Edit(Caret::Home)));
+}
+
+/// The command `key` gives with an edit typing over the hot seat's names.
+fn on_keys(keys: &Keys<Command>, key: &str) -> Option<Command> {
+    command_for(keys, &[Context::Edit, Context::HotSeat], false, key)
 }
 
 #[test]

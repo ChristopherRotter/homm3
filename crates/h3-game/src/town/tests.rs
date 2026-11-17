@@ -258,6 +258,7 @@ pub(super) fn town_pack(elf: bool) -> TownPack {
         ],
         buildings,
         roe: true,
+        tavern: vec![(key("t:knight"), 1)],
     };
     let mut towns = vec![town.clone()];
     if elf {
@@ -295,6 +296,7 @@ pub(super) fn town_pack(elf: bool) -> TownPack {
                 upgrade: 5,
             },
             most_heroes: 8,
+            hire_price: vec![(key("t:gold"), 2500)],
         }),
         towns,
         ..TownPack::new(manifest())

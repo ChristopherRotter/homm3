@@ -210,7 +210,7 @@ packs = [
 profile = "base:strict-fixed"
 ruleset_hash = "0xb0c378a75ff70a5b"
 adventure_ruleset_hash = "0xa5809e7fd9e842dd"
-town_ruleset_hash = "0x0d7be940b64312a6"
+town_ruleset_hash = "0xabc9756b93a29a55"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
@@ -222,7 +222,7 @@ checkpoint_every = 25
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
 hash = "0x5918efa3271a85e0"
-import_version = 23
+import_version = 24
 
 [result]
 day = 8

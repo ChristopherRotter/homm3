@@ -423,6 +423,7 @@ fn keep() -> TownRecord {
         buildings,
         capitol_demoted_to: BuildingId::from_index(CITY_HALL).unwrap(),
         roe: true,
+        tavern: Vec::new(),
     }
 }
 
@@ -450,6 +451,7 @@ fn marsh() -> TownRecord {
         ],
         capitol_demoted_to: BuildingId::from_index(0).unwrap(),
         roe: false,
+        tavern: Vec::new(),
     }
 }
 
@@ -481,6 +483,7 @@ fn params() -> TownParams {
             upgrade: 5,
         },
         most_heroes: 8,
+        hire_price: vec![(GOLD, 2500)],
     }
 }
 

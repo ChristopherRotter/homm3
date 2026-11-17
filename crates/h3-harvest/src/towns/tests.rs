@@ -46,6 +46,10 @@ garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], w
 sources = ["s"]
 most_heroes = 8
 
+[towns.tavern]
+sources = ["s"]
+hire_price = 2500
+
 [towns.params]
 sources = ["s"]
 gold = "Gold"
@@ -345,8 +349,25 @@ fn harvests_the_town_files_that_compile() {
         "capitol_demoted_to = \"city_hall\"\nvisions_factor = 3\nvisions_min_radius = 2\n\
          week_creature_chance = [1, 4]\nweek_creature_bonus = 5\n\
          garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], weeks = 8, \
-         upgrade = 5 }\nmost_heroes = 8\n"
+         upgrade = 5 }\nmost_heroes = 8\nhire_price = { gold = 2500 }\n"
     ));
+    // The tavern weights (E09 T36): each record's faction column over its pack's closure, a 0
+    // left out; the ab pack's two classes in the base records by its overrides.
+    assert!(base.contains("\n  [town.tavern]\n  class_0 = 4\n  class_1 = 5\n  class_2 = 6\n\n"));
+    assert!(base.contains(
+        "\n  [town.tavern]\n  class_0 = 5\n  class_1 = 6\n  class_2 = 4\n  class_3 = 5\n\n"
+    ));
+    assert!(ab.contains(
+        "\n  [town.tavern]\n  \"base:class_0\" = 6\n  \"base:class_1\" = 4\n  \"base:class_2\" = 5\n  \
+         \"base:class_3\" = 6\n  class_4 = 4\n  class_5 = 5\n\n"
+    ));
+    assert!(ab.contains(
+        "\n[[town_override]]\nfaction = \"base:alpha\"\ntavern = { class_4 = 5, class_5 = 6 }\n"
+    ));
+    assert!(ab.contains(
+        "\n[[town_override]]\nfaction = \"base:beta\"\ntavern = { class_4 = 6, class_5 = 4 }\n"
+    ));
+    assert!(!sod.contains("tavern"));
     assert!(!ab.contains("[town_params]") && !sod.contains("[town_params]"));
     // Visions' creatures, each in its own pack's file (E09 T8c2).
     assert!(base.contains("\n[town_visions]\ncreatures = [\"unit_100\"]\n"));

@@ -2084,6 +2084,16 @@ it stands (`h3-game`'s `town/pool.rs`, `setup.rs`, `state/battle.rs`; `h3-towns`
 - **The roles and the bound** stay: `tavern` (a standing Tavern or Castle's Brotherhood,
   `has_tavern`, increment 1) opens a town's tavern; `most_heroes` (8, increment 3) bounds the
   hire. Part v7 (the record's field, the parameter).
+- *As built* (T36): `TownDef::tavern` and `TownRecord::tavern` (a `u8` per core class, by
+  `HeroClassId`), `TownParamsDef::hire_price` and `TownParams::hire_price`,
+  `TownCompileError::UnknownHeroClass`; the sum checked after the overrides. **The base records
+  cannot name the AB pack's two classes** (outside their closure), which weigh 5 in every SoD
+  faction's column: the AB pack overrides each base record with them, `TownPatch::tavern` changing
+  or adding the classes it lists (the silo's patch replaces its list). So a base faction's tavern
+  sums to 100 with AB or SoD and to 90 on the base pack alone (an RoE edition's own weights are
+  E11's). The harvest reads `H3bitmap.lod`'s `HCTRAITS.TXT` as the class harvest does
+  (`H3ab_bmp.lod`'s file is byte-identical in this build, checked); the price is the gap-fill's
+  `[towns.tavern]` (source `exe-hero-price`), as `most_heroes`. Decision 132.
 
 ### 61. The pool's records and the players' tavern heroes (TWN-SET-005, TWN-SET-001 amended; `h3-game`'s `town/pool.rs`, `state.rs` `cross-lane`)
 

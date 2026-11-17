@@ -4,6 +4,22 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-16, E08 T123b: done whole, decision 352, `cross-lane` for `h3-server`'s `tests::record`; the record in `E08-log.md`; T124 queued.)* **E08 T123b — the import** (round 5; design `E08-design.md` §3, §18; as T113b for increment 12)
+
+- **Scope:** `adventure/e08-t123b`: `codes::object_type`'s class 16 by subclass 0 to 6 to the
+  seven bank types and 85, 24, 84, 25 at subclass 0 to theirs (another subclass
+  `ImportError::Subclass`; no body, `Holds::None`), the census (`h3-map`'s `original_data`:
+  the 2 137 banks of survey §1's table typed), the typed classes' tests (a blocker case of
+  another class if one used a bank class), a step onto a bank refused as any unbuilt visit's
+  until T124b (a state test, the reach ending before it), `h3m.md`'s import; map import v24 (the
+  goldens' `import_version`, checkpoints and final hashes; the server lane's `tests::record` if
+  its replay moves, `cross-lane`). The writer already writes the five classes (T119's `BANK_OBJECTS`). The
+  rules: ADV-OBJ-002 amended, ADV-BNK-001's import part (`verified` by batch E13 already).
+- **Inputs:** design §3; survey `E08-banks.md` §1; T113b's record in `E08-log.md` as the form; the
+  town lane's inbox note below (its T37b and T39a come after T123b's map import v24).
+- **Depends on:** T123a (`adventure/e08-t123a`). **Status:** ready once T123a merges. The census
+  needs `maps.tar` staged.
+
 *(Moved 2026-11-16, E08 T123a: T123a done alone, decision 351, `cross-lane` for the AI lane's two bots tables; the record in `E08-log.md`; T123b queued alone.)* **E08 T123 — the kind, the packs, the check; the import and the writer** (round 5; design
 `E08-design.md` §1 to §3, §18; as T113a and T113b for increment 12)
 

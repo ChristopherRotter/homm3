@@ -90,7 +90,8 @@ impl MenuLayout {
 }
 
 /// What a screen shows: its background, then its dialog's draws over it, the rows a redraw does
-/// not show, the box over them, and whether the cursor shows.
+/// not show, what is open over them (a box, the Multiplayer dialog), and whether the cursor
+/// shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Look {
     /// The picture copied whole onto the screen first.
@@ -100,7 +101,8 @@ pub struct Look {
     /// The rows a redraw did not show, each kept as last shown: drawn over the background alone
     /// and copied there (the original's profile only).
     pub stale: Vec<Stale>,
-    /// The box open over the screen, drawn last.
+    /// What is open over the screen, drawn last: the menu's box, or the Multiplayer dialog and
+    /// its box (over the stale rows, M2's review of E27).
     pub over: Vec<Draw>,
     /// The cursor drawn at the pointer.
     pub cursor: bool,
@@ -125,7 +127,8 @@ pub fn parse_layout(text: &str) -> Result<ShellLayout, String> {
 /// `front` (the screen's own: a menu's, or a stub's menu under its notice, E27 M2 T6b2; the
 /// Multiplayer dialog over its menu, T7): its buttons as they are, the stale rows and the box
 /// over them ([`super::menu::Menu::dialog_draws`], [`super::menu::Menu::stale`],
-/// [`super::menu::Menu::box_draws`]); the dialogs over the menu.
+/// [`super::menu::Menu::box_draws`]); the Multiplayer dialog and its box over the menu and its
+/// stale rows (in [`Look::over`]).
 #[must_use]
 pub fn look(layout: &ShellLayout, screen: Screen, front: Option<&Front>) -> Option<Look> {
     let players = &layout.player_palette;
@@ -145,17 +148,18 @@ pub fn look(layout: &ShellLayout, screen: Screen, front: Option<&Front>) -> Opti
         Kind::GameType(_) => &layout.game_type.background,
         Kind::Main => &layout.main_menu.background,
     };
-    let mut draws = menu.dialog_draws(players);
+    // The Multiplayer dialog over the menu's stale rows (M2's review of E27), then its box.
     let (over, cursor) = match dialog {
         Some(d) => {
-            draws.extend(d.draws(players));
-            (d.box_draws(players), d.cursor())
+            let mut over = d.draws(players);
+            over.extend(d.box_draws(players));
+            (over, d.cursor())
         }
         None => (menu.box_draws(players), menu.cursor()),
     };
     Some(Look {
         background: background.clone(),
-        draws,
+        draws: menu.dialog_draws(players),
         stale: menu.stale(players),
         over,
         cursor,

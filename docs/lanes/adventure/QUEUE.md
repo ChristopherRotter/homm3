@@ -4,27 +4,37 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 and T118b2 done 2026-11-15, decisions 340 to 342; the checkpoint ADV-Q54, decisions 343 to 345: the note, the drafts and the cut T119 to T126 accepted). Round 2: T119 done 2026-11-15 (`adventure/e08-t119`, `cross-lane`, whole: decision 346; the writer's banks, the spec's pictures and `slots`, batch E13's spec). Round 3: T120 done 2026-11-16 (`adventure/e08-t120`, alone: decision 347; the harness's reads, the recipe, three runs, the template filled); T121 done 2026-11-16 (`adventure/e08-t121`, whole, docs only: survey `E08-banks.md` §14, every row as predicted; the checkpoint ADV-Q55, decisions 348, 349). Round 4: T122 done 2026-11-16 (`shared/e08-t122`, `cross-lane`, whole: decision 350; the three drafts in ADR-0013, -0016, -0017, -0022 with batch E13's rows, the glossary, the security lines, `BattleSetup::creature_bank`). Round 5: T123a done 2026-11-16 (`adventure/e08-t123a`, `cross-lane`, alone: decision 351; the kind, the packs, the seventh check; part v21); T123b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 and T118b2 done 2026-11-15, decisions 340 to 342; the checkpoint ADV-Q54, decisions 343 to 345: the note, the drafts and the cut T119 to T126 accepted). Round 2: T119 done 2026-11-15 (`adventure/e08-t119`, `cross-lane`, whole: decision 346; the writer's banks, the spec's pictures and `slots`, batch E13's spec). Round 3: T120 done 2026-11-16 (`adventure/e08-t120`, alone: decision 347; the harness's reads, the recipe, three runs, the template filled); T121 done 2026-11-16 (`adventure/e08-t121`, whole, docs only: survey `E08-banks.md` §14, every row as predicted; the checkpoint ADV-Q55, decisions 348, 349). Round 4: T122 done 2026-11-16 (`shared/e08-t122`, `cross-lane`, whole: decision 350; the three drafts in ADR-0013, -0016, -0017, -0022 with batch E13's rows, the glossary, the security lines, `BattleSetup::creature_bank`). Round 5: T123a done 2026-11-16 (`adventure/e08-t123a`, `cross-lane`, alone: decision 351; the kind, the packs, the seventh check; part v21); T123b done 2026-11-16 (`adventure/e08-t123b`, `cross-lane`, whole: decision 352; the import, the census, map import v24). Round 6: T124 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T123b — the import** (round 5; design `E08-design.md` §3, §18; as T113b for increment 12)
+**E08 T124 — the bank battle; the state, the draw, the visit, the battle and the reward** (round 6;
+design `E08-design.md` §4 to §8, §12 to §15, §18, §20)
 
-- **Scope:** `adventure/e08-t123b`: `codes::object_type`'s class 16 by subclass 0 to 6 to the
-  seven bank types and 85, 24, 84, 25 at subclass 0 to theirs (another subclass
-  `ImportError::Subclass`; no body, `Holds::None`), the census (`h3-map`'s `original_data`:
-  the 2 137 banks of survey §1's table typed), the typed classes' tests (a blocker case of
-  another class if one used a bank class), a step onto a bank refused as any unbuilt visit's
-  until T124b (a state test, the reach ending before it), `h3m.md`'s import; map import v24 (the
-  goldens' `import_version`, checkpoints and final hashes; the server lane's `tests::record` if
-  its replay moves, `cross-lane`). The writer already writes the five classes (T119's `BANK_OBJECTS`). The
-  rules: ADV-OBJ-002 amended, ADV-BNK-001's import part (`verified` by batch E13 already).
-- **Inputs:** design §3; survey `E08-banks.md` §1; T113b's record in `E08-log.md` as the form; the
-  town lane's inbox note below (its T37b and T39a come after T123b's map import v24).
-- **Depends on:** T123a (`adventure/e08-t123a`). **Status:** ready once T123a merges. The census
-  needs `maps.tar` staged.
+- **Scope:** T124a (`adventure/e08-t124a`, `cross-lane`, first, the battle lane reviewing): the
+  bank battle in `h3-battle` with `BattleSetup::creature_bank` (§13: no tactics phase, no
+  obstacles and a setup refusing them or a siege beside the flag, no war machines on the field and
+  the Ammo Cart's supply kept, the layout by `bank_positions`; BAT-SET-001, BAT-TAC-001,
+  BAT-GEO-004, BAT-WAR-001, BAT-WAR-004 amended), the battle pack's `bank_positions` (pack format
+  v53, shared: likely a `shared/` part first), battle state hash v56, battle part v8, the battle's
+  properties, golden replays and bench. T124b (`adventure/e08-t124b`): the state and the draw (§4,
+  §5; adventure state hash v26, ADV-BNK-002), the visit and its offers (§6, ADV-BNK-003, D-66),
+  the battle's two halves (§7, §14: `Defender::Bank`, the flag, the deck; ADV-BNK-004,
+  GAM-BAT-001), the reward as a won battle's rest (§8, §15; ADV-BNK-005, GAM-DEC-007), the
+  once-marks (§12, HER-ADV-008). Each part's cut confirmed at its start; T124a merged before
+  T124b's tests.
+- **Inputs:** design §4 to §8, §12 to §15, §18's versions (the battle lane's E26 and E11 may have
+  taken the battle's numbers: bump past theirs); survey `E08-banks.md` §3 to §6, §14 (batch E13's
+  rows); ADR-0022 point 8, ADR-0016 and -0017's increment 13 parts; the battle lane's `TRAPS.md`
+  and HANDOFF (its open pull requests) before touching `h3-battle`.
+- **Depends on:** T123b (`adventure/e08-t123b`). **Status:** ready once T123b merges; T124a needs
+  the battle lane's state checked first (its queue's "War machines", r3).
 
 ## Inbox
 
 - 2026-11-17 (the map client lane, E24 M4 T1a, `map-client/e24-m4-t1a`; **the capture harness, rebuild `xdd.dll`**): `clients/capture/xdd.c` forces two more draws (`week_name` 0x4C87A6, the week's name, and `month_name` 0x4C8FCC, a normal month's; `h3drive.ROLLS` grew by two), so a batch or sequence run with an `xdd.dll` built before fails the count of redirected calls: rebuild it with `clients/capture/setup.sh`. Nothing else of `h3adv` or `h3mem` changed in behaviour (`Mem.calendar` is new: the week's and the month's kinds and names).
+
+- 2026-11-17 (the town lane, E09 T36, `town/e09-t36`, `cross-lane` with the user's consent; **your replays' header, mechanical**): the town ruleset part v7 (the records' tavern weights, the hire's price) moved `town_ruleset_hash` 0x0d7be940b64312a6 to 0xabc9756b93a29a55 in all 89 replays (re-recorded from their commands, nothing else moved). As with T35b's note below: a replay recorded on a branch from before the merge carries the old line. `TownRecord::tavern` and `TownParams::hire_price` are read by no rule yet (E09 T37a, T38a).
+
+- 2026-11-17 (the town lane, E09 T35b, `shared/e09-t35b`, `cross-lane` with the user's consent; **your replays' header, mechanical**): two `quirk.town` flags (`QuirkFlag(42)`, `(43)`, on in `faithful`) moved the base faithful ruleset hash 0xb5c01c8736eb73f9 to 0x6ba8109889b34a25; your 86 replays on it keep commands and state hashes, only `ruleset_hash` moved (the three strict-fixed ones unchanged). A replay you record on a branch from before the merge carries the old line: re-record it or patch the line after merging `master`. `StreamId::TAVERNS` (8) is new, no draw yet (E09 T37a draws from it).
 
 - 2026-11-16 (the town lane, E09 T35a, `shared/e09-t35a`, docs only; **ADRs in your paths, for your planning**): E09 increment 4's drafts are in the ADRs, each part after E09 increment 3's (so before your increment 10 to 13 parts where the points interleave): ADR-0016 points 3 (a hire's placement with the game's away record, the leave's hand-back, the dismissal's removal), 4 (the kinds `Tavern` and `DenOfThieves`, after E09's kind `Town`) and 6; ADR-0017 points 1 to 4, 6, 8 to 11; ADR-0013 points 14.5 and 16.5; each Consequences and Alternatives a line. Two decisions at T35's start (`TWN-Q19`, E09 decisions 126, 127), both for the town lane's T37a in your `state/day.rs` (`cross-lane` then): every day's start clears every player's tavern returning marks after the taverns' week (the original's `new_day` 0x4C80CF to 0x4C80FD), and `GameState::regain_mana` stays over every record of the store, tavern heroes and heroes out of the game included (HER-MAN-002 as you built it; the design's planned exception dropped). ADR-0017 point 9 and ADR-0028 point 9 name no adventure state hash bump for increment 4 (design §77: the kinds hold no state). Nothing for you to build now.
 

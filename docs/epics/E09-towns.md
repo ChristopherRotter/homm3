@@ -1,6 +1,6 @@
 # E09 — Towns
 
-Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63), increment 3 (growth, recruitment and the army rows) on 2026-11-15 (T30; decisions 64–97), all three in `E09-archive.md`; increment 4 (the Tavern) refined the same day (TWN-Q15, decisions 98–102), its drafts accepted at T33b (TWN-Q18, decisions 114–122), batch TWN-4 run and scored by T34 (decisions 123, 124), T35 cut in two at its start (TWN-Q19, decisions 125–128): T35a the ADRs done, T35b next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
+Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63), increment 3 (growth, recruitment and the army rows) on 2026-11-15 (T30; decisions 64–97), all three in `E09-archive.md`; increment 4 (the Tavern) refined the same day (TWN-Q15, decisions 98–102), its drafts accepted at T33b (TWN-Q18, decisions 114–122), batch TWN-4 run and scored by T34 (decisions 123, 124), T35 cut in two at its start (TWN-Q19, decisions 125–128): T35a the ADRs done, T35b the code done (decisions 129–131), T36 the town part v7 done (decision 132), T37a next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
 
 ## Goal
 
@@ -171,6 +171,26 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
      decisions 103 to 127; each draft sentence moved verbatim but where a batch row is cited, a
      decision changes it or an anchor moved.
 
+### Decisions at T35b's and T36's start (2026-11-16, the user)
+
+129. **T35b whole** (recommended; `AskUserQuestion`): one `shared/` pull request, `cross-lane`
+     consented (the battle lane's harvester and packs, the adventure lane's golden replays, the AI
+     lane's bot reports, the server lane's test literal), as T24. Not chosen: the code and the flags
+     first, the re-record second.
+130. **T36 in the same session, whole** (the user; the agent recommended stopping after T35b, then
+     T36 whole): one pull request after T35b's, `cross-lane` consented (the battle lane's harvester,
+     the adventure lane's replays' `town_ruleset_hash`). Not chosen: the record and the parameter
+     first with hand-written packs, the harvest second.
+131. *Agent's calls (change freely):* the flags' names `quirk.town.leave_points_over_cleared_army`
+     and `quirk.town.guild_artifacts_by_backpacks`; both ledger entries made with the flags (their
+     regression tests with T38b and T39b).
+132. *Agent's calls at T36 (change freely; design §60's As built):* the AB pack's overrides give
+     its two classes' weights to the base records (the base pack cannot name them), a patch's
+     weights changing or adding the classes it lists; the harvest from `H3bitmap.lod`'s
+     `HCTRAITS.TXT` (`H3ab_bmp.lod`'s byte-identical); the price in the gap-fill, as
+     `most_heroes`, not read from 0x67814C; an empty price compiles (a free hire, as a building's
+     free cost); TWN-TAV-001's catalog entry left to T37a, which builds the draw.
+
 ### Exit criteria (accepted at `TWN-Q18`, decision 121; design note §80)
 
 1. The town part's tavern weights and the hire's price compile (part v7); each player's faction
@@ -212,7 +232,8 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
 - **T35** `shared/` (round 3), in two (decision 125): **T35a** the drafts into the four ADRs, the
   glossary, `docs/06-security.md`: done 2026-11-16 (`TWN-Q19`, decisions 125–128: the marks cleared
   at every day's start, every record's day's spell points; the drafts deleted; `E09-log.md`).
-  **T35b** `StreamId::TAVERNS`, the two quirk flags, the packs and the replays' hashes. **T36** the town part v7 (round 4). **T37** T37a the pool, the draw and the fills, T37b the map's customised types (round 5). **T38** T38a the town's hire and the replacement, T38b the leaves, the returns and the dismissal (round 6). **T39** T39a the Tavern and the Den of Thieves with the tavern decision, T39b the Thieves' Guild (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
+  **T35b** `StreamId::TAVERNS`, the two quirk flags, the packs and the replays' hashes: done
+  2026-11-17 (whole, decisions 129, 131; the base faithful hash 0x6ba8109889b34a25; `E09-log.md`). **T36** the town part v7 (round 4): done 2026-11-17 (whole, decisions 130, 132; `E09-log.md`). **T37** T37a the pool, the draw and the fills, T37b the map's customised types (round 5). **T38** T38a the town's hire and the replacement, T38b the leaves, the returns and the dismissal (round 6). **T39** T39a the Tavern and the Den of Thieves with the tavern decision, T39b the Thieves' Guild (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
 
 ## Risks
 
