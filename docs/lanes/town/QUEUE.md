@@ -7,27 +7,21 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 4: the Tavern, refined at T30, `TWN-Q15`, decisions 98
 to 128; its drafts accepted at T33b, `TWN-Q18`; batch TWN-4 scored by T34; the drafts in the ADRs
 by T35a, `TWN-Q19`; its code by T35b, decisions 129 to 131; the town part v7 by T36, decision
-132; the pool in the game by T37a, `TWN-Q20`, decisions 133 to 136); done tasks in `E09-log.md`; increments 1 to 3
+132; the pool in the game by T37a, `TWN-Q20`, decisions 133 to 136; the map's customised types
+by T37b, `TWN-Q21`, decisions 137 to 139); done tasks in `E09-log.md`; increments 1 to 3
 (closed by T10, T20 and T30) in `E09-archive.md`. The building tasks are the design note's
 `E09-design.md` §79 (round by round, with the order against E08's increment 13); each task's cut
 confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`) and the exit criteria it serves (the epic's list, decision 121).
-
-**E09 T37 — the pool in the game** (round 5; `cross-lane`; design §61 to §63, §68, §70, §75):
-T37a done 2026-11-17 (decisions 133–136: the pool, the draw, the fills, the turn's points and
-marks, the views, `TavernOffered` with `TavernPartSeen`, protocol v70, game state hash v33;
-`E09-log.md`). **T37b** the map's customised types (GAM-HER-001, TWN-SET-005; `GameSetup`'s
-`custom_types`, the import after E08's T123: map import v25, design §70): a record made at a draw
-takes its type's map-wide entry over GAM-HER-001's defaults, a custom experience's levels at load
-from the draw's stream (§63's order puts the levels before the seed, but `faithful` levels read the
-seed: settle the order at the start). **Status:** next.
 
 **E09 T38 — the hire and the leaves** (round 6; `cross-lane`; design §64, §65, §67, §69, §75,
 §76): T38a `TownCommand::Hire` (TWN-TAV-003), the adventure's placement, the replacement
 (TWN-TAV-004), `HeroHired`, the legal commands, `town hire`, the env's `HIRE` (v12), the protocol;
 T38b a hero that leaves the game (TWN-TAV-006; GAM-BAT-003, the capture's leave;
 `TWN-QUIRK-12`), the returns (TD-18, TD-19), the dismissal (GAM-MAN-003, TD-22, `manage dismiss`;
-no env entry), the protocol; in merge order with E08's T124b. **Status:** queued.
+no env entry), the protocol; in merge order with E08's T124b. T37b's note: a customised
+type's record exists from the build (no away record until its first fill), so a hire or a
+leave meets a record made before any draw. **Status:** next.
 
 **E09 T39 — the map's objects and the information** (round 7; `cross-lane`, after E08's T123;
 design §66, §73 to §76): T39a the kinds `Tavern` and `DenOfThieves` (the adventure part, classes
@@ -56,7 +50,8 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
 - 2026-11-16 (the adventure lane, E08 T123b, `adventure/e08-t123b`; **for your T37b and T39a**):
   E08's T123 is done, **map import v24** is taken (the creature banks typed: `h3-map`'s
   `codes::object_type`, class 16 by subclass, 85, 24, 84, 25; `CREATURE_BANKS` beside
-  `BONUS_VISITABLES` in `import/codes.rs`). Your import changes take v25 (bump
+  `BONUS_VISITABLES` in `import/codes.rs`). Your import changes take v25 (T37b took it: T39a's
+  takes v26; bump
   `MAP_IMPORT_VERSION` and its doc line); the goldens then move their `import_version` line, and
   `h3-server`'s `tests/record.rs` its `import` case (the adventure lane's `TRAPS.md`).
 

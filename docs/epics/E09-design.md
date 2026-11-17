@@ -2363,6 +2363,25 @@ hero reads the facts.
 - **Banned skills** do not touch a hired hero's starting skills (the reading; VCMI agrees):
   nothing to build; a test pins a type with a banned starting skill offered with it.
 - **Not in the pool**, as built: `Out` (not allowed), `Prisoner`, the placed heroes' `Taken`.
+- *As built* (T37b, decisions 137, 138; map import v25): `GameSetup::custom_types` (the import's
+  entries that set a field the game keeps, a biography alone left out; the placed heroes' bodies
+  still merged over them by the import); the setup checks each entry's type (the ruleset's, named
+  once: `GameSetupError::CustomType`) and the entry on its own at experience 0
+  (`CustomDetails`), before any draw, so the heroes' draws decide no validity. **Every hero the
+  build makes** takes its type's entry under its own customisations
+  (`HeroDetailsSetup::over`, field by field; idempotent for an imported placed hero): a random
+  hero by its drawn type, a main town's hero (the code reading: `load_hero_body` 0x502374 to
+  0x5023E7, `placed_heroes_setup` before `main_town_heroes`; VCMI agrees but for the random hero,
+  TD-24). **A record at the build** (`town::custom_records`) for each customised type still
+  free after the build's heroes, in type order, its id after them, its default experience in the
+  build's pass, no army; its level seed in `Progression::new`'s pass, then its levels at load,
+  so the order T37a left open is the build's (the seed first, which `faithful` reads). A draw
+  finds the record made; no new state, the game state hash's encoding unchanged (v33).
+  `Marshland Menace`: 13 or 14 records at level 3, the Fortress player's main town's and random
+  heroes at 2 000 whenever they draw one of the 15 types. The fixture maps' engine-written entry
+  (type 3) is placed on the duel; on `e08-army-12` and `e08-xl-144` it becomes a record, so the
+  army map's two replays' hashes moved and the XL map's two reach workloads' games changed
+  (re-baselined).
 
 ### 71. The hire's ids, versions and open points (for T33b)
 

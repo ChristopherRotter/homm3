@@ -1022,6 +1022,7 @@ pub(super) fn telling(viewer: PlayerId, view: &TownView) -> Vec<GameEvent> {
 mod build;
 mod capture;
 mod command;
+mod custom;
 mod events;
 mod garrison;
 mod growth;

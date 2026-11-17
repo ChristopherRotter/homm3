@@ -254,7 +254,14 @@ fill, one creature as a replacement).
   record to its hero (`placed_hero_setup` 0x4D8B30), placed or not, before the taverns' first fill.
   So an offer is the map's customised hero: `Marshland Menace`'s 15 types come at 2 000 experience
   (level 3; its levels at load as GAM-SET-002 gives them). The disposed heroes' names and portraits
-  go into the same records (0x4C2AC8).
+  go into the same records (0x4C2AC8). *Read further at T37b (2026-11-17):* `map_custom_heroes_read`
+  runs before the objects are read (`new_game_bans` 0x4C2B4A, the objects at 0x4C2C98), and
+  `load_hero_body` writes a body into its type's record field by field, a flag only where the body
+  sets it (the name's +0xC at 0x5023B5, the experience's +0x1A and +0x1C at 0x5023E3), a random
+  hero's into its drawn type's (0x502374); `placed_heroes_setup` runs before `main_town_heroes`
+  (`new_game_heroes` 0x4C0037, 0x4C004D). So a random hero and a main town's hero of a customised
+  type take its entry too (`Marshland Menace`'s Fortress player, 5: its random hero and its main
+  town's hero; TD-24).
 - **Colour masks** (SoD's disposed heroes, `hero_pool_init`): a type is drawn only for a colour in
   its mask (§2.2 step 2); `hero_place` adds the hiring colour's bit.
 - **Banned skills** (game +0x4E658): read by the level-up offer (`hero_secondary_offer`
@@ -338,6 +345,12 @@ else one of the two (TD-19). Its RNG is a stream per player (`getRandomGenerator
 - **TD-21 — the hero limits.** The reading: 8 on the map, garrison heroes not counted, a constant;
   VCMI: the same 8 on the map and a total cap of its settings. The town part's `most_heroes` (8,
   TWN-ROW-003) already holds the reading. Recommended: the reading, one bound.
+
+- **TD-24 — a random hero of a customised type** (T37b, 2026-11-17; decision 137). The reading
+  (§5): its body over its drawn type's entry, so `Marshland Menace`'s random hero of player 5
+  starts at 2 000 experience when it draws one of the 15 customised Fortress types (15 of 16).
+  VCMI 1.7.5 builds a new hero (`CGHeroInstance::pickRandomObject`), the entry unused (its main
+  towns' heroes and taverns take it, as the reading). The user: the original (the reading).
 
 **Quirk candidates** (`T-<n>`; the ledger after the checkpoint):
 - **T-14 — a dismissed hero's artifacts back in the pool.** Nothing on `hero_leave_game`'s path or

@@ -1,6 +1,6 @@
 # E09 — Towns
 
-Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63), increment 3 (growth, recruitment and the army rows) on 2026-11-15 (T30; decisions 64–97), all three in `E09-archive.md`; increment 4 (the Tavern) refined the same day (TWN-Q15, decisions 98–102), its drafts accepted at T33b (TWN-Q18, decisions 114–122), batch TWN-4 run and scored by T34 (decisions 123, 124), T35 cut in two at its start (TWN-Q19, decisions 125–128): T35a the ADRs done, T35b the code done (decisions 129–131), T36 the town part v7 done (decision 132), T37a next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
+Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63), increment 3 (growth, recruitment and the army rows) on 2026-11-15 (T30; decisions 64–97), all three in `E09-archive.md`; increment 4 (the Tavern) refined the same day (TWN-Q15, decisions 98–102), its drafts accepted at T33b (TWN-Q18, decisions 114–122), batch TWN-4 run and scored by T34 (decisions 123, 124), T35 cut in two at its start (TWN-Q19, decisions 125–128): T35a the ADRs done, T35b the code done (decisions 129–131), T36 the town part v7 done (decision 132), T37a done (decisions 133–136), T37b done (decisions 137–139), T38a next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
 
 ## Goal
 
@@ -221,6 +221,32 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
      group's turn; the week tells a slot whose view changed; the five shown backpack places a
      constant (`TAVERN_BACKPACK_SHOWN`).
 
+### Decisions at T37b's start (2026-11-17, the user; TWN-Q21)
+
+137. **Every hero of a customised type takes its entry** (recommended; the code reading:
+     `map_custom_heroes_read` 0x4C2CE0 fills the types' setup records before the objects are
+     read, `load_hero_body` writes a body's set fields over its type's record, a random hero's
+     by its drawn type, 0x502374 to 0x5023E7, and `placed_heroes_setup` 0x4CAE10 sets up all 156
+     types' heroes from them before `main_town_heroes` and the taverns): a placed hero (its body
+     over the entry, as built), **a random hero** (its body over its drawn type's entry), **a main
+     town's hero** (the entry) and a tavern hero. VCMI 1.7.5 agrees for the main towns
+     (`placeStartingHero` takes the map's predefined hero) and the taverns (`initHeroes`), not for
+     a random hero (a new instance, `CGHeroInstance::pickRandomObject`): `TD-24`, the original
+     followed. `Marshland Menace`'s player 5 (Fortress only) starts its main town's hero and its
+     random hero at 2 000 experience whenever it draws one of the 15 customised types. Not chosen:
+     the tavern records only (design §70 as drafted), the rest a stub.
+138. **A customised type's record at the build** (recommended; amends decision 109 for these
+     types): after the build's heroes, one record per customised type still free, in type order,
+     its default experience, level seed and levels at load in the build's passes (hero id order,
+     the setup stream); a draw finds the record made. The original's timing (every type's hero set
+     up before the first fill); no new state, the game state hash's encoding unchanged; the order
+     T37a left open is the build's (the seed before the levels, which `faithful` reads). Not
+     chosen: the record at its first draw (§70 as drafted: the entries in the state, game state
+     hash v34, the seed then the levels from the taverns' stream).
+139. **T37b whole** (recommended): one `cross-lane` pull request (map import v25, `GameSetup`'s
+     `custom_types` and its checks, the build, the goldens' import line). Not chosen: the import
+     and the setup first, the build second.
+
 ### Exit criteria (accepted at `TWN-Q18`, decision 121; design note §80)
 
 1. The town part's tavern weights and the hire's price compile (part v7); each player's faction
@@ -263,7 +289,7 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
   glossary, `docs/06-security.md`: done 2026-11-16 (`TWN-Q19`, decisions 125–128: the marks cleared
   at every day's start, every record's day's spell points; the drafts deleted; `E09-log.md`).
   **T35b** `StreamId::TAVERNS`, the two quirk flags, the packs and the replays' hashes: done
-  2026-11-17 (whole, decisions 129, 131; the base faithful hash 0x6ba8109889b34a25; `E09-log.md`). **T36** the town part v7 (round 4): done 2026-11-17 (whole, decisions 130, 132; `E09-log.md`). **T37** T37a the pool, the draw and the fills, the turn's points and marks, the views and the protocol: done 2026-11-17 (whole, decisions 133–136; game state hash v33, protocol v70; `E09-log.md`); T37b the map's customised types (round 5). **T38** T38a the town's hire and the replacement, T38b the leaves, the returns and the dismissal (round 6). **T39** T39a the Tavern and the Den of Thieves with the tavern decision, T39b the Thieves' Guild (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
+  2026-11-17 (whole, decisions 129, 131; the base faithful hash 0x6ba8109889b34a25; `E09-log.md`). **T36** the town part v7 (round 4): done 2026-11-17 (whole, decisions 130, 132; `E09-log.md`). **T37** T37a the pool, the draw and the fills, the turn's points and marks, the views and the protocol: done 2026-11-17 (whole, decisions 133–136; game state hash v33, protocol v70; `E09-log.md`); T37b the map's customised types: done 2026-11-17 (whole, decisions 137–139; map import v25; `E09-log.md`). **T38** T38a the town's hire and the replacement, T38b the leaves, the returns and the dismissal (round 6). **T39** T39a the Tavern and the Den of Thieves with the tavern decision, T39b the Thieves' Guild (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
 
 ## Risks
 
