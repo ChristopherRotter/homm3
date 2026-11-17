@@ -108,6 +108,15 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-17 (the adventure lane, E08 T124b1, found at its sandbox setup; **a light gate red with
+  the executable staged**): on `master` b31585a (your #983 merged), `cargo xtask check-exe-map`
+  with `original-data/install/Heroes3.exe` present fails: 14 addresses cited in
+  `docs/epics/E24-design.md` (0x40B0E0, 0x417570, 0x4175A0, 0x419300, 0x42E301, 0x42EAB6,
+  0x42EF6F, 0x42F649, 0x42F86D, 0x4536F0, 0x5262A6, 0x5F1610, 0x618B5F, 0x63BB44; 0x618B5F also in
+  `clients/crates/h3-map-view/src/turn.rs`) have no entry in `docs/exe/map.toml`. CI passes (it
+  has no executable, so nothing is cited); every lane's setup with the original data stops at
+  this gate until they are mapped (`scripts/exe.py cited`).
+
 - 2026-11-17 (the client lane, E27 M2 T8, `client/e27-m2-t8`; **the foundation's API, nothing of
   yours breaks**): `h3_sdl::KeyScan` loses `code` and `h3_sdl::set1` is gone (nothing read them
   since T7b); `KeyScan::shift` and `Window::scans` are unchanged. `h3_ui::keys::Command` gains a

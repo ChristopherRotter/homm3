@@ -1771,3 +1771,22 @@ design `E08-design.md` §4 to §8, §12 to §15, §18, §20)
   and HANDOFF (its open pull requests) before touching `h3-battle`.
 - **Depends on:** T123b (`adventure/e08-t123b`). **Status:** ready once T123b merges; T124a needs
   the battle lane's state checked first (its queue's "War machines", r3).
+
+## T124b (moved 2026-11-17, cut in two by decision 354: its state and draw done as T124b1, `adventure/e08-t124b1`; the rest queued as T124b2)
+
+**E08 T124b — the state, the draw, the visit, the battle and the reward** (round 6; design
+`E08-design.md` §4 to §8, §12, §14, §15, §18, §20)
+
+- **Scope:** (`adventure/e08-t124b`): the state and the draw (§4, §5; adventure state hash v26,
+  ADV-BNK-002), the visit and its offers (§6, ADV-BNK-003, D-66), the battle's two halves (§7,
+  §14: `Defender::Bank`, the flag set in the battle's setup, the deck; ADV-BNK-004, GAM-BAT-001),
+  the reward as a won battle's rest (§8, §15; ADV-BNK-005, GAM-DEC-007), the once-marks (§12,
+  HER-ADV-008). Likely large: its cut confirmed at its start (a seam: the state, the draw and the
+  visit first; the battle, the reward and the once-marks next).
+- **Inputs:** design §4 to §8, §12, §14, §15, §18's versions; §13's *As built* (T124a: the bank
+  battle as the battle crate runs it, `BattleParams::bank_position`, `SetupError::
+  InvalidCreatureBank` for a bank setup with obstacles or a siege, `generate_setup_obstacles`
+  giving none); survey `E08-banks.md` §3 to §6, §14 (batch E13's rows); ADR-0016 and -0017's
+  increment 13 parts; the lane's `TRAPS.md`.
+- **Depends on:** T124a (`adventure/e08-t124a`, merged first). **Status:** ready once T124a
+  merges.

@@ -82,6 +82,7 @@ impl StaticTile {
     };
 }
 
+mod banks;
 mod boats;
 mod bonuses;
 mod calendar;

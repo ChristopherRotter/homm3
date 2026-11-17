@@ -2,7 +2,7 @@
 //! ADV-BNK-001): what a type of creature bank holds as data, its levels as the original's
 //! `CrBanks.txt` gives them before the split, and their compilation from the packs' keys. The
 //! draw when the game is built (the level, the artifacts, the split, the upgrade: ADV-BNK-002) is
-//! the static map's since T124b1 (`state::draws`); the visit and the reward come with T124b2;
+//! the static map's since T124b1 (`state::banks`); the visit and the reward come with T124b2;
 //! until then a step onto a bank is refused as any unbuilt visit's
 //! ([`super::ObjectKind::effect`]).
 

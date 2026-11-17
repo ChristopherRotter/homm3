@@ -18129,3 +18129,60 @@ v8, v53 as planned.
 **Versions:** battle state hash v56, battle part v8, pack format v53 (the battle lane's and the
 shared one, `cross-lane`). The game state hash, the adventure state hash, the ruleset part, the
 map import and the replay format unchanged. T124b next.
+
+### Increment 13, round 6: T124b1, the banks' draw (2026-11-17, `adventure/e08-t124b1`, `cross-lane`)
+
+**The cut** (decision 354; asked at T124b's start, `AskUserQuestion`): T124b in two, the draw
+first (T124b1 the state and the draw, design §4, §5; T124b2 the visit, the battle's two halves,
+the reward and the once-marks), T124b1 alone in this session; `cross-lane` with the user's consent
+for `h3-server`'s `tests::record`. The last note's cut (the state, the draw and the visit first)
+not chosen: the visit's yes starts the battle at once and a won battle gives the reward, so the
+visit alone would refuse a yes for one task. **Baseline:** `master` b31585a (#985 merged; CI
+green, its fingerprint, so the setup ran the light gates only). The original data staged from the
+user's repo folder (the four LODs, both executables, `maps.tar`, `extracted.tar`; SHA-256
+checked, one digest of the sorted lists `24d7b7eb…`, as T124a's). The setup's light gates stopped
+at `check-exe-map`: with the executable staged it finds 14 addresses that `E24-design.md` (and
+one `h3-map-view` comment) cite without an entry in `docs/exe/map.toml`, on `master` since the
+map client lane's #983 (CI has no executable, so it passes there): the map client lane's inbox
+told; not this lane's to fix.
+
+- **The state** (design §4): `Resolved::Bank { level, artifacts }` (the level's index into the
+  kind's levels, the artifacts in the draw's order; hash tag 9), a bank's guards as drawn in
+  `MapObject::guards` (asking: `Guards::question` true, *agent's call*: T124b2's visit asks by the
+  kind's question, so the flag is unread); **adventure state hash v26** (no new block; the static
+  map's hash covers both).
+- **The draw** (design §5, survey §3; ADV-BNK-002): `bank_draw` (the new `state/banks.rs`, where
+  T124b2's visit and reward go) from `draws::resolve_rewards`' second walk, in object order with the chests, the gifts, the Shrines, the finds and the Pyramid:
+  the level by r in 1 to 100 over the running sum of the chances but the last's (the original's
+  subtraction; a one-level bank draws r too), the artifacts by class relics first from the random
+  artifacts' pool (`ArtifactPool::draw` per class: its refill and widening; none found, one fewer),
+  the split without a draw (`bank_split`: one, two, three or four creatures, the upgrade's slot 2,
+  3, 0, 0; a quotient of 0 leaves its slot empty), the upgrade's r only when the chance is above
+  0 and the slot's creature has an upgrade (`Ruleset::upgrades`' first).
+- **Tests** (`state/tests/draws.rs`, four): the level against the setup stream's first draw over
+  400 seeds (every level seen); the split's cases (50 and 13 of one creature, 3 with two empty
+  slots, the Crypt's levels 1 and 2 and odd counts, four unsplit); the upgrade against the
+  stream's second draw over 200 seeds (each slot's creature and count), the slot by the number of
+  creatures at 100 %, a creature without an upgrade kept, and neither such a slot nor a chance of
+  0 drawing (a third bank's level from the stream's third draw); the artifacts relics first, the
+  treasure the one the placed artifact and a random treasure left, none with every artifact
+  banned; `Resolved::Bank`'s three hash cases.
+- **The measure** (`homm3-bench-regression`): with `bank_draw` and `bank_split` inside
+  `state::draws` the scoped verify's bench-check failed: every random-play workload +2.4 to +7.6 %,
+  `reach-garrisons-xl-144` +6.1 %, with the same calls in every function and only two bodies
+  longer (`Reach::search` 777.9 M to 841.7 M Ir, `Pricing::walking_step` 131.5 M to 144.4 M;
+  `master` measured here at its baselines, 1 247.9 M). The draw's code alone moved them (the branch
+  without it, the variant and the hash kept: 1 247.8 M), so the cause is the release build's
+  codegen-unit partition (16 units, thin LTO), not the reach. The same code in its own module
+  `state/banks.rs`: 1 247.8 M, and all 34 adventure workloads inside their baselines (the most
+  `manage-army-12` +1.01 %, as before the move); no baseline moved. `TRAPS.md` has the trap.
+- **Rules:** ADV-BNK-002 new, `verified` (the code reading, VCMI's config, batch E13's E13-1 and
+  E13-7).
+- **Replays:** the 89 adventure goldens re-recorded from their commands (a scratch script): only
+  `adventure_state_hash_version`, the final hashes (89) and the checkpoints (87) moved; no fixture
+  map holds a bank. `h3-server`'s `tests::record`: `army-dialog-s1`'s checkpoint and final hash
+  (`cross-lane`; the server lane's inbox told). The bots tables record no adventure state hash:
+  unchanged.
+- **Docs:** design §5's *As built*, §18's row, §20's round 6; decision 354 and the task's line;
+  the queue (T124b archived verbatim, T124b2 in); `OVERVIEW.md`'s state line; the comments that
+  said T124b.
