@@ -1013,7 +1013,7 @@ def sequence_inputs(entry):
     check compares), in order of time, a key released only once pressed, the button likewise (no
     press or click while it is held: E24 M3 T7b2, F5-7), a pointer inside the screen. Returns the options [(address, value)] and the inputs by time {t: [(kind, value)]}."""
     unknown = set(entry) - {"id", "situation", "ms", "why", "inputs", "status", "rolls",
-                            "seed", *OPTIONS}
+                            "seed", "sound", *OPTIONS}
     if unknown:
         raise ValueError(f"{entry['id']}: unknown keys {sorted(unknown)}")
     # The rolls a sequence forces (E24 M4 T1a: the week's and the month's), every draw of each

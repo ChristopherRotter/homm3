@@ -104,15 +104,18 @@ Options: (a) the original's everywhere; (b) the client shows the Familiar's own 
 original's behind `--bugs original` for the comparisons. **Recommended (b)** (one argument, no
 difference with the shipped data). Blocks nothing.
 
-#### MCL-Q30 — The new day's sound started twice (E24 M4 T1a, a recording)
+#### MCL-Q30 — The new day's sound started twice (E24 M4 T1a, a recording; sound run at T1b2)
 
 At a turn's start the date's status window is built twice in the same millisecond (the chooser
 after `status_window_set_kind` and again at the next view draw, design §5.1 and §4.9), and each
-build starts `newday.wav` (`play_sound_async`, category 3), so two samples of it start together;
-whether Miles mixes them louder or the second replaces the first is not checked (the sandbox has
-no audio device, no sound run recorded it). Built as the original's. Options: (a) the original's;
-(b) the client starts it once, the original's behind `--bugs original`; (c) a sound run at T1b
-first, then (a) or (b). **Recommended (c), then (b) if two samples sound.** Blocks nothing.
+build starts `newday.wav` (`play_sound_async`, category 3). **The sound run (T1b2,
+`turn-day` with `sound = true`):** two samples start at End Turn's millisecond on two channels
+(Miles' sample handles 7 and 8), each 3 739 ms (`newday.wav`'s 82 432 frames at 22 050 Hz), so the
+same waveform plays twice in phase: the new day sounds at double amplitude (about +6 dB louder
+than one start), unless Miles' mix clips it. The viewer starts it twice too (built as the original's).
+Options: (a) the original's; (b) the client starts it once, the original's behind `--bugs
+original` for the comparisons. **Recommended (b)** (the doubling is an accident of the two
+builds; one start sounds as the sample was made). Blocks nothing.
 
 #### MCL-Q31 — The view follows a computer's hero still under the fog (E24 M4 T1b1, a recording)
 

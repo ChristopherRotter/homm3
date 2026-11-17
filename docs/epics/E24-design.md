@@ -2760,8 +2760,9 @@ its step 0x4536F0 (the panel's vtable 0x63BB44 +4), `arraytxt_load` 0x5B9CC0's t
   player; 2192 `HourSand.def` at (98, 51), 58 × 64, frame 0; 2193 `HourGlas.def` at (98, 51),
   frame 0; for a human current player (a network's or a hot seat's other human) two
   texts in `medfont.fnt` (colour 1, centred), GENRLTXT 631 at (0, 20) and the player's name at
-  (0, 123), each 176 × 31. The panel keeps, per colour, 1 000 plus the maximum movement points of
-  a computer player's heroes (0 for a human or a colour out of the game). Its step (the vtable's
+  (0, 123), each 176 × 31. The panel keeps, per colour, 1 000 plus the sum of a computer player's
+  heroes' maximum movement points (`hero_max_movement` 0x4E4D90 each, read at T1b2; 0 for a human
+  or a colour out of the game), set when it is built. Its step (the vtable's
   +4, every 50 ms by +0x6C from +0x40): a new current player sets the crest's frame and its value
   again; for a computer player the sand's frame +0x68 steps round its frames and the glass's +0x70
   steps by one towards (value − the heroes' points left) × (frames − 1) / value (all but the last
@@ -2905,7 +2906,8 @@ Blackout branch; recorded by the harness (`ai-walk`, `ai-walk-slow`, `ai-walk-fa
   items are 2190 to 2193, and +0x68 is the sand's frame, +0x70 the glass's): nothing until the
   clock is 50 ms (+0x6C) past its last step (+0x40); a new current player sets the crest's frame,
   hides the sand and the glass for a human (the step ends there) or shows them for a computer,
-  whose value becomes 1 000 plus its heroes' maximum movement points, the glass at 0. For a
+  whose value becomes 1 000 plus the sum of its heroes' maximum movement points (the panel's
+  build sets it for every colour already, T1b2), the glass at 0. For a
   computer then: the points left summed over its heroes, at most the value; the glass one frame
   up while below (value − left) × (n − 1) / value (n the glass's frames, 10), never down; the
   sand one frame on, round its 10; both and the crest drawn and shown at once. Its callers in a
