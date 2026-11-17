@@ -28,6 +28,7 @@ edges = 2
 hot = [[0, 0], [1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16], [17, 18]]
 default_def = "crdeflt.def"
 default_hot = [0, 0]
+busy = 2
 
 [dialog]
 place = [0, 0]
@@ -123,10 +124,22 @@ def = "itpt.def"
 at = [3, 2]
 size = [58, 64]
 
+[status_other]
+place = [614, 400]
+
+[[status_other.items]]
+kind = "def"
+id = 2191
+def = "crest58.def"
+at = [20, 51]
+size = [58, 64]
+
 [panels]
 coloured = [3]
 underground = ["iam010.def", "iam003.def"]
 sleep = ["iam005.def", "iam011.def"]
+computer = [6, 7, 8, 12]
+shield = "aishield.pcx"
 
 [message]
 background = "diboxbck.pcx"
@@ -166,6 +179,9 @@ fn loads_a_layout_and_places_its_tiles() {
     let flags: Vec<u16> = layout.status_kingdom.items.iter().map(Item::id).collect();
     assert_eq!(flags, (2041..2049).collect::<Vec<u16>>());
     assert_eq!(layout.panels.sleep[1], "iam011.def");
+    // A computer player's turn's (E24 M4 T1b2): its panel, the buttons it disables, the shield.
+    assert_eq!(layout.status_other.place, [614, 400]);
+    assert_eq!(layout.panels.computer, [6, 7, 8, 12]);
     let names: Vec<String> = layout.names().into_iter().collect();
     assert_eq!(
         names,
@@ -176,10 +192,12 @@ fn loads_a_layout_and_places_its_tiles() {
             "ADVMAP.PCX",
             "AGEMUL.DEF",
             "AGEMUR.DEF",
+            "AISHIELD.PCX",
             "ARESBAR.PCX",
             "BOX64X30.PCX",
             "CRADVNTR.DEF",
             "CRDEFLT.DEF",
+            "CREST58.DEF",
             "DIALGBOX.DEF",
             "DIBOXBCK.PCX",
             "GAME.PAL",

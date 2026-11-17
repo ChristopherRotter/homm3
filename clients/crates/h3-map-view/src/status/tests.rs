@@ -56,6 +56,7 @@ fn live(kingdom: Kingdom) -> Live {
         chosen: crate::live::Chosen::default(),
         pressed: Vec::new(),
         turns: Vec::new(),
+        computer: false,
     }
 }
 
@@ -382,7 +383,7 @@ fn nothing_drawn_but_a_hero_s_or_a_town_s_window_of_the_selection() {
         ..hero_kingdom(fiona())
     }));
     assert!(!draw(Kingdom {
-        status: Some(Status::Other(5)),
+        status: Some(Status::Other(6)),
         ..hero_kingdom(fiona())
     }));
     // A hero's window with a town selected, a town's with a hero, a selection past its list.
@@ -457,6 +458,42 @@ fn the_tables_rules_checked() {
     let unmatched = "the date's pictures and their frames do not match";
     assert_eq!(broken(|a| a.date.frames.truncate(4)), unmatched);
     assert_eq!(broken(|a| a.date.frames[2] = 0), unmatched);
+    // Another player's turn's (E24 M4 T1b2): its sand and glass have frames.
+    let frameless = "another player's turn's sand or glass without frames";
+    assert_eq!(broken(|a| a.other.sand = 0), frameless);
+    assert_eq!(broken(|a| a.other.glass = 0), frameless);
+    assert_eq!((art.other.step, art.other.glass), (50, 10));
+}
+
+#[test]
+fn another_player_s_turn_s_window() {
+    // E24 M4 T1b2: kind 5's panel, the crest's, the sand's and the glass's frames.
+    let layout = layout();
+    let kingdom = Kingdom {
+        status: Some(Status::Turn(TurnStatus {
+            crest: 1,
+            sand: 4,
+            glass: 2,
+            value: 2560,
+        })),
+        ..Kingdom::default()
+    };
+    let (panel, shown) = window(
+        &layout,
+        &art(),
+        &lists(),
+        &live(kingdom),
+        &names(),
+        &texts(),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(panel.place, layout.status_other.place);
+    let frames: Vec<(u16, u32)> = shown.frames.iter().map(|(&i, &f)| (i, f)).collect();
+    assert_eq!(frames, [(id::CREST, 1), (id::SAND, 4), (id::GLASS, 2)]);
+    for id in shown.frames.keys() {
+        assert!(panel.item(*id).is_some(), "{id}");
+    }
 }
 
 fn date_kingdom(frame: u32, [month, week, day]: [u16; 3]) -> Kingdom {

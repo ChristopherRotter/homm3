@@ -60,6 +60,14 @@ pub struct Sequence {
     /// draw's value): the viewer takes their outcome from the live part's `[[turn]]`, so it only
     /// accepts them.
     pub rolls: Option<BTreeMap<String, i64>>,
+    /// Computer Walk Speed (E24 M4 T1b2, design §5.2: 2 to 5 as the harness writes it; none, the
+    /// harness's settings' 3).
+    pub computer_speed: Option<usize>,
+    /// Blackout Computer (0 or 1; none 0).
+    pub blackout: Option<u32>,
+    /// The generator's seed the harness sets (E24 M4 T1b1: a computer's draws): the viewer takes
+    /// their outcome from the recording, so it only accepts it.
+    pub seed: Option<u32>,
     /// The inputs in time order.
     #[serde(default)]
     pub inputs: Vec<Input>,
@@ -93,6 +101,10 @@ pub const DEFAULT_SCROLL_SPEED: usize = 1;
 /// The hero speed when a sequence gives none (`option_walk_speed` 0x69875C: any value but 1 to 4
 /// is 2).
 pub const DEFAULT_HERO_SPEED: usize = 2;
+
+/// Computer Walk Speed when a sequence gives none (E24 M4 T1b2: the harness's settings keep the
+/// first run's 3).
+pub const DEFAULT_COMPUTER_SPEED: usize = 3;
 
 /// The direction keys by xdotool's names (X keysyms), the original's scan codes 72, 73, 77, 81, 80,
 /// 79, 75, 71 (`adventure_key_down` 0x408C40, design §3.4): north clockwise to north-west.
@@ -180,6 +192,33 @@ impl Sequence {
                 "{}: `move_reminder` {other} is not 0 or 1",
                 self.id
             )),
+        }
+    }
+
+    /// Computer Walk Speed (E24 M4 T1b2), checked: 2 to 4 (5, Blackout's, is not built alone).
+    ///
+    /// # Errors
+    /// Another speed.
+    pub fn computer_speed(&self) -> Result<usize, String> {
+        let speed = self.computer_speed.unwrap_or(DEFAULT_COMPUTER_SPEED);
+        if !(2..=HERO_SPEEDS).contains(&speed) {
+            return Err(format!(
+                "{}: the computer's speed {speed} is not 2 to 4",
+                self.id
+            ));
+        }
+        Ok(speed)
+    }
+
+    /// Blackout Computer (E24 M4 T1b2), checked: 0 or 1 (none 0).
+    ///
+    /// # Errors
+    /// Another value.
+    pub fn blackout(&self) -> Result<bool, String> {
+        match self.blackout {
+            None | Some(0) => Ok(false),
+            Some(1) => Ok(true),
+            Some(other) => Err(format!("{}: `blackout` {other} is not 0 or 1", self.id)),
         }
     }
 
@@ -329,6 +368,43 @@ impl Sequence {
                 .push(read.ok_or_else(|| format!("{}: the line `{line}` does not read", self.id))?);
         }
         Ok(points)
+    }
+
+    /// The current player's selected hero as its recorded timeline shows it where it changes
+    /// (`h3map.py frames`' `<ms> hero <x> <y> <level> <facing>` lines; a line without numbers, no
+    /// hero selected, left out), each with its millisecond, in order: E24 M4 T1b2, a computer
+    /// player's steps ([`crate::turn::walks`]).
+    ///
+    /// # Errors
+    /// A `hero` line that does not read.
+    pub fn heroes(&self, recorded: &str) -> Result<Vec<(u32, Hero)>, String> {
+        let mut out = Vec::new();
+        for line in recorded.lines() {
+            let words: Vec<&str> = line.split_whitespace().collect();
+            let [t, "hero", rest @ ..] = words.as_slice() else {
+                continue;
+            };
+            if rest.is_empty() {
+                continue;
+            }
+            let numbers: Option<Vec<u8>> = rest.iter().map(|w| w.parse().ok()).collect();
+            let read = match (t.parse::<u32>(), numbers.as_deref()) {
+                (Ok(t), Some(&[x, y, z, facing])) => {
+                    Direction::ALL.get(usize::from(facing)).map(|&facing| {
+                        (
+                            t,
+                            Hero {
+                                at: Pos { x, y, z },
+                                facing,
+                            },
+                        )
+                    })
+                }
+                _ => None,
+            };
+            out.push(read.ok_or_else(|| format!("{}: the line `{line}` does not read", self.id))?);
+        }
+        Ok(out)
     }
 }
 

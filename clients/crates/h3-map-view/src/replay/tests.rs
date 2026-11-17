@@ -5,7 +5,7 @@ use h3_render::Bugs;
 use super::*;
 use crate::scene::ViewAt;
 use crate::timeline::tests::{recorded, rules};
-use crate::timeline::{Direction, play};
+use crate::timeline::{Computer, Direction, play};
 
 /// The changes of what the screen shows in a headless play's states: each state whose draw or
 /// cursor differs from the one before (the first always).
@@ -23,6 +23,7 @@ fn headless(id: &str) -> Vec<Change> {
                 drawn: s.drawn,
                 cursor: s.cursor,
                 buttons: s.buttons,
+                held: Vec::new(),
             });
         }
     }
@@ -82,6 +83,7 @@ fn idle() -> Replay {
         move_reminder: false,
         question: None,
         turns: Vec::new(),
+        computer: Computer::default(),
     };
     let actions = BTreeMap::from([
         (0, vec![Action::Scroll(Direction::East)]),
@@ -270,6 +272,7 @@ fn its_cues_are_handed_out_once() {
         move_reminder: false,
         question: None,
         turns: Vec::new(),
+        computer: Computer::default(),
     };
     let actions = BTreeMap::from([
         (1, vec![Action::Click(dest)]),

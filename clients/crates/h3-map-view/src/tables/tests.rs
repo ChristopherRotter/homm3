@@ -106,6 +106,11 @@ frames = [10, 4, 8]
 step = 100
 sound = "newday.wav"
 
+[map.status.other]
+step = 50
+sand = 10
+glass = 10
+
 [map.turn]
 asked = 3000
 week = "newweek.wav"

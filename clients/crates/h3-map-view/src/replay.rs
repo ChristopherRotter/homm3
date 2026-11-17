@@ -17,6 +17,10 @@
 //! the window takes them as its clock reaches them ([`Replay::take_cues`]); the loop run again
 //! from a change gives the cues after it again, and the ones handed out already are not given
 //! twice.
+//!
+//! A computer's steps at speed 4 (E24 M4 T1b2) are drawn inside one millisecond: the change of
+//! that millisecond carries each of those draws ([`Change::held`]), which the window shows on its
+//! own clock before it.
 
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::vec::Vec;
@@ -37,6 +41,9 @@ pub struct Change {
     pub cursor: Cursor,
     /// Move hero's and next hero's states (E24 M3 T2a).
     pub buttons: Buttons,
+    /// What the screen showed inside the millisecond before this (E24 M4 T1b2: a computer's
+    /// steps at speed 4 seen, each drawn once with no wait: [`Loop::take_held`]), in order.
+    pub held: Vec<Change>,
 }
 
 impl Change {
@@ -82,6 +89,7 @@ fn shown(l: &Loop, t: u32) -> (Change, Loop) {
             drawn: l.drawn().clone(),
             cursor: l.cursor(),
             buttons: l.buttons(),
+            held: Vec::new(),
         },
         l.clone(),
     )
@@ -258,11 +266,25 @@ impl Replay {
             self.t = next;
             let cues = self.l.take_cues();
             self.keep_cues(cues);
-            if *self.l.drawn() != self.now.0.drawn
+            let held: Vec<Change> = self
+                .l
+                .take_held()
+                .into_iter()
+                .map(|s| Change {
+                    t: next,
+                    drawn: s.drawn,
+                    cursor: s.cursor,
+                    buttons: s.buttons,
+                    held: Vec::new(),
+                })
+                .collect();
+            if !held.is_empty()
+                || *self.l.drawn() != self.now.0.drawn
                 || self.l.cursor() != self.now.0.cursor
                 || self.l.buttons() != self.now.0.buttons
             {
-                let change = shown(&self.l, next);
+                let mut change = shown(&self.l, next);
+                change.0.held = held;
                 self.kept
                     .push_back(core::mem::replace(&mut self.now, change));
             }

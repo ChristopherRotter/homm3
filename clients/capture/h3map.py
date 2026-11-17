@@ -253,17 +253,18 @@ def to_shipped(game, timeout=120.0):
     h3adv.dismiss(game)
 
 
-def started(map_path, run_dir, shipped=False, tries=2, seed=None):
+def started(map_path, run_dir, shipped=False, tries=2, seed=None, sound=False):
     """The original on the map's adventure screen (a single scenario). A game that crashes on its
     way there is started once more: the original's tavern rumour at a new game reads one entry past
     its table about once in 800 games (rumour_pick_text 0x4CCF20; E24 M1 T4a saw it). So is one
     whose Wine exits at once, before the main menu, writing nothing (E24 M1 T4b saw it once in a
     set run, right after the game before it stopped). With `seed` (E24 M4 T1b1, a writer's
-    map only) the random generator seeded just before Begin (`h3drive.to_scenario`)."""
+    map only) the random generator seeded just before Begin (`h3drive.to_scenario`). With `sound`
+    (E24 M4 T1b2) the game plays its sounds (h3drive's `sound`)."""
     if shipped and seed is not None:
         raise ValueError(f"{map_path}: a seed for a shipped map's start")
     for attempt in range(1, tries + 1):
-        game = h3drive.Game(run_dir)
+        game = h3drive.Game(run_dir, sound=sound)
         game.start(map_path)
         try:
             if shipped:
@@ -520,7 +521,7 @@ def still(situation_path, out=None, keep=False):
     return compare(situation_path, out, cap)
 
 
-def stage(situation_path, out, seed=None):
+def stage(situation_path, out, seed=None, sound=False):
     """Shows one situation in the original, up to its moment (E24 M2 T1a1: `capture`'s and
     `sequence`'s common part): its map written to `out` (`map.h3m`), the game started on it, the
     heroes walked, the explored tiles written, the view set, the path shown, the facings and the
@@ -540,7 +541,7 @@ def stage(situation_path, out, seed=None):
         raise ValueError(f"{situation_path}: `hidden` with the start's explored tiles")
     # A map with an underground shows the level button enabled (E24 M3 T6b2): `adventure`'s wait.
     game = started(map_path, out / "run", shipped="map" in sit or "underground" in sit,
-                   seed=seed)
+                   seed=seed, sound=sound)
     try:
         mem = game_mem(game)
         turn = arrange(game, mem, sit)
@@ -1012,7 +1013,7 @@ def sequence_inputs(entry):
     check compares), in order of time, a key released only once pressed, the button likewise (no
     press or click while it is held: E24 M3 T7b2, F5-7), a pointer inside the screen. Returns the options [(address, value)] and the inputs by time {t: [(kind, value)]}."""
     unknown = set(entry) - {"id", "situation", "ms", "why", "inputs", "status", "rolls",
-                            "seed", *OPTIONS}
+                            "seed", "sound", *OPTIONS}
     if unknown:
         raise ValueError(f"{entry['id']}: unknown keys {sorted(unknown)}")
     # The rolls a sequence forces (E24 M4 T1a: the week's and the month's), every draw of each
@@ -1122,7 +1123,16 @@ def sequence(entry, out):
     if seed is not None and (not isinstance(seed, int) or isinstance(seed, bool)
                              or not 0 <= seed < 2 ** 32):
         raise ValueError(f"{entry['id']}: the seed `{seed!r}`: a whole number of 32 bits")
-    game, mem, sit, turn = stage(situation_path, out, seed=seed)
+    # A sound run (E24 M4 T1b2, MCL-Q30): the game plays its sounds as h3drive's sequences do
+    # (an audio driver over the null sink, the effects at volume 5, xdd.dll's samples on the
+    # virtual clock), the map's own sounds played out before the clock is frozen; each sample
+    # started is listed in `<out>/sounds.txt`. Its waits for samples move the timeline, so a
+    # sound run is a sequence of its own, never one recorded silent.
+    sound = entry.get("sound", False)
+    if not isinstance(sound, bool):
+        raise ValueError(f"{entry['id']}: `sound` is true or false, not `{sound!r}`")
+    (out / "sounds.txt").unlink(missing_ok=True)
+    game, mem, sit, turn = stage(situation_path, out, seed=seed, sound=sound)
     down = set()
     try:
         kept.mkdir(parents=True)
@@ -1155,6 +1165,9 @@ def sequence(entry, out):
         # a step of the virtual clock spans many times over; the original repeats nothing itself
         # (a key held is one press, design §3.4).
         h3drive.run("xset", "r", "off")
+        if sound:
+            h3drive.sounds_settled(game)
+        heard = len(h3drive.sounds(game))
         game.clock("step 100")
         now = game.clock("freeze")
         if seed is not None:
@@ -1248,6 +1261,13 @@ def sequence(entry, out):
             if [states[-1][k] for k in ("date", "player")] != [states[-2][k]
                                                                  for k in ("date", "player")]:
                 turns.append(turn_toml(mem, t - t0))
+        if sound:
+            # `<ms> <channel> <length ms> <loops>` from the sequence's 0, each sample started
+            # since the map's own sounds settled (the channel: xdd.dll's numbering of the game's
+            # sample handles, so two starts on two channels sound together).
+            (out / "sounds.txt").write_text("".join(
+                f"{t - t0} {channel} {length} {loops}\n"
+                for t, channel, length, loops in h3drive.sounds(game)[heard:]))
     finally:
         # A key left down stays down on the display for the next game (T1a2); the game stopped
         # whatever the release meets (M2 T6a, the reviewer's R3-4).
@@ -1354,8 +1374,8 @@ def run_frames(rest):
     only = rest[rest.index("--only") + 1] if "--only" in rest else None
     base = Path(rest[rest.index("--out") + 1]) if "--out" in rest else OUT_FRAMES
     reuse = "--reuse" in rest
-    # E24 M4 T1b1: sequences recorded before the viewer plays them (`--sequences
-    # map/to-record.toml`), their frame check left out (`--no-check`).
+    # E24 M4 T1b1: sequences recorded before the viewer plays them (`--sequences <file>`; T1b1's
+    # in map/to-record.toml until T1b2 moved them), their frame check left out (`--no-check`).
     listed = (Path(rest[rest.index("--sequences") + 1]) if "--sequences" in rest
               else SEQUENCES)
     check = "--no-check" not in rest

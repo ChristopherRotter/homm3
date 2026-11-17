@@ -17,7 +17,7 @@ fn one(rest: &str) -> Sequence {
 #[test]
 fn reads_the_recorded_sequences() {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
-    assert_eq!(sequences.sequence.len(), 42);
+    assert_eq!(sequences.sequence.len(), 47);
     // The status window's kind asked at 0 (E24 M3 T5b2).
     let date = sequences.get("status-date-end").unwrap();
     assert_eq!(date.asked(), Ok(Some(Asked { kind: 1, end: 3000 })));
@@ -115,6 +115,70 @@ fn move_reminder_and_the_rolls() {
     let week = sequences.get("turn-week").unwrap();
     let rolls = week.rolls.as_ref().unwrap();
     assert_eq!((rolls["week_chance"], rolls["week_name"]), (2, 4));
+}
+
+#[test]
+fn a_computers_turns_options() {
+    // E24 M4 T1b2: Computer Walk Speed 2 to 4 (none the harness's 3), Blackout 0 or 1, the seed
+    // accepted.
+    let sequences = Sequences::parse(SEQUENCES).unwrap();
+    let speed = |id: &str| sequences.get(id).unwrap().computer_speed();
+    assert_eq!(
+        (
+            speed("ai-walk"),
+            speed("ai-walk-slow"),
+            speed("ai-walk-fast")
+        ),
+        (Ok(3), Ok(2), Ok(4))
+    );
+    let fog = sequences.get("ai-walk-fog").unwrap();
+    assert_eq!((fog.seed, fog.blackout()), (Some(1), Ok(false)));
+    let blackout = sequences.get("ai-walk-blackout").unwrap();
+    assert_eq!(blackout.blackout(), Ok(true));
+    assert_eq!(
+        one("computer_speed = 5").computer_speed(),
+        Err("s: the computer's speed 5 is not 2 to 4".into())
+    );
+    assert!(one("computer_speed = 1").computer_speed().is_err());
+    assert_eq!(
+        one("blackout = 2").blackout(),
+        Err("s: `blackout` 2 is not 0 or 1".into())
+    );
+    assert_eq!(one("blackout = 0").blackout(), Ok(false));
+}
+
+#[test]
+fn the_selected_heroes_lines() {
+    // E24 M4 T1b2: each `hero` line with its millisecond, in order; one without numbers left out.
+    let recorded = "0 view 1 2 0
+160 hero 6 26 0 2
+160 walk 7 1 16 0
+900 hero
+                    1460 hero 19 25 0 1
+";
+    let hero = |x, y, facing| Hero {
+        at: Pos { x, y, z: 0 },
+        facing,
+    };
+    assert_eq!(
+        one("").heroes(recorded),
+        Ok(vec![
+            (160, hero(6, 26, Direction::East)),
+            (1460, hero(19, 25, Direction::NorthEast))
+        ])
+    );
+    for bad in [
+        "x hero 1 2 0 0",
+        "5 hero 1 2 0",
+        "5 hero 1 2 0 8",
+        "5 hero 1 2 0 z",
+    ] {
+        assert_eq!(
+            one("").heroes(bad),
+            Err(format!("s: the line `{bad}` does not read")),
+            "{bad}"
+        );
+    }
 }
 
 #[test]

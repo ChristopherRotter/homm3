@@ -102,6 +102,30 @@ fn pieces(scene: &Scene, of: Pass) -> Vec<Seen> {
 }
 
 #[test]
+fn a_computer_s_turn_shows_the_shield_in_the_minimap_s_place() {
+    // E24 M4 T1b2: `aishield.pcx` over the minimap's area from its corner, the minimap not drawn.
+    let (art, mut live) = art_with(vec![]);
+    live.computer = true;
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    assert!(
+        !scene
+            .draws
+            .iter()
+            .any(|d| matches!(d, Draw::Minimap(_) | Draw::Radar { .. }))
+    );
+    assert_eq!(
+        scene.draws.last(),
+        Some(&Draw::Dialog(ui::Draw::Picture {
+            picture: "aishield.pcx".to_string(),
+            x: 630,
+            y: 26,
+            player: None,
+            size: Some([144, 144]),
+        }))
+    );
+}
+
+#[test]
 fn the_frame_then_the_passes_then_the_gems() {
     let (art, live) = art_with(vec![]);
     let scene = still(&art, &live, at(0, 0), Bugs::Fixed);

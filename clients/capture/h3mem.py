@@ -382,6 +382,9 @@ MOVE_REMINDER = 0x698778
 COMPUTER_WALK_SPEED, BLACKOUT_COMPUTER = 0x698758, 0x698790
 STATUS_OTHER, STATUS_CREST, STATUS_SAND, STATUS_GLASS = 5, 2191, 2192, 2193
 STATUS_OTHER_ITEMS = range(2190, 2194)
+# E24 M4 T1b2: the adventure dialog's status panel (+0x98, status_panel_set 0x402C10) and kind 5's
+# per-colour values in it (+0x44, i32 each; status_other_turn_create 0x453250).
+STATUS_PANEL, OTHER_VALUES = 0x98, 0x44
 WEEK_KIND, WEEK_CREATURE, MONTH_KIND, MONTH_CREATURE = 0x697750, 0x6983FC, 0x698834, 0x697748
 # The walk (E24 M2 T1b, design §3.5): the manager's view offset (i32 +0xF4, +0xF8: added to every
 # tile's place, written by the walk's animation 0x480380 only), the moving hero's group (i32
@@ -1288,7 +1291,13 @@ class Mem:
             # Another player's turn (E24 M4 T1b1, design §5.2): its crest's, sand's and glass's
             # frames.
             crest, sand, glass = self.other_turn(items)
-            return {"kind": kind, "crest": crest, "sand": sand, "glass": glass}
+            # E24 M4 T1b2: the panel's value for the current player (status_other_turn_create
+            # 0x453250 fills +0x44 per colour: 1 000 plus the sum of its heroes' maximum
+            # movement points, hero_max_movement 0x4E4D90, when built), which the glass steps
+            # towards; a computer's steps out of sight before its first seen one leave it there.
+            panel = self.u32(self.manager_field(ADVENTURE_DIALOG) + STATUS_PANEL)
+            value = self.i32(panel + OTHER_VALUES + 4 * self.current_player())
+            return {"kind": kind, "crest": crest, "sand": sand, "glass": glass, "value": value}
         return {"kind": kind}
 
     def other_turn(self, items=None):

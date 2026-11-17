@@ -3,15 +3,19 @@
 //! (`player_turn_start` 0x4CC7D0 at 0x4CCAE5, ArrayTxt's records as `arraytxt_load` 0x5B9CC0
 //! copies them), the keys and families they name. The timeline (`crate::timeline`) opens the boxes
 //! and plays the turn's change; the adapter lays the boxes out (`h3_ui::message`) with the texts
-//! given here.
+//! given here. Since E24 M4 T1b2 (design §5.2) what a turn's facts give the timeline of the map's
+//! heroes: those standing ([`placed`]) and a computer player's walks in sight ([`walks`]).
 
 use alloc::format;
 use alloc::string::String;
+use alloc::vec;
+use alloc::vec::Vec;
 
 use h3_ui::text::{Args, Catalogue};
 use serde::Deserialize;
 
-use crate::live::{Calendar, Date};
+use crate::live::{Calendar, Date, LiveBoat, LiveHero, Selected, Status, Turn};
+use crate::timeline::{Direction, Hero, Steps};
 
 /// The turn's numbers and sounds (the tables' `[map.turn]`).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -147,3 +151,106 @@ fn upper_first(name: &str) -> String {
 
 #[cfg(test)]
 mod tests;
+
+/// A hero of the live part on its tile and facing, as the timeline holds it.
+fn hero_of(h: &LiveHero) -> Hero {
+    Hero {
+        at: h.at,
+        facing: Direction::ALL[usize::from(h.facing.number()) % Direction::ALL.len()],
+    }
+}
+
+/// The map's heroes `turn`'s facts hold standing (E24 M4 T1b2, *provisional*: the tables name no
+/// hero), each by its index among the live part's `map` heroes at 0 (the timeline's
+/// [`crate::timeline::Start::heroes`]): the only one of the same owner and class. None for a table
+/// without them (T1a's).
+///
+/// # Errors
+/// A hero standing that matches no map hero or several, one whose boat changed, or boats other
+/// than the map's `boats` at 0 (a boat's move is not built).
+pub fn placed(
+    map: &[LiveHero],
+    boats: &[LiveBoat],
+    turn: &Turn,
+) -> Result<Vec<(usize, Hero)>, String> {
+    if turn.boats.as_ref().is_some_and(|b| b != boats) {
+        return Err(format!(
+            "the turn at {} ms: a boat moved (not built)",
+            turn.at
+        ));
+    }
+    let Some(standing) = &turn.heroes else {
+        return Ok(Vec::new());
+    };
+    standing
+        .iter()
+        .map(|h| {
+            let same: Vec<usize> = map
+                .iter()
+                .enumerate()
+                .filter(|(_, m)| (m.owner, m.class) == (h.owner, h.class))
+                .map(|(i, _)| i)
+                .collect();
+            match same[..] {
+                [i] if map[i].boat == h.boat => Ok((i, hero_of(h))),
+                [_] => Err(format!(
+                    "the turn at {} ms: a hero's boat changed (not built)",
+                    turn.at
+                )),
+                _ => Err(format!(
+                    "the turn at {} ms: {} map heroes of owner {} and class {}",
+                    turn.at,
+                    same.len(),
+                    h.owner,
+                    h.class
+                )),
+            }
+        })
+        .collect()
+}
+
+/// A computer player's walks in the turn `turns[at]` (E24 M4 T1b2, *provisional*: M4's scripted
+/// walks; Part B the engine's moves): none unless its window is another player's (kind 5). Its one
+/// hero (the map's only hero of its colour, its kingdom's selected one) and its steps, the
+/// recording's `hero` lines (`lines`, [`crate::sequence::Sequence::heroes`]) from the turn's
+/// millisecond to the next turn's.
+///
+/// # Errors
+/// A computer's turn with other than one hero, or none selected.
+pub fn walks(
+    turns: &[Turn],
+    at: usize,
+    map: &[LiveHero],
+    lines: &[(u32, Hero)],
+) -> Result<Vec<Steps>, String> {
+    let Some(turn) = turns
+        .get(at)
+        .filter(|t| matches!(t.status, Status::Turn(_)))
+    else {
+        return Ok(Vec::new());
+    };
+    let own: Vec<usize> = map
+        .iter()
+        .enumerate()
+        .filter(|(_, h)| h.owner == turn.player)
+        .map(|(i, _)| i)
+        .collect();
+    let (&[hero], 1, Selected::Hero(slot)) =
+        (&own[..], turn.kingdom.heroes.len(), turn.kingdom.selected)
+    else {
+        return Err(format!(
+            "the computer's turn at {} ms: {} heroes of its colour on the map, {} in its \
+             kingdom (one hero, selected, is built)",
+            turn.at,
+            own.len(),
+            turn.kingdom.heroes.len()
+        ));
+    };
+    let end = turns.get(at.saturating_add(1)).map_or(u32::MAX, |t| t.at);
+    let steps = lines
+        .iter()
+        .filter(|(t, _)| (turn.at..end).contains(t))
+        .map(|&(_, h)| h)
+        .collect();
+    Ok(vec![Steps { hero, slot, steps }])
+}

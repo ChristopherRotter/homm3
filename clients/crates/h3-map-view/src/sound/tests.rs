@@ -339,6 +339,7 @@ pub(crate) fn map_with(
         chosen: crate::live::Chosen::default(),
         pressed: Vec::new(),
         turns: Vec::new(),
+        computer: false,
     };
     (art, live, shapes)
 }

@@ -1,4 +1,4 @@
-# A computer player's moves in sight (E24 M4 T1b1; clients/map/to-record.toml `ai-walk` and its
+# A computer player's moves in sight (E24 M4 T1b1; clients/map/sequences.toml `ai-walk` and its
 # kin; E24 design §5.2): Red's hero and town in the open as in seq-turn, Blue's hero (a computer
 # player's) in Red's explored land below them, out of the view at 0, with a mine of Red's far to
 # its east (more than a day's walk). Blue has no town: with one the computer builds a Tavern and

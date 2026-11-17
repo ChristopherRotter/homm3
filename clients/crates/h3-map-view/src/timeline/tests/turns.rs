@@ -86,6 +86,8 @@ fn next(turn: Turn) -> NextTurn {
     NextTurn {
         message: week.then(|| laid("Week of the Rat.", Style::Ok)),
         turn,
+        heroes: Vec::new(),
+        walks: Vec::new(),
     }
 }
 

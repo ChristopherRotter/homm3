@@ -18,8 +18,8 @@ use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
 use h3_map_view::hover::{self, Facts};
 use h3_map_view::live::{
-    Arrow, Boat, Buttons, Chosen, Drawn, Explored, Facing, Kingdom, Live, LiveBoat, LiveHero,
-    Moment, Status, TOWN_CLASS, Turn,
+    Arrow, Buttons, Chosen, Drawn, Explored, Kingdom, Live, LiveBoat, LiveHero, Moment, Status,
+    TOWN_CLASS, Turn,
 };
 use h3_map_view::objects;
 use h3_map_view::scene::{self, Draw, ViewAt};
@@ -476,17 +476,12 @@ pub fn read_live(
         }
     }
     if let Some(heroes) = table.get("heroes") {
-        live.heroes = rows::<8>(heroes)
-            .and_then(|rows| rows.into_iter().map(hero).collect())
-            .ok_or_else(|| {
-                failed(
-                    "`heroes` is not a list of [x, y, level, class, facing, owner, boat, colour]",
-                )
-            })?;
+        live.heroes = LiveHero::read_all(heroes).ok_or_else(|| {
+            failed("`heroes` is not a list of [x, y, level, class, facing, owner, boat, colour]")
+        })?;
     }
     if let Some(boats) = table.get("boats") {
-        live.boats = rows::<5>(boats)
-            .and_then(|rows| rows.into_iter().map(boat).collect())
+        live.boats = LiveBoat::read_all(boats)
             .ok_or_else(|| failed("`boats` is not a list of [x, y, level, type, facing]"))?;
     }
     if let Some(rows) = table.get("explored") {
@@ -622,7 +617,7 @@ pub fn read_live(
         live.turns = turns.ok_or_else(|| {
             failed(
                 "`[[turn]]` is not at, player, kingdom = { ... }, status = { ... }, week = [kind, \
-                 n] and month = [kind, n]",
+                 n] and month = [kind, n], with heroes and boats as the live part's",
             )
         })?;
     }
@@ -674,28 +669,6 @@ fn byte(n: i64) -> Option<u8> {
     u8::try_from(n).ok()
 }
 
-/// A hero of `live.toml`'s `heroes` (its class below 18, a colour 0-7, a boat's type 0-2 or -1).
-fn hero([x, y, z, class, facing, owner, kind, colour]: [i64; 8]) -> Option<LiveHero> {
-    let boat = match (kind, colour) {
-        (-1, -1) => None,
-        _ => Some(Boat {
-            kind: byte(kind).filter(|&k| k < 3)?,
-            colour: byte(colour).filter(|&c| c < 8)?,
-        }),
-    };
-    Some(LiveHero {
-        at: Pos {
-            x: byte(x)?,
-            y: byte(y)?,
-            z: byte(z)?,
-        },
-        class: byte(class).filter(|&c| c < 18)?,
-        owner: byte(owner).filter(|&c| c < 8)?,
-        facing: Facing::from_number(byte(facing)?)?,
-        boat,
-    })
-}
-
 /// `live.toml`'s `explored`: `levels` × `size` rows of `size` tiles each.
 fn explored(value: &toml::Value, size: usize, levels: usize) -> Option<Explored> {
     let rows: Vec<&str> = value
@@ -735,19 +708,6 @@ fn arrow([x, y, z, arrow]: [i64; 4]) -> Option<Arrow> {
         arrow: u16::try_from(arrow)
             .ok()
             .filter(|&a| a > 0 && usize::from(a) <= PATH_FRAMES)?,
-    })
-}
-
-/// A boat of `live.toml`'s `boats`.
-fn boat([x, y, z, kind, facing]: [i64; 5]) -> Option<LiveBoat> {
-    Some(LiveBoat {
-        at: Pos {
-            x: byte(x)?,
-            y: byte(y)?,
-            z: byte(z)?,
-        },
-        kind: byte(kind).filter(|&k| k < 3)?,
-        facing: Facing::from_number(byte(facing)?)?,
     })
 }
 

@@ -25,6 +25,11 @@
 //! show none), its gold income (its low 16 bits, signed: MCL-Q16) and the army it shows, as a
 //! hero's but its filled slots one after another from the first place (a hero's each at its
 //! slot's).
+//!
+//! Another player's turn's (E24 M4 T1b2, design §5.1, §5.2: `AdStatNx.pcx`, built by 0x453250 as
+//! the layout's `status_other`): the current player's crest (`crest58.def`, the frame its colour),
+//! the sand (`HourSand.def`) and over it the glass (`HourGlas.def`), each at its frame; when they
+//! step is [`crate::timeline`]'s. A human current player's texts (a hot seat's) are not drawn.
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -39,6 +44,7 @@ use crate::layout::AdventureLayout;
 use crate::lists::ListArt;
 use crate::live::{
     Date, DateStatus, HeroStatus, KingdomStatus, Live, Selected, Stack, Status, TownStatus,
+    TurnStatus,
 };
 
 /// The status window's control ids (ours, design §4.8; the original numbers its items from 2000
@@ -86,6 +92,12 @@ pub mod id {
     pub const HALL_COUNTS: u16 = 2021;
     /// The kingdom's label of the viewer's team (no id in the original).
     pub const ALLIES: u16 = 2031;
+    /// Another player's turn's crest (E24 M4 T1b2; the original's ids: 2190 its picture).
+    pub const CREST: u16 = 2191;
+    /// Its sand.
+    pub const SAND: u16 = 2192;
+    /// Its glass, over the sand.
+    pub const GLASS: u16 = 2193;
     /// The kingdom's label of the others.
     pub const ENEMIES: u16 = 2032;
     /// The flags of the viewer's team, the first of eight places.
@@ -160,6 +172,52 @@ pub struct StatusArt {
     /// How long a click on the window asks the kingdom's or the date's window for, ms (3 000:
     /// `adventure_command` 0x40A030; E24 M3 T6b2, design §4.14).
     pub asked: u32,
+    /// Another player's turn's window (E24 M4 T1b2): its timing.
+    pub other: OtherArt,
+}
+
+/// Another player's turn's window's step (the tables' `[map.status.other]`; E24 M4 T1b2, design
+/// §5.2: `status_other_turn_step` 0x4536F0).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OtherArt {
+    /// The least time between two steps, ms (the panel's +0x6C: 50).
+    pub step: u32,
+    /// The sand's frames (`HourSand.def`'s group 0: 10), which it steps round.
+    pub sand: u32,
+    /// The glass's frames (`HourGlas.def`'s: 10), which it rises through.
+    pub glass: u32,
+}
+
+impl OtherArt {
+    /// Kind 5's step for a computer player (0x4536F0, *provisional*: the recordings' frames
+    /// agree): the glass one frame up while below (value − left) × (glass's frames − 1) / value,
+    /// `left` the points its heroes have left (at most the value), never down; the sand one frame
+    /// on, round its frames.
+    #[must_use]
+    pub fn stepped(&self, status: TurnStatus, left: i32) -> TurnStatus {
+        let value = i64::from(status.value);
+        let left = i64::from(left).min(value);
+        let below = if value > 0 {
+            (value - left) * i64::from(self.glass.saturating_sub(1)) / value
+        } else {
+            0
+        };
+        let glass = if i64::from(status.glass) < below {
+            status.glass.saturating_add(1)
+        } else {
+            status.glass
+        };
+        TurnStatus {
+            sand: status
+                .sand
+                .saturating_add(1)
+                .checked_rem(self.sand)
+                .unwrap_or(0),
+            glass,
+            ..status
+        }
+    }
 }
 
 /// The date's window's pictures and timing (the tables' `[map.status.date]`; E24 M3 T5b2, design
@@ -245,6 +303,9 @@ impl StatusArt {
         if date.frames.len() != date.weeks.len().saturating_add(1) || date.frames.contains(&0) {
             return Err("the date's pictures and their frames do not match".into());
         }
+        if self.other.sand == 0 || self.other.glass == 0 {
+            return Err("another player's turn's sand or glass without frames".into());
+        }
         Ok(())
     }
 
@@ -296,6 +357,7 @@ pub fn window<'l>(
         (Some(Status::Kingdom(status)), _) => {
             Some((&layout.status_kingdom, kingdom_window(status, texts)))
         }
+        (Some(Status::Turn(status)), _) => Some((&layout.status_other, turn_window(*status))),
         (Some(Status::Hero(status)), Selected::Hero(at)) => match kingdom.heroes.get(at) {
             Some(hero) => {
                 let portrait = art
@@ -321,6 +383,18 @@ pub fn window<'l>(
         },
         _ => None,
     })
+}
+
+/// Another player's turn's window (0x453250): the crest's, the sand's and the glass's frames.
+fn turn_window(status: TurnStatus) -> Shown {
+    Shown {
+        frames: BTreeMap::from([
+            (id::CREST, status.crest),
+            (id::SAND, status.sand),
+            (id::GLASS, status.glass),
+        ]),
+        ..Shown::default()
+    }
 }
 
 /// The date's window (0x450DD0): its picture and frame, and the day's or the week's text

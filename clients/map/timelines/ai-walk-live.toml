@@ -1,7 +1,7 @@
 # The original's live part at the sequence's 0 (h3map.py frames).
 view = [0, 0, 0]
-cycles = 11
-river_cycles = 11
+cycles = 10
+river_cycles = 10
 frames = 0
 viewer = 0
 anchors = [[5, 4, 0], [6, 26, 0], [8, 3, 0], [33, 22, 0]]
@@ -43,7 +43,7 @@ quests = []
 at = 160
 player = 1
 kingdom = { heroes = [[0, 1, 0, 1560, 10]], towns = [], selected = [1, 0], tops = [0, 0], quests = 0, resources = [10, 4, 10, 4, 4, 4, 8300], date = [1, 1, 1] }
-status = { kind = 5, crest = 1, sand = 0, glass = 0 }
+status = { kind = 5, crest = 1, sand = 0, glass = 0, value = 2560 }
 week = [0, 0]
 month = [0, 0]
 heroes = [[4, 4, 0, 2, 2, 0, -1, -1]]

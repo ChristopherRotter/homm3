@@ -1301,10 +1301,20 @@ the `hero`, `walk` and `points` lines follow the current player's selected hero,
 player's walk shows in them as a human's. A `[[turn]]` table holds kind 5 in its `status` and,
 since T1b1, the `heroes` and `boats` standing on the view's level (as the live part's: a computer
 player's moves out of sight show there; the selected hero is lifted, the `hero` line's). The
-`player` line prints since T1b1 (no earlier sequence changed the player across a millisecond).
-Sequences recorded before the viewer plays them wait in
-`map/to-record.toml`: `frames --sequences map/to-record.toml --no-check` records them (the frame
-check left out), each moved into `sequences.toml` once the viewer plays it. A run with an
+`player` line prints since T1b1 (no earlier sequence changed the player across a millisecond). Since
+T1b2 kind 5's `status` in a `[[turn]]` table holds its `value` too (the panel's for the current
+player, set when it is built: 1 000 plus the sum of the player's heroes' maximum movement points,
+`Mem.status` reading the adventure dialog's status panel +0x98 and its +0x44 per colour), which the
+glass steps towards. **A sound run** (E24 M4 T1b2, MCL-Q30): a sequence with `sound = true` runs
+as the Sound section's sequences do (the map's own sounds played out before the clock is frozen)
+and lists each sample started in `<out>/<id>/sounds.txt` (`<ms from 0> <channel> <length ms>
+<loops>`); its waits for samples can move the timeline, so it is a sequence of its own (an id of
+its own, run from a scratch file with `--sequences <file> --no-check --out <dir>`; delete the
+`timelines/<id>-live.toml` the run keeps), never one recorded silent.
+Sequences recorded before the viewer plays them wait in a
+file of their own: `frames --sequences <file> --no-check` records them (the frame check left out),
+each moved into `sequences.toml` once the viewer plays it (T1b1's in `map/to-record.toml`, moved by
+T1b2, the file removed). A run with an
 `xdd.dll` built before T1b1 fails as stale where it reads the acknowledgement whole (15 fields,
 not 16): rebuild it with `setup.sh`.
 

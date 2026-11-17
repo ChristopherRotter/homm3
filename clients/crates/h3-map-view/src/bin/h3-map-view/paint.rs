@@ -34,7 +34,7 @@ use h3_map_view::situation::Situation;
 use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
-    Action, Cursor, DEFAULT_CURSOR, Direction, Draw, Hero, NextTurn, Start,
+    Action, Computer, Cursor, DEFAULT_CURSOR, Direction, Draw, Hero, NextTurn, Start,
 };
 use h3_map_view::turn;
 use h3_render::Bugs;
@@ -128,8 +128,12 @@ pub fn for_sequence<'a>(
         (None, Vec::new())
     };
     let sound = painter.sound(hero.map(|h| h.at))?;
-    // End Turn's question and the turns' messages (E24 M4 T1a).
-    let (question, turns) = painter.boxes()?;
+    // End Turn's question and the turns' messages (E24 M4 T1a); a computer's walks from the
+    // recorded `hero` lines (E24 M4 T1b2).
+    let lines = sequence.heroes(recorded.as_deref().unwrap_or_default())?;
+    let (question, turns) = painter
+        .boxes(&lines)
+        .map_err(|e| format!("{}: {e}", live_path.display()))?;
     let start = Start {
         view,
         size: i32::from(situation.size),
@@ -157,6 +161,10 @@ pub fn for_sequence<'a>(
         move_reminder: sequence.move_reminder()?,
         question: Some(question),
         turns,
+        computer: Computer {
+            speed: sequence.computer_speed()?,
+            blackout: sequence.blackout()?,
+        },
     };
     Ok(Setup {
         painter,
@@ -212,7 +220,7 @@ pub fn for_situation<'a>(
     let hero = sequence::selected_hero(&painter.live).ok();
     painter.selected = sequence::selected_in(&painter.live).ok();
     let sound = painter.sound(hero.map(|h| h.at))?;
-    let (question, turns) = painter.boxes()?;
+    let (question, turns) = painter.boxes(&[])?;
     let start = Start {
         view,
         size: i32::try_from(painter.art.size).unwrap_or(i32::MAX),
@@ -238,6 +246,7 @@ pub fn for_situation<'a>(
         move_reminder: false,
         question: Some(question),
         turns,
+        computer: Computer::default(),
     };
     Ok(Setup {
         painter,
@@ -452,8 +461,9 @@ impl<'a> Painter<'a> {
 
     /// The boxes End Turn opens (E24 M4 T1a, design §5.1): its question (GENRLTXT 56, style 2) and
     /// each of the live part's turns with its week's or month's message at a week's start (style
-    /// 1), laid out in the box's font, framed in the viewer's colours.
-    fn boxes(&self) -> Result<(Arc<MessageBox>, Vec<NextTurn>), String> {
+    /// 1), laid out in the box's font, framed in the viewer's colours; since E24 M4 T1b2 each
+    /// turn's heroes standing and a computer's walks from the recorded `hero` lines (`lines`).
+    fn boxes(&self, lines: &[(u32, Hero)]) -> Result<(Arc<MessageBox>, Vec<NextTurn>), String> {
         let assets = self.assets;
         let layout = &assets.layout.message;
         let font = self
@@ -472,16 +482,21 @@ impl<'a> Painter<'a> {
         } else {
             0
         };
-        let turns = self
-            .live
+        let live = &self.live;
+        let turns = live
             .turns
             .iter()
-            .map(|t| NextTurn {
-                turn: t.clone(),
-                message: turn::message(texts, art, (t.kingdom.date, t.week, t.month), growth)
-                    .map(|text| laid(&text, Style::Ok)),
+            .enumerate()
+            .map(|(i, t)| {
+                Ok(NextTurn {
+                    turn: t.clone(),
+                    message: turn::message(texts, art, (t.kingdom.date, t.week, t.month), growth)
+                        .map(|text| laid(&text, Style::Ok)),
+                    heroes: turn::placed(&live.heroes, &live.boats, t)?,
+                    walks: turn::walks(&live.turns, i, &live.heroes, lines)?,
+                })
             })
-            .collect();
+            .collect::<Result<Vec<_>, String>>()?;
         Ok((question, turns))
     }
 
@@ -548,8 +563,14 @@ impl<'a> Painter<'a> {
             river_cycles: base.river_cycles.wrapping_add(draw.cycles),
             frames: base.frames.wrapping_add(draw.frames),
         };
-        // The selected hero as the draw has it (E24 M3 T6b1: a hero chosen is another; the one
-        // chosen away from keeps the tile and facing its last draw gave it).
+        // The map's heroes as the draw has them (E24 M4 T1b2: a computer's moves), then the
+        // selected hero as the draw has it (E24 M3 T6b1: a hero chosen is another; the one chosen
+        // away from keeps the tile and facing its last draw gave it).
+        for (live, hero) in self.live.heroes.iter_mut().zip(draw.heroes.iter()) {
+            live.at = hero.at;
+            live.facing = Facing::from_number(u8::try_from(hero.facing.number()).unwrap_or(0))
+                .unwrap_or(live.facing);
+        }
         match (draw.selected, self.selected) {
             (Some(index), _) => self.walk(index, draw),
             // A town chosen (no hero selected): the path cleared, the hero put back.
@@ -570,6 +591,8 @@ impl<'a> Painter<'a> {
         });
         // The buttons pressed (E24 M3 T6b1).
         self.live.pressed.clone_from(&draw.pressed);
+        // A computer player's turn's buttons and shield (E24 M4 T1b2).
+        self.live.computer = draw.computer;
         // The lists as last shown (E24 M3 T4b).
         if self.live.kingdom != *draw.kingdom {
             self.live.kingdom.clone_from(&draw.kingdom);

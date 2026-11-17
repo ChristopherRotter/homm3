@@ -67,7 +67,9 @@ pub mod id {
 /// disabled without a quest; sleep and cast a spell disabled without a hero selected, sleep's
 /// DEF the asleep one while it sleeps; move hero and next hero as the live part's buttons (or as
 /// [`Buttons::of`] gives them); each list's up arrow disabled at its top, its down arrow when no
-/// more than its slots lie below the top; the buttons the layout names in the viewer's colours.
+/// more than its slots lie below the top; the buttons the layout names in the viewer's colours;
+/// during a computer player's turn (E24 M4 T1b2, design §5.2) the layout's `computer` buttons
+/// disabled too.
 /// The lists' slots by [`lists`] (design §4.5): each hero's portrait and its bars' frames, each
 /// town's picture, an empty slot the layout's picture and frame 0; the selection frames hidden
 /// ([`selections`] draws the selected hero's after the items, as 0x4038C0 does). None when a
@@ -88,13 +90,19 @@ pub fn dialog(
         Selected::Hero(i) => Some(kingdom.heroes.get(i).copied().unwrap_or_default()),
         Selected::None | Selected::Town(_) => None,
     };
-    let disabled = disabled(kingdom, buttons, levels);
+    let computer = live
+        .computer
+        .then_some(&layout.panels.computer)
+        .into_iter()
+        .flatten()
+        .map(|&id| (id, true));
     let hidden = State {
         hidden: true,
         ..State::default()
     };
-    let off: Vec<u16> = disabled
+    let off: Vec<u16> = disabled(kingdom, buttons, levels)
         .into_iter()
+        .chain(computer)
         .filter(|&(_, off)| off)
         .map(|(id, _)| id)
         .collect();

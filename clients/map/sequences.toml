@@ -20,7 +20,11 @@
 # asked at 0 until `end` ms after it, built afresh by 0's redraw (design §4.9). Since E24 M3 T6b1
 # `press` and `release` (the left button down and up apart at a point: a panel's button held
 # between them) and the panels' hotkeys by their letters (`keydown = "h"`: the key down presses
-# the button, the key up clicks it; design §4.13).
+# the button, the key up clicks it; design §4.13). Since E24 M4 T1a `move_reminder` (0 or 1: End
+# Turn asks while a hero can move) and `rolls` (each forced draw's value); since T1b1 a computer
+# player's turn's `computer_speed` (Computer Walk Speed, 2 to 5; none the harness's settings' 3),
+# `blackout` (Blackout Computer, 0 or 1) and `seed` (the game's generator seeded before Begin and
+# at 0; capture/README.md, "A computer player's turn").
 
 [[sequence]]
 id = "idle-cycles"
@@ -840,3 +844,52 @@ inputs = [
     { at = 100, keydown = "e" }, { at = 160, keyup = "e" },
     { at = 800, keydown = "Return" }, { at = 860, keyup = "Return" },
 ]
+
+# A computer player's moves in sight (E24 M4 T1b1 recorded them, T1b2 plays them; design §5.2):
+# Red's End Turn, Blue's turn with its hero walking in Red's explored land (the view following it,
+# the status window's kind 5, the minimap's place the shield, four buttons blank), then Red's next
+# day; at each Computer Walk Speed and under Blackout Computer, and from the fog. `seed` seeds the
+# game's generator (its computer's draws), so that every run walks alike.
+
+[[sequence]]
+id = "ai-walk"
+situation = "seq-turn-ai"
+ms = 2000
+seed = 1
+why = "a computer player's walk in sight at Computer Walk Speed 3 (the first run's): the view on its hero, kind 5's steps, the cursor hidden, then the next day"
+inputs = [{ at = 100, keydown = "e" }, { at = 160, keyup = "e" }]
+
+[[sequence]]
+id = "ai-walk-slow"
+situation = "seq-turn-ai"
+ms = 2800
+seed = 1
+computer_speed = 2
+why = "the same walk at Computer Walk Speed 2: three frames of 50 ms a step"
+inputs = [{ at = 100, keydown = "e" }, { at = 160, keyup = "e" }]
+
+[[sequence]]
+id = "ai-walk-fast"
+situation = "seq-turn-ai"
+ms = 600
+seed = 1
+computer_speed = 4
+why = "the same walk at Computer Walk Speed 4: each step drawn once with no wait, so the whole turn in End Turn's millisecond"
+inputs = [{ at = 100, keydown = "e" }, { at = 160, keyup = "e" }]
+
+[[sequence]]
+id = "ai-walk-blackout"
+situation = "seq-turn-ai"
+ms = 600
+seed = 1
+blackout = 1
+why = "the same walk under Blackout Computer: no step shown, so the whole turn in End Turn's millisecond"
+inputs = [{ at = 100, keydown = "e" }, { at = 160, keyup = "e" }]
+
+[[sequence]]
+id = "ai-walk-fog"
+situation = "seq-turn-ai-fog"
+ms = 2000
+seed = 1
+why = "the walk starting in the fog: its first steps unseen (no time), the view on the hero at its first step in sight"
+inputs = [{ at = 100, keydown = "e" }, { at = 160, keyup = "e" }]
