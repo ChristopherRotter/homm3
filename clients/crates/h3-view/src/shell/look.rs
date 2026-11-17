@@ -212,7 +212,10 @@ pub fn look(layout: &ShellLayout, screen: Screen, front: Option<&Front>) -> Opti
 /// palette) and the players' palette.
 #[must_use]
 pub fn names(layout: &ShellLayout) -> Vec<String> {
-    let mut names = alloc::vec![layout.cursor.def.clone(), layout.adventure_cursor.def.clone()];
+    let mut names = alloc::vec![
+        layout.cursor.def.clone(),
+        layout.adventure_cursor.def.clone()
+    ];
     for menu in [&layout.main_menu, &layout.game_type] {
         names.push(menu.background.clone());
         for draw in menu.dialog.draws(&Shown::default(), "") {
@@ -221,7 +224,11 @@ pub fn names(layout: &ShellLayout) -> Vec<String> {
         names.extend(menu.titles.iter().cloned());
     }
     names.extend(layout.scenario.backgrounds.iter().cloned());
-    for dialog in [&layout.multiplayer, &layout.hot_seat, &layout.scenario.dialog] {
+    for dialog in [
+        &layout.multiplayer,
+        &layout.hot_seat,
+        &layout.scenario.dialog,
+    ] {
         for draw in dialog.draws(&Shown::default(), "") {
             names.extend(h3_ui::paint::names(&draw).into_iter().map(String::from));
         }

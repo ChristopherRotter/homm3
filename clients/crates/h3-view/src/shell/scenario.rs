@@ -1,5 +1,5 @@
 //! The scenario screen in its new-game mode (E27 M3 T1a; `docs/epics/E27-design.md` §3.1, §3.2,
-//! §3.5, §3.8, §19): `scenario_dialog_create` 0x579960 with its argument 0, a single scenario,
+//! §3.5, §3.8, §18): `scenario_dialog_create` 0x579960 with its argument 0, a single scenario,
 //! the list hidden (a new game opens with no left-hand panel, the background showing there).
 //!
 //! - **The frame** (§3.1): `gamselb1.pcx` when `random_between(1, 100)` is below 51, else
@@ -37,7 +37,7 @@ use h3_ui::ui::{Dialog, Draw, Shown, State};
 
 use super::Ended;
 use super::keys::{Command, Context};
-use super::menu::{Did, Hovers};
+use super::menu::{Arrow, Did, Hovers};
 use crate::message::MessageBox;
 
 /// Show Available Scenarios (128: S).
@@ -196,13 +196,14 @@ impl Entry {
 
 /// The list's order as built (`scenario_list_finish` 0x582E90: key 2, the format then the name
 /// case-insensitively, `scenario_compare_version` 0x591190), the file's name breaking ties
-/// (CLT-Q90).
+/// (CLT-Q90: case-insensitively, then as it is).
 pub fn sort(entries: &mut [Entry]) {
     entries.sort_by(|a, b| {
         a.format
             .cmp(&b.format)
             .then_with(|| caseless(&a.name).cmp(caseless(&b.name)))
             .then_with(|| caseless(&a.file).cmp(caseless(&b.file)))
+            .then_with(|| a.file.cmp(&b.file))
     });
 }
 
@@ -289,9 +290,17 @@ impl Scenario {
 
     /// The screen opened anew (`scenario_new` 0x4F0490), the menus' last items `hovers` carried
     /// for the menu after it, its background `gamselb0.pcx` until the caller draws
-    /// ([`Scenario::with_background`]).
+    /// ([`Scenario::with_background`]). Its busy cursor leaves the adventure map's arrow in the
+    /// original's profile (CLT-Q137 (b): the client's keeps the default one).
     #[must_use]
     pub fn opened(&self, hovers: Hovers) -> Self {
+        let hovers = match self.bugs {
+            Bugs::Original => Hovers {
+                arrow: Arrow::Adventure,
+                ..hovers
+            },
+            Bugs::Fixed => hovers,
+        };
         let mut opened = Self::new(
             self.dialog.clone(),
             self.texts.clone(),
@@ -396,9 +405,7 @@ impl Scenario {
             entry.name.clone()
         };
         shown.texts.insert(NAME, name);
-        shown
-            .texts
-            .insert(DESCRIPTION, entry.description.clone());
+        shown.texts.insert(DESCRIPTION, entry.description.clone());
         let victory = match entry.victory {
             Some(goal) if entry.standard => text_at(&t.with_standard, usize::from(goal)),
             Some(goal) => text_at(&t.victories, usize::from(goal) + 1),
@@ -489,7 +496,10 @@ impl Scenario {
         if self.over != Over::Nothing || self.input.holds_button() {
             return Did::default();
         }
-        match self.item_at(point).filter(|id| self.texts.help.contains_key(id)) {
+        match self
+            .item_at(point)
+            .filter(|id| self.texts.help.contains_key(id))
+        {
             Some(id) => {
                 self.over = Over::Help(id);
                 Did::CHANGED
@@ -539,7 +549,10 @@ impl Scenario {
 
     /// Whether the layout has a button `id`.
     fn has(&self, id: u16) -> bool {
-        self.dialog.items.iter().any(|item| item.id() == id)
+        self.dialog
+            .items
+            .iter()
+            .any(|item| matches!(item, h3_ui::ui::Item::Button(b) if b.id == id))
     }
 
     /// The item under the mouse at `point` (`dialog_item_at` 0x5FF3E0: the last in order whose
@@ -609,4 +622,4 @@ fn text_at(texts: &[String], k: usize) -> String {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

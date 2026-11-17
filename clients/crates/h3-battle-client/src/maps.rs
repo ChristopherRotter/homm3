@@ -114,24 +114,18 @@ mod tests {
         dir.join(MAPS).is_dir().then_some(dir)
     }
 
-    /// Every shipped map reads (decision 44: all 160 import and validate since E08 T97b1), in the
-    /// list's order: the formats in turn, the names case-insensitively.
+    /// Every shipped map reads (decision 44: all import and validate since E08 T97b1), in the
+    /// list's order: the formats in turn, the names case-insensitively. The copy's `Maps` holds
+    /// 160 files: 159 maps (`*.h3m`, the new game's pattern) and the tutorial's `Tutorial.tut`.
     #[test]
     fn the_shipped_maps_read_into_the_list() {
         let Some(install) = staged() else {
             return;
         };
         let entries = entries(&install);
-        assert_eq!(entries.len(), 160);
-        assert!(
-            entries
-                .windows(2)
-                .all(|w| w[0].format <= w[1].format)
-        );
-        let arrogance = entries
-            .iter()
-            .find(|e| e.file == "Arrogance.h3m")
-            .unwrap();
+        assert_eq!(entries.len(), 159);
+        assert!(entries.windows(2).all(|w| w[0].format <= w[1].format));
+        let arrogance = entries.iter().find(|e| e.file == "Arrogance.h3m").unwrap();
         assert_eq!(arrogance.name, "Arrogance");
         assert_eq!(arrogance.size, 36);
         assert_eq!(arrogance.difficulty, 1);

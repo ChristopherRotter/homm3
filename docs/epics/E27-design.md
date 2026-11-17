@@ -2414,3 +2414,68 @@ default:
   Lock a capital; Home, Delete, End and BackSpace as the table's commands; the hot seat's Tab,
   Shift and Tab, and Enter pressing an enabled OK (the scenario screen's stub).
 
+
+## 18. The scenario screen's frame and information panel (M3 T1a, 2026-11-17)
+
+Read from `Heroes3.exe` for the new-game mode with the list hidden (§3.1, §3.2, §3.5), and
+recorded again (`scn-new`, `scn-list-keys`: as kept). The client: `h3_view::shell::scenario`, the
+layout's `[scenario]`, `h3-battle-client`'s `maps`.
+
+### 18.1 The items' drawing
+
+- **A caption button** (`H3DlgCaptionButton`, created by 0x456A50, vtable 0x63BB88, drawn by
+  0x456CA0): the DEF button's frame (`def_button_draw` 0x456940), then its caption (+0x5C) by
+  `text_draw` in the button's box (+0x1C, +0x1E) in its font (+0x68), alignment 5, colour +0x6C
+  (2 more while the state has 0x28); the box at (x, y − 1) while released, (x + 1, y) while
+  pressed (state bit 1). The panel buttons: `gspbutt.def`, `smalfont.fnt`, colour 4, frames 0
+  and 1; hotkeys 0x1F (S, 128), 0x1E (A, 129), 0x13 (R, 130); built in that order (128, 129,
+  130). `h3_ui::ui::Caption`.
+- **The scrolling text** (`H3DlgScrollableText::Create` 0x5B9FB0, the description: (422, 155,
+  319, 115), `smalfont.fnt`, colour 4): the text split into lines at width − 24; more lines than
+  the box's height ÷ the font's height takes the scroll bar's path (0x5BA19E, *not read*: T2);
+  else split again at width − 3, padded with empty lines, each line a text item at (x, y + k ×
+  height, width, height), alignment 0. The client draws the fitting case as one label of width
+  − 3 (the drawer's lines are the font's height apart: the same pixels, `scn-new` exact).
+- **The labels** (`text_item_create`, all `smalfont.fnt`): 132 "%s:" (0x660D28) of GENRLTXT 493
+  at (414, 435, 334, 19), 133 "%s:" of 219 at (665, 435, 84, 19), 134 GENRLTXT 495 at (414, 435,
+  90, 19), colour 2, alignment 5; the name's (496), the description's (497), victory's (498) and
+  loss's (499) labels (id 100, 105, 100, 100) at x 422, width 278, height 18, colour 2, alignment
+  4; the allies' "%s:" of 391 (id 100) at (414, 403, 44, 23) and the enemies' of 392 (386) at
+  (579, 403, 58, 23), colour 4, alignment 6. The flags: `itgflags.def` items 112 + i at (460 + 15
+  i, 405) and 120 + i at (640 + 15 i, 405), 15 × 20, hidden; the strip 387 (456, 402, 310, 25)
+  added after them.
+- **The redraw's own** (`scenario_info_draw` 0x5840F0, §3.5 corrected): the name in `bigfont.fnt`
+  colour 8 **alignment 0** at (422, 45, 324, 30); the map's difficulty and the rating ("%d%%",
+  0x6831E4) colour 4 alignment 5; victory's text ("%s %s %s", 0x6837B4, with GENRLTXT 5 and the
+  standard's record when the map allows it, the record's +1) and loss's at alignment 4; the
+  marks by `def_draw_plain`. The client draws them as items of its own ids (1000 on), no hint.
+- **Begin and Back:** `scnrbeg.def` (a new game's; frames 0, 1; hotkey 0x1C) at (414, 535, 166,
+  40), `scnrback.def` (frames 0, 1; hotkey 1) at (584, 535, 166, 40). The difficulty's buttons
+  `gspbut3` to `7.def` at (506 + 32 i, 456, 30, 46), frames 0 and 1, the chosen selected (3).
+
+### 18.2 The texts and the draws
+
+- **`difficulty_names`** (0x6A77EC, §6.4's item): `arraytxt_load` copies ArrayTxt.txt's records
+  142 to 146 (after the label 141; the map sizes 137 to 140 into 0x6A7D94, the directions 148 to
+  156 into 0x6A5C48), *read*.
+- **The background's draw** is the client's own randomness; under the harness the original's
+  draws are fixed by its frozen clock (`scn-new`: gamselb0, gamselb0, gamselb1 at its three
+  openings), so the replay takes them from a recipe's `backgrounds` (*provisional*).
+- **The cursor** (CLT-Q137): the constructor's busy cursor (`busy_cursor_start` 0x577790:
+  `mouse_set_cursor`(1, 1), `busy_cursor_stop` 0x577810: (0, 1)) leaves the adventure map's
+  arrow, `cradvntr.def`'s frame 0 (the cursors' DEFs by type, 0x67FF38: `crdeflt`, `cradvntr`,
+  `crcombat`, `crspell`), until the menu loop's top sets `crdeflt.def`'s again (0x4EE8CC: (0, 0)).
+  The two arrows have the same shape in other colours (one level of green or blue in 38 pixels):
+  `scn-new`'s 25 shots with the cursor and New Game's menu after its Escape show `cradvntr`'s.
+  The client keeps the default arrow, the original's for the comparisons only (CLT-Q137 (b),
+  decision 46).
+- **M2's leftover** (the keys without an `h3_sdl::Key` variant): met since E17 M5 T8b2, they reach
+  the window as `Key::Other`, which skips the start (checked in the window under Xvfb: 7 and
+  Insert skip the start, F4 does not); a hotkey still needs a variant (TRAPS).
+
+### 18.3 Not built (T1b on)
+
+The list and its panel (128's command, GENRLTXT 503), the right press on the flags' strip (the
+teams' dialog, 0x576540) and on the labels and texts (`scn-right`), the description's scroll bar,
+the difficulty's presses and Begin (T2), the advanced options (T3), the hot seat's mode (T4), the
+random map (T5).

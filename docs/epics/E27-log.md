@@ -955,3 +955,35 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
   checkouts' debug artifacts in one target, 14 GB, beside a coverage target of 5.7 GB): TRAPS.
 - **Change freely** (the agent's): the census and font tools (`/home/claude/tools/`, outside the
   repo); the review list's wording.
+
+## M3 T1a — the scenario screen's frame and information panel: a new single scenario's, the list hidden (2026-11-17)
+
+- **The cut** (decision 45): T1 as the M3 table had it could not be exact without T2's panel (the
+  screen shows the kept map's information from its first shot), so T1a is the frame with the
+  panel, T1b the list.
+- **Read** (design §18): the caption button (0x456A50, drawn by 0x456CA0), the scrolling text
+  (0x5B9FB0), the constructor's labels, flags, panel buttons, difficulty's buttons, Begin and
+  Back, the redraw's name (alignment 0, §3.5 corrected), texts and marks; `difficulty_names` as
+  ArrayTxt.txt 142 to 146 (§6.4's item); the busy cursor's stop on the adventure map's arrow
+  (CLT-Q137, asked and answered (b): decision 46).
+- **Built:** `h3_view::shell::scenario` (the screen: `Scenario`, its `Entry` and `Texts`, `sort`,
+  the panel's texts, marks and flags from the entry, the chosen difficulty selected, the buttons'
+  hold, Back's ending, the hotkeys, the right press's popups), `Front::Scenario`,
+  `Menus::scenario`, `menu::Arrow` (carried in `Hovers`; the menu loop's top resets it at the
+  main menu), `look::ScenarioLayout` and `Look::arrow`, the replay's `with_backgrounds`;
+  `h3_ui::ui::Caption` (a button's caption, additive in the foundation); the keys' context
+  `Scenario` (S, R, A, Enter, Escape); `h3-battle-client`'s `maps` (the installation copy's
+  maps read whole at the shell's start, the list's order: 159, the `*.h3m` of the copy's 160
+  files, the 160th the tutorial's `Tutorial.tut`) and the shell's `--backgrounds`, the
+  second arrow drawn and as the hardware cursor; the layout's `[scenario]` and
+  `[adventure_cursor]`; the keys `shell.scenario.*` (VCDESC and LCDESC new tables); `h3shell.py
+  drawn` passes a recipe's `backgrounds` (`scn-new`: 0, 0, 1).
+- **Compared:** `scn-new` 30 of 31 exact (`list-shown` T1b's), every other recipe as recorded;
+  `scn-new` and `scn-list-keys` played again under Wine as kept. The window (the client's
+  profile) checked under Xvfb: the screen, Escape back to New Game's menu.
+- **M2's leftover** found met: a key without an `h3_sdl::Key` variant reaches the window as
+  `Key::Other` (E17 M5 T8b2), which skips the start (7 and Insert skip it, F4 not, in the window
+  under Xvfb); a test asserts it; no `h3_sdl` change, no inbox note.
+- **The sandbox:** the PC's 64 files staged at once (digest `0a71d131…`); the setup's baseline
+  stopped before coverage, but `cargo-llvm-cov` outlived the watcher's kill (TRAPS); the VM
+  restarted once during the setup (files kept).

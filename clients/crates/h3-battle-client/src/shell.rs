@@ -81,8 +81,8 @@ use h3_view::shell::keys::{self as shell_keys, Command, GAME_TYPE, MAIN_MENU};
 use h3_view::shell::look::{self, CursorLook, ShellLayout};
 use h3_view::shell::menu::{self, Arrow, Boxes, Front, Kind, Menu, Menus};
 use h3_view::shell::multiplayer::{self, Multiplayer, Texts};
-use h3_view::shell::scenario::{self, Scenario};
 use h3_view::shell::replay::{self, INPUT_STEP, Replay, Stop, Take};
+use h3_view::shell::scenario::{self, Scenario};
 use h3_view::shell::start::{self as clips, Header, Op, Pace, Part, Picture, Source, Start};
 use h3_view::shell::{Ended, Game, Screen, Shell, text};
 
@@ -1331,6 +1331,9 @@ mod tests {
             assert_eq!(skips_start(&Event::Key(key)), key != Key::F4, "{key:?}");
         }
         assert!(skips_start(&Event::Key(Key::RightButton)));
+        // E27 M3 T1a (M2's leftover): a key `h3_sdl::Key` has no variant for (a digit, B,
+        // Insert) reaches the window as `Key::Other` (`Window::events`), which skips too.
+        assert!(skips_start(&Event::Key(Key::Other)));
         assert!(skips_start(&Event::Click {
             down: true,
             at: (1, 2)
@@ -1388,10 +1391,19 @@ mod tests {
                 steps: "s".into(),
                 frames: "f".into(),
                 pointer: PARK,
-                input_step: 100
+                input_step: 100,
+                backgrounds: Vec::new(),
             }
         );
         assert_eq!(replay.install, PathBuf::from("i"));
+        // E27 M3 T1a: the scenario screen's background draws, a replay's alone.
+        let drawn = parse(&["--steps", "s", "--frames", "f", "--backgrounds", "0,0,1"]);
+        assert!(matches!(
+            drawn.unwrap().mode,
+            Mode::Replay { backgrounds, .. } if backgrounds == [0, 0, 1]
+        ));
+        assert!(parse(&["--steps", "s", "--frames", "f", "--backgrounds", "2"]).is_err());
+        assert!(parse(&["--window", "--backgrounds", "1"]).is_err());
         let placed = parse(&[
             "--steps",
             "s",

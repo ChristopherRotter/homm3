@@ -562,3 +562,83 @@ size = [42, 38]
     shown.frames.insert(219, 6);
     assert_eq!(d.draws(&shown, "P.pal"), [shared(6)]);
 }
+
+#[test]
+fn a_caption_button_draws_its_text_over_its_frame() {
+    // E27 M3 T1a (0x456CA0): the text after the frame, one pixel up while released, one right
+    // while pressed, its colour 2 more while disabled; none while hidden or without a caption.
+    let dialog: Dialog = toml::from_str(
+        r#"
+place = [10, 20]
+[[items]]
+kind = "button"
+id = 128
+def = "gspbutt.def"
+at = [404, 61]
+size = [200, 20]
+caption = { font = "smalfont.fnt", font_palette = "game.pal", colour = 4, align = 5 }
+[[items]]
+kind = "button"
+id = 186
+def = "scnrbeg.def"
+at = [0, 0]
+size = [166, 40]
+"#,
+    )
+    .unwrap();
+    let mut shown = Shown::default();
+    shown.texts.insert(128, "Show".to_string());
+    let caption = |shown: &Shown| {
+        dialog.draws(shown, "").into_iter().find_map(|d| match d {
+            Draw::Label {
+                item,
+                x,
+                y,
+                text,
+                disabled,
+            } => Some((item.id, [x, y], item.size, item.colour, text, disabled)),
+            _ => None,
+        })
+    };
+    let draws = dialog.draws(&shown, "");
+    assert_eq!(draws.len(), 3);
+    assert!(matches!(&draws[0], Draw::Button { frame: 0, .. }));
+    assert_eq!(
+        caption(&shown),
+        Some((128, [414, 80], [200, 20], 4, "Show".to_string(), false))
+    );
+    let state = State {
+        pressed: true,
+        ..State::default()
+    };
+    shown.states.insert(128, state);
+    assert_eq!(caption(&shown).map(|c| c.1), Some([415, 81]));
+    shown.states.insert(
+        128,
+        State {
+            disabled: true,
+            ..State::default()
+        },
+    );
+    assert_eq!(caption(&shown).map(|c| c.5), Some(true));
+    shown.states.insert(
+        128,
+        State {
+            hidden: true,
+            ..State::default()
+        },
+    );
+    assert_eq!(caption(&shown), None);
+    let Item::Button(button) = &dialog.items[0] else {
+        panic!("a button")
+    };
+    let hidden = State {
+        hidden: true,
+        ..State::default()
+    };
+    assert_eq!(button.caption_draw(hidden, [0, 0], "x"), None);
+    let Item::Button(plain) = &dialog.items[1] else {
+        panic!("a button")
+    };
+    assert_eq!(plain.caption_draw(State::default(), [0, 0], "x"), None);
+}

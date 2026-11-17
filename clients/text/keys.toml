@@ -2396,7 +2396,7 @@ original = [{ at = "HELP:561:0" }]
 id = "shell.hot-seat.help.cancel"
 original = [{ at = "HELP:561:0" }]
 
-# The scenario screen (E27 M3 T1a; design §3.2, §3.5, §19; `scenario_dialog_create` 0x579960,
+# The scenario screen (E27 M3 T1a; design §3.2, §3.5, §18; `scenario_dialog_create` 0x579960,
 # `scenario_info_draw` 0x5840F0): a label's word and colon (the executable's "%s:", 0x660D28) for
 # the player's difficulty, the rating, the allies and the enemies; the labels' words, the panel
 # buttons' captions; a map's name when it has none (GENRLTXT 509).
@@ -2458,7 +2458,7 @@ id = "shell.scenario.unnamed"
 original = [{ at = "GENRLTXT:509" }]
 
 # The difficulties' names (`difficulty_names` 0x6A77EC: `arraytxt_load` 0x5B9DED copies ArrayTxt.txt's
-# records 142 to 146, after the map sizes' 137 to 140; design §19.2).
+# records 142 to 146, after the map sizes' 137 to 140; design §18.2).
 [[key]]
 id = "shell.scenario.difficulty.easy"
 original = [{ at = "ARRAYTXT:142" }]

@@ -75,6 +75,11 @@ fn the_commands_have_names_in_the_shell_s_table() {
             "multiplayer-cancel",
             "hot-seat-ok",
             "hot-seat-cancel",
+            "scenario-list",
+            "scenario-random",
+            "scenario-advanced",
+            "scenario-begin",
+            "scenario-back",
             "edit-home",
             "edit-end",
             "edit-left",
@@ -242,4 +247,17 @@ fn a_name_s_shift_is_read_off_it() {
     assert_eq!(shifted("Shift+a"), (true, "a"));
     assert_eq!(shifted("Tab"), (false, "Tab"));
     assert_eq!(shifted("shift"), (false, "shift"));
+}
+
+#[test]
+fn the_scenario_screen_s_hotkeys_are_the_original_s() {
+    // E27 M3 T1a: S, R, A, Enter and Escape on the scenario screen alone.
+    let keys = Keys::<Command>::original();
+    let on = |key| keys.command(Context::Scenario, false, key);
+    let ids: Vec<Option<Command>> = ["S", "R", "A", "Return", "Escape"].map(on).into();
+    assert_eq!(
+        ids,
+        [128, 130, 129, 186, 188].map(|id| Some(Command::Dialog(id)))
+    );
+    assert_eq!(keys.command(Context::GameType, false, "R"), None);
 }

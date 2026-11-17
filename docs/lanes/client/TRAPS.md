@@ -325,9 +325,14 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   left out of the viewer's steps (its `stop <k>` counts the viewer's). The window under Xvfb:
   SDL's default renderer (EGL over Mesa) dumps black with `xwd`; `SDL_RENDER_DRIVER=software`
   shows it (the hardware cursor is never in the dump). With no window manager the window takes
-  `xdotool`'s keys only once a click focused it. `h3_sdl::Key` names a fixed set of keys: a hotkey
-  whose key has no variant there reaches the replay but never the window (E27 M2 T6b1: the main
-  menu's N and L), so a new screen's hotkeys are checked in the window too. **A keyboard layout
+  `xdotool`'s keys only once a click focused it (`xdotool windowfocus --sync <id>` focuses it
+  without a click: the start's clips then take a key). `h3_sdl::Key` names a fixed set of keys: a
+  hotkey whose key has no variant there reaches the replay but never the window (E27 M2 T6b1: the
+  main menu's N and L), so a new screen's hotkeys are checked in the window too; any other key
+  reaches it as `Key::Other` (it skips the start, E27 M3 T1a). **The scenario screen's
+  background** is drawn at random (E27 M3 T1a): under the harness the original's draws are fixed
+  by its frozen clock, and the viewer takes them from a recipe's `backgrounds` (0 at an opening
+  past them), so a recipe whose original opening shows `gamselb1.pcx` lists it. **A keyboard layout
   under Xvfb** (E27 M2 T7b): this sandbox's Xvfb ignores every keymap change at run time
   (`setxkbmap`, `xmodmap`, `xkbcomp` all exit 0 and change nothing); start it with the layout
   as its default instead: copy `/usr/share/X11/xkb`, replace the copy's `symbols/us` by a file
@@ -336,7 +341,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   text events compose dead keys with `LANG=C.UTF-8`.
 - **Coverage with the original data staged restarts the sandbox's VM** (E27 M2 T5b2 and T6a: the
   setup's baseline and `check.sh`, three runs, one build job or two; every step before coverage
-  passed): run the coverage as CI does, `H3_INSTALL` an empty folder (the staged-data tests
+  passed; E27 M3 T1a: a watcher that kills `verify-once.sh`'s tree at `== coverage` leaves
+  `cargo-llvm-cov` and its `cargo test` running, reparented: kill them by pid, `ps -eo
+  pid,args | grep llvm-cov`, and delete `clients/target/llvm-cov-target`): run the coverage as CI does, `H3_INSTALL` an empty folder (the staged-data tests
   skip; peak memory about 2 GB of 8), with `source scripts/llvm-tools.sh && llvm_tools_env` and
   `check.sh`'s `cargo llvm-cov` line, and the staged-data tests on their own without coverage
   (`RUST_TEST_THREADS=1 cargo test -p h3-battle-client`). CI's green run on `master` stands in for

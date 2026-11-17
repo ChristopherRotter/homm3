@@ -281,7 +281,8 @@ pub struct Hovers {
     /// The mouse's cursor (E27 M3 T1a; CLT-Q137): the menu loop's top sets the default arrow
     /// (0x4EE8CC, `mouse_set_cursor`(0, 0): `crdeflt.def`'s frame 0), the scenario screen's busy
     /// cursor leaves the adventure map's (`busy_cursor_stop` 0x577810: (0, 1), `cradvntr.def`'s
-    /// frame 0, slightly other colours) until the top sets it again.
+    /// frame 0, slightly other colours) until the top sets it again: in the original's profile
+    /// only (CLT-Q137 (b): the client's keeps the default arrow).
     pub arrow: Arrow,
 }
 
@@ -798,12 +799,7 @@ impl Menus {
                 Box::new(self.multiplayer.opened(*menu, pointer)),
             )),
             (Screen::Multiplayer(_), _) => None,
-            // Its busy cursor leaves the adventure map's arrow (CLT-Q137).
             (Screen::Scenario(Game::New, ScenarioKind::Single), _) => {
-                let hovers = Hovers {
-                    arrow: Arrow::Adventure,
-                    ..hovers
-                };
                 Some(Front::Scenario(Box::new(self.scenario.opened(hovers))))
             }
             _ => self
