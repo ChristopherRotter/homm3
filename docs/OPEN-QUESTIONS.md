@@ -89,18 +89,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Client lane (`CLT-Q<n>`)
 
-#### CLT-Q138 — The scenario list's partial redraw leaves stale pixels (E27 M3 T1b1, a reading and the recordings)
-
-`scenario_select` 0x585500 with an unchanged selection redraws only the list's items, the panel,
-the info texts and the rows (0x585A06; design §19.4). Every other item keeps its pixels: after
-any sort the size mark shows the previous selection's size (`scn-sort`: L over an M map), the
-list panel's opaque edge covers Begin's last row, and the flags' strip, restored from its kept
-background copy, loses the "Allies:" colon's shadow at x 456. It follows every sort, a move of the
-scroll bar, a click on the selected row and a key that keeps the selection, until the next whole
-redraw. Options: (a) the original's everywhere; (b) the client draws whole, the original's partial
-redraw for the comparisons only (`Bugs::Original`); (c) an option. **Recommended (b)** (a drawing
-bug: the user's rule, E17's decisions). Built as (b): the original's profile reproduces it, and
-`scn-list-keys`, `scn-filter` and 5 of `scn-sort` are exact with it. Blocks nothing.
+(no open questions)
 
 ### Map client lane (`MCL-Q<n>`)
 

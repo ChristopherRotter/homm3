@@ -5,7 +5,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 47). **M1 and M2 closed** (2026-11-13, 2026-11-16; `E27-archive.md`; the build record
+  to 48). **M1 and M2 closed** (2026-11-13, 2026-11-16; `E27-archive.md`; the build record
   `E27-log.md`; the readings `E27-design.md` §1 to §17, M3's from §18): the start's clips and
   their sound, start-up loading, the main menu, New Game's and Load Game's menus, Quit, the
   stubs and the client's own pack, the Multiplayer dialog and the hot seat's names, the edits;
@@ -13,7 +13,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   shipped map listed and read whole, Begin a notice after the loading bar, Options to M4):
   **T1a done** (2026-11-17, decisions 45 and 46: the frame and the information panel), **T1b1
   done** (2026-11-17, decision 47: T1b cut in two; the list, its sort, filters, keys and scroll
-  bar, `h3_ui::scrollbar`; 59 of 67 exact, the rest the ties' order; CLT-Q138 open).
+  bar, `h3_ui::scrollbar`; 59 of 67 exact, the rest the ties' order; CLT-Q138 (b): decision 48).
   **Next: M3 T1b2** (the list's right press, the teams dialog, GENRLTXT 503: the queue).
   Decisions to carry: the dialogs' input one
   implementation (20; `h3_ui::input`); the shell's code as the battle's (21); decision 22's
@@ -32,8 +32,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*`, `E27*` (since E17 closed: #866) and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first (at M1 T3: one per area, the
-  shots as contact sheets). **Open:** CLT-Q138 (the list's partial redraw; recommended (b),
-  built so). Answered, waiting on other lanes: CLT-Q63 (a), Q65 (b), Q69 (a) (the queue's inbox,
+  shots as contact sheets). **Open:** none. Answered, waiting on other lanes: CLT-Q63 (a), Q65 (b), Q69 (a) (the queue's inbox,
   "E17's leftovers"). `CLT-STUB-1` (a server's seat lacks the other hero's Orb and Cloak),
   `CLT-STUB-4` (no Auto Combat switch in a live game's battle), `CLT-STUB-5` (a hot-seat
   battle between two of the host's humans) and `CLT-STUB-6` (the Multiplayer dialog's network
@@ -63,9 +62,9 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   (decision 47). The PC's 64 files and the manuals staged at once (SHA-256 checked); `master`'s
   client build broken by #982 against #983: fixed in #988 first. Read `H3DlgScrollbar` whole and
   the list's draws, keys, sorts, filters and redraws; built `h3_ui::scrollbar` and the list;
-  CLT-Q138 asked (the partial redraw, reproduced for the comparisons). `scn-list-keys` recorded
-  again; 59 of 67 exact (the 8 others the ties' order, decision 12). Record: `E27-log.md`, "M3
-  T1b1".
+  CLT-Q138 asked and answered (b) (the partial redraw, for the comparisons). `scn-list-keys`
+  recorded again; 59 of 67 exact (the 8 others the ties' order, decision 12). Record:
+  `E27-log.md`, "M3 T1b1".
 - **2026-11-17, E27 M3 T1a (done; `client/e27-m3-t1a`).** T1 cut in two with the user (decision
   45). The original data staged at once (64 files and the manuals, checked by SHA-256); the
   baseline stopped before coverage (`cargo-llvm-cov` survived the watcher: TRAPS). Read the

@@ -2547,7 +2547,7 @@ call) without the allies' label drawn again, loses the label's colon column at x
 418). After a move of the bar, a row's click on the selection, a key that keeps the selection, a
 sort. The client, original's profile: the items the partial redraw leaves drawn first with the size
 mark's last whole frame, those it draws over them after, the strip as a stale rectangle
-(`Look::stale`); the client's profile draws whole (CLT-Q138, recommended (b)).
+(`Look::stale`); the client's profile draws whole (CLT-Q138 (b), decision 48).
 
 ### 19.5 The recordings and the comparisons
 

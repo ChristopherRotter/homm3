@@ -1019,8 +1019,8 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
   the 8 others (`scn-sort`'s size, players, victory and loss sorts) differ only in their ties'
   order (decision 12; each row's key column the original's, checked row by row). Before CLT-Q138's
   reproduction 49: the partial redraw's size mark and strip.
-- **Questions:** CLT-Q138 (the partial redraw: recommended (b), the client draws whole, the
-  original's for the comparisons; built so meanwhile).
+- **Questions:** CLT-Q138 asked and answered (b) (decision 48: the client draws whole, the
+  original's partial redraw for the comparisons; built so).
 - **Found on `master`:** the client workspace did not build (#982's `Button::caption` against
   #983's `h3_ui::message`): fixed in #988, merged first; `check-exe-map` lists six addresses of
   E24's design note and `turn.rs` unmapped (the map-client lane's inbox).
