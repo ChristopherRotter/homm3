@@ -6,7 +6,8 @@
 //! [`edit`] a dialog's edit field (its text, caret and keys), [`input`] a dialog's press, hold and release of its buttons, boxes and bars, one implementation
 //! for the battle's dialogs and the shell's (E27 M2 T3a, decision 20); [`text`] the string
 //! catalogue and its language packs; [`keys`] the table of what each key does, generic over a viewer's commands;
-//! [`music`] the original's music thread for a window's music stream. What is one viewer's alone
+//! [`music`] the original's music thread for a window's music stream; [`message`] the message box
+//! (E24 M4 T1a: the battle's `h3_view::message` trimmed to the adventure map's boxes). What is one viewer's alone
 //! (the battle's hexes and layouts, the map's tiles) stays in that viewer.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`; time is an input. The header below
@@ -34,6 +35,7 @@ pub mod cursor;
 pub mod edit;
 pub mod input;
 pub mod keys;
+pub mod message;
 pub mod music;
 pub mod paint;
 pub mod sprite;
