@@ -74,6 +74,11 @@ pub fn command(command: &EngineCommand) -> GameCommand {
                         EngineHeroChange::Swap => TownHeroChange::Swap {},
                     },
                 },
+                // E09 T38a1 (v71).
+                EngineTown::Hire { town, slot } => TownCommand::Hire {
+                    town: town.raw(),
+                    slot,
+                },
             },
         },
         // E16 M5 T14 (v56): the system actor's own commands, the host's.
@@ -293,6 +298,11 @@ pub fn command_to_engine(command: GameCommand) -> Result<EngineCommand, GameReje
                         TownHeroChange::Swap {} => EngineHeroChange::Swap,
                     },
                 },
+                // E09 T38a1 (v71): the slot as sent; the engine refuses one past the two.
+                TownCommand::Hire { town, slot } => EngineTown::Hire {
+                    town: TownId::new(town),
+                    slot,
+                },
             })
         }
         // E16 M5 T14 (v56): the engine refuses it from a seat (`SystemOnly`).
@@ -492,6 +502,9 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 TownCommandError::EntranceHeld => TownReject::EntranceHeld {},
                 TownCommandError::TooManyHeroes => TownReject::TooManyHeroes {},
                 TownCommandError::EmptyArmy => TownReject::EmptyArmy {},
+                TownCommandError::NoTavern => TownReject::NoTavern {},
+                TownCommandError::UnknownSlot => TownReject::UnknownSlot {},
+                TownCommandError::EmptySlot => TownReject::EmptySlot {},
             },
         },
     }

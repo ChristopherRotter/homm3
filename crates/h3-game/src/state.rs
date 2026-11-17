@@ -1577,6 +1577,17 @@ impl GameState {
         }
     }
 
+    /// What a hire's replacement writes (E09 T38a1, TWN-TAV-004): the taverns' parts
+    /// ([`Self::taverns`]) with the hirer's stream in place of the taverns' (ADR-0017 point 4).
+    pub(crate) fn taverns_for(&mut self, player: PlayerId) -> town::tavern::Parts<'_> {
+        town::tavern::Parts {
+            pool: &mut self.pool,
+            heroes: &mut self.heroes,
+            progression: &mut self.progression,
+            draws: &mut self.players[player.index()].rng,
+        }
+    }
+
     /// The adventure context's state.
     pub const fn adventure(&self) -> &AdventureState {
         &self.adventure

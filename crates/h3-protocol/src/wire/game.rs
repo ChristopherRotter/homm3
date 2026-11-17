@@ -966,6 +966,31 @@ pub enum TavernPart {
     },
 }
 
+/// A part of a hired hero's details its tavern slot's view did not show (`h3_game::HiredPart`;
+/// TWN-TAV-003, protocol v71): told to its owner after its `HeroHired`, in this order, so that the
+/// slot's view folded with them is the hero's details whole.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum HiredPart {
+    /// First, once: the levels at which a level-up last offered Wisdom and a magic school, and
+    /// how many positions its worn artifacts have ([`HeroDetails::worn`]'s length).
+    Details {
+        /// The levels last offered.
+        offered: OfferLevels,
+        /// The positions' count.
+        positions: u8,
+    },
+    /// An artifact of its backpack past the view's first five places, in backpack order.
+    Carried {
+        /// The artifact.
+        artifact: Artifact,
+    },
+    /// A spell it has learned, by handle, in its details' order.
+    Spell {
+        /// The spell.
+        spell: u16,
+    },
+}
+
 /// A tavern hero as its owner sees it (`h3_game::TavernHeroView`; TWN-TAV-002, protocol v70): its
 /// parts without a list, then its lists in [`TavernPart`]'s order.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

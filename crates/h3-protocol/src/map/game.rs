@@ -24,10 +24,10 @@ use h3_content::{CreatureTypeId, Formation as EngineFormation, ResourceId};
 use h3_contracts::{ArmyStack as EngineStack, FortLevel};
 use h3_game::{
     DecisionView, GameRuleset, GameState, GarrisonStackView, GarrisonView, HeroInfo as EngineInfo,
-    HireCreature as EngineCreature, HireSeen as EngineSeen, HireView, LevelUpView, MapGarrisonView,
-    MonthKind, PlayerView, SlotState as EngineSlot, TavernHero as EngineTavernHero,
-    TavernHeroView as EngineTavernView, TavernPart as EngineTavernPart, TownBuildingsView,
-    TownOwnerView, TownView, Viewer, WeekKind,
+    HireCreature as EngineCreature, HireSeen as EngineSeen, HireView, HiredPart as EngineHiredPart,
+    LevelUpView, MapGarrisonView, MonthKind, PlayerView, SlotState as EngineSlot,
+    TavernHero as EngineTavernHero, TavernHeroView as EngineTavernView,
+    TavernPart as EngineTavernPart, TownBuildingsView, TownOwnerView, TownView, Viewer, WeekKind,
 };
 use h3_heroes::{
     ArtifactInstance, HeroDetails as EngineDetails, OfferLevels as EngineLevels,
@@ -39,7 +39,7 @@ use crate::wire::WireU64;
 use crate::wire::game::{
     Adventure, AdventureReveal, Amount, ArmyStack, Artifact, Boat, Bonuses, Choice, ChoiceKind,
     Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonHero, GarrisonStack,
-    Guards, HeroDetails, HeroInfo, Hire, HireCreature, HireSeen, HireTarget, Known,
+    Guards, HeroDetails, HeroInfo, Hire, HireCreature, HireSeen, HireTarget, HiredPart, Known,
     KnownObject as WireKnownObject, LevelUp, MapGarrison, MapHero, Monster, Month, Object,
     ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, RevealedArea,
     RevealedView, SkillLevel, SlotState, Summoned, TavernHero, TavernHeroHead, TavernPart, Tile,
@@ -188,6 +188,23 @@ pub(super) fn tavern_part(part: EngineTavernPart) -> TavernPart {
             place: command::artifact_place(place),
             artifact: artifact(a),
         },
+    }
+}
+
+/// A part of a hired hero's details on the wire (protocol v71, E09 T38a1).
+pub(super) const fn hired_part(part: EngineHiredPart) -> HiredPart {
+    match part {
+        EngineHiredPart::Details {
+            offered: EngineLevels { wisdom, school },
+            positions,
+        } => HiredPart::Details {
+            offered: OfferLevels { wisdom, school },
+            positions,
+        },
+        EngineHiredPart::Carried(a) => HiredPart::Carried {
+            artifact: artifact(a),
+        },
+        EngineHiredPart::Spell(spell) => HiredPart::Spell { spell: spell.raw() },
     }
 }
 

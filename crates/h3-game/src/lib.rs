@@ -123,6 +123,7 @@ pub use setup::{
 };
 pub use state::{GameState, MonthKind, OpenBattle};
 pub use system::SystemCommand;
+pub use town::hire::HiredPart;
 pub use town::offer::TownOffer;
 pub use town::tavern::{TAVERN_BACKPACK_SHOWN, TavernHero, TavernHeroView, TavernPart};
 pub use town::view::{

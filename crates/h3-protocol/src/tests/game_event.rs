@@ -778,6 +778,37 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
                 },
             },
         },
+        G::HeroHired {
+            player,
+            hero,
+            hero_type,
+            slot,
+            pos,
+        } => GameEvent::HeroHired {
+            player: p(player),
+            hero: id(hero),
+            hero_type: Handle::from_raw(hero_type),
+            slot,
+            pos: pos_back(pos),
+            seen_by: alone,
+        },
+        G::HiredPartSeen { player, hero, part } => GameEvent::HiredPartSeen {
+            player: p(player),
+            hero: id(hero),
+            part: match part {
+                w::HiredPart::Details { offered, positions } => h3_game::HiredPart::Details {
+                    offered: OfferLevels {
+                        wisdom: offered.wisdom,
+                        school: offered.school,
+                    },
+                    positions,
+                },
+                w::HiredPart::Carried { artifact } => {
+                    h3_game::HiredPart::Carried(artifact_back(artifact))
+                }
+                w::HiredPart::Spell { spell } => h3_game::HiredPart::Spell(Handle::from_raw(spell)),
+            },
+        },
         G::GarrisonChanged {
             player,
             object_type,
@@ -1164,6 +1195,39 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             slot: 0,
             hero: None,
         },
+        // E09 T38a1 (v71): a hire both see, its slot player 0's alone, and its parts.
+        GameEvent::HeroHired {
+            player: P0,
+            hero: HeroId::new(6),
+            hero_type: Handle::from_raw(12),
+            slot: Some(1),
+            pos: at,
+            seen_by,
+        },
+        GameEvent::HiredPartSeen {
+            player: P0,
+            hero: HeroId::new(6),
+            part: h3_game::HiredPart::Details {
+                offered: OfferLevels {
+                    wisdom: 2,
+                    school: 3,
+                },
+                positions: 19,
+            },
+        },
+        GameEvent::HiredPartSeen {
+            player: P0,
+            hero: HeroId::new(6),
+            part: h3_game::HiredPart::Carried(ArtifactInstance {
+                artifact: Handle::from_raw(7),
+                spell: None,
+            }),
+        },
+        GameEvent::HiredPartSeen {
+            player: P0,
+            hero: HeroId::new(6),
+            part: h3_game::HiredPart::Spell(Handle::from_raw(30)),
+        },
         GameEvent::TownChanged {
             player: P0,
             town: TownId::new(1),
@@ -1539,9 +1603,10 @@ pub(super) fn every_event() -> Vec<GameEvent> {
 fn every_event_maps_back_for_its_viewers_and_round_trips() {
     let all = every_event();
     let distinct: BTreeSet<String> = all.iter().map(kinds).collect();
-    // The game's 41 kinds of event (the adventure's as one; E08 T114a2: `ExchangeOpened`; T114b:
-    // `GarrisonChanged`, `GarrisonStackSeen`; E09 T37a: `TavernOffered`, `TavernPartSeen`).
-    assert_eq!(distinct.len(), 41, "{distinct:?}");
+    // The game's 43 kinds of event (the adventure's as one; E08 T114a2: `ExchangeOpened`; T114b:
+    // `GarrisonChanged`, `GarrisonStackSeen`; E09 T37a: `TavernOffered`, `TavernPartSeen`; T38a1:
+    // `HeroHired`, `HiredPartSeen`).
+    assert_eq!(distinct.len(), 43, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);
@@ -1563,10 +1628,22 @@ fn every_event_maps_back_for_its_viewers_and_round_trips() {
         "BattleStarted",
         "Battle",
         "BattleEnded",
+        "HeroHired",
     ]
     .map(String::from)
     .into();
     assert_eq!(theirs, seen);
+    // A hire's slot is its owner's alone.
+    let slots = |viewer| -> Vec<Option<u8>> {
+        events(&all, Viewer::Player(viewer))
+            .iter()
+            .filter_map(|e| match e {
+                w::GameEvent::HeroHired { slot, .. } => Some(*slot),
+                _ => None,
+            })
+            .collect()
+    };
+    assert_eq!((slots(P0), slots(P1)), (vec![Some(1)], vec![None]));
     // A step player 0 sees at one end only: the other is `None` on its wire.
     let mine = events(&all, Viewer::Player(P0));
     let steps: Vec<_> = mine

@@ -2288,3 +2288,64 @@ fn a_view_of_the_largest_sides_folds_its_far_corner_without_a_panic() {
 fn views_of(v: &GameObservation) -> Vec<Tile> {
     (0..6).map(|i| *v.adventure.tile(i).unwrap()).collect()
 }
+
+/// A hire (E09 T38a1, TWN-TAV-003) folds into every viewer's view as `observe` shows it after:
+/// the hero on the map for the players that see its tile, its owner's view of it whole (the slot's
+/// view with the parts it lacked, its points), the price and the slot's refill. On the golden
+/// replays of the towns and builds maps, the first state in each where the actor hires at a town of
+/// its own (none of them hires: the hire is not listed before E09 T38a2).
+#[test]
+fn a_hire_folds_as_observe_shows_it() {
+    let names = ["towns-s173-d21", "builds-s262-d14", "towns-visitor-s1"];
+    let mut hired = 0;
+    for name in names {
+        let (rules, setup, replay) = one(name);
+        let mut state = GameState::new(&rules, &setup, replay.seed).unwrap();
+        for (actor, command) in &replay.commands {
+            let h3_game::Actor::Player(player) = *actor else {
+                apply(&mut state, &rules, *actor, command.clone(), &mut Vec::new()).unwrap();
+                continue;
+            };
+            let towns = u16::try_from(state.towns().len()).unwrap();
+            let hire = (0..towns).find_map(|town| {
+                let mut trial = state.clone();
+                let mut told = Vec::new();
+                let command = h3_game::GameCommand::Town(h3_game::TownCommand::Hire {
+                    town: h3_contracts::TownId::new(town),
+                    slot: 0,
+                });
+                let viewers: Vec<Viewer> = (0..=u8::MAX)
+                    .take(state.players())
+                    .map(|p| Viewer::Player(PlayerId::new(p)))
+                    .collect();
+                let before: Vec<GameObservation> = viewers
+                    .iter()
+                    .map(|&v| observe(&state, &rules, v))
+                    .collect();
+                apply(&mut trial, &rules, *actor, command, &mut told).ok()?;
+                Some((trial, told, viewers, before))
+            });
+            if let Some((trial, told, viewers, before)) = hire {
+                for (viewer, mut view) in viewers.into_iter().zip(before) {
+                    let wire = events(&told, viewer);
+                    let own = viewer == Viewer::Player(player);
+                    let slot = wire.iter().find_map(|e| match e {
+                        GameEvent::HeroHired { slot, .. } => Some(slot.is_some()),
+                        _ => None,
+                    });
+                    // The owner is told it with its slot; another viewer without.
+                    assert!(!own || slot == Some(true), "{name}: {viewer:?}");
+                    assert!(own || slot != Some(true), "{name}: {viewer:?}");
+                    for event in &wire {
+                        view.fold(event);
+                    }
+                    assert_eq!(view, observe(&trial, &rules, viewer), "{name}: {viewer:?}");
+                }
+                hired += 1;
+                break;
+            }
+            apply(&mut state, &rules, *actor, command.clone(), &mut Vec::new()).unwrap();
+        }
+    }
+    assert!(hired >= 2, "{hired} of the replays met a hire");
+}

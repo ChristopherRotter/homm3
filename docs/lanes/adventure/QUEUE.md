@@ -38,6 +38,17 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-17 (the town lane, E09 T38a1, `town/e09-t38a1`, `cross-lane` with the user's consent;
+  **your paths changed, for your review; replay format v17 taken**): the adventure replay format is
+  **v17** (`town hire <town> <slot>`, `h3_towns::TownCommand::Hire`; `h3-files`' word and doc,
+  `h3-sim`'s `REPLAY_FORMAT_VERSION`, the 89 goldens' `format` line only, `h3-cli`'s and `h3-sim`'s
+  literals): your next bump is v18. `h3-game` gained `GameEvent::HeroHired` and `HiredPartSeen`
+  (`observe.rs`' `project`, `h3-map`'s `tests/view.rs` told-views arms) and
+  `GameState::taverns_for` (`state.rs`); `h3-adventure`'s town module gained `check_tavern_hire`
+  and `place_hired` (`src/town/hire.rs`; `rows.rs`' `town_entrance` and `arrive` made
+  `pub(super)`). No hash version moved; the hire is not in `legal_commands` until E09 T38a2
+  (`TWN-STUB-19`), which also changes `legal.rs` (`cross-lane`).
+
 - 2026-11-17 (the client lane, E27 M3 T2a, `client/e27-m3-t2ab`; **for E10's victory conditions, nothing to do now**): the original rewrites a special victory's "standard victory also" flag (`h3_map`'s `Victory::Special::allow_standard`) after reading it: `victory_standard_set` 0x4BF780 (from the conditions' read 0x4C3555 with 0, from `new_game_heroes` 0x4C0139 with 1) sets it for goal 5 (a hero's defeat) always, and for goals 0, 4 and 10 (an artifact, the Grail, a transport) clears it when exactly one colour is left undefeated (game +0x1F636), else sets it outside a campaign (a campaign by its ids); the other goals keep the file's flag. The shipped maps: goals 0, 4, 10 all carry the flag, the five maps of goal 5 all lack it, and the scenario screen shows them "or Defeat All Enemies" (recorded, `scn-info`). VCMI 1.7.5 (`MapFormatH3M.cpp`) forces goal 5 too ("H3 behavior") and clears the flag for any goal on a map of one player. The client applies the screen's rule to its list only (`h3-battle-client`'s `maps::STANDARD_ALWAYS`); the game's rule is E10's (design note `docs/epics/E27-design.md` §21.1).
 
 - 2026-11-17 (the map client lane, E24 M4 T1b1, `map-client/e24-m4-t1b1`; **the capture harness, rebuild `xdd.dll`**): `clients/capture/xdd.c` takes a new command, `<seq> seed <value>` (its 8.: the main thread's C library seed set at its next clock read, so that a computer player's turn draws alike in every run; `Game.seed`, and `h3drive.to_scenario(game, seed=...)` seeds just before Begin), and its acknowledgement has a sixteenth field (the seeds set): `h3drive.ACK_FIELDS` is 16, so a run with an `xdd.dll` built before fails as stale where it reads the acknowledgement whole (a forced roll, a batch's or a sequence's checks, a seed): rebuild it with `clients/capture/setup.sh`. Nothing else of `h3drive`, `h3adv` or `h3mem` changed in behaviour (`Mem.other_turn` is new; `Mem.status_items` also returns kind 5's items, ids 2190 to 2193).

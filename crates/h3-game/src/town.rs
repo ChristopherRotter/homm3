@@ -35,6 +35,7 @@ pub(crate) mod events;
 pub(crate) mod garrison;
 pub(crate) mod growth;
 pub(crate) mod heroes;
+pub(crate) mod hire;
 pub(crate) mod income;
 pub(crate) mod offer;
 pub(crate) mod pool;
