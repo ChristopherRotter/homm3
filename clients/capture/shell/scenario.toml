@@ -180,6 +180,49 @@ steps = [
 ]
 
 [[recipe]]
+id = "scn-long-text"
+what = "§3.5 (E27 M3 T2c): a description longer than its box (a map of the harness's own): the scroll bar's arrows, track, thumb and keys; the list's keys at the press, the bar's at the release; the selected row again (the partial redraw); a whole redraw scrolled; a description of 300 bytes"
+# Jihad (AB) is row 0, Arrogance row 1, Arrogance Retold row 2 (both SoD). The description's bar
+# (725, 155, 16, 115): its arrows (733, 163) and (733, 262), its track between, the thumb 16 high
+# from y 171 at value 0 (12 ticks: 18 lines at 295 pixels, 7 shown).
+maps = ["Arrogance.h3m", "Jihad.h3m", "Arrogance Retold.h3m"]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "move:790,300", "shot:screen",
+  "click:514,91", "move:790,300", "shot:list",
+  "key-down:Down", "shot:down-pressed", "key-up:Down", "shot:down-released",
+  "key:Down", "shot:down-last", "key:Next", "shot:page-down",
+  "key-down:Up", "shot:up-pressed", "key-up:Up", "shot:up-released",
+  "key:Down", "shot:down-back",
+  "click:733,262", "shot:arrow-down", "down:733,262", "shot:arrow-held", "up", "shot:arrow-released",
+  "click:733,163", "shot:arrow-up",
+  "click:733,240", "shot:track-below", "click:733,180", "shot:track-above",
+  "down:733,179", "move:733,230", "shot:drag", "up", "move:790,300", "shot:dragged",
+  "right:733,200", "shot:right-bar", "right-up", "shot:right-bar-closed",
+  "step:500", "click:216,185", "move:790,300", "shot:row-again",
+  "click:733,163", "shot:row-again-up", "click:733,262", "shot:row-again-down",
+  "click:733,262", "key:Prior", "shot:page-up-list",
+  "click:733,240", "click:585,478", "move:790,300", "shot:hard",
+  "click:514,91", "move:790,300", "shot:list-hidden",
+  "key:Down", "shot:key-down", "key:Right", "shot:key-right", "key:Next", "shot:key-page-down",
+  "key:Next", "shot:key-page-down-end", "key:Left", "shot:key-left", "key:Up", "shot:key-up",
+  "key:Prior", "shot:key-page-up", "key:Prior", "shot:key-page-up-top",
+  "click:514,91", "step:500", "click:216,135", "move:790,300", "shot:jihad",
+  "step:500", "click:216,185", "move:790,300", "shot:retold",
+  "click:733,262", "click:667,555", "move:790,300", "until:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "move:790,300", "shot:reopened",
+]
+
+[[recipe.made]]
+file = "Arrogance Retold.h3m"
+from = "Arrogance.h3m"
+name = "Arrogance Retold"
+# Ours (E27 M3 T2c): 277 bytes, under the list record's 300 (scenario_header_read's strncpy); two
+# spaces inside a line, three before a newline, an empty line, an indent, a word wider than the
+# line, braces whose width the split counts and a highlight across a line's end, code-page letters.
+description = "The harness's own map.  Its text runs past the box, so it scrolls.   \n\n   Indented.\nPneumonoultramicroscopicsilicovolcanoconiosisandmore\n{The long word} was cut; {this lit part runs word past the break,} then plain.\nCafé, Über, Ångström.\n9\n10\n11\n12\n13\n14\n15\n16\nThe last line.  "
+
+[[recipe]]
 id = "scn-load"
 what = "§3.1, §3.3 to §3.6: a single load's screen (the saves, the autosave's name, a save's time and difficulty), keys, sorts, Delete's question both ways, Load's popup, the load to the map (its bar filled in real time: the clip from the load's end)"
 games = ["AUTOSAVE.GM1", "AUTOSAVE.TGM", "save1.GM1"]

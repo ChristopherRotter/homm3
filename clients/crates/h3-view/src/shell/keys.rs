@@ -16,7 +16,9 @@
 //!   Scenarios (128), R Random Map (130), A Show Advanced Options (129), Enter Begin (186),
 //!   Escape Back (188); its list's (`scenario_dialog_proc` 0x587D00, its scan codes 0x48, 0x50,
 //!   0x49 and 0x51; E27 M3 T1b1): Up and Down the selection by a row, Page Up and Page Down the
-//!   top by a page.
+//!   top by a page, at the key's press; the description's scroll bar's (E27 M3 T2c, its arrows'
+//!   keys: 0x48 to 0x51) at the key's release: Up and Left a line back, Down and Right a line
+//!   on, Page Up and Page Down a page.
 //! - **An edit's own keys** (E27 M2 T7b, decision 39: the client's profile): Home, End, Left,
 //!   Right, Delete and BackSpace, taken while an edit has the focus ([`Context::Edit`], asked
 //!   before its dialog's); **the hot seat's ring** (`hot_seat_edit_key` 0x50DF60): Tab and Down to
@@ -78,21 +80,27 @@ pub enum Command {
     Edit(Caret),
     /// The hot seat's ring: to the next edit (`true`) or the previous (E27 M2 T7b).
     Ring(bool),
-    /// The scenario list's move (E27 M3 T1b1).
+    /// The scenario list's move at the key's press, the description's bar's step at its release
+    /// (E27 M3 T1b1, T2c).
     List(Scroll),
 }
 
-/// A move of the scenario list by a key (E27 M3 T1b1).
+/// A move of the scenario list by a key at its press (E27 M3 T1b1), and of the description's
+/// scroll bar at its release (E27 M3 T2c: the bar's own keys, `scrollbar_key_step` 0x596230).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Scroll {
-    /// The selection up a row (Up).
+    /// The selection up a row (Up); the description a line back.
     Up,
-    /// The selection down a row (Down).
+    /// The selection down a row (Down); the description a line on.
     Down,
-    /// The top up a page (Page Up).
+    /// The top up a page (Page Up); the description a page back.
     PageUp,
-    /// The top down a page (Page Down).
+    /// The top down a page (Page Down); the description a page on.
     PageDown,
+    /// The description a line back (Left); the list nothing.
+    Left,
+    /// The description a line on (Right); the list nothing.
+    Right,
 }
 
 /// The main menu's buttons with a hotkey, by id, with their names and the original's keys.
@@ -128,13 +136,15 @@ pub const DIALOGS: [(u16, &str, &str, Context); 8] = [
     (188, "scenario-back", "Escape", Context::Scenario),
 ];
 
-/// The scenario list's keys (E27 M3 T1b1), with their names and the original's keys by the
-/// adapter's names.
-pub const LIST: [(Scroll, &str, &str); 4] = [
+/// The scenario list's keys (E27 M3 T1b1) and the description's bar's (T2c: Left and Right its
+/// own), with their names and the original's keys by the adapter's names.
+pub const LIST: [(Scroll, &str, &str); 6] = [
     (Scroll::Up, "scenario-up", "Up"),
     (Scroll::Down, "scenario-down", "Down"),
     (Scroll::PageUp, "scenario-page-up", "PageUp"),
     (Scroll::PageDown, "scenario-page-down", "PageDown"),
+    (Scroll::Left, "scenario-left", "Left"),
+    (Scroll::Right, "scenario-right", "Right"),
 ];
 
 /// A message box's keys with their names and the original's (as the battle's,

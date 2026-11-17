@@ -11,7 +11,7 @@ use std::path::Path;
 use h3_map::model::{Loss, Version, Victory, VictoryGoal};
 use h3_map::{Limits, RawMap};
 use h3_ui::text::decode_1252;
-use h3_view::shell::scenario::{self, Entry, Format, Seat};
+use h3_view::shell::scenario::{self, DESCRIPTION_BYTES, Entry, Format, Seat};
 
 /// The maps' folder of an installation (`maps`, as the original names it: the copy's `Maps`).
 const MAPS: &str = "Maps";
@@ -23,34 +23,43 @@ pub fn entries(install: &Path) -> Vec<Entry> {
     let Ok(dir) = fs::read_dir(install.join(MAPS)) else {
         return Vec::new();
     };
-    let limits = Limits::default();
     let mut entries: Vec<Entry> = dir
         .filter_map(Result::ok)
-        .filter_map(|e| {
-            let file = e.file_name().into_string().ok()?;
-            let h3m = Path::new(&file)
-                .extension()
-                .is_some_and(|x| x.eq_ignore_ascii_case("h3m"));
-            let bytes = h3m.then(|| fs::read(e.path()).ok()).flatten()?;
-            let map = h3_map::read(&bytes, &limits).ok()?;
-            Some(entry(file, &map))
-        })
+        .filter_map(|e| read(&e.path()))
         .collect();
     scenario::sort(&mut entries);
     entries
 }
 
+/// The entry of the map file `path` (`*.h3m`, any case), by its file's name; none for another
+/// file or one that does not read.
+fn read(path: &Path) -> Option<Entry> {
+    let file = path.file_name()?.to_str()?.to_owned();
+    let h3m = Path::new(&file)
+        .extension()
+        .is_some_and(|x| x.eq_ignore_ascii_case("h3m"));
+    let bytes = h3m.then(|| fs::read(path).ok()).flatten()?;
+    let map = h3_map::read(&bytes, &Limits::default()).ok()?;
+    Some(entry(file, &map))
+}
+
 /// `entries` with the files `names` names alone (any case), in their order; all of them without
 /// names (E27 M3 T1b1: a replay's `--maps`, a recipe's `maps` as the harness's run copies them).
+/// A name with a `/` is a map file's path (E27 M3 T2c: a map of the harness's own, written for
+/// the run): read and listed by its file's name, the list in its order again.
 #[must_use]
 pub fn named(entries: Vec<Entry>, names: Option<&[String]>) -> Vec<Entry> {
-    match names {
-        Some(names) => entries
-            .into_iter()
-            .filter(|e| names.iter().any(|n| n.eq_ignore_ascii_case(&e.file)))
-            .collect(),
-        None => entries,
-    }
+    let Some(names) = names else {
+        return entries;
+    };
+    let mut named: Vec<Entry> = entries
+        .into_iter()
+        .filter(|e| names.iter().any(|n| n.eq_ignore_ascii_case(&e.file)))
+        .collect();
+    let own = names.iter().filter(|n| n.contains('/'));
+    named.extend(own.filter_map(|path| read(Path::new(path))));
+    scenario::sort(&mut named);
+    named
 }
 
 /// The list's entry of `map`, read from the file `file`.
@@ -86,7 +95,11 @@ pub fn entry(file: String, map: &RawMap) -> Entry {
             Version::Sod => Format::SoD,
         }),
         name: decode_1252(header.name.as_bytes()),
-        description: decode_1252(header.description.as_bytes()),
+        // The list's record keeps the description's first 300 bytes (E27 M3 T2c).
+        description: {
+            let bytes = header.description.as_bytes();
+            decode_1252(&bytes[..bytes.len().min(DESCRIPTION_BYTES)])
+        },
         size: header.size,
         difficulty: header.difficulty,
         victory,

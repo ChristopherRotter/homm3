@@ -61,6 +61,7 @@ pub(crate) fn texts(bugs: Bugs) -> Texts {
             None,
             (BOX_PLAYER, bugs),
         )),
+        description_font: None,
     }
 }
 
@@ -99,7 +100,7 @@ pub(crate) fn scenario_of(entries: Vec<Entry>, bugs: Bugs) -> Scenario {
     let layout = parse_layout(LAYOUT).unwrap();
     Scenario::new(
         layout.scenario.dialog,
-        layout.scenario.list,
+        (layout.scenario.list, layout.scenario.description),
         texts(bugs),
         entries,
         bugs,
@@ -326,8 +327,9 @@ fn a_press_holds_a_button_and_back_ends_the_screen() {
 #[test]
 fn a_right_press_shows_the_item_s_help_while_held() {
     let mut s = scenario(Bugs::Original);
-    // The name drawn by the redraw takes no right press.
-    assert_eq!(s.right([580, 57]), Did::default());
+    // The name drawn by the redraw shows no popup: the screen redrawn whole at once (E27 M3 T2c).
+    assert_eq!(s.right([580, 57]), Did::CHANGED);
+    assert_eq!(s.over, Over::Nothing);
     assert!(s.box_draws("PLAYERS.PAL").is_empty());
     assert!(s.right([514, 91]).changed);
     assert!(!s.cursor());
@@ -491,9 +493,10 @@ fn the_list_s_items_and_bar_show_their_help() {
         assert!(s.right_release().changed);
     }
     assert_eq!(s.right([216, 160]), Did::default());
-    // The bar's help only while the list shows.
+    // The bar's help only while the list shows (else no popup, the screen redrawn whole).
     let mut s = scenario_of(many(30), Bugs::Original);
-    assert_eq!(s.right([383, 300]), Did::default());
+    assert_eq!(s.right([383, 300]), Did::CHANGED);
+    assert_eq!(s.over, Over::Nothing);
 }
 
 /// A click at `point`: the move, the press and the release.
@@ -1115,4 +1118,153 @@ fn ok_button(s: &Scenario) -> [i32; 2] {
             _ => None,
         })
         .unwrap()
+}
+
+// E27 M3 T2c: the description's scroll bar.
+
+/// `n` lines of their numbers.
+fn lines(n: usize) -> String {
+    (0..n)
+        .map(|k| format!("line {k}"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// The screen over Arrogance (kept, short) and "Arrogance Retold" (18 lines) in a font of 5-wide
+/// glyphs, the list shown (`scn-long-text`'s rows 1 and 2).
+fn long(bugs: Bugs) -> Scenario {
+    let mut retold = map("Arrogance Retold.h3m", "Arrogance Retold");
+    retold.description = lines(18);
+    let layout = parse_layout(LAYOUT).unwrap();
+    let texts = Texts {
+        description_font: Some(font(5, 16)),
+        ..texts(bugs)
+    };
+    let mut s = Scenario::new(
+        layout.scenario.dialog,
+        (layout.scenario.list, layout.scenario.description),
+        texts,
+        vec![map("Arrogance.h3m", "Arrogance"), retold],
+        bugs,
+    );
+    s.clock(1000);
+    assert!(click(&mut s, [514, 91]).changed);
+    s
+}
+
+/// The description's first line drawn and the thumb of its bar (x 725), if it shows.
+fn described(s: &Scenario) -> (Option<String>, Option<i32>) {
+    let draws = s.draws("PLAYERS.PAL");
+    let first = label(&draws, DESCRIPTION).map(|t| t.lines().next().unwrap_or("").to_string());
+    let thumb = draws.iter().find_map(|d| match d {
+        Draw::Button { frame: 4, x, y, .. } if *x == 725 => Some(*y),
+        _ => None,
+    });
+    (first, thumb)
+}
+
+/// The description's thumb's top at the value `v` of 12 ticks.
+const fn thumb_at(v: i32) -> i32 {
+    155 + 16 + 67 * v / 11
+}
+
+#[test]
+fn the_list_moves_at_a_key_s_press_the_description_at_its_release() {
+    let mut s = long(Bugs::Original);
+    assert_eq!(described(&s), (Some("A map.".into()), None));
+    let down = Some(Command::List(Scroll::Down));
+    // Down's press selects the long description at its first line, its release steps the bar.
+    assert!(s.key(down, "Down").changed);
+    assert_eq!(described(&s), (Some("line 0".into()), Some(thumb_at(0))));
+    assert!(s.key_up("Down").changed);
+    assert_eq!(described(&s), (Some("line 1".into()), Some(thumb_at(1))));
+    // On the last row the list does nothing, the bar steps; Page Down a page.
+    s.key(down, "Down");
+    s.key_up("Down");
+    s.key(Some(Command::List(Scroll::PageDown)), "Next");
+    s.key_up("Next");
+    assert_eq!(described(&s), (Some("line 9".into()), Some(thumb_at(9))));
+    // Up's press selects the short one: its release finds no bar.
+    s.key(Some(Command::List(Scroll::Up)), "Up");
+    assert!(!s.key_up("Up").changed);
+    assert_eq!(described(&s), (Some("A map.".into()), None));
+    // Left and Right are the bar's alone.
+    s.key(down, "Down");
+    s.key_up("Down");
+    assert_eq!(s.rows(), (Some(1), 0));
+    assert!(!s.key(Some(Command::List(Scroll::Right)), "Right").changed);
+    assert!(s.key_up("Right").changed);
+    assert_eq!(s.rows(), (Some(1), 0));
+    assert_eq!(described(&s), (Some("line 2".into()), Some(thumb_at(2))));
+    // With the list hidden the keys step the bar alone.
+    assert!(click(&mut s, [514, 91]).changed);
+    assert!(!s.showing());
+    s.key(Some(Command::List(Scroll::Left)), "Left");
+    s.key_up("Left");
+    assert_eq!(described(&s), (Some("line 1".into()), Some(thumb_at(1))));
+}
+
+#[test]
+fn the_mouse_scrolls_the_description_by_its_bar() {
+    let mut s = long(Bugs::Original);
+    s.key(Some(Command::List(Scroll::Down)), "Down");
+    // The bottom arrow, held then released; the track below the thumb a page on.
+    s.moved([733, 262]);
+    assert!(s.press([733, 262]).changed);
+    // Neither key nor right press while the mouse holds the bar.
+    assert_eq!(s.key(Some(Command::List(Scroll::Up)), "Up"), Did::default());
+    assert_eq!(s.right([733, 262]), Did::default());
+    assert!(s.moved([733, 262]).changed);
+    assert!(s.release().changed);
+    assert_eq!(described(&s), (Some("line 1".into()), Some(thumb_at(1))));
+    click(&mut s, [733, 240]);
+    assert_eq!(described(&s), (Some("line 8".into()), Some(thumb_at(8))));
+    // The right release lets go of the bar as the left.
+    s.press([733, 163]);
+    assert!(s.right_release().changed);
+    assert_eq!(described(&s), (Some("line 7".into()), Some(thumb_at(7))));
+    // A right press on it shows nothing: the screen redrawn whole.
+    assert_eq!(s.right([733, 200]), Did::CHANGED);
+    assert_eq!(s.over, Over::Nothing);
+}
+
+#[test]
+fn the_selected_row_again_leaves_the_description_as_drawn_in_the_original_s_profile() {
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        let mut s = long(bugs);
+        s.key(Some(Command::List(Scroll::Down)), "Down");
+        click(&mut s, [733, 240]);
+        assert_eq!(described(&s), (Some("line 7".into()), Some(thumb_at(7))));
+        // The select resets the text and the bar; the partial redraw draws neither.
+        s.clock(2000);
+        click(&mut s, [216, 160]);
+        assert_eq!(s.shown.texts[&DESCRIPTION].lines().next(), Some("line 0"));
+        let stale = (Some("line 7".into()), Some(thumb_at(7)));
+        let fresh = (Some("line 0".into()), Some(thumb_at(0)));
+        assert_eq!(
+            described(&s),
+            if bugs == Bugs::Original {
+                stale.clone()
+            } else {
+                fresh.clone()
+            }
+        );
+        // The top arrow at 0 draws the bar, not the lines.
+        click(&mut s, [733, 163]);
+        let up = (
+            Some(
+                if bugs == Bugs::Original {
+                    "line 7"
+                } else {
+                    "line 0"
+                }
+                .into(),
+            ),
+            Some(thumb_at(0)),
+        );
+        assert_eq!(described(&s), up);
+        // A right press on the description redraws whole.
+        s.right([600, 200]);
+        assert_eq!(described(&s), fresh);
+    }
 }

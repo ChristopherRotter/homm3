@@ -18,7 +18,7 @@ use h3_ui::ui::{Dialog, Draw, Shown};
 use serde::Deserialize;
 
 use super::menu::{Arrow, Front, Kind, Stale, TITLE};
-use super::scenario::{ListLook, TeamsLook};
+use super::scenario::{DescriptionLook, ListLook, TeamsLook};
 use super::{Game, Screen};
 use crate::message::MessageLayout;
 
@@ -51,7 +51,8 @@ pub struct ShellLayout {
     pub scenario: ScenarioLayout,
 }
 
-/// The scenario screen: its two backgrounds, its dialog and its list's rows and bar.
+/// The scenario screen: its two backgrounds, its dialog, its list's rows and bar, its teams'
+/// dialog and its description's split and bar.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ScenarioLayout {
@@ -65,6 +66,8 @@ pub struct ScenarioLayout {
     pub list: ListLook,
     /// The teams' dialog of the flags' strip's right press (E27 M3 T1b2).
     pub teams: TeamsLook,
+    /// The description's split and scroll bar (E27 M3 T2c).
+    pub description: DescriptionLook,
 }
 
 /// A cursor's DEF and frame.
@@ -245,6 +248,9 @@ pub fn names(layout: &ShellLayout) -> Vec<String> {
     }
     names.extend(super::scenario::list_names(&layout.scenario.list));
     names.extend(super::scenario::teams_names(&layout.scenario.teams));
+    names.extend(super::scenario::description_names(
+        &layout.scenario.description,
+    ));
     let m = &layout.message;
     names.extend(
         [
