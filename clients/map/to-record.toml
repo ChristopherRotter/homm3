@@ -7,90 +7,6 @@
 # draws at the start: a Windmill's resource, the armies).
 
 [[sequence]]
-id = "find-windmill"
-situation = "seq-find-windmill"
-ms = 1600
-hero_speed = 4
-seed = 7
-why = "a Windmill visited: its box with the resource found, closed by Enter"
-inputs = [
-    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
-    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
-]
-
-[[sequence]]
-id = "find-stone"
-situation = "seq-find-stone"
-ms = 1600
-hero_speed = 4
-seed = 7
-why = "a Learning Stone visited: its box with the experience gained, closed by Enter"
-inputs = [
-    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
-    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
-]
-
-[[sequence]]
-id = "find-axis"
-situation = "seq-find-axis"
-ms = 1600
-hero_speed = 4
-seed = 7
-why = "a Star Axis visited: its box with +1 Spell Power, closed by Enter"
-inputs = [
-    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
-    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
-]
-
-[[sequence]]
-id = "find-temple"
-situation = "seq-find-temple"
-ms = 1600
-hero_speed = 4
-seed = 7
-why = "a Temple visited: its box with the morale gained, closed by Enter"
-inputs = [
-    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
-    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
-]
-
-[[sequence]]
-id = "find-witch-hut"
-situation = "seq-find-witch-hut"
-ms = 1600
-hero_speed = 4
-seed = 7
-why = "a Witch Hut visited: its box with the skill learned, closed by Enter"
-inputs = [
-    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
-    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
-]
-
-[[sequence]]
-id = "find-shrine"
-situation = "seq-find-shrine"
-ms = 1600
-hero_speed = 4
-seed = 7
-why = "a Shrine visited: its box with the spell learned, closed by Enter"
-inputs = [
-    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
-    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
-]
-
-[[sequence]]
-id = "find-sign"
-situation = "seq-find-sign"
-ms = 1600
-hero_speed = 4
-seed = 7
-why = "a sign read: its box with the text by its column, closed by Enter"
-inputs = [
-    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
-    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
-]
-
-[[sequence]]
 id = "find-pile"
 situation = "seq-find-pile"
 ms = 5600
@@ -125,16 +41,4 @@ inputs = [
     { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
     { at = 1600, keydown = "Return" }, { at = 1660, keyup = "Return" },
     { at = 2200, keydown = "Return" }, { at = 2260, keyup = "Return" },
-]
-
-[[sequence]]
-id = "turn-no-town"
-situation = "seq-turn-no-town"
-ms = 2600
-seed = 7
-why = "a turn's end without a town: the warning of the town lost, then the next day's days left, each closed by Enter"
-inputs = [
-    { at = 100, keydown = "e" }, { at = 160, keyup = "e" },
-    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
-    { at = 2000, keydown = "Return" }, { at = 2060, keyup = "Return" },
 ]

@@ -22,6 +22,7 @@ use core::ops::Range;
 use serde::Deserialize;
 
 use crate::art::Layer;
+use crate::finds::FindArt;
 use crate::lists::ListArt;
 use crate::minimap::MinimapArt;
 use crate::record::{RecordArt, Records};
@@ -105,6 +106,9 @@ pub struct ViewArt {
     pub status: StatusArt,
     /// The turn's change (E24 M4 T1a; design §5.1).
     pub turn: TurnArt,
+    /// The finds told: the pictures' DEFs, the Learning Stone's experience (E24 M4 T2a2; design
+    /// §5.3).
+    pub finds: FindArt,
     /// The map's sounds (E24 M2 T5; design §3.11): none, and the map plays none.
     #[serde(default)]
     pub sound: Option<SoundArt>,

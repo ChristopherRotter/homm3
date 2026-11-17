@@ -999,6 +999,138 @@ id = "map.turn.week-deity"
 args = { creature = "text", growth = "text", other = "text" }
 original = [{ at = "ARRAYTXT:135", printf = ["creature", "creature", "growth", "other", "growth"] }]
 
+# The finds told (E24 M4 T2a2; docs/epics/E24-design.md §5.3): a picture's caption
+# (`message_box_picture` 0x4F4EB0) of a resource's income (GENRLTXT 4 with the amount, its subtype
+# negated), the experience's level (GENRLTXT 443, its subtype -1), a count and a name (the
+# executable's `count_name_format` 0x6778A4: a creature's, a primary skill's, the spell points'),
+# a primary skill's gain (`plus_count_name_format` 0x677278) and the spell points' word (GENRLTXT
+# 388). A number alone is `map.resources.amount`'s (`decimal_format`); the names are the families
+# `resource`, `artifact`, `spell`, `player-colour` (its first letter upper-cased, as recorded),
+# `skill-level`, `secondary-skill`, `primary-skill` and `creature`'s.
+[[key]]
+id = "map.find.per-day"
+args = { amount = "number" }
+original = [{ at = "GENRLTXT:4", printf = ["amount"] }]
+
+[[key]]
+id = "map.find.level"
+original = [{ at = "GENRLTXT:443" }]
+
+[[key]]
+id = "map.find.count"
+args = { amount = "number", name = "text" }
+original = [{ at = "EXE:0x6778A4", printf = ["amount", "name"] }]
+
+[[key]]
+id = "map.find.plus"
+args = { amount = "number", name = "text" }
+original = [{ at = "EXE:0x677278", printf = ["amount", "name"] }]
+
+[[key]]
+id = "map.find.spell-points"
+original = [{ at = "GENRLTXT:388" }]
+
+# The finds' boxes (ADVEVENT's records; design §5.3's table): a Windmill's with its resource (170)
+# or empty (169); a Learning Stone's (143) or visited (144); a Star Axis's (100, 101); a Temple's
+# (140, 141); a Witch Hut's with the skill's name (the `secondary-skill` family) taught (171),
+# known or eight skills (173, as `visit_witch_hut` 0x4A8080 reads), deserted (190); a Shrine's: the
+# executable's `shrine_text_format` 0x677750 with its level's text (127 to 129, `visit_object`'s by
+# the class) and the spell's name (`spell`), a refusal appended (174 known, 131 no Spell Book, 130
+# Wisdom). A sign without a text of its own: the `sign` family.
+[[key]]
+id = "map.find.windmill"
+original = [{ at = "ADVEVENT:170" }]
+
+[[key]]
+id = "map.find.windmill-empty"
+original = [{ at = "ADVEVENT:169" }]
+
+[[key]]
+id = "map.find.stone"
+original = [{ at = "ADVEVENT:143" }]
+
+[[key]]
+id = "map.find.stone-visited"
+original = [{ at = "ADVEVENT:144" }]
+
+[[key]]
+id = "map.find.axis"
+original = [{ at = "ADVEVENT:100" }]
+
+[[key]]
+id = "map.find.axis-visited"
+original = [{ at = "ADVEVENT:101" }]
+
+[[key]]
+id = "map.find.temple"
+original = [{ at = "ADVEVENT:140" }]
+
+[[key]]
+id = "map.find.temple-visited"
+original = [{ at = "ADVEVENT:141" }]
+
+[[key]]
+id = "map.find.witch-hut"
+args = { skill = "text" }
+original = [{ at = "ADVEVENT:171", printf = ["skill"] }]
+
+[[key]]
+id = "map.find.witch-hut-known"
+args = { skill = "text" }
+original = [{ at = "ADVEVENT:173", printf = ["skill"] }]
+
+[[key]]
+id = "map.find.witch-hut-empty"
+original = [{ at = "ADVEVENT:190" }]
+
+[[key]]
+id = "map.find.shrine"
+args = { text = "text", spell = "text" }
+original = [{ at = "EXE:0x677750", printf = ["text", "spell"] }]
+
+[[key]]
+id = "map.find.shrine-1"
+original = [{ at = "ADVEVENT:127" }]
+
+[[key]]
+id = "map.find.shrine-2"
+original = [{ at = "ADVEVENT:128" }]
+
+[[key]]
+id = "map.find.shrine-3"
+original = [{ at = "ADVEVENT:129" }]
+
+[[key]]
+id = "map.find.shrine-known"
+original = [{ at = "ADVEVENT:174" }]
+
+[[key]]
+id = "map.find.shrine-no-book"
+original = [{ at = "ADVEVENT:131" }]
+
+[[key]]
+id = "map.find.shrine-wisdom"
+original = [{ at = "ADVEVENT:130" }]
+
+# A turn without a town (E24 M4 T2a2; design §5.3): at the turn's end GENRLTXT 7 with the player's
+# name (`scenario_condition_met` 0x4F2CE0), at each later day's start ArrayTxt 128 with the name and
+# the days left, 129 on the last day (`player_turn_start` 0x4CC7D0); the name the viewer's
+# (CLT-Q100 (b): the colour's; empty in the original's single scenario, the comparisons').
+[[key]]
+id = "map.turn.town-lost"
+args = { player = "text" }
+original = [{ at = "GENRLTXT:7", printf = ["player"] }]
+
+[[key]]
+id = "map.turn.days-left"
+args = { player = "text", days = "number" }
+original = [{ at = "ARRAYTXT:128", printf = ["player", "days"] }]
+
+[[key]]
+id = "map.turn.last-day"
+args = { player = "text" }
+original = [{ at = "ARRAYTXT:129", printf = ["player"] }]
+
 # The spell book (E17 M5 T3a; design §7.17). A place's text (`spell_book_page` 0x59CE19, 0x59CEE1:
 # the executable's own formats): the spell's name, its level, the hero's mastery's short name when
 # it has one, the spell points' word and the cost.
@@ -1865,6 +1997,28 @@ id = "week-name"
 table = "ARRAYTXT"
 first = 43
 count = 15
+column = 0
+optional = true
+
+# A secondary skill's level's name (SKILLLEV.TXT's records 0 to 2, `skill_level_names` 0x6A7570; E24
+# M4 T2a2, design §5.3): a secondary skill's picture's caption, the level by its subtype mod 3,
+# `skill-level.<n>`. Only the map viewer lists it.
+[[family]]
+id = "skill-level"
+table = "SKILLLEV"
+first = 0
+count = 3
+column = 0
+optional = true
+
+# A sign's default text (RANDSIGN.TXT's 25 records, `sign_default_texts` 0x696C74; E24 M4 T2a2,
+# design §5.3): a sign without a text of its own tells the record of its column mod 25,
+# `sign.<n>`. Only the map viewer lists it.
+[[family]]
+id = "sign"
+table = "RANDSIGN"
+first = 0
+count = 25
 column = 0
 optional = true
 

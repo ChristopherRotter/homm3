@@ -148,6 +148,7 @@ button_back = "Box64x30.pcx"
 ok = "iOkay.def"
 cancel = "iCancel.def"
 font = "medfont.fnt"
+caption_font = "smalfont.fnt"
 font_palette = "game.pal"
 "#;
 

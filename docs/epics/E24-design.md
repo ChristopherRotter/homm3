@@ -3117,3 +3117,48 @@ two boxes: the client lane's reading of `scenario_condition_met` 0x4F2CE0 (E27 d
   read; kind 6's panel and its 5 000 ms; an object taken (the level's index built again, the view
   drawn without it, the dissolve by `h3_render::Screen::dissolve_rect`); the pickup's sound (the
   roll at 0x4A4D18 forced or the viewer's own draw: a review item).
+- **Built** (M4 T2a2 part A, *provisional*): the common crate's `h3_ui::message` gains the client
+  lane's pictures (copied with their tests: `Picture`, `slot_ids` from `PICTURES`, `SLOTS`,
+  `pictures` for `message_box_pictures`, `Rows` with CLT-Q77's profile, `Slot`, `row_xs`; new
+  `told`, `message_box`'s OK box with up to `TOLD_SLOTS` (3) pictures, its text at x 20 with `--bugs
+  original` and centred else; `CHOICE` 0x7809 the hidden frames' first id, not built; the layout's
+  `caption_font`, `smalfont.fnt`). The module `finds`: `picture` (every type of
+  `message_box_picture` but a town's building, 22 to 30: the tables' `[map.finds]` DEFs, the
+  captions through the catalogue), `Find` (the Windmill's, the Learning Stone's, the Star Axis's, the
+  Temple's, the Witch Hut's, the Shrines' and a sign's facts: `Find::of` from the class, the
+  entrance word (the Windmill's resource bits 0 to 3 signed and amount 13 to 16, the Witch Hut's
+  skill 13 to 19, a Shrine's spell 13 to 22), the hero's mark and the contents' "known" of the
+  live part's `[hover]`, a sign's text from the map's body; `told`, the box's text and pictures as
+  §5.3's table; `visited`, the find as its visit leaves it; `gain`, what the panels show of the
+  visit), `town_lost` and `days_left` (the player's name the colour's, CLT-Q100 (b), empty with
+  `--bugs original`; 129 at one day left, not read). The catalogue's keys `map.find.*` (23: the
+  captions' formats and the finds' ADVEVENT records), `map.turn.town-lost`, `.days-left`,
+  `.last-day` and the families `skill-level` (SKILLLEV 0 to 2), `sign` (RANDSIGN's 25); the tables'
+  `[map.turn]` `town_days` (7). The timeline: `Start::finds` (`Found`: the entrance tile, the
+  first and the later box, the gain) and `Start::town` (`TownBoxes`); a walk's end on a find's
+  entrance opens its box in that millisecond, the queue emptied (`Loop::tell_find`); its close
+  shows the gain (the resource bar's amount, the selected hero's window's primary skills and
+  morale, +2 on the week's seventh day: recorded at 1060, `find-windmill`, `find-axis`,
+  `find-temple`), then the idle step; the scenario's test at the viewer's turn's end
+  (`Loop::town_test`: heroes and no town, the days −1 at 0 become `town_days` with the warning's
+  box, the turn's change going on at its close; down to their last refused, the elimination not
+  built), the days counted down at each turn's end, the days left's box at a human day's start
+  before the week's (`waiting`: a box opens as the last closes), its close building the
+  selection's window again (recorded, not read: `turn-no-town`'s date's window unstepped at 2060,
+  as `hero_select` after the box would build it). The binary lays the boxes out (`Painter::told`:
+  each picture's DEF decoded for its size), the finds by the mouse-over's entrance tiles. The facts'
+  sources: the Windmill's, the Witch Hut's and the Shrine's from the live part's entrance words;
+  the Stone's, the Axis's and the Temple's visits from its marks; a known skill or spell from its
+  contents (else not known); a sign's text from the map; the Learning Stone's 1 000 the tables'
+  (no Learning known); a Spell Book and Wisdom taken as present; the days without a town −1 at 0.
+  Not built: the visits' other results (experience, skills, spells: none on screen), a level-up,
+  the Magic Well, a pile's, an artifact's and an event's (part B), kind 6.
+- **Checked** (M4 T2a2 part A): `frames --only <id> --reuse` on the eight sequences recorded in
+  this sandbox: every frame exact (`find-windmill`, `find-stone`, `find-axis`, `find-temple`,
+  `find-witch-hut`, `find-shrine`, `find-sign` 7 each, `turn-no-town` 10), the viewer's timelines
+  the recorded ones line for line (`<id>-frames.txt` kept); the eight moved into
+  `sequences.toml`; `drawn` the 50 situations and 47 earlier sequences the same, then `--record`;
+  unit tests (the boxes' pictures in `h3-ui`; every picture type, the finds' facts, boxes, visits
+  and gains, the turn's two boxes by profile; the finds and `turn-no-town` replayed headless, a
+  find told again, a gain at the close, the warning and the days left, the days' box before the
+  week's), 100 % lines, regions and functions of both crates.

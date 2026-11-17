@@ -751,7 +751,8 @@ shield = "aishield.pcx"
 
 # The message box over the map (E24 M4 T1a; docs/epics/E24-design.md §5.1: End Turn's question, the
 # week's and the month's message; message_box 0x4F6570, E17 design §7.19): the battle's [message]
-# without its pictures, the executable's literals; h3_ui::message lays the box out from them.
+# without its pictures' DEFs (the tables' [map.finds], E24 M4 T2a2), the executable's literals;
+# h3_ui::message lays the box out from them, a picture's caption in `caption_font`.
 [message]
 background = "diboxbck.pcx"
 frame = "dialgbox.def"
@@ -759,4 +760,5 @@ button_back = "Box64x30.pcx"
 ok = "iOkay.def"
 cancel = "iCancel.def"
 font = "medfont.fnt"
+caption_font = "smalfont.fnt"
 font_palette = "game.pal"

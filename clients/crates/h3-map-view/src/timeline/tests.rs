@@ -251,6 +251,8 @@ fn start(situation: &str, speed: usize) -> Start {
         question: None,
         turns: Vec::new(),
         computer: Computer::default(),
+        finds: Vec::new(),
+        town: None,
     }
 }
 
@@ -354,7 +356,14 @@ fn the_walks_frames_are_m2_t3bs() {
             "walk-stop-key",
             "walk-stop-press",
             "walk-stop-space",
-            "turn-question"
+            "turn-question",
+            "find-windmill",
+            "find-stone",
+            "find-axis",
+            "find-temple",
+            "find-witch-hut",
+            "find-shrine",
+            "find-sign"
         ]
     );
 }
@@ -386,6 +395,8 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         question: None,
         turns: Vec::new(),
         computer: Computer::default(),
+        finds: Vec::new(),
+        town: None,
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -594,6 +605,8 @@ fn what_it_cannot_play_yet() {
         question: None,
         turns: Vec::new(),
         computer: Computer::default(),
+        finds: Vec::new(),
+        town: None,
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -734,6 +747,8 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         question: None,
         turns: Vec::new(),
         computer: Computer::default(),
+        finds: Vec::new(),
+        town: None,
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
 }
@@ -1379,6 +1394,8 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         question: None,
         turns: Vec::new(),
         computer: Computer::default(),
+        finds: Vec::new(),
+        town: None,
     }
 }
 
@@ -1987,6 +2004,8 @@ fn hovering(live: bool, bugs: Bugs) -> Loop {
         question: None,
         turns: Vec::new(),
         computer: Computer::default(),
+        finds: Vec::new(),
+        town: None,
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -2475,7 +2494,7 @@ fn a_choice_with_the_facts_and_the_sound() {
         },
     ];
     l.index = Some(0);
-    let status = crate::live::HeroStatus {
+    let status = HeroStatus {
         hero: 1,
         own_name: false,
         skills: [0; 4],
@@ -2549,7 +2568,7 @@ fn underground_start() -> Start {
             ..KingdomHero::default()
         }],
         selected: Selected::Hero(0),
-        status: Some(Status::Hero(crate::live::HeroStatus {
+        status: Some(Status::Hero(HeroStatus {
             hero: 2,
             own_name: false,
             skills: [1, 2, 3, 4],
@@ -3003,4 +3022,5 @@ fn a_hotkeys_up_during_a_hold_releases_its_button_in_the_client() {
 }
 
 mod computers;
+mod finds;
 mod turns;

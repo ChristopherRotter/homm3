@@ -185,6 +185,28 @@ asked = 3000
 week = "newweek.wav"
 month = "newmonth.wav"
 deity = [42, 43]
+town_days = 7
+
+# The finds told (E24 M4 T2a2; design §5.3, message_box_picture 0x4F4EB0): a picture's DEF by its
+# type (the resources' 0 to 7, 18 and 19, the frame the type; an artifact's 8; a spell's 9; a
+# player's crest 10, the frame the colour; the luck's 11 to 13 and the morale's 14 to 16, frames 4,
+# 3, 2; the experience 17 frame 4, the primary skills 31 to 34 frame type - 31 and the spell points
+# 35 frame 5; a secondary skill 20, the frame the subtype; a creature 21, the frame the creature +
+# 2; type 36, frame 6), the names as the recordings' boxes give them; the Learning Stone's
+# experience (visit_learning_stone 0x4A6330: 1000 times the hero's Learning, *provisional*: no
+# hero's skills known).
+[map.finds]
+resources = "resour82.def"
+artifacts = "artifact.def"
+spells = "spellscr.def"
+crests = "crest58.def"
+luck = "ilck82.def"
+morale = "imrl82.def"
+skills = "pskill.def"
+secondary = "secsk82.def"
+creatures = "twcrport.def"
+gold = "resource.def"
+experience = 1000
 
 [map.status]
 portraits = [

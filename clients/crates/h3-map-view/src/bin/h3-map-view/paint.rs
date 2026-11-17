@@ -16,13 +16,16 @@ use std::path::Path;
 use std::sync::Arc;
 
 use h3_formats::lod::LodArchive;
+use h3_formats::text::decode_windows_1252;
 use h3_map::Limits;
-use h3_map::model::Pos;
+
+use h3_map::model::{Body, Pos, RawMap};
 use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::MapArt;
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
 use h3_map_view::damage::{Held, History, drop_held};
+use h3_map_view::finds::{self, Find, Told};
 use h3_map_view::hover::Hover;
 use h3_map_view::layout::{AdventureLayout, CursorArt};
 use h3_map_view::live::{Buttons, Calendar, Facing, Lifted, Live, Moment, Walking};
@@ -34,13 +37,14 @@ use h3_map_view::situation::Situation;
 use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
-    Action, Computer, Cursor, DEFAULT_CURSOR, Direction, Draw, Hero, NextTurn, Start,
+    Action, Computer, Cursor, DEFAULT_CURSOR, Direction, Draw, Found, Hero, NextTurn, Start,
+    TownBoxes,
 };
 use h3_map_view::turn;
 use h3_render::Bugs;
 use h3_render::screen::{Screen, Widening};
 use h3_ui::cursor::{Cursor as Sprite, Image};
-use h3_ui::message::{self, MessageBox, Style};
+use h3_ui::message::{self, MessageBox, Picture, Style};
 
 use crate::{files, render, situation};
 
@@ -134,6 +138,10 @@ pub fn for_sequence<'a>(
     let (question, turns) = painter
         .boxes(&lines)
         .map_err(|e| format!("{}: {e}", live_path.display()))?;
+    // The finds a walk tells and the turn without a town's boxes (E24 M4 T2a2).
+    let hover = painter.hover()?;
+    let finds = painter.finds(&raw, hover.as_deref())?;
+    let town = painter.town()?;
     let start = Start {
         view,
         size: i32::from(situation.size),
@@ -152,7 +160,7 @@ pub fn for_sequence<'a>(
         buttons: painter.live.buttons,
         // The status window's kind the recording asked at 0 (E24 M3 T5b2).
         asked: sequence.asked()?,
-        hover: painter.hover()?,
+        hover,
         levels: painter.art.levels,
         heroes: heroes(&painter.live),
         index: painter.selected,
@@ -165,6 +173,8 @@ pub fn for_sequence<'a>(
             speed: sequence.computer_speed()?,
             blackout: sequence.blackout()?,
         },
+        finds,
+        town: Some(town),
     };
     Ok(Setup {
         painter,
@@ -221,6 +231,9 @@ pub fn for_situation<'a>(
     painter.selected = sequence::selected_in(&painter.live).ok();
     let sound = painter.sound(hero.map(|h| h.at))?;
     let (question, turns) = painter.boxes(&[])?;
+    let hover = painter.hover()?;
+    let finds = painter.finds(&raw, hover.as_deref())?;
+    let town = painter.town()?;
     let start = Start {
         view,
         size: i32::try_from(painter.art.size).unwrap_or(i32::MAX),
@@ -236,7 +249,7 @@ pub fn for_situation<'a>(
         points: Vec::new(),
         buttons: painter.live.buttons,
         asked: None,
-        hover: painter.hover()?,
+        hover,
         levels: painter.art.levels,
         heroes: heroes(&painter.live),
         index: painter.selected,
@@ -247,6 +260,8 @@ pub fn for_situation<'a>(
         question: Some(question),
         turns,
         computer: Computer::default(),
+        finds,
+        town: Some(town),
     };
     Ok(Setup {
         painter,
@@ -311,7 +326,7 @@ impl<'a> Painter<'a> {
     /// `hidden` rectangles.
     fn new(
         assets: &'a Assets<'a>,
-        raw: &h3_map::RawMap,
+        raw: &RawMap,
         live: Option<&Path>,
         view: ViewAt,
         hidden: &[[i32; 4]],
@@ -498,6 +513,128 @@ impl<'a> Painter<'a> {
             })
             .collect::<Result<Vec<_>, String>>()?;
         Ok((question, turns))
+    }
+
+    /// A box of a find or of a turn without a town (E24 M4 T2a2, design §5.3): `told`'s text and
+    /// pictures (`finds::picture`: each DEF decoded for its size, its caption in the small font)
+    /// in an OK box of `message_box` 0x4F6570 (`message::told`), framed in the viewer's colours.
+    fn told(&mut self, told: &Told) -> Result<Arc<MessageBox>, String> {
+        let assets = self.assets;
+        let layout = &assets.layout.message;
+        let (art, texts) = (&assets.tables.map.finds, &assets.tables.texts);
+        let shown = told
+            .pictures
+            .iter()
+            .map(|&(kind, subtype)| {
+                finds::picture(art, texts, kind, subtype)
+                    .ok_or_else(|| format!("a picture of type {kind}: not built"))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        self.add(
+            shown
+                .iter()
+                .map(|p| p.def.to_ascii_uppercase())
+                .chain([layout.caption_font.to_ascii_uppercase()]),
+        )?;
+        let pictures = shown
+            .into_iter()
+            .map(|p| {
+                let sprite = self
+                    .batch
+                    .sprite(&p.def)
+                    .ok_or_else(|| format!("{}: not decoded", p.def))?;
+                let side = |v: u32| i32::try_from(v).unwrap_or(i32::MAX);
+                Ok(Picture {
+                    size: [side(sprite.def.width), side(sprite.def.height)],
+                    def: p.def,
+                    frame: p.frame,
+                    caption: p.caption,
+                })
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        let font = |name: &str| {
+            self.batch
+                .font(name)
+                .ok_or_else(|| format!("{name}: not decoded"))
+        };
+        let fonts = (font(&layout.font)?, font(&layout.caption_font)?);
+        Ok(Arc::new(message::told(
+            layout,
+            fonts,
+            &told.text,
+            Style::Ok,
+            &pictures,
+            (self.live.viewer, assets.bugs),
+        )))
+    }
+
+    /// The finds a walk's end tells (E24 M4 T2a2, design §5.3): each object of a find's class by
+    /// its entrance tile (the mouse-over's tiles), its facts from the live part's `[hover]` facts
+    /// and a sign's text from the map `raw` (*provisional*: `Find::of`, the facts at 0), its first
+    /// visit's box and its later one's; none without the facts.
+    fn finds(&mut self, raw: &RawMap, hover: Option<&Hover>) -> Result<Vec<Found>, String> {
+        let Some(hover) = hover else {
+            return Ok(Vec::new());
+        };
+        let assets = self.assets;
+        let (art, texts) = (&assets.tables.map.finds, &assets.tables.texts);
+        let facts = hover.facts();
+        let size = u8::try_from(self.art.size).map_err(|_| "the map's size".to_owned())?;
+        let levels = u8::try_from(self.art.levels).map_err(|_| "the map's levels".to_owned())?;
+        let mut out = Vec::new();
+        for z in 0..levels {
+            for y in 0..size {
+                for x in 0..size {
+                    let at = [i32::from(x), i32::from(y), i32::from(z)];
+                    let Some(tile) = hover.base(at) else {
+                        continue;
+                    };
+                    let Some(o) = tile
+                        .object
+                        .filter(|_| tile.entrance && finds::CLASSES.contains(&tile.class))
+                    else {
+                        continue;
+                    };
+                    let text = match raw.objects.get(o).map(|object| &object.body) {
+                        Some(Body::Sign(text)) => Some(decode_windows_1252(text.as_bytes())),
+                        _ => None,
+                    };
+                    let Some(find) = Find::of(
+                        tile.class,
+                        tile.word,
+                        facts.visits.get(o).copied(),
+                        facts.contents.get(&o),
+                        (text.as_deref(), i32::from(x)),
+                    ) else {
+                        continue;
+                    };
+                    let first = self.told(&find.told(art, texts))?;
+                    let again = self.told(&find.visited().told(art, texts))?;
+                    out.push(Found {
+                        at: Pos { x, y, z },
+                        first,
+                        again,
+                        gain: find.gain(),
+                    });
+                }
+            }
+        }
+        Ok(out)
+    }
+
+    /// The viewer's boxes of a turn without a town (E24 M4 T2a2, design §5.3): the warning and
+    /// the days left's for each of the tables' days, the player named as CLT-Q100 (b) has it (the
+    /// colour's name: the viewer has no player name), the original's empty name with `--bugs
+    /// original`.
+    fn town(&mut self) -> Result<TownBoxes, String> {
+        let assets = self.assets;
+        let texts = &assets.tables.texts;
+        let (player, original) = (self.live.viewer, assets.bugs == Bugs::Original);
+        let lost = self.told(&finds::town_lost(texts, player, original))?;
+        let left = (1..=i32::from(assets.tables.map.turn.town_days))
+            .map(|days| self.told(&finds::days_left(texts, player, days, original)))
+            .collect::<Result<Vec<_>, String>>()?;
+        Ok(TownBoxes { lost, left })
     }
 
     /// Decodes the named assets not decoded yet.
