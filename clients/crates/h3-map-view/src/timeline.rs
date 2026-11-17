@@ -1024,8 +1024,10 @@ pub struct Loop {
     /// Computer (E24 M4 T1b2, [`Start::computer`]).
     computer_pixels: Vec<i32>,
     blackout: bool,
-    /// A computer player's turn under way (E24 M4 T1b2).
+    /// A computer player's turn under way (E24 M4 T1b2), and its step under way: its direction,
+    /// its next frame and when that frame, or its end, comes.
     ai: Option<AiTurn>,
+    ai_step: Option<(Direction, usize, u32)>,
     /// The single draws of a computer's step at speed 4 in this millisecond, each as the screen
     /// showed it ([`Loop::take_held`]).
     within: Vec<State>,
@@ -1043,17 +1045,17 @@ struct AiTurn {
     stepped: u32,
     /// The heroes' walks left.
     walks: VecDeque<Steps>,
-    /// The walking hero's steps left.
+    /// The walking hero's place in the computer's kingdom (the current player's selected hero:
+    /// the timeline's `points`) and its steps left.
+    slot: usize,
     steps: VecDeque<Hero>,
-    /// The step under way: its direction, its next frame and when that frame, or its end, comes.
-    step: Option<(Direction, usize, u32)>,
     /// The viewer's turn's end.
     ended: Ended,
 }
 
 /// What the viewer's turn's end leaves for its next day (E24 M4 T1a's turn's change): its
 /// selection, the selection's window memory kept and the path shown.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct Ended {
     before: Selected,
     window: Option<Status>,
@@ -1208,6 +1210,7 @@ impl Loop {
             computer_pixels,
             blackout: start.computer.blackout,
             ai: None,
+            ai_step: None,
             within: Vec::new(),
             rules,
         };
@@ -1270,10 +1273,7 @@ impl Loop {
             buttons: self.buttons,
             // The current player's selected hero's (a computer's during its turn).
             points: match &self.ai {
-                Some(ai) => match ai.kingdom.selected {
-                    Selected::Hero(i) => ai.kingdom.heroes.get(i).map(|h| h.points),
-                    _ => None,
-                },
+                Some(ai) => ai.kingdom.heroes.get(ai.slot).map(|h| h.points),
                 None => self
                     .selected_hero()
                     .and_then(|i| self.kingdom.heroes.get(i))
@@ -1327,21 +1327,19 @@ impl Loop {
         self.within.clear();
         // The loop's turn and a walk's wait alike run the tick (0x4ED490: the poll, the palettes).
         self.tick(t);
-        if self.ai.is_some() {
-            // A computer player's turn (E24 M4 T1b2): its walk's waits; at its end the next
-            // turn, then the manager's next message (the redraws due since run then).
-            if self.ai_on(t)? {
-                self.idle_message(t);
-            }
-        } else {
-            match self.moving.take() {
+        // A computer player's turn (E24 M4 T1b2): its walk's waits; at its end the next turn, then
+        // the manager's next message (the redraws due since run then).
+        match self.ai_on(t)? {
+            Some(true) => self.idle_message(t),
+            Some(false) => {}
+            None => match self.moving.take() {
                 Some(moving) => {
                     if let Some(queued) = self.carry_on(t, moving) {
                         self.resume(t, queued)?;
                     }
                 }
                 None => self.idle_message(t),
-            }
+            },
         }
         for &action in actions {
             if self.ai.is_some() {
@@ -1955,9 +1953,9 @@ impl Loop {
             kingdom: turn.kingdom,
             status,
             stepped: t,
+            slot: walks.first().map_or(0, |w| w.slot),
             walks: walks.into(),
             steps: VecDeque::new(),
-            step: None,
             ended,
         });
         self.ai_on(t)?;
@@ -1967,18 +1965,19 @@ impl Loop {
     /// A computer player's turn from `t` (E24 M4 T1b2, design §5.2): its step's frames as their
     /// times come, each step's end (the points taken after the animation: the recording's, the
     /// standing group at the hero's last step, the offset 0); its next step, its next hero's
-    /// turn, its end. Whether it ended.
-    fn ai_on(&mut self, t: u32) -> Result<bool, Unplayable> {
+    /// turn, its end. Whether it ended; none without a computer's turn under way.
+    fn ai_on(&mut self, t: u32) -> Result<Option<bool>, Unplayable> {
         loop {
             let Some(ai) = &mut self.ai else {
-                return Ok(false);
+                return Ok(None);
             };
-            if let Some((direction, frame, until)) = ai.step {
+            if let Some((direction, frame, until)) = self.ai_step {
                 if t < until {
-                    return Ok(false);
+                    return Ok(Some(false));
                 }
+                let last = ai.steps.is_empty();
                 if let Some(&pixels) = self.computer_pixels.get(frame) {
-                    ai.step = Some((
+                    self.ai_step = Some((
                         direction,
                         frame.saturating_add(1),
                         t.saturating_add(self.rules.walk.frame_ms),
@@ -1989,8 +1988,7 @@ impl Loop {
                     self.frame_drawn(t);
                     continue;
                 }
-                ai.step = None;
-                let last = ai.steps.is_empty();
+                self.ai_step = None;
                 self.ai_spend(t);
                 if last {
                     self.stand();
@@ -1999,15 +1997,19 @@ impl Loop {
                 continue;
             }
             if let Some(to) = ai.steps.pop_front() {
-                self.ai_step(t, to);
+                self.computer_step(t, to);
                 continue;
             }
             if let Some(walk) = ai.walks.pop_front() {
-                self.ai_hero(t, walk);
+                ai.slot = walk.slot;
+                ai.steps = walk.steps.into();
+                self.ai_hero(t, walk.hero);
                 continue;
             }
-            self.ai_end(t)?;
-            return Ok(true);
+            let ended = core::mem::take(&mut ai.ended);
+            self.ai = None;
+            self.ai_end(t, ended)?;
+            return Ok(Some(true));
         }
     }
 
@@ -2016,17 +2018,13 @@ impl Loop {
     /// 0, 1: lifted, standing; the view's corner its tile less the middle, never clamped, drawn
     /// and shown when the viewer sees its tile or a neighbour, never under Blackout Computer; no
     /// list, status window or minimap drawn).
-    fn ai_hero(&mut self, t: u32, walk: Steps) {
+    fn ai_hero(&mut self, t: u32, index: usize) {
         self.ai_status_step(t);
         self.keep_hero();
-        self.index = Some(walk.hero);
-        self.hero = self.heroes.get(walk.hero).copied();
+        self.index = Some(index);
+        self.hero = self.heroes.get(index).copied();
         self.lifted = true;
         self.stand();
-        if let Some(ai) = &mut self.ai {
-            ai.kingdom.selected = Selected::Hero(walk.slot);
-            ai.steps = walk.steps.into();
-        }
         if self.hero.is_some_and(|h| self.sees(h.at)) {
             self.centre();
             self.draw(t);
@@ -2042,15 +2040,13 @@ impl Loop {
     /// human's step (the view centred on the hero's new tile, never clamped: MCL-Q31's view under
     /// the fog as the original's), its frames at Computer Walk Speed; at speed 4 its one draw kept
     /// for the window ([`Loop::take_held`]). One it does not see moves the hero and takes no time.
-    fn ai_step(&mut self, t: u32, to: Hero) {
+    fn computer_step(&mut self, t: u32, to: Hero) {
         self.ai_status_step(t);
         let number = usize::try_from(to.facing.number()).unwrap_or(0);
         let back = Direction::ALL[number.saturating_add(4) % Direction::ALL.len()];
         let at = self.hero.map(|h| h.at);
         let from = self.next(to.at, back).or(at).unwrap_or(to.at);
-        if let Some(hero) = &mut self.hero {
-            hero.at = from;
-        }
+        self.hero = self.hero.map(|h| Hero { at: from, ..h });
         self.ai_spend(t);
         let seen = !self.blackout && (self.sees(from) || self.sees(to.at));
         if !seen {
@@ -2064,9 +2060,7 @@ impl Loop {
             let state = self.state(t);
             self.within.push(state);
         }
-        if let Some(ai) = &mut self.ai {
-            ai.step = Some((to.facing, 0, t));
-        }
+        self.ai_step = Some((to.facing, 0, t));
     }
 
     /// A computer player's turn's end (`ai_player_turn`'s, design §5.2): the last hero put back on
@@ -2074,10 +2068,7 @@ impl Loop {
     /// as the adventure cursor's arrow (*provisional*: where its type is set back is not read), the
     /// redraws missed caught up; then the next turn: another computer's, or the next day (refused in a recording when the
     /// facts give none or its selection is not known).
-    fn ai_end(&mut self, t: u32) -> Result<(), Unplayable> {
-        let Some(ai) = self.ai.take() else {
-            return Ok(());
-        };
+    fn ai_end(&mut self, t: u32, ended: Ended) -> Result<(), Unplayable> {
         self.lifted = false;
         self.keep_hero();
         self.set_cursor(CURSOR_TYPE, self.rules.arrow);
@@ -2096,12 +2087,12 @@ impl Loop {
             if !self.computer_playable(&next) {
                 return self.unbuilt(refused);
             }
-            return self.computer_start(t, next, status, ai.ended);
+            return self.computer_start(t, next, status, ended);
         }
         let Some(choice) = self.turn_choice(&next.turn) else {
             return self.unbuilt(refused);
         };
-        self.day_start(t, next, choice, ai.ended);
+        self.day_start(t, next, choice, ended);
         Ok(())
     }
 
@@ -2120,8 +2111,7 @@ impl Loop {
     fn ai_spend(&mut self, t: u32) {
         let given = self.points.iter().take_while(|(at, _)| *at <= t).last();
         if let (Some(&(_, points)), Some(ai)) = (given, &mut self.ai)
-            && let Selected::Hero(i) = ai.kingdom.selected
-            && let Some(hero) = ai.kingdom.heroes.get_mut(i)
+            && let Some(hero) = ai.kingdom.heroes.get_mut(ai.slot)
         {
             hero.points = points;
         }
@@ -2131,21 +2121,23 @@ impl Loop {
     /// passed since the last, the glass and the sand stepped by the computer's heroes' points
     /// left ([`OtherArt::stepped`]), drawn and shown at once.
     fn ai_status_step(&mut self, t: u32) {
-        let Some(ai) = &mut self.ai else {
-            return;
+        let other = self.rules.other;
+        let stepped = match &mut self.ai {
+            Some(ai) if t.saturating_sub(ai.stepped) >= other.step => {
+                ai.stepped = t;
+                let left = ai
+                    .kingdom
+                    .heroes
+                    .iter()
+                    .fold(0_i32, |sum, h| sum.saturating_add(h.points));
+                ai.status = other.stepped(ai.status, left);
+                Some(ai.status)
+            }
+            _ => None,
         };
-        if t.saturating_sub(ai.stepped) < self.rules.other.step {
-            return;
+        if let Some(status) = stepped {
+            self.show_status(Status::Turn(status));
         }
-        ai.stepped = t;
-        let left = ai
-            .kingdom
-            .heroes
-            .iter()
-            .fold(0_i32, |sum, h| sum.saturating_add(h.points));
-        ai.status = self.rules.other.stepped(ai.status, left);
-        let status = Status::Turn(ai.status);
-        self.show_status(status);
     }
 
     /// A status window shown at once, memory's and the screen's.
@@ -2157,11 +2149,10 @@ impl Loop {
     /// Whether the viewer sees `at`: the tile or one of its neighbours inside the map explored
     /// (`tile_or_neighbour_seen` 0x41A750); nothing without the mouse-over's facts.
     fn sees(&self, at: Pos) -> bool {
-        let Some(hover) = &self.hover else {
-            return false;
-        };
         let [x, y, z] = [i32::from(at.x), i32::from(at.y), i32::from(at.z)];
-        (-1..=1).any(|dy| (-1..=1).any(|dx| hover.explored([x + dx, y + dy, z])))
+        self.hover.as_ref().is_some_and(|hover| {
+            (-1..=1).any(|dy| (-1..=1).any(|dx| hover.explored([x + dx, y + dy, z])))
+        })
     }
 
     /// The map hero (its index among [`Start::heroes`]) of the kingdom's hero `i`: the one of its

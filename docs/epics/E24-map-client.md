@@ -235,3 +235,25 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
 M1's review lists (three reviewers, T6b; the list accepted), M2's (accepted at T6b2a) and M3's
 (six reviewers at T7, the list accepted at T7c1): `E24-archive.md`. Later milestones add theirs
 here.
+
+### M4's review list
+
+The M4 review list starts here (the autonomy contract's "queue for the milestone review").
+
+- **M4 T1b2, speed 4's single draws on the window's clock** (*provisional*): a computer's steps
+  at Computer Walk Speed 4 take no time on the map's clock (the original draws each once with no
+  wait, as fast as it can); the window shows each for 20 ms of its own clock (`HOLD_MS` in the
+  binary's `window.rs`), the map's clock held at their millisecond meanwhile, then the
+  millisecond's own change. A recording gives no steps inside End Turn's millisecond, so only
+  the engine's records (Part B) or a hand-made sequence show it (the T1b2 check used `ai-walk`'s
+  walk at speed 4 in a scratch map folder).
+- **M4 T1b2, a computer's turn from a recording** (*provisional*): its walk is the recorded
+  timeline's `hero` lines in its turn (one hero; several, or a hero of another level, refused);
+  the turn tables' standing heroes matched to the map's by owner and class (two alike refused, a
+  boat's move refused); its sounds and music (`AITheme0`–`2`, the steps' sounds) not played;
+  input during it dropped, the mouse's point taken; kind 5's step at every step's start, its
+  50 ms deciding (which call steps it is not read); the busy cursor's hot spot the default
+  cursor's (never drawn: hidden from the first seen step); the cursor's type set back to the
+  adventure arrow's at the turn's end; the redraws missed caught up there before the next day's
+  whole redraw (recorded, not read).
+

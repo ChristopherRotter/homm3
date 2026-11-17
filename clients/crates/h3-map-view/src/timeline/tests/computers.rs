@@ -230,10 +230,16 @@ fn the_computers_screen() {
     );
     l.run(
         161,
-        &[Action::Click([300, 300]), Action::Key(Hotkey::EndTurn)],
+        &[
+            Action::Click([300, 300]),
+            Action::Key(Hotkey::EndTurn),
+            Action::Press([310, 300]),
+            Action::Pointer([320, 300]),
+            Action::Release([330, 300]),
+        ],
     )
     .unwrap();
-    assert_eq!((l.pointer, l.player, l.next_turn), ([300, 300], 1, 1));
+    assert_eq!((l.pointer, l.player, l.next_turn), ([330, 300], 1, 1));
     // The next day: Blue's hero put back where its walk ended, the shield gone, the cursor the
     // adventure arrow shown again, the redraws missed caught up (two steps, the deadline 180
     // on).
@@ -370,12 +376,19 @@ fn a_computers_turn_it_cannot_play() {
         rules(Bugs::Original),
         &Start {
             live: true,
-            ..alone
+            ..alone.clone()
         },
     )
     .unwrap();
     end(&mut l).unwrap();
     assert!(l.ai.is_none());
+    // At a walk's pace the refusal comes at its end, in a later millisecond.
+    let mut walking = alone;
+    walking.computer.speed = 3;
+    let mut l = Loop::start(rules(Bugs::Original), &walking).unwrap();
+    end(&mut l).unwrap();
+    let ended = (3..2000).find_map(|t| l.run(t, &[]).err().map(|e| (t, e)));
+    assert_eq!(ended, Some((1502, Unplayable::Command(12))));
     // The next turn after a computer's not knowing its selection, or after it a computer's
     // turn it cannot play: not built.
     let mut unknown = start.clone();
@@ -387,6 +400,34 @@ fn a_computers_turn_it_cannot_play() {
     lost.turns[1].walks[0].hero = 9;
     let mut l = Loop::start(rules(Bugs::Original), &lost).unwrap();
     assert_eq!(end(&mut l), Err(Unplayable::Command(12)));
+}
+
+#[test]
+fn a_computers_turn_from_a_town_selected_and_without_points() {
+    // No hero of the viewer's selected at End Turn, no points recorded: the turn plays all the
+    // same (the computer's hero's points the facts'); a standing hero the facts place off the
+    // map's list left out.
+    let (start, ..) = computing("ai-walk");
+    let mut start = Start {
+        index: None,
+        hero: None,
+        points: Vec::new(),
+        ..start
+    };
+    let east = Hero {
+        at: Pos { x: 1, y: 1, z: 0 },
+        facing: Direction::East,
+    };
+    start.turns[1].heroes.push((9, east));
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    l.run(1, &[Action::Key(Hotkey::EndTurn)]).unwrap();
+    l.run(2, &[Action::KeyUp(Hotkey::EndTurn)]).unwrap();
+    assert_eq!((l.player, l.state(2).points), (1, Some(1560)));
+    for t in 3..=1502 {
+        l.run(t, &[]).unwrap();
+    }
+    assert_eq!((l.player, l.heroes.len()), (0, 2));
+    assert_eq!(l.heroes[1].at, Pos { x: 20, y: 24, z: 0 });
 }
 
 #[test]
@@ -513,10 +554,18 @@ fn a_turns_heroes_and_boats_read() {
         ("heroes", "[[1, 2, 0, 0, 0, 0, 0, 8]]"),
         ("heroes", "[[-1, 2, 0, 0, 0, 0, -1, -1]]"),
         ("heroes", "[[1, 2, 0]]"),
+        ("heroes", "[[1, -2, 0, 0, 0, 0, -1, -1]]"),
+        ("heroes", "[[1, 2, -1, 0, 0, 0, -1, -1]]"),
+        ("heroes", "[[1, 2, 0, 0, -1, 0, -1, -1]]"),
+        ("heroes", "[1]"),
         ("heroes", "1"),
         ("boats", "[[1, 2, 0, 3, 0]]"),
         ("boats", "[[1, 2, 0, 0, 8]]"),
         ("boats", "[[1, -2, 0, 0, 0]]"),
+        ("boats", "[[-1, 2, 0, 0, 0]]"),
+        ("boats", "[[1, 2, -1, 0, 0]]"),
+        ("boats", "[[1, 2, 0, 0, -1]]"),
+        ("boats", "[1]"),
         ("boats", "[[1, 2, \"x\", 0, 0]]"),
         ("boats", "1"),
     ] {

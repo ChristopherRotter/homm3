@@ -117,6 +117,23 @@ fn move_hero_needs_a_green_arrow_or_the_timeline_s_word() {
 }
 
 #[test]
+fn a_computer_s_turn_disables_four_buttons() {
+    // E24 M4 T1b2: sleep, move hero, cast a spell and End Turn, whatever the kingdom; a press
+    // shown on one of them dropped.
+    let layout = layout();
+    let mut l = live(one_hero(), vec![arrow(1)]);
+    l.computer = true;
+    l.pressed = vec![id::END_TURN, id::NEXT_HERO];
+    let shown = dialog(&layout, &l, 1, 0);
+    let off = disabled(&shown);
+    for id in [id::SLEEP, id::MOVE_HERO, id::CAST, id::END_TURN] {
+        assert!(off.contains(&id), "{id}");
+    }
+    assert!(!off.contains(&id::NEXT_HERO));
+    assert!(!shown.state(id::END_TURN).pressed && shown.state(id::NEXT_HERO).pressed);
+}
+
+#[test]
 fn a_town_selected_disables_the_hero_s_buttons() {
     let layout = layout();
     let kingdom = Kingdom {

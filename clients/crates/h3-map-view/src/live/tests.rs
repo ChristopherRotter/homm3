@@ -687,8 +687,17 @@ fn a_live_parts_status_read() {
     });
     assert_eq!(read(other), Some(turn.clone()));
     assert_eq!(read("{ kind = 5 }"), None);
-    assert_eq!(read(&other.replace("glass = 3", "glass = -3")), None);
-    assert_eq!(read(&other.replace("2560", "3000000000")), None);
+    assert_eq!(read("{ kind = 6 }"), Some(Status::Other(6)));
+    for wrong in [
+        other.replace("glass = 3", "glass = -3"),
+        other.replace("crest = 1", "crest = \"x\""),
+        other.replace("sand = 2", "sand = -1"),
+        other.replace(", value = 2560", ""),
+        other.replace("2560", "\"x\""),
+        other.replace("2560", "3000000000"),
+    ] {
+        assert_eq!(read(&wrong), None, "{wrong}");
+    }
     for (status, kind) in [
         (Status::Date(DateStatus { frame: 0 }), 1),
         (Status::Kingdom(kingdom_status), 2),

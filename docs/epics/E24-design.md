@@ -2872,7 +2872,8 @@ T1b2 the viewer playing them): `ai_player_turn` 0x525E80 to its heroes' turns, `
 (`status_other_turn_create` 0x453250: its items) and its step (`status_other_turn_step` 0x4536F0)
 whole, `hero_select`'s computer branch (0x417DF0 to 0x418060), `covered_view_redraw` 0x4CA5B0's
 Blackout branch; recorded by the harness (`ai-walk`, `ai-walk-slow`, `ai-walk-fast`,
-`ai-walk-blackout`, `ai-walk-fog` in `clients/map/to-record.toml`; situations `seq-turn-ai`,
+`ai-walk-blackout`, `ai-walk-fog`, held in `clients/map/to-record.toml` until T1b2 moved them
+into `sequences.toml`; situations `seq-turn-ai`,
 `seq-turn-ai-fog`), each twice with the same timeline.
 
 - **The turn** (after §5.1's computer start, at the manager's next message): `ai_player_turn`
@@ -2957,10 +2958,43 @@ Blackout branch; recorded by the harness (`ai-walk`, `ai-walk-slow`, `ai-walk-fa
   +0x38C at the next human's start, whose minimap draw then draws the map. With Blackout
   Computer the view is drawn covered between the same disabled buttons (not compared: the turn
   falls in End Turn's millisecond).
-- **For T1b2** (the viewer): Blue's turn from the `[[turn]]` facts and the timeline (the walk from
-  the `hero` and `walk` lines as M2's, the view by its corner rule, Computer Walk Speed from the
-  sequence, the cursor hidden from the first seen step, kind 5's step by the rule above checked
-  against the `other` lines), the shield in the minimap's place and the blank buttons read first
-  (`covered_view_redraw` without Blackout, the minimap's draw in a computer's turn); speed 4's
-  single draws shown on the client's clock (on the virtual clock they take none); MCL-Q30's sound
-  run.
+- **Built** (T1b2, *provisional*): the live part's `Status::Turn` (kind 5: `crest`, `sand`,
+  `glass` and the panel's `value`, the `[[turn]]` status's, required) and the `[[turn]]` tables'
+  `heroes` and `boats` (`Turn::heroes`, `boats`; `LiveHero::read`, `LiveBoat::read`, the
+  binary's readers moved into the library); the layout's `[status_other]` (2190 `AdStatNx.pcx`,
+  2191 `crest58.def`, 2192 `HourSand.def`, 2193 `HourGlas.def`), `[panels]` `computer` (6, 7, 8,
+  12) and `shield` (`aishield.pcx`, drawn opaque from its corner over the dialog's area 1:
+  144 × 144, no index 0), `[cursor]` `busy` (2); the tables' `[map.status.other]` (`step` 50,
+  `sand` 10, `glass` 10; `OtherArt::stepped`); `Live::computer` and `Draw::computer` (the four
+  buttons disabled, the shield instead of the minimap), `Draw::heroes` (the map's heroes on
+  their tiles: a computer's moves); a sequence's `computer_speed` (2 to 4), `blackout` and `seed`
+  (accepted); `Sequence::heroes` (the `hero` lines), `turn::placed` (a table's standing heroes by
+  owner and class), `turn::walks` (a computer's one hero, its kingdom's selected one, and its
+  steps: the `hero` lines from its turn's millisecond to the next turn's); `NextTurn::heroes`,
+  `walks`, `Steps`, `Start::computer` (`Computer`: the speed's frames as the hero speed's of that
+  number, Blackout). The loop: a turn whose status is kind 5 is a computer's
+  (`Loop::computer_start` after the viewer's turn's end, `turn_end`, whose deadline rule moved
+  there from the next day's start): the busy cursor, move hero off, the viewer's selection cleared,
+  the lists drawn for the viewer, kind 5 built (the crest the player, the facts' value); each hero
+  selected (lifted, the view centred and drawn when seen), each step's start kind 5's step (its
+  50 ms gate), the steps the recording does not show between two `hero` lines taken unseen (the
+  hero to the step's start, the points the recording's), a seen step a human's (the cursor hidden,
+  the view centred, the frames at Computer Walk Speed), an unseen one no time and no draw; the
+  minimap's draw and the chooser doing nothing meanwhile, the input dropped (the mouse's point
+  kept); at the end the hero put back, the adventure arrow shown, the redraws missed caught up
+  (recorded, not read: `ai-walk` at 1660 two steps, the deadline 1840, the next day's whole redraw
+  showing the last, unchanged at 1840), then the next turn (`day_start`, T1a's, with the table's
+  heroes placed; another computer's played on). The timeline's `other` line (`State::other`).
+  Speed 4's single draws: `Loop::take_held`, `timeline::play_held`, `Change::held`; the window
+  shows each for `HOLD_MS` (20 ms, *provisional*) of its own clock, the map's clock held. MCL-Q31
+  as the original's in both modes; MCL-Q30's sound left as T1a built it. Not built: the turn's
+  music and sounds, a human current player's texts (a hot seat's), the covered view under
+  Blackout Computer (it falls in End Turn's millisecond), a computer with several heroes.
+- **Checked:** `frames --only <id> --reuse` on the five sequences: every frame exact (`ai-walk`
+  34, `ai-walk-slow` 50, `ai-walk-fast` and `ai-walk-blackout` 5 each, `ai-walk-fog` 30), the
+  viewer's timelines the recorded ones line for line (`<id>-frames.txt` kept); the five moved into
+  `sequences.toml`, `to-record.toml` removed; `drawn` the 50 situations and 42 earlier sequences
+  the same, then `--record`; the window under Xvfb (`--check 10`) on `ai-walk-fast` and `ai-walk`
+  every frame read back exact and every change the headless loop's, and on `ai-walk`'s walk at
+  speed 4 (a scratch map folder) its 15 held draws shown, read back exact and each the headless
+  loop's.
