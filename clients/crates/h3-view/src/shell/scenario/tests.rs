@@ -1,5 +1,6 @@
 //! The scenario screen's tests (E27 M3 T1a): its information panel, its buttons, hotkeys and
-//! popups, as `scn-new` recorded them.
+//! popups, as `scn-new` recorded them; the list (T1b1, T1b2); the difficulty, the empty list and
+//! Begin's message (T2a, T2b).
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -52,6 +53,14 @@ pub(crate) fn texts(bugs: Bugs) -> Texts {
             title: String::from("Teams"),
             names: (1..=8).map(|k| format!("Team {k}")).collect(),
         }),
+        no_maps: Some(message::layout(
+            &layout.message,
+            (&medium, &small),
+            "No maps",
+            Style::Ok,
+            None,
+            (BOX_PLAYER, bugs),
+        )),
     }
 }
 
@@ -145,7 +154,7 @@ fn the_panel_shows_the_kept_map() {
     let s = scenario(Bugs::Original);
     assert_eq!(s.entry().map(|e| e.name.as_str()), Some("Arrogance"));
     assert_eq!(s.entries().len(), 2);
-    assert_eq!(s.difficulty(), KEPT_DIFFICULTY);
+    assert_eq!(s.difficulty(), OPENING_DIFFICULTY);
     let draws = s.draws("PLAYERS.PAL");
     assert_eq!(label(&draws, NAME).as_deref(), Some("Arrogance"));
     assert_eq!(label(&draws, DESCRIPTION).as_deref(), Some("A map."));
@@ -206,11 +215,12 @@ fn without_the_kept_map_the_first_shows_and_without_maps_none() {
     assert_eq!(s.entry(), None);
     let draws = s.draws("PLAYERS.PAL");
     assert_eq!(label(&draws, NAME).as_deref(), Some(""));
-    assert_eq!(frame(&draws, "scnrmpsz.def", [714, 28]), None);
     assert_eq!(frame(&draws, "scnrvict.def", [420, 308]), None);
     assert!(flags(&draws).is_empty());
-    // The rating still shows the chosen difficulty's.
-    assert_eq!(label(&draws, RATING).as_deref(), Some("100%"));
+    // E27 M3 T2b: no rating; the size mark's frame 4 (CLT-Q115 (b)), Normal chosen (CLT-Q139).
+    assert_eq!(label(&draws, RATING).as_deref(), Some(""));
+    assert_eq!(frame(&draws, "scnrmpsz.def", [714, 28]), Some(4));
+    assert_eq!(chosen(&draws), Some(1));
 }
 
 #[test]
@@ -274,6 +284,13 @@ fn opened_anew_it_keeps_the_choices_and_carries_the_hovers() {
     let fixed = scenario(Bugs::Fixed).opened(default);
     assert_eq!(fixed.hovers().arrow, Arrow::Default);
     assert_eq!(opened.entry(), s.entry());
+    // E27 M3 T2a: each opening takes Normal again, the kept map kept.
+    let mut hard = scenario(Bugs::Original);
+    click(&mut hard, [585, 478]);
+    assert_eq!(hard.difficulty(), 2);
+    let again = hard.opened(default);
+    assert_eq!(again.difficulty(), OPENING_DIFFICULTY);
+    assert_eq!(again.entry(), hard.entry());
     assert_eq!(opened.background(), 0);
     assert_eq!(opened.clone().with_background(1).background(), 1);
     assert_eq!(opened.with_background(7).background(), 0);
@@ -446,11 +463,11 @@ fn the_strip_s_right_press_shows_the_teams_while_held() {
     let y = (600 - 256) / 2;
     assert_eq!(labels.len(), 4);
     assert_eq!(flags[2], (2, 272 + 120, y + 176));
-    // No dialog without its texts, nor without a selection.
+    // No dialog without its texts, nor without a selection in the client's profile (T2b).
     let mut s = scenario(Bugs::Original);
     s.texts.teams = None;
     assert_eq!(s.right([600, 414]), Did::default());
-    let mut s = scenario_of(Vec::new(), Bugs::Original);
+    let mut s = scenario_of(Vec::new(), Bugs::Fixed);
     assert_eq!(s.right([600, 414]), Did::default());
 }
 
@@ -915,4 +932,180 @@ fn the_entry_counts_its_players_and_the_list_names_its_assets() {
     assert!(names.iter().any(|n| n == "ScSelC.def") && names.iter().any(|n| n == "sliderV.pcx"));
     let names = teams_names(&layout.scenario.teams);
     assert!(names.iter().any(|n| n == "dialgbox.def") && names.iter().any(|n| n == "itgflags.def"));
+}
+
+// E27 M3 T2a and T2b: the difficulty, the empty list and Begin's message.
+
+/// The difficulty whose button shows selected (frame 3), if any (0 easy to 4 impossible).
+fn chosen(draws: &[Draw]) -> Option<i32> {
+    (0..5).find(|&k| {
+        frame(draws, &format!("gspbut{}.def", k + 3), [506 + 32 * k, 456]) == Some(3)
+    })
+}
+
+#[test]
+fn a_difficulty_s_press_chooses_it_and_the_list_keeps_it() {
+    let mut s = scenario(Bugs::Original);
+    // Held, it shows pressed; at the release over it the choice, the screen drawn whole.
+    let did = s.press([617, 478]);
+    assert!(did.changed && did.sample);
+    let did = s.release();
+    assert!(did.changed && did.ended.is_none());
+    assert_eq!(s.difficulty(), 3);
+    let draws = s.draws("PLAYERS.PAL");
+    assert_eq!(chosen(&draws), Some(3));
+    assert_eq!(label(&draws, RATING).as_deref(), Some("160%"));
+    // Each in turn, the rating its own.
+    for (k, rating) in [(0, "80%"), (1, "100%"), (2, "130%"), (4, "200%")] {
+        click(&mut s, [521 + 32 * k, 478]);
+        let draws = s.draws("PLAYERS.PAL");
+        assert_eq!(chosen(&draws), Some(k));
+        assert_eq!(label(&draws, RATING).as_deref(), Some(rating));
+    }
+    // The list's first showing keeps it (`scn-difficulty` impossible-list), its rows too.
+    click(&mut s, [514, 91]);
+    assert!(s.showing());
+    assert_eq!(chosen(&s.draws("PLAYERS.PAL")), Some(4));
+    click(&mut s, [216, 135]);
+    assert_eq!(s.difficulty(), 4);
+}
+
+#[test]
+fn an_empty_list_s_panel_keeps_the_original_s_leftovers() {
+    // A filter that empties the list: the original's size mark the filter's, the last map's
+    // flags; no map's texts, no rating; the choice kept.
+    let mut s = shown(vec![map("Arrogance.h3m", "Arrogance")], Bugs::Original);
+    click(&mut s, [324, 68]);
+    assert_eq!(s.entry(), None);
+    let draws = s.draws("PLAYERS.PAL");
+    assert_eq!(label(&draws, NAME).as_deref(), Some(""));
+    assert_eq!(label(&draws, MAP_DIFFICULTY).as_deref(), Some(""));
+    assert_eq!(label(&draws, RATING).as_deref(), Some(""));
+    assert_eq!(frame(&draws, "scnrvict.def", [420, 308]), None);
+    assert_eq!(frame(&draws, "scnrmpsz.def", [714, 28]), Some(3));
+    assert_eq!(flags(&draws), vec![(460, 0), (475, 2), (640, 1)]);
+    assert_eq!(chosen(&draws), Some(1));
+    // All shows the map again.
+    click(&mut s, [371, 68]);
+    assert_eq!(label(&s.draws("PLAYERS.PAL"), RATING).as_deref(), Some("100%"));
+    // The client's: frame 4, no flags (CLT-Q115 (b), CLT-Q139 (b)).
+    let mut s = shown(vec![map("Arrogance.h3m", "Arrogance")], Bugs::Fixed);
+    click(&mut s, [324, 68]);
+    let draws = s.draws("PLAYERS.PAL");
+    assert_eq!(frame(&draws, "scnrmpsz.def", [714, 28]), Some(4));
+    assert!(flags(&draws).is_empty());
+    // No map at all: the original's S, no flags, no choice shown until a press (whose rating
+    // stays hidden).
+    let mut s = scenario_of(Vec::new(), Bugs::Original);
+    let draws = s.draws("PLAYERS.PAL");
+    assert_eq!(frame(&draws, "scnrmpsz.def", [714, 28]), Some(0));
+    assert!(flags(&draws).is_empty());
+    assert_eq!(chosen(&draws), None);
+    click(&mut s, [585, 478]);
+    let draws = s.draws("PLAYERS.PAL");
+    assert_eq!(chosen(&draws), Some(2));
+    assert_eq!(label(&draws, RATING).as_deref(), Some(""));
+}
+
+#[test]
+fn the_teams_dialog_over_an_empty_list() {
+    // The original's after a filter: the last map's teams (red and tan, blue).
+    let mut s = shown(vec![map("Arrogance.h3m", "Arrogance")], Bugs::Original);
+    click(&mut s, [324, 68]);
+    assert!(s.right([600, 414]).changed);
+    let (labels, flags) = teams_drawn(&s.box_draws("PLAYERS.PAL"));
+    assert_eq!(labels.len(), 3);
+    assert_eq!(flags.len(), 3);
+    s.right_release();
+    // With no map at all, the reset game's: one team of the eight colours.
+    let mut s = scenario_of(Vec::new(), Bugs::Original);
+    assert!(s.right([600, 414]).changed);
+    let (labels, flags) = teams_drawn(&s.box_draws("PLAYERS.PAL"));
+    assert_eq!(labels.len(), 2);
+    let colours: Vec<u32> = flags.iter().map(|&(c, _, _)| c).collect();
+    assert_eq!(colours, (0..8).collect::<Vec<_>>());
+    // The client's: none (CLT-Q139 (b)).
+    let mut s = scenario_of(Vec::new(), Bugs::Fixed);
+    assert_eq!(s.right([600, 414]), Did::default());
+    assert!(s.box_draws("PLAYERS.PAL").is_empty());
+}
+
+#[test]
+fn begin_over_an_empty_list_shows_its_message() {
+    // With a map Begin does nothing yet (T6).
+    let mut s = scenario(Bugs::Original);
+    assert_eq!(click(&mut s, [497, 555]).ended, None);
+    assert!(s.box_draws("PLAYERS.PAL").is_empty());
+    // The original's with no map at all: nothing (CLT-Q114).
+    let mut none = scenario_of(Vec::new(), Bugs::Original);
+    click(&mut none, [497, 555]);
+    assert!(none.box_draws("PLAYERS.PAL").is_empty());
+    assert_eq!(none.context(), Context::Scenario);
+    // After a filter emptied it: GENRLTXT 530 in an OK box, the cursor showing, its keys.
+    let adventure = Hovers {
+        arrow: Arrow::Adventure,
+        ..Hovers::default()
+    };
+    let mut s = shown(vec![map("Arrogance.h3m", "Arrogance")], Bugs::Original).opened(adventure);
+    click(&mut s, [514, 91]);
+    click(&mut s, [324, 68]);
+    assert!(click(&mut s, [497, 555]).changed);
+    assert!(!s.box_draws("PLAYERS.PAL").is_empty());
+    assert_eq!(s.context(), Context::Question);
+    assert!(s.cursor());
+    // The box's own loop shows the default arrow, the screen's back after it.
+    assert_eq!(s.hovers().arrow, Arrow::Default);
+    // Nothing else takes an input meanwhile: the screen's keys, a right press.
+    assert_eq!(s.key(Some(Command::Dialog(BACK)), "Escape"), Did::default());
+    assert_eq!(s.right([600, 414]), Did::default());
+    assert_eq!(s.right_release(), Did::default());
+    assert_eq!(s.press([10, 10]), Did::default());
+    // Enter's OK closes it at the key's release, the screen drawn again.
+    let did = s.key(Some(Command::Message(message::Key::Ok)), "Return");
+    assert!(did.changed && did.sample);
+    assert_eq!(s.key_up("Escape"), Did::default());
+    assert!(s.key_up("Return").changed);
+    assert!(s.box_draws("PLAYERS.PAL").is_empty());
+    assert_eq!(s.context(), Context::Scenario);
+    assert_eq!(s.hovers().arrow, Arrow::Adventure);
+    // The OK pressed by the mouse: off it and back, then released over it; or the right release
+    // while the mouse holds it (CLT-Q72 (a)).
+    click(&mut s, [497, 555]);
+    let ok = ok_button(&s);
+    assert!(s.press(ok).changed);
+    assert!(s.moved([10, 10]).changed);
+    assert!(s.moved(ok).changed);
+    assert!(s.release().changed);
+    assert!(s.box_draws("PLAYERS.PAL").is_empty());
+    click(&mut s, [497, 555]);
+    s.press(ok);
+    assert!(s.right_release().changed);
+    assert!(s.box_draws("PLAYERS.PAL").is_empty());
+    // The client's with no map at all (CLT-Q114 (b)); none without the text.
+    let mut fixed = scenario_of(Vec::new(), Bugs::Fixed);
+    assert!(click(&mut fixed, [497, 555]).changed);
+    assert_eq!(fixed.context(), Context::Question);
+    let mut silent = scenario_of(Vec::new(), Bugs::Fixed);
+    silent.texts.no_maps = None;
+    click(&mut silent, [497, 555]);
+    assert_eq!(silent.context(), Context::Scenario);
+}
+
+/// The OK button's middle in the open box.
+fn ok_button(s: &Scenario) -> [i32; 2] {
+    let Over::Notice(open) = &s.over else {
+        panic!("no box open");
+    };
+    let dialog = &open.message.dialog;
+    dialog
+        .items
+        .iter()
+        .find_map(|item| match item {
+            h3_ui::ui::Item::Button(b) if b.id == message::OK => {
+                let ([x, y], [w, h]) = item.area()?;
+                Some([dialog.place[0] + x + w / 2, dialog.place[1] + y + h / 2])
+            }
+            _ => None,
+        })
+        .unwrap()
 }

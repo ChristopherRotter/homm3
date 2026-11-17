@@ -2518,6 +2518,11 @@ original = [{ at = "GENRLTXT:760" }]
 id = "shell.scenario.unnamed"
 original = [{ at = "GENRLTXT:509" }]
 
+# Begin's message over an empty list (E27 M3 T2b; design §3.6, §21.3: `scenario_begin` 0x58BCE0).
+[[key]]
+id = "shell.scenario.no-maps"
+original = [{ at = "GENRLTXT:530" }]
+
 # The scenario list (E27 M3 T1b1; design §3.2, §3.4; `scenario_dialog_redraw` 0x584550): the title
 # of a new game's screen (`scenario_titles` 0x6A8098: ArrayTxt.txt 229), the sizes' label, the
 # players column ("%d/%d", 0x679DC8: the colours anyone plays and those a human may), the size

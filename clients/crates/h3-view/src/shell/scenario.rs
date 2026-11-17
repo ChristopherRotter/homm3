@@ -44,12 +44,26 @@
 //!   the name then the file's name (CLT-Q90); the size's first press after the build descending
 //!   in the original's profile (its recorded key 1), ascending in the client's (CLT-Q91 (c)).
 //!
-//! *Not built yet:* the difficulty's presses and Begin (T2: a double press begins nothing yet),
-//! the advanced options (129: T3), the random map (130: T5), a description too long for its box
-//! (its scroll bar: T2), the hot seat's and the load's modes (the client's stub until T4 and M4),
-//! GENRLTXT 503 while the list is read again (a network game's message 1015 alone, `sub_58B120`
-//! 0x58B120: the network modes', `CLT-STUB-6`; design §20.3).
+//! - **The difficulty** (E27 M3 T2a; §3.5, §21): a press of 107 to 111 chooses it
+//!   (`scenario_difficulty_click` 0x586BF3: its button selected, the rating its own) and redraws
+//!   the screen whole. Each opening takes Normal ([`OPENING_DIFFICULTY`]: the list's build at the
+//!   opening sets it from the selected map's record), the list's showing keeps the choice.
+//! - **The empty list** (E27 M3 T2b; §21): the panel shows nothing of a map, the rating neither
+//!   (`scenario_info_draw` 0x5840F0 draws nothing there). In the original's profile the size mark
+//!   and the flags keep what they showed (a filter's size, the last map's flags), the teams'
+//!   dialog shows the last map's teams (with no map ever shown, one team of the eight colours),
+//!   and with no map at all no difficulty shows chosen before a press; in the client's the size
+//!   mark shows frame 4 (CLT-Q115 (b)), no flags, no teams' dialog, the choice always shown
+//!   (CLT-Q139 (b)). **Begin** there shows GENRLTXT 530 in an OK box (`scenario_begin` 0x58BCE0);
+//!   the original's only once a map was shown (with no map at all it does nothing: CLT-Q114 (b)).
+//!
+//! *Not built yet:* Begin with a map (T6: a double press begins nothing yet either), the advanced
+//! options (129: T3), the random map (130: T5), a description too long for its box (its scroll
+//! bar: T2c), the hot seat's and the load's modes (the client's stub until T4 and M4), GENRLTXT
+//! 503 while the list is read again (a network game's message 1015 alone, `sub_58B120` 0x58B120:
+//! the network modes', `CLT-STUB-6`; design §20.3).
 
+use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -64,7 +78,7 @@ use serde::Deserialize;
 use super::Ended;
 use super::keys::{Command, Context, Scroll};
 use super::menu::{Arrow, Did, Hovers};
-use crate::message::MessageBox;
+use crate::message::{MessageBox, Open, Outcome};
 
 /// Show Available Scenarios (128: S).
 pub const LIST: u16 = 128;
@@ -199,9 +213,13 @@ pub const RATINGS: [u32; 5] = [80, 100, 130, 160, 200];
 /// The map kept between visits at the start (`scenario_last_map` 0x683238).
 pub const KEPT_MAP: &str = "Arrogance.h3m";
 
-/// The difficulty kept between visits at the start (`scenario_last_difficulty` 0x683454:
-/// Normal, recorded at M1 T2: `scn-new`).
-pub const KEPT_DIFFICULTY: u8 = 1;
+/// The difficulty at each opening (E27 M3 T2a, design §21.1): the list's build at the opening
+/// (`scenario_slots_new` 0x57FADC, `scenario_list_finish` 0x58314E) sets
+/// `scenario_last_difficulty` 0x683454 from the selected record's +0x33C, which a new game's map
+/// record holds at 1 (its constructors 0x579049, 0x579177), and the game from it
+/// (`scenario_to_game` 0x583673): Normal, whatever was chosen before (recorded: `scn-difficulty`
+/// reopened).
+pub const OPENING_DIFFICULTY: u8 = 1;
 
 /// A map's format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -385,6 +403,9 @@ pub struct Texts {
     pub sizes: Vec<String>,
     /// The teams' dialog (none: the strip's right press opens nothing).
     pub teams: Option<Teams>,
+    /// Begin's message over an empty list (GENRLTXT 530 in an OK box, E27 M3 T2b; none: Begin
+    /// does nothing there).
+    pub no_maps: Option<MessageBox>,
 }
 
 /// The teams' dialog's look (`scenario_teams_dialog` 0x576540; the layout's `[scenario.teams]`):
@@ -497,6 +518,8 @@ enum Over {
     Help(u16),
     /// The teams' dialog (`scenario_teams_dialog` 0x576540), while the right button is held.
     Teams(MessageBox),
+    /// Begin's message over an empty list (GENRLTXT 530), until its OK.
+    Notice(Box<Open>),
 }
 
 /// The scenario screen as it shows.
@@ -540,6 +563,12 @@ pub struct Scenario {
     last_row: Option<(u32, Option<usize>)>,
     kept: String,
     difficulty: u8,
+    /// The original's profile: the difficulty's buttons show the choice (the opening selects it
+    /// only over a list with a map, 0x57C556; a press always). The client's always (CLT-Q139 (b)).
+    chosen: bool,
+    /// The map the game holds (`scenario_to_game` 0x583580: the last one shown), whose players
+    /// the original's flags and teams' dialog keep over an empty list; none before one showed.
+    game: Option<Entry>,
     background: u8,
     over: Over,
     hovers: Hovers,
@@ -548,8 +577,9 @@ pub struct Scenario {
 
 impl Scenario {
     /// The screen from the layout's `dialog` and the list's look `look`, its texts `texts` and
-    /// the maps `entries` (in the list's order, [`sort`]), the kept map [`KEPT_MAP`] and
-    /// difficulty [`KEPT_DIFFICULTY`], in the profile `bugs`; the list hidden.
+    /// the maps `entries` (in the list's order, [`sort`]), the kept map [`KEPT_MAP`] and the
+    /// difficulty [`OPENING_DIFFICULTY`], in the profile `bugs`; the list hidden, the flags too
+    /// until a map shows (the constructor's).
     #[must_use]
     pub fn new(
         dialog: Dialog,
@@ -562,7 +592,11 @@ impl Scenario {
         for (id, text) in &texts.labels {
             shown.texts.insert(*id, text.clone());
         }
+        for id in ALLIES..ENEMIES + 8 {
+            shown.states.insert(id, hidden());
+        }
         let bar = Scrollbar::new(look.bar.clone());
+        let chosen = !entries.is_empty();
         let listed = (0..entries.len()).collect();
         let mut scenario = Self {
             dialog,
@@ -587,7 +621,9 @@ impl Scenario {
             now: 0,
             last_row: None,
             kept: String::from(KEPT_MAP),
-            difficulty: KEPT_DIFFICULTY,
+            difficulty: OPENING_DIFFICULTY,
+            chosen,
+            game: None,
             background: 0,
             over: Over::Nothing,
             hovers: Hovers::default(),
@@ -599,7 +635,8 @@ impl Scenario {
 
     /// The screen opened anew (`scenario_new` 0x4F0490), the menus' last items `hovers` carried
     /// for the menu after it, its background `gamselb0.pcx` until the caller draws
-    /// ([`Scenario::with_background`]). Its busy cursor leaves the adventure map's arrow in the
+    /// ([`Scenario::with_background`]): the kept map selected, the difficulty
+    /// [`OPENING_DIFFICULTY`] again. Its busy cursor leaves the adventure map's arrow in the
     /// original's profile (CLT-Q137 (b): the client's keeps the default one).
     #[must_use]
     pub fn opened(&self, hovers: Hovers) -> Self {
@@ -618,7 +655,6 @@ impl Scenario {
             self.bugs,
         );
         opened.kept.clone_from(&self.kept);
-        opened.difficulty = self.difficulty;
         opened.hovers = hovers;
         opened.selecting()
     }
@@ -637,10 +673,18 @@ impl Scenario {
         self.background
     }
 
-    /// The menus' last items, carried from the menu before it.
+    /// The menus' last items, carried from the menu before it; while Begin's message is open the
+    /// default arrow (`message_box_build` 0x4F74AC sets it for its loop, then puts the screen's
+    /// back, 0x4F753A; recorded: `scn-begin-filter` begin).
     #[must_use]
     pub const fn hovers(&self) -> Hovers {
-        self.hovers
+        match self.over {
+            Over::Notice(_) => Hovers {
+                arrow: Arrow::Default,
+                ..self.hovers
+            },
+            _ => self.hovers,
+        }
     }
 
     /// The entry selected, if any.
@@ -680,16 +724,20 @@ impl Scenario {
         self.difficulty
     }
 
-    /// Where it takes its keys.
+    /// Where it takes its keys: a box's while Begin's message is open.
     #[must_use]
     pub const fn context(&self) -> Context {
-        Context::Scenario
+        match self.over {
+            Over::Notice(_) => Context::Question,
+            _ => Context::Scenario,
+        }
     }
 
-    /// Whether the cursor shows (a help popup hides it; the teams' dialog runs with it).
+    /// Whether the cursor shows (a help popup hides it; the teams' dialog and a message run with
+    /// it).
     #[must_use]
     pub const fn cursor(&self) -> bool {
-        matches!(self.over, Over::Nothing | Over::Teams(_))
+        !matches!(self.over, Over::Help(_))
     }
 
     /// The shell's clock is `ms`: a row's double press is timed on it, from the screen's opening
@@ -822,13 +870,16 @@ impl Scenario {
     }
 
     /// A filter's press (`scenario_list_filter` 0x585D90): the shown list of the maps of `size`
-    /// (every one for 0), the top and the selection its first row, the bar's ticks.
+    /// (every one for 0), the top and the selection its first row, the bar's ticks; the size mark
+    /// set to the filter's size first (0x585EFB: frame 4 for every one), which a selection
+    /// replaces (an empty list keeps it in the original's profile).
     fn filter_by(&mut self, size: u32) {
         self.filter = size;
         self.relist();
         self.top = 0;
         self.selected = (!self.listed.is_empty()).then_some(0);
         self.bar.reset(self.ticks());
+        self.shown.frames.insert(SIZE, size_frame(size));
         self.show();
         self.whole();
     }
@@ -955,32 +1006,30 @@ impl Scenario {
 
     /// What the information panel shows of the entry selected (`scenario_select` 0x585500, its
     /// draw `scenario_info_draw` 0x5840F0, the flags `scenario_team_flags` 0x585300), and the
-    /// chosen difficulty's button selected.
+    /// chosen difficulty's button selected (not before a press in the original's profile when the
+    /// screen opened with no map).
     fn show(&mut self) {
+        let chosen = self.chosen || self.bugs == Bugs::Fixed;
         for (k, &id) in DIFFICULTIES.iter().enumerate() {
             let state = self.shown.state(id);
-            let selected = usize::from(self.difficulty) == k;
+            let selected = chosen && usize::from(self.difficulty) == k;
             self.shown.states.insert(id, State { selected, ..state });
-        }
-        let rating = text_at(&self.texts.ratings, usize::from(self.difficulty));
-        self.shown.texts.insert(RATING, rating);
-        for id in ALLIES..ENEMIES + 8 {
-            self.shown.states.insert(id, hidden());
         }
         let entry = self
             .selected
             .and_then(|i| self.listed.get(i))
             .and_then(|&e| self.entries.get(e));
-        let shown = &mut self.shown;
         let Some(entry) = entry else {
-            for id in [NAME, DESCRIPTION, VICTORY, LOSS, MAP_DIFFICULTY] {
-                shown.texts.insert(id, String::new());
-            }
-            for id in [SIZE, VICTORY_MARK, LOSS_MARK] {
-                shown.states.insert(id, hidden());
-            }
+            self.show_empty();
             return;
         };
+        self.game = Some(entry.clone());
+        let rating = text_at(&self.texts.ratings, usize::from(self.difficulty));
+        let shown = &mut self.shown;
+        shown.texts.insert(RATING, rating);
+        for id in ALLIES..ENEMIES + 8 {
+            shown.states.insert(id, hidden());
+        }
         let t = &self.texts;
         let name = if entry.name.is_empty() {
             t.unnamed.clone()
@@ -1022,6 +1071,57 @@ impl Scenario {
             shown.states.insert(*slot, State::default());
             shown.frames.insert(*slot, u32::from(colour));
             *slot += 1;
+        }
+    }
+
+    /// The panel over an empty list (E27 M3 T2b, design §21.2): the select does nothing there
+    /// (0x58553C) and `scenario_info_draw` 0x5840F0 draws nothing of a map (0x584128), the rating
+    /// neither. The original's size mark and flags keep what they showed (a filter's size, set
+    /// first, or the constructor's S; the last map's flags); the client's size mark shows frame 4
+    /// (CLT-Q115 (b)) and no flags (CLT-Q139 (b)).
+    fn show_empty(&mut self) {
+        let shown = &mut self.shown;
+        for id in [NAME, DESCRIPTION, VICTORY, LOSS, MAP_DIFFICULTY, RATING] {
+            shown.texts.insert(id, String::new());
+        }
+        for id in [VICTORY_MARK, LOSS_MARK] {
+            shown.states.insert(id, hidden());
+        }
+        if self.bugs == Bugs::Fixed {
+            shown.states.insert(SIZE, State::default());
+            shown.frames.insert(SIZE, size_frame(0));
+            for id in ALLIES..ENEMIES + 8 {
+                shown.states.insert(id, hidden());
+            }
+        }
+    }
+
+    /// A difficulty's press (`scenario_difficulty_click` 0x586BF3): the difficulty `k` chosen
+    /// (game +0x1F6D8, `scenario_last_difficulty`), its button selected, the screen redrawn whole
+    /// (the dialog's redraw, then `scenario_dialog_redraw`).
+    fn choose(&mut self, k: u8) {
+        self.difficulty = k;
+        self.chosen = true;
+        self.show();
+        self.whole();
+    }
+
+    /// Begin (186, `scenario_begin` 0x58BCE0): over an empty list GENRLTXT 530 in an OK box, the
+    /// original's only once a map of a known format was shown (its check of the game's map comes
+    /// first: with no map at all Begin does nothing, CLT-Q114 (b)); with a map nothing yet (the
+    /// game's begin: T6).
+    fn begin(&mut self) -> bool {
+        if self.entry().is_some() {
+            return false;
+        }
+        let checked = self.bugs == Bugs::Fixed
+            || self.game.as_ref().is_some_and(|g| g.format.is_some());
+        match self.texts.no_maps.clone().filter(|_| checked) {
+            Some(message) => {
+                self.over = Over::Notice(Box::new(Open::new(message)));
+                true
+            }
+            None => false,
         }
     }
 
@@ -1150,6 +1250,7 @@ impl Scenario {
                 .map(|m| m.dialog.draws(&m.shown, players))
                 .unwrap_or_default(),
             Over::Teams(m) => m.dialog.draws(&m.shown, players),
+            Over::Notice(open) => open.message.dialog.draws(&open.message.shown, players),
             Over::Nothing => Vec::new(),
         }
     }
@@ -1171,8 +1272,9 @@ impl Scenario {
             self.scrolled(value);
             return Did::CHANGED;
         }
-        match self.over {
+        match &mut self.over {
             Over::Nothing => Did::held(self.input.moved(&self.dialog, &mut self.shown, point)),
+            Over::Notice(open) => Did::of_box(open.moved(point)),
             Over::Help(_) | Over::Teams(_) => Did::default(),
         }
     }
@@ -1181,11 +1283,12 @@ impl Scenario {
     /// shared input's buttons (a hidden item takes no press).
     pub fn press(&mut self, point: [i32; 2]) -> Did {
         self.pointer = point;
-        match self.over {
+        match &mut self.over {
             Over::Nothing => {}
             Over::Help(_) => return self.close_help(),
             // The dialog's procedure (0x575430) takes the right release alone.
             Over::Teams(_) => return Did::default(),
+            Over::Notice(open) => return Did::box_press(open.press(point)),
         }
         let inside = self.inside(point);
         if self.showing && self.row.is_none() && self.bar.contains(inside) {
@@ -1226,13 +1329,17 @@ impl Scenario {
             }
             return Did::CHANGED;
         }
-        match self.over {
+        match &mut self.over {
             Over::Nothing => {
                 let did = self.input.release(&mut self.shown);
                 self.clicked(did.changed, did.clicked)
             }
             Over::Help(_) => self.close_help(),
             Over::Teams(_) => Did::default(),
+            Over::Notice(open) => {
+                let outcome = open.release();
+                self.answered(outcome)
+            }
         }
     }
 
@@ -1269,16 +1376,22 @@ impl Scenario {
     /// colour, each team's name and its colours' flags in colour order; the dialog
     /// [`TEAMS_WIDTH`] wide at x [`TEAMS_X`], ((50 × teams + 56) / 64 + 1) × 64 high, centred on
     /// the screen's rows, casting a shadow (its flags 0x12), its frame in the DEF's own colours.
-    /// None without a selection (*provisional*: T2's empty list) or without the dialog's texts.
+    /// None without the dialog's texts. Over an empty list (E27 M3 T2b, design §21.2) the
+    /// original's shows the game's players, the last map's (with none shown yet the reset
+    /// game's: every colour in one team), the client's none (CLT-Q139 (b)).
     fn teams_dialog(&self) -> Option<MessageBox> {
         let teams = self.texts.teams.as_ref()?;
-        let entry = self
-            .selected
-            .and_then(|i| self.listed.get(i))
-            .and_then(|&e| self.entries.get(e))?;
+        let (plays, of) = match (self.entry(), self.bugs, &self.game) {
+            (Some(entry), _, _) | (None, Bugs::Original, Some(entry)) => (
+                entry.seats.map(Seat::plays),
+                entry.teams,
+            ),
+            (None, Bugs::Original, None) => ([true; 8], [0; 8]),
+            (None, Bugs::Fixed, _) => return None,
+        };
         let mut groups: Vec<(u8, Vec<u8>)> = Vec::new();
-        for colour in (0..8u8).filter(|&c| entry.seats[usize::from(c)].plays()) {
-            let team = entry.teams[usize::from(colour)];
+        for colour in (0..8u8).filter(|&c| plays[usize::from(c)]) {
+            let team = of[usize::from(colour)];
             match groups.iter_mut().find(|(t, _)| *t == team) {
                 Some((_, colours)) => colours.push(colour),
                 None => groups.push((team, alloc::vec![colour])),
@@ -1338,8 +1451,14 @@ impl Scenario {
         if self.bar.held() {
             return self.release();
         }
-        match self.over {
+        match &mut self.over {
             Over::Help(_) | Over::Teams(_) => self.close_help(),
+            // A box's button the mouse holds goes up as at a left release (CLT-Q72 (a)).
+            Over::Notice(open) if open.holds_mouse() => {
+                let outcome = open.release();
+                self.answered(outcome)
+            }
+            Over::Notice(_) => Did::default(),
             Over::Nothing => {
                 let did = self.input.right_release(&mut self.shown);
                 self.clicked(did.changed, did.clicked)
@@ -1352,6 +1471,12 @@ impl Scenario {
     pub fn key(&mut self, command: Option<Command>, by: &str) -> Did {
         if self.bar.held() {
             return Did::default();
+        }
+        if let Over::Notice(open) = &mut self.over {
+            return match command {
+                Some(Command::Message(key)) => Did::box_press(open.key(key, by)),
+                _ => Did::default(),
+            };
         }
         match (&self.over, command) {
             (Over::Nothing, Some(Command::Dialog(id))) if self.has(id) => {
@@ -1367,7 +1492,7 @@ impl Scenario {
 
     /// The key `by` released.
     pub fn key_up(&mut self, by: &str) -> Did {
-        match self.over {
+        match &mut self.over {
             Over::Nothing => {
                 let did = self.input.key_up(&mut self.shown, by);
                 self.clicked(did.changed, did.clicked)
@@ -1378,6 +1503,10 @@ impl Scenario {
                     changed: did.changed,
                     ..Did::default()
                 }
+            }
+            Over::Notice(open) => {
+                let outcome = open.key_up(by);
+                self.answered(outcome)
             }
         }
     }
@@ -1416,10 +1545,21 @@ impl Scenario {
         Did::CHANGED
     }
 
+    /// Begin's message after an input: its OK closes it, the screen drawn again whole as the box
+    /// takes its pixels back.
+    fn answered(&mut self, outcome: Outcome) -> Did {
+        match outcome {
+            Outcome::Nothing => Did::default(),
+            Outcome::Changed => Did::CHANGED,
+            Outcome::Closed(_) => self.close_help(),
+        }
+    }
+
     /// A hold ended (`changed`: a button went up) with the click `clicked`, if any: its command
     /// (`scenario_dialog_click` 0x5865B0): Back ends the screen (0x7801), Show Available
-    /// Scenarios toggles the list, a filter and a column act on it; the others' commands are later
-    /// tasks' (the module's notes).
+    /// Scenarios toggles the list, a filter and a column act on it, a difficulty is chosen, Begin
+    /// shows its message over an empty list; the others' commands are later tasks' (the module's
+    /// notes).
     fn clicked(&mut self, changed: bool, clicked: Option<u16>) -> Did {
         let mut did = Did {
             changed,
@@ -1438,6 +1578,11 @@ impl Scenario {
         } else if let Some(&(_, key)) = COLUMNS.iter().find(|&&(c, _)| c == id) {
             self.sort_click(key);
             did.changed = true;
+        } else if let Some(k) = DIFFICULTIES.iter().position(|&d| d == id) {
+            self.choose(u8::try_from(k).unwrap_or(OPENING_DIFFICULTY));
+            did.changed = true;
+        } else if id == BEGIN {
+            did.changed |= self.begin();
         }
         did
     }
