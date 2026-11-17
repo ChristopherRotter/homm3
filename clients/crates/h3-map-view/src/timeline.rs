@@ -36,6 +36,16 @@
 //! millisecond as `player_turn_start` 0x4CC7D0 draws the next day, with the week's or the month's
 //! message over it at a week's start. While a box is open the map stands still (the tick runs, the
 //! week's box steps the date's window behind it); its buttons take the mouse and its keys.
+//!
+//! A computer player's turn in the viewer's sight (E24 M4 T1b2, design §5.2, *provisional*): a turn
+//! whose status window is another player's (kind 5) is a computer's, played from its facts
+//! ([`NextTurn::walks`]: its heroes' steps as a recording shows them; Part B the engine's). Its
+//! start disables four buttons and shows the shield in the minimap's place, the lists staying the
+//! viewer's; each hero is selected (the view centred on it when the viewer sees it) and walks its
+//! steps, a step the viewer sees drawn as a human's at Computer Walk Speed and one it does not see
+//! taking no time; kind 5 steps its sand and glass. Its end starts the next turn. The single draws
+//! of a step at speed 4 take no time either: the loop keeps them ([`Loop::take_held`]) for the
+//! window, which shows each on its own clock.
 
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::format;
@@ -54,14 +64,14 @@ use crate::layout::{AdventureLayout, DIRECTIONS};
 use crate::lists::{SLOTS, top_showing};
 use crate::live::{
     Arrow, Buttons, Chosen, ChosenHero, ChosenTown, Date, DateStatus, Kingdom, KingdomStatus,
-    Selected, Status, Turn,
+    Selected, Status, Turn, TurnStatus,
 };
 use crate::minimap::{MinimapArt, divided};
 use crate::panels;
 use crate::scene::ViewAt;
-use crate::sequence::{DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
+use crate::sequence::{DEFAULT_COMPUTER_SPEED, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
 use crate::sound::{Cue, Sound};
-use crate::status::DateArt;
+use crate::status::{DateArt, OtherArt};
 use crate::tables::{Tables, WalkArt};
 use crate::turn::{self, TurnArt};
 
@@ -443,6 +453,10 @@ pub struct Rules {
     pub asked_ms: u32,
     /// The turn's numbers and sounds (E24 M4 T1a, design §5.1).
     pub turn: TurnArt,
+    /// Another player's turn's status window's step (E24 M4 T1b2, design §5.2).
+    pub other: OtherArt,
+    /// The default cursor's frame a computer player's turn sets (E24 M4 T1b2).
+    pub busy: u32,
 }
 
 impl Rules {
@@ -472,6 +486,8 @@ impl Rules {
             minimap: tables.map.minimap.clone(),
             asked_ms: tables.map.status.asked,
             turn: tables.map.turn.clone(),
+            other: tables.map.status.other,
+            busy: layout.cursor.busy,
         }
     }
 
@@ -681,17 +697,63 @@ pub struct Start {
     /// The turns' starts End Turn plays, in order (E24 M4 T1a: a recording's `[[turn]]`; Part B
     /// the engine's events); past the last End Turn's change is not built.
     pub turns: Vec<NextTurn>,
+    /// A computer player's turn's options (E24 M4 T1b2).
+    pub computer: Computer,
+}
+
+/// A computer player's turn's options (E24 M4 T1b2, design §5.2): Computer Walk Speed
+/// (`option_computer_walk_speed` 0x698758: a step's frames as the hero speed's of that number,
+/// 3 the harness's settings') and Blackout Computer (0x698790: no step seen).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Computer {
+    /// Computer Walk Speed (2 to 4 drawn; 5, which the system options set with Blackout, lies
+    /// past the tables: one draw as 4's).
+    pub speed: usize,
+    /// Blackout Computer.
+    pub blackout: bool,
+}
+
+impl Default for Computer {
+    fn default() -> Self {
+        Self {
+            speed: DEFAULT_COMPUTER_SPEED,
+            blackout: false,
+        }
+    }
 }
 
 /// A turn's start End Turn plays (E24 M4 T1a, design §5.1, *provisional*): the live part's facts
 /// and, at a week's start, the week's or the month's message laid out (the adapter's: the text,
-/// [`turn::message`], in a box of style 1).
+/// [`turn::message`], in a box of style 1); since E24 M4 T1b2 the map's heroes where the turn's
+/// start finds them and, for a computer player's turn in sight, its heroes' walks.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NextTurn {
     /// The facts.
     pub turn: Turn,
     /// The week's or the month's message; none on another day.
     pub message: Option<Arc<MessageBox>>,
+    /// The map's heroes the facts hold standing ([`Turn::heroes`], [`turn::placed`]), each by
+    /// its index among [`Start::heroes`] with its tile and facing: placed there as the turn
+    /// starts (a computer's moves out of sight).
+    pub heroes: Vec<(usize, Hero)>,
+    /// A computer player's turn's heroes' walks, in order (E24 M4 T1b2: [`turn::walks`]); none
+    /// for a human's.
+    pub walks: Vec<Steps>,
+}
+
+/// A computer player's hero's walk in its turn (E24 M4 T1b2, *provisional*): the hero (its index
+/// among [`Start::heroes`]), its place in the computer's kingdom's list, and its steps as a
+/// recording shows them (the timeline's `hero` lines in the turn: each step's destination and the
+/// way it faces; the steps it does not show, unseen ones, lie between two of them); Part B the
+/// engine's moves.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Steps {
+    /// The map's hero.
+    pub hero: usize,
+    /// Its place in the computer's kingdom's hero list.
+    pub slot: usize,
+    /// Its steps' destinations and facings, in order.
+    pub steps: Vec<Hero>,
 }
 
 /// A status window's kind asked for a time (`status_window_set_kind` 0x415D60: the manager's
@@ -786,6 +848,12 @@ pub struct Draw {
     pub pressed: Vec<u16>,
     /// The message box over the map, its buttons' states (E24 M4 T1a); none without one.
     pub message: Option<Arc<MessageBox>>,
+    /// A computer player's turn shown (E24 M4 T1b2, design §5.2: four buttons disabled, the
+    /// minimap's place the shield; [`crate::live::Live::computer`]).
+    pub computer: bool,
+    /// The map's heroes on their tiles and facings ([`Start::heroes`]; the selected one's as it
+    /// stood when last chosen away from: [`Draw::hero`] gives it): E24 M4 T1b2, a computer's moves.
+    pub heroes: Arc<Vec<Hero>>,
 }
 
 /// The state after a millisecond.
@@ -818,6 +886,9 @@ pub struct State {
     pub date: Date,
     /// The current player's colour: the timeline's `player`.
     pub player: u8,
+    /// Another player's turn's status window shown (E24 M4 T1b2): its crest's, sand's and glass's
+    /// frames, the timeline's `other`; none under another kind.
+    pub other: Option<[u32; 3]>,
 }
 
 /// A walk under way: inside a key's step or the path's walk, which wait for their frames' times.
@@ -949,6 +1020,52 @@ pub struct Loop {
     /// The input queue emptied (`input_flush` 0x4EC570: a box's opening, a human's turn's
     /// start): the actions after this one in its millisecond are dropped.
     flush: bool,
+    /// Computer Walk Speed's frames: the pixels each slides the view by (none: one draw); Blackout
+    /// Computer (E24 M4 T1b2, [`Start::computer`]).
+    computer_pixels: Vec<i32>,
+    blackout: bool,
+    /// A computer player's turn under way (E24 M4 T1b2).
+    ai: Option<AiTurn>,
+    /// The single draws of a computer's step at speed 4 in this millisecond, each as the screen
+    /// showed it ([`Loop::take_held`]).
+    within: Vec<State>,
+}
+
+/// A computer player's turn under way (E24 M4 T1b2, design §5.2, *provisional*): its facts, kind
+/// 5's window, its heroes' walks left and the step under way, and what the viewer's turn's end
+/// left for its next day.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct AiTurn {
+    /// The computer's kingdom (the turn's facts): its heroes' points, its selection.
+    kingdom: Kingdom,
+    /// Kind 5's window and the millisecond it last stepped or was built (the panel's +0x40).
+    status: TurnStatus,
+    stepped: u32,
+    /// The heroes' walks left.
+    walks: VecDeque<Steps>,
+    /// The walking hero's steps left.
+    steps: VecDeque<Hero>,
+    /// The step under way: its direction, its next frame and when that frame, or its end, comes.
+    step: Option<(Direction, usize, u32)>,
+    /// The viewer's turn's end.
+    ended: Ended,
+}
+
+/// What the viewer's turn's end leaves for its next day (E24 M4 T1a's turn's change): its
+/// selection, the selection's window memory kept and the path shown.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Ended {
+    before: Selected,
+    window: Option<Status>,
+    path: Vec<(Direction, Arrow)>,
+}
+
+/// The next day's selection as the turn's facts give it (E24 M4 T1a): the kingdom's hero `i` and
+/// its map hero, or the town `i` and what choosing it shows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Choice {
+    hero: Option<(usize, usize)>,
+    town: Option<(usize, ChosenTown)>,
 }
 
 /// A message box open over the map (E24 M4 T1a, design §5.1): what its OK does, the box and the
@@ -982,6 +1099,15 @@ impl Loop {
             .checked_sub(1)
             .and_then(|i| rules.walk.pixels.get(i))
             .or_else(|| rules.walk.pixels.get(DEFAULT_HERO_SPEED - 1))
+            .cloned()
+            .unwrap_or_default();
+        // Computer Walk Speed by the hero speeds' frames (design §5.2: `walk_frame_pixels` by
+        // the option's number); 5, past the tables, one draw (*provisional*: not recorded alone).
+        let computer_pixels = start
+            .computer
+            .speed
+            .checked_sub(1)
+            .and_then(|i| rules.walk.pixels.get(i))
             .cloned()
             .unwrap_or_default();
         let cursor = Cursor {
@@ -1023,6 +1149,8 @@ impl Loop {
                 selected: start.index,
                 pressed: Vec::new(),
                 message: None,
+                computer: false,
+                heroes: Arc::new(start.heroes.clone()),
             },
             hero: start.hero,
             lifted: false,
@@ -1077,6 +1205,10 @@ impl Loop {
             next_turn: 0,
             boxed: None,
             flush: false,
+            computer_pixels,
+            blackout: start.computer.blackout,
+            ai: None,
+            within: Vec::new(),
             rules,
         };
         // The status window at 0 (E24 M3 T5b2): the kind asked, else the date's or the kingdom's
@@ -1136,13 +1268,30 @@ impl Loop {
             walk: self.walk,
             arrows: self.arrows(),
             buttons: self.buttons,
-            points: self
-                .selected_hero()
-                .and_then(|i| self.kingdom.heroes.get(i))
-                .map(|h| h.points),
+            // The current player's selected hero's (a computer's during its turn).
+            points: match &self.ai {
+                Some(ai) => match ai.kingdom.selected {
+                    Selected::Hero(i) => ai.kingdom.heroes.get(i).map(|h| h.points),
+                    _ => None,
+                },
+                None => self
+                    .selected_hero()
+                    .and_then(|i| self.kingdom.heroes.get(i))
+                    .map(|h| h.points),
+            },
             date: self.kingdom.date,
             player: self.player,
+            other: match &self.kingdom.status {
+                Some(Status::Turn(s)) => Some([s.crest, s.sand, s.glass]),
+                _ => None,
+            },
         }
+    }
+
+    /// The states the screen showed inside the last millisecond run before its last (E24 M4
+    /// T1b2: a computer's steps at speed 4 seen, each drawn once with no wait), in order; taken.
+    pub fn take_held(&mut self) -> Vec<State> {
+        core::mem::take(&mut self.within)
     }
 
     /// What the screen's view shows: its last draw.
@@ -1175,17 +1324,38 @@ impl Loop {
     /// # Errors
     /// An action the loop cannot play yet ([`Unplayable`]).
     pub fn run(&mut self, t: u32, actions: &[Action]) -> Result<(), Unplayable> {
+        self.within.clear();
         // The loop's turn and a walk's wait alike run the tick (0x4ED490: the poll, the palettes).
         self.tick(t);
-        match self.moving.take() {
-            Some(moving) => {
-                if let Some(queued) = self.carry_on(t, moving) {
-                    self.resume(t, queued)?;
-                }
+        if self.ai.is_some() {
+            // A computer player's turn (E24 M4 T1b2): its walk's waits; at its end the next
+            // turn, then the manager's next message (the redraws due since run then).
+            if self.ai_on(t)? {
+                self.idle_message(t);
             }
-            None => self.idle_message(t),
+        } else {
+            match self.moving.take() {
+                Some(moving) => {
+                    if let Some(queued) = self.carry_on(t, moving) {
+                        self.resume(t, queued)?;
+                    }
+                }
+                None => self.idle_message(t),
+            }
         }
         for &action in actions {
+            if self.ai.is_some() {
+                // During a computer's turn the messages wait in the queue, which the next human's
+                // start empties (*provisional*); the mouse's point is read at once.
+                if let Action::Pointer(at)
+                | Action::Click(at)
+                | Action::Press(at)
+                | Action::Release(at) = action
+                {
+                    self.pointer = at;
+                }
+                continue;
+            }
             match &mut self.moving {
                 Some(moving) => {
                     // During a walk the mouse's point is read at once (GetCursorPos); the message
@@ -1567,45 +1737,37 @@ impl Loop {
 
     /// The turn's change (`next_player_turn` 0x4C6FE0, `player_turn_start` 0x4CC7D0; design
     /// §5.1), all in End Turn's millisecond (a computer's turn out of sight takes no virtual time):
-    /// the next of [`Start::turns`] (none: not built, refused in a recording). The selected hero put
-    /// back; the current player and the kingdom the turn's (the date, the resources, the heroes'
-    /// rows and points, the towns, the selection, the lists' first slots), the status window shown
-    /// kept until it is built again, the selection's window the one before for the same hero or
-    /// town, else its choice's (*provisional*: the engine's from Part B); the input queue emptied (`input_flush` 0x4EC570). The screen redrawn whole
-    /// (`adventure_full_update` 0x417420) with the date's window asked for the tables' time and
-    /// built, its sound with it; then the turn's hero chosen (`hero_select` with 0, 0, 1: lifted,
-    /// the view centred on it, the date's window built again, its path made again from its
-    /// destination), else its town (`town_select`); next hero's state (0x419450). A redraw's
-    /// deadline already passed moves to the tables' step from now without a step (*provisional*:
-    /// recorded, `turn-question` at 1060, not read). At a week's start but the game's first its
-    /// sound (0x4CCAE5) and its message ([`Loop::open_box`]).
+    /// the next of [`Start::turns`] (none: not built, refused in a recording). The viewer's turn's
+    /// end ([`Loop::turn_end`]), then a computer player's turn in sight when the facts give one
+    /// (E24 M4 T1b2: [`Loop::computer_start`]), else the next day ([`Loop::day_start`]).
     fn turn_change(&mut self, t: u32) -> Result<(), Unplayable> {
         let refused = Unplayable::Command(panels::id::END_TURN);
         let Some(next) = self.turns.get(self.next_turn).cloned() else {
             return self.unbuilt(refused);
         };
+        if let Status::Turn(status) = next.turn.status {
+            if !self.computer_playable(&next) {
+                return self.unbuilt(refused);
+            }
+            let ended = self.turn_end(t);
+            return self.computer_start(t, next, status, ended);
+        }
         // The selection's map hero or town, known before anything changes.
-        let selected = next.turn.kingdom.selected;
-        let chosen_town = match selected {
-            Selected::Town(i) => match self.chosen.towns.get(i).cloned().flatten() {
-                Some(chosen) => Some((i, chosen)),
-                None => return self.unbuilt(refused),
-            },
-            _ => None,
+        let Some(choice) = self.turn_choice(&next.turn) else {
+            return self.unbuilt(refused);
         };
-        let hero = match selected {
-            Selected::Hero(i) => match self.map_hero(i) {
-                Some(index) => Some((i, index)),
-                None => return self.unbuilt(refused),
-            },
-            _ => None,
-        };
-        self.next_turn += 1;
-        let NextTurn { turn, message } = next;
-        // The turn's end: the hero put back, its path kept for its choice.
+        let ended = self.turn_end(t);
+        self.day_start(t, next, choice, ended);
+        Ok(())
+    }
+
+    /// The viewer's turn's end (E24 M4 T1a, design §5.1): the selected hero put back, its path
+    /// kept for its choice; the selection's window memory kept (none under a kind asked: the
+    /// selection's next). A redraw's deadline already passed moves to the tables' step from now
+    /// without a step (*provisional*: recorded, `turn-question` at 1060, not read; E24 M4 T1b2:
+    /// here, before a computer's turn in sight, whose end then redraws for each step it missed).
+    fn turn_end(&mut self, t: u32) -> Ended {
         self.keep_path();
-        let before = self.kingdom.selected;
-        let path = core::mem::take(&mut self.path);
         let shown = |s: &Status| matches!(s, Status::Hero(_) | Status::Town(_));
         let window = self
             .kingdom
@@ -1613,7 +1775,59 @@ impl Loop {
             .take()
             .or_else(|| self.kingdom.status.clone().filter(shown));
         self.lifted = false;
+        if self.frame_at <= t {
+            self.frame_at = t.saturating_add(self.rules.frame_ms);
+        }
+        Ended {
+            before: self.kingdom.selected,
+            window,
+            path: core::mem::take(&mut self.path),
+        }
+    }
+
+    /// The next day's selection as `turn` gives it: a hero's map hero (by the mouse-over's facts,
+    /// else its choice's) or a town's choice, none when neither is known.
+    fn turn_choice(&self, turn: &Turn) -> Option<Choice> {
+        let town = match turn.kingdom.selected {
+            Selected::Town(i) => Some((i, self.chosen.towns.get(i).cloned().flatten()?)),
+            _ => None,
+        };
+        let hero = match turn.kingdom.selected {
+            Selected::Hero(i) => Some((i, self.map_hero(i)?)),
+            _ => None,
+        };
+        Some(Choice { hero, town })
+    }
+
+    /// A human player's turn's start (`player_turn_start` 0x4CC7D0; design §5.1): the map's heroes
+    /// where the facts have them (E24 M4 T1b2); the current player and the kingdom the turn's (the
+    /// date, the resources, the heroes' rows and points, the towns, the selection, the lists'
+    /// first slots), the status window shown kept until it is built again, the selection's window
+    /// the one before for the same hero or town, else its choice's (*provisional*: the engine's
+    /// from Part B); the input queue emptied (`input_flush` 0x4EC570); a computer's screen undone
+    /// (the buttons enabled, the minimap drawn again: `adventure_full_update` 0x417478). The screen
+    /// redrawn whole (`adventure_full_update` 0x417420) with the date's window asked for the
+    /// tables' time and built, its sound with it; then the turn's hero chosen (`hero_select` with
+    /// 0, 0, 1: lifted, the view centred on it, the date's window built again, its path made again
+    /// from its destination), else its town (`town_select`); next hero's state (0x419450). At a
+    /// week's start but the game's first its sound (0x4CCAE5) and its message
+    /// ([`Loop::open_box`]).
+    fn day_start(&mut self, t: u32, next: NextTurn, choice: Choice, ended: Ended) {
+        self.next_turn += 1;
+        let NextTurn {
+            turn,
+            message,
+            heroes,
+            ..
+        } = next;
+        let Ended {
+            before,
+            window,
+            path,
+        } = ended;
+        self.place(&heroes);
         self.player = turn.player;
+        let selected = turn.kingdom.selected;
         let mut kingdom = turn.kingdom;
         kingdom.status = self.kingdom.status.take();
         kingdom.realm = self.kingdom.realm.take();
@@ -1623,13 +1837,15 @@ impl Loop {
             .filter(|_| selected == before)
             .or_else(|| match selected {
                 Selected::Hero(i) => self.chosen_hero(i).map(|c| Status::Hero(c.status.clone())),
-                Selected::Town(_) => chosen_town
+                Selected::Town(_) => choice
+                    .town
                     .as_ref()
                     .map(|(_, c)| Status::Town(c.status.clone())),
                 Selected::None => None,
             });
         self.kingdom = kingdom;
         self.flush = true;
+        self.drawn.computer = false;
         // The screen redrawn whole, the date's window asked and built.
         self.asked = 1;
         self.end = t.saturating_add(self.rules.turn.asked);
@@ -1638,7 +1854,7 @@ impl Loop {
         self.draw_minimap();
         self.draw(t);
         // The turn's selection.
-        match (hero, chosen_town) {
+        match (choice.hero, choice.town) {
             (Some((i, index)), _) => {
                 self.buttons.move_hero = false;
                 self.hero = self.heroes.get(index).copied();
@@ -1670,9 +1886,6 @@ impl Loop {
             }
         }
         self.buttons.next_hero = self.kingdom.next_hero();
-        if self.frame_at <= t {
-            self.frame_at = t.saturating_add(self.rules.frame_ms);
-        }
         let date = self.kingdom.date;
         if turn::starts_week(date) {
             if let Some(sound) = &mut self.sound {
@@ -1682,7 +1895,273 @@ impl Loop {
                 self.open_box(message, false);
             }
         }
+    }
+
+    /// The map's heroes the facts give, each on its tile and facing (E24 M4 T1b2).
+    fn place(&mut self, heroes: &[(usize, Hero)]) {
+        for &(index, hero) in heroes {
+            if let Some(h) = self.heroes.get_mut(index) {
+                *h = hero;
+            }
+        }
+    }
+
+    /// Whether the loop plays a computer's turn in sight from `next` (E24 M4 T1b2): the viewer's
+    /// explored tiles known (the mouse-over's facts) and each walk's hero on the map.
+    fn computer_playable(&self, next: &NextTurn) -> bool {
+        self.hover.is_some() && next.walks.iter().all(|w| w.hero < self.heroes.len())
+    }
+
+    /// A computer player's turn's start (E24 M4 T1b2, design §5.1, §5.2): the map's heroes where
+    /// the facts have them; the computer the current player; the busy cursor (`mouse_set_cursor`
+    /// 0x4C74FE), a shown path cleared and move hero disabled (`path_cancel` 0x419300), the
+    /// viewer's selection cleared at its turn's end (0x4175A0: the lists show none);
+    /// `covered_view_redraw` 0x4CA5B0: four buttons disabled and the lists, the quest log, the
+    /// resource bar and every item drawn for the viewer (its kingdom, not the computer's), the
+    /// shield in the minimap's place (every minimap draw returning at once until the next human's
+    /// start); under Blackout Computer the view drawn covered (not built: the turn falls in End
+    /// Turn's millisecond). Then `ai_player_turn` 0x525E80: kind 5 built (its value the facts')
+    /// and its heroes' turns ([`Loop::ai_on`]).
+    fn computer_start(
+        &mut self,
+        t: u32,
+        next: NextTurn,
+        status: TurnStatus,
+        ended: Ended,
+    ) -> Result<(), Unplayable> {
+        self.next_turn += 1;
+        let NextTurn {
+            turn,
+            heroes,
+            walks,
+            ..
+        } = next;
+        self.place(&heroes);
+        self.player = turn.player;
+        self.set_cursor(DEFAULT_CURSOR, self.rules.busy);
+        self.buttons.move_hero = false;
+        self.kingdom.selected = Selected::None;
+        self.drawn.computer = true;
+        self.draw_lists();
+        self.asked = 0;
+        let status = TurnStatus {
+            crest: u32::from(turn.player),
+            sand: 0,
+            glass: 0,
+            ..status
+        };
+        self.show_status(Status::Turn(status));
+        self.ai = Some(AiTurn {
+            kingdom: turn.kingdom,
+            status,
+            stepped: t,
+            walks: walks.into(),
+            steps: VecDeque::new(),
+            step: None,
+            ended,
+        });
+        self.ai_on(t)?;
         Ok(())
+    }
+
+    /// A computer player's turn from `t` (E24 M4 T1b2, design §5.2): its step's frames as their
+    /// times come, each step's end (the points taken after the animation: the recording's, the
+    /// standing group at the hero's last step, the offset 0); its next step, its next hero's
+    /// turn, its end. Whether it ended.
+    fn ai_on(&mut self, t: u32) -> Result<bool, Unplayable> {
+        loop {
+            let Some(ai) = &mut self.ai else {
+                return Ok(false);
+            };
+            if let Some((direction, frame, until)) = ai.step {
+                if t < until {
+                    return Ok(false);
+                }
+                if let Some(&pixels) = self.computer_pixels.get(frame) {
+                    ai.step = Some((
+                        direction,
+                        frame.saturating_add(1),
+                        t.saturating_add(self.rules.walk.frame_ms),
+                    ));
+                    let [dx, dy] = direction.delta();
+                    self.walk.offset[0] -= pixels * dx;
+                    self.walk.offset[1] -= pixels * dy;
+                    self.frame_drawn(t);
+                    continue;
+                }
+                ai.step = None;
+                let last = ai.steps.is_empty();
+                self.ai_spend(t);
+                if last {
+                    self.stand();
+                }
+                self.walk.offset = [0, 0];
+                continue;
+            }
+            if let Some(to) = ai.steps.pop_front() {
+                self.ai_step(t, to);
+                continue;
+            }
+            if let Some(walk) = ai.walks.pop_front() {
+                self.ai_hero(t, walk);
+                continue;
+            }
+            self.ai_end(t)?;
+            return Ok(true);
+        }
+    }
+
+    /// A computer's hero's turn (`ai_hero_turn` 0x5261F0, design §5.2): kind 5's step; the
+    /// selected one put back (`adventure_hero_stop`) and this one selected (`hero_select` with 1,
+    /// 0, 1: lifted, standing; the view's corner its tile less the middle, never clamped, drawn
+    /// and shown when the viewer sees its tile or a neighbour, never under Blackout Computer; no
+    /// list, status window or minimap drawn).
+    fn ai_hero(&mut self, t: u32, walk: Steps) {
+        self.ai_status_step(t);
+        self.keep_hero();
+        self.index = Some(walk.hero);
+        self.hero = self.heroes.get(walk.hero).copied();
+        self.lifted = true;
+        self.stand();
+        if let Some(ai) = &mut self.ai {
+            ai.kingdom.selected = Selected::Hero(walk.slot);
+            ai.steps = walk.steps.into();
+        }
+        if self.hero.is_some_and(|h| self.sees(h.at)) {
+            self.centre();
+            self.draw(t);
+        }
+    }
+
+    /// A computer's hero's step onto `to` (`ai_hero_step` 0x42FC50, `hero_move_step` 0x4805E0;
+    /// design §5.2): kind 5's step (*provisional*: at every step's start, its 50 ms deciding; which
+    /// call steps it is not read); the steps the facts do not show before it (unseen: no time,
+    /// nothing drawn) bring the hero to its start, their points the recording's. A step the viewer
+    /// sees (`step_seen` 0x480000: its start or its end tile or a neighbour of either explored;
+    /// never under Blackout Computer) hides the cursor until the turn's end (`mouse_hide`) and is a
+    /// human's step (the view centred on the hero's new tile, never clamped: MCL-Q31's view under
+    /// the fog as the original's), its frames at Computer Walk Speed; at speed 4 its one draw kept
+    /// for the window ([`Loop::take_held`]). One it does not see moves the hero and takes no time.
+    fn ai_step(&mut self, t: u32, to: Hero) {
+        self.ai_status_step(t);
+        let number = usize::try_from(to.facing.number()).unwrap_or(0);
+        let back = Direction::ALL[number.saturating_add(4) % Direction::ALL.len()];
+        let at = self.hero.map(|h| h.at);
+        let from = self.next(to.at, back).or(at).unwrap_or(to.at);
+        if let Some(hero) = &mut self.hero {
+            hero.at = from;
+        }
+        self.ai_spend(t);
+        let seen = !self.blackout && (self.sees(from) || self.sees(to.at));
+        if !seen {
+            self.hero = Some(to);
+            return;
+        }
+        self.cursor.shown = false;
+        let single = self.computer_pixels.is_empty();
+        self.step(t, to.facing, to.at, single);
+        if single {
+            let state = self.state(t);
+            self.within.push(state);
+        }
+        if let Some(ai) = &mut self.ai {
+            ai.step = Some((to.facing, 0, t));
+        }
+    }
+
+    /// A computer player's turn's end (`ai_player_turn`'s, design §5.2): the last hero put back on
+    /// its tile (`adventure_hero_stop` with 0, 1), the cursor shown again (`mouse_show` 0x50D5B0)
+    /// as the adventure cursor's arrow (*provisional*: where its type is set back is not read), the
+    /// redraws missed caught up; then the next turn: another computer's, or the next day (refused in a recording when the
+    /// facts give none or its selection is not known).
+    fn ai_end(&mut self, t: u32) -> Result<(), Unplayable> {
+        let Some(ai) = self.ai.take() else {
+            return Ok(());
+        };
+        self.lifted = false;
+        self.keep_hero();
+        self.set_cursor(CURSOR_TYPE, self.rules.arrow);
+        self.cursor.shown = true;
+        // The redraws the turn's walks missed caught up before the next turn starts, the objects
+        // stepped for each (*provisional*: recorded, not read: `ai-walk` at 1660 two steps, the
+        // deadline 1840, and the next day's whole redraw showing the last, unchanged at 1840).
+        while t >= self.frame_at {
+            self.step_objects(t);
+        }
+        let refused = Unplayable::Command(panels::id::END_TURN);
+        let Some(next) = self.turns.get(self.next_turn).cloned() else {
+            return self.unbuilt(refused);
+        };
+        if let Status::Turn(status) = next.turn.status {
+            if !self.computer_playable(&next) {
+                return self.unbuilt(refused);
+            }
+            return self.computer_start(t, next, status, ai.ended);
+        }
+        let Some(choice) = self.turn_choice(&next.turn) else {
+            return self.unbuilt(refused);
+        };
+        self.day_start(t, next, choice, ai.ended);
+        Ok(())
+    }
+
+    /// The selected hero kept among the map's heroes on its tile and facing (E24 M4 T1b2: a
+    /// computer's, put back).
+    fn keep_hero(&mut self) {
+        if let (Some(index), Some(hero)) = (self.index, self.hero)
+            && let Some(h) = self.heroes.get_mut(index)
+        {
+            *h = hero;
+        }
+    }
+
+    /// The computer's walking hero's points memory holds at `t` as [`Start::points`] gives them
+    /// (the recording's `points` lines follow the current player's selected hero).
+    fn ai_spend(&mut self, t: u32) {
+        let given = self.points.iter().take_while(|(at, _)| *at <= t).last();
+        if let (Some(&(_, points)), Some(ai)) = (given, &mut self.ai)
+            && let Selected::Hero(i) = ai.kingdom.selected
+            && let Some(hero) = ai.kingdom.heroes.get_mut(i)
+        {
+            hero.points = points;
+        }
+    }
+
+    /// Kind 5's step (`status_other_turn_step` 0x4536F0, design §5.2): once its step's time has
+    /// passed since the last, the glass and the sand stepped by the computer's heroes' points
+    /// left ([`OtherArt::stepped`]), drawn and shown at once.
+    fn ai_status_step(&mut self, t: u32) {
+        let Some(ai) = &mut self.ai else {
+            return;
+        };
+        if t.saturating_sub(ai.stepped) < self.rules.other.step {
+            return;
+        }
+        ai.stepped = t;
+        let left = ai
+            .kingdom
+            .heroes
+            .iter()
+            .fold(0_i32, |sum, h| sum.saturating_add(h.points));
+        ai.status = self.rules.other.stepped(ai.status, left);
+        let status = Status::Turn(ai.status);
+        self.show_status(status);
+    }
+
+    /// A status window shown at once, memory's and the screen's.
+    fn show_status(&mut self, status: Status) {
+        self.kingdom.status = Some(status.clone());
+        Arc::make_mut(&mut self.drawn.kingdom).status = Some(status);
+    }
+
+    /// Whether the viewer sees `at`: the tile or one of its neighbours inside the map explored
+    /// (`tile_or_neighbour_seen` 0x41A750); nothing without the mouse-over's facts.
+    fn sees(&self, at: Pos) -> bool {
+        let Some(hover) = &self.hover else {
+            return false;
+        };
+        let [x, y, z] = [i32::from(at.x), i32::from(at.y), i32::from(at.z)];
+        (-1..=1).any(|dy| (-1..=1).any(|dx| hover.explored([x + dx, y + dy, z])))
     }
 
     /// The map hero (its index among [`Start::heroes`]) of the kingdom's hero `i`: the one of its
@@ -2431,7 +2910,7 @@ impl Loop {
             until: t,
             queued: Vec::new(),
         };
-        self.step(t, direction, next);
+        self.step(t, direction, next, self.pixels.is_empty());
         self.carry_on(t, moving);
     }
 
@@ -2439,9 +2918,10 @@ impl Loop {
     /// lifted (after a scroll) lifted, the view centred on it, drawn and shown (`mobilize_hero`
     /// with 0, 0, 1, 0x480914); the next tile's arrow zeroed (0x480B30: the next frame shows it
     /// gone); the offset 0, the walking group, the facing, the hero on the next tile at once and
-    /// the view centred on it (0x48041D, never clamped); at speed 4 the view drawn once (0x480483),
-    /// else the offset a tile back (`walk_start_offsets` 0x63D6F0) for the frames.
-    fn step(&mut self, t: u32, direction: Direction, next: Pos) {
+    /// the view centred on it (0x48041D, never clamped); at speed 4 (`single`: the hero speed's or,
+    /// E24 M4 T1b2, Computer Walk Speed's) the view drawn once (0x480483), else the offset a tile
+    /// back (`walk_start_offsets` 0x63D6F0) for the frames.
+    fn step(&mut self, t: u32, direction: Direction, next: Pos, single: bool) {
         if !self.lifted {
             self.lift(t, true);
             self.draw(t);
@@ -2455,7 +2935,7 @@ impl Loop {
             facing: direction,
         });
         self.centre();
-        if self.pixels.is_empty() {
+        if single {
             self.frame_drawn(t);
         } else {
             let [dx, dy] = direction.delta();
@@ -2531,7 +3011,7 @@ impl Loop {
             moving.direction = direction;
             moving.last = moving.rest.is_empty();
             moving.frame = 0;
-            self.step(t, direction, next);
+            self.step(t, direction, next, self.pixels.is_empty());
         }
     }
 
@@ -2751,8 +3231,12 @@ impl Loop {
     }
 
     /// The minimap drawn (`minimap_draw` 0x412C40) and shown: the view's corner and the selected
-    /// hero's tile now.
+    /// hero's tile now; in a computer player's turn nothing (E24 M4 T1b2, design §5.2: the draw
+    /// returns at once, the shield standing).
     fn draw_minimap(&mut self) {
+        if self.ai.is_some() {
+            return;
+        }
         self.drawn.minimap = Minimap {
             view: self.view,
             hero: self.hero.map(|h| h.at),
@@ -2779,6 +3263,12 @@ impl Loop {
             selected: self.index,
             pressed: core::mem::take(&mut self.drawn.pressed),
             message: self.drawn.message.take(),
+            computer: self.drawn.computer,
+            heroes: if *self.drawn.heroes == self.heroes {
+                Arc::clone(&self.drawn.heroes)
+            } else {
+                Arc::new(self.heroes.clone())
+            },
         };
         self.choose(t, false);
     }
@@ -2791,7 +3281,8 @@ impl Loop {
     /// hero's selection 0x41800B, a key's step 0x4090FE) the window is built again. A window the
     /// live part does not give (none shown, or the selection's unknown) is left as it is.
     fn choose(&mut self, t: u32, force: bool) {
-        if self.kingdom.status.is_none() {
+        // A computer player's turn shows kind 5, which its own steps draw (E24 M4 T1b2).
+        if self.kingdom.status.is_none() || self.ai.is_some() {
             return;
         }
         if self.asked != 0 && t >= self.end {
@@ -2978,15 +3469,37 @@ pub fn play(
     actions: &BTreeMap<u32, Vec<Action>>,
     until: u32,
 ) -> Result<Vec<State>, (u32, Unplayable)> {
+    play_held(rules, start, actions, until).map(|(states, _)| states)
+}
+
+/// The states each millisecond showed before its last, by millisecond (E24 M4 T1b2: [`play_held`]).
+pub type Held = BTreeMap<u32, Vec<State>>;
+
+/// [`play`] with the states each millisecond showed before its last (E24 M4 T1b2: a computer's
+/// single draws at speed 4, [`Loop::take_held`]), by millisecond where there are any.
+///
+/// # Errors
+/// As [`play`].
+pub fn play_held(
+    rules: Rules,
+    start: &Start,
+    actions: &BTreeMap<u32, Vec<Action>>,
+    until: u32,
+) -> Result<(Vec<State>, Held), (u32, Unplayable)> {
     let mut l = Loop::start(rules, start).map_err(|why| (0, why))?;
     let mut states = Vec::with_capacity(usize::try_from(until).unwrap_or(0).saturating_add(1));
+    let mut held = BTreeMap::new();
     states.push(l.state(0));
     for t in 1..=until {
         let given = actions.get(&t).map_or(&[][..], Vec::as_slice);
         l.run(t, given).map_err(|why| (t, why))?;
+        let shown = l.take_held();
+        if !shown.is_empty() {
+            held.insert(t, shown);
+        }
         states.push(l.state(t));
     }
-    Ok(states)
+    Ok((states, held))
 }
 
 /// The timeline's lines (design §3.2): at 0 the view, the objects, the cycles, the cursor, the
@@ -2994,7 +3507,7 @@ pub fn play(
 /// points (E24 M3 T4b; none without one), then each one where it changed, in that order within a
 /// millisecond; after 0 the walk's (§3.5) where
 /// they changed: the selected hero, the walk's drawing, since E24 M4 T1a the date and the current
-/// player, the path's arrows; and a `screen` line
+/// player, since T1b2 another player's turn's window, the path's arrows; and a `screen` line
 /// where `screens` gives the box the screen changed in (never at 0, whose screen is always kept).
 #[must_use]
 pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String> {
@@ -3058,6 +3571,14 @@ pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String>
             }
             if s.player != l.player {
                 out.push(format!("{} player {}", s.t, s.player));
+            }
+            // Another player's turn's window where its frames change, the line alone once another
+            // kind shows (E24 M4 T1b2).
+            if s.other != l.other {
+                out.push(s.other.map_or_else(
+                    || format!("{} other", s.t),
+                    |[crest, sand, glass]| format!("{} other {crest} {sand} {glass}", s.t),
+                ));
             }
             if s.arrows != l.arrows {
                 let arrows: String = s

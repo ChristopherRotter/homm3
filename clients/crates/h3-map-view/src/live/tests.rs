@@ -677,12 +677,24 @@ fn a_live_parts_status_read() {
         enemies: vec![7],
     };
     assert_eq!(read(realm), Some(Status::Kingdom(kingdom_status.clone())));
-    assert_eq!(read("{ kind = 5 }"), Some(Status::Other(5)));
+    // Another player's turn's (E24 M4 T1b2): its frames and value, each needed.
+    let other = "{ kind = 5, crest = 1, sand = 2, glass = 3, value = 2560 }";
+    let turn = Status::Turn(TurnStatus {
+        crest: 1,
+        sand: 2,
+        glass: 3,
+        value: 2560,
+    });
+    assert_eq!(read(other), Some(turn.clone()));
+    assert_eq!(read("{ kind = 5 }"), None);
+    assert_eq!(read(&other.replace("glass = 3", "glass = -3")), None);
+    assert_eq!(read(&other.replace("2560", "3000000000")), None);
     for (status, kind) in [
         (Status::Date(DateStatus { frame: 0 }), 1),
         (Status::Kingdom(kingdom_status), 2),
         (read(&hero).unwrap(), 3),
         (read(&town).unwrap(), 4),
+        (turn, 5),
         (Status::Other(6), 6),
     ] {
         assert_eq!(status.kind(), kind);

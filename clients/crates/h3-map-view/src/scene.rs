@@ -487,11 +487,28 @@ pub fn scene_in(
         });
     }
     // The minimap after the view (`adventure_full_update` 0x41753A, design §4.4), as it was last
-    // drawn (T3b).
-    if let Some(base) = &index.minimap {
-        let (view, hero) = live.minimap.map_or((at, None), |m| (m.view, m.hero));
-        draws.push(Draw::Minimap(base.tiles(live, tables, hero)));
-        draws.push(base.radar(view));
+    // drawn (T3b); during a computer player's turn the shield in its area from the shield's
+    // corner (E24 M4 T1b2, design §5.2: `ai_shield_draw` 0x4CA780, every minimap draw of the turn
+    // returning at once).
+    let area = layout
+        .dialog
+        .item(panels::id::MINIMAP)
+        .and_then(ui::Item::area);
+    match (live.computer, area) {
+        (true, Some(([x, y], size))) => draws.push(Draw::Dialog(ui::Draw::Picture {
+            picture: layout.panels.shield.clone(),
+            x: layout.dialog.place[0].saturating_add(x),
+            y: layout.dialog.place[1].saturating_add(y),
+            player: None,
+            size: Some(size),
+        })),
+        _ => {
+            if let Some(base) = &index.minimap {
+                let (view, hero) = live.minimap.map_or((at, None), |m| (m.view, m.hero));
+                draws.push(Draw::Minimap(base.tiles(live, tables, hero)));
+                draws.push(base.radar(view));
+            }
+        }
     }
     let moment = live.moment;
     let cycles = [

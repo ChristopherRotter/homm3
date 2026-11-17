@@ -67,6 +67,11 @@ pub struct Live {
     /// The turns' starts a recording reaches, in order (E24 M4 T1a, design §5.1: a comparison's
     /// `[[turn]]` tables; the engine's events from Part B): what the next day shows.
     pub turns: Vec<Turn>,
+    /// A computer player's turn shown (E24 M4 T1b2, design §5.2, *provisional*: from its start,
+    /// `covered_view_redraw` 0x4CA5B0, to the next human's, `adventure_full_update` 0x417478):
+    /// sleep, move hero, cast a spell and End Turn disabled (the layout's `[panels]` `computer`)
+    /// and the shield (`aishield.pcx`, `ai_shield_draw` 0x4CA780) in the minimap's place.
+    pub computer: bool,
 }
 
 /// A turn's start (E24 M4 T1a, design §5.1, *provisional*): a comparison's `[[turn]]` table, as the
@@ -87,6 +92,12 @@ pub struct Turn {
     pub week: Calendar,
     /// The month's (`month_kind` 0x698834, `month_creature` 0x697748).
     pub month: Calendar,
+    /// The heroes standing on the view's level then (E24 M4 T1b1's tables; the current player's
+    /// selected hero, lifted, is not among them): where a computer player's moves left them.
+    /// None in a table written before (T1a's: no hero moved).
+    pub heroes: Option<Vec<LiveHero>>,
+    /// The boats without a hero then, as [`Turn::heroes`].
+    pub boats: Option<Vec<LiveBoat>>,
 }
 
 /// A week's or a month's kind and what names it (`Mem.calendar`'s `[kind, name or creature]`;
@@ -123,11 +134,20 @@ impl Turn {
     /// A live part's `[[turn]]` table as the harness writes it: `at = <ms>`, `player = <colour>`,
     /// `kingdom = <a kingdom>` ([`Kingdom::read`]), `status = <a status>` ([`Status::read`]),
     /// `week = [kind, name or creature]` and `month = [kind, name or creature]`
-    /// ([`Calendar::read`]); none for anything else.
+    /// ([`Calendar::read`]), since E24 M4 T1b1 `heroes` and `boats` as the live part's
+    /// ([`LiveHero::read`], [`LiveBoat::read`]; each optional); none for anything else.
     #[must_use]
     pub fn read(value: &toml::Value) -> Option<Self> {
         let table = value.as_table()?;
         let int = |key: &str| table.get(key)?.as_integer();
+        let heroes = match table.get("heroes") {
+            Some(rows) => Some(LiveHero::read_all(rows)?),
+            None => None,
+        };
+        let boats = match table.get("boats") {
+            Some(rows) => Some(LiveBoat::read_all(rows)?),
+            None => None,
+        };
         Some(Self {
             at: u32::try_from(int("at")?).ok()?,
             player: u8::try_from(int("player")?).ok().filter(|&c| c < 8)?,
@@ -135,6 +155,8 @@ impl Turn {
             status: Status::read(table.get("status")?)?,
             week: Calendar::read(table.get("week")?)?,
             month: Calendar::read(table.get("month")?)?,
+            heroes,
+            boats,
         })
     }
 }
@@ -299,7 +321,10 @@ pub enum Status {
     Hero(HeroStatus),
     /// The selected town's (the kind 4, `AdStatCs.pcx`: 0x4521F0).
     Town(TownStatus),
-    /// Another kind, not drawn yet: the other player's turn (5) and a message's (6, 7) are M4's.
+    /// Another player's turn (the kind 5, `AdStatNx.pcx`: 0x453250; E24 M4 T1b2, design §5.2):
+    /// a computer player's.
+    Turn(TurnStatus),
+    /// Another kind, not drawn yet: a message's (6, 7) are M4's.
     Other(u8),
 }
 
@@ -312,6 +337,7 @@ impl Status {
             Self::Kingdom(_) => 2,
             Self::Hero(_) => 3,
             Self::Town(_) => 4,
+            Self::Turn(_) => 5,
             Self::Other(kind) => *kind,
         }
     }
@@ -324,6 +350,22 @@ impl Status {
 pub struct DateStatus {
     /// The picture's frame shown (the panel's +0x3C).
     pub frame: u32,
+}
+
+/// Another player's turn's status window (E24 M4 T1b2, design §5.1, §5.2: 0x453250, its step
+/// `status_other_turn_step` 0x4536F0): the crest's, the sand's and the glass's frames, and the
+/// panel's value for the current player.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TurnStatus {
+    /// The crest's frame (`crest58.def`): the current player's colour.
+    pub crest: u32,
+    /// The sand's frame (`HourSand.def`, the panel's +0x68).
+    pub sand: u32,
+    /// The glass's frame (`HourGlas.def`, +0x70).
+    pub glass: u32,
+    /// The panel's value for the current player (its +0x44's entry, filled at the panel's
+    /// build: 1 000 plus the sum of the colour's heroes' maximum movement points, 0 for a human).
+    pub value: i32,
 }
 
 /// The kingdom's status window (E24 M3 T5b2, design §4.9).
@@ -391,8 +433,9 @@ impl Status {
     /// [[type, count], ...7] }`, `{ kind = 4, name = <TownName.txt's record>, buildings = [<ids
     /// standing>], garrison = <0 or 1>, army = [[type, count], ...7], silo = [<resources>],
     /// income = n }`, since E24 M3 T5b2 `{ kind = 1, frame = n }` and `{ kind = 2, halls = [4
-    /// counts], allies = [colours], enemies = [colours] }`, or `{ kind = n }` for another kind (an
-    /// empty slot's type −1); none for anything else.
+    /// counts], allies = [colours], enemies = [colours] }`, since E24 M4 T1b2 `{ kind = 5, crest
+    /// = c, sand = s, glass = g, value = v }` (a `[[turn]]` table's), or `{ kind = n }` for
+    /// another kind but 5 (an empty slot's type −1); none for anything else.
     #[must_use]
     pub fn read(value: &toml::Value) -> Option<Self> {
         let table = value.as_table()?;
@@ -481,6 +524,15 @@ impl Status {
                     army: army(get("army")?)?,
                     silo,
                     income: i32::try_from(int(get("income")?)?).ok()?,
+                }))
+            }
+            5 => {
+                let frame = |key: &str| u32::try_from(int(get(key)?)?).ok();
+                Some(Self::Turn(TurnStatus {
+                    crest: frame("crest")?,
+                    sand: frame("sand")?,
+                    glass: frame("glass")?,
+                    value: i32::try_from(int(get("value")?)?).ok()?,
                 }))
             }
             _ => Some(Self::Other(kind)),
@@ -756,6 +808,79 @@ pub struct LiveHero {
     pub facing: Facing,
     /// The boat it sails, if it is in one.
     pub boat: Option<Boat>,
+}
+
+impl LiveHero {
+    /// A row of a live part's `heroes`: `[x, y, level, class, facing, owner, boat, colour]` (its
+    /// class below 18, a colour 0–7, a boat's type 0–2 and its flag's colour, or -1 and -1);
+    /// none for anything else.
+    #[must_use]
+    pub fn read(value: &toml::Value) -> Option<Self> {
+        let [x, y, z, class, facing, owner, kind, colour] = row(value)?;
+        let boat = match (kind, colour) {
+            (-1, -1) => None,
+            _ => Some(Boat {
+                kind: byte(kind).filter(|&k| k < 3)?,
+                colour: byte(colour).filter(|&c| c < 8)?,
+            }),
+        };
+        Some(Self {
+            at: Pos {
+                x: byte(x)?,
+                y: byte(y)?,
+                z: byte(z)?,
+            },
+            class: byte(class).filter(|&c| c < 18)?,
+            owner: byte(owner).filter(|&c| c < 8)?,
+            facing: Facing::from_number(byte(facing)?)?,
+            boat,
+        })
+    }
+
+    /// A live part's `heroes`, each row by [`LiveHero::read`].
+    #[must_use]
+    pub fn read_all(value: &toml::Value) -> Option<Vec<Self>> {
+        value.as_array()?.iter().map(Self::read).collect()
+    }
+}
+
+impl LiveBoat {
+    /// A row of a live part's `boats`: `[x, y, level, type, facing]` (a type 0–2); none for
+    /// anything else.
+    #[must_use]
+    pub fn read(value: &toml::Value) -> Option<Self> {
+        let [x, y, z, kind, facing] = row(value)?;
+        Some(Self {
+            at: Pos {
+                x: byte(x)?,
+                y: byte(y)?,
+                z: byte(z)?,
+            },
+            kind: byte(kind).filter(|&k| k < 3)?,
+            facing: Facing::from_number(byte(facing)?)?,
+        })
+    }
+
+    /// A live part's `boats`, each row by [`LiveBoat::read`].
+    #[must_use]
+    pub fn read_all(value: &toml::Value) -> Option<Vec<Self>> {
+        value.as_array()?.iter().map(Self::read).collect()
+    }
+}
+
+/// A TOML list of `N` integers.
+fn row<const N: usize>(value: &toml::Value) -> Option<[i64; N]> {
+    let row: Option<Vec<i64>> = value
+        .as_array()?
+        .iter()
+        .map(toml::Value::as_integer)
+        .collect();
+    <[i64; N]>::try_from(row?).ok()
+}
+
+/// A byte of a live part's row.
+fn byte(n: i64) -> Option<u8> {
+    u8::try_from(n).ok()
 }
 
 /// A boat's pictures (design §2.3: the waves, the flag, the boat by its type).
@@ -1152,6 +1277,7 @@ impl Live {
             chosen,
             pressed: Vec::new(),
             turns: Vec::new(),
+            computer: false,
         }
     }
 }

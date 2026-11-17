@@ -46,6 +46,9 @@ pub struct AdventureLayout {
     pub status_hero: Dialog,
     /// The status window's panel of a town (0x4521F0).
     pub status_town: Dialog,
+    /// The status window's panel of another player's turn (E24 M4 T1b2, design §5.1, §5.2:
+    /// 0x453250; its items 2190 to 2193, the original's ids).
+    pub status_other: Dialog,
     /// What the panels' logic needs of the dialog (E24 M3 T2a).
     pub panels: Panels,
     /// The message box's assets and fonts (E24 M4 T1a, design §5.1: End Turn's question, the
@@ -65,6 +68,12 @@ pub struct Panels {
     pub underground: [String; 2],
     /// Sleep's DEF while the hero is awake and asleep (0x65F238).
     pub sleep: [String; 2],
+    /// The buttons a computer player's turn disables (E24 M4 T1b2, design §5.2:
+    /// `covered_view_redraw` 0x4CA5B0, sleep, move hero, cast a spell and End Turn).
+    pub computer: Vec<u16>,
+    /// The shield a computer player's turn draws in the minimap's area from its corner
+    /// (`aishield.pcx`, `ai_shield_draw` 0x4CA780; E24 M4 T1b2).
+    pub shield: String,
 }
 
 /// The view's scroll (`view_scroll` 0x4195C0, `edge_scroll` 0x419820; design §3.4).
@@ -99,6 +108,9 @@ pub struct CursorArt {
     pub default_def: String,
     /// Its frame 0's hot spot (0x67FF50's first entry).
     pub default_hot: [i32; 2],
+    /// The default cursor's frame a computer player's turn sets at its start (E24 M4 T1b2,
+    /// design §5.1: `mouse_set_cursor(2, 0)` at 0x4C74FE).
+    pub busy: u32,
 }
 
 /// The scroll's directions, one edge cursor each.
@@ -163,6 +175,7 @@ impl AdventureLayout {
         layout.status_kingdom = layout.status_kingdom.expanded();
         layout.status_hero = layout.status_hero.expanded();
         layout.status_town = layout.status_town.expanded();
+        layout.status_other = layout.status_other.expanded();
         layout.check()?;
         Ok(layout)
     }
@@ -231,7 +244,8 @@ impl AdventureLayout {
             .chain(&self.status_date.items)
             .chain(&self.status_kingdom.items)
             .chain(&self.status_hero.items)
-            .chain(&self.status_town.items);
+            .chain(&self.status_town.items)
+            .chain(&self.status_other.items);
         let mut out = Vec::new();
         for item in items {
             match item {
@@ -256,6 +270,7 @@ impl AdventureLayout {
                 .chain(&panels.sleep)
                 .map(|d| (d.as_str(), ".DEF")),
         );
+        out.push((panels.shield.as_str(), ".PCX"));
         // The message box's (E24 M4 T1a).
         let m = &self.message;
         out.extend([

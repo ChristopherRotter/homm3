@@ -56,6 +56,7 @@ fn live(kingdom: Kingdom) -> Live {
         chosen: crate::live::Chosen::default(),
         pressed: Vec::new(),
         turns: Vec::new(),
+        computer: false,
     }
 }
 
@@ -382,7 +383,7 @@ fn nothing_drawn_but_a_hero_s_or_a_town_s_window_of_the_selection() {
         ..hero_kingdom(fiona())
     }));
     assert!(!draw(Kingdom {
-        status: Some(Status::Other(5)),
+        status: Some(Status::Other(6)),
         ..hero_kingdom(fiona())
     }));
     // A hero's window with a town selected, a town's with a hero, a selection past its list.

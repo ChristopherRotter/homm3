@@ -1311,9 +1311,10 @@ and lists each sample started in `<out>/<id>/sounds.txt` (`<ms from 0> <channel>
 <loops>`); its waits for samples can move the timeline, so it is a sequence of its own (an id of
 its own, run from a scratch file with `--sequences <file> --no-check --out <dir>`; delete the
 `timelines/<id>-live.toml` the run keeps), never one recorded silent.
-Sequences recorded before the viewer plays them wait in
-`map/to-record.toml`: `frames --sequences map/to-record.toml --no-check` records them (the frame
-check left out), each moved into `sequences.toml` once the viewer plays it. A run with an
+Sequences recorded before the viewer plays them wait in a
+file of their own: `frames --sequences <file> --no-check` records them (the frame check left out),
+each moved into `sequences.toml` once the viewer plays it (T1b1's in `map/to-record.toml`, moved by
+T1b2, the file removed). A run with an
 `xdd.dll` built before T1b1 fails as stale where it reads the acknowledgement whole (15 fields,
 not 16): rebuild it with `setup.sh`.
 

@@ -167,6 +167,15 @@ frames = [10, 4, 8, 12, 16]
 step = 100
 sound = "newday.wav"
 
+# Another player's turn's status window (E24 M4 T1b2; design §5.2, status_other_turn_step
+# 0x4536F0): a step `step` ms or more after the last (the panel's +0x6C); the sand's frames
+# (HourSand.def's group 0), which it steps round, and the glass's (HourGlas.def's), which it rises
+# through towards (value - points left) x (glass - 1) / value.
+[map.status.other]
+step = 50
+sand = 10
+glass = 10
+
 # The turn's change (E24 M4 T1a; design §5.1): a turn's start asks the date's status window for
 # `asked` ms (player_turn_start 0x4CC7D0); a week's first day but the game's first plays `week`, a
 # month's first `month`, with the week's or the month's message (0x4CCAE5); the week of the

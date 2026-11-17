@@ -1374,8 +1374,8 @@ def run_frames(rest):
     only = rest[rest.index("--only") + 1] if "--only" in rest else None
     base = Path(rest[rest.index("--out") + 1]) if "--out" in rest else OUT_FRAMES
     reuse = "--reuse" in rest
-    # E24 M4 T1b1: sequences recorded before the viewer plays them (`--sequences
-    # map/to-record.toml`), their frame check left out (`--no-check`).
+    # E24 M4 T1b1: sequences recorded before the viewer plays them (`--sequences <file>`; T1b1's
+    # in map/to-record.toml until T1b2 moved them), their frame check left out (`--no-check`).
     listed = (Path(rest[rest.index("--sequences") + 1]) if "--sequences" in rest
               else SEQUENCES)
     check = "--no-check" not in rest

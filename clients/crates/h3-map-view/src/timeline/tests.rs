@@ -245,11 +245,12 @@ fn start(situation: &str, speed: usize) -> Start {
         levels: 1,
         heroes: Vec::new(),
         index: None,
-        chosen: crate::live::Chosen::default(),
+        chosen: Chosen::default(),
         player: 0,
         move_reminder: false,
         question: None,
         turns: Vec::new(),
+        computer: Computer::default(),
     }
 }
 
@@ -379,11 +380,12 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         levels: 1,
         heroes: Vec::new(),
         index: None,
-        chosen: crate::live::Chosen::default(),
+        chosen: Chosen::default(),
         player: 0,
         move_reminder: false,
         question: None,
         turns: Vec::new(),
+        computer: Computer::default(),
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -586,11 +588,12 @@ fn what_it_cannot_play_yet() {
         levels: 1,
         heroes: Vec::new(),
         index: None,
-        chosen: crate::live::Chosen::default(),
+        chosen: Chosen::default(),
         player: 0,
         move_reminder: false,
         question: None,
         turns: Vec::new(),
+        computer: Computer::default(),
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -725,11 +728,12 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         levels: 1,
         heroes: Vec::new(),
         index: None,
-        chosen: crate::live::Chosen::default(),
+        chosen: Chosen::default(),
         player: 0,
         move_reminder: false,
         question: None,
         turns: Vec::new(),
+        computer: Computer::default(),
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
 }
@@ -1369,11 +1373,12 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         levels: 1,
         heroes: Vec::new(),
         index: None,
-        chosen: crate::live::Chosen::default(),
+        chosen: Chosen::default(),
         player: 0,
         move_reminder: false,
         question: None,
         turns: Vec::new(),
+        computer: Computer::default(),
     }
 }
 
@@ -1976,11 +1981,12 @@ fn hovering(live: bool, bugs: Bugs) -> Loop {
         levels: 1,
         heroes: Vec::new(),
         index: None,
-        chosen: crate::live::Chosen::default(),
+        chosen: Chosen::default(),
         player: 0,
         move_reminder: false,
         question: None,
         turns: Vec::new(),
+        computer: Computer::default(),
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -2996,4 +3002,5 @@ fn a_hotkeys_up_during_a_hold_releases_its_button_in_the_client() {
     }
 }
 
+mod computers;
 mod turns;
