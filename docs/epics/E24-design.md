@@ -2810,3 +2810,52 @@ its step 0x4536F0 (the panel's vtable 0x63BB44 +4), `arraytxt_load` 0x5B9CC0's t
   millisecond, the current player, its kingdom, the status window shown, the week's and the
   month's kinds and names: `Mem.calendar`), what the viewer takes for the next day in Part A
   (Part B: the engine's events).
+- **Recorded, not read** (*provisional*): at the turn's change a redraw's deadline already passed
+  moves to 180 ms from now without an objects' step (`turn-question` at 1060: memory's deadline
+  820 became 1240, +0x100 unchanged; `turn-day` at 160, its deadline 180 still ahead, kept); a
+  box's opening and the cursor it restores draw the cursor at the mouse now (the click's point at
+  700, 711 drawn at 710).
+- **Built** (*provisional*): the common crate's `h3_ui::message` (a copy of the client lane's
+  `h3_view::message` trimmed to styles 1 and 2 without pictures, with an origin comment: `layout`,
+  `Open`); the live part's `Turn` and `Calendar` (`Live::turns`, the binary's `[[turn]]`); the
+  module `turn` (the tables' `[map.turn]`: the date's window asked 3 000 ms, `newweek.wav`,
+  `newmonth.wav`, the Deity's creatures 42 and 43; `starts_week`, `sound`, `question`,
+  `message`, the catalogue's keys `map.turn.end`, `map.turn.month`, `map.turn.month-creature`,
+  `map.turn.plague`, `map.turn.week`, `map.turn.week-creature`, `map.turn.week-deity` and the
+  families `month-name`, `week-name`; the Deity's growth the caller's, the binary's from
+  `CRTRAITS.TXT`'s column 11, its names not upper-cased: the reading names none); a sequence's
+  `move_reminder`, `rolls` (accepted), `Return` and `Escape` (`Action::BoxKey`, `BoxKeyUp`); the
+  timeline's `Start::player`, `move_reminder`, `question` and `turns` (`NextTurn`: the facts and
+  the week's box laid out), `Cursor::kind` (`CURSOR_TYPE`, `DEFAULT_CURSOR`), `Draw::message`,
+  `State::date` and `player` (the `date` and `player` lines, the `cursor` line's type),
+  `panels::id::END_TURN`; the loop's End Turn (the question, `Loop::turn_change` as read: the
+  kingdom the turn's, the selection's window memory's for the same hero or town else its
+  choice's, the turn's hero found by the mouse-over's facts else its choice, the whole screen
+  drawn, the date's window asked and built twice with its sound, the hero chosen centred or the
+  town, next hero's state, the deadline above, the week's sound and box), a box's own loop (the
+  map standing still, the week's box stepping the date's window, none while the mouse holds one
+  of its buttons; its presses with `button.wav`; its click closing it, Cancel and the week's OK
+  to the idle step, the question's OK to the turn's change; the rest of the millisecond's input
+  dropped at a box's opening and at a turn's start); the layout's `[message]` and `[cursor]`
+  `default_def`, `default_hot`; the key table's `Context` (`Map`, `Message`) and
+  `Command::Message` (`box-ok` Enter, `box-cancel` Escape: Escape the window's quit with no box
+  open). The binary: `Painter::boxes` (the question and each turn's message laid out in
+  `medfont.fnt`, framed in the viewer's colours, the text 5 pixels left of centre with `--bugs
+  original`, centred else: CLT-Q28), the box drawn over the scene, the default cursor drawn and
+  as the hardware one, the window's keys by the box's context. Not built: the gate's check of the
+  box's assets (the layout lists them, `AdventureLayout::names`), the tutorial's test (the viewer
+  plays none), the computer's turn shown and kind 5 (T1b).
+- **Checked:** `frames --only <id> --reuse` on the seven sequences: every frame exact (`turn-day`
+  22, `turn-question` 14, `turn-week` 16, `turn-week-creature` 12, `turn-month`,
+  `turn-month-creature`, `turn-plague` 9 each), the viewer's timelines the recorded ones line for
+  line (`<id>-frames.txt` kept); `drawn` the 50 situations and 35 sequences recorded before the
+  same, then `--record`; unit tests (the box's layout and buttons in `h3-ui`; the turn's texts by
+  kind, the Deity's among them; the turns replayed headless; the question cancelled and
+  answered, by keys and the mouse with their sounds; the week's box stepping the date; a box
+  emptying the queue; a turn's hero, town or nothing selected, one not given refused; the facts'
+  hero; the `[[turn]]` tables read and refused; the box's key context), 100 % coverage; the
+  window under Xvfb (`turn-question`, `turn-week`, `--check 10`): 60 of 60 frames read back
+  exact, 63 of 63 made as the same frame composed afresh, 59 of 59 changes the headless loop's;
+  live after `turn-question`'s inputs E's question opened (the new day's hero able to move),
+  Escape cancelled it without quitting, Enter's OK with no turn left did nothing (71 of 71
+  exact).
