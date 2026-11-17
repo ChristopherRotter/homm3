@@ -1024,6 +1024,10 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
 - **Found on `master`:** the client workspace did not build (#982's `Button::caption` against
   #983's `h3_ui::message`): fixed in #988, merged first; `check-exe-map` lists six addresses of
   E24's design note and `turn.rs` unmapped (the map-client lane's inbox).
+- **Gates:** `check.sh --no-coverage` passed with the data staged; coverage 100 % of lines and
+  regions with `H3_INSTALL` empty; the scoped verify passes but `check-exe-map` (`master`'s E24
+  citations alone, above).
 - **The sandbox:** the PC's 64 files and the manuals staged at once (digest `a8cd97a7…`, the
   sorted `sha256sum` lines without their paths' column); the setup's baseline stopped at coverage
-  by the watcher (clippy over the workspace passed with #988's fix).
+  by the watcher (clippy over the workspace passed with #988's fix); the VM restarted once (files
+  kept).

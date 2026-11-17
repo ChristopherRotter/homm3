@@ -1011,16 +1011,19 @@ impl Scenario {
                 text,
                 disabled: false,
             };
+            // A mark: its DEF's frame, none for a frame of none (or a look without its DEF).
             let mark = |def: &Def, frame: Option<u32>| {
-                let name = def.def.clone()?;
-                Some(Draw::Button {
-                    def: name,
-                    frame: frame?,
-                    x: px + def.at[0],
-                    y: dy + def.at[1],
-                    mirrored: false,
-                    player: None,
-                })
+                def.def
+                    .clone()
+                    .zip(frame)
+                    .map(|(name, frame)| Draw::Button {
+                        def: name,
+                        frame,
+                        x: px + def.at[0],
+                        y: dy + def.at[1],
+                        mirrored: false,
+                        player: None,
+                    })
             };
             let players = 9 * usize::from(entry.players()) + usize::from(entry.humans());
             draws.push(text(&look.players, text_at(&self.texts.players, players)));
