@@ -73,6 +73,7 @@ use h3_ui::ui::{Dialog, Draw, Item, Shown, State};
 
 use super::keys::{Command, Context};
 use super::multiplayer::Multiplayer;
+use super::scenario::Scenario;
 use super::{Choice, Ended, Game, Kind as ScenarioKind, Request, Screen};
 use crate::message::{self, MessageBox, Open, Outcome};
 
@@ -90,14 +91,15 @@ pub const GAME_TYPE_BUTTONS: [u16; 5] = [100, 101, 102, 103, 104];
 pub const TITLE: u16 = 105;
 
 /// The client's stubs (E27 M2 T6b2, T7): each screen, the menu its notice shows over and the
-/// notice's OK's ending. The scenario screen's (until M3) shows over the game type menu it was
-/// reached from (by Single, Campaign, Tutorial or the Multiplayer dialog), its OK back there.
-pub const STUBS: [(Screen, Kind, Ended); 10] = [
+/// notice's OK's ending. The scenario screen's (a new single scenario's built since M3 T1a; the
+/// hot seat's until M3 T4, the loads' until M4) shows over the game type menu it was reached
+/// from (by Campaign, Tutorial, Load Game's Single or the Multiplayer dialog), its OK back
+/// there.
+pub const STUBS: [(Screen, Kind, Ended); 9] = [
     (Screen::Campaigns, Kind::GameType(Game::New), Ended::Back),
     (Screen::Tutorial, Kind::GameType(Game::New), Ended::Back),
     (Screen::HighScores, Kind::Main, Ended::Done),
     (Screen::Credits, Kind::Main, Ended::Done),
-    scenario(Game::New, ScenarioKind::Single),
     scenario(Game::New, ScenarioKind::Multiplayer),
     scenario(Game::Load, ScenarioKind::Single),
     scenario(Game::Load, ScenarioKind::Multiplayer),
@@ -276,6 +278,21 @@ pub struct Hovers {
     pub main: Option<u16>,
     /// The game type menus'.
     pub game_type: Option<u16>,
+    /// The mouse's cursor (E27 M3 T1a; CLT-Q137): the menu loop's top sets the default arrow
+    /// (0x4EE8CC, `mouse_set_cursor`(0, 0): `crdeflt.def`'s frame 0), the scenario screen's busy
+    /// cursor leaves the adventure map's (`busy_cursor_stop` 0x577810: (0, 1), `cradvntr.def`'s
+    /// frame 0, slightly other colours) until the top sets it again.
+    pub arrow: Arrow,
+}
+
+/// Which arrow the mouse's cursor is (CLT-Q137).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Arrow {
+    /// The default cursors' (`crdeflt.def`).
+    #[default]
+    Default,
+    /// The adventure map's (`cradvntr.def`), after a busy cursor.
+    Adventure,
 }
 
 impl Hovers {
@@ -732,6 +749,9 @@ pub struct Menus {
     pub notices: Vec<(Screen, MessageBox)>,
     /// The Multiplayer dialog as it opens (E27 M2 T7), over no menu yet.
     pub multiplayer: Multiplayer,
+    /// The scenario screen as it opens (E27 M3 T1a): a new single scenario's, the maps listed and
+    /// the kept choices in it.
+    pub scenario: Scenario,
 }
 
 impl Menus {
@@ -741,7 +761,14 @@ impl Menus {
     #[must_use]
     pub fn opened(&self, screen: Screen, pointer: [i32; 2], hovers: Hovers) -> Option<Menu> {
         let kind = match screen {
-            Screen::MainMenu => Kind::Main,
+            // The menu loop's top, before the main menu: the default arrow (CLT-Q137).
+            Screen::MainMenu => {
+                let hovers = Hovers {
+                    arrow: Arrow::Default,
+                    ..hovers
+                };
+                return Some(self.menu(Kind::Main).opened(pointer, hovers));
+            }
             Screen::GameType(game) => Kind::GameType(game),
             _ => {
                 let &(_, kind, _) = STUBS.iter().find(|&&(s, _, _)| s == screen)?;
@@ -755,8 +782,9 @@ impl Menus {
 
     /// What takes the inputs on `screen` as it shows, the pointer at `pointer`, `previous` what
     /// took them on the screen before: a menu's or a stub's menu ([`Menus::opened`]); the
-    /// Multiplayer dialog over the game type menu `previous` left (E27 M2 T7); none for another
-    /// screen.
+    /// Multiplayer dialog over the game type menu `previous` left (E27 M2 T7); a new single
+    /// scenario's screen (E27 M3 T1a: its background `gamselb0.pcx` until the caller draws,
+    /// [`Scenario::with_background`]); none for another screen.
     #[must_use]
     pub fn front(
         &self,
@@ -770,6 +798,14 @@ impl Menus {
                 Box::new(self.multiplayer.opened(*menu, pointer)),
             )),
             (Screen::Multiplayer(_), _) => None,
+            // Its busy cursor leaves the adventure map's arrow (CLT-Q137).
+            (Screen::Scenario(Game::New, ScenarioKind::Single), _) => {
+                let hovers = Hovers {
+                    arrow: Arrow::Adventure,
+                    ..hovers
+                };
+                Some(Front::Scenario(Box::new(self.scenario.opened(hovers))))
+            }
             _ => self
                 .opened(screen, pointer, hovers)
                 .map(|m| Front::Menu(Box::new(m))),
@@ -786,13 +822,16 @@ impl Menus {
     }
 }
 
-/// What takes the inputs on a built screen (E27 M2 T7): a menu, or the Multiplayer dialog.
+/// What takes the inputs on a built screen (E27 M2 T7): a menu, the Multiplayer dialog, or the
+/// scenario screen (E27 M3 T1a).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Front {
     /// A menu (a stub's menu under its notice among them).
     Menu(Box<Menu>),
     /// The Multiplayer dialog over its menu.
     Multiplayer(Box<Multiplayer>),
+    /// The scenario screen (E27 M3 T1a).
+    Scenario(Box<Scenario>),
 }
 
 impl Front {
@@ -803,6 +842,7 @@ impl Front {
         match self {
             Self::Menu(m) => m.hovers(),
             Self::Multiplayer(m) => m.under().map(Menu::hovers).unwrap_or_default(),
+            Self::Scenario(s) => s.hovers(),
         }
     }
 
@@ -812,6 +852,7 @@ impl Front {
         match self {
             Self::Menu(m) => m.context(),
             Self::Multiplayer(m) => m.context(),
+            Self::Scenario(s) => s.context(),
         }
     }
 
@@ -822,6 +863,7 @@ impl Front {
         match self {
             Self::Menu(m) => alloc::vec![m.context()],
             Self::Multiplayer(m) => m.contexts(),
+            Self::Scenario(s) => alloc::vec![s.context()],
         }
     }
 
@@ -829,7 +871,7 @@ impl Front {
     #[must_use]
     pub const fn typing(&self) -> bool {
         match self {
-            Self::Menu(_) => false,
+            Self::Menu(_) | Self::Scenario(_) => false,
             Self::Multiplayer(m) => m.typing(),
         }
     }
@@ -837,7 +879,7 @@ impl Front {
     /// A character the window's text input typed (E27 M2 T7b).
     pub fn typed(&mut self, c: char) -> Did {
         match self {
-            Self::Menu(_) => Did::default(),
+            Self::Menu(_) | Self::Scenario(_) => Did::default(),
             Self::Multiplayer(m) => m.typed(c),
         }
     }
@@ -847,6 +889,7 @@ impl Front {
         match self {
             Self::Menu(m) => m.moved(point),
             Self::Multiplayer(m) => m.moved(point),
+            Self::Scenario(s) => s.moved(point),
         }
     }
 
@@ -855,6 +898,7 @@ impl Front {
         match self {
             Self::Menu(m) => m.press(point),
             Self::Multiplayer(m) => m.press(point),
+            Self::Scenario(s) => s.press(point),
         }
     }
 
@@ -863,6 +907,7 @@ impl Front {
         match self {
             Self::Menu(m) => m.release(),
             Self::Multiplayer(m) => m.release(),
+            Self::Scenario(s) => s.release(),
         }
     }
 
@@ -871,6 +916,7 @@ impl Front {
         match self {
             Self::Menu(m) => m.right(point),
             Self::Multiplayer(m) => m.right(point),
+            Self::Scenario(s) => s.right(point),
         }
     }
 
@@ -879,6 +925,7 @@ impl Front {
         match self {
             Self::Menu(m) => m.right_release(),
             Self::Multiplayer(m) => m.right_release(),
+            Self::Scenario(s) => s.right_release(),
         }
     }
 
@@ -894,6 +941,7 @@ impl Front {
         match self {
             Self::Menu(m) => command.map_or(Did::default(), |c| m.key(c, by)),
             Self::Multiplayer(m) => m.key(scan, command, by),
+            Self::Scenario(s) => s.key(command, by),
         }
     }
 
@@ -902,6 +950,7 @@ impl Front {
         match self {
             Self::Menu(m) => m.key_up(by),
             Self::Multiplayer(m) => m.key_up(by),
+            Self::Scenario(s) => s.key_up(by),
         }
     }
 }

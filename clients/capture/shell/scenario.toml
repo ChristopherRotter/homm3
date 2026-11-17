@@ -14,6 +14,9 @@
 [[recipe]]
 id = "scn-new"
 what = "§3.1, §3.2, §3.8: a new game's screen (no list), both backgrounds; the panel buttons' hover, press, popup; the list's toggle"
+# The original's draws at the three openings (E27 M3 T1a: `screen`, `screen-2` gamselb0.pcx,
+# `screen-3` gamselb1.pcx).
+backgrounds = [0, 0, 1]
 steps = [
   "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
   "move:790,300", "until:scenario_list", "move:790,300", "shot:screen",

@@ -8,7 +8,8 @@
 //! (CLT-Q118), the box open over them; the help popup hides the cursor. A stub's screen (T6b2) is
 //! the menu it was chosen from with the stub's notice over it. The Multiplayer dialog (T7) shows
 //! over the game type menu as that menu left the screen, the hot seat's names over it, a popup or
-//! the network's notice over them ([`super::multiplayer`]).
+//! the network's notice over them ([`super::multiplayer`]). The scenario screen (M3 T1a) is its
+//! drawn background, its dialog and its popup ([`super::scenario`]).
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -16,7 +17,7 @@ use alloc::vec::Vec;
 use h3_ui::ui::{Dialog, Draw, Shown};
 use serde::Deserialize;
 
-use super::menu::{Front, Kind, Stale, TITLE};
+use super::menu::{Arrow, Front, Kind, Stale, TITLE};
 use super::{Game, Screen};
 use crate::message::MessageLayout;
 
@@ -27,6 +28,9 @@ pub struct ShellLayout {
     /// The cursor the menu loop sets (0x4EE842: the arrow, the default cursor's frame 0): its DEF
     /// and frame, its hot spot at the canvas's corner (`h3_ui::cursor`).
     pub cursor: CursorLook,
+    /// The adventure map's arrow (E27 M3 T1a, CLT-Q137): the cursor after a busy cursor, until
+    /// the menu loop's top (`super::menu::Arrow`).
+    pub adventure_cursor: CursorLook,
     /// The players' palette (`PLAYERS.PAL`, 32 entries a player): a box's frame in a player's
     /// colours (E27 M2 T6a).
     pub player_palette: String,
@@ -42,6 +46,20 @@ pub struct ShellLayout {
     pub multiplayer: Dialog,
     /// The hot seat's names (§2.7: `hot_seat_dialog_init` 0x511E20), its edits labels.
     pub hot_seat: Dialog,
+    /// The scenario screen (§3: `scenario_dialog_create` 0x579960; E27 M3 T1a).
+    pub scenario: ScenarioLayout,
+}
+
+/// The scenario screen: its two backgrounds and its dialog.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScenarioLayout {
+    /// The pictures copied whole onto the screen first, by the draw: `gamselb0.pcx`, then
+    /// `gamselb1.pcx` (the constructor's "gamselb%d.pcx").
+    pub backgrounds: Vec<String>,
+    /// The dialog over it: the right-hand panel's picture, then the items in the order the
+    /// constructor adds them, then what the redraw draws itself (the client's ids).
+    pub dialog: Dialog,
 }
 
 /// A cursor's DEF and frame.
@@ -106,6 +124,8 @@ pub struct Look {
     pub over: Vec<Draw>,
     /// The cursor drawn at the pointer.
     pub cursor: bool,
+    /// Which arrow it is (CLT-Q137).
+    pub arrow: Arrow,
 }
 
 /// Reads the shell's layout.
@@ -117,7 +137,11 @@ pub fn parse_layout(text: &str) -> Result<ShellLayout, String> {
     for menu in [&mut layout.main_menu, &mut layout.game_type] {
         menu.dialog = menu.dialog.clone().expanded();
     }
-    for dialog in [&mut layout.multiplayer, &mut layout.hot_seat] {
+    for dialog in [
+        &mut layout.multiplayer,
+        &mut layout.hot_seat,
+        &mut layout.scenario.dialog,
+    ] {
         *dialog = dialog.clone().expanded();
     }
     Ok(layout)
@@ -132,9 +156,24 @@ pub fn parse_layout(text: &str) -> Result<ShellLayout, String> {
 #[must_use]
 pub fn look(layout: &ShellLayout, screen: Screen, front: Option<&Front>) -> Option<Look> {
     let players = &layout.player_palette;
+    let arrow = front.map(Front::hovers).unwrap_or_default().arrow;
     let (menu, dialog) = match front? {
         Front::Menu(menu) => (menu.as_ref(), None),
         Front::Multiplayer(dialog) => (dialog.under()?, Some(dialog)),
+        Front::Scenario(scenario) => {
+            let backgrounds = &layout.scenario.backgrounds;
+            let background = backgrounds
+                .get(usize::from(scenario.background()))
+                .or_else(|| backgrounds.first())?;
+            return matches!(screen, Screen::Scenario(..)).then(|| Look {
+                background: background.clone(),
+                draws: scenario.draws(players),
+                stale: Vec::new(),
+                over: scenario.box_draws(players),
+                cursor: scenario.cursor(),
+                arrow,
+            });
+        }
     };
     let screen_on = if dialog.is_some() {
         matches!(screen, Screen::Multiplayer(_))
@@ -163,6 +202,7 @@ pub fn look(layout: &ShellLayout, screen: Screen, front: Option<&Front>) -> Opti
         stale: menu.stale(players),
         over,
         cursor,
+        arrow,
     })
 }
 
@@ -172,7 +212,7 @@ pub fn look(layout: &ShellLayout, screen: Screen, front: Option<&Front>) -> Opti
 /// palette) and the players' palette.
 #[must_use]
 pub fn names(layout: &ShellLayout) -> Vec<String> {
-    let mut names = alloc::vec![layout.cursor.def.clone()];
+    let mut names = alloc::vec![layout.cursor.def.clone(), layout.adventure_cursor.def.clone()];
     for menu in [&layout.main_menu, &layout.game_type] {
         names.push(menu.background.clone());
         for draw in menu.dialog.draws(&Shown::default(), "") {
@@ -180,7 +220,8 @@ pub fn names(layout: &ShellLayout) -> Vec<String> {
         }
         names.extend(menu.titles.iter().cloned());
     }
-    for dialog in [&layout.multiplayer, &layout.hot_seat] {
+    names.extend(layout.scenario.backgrounds.iter().cloned());
+    for dialog in [&layout.multiplayer, &layout.hot_seat, &layout.scenario.dialog] {
         for draw in dialog.draws(&Shown::default(), "") {
             names.extend(h3_ui::paint::names(&draw).into_iter().map(String::from));
         }

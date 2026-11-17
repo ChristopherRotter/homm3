@@ -1595,6 +1595,7 @@ pub(crate) mod tests {
                     size: [64, 30],
                     frames: Frames::default(),
                     hint: None,
+                    caption: None,
                 })],
             },
             shown: Shown::default(),

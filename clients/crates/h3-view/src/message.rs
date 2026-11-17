@@ -664,6 +664,7 @@ fn button(layout: &MessageLayout, (back, id): (u16, u16), def: &str, at: [i32; 2
             size: BUTTON,
             frames: Frames::default(),
             hint: None,
+            caption: None,
         }),
     ]
 }

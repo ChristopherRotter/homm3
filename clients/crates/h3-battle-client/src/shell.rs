@@ -78,9 +78,10 @@ use h3_view::batch::Batch;
 use h3_view::compose::FORMAT;
 use h3_view::message::{self, Style};
 use h3_view::shell::keys::{self as shell_keys, Command, GAME_TYPE, MAIN_MENU};
-use h3_view::shell::look::{self, ShellLayout};
-use h3_view::shell::menu::{self, Boxes, Front, Kind, Menu, Menus};
+use h3_view::shell::look::{self, CursorLook, ShellLayout};
+use h3_view::shell::menu::{self, Arrow, Boxes, Front, Kind, Menu, Menus};
 use h3_view::shell::multiplayer::{self, Multiplayer, Texts};
+use h3_view::shell::scenario::{self, Scenario};
 use h3_view::shell::replay::{self, INPUT_STEP, Replay, Stop, Take};
 use h3_view::shell::start::{self as clips, Header, Op, Pace, Part, Picture, Source, Start};
 use h3_view::shell::{Ended, Game, Screen, Shell, text};
@@ -106,6 +107,9 @@ enum Mode {
         frames: PathBuf,
         pointer: [i32; 2],
         input_step: u32,
+        /// The original's draws of the scenario screen's background, an opening each (E27 M3
+        /// T1a: `--backgrounds`, a recipe's).
+        backgrounds: Vec<u8>,
     },
     /// In a window, at a scale (`None`: the largest that fits).
     Window(Option<u32>),
@@ -128,7 +132,7 @@ pub struct Options {
 
 impl Options {
     /// Parses `[--script <file> | --steps <file> --frames <dir> [--pointer <x>,<y>]
-    /// [--input-step <ms>] | --window [--scale <n>] [--keys <file>]] [--no-intro]
+    /// [--input-step <ms>] [--backgrounds <n>,…] | --window [--scale <n>] [--keys <file>]] [--no-intro]
     /// [--video-quality high|low] [--effects <0..9>] [--install <dir>]`; the installation
     /// defaults to `$H3_INSTALL`, then the repository's `original-data/install`.
     ///
@@ -144,7 +148,7 @@ impl Options {
         let (mut script, mut steps, mut frames, mut install) = (None, None, None, None);
         let (mut pointer, mut input_step, mut scale) = (None, None, None);
         let (mut intro, mut window, mut bink_video) = (true, false, true);
-        let (mut effects, mut keys) = (None, None);
+        let (mut effects, mut keys, mut backgrounds) = (None, None, None);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -159,6 +163,7 @@ impl Options {
                 "--install" => install = Some(PathBuf::from(value()?)),
                 "--pointer" => pointer = Some(point(&value()?)?),
                 "--input-step" => input_step = Some(number(&value()?)?),
+                "--backgrounds" => backgrounds = Some(draws(&value()?)?),
                 "--scale" => scale = Some(number(&value()?)?),
                 "--keys" => keys = Some(PathBuf::from(value()?)),
                 "--window" => window = true,
@@ -195,8 +200,8 @@ impl Options {
             }
         };
         lone(
-            !replaying && (pointer.is_some() || input_step.is_some()),
-            "--pointer and --input-step",
+            !replaying && (pointer.is_some() || input_step.is_some() || backgrounds.is_some()),
+            "--pointer, --input-step and --backgrounds",
             "--steps",
         )?;
         lone(!window && scale.is_some(), "--scale", "--window")?;
@@ -207,6 +212,7 @@ impl Options {
                 frames,
                 pointer: pointer.unwrap_or(PARK),
                 input_step: input_step.unwrap_or(INPUT_STEP),
+                backgrounds: backgrounds.unwrap_or_default(),
             },
             (None, None) if window => Mode::Window(scale),
             (None, None) => Mode::Words(script),
@@ -229,6 +235,17 @@ impl Options {
 fn number(s: &str) -> Result<u32, String> {
     s.parse()
         .map_err(|_| format!("shell: `{s}` is not a number"))
+}
+
+/// The scenario screen's background draws, `0` or `1` each, comma-separated.
+fn draws(s: &str) -> Result<Vec<u8>, String> {
+    s.split(',')
+        .map(|n| match n.trim() {
+            "0" => Ok(0),
+            "1" => Ok(1),
+            _ => Err(format!("shell: background `{n}` (0 or 1)")),
+        })
+        .collect()
 }
 
 fn point(s: &str) -> Result<[i32; 2], String> {
@@ -308,8 +325,12 @@ const MAIN_MUSIC: &str = "MainMenu";
 struct Drawer {
     layout: ShellLayout,
     batch: Batch,
+    /// The arrows, the default cursors' and the adventure map's (CLT-Q137), each drawn and as
+    /// the window's hardware cursor.
     cursor: Cursor,
     hardware: CursorImage,
+    adventure: Cursor,
+    adventure_hardware: CursorImage,
     bugs: Bugs,
     /// `introrim.pcx` drawn on the screen (none when the LODs lack it: `H3Intro` then plays on
     /// what the back buffer held).
@@ -345,24 +366,31 @@ impl Drawer {
             draw_image(&mut pixels, pcx, 0, 0);
             Some(pixels)
         });
-        let (def, frame) = (&layout.cursor.def, layout.cursor.frame);
-        let cursor = batch
-            .sprite(def)
-            .and_then(|s| Cursor::read(s, frame, (0, 0), FORMAT))
-            .ok_or_else(|| format!("{def}: no frame {frame}"))?;
-        let image = cursor.image(FORMAT);
-        let hardware = CursorImage {
-            width: image.width,
-            height: image.height,
-            hot_x: image.hot.0,
-            hot_y: image.hot.1,
-            rgba: image.rgba,
+        let arrow = |look: &CursorLook| {
+            let (def, frame) = (&look.def, look.frame);
+            let cursor = batch
+                .sprite(def)
+                .and_then(|s| Cursor::read(s, frame, (0, 0), FORMAT))
+                .ok_or_else(|| format!("{def}: no frame {frame}"))?;
+            let image = cursor.image(FORMAT);
+            let hardware = CursorImage {
+                width: image.width,
+                height: image.height,
+                hot_x: image.hot.0,
+                hot_y: image.hot.1,
+                rgba: image.rgba,
+            };
+            Ok::<_, String>((cursor, hardware))
         };
+        let (cursor, hardware) = arrow(&layout.cursor)?;
+        let (adventure, adventure_hardware) = arrow(&layout.adventure_cursor)?;
         Ok(Self {
             layout,
             batch,
             cursor,
             hardware,
+            adventure,
+            adventure_hardware,
             bugs,
             rim,
             videos: Videos::open(install),
@@ -395,7 +423,7 @@ impl Drawer {
         front: Option<&Front>,
     ) -> Result<Pixels, String> {
         let mut pixels = Pixels::new(WIDTH, HEIGHT, FORMAT).ok_or("no 800 × 600 screen")?;
-        let mut cursor = true;
+        let (mut cursor, mut arrow) = (true, &self.cursor);
         if let Some(shown) = look::look(&self.layout, screen, front) {
             let background = self
                 .batch
@@ -419,6 +447,9 @@ impl Drawer {
                 h3_ui::paint::draw(&mut pixels, draw, &self.batch, self.bugs)?;
             }
             cursor = shown.cursor;
+            if shown.arrow == Arrow::Adventure {
+                arrow = &self.adventure;
+            }
         }
         if let Some([x, y]) = pointer.filter(|_| cursor) {
             // The original's bug: the mouse's x rounded down to even first (0x50CE04, E17
@@ -427,7 +458,7 @@ impl Drawer {
                 Bugs::Original => x & !1,
                 Bugs::Fixed => x,
             };
-            self.cursor.draw(&mut pixels, x, y);
+            arrow.draw(&mut pixels, x, y);
         }
         Ok(pixels)
     }
@@ -553,6 +584,60 @@ fn menus(
         network: laid("shell.stub.network", Style::Ok),
         title: catalogue.text("shell.hot-seat.title", &Args::new()),
     };
+    // The scenario screen's texts (E27 M3 T1a) and the installation's maps.
+    let text = |key: &str| catalogue.text(key, &Args::new());
+    let labels = scenario::LABELS
+        .iter()
+        .map(|&(id, name)| {
+            let word = text(&format!("shell.scenario.{name}"));
+            let shown = if scenario::COLONED.contains(&id) {
+                catalogue.text("shell.scenario.label", &Args::new().text("word", &word))
+            } else {
+                word
+            };
+            (id, shown)
+        })
+        .collect();
+    let standard = text("shell.scenario.victory.0");
+    let or = text("shell.scenario.or");
+    let scenario_texts = scenario::Texts {
+        labels,
+        unnamed: text("shell.scenario.unnamed"),
+        difficulties: ["easy", "normal", "hard", "expert", "impossible"]
+            .iter()
+            .map(|d| text(&format!("shell.scenario.difficulty.{d}")))
+            .collect(),
+        ratings: scenario::RATINGS
+            .iter()
+            .map(|&r| {
+                let args = Args::new().number("rating", i64::from(r));
+                catalogue.text("shell.scenario.rating", &args)
+            })
+            .collect(),
+        victories: (0..12)
+            .map(|k| text(&format!("shell.scenario.victory.{k}")))
+            .collect(),
+        with_standard: (1..12)
+            .map(|k| {
+                let goal = text(&format!("shell.scenario.victory.{k}"));
+                let args = Args::new()
+                    .text("goal", &goal)
+                    .text("or", &or)
+                    .text("standard", &standard);
+                catalogue.text("shell.scenario.with-standard", &args)
+            })
+            .collect(),
+        losses: (0..4)
+            .map(|k| text(&format!("shell.scenario.loss.{k}")))
+            .collect(),
+        help: scenario::HELPED
+            .iter()
+            .map(|&(id, name)| {
+                let key = format!("shell.scenario.help.{name}");
+                (id, laid(&key, Style::Popup))
+            })
+            .collect(),
+    };
     Ok(Menus {
         main,
         new_game: game_type(Game::New),
@@ -562,6 +647,12 @@ fn menus(
             layout.multiplayer.clone(),
             layout.hot_seat.clone(),
             texts,
+            bugs,
+        ),
+        scenario: Scenario::new(
+            layout.scenario.dialog.clone(),
+            scenario_texts,
+            crate::maps::entries(install),
             bugs,
         ),
     })
@@ -744,6 +835,7 @@ fn replay_steps(options: &Options, drawer: &Drawer) -> Result<(), String> {
         frames,
         pointer,
         input_step,
+        backgrounds,
     } = &options.mode
     else {
         return Err("not a replay".into());
@@ -777,7 +869,8 @@ fn replay_steps(options: &Options, drawer: &Drawer) -> Result<(), String> {
     )?;
     let mut applied = 0;
     let shell = Shell::new(options.intro);
-    let mut r = Replay::new(shell, *pointer, *input_step, Some(start), &drawer.menus);
+    let mut r = Replay::new(shell, *pointer, *input_step, Some(start), &drawer.menus)
+        .with_backgrounds(backgrounds);
     if sound && let Some(ms) = drawer.button_ms() {
         r = r.with_sound(ms);
     }
@@ -955,6 +1048,7 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
         u32::try_from(win.ticks_ns().saturating_sub(began) / 1_000_000).unwrap_or(u32::MAX)
     };
     let (mut pointer, mut dirty, mut cursor_hidden) = (None, true, false);
+    let mut cursor_arrow = Arrow::Default;
     // The inputs given during the start's last fade, the main menu's first (CLT-Q130 (a)).
     let mut kept: Vec<Given> = Vec::new();
     loop {
@@ -1095,11 +1189,18 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
         let hidden = front.as_ref().is_some_and(|f| match f {
             Front::Menu(m) => !m.cursor(),
             Front::Multiplayer(m) => !m.cursor(),
+            Front::Scenario(s) => !s.cursor(),
         });
-        if !drawn && hidden != cursor_hidden {
-            let image = (!hidden).then(|| drawer.hardware.clone());
+        // Which arrow (CLT-Q137): the adventure map's after the scenario screen's busy cursor.
+        let arrow = front.as_ref().map(Front::hovers).unwrap_or_default().arrow;
+        if !drawn && (hidden != cursor_hidden || arrow != cursor_arrow) {
+            let image = (!hidden).then(|| match arrow {
+                Arrow::Default => drawer.hardware.clone(),
+                Arrow::Adventure => drawer.adventure_hardware.clone(),
+            });
             win.set_cursor(image)?;
             cursor_hidden = hidden;
+            cursor_arrow = arrow;
         }
         // A screen shown anew (the start's end, a menu's, a word's): its menu opened at the
         // pointer, before it is drawn, its music asked for (the track playing goes on:
@@ -1109,6 +1210,11 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             front = drawer
                 .menus
                 .front(shell.screen(), previous.take(), pointer.unwrap_or(PARK));
+            // The scenario screen's background, the client's own draw (E27 M3 T1a, a look):
+            // `random_between(1, 100) < 51` gives `gamselb1.pcx`.
+            if let Some(Front::Scenario(s)) = front.as_mut() {
+                **s = s.as_ref().clone().with_background(background_draw());
+            }
             if let (Some(host), true) = (host.as_mut(), front.is_some()) {
                 let _ = host.request(MAIN_MUSIC, false);
             }
@@ -1124,6 +1230,12 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             dirty = false;
         }
     }
+}
+
+/// The scenario screen's background drawn as the original draws it (`random_between(1, 100) <
+/// 51`: 1), from the system's randomness (none: 0).
+fn background_draw() -> u8 {
+    getrandom::u32().map_or(0, |v| u8::from(v % 100 + 1 < 51))
 }
 
 /// What the window gave in one wait, in order (T7b): its events, each keyboard key down with its

@@ -12,6 +12,13 @@ player_palette = "PLAYERS.PAL"
 def = "crdeflt.def"
 frame = 0
 
+# The adventure map's arrow (E27 M3 T1a, CLT-Q137): the scenario screen's busy cursor stops on
+# mouse_set_cursor(0, 1) (busy_cursor_stop 0x577810), cradvntr.def's frame 0, until the menu
+# loop's top sets the default arrow again.
+[adventure_cursor]
+def = "cradvntr.def"
+frame = 0
+
 # The message boxes over the shell's screens (E27 M2 T6a: Quit's question, GENRLTXT 70 in a box of
 # style 2; the buttons' help, style 4): the battle's [message] (message_box 0x4F6570), the
 # executable's literals; h3_view::message lays them out.
@@ -360,3 +367,302 @@ font = "smalfont.fnt"
 font_palette = "game.pal"
 colour = 1
 align = 1
+
+# The scenario screen (§3: scenario_dialog_create 0x579960; E27 M3 T1a: a new single scenario's,
+# the list hidden): a dialog at (0, 0, 800, 600) over one of two backgrounds by the draw (the
+# constructor's "gamselb%d.pcx": random_between(1, 100) < 51 gives gamselb1.pcx), the right-hand
+# panel's picture first, then the items in the order the constructor adds them (the network's,
+# the list's, the advanced options' and the random map's not yet: M3 T1b to T5), then what the
+# redraw draws itself, as items of the client's own ids (1000 on: no hint, no right press). The
+# texts: h3_view::shell::scenario::LABELS and the screen's (its entry's).
+[scenario]
+backgrounds = ["gamselb0.pcx", "gamselb1.pcx"]
+
+[scenario.dialog]
+place = [0, 0]
+
+# The right-hand panel (item 100, drawn into the screen at once).
+[[scenario.dialog.items]]
+kind = "picture"
+id = 1020
+picture = "GSelPop1.pcx"
+at = [396, 6]
+
+# The difficulty's labels (132 "%s:" GENRLTXT 493, 133 "%s:" 219, 134 GENRLTXT 495), then the panel's
+# (the original's 100s, 105), the description (a scrolling text: its lines split at its width - 3,
+# each in its own text item at alignment 0; the box here 319 - 3 wide), victory's and loss's.
+[[scenario.dialog.items]]
+kind = "label"
+id = 132
+at = [414, 435]
+size = [334, 19]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 2
+align = 5
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 133
+at = [665, 435]
+size = [84, 19]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 2
+align = 5
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 134
+at = [414, 435]
+size = [90, 19]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 2
+align = 5
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 1010
+at = [422, 27]
+size = [278, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 2
+align = 4
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 105
+at = [422, 137]
+size = [278, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 2
+align = 4
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 1002
+at = [422, 155]
+size = [316, 115]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 1011
+at = [422, 288]
+size = [278, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 2
+align = 4
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 1012
+at = [422, 344]
+size = [278, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 2
+align = 4
+
+# The map's size mark (frame 0 to 3 by size, else 4).
+[[scenario.dialog.items]]
+kind = "def"
+id = 189
+def = "scnrmpsz.def"
+at = [714, 28]
+size = [29, 23]
+
+# The allies' and the enemies' labels ("%s:" GENRLTXT 391, 392), their flags (hidden until a colour
+# shows; the constructor adds each ally's and enemy's in turn: no overlap, so a loop each here), the
+# flags' strip (387: its right press the teams' dialog, M3 T1b).
+[[scenario.dialog.items]]
+kind = "label"
+id = 1013
+at = [414, 403]
+size = [44, 23]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 6
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 386
+at = [579, 403]
+size = [58, 23]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 6
+
+[[scenario.dialog.items]]
+kind = "def"
+id = 112
+def = "itgflags.def"
+at = [460, 405]
+size = [15, 20]
+repeat = { count = [8, 1], step = [15, 0] }
+
+[[scenario.dialog.items]]
+kind = "def"
+id = 120
+def = "itgflags.def"
+at = [640, 405]
+size = [15, 20]
+repeat = { count = [8, 1], step = [15, 0] }
+
+[[scenario.dialog.items]]
+kind = "area"
+id = 387
+at = [456, 402]
+size = [310, 25]
+
+# The panel buttons (caption buttons, gspbutt.def; their texts GENRLTXT 501, 502, 760), in the order
+# added: Show Available Scenarios, Show Advanced Options, Random Map.
+[[scenario.dialog.items]]
+kind = "button"
+id = 128
+def = "gspbutt.def"
+at = [414, 81]
+size = [200, 20]
+caption = { font = "smalfont.fnt", font_palette = "game.pal", colour = 4, align = 5 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 129
+def = "gspbutt.def"
+at = [414, 509]
+size = [200, 20]
+caption = { font = "smalfont.fnt", font_palette = "game.pal", colour = 4, align = 5 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 130
+def = "gspbutt.def"
+at = [414, 105]
+size = [200, 20]
+caption = { font = "smalfont.fnt", font_palette = "game.pal", colour = 4, align = 5 }
+
+# The difficulty, easy to impossible (the chosen one selected, frame 3).
+[[scenario.dialog.items]]
+kind = "button"
+id = 107
+def = "gspbut3.def"
+at = [506, 456]
+size = [30, 46]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 108
+def = "gspbut4.def"
+at = [538, 456]
+size = [30, 46]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 109
+def = "gspbut5.def"
+at = [570, 456]
+size = [30, 46]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 110
+def = "gspbut6.def"
+at = [602, 456]
+size = [30, 46]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 111
+def = "gspbut7.def"
+at = [634, 456]
+size = [30, 46]
+
+# Begin (a new game's scnrbeg.def) and Back.
+[[scenario.dialog.items]]
+kind = "button"
+id = 186
+def = "scnrbeg.def"
+at = [414, 535]
+size = [166, 40]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 188
+def = "scnrback.def"
+at = [584, 535]
+size = [166, 40]
+
+# What the redraw draws itself (scenario_info_draw 0x5840F0; the client's ids): the name, the map's
+# difficulty, the rating, the victory's and the loss's texts and marks.
+[[scenario.dialog.items]]
+kind = "label"
+id = 1001
+at = [422, 45]
+size = [324, 30]
+font = "bigfont.fnt"
+font_palette = "game.pal"
+colour = 8
+align = 0
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 1007
+at = [414, 454]
+size = [89, 48]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 5
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 1008
+at = [666, 454]
+size = [83, 48]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 5
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 1003
+at = [456, 305]
+size = [288, 32]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 4
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 1004
+at = [456, 364]
+size = [288, 32]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 4
+
+[[scenario.dialog.items]]
+kind = "def"
+id = 1005
+def = "scnrvict.def"
+at = [420, 308]
+size = [32, 24]
+
+[[scenario.dialog.items]]
+kind = "def"
+id = 1006
+def = "scnrloss.def"
+at = [420, 365]
+size = [32, 24]
