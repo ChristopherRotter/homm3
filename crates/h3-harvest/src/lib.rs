@@ -68,6 +68,8 @@ pub struct Inputs {
     pub wall_tables: (TextTable, TextTable),
     /// The executable's town tables (E09 T5b2b1; the town packs' harvest, T5b2b2, reads them).
     pub town_tables: TownData,
+    /// The executable's creature bank battle hexes by side (E08 T124a; `bank_positions`).
+    pub bank_hexes: [[u8; h3_formats::exe::BANK_STACKS]; 2],
     /// The buildings' text tables: the names (E09 T5b2b2) and the costs (E09 T16b).
     pub town_names: towns::Tables,
     /// Hero content text tables (E04a T3).
@@ -100,6 +102,8 @@ impl Inputs {
             h3_formats::exe::wall_shot_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
         let town_tables =
             h3_formats::exe::town_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
+        let bank_hexes =
+            h3_formats::exe::bank_hexes(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
         let sod = read("Data/H3bitmap.lod")?;
         let ab = read("Data/H3ab_bmp.lod")?;
         let table = |data: &[u8], archive: &str, name: &str| -> Result<TextTable, String> {
@@ -126,6 +130,7 @@ impl Inputs {
                 table(&sod, "H3bitmap.lod", "BALLIST.TXT")?,
             ),
             town_tables,
+            bank_hexes,
             town_names: towns::Tables {
                 neutral: table(&sod, "H3bitmap.lod", "BldgNeut.txt")?,
                 special: table(&sod, "H3bitmap.lod", "BldgSpec.txt")?,
@@ -951,7 +956,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     )?;
     let sieges = sieges::write((&inputs.siege, &shots), &town_refs, &hero_packs.spell_keys)?;
     base.push_str(&sieges.base);
-    write_battle(&mut base, gap);
+    write_battle(&mut base, gap, &inputs.bank_hexes);
     base.push_str(&sieges.field);
     write_hero_params(&mut base, gap, &hero_packs.skills)?;
     base.push_str(
@@ -1297,7 +1302,11 @@ fn write_hero_params(
     Ok(())
 }
 
-fn write_battle(out: &mut String, gap: &GapFill) {
+fn write_battle(
+    out: &mut String,
+    gap: &GapFill,
+    bank_hexes: &[[u8; h3_formats::exe::BANK_STACKS]; 2],
+) {
     let b = &gap.battle;
     let _ = write!(
         out,
@@ -1358,6 +1367,29 @@ fn write_battle(out: &mut String, gap: &GapFill) {
         .map(|[x, y]| format!("[{x}, {y}]"))
         .collect();
     let _ = writeln!(out, "war_machine_positions = [{}]", positions.join(", "));
+    // A creature bank's hexes (E08 T124a): the executable's by side and ordinal as `[x, y]` of
+    // the field (`installation.md` §7.62), one per army slot (the compiler refuses fewer).
+    let width = usize::from(b.field_width).max(1);
+    let side = |hexes: &[u8]| -> String {
+        hexes
+            .iter()
+            .take(usize::from(b.army_slots))
+            .map(|&hex| {
+                format!(
+                    "[{}, {}]",
+                    usize::from(hex) % width,
+                    usize::from(hex) / width
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let _ = writeln!(
+        out,
+        "bank_positions = {{ attacker = [{}], defender = [{}] }}",
+        side(&bank_hexes[0]),
+        side(&bank_hexes[1])
+    );
     let rows = |table: &[Vec<u8>]| -> String {
         table
             .iter()

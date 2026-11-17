@@ -793,7 +793,15 @@ its own, at most three; BAT-SIE-016, `installation.md` §7.30), and `turret_coun
 least creature count (4; `Siege.structures` adds to it). Since E04c T8 (pack format v42, battle
 part hash v6) `teleport_moat` and `teleport_walls` (0 to 3) are the Teleport masteries from which a
 teleported stack may cross the moat and pass the walls (2 and 3 in `base`, harvested from the
-executable's 0x5A3700; BAT-SIE-026, `installation.md` §7.32).
+executable's 0x5A3700; BAT-SIE-026, `installation.md` §7.32). Since E08 T124a (pack format v53,
+battle part hash v8) `bank_positions = { attacker, defender }`: a creature bank's battle's hexes
+`[x, y]` per side, one per army slot, not mirrored; a side's stack takes the entry of its ordinal
+among the filled slots, a two-hex stack's position its rear hex with the front one column toward
+the enemy (BAT-SET-001, BAT-GEO-002). The compiler checks that each hex and the one in front of
+it are standable and that no hex lies in two footprints of either side, so a bank's placement
+cannot fail (its battle has no obstacles, war machines or walls). `base` harvests the executable's
+`bank_battle_hexes` 0x63D0E0 (57, 61, 90, 93, 96, 125, 129; 15, 185, 172, 2, 100, 87, 8;
+`installation.md` §7.62).
 
 **Hero parameters** (`[hero_params]`, Tier 2, E04a T4a; at most one enabled pack provides them,
 a ruleset without them cannot validate hero details): `primary_min` (four values, attack,

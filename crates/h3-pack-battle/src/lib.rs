@@ -295,6 +295,7 @@ struct BattleDto {
     luck_dice: u8,
     good_luck_chances: Vec<u8>,
     war_machine_positions: Vec<[u8; 2]>,
+    bank_positions: BankPositionsDto,
     loose_formation: Vec<Vec<u8>>,
     tight_formation: Vec<Vec<u8>>,
     tactics_zone_columns: Vec<u8>,
@@ -304,6 +305,15 @@ struct BattleDto {
     side_stack_limit: u8,
     #[serde(default)]
     siege: Option<SiegeFieldDto>,
+}
+
+/// `bank_positions` in `[battle]` (pack format v53, E08 T124a): a creature bank's hexes
+/// `[x, y]` by side, one per army slot (BAT-SET-001).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BankPositionsDto {
+    attacker: Vec<[u8; 2]>,
+    defender: Vec<[u8; 2]>,
 }
 
 #[derive(Deserialize)]
@@ -1285,6 +1295,7 @@ pub fn parse_battle(manifest: &PackManifest, text: &str) -> Result<BattlePack, B
                 luck_dice: b.luck_dice,
                 good_luck_chances: b.good_luck_chances,
                 war_machine_positions: b.war_machine_positions,
+                bank_positions: [b.bank_positions.attacker, b.bank_positions.defender],
                 loose_formation: b.loose_formation,
                 tight_formation: b.tight_formation,
                 tactics_zone_columns: b.tactics_zone_columns,

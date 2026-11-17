@@ -142,6 +142,10 @@ pub(crate) fn battle_def() -> BattleParamsDef {
         luck_dice: 24,
         good_luck_chances: vec![1, 2, 3],
         war_machine_positions: vec![[1, 3], [1, 1], [1, 9]],
+        bank_positions: [
+            vec![[6, 3], [10, 3], [5, 5]],
+            vec![[15, 0], [15, 10], [2, 10]],
+        ],
         loose_formation: vec![vec![5], vec![3, 7], vec![2, 5, 8]],
         tight_formation: vec![vec![5], vec![4, 6], vec![4, 5, 6]],
         tactics_zone_columns: vec![3, 5, 7],
@@ -453,6 +457,19 @@ fn an_adventure_spell_may_have_no_battle_row() {
     );
 }
 
+// covers: BAT-SET-001
+#[test]
+fn bank_positions_by_side_and_ordinal() {
+    let r = compile(&[base()], "base:faithful").unwrap();
+    let b = r.battle();
+    assert_eq!(b.bank_position(0, 0), Some((6, 3)));
+    assert_eq!(b.bank_position(0, 2), Some((5, 5)));
+    assert_eq!(b.bank_position(1, 1), Some((15, 10)));
+    // Past the army slots, and a side that is neither.
+    assert_eq!(b.bank_position(0, 3), None);
+    assert_eq!(b.bank_position(2, 0), None);
+}
+
 #[test]
 fn formation_rows() {
     let r = compile(&[base()], "base:faithful").unwrap();
@@ -492,6 +509,11 @@ fn hash_is_stable_and_sensitive() {
     tactics.battle.battle.as_mut().unwrap().tactics_zone_columns[2] = 15;
     let tactics = compile(&[tactics], "base:faithful").unwrap();
     assert_ne!(a.content_hash(), tactics.content_hash());
+    // covers: BAT-SET-001
+    let mut bank = base();
+    bank.battle.battle.as_mut().unwrap().bank_positions[1][2] = [2, 9];
+    let bank = compile(&[bank], "base:faithful").unwrap();
+    assert_ne!(a.content_hash(), bank.content_hash());
     // The surrender's resource is resolved like any reference (BAT-FLE-002).
     let mut surrender = base();
     surrender.battle.battle.as_mut().unwrap().surrender = Some(SurrenderDef {
@@ -537,7 +559,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0xdaba_83eb_c3a9_8163;
+const GOLDEN_BASE_HASH: u64 = 0x276b_c49d_24ea_380e;
 
 #[test]
 fn battle_params_are_unique_and_required() {
@@ -732,6 +754,47 @@ fn battle_param_errors() {
             |b| b.war_machine_positions[2] = [8, 5],
             "war machine positions overlap (as two-hex footprints)",
         ),
+        // covers: BAT-SET-001
+        (
+            |b| b.bank_positions[0].truncate(2),
+            "bank_positions needs one hex [x, y] per army slot for each side",
+        ),
+        (
+            |b| b.bank_positions[1].push([8, 0]),
+            "bank_positions needs one hex [x, y] per army slot for each side",
+        ),
+        (
+            |b| b.bank_positions[0][0] = [0, 3],
+            "bank positions must be standable, with a standable hex in front of each",
+        ),
+        (
+            |b| b.bank_positions[0][0] = [15, 3],
+            "bank positions must be standable, with a standable hex in front of each",
+        ),
+        (
+            |b| b.bank_positions[0][0] = [6, 11],
+            "bank positions must be standable, with a standable hex in front of each",
+        ),
+        (
+            |b| b.bank_positions[1][0] = [1, 0],
+            "bank positions must be standable, with a standable hex in front of each",
+        ),
+        (
+            |b| b.bank_positions[1][0] = [0, 0],
+            "bank positions must be standable, with a standable hex in front of each",
+        ),
+        (
+            |b| b.bank_positions[1][0] = [16, 0],
+            "bank positions must be standable, with a standable hex in front of each",
+        ),
+        (
+            |b| b.bank_positions[0][1] = [7, 3],
+            "bank positions overlap (as two-hex footprints)",
+        ),
+        (
+            |b| b.bank_positions[1][0] = [7, 3],
+            "bank positions overlap (as two-hex footprints)",
+        ),
         (
             |b| drop(b.loose_formation.pop()),
             "formations need one entry per army size 1..=army_slots",
@@ -770,6 +833,10 @@ fn battle_param_errors() {
     b.army_slots = 16;
     b.loose_formation = (1..=16u8).map(|n| (0..n).collect()).collect();
     b.tight_formation = (1..=16u8).map(|n| (0..n).rev().collect()).collect();
+    b.bank_positions = [
+        (0..16).map(|r| [1, r]).collect(),
+        (0..16).map(|r| [13, r]).collect(),
+    ];
     assert!(compile(&[ok], "base:faithful").is_ok());
 }
 
