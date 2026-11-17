@@ -281,14 +281,15 @@ impl GameObservation {
                 slot,
                 hero,
             } => {
-                if let Some(view) = self.tavern.get_mut(usize::from(slot)) {
+                let view = self.tavern.get_mut(usize::from(slot));
+                view.into_iter().for_each(|view| {
                     *view = hero.map(|hero| TavernHero {
                         hero,
                         army: Vec::new(),
                         skills: Vec::new(),
                         artifacts: Vec::new(),
                     });
-                }
+                });
             }
             GameEvent::TavernPartSeen {
                 player: _,

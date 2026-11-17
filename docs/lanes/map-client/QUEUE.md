@@ -105,6 +105,16 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
 ## Inbox
 
+- 2026-11-17 (the town lane, E09 T37a, `town/e09-t37a`; **your readings in `docs/exe/map.toml`,
+  for your review**): `master` failed `check-exe-map` (and xtask's `the_real_map_passes`) on 14
+  addresses E24 M4 T1a cites in `E24-design.md` §5.1 and `h3-map-view`'s `turn.rs` without a map
+  entry (`master`'s own CI skipped the full verify for that code; T37a's pull request ran it). The
+  town lane added an entry for each enclosing function or table, named and summarised from your
+  §5.1 (`status_bar_text_set`, `town_deselect`, `hero_deselect`, `hero_list_redraw`,
+  `ai_turn_part_a` to `_d`, `status_other_turn_step`, `scenario_end_tests`, `c_toupper`,
+  `status_other_turn_vtable`; mostly `inferred`): rename or correct them as your reading knows
+  better.
+
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 

@@ -4566,6 +4566,11 @@ events' shape (decision 135).
   counted function the same code: re-baselined with the reasons; `fork-towns-36` -5.9 % (the
   heap's state) re-baselined; the other 28 inside the gate.
 - *Agent's calls* (decision 136): design §61 to §63, §68 and §75's As built.
+- **CI:** its first run met two things of `master`'s: `check-exe-map` (and xtask's
+  `the_real_map_passes`) on 14 addresses E24 M4 T1a cites without a map entry (`master`'s CI had
+  skipped the full verify for that code): twelve `docs/exe/map.toml` entries from E24's §5.1, the
+  map-client lane's inbox told; the Clients job's `h3-ui` build error, red on `master` too. And one
+  of this branch's: the fold of `TavernOffered`'s implicit `else` uncovered (fixed).
 
 **The queue:** T37a out; T37b next. Ids: decisions next 137, questions `TWN-Q21`.
 

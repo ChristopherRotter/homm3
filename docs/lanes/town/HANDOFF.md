@@ -51,7 +51,9 @@ original's tavern shows the offer's whole hero screen as a held popup, chose its
 start only: 15 files staged (the four LODs, both executables, both tars, the saves, the manuals;
 SHA-256 checked). Built: design §61 to §63, §68, §75 (game state hash v33, protocol v70); the
 week-start benches measured, one design pass, re-baselined (+13 to +99 %: the week's fill); the 89
-replays re-recorded; #984 the `shared/` half.
+replays re-recorded; #984 the `shared/` half. CI's first run on #987 met `master`'s latent
+`check-exe-map` gap (E24 M4 T1a's 14 cited addresses): entries added, the map-client lane told;
+the Clients job is red on `master` too (`h3-ui`'s `message.rs`, not this branch's).
 
 ### 2026-11-17 — T35b and T36: the taverns' stream, the two flags, the town part v7
 
