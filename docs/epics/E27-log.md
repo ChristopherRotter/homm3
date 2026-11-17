@@ -987,3 +987,47 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
 - **The sandbox:** the PC's 64 files staged at once (digest `0a71d131…`); the setup's baseline
   stopped before coverage, but `cargo-llvm-cov` outlived the watcher's kill (TRAPS); the VM
   restarted once during the setup (files kept).
+
+## M3 T1b1 — the list: its rows, sort, filters, keys and scroll bar (2026-11-17)
+
+- **The cut** (decision 47): T1b as queued had a widget not yet in `h3_ui` (the scroll bar, its
+  code unread), the list and its right press with the teams dialog (unread); T1b1 the list itself,
+  T1b2 the right press, the teams dialog and GENRLTXT 503 in a shot.
+- **Read** (design §19): `H3DlgScrollbar` whole for a vertical bar (create, art, draw, procedure,
+  press, release, drag, value, ticks, reset; the vtable's +0x34 to +0x40); the filters' and
+  columns' creation (the name column 33 high); the rows' draw (the redraw's list part), the keys
+  (Page Down nothing in one page, the selection keeping its signed distance), the toggle (the bar
+  reset at each showing), `scenario_find_by_name`, the row's click (`text_item_message`: at the
+  release anywhere), the sort's and the filter's redraws, `scenario_select`'s partial redraw and
+  `scenario_team_flags`' kept strip (CLT-Q138).
+- **Built:** `h3_ui::scrollbar` (additive in the foundation); in `h3_view::shell::scenario` the
+  list (`ListLook`, `sort_by`, `list_names`, `Entry::players` and `humans`, `Format::mark`, the
+  toggle, the build, the rows' draws, the columns, the filters, the keys, the bar, the rows'
+  press and double press on the shell's clock, the partial redraw in the original's profile with
+  `stale_draws`); `Front::clock`, the window's and the replay's clock; `keys::Command::List`
+  (`scenario-up`, `-down`, `-page-up`, `-page-down`: Up, Down, PageUp, PageDown); the replay's
+  xdotool Prior and Next as the adapter's PageUp and PageDown; the viewer's `--maps <file>` and
+  `h3shell.py drawn` giving a recipe's `maps`; the layout's list items and `[scenario.list]`; the
+  keys `shell.scenario.title`, `sizes`, `players`, `size.*`; ten map entries (`scrollbar_*`,
+  `players_count_format`) and five updated.
+- **Recorded:** `scn-list-keys` again (§6.4: seven Page Ups to the first row, `page-up-first`,
+  `up-at-first`; 16 shots, both runs the same); `scn-sort`, `scn-filter`, `scn-info`,
+  `scn-difficulty`, `scn-begin-none`, `scn-begin-filter` played as kept. `drawn` recorded for the
+  `scenario` group and `adv-single-maps` (they show the list now); `menus`, `multiplayer` and the
+  rest of `advanced` as recorded.
+- **Compared:** 59 of the 67 shots of `scn-new`, `scn-list-keys`, `scn-sort`, `scn-filter` exact;
+  the 8 others (`scn-sort`'s size, players, victory and loss sorts) differ only in their ties'
+  order (decision 12; each row's key column the original's, checked row by row). Before CLT-Q138's
+  reproduction 49: the partial redraw's size mark and strip.
+- **Questions:** CLT-Q138 asked and answered (b) (decision 48: the client draws whole, the
+  original's partial redraw for the comparisons; built so).
+- **Found on `master`:** the client workspace did not build (#982's `Button::caption` against
+  #983's `h3_ui::message`): fixed in #988, merged first; `check-exe-map` lists six addresses of
+  E24's design note and `turn.rs` unmapped (the map-client lane's inbox).
+- **Gates:** `check.sh --no-coverage` passed with the data staged; coverage 100 % of lines and
+  regions with `H3_INSTALL` empty; the scoped verify passes but `check-exe-map` (`master`'s E24
+  citations alone, above).
+- **The sandbox:** the PC's 64 files and the manuals staged at once (digest `a8cd97a7…`, the
+  sorted `sha256sum` lines without their paths' column); the setup's baseline stopped at coverage
+  by the watcher (clippy over the workspace passed with #988's fix); the VM restarted once (files
+  kept).

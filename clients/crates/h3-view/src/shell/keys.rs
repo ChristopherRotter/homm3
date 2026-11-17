@@ -14,7 +14,9 @@
 //!   Escape its Cancel (520).
 //! - **The scenario screen** (`scenario_dialog_create` 0x579960; E27 M3 T1a): S Show Available
 //!   Scenarios (128), R Random Map (130), A Show Advanced Options (129), Enter Begin (186),
-//!   Escape Back (188).
+//!   Escape Back (188); its list's (`scenario_dialog_proc` 0x587D00, its scan codes 0x48, 0x50,
+//!   0x49 and 0x51; E27 M3 T1b1): Up and Down the selection by a row, Page Up and Page Down the
+//!   top by a page.
 //! - **An edit's own keys** (E27 M2 T7b, decision 39: the client's profile): Home, End, Left,
 //!   Right, Delete and BackSpace, taken while an edit has the focus ([`Context::Edit`], asked
 //!   before its dialog's); **the hot seat's ring** (`hot_seat_edit_key` 0x50DF60): Tab and Down to
@@ -76,6 +78,21 @@ pub enum Command {
     Edit(Caret),
     /// The hot seat's ring: to the next edit (`true`) or the previous (E27 M2 T7b).
     Ring(bool),
+    /// The scenario list's move (E27 M3 T1b1).
+    List(Scroll),
+}
+
+/// A move of the scenario list by a key (E27 M3 T1b1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Scroll {
+    /// The selection up a row (Up).
+    Up,
+    /// The selection down a row (Down).
+    Down,
+    /// The top up a page (Page Up).
+    PageUp,
+    /// The top down a page (Page Down).
+    PageDown,
 }
 
 /// The main menu's buttons with a hotkey, by id, with their names and the original's keys.
@@ -109,6 +126,15 @@ pub const DIALOGS: [(u16, &str, &str, Context); 8] = [
     (129, "scenario-advanced", "A", Context::Scenario),
     (186, "scenario-begin", "Return", Context::Scenario),
     (188, "scenario-back", "Escape", Context::Scenario),
+];
+
+/// The scenario list's keys (E27 M3 T1b1), with their names and the original's keys by the
+/// adapter's names.
+pub const LIST: [(Scroll, &str, &str); 4] = [
+    (Scroll::Up, "scenario-up", "Up"),
+    (Scroll::Down, "scenario-down", "Down"),
+    (Scroll::PageUp, "scenario-page-up", "PageUp"),
+    (Scroll::PageDown, "scenario-page-down", "PageDown"),
 ];
 
 /// A message box's keys with their names and the original's (as the battle's,
@@ -168,6 +194,10 @@ impl Command {
                     let chords = keys.iter().filter_map(|k| Chord::parse(k).ok()).collect();
                     (*name, chords)
                 }),
+            Self::List(scroll) => LIST
+                .iter()
+                .find(|&&(l, _, _)| l == scroll)
+                .map(|&(_, name, key)| (name, one(key))),
         };
         let (name, chords) = found.unwrap_or(("", Vec::new()));
         (String::from(name), chords)
@@ -179,7 +209,7 @@ impl keys::Command for Command {
     const TABLE: &'static str = "shell";
 
     /// Every command, in the table's order: the main menu's buttons, the game type menus', the
-    /// box's, the dialogs', an edit's own keys, the hot seat's ring.
+    /// box's, the dialogs', an edit's own keys, the hot seat's ring, the scenario list's.
     fn all() -> Vec<Self> {
         let mut all: Vec<Self> = MAIN_MENU.map(|(id, _, _)| Self::Button(id)).into();
         all.extend(GAME_TYPE.map(|(c, _, _)| Self::Choice(c)));
@@ -187,6 +217,7 @@ impl keys::Command for Command {
         all.extend(DIALOGS.map(|(id, _, _, _)| Self::Dialog(id)));
         all.extend(EDIT.map(|(c, _, _)| Self::Edit(c)));
         all.extend(RING.map(|(next, _, _)| Self::Ring(next)));
+        all.extend(LIST.map(|(scroll, _, _)| Self::List(scroll)));
         all
     }
 
@@ -202,7 +233,7 @@ impl keys::Command for Command {
 
     /// The main menu's buttons over the main menu, a game type menu's over it, the box's keys
     /// over a box, a dialog's over it, an edit's while it has the focus, the ring over the hot
-    /// seat's names.
+    /// seat's names, the list's over the scenario screen.
     fn context(self) -> Option<Context> {
         Some(match self {
             Self::Button(_) => Context::MainMenu,
@@ -211,6 +242,7 @@ impl keys::Command for Command {
             Self::Dialog(id) => DIALOGS.iter().find(|&&(d, _, _, _)| d == id)?.3,
             Self::Edit(_) => Context::Edit,
             Self::Ring(_) => Context::HotSeat,
+            Self::List(_) => Context::Scenario,
         })
     }
 

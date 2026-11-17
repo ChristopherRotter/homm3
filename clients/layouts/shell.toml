@@ -388,6 +388,24 @@ id = 1020
 picture = "GSelPop1.pcx"
 at = [396, 6]
 
+# The list's panel (101, its right part index 0 over the right-hand panel) and its title (361,
+# ArrayTxt.txt 229 for a new game), hidden until Show Available Scenarios shows the list (M3 T1b1).
+[[scenario.dialog.items]]
+kind = "picture"
+id = 101
+picture = "SCSelBck.pcx"
+at = [3, 6]
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 361
+at = [25, 23]
+size = [367, 23]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 8
+align = 5
+
 # The difficulty's labels (132 "%s:" GENRLTXT 493, 133 "%s:" 219, 134 GENRLTXT 495), then the panel's
 # (the original's 100s, 105), the description (a scrolling text: its lines split at its width - 3,
 # each in its own text item at alignment 0; the box here 319 - 3 wide), victory's and loss's.
@@ -523,6 +541,98 @@ kind = "area"
 id = 387
 at = [456, 402]
 size = [310, 25]
+
+# The list's rows (142 to 159, text items with no text: the redraw draws each row itself, the list
+# look below; a row takes the press), the size filters S, M, L, XL and All (137 to 141) and the
+# columns players, size, version, name, victory and loss (190 to 195), hidden with the list (M3
+# T1b1; design §3.2, §19.1).
+[[scenario.dialog.items]]
+kind = "label"
+id = 142
+at = [57, 122]
+size = [314, 25]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 5
+repeat = { count = [1, 18], step = [0, 25] }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 137
+def = "scsmbut.def"
+at = [161, 52]
+size = [44, 33]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 138
+def = "scmdbut.def"
+at = [208, 52]
+size = [44, 33]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 139
+def = "sclgbut.def"
+at = [255, 52]
+size = [44, 33]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 140
+def = "scxlbut.def"
+at = [302, 52]
+size = [44, 33]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 141
+def = "scalbut.def"
+at = [349, 52]
+size = [44, 33]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 190
+def = "scbutt1.def"
+at = [26, 92]
+size = [31, 28]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 191
+def = "scbutt2.def"
+at = [58, 92]
+size = [32, 28]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 192
+def = "ScButCp.def"
+at = [91, 92]
+size = [32, 28]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 193
+def = "scbutt3.def"
+at = [124, 92]
+size = [184, 33]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 194
+def = "scbutt4.def"
+at = [309, 92]
+size = [32, 28]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 195
+def = "scbutt5.def"
+at = [342, 92]
+size = [32, 28]
 
 # The panel buttons (caption buttons, gspbutt.def; their texts GENRLTXT 501, 502, 760), in the order
 # added: Show Available Scenarios, Show Advanced Options, Random Map.
@@ -666,3 +776,40 @@ id = 1006
 def = "scnrloss.def"
 at = [420, 365]
 size = [32, 24]
+
+# The list's sizes label (GENRLTXT 511), drawn by the redraw with the list (M3 T1b1).
+[[scenario.dialog.items]]
+kind = "label"
+id = 1014
+at = [25, 52]
+size = [132, 32]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 2
+align = 5
+
+# The list's rows as the redraw draws them (scenario_dialog_redraw 0x584550; M3 T1b1, design §3.4,
+# §19.1): each cell at the first row (its texts a pixel above the row's top), the rows 25 apart,
+# the selection's texts in colour 5; the players "%d/%d", the size's letter, the version's mark
+# (ScSelC.def), the name, the victory's and the loss's marks.
+[scenario.list]
+rows = 18
+step = 25
+selected = 5
+players = { id = 1100, at = [26, 122], size = [30, 25], font = "smalfont.fnt", font_palette = "game.pal", colour = 4, align = 5 }
+size = { id = 1101, at = [59, 122], size = [30, 25], font = "smalfont.fnt", font_palette = "game.pal", colour = 4, align = 5 }
+version = { id = 1102, def = "ScSelC.def", at = [91, 123], size = [32, 25] }
+name = { id = 1103, at = [125, 122], size = [184, 25], font = "smalfont.fnt", font_palette = "game.pal", colour = 4, align = 5 }
+victory = { id = 1104, def = "scnrvict.def", at = [309, 123], size = [32, 25] }
+loss = { id = 1105, def = "scnrloss.def", at = [342, 123], size = [32, 25] }
+
+# The list's scroll bar (337: H3DlgScrollbar::Create 0x5960D0 with 10 ticks, blue, a page of the
+# rows; the track's picture and the DEF's 16-pixel buttons, loadButton 0x596050).
+[scenario.list.bar]
+id = 337
+at = [375, 92]
+size = [16, 480]
+def = "SlideBuV.def"
+track = "sliderV.pcx"
+button = 16
+step = 18

@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use h3_ui::edit::Caret;
 use h3_ui::keys::{Chord, Command as _, Keys};
 
-use super::{Command, Context, command_for, shifted};
+use super::{Command, Context, Scroll, command_for, shifted};
 use crate::message;
 use crate::shell::Choice;
 
@@ -87,10 +87,21 @@ fn the_commands_have_names_in_the_shell_s_table() {
             "edit-delete",
             "edit-backspace",
             "hot-seat-next",
-            "hot-seat-previous"
+            "hot-seat-previous",
+            "scenario-up",
+            "scenario-down",
+            "scenario-page-up",
+            "scenario-page-down"
         ]
     );
     assert_eq!(Command::from_name("quit"), Some(Command::Button(105)));
+    // E27 M3 T1b1: the scenario list's keys, over the scenario screen.
+    let keys = Keys::<Command>::original();
+    assert_eq!(
+        keys.command(Context::Scenario, false, "PageDown"),
+        Some(Command::List(Scroll::PageDown))
+    );
+    assert_eq!(keys.command(Context::HotSeat, false, "PageDown"), None);
     assert_eq!(
         Command::from_name("back"),
         Some(Command::Choice(Choice::Back))

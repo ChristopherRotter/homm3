@@ -949,6 +949,14 @@ impl Front {
             Self::Scenario(s) => s.key_up(by),
         }
     }
+
+    /// The shell's clock is `ms` (E27 M3 T1b1: the scenario list's double press is timed on it,
+    /// from the screen's opening); the menus and the Multiplayer dialog read no clock.
+    pub fn clock(&mut self, ms: u32) {
+        if let Self::Scenario(s) = self {
+            s.clock(ms);
+        }
+    }
 }
 
 /// The parts of `rect` (left, top, width, height) outside every rectangle of `shown`.

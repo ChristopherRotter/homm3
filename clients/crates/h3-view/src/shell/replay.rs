@@ -14,9 +14,10 @@
 //! The main menu (E27 M2 T6a) and the game type menus (T6b1) take the inputs as the harness gives
 //! them ([`super::menu`]): a `click` is a move there, a press and a release, a `down` or a `right`
 //! a move and a press, a `key` its key down and up (xdotool's names as the adapter's: a letter
-//! upper-cased), through the shell's key table ([`super::keys`]); each menu opens anew as its
-//! screen shows, the pointer where it is; with the effects on ([`Replay::with_sound`]) each
-//! press's sample is listed as the original's sound manager plays it ([`Replay::samples`]).
+//! upper-cased, Prior and Next as PageUp and PageDown), through the shell's key table
+//! ([`super::keys`]); each menu opens anew as its screen shows, the pointer where it is; with the
+//! effects on ([`Replay::with_sound`]) each press's sample is listed as the original's sound
+//! manager plays it ([`Replay::samples`]).
 //!
 //! What only the harness can do stops the replay ([`Stop`]): a step on the original's memory or
 //! its probes (`poke`, `press`, `point`, `until-button`, `games-time`, `freeze`), a screen name the
@@ -554,6 +555,9 @@ impl Replay {
     /// The clock moved on: the start's reading of it.
     fn tick(&mut self, ms: u32) {
         self.time = self.time.saturating_add(ms);
+        if let Some(front) = self.front.as_mut() {
+            front.clock(self.time);
+        }
         if let Some(start) = self.start.as_mut() {
             start.read(self.time, &mut self.ops);
         }
@@ -580,19 +584,24 @@ impl Replay {
         let _ = self.shell.end(ended);
         let previous = self.front.take();
         self.front = whole(&self.menus, self.screen(), previous, self.pointer);
+        if let Some(front) = self.front.as_mut() {
+            front.clock(self.time);
+        }
         self.draw_background();
     }
 
     /// An input of the harness's to the menu on the screen, as what it gives the game in order,
     /// until the menu ends.
     fn on_menu(&mut self, input: &Input) {
-        // The adapter's name of a recipe's key (a letter upper-cased) and whether Shift holds it.
+        // The adapter's name of a recipe's key (a letter upper-cased; xdotool's Prior and Next its
+        // PageUp and PageDown, E27 M3 T1b1) and whether Shift holds it.
         let key = |name: &str| {
             let (shift, bare) = keys::shifted(name);
-            let bare = if bare.chars().count() == 1 {
-                bare.to_uppercase()
-            } else {
-                String::from(bare)
+            let bare = match bare {
+                "Prior" => String::from("PageUp"),
+                "Next" => String::from("PageDown"),
+                _ if bare.chars().count() == 1 => bare.to_uppercase(),
+                _ => String::from(bare),
             };
             (bare, shift)
         };

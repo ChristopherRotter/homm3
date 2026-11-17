@@ -7,7 +7,8 @@
 //! for the battle's dialogs and the shell's (E27 M2 T3a, decision 20); [`text`] the string
 //! catalogue and its language packs; [`keys`] the table of what each key does, generic over a viewer's commands;
 //! [`music`] the original's music thread for a window's music stream; [`message`] the message box
-//! (E24 M4 T1a: the battle's `h3_view::message` trimmed to the adventure map's boxes). What is one viewer's alone
+//! (E24 M4 T1a: the battle's `h3_view::message` trimmed to the adventure map's boxes);
+//! [`scrollbar`] a dialog's scroll bar (E27 M3 T1b1: the scenario list's). What is one viewer's alone
 //! (the battle's hexes and layouts, the map's tiles) stays in that viewer.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`; time is an input. The header below
@@ -38,6 +39,7 @@ pub mod keys;
 pub mod message;
 pub mod music;
 pub mod paint;
+pub mod scrollbar;
 pub mod sprite;
 pub mod text;
 pub mod ui;
