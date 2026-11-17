@@ -12,9 +12,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `QUEUE.md`), its cut confirmed at its start. The guild and the services are increment 5, travel
   and the Grail 6. Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6`, `-13`
   and `-15` (increment 5), `TWN-STUB-2` (the victory conditions), `TWN-STUB-19` (T38a2).
-- **Open pull requests:** T38a1's `shared/e09-t38a1` (#999, docs: ADR-0016 point 6, ADR-0017
-  point 2, `06-security.md`) merges first, then `town/e09-t38a1` (`cross-lane`); watch both until
-  they merge.
+- **Open pull requests:** T38a1's `town/e09-t38a1` (#1001, `cross-lane`; its `shared/` half #999
+  merged), opened at the session's end; watch it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -50,7 +49,7 @@ in two (decision 140) and chose the owner's parts for what the slot's view lacks
 moved the replay word into T38a1 (the server journals what the wire takes) and told the user.
 Built: design §64, §65, §75's As built (`h3-game`'s `town/hire.rs`, the adventure's
 `src/town/hire.rs`, `h3_towns::check_hire`); the wire's fold of a hire, tested on three golden
-games; the 89 goldens' format line. #999 the `shared/` half.
+games; the 89 goldens' format line. #999 the `shared/` half (merged), #1001 the code.
 
 ### 2026-11-17 — T37b: the map's customised types, map import v25
 
