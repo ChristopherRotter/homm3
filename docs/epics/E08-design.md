@@ -216,6 +216,12 @@ A fork costs what it did; the artifacts' list lives in the static map behind its
      50 %; the Dragon Fly Hive's Dragon Flies have none, and nor has a base pack's Water
      Elemental (RoE's dead branch, survey §3 step 4, needs no counterpart).
 - **Never drawn again:** no week, month or visit touches a bank's draw.
+- *As built* (T124b1, decision 354): `state/banks.rs`' `bank_draw` (steps 1, 2, 4) and
+  `bank_split` (step 3), called by `draws::resolve_rewards`' second walk (a module of its own for
+  the reach's sake: the log's T124b1 measure); the guards ask (`Guards::question` true; §6's visit
+  asks by the kind's question); a one-level bank draws its r too; tests in `state/tests/draws.rs`
+  (the level and the upgrade against the setup stream's draws, the split's four cases and an empty
+  quotient, the relics first from the one pool, none with every artifact banned).
 
 ### 6. The visit (ADV-BNK-003; survey §4; D-66 the original)
 
@@ -559,7 +565,7 @@ the machines and the supply, a side without a hero or a cart unsupplied; the has
 |---|---|---|---|
 | adventure ruleset part | v20 | **v21** | T123a: the kind `bank` (hash tag 44); *done* |
 | map import | v23 | **v24** | T123b: the five classes typed; *done* |
-| adventure state hash | v25 | **v26** | T124b: `Resolved::Bank`, the banks' guards in the static map |
+| adventure state hash | v25 | **v26** | T124b1: `Resolved::Bank`, the banks' guards in the static map; *done* |
 | battle state hash (the battle lane's) | v55 | **v56** | T124a, `cross-lane`: the flag in the state; *done* |
 | battle ruleset part (the battle lane's) | v7 | **v8** | T124a, `cross-lane`: `bank_positions`; *done* |
 | pack format (shared, the battle file) | v52 | **v53** | T124a, `cross-lane`: `bank_positions` in `[battle]`; *done* |
@@ -641,7 +647,7 @@ the ADRs are applied once with the rows' verdicts:
 | 3 | **T120** + **T121** | T120: the harness's reads, the recipe, the run. T121: scored (survey §14) |
 | 4 | **T122** | `shared/` (`cross-lane`): the three drafts with T121's outcome, `BattleSetup::creature_bank` and its literals, the glossary, `docs/06-security.md` |
 | 5 | **T123** | T123a: the kind, the packs, the seventh original-data check (§1, §2; part v21). T123b: the import and the writer's classes for fixtures (§3; map import v24); a step onto a bank refused as any unbuilt visit's until T124b |
-| 6 | **T124** | T124a (`cross-lane`, first): the bank battle in `h3-battle` and the battle pack (§13; battle state hash v56, battle part v8, pack format v53; the battle's properties, golden replays and bench). T124b: the state and the draw (§4, §5; adventure state hash v26), the visit and its offers (§6), the battle's two halves (§7, §14: `Defender::Bank`, the flag, the deck), the reward as a won battle's rest (§8, §15), the once-marks (§12) |
+| 6 | **T124** | T124a (`cross-lane`, first): the bank battle in `h3-battle` and the battle pack (§13; battle state hash v56, battle part v8, pack format v53; the battle's properties, golden replays and bench). T124b in two (decision 354): T124b1 the state and the draw (§4, §5; adventure state hash v26); T124b2 the visit and its offers (§6), the battle's two halves (§7, §14: `Defender::Bank`, the flag, the deck), the reward as a won battle's rest (§8, §15), the once-marks (§12) |
 | 7 | **T125** | T125a: the hint and its events (§10, §16), the Shipwreck's passage with the reach's measure against `master` (§9; ADV-STUB-12 lifted). T125b: the two maps, the replays, the properties, the benchmarks, `--with-original-data` (§17) |
 | 8 | **T126** | The audit against the exit criteria; increment 13 closed; increment 14 refined |
 

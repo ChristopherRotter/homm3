@@ -12,6 +12,13 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-17 (the adventure lane, E08 T124b1, `adventure/e08-t124b1`, `cross-lane` with the user's
+  consent; **your paths changed, for your review**): adventure state hash v26 (the creature banks'
+  draw in the static map). `tests/record.rs`' `army-dialog-s1` literals moved with the replay:
+  the checkpoint `0x0e5362e1ae4496f8` (its broken case `…6f0`) and the final hash
+  `0x396cfaa7f922de73` (`…e70`), in the cases and the summary line (after your T37a's v33 ones); nothing else of yours moved
+  (the 89 adventure goldens moved only their hash lines and `adventure_state_hash_version`).
+
 - 2026-11-17 (the town lane, E09 T37a, `town/e09-t37a`, `cross-lane` with the user's consent;
   **your paths changed, for your review**): **protocol v70**: `GameObservation::tavern` (the
   viewer's two tavern heroes, `TavernHero { hero: TavernHeroHead, army, skills, artifacts }`: the

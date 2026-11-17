@@ -4021,3 +4021,29 @@ numeric  = "integer"
   ref        = "experiments/results/E08-batch-13.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-16; survey E08-banks.md section 14): E13-1 (the 27 banks' records, each a level of CrBanks.txt's; D-65), the hero standing on the entered banks' entrances (E13-2, E13-11) and visiting the Shipwreck from the coast (E13-5, E13-12)"
   retrieved  = "2026-11-16"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-BNK-002"
+title    = "The creature banks' draw when the game is built"
+context  = "adventure"
+status   = "verified"
+summary  = "Each creature bank is drawn once when the game is built (increment 13's design note sections 4 and 5; E08 T124b1, adventure state hash v26), in the second walk of the build's draws in object order with the chests, gifts, Shrines, finds and the Pyramid, from the setup stream: (1) the level: r in 1 to 100, the first level but the last whose running sum of chances reaches r, else the last (the original's subtraction); (2) the artifacts: the level's counts by class, the relics first, then the majors, the minors and the treasures, each one draw of its class from the random artifacts' pool (ADV-OBJ-006: shared with the random artifacts, the chests and the finds; refilled from the bans, then widened; a draw that finds none gives one fewer; D-68); (3) the split of the level's guards into their slots, without a draw, each new stack in the next slot: one creature of count c as slots 1 to 4 taking floor(c / 5), then of what is left floor(/ 4), floor(/ 3), floor(/ 2), slot 0 the rest (the upgrade's slot 2); two as the second's half into slot 2, the first's third into slot 3 and half of what is left into slot 4 (slot 3); three as the second's half into slot 3, the first's half into slot 4 (slot 0); four unsplit (slot 0); a quotient of 0 leaves its slot empty (unreachable with the shipped counts); (4) the upgrade: when the level's upgrade chance is above 0 and its slot holds a creature with an upgrade (its first), r in 1 to 100, at most the chance makes the stack that upgrade with its count (the original draws r for every bank, the engine only where it can change a stack; decision 17's form). The static map keeps the level and the artifacts in their order (`Resolved::Bank`) and the guards as drawn (the object's guards, which ask); the level's resources and creature are read from the kind. Never drawn again: no week, month or visit touches a bank's draw. The visit, battle and reward are ADV-BNK-003 to -005 (T124b2)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-banks.md section 3): setup_map_objects 0x4C0CC0 (the walk; the bank cases at 0x4C0F0C, 0x4C11A6, 0x4C1256, 0x4C1306, 0x4C13B6), bank_draw 0x47AD90 (the level's subtraction, the artifacts relics first by random_artifact_of_level 0x4C94D0, the split by the number of guard stacks, the upgrade by random_between and creature_is_unupgraded 0x47B120, creature_upgrade 0x47B1A0), bank_vector_insert 0x4D2290"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/creatureBanks.json (VCMI 1.7.5; survey E08-banks.md section 8): the levels' appearChance, the guards written out already split as the original's rule gives them (the Crypt's 10, 10, 10, 10, 10 and 13, 10, 5, 10, 12), upgradeChance on the third stack; its artifacts listed treasure first (not the original's, D-68)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/creatureBanks.json"
+  retrieved  = "2026-11-15"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-13.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-16; survey E08-banks.md section 14): E13-1 (the 27 banks' records in the walk's order, each a level of CrBanks.txt's; class 16 and the ships five equal stacks, the Crypt's levels 1 and 2 split as section 3, its 3 and 4 and Utopia four stacks; an upgrade only on class 16's slot 2, never a Hive's; Utopia's artifacts relics first), E13-7 (the artifacts given in the record's order)"
+  retrieved  = "2026-11-16"
+  confidence = "high"

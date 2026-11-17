@@ -6,7 +6,8 @@
 //! `E08-rewards.md` §3.1). Within an object the draws' order is the engine's (E08 decision 17),
 //! so the original's dropped draws (a placed artifact's, §3.1) have no counterpart. No draw gives
 //! a banned skill, spell or artifact (GAM-SET-003), nor a spell granted by name only (the
-//! original's game bans the spells with the flag 0x2000 beside the map's).
+//! original's game bans the spells with the flag 0x2000 beside the map's). Since E08 T124b1 the
+//! creature banks' draws in the second walk (ADV-BNK-002; increment 13's design note §5).
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -18,13 +19,15 @@ use h3_content::{
 use h3_heroes::{PrimarySkill, ScholarGift};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
-use super::{MapObject, pick};
+use super::{MapObject, banks, pick};
 use crate::ruleset::{AdventureRuleset, Chest, Find, FindContent, ObjectKind, Turn};
 use crate::setup::{Bans, Holds, Pos};
 
 /// What the build drew for an object of increment 7's kinds (E08 T61b; increment 7's design note
 /// §9), beside what the map put in it ([`MapObject::holds`]); a chest's gold and a find's resources
-/// are its [`MapObject::contents`]. The visits that read it come with T62.
+/// are its [`MapObject::contents`]. The visits that read it come with T62. Since E08 T83b1 an
+/// abandoned mine's and a Shipyard's, since T124b1 a creature bank's (its guards as drawn are its
+/// [`MapObject::guards`]).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum Resolved {
     /// Nothing drawn: every other kind, a gift of one price or none, a chest of gold, a find of
@@ -62,6 +65,16 @@ pub enum Resolved {
     /// with none is [`Self::Nothing`] and never builds. Since E09 T18a also a town's spot
     /// (TWN-SET-011), a town with none [`Self::Nothing`].
     BoatTile(Pos),
+    /// A creature bank's draws (ADV-BNK-002, E08 T124b1; increment 13's design note §4, §5): its
+    /// level, an index into its kind's levels, whose resources and creature are read from the
+    /// kind, never copied; and the artifacts drawn for it, in the draw's order (the relics first,
+    /// D-68). Its guards as drawn are its [`MapObject::guards`].
+    Bank {
+        /// The level's index.
+        level: u8,
+        /// The artifacts, in the draw's order.
+        artifacts: Vec<ArtifactTypeId>,
+    },
 }
 
 impl Resolved {
@@ -102,7 +115,8 @@ impl CanonicalHash for Resolved {
     /// Its tag (0 nothing, 1 an artifact, 2 a price's index, 3 a spell, 4 a skill, 5 a Scholar's
     /// gift with its tag (0 a primary skill, 1 a skill, 2 a spell), its value and the fallback, 6
     /// skills as length and entries; since adventure state hash v18, E08 T83b1, 7 a mine's
-    /// resource and guards' count, 8 a boat tile), then its values.
+    /// resource and guards' count, 8 a boat tile; since v26, E08 T124b1, 9 a bank's level and its
+    /// artifacts as length and entries), then its values.
     fn hash_into(&self, h: &mut StateHasher) {
         match self {
             Self::Nothing => h.write_u8(0),
@@ -152,6 +166,11 @@ impl CanonicalHash for Resolved {
             Self::BoatTile(tile) => {
                 h.write_u8(8);
                 tile.hash_into(h);
+            }
+            Self::Bank { level, artifacts } => {
+                h.write_u8(9);
+                h.write_u8(*level);
+                artifacts.hash_into(h);
             }
         }
     }
@@ -316,9 +335,10 @@ fn kind_of<'p>(part: &'p AdventureRuleset, object: &MapObject) -> Option<&'p Obj
 /// walks in object order: each random artifact's artifact (ADV-OBJ-006); then each other object's
 /// draws in its own shape: a chest (ADV-PIK-005), a gift with several prices (ADV-TCH-003), a
 /// Shrine without the map's spell (ADV-TCH-004), a Witch Hut (ADV-TCH-005, `ADV-QUIRK-21` for an
-/// RoE map's), a Scholar (ADV-TCH-006), a University (ADV-TCH-007), a find (ADV-PIK-009 to -012)
-/// and the Pyramid (ADV-TCH-008). The random artifacts' marks are shared by the random artifacts,
-/// the chests and the finds.
+/// RoE map's), a Scholar (ADV-TCH-006), a University (ADV-TCH-007), a find (ADV-PIK-009 to -012),
+/// the Pyramid (ADV-TCH-008) and, since E08 T124b1, a creature bank (ADV-BNK-002: [`banks::bank_draw`],
+/// its guards set as drawn). The random artifacts' marks are shared by the random artifacts, the
+/// chests, the finds and the banks.
 pub(super) fn resolve_rewards(
     core: &Ruleset,
     part: &AdventureRuleset,
@@ -396,6 +416,11 @@ pub(super) fn resolve_rewards(
                 // rule: ADV-TCH-008
                 pick(&spells.left(Some(pyramid.level), &[]), draws)
                     .map_or(Resolved::Nothing, |&spell| Resolved::Spell(spell))
+            }
+            (ObjectKind::Bank(bank), _) => {
+                let (guards, resolved) = banks::bank_draw(core, bank, &mut artifacts, draws);
+                object.guards = Some(guards);
+                resolved
             }
             _ => continue,
         };

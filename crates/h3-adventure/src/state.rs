@@ -82,6 +82,7 @@ impl StaticTile {
     };
 }
 
+mod banks;
 mod boats;
 mod bonuses;
 mod calendar;
@@ -148,8 +149,9 @@ pub struct MapObject {
     /// T20a2a); none for every other object.
     pub monster: Option<Monster>,
     /// A guarded pile's guards as the map gives them, their stacks in slot order (ADV-PIK-004,
-    /// E08 T21a); none for every other object. A battle they survive leaves their stacks in the
-    /// state, not here.
+    /// E08 T21a); since E08 T124b1 a creature bank's as the build drew them (ADV-BNK-002: split and
+    /// upgraded, [`Resolved::Bank`] beside them); none for every other object. A battle they
+    /// survive leaves their stacks in the state, not here.
     pub guards: Option<Guards>,
     /// What it is among a battle's surroundings (GAM-BAT-011, E08 T54).
     pub scenery: Scenery,
@@ -1149,8 +1151,9 @@ impl CanonicalHash for StaticMap {
     /// the stacks as length and slot, creature and count each; since v12 its scenery, 0 other, 1
     /// ownable, 2 a tree, 3 a mountain, 4 dead vegetation; since v13 a monster's treasure artifact
     /// after its treasure, and after the scenery what the object holds, [`Holds`]' encoding; since
-    /// v14 after it what the build drew, [`Resolved`]'s). The per-tile object flags follow from
-    /// the objects.
+    /// v14 after it what the build drew, [`Resolved`]'s; since v26 a creature bank's guards as
+    /// drawn in its guards' place and its draws in [`Resolved`]'s). The per-tile object flags
+    /// follow from the objects.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u16(self.width);
         h.write_u16(self.height);

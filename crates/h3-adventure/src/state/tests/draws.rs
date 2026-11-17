@@ -1,7 +1,8 @@
 //! Tests of the draws when the game is built (E08 T61b; increment 7's design note §9): the random
 //! artifacts' pool and its marks, the chests, the gifts' prices, the Shrines' marks, the Witch Huts
 //! (`ADV-QUIRK-21`), the Scholars, the Universities, the finds and the Pyramid, the bans, and the
-//! static map's hash.
+//! static map's hash. Since E08 T124b1 the creature banks' (ADV-BNK-002; increment 13's design
+//! note §5): the level, the split, the upgrade and the artifacts.
 
 use std::collections::BTreeSet;
 use std::format;
@@ -11,19 +12,20 @@ use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactTypeId, ContentKey, ContentPack,
     SpellCategory, SpellDef, SpellId, SpellSchoolDef,
 };
+use h3_contracts::ArmyStack;
 use h3_heroes::{PrimarySkill, ScholarGift};
 use h3_kernel::hash::hash_of;
 
 use super::*;
 use crate::ruleset::{
-    AdventurePack, ChestDef, FindContentDef, FindDef, GiftDef, Gives, ObjectKindDef, ObjectTypeDef,
-    OnceBonus, PyramidDef, TurnDef, Visit,
+    AdventurePack, BankDef, BankLevelDef, BankQuestion, ChestDef, FindContentDef, FindDef, GiftDef,
+    Gives, ObjectKindDef, ObjectTypeDef, OnceBonus, PyramidDef, TurnDef, Visit,
 };
 use crate::setup::{Bans, Holds};
 use crate::state::Resolved;
 use crate::testing::{
-    FLYING, LOGISTICS, PATHFINDING, PEASANT, SCOUTING, WATER_WALKING, hero_at, hero_skills, key,
-    movement_rules_with, world,
+    FLYING, GNOLL, LOGISTICS, PATHFINDING, PEASANT, PIKEMAN, SCOUTING, WATER_WALKING, WOLF,
+    hero_at, hero_skills, key, movement_rules_with, world,
 };
 
 type Rules = (Ruleset, AdventureRuleset);
@@ -791,7 +793,291 @@ fn the_static_maps_hash_sees_what_the_build_drew() {
         Resolved::Scholar(ScholarGift::Spell(GUST), PrimarySkill::Knowledge),
         Resolved::Skills(vec![LOGISTICS]),
         Resolved::Skills(vec![]),
+        Resolved::Bank {
+            level: 0,
+            artifacts: vec![],
+        },
+        Resolved::Bank {
+            level: 1,
+            artifacts: vec![],
+        },
+        Resolved::Bank {
+            level: 0,
+            artifacts: vec![RING],
+        },
     ];
     let hashes: BTreeSet<u64> = all.iter().map(hash_of).collect();
     assert_eq!(hashes.len(), all.len());
+}
+
+/// A creature bank's level of `chance` guarded by `guards` (core keys and counts), upgraded at
+/// `upgrade` %, giving `artifacts` by class (treasures, minors, majors, relics) and nothing else.
+fn bank_level(chance: u8, guards: &[(&str, u32)], upgrade: u8, artifacts: [u8; 4]) -> BankLevelDef {
+    BankLevelDef {
+        chance,
+        guards: guards.iter().map(|&(k, count)| (key(k), count)).collect(),
+        upgrade,
+        resources: vec![],
+        creature: None,
+        artifacts,
+    }
+}
+
+/// [`rules`] with peasants upgrading to pikemen and an entered attack bank of each key and its
+/// levels.
+fn bank_rules(banks: Vec<(&str, Vec<BankLevelDef>)>) -> Rules {
+    rules_with(
+        true,
+        |core| core.creatures[2].info.upgrades = vec![key("t:pikeman")],
+        |types| {
+            types.extend(banks.into_iter().map(|(k, levels)| ObjectTypeDef {
+                key: key(k),
+                name: "Bank".into(),
+                visit: Visit::Enter,
+                from_above: false,
+                kind_mark: false,
+                kind: ObjectKindDef::Bank(BankDef {
+                    question: BankQuestion::Attack,
+                    levels,
+                    looted: None,
+                    deck: false,
+                    coast: false,
+                }),
+            }));
+        },
+    )
+}
+
+/// The bank at object index `index`: its guards as drawn (they ask), its level and artifacts.
+fn bank(state: &AdventureState, index: usize) -> (Vec<ArmyStack>, u8, Vec<ArtifactTypeId>) {
+    let object = &state.map().objects()[index];
+    let Resolved::Bank { level, artifacts } = &object.resolved else {
+        panic!("{:?}", object.resolved);
+    };
+    let guards = object.guards.as_ref().unwrap();
+    assert!(guards.question);
+    (guards.army.clone(), *level, artifacts.clone())
+}
+
+/// The level index the original's subtraction gives r over these chances (an oracle restated:
+/// the first level but the last whose running sum reaches r, else the last).
+fn level_for(r: u32, chances: &[u8]) -> u8 {
+    let mut sum = 0;
+    for (index, &chance) in chances[..chances.len() - 1].iter().enumerate() {
+        sum += u32::from(chance);
+        if r <= sum {
+            return u8::try_from(index).unwrap();
+        }
+    }
+    u8::try_from(chances.len() - 1).unwrap()
+}
+
+/// `n` of the setup stream of `seed`'s draws in 1 to 100.
+fn percents(seed: u64, n: usize) -> Vec<u32> {
+    let mut stream = Rng::for_stream(seed, StreamId::SETUP);
+    (0..n).map(|_| stream.range_inclusive(1, 100)).collect()
+}
+
+/// The original's four chances (survey `E08-banks.md` §3 step 1), each level guarded by 5, 10,
+/// 15 or 20 peasants.
+fn four_levels() -> Vec<BankLevelDef> {
+    [30, 30, 30, 10]
+        .into_iter()
+        .zip(1..)
+        .map(|(chance, n)| bank_level(chance, &[("t:peasant", 5 * n)], 0, [0; 4]))
+        .collect()
+}
+
+// covers: ADV-BNK-002
+#[test]
+fn a_bank_draws_its_level_by_the_running_sum_of_its_chances() {
+    let rules = bank_rules(vec![("t:bank", four_levels())]);
+    let mut seen = [0; 4];
+    for seed in 0..400 {
+        let objects = vec![object(&rules, 0, "t:bank", Holds::Nothing)];
+        let (army, level, artifacts) = bank(&built(&rules, objects, &Bans::default(), seed), 0);
+        // The setup stream's first draw r: 1 to 30 the first level, 31 to 60 the second, 61 to
+        // 90 the third, 91 to 100 the fourth.
+        let r = percents(seed, 1)[0];
+        assert_eq!(level, level_for(r, &[30, 30, 30, 10]), "seed {seed}: r {r}");
+        // Its guards are that level's, and it gives no artifact.
+        let total: u32 = army.iter().map(|stack| stack.count).sum();
+        assert_eq!(total, 5 * (u32::from(level) + 1));
+        assert!(artifacts.is_empty());
+        seen[usize::from(level)] += 1;
+    }
+    assert!(seen.iter().all(|&n| n > 0), "{seen:?}");
+    assert!(seen[3] < seen[0], "{seen:?}");
+}
+
+// covers: ADV-BNK-002
+#[test]
+fn a_banks_guards_split_by_their_number_into_the_originals_slots() {
+    // The guards of a one-level bank of these, by slot.
+    let split = |guards: &[(&str, u32)]| {
+        let rules = bank_rules(vec![("t:bank", vec![bank_level(100, guards, 0, [0; 4])])]);
+        let objects = vec![object(&rules, 0, "t:bank", Holds::Nothing)];
+        let (army, _, _) = bank(&built(&rules, objects, &Bans::default(), 0), 0);
+        army.iter()
+            .map(|stack| (stack.slot, stack.creature, stack.count))
+            .collect::<Vec<_>>()
+    };
+    let (p, w, g, k) = (PEASANT, WOLF, GNOLL, PIKEMAN);
+    // One creature: slots 1 to 4 take h₁ = ⌊c / 5⌋, h₂ = ⌊(c − h₁) / 4⌋, h₃, h₄; slot 0 the rest.
+    assert_eq!(
+        split(&[("t:peasant", 50)]),
+        [(0, p, 10), (1, p, 10), (2, p, 10), (3, p, 10), (4, p, 10)]
+    );
+    assert_eq!(
+        split(&[("t:peasant", 13)]),
+        [(0, p, 3), (1, p, 2), (2, p, 2), (3, p, 3), (4, p, 3)]
+    );
+    // A quotient of 0 leaves its slot empty.
+    assert_eq!(
+        split(&[("t:peasant", 3)]),
+        [(0, p, 1), (3, p, 1), (4, p, 1)]
+    );
+    // Two (the Crypt's level 1): the second's half into slot 2, the first's third into slot 3 and
+    // half of what is left into slot 4.
+    assert_eq!(
+        split(&[("t:peasant", 30), ("t:wolf", 20)]),
+        [(0, p, 10), (1, w, 10), (2, w, 10), (3, p, 10), (4, p, 10)]
+    );
+    assert_eq!(
+        split(&[("t:peasant", 31), ("t:wolf", 21)]),
+        [(0, p, 11), (1, w, 11), (2, w, 10), (3, p, 10), (4, p, 10)]
+    );
+    // Three (the Crypt's level 2): the second's half into slot 3, the first's into slot 4.
+    assert_eq!(
+        split(&[("t:peasant", 25), ("t:wolf", 20), ("t:gnoll", 5)]),
+        [(0, p, 13), (1, w, 10), (2, g, 5), (3, w, 10), (4, p, 12)]
+    );
+    // Four: no split.
+    assert_eq!(
+        split(&[
+            ("t:peasant", 20),
+            ("t:wolf", 20),
+            ("t:gnoll", 10),
+            ("t:pikeman", 5)
+        ]),
+        [(0, p, 20), (1, w, 20), (2, g, 10), (3, k, 5)]
+    );
+}
+
+// covers: ADV-BNK-002
+#[test]
+fn a_banks_upgrade_slot_takes_its_upgrade_by_its_chance() {
+    // The creatures of a one-level bank of these, upgraded at `upgrade` %, by slot.
+    let at = |guards: &[(&str, u32)], upgrade: u8, seed: u64| {
+        let rules = bank_rules(vec![(
+            "t:bank",
+            vec![bank_level(100, guards, upgrade, [0; 4])],
+        )]);
+        let objects = vec![object(&rules, 0, "t:bank", Holds::Nothing)];
+        let (army, _, _) = bank(&built(&rules, objects, &Bans::default(), seed), 0);
+        army
+    };
+    let (p, w, g, k) = (PEASANT, WOLF, GNOLL, PIKEMAN);
+    let mut upgraded = 0;
+    for seed in 0..200 {
+        // One creature: slot 2's stack by the stream's second draw, at most 50 (the first the
+        // level's), its count kept.
+        let up = percents(seed, 2)[1] <= 50;
+        for stack in at(&[("t:peasant", 50)], 50, seed) {
+            let creature = if up && stack.slot == 2 { k } else { p };
+            assert_eq!((stack.creature, stack.count), (creature, 10), "seed {seed}");
+        }
+        upgraded += usize::from(up);
+    }
+    assert!((60..140).contains(&upgraded), "{upgraded}");
+    // At 100 %, the upgrade's slot by the number of creatures: 3 for two, 0 for three and four.
+    let creatures = |army: Vec<ArmyStack>| {
+        army.iter()
+            .map(|stack| (stack.slot, stack.creature))
+            .collect::<Vec<_>>()
+    };
+    let two = [("t:peasant", 30), ("t:wolf", 20)];
+    assert_eq!(
+        creatures(at(&two, 100, 0)),
+        [(0, p), (1, w), (2, w), (3, k), (4, p)]
+    );
+    let three = [("t:peasant", 25), ("t:wolf", 20), ("t:gnoll", 5)];
+    assert_eq!(
+        creatures(at(&three, 100, 0)),
+        [(0, k), (1, w), (2, g), (3, w), (4, p)]
+    );
+    let four = [
+        ("t:peasant", 20),
+        ("t:wolf", 20),
+        ("t:gnoll", 10),
+        ("t:pikeman", 5),
+    ];
+    assert_eq!(
+        creatures(at(&four, 100, 0)),
+        [(0, k), (1, w), (2, g), (3, k)]
+    );
+    // A creature without an upgrade in the slot stays: wolves first, the peasants elsewhere.
+    let wolves = [("t:wolf", 30), ("t:peasant", 20)];
+    assert_eq!(
+        creatures(at(&wolves, 100, 0)),
+        [(0, w), (1, p), (2, p), (3, w), (4, w)]
+    );
+    // Neither a slot without an upgrade nor a chance of 0 draws: a bank after two such banks
+    // draws its level from the stream's third draw.
+    let rules = bank_rules(vec![
+        (
+            "t:wolves",
+            vec![bank_level(100, &[("t:wolf", 50)], 100, [0; 4])],
+        ),
+        (
+            "t:never",
+            vec![bank_level(100, &[("t:peasant", 50)], 0, [0; 4])],
+        ),
+        ("t:bank", four_levels()),
+    ]);
+    for seed in 0..50 {
+        let objects = vec![
+            object(&rules, 0, "t:wolves", Holds::Nothing),
+            object(&rules, 1, "t:never", Holds::Nothing),
+            object(&rules, 2, "t:bank", Holds::Nothing),
+        ];
+        let state = built(&rules, objects, &Bans::default(), seed);
+        assert!(bank(&state, 0).0.iter().all(|stack| stack.creature == w));
+        assert!(bank(&state, 1).0.iter().all(|stack| stack.creature == p));
+        let r = percents(seed, 3)[2];
+        assert_eq!(
+            bank(&state, 2).1,
+            level_for(r, &[30, 30, 30, 10]),
+            "seed {seed}"
+        );
+    }
+}
+
+// covers: ADV-BNK-002, ADV-OBJ-006
+#[test]
+fn a_banks_artifacts_come_relics_first_from_the_random_artifacts_pool() {
+    // A treasure, a minor, a major and a relic: the relic first, then the major, the minor and
+    // the treasure.
+    let level = bank_level(100, &[("t:peasant", 5)], 0, [1, 1, 1, 1]);
+    let rules = bank_rules(vec![("t:bank", vec![level])]);
+    for seed in 0..20 {
+        // A placed ring and a random treasure mark theirs: the bank's treasure is the third.
+        let objects = vec![
+            object(&rules, 0, "t:artifact", Holds::Artifact(RING.into())),
+            object(&rules, 1, "t:random_treasure", Holds::Nothing),
+            object(&rules, 2, "t:bank", Holds::Nothing),
+        ];
+        let state = built(&rules, objects, &Bans::default(), seed);
+        let random = artifact(&state.map().objects()[1].resolved).unwrap();
+        let (_, _, artifacts) = bank(&state, 2);
+        let third = if random == CHARM { AMULET } else { CHARM };
+        assert_eq!(artifacts, [CROWN, HELM, CLOAK, third], "seed {seed}");
+    }
+    // Every artifact but the special one banned: the bank gives none.
+    let bans = Bans {
+        artifacts: vec![RING, CHARM, AMULET, CLOAK, HELM, CROWN],
+        ..Bans::default()
+    };
+    let objects = vec![object(&rules, 0, "t:bank", Holds::Nothing)];
+    assert_eq!(bank(&built(&rules, objects, &bans, 0), 0).2, []);
 }
