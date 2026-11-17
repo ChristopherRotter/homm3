@@ -547,10 +547,9 @@ impl Replay {
         if self.start.as_ref().is_some_and(Start::ended) {
             self.start = None;
             self.end(Ended::Start);
+            // With no menu on (none after the start today) `on_menu` gives nothing.
             for input in core::mem::take(&mut self.kept) {
-                if self.front.is_some() {
-                    self.on_menu(&input);
-                }
+                self.on_menu(&input);
             }
         }
     }
