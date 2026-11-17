@@ -2921,7 +2921,8 @@ Blackout branch; recorded by the harness (`ai-walk`, `ai-walk-slow`, `ai-walk-fa
   no cursor (the busy one, the default's frame 2, hidden: the timeline's `cursor` line keeps its
   type and frame), the first step's first frame drawn (the hero onto (6, 26), offset 16). Then a
   step every 100 ms (its second frame at 50), the view one tile on and kind 5 stepped at each
-  step's start; 15 steps east, then north-east, to (20, 24) with 119 points left; at 1660 Blue's
+  step's start; 15 steps east, then north-east, to (20, 24) (the `points` line lags a step: the
+  price is taken after the animation); at 1660 Blue's
   turn ends and Red's next day starts in that millisecond as in §5.1 (the view on Red's hero, the
   adventure arrow again). `ai-walk-slow` (speed 2): the same path, a step every 150 ms (offsets
   22, 10, 0), the turn's end at 2410. `ai-walk-fast` (speed 4) and `ai-walk-blackout`: the whole
