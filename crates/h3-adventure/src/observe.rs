@@ -264,7 +264,9 @@ pub enum Known {
     Emptied(bool),
     /// That the viewer's team visited it, nothing more (E08 T115b; increment 12's design note
     /// §10: a Fountain of Fortune, whose value never shows, a Magic Spring, whose entrances' state
-    /// never shows; as a weekly object's mark says "visited once").
+    /// never shows; as a weekly object's mark says "visited once"). Since E08 T124b2 a creature
+    /// bank's team mark (increment 13's design note §10: its level, its reward and whether it is
+    /// looted never show; the hint by the mark is T125a's).
     Visited,
 }
 
@@ -593,7 +595,8 @@ impl AdventureState {
 
     /// What `viewer` learned of the objects still on the map by its own visits (ADV-VIS-006,
     /// [`AdventureObservation::known`]): a Shrine's spell, a Witch Hut's skill, a gift's drawn
-    /// price, a University's skills, whether a find is emptied; none without the visits' block.
+    /// price, a University's skills, whether a find is emptied, that a bank was visited (E08
+    /// T124b2); none without the visits' block.
     /// The static map's objects only: a visit teaches nothing of a monster (E08 T85a's audit).
     // rule: ADV-VIS-006
     fn known_by(&self, part: &AdventureRuleset, viewer: PlayerId) -> Vec<KnownObject> {
@@ -627,9 +630,12 @@ impl AdventureState {
                         (ObjectKind::University { .. }, resolved) => {
                             Known::Skills(resolved.skills().to_vec())
                         }
-                        (ObjectKind::FountainOfFortune { .. } | ObjectKind::MagicSpring, _) => {
-                            Known::Visited
-                        }
+                        (
+                            ObjectKind::FountainOfFortune { .. }
+                            | ObjectKind::MagicSpring
+                            | ObjectKind::Bank(_),
+                            _,
+                        ) => Known::Visited,
                         _ => Known::Emptied(self.is_emptied(index)),
                     },
                 })

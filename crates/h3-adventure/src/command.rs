@@ -689,16 +689,29 @@ pub enum Defender {
         /// The stacks by slot.
         army: Vec<ArmyStack>,
     },
+    /// A creature bank's guards (ADV-BNK-004, E08 T124b2; increment 13's design note §7, §14),
+    /// unowned and without a hero, the system actor's side as [`Self::Guards`]': their stacks by
+    /// slot as they stand (an earlier battle's survivors, an upgraded stack as its own creature),
+    /// which defend unsplit. By the battle's cause, not its tile: only a bank's accepted question
+    /// builds it, and the game sets the setup's creature bank from it (ADR-0022 point 8), so a
+    /// hero met on a bank's entrance fights an ordinary battle.
+    Bank {
+        /// The stacks by slot.
+        army: Vec<ArmyStack>,
+    },
 }
 
 impl Defender {
     /// The player owning the defending side: a hero's owner, an owned mine's (E08 T84a); none for
-    /// a monster's or guards' side.
+    /// a monster's or guards' side, a creature bank's too (E08 T124b2).
     pub const fn owner(&self) -> Option<PlayerId> {
         match self {
             Self::Hero(combatant) => Some(combatant.owner),
             Self::Garrison { owner, .. } => Some(*owner),
-            Self::Monster { .. } | Self::Guards { .. } | Self::Monsters { .. } => None,
+            Self::Monster { .. }
+            | Self::Guards { .. }
+            | Self::Monsters { .. }
+            | Self::Bank { .. } => None,
         }
     }
 }
@@ -790,7 +803,8 @@ pub enum OfferKind {
     /// declined, nothing happens. Since E08 T62a a guarded artifact's (ADV-PIK-007) and a guarded
     /// scroll's with a text (ADV-PIK-008) too; since E08 T84a a guarded mine's, neutral or another
     /// player's (ADV-MIN-002: the original's ADVEVENT 84 or 187): accepted, its guards' battle, or
-    /// the flag when none stand any more.
+    /// the flag when none stand any more. Since E08 T124b2 an attack kind of creature bank's
+    /// (ADV-BNK-003: ADVEVENT 32): accepted, its guards' battle, or its reward when none stand.
     Fight,
     /// A once-per-hero gift's price (ADV-TCH-003, E08 T62a: the Tree of Knowledge's drawn one),
     /// each amount at least 1: accepted, the gift is given and marks the hero; declined, nothing
@@ -800,7 +814,9 @@ pub enum OfferKind {
         price: Vec<(ResourceId, u32)>,
     },
     /// A find's question (ADV-PIK-011, E08 T62a: the Warrior's Tomb's "search?"): accepted, its
-    /// contents and its bonus; declined, nothing.
+    /// contents and its bonus; declined, nothing. Since E08 T124b2 a search kind of creature
+    /// bank's (ADV-BNK-003: ADVEVENT 41, 119, 122): accepted, its team's marks, then a looted
+    /// one's once-bonus, its guards' battle or its reward; declined, nothing (no mark).
     Search,
     /// Pandora's Box's question (ADV-PIK-013, E08 T62b1: "open the box?"): accepted, its guards
     /// fight at once, else its reward record is given and it leaves the map; declined, nothing.

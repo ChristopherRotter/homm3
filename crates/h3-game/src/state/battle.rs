@@ -203,11 +203,14 @@ impl GameState {
     /// garrison's entrance, the garrison's own or a hero's standing in it, is fought without
     /// magic (ADV-GAR-005: `AdventureState::anti_magic`, the setup's `anti_magic`, BAT-TER-004),
     /// and a map garrison's army defends as an owned mine's guards or a pile's (ADV-GAR-002).
+    /// Since E08 T124b2 a creature bank's guards defend as a pile's, and the setup is a bank
+    /// battle by that cause ([`Defender::Bank`]: `BattleSetup::creature_bank`, ADR-0022 point 8;
+    /// ADV-BNK-004), never by the tile, so a hero met on a bank's entrance fights an ordinary one.
     /// A setup the battle refuses cannot come
     /// from a valid game (the armies, the heroes and the parts were checked when they were built);
     /// it would start no battle.
     // rule: GAM-BAT-001, GAM-BAT-004, ADV-MON-009, ADV-PIK-004, ADV-MIN-002
-    // rule: TWN-SIE-003, TWN-SIE-004, TWN-SIE-005, ADV-GAR-002, ADV-GAR-005
+    // rule: TWN-SIE-003, TWN-SIE-004, TWN-SIE-005, ADV-GAR-002, ADV-GAR-005, ADV-BNK-004
     pub(crate) fn start_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -221,7 +224,8 @@ impl GameState {
             Defender::Monster { .. }
             | Defender::Guards { .. }
             | Defender::Monsters { .. }
-            | Defender::Garrison { .. } => None,
+            | Defender::Garrison { .. }
+            | Defender::Bank { .. } => None,
         };
         let sides: [Option<&Combatant>; 2] = [Some(&start.attacker), defending];
         // rule: ADV-MIN-002
@@ -275,8 +279,10 @@ impl GameState {
                     }
                 })
             }
-            // rule: ADV-PIK-004, ADV-MIN-002
-            Defender::Guards { army } | Defender::Garrison { army, .. } => army.clone(),
+            // rule: ADV-PIK-004, ADV-MIN-002, ADV-BNK-004
+            Defender::Guards { army }
+            | Defender::Garrison { army, .. }
+            | Defender::Bank { army } => army.clone(),
             // rule: ADV-MON-012
             Defender::Monsters {
                 split: first,
@@ -317,6 +323,8 @@ impl GameState {
             colours,
             // rule: ADV-GAR-005
             anti_magic: self.adventure.anti_magic(rules.adventure(), start.tile),
+            // rule: ADV-BNK-004
+            creature_bank: matches!(start.defender, Defender::Bank { .. }),
             ..BattleSetup::default()
         };
         // rule: TWN-SIE-003, TWN-SIE-004, TWN-SIE-005

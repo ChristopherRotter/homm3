@@ -2359,9 +2359,11 @@ impl AdventureState {
     /// `weekday`, the day of the week ([`Self::visit_bonus`]), the Fountain of Fortune
     /// ([`Self::visit_fortune`]), the Magic Well and the Magic Spring ([`Self::visit_well`],
     /// [`Self::visit_spring`]), the Stables ([`Self::visit_stables`]) and the Sirens
-    /// ([`Self::visit_sirens`]).
+    /// ([`Self::visit_sirens`]). Since T124b2 a creature bank ([`Self::visit_bank`]: an attack
+    /// kind's marks and question unless looted, a search kind's question).
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
     // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017, ADV-DWL-004, ADV-RFG-001, ADV-BON-002
+    // rule: ADV-BNK-003
     fn visit<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -2482,6 +2484,7 @@ impl AdventureState {
             Effect::Sirens { mark, keep } => {
                 outcome = self.visit_sirens((player, hero), visited, (mark, keep), sink);
             }
+            Effect::Bank(bank) => outcome = self.visit_bank((player, hero), object, bank, sink),
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
             Effect::Message(leaves) => {
@@ -2599,11 +2602,14 @@ impl AdventureState {
     /// question (ADV-HIR-001, E08 T95a1): an own dwelling's free creatures
     /// ([`Self::accept_hire`]), then the hire dialog (ADV-HIR-002, E08 T95b:
     /// [`AdventureOutcome::hire`]), a camp's at once. A dwelling's guards' question (ADV-DWL-004, E08 T95a2): their
-    /// battle, or the visit's rest when none stand any more ([`Self::fight_for_dwelling`]).
+    /// battle, or the visit's rest when none stand any more ([`Self::fight_for_dwelling`]). A
+    /// creature bank's question (ADV-BNK-003, E08 T124b2), `Fight` or `Search` routed by its kind:
+    /// a search kind's marks, a looted one's once-bonus, its guards' battle or its reward
+    /// ([`Self::enter_bank`]).
     /// Infallible; the outcome is what the game applies after.
     // rule: ADV-VIS-001, ADV-VIS-004, ADV-MON-008, ADV-PIK-004, ADV-TCH-003, ADV-PIK-011
     // rule: ADV-PIK-013, ADV-TCH-008, ADV-MIN-002, ADV-SHY-002, ADV-HIR-001, ADV-DWL-004
-    // rule: ADV-HIR-002
+    // rule: ADV-HIR-002, ADV-BNK-003
     pub fn accept_offer<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -2633,13 +2639,21 @@ impl AdventureState {
                     let object = (index, offer.object_type);
                     if self.is_mine(part, index) {
                         self.fight_for_mine((core, part), (player, offer.hero), object, sink)
+                    } else if let Some(bank) = self.bank_of(part, index) {
+                        self.enter_bank(rules, player, (index, bank), offer, sink)
                     } else {
                         self.fight_or_pick(core, part, offer.hero, object, sink)
                     }
                 })
                 .unwrap_or_default(),
             OfferKind::Gift { .. } => self.accept_gift(rules, offer),
-            OfferKind::Search => self.accept_search(rules, player, offer, sink),
+            OfferKind::Search => match self
+                .offer_object(offer)
+                .and_then(|index| self.bank_of(part, index).map(|bank| (index, bank)))
+            {
+                Some(bank) => self.enter_bank(rules, player, bank, offer, sink),
+                None => self.accept_search(rules, player, offer, sink),
+            },
             OfferKind::OpenBox => self.open_box(rules, offer, sink),
             OfferKind::SearchPyramid => self.search_pyramid(part, player, offer),
             OfferKind::Boat { .. } => {

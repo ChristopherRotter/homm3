@@ -130,10 +130,11 @@ impl AdventureState {
     /// ADV-OBJ-007). A dwelling's guards' (ADV-DWL-004, E08 T95a2: [`Self::end_dwelling_battle`],
     /// the survivors kept in its week's entry). A town's garrison's (E09 T8b1, TWN-CAP-003:
     /// [`Self::end_town_battle`], a siege's without a hero). A map garrison's (ADV-GAR-002, E08
-    /// T114a1: [`Self::end_garrison_battle`], the survivors kept as its army). Infallible:
-    /// nothing when none of them is at `tile`.
+    /// T114a1: [`Self::end_garrison_battle`], the survivors kept as its army). A creature bank's
+    /// (ADV-BNK-004, E08 T124b2: [`Self::end_bank_battle`], the survivors kept, the reward after
+    /// the winner's levels). Infallible: nothing when none of them is at `tile`.
     // rule: ADV-PIK-004, ADV-MON-010, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007, GAM-DEC-007
-    // rule: ADV-MIN-002, ADV-DWL-004, TWN-CAP-003, ADV-GAR-002
+    // rule: ADV-MIN-002, ADV-DWL-004, TWN-CAP-003, ADV-GAR-002, ADV-BNK-004
     pub fn end_unowned_battle<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -168,6 +169,7 @@ impl AdventureState {
             ObjectKind::Garrison { .. } => {
                 self.end_garrison_battle(index, (hero, tile), (survivors, won))
             }
+            ObjectKind::Bank(_) => self.end_bank_battle(index, (hero, tile), (survivors, won)),
             _ if self.object_at(index).guards.is_some() => {
                 let left = if won { Vec::new() } else { survivors.to_vec() };
                 self.army_left.set(index, Some(left));
@@ -192,11 +194,12 @@ impl AdventureState {
     /// hero beat is flagged for the hero's owner (ADV-GAR-002, E08 T114a1: [`Self::flag_won`],
     /// the original's `garrison_set_owner` 0x4C6960 after the battle), then its exchange opens
     /// (ADV-GAR-003, E08 T114a2: [`AdventureOutcome::exchange`], the original's dialog after the
-    /// flag; none for a winner no longer on the map). Read when it is given: the levels'
-    /// skills decide what the hero can receive or learn (the Pyramid's spell, E7-22). Nothing when
-    /// none of them is at `tile` any more.
+    /// flag; none for a winner no longer on the map); a creature bank gives its reward and is
+    /// looted (ADV-BNK-005, E08 T124b2: [`Self::bank_won`]). Read when it is given: the levels'
+    /// skills decide what the hero can receive or learn (the Pyramid's spell, E7-22; a bank's
+    /// artifacts). Nothing when none of them is at `tile` any more.
     // rule: GAM-DEC-007, ADV-PIK-004, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007, ADV-MIN-002
-    // rule: ADV-DWL-004, TWN-CAP-003, ADV-GAR-002, ADV-GAR-003
+    // rule: ADV-DWL-004, TWN-CAP-003, ADV-GAR-002, ADV-GAR-003, ADV-BNK-005
     pub fn give_won<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -237,6 +240,9 @@ impl AdventureState {
                 if let ObjectKind::Dwelling { creatures, .. } = &ty.kind =>
             {
                 self.dwelling_won((core, part), hero, (index, object_type), creatures, sink)
+            }
+            Some((index, _, ty)) if let ObjectKind::Bank(bank) = &ty.kind => {
+                self.bank_won(rules, hero, (index, bank), sink)
             }
             Some((index, object_type, ty)) if beaten(self, index) => match ty.kind {
                 ObjectKind::PandoraBox => self.give_box(rules, hero, (index, object_type), sink),
