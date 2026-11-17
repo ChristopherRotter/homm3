@@ -81,8 +81,10 @@ const MAPS: [(&str, &[u8], u64); 8] = [
     (
         "xl",
         include_bytes!("../../../../fixtures/maps/e08-xl-144.h3m"),
-        // A whole map's reveal.
-        5,
+        // A whole map's reveal (seed 5 until E09 T37b's record of the map's customised type 3,
+        // which changed its games: of seeds 1 to 24, 3, 4, 11, 13 and 23 reveal a whole map, 13
+        // with the largest snapshot as measured).
+        13,
     ),
 ];
 

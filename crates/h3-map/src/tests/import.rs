@@ -1705,6 +1705,20 @@ fn the_map_wide_entries_that_set_a_field_are_the_setups_customised_types() {
     );
     // The placed hero's own type is not customised: its details stay the body's.
     assert_eq!(setup.heroes[0].details, HeroDetailsSetup::default());
+    // An entry's field the import refuses as a placed hero's: a skill code past the table.
+    m.custom_heroes = vec![CustomHero {
+        hero_type: 112,
+        secondary_skills: Some(vec![(200, 1)]),
+        sex: 0xFF,
+        ..CustomHero::default()
+    }];
+    assert_eq!(
+        import(&m, &SOD).unwrap_err(),
+        ImportError::UnknownCode {
+            what: "secondary skill",
+            code: 200
+        }
+    );
     // A type code past the table is refused.
     m.custom_heroes = vec![CustomHero {
         hero_type: 200,

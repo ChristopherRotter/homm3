@@ -4579,3 +4579,63 @@ check-lane --cross-lane`, `cargo check --workspace --all-targets`, `cargo clippy
 --all-targets -- -D warnings`, `cargo test -p h3-protocol -p h3-server -p h3-sim -p h3-cli`, the
 clients' check; CI on the pull request is the record.
 
+
+### T37b — the map's customised hero types (2026-11-17)
+
+The user present at the start; branch `town/e09-t37b`, `cross-lane` (the adventure lane's
+`h3-game` setup, state and test modules, `h3-map`'s import, version and tests, the 89 golden
+replays; the server lane's `h3-server` record test; the ai lane's census literal). Starting point:
+`master` at 8944673 (#991, E08 T124b1, merged; CI's fingerprint on `master`, so the setup ran the
+light gates). The user's computer was connected at the start only: the four LODs, both
+executables, both tars, the three saves, the three manuals and two help files staged (16 files,
+SHA-256 checked). A census of the shipped maps first (a throwaway example over `h3-map`'s reader):
+`Marshland Menace`'s 15 customised Fortress types, its five players' main towns all generating a
+hero, its Fortress-only player 5 owning its one random hero; `Last Chance` and its Allies copy
+Elleshar's sex. A short code reading (`load_hero_body` 0x5022C0 to 0x502420; the order in
+`new_game_bans` and `new_game_heroes`) and VCMI 1.7.5's `CGameState::placeStartingHero`,
+`initHeroes`, `CMapLoaderH3M::readHero` and `CGHeroInstance::pickRandomObject` before the
+questions (`TWN-Q21`): every hero of a customised type takes its entry (decision 137; VCMI
+differs for a random hero, TD-24, the original followed), a record per such free type at the
+build (decision 138: the open order settled as the build's, the seed first), T37b whole (139).
+
+- **The setup** (`setup.rs`): `GameSetup::custom_types`, `HeroDetailsSetup::over` (field by
+  field, idempotent), `GameSetupError::CustomType` (not the ruleset's, or named twice) and
+  `CustomDetails` (the entry on its own at experience 0 breaks the hero model), checked after the
+  banned sets and before any draw; the heroes' count bound counts one per customised type. Each
+  hero's details its own over its type's entry (a random hero's by its drawn type, a main town's
+  hero's); `town::custom_records` (each customised type still free after the build's heroes, in
+  type order) gives the records after them, their default experience in the build's pass, no
+  army; `Prepared`'s last part each store hero's customisations as built.
+- **The game** (`state.rs`): the level seeds, the sexes and the levels at load read the built
+  customisations (the records last, each seed before its levels). No new state: the game state
+  hash's encoding is unchanged (v33); a draw finds a record made.
+- **The import** (`h3-map`, **map import v25**): the map-wide entries that set a field the game
+  keeps (a biography alone left out), as a placed hero's customisations over a body that sets
+  none; a type code past the table refused; `hero_type_of` factored out of `hero`. The placed
+  heroes' bodies still merged over their entries.
+- **Tests:** `town/tests/custom.rs` (a free customised type's record at the build and its offer
+  as set, the not-allowed and the prisoner's types without one, the placed heroes' merge; a main
+  town's hero and a random hero by their drawn types; `faithful`'s levels at load from the
+  record's seed by the levels oracle, `tests::levels::oracle` made `pub(crate)`; a banned starting
+  skill kept by a tavern hero, design §70's pin; the checks); `h3-map`'s
+  `the_map_wide_entries_that_set_a_field_are_the_setups_customised_types`.
+- **The census, after:** `Marshland Menace` builds 13 or 14 records at level 3 (2 000), its
+  Fortress player's main town's hero and random hero at 2 000 whenever they draw a customised
+  type (three of four seeds).
+- **Catalog:** GAM-HER-001 (a code reading and a VCMI source added), GAM-HER-002, GAM-SET-002,
+  TWN-SET-005, -008, -009 amended. The survey's §5 and TD-24, `docs/exe/map.toml`'s
+  `load_hero_body` and `map_custom_heroes_read`, `h3m.md`'s import.
+- **Replays and reports:** the 89 goldens re-recorded from their commands: `import_version` 25 in
+  each, and `e08-army-12`'s `army-meeting-s1` and `army-dialog-s1` moved their checkpoints and
+  final hashes (the fixture maps' engine-written entry of type 3, which that map does not place,
+  now makes a record at the build; `TRAPS.md`); `h3-server`'s record literals; the bot reports
+  unchanged.
+- **Benches:** the scoped verify's `bench-check` found `reach-xl-144` -3.23 % and
+  `reach-lifted-xl-144` -5.40 %: the XL map does not place type 3 either, so its record's default
+  experience moves the setup stream's later draws (the map objects' contents) and the random games
+  changed (3 007 steps and 6 200 queries for 2 633 and 5 656). Against `master` measured in the
+  same sandbox (`target/wt-master`): -3.27 % and -5.05 %, every counted function the same shape a
+  few per cent lower (`Reach::search`, `passage`, `expand_layered`, `tile_object`): re-baselined
+  with the reason; the other workloads inside the gate (the build is not counted). The same
+  change of the XL map's games moved `h3-protocol`'s `game_bounds` test off its whole map's reveal:
+  its XL seed 13 (5 before; a throwaway search over seeds 1 to 24), the server lane told.

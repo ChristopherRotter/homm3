@@ -2379,8 +2379,9 @@ hero reads the facts.
   finds the record made; no new state, the game state hash's encoding unchanged (v33).
   `Marshland Menace`: 13 or 14 records at level 3, the Fortress player's main town's and random
   heroes at 2 000 whenever they draw one of the 15 types. The fixture maps' engine-written entry
-  (type 3) is placed on the duel and the XL map; on `e08-army-12` it becomes a record, so its two
-  replays' hashes moved.
+  (type 3) is placed on the duel; on `e08-army-12` and `e08-xl-144` it becomes a record, so the
+  army map's two replays' hashes moved and the XL map's two reach workloads' games changed
+  (re-baselined).
 
 ### 71. The hire's ids, versions and open points (for T33b)
 

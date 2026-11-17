@@ -11,7 +11,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   v25). **Next:** T38a (the hire; `QUEUE.md`), its cut confirmed at its start. The guild and the services are increment
   5, travel and the Grail 6. Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6`
   and `-13` (increment 5), `TWN-STUB-2` (the victory conditions).
-- **Open pull requests:** T37b's `town/e09-t37b` (`cross-lane`): in progress, not opened yet.
+- **Open pull requests:** T37b's `town/e09-t37b` (`cross-lane`), opened at the session's end;
+  watch it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -43,11 +44,14 @@ In `TRAPS.md`.
 
 Baseline 8944673 (#991 merged; CI's fingerprint on `master`, the setup ran the light gates). The
 user's computer was connected at the start only: 16 files staged (the four LODs, both
-executables, both tars, the saves, the three manuals, two help files; SHA-256 checked). A census
-first (`Marshland Menace`: its Fortress-only player 5 owns its one random hero and its main town
-generates one) and a short code reading (`load_hero_body`'s field-by-field writes): the user chose
-every hero of a customised type and the records at the build (decisions 137, 138; VCMI differs for
-a random hero, TD-24). In progress: the code, tests and replays done; the scoped verify and the PR next.
+executables, both tars, the saves, the manuals, two help files; SHA-256 checked). A census first
+(`Marshland Menace`'s Fortress-only player 5 owns its random hero, its main town generates one)
+and a short code reading (`load_hero_body`'s field-by-field writes): the user chose every hero of
+a customised type and the records at the build (decisions 137, 138; VCMI differs for a random
+hero, TD-24). Built: `GameSetup::custom_types` and its checks, the merges, `town::custom_records`
+(design §70 As built); the 89 goldens re-recorded (the import line; `e08-army-12`'s two replays'
+hashes: the fixture maps' type-3 entry now makes a record); `reach-xl-144` and
+`reach-lifted-xl-144` re-baselined (the XL map's games changed the same way).
 
 ### 2026-11-17 — T37a: the pool in the game, the views, protocol v70
 

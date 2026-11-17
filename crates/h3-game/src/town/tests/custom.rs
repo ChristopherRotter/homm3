@@ -4,8 +4,11 @@
 //! record at the build, which the taverns offer as the map sets it (TWN-SET-005, TWN-TAV-002),
 //! its levels at load in the build's order (GAM-SET-002, GAM-HER-002); the setup's checks.
 
+use alloc::collections::BTreeSet;
+use alloc::format;
 use alloc::string::ToString;
 use alloc::vec;
+use alloc::vec::Vec;
 
 use h3_content::{HeroTypeId, Ruleset};
 use h3_contracts::{HeroId, HeroSex, PlayerId};
@@ -136,7 +139,7 @@ fn a_main_towns_hero_and_a_random_hero_take_their_drawn_types_entries() {
         ..experienced(2000)
     };
     setup.custom_types = vec![(gunner, entry.clone()), (sage, entry)];
-    let mut types = alloc::collections::BTreeSet::new();
+    let mut types = BTreeSet::new();
     for seed in 0..8 {
         let game = GameState::new(&rules, &setup, seed).unwrap();
         // Blue's random hero (hero 1): its own primary skills over its drawn type's experience
@@ -167,7 +170,7 @@ fn in_faithful_a_records_levels_at_load_follow_its_level_seed() {
         setup.custom_types = vec![(c0, experienced(experience))];
         GameState::new(&rules, &setup, seed).unwrap()
     };
-    let mut levelled_alike = alloc::collections::BTreeSet::new();
+    let mut levelled_alike = BTreeSet::new();
     for seed in 0..24 {
         // The same record at experience 0: a custom experience draws nothing, so the level
         // seeds match; the seed drawn before the levels, which read it.
@@ -214,7 +217,7 @@ fn a_customised_type_is_the_rulesets_named_once_and_valid_on_its_own() {
     let sage = hero(&rules, "t:sage");
     let unknown = HeroTypeId::from_index(rules.core().hero_types().len()).unwrap();
     let wits = rules.core().skill_by_key("t:wits").unwrap();
-    let refused = |custom_types: alloc::vec::Vec<(HeroTypeId, HeroDetailsSetup)>| {
+    let refused = |custom_types: Vec<(HeroTypeId, HeroDetailsSetup)>| {
         let mut setup = towns_setup(&rules);
         setup.custom_types = custom_types;
         setup.validate(&rules).unwrap_err()
@@ -223,7 +226,7 @@ fn a_customised_type_is_the_rulesets_named_once_and_valid_on_its_own() {
     assert_eq!(error, GameSetupError::CustomType(unknown));
     assert_eq!(
         error.to_string(),
-        alloc::format!(
+        format!(
             "customised hero type {} is unknown or named twice",
             unknown.raw()
         )
@@ -241,7 +244,7 @@ fn a_customised_type_is_the_rulesets_named_once_and_valid_on_its_own() {
     assert!(
         error
             .to_string()
-            .starts_with(&alloc::format!("customised hero type {}: ", sage.raw()))
+            .starts_with(&format!("customised hero type {}: ", sage.raw()))
     );
     // A type the map does not allow is checked too (no hero takes it).
     let mut setup = towns_setup(&rules);

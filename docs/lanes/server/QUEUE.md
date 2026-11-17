@@ -19,6 +19,9 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   `0xb614a339103038da` (its broken case `…8d0`) and the final hash `0x8a46cfc9c62f7d09`
   (`…d00`), in the cases and the summary line. `GameSetupError` gained `CustomType` and
   `CustomDetails` (a `GameRestoreError::Setup` payload; nothing of yours matches it).
+  `h3-protocol`'s `tests/game_bounds.rs`: the XL map's seed 13 (5 before: the map's record of
+  its customised type changed its games; 3, 4, 11, 13 and 23 of 1 to 24 reveal a whole map, 13
+  with the largest snapshot as measured).
 
 - 2026-11-17 (the adventure lane, E08 T124b1, `adventure/e08-t124b1`, `cross-lane` with the user's
   consent; **your paths changed, for your review**): adventure state hash v26 (the creature banks'
