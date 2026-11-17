@@ -28,6 +28,14 @@
 //! selection's window once its end has come; the date's window steps its picture's frame at a draw
 //! at least the tables' step after the last, up to its last frame, and plays the day's sound when
 //! built.
+//!
+//! The turn's end and the next day (E24 M4 T1a, design §5.1, *provisional*): End Turn's command
+//! asks Move Reminder's question while a hero can still move (a message box, `h3_ui::message`,
+//! laid out by the adapter: [`Start::question`]); the turn's change is the next of
+//! [`Start::turns`] (a recording's `[[turn]]`, from Part B the engine's events), drawn in that
+//! millisecond as `player_turn_start` 0x4CC7D0 draws the next day, with the week's or the month's
+//! message over it at a week's start. While a box is open the map stands still (the tick runs, the
+//! week's box steps the date's window behind it); its buttons take the mouse and its keys.
 
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::format;
@@ -39,13 +47,14 @@ use core::fmt;
 use h3_map::model::Pos;
 use h3_render::Bugs;
 use h3_render::screen::Screen;
+use h3_ui::message::{self as boxes, Key, MessageBox, Open, Outcome};
 
 use crate::hover::{self, Hint, Hover, PanelItems, Selection};
 use crate::layout::{AdventureLayout, DIRECTIONS};
 use crate::lists::{SLOTS, top_showing};
 use crate::live::{
-    Arrow, Buttons, Chosen, ChosenHero, ChosenTown, DateStatus, Kingdom, KingdomStatus, Selected,
-    Status,
+    Arrow, Buttons, Chosen, ChosenHero, ChosenTown, Date, DateStatus, Kingdom, KingdomStatus,
+    Selected, Status, Turn,
 };
 use crate::minimap::{MinimapArt, divided};
 use crate::panels;
@@ -54,10 +63,15 @@ use crate::sequence::{DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
 use crate::sound::{Cue, Sound};
 use crate::status::DateArt;
 use crate::tables::{Tables, WalkArt};
+use crate::turn::{self, TurnArt};
 
 /// The mouse manager's type of the adventure cursor (`cursor_defs` 0x67FF38: 1, `cradvntr.def`),
 /// the timeline's `cursor` lines' first number.
 pub const CURSOR_TYPE: u32 = 1;
+
+/// The mouse manager's type of the default cursor (0, `crdeflt.def`): a message box's (E24 M4
+/// T1a, `mouse_set_cursor(0, 0)` at 0x4F74AC).
+pub const DEFAULT_CURSOR: u32 = 0;
 
 /// The last green arrow (1 to 25 green, a step the hero pays today; 26 to 50 red: design §2.10).
 pub use crate::live::GREEN;
@@ -186,6 +200,11 @@ pub enum Action {
     /// holds down takes it as the left one's release (`def_button_message` 0x456338: its command
     /// when it shows pressed, 0x456451).
     RightRelease,
+    /// A message box's hotkey pressed (E24 M4 T1a: Enter the OK's, Escape the Cancel's,
+    /// `message_box_build` 0x4F6990): its button pressed; on the map with no box open nothing.
+    BoxKey(Key),
+    /// Its key released: the button it pressed clicks.
+    BoxKeyUp(Key),
 }
 
 impl Action {
@@ -214,6 +233,7 @@ impl Action {
                 | Self::Press(_)
                 | Self::RightPress
                 | Self::Key(_)
+                | Self::BoxKey(_)
                 | Self::Visit
         )
     }
@@ -421,6 +441,8 @@ pub struct Rules {
     /// How long a click on the status window asks the kingdom's or the date's window for, ms
     /// (E24 M3 T6b2).
     pub asked_ms: u32,
+    /// The turn's numbers and sounds (E24 M4 T1a, design §5.1).
+    pub turn: TurnArt,
 }
 
 impl Rules {
@@ -449,6 +471,7 @@ impl Rules {
             panels: PanelItems::new(layout),
             minimap: tables.map.minimap.clone(),
             asked_ms: tables.map.status.asked,
+            turn: tables.map.turn.clone(),
         }
     }
 
@@ -646,6 +669,29 @@ pub struct Start {
     pub index: Option<usize>,
     /// What choosing each hero and town of the kingdom's shows (E24 M3 T6b1).
     pub chosen: Chosen,
+    /// The current player's colour (E24 M4 T1a: the viewer's at 0; the timeline's `player`
+    /// lines).
+    pub player: u8,
+    /// Move Reminder's setting (E24 M4 T1a, design §5.1): End Turn asks its question while a hero
+    /// can still move.
+    pub move_reminder: bool,
+    /// End Turn's question laid out (GENRLTXT 56, style 2; the adapter's, with the fonts); none:
+    /// End Turn with a hero to go to is not built (refused in a recording).
+    pub question: Option<Arc<MessageBox>>,
+    /// The turns' starts End Turn plays, in order (E24 M4 T1a: a recording's `[[turn]]`; Part B
+    /// the engine's events); past the last End Turn's change is not built.
+    pub turns: Vec<NextTurn>,
+}
+
+/// A turn's start End Turn plays (E24 M4 T1a, design §5.1, *provisional*): the live part's facts
+/// and, at a week's start, the week's or the month's message laid out (the adapter's: the text,
+/// [`turn::message`], in a box of style 1).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NextTurn {
+    /// The facts.
+    pub turn: Turn,
+    /// The week's or the month's message; none on another day.
+    pub message: Option<Arc<MessageBox>>,
 }
 
 /// A status window's kind asked for a time (`status_window_set_kind` 0x415D60: the manager's
@@ -661,6 +707,9 @@ pub struct Asked {
 /// The cursor drawn: a frame of the layout's cursor and the point its hot spot is at.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Cursor {
+    /// The mouse manager's type (E24 M4 T1a): [`CURSOR_TYPE`] the adventure cursor's,
+    /// [`DEFAULT_CURSOR`] the default one's (a message box's).
+    pub kind: u32,
     /// The frame.
     pub frame: u32,
     /// The point.
@@ -735,6 +784,8 @@ pub struct Draw {
     /// The panels' buttons shown pressed, by id in order (E24 M3 T6b1: each press and release
     /// drawn and shown at once).
     pub pressed: Vec<u16>,
+    /// The message box over the map, its buttons' states (E24 M4 T1a); none without one.
+    pub message: Option<Arc<MessageBox>>,
 }
 
 /// The state after a millisecond.
@@ -763,6 +814,10 @@ pub struct State {
     pub buttons: Buttons,
     /// The selected hero's movement points (its +0x4D; E24 M3 T4b): the timeline's `points`.
     pub points: Option<i32>,
+    /// The game's date (E24 M4 T1a): the timeline's `date`.
+    pub date: Date,
+    /// The current player's colour: the timeline's `player`.
+    pub player: u8,
 }
 
 /// A walk under way: inside a key's step or the path's walk, which wait for their frames' times.
@@ -880,6 +935,32 @@ pub struct Loop {
     /// the left button's next release, wherever, is its command (0x409FD8); a window built again
     /// meanwhile takes it with its items.
     status_held: bool,
+    /// The current player ([`Start::player`]).
+    player: u8,
+    /// Move Reminder's setting and End Turn's question ([`Start::move_reminder`],
+    /// [`Start::question`]).
+    move_reminder: bool,
+    question: Option<Arc<MessageBox>>,
+    /// The turns' starts ([`Start::turns`]) and the next one's place among them.
+    turns: Arc<Vec<NextTurn>>,
+    next_turn: usize,
+    /// The message box open over the map (E24 M4 T1a).
+    boxed: Option<Boxed>,
+    /// The input queue emptied (`input_flush` 0x4EC570: a box's opening, a human's turn's
+    /// start): the actions after this one in its millisecond are dropped.
+    flush: bool,
+}
+
+/// A message box open over the map (E24 M4 T1a, design §5.1): what its OK does, the box and the
+/// button it holds, the cursor before it (restored at its end).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Boxed {
+    /// End Turn's question (its OK ends the turn), else the week's or the month's message (the
+    /// date's window steps behind it: the dialog's +0x6C).
+    question: bool,
+    open: Open,
+    /// The cursor's type and frame before the box.
+    cursor: [u32; 2],
 }
 
 impl Loop {
@@ -904,6 +985,7 @@ impl Loop {
             .cloned()
             .unwrap_or_default();
         let cursor = Cursor {
+            kind: CURSOR_TYPE,
             frame: rules.arrow,
             at: rules.drawn_at(start.pointer),
             shown: true,
@@ -940,6 +1022,7 @@ impl Loop {
                 hint: Hint::Empty,
                 selected: start.index,
                 pressed: Vec::new(),
+                message: None,
             },
             hero: start.hero,
             lifted: false,
@@ -987,6 +1070,13 @@ impl Loop {
                 .minimap
                 .click(usize::try_from(start.size).unwrap_or(usize::MAX)),
             status_held: false,
+            player: start.player,
+            move_reminder: start.move_reminder,
+            question: start.question.clone(),
+            turns: Arc::new(start.turns.clone()),
+            next_turn: 0,
+            boxed: None,
+            flush: false,
             rules,
         };
         // The status window at 0 (E24 M3 T5b2): the kind asked, else the date's or the kingdom's
@@ -1050,6 +1140,8 @@ impl Loop {
                 .selected_hero()
                 .and_then(|i| self.kingdom.heroes.get(i))
                 .map(|h| h.points),
+            date: self.kingdom.date,
+            player: self.player,
         }
     }
 
@@ -1113,6 +1205,11 @@ impl Loop {
                     self.flushed = false;
                 }
             }
+            // A box opened or a turn started: the queue emptied, the rest of the millisecond's
+            // input with it (E24 M4 T1a, *provisional*: the window's pass's).
+            if core::mem::take(&mut self.flush) {
+                break;
+            }
         }
         self.hint_again();
         Ok(())
@@ -1156,6 +1253,11 @@ impl Loop {
 
     /// The idle message: the edge scroll before it, then the idle step (0x408A88).
     fn idle_message(&mut self, t: u32) {
+        // A message box's own loop (E24 M4 T1a): the map stands still.
+        if self.boxed.is_some() {
+            self.box_step(t);
+            return;
+        }
         // The mouse holding a button down runs the button's loop: the tick only (0x45641C); so
         // does the minimap's (0x40A344, E24 M3 T6b2).
         if self.held.is_some() || self.dragging.is_some() {
@@ -1176,6 +1278,9 @@ impl Loop {
     /// cursor read the mouse's point now, GetCursorPos: the latest given, M2 T6a, the reviewer's
     /// R1-3; a click's tile is its message's).
     fn act(&mut self, t: u32, action: Action, fresh: bool) -> Result<(), Unplayable> {
+        if self.boxed.is_some() {
+            return self.box_act(t, action, fresh);
+        }
         if self.held.is_some() || self.dragging.is_some() {
             return self.holding(t, action, fresh);
         }
@@ -1220,7 +1325,13 @@ impl Loop {
             Action::Key(key) => self.key(t, key),
             Action::KeyUp(key) => self.key_up(t, key)?,
             Action::Visit => self.visit(t)?,
-            Action::Up | Action::RightPress | Action::RightRelease => {}
+            // A box's keys with no box open: nothing (*provisional*: the map's own keys,
+            // `adventure_key_down` 0x408C40, were not read for Enter and Escape).
+            Action::Up
+            | Action::RightPress
+            | Action::RightRelease
+            | Action::BoxKey(_)
+            | Action::BoxKeyUp(_) => {}
         }
         Ok(())
     }
@@ -1411,8 +1522,9 @@ impl Loop {
     }
 
     /// A button's command (`adventure_command` 0x409A70, its switch 0x409AB4): the
-    /// underground's (0x409F6B), next hero's (0x409D89), the hero list's arrows (0x403220) and
-    /// the town list's (0x403280); the rest a dialog's or the engine's (M4, M5).
+    /// underground's (0x409F6B), next hero's (0x409D89), end turn's (0x409D12, E24 M4 T1a), the
+    /// hero list's arrows (0x403220) and the town list's (0x403280); the rest a dialog's or the
+    /// engine's (M4, M5).
     fn command(&mut self, t: u32, id: u16) -> Result<(), Unplayable> {
         match id {
             panels::id::UNDERGROUND => {
@@ -1420,6 +1532,7 @@ impl Loop {
                 Ok(())
             }
             panels::id::NEXT_HERO => self.next_hero(t),
+            panels::id::END_TURN => self.end_turn(t),
             id if panels::id::HEROES.contains(&id) || panels::id::TOWNS.contains(&id) => {
                 let towns = panels::id::TOWNS.contains(&id);
                 let up = id == panels::id::HEROES[0] || id == panels::id::TOWNS[0];
@@ -1434,6 +1547,257 @@ impl Loop {
     /// draw), nothing live.
     fn unbuilt(&self, why: Unplayable) -> Result<(), Unplayable> {
         if self.live { Ok(()) } else { Err(why) }
+    }
+
+    /// End Turn's command (`adventure_command` 0x409D12 to 0x409D84; E24 M4 T1a, design §5.1):
+    /// outside the tutorial (game +0x1F69D: the viewer plays none), with Move Reminder set and a
+    /// hero to go to (`next_hero_exists` 0x4BAB90: one awake that can move) the question first
+    /// (style 2, [`Loop::open_box`]: its OK goes on to the turn's change, anything else ends the
+    /// command there); else the turn's change at once ([`Loop::turn_change`]).
+    fn end_turn(&mut self, t: u32) -> Result<(), Unplayable> {
+        if self.move_reminder && self.kingdom.next_hero() {
+            let Some(question) = self.question.clone() else {
+                return self.unbuilt(Unplayable::Command(panels::id::END_TURN));
+            };
+            self.open_box(question, true);
+            return Ok(());
+        }
+        self.turn_change(t)
+    }
+
+    /// The turn's change (`next_player_turn` 0x4C6FE0, `player_turn_start` 0x4CC7D0; design
+    /// §5.1), all in End Turn's millisecond (a computer's turn out of sight takes no virtual time):
+    /// the next of [`Start::turns`] (none: not built, refused in a recording). The selected hero put
+    /// back; the current player and the kingdom the turn's (the date, the resources, the heroes'
+    /// rows and points, the towns, the selection, the lists' first slots), the status window shown
+    /// kept until it is built again, the selection's window its choice's when the live part gives
+    /// one, else the one before for the same hero or town (*provisional*: the engine's from Part
+    /// B); the input queue emptied (`input_flush` 0x4EC570). The screen redrawn whole
+    /// (`adventure_full_update` 0x417420) with the date's window asked for the tables' time and
+    /// built, its sound with it; then the turn's hero chosen (`hero_select` with 0, 0, 1: lifted,
+    /// the view centred on it, the date's window built again, its path made again from its
+    /// destination), else its town (`town_select`); next hero's state (0x419450). A redraw's
+    /// deadline already passed moves to the tables' step from now without a step (*provisional*:
+    /// recorded, `turn-question` at 1060, not read). At a week's start but the game's first its
+    /// sound (0x4CCAE5) and its message ([`Loop::open_box`]).
+    fn turn_change(&mut self, t: u32) -> Result<(), Unplayable> {
+        let refused = Unplayable::Command(panels::id::END_TURN);
+        let Some(next) = self.turns.get(self.next_turn).cloned() else {
+            return self.unbuilt(refused);
+        };
+        // The selection's map hero or town, known before anything changes.
+        let selected = next.turn.kingdom.selected;
+        let chosen_town = match selected {
+            Selected::Town(i) => match self.chosen.towns.get(i).cloned().flatten() {
+                Some(chosen) => Some(chosen),
+                None => return self.unbuilt(refused),
+            },
+            _ => None,
+        };
+        let hero = match selected {
+            Selected::Hero(i) => match self.map_hero(i) {
+                Some(index) => Some((i, index)),
+                None => return self.unbuilt(refused),
+            },
+            _ => None,
+        };
+        self.next_turn += 1;
+        let NextTurn { turn, message } = next;
+        // The turn's end: the hero put back, its path kept for its choice.
+        self.keep_path();
+        let before = self.kingdom.selected;
+        let path = core::mem::take(&mut self.path);
+        let shown = |s: &Status| matches!(s, Status::Hero(_) | Status::Town(_));
+        let window = self
+            .kingdom
+            .selection
+            .take()
+            .or_else(|| self.kingdom.status.clone().filter(shown));
+        self.lifted = false;
+        self.player = turn.player;
+        let mut kingdom = turn.kingdom;
+        kingdom.status = self.kingdom.status.take();
+        kingdom.realm = self.kingdom.realm.take();
+        kingdom.selection = match selected {
+            Selected::Hero(i) => self.chosen_hero(i).map(|c| Status::Hero(c.status.clone())),
+            Selected::Town(_) => chosen_town.as_ref().map(|c| Status::Town(c.status.clone())),
+            Selected::None => None,
+        }
+        .or_else(|| window.filter(|_| selected == before));
+        self.kingdom = kingdom;
+        self.flush = true;
+        // The screen redrawn whole, the date's window asked and built.
+        self.asked = 1;
+        self.end = t.saturating_add(self.rules.turn.asked);
+        self.draw_lists();
+        self.choose(t, true);
+        self.draw_minimap();
+        self.draw(t);
+        // The turn's selection.
+        match (hero, chosen_town) {
+            (Some((i, index)), _) => {
+                self.buttons.move_hero = false;
+                self.hero = self.heroes.get(index).copied();
+                self.index = Some(index);
+                self.selected_id = self
+                    .hover
+                    .as_ref()
+                    .and_then(|h| h.facts().hero_list.get(i))
+                    .map(|h| h.0);
+                self.walked = true;
+                self.path = if before == Selected::Hero(i) {
+                    path
+                } else {
+                    let arrows = self.chosen_hero(i).map(|c| c.path.clone());
+                    self.hero
+                        .zip(arrows)
+                        .and_then(|(h, a)| chain(h.at, &a))
+                        .unwrap_or_default()
+                };
+                self.lift(t, true);
+                self.buttons.move_hero = self.green();
+                self.draw(t);
+                self.look_again();
+            }
+            (None, Some(chosen)) => {
+                if let Selected::Town(i) = selected {
+                    self.choose_town(t, i, chosen);
+                }
+            }
+            (None, None) => {
+                (self.hero, self.index, self.selected_id) = (None, None, None);
+                self.buttons.move_hero = false;
+            }
+        }
+        self.buttons.next_hero = self.kingdom.next_hero();
+        if self.frame_at <= t {
+            self.frame_at = t.saturating_add(self.rules.frame_ms);
+        }
+        let date = self.kingdom.date;
+        if turn::starts_week(date) {
+            if let Some(sound) = &mut self.sound {
+                sound.effect(t, turn::sound(&self.rules.turn, date));
+            }
+            if let Some(message) = message {
+                self.open_box(message, false);
+            }
+        }
+        Ok(())
+    }
+
+    /// The map hero (its index among [`Start::heroes`]) of the kingdom's hero `i`: its choice's
+    /// when the live part gives one, else the one of its record index by the mouse-over's facts.
+    fn map_hero(&self, i: usize) -> Option<usize> {
+        if let Some(chosen) = self.chosen_hero(i) {
+            return Some(chosen.hero);
+        }
+        let facts = self.hover.as_ref()?.facts();
+        let id = facts.hero_list.get(i)?.0;
+        facts
+            .heroes
+            .iter()
+            .position(|h| h.0 == id)
+            .filter(|&index| index < self.heroes.len())
+    }
+
+    /// A message box opened (`message_box` 0x4F6570; E17 design §7.19): the default cursor's frame 0
+    /// at the mouse (`mouse_set_cursor(0, 0)` at 0x4F74AC), the box drawn and shown over the map,
+    /// the input queue emptied as it opens; `question` End Turn's (its OK ends the turn), else the
+    /// week's (the date's window stepping behind it).
+    fn open_box(&mut self, message: Arc<MessageBox>, question: bool) {
+        let cursor = [self.cursor.kind, self.cursor.frame];
+        self.set_cursor(DEFAULT_CURSOR, 0);
+        self.boxed = Some(Boxed {
+            question,
+            open: Open::new((*message).clone()),
+            cursor,
+        });
+        self.drawn.message = Some(message);
+        self.flush = true;
+    }
+
+    /// The cursor set (`mouse_set_cursor`): its type and frame, drawn at the mouse now.
+    fn set_cursor(&mut self, kind: u32, frame: u32) {
+        self.cursor.kind = kind;
+        self.cursor.frame = frame;
+        self.cursor.at = self.rules.drawn_at(self.pointer);
+    }
+
+    /// A message box's loop's turn (0x602520 with `message_box_proc` 0x4F08D0): the week's box
+    /// calls `status_panel_update` with 1, the adventure dialog's +0x6C set (0x4CCAE5), so the
+    /// date's window steps behind it (§4.9); none while the mouse holds one of its buttons (the
+    /// button's own loop), none behind End Turn's question.
+    fn box_step(&mut self, t: u32) {
+        let steps = self
+            .boxed
+            .as_ref()
+            .is_some_and(|b| !b.question && !b.open.holds_mouse());
+        if let (true, Some(Status::Date(date))) = (steps, self.kingdom.status.clone())
+            && let Some(status) = self.date_window(t, Some(date))
+        {
+            self.kingdom.status = Some(status.clone());
+            Arc::make_mut(&mut self.drawn.kingdom).status = Some(status);
+        }
+    }
+
+    /// An action while a message box is open (its modal loop; E17 design §7.19): the mouse's
+    /// moves, presses and releases and the box's keys go to the box ([`Open`]); a button pressed
+    /// is drawn and shown with its sound (`button.wav`: `def_button_message`, as the panels'), a
+    /// click closes the box ([`Loop::close_box`]); every other message is dropped (no edge scroll,
+    /// no hint: the map stands still). The mouse's point is the latest given.
+    fn box_act(&mut self, t: u32, action: Action, fresh: bool) -> Result<(), Unplayable> {
+        if fresh
+            && let Action::Pointer(at) | Action::Click(at) | Action::Press(at) | Action::Release(at) =
+                action
+        {
+            self.pointer = at;
+        }
+        if let Action::Click(at) = action {
+            self.box_act(t, Action::Press(at), false)?;
+            return self.box_act(t, Action::Release(at), false);
+        }
+        let Some(boxed) = &mut self.boxed else {
+            return Ok(());
+        };
+        let before = pressed(&boxed.open);
+        let outcome = match action {
+            Action::Pointer(at) => boxed.open.moved(at),
+            Action::Press(at) => boxed.open.press(at),
+            Action::Release(_) | Action::RightRelease => boxed.open.release(),
+            Action::BoxKey(key) => boxed.open.key(key, key_name(key)),
+            Action::BoxKeyUp(key) => boxed.open.key_up(key_name(key)),
+            _ => Outcome::Nothing,
+        };
+        match outcome {
+            Outcome::Nothing => Ok(()),
+            Outcome::Changed => {
+                let now = pressed(&boxed.open);
+                self.drawn.message = Some(Arc::new(boxed.open.message.clone()));
+                if now.is_some() && now != before {
+                    self.press_sound(t);
+                }
+                Ok(())
+            }
+            Outcome::Closed(id) => self.close_box(t, id),
+        }
+    }
+
+    /// The box closed by its button `id`'s click: the cursor before it set again, the screen
+    /// under it shown as it was (the map stood still); End Turn's question's OK goes on to the
+    /// turn's change, anything else to the map's idle step in that millisecond (recorded: its
+    /// redraws due since run then).
+    fn close_box(&mut self, t: u32, id: u16) -> Result<(), Unplayable> {
+        let Some(boxed) = self.boxed.take() else {
+            return Ok(());
+        };
+        self.drawn.message = None;
+        let [kind, frame] = boxed.cursor;
+        self.set_cursor(kind, frame);
+        if boxed.question && id == boxes::YES {
+            return self.turn_change(t);
+        }
+        self.idle_message(t);
+        Ok(())
     }
 
     /// The underground's command (`adventure_command` 0x409F6B; E24 M3 T6b2, design §4.14): on
@@ -2218,7 +2582,7 @@ impl Loop {
         let mut queued = queued.into_iter();
         while let Some(action) = queued.next() {
             self.act(t, action, false)?;
-            if core::mem::take(&mut self.flushed) {
+            if core::mem::take(&mut self.flushed) || core::mem::take(&mut self.flush) {
                 queued.by_ref().for_each(drop);
             }
             if let Some(moving) = &mut self.moving {
@@ -2402,6 +2766,7 @@ impl Loop {
             hint: self.drawn.hint.clone(),
             selected: self.index,
             pressed: core::mem::take(&mut self.drawn.pressed),
+            message: self.drawn.message.take(),
         };
         self.choose(t, false);
     }
@@ -2531,6 +2896,24 @@ impl Loop {
     }
 }
 
+/// The button an open box shows pressed, if any.
+fn pressed(open: &Open) -> Option<u16> {
+    open.message
+        .shown
+        .states
+        .iter()
+        .find(|(_, s)| s.pressed)
+        .map(|(&id, _)| id)
+}
+
+/// A box's key's name, which its key's release matches ([`Open::key`]).
+const fn key_name(key: Key) -> &'static str {
+    match key {
+        Key::Ok => "Return",
+        Key::Cancel => "Escape",
+    }
+}
+
 /// Whether the dialog's item `id` is a button (`def_button_message`'s): the buttons 3 to 12 and
 /// the lists' arrows.
 const fn is_button(id: u16) -> bool {
@@ -2598,7 +2981,8 @@ pub fn play(
 /// buttons (move hero's and next hero's states, 1 enabled; E24 M3 T2a) and the selected hero's
 /// points (E24 M3 T4b; none without one), then each one where it changed, in that order within a
 /// millisecond; after 0 the walk's (§3.5) where
-/// they changed: the selected hero, the walk's drawing, the path's arrows; and a `screen` line
+/// they changed: the selected hero, the walk's drawing, since E24 M4 T1a the date and the current
+/// player, the path's arrows; and a `screen` line
 /// where `screens` gives the box the screen changed in (never at 0, whose screen is always kept).
 #[must_use]
 pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String> {
@@ -2614,8 +2998,8 @@ pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String>
         let cycles = |s: &State| format!("cycles {} {}", s.cycles, s.cycles);
         let cursor = |s: &State| {
             format!(
-                "cursor {CURSOR_TYPE} {} {} {}",
-                s.cursor.frame, s.cursor.at[0], s.cursor.at[1]
+                "cursor {} {} {} {}",
+                s.cursor.kind, s.cursor.frame, s.cursor.at[0], s.cursor.at[1]
             )
         };
         let buttons = |s: &State| {
@@ -2654,6 +3038,14 @@ pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String>
                 } = s.walk;
                 let [x, y] = offset;
                 out.push(format!("{} walk {group} {frame} {x} {y}", s.t));
+            }
+            // The date and the current player where they change (E24 M4 T1a).
+            if s.date != l.date {
+                let Date { month, week, day } = s.date;
+                out.push(format!("{} date {month} {week} {day}", s.t));
+            }
+            if s.player != l.player {
+                out.push(format!("{} player {}", s.t, s.player));
             }
             if s.arrows != l.arrows {
                 let arrows: String = s

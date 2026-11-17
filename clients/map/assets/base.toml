@@ -167,6 +167,16 @@ frames = [10, 4, 8, 12, 16]
 step = 100
 sound = "newday.wav"
 
+# The turn's change (E24 M4 T1a; design §5.1): a turn's start asks the date's status window for
+# `asked` ms (player_turn_start 0x4CC7D0); a week's first day but the game's first plays `week`, a
+# month's first `month`, with the week's or the month's message (0x4CCAE5); the week of the
+# Deity's message names its two creatures, the Imp and the Familiar (ArrayTxt 135).
+[map.turn]
+asked = 3000
+week = "newweek.wav"
+month = "newmonth.wav"
+deity = [42, 43]
+
 [map.status]
 portraits = [
     "HPL000Kn.PCX", "HPL001Kn.PCX", "HPL002Kn.PCX", "HPL003Kn.PCX", "HPL004Kn.PCX", "HPL005Kn.PCX",

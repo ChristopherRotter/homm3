@@ -27,6 +27,7 @@ use crate::minimap::MinimapArt;
 use crate::record::{RecordArt, Records};
 use crate::sound::{SoundArt, SoundRules};
 use crate::status::StatusArt;
+use crate::turn::TurnArt;
 
 /// One table file as written.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -102,6 +103,8 @@ pub struct ViewArt {
     pub lists: ListArt,
     /// The status window (E24 M3 T5b1; design §4.8).
     pub status: StatusArt,
+    /// The turn's change (E24 M4 T1a; design §5.1).
+    pub turn: TurnArt,
     /// The map's sounds (E24 M2 T5; design §3.11): none, and the map plays none.
     #[serde(default)]
     pub sound: Option<SoundArt>,
@@ -713,8 +716,12 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
             .collect();
         let mut rules = SoundRules::new(sound, tables.records.clone(), music, steps)
             .map_err(|rule| entry("sound", &rule))?;
-        // The sounds played once (E24 M3 T5b2): the day's status window's.
+        // The sounds played once (E24 M3 T5b2): the day's status window's; since E24 M4 T1a the
+        // week's and the month's message's.
         rules.effects.push(map.status.date.sound.clone());
+        rules
+            .effects
+            .extend([map.turn.week.clone(), map.turn.month.clone()]);
         tables.sound = Some(rules);
     }
     Ok(tables)

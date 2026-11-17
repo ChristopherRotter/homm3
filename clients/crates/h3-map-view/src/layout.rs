@@ -11,6 +11,7 @@ use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
+use h3_ui::message::MessageLayout;
 use h3_ui::ui::{Dialog, Item};
 use serde::Deserialize;
 
@@ -47,6 +48,10 @@ pub struct AdventureLayout {
     pub status_town: Dialog,
     /// What the panels' logic needs of the dialog (E24 M3 T2a).
     pub panels: Panels,
+    /// The message box's assets and fonts (E24 M4 T1a, design §5.1: End Turn's question, the
+    /// week's and the month's message; E17 design §7.19), the battle's `[message]` less its
+    /// pictures.
+    pub message: MessageLayout,
 }
 
 /// What the panels' logic needs of the dialog's items (E24 M3 T2a, design §4.1).
@@ -89,6 +94,11 @@ pub struct CursorArt {
     /// Its frames' hot spots (`cursor_hot_spots` 0x67FF50 + (144 + frame) × 8): the canvas's
     /// corner is the mouse less its frame's.
     pub hot: Vec<[i32; 2]>,
+    /// The default cursor's DEF (the mouse manager's type 0, `crdeflt.def`: a message box's,
+    /// `mouse_set_cursor(0, 0)` at 0x4F74AC; E24 M4 T1a).
+    pub default_def: String,
+    /// Its frame 0's hot spot (0x67FF50's first entry).
+    pub default_hot: [i32; 2],
 }
 
 /// The scroll's directions, one edge cursor each.
@@ -185,6 +195,7 @@ impl AdventureLayout {
             return Err(format!("a tile of {} pixels", view.tile));
         }
         name(&self.cursor.def, ".DEF")?;
+        name(&self.cursor.default_def, ".DEF")?;
         let frames = u32::try_from(self.cursor.hot.len()).unwrap_or(u32::MAX);
         let edges = self.cursor.edges.saturating_add(DIRECTIONS);
         if self.cursor.arrow >= frames || edges > frames {
@@ -209,8 +220,8 @@ impl AdventureLayout {
         Ok(())
     }
 
-    /// Every name the dialog, the resource bar, the status window's panels and the panels' data
-    /// mention, with the extension each must have.
+    /// Every name the dialog, the resource bar, the status window's panels, the panels' data and
+    /// the message box mention, with the extension each must have.
     fn dialog_names(&self) -> Vec<(&str, &'static str)> {
         let items = self
             .dialog
@@ -245,6 +256,17 @@ impl AdventureLayout {
                 .chain(&panels.sleep)
                 .map(|d| (d.as_str(), ".DEF")),
         );
+        // The message box's (E24 M4 T1a).
+        let m = &self.message;
+        out.extend([
+            (m.background.as_str(), ".PCX"),
+            (m.frame.as_str(), ".DEF"),
+            (m.button_back.as_str(), ".PCX"),
+            (m.ok.as_str(), ".DEF"),
+            (m.cancel.as_str(), ".DEF"),
+            (m.font.as_str(), ".FNT"),
+            (m.font_palette.as_str(), ".PAL"),
+        ]);
         out
     }
 
@@ -252,7 +274,11 @@ impl AdventureLayout {
     #[must_use]
     pub fn names(&self) -> BTreeSet<String> {
         core::iter::once(self.picture.as_str())
-            .chain([self.player_palette.as_str(), self.cursor.def.as_str()])
+            .chain([
+                self.player_palette.as_str(),
+                self.cursor.def.as_str(),
+                self.cursor.default_def.as_str(),
+            ])
             .chain(self.view.gems.iter().map(|g| g.def.as_str()))
             .chain(self.dialog_names().into_iter().map(|(n, _)| n))
             .map(str::to_ascii_uppercase)

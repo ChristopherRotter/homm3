@@ -26,6 +26,8 @@ def = "cradvntr.def"
 arrow = 0
 edges = 2
 hot = [[0, 0], [1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16], [17, 18]]
+default_def = "crdeflt.def"
+default_hot = [0, 0]
 
 [dialog]
 place = [0, 0]
@@ -125,6 +127,15 @@ size = [58, 64]
 coloured = [3]
 underground = ["iam010.def", "iam003.def"]
 sleep = ["iam005.def", "iam011.def"]
+
+[message]
+background = "diboxbck.pcx"
+frame = "dialgbox.def"
+button_back = "Box64x30.pcx"
+ok = "iOkay.def"
+cancel = "iCancel.def"
+font = "medfont.fnt"
+font_palette = "game.pal"
 "#;
 
 #[test]
@@ -166,13 +177,19 @@ fn loads_a_layout_and_places_its_tiles() {
             "AGEMUL.DEF",
             "AGEMUR.DEF",
             "ARESBAR.PCX",
+            "BOX64X30.PCX",
             "CRADVNTR.DEF",
+            "CRDEFLT.DEF",
+            "DIALGBOX.DEF",
+            "DIBOXBCK.PCX",
             "GAME.PAL",
             "IAM002.DEF",
             "IAM003.DEF",
             "IAM005.DEF",
             "IAM010.DEF",
             "IAM011.DEF",
+            "ICANCEL.DEF",
+            "IOKAY.DEF",
             "ITGFLAGS.DEF",
             "ITPA.DEF",
             "ITPT.DEF",

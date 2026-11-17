@@ -64,6 +64,79 @@ pub struct Live {
     /// The panels' buttons shown pressed, in their click frames (E24 M3 T6b1: a press held by the
     /// mouse or by a hotkey), by id in order; none in a still.
     pub pressed: Vec<u16>,
+    /// The turns' starts a recording reaches, in order (E24 M4 T1a, design §5.1: a comparison's
+    /// `[[turn]]` tables; the engine's events from Part B): what the next day shows.
+    pub turns: Vec<Turn>,
+}
+
+/// A turn's start (E24 M4 T1a, design §5.1, *provisional*): a comparison's `[[turn]]` table, as the
+/// harness reads memory in the millisecond the current player or the date changed (`h3map.py`'s
+/// `turn_toml`); from Part B the engine's events. The viewer's next day is drawn from it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Turn {
+    /// The recording's millisecond.
+    pub at: u32,
+    /// The current player's colour.
+    pub player: u8,
+    /// Its kingdom as the panels show it then (the date, the resources, the heroes' rows with
+    /// their points, the towns, the selection, the lists' first slots).
+    pub kingdom: Kingdom,
+    /// The status window shown then (the date's at its first frame).
+    pub status: Status,
+    /// The week's kind and name (`week_kind` 0x697750, `week_creature` 0x6983FC).
+    pub week: Calendar,
+    /// The month's (`month_kind` 0x698834, `month_creature` 0x697748).
+    pub month: Calendar,
+}
+
+/// A week's or a month's kind and what names it (`Mem.calendar`'s `[kind, name or creature]`;
+/// design §5.1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Calendar {
+    /// Kind 0, a normal week or month: its name's number (ArrayTxt's record 43 + n for a week,
+    /// 32 + n for a month).
+    Named(u16),
+    /// Kind 1: a creature's, the creature.
+    Creature(u16),
+    /// Kind 2: the week of the Deity (the Imp's and the Familiar's), the month of the Plague.
+    Special,
+}
+
+impl Calendar {
+    /// `[kind, n]` as the harness writes it; none for another kind or a number out of range.
+    #[must_use]
+    pub fn read(value: &toml::Value) -> Option<Self> {
+        let [kind, n] = value.as_array()?.as_slice() else {
+            return None;
+        };
+        let n = u16::try_from(n.as_integer()?).ok();
+        match kind.as_integer()? {
+            0 => Some(Self::Named(n?)),
+            1 => Some(Self::Creature(n?)),
+            2 => Some(Self::Special),
+            _ => None,
+        }
+    }
+}
+
+impl Turn {
+    /// A live part's `[[turn]]` table as the harness writes it: `at = <ms>`, `player = <colour>`,
+    /// `kingdom = <a kingdom>` ([`Kingdom::read`]), `status = <a status>` ([`Status::read`]),
+    /// `week = [kind, name or creature]` and `month = [kind, name or creature]`
+    /// ([`Calendar::read`]); none for anything else.
+    #[must_use]
+    pub fn read(value: &toml::Value) -> Option<Self> {
+        let table = value.as_table()?;
+        let int = |key: &str| table.get(key)?.as_integer();
+        Some(Self {
+            at: u32::try_from(int("at")?).ok()?,
+            player: u8::try_from(int("player")?).ok().filter(|&c| c < 8)?,
+            kingdom: Kingdom::read(table.get("kingdom")?)?,
+            status: Status::read(table.get("status")?)?,
+            week: Calendar::read(table.get("week")?)?,
+            month: Calendar::read(table.get("month")?)?,
+        })
+    }
 }
 
 /// What choosing each hero and town of the kingdom's lists shows (E24 M3 T6b1, design §4.13,
@@ -1078,6 +1151,7 @@ impl Live {
             hint: None,
             chosen,
             pressed: Vec::new(),
+            turns: Vec::new(),
         }
     }
 }
