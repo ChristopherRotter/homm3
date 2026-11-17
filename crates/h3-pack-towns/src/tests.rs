@@ -105,6 +105,29 @@ fn the_synthetic_record_compiles_with_its_override() {
         "creatures = [[\"spearman\"], [\"synthetic:brute\"]]\nroe = false",
     );
     assert!(!parse(&text).unwrap().towns[0].roe);
+    // E09 T36: the hire's price and the tavern weights by the core's class index (the expansion's
+    // override changes the Sage's 3 to 4).
+    let coin = core
+        .resources()
+        .iter()
+        .position(|r| r.key.as_str() == "synthetic:coin")
+        .unwrap();
+    let price: Vec<_> = params
+        .hire_price
+        .iter()
+        .map(|&(r, a)| (r.index(), a))
+        .collect();
+    assert_eq!(price, [(coin, 2000)]);
+    let class = |k: &str| {
+        core.hero_classes()
+            .iter()
+            .position(|c| c.key.as_str() == k)
+            .unwrap()
+    };
+    let mut weights = vec![0; core.hero_classes().len()];
+    weights[class("synthetic:warden")] = 7;
+    weights[class("synthetic:sage")] = 4;
+    assert_eq!(record.tavern, weights);
 }
 
 #[test]
@@ -518,6 +541,7 @@ fn the_original_packs_compile_with_every_faction() {
     for (key, _) in factions {
         assert_eq!(siege(&sod, key), (Moat::Damaging, false), "{key}");
     }
+    the_original_taverns(&roe, &sod, &core);
     // The parameters.
     let params = sod.params().unwrap();
     assert_eq!(params.hall_gold, [500, 1000, 2000, 4000]);
@@ -594,6 +618,48 @@ fn the_original_packs_compile_with_every_faction() {
             upgrade: 5,
         }
     );
+}
+
+/// E09 T36's harvest in the shipped packs (design §60; survey `E09-tavern.md` §2.2): every
+/// faction's tavern weighs each class 5 or 6, its column summing to 100 with the AB pack's two
+/// Conflux classes (its overrides of the base records) and to 90 without them; the hire's price
+/// 2 500 gold.
+fn the_original_taverns(roe: &TownRuleset, sod: &TownRuleset, core: &Ruleset) {
+    let gold = core
+        .resources()
+        .iter()
+        .position(|r| r.key.as_str() == "base:gold")
+        .unwrap();
+    for part in [roe, sod] {
+        let price: Vec<_> = part
+            .params()
+            .unwrap()
+            .hire_price
+            .iter()
+            .map(|&(r, a)| (r.index(), a))
+            .collect();
+        assert_eq!(price, [(gold, 2500)]);
+    }
+    assert_eq!(core.hero_classes().len(), 18);
+    for record in sod.towns() {
+        assert_eq!(record.tavern.len(), 18);
+        assert!(record.tavern.iter().all(|&w| w == 5 || w == 6));
+        assert_eq!(
+            record.tavern.iter().map(|&w| u32::from(w)).sum::<u32>(),
+            100
+        );
+    }
+    // Castle's column (survey §2.2): its own, Rampart's, Tower's, Stronghold's and Fortress'
+    // classes 6, Inferno's, Necropolis', Dungeon's and Conflux's 5.
+    let castle = core.faction_by_key("base:castle").unwrap();
+    assert_eq!(
+        sod.town(castle).unwrap().tavern,
+        [6, 6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 5, 5]
+    );
+    for record in roe.towns() {
+        assert_eq!(record.tavern.len(), 16);
+        assert_eq!(record.tavern.iter().map(|&w| u32::from(w)).sum::<u32>(), 90);
+    }
 }
 
 /// E09 T25a's harvest in the shipped packs (design §38; survey `E09-growth.md` §1, §2, §5): the

@@ -9,7 +9,8 @@
 //! validates everything again (E09 increment 1's design note §2).
 //!
 //! # Format (E09 T5a1; the requirements, costs and role `shipyard` since E09 T16a; the roles
-//! `horde`, `portal`, `week_of`, a record's `roe` and the growth's parameters since E09 T25a)
+//! `horde`, `portal`, `week_of`, a record's `roe` and the growth's parameters since E09 T25a;
+//! the hire's price and the tavern weights since E09 T36)
 //!
 //! ```toml
 //! [town_params]                    # exactly one enabled pack gives them when any pack has a
@@ -35,6 +36,8 @@
 //!                                  # counted; the upgrade's chance in 100
 //! most_heroes = 8                  # TWN-ROW-003 (E09 T28a): a garrison hero comes out only
 //!                                  # while its owner has fewer heroes on the map (>= 1)
+//! hire_price = { gold = 2500 }     # TWN-TAV-003 (E09 T36): a hero's price at a tavern, each
+//!                                  # resource >= 1, empty for free
 //!
 //! [town_visions]                   # optional, in any pack (E09 T8c2): creatures that give
 //! creatures = ["rogue"]            # their hero Visions at its expert level for the towns
@@ -51,6 +54,10 @@
 //!                                  # one of its upgrades
 //! roe = false                      # optional (true): its creatures may be a week's on a
 //!                                  # Restoration of Erathia map (TWN-GRO-002; Conflux's false)
+//!   [town.tavern]                  # TWN-TAV-001 (E09 T36): core hero class = its weight in a
+//!   knight = 6                     # tavern's draw for a player of the faction (0 to 255, a
+//!   cleric = 6                     # class not given 0); each class once, the record's sum
+//!                                  # after the overrides above 0
 //!   [[town.building]]              # every building of the faction, roles or not; at most 64
 //!   key = "town_hall"              # [a-z0-9_]+, unique within the record
 //!   name = "Town Hall"             # the name only (Q13)
@@ -67,10 +74,11 @@
 //!   hall = 2                       # its roles, each optional (below)
 //!
 //! [[town_override]]                # ADR-0006: a record a pack of the closure defined; only the
-//! faction = "castle"               # listed fields change, the silo as a whole, in load order
-//! moat = "damaging"
-//! siege_obstacles = false
+//! faction = "castle"               # listed fields change, the silo as a whole, the tavern
+//! moat = "damaging"                # weights class by class (the others keep theirs), in load
+//! siege_obstacles = false          # order
 //! silo = { wood = 1, ore = 1 }
+//! tavern = { planeswalker = 5, elementalist = 5 }
 //! ```
 //!
 //! A building's roles, each read over one of a town's two sets (E09 increment 1's design note §4,
@@ -96,7 +104,7 @@
 //! | `reveal = n` or `"all"` | a reveal larger than `reveal_radius` (the Lookout Tower, a Grail) | ever built |
 //!
 //! Keys without a pack prefix name an entity of the file's own pack; core references (factions,
-//! creatures, resources) must lie in the pack's dependency closure.
+//! creatures, resources, hero classes) must lie in the pack's dependency closure.
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
@@ -210,6 +218,7 @@ struct ParamsDto {
     week_creature_bonus: u16,
     garrison_week: GarrisonWeekDto,
     most_heroes: u8,
+    hire_price: BTreeMap<String, u32>,
 }
 
 #[derive(Deserialize)]
@@ -265,6 +274,8 @@ struct TownDto {
     creatures: Vec<Vec<String>>,
     #[serde(default = "yes")]
     roe: bool,
+    #[serde(default)]
+    tavern: BTreeMap<String, u8>,
     #[serde(default)]
     building: Vec<BuildingDto>,
 }
@@ -348,6 +359,7 @@ struct OverrideDto {
     moat: Option<MoatDto>,
     siege_obstacles: Option<bool>,
     silo: Option<BTreeMap<String, u32>>,
+    tavern: Option<BTreeMap<String, u8>>,
 }
 
 /// A key as written: `pack:name`, or a name of the file's own pack.
@@ -357,6 +369,14 @@ fn reference(pack: &str, text: &str) -> Result<ContentKey, KeyError> {
     } else {
         ContentKey::new(pack, text)
     }
+}
+
+/// Tavern weights as written (class = weight), their keys resolved.
+fn weights(pack: &str, weights: BTreeMap<String, u8>) -> Result<Vec<(ContentKey, u8)>, KeyError> {
+    weights
+        .into_iter()
+        .map(|(k, w)| Ok((reference(pack, &k)?, w)))
+        .collect()
 }
 
 /// Amounts of resources (a silo's, a cost) as written, their keys resolved.
@@ -435,6 +455,7 @@ fn town(pack: &str, t: TownDto) -> Result<TownDef, TownPackError> {
             .map(|b| building(pack, b))
             .collect::<Result<_, _>>()?,
         roe: t.roe,
+        tavern: weights(pack, t.tavern)?,
     })
 }
 
@@ -477,6 +498,7 @@ pub fn parse_towns(manifest: &PackManifest, text: &str) -> Result<TownPack, Town
                     upgrade: p.garrison_week.upgrade,
                 },
                 most_heroes: p.most_heroes,
+                hire_price: amounts(pack, p.hire_price)?,
             })
         })
         .transpose()?;
@@ -501,6 +523,7 @@ pub fn parse_towns(manifest: &PackManifest, text: &str) -> Result<TownPack, Town
                     moat: o.moat.map(Moat::from),
                     siege_obstacles: o.siege_obstacles,
                     silo: o.silo.map(|s| amounts(pack, s)).transpose()?,
+                    tavern: o.tavern.map(|t| weights(pack, t)).transpose()?,
                 },
             })
         })

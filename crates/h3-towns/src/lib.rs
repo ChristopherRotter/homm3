@@ -118,5 +118,6 @@ pub const TOWN_STATE_HASH_VERSION: u32 = 3;
 /// requirements (the closure) and cost, and the role `shipyard` (E09 design §24). v5 (E09 T25a): the
 /// roles `horde`, `portal` and `week_of`, each record's `roe`, the week's and the garrison week's
 /// parameters (E09 design §38). v6 (E09 T28a): the most heroes on the map in the parameters
-/// (TWN-ROW-003, design §53).
-pub const TOWN_RULESET_HASH_VERSION: u32 = 6;
+/// (TWN-ROW-003, design §53). v7 (E09 T36): the hire's price in the parameters and each record's
+/// tavern weights (TWN-TAV-001, -003; design §60).
+pub const TOWN_RULESET_HASH_VERSION: u32 = 7;

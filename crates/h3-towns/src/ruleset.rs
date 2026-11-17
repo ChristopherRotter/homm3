@@ -99,6 +99,10 @@ pub struct TownParamsDef {
     /// fewer. At least 1. A town part parameter while only the town's rows read it (the Tavern's
     /// hire, increment 4, reads it too).
     pub most_heroes: u8,
+    /// A hero's price at a tavern, resources of the core as a building's cost, each once and at
+    /// least 1, empty for free (TWN-TAV-003; E09 design §60: 2 500 gold, `hero_price` 0x67814C,
+    /// every edition and difficulty).
+    pub hire_price: Vec<(ContentKey, u32)>,
 }
 
 /// The week's parameters (E09 design §38, §42): the chance of a creature's week and the bonus
@@ -159,6 +163,10 @@ pub struct TownDef {
     /// Whether the record's creatures may be a week's on a Restoration of Erathia map (TWN-GRO-002;
     /// E09 design §38: Conflux's record false).
     pub roe: bool,
+    /// Per core hero class its weight in a tavern's draw for a player of the faction (TWN-TAV-001;
+    /// E09 design §60: `HCTRAITS.TXT`'s tavern column), each class once; a class not given weighs
+    /// 0, and the weights after the overrides must sum to more than 0.
+    pub tavern: Vec<(ContentKey, u8)>,
 }
 
 /// A level's creatures in a pack: the faction's creature of that level and its upgrade.
@@ -290,7 +298,7 @@ pub struct TownOverride {
 }
 
 /// The changed fields of a [`TownOverride`]. `None` fields stay as they are; the silo replaces
-/// the whole list.
+/// the whole list, the tavern weights only the classes they list.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TownPatch {
     /// New moat.
@@ -299,6 +307,9 @@ pub struct TownPatch {
     pub siege_obstacles: Option<bool>,
     /// New silo resources.
     pub silo: Option<Vec<(ContentKey, u32)>>,
+    /// Tavern weights that change or join the record's, class by class (each class once; the
+    /// other classes keep theirs): the AB pack's two Conflux classes in the base records.
+    pub tavern: Option<Vec<(ContentKey, u8)>>,
 }
 
 /// Why the town packs could not be compiled into a [`TownRuleset`].
@@ -330,6 +341,8 @@ pub enum TownCompileError {
     UnknownResource(String),
     /// A creature the core ruleset does not define.
     UnknownCreature(String),
+    /// A hero class the core ruleset does not define (a tavern weight's).
+    UnknownHeroClass(String),
     /// Two packs define a town record for one faction.
     DuplicateTown(String),
     /// An override names a faction without a town record.
@@ -376,6 +389,7 @@ impl fmt::Display for TownCompileError {
             Self::UnknownFaction(k) => write!(f, "unknown faction `{k}`"),
             Self::UnknownResource(k) => write!(f, "unknown resource `{k}`"),
             Self::UnknownCreature(k) => write!(f, "unknown creature `{k}`"),
+            Self::UnknownHeroClass(k) => write!(f, "unknown hero class `{k}`"),
             Self::DuplicateTown(k) => write!(f, "faction `{k}` has two town records"),
             Self::UnknownTown(k) => write!(f, "faction `{k}` has no town record to override"),
             Self::MissingParams => f.write_str("no pack provides the town parameters"),
@@ -428,6 +442,8 @@ pub struct TownParams {
     pub garrison_week: GarrisonWeekParams,
     /// The most heroes a player has on the map (TWN-ROW-003).
     pub most_heroes: u8,
+    /// A hero's price at a tavern, in the core's resource order (TWN-TAV-003).
+    pub hire_price: Vec<(ResourceId, u32)>,
 }
 
 /// A faction's compiled town record.
@@ -449,6 +465,10 @@ pub struct TownRecord {
     pub capitol_demoted_to: BuildingId,
     /// Whether its creatures may be a week's on a Restoration of Erathia map (TWN-GRO-002).
     pub roe: bool,
+    /// Per core hero class (indexed by its [`h3_content::HeroClassId`]) its weight in a tavern's
+    /// draw for a player of the faction (TWN-TAV-001); 0 for a class the packs give none. Not all
+    /// 0.
+    pub tavern: Vec<u8>,
 }
 
 impl TownRecord {
@@ -670,15 +690,17 @@ fn hash_option<T>(h: &mut StateHasher, value: Option<T>, write: impl FnOnce(&mut
 }
 
 impl CanonicalHash for TownRuleset {
-    /// Encoding v5 (E09 T25a; v4, T16a's, without the roles `horde`, `portal`, `week_of`, a
-    /// record's `roe` and the week's and garrison week's parameters; v3, T8c2's, without the
+    /// Encoding v7 (E09 T36; v6, T28a's, without the hire's price and the records' tavern weights;
+    /// v5, T25a's, without the most heroes on the map; v4, T16a's, without the roles `horde`,
+    /// `portal`, `week_of`, a record's `roe` and the week's and garrison week's parameters; v3, T8c2's, without the
     /// requirements, the costs and the role `shipyard`; v2, T5b2a's, without Visions; v1, T5a1's
     /// first, without the automatic set): version; the parameters (0 for none, else 1, the gold
     /// resource's handle, the four hall amounts, the Grail's, the reveal radius, the level-2
     /// dwelling chance, the four garrison rows' chance and bounds, the demoted Capitol's key,
     /// Visions' factor and least radius, its creatures as their number and handles, the week's
     /// creature chance and bonus, the garrison week's two odds, its denominator, its weights as
-    /// their number and values, its weeks and its upgrade chance); the records in faction order as
+    /// their number and values, its weeks and its upgrade chance, the most heroes on the map, the
+    /// hire's price (length, each resource handle and amount)); the records in faction order as
     /// their number and each one's faction handle, moat (0 absent, 1 harmless, 2 damaging),
     /// natural obstacles, the silo (length, each resource handle and amount), the creatures
     /// (length, each base handle and the upgrade as an option), the buildings (length, each key,
@@ -688,8 +710,9 @@ impl CanonicalHash for TownRuleset {
     /// tavern, silo, grail, shipyard, the horde as an option of its level and upgrade flag,
     /// portal, `week_of` as an option, the dwelling as an option of its level and upgrade flag,
     /// morale, luck, the escape tunnel, the defender's attack, defense, power and mana, the reveal
-    /// as 0 none, 1 and the radius, 2 all), `roe` and the demoted Capitol's building. The core's
-    /// hash is not part of it: replays record both.
+    /// as 0 none, 1 and the radius, 2 all), `roe`, the demoted Capitol's building and the tavern
+    /// weights (length, each weight by class index). The core's hash is not part of it: replays
+    /// record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(TOWN_RULESET_HASH_VERSION);
         hash_option(h, self.params.as_ref(), |h, p| {
@@ -717,6 +740,11 @@ impl CanonicalHash for TownRuleset {
             h.write_u8(g.weeks);
             h.write_u8(g.upgrade);
             h.write_u8(p.most_heroes);
+            h.write_len(p.hire_price.len());
+            for &(resource, amount) in &p.hire_price {
+                resource.hash_into(h);
+                h.write_u32(amount);
+            }
         });
         h.write_len(self.towns.len());
         for t in &self.towns {
@@ -751,6 +779,8 @@ impl CanonicalHash for TownRuleset {
             }
             h.write_bool(t.roe);
             h.write_u8(t.capitol_demoted_to.raw());
+            h.write_len(t.tavern.len());
+            t.tavern.iter().for_each(|&w| h.write_u8(w));
         }
     }
 }
