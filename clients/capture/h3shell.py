@@ -34,6 +34,7 @@ game's first read, each recipe recorded twice and the two compared.
 A recipe (a `[[recipe]]` of shell/<group>.toml): `id`, `what` (the catalogue's section), and
   registry  dwords of the settings key for this run, over setup.sh's (`Show Intro`, …)
   maps      the run's Maps/: "all" (the default: original-data/install/Maps), or a list of names
+            (the viewer's too since E27 M3 T1b1: `drawn` gives them as `--maps`)
   games     the run's Games/: files of original-data/games (default none)
   frozen    false: the clock runs in real time until a step freezes it (default true)
   sound     true: the game plays its sounds (h3drive's `sound`: an audio driver, the effects at
@@ -884,6 +885,11 @@ def drawn_recipe(recipe, out):
     # E27 M3 T1a: the scenario screen's backgrounds as the original drew them, one an opening.
     if recipe.get("backgrounds"):
         args += ["--backgrounds", ",".join(str(int(b)) for b in recipe["backgrounds"])]
+    # E27 M3 T1b1: a recipe's own maps (its run's Maps/), a name a line; "all" gives every map.
+    maps = recipe.get("maps", "all")
+    if maps != "all":
+        (here / "maps.txt").write_text("".join(m + "\n" for m in maps))
+        args += ["--maps", str(here / "maps.txt")]
     # E27 M2 T5b1: a sound recipe's effects (h3drive's volume 5): the clips with their sound, its
     # starts and stops listed (`sound`, `quiet`; compared from T5b2 on).
     if recipe.get("sound", False):

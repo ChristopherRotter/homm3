@@ -110,6 +110,9 @@ enum Mode {
         /// The original's draws of the scenario screen's background, an opening each (E27 M3
         /// T1a: `--backgrounds`, a recipe's).
         backgrounds: Vec<u8>,
+        /// A file naming the maps the scenario list reads, one a line (E27 M3 T1b1: `--maps`, a
+        /// recipe's `maps`); none for every map of the installation.
+        maps: Option<PathBuf>,
     },
     /// In a window, at a scale (`None`: the largest that fits).
     Window(Option<u32>),
@@ -132,7 +135,8 @@ pub struct Options {
 
 impl Options {
     /// Parses `[--script <file> | --steps <file> --frames <dir> [--pointer <x>,<y>]
-    /// [--input-step <ms>] [--backgrounds <n>,…] | --window [--scale <n>] [--keys <file>]] [--no-intro]
+    /// [--input-step <ms>] [--backgrounds <n>,…] [--maps <file>] | --window [--scale <n>]
+    /// [--keys <file>]] [--no-intro]
     /// [--video-quality high|low] [--effects <0..9>] [--install <dir>]`; the installation
     /// defaults to `$H3_INSTALL`, then the repository's `original-data/install`.
     ///
@@ -148,7 +152,7 @@ impl Options {
         let (mut script, mut steps, mut frames, mut install) = (None, None, None, None);
         let (mut pointer, mut input_step, mut scale) = (None, None, None);
         let (mut intro, mut window, mut bink_video) = (true, false, true);
-        let (mut effects, mut keys, mut backgrounds) = (None, None, None);
+        let (mut effects, mut keys, mut backgrounds, mut maps) = (None, None, None, None);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -164,6 +168,7 @@ impl Options {
                 "--pointer" => pointer = Some(point(&value()?)?),
                 "--input-step" => input_step = Some(number(&value()?)?),
                 "--backgrounds" => backgrounds = Some(draws(&value()?)?),
+                "--maps" => maps = Some(PathBuf::from(value()?)),
                 "--scale" => scale = Some(number(&value()?)?),
                 "--keys" => keys = Some(PathBuf::from(value()?)),
                 "--window" => window = true,
@@ -199,9 +204,11 @@ impl Options {
                 Ok(())
             }
         };
+        let replay_only =
+            pointer.is_some() || input_step.is_some() || backgrounds.is_some() || maps.is_some();
         lone(
-            !replaying && (pointer.is_some() || input_step.is_some() || backgrounds.is_some()),
-            "--pointer, --input-step and --backgrounds",
+            !replaying && replay_only,
+            "--pointer, --input-step, --backgrounds and --maps",
             "--steps",
         )?;
         lone(!window && scale.is_some(), "--scale", "--window")?;
@@ -213,6 +220,7 @@ impl Options {
                 pointer: pointer.unwrap_or(PARK),
                 input_step: input_step.unwrap_or(INPUT_STEP),
                 backgrounds: backgrounds.unwrap_or_default(),
+                maps,
             },
             (None, None) if window => Mode::Window(scale),
             (None, None) => Mode::Words(script),
@@ -230,6 +238,21 @@ impl Options {
             keys,
         })
     }
+}
+
+/// The maps a replay's file `path` names, one a line (E27 M3 T1b1: a recipe's `maps`); none for
+/// none given.
+fn maps_named(path: Option<&Path>) -> Result<Option<Vec<String>>, String> {
+    path.map(|p| {
+        let text = fs::read_to_string(p).map_err(|e| format!("{}: {e}", p.display()))?;
+        Ok(text
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty())
+            .map(String::from)
+            .collect())
+    })
+    .transpose()
 }
 
 fn number(s: &str) -> Result<u32, String> {
@@ -259,9 +282,10 @@ fn point(s: &str) -> Result<[i32; 2], String> {
 pub fn run(options: &Options) -> ExitCode {
     let done = match &options.mode {
         Mode::Words(script) => return words(options.intro, script.as_deref()),
-        Mode::Replay { .. } => Drawer::load(&options.install, Bugs::Original)
+        Mode::Replay { maps, .. } => maps_named(maps.as_deref())
+            .and_then(|only| Drawer::load(&options.install, Bugs::Original, only.as_deref()))
             .and_then(|drawer| replay_steps(options, &drawer)),
-        Mode::Window(scale) => Drawer::load(&options.install, Bugs::Fixed)
+        Mode::Window(scale) => Drawer::load(&options.install, Bugs::Fixed, None)
             .and_then(|drawer| in_window(options, *scale, &drawer)),
     };
     match done {
@@ -345,7 +369,7 @@ struct Drawer {
 impl Drawer {
     /// The layout (`clients/layouts/shell.toml`) and its assets from `install`'s archives, read
     /// by their tables in one batch (CLT-Q2).
-    fn load(install: &Path, bugs: Bugs) -> Result<Self, String> {
+    fn load(install: &Path, bugs: Bugs, maps: Option<&[String]>) -> Result<Self, String> {
         let path = assets::clients_dir().join("layouts").join("shell.toml");
         let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
         let layout = look::parse_layout(&text).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -356,7 +380,7 @@ impl Drawer {
         for (name, bytes) in names.iter().zip(lods.batch(&names)?) {
             batch.add(name, &bytes).map_err(|e| e.to_string())?;
         }
-        let menus = menus(&layout, &batch, &lods, install, bugs)?;
+        let menus = menus(&layout, &batch, &lods, (install, maps), bugs)?;
         let mut lines = Vec::new();
         let button = crate::audio::clips(install, &[BUTTON_ENTRY.to_owned()], &mut lines)?
             .into_values()
@@ -488,7 +512,7 @@ fn menus(
     layout: &ShellLayout,
     batch: &Batch,
     lods: &Lods,
-    install: &Path,
+    (install, maps): (&Path, Option<&[String]>),
     bugs: Bugs,
 ) -> Result<Menus, String> {
     let tables = assets::load(&assets::default_dir(), assets::ALL)?;
@@ -665,7 +689,7 @@ fn menus(
             layout.scenario.dialog.clone(),
             layout.scenario.list.clone(),
             scenario_texts,
-            crate::maps::entries(install),
+            crate::maps::named(crate::maps::entries(install), maps),
             bugs,
         ),
     })
@@ -849,6 +873,7 @@ fn replay_steps(options: &Options, drawer: &Drawer) -> Result<(), String> {
         pointer,
         input_step,
         backgrounds,
+        ..
     } = &options.mode
     else {
         return Err("not a replay".into());
@@ -1411,6 +1436,7 @@ mod tests {
                 pointer: PARK,
                 input_step: 100,
                 backgrounds: Vec::new(),
+                maps: None,
             }
         );
         assert_eq!(replay.install, PathBuf::from("i"));
@@ -1422,6 +1448,13 @@ mod tests {
         ));
         assert!(parse(&["--steps", "s", "--frames", "f", "--backgrounds", "2"]).is_err());
         assert!(parse(&["--window", "--backgrounds", "1"]).is_err());
+        // E27 M3 T1b1: the maps a recipe gives, a replay's alone.
+        let named = parse(&["--steps", "s", "--frames", "f", "--maps", "m.txt"]);
+        assert!(matches!(
+            named.unwrap().mode,
+            Mode::Replay { maps: Some(m), .. } if m == Path::new("m.txt")
+        ));
+        assert!(parse(&["--window", "--maps", "m.txt"]).is_err());
         let placed = parse(&[
             "--steps",
             "s",

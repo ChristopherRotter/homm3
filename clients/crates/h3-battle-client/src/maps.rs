@@ -40,6 +40,19 @@ pub fn entries(install: &Path) -> Vec<Entry> {
     entries
 }
 
+/// `entries` with the files `names` names alone (any case), in their order; all of them without
+/// names (E27 M3 T1b1: a replay's `--maps`, a recipe's `maps` as the harness's run copies them).
+#[must_use]
+pub fn named(entries: Vec<Entry>, names: Option<&[String]>) -> Vec<Entry> {
+    match names {
+        Some(names) => entries
+            .into_iter()
+            .filter(|e| names.iter().any(|n| n.eq_ignore_ascii_case(&e.file)))
+            .collect(),
+        None => entries,
+    }
+}
+
 /// The list's entry of `map`, read from the file `file`.
 #[must_use]
 pub fn entry(file: String, map: &RawMap) -> Entry {
@@ -131,6 +144,15 @@ mod tests {
         assert_eq!(arrogance.difficulty, 1);
         assert_eq!((arrogance.victory, arrogance.loss), (None, None));
         assert_eq!(arrogance.local(), Some(0));
+        // E27 M3 T1b1: the list's players column, "4/4" in `scn-list-keys` list.
+        assert_eq!((arrogance.players(), arrogance.humans()), (4, 4));
+        // A recipe's maps alone (`--maps`), any case; all without names.
+        let names = [String::from("arrogance.H3M"), String::from("no such.h3m")];
+        let named = named(entries.clone(), Some(&names));
+        assert_eq!(named.len(), 1);
+        assert_eq!(named[0].file, "Arrogance.h3m");
+        assert_eq!(super::named(entries, None).len(), 159);
+        assert!(super::named(Vec::new(), Some(&[])).is_empty());
     }
 
     #[test]
