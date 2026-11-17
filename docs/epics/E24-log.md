@@ -2405,7 +2405,8 @@ baseline stopped at clippy: `master`'s Clients check was red.
 
 - **`master`'s clients build:** #982 (the client lane's E27 M3 T1a) gave `h3_ui::ui::Button` a
   `caption` and #983 (T1a) built the message boxes' buttons without it; each was green alone.
-  Fixed apart, first: #986 (`map-client/fix-message-caption`, `caption: None`).
+  Fixed apart, first: #986 (`map-client/fix-message-caption`, `caption: None`); the client lane's
+  #988 made the same fix, so #986 merged empty.
 - **The cut** (the user, at the start): T1b in two, T1b1 the reading and the recordings (the
   sequences held in `clients/map/to-record.toml` until the viewer plays them), T1b2 the viewer.
 - **Read** (design §5.2): `ai_player_turn` to its heroes' turns, `ai_hero_turn` to its walk,
@@ -2414,10 +2415,11 @@ baseline stopped at clippy: `master`'s Clients check was red.
   five new entries (`tile_or_neighbour_seen`, `ai_hero_walk`, `step_seen`,
   `status_other_turn_step`, `ai_hero_turn`), `ai_boat_planning_caller` renamed `ai_hero_step`,
   `status_other_turn_create`, `ai_player_turn`, `option_blackout_computer` and `view_shown`
-  amended; seven addresses §5.1 cited without an entry mapped (`status_bar_text_set`,
-  `town_deselect`, `hero_deselect`, `path_cancel`, `scenario_conditions_test`, `crt_toupper`,
-  `status_other_turn_vtable`), with `ai_next_hero` and five planning sites of kind 5's step:
-  `check-exe-map` passes again. §5.1 corrected: kind 5's items are 2190 to 2193 (T1a's reading
+  amended; the addresses §5.1 cited without an entry (the town lane's #987 had mapped them from
+  §5.1 meanwhile, mostly `inferred`) now as read: `status_bar_text_set`, `town_deselect`,
+  `hero_deselect`, `path_cancel` (their `hero_list_redraw`), `ai_hero_turn` (`ai_turn_part_d`),
+  `ai_hero_replan` (`ai_turn_part_a`), `scenario_conditions_test`, `crt_toupper`,
+  `status_other_turn_vtable`; `ai_next_hero` and five planning sites of kind 5's step new. §5.1 corrected: kind 5's items are 2190 to 2193 (T1a's reading
   had 2000 to 2003), +0x68 the sand's frame and +0x70 the glass's (swapped there), and 0x419300
   clears a shown path (T1a had it the hero list's update).
 - **Seen first:** the game seeds its generator once, with the running clock's time, so two runs of
