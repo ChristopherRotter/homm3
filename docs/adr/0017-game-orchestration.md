@@ -260,10 +260,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    own heroes (ADR-0016 point 6); the hire dialog's view is its owner's, as on the map.
    **E09's increment 4** (the Tavern; TWN-TAV-002 to -009): **a player's two tavern heroes are its
    own** (as its treasury): its observation gives, by slot, each tavern hero's view (its id and
-   type, its details, its army by slot, its formation and tactics flag: what the original's tavern
-   dialog and its view-only hero screen show; no points, no returning mark), whether or not it owns
-   a Tavern (the agent's call: they tell nothing of another player), and `TavernOffered` tells it a
-   slot's new view (or its emptying) after every change: a week's release and fill (in player, then
+   type, its details as the tavern's held hero screen shows them, its army by slot, its formation
+   and tactics flag: what the original's tavern dialog and the offer's hero screen, held while the
+   right button is, show; no points, no returning mark; E09 decision 134 at T37a: its level,
+   experience, primary skills, spell points, skills and worn artifacts, the backpack's first five
+   places and its count, no learned spells and no offered levels), whether or not it owns
+   a Tavern (the agent's call: they tell nothing of another player), and `TavernOffered` (the view
+   without its lists, then `TavernPartSeen` per stack, skill and artifact: `GameEvent` stays
+   `Copy`, E09 decision 135) tells it a slot's new view (or its emptying) after every change: a week's release and fill (in player, then
    slot order, after the towns' week), a hire's replacement, a hero's return; the game's start's
    fill is the first observation's. **A hire** is told as `HeroHired` (the hero, its type, its
    owner, its tile; its slot to the owner alone) to the owner and to every player that sees the tile
@@ -1493,3 +1497,7 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   Drafted in E09 T33a and T33b (design note `E09-design.md` Part F); batch TWN-4's outcome (T34,
   survey `E09-tavern.md` §14: every row as read) folded in; placed after E08 increment 13's text
   (T122, merged first) where it follows E09 increment 3's.
+- 2026-11-17 (E09 T37a `shared/`; E09 decisions 134, 135, `TWN-Q20`): point 2's increment 4 part:
+  the tavern view is the held hero screen's (no learned spells, no offered levels, the backpack's
+  first five places and its count; the code reading of `tavern_dialog_proc` 0x5D7D7D, the manual
+  and VCMI agreeing), `TavernOffered` with `TavernPartSeen` per part.
