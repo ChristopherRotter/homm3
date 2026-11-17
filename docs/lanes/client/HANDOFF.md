@@ -22,8 +22,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (32); a clip's track played out (34); the main menu's buttons drawn in their order (36); the
   edits type what the keyboard prints (39); a menu opening anew takes the hover (40); a silent
   Smacker clip's frames from their due times (43). Open pull requests: #988
-  (`client/e27-m3-fix-message-caption`, `master`'s client build) and T1b1's
-  (`client/e27-m3-t1b1`, stacked on it): watch both until they merge. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
+  (`client/e27-m3-fix-message-caption`, `master`'s client build) and #990
+  (`client/e27-m3-t1b1`, T1b1's, stacked on it: rebase onto `master` once #988 merges): watch
+  both until they merge. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
   epic's "Placed at the closure", the queue's inbox). E28 and E29 are backlog sketches.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+
   drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`.
