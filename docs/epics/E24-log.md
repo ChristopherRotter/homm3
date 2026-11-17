@@ -2480,3 +2480,44 @@ tests and deny passed), CI's green `master` standing in.
   `RUST_TEST_THREADS=1 check.sh --no-coverage` all gates; coverage outside `check.sh` 100 %
   lines, regions and functions; the window under Xvfb (`--check 10`) on `ai-walk-fast`, `ai-walk`
   and a scratch speed-4 walk (its 15 held draws read back exact).
+
+### M4 T2a1 — the finds told, read and recorded (2026-11-17)
+
+On `map-client/e24-m4-t2a`, the user present at the start (the cut); `master` at #994. Original
+data staged from the PC before it went offline (63 files, SHA-256 checked against the PC's: one
+digest of the sorted hashes, `9421f826…`; the PC's own clone behind GitHub's, nothing
+uncommitted); the setup's baseline stopped at its coverage step by a watcher (fmt, clippy, doc
+tests and deny passed), CI's green `master` standing in.
+
+- **The cut** (the user, at the start; the recommended one): T2 in four by dialog family, T2a the
+  finds told, T2b the questions and choices, T2c a level-up's choice, T2d the map changed by a
+  visit; this session T2a, cut again into T2a1 (the reading and the recordings, the sequences in
+  `clients/map/to-record.toml`) and T2a2 (the viewer) once the reading showed its size (the
+  fallback the user agreed with the cut).
+- **Read** (design §5.3; `docs/exe/map.toml`): `message_box_picture` whole (now `read`: every
+  picture type's DEF, frame and caption); `status_resource_set` 0x416060 and `status_text_set`
+  0x416210 new (kind 6 asked for 5 000 ms by a pile's visit alone; kind 7 by a network game's
+  messages alone: not M4's); `status_resource_create` (now `read`, its items); the finds' boxes of
+  the Windmill, the Learning Stone, the Star Axis, the Temple, the Witch Hut, the Shrines, the
+  Magic Well, a sign, the plain artifact pickup and a pile (its removal: the pickup's sound and
+  the view's middle dissolved in 65 ms steps); `grant_rewards`' boxes located; new entries
+  `plus_count_name_format`, `shrine_text_format`, `artifact_pickup_texts`, `skill_level_names`.
+  The turn's two boxes from the client lane's reading (E27 design §5.1) and §5.1: both begin
+  with the player's name, empty in a single scenario, which CLT-Q100 answered (b) for the shell;
+  T2a2 names the player the same way (no new question).
+- **The harness** (common, additive): the live part's `[[message]]` (`Mem.message_box`) and
+  `[[found]]` (`Mem.found`) tables; the situations' bodies in this lane's `situation.rs` (a pile's
+  `amount`, a Shrine's `spell`, a Witch Hut's `skills`, an event's `rewards`, a hero's
+  `experience`; the bodied objects among the writer's placed objects, refused with quests), a
+  unit test.
+- **Recorded** (each twice, the second run `ok`, the frame at 0 exact): `find-windmill`,
+  `find-stone`, `find-axis`, `find-temple`, `find-witch-hut`, `find-shrine`, `find-sign` (30
+  timeline lines, 7 screens each), `find-pile` (98, 37), `find-artifact` (32, 13), `find-event`
+  (40, 11: three boxes), `turn-no-town` (36, 10: GENRLTXT 7, then ArrayTxt 128); situations
+  `seq-find-*` and `seq-turn-no-town`; their timelines and live parts in `map/timelines/`. Every
+  box's texts and pictures as read; the pile's gold as the format stores it (700 is 70 000 gold).
+- **Checked:** `h3-map-view`'s tests at 100 % lines, regions and functions (`cargo llvm-cov -p
+  h3-map-view`, `H3_INSTALL` empty); the clients workspace's fmt and clippy clean; `cargo xtask
+  verify --scope map-client --summary --with-original-data` no failing step; `scripts/exe.py
+  check` and `cited` clean. No existing situation's map changes (every new branch needs a body or
+  an experience), so `drawn` was not run. PR #996.

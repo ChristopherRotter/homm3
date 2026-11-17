@@ -1000,6 +1000,24 @@ def turn_toml(mem, t):
             f"heroes = {heroes}\nboats = {boats}\n")
 
 
+def message_toml(box, t):
+    """A message box opened in a sequence (E24 M4 T2a1, design §5.3), a `[[message]]` table of
+    the live part (after the `[[turn]]` tables): its millisecond, its place (x, y, width,
+    height), its texts (the text, then the pictures' captions), its pictures ([DEF, frame,
+    caption]) and its buttons' ids, as memory holds them (`Mem.message_box`): what the box the
+    viewer lays out from a find's facts is checked against (Part B: the engine's events)."""
+    return (f"\n[[message]]\nat = {t}\nbox = {box['box']}\ntexts = {json.dumps(box['texts'])}\n"
+            f"pictures = {json.dumps(box['pictures'])}\nbuttons = {box['buttons']}\n")
+
+
+def found_toml(found, t):
+    """The status window of a resource found built in a sequence (kind 6; E24 M4 T2a1, design
+    §5.3), a `[[found]]` table of the live part: its millisecond, the resource, the amount and
+    the text (`Mem.found`)."""
+    return (f"\n[[found]]\nat = {t}\nresource = {found['resource']}\n"
+            f"amount = {found['amount']}\ntext = {json.dumps(found['text'])}\n")
+
+
 def known_key(name):
     """Whether `name` is a key a sequence may press: a direction key, `ctrl+` before it or not,
     a hotkey's letter or Space."""
@@ -1234,6 +1252,9 @@ def sequence(entry, out):
         # Each turn's start the sequence reaches (E24 M4 T1a, design §5): its facts as memory
         # holds them in the millisecond the current player or the date changed.
         turns = []
+        # Each message box opened and each status window of a resource found built (E24 M4
+        # T2a1, design §5.3): their facts in the millisecond they first show, after the turns'.
+        shown_box, shown_found, finds = None, mem.status_shown() == 6, []
         for i in range(entry["ms"]):
             t = game.clock("step 1", settle_reads=500)
             # Each step one millisecond (M2 T6a, the reviewer's R3-6): an input at a skipped one
@@ -1261,6 +1282,15 @@ def sequence(entry, out):
             if [states[-1][k] for k in ("date", "player")] != [states[-2][k]
                                                                  for k in ("date", "player")]:
                 turns.append(turn_toml(mem, t - t0))
+            box = mem.message_box()
+            key = None if box is None else (box["box"], box["texts"], box["pictures"])
+            if key is not None and key != shown_box:
+                finds.append(message_toml(box, t - t0))
+            shown_box = key
+            found = mem.status_shown() == 6
+            if found and not shown_found:
+                finds.append(found_toml(mem.found(), t - t0))
+            shown_found = found
         if sound:
             # `<ms> <channel> <length ms> <loops>` from the sequence's 0, each sample started
             # since the map's own sounds settled (the channel: xdd.dll's numbering of the game's
@@ -1281,7 +1311,7 @@ def sequence(entry, out):
         finally:
             game.stop()
     (out / "live.toml").write_text("# The original's live part at the sequence's 0 (h3map.py "
-                                   "frames).\n" + live + "".join(turns))
+                                   "frames).\n" + live + "".join(turns) + "".join(finds))
     with open(out / "states.jsonl", "w") as f, open(out / "frames.jsonl", "w") as g:
         for s in states:
             f.write(json.dumps(s) + "\n")

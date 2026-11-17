@@ -179,7 +179,12 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   the status window's kind 5, cut in two by the user at its start (2026-11-17): T1b1, the reading
   and the recordings (**done** 2026-11-17, the log's "M4 T1b1"), T1b2, the viewer playing them
   (**done** 2026-11-17, whole: the user kept it uncut; the log's "M4 T1b2");
-  T2, a visit's results; T3, a record's start (after the server lane's whole-game record
+  T2, a visit's results, cut in four by the user at its start (2026-11-17, by dialog family):
+  T2a, the finds told (the box with pictures, the status window's kinds 6 and 7, the turn's two
+  boxes T1a left), cut again at its start (the agreed fallback): T2a1, the reading and the
+  recordings (**done** 2026-11-17, the log's "M4 T2a1"), T2a2, the viewer; T2b, the questions and
+  choices, T2c, a level-up's choice, T2d, the map changed
+  by a visit; T3, a record's start (after the server lane's whole-game record
   and the adventure lane's object identity); T4, a record played; T5, the battles handed over
   (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
   with the user.

@@ -1,0 +1,12 @@
+# A find told (E24 M4 T2a1; clients/map/to-record.toml `find-stone`; E24 design §5.3):
+# a Learning Stone's experience (ADVEVENT 143, the experience picture; the hero at 3 200, level 4,
+# so 1 000 more is no level).
+# Red's hero on (4, 4) steps right onto it (its entrance (5, 4)); Red's town out of the way,
+# so that no visit's scenario test warns of a town lost; Blue's hero far off in the fog.
+size = 36
+terrain = "grass"
+heroes = [{ at = [4, 4], class = 2, experience = 3200 }, { at = [32, 32], owner = 1 }]
+towns = [{ at = [16, 12], faction = 0, owner = 0, buildings = "fort" }]
+objects = [{ def = "AVSgzbo0.def", at = [5, 4] }]
+view = [0, 0, 0]
+hidden = [[20, 16, 35, 35]]
