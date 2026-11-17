@@ -1507,7 +1507,8 @@ are 10 ms earlier (the Smacker copy's open fell inside a clock step; its kept li
   §4.1); a skip of a Smacker copy (§2.1); a hot-seat restart (§4.6).
 - **Recipes for M3** (M1 T3's shot review): the date's field order (§3.5: `scn-load`'s
   `games-time` gives day = month, and Wine's time zone enters the digest: a day above 12 and a
-  pinned TZ); `up-past-top` never reaches the list's first row (§3.4: Page Up first);
+  pinned TZ); `up-past-top` never reaches the list's first row (§3.4: Page Up first; done at M3
+  T1b1, `up-at-first`, §19.5);
   `popup-hero-arrow` pressed a computer row (§3.13's hints: row 2's arrow); `scn-load` size-1
   changes nothing (both saves XL: a save of another size); the Random Map button in a load (`adv-load`,
   §3.16); Begin after `tab-again` (§3.16); `scn-begin-none`'s `what` line (530 is a filter's,
@@ -2479,3 +2480,91 @@ The list and its panel (128's command, GENRLTXT 503), the right press on the fla
 teams' dialog, 0x576540) and on the labels and texts (`scn-right`), the description's scroll bar,
 the difficulty's presses and Begin (T2), the advanced options (T3), the hot seat's mode (T4), the
 random map (T5).
+
+## 19. The list (M3 T1b1, 2026-11-17)
+
+Read from `Heroes3.exe` for a new single scenario's list (§3.3, §3.4 corrected where marked) and
+recorded again (`scn-list-keys` with §6.4's fix; `scn-sort`, `scn-filter`, `scn-new` as kept).
+The client: `h3_view::shell::scenario` (the list), `h3_ui::scrollbar`, the layout's
+`[scenario.list]`.
+
+### 19.1 The items and the rows
+
+- **The constructor's items** (`def_button_create` 0x455EF0 with frames 0 and 1, no hotkey): the
+  filters 137 to 141 (`scsmbut` … `scalbut.def`) at (161 + 47 i, 52, 44, 33); the columns 190 to
+  195 at (26, 92, 31, 28), (58, 92, 32, 28), (91, 92, 32, 28), (124, 92, 184, **33**), (309, 92,
+  32, 28), (342, 92, 32, 28); the panel 101 (`SCSelBck.pcx`, flags 0x800) and the title 361
+  (`medfont.fnt`, colour 8, alignment 5) hidden at once (`dialog_item_send`(6, 6)), shown by
+  (6, 5). The rows 142 to 159 are text items at (57, 122 + 25 i, 314, 25) with no text: a row
+  takes the press from x 57, not under the players column.
+- **The redraw's rows** (`scenario_dialog_redraw` 0x584550): with the list shown GENRLTXT 511 at
+  (25, 52, 132, 32) colour 2; then min(count, rows) rows from the top, each within the list: colour
+  5 for the selection, else 4, `smalfont.fnt` alignment 5; "%d/%d" (0x679DC8) of +6 and +8 at (26,
+  y − 1, 30, 25); GENRLTXT 512 to 515 by the size (36, 72, 108, another) at (59, y − 1, 30, 25);
+  `ScSelC.def` by the format (0x0E 0, 0x15 1, 0x1C 2, another none) at (91, y); the name (184
+  wide) at (125, y − 1); `scnrvict.def` +0x30 (0 to 11, else 11) at (309, y); `scnrloss.def` +0x7C
+  (else 3) at (342, y); y = 123 + 25 i. The client computes +6 and +8 from the seats (the colours
+  anyone plays, those a human may: `scn-list-keys` exact with them).
+
+### 19.2 The scroll bar (`h3_ui::scrollbar`)
+
+`scrollbar_create` 0x5960D0 with (375, 92, 16, 480), 10 ticks, blue (`SlideBuV.def`, the track
+`sliderV.pcx`), a page of 18 rows, no arrow keys. Its rules (`scrollbar_proc` 0x5964E0 and its
+helpers, read whole for a vertical bar): the module's notes. What the list needs: an arrow steps
+at the **release** (drawn pressed meanwhile, no repeat while held); the track pages by 18 at the
+press; the thumb drags; the callback (`scenario_list_scrolled` 0x57C990: the top the value, then
+`scenario_select` with the selection and the redraw flag) only on a change since the last report
+(+0x38: a set by the screen counts as one, so the next press reports even unchanged).
+
+### 19.3 The list's commands (§3.3, §3.4 corrected)
+
+- **Shown** (`scenario_list_toggle` 0x580A70): each showing resets the bar to count − rows + 1
+  ticks and sets it to the top; the first builds (`scenario_list_finish`: sorted by key 2, the
+  recorded key 1, `scenario_find_by_name` 0x58D3E0: the kept file's row selected and on top, the
+  top at most count − rows; the bar's value the top).
+- **The keys** (`scenario_dialog_proc` 0x587D00) redraw whole first (0x587ED5), then select:
+  Up nothing on the first row (no redraw), Down nothing on the last; Page Up the top less rows − 1
+  (at least 0), Page Down more (at most count − rows; **nothing in a list of one page**), the
+  selection keeping its distance from the top (a selection off the page too; none past the list;
+  before it the original selects a negative index, the client nothing: *provisional*).
+- **A row** (`text_item_message` 0x5BC440): the click at the release wherever the mouse is
+  (CLT-Q43 (2)'s rule: the client's over the row); within 400 ms of the last row's click or the
+  screen's opening Begin, else selected (§3.4).
+- **A sort** redraws whole (0x5852BF) before the click selects row 0, which it already is (+0x374
+  0): the select's partial redraw follows every sort (§19.4). **A filter** selects without a
+  redraw, then redraws whole; it sets the size mark 189 to its own size's frame first (0x585EFB),
+  which the select replaces (T2: an empty list's panel keeps it).
+
+### 19.4 The partial redraw (CLT-Q138)
+
+`scenario_select` 0x585500 with the redraw flag and an unchanged selection redraws part
+(0x585A06): the panel 101, the title, the filters, the columns, the bar, then the info draw and the
+rows; every other item keeps its pixels. Seen in the captures: after any sort the size mark shows
+the previous selection's size (`scn-sort` name-1 and others: L for "All for One", an M map); the
+panel's opaque bottom edge (rows 574 to 590, x 393 to 577) covers Begin's last row; the flags'
+strip, restored from its copy of the background (`scenario_team_flags` 0x585300, kept at its first
+call) without the allies' label drawn again, loses the label's colon column at x 456 (rows 413,
+418). After a move of the bar, a row's click on the selection, a key that keeps the selection, a
+sort. The client, original's profile: the items the partial redraw leaves drawn first with the size
+mark's last whole frame, those it draws over them after, the strip as a stale rectangle
+(`Look::stale`); the client's profile draws whole (CLT-Q138, recommended (b)).
+
+### 19.5 The recordings and the comparisons
+
+- **`scn-list-keys`** recorded again (§6.4's item): seven Page Ups after `up-past-top` bring the
+  top to the list's first row (`page-up-first`), Up there changes nothing (`up-at-first`); the 16
+  shots kept, both runs the same.
+- **`drawn`:** `scn-new` 31 of 31, `scn-list-keys` 16 of 16, `scn-filter` 7 of 7, `scn-sort` 5 of
+  13 exact. The 8 others (size, players, victory and loss, each way) differ only in the order of
+  their ties (decision 12): every row's key column is the original's, the names among equal keys
+  are not (the original's library sort over the folder's order). Since T1b1 `drawn` gives a
+  recipe's `maps` to the viewer (`--maps`): `scn-info` 19 of 21 (row-08 and row-15: the victory's
+  text, T2), `scn-begin-filter` 3 of 6 and `scn-begin-none` 0 of 4 (the empty list's panel and
+  Begin's message, T2), `scn-difficulty` 3 of 8 (the presses, T2; `impossible-list`: the build sets
+  `scenario_last_difficulty` from the selected record's +0x33C, 0x58314E).
+
+### 19.6 Not built (T1b2 on)
+
+GENRLTXT 503 while the list is read (§3.3: drawn after the items, before the build; a shot of it
+needs the read held), the right press's popups on the columns, the filters, the bar and the
+labels and texts (`scn-right`), the flags' strip's teams dialog (0x576540); T2's items above.

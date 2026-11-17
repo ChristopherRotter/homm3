@@ -756,7 +756,8 @@ impl Scenario {
     /// A list key (`scenario_dialog_proc` 0x587D00, the list showing): Up and Down the selection
     /// by a row (Up nothing on the first, Down nothing on the last), the top following it; Page
     /// Up the top up a page less one (to 0 at most), Page Down down one (to the last page at
-    /// most; nothing in a list of one page), the selection keeping its row (none past the list).
+    /// most; nothing in a list of one page), the selection keeping its distance from the top
+    /// (none past the list; before it, *provisional*: the original selects a negative index).
     fn scroll(&mut self, scroll: Scroll) {
         let count = self.listed.len();
         let rows = usize::from(self.look.rows);
@@ -764,7 +765,9 @@ impl Scenario {
         let Some(selected) = self.selected else {
             return;
         };
-        let row = selected.checked_sub(self.top);
+        // The selection's row from the top, negative above it (its distance kept by a page).
+        let signed = |n: usize| i64::try_from(n).unwrap_or(i64::MAX);
+        let row = signed(selected) - signed(self.top);
         let before = self.selected;
         match scroll {
             Scroll::Up => {
@@ -800,7 +803,8 @@ impl Scenario {
                     return;
                 }
                 self.set_bar();
-                if let Some(target) = row.map(|r| self.top + r).filter(|&t| t < count) {
+                let target = usize::try_from(signed(self.top) + row).ok();
+                if let Some(target) = target.filter(|&t| t < count) {
                     self.selected = Some(target);
                 }
             }

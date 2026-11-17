@@ -332,7 +332,14 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   reaches it as `Key::Other` (it skips the start, E27 M3 T1a). **The scenario screen's
   background** is drawn at random (E27 M3 T1a): under the harness the original's draws are fixed
   by its frozen clock, and the viewer takes them from a recipe's `backgrounds` (0 at an opening
-  past them), so a recipe whose original opening shows `gamselb1.pcx` lists it. **A keyboard layout
+  past them), so a recipe whose original opening shows `gamselb1.pcx` lists it. **A recipe's
+  maps** (E27 M3 T1b1): `drawn` gives a recipe's `maps` to the viewer (`--maps`); without it the
+  viewer lists every shipped map, the original only the recipe's. **The scenario screen's
+  redraws** (E27 M3 T1b1, CLT-Q138): each command of the screen is a whole redraw or the select's
+  partial one (`Scenario::whole`, `partial`); a new command that leaves it as it was draws the
+  original's profile with the last one's stale pixels (design §19.4): say which in the same
+  change. **Ties in `scn-sort`** (decision 12): 8 shots stay not exact by design; compare their
+  key columns row by row, not their digests. **A keyboard layout
   under Xvfb** (E27 M2 T7b): this sandbox's Xvfb ignores every keymap change at run time
   (`setxkbmap`, `xmodmap`, `xkbcomp` all exit 0 and change nothing); start it with the layout
   as its default instead: copy `/usr/share/X11/xkb`, replace the copy's `symbols/us` by a file

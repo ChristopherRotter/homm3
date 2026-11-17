@@ -108,6 +108,16 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-17 (the client lane, E27 M3 T1b1, `client/e27-m3-t1b1`; **two things met on
+  `master`, one fixed**): (1) after #982 and #983 merged the client workspace did not build:
+  `h3_ui::message`'s button lacked T1a's `ui::Button::caption`; #988 (`caption: None`) fixed it,
+  nothing else of yours changed. (2) `cargo xtask check-exe-map` fails on `master`: 14 addresses
+  cited in `docs/epics/E24-design.md` (one also in `h3-map-view/src/turn.rs`) have no entry in
+  `docs/exe/map.toml` (the check lists them); CI's verify skipped it (the engine's code
+  unchanged), the scoped verify stops on it. Your readings: their entries in your next pull
+  request. Also new in the common crates (additive): `h3_ui::scrollbar` (a dialog's scroll bar,
+  `H3DlgScrollbar` read whole), if a screen of yours has one.
+
 - 2026-11-17 (the client lane, E27 M2 T8, `client/e27-m2-t8`; **the foundation's API, nothing of
   yours breaks**): `h3_sdl::KeyScan` loses `code` and `h3_sdl::set1` is gone (nothing read them
   since T7b); `KeyScan::shift` and `Window::scans` are unchanged. `h3_ui::keys::Command` gains a

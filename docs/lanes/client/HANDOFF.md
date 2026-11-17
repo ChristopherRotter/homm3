@@ -5,23 +5,25 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 46). **M1 and M2 closed** (2026-11-13, 2026-11-16; `E27-archive.md`; the build record
+  to 47). **M1 and M2 closed** (2026-11-13, 2026-11-16; `E27-archive.md`; the build record
   `E27-log.md`; the readings `E27-design.md` §1 to §17, M3's from §18): the start's clips and
   their sound, start-up loading, the main menu, New Game's and Load Game's menus, Quit, the
   stubs and the client's own pack, the Multiplayer dialog and the hot seat's names, the edits;
   `drawn` exact on every recipe the shell builds. **M3** (refined at M2 T8, decision 44: every
   shipped map listed and read whole, Begin a notice after the loading bar, Options to M4):
-  **T1a done** (2026-11-17, decisions 45 and 46: T1 cut in two; the scenario screen of a new
-  single scenario, the list hidden, the kept map's information panel; `scn-new` 30 of 31 exact;
-  CLT-Q137 (b): the adventure map's arrow after the busy cursor for the comparisons only).
-  **Next: M3 T1b** (the list: the queue). Decisions to carry: the dialogs' input one
+  **T1a done** (2026-11-17, decisions 45 and 46: the frame and the information panel), **T1b1
+  done** (2026-11-17, decision 47: T1b cut in two; the list, its sort, filters, keys and scroll
+  bar, `h3_ui::scrollbar`; 59 of 67 exact, the rest the ties' order; CLT-Q138 open).
+  **Next: M3 T1b2** (the list's right press, the teams dialog, GENRLTXT 503: the queue).
+  Decisions to carry: the dialogs' input one
   implementation (20; `h3_ui::input`); the shell's code as the battle's (21); decision 22's
   fixes; every pixel of a Smacker clip through its palette (24); every clip's sound at the
   effects setting (27); every Bink frame whole (28); the start's fade from the screen as shown
   (32); a clip's track played out (34); the main menu's buttons drawn in their order (36); the
   edits type what the keyboard prints (39); a menu opening anew takes the hover (40); a silent
-  Smacker clip's frames from their due times (43). Open pull request: #982 (`client/e27-m3-t1a`), T1a's
-  (watch it until it merges). E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
+  Smacker clip's frames from their due times (43). Open pull requests: #988
+  (`client/e27-m3-fix-message-caption`, `master`'s client build) and T1b1's
+  (`client/e27-m3-t1b1`, stacked on it): watch both until they merge. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
   epic's "Placed at the closure", the queue's inbox). E28 and E29 are backlog sketches.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+
   drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`.
@@ -29,13 +31,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*`, `E27*` (since E17 closed: #866) and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first (at M1 T3: one per area, the
-  shots as contact sheets). **Open:** none. Answered, waiting on other lanes: CLT-Q63 (a), Q65 (b), Q69 (a) (the queue's inbox,
+  shots as contact sheets). **Open:** CLT-Q138 (the list's partial redraw; recommended (b),
+  built so). Answered, waiting on other lanes: CLT-Q63 (a), Q65 (b), Q69 (a) (the queue's inbox,
   "E17's leftovers"). `CLT-STUB-1` (a server's seat lacks the other hero's Orb and Cloak),
   `CLT-STUB-4` (no Auto Combat switch in a live game's battle), `CLT-STUB-5` (a hot-seat
   battle between two of the host's humans) and `CLT-STUB-6` (the Multiplayer dialog's network
   modes), `CLT-STUB-7` and `-8` (Campaign, Tutorial) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q138, CLT-STUB-9.
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q139, CLT-STUB-9.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens) and the 40 non-campaign MP3s; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -55,6 +58,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-17, E27 M3 T1b1 (done; `client/e27-m3-t1b1`).** T1b cut in two with the user
+  (decision 47). The PC's 64 files and the manuals staged at once (SHA-256 checked); `master`'s
+  client build broken by #982 against #983: fixed in #988 first. Read `H3DlgScrollbar` whole and
+  the list's draws, keys, sorts, filters and redraws; built `h3_ui::scrollbar` and the list;
+  CLT-Q138 asked (the partial redraw, reproduced for the comparisons). `scn-list-keys` recorded
+  again; 59 of 67 exact (the 8 others the ties' order, decision 12). Record: `E27-log.md`, "M3
+  T1b1".
 - **2026-11-17, E27 M3 T1a (done; `client/e27-m3-t1a`).** T1 cut in two with the user (decision
   45). The original data staged at once (64 files and the manuals, checked by SHA-256); the
   baseline stopped before coverage (`cargo-llvm-cov` survived the watcher: TRAPS). Read the
@@ -68,9 +78,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   as kept (the full Smacker starts not played); the review's 17 findings fixed; `drawn` all exact; CLT-Q129 to CLT-Q136 asked and
   answered; M2 archived, M3 refined; the README's row in `shared/e27-m2-closure` (#978). The VM
   restarted twice and the disk filled once (TRAPS). Record: `E27-log.md`, "M2 T8".
-- **2026-11-16, E27 M2 T7b (done; `client/e27-m2-t7b`).** Kept whole. The original data staged
-  at once (64 files, checked by SHA-256); the baseline stopped by a watcher before coverage. Built
-  the edits' text input and their keys in the key table on T7's edit; `drawn` as recorded; the
-  window typed under a German layout, once Xvfb took it as its default keymap (it ignores
-  changes at run time: TRAPS). Coverage closed at 100 % (two regions). No new question. Record:
-  `E27-log.md`, "M2 T7b".

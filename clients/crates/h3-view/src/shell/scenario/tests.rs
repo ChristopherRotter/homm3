@@ -637,8 +637,11 @@ fn the_keys_move_the_selection_and_the_top() {
     assert_eq!(off.rows(), (Some(0), 18));
     key(&mut off, Scroll::PageUp);
     assert_eq!(off.rows(), (Some(0), 1));
+    // Page Down keeps its distance from the top: one row above it, row 17 of the next page.
+    key(&mut off, Scroll::PageDown);
+    assert_eq!(off.rows(), (Some(17), 18));
     key(&mut off, Scroll::Down);
-    assert_eq!(off.rows(), (Some(1), 1));
+    assert_eq!(off.rows(), (Some(18), 18));
 }
 
 #[test]
