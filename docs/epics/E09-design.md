@@ -2133,7 +2133,10 @@ it stands (`h3-game`'s `town/pool.rs`, `setup.rs`, `state/battle.rs`; `h3-towns`
 - *As built* (T37a, decisions 133, 136): `HeroStatus::Offered`; each pool entry its record
   (`Option<HeroId>`: the build's placed and generated heroes' by type, the first of a repeated type,
   a drawn type's from its first draw) and its away record (`Away`: points left, the day's maximum,
-  formation, tactics, army; a new one with no points, loose, tactics on); per player a `Tavern`
+  formation, tactics, army; a new one with no points, loose, tactics on; two flags for the speed
+  gate, `stale`, its points to derive at the next turn start, and `full`, its record's spell points
+  at their maximum since a fill, which the day's regain skips: `day_mana` never changes points at
+  the maximum, so the result is the same); per player a `Tavern`
   (faction, two slots and their marks): **a slot names its hero's type**, its entry the record (the
   agent's call; the observation names the id). `Progression::record` grows the level seeds and the
   sexes by one. The factions come from the build's resolved choices (`HeroPool::set_factions`); a
@@ -2326,7 +2329,10 @@ hero reads the facts.
   turn ended. The clear writes the pool's block only when a mark is set (a fork's day costs
   nothing more otherwise).
 - *As built* (T37a): `town::tavern::start_turn` after the adventure's turn start (its heroes
-  on the map and its garrison heroes; none draws); `clear_marks` at `EndTurn` for the player and
+  on the map and its garrison heroes; none draws), deriving only a stale hero's points (a fill's;
+  nothing else changes what the derivation reads off the map, so the others' are its value
+  already: `bench-check`, a derivation every turn start cost `day-start-builds-36` +11 %);
+  `clear_marks` at `EndTurn` for the player and
   in the day's advance after the week's block for all, each writing only where a mark is set. No
   mark is set before T38b (a test helper sets one).
 

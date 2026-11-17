@@ -4,6 +4,7 @@
 //! TWN-SET-007), from the setup stream before every other draw of the build (the random towns'
 //! factions next, [`super::build`], then the main towns' heroes, [`super::heroes`]).
 
+use alloc::collections::BTreeSet;
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -262,17 +263,13 @@ impl HeroPool {
         }
     }
 
-    /// The records whose spell points are at their maximum, unchanged since ([`Away::full`]), in
-    /// id order.
-    pub(crate) fn full_records(&self) -> Vec<HeroId> {
-        let mut full: Vec<HeroId> = self
-            .records
+    /// The records whose spell points are at their maximum, unchanged since ([`Away::full`]).
+    pub(crate) fn full_records(&self) -> BTreeSet<HeroId> {
+        self.records
             .iter()
             .filter(|record| record.away.as_ref().is_some_and(|away| away.full))
             .filter_map(|record| record.hero)
-            .collect();
-        full.sort_unstable();
-        full
+            .collect()
     }
 
     /// Per core hero class by index, how many types of the class are free and may be taken by

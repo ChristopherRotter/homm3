@@ -5,37 +5,33 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E09** (towns): increments 1 to 3 closed (T10, T20, T30; `E09-archive.md`, design notes Parts A
-  to E). **Increment 4** (the Tavern; decisions 98–128, `TWN-Q15` to `-Q19`): T31 to T34 done
-  (batch TWN-4: every row as the reading, survey `E09-tavern.md` §14); **T35 cut in two**
-  (`TWN-Q19`, decision 125): **T35a done**, the drafts in ADR-0013, -0016, -0017, -0028 with T34's
-  verdicts and decisions 126 (every day's start clears the returning marks) and 127 (every record
-  regains its day's spell points: TD-20's spell-point half amended); **T35b done** (decisions 129
-  to 131: `StreamId::TAVERNS`, the flags 42 and 43, the base faithful hash 0x6ba8109889b34a25);
-  **T36 done** (decisions 130, 132: the town part v7, the tavern weights harvested, the AB pack's
-  overrides of the base records, the hire's price). **Next:** T37a (the pool, the draw and the
-  fills; `QUEUE.md`), its cut confirmed at its start.
-  The guild and the services are increment 5, travel and the Grail 6. Waiting elsewhere:
-  `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment 5), `TWN-STUB-2` (the
-  victory conditions).
-- **Open pull requests:** T36's #980 (`town/e09-t36`, `cross-lane`; rebased onto `master` after
-  T35b's #979 was squash-merged); watch it until it merges.
+  to E). **Increment 4** (the Tavern; decisions 98–136, `TWN-Q15` to `-Q20`): T31 to T36 done;
+  **T37a done** (whole, decisions 133–136: the pool's records and slots, the draw, the start's and
+  the week's fills, the turn's points and marks, the views as the held hero screen shows them,
+  `TavernOffered` with `TavernPartSeen`). **Next:** T37b (the map's customised types; `QUEUE.md`),
+  its cut confirmed at its start; then T38a (the hire). The guild and the services are increment
+  5, travel and the Grail 6. Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6`
+  and `-13` (increment 5), `TWN-STUB-2` (the victory conditions).
+- **Open pull requests:** #984 (`shared/e09-t37a-tavern-view`, ADR-0017 point 2 and
+  `docs/06-security.md`, docs only; merge first) and T37a's (`town/e09-t37a`, `cross-lane`);
+  watch both until they merge.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
   experiments. The rest of those crates is the adventure lane's: a change there is `cross-lane`,
   merged in order with its pull requests.
-- **Versions:** the lane's own: the town state hash (`TOWN_STATE_HASH_VERSION`, v3: T25a's counts
-  and Portal) and the town ruleset part (`TOWN_RULESET_HASH_VERSION`, v7: T36's tavern weights and price),
-  both in `h3-towns`; the adventure lane's (game state hash v32, adventure state hash v25 by T28a,
-  map import v23, replay format v16 by T28a), the env's (v11 by T28a) and the protocol's (v67 by
-  T28b2; v69 on `master` now) are bumped `cross-lane` (each task's record in `E09-log.md`; the
-  plan in design §77). Shared: core ruleset hash v53, pack format v52 (T24), quirk flags 43 and `StreamId::TAVERNS`
-  (8) by T35b (no version moved; the base faithful hash 0x6ba8109889b34a25).
-- **Ids** (next): questions `TWN-Q20`; decisions 133; quirks `TWN-QUIRK-14` (`-12`, `-13` entered
-  by T35b, their tests with T38b, T39b); stubs `TWN-STUB-19` (`-11`, `-12` planned by §34; `-15` to `-18` by §71, §77); rules:
-  design §55's all built, TWN-TAV-001 to -009, GAM-DEC-010, GAM-MAN-003 planned; experiment batch
-  `TWN-5` (TWN-4 run by T34); disputes `TD-24`; quirk candidates `T-18`.
-  ADR-0028 is the lane's; no drafts open (increment 4's moved by T35a).
+- **Versions:** the lane's own: the town state hash (`TOWN_STATE_HASH_VERSION`, v3) and the town
+  ruleset part (`TOWN_RULESET_HASH_VERSION`, v7: T36), both in `h3-towns`; the adventure lane's
+  (**game state hash v33 by T37a**, adventure state hash v25 by T28a, map import v24 by E08's T123b:
+  T37b takes v25, replay format v16 by T28a), the env's (v11 by T28a) and the protocol's (**v70 by
+  T37a**) are bumped `cross-lane` (each task's record in `E09-log.md`; the plan in design §77).
+  Shared: core ruleset hash v53, pack format v52 (T24), quirk flags 43 and `StreamId::TAVERNS` (8)
+  by T35b.
+- **Ids** (next): questions `TWN-Q21`; decisions 137; quirks `TWN-QUIRK-14` (`-12`, `-13` entered
+  by T35b, their tests with T38b, T39b); stubs `TWN-STUB-19` (`-11`, `-12` planned by §34; `-15`
+  to `-18` by §71, §77); rules: TWN-TAV-001, -002, -005 built (T37a), TWN-TAV-003, -004, -006 to
+  -009, GAM-DEC-010, GAM-MAN-003 planned; experiment batch `TWN-5`; disputes `TD-24`; quirk
+  candidates `T-18`. ADR-0028 is the lane's; no drafts open.
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at
   each round; the user confirms seams and ADRs; tokens first.
 
@@ -44,6 +40,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-17 — T37a: the pool in the game, the views, protocol v70
+
+Baseline 2f6ed77 (#980 merged; the setup's baseline lost to a VM restart, CI's green `master`
+stood in). The user kept T37a whole (decision 133) and, after the agent's check that the
+original's tavern shows the offer's whole hero screen as a held popup, chose its parts exactly
+(decision 134) and a head with one part event (135). The user's computer was connected at the
+start only: 15 files staged (the four LODs, both executables, both tars, the saves, the manuals;
+SHA-256 checked). Built: design §61 to §63, §68, §75 (game state hash v33, protocol v70); the
+week-start benches measured, one design pass, re-baselined (+13 to +99 %: the week's fill); the 89
+replays re-recorded; #984 the `shared/` half.
 
 ### 2026-11-17 — T35b and T36: the taverns' stream, the two flags, the town part v7
 
@@ -65,14 +72,3 @@ the editor, both bitmap LODs, both tars, the saves; SHA-256 checked). Docs only:
 into the ADRs with batch TWN-4's rows, the glossary, `docs/06-security.md`'s section; the drafts'
 point 9 corrected to §77 (no adventure state hash); T35b moves no version (the flags move the
 profiles' hashes only). The adventure lane's inbox told.
-
-### 2026-11-16 — T34: batch TWN-4
-
-Baseline 77c2eec (#969 merged; the setup ran the light gates only, CI's fingerprint on `master`).
-The user kept T34 whole (decision 123) and consented to the `cross-lane` writer and
-`h3-experiment` changes. The user's computer was connected at the start only: the client lane's 64
-files and the manuals and help files staged (70, SHA-256 checked). Built: the writer's Tavern and
-Den; the harness's taverns, guild, draws with ranges and steps (README "Taverns and the Thieves'
-Guild"); three specs and recipes, two runs each, the scoring (survey §14). Two points the reading
-missed (the new day's clear of the mark, the day's spell points of every record) wait for T35's
-checkpoint. Inbox notes in the adventure, client and map-client lanes (rebuild `xdd.dll`).

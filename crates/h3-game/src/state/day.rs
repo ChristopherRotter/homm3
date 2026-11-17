@@ -311,7 +311,7 @@ impl GameState {
             .enumerate()
             .filter(|&(index, _)| {
                 let id = u16::try_from(index).map(h3_contracts::HeroId::new);
-                id.is_ok_and(|id| full.binary_search(&id).is_err())
+                id.is_ok_and(|id| !full.contains(&id))
             })
             .map(|(index, details)| (index, h3_heroes::day_mana(details, core)))
             .filter(|&(index, mana)| self.heroes[index].mana != mana)

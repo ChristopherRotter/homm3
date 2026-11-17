@@ -6971,8 +6971,24 @@ fn check_conservation(
     if !battles.is_empty() {
         return check_battle_end(rules, (before, after), events, &battles);
     }
+    // E09 T37a: a week's fill offers types to the taverns (TWN-TAV-002): their records' spell
+    // points full and backpacks equipped, which no event tells (the owner's `TavernOffered`
+    // carries the view), and the records of the types drawn for the first time.
+    let week = events
+        .iter()
+        .any(|e| matches!(e, GameEvent::WeekStarted { .. }));
+    let offered: Vec<HeroId> = (0..=u8::MAX)
+        .take(after.players())
+        .filter(|_| week)
+        .flat_map(|p| observe(after, rules, Viewer::Player(PlayerId::new(p))).tavern)
+        .flatten()
+        .map(|view| view.hero.id)
+        .collect();
     for (i, (b, a)) in before.heroes().iter().zip(after.heroes()).enumerate() {
         let id = HeroId::new(u16::try_from(i).unwrap());
+        if offered.contains(&id) {
+            continue;
+        }
         // E08 T52: outside a battle a hero's details change by the changes its owner is told: a
         // meeting's spells (HER-SPL-007), an artifact's move, an assembly and a disassembly
         // (HER-ART-005, -006), each applied in order; (E08 T30) by the levels it is told it
@@ -7024,7 +7040,16 @@ fn check_conservation(
         }
         prop_assert_eq!(&told, &**a);
     }
-    prop_assert_eq!(before.heroes().len(), after.heroes().len());
+    // Nothing but a week's fill adds a record, each a player's tavern hero.
+    if week {
+        let new = (before.heroes().len()..after.heroes().len())
+            .map(|i| HeroId::new(u16::try_from(i).unwrap()));
+        for id in new {
+            prop_assert!(offered.contains(&id), "{:?} added untold", id);
+        }
+    } else {
+        prop_assert_eq!(before.heroes().len(), after.heroes().len());
+    }
     let adventure = after.adventure();
     let joined: Vec<(HeroId, CreatureTypeId, u32)> = events
         .iter()

@@ -778,7 +778,10 @@ fn check_same(
     viewer: PlayerId,
 ) -> Result<(), TestCaseError> {
     let seen = observe(a, rules, Viewer::Player(viewer));
-    prop_assert_eq!(&seen, &observe(b, rules, Viewer::Player(viewer)));
+    prop_assert_eq!(
+        without_tavern(seen.clone()),
+        without_tavern(observe(b, rules, Viewer::Player(viewer)))
+    );
     let actor = Actor::Player(viewer);
     prop_assert_eq!(
         legal_commands(a, rules, actor),
@@ -791,6 +794,27 @@ fn check_same(
         );
     }
     Ok(())
+}
+
+/// The viewer's observation without its tavern heroes (E09 T37a, TWN-TAV-002): its own, drawn from
+/// the taverns' stream and the pool, which the hygiene's variations change (the seed, the other
+/// players' types), as they would its heroes' drawn experience; `h3-game`'s tavern tests check
+/// that another player's never show.
+fn without_tavern(mut seen: GameObservation) -> GameObservation {
+    seen.tavern = [None, None];
+    seen
+}
+
+/// The told events without the viewer's tavern heroes' (E09 T37a; [`without_tavern`]).
+fn untavern(told: Vec<GameEvent>) -> Vec<GameEvent> {
+    told.into_iter()
+        .filter(|e| {
+            !matches!(
+                e,
+                GameEvent::TavernOffered { .. } | GameEvent::TavernPartSeen { .. }
+            )
+        })
+        .collect()
 }
 
 /// How many objects `viewer` knows what it learned of (E08 T64b; ADV-VIS-006: its `known`).
@@ -2945,7 +2969,7 @@ proptest! {
                 // The other player's command did not do the same in both games.
                 break;
             }
-            let (ta, tb) = (told(&ea, viewer), told(&eb, viewer));
+            let (ta, tb) = (untavern(told(&ea, viewer)), untavern(told(&eb, viewer)));
             // E08 T96b1: what the viewer is shown of the dwellings and the camps, in both games
             // (the other's owners at load, armies and seed differ); (E09 T9b2b) and of the towns;
             // (E08 T106b2) and what it is told of the jumps.
@@ -4058,7 +4082,11 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
                 };
                 levels[0].extend(filter(&ea, level));
                 levels[1].extend(filter(&eb, level));
-                assert_eq!(told(&ea, blue), told(&eb, blue), "{profile}, seed {seed}");
+                assert_eq!(
+                    untavern(told(&ea, blue)),
+                    untavern(told(&eb, blue)),
+                    "{profile}, seed {seed}"
+                );
                 assert_eq!(a.waiting_for(), b.waiting_for());
                 check_same(&a, &b, rules, blue).unwrap();
             }
