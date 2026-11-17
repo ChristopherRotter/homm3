@@ -41,9 +41,9 @@ packs = [
 ],
 ]
 profile = "base:faithful"
-ruleset_hash = "0xb5c01c8736eb73f9"
+ruleset_hash = "0x6ba8109889b34a25"
 adventure_ruleset_hash = "0xa5809e7fd9e842dd"
-town_ruleset_hash = "0x0d7be940b64312a6"
+town_ruleset_hash = "0xabc9756b93a29a55"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"

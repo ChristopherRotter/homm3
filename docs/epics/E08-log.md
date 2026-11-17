@@ -18122,7 +18122,7 @@ v8, v53 as planned.
   `check-lane` (`cross-lane` by design; `check-lane --cross-lane` passes): fmt, clippy, the
   checks, coverage, determinism, bench-check (the battle workloads inside their baselines) and the
   original-data step (the re-harvest equal to the committed packs, `bank_positions` among them),
-  each on its first run. The adventure scope's run: ADVENTURE_GATES. `cargo clippy --workspace
+  each on its first run. The adventure scope's run (`--with-original-data`): the same, every step but `check-lane` passing on its first run (coverage, determinism, bench-check, the original-data checks). After merging `master` (#979, #980: the town lane's T35b and T36) the bots tables regenerated once more (only `engine.battle` against `master`'s) and the golden replays of both lanes pass. `cargo clippy --workspace
   --all-targets` clean; the tests of `h3-cli`, `h3-game`, `h3-sim`, `h3-protocol`, `h3-server`,
   `h3-ffi` and `h3-map` pass. The client workspace builds `h3-battle`: CI's client job checks it.
 

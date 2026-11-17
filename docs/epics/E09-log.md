@@ -4426,3 +4426,87 @@ next 129.
 **Verify:** `cargo xtask check-docs`, `cargo xtask doc-drift`, `cargo xtask check-lane
 --cross-lane`, `cargo xtask verify --scope town --summary`; docs only, so CI runs `check-lane` and
 the docs gates; the pull request is the record.
+
+### T35b — `shared/`: the taverns' stream, the flags of `TWN-QUIRK-12` and `-13`, the profiles' hashes (2026-11-17)
+
+One session, the user present at the start; branch `shared/e09-t35b`, `cross-lane` (`h3-kernel`
+and `h3-content` shared; the harvester and the packs the battle lane's, the golden replays the
+adventure lane's, the bot reports the AI lane's, one test literal the server lane's). Starting
+point: `master` at 4f4fbbc (#976, T35a's, merged; the setup's baseline verified the code,
+e3cedff5, after a VM restart). The user's computer was connected at the start only: the four
+LODs, both executables, the two tars and the three saves staged (11 files, SHA-256 checked against
+the PC's), for T35b and T36. **Kept whole** with the `cross-lane` consent (decision 129); T36 after
+it in the same session (decision 130).
+
+- **`h3-kernel`:** `StreamId::TAVERNS = Self(8)` in the closed list (decision 115), the two tests'
+  named lists extended; KER-RNG-001's summary names the streams 6 to 8 (it stopped at 5).
+- **`h3-content`:** `quirk.town.leave_points_over_cleared_army` (`QuirkFlag(42)`,
+  `LEAVE_POINTS_OVER_CLEARED_ARMY`, T-16) and `quirk.town.guild_artifacts_by_backpacks` (43,
+  `GUILD_ARTIFACTS_BY_BACKPACKS`, T-17): the registry's 44 positions, its two tests; read from
+  T38b and T39b. No encoding changed: `RULESET_HASH_VERSION` 53 and the pack format v52 kept.
+- **`h3-pack`:** `the_harvested_flags_of_e09_increment_4` (on in `faithful`, off in `strict-fixed`,
+  every expansion). **The harvester's** two profiles and `packs/base/core.toml`'s two profile
+  lines; the harvester re-run on the staged installation wrote the same packs (the synthetic packs
+  name no town flag, as before).
+- **The ledger:** `TWN-QUIRK-12` and `-13` entered (`quirks-town.md`; confirmed by batch TWN-4's
+  TWN-4-4 and TWN-4-7; their regression tests with T38b and T39b; decision 131).
+- **Replays and records:** the base faithful ruleset hash moved 0xb5c01c8736eb73f9 to
+  **0x6ba8109889b34a25** (the flags' bits; `strict-fixed`'s 0xb0c378a75ff70a5b and the synthetic
+  0x876dc0d92f71fae2 kept: the bits off and no town flag). The 86 golden adventure replays on it
+  re-recorded from their commands by a scratch script: only `ruleset_hash` moved; the three
+  strict-fixed ones and the ten battle replays unchanged; all 99 verified (`h3 adventure verify`,
+  `h3 verify`). `h3-server`'s record literal; the AI lane's `bots-report-v1.json` and
+  `bots-neutral-v1.json` regenerated: only `engine.core` moved.
+- **Also:** the battle and adventure lanes' HANDOFF version lines; the adventure lane's inbox (the
+  replays' header in its paths).
+
+**The queue:** T35b out; T36 next (its cut confirmed, decision 130). Ids: decisions next 132.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`, `cargo xtask
+check-lane --cross-lane`, `cargo check --workspace --all-targets`, `cargo test -p h3-kernel -p
+h3-content -p h3-pack -p h3-harvest -p h3-server -p h3-protocol`; CI on the pull request is the
+record.
+
+### T36 — the town part v7: the tavern weights and the hire's price (2026-11-17)
+
+The same session as T35b, the user present at the start; branch `town/e09-t36` on T35b's
+(`shared/e09-t35b`, #979), `cross-lane` (the harvester and `packs/README.md` the battle lane's, the
+golden replays the adventure lane's). **Kept whole** (decision 130); the original data staged at
+T35b's start.
+
+- **`h3-towns`** (design §60): `TownDef::tavern` (class key, weight), compiled to
+  `TownRecord::tavern` (a `u8` per core class by `HeroClassId`, a class not given 0);
+  `TownPatch::tavern` changes or adds the classes it lists; `TownParamsDef::hire_price` and
+  `TownParams::hire_price` (core resources as a building's cost: each once, at least 1, empty for
+  free); the refusals `UnknownHeroClass`, a class outside the pack's closure, a class given twice
+  (a record's or a patch's), a record whose weights sum to 0 after the overrides, the price's
+  resource twice or 0. **Town ruleset part v7** (`TOWN_RULESET_HASH_VERSION`; the price after
+  `most_heroes`, each record's weights after its demoted Capitol), pins `0x0f14_27ea_a4ad_9c09` and
+  the empty part's `0x2bc5_8221_66bf_4786`.
+- **`h3-pack-towns`:** `hire_price = { gold = 2500 }` in `[town_params]`, a record's
+  `[town.tavern]` (class = weight), an override's `tavern = { … }`; the format's doc. The synthetic
+  packs: `hire_price = { coin = 2000 }`, `vale`'s Warden 7 and Sage 3, the expansion's override
+  the Sage's 4.
+- **The harvest** (`h3-harvest`, `cross-lane`): `heroes::class_taverns` (the columns after the
+  skills' weights, one per town); each record's faction column over its pack's closure (class i is
+  faction i / 2's; a 0 left out); the AB pack's overrides of the eight base records with the
+  Planeswalker's and the Elementalist's 5 (the base pack cannot name them); the gap-fill's
+  `[towns.tavern]` (`hire_price = 2500`, source `exe-hero-price`: `hero_price` 0x67814C). The
+  harvester re-run on the staged installation wrote `base` and `ab`; `sod` unchanged.
+- **Tests:** `h3-towns`' compile, refusal, message and hash tests; `h3-pack-towns`' synthetic record
+  and `the_original_taverns` (every SoD record 18 classes of 5 or 6 summing to 100, Castle's column
+  as survey §2.2, the base pack alone 16 classes summing to 90, the price 2 500 gold in both);
+  `h3-harvest`'s town test (the fixture's columns 4 to 6 with a 0: the records, the overrides).
+- **Replays:** the 89 golden adventure replays re-recorded from their commands (only
+  `town_ruleset_hash` moved, 0x0d7be940b64312a6 to 0xabc9756b93a29a55; all verify). The bot reports
+  record no town part: unchanged.
+- *Agent's calls* (decision 132): the overrides by class; the harvest from `H3bitmap.lod`'s file
+  (`H3ab_bmp.lod`'s byte-identical in this build); the price in the gap-fill; a free price
+  allowed; TWN-TAV-001's entry left to T37a. Design §60's *As built*.
+
+**The queue:** T36 out; T37 next (T37a the pool, the draw and the fills). Ids: decisions next 133.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`, `cargo xtask
+check-lane --cross-lane`, `cargo check --workspace --all-targets`, `cargo clippy --workspace
+--all-targets -- -D warnings`, `cargo test -p h3-harvest -p h3-protocol -p h3-server -p h3-cli -p
+h3-sim -p h3-game`; CI on the pull request is the record.

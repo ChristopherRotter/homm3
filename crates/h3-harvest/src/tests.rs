@@ -403,7 +403,8 @@ fn hero_tables() -> heroes::Tables {
         let mut r = strings(&[&format!("Class {i}"), "1.00", "2", "2", "1", "1"]);
         r.extend(strings(&["35", "45", "10", "10", "30", "30", "20", "20"]));
         r.extend((0..28).map(|s| (s % 3).to_string()));
-        r.extend((0..9).map(|_| "5".to_owned()));
+        // The tavern columns (E09 T36): 4 to 6 by class and town, class 3's 0 in town 0.
+        r.extend((0..9).map(|c| if (i, c) == (3, 0) { 0 } else { 4 + (i + c) % 3 }.to_string()));
         classes.push(r);
     }
     let mut heroes = header.clone();

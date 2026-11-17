@@ -320,6 +320,31 @@ pub fn skill_names(tables: &Tables) -> Result<Vec<String>, String> {
         .collect())
 }
 
+/// The hero classes' tavern weights (E09 T36, design §60): per class of `HCTRAITS.TXT`, in its
+/// order, its key and its weight in each town's taverns (the columns after the skills' weights,
+/// one per town in `TownType.txt`'s order: `towns` of them).
+///
+/// # Errors
+/// A malformed table: a row without the columns, a weight that is not a `u8`.
+pub(crate) fn class_taverns(
+    tables: &Tables,
+    towns: usize,
+) -> Result<Vec<(String, Vec<u8>)>, String> {
+    let skills = named_rows(&tables.skills, None, 4, "SSTRAITS.TXT")?.len();
+    let first = HCTRAITS_FIXED + skills;
+    named_rows(&tables.classes, None, first + towns, "HCTRAITS.TXT")?
+        .iter()
+        .map(|row| {
+            let name = row[0].trim();
+            let what = format!("hero class `{name}`");
+            let weights = (first..first + towns)
+                .map(|c| number::<u8>(row, c, &what))
+                .collect::<Result<_, _>>()?;
+            Ok((key_of(name), weights))
+        })
+        .collect()
+}
+
 /// Runs the hero-content harvest.
 ///
 /// # Errors
@@ -1245,7 +1270,10 @@ pub fn harvest_heroes(
     {
         return Err(format!("gapfill: data quirk: unknown class `{}`", f.class));
     }
-    report.push("HCTRAITS: aggression and tavern weights not harvested (E09)".into());
+    report.push(
+        "HCTRAITS: aggression not harvested; the tavern weights in the town records (E09 T36)"
+            .into(),
+    );
 
     // Hero types: the executable's hero and specialty tables, army sizes from HOTRAITS.
     let hero_rows = named_rows(

@@ -8,8 +8,8 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::{
-    ContentKey, ContentPack, CreatureDef, CreatureInfoDef, FactionDef, PackManifest, ProfileDef,
-    ResourceDef, Ruleset,
+    ContentKey, ContentPack, CreatureDef, CreatureInfoDef, FactionDef, HeroClassDef, PackManifest,
+    ProfileDef, ResourceDef, Ruleset,
 };
 
 use super::*;
@@ -41,6 +41,18 @@ fn resource(k: &str) -> ResourceDef {
     }
 }
 
+fn class(k: &str, faction: &str) -> HeroClassDef {
+    HeroClassDef {
+        key: key(k),
+        name: "Class".into(),
+        faction: key(faction),
+        primary: [1, 1, 1, 1],
+        primary_gain: [[25, 25, 25, 25]; 2],
+        skill_weights: vec![],
+        offer_intervals: [4, 4],
+    }
+}
+
 fn creature(k: &str, faction: Option<&str>, level: u8, upgrades: &[&str]) -> CreatureDef {
     CreatureDef {
         key: key(k),
@@ -56,8 +68,9 @@ fn creature(k: &str, faction: Option<&str>, level: u8, upgrades: &[&str]) -> Cre
 
 /// Core packs: `t` (the resources `t:wood` and `t:gold`, the factions `t:keep` with `t:pike`
 /// upgrading to `t:halberd` at level 1 and `t:archer` at level 2, and `t:wild` with `t:imp` and
-/// `t:gog`; the neutral `t:wisp`; the profile), `u` (depends on `t`: the resource `u:gem`, the
-/// faction `u:marsh` with `u:frog` and `u:toad`), `v` (no dependencies: the faction `v:dune` with
+/// `t:gog`; the neutral `t:wisp`; the hero classes `t:knight` of `t:keep` and `t:shaman` of
+/// `t:wild`; the profile), `u` (depends on `t`: the resource `u:gem`, the faction `u:marsh` with
+/// `u:frog` and `u:toad`, its hero class `u:seer`), `v` (no dependencies: the faction `v:dune` with
 /// `v:a` and `v:b`) and `w` (depends on `t`, nothing defined).
 fn core() -> Ruleset {
     let t = ContentPack {
@@ -71,6 +84,7 @@ fn core() -> Ruleset {
             creature("t:gog", Some("t:wild"), 2, &[]),
             creature("t:wisp", None, 1, &[]),
         ],
+        hero_classes: vec![class("t:knight", "t:keep"), class("t:shaman", "t:wild")],
         profiles: vec![ProfileDef {
             key: key("t:faithful"),
             quirks: vec![],
@@ -84,6 +98,7 @@ fn core() -> Ruleset {
             creature("u:frog", Some("u:marsh"), 1, &[]),
             creature("u:toad", Some("u:marsh"), 2, &[]),
         ],
+        hero_classes: vec![class("u:seer", "u:marsh")],
         ..ContentPack::new(manifest("u", &["t"]))
     };
     let v = ContentPack {
@@ -138,6 +153,7 @@ fn params() -> TownParamsDef {
             upgrade: 5,
         },
         most_heroes: 8,
+        hire_price: vec![(key("t:gold"), 2500)],
     }
 }
 
@@ -309,13 +325,15 @@ fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDe
             .collect(),
         buildings,
         roe: true,
+        tavern: vec![(key("t:knight"), 6), (key("t:shaman"), 5)],
     }
 }
 
 /// The packs: `t` the parameters, the records of `t:keep` (harmless, its upgraded level-1
 /// dwelling and horde too) and `t:wild` (absent) and the Visions creature `t:wisp`, `u` the
-/// record of `u:marsh` (harmless, not a Restoration of Erathia record), overrides of `t:keep` (damaging) and of its own record (natural
-/// obstacles) and the Visions creatures `u:toad` and `u:frog`, `v` and `w` empty.
+/// record of `u:marsh` (harmless, not a Restoration of Erathia record, its class `u:seer` in its
+/// tavern), overrides of `t:keep` (damaging, `u:seer` joining its tavern) and of its own record
+/// (natural obstacles) and the Visions creatures `u:toad` and `u:frog`, `v` and `w` empty.
 fn packs() -> Vec<TownPack> {
     let mut keep = town(
         "t:keep",
@@ -331,6 +349,7 @@ fn packs() -> Vec<TownPack> {
         Moat::Harmless,
     );
     marsh.roe = false;
+    marsh.tavern.push((key("u:seer"), 5));
     let t = TownPack {
         params: Some(params()),
         towns: vec![
@@ -349,6 +368,7 @@ fn packs() -> Vec<TownPack> {
                     moat: Some(Moat::Damaging),
                     siege_obstacles: Some(true),
                     silo: Some(vec![(key("u:gem"), 2), (key("t:wood"), 1)]),
+                    tavern: Some(vec![(key("u:seer"), 4), (key("t:shaman"), 6)]),
                 },
             },
             TownOverride {
@@ -426,6 +446,12 @@ fn the_records_compile_in_faction_order_with_the_overrides_applied() {
     assert_eq!(p.week, params().week);
     assert_eq!(p.garrison_week, params().garrison_week);
     assert!(keep.roe && wild.roe && !marsh.roe);
+    // Increment 4's (E09 T36): the hire's price, the tavern weights by the core's class index
+    // (`t:knight`, `t:shaman`, `u:seer`), the override's classes changed or joined.
+    assert_eq!(p.hire_price, [(resource("t:gold"), 2500)]);
+    assert_eq!(keep.tavern, [6, 6, 4]);
+    assert_eq!(wild.tavern, [6, 5, 0]);
+    assert_eq!(marsh.tavern, [6, 5, 5]);
 }
 
 #[test]
@@ -583,11 +609,11 @@ fn the_hash_is_pinned_and_follows_the_content() {
     let (_, again) = compiled();
     assert_eq!(part.content_hash(), again.content_hash());
     assert_eq!(part.content_hash(), hash_of(&part));
-    // The sixth encoding (v6): pinned, so a change of what it covers bumps the version.
-    assert_eq!(part.content_hash(), 0xe9d6_8ef9_f9d6_aaf3);
+    // The seventh encoding (v7): pinned, so a change of what it covers bumps the version.
+    assert_eq!(part.content_hash(), 0x0f14_27ea_a4ad_9c09);
     assert_eq!(
         TownRuleset::empty(&core).content_hash(),
-        0xbf2f_d77e_fb5a_3d99
+        0x2bc5_8221_66bf_4786
     );
     let mut changed = packs();
     changed[0].towns[0].buildings[2].name = "Hall".into();
@@ -657,6 +683,25 @@ fn the_hash_is_pinned_and_follows_the_content() {
     changed[0].params.as_mut().unwrap().most_heroes = 7;
     let other = TownRuleset::compile(&core, &changed).unwrap();
     assert_ne!(other.content_hash(), part.content_hash());
+    // The seventh (v7): the hire's price and the tavern weights.
+    let changes: [fn(&mut Vec<TownPack>); 4] = [
+        |p| p[0].params.as_mut().unwrap().hire_price[0].1 = 2000,
+        |p| {
+            p[0].params
+                .as_mut()
+                .unwrap()
+                .hire_price
+                .push((key("t:wood"), 1))
+        },
+        |p| keep(p).tavern[0].1 = 5,
+        |p| drop(p[0].towns[1].tavern.pop()),
+    ];
+    for change in changes {
+        let mut changed = packs();
+        change(&mut changed);
+        let other = TownRuleset::compile(&core, &changed).unwrap();
+        assert_ne!(other.content_hash(), part.content_hash());
+    }
 }
 
 // covers: TWN-VEW-003
@@ -810,6 +855,19 @@ fn references_are_checked() {
         }),
         E::UnknownTown("t:wild".into())
     );
+    // Increment 4's (E09 T36): a tavern weight's class and the hire's price.
+    assert_eq!(
+        refused(|p| keep(p).tavern[0].0 = key("t:nope")),
+        E::UnknownHeroClass("t:nope".into())
+    );
+    assert_eq!(
+        refused(|p| keep(p).tavern.push((key("u:seer"), 1))),
+        outside("u:seer", "t")
+    );
+    assert_eq!(
+        refused(|p| p[0].params.as_mut().unwrap().hire_price[0].0 = key("t:nope")),
+        E::UnknownResource("t:nope".into())
+    );
 }
 
 #[test]
@@ -860,6 +918,13 @@ fn the_parameters_are_checked() {
         param(|d| d.most_heroes = 0),
         E::InvalidParams("the most heroes on the map needs at least 1")
     );
+    let price = E::InvalidParams("the hire's price gives each resource once, at least 1");
+    assert_eq!(param(|d| d.hire_price[0].1 = 0), price);
+    assert_eq!(param(|d| d.hire_price.push((key("t:gold"), 1))), price);
+    // A free hire compiles.
+    let mut free = packs();
+    free[0].params.as_mut().unwrap().hire_price.clear();
+    assert!(TownRuleset::compile(&core(), &free).is_ok());
     // At the bounds: a chance of 1 in 1, both odds the denominator, one weight, a sure upgrade.
     let mut at_bounds = packs();
     let p = at_bounds[0].params.as_mut().unwrap();
@@ -925,6 +990,26 @@ fn a_record_is_checked() {
         }),
         town_error("t:keep", "has more than 64 buildings")
     );
+    // Increment 4's (E09 T36): the tavern weights, each class once (the override's too), not all
+    // 0 after the overrides (the Keep's 0 weights are filled by `u`'s override).
+    let twice = town_error("t:keep", "a tavern weight's class is given twice");
+    assert_eq!(reason(|t| t.tavern.push((key("t:knight"), 1))), twice);
+    assert_eq!(
+        refused(|p| {
+            let patch = &mut p[1].overrides[0].patch;
+            patch.tavern.as_mut().unwrap().push((key("u:seer"), 1));
+        }),
+        twice
+    );
+    let nothing = town_error("t:wild", "the tavern weights sum to 0");
+    assert_eq!(refused(|p| p[0].towns[1].tavern.clear()), nothing);
+    assert_eq!(
+        refused(|p| p[0].towns[1].tavern.iter_mut().for_each(|w| w.1 = 0)),
+        nothing
+    );
+    let mut filled = packs();
+    keep(&mut filled).tavern.clear();
+    assert!(TownRuleset::compile(&core(), &filled).is_ok());
 }
 
 #[test]
@@ -1213,6 +1298,10 @@ fn every_error_has_a_message() {
         (E::UnknownFaction("p:x".into()), "unknown faction `p:x`"),
         (E::UnknownResource("p:x".into()), "unknown resource `p:x`"),
         (E::UnknownCreature("p:x".into()), "unknown creature `p:x`"),
+        (
+            E::UnknownHeroClass("p:x".into()),
+            "unknown hero class `p:x`",
+        ),
         (
             E::DuplicateTown("p:x".into()),
             "faction `p:x` has two town records",
