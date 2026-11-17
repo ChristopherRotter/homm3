@@ -9,24 +9,24 @@ decisions 4 to 8, CLT-Q79 to CLT-Q83; the clips: `E27-design.md` §1). M1 closed
 M2 2026-11-16 (T8); M3 (a game's setup) below, refined at M2 T8 (decision 44); M4 is refined at
 its T0. The original files: stage them from the user's `original-data/install/` (one large file
 per staging call; the user's computer must be online); never from the installation. The captures
-need the five DLLs (`MP3DEC.ASI` from the installation: the PC's `original-data/install` lacks it),
+need the five DLLs (`MP3DEC.ASI` in the PC's `original-data/install` too since 2026-11-17),
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
 `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check;
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T2c
+#### E27 M3 T3
 
-T2c The description's scroll bar (the epic's M3 table, decision 50; design §18.1, §21.5): read
-`H3DlgScrollableText::Create` 0x5B9FB0's path for more lines than the box holds (0x5BA19E: the
-lines at width − 24, the bar's place, size and ticks, its arrows and keys, the text's redraw) and
-build it in `h3_view::shell::scenario` (an `h3_ui::scrollbar` as the list's, or the foundation's
-scrolling text if the map client needs one too: say which). No shipped map reaches it (the longest
-of the 159 descriptions fill the box's 7 lines), so the harness makes a map of its own: a shipped
-map's copy with a longer description, written at the run's start into the run directory's `Maps`
-(never committed, ADR-0009; a recipe's `maps` naming it, the viewer's `--maps` too), and a recipe
-of it (`scn-long-text`: the panel, the bar's arrows, its track, a drag, the list's selection
-moving off and back). Exact against that recipe. Then T3 to T7 as the M3 table lists them.
+T3 The advanced options of a single player (the epic's M3 table; design §3.12 to §3.15, §3.9):
+the rows, the town's, hero's and bonus's arrows, the handicap, the flags, the turn's duration, the
+popups and the hover; the choices into `GameSetup` (`GameSetup::offer`, the faction choice), the
+bonus, the handicap and the timer drawn and chosen, each effect a `CLT-STUB` (decision 6); exact
+against `adv-single-town`, `adv-single-hero`, `adv-single-rest`, `adv-single-maps` (§6.4:
+`popup-hero-arrow` on row 2's arrow). Large: offer the user a cut at its start (the rows and the
+panel drawn first, the arrows and the choices after, as T1 and T2 were cut). First, if the user
+has answered CLT-Q140 (the list's keys and the description's bar), build the answer (small:
+`scenario::description`'s key step by the list's showing, the original's behind its profile).
+Then T4 to T7 as the M3 table lists them.
 
 ## Inbox
 

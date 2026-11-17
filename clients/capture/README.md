@@ -1367,7 +1367,11 @@ python3 h3shell.py drawn [--group menus] [--only menu-main] [--record]   # the v
 
 - **A recipe** (`shell/<group>.toml`, `[[recipe]]`): `id`, `what` (the catalogue's section),
   `registry` (dwords over the base settings), `maps` (`"all"`, the default: the 160 shipped maps;
-  or a list), `games` (files of `original-data/games/`), `backgrounds` (the scenario screen's
+  or a list; since E27 M3 T2c `[[recipe.made]]` tables add maps of the harness's own: `file` (its
+  name, listed in `maps`), `from` (the shipped map copied), `name` and `description` (the header's,
+  ours), written by `made_map` into the run's `Maps/` at each run and into `drawn`'s folder, the
+  viewer given their paths in `--maps`; never kept, never committed), `games` (files of
+  `original-data/games/`), `backgrounds` (the scenario screen's
   background as the original drew it at each opening, 0 or 1: the viewer's alone, E27 M3 T1a),
   `input_step` and `steps` (the docstring's
   `STEPS`: `until`, `check`, `step` (in increments: `step:<ms>:<by>`), `move`, `click`,

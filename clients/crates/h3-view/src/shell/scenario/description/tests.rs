@@ -118,7 +118,7 @@ fn the_screen_keeps_what_it_last_drew() {
     d.drew();
     d.key_down(Scroll::PageDown, "Next");
     assert!(d.key_up("Next", true));
-    let scrolled = String::from(d.text());
+    let scrolled = d.text();
     // The select again (`scenario_to_game`) resets the text and the bar, undrawn.
     d.set(&numbered(18));
     assert_eq!(d.drawn_text(), scrolled);

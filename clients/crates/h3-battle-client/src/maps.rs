@@ -187,8 +187,22 @@ mod tests {
         let named = named(entries.clone(), Some(&names));
         assert_eq!(named.len(), 1);
         assert_eq!(named[0].file, "Arrogance.h3m");
-        assert_eq!(super::named(entries, None).len(), 159);
+        assert_eq!(super::named(entries.clone(), None).len(), 159);
         assert!(super::named(Vec::new(), Some(&[])).is_empty());
+        // E27 M3 T2c: a name with a `/` is a map file of its own (the harness's), read and listed
+        // in the list's order; Jihad's description is the record's 300 bytes whole.
+        let path = install.join(MAPS).join("Jihad.h3m");
+        let names = [
+            String::from("Arrogance.h3m"),
+            path.to_string_lossy().into_owned(),
+        ];
+        let own = super::named(Vec::from([entries[0].clone()]), Some(&names));
+        let files: Vec<&str> = own.iter().map(|e| e.file.as_str()).collect();
+        assert_eq!(files, ["Jihad.h3m"]);
+        let own = super::named(entries, Some(&names));
+        let files: Vec<&str> = own.iter().map(|e| e.file.as_str()).collect();
+        assert_eq!(files, ["Jihad.h3m", "Arrogance.h3m"]);
+        assert_eq!(own[0].description.len(), DESCRIPTION_BYTES);
     }
 
     #[test]

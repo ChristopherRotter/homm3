@@ -885,7 +885,7 @@ impl Scenario {
         // description set, E27 M3 T2c; the size mark as it was) and redraws whole (0x5852BF)
         // before the click selects that row, which it already is: the select's partial redraw
         // (CLT-Q138).
-        self.to_game();
+        self.give_to_game();
         self.whole();
         self.select();
         self.partial = true;
@@ -1116,13 +1116,13 @@ impl Scenario {
         if let Some(file) = self.entry().map(|e| e.file.clone()) {
             self.kept = file;
         }
-        self.to_game();
+        self.give_to_game();
         self.show();
     }
 
     /// The selected map given to the game (`scenario_to_game` 0x583580): the description set
     /// anew (`scrollable_text_set` 0x5BA6E0), empty over an empty list.
-    fn to_game(&mut self) {
+    fn give_to_game(&mut self) {
         let text = self
             .entry()
             .map(|e| e.description.clone())
@@ -1572,9 +1572,11 @@ impl Scenario {
             (Over::Nothing, Some(Command::List(scroll))) => {
                 // The description's bar steps at the key's release (E27 M3 T2c).
                 self.description.key_down(scroll, by);
+                if self.showing {
+                    self.scroll(scroll);
+                }
                 let list = !matches!(scroll, Scroll::Left | Scroll::Right);
                 if self.showing && list {
-                    self.scroll(scroll);
                     Did::CHANGED
                 } else {
                     Did::default()
