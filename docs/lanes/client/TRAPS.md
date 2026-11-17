@@ -353,7 +353,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   runs as `CARGO_BUILD_JOBS=1 RUST_TEST_THREADS=1 nice`, and coverage only with no capture
   running. The disk (about 43 GB usable) filled once: a worktree sharing the clone's
   `CARGO_TARGET_DIR` keeps its own copy of every workspace crate (the debug target 14 GB), a
-  coverage target adds about 6 GB, and `start-bink`'s runs write its clip's frames twice. Delete
+  coverage target adds about 6 GB, and `start-bink`'s runs write its clip's frames twice;
+  `h3shell.py drawn` over every group writes about 10 GB of frames (E27 M3 T1a: the disk filled
+  under a coverage build), so run it by groups and delete `clients/out/shell-drawn` after each. Delete
   `llvm-cov-target` after a coverage run and a recipe's `clients/out/shell/<id>` once it played as
   kept, and size the disk check's ballast (above) before each recipe of a long run. Under that
   load `start-bink`'s 3DO logo (1 ms steps) once showed a frame 1 ms late in one of its two runs
