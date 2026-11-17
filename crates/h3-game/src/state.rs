@@ -2078,6 +2078,12 @@ impl GameState {
         Arc::make_mut(&mut store[usize::from(hero.raw())]).backpack = backpack;
     }
 
+    /// Sets `hero`'s learned spells (tests of a hire's parts, E09 T38a1).
+    pub(crate) fn set_spells(&mut self, hero: HeroId, spells: Vec<h3_content::SpellId>) {
+        let store = Arc::make_mut(&mut self.heroes);
+        Arc::make_mut(&mut store[usize::from(hero.raw())]).spells = spells;
+    }
+
     /// Sets `player`'s returning mark of `slot` (tests of the week's release and the marks' clears,
     /// E09 T37a; a return sets it from E09 T38b).
     pub(crate) fn set_returning(&mut self, player: PlayerId, slot: usize) {

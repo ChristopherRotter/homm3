@@ -11,7 +11,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_adventure::{AdventureEventKind, HeroOnMap, Pos, Viewers};
-use h3_content::{ArtifactTypeId, HeroTypeId, ResourceId, Ruleset, StartingStackDef};
+use h3_content::{ArtifactTypeId, HeroTypeId, ResourceId, Ruleset, SpellId, StartingStackDef};
 use h3_contracts::{ArmyStack, PlayerId, TownId};
 use h3_heroes::{ArtifactInstance, max_mana};
 use h3_towns::{
@@ -231,11 +231,13 @@ fn the_owner_is_told_the_hire_its_parts_and_the_slots_new_view() {
     let rules = rules();
     let mut game = game(&rules, &towns_setup(&rules), 5000);
     let id = game.pool().record(slots(&game, RED)[0].unwrap()).unwrap();
-    // A learned spell and a backpack past the view's five places for the parts to tell.
+    // A backpack past the view's five places and a learned spell for the parts to tell.
     let scroll = ArtifactTypeId::from_index(0)
         .map(ArtifactInstance::from)
         .unwrap();
     game.set_backpack(id, vec![scroll; 7]);
+    let spell = SpellId::from_raw(0);
+    game.set_spells(id, vec![spell]);
     let before = observe(&game, &rules, Viewer::Player(RED)).tavern;
     let events = run(&rules, &mut game, RED, hire(T0, 0)).unwrap();
     let details = game.hero(id).unwrap();
@@ -257,7 +259,14 @@ fn the_owner_is_told_the_hire_its_parts_and_the_slots_new_view() {
             positions: u8::try_from(details.worn.len()).unwrap(),
         }
     );
-    assert_eq!(parts[1..], [HiredPart::Carried(scroll); 2]);
+    assert_eq!(
+        parts[1..],
+        [
+            HiredPart::Carried(scroll),
+            HiredPart::Carried(scroll),
+            HiredPart::Spell(spell),
+        ]
+    );
     // Then the slot's new view, as the week tells a slot (after the parts).
     let offered = events
         .iter()
