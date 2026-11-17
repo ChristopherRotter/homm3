@@ -2997,4 +2997,10 @@ into `sequences.toml`; situations `seq-turn-ai`,
   the same, then `--record`; the window under Xvfb (`--check 10`) on `ai-walk-fast` and `ai-walk`
   every frame read back exact and every change the headless loop's, and on `ai-walk`'s walk at
   speed 4 (a scratch map folder) its 15 held draws shown, read back exact and each the headless
-  loop's.
+  loop's; unit tests (the five replayed headless, the computer's screen at 160 and the next day at
+  1660, the unseen steps, Blackout and speed 4's held draws, the replay's and the headless play's
+  held draws, a computer's turn refused or chained, from a town selected and without points, kind
+  5's step and window, the turn tables' heroes and boats read and refused, `placed` and `walks`,
+  the four buttons, the shield, the sequence's options and `hero` lines);
+  `RUST_TEST_THREADS=1 check.sh --no-coverage` all gates; coverage outside `check.sh` 100 % lines,
+  regions and functions.
