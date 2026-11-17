@@ -254,7 +254,9 @@ heroes, hires, leaves and the guild.
   no town; a refusal changes nothing.
 - **A hired hero** is seen as any hero on the map: `HeroHired` (the hero, its type, owner and tile)
   to the owner and every player that sees the tile, its slot to the owner alone; the owner's view of
-  it is the tavern slot's it held. A dismissal is told as a removal (`HeroRemoved`) to the owner and
+  it is the tavern slot's it held, with its own details the slot did not show told to it alone
+  (`HiredPartSeen`: the levels last offered, the backpack past its first five places, the learned
+  spells). A dismissal is told as a removal (`HeroRemoved`) to the owner and
   the players that see its tile.
 - **The Thieves' Guild** shows, at the viewer's level (its towns with a Tavern counted to 5, as the
   original's window), the places of every player in the game in each row it shows, equal values
