@@ -267,6 +267,17 @@ fn the_scenario_screen_shows_its_drawn_background_and_its_arrow() {
     assert_eq!(shown.background, "gamselb0.pcx");
     assert_eq!(shown.arrow, Arrow::Adventure);
     assert!(shown.cursor && shown.over.is_empty() && shown.stale.is_empty());
+    // E27 M3 T1b1: the original's partial redraw leaves the flags' strip as a stale rectangle
+    // (CLT-Q138): after a sort.
+    let mut sorted = scenario.clone();
+    for point in [[514, 91], [216, 106]] {
+        sorted.moved(point);
+        sorted.press(point);
+        sorted.release();
+    }
+    let shown = look(&layout, screen, Some(&front(&sorted))).unwrap();
+    assert_eq!(shown.stale.len(), 1);
+    assert_eq!(shown.stale[0].rects, [crate::shell::scenario::STRIP]);
     let drawn = scenario.clone().with_background(1);
     let shown = look(&layout, screen, Some(&front(&drawn))).unwrap();
     assert_eq!(

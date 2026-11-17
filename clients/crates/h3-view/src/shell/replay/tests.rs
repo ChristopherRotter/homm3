@@ -890,3 +890,40 @@ fn the_scenario_screen_takes_the_original_s_background_draws_in_turn() {
     assert_eq!((stop, background(&r)), (None, Some(0)));
     assert_eq!(r.screen(), Screen::Scenario(Game::New, Kind::Single));
 }
+
+#[test]
+fn the_list_takes_xdotool_s_page_keys_as_the_adapter_s() {
+    // E27 M3 T1b1: `scn-list-keys`' Next and Prior are the adapter's PageDown and PageUp; the
+    // screen's double press is timed from its opening on the replay's clock.
+    let mut menus = menus(Bugs::Original);
+    menus.scenario = crate::shell::scenario::tests::scenario_of(
+        crate::shell::scenario::tests::many(40),
+        Bugs::Original,
+    );
+    let r = Replay::new(Shell::new(false), [400, 300], INPUT_STEP, None, &menus);
+    let rows = |r: &Replay| match r.front() {
+        Some(Front::Scenario(s)) => Some(s.rows()),
+        _ => None,
+    };
+    let steps = [
+        "until:main_menu",
+        "click:643,70",
+        "click:649,65",
+        "move:790,300",
+        "until:scenario_list",
+        "click:514,91",
+        "key:Next",
+    ];
+    let (_, stop, r) = replay_from(r, &steps);
+    assert_eq!((stop, rows(&r)), (None, Some((Some(17), 17))));
+    let (_, stop, r) = replay_from(r, &["key:Prior"]);
+    assert_eq!((stop, rows(&r)), (None, Some((Some(0), 0))));
+    // A row's click selects it; another row's 100 ms later begins in the original's profile
+    // (the selection stays); 500 ms later it selects.
+    let (_, stop, r) = replay_from(r, &["click:216,235"]);
+    assert_eq!((stop, rows(&r)), (None, Some((Some(4), 0))));
+    let (_, stop, r) = replay_from(r, &["click:216,260"]);
+    assert_eq!((stop, rows(&r)), (None, Some((Some(4), 0))));
+    let (_, stop, r) = replay_from(r, &["step:500", "click:216,260"]);
+    assert_eq!((stop, rows(&r)), (None, Some((Some(5), 0))));
+}

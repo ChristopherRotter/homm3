@@ -785,11 +785,10 @@ impl Scenario {
                 if new >= count {
                     return;
                 }
+                // The top follows (the original's clamp to count − rows never binds here: the
+                // next row is within the list, so the top stays at most count − rows).
                 if new > self.top + page {
                     self.top += 1;
-                    if count >= rows && self.top > count - rows {
-                        self.top = count - rows;
-                    }
                     self.set_bar();
                 }
                 self.selected = Some(new);
@@ -993,11 +992,9 @@ impl Scenario {
         let look = &self.look;
         let [px, py] = self.dialog.place;
         let mut draws = Vec::new();
-        let rows = self.listed.iter().enumerate().skip(self.top);
-        for (r, (index, &e)) in (0i32..i32::from(look.rows)).zip(rows) {
-            let Some(entry) = self.entries.get(e) else {
-                continue;
-            };
+        let rows = (self.listed.iter().enumerate().skip(self.top))
+            .filter_map(|(index, &e)| self.entries.get(e).map(|entry| (index, entry)));
+        for (r, (index, entry)) in (0i32..i32::from(look.rows)).zip(rows) {
             let dy = py + look.step * r;
             let colour = if self.selected == Some(index) {
                 look.selected

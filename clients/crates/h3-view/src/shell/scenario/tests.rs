@@ -365,7 +365,7 @@ fn the_hotkeys_press_and_click_their_buttons() {
 
 /// `n` maps named "Map 00" on, their sizes in turn 36, 72, 108, 144, all SoD's, and the kept map
 /// "Arrogance" (36 tiles) among them in the name's order.
-fn many(n: usize) -> Vec<Entry> {
+pub(crate) fn many(n: usize) -> Vec<Entry> {
     let mut entries: Vec<Entry> = (0..n)
         .map(|k| {
             let mut e = map(&format!("m{k:02}.h3m"), &format!("Map {k:02}"));
@@ -788,16 +788,21 @@ fn the_original_s_partial_redraw_leaves_the_size_mark_and_the_strip() {
     let key = |s: &mut Scenario, scroll| s.key(Some(Command::List(scroll)), "k");
     key(&mut s, Scroll::PageDown);
     key(&mut s, Scroll::PageDown);
+    assert_eq!(s.rows(), (Some(22), 23));
+    assert!(s.stale_draws("PLAYERS.PAL").is_none());
     key(&mut s, Scroll::PageDown);
     assert!(s.stale_draws("PLAYERS.PAL").is_some());
-    // Up on the first row redraws nothing; Down selects the next.
+    // Up selects the row above: whole.
     key(&mut s, Scroll::Up);
-    assert!(s.stale_draws("PLAYERS.PAL").is_some());
-    key(&mut s, Scroll::Down);
     assert!(s.stale_draws("PLAYERS.PAL").is_none());
-    click(&mut s, [383, 562]);
-    click(&mut s, [514, 91]);
-    assert!(s.stale_draws("PLAYERS.PAL").is_none());
+    // Up on the first row redraws nothing: the bar's partial redraw stays.
+    let mut first = shown(many(40), Bugs::Original);
+    click(&mut first, [383, 562]);
+    key(&mut first, Scroll::Up);
+    assert!(first.stale_draws("PLAYERS.PAL").is_some());
+    // The list hidden: none.
+    click(&mut first, [514, 91]);
+    assert!(first.stale_draws("PLAYERS.PAL").is_none());
 }
 
 #[test]
