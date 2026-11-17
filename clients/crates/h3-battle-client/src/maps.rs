@@ -65,7 +65,10 @@ pub fn entry(file: String, map: &RawMap) -> Entry {
             ..
         } => {
             let code = goal_code(goal);
-            (Some(code), allow_standard || STANDARD_ALWAYS.contains(&code))
+            (
+                Some(code),
+                allow_standard || STANDARD_ALWAYS.contains(&code),
+            )
         }
     };
     let loss = match map.loss {

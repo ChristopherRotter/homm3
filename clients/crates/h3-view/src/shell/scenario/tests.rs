@@ -938,9 +938,7 @@ fn the_entry_counts_its_players_and_the_list_names_its_assets() {
 
 /// The difficulty whose button shows selected (frame 3), if any (0 easy to 4 impossible).
 fn chosen(draws: &[Draw]) -> Option<i32> {
-    (0..5).find(|&k| {
-        frame(draws, &format!("gspbut{}.def", k + 3), [506 + 32 * k, 456]) == Some(3)
-    })
+    (0..5).find(|&k| frame(draws, &format!("gspbut{}.def", k + 3), [506 + 32 * k, 456]) == Some(3))
 }
 
 #[test]
@@ -987,7 +985,10 @@ fn an_empty_list_s_panel_keeps_the_original_s_leftovers() {
     assert_eq!(chosen(&draws), Some(1));
     // All shows the map again.
     click(&mut s, [371, 68]);
-    assert_eq!(label(&s.draws("PLAYERS.PAL"), RATING).as_deref(), Some("100%"));
+    assert_eq!(
+        label(&s.draws("PLAYERS.PAL"), RATING).as_deref(),
+        Some("100%")
+    );
     // The client's: frame 4, no flags (CLT-Q115 (b), CLT-Q139 (b)).
     let mut s = shown(vec![map("Arrogance.h3m", "Arrogance")], Bugs::Fixed);
     click(&mut s, [324, 68]);

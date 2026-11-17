@@ -1114,8 +1114,8 @@ impl Scenario {
         if self.entry().is_some() {
             return false;
         }
-        let checked = self.bugs == Bugs::Fixed
-            || self.game.as_ref().is_some_and(|g| g.format.is_some());
+        let checked =
+            self.bugs == Bugs::Fixed || self.game.as_ref().is_some_and(|g| g.format.is_some());
         match self.texts.no_maps.clone().filter(|_| checked) {
             Some(message) => {
                 self.over = Over::Notice(Box::new(Open::new(message)));
@@ -1382,10 +1382,9 @@ impl Scenario {
     fn teams_dialog(&self) -> Option<MessageBox> {
         let teams = self.texts.teams.as_ref()?;
         let (plays, of) = match (self.entry(), self.bugs, &self.game) {
-            (Some(entry), _, _) | (None, Bugs::Original, Some(entry)) => (
-                entry.seats.map(Seat::plays),
-                entry.teams,
-            ),
+            (Some(entry), _, _) | (None, Bugs::Original, Some(entry)) => {
+                (entry.seats.map(Seat::plays), entry.teams)
+            }
             (None, Bugs::Original, None) => ([true; 8], [0; 8]),
             (None, Bugs::Fixed, _) => return None,
         };

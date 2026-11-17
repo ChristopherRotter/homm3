@@ -2562,7 +2562,8 @@ mark's last whole frame, those it draws over them after, the strip as a stale re
   recipe's `maps` to the viewer (`--maps`): `scn-info` 19 of 21 (row-08 and row-15: the victory's
   text, T2), `scn-begin-filter` 3 of 6 and `scn-begin-none` 0 of 4 (the empty list's panel and
   Begin's message, T2), `scn-difficulty` 3 of 8 (the presses, T2; `impossible-list`: the build sets
-  `scenario_last_difficulty` from the selected record's +0x33C, 0x58314E).
+  `scenario_last_difficulty` from the selected record's +0x33C, 0x58314E; **corrected at T2a,
+  §21.1:** that build runs at the opening, not at the list's first showing).
 
 ### 19.6 Not built (T1b2 on)
 
@@ -2630,3 +2631,86 @@ opening.
 `scn-right` played again (both runs as kept); `drawn`: 30 of 30 exact (15 before: the columns,
 the filters, the bar, the two labels, the teams), recorded. The `scenario` group otherwise as
 recorded (`scn-new` 31, `scn-list-keys` 16, `scn-filter` 7 exact; the others as at T1b1).
+
+## 21. The difficulty, the empty list and Begin's message (M3 T2a, T2b, 2026-11-17)
+
+Read from `Heroes3.exe` (§3.5, §3.6 completed) and recorded (`scn-difficulty` with `reopened`,
+`scn-begin-none` with the strip's right press and a difficulty's press, `scn-empty-filter` new;
+decision 50). The client: `h3_view::shell::scenario` (`OPENING_DIFFICULTY`, `choose`,
+`show_empty`, `begin`, `Over::Notice`), `h3-battle-client`'s `maps` (`STANDARD_ALWAYS`), the
+catalogue's `shell.scenario.no-maps`.
+
+### 21.1 The difficulty and the victory's text
+
+- **A press** (`scenario_difficulty_click` 0x586BF3, read whole): game +0x1F6D8 and
+  `scenario_last_difficulty` 0x683454 take the id − 107; the five buttons lose state 0x10 and the
+  chosen one gains it; a network host's message (nothing in a single game, not read); the dialog's
+  redraw (vtable +0x14 with 0, 0xFFFF0001, 0xFFFF) and `scenario_dialog_redraw`: a whole redraw.
+- **The opening's difficulty:** `scenario_slots_new` (the constructor's, 0x57FADC) builds the list
+  every opening; `scenario_list_finish` 0x58314E then sets `scenario_last_difficulty` from the
+  selected record's +0x33C and `scenario_to_game` copies it into the game (0x583673). A new
+  game's map record holds 1 there (its constructors 0x579049 and 0x579177 set it; no header read
+  writes it), so **each opening shows Normal** whatever was chosen before (recorded: `scn-difficulty`
+  `reopened` after Impossible; T1a's "kept between visits" corrected). The list's first showing
+  builds nothing (§20.3), so it keeps the choice (`impossible-list`). The constructor then selects
+  the game's button (`scenario_difficulty_show` 0x586060, from 0x57C556) only when the shown list
+  is not empty (0x58EAB0's count) or in the save mode.
+- **The victory's "or" text** (`scn-info` row-08, row-15): `scenario_info_draw` joins the standard
+  victory when the game's victory record has +1 set (+0x1F89D, read), and the header's read sets
+  it (`victory_standard_set` 0x4BF780, called with 0 from the conditions' read 0x4C3555; with 1 from
+  `new_game_heroes`): goal 5 (a hero's defeat) always; goals 0, 4 and 10 (an artifact, the Grail,
+  a transport) cleared when exactly one colour is not defeated (+0x1F636; `game_reset` clears
+  every flag before each header read, so never at the screen), else set outside a campaign (a
+  campaign by its ids); the others keep the file's flag. The shipped maps: goals 0, 4 and 10 all
+  carry the flag, the five of goal 5 all lack it. VCMI 1.7.5 (`MapFormatH3M.cpp`) agrees for goal 5
+  ("H3 behavior") and clears the flag for any goal on a map of one player. The client's entries
+  take it (`maps::STANDARD_ALWAYS`); the rule at the game's start is E10's (the adventure lane's
+  inbox).
+
+### 21.2 The empty list
+
+- `scenario_select` past the list does nothing (0x58553C), so an emptied list leaves the game's
+  map as it was: the last one shown after a filter (the filter calls `scenario_to_game` only for
+  a list with a record, 0x585E8C), the reset game with no map at all.
+- **The panel:** `scenario_info_draw` returns at once for an empty list outside the save mode
+  (0x584128): no name, texts, marks, map's difficulty nor rating. The size mark keeps its frame: a
+  filter sets its own first (0x585EFB: 36, 72, 108, 144 tiles frames 0 to 3, All 4), with no map
+  at all the constructor's S. The flags keep the last map's (items' states). Recorded:
+  `scn-begin-filter` extra-large and after, `scn-begin-none` screen and list, `scn-empty-filter`.
+- **The difficulty's buttons:** with no map at all none shows chosen (0x586060 skipped) until a
+  press, which selects its own (the rating still not drawn; `scn-begin-none` hard); after a filter
+  the choice stays shown (`scn-empty-filter` hard), and All brings the map back with it (`all`).
+- **The teams' dialog** (§20.2) groups the game's players: after a filter the last map's teams
+  (`scn-empty-filter` teams: Arrogance's four), with no map at all the reset game's, every colour
+  playing in team 0: "Team 1" with the eight flags (`scn-begin-none` teams).
+- **The client's profile** (CLT-Q139 (b), decision 51): no flags and no teams' dialog over an
+  empty list, the chosen difficulty always shown; the size mark's frame 4 (CLT-Q115 (b)); no
+  rating, as the original. The original's for the comparisons.
+
+### 21.3 Begin's message
+
+`scenario_begin` checks the game's map's format before the list (§3.6): with no map at all the
+reset game's format is none and Begin does nothing (`scn-begin-none` begin); after a filter
+emptied the list GENRLTXT 530 shows in an OK box (`scn-begin-filter` begin), Enter's or the OK's
+release closing it. The box's build (`message_box_build` 0x4F6990) keeps the cursor (the mouse
+manager's +0x4C, +0x50), sets the default arrow for its loop (0x4F74AC) and puts the kept one back
+after (0x4F753A): the adventure map's arrow of CLT-Q137 shows `crdeflt.def` in the box
+(`scn-begin-filter` begin) and comes back at its close (`after`). The client: 530 over any empty
+list (CLT-Q114 (b)), the original's only with a map of a known format shown before; Begin with a
+map is T6's.
+
+### 21.4 The recordings and the comparisons
+
+`scn-difficulty` (`reopened` added), `scn-begin-none` (`teams`, `teams-closed`, `hard` added)
+and `scn-empty-filter` (new: `extra-large`, `teams`, `teams-closed`, `hard`, `all`) recorded,
+both runs alike; `scn-info`, `scn-begin-filter` played again as kept (the latter's load clip
+1900 to 2100 or 2110 ms: the bar fills in real time). `drawn`: `scn-info` 21 of 21,
+`scn-difficulty` 9 of 9, `scn-begin-none` 7 of 7, `scn-empty-filter` 5 of 5, `scn-begin-filter` 6
+of 6 up to its load; the `scenario` and `advanced` groups otherwise as recorded.
+
+### 21.5 Not built (T2c on)
+
+The description's scroll bar (`H3DlgScrollableText`'s path for more lines than the box holds,
+0x5BA19E, *not read*): no shipped map reaches it (159 maps: the longest descriptions fill 7 of the
+box's 7 lines at width − 24, 300 characters the longest), so its recording needs a map of
+the harness's own with a longer text (T2c). Begin with a map (T6).
