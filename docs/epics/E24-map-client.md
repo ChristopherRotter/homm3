@@ -124,15 +124,16 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   cursors, 0x40DEB0; a computer player's moves where the viewer sees them); a visit's results
   (T2: the adventure's message box, its text, pictures, buttons and sounds, for the finds and
   questions the engine's visits make, the level-up's choice among them; a resource found, kind
-  6, 0x451220, 5 seconds; a text, kind 7, 0x451820, design §4.8; an object taken or a monster
-  beaten, the map, the minimap and the panels redrawn; a flag raised; a boat boarded and left; a
-  spell cast on the map recorded, MCL-Q14). **Part B, the engine's games through the protocol's
+  6, 0x451220, 5 seconds; a text, kind 7, 0x451820, design §4.8; an object taken, the map, the
+  minimap and the panels redrawn; a flag raised; a boat boarded and left; a spell cast on the map
+  recorded, MCL-Q14; a monster beaten moved to T5 by the user at T2d's start). **Part B, the engine's games through the protocol's
   whole-game record:** a record's start (T3: the static art from the map it names, the live part
   from its first observation: each object by its identity, a random object's type, the owners,
   the heroes, the boats, the explored tiles, the kingdom, a hero's status, the hover's facts; a
   town's own name from the map); a record played over time (T4: each event as Part A built it,
   the walks along the engine's paths as M2's, the record's answers in its boxes, the viewer's
-  controls). **Part C:** the battles handed over and back (T5). The closure (T6). **Not in M4:**
+  controls). **Part C:** the battles handed over and back (T5; a monster beaten, the map after a
+  battle won, with them). The closure (T6). **Not in M4:**
   the hero, town, meeting and kingdom-overview screens, the quest log and every dialog but the
   message boxes (M5); play (M5); a spectator's view; shipped maps with towns (E09: of the 160,
   the engine plays 8 whole, 128 stop at a hero generated at a main town; M4's games are on those
@@ -187,7 +188,10 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   choices, cut in two by the user at its start (2026-11-18, as T2a): T2b1, the reading and the
   recordings (**done** 2026-11-18, the log's "M4 T2b1"), T2b2, the viewer (**done** 2026-11-18,
   whole: the user kept it uncut; the log's "M4 T2b2"); T2c, a level-up's choice (**done**
-  2026-11-18, whole: the user kept it uncut; the log's "M4 T2c"), T2d, the map changed by a visit; T3, a record's start (after the server lane's whole-game record
+  2026-11-18, whole: the user kept it uncut; the log's "M4 T2c"), T2d, the map changed by a
+  visit, cut in three by the user at its start (2026-11-18, by family; "a monster beaten" moved to
+  T5): T2d1, a flag raised (**done** 2026-11-18, the log's "M4 T2d1"), T2d2, a boat boarded and
+  left, T2d3, a spell cast on the map (MCL-Q14); T3, a record's start (after the server lane's whole-game record
   and the adventure lane's object identity); T4, a record played; T5, the battles handed over
   (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
   with the user.
@@ -336,3 +340,9 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   written after the staging (every level and slot cleared first, no selection), so that a level
   offers one advance or none without a seed's search; they and the type's cleared must not change
   the morale or luck the status window shows (TRAPS).
+- **M4 T2d1, a flag raised** (*provisional*; design §5.6, *Built*): the flag raised after a find's
+  first boxes and before its question, a dwelling's only without guards (its creature below level
+  5); of `visit_and_update`'s redraws the minimap alone (nothing else changes in the recordings);
+  the reveal of radius 3 and the scenario's test left out (nothing shows); the hint and cursor over
+  the object after its visit still the owners at 0; an abandoned mine without guards keeps its
+  question (its record not read); the mines' incomes as the tables' `mine_income`.

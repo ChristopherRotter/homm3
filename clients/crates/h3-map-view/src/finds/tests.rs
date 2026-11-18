@@ -32,7 +32,7 @@ fn texts() -> Catalogue {
         r#""witch-hut-empty": "deserted", "shrine": "{{text}}'{{spell}}'.", "#,
         r#""shrine-1": "a simple spell - ", "shrine-2": "a spell - ", "#,
         r#""shrine-3": "a sophisticated spell - ", "shrine-known": " KNOWN", "#,
-        r#""shrine-no-book": " NO BOOK", "shrine-wisdom": " WISDOM" }, "#,
+        r#""shrine-no-book": " NO BOOK", "shrine-wisdom": " WISDOM", "lighthouse": "LIGHT" }, "#,
         r#""turn": { "town-lost": "{{player}}, you have lost your last town.", "#,
         r#""days-left": "{{player}}, you only have {{days}} days left.", "#,
         r#""last-day": "{{player}}, this is your last day." } }, "#,
@@ -44,6 +44,7 @@ fn texts() -> Catalogue {
         r#""creature": { "4_one": "Griffin", "4_other": "Griffins", "1_one": "Halberdier", "#,
         r#""1_other": "Halberdiers" }, "resource": { "6": "Gold" }, "#,
         r#""artifact-event": { "7": "You see a heavy axe." }, "#,
+        r#""mine-event": { "0": "SAWMILL", "6": "GOLD MINE" }, "#,
         r#""sign": { "5": "Proceed at Your Own Risk", "0": "Do Not Enter" } }"#,
     );
     Catalogue {
@@ -70,6 +71,7 @@ fn art() -> FindArt {
         pickups: vec!["pickup01.wav".to_string(), "pickup02.wav".to_string()],
         killfade: "killfade.wav".to_string(),
         artifact_skills: vec![[7, 2, 0, 0, 0], [12, 12, -3, 0, 0]],
+        mine_income: [2, 1, 2, 1, 1, 1, 1000],
     }
 }
 
@@ -670,4 +672,41 @@ fn what_a_visit_gives_the_panels() {
         }
     );
     assert_eq!(Find::Stone { visited: true }.gain(&art), Gain::default());
+}
+
+#[test]
+fn a_flag_raised_at_a_mine_and_a_lighthouse() {
+    // E24 M4 T2d1 (design §5.6): a neutral Sawmill without guards (`flag-mine`; Blue's Ore Pit
+    // alike, `flag-mine-blue`): MINEEVNT's record of its resource with the wood at its "2/day";
+    // a Gold Mine's 1000/day.
+    let mine = |resource: u8, guards: Vec<(u32, u32)>| Content::Mine { resource, guards };
+    let sawmill = Find::flag_of([53, 0], Some(&mine(0, vec![])), false).unwrap();
+    assert_eq!(sawmill, Find::Mine { resource: 0 });
+    assert!(sawmill.flagged() && !sawmill.taken());
+    assert_eq!(told(&sawmill), told_text("SAWMILL", &[(0, -2)]));
+    assert_eq!(shown(0, -2), of("resour82.def", 0, "2/day"));
+    let gold = Find::Mine { resource: 6 };
+    assert_eq!(told(&gold), told_text("GOLD MINE", &[(6, -1000)]));
+    assert_eq!(shown(6, -1000), of("resour82.def", 6, "1000/day"));
+    // A resource past the incomes has none (no caption), its record's text none.
+    assert_eq!(told(&Find::Mine { resource: 7 }), told_text("", &[(7, 0)]));
+    // The panels show nothing of it; told once (`flagged`: the visitor's after it).
+    assert_eq!(sawmill.visited(), sawmill);
+    assert_eq!(sawmill.gain(&art()), Gain::default());
+    assert_eq!(sawmill.found(&texts()), None);
+    // The Lighthouse (`flag-lighthouse`): ADVEVENT 69 alone.
+    let light = Find::flag_of([42, 0], None, false).unwrap();
+    assert_eq!(light, Find::Lighthouse);
+    assert!(light.flagged());
+    assert_eq!(told(&light), told_text("LIGHT", &[]));
+    assert_eq!(light.visited(), light);
+    // Of the visitor's team, guarded, the abandoned mine, without contents, another class: none.
+    assert_eq!(Find::flag_of([53, 0], Some(&mine(0, vec![])), true), None);
+    assert_eq!(Find::flag_of([42, 0], None, true), None);
+    let guarded = mine(2, vec![(56, 10)]);
+    assert_eq!(Find::flag_of([53, 2], Some(&guarded), false), None);
+    assert_eq!(Find::flag_of([53, 7], Some(&mine(6, vec![])), false), None);
+    assert_eq!(Find::flag_of([53, 0], None, false), None);
+    assert_eq!(Find::flag_of([112, 0], None, false), None);
+    assert!(!Find::Stone { visited: false }.flagged());
 }

@@ -119,10 +119,17 @@ fn turning(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
 
 /// The start of the recorded sequence `(id, situation, timeline, live)` as [`turning`] makes it.
 pub(super) fn started(
-    &(id, situation, timeline, live): &(&str, &str, &'static str, &str),
+    entry: &(&str, &str, &'static str, &str),
 ) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
-    let sequence = sequences.get(id).unwrap();
+    started_by(sequences.get(entry.0).unwrap(), entry)
+}
+
+/// [`started`] with the sequence given (E24 M4 T2d1: one not yet in `sequences.toml`).
+pub(super) fn started_by(
+    sequence: &sequence::Sequence,
+    &(id, situation, timeline, live): &(&str, &str, &'static str, &str),
+) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
     let mut start = start(situation, sequence.scroll_speed().unwrap());
     (start.kingdom, start.buttons) = live_kingdom(live);
     let (heroes, viewer) = live_heroes(live);

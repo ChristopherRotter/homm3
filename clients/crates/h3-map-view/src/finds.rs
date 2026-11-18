@@ -25,6 +25,15 @@
 //! spells, the artifacts: the engine's), a level-up, Pandora's Box (its question: T2b), an
 //! event's guards and an event with a text and no reward (`event_fire` 0x4A0ED0 not read past
 //! `grant_rewards`).
+//!
+//! A flag raised (E24 M4 T2d1, design §5.6, *provisional*): a mine's and a Lighthouse's visit
+//! by a hero not of their owner's team ([`Find::flag_of`]: no guards) tells its box (MINEEVNT's
+//! record of the mine's resource with the resource's daily income, ADVEVENT 69), then the object
+//! is the visitor's ([`Find::flagged`]: nothing told again). *Not built:* an abandoned mine
+//! without guards (its record by the resource or 7 not read: it stays the question's,
+//! `crate::asks`), a mine's or a Lighthouse's owner's own visit (the Leave Guards dialog, M5's),
+//! the reveal of radius 3 around the entrance (nothing new shows: the step revealed the hero's
+//! scouting radius) and the scenario's test after it.
 
 use alloc::format;
 use alloc::string::String;
@@ -86,6 +95,10 @@ pub struct FindArt {
     /// packs' `primary_skills` effects; *provisional*: the engine's in time, an artifact picked
     /// up taken as worn): what the hero's window shows at a pickup's end.
     pub artifact_skills: Vec<[i32; 5]>,
+    /// Each resource's mine's daily income, in the resource bar's order (`mine_daily_income`
+    /// 0x678288: 2, 1, 2, 1, 1, 1, 1 000; E24 M4 T2d1): a mine's box shows it as its picture's
+    /// caption (GENRLTXT 4).
+    pub mine_income: [i32; 7],
 }
 
 impl FindArt {
@@ -113,8 +126,9 @@ pub fn pickup(art: &FindArt, n: usize) -> Option<&str> {
 
 /// The string catalogue's keys the finds and the turn's boxes show (`clients/text/keys.toml`);
 /// the names are the families `resource`, `artifact`, `artifact-event`, `spell`, `player-colour`,
-/// `skill-level`, `secondary-skill`, `primary-skill`, `creature`, `hero` and `sign`'s.
-pub const KEYS: [&str; 44] = [
+/// `skill-level`, `secondary-skill`, `primary-skill`, `creature`, `hero`, `sign`'s and (E24 M4
+/// T2d1) `mine-event`'s, a mine's box (MINEEVNT's records).
+pub const KEYS: [&str; 45] = [
     "map.find.per-day",
     "map.find.level",
     "map.find.count",
@@ -156,6 +170,7 @@ pub const KEYS: [&str; 44] = [
     "map.find.reward-spells",
     "map.find.reward-creature",
     "map.find.reward-creatures",
+    "map.find.lighthouse",
     "map.turn.town-lost",
     "map.turn.days-left",
     "map.turn.last-day",
@@ -410,6 +425,17 @@ pub enum Find {
         /// The hero's spell points at their maximum or above.
         full: bool,
     },
+    /// A mine (53, E24 M4 T2d1, design §5.6: `visit_mine` 0x4A39A0) not of the visitor's team
+    /// and without guards: its resource (its record's +1, the live part's contents), told by
+    /// MINEEVNT's record of it with the resource's picture at minus its daily income; then the
+    /// visitor's (`set_mine_owner` 0x4C66E0).
+    Mine {
+        /// The resource (0 to 6).
+        resource: u8,
+    },
+    /// A Lighthouse (42, E24 M4 T2d1: `visit_object`'s case 42, 0x4A9479) not of the visitor's
+    /// team: ADVEVENT 69 without a picture; then the visitor's.
+    Lighthouse,
 }
 
 /// What a find's visit changes that the panels show (E24 M4 T2a2, *provisional*: the engine's
@@ -453,6 +479,15 @@ pub const CLASSES: [u32; 12] = [5, 49, 61, 79, 88, 89, 90, 91, 96, 100, 112, 113
 
 /// An event's class (26): told by [`rewards`].
 pub const EVENT: u32 = 26;
+
+/// The classes whose visit raises the visitor's flag and tells it (E24 M4 T2d1, design §5.6:
+/// [`Find::flag_of`]): a Lighthouse, a mine.
+pub const FLAGS: [u32; 2] = [LIGHTHOUSE, MINE];
+const LIGHTHOUSE: u32 = 42;
+const MINE: u32 = 53;
+
+/// The abandoned mine's subclass (7).
+const ABANDONED: u32 = 7;
 
 /// Gold, the resource a pile's word gives in hundreds (6).
 const GOLD_PILE: i32 = 6;
@@ -548,6 +583,41 @@ impl Find {
         })
     }
 
+    /// The find of an object of `class` and `subclass` whose visit raises the visitor's flag (E24
+    /// M4 T2d1, design §5.6; [`FLAGS`]), its owner `ours` when of the visitor's team: a mine of
+    /// the live part's `content` without guards (`visit_mine` 0x4A39A0), a Lighthouse. None for
+    /// another class, an owner of the visitor's team (nothing told: the Leave Guards dialog of a
+    /// human's own mine is M5's), a mine with guards (its question: `crate::asks`) or without
+    /// its contents, and (*provisional*, not read) an abandoned mine's.
+    #[must_use]
+    pub fn flag_of(
+        [class, subclass]: [u32; 2],
+        content: Option<&Content>,
+        ours: bool,
+    ) -> Option<Self> {
+        if ours {
+            return None;
+        }
+        match (class, content) {
+            (LIGHTHOUSE, _) => Some(Self::Lighthouse),
+            (MINE, Some(Content::Mine { resource, guards }))
+                if guards.is_empty() && subclass != ABANDONED =>
+            {
+                Some(Self::Mine {
+                    resource: *resource,
+                })
+            }
+            _ => None,
+        }
+    }
+
+    /// Whether the visit makes the object the visitor's (E24 M4 T2d1: a mine, a Lighthouse):
+    /// nothing is told at a later visit.
+    #[must_use]
+    pub const fn flagged(&self) -> bool {
+        matches!(self, Self::Mine { .. } | Self::Lighthouse)
+    }
+
     /// A Magic Well's find with the hero's spell points `full` (at their maximum or above: the
     /// viewer's [`full_mana`]); any other find as it is.
     #[must_use]
@@ -593,9 +663,12 @@ impl Find {
                 visited: true,
                 full: true,
             },
-            Self::Sign { .. } | Self::Pile { .. } | Self::Artifact { .. } | Self::Well { .. } => {
-                self.clone()
-            }
+            Self::Sign { .. }
+            | Self::Pile { .. }
+            | Self::Artifact { .. }
+            | Self::Well { .. }
+            | Self::Mine { .. }
+            | Self::Lighthouse => self.clone(),
         }
     }
 
@@ -775,6 +848,20 @@ impl Find {
             Self::Well { visited: true, .. } => alone("map.find.well-again"),
             Self::Well { full: true, .. } => alone("map.find.well-full"),
             Self::Well { .. } => alone("map.find.well"),
+            // MINEEVNT's record by the resource (`mine_event_texts` 0x6A5E20), the resource's
+            // picture at minus its income: GENRLTXT 4's "%d/day" (`flag-mine`'s "2/day").
+            Self::Mine { resource } => Told {
+                text: texts
+                    .known(&format!("mine-event.{resource}"), &Args::new())
+                    .unwrap_or_default(),
+                pictures: vec![(
+                    u32::from(*resource),
+                    art.mine_income
+                        .get(usize::from(*resource))
+                        .map_or(0, |income| income.saturating_neg()),
+                )],
+            },
+            Self::Lighthouse => alone("map.find.lighthouse"),
         })
     }
 }

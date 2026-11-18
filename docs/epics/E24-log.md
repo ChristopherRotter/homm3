@@ -2711,3 +2711,39 @@ was needed from it by then).
   check` and `cited` clean (`two_lines_format` 0x67FA38 and `plus_one_format` 0x67FA40, the
   catalogue's citations, `map.toml` entries); `cargo xtask verify --scope map-client --summary
   --with-original-data` no failing step.
+
+### M4 T2d1 — a flag raised (2026-11-18)
+
+On `map-client/e24-m4-t2d1`, the user present at the start; `master` at #1021. Original data
+staged from the PC at the start (63 files, SHA-256 checked against the PC's: one digest of the
+sorted hash lines, `28fcf718…`; the PC's own clone behind GitHub's, nothing uncommitted; the
+four manuals and three help files too); the setup's baseline stopped at its coverage step by a
+watcher (fmt, clippy, doc tests and deny passed), CI's green `master` standing in.
+
+- **The cut** (the user, at the start; the recommended one): T2d in three by family, each read,
+  recorded and built in one task as T2c was (T2d1 a flag raised, T2d2 a boat boarded and left,
+  T2d3 a spell cast on the map, MCL-Q14); "a monster beaten" moved to T5 (its recording needs a
+  battle; T5 hands the map back with the result applied); "an object taken" was T2a2's and T2b2's.
+  The user also allowed the client lane's catalogue test word for MINEEVNT (`cross-lane`); the
+  build made it a family instead, so it was not needed.
+- **Read** (design §5.6; `docs/exe/map.toml`: `visit_and_update` 0x4AAAA0 now `read`,
+  `mineevnt_load` 0x5B9150 and `mine_event_texts` 0x6A5E20 new): a mine's and a Lighthouse's box
+  and flag (`visit_mine`, `visit_object`'s case 42), a dwelling's flag before its hire question;
+  nothing redrawn by the visit, the minimap at `visit_and_update`'s end, the view at its next
+  redraw; the reveal of radius 3 shows nothing new.
+- **Recorded** (each twice, the second run `ok`, the frame at 0 exact; no harness change):
+  `flag-mine` (34 timeline lines, 8 screens), `flag-mine-blue` (34, 8), `flag-lighthouse` (34,
+  8), `flag-dwelling` (36, 9); situations `seq-flag-*`.
+- **Built** (one worker; design §5.6's *Built*; *provisional*, M4's review list): `Find::Mine`,
+  `Find::Lighthouse`, `Find::flag_of`, `Find::flagged`; a neutral dwelling's flag before its hire
+  (`Ask::flags`); the timeline's `Found::flag`, the owners in memory, `Draw::owners`,
+  `Minimap::owners`; `TileIndex::minimap_again`; the tables' `mine_income`; the catalogue's
+  `map.find.lighthouse` and the family `mine-event`; `timeline/tests/flags.rs` (the four replayed
+  headless).
+- **Checked:** the four moved into `sequences.toml` (`to-record.toml` removed), every frame exact
+  by `frames --only <id> --reuse` (8, 8, 8, 9) and the viewer's timelines the recorded ones
+  (`<id>-frames.txt` kept); `h3-map-view sequences` the 89 as recorded; `drawn` the 50 situations
+  and 85 earlier sequences the same, `--record` for the four; 406 library tests; coverage of
+  `h3-map-view`'s library 100 % lines, regions and functions (the worker's run); the window under
+  Xvfb (`--check 8`) on `flag-dwelling` and `flag-mine-blue`, 44 of 44 and 45 of 45 frames read
+  back exact, every change the headless loop's; `scripts/exe.py check` and `cited` clean.
