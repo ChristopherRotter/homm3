@@ -29,6 +29,12 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-18, E24 M4 T2b2 — in progress** (the user at the start: no cut, the 22 whole): on
+  `map-client/e24-m4-t2b2`. Done: original data staged (63 files, SHA-256 digest `9c890f81…` on
+  both sides); the harness keeps `TMP`, `TEMP`, `TMPDIR` from Wine (Wine 9.0's loader aborted at
+  every start); the 22 recorded again (running). Building in three parts by workers in turn: A1 (style 2,
+  the eight declined, `ask-tomb`, `ask-hire`), A2 (the six accepted that change the map), B (the
+  six choices); then `drawn`, `check.sh`, the docs and the PR. Nothing waits on the user's computer.
 - **2026-11-18, E24 M4 T2b1** (the user at the start: T2b in two, as T2a): every question's and
   choice's box read (design §5.4: styles 2, 7 and 10, the choice frames; MCL-Q33), the harness's
   box marks and the words the load draws, 22 sequences recorded twice into `to-record.toml` (the
@@ -39,9 +45,4 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   turn; `grant_rewards`' boxes read between them (MCL-Q32), two T2a1 misreadings corrected. The
   sequences recorded again here first. Original data staged (62 files) and a ballast file for
   the game's disk check (TRAPS). Nothing is waiting on the user's computer.
-- **2026-11-17, E24 M4 T2a1** (the user present at the cut, the PC offline after the staging): T2
-  cut in four, T2a again in two; the finds' boxes, the picture types, kinds 6 and 7, a pile's
-  removal read (design §5.3); the harness's `[[message]]` and `[[found]]` tables and the
-  situations' bodies; eleven sequences recorded twice (the log's "M4 T2a1"). Original data staged
-  (63 files) and a ballast file for the game's disk check (TRAPS). Nothing is waiting on the
-  user's computer.
+
