@@ -91,16 +91,15 @@ pub const GAME_TYPE_BUTTONS: [u16; 5] = [100, 101, 102, 103, 104];
 pub const TITLE: u16 = 105;
 
 /// The client's stubs (E27 M2 T6b2, T7): each screen, the menu its notice shows over and the
-/// notice's OK's ending. The scenario screen's (a new single scenario's built since M3 T1a; the
-/// hot seat's until M3 T4, the loads' until M4) shows over the game type menu it was reached
+/// notice's OK's ending. The scenario screen's (a new single scenario's built since M3 T1a, the
+/// hot seat's since M3 T4a; the loads' until M4) shows over the game type menu it was reached
 /// from (by Campaign, Tutorial, Load Game's Single or the Multiplayer dialog), its OK back
 /// there.
-pub const STUBS: [(Screen, Kind, Ended); 9] = [
+pub const STUBS: [(Screen, Kind, Ended); 8] = [
     (Screen::Campaigns, Kind::GameType(Game::New), Ended::Back),
     (Screen::Tutorial, Kind::GameType(Game::New), Ended::Back),
     (Screen::HighScores, Kind::Main, Ended::Done),
     (Screen::Credits, Kind::Main, Ended::Done),
-    scenario(Game::New, ScenarioKind::Multiplayer),
     scenario(Game::Load, ScenarioKind::Single),
     scenario(Game::Load, ScenarioKind::Multiplayer),
     scenario(Game::Load, ScenarioKind::Campaign),
@@ -806,6 +805,16 @@ impl Menus {
             (Screen::Multiplayer(_), _) => None,
             (Screen::Scenario(Game::New, ScenarioKind::Single), _) => {
                 Some(Front::Scenario(Box::new(self.scenario.opened(hovers))))
+            }
+            // The hot seat's (E27 M3 T4a): the names its OK stored (`hot_seat_names` 0x69CA50).
+            (
+                Screen::Scenario(Game::New, ScenarioKind::Multiplayer),
+                Some(Front::Multiplayer(m)),
+            ) => {
+                let names = m.names();
+                Some(Front::Scenario(Box::new(
+                    self.scenario.opened_hot_seat(hovers, names),
+                )))
             }
             _ => self
                 .opened(screen, pointer, hovers)

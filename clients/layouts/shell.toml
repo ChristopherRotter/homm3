@@ -960,6 +960,9 @@ bar = { id = 338, at = [58, 557], size = [194, 16], def = "SlideBuH.def", track 
 flag = { id = 263, def = "AOFLGB{}.DEF", at = [14, 130], size = [42, 50] }
 kind = { id = 199, at = [62, 151], size = [46, 24], font = "tiny.fnt", font_palette = "game.pal", colour = 4, align = 5 }
 handicap = { id = 207, def = "adopb2{}.def", at = [110, 151], size = [50, 24] }
+# The hot seat's handicap is a caption button (E27 M3 T4a: caption_button_create 0x456A50 at 0x57B0D3,
+# tiny.fnt colour 4; its draw centres it, 0x456CA0).
+handicap_caption = { font = "tiny.fnt", font_palette = "game.pal", colour = 4, align = 5 }
 town_left = { id = 215, def = "adoplfa.def", at = [164, 133], size = [11, 24] }
 town_right = { id = 223, def = "adoprta.def", at = [225, 133], size = [11, 24], frames = { normal = 1, pressed = 0, disabled = 2, selected = 3 } }
 hero_left = { id = 231, def = "adoplfa.def", at = [240, 133], size = [11, 24] }

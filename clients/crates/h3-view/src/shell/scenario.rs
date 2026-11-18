@@ -46,6 +46,11 @@
 //!   the name then the file's name (CLT-Q90); the size's first press after the build descending
 //!   in the original's profile (its recorded key 1), ascending in the client's (CLT-Q91 (c)).
 //!
+//! - **The hot seat** (E27 M3 T4a; §28): opened from the Multiplayer dialog's hot seat
+//!   ([`Scenario::opened_hot_seat`]): its players the hot seat's names, its list the maps two
+//!   humans may play, the flags' strip from the first player's colour; its advanced options
+//!   (`advanced`'s hot seat).
+//!
 //! - **The difficulty** (E27 M3 T2a; §3.5, §21): a press of 107 to 111 chooses it
 //!   (`scenario_difficulty_click` 0x586BF3: its button selected, the rating its own) and redraws
 //!   the screen whole. Each opening takes Normal ([`OPENING_DIFFICULTY`]: the list's build at the
@@ -61,7 +66,7 @@
 //!
 //! *Not built yet:* Begin with a map (T6: a double press begins nothing yet either), the advanced
 //! options (129: T3), the random map (130: T5), a description too long for its box (its scroll
-//! bar: T2c), the hot seat's and the load's modes (the client's stub until T4 and M4), GENRLTXT
+//! bar: T2c), the load's modes (the client's stub until M4), GENRLTXT
 //! 503 while the list is read again (a network game's message 1015 alone, `sub_58B120` 0x58B120:
 //! the network modes', `CLT-STUB-6`; design §20.3).
 
@@ -418,6 +423,13 @@ impl Entry {
         self.loss.map_or(-1, i16::from)
     }
 
+    /// The colour the hot seat's first player takes (`scenario_players_init` 0x584C40's hot-seat
+    /// loop, E27 M3 T4a: the first a human may play).
+    #[must_use]
+    pub fn first_human(&self) -> Option<usize> {
+        self.seats.iter().position(|s| s.human)
+    }
+
     /// The colour a single player takes (`scenario_players_init` 0x584C40, §3.12): the first only
     /// a human may play, else the first a human may play, else the first anyone plays.
     #[must_use]
@@ -697,6 +709,8 @@ pub struct Scenario {
     background: u8,
     over: Over,
     hovers: Hovers,
+    /// The hot seat's (E27 M3 T4a): its players the hot seat's names.
+    hot_seat: bool,
     bugs: Bugs,
 }
 
@@ -773,6 +787,7 @@ impl Scenario {
             background: 0,
             over: Over::Nothing,
             hovers: Hovers::default(),
+            hot_seat: false,
             bugs,
         };
         Advanced::hide_items(&mut scenario.shown);
@@ -793,6 +808,22 @@ impl Scenario {
     /// original's profile (CLT-Q137 (b): the client's keeps the default one).
     #[must_use]
     pub fn opened(&self, hovers: Hovers) -> Self {
+        self.open(hovers, None)
+    }
+
+    /// The screen opened anew from the Multiplayer dialog's hot seat (E27 M3 T4a; New Game's
+    /// Multiplayer, 0x4EED13: `multiplayer_dialog_run` 0x4F0590, then `scenario_new` 0x4F0490 as
+    /// Single's, `game_type` 0x6989F0 3) as [`Scenario::opened`] does, its players the hot seat's
+    /// `names` (`hot_seat_names` 0x69CA50: a human record each, `scenario_slots_new` 0x57F740) and
+    /// its list the maps two humans may play (`scenario_list_build` 0x582D53: the record's +8,
+    /// the colours a human may play, at least 2).
+    #[must_use]
+    pub fn opened_hot_seat(&self, hovers: Hovers, names: &[String]) -> Self {
+        self.open(hovers, Some(names))
+    }
+
+    /// The screen opened anew, single or with the hot seat's `names`.
+    fn open(&self, hovers: Hovers, names: Option<&[String]>) -> Self {
         let hovers = match self.bugs {
             Bugs::Original => Hovers {
                 arrow: Arrow::Adventure,
@@ -800,16 +831,30 @@ impl Scenario {
             },
             Bugs::Fixed => hovers,
         };
+        let mut entries = self.entries.clone();
+        if names.is_some() {
+            entries.retain(|e| e.humans() >= 2);
+        }
         let mut opened = Self::new(
             self.dialog.clone(),
             (self.look.clone(), self.description.look().clone()),
             self.texts.clone(),
-            self.entries.clone(),
+            entries,
             self.bugs,
         );
+        if let Some(names) = names {
+            opened.hot_seat = true;
+            opened.advanced = opened.advanced.take().map(|a| a.seated(names));
+        }
         opened.kept.clone_from(&self.kept);
         opened.hovers = hovers;
         opened.selecting()
+    }
+
+    /// Whether it is the hot seat's (E27 M3 T4a).
+    #[must_use]
+    pub const fn hot_seat(&self) -> bool {
+        self.hot_seat
     }
 
     /// The screen with its background `gamselb<n>.pcx` (`n` 0 or 1; another is taken as 0): the
@@ -920,6 +965,11 @@ impl Scenario {
         if self.last_row.is_none() {
             self.last_row = Some((ms, None));
         }
+    }
+
+    /// Whether item `id` takes the mouse (a single player's handicap does not: [`Advanced`]).
+    fn takes(&self, id: u16) -> bool {
+        self.advanced.as_ref().is_none_or(|a| a.takes(id))
     }
 
     /// The kept map's entry selected (else the first, none in an empty list) and shown.
@@ -1329,14 +1379,24 @@ impl Scenario {
 
     /// The flags of `entry`'s colours (`scenario_team_flags` 0x585300): each colour that plays, in
     /// colour order, of the local colour's team the next allies' flag (the local one's own first),
-    /// any other the next enemies'. The local colour: the advanced options' single player's while
-    /// its rows are as made (a flag's press moves it: E27 M3 T3c1), else the map's.
+    /// any other the next enemies'. The local colour: the advanced options' local record's (the
+    /// single player's, the hot seat's first) while its rows are as made (a flag's press moves it:
+    /// E27 M3 T3c1), else the map's for it (the hot seat's first player's: E27 M3 T4a).
     fn team_flags(&mut self, entry: &Entry) {
         let local = self
             .advanced
             .as_ref()
             .and_then(Advanced::local_colour)
-            .map_or_else(|| entry.local(), |c| c.map(usize::from));
+            .map_or_else(
+                || {
+                    if self.hot_seat {
+                        entry.first_human()
+                    } else {
+                        entry.local()
+                    }
+                },
+                |c| c.map(usize::from),
+            );
         let team = local.map(|c| entry.teams[c & 7]);
         let (mut allies, mut enemies) = (ALLIES, ENEMIES);
         for id in ALLIES..ENEMIES + 8 {
@@ -1691,7 +1751,7 @@ impl Scenario {
         let dialog = mouse_dialog(&self.dialog, &self.shown);
         let hidden = dialog
             .item_at(point)
-            .is_some_and(|item| self.shown.state(item.id()).hidden || !Advanced::takes(item.id()));
+            .is_some_and(|item| self.shown.state(item.id()).hidden || !self.takes(item.id()));
         if hidden {
             return Did::default();
         }
@@ -1775,7 +1835,7 @@ impl Scenario {
         } else if on_duration {
             Some(advanced::BAR)
         } else {
-            self.item_at(point).filter(|&id| Advanced::takes(id))
+            self.item_at(point).filter(|&id| self.takes(id))
         };
         if id == Some(TEAMS) {
             return self.teams_dialog().map_or_else(Did::default, |m| {

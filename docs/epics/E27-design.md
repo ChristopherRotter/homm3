@@ -3192,3 +3192,65 @@ the `advanced` and `scenario` groups as recorded; `drawn.txt` recorded for `adv-
 
 The hot seat's bar (enabled for every player there, T4); a network host's message (no network
 play); the timer (`CLT-STUB-11`: the hot seat's clock, E24 M5).
+
+## 28. The hot seat's advanced options as they open (M3 T4a, 2026-11-18)
+
+Read from `Heroes3.exe` (New Game's Multiplayer, 0x4EED13; the constructor's handicap 0x57B07A to
+0x57B115; `scenario_advanced_toggle` 0x58164A to 0x58174A; the row's draw 0x58DE13 to 0x58DF03;
+`scenario_list_build` 0x582D41) against `adv-hotseat`, played again under Wine this session
+(§28.3). The client: `Scenario::opened_hot_seat`, `Advanced::seated` and its human records, the
+layout's `handicap_caption`, the keys `shell.advanced.handicap.*`.
+
+### 28.1 The entry
+
+- **The path** (0x4EED13): New Game's Multiplayer runs `multiplayer_dialog_run`; a result other
+  than 0 (the hot seat's OK, `game_type` 3) falls into Single's `scenario_new` 0x4F0490: the same
+  constructor with 0, the same run, a back to New Game's menu. Nothing of the Multiplayer dialog
+  stays drawn: the constructor draws its background (`gamselb%d.pcx` by its own draw, recorded:
+  `adv-hotseat`'s seven openings drew 0, 0, 1, 1, 0, 0, 1; the recipe's `backgrounds`).
+- **The slots** (`scenario_slots_new` 0x57F740, §3.12): a human record each of `hot_seat_names`'
+  names, in order, ids 1 on; `local_slot` is id 1, so the first name is the local record (its
+  colour the flags' strip's, §3.5).
+- **The list** (`scenario_list_build`, 0x582D41): outside network play and the hot seat every map
+  read is listed; there, only one whose record's +8 is at least 2. The +8 is the "/" figure of the
+  list's players column (the colours a human may play: the client's `Entry::humans`, drawn exact
+  on the 160 maps since T1b1). The kept map is selected when listed, else the first.
+- **The rows** (`scenario_players_init` 0x584C40's hot-seat branch, §3.12): each colour a human
+  may play, in colour order, to the next human record without one; past the last name the colours
+  are the computer's (their names GENRLTXT 469), past the last such colour a name has none and no
+  row (`hotseat-long`, `adv-hotseat` players-2 to players-8: the names on the first rows).
+
+### 28.2 What differs from a single player's
+
+- **The handicap** (0x57B07A): network play or `game_type` 3 makes `adopb2%c.def` a caption
+  button (`caption_button_create` at 0x57B0D3: (110, y, 50, 24), the caption `handicap_names`'
+  first, `tiny.fnt`, frame 0, click frame 1, flags 2, colour 4; its draw centres it one pixel up,
+  §18.1), else a plain DEF button (0x57B110). `scenario_advanced_toggle` disables it single only
+  (0x58170E skips the disable and the edit's hide for `game_type` 3): enabled, it takes the mouse
+  and its hint (`adv-hotseat-rows` handicap-popup exact). Its caption changes only at a press
+  (T4b).
+- **The name's edit** (353 + *c*): the constructor's move of it to its row (0x58164A) and the
+  row's draw of it (0x58DEE5) are single only; in the hot seat it stays as made, hidden, and a name
+  takes no press (`scenario_name_click`: single only).
+- **The arrows** (§3.14): the town's as single's (the hot seat, or a free record, or the local
+  one's: every colour); the hero's a human record's (every name's colour, not only the local one);
+  the bonus's every colour's (0x58DE46: `game_type` 3 shows them whatever the record or the town).
+- **The duration's bar** enabled as single's (§3.13).
+
+### 28.3 The recordings and the comparisons
+
+`adv-hotseat` played under Wine (`run --only adv-hotseat`, both runs as kept): its frames
+differed from the viewer's only by the background at three openings (the frame's edges, 32 020
+pixels); with the recipe's `backgrounds` its 8 shots are exact. `adv-hotseat-rows`' and
+`adv-hotseat-two`'s `panel` exact, and with them `handicap-3` (three presses back to the first
+caption: the press takes nothing yet), `handicap-popup` and `flag-hover-green`; the presses' other
+shots are T4b's. `hotseat-names` and `hotseat-long` now reach the screen: their `scenario` and
+`advanced` shots exact. `drawn.txt` recorded for the `advanced` group and those two recipes; every
+other recipe as recorded.
+
+### 28.4 Not built
+
+The hot seat's presses (T4b): the handicap's (+1 modulo 3, its caption), the flags' cycle
+(`hot_seat_colour_cycle` 0x577AE0, CLT-Q94: until then a flag's press moves no colour), a hero
+another human record holds passed over and stepped on (`scenario_hero_step`,
+`scenario_heroes_unclash`), Begin's GENRLTXT 83 and 531. A hot-seat load (M4).

@@ -244,11 +244,11 @@ impl Screen {
     }
 
     /// How much of the screen is built ([`look::look`] draws it unless [`Built::Not`]): the start,
-    /// the main menu, the game type menus, the Multiplayer dialog (E27 M2 T5a, T6a, T6b1, T7) and
-    /// a new single scenario's screen (M3 T1a); the campaigns' selection, the tutorial, High
-    /// Scores, Credits and the scenario screen's other modes the client's stubs (T6b2, T7: until
-    /// E20, CLT-Q84's tutorial mode, M4, M3 T4 and M4); the others a stand-in until their task
-    /// ([`Screen::task`]).
+    /// the main menu, the game type menus, the Multiplayer dialog (E27 M2 T5a, T6a, T6b1, T7), a
+    /// new single scenario's screen (M3 T1a) and the hot seat's (M3 T4a: a new game's from the
+    /// Multiplayer dialog, its only path); the campaigns' selection, the tutorial, High Scores,
+    /// Credits and the loads' scenario screens the client's stubs (T6b2, T7: until E20, CLT-Q84's
+    /// tutorial mode, M4 and M4); the others a stand-in until their task ([`Screen::task`]).
     #[must_use]
     pub const fn built(self) -> Built {
         match self {
@@ -256,7 +256,7 @@ impl Screen {
             | Self::MainMenu
             | Self::GameType(_)
             | Self::Multiplayer(_)
-            | Self::Scenario(Game::New, Kind::Single) => Built::Whole,
+            | Self::Scenario(Game::New, Kind::Single | Kind::Multiplayer) => Built::Whole,
             Self::Campaigns
             | Self::Tutorial
             | Self::HighScores
