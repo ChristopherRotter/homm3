@@ -30,10 +30,19 @@ reading and recordings, then the viewer's build, as T1b was).
   "M4 T2a2"). Its pictures (`h3_ui::message`), `finds` and the timeline's boxes are T2b's base.
 - **T2b, the questions and choices** (an answer): Yes/No with pictures for the engine's offers
   (`h3_adventure::OfferKind`: a guard's passage, a monster's join free or for a price, its
-  flight, a Cartographer's price; a guarded pile's question) and the choice box for its choices
+  flight, a Cartographer's price; a guarded pile's, artifact's, scroll's, mine's and bank's
+  question; the Tree of Knowledge's price, a search (the Warrior's Tomb, a bank), Pandora's Box,
+  the Pyramid, a dwelling's hire and guards questions) and the choice box for its choices
   (`Choice`: a chest's gold or experience, the Arena's and a School's two skills; the pictures
-  chosen by a click, the hidden frame a choice's mark), the answer the harness gives. **Depends
-  on:** T2a.
+  chosen by a click, the hidden frame a choice's mark), the answer the harness gives. Not the
+  Shipyard's boat dialog and the recruit dialog (screens of their own: M5). **Cut in two by the
+  user at its start** (2026-11-18, as T2a was; recommended was three, the choice box apart):
+  - **T2b1, read and recorded:** every question's and choice's box read (its style, text,
+    pictures, sounds, the answer's effect on the screen up to the box's close), the harness
+    giving the answers, the sequences recorded twice into `clients/map/to-record.toml`. **Status:**
+    in progress (`map-client/e24-m4-t2b1`, 2026-11-18T08:00Z).
+  - **T2b2, the viewer:** the viewer plays T2b1's sequences frame-exact (a cut offered at its
+    start, as T2a2's). **Depends on:** T2b1.
 - **T2c, a level-up's choice:** the level-up dialog (0x63FE60, `level_up`; the engine's
   `DecisionView::LevelUp`): the primary skill gained, one or two secondary offers, its own layout.
   **Depends on:** T2a.
