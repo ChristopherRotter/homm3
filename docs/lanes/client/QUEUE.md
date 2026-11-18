@@ -15,16 +15,6 @@ need the five DLLs (`MP3DEC.ASI` in the PC's `original-data/install` too since 2
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T3c1
-
-T3c1 A single player's flags, handicap and name (decision 57: T3c cut in two at
-`adv-single-rest`'s seam; design §3.13, §3.14, §23.7): the flags' hover and press
-(`scenario_flag_click` 0x58B790: the player to another colour a human may play, CLT-Q93 (b)), the
-handicap (single: drawn up, no press, no popup; a `CLT-STUB`, decision 6), the name's edit (353,
-`scenario_name_click` 0x58B620: through `h3_ui::input`, decision 20; where the text returns to the
-record not read yet). Exact against `adv-single-rest`'s first ten shots (`flag-hover-own` to
-`name-after-flag`).
-
 #### E27 M3 T3c2
 
 T3c2 The duration's bar and the hints (decision 57): the duration's bar's input

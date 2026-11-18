@@ -864,24 +864,27 @@ impl Front {
         match self {
             Self::Menu(m) => alloc::vec![m.context()],
             Self::Multiplayer(m) => m.contexts(),
-            Self::Scenario(s) => alloc::vec![s.context()],
+            Self::Scenario(s) => s.contexts(),
         }
     }
 
     /// Whether an edit takes the window's text input (E27 M2 T7b, the client's profile).
     #[must_use]
-    pub const fn typing(&self) -> bool {
+    pub fn typing(&self) -> bool {
         match self {
-            Self::Menu(_) | Self::Scenario(_) => false,
+            Self::Menu(_) => false,
             Self::Multiplayer(m) => m.typing(),
+            Self::Scenario(s) => s.typing(),
         }
     }
 
-    /// A character the window's text input typed (E27 M2 T7b).
+    /// A character the window's text input typed (E27 M2 T7b; the scenario screen's name, M3
+    /// T3c1).
     pub fn typed(&mut self, c: char) -> Did {
         match self {
-            Self::Menu(_) | Self::Scenario(_) => Did::default(),
+            Self::Menu(_) => Did::default(),
             Self::Multiplayer(m) => m.typed(c),
+            Self::Scenario(s) => s.typed(c),
         }
     }
 
@@ -942,7 +945,7 @@ impl Front {
         match self {
             Self::Menu(m) => command.map_or(Did::default(), |c| m.key(c, by)),
             Self::Multiplayer(m) => m.key(scan, command, by),
-            Self::Scenario(s) => s.key(command, by),
+            Self::Scenario(s) => s.key(scan, command, by),
         }
     }
 
