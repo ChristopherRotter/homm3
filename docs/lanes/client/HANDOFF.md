@@ -26,9 +26,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   hero's arrows, portraits and names, Random's popup; CLT-Q141 (b), CLT-Q142 (b), decisions 55
   and 56; `adv-single-hero` 26 of 28, `adv-single-maps` 11 of 13 exact, the rest a hero's own
   popup: design §24). **T3b2 done** (2026-11-18: a hero's own popup, `scenario_hero_popup` read
-  whole; `adv-single-hero` 28 of 28, `adv-single-maps` 13 of 13 exact: design §25). **Next: M3
-  T3c** (the queue; a cut offered: T3c1 the flags' hover and press, the handicap, the name's
-  edit, `adv-single-rest`'s first ten shots; T3c2 the duration's bar and the hints).
+  whole; `adv-single-hero` 28 of 28, `adv-single-maps` 13 of 13 exact: design §25). **T3c cut in
+  two** (decision 57). **Next: M3 T3c1** (the flags, the handicap, the name's edit: the queue),
+  then T3c2.
   Decisions to carry: the dialogs' input one
   implementation (20; `h3_ui::input`); the shell's code as the battle's (21); decision 22's
   fixes; every pixel of a Smacker clip through its palette (24); every clip's sound at the

@@ -1205,3 +1205,6 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
   (18); `menus` loads the game's rules once (the maps and the classes).
 - **Compared:** `adv-single-hero` 28 of 28, `adv-single-maps` 13 of 13 exact (the four hero
   popups at the first build); every other group as recorded; `drawn.txt` recorded for the two.
+- **Cut** (the user, decision 57): T3c in two at `adv-single-rest`'s seam (T3c1 the flags, the
+  handicap and the name's edit, the first ten shots; T3c2 the duration's bar and the hints);
+  the session stopped there.
