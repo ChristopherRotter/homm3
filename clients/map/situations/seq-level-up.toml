@@ -1,4 +1,4 @@
-# A level-up's choice (E24 M4 T2c; clients/map/to-record.toml `level-up`, `level-up-right`; E24
+# A level-up's choice (E24 M4 T2c; clients/map/sequences.toml `level-up`, `level-up-right`; E24
 # design §5.5): a Learning Stone's 1 000 experience (ADVEVENT 143) takes the hero at 0 to level 2,
 # its dialog with two offers.
 # Red's hero on (4, 4) steps right onto it (its entrance (5, 4)); Red's town out of the way, so

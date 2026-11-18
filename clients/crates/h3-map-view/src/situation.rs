@@ -729,7 +729,9 @@ pub struct HeroSpec {
     /// Its secondary skills, [skill, level 1 to 3] in the list's order (at most eight, each
     /// skill once; hero +0xC9, +0xE5, +0x101), written by the harness after its walk in place of
     /// the type's (E24 M4 T2c, design §5.5: a level-up's offers, one or none with eight skills
-    /// known); empty the type's. It redraws nothing, so it needs no selection.
+    /// known); empty the type's. The status window at 0 was built before it is written and is
+    /// built again at the walk, so the skills written and the type's cleared must not change the
+    /// morale or luck shown (Leadership, Luck): TRAPS. It needs no selection.
     #[serde(default)]
     pub secondary: Vec<[u8; 2]>,
 }

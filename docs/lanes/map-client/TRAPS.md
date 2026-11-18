@@ -139,6 +139,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   T2a sequence recorded again (`find-*`, `turn-*`) keeps a live part with more tables than git's:
   expected, nothing of the viewer reads them. A choice's OK is disabled until a picture is
   chosen (styles 7 and 10): a sequence's Enter before the click does nothing.
+- **A hero's secondary skills written show at the walk** (M4 T2c, design §5.5): a situation's
+  `secondary` is written without a selection (none of another hero to make), after the status
+  window at 0 was built; the walk's first step builds it again from the hero. So the skills
+  written, and the type's own they clear, must not change the morale or luck shown (Leadership,
+  Luck): `level-up-one` and `-none` give a Cleric (Rion: Wisdom, First Aid) eight skills without
+  either (their first staging, Mephala's Basic Leadership cleared and Expert Leadership written,
+  differed from 100 in the morale's icon alone).
 - **One game at a time:** `h3mem.Mem()` takes the first game process it finds, so a `still --keep` game left running makes the next still read it (T5a); stop it first (`wineserver -k` with `h3drive.env()`). At a human player's turn start the selected hero is off its tile until the view moves: find heroes by their records (`Mem.hero_on`).
 - **Driving the window under Xvfb** (M2 T4b1): `xdotool click --window <id>` sends a synthetic
   event that SDL ignores; move the pointer with `mousemove --window` and click with a plain

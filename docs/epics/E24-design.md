@@ -3559,8 +3559,11 @@ situations `seq-level-up*`).
 - **After** (recorded): the dialog closed, the status window shows the hero's primary skill raised
   (`level-up`: Defense 2 to 3 at 2260, the window's number alone); two levels show their dialogs
   one after the other, the second built in the millisecond the first closes (`level-up-twice` at
-  4260: the screen changes where the two differ). Nothing else of the map changes (no offer
-  recorded changes the sight).
+  4260: the screen changes where the two differ). The offer learned shows where the status window
+  shows it: `level-up-twice`'s Advanced Leadership, the morale +1 to +2 at the last close (5260);
+  no offer recorded changes the sight. A chest's levels come after its dissolve
+  (`visit_treasure_chest`'s `hero_level_up` after `remove_map_object`; `chest_gold_or_experience`
+  gives the experience without them).
 - **The oddity** (MCL-Q34): the sentence naming the offers (GENRLTXT 204, 205) is built and never
   shows (its two leading line breaks put it below its box); the captions under the pictures say
   the same. The viewer draws it as the original's.
@@ -3572,16 +3575,17 @@ situations `seq-level-up*`).
   situation's hero's `secondary` (`Mem.write_secondary`: eight skills, one or none to offer); the
   keys 1 and 2.
 - **Recorded** (each twice, the second run `ok`, the frame at 0 exact; the situations
-  `seq-level-up*`: Red's hero, Mephala (the Ranger seed 7 draws, at experience 0), steps right
-  onto a Learning Stone, or at 900 up onto a chest): `level-up` (42 timeline lines, 11 screens
+  `seq-level-up*`: Red's hero, Mephala (the Ranger the situation's class gives, at experience 0;
+  Rion, a Cleric, in `level-up-one` and `-none` since the build's check), steps right onto a
+  Learning Stone, or at 900 up onto a chest): `level-up` (42 timeline lines, 11 screens
   kept: the stone's box closed by Enter, the dialog built at the key's release, 1060; Enter before
   a choice does nothing, the left offer clicked, Enter), `level-up-right` (41, 12: the keys 2 and
   1, a click on the right offer, the OK clicked), `level-up-one` (35, 9: eight skills, Mysticism at
   Basic the one offer), `level-up-none` (35, 9: eight at Expert; closed by Escape), `level-up-twice`
   (73, 25: the chest's 1 500 experience, levels 2 and 3, the second dialog at the first's close).
   The live parts' `[[level_up]]` tables give the hero, the level, the primary skill (`pskil42.def`'s
-  frame) and the offers (`offers`): Defense, Advanced Armorer or Basic Eagle Eye at level 2;
-  Knowledge, Advanced Leadership or Basic Artillery at level 3.
+  frame) and the offers (`offers`): Mephala's Defense, Advanced Armorer or Basic Eagle Eye at level
+  2; Knowledge, Advanced Leadership or Basic Artillery at level 3.
 - **Built** (M4 T2c, *provisional*): the module `levels`: `LevelUp`, a level-up's facts in
   `h3_game::LevelUpView`'s shape (the hero, the new level, the primary skill, the offers: none to
   two, each an `Offer`, a secondary skill and the level it reaches, `Offer::of_frame` from
@@ -3628,12 +3632,12 @@ situations `seq-level-up*`).
   hero other than the one selected at 0.
 - **Checked** (M4 T2c): the five moved into `sequences.toml`, `to-record.toml` removed; `frames
   --only <id> --reuse` on them: `level-up` (11 frames), `level-up-right` (12) and `level-up-twice`
-  (25) every frame exact; `level-up-one` and `level-up-none` (9 each) every frame of the dialog
-  exact, the status window's morale differing from 100 (181 pixels, 209 once the stone's box is
-  closed: its icon at x 621 to 640, y 474 to 485), the staging's: the situations' eight skills
-  hold Expert Leadership, written after the window at 0 was built (the live part's morale +1, the
-  step's rebuild at 100 the hero's +3); the viewer's timelines the recorded ones line for line (42,
-  41, 35, 35, 73; `<id>-frames.txt` kept, `drawn --record`); `find-stone`, `choose-chest`,
+  (25) every frame exact; `level-up-one` and `level-up-none` (9 each) first with the status
+  window's morale differing from 100 (181 pixels, then 209: the staging's, the eight skills
+  written after the window at 0 was built held Expert Leadership, and the type's Basic Leadership
+  went with the write: TRAPS), then staged again with a Cleric (Rion: Wisdom, First Aid) and no
+  morale or luck skill written, recorded twice, every frame exact; the viewer's timelines the
+  recorded ones line for line (42, 41, 35, 35, 73; `<id>-frames.txt` kept, `drawn --record`); `find-stone`, `choose-chest`,
   `choose-chest-gold` and `ask-tree` still exact; `h3-map-view sequences` the 85 as recorded; unit
   tests (the levels an experience reaches, an offer's frame, the tables read and refused, the
   texts with none, one and two offers, the dialog's items and states, the choice by a picture, a
