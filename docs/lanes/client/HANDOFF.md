@@ -35,7 +35,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   Smacker clip's frames from their due times (43); the empty list's leftovers fixed (51); the
   description's bar takes no list key while the list shows (52); a main hero of its type's
   portrait shown (55); a pick named by its own name (56). Open pull request: T3b1's
-  (`client/e27-m3-t3b1`): watch it until it merges. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
+  #1008 (`client/e27-m3-t3b1`): watch it until it merges. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
   epic's "Placed at the closure", the queue's inbox). E28 and E29 are backlog sketches.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+
   drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`.
@@ -69,7 +69,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-18, E27 M3 T3b1 (done; `client/e27-m3-t3b1`).** T3b cut in two with the user. The
+- **2026-11-18, E27 M3 T3b1 (done; `client/e27-m3-t3b1`, #1008).** T3b cut in two with the user. The
   PC's 64 files and the manuals staged at once (SHA-256 checked). Read the hero's list, step, shown
   hero and name, the row's hero draw and the right press; CLT-Q141 and CLT-Q142 asked and
   answered (b); built the offers from each map's import (`maps::heroes`, the engine's
