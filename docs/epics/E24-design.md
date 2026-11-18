@@ -3688,3 +3688,25 @@ in `clients/map/to-record.toml`, the situations `seq-flag-*`); no harness change
   without a picture; no minimap change, the Lighthouse's one tile being the entrance under the
   hero), `flag-dwelling` (a neutral Guardhouse: 36, 9; `ask-hire`'s lines but at the last close,
   1660, whose change reaches the minimap).
+- **Built** (M4 T2d1, one worker; *provisional*, M4's review list): `finds`' `Find::Mine`
+  (MINEEVNT's record of its resource through the catalogue's family `mine-event`, the resource's
+  picture at minus the tables' `[map.finds] mine_income`) and `Find::Lighthouse`
+  (`map.find.lighthouse`, ADVEVENT 69), chosen by `Find::flag_of` (an owner of another team, no
+  guards), `Find::flagged`; `asks`: a dwelling of another team without guards (its creature below
+  level 5) takes its flag first, then asks its hire as the visitor's own (`Ask::Hire`'s flag,
+  `Ask::flags`); the timeline's `Found::flag`, raised after a find's first boxes and before its
+  question, the owners changed since 0 in memory, `Draw::owners` (the view's, at its next draw)
+  and `Minimap::owners` (at the visit's end, `visit_and_update`'s minimap); `scene`'s
+  `TileIndex::minimap_again` (a level's minimap built again alone, so that it shows a new owner
+  before the view does); the binary builds the flag finds and keeps the view's owners and the
+  minimap's apart. MINEEVNT is a family, not keys, so the client lane's catalogue test is
+  unchanged (no `cross-lane`). Left out: the reveal of radius 3 and the scenario's test (nothing
+  shows), `visit_and_update`'s other redraws (nothing changes in the recordings), the hint and
+  cursor over the object after its visit (the owners at 0), an abandoned mine without guards (the
+  question kept: its record, 7 or its resource's, not read), another player's guarded mine (T5),
+  the visitor's own mine or Lighthouse (M5's Leave Guards), class 20's dwellings (ADVEVENT 36).
+- **Checked** (M4 T2d1): the four moved into `sequences.toml`, `to-record.toml` removed; `frames
+  --only <id> --reuse` every frame exact (8, 8, 8, 9), the viewer's timelines the recorded ones;
+  `drawn` the rest the same, `--record` for the four; the window's read-back exact on
+  `flag-dwelling` and `flag-mine-blue`; unit tests (the four replayed headless, the finds' and
+  the hire's facts and boxes, a minimap built again alone), 100 % of `h3-map-view`'s library.

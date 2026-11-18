@@ -34,10 +34,22 @@ reading and recordings, then the viewer's build, as T1b was).
 - **T2c, a level-up's choice:** done 2026-11-18 (whole; its entry in `QUEUE-ARCHIVE.md`; the log's
   "M4 T2c"). `levels`, `LevelUp` and the timeline's `Loop::level_up` are T5's base for a battle's
   levels.
-- **T2d, the map changed by a visit:** an object taken or a monster beaten (the map, the minimap
-  and the panels redrawn); a flag raised (the owner's colour on the object and the minimap); a
-  boat boarded and left; a spell cast on the map recorded (MCL-Q14: if the stale mana bar shows,
-  the client shows the slot whole, the original's behind `--bugs original`). **Depends on:** T1a.
+- **T2d, the map changed by a visit:** cut in three by the user at its start (2026-11-18, by
+  family, each read, recorded and built in one task as T2c was; "an object taken" was T2a2's and
+  T2b2's; "a monster beaten" moved to T5, its recording needing a battle):
+  - **T2d1, a flag raised:** done 2026-11-18 (its entry in `QUEUE-ARCHIVE.md`; the log's "M4
+    T2d1"; design §5.6). `Found::flag`, the owners in memory and `Minimap::owners` are T2d2's and
+    T4's base.
+  - **T2d2, a boat boarded and left:** the step onto a boat (`hero_boards_boat` 0x4A1010: the
+    hero's picture becomes the boat's, the boat taken off the map, the day's points) and off it
+    onto a coast (`hero_lands_from_boat` 0x49E670, the landing in `hero_move_step` 0x480949 to
+    0x480B0C: the boat put on its water tile, facing the hero's), their sounds and the panels;
+    M2 left both out (design §3.5). **Depends on:** T1a.
+  - **T2d3, a spell cast on the map:** a cast recorded (MCL-Q14: if the stale mana bar shows, the
+    client shows the slot whole, the original's behind `--bugs original`); the spell book is M5's,
+    so the recording needs a way past it (the harness's cast, or the frames under the book left
+    out); a spell whose result the map shows (Summon Boat, Dimension Door, Scuttle Boat or View
+    Air/Earth's screen: chosen at its start). **Depends on:** T1a; T2d2 for a boat's spells.
 
 ### E24 M4 T3 — a record's start
 
@@ -77,7 +89,8 @@ reading and recordings, then the viewer's build, as T1b was).
 
 - **Scope:** a battle of the game drawn by the battle client's viewer in the map viewer's
   window, as the original switches screens (its sounds and music), and the map back with the
-  result applied; the battle's background and colours from the game (CLT-Q4, CLT-Q6:
+  result applied (a monster beaten: taken off the map, the hero's army and experience, a guarded
+  mine's flag, design §5.6; moved here from T2d by the user, 2026-11-18); the battle's background and colours from the game (CLT-Q4, CLT-Q6:
   `BattleSetup.background`, `colours`, set by `h3-game`).
 - **Acceptance:** a golden replay's battles shown in the window; the switch compared with the
   original's recording where it is drawn; `check.sh` all gates.

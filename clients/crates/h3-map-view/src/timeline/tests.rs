@@ -396,7 +396,11 @@ fn the_walks_frames_are_m2_t3bs() {
             "level-up-right",
             "level-up-one",
             "level-up-none",
-            "level-up-twice"
+            "level-up-twice",
+            "flag-mine",
+            "flag-mine-blue",
+            "flag-lighthouse",
+            "flag-dwelling"
         ]
     );
 }
