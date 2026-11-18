@@ -145,4 +145,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   sending anything, and keep the run's output out of the repository.
 - The client lane's standing traps apply to the foundation and the harness (`docs/lanes/client/HANDOFF.md`): the licences (`winit`, `cpal`, Bevy are excluded: SDL 3), the purity allowlist of a pure crate, `clients/Cargo.lock` as a common path, no float arithmetic in drawing and timing, never running the original from the installation, captures never in git, a capture run alone.
 
+- **A re-run of CI forces the full verify** (M4 T2b1, PR #1007): `ci.yml`'s plan sets `FORCE` for a
+  run's second attempt, and the full verify can outlast the verify job's 40 minutes (cancelled in
+  bench-check), while this lane's branches change no engine code and pass in the light path. When a
+  light run fails on GitHub's API ("Record the verified code": an empty answer), push a commit to
+  run again instead of re-running the job.
 - **Sandbox routines as a skill:** GitHub (pull requests and CI by REST), waiting for long jobs, worktrees for concurrent fixers, VM restarts: the skill `homm3-sandbox-session`.
