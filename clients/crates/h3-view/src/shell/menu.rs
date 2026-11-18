@@ -784,7 +784,8 @@ impl Menus {
     /// took them on the screen before: a menu's or a stub's menu ([`Menus::opened`]); the
     /// Multiplayer dialog over the game type menu `previous` left (E27 M2 T7); a new single
     /// scenario's screen (E27 M3 T1a: its background `gamselb0.pcx` until the caller draws,
-    /// [`Scenario::with_background`]); none for another screen. A scenario screen `previous`
+    /// [`Scenario::with_background`]), or the hot seat's after the Multiplayer dialog `previous`,
+    /// its names the players (E27 M3 T4a); none for another screen. A scenario screen `previous`
     /// leaves its kept map to the next (E27 M3 T2c: `scenario_last_map` 0x683238, the last
     /// map selected).
     #[must_use]

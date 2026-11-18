@@ -837,7 +837,8 @@ impl Advanced {
     /// (the loop 0x584DF0's hot-seat branch), the colours past the last name the computer's.
     fn seat_humans(&mut self, map: &Map) {
         if !self.hot_seat {
-            if let Some(local) = self.humans.first_mut() {
+            // (The single player's record is the only human one.)
+            for local in &mut self.humans {
                 local.record.colour = map.local;
             }
             return;
@@ -1026,7 +1027,8 @@ impl Advanced {
             return false;
         };
         let name = String::from(edit.text());
-        if let Some(local) = self.humans.first_mut() {
+        // (The edit is a single player's, whose record is the only human one.)
+        for local in &mut self.humans {
             local.name.clone_from(&name);
         }
         set(shown, EDIT + u16::from(c), |s| s.hidden = true);
