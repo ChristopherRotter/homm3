@@ -77,15 +77,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-#### ADV-Q57 — Increment 14's survey checkpoint (E08 T127a2)
-
-**Context:** survey `docs/rules/surveys/E08-trades.md` §20 (its disputes §10, §16). **Options and
-recommendations:** (1) the roundings D-71 (the creature sale), D-73 (the Altar's Learning per item)
-and D-74 (the Hill Fort per stack): the original's in each (recommended) or VCMI's; (2) the losses
-A-46 (a Black Market purchase without room) and A-48 (the Altar's artifacts at the turn's time
-end): both fixed (recommended) or as the original; (3) the special artifacts at the Altar (A-47,
-D-72): as the original, taken for 0 (recommended), refused, or VCMI's (the war machines refused);
-(4) batch E14 before the build (recommended), after it, or not at all. Asked at T127a2's end.
+(no open questions)
 
 ### Server lane (`SRV-Q<n>`)
 

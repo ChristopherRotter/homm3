@@ -19518,3 +19518,53 @@ amended, `new_month`, `object_class_values`, `random_artifact_of_level` cited; `
 **Verify:** docs and the address map only: the docs gates (`check-docs`, `check-exe-map`) and
 `scripts/exe.py check`. No code, version or replay moved; CI's run on the pull request is the
 record. **Next:** T127a2.
+
+### Increment 14, round 1: T127a2, the trades survey's second part: the services and the checkpoint (2026-11-18, `adventure/e08-t127a2`)
+
+**The cut** (decision 364, the user at T127a2's start after the reading was measured again: about
+14.5 KB of code, the Altar about 8 KB of its 24 KB dialog, the Hill Fort about 5, the factory about
+1.5 on increment 10's hire dialog; offered: the reading first and the planning second, recommended,
+or the Altar alone first): **whole**. **Baseline:** `master` 5ee8c88 (#1019, T127a1, merged); a
+docs-only task, no setup run. Staged the executable, `maps.tar` and `extracted.tar` (SHA-256 checked
+against the PC's). Survey `docs/rules/surveys/E08-trades.md` §12 to §20 (and part 2's sources and
+findings in short):
+
+- **The Altar of Sacrifice** (§12): the screens by the hero's class's faction (Castle, Rampart,
+  Tower artifacts; Inferno, Necropolis, Dungeon creatures; Stronghold, Fortress, Conflux both,
+  artifacts first); an artifact 1 000, 1 500, 3 000, 6 000 by class, a special one 0; a creature
+  5 × ⌊AI value / 40⌋; the Learning per artifact and per stack, truncated each; every artifact but
+  the Spell Book and the Catapult may go on the altar (22 places and the cursor); the army keeps a
+  creature; Sacrifice needs a total above 0, gives the levels at once and leaves the dialog open;
+  A-48, the turn's time end.
+- **The Hill Fort** (§13): a town's unupgraded creature (not the RoE elementals) at
+  `upgrade_cost` 0x54E750's difference times the count, the gold alone scaled by the level (0, 25,
+  50, 75 % to level 4, whole after) and truncated once; a slot or all (all only when affordable).
+- **The War Machine Factory** (§14): the question, the hire dialog with the Ballista, the First Aid
+  Tent and the Ammo Cart, one of each the hero lacks at its gold cost, the artifact given.
+- **VCMI 1.7.5 and the wiki** (§15; a throwaway script over the packs, deleted): the screens, the
+  values, the last creature, the factors and the factory agree; **D-72** (the machines on the
+  altar), **D-73** (the Learning once over the sum), **D-74** (the Hill Fort per creature); the wiki
+  through search snippets only (the Altar's alignment rule, the machines' prices, the factory).
+- **Quirk candidates** (§16): **A-47** (a special artifact sacrificed for nothing beside others),
+  **A-48** (the altar's artifacts lost at a timed turn's end). **For T127b:** the levels inside the
+  Altar, the answers' shapes, the factory as the hire dialog.
+- **The interfaces' sketch** (§17, every class a decision of the visitor's owner, as GAM-DEC-006 and
+  -008), **batch E14's plan** (§18, E14-1 to E14-15), **the ids** (§19: ADV-MKT-001 to -008,
+  ADV-ALT-001 to -003, ADV-HFT-001, -002, ADV-WMF-001, GAM-DEC-011 to -013), **the checkpoint**
+  (§20, ADV-Q57).
+
+**The checkpoint** (ADV-Q57, one round, decisions 365 to 368, all as recommended): the original's
+roundings (D-71, D-73, D-74); A-46 and A-48 fixed; the Altar's special artifacts as the original
+(A-47 harmless and accepted, D-72 the original's); batch E14 before the build. The town lane's
+inbox told (D-71, A-46 and `upgrade_cost`).
+
+**The address map:** 38 new entries (33 functions: the Altar's 24, its dialog with its run,
+screens, update, clicks, buttons, experience and time's end (two inferred), the Hill Fort's run, rows,
+upgrade and procedure (its constructor inferred), `upgrade_cost`, `war_machine_creature`, the
+computer's two visits (inferred); 5 tables: the Altar's two place tables and vtable, the Hill
+Fort's factors and vtable); the three visit cases, `recruit_dialog_select` and
+`recruit_dialog_proc` amended. `scripts/exe.py check` agrees with the executable.
+
+**Verify:** docs and the address map only: `check-docs`, `check-exe-map`, `check-lane` and
+`scripts/exe.py check`. No code, version or replay moved; CI's run on the pull request is the
+record. **Next:** T127b.

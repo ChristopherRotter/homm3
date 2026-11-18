@@ -762,3 +762,8 @@ Asked at T127a2's end (`docs/OPEN-QUESTIONS.md`, ADV-Q57; the answers in the epi
 4. **Batch E14:** before the build (recommended, as batches E9 to E13), after it, or not at all.
 
 D-70 is the town lane's (§10, §11). The open points of §10 and §16 are T127b's calls.
+
+**Answered** (2026-11-18, `AskUserQuestion`, one round; the epic's decisions 365 to 368; ADV-Q57):
+(1) D-71, D-73 and D-74 **the original's** in each; (2) A-46 and A-48 **both fixed**; (3) the special
+artifacts **as the original** (A-47 harmless and accepted, D-72 the original's); (4) **batch E14 before
+the build**. All as recommended.
