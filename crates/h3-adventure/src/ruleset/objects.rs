@@ -352,7 +352,7 @@ pub enum ObjectKind {
     /// increment 12's design note §2; ADV-BON-001: the Buoy, the Swan Pond, the Faerie Ring, the
     /// Fountain of Youth, the Idol of Fortune, the Mermaids, the Oasis, the Rally Flag, the Temple,
     /// the Watering Hole): once until the hero's next battle, under its mark, the day's morale and
-    /// luck, then its movement. Its visit comes with T115b (ADV-BON-002, -004).
+    /// luck, then its movement. Its visit: ADV-BON-002, -004 (E08 T115b).
     Bonus {
         /// The battle bonus's once-mark (part C §12.2: the original's bit order from 2; any
         /// number, kinds of one mark sharing it).

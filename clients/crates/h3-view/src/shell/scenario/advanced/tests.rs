@@ -1,6 +1,7 @@
 //! The advanced options' tests (E27 M3 T3a): the rows as `adv-single-town` recorded them, the
 //! town's and the bonus's arrows, the popups, the hiding; the hero's arrows, portraits, names and
-//! popups (T3b1, as `adv-single-hero` and `adv-single-maps` recorded them; a hero's own: T3b2).
+//! popups (T3b1, as `adv-single-hero` and `adv-single-maps` recorded them; a hero's own: T3b2);
+//! the flags, the handicap and the name's edit: `flags` (T3c1).
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -819,7 +820,7 @@ fn without_their_texts_there_are_no_options() {
 fn the_items_and_names_of_every_colour() {
     let look = advanced_texts().look;
     let items = Advanced::items(&look);
-    assert_eq!(items.len(), 8 * 13);
+    assert_eq!(items.len(), 8 * 14);
     // Pink's flag on row 7, its DEF's letter s.
     let pink = items.iter().find(|i| i.id() == FLAG + 7).unwrap();
     assert!(matches!(pink, Item::Button(b) if b.def == "AOFLGBs.DEF" && b.at == [14, 480]));
@@ -827,6 +828,7 @@ fn the_items_and_names_of_every_colour() {
     assert!(names.iter().any(|n| n == "adopspnl.pcx"));
     assert!(names.iter().any(|n| n == "cprsmall.def"));
     assert!(Advanced::owns(BONUS_AREA + 7) && !Advanced::owns(BONUS_AREA + 8));
+    assert!(Advanced::owns(EDIT + 7) && !Advanced::owns(EDIT + 8));
     assert!(Advanced::takes(TOWN_LEFT) && !Advanced::takes(HANDICAP + 3));
     // Out of the letters: none; a mask with no faction: Castle; codes modulo 4.
     let short = AdvancedLook {
@@ -860,3 +862,5 @@ fn the_items_and_names_of_every_colour() {
     assert_eq!(advanced.popup(PLAYER, &map), None);
     assert_eq!(shown.state(HANDICAP), State::default());
 }
+
+mod flags;

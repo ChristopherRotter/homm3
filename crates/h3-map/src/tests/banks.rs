@@ -314,7 +314,7 @@ fn the_import_types_the_banks() {
     }
 }
 
-// covers: ADV-OBJ-003, ADV-BNK-001, ADV-BNK-003, ADV-BNK-004
+// covers: ADV-OBJ-003, ADV-BNK-001, ADV-BNK-003, ADV-BNK-004, ADV-TEL-008
 #[test]
 fn a_step_onto_a_land_bank_asks_by_its_kind_and_a_yes_fights_its_guards() {
     // Since T124b2 (increment 13's design note §6, §7) a bank's entrance ends a path and is
