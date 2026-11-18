@@ -12,8 +12,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   services are increment 5, travel and the Grail 6. Waiting elsewhere: `TWN-STUB-8` (the battle
   lane's inbox), `TWN-STUB-6`, `-13` and `-15` (increment 5), `TWN-STUB-2` (the victory
   conditions), `TWN-STUB-16` (E10's loss condition).
-- **Open pull requests:** T39a's `town/e09-t39a` (`cross-lane`), opened at the session's end (its
-  number in the newest session entry); watch it until it merges.
+- **Open pull requests:** #1030 (T39a's `town/e09-t39a`, `cross-lane`), opened at the session's
+  end; watch it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -50,8 +50,8 @@ files; SHA-256 checked). The agent recommended the Tavern alone (the Den to T39b
 T39a whole as queued and consented to the `cross-lane` PR (decision 149). Built: design §66's
 and §74's As built (the two kinds, part v22, import v26; `Decision::Tavern`, game state hash v34;
 `map_hire` through the town hire's `place`; protocol v73, env v13, replay format v19; the 98
-goldens and the bots tables re-recorded); every workload inside its gate. In progress: the
-scoped verify, then the PR.
+goldens and the bots tables re-recorded); every workload inside its gate; the scoped verify and
+the server scope's coverage clean (a fold test added). PR #1030.
 
 ### 2026-11-18 — T38b2: the dismissal
 
