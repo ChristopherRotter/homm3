@@ -1122,3 +1122,187 @@ fn objects_with_their_bodies() {
         "a situation with both objects' bodies and quests"
     );
 }
+
+/// E24 M4 T2b1 (design §5.4): a monster's body, a pile's and an artifact's guards with their
+/// text, Pandora's rewards, each on its class; guards of no stack, of eight, of a count of 0, on
+/// a monster or a Shrine refused, a monster's count or disposition out of range refused; the
+/// visits' words in their bits' ranges, a hero's Diplomacy at most Expert.
+#[test]
+fn questions_bodies_and_words() {
+    let line = |def: &str, class, subclass| {
+        ObjectTemplate::from_objects_txt(&format!(
+            "{def} {} {} 111111111 111111111 {class} {subclass} 0 0",
+            "1".repeat(48),
+            "0".repeat(48)
+        ))
+        .unwrap()
+    };
+    let templates = [
+        line("pile.def", 79, 6),
+        line("art.def", 5, 7),
+        line("box.def", 6, 0),
+        line("peas.def", 54, 139),
+        line("shrine.def", 88, 0),
+        line("hut.def", 113, 0),
+        line("event.def", 26, 0),
+        line("chest.def", 101, 0),
+    ];
+    let text = |rest: &str| {
+        format!(
+            "size = 36\nterrain = \"grass\"\nheroes = [{{ at = [4, 4], class = 1, diplomacy = 2 }}, {{ at = [34, 1], owner = 1 }}]\nview = [0, 0, 0]\n{rest}"
+        )
+    };
+    let given = text(
+        r#"objects = [
+    { def = "pile.def", at = [5, 4], guards = { army = [[0, 10]], text = "Fight?" } },
+    { def = "art.def", at = [5, 6], guards = { army = [[0, 10], [1, 2]] } },
+    { def = "box.def", at = [5, 8], rewards = { resources = [0, 0, 0, 0, 0, 0, 1500] } },
+    { def = "peas.def", at = [5, 10], monster = { count = 10, disposition = 0, never_flees = true } },
+    { def = "chest.def", at = [7, 7] },
+]
+visits = [{ at = [5, 10], aggression = -4 }, { at = [7, 7], gold = 1000 }]"#,
+    );
+    let situation = Situation::parse(&given).unwrap();
+    assert_eq!(situation.heroes[0].diplomacy, Some(2));
+    assert_eq!(
+        (situation.visits[0].aggression, situation.visits[1].gold),
+        (Some(-4), Some(1000))
+    );
+    let (map, _) = situation.build(&BTreeMap::new(), &templates).unwrap();
+    let MapObject::Pile(pile) = &map.objects[2] else {
+        panic!("the pile after the heroes");
+    };
+    let mut army = [None; 7];
+    army[0] = Some((0, 10));
+    assert_eq!(
+        (pile.amount, pile.guards.clone()),
+        (
+            0,
+            Some(Guards {
+                army,
+                question: "Fight?".into()
+            })
+        )
+    );
+    let MapObject::Reward(artifact) = &map.objects[3] else {
+        panic!("the artifact");
+    };
+    army[1] = Some((1, 2));
+    assert_eq!(
+        artifact.body,
+        RewardBody::Artifact(Some(Message {
+            text: String::new(),
+            guards: Some(army),
+        }))
+    );
+    let MapObject::Reward(pandora) = &map.objects[4] else {
+        panic!("Pandora's Box");
+    };
+    let mut rewards = Rewards::default();
+    rewards.resources[6] = 1500;
+    assert_eq!(
+        pandora.body,
+        RewardBody::Pandora {
+            message: None,
+            rewards
+        }
+    );
+    let MapObject::Monster(monster) = &map.objects[5] else {
+        panic!("the monster");
+    };
+    assert_eq!(
+        (
+            monster.tile,
+            monster.count,
+            monster.disposition,
+            monster.never_flees
+        ),
+        ((5, 10), 10, 0, true)
+    );
+    assert!(!monster.fixed_count && monster.treasure.is_none());
+    let refused = |rest: &str| {
+        Situation::parse(&text(rest))
+            .and_then(|s| s.build(&BTreeMap::new(), &templates).map(|_| ()))
+            .unwrap_err()
+    };
+    let class = |def: &str, class: u32| {
+        format!("{def} at [5, 4]: a body its class {class} does not take, or more than one")
+    };
+    assert_eq!(
+        refused(r#"objects = [{ def = "pile.def", at = [5, 4], guards = { army = [] } }]"#),
+        "guards of 0 stacks: one to seven"
+    );
+    assert_eq!(
+        refused(
+            r#"objects = [{ def = "pile.def", at = [5, 4], guards = { army = [[0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]] } }]"#
+        ),
+        "guards of 8 stacks: one to seven"
+    );
+    assert_eq!(
+        refused(r#"objects = [{ def = "art.def", at = [5, 4], guards = { army = [[3, 0]] } }]"#),
+        "guards of creature 3: a count of 0"
+    );
+    for (def, body, c) in [
+        (
+            "peas.def",
+            "monster = { count = 1, disposition = 0 }, guards = { army = [[0, 1]] }",
+            54,
+        ),
+        ("shrine.def", "spell = 1, guards = { army = [[0, 1]] }", 88),
+        ("hut.def", "skills = [1], guards = { army = [[0, 1]] }", 113),
+        (
+            "event.def",
+            "rewards = { mana = 1 }, guards = { army = [[0, 1]] }",
+            26,
+        ),
+        (
+            "box.def",
+            "rewards = { mana = 1 }, guards = { army = [[0, 1]] }",
+            6,
+        ),
+        ("art.def", "amount = 3", 5),
+    ] {
+        assert_eq!(
+            refused(&format!(
+                r#"objects = [{{ def = "{def}", at = [5, 4], {body} }}]"#
+            )),
+            class(def, c)
+        );
+    }
+    for monster in [
+        "count = 0, disposition = 0",
+        "count = 4096, disposition = 0",
+        "count = 1, disposition = 5",
+    ] {
+        assert!(
+            refused(&format!(
+                r#"objects = [{{ def = "peas.def", at = [5, 4], monster = {{ {monster} }} }}]"#
+            ))
+            .starts_with("peas.def at [5, 4]: a monster of ")
+        );
+    }
+    let word = |visit: &str| {
+        refused(&format!(
+            "objects = [{{ def = \"chest.def\", at = [5, 4] }}]\nvisits = [{{ at = [5, 4], {visit} }}]"
+        ))
+    };
+    for visit in [
+        "aggression = 16",
+        "aggression = -17",
+        "gold = 750",
+        "gold = 0",
+        "gold = 8000",
+        "price = 3",
+    ] {
+        assert!(
+            word(visit)
+                .ends_with("an aggression, a chest's gold or a Tree's price its word cannot hold"),
+            "{visit}"
+        );
+    }
+    let expert = Situation::parse(&text("").replace("diplomacy = 2", "diplomacy = 4"))
+        .unwrap()
+        .build(&BTreeMap::new(), &templates)
+        .unwrap_err();
+    assert_eq!(expert, "the hero at [4, 4]: Diplomacy past Expert");
+}
