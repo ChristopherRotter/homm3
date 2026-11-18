@@ -1,23 +1,25 @@
 //! A hero that leaves the game (TWN-TAV-006; E09 T38b1, design note `E09-design.md` §67; survey
-//! `E09-tavern.md` §4): every path off the map but the dismissal (E09 T38b2), so a battle's (a
-//! loser, a retreat, a surrender, both after a draw, a winner left with stacks created in the
-//! battle only: [`after_battle`]) and the capture's garrison hero without a stack
-//! (`TWN-QUIRK-11`, `capture.rs`), once the adventure took the hero off the map (its marks gone,
-//! its boat freed, `HeroRemoved` told) and, after a battle, after the heroes' part, so that the
-//! leave's own writes come last, as the original's after the battle. The original's
-//! `hero_leave_game` 0x4D9EC0, read whole; batch TWN-4's rows TWN-4-3 and TWN-4-4 observed it.
+//! `E09-tavern.md` §4): every path off the map, so a battle's (a loser, a retreat, a surrender,
+//! both after a draw, a winner left with stacks created in the battle only: [`after_battle`]),
+//! the capture's garrison hero without a stack (`TWN-QUIRK-11`, `capture.rs`) and since E09
+//! T38b2 the dismissal ([`dismiss`], GAM-MAN-003, design note §69, survey §12), once the
+//! adventure took the hero off the map (its marks gone, its boat freed, `HeroRemoved` told) and,
+//! after a battle, after the heroes' part, so that the leave's own writes come last, as the
+//! original's after the battle. The original's `hero_leave_game` 0x4D9EC0, read whole; batch
+//! TWN-4's rows TWN-4-3 and TWN-4-4 observed it, TWN-4-5 the dismissal's artifacts.
 
 use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_adventure::HeroOnMap;
+use h3_adventure::{AdventureState, HeroOnMap};
 use h3_content::{HeroType, LEAVE_POINTS_OVER_CLEARED_ARMY};
-use h3_contracts::{ArmyStack, BattleResult, BattleSide, HeroId};
+use h3_contracts::{ArmyStack, BattleResult, BattleSide, HeroId, PlayerId};
 
 use super::pool::Away;
 use super::tavern;
-use crate::command::Sink;
+use crate::command::{AdventureSink, Sink};
+use crate::manage::ManageError;
 use crate::{GameRuleset, GameState};
 
 /// How a hero leaves the game (design note §67).
@@ -27,8 +29,8 @@ pub(crate) enum Leave<'a> {
     Retreated,
     /// After its side's surrender: back into its owner's tavern with its side's survivors.
     Surrendered(&'a [ArmyStack]),
-    /// Every other leave (a loss, a draw, a winner left with created stacks only, the capture's):
-    /// its type free.
+    /// Every other leave (a loss, a draw, a winner left with created stacks only, the capture's,
+    /// the dismissal): its type free.
     Gone,
 }
 
@@ -166,6 +168,82 @@ pub(crate) fn after_battle<S: Sink>(
     }
     if let Some(before) = before {
         tavern::tell(state, &before, sink);
+    }
+}
+
+/// The dismissal of `player`'s hero `hero` (GAM-MAN-003; E09 T38b2, design note §69; survey
+/// `E09-tavern.md` §12, the hero screen's button 129, `hero_leave_game` 0x4D9EC0 with (1, 0)):
+/// checked first, in this order, a refusal changing nothing: the player's own hero
+/// (`NotYourHero`: another player's, a tavern hero, one out of the game), on the map (`NotOnMap`:
+/// its garrison hero, whom the town screen offers no dismissal), not a town's visitor on its
+/// entrance (`InTown`: the original's `hero_screen_refresh` 0x4E1A6B tests the tile, TD-22's
+/// reading, decision 118; VCMI's button does not), not the player's one hero on the map while it
+/// owns no town (`LastHero`). The caller checked the turn and that no decision is open. Then the
+/// adventure takes it off the map (`AdventureState::remove_hero`: `HeroRemoved` to its owner and
+/// the players that see its tile, its boat freed, its marks gone) and it leaves without return
+/// ([`Leave::Gone`]): its type free with its record and every artifact it holds (decision 105,
+/// row TWN-4-5), one creature, its spell points full, T-16's points. No draw; nothing more told
+/// (the pool is hidden).
+///
+/// # Errors
+///
+/// The refusals above, as [`ManageError`]; nothing changed.
+// rule: GAM-MAN-003, TWN-TAV-006
+pub(crate) fn dismiss<S: Sink>(
+    state: &mut GameState,
+    rules: &GameRuleset,
+    (player, hero): (PlayerId, HeroId),
+    sink: &mut S,
+) -> Result<(), ManageError> {
+    let adventure = state.adventure();
+    if adventure
+        .garrisoned(hero)
+        .is_some_and(|(_, held)| held.owner == player)
+    {
+        return Err(ManageError::NotOnMap);
+    }
+    if let Some(on) = adventure.hero(hero).filter(|on| on.owner == player) {
+        check_dismissal(adventure, player, on)?;
+    }
+    let (adventure, _) = state.adventure_with_heroes();
+    let removed = adventure
+        .remove_hero(rules.core(), (player, hero), &mut AdventureSink(&mut *sink))
+        .ok_or(ManageError::NotYourHero(hero))?;
+    leave(state, rules, &removed, Leave::Gone);
+    Ok(())
+}
+
+/// Checks that `player`'s hero on the map `on` may be dismissed (GAM-MAN-003; [`dismiss`]'s map
+/// half, and the listing's, `crate::legal_management`): not a town's visitor on its entrance
+/// (`InTown`, TD-22), not the player's one hero on the map while it owns no town (`LastHero`).
+///
+/// # Errors
+///
+/// `InTown`, then `LastHero`.
+// rule: GAM-MAN-003
+pub(crate) fn check_dismissal(
+    adventure: &AdventureState,
+    player: PlayerId,
+    on: &HeroOnMap,
+) -> Result<(), ManageError> {
+    let map = adventure.map();
+    if map.town_at(on.pos).is_some() {
+        return Err(ManageError::InTown);
+    }
+    // stub: TWN-STUB-16 (the loss condition "lose this hero", `hero_mission_critical` 0x5F2A40:
+    // E10's scenarios)
+    let others = adventure
+        .heroes()
+        .iter()
+        .any(|other| other.owner == player && other.id != on.id);
+    let towns = map
+        .towns()
+        .iter()
+        .any(|&index| adventure.owner(index) == Some(player));
+    if others || towns {
+        Ok(())
+    } else {
+        Err(ManageError::LastHero)
     }
 }
 

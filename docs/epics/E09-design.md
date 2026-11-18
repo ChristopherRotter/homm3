@@ -2392,6 +2392,28 @@ returning.
   `Free` with its record and every artifact (decision 105). No draw.
 - **The legal commands:** per own hero on the map in hero order, after its management commands,
   a `Dismiss` when it passes. **Replay:** `manage dismiss <hero>`. The env (T33b).
+- *As built* (T38b2, decision 147): `Manage::Dismiss { hero }` (`h3-game`'s `manage.rs`,
+  `cross-lane`) and `ManageError::{NotOnMap, InTown, LastHero}`; `GameState::manage` refuses it
+  with `DecisionOpen` unless no decision is open (`Together::Alone`: a meeting, an army dialog or
+  an exchange holds the turn) and hands it to the town lane's `town::leave::dismiss`: a garrison
+  hero of the player's `NotOnMap`, then for the player's hero on the map `check_dismissal`
+  (`InTown` by `StaticMap::town_at` on its tile, any town's; `LastHero` when the player has no
+  other hero on the map and owns no town), then the adventure's `remove_hero((player, hero))`
+  (`cross-lane`: `end_battle`'s removal made one private `remove_at`, shared), whose `None` is
+  `NotYourHero` (another player's, a tavern hero, one out of the game), then `leave(..,
+  Leave::Gone)`. `TWN-STUB-16` marks `check_dismissal` (the loss condition's hero). The listing:
+  `legal_management` appends the dismissal last, outside a decision, for a hero on the map that
+  `check_dismissal` passes (a garrison hero's listing has none). The replay word is **`dismiss
+  <hero>`** (format v18; the agent's call: the format's other management words carry no
+  `manage`), the protocol v72's `Manage::Dismiss` and `ManageReject::{NotOnMap, InTown,
+  LastHero}`; `HeroRemoved` folds as a battle's (`a_dismissal_folds_as_observe_shows_it`). Tests:
+  `town/tests/hire/dismiss.rs` (the leave with every artifact, its type free, one creature, full
+  spell points, no draw, told as the removal; every refusal and the listing beside it; a meeting
+  holding the turn), the adventure's `a_removed_hero_leaves_the_map_with_its_boat_as_a_beaten_one`,
+  `h3-files`' word. The plans dismiss in one `Step::Manage` of sixteen (`dismissal`; `managing`
+  leaves the dismissals out, so the other steps play as before); `check_management`,
+  `check_conservation` (the record's spell points full untold, the army off the map) and
+  `check_isolation` know it.
 
 ### 70. The map's hero settings (GAM-HER-001, TWN-SET-005 amended; `GameSetup`, the import `cross-lane`)
 

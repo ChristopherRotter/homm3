@@ -5,14 +5,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E09** (towns): increments 1 to 3 closed (T10, T20, T30; `E09-archive.md`, design notes Parts A
-  to E). **Increment 4** (the Tavern; decisions 98–146, `TWN-Q15` to `-Q23`): T31 to T38a2 done;
-  T38b cut in two (decision 145, `TWN-Q23`): **T38b1 done** (every leave by a battle or a capture,
-  the returns; decision 146). **Next:** T38b2 (the dismissal, `manage dismiss`, the protocol;
-  `QUEUE.md`), its cut confirmed at its start. The guild and the services are increment 5,
-  travel and the Grail 6. Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox),
-  `TWN-STUB-6`, `-13` and `-15` (increment 5), `TWN-STUB-2` (the victory conditions).
-- **Open pull requests:** #1013 (T38b1's `town/e09-t38b1`, `cross-lane`; `master` merged in
-  after #1011 and #1012), opened at the session's end; watch it until it merges.
+  to E). **Increment 4** (the Tavern; decisions 98–148, `TWN-Q15` to `-Q24`): T31 to T38 done;
+  **T38b2 done whole** (the dismissal, `TWN-Q24`, decisions 147, 148). **Next:** T39a (the map's
+  Tavern and Den of Thieves, the tavern decision, `answer tavern`; `QUEUE.md`), its cut
+  confirmed at its start. The guild and the services are increment 5, travel and the Grail 6.
+  Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6`, `-13` and `-15`
+  (increment 5), `TWN-STUB-2` (the victory conditions), `TWN-STUB-16` (E10's loss condition).
+- **Open pull requests:** #1018 (T38b2's `town/e09-t38b2`, `cross-lane`), opened at the session's end;
+  watch it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -21,14 +21,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **Versions:** the lane's own: the town state hash (`TOWN_STATE_HASH_VERSION`, v3) and the town
   ruleset part (`TOWN_RULESET_HASH_VERSION`, v7: T36), both in `h3-towns`; the adventure lane's
   (game state hash v33 by T37a, adventure state hash v26 by E08's T124b1, map import v25 by
-  T37b: T39a takes v26, replay format v17 by T38a1: T38b2 takes v18), the env's (v12 by T38a2;
-  T39a takes v13) and the protocol's (v71 by T38a1: T38b2 takes v72) are bumped `cross-lane` (each task's record in
+  T37b: T39a takes v26, replay format v18 by T38b2: T39a takes v19), the env's (v12 by T38a2;
+  T39a takes v13) and the protocol's (v72 by T38b2: T39a takes v73) are bumped `cross-lane` (each task's record in
   `E09-log.md`; the plan in design §77). Shared: core ruleset hash v53, pack format v52 (T24),
   quirk flags 43 and `StreamId::TAVERNS` (8) by T35b.
-- **Ids** (next): questions `TWN-Q24`; decisions 147; quirks `TWN-QUIRK-14` (`-12`, `-13` entered
+- **Ids** (next): questions `TWN-Q25`; decisions 149; quirks `TWN-QUIRK-14` (`-12`, `-13` entered
   by T35b; `-12`'s test by T38b1, `-13`'s with T39b); stubs `TWN-STUB-20` (`-11`, `-12` planned by §34; `-16`
-  to `-18` by §71, §77); rules: TWN-TAV-001 to -006 built, TWN-TAV-007 to -009, GAM-DEC-010,
-  GAM-MAN-003 planned; experiment batch `TWN-5`; disputes `TD-25`; quirk candidates `T-18`.
+  registered by T38b2, `-17`, `-18` by §71, §77); rules: TWN-TAV-001 to -006 and GAM-MAN-003
+  built, TWN-TAV-007 to -009, GAM-DEC-010 planned; experiment batch `TWN-5`; disputes `TD-25`; quirk candidates `T-18`.
   ADR-0028 is the lane's; no drafts open.
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at
   each round; the user confirms seams and ADRs; tokens first.
@@ -38,6 +38,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-18 — T38b2: the dismissal
+
+Baseline 8625fed (#1013, #1014 merged; CI's fingerprint on `master`, the setup ran the light
+gates). The user's computer was connected at the start only: 16 files staged (the four LODs, both
+executables, both tars, the saves, the manuals, two help files; SHA-256 checked). The agent
+recommended a cut in two as T38a's; the user kept T38b2 whole (decision 147). Built: design §69's
+As built (`Manage::Dismiss` with `NotOnMap`, `InTown`, `LastHero`; `town::leave::dismiss` and
+`check_dismissal`; the adventure's `remove_hero`; the listing; replay format v18 `dismiss
+<hero>`, protocol v72 with a fold test; the plans dismiss in one `Step::Manage` of sixteen, three
+oracles taught); GAM-MAN-003 `verified`, `TWN-STUB-16`; every workload inside its gate.
 
 ### 2026-11-18 — T38b1: the leaves and the returns
 
@@ -62,14 +73,3 @@ recommended a cut in two (the listing with the plans, then the env); the user ke
 seeds searched again (2369, 6); the listing folded into a sized list after the first bench
 (+17 % on the same games to +4.6 %), then the town workloads re-baselined. No protocol, replay
 or hash version moved; `TWN-STUB-19` lifted.
-
-### 2026-11-17 — T38a1: the town's hire, protocol v71, replay format v17
-
-Baseline 7a0da76 (#995 to #997 merged; CI's fingerprint on `master`, the setup ran the light
-gates). The user's computer was connected at the start only: 16 files staged (the four LODs, both
-executables, both tars, the saves, the manuals, two help files; SHA-256 checked). The user cut T38a
-in two (decision 140) and chose the owner's parts for what the slot's view lacks (141); the agent
-moved the replay word into T38a1 (the server journals what the wire takes) and told the user.
-Built: design §64, §65, §75's As built (`h3-game`'s `town/hire.rs`, the adventure's
-`src/town/hire.rs`, `h3_towns::check_hire`); the wire's fold of a hire, tested on three golden
-games; the 89 goldens' format line. #999 the `shared/` half (merged), #1001 the code.

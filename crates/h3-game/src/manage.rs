@@ -1,7 +1,7 @@
 //! A player's management of its heroes on the map (ADR-0017 points 1 and 6, GAM-MAN-001; E08 T51a,
 //! T51b; increment 6's design note §10 in `E08-log.md`): the army commands of the adventure
 //! (ADR-0016 point 3), the formation and the tactics flag, and the artifact commands of `h3-heroes`
-//! (ADR-0013 point 14). The game checks the actor, its turn and its open decision, which armies may
+//! (ADR-0013 point 14), and since E09 T38b2 a hero's dismissal (GAM-MAN-003). The game checks the actor, its turn and its open decision, which armies may
 //! meet (two heroes in their meeting, a hero and the group in its army dialog), then the context's
 //! rules, before anything changes; the commands themselves apply in `state/manage.rs`, the per-hero
 //! listing is [`crate::legal_management`].
@@ -56,6 +56,13 @@ pub enum Manage {
         /// The combination's position.
         at: Position,
     },
+    /// Dismisses a hero (GAM-MAN-003; E09 T38b2, the town lane's design note `E09-design.md`
+    /// §69): it leaves the game with every artifact it holds, its type free in the hero pool
+    /// (TWN-TAV-006). Only outside a decision.
+    Dismiss {
+        /// The hero.
+        hero: HeroId,
+    },
 }
 
 /// Why a management command was rejected; nothing changed.
@@ -72,6 +79,13 @@ pub enum ManageError {
     Artifact(MoveError),
     /// The hero model refused the assembly or the disassembly.
     Combine(CombineError),
+    /// The hero to dismiss is the player's garrison hero, not on the map (GAM-MAN-003: the town
+    /// screen offers no dismissal).
+    NotOnMap,
+    /// The hero to dismiss visits a town, standing on its entrance (GAM-MAN-003, TD-22).
+    InTown,
+    /// The hero to dismiss is the player's one hero on the map, and it owns no town (GAM-MAN-003).
+    LastHero,
 }
 
 impl ManageError {
@@ -94,6 +108,11 @@ impl fmt::Display for ManageError {
             Self::Army(error) => write!(f, "{error}"),
             Self::Artifact(error) => write!(f, "{error}"),
             Self::Combine(error) => write!(f, "{error}"),
+            Self::NotOnMap => f.write_str("the hero is in a town's garrison, not on the map"),
+            Self::InTown => f.write_str("the hero visits a town"),
+            Self::LastHero => {
+                f.write_str("the hero is the player's last on the map, and it owns no town")
+            }
         }
     }
 }

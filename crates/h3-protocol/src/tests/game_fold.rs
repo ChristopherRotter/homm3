@@ -13,7 +13,7 @@ use std::vec;
 use std::vec::Vec;
 use std::{eprintln, format, fs};
 
-use h3_contracts::PlayerId;
+use h3_contracts::{HeroId, PlayerId};
 use h3_game::{BitGrid, GameRuleset, GameSetup, GameState, Viewer, apply};
 use h3_sim::adventure::replay::Replay;
 
@@ -2348,6 +2348,51 @@ fn a_hire_folds_as_observe_shows_it() {
         }
     }
     assert!(hired >= 2, "{hired} of the replays met a hire");
+}
+
+/// A dismissal (E09 T38b2, GAM-MAN-003) folds into every viewer's view as `observe` shows it
+/// after: the hero (and its boat) off the map for its owner and the players that see its tile,
+/// nothing else. On golden replays, the first state in each where the actor dismisses one of its
+/// heroes on the map (the first that passes, by id).
+#[test]
+fn a_dismissal_folds_as_observe_shows_it() {
+    let names = ["towns-s173-d21", "duel-s1308-strict-d28", "sea-flyer-s1"];
+    let mut dismissed = 0;
+    for name in names {
+        let (rules, setup, replay) = one(name);
+        let mut state = GameState::new(&rules, &setup, replay.seed).unwrap();
+        for (actor, command) in &replay.commands {
+            let h3_game::Actor::Player(player) = *actor else {
+                apply(&mut state, &rules, *actor, command.clone(), &mut Vec::new()).unwrap();
+                continue;
+            };
+            let own: Vec<HeroId> = (state.adventure().heroes().iter())
+                .filter(|h| h.owner == player)
+                .map(|h| h.id)
+                .collect();
+            let dismissal = own.into_iter().find_map(|hero| {
+                let mut trial = state.clone();
+                let mut told = Vec::new();
+                let command = h3_game::GameCommand::Manage(h3_game::Manage::Dismiss { hero });
+                apply(&mut trial, &rules, *actor, command, &mut told).ok()?;
+                Some((trial, told))
+            });
+            if let Some((trial, told)) = dismissal {
+                for p in (0..=u8::MAX).take(state.players()) {
+                    let viewer = Viewer::Player(PlayerId::new(p));
+                    let mut view = observe(&state, &rules, viewer);
+                    for event in &events(&told, viewer) {
+                        view.fold(event);
+                    }
+                    assert_eq!(view, observe(&trial, &rules, viewer), "{name}: {viewer:?}");
+                }
+                dismissed += 1;
+                break;
+            }
+            apply(&mut state, &rules, *actor, command.clone(), &mut Vec::new()).unwrap();
+        }
+    }
+    assert_eq!(dismissed, 3, "{dismissed} of the replays met a dismissal");
 }
 
 /// A hire's fold by hand (E09 T38a1, TWN-TAV-003): the owner's slot view moves into its heroes, a
