@@ -79,7 +79,9 @@ jobs:
       matrix:
         os: [ubuntu-24.04]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 40
+    # 55 (the user, 2026-11-18; was 40): master's full run took 36 minutes, the runner's apt step
+    # 6 to 10 of them, and E09 T38a2's run (#1006) was cancelled twice at 40.
+    timeout-minutes: 55
     defaults:
       run:
         shell: bash

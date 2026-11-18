@@ -2907,7 +2907,83 @@ popup) exact but for that box. The `scenario` group as recorded; `drawn.txt` rec
 
 ### 23.7 Not built (T3b on)
 
-The hero's arrows and popups and a main hero's portrait and name (T3b); the flags' press and
+The hero's arrows and popups and a main hero's portrait and name (T3b: §24); the flags' press and
 hover, the name's edit (353), the handicap's press (taking none), the duration's bar's input and
 the items' hints (T3c); the hot seat (T4); the random map (T5); a human-only colour's town drawn at
 the list's read (CLT-Q95; no shipped map).
+
+## 24. The advanced options: the hero (M3 T3b1, 2026-11-18)
+
+Read from `Heroes3.exe` (`scenario_hero_lists` 0x583890 again, `scenario_hero_step` 0x58AF20,
+`scenario_dialog_click`'s hero arrows 0x586A93 and 0x586B69, `scenario_shown_hero` 0x58D0E0 and
+`scenario_shown_hero_name` 0x58D1F0 whole, the row's draw of the hero 0x58DA6E to 0x58DC95,
+`scenario_dialog_right_click`'s hero areas 0x5823FF to 0x582614, the constructor's portraits
+0x57C431) against `adv-single-hero` and `adv-single-maps`. T3b cut in two (decision 54): T3b1 all
+but a hero's own popup (`scenario_hero_popup` 0x575A90, T3b2). The client:
+`h3_view::shell::scenario::advanced` (the hero's list, step, show, name and Random's popup),
+`Heroes`, `CustomHero`, `Entry::heroes`, `MainHero::portrait` an `Option`; `h3-battle-client`'s
+`maps::rules` and `maps::heroes`; the asset tables' `small_portrait`.
+
+### 24.1 The list and the arrows
+
+- **The list** (`scenario_hero_lists`): built for a colour a **human record** holds (a computer
+  record has none, +0x28 0) whose shown town is a town: up to 16 hero types in type order that are
+  free, of the faction's two classes and, where the map disposes of the type, takeable by the
+  colour. It does not test the flags (the arrows do: `scenario_hero_choosable`). The engine's
+  `GameSetup::offer` (TWN-SET-006) is the same list where the flags allow a pick; the client takes
+  it from each map's import at the shell's start, the colour's choice made each faction in turn
+  (`maps::heroes`; the 159 maps import in about 50 ms in release, every one).
+- **The step** (231 + *c* left, 239 + *c* right; the human record holding the colour, else
+  nothing): +0x20 an index into the list, −1 Random; an empty list changes nothing. Right: −1 to 0,
+  on to the last, past it to −1; left: −1 to the last, back to 0, past it to −1. A step that lands on
+  a type another human record's index names steps on (the hot seat's: T4); −1 never clashes. Then
+  message 0x40C (a network game's relay) and the row redrawn. The client keeps the hero type in
+  `Record::hero` (T6's `PlayerStart.pick`).
+
+### 24.2 The hero shown and its name
+
+- **`scenario_shown_hero`** (a portrait index or −1): a new game with neither the generating main
+  town (+0xB) nor the random-hero flag (+0x18): the players block's +0x20, **the main hero's
+  portrait as the file gives it** (0xFF, its type's own, kept as −1); else the record's pick
+  through the map's disposed heroes (game +0x1FB2C, a tree by type: +0x10 a portrait, −1 none),
+  else the pick's type. (A load: the main hero's portrait or the first hero, not built.)
+- **The row** (0x58DB0F): −1 is Random or None as §23.2; else the portrait of the dialog's array
+  (+0xC8: `hero_table` 0x679DD0's +0x30 for the 163 records, 156 types and the campaign heroes'
+  seven, then `hpsrand.pcx` at +0x354) at (252, 130 + 50 *r*), its name tiny colour 4 align 5 at
+  (240, 162 + 50 *r*, 71, 16).
+- **So a main hero the file leaves at its type's portrait shows no hero** (Adventures of Jared
+  Haret's blue, type 85: None; tan, type 33 named "Thenith", under a Random town: Random; 52 main
+  heroes of the shipped maps): **CLT-Q141** (b), decision 55: the client shows the type's portrait
+  and the main hero's name, else the type's; the original's for the comparisons only.
+- **`scenario_shown_hero_name`** (new game): with no flag the main hero's type (+0x1C), else the
+  pick's; the main hero's own name (+0x24) when the colour has a main hero and the name is not
+  empty, **whatever hero shows**; else the disposed hero's name (its string's length not 0), else
+  the type's (game +0x21643 + 0x492 × type). With a flag and a named main hero the original names
+  every pick by the main hero (no shipped map: each such colour is computer-only, and only a human
+  picks): **CLT-Q142** (b), decision 56: the client names a pick by its own name; the original's for
+  the comparisons only. The shipped maps' disposed heroes (832) all keep their types' portraits
+  and names.
+
+### 24.3 The right press (362 + *c*)
+
+A new game (0x5823FF): the colour's human record, else its computer record; with its hero −1 and
+the colour with neither flag nor a main hero: no popup. Then with the hero −1 and none shown
+(−1): Random's popup (`scenario_info_popup`: GENRLTXT 102, `hpsrand1.pcx`, 523, 103; the small
+popup of §23.4). Else the hero's type (no flag: the main hero's, else the list's) and its popup
+(`scenario_hero_popup` with the portrait, the name, `hero_class_name` 0x4D8F70 and
+`hero_specialty_text` 0x4D7220: T3b2). So a None over a main hero of its type's portrait gives Random's popup (CLT-Q112's
+recording, `map-2-computer-hero-popup`); with CLT-Q141 (b) the client shows that hero, and a None
+(no hero at all) gives none.
+
+### 24.4 The recordings and the comparisons
+
+`adv-single-hero` 26 of 28 and `adv-single-maps` 11 of 13 exact: the four shots of a hero's own
+popup differ (`hero-popup-1`, `hero-popup-last`, `map-0-hero-popup`, `map-2-hero-popup`: T3b2's).
+`adv-begin`'s panel exact; every other group as recorded.
+
+### 24.5 Not built (T3b2 on)
+
+A hero's own popup (T3b2: `scenario_hero_popup` 0x575A90, the class and level, the specialty); a
+hero two human records hold (the step's skip, `scenario_heroes_unclash` 0x58BBC0: T4); a portrait
+past the hero types' (the campaign heroes' seven, 156 to 162: no table entry, not drawn; no shipped
+map gives one); a load's hero (M4).

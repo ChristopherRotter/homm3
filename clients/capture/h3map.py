@@ -99,7 +99,7 @@ TERRAIN_FIELD, RIVER_FIELD = h3mem.TERRAIN_DEFS, h3mem.RIVER_DEFS
 MASKS = {name: [tuple(r) for r in rects]
          for name, rects in tomllib.loads((CLIENTS / "map/masks.toml").read_text()).items()}
 # What `lists` writes into a situation's hero's record (E24 M3 T4a, T5b1).
-HERO_WRITES = {"points", "mana", "skills", "morale", "luck", "army"}
+HERO_WRITES = {"points", "mana", "skills", "morale", "luck", "army", "diplomacy"}
 # The status window's kinds the viewer draws (E24 M3 T5b1: a hero's and a town's, design §4.8;
 # T5b2 the date's and the kingdom's, §4.9).
 STATUS_DRAWN = (1, 2, 3, 4)
@@ -378,6 +378,9 @@ def lists(game, mem, sit):
             # F5-6: seven empty slots were written while the parser saw nothing written).
             if hero.get("army"):
                 mem.write_army(mem.hero_record(index) + h3mem.ARMY, hero["army"])
+            # A monster's offer to join for gold (E24 M4 T2b1, design §5.4).
+            if "diplomacy" in hero:
+                mem.write_diplomacy(index, hero["diplomacy"])
     for town in sit.get("towns", []):
         if town.get("built"):
             mem.write_town_built(town_index(mem, town["at"]))
@@ -574,8 +577,13 @@ def stage(situation_path, out, seed=None, sound=False):
         # as staged: the hint reads them at each change of the tile under the pointer; since
         # T6a2b (§4.12) the selected hero's own and a mine's or a bank's guards too.
         for visit in sit.get("visits", []):
-            mem.write_visit(mem.current_player(), *visit["at"], visit.get("known", False),
-                            visit.get("visited"), visit.get("hero"), visit.get("guards"))
+            # E24 M4 T2b1 (design §5.4): the words the load drew, written first.
+            fields = {k: visit[k] for k in h3mem.WORD_FIELDS if k in visit}
+            if fields:
+                mem.write_fields(*visit["at"], fields)
+            if set(visit) - {"at", *fields}:
+                mem.write_visit(mem.current_player(), *visit["at"], visit.get("known", False),
+                                visit.get("visited"), visit.get("hero"), visit.get("guards"))
         if "status" in sit:
             ask_status(mem, sit["status"], max(mem.map_due()) + STATUS_LONG)
             h3adv.wait_for(lambda: mem.status_shown() == sit["status"],
@@ -1005,9 +1013,13 @@ def message_toml(box, t):
     the live part (after the `[[turn]]` tables): its millisecond, its place (x, y, width,
     height), its texts (the text, then the pictures' captions), its pictures ([DEF, frame,
     caption]) and its buttons' ids, as memory holds them (`Mem.message_box`): what the box the
-    viewer lays out from a find's facts is checked against (Part B: the engine's events)."""
+    viewer lays out from a find's facts is checked against (Part B: the engine's events). Since
+    E24 M4 T2b1 (design §5.4) its `style`, the picture `chosen` (0x7809 or 0x780A in styles 7
+    and 10, -1 none) and its `marks`, each button's and choice frame's [id, x, y, width, height,
+    state]: a choice or a button enabled appends a table of its own."""
     return (f"\n[[message]]\nat = {t}\nbox = {box['box']}\ntexts = {json.dumps(box['texts'])}\n"
-            f"pictures = {json.dumps(box['pictures'])}\nbuttons = {box['buttons']}\n")
+            f"pictures = {json.dumps(box['pictures'])}\nbuttons = {box['buttons']}\n"
+            f"style = {box['style']}\nchosen = {box['chosen']}\nmarks = {box['marks']}\n")
 
 
 def found_toml(found, t):
@@ -1283,7 +1295,9 @@ def sequence(entry, out):
                                                                  for k in ("date", "player")]:
                 turns.append(turn_toml(mem, t - t0))
             box = mem.message_box()
-            key = None if box is None else (box["box"], box["texts"], box["pictures"])
+            # E24 M4 T2b1: a choice made or a button's state changed is a table of its own.
+            key = None if box is None else (box["box"], box["texts"], box["pictures"],
+                                            box["chosen"], box["marks"])
             if key is not None and key != shown_box:
                 finds.append(message_toml(box, t - t0))
             shown_box = key

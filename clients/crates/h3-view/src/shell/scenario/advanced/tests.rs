@@ -1,5 +1,6 @@
 //! The advanced options' tests (E27 M3 T3a): the rows as `adv-single-town` recorded them, the
-//! town's and the bonus's arrows, the popups, the hiding.
+//! town's and the bonus's arrows, the popups, the hiding; the hero's arrows, portraits, names and
+//! popups (T3b1, as `adv-single-hero` and `adv-single-maps` recorded them).
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -10,7 +11,7 @@ use h3_render::Bugs;
 use h3_ui::ui::{Draw, Item, State};
 
 use super::super::tests::{scenario_of, texts};
-use super::super::{Entry, Format, MainHero, Scenario, Seat, Texts};
+use super::super::{CustomHero, Entry, Format, Heroes, MainHero, Scenario, Seat, Texts};
 use super::*;
 use crate::shell::look::parse_layout;
 
@@ -29,6 +30,9 @@ fn advanced_texts() -> AdvancedTexts {
         .collect();
     AdvancedTexts {
         look,
+        hero_names: numbered("hero", 156),
+        portraits: (0..156).map(|k| format!("HPS{k:03}.pcx")).collect(),
+        random_hero: [String::from("Random Hero"), String::from("A hero")],
         kinds: ["both", "human", "computer"].map(String::from),
         computer: String::from("Computer"),
         random: String::from("Random"),
@@ -81,7 +85,15 @@ fn map_of(file: &str, seats: [Option<Seat>; 8]) -> Entry {
         loss: None,
         seats: seats.map(Option::unwrap_or_default),
         teams: [0, 1, 2, 3, 4, 5, 6, 7],
+        heroes: Heroes::default(),
     }
+}
+
+/// Arrogance with red's offers: Castle's heroes 0 to 2, Rampart's none.
+fn arrogance_offered() -> Entry {
+    let mut map = arrogance();
+    map.heroes.offers[0][0] = vec![0, 1, 2];
+    map
 }
 
 /// Arrogance: red, blue, purple and teal, each [`open`].
@@ -95,19 +107,22 @@ fn arrogance() -> Entry {
 
 /// The screen over `entries` with the advanced options.
 fn with_options(entries: Vec<Entry>) -> Scenario {
-    let mut s = scenario_of(entries, Bugs::Fixed);
+    with_options_in(entries, Bugs::Fixed)
+}
+
+/// The screen over `entries` with the advanced options in the profile `bugs`.
+fn with_options_in(entries: Vec<Entry>, bugs: Bugs) -> Scenario {
     let layout = parse_layout(LAYOUT).unwrap();
-    s = Scenario::new(
+    Scenario::new(
         layout.scenario.dialog,
         (layout.scenario.list, layout.scenario.description),
         Texts {
             advanced: Some(advanced_texts()),
-            ..texts(Bugs::Fixed)
+            ..texts(bugs)
         },
-        s.entries().to_vec(),
-        Bugs::Fixed,
-    );
-    s
+        entries,
+        bugs,
+    )
 }
 
 fn click(s: &mut Scenario, point: [i32; 2]) -> bool {
@@ -118,7 +133,12 @@ fn click(s: &mut Scenario, point: [i32; 2]) -> bool {
 
 /// The options shown over `entries` (Show Advanced Options clicked).
 fn shown(entries: Vec<Entry>) -> Scenario {
-    let mut s = with_options(entries);
+    shown_in(entries, Bugs::Fixed)
+}
+
+/// The options shown over `entries` in the profile `bugs`.
+fn shown_in(entries: Vec<Entry>, bugs: Bugs) -> Scenario {
+    let mut s = with_options_in(entries, bugs);
     assert!(click(&mut s, [514, 519]));
     assert!(s.advanced_showing());
     s
@@ -261,6 +281,187 @@ fn the_town_s_arrows_step_through_the_allowed_factions_and_random() {
     assert_eq!(s.records().unwrap()[0].town, Some(7));
 }
 
+/// The hero's text and picture of row `r`.
+fn hero_of(s: &Scenario, r: i32) -> (Vec<String>, Option<String>) {
+    let draws = s.draws("P");
+    let picture = pictures(&draws)
+        .into_iter()
+        .find(|(_, at)| *at == [252, 130 + dy(r)])
+        .map(|(p, _)| p);
+    (texts_at(&draws, [240, 162 + dy(r)]), picture)
+}
+
+#[test]
+fn the_hero_s_arrows_step_through_the_offer_and_random() {
+    let mut s = shown(vec![arrogance_offered()]);
+    // Castle: right from Random to the offer's first, on to its last, past it to Random.
+    click(&mut s, [230, 145]);
+    let random = (
+        vec![String::from("Random")],
+        Some(String::from("hpsrand1.pcx")),
+    );
+    assert_eq!(hero_of(&s, 0), random);
+    for k in 0..3 {
+        assert!(click(&mut s, [306, 145]));
+        let portrait = format!("HPS{k:03}.pcx");
+        assert_eq!(hero_of(&s, 0), (vec![format!("hero {k}")], Some(portrait)));
+        assert_eq!(s.records().unwrap()[0].hero, Some(k));
+    }
+    click(&mut s, [306, 145]);
+    assert_eq!(hero_of(&s, 0), random);
+    // Left: from Random to the last, back to the first, past it to Random.
+    click(&mut s, [245, 145]);
+    assert_eq!(hero_of(&s, 0).0, ["hero 2"]);
+    click(&mut s, [245, 145]);
+    click(&mut s, [245, 145]);
+    assert_eq!(hero_of(&s, 0).0, ["hero 0"]);
+    click(&mut s, [245, 145]);
+    assert_eq!(hero_of(&s, 0), random);
+    // A pick, then the town changed: Random again; Rampart offers none: its arrows do nothing.
+    click(&mut s, [306, 145]);
+    click(&mut s, [230, 145]);
+    assert_eq!(hero_of(&s, 0), random);
+    assert!(click(&mut s, [306, 145]));
+    assert_eq!(hero_of(&s, 0), random);
+    assert_eq!(s.records().unwrap()[0].hero, None);
+    // The pick has no popup of its own yet (T3b2).
+    click(&mut s, [169, 145]);
+    click(&mut s, [306, 145]);
+    assert_eq!(hero_of(&s, 0).0, ["hero 0"]);
+    assert!(s.right([276, 146]).changed);
+    assert!(s.box_draws("P").is_empty());
+}
+
+#[test]
+fn a_pick_shows_the_map_s_customised_portrait_and_name() {
+    let mut map = arrogance_offered();
+    map.heroes.custom = vec![
+        CustomHero {
+            hero_type: 1,
+            portrait: Some(40),
+            name: String::from("Sir One"),
+        },
+        CustomHero {
+            hero_type: 2,
+            portrait: None,
+            name: String::new(),
+        },
+    ];
+    let mut s = shown(vec![map.clone()]);
+    click(&mut s, [230, 145]);
+    click(&mut s, [306, 145]);
+    click(&mut s, [306, 145]);
+    let one = (
+        vec![String::from("Sir One")],
+        Some(String::from("HPS040.pcx")),
+    );
+    assert_eq!(hero_of(&s, 0), one);
+    click(&mut s, [306, 145]);
+    let two = (
+        vec![String::from("hero 2")],
+        Some(String::from("HPS002.pcx")),
+    );
+    assert_eq!(hero_of(&s, 0), two);
+    // A main hero's own name of the map names a pick in the original alone
+    // (`scenario_shown_hero_name` 0x58D33A, CLT-Q142 (b)).
+    map.seats[0].main_hero = Some(MainHero {
+        hero_type: 7,
+        portrait: Some(19),
+    });
+    map.heroes.main_names[0] = String::from("Tovar");
+    for (bugs, name) in [(Bugs::Fixed, "hero 0"), (Bugs::Original, "Tovar")] {
+        let mut s = shown_in(vec![map.clone()], bugs);
+        click(&mut s, [230, 145]);
+        click(&mut s, [306, 145]);
+        assert_eq!(hero_of(&s, 0).0, [name]);
+    }
+}
+
+/// Adventures of Jared Haret's kinds of rows (`adv-single-maps` map-2), and two more: red's main
+/// hero of a portrait of its own and a name, blue's (a fixed town) and tan's (a Random town) of
+/// their types' own portraits (CLT-Q141), a colour with no hero at all, a portrait past the table.
+fn main_heroes() -> Entry {
+    let computer = Seat {
+        human: false,
+        random_town: false,
+        generates: false,
+        ..open()
+    };
+    let main = |hero_type, portrait| {
+        Some(MainHero {
+            hero_type,
+            portrait,
+        })
+    };
+    let mut seats = [None; 8];
+    seats[0] = Some(Seat {
+        human: true,
+        factions: 1,
+        main_hero: main(2, Some(0)),
+        ..computer
+    });
+    seats[1] = Some(Seat {
+        factions: 1 << 5,
+        main_hero: main(85, None),
+        ..computer
+    });
+    seats[2] = Some(Seat {
+        random_town: true,
+        main_hero: main(33, None),
+        ..computer
+    });
+    seats[3] = Some(Seat {
+        factions: 1,
+        ..computer
+    });
+    seats[4] = Some(Seat {
+        factions: 1,
+        main_hero: main(5, Some(200)),
+        ..computer
+    });
+    let mut map = map_of("Jared.h3m", seats);
+    map.heroes.main_names[0] = String::from("Jared Haret");
+    map.heroes.main_names[2] = String::from("Thenith");
+    map
+}
+
+#[test]
+fn a_main_hero_shows_its_portrait_and_name() {
+    let mut s = shown(vec![main_heroes()]);
+    let hero = |k: &str, p: &str| (vec![String::from(k)], Some(String::from(p)));
+    assert_eq!(hero_of(&s, 0), hero("Jared Haret", "HPS000.pcx"));
+    // CLT-Q141 (b): the type's own portrait; the map's name, else the type's.
+    assert_eq!(hero_of(&s, 1), hero("hero 85", "HPS085.pcx"));
+    assert_eq!(hero_of(&s, 2), hero("Thenith", "HPS033.pcx"));
+    assert_eq!(hero_of(&s, 3), hero("None", "hpsrand6.pcx"));
+    // A portrait past the table: its name alone.
+    assert_eq!(hero_of(&s, 4), (vec![String::from("hero 5")], None));
+    // No popup over a None (CLT-Q112 (b)), none yet over a hero (T3b2).
+    for r in 0..4 {
+        assert!(s.right([276, 146 + dy(r)]).changed);
+        assert!(s.box_draws("P").is_empty(), "{r}");
+        s.right_release();
+    }
+}
+
+#[test]
+fn the_original_shows_no_main_hero_of_its_type_s_portrait() {
+    let mut s = shown_in(vec![main_heroes()], Bugs::Original);
+    let hero = |k: &str, p: &str| (vec![String::from(k)], Some(String::from(p)));
+    assert_eq!(hero_of(&s, 0), hero("Jared Haret", "HPS000.pcx"));
+    assert_eq!(hero_of(&s, 1), hero("None", "hpsrand6.pcx"));
+    assert_eq!(hero_of(&s, 2), hero("Random", "hpsrand1.pcx"));
+    assert_eq!(hero_of(&s, 3), hero("None", "hpsrand6.pcx"));
+    // Random's popup over blue's None and tan's Random (`map-2-computer-hero-popup`), none over
+    // a colour with no hero at all (`map-1-hero-popup`).
+    for (r, random) in [(1, true), (2, true), (3, false)] {
+        s.right([276, 146 + dy(r)]);
+        let labels = popup(&s).0;
+        assert_eq!(!labels.is_empty(), random, "{r}");
+        s.right_release();
+    }
+}
+
 #[test]
 fn a_mask_s_factions_alone_are_stepped_to() {
     let rampart_and_dungeon = Seat {
@@ -331,7 +532,7 @@ fn a_colour_with_no_hero_to_take_it_passes_over_the_artifact() {
     seats[1] = Some(Seat {
         main_hero: Some(MainHero {
             hero_type: 3,
-            portrait: 3,
+            portrait: Some(4),
         }),
         ..fixed
     });
@@ -349,13 +550,14 @@ fn a_colour_with_no_hero_to_take_it_passes_over_the_artifact() {
     });
     let mut s = shown(vec![map_of("Fixed.h3m", seats)]);
     let draws = s.draws("P");
-    // A fixed town (Tower) shows without its arrows; no hero at all shows none; the main hero's
-    // portrait is T3b's (nothing drawn); a Random town with neither flag shows none too.
+    // A fixed town (Tower) shows without its arrows; no hero at all shows none; the main hero its
+    // portrait and its type's name (T3b1); a Random town with neither flag shows none too.
     assert_eq!(texts_at(&draws, [164, 162]), ["town 2"]);
     assert!(!frames(&draws, "adoprta.def").contains(&([225, 133], 1)));
     assert!(pictures(&draws).contains(&(String::from("hpsrand6.pcx"), [252, 130])));
     assert_eq!(texts_at(&draws, [240, 162]), ["None"]);
-    assert!(texts_at(&draws, [240, 162 + dy(1)]).is_empty());
+    assert!(pictures(&draws).contains(&(String::from("HPS004.pcx"), [252, 130 + dy(1)])));
+    assert_eq!(texts_at(&draws, [240, 162 + dy(1)]), ["hero 3"]);
     assert_eq!(texts_at(&draws, [240, 162 + dy(2)]), ["None"]);
     // A human-only colour (green, the single player's: the first only a human may play) says so;
     // under a town its random-hero flag gives it the hero's arrows.
@@ -467,9 +669,10 @@ fn the_pictures_right_press_shows_their_popups_while_held() {
     s.right([352, 146]);
     assert_eq!(popup(&s).0, ["Artifact Bonus", "", "An artifact"]);
     s.right_release();
-    // The hero's picture has no popup yet (T3b): the screen redrawn whole.
+    // The hero's picture, Random under a town with its arrows: Random's popup (T3b1).
     assert!(s.right([276, 146]).changed);
-    assert!(s.box_draws("P").is_empty());
+    assert_eq!(popup(&s).0, ["Random Hero", "Random", "A hero"]);
+    assert_eq!(popup(&s).2, ["hpsrand1.pcx"]);
 }
 
 #[test]
@@ -557,18 +760,26 @@ fn the_items_and_names_of_every_colour() {
     assert_eq!(first_faction(0), 0);
     assert_eq!(Bonus::of(7), Bonus::Random);
     // The options' own state: shown nowhere until shown; a click or a right press then nothing.
-    let mut advanced = Advanced::new(advanced_texts());
+    let mut advanced = Advanced::new(advanced_texts(), Bugs::Fixed);
     let mut shown = Shown::default();
-    let seats = [open(); 8];
-    assert!(!advanced.click(TOWN_RIGHT, &seats, &mut shown));
-    assert_eq!(advanced.popup(TOWN_AREA, &seats), None);
+    let map = Map {
+        seats: [open(); 8],
+        heroes: Heroes::default(),
+        local: Some(0),
+    };
+    assert!(!advanced.click(TOWN_RIGHT, &map, &mut shown));
+    assert_eq!(advanced.popup(TOWN_AREA, &map), None);
     let mut dialog = Dialog {
         place: [0, 0],
         shadow: None,
         items: Vec::new(),
     };
-    advanced.show((&seats, Some(0)), &mut dialog, &mut shown);
-    assert!(!advanced.click(PLAYER, &seats, &mut shown));
-    assert_eq!(advanced.popup(PLAYER, &seats), None);
+    advanced.show(&map, &mut dialog, &mut shown);
+    assert!(!advanced.click(PLAYER, &map, &mut shown));
+    // A hero's arrow of a colour no human record holds (its arrows hidden): no list, no step
+    // (`scenario_dialog_click` 0x586A93).
+    assert!(advanced.click(HERO_RIGHT + 1, &map, &mut shown));
+    assert_eq!(advanced.record(1).hero, None);
+    assert_eq!(advanced.popup(PLAYER, &map), None);
     assert_eq!(shown.state(HANDICAP), State::default());
 }

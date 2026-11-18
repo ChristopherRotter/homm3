@@ -1106,6 +1106,7 @@ def = "CH00.DEF"
 cast = [92, 67]
 cast_frames = 5
 portrait = "HPL000Kn.PCX"
+small_portrait = "HPS000Kn.PCX"
 picture = 0
 
 [[hero]]
@@ -1115,6 +1116,7 @@ def = "CH01.DEF"
 cast = [94, 54]
 cast_frames = 5
 portrait = "HPL001Kn.PCX"
+small_portrait = "HPS001Kn.PCX"
 female = true
 picture = 1
 
@@ -1125,6 +1127,7 @@ def = "CH00.DEF"
 cast = [92, 67]
 cast_frames = 5
 portrait = "HPL002Kn.PCX"
+small_portrait = "HPS002Kn.PCX"
 picture = 0
 
 [[hero]]
@@ -1134,6 +1137,7 @@ def = "CH01.DEF"
 cast = [94, 54]
 cast_frames = 5
 portrait = "HPL003Kn.PCX"
+small_portrait = "HPS003Kn.PCX"
 female = true
 picture = 1
 
@@ -1144,6 +1148,7 @@ def = "CH00.DEF"
 cast = [92, 67]
 cast_frames = 5
 portrait = "HPL004Kn.PCX"
+small_portrait = "HPS004Kn.PCX"
 picture = 0
 
 [[hero]]
@@ -1153,6 +1158,7 @@ def = "CH01.DEF"
 cast = [94, 54]
 cast_frames = 5
 portrait = "HPL005Kn.PCX"
+small_portrait = "HPS005Kn.PCX"
 female = true
 picture = 1
 
@@ -1163,6 +1169,7 @@ def = "CH00.DEF"
 cast = [92, 67]
 cast_frames = 5
 portrait = "HPL006Kn.PCX"
+small_portrait = "HPS006Kn.PCX"
 picture = 0
 
 [[hero]]
@@ -1172,6 +1179,7 @@ def = "CH01.DEF"
 cast = [94, 54]
 cast_frames = 5
 portrait = "HPL007Kn.PCX"
+small_portrait = "HPS007Kn.PCX"
 female = true
 picture = 1
 
@@ -1182,6 +1190,7 @@ def = "CH00.DEF"
 cast = [92, 67]
 cast_frames = 5
 portrait = "HPL008Cl.PCX"
+small_portrait = "HPS008Cl.PCX"
 picture = 0
 
 [[hero]]
@@ -1191,6 +1200,7 @@ def = "CH01.DEF"
 cast = [94, 54]
 cast_frames = 5
 portrait = "HPL009Cl.PCX"
+small_portrait = "HPS009Cl.PCX"
 female = true
 picture = 1
 
@@ -1201,6 +1211,7 @@ def = "CH00.DEF"
 cast = [92, 67]
 cast_frames = 5
 portrait = "HPL010Cl.PCX"
+small_portrait = "HPS010Cl.PCX"
 picture = 0
 
 [[hero]]
@@ -1210,6 +1221,7 @@ def = "CH01.DEF"
 cast = [94, 54]
 cast_frames = 5
 portrait = "HPL011Cl.PCX"
+small_portrait = "HPS011Cl.PCX"
 female = true
 picture = 1
 
@@ -1220,6 +1232,7 @@ def = "CH00.DEF"
 cast = [92, 67]
 cast_frames = 5
 portrait = "HPL012Cl.PCX"
+small_portrait = "HPS012Cl.PCX"
 picture = 0
 
 [[hero]]
@@ -1229,6 +1242,7 @@ def = "CH01.DEF"
 cast = [94, 54]
 cast_frames = 5
 portrait = "HPL013Cl.PCX"
+small_portrait = "HPS013Cl.PCX"
 female = true
 picture = 1
 
@@ -1239,6 +1253,7 @@ def = "CH00.DEF"
 cast = [92, 67]
 cast_frames = 5
 portrait = "HPL014Cl.PCX"
+small_portrait = "HPS014Cl.PCX"
 picture = 0
 
 [[hero]]
@@ -1248,6 +1263,7 @@ def = "CH01.DEF"
 cast = [94, 54]
 cast_frames = 5
 portrait = "HPL015Cl.PCX"
+small_portrait = "HPS015Cl.PCX"
 female = true
 picture = 1
 
@@ -1258,6 +1274,7 @@ def = "CH03.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL016Rn.PCX"
+small_portrait = "HPS016Rn.PCX"
 female = true
 picture = 3
 
@@ -1268,6 +1285,7 @@ def = "CH02.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL017Rn.PCX"
+small_portrait = "HPS017Rn.PCX"
 picture = 2
 
 [[hero]]
@@ -1277,6 +1295,7 @@ def = "CH03.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL018Rn.PCX"
+small_portrait = "HPS018Rn.PCX"
 female = true
 picture = 3
 
@@ -1287,6 +1306,7 @@ def = "CH02.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL019Rn.PCX"
+small_portrait = "HPS019Rn.PCX"
 picture = 2
 
 [[hero]]
@@ -1296,6 +1316,7 @@ def = "CH02.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL020Rn.PCX"
+small_portrait = "HPS020Rn.PCX"
 picture = 2
 
 [[hero]]
@@ -1305,6 +1326,7 @@ def = "CH02.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL021Rn.PCX"
+small_portrait = "HPS021Rn.PCX"
 picture = 2
 
 [[hero]]
@@ -1314,6 +1336,7 @@ def = "CH02.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL022Rn.PCX"
+small_portrait = "HPS022Rn.PCX"
 picture = 2
 
 [[hero]]
@@ -1323,6 +1346,7 @@ def = "CH03.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL023Rn.PCX"
+small_portrait = "HPS023Rn.PCX"
 female = true
 picture = 3
 
@@ -1333,6 +1357,7 @@ def = "CH02.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL024Dr.PCX"
+small_portrait = "HPS024Dr.PCX"
 picture = 2
 
 [[hero]]
@@ -1342,6 +1367,7 @@ def = "CH02.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL025Dr.PCX"
+small_portrait = "HPS025Dr.PCX"
 picture = 2
 
 [[hero]]
@@ -1351,6 +1377,7 @@ def = "CH02.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL026Dr.PCX"
+small_portrait = "HPS026Dr.PCX"
 picture = 2
 
 [[hero]]
@@ -1360,6 +1387,7 @@ def = "CH03.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL027Dr.PCX"
+small_portrait = "HPS027Dr.PCX"
 female = true
 picture = 3
 
@@ -1370,6 +1398,7 @@ def = "CH02.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL028Dr.PCX"
+small_portrait = "HPS028Dr.PCX"
 picture = 2
 
 [[hero]]
@@ -1379,6 +1408,7 @@ def = "CH03.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL029Dr.PCX"
+small_portrait = "HPS029Dr.PCX"
 female = true
 picture = 3
 
@@ -1389,6 +1419,7 @@ def = "CH02.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL030Dr.PCX"
+small_portrait = "HPS030Dr.PCX"
 picture = 2
 
 [[hero]]
@@ -1398,6 +1429,7 @@ def = "CH02.DEF"
 cast = [102, 62]
 cast_frames = 5
 portrait = "HPL031Dr.PCX"
+small_portrait = "HPS031Dr.PCX"
 picture = 2
 
 [[hero]]
@@ -1407,6 +1439,7 @@ def = "CH05.DEF"
 cast = [100, 59]
 cast_frames = 5
 portrait = "HPL032Al.PCX"
+small_portrait = "HPS032Al.PCX"
 picture = 4
 
 [[hero]]
@@ -1416,6 +1449,7 @@ def = "CH05.DEF"
 cast = [100, 59]
 cast_frames = 5
 portrait = "HPL033Al.PCX"
+small_portrait = "HPS033Al.PCX"
 picture = 4
 
 [[hero]]
@@ -1425,6 +1459,7 @@ def = "CH04.DEF"
 cast = [98, 52]
 cast_frames = 5
 portrait = "HPL034Al.PCX"
+small_portrait = "HPS034Al.PCX"
 female = true
 picture = 5
 
@@ -1435,6 +1470,7 @@ def = "CH04.DEF"
 cast = [98, 52]
 cast_frames = 5
 portrait = "HPL035Al.PCX"
+small_portrait = "HPS035Al.PCX"
 female = true
 picture = 5
 
@@ -1445,6 +1481,7 @@ def = "CH05.DEF"
 cast = [100, 59]
 cast_frames = 5
 portrait = "HPL036Al.PCX"
+small_portrait = "HPS036Al.PCX"
 picture = 4
 
 [[hero]]
@@ -1454,6 +1491,7 @@ def = "CH05.DEF"
 cast = [100, 59]
 cast_frames = 5
 portrait = "HPL037Al.PCX"
+small_portrait = "HPS037Al.PCX"
 picture = 4
 
 [[hero]]
@@ -1463,6 +1501,7 @@ def = "CH04.DEF"
 cast = [98, 52]
 cast_frames = 5
 portrait = "HPL038Al.PCX"
+small_portrait = "HPS038Al.PCX"
 female = true
 picture = 5
 
@@ -1473,6 +1512,7 @@ def = "CH04.DEF"
 cast = [98, 52]
 cast_frames = 5
 portrait = "HPL039Al.PCX"
+small_portrait = "HPS039Al.PCX"
 female = true
 picture = 5
 
@@ -1483,6 +1523,7 @@ def = "CH05.DEF"
 cast = [100, 59]
 cast_frames = 5
 portrait = "HPL040Wz.PCX"
+small_portrait = "HPS040Wz.PCX"
 picture = 4
 
 [[hero]]
@@ -1492,6 +1533,7 @@ def = "CH05.DEF"
 cast = [100, 59]
 cast_frames = 5
 portrait = "HPL041Wz.PCX"
+small_portrait = "HPS041Wz.PCX"
 picture = 4
 
 [[hero]]
@@ -1501,6 +1543,7 @@ def = "CH04.DEF"
 cast = [98, 52]
 cast_frames = 5
 portrait = "HPL042Wz.PCX"
+small_portrait = "HPS042Wz.PCX"
 female = true
 picture = 5
 
@@ -1511,6 +1554,7 @@ def = "CH04.DEF"
 cast = [98, 52]
 cast_frames = 5
 portrait = "HPL043Wz.PCX"
+small_portrait = "HPS043Wz.PCX"
 female = true
 picture = 5
 
@@ -1521,6 +1565,7 @@ def = "CH05.DEF"
 cast = [100, 59]
 cast_frames = 5
 portrait = "HPL044Wz.PCX"
+small_portrait = "HPS044Wz.PCX"
 picture = 4
 
 [[hero]]
@@ -1530,6 +1575,7 @@ def = "CH05.DEF"
 cast = [100, 59]
 cast_frames = 5
 portrait = "HPL045Wz.PCX"
+small_portrait = "HPS045Wz.PCX"
 picture = 4
 
 [[hero]]
@@ -1539,6 +1585,7 @@ def = "CH04.DEF"
 cast = [98, 52]
 cast_frames = 5
 portrait = "HPL046Wz.PCX"
+small_portrait = "HPS046Wz.PCX"
 female = true
 picture = 5
 
@@ -1549,6 +1596,7 @@ def = "CH04.DEF"
 cast = [98, 52]
 cast_frames = 5
 portrait = "HPL047Wz.PCX"
+small_portrait = "HPS047Wz.PCX"
 female = true
 picture = 5
 
@@ -1559,6 +1607,7 @@ def = "CH07.DEF"
 cast = [99, 62]
 cast_frames = 5
 portrait = "HPL048Hr.PCX"
+small_portrait = "HPS048Hr.PCX"
 female = true
 picture = 7
 
@@ -1569,6 +1618,7 @@ def = "CH06.DEF"
 cast = [97, 63]
 cast_frames = 5
 portrait = "HPL049Hr.PCX"
+small_portrait = "HPS049Hr.PCX"
 picture = 6
 
 [[hero]]
@@ -1578,6 +1628,7 @@ def = "CH07.DEF"
 cast = [99, 62]
 cast_frames = 5
 portrait = "HPL050Hr.PCX"
+small_portrait = "HPS050Hr.PCX"
 female = true
 picture = 7
 
@@ -1588,6 +1639,7 @@ def = "CH06.DEF"
 cast = [97, 63]
 cast_frames = 5
 portrait = "HPL051Hr.PCX"
+small_portrait = "HPS051Hr.PCX"
 picture = 6
 
 [[hero]]
@@ -1597,6 +1649,7 @@ def = "CH07.DEF"
 cast = [99, 62]
 cast_frames = 5
 portrait = "HPL052Hr.PCX"
+small_portrait = "HPS052Hr.PCX"
 female = true
 picture = 7
 
@@ -1607,6 +1660,7 @@ def = "CH06.DEF"
 cast = [97, 63]
 cast_frames = 5
 portrait = "HPL053Hr.PCX"
+small_portrait = "HPS053Hr.PCX"
 picture = 6
 
 [[hero]]
@@ -1616,6 +1670,7 @@ def = "CH07.DEF"
 cast = [99, 62]
 cast_frames = 5
 portrait = "HPL054Hr.PCX"
+small_portrait = "HPS054Hr.PCX"
 female = true
 picture = 7
 
@@ -1626,6 +1681,7 @@ def = "CH07.DEF"
 cast = [99, 62]
 cast_frames = 5
 portrait = "HPL055Hr.PCX"
+small_portrait = "HPS055Hr.PCX"
 female = true
 picture = 7
 
@@ -1636,6 +1692,7 @@ def = "CH06.DEF"
 cast = [97, 63]
 cast_frames = 5
 portrait = "HPL056Dm.PCX"
+small_portrait = "HPS056Dm.PCX"
 picture = 6
 
 [[hero]]
@@ -1645,6 +1702,7 @@ def = "CH06.DEF"
 cast = [97, 63]
 cast_frames = 5
 portrait = "HPL057Dm.PCX"
+small_portrait = "HPS057Dm.PCX"
 picture = 6
 
 [[hero]]
@@ -1654,6 +1712,7 @@ def = "CH06.DEF"
 cast = [97, 63]
 cast_frames = 5
 portrait = "HPL058Dm.PCX"
+small_portrait = "HPS058Dm.PCX"
 picture = 6
 
 [[hero]]
@@ -1663,6 +1722,7 @@ def = "CH07.DEF"
 cast = [99, 62]
 cast_frames = 5
 portrait = "HPL059Dm.PCX"
+small_portrait = "HPS059Dm.PCX"
 female = true
 picture = 7
 
@@ -1673,6 +1733,7 @@ def = "CH07.DEF"
 cast = [99, 62]
 cast_frames = 5
 portrait = "HPL060Dm.PCX"
+small_portrait = "HPS060Dm.PCX"
 female = true
 picture = 7
 
@@ -1683,6 +1744,7 @@ def = "CH07.DEF"
 cast = [99, 62]
 cast_frames = 5
 portrait = "HPL061Dm.PCX"
+small_portrait = "HPS061Dm.PCX"
 female = true
 picture = 7
 
@@ -1693,6 +1755,7 @@ def = "CH06.DEF"
 cast = [97, 63]
 cast_frames = 5
 portrait = "HPL062Dm.PCX"
+small_portrait = "HPS062Dm.PCX"
 picture = 6
 
 [[hero]]
@@ -1702,6 +1765,7 @@ def = "CH06.DEF"
 cast = [97, 63]
 cast_frames = 5
 portrait = "HPL063Dm.PCX"
+small_portrait = "HPS063Dm.PCX"
 picture = 6
 
 [[hero]]
@@ -1711,6 +1775,7 @@ def = "CH08.DEF"
 cast = [91, 68]
 cast_frames = 5
 portrait = "HPL064Dk.PCX"
+small_portrait = "HPS064Dk.PCX"
 picture = 8
 
 [[hero]]
@@ -1720,6 +1785,7 @@ def = "CH08.DEF"
 cast = [91, 68]
 cast_frames = 5
 portrait = "HPL065Dk.PCX"
+small_portrait = "HPS065Dk.PCX"
 picture = 8
 
 [[hero]]
@@ -1729,6 +1795,7 @@ def = "CH08.DEF"
 cast = [91, 68]
 cast_frames = 5
 portrait = "HPL066Dk.PCX"
+small_portrait = "HPS066Dk.PCX"
 picture = 8
 
 [[hero]]
@@ -1738,6 +1805,7 @@ def = "CH09.DEF"
 cast = [96, 56]
 cast_frames = 5
 portrait = "HPL067Dk.PCX"
+small_portrait = "HPS067Dk.PCX"
 female = true
 picture = 9
 
@@ -1748,6 +1816,7 @@ def = "CH09.DEF"
 cast = [96, 56]
 cast_frames = 5
 portrait = "HPL068Dk.PCX"
+small_portrait = "HPS068Dk.PCX"
 female = true
 picture = 9
 
@@ -1758,6 +1827,7 @@ def = "CH09.DEF"
 cast = [96, 56]
 cast_frames = 5
 portrait = "HPL069Dk.PCX"
+small_portrait = "HPS069Dk.PCX"
 female = true
 picture = 9
 
@@ -1768,6 +1838,7 @@ def = "CH08.DEF"
 cast = [91, 68]
 cast_frames = 5
 portrait = "HPL070Dk.PCX"
+small_portrait = "HPS070Dk.PCX"
 picture = 8
 
 [[hero]]
@@ -1777,6 +1848,7 @@ def = "CH08.DEF"
 cast = [91, 68]
 cast_frames = 5
 portrait = "HPL071Dk.PCX"
+small_portrait = "HPS071Dk.PCX"
 picture = 8
 
 [[hero]]
@@ -1786,6 +1858,7 @@ def = "CH09.DEF"
 cast = [96, 56]
 cast_frames = 5
 portrait = "HPL072Nc.PCX"
+small_portrait = "HPS072Nc.PCX"
 female = true
 picture = 9
 
@@ -1796,6 +1869,7 @@ def = "CH09.DEF"
 cast = [96, 56]
 cast_frames = 5
 portrait = "HPL073Nc.PCX"
+small_portrait = "HPS073Nc.PCX"
 female = true
 picture = 9
 
@@ -1806,6 +1880,7 @@ def = "CH08.DEF"
 cast = [91, 68]
 cast_frames = 5
 portrait = "HPL074Nc.PCX"
+small_portrait = "HPS074Nc.PCX"
 picture = 8
 
 [[hero]]
@@ -1815,6 +1890,7 @@ def = "CH08.DEF"
 cast = [91, 68]
 cast_frames = 5
 portrait = "HPL075Nc.PCX"
+small_portrait = "HPS075Nc.PCX"
 picture = 8
 
 [[hero]]
@@ -1824,6 +1900,7 @@ def = "CH08.DEF"
 cast = [91, 68]
 cast_frames = 5
 portrait = "HPL076Nc.PCX"
+small_portrait = "HPS076Nc.PCX"
 picture = 8
 
 [[hero]]
@@ -1833,6 +1910,7 @@ def = "CH09.DEF"
 cast = [96, 56]
 cast_frames = 5
 portrait = "HPL077Nc.PCX"
+small_portrait = "HPS077Nc.PCX"
 female = true
 picture = 9
 
@@ -1843,6 +1921,7 @@ def = "CH09.DEF"
 cast = [96, 56]
 cast_frames = 5
 portrait = "HPL078Nc.PCX"
+small_portrait = "HPS078Nc.PCX"
 female = true
 picture = 9
 
@@ -1853,6 +1932,7 @@ def = "CH08.DEF"
 cast = [91, 68]
 cast_frames = 5
 portrait = "HPL079Nc.PCX"
+small_portrait = "HPS079Nc.PCX"
 picture = 8
 
 [[hero]]
@@ -1862,6 +1942,7 @@ def = "CH11.DEF"
 cast = [96, 56]
 cast_frames = 5
 portrait = "HPL080Ov.PCX"
+small_portrait = "HPS080Ov.PCX"
 female = true
 picture = 11
 
@@ -1872,6 +1953,7 @@ def = "CH010.DEF"
 cast = [92, 56]
 cast_frames = 5
 portrait = "HPL081Ov.PCX"
+small_portrait = "HPS081Ov.PCX"
 picture = 10
 
 [[hero]]
@@ -1881,6 +1963,7 @@ def = "CH010.DEF"
 cast = [92, 56]
 cast_frames = 5
 portrait = "HPL082Ov.PCX"
+small_portrait = "HPS082Ov.PCX"
 picture = 10
 
 [[hero]]
@@ -1890,6 +1973,7 @@ def = "CH010.DEF"
 cast = [92, 56]
 cast_frames = 5
 portrait = "HPL083Ov.PCX"
+small_portrait = "HPS083Ov.PCX"
 picture = 10
 
 [[hero]]
@@ -1899,6 +1983,7 @@ def = "CH010.DEF"
 cast = [92, 56]
 cast_frames = 5
 portrait = "HPL084Ov.PCX"
+small_portrait = "HPS084Ov.PCX"
 picture = 10
 
 [[hero]]
@@ -1908,6 +1993,7 @@ def = "CH010.DEF"
 cast = [92, 56]
 cast_frames = 5
 portrait = "HPL085Ov.PCX"
+small_portrait = "HPS085Ov.PCX"
 picture = 10
 
 [[hero]]
@@ -1917,6 +2003,7 @@ def = "CH11.DEF"
 cast = [96, 56]
 cast_frames = 5
 portrait = "HPL086Ov.PCX"
+small_portrait = "HPS086Ov.PCX"
 female = true
 picture = 11
 
@@ -1927,6 +2014,7 @@ def = "CH010.DEF"
 cast = [92, 56]
 cast_frames = 5
 portrait = "HPL087Ov.PCX"
+small_portrait = "HPS087Ov.PCX"
 picture = 10
 
 [[hero]]
@@ -1936,6 +2024,7 @@ def = "CH010.DEF"
 cast = [92, 56]
 cast_frames = 5
 portrait = "HPL088Wl.PCX"
+small_portrait = "HPS088Wl.PCX"
 picture = 10
 
 [[hero]]
@@ -1945,6 +2034,7 @@ def = "CH010.DEF"
 cast = [92, 56]
 cast_frames = 5
 portrait = "HPL089Wl.PCX"
+small_portrait = "HPS089Wl.PCX"
 picture = 10
 
 [[hero]]
@@ -1954,6 +2044,7 @@ def = "CH010.DEF"
 cast = [92, 56]
 cast_frames = 5
 portrait = "HPL090Wl.PCX"
+small_portrait = "HPS090Wl.PCX"
 picture = 10
 
 [[hero]]
@@ -1963,6 +2054,7 @@ def = "CH010.DEF"
 cast = [92, 56]
 cast_frames = 5
 portrait = "HPL091Wl.PCX"
+small_portrait = "HPS091Wl.PCX"
 picture = 10
 
 [[hero]]
@@ -1972,6 +2064,7 @@ def = "CH010.DEF"
 cast = [92, 56]
 cast_frames = 5
 portrait = "HPL092Wl.PCX"
+small_portrait = "HPS092Wl.PCX"
 picture = 10
 
 [[hero]]
@@ -1981,6 +2074,7 @@ def = "CH010.DEF"
 cast = [92, 56]
 cast_frames = 5
 portrait = "HPL093Wl.PCX"
+small_portrait = "HPS093Wl.PCX"
 picture = 10
 
 [[hero]]
@@ -1990,6 +2084,7 @@ def = "CH11.DEF"
 cast = [96, 56]
 cast_frames = 5
 portrait = "HPL094Wl.PCX"
+small_portrait = "HPS094Wl.PCX"
 female = true
 picture = 11
 
@@ -2000,6 +2095,7 @@ def = "CH010.DEF"
 cast = [92, 56]
 cast_frames = 5
 portrait = "HPL095Wl.PCX"
+small_portrait = "HPS095Wl.PCX"
 picture = 10
 
 [[hero]]
@@ -2009,6 +2105,7 @@ def = "CH013.DEF"
 cast = [101, 60]
 cast_frames = 5
 portrait = "HPL096Br.PCX"
+small_portrait = "HPS096Br.PCX"
 picture = 12
 
 [[hero]]
@@ -2018,6 +2115,7 @@ def = "CH013.DEF"
 cast = [101, 60]
 cast_frames = 5
 portrait = "HPL097Br.PCX"
+small_portrait = "HPS097Br.PCX"
 picture = 12
 
 [[hero]]
@@ -2027,6 +2125,7 @@ def = "CH013.DEF"
 cast = [101, 60]
 cast_frames = 5
 portrait = "HPL098Br.PCX"
+small_portrait = "HPS098Br.PCX"
 picture = 12
 
 [[hero]]
@@ -2036,6 +2135,7 @@ def = "CH012.DEF"
 cast = [96, 59]
 cast_frames = 5
 portrait = "HPL099Br.PCX"
+small_portrait = "HPS099Br.PCX"
 female = true
 picture = 13
 
@@ -2046,6 +2146,7 @@ def = "CH012.DEF"
 cast = [96, 59]
 cast_frames = 5
 portrait = "HPL100Br.PCX"
+small_portrait = "HPS100Br.PCX"
 female = true
 picture = 13
 
@@ -2056,6 +2157,7 @@ def = "CH013.DEF"
 cast = [101, 60]
 cast_frames = 5
 portrait = "HPL101Br.PCX"
+small_portrait = "HPS101Br.PCX"
 picture = 12
 
 [[hero]]
@@ -2065,6 +2167,7 @@ def = "CH013.DEF"
 cast = [101, 60]
 cast_frames = 5
 portrait = "HPL102Br.PCX"
+small_portrait = "HPS102Br.PCX"
 picture = 12
 
 [[hero]]
@@ -2074,6 +2177,7 @@ def = "CH013.DEF"
 cast = [101, 60]
 cast_frames = 5
 portrait = "HPL103Br.PCX"
+small_portrait = "HPS103Br.PCX"
 picture = 12
 
 [[hero]]
@@ -2083,6 +2187,7 @@ def = "CH012.DEF"
 cast = [96, 59]
 cast_frames = 5
 portrait = "HPL104Bm.PCX"
+small_portrait = "HPS104Bm.PCX"
 female = true
 picture = 13
 
@@ -2093,6 +2198,7 @@ def = "CH013.DEF"
 cast = [101, 60]
 cast_frames = 5
 portrait = "HPL105Bm.PCX"
+small_portrait = "HPS105Bm.PCX"
 picture = 12
 
 [[hero]]
@@ -2102,6 +2208,7 @@ def = "CH013.DEF"
 cast = [101, 60]
 cast_frames = 5
 portrait = "HPL106Bm.PCX"
+small_portrait = "HPS106Bm.PCX"
 picture = 12
 
 [[hero]]
@@ -2111,6 +2218,7 @@ def = "CH013.DEF"
 cast = [101, 60]
 cast_frames = 5
 portrait = "HPL107Bm.PCX"
+small_portrait = "HPS107Bm.PCX"
 picture = 12
 
 [[hero]]
@@ -2120,6 +2228,7 @@ def = "CH013.DEF"
 cast = [101, 60]
 cast_frames = 5
 portrait = "HPL108Bm.PCX"
+small_portrait = "HPS108Bm.PCX"
 picture = 12
 
 [[hero]]
@@ -2129,6 +2238,7 @@ def = "CH012.DEF"
 cast = [96, 59]
 cast_frames = 5
 portrait = "HPL109Bm.PCX"
+small_portrait = "HPS109Bm.PCX"
 female = true
 picture = 13
 
@@ -2139,6 +2249,7 @@ def = "CH012.DEF"
 cast = [96, 59]
 cast_frames = 5
 portrait = "HPL110Bm.PCX"
+small_portrait = "HPS110Bm.PCX"
 female = true
 picture = 13
 
@@ -2149,6 +2260,7 @@ def = "CH013.DEF"
 cast = [101, 60]
 cast_frames = 5
 portrait = "HPL111Bm.PCX"
+small_portrait = "HPS111Bm.PCX"
 picture = 12
 
 [[hero]]
@@ -2158,6 +2270,7 @@ def = "CH014.DEF"
 cast = [99, 58]
 cast_frames = 5
 portrait = "HPL112Bs.PCX"
+small_portrait = "HPS112Bs.PCX"
 picture = 14
 
 [[hero]]
@@ -2167,6 +2280,7 @@ def = "CH014.DEF"
 cast = [99, 58]
 cast_frames = 5
 portrait = "HPL113Bs.PCX"
+small_portrait = "HPS113Bs.PCX"
 picture = 14
 
 [[hero]]
@@ -2176,6 +2290,7 @@ def = "CH014.DEF"
 cast = [99, 58]
 cast_frames = 5
 portrait = "HPL114Bs.PCX"
+small_portrait = "HPS114Bs.PCX"
 picture = 14
 
 [[hero]]
@@ -2185,6 +2300,7 @@ def = "CH014.DEF"
 cast = [99, 58]
 cast_frames = 5
 portrait = "HPL115Bs.PCX"
+small_portrait = "HPS115Bs.PCX"
 picture = 14
 
 [[hero]]
@@ -2194,6 +2310,7 @@ def = "CH014.DEF"
 cast = [99, 58]
 cast_frames = 5
 portrait = "HPL116Bs.PCX"
+small_portrait = "HPS116Bs.PCX"
 picture = 14
 
 [[hero]]
@@ -2203,6 +2320,7 @@ def = "CH014.DEF"
 cast = [99, 58]
 cast_frames = 5
 portrait = "HPL117Bs.PCX"
+small_portrait = "HPS117Bs.PCX"
 picture = 14
 
 [[hero]]
@@ -2212,6 +2330,7 @@ def = "CH014.DEF"
 cast = [99, 58]
 cast_frames = 5
 portrait = "HPL118Bs.PCX"
+small_portrait = "HPS118Bs.PCX"
 picture = 14
 
 [[hero]]
@@ -2221,6 +2340,7 @@ def = "CH014.DEF"
 cast = [99, 58]
 cast_frames = 5
 portrait = "HPL119Bs.PCX"
+small_portrait = "HPS119Bs.PCX"
 picture = 14
 
 [[hero]]
@@ -2230,6 +2350,7 @@ def = "CH015.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL120Wh.PCX"
+small_portrait = "HPS120Wh.PCX"
 female = true
 picture = 15
 
@@ -2240,6 +2361,7 @@ def = "CH015.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL121Wh.PCX"
+small_portrait = "HPS121Wh.PCX"
 female = true
 picture = 15
 
@@ -2250,6 +2372,7 @@ def = "CH015.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL122Wh.PCX"
+small_portrait = "HPS122Wh.PCX"
 female = true
 picture = 15
 
@@ -2260,6 +2383,7 @@ def = "CH015.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL123Wh.PCX"
+small_portrait = "HPS123Wh.PCX"
 female = true
 picture = 15
 
@@ -2270,6 +2394,7 @@ def = "CH015.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL124Wh.PCX"
+small_portrait = "HPS124Wh.PCX"
 female = true
 picture = 15
 
@@ -2280,6 +2405,7 @@ def = "CH015.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL125Wh.PCX"
+small_portrait = "HPS125Wh.PCX"
 female = true
 picture = 15
 
@@ -2290,6 +2416,7 @@ def = "CH015.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL126Wh.PCX"
+small_portrait = "HPS126Wh.PCX"
 female = true
 picture = 15
 
@@ -2300,6 +2427,7 @@ def = "CH015.DEF"
 cast = [95, 52]
 cast_frames = 5
 portrait = "HPL127Wh.PCX"
+small_portrait = "HPS127Wh.PCX"
 female = true
 picture = 15
 
