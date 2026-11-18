@@ -1235,3 +1235,59 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
 - **Compared:** `adv-single-rest`'s first twelve shots exact (decision 57's "ten" counted twelve
   by name), and `hidden`; its other 26 T3c2's (the duration and the hints); every other group as
   recorded (93 recipes, 490 shots exact); `drawn.txt` recorded for `adv-single-rest`.
+
+## M3 T3c2 — the duration's bar and the hints (2026-11-18)
+
+- **Staged** from the PC at once: the 64 files and the seven manuals and help files, each checked
+  by SHA-256 against the PC's (every hash line equal; the PC's shell dropped about 45 minutes in,
+  the staging done by then). The setup's baseline stopped at `check.sh`'s coverage by a watcher (fmt,
+  clippy, doc tests, deny passed).
+- **Read** (design §27): the scroll bar's press, release, drag, move and draw for their
+  horizontal branches (the rules on x; the press's thumb 16 wide, not the button), the duration's
+  bar's creation (11 ticks, blue, no page, no keys), `scenario_duration_scrolled` whole (the
+  duration, a host's message, the whole redraw), `dialog_item_at` (shown and enabled) and
+  `dialog_right_click`. The hints of 104 to 344 (record id − 83) for the options' items: one
+  text for the eight colours of each group in both LODs.
+- **Recipe:** §6.4's `popup-hero-arrow` on row 2's arrow showed none (the hero's arrows hide under
+  a Random town, as on row 0, a computer's); the recipe presses the row's town arrow first. Played
+  twice and recorded: the seven shots from `popup-hero-arrow` to `hidden` changed.
+- **Built:** `h3_ui::scrollbar`'s horizontal input (`axis`, `length`, `offset`, the press, move,
+  release and drag on the bar's axis, `HORIZONTAL_THUMB`, the arrows drawn pressed on x);
+  `advanced::BAR`, `Advanced::duration`, `on_bar`, `bar_held`, `bar_press`, `bar_moved`,
+  `bar_release`, `scrolled` (`CLT-STUB-11`: no timer); the screen's duration bar in `press`,
+  `moved`, `release`, `right`, `right_release`, `key` (`duration_held`, `duration_scrolled`: the
+  whole redraw), `Scenario::duration`; `HELPED` with the headers, the label and the bar,
+  `COLOUR_HELPED` (one key a group for the eight colours), the right press passing over an item
+  not enabled (`Advanced::takes`); the keys `shell.scenario.help.*` (15); the layout's duration
+  bar without a page (T3a's `step = 1` was a guess).
+- **Compared:** `adv-single-rest` 39 of 39 exact; every other recipe of the `advanced` and
+  `scenario` groups as recorded; `drawn.txt` recorded for `adv-single-rest`.
+
+## M3 T4a — the hot seat's screen and advanced options as they open (2026-11-18)
+
+- **Staged** from the PC at once: the 64 files and the seven manuals and help files, each checked
+  by SHA-256 against the PC's (64 of 64 equal). The setup's baseline stopped at `check.sh`'s
+  coverage by a watcher (CI's green `master` stands in).
+- **Cut** (decision 59): the hot seat's path into the screen read first (0x4EED13: the Multiplayer
+  dialog, then Single's `scenario_new`); every hot-seat branch was read at M1, so T4 is building:
+  the user took the cut in two (T4a the screen as it opens, T4b the presses).
+- **Read** (design §28): the constructor's handicap by the mode (a caption button in the hot seat,
+  0x57B0D3), the toggle's single-only disable and edit (0x58164A, 0x58170E), the row's bonus
+  arrows and edit (0x58DE46, 0x58DEE5), the list's filter (0x582D41: the record's +8, the list's
+  "/" figure, at least 2).
+- **Built:** `Scenario::opened_hot_seat` (the shared `open`), `Scenario::hot_seat`,
+  `Entry::first_human` (the flags' strip before the options show), `Menus::front` from the
+  Multiplayer front's names; `Advanced::seated`, the human records (`Human`: a name and a record;
+  the single player's the first, `local`, `local_held`, `human_of`), `seat_humans`, `row_items`
+  (the hot seat's handicap a caption button), `takes` by the mode, the hero's arrows a human
+  record's, the bonus's every colour's in the hot seat, no name's press there; the screen built
+  whole and out of `STUBS`; the layout's `handicap_caption`, `AdvancedTexts::handicaps` and the
+  keys `shell.advanced.handicap.0` to `.2` (ArrayTxt 210 to 212). A hot-seat flag's press moves no
+  colour until T4b. Tests: `advanced/tests/hot_seat.rs` (seven).
+- **Recipe:** `adv-hotseat` played under Wine (both runs as kept): only the background differed,
+  at its third, fourth and seventh openings; its `backgrounds = [0, 0, 1, 1, 0, 0, 1]`.
+- **Compared:** `adv-hotseat` 8 of 8 exact; `adv-hotseat-rows` `panel`, `handicap-3`,
+  `handicap-popup`, `flag-hover-green` and `adv-hotseat-two` `panel` exact (the other 17 shots
+  T4b's); `hotseat-names`' and `hotseat-long`'s new `scenario` and `advanced` shots exact; every
+  other recipe of every group as recorded. `drawn.txt` recorded for the `advanced` group and
+  those two recipes.

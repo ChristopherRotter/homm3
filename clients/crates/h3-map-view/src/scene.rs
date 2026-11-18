@@ -374,6 +374,20 @@ impl TileIndex {
         })
     }
 
+    /// Its minimap built again for `live`'s objects (E24 M4 T2d1, design §5.6: the minimap a
+    /// visit's end draws shows a flag raised before the view's next draw does), its draw lists and
+    /// looks as they were built.
+    pub fn minimap_again(
+        &mut self,
+        art: &MapArt,
+        live: &Live,
+        tables: &Tables,
+        layout: &AdventureLayout,
+        bugs: Bugs,
+    ) {
+        self.minimap = Base::build(art, live, tables, layout, &self.lists, self.z, bugs);
+    }
+
     /// Its level.
     #[must_use]
     pub fn level(&self) -> u8 {

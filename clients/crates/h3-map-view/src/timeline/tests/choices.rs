@@ -157,6 +157,7 @@ fn choice(id: &str) -> Found {
         taken: None,
         event: false,
         blocks: chest.then_some(OBJECT),
+        flag: None,
         ask: Some(Question {
             asked: chosen(style, chest.then_some("or")),
             chooses: true,

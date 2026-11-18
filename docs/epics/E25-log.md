@@ -2087,3 +2087,76 @@ an entry only where a task builds on it.
   regime or the anchor's at 40 M, E25 closed on #2): **`e25-anchor-1` resumed from 2 M to
   20 M** (T36), its config as built for 20 M. Its rule, measures and budget as the AI queue
   stated them before the run. **T35 closed** 2026-11-16.
+
+## T36 — The long run (2026-11-16 to 2026-11-18)
+
+- **The run** (the user's GPU, 2026-11-16 to 2026-11-18; `e25-anchor-1` resumed from T34 (b)'s
+  2 M with `samples` 20 M, six parts, commits `fcc19e7` to `d5e5742`, each clean; the record
+  `python/records/e25-anchor-1.json` replaced by the 20 M one): 20 013 191 samples in 784
+  updates, 1 185 minutes in all (the resume's 1 055), 265 to 280 samples a second with #2's pass
+  to 10 M, 287 to 312 after it.
+- **The run's gates:** both rejected the learner against the 2 M network promoted at T34 (b):
+  at 10 M 0.487 (56 pairs, Elo −9.3), at 20 M 0.496 (118 pairs, Elo −2.9). `best.pt` stays that
+  2 M network (T34's measures: 0.4961 ± 0.0020 head to head against #2, 0.503 and 0.506 against
+  the system actors). #2's own run was promoted at both of its gates (10 M 0.541 over 115 pairs,
+  20 M 0.517 over 713).
+- **(c) The update records** (means over 2 M windows; #2's run beside, its gate intervals'
+  means; the teacher #2 here, the fair actor there):
+
+  | Samples | Loss weight | Teacher's agreement (loss, nats) | Entropy | KL | Clip | Explained variance |
+  |---|---:|---|---:|---:|---:|---:|
+  | 0 to 2 M (T34 (b)) | 0.45 | 0.48 (1.56) | 1.53 | 0.028 | 0.20 | 0.76 |
+  | 2 to 4 M | 0.35 | 0.53 (1.34) | 1.33 | 0.026 | 0.21 | 0.79 |
+  | 8 to 10 M | 0.05 | 0.51 (1.48) | 1.36 | 0.018 | 0.17 | 0.82 |
+  | 10 to 12 M | 0 | | 1.37 | 0.018 | 0.16 | 0.81 |
+  | 16 to 18 M | 0 | | 1.16 | 0.008 | 0.08 | 0.81 |
+  | 18 to 20 M (the last update) | 0 | | 1.06 (1.00) | 0.003 | 0.04 | 0.82 |
+  | #2's run, 0 to 10 M; 10 to 20 M (its end) | 0.5 to 0 | 0.69 | 0.74; 1.20 (1.00) | 0.010 | 0.08 to 0.09 | 0.77 to 0.79 |
+
+  The self-play attacker's wins by kind level with #2's run's (hero 0.703 to 0.707, siege hero
+  0.556 to 0.570; #2's 0.703 to 0.708, 0.550 to 0.586).
+- **The read so far:** after T34 (b)'s 2 M the run steps about twice as far an update as #2's
+  run did (KL 0.018 to 0.026 against 0.010, until the rate falls past 16 M) and ends as sharp as
+  #2 (entropy 1.00), yet neither of its gates finds a gain over its own 2 M network. The
+  agreement with #2 peaks at 4 to 6 M (0.54) and falls as the loss's weight does.
+- **(b) The 20 M network's ladders** (`checkpoint.pt`, 500 a kind; the measures
+  `python/records/anchor/e25-anchor-1-{ladder,neutral}-20m.json`; a ladder's episodes and draws
+  are seeded alike for every network, so these differ from T34's 2 M rows only by the network):
+
+  | Opponent | `e25-anchor-1` at 20 M | #2 (T28's final) | at 2 M (T34 (b)) |
+  |---|---|---|---|
+  | Random | 0.880 ± 0.011 (+0.341) | 0.887 (+0.343) | |
+  | Aggressor | 0.710 ± 0.016 (+0.184) | 0.707 (+0.179) | |
+  | Greedy | 0.678 ± 0.017 (+0.154) | 0.673 (+0.149) | |
+  | fair actor | 0.514 ± 0.019 (+0.031) | 0.511 (+0.027) | 0.503 (+0.021) |
+  | hero (attacking, defending), siege hero, siege garrison | 0.512 (0.711, 0.312), 0.522, 0.504 | 0.509 (0.707, 0.306), 0.519, 0.505 | 0.498 (0.697, 0.298), 0.515, 0.500 |
+  | all-seeing (the faithful actor) | **0.511 ± 0.018** (+0.027) | 0.507 (+0.026) | 0.506 (+0.021) |
+  | neutral set | 0.993, +0.305 | 0.991, +0.302 | 0.989, +0.299 |
+
+  The second head-to-head file uploaded (`head-to-head-20m.json`) measured `best.pt`, the 2 M
+  network: its pairs are T34's to the count (the fixed head-to-head is deterministic on the
+  user's card). (a) of the 20 M network is not measured.
+- **The read, by the rule stated before it ran:** against the faithful actor 0.511 ± 0.018, so
+  the rate less its half-width 0.493: **the aim is not met.** (a) of the 20 M network was not
+  measured (the user, 2026-11-18: skipped; the run's gates put it at about 0.49 ± 0.013 against
+  #2, two gates of no gain over a network 0.496 against it), so the rule's middle case rests on
+  (b), where every row lies within 0.007 of #2's: **#2 stays the current best**; the taught
+  regime does not pass the plateau at 20 M.
+  1. **Every lever of increment 8 and its long run ends at #2's level:** the network's size,
+     PPO's settings, the search at play, the anchor, the outcome's weight (T32 to T35), and
+     18 M of the anchor's regime past #2's level. The setup's plateau (T33) holds for the
+     regimes and sizes tried; what is left is what the network is shown (the epic's risk, the
+     information observation v22 lacks) and what it trains against.
+  2. **The run's cost, and the early stop:** the run's 10 M gate (no gain over its 2 M network,
+     0.487) showed the plateau at 627 minutes of its 1 185; the rest (558 minutes, about 9.3
+     hours of the user's GPU) changed no measure. **The user, 2026-11-18: a long run stops early
+     once its goal can evidently not be met.** Built: `[gate] futility` (N gates in a row without
+     a promotion end the run before its budget, the best's final ladder played, the run ended
+     `futile`, a resume past it with `--set gate.futility=0`; tests in `test_train.py`). With 1
+     and its 10 M gate this run would have stopped there. A long run's config from now on sets it
+     (at least 1) and gates at least every quarter of its budget, and its rule names the check
+     (`docs/lanes/ai/TRAPS.md`, Python).
+- **The user's choice** (2026-11-18, AI-Q18, of four offered: E25 closed on #2, an exploiter
+  league, expert iteration in Rust, a richer observation): **increment 9, a richer observation
+  (v23)**. **T36 closed** 2026-11-18; **increment 8 closed** (its decisions and tasks in
+  `E25-archive.md`).

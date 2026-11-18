@@ -201,7 +201,7 @@ fn the_probes_names_are_the_shell_s_screens() {
 #[test]
 fn the_multiplayer_dialog_and_the_hot_seat_take_the_harness_s_inputs() {
     // E27 M2 T7: the dialog over New Game's menu as it ended; typing by scan code, capitals with
-    // Shift; the names' ring; OK to the scenario screen's stub.
+    // Shift; the names' ring; OK to the hot seat's scenario screen (M3 T4a).
     let steps = [
         "until:main_menu",
         "click:643,70",
@@ -220,13 +220,11 @@ fn the_multiplayer_dialog_and_the_hot_seat_take_the_harness_s_inputs() {
         "up",
         "until:scenario_list",
     ];
-    // The scenario screen is a stub (M3): waiting for it stops the replay there.
+    // The hot seat's scenario screen takes the names (M3 T4a).
     let (_, stop, r) = replay(false, &steps);
     let scenario = Screen::Scenario(Game::New, Kind::Multiplayer);
-    assert_eq!(
-        (stop, r.screen()),
-        (Some(Stop::NotBuilt(scenario)), scenario)
-    );
+    assert_eq!((stop, r.screen()), (None, scenario));
+    assert!(matches!(r.front(), Some(Front::Scenario(s)) if s.hot_seat()));
     let (_, stop, r) = replay(false, &steps[..13]);
     assert_eq!(stop, None);
     let Some(Front::Multiplayer(m)) = r.front() else {

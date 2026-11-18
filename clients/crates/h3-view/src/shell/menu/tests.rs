@@ -875,26 +875,25 @@ fn the_front_is_a_menu_or_the_multiplayer_dialog_over_its_menu() {
 #[test]
 fn the_scenario_screen_is_a_stub_over_its_game_type_menu() {
     // E27 M2 T7, until M3: from Single, Campaign, Tutorial or the Multiplayer dialog; a new
-    // single scenario's built since M3 T1a.
+    // single scenario's built since M3 T1a, the hot seat's since M3 T4a.
     assert_eq!(
         stub_name(Screen::Scenario(Game::Load, ScenarioKind::Tutorial)),
         "scenario"
     );
     assert_eq!(stub_name(Screen::Credits), "credits");
-    assert_eq!(
-        super::scenario(Game::New, ScenarioKind::Multiplayer),
-        STUBS[4]
-    );
-    assert!(
-        !STUBS
-            .iter()
-            .any(|&(s, _, _)| s == Screen::Scenario(Game::New, ScenarioKind::Single))
-    );
+    assert_eq!(super::scenario(Game::Load, ScenarioKind::Single), STUBS[4]);
+    for built in [ScenarioKind::Single, ScenarioKind::Multiplayer] {
+        assert!(
+            !STUBS
+                .iter()
+                .any(|&(s, _, _)| s == Screen::Scenario(Game::New, built))
+        );
+    }
     let all = menus(Bugs::Fixed);
     for (screen, game) in [
         (
-            Screen::Scenario(Game::New, ScenarioKind::Multiplayer),
-            Game::New,
+            Screen::Scenario(Game::Load, ScenarioKind::Multiplayer),
+            Game::Load,
         ),
         (
             Screen::Scenario(Game::Load, ScenarioKind::Campaign),

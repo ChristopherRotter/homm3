@@ -136,6 +136,7 @@ dissolve_ms = 65
 pickups = ["pickup01.wav"]
 killfade = "killfade.wav"
 artifact_skills = [[7, 2, 0, 0, 0]]
+mine_income = [2, 1, 2, 1, 1, 1, 1000]
 
 [[terrain]]
 code = 0

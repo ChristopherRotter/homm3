@@ -410,6 +410,13 @@ The user, 2026-11-17 (M3 T2's start):
     frame doubled) and a row's draw shows the name again under the open edit; the client's name
     box stays clean and the name hidden while the edit is open, the original's for the
     comparisons only. Built at T3c1.
+59. **T4 cut in two** (the agent's recommendation at T4's start, the user, 2026-11-18; offered:
+    the cut, whole, or by recipe): the hot seat's path into the screen is Single's
+    (`scenario_new` after the Multiplayer dialog) and M1 read every hot-seat branch, so T4 is
+    building: T4a the screen as it opens (the entry from the names, two to eight human records,
+    the list's filter, the rows, Back; exact against `adv-hotseat` and both panels), T4b the
+    presses (the handicap's, the flags' cycle, a hero another player holds, the name's press,
+    Begin's GENRLTXT 83 and 531; the other 17 shots of `adv-hotseat-rows` and `adv-hotseat-two`).
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
@@ -516,9 +523,10 @@ catalogue: design §3; the shell's frame, menus, edits and the hot seat's names:
 | T3b1 | The hero's arrows and a hero's portrait and name (§3.14, §3.15; decision 54): the engine's offer from each map's import, the pick into the records, the heroes' small portraits, the main heroes' and the map's names, Random's popup, CLT-Q112's rows; exact against `adv-single-hero`, `adv-single-maps` but a hero's popup | **done** 2026-11-18: `scenario::Heroes`, `CustomHero`, `Entry::heroes`, `MainHero::portrait` (CLT-Q141 (b), decision 55), the options' hero list, step, show and name (CLT-Q142 (b), decision 56), Random's popup; `h3-battle-client`'s `maps::rules`, `maps::heroes` (`h3-files`, `h3-game` dependencies); the asset tables' `small_portrait` (the harvest's +0x30); `adv-single-hero` 26 of 28, `adv-single-maps` 11 of 13 exact (the four hero popups T3b2's); log "M3 T3b1", design §24 |
 | T3b2 | A hero's own popup (§3.15, design §24.3: `scenario_hero_popup` 0x575A90 read whole: the name, the portrait, the class and level, GENRLTXT 78 and 79's headings, the specialty's picture and text); exact against `adv-single-hero`, `adv-single-maps` | **done** 2026-11-18: `advanced::own_hero_popup`, `HeroPopupLook` (`[scenario.advanced.hero_popup]`: 320 × 256 at (250, 172)), `AdvancedTexts`' `hero_popup`, `hero_line`, `hero_classes`, `specialties`; the keys `shell.advanced.hero-popup.*`, the family `hero-specialty`, `hero-class` listed by the battle client; the classes from the game's rules; `adv-single-hero` 28 of 28, `adv-single-maps` 13 of 13 exact; the harness without `TMPDIR` for Wine; log "M3 T3b2", design §25 |
 | T3c1 | The flags' hover and press (single: `scenario_flag_click` 0x58B790, CLT-Q93), the handicap (single: shown, no press), the name's edit (353, `scenario_name_click` 0x58B620) (§3.13, §3.14; decision 57; the handicap a `CLT-STUB`, decision 6); exact against `adv-single-rest`'s first ten shots (`flag-hover-own` to `name-after-flag`) | **done** 2026-11-18: the flags' hover and press (`Advanced::hover`, `flag_click`; the screen's flags from the moved colour, `Scenario::team_flags`), the name's edit (`EDIT`, the layout's `edit`, `name_click`, its keys by scan code and by the key table and text input, `Scenario::typing`, `contexts`, `typed`), the handicap drawn up (`CLT-STUB-10`); the original's strip after a flag's press and the edit's piece as stale rectangles (CLT-Q143 (b), decision 58); `adv-single-rest`'s first twelve shots exact; log "M3 T3c1", design §26 |
-| T3c2 | The duration's bar's input and texts (`scenario_duration_scrolled` 0x57C7F0), the items' hints (`HELPED`) (§3.13 to §3.15; decision 57; the timer a `CLT-STUB`, decision 6); exact against the rest of `adv-single-rest` (§6.4: `popup-hero-arrow` recorded again on row 2's arrow) | after T3c1 |
-| T4 | The advanced options in the hot seat (§3.14): two to eight humans, the flags' cycle, the names from the Multiplayer dialog (`Multiplayer::names`, M2's item 61); exact against `adv-hotseat`, `adv-hotseat-rows`, `adv-hotseat-two` | after T3c |
-| T5 | The random map's tab (§3.16; CLT-Q92: drawn, its generator a stub); exact against `adv-random` (§6.4: Begin after `tab-again`) | after T4 |
+| T3c2 | The duration's bar's input and texts (`scenario_duration_scrolled` 0x57C7F0), the items' hints (`HELPED`) (§3.13 to §3.15; decision 57; the timer a `CLT-STUB`, decision 6); exact against the rest of `adv-single-rest` (§6.4: `popup-hero-arrow` recorded again on row 2's arrow) | **done** 2026-11-18: `h3_ui::scrollbar`'s horizontal input (the press's thumb 16 wide), the duration's bar (`Advanced::bar_press`, `bar_moved`, `bar_release`, `scrolled`; no page: the layout's `step` 0), `Scenario::duration`, `CLT-STUB-11` (no timer); `HELPED`'s headers, label and bar, `COLOUR_HELPED`, the right press past an item not enabled; the keys `shell.scenario.help.*`; `popup-hero-arrow` after the row's town (its hero's arrows hide under Random); `adv-single-rest` 39 of 39 exact; log "M3 T3c2", design §27 |
+| T4a | The hot seat's screen and advanced options as they open (§3.12 to §3.14; decision 59): the entry from the Multiplayer dialog's names (`Multiplayer::names`, M2's item 61), two to eight human records, the list of the maps two humans may play, each colour a human may play to the next name, the rows (the names, the handicap a caption button, the arrows by the hot seat's rules), the flags' strip from the first player's colour, Back; exact against `adv-hotseat`, `adv-hotseat-rows`' and `adv-hotseat-two`'s `panel` | **done** 2026-11-18: `Scenario::opened_hot_seat`, `hot_seat`, `Entry::first_human`, `Menus::front`'s hot seat; `Advanced::seated`, its human records (`Human`, the single player's the first), `seat_humans`, `row_items` (the handicap's caption), `takes` by the mode; `Screen::Scenario(New, Multiplayer)` built whole (no longer a stub); the layout's `handicap_caption`, the keys `shell.advanced.handicap.*`; `adv-hotseat`'s `backgrounds`; `adv-hotseat` 8 of 8, both panels exact (also `handicap-3`, `handicap-popup`, `flag-hover-green`; `hotseat-names`' and `hotseat-long`'s screen shots); log "M3 T4a", design §28 |
+| T4b | The hot seat's presses (§3.6, §3.14, §3.15; decision 59): the handicap's (+1 modulo 3, `handicap_names`), the flags' cycle (CLT-Q94, decision 13: the client's; the original's `hot_seat_colour_cycle` for the comparisons), a hero another human record holds passed over and stepped on (`scenario_hero_step`, `scenario_heroes_unclash`), the name's press taking nothing, Begin's GENRLTXT 83 and 531; exact against the rest of `adv-hotseat-rows` and `adv-hotseat-two` | after T4a |
+| T5 | The random map's tab (§3.16; CLT-Q92: drawn, its generator a stub); exact against `adv-random` (§6.4: Begin after `tab-again`) | after T4b |
 | T6 | The game's begin (§3.17, §2.1; CLT-Q95, CLT-Q135): the setup built and validated by the engine (a refusal shown), the loading bar (`loadbar.pcx`, `loadprog.def`; the client's steps), the begin's notice (a `CLT-STUB`) and back to the menu, the setup kept for E24 M5 (the map-client lane's inbox); exact against `adv-begin` and `adv-hotseat-begin` up to the bar | after T5 |
 | T7 | M3's closure: a fresh reviewer, the review list, M4's refinement (M4 T0: the saves' record and its extension, decision 8; Options with the menu in play, CLT-Q136; the load and save modes with §6.4's recipes for them) | after T6 |
 
@@ -569,7 +577,16 @@ the hot seat's T4 leaves it hidden); in the client's profile, while the edit is 
 command closes it as the original's Enter, Back's is the screen's, every other key the edit's; the
 original's piece (CLT-Q143) and the flag press's strip as stale rectangles; the name kept in the
 screen, not carried to the next opening (no settings: M4); the screen's flags read the options'
-single player's colour while its rows are as made, else the map's.
+single player's colour while its rows are as made, else the map's. (17) T3c2: one key a group
+for the eight colours' hints (`COLOUR_HELPED`: the first colour's `Help.txt` record; the eight
+records one text in both LODs), not one a record; the duration's bar drawn and pressed by the
+options beside the dialog's items (as the list's, item (6)); the right press passing over an item
+not enabled through `Advanced::takes` (a single player's handicap) rather than a state bit.
+(18) T4a: the human records a list in the options (`Advanced`'s `humans`: the single player's the
+first, the hot seat's the names'), the mode a flag of the options and of the screen; the hot
+seat's list filtered at its opening from the list read at the shell's start (the original reads
+the files at each opening); the handicap's caption the item's text, set at the showing where
+none is (the press sets it: T4b); the hot seat's records new at each opening (as single's).
 
 ## Dependencies and boundaries
 

@@ -61,7 +61,7 @@ epics whose later increments are still sketches grow as those get refined, so th
 | [E26](docs/epics/E26-fair-system-actor.md) | Fair system actor: the original's AI on what its side may know | battle | `█████░░░░░` 1/2 I | increment 1 built; checkpoint with you next |
 | [E09](docs/epics/E09-towns.md) | Towns and economy | town | `█████░░░░░` 3/6 I | I1–I3 closed (towns on the map, construction, growth and recruitment); I4 (the Tavern) refined; guild, travel and Grail follow |
 | [E27](docs/epics/E27-game-shell.md) | Game shell: menus, scenario setup, load/save, options, start clips | client | `█████░░░░░` 2/4 M | M1–M2 closed (reading, start and menus); M3 (a game's setup) next |
-| [E25](docs/epics/E25-battle-ai-v2.md) | Battle AI v2: beat the faithful system actor | ai | `▓▓▓▓▓▓▓░░░` 7 I done, open-ended | shaped at each checkpoint |
+| [E25](docs/epics/E25-battle-ai-v2.md) | Battle AI v2: beat the faithful system actor | ai | `▓▓▓▓▓▓▓▓░░` 8 I done, open-ended | I8 closed (probes and one long run: #2 stays); I9 (a richer observation) next; shaped at each checkpoint |
 | [E11](docs/epics/E11-historical-rules.md) | Historical rules of RoE and AB | battle | `░░░░░░░░░░` planned | waits for the original media of the older editions |
 
 Not started yet (sketches in the backlog): game orchestration beyond the import (E10), map-object

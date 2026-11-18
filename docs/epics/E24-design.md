@@ -3645,3 +3645,68 @@ situations `seq-level-up*`).
   1 and 2, Escape, the OK clicked and the cursor kept, two levels in turn, the morale and a Luck's
   luck, an answer's levels, a level not given, an experience not known), 100 % lines, regions and
   functions of `h3-map-view`'s library and of `h3-ui` but its `scrollbar.rs` (untouched).
+
+### 5.6 A flag raised (M4 T2d1)
+
+The user's cut at T2d's start (2026-11-18): T2d in three by family, each read, recorded and built in
+one task (T2d1 a flag raised, T2d2 a boat boarded and left, T2d3 a spell cast on the map, MCL-Q14);
+"a monster beaten" moved to T5 (its recording needs a battle between the visit and the map's
+return, which T5's "the map back with the result applied" covers); "an object taken" was T2a2's and
+T2b2's. Read: `visit_mine` 0x4A39A0 again (E08 T77a1 had read it whole), `visit_object`'s case 42
+(`visit_lighthouse` 0x4A9479), `visit_dwelling` 0x4A18B0 around its flag (0x4A1B00 to 0x4A1C22),
+`visit_and_update` 0x4AAAA0 whole (now `read`), the MINEEVNT loader (`mineevnt_load` 0x5B9150 new:
+its eight records into `mine_event_texts` 0x6A5E20, new). Recorded by the harness (the sequences
+in `clients/map/to-record.toml`, the situations `seq-flag-*`); no harness change.
+
+- **When** (a human's visit; the object's owner not of the visitor's team; without guards, or
+  after a battle won: T5's): a mine (class 53, 220 loaded as 53) tells MINEEVNT's record of its
+  resource (the record's +1) in an OK box (style 1, centred) with one picture, the resource (type
+  0 to 6) at minus `mine_daily_income` 0x678288's amount, so its caption is GENRLTXT 4's per day
+  (`message_box_picture`'s negative amounts, §5.3: "2/day"); then `set_mine_owner` 0x4C66E0 with
+  how 1 (the owner, a reveal of radius 3 around the entrance for the owner's team, the scenario's
+  test). A Lighthouse (class 42) the same with ADVEVENT 69 and no picture. A dwelling (17, 20)
+  takes its flag first (`set_dwelling_owner` 0x4C67B0: the same reveal and test), then asks its
+  hire (ADVEVENT 35, 36 for class 20's four: §5.4's `Hire`, the free join of level-1 creatures
+  and its GENRLTXT 424 box built at T2b2). An owner of the visitor's team: nothing (its own mine
+  with a human the Leave Guards dialog, M5's); guards: the question (§5.4) and a battle (T5).
+- **The screen** (`visit_mine` and the Lighthouse's case return from `visit_object` at once,
+  without its common end 0x4A9AD3): nothing is drawn by the visit itself; the box's close puts the
+  screen under it back (the old flag, the old minimap), then `visit_and_update` (read whole: the
+  move's step and Space call it) draws the minimap at once (`minimap_redraw` 0x413790 with show 1:
+  the object's tiles but the one the hero stands on in the new owner's colour, `minimap_draw`'s
+  entry 64 + owner), both lists, the quest log's, Cast's and Sleep's states, the status window
+  (`status_window_choose` with 1, 1, 1) and the resource bar, then the scenario's two tests; the
+  view shows the new flag at the next idle redraw (`tile_object_owner` 0x40FD20: the flag's pixels
+  in entry 64 + owner). A dwelling's flag, raised before its question, shows the same way after
+  the visit's last box. The reveal of radius 3 shows nothing new to the visitor: the step onto the
+  entrance revealed the hero's scouting radius (5 at least) around the same tile.
+- **Recorded** (each twice, the second run `ok`, the frame at 0 exact; Red's hero steps up onto the
+  entrance at 100, Enter at 1000 closes the box): `flag-mine` (a neutral Sawmill: 34 timeline
+  lines, 8 screens; the box with "2/day" under the wood, then at 1060 the screen under the box and
+  the minimap's mine in red, the flag's steps at each later redraw), `flag-mine-blue` (Blue's Ore
+  Pit: the same lines, the flag Blue's until 1060), `flag-lighthouse` (34, 8: the smaller box
+  without a picture; no minimap change, the Lighthouse's one tile being the entrance under the
+  hero), `flag-dwelling` (a neutral Guardhouse: 36, 9; `ask-hire`'s lines but at the last close,
+  1660, whose change reaches the minimap).
+- **Built** (M4 T2d1, one worker; *provisional*, M4's review list): `finds`' `Find::Mine`
+  (MINEEVNT's record of its resource through the catalogue's family `mine-event`, the resource's
+  picture at minus the tables' `[map.finds] mine_income`) and `Find::Lighthouse`
+  (`map.find.lighthouse`, ADVEVENT 69), chosen by `Find::flag_of` (an owner of another team, no
+  guards), `Find::flagged`; `asks`: a dwelling of another team without guards (its creature below
+  level 5) takes its flag first, then asks its hire as the visitor's own (`Ask::Hire`'s flag,
+  `Ask::flags`); the timeline's `Found::flag`, raised after a find's first boxes and before its
+  question, the owners changed since 0 in memory, `Draw::owners` (the view's, at its next draw)
+  and `Minimap::owners` (at the visit's end, `visit_and_update`'s minimap); `scene`'s
+  `TileIndex::minimap_again` (a level's minimap built again alone, so that it shows a new owner
+  before the view does); the binary builds the flag finds and keeps the view's owners and the
+  minimap's apart. MINEEVNT is a family, not keys, so the client lane's catalogue test is
+  unchanged (no `cross-lane`). Left out: the reveal of radius 3 and the scenario's test (nothing
+  shows), `visit_and_update`'s other redraws (nothing changes in the recordings), the hint and
+  cursor over the object after its visit (the owners at 0), an abandoned mine without guards (the
+  question kept: its record, 7 or its resource's, not read), another player's guarded mine (T5),
+  the visitor's own mine or Lighthouse (M5's Leave Guards), class 20's dwellings (ADVEVENT 36).
+- **Checked** (M4 T2d1): the four moved into `sequences.toml`, `to-record.toml` removed; `frames
+  --only <id> --reuse` every frame exact (8, 8, 8, 9), the viewer's timelines the recorded ones;
+  `drawn` the rest the same, `--record` for the four; the window's read-back exact on
+  `flag-dwelling` and `flag-mine-blue`; unit tests (the four replayed headless, the finds' and
+  the hire's facts and boxes, a minimap built again alone), 100 % of `h3-map-view`'s library.

@@ -23,6 +23,16 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   (format v19); the 98 goldens' hashes moved (game state hash v34): `tests/record.rs`' literals
   with them. No golden meets a Tavern. Your next bump is v74.
 
+- 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **planned
+  `cross-lane` changes in your paths; nothing changed yet**): E08's increment 14 adds to `h3-game`
+  three decisions with typed answers, views and errors (`Answer::Market`, `Altar`, `HillFort`;
+  `DecisionView::Market`, `Altar`, `HillFort`; `GameCommandError::Market`, `Altar`, `HillFort`)
+  and three events (`MarketOpened`, `AltarOpened`, `HillFortOpened`), and `h3-adventure`'s
+  outcome field `ServiceVisit` (design note `docs/epics/E08-design.md` §13 to §17). Each building
+  task (E08 T133b, T134a, T134b) maps its part in `h3-protocol` in the same pull request
+  (`cross-lane`, the user's consent at its start) with the protocol's next version and a fold
+  test; the factory reuses the hire dialog's wire. Say so here if you would rather map them first.
+
 - 2026-11-18 (the town lane, E09 T38b2, `town/e09-t38b2`, `cross-lane` with the user's consent;
   **your paths changed, for your review; protocol v72 taken**): `Manage::Dismiss { hero }`
   (GAM-MAN-003) and the refusals `ManageReject::{NotOnMap, InTown, LastHero}` mapped both ways

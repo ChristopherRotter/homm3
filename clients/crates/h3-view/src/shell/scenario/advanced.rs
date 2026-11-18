@@ -1,7 +1,7 @@
 //! The scenario screen's advanced options of a single player (E27 M3 T3a;
-//! `docs/epics/E27-design.md` §3.12 to §3.15, §23): Show Advanced Options (129,
-//! `scenario_advanced_toggle` 0x581100) shows `AdvOptBk.pcx` (102), the headers, the turn's
-//! duration and a row of each colour that plays, a second press hides them
+//! `docs/epics/E27-design.md` §3.12 to §3.15, §23) and of the hot seat (T4a, §28): Show Advanced
+//! Options (129, `scenario_advanced_toggle` 0x581100) shows `AdvOptBk.pcx` (102), the headers,
+//! the turn's duration and a row of each colour that plays, a second press hides them
 //! (`scenario_advanced_hide` 0x581B20); the list's showing hides them too.
 //!
 //! - **The records** (§3.12, `H3ScenarioPlayer`): the single player's (the local slot's) holds its
@@ -59,8 +59,22 @@
 //!   opening pastes the colour's bar's piece at the bar's corner, not under the edit (CLT-Q143:
 //!   the original's for the comparisons only).
 //!
-//! *Not built yet:* the duration's bar's input and the hints (T3c2); the hot seat (T4: its
-//! handicap's press, its flags' cycle) and a hero two human records hold; the name written to
+//! - **The duration** (T3c2; design §27): its bar (338, `h3_ui::scrollbar` on the x axis: 11
+//!   ticks, no page, an arrow's step at the release, the track's drag) reports its value to
+//!   `scenario_duration_scrolled` 0x57C7F0: the duration (`turndur.txt`'s record) and its text, the
+//!   screen redrawn whole; no timer runs it (`CLT-STUB-11`). A right press on the headers, the bar
+//!   and each colour's items shows their `Help.txt` hints (the screen's `HELPED` and
+//!   `COLOUR_HELPED`); the names, the areas and a single player's handicap (not enabled) none.
+//!
+//! - **The hot seat** (T4a; design §28): a human record each of the hot seat's names, in order
+//!   (`scenario_slots_new` 0x57F740), each colour a human may play to the next record without one
+//!   (`scenario_players_init` 0x584C40), the colours past the last name the computer's; each row
+//!   the name of the record holding its colour; the handicap a caption button (its first name,
+//!   enabled, taking the mouse and its hint), no name's edit; the hero's arrows a human record's,
+//!   the bonus's every colour's (0x58DE46); the local record the first name's.
+//!
+//! *Not built yet:* the hot seat's presses (T4b: its handicap's, its flags' cycle, a hero another
+//! human record holds passed over or stepped on); the name written to
 //! the setting `Network Default Name` (0x698817 and `settings_save` 0x50C1B0 at the edit's close:
 //! the client has no settings, M4); a town a human-only colour draws at the list's read (no
 //! shipped map has one; CLT-Q95); the edition's version (+0x1898: a single player's is SoD, so
@@ -73,7 +87,7 @@ use alloc::vec::Vec;
 use h3_render::Bugs;
 use h3_ui::edit::{self, Caret, Edit, Scan};
 use h3_ui::scrollbar::{self, Scrollbar};
-use h3_ui::ui::{Area, Button, Def, Dialog, Draw, Item, Label, Shown, State};
+use h3_ui::ui::{Area, Button, Caption, Def, Dialog, Draw, Item, Label, Shown, State};
 use serde::Deserialize;
 
 use super::{Heroes, Seat};
@@ -98,6 +112,8 @@ pub const SUBTITLE: u16 = 1031;
 pub const DURATION: u16 = 1032;
 /// The duration of a new game (10: unlimited; `scenario_slots_new` 0x57F740).
 pub const UNLIMITED: u8 = 10;
+/// The duration's bar (a scroll bar of the dialog: drawn by the options, E27 M3 T3c2).
+pub const BAR: u16 = 338;
 
 /// A colour's items, colour 0's ids (`+ c` for colour `c`): the flag, who may play, the handicap,
 /// the town's, the hero's and the bonus's arrows, the name, the hero's, the town's and the
@@ -173,6 +189,8 @@ pub struct AdvancedLook {
     pub kind: Label,
     /// The handicap (`adopb2%c.def`).
     pub handicap: Button,
+    /// The hot seat's handicap's caption (E27 M3 T4a: `tiny.fnt`, colour 4, centred).
+    pub handicap_caption: Caption,
     /// The arrows (`adoplfa.def`, `adoprta.def`, 11 × 24): the town's, the hero's, the bonus's.
     pub town_left: Button,
     /// The town's right arrow.
@@ -345,6 +363,9 @@ pub struct AdvancedTexts {
     pub kinds: [String; 3],
     /// A computer's name (GENRLTXT 469).
     pub computer: String,
+    /// The handicaps' names: none, mild, severe (`handicap_names` 0x6A7800: ArrayTxt 210 to 212;
+    /// the hot seat's captions, E27 M3 T4a).
+    pub handicaps: [String; 3],
     /// Random (GENRLTXT 523) and none (524).
     pub random: String,
     /// None.
@@ -469,6 +490,16 @@ enum Hero {
     },
 }
 
+/// A human record (`H3ScenarioPlayer` of a slot, §3.12): its name (+4) and its choices.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Human {
+    /// Its name (the hot seat's: its edit's; the single player's: `network_default_name` at the
+    /// slot's making, none in the client, then its edit's; E27 M3 T3c1).
+    name: String,
+    /// Its record (its colour among them).
+    record: Record,
+}
+
 /// What the options read of the map they show (the selected entry's, else the game's): its
 /// seats, its heroes and the single player's colour.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -492,18 +523,24 @@ pub(super) struct Advanced {
     showing: bool,
     /// The selection changed since the rows were made (+0x1854).
     changed: bool,
-    /// The single player's record (the local slot's).
-    local: Record,
+    /// The hot seat's (`game_type` 0x6989F0 3; E27 M3 T4a): every human record takes a colour a
+    /// human may play, the handicap is a caption button, no name has an edit.
+    hot_seat: bool,
+    /// The human records in the slots' order (+0x1064: `scenario_slot_add` 0x577BE0, ids 1 on):
+    /// the single player's alone (the local slot's), or the hot seat's names'; the first is the
+    /// local one (`local_slot` 0x69D608: id 1).
+    humans: Vec<Human>,
     /// The computers' records, by colour.
     computers: [Record; 8],
     /// Each colour's row while the options show.
     rows: [Option<i32>; 8],
-    /// The turn's duration's index (+0x378: `turndur.txt`'s record).
+    /// The turn's duration's index (+0x378 and the game's +0x1F843: `turndur.txt`'s record), set
+    /// by its bar (E27 M3 T3c2); no timer runs it yet (decision 6: the engine has none, the hot
+    /// seat's clock is E24 M5's).
+    // stub: CLT-STUB-11
     duration: u8,
+    /// The duration's bar (338: 11 ticks, enabled for a single player).
     bar: Scrollbar,
-    /// The single player's name (the local record's +4: `network_default_name` at the slot's
-    /// making, none in the client; E27 M3 T3c1).
-    name: String,
     /// The name's edit while it shows, by colour (it has the focus then).
     editing: Option<(u8, Edit)>,
     /// The flag the mouse is over (`scenario_hovered` 0x683470), by colour.
@@ -524,16 +561,35 @@ impl Advanced {
             bugs,
             showing: false,
             changed: true,
-            local: Record::NEW,
+            hot_seat: false,
+            humans: alloc::vec![Human {
+                name: String::new(),
+                record: Record::NEW,
+            }],
             computers: [Record::NEW; 8],
             rows: [None; 8],
             duration: UNLIMITED,
             bar,
-            name: String::new(),
             editing: None,
             hovered: None,
             pasted: None,
         }
+    }
+
+    /// The options of the hot seat's `names` (E27 M3 T4a; `scenario_slots_new` 0x57F740): a human
+    /// record a name in their order, at most eight (`scenario_slot_add` 0x577BE0: none past the
+    /// eighth), each starting as `scenario_player_init` 0x57C790 starts one.
+    pub(super) fn seated(mut self, names: &[String]) -> Self {
+        self.hot_seat = true;
+        self.humans = names
+            .iter()
+            .take(8)
+            .map(|name| Human {
+                name: name.clone(),
+                record: Record::NEW,
+            })
+            .collect();
+        self
     }
 
     /// Whether the options show.
@@ -541,9 +597,15 @@ impl Advanced {
         self.showing
     }
 
-    /// Whether item `id` takes the mouse: not a single player's handicap (not enabled).
-    pub(super) fn takes(id: u16) -> bool {
-        !(HANDICAP..HANDICAP + 8).contains(&id)
+    /// Whether item `id` takes the mouse: not a single player's handicap (not enabled; the hot
+    /// seat's is, 0x58170E).
+    pub(super) fn takes(&self, id: u16) -> bool {
+        self.hot_seat || !(HANDICAP..HANDICAP + 8).contains(&id)
+    }
+
+    /// The human record holding colour `c`, if one does.
+    fn human_of(&self, c: u8) -> Option<&Human> {
+        self.humans.iter().find(|h| h.record.colour == Some(c))
     }
 
     /// Each colour's record, red first (what the begin hands the engine: T6).
@@ -551,23 +613,32 @@ impl Advanced {
         core::array::from_fn(|c| self.record(c as u8))
     }
 
-    /// Colour `colour`'s record: the single player's when it holds the colour, else the
-    /// computer's.
+    /// Colour `colour`'s record: the human record holding it, else the computer's (§3.12).
     pub(super) fn record(&self, colour: u8) -> Record {
-        if self.local.colour == Some(colour) {
-            self.local
-        } else {
-            self.computers[usize::from(colour & 7)]
-        }
+        self.human_of(colour)
+            .map_or_else(|| self.computers[usize::from(colour & 7)], |h| h.record)
     }
 
     /// Colour `colour`'s record to change.
     fn record_mut(&mut self, colour: u8) -> &mut Record {
-        if self.local.colour == Some(colour) {
-            &mut self.local
-        } else {
-            &mut self.computers[usize::from(colour & 7)]
+        match self
+            .humans
+            .iter_mut()
+            .find(|h| h.record.colour == Some(colour))
+        {
+            Some(human) => &mut human.record,
+            None => &mut self.computers[usize::from(colour & 7)],
         }
+    }
+
+    /// The local record's (the first human record's): the single player's.
+    fn local(&self) -> Option<&Human> {
+        self.humans.first()
+    }
+
+    /// The local record's colour.
+    fn local_held(&self) -> Option<u8> {
+        self.local().and_then(|h| h.record.colour)
     }
 
     /// The selection changed (`scenario_select` 0x585500's +0x1854): the rows are made again at the
@@ -631,6 +702,24 @@ impl Advanced {
         ]
     }
 
+    /// Colour `c`'s items on row `row` as the mode makes them: the hot seat's handicap a caption
+    /// button (`caption_button_create` 0x456A50 at 0x57B0D3: `tiny.fnt`, colour 4, centred by its
+    /// draw), a single player's a plain DEF button (0x57B110).
+    fn row_items(&self, c: u8, row: i32) -> [Item; 14] {
+        let look = &self.texts.look;
+        let mut items = Self::colour_items(look, c, row);
+        if self.hot_seat {
+            for item in &mut items {
+                if let Item::Button(b) = item
+                    && b.id == HANDICAP + u16::from(c)
+                {
+                    b.caption = Some(look.handicap_caption.clone());
+                }
+            }
+        }
+        items
+    }
+
     /// Every item id of the options: the panel, the headers, the redraw's own and the colours'.
     fn ids() -> impl Iterator<Item = u16> {
         let colours = ROW_IDS
@@ -666,18 +755,19 @@ impl Advanced {
 
     /// Shown over `map` (`scenario_advanced_toggle` 0x581100): the rows made again after a change
     /// of the selection; each colour that plays on its row (its items moved there), its flag where
-    /// a human may play it, its handicap not enabled (a single player's), who may play and its name
-    /// set; the others' items hidden.
+    /// a human may play it, its handicap not enabled (a single player's; the hot seat's a caption
+    /// button), who may play and its name set; the others' items hidden.
     pub(super) fn show(&mut self, map: &Map, dialog: &mut Dialog, shown: &mut Shown) {
         let seats = &map.seats;
         self.showing = true;
         if self.changed {
-            for record in core::iter::once(&mut self.local).chain(&mut self.computers) {
+            let humans = self.humans.iter_mut().map(|h| &mut h.record);
+            for record in humans.chain(&mut self.computers) {
                 record.colour = None;
                 record.town = None;
                 record.hero = None;
             }
-            self.local.colour = map.local;
+            self.seat_humans(map);
             self.changed = false;
         }
         for id in [PANEL, TITLE, SUBTITLE, DURATION]
@@ -688,7 +778,6 @@ impl Advanced {
         }
         let duration = text_at(&self.texts.durations, usize::from(self.duration));
         shown.texts.insert(DURATION, duration);
-        let look = &self.texts.look;
         let mut row = 0;
         for c in 0..8u8 {
             let seat = seats[usize::from(c)];
@@ -701,7 +790,7 @@ impl Advanced {
                 continue;
             }
             self.rows[usize::from(c)] = Some(row);
-            for item in Self::colour_items(look, c, row) {
+            for item in self.row_items(c, row) {
                 if let Some(slot) = dialog.items.iter_mut().find(|i| i.id() == item.id()) {
                     *slot = item;
                 }
@@ -719,9 +808,15 @@ impl Advanced {
                 set(shown, id + u16::from(c), |s| s.hidden = false);
             }
             // A single player's handicap is not enabled (0x581713: its bit 2 cleared): drawn up,
-            // taking no press ([`Advanced::takes`]); the name's edit hidden (0x58173B).
+            // taking no press ([`Advanced::takes`]); the name's edit hidden (0x58173B). The hot
+            // seat's handicap is enabled, its caption the constructor's first name (0x57B0A4:
+            // `handicap_names`' first) until a press; its edits stay hidden as made.
             set(shown, HANDICAP + u16::from(c), |s| *s = State::default());
             set(shown, EDIT + u16::from(c), |s| s.hidden = true);
+            if self.hot_seat {
+                let first = self.texts.handicaps[0].clone();
+                shown.texts.entry(HANDICAP + u16::from(c)).or_insert(first);
+            }
             let kind = match (seat.human, seat.computer) {
                 (true, true) => 0,
                 (true, false) => 1,
@@ -736,28 +831,40 @@ impl Advanced {
         self.refresh(seats, shown);
     }
 
-    /// Each row's name (`scenario_dialog_redraw` 0x584550 sets them): the single player's own
-    /// (the local record's), else a computer's (GENRLTXT 469).
+    /// The human records' colours from `map` (`scenario_players_init` 0x584C40, every record's
+    /// colour cleared before): single, the local record the map's single player's colour; the hot
+    /// seat, each colour a human may play, in colour order, to the next human record without one
+    /// (the loop 0x584DF0's hot-seat branch), the colours past the last name the computer's.
+    fn seat_humans(&mut self, map: &Map) {
+        if !self.hot_seat {
+            // (The single player's record is the only human one.)
+            for local in &mut self.humans {
+                local.record.colour = map.local;
+            }
+            return;
+        }
+        let colours = (0..8u8).filter(|&c| map.seats[usize::from(c)].human);
+        for (human, c) in self.humans.iter_mut().zip(colours) {
+            human.record.colour = Some(c);
+        }
+    }
+
+    /// Each row's name (`scenario_dialog_redraw` 0x584550 sets them): the human record's that
+    /// holds the colour, else a computer's (GENRLTXT 469).
     fn set_names(&self, shown: &mut Shown) {
         for c in (0..8u8).filter(|&c| self.rows[usize::from(c)].is_some()) {
-            let name = if self.local.colour == Some(c) {
-                self.name.clone()
-            } else {
-                self.texts.computer.clone()
-            };
+            let name = self
+                .human_of(c)
+                .map_or_else(|| self.texts.computer.clone(), |h| h.name.clone());
             shown.texts.insert(PLAYER + u16::from(c), name);
         }
     }
 
-    /// The colour the single player holds while the rows are as made (none: they are made again at
-    /// the next showing, `+0x1854`), which the screen's flags read (`scenario_team_flags`
-    /// 0x585300: the local record's colour).
-    pub(super) const fn local_colour(&self) -> Option<Option<u8>> {
-        if self.changed {
-            None
-        } else {
-            Some(self.local.colour)
-        }
+    /// The colour the local record (the single player's, the hot seat's first) holds while the
+    /// rows are as made (none: they are made again at the next showing, `+0x1854`), which the
+    /// screen's flags read (`scenario_team_flags` 0x585300: the local record's colour).
+    pub(super) fn local_colour(&self) -> Option<Option<u8>> {
+        (!self.changed).then(|| self.local_held())
     }
 
     /// Colour `c`'s row drawn again (`scenario_player_row_draw` 0x58D510: its bar whole, its name
@@ -774,6 +881,56 @@ impl Advanced {
         if self.bugs == Bugs::Original || !editing {
             set(shown, PLAYER + u16::from(c), |s| s.hidden = false);
         }
+    }
+
+    /// The turn's duration (`turndur.txt`'s record: 0 to 9 one to thirty minutes, 10 unlimited).
+    pub(super) const fn duration(&self) -> u8 {
+        self.duration
+    }
+
+    /// Whether `point` (from the dialog's corner) is on the duration's bar while the options show.
+    pub(super) fn on_bar(&self, point: [i32; 2]) -> bool {
+        self.showing && self.bar.contains(point)
+    }
+
+    /// Whether the mouse holds the duration's bar (its own loop runs: no hover, key or right
+    /// press reaches the screen).
+    pub(super) const fn bar_held(&self) -> bool {
+        self.bar.held()
+    }
+
+    /// The duration's bar pressed at `point` (from the dialog's corner; `h3_ui::scrollbar`):
+    /// whether the duration changed ([`Advanced::scrolled`]).
+    pub(super) fn bar_press(&mut self, point: [i32; 2], shown: &mut Shown) -> bool {
+        let value = self.bar.press(point);
+        self.scrolled(value, shown)
+    }
+
+    /// The mouse moved to `point` while it holds the duration's bar: whether the duration changed.
+    pub(super) fn bar_moved(&mut self, point: [i32; 2], shown: &mut Shown) -> bool {
+        let value = self.bar.moved(point);
+        self.scrolled(value, shown)
+    }
+
+    /// The duration's bar let go (an arrow steps it): whether the duration changed.
+    pub(super) fn bar_release(&mut self, shown: &mut Shown) -> bool {
+        let value = self.bar.release();
+        self.scrolled(value, shown)
+    }
+
+    /// The bar's value reported (`scenario_duration_scrolled` 0x57C7F0, the bar's callback): the
+    /// duration (+0x378, the game's +0x1F843; a network host would send the setup, message 0x402:
+    /// no network play) and its text (`turn_duration_texts` 0x69FB44); the caller redraws the screen
+    /// whole (the dialog's items, vtable +0x14 with 0, 0xFFFF0001, 0xFFFF, then
+    /// `scenario_dialog_redraw`). Whether a value was reported.
+    fn scrolled(&mut self, value: Option<i32>, shown: &mut Shown) -> bool {
+        let Some(value) = value else {
+            return false;
+        };
+        self.duration = u8::try_from(value).unwrap_or(UNLIMITED);
+        let text = text_at(&self.texts.durations, usize::from(self.duration));
+        shown.texts.insert(DURATION, text);
+        true
     }
 
     /// The mouse over item `id` (none: no item; `scenario_dialog_proc` 0x5881B2): over another
@@ -800,17 +957,23 @@ impl Advanced {
     /// edit closed first (`dialog_set_focus` −1), then to a colour a human may play that is not
     /// the single player's own: the old flag's highlight cleared, the single player's record to
     /// it, its town and hero Random (`scenario_hero_lists`); the names set and every row drawn
-    /// again (the redraw). The screen's flags are the caller's.
+    /// again (the redraw). The screen's flags are the caller's. (The hot seat's cycle,
+    /// `hot_seat_colour_cycle` 0x577AE0: T4b; until then its press moves no colour.)
     pub(super) fn flag_click(&mut self, c: u8, map: &Map, shown: &mut Shown) {
         self.close_edit(shown);
         let seat = map.seats[usize::from(c & 7)];
-        if seat.human && self.local.colour != Some(c) {
-            if let Some(old) = self.local.colour {
+        let old = self.local_held();
+        if !self.hot_seat
+            && seat.human
+            && old != Some(c)
+            && let Some(local) = self.humans.first_mut()
+        {
+            if let Some(old) = old {
                 set(shown, FLAG + u16::from(old), |s| s.selected = false);
             }
-            self.local.colour = Some(c);
-            self.local.town = None;
-            self.local.hero = None;
+            local.record.colour = Some(c);
+            local.record.town = None;
+            local.record.hero = None;
         }
         self.set_names(shown);
         self.refresh(&map.seats, shown);
@@ -819,24 +982,26 @@ impl Advanced {
         }
     }
 
-    /// Colour `c`'s name clicked (`scenario_name_click` 0x58B620, single): the focus taken from an
-    /// open edit, then on the single player's own colour its edit shown over the name with the
-    /// record's name (the caret at its end) and the focus, the name hidden; in the original's
-    /// profile the bar's piece pasted at the bar's corner (CLT-Q143). Whether it opened.
+    /// Colour `c`'s name clicked (`scenario_name_click` 0x58B620, single only: the hot seat's names
+    /// take none): the focus taken from an open edit, then on the single player's own colour its
+    /// edit shown over the name with the record's name (the caret at its end) and the focus, the
+    /// name hidden; in the original's profile the bar's piece pasted at the bar's corner
+    /// (CLT-Q143). Whether it opened.
     pub(super) fn name_click(&mut self, c: u8, shown: &mut Shown) -> bool {
-        if !self.showing {
+        if !self.showing || self.hot_seat {
             return false;
         }
         self.close_edit(shown);
-        if self.local.colour != Some(c) {
+        if self.local_held() != Some(c) {
             return false;
         }
-        let mut edit = Edit::new(&self.name, NAME_ROOM);
+        let name = self.local().map(|h| h.name.clone()).unwrap_or_default();
+        let mut edit = Edit::new(&name, NAME_ROOM);
         edit.set_focus(true);
         self.editing = Some((c, edit));
         set(shown, EDIT + u16::from(c), |s| *s = State::default());
         set(shown, PLAYER + u16::from(c), |s| s.hidden = true);
-        shown.texts.insert(PLAYER + u16::from(c), self.name.clone());
+        shown.texts.insert(PLAYER + u16::from(c), name);
         if self.bugs == Bugs::Original {
             self.pasted = Some(c);
         }
@@ -861,9 +1026,13 @@ impl Advanced {
         let Some((c, edit)) = self.editing.take() else {
             return false;
         };
-        self.name = String::from(edit.text());
+        let name = String::from(edit.text());
+        // (The edit is a single player's, whose record is the only human one.)
+        for local in &mut self.humans {
+            local.name.clone_from(&name);
+        }
         set(shown, EDIT + u16::from(c), |s| s.hidden = true);
-        shown.texts.insert(PLAYER + u16::from(c), self.name.clone());
+        shown.texts.insert(PLAYER + u16::from(c), name);
         self.row_drawn(c, shown);
         true
     }
@@ -990,19 +1159,21 @@ impl Advanced {
         offered(seat)
     }
 
-    /// Whether colour `c`'s hero may change (`scenario_hero_choosable` 0x58CFB0): the single
-    /// player's record, its shown town not Random, and its main town generating its hero or the
-    /// random-hero flag (TWN-SET-006).
+    /// Whether colour `c`'s hero may change (`scenario_hero_choosable` 0x58CFB0): a human record's
+    /// (outside the hot seat the single player's: the only one), its shown town not Random, and
+    /// its main town generating its hero or the random-hero flag (TWN-SET-006).
     fn hero_choosable(&self, seat: Seat, c: u8) -> bool {
-        self.local.colour == Some(c)
+        self.human_of(c).is_some()
             && self.shown_town(seat, c).is_some()
             && (seat.generates || seat.random_hero)
     }
 
-    /// Whether colour `c`'s bonus may change (the row's draw, 0x58DD48): the single player's own
-    /// colour, or a computer's whose town shows a town or may change.
+    /// Whether colour `c`'s bonus may change (the row's draw, 0x58DD48): the local record's
+    /// colour, or a computer's whose town shows a town or may change; the hot seat every colour's
+    /// (0x58DE46).
     fn bonus_choosable(&self, seat: Seat, c: u8) -> bool {
-        self.local.colour == Some(c)
+        self.hot_seat
+            || self.local_held() == Some(c)
             || self.shown_town(seat, c).is_some()
             || self.town_choosable(seat, c)
     }
@@ -1099,10 +1270,10 @@ impl Advanced {
     }
 
     /// Colour `c`'s list of heroes (`scenario_hero_lists` 0x583890: a human record's alone): the
-    /// offer of its shown town where the single player holds it, else none.
+    /// offer of its shown town where a human record holds it, else none.
     fn hero_list<'m>(&self, map: &'m Map, c: u8) -> &'m [u8] {
         match self.shown_town(map.seats[usize::from(c)], c) {
-            Some(f) if self.local.colour == Some(c) => {
+            Some(f) if self.human_of(c).is_some() => {
                 &map.heroes.offers[usize::from(c)][usize::from(f)]
             }
             _ => &[],
