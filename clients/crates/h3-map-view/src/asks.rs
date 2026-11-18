@@ -39,6 +39,9 @@
 //! Learning (the experience the gold less 500 alone; the levels it reaches are T2c's, the
 //! timeline's: `crate::levels`), the Arena visited, a School visited (ADVEVENT 72) or too dear
 //! (73), the School of War (158, its code the Magic's: not recorded).
+//!
+//! Since E24 M4 T2d1 (design §5.6, *provisional*): a dwelling of another team without guards is
+//! the visitor's first ([`Ask::flags`]), then asks its hire as the visitor's own does.
 
 use alloc::boxed::Box;
 use alloc::format;
@@ -439,7 +442,9 @@ pub enum Ask {
     },
     /// A dwelling of the visitor's team (`visit_dwelling` 0x4A18B0: ADVEVENT 35): the dwelling,
     /// its creatures to hire, whether they join free (its own player's, level 1) and whether the
-    /// hero's army has room for them.
+    /// hero's army has room for them. Since E24 M4 T2d1 (design §5.6) a dwelling of another team
+    /// without guards too, its flag raised first (`set_dwelling_owner` 0x4C67B0 at 0x4A1B00, the
+    /// visitor's then: `flag-dwelling`'s Pikemen free).
     Hire {
         /// The dwelling.
         dwelling: u32,
@@ -449,6 +454,8 @@ pub enum Ask {
         free: bool,
         /// The army has a slot of their kind or an empty one.
         room: bool,
+        /// The visit raises the visitor's flag before it asks (E24 M4 T2d1).
+        flag: bool,
     },
     /// A wandering monster's offer (part A2; `monster_visit_decision` 0x4A7740): its stack, the
     /// offer, whether the hero's army has room for it (`army_add_stack` 0x44ACE0: a slot of its
@@ -568,21 +575,26 @@ impl Ask {
                 let team = |c: u8| visitor.teams.get(usize::from(c)).copied();
                 let ours = seen.owner.is_some_and(|o| team(o) == team(visitor.colour));
                 let [least, weeks] = art.guards;
-                if ours {
+                // Another team's without guards (*provisional*: a new game's, a creature below
+                // level 5) is the visitor's first (E24 M4 T2d1), then asks the same.
+                let flag = !ours && i32::from(level) < least;
+                if ours || flag {
                     let room = visitor
                         .army
                         .iter()
                         .any(|s| s.is_none_or(|s| s.creature == creature));
+                    let own = flag || seen.owner == Some(visitor.colour);
                     Self::Hire {
                         dwelling: subclass,
                         joins: Stack {
                             creature,
                             count: growth,
                         },
-                        free: seen.owner == Some(visitor.colour) && level == 1,
+                        free: own && level == 1,
                         room,
+                        flag,
                     }
-                } else if i32::from(level) >= least {
+                } else {
                     Self::Guarded {
                         dwelling: subclass,
                         guards: Stack {
@@ -590,8 +602,6 @@ impl Ask {
                             count: weeks.saturating_mul(growth),
                         },
                     }
-                } else {
-                    return None;
                 }
             }
             MONSTER if !bit(MESSAGE) => {
@@ -743,6 +753,13 @@ impl Ask {
                 | Self::OpenBox { .. }
                 | Self::Chest { .. }
         )
+    }
+
+    /// Whether the visit makes the object the visitor's before it asks (E24 M4 T2d1, design §5.6:
+    /// a dwelling of another team without guards, `set_dwelling_owner` 0x4C67B0).
+    #[must_use]
+    pub const fn flags(&self) -> bool {
+        matches!(self, Self::Hire { flag: true, .. })
     }
 
     /// Its box's style (part B): a chest's 7, the Arena's and a School's 10 (their pictures

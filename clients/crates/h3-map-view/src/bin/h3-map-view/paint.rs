@@ -43,7 +43,7 @@ use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
     Action, Answer, Computer, Cursor, DEFAULT_CURSOR, Direction, Dissolve, Draw, Found, Hero,
-    LevelBox, NextTurn, Question, Start, TownBoxes,
+    LevelBox, NextTurn, Owners, Question, Start, TownBoxes,
 };
 use h3_map_view::{status, turn};
 use h3_render::Bugs;
@@ -348,6 +348,13 @@ pub struct Painter<'a> {
     /// the tiles the live part at 0 has explored, which the revealed ones join.
     revealed: u32,
     explored: Explored,
+    /// The objects' owners at 0, the owners changed that the indexes' looks were built for (E24
+    /// M4 T2d1: `Draw::owners`, the live part's objects holding them), and those their minimaps
+    /// were built for when not the same (`Minimap::owners`, the spare set dropped: a visit's
+    /// end draws the minimap before the view).
+    owners_at_0: Vec<Option<u8>>,
+    owners: Owners,
+    minimap_owners: Option<Owners>,
     batch: Batch,
     added: BTreeSet<String>,
     /// The frame the last view was drawn into, and that view's draw and buttons.
@@ -417,6 +424,7 @@ impl<'a> Painter<'a> {
             .collect::<Result<Vec<_>, String>>()?;
         let composer = Composer::new(assets.layout.frame).map_err(|e| e.to_string())?;
         let explored = start.explored.clone();
+        let owners_at_0 = start.objects.iter().map(|o| o.owner).collect();
         let mut painter = Self {
             assets,
             art,
@@ -428,6 +436,9 @@ impl<'a> Painter<'a> {
             spare: None,
             revealed: 0,
             explored,
+            owners_at_0,
+            owners: Arc::new(Vec::new()),
+            minimap_owners: None,
             batch: Batch::default(),
             added: BTreeSet::new(),
             composer,
@@ -686,7 +697,10 @@ impl<'a> Painter<'a> {
     /// `[hover]` facts and a sign's text from the map `raw` (*provisional*: `Find::of`, the facts
     /// at 0), its first visit's box and its later one's; a pile's and an artifact's with a
     /// message or guards left out (their question: T2b2's, [`Painter::asked`]); then each event's
-    /// boxes (part B, [`Painter::event`]); none without the facts.
+    /// boxes (part B, [`Painter::event`]); none without the facts. Since E24 M4 T2d1 (design
+    /// §5.6, *provisional*: the owners and teams at 0) a mine's or a Lighthouse's of another team
+    /// (`Find::flag_of`, the mouse-over's teams and contents) told once, its flag the viewer's
+    /// colour after its box.
     fn finds(&mut self, raw: &RawMap, hover: Option<&Hover>) -> Result<Vec<Found>, String> {
         let Some(hover) = hover else {
             return Ok(Vec::new());
@@ -719,6 +733,37 @@ impl<'a> Painter<'a> {
                             } | Body::Artifact(Some(_))
                         )
                     );
+                    // A flag raised (E24 M4 T2d1, design §5.6): a mine's or a Lighthouse's of
+                    // another team, told; else (a guarded mine) the question's.
+                    if finds::FLAGS.contains(&tile.class) {
+                        let team = |c: u8| facts.teams.get(usize::from(c)).copied();
+                        let ours = self
+                            .live
+                            .objects
+                            .get(o)
+                            .and_then(|object| object.owner)
+                            .is_some_and(|c| team(c) == team(self.live.viewer));
+                        let flagged = Find::flag_of(
+                            [tile.class, tile.subclass],
+                            facts.contents.get(&o),
+                            ours,
+                        );
+                        if let Some(told) = flagged.and_then(|find| find.told(art, texts)) {
+                            out.push(Found {
+                                at: pos,
+                                first: vec![(self.told(&told)?, Gain::default())],
+                                again: None,
+                                gain: Gain::default(),
+                                found: None,
+                                taken: None,
+                                event: false,
+                                blocks: None,
+                                ask: None,
+                                flag: Some((o, self.live.viewer)),
+                            });
+                            continue;
+                        }
+                    }
                     if asks || !finds::CLASSES.contains(&tile.class) {
                         // A question's find (E24 M4 T2b2 part A1).
                         if let Some(found) = self.asked((pos, o), tile, body, facts)? {
@@ -758,6 +803,7 @@ impl<'a> Painter<'a> {
                         event: false,
                         blocks: find.taken().then_some(o),
                         ask: None,
+                        flag: None,
                     });
                 }
             }
@@ -824,6 +870,7 @@ impl<'a> Painter<'a> {
             event: true,
             blocks: None,
             ask: None,
+            flag: None,
         }))
     }
 
@@ -837,7 +884,8 @@ impl<'a> Painter<'a> {
     /// power by them (part A2), its Diplomacy the situation's ([`Painter::diplomacy`]). Its box
     /// laid out of style 2 (style 1 where it asks nothing: a looted bank's, the Tree's visited or
     /// too poor, told at every visit), its answers where built ([`Painter::question`]); none for
-    /// an object that asks nothing these parts build.
+    /// an object that asks nothing these parts build. Since E24 M4 T2d1 a dwelling of another
+    /// team's flag, the viewer's colour, raised before its hire (`Ask::flags`).
     fn asked(
         &mut self,
         (pos, o): (Pos, usize),
@@ -948,6 +996,7 @@ impl<'a> Painter<'a> {
                 event: false,
                 blocks: None,
                 ask: None,
+                flag: None,
             }));
         }
         Ok(Some(Found {
@@ -960,6 +1009,8 @@ impl<'a> Painter<'a> {
             event: false,
             blocks: ask.beside().then_some(o),
             ask: Some(self.question(&ask, o)?),
+            // A dwelling of another team's flag before its hire (E24 M4 T2d1).
+            flag: ask.flags().then_some((o, self.live.viewer)),
         }))
     }
 
@@ -1243,9 +1294,12 @@ impl<'a> Painter<'a> {
         self.live.buttons = Some(buttons);
         // The status bar's hint as last shown (E24 M3 T6a1).
         self.live.hint = Some(draw.hint.clone());
-        // The objects taken off the map (E24 M4 T2a2 part B), the terrains revealed (T2b2).
+        // The objects' owners changed (E24 M4 T2d1), the objects taken off the map (E24 M4 T2a2
+        // part B), the terrains revealed (T2b2), then the minimap's own owners (T2d1).
+        self.owned(&draw.owners)?;
         self.reveal(draw.revealed)?;
         self.taken(&draw.gone)?;
+        self.minimap_owned(&draw.owners, &draw.minimap.owners);
         let assets = self.assets;
         let z = draw.view.z;
         let index = self
@@ -1299,28 +1353,84 @@ impl<'a> Painter<'a> {
         }
         let index = match self.spare.take() {
             Some((spare, index)) if spare == *gone => index,
-            _ => {
-                let assets = self.assets;
-                (0..self.art.levels)
-                    .map(|z| {
-                        let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
-                        TileIndex::build(
-                            &self.art,
-                            &self.live,
-                            assets.tables,
-                            assets.layout,
-                            &self.shapes,
-                            z,
-                            assets.bugs,
-                        )
-                        .map_err(|e| e.to_string())
-                    })
-                    .collect::<Result<Vec<_>, String>>()?
-            }
+            _ => self.indexes()?,
         };
         let old = core::mem::replace(&mut self.index, index);
-        self.spare = Some((core::mem::replace(&mut self.gone, Arc::clone(gone)), old));
+        let was = core::mem::replace(&mut self.gone, Arc::clone(gone));
+        // Indexes whose minimaps were built for other owners than their looks' are not kept.
+        self.spare = self.minimap_owners.take().is_none().then_some((was, old));
         Ok(())
+    }
+
+    /// The live part's objects' owners: those at 0 with `changed` over them (E24 M4 T2d1).
+    fn set_owners(&mut self, changed: &Owners) {
+        for (object, &owner) in self.live.objects.iter_mut().zip(&self.owners_at_0) {
+            object.owner = owner;
+        }
+        for &(i, colour) in changed.iter() {
+            if let Some(object) = self.live.objects.get_mut(i) {
+                object.owner = Some(colour);
+            }
+        }
+    }
+
+    /// The objects' owners as the view shows them (E24 M4 T2d1, design §5.6: `changed`, a flag
+    /// raised), each level's index built again for them (TRAPS: "A level's index holds for the
+    /// objects it was built for"; the other set's indexes dropped).
+    fn owned(&mut self, changed: &Owners) -> Result<(), String> {
+        if self.owners == *changed {
+            return Ok(());
+        }
+        self.set_owners(changed);
+        self.owners = Arc::clone(changed);
+        self.index = self.indexes()?;
+        self.spare = None;
+        self.minimap_owners = None;
+        Ok(())
+    }
+
+    /// Each level's minimap built for the owners `minimap` shows when they are not the view's
+    /// `view` (E24 M4 T2d1: a visit's end draws the minimap with a flag raised, the view's next
+    /// draw its flag), the live part's owners the view's again after.
+    fn minimap_owned(&mut self, view: &Owners, minimap: &Owners) {
+        let wanted = (minimap != view).then(|| Arc::clone(minimap));
+        if self.minimap_owners == wanted {
+            return;
+        }
+        let assets = self.assets;
+        self.set_owners(wanted.as_ref().unwrap_or(view));
+        for index in &mut self.index {
+            index.minimap_again(
+                &self.art,
+                &self.live,
+                assets.tables,
+                assets.layout,
+                assets.bugs,
+            );
+        }
+        self.set_owners(view);
+        self.minimap_owners = wanted;
+        self.spare = None;
+    }
+
+    /// Each level's index for the live part as it is.
+    fn indexes(&self) -> Result<Vec<TileIndex>, String> {
+        let assets = self.assets;
+        (0..self.art.levels)
+            .map(|z| {
+                let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
+                TileIndex::build(
+                    &self.art,
+                    &self.live,
+                    assets.tables,
+                    assets.layout,
+                    &self.shapes,
+                    z,
+                    assets.bugs,
+                )
+                .map_err(|e| e.to_string())
+            })
+            .collect()
     }
 
     /// The tiles explored as the live part at 0 has them and every tile of the terrains in `mask`
@@ -1346,23 +1456,9 @@ impl<'a> Painter<'a> {
         }
         self.live.explored = explored;
         self.revealed = mask;
-        let assets = self.assets;
-        self.index = (0..self.art.levels)
-            .map(|z| {
-                let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
-                TileIndex::build(
-                    &self.art,
-                    &self.live,
-                    assets.tables,
-                    assets.layout,
-                    &self.shapes,
-                    z,
-                    assets.bugs,
-                )
-                .map_err(|e| e.to_string())
-            })
-            .collect::<Result<Vec<_>, String>>()?;
+        self.index = self.indexes()?;
         self.spare = None;
+        self.minimap_owners = None;
         Ok(())
     }
 

@@ -30,8 +30,8 @@ use crate::files;
 /// an artifact's); since E24 M4 T1a a normal month's and week's names (`month-name.6`,
 /// `week-name.4`, design §5.1); since E24 M4 T2a2 a secondary skill's level's name, a default
 /// sign's text and an artifact's pickup text (`skill-level.0`, `sign.5`, `artifact-event.7`,
-/// design §5.3).
-pub const FAMILIES: [&str; 27] = [
+/// design §5.3); since E24 M4 T2d1 a mine's box when taken (`mine-event.0`, design §5.6).
+pub const FAMILIES: [&str; 28] = [
     "hero",
     "town-name",
     "map-hint",
@@ -59,6 +59,7 @@ pub const FAMILIES: [&str; 27] = [
     "skill-level",
     "sign",
     "artifact-event",
+    "mine-event",
 ];
 
 /// The committed key catalogue (`clients/text/keys.toml`).

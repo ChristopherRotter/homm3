@@ -202,7 +202,9 @@ town_days = 7
 # (hero_loss_effect 0x4ACBB0 with 0; E24 M4 T2b2 part A2). An artifact's primary skills, shown in
 # the hero's window at the pickup's end (find-artifact's Centaurs Axe, +2 Attack): [artifact,
 # attack, defense, power, knowledge], from the packs' `primary_skills` effects (packs/base, ab, sod
-# core.toml; *provisional*: the engine's in time, the artifact taken as worn).
+# core.toml; *provisional*: the engine's in time, the artifact taken as worn). E24 M4 T2d1: each
+# resource's mine's daily income in the resource bar's order (mine_daily_income 0x678288), its box's
+# picture's caption (design §5.6: flag-mine's "2/day").
 [map.finds]
 resources = "resour82.def"
 artifacts = "artifact.def"
@@ -233,6 +235,7 @@ artifact_skills = [
     [37, 1, 1, 0, 0], [38, 2, 2, 0, 0], [39, 3, 3, 0, 0], [40, 4, 4, 0, 0], [41, 0, 0, 1, 1],
     [42, 0, 0, 2, 2], [43, 0, 0, 3, 3], [44, 0, 0, 4, 4], [128, 3, 3, 3, 6], [134, 6, 6, 6, 6],
 ]
+mine_income = [2, 1, 2, 1, 1, 1, 1000]
 
 # The questions (E24 M4 T2b2 part A1; design §5.4, *provisional*): each creature's level, 1 to 7,
 # by its number (creature_table 0x6703B8's +4 plus 1, read from Heroes3.exe; 0 where no creature

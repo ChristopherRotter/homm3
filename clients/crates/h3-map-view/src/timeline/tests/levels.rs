@@ -119,6 +119,7 @@ fn stone() -> Found {
         taken: None,
         event: false,
         blocks: None,
+        flag: None,
         ask: None,
     }
 }
@@ -136,6 +137,7 @@ fn chest(experience: i32) -> Found {
         taken: None,
         event: false,
         blocks: Some(CHEST),
+        flag: None,
         ask: Some(Question {
             asked: chosen(Style::Choose, Some("or")),
             chooses: true,
