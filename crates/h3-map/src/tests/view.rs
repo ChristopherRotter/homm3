@@ -7,14 +7,15 @@ use h3_adventure::{
     AdventureCommand, AdventureEvent, AdventureEventKind, GuardsView, ObjectKind, ObjectView,
     OfferKind, OwnHeroView, Pos as TilePos, TileMask, TileView, Viewers, allied,
 };
+use h3_content::HeroTypeId;
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, ArmyRef, ArmySlot, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset,
-    GameState, GarrisonStackView, GarrisonView, HeroInfo, LevelUpView, MapGarrisonView,
+    GameState, GarrisonStackView, GarrisonView, HeroInfo, HiredPart, LevelUpView, MapGarrisonView,
     OWNER_LEVEL, TAVERN_LEVELS, TavernHeroView, TavernPart, TownBuildingsView, TownOwnerView,
     TownView, Viewer, apply, legal_commands, legal_moves, observe, project,
 };
-use h3_heroes::HeroDetails;
+use h3_heroes::{ArtifactPlace, HeroDetails, Position};
 use proptest::collection::vec;
 use proptest::prelude::*;
 use proptest::test_runner::TestCaseError;
@@ -817,6 +818,62 @@ fn untavern(told: Vec<GameEvent>) -> Vec<GameEvent> {
         .collect()
 }
 
+/// A hero its owner hired (E09 T38a2; decision 141): the slot's view told before its hire, folded
+/// with the parts told after it (`HiredPartSeen`, in [`HiredPart`]'s order), is its details in
+/// `after` whole: the view's type, level, experience, primary skills, spell points, skills and
+/// worn artifacts by position, its first backpack places, then the parts' levels offered, its
+/// positions' count, the rest of its backpack and its spells.
+fn check_hired(
+    after: &GameObservation,
+    (hero, view): (HeroId, Option<&TavernHeroView>),
+    parts: &[HiredPart],
+) -> Result<(), TestCaseError> {
+    let view =
+        view.ok_or_else(|| TestCaseError::fail(format!("{hero:?} hired from an empty slot")))?;
+    prop_assert_eq!(view.hero.id, hero);
+    let Some(&HiredPart::Details { offered, positions }) = parts.first() else {
+        return Err(TestCaseError::fail(format!(
+            "{hero:?}'s parts start without its details: {parts:?}"
+        )));
+    };
+    let mut worn = vec![None; usize::from(positions)];
+    let mut backpack = Vec::new();
+    for &(place, artifact) in &view.artifacts {
+        match place {
+            ArtifactPlace::Worn(Position(at)) => {
+                prop_assert!(at < worn.len(), "{:?}", place);
+                worn[at] = Some(artifact);
+            }
+            ArtifactPlace::Backpack(_) => backpack.push(artifact),
+        }
+    }
+    let mut spells = Vec::new();
+    for part in &parts[1..] {
+        match *part {
+            HiredPart::Carried(artifact) => backpack.push(artifact),
+            HiredPart::Spell(spell) => spells.push(spell),
+            HiredPart::Details { .. } => {
+                return Err(TestCaseError::fail(format!("{part:?} twice")));
+            }
+        }
+    }
+    let folded = HeroDetails {
+        hero_type: view.hero.hero_type,
+        level: view.hero.level,
+        experience: view.hero.experience,
+        offered,
+        primary: view.hero.primary,
+        skills: view.skills.clone(),
+        worn,
+        backpack,
+        spells,
+        mana: view.hero.mana,
+    };
+    let info = after.heroes.iter().find(|h| h.id == hero);
+    prop_assert_eq!(info.and_then(|h| h.details.as_deref()), Some(&folded));
+    Ok(())
+}
+
 /// How many objects `viewer` knows what it learned of (E08 T64b; ADV-VIS-006: its `known`).
 fn known(state: &GameState, viewer: PlayerId) -> usize {
     let visits = state.adventure().visits();
@@ -1242,6 +1299,9 @@ fn check_told(
     let mut ended = false;
     // E09 T37a: the viewer's tavern heroes as told, each slot's head then its parts.
     let mut tavern = before.tavern.clone();
+    // E09 T38a2: the heroes it hired, each with its slot's view as it was told and the parts told
+    // after its `HeroHired`.
+    let mut hired: Vec<(HeroId, Option<TavernHeroView>, Vec<HiredPart>)> = Vec::new();
     let alone = Viewers::NONE.with(viewer);
     for event in told {
         match *event {
@@ -1272,14 +1332,31 @@ fn check_told(
             }
             // E09 T38a1 (TWN-TAV-003): a hire takes its slot's hero out of the owner's tavern,
             // the slot named to it alone; its slot's refill follows as a `TavernOffered`, its
-            // details' parts to the owner alone.
-            GameEvent::HeroHired { player, slot, .. } => {
+            // details' parts to the owner alone. Since E09 T38a2 (the plans hire): the hero
+            // shows on its tile to every player told, which sees it; the owner's slot's view
+            // folded with the parts is its details ([`check_hired`]).
+            GameEvent::HeroHired {
+                player,
+                hero,
+                slot,
+                pos,
+                seen_by,
+                ..
+            } => {
                 prop_assert_eq!(slot.is_some(), player == viewer, "{:?}", event);
+                prop_assert!(seen_by.contains(viewer), "{:?}", event);
+                prop_assert!(!heroes.iter().any(|&(id, _)| id == hero), "{:?}", event);
+                heroes.push((hero, pos));
                 if let Some(view) = slot.and_then(|slot| tavern.get_mut(usize::from(slot))) {
-                    *view = None;
+                    hired.push((hero, view.take(), Vec::new()));
                 }
             }
-            GameEvent::HiredPartSeen { player, .. } => prop_assert_eq!(player, viewer),
+            GameEvent::HiredPartSeen { player, hero, part } => {
+                prop_assert_eq!(player, viewer);
+                let at = hired.iter_mut().rev().find(|(id, ..)| *id == hero);
+                prop_assert!(at.is_some(), "{:?} without its hire", event);
+                at.unwrap().2.push(part);
+            }
             GameEvent::HeroChanged { player, hero, .. }
             | GameEvent::CreaturesRaised { player, hero, .. }
             | GameEvent::LevelGained { player, hero, .. } => {
@@ -2116,6 +2193,9 @@ fn check_told(
         tavern.iter().map(rested).collect(),
     );
     prop_assert_eq!(seen, folded, "the tavern heroes changed untold");
+    for (hero, view, parts) in &hired {
+        check_hired(after, (*hero, view.as_ref()), parts)?;
+    }
     prop_assert_eq!(after.month, month);
     prop_assert_eq!(after.week, week);
     prop_assert_eq!(after.day, day);
@@ -2796,6 +2876,16 @@ type Outcome = (
     Option<PlayerId>,
     Vec<AdventureEventKind>,
     Vec<(TownId, bool)>,
+    Vec<Hired>,
+);
+
+/// A hero a command hired, as it joined the map (E09 T38a2): its id and type, its army and its
+/// details.
+type Hired = (
+    HeroId,
+    HeroTypeId,
+    Option<Vec<ArmyStack>>,
+    Option<HeroDetails>,
 );
 
 /// What a command of `player` did in a game, as the hygiene test compares it between two games
@@ -2826,7 +2916,11 @@ type Outcome = (
 /// move left out (none): the exit is drawn from its owner's stream among its channel's (ADV-TEL-003)
 /// or is its gate's pair, which the test may change where the viewer never sees them, and the
 /// viewer is told the entrance alone or nothing (A-41 not reproduced), so that the comparison goes
-/// on past another player's hidden jump; one it sees land in one game only ends it.
+/// on past another player's hidden jump; one it sees land in one game only ends it. (E09 T38a2)
+/// And the heroes it hired as they joined the map (their types, armies and details): a tavern hero
+/// is a draw of the taverns' stream, which the hidden differences move, and a hire the viewer does
+/// not see puts on the map a hero that may walk into its sight later (a case the plans' hires
+/// found at 240 cases: the same record another type in the other game).
 fn outcome(
     (player, viewer, accepted): (PlayerId, PlayerId, bool),
     before: &[(HeroId, TilePos)],
@@ -2924,6 +3018,20 @@ fn outcome(
             _ => None,
         })
         .collect();
+    let hired = events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::HeroHired {
+                hero, hero_type, ..
+            } => Some((
+                hero,
+                hero_type,
+                after.adventure().hero(hero).map(|h| h.army.clone()),
+                after.hero(hero).cloned(),
+            )),
+            _ => None,
+        })
+        .collect();
     (
         accepted,
         moved,
@@ -2933,6 +3041,7 @@ fn outcome(
         after.waiting_for(),
         guards,
         capitols,
+        hired,
     )
 }
 
@@ -2986,6 +3095,9 @@ proptest! {
     /// the seed: ADV-BNK-002) the viewer never sees but by its team's mark (ADV-BNK-006): the hint
     /// its own visit or yes tells it ends the comparison as a visit's contents do, its battle as
     /// any battle, and another player's bank battle must go alike in both games ([`outcome`]).
+    /// Since E09 T38a2 the plans hire: a hire the viewer is told ends the comparison (the hired
+    /// hero is a draw of the taverns' stream, below), and another player's must hire alike in both
+    /// games ([`outcome`]).
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in hygienic(),
@@ -3087,6 +3199,18 @@ proptest! {
                     .any(|e| matches!(e, GameEvent::BattleStarted { .. }))
             };
             if battle(&ta) || battle(&tb) {
+                break;
+            }
+            // E09 T38a2: a hire shows the viewer a tavern hero (its own slot's, or another
+            // player's on a tile it sees: TWN-TAV-003), a draw of the taverns' stream that the
+            // hidden differences move ([`without_tavern`]): the comparison ends when the viewer is
+            // told one, as at a battle.
+            let hired = |events: &[GameEvent]| {
+                events
+                    .iter()
+                    .any(|e| matches!(e, GameEvent::HeroHired { .. }))
+            };
+            if hired(&ta) || hired(&tb) {
                 break;
             }
             // A monster's answer follows from its aggression, drawn from the seed and never
