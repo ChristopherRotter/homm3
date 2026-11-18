@@ -18,7 +18,8 @@
 //! [`situation`] is a still of the capture set: a map built with the writer, its view and the
 //! tiles left unexplored. [`timeline`] is the map over time (E24 M2 T2): the original's loop on a
 //! clock of milliseconds, its redraws, palette steps, scroll and cursor; [`sequence`] the recorded
-//! sequences it replays; [`turn`] the turn's end and the next day's texts (E24 M4 T1a). For the window (E24 M2 T4a): [`replay`] runs the timeline forward as its
+//! sequences it replays; [`turn`] the turn's end and the next day's texts (E24 M4 T1a), [`finds`]
+//! the finds told and a turn without a town's boxes (E24 M4 T2a2). For the window (E24 M2 T4a): [`replay`] runs the timeline forward as its
 //! clock (`h3_ui::clock`) needs, [`keys`] are the window's commands (the table of what each key
 //! does: `h3_ui::keys`); [`sound`] the map's sound as cues (M2 T5), its music the original's music
 //! thread (`h3_ui::music`, M2 T6a2). What both viewers share is the common crate `h3-ui`'s (E24
@@ -52,6 +53,7 @@ pub mod check;
 pub mod compose;
 pub mod damage;
 pub mod draw;
+pub mod finds;
 pub mod hover;
 pub mod keys;
 pub mod layout;

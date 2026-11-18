@@ -15,17 +15,23 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
+use h3_assets::fnt::Font;
 use h3_formats::lod::LodArchive;
+use h3_formats::text::decode_windows_1252;
 use h3_map::Limits;
-use h3_map::model::Pos;
+
+use h3_map::model::{Body, EventBody, Pos, RawMap};
 use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::MapArt;
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
 use h3_map_view::damage::{Held, History, drop_held};
+use h3_map_view::finds::{self, Find, Gain, Told};
 use h3_map_view::hover::Hover;
 use h3_map_view::layout::{AdventureLayout, CursorArt};
-use h3_map_view::live::{Buttons, Calendar, Facing, Lifted, Live, Moment, Walking};
+use h3_map_view::live::{
+    Buttons, Calendar, Facing, Lifted, Live, Moment, Selected, Status, Walking,
+};
 use h3_map_view::minimap::Shown;
 use h3_map_view::objects::{self, DrawLists, Shapes};
 use h3_map_view::scene::{self, Scene, TileIndex, ViewAt};
@@ -34,19 +40,24 @@ use h3_map_view::situation::Situation;
 use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
-    Action, Computer, Cursor, DEFAULT_CURSOR, Direction, Draw, Hero, NextTurn, Start,
+    Action, Computer, Cursor, DEFAULT_CURSOR, Direction, Dissolve, Draw, Found, Hero, NextTurn,
+    Start, TownBoxes,
 };
-use h3_map_view::turn;
+use h3_map_view::{status, turn};
 use h3_render::Bugs;
 use h3_render::screen::{Screen, Widening};
 use h3_ui::cursor::{Cursor as Sprite, Image};
-use h3_ui::message::{self, MessageBox, Style};
+use h3_ui::message::{self, MessageBox, Picture, Style};
+use h3_ui::text::Args;
 
 use crate::{files, render, situation};
 
 /// Where the harness parks the pointer (`h3adv.py`'s `PARK`, over the right panel): a sequence's
 /// start, and a situation's in the window.
 pub const PARK: [i32; 2] = [700, 300];
+
+/// A template's cells across and down (8 × 6, `Shape::new`'s).
+const CELLS: [u8; 2] = [8, 6];
 
 /// How many compositions the history keeps: a frame widened into a buffer older than that is
 /// widened whole (E24 M3 T2b2).
@@ -134,6 +145,10 @@ pub fn for_sequence<'a>(
     let (question, turns) = painter
         .boxes(&lines)
         .map_err(|e| format!("{}: {e}", live_path.display()))?;
+    // The finds a walk tells and the turn without a town's boxes (E24 M4 T2a2).
+    let hover = painter.hover()?;
+    let finds = painter.finds(&raw, hover.as_deref())?;
+    let town = painter.town()?;
     let start = Start {
         view,
         size: i32::from(situation.size),
@@ -152,7 +167,7 @@ pub fn for_sequence<'a>(
         buttons: painter.live.buttons,
         // The status window's kind the recording asked at 0 (E24 M3 T5b2).
         asked: sequence.asked()?,
-        hover: painter.hover()?,
+        hover,
         levels: painter.art.levels,
         heroes: heroes(&painter.live),
         index: painter.selected,
@@ -165,6 +180,8 @@ pub fn for_sequence<'a>(
             speed: sequence.computer_speed()?,
             blackout: sequence.blackout()?,
         },
+        finds,
+        town: Some(town),
     };
     Ok(Setup {
         painter,
@@ -221,6 +238,9 @@ pub fn for_situation<'a>(
     painter.selected = sequence::selected_in(&painter.live).ok();
     let sound = painter.sound(hero.map(|h| h.at))?;
     let (question, turns) = painter.boxes(&[])?;
+    let hover = painter.hover()?;
+    let finds = painter.finds(&raw, hover.as_deref())?;
+    let town = painter.town()?;
     let start = Start {
         view,
         size: i32::try_from(painter.art.size).unwrap_or(i32::MAX),
@@ -236,7 +256,7 @@ pub fn for_situation<'a>(
         points: Vec::new(),
         buttons: painter.live.buttons,
         asked: None,
-        hover: painter.hover()?,
+        hover,
         levels: painter.art.levels,
         heroes: heroes(&painter.live),
         index: painter.selected,
@@ -247,6 +267,8 @@ pub fn for_situation<'a>(
         question: Some(question),
         turns,
         computer: Computer::default(),
+        finds,
+        town: Some(town),
     };
     Ok(Setup {
         painter,
@@ -286,9 +308,13 @@ pub struct Painter<'a> {
     /// The live part's moment at 0: the draws' steps count from it.
     base: Moment,
     shapes: Shapes,
-    /// Each level's objects by their tiles, for the live part's objects at 0 (which no draw
-    /// changes).
+    /// Each level's objects by their tiles, for the live part's objects at 0 less the objects
+    /// taken off the map by the draw last drawn (E24 M4 T2a2 part B: `gone`, each level's index
+    /// built again), and the other set's last indexes (a dissolve's two draws, one after the
+    /// other).
     index: Vec<TileIndex>,
+    gone: Arc<Vec<usize>>,
+    spare: Option<(Arc<Vec<usize>>, Vec<TileIndex>)>,
     batch: Batch,
     added: BTreeSet<String>,
     /// The frame the last view was drawn into, and that view's draw and buttons.
@@ -311,7 +337,7 @@ impl<'a> Painter<'a> {
     /// `hidden` rectangles.
     fn new(
         assets: &'a Assets<'a>,
-        raw: &h3_map::RawMap,
+        raw: &RawMap,
         live: Option<&Path>,
         view: ViewAt,
         hidden: &[[i32; 4]],
@@ -360,6 +386,8 @@ impl<'a> Painter<'a> {
             base,
             shapes,
             index,
+            gone: Arc::new(Vec::new()),
+            spare: None,
             batch: Batch::default(),
             added: BTreeSet::new(),
             composer,
@@ -500,6 +528,266 @@ impl<'a> Painter<'a> {
         Ok((question, turns))
     }
 
+    /// The pictures of `told` (`finds::picture`: each DEF decoded for its size, its caption in
+    /// the small font decoded too; E24 M4 T2a2).
+    fn pictures(&mut self, told: &Told) -> Result<Vec<Picture>, String> {
+        let assets = self.assets;
+        let layout = &assets.layout.message;
+        let (art, texts) = (&assets.tables.map.finds, &assets.tables.texts);
+        let shown = told
+            .pictures
+            .iter()
+            .map(|&(kind, subtype)| {
+                finds::picture(art, texts, kind, subtype)
+                    .ok_or_else(|| format!("a picture of type {kind}: not built"))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        self.add(
+            shown
+                .iter()
+                .map(|p| p.def.to_ascii_uppercase())
+                .chain([layout.caption_font.to_ascii_uppercase()]),
+        )?;
+        let pictures = shown
+            .into_iter()
+            .map(|p| {
+                let sprite = self
+                    .batch
+                    .sprite(&p.def)
+                    .ok_or_else(|| format!("{}: not decoded", p.def))?;
+                let side = |v: u32| i32::try_from(v).unwrap_or(i32::MAX);
+                Ok(Picture {
+                    size: [side(sprite.def.width), side(sprite.def.height)],
+                    def: p.def,
+                    frame: p.frame,
+                    caption: p.caption,
+                })
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        Ok(pictures)
+    }
+
+    /// The message box's text font and caption font, decoded.
+    fn fonts(&self) -> Result<(&Font, &Font), String> {
+        let layout = &self.assets.layout.message;
+        let font = |name: &str| {
+            self.batch
+                .font(name)
+                .ok_or_else(|| format!("{name}: not decoded"))
+        };
+        Ok((font(&layout.font)?, font(&layout.caption_font)?))
+    }
+
+    /// A box of a find or of a turn without a town (E24 M4 T2a2, design §5.3): `told`'s text and
+    /// pictures in an OK box of `message_box` 0x4F6570 (`message::told`), framed in the viewer's
+    /// colours.
+    fn told(&mut self, told: &Told) -> Result<Arc<MessageBox>, String> {
+        let pictures = self.pictures(told)?;
+        let assets = self.assets;
+        Ok(Arc::new(message::told(
+            &assets.layout.message,
+            self.fonts()?,
+            &told.text,
+            Style::Ok,
+            &pictures,
+            (self.live.viewer, assets.bugs),
+        )))
+    }
+
+    /// An event's box (E24 M4 T2a2 part B, design §5.3): `told`'s text and up to eight pictures
+    /// in a box of `message_box_pictures` 0x4F7690 (`message::pictures`).
+    fn pictured(&mut self, told: &Told) -> Result<Arc<MessageBox>, String> {
+        let pictures = self.pictures(told)?;
+        let assets = self.assets;
+        Ok(Arc::new(message::pictures(
+            &assets.layout.message,
+            self.fonts()?,
+            &told.text,
+            &pictures,
+            (self.live.viewer, assets.bugs),
+        )))
+    }
+
+    /// The selected hero's name (E24 M4 T2a2 part B: an event's texts' `%s`): the status
+    /// window's hero's, its own name the map's, else its type's; empty without one.
+    fn hero_name(&self) -> String {
+        let texts = &self.assets.tables.texts;
+        match &self.live.kingdom.status {
+            Some(Status::Hero(hero)) => match self.art.hero_names.get(&hero.hero) {
+                Some(own) if hero.own_name => own.clone(),
+                _ => texts.text(&status::hero_key(hero.hero), &Args::new()),
+            },
+            _ => String::new(),
+        }
+    }
+
+    /// Whether the selected hero's spell points are at their maximum (a Magic Well's facts;
+    /// *provisional*: `finds::full_mana` by the status window's Knowledge, no Intelligence).
+    fn full_mana(&self) -> bool {
+        let kingdom = &self.live.kingdom;
+        let mana = match kingdom.selected {
+            Selected::Hero(i) => kingdom.heroes.get(i).map(|h| h.mana),
+            _ => None,
+        };
+        match (&kingdom.status, mana) {
+            (Some(Status::Hero(hero)), Some(mana)) => finds::full_mana(mana, hero.skills[3]),
+            _ => false,
+        }
+    }
+
+    /// The finds a walk's end or a key's step tells (E24 M4 T2a2, design §5.3): each object of a
+    /// find's class by its entrance tile (the mouse-over's tiles), its facts from the live part's
+    /// `[hover]` facts and a sign's text from the map `raw` (*provisional*: `Find::of`, the facts
+    /// at 0), its first visit's box and its later one's; a pile's and an artifact's with a
+    /// message or guards left out (their question: T2b); then each event's boxes (part B,
+    /// [`Painter::event`]); none without the facts.
+    fn finds(&mut self, raw: &RawMap, hover: Option<&Hover>) -> Result<Vec<Found>, String> {
+        let Some(hover) = hover else {
+            return Ok(Vec::new());
+        };
+        let assets = self.assets;
+        let (art, texts) = (&assets.tables.map.finds, &assets.tables.texts);
+        let facts = hover.facts();
+        let size = u8::try_from(self.art.size).map_err(|_| "the map's size".to_owned())?;
+        let levels = u8::try_from(self.art.levels).map_err(|_| "the map's levels".to_owned())?;
+        let (hero, full) = (self.hero_name(), self.full_mana());
+        let mut out = Vec::new();
+        for z in 0..levels {
+            for y in 0..size {
+                for x in 0..size {
+                    let at = [i32::from(x), i32::from(y), i32::from(z)];
+                    let pos = Pos { x, y, z };
+                    let Some(tile) = hover.base(at) else {
+                        continue;
+                    };
+                    let Some(o) = tile.object.filter(|_| tile.entrance) else {
+                        continue;
+                    };
+                    let body = raw.objects.get(o).map(|object| &object.body);
+                    let asks = matches!(
+                        body,
+                        Some(
+                            Body::Resource {
+                                message: Some(_),
+                                ..
+                            } | Body::Artifact(Some(_))
+                        )
+                    );
+                    if asks || !finds::CLASSES.contains(&tile.class) {
+                        continue;
+                    }
+                    let text = match body {
+                        Some(Body::Sign(text)) => Some(decode_windows_1252(text.as_bytes())),
+                        _ => None,
+                    };
+                    let Some(find) = Find::of(
+                        [tile.class, tile.subclass],
+                        tile.word,
+                        facts.visits.get(o).copied(),
+                        facts.contents.get(&o),
+                        (text.as_deref(), i32::from(x)),
+                    ) else {
+                        continue;
+                    };
+                    let find = find.full(full);
+                    let first = match find.told(art, texts) {
+                        Some(told) => vec![(self.told(&told)?, Gain::default())],
+                        None => Vec::new(),
+                    };
+                    let again = match find.visited().told(art, texts) {
+                        Some(told) if !find.taken() => Some(self.told(&told)?),
+                        _ => None,
+                    };
+                    out.push(Found {
+                        at: pos,
+                        first,
+                        again,
+                        gain: find.gain(art),
+                        found: find.found(texts),
+                        taken: find.taken().then_some(o),
+                        event: false,
+                    });
+                }
+            }
+        }
+        // The events: drawn nowhere, so on no tile's record (`place_object_tiles` 0x505B20 marks
+        // their tiles only); each by its template's first visitable cell.
+        for (o, object) in raw.objects.iter().enumerate() {
+            let Body::Event(event) = &object.body else {
+                continue;
+            };
+            let Some((template, art)) =
+                objects::template(&self.art, o).zip(self.art.objects.get(o))
+            else {
+                continue;
+            };
+            let cell = (0..CELLS[0])
+                .flat_map(|dx| (0..CELLS[1]).map(move |dy| (dx, dy)))
+                .find(|&(dx, dy)| template.visitable(dx, dy));
+            let at = cell.and_then(|(dx, dy)| {
+                Some(Pos {
+                    x: art.anchor.x.checked_sub(dx)?,
+                    y: art.anchor.y.checked_sub(dy)?,
+                    z: art.anchor.z,
+                })
+            });
+            if let Some(at) = at
+                && let Some(found) = self.event(at, event, &hero)?
+            {
+                out.push(found);
+            }
+        }
+        Ok(out)
+    }
+
+    /// An event's find (E24 M4 T2a2 part B, design §5.3: `event_fire` 0x4A0ED0 after the step onto
+    /// it, `grant_rewards` 0x49FA90's boxes for the hero named `hero`, the map's text in the
+    /// first; the scenario's test after them): none when it does not fire for the viewer's colour
+    /// or has guards (a battle: not built). *Provisional:* told once (one the map leaves after a
+    /// visit has nothing more; one it keeps would give its rewards again, not built).
+    fn event(&mut self, at: Pos, event: &EventBody, hero: &str) -> Result<Option<Found>, String> {
+        let fires = event.players & (1 << (self.live.viewer % 8)) != 0;
+        let guarded = event.message.as_ref().is_some_and(|m| m.guards.is_some());
+        if !fires || guarded {
+            return Ok(None);
+        }
+        let text = event
+            .message
+            .as_ref()
+            .map(|m| decode_windows_1252(m.text.as_bytes()))
+            .unwrap_or_default();
+        let texts = &self.assets.tables.texts;
+        let (boxes, gain) = finds::rewards(&event.rewards, texts, hero, &text);
+        let first = boxes
+            .iter()
+            .map(|reward| Ok((self.pictured(&reward.told)?, reward.shows)))
+            .collect::<Result<Vec<_>, String>>()?;
+        Ok(Some(Found {
+            at,
+            first,
+            again: None,
+            gain,
+            found: None,
+            taken: None,
+            event: true,
+        }))
+    }
+
+    /// The viewer's boxes of a turn without a town (E24 M4 T2a2, design §5.3): the warning and
+    /// the days left's for each of the tables' days, the player named as CLT-Q100 (b) has it (the
+    /// colour's name: the viewer has no player name), the original's empty name with `--bugs
+    /// original`.
+    fn town(&mut self) -> Result<TownBoxes, String> {
+        let assets = self.assets;
+        let texts = &assets.tables.texts;
+        let (player, original) = (self.live.viewer, assets.bugs == Bugs::Original);
+        let lost = self.told(&finds::town_lost(texts, player, original))?;
+        let left = (1..=i32::from(assets.tables.map.turn.town_days))
+            .map(|days| self.told(&finds::days_left(texts, player, days, original)))
+            .collect::<Result<Vec<_>, String>>()?;
+        Ok(TownBoxes { lost, left })
+    }
+
     /// Decodes the named assets not decoded yet.
     fn add(&mut self, names: impl IntoIterator<Item = String>) -> Result<(), String> {
         for name in names {
@@ -600,6 +888,8 @@ impl<'a> Painter<'a> {
         self.live.buttons = Some(buttons);
         // The status bar's hint as last shown (E24 M3 T6a1).
         self.live.hint = Some(draw.hint.clone());
+        // The objects taken off the map (E24 M4 T2a2 part B).
+        self.taken(&draw.gone)?;
         let assets = self.assets;
         let z = draw.view.z;
         let index = self
@@ -627,6 +917,65 @@ impl<'a> Painter<'a> {
                 .extend(draws.into_iter().map(scene::Draw::Dialog));
         }
         Ok(scene)
+    }
+
+    /// The live part's objects standing but those `gone` (E24 M4 T2a2 part B: taken off the map,
+    /// `remove_map_object` 0x4AABB0), each level's index built again for them (TRAPS: "A level's
+    /// index holds for the objects it was built for"), or taken back from the last other set.
+    fn taken(&mut self, gone: &Arc<Vec<usize>>) -> Result<(), String> {
+        if self.gone == *gone {
+            return Ok(());
+        }
+        for (i, object) in self.live.objects.iter_mut().enumerate() {
+            if self.gone.contains(&i) {
+                object.standing = true;
+            }
+            if gone.contains(&i) {
+                object.standing = false;
+            }
+        }
+        let index = match self.spare.take() {
+            Some((spare, index)) if spare == *gone => index,
+            _ => {
+                let assets = self.assets;
+                (0..self.art.levels)
+                    .map(|z| {
+                        let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
+                        TileIndex::build(
+                            &self.art,
+                            &self.live,
+                            assets.tables,
+                            assets.layout,
+                            &self.shapes,
+                            z,
+                            assets.bugs,
+                        )
+                        .map_err(|e| e.to_string())
+                    })
+                    .collect::<Result<Vec<_>, String>>()?
+            }
+        };
+        let old = core::mem::replace(&mut self.index, index);
+        self.spare = Some((core::mem::replace(&mut self.gone, Arc::clone(gone)), old));
+        Ok(())
+    }
+
+    /// A dissolve's screen (E24 M4 T2a2 part B, design §5.3): the view of the draw before, its
+    /// rectangle `step` eighths of the way to `drawn`'s (`h3_render::Screen::dissolve_rect`).
+    fn dissolved(
+        &mut self,
+        drawn: &Draw,
+        dissolve: &Dissolve,
+        buttons: Buttons,
+    ) -> Result<Screen, String> {
+        let mut screen = self.view(&dissolve.before, buttons)?.clone();
+        let after = Draw {
+            dissolve: None,
+            ..drawn.clone()
+        };
+        let now = self.view(&after, buttons)?;
+        screen.dissolve_rect(now, dissolve.rect, dissolve.step);
+        Ok(screen)
     }
 
     /// A walk's part of a draw in the live part: the selected hero's tile and facing, lifted at
@@ -657,7 +1006,10 @@ impl<'a> Painter<'a> {
         buttons: Buttons,
         cursor: Cursor,
     ) -> Result<Screen, String> {
-        let mut screen = self.view(drawn, buttons)?.clone();
+        let mut screen = match &drawn.dissolve {
+            Some(dissolve) => self.dissolved(drawn, dissolve, buttons)?,
+            None => self.view(drawn, buttons)?.clone(),
+        };
         let Cursor {
             kind,
             frame,
@@ -685,9 +1037,20 @@ impl<'a> Painter<'a> {
         buttons: Buttons,
         cursor: Cursor,
     ) -> Result<Screen, String> {
-        let scene = self.scene(drawn, buttons)?;
-        let mut screen = compose::compose(&scene, &self.batch, self.assets.layout.frame)
-            .map_err(|e| e.to_string())?;
+        let mut screen = match &drawn.dissolve {
+            // A dissolve's (E24 M4 T2a2 part B): both draws composed afresh.
+            Some(dissolve) => {
+                let mut before = self.composed(&dissolve.before, buttons)?;
+                let after = Draw {
+                    dissolve: None,
+                    ..drawn.clone()
+                };
+                let now = self.composed(&after, buttons)?;
+                before.dissolve_rect(&now, dissolve.rect, dissolve.step);
+                before
+            }
+            None => self.composed(drawn, buttons)?,
+        };
         if cursor.shown {
             let assets = self.assets;
             let sprite = cursor_in(
@@ -701,10 +1064,17 @@ impl<'a> Painter<'a> {
         Ok(screen)
     }
 
+    /// A draw's view composed afresh, with no frame kept.
+    fn composed(&mut self, drawn: &Draw, buttons: Buttons) -> Result<Screen, String> {
+        let scene = self.scene(drawn, buttons)?;
+        compose::compose(&scene, &self.batch, self.assets.layout.frame).map_err(|e| e.to_string())
+    }
+
     /// [`Painter::screen`] widened into `out` (E24 M3 T2b1, T2b2, *provisional*): the view's
     /// frame widened by the table, only what changed since the frame `out` holds when the
     /// history still has it (the rectangles composed since, and its cursor's); then only what
-    /// lies under the cursor cut out, drawn on and widened over it; no copy of the frame.
+    /// lies under the cursor cut out, drawn on and widened over it; no copy of the frame. A
+    /// dissolve's step (E24 M4 T2a2 part B) widened whole, the frame then no composition's.
     pub fn frame_into(
         &mut self,
         drawn: &Draw,
@@ -712,6 +1082,12 @@ impl<'a> Painter<'a> {
         cursor: Cursor,
         out: &mut Widened,
     ) -> Result<(), String> {
+        if drawn.dissolve.is_some() {
+            let screen = self.screen(drawn, buttons, cursor)?;
+            self.widening.widen(&screen, &mut out.xrgb);
+            out.held = None;
+            return Ok(());
+        }
         self.view(drawn, buttons)?;
         let screen = self.composer.screen();
         let now = self.history.now();

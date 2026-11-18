@@ -406,6 +406,15 @@ font_palette = "game.pal"
 colour = 8
 align = 5
 
+# The advanced options' panel (102, 575 wide cut to the item's 557; hidden until Show Advanced Options
+# shows them; M3 T3a).
+[[scenario.dialog.items]]
+kind = "picture"
+id = 102
+picture = "AdvOptBk.pcx"
+at = [3, 6]
+size = [557, 585]
+
 # The difficulty's labels (132 "%s:" GENRLTXT 493, 133 "%s:" 219, 134 GENRLTXT 495), then the panel's
 # (the original's 100s, 105), the description (a scrolling text: its lines split at its width - 3,
 # each in its own text item at alignment 0; the box here 319 - 3 wide), victory's and loss's.
@@ -634,6 +643,61 @@ def = "scbutt5.def"
 at = [342, 92]
 size = [32, 28]
 
+# The advanced options (M3 T3a; design §3.13, §23): each colour's items (the constructor's loop over
+# the colours, 0x57AF82: the code adds them here from [scenario.advanced]), then the headers (339
+# GENRLTXT 518, 342 519 (341 before AB), 343 520, 344 521) and the duration's label (340, 522),
+# smalfont.fnt colour 2 centred; hidden until the options show.
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 339
+at = [58, 90]
+size = [104, 36]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 2
+align = 5
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 342
+at = [163, 90]
+size = [75, 36]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 2
+align = 5
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 343
+at = [239, 90]
+size = [75, 36]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 2
+align = 5
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 344
+at = [315, 90]
+size = [75, 36]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 2
+align = 5
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 340
+at = [58, 534]
+size = [334, 20]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 2
+align = 5
+
 # The panel buttons (caption buttons, gspbutt.def; their texts GENRLTXT 501, 502, 760), in the order
 # added: Show Available Scenarios, Show Advanced Options, Random Map.
 [[scenario.dialog.items]]
@@ -788,6 +852,39 @@ font_palette = "game.pal"
 colour = 2
 align = 5
 
+# What the redraw draws itself with the advanced options (M3 T3a: scenario_dialog_redraw 0x584550):
+# the title (GENRLTXT 516), the line under it (517) and the turn's duration's text (turndur.txt by
+# the duration).
+[[scenario.dialog.items]]
+kind = "label"
+id = 1030
+at = [58, 24]
+size = [334, 25]
+font = "bigfont.fnt"
+font_palette = "game.pal"
+colour = 8
+align = 1
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 1031
+at = [58, 48]
+size = [334, 34]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 1032
+at = [256, 556]
+size = [134, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 5
+
 # The list's rows as the redraw draws them (scenario_dialog_redraw 0x584550; M3 T1b1, design §3.4,
 # §19.1): each cell at the first row (its texts a pixel above the row's top), the rows 25 apart,
 # the selection's texts in colour 5; the players "%d/%d", the size's letter, the version's mark
@@ -844,3 +941,82 @@ def = "SlideBuV.def"
 track = "sliderV.pcx"
 button = 16
 step = 7
+
+# The advanced options (M3 T3a; design §3.13 to §3.15, §23): the colours' letters of the per-colour
+# files (colour_letters 0x641AE0), a row's height; the duration's bar (338: H3DlgScrollbar::Create
+# with 11 ticks, horizontal: SlideBuH.def, slider.pcx, its button the DEF's 16-pixel width); a
+# colour's items at row 0, colour 0's ids (the constructor 0x57AF82: the flag at y - 3, who may play
+# and the handicap 18 below the arrows); what its row draws itself (scenario_player_row_draw
+# 0x58D510): the colour's bar, the town's (itpa.def frame 2 t + 2, Random hpsrand0.pcx), the hero's
+# (Random hpsrand1.pcx, none hpsrand6.pcx) and the bonus's (ScnrStar.def) pictures and their tiny
+# texts.
+[scenario.advanced]
+letters = "rbygopts"
+step = 50
+bar = { id = 338, at = [58, 557], size = [194, 16], def = "SlideBuH.def", track = "slider.pcx", button = 16, step = 1 }
+flag = { id = 263, def = "AOFLGB{}.DEF", at = [14, 130], size = [42, 50] }
+kind = { id = 199, at = [62, 151], size = [46, 24], font = "tiny.fnt", font_palette = "game.pal", colour = 4, align = 5 }
+handicap = { id = 207, def = "adopb2{}.def", at = [110, 151], size = [50, 24] }
+town_left = { id = 215, def = "adoplfa.def", at = [164, 133], size = [11, 24] }
+town_right = { id = 223, def = "adoprta.def", at = [225, 133], size = [11, 24], frames = { normal = 1, pressed = 0, disabled = 2, selected = 3 } }
+hero_left = { id = 231, def = "adoplfa.def", at = [240, 133], size = [11, 24] }
+hero_right = { id = 239, def = "adoprta.def", at = [301, 133], size = [11, 24], frames = { normal = 1, pressed = 0, disabled = 2, selected = 3 } }
+bonus_left = { id = 247, def = "adoplfa.def", at = [316, 133], size = [11, 24] }
+bonus_right = { id = 255, def = "adoprta.def", at = [377, 133], size = [11, 24], frames = { normal = 1, pressed = 0, disabled = 2, selected = 3 } }
+name = { id = 345, at = [62, 130], size = [97, 17], font = "smalfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+hero_area = { id = 362, at = [252, 130], size = [48, 32] }
+town_area = { id = 370, at = [176, 130], size = [48, 32] }
+bonus_area = { id = 378, at = [328, 130], size = [48, 32] }
+panel = "adop{}pnl.pcx"
+panel_at = [57, 128]
+town = { at = [176, 130], def = "itpa.def", random = "hpsrand0.pcx" }
+hero = { at = [252, 130], random = "hpsrand1.pcx", none = "hpsrand6.pcx" }
+bonus = { at = [328, 130], def = "ScnrStar.def" }
+town_name = { id = 0, at = [164, 162], size = [71, 16], font = "tiny.fnt", font_palette = "game.pal", colour = 4, align = 5 }
+hero_name = { id = 0, at = [240, 162], size = [71, 16], font = "tiny.fnt", font_palette = "game.pal", colour = 4, align = 5 }
+bonus_name = { id = 0, at = [316, 162], size = [71, 16], font = "tiny.fnt", font_palette = "game.pal", colour = 4, align = 5 }
+
+# The small popup of a Random town's or a bonus's right press (scenario_info_popup 0x5757E0,
+# scenario_bonus_popup 0x5754F0): 200 x 150 at (300, 225), its frame 256 x 192 (dialog_frame_build
+# 0x48FF00, in the DEF's own colours), casting a shadow; the title (medfont.fnt colour 1) at (10, 26,
+# width - 20, 36), the picture's 48 pixels centred at y 60, its caption at (10, 95, width - 20, 18),
+# the text at (15, 120, width - 30, height - 120), smalfont.fnt colour 1 (the frame's ids from 200).
+[scenario.advanced.popup]
+place = [300, 225]
+size = [256, 192]
+background = "diboxbck.pcx"
+frame = "dialgbox.def"
+title = { id = 1, at = [10, 26], size = [236, 36], font = "medfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+picture = [104, 60]
+caption = { id = 3, at = [10, 95], size = [236, 18], font = "smalfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+text = { id = 4, at = [15, 120], size = [226, 72], font = "smalfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+
+# A town's popup (scenario_town_popup 0x575E60): 256 x 320 at (272, 140); GENRLTXT 81 at (10, 26,
+# 236, 36), the town's itpa.def frame centred at y 60, its name at (10, 95, 236, 18), GENRLTXT 80 at
+# (10, 127, 236, 36); the faction's seven creatures by level (town_creatures 0x6747B4, their original
+# ids) in cprsmall.def (frame the id + 2), three from x width / 2 - 68 at y 159, their names (tiny.fnt
+# colour 1, 52 x 32) 10 left at y 193, four from width / 2 - 88 at y 235, names at y 267, 52 apart.
+[scenario.advanced.town_popup]
+place = [272, 140]
+size = [256, 320]
+background = "diboxbck.pcx"
+frame = "dialgbox.def"
+title = { id = 1, at = [10, 26], size = [236, 36], font = "medfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+picture = [104, 60]
+name = { id = 3, at = [10, 95], size = [236, 18], font = "smalfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+heading = { id = 4, at = [10, 127], size = [236, 36], font = "medfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+creature = { id = 0, def = "cprsmall.def", at = [0, 0], size = [32, 32] }
+creature_name = { id = 0, at = [0, 0], size = [52, 32], font = "tiny.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+rows = [{ at = [60, 159], name = [50, 193], count = 3 }, { at = [40, 235], name = [30, 267], count = 4 }]
+step = 52
+creatures = [
+  [0, 2, 4, 6, 8, 10, 12],
+  [14, 16, 18, 20, 22, 24, 26],
+  [28, 30, 32, 34, 36, 38, 40],
+  [42, 44, 46, 48, 50, 52, 54],
+  [56, 58, 60, 62, 64, 66, 68],
+  [70, 72, 74, 76, 78, 80, 82],
+  [84, 86, 88, 90, 92, 94, 96],
+  [98, 100, 104, 106, 102, 108, 110],
+  [118, 112, 115, 114, 113, 120, 130],
+]

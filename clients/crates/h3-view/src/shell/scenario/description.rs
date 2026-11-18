@@ -16,7 +16,9 @@
 //!   0x5BA600: the box's background less the bar's column put back from its copy, kept at the
 //!   first redraw (0x5BA571), the lines drawn, the box shown). The mouse as on the list's bar
 //!   (`h3_ui::scrollbar`); its keys at their release ([`super::keys::Scroll`]: the list's keys
-//!   act at their press, so Down onto a long description shows it from its second line, CLT-Q140).
+//!   act at their press, so in the original's profile Down onto a long description shows it from
+//!   its second line; in the client's the bar takes no list key while the list shows, Left and
+//!   Right always: CLT-Q140 (b), decision 52).
 //! - **What the screen last drew** (the original's profile, CLT-Q138's partial redraw): the
 //!   select of the row already selected resets the text and the bar (`scenario_select` 0x585500
 //!   calls `scenario_to_game` whatever the change) but the partial redraw draws neither: the

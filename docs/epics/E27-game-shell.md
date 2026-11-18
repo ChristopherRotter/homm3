@@ -377,6 +377,16 @@ The user, 2026-11-17 (M3 T2's start):
     one team of the eight colours) and always shows the chosen difficulty (the original's none with
     no map at all until a press); no rating, as the original's. The original's for the comparisons
     only. Built in T2b.
+52. **The list's keys and a long description's bar** (CLT-Q140 (b), 2026-11-18): while the list
+    shows, the client's description bar takes none of the list's keys (Up, Down, Page Up, Page
+    Down), Left and Right always; with the list hidden the list's keys step it. The original's
+    (the bar steps at the key's release after the list moved at its press) for the comparisons
+    only. Built at T3a's start.
+53. **T3 cut in three, by recipe** (offered: three by recipe, two by drawing and choices, two by
+    recipe; the user, 2026-11-18): T3a the panel, the rows, the town's and the bonus's arrows and
+    popups (`adv-single-town`); T3b the hero's arrows and popups, the computer's rows
+    (`adv-single-hero`, `adv-single-maps`); T3c the flags, the name's edit, the handicap, the
+    duration, the hints (`adv-single-rest`, §6.4's `popup-hero-arrow` recorded again on row 2).
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
@@ -479,8 +489,10 @@ catalogue: design §3; the shell's frame, menus, edits and the hot seat's names:
 | T2a | The difficulty (§3.5; decision 50): the presses (107 to 111) and the rating, the opening's difficulty, the victory's text of goals 0, 4, 5 and 10; exact against `scn-difficulty` (`reopened` added), `scn-info` | **done** 2026-11-17: `OPENING_DIFFICULTY` (Normal at each opening: the record's +0x33C), `choose`, `maps::STANDARD_ALWAYS` (`victory_standard_set` 0x4BF780); `scn-difficulty` 9 of 9, `scn-info` 21 of 21 exact; log "M3 T2a, T2b", design §21.1 |
 | T2b | The empty list and Begin's messages (§3.5, §3.6; decision 50): the empty list's panel, its teams' dialog, a difficulty's press over it, GENRLTXT 530; exact against `scn-begin-none` (its strip and a press added), `scn-begin-filter` up to its load, `scn-empty-filter` (new) | **done** 2026-11-17 (CLT-Q139 (b), decision 51): `show_empty`, `begin`, `Over::Notice` (the box's default arrow), `Texts::no_maps`, the key `shell.scenario.no-maps`; `scn-begin-none` 7 of 7, `scn-begin-filter` 6 of 6 up to its load, `scn-empty-filter` 5 of 5 exact; log "M3 T2a, T2b", design §21.2, §21.3 |
 | T2c | The description's scroll bar (§3.5; design §18.1, §21.5; decision 50): `H3DlgScrollableText`'s path for a text longer than its box (0x5BA19E) read and built; no shipped map reaches it, so a map of the harness's own with a longer description (made from a shipped one) and a recipe of it; exact against that recipe | **done** 2026-11-17: `scenario::description` (`Description`, `DescriptionLook`, `[scenario.description]`), `h3_render::text::split_lines` (0x4B5B90), `h3_ui::scrollbar`'s keys (0x596230), `Scroll::Left`/`Right`; the kept map carried (`Menus::front`); the harness's `made` maps; `scn-long-text` 36 of 36 exact; CLT-Q140 asked; log "M3 T2c", design §22 |
-| T3 | The advanced options of a single player (§3.12 to §3.15): the rows, the town's, hero's and bonus's arrows, the handicap, the flags, the turn's duration, the popups and the hover; the choices into `GameSetup` (§3.9: `GameSetup::offer`, the faction choice), the bonus, the handicap and the timer drawn and chosen, each effect a `CLT-STUB` (decision 6); exact against `adv-single-town`, `adv-single-hero`, `adv-single-rest`, `adv-single-maps` (§6.4: `popup-hero-arrow` on row 2's arrow) | after T2 |
-| T4 | The advanced options in the hot seat (§3.14): two to eight humans, the flags' cycle, the names from the Multiplayer dialog (`Multiplayer::names`, M2's item 61); exact against `adv-hotseat`, `adv-hotseat-rows`, `adv-hotseat-two` | after T3 |
+| T3a | The advanced options' panel and rows, the town's and the bonus's arrows and popups (§3.12 to §3.15; decision 53: T3 cut in three by recipe): the panel, the headers, the duration's text and bar drawn; a row per colour that plays; the records (`GameSetup`'s choices at T6: `PlayerStart.choice`), the bonus a `CLT-STUB`; exact against `adv-single-town` | **done** 2026-11-18: `scenario::advanced` (`Advanced`, `AdvancedLook`, `AdvancedTexts`, `Record`, `Bonus`), `Scenario::records`, the layout's `[scenario.advanced]`, the seats' factions and flags, `h3_ui::scrollbar`'s horizontal draw, `CLT-STUB-9`; CLT-Q140 (b) built (decision 52); `adv-single-town` 27 of 27 exact, `adv-single-hero` and `adv-single-maps` exact but the hero's box; log "M3 T3a", design §23 |
+| T3b | The hero's arrows and popups and a main hero's portrait and name (§3.14, §3.15; the heroes' small portraits, `GameSetup::offer`'s pick, the clash stepped on); the computers' rows; exact against `adv-single-hero`, `adv-single-maps` | after T3a |
+| T3c | The flags' press and hover, the name's edit, the handicap (single: no press), the duration's bar's input and texts, the items' hints (§3.13 to §3.15; the handicap and the timer each a `CLT-STUB`, decision 6); exact against `adv-single-rest` (§6.4: `popup-hero-arrow` recorded again on row 2's arrow) | after T3b |
+| T4 | The advanced options in the hot seat (§3.14): two to eight humans, the flags' cycle, the names from the Multiplayer dialog (`Multiplayer::names`, M2's item 61); exact against `adv-hotseat`, `adv-hotseat-rows`, `adv-hotseat-two` | after T3c |
 | T5 | The random map's tab (§3.16; CLT-Q92: drawn, its generator a stub); exact against `adv-random` (§6.4: Begin after `tab-again`) | after T4 |
 | T6 | The game's begin (§3.17, §2.1; CLT-Q95, CLT-Q135): the setup built and validated by the engine (a refusal shown), the loading bar (`loadbar.pcx`, `loadprog.def`; the client's steps), the begin's notice (a `CLT-STUB`) and back to the menu, the setup kept for E24 M5 (the map-client lane's inbox); exact against `adv-begin` and `adv-hotseat-begin` up to the bar | after T5 |
 | T7 | M3's closure: a fresh reviewer, the review list, M4's refinement (M4 T0: the saves' record and its extension, decision 8; Options with the menu in play, CLT-Q136; the load and save modes with §6.4's recipes for them) | after T6 |
@@ -509,7 +521,14 @@ Begin's message a box of the screen's own (`Over::Notice`), its default arrow th
 (12) T2c: the description as one label of the lines shown (a highlight closed at a line's end),
 the fitting case through the split too; its bar drawn after the items; the key's step at once
 (the original's 60 ms with the arrow pressed not drawn); a description cut at 300 bytes (the
-record's next bytes not read); the harness's own maps by path in `--maps`.
+record's next bytes not read); the harness's own maps by path in `--maps`. (13) T3a: the
+advanced options' items made by the code from a row template (`[scenario.advanced]`, the DEFs'
+`{}` the colour's letter) and moved to their rows at each showing; what a row draws itself after
+the dialog's items, its items drawn again over its bar (the original's order); the screen handing
+the mouse a dialog without the options' hidden items (`mouse_dialog`) rather than the shared input
+passing over hidden items; the records kept in the screen (`Scenario::records`) for T6's
+`GameSetup`; the popups' pictures centred by the layout (`picture = [104, 60]`: 48-pixel
+pictures); the horizontal scroll bar drawn by symmetry (*provisional* until T3c's presses).
 
 ## Dependencies and boundaries
 

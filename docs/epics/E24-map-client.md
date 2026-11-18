@@ -182,7 +182,8 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   T2, a visit's results, cut in four by the user at its start (2026-11-17, by dialog family):
   T2a, the finds told (the box with pictures, the status window's kinds 6 and 7, the turn's two
   boxes T1a left), cut again at its start (the agreed fallback): T2a1, the reading and the
-  recordings (**done** 2026-11-17, the log's "M4 T2a1"), T2a2, the viewer; T2b, the questions and
+  recordings (**done** 2026-11-17, the log's "M4 T2a1"), T2a2, the viewer (**done** 2026-11-18,
+  whole: the user kept it uncut; the log's "M4 T2a2"); T2b, the questions and
   choices, T2c, a level-up's choice, T2d, the map changed
   by a visit; T3, a record's start (after the server lane's whole-game record
   and the adventure lane's object identity); T4, a record played; T5, the battles handed over
@@ -263,3 +264,20 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   adventure arrow's at the turn's end; the redraws missed caught up there before the next day's
   whole redraw (recorded, not read).
 
+- **M4 T2a2, a find's facts without the engine** (*provisional*; design §5.3, *Built*): a
+  sequence's finds take their facts from the map and the live part (the Windmill's, the Witch
+  Hut's and a Shrine's from the entrance words, the Stone's, the Axis's and the Temple's visits
+  from the marks, a known skill or spell from the contents, else not known); the Learning Stone's
+  1 000 from the tables (no Learning known); a Spell Book and Wisdom taken as present; the days
+  without a town −1 at 0; ArrayTxt 129 at one day left (not read); the selection's window built
+  again at the days left's close (recorded, not read); the crest's caption's first letter
+  upper-cased (PlColors' "red" shows "Red"; the loader not read). M4's Part B (T3, T4)
+  takes the facts from the engine's events instead.
+- **M4 T2a2, an object taken** (*provisional*): the pickup's sound `pickup01` to `pickup07` in
+  turn (the viewer's own draw, not the game's roll at 0x4A4D18; no frame shows it); a step onto a
+  pile or an artifact as recorded (the hero beside it, its points spent; a key's step only, a
+  path's walk onto one not built); an artifact picked up taken as worn, its primary skills from
+  the tables' `artifact_skills` (the packs' effects) for the hero's window; the event told once,
+  its scenario test after its boxes (guards and a text alone not built); kind 6's places from
+  `resour82.def`'s 82 × 93; the window uploads a dissolve's frame whole; the Magic Well from the
+  reading alone (its maximum without Intelligence, its points not on the panels).

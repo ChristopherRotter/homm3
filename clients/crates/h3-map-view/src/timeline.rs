@@ -46,6 +46,18 @@
 //! taking no time; kind 5 steps its sand and glass. Its end starts the next turn. The single draws
 //! of a step at speed 4 take no time either: the loop keeps them ([`Loop::take_held`]) for the
 //! window, which shows each on its own clock.
+//!
+//! The finds told (E24 M4 T2a2, design §5.3, *provisional*): a walk's end on the entrance of a
+//! find ([`Start::finds`], laid out by the adapter from `crate::finds`) opens its box in that
+//! millisecond, the input queue emptied; told again, the find's later box. The scenario's test at
+//! the viewer's turn's end (`scenario_condition_met` 0x4F2CE0): heroes but no town, the days
+//! without a town become the tables' count with its warning ([`Start::town`]), the turn's change
+//! going on at the box's close; counted down at each turn's end, they are told at each later
+//! human day's start. Part B: a key's step onto a pile or an artifact visits it from beside
+//! ([`Found::taken`]): a pile's kind 6 asked for the tables' time, an artifact's box; then the
+//! object taken off the map, the view's middle dissolved into the view without it in eight
+//! steps ([`Draw::dissolve`]), the map stopped meanwhile; an event's boxes one after another, the
+//! resources shown as their box opens.
 
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::format;
@@ -59,12 +71,13 @@ use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_ui::message::{self as boxes, Key, MessageBox, Open, Outcome};
 
+use crate::finds::{FindArt, Gain, pickup};
 use crate::hover::{self, Hint, Hover, PanelItems, Selection};
 use crate::layout::{AdventureLayout, DIRECTIONS};
 use crate::lists::{SLOTS, top_showing};
 use crate::live::{
-    Arrow, Buttons, Chosen, ChosenHero, ChosenTown, Date, DateStatus, Kingdom, KingdomStatus,
-    Selected, Status, Turn, TurnStatus,
+    Arrow, Buttons, Chosen, ChosenHero, ChosenTown, Date, DateStatus, FoundStatus, HeroStatus,
+    Kingdom, KingdomStatus, Selected, Stack, Status, Turn, TurnStatus,
 };
 use crate::minimap::{MinimapArt, divided};
 use crate::panels;
@@ -218,6 +231,15 @@ pub enum Action {
 }
 
 impl Action {
+    /// The mouse's point it gives (a move's, a click's, a press's, a release's).
+    #[must_use]
+    pub const fn point(self) -> Option<[i32; 2]> {
+        match self {
+            Self::Pointer(at) | Self::Click(at) | Self::Press(at) | Self::Release(at) => Some(at),
+            _ => None,
+        }
+    }
+
     /// The input messages it is (`input_key_message` 0x4EC0E0, `input_mouse_message` 0x4EC290;
     /// design §4.15): a click two, a button's down and up; everything else one (*provisional*: a
     /// scroll's Control key, its own down and up, is not counted).
@@ -457,6 +479,9 @@ pub struct Rules {
     pub other: OtherArt,
     /// The default cursor's frame a computer player's turn sets (E24 M4 T1b2).
     pub busy: u32,
+    /// The finds' numbers (E24 M4 T2a2 part B): kind 6's time, the dissolve's rectangle and step,
+    /// the pickup's sounds.
+    pub finds: FindArt,
 }
 
 impl Rules {
@@ -488,6 +513,7 @@ impl Rules {
             turn: tables.map.turn.clone(),
             other: tables.map.status.other,
             busy: layout.cursor.busy,
+            finds: tables.map.finds.clone(),
         }
     }
 
@@ -699,6 +725,51 @@ pub struct Start {
     pub turns: Vec<NextTurn>,
     /// A computer player's turn's options (E24 M4 T1b2).
     pub computer: Computer,
+    /// The finds a walk's end tells (E24 M4 T2a2, design §5.3; the adapter's, laid out), by
+    /// their entrance tiles.
+    pub finds: Vec<Found>,
+    /// The viewer's boxes of a turn without a town (E24 M4 T2a2); none: the scenario's test is
+    /// not played.
+    pub town: Option<TownBoxes>,
+}
+
+/// A find's boxes (E24 M4 T2a2, design §5.3, *provisional*: the viewer's facts at 0,
+/// `crate::finds::Find`): its entrance tile, the first visit's boxes and every later one's (the
+/// find as the visit leaves it, [`crate::finds::Find::visited`]), what the panels show, and for
+/// part B a pile's kind 6, the object taken and the scenario's test after an event.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Found {
+    /// The entrance tile a walk ends on, or a key's step visits from beside ([`Found::taken`]).
+    pub at: Pos,
+    /// The first visit's boxes, one after another, each with what the panels show as it opens
+    /// (an event's resources); none: a pile's.
+    pub first: Vec<(Arc<MessageBox>, Gain)>,
+    /// A later visit's; none: nothing told again (an object taken, an event removed).
+    pub again: Option<Arc<MessageBox>>,
+    /// What the first visit gives that the panels show, at its last box's close (a pile's at
+    /// once).
+    pub gain: Gain,
+    /// Kind 6 the visit asks (a pile's, `status_resource_set` 0x416060).
+    pub found: Option<FoundStatus>,
+    /// The object the visit takes off the map (its index in the map's order): a pile's, an
+    /// artifact's, which block their tile; a key's step onto it leaves the hero beside it.
+    pub taken: Option<usize>,
+    /// An event (`event_fire` 0x4A0ED0, fired inside the step onto its tile): its boxes before
+    /// the step's end draws the hero's slot (recorded, `find-event`: the movement bar's points at
+    /// 2260), the scenario's test after them (*provisional*: its place not read).
+    pub event: bool,
+}
+
+/// The viewer's boxes of a turn without a town (E24 M4 T2a2, design §5.3): the warning at its
+/// turn's end (GENRLTXT 7, [`crate::finds::town_lost`]) and the days left at each later day's
+/// start ([`crate::finds::days_left`]), `left[d - 1]` the box of `d` days, as many as the tables'
+/// `[map.turn]` `town_days`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TownBoxes {
+    /// The warning.
+    pub lost: Arc<MessageBox>,
+    /// The days left's.
+    pub left: Vec<Arc<MessageBox>>,
 }
 
 /// A computer player's turn's options (E24 M4 T1b2, design §5.2): Computer Walk Speed
@@ -854,6 +925,26 @@ pub struct Draw {
     /// The map's heroes on their tiles and facings ([`Start::heroes`]; the selected one's as it
     /// stood when last chosen away from: [`Draw::hero`] gives it): E24 M4 T1b2, a computer's moves.
     pub heroes: Arc<Vec<Hero>>,
+    /// The objects taken off the map (E24 M4 T2a2 part B: a pile, an artifact), by their index in
+    /// the map's order, in order: the view draws without them (the level's index built again).
+    pub gone: Arc<Vec<usize>>,
+    /// A dissolve's step shown (E24 M4 T2a2 part B, design §5.3): over this draw, its rectangle
+    /// the picture before blended towards this one.
+    pub dissolve: Option<Dissolve>,
+}
+
+/// A dissolve's step (`screen_dissolve` 0x602DC0; E17 design §7.25, E24 design §5.3): the
+/// screen as the draw before showed it, its rectangle (left, top, right, bottom) `step` eighths
+/// of the way to the draw's (`h3_render::Screen::dissolve_rect`); the rest of the screen the one
+/// before's.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Dissolve {
+    /// What the screen showed before (no dissolve of its own).
+    pub before: Arc<Draw>,
+    /// The rectangle.
+    pub rect: [i64; 4],
+    /// The step, 0 (the picture before) to 7.
+    pub step: u8,
 }
 
 /// The state after a millisecond.
@@ -1015,8 +1106,21 @@ pub struct Loop {
     /// The turns' starts ([`Start::turns`]) and the next one's place among them.
     turns: Arc<Vec<NextTurn>>,
     next_turn: usize,
-    /// The message box open over the map (E24 M4 T1a).
+    /// The message box open over the map (E24 M4 T1a), and the boxes waiting to open as it closes
+    /// (E24 M4 T2a2: the days left's, then the week's).
     boxed: Option<Boxed>,
+    waiting: VecDeque<(Arc<MessageBox>, Told)>,
+    /// The finds ([`Start::finds`]) and those told once, by their place among them.
+    finds: Arc<Vec<Found>>,
+    told: Vec<usize>,
+    /// The viewer's boxes of a turn without a town ([`Start::town`]) and its days without a town
+    /// (the player's +0x3D: −1 not counting, *provisional*: a new game's at 0).
+    town: Option<Arc<TownBoxes>>,
+    days: i32,
+    /// Kind 6's window a pile's visit asked (E24 M4 T2a2 part B: the chooser's kind 6 builds it).
+    found: Option<FoundStatus>,
+    /// An object's dissolve under way (E24 M4 T2a2 part B): the map stopped until its end.
+    dissolving: Option<Dissolving>,
     /// The input queue emptied (`input_flush` 0x4EC570: a box's opening, a human's turn's
     /// start): the actions after this one in its millisecond are dropped.
     flush: bool,
@@ -1074,12 +1178,66 @@ struct Choice {
 /// button it holds, the cursor before it (restored at its end).
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Boxed {
-    /// End Turn's question (its OK ends the turn), else the week's or the month's message (the
-    /// date's window steps behind it: the dialog's +0x6C).
-    question: bool,
+    /// What the box is.
+    told: Told,
     open: Open,
     /// The cursor's type and frame before the box.
     cursor: [u32; 2],
+}
+
+/// An object's dissolve under way (E24 M4 T2a2 part B, design §5.3): its start, the draw before
+/// it and the actions given meanwhile (taken after it as a walk's are).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Dissolving {
+    start: u32,
+    before: Arc<Draw>,
+    queued: Vec<Action>,
+    /// What the panels show at its end (an artifact's primary skills: `find-artifact`'s Attack at
+    /// 1580, the hero's window built again by the step's end).
+    gain: Gain,
+}
+
+/// A dissolve's steps (`screen_dissolve` 0x602DC0: eight, the blend's eighths).
+const DISSOLVE_STEPS: u32 = 8;
+
+/// Kind 6, a resource found (the status window's kind a pile's visit asks).
+const KIND_FOUND: u8 = 6;
+
+/// A creature `stack` joining `army`: the slot of its kind, else the first empty one; none with
+/// no room (*provisional*: `army_dialog_with` not built).
+fn joined(army: &mut [Option<Stack>; 7], stack: Stack) {
+    let slot = army
+        .iter()
+        .position(|s| s.is_some_and(|s| s.creature == stack.creature))
+        .or_else(|| army.iter().position(Option::is_none));
+    if let Some(slot) = slot.and_then(|i| army.get_mut(i)) {
+        match slot {
+            Some(have) => have.count = have.count.saturating_add(stack.count),
+            None => *slot = Some(stack),
+        }
+    }
+}
+
+/// What an open box is, which says what its close does (E24 M4 T2a2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Told {
+    /// End Turn's question: its OK ends the turn.
+    Question,
+    /// The week's or the month's message: the date's window steps behind it (the dialog's +0x6C).
+    Week,
+    /// The scenario's warning at the turn's end (GENRLTXT 7): its close goes on with the turn's
+    /// change.
+    Warning,
+    /// A find's first visit's box (the find's place among [`Start::finds`], the box's among its
+    /// first ones): its close opens the next with what it shows, after the last shows the gain,
+    /// takes the object or tests the scenario, then the idle step.
+    Found(usize, usize),
+    /// The days left to take a town: at its close the turn's selection's window built again
+    /// (*provisional*: `turn-no-town` at 2060 shows the date's window unstepped, as `hero_select`
+    /// after the box would build it; not read), then the idle step.
+    DaysLeft,
+    /// Any other (a find told again): its close goes to the idle step.
+    Plain,
 }
 
 impl Loop {
@@ -1153,6 +1311,8 @@ impl Loop {
                 message: None,
                 computer: false,
                 heroes: Arc::new(start.heroes.clone()),
+                gone: Arc::new(Vec::new()),
+                dissolve: None,
             },
             hero: start.hero,
             lifted: false,
@@ -1206,6 +1366,13 @@ impl Loop {
             turns: Arc::new(start.turns.clone()),
             next_turn: 0,
             boxed: None,
+            waiting: VecDeque::new(),
+            finds: Arc::new(start.finds.clone()),
+            told: Vec::new(),
+            town: start.town.clone().map(Arc::new),
+            days: -1,
+            found: None,
+            dissolving: None,
             flush: false,
             computer_pixels,
             blackout: start.computer.blackout,
@@ -1327,21 +1494,26 @@ impl Loop {
         self.within.clear();
         // The loop's turn and a walk's wait alike run the tick (0x4ED490: the poll, the palettes).
         self.tick(t);
-        // A computer player's turn (E24 M4 T1b2): its walk's waits; at its end the next turn, then
-        // the manager's next message (the redraws due since run then).
-        match self.ai_on(t)? {
-            Some(true) => self.idle_message(t),
-            Some(false) => {}
-            None => match self.moving.take() {
-                Some(moving) => {
-                    if let Some(queued) = self.carry_on(t, moving) {
-                        self.resume(t, queued)?;
-                    }
-                }
-                None => self.idle_message(t),
-            },
+        // An object's dissolve (E24 M4 T2a2 part B): the map stopped until its end, then the
+        // step's end, the actions given meanwhile and the idle step.
+        if self.dissolving.is_some() {
+            if self.dissolve_step(t)
+                && let Some(dissolving) = self.dissolving.take()
+            {
+                self.gain(dissolving.gain);
+                self.finish(t, true);
+                self.resume(t, dissolving.queued)?;
+            }
+        } else {
+            self.turn_of_loop(t)?;
         }
         for &action in actions {
+            if let Some(dissolving) = &mut self.dissolving {
+                // The mouse's point is read at once; the message waits as during a walk.
+                self.pointer = action.point().unwrap_or(self.pointer);
+                dissolving.queued.push(action);
+                continue;
+            }
             if self.ai.is_some() {
                 // During a computer's turn the messages wait in the queue, which the next human's
                 // start empties (*provisional*); the mouse's point is read at once.
@@ -1383,6 +1555,25 @@ impl Loop {
         Ok(())
     }
 
+    /// The loop's turn at `t` outside a dissolve: a computer player's turn (E24 M4 T1b2: its walk's
+    /// waits; at its end the next turn, then the manager's next message, the redraws due since run
+    /// then), a walk's wait or its end, else the idle message.
+    fn turn_of_loop(&mut self, t: u32) -> Result<(), Unplayable> {
+        match self.ai_on(t)? {
+            Some(true) => self.idle_message(t),
+            Some(false) => {}
+            None => match self.moving.take() {
+                Some(moving) => {
+                    if let Some(queued) = self.carry_on(t, moving) {
+                        self.resume(t, queued)?;
+                    }
+                }
+                None => self.idle_message(t),
+            },
+        }
+        Ok(())
+    }
+
     /// The client's fix of MCL-Q22 (the user, 2026-10-31; [`Bugs::Fixed`]): after a redraw of
     /// every dialog item ([`Loop::draw_lists`]) the status bar shows the hint of the mouse's item
     /// again, where the original's chat edit leaves it empty until another item's hint. Off the
@@ -1408,7 +1599,11 @@ impl Loop {
     /// (0x50D680: the cursor drawn where it reads the mouse), the palettes' step when due.
     fn tick(&mut self, t: u32) {
         if t >= self.palette_at {
-            self.ticks = self.ticks.saturating_add(1);
+            // A dissolve holds the cycling: the deadline moves on, the palettes stay (E24 M4
+            // T2a2 part B: `find-pile`'s due 200 at 165, 400 at 230, its cycles 0 to 800).
+            if self.dissolving.is_none() {
+                self.ticks = self.ticks.saturating_add(1);
+            }
             self.palette_at = t.saturating_add(self.rules.cycle_ms);
         }
         if t >= self.poll_at {
@@ -1727,10 +1922,35 @@ impl Loop {
             let Some(question) = self.question.clone() else {
                 return self.unbuilt(Unplayable::Command(panels::id::END_TURN));
             };
-            self.open_box(question, true);
+            self.open_box(question, Told::Question);
             return Ok(());
         }
         self.turn_change(t)
+    }
+
+    /// The scenario's test of the viewer's turn's end (`scenario_condition_met` 0x4F2CE0 from
+    /// `next_player_turn`; E24 M4 T2a2, design §5.3): with heroes but no town, the days without a
+    /// town not counting become the tables' count and the warning's box is given; none without
+    /// [`Start::town`].
+    ///
+    /// # Errors
+    /// The days down to their last (their end at the next day's start: the player's elimination,
+    /// not built).
+    fn town_test(&mut self) -> Result<Option<Arc<MessageBox>>, Unplayable> {
+        let Some(town) = &self.town else {
+            return Ok(None);
+        };
+        if !self.kingdom.towns.is_empty() || self.kingdom.heroes.is_empty() {
+            return Ok(None);
+        }
+        match self.days {
+            -1 => {
+                self.days = i32::from(self.rules.turn.town_days);
+                Ok(Some(town.lost.clone()))
+            }
+            ..=1 => Err(Unplayable::Command(panels::id::END_TURN)),
+            _ => Ok(None),
+        }
     }
 
     /// The turn's change (`next_player_turn` 0x4C6FE0, `player_turn_start` 0x4CC7D0; design
@@ -1739,6 +1959,16 @@ impl Loop {
     /// end ([`Loop::turn_end`]), then a computer player's turn in sight when the facts give one
     /// (E24 M4 T1b2: [`Loop::computer_start`]), else the next day ([`Loop::day_start`]).
     fn turn_change(&mut self, t: u32) -> Result<(), Unplayable> {
+        // The scenario's tests first (E24 M4 T2a2): a warning's box, the change at its close.
+        if let Some(warning) = self.town_test()? {
+            self.open_box(warning, Told::Warning);
+            return Ok(());
+        }
+        self.turn_proceed(t)
+    }
+
+    /// The turn's change after the scenario's tests ([`Loop::turn_change`]).
+    fn turn_proceed(&mut self, t: u32) -> Result<(), Unplayable> {
         let refused = Unplayable::Command(panels::id::END_TURN);
         let Some(next) = self.turns.get(self.next_turn).cloned() else {
             return self.unbuilt(refused);
@@ -1765,6 +1995,10 @@ impl Loop {
     /// without a step (*provisional*: recorded, `turn-question` at 1060, not read; E24 M4 T1b2:
     /// here, before a computer's turn in sight, whose end then redraws for each step it missed).
     fn turn_end(&mut self, t: u32) -> Ended {
+        // The days without a town counted down (`next_player_turn`: +0x3D above 0; E24 M4 T2a2).
+        if self.days > 0 {
+            self.days -= 1;
+        }
         self.keep_path();
         let shown = |s: &Status| matches!(s, Status::Hero(_) | Status::Town(_));
         let window = self
@@ -1884,14 +2118,29 @@ impl Loop {
             }
         }
         self.buttons.next_hero = self.kingdom.next_hero();
+        // The days left to take a town (E24 M4 T2a2, design §5.3: the player's +0x3D at 0 or more;
+        // recorded over the day's whole redraw, `turn-no-town` at 1060), then the week's message.
+        let mut boxes = Vec::new();
+        if let Some(town) = &self.town
+            && let Some(left) = usize::try_from(self.days - 1)
+                .ok()
+                .and_then(|d| town.left.get(d))
+        {
+            boxes.push((left.clone(), Told::DaysLeft));
+        }
         let date = self.kingdom.date;
         if turn::starts_week(date) {
             if let Some(sound) = &mut self.sound {
                 sound.effect(t, turn::sound(&self.rules.turn, date));
             }
             if let Some(message) = message {
-                self.open_box(message, false);
+                boxes.push((message, Told::Week));
             }
+        }
+        let mut boxes = boxes.into_iter();
+        if let Some((first, told)) = boxes.next() {
+            self.open_box(first, told);
+            self.waiting.extend(boxes);
         }
     }
 
@@ -2175,11 +2424,11 @@ impl Loop {
     /// at the mouse (`mouse_set_cursor(0, 0)` at 0x4F74AC), the box drawn and shown over the map,
     /// the input queue emptied as it opens; `question` End Turn's (its OK ends the turn), else the
     /// week's (the date's window stepping behind it).
-    fn open_box(&mut self, message: Arc<MessageBox>, question: bool) {
+    fn open_box(&mut self, message: Arc<MessageBox>, told: Told) {
         let cursor = [self.cursor.kind, self.cursor.frame];
         self.set_cursor(DEFAULT_CURSOR, 0);
         self.boxed = Some(Boxed {
-            question,
+            told,
             open: Open::new((*message).clone()),
             cursor,
         });
@@ -2202,7 +2451,7 @@ impl Loop {
         let steps = self
             .boxed
             .as_ref()
-            .is_some_and(|b| !b.question && !b.open.holds_mouse());
+            .is_some_and(|b| b.told == Told::Week && !b.open.holds_mouse());
         if let (true, Some(Status::Date(date))) = (steps, self.kingdom.status.clone())
             && let Some(status) = self.date_window(t, Some(date))
         {
@@ -2275,11 +2524,258 @@ impl Loop {
         self.drawn.message = None;
         let [kind, frame] = boxed.cursor;
         self.set_cursor(kind, frame);
-        if boxed.question && id == boxes::YES {
-            return self.turn_change(t);
+        match boxed.told {
+            Told::Found(i, k) => return self.found_closed(t, i, k),
+            Told::DaysLeft => self.choose(t, true),
+            _ => {}
+        }
+        // A box waiting opens in this millisecond (E24 M4 T2a2).
+        if let Some((next, told)) = self.waiting.pop_front() {
+            self.open_box(next, told);
+            return Ok(());
+        }
+        match (boxed.told, id) {
+            (Told::Question, boxes::YES) => self.turn_change(t),
+            (Told::Warning, _) => self.turn_proceed(t),
+            _ => {
+                self.idle_message(t);
+                Ok(())
+            }
+        }
+    }
+
+    /// A find's first visit's box `k` closed (E24 M4 T2a2): the next opens in that millisecond,
+    /// what it shows shown first (an event's resources: `find-event`'s gold at 1060); after the
+    /// last the object taken (an artifact's: its dissolve, the gain shown at its end), else the
+    /// gain shown, then the scenario's test (an event's: its warning a box of its own) or the
+    /// idle step.
+    fn found_closed(&mut self, t: u32, i: usize, k: usize) -> Result<(), Unplayable> {
+        let found = Arc::clone(&self.finds);
+        let Some(found) = found.get(i) else {
+            self.idle_message(t);
+            return Ok(());
+        };
+        if let Some((next, shows)) = found.first.get(k + 1) {
+            self.gain(*shows);
+            self.open_box(Arc::clone(next), Told::Found(i, k + 1));
+            return Ok(());
+        }
+        if let Some(object) = found.taken {
+            self.take(t, object, found.gain);
+            return Ok(());
+        }
+        self.gain(found.gain);
+        if found.event {
+            self.draw_slot();
+        }
+        if found.event
+            && let Some(warning) = self.town_test()?
+        {
+            self.open_box(warning, Told::Plain);
+            return Ok(());
         }
         self.idle_message(t);
         Ok(())
+    }
+
+    /// A find on the tile a walk ends on told (E24 M4 T2a2, design §5.3: the step and its box in
+    /// one millisecond, recorded): its first boxes, told again its later one; whether one opened.
+    /// A find taken from beside ([`Found::taken`]) is a key's step's ([`Loop::visit_beside`]).
+    fn tell_find(&mut self) -> bool {
+        let Some(at) = self.hero.map(|h| h.at) else {
+            return false;
+        };
+        let Some(i) = self
+            .finds
+            .iter()
+            .position(|f| f.at == at && f.taken.is_none())
+        else {
+            return false;
+        };
+        let found = Arc::clone(&self.finds);
+        let found = &found[i];
+        let opened = if self.told.contains(&i) {
+            found
+                .again
+                .clone()
+                .map(|again| self.open_box(again, Told::Plain))
+        } else {
+            self.told.push(i);
+            found.first.first().map(|(first, shows)| {
+                self.gain(*shows);
+                self.open_box(Arc::clone(first), Told::Found(i, 0));
+            })
+        };
+        opened.is_some()
+    }
+
+    /// Whether the selected hero stands on an event not told yet (E24 M4 T2a2 part B).
+    fn event_due(&self) -> bool {
+        let at = self.hero.map(|h| h.at);
+        self.finds
+            .iter()
+            .enumerate()
+            .any(|(i, f)| f.event && Some(f.at) == at && !self.told.contains(&i))
+    }
+
+    /// The find a key's step onto `at` visits from beside (E24 M4 T2a2 part B): one whose object
+    /// the visit takes, not taken yet; its place among the finds and the object.
+    fn beside(&self, at: Pos) -> Option<(usize, usize)> {
+        self.finds.iter().enumerate().find_map(|(i, f)| {
+            f.taken
+                .filter(|o| f.at == at && !self.drawn.gone.contains(o))
+                .map(|o| (i, o))
+        })
+    }
+
+    /// A key's step onto a pile or an artifact (E24 M4 T2a2 part B, design §5.3; recorded,
+    /// `find-pile`, `find-artifact`; *provisional*: `hero_move_step` 0x4805E0's blocked visit not
+    /// read): the mouse hidden, the hero lifted (the view centred on it and drawn) and turned that
+    /// way but left on its tile, its points spent, its slot and the minimap drawn; then the visit
+    /// (`visit_resource_pile` 0x4A4BE0, `visit_artifact` 0x49F7E0): a pile's resources shown on
+    /// the resource bar and its kind 6 asked, chosen and drawn, then the pile taken; an
+    /// artifact's box (the mouse shown over it), the artifact taken at its close. The step's end
+    /// ([`Loop::finish`]) comes after the dissolve.
+    fn visit_beside(&mut self, t: u32, direction: Direction, (i, object): (usize, usize)) {
+        self.cursor.shown = false;
+        self.walked = true;
+        if !self.lifted {
+            self.lift(t, true);
+            self.draw(t);
+        }
+        self.hero = self.hero.map(|hero| Hero {
+            facing: direction,
+            ..hero
+        });
+        self.stand();
+        self.spend(t);
+        self.draw_minimap();
+        self.draw_slot();
+        self.told.push(i);
+        let finds = Arc::clone(&self.finds);
+        let found = &finds[i];
+        if let Some((first, shows)) = found.first.first() {
+            self.gain(*shows);
+            self.cursor.shown = true;
+            self.open_box(Arc::clone(first), Told::Found(i, 0));
+            return;
+        }
+        self.gain(found.gain);
+        if let Some(status) = &found.found {
+            // Kind 6 asked until the tables' time from now, the chooser at once (1, 1, 1).
+            self.found = Some(status.clone());
+            self.asked = KIND_FOUND;
+            self.end = t.saturating_add(self.rules.finds.found_ms);
+            self.choose(t, true);
+        }
+        self.take(t, object, Gain::default());
+    }
+
+    /// The object `object` taken off the map (`remove_map_object` 0x4AABB0 between the view's
+    /// draws of `visit_resource_pile` 0x4A4BE0 and `artifact_pickup_remove` 0x49E170; design
+    /// §5.3): the palettes' cycling held, the view drawn and shown with it, the object removed,
+    /// the pickup's sound (the viewer's own, [`pickup`]), the mouse hidden, the view drawn without
+    /// it and the tables' rectangle dissolved into that in eight steps from now
+    /// ([`Loop::dissolve_step`]), `gain` shown at its end.
+    fn take(&mut self, t: u32, object: usize, gain: Gain) {
+        self.draw(t);
+        let before = Arc::new(self.drawn.clone());
+        let taken = self.drawn.gone.len();
+        let gone = Arc::make_mut(&mut self.drawn.gone);
+        gone.push(object);
+        gone.sort_unstable();
+        gone.dedup();
+        if let (Some(sound), Some(name)) = (&mut self.sound, pickup(&self.rules.finds, taken)) {
+            sound.effect(t, name);
+        }
+        self.cursor.shown = false;
+        self.dissolving = Some(Dissolving {
+            start: t,
+            before,
+            queued: Vec::new(),
+            gain,
+        });
+        self.dissolve_step(t);
+    }
+
+    /// A dissolve's turn at `t` (`screen_dissolve` 0x602DC0; E17 design §7.25): step k shown at
+    /// the start plus k times the tables' step (0 the picture before, 7 the last before the
+    /// view without the object); eight steps on, the view without it shown, the mouse shown, the
+    /// step's end ([`Loop::finish`]) and the actions given meanwhile, then the idle step. Whether
+    /// the dissolve is over.
+    fn dissolve_step(&mut self, t: u32) -> bool {
+        let Some(dissolving) = &self.dissolving else {
+            return true;
+        };
+        let since = t.saturating_sub(dissolving.start);
+        let step_ms = self.rules.finds.dissolve_ms.max(1);
+        if since >= step_ms.saturating_mul(DISSOLVE_STEPS) {
+            self.drawn.dissolve = None;
+            return true;
+        }
+        if since % step_ms == 0 {
+            let [x, y, w, h] = self.rules.finds.dissolve.map(i64::from);
+            self.drawn.dissolve = Some(Dissolve {
+                before: Arc::clone(&dissolving.before),
+                rect: [x, y, x + w, y + h],
+                step: u8::try_from(since / step_ms).unwrap_or(0),
+            });
+        }
+        false
+    }
+
+    /// A find's gain shown (E24 M4 T2a2, *provisional*: the engine's in time): the kingdom's
+    /// resources, the resource bar drawn; the selected hero's primary skills, morale (−3 to 3; the
+    /// week's seventh day's on that day) and luck (−3 to 3) in its windows and its army's new
+    /// creatures (each the slot of its kind, else the first empty one; none with no room), its
+    /// spell points in the kingdom's list, the window shown drawn.
+    fn gain(&mut self, gain: Gain) {
+        if gain.resources != [0; 7] {
+            for (have, more) in self.kingdom.resources.iter_mut().zip(gain.resources) {
+                *have = have.saturating_add(more);
+            }
+            Arc::make_mut(&mut self.drawn.kingdom).resources = self.kingdom.resources;
+        }
+        if gain.mana != 0
+            && let Some(i) = self.selected_hero()
+            && let Some(hero) = self.kingdom.heroes.get_mut(i)
+        {
+            hero.mana = hero.mana.saturating_add(gain.mana);
+            let mana = hero.mana;
+            if let Some(drawn) = Arc::make_mut(&mut self.drawn.kingdom).heroes.get_mut(i) {
+                drawn.mana = mana;
+            }
+        }
+        let morale = gain.morale[usize::from(self.kingdom.date.day == 7)];
+        let army = gain.army.iter().flatten().count() > 0;
+        if gain.skills == [0; 4] && morale == 0 && gain.luck == 0 && !army {
+            return;
+        }
+        let raise = |hero: &mut HeroStatus| {
+            for (skill, more) in hero.skills.iter_mut().zip(gain.skills) {
+                *skill = skill.saturating_add(more);
+            }
+            hero.morale = hero.morale.saturating_add(morale).clamp(-3, 3);
+            hero.luck = hero.luck.saturating_add(gain.luck).clamp(-3, 3);
+            for stack in gain.army.iter().flatten() {
+                joined(&mut hero.army, *stack);
+            }
+        };
+        let kingdom = &mut self.kingdom;
+        for status in [&mut kingdom.status, &mut kingdom.selection] {
+            if let Some(Status::Hero(hero)) = status {
+                raise(hero);
+            }
+        }
+        if let Some(Some(chosen)) = self
+            .selected_hero()
+            .and_then(|i| self.chosen.heroes.get_mut(i))
+        {
+            raise(&mut chosen.status);
+        }
+        Arc::make_mut(&mut self.drawn.kingdom)
+            .status
+            .clone_from(&self.kingdom.status);
     }
 
     /// The underground's command (`adventure_command` 0x409F6B; E24 M3 T6b2, design §4.14): on
@@ -2805,6 +3301,11 @@ impl Loop {
             self.draw(t);
             self.step_objects(t);
         }
+        // A pile or an artifact visited from beside (E24 M4 T2a2 part B).
+        if let Some(found) = self.beside(next) {
+            self.visit_beside(t, direction, found);
+            return;
+        }
         self.walk_off(t, true, direction, next, VecDeque::new());
     }
 
@@ -2972,8 +3473,11 @@ impl Loop {
             // draws the minimap first, shown at once (0x4800A5).
             self.draw_minimap();
             // Back from the step, its hero's slot drawn and shown (`hero_list_slot` with -1, 1, 1:
-            // the path's 0x407EEF, a key's 0x409069).
-            self.draw_slot();
+            // the path's 0x407EEF, a key's 0x409069): after an event's boxes on the last tile
+            // (E24 M4 T2a2 part B, [`Found::event`]).
+            if !(moving.last && self.event_due()) {
+                self.draw_slot();
+            }
             if !moving.key {
                 // The messages' kinds 1, 8, 0x20 and 0x200 end the walk (0x407FA7): a key-down,
                 // Ctrl's too (M2 T6a, the reviewer's R1-1), a hotkey's and Space's (E24 M3 T6b3),
@@ -2997,6 +3501,10 @@ impl Loop {
             }
             let Some((direction, next)) = moving.rest.pop_front() else {
                 self.finish(t, moving.key);
+                // A find on its last tile told (E24 M4 T2a2): its box empties the queue.
+                if self.tell_find() {
+                    moving.queued.clear();
+                }
                 return Some(moving.queued);
             };
             moving.direction = direction;
@@ -3260,13 +3768,15 @@ impl Loop {
             } else {
                 Arc::new(self.heroes.clone())
             },
+            gone: Arc::clone(&self.drawn.gone),
+            dissolve: None,
         };
         self.choose(t, false);
     }
 
     /// The status window chosen (`status_window_choose` 0x415DE0; design §4.8, §4.9): a kind
     /// asked whose end has come back to the selection's (0); then the kind asked built (1 the
-    /// date's, 2 the kingdom's) or for 0 the selection's window (the hero's, else the town's, else
+    /// date's, 2 the kingdom's, 6 a pile's: E24 M4 T2a2) or for 0 the selection's window (the hero's, else the town's, else
     /// the date's), drawn and shown at once. Without `force` (a view's draw, 0x40F861) the kind
     /// shown builds nothing, but the date's steps its frame ([`Loop::date_window`]); with it (a
     /// hero's selection 0x41800B, a key's step 0x4090FE) the window is built again. A window the
@@ -3293,6 +3803,11 @@ impl Loop {
             (1, _, _) | (0, Selected::None, _) => None,
             (2, _, _) => match &self.realm {
                 Some(realm) => Some(builds(2).then(|| Status::Kingdom(realm.clone()))),
+                None => return,
+            },
+            // A pile's kind 6 (E24 M4 T2a2 part B).
+            (KIND_FOUND, _, _) => match &self.found {
+                Some(found) => Some(builds(KIND_FOUND).then(|| Status::Found(found.clone()))),
                 None => return,
             },
             (0, Selected::Hero(_), Some(s @ Status::Hero(_)))

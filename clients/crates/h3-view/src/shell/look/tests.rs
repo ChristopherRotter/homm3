@@ -168,6 +168,7 @@ fn the_shell_s_assets_are_named_once() {
             "GSelPop1.pcx",
             "SCSelBck.pcx",
             "medfont.fnt",
+            "AdvOptBk.pcx",
             "scnrmpsz.def",
             "itgflags.def",
             "scsmbut.def",
@@ -196,6 +197,41 @@ fn the_shell_s_assets_are_named_once() {
             "sliderV.pcx",
             "diboxbck.pcx",
             "dialgbox.def",
+            "AOFLGBr.DEF",
+            "adopb2r.def",
+            "adoprpnl.pcx",
+            "AOFLGBb.DEF",
+            "adopb2b.def",
+            "adopbpnl.pcx",
+            "AOFLGBy.DEF",
+            "adopb2y.def",
+            "adopypnl.pcx",
+            "AOFLGBg.DEF",
+            "adopb2g.def",
+            "adopgpnl.pcx",
+            "AOFLGBo.DEF",
+            "adopb2o.def",
+            "adopopnl.pcx",
+            "AOFLGBp.DEF",
+            "adopb2p.def",
+            "adopppnl.pcx",
+            "AOFLGBt.DEF",
+            "adopb2t.def",
+            "adoptpnl.pcx",
+            "AOFLGBs.DEF",
+            "adopb2s.def",
+            "adopspnl.pcx",
+            "adoplfa.def",
+            "adoprta.def",
+            "itpa.def",
+            "hpsrand0.pcx",
+            "hpsrand1.pcx",
+            "hpsrand6.pcx",
+            "ScnrStar.def",
+            "tiny.fnt",
+            "SlideBuH.def",
+            "slider.pcx",
+            "cprsmall.def",
             "Box64x30.pcx",
             "iOkay.def",
             "iCancel.def",
@@ -205,7 +241,7 @@ fn the_shell_s_assets_are_named_once() {
     // A name given twice in another case is kept once.
     let mut twice = layout;
     twice.cursor.def = String::from("MMENUNG.DEF");
-    assert_eq!(names(&twice).len(), 65);
+    assert_eq!(names(&twice).len(), 101);
 }
 
 #[test]

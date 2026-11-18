@@ -26,6 +26,7 @@ fn art() -> TurnArt {
         week: "newweek.wav".to_string(),
         month: "newmonth.wav".to_string(),
         deity: [42, 43],
+        town_days: 7,
     }
 }
 
@@ -121,6 +122,7 @@ fn the_tables_section_reads_from_toml() {
         week = "newweek.wav"
         month = "newmonth.wav"
         deity = [42, 43]
+        town_days = 7
         "#,
     )
     .unwrap();
