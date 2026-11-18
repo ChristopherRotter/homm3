@@ -71,6 +71,7 @@ use core::cmp::Ordering;
 
 use h3_assets::fnt::Font;
 use h3_render::Bugs;
+use h3_ui::edit::Scan;
 use h3_ui::input::Input;
 use h3_ui::scrollbar::{self, Scrollbar};
 use h3_ui::ui::{Def, Dialog, Draw, Label, Shown, State};
@@ -633,6 +634,9 @@ pub struct Scenario {
     filter: u32,
     /// The row the mouse pressed, until its release.
     row: Option<u16>,
+    /// The advanced options' name the mouse pressed (a text item: its click at the release; E27 M3
+    /// T3c1), until its release.
+    name: Option<u16>,
     /// The mouse, as last moved or pressed.
     pointer: [i32; 2],
     /// The original's profile: the last redraw was the partial one (`scenario_select` 0x585500
@@ -640,6 +644,10 @@ pub struct Scenario {
     /// it (its state and frame): CLT-Q138.
     partial: bool,
     drawn_size: (State, u32),
+    /// The original's profile: a flag's press restored the flags' strip and no whole redraw
+    /// followed (`scenario_team_flags` 0x585300, then `scenario_dialog_redraw` alone: CLT-Q138's
+    /// colon; E27 M3 T3c1).
+    strip: bool,
     /// The shell's clock (ms) and the last row press's time with its entry in the shown list
     /// (+0x60; none for the screen's opening).
     now: u32,
@@ -719,9 +727,11 @@ impl Scenario {
             descending: false,
             filter: 0,
             row: None,
+            name: None,
             pointer: [0, 0],
             partial: false,
             drawn_size: (State::default(), 0),
+            strip: false,
             now: 0,
             last_row: None,
             kept: String::from(KEPT_MAP),
@@ -1003,13 +1013,25 @@ impl Scenario {
         true
     }
 
-    /// An advanced option's arrow `id` clicked (E27 M3 T3a): its row drawn again; whether it was
-    /// one.
+    /// An advanced option's arrow `id` clicked (E27 M3 T3a): its row drawn again; a flag (T3c1:
+    /// `scenario_flag_click` 0x58B790, then `scenario_team_flags` with its redraw flag and
+    /// `scenario_dialog_redraw`, 0x5870EE: the items not drawn again, so in the original's profile
+    /// the strip stays restored, CLT-Q138). Whether it was one.
     fn advanced_click(&mut self, id: u16) -> bool {
         let map = self.players();
-        self.advanced
-            .as_mut()
-            .is_some_and(|a| a.click(id, &map, &mut self.shown))
+        let Some(advanced) = self.advanced.as_mut().filter(|a| a.showing()) else {
+            return false;
+        };
+        if (advanced::FLAG..advanced::FLAG + 8).contains(&id) {
+            let c = u8::try_from(id - advanced::FLAG).unwrap_or(0);
+            advanced.flag_click(c, &map, &mut self.shown);
+            if let Some(entry) = self.entry().or(self.game.as_ref()).cloned() {
+                self.team_flags(&entry);
+            }
+            self.strip = self.bugs == Bugs::Original;
+            return true;
+        }
+        advanced.click(id, &map, &mut self.shown)
     }
 
     /// The full list sorted by `key` (`scenario_list_sort` 0x585050), the shown list rebuilt in
@@ -1178,6 +1200,7 @@ impl Scenario {
     /// The screen redrawn whole: the size mark as it is now is the one drawn.
     fn whole(&mut self) {
         self.partial = false;
+        self.strip = false;
         let frame = self.shown.frames.get(&SIZE).copied().unwrap_or(0);
         self.drawn_size = (self.shown.state(SIZE), frame);
         self.description.drew();
@@ -1211,7 +1234,7 @@ impl Scenario {
             .selected
             .and_then(|i| self.listed.get(i))
             .and_then(|&e| self.entries.get(e));
-        let Some(entry) = entry else {
+        let Some(entry) = entry.cloned() else {
             self.show_empty();
             return;
         };
@@ -1250,18 +1273,32 @@ impl Scenario {
         shown
             .frames
             .insert(LOSS_MARK, entry.loss.map_or(3, u32::from));
-        // Each colour that plays, in colour order: of the local colour's team the next allies'
-        // flag (the local one's own first), any other the next enemies'.
-        let team = entry.local().map(|c| entry.teams[c]);
+        self.team_flags(&entry);
+    }
+
+    /// The flags of `entry`'s colours (`scenario_team_flags` 0x585300): each colour that plays, in
+    /// colour order, of the local colour's team the next allies' flag (the local one's own first),
+    /// any other the next enemies'. The local colour: the advanced options' single player's while
+    /// its rows are as made (a flag's press moves it: E27 M3 T3c1), else the map's.
+    fn team_flags(&mut self, entry: &Entry) {
+        let local = self
+            .advanced
+            .as_ref()
+            .and_then(Advanced::local_colour)
+            .map_or_else(|| entry.local(), |c| c.map(usize::from));
+        let team = local.map(|c| entry.teams[c & 7]);
         let (mut allies, mut enemies) = (ALLIES, ENEMIES);
+        for id in ALLIES..ENEMIES + 8 {
+            self.shown.states.insert(id, hidden());
+        }
         for colour in (0..8u8).filter(|&c| entry.seats[usize::from(c)].plays()) {
             let slot = if Some(entry.teams[usize::from(colour)]) == team {
                 &mut allies
             } else {
                 &mut enemies
             };
-            shown.states.insert(*slot, State::default());
-            shown.frames.insert(*slot, u32::from(colour));
+            self.shown.states.insert(*slot, State::default());
+            self.shown.frames.insert(*slot, u32::from(colour));
             *slot += 1;
         }
     }
@@ -1387,6 +1424,8 @@ impl Scenario {
         if let Some(advanced) = &self.advanced {
             let map = self.players();
             draws.extend(advanced.draws(&map, &self.dialog, &self.shown, players));
+            // The name's edit drawn as the edit where the dialog draws its items too (E27 M3 T3c1).
+            advanced.place_edit(&mut draws);
         }
         draws
     }
@@ -1398,7 +1437,8 @@ impl Scenario {
     /// label's colon loses its shadow there. Its rectangle and its draws over the background.
     #[must_use]
     pub fn stale_draws(&self, players: &str) -> Option<([i32; 4], Vec<Draw>)> {
-        if !self.stale() {
+        let strip = self.strip && self.bugs == Bugs::Original;
+        if !self.stale() && !strip {
             return None;
         }
         let mut strip = self.shown.clone();
@@ -1409,6 +1449,20 @@ impl Scenario {
             }
         }
         Some((STRIP, self.dialog.draws(&strip, players)))
+    }
+
+    /// What the original's opening of the name's edit pasted (CLT-Q143, E27 M3 T3c1): the bar's
+    /// piece at the bar's corner, the edit over it, until the row is drawn again: its rectangle
+    /// and the screen's draws with the piece and the edit after them.
+    #[must_use]
+    pub fn piece_draws(&self, players: &str) -> Option<([i32; 4], Vec<Draw>)> {
+        let (rect, over) = self
+            .advanced
+            .as_ref()?
+            .piece(&self.dialog, &self.shown, players)?;
+        let mut draws = self.draws(players);
+        draws.extend(over);
+        Some((rect, draws))
     }
 
     /// The rows the redraw draws (`scenario_dialog_redraw` 0x584550): from the top, as many as
@@ -1514,12 +1568,26 @@ impl Scenario {
         }
         match &mut self.over {
             Over::Nothing => {
+                // The flags' hover (E27 M3 T3c1), unless a button's own loop holds the mouse.
+                let hovered = !self.input.holds_button() && self.hover(point);
                 let dialog = mouse_dialog(&self.dialog, &self.shown);
-                Did::held(self.input.moved(&dialog, &mut self.shown, point))
+                let mut did = Did::held(self.input.moved(&dialog, &mut self.shown, point));
+                did.changed |= hovered;
+                did
             }
             Over::Notice(open) => Did::of_box(open.moved(point)),
             Over::Help(_) | Over::Popup(_) => Did::default(),
         }
+    }
+
+    /// The mouse's move to `point` as the screen's procedure takes it (`scenario_dialog_proc`
+    /// 0x5881B2: the item there, `dialog_item_id_at` 0x5FF3B0): the advanced options' flags'
+    /// hover. Whether it changed anything.
+    fn hover(&mut self, point: [i32; 2]) -> bool {
+        let id = self.item_at(point);
+        self.advanced
+            .as_mut()
+            .is_some_and(|a| a.hover(id, &mut self.shown))
     }
 
     /// The left button pressed at `point`: the list's bar or a row while the list shows, else the
@@ -1546,6 +1614,11 @@ impl Scenario {
         match self.item_at(point) {
             Some(id) if rows.contains(&id) => {
                 self.row = Some(id);
+                return Did::default();
+            }
+            // A name of the advanced options, a text item as a row (E27 M3 T3c1).
+            Some(id) if (advanced::PLAYER..advanced::PLAYER + 8).contains(&id) => {
+                self.name = Some(id);
                 return Did::default();
             }
             _ => {}
@@ -1578,6 +1651,21 @@ impl Scenario {
                 self.row_click(row);
             }
             return Did::CHANGED;
+        }
+        // A name's click at the release, wherever the mouse is in the original's profile, over it
+        // in the client's (CLT-Q43 (2)'s rule; `scenario_name_click` 0x58B620).
+        if let Some(name) = self.name.take() {
+            let over = self.item_at(self.pointer) == Some(name);
+            let c = u8::try_from(name - advanced::PLAYER).unwrap_or(0);
+            let opened = (self.bugs == Bugs::Original || over)
+                && self
+                    .advanced
+                    .as_mut()
+                    .is_some_and(|a| a.name_click(c, &mut self.shown));
+            return Did {
+                changed: opened,
+                ..Did::default()
+            };
         }
         match &mut self.over {
             Over::Nothing => {
@@ -1734,9 +1822,11 @@ impl Scenario {
         }
     }
 
-    /// A key down: the key table's `command` for it, `by` its name (whose release clicks); the
-    /// list's keys while it shows. None while the bar is held (its loop takes no key).
-    pub fn key(&mut self, command: Option<Command>, by: &str) -> Did {
+    /// A key down: as the original reads it (`scan`, the name's edit's in the original's profile),
+    /// the key table's `command` for it ([`Scenario::contexts`]), `by` its name (whose release
+    /// clicks); the list's keys while it shows. None while the bar is held (its loop takes no
+    /// key). The name's edit while it shows first (E27 M3 T3c1).
+    pub fn key(&mut self, scan: Option<Scan>, command: Option<Command>, by: &str) -> Did {
         if self.bar.held() || self.description.held() {
             return Did::default();
         }
@@ -1744,6 +1834,14 @@ impl Scenario {
             return match command {
                 Some(Command::Message(key)) => Did::box_press(open.key(key, by)),
                 _ => Did::default(),
+            };
+        }
+        if self.over == Over::Nothing
+            && let Some(taken) = self.edit_key(scan, command)
+        {
+            return Did {
+                changed: taken,
+                ..Did::default()
             };
         }
         match (&self.over, command) {
@@ -1768,6 +1866,62 @@ impl Scenario {
                 }
             }
             _ => Did::default(),
+        }
+    }
+
+    /// A key down to the advanced options' name's edit while it shows (none: not the edit's, its
+    /// dialog's then): in the original's profile by `scan` (0x57CDC0: Enter closes it, Escape and
+    /// Tab are the dialog's, any other key the edit's); in the client's by `command`, the edit's
+    /// own keys, Begin's closing it as the original's Enter, Back's the dialog's, any other key
+    /// taken by the edit (its character typed through [`Scenario::typed`]). Some(whether it
+    /// changed) when the edit took it.
+    fn edit_key(&mut self, scan: Option<Scan>, command: Option<Command>) -> Option<bool> {
+        let advanced = self.advanced.as_mut().filter(|a| a.editing())?;
+        let shown = &mut self.shown;
+        match self.bugs {
+            Bugs::Original => {
+                let scan = scan?;
+                advanced.edit_key(scan, shown).then_some(true)
+            }
+            Bugs::Fixed => match command {
+                Some(Command::Edit(caret)) => Some(advanced.edit_caret(caret)),
+                Some(Command::Dialog(BEGIN)) => Some(advanced.close_edit(shown)),
+                Some(Command::Dialog(BACK)) => None,
+                _ => Some(false),
+            },
+        }
+    }
+
+    /// Whether the name's edit takes the window's text input (E27 M3 T3c1, the client's profile):
+    /// while it shows, nothing over the screen.
+    #[must_use]
+    pub fn typing(&self) -> bool {
+        self.bugs == Bugs::Fixed
+            && self.over == Over::Nothing
+            && self.advanced.as_ref().is_some_and(Advanced::editing)
+    }
+
+    /// Where a key down is asked for its command, in order: an edit's own keys while the name's
+    /// edit types ([`Scenario::typing`]), then [`Scenario::context`].
+    #[must_use]
+    pub fn contexts(&self) -> Vec<Context> {
+        if self.typing() {
+            alloc::vec![Context::Edit, self.context()]
+        } else {
+            alloc::vec![self.context()]
+        }
+    }
+
+    /// A character the window's text input typed (the client's profile): to the name's edit while
+    /// it types.
+    pub fn typed(&mut self, c: char) -> Did {
+        if !self.typing() {
+            return Did::default();
+        }
+        let changed = self.advanced.as_mut().is_some_and(|a| a.edit_typed(c));
+        Did {
+            changed,
+            ..Did::default()
         }
     }
 

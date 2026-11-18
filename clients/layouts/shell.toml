@@ -946,7 +946,9 @@ step = 7
 # files (colour_letters 0x641AE0), a row's height; the duration's bar (338: H3DlgScrollbar::Create
 # with 11 ticks, horizontal: SlideBuH.def, slider.pcx, its button the DEF's 16-pixel width); a
 # colour's items at row 0, colour 0's ids (the constructor 0x57AF82: the flag at y - 3, who may play
-# and the handicap 18 below the arrows); what its row draws itself (scenario_player_row_draw
+# and the handicap 18 below the arrows; M3 T3c1: the single player's name's edit 353, the
+# constructor's edit_create 0x57B4CD: smalfont.fnt, colour 1, left, 21 with its terminator, moved
+# to its row at the showing); what its row draws itself (scenario_player_row_draw
 # 0x58D510): the colour's bar, the town's (itpa.def frame 2 t + 2, Random hpsrand0.pcx), the hero's
 # (Random hpsrand1.pcx, none hpsrand6.pcx) and the bonus's (ScnrStar.def) pictures and their tiny
 # texts.
@@ -964,6 +966,7 @@ hero_right = { id = 239, def = "adoprta.def", at = [301, 133], size = [11, 24], 
 bonus_left = { id = 247, def = "adoplfa.def", at = [316, 133], size = [11, 24] }
 bonus_right = { id = 255, def = "adoprta.def", at = [377, 133], size = [11, 24], frames = { normal = 1, pressed = 0, disabled = 2, selected = 3 } }
 name = { id = 345, at = [62, 130], size = [97, 17], font = "smalfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+edit = { id = 353, at = [62, 130], size = [97, 17], font = "smalfont.fnt", font_palette = "game.pal", colour = 1, align = 0 }
 hero_area = { id = 362, at = [252, 130], size = [48, 32] }
 town_area = { id = 370, at = [176, 130], size = [48, 32] }
 bonus_area = { id = 378, at = [328, 130], size = [48, 32] }

@@ -42,17 +42,36 @@
 //!   (`scenario_bonus_popup` 0x5754F0); each while the right button is held, the cursor showing,
 //!   then the screen redrawn whole.
 //!
-//! *Not built yet:* the flags' press
-//! and hover, the name's edit, the handicap's press, the duration's bar's input and the hints
-//! (T3c); the hot seat and a hero two human records hold (T4); a town a human-only colour draws
-//! at the list's read (no shipped map has one; CLT-Q95); the edition's version (+0x1898: a single
-//! player's is SoD, so Conflux is left out only by the map's mask); a portrait past the hero
-//! types' (the campaign heroes' seven: no shipped map gives one).
+//! - **The flags** (T3c1; design §26): the hover (`scenario_dialog_proc` 0x5881B2) highlights the
+//!   flag under the mouse (its state 0x10: `AOFLGB%c.DEF`'s frame 3) and clears the one it left,
+//!   each one's row drawn again; a press (`scenario_flag_click` 0x58B790, single) first takes the
+//!   focus from the name's edit, then moves the single player to a colour a human may play that is
+//!   not its own: the old flag's highlight cleared, its town and hero Random; the screen's flags
+//!   (`scenario_team_flags` 0x585300) and its redraw follow (the screen's).
+//! - **The handicap** (207 + c): a single player's is drawn up and takes no press; the record's
+//!   handicap reaches no game (`CLT-STUB-10`).
+//! - **The name's edit** (353 + c, T3c1): a click on the single player's name
+//!   (`scenario_name_click` 0x58B620, at the text item's release) shows the edit over it with the
+//!   record's name and the focus, the name hidden; the edit (its own vtable 0x641C14) takes every
+//!   key but Escape and Tab: Enter (0x57CDC0) and a loss of the focus (0x57CEE0: a flag's press,
+//!   the options' hiding) close it, its text the record's name, the row drawn again. A row's draw
+//!   shows the name again (0x58DEBA); in the original's profile under the open edit too, and the
+//!   opening pastes the colour's bar's piece at the bar's corner, not under the edit (CLT-Q143:
+//!   the original's for the comparisons only).
+//!
+//! *Not built yet:* the duration's bar's input and the hints (T3c2); the hot seat (T4: its
+//! handicap's press, its flags' cycle) and a hero two human records hold; the name written to
+//! the setting `Network Default Name` (0x698817 and `settings_save` 0x50C1B0 at the edit's close:
+//! the client has no settings, M4); a town a human-only colour draws at the list's read (no
+//! shipped map has one; CLT-Q95); the edition's version (+0x1898: a single player's is SoD, so
+//! Conflux is left out only by the map's mask); a portrait past the hero types' (the campaign
+//! heroes' seven: no shipped map gives one).
 
 use alloc::string::String;
 use alloc::vec::Vec;
 
 use h3_render::Bugs;
+use h3_ui::edit::{self, Caret, Edit, Scan};
 use h3_ui::scrollbar::{self, Scrollbar};
 use h3_ui::ui::{Area, Button, Def, Dialog, Draw, Item, Label, Shown, State};
 use serde::Deserialize;
@@ -102,6 +121,8 @@ pub const BONUS_LEFT: u16 = 247;
 pub const BONUS_RIGHT: u16 = 255;
 /// The player's name (the human record's, else GENRLTXT 469).
 pub const PLAYER: u16 = 345;
+/// The single player's name's edit (E27 M3 T3c1; the constructor's last item of a colour).
+pub const EDIT: u16 = 353;
 /// The hero's area (its right press).
 pub const HERO_AREA: u16 = 362;
 /// The town's area.
@@ -109,8 +130,11 @@ pub const TOWN_AREA: u16 = 370;
 /// The bonus's area.
 pub const BONUS_AREA: u16 = 378;
 
+/// A name's room with its terminator (`edit_create`'s 21: 20 characters).
+const NAME_ROOM: usize = 21;
+
 /// A colour's item ids of colour 0, in the constructor's order.
-const ROW_IDS: [u16; 13] = [
+const ROW_IDS: [u16; 14] = [
     FLAG,
     KIND,
     HANDICAP,
@@ -124,6 +148,7 @@ const ROW_IDS: [u16; 13] = [
     HERO_AREA,
     TOWN_AREA,
     BONUS_AREA,
+    EDIT,
 ];
 
 /// The factions (Castle 0 to Conflux 8).
@@ -162,6 +187,8 @@ pub struct AdvancedLook {
     pub bonus_right: Button,
     /// The name (small, colour 1).
     pub name: Label,
+    /// The single player's name's edit (small, colour 1, left; E27 M3 T3c1).
+    pub edit: Label,
     /// The pictures' areas (48 × 32): the hero's, the town's, the bonus's.
     pub hero_area: Area,
     /// The town's area.
@@ -408,7 +435,9 @@ pub struct Record {
     pub hero: Option<u8>,
     /// The bonus (+0x6C).
     pub bonus: Bonus,
-    /// The handicap (+0x78: 0 none, 1 mild, 2 severe).
+    /// The handicap (+0x78: 0 none, 1 mild, 2 severe): shown, chosen in the hot seat (T4), no
+    /// effect yet (decision 6).
+    // stub: CLT-STUB-10
     pub handicap: u8,
 }
 
@@ -472,6 +501,16 @@ pub(super) struct Advanced {
     /// The turn's duration's index (+0x378: `turndur.txt`'s record).
     duration: u8,
     bar: Scrollbar,
+    /// The single player's name (the local record's +4: `network_default_name` at the slot's
+    /// making, none in the client; E27 M3 T3c1).
+    name: String,
+    /// The name's edit while it shows, by colour (it has the focus then).
+    editing: Option<(u8, Edit)>,
+    /// The flag the mouse is over (`scenario_hovered` 0x683470), by colour.
+    hovered: Option<u8>,
+    /// The original's profile: the colour whose bar's piece the edit's opening pasted at the bar's
+    /// corner, until the row is drawn again (CLT-Q143).
+    pasted: Option<u8>,
 }
 
 impl Advanced {
@@ -490,6 +529,10 @@ impl Advanced {
             rows: [None; 8],
             duration: UNLIMITED,
             bar,
+            name: String::new(),
+            editing: None,
+            hovered: None,
+            pasted: None,
         }
     }
 
@@ -543,7 +586,7 @@ impl Advanced {
 
     /// Colour `c`'s items of `look` on row `row` (its ids its colour 0's + c, its DEFs' `{}` its
     /// letter), in the constructor's order.
-    fn colour_items(look: &AdvancedLook, c: u8, row: i32) -> [Item; 13] {
+    fn colour_items(look: &AdvancedLook, c: u8, row: i32) -> [Item; 14] {
         let letter = letter(look, c);
         let dy = look.step * row;
         let at = |at: [i32; 2]| [at[0], at[1] + dy];
@@ -584,6 +627,7 @@ impl Advanced {
             area(&look.hero_area),
             area(&look.town_area),
             area(&look.bonus_area),
+            label(&look.edit),
         ]
     }
 
@@ -599,13 +643,15 @@ impl Advanced {
     }
 
     /// Whether item `id` is one of the options' ([`Advanced::ids`]: the colours' 199 to 270, 345 to
-    /// 352 and 362 to 385, the headers 339 to 344).
+    /// 360 and 362 to 385, the headers 339 to 344).
     pub(super) const fn owns(id: u16) -> bool {
-        matches!(id, PANEL | 199..=270 | 339..=352 | 362..=385 | TITLE..=DURATION)
+        matches!(id, PANEL | 199..=270 | 339..=360 | 362..=385 | TITLE..=DURATION)
     }
 
-    /// Hidden (`scenario_advanced_hide` 0x581B20): every item of the options.
+    /// Hidden (`scenario_advanced_hide` 0x581B20): the name's edit closed first (its focus
+    /// taken), then every item of the options.
     pub(super) fn hide(&mut self, shown: &mut Shown) {
+        self.close_edit(shown);
         self.showing = false;
         Self::hide_items(shown);
     }
@@ -660,10 +706,12 @@ impl Advanced {
                     *slot = item;
                 }
             }
-            let own = self.local.colour == Some(c);
+            // The flag shown and enabled where a human may play the colour (5, 6); its hover's
+            // highlight (0x10) as the mouse left it.
             set(shown, FLAG + u16::from(c), |s| {
                 *s = State {
                     hidden: !seat.human,
+                    selected: s.selected,
                     ..State::default()
                 };
             });
@@ -671,8 +719,9 @@ impl Advanced {
                 set(shown, id + u16::from(c), |s| s.hidden = false);
             }
             // A single player's handicap is not enabled (0x581713: its bit 2 cleared): drawn up,
-            // taking no press ([`Advanced::takes`]).
+            // taking no press ([`Advanced::takes`]); the name's edit hidden (0x58173B).
             set(shown, HANDICAP + u16::from(c), |s| *s = State::default());
+            set(shown, EDIT + u16::from(c), |s| s.hidden = true);
             let kind = match (seat.human, seat.computer) {
                 (true, true) => 0,
                 (true, false) => 1,
@@ -681,17 +730,218 @@ impl Advanced {
             shown
                 .texts
                 .insert(KIND + u16::from(c), self.texts.kinds[kind].clone());
-            // The single player's name (the local slot's: empty until T3c's edit), else a
-            // computer's.
-            let name = if own {
-                String::new()
+            row += 1;
+        }
+        self.set_names(shown);
+        self.refresh(seats, shown);
+    }
+
+    /// Each row's name (`scenario_dialog_redraw` 0x584550 sets them): the single player's own
+    /// (the local record's), else a computer's (GENRLTXT 469).
+    fn set_names(&self, shown: &mut Shown) {
+        for c in (0..8u8).filter(|&c| self.rows[usize::from(c)].is_some()) {
+            let name = if self.local.colour == Some(c) {
+                self.name.clone()
             } else {
                 self.texts.computer.clone()
             };
             shown.texts.insert(PLAYER + u16::from(c), name);
-            row += 1;
         }
-        self.refresh(seats, shown);
+    }
+
+    /// The colour the single player holds while the rows are as made (none: they are made again at
+    /// the next showing, `+0x1854`), which the screen's flags read (`scenario_team_flags`
+    /// 0x585300: the local record's colour).
+    pub(super) const fn local_colour(&self) -> Option<Option<u8>> {
+        if self.changed {
+            None
+        } else {
+            Some(self.local.colour)
+        }
+    }
+
+    /// Colour `c`'s row drawn again (`scenario_player_row_draw` 0x58D510: its bar whole, its name
+    /// shown, 0x58DEBA): the original's piece gone; the name shown, in the client's profile not
+    /// under its open edit (CLT-Q143).
+    fn row_drawn(&mut self, c: u8, shown: &mut Shown) {
+        if !self.showing || self.rows[usize::from(c)].is_none() {
+            return;
+        }
+        if self.pasted == Some(c) {
+            self.pasted = None;
+        }
+        let editing = matches!(self.editing, Some((e, _)) if e == c);
+        if self.bugs == Bugs::Original || !editing {
+            set(shown, PLAYER + u16::from(c), |s| s.hidden = false);
+        }
+    }
+
+    /// The mouse over item `id` (none: no item; `scenario_dialog_proc` 0x5881B2): over another
+    /// flag than the one hovered, that one's highlight (0x10) cleared and the new one's set, each
+    /// one's row drawn again; off the flags the one hovered cleared. Whether anything changed.
+    pub(super) fn hover(&mut self, id: Option<u16>, shown: &mut Shown) -> bool {
+        let flag = id.and_then(flag_of);
+        if flag == self.hovered {
+            return false;
+        }
+        if let Some(old) = self.hovered.take() {
+            set(shown, FLAG + u16::from(old), |s| s.selected = false);
+            self.row_drawn(old, shown);
+        }
+        if let Some(c) = flag {
+            set(shown, FLAG + u16::from(c), |s| s.selected = true);
+            self.row_drawn(c, shown);
+            self.hovered = Some(c);
+        }
+        true
+    }
+
+    /// Colour `c`'s flag clicked over `map` (`scenario_flag_click` 0x58B790, single): the name's
+    /// edit closed first (`dialog_set_focus` −1), then to a colour a human may play that is not
+    /// the single player's own: the old flag's highlight cleared, the single player's record to
+    /// it, its town and hero Random (`scenario_hero_lists`); the names set and every row drawn
+    /// again (the redraw). The screen's flags are the caller's.
+    pub(super) fn flag_click(&mut self, c: u8, map: &Map, shown: &mut Shown) {
+        self.close_edit(shown);
+        let seat = map.seats[usize::from(c & 7)];
+        if seat.human && self.local.colour != Some(c) {
+            if let Some(old) = self.local.colour {
+                set(shown, FLAG + u16::from(old), |s| s.selected = false);
+            }
+            self.local.colour = Some(c);
+            self.local.town = None;
+            self.local.hero = None;
+        }
+        self.set_names(shown);
+        self.refresh(&map.seats, shown);
+        for c in 0..8 {
+            self.row_drawn(c, shown);
+        }
+    }
+
+    /// Colour `c`'s name clicked (`scenario_name_click` 0x58B620, single): the focus taken from an
+    /// open edit, then on the single player's own colour its edit shown over the name with the
+    /// record's name (the caret at its end) and the focus, the name hidden; in the original's
+    /// profile the bar's piece pasted at the bar's corner (CLT-Q143). Whether it opened.
+    pub(super) fn name_click(&mut self, c: u8, shown: &mut Shown) -> bool {
+        if !self.showing {
+            return false;
+        }
+        self.close_edit(shown);
+        if self.local.colour != Some(c) {
+            return false;
+        }
+        let mut edit = Edit::new(&self.name, NAME_ROOM);
+        edit.set_focus(true);
+        self.editing = Some((c, edit));
+        set(shown, EDIT + u16::from(c), |s| *s = State::default());
+        set(shown, PLAYER + u16::from(c), |s| s.hidden = true);
+        shown.texts.insert(PLAYER + u16::from(c), self.name.clone());
+        if self.bugs == Bugs::Original {
+            self.pasted = Some(c);
+        }
+        true
+    }
+
+    /// Whether the name's edit shows (with the focus).
+    pub(super) const fn editing(&self) -> bool {
+        self.editing.is_some()
+    }
+
+    /// The open edit's item in `draws` (where it is a label) drawn as the edit.
+    pub(super) fn place_edit(&self, draws: &mut [Draw]) {
+        if let Some((c, edit)) = &self.editing {
+            edit.place(EDIT + u16::from(*c), draws);
+        }
+    }
+
+    /// The name's edit closed (its Enter, 0x57CDC0, or its loss of the focus, 0x57CEE0): hidden,
+    /// its text the record's name and the name's, the row drawn again. Whether one was open.
+    pub(super) fn close_edit(&mut self, shown: &mut Shown) -> bool {
+        let Some((c, edit)) = self.editing.take() else {
+            return false;
+        };
+        self.name = String::from(edit.text());
+        set(shown, EDIT + u16::from(c), |s| s.hidden = true);
+        shown.texts.insert(PLAYER + u16::from(c), self.name.clone());
+        self.row_drawn(c, shown);
+        true
+    }
+
+    /// A key down `scan` to the open edit as the original reads it (its key, 0x57CDC0): Enter
+    /// closes it, any other but Escape and Tab is the edit's (`edit_key` 0x5BAC50). Whether it
+    /// was taken (its dialog's hotkeys get the others).
+    pub(super) fn edit_key(&mut self, scan: Scan, shown: &mut Shown) -> bool {
+        let Some((_, edit)) = &mut self.editing else {
+            return false;
+        };
+        if scan.code == edit::RETURN {
+            return self.close_edit(shown);
+        }
+        edit.key(scan)
+    }
+
+    /// One of the open edit's own keys (the client's profile: the key table's): whether taken.
+    pub(super) fn edit_caret(&mut self, caret: Caret) -> bool {
+        self.editing
+            .as_mut()
+            .is_some_and(|(_, edit)| edit.caret_key(caret))
+    }
+
+    /// A character typed into the open edit (the client's profile): whether taken.
+    pub(super) fn edit_typed(&mut self, c: char) -> bool {
+        self.editing.as_mut().is_some_and(|(_, edit)| edit.typed(c))
+    }
+
+    /// The original's piece (CLT-Q143): `scenario_name_click` 0x58B724 draws the colour's bar
+    /// `adop%cpnl.pcx` from the edit's offset in it (5, 2) with the edit's size at the bar's
+    /// corner, not under the edit; recorded (`adv-single-rest` name-edit): the bar shifted 5 left
+    /// and 2 up, seen from the edit's corner to the bar's corner plus the edit's size (92 × 15),
+    /// until the row is drawn again. Its rectangle, the bar so drawn, and the edit's draw over
+    /// it.
+    pub(super) fn piece(
+        &self,
+        dialog: &Dialog,
+        shown: &Shown,
+        players: &str,
+    ) -> Option<([i32; 4], Vec<Draw>)> {
+        let c = self.pasted?;
+        let row = self.rows[usize::from(c)]?;
+        let look = &self.texts.look;
+        let [px, py] = dialog.place;
+        let [bx, by] = look.panel_at;
+        let [ex, ey] = look.edit.at;
+        let (sx, sy) = (ex - bx, ey - by);
+        let top = py + by + look.step * row;
+        let [w, h] = look.edit.size;
+        let rect = [px + ex, top + sy, w - sx, h - sy];
+        let mut draws = alloc::vec![Draw::Picture {
+            picture: look.panel.replace("{}", &letter(look, c)),
+            x: px + bx - sx,
+            y: top - sy,
+            player: None,
+            size: None,
+        }];
+        draws.extend(self.edit_draws(c, dialog, shown, players));
+        Some((rect, draws))
+    }
+
+    /// Colour `c`'s edit as its row draws it (none unless it shows on that colour).
+    fn edit_draws(&self, c: u8, dialog: &Dialog, shown: &Shown, players: &str) -> Vec<Draw> {
+        let id = EDIT + u16::from(c);
+        let mut draws = Dialog {
+            place: dialog.place,
+            shadow: None,
+            items: dialog
+                .items
+                .iter()
+                .filter(|i| i.id() == id)
+                .cloned()
+                .collect(),
+        }
+        .draws(shown, players);
+        self.place_edit(&mut draws);
+        draws
     }
 
     /// Each row's arrows shown or hidden by its record (the row's draw), and a resource's bonus
@@ -925,6 +1175,7 @@ impl Advanced {
         };
         step(self, map, c);
         self.refresh(&map.seats, shown);
+        self.row_drawn(c, shown);
         true
     }
 
@@ -1264,6 +1515,8 @@ impl Advanced {
         draws.push(frame(def, bonus_frame(record.bonus, town), look.bonus.at));
         draws.extend(items(&[BONUS_LEFT, BONUS_RIGHT]));
         draws.extend(items(&[PLAYER]));
+        // The name's edit over it (0x58DEEE, single).
+        draws.extend(self.edit_draws(c, dialog, shown, players));
         draws
     }
 
@@ -1291,6 +1544,7 @@ impl Advanced {
         let labels = [
             &look.kind,
             &look.name,
+            &look.edit,
             &look.town_name,
             &look.popup.title,
             &look.popup.caption,
@@ -1377,6 +1631,13 @@ const fn offered(seat: Seat) -> bool {
 const fn first_faction(factions: u16) -> u8 {
     let f = factions & 0x1FF;
     if f == 0 { 0 } else { f.trailing_zeros() as u8 }
+}
+
+/// The colour of flag `id` (263 to 270), none for another item.
+fn flag_of(id: u16) -> Option<u8> {
+    (FLAG..FLAG + 8)
+        .contains(&id)
+        .then(|| u8::try_from(id - FLAG).unwrap_or(0))
 }
 
 /// Colour `c`'s letter of `look`.

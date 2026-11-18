@@ -172,6 +172,12 @@ epic   = "E16"
 # where  = "clients/crates/h3-view/src/shell/scenario/advanced.rs::Bonus"
 # reason = "The starting bonus a single player's advanced options choose (E27 M3 T3a, decision 6; design section 3.9) is drawn and kept in the screen's records but reaches no game: the engine has no starting bonus (E10's gap). Lifted when E10 adds it and the begin (M3 T6) hands it on"
 # epic   = "E27"
+#
+# [[stub]]
+# id     = "CLT-STUB-10"
+# where  = "clients/crates/h3-view/src/shell/scenario/advanced.rs::Record"
+# reason = "The handicap of the advanced options (E27 M3 T3c1, decision 6; design section 26.3) is drawn (a single player's up, taking no press; the hot seat's chosen at T4) and kept in the screen's records but reaches no game: the engine has no handicap (E10's gap). Lifted when E10 adds it and the begin (M3 T6) hands it on"
+# epic   = "E27"
 
 # --- map-client (MCL-STUB-<n>) ---
 

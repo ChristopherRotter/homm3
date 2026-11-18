@@ -1208,3 +1208,31 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
 - **Cut** (the user, decision 57): T3c in two at `adv-single-rest`'s seam (T3c1 the flags, the
   handicap and the name's edit, the first ten shots; T3c2 the duration's bar and the hints);
   the session stopped there.
+
+## M3 T3c1 — the flags, the handicap and the name's edit (2026-11-18)
+
+- **Staged** from the PC at once: the 64 files and the seven manuals and help files, each checked
+  by SHA-256 against the PC's (one digest of the sorted hashes each side: `25d4cb3e…`, the
+  manuals `41b14d5a…`). The setup's baseline stopped at `check.sh`'s coverage by a watcher (fmt,
+  clippy, doc tests, deny passed). `adv-single-rest` played once under Wine: every shot as kept.
+- **Read** (design §26): `scenario_flag_click` and `scenario_name_click` whole, the hover's
+  branch of the screen's procedure, the row draw's end, the name's edit's vtable 0x641C14 (its own
+  key 0x57CDC0 and loss of the focus 0x57CEE0, both read whole: the text returns to the record and
+  to `network_default_name`), the showing's move of the edit, `dialog_set_focus`. The flag's
+  press is followed by `scenario_dialog_redraw` alone: the strip's colon stays without its shadow
+  (CLT-Q138's mechanism). New in the address map: 0x57CDC0, 0x57CEE0, 0x641C14.
+- **Asked:** CLT-Q143 (the edit's opening pastes the bar's piece at the bar's corner, the name's
+  frame doubled; a row's draw shows the name again under the open edit): recommended (b), built
+  as (b) in the client's profile (the binding E17 decision on drawing bugs), the original's for
+  the comparisons.
+- **Built:** `advanced::EDIT`, `AdvancedLook::edit` (the layout's `edit`), `Advanced::hover`,
+  `flag_click`, `name_click`, `close_edit`, `edit_key`, `edit_caret`, `edit_typed`, `piece`,
+  `place_edit`, `local_colour`; the screen's `hover`, the name's press and release (CLT-Q43 (2)'s
+  rule), `key` taking the scan code, `typing`, `contexts`, `typed`, `team_flags`, `piece_draws`,
+  the strip after a flag's press (`strip`); `Front`'s typing and keys to the screen; the look's
+  second stale rectangle; `CLT-STUB-10` (the handicap's effect). The piece's rectangle is the
+  recorded one (the bar shifted 5 left and 2 up, seen from the edit's corner, 92 × 15), fitted
+  first as the reading's (57, 128, 97, 17): 232 pixels off on `name-edit` and `name-typed`.
+- **Compared:** `adv-single-rest`'s first twelve shots exact (decision 57's "ten" counted twelve
+  by name), and `hidden`; its other 26 T3c2's (the duration and the hints); every other group as
+  recorded (93 recipes, 490 shots exact); `drawn.txt` recorded for `adv-single-rest`.
