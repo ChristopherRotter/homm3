@@ -266,6 +266,18 @@ arena = 2
 school = 1
 school_price = [6, 1000]
 
+# A level-up (E24 M4 T2c; design §5.5, *provisional*): the experience each level from 1 starts at
+# (hero_level_up 0x4DA720's table 0x679C88 to level 12; beyond it each step a fifth more, level 13
+# at 24 320; the engine's packs' `experience`, crates/h3-harvest/data/gapfill.toml), the sound
+# the dialog's build plays (nwherolv.82m, play_sound_async at 0x4DAA26) and the secondary skills
+# whose every level learned shows in the status window: Leadership's a morale point (6: +1, +2, +3
+# by level; recorded, level-up-twice's Advanced Leadership), Luck's a luck point (9).
+[map.level_up]
+experience = [0, 1000, 2000, 3200, 4600, 6200, 8000, 10000, 12200, 14700, 17500, 20600]
+sound = "nwherolv.wav"
+morale = 6
+luck = 9
+
 [map.status]
 portraits = [
     "HPL000Kn.PCX", "HPL001Kn.PCX", "HPL002Kn.PCX", "HPL003Kn.PCX", "HPL004Kn.PCX", "HPL005Kn.PCX",

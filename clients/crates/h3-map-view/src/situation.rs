@@ -726,6 +726,14 @@ pub struct HeroSpec {
     /// gold); none the type's. It redraws nothing, so it needs no selection.
     #[serde(default)]
     pub diplomacy: Option<u8>,
+    /// Its secondary skills, [skill, level 1 to 3] in the list's order (at most eight, each
+    /// skill once; hero +0xC9, +0xE5, +0x101), written by the harness after its walk in place of
+    /// the type's (E24 M4 T2c, design §5.5: a level-up's offers, one or none with eight skills
+    /// known); empty the type's. The status window at 0 was built before it is written and is
+    /// built again at the walk, so the skills written and the type's cleared must not change the
+    /// morale or luck shown (Leadership, Luck): TRAPS. It needs no selection.
+    #[serde(default)]
+    pub secondary: Vec<[u8; 2]>,
 }
 
 impl HeroSpec {
@@ -758,6 +766,8 @@ pub struct BoatSpec {
     pub colour: Option<u8>,
 }
 
+/// The secondary skills (SSTRAITS.TXT's 28).
+const SECONDARY_SKILLS: usize = 28;
 /// The boats' class.
 const BOAT_CLASS: u32 = 8;
 /// The monsters' class (54), whose object a quest may name (E24 M3 T6a2b).
@@ -1160,6 +1170,20 @@ impl Situation {
             .find(|h| h.diplomacy.is_some_and(|d| d > 3))
         {
             return Err(format!("the hero at {:?}: Diplomacy past Expert", h.at));
+        }
+        // A level-up's offers (E24 M4 T2c): eight skills at most, each a skill once at a level.
+        if let Some(h) = self.heroes.iter().find(|h| {
+            h.secondary.len() > 8
+                || h.secondary.iter().enumerate().any(|(i, &[skill, level])| {
+                    usize::from(skill) >= SECONDARY_SKILLS
+                        || !(1..=3).contains(&level)
+                        || h.secondary[..i].iter().any(|k| k[0] == skill)
+                })
+        }) {
+            return Err(format!(
+                "the hero at {:?}: secondary skills past eight, unknown, twice or at no level",
+                h.at
+            ));
         }
         // The status window's (E24 M3 T5b1): Red's towns' garrisons and garrison heroes, of
         // Red's; seven slots at most; a silo with chosen buildings.

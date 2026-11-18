@@ -158,6 +158,20 @@ Arena box has no Cancel (the OK alone, enabled once a picture is chosen), the or
 button that says Cancel and grants a skill misleads, and the engine offers no leaving. The viewer
 plays the original's meanwhile (T2b2). Blocks nothing.
 
+#### MCL-Q34 — The level-up dialog's sentence naming the offers never shows (E24 M4 T2c, a reading and a recording)
+
+The level-up dialog (`level_up_dialog` 0x4F8880, E24 design §5.5) builds a text item under the
+primary skill's bar (23, 270, 339 × 52, `medfont.fnt`) with GENRLTXT 205 ("Your hero may learn
+either Advanced Armorer or Basic Eagle Eye.") for two offers, 204 ("Your hero has learned
+Advanced Mysticism.") for one. Both records start with two line breaks, so at medfont's 20 pixels
+the sentence's first line would start at 40 and end below the box: the text drawer draws none of
+it (recorded: `level-up`, `level-up-one`; the dialog's texts in memory hold it). The captions under
+the offers' pictures name the same skills and levels. Options: (a) the original's: nothing shown;
+(b) the client shows the sentence (its leading line breaks dropped, in the box's 52 pixels: two
+lines), the original's behind `--bugs original` for the comparisons. **Recommended (a)**: the
+dialog's layout was made without it and the captions already tell it; (b) adds text no player of
+the original saw. The viewer draws the original's meanwhile. Blocks nothing.
+
 ### Town lane (`TWN-Q<n>`)
 
 (no open questions)

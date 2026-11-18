@@ -1,0 +1,13 @@
+# A level-up's choice (E24 M4 T2c; clients/map/sequences.toml `level-up-twice`; E24 design §5.5):
+# a treasure chest's choice (ADVEVENT 146), its gold written: 2 000, the experience taken
+# (1 500), which takes the hero at 900 past levels 2 and 3: two dialogs in turn.
+# Red's hero on (5, 5) steps up onto its entrance (5, 4); Red's town out of the way, so that no
+# visit's scenario test warns of a town lost; Blue's hero far off in the fog.
+size = 36
+terrain = "grass"
+heroes = [{ at = [5, 5], class = 2, experience = 900 }, { at = [32, 32], owner = 1 }]
+towns = [{ at = [16, 12], faction = 0, owner = 0, buildings = "fort" }]
+view = [0, 0, 0]
+hidden = [[20, 16, 35, 35]]
+objects = [{ def = "AVTchst0.def", at = [5, 4] }]
+visits = [{ at = [5, 4], gold = 2000 }]

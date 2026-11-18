@@ -99,11 +99,18 @@ fn the_tables_sounds_are_the_originals() {
     );
     assert_eq!(r.flying, "horse10.wav");
     // The loops, the step sounds, the flying one, (E24 M3 T6b1) the buttons' press, (E24 M3 T5b2)
-    // the day's status window's and (E24 M4 T1a) the week's and the month's message's.
-    assert_eq!(r.wavs().len(), 85);
+    // the day's status window's, (E24 M4 T1a) the week's and the month's message's and (E24 M4
+    // T2c) a level-up's dialog's.
+    assert_eq!(r.wavs().len(), 86);
     assert_eq!(
         r.effects,
-        ["button.wav", "newday.wav", "newweek.wav", "newmonth.wav"]
+        [
+            "button.wav",
+            "newday.wav",
+            "newweek.wav",
+            "newmonth.wav",
+            "nwherolv.wav"
+        ]
     );
     assert_eq!(r.button.as_deref(), Some("button.wav"));
     let volumes: Vec<u8> = (0..5).map(|d| r.volume(d)).collect();
@@ -205,10 +212,14 @@ fn the_tables_with_and_without_sound() {
     let t = tables::load(&[tables::parse(text).unwrap()], "base").unwrap();
     let sounds = t.sounds();
     // Since E24 M3 T5b2 the day's status window's sound among them, since T6b1 the buttons', since
-    // E24 M4 T1a the week's and the month's message's.
-    assert_eq!(sounds.len(), 85);
+    // E24 M4 T1a the week's and the month's message's, since T2c a level-up's dialog's.
+    assert_eq!(sounds.len(), 86);
     assert!(sounds.contains("LOOPANIM") && sounds.contains("HORSE10") && sounds.contains("NEWDAY"));
     assert!(sounds.contains("BUTTON") && sounds.contains("NEWWEEK") && sounds.contains("NEWMONTH"));
+    // Without a level-up's sound (E24 M4 T2c) none of its own.
+    let silent = text.replace("sound = \"nwherolv.wav\"", "sound = \"\"");
+    let quiet = tables::load(&[tables::parse(&silent).unwrap()], "base").unwrap();
+    assert_eq!(quiet.sounds().len(), 85);
     assert_eq!(t.tracks().len(), 9);
     // Without `[map.sound]`, no sound; a river's music, an error.
     let without = text.replace("[map.sound]", "[unused]");
@@ -340,6 +351,7 @@ pub(crate) fn map_with(
         pressed: Vec::new(),
         turns: Vec::new(),
         computer: false,
+        level_ups: Vec::new(),
     };
     (art, live, shapes)
 }

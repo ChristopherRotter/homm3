@@ -3496,3 +3496,152 @@ and `seq-choose-*`).
   answers, the Cancels, a plain OK, the cursor after the walk recorded or not), 100 % lines,
   regions and functions of `h3-map-view`'s library and of `h3-ui` but its `scrollbar.rs`
   (untouched).
+
+### 5.5 A level-up's choice (M4 T2c)
+
+Read (T2c whole, the user at its start, 2026-11-18; the cut after the reading and the recordings
+kept as the fallback): `level_up_dialog` 0x4F8880 whole (E08 T32b1 had read its items' ids),
+`level_up_dialog_proc` 0x4F9780 whole and `hero_level_up` 0x4DA720's human path again (0x4DA9F2
+to 0x4DAC91). Recorded by the harness (the sequences in `clients/map/to-record.toml`, the
+situations `seq-level-up*`).
+
+- **When** (`hero_level_up`, a level at a time, for a human owner at its own computer outside the
+  new game's setup): the level, the primary skill and the two offers drawn first (E08's reading),
+  then `nwherolv.82m` (`play_sound_async`, 0x4DAA26) and the dialog built and run modally: no
+  offer with pictures −1 and −1, one with the offer's and −1, two with the first offer left and
+  the second right; a picture is `secskill.def`'s frame 3 × skill + 3 + the hero's level of it
+  before, so the frame mod 3 is the level it reaches (`skill-level`). One offer is learned after
+  the dialog, two by its result (2010 the first, 2011 the second, 9999 the computer's choice).
+  With two offers GENRLTXT 205's sentence is first appended to the message buffer (0x4DAB2E to
+  0x4DABB0), which the build overwrites: nothing of it shows. The visits that give experience and
+  then levels: the Learning Stone, a chest's experience, the Tree of Knowledge, Pandora's Box and
+  the events' rewards (§5.3, §5.4), a battle's end (T5's).
+- **The dialog** (0x4F8880): `dialog_construct` at (205, 65), 385 × 470, flags 0x12 (the shadow
+  of the message boxes, 8 pixels right and below: recorded); the cursor set to the arrow
+  (`mouse_set_cursor` (0, 1)). Its items in order, their places the dialog's:
+
+  | Id | Item | Place | Contents |
+  |---|---|---|---|
+  | 2000 | picture (`dialog_picture_create`) | 0, 0, 385 × 470 | `lvlupbkg.pcx` in the hero's owner's colours (`dialog_picture_player_colours`) |
+  | 2001 | picture | 171, 66, 58 × 64 | the hero type's large portrait (its record's +0x34: `hpl016rn.pcx` for Mephala) |
+  | 2002 | text (`text_item_create`), `medfont.fnt`, colour 1, alignment 5 | 23, 22, 339 × 23 | GENRLTXT 445 with the hero's name |
+  | 2003 | text, the same | 23, 151, 339 × 23 | GENRLTXT 446: the name, the level (+0x55), the class's name (`hero_class_name` 0x4D8F70) |
+  | 2004 | text, the same | 23, 242, 339 × 23 | the executable's `%s +1` with the primary skill's name (PRISKILL) |
+  | 2009 | DEF (`dialog_def_create`), flags 0x10 | 174, 190, 42 × 42 | `pskil42.def` at the primary skill's frame (0 to 3) |
+
+  Two offers then:
+
+  | Id | Item | Place | Contents |
+  |---|---|---|---|
+  | 2005 | text, `medfont.fnt`, colour 1, alignment 1 | 23, 270, 339 × 52 | GENRLTXT 205 (the left's level and name, the right's): it starts with two line breaks, so its third line falls below the box at medfont's 20 pixels and nothing is drawn (the text drawer, E17 design §3.6) |
+  | 2006 | text, alignment 5 | 169, 325, 50 × 46 | GENRLTXT 5, "or" |
+  | 2012, 2013 | frame (`dialog_frame_create`), the game palette's entry 45, flags 0x400, hidden at once | 122, 325 and 220, 325, 47 × 46 | the choice's frames (as the message box's, §5.4) |
+  | 2010, 2011 | DEF, flags 0x10 | 124, 326 and 222, 326, 44 × 44 | `secskill.def` at the offers' frames |
+  | 2007, 2008 | text, `smalfont.fnt`, colour 1, alignment 5 | 102, 375 and 200, 375, 87 × 40 | the executable's `%s\n%s`: the level's name (`skill-level`) and the skill's |
+
+  One offer: 2005 with GENRLTXT 204 (the level, the name; nothing drawn, as 205); 2012 at 169, 325,
+  **shown**; 2010 at 170, 326; 2007 at 149, 375; the offer chosen at once (+0x68 = 2010). No
+  offer: none of these. Last the OK (`def_button_create`): 0x7802 at 296, 413, 64 × 30,
+  `iokay.def`, hotkeys Escape (1) and Enter (0x1C), disabled with two offers (0x4F9507). The
+  dialog keeps the pictures (+0x60, +0x64) and the offer chosen (+0x68, 0 none). Its deadline: E16
+  M5 T15's.
+- **The procedure** (0x4F9780; without a deadline `dialog_proc_base` first, its own messages when
+  that returns 0): the key 1 (scancode 2) takes the left offer when there is one, the key 2
+  (scancode 3) the right one; a click (a command 0x200, subtype 13, without the flag 0x200) on
+  2010 or 2012 the left, on 2011 or 2013 the right. A choice shows its frame (`dialog_item_send`
+  (5, 4)), hides the other's (6, 4; none with one offer), sets +0x68 (2010 or 2011), enables the OK
+  and redraws the dialog whole (its vtable's +0x14 (1, 0xFFFF0001, 0xFFFF)): the same frame chosen
+  again redraws the same pixels. The OK, once enabled, closes it with +0x68 as the result; with one
+  offer or none it is enabled from the start (the result unused). A right-click (subtype 14) on
+  2010 to 2013 shows the offer's description at that level in a popup (`message_box` style 4;
+  SSTRAITS' columns): not recorded, not built (as the choice frames' popups, §5.4). A mouse move
+  onto another item sets the arrow again.
+- **After** (recorded): the dialog closed, the status window shows the hero's primary skill raised
+  (`level-up`: Defense 2 to 3 at 2260, the window's number alone); two levels show their dialogs
+  one after the other, the second built in the millisecond the first closes (`level-up-twice` at
+  4260: the screen changes where the two differ). The offer learned shows where the status window
+  shows it: `level-up-twice`'s Advanced Leadership, the morale +1 to +2 at the last close (5260);
+  no offer recorded changes the sight. A chest's levels come after its dissolve
+  (`visit_treasure_chest`'s `hero_level_up` after `remove_map_object`; `chest_gold_or_experience`
+  gives the experience without them).
+- **The oddity** (MCL-Q34): the sentence naming the offers (GENRLTXT 204, 205) is built and never
+  shows (its two leading line breaks put it below its box); the captions under the pictures say
+  the same. The viewer draws it as the original's.
+- **The harness** (common, additive; the runbook's "The level-up's dialog"): the live part's
+  `[[level_up]]` table (`Mem.level_up_box`: the hero (the selected one) and its new level, the
+  dialog's place, texts and pictures in item order,
+  the picture arguments `offers`, the offer `chosen` and the `marks` of the frames and the OK; a
+  choice or the OK's state changed appends a table; `Mem.message_box` leaves the dialog out); a
+  situation's hero's `secondary` (`Mem.write_secondary`: eight skills, one or none to offer); the
+  keys 1 and 2.
+- **Recorded** (each twice, the second run `ok`, the frame at 0 exact; the situations
+  `seq-level-up*`: Red's hero, Mephala (the Ranger the situation's class gives, at experience 0;
+  Rion, a Cleric, in `level-up-one` and `-none` since the build's check), steps right onto a
+  Learning Stone, or at 900 up onto a chest): `level-up` (42 timeline lines, 11 screens
+  kept: the stone's box closed by Enter, the dialog built at the key's release, 1060; Enter before
+  a choice does nothing, the left offer clicked, Enter), `level-up-right` (41, 12: the keys 2 and
+  1, a click on the right offer, the OK clicked), `level-up-one` (35, 9: eight skills, Mysticism at
+  Basic the one offer), `level-up-none` (35, 9: eight at Expert; closed by Escape), `level-up-twice`
+  (73, 25: the chest's 1 500 experience, levels 2 and 3, the second dialog at the first's close).
+  The live parts' `[[level_up]]` tables give the hero, the level, the primary skill (`pskil42.def`'s
+  frame) and the offers (`offers`): Mephala's Defense, Advanced Armorer or Basic Eagle Eye at level
+  2; Knowledge, Advanced Leadership or Basic Artillery at level 3.
+- **Built** (M4 T2c, *provisional*): the module `levels`: `LevelUp`, a level-up's facts in
+  `h3_game::LevelUpView`'s shape (the hero, the new level, the primary skill, the offers: none to
+  two, each an `Offer`, a secondary skill and the level it reaches, `Offer::of_frame` from
+  `secskill.def`'s 3 × skill + 3 + level before); Part A reads them from the live part's
+  `[[level_up]]` tables (`LevelUp::read_all`: one a dialog, the tables a choice or the OK appends
+  folded; the primary skill the third picture from the end, the harness's order), `Live::level_ups`.
+  `LevelArt` (the tables' `[map.level_up]`): the thresholds of levels 1 to 12 (the engine's packs'
+  0 … 20 600), `level_of` (beyond the table each step a fifth more: 24 320 at 13; in integers,
+  capped at 255), the dialog's sound `nwherolv.wav` (among the sound rules' effects) and the skills
+  whose every level learned shows in the status window: Leadership's a morale point (6), Luck's a
+  luck point (9). The layout's `[level_up]` (`LevelUpLayout`): the dialog at (205, 65), 385 × 470
+  with the message boxes' shadow, its items without an offer (2000 the background in the owner's
+  colours, 2001 the portrait, 2002 to 2004, 2009, the OK 0x7802 last) and those two offers and one
+  add before the OK (the frames 2012 and 2013 areas); `levels::dialog` fills them (the texts, the
+  portrait the status window's, the frames of `pskil42.def` and `secskill.def`; two offers: the
+  frames hidden, the OK disabled; one: its frame shown), `LevelUp::texts` through the catalogue's
+  `map.level-up.*` (GENRLTXT 445, 446, 204, 205; the executable's `%s +1` and `%s\n%s` at 0x67FA40
+  and 0x67FA38, the viewer's `EXE` reader now taking a line break) and `map.ask.or`; 2005 drawn
+  through the text drawer, which draws nothing for it (MCL-Q34); `offer_at` (2010 or 2012 the left,
+  2011 or 2013 the right, at the press as a choice box's), `choose` (its frame shown, the other's
+  hidden, the OK enabled, the dialog drawn again), `chosen`, `frame_draws` (each shown frame's
+  outline in entry 45 by the common `h3_ui::message::outline`, additive). The timeline:
+  `Gain::experience` (the Learning Stone's `art`'s, an event's and Pandora's rewards', a chest's in
+  `Answer::after` and `Reply::after`, shown at its dissolve's end), `Start::experience` (the
+  situation's: the map's; none, a new game's draw not known, and no level is reached; the selected
+  hero at 0's only), `Start::level_ups` (`LevelBox`: the level, the dialog laid out, the offers,
+  the primary skill; the adapter's `Painter::level_ups`, its class's name from the mouse-over's
+  hero list); the levels due where the visit's handler calls `hero_level_up` (`Loop::level_up`:
+  after a find's first boxes, `After::Found`; after an answer's gain, `After::Answer`; at a
+  dissolve's end, `After::Step`), each dialog with its sound, the mouse shown with the arrow
+  (`Told::Level`), the next in the millisecond the last closes; a level whose facts are missing
+  refused in a recording (`Unplayable::LevelUp`), passed over live; at the last close
+  (`Loop::leveled`) the primary skills, a Leadership's morale and a Luck's luck shown, the mouse
+  looked at again, then what follows. `Action::Offer` (the keys 1 and 2: `sequences.toml`'s `1`
+  and `2`, the window's `offer-left` and `offer-right` in the box's context, `h3-sdl`'s `Digit1`
+  and `Digit2`, additive; elsewhere nothing), Escape the dialog's OK. A box's close keeps the
+  cursor where the mouse manager last drew it (`level-up-right`'s OK clicked at 2000, the poll's
+  move at 2013; every timeline as recorded). **Read** (recorded): the offer learned shows when it
+  is Leadership's (`level-up-twice`'s Advanced Leadership: the morale +2 at 5260, §5.5's "After"
+  had none); a chest's levels come after its dissolve (`visit_treasure_chest`'s `hero_level_up`
+  after `remove_map_object`; `map.toml`'s `chest_gold_or_experience` says "with its levels").
+  Not built: the Tree of Knowledge's OK (its experience to the next level, its price), a battle's
+  levels (T5), a right-click's popup, the deadline, the computer's choice; the experience of a
+  hero other than the one selected at 0.
+- **Checked** (M4 T2c): the five moved into `sequences.toml`, `to-record.toml` removed; `frames
+  --only <id> --reuse` on them: `level-up` (11 frames), `level-up-right` (12) and `level-up-twice`
+  (25) every frame exact; `level-up-one` and `level-up-none` (9 each) first with the status
+  window's morale differing from 100 (181 pixels, then 209: the staging's, the eight skills
+  written after the window at 0 was built held Expert Leadership, and the type's Basic Leadership
+  went with the write: TRAPS), then staged again with a Cleric (Rion: Wisdom, First Aid) and no
+  morale or luck skill written, recorded twice, every frame exact; the viewer's timelines the
+  recorded ones line for line (42, 41, 35, 35, 73; `<id>-frames.txt` kept, `drawn --record`); `find-stone`, `choose-chest`,
+  `choose-chest-gold` and `ask-tree` still exact; `h3-map-view sequences` the 85 as recorded; unit
+  tests (the levels an experience reaches, an offer's frame, the tables read and refused, the
+  texts with none, one and two offers, the dialog's items and states, the choice by a picture, a
+  frame or a key; the five replayed headless, the sound, the arrow, Enter before a choice, the keys
+  1 and 2, Escape, the OK clicked and the cursor kept, two levels in turn, the morale and a Luck's
+  luck, an answer's levels, a level not given, an experience not known), 100 % lines, regions and
+  functions of `h3-map-view`'s library and of `h3-ui` but its `scrollbar.rs` (untouched).

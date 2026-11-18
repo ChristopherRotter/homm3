@@ -99,7 +99,7 @@ TERRAIN_FIELD, RIVER_FIELD = h3mem.TERRAIN_DEFS, h3mem.RIVER_DEFS
 MASKS = {name: [tuple(r) for r in rects]
          for name, rects in tomllib.loads((CLIENTS / "map/masks.toml").read_text()).items()}
 # What `lists` writes into a situation's hero's record (E24 M3 T4a, T5b1).
-HERO_WRITES = {"points", "mana", "skills", "morale", "luck", "army", "diplomacy"}
+HERO_WRITES = {"points", "mana", "skills", "morale", "luck", "army", "diplomacy", "secondary"}
 # The status window's kinds the viewer draws (E24 M3 T5b1: a hero's and a town's, design §4.8;
 # T5b2 the date's and the kingdom's, §4.9).
 STATUS_DRAWN = (1, 2, 3, 4)
@@ -381,6 +381,9 @@ def lists(game, mem, sit):
             # A monster's offer to join for gold (E24 M4 T2b1, design §5.4).
             if "diplomacy" in hero:
                 mem.write_diplomacy(index, hero["diplomacy"])
+            # A level-up's offers (E24 M4 T2c, design §5.5): its secondary skills as given.
+            if "secondary" in hero:
+                mem.write_secondary(index, hero["secondary"])
     for town in sit.get("towns", []):
         if town.get("built"):
             mem.write_town_built(town_index(mem, town["at"]))
@@ -975,10 +978,11 @@ INPUTS = ("keydown", "keyup", "pointer", "click", "press", "release")
 # direction keys, as `h3_map_view::sequence`'s DIRECTION_KEYS, with or without `ctrl+`; since
 # E24 M3 T6b1 the panels' buttons' hotkeys (`h3_map_view::timeline::Hotkey`'s letters); since
 # T6b3 Space (`space`: the selected hero chosen again, its tile visited); since E24 M4 T1a a
-# message box's Enter and Escape (`Return`, `Escape`: its OK's and Cancel's hotkeys).
+# message box's Enter and Escape (`Return`, `Escape`: its OK's and Cancel's hotkeys); since E24
+# M4 T2c the digits 1 and 2 (the level-up dialog's left and right offers, design §5.5).
 DIRECTION_KEYS = ("Up", "Prior", "Right", "Next", "Down", "End", "Left", "Home")
 HOTKEYS = ("k", "u", "q", "z", "w", "m", "c", "a", "o", "h", "e")
-OTHER_KEYS = ("space", "Return", "Escape")
+OTHER_KEYS = ("space", "Return", "Escape", "1", "2")
 
 
 def force_rolls(game, name, value):
@@ -1020,6 +1024,22 @@ def message_toml(box, t):
     return (f"\n[[message]]\nat = {t}\nbox = {box['box']}\ntexts = {json.dumps(box['texts'])}\n"
             f"pictures = {json.dumps(box['pictures'])}\nbuttons = {box['buttons']}\n"
             f"style = {box['style']}\nchosen = {box['chosen']}\nmarks = {box['marks']}\n")
+
+
+def level_up_toml(box, t):
+    """The level-up dialog opened in a sequence (E24 M4 T2c, design §5.5), a `[[level_up]]`
+    table of the live part beside the `[[message]]` tables: its millisecond, the `hero` (the
+    selected one) and its new `level`, its place, its texts and pictures in item order, the
+    picture arguments it keeps (`offers`: the left and the right secskill.def frame, -1 none),
+    the offer `chosen` (0x7DA, 0x7DB, 0 none) and its `marks`, the two frames' and the OK's [id,
+    x, y, width, height, state] (`Mem.level_up_box`): a choice or the OK's state changed appends
+    a table of its own. The viewer takes a level-up's facts from it (the hero, the level, the
+    primary skill and the offers: the original's draws), as Part B takes them from the engine's
+    `LevelUpView`."""
+    return (f"\n[[level_up]]\nat = {t}\nhero = {box['hero']}\nlevel = {box['level']}\n"
+            f"box = {box['box']}\ntexts = {json.dumps(box['texts'])}\n"
+            f"pictures = {json.dumps(box['pictures'])}\noffers = {box['offers']}\n"
+            f"chosen = {box['chosen']}\nmarks = {box['marks']}\n")
 
 
 def found_toml(found, t):
@@ -1267,6 +1287,7 @@ def sequence(entry, out):
         # Each message box opened and each status window of a resource found built (E24 M4
         # T2a1, design §5.3): their facts in the millisecond they first show, after the turns'.
         shown_box, shown_found, finds = None, mem.status_shown() == 6, []
+        shown_level_up = None
         for i in range(entry["ms"]):
             t = game.clock("step 1", settle_reads=500)
             # Each step one millisecond (M2 T6a, the reviewer's R3-6): an input at a skipped one
@@ -1301,6 +1322,15 @@ def sequence(entry, out):
             if key is not None and key != shown_box:
                 finds.append(message_toml(box, t - t0))
             shown_box = key
+            # E24 M4 T2c (design §5.5): the level-up dialog, a table at its build and at each
+            # change of its choice or its OK.
+            level_up = mem.level_up_box()
+            key = None if level_up is None else (level_up["box"], level_up["texts"],
+                                                 level_up["pictures"], level_up["chosen"],
+                                                 level_up["marks"])
+            if key is not None and key != shown_level_up:
+                finds.append(level_up_toml(level_up, t - t0))
+            shown_level_up = key
             found = mem.status_shown() == 6
             if found and not shown_found:
                 finds.append(found_toml(mem.found(), t - t0))

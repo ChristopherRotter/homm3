@@ -744,6 +744,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     | Command::Panel(_)
                     | Command::Visit
                     | Command::Message(_)
+                    | Command::Offer(_)
                     | Command::Window(Own::Frame),
                 )
                 | None => {}
@@ -800,6 +801,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     | Action::KeyUp(_)
                     | Action::BoxKey(_)
                     | Action::BoxKeyUp(_)
+                    | Action::Offer(_)
                     | Action::Visit
                     | Action::Up => 4,
                 }] += 1;

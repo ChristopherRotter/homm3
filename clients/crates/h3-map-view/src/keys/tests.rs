@@ -87,7 +87,7 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
     }
     // Every command bound, in the table's order: the map's twice (the key and the keypad's).
     let chords = keys.chords();
-    assert_eq!(chords.len(), 55);
+    assert_eq!(chords.len(), 57);
     let mut commands: Vec<Command> = chords.iter().map(|&(c, _)| c).collect();
     commands.dedup();
     assert_eq!(commands, Command::all());
@@ -97,7 +97,9 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
     assert_eq!(chords[32].1.to_string(), "K");
     assert_eq!(chords[43].1.to_string(), "Space");
     assert_eq!(chords[44].1.to_string(), "Return");
-    assert_eq!(chords[54].1.to_string(), "Escape");
+    assert_eq!(chords[46].1.to_string(), "1");
+    assert_eq!(chords[47].1.to_string(), "2");
+    assert_eq!(chords[56].1.to_string(), "Escape");
 }
 
 #[test]
@@ -132,12 +134,22 @@ fn a_message_box_takes_its_keys_and_the_windows_own() {
     assert_eq!(ok.release(), Some(Action::BoxKeyUp(Key::Ok)));
     assert_eq!(ok.name(), "box-ok");
     assert_eq!(Command::Message(Key::Cancel).name(), "box-cancel");
+    // E24 M4 T2c: a level-up's 1 and 2 in the box's context, nothing on the map; released, a
+    // message that does nothing.
+    for (key, n, name) in [("1", 0, "offer-left"), ("2", 1, "offer-right")] {
+        let offer = Command::Offer(n);
+        assert_eq!(keys.command(message, false, key), Some(offer));
+        assert_eq!(keys.command(map, false, key), None);
+        assert_eq!(offer.action(), Some(Action::Offer(n)));
+        assert_eq!(offer.release(), Some(Action::Up));
+        assert_eq!(offer.name(), name);
+    }
 }
 
 #[test]
 fn every_command_has_a_name_and_the_maps_its_action() {
     let all = Command::all();
-    assert_eq!(all.len(), 39);
+    assert_eq!(all.len(), 41);
     for &command in &all {
         assert_eq!(Command::from_name(&command.name()), Some(command));
     }
@@ -161,9 +173,12 @@ fn every_command_has_a_name_and_the_maps_its_action() {
             "visit"
         ]
     );
-    assert_eq!(names[28..30], ["box-ok", "box-cancel"]);
     assert_eq!(
-        names[30..],
+        names[28..32],
+        ["box-ok", "box-cancel", "offer-left", "offer-right"]
+    );
+    assert_eq!(
+        names[32..],
         [
             "music",
             "effects",
@@ -241,7 +256,7 @@ fn a_users_file_overrides_command_by_command() {
         Some(Command::Window(Window::Frame))
     );
     let chords = keys.chords();
-    assert_eq!(chords.len(), 54);
+    assert_eq!(chords.len(), 56);
     assert!(
         chords
             .iter()

@@ -1,0 +1,18 @@
+# A level-up's choice (E24 M4 T2c; clients/map/sequences.toml `level-up-one`; E24 design §5.5):
+# a Learning Stone's 1 000 experience takes the hero at 0 to level 2; its eight secondary skills
+# written, all at Expert but Mysticism at Basic, so the dialog offers that one advance alone.
+# The status window at 0 is built before the harness's writes and again at the walk, so neither
+# the skills written nor the type's own (a Cleric's first, Rion: Wisdom, First Aid) change the
+# morale or luck shown. Red's hero on (4, 4) steps right onto it (its entrance (5, 4)); Red's
+# town out of the way, so that no visit's scenario test warns of a town lost; Blue's hero far
+# off in the fog.
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [4, 4], class = 1, experience = 0, secondary = [[0, 3], [1, 3], [2, 3], [3, 3], [4, 3], [5, 3], [7, 3], [8, 1]] },
+    { at = [32, 32], owner = 1 },
+]
+towns = [{ at = [16, 12], faction = 0, owner = 0, buildings = "fort" }]
+objects = [{ def = "AVSgzbo0.def", at = [5, 4] }]
+view = [0, 0, 0]
+hidden = [[20, 16, 35, 35]]

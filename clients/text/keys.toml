@@ -1433,6 +1433,42 @@ original = [{ at = "ADVEVENT:0" }]
 id = "map.ask.school"
 original = [{ at = "ADVEVENT:71" }]
 
+# A level-up's dialog (E24 M4 T2c; design §5.5: `level_up_dialog` 0x4F8880): the hero's name
+# gaining a level (2002), its name, new level and class (2003), the primary skill's name raised
+# (2004: the executable's own text), the sentence naming the offers (2005: one's level and skill
+# for one, both for two, the left's first; its two leading line breaks put it below its box,
+# MCL-Q34) and an offer's caption under its picture (2007, 2008: its level's name and its
+# skill's); the "or" between two is `map.ask.or`'s.
+[[key]]
+id = "map.level-up.gained"
+args = { name = "text" }
+original = [{ at = "GENRLTXT:445", printf = ["name"] }]
+
+[[key]]
+id = "map.level-up.now"
+args = { name = "text", level = "number", class = "text" }
+original = [{ at = "GENRLTXT:446", printf = ["name", "level", "class"] }]
+
+[[key]]
+id = "map.level-up.primary"
+args = { skill = "text" }
+original = [{ at = "EXE:0x67FA40", printf = ["skill"] }]
+
+[[key]]
+id = "map.level-up.learned"
+args = { level = "text", skill = "text" }
+original = [{ at = "GENRLTXT:204", printf = ["level", "skill"] }]
+
+[[key]]
+id = "map.level-up.either"
+args = { level = "text", skill = "text", second_level = "text", second = "text" }
+original = [{ at = "GENRLTXT:205", printf = ["level", "skill", "second_level", "second"] }]
+
+[[key]]
+id = "map.level-up.caption"
+args = { level = "text", skill = "text" }
+original = [{ at = "EXE:0x67FA38", printf = ["level", "skill"] }]
+
 # A turn without a town (E24 M4 T2a2; design §5.3): at the turn's end GENRLTXT 7 with the player's
 # name (`scenario_condition_met` 0x4F2CE0), at each later day's start ArrayTxt 128 with the name and
 # the days left, 129 on the last day (`player_turn_start` 0x4CC7D0); the name the viewer's

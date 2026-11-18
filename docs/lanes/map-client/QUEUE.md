@@ -31,9 +31,9 @@ reading and recordings, then the viewer's build, as T1b was).
 - **T2b, the questions and choices:** done 2026-11-18 (T2b1 and T2b2; their entries in
   `QUEUE-ARCHIVE.md`; the log's "M4 T2b1", "M4 T2b2"). `asks`, `Question`, `Answer`, `Reply` and
   `h3_ui::message`'s styles 7 and 10 are T2c's base.
-- **T2c, a level-up's choice:** the level-up dialog (0x63FE60, `level_up`; the engine's
-  `DecisionView::LevelUp`): the primary skill gained, one or two secondary offers, its own layout.
-  **Depends on:** T2a.
+- **T2c, a level-up's choice:** done 2026-11-18 (whole; its entry in `QUEUE-ARCHIVE.md`; the log's
+  "M4 T2c"). `levels`, `LevelUp` and the timeline's `Loop::level_up` are T5's base for a battle's
+  levels.
 - **T2d, the map changed by a visit:** an object taken or a monster beaten (the map, the minimap
   and the panels redrawn); a flag raised (the owner's colour on the object and the minimap); a
   boat boarded and left; a spell cast on the map recorded (MCL-Q14: if the stale mana bar shows,

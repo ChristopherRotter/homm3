@@ -863,3 +863,8 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
   opening (else the run raises), loops counted (`sounds_settled` too); a paused sample answers
   Miles' 8; `wineserver -w` waits at most 60 s. Nothing else drives the original otherwise
   (runbook, "Sound", "The clips", "Traps").
+- 2026-11-18 (this lane, E24 M4 T2c): kept whole by the user (the cut after the reading and the
+  recordings as the fallback, not needed); done, the log's "M4 T2c". Its entry:
+  - **T2c, a level-up's choice:** the level-up dialog (0x63FE60, `level_up`; the engine's
+    `DecisionView::LevelUp`): the primary skill gained, one or two secondary offers, its own layout.
+    **Depends on:** T2a.

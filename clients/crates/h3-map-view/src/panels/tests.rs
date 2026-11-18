@@ -48,6 +48,7 @@ fn live(kingdom: Kingdom, path: Vec<Arrow>) -> Live {
         pressed: Vec::new(),
         turns: Vec::new(),
         computer: false,
+        level_ups: Vec::new(),
     }
 }
 

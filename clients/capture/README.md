@@ -1349,6 +1349,18 @@ level alone, `Mem.write_diplomacy`: a monster's offer to join for gold). T2b1's 
 (`ask-*`, `choose-*`) waited in `map/to-record.toml` until T2b2 moved them into `sequences.toml`
 (the file removed).
 
+**The level-up's dialog** (E24 M4 T2c, design §5.5): `Mem.message_box` leaves the level-up dialog
+out (its vtable 0x63FE60); a `[[level_up]]` table holds it in its place (`Mem.level_up_box`): its
+millisecond, the `hero` (the selected one: the dialog keeps none) and its new `level`, the
+dialog's place, texts and pictures in item order (`[name, frame]`, a PCX's frame −1), the
+picture arguments it keeps (`offers`: the left and right `secskill.def` frames, −1 none), the
+offer `chosen` (0x7DA, 0x7DB, 0 none) and the `marks` of its two frames and its OK; a choice or the
+OK's state changed appends a table. A situation's hero may carry its `secondary` skills
+(`[[skill, level], ...]`, levels 1 to 3, at most eight, `Mem.write_secondary`: every level and slot
+cleared first), so that a level-up offers one advance or none. A sequence may press the keys `1`
+and `2` (the dialog's left and right offers). T2c's sequences (`level-up*`) wait in
+`map/to-record.toml` until the viewer plays them.
+
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
 <out>/<id>/live.toml`: the map's timeline from the situation, this run's live part at 0 and the
