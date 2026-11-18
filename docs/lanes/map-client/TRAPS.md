@@ -132,6 +132,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   with the screens under `clients/out/map-frames/<id>/`, never in git, so a fresh sandbox records
   each sequence again first (`frames … --only <id>`, one id per run), then checks with `frames
   --only <id> --reuse` while the viewer changes.
+- **A box's `[[message]]` tables grew** (M4 T2b1, design §5.4): each holds the box's `style`,
+  `chosen` and `marks`, and a button pressed or a picture chosen appends a table of its own, so a
+  T2a sequence recorded again (`find-*`, `turn-*`) keeps a live part with more tables than git's:
+  expected, nothing of the viewer reads them. A choice's OK is disabled until a picture is
+  chosen (styles 7 and 10): a sequence's Enter before the click does nothing.
 - **One game at a time:** `h3mem.Mem()` takes the first game process it finds, so a `still --keep` game left running makes the next still read it (T5a); stop it first (`wineserver -k` with `h3drive.env()`). At a human player's turn start the selected hero is off its tile until the view moves: find heroes by their records (`Mem.hero_on`).
 - **Driving the window under Xvfb** (M2 T4b1): `xdotool click --window <id>` sends a synthetic
   event that SDL ignores; move the pointer with `mousemove --window` and click with a plain
