@@ -4759,6 +4759,9 @@ skipping the listed hires as decision 56 did; then the env); **the user kept T38
   3 554), `day-start-builds-36` +104.7 %, `day-start-towns-36` +51.1 %, `month-start-builds-36`
   +68.9 %, `fork-towns-36` +38.8 % (more heroes in the states); the other adventure workloads
   within their gates (`random-play-bonuses-36` +1.67 % the largest: the fold, the listing).
+  CI's first full verify on #1006 was cancelled at its 40-minute limit in `bench-check`
+  (`master`'s run takes 36): `reach-towns-36`'s 28 days ran 107 s under callgrind for 17 s
+  with the hired heroes; its games cut to 10 days (2 418 queries, 10 s, 887 907 696 Ir).
 - **Versions:** action encoding v12 alone; no protocol, replay format or hash moved (the 89
   goldens replay unchanged).
 
