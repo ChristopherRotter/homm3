@@ -1882,3 +1882,21 @@ design `E08-design.md` §4 to §8, §12 to §15, §18, §20)
 - **Depends on:** T125a (`adventure/e08-t125a`, merged first). **Status:** ready once T125a
   merges; its cut confirmed at its start (likely in two: the maps and replays, then the
   properties and benchmarks). T126 (the audit) after it.
+
+## T125b2b (moved 2026-11-18, done whole: `adventure/e08-t125b2b`, decision 359)
+
+**E08 T125b2b — the benchmarks, `--with-original-data`** (round 7; design `E08-design.md` §17,
+§20; decisions 357, 358)
+
+- **Scope:** (`adventure/e08-t125b2b`): the benchmarks `reach-banks-xl-144` (walkers and flyers on
+  T125b1's `e08-banks-144.h3m`: the coast's Shipwrecks met and crossed), `build-banks-xl-144` (the
+  game's build with its draws, as `build-gates-xl-144`) and `random-play-banks-36` (T125b1's
+  `e08-banks-36.h3m`) baselined (`homm3-bench-regression`; their README rows in a `shared/` pull
+  request, as T116c's); `--with-original-data` (the census, the 160 shipped maps built with their
+  banks drawn, the seventh pack check, the bank positions). Versions: none planned.
+- **Inputs:** design §17, §20's exit criteria 1, 2, 5, 7 and 9; T125b1's record in `E08-log.md`
+  (the maps' layouts); the templates `benches/adventure/`'s `reach-garrisons-xl-144`,
+  `build-gates-xl-144` and `random-play-bonuses-36` (T116c's record); the lane's `TRAPS.md` (a
+  workload's `collect` pattern, a new workload's first count); skill `homm3-bench-regression`.
+- **Depends on:** T125b2a (`adventure/e08-t125b2a`, merged first). **Status:** ready once T125b2a
+  merges; its cut confirmed at its start (likely whole, as T116c). T126 (the audit) after it.

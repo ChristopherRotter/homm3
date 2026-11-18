@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "the game's build of 2 games on the banks XL map (E08 T125b2b, increment 13's design note §17, as build-gates-xl-144; T125b1's e08-banks-144.h3m: 144 x 144 with a sea, 106 creature banks as Thousand Islands, the shipped maps' most on one map, every kind in the census's shares, ten heroes, 136 gnoll stacks), each bank's draw from the setup stream in object order (ADV-BNK-002: the level, the guards' split and upgrade, the artifacts from the one pool): about 4.46 M Ir a build, h3_adventure::state::banks::bank_draw 6.6 % (about 2 800 Ir a bank), the draws' artifact pool 3.9 %, the terrain shares 22 %, AdventureState::new 19 %, the static map's hash 14 %, malloc and free 6 %; counts only inside h3_cli::adventure::bench::game_build (GameState::new: the static map, its draws, the heroes, the start); baselined at its first count"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-banks-144.h3m",
+    "--workload",
+    "build",
+    "--games",
+    "2",
+    "--days",
+    "1",
+    "--seed",
+    "1",
+]
+collect = "*game_build*"
+instructions = 8919109
+threshold_percent = 2

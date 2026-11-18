@@ -36,12 +36,13 @@
 //! - **A right press** (`scenario_dialog_right_click` 0x5822D0, §3.15): on a town's picture
 //!   (370 + c) its alignment (`scenario_town_popup` 0x575E60: the town's picture and name, its
 //!   seven creatures in two rows) or a Random town's (`scenario_info_popup` 0x5757E0, GENRLTXT 104,
-//!   523, 105); on a hero's (362 + c) a Random hero's (GENRLTXT 102, 523, 103), none where the row
-//!   shows None (CLT-Q112 (b)); on a bonus's (378 + c) its popup (`scenario_bonus_popup`
-//!   0x5754F0); each while the right button is held, the cursor showing, then the screen redrawn
-//!   whole.
+//!   523, 105); on a hero's (362 + c) the hero's own (T3b2: `scenario_hero_popup` 0x575A90, its
+//!   portrait, name and class, its specialty's picture and name), a Random hero's (GENRLTXT 102,
+//!   523, 103), none where the row shows None (CLT-Q112 (b)); on a bonus's (378 + c) its popup
+//!   (`scenario_bonus_popup` 0x5754F0); each while the right button is held, the cursor showing,
+//!   then the screen redrawn whole.
 //!
-//! *Not built yet:* a hero's own popup (`scenario_hero_popup` 0x575A90: T3b2); the flags' press
+//! *Not built yet:* the flags' press
 //! and hover, the name's edit, the handicap's press, the duration's bar's input and the hints
 //! (T3c); the hot seat and a hero two human records hold (T4); a town a human-only colour draws
 //! at the list's read (no shipped map has one; CLT-Q95); the edition's version (+0x1898: a single
@@ -58,6 +59,11 @@ use serde::Deserialize;
 
 use super::{Heroes, Seat};
 use crate::message::MessageBox;
+
+/// What stands for a hero's name in [`AdvancedTexts::hero_line`].
+pub const HERO_NAME: char = '\u{1}';
+/// What stands for a hero's class in [`AdvancedTexts::hero_line`].
+pub const HERO_CLASS: char = '\u{2}';
 
 /// The advanced options' panel (102, `AdvOptBk.pcx`).
 pub const PANEL: u16 = 102;
@@ -183,6 +189,8 @@ pub struct AdvancedLook {
     pub popup: PopupLook,
     /// The town's popup.
     pub town_popup: TownPopupLook,
+    /// A hero's own popup (E27 M3 T3b2).
+    pub hero_popup: HeroPopupLook,
 }
 
 /// A picture a row draws itself: a DEF's frame or a picture by name, at its corner.
@@ -260,6 +268,35 @@ pub struct TownPopupLook {
     pub creatures: Vec<[u16; 7]>,
 }
 
+/// A hero's popup (`scenario_hero_popup` 0x575A90; E27 M3 T3b2, design §25): its place and size,
+/// its frame, the title (GENRLTXT 78), the hero's small portrait, its name and class, the
+/// specialty's heading (GENRLTXT 79), its picture (`un44.def`, the hero type's frame) and its
+/// name.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HeroPopupLook {
+    /// Its corner on the screen.
+    pub place: [i32; 2],
+    /// Its size (the frame's).
+    pub size: [i32; 2],
+    /// The background's tile.
+    pub background: String,
+    /// The frame's pieces.
+    pub frame: String,
+    /// The title (medfont, colour 1).
+    pub title: Label,
+    /// The portrait's corner (its 48 pixels centred).
+    pub portrait: [i32; 2],
+    /// The name and the class (smalfont).
+    pub name: Label,
+    /// The specialty's heading (medfont).
+    pub heading: Label,
+    /// The specialty's picture (`un44.def`, 44 × 44, centred).
+    pub specialty: Def,
+    /// The specialty's name (smalfont, under its picture).
+    pub specialty_name: Label,
+}
+
 /// A row of the town's popup's creatures.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -298,6 +335,16 @@ pub struct AdvancedTexts {
     pub portraits: Vec<String>,
     /// A Random hero's popup: its title (GENRLTXT 102) and text (103).
     pub random_hero: [String; 2],
+    /// A hero's own popup's title (GENRLTXT 78) and its specialty's heading (79; E27 M3 T3b2).
+    pub hero_popup: [String; 2],
+    /// A hero's popup's line of its name and class (`name_dash_format` 0x66033C, "%s - %s"):
+    /// [`HERO_NAME`] stands for the name, [`HERO_CLASS`] for the class.
+    pub hero_line: String,
+    /// The hero types' classes' names, by hero type (HCTRAITS by the type's class).
+    pub hero_classes: Vec<String>,
+    /// The hero types' specialties' names, by hero type (HeroSpec.txt's first column:
+    /// `hero_specialty_text` 0x4D7220).
+    pub specialties: Vec<String>,
     /// The town's popup's title (GENRLTXT 81) and its creatures' heading (80).
     pub alignment: String,
     /// The creatures' heading.
@@ -927,16 +974,23 @@ impl Advanced {
     }
 
     /// Colour `c`'s hero's popup over `map` (`scenario_dialog_right_click` 0x5823FF): none for a
-    /// colour with no hero at all (neither flag nor a main hero); a hero shown, its own (T3b2: none
-    /// yet); a Random one, Random's (`scenario_info_popup` 0x5757E0: GENRLTXT 102, `hpsrand1.pcx`,
-    /// 523, 103); a None, none (CLT-Q112 (b); the original's Random's for the comparisons).
+    /// colour with no hero at all (neither flag nor a main hero); a hero shown, its own
+    /// (`scenario_hero_popup` 0x575A90, T3b2); a Random one, Random's (`scenario_info_popup`
+    /// 0x5757E0: GENRLTXT 102, `hpsrand1.pcx`, 523, 103); a None, none (CLT-Q112 (b); the
+    /// original's Random's for the comparisons).
     fn hero_popup(&self, map: &Map, c: u8) -> Option<MessageBox> {
         let seat = map.seats[usize::from(c)];
         let none_at_all = !(seat.generates || seat.random_hero) && seat.main_hero.is_none();
         let random = match self.shown_hero(map, c) {
             Hero::Random => true,
             Hero::Nobody => self.bugs == Bugs::Original && !none_at_all,
-            Hero::Portrait { .. } => false,
+            Hero::Portrait {
+                portrait,
+                hero_type,
+            } => {
+                let name = self.hero_name(map, c, hero_type);
+                return Some(self.own_hero_popup(portrait, hero_type, &name));
+            }
         };
         let t = &self.texts;
         random.then(|| {
@@ -948,6 +1002,51 @@ impl Advanced {
                 &t.random_hero[1],
             )
         })
+    }
+
+    /// A hero's own popup (`scenario_hero_popup` 0x575A90; design §25): GENRLTXT 78, the small
+    /// portrait `portrait` the row shows (none past the table), "%s - %s" of `name` and the class
+    /// of `hero_type`, GENRLTXT 79, `un44.def`'s frame of `hero_type` and its specialty's name.
+    fn own_hero_popup(&self, portrait: u8, hero_type: u8, name: &str) -> MessageBox {
+        let texts = &self.texts;
+        let look = &texts.look.hero_popup;
+        let [w, h] = look.size;
+        let mut items =
+            crate::message::frame((&look.background, &look.frame), [w.into(), h.into()]);
+        let mut shown = Shown::default();
+        let t = usize::from(hero_type);
+        let line = texts
+            .hero_line
+            .replace(HERO_NAME, name)
+            .replace(HERO_CLASS, &text_at(&texts.hero_classes, t));
+        let mut label = |label: &Label, text: String, items: &mut Vec<Item>| {
+            items.push(Item::Label(label.clone()));
+            shown.texts.insert(label.id, text);
+        };
+        let [title, heading] = texts.hero_popup.clone();
+        label(&look.title, title, &mut items);
+        if let Some(picture) = texts.portraits.get(usize::from(portrait)) {
+            items.push(Picture::Named(picture.clone()).item(POPUP_PICTURE, look.portrait));
+        }
+        label(&look.name, line, &mut items);
+        label(&look.heading, heading, &mut items);
+        items.push(Item::Def(Def {
+            frame: u32::from(hero_type),
+            ..look.specialty.clone()
+        }));
+        label(
+            &look.specialty_name,
+            text_at(&texts.specialties, t),
+            &mut items,
+        );
+        MessageBox {
+            dialog: Dialog {
+                place: look.place,
+                shadow: Some(look.size),
+                items,
+            },
+            shown,
+        }
     }
 
     /// The small popup (`scenario_info_popup` 0x5757E0, `scenario_bonus_popup` 0x5754F0): its
@@ -1196,6 +1295,8 @@ impl Advanced {
             &look.popup.title,
             &look.popup.caption,
             &look.town_popup.creature_name,
+            &look.hero_popup.title,
+            &look.hero_popup.name,
         ];
         for label in labels {
             names.push(label.font.clone());
@@ -1206,11 +1307,13 @@ impl Advanced {
         for (background, frame) in [
             (&look.popup.background, &look.popup.frame),
             (&look.town_popup.background, &look.town_popup.frame),
+            (&look.hero_popup.background, &look.hero_popup.frame),
         ] {
             names.push(background.clone());
             names.push(frame.clone());
         }
         names.extend(look.town_popup.creature.def.clone());
+        names.extend(look.hero_popup.specialty.def.clone());
         names
     }
 }

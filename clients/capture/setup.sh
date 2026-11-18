@@ -31,6 +31,9 @@ run="$(realpath -m "${H3_RUN:-$root/original-data/wine}")"
 WINEPREFIX="$(realpath -m "${WINEPREFIX:-$HOME/.wine-h3}")"
 export WINEPREFIX WINEARCH=win32 WINEDEBUG=-all
 export WINEDLLOVERRIDES="mscoree,mshtml="
+# Wine 9's 32-bit loader crashes at its start where TMPDIR is set (E27 M3 T3b2: the sandbox's
+# TMPDIR=/tmp; wineboot's segfault or `free(): invalid pointer`): h3drive.py drops it too.
+unset TMPDIR
 
 # 1. Packages: 32-bit Wine, the virtual display and input (xset turns its key repeat off: E24 M2
 # T1a2), mingw-w64 for the forwarder.

@@ -52,11 +52,16 @@ pub fn own_pack(catalogue: &Path, keys: &Keys) -> Result<Pack, String> {
 /// combinations among them), by their numbers.
 const ARTIFACTS: usize = 141;
 
+/// The hero classes the family `hero-class` names (E27 M3 T3b2): the original's 18, by their
+/// numbers.
+const HERO_CLASSES: usize = 18;
+
 /// The families' entries: the asset tables' creatures, spells and heroes (E17 M3 T7b-1), the
 /// towns' moats by their faction (E17 M4 T2c-1) and their wall-shot targets' parts (E17 M4 T2c-2:
 /// `<faction>.<part>`, the town type's 18 parts in order), by qualified key, with their original
 /// ids; the artifacts by their numbers (E17 M6 T5a: `artifact.<n>`, the book's refusals and the
-/// stats' capping artifacts).
+/// stats' capping artifacts); the hero classes by their numbers (E27 M3 T3b2: `hero-class.<n>`,
+/// the scenario screen's hero popup).
 pub fn entries(tables: &AssetTables) -> BTreeMap<String, Vec<Entry>> {
     let entry = |key: &String, original: u16| Entry {
         key: key.clone(),
@@ -92,16 +97,19 @@ pub fn entries(tables: &AssetTables) -> BTreeMap<String, Vec<Entry>> {
             })
         })
         .collect();
-    let artifacts = (0..ARTIFACTS)
-        .map(|id| Entry {
-            key: id.to_string(),
-            id,
-        })
-        .collect();
+    let numbered = |count: usize| {
+        (0..count)
+            .map(|id| Entry {
+                key: id.to_string(),
+                id,
+            })
+            .collect()
+    };
     BTreeMap::from([
-        (String::from("artifact"), artifacts),
+        (String::from("artifact"), numbered(ARTIFACTS)),
         (String::from("creature"), creatures),
         (String::from("hero"), heroes),
+        (String::from("hero-class"), numbered(HERO_CLASSES)),
         (String::from("moat"), moats),
         (String::from("spell"), spells),
         (String::from("wall"), walls),
@@ -494,6 +502,10 @@ mod tests {
         assert!(keys.keys.contains_key("creature.base:pikeman"));
         assert!(keys.keys.contains_key("spell.sod:titans_lightning_bolt"));
         assert!(keys.keys.contains_key("hero.base:orrin"));
+        // E27 M3 T3b2: a hero type's specialty, a hero class by its number (0 to 17).
+        assert!(keys.keys.contains_key("hero-specialty.ab:xeron"));
+        assert!(keys.keys.contains_key("hero-class.17"));
+        assert!(!keys.keys.contains_key("hero-class.18"));
         // E17 M6 T5a: the artifacts by number (the Orb of Inhibition 126), 0 to 140.
         assert!(keys.keys.contains_key("artifact.126"));
         assert!(keys.keys.contains_key("artifact.140"));
@@ -514,14 +526,15 @@ mod tests {
         // ability texts; T2a2a its hints, the cast button's the first mine's name (MineName.txt);
         // E17 M6 T5a the artifacts' names (ARTRAITS.TXT); E27 M3 T1a the scenario screen's
         // victories' and losses' texts (VCDESC.TXT, LCDESC.TXT); E24 M4 T2a2 the map viewer's
-        // finds' texts (ADVEVENT.TXT); E27 M3 T3a the turn's durations (TURNDUR.TXT).
+        // finds' texts (ADVEVENT.TXT); E27 M3 T3a the turn's durations (TURNDUR.TXT); E27 M3 T3b2
+        // a hero popup's class and specialty (HCTRAITS.TXT, HEROSPEC.TXT).
         assert!(keys.keys.contains_key("stats.attack"));
         assert!(keys.keys.contains_key("creature-ability.base:marksman"));
         assert!(keys.keys.contains_key("stats.hint.ok"));
         let tables = [
             "ADVEVENT", "ARRAYTXT", "ARTRAITS", "BLDGNEUT", "BLDGSPEC", "CRTRAITS", "EXE",
-            "GENRLTXT", "HELP", "HOTRAITS", "LCDESC", "MINENAME", "PRISKILL", "SEERHUT",
-            "SKILLLEV", "SPTRAITS", "TURNDUR", "VCDESC", "WALLS",
+            "GENRLTXT", "HCTRAITS", "HELP", "HEROSPEC", "HOTRAITS", "LCDESC", "MINENAME",
+            "PRISKILL", "SEERHUT", "SKILLLEV", "SPTRAITS", "TURNDUR", "VCDESC", "WALLS",
         ];
         assert_eq!(names, BTreeSet::from(tables));
     }

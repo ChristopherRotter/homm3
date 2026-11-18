@@ -209,6 +209,9 @@ def env():
     if fault:
         raise RuntimeError(fault)
     e = dict(os.environ)
+    # Wine 9's 32-bit loader crashes at its start where TMPDIR is set (E27 M3 T3b2: the sandbox's
+    # TMPDIR=/tmp; `free(): invalid pointer` or a segfault in libc), so no Wine command takes it.
+    e.pop("TMPDIR", None)
     e.setdefault("WINEPREFIX", str(Path.home() / ".wine-h3"))
     e["WINEDEBUG"] = "-all"
     e["DISPLAY"] = DISPLAY

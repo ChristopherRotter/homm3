@@ -15,27 +15,24 @@ need the five DLLs (`MP3DEC.ASI` in the PC's `original-data/install` too since 2
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T3b2
+#### E27 M3 T3c1
 
-T3b2 A hero's own popup of a single player's advanced options (decision 54; the epic's M3 table;
-design §3.15, §24.3): `scenario_hero_popup` 0x575A90 read whole (320 × 256 at (250, 172): the name
-in `medfont.fnt`, the portrait, "%s - %s" (not read; its arguments include `hero_class_name`
-0x4D8F70 and `hero_specialty_text` 0x4D7220), GENRLTXT 78 and 79's headings, the specialty's
-picture and text), its
-texts into the catalogue and its pictures into the asset tables; the popup over a hero the row
-shows (a main hero's, CLT-Q141 (b) included; a pick's). Exact against `adv-single-hero`
-(`hero-popup-1`, `hero-popup-last`) and `adv-single-maps` (`map-0-hero-popup`, `map-2-hero-popup`):
-today every other shot of both is exact.
+T3c1 A single player's flags, handicap and name (decision 57: T3c cut in two at
+`adv-single-rest`'s seam; design §3.13, §3.14, §23.7): the flags' hover and press
+(`scenario_flag_click` 0x58B790: the player to another colour a human may play, CLT-Q93 (b)), the
+handicap (single: drawn up, no press, no popup; a `CLT-STUB`, decision 6), the name's edit (353,
+`scenario_name_click` 0x58B620: through `h3_ui::input`, decision 20; where the text returns to the
+record not read yet). Exact against `adv-single-rest`'s first ten shots (`flag-hover-own` to
+`name-after-flag`).
 
-#### E27 M3 T3c
+#### E27 M3 T3c2
 
-T3c The rest of a single player's advanced options (design §3.13 to §3.15, §23.7): the flags'
-press (`scenario_flag_click` 0x58B790, CLT-Q93) and hover, the name's edit (353,
-`scenario_name_click` 0x58B620), the handicap (single: drawn up, no press, no popup), the
-duration's bar's input (`h3_ui::scrollbar` on the x axis: presses, drags, `scenario_duration_scrolled`
-0x57C7F0) and texts, the items' hints (`HELPED`); the handicap and the timer each a `CLT-STUB`
-(decision 6). Exact against `adv-single-rest` (§6.4: record `popup-hero-arrow` again on row 2's
-arrow). Then T4 to T7 as the M3 table lists them.
+T3c2 The duration's bar and the hints (decision 57): the duration's bar's input
+(`h3_ui::scrollbar` on the x axis: presses, drags, `scenario_duration_scrolled` 0x57C7F0) and its
+eleven texts, the items' hints (`HELPED`: the headers, the bar, the flags, the arrows, the handicap,
+who may play, the name); the timer a `CLT-STUB` (decision 6). Exact against the rest of
+`adv-single-rest` (§6.4: record `popup-hero-arrow` again on row 2's arrow). Then T4 to T7 as the
+M3 table lists them.
 
 ## Inbox
 

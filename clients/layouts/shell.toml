@@ -1020,3 +1020,22 @@ creatures = [
   [98, 100, 104, 106, 102, 108, 110],
   [118, 112, 115, 114, 113, 120, 130],
 ]
+
+# A hero's own popup (scenario_hero_popup 0x575A90; E27 M3 T3b2, design §25): created 300 x 256 at
+# (250, 172), its frame 320 x 256 (the width rounded up to 64: the items' width - 60 is 260);
+# GENRLTXT 78 (medfont.fnt colour 1 align 1) at (30, 26, 260, 36), the small portrait centred at
+# y 56, "%s - %s" (name_dash_format 0x66033C: the name, the class) in smalfont at (30, 91, 260, 18),
+# GENRLTXT 79 at (30, 122, 260, 36), un44.def's frame of the hero type centred at y 149 (44 x 44),
+# the specialty's name (hero_specialty_text 0x4D7220: HeroSpec.txt's first column) in smalfont at
+# (30, 149 + 44 + 2, 260, 36).
+[scenario.advanced.hero_popup]
+place = [250, 172]
+size = [320, 256]
+background = "diboxbck.pcx"
+frame = "dialgbox.def"
+title = { id = 1, at = [30, 26], size = [260, 36], font = "medfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+portrait = [136, 56]
+name = { id = 3, at = [30, 91], size = [260, 18], font = "smalfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+heading = { id = 4, at = [30, 122], size = [260, 36], font = "medfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+specialty = { id = 5, def = "un44.def", at = [138, 149], size = [44, 44] }
+specialty_name = { id = 6, at = [30, 195], size = [260, 36], font = "smalfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
