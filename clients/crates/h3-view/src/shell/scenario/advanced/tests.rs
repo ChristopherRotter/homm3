@@ -1,6 +1,6 @@
 //! The advanced options' tests (E27 M3 T3a): the rows as `adv-single-town` recorded them, the
 //! town's and the bonus's arrows, the popups, the hiding; the hero's arrows, portraits, names and
-//! popups (T3b1, as `adv-single-hero` and `adv-single-maps` recorded them).
+//! popups (T3b1, as `adv-single-hero` and `adv-single-maps` recorded them; a hero's own: T3b2).
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -33,6 +33,13 @@ fn advanced_texts() -> AdvancedTexts {
         hero_names: numbered("hero", 156),
         portraits: (0..156).map(|k| format!("HPS{k:03}.pcx")).collect(),
         random_hero: [String::from("Random Hero"), String::from("A hero")],
+        hero_popup: [
+            String::from("Starting Hero"),
+            String::from("Hero Specialty"),
+        ],
+        hero_line: format!("{HERO_NAME} - {HERO_CLASS}"),
+        hero_classes: numbered("class", 156),
+        specialties: numbered("specialty", 156),
         kinds: ["both", "human", "computer"].map(String::from),
         computer: String::from("Computer"),
         random: String::from("Random"),
@@ -324,12 +331,60 @@ fn the_hero_s_arrows_step_through_the_offer_and_random() {
     assert!(click(&mut s, [306, 145]));
     assert_eq!(hero_of(&s, 0), random);
     assert_eq!(s.records().unwrap()[0].hero, None);
-    // The pick has no popup of its own yet (T3b2).
+    // The pick's own popup (T3b2, `hero-popup-1`): its portrait, name and class, specialty.
     click(&mut s, [169, 145]);
     click(&mut s, [306, 145]);
     assert_eq!(hero_of(&s, 0).0, ["hero 0"]);
     assert!(s.right([276, 146]).changed);
+    assert!(s.cursor());
+    assert_eq!(popup(&s), hero_popup("hero 0", 0, Some("HPS000.pcx")));
+    assert!(s.right_release().changed);
     assert!(s.box_draws("P").is_empty());
+}
+
+/// A hero's own popup of `name` and hero type `t` with the picture `portrait`, as [`popup`]
+/// gives it.
+fn hero_popup(
+    name: &str,
+    t: u32,
+    portrait: Option<&str>,
+) -> (Vec<String>, Vec<(String, u32)>, Vec<String>) {
+    (
+        vec![
+            String::from("Starting Hero"),
+            format!("{name} - class {t}"),
+            String::from("Hero Specialty"),
+            format!("specialty {t}"),
+        ],
+        vec![(String::from("un44.def"), t)],
+        portrait.into_iter().map(String::from).collect(),
+    )
+}
+
+#[test]
+fn a_hero_s_popup_is_laid_out_as_the_original_s() {
+    let mut s = shown(vec![main_heroes()]);
+    s.right([276, 146]);
+    let draws = s.box_draws("P");
+    let at = |what: &str| {
+        draws
+            .iter()
+            .find_map(|d| match d {
+                Draw::Button { def, x, y, .. } if def == what => Some([*x, *y]),
+                Draw::Picture { picture, x, y, .. } if picture == what => Some([*x, *y]),
+                Draw::Label { text, x, y, .. } if text == what => Some([*x, *y]),
+                _ => None,
+            })
+            .unwrap()
+    };
+    // 320 x 256 at (250, 172): the portrait centred at y 56, the specialty's picture at y 149.
+    assert_eq!(at("diboxbck.pcx"), [250, 172]);
+    assert_eq!(at("HPS000.pcx"), [250 + 136, 172 + 56]);
+    assert_eq!(at("un44.def"), [250 + 138, 172 + 149]);
+    assert_eq!(at("Starting Hero"), [250 + 30, 172 + 26]);
+    assert_eq!(at("Jared Haret - class 2"), [250 + 30, 172 + 91]);
+    assert_eq!(at("Hero Specialty"), [250 + 30, 172 + 122]);
+    assert_eq!(at("specialty 2"), [250 + 30, 172 + 195]);
 }
 
 #[test]
@@ -362,6 +417,14 @@ fn a_pick_shows_the_map_s_customised_portrait_and_name() {
         Some(String::from("HPS002.pcx")),
     );
     assert_eq!(hero_of(&s, 0), two);
+    // The pick's popup: its customised portrait and name, its type's class and specialty.
+    s.right([276, 146]);
+    assert_eq!(popup(&s), hero_popup("hero 2", 2, Some("HPS002.pcx")));
+    s.right_release();
+    click(&mut s, [245, 145]);
+    s.right([276, 146]);
+    assert_eq!(popup(&s), hero_popup("Sir One", 1, Some("HPS040.pcx")));
+    s.right_release();
     // A main hero's own name of the map names a pick in the original alone
     // (`scenario_shown_hero_name` 0x58D33A, CLT-Q142 (b)).
     map.seats[0].main_hero = Some(MainHero {
@@ -374,6 +437,9 @@ fn a_pick_shows_the_map_s_customised_portrait_and_name() {
         click(&mut s, [230, 145]);
         click(&mut s, [306, 145]);
         assert_eq!(hero_of(&s, 0).0, [name]);
+        // Its popup names it as its row does (`scenario_shown_hero_name`, 0x5825E2).
+        s.right([276, 146]);
+        assert_eq!(popup(&s).0[1], format!("{name} - class 0"));
     }
 }
 
@@ -436,10 +502,21 @@ fn a_main_hero_shows_its_portrait_and_name() {
     assert_eq!(hero_of(&s, 3), hero("None", "hpsrand6.pcx"));
     // A portrait past the table: its name alone.
     assert_eq!(hero_of(&s, 4), (vec![String::from("hero 5")], None));
-    // No popup over a None (CLT-Q112 (b)), none yet over a hero (T3b2).
-    for r in 0..4 {
+    // Each hero's own popup (T3b2; `map-2-hero-popup`: Jared Haret, of Edric's type, in Orrin's
+    // portrait), none over a None (CLT-Q112 (b)); a portrait past the table, none in the popup.
+    let popups = [
+        Some(hero_popup("Jared Haret", 2, Some("HPS000.pcx"))),
+        Some(hero_popup("hero 85", 85, Some("HPS085.pcx"))),
+        Some(hero_popup("Thenith", 33, Some("HPS033.pcx"))),
+        None,
+        Some(hero_popup("hero 5", 5, None)),
+    ];
+    for (r, expected) in (0..).zip(popups) {
         assert!(s.right([276, 146 + dy(r)]).changed);
-        assert!(s.box_draws("P").is_empty(), "{r}");
+        match expected {
+            Some(p) => assert_eq!(popup(&s), p, "{r}"),
+            None => assert!(s.box_draws("P").is_empty(), "{r}"),
+        }
         s.right_release();
     }
 }

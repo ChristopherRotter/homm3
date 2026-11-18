@@ -320,6 +320,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   modulo 4 GiB every run fails at `until:main_menu` (the display: "Insufficient Disk Space"). A
   ballast file moves it: `fallocate -l 3G ballast` took 21.47 GB free (read as −1.2 MB) to
   about 1 GB; free space changes with every build, so check `df -B1 /` before a long run.
+- **Wine and `TMPDIR`** (E27 M3 T3b2): Wine 9's 32-bit loader crashes at its start where `TMPDIR`
+  is set (the sandbox sets `TMPDIR=/tmp`, found 2026-11-18: wineboot's segfault in i386 libc, or
+  `free(): invalid pointer`; `dmesg` shows `segfault at ff…00000`). `setup.sh` unsets it and
+  `h3drive.env()` drops it; a Wine command run by hand takes `env -u TMPDIR`.
 - **The shell's viewer side** (E27 M2 T4): `h3shell.py drawn` runs the release `h3-view`
   (rebuild it after a change, or it compares the old one); a recipe's `mask` steps are Python's,
   left out of the viewer's steps (its `stop <k>` counts the viewer's). The window under Xvfb:

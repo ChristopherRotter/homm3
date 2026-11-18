@@ -86,7 +86,8 @@ mod description;
 
 use advanced::{Advanced, Map};
 pub use advanced::{
-    AdvancedLook, AdvancedTexts, Bonus, CreatureRow, Pictured, PopupLook, Record, TownPopupLook,
+    AdvancedLook, AdvancedTexts, Bonus, CreatureRow, HERO_CLASS, HERO_NAME, HeroPopupLook,
+    Pictured, PopupLook, Record, TownPopupLook,
 };
 use description::Description;
 pub use description::{DESCRIPTION_BYTES, DescriptionLook, description_names};
