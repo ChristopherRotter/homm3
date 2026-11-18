@@ -123,6 +123,15 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `--map` (the catalogue beside it, `<map>/../text/keys.toml`) and `--install`; a hand test's
   `.cmd` passes both, master's `clients/map` and `clients/text` copied into `out/win/<task>/` when
   the user's checkout is behind. A new file a command reads goes beside `--map` too.
+- **A new table in the common catalogue fails the client lane's test** (M4 T2a2):
+  `h3-battle-client`'s `text::tests::the_committed_catalogue_parses` lists every original table
+  `clients/text/keys.toml`'s keys name (a family's do not count), so a key from a new file
+  (ADVEVENT at T2a2) fails `check.sh`'s tests: one word in the client lane's crate, a
+  `cross-lane` change with the user's consent, the client lane's inbox told.
+- **The original's screens are local** (M4 T2a2): a sequence's frame check compares the viewer
+  with the screens under `clients/out/map-frames/<id>/`, never in git, so a fresh sandbox records
+  each sequence again first (`frames … --only <id>`, one id per run), then checks with `frames
+  --only <id> --reuse` while the viewer changes.
 - **One game at a time:** `h3mem.Mem()` takes the first game process it finds, so a `still --keep` game left running makes the next still read it (T5a); stop it first (`wineserver -k` with `h3drive.env()`). At a human player's turn start the selected hero is off its tile until the view moves: find heroes by their records (`Mem.hero_on`).
 - **Driving the window under Xvfb** (M2 T4b1): `xdotool click --window <id>` sends a synthetic
   event that SDL ignores; move the pointer with `mousemove --window` and click with a plain

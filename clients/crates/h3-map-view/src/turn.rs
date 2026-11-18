@@ -31,6 +31,9 @@ pub struct TurnArt {
     /// The week of the Deity's two creatures (the Imp, 42, and the Familiar, 43: ArrayTxt 135's
     /// names).
     pub deity: [u16; 2],
+    /// The days a player with heroes and no town has to take one (`scenario_condition_met`
+    /// 0x4F2CE0: the player's +0x3D −1 become 7; E24 M4 T2a2, design §5.3).
+    pub town_days: u8,
 }
 
 /// The string catalogue's keys the turn shows (`clients/text/keys.toml`); the names are the

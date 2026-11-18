@@ -49,6 +49,9 @@ pub struct AdventureLayout {
     /// The status window's panel of another player's turn (E24 M4 T1b2, design §5.1, §5.2:
     /// 0x453250; its items 2190 to 2193, the original's ids).
     pub status_other: Dialog,
+    /// The status window's panel of a resource found (E24 M4 T2a2, design §5.3:
+    /// `status_resource_create` 0x451220; its items 2000, 2100, 2103 and 2102, the original's).
+    pub status_found: Dialog,
     /// What the panels' logic needs of the dialog (E24 M3 T2a).
     pub panels: Panels,
     /// The message box's assets and fonts (E24 M4 T1a, design §5.1: End Turn's question, the
@@ -176,6 +179,7 @@ impl AdventureLayout {
         layout.status_hero = layout.status_hero.expanded();
         layout.status_town = layout.status_town.expanded();
         layout.status_other = layout.status_other.expanded();
+        layout.status_found = layout.status_found.expanded();
         layout.check()?;
         Ok(layout)
     }
@@ -245,7 +249,8 @@ impl AdventureLayout {
             .chain(&self.status_kingdom.items)
             .chain(&self.status_hero.items)
             .chain(&self.status_town.items)
-            .chain(&self.status_other.items);
+            .chain(&self.status_other.items)
+            .chain(&self.status_found.items);
         let mut out = Vec::new();
         for item in items {
             match item {

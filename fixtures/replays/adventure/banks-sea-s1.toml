@@ -1,0 +1,66 @@
+commands = [
+    "0 move 5 27,27,0",
+    "0 end-turn",
+    "1 end-turn",
+    "0 move 5 28,27,0 29,26,0 30,25,0",
+    "0 answer offer accept",
+    "0 battle attack 4 3",
+    "system battle move 10",
+    "system battle move 164",
+    "system battle move 90",
+    "system battle move 95",
+    "0 battle attack 2 161",
+    "system battle move 93",
+    "system battle attack 0 160",
+    "system battle attack 0 144",
+    "0 battle attack 5 161",
+    "system battle attack 0 144",
+    "0 answer level-up first",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0x8fc947705c4fb690",
+    "0x7829ba2a6dde4732",
+    "0x5002c59fdab77ec5",
+]
+
+[replay]
+format = 17
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x6ba8109889b34a25"
+adventure_ruleset_hash = "0xa5809e7fd9e842dd"
+town_ruleset_hash = "0xabc9756b93a29a55"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 33
+adventure_state_hash_version = 26
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-banks-36.h3m"
+hash = "0xda3dd80d4aa94083"
+import_version = 25
+
+[result]
+day = 3
+final_hash = "0xc21fba8a4c530925"

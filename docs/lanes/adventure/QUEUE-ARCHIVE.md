@@ -1851,3 +1851,34 @@ design `E08-design.md` §4 to §8, §12 to §15, §18, §20)
 - **Depends on:** T124b2 (`adventure/e08-t124b2`, merged first). **Status:** ready once T124b2
   merges; its cut confirmed at its start. T125b (the two maps, the replays, the properties, the
   benchmarks, `--with-original-data`) after it.
+
+## T125b (moved 2026-11-18, cut in two by decision 357: its maps and replays done as T125b1, `adventure/e08-t125b1`; the rest queued as T125b2)
+
+**E08 T125b — the two maps, the replays, the properties, the benchmarks** (round 7; design
+`E08-design.md` §17, §19, §20)
+
+- **Scope:** (`adventure/e08-t125b`): the two maps written by `h3_map::writer` (§17):
+  `e08-banks-36.h3m` (the eleven kinds beside two players' starts, a coast with a Shipwreck beside
+  land, a Derelict Ship off it and a boat, a hero of each player with a full army, one near a
+  level) and `e08-banks-144.h3m` (144 × 144 with a sea, the census's most banks on one map, every
+  kind, many Shipwrecks beside land, a monster on every hundredth free land tile); the golden
+  replays on the 36 map (three random-play seeds per `adventure_replays.rs` and the scripted ones
+  of §17: the declined attack and search with both players' hints, a won Griffin Conservatory past
+  a level with the army dialog, a lost battle and the revisit, the looted Crypts and Shipwreck's
+  once-marks cleared by a battle, the Shipwreck from the coast and the Derelict Ship from the boat,
+  a flight across the Shipwreck); the properties (`h3-map`'s `play.rs`: `BANKS` in the plans,
+  `Step::Bank`, `check_banks`, `check_told` for the mark's `GuardsChanged`, the hygiene property's
+  bank with its hidden draw ending at the viewer's team's mark or battle; fixed cases visiting
+  every kind); the benchmarks `reach-banks-xl-144`, `build-banks-xl-144`, `random-play-banks-36`
+  baselined (`homm3-bench-regression`); `--with-original-data` (the census, the 160 shipped maps
+  built with their banks drawn, the seventh pack check, the bank positions). Versions: none
+  planned (adventure replay format v16, env v8 stay).
+- **Inputs:** design §17, §19 (batch E13's rows for the scripted replays' expectations), §20's
+  exit criteria 1 to 9; T125a's *As built* in §9, §10, §16 (`coast_visit`,
+  `StaticMap::coast_entrances`, `bank_view`, `mark_bank`, `tell_hint`); the templates: increment
+  12's maps and replays (`e08-garrisons-36`, `e08-bonuses-36`), `play.rs`' `check_garrisons` and
+  `check_bonuses`; the lane's `TRAPS.md` (the plans' oracles, the hygiene property, a command's
+  exact events); skills `homm3-rerecord-replays`, `homm3-bench-regression`.
+- **Depends on:** T125a (`adventure/e08-t125a`, merged first). **Status:** ready once T125a
+  merges; its cut confirmed at its start (likely in two: the maps and replays, then the
+  properties and benchmarks). T126 (the audit) after it.

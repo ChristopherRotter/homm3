@@ -84,6 +84,8 @@ fn idle() -> Replay {
         question: None,
         turns: Vec::new(),
         computer: Computer::default(),
+        finds: Vec::new(),
+        town: None,
     };
     let actions = BTreeMap::from([
         (0, vec![Action::Scroll(Direction::East)]),
@@ -273,6 +275,8 @@ fn its_cues_are_handed_out_once() {
         question: None,
         turns: Vec::new(),
         computer: Computer::default(),
+        finds: Vec::new(),
+        town: None,
     };
     let actions = BTreeMap::from([
         (1, vec![Action::Click(dest)]),

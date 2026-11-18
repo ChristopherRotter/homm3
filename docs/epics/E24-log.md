@@ -2521,3 +2521,48 @@ tests and deny passed), CI's green `master` standing in.
   verify --scope map-client --summary --with-original-data` no failing step; `scripts/exe.py
   check` and `cited` clean. No existing situation's map changes (every new branch needs a body or
   an experience), so `drawn` was not run. PR #996.
+
+### M4 T2a2 — the finds told, played by the viewer (2026-11-17 to 18)
+
+On `map-client/e24-m4-t2a2`, the user present at the start; `master` at #996. Original data
+staged from the PC before it went offline (62 files, SHA-256 checked against the PC's: one digest
+of the sorted hash lines, `29a3470f…`; the PC's own clone behind GitHub's, nothing uncommitted;
+`MP3DEC.ASI` now in the PC's `original-data/install`, 39 non-campaign MP3s); the setup's baseline
+stopped at its coverage step by a watcher (fmt, clippy, doc tests and deny passed), CI's green
+`master` standing in. The server behind the session stopped once and the VM restarted once (part
+B's worker resumed from its checkpoint commit).
+
+- **No cut** (the user, at the start): T2a2 whole, though a seam was offered (the seven single
+  boxes and the turn's two first, the pile, the artifact and the event after). Built in two parts
+  by two workers one after the other, the main session reading `grant_rewards` between them.
+- **Recorded again here** (the original's screens are local, never in git): the eleven
+  sequences, each `ok` against its kept timeline and exact at 0 (`frames --sequences
+  map/to-record.toml --no-check`, one id per run, a ballast file for the game's disk check).
+- **Read** (design §5.3, "The rewards' boxes"; `docs/exe/map.toml`: `grant_rewards` amended,
+  `reward_box_flush_full` 0x4A0B00 new): which parts share a box (experience to luck, then the
+  resources, the artifacts, the spells, the creatures; a box at eight), each part's picture and
+  line, the map's text in the first box alone; MCL-Q32 (two spells in the first box replace the
+  map's text). Two corrections of T2a1's reading: a Witch Hut's known skill is ADVEVENT 172 (173
+  the eight skills); the sign, the Stone, the Axis and the Shrine move the hero onto their
+  entrance (only the pile and the artifact leave him beside them).
+- **Built** (design §5.3's *Built (M4 T2a2)*, parts A and B): `h3_ui::message`'s pictures (the
+  client lane's slots, rows and layout copied with their tests, additive), the module `finds`
+  (every picture type of `message_box_picture` but a town's building; each find's box from its
+  facts through the catalogue), the timeline's finds and the turn's two boxes (the player named
+  by colour, CLT-Q100 (b); empty with `--bugs original`), kind 6's panel for 5 000 ms, an object
+  taken (the index built again, the dissolve by `h3_render::Screen::dissolve_rect`, the pickup's
+  sound), the artifact's box and the event's three; the catalogue's `map.find.*` keys, the
+  tables' `[map.finds]`, `[map.turn]` and `artifact_skills`. Its *provisional* choices: M4's
+  review list.
+- **Checked:** the eleven moved into `sequences.toml` (`to-record.toml` removed), every frame
+  exact by `frames --only <id> --reuse` (`find-windmill`, `-stone`, `-axis`, `-temple`,
+  `-witch-hut`, `-shrine`, `-sign` 7 each, `turn-no-town` 10, `find-pile` 37, `find-artifact` 13,
+  `find-event` 11) and the viewer's timelines the recorded ones; `drawn` the 50 situations and 47
+  earlier sequences the same, then `--record`; `RUST_TEST_THREADS=1 check.sh --no-coverage` all
+  gates; coverage of `h3-map-view` and `h3-ui` 100 % lines, regions and functions; the window
+  under Xvfb (`--check 10`) on `find-pile` (62 frames, the dissolve's among them) and
+  `find-windmill` (54), every frame read back exact; `scripts/exe.py check` and `cited` clean.
+- **Cross-lane** (the user's consent at the end; the label `cross-lane`): `check.sh`'s tests
+  failed on the client lane's `h3-battle-client` test `the_committed_catalogue_parses`, which
+  lists the common catalogue's tables: `"ADVEVENT"` added to it (one word and its comment), the
+  client lane's inbox told.

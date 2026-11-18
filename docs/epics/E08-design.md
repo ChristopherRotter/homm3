@@ -615,6 +615,19 @@ the machines and the supply, a side without a hero or a cart unsupplied; the has
   shipped-map counts move once), each shipped map built with its banks drawn, the seventh pack
   check (§2), the bank positions against 0x63D0E0.
 
+*As built* (T125b1, `adventure/e08-t125b1`, `cross-lane`; decision 357): **`e08-banks-36.h3m`**
+(`h3-map`'s `tests/banks_map.rs`): the land kinds on dirt (columns 0 to 12) and grass, two Crypts,
+the Shipwreck's entrance beside the coast with an island beyond it (a flight crosses only towards
+land), the Derelict Ship off the coast, a boat; ten heroes, each of red's seven placed for a
+scripted replay (a full army without Angels and 900 experience below the Griffin Conservatory).
+Nine golden replays: random play `banks-s545-d28`, `-s161-d28`, `-s804-d28` (a probe over the
+seeds 1 to 1 500); scripted `banks-declined-s1`, `-griffins-s1`, `-lost-s1`, `-looted-s1` (the
+Shipwreck from the coast inside it), `-sea-s1` (the Derelict Ship from the boat on day 2:
+boarding ends the move), `-flight-s1`. **`e08-banks-144.h3m`** (`tests/banks_xl_map.rs`): the sea
+on columns 96 to 143, the 106 in the census's shares, fourteen coast Shipwrecks each with an
+island beyond it, a flyer of each player in front of one. The properties, the three workloads
+and `--with-original-data` are T125b2's.
+
 ### 18. Versions, rule ids, quirks, stubs
 
 | Version | From | To | By |

@@ -324,8 +324,24 @@ pub enum Status {
     /// Another player's turn (the kind 5, `AdStatNx.pcx`: 0x453250; E24 M4 T1b2, design §5.2):
     /// a computer player's.
     Turn(TurnStatus),
-    /// Another kind, not drawn yet: a message's (6, 7) are M4's.
+    /// A resource found (the kind 6, `AdStatOt.pcx`: `status_resource_create` 0x451220; E24 M4
+    /// T2a2, design §5.3): a pile's, asked by its visit.
+    Found(FoundStatus),
+    /// Another kind, not drawn: a live part's kind 6 (its facts not read) and kind 7 (a network
+    /// game's text).
     Other(u8),
+}
+
+/// A resource found's window (the kind 6, E24 M4 T2a2, design §5.3: the adventure manager's
+/// +0x3A0 to +0x3A8 as `status_resource_set` 0x416060 writes them).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FoundStatus {
+    /// The resource (none below 0: the text alone).
+    pub resource: i32,
+    /// The amount.
+    pub amount: i32,
+    /// The text.
+    pub text: String,
 }
 
 impl Status {
@@ -338,6 +354,7 @@ impl Status {
             Self::Hero(_) => 3,
             Self::Town(_) => 4,
             Self::Turn(_) => 5,
+            Self::Found(_) => 6,
             Self::Other(kind) => *kind,
         }
     }

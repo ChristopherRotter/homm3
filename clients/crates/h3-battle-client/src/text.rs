@@ -513,15 +513,15 @@ mod tests {
         // T2a1 the stats dialog's attack and defense labels (PRISKILL.TXT) and the creatures'
         // ability texts; T2a2a its hints, the cast button's the first mine's name (MineName.txt);
         // E17 M6 T5a the artifacts' names (ARTRAITS.TXT); E27 M3 T1a the scenario screen's
-        // victories' and losses' texts (VCDESC.TXT, LCDESC.TXT); E27 M3 T3a the turn's durations
-        // (TURNDUR.TXT).
+        // victories' and losses' texts (VCDESC.TXT, LCDESC.TXT); E24 M4 T2a2 the map viewer's
+        // finds' texts (ADVEVENT.TXT); E27 M3 T3a the turn's durations (TURNDUR.TXT).
         assert!(keys.keys.contains_key("stats.attack"));
         assert!(keys.keys.contains_key("creature-ability.base:marksman"));
         assert!(keys.keys.contains_key("stats.hint.ok"));
         let tables = [
-            "ARRAYTXT", "ARTRAITS", "BLDGNEUT", "BLDGSPEC", "CRTRAITS", "EXE", "GENRLTXT", "HELP",
-            "HOTRAITS", "LCDESC", "MINENAME", "PRISKILL", "SEERHUT", "SKILLLEV", "SPTRAITS",
-            "TURNDUR", "VCDESC", "WALLS",
+            "ADVEVENT", "ARRAYTXT", "ARTRAITS", "BLDGNEUT", "BLDGSPEC", "CRTRAITS", "EXE",
+            "GENRLTXT", "HELP", "HOTRAITS", "LCDESC", "MINENAME", "PRISKILL", "SEERHUT",
+            "SKILLLEV", "SPTRAITS", "TURNDUR", "VCDESC", "WALLS",
         ];
         assert_eq!(names, BTreeSet::from(tables));
     }
