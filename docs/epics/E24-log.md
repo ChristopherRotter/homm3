@@ -2658,3 +2658,56 @@ the setup; the server behind the session stopped twice during part B (its worker
   exact, 59 of 59 changes the headless loop's; `scripts/exe.py check` and `cited` clean
   (`dialog_frame_create` 0x450130, part B's citation, a `map.toml` entry); `cargo xtask verify
   --scope map-client --summary --with-original-data` no failing step.
+
+### M4 T2c — a level-up's choice (2026-11-18)
+
+On `map-client/e24-m4-t2c`, the user present at the start; `master` at #1014. Original data
+staged from the PC at the start (63 files, SHA-256 checked against the PC's: one digest of the
+sorted hash lines, `9421f826…`; the PC's own clone behind GitHub's, nothing uncommitted); the
+setup's baseline stopped at its coverage step by a watcher (fmt, clippy, doc tests and deny
+passed), CI's green `master` standing in. The PC's link dropped later in the session (nothing
+was needed from it by then).
+
+- **No cut** (the user, at the start): T2c whole, the cut after the reading and the recordings
+  (as T2a's and T2b's) kept as the fallback; not needed. The reading and the recordings in the
+  main session, the viewer by one worker, the morale's staging fixed after it.
+- **Read** (design §5.5; `docs/exe/map.toml`: `level_up_dialog` 0x4F8880 and
+  `level_up_dialog_proc` 0x4F9780 whole, `chest_gold_or_experience` corrected: its experience
+  without levels): the dialog's place and shadow, every item for no, one and two offers, the OK
+  disabled with two, the keys 1 and 2, a click on a picture or its frame, the redraw, the
+  sound `nwherolv.82m` before the build. **MCL-Q34**: the sentence naming the offers (GENRLTXT
+  204, 205) never shows (two leading line breaks below medfont's box); built as the original's.
+- **The harness** (common, additive; the runbook's "The level-up's dialog"): `Mem.level_up_box`
+  and the live part's `[[level_up]]` tables (the hero, its level, the texts, pictures, offers,
+  the choice, the marks), `Mem.message_box` leaving the dialog out; a hero's `secondary`
+  (`Mem.write_secondary`, `h3_map_view::situation`'s `HeroSpec::secondary`, checked: eight at
+  most, each once, levels 1 to 3); the keys `1` and `2`.
+- **Recorded** (each twice, the second run `ok`, the frame at 0 exact): `level-up` (42 timeline
+  lines, 11 screens), `level-up-right` (41, 12), `level-up-one` (35, 9), `level-up-none` (35, 9),
+  `level-up-twice` (73, 25). `level-up-one` and `-none` staged again after the build's check:
+  their first staging (Mephala, Expert Leadership written, her Basic Leadership cleared, after
+  the status window at 0) showed another morale from the walk's rebuild on (TRAPS); now a Cleric
+  (Rion) without a morale or luck skill. `find-stone`, `choose-chest`, `choose-chest-gold` and
+  `ask-tree` recorded again here for their frame check (`ok`).
+- **Built** (design §5.5's *Built*; *provisional*, M4's review list): the module `levels`
+  (`LevelUp`, the levels an experience reaches by the tables' thresholds, the dialog's facts from
+  the live part's tables, its texts, items and choice), the layout's `[level_up]`, the tables'
+  `[map.level_up]`, the catalogue's `map.level-up.*`; the timeline's `Gain::experience`,
+  `Start::experience`, `Start::level_ups`, `Loop::level_up` and `leveled` (after a find's boxes,
+  an answer's gain, a chest's dissolve; the next dialog in the millisecond the last closes; the
+  primary skills, a Leadership's morale and a Luck's luck shown at the last close), `Answer::after`
+  and `Reply::after`, `Action::Offer` (the window's `offer-left`, `offer-right`; `h3-sdl`'s
+  `Digit1`, `Digit2`, additive), `h3_ui::message::outline` (additive); a box's close keeps the
+  cursor where the mouse manager last drew it (every box; every timeline as recorded).
+- **Checked:** the five moved into `sequences.toml` (`to-record.toml` removed), every frame exact
+  by `frames --only <id> --reuse` (11, 12, 9, 9, 25) and the viewer's timelines the recorded ones;
+  `find-stone` (7), `choose-chest` (21), `choose-chest-gold` (19), `ask-tree` (7) still exact;
+  `h3-map-view sequences` the 85 as recorded; `drawn --record` for the five; unit tests (567 in
+  `h3-map-view`, `h3-ui` and `h3-sdl`; the client lane's catalogue test passes); coverage of
+  `h3-map-view`'s library 100 % lines, regions and functions and of `h3-ui` but its
+  `scrollbar.rs`; `RUST_TEST_THREADS=1 check.sh --no-coverage` all gates; the window under Xvfb
+  (`--check 8`) on `level-up-right` (the keys 1 and 2, the OK clicked) and `level-up-twice`, 44 of
+  44 and 38 of 38 frames read back exact, every change the headless loop's; `scripts/exe.py
+  check` and `cited` clean (`two_lines_format` 0x67FA38 and `plus_one_format` 0x67FA40, the
+  catalogue's citations, `map.toml` entries); `cargo xtask verify --scope map-client --summary
+  --with-original-data` no failing step.

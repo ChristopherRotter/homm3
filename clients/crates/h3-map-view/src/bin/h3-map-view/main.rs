@@ -100,8 +100,8 @@ commands:
           window's own keys too); the
           panels' hotkeys are the original's letters (E24 M3 T6b1), Space chooses the selected
           hero again and visits what it stands on (T6b3), Enter and Escape a message box's OK and
-          Cancel (E24 M4 T1a), 1 and 2 a level-up's offers (T2c). A user's file (--keys, else keys.toml
-          in the working directory when there is one; its [map] table, the battle window's
+          Cancel (E24 M4 T1a), 1 and 2 a level-up's offers (T2c). A user's file (--keys, else
+          keys.toml in the working directory when there is one; its [map] table, the battle window's
           [battle]) overrides the defaults command by command, e.g. `[map]` then `pause =
           [\"P\"]`, `quit = [\"Escape\", \"Ctrl+F12\"]` (the commands: scroll-north ...
           scroll-north-west, hero-north ... hero-north-west, kingdom-overview, underground,
