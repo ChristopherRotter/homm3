@@ -999,6 +999,234 @@ id = "map.turn.week-deity"
 args = { creature = "text", growth = "text", other = "text" }
 original = [{ at = "ARRAYTXT:135", printf = ["creature", "creature", "growth", "other", "growth"] }]
 
+# The finds told (E24 M4 T2a2; docs/epics/E24-design.md §5.3): a picture's caption
+# (`message_box_picture` 0x4F4EB0) of a resource's income (GENRLTXT 4 with the amount, its subtype
+# negated), the experience's level (GENRLTXT 443, its subtype -1), a count and a name (the
+# executable's `count_name_format` 0x6778A4: a creature's, a primary skill's, the spell points'),
+# a primary skill's gain (`plus_count_name_format` 0x677278) and the spell points' word (GENRLTXT
+# 388). A number alone is `map.resources.amount`'s (`decimal_format`); the names are the families
+# `resource`, `artifact`, `spell`, `player-colour` (its first letter upper-cased, as recorded),
+# `skill-level`, `secondary-skill`, `primary-skill` and `creature`'s.
+[[key]]
+id = "map.find.per-day"
+args = { amount = "number" }
+original = [{ at = "GENRLTXT:4", printf = ["amount"] }]
+
+[[key]]
+id = "map.find.level"
+original = [{ at = "GENRLTXT:443" }]
+
+[[key]]
+id = "map.find.count"
+args = { amount = "number", name = "text" }
+original = [{ at = "EXE:0x6778A4", printf = ["amount", "name"] }]
+
+[[key]]
+id = "map.find.plus"
+args = { amount = "number", name = "text" }
+original = [{ at = "EXE:0x677278", printf = ["amount", "name"] }]
+
+[[key]]
+id = "map.find.spell-points"
+original = [{ at = "GENRLTXT:388" }]
+
+# The finds' boxes (ADVEVENT's records; design §5.3's table): a Windmill's with its resource (170)
+# or empty (169); a Learning Stone's (143) or visited (144); a Star Axis's (100, 101); a Temple's
+# (140, 141); a Witch Hut's with the skill's name (the `secondary-skill` family) taught (171),
+# known (172, 0x4A814F), eight skills (173, 0x4A8183: `visit_witch_hut` 0x4A8080), deserted (190;
+# T2a2 part B's reading: part A had 173 for both); a Shrine's: the
+# executable's `shrine_text_format` 0x677750 with its level's text (127 to 129, `visit_object`'s by
+# the class) and the spell's name (`spell`), a refusal appended (174 known, 131 no Spell Book, 130
+# Wisdom). A sign without a text of its own: the `sign` family.
+[[key]]
+id = "map.find.windmill"
+original = [{ at = "ADVEVENT:170" }]
+
+[[key]]
+id = "map.find.windmill-empty"
+original = [{ at = "ADVEVENT:169" }]
+
+[[key]]
+id = "map.find.stone"
+original = [{ at = "ADVEVENT:143" }]
+
+[[key]]
+id = "map.find.stone-visited"
+original = [{ at = "ADVEVENT:144" }]
+
+[[key]]
+id = "map.find.axis"
+original = [{ at = "ADVEVENT:100" }]
+
+[[key]]
+id = "map.find.axis-visited"
+original = [{ at = "ADVEVENT:101" }]
+
+[[key]]
+id = "map.find.temple"
+original = [{ at = "ADVEVENT:140" }]
+
+[[key]]
+id = "map.find.temple-visited"
+original = [{ at = "ADVEVENT:141" }]
+
+[[key]]
+id = "map.find.witch-hut"
+args = { skill = "text" }
+original = [{ at = "ADVEVENT:171", printf = ["skill"] }]
+
+[[key]]
+id = "map.find.witch-hut-known"
+args = { skill = "text" }
+original = [{ at = "ADVEVENT:172", printf = ["skill"] }]
+
+[[key]]
+id = "map.find.witch-hut-full"
+args = { skill = "text" }
+original = [{ at = "ADVEVENT:173", printf = ["skill"] }]
+
+[[key]]
+id = "map.find.witch-hut-empty"
+original = [{ at = "ADVEVENT:190" }]
+
+[[key]]
+id = "map.find.shrine"
+args = { text = "text", spell = "text" }
+original = [{ at = "EXE:0x677750", printf = ["text", "spell"] }]
+
+[[key]]
+id = "map.find.shrine-1"
+original = [{ at = "ADVEVENT:127" }]
+
+[[key]]
+id = "map.find.shrine-2"
+original = [{ at = "ADVEVENT:128" }]
+
+[[key]]
+id = "map.find.shrine-3"
+original = [{ at = "ADVEVENT:129" }]
+
+[[key]]
+id = "map.find.shrine-known"
+original = [{ at = "ADVEVENT:174" }]
+
+[[key]]
+id = "map.find.shrine-no-book"
+original = [{ at = "ADVEVENT:131" }]
+
+[[key]]
+id = "map.find.shrine-wisdom"
+original = [{ at = "ADVEVENT:130" }]
+
+# Part B (E24 M4 T2a2; design §5.3): a pile's kind 6 (ADVEVENT 113 with the resource's name, its
+# first letter lower-cased: `visit_resource_pile` 0x4A4BE0); the Magic Well's (`visit_magic_well`
+# 0x4A3730: 77 the spell points restored, 78 drunk today, 79 at the maximum); an event's boxes
+# (`grant_rewards` 0x49FA90, the hero's name first): 175 the experience, a primary or a secondary
+# skill, 176 and 177 the spell points lost and gained, 178 and 179 the morale's, 180 and 181 the
+# luck's, 182 and 183 the resources lost and found (183 the artifacts' too), 184 a spell, 188 two or
+# more in a box, 185 one creature (its singular name) and 186 more (the plural). An artifact's
+# plain pickup: the `artifact-event` family.
+[[key]]
+id = "map.find.pile"
+args = { resource = "text" }
+original = [{ at = "ADVEVENT:113", printf = ["resource"] }]
+
+[[key]]
+id = "map.find.well"
+original = [{ at = "ADVEVENT:77" }]
+
+[[key]]
+id = "map.find.well-again"
+original = [{ at = "ADVEVENT:78" }]
+
+[[key]]
+id = "map.find.well-full"
+original = [{ at = "ADVEVENT:79" }]
+
+[[key]]
+id = "map.find.reward-experience"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:175", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-mana-lost"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:176", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-mana"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:177", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-morale-lost"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:178", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-morale"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:179", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-luck-lost"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:180", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-luck"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:181", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-treasure-lost"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:182", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-treasure"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:183", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-spell"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:184", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-spells"
+args = { hero = "text" }
+original = [{ at = "ADVEVENT:188", printf = ["hero"] }]
+
+[[key]]
+id = "map.find.reward-creature"
+args = { creature = "text", hero = "text" }
+original = [{ at = "ADVEVENT:185", printf = ["creature", "hero"] }]
+
+[[key]]
+id = "map.find.reward-creatures"
+args = { creatures = "text", hero = "text" }
+original = [{ at = "ADVEVENT:186", printf = ["creatures", "hero"] }]
+
+# A turn without a town (E24 M4 T2a2; design §5.3): at the turn's end GENRLTXT 7 with the player's
+# name (`scenario_condition_met` 0x4F2CE0), at each later day's start ArrayTxt 128 with the name and
+# the days left, 129 on the last day (`player_turn_start` 0x4CC7D0); the name the viewer's
+# (CLT-Q100 (b): the colour's; empty in the original's single scenario, the comparisons').
+[[key]]
+id = "map.turn.town-lost"
+args = { player = "text" }
+original = [{ at = "GENRLTXT:7", printf = ["player"] }]
+
+[[key]]
+id = "map.turn.days-left"
+args = { player = "text", days = "number" }
+original = [{ at = "ARRAYTXT:128", printf = ["player", "days"] }]
+
+[[key]]
+id = "map.turn.last-day"
+args = { player = "text" }
+original = [{ at = "ARRAYTXT:129", printf = ["player"] }]
+
 # The spell book (E17 M5 T3a; design §7.17). A place's text (`spell_book_page` 0x59CE19, 0x59CEE1:
 # the executable's own formats): the spell's name, its level, the hero's mastery's short name when
 # it has one, the spell points' word and the cost.
@@ -1868,6 +2096,28 @@ count = 15
 column = 0
 optional = true
 
+# A secondary skill's level's name (SKILLLEV.TXT's records 0 to 2, `skill_level_names` 0x6A7570; E24
+# M4 T2a2, design §5.3): a secondary skill's picture's caption, the level by its subtype mod 3,
+# `skill-level.<n>`. Only the map viewer lists it.
+[[family]]
+id = "skill-level"
+table = "SKILLLEV"
+first = 0
+count = 3
+column = 0
+optional = true
+
+# A sign's default text (RANDSIGN.TXT's 25 records, `sign_default_texts` 0x696C74; E24 M4 T2a2,
+# design §5.3): a sign without a text of its own tells the record of its column mod 25,
+# `sign.<n>`. Only the map viewer lists it.
+[[family]]
+id = "sign"
+table = "RANDSIGN"
+first = 0
+count = 25
+column = 0
+optional = true
+
 # A hero's hint, over its slot of the hero list (0x40316A) or over it on the map (0x40BC89):
 # GENRLTXT's record 16 with its name and its class's name.
 [[key]]
@@ -2302,6 +2552,15 @@ optional = true
 id = "artifact"
 table = "ARTRAITS"
 first = 2
+column = 0
+optional = true
+
+# An artifact's plain pickup's text (ARTEVENT.TXT's record by the artifact, `artifact_pickup_texts`;
+# E24 M4 T2a2 part B, design §5.3): `artifact-event.<n>`. Only the map viewer lists it.
+[[family]]
+id = "artifact-event"
+table = "ARTEVENT"
+first = 0
 column = 0
 optional = true
 
@@ -2780,6 +3039,250 @@ original = [{ at = "GENRLTXT:658" }]
 id = "shell.scenario.teams.team"
 args = { team = "number" }
 original = [{ at = "GENRLTXT:657", printf = ["team"] }]
+
+# The scenario screen's advanced options (E27 M3 T3a; design §3.13 to §3.15, §23): the title and
+# the line under it, the headers and the duration's label (GENRLTXT 516 to 522), Random and none
+# (523, 524), a computer's name (469), who may play (`player_kind_texts` 0x6A7E18: ArrayTxt 206 both,
+# 207 a human only, 208 the computer only), the factions' names (`town_type_names`: ArrayTxt 219 to
+# 227), the bonuses' (`bonus_names` 0x6A5E14: ArrayTxt 214 to 216), the turn's durations
+# (`turn_duration_texts` 0x69FB44: turndur.txt 0 to 10).
+[[key]]
+id = "shell.scenario.advanced-title"
+original = [{ at = "GENRLTXT:516" }]
+
+[[key]]
+id = "shell.scenario.advanced-subtitle"
+original = [{ at = "GENRLTXT:517" }]
+
+[[key]]
+id = "shell.scenario.name-header"
+original = [{ at = "GENRLTXT:518" }]
+
+[[key]]
+id = "shell.scenario.town-header"
+original = [{ at = "GENRLTXT:519" }]
+
+[[key]]
+id = "shell.scenario.hero-header"
+original = [{ at = "GENRLTXT:520" }]
+
+[[key]]
+id = "shell.scenario.bonus-header"
+original = [{ at = "GENRLTXT:521" }]
+
+[[key]]
+id = "shell.scenario.duration-label"
+original = [{ at = "GENRLTXT:522" }]
+
+[[key]]
+id = "shell.advanced.random"
+original = [{ at = "GENRLTXT:523" }]
+
+[[key]]
+id = "shell.advanced.none"
+original = [{ at = "GENRLTXT:524" }]
+
+[[key]]
+id = "shell.advanced.computer"
+original = [{ at = "GENRLTXT:469" }]
+
+[[key]]
+id = "shell.advanced.kind.both"
+original = [{ at = "ARRAYTXT:206" }]
+
+[[key]]
+id = "shell.advanced.kind.human"
+original = [{ at = "ARRAYTXT:207" }]
+
+[[key]]
+id = "shell.advanced.kind.computer"
+original = [{ at = "ARRAYTXT:208" }]
+
+[[key]]
+id = "shell.advanced.town.0"
+original = [{ at = "ARRAYTXT:219" }]
+
+[[key]]
+id = "shell.advanced.town.1"
+original = [{ at = "ARRAYTXT:220" }]
+
+[[key]]
+id = "shell.advanced.town.2"
+original = [{ at = "ARRAYTXT:221" }]
+
+[[key]]
+id = "shell.advanced.town.3"
+original = [{ at = "ARRAYTXT:222" }]
+
+[[key]]
+id = "shell.advanced.town.4"
+original = [{ at = "ARRAYTXT:223" }]
+
+[[key]]
+id = "shell.advanced.town.5"
+original = [{ at = "ARRAYTXT:224" }]
+
+[[key]]
+id = "shell.advanced.town.6"
+original = [{ at = "ARRAYTXT:225" }]
+
+[[key]]
+id = "shell.advanced.town.7"
+original = [{ at = "ARRAYTXT:226" }]
+
+[[key]]
+id = "shell.advanced.town.8"
+original = [{ at = "ARRAYTXT:227" }]
+
+[[key]]
+id = "shell.advanced.bonus.artifact"
+original = [{ at = "ARRAYTXT:214" }]
+
+[[key]]
+id = "shell.advanced.bonus.gold"
+original = [{ at = "ARRAYTXT:215" }]
+
+[[key]]
+id = "shell.advanced.bonus.resource"
+original = [{ at = "ARRAYTXT:216" }]
+
+[[key]]
+id = "shell.advanced.duration.0"
+original = [{ at = "TURNDUR:0" }]
+
+[[key]]
+id = "shell.advanced.duration.1"
+original = [{ at = "TURNDUR:1" }]
+
+[[key]]
+id = "shell.advanced.duration.2"
+original = [{ at = "TURNDUR:2" }]
+
+[[key]]
+id = "shell.advanced.duration.3"
+original = [{ at = "TURNDUR:3" }]
+
+[[key]]
+id = "shell.advanced.duration.4"
+original = [{ at = "TURNDUR:4" }]
+
+[[key]]
+id = "shell.advanced.duration.5"
+original = [{ at = "TURNDUR:5" }]
+
+[[key]]
+id = "shell.advanced.duration.6"
+original = [{ at = "TURNDUR:6" }]
+
+[[key]]
+id = "shell.advanced.duration.7"
+original = [{ at = "TURNDUR:7" }]
+
+[[key]]
+id = "shell.advanced.duration.8"
+original = [{ at = "TURNDUR:8" }]
+
+[[key]]
+id = "shell.advanced.duration.9"
+original = [{ at = "TURNDUR:9" }]
+
+[[key]]
+id = "shell.advanced.duration.10"
+original = [{ at = "TURNDUR:10" }]
+
+
+# The popups of a right press (design §3.15): a town's (`scenario_town_popup` 0x575E60: its title,
+# its creatures' heading), a Random town's (`scenario_info_popup` 0x5757E0), a bonus's
+# (`scenario_bonus_popup` 0x5754F0, `scenario_dialog_right_click` 0x5828A4): each bonus's title,
+# caption and text, a resource's by the town's resource (wood and ore, crystal, gems, mercury,
+# sulfur).
+[[key]]
+id = "shell.advanced.alignment"
+original = [{ at = "GENRLTXT:81" }]
+
+[[key]]
+id = "shell.advanced.creatures"
+original = [{ at = "GENRLTXT:80" }]
+
+[[key]]
+id = "shell.advanced.random-town.title"
+original = [{ at = "GENRLTXT:104" }]
+
+[[key]]
+id = "shell.advanced.random-town.text"
+original = [{ at = "GENRLTXT:105" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.artifact.title"
+original = [{ at = "GENRLTXT:84" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.artifact.text"
+original = [{ at = "GENRLTXT:91" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.gold.title"
+original = [{ at = "GENRLTXT:85" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.gold.caption"
+original = [{ at = "GENRLTXT:88" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.gold.text"
+original = [{ at = "GENRLTXT:93" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.resource.title"
+original = [{ at = "GENRLTXT:86" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.random.title"
+original = [{ at = "GENRLTXT:87" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.random.text"
+original = [{ at = "GENRLTXT:95" }]
+
+[[key]]
+id = "shell.advanced.resource.wood-ore.caption"
+original = [{ at = "GENRLTXT:90" }]
+
+[[key]]
+id = "shell.advanced.resource.wood-ore.text"
+original = [{ at = "GENRLTXT:94" }]
+
+[[key]]
+id = "shell.advanced.resource.crystal.caption"
+original = [{ at = "GENRLTXT:693" }]
+
+[[key]]
+id = "shell.advanced.resource.crystal.text"
+original = [{ at = "GENRLTXT:689" }]
+
+[[key]]
+id = "shell.advanced.resource.gems.caption"
+original = [{ at = "GENRLTXT:694" }]
+
+[[key]]
+id = "shell.advanced.resource.gems.text"
+original = [{ at = "GENRLTXT:690" }]
+
+[[key]]
+id = "shell.advanced.resource.mercury.caption"
+original = [{ at = "GENRLTXT:695" }]
+
+[[key]]
+id = "shell.advanced.resource.mercury.text"
+original = [{ at = "GENRLTXT:691" }]
+
+[[key]]
+id = "shell.advanced.resource.sulfur.caption"
+original = [{ at = "GENRLTXT:696" }]
+
+[[key]]
+id = "shell.advanced.resource.sulfur.text"
+original = [{ at = "GENRLTXT:692" }]
 
 # The client's own texts (E27 M2 T6b2, decision 37): no original form, their messages in the
 # client's own pack beside this file (`en.json`; E17 design §9.2), which must give each one.

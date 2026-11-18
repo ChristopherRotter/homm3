@@ -116,6 +116,25 @@ asked = 3000
 week = "newweek.wav"
 month = "newmonth.wav"
 deity = [42, 43]
+town_days = 7
+
+[map.finds]
+resources = "resour82.def"
+artifacts = "artifact.def"
+spells = "spellscr.def"
+crests = "crest58.def"
+luck = "ilck82.def"
+morale = "imrl82.def"
+skills = "pskill.def"
+secondary = "secsk82.def"
+creatures = "twcrport.def"
+gold = "resource.def"
+experience = 1000
+found_ms = 5000
+dissolve = [192, 160, 224, 224]
+dissolve_ms = 65
+pickups = ["pickup01.wav"]
+artifact_skills = [[7, 2, 0, 0, 0]]
 
 [[terrain]]
 code = 0

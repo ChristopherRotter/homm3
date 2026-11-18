@@ -8,8 +8,9 @@ use h3_ui::message::{self, NO, OK, Style, YES};
 
 use crate::live::{ChosenTown, HeroStatus, Turn};
 
-/// E24 M4 T1a's sequences: their situations, timelines and kept live parts.
-const TURNING: [(&str, &str, &str, &str); 7] = [
+/// E24 M4 T1a's sequences (and T2a2's turn without a town): their situations, timelines and kept
+/// live parts.
+const TURNING: [(&str, &str, &str, &str); 8] = [
     (
         "turn-day",
         include_str!("../../../../../map/situations/seq-turn.toml"),
@@ -52,10 +53,16 @@ const TURNING: [(&str, &str, &str, &str); 7] = [
         include_str!("../../../../../map/timelines/turn-plague.txt"),
         include_str!("../../../../../map/timelines/turn-plague-live.toml"),
     ),
+    (
+        "turn-no-town",
+        include_str!("../../../../../map/situations/seq-turn-no-town.toml"),
+        include_str!("../../../../../map/timelines/turn-no-town.txt"),
+        include_str!("../../../../../map/timelines/turn-no-town-live.toml"),
+    ),
 ];
 
 /// A box of `style` laid out in a font of 8-pixel glyphs 16 high (no original file).
-fn laid(text: &str, style: Style) -> Arc<MessageBox> {
+pub(super) fn laid(text: &str, style: Style) -> Arc<MessageBox> {
     let layout =
         AdventureLayout::parse(include_str!("../../../../../map/layouts/adventure.toml")).unwrap();
     let font = Font {
@@ -91,14 +98,31 @@ fn next(turn: Turn) -> NextTurn {
     }
 }
 
+/// The boxes of a turn without a town (E24 M4 T2a2): the warning and the days left's, seven.
+fn town() -> TownBoxes {
+    TownBoxes {
+        lost: laid("Red, you have lost your last town.", Style::Ok),
+        left: (1..=7)
+            .map(|d| laid(&alloc::format!("{d} days left"), Style::Ok))
+            .collect(),
+    }
+}
+
 /// A turn sequence's start (as the binary's `for_sequence` makes it): the kingdom, the buttons,
 /// the map's heroes and the selected one by the mouse-over's facts, the question and the turns;
 /// each kingdom hero's choice its map hero by the facts (the binary's loop finds it through the
-/// mouse-over), its window the live part's.
+/// mouse-over), its window the live part's; since E24 M4 T2a2 the boxes of a turn without a town.
 fn turning(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
+    let entry = TURNING.iter().find(|(t, ..)| *t == id).unwrap();
+    started(entry)
+}
+
+/// The start of the recorded sequence `(id, situation, timeline, live)` as [`turning`] makes it.
+pub(super) fn started(
+    &(id, situation, timeline, live): &(&str, &str, &'static str, &str),
+) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
     let sequence = sequences.get(id).unwrap();
-    let (_, situation, timeline, live) = TURNING.iter().find(|(t, ..)| *t == id).unwrap();
     let mut start = start(situation, sequence.scroll_speed().unwrap());
     (start.kingdom, start.buttons) = live_kingdom(live);
     let (heroes, viewer) = live_heroes(live);
@@ -139,14 +163,17 @@ fn turning(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
     start.player = viewer;
     start.move_reminder = sequence.move_reminder().unwrap();
     start.question = Some(laid("End?", Style::OkCancel));
-    start.turns = table["turn"]
-        .as_array()
-        .unwrap()
+    start.turns = table
+        .get("turn")
+        .and_then(toml::Value::as_array)
+        .map_or(&[][..], Vec::as_slice)
         .iter()
         .map(|t| next(Turn::read(t).unwrap()))
         .collect();
     start.points = sequence.points(timeline).unwrap();
     start.paths = sequence.paths(timeline).unwrap();
+    start.hero_speed = sequence.hero_speed().unwrap();
+    start.town = Some(town());
     (start, sequence.actions().unwrap(), sequence.ms, timeline)
 }
 
@@ -219,7 +246,9 @@ fn the_question_cancelled_and_answered() {
     // `turn-question`: E's key up opens the question, the default cursor's frame 0 at the mouse.
     let l = run_to("turn-question", 160);
     let s = l.state(160);
-    assert!(s.drawn.message.is_some() && l.boxed.as_ref().is_some_and(|b| b.question));
+    assert!(
+        s.drawn.message.is_some() && l.boxed.as_ref().is_some_and(|b| b.told == Told::Question)
+    );
     assert_eq!((s.cursor.kind, s.cursor.frame), (DEFAULT_CURSOR, 0));
     // The map stands still behind it: no redraw at 180, the palettes stepping in memory.
     let l = run_to("turn-question", 399);
@@ -253,7 +282,7 @@ fn the_weeks_message_steps_the_date_behind_it() {
         _ => panic!("not the date's window"),
     };
     let l = run_to("turn-week", 160);
-    assert!(l.boxed.as_ref().is_some_and(|b| !b.question));
+    assert!(l.boxed.as_ref().is_some_and(|b| b.told != Told::Question));
     assert_eq!(frame(&l), 0);
     assert_eq!(frame(&run_to("turn-week", 259)), 0);
     assert_eq!(frame(&run_to("turn-week", 260)), 1);
@@ -318,7 +347,7 @@ fn the_boxes_take_the_mouse() {
     // The week's box opens over the next day with its sound; the box's mouse hold stops the
     // date's steps.
     l.run(7, &[Action::Release(ok)]).unwrap();
-    assert!(l.boxed.as_ref().is_some_and(|b| !b.question));
+    assert!(l.boxed.as_ref().is_some_and(|b| b.told != Told::Question));
     let cues: Vec<String> = l
         .take_cues()
         .iter()

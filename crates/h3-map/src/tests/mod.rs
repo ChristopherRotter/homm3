@@ -7,6 +7,8 @@
 //! `garrisons_bonuses.rs` (E08 T109a); its creature banks in `banks.rs` (E08 T119).
 
 mod banks;
+mod banks_map;
+mod banks_xl_map;
 mod bonuses_map;
 mod builds_map;
 mod dwellings;

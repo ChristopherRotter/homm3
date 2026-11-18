@@ -89,20 +89,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Client lane (`CLT-Q<n>`)
 
-#### CLT-Q140 — The list's keys move the description too (E27 M3 T2c, a reading and a recording)
-
-The scenario screen's list takes Up, Down, Page Up and Page Down at the key's **press**
-(`scenario_dialog_proc` 0x587D00); a description longer than its box has a scroll bar with its
-arrows' keys, which takes the same keys (and Left and Right) at their **release**
-(`scrollbar_key_step` 0x596230), the items before the screen. So Down onto a long description
-selects it at its first line and its release scrolls it one line on (`scn-long-text`
-`down-released`); Page Down onto it a page on; Down on the last row and Page Down in a list of one
-page scroll it alone. No shipped map has such a description (a map editor's or another map's
-could). Built as the original's (design §22.3). Options: (a) the original's everywhere; (b) the
-client's bar takes no key while the list shows (Left and Right, the bar's own, always), the
-original's behind `--bugs original` for the comparisons; (c) the bar takes no key at all.
-**Recommended (b)**: the keys then move what the screen shows the list for, and still scroll a long
-description with the list hidden. Blocks nothing (T3 goes on).
+(no open questions)
 
 ### Map client lane (`MCL-Q<n>`)
 
@@ -142,6 +129,20 @@ fog one step early. Options: (a) the original's (the view moves one step before 
 original's behind `--bugs original`. **Recommended (a)**: one tile of lead at the fog's edge,
 and the computer's walk then reads as one movement. Built as the original's meanwhile (T1b2).
 Blocks nothing.
+
+#### MCL-Q32 — Two spells in a reward's first box replace the map's own text (E24 M4 T2a2, a reading)
+
+`grant_rewards` 0x49FA90 (an event's or a Pandora's Box's rewards, E24 design §5.3 "The rewards'
+boxes") shows the map's text in its first box and each part's own line in the later ones. For
+the spells it sets the box's text to ADVEVENT 188 ("%s learns spells.") whenever the box already
+holds a picture (0x4A05C4), without the test the other parts make (only when the text is empty).
+So an event or a box whose rewards are two or more spells and nothing before them (no experience,
+skills, spell points, morale, luck, resources or artifacts) shows "<hero> learns spells." instead
+of the map maker's text, which is lost. No recording shows it; the shipped maps were not searched.
+Options: (a) the original's; (b) the client keeps the map's text there (188 only over a part's
+own line), the original's behind `--bugs original` for the comparisons. **Recommended (b)**: the
+map's text is the map maker's message, and the other parts never overwrite it. Built as the
+original's meanwhile (T2a2). Blocks nothing.
 
 ### Town lane (`TWN-Q<n>`)
 

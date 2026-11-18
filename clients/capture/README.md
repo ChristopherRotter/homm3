@@ -1330,8 +1330,8 @@ a pile's `amount` (as the map stores it: gold is then ×100 in the game), a Shri
 Witch Hut's `skills` (one drawn), an event's `rewards` (a table: `experience`, `mana`, `morale`,
 `luck`, `resources`, `primary`, `skills`, `artifacts`, `spells`, `creatures`; written as an
 `[[objects]]` table, since an inline table cannot span lines); a hero its `experience` (the levels
-it reaches given at the start). T2a1's eleven (`find-*`, `turn-no-town`) wait in
-`map/to-record.toml` for T2a2.
+it reaches given at the start). T2a1's eleven (`find-*`, `turn-no-town`) waited in
+`map/to-record.toml` until T2a2 moved them into `sequences.toml` (the file removed).
 
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live

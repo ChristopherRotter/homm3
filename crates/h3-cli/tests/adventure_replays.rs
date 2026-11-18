@@ -656,6 +656,79 @@
 //!   Cavaliers; her revisit upgrades them to Champions, no points (D-63); again: nothing; day 2's
 //!   maximum 400 more (the week mark); on day 8 the mark gone, her revisit gives the 400 again.
 //!
+//! **Banks** (E08 T125b1, increment 13), on `fixtures/maps/e08-banks-36.h3m` (written by
+//! `h3_map::writer`; `fixtures/maps/README.md`): SoD, 36 × 36 of grass, dirt on columns 0 to 12,
+//! the sea on columns 27 to 35 with an island on columns 29 to 31, rows 13 to 17; the eleven kinds
+//! by their entrances: on dirt the Griffin Conservatory (8, 8), the Cyclops Stockpile (3, 14), the
+//! Medusa Stores (9, 14) and the Dwarven Treasury (5, 20); on grass the Imp Cache (14, 8), the Naga
+//! Bank (15, 14), two Crypts (24, 10) and (24, 20) and the Dragon Fly Hive (20, 15); Dragon Utopia
+//! (13, 22) across both; on the water the Shipwreck (27, 15), visited from the coast's (26, 14) to
+//! (26, 16) or from the water, and the Derelict Ship (30, 25); an empty boat on (27, 27). Red's
+//! Orrin (hero 0; a full army of seven Castle stacks, no Angels, 900 experience) on (8, 9), Valeska
+//! (hero 1) on (20, 17), Edric (hero 2; ten swordsmen) on (14, 9), Sylvia (hero 3; ten archangels)
+//! on (15, 9), Sorsha (hero 4; twenty-five archangels) on (24, 15), Christian (hero 5; fifteen
+//! archangels) on (26, 27), Tyris (hero 6; Angel Wings) on (26, 15); blue's Rion (hero 7) on
+//! (19, 20), Adela (hero 8; ten archangels) on (6, 28), Cuthbert (hero 9) on (14, 28). Random play,
+//! recorded with `--map fixtures/maps/e08-banks-36.h3m --seed N --agent-seed N --days 28`: the
+//! three of a search over the seeds 1 to 1 500 (a scratch probe noting each game's questions and
+//! answers by kind, the bank battles and their results, the survivors fought again, the rewards'
+//! creatures, army dialogs and artifacts, the looted visits, the once-marks set and cleared, the
+//! hints by viewer, the Shipwreck fought from the coast or a boat, the Derelict Ship from a boat, a
+//! hero met on an entrance and the steps over the Shipwreck's tiles; not committed: 1 398 games
+//! tell a hint, 1 308 fight a bank, 76 its survivors again, 743 tell a level-up after a bank's win,
+//! 47 an army dialog, 173 fight the Shipwreck from the coast and 2 from a boat, 3 the Derelict
+//! Ship, 128 a Crypt's once-mark and 11 the Shipwreck's, 17 a mark cleared by a battle, 7 a hero
+//! battle on an entrance):
+//!
+//! - `banks-s545-d28`: Edric wins the Imp Cache (day 5), Christian the Cyclops Stockpile (day 7,
+//!   two level-ups); Edric wins the first Crypt and searches it again, looted: −1 morale under
+//!   mark 15 (day 7; HER-ADV-008); Sylvia wins the Shipwreck from the coast (day 18); Sorsha
+//!   searches it looted, −1 under mark 14 (day 22), and her Medusa Stores' battle (day 25, a
+//!   level-up) clears it; declined Crypts, the Cyclops Stockpile and the Dragon Fly Hive; looted
+//!   attack banks told.
+//! - `banks-s161-d28`: Tyris flies over the Shipwreck's two tiles (day 1, no visit); Cuthbert loses
+//!   at the Naga Bank and leaves the map (day 2), Sorsha wins its survivors (day 27); Orrin wins
+//!   the Medusa Stores (day 3), the Griffin Conservatory (day 10: the level-up, then the army
+//!   dialog for its Angel) and Dragon Utopia (day 27: four level-ups, then its four artifacts);
+//!   Edric wins the Imp Cache (day 11); the hint to both teams after a battle's end.
+//! - `banks-s804-d28`: Sorsha wins the Dragon Fly Hive on day 1, its four Wyverns joining; Cuthbert
+//!   attacks her on its entrance, an ordinary battle (ADV-BNK-004, GAM-BAT-001), and leaves the
+//!   map; Rion loses at Dragon Utopia (day 7), Valeska at the Dwarven Treasury after three declined
+//!   questions there (days 16 and 17).
+//!
+//! **Scripted** (E08 T125b1: increment 13's design note §17's paths), on the same map, recorded
+//! with `h3 adventure run --map fixtures/maps/e08-banks-36.h3m --seed 1 --checkpoint-every 5
+//! --script <script> --record <replay>` (the moves from a scratch probe walking each hero with
+//! `legal_moves`' paths, the battles' commands from E23's `h3_battle_ai::choose` for both sides;
+//! not committed); each ends with both players' turns. Seed 1 draws the Griffin Conservatory's
+//! level 1 (fifty griffins, one stack of them upgraded), the Imp Cache's level 3 (200, one stack
+//! Familiars), the Shipwreck's and the Dragon Fly Hive's level 3, the Derelict Ship's level 3.
+//!
+//! - `banks-declined-s1`: Valeska onto the Dragon Fly Hive (20, 15): red's mark and hint at once
+//!   (`ObjectMarked`, `GuardsChanged` to red), its question declined; onto the second Crypt
+//!   (24, 20): its question first, declined, no mark (ADV-BNK-003; D-66); off its entrance. Rion
+//!   onto the Fly Hive: blue's own mark and hint, declined; onto the Crypt: declined (ADV-BNK-006).
+//! - `banks-griffins-s1`: Orrin onto the Griffin Conservatory (8, 8), accepted: the battle at once
+//!   against its guards as drawn, unowned, at the bank positions (ADV-BNK-004, BAT-SET-001); won,
+//!   the levels 2 and 3 answered first, then the reward: its Angel finds no room, so the army
+//!   dialog (ADV-BNK-005, GAM-DEC-007; D-67 corrected); his halberdiers dismissed, the Angel into
+//!   their slot, closed.
+//! - `banks-lost-s1`: Edric with ten swordsmen onto the Imp Cache (14, 8), accepted: lost, he
+//!   leaves the map and the survivors stay (3, 40 and 14 Imps of the five stacks of 40: the
+//!   Familiars and a stack of Imps gone), the hint's creature and word changed; Sylvia onto it:
+//!   asked again, the battle against the three at the layout's first three positions by their order
+//!   (BAT-SET-001, ADV-BNK-005), won, its mercury and gold.
+//! - `banks-looted-s1`: Sorsha searches and wins both Crypts (day 1, a level-up), the Shipwreck
+//!   from the coast on its deck (day 2: gold and a treasure); the second Crypt looted: −1 morale
+//!   under mark 15 (day 2); the first looted: nothing more (day 3); the Shipwreck looted: −1 more
+//!   under mark 14 (day 3, −2 in all); the Dragon Fly Hive won (day 4): both marks cleared at the
+//!   battle's end, its Wyverns after the level-up; the second Crypt again: −1 (HER-ADV-008).
+//! - `banks-sea-s1`: Christian boards the boat (day 1); on day 2 he sails onto the Derelict Ship's
+//!   entrance (30, 25), searches it and wins on the deck (ADV-BNK-004): a level-up, then its gold
+//!   and treasure.
+//! - `banks-flight-s1`: Tyris flies from (26, 15) to the island (29, 15) over the Shipwreck's
+//!   entrance and anchor, and back to (26, 16): no visit (ADV-MOV-009, ADV-SEA-002).
+//!
 //! **Builds** (E09 T19a, the town lane's increment 2: design note `docs/epics/E09-design.md`
 //! §32's), on `fixtures/maps/e09-builds-36.h3m` (written by `h3_map::writer`;
 //! `fixtures/maps/README.md`): red (Castle) and blue (Conflux); red's Orrin (hero 0, ten pikemen) on

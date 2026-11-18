@@ -1,4 +1,5 @@
-//! Origin: `h3_view::message`'s tests (E17 M5 T4a, T8b2, M7 T2), the boxes without pictures.
+//! Origin: `h3_view::message`'s tests (E17 M5 T4a, T8b2, M6 T5c, M7 T1b, M7 T2); the pictures'
+//! (E24 M4 T2a2) through [`told`] and [`pictures`].
 
 use super::*;
 use alloc::string::ToString;
@@ -30,6 +31,7 @@ fn assets() -> MessageLayout {
         ok: "iOkay.def".to_string(),
         cancel: "iCancel.def".to_string(),
         font: "medfont.fnt".to_string(),
+        caption_font: "smalfont.fnt".to_string(),
         font_palette: "game.pal".to_string(),
     }
 }
@@ -299,10 +301,321 @@ fn the_layout_section_reads_from_toml() {
         ok = "iOkay.def"
         cancel = "iCancel.def"
         font = "medfont.fnt"
+        caption_font = "smalfont.fnt"
         font_palette = "game.pal"
         "#,
     )
     .unwrap();
     assert_eq!(section, assets());
     assert!(toml::from_str::<MessageLayout>("background = 1").is_err());
+}
+
+/// A spell's picture 83 × 61 (a slot 85 × 63) with its caption.
+fn spell(frame: u32, caption: &str) -> Picture {
+    Picture {
+        def: "spellScr.def".to_string(),
+        frame,
+        size: [83, 61],
+        caption: caption.to_string(),
+    }
+}
+
+/// The box of [`told`] with `pictures` in the profile `bugs`.
+fn told_with(text: &str, pictures: &[Picture], bugs: Bugs) -> MessageBox {
+    let medium = font(8, 16);
+    let small = font(5, 10);
+    told(
+        &assets(),
+        (&medium, &small),
+        text,
+        Style::Ok,
+        pictures,
+        (0, bugs),
+    )
+}
+
+/// The DEF item of slot `slot`.
+fn picture_def(message: &MessageBox, slot: usize) -> &Def {
+    match message.dialog.item(slot_ids(slot)[0]) {
+        Some(Item::Def(d)) => d,
+        _ => panic!("no picture in slot {slot}"),
+    }
+}
+
+#[test]
+fn a_picture_and_its_caption_sit_above_the_buttons() {
+    let m = told_with("x", &[spell(9, "View Air")], Bugs::Original);
+    // 16 + 60 + 20 + 63 + 10 + 50 = 219, rounded up to 256.
+    assert_eq!(m.dialog.shadow, Some([256, 256]));
+    assert_eq!(label(&m, TEXT).at, [20, 30 + (256 - 219) / 2]);
+    // The slot 85 x 63, centred, its caption (85 wide: the picture's) 30 above the buttons' room.
+    let def = picture_def(&m, 0);
+    assert_eq!((def.at, def.size, def.frame), ([85, 103], [85, 63], 9));
+    let caption = label(&m, slot_ids(0)[1]);
+    assert_eq!((caption.at, caption.size), ([85, 166], [85, 10]));
+    assert_eq!(caption.font, "smalfont.fnt");
+    assert_eq!(m.shown.texts[&slot_ids(0)[1]], "View Air");
+    // The picture keeps its own colours.
+    assert!(!m.shown.players.contains_key(&slot_ids(0)[0]));
+    // The client's profile centres the text alone (CLT-Q28 (1)); the picture where it was.
+    let fixed = told_with("x", &[spell(9, "View Air")], Bugs::Fixed);
+    assert_eq!(label(&fixed, TEXT).at, [25, 30 + (256 - 219) / 2]);
+    assert_eq!(picture_def(&fixed, 0).at, [85, 103]);
+    // Three at most in a box of `told`, in one row; a fourth is not shown.
+    let four: Vec<Picture> = (0..4).map(|i| spell(i, "S")).collect();
+    let m = told_with("x", &four, Bugs::Original);
+    assert!(m.dialog.item(slot_ids(2)[0]).is_some());
+    assert!(m.dialog.item(slot_ids(3)[0]).is_none());
+    assert_eq!(slot_ids(0), [PICTURES, PICTURES + 1]);
+    assert_eq!(CHOICE, 0x7809);
+}
+
+#[test]
+fn a_caption_wider_than_its_picture_is_centred_on_it() {
+    // A slot 85 wide, a caption of one word 112 wide cut to 110 (one line at 110).
+    let mut picture = spell(0, &"x".repeat(22));
+    let m = told_with("x", core::slice::from_ref(&picture), Bugs::Original);
+    // The row (110 + 40) under the least width: 256.
+    assert_eq!(m.dialog.shadow, Some([256, 256]));
+    // The slot at (256 - 85) / 2; the caption (85 - 110) / 2 = -12 from it (C division).
+    let caption = label(&m, slot_ids(0)[1]);
+    assert_eq!((caption.at, caption.size), ([73, 166], [110, 10]));
+    // A picture wider than the text: the row makes the box (252 + 40 rounded up to 320), the
+    // caption still at most 110.
+    picture.size = [250, 61];
+    let m = told_with("x", &[picture], Bugs::Original);
+    assert_eq!(m.dialog.shadow, Some([320, 256]));
+    assert_eq!(label(&m, slot_ids(0)[1]).at, [34 + 71, 166]);
+}
+
+#[test]
+fn a_caption_widens_while_it_is_too_high() {
+    let small = font(5, 20);
+    let slot = |caption: &str, size| {
+        Slot::of(
+            &small,
+            &Picture {
+                def: String::new(),
+                frame: 0,
+                size,
+                caption: caption.to_string(),
+            },
+        )
+    };
+    // None: no caption.
+    assert_eq!(slot("", [10, 10]).caption, [0, 0]);
+    // A word wider than 50: its width + 2; its spaces counted in its lines, not its words.
+    assert_eq!(slot("xxxxxxxxxxxx", [10, 10]).caption, [62, 20]);
+    assert_eq!(slot("  xxxxxxxxxxxx ", [10, 10]).caption, [62, 40]);
+    // Two lines at 50 (40 high > 33): widened to 75, one line.
+    assert_eq!(slot("xxxxx xxxxx", [10, 10]).caption, [75, 20]);
+    // At most 110, whatever its lines.
+    assert_eq!(
+        slot("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", [10, 10]).caption,
+        [110, 40]
+    );
+    let many = ["xxxxx"; 12].join(" ");
+    assert_eq!(slot(&many, [10, 10]).caption, [110, 80]);
+    // Not below the picture's width + 2.
+    assert_eq!(slot("x", [70, 10]).caption, [72, 20]);
+}
+
+/// `n` spells' pictures (83 × 61, slots 85 × 63), captions of two glyphs.
+fn spells(n: u32) -> Vec<Picture> {
+    (0..n).map(|i| spell(i, &alloc::format!("S{i}"))).collect()
+}
+
+/// Each picture's DEF item's corner and the box's size, in slot order.
+fn corners(message: &MessageBox) -> (Vec<[i32; 2]>, [i32; 2]) {
+    let defs = (0..SLOTS)
+        .filter_map(|slot| match message.dialog.item(slot_ids(slot)[0]) {
+            Some(Item::Def(d)) => Some(d.at),
+            _ => None,
+        })
+        .collect();
+    (defs, message.dialog.shadow.unwrap())
+}
+
+/// The box of `pictures` in the profile `bugs`.
+fn in_profile(pictures: &[Picture], bugs: Bugs) -> MessageBox {
+    let medium = font(8, 16);
+    let small = font(5, 10);
+    super::pictures(&assets(), (&medium, &small), "x", pictures, (2, bugs))
+}
+
+/// The box of `pictures`, the same in both profiles (CLT-Q77: they part only where a caption is
+/// wider than its picture in a row of three or four, or a second row's captions are higher than
+/// the first's).
+fn with_pictures(pictures: &[Picture]) -> MessageBox {
+    let original = in_profile(pictures, Bugs::Original);
+    assert_eq!(in_profile(pictures, Bugs::Fixed), original);
+    original
+}
+
+#[test]
+fn one_to_four_pictures_make_one_row_placed_by_its_count() {
+    // One: as the one picture of `told`, the text at x 25 (the call's corner: centred).
+    let one = with_pictures(&spells(1));
+    assert_eq!(corners(&one), (vec![[85, 103]], [256, 256]));
+    assert_eq!(label(&one, TEXT).at, [25, 30 + (256 - 219) / 2]);
+    // Two: the row 2 × 85 + 40 + 40 = 250 wide, a box of 256; the pair split around the centre
+    // by the gap (the overhang 0 and 40).
+    assert_eq!(
+        corners(&with_pictures(&spells(2))).0,
+        [[23, 103], [148, 103]]
+    );
+    // Three: 375, a box of 384; the middle one centred, 40 beside it.
+    assert_eq!(
+        corners(&with_pictures(&spells(3))),
+        (vec![[24, 103], [149, 103], [274, 103]], [384, 256])
+    );
+    // Four: 500, a box of 512.
+    assert_eq!(
+        corners(&with_pictures(&spells(4))),
+        (
+            vec![[26, 103], [151, 103], [276, 103], [401, 103]],
+            [512, 256]
+        )
+    );
+}
+
+#[test]
+fn five_to_eight_pictures_make_two_rows_the_first_the_larger() {
+    // Five: 3 + 2, the box 384 × 320 (16 + 60 + 20 + 73 + 20 + 73 + 50 = 312); the first row's
+    // captions raised by the second row's 20 + 73 above the buttons' room's 30.
+    let five = with_pictures(&spells(5));
+    assert_eq!(
+        corners(&five),
+        (
+            vec![[24, 74], [149, 74], [274, 74], [87, 167], [212, 167]],
+            [384, 320]
+        )
+    );
+    assert_eq!(label(&five, TEXT).at, [25, 34]);
+    // Each caption under its picture, centred on it (85 wide: the picture's).
+    let caption = label(&five, slot_ids(3)[1]);
+    assert_eq!((caption.at, caption.size), ([87, 230], [85, 10]));
+    assert_eq!(five.shown.texts[&slot_ids(4)[1]], "S4");
+    // Six: 3 + 3; seven: 4 + 3; eight: 4 + 4.
+    let (six, _) = corners(&with_pictures(&spells(6)));
+    assert_eq!(six[3..], [[24, 167], [149, 167], [274, 167]]);
+    let (seven, size) = corners(&with_pictures(&spells(7)));
+    assert_eq!(size, [512, 320]);
+    assert_eq!(seven[..4], [[26, 74], [151, 74], [276, 74], [401, 74]]);
+    assert_eq!(seven[4..], [[88, 167], [213, 167], [338, 167]]);
+    let (eight, _) = corners(&with_pictures(&spells(8)));
+    assert_eq!(eight[4..], [[26, 167], [151, 167], [276, 167], [401, 167]]);
+    // A ninth is not shown (eight slots).
+    let (nine, _) = corners(&with_pictures(&spells(9)));
+    assert_eq!(nine, eight);
+    // The pictures keep their own colours; the frame's pieces take the player's.
+    let m = with_pictures(&spells(8));
+    assert!(m.shown.players.keys().all(|&id| id < PICTURES));
+    assert!(m.shown.players.values().all(|&p| p == 2));
+}
+
+/// `n` pictures 38 × 18 (slots 40 × 20) with captions of one word 72 wide: `widest` 72, the
+/// overhang 32.
+fn wide_captions(n: u32) -> Vec<Picture> {
+    (0..n)
+        .map(|i| Picture {
+            def: "spellScr.def".to_string(),
+            frame: i,
+            size: [38, 18],
+            caption: "x".repeat(14),
+        })
+        .collect()
+}
+
+/// Each picture's x in `message`.
+fn xs(message: &MessageBox) -> Vec<i32> {
+    corners(message).0.iter().map(|at| at[0]).collect()
+}
+
+#[test]
+fn wide_captions_spread_the_pictures_by_their_overhang() {
+    // Four: the row 4 × 72 + 3 × 72 + 40 = 544, a box of 576 in both profiles.
+    let original = in_profile(&wide_captions(4), Bugs::Original);
+    let fixed = in_profile(&wide_captions(4), Bugs::Fixed);
+    assert_eq!(corners(&original).1, [576, 192]);
+    assert_eq!(corners(&fixed).1, [576, 192]);
+    // The middle two the gap with the overhang apart; the executable's outer ones 40 from them
+    // (the captions 8 apart there), the client's the gap too (CLT-Q77 (b): 40 apart).
+    assert_eq!(xs(&original), [132, 212, 324, 404]);
+    assert_eq!(xs(&fixed), [100, 212, 324, 436]);
+    // The captions centred on their pictures, past them by half the overhang.
+    let caption = label(&original, slot_ids(0)[1]);
+    assert_eq!((caption.at[0], caption.size), (116, [72, 10]));
+    assert_eq!(label(&fixed, slot_ids(0)[1]).at[0], 84);
+    // Three: 3 × 72 + 2 × 72 + 40 = 400, a box of 448; the middle one centred, the executable's
+    // others 40 from it (0x4F6129: the overhang left out), the client's the gap.
+    let original = in_profile(&wide_captions(3), Bugs::Original);
+    let fixed = in_profile(&wide_captions(3), Bugs::Fixed);
+    assert_eq!(corners(&original).1, [448, 192]);
+    assert_eq!(corners(&fixed).1, [448, 192]);
+    assert_eq!(xs(&original), [124, 204, 284]);
+    assert_eq!(xs(&fixed), [92, 204, 316]);
+    // Two: 2 × 72 + 72 + 40 = 256; the gap between them, the same in both.
+    assert_eq!(xs(&with_pictures(&wide_captions(2))), [52, 164]);
+}
+
+#[test]
+fn a_second_rows_heights_place_the_rows_below_the_first() {
+    // Five, the second row's captions two lines high: the rows raised by the second row's
+    // heights. The executable's second row's captions lowered by them (0x4F626E), so they end 20
+    // above the buttons' room, its pictures 30 below the first row's captions; the client's by
+    // the first row's caption height (CLT-Q77 (b)): 30 above the room, 20 below.
+    let mut five = spells(5);
+    for p in &mut five[3..] {
+        p.caption = "xxxxxxxxxx xxxxxxxxxx".to_string();
+    }
+    let original = in_profile(&five, Bugs::Original);
+    let (at, size) = corners(&original);
+    assert_eq!(size, [384, 384]);
+    assert_eq!(at[0][1], 191 - 63);
+    assert_eq!(at[3][1], 294 - 63);
+    let caption = label(&original, slot_ids(3)[1]);
+    assert_eq!((caption.at[1], caption.size), (294, [85, 20]));
+    let fixed = in_profile(&five, Bugs::Fixed);
+    let (at, size) = corners(&fixed);
+    assert_eq!(size, [384, 384]);
+    // The first row where the executable has it, its captions 191 to 201; the second's pictures
+    // from 221, its captions 284 to 304, the room starting at 384 − 50 = 334.
+    assert_eq!(at[0][1], 191 - 63);
+    assert_eq!(at[3][1], 201 + 20);
+    let caption = label(&fixed, slot_ids(3)[1]);
+    assert_eq!((caption.at[1], caption.size), (334 - 30 - 20, [85, 20]));
+    // The first row's captions higher instead: the executable's second row raised by its own
+    // (lower) captions, ending 40 above the room; the client's 30.
+    let mut five = spells(5);
+    for p in &mut five[..3] {
+        p.caption = "xxxxxxxxxx xxxxxxxxxx".to_string();
+    }
+    let bottom = |m: &MessageBox| {
+        let c = label(m, slot_ids(3)[1]);
+        c.at[1] + c.size[1]
+    };
+    let (original, fixed) = (
+        in_profile(&five, Bugs::Original),
+        in_profile(&five, Bugs::Fixed),
+    );
+    assert_eq!(corners(&original).1, corners(&fixed).1);
+    let room = corners(&fixed).1[1] - 50;
+    assert_eq!([bottom(&original), bottom(&fixed)], [room - 40, room - 30]);
+}
+
+#[test]
+fn an_empty_caption_has_no_item() {
+    // Only a caption that is not empty (`message_box_build`'s picture items); the slot keeps
+    // its place.
+    let mut two = spells(2);
+    two[1].caption = String::new();
+    let m = with_pictures(&two);
+    assert!(m.dialog.item(slot_ids(1)[1]).is_none());
+    assert!(!m.shown.texts.contains_key(&slot_ids(1)[1]));
+    assert_eq!(corners(&m).0, [[23, 103], [148, 103]]);
+    // Without pictures: the text's box alone, an OK.
+    let none = with_pictures(&[]);
+    assert_eq!(corners(&none), (Vec::new(), [256, 128]));
+    assert!(none.dialog.item(OK).is_some());
 }

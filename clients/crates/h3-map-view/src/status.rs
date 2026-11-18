@@ -30,6 +30,11 @@
 //! the layout's `status_other`): the current player's crest (`crest58.def`, the frame its colour),
 //! the sand (`HourSand.def`) and over it the glass (`HourGlas.def`), each at its frame; when they
 //! step is [`crate::timeline`]'s. A human current player's texts (a hot seat's) are not drawn.
+//!
+//! A resource found's (E24 M4 T2a2 part B, design §5.3: `AdStatOt.pcx`, built by
+//! `status_resource_create` 0x451220 as the layout's `status_found`): the text in `smalfont.fnt`
+//! (colour 4) and, with a resource, its picture (`resour82.def`, the frame the resource) over its
+//! amount (colour 1), each centred on the window.
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -43,8 +48,8 @@ use serde::Deserialize;
 use crate::layout::AdventureLayout;
 use crate::lists::ListArt;
 use crate::live::{
-    Date, DateStatus, HeroStatus, KingdomStatus, Live, Selected, Stack, Status, TownStatus,
-    TurnStatus,
+    Date, DateStatus, FoundStatus, HeroStatus, KingdomStatus, Live, Selected, Stack, Status,
+    TownStatus, TurnStatus,
 };
 
 /// The status window's control ids (ours, design §4.8; the original numbers its items from 2000
@@ -104,6 +109,12 @@ pub mod id {
     pub const ALLY_FLAGS: u16 = 2041;
     /// The flags of the others, the first of eight places.
     pub const ENEMY_FLAGS: u16 = 2051;
+    /// A resource found's text (E24 M4 T2a2).
+    pub const FOUND_TEXT: u16 = 2100;
+    /// A resource found's amount.
+    pub const FOUND_AMOUNT: u16 = 2102;
+    /// A resource found's picture.
+    pub const FOUND_PICTURE: u16 = 2103;
 }
 
 /// The kingdom's halls.
@@ -358,6 +369,7 @@ pub fn window<'l>(
             Some((&layout.status_kingdom, kingdom_window(status, texts)))
         }
         (Some(Status::Turn(status)), _) => Some((&layout.status_other, turn_window(*status))),
+        (Some(Status::Found(found)), _) => Some((&layout.status_found, found_window(found, texts))),
         (Some(Status::Hero(status)), Selected::Hero(at)) => match kingdom.heroes.get(at) {
             Some(hero) => {
                 let portrait = art
@@ -395,6 +407,30 @@ fn turn_window(status: TurnStatus) -> Shown {
         ]),
         ..Shown::default()
     }
+}
+
+/// A resource found's window (`status_resource_create` 0x451220): its text; with a resource (at
+/// least 0) its picture's frame and its amount, else both hidden.
+fn found_window(found: &FoundStatus, texts: &Catalogue) -> Shown {
+    let mut shown = Shown::default();
+    shown.texts.insert(id::FOUND_TEXT, found.text.clone());
+    match u32::try_from(found.resource) {
+        Ok(frame) => {
+            shown.frames.insert(id::FOUND_PICTURE, frame);
+            shown
+                .texts
+                .insert(id::FOUND_AMOUNT, number(texts, i64::from(found.amount)));
+        }
+        Err(_) => {
+            let hidden = State {
+                hidden: true,
+                ..State::default()
+            };
+            shown.states.insert(id::FOUND_PICTURE, hidden);
+            shown.states.insert(id::FOUND_AMOUNT, hidden);
+        }
+    }
+    shown
 }
 
 /// The date's window (0x450DD0): its picture and frame, and the day's or the week's text
