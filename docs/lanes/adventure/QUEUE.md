@@ -37,6 +37,21 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-18 (the town lane, E09 T38a2, `town/e09-t38a2`, `cross-lane` with the user's consent;
+  **your paths changed, for your review**): `h3_game::legal_commands` lists each own town's hires
+  after its recruitments (TWN-TAV-003) and now folds its chain into a list sized 16 (`for_each`,
+  `legal.rs`: `collect()` cost `legal-towns-36` +17 % with the longer lists, the town lane's
+  `TRAPS.md`); a new part of the listing goes into that fold. The plans hire (`h3-map`:
+  `town_builds` probes `Hire`, `check_town_hire`, `Step::Town` hires in one step of eight), and
+  four oracles know a hired hero: `check_isolation` (it joins the map), `check_conservation` (the
+  price, its army from the slot's view, the refill's record), `view.rs`' told views (`HeroHired`
+  shows it on its tile; `check_hired` folds the owner's slot view with `HiredPartSeen`) and the
+  hygiene (a hire the viewer is told ends the comparison). Every random game on a map with owned
+  towns hires now (env encoding v12): six workloads of yours on the town maps re-baselined
+  (`reach-towns-36` +194 %, `day-start-builds-36` +105 %, `month-start-builds-36` +69 %,
+  `legal-towns-36` +60 %, `day-start-towns-36` +51 %, `fork-towns-36` +39 %; more heroes, the
+  same counted code). No hash, replay or protocol version moved.
+
 - 2026-11-17 (the town lane, E09 T38a1, `town/e09-t38a1`, `cross-lane` with the user's consent;
   **your paths changed, for your review; replay format v17 taken**): the adventure replay format is
   **v17** (`town hire <town> <slot>`, `h3_towns::TownCommand::Hire`; `h3-files`' word and doc,
