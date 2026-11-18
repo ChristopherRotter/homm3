@@ -232,6 +232,7 @@ fn the_shell_s_assets_are_named_once() {
             "SlideBuH.def",
             "slider.pcx",
             "cprsmall.def",
+            "un44.def",
             "Box64x30.pcx",
             "iOkay.def",
             "iCancel.def",
@@ -241,7 +242,7 @@ fn the_shell_s_assets_are_named_once() {
     // A name given twice in another case is kept once.
     let mut twice = layout;
     twice.cursor.def = String::from("MMENUNG.DEF");
-    assert_eq!(names(&twice).len(), 101);
+    assert_eq!(names(&twice).len(), 102);
 }
 
 #[test]
