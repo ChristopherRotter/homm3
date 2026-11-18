@@ -146,6 +146,21 @@ fn a_dismissal_is_refused_for_a_hero_not_on_the_map_in_a_town_or_the_last() {
     assert!(!listed(&rules, &townless, BLUE, BLUE_HERO));
     run(&rules, &mut game, RED, GameCommand::EndTurn).unwrap();
     assert!(listed(&rules, &game, BLUE, BLUE_HERO));
+    // Each refusal says why.
+    let said = [
+        ManageError::NotOnMap,
+        ManageError::InTown,
+        ManageError::LastHero,
+    ]
+    .map(|error| error.to_string());
+    assert_eq!(
+        said,
+        [
+            "the hero is in a town's garrison, not on the map",
+            "the hero visits a town",
+            "the hero is the player's last on the map, and it owns no town",
+        ]
+    );
 }
 
 // covers: GAM-MAN-003, GAM-DEC-001, GAM-DEC-003
