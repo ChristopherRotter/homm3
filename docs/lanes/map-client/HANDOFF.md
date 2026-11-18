@@ -29,6 +29,11 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-18, E24 M4 T2c** (the user at the start: whole, the cut after the reading and the
+  recordings as the fallback), **in progress** on `map-client/e24-m4-t2c`: done the reading
+  (design §5.5, MCL-Q34), the harness's `[[level_up]]` table and a hero's `secondary`, five
+  sequences recorded twice into `to-record.toml`; next the viewer's dialog (a worker), then the
+  docs and the PR. Original data staged (63 files) and a ballast file for the game's disk check.
 - **2026-11-18, E24 M4 T2b2** (the user at the start: no cut, the 22 whole): the viewer plays
   every question and choice frame-exact (the log's "M4 T2b2"), built in three parts by three
   workers in turn (style 2 and the ten simplest; the six accepted that change the map; the six
