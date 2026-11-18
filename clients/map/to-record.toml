@@ -199,15 +199,43 @@ inputs = [
 ]
 
 [[sequence]]
-id = "choose-chest-ok"
+id = "choose-chest"
 situation = "seq-choose-chest"
-ms = 2600
+ms = 3400
 hero_speed = 4
 seed = 7
-why = "a chest's choice closed by Enter with no picture chosen"
+why = "a chest's choice: Enter with no picture chosen does nothing, the gold chosen, then the experience, Enter"
 inputs = [
     { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
-    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 600, keydown = "Return" }, { at = 660, keyup = "Return" },
+    { at = 1000, click = [338, 380] }, { at = 1400, click = [462, 380] },
+    { at = 1800, keydown = "Return" }, { at = 1860, keyup = "Return" },
+]
+
+[[sequence]]
+id = "choose-chest-gold"
+situation = "seq-choose-chest"
+ms = 3000
+hero_speed = 4
+seed = 7
+why = "a chest's gold chosen by a click, Enter: the gold given, the chest dissolving"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, click = [338, 380] }, { at = 1400, keydown = "Return" },
+    { at = 1460, keyup = "Return" },
+]
+
+[[sequence]]
+id = "choose-arena"
+situation = "seq-choose-arena"
+ms = 2000
+hero_speed = 4
+seed = 7
+why = "the Arena's +2 Defense chosen by a click, Enter"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, click = [462, 364] }, { at = 1400, keydown = "Return" },
+    { at = 1460, keyup = "Return" },
 ]
 
 [[sequence]]
@@ -220,6 +248,19 @@ why = "the Arena's choice cancelled by Escape"
 inputs = [
     { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
     { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "choose-school"
+situation = "seq-choose-school"
+ms = 2000
+hero_speed = 4
+seed = 7
+why = "a School of Magic's +1 Knowledge chosen by a click, Enter"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, click = [462, 364] }, { at = 1400, keydown = "Return" },
+    { at = 1460, keyup = "Return" },
 ]
 
 [[sequence]]
