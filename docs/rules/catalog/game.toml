@@ -1141,6 +1141,39 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "GAM-MAN-003"
+title    = "A player dismisses a hero on the map"
+context  = "game"
+status   = "verified"
+summary  = "In its turn, with no decision open (else `DecisionOpen`, a meeting's, an army dialog's or an exchange's too), a player dismisses one of its heroes (`Manage::Dismiss`): the game checks, in this order, that the hero is the player's (`NotYourHero`: another player's, a tavern hero, one out of the game), on the map (`NotOnMap`: its garrison hero, whom the town screen offers no dismissal), not a town's visitor standing on its entrance (`InTown`, TD-22: the original's reading), and not the player's one hero on the map while it owns no town (`LastHero`); a refusal is typed and changes nothing. The hero then leaves the game without returning (TWN-TAV-006): the adventure takes it off the map (its marks gone, its boat freed, ADV-SEA-006), told to its owner and the players that see its tile as `HeroRemoved` (with its boat's `BoatRemoved`), and its type goes free in the hero pool with its record and every artifact it holds (none stripped), one creature of its type's first starting stack, its spell points full and its points the land maximum over the cleared army (TWN-QUIRK-12); no draw, nothing more told (the pool is hidden). The listing per hero (GAM-MAN-002) gives the dismissal last, outside a decision, when it passes. No env entry (a management command, E09 decision 120). Not yet: the loss condition \"lose this hero\" that forbids it (TWN-STUB-16, E10's scenarios). E09 T38b2 (design note E09-design.md section 69): `Manage::Dismiss`, `ManageError::{NotOnMap, InTown, LastHero}`, h3_game's `town::leave::dismiss`, h3_adventure's `remove_hero`; replay format v18 `dismiss <hero>`, protocol v72."
+numeric  = "integer"
+quirks   = ["TWN-QUIRK-12"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T33a; survey E09-tavern.md section 12): the hero screen's button 129 (result 0x81) calls hero_leave_game 0x4D9EC0 with (1, 0), a lost hero's path without bit 17; hero_screen_refresh 0x4E1A50 enables it (0x4E1C2B) unless the caller passed hero_screen_no_dismiss 0x698A90 (the town screen's portraits and the tavern dialog: a garrison hero is never dismissed), the hero stands on a town's entrance (0x4E1A6B to 0x4E1A7A), hero_mission_critical 0x5F2A40 holds, the screen is view-only, or the player owns no town (+0x3E) and has one hero (+0x1); nothing on the path strips the hero's artifacts"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "client/windows/CHeroWindow.cpp CHeroWindow::update (1.7.5): the dismiss button blocked for a player's one hero without a town, a mission-critical hero and a garrison held in an exchange window; it does not test a town's visitor (TD-22, E09 decision 118: the reading chosen)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/client/windows/CHeroWindow.cpp"
+  retrieved  = "2026-11-16"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-4b.md, batch TWN-4 row TWN-4-5 (E09 T34; survey E09-tavern.md section 14): the dismissed hero's owner none, its type free, its worn Badge of Courage and Catapult and its backpack's Clover of Fortune kept, 1 Gremlin (its first starting stack), points 2 000 and spell points 10 (full); drawn again as a replacement with them"
+  retrieved  = "2026-11-16"
+  confidence = "high"
+  note       = "Marked verified by E09 T38b2: TWN-4-5 as the reading (the leave without return); the refusals rest on the code reading."
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 69; E09 decisions 105, 112, 118, 120"
+  confidence = "high"
+
+[[rule]]
 id       = "GAM-BAT-009"
 title    = "A hero's tactics flag off denies its side the tactics phase"
 context  = "game"

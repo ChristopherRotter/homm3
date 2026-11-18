@@ -22,6 +22,20 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-18 (the town lane, E09 T38b2, `town/e09-t38b2`, `cross-lane` with the user's consent;
+  **your paths changed, for your review; replay format v18 taken**): `h3_game::Manage::Dismiss
+  { hero }` (GAM-MAN-003) with `ManageError::{NotOnMap, InTown, LastHero}` (`manage.rs`),
+  applied in `state/manage.rs` (`DecisionOpen` unless no decision is open) through the town
+  lane's `town::leave::dismiss`; `legal_management` lists it last, outside a decision
+  (`legal.rs`), so `tests/manage.rs`' and `tests/exchanges.rs`' candidates hold it.
+  `AdventureState::remove_hero((player, hero))` (`state.rs`): `end_battle`'s removal (the marks,
+  `HeroRemoved`, the boat) is one private `remove_at` that both use. The adventure replay format
+  is **v18** (`dismiss <hero>`, a bare management word; `h3-files`' word and doc, `h3-sim`'s
+  `REPLAY_FORMAT_VERSION`, the 98 goldens' `format` line only, `h3-cli`'s and `h3-sim`'s
+  literals): your next bump is v19. The plans (`h3-map`'s `tests/play.rs`): `managing` leaves
+  the dismissals out, `dismissal` plays one in one `Step::Manage` of sixteen, and
+  `check_management`, `check_conservation` and `check_isolation` know it. No hash version moved.
+
 - 2026-11-18 (the town lane, E09 T38b1, `town/e09-t38b1`, `cross-lane` with the user's consent;
   **your paths changed, for your review**): `AdventureState::end_battle` returns the heroes that
   left the map (`Vec<HeroOnMap>`, in the order given, as each stood before the end: the army it

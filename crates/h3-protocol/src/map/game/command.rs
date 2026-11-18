@@ -192,6 +192,7 @@ fn manage(m: EngineManage) -> Manage {
             hero: hero.raw(),
             at: position(at),
         },
+        EngineManage::Dismiss { hero } => Manage::Dismiss { hero: hero.raw() },
     }
 }
 
@@ -406,6 +407,9 @@ fn manage_to_engine(m: Manage) -> EngineManage {
             hero: HeroId::new(hero),
             at: Position(usize::from(at)),
         },
+        Manage::Dismiss { hero } => EngineManage::Dismiss {
+            hero: HeroId::new(hero),
+        },
     }
 }
 
@@ -600,5 +604,8 @@ fn manage_reject(error: ManageError) -> ManageReject {
                 }
             },
         },
+        ManageError::NotOnMap => ManageReject::NotOnMap {},
+        ManageError::InTown => ManageReject::InTown {},
+        ManageError::LastHero => ManageReject::LastHero {},
     }
 }

@@ -207,6 +207,12 @@ where  = "crates/h3-game/src/town/hire.rs::hire"
 reason = "A hired hero learns none of the town's guild spells (TWN-TAV-003; E09 T38a1, design note E09-design.md section 64): the original's town_tavern_hire 0x5C12E0 calls town_heroes_learn_spells 0x5BE030 with 0 after hero_place, which teaches the town's visitor (the hired hero, first) and its garrison hero the spells of the town's Mage Guild when that hero has a spell book (batch TWN-4's TWN-4-2: Clavius, Xarfax and Fafner learned them, a Knight none; VCMI 1.7.5's objectVisited(town) too). The guild's spells are not drawn yet (increment 5, the mage guild and the services); lifted there with TWN-STUB-6"
 epic   = "E09"
 
+[[stub]]
+id     = "TWN-STUB-16"
+where  = "crates/h3-game/src/town/leave.rs::check_dismissal"
+reason = "A hero the scenario's loss condition \"lose this hero\" names may be dismissed (GAM-MAN-003; E09 T38b2, design note E09-design.md section 69): the original's hero_screen_refresh 0x4E1A50 disables the dismissal while hero_mission_critical 0x5F2A40 holds (the loss condition names the hero's type, or a campaign's scenario keeps it; survey E09-tavern.md section 12). The engine reads no victory or loss conditions yet; lifted with E10's scenarios"
+epic   = "E09"
+
 # --- ai (AI-STUB-<n>) ---
 
 [[stub]]

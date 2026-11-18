@@ -523,6 +523,8 @@ fn candidates(rules: &GameRuleset, hero: HeroId, (worn, carried): (usize, usize)
         all.push(Manage::Assemble { hero, at });
         all.push(Manage::Disassemble { hero, at });
     }
+    // E09 T38b2: the hero's dismissal (GAM-MAN-003).
+    all.push(Manage::Dismiss { hero });
     all
 }
 
@@ -562,9 +564,11 @@ fn the_listing_gives_a_heros_commands_apply_accepts_but_the_splits() {
     };
     // The imps' moves onto the six other slots (none dismissed: the last stack); two formations
     // and two flags; the ring onto the other ring position and the backpack's three indices, the
-    // band onto either ring position and after the charm, the charm before the band.
+    // band onto either ring position and after the charm, the charm before the band; since E09
+    // T38b2 the hero's dismissal (GAM-MAN-003: red's other hero stays on the map).
     let listed = check(&game);
-    assert_eq!(listed.len(), 6 + 2 + 2 + 8);
+    assert_eq!(listed.len(), 6 + 2 + 2 + 8 + 1);
+    assert_eq!(listed.last(), Some(&Manage::Dismiss { hero: RED_HERO }));
     assert_eq!(
         listed[0],
         Manage::Army(ArmyCommand::Move {

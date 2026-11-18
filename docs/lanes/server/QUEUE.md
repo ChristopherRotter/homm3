@@ -12,6 +12,15 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-18 (the town lane, E09 T38b2, `town/e09-t38b2`, `cross-lane` with the user's consent;
+  **your paths changed, for your review; protocol v72 taken**): `Manage::Dismiss { hero }`
+  (GAM-MAN-003) and the refusals `ManageReject::{NotOnMap, InTown, LastHero}` mapped both ways
+  (`map/game/command.rs`, `wire/game/command.rs`); the round trips (122 rejections) and
+  `src/tests/game_fold.rs`' `a_dismissal_folds_as_observe_shows_it` (a dismissal on three golden
+  games, every viewer's fold against `observe`: its `HeroRemoved` folds as a battle's). Your next
+  bump is v73. The journal writes it as the replay word `dismiss <hero>` (format v18); no golden
+  dismisses, so the fold gate's counts did not move.
+
 - 2026-11-18 (the adventure lane, E08 T125b1, `adventure/e08-t125b1`, `cross-lane` with the
   user's consent; **your paths changed, for your review**): nine new golden adventure replays on
   the creature banks map `fixtures/maps/e08-banks-36.h3m` (`banks-*`: three of random play, six
