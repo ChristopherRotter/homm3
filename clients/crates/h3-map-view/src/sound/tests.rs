@@ -216,6 +216,10 @@ fn the_tables_with_and_without_sound() {
     assert_eq!(sounds.len(), 86);
     assert!(sounds.contains("LOOPANIM") && sounds.contains("HORSE10") && sounds.contains("NEWDAY"));
     assert!(sounds.contains("BUTTON") && sounds.contains("NEWWEEK") && sounds.contains("NEWMONTH"));
+    // Without a level-up's sound (E24 M4 T2c) none of its own.
+    let silent = text.replace("sound = \"nwherolv.wav\"", "sound = \"\"");
+    let quiet = tables::load(&[tables::parse(&silent).unwrap()], "base").unwrap();
+    assert_eq!(quiet.sounds().len(), 85);
     assert_eq!(t.tracks().len(), 9);
     // Without `[map.sound]`, no sound; a river's music, an error.
     let without = text.replace("[map.sound]", "[unused]");

@@ -126,10 +126,10 @@ impl Offer {
     /// hero's level of it before); none for −1 (no offer) or another frame below 3.
     #[must_use]
     pub fn of_frame(frame: i64) -> Option<Self> {
-        let past = u32::try_from(frame).ok()?.checked_sub(3)?;
+        let past = u8::try_from(frame).ok()?.checked_sub(3)?;
         Some(Self {
-            skill: u8::try_from(past / 3).ok()?,
-            level: u8::try_from(past % 3 + 1).ok()?,
+            skill: past / 3,
+            level: past % 3 + 1,
         })
     }
 
@@ -173,28 +173,39 @@ impl LevelUp {
     #[must_use]
     pub fn read(value: &toml::Value) -> Option<Self> {
         let table = value.as_table()?;
-        let int = |key: &str| table.get(key)?.as_integer();
-        let pictures = table.get("pictures")?.as_array()?;
-        let primary = pictures.get(pictures.len().checked_sub(3)?)?.as_array()?;
-        let primary = u8::try_from(primary.get(1)?.as_integer()?)
-            .ok()
+        let byte = |key: &str| {
+            table
+                .get(key)
+                .and_then(toml::Value::as_integer)
+                .and_then(|n| u8::try_from(n).ok())
+        };
+        let list = |key: &str| table.get(key).and_then(toml::Value::as_array);
+        let pictures = list("pictures")?;
+        let primary = pictures
+            .len()
+            .checked_sub(3)
+            .and_then(|i| pictures.get(i))
+            .and_then(toml::Value::as_array)
+            .and_then(|p| p.get(1))
+            .and_then(toml::Value::as_integer)
+            .and_then(|p| u8::try_from(p).ok())
             .filter(|&p| p < 4)?;
-        let mut offers = Vec::new();
-        for frame in table.get("offers")?.as_array()? {
-            let frame = frame.as_integer()?;
-            if frame >= 0 {
-                offers.push(Offer::of_frame(frame)?);
-            }
-        }
-        if offers.len() > 2 {
-            return None;
-        }
+        let frames: Vec<i64> = list("offers")?
+            .iter()
+            .map(toml::Value::as_integer)
+            .collect::<Option<_>>()?;
+        let offers: Vec<Offer> = frames
+            .into_iter()
+            .filter(|&frame| frame >= 0)
+            .map(Offer::of_frame)
+            .collect::<Option<_>>()?;
         Some(Self {
-            hero: u8::try_from(int("hero")?).ok()?,
-            level: u8::try_from(int("level")?).ok()?,
+            hero: byte("hero")?,
+            level: byte("level")?,
             primary,
             offers,
         })
+        .filter(|up| up.offers.len() <= 2)
     }
 
     /// A live part's `[[level_up]]` tables, one level-up each dialog: the harness appends a
@@ -378,9 +389,7 @@ pub fn frame_draws(message: &MessageBox, palette: &str) -> Vec<Draw> {
         .items
         .iter()
         .filter_map(|item| match item {
-            Item::Area(a) if FRAMES.contains(&a.id) && !message.shown.state(a.id).hidden => {
-                Some(a)
-            }
+            Item::Area(a) if FRAMES.contains(&a.id) && !message.shown.state(a.id).hidden => Some(a),
             _ => None,
         })
         .flat_map(|a| {

@@ -3248,7 +3248,8 @@ impl Loop {
     /// resources, the resource bar drawn; the selected hero's primary skills, morale (−3 to 3; the
     /// week's seventh day's on that day) and luck (−3 to 3) in its windows and its army's new
     /// creatures (each the slot of its kind, else the first empty one; none with no room), its
-    /// spell points in the kingdom's list, the window shown drawn.
+    /// spell points in the kingdom's list, the window shown drawn; since E24 M4 T2c its
+    /// experience, which nothing shows (its levels: [`Loop::levels_due`]).
     fn gain(&mut self, gain: Gain) {
         // The experience (E24 M4 T2c): the selected hero's when it is the one known.
         if gain.experience != 0 && self.index == self.experienced {
