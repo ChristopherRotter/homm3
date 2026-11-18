@@ -2987,3 +2987,63 @@ A hero's own popup (T3b2: `scenario_hero_popup` 0x575A90, the class and level, t
 hero two human records hold (the step's skip, `scenario_heroes_unclash` 0x58BBC0: T4); a portrait
 past the hero types' (the campaign heroes' seven, 156 to 162: no table entry, not drawn; no shipped
 map gives one); a load's hero (M4).
+
+## 25. The advanced options: a hero's own popup (M3 T3b2, 2026-11-18)
+
+Read from `Heroes3.exe` (`scenario_hero_popup` 0x575A90 whole, `scenario_dialog_right_click`'s
+call 0x5825B5 to 0x5825F6, `hero_class_name` 0x4D8F70, `hero_specialty_text` 0x4D7220, the
+constructor's `un44.def` 0x57C41E) against `adv-single-hero` and `adv-single-maps`, played again
+under Wine this session (every shot as kept). The client: `h3_view::shell::scenario::advanced`'s
+`own_hero_popup`, `HeroPopupLook` (`[scenario.advanced.hero_popup]`), `AdvancedTexts`'
+`hero_popup`, `hero_line`, `hero_classes`, `specialties`; the catalogue's
+`shell.advanced.hero-popup.*` and the family `hero-specialty`, `hero-class` listed by the battle
+client too.
+
+### 25.1 The popup (`scenario_hero_popup`, six arguments)
+
+- **The arguments** (the caller, 0x5825B5): the portrait (the dialog's array +0xC8 at
+  `scenario_shown_hero`'s index: the small portrait the row shows), the name
+  (`scenario_shown_hero_name` of the colour: the row's), `un44.def` (+0x80), the hero type, the
+  specialty's text and the class's name of the game's hero record of that type (game +0x21620 +
+  0x492 × type). The type: with neither flag the main hero's (+0x1C), else the record's pick.
+- **The dialog**: created 300 × 256 at (250, 172), its size rounded up to 64 (320 × 256, as the
+  small popup's 200 × 150 is 256 × 192), so the items' width − 60 is 260; then, every text
+  colour 1 and alignment 1:
+  - GENRLTXT 78 ("{Starting Hero}", highlighted) in `medfont.fnt` at (30, 26, 260, 36);
+  - the portrait (a PCX item) centred at y 56: (136, 56), 48 × 32;
+  - `"%s - %s"` (`name_dash_format` 0x66033C: the name, then the class) in `smalfont.fnt` at
+    (30, 91, 260, 18);
+  - GENRLTXT 79 ("{Hero Specialty}") in `medfont.fnt` at (30, 122, 260, 36);
+  - `un44.def` (156 frames of 44 × 44 in one group) at the hero type's frame modulo the group's
+    count (a DEF of no group divides by 0), centred at y 149: (138, 149);
+  - the specialty's text in `smalfont.fnt` at (30, 149 + the DEF's height + 2, 260, 36):
+    (30, 195).
+- **The texts**: `hero_class_name` gives the class record's +4 (HCTRAITS' first column; in a
+  campaign of type 15 hero 27 GENRLTXT 736: never on this screen); `hero_specialty_text` the
+  specialty record's +0x1C (`hero_specialty_pointer` 0x679C80, 0x28 bytes a type): HeroSpec.txt's
+  first column, the short name ("Archery", "Griffins": recorded).
+- **Recorded:** `hero-popup-1` (Orrin, Knight, Archery), `hero-popup-last` and `map-0-hero-popup`
+  (picks), `map-2-hero-popup` (Adventures of Jared Haret's red: the main hero "Jared Haret" of
+  Edric's type in Orrin's portrait: "Jared Haret - Knight", Griffins): the portrait the shown
+  one, the name the row's, the class and the specialty the type's.
+
+### 25.2 The client
+
+The hero's popup is built where the row shows a hero (`Hero::Portrait`: a main hero, CLT-Q141 (b)
+included, or a pick); its name is the row's (`hero_name`, CLT-Q142 (b) included), the class's name
+by the hero type from the game's rules (`rules.core().hero_types()`' class: the engine's numbers
+are the original's), the specialty's by the type from the catalogue (`hero-specialty.<key>`,
+HeroSpec.txt's records from 2, column 0). The line is the catalogue's format resolved with
+U+0001 and U+0002 for its arguments (`HERO_NAME`, `HERO_CLASS`), filled at the popup
+(*provisional*: the screen holds resolved texts, no catalogue). The DEF's frame is the hero type
+(every type below its 156 frames). A portrait past the table: no picture (as the row).
+
+### 25.3 The recordings and the comparisons
+
+`adv-single-hero` 28 of 28 and `adv-single-maps` 13 of 13 exact (the four hero popups, T3b1's
+leftovers, now exact); every other group as recorded.
+
+### 25.4 Not built
+
+A hero's popup in a load (M4) and in the hot seat (T4: the same function); the campaign's class
+text (GENRLTXT 736: no campaign here); a hero type past `un44.def`'s frames (none tabled).

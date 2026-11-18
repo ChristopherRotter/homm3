@@ -520,6 +520,8 @@ fn menus(
 ) -> Result<Menus, String> {
     let exe = crate::text::executable(install)?;
     let catalogue = crate::log::catalogue(tables, lods, &exe)?;
+    // The game's rules (E27 M3 T3b1: the maps' heroes; T3b2: the hero types' classes).
+    let rules = crate::maps::rules()?;
     let font = |name: &str| {
         batch
             .font(name)
@@ -693,7 +695,7 @@ fn menus(
         // The advanced options (T3a).
         advanced: Some(advanced_texts(
             &layout.scenario.advanced,
-            tables,
+            (tables, &rules),
             &catalogue,
         )),
     };
@@ -715,20 +717,18 @@ fn menus(
                 layout.scenario.description.clone(),
             ),
             scenario_texts,
-            {
-                let rules = crate::maps::rules()?;
-                crate::maps::named(crate::maps::entries(install, &rules), maps, &rules)
-            },
+            crate::maps::named(crate::maps::entries(install, &rules), maps, &rules),
             bugs,
         ),
     })
 }
 
 /// The advanced options' texts (E27 M3 T3a): the catalogue's `shell.advanced.*` and, for the
-/// towns' popups, each creature's singular name by its original id (the asset tables' key).
+/// towns' popups, each creature's singular name by its original id (the asset tables' key); for a
+/// hero's popup (T3b2) each hero type's class's name (its class in `rules`) and specialty's name.
 fn advanced_texts(
     look: &scenario::AdvancedLook,
-    tables: &h3_view::tables::Tables,
+    (tables, rules): (&h3_view::tables::Tables, &h3_game::GameRuleset),
     catalogue: &h3_ui::text::Catalogue,
 ) -> scenario::AdvancedTexts {
     let text = |key: &str| catalogue.text(key, &Args::new());
@@ -803,6 +803,28 @@ fn advanced_texts(
             text("shell.advanced.random-hero.title"),
             text("shell.advanced.random-hero.text"),
         ],
+        hero_popup: [
+            text("shell.advanced.hero-popup.title"),
+            text("shell.advanced.hero-popup.specialty"),
+        ],
+        hero_line: catalogue.text(
+            "shell.advanced.hero-popup.name",
+            &Args::new()
+                .text("name", &String::from(scenario::HERO_NAME))
+                .text("class", &String::from(scenario::HERO_CLASS)),
+        ),
+        // The hero types' classes as the game's rules give them, in type order (the engine's
+        // hero type and class numbers are the original's).
+        hero_classes: rules
+            .core()
+            .hero_types()
+            .iter()
+            .map(|h| text(&format!("hero-class.{}", h.class.index())))
+            .collect(),
+        specialties: heroes
+            .iter()
+            .map(|(_, key, _)| text(&format!("hero-specialty.{key}")))
+            .collect(),
         kinds: ["both", "human", "computer"].map(|k| text(&format!("shell.advanced.kind.{k}"))),
         computer: text("shell.advanced.computer"),
         random: text("shell.advanced.random"),
