@@ -14,8 +14,8 @@ use alloc::vec::Vec;
 mod hire;
 mod rows;
 
-pub(crate) use rows::TownHeroes;
 pub use hire::TavernVisit;
+pub(crate) use rows::TownHeroes;
 pub use rows::{TownHeroError, TownHeroMove};
 
 use h3_content::{Formation, Ruleset};

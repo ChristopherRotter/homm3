@@ -115,8 +115,8 @@ fn the_import_types_the_tavern_and_the_den() {
         let setup = import(&raw, rules).unwrap();
         setup.validate(rules).unwrap();
         assert_eq!(setup.map.objects.len(), 2);
-        let types = ["base:tavern", "base:den_of_thieves"]
-            .map(|k| rules.adventure().object_type_by_key(k));
+        let types =
+            ["base:tavern", "base:den_of_thieves"].map(|k| rules.adventure().object_type_by_key(k));
         assert!(types.iter().all(Option::is_some));
         for ((object, (x, y)), ty) in setup.map.objects.iter().zip(TILES).zip(types) {
             assert_eq!(object.object_type, ty);

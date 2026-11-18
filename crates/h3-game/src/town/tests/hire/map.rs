@@ -172,7 +172,13 @@ fn a_map_taverns_hire_places_the_hero_on_its_tile_and_closes_it() {
     let id = game.pool().record(hired).unwrap();
     let away = game.pool().away(hired).unwrap().clone();
     let details = game.hero(id).unwrap().clone();
-    let events = run(&rules, &mut game, RED, answer(TavernAnswer::Hire { slot: 1 })).unwrap();
+    let events = run(
+        &rules,
+        &mut game,
+        RED,
+        answer(TavernAnswer::Hire { slot: 1 }),
+    )
+    .unwrap();
     assert_eq!(gold(&game), 2500);
     let seen_by = [RED, BLUE]
         .into_iter()
@@ -216,9 +222,11 @@ fn a_map_taverns_hire_places_the_hero_on_its_tile_and_closes_it() {
     assert!(slots(&game, RED)[1].is_some_and(|t| t != hired));
     // A hero on a neighbour-visited object's tile revisits nothing (the original skips case 95
     // under its visitor).
-    assert!(!legal_commands(&game, &rules, Actor::Player(RED)).contains(&GameCommand::Adventure(
-        AdventureCommand::Revisit { hero: id }
-    )));
+    assert!(
+        !legal_commands(&game, &rules, Actor::Player(RED)).contains(&GameCommand::Adventure(
+            AdventureCommand::Revisit { hero: id }
+        ))
+    );
     // A second step toward the Tavern now meets the hired hero (a meeting), not the Tavern.
     let mut again = game.clone();
     let events = run(&rules, &mut again, RED, step(&[TAVERN])).unwrap();
@@ -239,7 +247,12 @@ fn each_refusal_of_a_map_taverns_hire_changes_nothing_and_leaves_it_open() {
     let setup = inn_setup(&rules);
     let (mut game, _) = visited(&rules, &setup, 5000);
     assert_eq!(
-        run(&rules, &mut game, RED, answer(TavernAnswer::Hire { slot: 2 })),
+        run(
+            &rules,
+            &mut game,
+            RED,
+            answer(TavernAnswer::Hire { slot: 2 })
+        ),
         refused(TavernError::UnknownSlot)
     );
     assert!(game.tavern(RED).is_some());
@@ -250,7 +263,12 @@ fn each_refusal_of_a_map_taverns_hire_changes_nothing_and_leaves_it_open() {
     let (mut one, _) = visited(&rules, &one, 5000);
     assert_eq!(slots(&one, RED)[1], None);
     assert_eq!(
-        run(&rules, &mut one, RED, answer(TavernAnswer::Hire { slot: 1 })),
+        run(
+            &rules,
+            &mut one,
+            RED,
+            answer(TavernAnswer::Hire { slot: 1 })
+        ),
         refused(TavernError::EmptySlot)
     );
     assert_eq!(
@@ -264,7 +282,12 @@ fn each_refusal_of_a_map_taverns_hire_changes_nothing_and_leaves_it_open() {
     let most = rules_with(|towns| towns.params.as_mut().unwrap().most_heroes = 1);
     let (mut full, _) = visited(&most, &inn_setup(&most), 5000);
     assert_eq!(
-        run(&most, &mut full, RED, answer(TavernAnswer::Hire { slot: 0 })),
+        run(
+            &most,
+            &mut full,
+            RED,
+            answer(TavernAnswer::Hire { slot: 0 })
+        ),
         refused(TavernError::TooManyHeroes)
     );
     assert_eq!(
@@ -285,7 +308,12 @@ fn each_refusal_of_a_map_taverns_hire_changes_nothing_and_leaves_it_open() {
         },
     );
     assert_eq!(
-        run(&rules, &mut held, RED, answer(TavernAnswer::Hire { slot: 0 })),
+        run(
+            &rules,
+            &mut held,
+            RED,
+            answer(TavernAnswer::Hire { slot: 0 })
+        ),
         refused(TavernError::Occupied)
     );
     assert_eq!(
@@ -295,7 +323,12 @@ fn each_refusal_of_a_map_taverns_hire_changes_nothing_and_leaves_it_open() {
     // The treasury below the price, after the map's checks.
     let (mut poor, _) = visited(&rules, &setup, 2499);
     assert_eq!(
-        run(&rules, &mut poor, RED, answer(TavernAnswer::Hire { slot: 0 })),
+        run(
+            &rules,
+            &mut poor,
+            RED,
+            answer(TavernAnswer::Hire { slot: 0 })
+        ),
         Err(GameCommandError::CannotPay)
     );
     assert_eq!(

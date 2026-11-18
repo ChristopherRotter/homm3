@@ -773,6 +773,8 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "vcmi"
   ref        = "VCMI 1.7.5 as read by survey E09-tavern.md sections 3 and 7: the map tavern's hire places the hero at the Tavern's visitable tile and refuses while it is occupied; HERO_GOLD_COST 2 500, 8 heroes on the map"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/HeroPoolProcessor.cpp"
+  retrieved  = "2026-11-15"
   confidence = "high"
 
   [[rule.source]]

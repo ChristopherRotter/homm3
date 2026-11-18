@@ -66,6 +66,8 @@ pub use command::{
     HireAnswer, NoopSink, SchoolChoice, Sink, SkillOffer, TavernAnswer, UniversityAnswer, apply,
 };
 pub use garrisons::MapGarrisonView;
+/// A map Tavern's visit (E09 T39a; `h3_adventure`'s type): what [`GameState::tavern`] gives.
+pub use h3_adventure::TavernVisit;
 /// What [`reveal`] answers of the adventure map and the grid it reads (SRV-Q26 (a);
 /// `h3_adventure`'s types): a server keeps each viewer's last explored grid.
 pub use h3_adventure::{AdventureReveal, BitGrid, RevealedTile};
@@ -74,8 +76,6 @@ pub use h3_adventure::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
 /// A choice's and a University's views (E08 T63a; `h3_adventure`'s types): what
 /// [`DecisionView::Choice`] and [`DecisionView::University`] show.
 pub use h3_adventure::{Choice, ChoiceKind, UniversityVisit};
-/// A map Tavern's visit (E09 T39a; `h3_adventure`'s type): what [`GameState::tavern`] gives.
-pub use h3_adventure::TavernVisit;
 /// A hire dialog, its army, source and refusals (E08 T95b; `h3_adventure`'s types): what
 /// [`GameState::hire_dialog`], [`GameEvent::HireOpened`], [`DecisionView::Hire`] and
 /// [`GameCommandError::Hire`] carry.

@@ -271,11 +271,7 @@ fn check<'a>(
 
 /// The type and record of the hero in `player`'s tavern `slot`: `Err(false)` for a slot that is
 /// not one of the two, `Err(true)` for one that holds none.
-fn slot_hero(
-    state: &GameState,
-    player: PlayerId,
-    slot: u8,
-) -> Result<(HeroTypeId, HeroId), bool> {
+fn slot_hero(state: &GameState, player: PlayerId, slot: u8) -> Result<(HeroTypeId, HeroId), bool> {
     let pool = state.pool();
     let slots = pool.tavern(player).map_or([None; 2], |tavern| tavern.slots);
     let held = slots.get(usize::from(slot)).ok_or(false)?;
@@ -340,8 +336,8 @@ pub(crate) fn map_hires(
     rules: &GameRuleset,
     (player, visit): (PlayerId, &TavernVisit),
 ) -> impl Iterator<Item = Answer> {
-    let open = hire_slots(state, rules, player)
-        .filter(|_| state.adventure().tile_free(visit.entrance));
+    let open =
+        hire_slots(state, rules, player).filter(|_| state.adventure().tile_free(visit.entrance));
     let held = open.unwrap_or([false; 2]);
     (0..TAVERN_SLOTS)
         .filter(move |&slot| held[usize::from(slot)])

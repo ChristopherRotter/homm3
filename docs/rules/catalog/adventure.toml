@@ -2194,7 +2194,9 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "VCMI 1.7.5 as read by survey E09-tavern.md section 7: the Den of Thieves shows everything; its template visited from the sides and below, the entrance passable"
+  ref        = "VCMI 1.7.5 as read by survey E09-tavern.md section 7: the Den of Thieves shows the Thieves' Guild at everything (getThievesGuildInfo)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/callback/CGameInfoCallback.cpp"
+  retrieved  = "2026-11-15"
   confidence = "high"
 
   [[rule.source]]
