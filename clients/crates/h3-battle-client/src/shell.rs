@@ -834,6 +834,7 @@ fn advanced_texts(
             .collect(),
         kinds: ["both", "human", "computer"].map(|k| text(&format!("shell.advanced.kind.{k}"))),
         computer: text("shell.advanced.computer"),
+        handicaps: [0, 1, 2].map(|h| text(&format!("shell.advanced.handicap.{h}"))),
         random: text("shell.advanced.random"),
         none: text("shell.advanced.none"),
         towns: (0..9)
