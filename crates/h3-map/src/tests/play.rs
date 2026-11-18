@@ -37,11 +37,11 @@ use std::sync::{Arc, LazyLock};
 
 use h3_adventure::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureState,
-    Gift, Holds, MarkLifetime, NothingWhy, ObjectKind, ObjectTypeId, Offer, OfferKind, Passage,
-    Pos as TilePos, Reach, Resolved, RewardRecord, Turn, Viewers, Visit,
+    Bank, BankLevel, BankQuestion, Gift, Holds, MarkLifetime, NothingWhy, ObjectKind, ObjectTypeId,
+    Offer, OfferKind, Passage, Pos as TilePos, Reach, Resolved, RewardRecord, Turn, Viewers, Visit,
 };
 use h3_battle::{
-    CastTargets, Command, Event, EventKind, cast_targets, castable_spells, second_targets,
+    CastTargets, Command, Event, EventKind, Field, cast_targets, castable_spells, second_targets,
 };
 use h3_content::{
     ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, ResourceId, SIRENS_AGAIN_AFTER_BATTLE,
@@ -139,8 +139,9 @@ pub(super) const BLOCKER_CLASS: u32 = 118;
 /// Camp. Then (E08 T106b1, increment 11's design note §14) increment 11's kinds ([`TELEPORTERS`]):
 /// the monoliths of two channels, the Subterranean Gate and the Whirlpool. Then (E08 T116b1,
 /// increment 12's design note §16) the map garrisons ([`GARRISONS`]) and (E08 T116b2) the bonus
-/// visitables ([`BONUSES`]).
-pub(super) const KINDS: [(u32, u32, Option<u32>); 122] = [
+/// visitables ([`BONUSES`]); then (E08 T125b2a, increment 13's design note §17) the creature banks
+/// ([`BANKS`]).
+pub(super) const KINDS: [(u32, u32, Option<u32>); 133] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -263,6 +264,17 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 122] = [
     (11, 0, None),
     (52, 0, None),
     (92, 0, None),
+    (16, 0, None),
+    (16, 1, None),
+    (16, 2, None),
+    (16, 3, None),
+    (16, 4, None),
+    (16, 5, None),
+    (16, 6, None),
+    (84, 0, None),
+    (25, 0, None),
+    (24, 0, None),
+    (85, 0, None),
 ];
 /// Increment 7's kinds in [`KINDS`] (E08 T64b, increment 7's design note §16): the first of them,
 /// and how many. In order: the Arena, Centaur's Axe, a Pandora's Box (experience, gold, Magic Arrow
@@ -441,6 +453,46 @@ pub(super) const STABLES_OBJECT: usize = BONUS_OBJECTS[9];
 /// The Cavaliers' code (the Stables' `from`, ADV-BON-005).
 const CAVALIER: u16 = 10;
 
+/// Increment 13's creature banks in [`KINDS`] (E08 T125b2a, increment 13's design note §17): the
+/// first of them, and how many. In order: the nine on land, entered (ADV-BNK-001): class 16's
+/// seven by subclass (the Cyclops Stockpile, the Dwarven Treasury, the Griffin Conservatory, the
+/// Imp Cache, the Medusa Stores, the Naga Bank, the Dragon Fly Hive), the Crypt (84) and Dragon
+/// Utopia (25); then the sea's two: the Derelict Ship (24), entered from a boat, and the Shipwreck
+/// (85), visited from a neighbouring tile, a boat's or the coast's (ADV-MOV-009). None has a body:
+/// the build draws each one's level, artifacts and guards (ADV-BNK-002).
+pub(super) const BANKS: (usize, usize) = (122, 11);
+/// The creature banks' objects, by kind (one shape each: [`masks`] gives the nine on land the
+/// original's templates, `banks.rs`' `LAND_BANKS`, the Crypt's first picture's, and the sea's two
+/// one tile, blocked and visited: the Derelict Ship's two columns would close the plans'
+/// narrowest strait, as the Whirlpool's three).
+pub(super) const BANK_OBJECTS: [usize; 11] = {
+    let mut objects = [0; 11];
+    let mut i = 0;
+    while i < objects.len() {
+        objects[i] = BLOCKERS.len() * (BANKS.0 + i);
+        i += 1;
+    }
+    objects
+};
+/// How many of [`BANK_OBJECTS`] stand on land: the first nine.
+pub(super) const BANKS_ON_LAND: usize = 9;
+/// Dragon Utopia's blocked tiles (`banks.rs`' `LAND_BANKS`, `AVSutop0.def`): three rows, entered
+/// one column left of the anchor.
+const UTOPIA_BLOCKED: Mask = &[
+    (1, 0),
+    (2, 0),
+    (3, 0),
+    (1, 1),
+    (2, 1),
+    (3, 1),
+    (4, 1),
+    (5, 1),
+    (0, 2),
+    (1, 2),
+    (2, 2),
+    (3, 2),
+];
+
 /// Whether an object of kind `kind` is ownable, its owner at load from the plan's
 /// [`Plan::owners`]: [`OWNABLE`]'s (E08 T86b1) and (E08 T96b1) a dwelling or a random dwelling of
 /// [`DWELLINGS`] (not the camp), as the import's ownable kinds (ADV-OWN-001).
@@ -531,9 +583,24 @@ pub(super) type Mask = &'static [(u8, u8)];
 /// Pond, the Faerie Ring and the Temple, on the anchor for the Rally Flag and the Stables, on both
 /// for the Magic Spring's two entrances; two rows of two visited on the anchor for the Fountain of
 /// Youth, on its row for the Oasis; four of a row, all visited, for the Watering Hole) and the
-/// sea's three one tile ([`BONUS_OBJECTS`]).
+/// sea's three one tile ([`BONUS_OBJECTS`]); (E08 T125b2a) the land banks' original templates
+/// (`banks.rs`' `LAND_BANKS`: two tiles of a row, entered on the left for the Cyclops Stockpile,
+/// the Medusa Stores and the Naga Bank, on the anchor for the Griffin Conservatory and the Imp
+/// Cache; three of a row entered on the middle one for the Dwarven Treasury and the Crypt; the
+/// Dragon Fly Hive's one left of the anchor; Dragon Utopia's twelve, [`UTOPIA_BLOCKED`]) and the
+/// sea's two one tile ([`BANK_OBJECTS`]).
 pub(super) fn masks(object: usize) -> (Mask, Mask) {
-    match KINDS[object / BLOCKERS.len()].0 {
+    let (class, subclass, _) = KINDS[object / BLOCKERS.len()];
+    match (class, subclass) {
+        (16, 0 | 4 | 5) => return (&[(0, 0), (1, 0)], &[(1, 0)]),
+        (16, 2 | 3) => return (&[(0, 0), (1, 0)], &[(0, 0)]),
+        (16, 1) | (84, _) => return (&[(0, 0), (1, 0), (2, 0)], &[(1, 0)]),
+        (16, _) => return (&[(1, 0)], &[(1, 0)]),
+        (25, _) => return (UTOPIA_BLOCKED, &[(1, 0)]),
+        (24 | 85, _) => return (&[(0, 0)], &[(0, 0)]),
+        _ => {}
+    }
+    match class {
         54 | 26 | 8 | 29 | 82 | 86 | 59 | 43 | 44 | 45 => (&[(0, 0)], &[(0, 0)]),
         30 | 38 | 49 | 11 | 52 | 92 => (&[(0, 0)], &[(0, 0)]),
         14 | 28 | 96 => (&[(0, 0), (1, 0)], &[(1, 0)]),
@@ -898,6 +965,10 @@ pub(super) struct Plan {
     /// anchor (modulo the map) and object ([`BONUS_OBJECTS`]), laid out after the garrisons
     /// ([`bonuses_laid_out`]).
     pub(super) bonuses: Vec<(Spot, usize)>,
+    /// (E08 T125b2a; increment 13's design note §17) The creature banks ([`banks`]): each one's
+    /// anchor (modulo the map) and object ([`BANK_OBJECTS`]), laid out after the bonus visitables
+    /// (with them, [`bonuses_laid_out`]).
+    pub(super) banks: Vec<(Spot, usize)>,
 }
 
 /// A plan's map garrison (E08 T116b1; increment 12's design note §16; ADV-GAR-001): where it
@@ -1200,8 +1271,9 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 // E08 T106b1, drawn last for the same reason.
                 teleporters(),
                 // E08 T116b1, drawn last for the same reason; (E08 T116b2) the bonus
-                // visitables after them (a pair: the tuple holds twelve at most).
-                (garrisons(), bonuses()),
+                // visitables after them (a pair: the tuple holds twelve at most), (E08 T125b2a)
+                // the creature banks after those.
+                (garrisons(), bonuses(), banks()),
             ),
         ),
     )
@@ -1235,7 +1307,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                         dwellings,
                         towns,
                         teleporters,
-                        (garrisons, bonuses),
+                        (garrisons, bonuses, banks),
                     ),
                 ),
             )| {
@@ -1337,6 +1409,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 let mut whirlpools = Vec::new();
                 // E08 T116b2: the bonus visitables, the sea's on the strait ([`Bonuses`]).
                 let mut bonused = Vec::new();
+                // E08 T125b2a: the creature banks, the sea's on the strait ([`Banks`]).
+                let mut banked = Vec::new();
                 // E08 T75b: a strait beside a hero, its boats, pickups, winds and monster, and
                 // the hero's sources of sea points ([`Sea`]).
                 if let Some(sea) = sea {
@@ -1362,6 +1436,10 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     // E08 T116b2: the sea's bonus visitables on the strait ([`Bonuses::sea`]).
                     for &((c, r), object) in &bonuses.sea {
                         bonused.push(((column(c), row(r), z), object));
+                    }
+                    // E08 T125b2a: the sea's banks on the strait ([`Banks::sea`]).
+                    for &((c, r), object) in &banks.sea {
+                        banked.push(((column(c), row(r), z), object));
                     }
                     // E08 T86b1: a Shipyard on the strait's coast, its entrance two columns west
                     // of the strait ([`SHIPYARD_OBJECT`]), so that it has a boat tile.
@@ -1432,6 +1510,21 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     army.resize(army.len().max(7), None);
                     army[usize::from(slot) % 7] = Some((CAVALIER, count));
                 }
+                // E08 T125b2a: the creature banks on land near the heroes, and Archangels for the
+                // hero of the first ([`Banks`]).
+                for &((dx, dy), hero, object) in &banks.near {
+                    let levels = 1 + u8::from(two_levels);
+                    let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
+                    let ((hx, hy, hz), _) = heroes[usize::from(hero) % heroes.len()];
+                    banked.push(((at(hx, dx), at(hy, dy), hz % levels), object));
+                }
+                if let (Some(&(_, hero, _)), Some((slot, count))) = (banks.near.first(), banks.army)
+                {
+                    let index = usize::from(hero) % heroes.len();
+                    let army = heroes[index].1.get_or_insert_with(Vec::new);
+                    army.resize(army.len().max(7), None);
+                    army[usize::from(slot) % 7] = Some((ARCHANGEL, count));
+                }
                 Plan {
                     version,
                     side,
@@ -1453,6 +1546,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     teleporters: teleported,
                     garrisons,
                     bonuses: bonused,
+                    banks: banked,
                 }
             },
         )
@@ -1546,6 +1640,47 @@ fn bonuses() -> impl Strategy<Value = Bonuses> {
             sea,
             cavaliers,
         }),
+    ]
+}
+
+/// Increment 13's creature banks of a plan (E08 T125b2a, increment 13's design note §17), drawn as
+/// [`banks`] draws them; [`Plan::banks`] places them.
+#[derive(Debug, Clone, Default)]
+pub(super) struct Banks {
+    /// The nine on land ([`BANK_OBJECTS`]' first [`BANKS_ON_LAND`]), each with its anchor at an
+    /// offset from a hero's tile (two columns and rows left of it to two right) and the hero
+    /// (modulo the plan's), on its level, so that random play enters them.
+    near: Vec<((u8, u8), u8, usize)>,
+    /// On a plan with a strait ([`Sea`]): the sea's two, each at a column of the strait (modulo
+    /// its width: 0, the coast's, in two cases of three, so that a Shipwreck is visited from land
+    /// too) and a row from two above the strait's hero's to thirteen below, as the Whirlpools.
+    sea: Vec<((u8, u8), usize)>,
+    /// Archangels given to the hero the first bank on land stands near, as their slot (modulo
+    /// seven) and count, so that random play wins bank battles and takes their rewards.
+    army: Option<(u8, u16)>,
+}
+
+/// The Archangels' code ([`Banks::army`]).
+const ARCHANGEL: u16 = 13;
+
+/// A plan's creature banks (E08 T125b2a): in two plans of three, one to three on land near the
+/// heroes and up to two of the sea's (on a plan with a strait), each drawn among its kinds; with
+/// a bank on land, Archangels for its hero in three cases of four.
+fn banks() -> impl Strategy<Value = Banks> {
+    let land = proptest::sample::select(BANK_OBJECTS[..BANKS_ON_LAND].to_vec());
+    let near = vec(((0u8..5, 0u8..5), any::<u8>(), land), 1..=3);
+    let column = prop_oneof![2 => Just(0u8), 1 => any::<u8>()];
+    let sea = vec(
+        (
+            (column, 0u8..16),
+            proptest::sample::select(BANK_OBJECTS[BANKS_ON_LAND..].to_vec()),
+        ),
+        0..=2,
+    );
+    let army = proptest::option::weighted(0.75, (0u8..7, 20u16..=80));
+    prop_oneof![
+        1 => Just(Banks::default()),
+        2 => (near, sea, army).prop_map(|(near, sea, army)| Banks { near, sea, army }),
     ]
 }
 
@@ -1902,8 +2037,9 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
     // E08 T106b1: the teleporters' too; (E08 T116b1) the garrisons'.
     let used = used.chain(plan.teleporters.iter().map(|&(_, o)| o));
     let used = used.chain(plan.garrisons.iter().map(|g| garrison_object(g, v)));
-    // E08 T116b2: the bonus visitables'.
+    // E08 T116b2: the bonus visitables'; (E08 T125b2a) the creature banks'.
     let used = used.chain(plan.bonuses.iter().map(|&(_, o)| o));
+    let used = used.chain(plan.banks.iter().map(|&(_, o)| o));
     let used = used.map(|o| o + 1).max().unwrap_or(0);
     m.templates.extend((0..used.max(BLOCKERS.len())).map(|o| {
         let (blocked, visitable) = masks(o);
@@ -2312,7 +2448,8 @@ fn garrisons_laid_out(
 /// load is no case of the plans) or one an object laid out before blocks or is visited on
 /// (`covered`, which takes its tiles), so that each of its visitable tiles is listed for it and no
 /// two of a type share an anchor. One anywhere else is left out; plans without bonus visitables
-/// keep their maps.
+/// keep their maps. (E08 T125b2a) The creature banks after them, laid out alike ([`Plan::banks`]):
+/// the nine on land, the sea's two on water (the Shipwreck's tile beside the coast or not).
 fn bonuses_laid_out(
     m: &mut RawMap,
     plan: &Plan,
@@ -2320,7 +2457,7 @@ fn bonuses_laid_out(
     covered: &mut Vec<Spot>,
 ) {
     let (side, levels) = (plan.side, 1 + u8::from(plan.two_levels));
-    for &((x, y, z), bonus) in &plan.bonuses {
+    for &((x, y, z), bonus) in plan.bonuses.iter().chain(&plan.banks) {
         let (ax, ay, az) = (x % side, y % side, z % levels);
         let (blocked, visitable) = masks(bonus);
         let tiles = |mask: Mask| -> Vec<Spot> {
@@ -2331,7 +2468,8 @@ fn bonuses_laid_out(
                 .collect()
         };
         let (blocks, visits) = (tiles(blocked), tiles(visitable));
-        let water = BONUS_OBJECTS[BONUSES_ON_LAND..].contains(&bonus);
+        let water = BONUS_OBJECTS[BONUSES_ON_LAND..].contains(&bonus)
+            || BANK_OBJECTS[BANKS_ON_LAND..].contains(&bonus);
         let surface = |&(tx, ty, tz): &Spot| {
             let index = (usize::from(tz) * usize::from(side) + usize::from(ty)) * usize::from(side)
                 + usize::from(tx);
@@ -2824,6 +2962,13 @@ pub(super) enum Step {
     /// empty boat on a map with the sea's, or one that gets nearer to a visitable tile
     /// ([`seek_bonus`]); as `Exchange(n)` on a map without bonus visitables.
     Bonus(u16),
+    /// (E08 T125b2a; increment 13's design note §17) In a battle as `Fight(n)`; a creature bank's
+    /// open question accepted, declined in one step of four; on the map a bank's revisit, an
+    /// option that ends on a bank's visitable tile (entering one, visiting the Shipwreck from a
+    /// boat or the coast beside it), a walker's boarding of an empty boat on a map with the sea's,
+    /// or one that gets nearer to a visitable tile ([`seek_bank`]); as `Bonus(n)` on a map without
+    /// banks.
+    Bank(u16),
 }
 
 #[derive(Debug, Clone)]
@@ -3091,6 +3236,12 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
         prop_oneof![6 => any::<u16>().prop_map(Step::Bonus), 1 => Just(Step::EndTurn)],
         8..48,
     );
+    // E08 T125b2a: runs of banks, `Step::Bank`s with ends of turn among them, which walk and sail
+    // heroes to the creature banks, answer their questions, play their battles and revisit them.
+    let bank = vec(
+        prop_oneof![8 => any::<u16>().prop_map(Step::Bank), 1 => Just(Step::EndTurn)],
+        16..96,
+    );
     vec(
         prop_oneof![
             12 => step().prop_map(|step| vec![step]),
@@ -3106,6 +3257,7 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
             1 => build,
             1 => exchange,
             1 => bonus,
+            1 => bank,
         ],
         0..40,
     )
@@ -4066,6 +4218,149 @@ fn seek_bonus(
         .map_or(GameCommand::EndTurn, |&command| command.clone())
 }
 
+/// The creature banks of `state` (E08 T125b2a), by object index (the static map's: none is added
+/// in play).
+fn banks_of(state: &GameState, rules: &GameRuleset) -> Vec<usize> {
+    let adventure = state.adventure();
+    (0..adventure.map().objects().len())
+        .filter(|&i| bank_kind(state, rules, i).is_some())
+        .collect()
+}
+
+/// The kind of the creature bank at object index `index` of `state` (E08 T125b2a), if it is one.
+fn bank_kind<'r>(state: &GameState, rules: &'r GameRuleset, index: usize) -> Option<&'r Bank> {
+    let ty = state.adventure().object(index)?.object_type?;
+    match &rules.adventure().object_type(ty)?.kind {
+        ObjectKind::Bank(bank) => Some(bank),
+        _ => None,
+    }
+}
+
+/// The creature bank visited from `pos` on `state`, by object index (E08 T125b2a; the last object
+/// visited from the tile, as the engine's), with its kind.
+fn bank_at<'r>(
+    state: &GameState,
+    rules: &'r GameRuleset,
+    pos: TilePos,
+) -> Option<(usize, &'r Bank)> {
+    let index = visited_at(state, pos)?;
+    bank_kind(state, rules, index).map(|bank| (index, bank))
+}
+
+/// [`Step::Bank`] (E08 T125b2a; increment 13's design note §17): in a battle as [`fight`]; a
+/// creature bank's open question accepted, declined when `n % 4 == 3`; another decision settled
+/// ([`settle`]); on the map, in one step of four the `n`-th listed `Revisit` of a hero standing on
+/// a bank's entrance, else the `n`-th of its options that end on a bank's visitable tile (an
+/// entered one's: the hero stands on it; the Shipwreck's: its hero visits it from the boat or the
+/// coast beside it), else with the sea's on the map in one step of two a walker's option onto an
+/// empty boat (so that heroes sail to them), else one that ends nearer to a visitable tile than
+/// its hero stands, else `EndTurn`, the visitable tiles in three steps of four those of the banks
+/// not looted (while there are any); as [`seek_bonus`] on a map without banks.
+fn seek_bank(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -> GameCommand {
+    let banks = banks_of(state, rules);
+    if banks.is_empty() {
+        return seek_bonus(state, rules, legal, n);
+    }
+    let actor = acting(state);
+    if battle_of(state, self::actor(state)).is_some() {
+        return fight(state, rules, legal, n);
+    }
+    let asked = state.decision(actor).is_some_and(|offer| {
+        let index = object_index(state, offer.object_type, offer.anchor);
+        index.is_some_and(|i| bank_kind(state, rules, i).is_some())
+    });
+    if asked {
+        return ANSWERS[usize::from(n % 4 == 3)].clone();
+    }
+    if let Some(answer) = settle(state, legal, n) {
+        return answer;
+    }
+    let adventure = state.adventure();
+    let map = adventure.map();
+    // Their visitable tiles, in the walk's order, and whether one of the sea's stands on the map.
+    let mut tiles: Vec<TilePos> = Vec::new();
+    for z in 0..map.levels() {
+        for y in 0..map.height() {
+            for x in 0..map.width() {
+                let pos = TilePos::new(x, y, z);
+                if bank_at(state, rules, pos).is_some() {
+                    tiles.push(pos);
+                }
+            }
+        }
+    }
+    let sea = banks
+        .iter()
+        .any(|&i| bank_kind(state, rules, i).is_some_and(|bank| bank.deck));
+    let on_bank = |hero: HeroId| adventure.hero(hero).is_some_and(|h| tiles.contains(&h.pos));
+    // A looted bank asks again and again (a search's from the coast costs no points): in three
+    // steps of four the visits and the approaches seek the others, while there are any.
+    let unlooted: Vec<TilePos> = (tiles.iter().copied())
+        .filter(|&pos| bank_at(state, rules, pos).is_some_and(|(i, _)| !adventure.is_emptied(i)))
+        .collect();
+    let revisits: Vec<&GameCommand> = legal
+        .iter()
+        .filter(|c| {
+            matches!(c, GameCommand::Adventure(AdventureCommand::Revisit { hero }) if on_bank(*hero))
+        })
+        .collect();
+    if n % 4 == 3 && !revisits.is_empty() {
+        return revisits[usize::from(n / 4) % revisits.len()].clone();
+    }
+    let tiles = if n % 4 == 3 || unlooted.is_empty() {
+        tiles
+    } else {
+        unlooted
+    };
+    let moves: Vec<(&GameCommand, HeroId, &[TilePos])> = legal
+        .iter()
+        .filter_map(|c| as_move(c).map(|(hero, path)| (c, hero, path)))
+        .collect();
+    let entering: Vec<&GameCommand> = (moves.iter())
+        .filter(|(_, _, path)| path.last().is_some_and(|to| tiles.contains(to)))
+        .map(|&(c, _, _)| c)
+        .collect();
+    if !entering.is_empty() {
+        return entering[usize::from(n / 4) % entering.len()].clone();
+    }
+    let boarding: Vec<&GameCommand> = (moves.iter())
+        .filter(|(_, hero, path)| {
+            let walker = adventure.hero(*hero).is_some_and(|h| h.boat.is_none());
+            walker && path.last().is_some_and(|&to| adventure.is_empty_boat(to))
+        })
+        .map(|&(c, _, _)| c)
+        .collect();
+    if sea && n % 2 == 1 && !boarding.is_empty() {
+        return boarding[usize::from(n / 2) % boarding.len()].clone();
+    }
+    let distance = |pos: TilePos| {
+        (tiles.iter())
+            .filter(|t| t.level == pos.level && **t != pos)
+            .map(|t| t.x.abs_diff(pos.x).max(t.y.abs_diff(pos.y)))
+            .min()
+    };
+    let mut best: Vec<&GameCommand> = Vec::new();
+    let mut nearest = u16::MAX;
+    for &(command, hero, path) in &moves {
+        let Some(at) = adventure.hero(hero).map(|h| h.pos) else {
+            continue;
+        };
+        let (here, there) = (distance(at), path.last().and_then(|&to| distance(to)));
+        if let (Some(here), Some(there)) = (here, there)
+            && there < here
+            && there <= nearest
+        {
+            if there < nearest {
+                best.clear();
+                nearest = there;
+            }
+            best.push(command);
+        }
+    }
+    best.get(usize::from(n) % best.len().max(1))
+        .map_or(GameCommand::EndTurn, |&command| command.clone())
+}
+
 /// An arbitrary army command of the open exchange `open` (E08 T116b1; GAM-MAN-001 amended, the one
 /// owner rule): drawn from `n`, a move, a split or a dismissal (`n % 3`), from the exchange's hero to
 /// its garrison, back, within the garrison or within the hero (`n / 3 % 4`), from and to slots up
@@ -4351,8 +4646,25 @@ fn landing(
                 | AdventureEventKind::CreaturesUpgraded { .. }
         )
     });
+    // (E08 T125b2a) A creature bank's attack kind marks its visitor's team at once and tells it
+    // the hint (ADV-BNK-003, ADV-BNK-006: `ObjectMarked`, then `GuardsChanged`), or that it is
+    // looted (`marked`).
+    let banked = matches!(
+        visit,
+        [
+            AdventureEventKind::ObjectMarked { .. },
+            AdventureEventKind::GuardsChanged { .. }
+        ]
+    );
     prop_assert!(
-        kinds.len() <= steps + 1 || leaves || flagged || marked || captured || whirled || bonused,
+        kinds.len() <= steps + 1
+            || leaves
+            || flagged
+            || marked
+            || captured
+            || whirled
+            || bonused
+            || banked,
         "{:?}",
         kinds
     );
@@ -4485,7 +4797,9 @@ fn stops_on(before: &GameState, rules: &GameRuleset, pos: TilePos) -> bool {
 /// (ADV-PIK-018, D-46: only a boat visits the sea's objects, and no flight passes one), but where a
 /// hero in a boat stands, who is met there (ADV-SEA-005); a boarding or a landing converts the
 /// hero's points (ADV-SEA-002, -003; D-41): to at most the new maximum with free boarding
-/// (HER-ADV-009, the Admiral's Hat), to 0 without.
+/// (HER-ADV-009, the Admiral's Hat), to 0 without. (E08 T125b2a) A coast kind's water entrance (the
+/// Shipwreck's: ADV-MOV-009, increment 13's design note §9) is the exception: a walker's or a
+/// water walker's visit from the coast, a flight's pass, as an empty boat's tile.
 fn check_sea_move(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -4506,7 +4820,8 @@ fn check_sea_move(
         // boards it there from the shore (E08 decision 216).
         let met = heroes.iter().any(|h| h.pos == tile && h.id != hero)
             || before.adventure().is_empty_boat(tile);
-        let entrance = is_water(before, rules, tile) && live_bits(before, tile).1 && !met;
+        let coast = bank_at(before, rules, tile).is_some_and(|(_, bank)| bank.coast);
+        let entrance = is_water(before, rules, tile) && live_bits(before, tile).1 && !met && !coast;
         let adventure = before.adventure();
         let objects: Vec<_> = (adventure.map().objects().iter().enumerate())
             .filter(|&(i, o)| !adventure.is_removed(i) && o.covers(tile).1)
@@ -4672,6 +4987,7 @@ pub(super) fn resolve(
         Step::Jump(n) => (who, teleport(state, rules, legal, *n)),
         Step::Exchange(n) => (who, exchange_with(state, rules, legal, *n)),
         Step::Bonus(n) => (who, seek_bonus(state, rules, legal, *n)),
+        Step::Bank(n) => (who, seek_bank(state, rules, legal, *n)),
         Step::BuildBoat(n) => {
             let boat = |c: &GameCommand| {
                 matches!(
@@ -7117,6 +7433,11 @@ fn check_conservation(
         prop_assert!(joined.len() + held.len() <= 1, "{:?} {:?}", joined, held);
     }
     let mut contents = visit_gains(rules, (before, after), command, events);
+    // E08 T125b2a: a creature bank looted outside a battle (its winner's level-up answered, its
+    // yes with no guards standing) gives its level's resources ([`check_banks`]).
+    if let Some((_, level, _)) = bank_looted(rules, (before, after)) {
+        contents.extend(level.resources.iter().copied());
+    }
     // A guarding monster's treasure comes before the visit its answer held (decision 279: the
     // guard first, GAM-DEC-007), so before [`visit_gains`]' (the town lane's inbox, E09 T19a: a
     // join for gold before the Mystical Garden it guarded).
@@ -8950,6 +9271,11 @@ fn check_unowned_battle_end(
         Some((index, ObjectKind::Garrison { .. })) => {
             return check_garrison_battle_end((before, after), events, (visitor, index, result));
         }
+        // E08 T125b2a: a creature bank's ([`check_bank_battle_end`]).
+        Some((index, ObjectKind::Bank(_))) => {
+            let battle = (visitor, index, result);
+            return check_bank_battle_end(rules, (before, after), events, battle);
+        }
         _ => {}
     }
     // E08 T86b1: a found index may be a monster's added in play (a creature month's), read
@@ -9898,6 +10224,362 @@ fn check_bonuses(
     Ok(())
 }
 
+/// The creature bank looted between `before` and `after` (E08 T125b2a; ADV-BNK-005): one not
+/// looted before and looted after, with its object index, its drawn level and the artifacts drawn
+/// for it (`Resolved::Bank`); none for every other command (a command loots at most one: its
+/// visitor's battle, held reward or yes).
+fn bank_looted<'r, 's>(
+    rules: &'r GameRuleset,
+    (before, after): (&'s GameState, &GameState),
+) -> Option<(usize, &'r BankLevel, &'s [ArtifactTypeId])> {
+    let (b, a) = (before.adventure(), after.adventure());
+    let index = (0..b.map().objects().len())
+        .find(|&i| bank_kind(before, rules, i).is_some() && !b.is_emptied(i) && a.is_emptied(i))?;
+    let bank = bank_kind(before, rules, index)?;
+    let (level, artifacts) = b.object(index)?.resolved.bank()?;
+    Some((index, bank.levels.get(usize::from(level))?, artifacts))
+}
+
+/// The creature banks' oracle after every command (E08 T125b2a; increment 13's design note §17;
+/// ADV-BNK-002 to -005, HER-ADV-008, GAM-DEC-007), `player`'s (the system's battle commands its
+/// visitor's owner's):
+/// - a bank's drawn level and artifacts never change (the static map's), nor its guards but by the
+///   end of a battle at it in this command; it stays on the map;
+/// - a bank is looted only in a command that ends a won battle at it, answers its winner's
+///   level-up (the reward held, GAM-DEC-007) or accepts its question with no guards standing, and
+///   then gives the visitor's owner exactly its drawn level's resources, in its order, the
+///   visitor exactly the drawn artifacts it can receive, relics first as drawn
+///   (`can_receive_artifact`; the others lost), and the level's creature joined (ADV-ARM-007) or
+///   held in the army dialog (GAM-DEC-004), nothing else of its own (no experience, skill or
+///   spell); the winner gains no level and opens no level-up after the reward's first event;
+/// - a looted bank's search tells it is looted and gives its kind's once-bonus (−1 morale) when
+///   the hero does not hold its mark ([`check_bank_answer`]).
+fn check_banks(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    (player, command): (PlayerId, &GameCommand),
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let (b, a) = (before.adventure(), after.adventure());
+    // The bank whose battle ended in this command, if one did, with its result.
+    let started = events.iter().find_map(|e| match *e {
+        GameEvent::BattleStarted { tile, .. } => Some(tile),
+        _ => None,
+    });
+    let fought = ended(events).into_iter().find_map(|(heroes, result)| {
+        let hero = heroes[BattleSide::Attacker.index()]?;
+        if heroes[BattleSide::Defender.index()].is_some() {
+            return None;
+        }
+        let owner = b.hero(hero)?.owner;
+        let tile = before.battle(owner).map(OpenBattle::tile).or(started)?;
+        let index = visited_at(before, tile)?;
+        bank_kind(before, rules, index).map(|_| (index, hero, result))
+    });
+    for index in banks_of(before, rules) {
+        prop_assert!(!a.is_removed(index), "bank {} removed", index);
+        prop_assert_eq!(
+            a.object(index).map(|o| &o.resolved),
+            b.object(index).map(|o| &o.resolved)
+        );
+        if fought.is_none_or(|(i, ..)| i != index) {
+            prop_assert_eq!(
+                a.guards_left(index),
+                b.guards_left(index),
+                "bank {}'s guards by {:?}",
+                index,
+                command
+            );
+        }
+    }
+    let Some((index, level, artifacts)) = bank_looted(rules, (before, after)) else {
+        return Ok(());
+    };
+    // Who takes it: the battle's winner, the hero whose level-up held it, or the hero asked.
+    let answered = matches!(command, GameCommand::Answer(Answer::LevelUp(_)));
+    let visitor = match fought {
+        Some((i, hero, result)) if i == index => {
+            prop_assert_eq!(result.winner(), Some(BattleSide::Attacker), "{:?}", events);
+            hero
+        }
+        _ if answered && before.level_up(player).is_some() => {
+            prop_assert!(b.guards_left(index).is_empty(), "bank {}", index);
+            before.level_up(player).unwrap().hero
+        }
+        _ => {
+            let asked = before.decision(player).filter(|o| {
+                object_index(before, o.object_type, o.anchor) == Some(index)
+                    && matches!(command, GameCommand::Answer(Answer::Offer(Consent::Accept)))
+            });
+            let asked = asked.ok_or_else(|| fail(format!("bank {index} looted by {command:?}")))?;
+            prop_assert!(b.guards_left(index).is_empty(), "bank {}", index);
+            asked.hero
+        }
+    };
+    let owner = b.hero(visitor).map(|h| h.owner);
+    let from = events
+        .iter()
+        .position(|e| matches!(e, GameEvent::BattleEnded { .. }))
+        .map_or(0, |at| at + 1);
+    let reward = &events[from..];
+    // The resources, in the level's order.
+    let gained: Vec<(ResourceId, u32)> = (reward.iter())
+        .filter_map(|e| match *e {
+            GameEvent::ResourceGained {
+                player: p,
+                resource,
+                amount,
+            } if Some(p) == owner => Some((resource, amount)),
+            _ => None,
+        })
+        .collect();
+    prop_assert_eq!(&gained[..], &level.resources[..], "bank {}", index);
+    // The artifacts, each the hero can receive as the earlier ones leave it.
+    let added: Vec<ArtifactTypeId> = (reward.iter())
+        .filter_map(|e| match *e {
+            GameEvent::HeroChanged {
+                hero,
+                change: HeroChange::AddArtifact(item),
+                ..
+            } if hero == visitor => Some(item.artifact),
+            _ => None,
+        })
+        .collect();
+    let mut details = before.hero(visitor).unwrap().clone();
+    let mut expected = Vec::new();
+    for e in &events[..from] {
+        if let GameEvent::HeroChanged { hero, change, .. } = *e
+            && hero == visitor
+        {
+            h3_heroes::apply_change(&mut details, rules.core(), change);
+        }
+    }
+    for &artifact in artifacts {
+        let item = h3_heroes::ArtifactInstance::from(artifact);
+        if h3_heroes::can_receive_artifact(&details, rules.core(), item) {
+            h3_heroes::apply_change(&mut details, rules.core(), HeroChange::AddArtifact(item));
+            expected.push(artifact);
+        }
+    }
+    prop_assert_eq!(
+        added,
+        expected,
+        "bank {}'s artifacts {:?}",
+        index,
+        artifacts
+    );
+    // The creature, joined or held.
+    let creatures: Vec<(CreatureTypeId, u32)> = (reward.iter())
+        .filter_map(|e| match *e {
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::CreaturesJoined {
+                        hero,
+                        creature,
+                        count,
+                    },
+                ..
+            }) if hero == visitor => Some((creature, count)),
+            GameEvent::ArmyDialogOpened { hero, stack, .. } if hero == visitor => {
+                Some((stack.creature, stack.count))
+            }
+            _ => None,
+        })
+        .collect();
+    let creature = level.creature.map(|(c, count)| (c, u32::from(count)));
+    prop_assert_eq!(creatures, creature.into_iter().collect::<Vec<_>>());
+    // The winner's levels first (GAM-DEC-007), then nothing else of its own: no level, no
+    // experience, skill or spell (the battle's experience comes before).
+    let first = reward.iter().position(|e| match *e {
+        GameEvent::ResourceGained { player: p, .. } => Some(p) == owner,
+        GameEvent::HeroChanged {
+            hero,
+            change: HeroChange::AddArtifact(_),
+            ..
+        }
+        | GameEvent::ArmyDialogOpened { hero, .. }
+        | GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::CreaturesJoined { hero, .. },
+            ..
+        }) => hero == visitor,
+        _ => false,
+    });
+    let late = first.is_some_and(|first| {
+        reward[first..].iter().any(|e| {
+            matches!(
+                *e,
+                GameEvent::LevelUpOpened { hero, .. }
+                    | GameEvent::LevelGained { hero, .. }
+                    | GameEvent::HeroChanged {
+                        hero,
+                        change: HeroChange::GainPrimary(_)
+                            | HeroChange::RaiseSkill { .. }
+                            | HeroChange::LearnSpell(_)
+                            | HeroChange::GainExperience(_),
+                        ..
+                    }
+                    if hero == visitor
+            )
+        })
+    });
+    prop_assert!(!late, "after bank {}'s reward: {:?}", index, reward);
+    Ok(())
+}
+
+/// The end of a battle against a creature bank's guards (E08 T125b2a; ADV-BNK-004, ADV-BNK-005,
+/// GAM-DEC-007; increment 13's design note §7, §8): the bank stays on the map, no side
+/// surrenders. Won, none of its guards stand, and the bank is looted in this command, its reward
+/// given ([`check_banks`]), unless the winner's level-up is left open (the reward comes after
+/// it); else it is not looted and its guards are survivors, each of a stack it had by slot and
+/// creature with at most its count, none only after a draw. Only the visitor's owner's treasury
+/// changes, by the reward's resources ([`check_banks`]).
+fn check_bank_battle_end(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    events: &[GameEvent],
+    (visitor, index, result): (HeroId, usize, BattleResult),
+) -> Result<(), TestCaseError> {
+    let (b, a) = (before.adventure(), after.adventure());
+    let owner = b.hero(visitor).unwrap().owner;
+    prop_assert!(!a.is_removed(index), "bank {} removed", index);
+    prop_assert!(
+        !matches!(result, BattleResult::Surrender(_)),
+        "{:?}",
+        result
+    );
+    if result.winner() == Some(BattleSide::Attacker) {
+        prop_assert!(a.guards_left(index).is_empty(), "bank {}", index);
+        let held = after.level_up(owner).is_some_and(|l| l.hero == visitor);
+        prop_assert_eq!(a.is_emptied(index), !held, "bank {}: {:?}", index, events);
+    } else {
+        prop_assert!(!a.is_emptied(index), "bank {} looted", index);
+        let (had, left) = (b.guards_left(index), a.guards_left(index));
+        prop_assert!(
+            left.iter().all(|s| had
+                .iter()
+                .any(|h| (h.slot, h.creature) == (s.slot, s.creature) && h.count >= s.count)),
+            "{:?} of {:?}",
+            left,
+            had
+        );
+        prop_assert_eq!(left.is_empty(), result == BattleResult::Draw);
+    }
+    let reward = bank_looted(rules, (before, after));
+    let mut treasury = before.treasury(owner).unwrap().to_vec();
+    for &(resource, amount) in reward.iter().flat_map(|(_, level, _)| &level.resources) {
+        treasury[usize::from(resource.raw())] += amount;
+    }
+    prop_assert_eq!(after.treasury(owner).unwrap(), &treasury[..]);
+    for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        if player != owner {
+            prop_assert_eq!(before.treasury(player), after.treasury(player));
+        }
+    }
+    Ok(())
+}
+
+/// An accepted question of the creature bank at `index` (E08 T125b2a; ADV-BNK-003, ADV-BNK-004,
+/// GAM-BAT-001, BAT-SET-001, BAT-TAC-001, BAT-GEO-004, BAT-WAR-001; increment 13's design note §6,
+/// §7, §12, §14; HER-ADV-008), asked of `player`'s hero `hero`: afterwards its team holds the mark
+/// (a search kind's set at the yes); a looted one is told so to `player` alone, fights nothing and
+/// gives a search kind's once-bonus to a hero without its mark; one with no guards standing fights
+/// nothing and is looted (its reward: [`check_banks`]); else the battle against its guards starts
+/// at once, at a tile it is visited from, without a defending hero, owned by nobody, not looted
+/// meanwhile: each side's stacks its army's as they stood, by slot (no war machine), at the bank
+/// positions by their ordinal among its filled slots, no natural obstacle and no tactics phase.
+fn check_bank_answer(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    player: PlayerId,
+    (hero, index): (HeroId, usize),
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let (b, a) = (before.adventure(), after.adventure());
+    prop_assert!(
+        a.knows(player, index),
+        "bank {} unmarked after its yes",
+        index
+    );
+    let object = b.object(index).unwrap();
+    let started = events.iter().find_map(|e| match *e {
+        GameEvent::BattleStarted { heroes, tile, .. } => Some((heroes, tile)),
+        _ => None,
+    });
+    let looted = events.iter().any(|e| {
+        matches!(
+            *e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectEmpty { object_type, anchor },
+                seen_by,
+            }) if (Some(object_type), anchor, seen_by)
+                == (object.object_type, object.anchor, Viewers::NONE.with(player))
+        )
+    });
+    prop_assert_eq!(looted, b.is_emptied(index), "{:?}", events);
+    // A looted search kind's once-bonus by its mark (HER-ADV-008; increment 13's design note §12):
+    // given unless the hero holds the mark, which a battle's end clears ([`check_bonuses`]).
+    let once = bank_kind(before, rules, index).and_then(|bank| bank.looted);
+    if let Some(bonus) = once.filter(|_| looted) {
+        let (was, is) = (b.visit_marks(hero).bonuses(), a.visit_marks(hero).bonuses());
+        if was.has_mark(bonus.mark) {
+            prop_assert_eq!(&is.once, &was.once, "bank {}", index);
+        } else {
+            prop_assert!(
+                is.once.contains(&bonus.visit()),
+                "bank {}: {:?}",
+                index,
+                is.once
+            );
+        }
+    }
+    let guards = b.guards_left(index);
+    if looted || guards.is_empty() {
+        prop_assert!(started.is_none(), "bank {}: {:?}", index, events);
+        prop_assert!(
+            a.is_emptied(index),
+            "bank {} not looted: {:?}",
+            index,
+            events
+        );
+        return Ok(());
+    }
+    let Some((heroes, tile)) = started else {
+        return Err(fail(format!("bank {index} without its battle: {events:?}")));
+    };
+    prop_assert_eq!(heroes, [Some(hero), None]);
+    prop_assert_eq!(visited_at(before, tile), Some(index));
+    prop_assert!(!a.is_emptied(index));
+    if let Some(battle) = after.battle(player) {
+        prop_assert_eq!(battle.owners(), [Some(player), None]);
+        prop_assert_eq!(battle.tile(), tile);
+        let state = battle.state();
+        prop_assert!(state.obstacles().is_empty(), "obstacles at bank {}", index);
+        prop_assert!(state.tactics().is_none(), "tactics at bank {}", index);
+        let params = rules.battle().battle();
+        let field = Field::new(params.field);
+        let attacker = &b.hero(hero).unwrap().army;
+        for (side, army) in [
+            (BattleSide::Attacker, &attacker[..]),
+            (BattleSide::Defender, guards),
+        ] {
+            let stacks: Vec<_> = (state.stacks().iter()).filter(|s| s.side == side).collect();
+            let mut expected: Vec<_> = army.iter().map(|s| (s.slot, s.creature, s.count)).collect();
+            expected.sort_by_key(|&(slot, ..)| slot);
+            let set: Vec<_> = stacks
+                .iter()
+                .map(|s| (s.slot, s.creature, s.count))
+                .collect();
+            prop_assert_eq!(set, expected, "{:?} at bank {}", side, index);
+            for (ordinal, s) in stacks.into_iter().enumerate() {
+                let (x, y) = params.bank_position(side.index(), ordinal).unwrap();
+                let hex = field.hex(i32::from(x), i32::from(y));
+                prop_assert_eq!(Some(s.hex), hex, "{:?} {}", side, ordinal);
+            }
+        }
+    }
+    Ok(())
+}
+
 /// The end of a battle against a dwelling's guards (E08 T95a2; ADV-DWL-004, GAM-BAT-001 amended,
 /// increment 10's design note §7 step 2, §12), a neutral dwelling's or another player's (the
 /// system played its guards, unsplit, whoever its owner): its creatures' counts are kept, no
@@ -10086,7 +10768,8 @@ fn experience_cap(rules: &GameRuleset, state: &GameState, level: u8) -> u32 {
 /// machine. Since E08 T64b the winner that stays also changes by a reward's changes after the
 /// battle (a guarded object's, an event's; GAM-DEC-007), applied in the order told with its
 /// levels, every battle hero's bonuses end (GAM-BAT-014), and an artifact appears only as one an
-/// object that left the map held (a guarded artifact's, a monster's treasure, ADV-MON-011).
+/// object that left the map held (a guarded artifact's, a monster's treasure, ADV-MON-011) or (E08
+/// T125b2a) one drawn for a creature bank looted in the command (ADV-BNK-005).
 fn check_heroes_after_battle(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -10237,6 +10920,10 @@ fn check_heroes_after_battle(
     };
     let mut gone = items(before);
     let mut held = left_with(before, after);
+    // E08 T125b2a: a creature bank looted in the battle's command, after its winner's levels
+    // (ADV-BNK-005): its drawn artifacts.
+    let looted = bank_looted(rules, (before, after));
+    held.extend((looted.iter()).flat_map(|&(_, _, drawn)| drawn.iter().map(|a| (a.raw(), None))));
     for item in items(after) {
         if let Some(at) = gone.iter().position(|&i| i == item) {
             gone.remove(at);
@@ -10488,6 +11175,26 @@ fn check_decisions(
                             }
                         }
                     }
+                    // E08 T125b2a: a creature bank's question (ADV-BNK-003; increment 13's
+                    // design note §6), never refused (no price): an attack kind's while it is not
+                    // looted, its visitor's team marked by the visit (told before it), a search
+                    // kind's looted or not, its mark left to the yes.
+                    ObjectKind::Bank(bank) => {
+                        prop_assert!(opened, "{:?}: a bank's question is never refused", event);
+                        let index = object_index(before, object_type, anchor).unwrap();
+                        let (b, a) = (before.adventure(), after.adventure());
+                        match bank.question {
+                            BankQuestion::Attack => {
+                                prop_assert!(!b.is_emptied(index), "{:?} looted", event);
+                                prop_assert!(a.knows(actor, index), "{:?} unmarked", event);
+                                OfferKind::Fight
+                            }
+                            BankQuestion::Search => {
+                                prop_assert_eq!(a.knows(actor, index), b.knows(actor, index));
+                                OfferKind::Search
+                            }
+                        }
+                    }
                     // E08 T95a1: a Refugee Camp's, naming its week's creature while it has some
                     // left (ADV-RFG-001); never refused, never flagged.
                     ObjectKind::RefugeeCamp { .. } => {
@@ -10545,6 +11252,15 @@ fn check_decisions(
                         passed = Some((object_type, anchor));
                     }
                     (false, OfferKind::Pursue) => passed = Some((object_type, anchor)),
+                    // E08 T125b2a: an accepted question of a creature bank ([`check_bank_answer`]).
+                    (true, OfferKind::Fight | OfferKind::Search)
+                        if object_index(before, object_type, anchor)
+                            .is_some_and(|i| bank_kind(before, rules, i).is_some()) =>
+                    {
+                        let index = object_index(before, object_type, anchor).unwrap();
+                        let visit = (open.hero, index);
+                        check_bank_answer(rules, (before, after), actor, visit, events)?;
+                    }
                     // E08 T21a: an accepted question of a guarded pile is its battle (its guards
                     // stand: nobody but the visitor's owner acts while it is open).
                     (true, OfferKind::Pursue | OfferKind::Fight) => {
@@ -10687,7 +11403,8 @@ fn check_decisions(
                 keys |= 1 << key;
             }
             // E08 T95a1: a visit found empty is a weekly object's (ADV-WEK-001 to -003) or a
-            // Refugee Camp's without creatures (ADV-RFG-001), told to its visitor's owner alone.
+            // Refugee Camp's without creatures (ADV-RFG-001), told to its visitor's owner alone;
+            // (E08 T125b2a) or a looted creature bank's (ADV-BNK-003).
             GameEvent::Adventure(AdventureEvent {
                 kind:
                     AdventureEventKind::ObjectEmpty {
@@ -10701,7 +11418,9 @@ fn check_decisions(
                 let adventure = before.adventure();
                 let weekly = adventure.map().weeklies().contains(&index);
                 let deserted = adventure.camp(index).is_some_and(|(_, count)| count == 0);
-                prop_assert!(weekly || deserted, "{:?}", event);
+                let looted =
+                    adventure.is_emptied(index) && bank_kind(before, rules, index).is_some();
+                prop_assert!(weekly || deserted || looted, "{:?}", event);
             }
             GameEvent::Adventure(AdventureEvent {
                 kind:
@@ -11186,6 +11905,8 @@ proptest! {
             check_garrisons(rules, (&before, &state), (player, &command), &events)?;
             // E08 T116b2: the bonus visitables' marks, amounts, movement and losses.
             check_bonuses(rules, (&before, &state), &command, &events)?;
+            // E08 T125b2a: the creature banks' draws, guards, loots and rewards.
+            check_banks(rules, (&before, &state), (player, &command), &events)?;
             // E08 T52: management (GAM-MAN-001), and a move's inverse.
             if let GameCommand::Manage(manage) = &command {
                 check_management(rules, (&before, &state), player, manage, &events)?;
@@ -11974,6 +12695,7 @@ fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed
         teleporters: Vec::new(),
         garrisons: Vec::new(),
         bonuses: Vec::new(),
+        banks: Vec::new(),
     };
     // The second hero's levels at load, at 12 000 experience (level 8), after the first hero's
     // at `first` experience.
@@ -13640,4 +14362,262 @@ fn the_plans_visit_the_bonus_visitables() {
     assert!(b.sirens.iter().all(|&n| n > 0), "{b:?}");
     assert!(b.cleared > 0 && b.dropped.iter().all(|&n| n > 0), "{b:?}");
     assert!(b.sirens_after_battle.iter().all(|&n| n > 0), "{b:?}");
+}
+
+/// What [`the_plans_visit_and_fight_the_banks`] counts (E08 T125b2a): the creature banks laid out,
+/// by kind; their questions asked, by kind, and answered (accepted, declined); the visits of the
+/// Shipwreck from the coast and of the sea's banks from a boat; the revisits of a bank; the hints
+/// told at a mark and changed at a battle's end; the bank battles started (on the deck among
+/// them) and ended (won, lost or retreated, a draw); the loots (by a battle's command, after the
+/// winner's level-up, by a yes without guards standing) and their creatures (joined, held in the
+/// army dialog) and artifacts; the looted banks found looted (a search's once-bonus given, a
+/// mark already held).
+#[derive(Debug, Default)]
+struct Banked {
+    laid: [usize; 11],
+    asked: [usize; 11],
+    answered: [usize; 2],
+    coast: usize,
+    afloat: usize,
+    revisits: usize,
+    hints: [usize; 2],
+    battles: [usize; 2],
+    results: [usize; 3],
+    loots: [usize; 3],
+    creatures: [usize; 2],
+    artifacts: usize,
+    looted: [usize; 2],
+}
+
+/// The pack keys of the creature banks' types, in [`BANK_OBJECTS`]' order (E08 T125b2a).
+const BANK_KEYS: [&str; 11] = [
+    "base:cyclops_stockpile",
+    "base:dwarven_treasury",
+    "base:griffin_conservatory",
+    "base:imp_cache",
+    "base:medusa_stores",
+    "base:naga_bank",
+    "base:dragon_fly_hive",
+    "base:crypt",
+    "base:dragon_utopia",
+    "base:derelict_ship",
+    "base:shipwreck",
+];
+
+/// The place in [`BANK_OBJECTS`] of the creature bank of type `object_type` (E08 T125b2a), by its
+/// key ([`BANK_KEYS`]).
+fn bank_place(rules: &GameRuleset, object_type: Option<ObjectTypeId>) -> Option<usize> {
+    let part = rules.adventure();
+    let object_type = object_type?;
+    BANK_KEYS
+        .iter()
+        .position(|key| part.object_type_by_key(key) == Some(object_type))
+}
+
+impl Banked {
+    /// Counts what `command` of `player` did on its way from `before` to `after` (`events` its
+    /// events, an accepted command's).
+    fn count(
+        &mut self,
+        rules: &GameRuleset,
+        (before, after): (&GameState, &GameState),
+        (player, command): (PlayerId, &GameCommand),
+        events: &[GameEvent],
+    ) {
+        let (b, a) = (before.adventure(), after.adventure());
+        let bank = |object_type: ObjectTypeId, anchor: TilePos| {
+            let index = object_index(before, object_type, anchor)?;
+            bank_kind(before, rules, index).map(|kind| (index, kind))
+        };
+        for e in events {
+            match *e {
+                GameEvent::OfferOpened {
+                    hero,
+                    object_type,
+                    anchor,
+                    ..
+                } if bank(object_type, anchor).is_some() => {
+                    self.asked[bank_place(rules, Some(object_type)).unwrap()] += 1;
+                    let (index, kind) = bank(object_type, anchor).unwrap();
+                    if let (Some(then), Some(now)) = (b.hero(hero), a.hero(hero)) {
+                        if then.boat.is_some() && kind.deck {
+                            self.afloat += 1;
+                        }
+                        if kind.coast
+                            && now.boat.is_none()
+                            && visited_at(after, now.pos) != Some(index)
+                        {
+                            self.coast += 1;
+                        }
+                    }
+                    if matches!(
+                        command,
+                        GameCommand::Adventure(AdventureCommand::Revisit { .. })
+                    ) {
+                        self.revisits += 1;
+                    }
+                }
+                GameEvent::OfferAnswered {
+                    object_type,
+                    anchor,
+                    accepted,
+                    ..
+                } if bank(object_type, anchor).is_some() => {
+                    self.answered[usize::from(!accepted)] += 1;
+                    let (index, _) = bank(object_type, anchor).unwrap();
+                    if accepted && b.is_emptied(index) {
+                        let hero = before.decision(player).map(|o| o.hero).unwrap();
+                        let marks =
+                            |s: &GameState| s.adventure().visit_marks(hero).bonuses().once.len();
+                        self.looted[usize::from(marks(after) == marks(before))] += 1;
+                    }
+                }
+                GameEvent::Adventure(AdventureEvent {
+                    kind:
+                        AdventureEventKind::GuardsChanged {
+                            object_type,
+                            anchor,
+                            ..
+                        },
+                    ..
+                }) if bank(object_type, anchor).is_some() => {
+                    let battle = events
+                        .iter()
+                        .any(|e| matches!(e, GameEvent::BattleEnded { .. }));
+                    self.hints[usize::from(battle)] += 1;
+                }
+                GameEvent::BattleStarted { heroes, tile, .. }
+                    if heroes[BattleSide::Defender.index()].is_none() =>
+                {
+                    if let Some((_, kind)) = bank_at(before, rules, tile) {
+                        self.battles[usize::from(kind.deck)] += 1;
+                    }
+                }
+                _ => {}
+            }
+        }
+        if let Some((heroes, result)) = ended(events).first().copied()
+            && heroes[BattleSide::Defender.index()].is_none()
+            && let Some(battle) = before.battle(player)
+            && bank_at(before, rules, battle.tile()).is_some()
+        {
+            self.results[match result {
+                BattleResult::Victory(BattleSide::Attacker) => 0,
+                BattleResult::Draw => 2,
+                _ => 1,
+            }] += 1;
+        }
+        if let Some((_, level, artifacts)) = bank_looted(rules, (before, after)) {
+            let way = if !ended(events).is_empty() {
+                0
+            } else if matches!(command, GameCommand::Answer(Answer::LevelUp(_))) {
+                1
+            } else {
+                2
+            };
+            self.loots[way] += 1;
+            if level.creature.is_some() {
+                let held = events
+                    .iter()
+                    .any(|e| matches!(e, GameEvent::ArmyDialogOpened { .. }));
+                self.creatures[usize::from(held)] += 1;
+            }
+            self.artifacts += artifacts.len();
+        }
+    }
+}
+
+/// Plans with creature banks (E08 T125b2a), each with two or more, one of the sea's among them at
+/// least (on its strait), with the profile (strict or not), the seed and up to 299 steps, mostly
+/// [`Step::Bank`]s with ends of turn and [`Step::Legal`]s among them; what
+/// [`the_plans_visit_and_fight_the_banks`] counts, over proptest's deterministic runner.
+fn bank_plans() -> impl Strategy<Value = (Plan, bool, u64, Vec<Step>)> {
+    let steps = vec(
+        prop_oneof![
+            12 => any::<u16>().prop_map(Step::Bank),
+            1 => any::<u16>().prop_map(Step::Legal),
+            1 => Just(Step::EndTurn),
+        ],
+        0..300,
+    );
+    let sea = |&(_, o): &(Spot, usize)| BANK_OBJECTS[BANKS_ON_LAND..].contains(&o);
+    let plan = plan().prop_filter("creature banks", move |p| {
+        p.banks.len() > 1 && p.banks.iter().any(sea)
+    });
+    (plan, any::<bool>(), any::<u64>(), steps)
+}
+
+/// The plans visit and fight the creature banks (E08 T125b2a; increment 13's design note §17, exit
+/// criteria 3 to 6): over a fixed set of cases (proptest's deterministic runner), with the oracles
+/// the banks meet after every command (below), random play with the bank steps ([`bank_plans`],
+/// [`Step::Bank`]) lays out and asks each of the eleven, entered and from a boat, the Shipwreck
+/// from the coast too, and meets each outcome: a question accepted and declined; a revisit; the
+/// hint told at a mark and changed by a battle's end; bank battles on land and on the deck, won and
+/// lost; the reward after a battle and after the winner's level-up, its creature joined and held
+/// in the army dialog, its artifacts; a looted search's once-bonus and a mark already held, so that
+/// the properties' checks ([`check_banks`], [`check_bank_answer`], [`check_bank_battle_end`], the
+/// visits in [`landing`] and [`check_sea_move`], [`check_decisions`], [`check_conservation`])
+/// see each.
+// covers: ADV-BNK-002, ADV-BNK-003, ADV-BNK-004, ADV-BNK-005, HER-ADV-008, GAM-DEC-007
+#[test]
+fn the_plans_visit_and_fight_the_banks() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    let strategy = bank_plans();
+    let mut banked = Banked::default();
+    for _ in 0..512 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let mut state = start(&plan, rules, seed);
+        for index in banks_of(&state, rules) {
+            let ty = state.adventure().object(index).and_then(|o| o.object_type);
+            banked.laid[bank_place(rules, ty).unwrap()] += 1;
+        }
+        for (i, step) in steps.iter().enumerate() {
+            check_invariants(rules, &state).unwrap();
+            let legal = options(&state, rules);
+            // The listing's oracle probes every listed command: on every fourth step.
+            if i % 4 == 0 {
+                let reaches = reaches(&state, rules);
+                check_legal(&state, rules, &legal, &reaches).unwrap();
+            }
+            let (actor, command) = resolve(&state, rules, &legal, step);
+            let before = state.clone();
+            let mut events = Vec::new();
+            let result = apply(&mut state, rules, actor, command.clone(), &mut events);
+            let player = player_of(&before, actor);
+            // The oracles the creature banks meet, after every accepted command.
+            if result.is_ok() {
+                let after = (&before, &state);
+                if let Some((hero, path)) = as_move(&command) {
+                    let start = before.adventure().hero(hero).unwrap().pos;
+                    landing(&before, start, path, &events).unwrap();
+                    check_sea_move(rules, after, hero, path, &events).unwrap();
+                }
+                check_banks(rules, after, (player, &command), &events).unwrap();
+                check_bonuses(rules, after, &command, &events).unwrap();
+                check_decisions(rules, after, player, &events).unwrap();
+                check_isolation(&before, &state, player, &events).unwrap();
+                check_conservation(rules, after, &command, &events).unwrap();
+                banked.count(rules, after, (player, &command), &events);
+            } else {
+                assert_eq!(state, before);
+            }
+        }
+    }
+    let b = &banked;
+    eprintln!("{b:?}");
+    assert!(b.laid.iter().all(|&n| n > 0), "{b:?}");
+    assert!(b.asked.iter().all(|&n| n > 0), "{b:?}");
+    assert!(b.answered.iter().all(|&n| n > 0), "{b:?}");
+    assert!(b.coast > 0 && b.afloat > 0 && b.revisits > 0, "{b:?}");
+    assert!(b.hints.iter().all(|&n| n > 0), "{b:?}");
+    assert!(b.battles.iter().all(|&n| n > 0), "{b:?}");
+    assert!(b.results[..2].iter().all(|&n| n > 0), "{b:?}");
+    assert!(b.loots[..2].iter().all(|&n| n > 0), "{b:?}");
+    assert!(
+        b.creatures.iter().all(|&n| n > 0) && b.artifacts > 0,
+        "{b:?}"
+    );
+    assert!(b.looted.iter().all(|&n| n > 0), "{b:?}");
 }

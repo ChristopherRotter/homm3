@@ -18401,3 +18401,71 @@ or the census moved.
   `bench-check` among them; `cargo check --workspace --all-targets` and the clippy of `h3-cli`,
   `h3-server`, `h3-protocol` and `h3-map` clean. The server lane's inbox told.
 - **Versions:** none.
+
+### Increment 13, round 7: T125b2a, the creature banks in the plans' properties (2026-11-18, `adventure/e08-t125b2a`)
+
+**The cut** (decision 358; asked at T125b2's start, `AskUserQuestion`; recommended): T125b2 in
+two, the properties first; T125b2b the three benchmarks and `--with-original-data`. **Baseline:**
+`master` 0589380 (#1002, T125b1, merged; CI's run on it in progress at the start). The setup's
+`verify-once` (a full run: the code not verified yet) passed its tests step and was stopped at its
+coverage step for time; CI's run on `master` stands in. No original data staged. Built by the main
+session.
+
+- **The plans** (`h3-map`'s `play.rs`; `KINDS` 122 to 132, appended): the nine land banks with the
+  original's templates (`banks.rs`' `LAND_BANKS`: two tiles of a row entered on the left or on the
+  anchor, three entered on the middle one for the Dwarven Treasury and the Crypt, the Dragon Fly
+  Hive's one, Dragon Utopia's twelve, `UTOPIA_BLOCKED`), the Derelict Ship and the Shipwreck one
+  tile each, blocked and visited (`masks` by class and subclass). `Plan::banks` (`Banks`, drawn
+  last, after the bonus visitables, in the same tuple: a plan without banks lays out as before) in
+  two plans of three: one to three on land within two tiles of a hero, up to two of the sea's on a
+  strait (the coast's column in two cases of three); 20 to 80 Archangels in a slot of the first
+  land bank's hero in three cases of four. Laid out with the bonus visitables (`bonuses_laid_out`:
+  every tile on the map, the visitable ones on land, the sea's on water, none a hero's or covered).
+- **The steps:** `Step::Bank` (`seek_bank`): in a battle as `fight`; a bank's open question
+  accepted, declined in one step of four; another decision settled; on the map a revisit in one
+  step of four, a move onto a bank's visitable tile (entered, or the Shipwreck's from a boat or
+  the coast), a walker's boarding with the sea's on the map, a move nearer; the visitable tiles in
+  three steps of four those of the banks not looted. Runs of 16 to 95 with ends of turn among them
+  in `steps()`.
+- **The oracles:** `check_banks` after every command (the draw (`Resolved::Bank`) unchanged, the
+  guards but by the end of a battle at the bank, never removed; looted only in the command of a won
+  battle at it, of its winner's level-up answer or of a yes without guards standing, giving the
+  visitor's owner exactly the level's resources in order, the visitor the drawn artifacts it can
+  receive (`can_receive_artifact`, as the earlier ones leave it) and the level's creature joined or
+  held in the army dialog, nothing else, and no level-up, level, experience, skill or spell after
+  the reward's first event); `check_bank_answer` (`check_decisions`' accepted arm: the team marked;
+  a looted one told `ObjectEmpty` to its player alone with no battle and its search's once-bonus to
+  a hero without the mark; none standing: no battle, looted; else the battle at once at a tile
+  visited for the bank, `[hero, None]`, owned `[player, None]`, no natural obstacle, no tactics
+  phase, each side's stacks its army's by slot (no war machine) at `bank_position` by ordinal);
+  `check_bank_battle_end` (`check_unowned_battle_end`'s arm: never removed, no surrender; won, no
+  guards and looted unless the winner's level-up holds it; else not looted, survivors by slot, none
+  only after a draw; only the owner's treasury moves, by the reward). The old oracles met:
+  `landing` (an attack kind's `ObjectMarked` then `GuardsChanged`), `check_sea_move` (the
+  Shipwreck's coast entrance, ADV-MOV-009), `check_decisions` (the question by kind, never refused;
+  a looted bank's `ObjectEmpty`), `check_conservation` (a loot outside a battle gives the level's
+  resources), `check_heroes_after_battle` (the drawn artifacts of a bank looted in the battle's
+  command appear).
+- **The views** (`view.rs`): `check_bank_views` in `views_move_as_the_events_say` (a bank's mark
+  never lost and set only as told, its hint only with the mark, never with the army, changed only
+  as told, the last told shown; a scratch probe counted 30 hints at marks in one run of 48 cases and
+  25 changes at battles' ends in another); the hygiene property blind to a bank's hint at the viewer's own mark
+  (its guards' word drawn from the seed: the first run failed on a Crypt's word 3 against 2, its
+  seed kept in `proptest-regressions/tests/view.txt`).
+- **The cover test** `the_plans_visit_and_fight_the_banks` (512 fixed cases, `bank_plans`: two or
+  more banks, one of the sea's): laid by kind 27, 14, 20, 16, 27, 28, 43, 20, 4 (Dragon Utopia's
+  twelve tiles seldom fit), 239, 216; asked 47, 26, 45, 24, 46, 65, 77, 133, 6, 509, 4 738; answers
+  4 175 accepted and 1 500 declined; the Shipwreck from the coast 4 025, the sea's banks from a
+  boat 1 222; 341 revisits; hints 494 at marks, 365 at battles' ends; bank battles 271 on land and
+  273 on the deck, 304 won, 211 lost, no draw; loots 203 in the battle's command and 100 after
+  the level-up, none by a yes without guards (no draw: the state's tests hold it); creatures 33
+  joined and 3 held; 100 artifacts; looted searches 296 with the once-bonus, 3 335 with the mark
+  held.
+- *Found on the way* (no engine fault): a looted Shipwreck from the coast asks again at every
+  step (a neighbour visit costs no points), hence the seek's preference; a bank battle's
+  experience (`GainExperience`) and Necromancy's raise come between `BattleEnded` and the reward's
+  first event.
+- *Agent's calls (change freely):* the plans' draws and weights, the Archangels, the seek's
+  preference, `check_bank_views` apart from `check_told`.
+- **Gates:** `h3-map`'s whole lib suite (180 tests); the main property soaked over 8 runs of 48
+  random cases and the view properties over 3; the scoped verify (below).
