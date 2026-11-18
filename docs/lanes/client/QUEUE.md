@@ -15,18 +15,27 @@ need the five DLLs (`MP3DEC.ASI` in the PC's `original-data/install` too since 2
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T3
+#### E27 M3 T3b
 
-T3 The advanced options of a single player (the epic's M3 table; design §3.12 to §3.15, §3.9):
-the rows, the town's, hero's and bonus's arrows, the handicap, the flags, the turn's duration, the
-popups and the hover; the choices into `GameSetup` (`GameSetup::offer`, the faction choice), the
-bonus, the handicap and the timer drawn and chosen, each effect a `CLT-STUB` (decision 6); exact
-against `adv-single-town`, `adv-single-hero`, `adv-single-rest`, `adv-single-maps` (§6.4:
-`popup-hero-arrow` on row 2's arrow). Large: offer the user a cut at its start (the rows and the
-panel drawn first, the arrows and the choices after, as T1 and T2 were cut). First, if the user
-has answered CLT-Q140 (the list's keys and the description's bar), build the answer (small:
-`scenario::description`'s key step by the list's showing, the original's behind its profile).
-Then T4 to T7 as the M3 table lists them.
+T3b The hero's arrows and popups of a single player's advanced options (decision 53; the epic's
+M3 table; design §3.14, §3.15, §23.7): the hero's arrows (`scenario_hero_step` 0x58AF20 through
+`GameSetup::offer`'s list, `scenario_hero_lists` 0x583890, a clash stepped on), a main hero's
+portrait and name (`scenario_shown_hero` 0x58D0E0, `scenario_shown_hero_name` 0x58D1F0: the
+heroes' small portraits, `hero_table`'s +0x30, into the asset tables), the hero's popup
+(`scenario_hero_popup` 0x575A90: the class and level not read yet) and a Random hero's
+(`scenario_info_popup`, GENRLTXT 102, 103), CLT-Q112's rows; the pick into the records
+(`Record::hero`). Exact against `adv-single-hero`, `adv-single-maps` (today every difference lies
+in the hero's box: design §23.6). Offer the user a cut at its start if it grows.
+
+#### E27 M3 T3c
+
+T3c The rest of a single player's advanced options (design §3.13 to §3.15, §23.7): the flags'
+press (`scenario_flag_click` 0x58B790, CLT-Q93) and hover, the name's edit (353,
+`scenario_name_click` 0x58B620), the handicap (single: drawn up, no press, no popup), the
+duration's bar's input (`h3_ui::scrollbar` on the x axis: presses, drags, `scenario_duration_scrolled`
+0x57C7F0) and texts, the items' hints (`HELPED`); the handicap and the timer each a `CLT-STUB`
+(decision 6). Exact against `adv-single-rest` (§6.4: record `popup-hero-arrow` again on row 2's
+arrow). Then T4 to T7 as the M3 table lists them.
 
 ## Inbox
 

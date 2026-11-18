@@ -63,7 +63,6 @@
 //! 503 while the list is read again (a network game's message 1015 alone, `sub_58B120` 0x58B120:
 //! the network modes', `CLT-STUB-6`; design §20.3).
 
-use alloc::borrow::Cow;
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -706,9 +705,7 @@ impl Scenario {
             hovers: Hovers::default(),
             bugs,
         };
-        if let Some(advanced) = &mut scenario.advanced {
-            advanced.hide(&mut scenario.shown);
-        }
+        Advanced::hide_items(&mut scenario.shown);
         scenario.list_items(false);
         scenario.selecting()
     }
@@ -949,25 +946,29 @@ impl Scenario {
 
     /// Show Advanced Options (129, `scenario_advanced_toggle` 0x581100; E27 M3 T3a): shown, hidden;
     /// else the list hidden, the map given to the game again (the description from its first
-    /// line) and the options shown over it; the screen redrawn whole.
-    fn toggle_advanced(&mut self) {
-        let showing = self.advanced.as_ref().is_some_and(Advanced::showing);
+    /// line) and the options shown over it; the screen redrawn whole. Whether there are options.
+    fn toggle_advanced(&mut self) -> bool {
+        let Some(showing) = self.advanced.as_ref().map(Advanced::showing) else {
+            return false;
+        };
         if showing {
-            if let Some(advanced) = &mut self.advanced {
-                advanced.hide(&mut self.shown);
-            }
+            self.advanced
+                .iter_mut()
+                .for_each(|a| a.hide(&mut self.shown));
         } else {
             if self.showing {
                 self.showing = false;
                 self.list_items(false);
             }
             let (seats, local) = self.players();
-            if let Some(advanced) = &mut self.advanced {
-                advanced.show((&seats, local), &mut self.dialog, &mut self.shown);
-            }
+            let (dialog, shown) = (&mut self.dialog, &mut self.shown);
+            self.advanced
+                .iter_mut()
+                .for_each(|a| a.show((&seats, local), dialog, shown));
             self.give_to_game();
         }
         self.whole();
+        true
     }
 
     /// An advanced option's arrow `id` clicked (E27 M3 T3a): its row drawn again; whether it was
@@ -1481,7 +1482,7 @@ impl Scenario {
         }
         match &mut self.over {
             Over::Nothing => {
-                let dialog = mouse_dialog(&self.dialog, &self.shown, self.advanced.is_some());
+                let dialog = mouse_dialog(&self.dialog, &self.shown);
                 Did::held(self.input.moved(&dialog, &mut self.shown, point))
             }
             Over::Notice(open) => Did::of_box(open.moved(point)),
@@ -1517,10 +1518,10 @@ impl Scenario {
             }
             _ => {}
         }
-        let dialog = mouse_dialog(&self.dialog, &self.shown, self.advanced.is_some());
-        let hidden = dialog.item_at(point).is_some_and(|item| {
-            self.shown.state(item.id()).hidden || !Advanced::takes(item.id())
-        });
+        let dialog = mouse_dialog(&self.dialog, &self.shown);
+        let hidden = dialog
+            .item_at(point)
+            .is_some_and(|item| self.shown.state(item.id()).hidden || !Advanced::takes(item.id()));
         if hidden {
             return Did::default();
         }
@@ -1826,9 +1827,8 @@ impl Scenario {
         if id == LIST {
             self.toggle_list();
             did.changed = true;
-        } else if id == ADVANCED && self.advanced.is_some() {
-            self.toggle_advanced();
-            did.changed = true;
+        } else if id == ADVANCED {
+            did.changed |= self.toggle_advanced();
         } else if self.advanced_click(id) {
             did.changed = true;
         } else if let Some(&(_, size)) = FILTERS.iter().find(|&&(f, _)| f == id) {
@@ -1847,18 +1847,15 @@ impl Scenario {
     }
 }
 
-/// `dialog` as the mouse finds its items: with the advanced options (`advanced`), without their
-/// hidden items (E27 M3 T3a: their headers and rows lie over the list's columns, filters and rows;
-/// the original's `dialog_item_at` 0x5FF3E0 passes over a hidden item, the shared input does not).
-fn mouse_dialog<'d>(dialog: &'d Dialog, shown: &Shown, advanced: bool) -> Cow<'d, Dialog> {
-    if !advanced {
-        return Cow::Borrowed(dialog);
-    }
+/// `dialog` as the mouse finds its items: without the advanced options' hidden items (E27 M3 T3a:
+/// their panel, headers and rows lie over the list's columns, filters and rows; the original's
+/// `dialog_item_at` 0x5FF3E0 passes over a hidden item, the shared input does not).
+fn mouse_dialog(dialog: &Dialog, shown: &Shown) -> Dialog {
     let mut dialog = dialog.clone();
     dialog
         .items
         .retain(|i| !(Advanced::owns(i.id()) && shown.state(i.id()).hidden));
-    Cow::Owned(dialog)
+    dialog
 }
 
 /// Whether the partial redraw (`scenario_select` 0x585500 with the selection unchanged, from

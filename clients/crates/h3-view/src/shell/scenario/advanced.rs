@@ -293,7 +293,8 @@ pub struct AdvancedTexts {
     pub resources: Vec<[String; 2]>,
 }
 
-/// A starting bonus (the record's +0x6C).
+/// A starting bonus (the record's +0x6C): chosen, no effect yet (E10's gap, decision 6).
+// stub: CLT-STUB-9
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bonus {
     /// An artifact (0).
@@ -444,54 +445,58 @@ impl Advanced {
         self.changed = true;
     }
 
-    /// Every colour's items of `look` (colour `c`'s ids its colour 0's + c, its DEFs' `{}` its
-    /// letter), each colour's at its own row as the constructor places them, in its order.
+    /// Every colour's items of `look`, each colour's at its own row as the constructor places
+    /// them, in its order.
     pub(super) fn items(look: &AdvancedLook) -> Vec<Item> {
-        let mut items = Vec::new();
-        for c in 0..8u8 {
-            let letter = letter(look, c);
-            let dy = look.step * i32::from(c);
-            let at = |at: [i32; 2]| [at[0], at[1] + dy];
-            let id = |id: u16| id + u16::from(c);
-            let button = |b: &Button| {
-                Item::Button(Button {
-                    id: id(b.id),
-                    def: b.def.replace("{}", &letter),
-                    at: at(b.at),
-                    ..b.clone()
-                })
-            };
-            let label = |l: &Label| {
-                Item::Label(Label {
-                    id: id(l.id),
-                    at: at(l.at),
-                    ..l.clone()
-                })
-            };
-            let area = |a: &Area| {
-                Item::Area(Area {
-                    id: id(a.id),
-                    at: at(a.at),
-                    ..a.clone()
-                })
-            };
-            items.extend([
-                button(&look.flag),
-                label(&look.kind),
-                button(&look.handicap),
-                button(&look.town_left),
-                button(&look.town_right),
-                button(&look.hero_left),
-                button(&look.hero_right),
-                button(&look.bonus_left),
-                button(&look.bonus_right),
-                label(&look.name),
-                area(&look.hero_area),
-                area(&look.town_area),
-                area(&look.bonus_area),
-            ]);
-        }
-        items
+        (0..8u8)
+            .flat_map(|c| Self::colour_items(look, c, i32::from(c)))
+            .collect()
+    }
+
+    /// Colour `c`'s items of `look` on row `row` (its ids its colour 0's + c, its DEFs' `{}` its
+    /// letter), in the constructor's order.
+    fn colour_items(look: &AdvancedLook, c: u8, row: i32) -> [Item; 13] {
+        let letter = letter(look, c);
+        let dy = look.step * row;
+        let at = |at: [i32; 2]| [at[0], at[1] + dy];
+        let id = |id: u16| id + u16::from(c);
+        let button = |b: &Button| {
+            Item::Button(Button {
+                id: id(b.id),
+                def: b.def.replace("{}", &letter),
+                at: at(b.at),
+                ..b.clone()
+            })
+        };
+        let label = |l: &Label| {
+            Item::Label(Label {
+                id: id(l.id),
+                at: at(l.at),
+                ..l.clone()
+            })
+        };
+        let area = |a: &Area| {
+            Item::Area(Area {
+                id: id(a.id),
+                at: at(a.at),
+                ..a.clone()
+            })
+        };
+        [
+            button(&look.flag),
+            label(&look.kind),
+            button(&look.handicap),
+            button(&look.town_left),
+            button(&look.town_right),
+            button(&look.hero_left),
+            button(&look.hero_right),
+            button(&look.bonus_left),
+            button(&look.bonus_right),
+            label(&look.name),
+            area(&look.hero_area),
+            area(&look.town_area),
+            area(&look.bonus_area),
+        ]
     }
 
     /// Every item id of the options: the panel, the headers, the redraw's own and the colours'.
@@ -505,14 +510,21 @@ impl Advanced {
             .chain(colours)
     }
 
-    /// Whether item `id` is one of the options'.
-    pub(super) fn owns(id: u16) -> bool {
-        Self::ids().any(|own| own == id)
+    /// Whether item `id` is one of the options' ([`Advanced::ids`]: the colours' 199 to 270, 345 to
+    /// 352 and 362 to 385, the headers 339 to 344).
+    pub(super) const fn owns(id: u16) -> bool {
+        matches!(id, PANEL | 199..=270 | 339..=352 | 362..=385 | TITLE..=DURATION)
     }
 
     /// Hidden (`scenario_advanced_hide` 0x581B20): every item of the options.
     pub(super) fn hide(&mut self, shown: &mut Shown) {
         self.showing = false;
+        Self::hide_items(shown);
+    }
+
+    /// Every item of the options hidden in `shown` (the constructor's: also a screen without the
+    /// options, whose layout has their panel and headers).
+    pub(super) fn hide_items(shown: &mut Shown) {
         for id in Self::ids() {
             set(shown, id, |s| s.hidden = true);
         }
@@ -538,7 +550,10 @@ impl Advanced {
             self.local.colour = local;
             self.changed = false;
         }
-        for id in [PANEL, TITLE, SUBTITLE, DURATION].into_iter().chain(HEADERS) {
+        for id in [PANEL, TITLE, SUBTITLE, DURATION]
+            .into_iter()
+            .chain(HEADERS)
+        {
             set(shown, id, |s| s.hidden = false);
         }
         let duration = text_at(&self.texts.durations, usize::from(self.duration));
@@ -556,11 +571,9 @@ impl Advanced {
                 continue;
             }
             self.rows[usize::from(c)] = Some(row);
-            let dy = look.step * row;
-            for (id, template) in ids.into_iter().zip(ROW_IDS) {
-                if let Some(item) = dialog.items.iter_mut().find(|i| i.id() == id) {
-                    let at = template_at(look, template);
-                    place(item, [at[0], at[1] + dy]);
+            for item in Self::colour_items(look, c, row) {
+                if let Some(slot) = dialog.items.iter_mut().find(|i| i.id() == item.id()) {
+                    *slot = item;
                 }
             }
             let own = self.local.colour == Some(c);
@@ -809,7 +822,11 @@ impl Advanced {
         let mut items =
             crate::message::frame((&look.background, &look.frame), [w.into(), h.into()]);
         let mut shown = Shown::default();
-        for (label, text) in [(&look.title, title), (&look.caption, caption), (&look.text, text)] {
+        for (label, text) in [
+            (&look.title, title),
+            (&look.caption, caption),
+            (&look.text, text),
+        ] {
             items.push(Item::Label(label.clone()));
             shown.texts.insert(label.id, String::from(text));
         }
@@ -846,7 +863,11 @@ impl Advanced {
             items.push(Item::Label((*label).clone()));
             shown.texts.insert(label.id, text.clone());
         }
-        let creatures = look.creatures.get(usize::from(t)).copied().unwrap_or_default();
+        let creatures = look
+            .creatures
+            .get(usize::from(t))
+            .copied()
+            .unwrap_or_default();
         let mut next = creatures.iter();
         let mut id = POPUP_CREATURES;
         for row in &look.rows {
@@ -991,16 +1012,12 @@ impl Advanced {
             // A main hero's portrait and name: T3b.
             Hero::Portrait => {}
         }
+        // (A resource under a Random town was made Random by `refresh`.)
         let bonus_name = match record.bonus {
             Bonus::Random => t.random.clone(),
             b => text_at(&t.bonuses, usize::from(b.code())),
         };
-        let shown_bonus = if record.bonus == Bonus::Resource && town.is_none() {
-            t.random.clone()
-        } else {
-            bonus_name
-        };
-        draws.push(text(&look.bonus_name, shown_bonus));
+        draws.push(text(&look.bonus_name, bonus_name));
         let def = look.bonus.def.clone().unwrap_or_default();
         draws.push(frame(def, bonus_frame(record.bonus, town), look.bonus.at));
         draws.extend(items(&[BONUS_LEFT, BONUS_RIGHT]));
@@ -1018,7 +1035,12 @@ impl Advanced {
                 names.push(name.replace("{}", &letter));
             }
         }
-        for b in [&look.town_left, &look.town_right, &look.hero_left, &look.hero_right] {
+        for b in [
+            &look.town_left,
+            &look.town_right,
+            &look.hero_left,
+            &look.hero_right,
+        ] {
             names.push(b.def.clone());
         }
         for p in [&look.town, &look.hero, &look.bonus] {
@@ -1118,37 +1140,6 @@ fn letter(look: &AdvancedLook, c: u8) -> String {
         .nth(usize::from(c))
         .map(String::from)
         .unwrap_or_default()
-}
-
-/// The corner at row 0 of the item of colour 0's id `id`.
-fn template_at(look: &AdvancedLook, id: u16) -> [i32; 2] {
-    match id {
-        FLAG => look.flag.at,
-        KIND => look.kind.at,
-        HANDICAP => look.handicap.at,
-        TOWN_LEFT => look.town_left.at,
-        TOWN_RIGHT => look.town_right.at,
-        HERO_LEFT => look.hero_left.at,
-        HERO_RIGHT => look.hero_right.at,
-        BONUS_LEFT => look.bonus_left.at,
-        BONUS_RIGHT => look.bonus_right.at,
-        PLAYER => look.name.at,
-        HERO_AREA => look.hero_area.at,
-        TOWN_AREA => look.town_area.at,
-        _ => look.bonus_area.at,
-    }
-}
-
-/// `item` moved to `at`.
-const fn place(item: &mut Item, at: [i32; 2]) {
-    match item {
-        Item::Picture(p) => p.at = at,
-        Item::Button(b) => b.at = at,
-        Item::Text(t) => t.at = at,
-        Item::Def(d) => d.at = at,
-        Item::Label(l) => l.at = at,
-        Item::Area(a) => a.at = at,
-    }
 }
 
 /// Item `id`'s state in `shown` changed by `change`.

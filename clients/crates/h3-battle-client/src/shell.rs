@@ -689,7 +689,11 @@ fn menus(
         // The description's split (T2c): the font's metrics alone.
         description_font: Some(metrics(font(&layout.scenario.description.font)?)),
         // The advanced options (T3a).
-        advanced: Some(advanced_texts(&layout.scenario.advanced, &tables, &catalogue)),
+        advanced: Some(advanced_texts(
+            &layout.scenario.advanced,
+            &tables,
+            &catalogue,
+        )),
     };
     Ok(Menus {
         main,
@@ -723,8 +727,13 @@ fn advanced_texts(
     catalogue: &h3_ui::text::Catalogue,
 ) -> scenario::AdvancedTexts {
     let text = |key: &str| catalogue.text(key, &Args::new());
-    let ids: std::collections::BTreeSet<u16> =
-        look.town_popup.creatures.iter().flatten().copied().collect();
+    let ids: std::collections::BTreeSet<u16> = look
+        .town_popup
+        .creatures
+        .iter()
+        .flatten()
+        .copied()
+        .collect();
     let creature_names = ids
         .into_iter()
         .map(|id| {
@@ -755,8 +764,16 @@ fn advanced_texts(
         let key = |part: &str| format!("shell.advanced.bonus-popup.{bonus}.{part}");
         [
             text(&key("title")),
-            if caption { text(&key("caption")) } else { String::new() },
-            if body { text(&key("text")) } else { String::new() },
+            if caption {
+                text(&key("caption"))
+            } else {
+                String::new()
+            },
+            if body {
+                text(&key("text"))
+            } else {
+                String::new()
+            },
         ]
     };
     scenario::AdvancedTexts {

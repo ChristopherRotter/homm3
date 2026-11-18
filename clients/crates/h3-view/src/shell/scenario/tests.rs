@@ -62,6 +62,7 @@ pub(crate) fn texts(bugs: Bugs) -> Texts {
             (BOX_PLAYER, bugs),
         )),
         description_font: None,
+        advanced: None,
     }
 }
 
@@ -71,10 +72,12 @@ fn map(file: &str, name: &str) -> Entry {
     let both = Seat {
         human: true,
         computer: true,
+        ..Seat::default()
     };
     let computer = Seat {
         human: false,
         computer: true,
+        ..Seat::default()
     };
     let mut seats = [Seat::default(); 8];
     seats[0] = both;

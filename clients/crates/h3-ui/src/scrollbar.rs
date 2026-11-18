@@ -358,7 +358,6 @@ impl Scrollbar {
     }
 }
 
-
 impl Scrollbar {
     /// A horizontal bar's draw list at `[x, y]` (*provisional*, the vertical one's on the x axis):
     /// the left arrow, the right one a button left of the end, the track between them, the thumb.
