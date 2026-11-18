@@ -263,7 +263,7 @@ fn battle_against(army: Vec<ArmyStack>, s: &AdventureState, rules: &Rules) -> Ad
     }
 }
 
-// covers: ADV-BNK-003, ADV-VIS-006
+// covers: ADV-BNK-003, ADV-VIS-006, ADV-BNK-006, ADV-TEL-008
 #[test]
 fn an_attack_bank_marks_its_team_at_once_and_asks_unless_looted() {
     let rules = rules();
@@ -311,7 +311,7 @@ fn an_attack_bank_marks_its_team_at_once_and_asks_unless_looted() {
     assert_eq!(known(&rules, &s, RED), [visited]);
 }
 
-// covers: ADV-BNK-003, ADV-VIS-006
+// covers: ADV-BNK-003, ADV-VIS-006, ADV-BNK-004, ADV-BNK-006, ADV-TEL-008
 #[test]
 fn a_search_bank_asks_first_and_marks_after_a_yes() {
     let rules = rules();
@@ -340,7 +340,7 @@ fn a_search_bank_asks_first_and_marks_after_a_yes() {
     assert_eq!((outcome.offer, events.len()), (Some(search), 0));
 }
 
-// covers: ADV-BNK-004, GAM-BAT-001
+// covers: ADV-BNK-004, GAM-BAT-001, ADV-BNK-006
 #[test]
 fn a_yes_fights_the_guards_as_they_stand_at_the_entrance() {
     let rules = rules();
@@ -423,7 +423,7 @@ fn a_deck_banks_battle_is_on_the_deck_from_land_and_from_a_boat() {
     );
 }
 
-// covers: ADV-BNK-005, ADV-RWD-001, GAM-DEC-007, ADV-ARM-007
+// covers: ADV-BNK-005, ADV-RWD-001, GAM-DEC-007, ADV-ARM-007, ADV-BNK-006
 #[test]
 fn a_won_bank_gives_its_reward_after_the_levels_and_stays_looted() {
     let rules = rules();
@@ -800,7 +800,7 @@ fn reach_left(
         .points_left(pos)
 }
 
-// covers: ADV-SEA-002, ADV-MOV-009, ADV-MOV-010, ADV-BNK-003, ADV-BNK-004
+// covers: ADV-SEA-002, ADV-MOV-009, ADV-MOV-010, ADV-BNK-003, ADV-BNK-004, GAM-BAT-001
 #[test]
 fn a_shipwrecks_water_entrance_is_visited_from_the_coast_whatever_the_mode() {
     // E13-12's W4 and E13-5's W1 (design note §9): the hero stays on land, its step paid as

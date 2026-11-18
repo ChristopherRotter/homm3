@@ -1939,7 +1939,7 @@ bonus = { mark = 6, morale = 1, points = 400 }
 # 14 to 16 (the status bits 9 to 11, design note part C section 12). The sea banks fight on the
 # deck (the ship flag +0x53C6, by class). No kind mark (kinds_visited holds no bank; the hint reads
 # the tile's team bits). The split, the upgrade's slot and the draws are code (ADV-BNK-002); their
-# visits come with T124b.
+# visits, battles and rewards are code too (ADV-BNK-003 to -005, E08 T124b2).
 #
 # Cyclops Stockpile (class 16 subclass 0, k 0): Cyclopes; the six resources but gold.
 [[object_type]]

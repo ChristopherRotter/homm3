@@ -2,13 +2,14 @@
 //! §14, §15): the question by the kind, the yes starting a bank battle (`BattleSetup::
 //! creature_bank` from `Defender::Bank`: each side's stacks at the bank positions by their
 //! ordinal), the reward after the winner's levels with its gains and the
-//! creature joined, the army dialog for a creature without room, a lost battle's survivors.
+//! creature joined, the army dialog for a creature without room, a lost battle's survivors, a
+//! hero met on a bank's entrance fought in an ordinary battle (E08 T126).
 
 use h3_adventure::{BankDef, BankLevelDef, BankQuestion, Holds, OfferKind};
 use h3_battle::Field;
 use h3_contracts::{Army, BattleOutcome, BattleResult, BattleSide, StackOrigin, StackRecord};
 
-use super::decisions::{ACCEPT, CLOSE, DECLINE, GOLD, RED, play};
+use super::decisions::{ACCEPT, BLUE, CLOSE, DECLINE, GOLD, RED, move_hero, play};
 use super::rewards::{AT, HERO, answered, reward_at, starts_battle, visit, won};
 use super::*;
 
@@ -101,7 +102,7 @@ fn first(events: &[GameEvent], matches: impl Fn(&GameEvent) -> bool) -> Option<u
     events.iter().position(matches)
 }
 
-// covers: ADV-BNK-003, ADV-BNK-004, GAM-BAT-001
+// covers: ADV-BNK-003, ADV-BNK-004, GAM-BAT-001, BAT-SET-001
 #[test]
 fn a_banks_yes_starts_a_bank_battle_at_the_bank_positions() {
     let rules = bank_rules();
@@ -233,5 +234,51 @@ fn a_lost_banks_survivors_stay_as_its_guards() {
         state.adventure().guards_left(0),
         [stack(0, IMP, 2), stack(3, IMP, 1)]
     );
+    assert!(!state.adventure().is_emptied(0));
+}
+
+// covers: ADV-BNK-004, GAM-BAT-001
+#[test]
+fn a_hero_met_on_a_banks_entrance_fights_an_ordinary_battle() {
+    let rules = bank_rules();
+    let army = vec![stack(1, IMP, 9), stack(4, GOG, 1)];
+    let mut state = bank_game(&rules, "t:utopia", army, 0);
+    let guards = state.adventure().guards_left(0).to_vec();
+    // Blue's hero visits the bank, declines its question and stays on the entrance.
+    play(&mut state, &rules, RED, GameCommand::EndTurn).unwrap();
+    play(
+        &mut state,
+        &rules,
+        BLUE,
+        move_hero(1, &[Pos::new(2, 1, 0), AT]),
+    )
+    .unwrap();
+    assert_eq!(state.decision(BLUE).unwrap().kind, OfferKind::Fight);
+    play(&mut state, &rules, BLUE, DECLINE).unwrap();
+    assert_eq!(state.adventure().hero(HeroId::new(1)).unwrap().pos, AT);
+    play(&mut state, &rules, BLUE, GameCommand::EndTurn).unwrap();
+    // Red's step onto the entrance meets blue's hero: no question, the two heroes' battle there.
+    let events = visit(&mut state, &rules);
+    assert!(starts_battle(&events), "{events:?}");
+    assert!(state.decision(RED).is_none());
+    let open = state.battle(RED).unwrap();
+    assert_eq!(open.owners(), [Some(RED), Some(BLUE)]);
+    assert_eq!(open.tile(), AT);
+    // An ordinary battle (every caller but the bank's passes no flag): red's stacks stand by its
+    // formation, not at the bank positions by their ordinal; the bank's guards untouched.
+    let params = rules.battle().battle();
+    let field = Field::new(params.field);
+    let at_bank = open
+        .state()
+        .stacks()
+        .iter()
+        .filter(|s| s.side == BattleSide::Attacker)
+        .enumerate()
+        .all(|(ordinal, s)| {
+            let (x, y) = params.bank_position(0, ordinal).unwrap();
+            field.hex(i32::from(x), i32::from(y)) == Some(s.hex)
+        });
+    assert!(!at_bank);
+    assert_eq!(state.adventure().guards_left(0), guards);
     assert!(!state.adventure().is_emptied(0));
 }
