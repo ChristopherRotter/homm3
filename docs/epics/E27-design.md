@@ -2767,7 +2767,8 @@ shipped maps' recipes stay exact; none of the 159 descriptions has a brace).
   take the release first: Down onto a long description selects it at its first line, then its
   release steps the bar (`down-pressed`, `down-released`: shown from its second line); Down on
   the last row and Page Down in a list of one page step the bar alone; Up onto a short one finds
-  no bar. With the list hidden the keys step the bar alone.
+  no bar. With the list hidden the keys step the bar alone. The client's profile (CLT-Q140 (b),
+  decision 52): while the list shows the bar takes none of the list's keys, Left and Right always.
 
 ### 22.4 What a select resets, what the screen shows
 
@@ -2805,3 +2806,108 @@ every other `scenario` recipe as recorded.
 The 60 ms of a key's step (above); a description past 300 bytes (the record's next bytes); a
 scrolling text elsewhere (the message box's long texts, 0x4F6BC7: M4's or the map client's,
 through `Description` or the foundation's when needed).
+
+## 23. The advanced options: the panel, the rows, the town and the bonus (M3 T3a, 2026-11-18)
+
+Read from `Heroes3.exe` (`scenario_advanced_toggle` 0x581100's showing and its per-colour loop;
+the constructor's colour loop 0x57AF82 to 0x57B51B; `scenario_player_row_draw` 0x58D510 whole but
+the hero's portrait; `scenario_dialog_click`'s town arrows 0x586710, 0x586894 and bonus arrows
+0x5873C7, 0x58753C; `scenario_bonus_popup` 0x5754F0, `scenario_info_popup` 0x5757E0 and
+`scenario_town_popup` 0x575E60 whole; `scenario_dialog_right_click`'s bonus texts 0x5828A4;
+`scrollbar_create` 0x5960D0's art) against `adv-single-town`, `adv-single-hero` and
+`adv-single-maps` (played once: as kept). The client: `h3_view::shell::scenario::advanced`
+(`Advanced`, `AdvancedLook`, `AdvancedTexts`, `Record`, `Bonus`), the layout's
+`[scenario.advanced]` and the panel's items, `Scenario::records`, `h3_ui::scrollbar`'s horizontal
+draw, the keys `shell.advanced.*`, the seats' factions and flags (`maps::seat`). §3.13 and §3.14
+corrected below.
+
+### 23.1 The items and the showing
+
+- **The constructor** (0x57AF82): per colour the flag (`AOFLGB%c.DEF` at (14, y − 3), frames 0
+  up and 1 pressed), who may play (199), the handicap (207: a caption button in the hot seat, a
+  plain DEF button single), the arrows (left `adoplfa.def` frames 0 and 1; **right `adoprta.def`
+  frames 1 up and 0 pressed**, 0x57B19B: a right arrow drawn with frame 0 looks pressed), the name
+  (345), the hero's, the town's and the bonus's areas (362 at 252, 370 at 176, 378 at 328: §3.13's
+  table named 370 the hero's), the edit (353, single); after the loop the headers and the
+  duration's label. The client inserts the colours' items before the headers (layout order
+  otherwise); the panel 102 is cut to its item's 557 pixels (`AdvOptBk.pcx` is 575 wide).
+- **The showing** (0x5813B9 to 0x58197F): the list and the random map hidden, 102, the headers and
+  the duration's bar (set to +0x378) shown; with +0x1854 set every record's colour, town and hero
+  −1 and `scenario_players_init`; then **`scenario_to_game` always** (0x5814B3: the description
+  from its first line); per colour that plays its items moved (the arrows to 133 + 50 *r*, the
+  flag, the areas and the name to 130 + 50 *r*, 199 and 207 to 151 + 50 *r*), the flag shown and
+  enabled where a human may play it (never selected: §3.14's highlight is the hover's, T3c), 199,
+  207, 345 and the areas shown; single the handicap's bit 2 cleared (`dialog_item_send` 6, 2: not
+  enabled, still drawn up) and the edit hidden.
+- **The mouse** (the client): the options' hidden headers, title and rows lie over the list's
+  columns, filters and rows; the original's `dialog_item_at` 0x5FF3E0 passes over hidden items,
+  the shared input (`h3_ui::input`) does not, so the screen hands the mouse its dialog without
+  them (`mouse_dialog`; found by `scn-sort`, `scn-filter` and `scn-info` going not as recorded).
+
+### 23.2 A row's draw (`scenario_player_row_draw` 0x58D510)
+
+After the dialog's items, per colour that plays: the flag (item), `adop%cpnl.pcx` (336 × 49) at
+(57, 128 + 50 *r*), 199 and 207 (items); the town's arrows shown and drawn when
+`scenario_town_choosable`, else hidden; the town (`itpa.def` frame 2 *t* + 2 or `hpsrand0.pcx` at
+(176, 130 + 50 *r*), `town_type_names` or GENRLTXT 523 tiny colour 4 align 5 at (164, 162 + 50 *r*,
+71, 16)); the hero's arrows by `scenario_hero_choosable`; the hero (0x58DB0F: none shown is
+**Random** while its arrows show, or the colour has the generating main town or the random-hero
+flag, or under a Random town it has a hero at all; else **none**, `hpsrand6.pcx` and GENRLTXT 524);
+the bonus's text, then its picture (`ScnrStar.def` at (328, 130 + 50 *r*): 9 artifact, 8 gold, the
+shown town's index for a resource, Conflux 3, 10 Random; a resource under a shown Random town is
+**written** Random, 0x58DDAB); the bonus's arrows (0x58DD48: the local colour's; single or a host
+also a computer record's whose town shows a town or may change; the hot seat every colour's); the
+name (item). Every arrow's press redraws its row alone (no other item changes).
+
+### 23.3 The arrows
+
+- **The town's** (0x586710, 0x586894): the hero −1; from the shown town one back or on (left
+  from −1 is −2, taken as 8; right past 8 is −1) until −1 or a faction of the mask (Conflux's bit
+  cleared when +0x1898 is 0: a single player's version is SoD, so the map's mask alone decides);
+  then `scenario_hero_lists`, `scenario_heroes_unclash`, the row.
+- **The bonus's** (0x5873C7, 0x58753C): "heroless" is the record's hero −1 with neither the
+  random-hero flag (+0x18), the generating main town (+0xB) nor a main hero (+0x1C); left: −1,
+  below 0 to 3, an artifact of a heroless record to 3; right: +1 modulo 4, an artifact of a
+  heroless record to 1; then under a shown Random town a resource goes to gold (left) or Random
+  (right).
+
+### 23.4 The popups
+
+- **The small popup** (`scenario_info_popup`, `scenario_bonus_popup`): created 200 × 150 at
+  (300, 225), its frame 256 × 192 (the frame's own colours, a shadow); the title (medfont colour 1
+  align 1) at (10, 26, 236, 36), the picture (48 × 32) centred at y 60, its caption at (10, 95,
+  236, 18), the text at (15, 120, 226, 72), smalfont colour 1 align 1. A Random town: 104, the
+  picture `hpsrand0.pcx`, 523, 105. The bonus (0x5828A4): artifact 84, frame 9, no caption, 91;
+  gold 85, 8, 88, 93; a resource 86, the town's frame, its caption and text by the town's
+  resource (690s: Rampart 693/689, Tower 694/690, Inferno and Conflux 695/691, Dungeon 696/692,
+  else 90/94); Random 87, 10, no caption, 95. (The artifact's and Random's caption is the
+  function's first argument reused, empty in every recording.)
+- **The town's** (`scenario_town_popup`): 256 × 320 at (272, 140); 81 at (10, 26, 236, 36), the
+  `itpa.def` frame centred at y 60, the town's name at (10, 95, 236, 18), 80 at (10, 127, 236, 36);
+  `town_creatures` 0x6747B4's first seven of the faction (`cprsmall.def` frame id + 2, 32 × 32): three
+  from x 60 at y 159, their singular names (the creature table's +0x14, tiny colour 1 align 1, 52 ×
+  32) at x − 10, y 193; four from x 40 at y 235, names at y 267; 52 apart.
+- Each runs modally while the right button is held, the cursor showing; then the screen redrawn
+  whole.
+
+### 23.5 The duration's bar
+
+`scrollbar_create` with a bar wider than tall loads `SlideBuH.def` (blue) and `slider.pcx`, its
+button the DEF's width (16); drawn as the vertical one on the x axis (the left arrow, the right one
+a button from the end, the track between, the thumb at button + travel × value ÷ 10): exact at
+value 10 in every shot. Its presses are T3c's.
+
+### 23.6 The recordings and the comparisons
+
+`adv-single-town` 27 of 27 exact. `adv-single-hero` and `adv-single-maps`: every difference lies in
+the hero's portrait and name and its popups (T3b's): the artifact's, gold's and Random's bonus
+popups, the computers' bonus arrows, Free for All's town popup and Rebellion's rows (none, no
+popup) exact but for that box. The `scenario` group as recorded; `drawn.txt` recorded for the
+`advanced` group.
+
+### 23.7 Not built (T3b on)
+
+The hero's arrows and popups and a main hero's portrait and name (T3b); the flags' press and
+hover, the name's edit (353), the handicap's press (taking none), the duration's bar's input and
+the items' hints (T3c); the hot seat (T4); the random map (T5); a human-only colour's town drawn at
+the list's read (CLT-Q95; no shipped map).

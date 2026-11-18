@@ -1,0 +1,1158 @@
+//! The scenario screen's advanced options of a single player (E27 M3 T3a;
+//! `docs/epics/E27-design.md` §3.12 to §3.15, §23): Show Advanced Options (129,
+//! `scenario_advanced_toggle` 0x581100) shows `AdvOptBk.pcx` (102), the headers, the turn's
+//! duration and a row of each colour that plays, a second press hides them
+//! (`scenario_advanced_hide` 0x581B20); the list's showing hides them too.
+//!
+//! - **The records** (§3.12, `H3ScenarioPlayer`): the single player's (the local slot's) holds its
+//!   colour; every other colour plays by its computer record. At the showing after a select that
+//!   changed the selection (+0x1854) every record's colour, town and hero are cleared and the
+//!   local colour set again (`scenario_players_init` 0x584C40); the bonus and the handicap stay.
+//!   The showing gives the map to the game again (`scenario_to_game` 0x583580: the description
+//!   from its first line).
+//! - **A row** (`scenario_player_row_draw` 0x58D510, after the dialog's items): the flag, the
+//!   colour's bar `adop%cpnl.pcx`, who may play and the handicap, then the town, the hero and the
+//!   bonus, each a picture and a tiny text with their arrows, and the name. The arrows show by the
+//!   record: the town's when it may change it (`scenario_town_choosable` 0x58CEB0), the hero's when
+//!   its hero may (`scenario_hero_choosable` 0x58CFB0), the bonus's for the local colour and a
+//!   computer's whose town shows a town or may change. A bonus of a resource under a shown Random
+//!   town is made Random (the draw's own write, 0x58DDAB).
+//! - **The town's arrows** (215 to 230; `scenario_dialog_click` 0x586710, 0x586894): from the shown
+//!   town to the next (or the previous) allowed faction, past either end to Random and from Random
+//!   to the far end; the hero Random; the row drawn again.
+//! - **The bonus's arrows** (247 to 262; 0x5873C7, 0x58753C): left one back, right one on, modulo
+//!   4 (artifact, gold, resource, Random); the artifact passed over for a record with no hero to
+//!   take it (its hero Random and the colour with neither the random-hero flag, the generating main
+//!   town nor a main hero), the resource under a shown Random town (left to gold, right to Random).
+//! - **A right press** (`scenario_dialog_right_click` 0x5822D0, §3.15): on a town's picture
+//!   (370 + c) its alignment (`scenario_town_popup` 0x575E60: the town's picture and name, its
+//!   seven creatures in two rows) or a Random town's (`scenario_info_popup` 0x5757E0, GENRLTXT 104,
+//!   523, 105); on a bonus's (378 + c) its popup (`scenario_bonus_popup` 0x5754F0); each while the
+//!   right button is held, the cursor showing, then the screen redrawn whole.
+//!
+//! *Not built yet:* the hero's arrows and popups, a main hero's portrait and name (T3b: the row
+//! draws nothing there yet), the flags' press and hover, the name's edit, the handicap's press,
+//! the duration's bar's input and the hints (T3c); the hot seat (T4); a town a human-only colour
+//! draws at the list's read (no shipped map has one; CLT-Q95); the edition's version (+0x1898: a
+//! single player's is SoD, so Conflux is left out only by the map's mask).
+
+use alloc::string::String;
+use alloc::vec::Vec;
+
+use h3_ui::scrollbar::{self, Scrollbar};
+use h3_ui::ui::{Area, Button, Def, Dialog, Draw, Item, Label, Shown, State};
+use serde::Deserialize;
+
+use super::Seat;
+use crate::message::MessageBox;
+
+/// The advanced options' panel (102, `AdvOptBk.pcx`).
+pub const PANEL: u16 = 102;
+/// The headers (GENRLTXT 518 to 521: the name's, the town's (342: AB and Complete), the hero's,
+/// the bonus's) and the duration's label (340, GENRLTXT 522).
+pub const HEADERS: [u16; 5] = [339, 342, 343, 344, 340];
+/// The client's ids of what the redraw draws itself: the title (GENRLTXT 516), the line under it
+/// (517) and the duration's text.
+pub const TITLE: u16 = 1030;
+/// The line under the title.
+pub const SUBTITLE: u16 = 1031;
+/// The duration's text (`turn_duration_texts` 0x69FB44 by the duration).
+pub const DURATION: u16 = 1032;
+/// The duration of a new game (10: unlimited; `scenario_slots_new` 0x57F740).
+pub const UNLIMITED: u8 = 10;
+
+/// A colour's items, colour 0's ids (`+ c` for colour `c`): the flag, who may play, the handicap,
+/// the town's, the hero's and the bonus's arrows, the name, the hero's, the town's and the
+/// bonus's areas (the constructor's order, 0x57AF82 to 0x57B51B).
+pub const FLAG: u16 = 263;
+/// Who may play (`player_kind_texts` 0x6A7E18).
+pub const KIND: u16 = 199;
+/// The handicap (`adopb2%c.def`; a single player's disabled).
+pub const HANDICAP: u16 = 207;
+/// The town's left arrow.
+pub const TOWN_LEFT: u16 = 215;
+/// The town's right arrow.
+pub const TOWN_RIGHT: u16 = 223;
+/// The hero's left arrow.
+pub const HERO_LEFT: u16 = 231;
+/// The hero's right arrow.
+pub const HERO_RIGHT: u16 = 239;
+/// The bonus's left arrow.
+pub const BONUS_LEFT: u16 = 247;
+/// The bonus's right arrow.
+pub const BONUS_RIGHT: u16 = 255;
+/// The player's name (the human record's, else GENRLTXT 469).
+pub const PLAYER: u16 = 345;
+/// The hero's area (its right press).
+pub const HERO_AREA: u16 = 362;
+/// The town's area.
+pub const TOWN_AREA: u16 = 370;
+/// The bonus's area.
+pub const BONUS_AREA: u16 = 378;
+
+/// A colour's item ids of colour 0, in the constructor's order.
+const ROW_IDS: [u16; 13] = [
+    FLAG,
+    KIND,
+    HANDICAP,
+    TOWN_LEFT,
+    TOWN_RIGHT,
+    HERO_LEFT,
+    HERO_RIGHT,
+    BONUS_LEFT,
+    BONUS_RIGHT,
+    PLAYER,
+    HERO_AREA,
+    TOWN_AREA,
+    BONUS_AREA,
+];
+
+/// The factions (Castle 0 to Conflux 8).
+const FACTIONS: u8 = 9;
+
+/// The advanced options' look (the layout's `[scenario.advanced]`): the colours' letters of the
+/// per-colour files (`colour_letters` 0x641AE0), a row's height, the duration's bar, a colour's
+/// items at row 0 (their DEFs' `{}` the colour's letter) and what its row draws itself, and the
+/// popups.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AdvancedLook {
+    /// The colours' letters, red first (`rbygopts`).
+    pub letters: String,
+    /// A row's height (50).
+    pub step: i32,
+    /// The duration's bar (338, horizontal: `SlideBuH.def`, `slider.pcx`).
+    pub bar: scrollbar::Look,
+    /// The flag (`AOFLGB%c.DEF`, 42 × 50).
+    pub flag: Button,
+    /// Who may play (tiny, colour 4, centred).
+    pub kind: Label,
+    /// The handicap (`adopb2%c.def`).
+    pub handicap: Button,
+    /// The arrows (`adoplfa.def`, `adoprta.def`, 11 × 24): the town's, the hero's, the bonus's.
+    pub town_left: Button,
+    /// The town's right arrow.
+    pub town_right: Button,
+    /// The hero's left arrow.
+    pub hero_left: Button,
+    /// The hero's right arrow.
+    pub hero_right: Button,
+    /// The bonus's left arrow.
+    pub bonus_left: Button,
+    /// The bonus's right arrow.
+    pub bonus_right: Button,
+    /// The name (small, colour 1).
+    pub name: Label,
+    /// The pictures' areas (48 × 32): the hero's, the town's, the bonus's.
+    pub hero_area: Area,
+    /// The town's area.
+    pub town_area: Area,
+    /// The bonus's area.
+    pub bonus_area: Area,
+    /// The colour's bar (`adop%cpnl.pcx`) and its corner.
+    pub panel: String,
+    /// The bar's corner.
+    pub panel_at: [i32; 2],
+    /// The town's picture: a town's `itpa.def` frame 2 t + 2, Random's `hpsrand0.pcx`.
+    pub town: Pictured,
+    /// The hero's picture: Random's `hpsrand1.pcx`, none's `hpsrand6.pcx`.
+    pub hero: Pictured,
+    /// The bonus's picture (`ScnrStar.def`).
+    pub bonus: Pictured,
+    /// The texts under the pictures (tiny, colour 4, centred): the town's, the hero's, the
+    /// bonus's.
+    pub town_name: Label,
+    /// The hero's text.
+    pub hero_name: Label,
+    /// The bonus's text.
+    pub bonus_name: Label,
+    /// The small popup (Random's and the bonus's).
+    pub popup: PopupLook,
+    /// The town's popup.
+    pub town_popup: TownPopupLook,
+}
+
+/// A picture a row draws itself: a DEF's frame or a picture by name, at its corner.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Pictured {
+    /// Its corner at row 0.
+    pub at: [i32; 2],
+    /// Its DEF, if it has one.
+    #[serde(default)]
+    pub def: Option<String>,
+    /// Random's picture.
+    #[serde(default)]
+    pub random: Option<String>,
+    /// None's picture.
+    #[serde(default)]
+    pub none: Option<String>,
+}
+
+/// The small popup (`scenario_info_popup` 0x5757E0, `scenario_bonus_popup` 0x5754F0): its place
+/// and size, its frame, the title, the picture's corner, its caption and its text.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PopupLook {
+    /// Its corner on the screen.
+    pub place: [i32; 2],
+    /// Its size (the frame's: multiples of 64).
+    pub size: [i32; 2],
+    /// The background's tile (`diboxbck.pcx`).
+    pub background: String,
+    /// The frame's pieces (`dialgbox.def`, in its own colours).
+    pub frame: String,
+    /// The title (medfont, colour 1).
+    pub title: Label,
+    /// The picture's corner (its 48 pixels centred).
+    pub picture: [i32; 2],
+    /// The caption under it.
+    pub caption: Label,
+    /// The text.
+    pub text: Label,
+}
+
+/// The town's popup (`scenario_town_popup` 0x575E60): its place and size, its frame, the title,
+/// the town's picture and name, the creatures' heading, and the faction's seven creatures
+/// (`town_creatures` 0x6747B4's first seven: `cprsmall.def` frame + 2) in two rows, each with its
+/// name under it.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownPopupLook {
+    /// Its corner on the screen.
+    pub place: [i32; 2],
+    /// Its size.
+    pub size: [i32; 2],
+    /// The background's tile.
+    pub background: String,
+    /// The frame's pieces.
+    pub frame: String,
+    /// The title (GENRLTXT 81).
+    pub title: Label,
+    /// The town's picture's corner (`itpa.def`).
+    pub picture: [i32; 2],
+    /// The town's name.
+    pub name: Label,
+    /// The creatures' heading (GENRLTXT 80).
+    pub heading: Label,
+    /// A creature's picture (`cprsmall.def`, 32 × 32).
+    pub creature: Def,
+    /// A creature's name (tiny, colour 1, 52 × 32).
+    pub creature_name: Label,
+    /// Each row's first creature's corner, its name's and its count of creatures.
+    pub rows: Vec<CreatureRow>,
+    /// A creature's step to the next (52).
+    pub step: i32,
+    /// Each faction's creatures by level (their original ids).
+    pub creatures: Vec<[u16; 7]>,
+}
+
+/// A row of the town's popup's creatures.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CreatureRow {
+    /// The first creature's corner.
+    pub at: [i32; 2],
+    /// Its name's corner.
+    pub name: [i32; 2],
+    /// The creatures in the row.
+    pub count: usize,
+}
+
+/// The advanced options' look and texts (the shell's catalogue).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AdvancedTexts {
+    /// The look.
+    pub look: AdvancedLook,
+    /// Who may play: both, a human only, the computer only (ArrayTxt 206 to 208).
+    pub kinds: [String; 3],
+    /// A computer's name (GENRLTXT 469).
+    pub computer: String,
+    /// Random (GENRLTXT 523) and none (524).
+    pub random: String,
+    /// None.
+    pub none: String,
+    /// The factions' names (ArrayTxt 219 to 227).
+    pub towns: Vec<String>,
+    /// The bonuses' names: artifact, gold, resource (ArrayTxt 214 to 216).
+    pub bonuses: Vec<String>,
+    /// The durations' texts (`turndur.txt` 0 to 10).
+    pub durations: Vec<String>,
+    /// The town's popup's title (GENRLTXT 81) and its creatures' heading (80).
+    pub alignment: String,
+    /// The creatures' heading.
+    pub creatures: String,
+    /// The creatures' names by original id.
+    pub creature_names: Vec<(u16, String)>,
+    /// A Random town's popup: its title (GENRLTXT 104) and text (105).
+    pub random_town: [String; 2],
+    /// The bonuses' popups by bonus (artifact, gold, resource, Random): the title, the caption
+    /// and the text; a resource's caption and text by the faction ([`AdvancedTexts::resources`]).
+    pub bonus_popups: [[String; 3]; 4],
+    /// A resource's caption and text by faction (GENRLTXT 90 and 94, 693 to 696 and 689 to 692).
+    pub resources: Vec<[String; 2]>,
+}
+
+/// A starting bonus (the record's +0x6C): chosen, no effect yet (E10's gap, decision 6).
+// stub: CLT-STUB-9
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Bonus {
+    /// An artifact (0).
+    Artifact,
+    /// Gold (1).
+    Gold,
+    /// A resource of the town's (2).
+    Resource,
+    /// Random (3).
+    Random,
+}
+
+impl Bonus {
+    /// The bonus of the record's code, modulo 4.
+    const fn of(code: u8) -> Self {
+        match code % 4 {
+            0 => Self::Artifact,
+            1 => Self::Gold,
+            2 => Self::Resource,
+            _ => Self::Random,
+        }
+    }
+
+    /// Its code.
+    const fn code(self) -> u8 {
+        match self {
+            Self::Artifact => 0,
+            Self::Gold => 1,
+            Self::Resource => 2,
+            Self::Random => 3,
+        }
+    }
+}
+
+/// A player's record (`H3ScenarioPlayer`, 0x7C bytes; `scenario_player_init` 0x57C790): what a
+/// colour's row chooses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Record {
+    /// The colour it holds (+0x70), none.
+    pub colour: Option<u8>,
+    /// The town (+0x24), none for Random.
+    pub town: Option<u8>,
+    /// The hero (+0x20), none for Random.
+    pub hero: Option<u8>,
+    /// The bonus (+0x6C).
+    pub bonus: Bonus,
+    /// The handicap (+0x78: 0 none, 1 mild, 2 severe).
+    pub handicap: u8,
+}
+
+impl Record {
+    /// A record as `scenario_player_init` starts it: no colour, Random town, hero and bonus, no
+    /// handicap.
+    const NEW: Self = Self {
+        colour: None,
+        town: None,
+        hero: None,
+        bonus: Bonus::Random,
+        handicap: 0,
+    };
+}
+
+/// What a colour's row shows of its hero (`scenario_shown_hero` 0x58D0E0 and the row's draw).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Hero {
+    /// Random (`hpsrand1.pcx`, GENRLTXT 523).
+    Random,
+    /// None (`hpsrand6.pcx`, GENRLTXT 524).
+    Nobody,
+    /// A hero's portrait (the map's main hero's; not drawn yet: T3b).
+    Portrait,
+}
+
+/// The advanced options' state.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct Advanced {
+    texts: AdvancedTexts,
+    /// The options show (+0x37C).
+    showing: bool,
+    /// The selection changed since the rows were made (+0x1854).
+    changed: bool,
+    /// The single player's record (the local slot's).
+    local: Record,
+    /// The computers' records, by colour.
+    computers: [Record; 8],
+    /// Each colour's row while the options show.
+    rows: [Option<i32>; 8],
+    /// The turn's duration's index (+0x378: `turndur.txt`'s record).
+    duration: u8,
+    bar: Scrollbar,
+}
+
+impl Advanced {
+    /// The options of `texts`, hidden, the duration unlimited.
+    pub(super) fn new(texts: AdvancedTexts) -> Self {
+        let mut bar = Scrollbar::new(texts.look.bar.clone());
+        bar.reset(i32::from(UNLIMITED) + 1);
+        bar.set_value(i32::from(UNLIMITED));
+        Self {
+            texts,
+            showing: false,
+            changed: true,
+            local: Record::NEW,
+            computers: [Record::NEW; 8],
+            rows: [None; 8],
+            duration: UNLIMITED,
+            bar,
+        }
+    }
+
+    /// Whether the options show.
+    pub(super) const fn showing(&self) -> bool {
+        self.showing
+    }
+
+    /// Whether item `id` takes the mouse: not a single player's handicap (not enabled).
+    pub(super) fn takes(id: u16) -> bool {
+        !(HANDICAP..HANDICAP + 8).contains(&id)
+    }
+
+    /// Each colour's record, red first (what the begin hands the engine: T6).
+    pub(super) fn records(&self) -> [Record; 8] {
+        core::array::from_fn(|c| self.record(c as u8))
+    }
+
+    /// Colour `colour`'s record: the single player's when it holds the colour, else the
+    /// computer's.
+    pub(super) fn record(&self, colour: u8) -> Record {
+        if self.local.colour == Some(colour) {
+            self.local
+        } else {
+            self.computers[usize::from(colour & 7)]
+        }
+    }
+
+    /// Colour `colour`'s record to change.
+    fn record_mut(&mut self, colour: u8) -> &mut Record {
+        if self.local.colour == Some(colour) {
+            &mut self.local
+        } else {
+            &mut self.computers[usize::from(colour & 7)]
+        }
+    }
+
+    /// The selection changed (`scenario_select` 0x585500's +0x1854): the rows are made again at the
+    /// next showing.
+    pub(super) const fn selection_changed(&mut self) {
+        self.changed = true;
+    }
+
+    /// Every colour's items of `look`, each colour's at its own row as the constructor places
+    /// them, in its order.
+    pub(super) fn items(look: &AdvancedLook) -> Vec<Item> {
+        (0..8u8)
+            .flat_map(|c| Self::colour_items(look, c, i32::from(c)))
+            .collect()
+    }
+
+    /// Colour `c`'s items of `look` on row `row` (its ids its colour 0's + c, its DEFs' `{}` its
+    /// letter), in the constructor's order.
+    fn colour_items(look: &AdvancedLook, c: u8, row: i32) -> [Item; 13] {
+        let letter = letter(look, c);
+        let dy = look.step * row;
+        let at = |at: [i32; 2]| [at[0], at[1] + dy];
+        let id = |id: u16| id + u16::from(c);
+        let button = |b: &Button| {
+            Item::Button(Button {
+                id: id(b.id),
+                def: b.def.replace("{}", &letter),
+                at: at(b.at),
+                ..b.clone()
+            })
+        };
+        let label = |l: &Label| {
+            Item::Label(Label {
+                id: id(l.id),
+                at: at(l.at),
+                ..l.clone()
+            })
+        };
+        let area = |a: &Area| {
+            Item::Area(Area {
+                id: id(a.id),
+                at: at(a.at),
+                ..a.clone()
+            })
+        };
+        [
+            button(&look.flag),
+            label(&look.kind),
+            button(&look.handicap),
+            button(&look.town_left),
+            button(&look.town_right),
+            button(&look.hero_left),
+            button(&look.hero_right),
+            button(&look.bonus_left),
+            button(&look.bonus_right),
+            label(&look.name),
+            area(&look.hero_area),
+            area(&look.town_area),
+            area(&look.bonus_area),
+        ]
+    }
+
+    /// Every item id of the options: the panel, the headers, the redraw's own and the colours'.
+    fn ids() -> impl Iterator<Item = u16> {
+        let colours = ROW_IDS
+            .into_iter()
+            .flat_map(|id| (0..8u16).map(move |c| id + c));
+        [PANEL, TITLE, SUBTITLE, DURATION]
+            .into_iter()
+            .chain(HEADERS)
+            .chain(colours)
+    }
+
+    /// Whether item `id` is one of the options' ([`Advanced::ids`]: the colours' 199 to 270, 345 to
+    /// 352 and 362 to 385, the headers 339 to 344).
+    pub(super) const fn owns(id: u16) -> bool {
+        matches!(id, PANEL | 199..=270 | 339..=352 | 362..=385 | TITLE..=DURATION)
+    }
+
+    /// Hidden (`scenario_advanced_hide` 0x581B20): every item of the options.
+    pub(super) fn hide(&mut self, shown: &mut Shown) {
+        self.showing = false;
+        Self::hide_items(shown);
+    }
+
+    /// Every item of the options hidden in `shown` (the constructor's: also a screen without the
+    /// options, whose layout has their panel and headers).
+    pub(super) fn hide_items(shown: &mut Shown) {
+        for id in Self::ids() {
+            set(shown, id, |s| s.hidden = true);
+        }
+    }
+
+    /// Shown over the map's `seats`, `local` the single player's colour (`scenario_advanced_toggle`
+    /// 0x581100): the rows made again after a change of the selection; each colour that plays on its row (its items moved there), its
+    /// flag where a human may play it, its handicap not enabled (a single
+    /// player's), who may play and its name set; the others' items hidden.
+    pub(super) fn show(
+        &mut self,
+        (seats, local): (&[Seat; 8], Option<u8>),
+        dialog: &mut Dialog,
+        shown: &mut Shown,
+    ) {
+        self.showing = true;
+        if self.changed {
+            for record in core::iter::once(&mut self.local).chain(&mut self.computers) {
+                record.colour = None;
+                record.town = None;
+                record.hero = None;
+            }
+            self.local.colour = local;
+            self.changed = false;
+        }
+        for id in [PANEL, TITLE, SUBTITLE, DURATION]
+            .into_iter()
+            .chain(HEADERS)
+        {
+            set(shown, id, |s| s.hidden = false);
+        }
+        let duration = text_at(&self.texts.durations, usize::from(self.duration));
+        shown.texts.insert(DURATION, duration);
+        let look = &self.texts.look;
+        let mut row = 0;
+        for c in 0..8u8 {
+            let seat = seats[usize::from(c)];
+            let ids = ROW_IDS.map(|id| id + u16::from(c));
+            if !seat.plays() {
+                self.rows[usize::from(c)] = None;
+                for id in ids {
+                    set(shown, id, |s| s.hidden = true);
+                }
+                continue;
+            }
+            self.rows[usize::from(c)] = Some(row);
+            for item in Self::colour_items(look, c, row) {
+                if let Some(slot) = dialog.items.iter_mut().find(|i| i.id() == item.id()) {
+                    *slot = item;
+                }
+            }
+            let own = self.local.colour == Some(c);
+            set(shown, FLAG + u16::from(c), |s| {
+                *s = State {
+                    hidden: !seat.human,
+                    ..State::default()
+                };
+            });
+            for id in [KIND, PLAYER, HERO_AREA, TOWN_AREA, BONUS_AREA] {
+                set(shown, id + u16::from(c), |s| s.hidden = false);
+            }
+            // A single player's handicap is not enabled (0x581713: its bit 2 cleared): drawn up,
+            // taking no press ([`Advanced::takes`]).
+            set(shown, HANDICAP + u16::from(c), |s| *s = State::default());
+            let kind = match (seat.human, seat.computer) {
+                (true, true) => 0,
+                (true, false) => 1,
+                _ => 2,
+            };
+            shown
+                .texts
+                .insert(KIND + u16::from(c), self.texts.kinds[kind].clone());
+            // The single player's name (the local slot's: empty until T3c's edit), else a
+            // computer's.
+            let name = if own {
+                String::new()
+            } else {
+                self.texts.computer.clone()
+            };
+            shown.texts.insert(PLAYER + u16::from(c), name);
+            row += 1;
+        }
+        self.refresh(seats, shown);
+    }
+
+    /// Each row's arrows shown or hidden by its record (the row's draw), and a resource's bonus
+    /// under a shown Random town made Random (0x58DDAB).
+    pub(super) fn refresh(&mut self, seats: &[Seat; 8], shown: &mut Shown) {
+        for c in 0..8u8 {
+            if self.rows[usize::from(c)].is_none() {
+                continue;
+            }
+            let seat = seats[usize::from(c)];
+            let town = self.shown_town(seat, c);
+            if town.is_none() && self.record(c).bonus == Bonus::Resource {
+                self.record_mut(c).bonus = Bonus::Random;
+            }
+            let arrows = [
+                (TOWN_LEFT, TOWN_RIGHT, self.town_choosable(seat, c)),
+                (HERO_LEFT, HERO_RIGHT, self.hero_choosable(seat, c)),
+                (BONUS_LEFT, BONUS_RIGHT, self.bonus_choosable(seat, c)),
+            ];
+            for (left, right, on) in arrows {
+                for id in [left, right] {
+                    set(shown, id + u16::from(c), |s| {
+                        s.hidden = !on;
+                        s.disabled = !on;
+                    });
+                }
+            }
+        }
+    }
+
+    /// The town colour `c`'s row shows: its record's when the map offers a choice (its random-town
+    /// flag, or more than one faction: `faction_choice_offered` 0x58CE70), else its first allowed
+    /// faction (`random_allowed_faction` 0x5132D0 with its first flag; 0 when none).
+    fn shown_town(&self, seat: Seat, c: u8) -> Option<u8> {
+        if offered(seat) {
+            self.record(c).town
+        } else {
+            Some(first_faction(seat.factions))
+        }
+    }
+
+    /// Whether colour `c`'s town may change (`scenario_town_choosable` 0x58CEB0, a single player's
+    /// new game): its record the single player's or a computer's, and the map offering a choice.
+    fn town_choosable(&self, seat: Seat, _c: u8) -> bool {
+        offered(seat)
+    }
+
+    /// Whether colour `c`'s hero may change (`scenario_hero_choosable` 0x58CFB0): the single
+    /// player's record, its shown town not Random, and its main town generating its hero or the
+    /// random-hero flag (TWN-SET-006).
+    fn hero_choosable(&self, seat: Seat, c: u8) -> bool {
+        self.local.colour == Some(c)
+            && self.shown_town(seat, c).is_some()
+            && (seat.generates || seat.random_hero)
+    }
+
+    /// Whether colour `c`'s bonus may change (the row's draw, 0x58DD48): the single player's own
+    /// colour, or a computer's whose town shows a town or may change.
+    fn bonus_choosable(&self, seat: Seat, c: u8) -> bool {
+        self.local.colour == Some(c)
+            || self.shown_town(seat, c).is_some()
+            || self.town_choosable(seat, c)
+    }
+
+    /// Whether colour `c` has no hero to take an artifact: its record's hero Random and the
+    /// colour with neither the random-hero flag, a generating main town nor a main hero (0x587412).
+    fn heroless(&self, seat: Seat, c: u8) -> bool {
+        self.record(c).hero.is_none()
+            && !seat.random_hero
+            && !seat.generates
+            && seat.main_hero.is_none()
+    }
+
+    /// What colour `c`'s row shows of its hero (`scenario_shown_hero` 0x58D0E0, the row's draw
+    /// 0x58DB0F): with neither the generating main town nor the random-hero flag the map's main
+    /// hero, else the record's choice; no hero shown is Random while the arrows show or the colour
+    /// has either flag (or, under a Random town, any hero at all), else none.
+    fn shown_hero(&self, seat: Seat, c: u8) -> Hero {
+        let flags = seat.generates || seat.random_hero;
+        let hero = if flags {
+            self.record(c).hero
+        } else {
+            seat.main_hero.map(|h| h.portrait)
+        };
+        if hero.is_some() {
+            return Hero::Portrait;
+        }
+        let none_at_all = !flags && seat.main_hero.is_none();
+        let random_town = self.shown_town(seat, c).is_none();
+        if self.hero_choosable(seat, c) || flags || (random_town && !none_at_all) {
+            Hero::Random
+        } else {
+            Hero::Nobody
+        }
+    }
+
+    /// A town's arrow of colour `c` (`right` the right one): the next or previous allowed faction
+    /// from the shown town, Random past either end and the far end from Random; the hero Random.
+    fn step_town(&mut self, seat: Seat, c: u8, right: bool) {
+        let shown = self.shown_town(seat, c).map_or(-1, i16::from);
+        let allowed = |t: i16| t >= 0 && seat.factions & (1 << t) != 0;
+        let mut t = shown;
+        loop {
+            t = if right { t + 1 } else { t - 1 };
+            if right && t >= i16::from(FACTIONS) {
+                t = -1;
+            }
+            if !right && t < -1 {
+                t = i16::from(FACTIONS) - 1;
+            }
+            if t == -1 || allowed(t) {
+                break;
+            }
+        }
+        let record = self.record_mut(c);
+        record.town = u8::try_from(t).ok();
+        record.hero = None;
+    }
+
+    /// A bonus's arrow of colour `c` (`right` the right one): one back or on, modulo 4, the
+    /// artifact passed over for a colour with no hero to take it, the resource under a shown
+    /// Random town (left to gold, right to Random).
+    fn step_bonus(&mut self, seat: Seat, c: u8, right: bool) {
+        let heroless = self.heroless(seat, c);
+        let random_town = self.shown_town(seat, c).is_none();
+        let record = self.record_mut(c);
+        let code = record.bonus.code();
+        let mut bonus = if right {
+            Bonus::of(code + 1)
+        } else {
+            Bonus::of(code + 3)
+        };
+        if bonus == Bonus::Artifact && heroless {
+            bonus = if right { Bonus::Gold } else { Bonus::Random };
+        }
+        if bonus == Bonus::Resource && random_town {
+            bonus = if right { Bonus::Random } else { Bonus::Gold };
+        }
+        record.bonus = bonus;
+    }
+
+    /// The click of item `id` over the map's `seats` (an arrow of the town or the bonus), its row
+    /// drawn again; whether it was one.
+    pub(super) fn click(&mut self, id: u16, seats: &[Seat; 8], shown: &mut Shown) -> bool {
+        if !self.showing {
+            return false;
+        }
+        let of = |first: u16| (first..first + 8).contains(&id).then(|| (id - first) as u8);
+        let (c, step): (u8, fn(&mut Self, Seat, u8)) = if let Some(c) = of(TOWN_LEFT) {
+            (c, |a, s, c| a.step_town(s, c, false))
+        } else if let Some(c) = of(TOWN_RIGHT) {
+            (c, |a, s, c| a.step_town(s, c, true))
+        } else if let Some(c) = of(BONUS_LEFT) {
+            (c, |a, s, c| a.step_bonus(s, c, false))
+        } else if let Some(c) = of(BONUS_RIGHT) {
+            (c, |a, s, c| a.step_bonus(s, c, true))
+        } else {
+            return false;
+        };
+        let seat = seats[usize::from(c)];
+        step(self, seat, c);
+        self.refresh(seats, shown);
+        true
+    }
+
+    /// The popup of a right press on item `id` over the map's `seats`: a town's area's alignment
+    /// (or a Random town's), a bonus's area's bonus; none for another item.
+    pub(super) fn popup(&self, id: u16, seats: &[Seat; 8]) -> Option<MessageBox> {
+        if !self.showing {
+            return None;
+        }
+        let of = |first: u16| (first..first + 8).contains(&id).then(|| (id - first) as u8);
+        if let Some(c) = of(TOWN_AREA) {
+            let seat = seats[usize::from(c)];
+            return Some(match self.shown_town(seat, c) {
+                Some(t) => self.town_popup(t),
+                None => {
+                    let t = &self.texts;
+                    let random = t.look.town.random.clone().unwrap_or_default();
+                    self.small_popup(
+                        &t.random_town[0],
+                        Picture::Named(random),
+                        &t.random,
+                        &t.random_town[1],
+                    )
+                }
+            });
+        }
+        let c = of(BONUS_AREA)?;
+        let seat = seats[usize::from(c)];
+        let bonus = self.record(c).bonus;
+        let town = self.shown_town(seat, c);
+        let t = &self.texts;
+        let [title, caption, text] = t.bonus_popups[usize::from(bonus.code())].clone();
+        let (caption, text) = match (bonus, town) {
+            (Bonus::Resource, Some(f)) => {
+                let [c, x] = t.resources.get(usize::from(f)).cloned().unwrap_or_default();
+                (c, x)
+            }
+            _ => (caption, text),
+        };
+        let frame = bonus_frame(bonus, town);
+        let def = t.look.bonus.def.clone().unwrap_or_default();
+        Some(self.small_popup(&title, Picture::Frame(def, frame), &caption, &text))
+    }
+
+    /// The small popup (`scenario_info_popup` 0x5757E0, `scenario_bonus_popup` 0x5754F0): its
+    /// title, picture, caption and text.
+    fn small_popup(&self, title: &str, picture: Picture, caption: &str, text: &str) -> MessageBox {
+        let look = &self.texts.look.popup;
+        let [w, h] = look.size;
+        let mut items =
+            crate::message::frame((&look.background, &look.frame), [w.into(), h.into()]);
+        let mut shown = Shown::default();
+        for (label, text) in [
+            (&look.title, title),
+            (&look.caption, caption),
+            (&look.text, text),
+        ] {
+            items.push(Item::Label(label.clone()));
+            shown.texts.insert(label.id, String::from(text));
+        }
+        items.push(picture.item(POPUP_PICTURE, look.picture));
+        MessageBox {
+            dialog: Dialog {
+                place: look.place,
+                shadow: Some(look.size),
+                items,
+            },
+            shown,
+        }
+    }
+
+    /// Faction `t`'s popup (`scenario_town_popup` 0x575E60).
+    fn town_popup(&self, t: u8) -> MessageBox {
+        let texts = &self.texts;
+        let look = &texts.look.town_popup;
+        let [w, h] = look.size;
+        let mut items =
+            crate::message::frame((&look.background, &look.frame), [w.into(), h.into()]);
+        let mut shown = Shown::default();
+        let town = text_at(&texts.towns, usize::from(t));
+        let labels = [
+            (&look.title, texts.alignment.clone()),
+            (&look.name, town),
+            (&look.heading, texts.creatures.clone()),
+        ];
+        let def = texts.look.town.def.clone().unwrap_or_default();
+        items.push(Item::Label(labels[0].0.clone()));
+        shown.texts.insert(labels[0].0.id, labels[0].1.clone());
+        items.push(Picture::Frame(def, 2 * u32::from(t) + 2).item(POPUP_PICTURE, look.picture));
+        for (label, text) in &labels[1..] {
+            items.push(Item::Label((*label).clone()));
+            shown.texts.insert(label.id, text.clone());
+        }
+        let creatures = look
+            .creatures
+            .get(usize::from(t))
+            .copied()
+            .unwrap_or_default();
+        let mut next = creatures.iter();
+        let mut id = POPUP_CREATURES;
+        for row in &look.rows {
+            for (k, &creature) in (0i32..).zip(next.by_ref().take(row.count)) {
+                let dx = look.step * k;
+                items.push(Item::Def(Def {
+                    id,
+                    at: [row.at[0] + dx, row.at[1]],
+                    frame: u32::from(creature) + 2,
+                    ..look.creature.clone()
+                }));
+                items.push(Item::Label(Label {
+                    id: id + 1,
+                    at: [row.name[0] + dx, row.name[1]],
+                    ..look.creature_name.clone()
+                }));
+                let name = texts
+                    .creature_names
+                    .iter()
+                    .find(|(c, _)| *c == creature)
+                    .map(|(_, n)| n.clone())
+                    .unwrap_or_default();
+                shown.texts.insert(id + 1, name);
+                id += 2;
+            }
+        }
+        MessageBox {
+            dialog: Dialog {
+                place: look.place,
+                shadow: Some(look.size),
+                items,
+            },
+            shown,
+        }
+    }
+
+    /// The draws of the options after the dialog's items (`scenario_dialog_redraw` 0x584550): the
+    /// duration's bar, then each row (`scenario_player_row_draw` 0x58D510).
+    pub(super) fn draws(
+        &self,
+        seats: &[Seat; 8],
+        dialog: &Dialog,
+        shown: &Shown,
+        players: &str,
+    ) -> Vec<Draw> {
+        if !self.showing {
+            return Vec::new();
+        }
+        let mut draws = self.bar.draws(dialog.place);
+        for c in 0..8u8 {
+            if let Some(row) = self.rows[usize::from(c)] {
+                let seat = seats[usize::from(c)];
+                draws.extend(self.row_draws((seat, c, row), dialog, shown, players));
+            }
+        }
+        draws
+    }
+
+    /// Colour `c`'s row `row` (`scenario_player_row_draw` 0x58D510): its flag, its bar, who may
+    /// play and the handicap; the town's arrows, picture and text; the hero's; the bonus's text,
+    /// picture and arrows; the name.
+    fn row_draws(
+        &self,
+        (seat, c, row): (Seat, u8, i32),
+        dialog: &Dialog,
+        shown: &Shown,
+        players: &str,
+    ) -> Vec<Draw> {
+        let look = &self.texts.look;
+        let record = self.record(c);
+        let [px, py] = dialog.place;
+        let dy = py + look.step * row;
+        let items = |ids: &[u16]| {
+            let ids: Vec<u16> = ids.iter().map(|id| id + u16::from(c)).collect();
+            Dialog {
+                place: dialog.place,
+                shadow: None,
+                items: dialog
+                    .items
+                    .iter()
+                    .filter(|i| ids.contains(&i.id()))
+                    .cloned()
+                    .collect(),
+            }
+            .draws(shown, players)
+        };
+        let picture = |name: String, at: [i32; 2]| Draw::Picture {
+            picture: name,
+            x: px + at[0],
+            y: dy + at[1],
+            player: None,
+            size: None,
+        };
+        let frame = |def: String, frame: u32, at: [i32; 2]| Draw::Button {
+            def,
+            frame,
+            x: px + at[0],
+            y: dy + at[1],
+            mirrored: false,
+            player: None,
+        };
+        let text = |label: &Label, text: String| Draw::Label {
+            item: label.clone(),
+            x: px + label.at[0],
+            y: dy + label.at[1],
+            text,
+            disabled: false,
+        };
+        let t = &self.texts;
+        let mut draws = items(&[FLAG]);
+        draws.push(picture(
+            look.panel.replace("{}", &letter(look, c)),
+            look.panel_at,
+        ));
+        draws.extend(items(&[KIND, HANDICAP]));
+        draws.extend(items(&[TOWN_LEFT, TOWN_RIGHT]));
+        let town = self.shown_town(seat, c);
+        match town {
+            Some(f) => {
+                let def = look.town.def.clone().unwrap_or_default();
+                draws.push(frame(def, 2 * u32::from(f) + 2, look.town.at));
+                draws.push(text(&look.town_name, text_at(&t.towns, usize::from(f))));
+            }
+            None => {
+                let random = look.town.random.clone().unwrap_or_default();
+                draws.push(picture(random, look.town.at));
+                draws.push(text(&look.town_name, t.random.clone()));
+            }
+        }
+        draws.extend(items(&[HERO_LEFT, HERO_RIGHT]));
+        match self.shown_hero(seat, c) {
+            Hero::Random => {
+                let random = look.hero.random.clone().unwrap_or_default();
+                draws.push(picture(random, look.hero.at));
+                draws.push(text(&look.hero_name, t.random.clone()));
+            }
+            Hero::Nobody => {
+                let none = look.hero.none.clone().unwrap_or_default();
+                draws.push(picture(none, look.hero.at));
+                draws.push(text(&look.hero_name, t.none.clone()));
+            }
+            // A main hero's portrait and name: T3b.
+            Hero::Portrait => {}
+        }
+        // (A resource under a Random town was made Random by `refresh`.)
+        let bonus_name = match record.bonus {
+            Bonus::Random => t.random.clone(),
+            b => text_at(&t.bonuses, usize::from(b.code())),
+        };
+        draws.push(text(&look.bonus_name, bonus_name));
+        let def = look.bonus.def.clone().unwrap_or_default();
+        draws.push(frame(def, bonus_frame(record.bonus, town), look.bonus.at));
+        draws.extend(items(&[BONUS_LEFT, BONUS_RIGHT]));
+        draws.extend(items(&[PLAYER]));
+        draws
+    }
+
+    /// Every asset `look` names (the adapter's batch at the shell's start).
+    #[must_use]
+    pub fn names(look: &AdvancedLook) -> Vec<String> {
+        let mut names = Vec::new();
+        for c in 0..8u8 {
+            let letter = letter(look, c);
+            for name in [&look.flag.def, &look.handicap.def, &look.panel] {
+                names.push(name.replace("{}", &letter));
+            }
+        }
+        for b in [
+            &look.town_left,
+            &look.town_right,
+            &look.hero_left,
+            &look.hero_right,
+        ] {
+            names.push(b.def.clone());
+        }
+        for p in [&look.town, &look.hero, &look.bonus] {
+            names.extend(p.def.iter().chain(&p.random).chain(&p.none).cloned());
+        }
+        let labels = [
+            &look.kind,
+            &look.name,
+            &look.town_name,
+            &look.popup.title,
+            &look.popup.caption,
+            &look.town_popup.creature_name,
+        ];
+        for label in labels {
+            names.push(label.font.clone());
+            names.push(label.font_palette.clone());
+        }
+        names.push(look.bar.def.clone());
+        names.push(look.bar.track.clone());
+        for (background, frame) in [
+            (&look.popup.background, &look.popup.frame),
+            (&look.town_popup.background, &look.town_popup.frame),
+        ] {
+            names.push(background.clone());
+            names.push(frame.clone());
+        }
+        names.extend(look.town_popup.creature.def.clone());
+        names
+    }
+}
+
+/// A popup's picture: a DEF's frame or a picture by name.
+enum Picture {
+    Frame(String, u32),
+    Named(String),
+}
+
+impl Picture {
+    /// Its item, id `id` at `at`.
+    fn item(self, id: u16, at: [i32; 2]) -> Item {
+        match self {
+            Self::Frame(def, frame) => Item::Def(Def {
+                id,
+                def: Some(def),
+                at,
+                size: [48, 32],
+                frame,
+                mirrored: false,
+                group: 0,
+                creature: false,
+                frames_of: None,
+                repeat: None,
+            }),
+            Self::Named(picture) => Item::Picture(h3_ui::ui::Picture {
+                id,
+                picture,
+                at,
+                size: None,
+                hint: None,
+            }),
+        }
+    }
+}
+
+/// A popup's picture's id and its creatures' first (the frame's from 200).
+const POPUP_PICTURE: u16 = 2;
+const POPUP_CREATURES: u16 = 10;
+
+/// The bonus's frame of `ScnrStar.def`: an artifact 9, gold 8, a resource the shown town's (Conflux
+/// 3; Random 10 under a Random town), Random 10.
+const fn bonus_frame(bonus: Bonus, town: Option<u8>) -> u32 {
+    match (bonus, town) {
+        (Bonus::Artifact, _) => 9,
+        (Bonus::Gold, _) => 8,
+        (Bonus::Resource, Some(8)) => 3,
+        (Bonus::Resource, Some(t)) => t as u32,
+        (Bonus::Resource | Bonus::Random, _) => 10,
+    }
+}
+
+/// Whether the map offers colour `seat` a choice of town (its random-town flag, or more than one
+/// faction).
+const fn offered(seat: Seat) -> bool {
+    seat.random_town || (seat.factions & 0x1FF).count_ones() > 1
+}
+
+/// The first faction of `factions` (0 when none).
+const fn first_faction(factions: u16) -> u8 {
+    let f = factions & 0x1FF;
+    if f == 0 { 0 } else { f.trailing_zeros() as u8 }
+}
+
+/// Colour `c`'s letter of `look`.
+fn letter(look: &AdvancedLook, c: u8) -> String {
+    look.letters
+        .chars()
+        .nth(usize::from(c))
+        .map(String::from)
+        .unwrap_or_default()
+}
+
+/// Item `id`'s state in `shown` changed by `change`.
+fn set(shown: &mut Shown, id: u16, change: impl FnOnce(&mut State)) {
+    let mut state = shown.state(id);
+    change(&mut state);
+    shown.states.insert(id, state);
+}
+
+/// The text `k` of `texts`, empty past them.
+fn text_at(texts: &[String], k: usize) -> String {
+    texts.get(k).cloned().unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests;

@@ -1129,3 +1129,33 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
   `install/`), the four manuals and three help files staged at once, each checked against the
   PC's `sha256sum`; the setup's baseline stopped at coverage by the watcher; CI's green `master`
   stood in.
+
+## M3 T3a — the advanced options' panel, rows, town and bonus (2026-11-18)
+
+- **Cut** (the user, decision 53): T3 in three by recipe (offered: three by recipe, two by drawing
+  and choices, two by recipe); T3a whole this session. CLT-Q140 answered (b) at the start (decision
+  52) and built first (`Scenario::key`: the bar takes no list key while the list shows, Left and
+  Right always).
+- **Staged** from the PC at once: the 64 files and the seven manuals and help files, each checked
+  by SHA-256 against the PC's (one digest of the sorted hashes each side). The VM restarted once
+  (nothing running); the setup's baseline stopped at `check.sh`'s coverage by a watcher (fmt,
+  clippy, doc tests, deny passed).
+- **Read** (design §23): the advanced toggle's showing and per-colour loop, the constructor's colour
+  loop (the right arrows' frames 1 up and 0 pressed), the row's draw but the hero's portrait, the
+  town's and the bonus's arrows, the three popups whole, the right press's bonus texts, the
+  horizontal bar's art.
+- **Built:** `h3_view::shell::scenario::advanced` (`Advanced`: the records, the rows, the
+  showing, the arrows, the popups, the draws; `AdvancedLook`, `AdvancedTexts`, `Record`, `Bonus`,
+  `Pictured`, `PopupLook`, `TownPopupLook`, `CreatureRow`); `Seat`'s factions, flags and main hero
+  (`MainHero`), `Texts::advanced`, `Scenario::records`, `advanced_showing`, `Over::Popup` (the
+  teams' dialog's, renamed), `mouse_dialog`, the list's showing hiding the options; the layout's 102,
+  headers, own labels 1030 to 1032 and `[scenario.advanced]`; the keys `shell.advanced.*` and five
+  `shell.scenario.*` labels (TURNDUR the catalogue's eighteenth table); `h3_ui::scrollbar`'s
+  horizontal draw; `h3-battle-client`: `maps::seat`, `shell::advanced_texts` (the creatures' names
+  by original id). `CLT-STUB-9` (the bonus).
+- **Compared:** `adv-single-town` 27 of 27 exact (the first build: the labels' keys, the flag
+  selected, the handicap disabled, the right arrows' frames, the panel's width); `adv-single-hero`
+  3 and `adv-single-maps` 6 exact, every other shot differing in the hero's box alone (T3b);
+  `scenario` as recorded after `mouse_dialog` (the hidden headers had taken the columns' and
+  filters' presses: `scn-sort`, `scn-filter`, `scn-info`, `scn-begin-filter`, `scn-empty-filter`);
+  `multiplayer` as recorded; `drawn.txt` recorded for `advanced`.
