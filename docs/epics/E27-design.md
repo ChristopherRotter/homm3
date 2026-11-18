@@ -857,11 +857,13 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
     colour's index (*not understood*), the local record's colour the new one, its town and hero Random, the lists; then the flags (§3.5).
   - **the hot seat** (and a host): to a colour a human may play, `hot_seat_colour_cycle`
     0x577AE0: its holder loses it; the first human record with a player from index (the holder's
-    +0x74 + 1), always 0 outside network play, or with no holder from the first player without a
-    colour, takes it and leaves its own (kept at +0x1830; +0x1824 the colour pressed last: a
-    second press on it first returns the holder to the kept colour); then the lists, a clash
-    stepped on, the flags. So a press gives the colour to the first player without one, else to
-    the first player, and its holder is left with none (Begin then needs two placed players, §3.6).
+    +0x74 + 1: the holder's index in the hot seat, recorded at T4b, §29.1; M1 read it as always
+    0), or with no holder from the first player without a colour, else from 0, takes it and
+    leaves its own (kept at +0x1830; +0x1824 the colour pressed last: a second press on it first
+    returns the holder to the kept colour); then the lists (a clash stepped on: network play
+    only, 0x58B823), the flags. So a press on a held colour gives it to the player after its
+    holder (nobody after the last), on the computer's to the first player without one, else to the
+    first player; a holder is left with none (Begin then needs two placed players, §3.6).
     **CLT-Q94** (decision 13): the client passes the colour to the next player after its holder in
     the slots' order, the two exchanging colours (a taker without a colour leaves its holder with
     none); with no holder the first player takes it, leaving its own to the computer; after the
@@ -3250,7 +3252,85 @@ other recipe as recorded.
 
 ### 28.4 Not built
 
-The hot seat's presses (T4b): the handicap's (+1 modulo 3, its caption), the flags' cycle
-(`hot_seat_colour_cycle` 0x577AE0, CLT-Q94: until then a flag's press moves no colour), a hero
-another human record holds passed over and stepped on (`scenario_hero_step`,
-`scenario_heroes_unclash`), Begin's GENRLTXT 83 and 531. A hot-seat load (M4).
+The hot seat's presses (T4b: built, §29). A hot-seat load (M4).
+
+## 29. The hot seat's presses (M3 T4b, 2026-11-18)
+
+Read from `Heroes3.exe` (`hot_seat_colour_cycle` 0x577AE0 whole; `scenario_flag_click`
+0x58B790's hot-seat branch 0x58B7F5 to 0x58B829; the handicap's press 0x58706A to 0x5870CA;
+`scenario_hero_step` 0x58AF20 and `scenario_heroes_unclash` 0x58BBC0 whole, the showing's own loop
+0x5817C1 to 0x581856, the town's arrow 0x586A23 to 0x586A47; `scenario_begin_tail` 0x58C11F to
+0x58C212; `scenario_advanced_hide`'s 0x581D5F) against `adv-hotseat-rows`, `adv-hotseat-two` and
+`adv-hotseat-begin`, played again under Wine this session (every shot as kept). The client:
+`Advanced`'s `cycle`, `pass`, `step_handicap`, `held_elsewhere`, `unclash`, `refusal`, `Refusal`,
+the screen's Begin over a map (`Texts::unplaced`, `too_few`).
+
+### 29.1 The flags
+
+- **The hot seat's press** (0x58B7F5): a colour a human may play (the players block's +0xA0)
+  goes to `hot_seat_colour_cycle`, then `scenario_hero_lists`; outside network play nothing else
+  (the clash's step 0x58B8BC and the host's message are network play's), no highlight cleared;
+  then `scenario_team_flags` and the caller's `scenario_dialog_redraw` (§26.1: the strip stale).
+- **The cycle** (0x577AE0, on the human records): the holder (the record holding the colour)
+  loses it; the taker is searched from the holder's +0x74 + 1, with no holder from the first
+  record without a colour, else from 0: the first record with a player from there takes it
+  (its old colour kept at +0x1830, its town and hero −1); none past the last. A press on the
+  colour pressed last (+0x1824, set by every other press and forgotten at the options' hiding,
+  0x581D5F) first returns the holder to the kept colour (when one is kept); the kept colour is
+  cleared at every press before the taker's. The record's +0x74 starts at −1
+  (`scenario_player_init`); no write of it was found in the screen's code, but every recorded
+  press reads it as the record's index (below). The holder keeps its town and hero.
+- **Recorded** (each shot exact in the viewer's original profile):
+  - `adv-hotseat-rows` (Arrogance: red, blue, purple, teal; A, B, C): teal (no holder, everyone
+    placed): A takes it, red the computer's; teal again: A back to red, B takes teal, blue the
+    computer's; blue: A takes it (red the computer's); red: A takes it (blue the computer's).
+  - `adv-hotseat-two` (red, green; A, B): green (B's, the last): nobody, green the computer's;
+    red (A's): B takes it; red again (B's, nothing kept): nobody, both the computer's; green: A,
+    the first without a colour.
+  - `adv-hotseat-begin` (red, green; A, B, C): red (A's): B takes it (green kept); red again: B
+    back to green, C takes red; green (B's): C takes it; red: A, the first without one.
+- **The client** (CLT-Q94, decision 13; *provisional*): to the record after the holder, the two
+  exchanging colours (a taker without one leaves the holder with none); past the last to the
+  computer; with no holder the first record takes it, its own the computer's. Both movers' towns
+  and heroes Random.
+
+### 29.2 The handicap, the heroes, Begin
+
+- **The handicap's press** (207 + *c*, 0x58706A; enabled in the hot seat only): the record holding
+  the colour (a human's, else the computer's) one on, modulo 3, then the item's caption
+  `handicap_names`' (`dialog_item_send` 3, with the item's state bit 2 set meanwhile) and the row
+  drawn. Nothing else sets the caption (the row's draw reads no handicap), so a player a flag
+  moves keeps its handicap while each row keeps the caption pressed there: **CLT-Q144** (b),
+  decision 60: the client's caption is the record's, set at each row's refresh; the original's
+  for the comparisons. Recorded (`adv-hotseat-rows` handicap-1 to -3): Mild, Severe, None.
+- **The hero's step** (0x58AF20): the same walk as single's (§24.1), and after each step to a
+  hero (not to Random) the other colours' human records are compared, each by its pick's type;
+  a hero held there steps again. A record without a colour is compared with none.
+- **The clash** (`scenario_heroes_unclash` 0x58BBC0, after a town's arrow; the showing's same loop
+  0x5817C1): colours 7 down to 0, a human record whose pick another colour's human record also
+  holds steps once to the right. A town's arrow clears its own record's hero first and every
+  step passes over what is held, so no clash is reachable; built as the original's.
+  `row-1-choices` (blue's town, hero and bonus right arrows after the flags: blue the computer's,
+  Castle, no hero's arrows, the artifact) and `name-press` (nothing: §28.2) are exact.
+- **Begin** (0x58C11F, a new game): the local record (the hot seat's first) without a colour:
+  GENRLTXT 531; the hot seat or network play with fewer than two records holding a colour: 83;
+  each an OK box (as 530's, §21.3). Recorded: `adv-hotseat-two` begin-1 (83), `adv-hotseat-begin`
+  begin-1 (531). The client's 531 refuses while any record lacks a colour (CLT-Q109 (b), decision
+  22); with more names than the map's colours a human may play (listed: §28.1) one name is
+  always without, so such a game is never begun in the client's profile (**CLT-Q145** (c),
+  decision 61). Before the options are first shown the check reads the colours their showing
+  will give (`Advanced::seating`).
+- **The box's close** (`message_box`'s own restore): only the box's rectangle is drawn back, so
+  a flags' strip a press left stale stays stale (`closed-1` of both recipes: the allies' colon
+  without its shadow, 2 pixels); the client's screen is not drawn again whole at the box's close
+  (T2b's was: no stale part showed there).
+
+### 29.3 The recordings and the comparisons
+
+`adv-hotseat-rows` 12 of 12, `adv-hotseat-two` 7 of 7 exact; `adv-hotseat-begin` 7 of 7 up to its
+begin (T6's); every other recipe as recorded (`drawn.txt` recorded for the three).
+
+### 29.4 Not built
+
+The begin itself (T6); a hot-seat load's presses (M4, CLT-Q110 (b)); network play's clash step
+and messages (no network play).

@@ -92,7 +92,7 @@ use crate::message::{MessageBox, Open, Outcome};
 mod advanced;
 mod description;
 
-use advanced::{Advanced, Map};
+use advanced::{Advanced, Map, Refusal};
 pub use advanced::{
     AdvancedLook, AdvancedTexts, Bonus, CreatureRow, HERO_CLASS, HERO_NAME, HeroPopupLook,
     Pictured, PopupLook, Record, TownPopupLook,
@@ -524,6 +524,12 @@ pub struct Texts {
     /// Begin's message over an empty list (GENRLTXT 530 in an OK box, E27 M3 T2b; none: Begin
     /// does nothing there).
     pub no_maps: Option<MessageBox>,
+    /// Begin's message over a map where a player has no colour (GENRLTXT 531 in an OK box, E27 M3
+    /// T4b; none: Begin does nothing there).
+    pub unplaced: Option<MessageBox>,
+    /// Begin's message over a map where fewer than two of the hot seat's players hold a colour
+    /// (GENRLTXT 83 in an OK box, E27 M3 T4b; none: Begin does nothing there).
+    pub too_few: Option<MessageBox>,
     /// The description's font (`smalfont.fnt`, its metrics: E27 M3 T2c, the split); none: the
     /// description one label, never scrolling.
     pub description_font: Option<Font>,
@@ -1483,15 +1489,23 @@ impl Scenario {
 
     /// Begin (186, `scenario_begin` 0x58BCE0): over an empty list GENRLTXT 530 in an OK box, the
     /// original's only once a map of a known format was shown (its check of the game's map comes
-    /// first: with no map at all Begin does nothing, CLT-Q114 (b)); with a map nothing yet (the
-    /// game's begin: T6).
+    /// first: with no map at all Begin does nothing, CLT-Q114 (b)); over a map the advanced
+    /// options' refusal (E27 M3 T4b, `scenario_begin_tail` 0x58C11F: GENRLTXT 531, the hot seat's
+    /// 83; [`Advanced::refusal`]), else nothing yet (the game's begin: T6).
     fn begin(&mut self) -> bool {
-        if self.entry().is_some() {
-            return false;
-        }
-        let checked =
-            self.bugs == Bugs::Fixed || self.game.as_ref().is_some_and(|g| g.format.is_some());
-        match self.texts.no_maps.clone().filter(|_| checked) {
+        let message = if self.entry().is_some() {
+            let map = self.players();
+            match self.advanced.as_ref().and_then(|a| a.refusal(&map)) {
+                Some(Refusal::Unplaced) => self.texts.unplaced.clone(),
+                Some(Refusal::TooFew) => self.texts.too_few.clone(),
+                None => None,
+            }
+        } else {
+            let checked =
+                self.bugs == Bugs::Fixed || self.game.as_ref().is_some_and(|g| g.format.is_some());
+            self.texts.no_maps.clone().filter(|_| checked)
+        };
+        match message {
             Some(message) => {
                 self.over = Over::Notice(Box::new(Open::new(message)));
                 true
@@ -2125,13 +2139,17 @@ impl Scenario {
         Did::CHANGED
     }
 
-    /// Begin's message after an input: its OK closes it, the screen drawn again whole as the box
-    /// takes its pixels back.
+    /// Begin's message after an input: its OK closes it, the box taking its pixels back (the
+    /// screen as it was: in the original's profile a flags' strip a flag's press left stale stays
+    /// so, E27 M3 T4b, `adv-hotseat-two` closed-1).
     fn answered(&mut self, outcome: Outcome) -> Did {
         match outcome {
             Outcome::Nothing => Did::default(),
             Outcome::Changed => Did::CHANGED,
-            Outcome::Closed(_) => self.close_help(),
+            Outcome::Closed(_) => {
+                self.over = Over::Nothing;
+                Did::CHANGED
+            }
         }
     }
 

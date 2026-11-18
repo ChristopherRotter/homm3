@@ -3055,6 +3055,16 @@ original = [{ at = "GENRLTXT:509" }]
 id = "shell.scenario.no-maps"
 original = [{ at = "GENRLTXT:530" }]
 
+# Begin's messages over a map (E27 M3 T4b; design §3.6, §29: `scenario_begin_tail` 0x58C11F): a
+# player without a colour, fewer than two of the hot seat's players placed.
+[[key]]
+id = "shell.scenario.unplaced"
+original = [{ at = "GENRLTXT:531" }]
+
+[[key]]
+id = "shell.scenario.too-few"
+original = [{ at = "GENRLTXT:83" }]
+
 # The scenario list (E27 M3 T1b1; design §3.2, §3.4; `scenario_dialog_redraw` 0x584550): the title
 # of a new game's screen (`scenario_titles` 0x6A8098: ArrayTxt.txt 229), the sizes' label, the
 # players column ("%d/%d", 0x679DC8: the colours anyone plays and those a human may), the size
