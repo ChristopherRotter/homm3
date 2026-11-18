@@ -185,7 +185,8 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   recordings (**done** 2026-11-17, the log's "M4 T2a1"), T2a2, the viewer (**done** 2026-11-18,
   whole: the user kept it uncut; the log's "M4 T2a2"); T2b, the questions and
   choices, cut in two by the user at its start (2026-11-18, as T2a): T2b1, the reading and the
-  recordings (**done** 2026-11-18, the log's "M4 T2b1"), T2b2, the viewer; T2c, a level-up's choice, T2d, the map changed
+  recordings (**done** 2026-11-18, the log's "M4 T2b1"), T2b2, the viewer (**done** 2026-11-18,
+  whole: the user kept it uncut; the log's "M4 T2b2"); T2c, a level-up's choice, T2d, the map changed
   by a visit; T3, a record's start (after the server lane's whole-game record
   and the adventure lane's object identity); T4, a record played; T5, the battles handed over
   (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
@@ -287,3 +288,32 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   price), and a hero's Diplomacy as its level alone, without a skill slot (what a monster's
   answer reads; no screen of M4 shows the hero's skills), so that each question shows without a
   seed's search.
+
+- **M4 T2b2, a question's facts without the engine** (*provisional*; design §5.4, *Built*): as
+  T2a2's finds, each question's facts come from the map and the live part at 0 (`asks::Ask::of`):
+  a dwelling's guards and hire a new game's (its growth from `CRTRAITS.TXT`; guards three weeks'
+  for a creature of level 5 or more, the levels the tables' `[map.asks]`, read from the
+  executable's `creature_table`); a monster's offer decided in integers (the hero's power, the
+  strength step, the sympathy pairs 2 n and 2 n + 1 below 112 without Conflux's, Normal's
+  difficulty, the Diplomacy the situation's: the game's float factor and 32-bit sum not
+  reproduced); a Border Guard's key from the Tents' marks; a chest's experience its gold less 500
+  (no Learning known); the Tomb's morale lost at its first search. M4's Part B (T3, T4) takes them
+  from the engine's offers and choices instead.
+- **M4 T2b2, the answers' ends** (*provisional*): a question answered tells nothing at a later
+  visit; a declined question from beside ends the step at its close; an answer not built is
+  refused in a recording and acts as the Cancel live; the status window built again before the
+  hire's question as before the guards'; GENRLTXT 424's singular for one creature (not recorded);
+  Pandora's reward boxes in the event's layout, the gain shown before the Box is taken;
+  `killfade.82M` a removal sound beside the pickups; a monster drawn as its attack
+  (`avwattak.def`) only when visited from beside.
+- **M4 T2b2, the choices** (*provisional*): a picture chosen at the press (the frame's own message
+  not read); the "or" an item of its own (id 0xFEFF); choice frames in styles 7 and 10 alone; a
+  visit on its entrance looks at the mouse again as a step's end does (its place in
+  `hero_move_step` not read); the tables' `chest`, `arena`, `school`, `school_price`.
+- **M4 T2b2, the cursor after a walk from the recording** (*provisional*): over the view after a
+  walk the original's cursor is the tile's (the pathfinder's reach), which the viewer has not (the
+  arrow: TRAPS, "After a walk the mouse-over has no reach"); a sequence takes that cursor's frame
+  from its recorded timeline (`Start::reached`, as `Start::points` the points since M3 T4b), so
+  four of the six choices (`choose-chest`, `-chest-gold`, `-arena`, `-school`) check only when it
+  changes. Live the arrow. The engine's reach (Part B) replaces it; the alternative, re-recording
+  them with the mouse moved off the view before the box closes.

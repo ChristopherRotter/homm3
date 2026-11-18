@@ -3247,8 +3247,8 @@ choice's box in the handlers the engine's offers and choices copy (each handler'
 computer's answers not followed): `monster_visit_decision` 0x4A7740, `monster_join_free` 0x4A7000,
 `monster_join_for_gold` 0x4A7250, `monster_flee_offer` 0x4A6DF0, `visit_object` 0x4A84F0's Border
 Guard (0x4A8734) and Cartographer (0x4A8A14), `visit_guarded_resource` 0x4A4BE0,
-`visit_guarded_artifact` 0x49EEB0, `visit_mine` 0x4A39F0, `visit_creature_bank` 0x4A15D0,
-`visit_search_bank` 0x4AC440, `visit_tree_of_knowledge` 0x4A6710, `visit_warriors_tomb` 0x4A7C30,
+`visit_guarded_artifact` 0x49F070, `visit_mine` 0x4A39F0, `visit_creature_bank` 0x4A15D0,
+`visit_search_bank` 0x4AC490, `visit_tree_of_knowledge` 0x4A6710, `visit_warriors_tomb` 0x4A7C30,
 `visit_pandora_box` 0x4A0C50, `visit_pyramid` 0x4A4230, `visit_dwelling` 0x4A1950, `visit_arena`
 0x49E7D0, `chest_gold_or_experience` 0x4A6440, `visit_school_of_magic` 0x4A33E0
 (`visit_school_of_war` 0x4A7A40 the same code). `visit_guarded_scroll` 0x4A5AB0 and
@@ -3267,7 +3267,7 @@ and `seq-choose-*`).
   0x7801 (Escape) beside it (the OK's disabling at 0x4F6F2E; the Arena, the Schools). A disabled OK
   takes no key: Enter does nothing (recorded, `choose-chest` at 600). Every picture has a frame item
   one pixel out, hidden (0x4F72C9 to 0x4F7368: an H3DlgFrame at the picture's place less 1, its size
-  + 2, the game palette's entry 59, flags 0x400, id 0x7809 + its slot; its vtable then
+  + 2, the game palette's entry 45 (T2b2; read 59 at T2b1), flags 0x400, id 0x7809 + its slot; its vtable then
   `choice_frame_vtable` 0x63FE1C, whose right-click is a popup by the picture's type,
   `choice_frame_popup` 0x4F0B20, not read further). The "or" flag puts GENRLTXT 5 between the
   pictures (0x4F737D to 0x4F7461: a medfont text item centred on the box, one font height above the
@@ -3357,8 +3357,8 @@ and `seq-choose-*`).
   424 (423 none to hire, 426 no room; one creature's name the singular, not recorded) and the army
   joined. The catalogue's keys `map.ask.*` (30: the size words, GENRLTXT 421 to 426 and ADVEVENT's
   records); the tables' `[map.asks]`: each creature's level (`creature_table` 0x6703B8's +4 plus 1,
-  read from the SoD executable: the packs give the Air and Water Elementals level 4 where it has 2
-  and 3), the guards' `[5, 3]`, the Tree's prices (2 000 gold, 10 gems) and the Tomb's −3. The
+  read from the SoD executable: its Air and Water Elementals' 2 and 3 are the AB pack's, the
+  base pack's 4 RoE's), the guards' `[5, 3]`, the Tree's prices (2 000 gold, 10 gems) and the Tomb's −3. The
   timeline: `Found::blocks` (the object a key's step visits from beside until it is taken: a pile's
   and an artifact's with `taken` too, a guarded pile's alone) and `Found::ask` (`Question`: its box,
   `chooses`, `yes` an `Answer` of boxes and a gain); a find's question after its first boxes, on its
