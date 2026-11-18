@@ -68,6 +68,8 @@ pub struct ScenarioLayout {
     pub teams: TeamsLook,
     /// The description's split and scroll bar (E27 M3 T2c).
     pub description: DescriptionLook,
+    /// The advanced options (E27 M3 T3a).
+    pub advanced: super::scenario::AdvancedLook,
 }
 
 /// A cursor's DEF and frame.
@@ -251,6 +253,7 @@ pub fn names(layout: &ShellLayout) -> Vec<String> {
     names.extend(super::scenario::description_names(
         &layout.scenario.description,
     ));
+    names.extend(super::scenario::advanced_names(&layout.scenario.advanced));
     let m = &layout.message;
     names.extend(
         [

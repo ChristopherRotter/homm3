@@ -1,8 +1,9 @@
 //! A dialog's scroll bar (`H3DlgScrollbar`, vtable 0x641D50; E27 M3 T1b1, read for the scenario
-//! list's, design §19.2): two arrows, a track and a thumb, the value a tick of `ticks`. Only the
-//! vertical bar is built (a bar taller than wide; *provisional*: the horizontal one's art,
-//! `SlideBuH.def` and `iGPCrDiv.def`, and its x-axis twins of the rules below, wait for a screen
-//! that has one).
+//! list's, design §19.2): two arrows, a track and a thumb, the value a tick of `ticks`. The
+//! vertical bar is built whole (a bar taller than wide); the horizontal one (wider than tall: E27
+//! M3 T3a, the advanced options' turn duration, `SlideBuH.def` and `slider.pcx`, its button the
+//! DEF's width, `scrollbar_load_art` 0x596050) is drawn on the x axis, its input not yet
+//! (*provisional*: M3 T3c, the duration's bar).
 //!
 //! The original's rules:
 //! - **Its art** (`H3DlgScrollbar::Create` 0x5960D0, `loadButton` 0x596050): the DEF's frames 0
@@ -140,9 +141,19 @@ impl Scrollbar {
         self.held
     }
 
-    /// The thumb's travel: the height less three buttons (+0x44).
+    /// Whether the bar lies on the x axis (wider than tall: 0x596111).
+    const fn horizontal(&self) -> bool {
+        self.look.size[0] > self.look.size[1]
+    }
+
+    /// The thumb's travel: the length less three buttons (+0x44).
     const fn travel(&self) -> i32 {
-        self.look.size[1] - 3 * self.look.button
+        let length = if self.horizontal() {
+            self.look.size[0]
+        } else {
+            self.look.size[1]
+        };
+        length - 3 * self.look.button
     }
 
     /// Reset (0x5970F0): `ticks` ticks (at least 1), the value 0, the thumb at the top.
@@ -316,6 +327,9 @@ impl Scrollbar {
     #[must_use]
     pub fn draws(&self, place: [i32; 2]) -> Vec<Draw> {
         let [x, y] = [place[0] + self.look.at[0], place[1] + self.look.at[1]];
+        if self.horizontal() {
+            return self.horizontal_draws([x, y]);
+        }
         let [w, h] = self.look.size;
         let button = self.look.button;
         let offset = self.mouse[1] - self.look.at[1];
@@ -340,6 +354,36 @@ impl Scrollbar {
                 size: Some([w, h - 2 * button]),
             },
             frame(4, y + self.thumb),
+        ]
+    }
+}
+
+
+impl Scrollbar {
+    /// A horizontal bar's draw list at `[x, y]` (*provisional*, the vertical one's on the x axis):
+    /// the left arrow, the right one a button left of the end, the track between them, the thumb.
+    fn horizontal_draws(&self, [x, y]: [i32; 2]) -> Vec<Draw> {
+        let [w, h] = self.look.size;
+        let button = self.look.button;
+        let frame = |frame: u32, x: i32| Draw::Button {
+            def: self.look.def.clone(),
+            frame,
+            x,
+            y,
+            mirrored: false,
+            player: None,
+        };
+        alloc::vec![
+            frame(0, x),
+            frame(2, x + w - button),
+            Draw::Picture {
+                picture: self.look.track.clone(),
+                x: x + button,
+                y,
+                player: None,
+                size: Some([w - 2 * button, h]),
+            },
+            frame(4, x + self.thumb),
         ]
     }
 }

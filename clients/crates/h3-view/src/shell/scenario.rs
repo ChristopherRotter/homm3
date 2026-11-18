@@ -63,6 +63,7 @@
 //! 503 while the list is read again (a network game's message 1015 alone, `sub_58B120` 0x58B120:
 //! the network modes', `CLT-STUB-6`; design §20.3).
 
+use alloc::borrow::Cow;
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -81,10 +82,21 @@ use super::keys::{Command, Context, Scroll};
 use super::menu::{Arrow, Did, Hovers};
 use crate::message::{MessageBox, Open, Outcome};
 
+mod advanced;
 mod description;
 
+use advanced::Advanced;
+pub use advanced::{
+    AdvancedLook, AdvancedTexts, Bonus, CreatureRow, Pictured, PopupLook, Record, TownPopupLook,
+};
 use description::Description;
 pub use description::{DESCRIPTION_BYTES, DescriptionLook, description_names};
+
+/// Every asset the advanced options' look names (the adapter's batch at the shell's start).
+#[must_use]
+pub fn advanced_names(look: &AdvancedLook) -> Vec<String> {
+    Advanced::names(look)
+}
 
 /// Show Available Scenarios (128: S).
 pub const LIST: u16 = 128;
@@ -158,7 +170,7 @@ pub const DOUBLE_MS: u32 = 400;
 /// The labels and captions whose text the screen sets as it opens, by id, with their names in
 /// the key catalogue (`shell.scenario.<name>`): the constructor's texts (GENRLTXT's; the title
 /// ArrayTxt.txt's) and the list's sizes label the redraw draws.
-pub const LABELS: [(u16, &str); 14] = [
+pub const LABELS: [(u16, &str); 21] = [
     (TITLE, "title"),
     (SIZES, "sizes"),
     (132, "player-difficulty"),
@@ -173,6 +185,14 @@ pub const LABELS: [(u16, &str); 14] = [
     (LIST, "list"),
     (ADVANCED, "advanced"),
     (RANDOM, "random"),
+    // The advanced options' (E27 M3 T3a).
+    (advanced::TITLE, "advanced-title"),
+    (advanced::SUBTITLE, "advanced-subtitle"),
+    (339, "name-header"),
+    (342, "town-header"),
+    (343, "hero-header"),
+    (344, "bonus-header"),
+    (340, "duration-label"),
 ];
 
 /// The labels whose word takes a colon (the executable's "%s:": the player's difficulty, the
@@ -250,13 +270,33 @@ impl Format {
     }
 }
 
-/// Who may play a colour (the map's player +0 and +1).
+/// Who may play a colour (the map's player +0 and +1) and what the advanced options offer it
+/// (E27 M3 T3a: the player's +8, +0xA, +0xB, +0x18, +0x1C and +0x20; design §3.14).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Seat {
     /// A human may.
     pub human: bool,
     /// The computer may.
     pub computer: bool,
+    /// The factions it may start with (bit per faction, Castle bit 0 to Conflux bit 8).
+    pub factions: u16,
+    /// The map's random-town flag (the dialog then offers a choice of town).
+    pub random_town: bool,
+    /// Its main town generates its starting hero.
+    pub generates: bool,
+    /// The random-hero flag.
+    pub random_hero: bool,
+    /// The main hero the map customises, if any.
+    pub main_hero: Option<MainHero>,
+}
+
+/// A colour's main hero as the map's header customises it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct MainHero {
+    /// Its hero type.
+    pub hero_type: u8,
+    /// Its portrait (the type's own when the map gives none).
+    pub portrait: u8,
 }
 
 impl Seat {
@@ -415,6 +455,8 @@ pub struct Texts {
     /// The description's font (`smalfont.fnt`, its metrics: E27 M3 T2c, the split); none: the
     /// description one label, never scrolling.
     pub description_font: Option<Font>,
+    /// The advanced options (E27 M3 T3a; none: Show Advanced Options does nothing).
+    pub advanced: Option<AdvancedTexts>,
 }
 
 /// The teams' dialog's look (`scenario_teams_dialog` 0x576540; the layout's `[scenario.teams]`):
@@ -525,8 +567,9 @@ enum Over {
     Nothing,
     /// An item's help popup, while the right button is held.
     Help(u16),
-    /// The teams' dialog (`scenario_teams_dialog` 0x576540), while the right button is held.
-    Teams(MessageBox),
+    /// The teams' dialog (`scenario_teams_dialog` 0x576540) or an advanced option's popup (E27 M3
+    /// T3a: a town's, a bonus's), while the right button is held.
+    Popup(MessageBox),
     /// Begin's message over an empty list (GENRLTXT 530), until its OK.
     Notice(Box<Open>),
 }
@@ -580,6 +623,10 @@ pub struct Scenario {
     /// The map the game holds (`scenario_to_game` 0x583580: the last one shown), whose players
     /// the original's flags and teams' dialog keep over an empty list; none before one showed.
     game: Option<Entry>,
+    /// The advanced options (E27 M3 T3a), none without their texts.
+    advanced: Option<Advanced>,
+    /// The selection the last select made (+0x374 as `scenario_select` 0x585500 compares it).
+    last_select: Option<usize>,
     background: u8,
     over: Over,
     hovers: Hovers,
@@ -593,12 +640,27 @@ impl Scenario {
     /// `bugs`; the list hidden, the flags too until a map shows (the constructor's).
     #[must_use]
     pub fn new(
-        dialog: Dialog,
+        mut dialog: Dialog,
         (look, description): (ListLook, DescriptionLook),
         texts: Texts,
         entries: Vec<Entry>,
         bugs: Bugs,
     ) -> Self {
+        // The advanced options' rows (E27 M3 T3a): each colour's items where the constructor adds
+        // them, before the options' headers (or Show Available Scenarios).
+        // (An opening anew passes the dialog with them.)
+        let advanced = texts.advanced.clone().map(|a| {
+            if !dialog.items.iter().any(|i| i.id() == advanced::FLAG) {
+                let items = Advanced::items(&a.look);
+                let at = dialog
+                    .items
+                    .iter()
+                    .position(|i| i.id() == advanced::HEADERS[0] || i.id() == LIST)
+                    .unwrap_or(dialog.items.len());
+                dialog.items.splice(at..at, items);
+            }
+            Advanced::new(a)
+        });
         let mut shown = Shown::default();
         for (id, text) in &texts.labels {
             shown.texts.insert(*id, text.clone());
@@ -637,11 +699,16 @@ impl Scenario {
             difficulty: OPENING_DIFFICULTY,
             chosen,
             game: None,
+            advanced,
+            last_select: None,
             background: 0,
             over: Over::Nothing,
             hovers: Hovers::default(),
             bugs,
         };
+        if let Some(advanced) = &mut scenario.advanced {
+            advanced.hide(&mut scenario.shown);
+        }
         scenario.list_items(false);
         scenario.selecting()
     }
@@ -737,6 +804,19 @@ impl Scenario {
         self.showing
     }
 
+    /// Each colour's record of the advanced options, red first (E27 M3 T3a: the town, the hero, the
+    /// bonus and the handicap chosen; the game's begin hands them on, T6); none without them.
+    #[must_use]
+    pub fn records(&self) -> Option<[Record; 8]> {
+        self.advanced.as_ref().map(Advanced::records)
+    }
+
+    /// Whether the advanced options show.
+    #[must_use]
+    pub fn advanced_showing(&self) -> bool {
+        self.advanced.as_ref().is_some_and(Advanced::showing)
+    }
+
     /// The chosen difficulty (0 easy to 4 impossible).
     #[must_use]
     pub const fn difficulty(&self) -> u8 {
@@ -819,6 +899,10 @@ impl Scenario {
             self.whole();
             return;
         }
+        // The advanced options hidden first (`scenario_advanced_hide` 0x581B20; E27 M3 T3a).
+        if let Some(advanced) = &mut self.advanced {
+            advanced.hide(&mut self.shown);
+        }
         self.list_items(true);
         self.showing = true;
         if !self.built {
@@ -851,6 +935,48 @@ impl Scenario {
                 row
             };
         }
+    }
+
+    /// The map whose players the advanced options show: the entry selected, else the game's (the
+    /// last shown; E27 M3 T3a).
+    fn players(&self) -> ([Seat; 8], Option<u8>) {
+        self.entry()
+            .or(self.game.as_ref())
+            .map_or(([Seat::default(); 8], None), |e| {
+                (e.seats, e.local().and_then(|c| u8::try_from(c).ok()))
+            })
+    }
+
+    /// Show Advanced Options (129, `scenario_advanced_toggle` 0x581100; E27 M3 T3a): shown, hidden;
+    /// else the list hidden, the map given to the game again (the description from its first
+    /// line) and the options shown over it; the screen redrawn whole.
+    fn toggle_advanced(&mut self) {
+        let showing = self.advanced.as_ref().is_some_and(Advanced::showing);
+        if showing {
+            if let Some(advanced) = &mut self.advanced {
+                advanced.hide(&mut self.shown);
+            }
+        } else {
+            if self.showing {
+                self.showing = false;
+                self.list_items(false);
+            }
+            let (seats, local) = self.players();
+            if let Some(advanced) = &mut self.advanced {
+                advanced.show((&seats, local), &mut self.dialog, &mut self.shown);
+            }
+            self.give_to_game();
+        }
+        self.whole();
+    }
+
+    /// An advanced option's arrow `id` clicked (E27 M3 T3a): its row drawn again; whether it was
+    /// one.
+    fn advanced_click(&mut self, id: u16) -> bool {
+        let (seats, _) = self.players();
+        self.advanced
+            .as_mut()
+            .is_some_and(|a| a.click(id, &seats, &mut self.shown))
     }
 
     /// The full list sorted by `key` (`scenario_list_sort` 0x585050), the shown list rebuilt in
@@ -1116,6 +1242,14 @@ impl Scenario {
         if let Some(file) = self.entry().map(|e| e.file.clone()) {
             self.kept = file;
         }
+        // A changed selection makes the advanced options' rows again at their next showing
+        // (+0x1854; E27 M3 T3a).
+        if self.selected != self.last_select {
+            self.last_select = self.selected;
+            if let Some(advanced) = &mut self.advanced {
+                advanced.selection_changed();
+            }
+        }
         self.give_to_game();
         self.show();
     }
@@ -1217,6 +1351,10 @@ impl Scenario {
             draws.extend(self.bar.draws(self.dialog.place));
             draws.extend(self.row_draws());
         }
+        if let Some(advanced) = &self.advanced {
+            let (seats, _) = self.players();
+            draws.extend(advanced.draws(&seats, &self.dialog, &self.shown, players));
+        }
         draws
     }
 
@@ -1314,7 +1452,7 @@ impl Scenario {
                 .get(id)
                 .map(|m| m.dialog.draws(&m.shown, players))
                 .unwrap_or_default(),
-            Over::Teams(m) => m.dialog.draws(&m.shown, players),
+            Over::Popup(m) => m.dialog.draws(&m.shown, players),
             Over::Notice(open) => open.message.dialog.draws(&open.message.shown, players),
             Over::Nothing => Vec::new(),
         }
@@ -1342,9 +1480,12 @@ impl Scenario {
             return self.described();
         }
         match &mut self.over {
-            Over::Nothing => Did::held(self.input.moved(&self.dialog, &mut self.shown, point)),
+            Over::Nothing => {
+                let dialog = mouse_dialog(&self.dialog, &self.shown, self.advanced.is_some());
+                Did::held(self.input.moved(&dialog, &mut self.shown, point))
+            }
             Over::Notice(open) => Did::of_box(open.moved(point)),
-            Over::Help(_) | Over::Teams(_) => Did::default(),
+            Over::Help(_) | Over::Popup(_) => Did::default(),
         }
     }
 
@@ -1356,7 +1497,7 @@ impl Scenario {
             Over::Nothing => {}
             Over::Help(_) => return self.close_help(),
             // The dialog's procedure (0x575430) takes the right release alone.
-            Over::Teams(_) => return Did::default(),
+            Over::Popup(_) => return Did::default(),
             Over::Notice(open) => return Did::box_press(open.press(point)),
         }
         let inside = self.inside(point);
@@ -1376,14 +1517,14 @@ impl Scenario {
             }
             _ => {}
         }
-        let hidden = self
-            .dialog
-            .item_at(point)
-            .is_some_and(|item| self.shown.state(item.id()).hidden);
+        let dialog = mouse_dialog(&self.dialog, &self.shown, self.advanced.is_some());
+        let hidden = dialog.item_at(point).is_some_and(|item| {
+            self.shown.state(item.id()).hidden || !Advanced::takes(item.id())
+        });
         if hidden {
             return Did::default();
         }
-        Did::held(self.input.press(&self.dialog, &mut self.shown, point))
+        Did::held(self.input.press(&dialog, &mut self.shown, point))
     }
 
     /// The left button released: the bar let go, a row clicked (in the original's profile
@@ -1411,7 +1552,7 @@ impl Scenario {
                 self.clicked(did.changed, did.clicked)
             }
             Over::Help(_) => self.close_help(),
-            Over::Teams(_) => Did::default(),
+            Over::Popup(_) => Did::default(),
             Over::Notice(open) => {
                 let outcome = open.release();
                 self.answered(outcome)
@@ -1438,9 +1579,16 @@ impl Scenario {
         };
         if id == Some(TEAMS) {
             return self.teams_dialog().map_or_else(Did::default, |m| {
-                self.over = Over::Teams(m);
+                self.over = Over::Popup(m);
                 Did::CHANGED
             });
+        }
+        // A town's or a bonus's popup of the advanced options (E27 M3 T3a).
+        let (seats, _) = self.players();
+        let popup = id.and_then(|id| self.advanced.as_ref()?.popup(id, &seats));
+        if let Some(m) = popup {
+            self.over = Over::Popup(m);
+            return Did::CHANGED;
         }
         match id.filter(|id| self.texts.help.contains_key(id)) {
             Some(id) => {
@@ -1539,7 +1687,7 @@ impl Scenario {
             return self.release();
         }
         match &mut self.over {
-            Over::Help(_) | Over::Teams(_) => self.close_help(),
+            Over::Help(_) | Over::Popup(_) => self.close_help(),
             // A box's button the mouse holds goes up as at a left release (CLT-Q72 (a)).
             Over::Notice(open) if open.holds_mouse() => {
                 let outcome = open.release();
@@ -1603,7 +1751,7 @@ impl Scenario {
                 did.changed |= stepped;
                 did
             }
-            Over::Help(_) | Over::Teams(_) => {
+            Over::Help(_) | Over::Popup(_) => {
                 let did = self.input.let_go(&mut self.shown, Some(by));
                 Did {
                     changed: did.changed,
@@ -1678,6 +1826,11 @@ impl Scenario {
         if id == LIST {
             self.toggle_list();
             did.changed = true;
+        } else if id == ADVANCED && self.advanced.is_some() {
+            self.toggle_advanced();
+            did.changed = true;
+        } else if self.advanced_click(id) {
+            did.changed = true;
         } else if let Some(&(_, size)) = FILTERS.iter().find(|&&(f, _)| f == id) {
             self.filter_by(size);
             did.changed = true;
@@ -1692,6 +1845,20 @@ impl Scenario {
         }
         did
     }
+}
+
+/// `dialog` as the mouse finds its items: with the advanced options (`advanced`), without their
+/// hidden items (E27 M3 T3a: their headers and rows lie over the list's columns, filters and rows;
+/// the original's `dialog_item_at` 0x5FF3E0 passes over a hidden item, the shared input does not).
+fn mouse_dialog<'d>(dialog: &'d Dialog, shown: &Shown, advanced: bool) -> Cow<'d, Dialog> {
+    if !advanced {
+        return Cow::Borrowed(dialog);
+    }
+    let mut dialog = dialog.clone();
+    dialog
+        .items
+        .retain(|i| !(Advanced::owns(i.id()) && shown.state(i.id()).hidden));
+    Cow::Owned(dialog)
 }
 
 /// Whether the partial redraw (`scenario_select` 0x585500 with the selection unchanged, from

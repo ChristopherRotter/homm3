@@ -8,10 +8,10 @@
 use std::fs;
 use std::path::Path;
 
-use h3_map::model::{Loss, Version, Victory, VictoryGoal};
+use h3_map::model::{Loss, Player, Version, Victory, VictoryGoal};
 use h3_map::{Limits, RawMap};
 use h3_ui::text::decode_1252;
-use h3_view::shell::scenario::{self, DESCRIPTION_BYTES, Entry, Format, Seat};
+use h3_view::shell::scenario::{self, DESCRIPTION_BYTES, Entry, Format, MainHero, Seat};
 
 /// The maps' folder of an installation (`maps`, as the original names it: the copy's `Maps`).
 const MAPS: &str = "Maps";
@@ -105,11 +105,34 @@ pub fn entry(file: String, map: &RawMap) -> Entry {
         victory,
         standard,
         loss,
-        seats: map.players.each_ref().map(|p| Seat {
-            human: p.human,
-            computer: p.computer,
-        }),
+        seats: map.players.each_ref().map(seat),
         teams,
+    }
+}
+
+/// A colour's seat (E27 M3 T3a: what the advanced options offer it): who may play it, its
+/// factions and flags, its main hero.
+fn seat(player: &Player) -> Seat {
+    let details = player.details.as_ref();
+    Seat {
+        human: player.human,
+        computer: player.computer,
+        factions: details.map_or(0, |d| d.allowed_towns),
+        random_town: details.is_some_and(|d| d.random_town),
+        generates: details
+            .and_then(|d| d.main_town)
+            .is_some_and(|t| t.generate_hero),
+        random_hero: details.is_some_and(|d| d.random_hero),
+        main_hero: details
+            .and_then(|d| d.main_hero.as_ref())
+            .map(|h| MainHero {
+                hero_type: h.hero_type,
+                portrait: if h.portrait == 0xFF {
+                    h.hero_type
+                } else {
+                    h.portrait
+                },
+            }),
     }
 }
 
