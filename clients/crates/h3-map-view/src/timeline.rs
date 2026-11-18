@@ -68,6 +68,16 @@
 //! monster taken), and an answer may take its object off the map with its sound
 //! ([`Answer::taken`]: the dissolve), build the status window again and reveal terrains
 //! ([`Draw::revealed`]: the view and the minimap drawn again).
+//!
+//! A level-up's choice (E24 M4 T2c, design §5.5, *provisional*): the experience a visit gives
+//! ([`Gain::experience`]: the Learning Stone's, a chest's, an event's rewards) takes the selected
+//! hero to the levels it reaches (the tables' thresholds, from [`Start::experience`]); each
+//! level's dialog ([`Start::level_ups`], laid out by the adapter from `crate::levels`: the
+//! recording's facts, Part B the engine's) opens with its sound where the visit's handler calls
+//! `hero_level_up` 0x4DA720 (after the visit's boxes; a chest's after its dissolve), the next in
+//! the millisecond the last closes; its keys 1 and 2 ([`Action::Offer`]) or a click on a picture
+//! or its frame choose an offer, its OK (Enter and Escape) closes it; after the last the primary
+//! skills raised are shown and the mouse looked at again.
 
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
@@ -86,6 +96,7 @@ use crate::asks::Fade;
 use crate::finds::{FindArt, Gain, pickup};
 use crate::hover::{self, Hint, Hover, PanelItems, Selection};
 use crate::layout::{AdventureLayout, DIRECTIONS};
+use crate::levels::{self, LevelArt};
 use crate::lists::{SLOTS, top_showing};
 use crate::live::{
     Arrow, Attacking, Buttons, Chosen, ChosenHero, ChosenTown, Date, DateStatus, FoundStatus,
@@ -240,6 +251,11 @@ pub enum Action {
     BoxKey(Key),
     /// Its key released: the button it pressed clicks.
     BoxKeyUp(Key),
+    /// The key 1 or 2 (scan codes 2 and 3; E24 M4 T2c, design §5.5): a level-up's dialog's left
+    /// or right offer chosen (`level_up_dialog_proc` 0x4F9780); elsewhere nothing
+    /// (*provisional*: the map's own keys, `adventure_key_down` 0x408C40, not read for them).
+    /// Its release is [`Action::Up`].
+    Offer(usize),
 }
 
 impl Action {
@@ -278,6 +294,7 @@ impl Action {
                 | Self::RightPress
                 | Self::Key(_)
                 | Self::BoxKey(_)
+                | Self::Offer(_)
                 | Self::Visit
         )
     }
@@ -418,6 +435,9 @@ pub enum Unplayable {
     /// A question's OK whose answer is not built (E24 M4 T2b2: a battle, a level-up, the recruit
     /// dialog; the engine's, M4 T5 and M5), by its find's tile.
     Answer([i32; 3]),
+    /// A level the selected hero's experience reaches whose dialog the facts lack (E24 M4 T2c: a
+    /// recording's `[[level_up]]` tables; the engine's from Part B), by the level.
+    LevelUp(u8),
 }
 
 impl fmt::Display for Unplayable {
@@ -437,6 +457,9 @@ impl fmt::Display for Unplayable {
                     f,
                     "the answer of the question at ({x}, {y}, {z}) (the engine's)"
                 )
+            }
+            Self::LevelUp(level) => {
+                write!(f, "the level-up to level {level}: its facts not given")
             }
         }
     }
@@ -503,6 +526,9 @@ pub struct Rules {
     /// The finds' numbers (E24 M4 T2a2 part B): kind 6's time, the dissolve's rectangle and step,
     /// the pickup's sounds.
     pub finds: FindArt,
+    /// A level-up's numbers (E24 M4 T2c): the experience each level starts at, the dialog's
+    /// sound.
+    pub level_up: LevelArt,
 }
 
 impl Rules {
@@ -535,6 +561,7 @@ impl Rules {
             other: tables.map.status.other,
             busy: layout.cursor.busy,
             finds: tables.map.finds.clone(),
+            level_up: tables.map.level_up.clone(),
         }
     }
 
@@ -758,6 +785,28 @@ pub struct Start {
     /// The viewer's boxes of a turn without a town (E24 M4 T2a2); none: the scenario's test is
     /// not played.
     pub town: Option<TownBoxes>,
+    /// The selected hero's experience at 0 (E24 M4 T2c, design §5.5, *provisional*: a
+    /// situation's, which the map gives it; the engine's from Part B): the levels a visit's
+    /// experience reaches from it. None: not known (a new game's draw), and no level is reached.
+    pub experience: Option<u32>,
+    /// The selected hero's level-ups' dialogs, by their level (E24 M4 T2c: the adapter's, laid
+    /// out from a recording's facts).
+    pub level_ups: Vec<LevelBox>,
+}
+
+/// A level-up's dialog (E24 M4 T2c, design §5.5, *provisional*: laid out by the adapter,
+/// `crate::levels::dialog`, from the facts `crate::levels::LevelUp`): the level it shows, the
+/// dialog, its offers and the primary skill it raises.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LevelBox {
+    /// The new level.
+    pub level: u8,
+    /// The dialog.
+    pub dialog: Arc<MessageBox>,
+    /// Its offers, the left first (none to two).
+    pub offers: Vec<levels::Offer>,
+    /// The primary skill raised (0 Attack to 3 Knowledge).
+    pub primary: u8,
 }
 
 /// A find's boxes (E24 M4 T2a2, design §5.3, *provisional*: the viewer's facts at 0,
@@ -839,6 +888,9 @@ pub struct Answer {
     pub then: Option<Box<Question>>,
     /// The object taken off the map, and its sound.
     pub taken: Option<(usize, Fade)>,
+    /// What the panels show at the taken object's dissolve's end (E24 M4 T2c: a chest's
+    /// experience, its levels after the chest's removal).
+    pub after: Gain,
     /// The terrains revealed (a bit per terrain, `reveal_terrain_mask` 0x4CA240).
     pub reveal: u32,
     /// A Cancel's answer marks the find answered as an OK's does (E24 M4 T2b2 part B: the
@@ -1233,6 +1285,13 @@ pub struct Loop {
     /// The single draws of a computer's step at speed 4 in this millisecond, each as the screen
     /// showed it ([`Loop::take_held`]).
     within: Vec<State>,
+    /// The selected hero's experience ([`Start::experience`]) and level (E24 M4 T2c), the map's
+    /// hero they are of (the selected one at 0) and its level-ups' dialogs
+    /// ([`Start::level_ups`]).
+    experience: Option<u32>,
+    hero_level: u8,
+    experienced: Option<usize>,
+    level_ups: Arc<Vec<LevelBox>>,
 }
 
 /// A computer player's turn under way (E24 M4 T1b2, design §5.2, *provisional*): its facts, kind
@@ -1281,6 +1340,30 @@ struct Boxed {
     open: Open,
     /// The cursor's type and frame before the box.
     cursor: [u32; 2],
+}
+
+/// Level-ups under way (E24 M4 T2c, design §5.5): the dialog open, those after it, what they
+/// raised so far (shown at the last's close: the primary skills, a Leadership's morale, a Luck's
+/// luck) and what follows the last.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Leveling {
+    open: LevelBox,
+    rest: VecDeque<LevelBox>,
+    raised: Gain,
+    after: After,
+}
+
+/// What follows a visit's level-ups (E24 M4 T2c): where its handler called `hero_level_up`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum After {
+    /// A find's first visit's end (its place among [`Start::finds`]): an event's slot and the
+    /// scenario's test, then the idle step ([`Loop::found_end`]).
+    Found(usize),
+    /// An answer's end (its find's place): the status window, its next question, its object
+    /// taken or its terrains revealed ([`Loop::answer_end`]).
+    Answer(usize, Box<Answer>),
+    /// A dissolve's end: the step's end, then the actions given meanwhile.
+    Step(Vec<Action>),
 }
 
 /// An object's dissolve under way (E24 M4 T2a2 part B, design §5.3): its start, the draw before
@@ -1337,6 +1420,9 @@ enum Told {
     /// A question's answer's box (its find's place, the box's among the answer's, the answer):
     /// its close opens the next, after the last the answer's end ([`Loop::answered`]).
     Answer(usize, usize, Box<Answer>),
+    /// A level-up's dialog (E24 M4 T2c): its close raises its primary skill and opens the next
+    /// level's, after the last [`Loop::leveled`].
+    Level(Box<Leveling>),
     /// The days left to take a town: at its close the turn's selection's window built again
     /// (*provisional*: `turn-no-town` at 2060 shows the date's window unstepped, as `hero_select`
     /// after the box would build it; not read), then the idle step.
@@ -1489,6 +1575,10 @@ impl Loop {
             ai: None,
             ai_step: None,
             within: Vec::new(),
+            experience: start.experience,
+            hero_level: start.experience.map_or(1, |e| rules.level_up.level_of(e)),
+            experienced: start.index,
+            level_ups: Arc::new(start.level_ups.clone()),
             rules,
         };
         // The status window at 0 (E24 M3 T5b2): the kind asked, else the date's or the kingdom's
@@ -1612,8 +1702,14 @@ impl Loop {
                 && let Some(dissolving) = self.dissolving.take()
             {
                 self.gain(dissolving.gain);
-                self.finish(t, true);
-                self.resume(t, dissolving.queued)?;
+                // The levels its experience reaches (E24 M4 T2c: a chest's after its removal,
+                // `level-up-twice` at 1980), the step's end after them.
+                if let Some(After::Step(queued)) =
+                    self.level_up(t, After::Step(dissolving.queued))?
+                {
+                    self.finish(t, true);
+                    self.resume(t, queued)?;
+                }
             }
         } else {
             self.turn_of_loop(t)?;
@@ -1805,7 +1901,8 @@ impl Loop {
             | Action::RightPress
             | Action::RightRelease
             | Action::BoxKey(_)
-            | Action::BoxKeyUp(_) => {}
+            | Action::BoxKeyUp(_)
+            | Action::Offer(_) => {}
         }
         Ok(())
     }
@@ -2598,16 +2695,41 @@ impl Loop {
     }
 
     /// An input's message to the open box ([`Loop::box_act`]): a button pressed or released
-    /// drawn and shown, a press with its sound; the id of the button whose click closes it.
+    /// drawn and shown, a press with its sound; the id of the button whose click closes it. A
+    /// level-up's dialog (E24 M4 T2c, design §5.5) takes its keys 1 and 2 and a press on an
+    /// offer's picture or frame as the offer's choice ([`levels::choose`]: the dialog drawn again)
+    /// and Escape as its OK's hotkey.
     fn box_input(&mut self, t: u32, action: Action) -> Option<u16> {
         let boxed = self.boxed.as_mut()?;
         let before = pressed(&boxed.open);
+        let offers = match &boxed.told {
+            Told::Level(leveling) => Some(leveling.open.offers.len()),
+            _ => None,
+        };
+        let message = &mut boxed.open.message;
+        let choose = |message: &mut MessageBox, n: usize, offers: usize| {
+            if levels::choose(message, n, offers) {
+                Outcome::Changed
+            } else {
+                Outcome::Nothing
+            }
+        };
         let outcome = match action {
             Action::Pointer(at) => boxed.open.moved(at),
-            Action::Press(at) => boxed.open.press(at),
+            Action::Press(at) => match offers.zip(levels::offer_at(message, at)) {
+                Some((offers, n)) => choose(message, n, offers),
+                None => boxed.open.press(at),
+            },
             Action::Release(_) | Action::RightRelease => boxed.open.release(),
+            Action::BoxKey(Key::Cancel) if offers.is_some() => {
+                boxed.open.key(Key::Ok, key_name(Key::Cancel))
+            }
             Action::BoxKey(key) => boxed.open.key(key, key_name(key)),
             Action::BoxKeyUp(key) => boxed.open.key_up(key_name(key)),
+            Action::Offer(n) => match offers {
+                Some(offers) => choose(message, n, offers),
+                None => Outcome::Nothing,
+            },
             _ => Outcome::Nothing,
         };
         match outcome {
@@ -2633,8 +2755,10 @@ impl Loop {
             return Ok(());
         };
         self.drawn.message = None;
-        let [kind, frame] = boxed.cursor;
-        self.set_cursor(kind, frame);
+        // The cursor before it set again where the mouse manager last drew it (the poll moves
+        // it: recorded, `level-up-right`'s OK clicked at 2000, the cursor at its old place until
+        // 2013; E24 M4 T2c).
+        [self.cursor.kind, self.cursor.frame] = boxed.cursor;
         match boxed.told {
             Told::Found(i, k) => return self.found_closed(t, i, k),
             Told::Asked(i, question) => {
@@ -2646,6 +2770,10 @@ impl Loop {
                 return self.answer(t, i, *question, id);
             }
             Told::Answer(i, k, answer) => return self.answered(t, i, k + 1, *answer),
+            Told::Level(leveling) => {
+                let chosen = levels::chosen(&boxed.open.message, leveling.open.offers.len());
+                return self.leveled(t, *leveling, chosen);
+            }
             Told::DaysLeft => self.choose(t, true),
             _ => {}
         }
@@ -2689,17 +2817,130 @@ impl Loop {
             return Ok(());
         }
         self.gain(found.gain);
-        if found.event {
+        // The levels its experience reaches (E24 M4 T2c: the Learning Stone's after its box,
+        // `level-up` at 1060; an event's after its rewards' boxes, `grant_rewards`).
+        if let Some(After::Found(i)) = self.level_up(t, After::Found(i))? {
+            return self.found_end(t, i);
+        }
+        Ok(())
+    }
+
+    /// Find `i`'s first visit's end after its gain (and since E24 M4 T2c its level-ups): an
+    /// event's hero's slot drawn and the scenario's test (its warning a box of its own), else the
+    /// idle step.
+    fn found_end(&mut self, t: u32, i: usize) -> Result<(), Unplayable> {
+        let event = self.finds.get(i).is_some_and(|f| f.event);
+        if event {
             self.draw_slot();
         }
-        if found.event
-            && let Some(warning) = self.town_test()?
-        {
+        if event && let Some(warning) = self.town_test()? {
             self.open_box(warning, Told::Plain);
             return Ok(());
         }
         self.idle_message(t);
         Ok(())
+    }
+
+    /// The selected hero's levels its experience now reaches (E24 M4 T2c, design §5.5:
+    /// `hero_level_up` 0x4DA720, a level at a time), each with its level's dialog
+    /// ([`Start::level_ups`]); none while its experience is not known (a hero's other than the
+    /// one at 0, *provisional*). A level whose dialog the facts lack is refused in a recording
+    /// ([`Unplayable::LevelUp`]) and passed over live.
+    fn levels_due(&mut self) -> Result<VecDeque<LevelBox>, Unplayable> {
+        let mut due = VecDeque::new();
+        let Some(experience) = self.experience.filter(|_| self.index == self.experienced) else {
+            return Ok(due);
+        };
+        let reached = self.rules.level_up.level_of(experience);
+        while self.hero_level < reached {
+            self.hero_level += 1;
+            let level = self.hero_level;
+            match self.level_ups.iter().find(|b| b.level == level) {
+                Some(up) => due.push_back(up.clone()),
+                None => self.unbuilt(Unplayable::LevelUp(level))?,
+            }
+        }
+        Ok(due)
+    }
+
+    /// The level-ups due now shown one after another (E24 M4 T2c), `after` following the last;
+    /// `after` given back when none is due.
+    fn level_up(&mut self, t: u32, after: After) -> Result<Option<After>, Unplayable> {
+        let mut due = self.levels_due()?;
+        let Some(open) = due.pop_front() else {
+            return Ok(Some(after));
+        };
+        self.open_level(
+            t,
+            Leveling {
+                open,
+                rest: due,
+                raised: Gain::default(),
+                after,
+            },
+        );
+        Ok(None)
+    }
+
+    /// The dialog of `leveling`'s open level built (`hero_level_up` 0x4DA9F2 on): its sound
+    /// (`nwherolv.82m`, 0x4DAA26), then the dialog, modal, the mouse shown with the arrow
+    /// (`mouse_set_cursor` (0, 1): recorded, `level-up`'s cursor at 1060).
+    fn open_level(&mut self, t: u32, leveling: Leveling) {
+        if let Some(sound) = &mut self.sound
+            && !self.rules.level_up.sound.is_empty()
+        {
+            sound.effect(t, &self.rules.level_up.sound);
+        }
+        let dialog = Arc::clone(&leveling.open.dialog);
+        self.open_box(dialog, Told::Level(Box::new(leveling)));
+        self.set_cursor(CURSOR_TYPE, self.rules.arrow);
+        self.cursor.shown = true;
+    }
+
+    /// A level-up's dialog closed by its OK with the offer `chosen` (E24 M4 T2c, design §5.5): its
+    /// primary skill raised, the offer learned, the next level's dialog built in that millisecond
+    /// (recorded: `level-up-twice`'s at 4260, the status window as it was); after the last what
+    /// they raised shown (`level-up`'s Defense at 2260, `level-up-twice`'s Knowledge and its
+    /// Advanced Leadership's morale at 5260), the mouse looked at again (the dialog's arrow gives
+    /// way to the tile's cursor, `level-up`'s at 2260), then what follows the visit's level-ups
+    /// ([`After`]). *Provisional:* the offer learned is the engine's (Part B); the viewer shows
+    /// only a Leadership's morale and a Luck's luck ([`LevelArt`]).
+    fn leveled(
+        &mut self,
+        t: u32,
+        mut leveling: Leveling,
+        chosen: Option<usize>,
+    ) -> Result<(), Unplayable> {
+        let raised = &mut leveling.raised;
+        if let Some(skill) = raised.skills.get_mut(usize::from(leveling.open.primary)) {
+            *skill = skill.saturating_add(1);
+        }
+        let learned = chosen.and_then(|n| leveling.open.offers.get(n));
+        let art = &self.rules.level_up;
+        if let Some(offer) = learned {
+            if art.morale == Some(offer.skill) {
+                raised.morale = raised.morale.map(|m| m.saturating_add(1));
+            }
+            if art.luck == Some(offer.skill) {
+                raised.luck = raised.luck.saturating_add(1);
+            }
+        }
+        if let Some(next) = leveling.rest.pop_front() {
+            leveling.open = next;
+            self.open_level(t, leveling);
+            return Ok(());
+        }
+        self.gain(leveling.raised);
+        self.column = None;
+        self.moved();
+        match leveling.after {
+            After::Found(i) => self.found_end(t, i),
+            After::Answer(i, answer) => self.answer_end(t, i, *answer),
+            After::Step(queued) => {
+                self.finish(t, true);
+                self.resume(t, queued)
+            }
+        }
     }
 
     /// A find on the tile a walk ends on told (E24 M4 T2a2, design §5.3: the step and its box in
@@ -2808,6 +3049,21 @@ impl Loop {
             return Ok(());
         }
         self.gain(answer.gain);
+        // The levels its experience reaches (E24 M4 T2c: Pandora's Box's after its rewards'
+        // boxes, `grant_rewards`).
+        if let Some(After::Answer(i, answer)) =
+            self.level_up(t, After::Answer(i, Box::new(answer)))?
+        {
+            return self.answer_end(t, i, *answer);
+        }
+        Ok(())
+    }
+
+    /// Find `i`'s answer's end after its gain (and since E24 M4 T2c its level-ups): the status
+    /// window built again where the answer does, its next question asked, its object taken
+    /// ([`Loop::take`], what [`Answer::after`] gives shown at the dissolve's end) or its terrains
+    /// revealed, and the visit ended.
+    fn answer_end(&mut self, t: u32, i: usize, answer: Answer) -> Result<(), Unplayable> {
         if answer.chooses {
             self.choose(t, true);
         }
@@ -2816,7 +3072,7 @@ impl Loop {
             return Ok(());
         }
         if let Some((object, fade)) = answer.taken {
-            self.take(t, object, Gain::default(), fade);
+            self.take(t, object, answer.after, fade);
             return Ok(());
         }
         if answer.reveal != 0 {
@@ -2994,6 +3250,12 @@ impl Loop {
     /// creatures (each the slot of its kind, else the first empty one; none with no room), its
     /// spell points in the kingdom's list, the window shown drawn.
     fn gain(&mut self, gain: Gain) {
+        // The experience (E24 M4 T2c): the selected hero's when it is the one known.
+        if gain.experience != 0 && self.index == self.experienced {
+            self.experience = self
+                .experience
+                .map(|e| e.saturating_add_signed(gain.experience));
+        }
         if gain.resources != [0; 7] {
             for (have, more) in self.kingdom.resources.iter_mut().zip(gain.resources) {
                 *have = have.saturating_add(more);

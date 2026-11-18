@@ -11,7 +11,8 @@
 //! E24 M3 T6b1 the panels' buttons' hotkeys (the original's letters K, U, Q, Z, W, M, C, A, O, H
 //! and E, design §4.13); since T6b3 Space (the selected hero chosen again and its tile visited,
 //! design §4.15); since E24 M4 T1a a message box's OK and Cancel (Enter and Escape, in the box's
-//! own [`Context`], the battle's way: Escape is the window's quit with no box open).
+//! own [`Context`], the battle's way: Escape is the window's quit with no box open); since E24 M4
+//! T2c a level-up's offers (the keys 1 and 2, in the box's context too).
 
 use alloc::format;
 use alloc::string::String;
@@ -54,6 +55,16 @@ const fn message_key(key: Key) -> (&'static str, &'static str) {
     }
 }
 
+/// A level-up's offer's key name and the original's key (scan codes 2 and 3): the left's 1, the
+/// right's 2.
+const fn offer_key(n: usize) -> (&'static str, &'static str) {
+    if n == 0 {
+        ("offer-left", "1")
+    } else {
+        ("offer-right", "2")
+    }
+}
+
 /// What a key does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Command {
@@ -70,6 +81,9 @@ pub enum Command {
     /// A message box's OK or Cancel (E24 M4 T1a): its key down presses the button, its key up
     /// clicks it.
     Message(Key),
+    /// A level-up's left or right offer chosen (E24 M4 T2c, design §5.5: the original's 1 and 2,
+    /// `level_up_dialog_proc` 0x4F9780), 0 or 1.
+    Offer(usize),
     /// The window's own (the music and the effects since E24 M2 T5, the cursor's kind since T4b).
     Window(Window),
 }
@@ -97,6 +111,7 @@ impl Command {
             Self::Panel(key) => Some(Action::Key(key)),
             Self::Visit => Some(Action::Visit),
             Self::Message(key) => Some(Action::BoxKey(key)),
+            Self::Offer(n) => Some(Action::Offer(n)),
             Self::Window(_) => None,
         }
     }
@@ -109,7 +124,7 @@ impl Command {
         match self {
             Self::Panel(key) => Some(Action::KeyUp(key)),
             Self::Message(key) => Some(Action::BoxKeyUp(key)),
-            Self::Scroll(_) | Self::Hero(_) | Self::Visit => Some(Action::Up),
+            Self::Scroll(_) | Self::Hero(_) | Self::Visit | Self::Offer(_) => Some(Action::Up),
             Self::Window(_) => None,
         }
     }
@@ -121,13 +136,14 @@ impl keys::Command for Command {
     const TABLE: &'static str = "map";
 
     /// Every command, in the table's order: the scroll's eight directions, the hero's eight, the
-    /// panels' hotkeys, Space's, the box's, the window's own.
+    /// panels' hotkeys, Space's, the box's, a level-up's offers', the window's own.
     fn all() -> Vec<Self> {
         let mut all: Vec<Self> = Direction::ALL.into_iter().map(Self::Scroll).collect();
         all.extend(Direction::ALL.into_iter().map(Self::Hero));
         all.extend(Hotkey::ALL.map(Self::Panel));
         all.push(Self::Visit);
         all.extend(MESSAGE.map(Self::Message));
+        all.extend([0, 1].map(Self::Offer));
         all.extend(Window::ALL.map(Self::Window));
         all
     }
@@ -140,12 +156,14 @@ impl keys::Command for Command {
             Self::Panel(key) => hotkey_name(key).into(),
             Self::Visit => "visit".into(),
             Self::Message(key) => message_key(key).0.into(),
+            Self::Offer(n) => offer_key(n).0.into(),
             Self::Window(w) => w.name().into(),
         }
     }
 
     /// The original's keys on the map (a direction's key and the keypad's, with Ctrl for the
-    /// scroll; the panels' letters, E24 M3 T6b1; Space, T6b3) and the window's own.
+    /// scroll; the panels' letters, E24 M3 T6b1; Space, T6b3; a box's Enter and Escape, E24 M4
+    /// T1a; a level-up's 1 and 2, T2c) and the window's own.
     fn defaults() -> Vec<(Self, Vec<Chord>)> {
         let mut defaults = Vec::new();
         for ((d, key), pad) in Direction::ALL
@@ -168,19 +186,24 @@ impl keys::Command for Command {
             let chord = Chord::new(false, message_key(key).1);
             defaults.push((Self::Message(key), Vec::from([chord])));
         }
+        for n in [0, 1] {
+            let chord = Chord::new(false, offer_key(n).1);
+            defaults.push((Self::Offer(n), Vec::from([chord])));
+        }
         for w in Window::ALL {
             defaults.push((Self::Window(w), Vec::from([w.chord()])));
         }
         defaults
     }
 
-    /// The window's own that work whatever is open everywhere; the box's in the box's context;
+    /// The window's own that work whatever is open everywhere; the box's and a level-up's offers'
+    /// in the box's context;
     /// with nothing over the map the rest (quit, a frame on and restart among them: Escape is the
     /// box's Cancel while one is open).
     fn context(self) -> Option<Context> {
         match self {
             Self::Window(w) if w.everywhere() => None,
-            Self::Message(_) => Some(Context::Message),
+            Self::Message(_) | Self::Offer(_) => Some(Context::Message),
             Self::Scroll(_) | Self::Hero(_) | Self::Panel(_) | Self::Visit | Self::Window(_) => {
                 Some(Context::Map)
             }

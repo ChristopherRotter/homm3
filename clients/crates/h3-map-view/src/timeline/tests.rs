@@ -254,6 +254,8 @@ fn start(situation: &str, speed: usize) -> Start {
         computer: Computer::default(),
         finds: Vec::new(),
         town: None,
+        experience: None,
+        level_ups: Vec::new(),
     }
 }
 
@@ -389,7 +391,12 @@ fn the_walks_frames_are_m2_t3bs() {
             "choose-arena",
             "choose-arena-cancel",
             "choose-school",
-            "choose-school-leave"
+            "choose-school-leave",
+            "level-up",
+            "level-up-right",
+            "level-up-one",
+            "level-up-none",
+            "level-up-twice"
         ]
     );
 }
@@ -424,6 +431,8 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         computer: Computer::default(),
         finds: Vec::new(),
         town: None,
+        experience: None,
+        level_ups: Vec::new(),
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -635,6 +644,8 @@ fn what_it_cannot_play_yet() {
         computer: Computer::default(),
         finds: Vec::new(),
         town: None,
+        experience: None,
+        level_ups: Vec::new(),
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -778,6 +789,8 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         computer: Computer::default(),
         finds: Vec::new(),
         town: None,
+        experience: None,
+        level_ups: Vec::new(),
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
 }
@@ -1426,6 +1439,8 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         computer: Computer::default(),
         finds: Vec::new(),
         town: None,
+        experience: None,
+        level_ups: Vec::new(),
     }
 }
 
@@ -2037,6 +2052,8 @@ fn hovering(live: bool, bugs: Bugs) -> Loop {
         computer: Computer::default(),
         finds: Vec::new(),
         town: None,
+        experience: None,
+        level_ups: Vec::new(),
     };
     Loop::start(rules(bugs), &start).unwrap()
 }

@@ -805,3 +805,175 @@ cancel = "iCancel.def"
 font = "medfont.fnt"
 caption_font = "smalfont.fnt"
 font_palette = "game.pal"
+
+# A level-up's dialog (E24 M4 T2c; docs/epics/E24-design.md §5.5: level_up_dialog 0x4F8880, its
+# items in the executable's order, their places the dialog's): at (205, 65), 385 x 470, casting the
+# message boxes' shadow (flags 0x12). Without an offer: the background in the hero's owner's colours
+# (2000), the hero's large portrait (2001: the status window's, filled in), GENRLTXT 445 (2002),
+# 446 (2003) and the primary skill's `%s +1` (2004) in medfont.fnt, colour 1, alignment 5, the
+# primary skill's picture (2009: pskil42.def, its frame the skill), then the OK (0x7802, 30722:
+# iOkay.def, hotkeys Enter and Escape; disabled with two offers). The offers' items go before the
+# OK: `two` (the sentence 2005 at alignment 1, never shown: MCL-Q34; the "or" 2006; the frames 2012
+# and 2013, hidden at once, drawn in the game palette's entry 45; the pictures 2010 and 2011 from
+# secskill.def; the captions 2007 and 2008 in smalfont.fnt) and `one` (the sentence, the left's
+# frame, shown, its picture and its caption in the middle).
+[level_up.dialog]
+place = [205, 65]
+shadow = [385, 470]
+
+[[level_up.dialog.items]]
+kind = "picture"
+id = 2000
+picture = "lvlupbkg.pcx"
+at = [0, 0]
+size = [385, 470]
+
+[[level_up.dialog.items]]
+kind = "picture"
+id = 2001
+picture = "HPL000Kn.PCX"
+at = [171, 66]
+size = [58, 64]
+
+[[level_up.dialog.items]]
+kind = "label"
+id = 2002
+at = [23, 22]
+size = [339, 23]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 5
+
+[[level_up.dialog.items]]
+kind = "label"
+id = 2003
+at = [23, 151]
+size = [339, 23]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 5
+
+[[level_up.dialog.items]]
+kind = "label"
+id = 2004
+at = [23, 242]
+size = [339, 23]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 5
+
+[[level_up.dialog.items]]
+kind = "def"
+id = 2009
+def = "pskil42.def"
+at = [174, 190]
+size = [42, 42]
+
+[[level_up.dialog.items]]
+kind = "button"
+id = 30722
+def = "iOkay.def"
+at = [296, 413]
+size = [64, 30]
+
+[[level_up.two]]
+kind = "label"
+id = 2005
+at = [23, 270]
+size = [339, 52]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 1
+
+[[level_up.two]]
+kind = "label"
+id = 2006
+at = [169, 325]
+size = [50, 46]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 5
+
+[[level_up.two]]
+kind = "area"
+id = 2012
+at = [122, 325]
+size = [47, 46]
+
+[[level_up.two]]
+kind = "area"
+id = 2013
+at = [220, 325]
+size = [47, 46]
+
+[[level_up.two]]
+kind = "def"
+id = 2010
+def = "secskill.def"
+at = [124, 326]
+size = [44, 44]
+
+[[level_up.two]]
+kind = "def"
+id = 2011
+def = "secskill.def"
+at = [222, 326]
+size = [44, 44]
+
+[[level_up.two]]
+kind = "label"
+id = 2007
+at = [102, 375]
+size = [87, 40]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 5
+
+[[level_up.two]]
+kind = "label"
+id = 2008
+at = [200, 375]
+size = [87, 40]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 5
+
+[[level_up.one]]
+kind = "label"
+id = 2005
+at = [23, 270]
+size = [339, 52]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 1
+
+[[level_up.one]]
+kind = "area"
+id = 2012
+at = [169, 325]
+size = [47, 46]
+
+[[level_up.one]]
+kind = "def"
+id = 2010
+def = "secskill.def"
+at = [170, 326]
+size = [44, 44]
+
+[[level_up.one]]
+kind = "label"
+id = 2007
+at = [149, 375]
+size = [87, 40]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 5

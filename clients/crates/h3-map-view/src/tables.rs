@@ -24,6 +24,7 @@ use serde::Deserialize;
 use crate::art::Layer;
 use crate::asks::AskArt;
 use crate::finds::FindArt;
+use crate::levels::LevelArt;
 use crate::lists::ListArt;
 use crate::minimap::MinimapArt;
 use crate::record::{RecordArt, Records};
@@ -116,6 +117,10 @@ pub struct ViewArt {
     /// Tree or Cartographer asks (*provisional*).
     #[serde(default)]
     pub asks: AskArt,
+    /// A level-up's numbers: the experience each level starts at, the dialog's sound (E24 M4
+    /// T2c; design §5.5): none, and no level is ever reached (*provisional*).
+    #[serde(default)]
+    pub level_up: LevelArt,
     /// The map's sounds (E24 M2 T5; design §3.11): none, and the map plays none.
     #[serde(default)]
     pub sound: Option<SoundArt>,
@@ -733,6 +738,10 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         rules
             .effects
             .extend([map.turn.week.clone(), map.turn.month.clone()]);
+        // A level-up's dialog's (E24 M4 T2c), when the tables name it.
+        if !map.level_up.sound.is_empty() {
+            rules.effects.push(map.level_up.sound.clone());
+        }
         tables.sound = Some(rules);
     }
     Ok(tables)

@@ -7,7 +7,8 @@
 //! key scroll the view, a direction key alone steps the selected hero, a key's release does
 //! nothing; since E24 M3 T6b1 a panel button's letter presses the button and its release clicks
 //! it, and the left button's press and release come apart; since E24 M4 T1a a message box's Enter
-//! and Escape press its OK and its Cancel. A walk's paths are the original's, from the recorded timeline ([`Sequence::paths`]),
+//! and Escape press its OK and its Cancel, since E24 M4 T2c the keys 1 and 2 choose a level-up's
+//! offer. A walk's paths are the original's, from the recorded timeline ([`Sequence::paths`]),
 //! and its hero the live part's ([`selected`]): M2's walks are scripted (the epic's M2 decision).
 
 use alloc::collections::BTreeMap;
@@ -283,9 +284,12 @@ impl Sequence {
                     (Some((false, direction)), _, _) => Action::Step(direction),
                     (None, Some(hotkey), _) => Action::Key(hotkey),
                     (None, None, Some(key)) => Action::BoxKey(key),
-                    (None, None, None) => (name == SPACE)
-                        .then_some(Action::Visit)
-                        .ok_or_else(|| failed(&format!("`{name}`: no key of the map's")))?,
+                    (None, None, None) => match offer_key(name) {
+                        Some(n) => Action::Offer(n),
+                        None => (name == SPACE)
+                            .then_some(Action::Visit)
+                            .ok_or_else(|| failed(&format!("`{name}`: no key of the map's")))?,
+                    },
                 }
             } else if let Some(name) = &input.keyup {
                 let Some(at) = down.iter().position(|d| d == name) else {
@@ -537,6 +541,15 @@ fn box_key(name: &str) -> Option<Key> {
         _ => None,
     }
 }
+
+/// A level-up's offers' keys by xdotool's names (E24 M4 T2c: 1 the left's, 2 the right's,
+/// `level_up_dialog_proc` 0x4F9780; [`Action::Offer`]), the offer's place.
+fn offer_key(name: &str) -> Option<usize> {
+    OFFER_KEYS.iter().position(|&k| k == name)
+}
+
+/// The keys 1 and 2.
+const OFFER_KEYS: [&str; 2] = ["1", "2"];
 
 /// A key's name: with Ctrl or not, and its direction.
 fn key(name: &str) -> Option<(bool, Direction)> {

@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 use h3_map_view::asks::Traits;
-use h3_map_view::{asks, finds, hover, panels, status, turn};
+use h3_map_view::{asks, finds, hover, levels, panels, status, turn};
 use h3_ui::text::Catalogue;
 use h3_ui::text::keys::{EXECUTABLE, Entry, Keys, KeysFile, Row, address_field};
 use h3_ui::text::pack::{Pack, Tables};
@@ -106,6 +106,7 @@ pub fn keys(text: &str, ids: &BTreeMap<String, usize>) -> Result<Keys, String> {
         .chain(turn::KEYS)
         .chain(finds::KEYS)
         .chain(asks::KEYS)
+        .chain(levels::KEYS)
     {
         let key = all
             .keys
@@ -228,15 +229,16 @@ pub fn traits(archives: &[LodArchive<'_>]) -> Result<Vec<Traits>, String> {
         .collect())
 }
 
-/// The executable's string at file offset `at`: at most 256 bytes to a NUL, each printable ASCII
-/// or a space; none for any other or without the NUL.
+/// The executable's string at file offset `at`: at most 256 bytes to a NUL, each printable ASCII,
+/// a space or (E24 M4 T2c: a level-up's caption, `%s\n%s` at 0x67FA38) a line break; none for any
+/// other or without the NUL.
 fn exe_string(exe: &[u8], at: Option<usize>) -> Option<String> {
     let tail = exe.get(at?..)?;
     let len = tail.iter().take(256).position(|&b| b == 0)?;
     let bytes = &tail[..len];
     bytes
         .iter()
-        .all(|b| b.is_ascii_graphic() || *b == b' ')
+        .all(|b| b.is_ascii_graphic() || matches!(b, b' ' | b'\n'))
         .then(|| bytes.iter().map(|&b| char::from(b)).collect())
 }
 
@@ -280,6 +282,7 @@ mod tests {
                 .chain(turn::KEYS)
                 .chain(finds::KEYS)
                 .chain(asks::KEYS)
+                .chain(levels::KEYS)
                 .collect();
             ids.extend(["hero.0", "hero.1", "town-name.0"]);
             ids.sort_unstable();
@@ -307,6 +310,7 @@ mod tests {
         assert_eq!(exe_string(exe, None), None);
         assert_eq!(exe_string(exe, Some(99)), None);
         assert_eq!(exe_string(b"no end", Some(0)), None);
+        assert_eq!(exe_string(b"%s\n%s\0", Some(0)).as_deref(), Some("%s\n%s"));
     }
 
     #[test]

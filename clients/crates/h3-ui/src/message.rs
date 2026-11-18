@@ -521,23 +521,32 @@ impl MessageBox {
         });
         frames
             .flat_map(|a| {
-                let [x, y] = [px.saturating_add(a.at[0]), py.saturating_add(a.at[1])];
-                let [w, h] = a.size;
-                let (right, bottom) = (x.saturating_add(w - 1), y.saturating_add(h - 1));
-                [
-                    [x, y, w, 1],
-                    [x, bottom, w, 1],
-                    [x, y.saturating_add(1), 1, h - 2],
-                    [right, y.saturating_add(1), 1, h - 2],
-                ]
-                .map(|rect| Draw::Fill {
-                    rect,
-                    palette: String::from(palette),
-                    entry: FRAME_ENTRY,
-                })
+                let at = [px.saturating_add(a.at[0]), py.saturating_add(a.at[1])];
+                outline(at, a.size, palette)
             })
             .collect()
     }
+}
+
+/// A frame's one-pixel outline (E24 M4 T2c, design §5.5: the H3DlgFrame of a choice's box and of
+/// the level-up dialog, `dialog_frame_create`): the rectangle of `size` at `at` on the screen,
+/// its four sides' fills in the entry [`FRAME_ENTRY`] of the game palette `palette` (the top, the
+/// bottom, the left, the right; *provisional*: the frame's drawer 0x450130 not read, the
+/// recordings' pixels).
+#[must_use]
+pub fn outline([x, y]: [i32; 2], [w, h]: [i32; 2], palette: &str) -> [Draw; 4] {
+    let (right, bottom) = (x.saturating_add(w - 1), y.saturating_add(h - 1));
+    [
+        [x, y, w, 1],
+        [x, bottom, w, 1],
+        [x, y.saturating_add(1), 1, h - 2],
+        [right, y.saturating_add(1), 1, h - 2],
+    ]
+    .map(|rect| Draw::Fill {
+        rect,
+        palette: String::from(palette),
+        entry: FRAME_ENTRY,
+    })
 }
 
 /// Whether `id` is a choice frame's (the first three slots').

@@ -156,6 +156,10 @@ pub enum Key {
     F11,
     /// F12.
     F12,
+    /// The 1 above the letters (E24 M4 T2c: a level-up's left offer, scan code 2).
+    Digit1,
+    /// The 2 above the letters (E24 M4 T2c: a level-up's right offer, scan code 3).
+    Digit2,
     /// The keypad's 1 (E24 M2 T4b: in either NumLock state, as SDL 3 names them).
     Keypad1,
     /// The keypad's 2 (E24 M2 T4b: in either NumLock state, as SDL 3 names them).
@@ -234,6 +238,8 @@ impl Key {
             SDLK_F10 => Self::F10,
             SDLK_F11 => Self::F11,
             SDLK_F12 => Self::F12,
+            SDLK_1 => Self::Digit1,
+            SDLK_2 => Self::Digit2,
             SDLK_KP_1 => Self::Keypad1,
             SDLK_KP_2 => Self::Keypad2,
             SDLK_KP_3 => Self::Keypad3,
@@ -300,6 +306,8 @@ impl Key {
             Self::F10 => "F10",
             Self::F11 => "F11",
             Self::F12 => "F12",
+            Self::Digit1 => "1",
+            Self::Digit2 => "2",
             Self::Keypad1 => "Keypad1",
             Self::Keypad2 => "Keypad2",
             Self::Keypad3 => "Keypad3",
@@ -314,7 +322,7 @@ impl Key {
     }
 
     /// Every key a table may name, in the enum's order: all but [`Key::Other`].
-    pub const ALL: [Self; 59] = [
+    pub const ALL: [Self; 61] = [
         Self::Escape,
         Self::Space,
         Self::Right,
@@ -365,6 +373,8 @@ impl Key {
         Self::F10,
         Self::F11,
         Self::F12,
+        Self::Digit1,
+        Self::Digit2,
         Self::Keypad1,
         Self::Keypad2,
         Self::Keypad3,
@@ -1503,6 +1513,9 @@ mod tests {
         assert_eq!(Key::of(SDLK_RSHIFT).map(Key::name), Some("RightShift"));
         assert_eq!(Key::from_name("LeftShift"), Some(Key::LeftShift));
         assert_eq!(Key::of(SDLK_INSERT), None);
+        // E24 M4 T2c: the level-up's 1 and 2.
+        assert_eq!(Key::of(SDLK_1).map(Key::name), Some("1"));
+        assert_eq!(Key::from_name("2"), Some(Key::Digit2));
         // A key no table names (E17 M5 T8b2): after every named one, found by no name.
         assert!(Key::ALL.iter().all(|&k| k < Key::Other));
         assert_eq!(Key::from_name(Key::Other.name()), None);
