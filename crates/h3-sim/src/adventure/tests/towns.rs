@@ -350,6 +350,53 @@ fn a_build_action_names_its_town_by_the_entrance() {
     assert_eq!(mask, [false; BUILDING_COUNT]);
 }
 
+/// A hire's action names its town by the town's entrance and the slot by its entry (E09 T38a2,
+/// encoding v12): each listed hire of red's on the town map's first turn encodes so, decodes back
+/// and is legal by the masks; a slot past the two encodes to nothing, and a tile that is no town's
+/// entrance, a tile off the map or a building other than 0 decode to nothing.
+#[test]
+fn a_hire_action_names_its_town_by_the_entrance_and_the_slot_by_its_entry() {
+    let env = AdventureEnv::new(FAITHFUL.clone(), town_setup(&FAITHFUL, 1), 173, 21).unwrap();
+    let (state, rules) = (env.state(), env.rules());
+    let red = PlayerId::new(0);
+    let hires: Vec<GameCommand> = legal_commands(state, rules, Actor::Player(red))
+        .into_iter()
+        .filter(|c| matches!(c, GameCommand::Town(TownCommand::Hire { .. })))
+        .collect();
+    assert!(!hires.is_empty());
+    for hire in &hires {
+        let GameCommand::Town(TownCommand::Hire { town, slot }) = *hire else {
+            unreachable!()
+        };
+        let action = Action::tavern_hire(town_tile(state, town).unwrap(), usize::from(slot));
+        assert_eq!(action::encode(state, rules, red, hire), Some(action));
+        assert_eq!(
+            action::decode(state, rules, red, action),
+            Some(hire.clone())
+        );
+        assert!(legal_by_masks(&env, Seat::Player(red), action), "{action:?}");
+    }
+    let GameCommand::Town(TownCommand::Hire { town, .. }) = hires[0] else {
+        unreachable!()
+    };
+    let gate = town_tile(state, town).unwrap();
+    let past = GameCommand::Town(TownCommand::Hire { town, slot: 2 });
+    assert_eq!(action::encode(state, rules, red, &past), None);
+    let count = u32::try_from(env.tile_count()).unwrap();
+    let elsewhere = (0..count).find(|&t| town_of(state, t).is_none()).unwrap();
+    for none in [
+        Action::tavern_hire(elsewhere, 0),
+        Action::tavern_hire(count, 1),
+        Action::Adventure(MapAction {
+            entry: TAVERN_HIRE,
+            tile: gate,
+            building: 1,
+        }),
+    ] {
+        assert_eq!(action::decode(state, rules, red, none), None, "{none:?}");
+    }
+}
+
 /// The town whose entrance is the tile at `index`, if one's is.
 fn town_of(state: &GameState, index: u32) -> Option<TownId> {
     state.adventure().map().town_at(tile_pos(state, index)?)

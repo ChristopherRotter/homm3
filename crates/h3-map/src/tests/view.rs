@@ -7,6 +7,7 @@ use h3_adventure::{
     AdventureCommand, AdventureEvent, AdventureEventKind, GuardsView, ObjectKind, ObjectView,
     OfferKind, OwnHeroView, Pos as TilePos, TileMask, TileView, Viewers, allied,
 };
+use h3_content::HeroTypeId;
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, ArmyRef, ArmySlot, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset,
@@ -2789,6 +2790,16 @@ type Outcome = (
     Option<PlayerId>,
     Vec<AdventureEventKind>,
     Vec<(TownId, bool)>,
+    Vec<Hired>,
+);
+
+/// A hero a command hired, as it joined the map (E09 T38a2): its id and type, its army and its
+/// details.
+type Hired = (
+    HeroId,
+    HeroTypeId,
+    Option<Vec<ArmyStack>>,
+    Option<HeroDetails>,
 );
 
 /// What a command of `player` did in a game, as the hygiene test compares it between two games
@@ -2819,7 +2830,11 @@ type Outcome = (
 /// move left out (none): the exit is drawn from its owner's stream among its channel's (ADV-TEL-003)
 /// or is its gate's pair, which the test may change where the viewer never sees them, and the
 /// viewer is told the entrance alone or nothing (A-41 not reproduced), so that the comparison goes
-/// on past another player's hidden jump; one it sees land in one game only ends it.
+/// on past another player's hidden jump; one it sees land in one game only ends it. (E09 T38a2)
+/// And the heroes it hired as they joined the map (their types, armies and details): a tavern hero
+/// is a draw of the taverns' stream, which the hidden differences move, and a hire the viewer does
+/// not see puts on the map a hero that may walk into its sight later (a case the plans' hires
+/// found at 240 cases: the same record another type in the other game).
 fn outcome(
     (player, viewer, accepted): (PlayerId, PlayerId, bool),
     before: &[(HeroId, TilePos)],
@@ -2917,6 +2932,20 @@ fn outcome(
             _ => None,
         })
         .collect();
+    let hired = events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::HeroHired {
+                hero, hero_type, ..
+            } => Some((
+                hero,
+                hero_type,
+                after.adventure().hero(hero).map(|h| h.army.clone()),
+                after.hero(hero).cloned(),
+            )),
+            _ => None,
+        })
+        .collect();
     (
         accepted,
         moved,
@@ -2926,6 +2955,7 @@ fn outcome(
         after.waiting_for(),
         guards,
         capitols,
+        hired,
     )
 }
 
