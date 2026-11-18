@@ -55,6 +55,28 @@ the services) refined. **Status:** queued.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-18 (the adventure lane, E08 T127a1, `adventure/e08-t127a1`, docs only; **the market's
+  rates as read, for your increment 5; nothing to do now**): survey
+  `docs/rules/surveys/E08-trades.md` §3, §4 and §11 (the address map's `market_*` entries). The
+  town's Marketplace, Artifact Merchants and Freelancer's Guild and the map's Trading Posts,
+  Freelancer's Guild and Black Market share one window (`market_window_run` 0x5EA130) of five
+  screens (resources for resources, resources to a player, resources for artifacts, artifacts for
+  resources, creatures for resources). **The count:** a town trades at the current player's towns
+  with the Marketplace built (building 14, at most 10); every map object at five. **The rates:**
+  two value tables (250 wood and ore, 500 the rest, 1 gold; an artifact's price in half of them),
+  three binary32 factor tables by the count (resources 0.1 to 0.5, artifacts 0.2 to 0.6, creatures
+  0.3 to 1), each rate a binary32 quotient rounded half up in 53 bits (the reciprocal's binary32
+  rounding decides the halves: the engine reproduces the steps through `kernel::num` or holds the
+  finite tables checked against them; the decision is the adventure lane's T127b design, built
+  once by whichever lane needs it first, decision 361). **Disputes:** D-70 is yours alone (wood or
+  ore for gold at 2, 4 and 8 Marketplaces: the original's 37, 62, 112 against VCMI's 38, 63, 113;
+  none at five); D-71 (the creature sale's rounding against VCMI's ceiling) and A-46 (a purchase
+  from a hero who can hold no more artifacts takes the price and loses the artifact, the Artifact
+  Merchants too) go to the user at the adventure lane's T127a2 checkpoint; the rule built once
+  serves your guild and merchants as well. Not read
+  here: the artifact sale's screen (`market_sell_artifact_proc` 0x5EDF60) and the merchants'
+  monthly draw (`new_month` 0x4C8F40, game +0x1F664).
+
 - 2026-11-18 (the adventure lane, E08 T126, `adventure/e08-t126`; **for your increment 5's planning, nothing to do now**): E08's increment 14 is **the trades and services** on the map (E08 decision 361, ADV-Q56): the Black Market (7), the War Machine Factory (106), the Altar of Sacrifice (2), the Trading Posts (99, 221), the Hill Fort (35) and the Freelancer's Guild (213); the map Tavern (95) and the Den of Thieves (97) stay yours (E09 decision 106). The Trading Posts and the Freelancer's Guild trade at the market's rates, which your increment 5 builds with the town's Marketplace: **the rates are built once, by whichever lane needs them first, and the other reuses them** (as E09 decision 4's hire dialog). The adventure lane's survey (E08 T127a, `docs/rules/surveys/E08-trades.md`, next) reads the original's rates and how a Trading Post's relate to the Marketplaces a player owns, and tells you here what it finds before either lane builds them.
 
 - 2026-11-17 (the map client lane, E24 M4 T1b1, `map-client/e24-m4-t1b1`; **the capture harness, rebuild `xdd.dll`**): `clients/capture/xdd.c` takes a new command, `<seq> seed <value>` (its 8.: the main thread's C library seed set at its next clock read, so that a computer player's turn draws alike in every run; `Game.seed`, and `h3drive.to_scenario(game, seed=...)` seeds just before Begin), and its acknowledgement has a sixteenth field (the seeds set): `h3drive.ACK_FIELDS` is 16, so a run with an `xdd.dll` built before fails as stale where it reads the acknowledgement whole (a forced roll, a batch's or a sequence's checks, a seed): rebuild it with `clients/capture/setup.sh`. Nothing else of `h3drive`, `h3adv` or `h3mem` changed in behaviour (`Mem.other_turn` is new; `Mem.status_items` also returns kind 5's items, ids 2190 to 2193).

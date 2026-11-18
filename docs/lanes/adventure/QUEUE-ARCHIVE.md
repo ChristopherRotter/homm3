@@ -1917,6 +1917,36 @@ design `E08-design.md` §4 to §8, §12 to §15, §18, §20)
 - **Depends on:** T125b2a (`adventure/e08-t125b2a`, merged first). **Status:** ready once T125b2a
   merges; its cut confirmed at its start (likely whole, as T116c). T126 (the audit) after it.
 
+## T127a (moved 2026-11-18, cut in two by decision 363: the census and the market done as T127a1, `adventure/e08-t127a1`; the rest queued as T127a2)
+
+**E08 T127a — the trades and services survey** (decision 362; as T118a for increment 13: survey
+file `docs/rules/surveys/E08-trades.md`)
+
+- **Scope:** the census of classes 2 (the Altar of Sacrifice), 7 (the Black Market), 35 (the Hill
+  Fort), 99 and 221 (the Trading Posts), 106 (the War Machine Factory) and 213 (the Freelancer's
+  Guild) on the 160 shipped maps (T97c's counts in `E08-log.md`, T97c); their `.h3m` bodies and
+  templates (`docs/formats/h3m.md`, VCMI 1.7.5's reader); their data in the original data (the
+  text tables the harvest reads, the executable's tables: the market's rates, the war machines'
+  and the upgrades' prices); the original's code (`docs/exe/README.md`, `scripts/exe.py`): each
+  object's visit and its dialog's rules (what it sells or buys and at what price; the Black
+  Market's artifacts, when they are drawn and whether they are refreshed; the Hill Fort's upgrade
+  prices; the Altar's experience for what it takes; the Trading Posts' and the Freelancer's
+  Guild's rates against the town's Marketplace, E09 increment 5's), owners if any, a revisit; what
+  a viewer sees of each; VCMI's and the wiki's rules; disputes `D-<n>` from 70, reading quirk
+  candidates `A-<n>` from 46; the proposed rule ids; the batch's plan (E14) on the client lane's
+  harness (decision 362's agent's call); what the market's rates need, told to the town lane's
+  inbox. Likely in parts (by object or by kind of trade), confirmed with the user at its start,
+  the reading measured first.
+- **Inputs:** decisions 361, 362; ADR-0015 to -0017 (ADR-0016 points 3, 4 and 6, ADR-0017's
+  decisions and rests), ADR-0013 (the hero's artifacts and experience); increment 6's army
+  commands, increment 7's artifacts and rewards, increment 10's hire dialog (a purchase, creatures
+  joining an army), increment 13's army dialog for a reward; E09's market (`docs/epics/E09-towns.md`,
+  increment 5's Marketplace; the town lane's queue) and its map Tavern (E09 decision 106; the
+  kinds `Tavern` and `DenOfThieves` in your adventure part by E09 T39a, the inbox's T33b note);
+  the lane's `TRAPS.md`.
+- **Depends on:** T126 (done). **Status:** ready (the original data and the shipped maps: staging
+  per `docs/08-work-process.md`, "Cloud sandbox").
+
 ## Inbox notes settled or for information (moved 2026-11-18, E08 T126)
 
 *(Moved verbatim at increment 13's closure: the other lanes' notes of changes in this lane's paths (the town lane's E09 T29b to T38b1, the map client lane's harness rebuilds), built on by T123b to T125b2b and T126's audit, CI green on each; their lasting rules are one line in `TRAPS.md`, "The town lane's parts of your crates"; the versions they took are the HANDOFF's.)*

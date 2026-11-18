@@ -19474,3 +19474,47 @@ tests see the layout), the passage with the views (both small, each measured or 
   on `reach-banks-xl-144`.
 - **Not read:** network play's branch of `adventure_battle` (0x4AD725 to 0x4AE18F), the stored seed's
   use inside the battle, the reward message's texts and the hint's pictures (the clients').
+
+### Increment 14, round 1: T127a1, the trades survey's first part: the census and the market (2026-11-18, `adventure/e08-t127a1`)
+
+**The cut** (decision 363, the user at T127a's start after the reading was measured, ADV-Q56's
+round: about 30 KB of code against T118a's 5 KB): **two parts**, as recommended: T127a1 the census
+of the seven classes and the market (the Trading Posts, the Freelancer's Guild, the Black Market,
+the trade window and its rates); T127a2 the Altar of Sacrifice, the Hill Fort, the War Machine
+Factory, batch E14's plan, the ids and the checkpoint. Not chosen: three parts (the Altar alone),
+whole. **Baseline:** `master` 1c94d00 (T126's #1015 and #1016 merged); a docs-only task, no setup
+run. Staged the executable, `maps.tar` and `extracted.tar` (SHA-256 checked against the PC's).
+Survey `docs/rules/surveys/E08-trades.md` §0 to §12:
+
+- **The census** (§1, a throwaway example over `h3_map::read`, deleted): 1 058 objects on 148 maps
+  (2 177 / 88, 7 154 / 105, 35 146 / 69, 99 204 / 87, 221 33 / 27, 106 258 / 104, 213 86 / 40),
+  subclass 0, no body, one blocked entrance on land each; 213 and 221 on AB and SoD maps only;
+  221 loads as 99.
+- **The visit** (§2): only a human trades at the Trading Post and the Freelancer's Guild; the
+  Black Market's computer branch not read (E10's, E13's); no mark, no owner, no limit per visit;
+  the Altar's (k 28), the Hill Fort's (k 14) and the factory's dispatch for T127a2.
+- **The trade window** (§3, `market_window_run` 0x5EA130): five screens, the kind's buttons; every
+  map object at five Marketplaces, a town at its player's towns with one (at most 10).
+- **The rates** (§4): two value tables, three binary32 factor tables; each rate a binary32 quotient
+  rounded half up in 53 bits (the reciprocal's rounding decides the halves); the five-market tables.
+- **The Trading Posts** (§5): the resource trade and the 1:1 transfer to any player in the game.
+  **The Freelancer's Guild** (§6): the sale, the last creature kept. **The Black Market** (§7):
+  three treasures, three minors, one major drawn as given at a new game, never restocked; one
+  bought at a time; **A-46**, the price taken and the artifact lost from a hero who can hold none.
+- **VCMI and the wiki** (§9; a throwaway script over ARTRAITS.TXT and CRTRAITS.TXT, deleted): the
+  factors, modes, the five Marketplaces, the market's set and its never restocking agree; VCMI's
+  ceiling in doubles gives **D-70** (wood or ore for gold at 2, 4, 8 Marketplaces, the town's) and
+  **D-71** (the creature sale, 99 of 504 cases at five); the artifacts agree everywhere.
+- **For the town lane** (§11, its inbox told): what the Marketplace reuses, D-70, D-71, A-46.
+
+**The address map:** 43 new entries (26 functions: the six entries, the window's run, five
+constructors (four inferred), five redraws (one inferred), four procedures read and one inferred,
+three rates, `ai_black_market_visit`; 7 sites: the visit's cases of 2, 7, 35, 99, 106 and 213 and
+`black_market_draw`; 5 tables; 5 globals of the window's); `visit_object`, `setup_map_objects`, `hero_give_artifact`
+amended, `new_month`, `object_class_values`, `random_artifact_of_level` cited; `structs.toml`: game
++0x1F664 `merchant_artifacts`, +0x1F680 `black_markets`, `artifact_setup` +0x4 `cost`, the
+`black_market` record. `scripts/exe.py check` agrees with the executable.
+
+**Verify:** docs and the address map only: the docs gates (`check-docs`, `check-exe-map`) and
+`scripts/exe.py check`. No code, version or replay moved; CI's run on the pull request is the
+record. **Next:** T127a2.

@@ -4,35 +4,30 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1, the survey (T127a) and the ADR amendment drafts with the design note and the cut (T127b) below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1, the survey (T127a, in two parts by decision 363: T127a1 done, T127a2 below) and the ADR amendment drafts with the design note and the cut (T127b) below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T127a — the trades and services survey** (decision 362; as T118a for increment 13: survey
-file `docs/rules/surveys/E08-trades.md`)
+**E08 T127a2 — the trades and services survey, part 2: the services and the checkpoint**
+(decisions 362, 363; survey `docs/rules/surveys/E08-trades.md` from §12)
 
-- **Scope:** the census of classes 2 (the Altar of Sacrifice), 7 (the Black Market), 35 (the Hill
-  Fort), 99 and 221 (the Trading Posts), 106 (the War Machine Factory) and 213 (the Freelancer's
-  Guild) on the 160 shipped maps (T97c's counts in `E08-log.md`, T97c); their `.h3m` bodies and
-  templates (`docs/formats/h3m.md`, VCMI 1.7.5's reader); their data in the original data (the
-  text tables the harvest reads, the executable's tables: the market's rates, the war machines'
-  and the upgrades' prices); the original's code (`docs/exe/README.md`, `scripts/exe.py`): each
-  object's visit and its dialog's rules (what it sells or buys and at what price; the Black
-  Market's artifacts, when they are drawn and whether they are refreshed; the Hill Fort's upgrade
-  prices; the Altar's experience for what it takes; the Trading Posts' and the Freelancer's
-  Guild's rates against the town's Marketplace, E09 increment 5's), owners if any, a revisit; what
-  a viewer sees of each; VCMI's and the wiki's rules; disputes `D-<n>` from 70, reading quirk
-  candidates `A-<n>` from 46; the proposed rule ids; the batch's plan (E14) on the client lane's
-  harness (decision 362's agent's call); what the market's rates need, told to the town lane's
-  inbox. Likely in parts (by object or by kind of trade), confirmed with the user at its start,
-  the reading measured first.
-- **Inputs:** decisions 361, 362; ADR-0015 to -0017 (ADR-0016 points 3, 4 and 6, ADR-0017's
-  decisions and rests), ADR-0013 (the hero's artifacts and experience); increment 6's army
-  commands, increment 7's artifacts and rewards, increment 10's hire dialog (a purchase, creatures
-  joining an army), increment 13's army dialog for a reward; E09's market (`docs/epics/E09-towns.md`,
-  increment 5's Marketplace; the town lane's queue) and its map Tavern (E09 decision 106; the
-  kinds `Tavern` and `DenOfThieves` in your adventure part by E09 T39a, the inbox's T33b note);
-  the lane's `TRAPS.md`.
-- **Depends on:** T126 (done). **Status:** ready (the original data and the shipped maps: staging
-  per `docs/08-work-process.md`, "Cloud sandbox").
+- **Scope:** the code reading of the Altar of Sacrifice (2: its dialog, what it takes by the
+  hero's alignment and the experience for each artifact or creature, the team's kind mark k 28),
+  the Hill Fort (35: its dialog, which creatures it upgrades and at what price, the mark k 14) and
+  the War Machine Factory (106: the question, the hire dialog's war machines, a count of 4000
+  each, their prices and what a hero already holding one can buy); `visit_object`'s three cases
+  are mapped (§2); the computer's routines not followed. Their VCMI 1.7.5 and wiki comparison,
+  disputes from D-72 and reading quirk candidates from A-47; the interfaces' sketch for all seven
+  classes (§0 to §11's open points: the window as a decision or as commands beside the object, the
+  slider's validation, the rates' representation, what a viewer keeps of a Black Market's stock,
+  the transfer's event); batch E14's plan on the client lane's harness (D-71's sale, A-46's
+  purchase with a full backpack, the market not restocked after a month, the Trading Post's rates,
+  the last creature kept, and the services' rows); the proposed rule ids; the checkpoint's
+  questions (D-71, A-46 and part 2's), asked with the user at its end.
+- **Inputs:** survey `E08-trades.md` §0 to §12 (T127a1); decisions 361 to 363; ADR-0015 to -0017,
+  ADR-0013 (the hero's experience and artifacts); increment 6's army commands, increment 10's hire
+  dialog (`recruit_dialog_proc`'s war machine branch, `E08-dwellings.md` §5), increment 13's
+  army dialog; `docs/exe/README.md`; the lane's `TRAPS.md`.
+- **Depends on:** T127a1 (done). **Status:** ready (the executable and `extracted.tar` staged per
+  `docs/08-work-process.md`, "Cloud sandbox"; the census is done).
 
 **E08 T127b — the ADR amendment drafts, the design note and the cut** (decision 362)
 
@@ -45,7 +40,7 @@ file `docs/rules/surveys/E08-trades.md`)
   sketch, batch E14, the proposed ids); decisions 361, 362 and the survey's checkpoint; ADR-0015
   to -0017, ADR-0013; the town lane's answer on the market's rates, if any; T118b's drafts as the
   form.
-- **Depends on:** T127a (done). **Status:** ready once T127a's checkpoint is answered (docs only).
+- **Depends on:** T127a2. **Status:** ready once T127a2's checkpoint is answered (docs only).
 
 ## Inbox
 
