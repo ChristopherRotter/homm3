@@ -1,0 +1,235 @@
+# The sequences of E24 M4 T2b1 (design §5.4), recorded before the viewer plays them (T2b2:
+# `frames --sequences map/to-record.toml --no-check`; each moved into sequences.toml once the
+# viewer plays it, as T2a1's were). Answers: Enter the OK, Escape the Cancel, a click a picture.
+
+[[sequence]]
+id = "ask-join"
+situation = "seq-ask-join"
+ms = 2600
+hero_speed = 4
+seed = 7
+why = "a compliant monster's offer to join for free, accepted by Enter: it joins and dissolves"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+]
+
+[[sequence]]
+id = "ask-join-no"
+situation = "seq-ask-join-no"
+ms = 3200
+hero_speed = 4
+seed = 7
+why = "the offer to join declined by Escape, then its offer to flee declined: it dissolves"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+    { at = 1600, keydown = "Escape" }, { at = 1660, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-join-gold"
+situation = "seq-ask-join-gold"
+ms = 2600
+hero_speed = 4
+seed = 7
+why = "a monster's offer to join for gold (the gold's picture), accepted by Enter: paid, it joins and dissolves"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+]
+
+[[sequence]]
+id = "ask-guard"
+situation = "seq-ask-guard"
+ms = 2600
+hero_speed = 4
+seed = 7
+why = "a Border Guard's question, its key held, accepted by Enter: it is taken away"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+]
+
+[[sequence]]
+id = "ask-cartographer"
+situation = "seq-ask-cartographer"
+ms = 2200
+hero_speed = 4
+seed = 7
+why = "a land Cartographer's question accepted by Enter: paid, the land revealed"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+]
+
+[[sequence]]
+id = "ask-pile"
+situation = "seq-ask-pile"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "a guarded pile's question (the map's text) declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-artifact"
+situation = "seq-ask-artifact"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "a guarded artifact's question (the game's own text) declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-mine"
+situation = "seq-ask-mine"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "an abandoned mine's question declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-bank"
+situation = "seq-ask-bank"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "a creature bank's question declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-crypt"
+situation = "seq-ask-crypt"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "the Crypt's question declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-tree"
+situation = "seq-ask-tree"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "a Tree of Knowledge's price (the experience's picture) declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-tomb"
+situation = "seq-ask-tomb"
+ms = 2200
+hero_speed = 4
+seed = 7
+why = "the Warrior's Tomb searched (Enter): what it finds, closed by Enter"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1600, keydown = "Return" }, { at = 1660, keyup = "Return" },
+]
+
+[[sequence]]
+id = "ask-pandora"
+situation = "seq-ask-pandora"
+ms = 3000
+hero_speed = 4
+seed = 7
+why = "Pandora's Box opened (Enter): its gold's box closed by Enter, the box dissolving"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1600, keydown = "Return" }, { at = 1660, keyup = "Return" },
+]
+
+[[sequence]]
+id = "ask-pyramid"
+situation = "seq-ask-pyramid"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "the Pyramid's question declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-hire"
+situation = "seq-ask-hire"
+ms = 2200
+hero_speed = 4
+seed = 7
+why = "Red's own Guardhouse's question accepted by Enter: its Pikemen join free, told"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1600, keydown = "Return" }, { at = 1660, keyup = "Return" },
+]
+
+[[sequence]]
+id = "ask-dwelling-guards"
+situation = "seq-ask-dwelling-guards"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "a neutral Monastery's guards' question declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "choose-chest-ok"
+situation = "seq-choose-chest"
+ms = 2600
+hero_speed = 4
+seed = 7
+why = "a chest's choice closed by Enter with no picture chosen"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+]
+
+[[sequence]]
+id = "choose-arena-cancel"
+situation = "seq-choose-arena"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "the Arena's choice cancelled by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "choose-school-leave"
+situation = "seq-choose-school"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "a School of Magic's choice left by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]

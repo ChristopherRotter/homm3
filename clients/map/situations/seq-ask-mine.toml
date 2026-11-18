@@ -1,0 +1,11 @@
+# A question or a choice (E24 M4 T2b1; clients/map/to-record.toml `ask-mine`; E24 design §5.4):
+# an abandoned mine's question (ADVEVENT 84).
+# Red's hero on (5, 5) steps up onto its entrance (5, 4); Red's town out of the way, so that no
+# visit's scenario test warns of a town lost; Blue's hero far off in the fog.
+size = 36
+terrain = "grass"
+heroes = [{ at = [5, 5], class = 2 }, { at = [32, 32], owner = 1 }]
+towns = [{ at = [16, 12], faction = 0, owner = 0, buildings = "fort" }]
+view = [0, 0, 0]
+hidden = [[20, 16, 35, 35]]
+objects = [{ def = "AVXamDs.def", at = [6, 4] }]

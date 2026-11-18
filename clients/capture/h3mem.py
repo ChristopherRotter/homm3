@@ -362,6 +362,16 @@ OUT_OF_GAME, TEAMS, SHOWN_PLAYER, HALL_BITS = 0x1F636, 0x1F879, 0x69778C, (13, 1
 FOUND_RESOURCE, FOUND_TEXT = 0x3A0, 0x3A8
 # The message box's buttons (message_box_build 0x4F6990; E17 design §7.19): 0x7801 to 0x780A.
 BOX_BUTTONS = range(0x7801, 0x780B)
+# The box's style (message_box_style 0x699520) and, in styles 7 and 10, the picture chosen
+# (message_box_chosen 0x6993D4: 0x7809 or 0x780A, -1 none; E24 M4 T2b1, design §5.4).
+MESSAGE_BOX_STYLE, MESSAGE_BOX_CHOSEN = 0x699520, 0x6993D4
+# The words the map's load draws that a situation's visit may write (E24 M4 T2b1, design §5.4):
+# a monster's aggression (class 54, bits 12-16 signed), a chest's gold in 500s (class 101, bits
+# 11-14; bit 10 its artifact's flag), a Tree of Knowledge's price (class 102, bits 13-15).
+WORD_FIELDS = {"aggression": (54, 12, 5), "gold": (101, 11, 4), "price": (102, 13, 3)}
+CHEST_ARTIFACT_BIT = 10
+# A hero's Diplomacy level (the secondary skills' levels +0xC9, Diplomacy the fifth).
+DIPLOMACY = SECONDARY + 4
 MOVE_HERO, NEXT_HERO, QUEST_LOG = 7, 11, 5
 # A path arrow's frame: 0 none, 1 to 25 a move today (green), 26 to 50 a later one (red).
 GREEN_FRAMES = range(1, 26)
@@ -1212,6 +1222,12 @@ class Mem:
         record = self.game() + HEROES + HERO_SIZE * index
         self.write_bytes(record + PRIMARY, struct.pack("<4b", *skills))
 
+    def write_diplomacy(self, index, level):
+        """A hero's Diplomacy level alone (E24 M4 T2b1: a situation's hero's `diplomacy`; u8
+        +0xCD, no skill slot: what a monster's answer reads, monster_visit_decision 0x4A7740)."""
+        record = self.game() + HEROES + HERO_SIZE * index
+        self.write_bytes(record + DIPLOMACY, bytes([level]))
+
     def write_bonuses(self, index, morale, luck):
         """A hero's morale and luck until its next battle (E24 M3 T5b1: a situation's hero's
         `morale` and `luck`; i8 +0x11A, +0x11B)."""
@@ -1380,7 +1396,13 @@ class Mem:
                 "texts": [i["text"] for i in items
                           if i["vtable"] == TEXT_VTABLE and i["text"] is not None],
                 "pictures": [[p["def"], p["frame"], p["text"]] for p in self.dialog_pictures()],
-                "buttons": [i["id"] for i in items if i["id"] in BOX_BUTTONS]}
+                "buttons": [i["id"] for i in items if i["id"] in BOX_BUTTONS],
+                # E24 M4 T2b1 (design §5.4): the style, the picture chosen (styles 7 and 10)
+                # and each button's and choice frame's place and state, [id, x, y, w, h, state].
+                "style": self.i32(MESSAGE_BOX_STYLE),
+                "chosen": self.i32(MESSAGE_BOX_CHOSEN),
+                "marks": [[i["id"], *i["box"], i["state"]] for i in items
+                          if i["id"] in BOX_BUTTONS]}
 
     def town(self, index):
         """The town `index` of the game's towns (E24 M3 T4a): its record's address, faction,
@@ -2007,6 +2029,35 @@ class Mem:
             p = state["viewer"] if cls == 83 else state["shown"]
             bits = self.read(at, 1)[0]
             self.write_bytes(at, bytes([bits | 1 << p if visited else bits & ~(1 << p) & 0xFF]))
+        self.write_u32(tile, word)
+
+    def write_fields(self, x, y, fields):
+        """Writes the fields of `WORD_FIELDS` that `fields` names into the word of the object
+        anchored on (x, y) of the surface (E24 M4 T2b1, design §5.4): what the map's load drew,
+        a monster's aggression, a chest's gold (its artifact's flag cleared: gold, not an
+        artifact) or a Tree's price, on its first entrance tile; refused on another class."""
+        game = self.game()
+        side = self.i32(game + MAP_SIDE)
+        templates = self.template_bytes()
+        classes = self.map_templates()
+        found = [(t, level) for ox, oy, level, t, _ in self.map_objects()
+                 if (ox, oy, level) == (x, y, 0)]
+        if len(found) != 1:
+            raise RuntimeError(f"no single object anchored on {(x, y)}")
+        template, level = found[0]
+        cls = classes[template][1]
+        at = entrance_cell(templates, side, x, y, template)
+        tile = self.u32(game + TILES) + TILE_SIZE * ((level * side + at[1]) * side + at[0])
+        word = self.u32(tile)
+        for name, value in fields.items():
+            want, low, bits = WORD_FIELDS[name]
+            if cls != want:
+                raise RuntimeError(f"`{name}` on the object at {(x, y)} of class {cls}, not {want}")
+            if name == "gold":
+                value //= 500
+                word &= ~(1 << CHEST_ARTIFACT_BIT)
+            mask = (1 << bits) - 1
+            word = word & ~(mask << low) | (value & mask) << low
         self.write_u32(tile, word)
 
     def write_visit(self, colour, x, y, known, visited, hero=None, guards=None):

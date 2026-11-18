@@ -23,9 +23,10 @@ use alloc::vec::Vec;
 use h3_map::RawMap;
 use h3_map::model::{Mission, Rewards, Stack};
 use h3_map::writer::{
-    AnyObject, EVENT_OBJECT, Event, Extras, GivenTile, Hero, Map, MapObject, ObjectTemplate, Patch,
-    Pile, Player, RewardBody, RewardObject, RiverKind, Road, RoadKind, SHRINE_OBJECTS, Terrain,
-    Town, TownBuildings, Underground, WITCH_HUT_OBJECT,
+    ARMY_SLOTS, ARTIFACT_OBJECT, AnyObject, EVENT_OBJECT, Event, Extras, GivenTile, Guards, Hero,
+    Map, MapObject, Message, Monster, ObjectTemplate, PANDORA_OBJECT, Patch, Pile, Player,
+    RewardBody, RewardObject, RiverKind, Road, RoadKind, SHRINE_OBJECTS, Terrain, Town,
+    TownBuildings, Underground, WITCH_HUT_OBJECT,
 };
 use serde::Deserialize;
 
@@ -131,6 +132,18 @@ pub struct VisitSpec {
     /// army's slots; none as the new game left them, empty none.
     #[serde(default)]
     pub guards: Option<Vec<[u32; 2]>>,
+    /// A wandering monster's aggression (class 54: its tile word's bits 12 to 16, signed; E24 M4
+    /// T2b1, design §5.4), which the map's load draws from its disposition; none as drawn.
+    #[serde(default)]
+    pub aggression: Option<i8>,
+    /// A treasure chest's gold (class 101: its word's bits 11 to 14 in 500s, the artifact's bit
+    /// 10 cleared; T2b1), which the load draws; none as drawn.
+    #[serde(default)]
+    pub gold: Option<u32>,
+    /// A Tree of Knowledge's price (class 102: its word's bits 13 to 15, 0 free, 1 2 000 gold, 2
+    /// ten gems; T2b1), which the load draws; none as drawn.
+    #[serde(default)]
+    pub price: Option<u8>,
 }
 
 /// A Seer's Hut's or a Quest Guard's quest (E24 M3 T6a2b, design §4.12), the writer's mission
@@ -326,8 +339,63 @@ pub struct ObjectSpec {
     #[serde(default)]
     pub skills: Option<Vec<u8>>,
     /// An event's rewards (26; T2a1): it fires for every colour, a human's hero alone, once.
+    /// Since E24 M4 T2b1 Pandora's Box's (6) too, without a message.
     #[serde(default)]
     pub rewards: Option<RewardsSpec>,
+    /// A wandering monster's body (54; E24 M4 T2b1, design §5.4): none the editor's (a random
+    /// count, aggressive).
+    #[serde(default)]
+    pub monster: Option<MonsterSpec>,
+    /// The guards of a resource pile (79, with its `amount` or a drawn one) or an artifact (5),
+    /// and their message's text (T2b1): the game asks it before their battle; an empty one makes
+    /// a pile's guards fight at once and an artifact's question the game's own.
+    #[serde(default)]
+    pub guards: Option<GuardsSpec>,
+}
+
+/// A wandering monster's body (E24 M4 T2b1; the writer's `Monster`): no message or treasure,
+/// it grows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MonsterSpec {
+    /// Its count (1 to 4 095).
+    pub count: u16,
+    /// Its disposition: 0 compliant, 1 friendly, 2 aggressive, 3 hostile, 4 savage.
+    pub disposition: u8,
+    /// It never flees.
+    #[serde(default)]
+    pub never_flees: bool,
+}
+
+/// An object's guards and their message (E24 M4 T2b1; the writer's `Guards` and `Message`).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GuardsSpec {
+    /// The stacks, [creature, count] by slot: one to seven.
+    pub army: Vec<[u16; 2]>,
+    /// The message's text (our own words, Latin-1): empty none.
+    #[serde(default)]
+    pub text: String,
+}
+
+impl GuardsSpec {
+    /// The army by slot, checked: one to seven stacks, none empty.
+    fn army(&self) -> Result<[Option<(u16, u16)>; ARMY_SLOTS], String> {
+        if self.army.is_empty() || self.army.len() > ARMY_SLOTS {
+            return Err(format!(
+                "guards of {} stacks: one to seven",
+                self.army.len()
+            ));
+        }
+        let mut army = [None; ARMY_SLOTS];
+        for (slot, &[creature, count]) in army.iter_mut().zip(&self.army) {
+            if count == 0 {
+                return Err(format!("guards of creature {creature}: a count of 0"));
+            }
+            *slot = Some((creature, count));
+        }
+        Ok(army)
+    }
 }
 
 impl ObjectSpec {
@@ -338,6 +406,8 @@ impl ObjectSpec {
             || self.spell.is_some()
             || self.skills.is_some()
             || self.rewards.is_some()
+            || self.monster.is_some()
+            || self.guards.is_some()
     }
 
     /// Its body as the writer takes it (E24 M4 T2a1), on its template: a pile's amount, a
@@ -352,17 +422,60 @@ impl ObjectSpec {
                 body,
             }))
         };
-        match (&self.amount, &self.spell, &self.skills, &self.rewards) {
-            (Some(amount), None, None, None) if class == PILE_CLASS => Ok(MapObject::Pile(Pile {
+        let guards = self.guards.as_ref().map(GuardsSpec::army).transpose()?;
+        let text = || {
+            self.guards
+                .as_ref()
+                .map(|g| g.text.clone())
+                .unwrap_or_default()
+        };
+        match (
+            &self.amount,
+            &self.spell,
+            &self.skills,
+            &self.rewards,
+            &self.monster,
+        ) {
+            (amount, None, None, None, None) if class == PILE_CLASS => Ok(MapObject::Pile(Pile {
                 tile,
                 template: template.clone(),
-                amount: *amount,
-                guards: None,
+                amount: amount.unwrap_or(0),
+                guards: guards.map(|army| Guards {
+                    army,
+                    question: text(),
+                }),
             })),
-            (None, Some(spell), None, None) if SHRINE_OBJECTS.contains(&class) => {
+            (None, None, None, None, None) if class == ARTIFACT_OBJECT && guards.is_some() => {
+                reward(RewardBody::Artifact(Some(Message {
+                    text: text(),
+                    guards,
+                })))
+            }
+            (None, None, None, None, Some(m)) if class == MONSTER_CLASS && guards.is_none() => {
+                if m.disposition > 4 || !(1..=0xFFF).contains(&m.count) {
+                    return Err(format!(
+                        "{} at {:?}: a monster of {} creatures, disposition {}",
+                        self.def, self.at, m.count, m.disposition
+                    ));
+                }
+                Ok(MapObject::Monster(Monster {
+                    tile,
+                    template: template.clone(),
+                    count: m.count,
+                    disposition: m.disposition,
+                    never_flees: m.never_flees,
+                    fixed_count: false,
+                    treasure: None,
+                }))
+            }
+            (None, Some(spell), None, None, None)
+                if SHRINE_OBJECTS.contains(&class) && guards.is_none() =>
+            {
                 reward(RewardBody::Shrine(Some(*spell)))
             }
-            (None, None, Some(skills), None) if class == WITCH_HUT_OBJECT => {
+            (None, None, Some(skills), None, None)
+                if class == WITCH_HUT_OBJECT && guards.is_none() =>
+            {
                 let mut mask = [0u8; 4];
                 for &s in skills {
                     let byte = mask
@@ -375,7 +488,7 @@ impl ObjectSpec {
                 }
                 reward(RewardBody::WitchHut(Some(mask)))
             }
-            (None, None, None, Some(r)) if class == EVENT_OBJECT => {
+            (None, None, None, Some(r), None) if class == EVENT_OBJECT && guards.is_none() => {
                 reward(RewardBody::Event(Event {
                     message: None,
                     rewards: r.writer(),
@@ -383,6 +496,12 @@ impl ObjectSpec {
                     computer: false,
                     removed_after_visit: true,
                 }))
+            }
+            (None, None, None, Some(r), None) if class == PANDORA_OBJECT && guards.is_none() => {
+                reward(RewardBody::Pandora {
+                    message: None,
+                    rewards: r.writer(),
+                })
             }
             _ => Err(format!(
                 "{} at {:?}: a body its class {class} does not take, or more than one",
@@ -602,6 +721,11 @@ pub struct HeroSpec {
     /// gives the levels it reaches at the start, choosing for the human), none the type's.
     #[serde(default)]
     pub experience: Option<u32>,
+    /// Its Diplomacy's level (0 to 3; hero +0xCD, the level alone: no skill slot), written by
+    /// the harness after its walk (E24 M4 T2b1, design §5.4: a monster's offer to join for
+    /// gold); none the type's. It redraws nothing, so it needs no selection.
+    #[serde(default)]
+    pub diplomacy: Option<u8>,
 }
 
 impl HeroSpec {
@@ -1017,6 +1141,25 @@ impl Situation {
             if self.visits[..i].iter().any(|w| w.at == v.at) {
                 return Err(format!("the visits at {:?}: given twice", v.at));
             }
+            // The words the load draws (E24 M4 T2b1): each in its bits' range.
+            let fits = v.aggression.is_none_or(|a| (-16..=15).contains(&a))
+                && v.gold
+                    .is_none_or(|g| g % 500 == 0 && (500..=7_500).contains(&g))
+                && v.price.is_none_or(|p| p <= 2);
+            if !fits {
+                return Err(format!(
+                    "the visits at {:?}: an aggression, a chest's gold or a Tree's price \
+                     its word cannot hold",
+                    v.at
+                ));
+            }
+        }
+        if let Some(h) = self
+            .heroes
+            .iter()
+            .find(|h| h.diplomacy.is_some_and(|d| d > 3))
+        {
+            return Err(format!("the hero at {:?}: Diplomacy past Expert", h.at));
         }
         // The status window's (E24 M3 T5b1): Red's towns' garrisons and garrison heroes, of
         // Red's; seven slots at most; a silo with chosen buildings.
