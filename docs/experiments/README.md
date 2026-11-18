@@ -349,6 +349,20 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   tile west of `at`) and the Den of Thieves `AVXdend0` (class 97, entered at `at`), both without a
   body, each blocking `at` and the tile west of it. A map's allowed heroes are always the editor's
   default: batch TWN-4b's few free types are the capture harness's narrowed pool instead.
+  **Increment 14's objects** (E08 T128, batch E14; survey `docs/rules/surveys/E08-trades.md` §1,
+  increment 14's design note §7, §20): `[[map.object]]` takes the trades and services by picture
+  (no body, subclass 0; a Black Market's stock is the game's draw at the start, never the map's):
+  the Altar of Sacrifice `AvXAltar`, the Black Market `AVXmktb0`, the Hill Fort `AVXhild0` or
+  `AVXhilg0` (the editor's dirt or grass picture), the Trading Post `AVXpost0` (dirt and grass) or
+  `AVXpstr0` (rough) and `AVXpsSn` (snow, class 221), each entered at `at`; the War Machine
+  Factory `AVGsieg0` and the Freelancer's Guild `avxfgld`, entered at the tile west of `at`. Each
+  blocks `at` and the tile west of it (the guild also the second tile west), its entrance among
+  them; the hero stands on the entrance (the original's class lists, not the mask), and none is
+  entered from above. The guild and the snow post are AB's: the writer refuses them in an RoE map.
+  `banned_artifacts` (`[map]`, E08 T128): the artifacts the map bans besides the editor's default
+  ones (127 to 143), by `ARTRAITS.TXT` name (none, the default): no Black Market draws one (E14-3);
+  an RoE map holds none. A hero's secondary skills, war machines, worn artifacts, backpack (and
+  `fill_backpack` to 64) and an RoE map (`format = "roe"`) are the spec's already.
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `level` (E08
   T22a1: 1 puts the encounter's heroes and opponent on the underground; the template says so),
   `procedure`
