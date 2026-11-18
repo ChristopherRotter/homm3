@@ -211,7 +211,10 @@ pub mod wire;
 /// slot to the owner alone) and the owner's `HiredPartSeen` per part its slot's view did not show
 /// (the offered levels with the worn positions' count, the backpack past its first five, the
 /// learned spells), folded into the viewer's heroes on the map.
-pub const PROTOCOL_VERSION: u32 = 71;
+/// v72 (E09 T38b2, the town lane's, `cross-lane`): a hero's dismissal (GAM-MAN-003):
+/// `Manage::Dismiss` (the hero) and its refusals `NotOnMap`, `InTown` and `LastHero`; its
+/// `HeroRemoved` as a battle's.
+pub const PROTOCOL_VERSION: u32 = 72;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

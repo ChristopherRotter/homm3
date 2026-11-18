@@ -284,11 +284,13 @@ pub fn legal_moves(
 /// formations and both values of the flag, each artifact's moves onto every place of the hero
 /// and then, with a meeting open, of the other hero that takes it (`h3_heroes::check_move`: the
 /// sources and the targets in position order, then by backpack index, a target up to the
-/// backpack's length), then the assemblies and the disassemblies by position. Empty when the
+/// backpack's length), then the assemblies and the disassemblies by position, then since E09
+/// T38b2 outside a decision the hero's dismissal when it passes (GAM-MAN-003: on the map, not a
+/// town's visitor, not the player's one hero on the map while it owns no town). Empty when the
 /// actor's turn is not running, it has another open decision or a meeting, an army dialog or an
 /// exchange that does not hold the hero, by `apply`'s own checks, or the hero is not its on the map. A split's
 /// counts are [`split_range`]'s.
-// rule: GAM-MAN-002
+// rule: GAM-MAN-002, GAM-MAN-003
 pub fn legal_management(
     state: &GameState,
     rules: &GameRuleset,
@@ -374,6 +376,12 @@ pub fn legal_management(
     let disassemblies = positions
         .filter(|&at| check_disassemble(details, core, at).is_ok())
         .map(|at| Manage::Disassemble { hero, at });
+    // E09 T38b2 (GAM-MAN-003): outside a decision, a hero on the map that may be dismissed.
+    let dismissal = (together == Together::Alone)
+        .then(|| adventure.hero(hero))
+        .flatten()
+        .filter(|on| crate::town::leave::check_dismissal(adventure, player, on).is_ok())
+        .map(|_| Manage::Dismiss { hero });
     army.into_iter()
         .chain(grouped)
         .map(Manage::Army)
@@ -382,6 +390,7 @@ pub fn legal_management(
         .chain(moves)
         .chain(assemblies)
         .chain(disassemblies)
+        .chain(dismissal)
         .collect()
 }
 

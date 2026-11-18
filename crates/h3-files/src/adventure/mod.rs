@@ -2,7 +2,7 @@
 //! adventure-owned, `lanes.toml`): the packs with their adventure, battle and town files and the
 //! `.h3m` maps read from disk, and the adventure replay file format (TOML).
 //!
-//! Replay file format v17 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
+//! Replay file format v18 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
 //! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
 //! refused by its format version; a later file without one is malformed; v3 added the battle
 //! commands, E08 T19b1, and names each command's actor: a player by its number; v4 the system
@@ -29,7 +29,7 @@
 //! v16 `town heroes <town> enter|leave|swap`, a hero's move between a town's two bars, E09 T28a,
 //! and the management lines naming a town's upper bar, `t<town>:<slot>` its garrison or a garrison
 //! hero's army by the hero; v17 `town hire <town> <slot>`, a tavern hero hired at a town's Tavern,
-//! E09 T38a1, the slot 0 or 1):
+//! E09 T38a1, the slot 0 or 1; v18 `dismiss <hero>`, a hero's dismissal, E09 T38b2):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -46,8 +46,8 @@
 //!                                     #   …`: the system's for a player (format 14)
 //!     "0 army split 1:0 1:3 5",       #   `<player> army …` (`m12:0`: a map garrison's slot,
 //!     "0 army move 1:2 m12:4",        #   format 13), `formation …`, `tactics …`,
-//!     "0 artifact 1:b0 1:w2",         #   `artifact …`, `assemble …`, `disassemble …`: a
-//!                                     #   management command
+//!     "0 artifact 1:b0 1:w2",         #   `artifact …`, `assemble …`, `disassemble …`,
+//!     "0 dismiss 1",                  #   `dismiss <hero>` (format 18): a management command
 //!     "0 build-boat 41 9,16,1",       #   `<player> build-boat <type> <x>,<y>,<level>`
 //!     "0 town build 2 7",             #   `<player> town build <town> <building>` (format 11)
 //!     "0 town recruit 2 30",          #   `<player> town recruit <town> <building>` (format 15)
@@ -58,7 +58,7 @@
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 17
+//! format = 18
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -472,6 +472,8 @@ fn format_manage(command: &Manage) -> String {
         }
         Manage::Assemble { hero, at } => format!("assemble {} {}", hero.raw(), at.0),
         Manage::Disassemble { hero, at } => format!("disassemble {} {}", hero.raw(), at.0),
+        // Format v18 (E09 T38b2): a hero's dismissal.
+        Manage::Dismiss { hero } => format!("dismiss {}", hero.raw()),
     }
 }
 
@@ -551,9 +553,12 @@ fn parse_manage<'a>(kind: &str, words: &mut impl Iterator<Item = &'a str>) -> Op
             hero: hero(next())?,
             at: Position(next()?.parse().ok()?),
         },
-        _ => Manage::Disassemble {
+        "disassemble" => Manage::Disassemble {
             hero: hero(next())?,
             at: Position(next()?.parse().ok()?),
+        },
+        _ => Manage::Dismiss {
+            hero: hero(next())?,
         },
     };
     Some(command)
@@ -698,9 +703,10 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
                 TownCommand::Recruit { town, building }
             })
         }
-        // Format v6 (E08 T51a): the management commands.
+        // Format v6 (E08 T51a): the management commands; v18 (E09 T38b2) the dismissal.
         Some(
-            kind @ ("army" | "formation" | "tactics" | "artifact" | "assemble" | "disassemble"),
+            kind @ ("army" | "formation" | "tactics" | "artifact" | "assemble" | "disassemble"
+            | "dismiss"),
         ) => GameCommand::Manage(parse_manage(kind, &mut words).ok_or_else(bad)?),
         _ => return Err(bad()),
     };

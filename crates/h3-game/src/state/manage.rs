@@ -32,7 +32,9 @@ impl GameState {
     /// change the adventure's armies and the group, each slot named told (`StackChanged`); the
     /// formation and the flag the hero on the map (`FormationSet`, `TacticsSet`); the artifact
     /// commands the heroes' details through `h3-heroes`' changes, each told (`HeroChanged`). Seen
-    /// by the owner alone (ADR-0016 point 6).
+    /// by the owner alone (ADR-0016 point 6). Since E09 T38b2 a dismissal (GAM-MAN-003), only
+    /// outside a decision (else `DecisionOpen`): the town lane's leave (`town::leave::dismiss`),
+    /// its `HeroRemoved` seen by its owner and the players that see its tile.
     ///
     /// # Errors
     ///
@@ -48,6 +50,11 @@ impl GameState {
     ) -> Result<(), GameCommandError> {
         let together = self.check_managing(player)?;
         match command {
+            // E09 T38b2 (GAM-MAN-003): a dismissal only outside a decision.
+            Manage::Dismiss { .. } if together != Together::Alone => {
+                return Err(GameCommandError::DecisionOpen);
+            }
+            Manage::Dismiss { .. } => {}
             Manage::Army(army) => self.admits_army(player, together, army.armies())?,
             Manage::Artifact { from, to } => together.admits_heroes([from.0, to.0].into_iter())?,
             Manage::Formation { hero, .. }
@@ -176,6 +183,10 @@ impl GameState {
                 let changes = disassemble_changes(self.own_details(player, hero)?, core, at)
                     .map_err(ManageError::Combine)?;
                 self.change_all(core, player, hero, changes, sink);
+            }
+            // rule: GAM-MAN-003
+            Manage::Dismiss { hero } => {
+                crate::town::leave::dismiss(self, rules, (player, hero), sink)?;
             }
         }
         Ok(())

@@ -137,6 +137,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   after changing what a step plays, run the properties of `play.rs` and `view.rs` at five times
   their cases once, `every_step_keeps_the_commands_invariants` at ten (raise the two blocks'
   `cases`, then put 48 back): 240 cases missed two that CI's seeds met.
+- **A command listed for every hero outside a decision floods the plans** (E09 T38b2): `pick`
+  draws a kind uniformly, so a dismissal in `managing` would be played in about one
+  `Step::Manage` of five and empty the maps of heroes. `managing` leaves the dismissals out and
+  `dismissal` plays one in one step of sixteen; a new command of that kind goes the same way,
+  and `check_isolation`, `check_conservation` and `check_management` learn what it takes away.
 - **A tavern hero shown ends the hygiene's comparison** (E09 T38a2): the slots' heroes are draws
   of the taverns' stream, which the other game's seed and types move (`without_tavern` hides the
   viewer's slots), so a hire the viewer is told (its own, or another player's on a tile it sees)

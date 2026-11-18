@@ -292,3 +292,28 @@ fn a_beaten_hero_in_a_boat_leaves_the_map_with_it_and_a_winner_stays_in_its_boat
     assert!(state.heroes().is_empty());
     assert!(state.check_boats(&rules.1));
 }
+
+// covers: GAM-MAN-003, ADV-SEA-006
+#[test]
+fn a_removed_hero_leaves_the_map_with_its_boat_as_a_beaten_one() {
+    let rules = rules();
+    let mut state = boats(&rules, |_| {});
+    let mut beaten = state.clone();
+    let mut expected = Vec::new();
+    let left = beaten.end_battle(&rules.0, &[(BLUE_HERO, None)], &mut expected);
+    // Only its owner removes a hero on the map (E09 T38b2: the dismissal); nothing changes else.
+    let before = state.clone();
+    let mut events = Vec::new();
+    assert_eq!(
+        state.remove_hero(&rules.0, (RED, BLUE_HERO), &mut events),
+        None
+    );
+    assert_eq!(
+        state.remove_hero(&rules.0, (BLUE, HeroId::new(9)), &mut events),
+        None
+    );
+    assert_eq!((&state, events.len()), (&before, 0));
+    let removed = state.remove_hero(&rules.0, (BLUE, BLUE_HERO), &mut events);
+    assert_eq!(removed.as_ref(), left.first());
+    assert_eq!((state, events), (beaten, expected));
+}

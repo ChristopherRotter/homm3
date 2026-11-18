@@ -2915,7 +2915,8 @@ pub(super) enum Step {
     /// ([`seek`]), in a battle it plays the `n`-th of its fighting commands ([`fight`]).
     Fight(u16),
     /// (E08 T52) The acting player's `n`-th management command ([`managing`], modulo their
-    /// number), or as `Legal(n)` if it has none (a battle, an offer or a level-up open).
+    /// number), or as `Legal(n)` if it has none (a battle, an offer or a level-up open); since
+    /// E09 T38b2 in one step of sixteen a hero's dismissal when one is listed ([`dismissal`]).
     Manage(u16),
     /// (E08 T52) On the map the acting player's hero seeks another of its own ([`meet`]); with a
     /// meeting or an army dialog open, as `Manage(n)`.
@@ -3469,8 +3470,8 @@ fn splits(
 }
 
 /// The acting player's management commands (E08 T52; GAM-MAN-002): each of its heroes'
-/// [`legal_management`] by id, then its [`splits`], each to its range's ends and the count
-/// between them.
+/// [`legal_management`] by id but its dismissal ([`dismissal`]'s), then its [`splits`], each to
+/// its range's ends and the count between them.
 pub(super) fn managing(state: &GameState, rules: &GameRuleset) -> Vec<GameCommand> {
     let actor = actor(state);
     let mut commands: Vec<GameCommand> = state
@@ -3478,6 +3479,7 @@ pub(super) fn managing(state: &GameState, rules: &GameRuleset) -> Vec<GameComman
         .heroes()
         .iter()
         .flat_map(|h| legal_management(state, rules, actor, h.id))
+        .filter(|m| !matches!(m, Manage::Dismiss { .. }))
         .map(GameCommand::Manage)
         .collect();
     for (from, to, range) in splits(state, rules) {
@@ -3489,6 +3491,27 @@ pub(super) fn managing(state: &GameState, rules: &GameRuleset) -> Vec<GameComman
         }));
     }
     commands
+}
+
+/// In one [`Step::Manage`] of sixteen (E09 T38b2; GAM-MAN-003), the `n`-th of the acting
+/// player's listed hero dismissals ([`legal_management`]'s last, outside a decision), so that a
+/// game loses a hero now and then and keeps its others; none in the other steps or when none is
+/// listed (a decision open, every hero a town's visitor, the player's last hero without a town).
+fn dismissal(state: &GameState, rules: &GameRuleset, n: u16) -> Option<GameCommand> {
+    if n % 16 != 15 {
+        return None;
+    }
+    let actor = actor(state);
+    let listed: Vec<GameCommand> = state
+        .adventure()
+        .heroes()
+        .iter()
+        .filter_map(|h| legal_management(state, rules, actor, h.id).pop())
+        .filter(|m| matches!(m, Manage::Dismiss { .. }))
+        .map(GameCommand::Manage)
+        .collect();
+    let at = usize::from(n / 16) % listed.len().max(1);
+    listed.get(at).cloned()
 }
 
 /// A management command's kind (E08 T52): a stack's move, split or dismissal, a formation or a
@@ -4984,7 +5007,8 @@ pub(super) fn resolve(
         Step::Fight(n) => (who, seek(state, legal, *n)),
         Step::Manage(n) => (
             who,
-            pick(&managing(state, rules), *n)
+            dismissal(state, rules, *n)
+                .or_else(|| pick(&managing(state, rules), *n))
                 .unwrap_or_else(|| legal[usize::from(*n) % legal.len()].clone()),
         ),
         Step::Meet(n) => (who, meet(state, rules, legal, *n)),
@@ -7348,7 +7372,8 @@ fn check_timed(
 /// in the order it is told them (a reward's rest after a level-up, GAM-DEC-007). Since E08 T95b a
 /// hire dialog's purchase pays the cost of one times the amount and joins the amount as a join does.
 /// Since E09 T38a2 a town's hire pays the part's price, and its hero joins the map with its tavern
-/// slot's army; its slot's refill may add a record.
+/// slot's army; its slot's refill may add a record. Since E09 T38b2 a dismissed hero leaves the
+/// map with its army, its record's spell points full untold.
 fn check_conservation(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -7380,6 +7405,12 @@ fn check_conservation(
         .flatten()
         .map(|view| view.hero.id)
         .collect();
+    // E09 T38b2: a dismissed hero leaves the game (GAM-MAN-003, TWN-TAV-006): its record's spell
+    // points full, which no event tells, and its army off the map with it.
+    let dismissed = match *command {
+        GameCommand::Manage(Manage::Dismiss { hero }) => Some(hero),
+        _ => None,
+    };
     for (i, (b, a)) in before.heroes().iter().zip(after.heroes()).enumerate() {
         let id = HeroId::new(u16::try_from(i).unwrap());
         if offered.contains(&id) {
@@ -7433,6 +7464,9 @@ fn check_conservation(
                 }
                 _ => {}
             }
+        }
+        if dismissed == Some(id) {
+            told.mana = h3_heroes::max_mana(&told, rules.core());
         }
         prop_assert_eq!(&told, &**a);
     }
@@ -7735,6 +7769,7 @@ fn check_conservation(
         }
     }
     let mut expected = armies(before);
+    expected.retain(|&(id, _)| Some(id) != dismissed);
     // E09 T38a2: a hired hero joins with its tavern slot's army as its owner's view showed it
     // (TWN-TAV-003).
     for event in events {
@@ -8789,12 +8824,15 @@ fn check_management(
         Manage::Army(army) => named(army),
         _ => Vec::new(),
     };
-    for (b, a) in before
-        .adventure()
-        .heroes()
-        .iter()
-        .zip(after.adventure().heroes())
-    {
+    // E09 T38b2: a dismissed hero leaves the map (GAM-MAN-003), the others stay as they were.
+    let dismissed = match *command {
+        Manage::Dismiss { hero } => Some(hero),
+        _ => None,
+    };
+    let stayed = before.adventure().heroes().iter();
+    let stayed = stayed.filter(|b| Some(b.id) != dismissed);
+    prop_assert_eq!(stayed.clone().count(), after.adventure().heroes().len());
+    for (b, a) in stayed.zip(after.adventure().heroes()) {
         prop_assert_eq!(
             (b.id, b.owner, b.pos, b.movement),
             (a.id, a.owner, a.pos, a.movement)
@@ -8875,6 +8913,29 @@ fn check_management(
             expected.push(gained[0]);
             expected.sort_unstable();
             prop_assert_eq!(artifacts(whole, &[hero]), expected);
+        }
+        // E09 T38b2 (GAM-MAN-003): told as its removal (and its boat's), to its owner and the
+        // players that see its tile, nothing else; it keeps its record and every artifact.
+        Manage::Dismiss { hero } => {
+            let on = before.adventure().hero(hero).unwrap();
+            for event in events {
+                let GameEvent::Adventure(AdventureEvent { kind, seen_by }) = event else {
+                    return Err(fail(format!("{event:?} at a dismissal")));
+                };
+                match *kind {
+                    AdventureEventKind::HeroRemoved { hero: h, pos } => {
+                        prop_assert_eq!((h, pos), (hero, on.pos));
+                    }
+                    AdventureEventKind::BoatRemoved { hero: h, at, .. } => {
+                        prop_assert_eq!((h, at, on.boat.is_some()), (hero, on.pos, true));
+                    }
+                    _ => return Err(fail(format!("{event:?} at a dismissal"))),
+                }
+                prop_assert!(seen_by.contains(on.owner), "{:?}", event);
+            }
+            prop_assert_eq!(events.len(), 1 + usize::from(on.boat.is_some()));
+            prop_assert!(after.hero(hero).is_some());
+            prop_assert_eq!(artifacts(after, &[hero]), artifacts(before, &[hero]));
         }
     }
     Ok(())
@@ -11781,7 +11842,7 @@ fn told_army(
 /// (ADV-MOV-002); but a battle (E08 T19a) the actor owns with another player: its commands play
 /// the battle both own, and the one that ends it changes the other's hero (its army, or its
 /// removal; since E09 T29b a garrison hero's that defended) and, by a surrender, its treasury
-/// ([`check_battle_end`]).
+/// ([`check_battle_end`]); since E09 T38b2 the actor's dismissal takes its hero off the map.
 fn check_isolation(
     before: &GameState,
     after: &GameState,
@@ -11800,6 +11861,15 @@ fn check_isolation(
         }
         // E09 T28a: the actor's visitor into its town's garrison (TWN-ROW-002, -004).
         if a.is_none() && b.owner == actor && after.adventure().garrisoned(b.id).is_some() {
+            continue;
+        }
+        // E09 T38b2: the actor's dismissed hero, told as its removal (GAM-MAN-003).
+        let removed = |e: &GameEvent| {
+            matches!(e, GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::HeroRemoved { hero, .. }, ..
+            }) if *hero == b.id)
+        };
+        if a.is_none() && b.owner == actor && events.iter().any(removed) {
             continue;
         }
         let a = a.ok_or_else(|| fail(format!("{:?} left the map", b.id)))?;
@@ -12466,7 +12536,7 @@ fn the_plans_fly_and_walk_on_water() {
 }
 
 /// What a set of games managed (E08 T52): the meetings opened and the spells Scholar taught at
-/// them; the accepted management commands by kind, those between a meeting's two heroes (stacks
+/// them; the accepted management commands by kind (since E09 T38b2 the heroes dismissed), those between a meeting's two heroes (stacks
 /// and artifacts), the group's stacks taken into a hero's army; the army dialogs opened and the
 /// stacks lost with their groups; the management commands refused; the moves undone by their
 /// inverse ([`check_inverse`]).
@@ -12482,6 +12552,7 @@ struct Managed {
     artifacts: usize,
     assemblies: usize,
     disassemblies: usize,
+    heroes_dismissed: usize,
     stacks_exchanged: usize,
     artifacts_exchanged: usize,
     dialogs: usize,
@@ -12537,6 +12608,7 @@ impl Managed {
             }
             Manage::Assemble { .. } => self.assemblies += 1,
             Manage::Disassemble { .. } => self.disassemblies += 1,
+            Manage::Dismiss { .. } => self.heroes_dismissed += 1,
         }
     }
 }
@@ -12754,11 +12826,13 @@ fn count_timed(before: &GameState, events: &[GameEvent], timed: &mut [usize; 3])
 /// The plans meet and manage (E08 T52, increment 6's exit criteria 1 to 4): over a fixed set of
 /// cases (proptest's deterministic runner), random play with the management runs ([`steps`])
 /// meets a hero's mate and learns Scholar's spells there, moves, splits and dismisses stacks,
+/// dismisses heroes (E09 T38b2),
 /// exchanges stacks and artifacts between the two heroes, sets formations and flags, assembles
 /// and disassembles Elixir of Life, opens army dialogs for a full army's join, takes the group's
 /// stacks and loses the rest, refuses arbitrary management commands and undoes moves by their
 /// inverse; the properties above check each (`every_step_keeps_the_commands_invariants`).
-// covers: GAM-MAN-001, GAM-MAN-002, GAM-MET-001, GAM-DEC-003, GAM-DEC-004, HER-SPL-007
+// covers: GAM-MAN-001, GAM-MAN-002, GAM-MAN-003, GAM-MET-001, GAM-DEC-003, GAM-DEC-004
+// covers: HER-SPL-007
 #[test]
 fn the_plans_meet_and_manage() {
     use proptest::strategy::ValueTree;
@@ -12788,6 +12862,7 @@ fn the_plans_meet_and_manage() {
     assert!(m.moves > 0 && m.splits > 0 && m.dismissals > 0, "{m:?}");
     assert!(m.formations > 0 && m.flags > 0 && m.artifacts > 0, "{m:?}");
     assert!(m.assemblies > 0 && m.disassemblies > 0, "{m:?}");
+    assert!(m.heroes_dismissed > 0, "{m:?}");
     assert!(m.stacks_exchanged > 0 && m.artifacts_exchanged > 0, "{m:?}");
     assert!(m.dialogs > 0 && m.taken > 0 && m.lost > 0, "{m:?}");
     assert!(m.refused > 0 && m.undone > 0, "{m:?}");

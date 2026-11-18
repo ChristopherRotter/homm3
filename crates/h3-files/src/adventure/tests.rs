@@ -294,6 +294,12 @@ fn commands_round_trip_through_their_text() {
             }),
             "0 disassemble 12 2",
         ),
+        // Format v18 (E09 T38b2): a hero's dismissal.
+        (
+            PlayerId::new(1),
+            manage(Manage::Dismiss { hero }),
+            "1 dismiss 12",
+        ),
     ];
     for (player, command, text) in cases {
         let actor = Actor::Player(player);
@@ -453,6 +459,9 @@ fn commands_round_trip_through_their_text() {
         "0 assemble 1 x",
         "0 disassemble",
         "0 disassemble 1",
+        "0 dismiss",
+        "0 dismiss x",
+        "0 dismiss 1 2",
     ] {
         assert!(
             matches!(parse_command(bad), Err(AdventureFileError::Format(_))),
