@@ -3,44 +3,68 @@
 //! (`h3_view::shell::scenario::Entry`), in the list's order. A file that fails to read is left
 //! out, as the original leaves out one whose header does not read (`scenario_header_read`
 //! 0x583170). Read once, at the shell's start (*provisional*: the original reads them at each
-//! opening; M3's review list).
+//! opening; M3's review list). Since E27 M3 T3b1 each map is imported with the game's rules
+//! ([`rules`]) for the heroes the engine offers its colours (`GameSetup::offer`, decision 4).
 
 use std::fs;
 use std::path::Path;
 
+use h3_content::FactionId;
+use h3_contracts::PlayerId;
+use h3_game::{FactionChoice, GameRuleset};
 use h3_map::model::{Loss, Player, Version, Victory, VictoryGoal};
 use h3_map::{Limits, RawMap};
 use h3_ui::text::decode_1252;
-use h3_view::shell::scenario::{self, DESCRIPTION_BYTES, Entry, Format, MainHero, Seat};
+use h3_view::shell::scenario::{
+    self, CustomHero, DESCRIPTION_BYTES, Entry, Format, Heroes, MainHero, Seat,
+};
+
+/// The packs of the game's rules the shell imports the maps with, and their profile (as `h3
+/// adventure`'s defaults: Complete's content, the faithful profile).
+const PACKS: [&str; 3] = ["base", "ab", "sod"];
+const PROFILE: &str = "base:faithful";
+
+/// The game's rules of the repository's packs (`packs/`, beside the client workspace) that the
+/// maps are imported with (E27 M3 T3b1).
+///
+/// # Errors
+///
+/// The packs do not load.
+pub fn rules() -> Result<GameRuleset, String> {
+    let packs = crate::assets::clients_dir().join("../packs");
+    let ids = PACKS.map(String::from);
+    h3_files::adventure::load_rules(&packs, &ids, PROFILE)
+        .map_err(|e| format!("{}: {e}", packs.display()))
+}
 
 /// The maps' folder of an installation (`maps`, as the original names it: the copy's `Maps`).
 const MAPS: &str = "Maps";
 
-/// The entries of `install`'s maps (`*.h3m`, any case), in the list's order; none without the
-/// folder.
+/// The entries of `install`'s maps (`*.h3m`, any case) under `rules`, in the list's order; none
+/// without the folder.
 #[must_use]
-pub fn entries(install: &Path) -> Vec<Entry> {
+pub fn entries(install: &Path, rules: &GameRuleset) -> Vec<Entry> {
     let Ok(dir) = fs::read_dir(install.join(MAPS)) else {
         return Vec::new();
     };
     let mut entries: Vec<Entry> = dir
         .filter_map(Result::ok)
-        .filter_map(|e| read(&e.path()))
+        .filter_map(|e| read(&e.path(), rules))
         .collect();
     scenario::sort(&mut entries);
     entries
 }
 
-/// The entry of the map file `path` (`*.h3m`, any case), by its file's name; none for another
-/// file or one that does not read.
-fn read(path: &Path) -> Option<Entry> {
+/// The entry of the map file `path` (`*.h3m`, any case) under `rules`, by its file's name; none
+/// for another file or one that does not read.
+fn read(path: &Path, rules: &GameRuleset) -> Option<Entry> {
     let file = path.file_name()?.to_str()?.to_owned();
     let h3m = Path::new(&file)
         .extension()
         .is_some_and(|x| x.eq_ignore_ascii_case("h3m"));
     let bytes = h3m.then(|| fs::read(path).ok()).flatten()?;
     let map = h3_map::read(&bytes, &Limits::default()).ok()?;
-    Some(entry(file, &map))
+    Some(entry(file, &map, rules))
 }
 
 /// `entries` with the files `names` names alone (any case), in their order; all of them without
@@ -48,7 +72,7 @@ fn read(path: &Path) -> Option<Entry> {
 /// A name with a `/` is a map file's path (E27 M3 T2c: a map of the harness's own, written for
 /// the run): read and listed by its file's name, the list in its order again.
 #[must_use]
-pub fn named(entries: Vec<Entry>, names: Option<&[String]>) -> Vec<Entry> {
+pub fn named(entries: Vec<Entry>, names: Option<&[String]>, rules: &GameRuleset) -> Vec<Entry> {
     let Some(names) = names else {
         return entries;
     };
@@ -57,14 +81,14 @@ pub fn named(entries: Vec<Entry>, names: Option<&[String]>) -> Vec<Entry> {
         .filter(|e| names.iter().any(|n| n.eq_ignore_ascii_case(&e.file)))
         .collect();
     let own = names.iter().filter(|n| n.contains('/'));
-    named.extend(own.filter_map(|path| read(Path::new(path))));
+    named.extend(own.filter_map(|path| read(Path::new(path), rules)));
     scenario::sort(&mut named);
     named
 }
 
-/// The list's entry of `map`, read from the file `file`.
+/// The list's entry of `map`, read from the file `file`, its heroes under `rules`.
 #[must_use]
-pub fn entry(file: String, map: &RawMap) -> Entry {
+pub fn entry(file: String, map: &RawMap, rules: &GameRuleset) -> Entry {
     let header = &map.header;
     let (victory, standard) = match map.victory {
         Victory::Standard => (None, false),
@@ -107,7 +131,49 @@ pub fn entry(file: String, map: &RawMap) -> Entry {
         loss,
         seats: map.players.each_ref().map(seat),
         teams,
+        heroes: heroes(map, rules),
     }
+}
+
+/// What `map`'s import under `rules` gives the advanced options of its heroes (E27 M3 T3b1;
+/// design §24): each colour's offer by faction (its choice made each faction in turn,
+/// `GameSetup::offer`; none for a map that does not import), the main heroes' names, the map's
+/// customised heroes (its disposed heroes: a portrait of 0xFF and an empty name the type's).
+fn heroes(map: &RawMap, rules: &GameRuleset) -> Heroes {
+    let mut heroes = Heroes::default();
+    for (c, player) in map.players.iter().enumerate() {
+        if let Some(h) = player.details.as_ref().and_then(|d| d.main_hero.as_ref()) {
+            heroes.main_names[c] = decode_1252(h.name.as_bytes());
+        }
+    }
+    heroes.custom = map
+        .disposed_heroes
+        .iter()
+        .map(|h| CustomHero {
+            hero_type: h.hero_type,
+            portrait: (h.portrait != 0xFF).then_some(h.portrait),
+            name: decode_1252(h.name.as_bytes()),
+        })
+        .collect();
+    let Ok(mut setup) = h3_map::import(map, rules) else {
+        return heroes;
+    };
+    for p in 0..setup.players.len() {
+        let colour = usize::from(setup.players[p].colour & 7);
+        let player = PlayerId::new(u8::try_from(p).unwrap_or(u8::MAX));
+        for (f, offer) in heroes.offers[colour].iter_mut().enumerate() {
+            let Some(faction) = FactionId::from_index(f) else {
+                continue;
+            };
+            setup.players[p].start.choice = Some(FactionChoice::Fixed(faction));
+            *offer = setup
+                .offer(rules, player)
+                .iter()
+                .filter_map(|h| u8::try_from(h.index()).ok())
+                .collect();
+        }
+    }
+    heroes
 }
 
 /// A colour's seat (E27 M3 T3a: what the advanced options offer it): who may play it, its
@@ -127,11 +193,8 @@ fn seat(player: &Player) -> Seat {
             .and_then(|d| d.main_hero.as_ref())
             .map(|h| MainHero {
                 hero_type: h.hero_type,
-                portrait: if h.portrait == 0xFF {
-                    h.hero_type
-                } else {
-                    h.portrait
-                },
+                // The file's 0xFF (its type's own) kept apart (CLT-Q141).
+                portrait: (h.portrait != 0xFF).then_some(h.portrait),
             }),
     }
 }
@@ -185,7 +248,8 @@ mod tests {
         let Some(install) = staged() else {
             return;
         };
-        let entries = entries(&install);
+        let rules = rules().unwrap();
+        let entries = entries(&install, &rules);
         assert_eq!(entries.len(), 159);
         assert!(entries.windows(2).all(|w| w[0].format <= w[1].format));
         let arrogance = entries.iter().find(|e| e.file == "Arrogance.h3m").unwrap();
@@ -207,11 +271,11 @@ mod tests {
         assert_eq!(goal("For Sale.h3m"), (Some(6), false));
         // A recipe's maps alone (`--maps`), any case; all without names.
         let names = [String::from("arrogance.H3M"), String::from("no such.h3m")];
-        let named = named(entries.clone(), Some(&names));
+        let named = named(entries.clone(), Some(&names), &rules);
         assert_eq!(named.len(), 1);
         assert_eq!(named[0].file, "Arrogance.h3m");
-        assert_eq!(super::named(entries.clone(), None).len(), 159);
-        assert!(super::named(Vec::new(), Some(&[])).is_empty());
+        assert_eq!(super::named(entries.clone(), None, &rules).len(), 159);
+        assert!(super::named(Vec::new(), Some(&[]), &rules).is_empty());
         // E27 M3 T2c: a name with a `/` is a map file of its own (the harness's), read and listed
         // in the list's order; Jihad's description is the record's 300 bytes whole.
         let path = install.join(MAPS).join("Jihad.h3m");
@@ -219,10 +283,10 @@ mod tests {
             String::from("Arrogance.h3m"),
             path.to_string_lossy().into_owned(),
         ];
-        let own = super::named(Vec::from([entries[0].clone()]), Some(&names));
+        let own = super::named(Vec::from([entries[0].clone()]), Some(&names), &rules);
         let files: Vec<&str> = own.iter().map(|e| e.file.as_str()).collect();
         assert_eq!(files, ["Jihad.h3m"]);
-        let own = super::named(entries, Some(&names));
+        let own = super::named(entries, Some(&names), &rules);
         let files: Vec<&str> = own.iter().map(|e| e.file.as_str()).collect();
         assert_eq!(files, ["Jihad.h3m", "Arrogance.h3m"]);
         assert_eq!(own[0].description.len(), DESCRIPTION_BYTES);
@@ -230,7 +294,41 @@ mod tests {
 
     #[test]
     fn no_maps_folder_lists_nothing() {
-        assert!(entries(Path::new("/nonexistent-h3-install")).is_empty());
+        let rules = rules().unwrap();
+        assert!(entries(Path::new("/nonexistent-h3-install"), &rules).is_empty());
+    }
+
+    /// E27 M3 T3b1: the engine's offers, the main heroes and the map's customised heroes as the
+    /// advanced options read them (`adv-single-hero`, `adv-single-maps`).
+    #[test]
+    fn the_shipped_maps_offer_their_heroes() {
+        let Some(install) = staged() else {
+            return;
+        };
+        let rules = rules().unwrap();
+        let entries = entries(&install, &rules);
+        let map = |file: &str| entries.iter().find(|e| e.file == file).unwrap();
+        // Arrogance's red as Castle (`hero-1` to `hero-last`): Orrin first, 16 at most; none of
+        // another faction's; a colour that does not play none.
+        let arrogance = map("Arrogance.h3m");
+        let castle = &arrogance.heroes.offers[0][0];
+        assert_eq!(castle.first(), Some(&0));
+        assert!(castle.len() <= 16 && castle.iter().all(|&h| h < 16));
+        assert!(arrogance.heroes.offers[0][1].iter().all(|&h| (16..32).contains(&h)));
+        assert!(arrogance.heroes.offers[2].iter().all(Vec::is_empty));
+        // Adventures of Jared Haret (`map-2`): red's main hero Orrin's portrait named "Jared
+        // Haret"; blue's of its type's own portrait (CLT-Q141); tan's named "Thenith".
+        let jared = map("Adventures of Jared Haret.h3m");
+        let main = |c: usize| jared.seats[c].main_hero.unwrap();
+        assert_eq!((main(0).hero_type, main(0).portrait), (2, Some(0)));
+        assert_eq!((main(1).hero_type, main(1).portrait), (85, None));
+        assert_eq!(jared.heroes.main_names[0], "Jared Haret");
+        assert_eq!(jared.heroes.main_names[1], "");
+        assert_eq!(jared.heroes.main_names[2], "Thenith");
+        // The disposed heroes the shipped maps list keep their types' portraits and names.
+        let custom: Vec<_> = entries.iter().flat_map(|e| &e.heroes.custom).collect();
+        assert!(!custom.is_empty());
+        assert!(custom.iter().all(|h| h.portrait.is_none() && h.name.is_empty()));
     }
 
     #[test]

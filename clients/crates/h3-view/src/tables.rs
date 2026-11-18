@@ -224,6 +224,10 @@ pub struct Hero {
     /// result window, 0x47055A), none if not harvested.
     #[serde(default)]
     pub portrait: Option<String>,
+    /// Its small portrait (`hero_table` 0x679DD0's +0x30, 48 × 32; E27 M3 T3b1: the scenario
+    /// screen's advanced options, 0x57C43E), none if not harvested.
+    #[serde(default)]
+    pub small_portrait: Option<String>,
     /// The hero type is female (`hero_table` 0x679DD0's +0; E17 M6 T5a: the Summons' box names
     /// the hero's pronoun by it, GENRLTXT 540 or 541, where the map gives no sex).
     #[serde(default)]
@@ -695,6 +699,11 @@ impl Tables {
             .values()
             .flat_map(|c| core::iter::once(&c.def).chain(&c.missile))
             .chain(self.heroes.values().map(|h| &h.def))
+            .chain(
+                self.heroes
+                    .values()
+                    .flat_map(|h| h.portrait.iter().chain(&h.small_portrait)),
+            )
             .chain(self.battle.hero_pictures.iter().map(|p| &p.def))
             .chain(&self.battle.flags)
             .chain(self.battle.wall_explosions.iter().flatten())

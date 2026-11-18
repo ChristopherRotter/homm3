@@ -24,26 +24,39 @@
 //!   4 (artifact, gold, resource, Random); the artifact passed over for a record with no hero to
 //!   take it (its hero Random and the colour with neither the random-hero flag, the generating main
 //!   town nor a main hero), the resource under a shown Random town (left to gold, right to Random).
+//! - **The hero** (T3b1; design §24): with neither the generating main town nor the random-hero
+//!   flag the map's main hero (its portrait, CLT-Q141), else the record's pick through the map's
+//!   customised heroes (`scenario_shown_hero` 0x58D0E0); its small portrait (`hero_table`
+//!   0x679DD0's +0x30) and its name (`scenario_shown_hero_name` 0x58D1F0: the main hero's own
+//!   name of the map, a customised hero's, the type's).
+//! - **The hero's arrows** (231 to 246, the single player's colour; `scenario_hero_step`
+//!   0x58AF20): through the list its town offers (`GameSetup::offer`, the original's
+//!   `scenario_hero_lists` 0x583890): right from Random to the first, on to the last, past it to
+//!   Random; left the reverse; the row drawn again.
 //! - **A right press** (`scenario_dialog_right_click` 0x5822D0, §3.15): on a town's picture
 //!   (370 + c) its alignment (`scenario_town_popup` 0x575E60: the town's picture and name, its
 //!   seven creatures in two rows) or a Random town's (`scenario_info_popup` 0x5757E0, GENRLTXT 104,
-//!   523, 105); on a bonus's (378 + c) its popup (`scenario_bonus_popup` 0x5754F0); each while the
-//!   right button is held, the cursor showing, then the screen redrawn whole.
+//!   523, 105); on a hero's (362 + c) a Random hero's (GENRLTXT 102, 523, 103), none where the row
+//!   shows None (CLT-Q112 (b)); on a bonus's (378 + c) its popup (`scenario_bonus_popup`
+//!   0x5754F0); each while the right button is held, the cursor showing, then the screen redrawn
+//!   whole.
 //!
-//! *Not built yet:* the hero's arrows and popups, a main hero's portrait and name (T3b: the row
-//! draws nothing there yet), the flags' press and hover, the name's edit, the handicap's press,
-//! the duration's bar's input and the hints (T3c); the hot seat (T4); a town a human-only colour
-//! draws at the list's read (no shipped map has one; CLT-Q95); the edition's version (+0x1898: a
-//! single player's is SoD, so Conflux is left out only by the map's mask).
+//! *Not built yet:* a hero's own popup (`scenario_hero_popup` 0x575A90: T3b2); the flags' press
+//! and hover, the name's edit, the handicap's press, the duration's bar's input and the hints
+//! (T3c); the hot seat and a hero two human records hold (T4); a town a human-only colour draws
+//! at the list's read (no shipped map has one; CLT-Q95); the edition's version (+0x1898: a single
+//! player's is SoD, so Conflux is left out only by the map's mask); a portrait past the hero
+//! types' (the campaign heroes' seven: no shipped map gives one).
 
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use h3_render::Bugs;
 use h3_ui::scrollbar::{self, Scrollbar};
 use h3_ui::ui::{Area, Button, Def, Dialog, Draw, Item, Label, Shown, State};
 use serde::Deserialize;
 
-use super::Seat;
+use super::{Heroes, Seat};
 use crate::message::MessageBox;
 
 /// The advanced options' panel (102, `AdvOptBk.pcx`).
@@ -278,6 +291,13 @@ pub struct AdvancedTexts {
     pub bonuses: Vec<String>,
     /// The durations' texts (`turndur.txt` 0 to 10).
     pub durations: Vec<String>,
+    /// The hero types' names by hero type (the catalogue's `hero` family: HOTRAITS).
+    pub hero_names: Vec<String>,
+    /// The small portraits by portrait (`hero_table` 0x679DD0's +0x30: the hero types', in type
+    /// order; the asset tables' `small_portrait`).
+    pub portraits: Vec<String>,
+    /// A Random hero's popup: its title (GENRLTXT 102) and text (103).
+    pub random_hero: [String; 2],
     /// The town's popup's title (GENRLTXT 81) and its creatures' heading (80).
     pub alignment: String,
     /// The creatures' heading.
@@ -337,7 +357,7 @@ pub struct Record {
     pub colour: Option<u8>,
     /// The town (+0x24), none for Random.
     pub town: Option<u8>,
-    /// The hero (+0x20), none for Random.
+    /// The hero type picked (the original keeps its index in the list, +0x20), none for Random.
     pub hero: Option<u8>,
     /// The bonus (+0x6C).
     pub bonus: Bonus,
@@ -364,14 +384,34 @@ enum Hero {
     Random,
     /// None (`hpsrand6.pcx`, GENRLTXT 524).
     Nobody,
-    /// A hero's portrait (the map's main hero's; not drawn yet: T3b).
-    Portrait,
+    /// A hero: its portrait and its type (its name's).
+    Portrait {
+        /// The portrait.
+        portrait: u8,
+        /// The hero type.
+        hero_type: u8,
+    },
+}
+
+/// What the options read of the map they show (the selected entry's, else the game's): its
+/// seats, its heroes and the single player's colour.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(in crate::shell) struct Map {
+    /// Who may play each colour and what it is offered.
+    pub(in crate::shell) seats: [Seat; 8],
+    /// The heroes its import offers and customises.
+    pub(in crate::shell) heroes: Heroes,
+    /// The single player's colour.
+    pub(in crate::shell) local: Option<u8>,
 }
 
 /// The advanced options' state.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Advanced {
     texts: AdvancedTexts,
+    /// The original's for the comparisons: a main hero of its type's own portrait not shown
+    /// (CLT-Q141), Random's popup over a None (CLT-Q112).
+    bugs: Bugs,
     /// The options show (+0x37C).
     showing: bool,
     /// The selection changed since the rows were made (+0x1854).
@@ -388,13 +428,14 @@ pub(super) struct Advanced {
 }
 
 impl Advanced {
-    /// The options of `texts`, hidden, the duration unlimited.
-    pub(super) fn new(texts: AdvancedTexts) -> Self {
+    /// The options of `texts` in the profile `bugs`, hidden, the duration unlimited.
+    pub(super) fn new(texts: AdvancedTexts, bugs: Bugs) -> Self {
         let mut bar = Scrollbar::new(texts.look.bar.clone());
         bar.reset(i32::from(UNLIMITED) + 1);
         bar.set_value(i32::from(UNLIMITED));
         Self {
             texts,
+            bugs,
             showing: false,
             changed: true,
             local: Record::NEW,
@@ -530,16 +571,12 @@ impl Advanced {
         }
     }
 
-    /// Shown over the map's `seats`, `local` the single player's colour (`scenario_advanced_toggle`
-    /// 0x581100): the rows made again after a change of the selection; each colour that plays on its row (its items moved there), its
-    /// flag where a human may play it, its handicap not enabled (a single
-    /// player's), who may play and its name set; the others' items hidden.
-    pub(super) fn show(
-        &mut self,
-        (seats, local): (&[Seat; 8], Option<u8>),
-        dialog: &mut Dialog,
-        shown: &mut Shown,
-    ) {
+    /// Shown over `map` (`scenario_advanced_toggle` 0x581100): the rows made again after a change
+    /// of the selection; each colour that plays on its row (its items moved there), its flag where
+    /// a human may play it, its handicap not enabled (a single player's), who may play and its name
+    /// set; the others' items hidden.
+    pub(super) fn show(&mut self, map: &Map, dialog: &mut Dialog, shown: &mut Shown) {
+        let seats = &map.seats;
         self.showing = true;
         if self.changed {
             for record in core::iter::once(&mut self.local).chain(&mut self.computers) {
@@ -547,7 +584,7 @@ impl Advanced {
                 record.town = None;
                 record.hero = None;
             }
-            self.local.colour = local;
+            self.local.colour = map.local;
             self.changed = false;
         }
         for id in [PANEL, TITLE, SUBTITLE, DURATION]
@@ -681,19 +718,34 @@ impl Advanced {
             && seat.main_hero.is_none()
     }
 
-    /// What colour `c`'s row shows of its hero (`scenario_shown_hero` 0x58D0E0, the row's draw
-    /// 0x58DB0F): with neither the generating main town nor the random-hero flag the map's main
-    /// hero, else the record's choice; no hero shown is Random while the arrows show or the colour
-    /// has either flag (or, under a Random town, any hero at all), else none.
-    fn shown_hero(&self, seat: Seat, c: u8) -> Hero {
+    /// What colour `c`'s row shows of its hero over `map` (`scenario_shown_hero` 0x58D0E0, the
+    /// row's draw 0x58DB0F): with neither the generating main town nor the random-hero flag the
+    /// map's main hero (none where the map leaves its portrait at its type's own: the original's;
+    /// CLT-Q141 (b) shows the type's), else the record's pick (its portrait the map's customised
+    /// one, else its type's); no hero shown is Random while the arrows show or the colour has
+    /// either flag (or, under a Random town, any hero at all), else none.
+    fn shown_hero(&self, map: &Map, c: u8) -> Hero {
+        let seat = map.seats[usize::from(c)];
         let flags = seat.generates || seat.random_hero;
         let hero = if flags {
-            self.record(c).hero
+            self.record(c).hero.map(|t| {
+                let custom = map.heroes.custom.iter().find(|h| h.hero_type == t);
+                (custom.and_then(|h| h.portrait).unwrap_or(t), t)
+            })
         } else {
-            seat.main_hero.map(|h| h.portrait)
+            seat.main_hero.and_then(|h| {
+                let portrait = match self.bugs {
+                    Bugs::Original => h.portrait,
+                    Bugs::Fixed => Some(h.portrait.unwrap_or(h.hero_type)),
+                };
+                portrait.map(|p| (p, h.hero_type))
+            })
         };
-        if hero.is_some() {
-            return Hero::Portrait;
+        if let Some((portrait, hero_type)) = hero {
+            return Hero::Portrait {
+                portrait,
+                hero_type,
+            };
         }
         let none_at_all = !flags && seat.main_hero.is_none();
         let random_town = self.shown_town(seat, c).is_none();
@@ -702,6 +754,24 @@ impl Advanced {
         } else {
             Hero::Nobody
         }
+    }
+
+    /// The name under colour `c`'s hero of type `hero_type` over `map` (`scenario_shown_hero_name`
+    /// 0x58D1F0): the main hero's own name of the map where it has one (whatever hero shows: with a
+    /// flag, a pick's too, CLT-Q142), else a customised hero's of the map, else the type's.
+    fn hero_name(&self, map: &Map, c: u8, hero_type: u8) -> String {
+        let main = &map.heroes.main_names[usize::from(c)];
+        if !main.is_empty() {
+            return main.clone();
+        }
+        map.heroes
+            .custom
+            .iter()
+            .find(|h| h.hero_type == hero_type && !h.name.is_empty())
+            .map_or_else(
+                || text_at(&self.texts.hero_names, usize::from(hero_type)),
+                |h| h.name.clone(),
+            )
     }
 
     /// A town's arrow of colour `c` (`right` the right one): the next or previous allowed faction
@@ -727,6 +797,38 @@ impl Advanced {
         record.hero = None;
     }
 
+    /// Colour `c`'s list of heroes (`scenario_hero_lists` 0x583890: a human record's alone): the
+    /// offer of its shown town where the single player holds it, else none.
+    fn hero_list<'m>(&self, map: &'m Map, c: u8) -> &'m [u8] {
+        match self.shown_town(map.seats[usize::from(c)], c) {
+            Some(f) if self.local.colour == Some(c) => {
+                &map.heroes.offers[usize::from(c)][usize::from(f)]
+            }
+            _ => &[],
+        }
+    }
+
+    /// A hero's arrow of colour `c` (`right` the right one; `scenario_hero_step` 0x58AF20): right
+    /// from Random to the list's first, on to its last, past it to Random; left the reverse;
+    /// nothing with an empty list. (A hero another human record holds, passed over: T4's.)
+    fn step_hero(&mut self, map: &Map, c: u8, right: bool) {
+        let list = self.hero_list(map, c);
+        let Some(last) = list.len().checked_sub(1) else {
+            return;
+        };
+        let at = self
+            .record(c)
+            .hero
+            .and_then(|t| list.iter().position(|&h| h == t));
+        let next = match (at, right) {
+            (None, true) => Some(0),
+            (Some(k), true) => (k < last).then_some(k + 1),
+            (None, false) => Some(last),
+            (Some(k), false) => k.checked_sub(1),
+        };
+        self.record_mut(c).hero = next.map(|k| list[k]);
+    }
+
     /// A bonus's arrow of colour `c` (`right` the right one): one back or on, modulo 4, the
     /// artifact passed over for a colour with no hero to take it, the resource under a shown
     /// Random town (left to gold, right to Random).
@@ -749,37 +851,44 @@ impl Advanced {
         record.bonus = bonus;
     }
 
-    /// The click of item `id` over the map's `seats` (an arrow of the town or the bonus), its row
+    /// The click of item `id` over `map` (an arrow of the town, the hero or the bonus), its row
     /// drawn again; whether it was one.
-    pub(super) fn click(&mut self, id: u16, seats: &[Seat; 8], shown: &mut Shown) -> bool {
+    pub(super) fn click(&mut self, id: u16, map: &Map, shown: &mut Shown) -> bool {
         if !self.showing {
             return false;
         }
         let of = |first: u16| (first..first + 8).contains(&id).then(|| (id - first) as u8);
-        let (c, step): (u8, fn(&mut Self, Seat, u8)) = if let Some(c) = of(TOWN_LEFT) {
-            (c, |a, s, c| a.step_town(s, c, false))
+        let (c, step): (u8, fn(&mut Self, &Map, u8)) = if let Some(c) = of(TOWN_LEFT) {
+            (c, |a, m, c| a.step_town(m.seats[usize::from(c)], c, false))
         } else if let Some(c) = of(TOWN_RIGHT) {
-            (c, |a, s, c| a.step_town(s, c, true))
+            (c, |a, m, c| a.step_town(m.seats[usize::from(c)], c, true))
+        } else if let Some(c) = of(HERO_LEFT) {
+            (c, |a, m, c| a.step_hero(m, c, false))
+        } else if let Some(c) = of(HERO_RIGHT) {
+            (c, |a, m, c| a.step_hero(m, c, true))
         } else if let Some(c) = of(BONUS_LEFT) {
-            (c, |a, s, c| a.step_bonus(s, c, false))
+            (c, |a, m, c| a.step_bonus(m.seats[usize::from(c)], c, false))
         } else if let Some(c) = of(BONUS_RIGHT) {
-            (c, |a, s, c| a.step_bonus(s, c, true))
+            (c, |a, m, c| a.step_bonus(m.seats[usize::from(c)], c, true))
         } else {
             return false;
         };
-        let seat = seats[usize::from(c)];
-        step(self, seat, c);
-        self.refresh(seats, shown);
+        step(self, map, c);
+        self.refresh(&map.seats, shown);
         true
     }
 
-    /// The popup of a right press on item `id` over the map's `seats`: a town's area's alignment
-    /// (or a Random town's), a bonus's area's bonus; none for another item.
-    pub(super) fn popup(&self, id: u16, seats: &[Seat; 8]) -> Option<MessageBox> {
+    /// The popup of a right press on item `id` over `map`: a town's area's alignment (or a Random
+    /// town's), a hero's area's Random hero's, a bonus's area's bonus; none for another item.
+    pub(super) fn popup(&self, id: u16, map: &Map) -> Option<MessageBox> {
         if !self.showing {
             return None;
         }
+        let seats = &map.seats;
         let of = |first: u16| (first..first + 8).contains(&id).then(|| (id - first) as u8);
+        if let Some(c) = of(HERO_AREA) {
+            return self.hero_popup(map, c);
+        }
         if let Some(c) = of(TOWN_AREA) {
             let seat = seats[usize::from(c)];
             return Some(match self.shown_town(seat, c) {
@@ -812,6 +921,30 @@ impl Advanced {
         let frame = bonus_frame(bonus, town);
         let def = t.look.bonus.def.clone().unwrap_or_default();
         Some(self.small_popup(&title, Picture::Frame(def, frame), &caption, &text))
+    }
+
+    /// Colour `c`'s hero's popup over `map` (`scenario_dialog_right_click` 0x5823FF): none for a
+    /// colour with no hero at all (neither flag nor a main hero); a hero shown, its own (T3b2: none
+    /// yet); a Random one, Random's (`scenario_info_popup` 0x5757E0: GENRLTXT 102, `hpsrand1.pcx`,
+    /// 523, 103); a None, none (CLT-Q112 (b); the original's Random's for the comparisons).
+    fn hero_popup(&self, map: &Map, c: u8) -> Option<MessageBox> {
+        let seat = map.seats[usize::from(c)];
+        let none_at_all = !(seat.generates || seat.random_hero) && seat.main_hero.is_none();
+        let random = match self.shown_hero(map, c) {
+            Hero::Random => true,
+            Hero::Nobody => self.bugs == Bugs::Original && !none_at_all,
+            Hero::Portrait { .. } => false,
+        };
+        let t = &self.texts;
+        random.then(|| {
+            let picture = t.look.hero.random.clone().unwrap_or_default();
+            self.small_popup(
+                &t.random_hero[0],
+                Picture::Named(picture),
+                &t.random,
+                &t.random_hero[1],
+            )
+        })
     }
 
     /// The small popup (`scenario_info_popup` 0x5757E0, `scenario_bonus_popup` 0x5754F0): its
@@ -906,21 +1039,14 @@ impl Advanced {
 
     /// The draws of the options after the dialog's items (`scenario_dialog_redraw` 0x584550): the
     /// duration's bar, then each row (`scenario_player_row_draw` 0x58D510).
-    pub(super) fn draws(
-        &self,
-        seats: &[Seat; 8],
-        dialog: &Dialog,
-        shown: &Shown,
-        players: &str,
-    ) -> Vec<Draw> {
+    pub(super) fn draws(&self, map: &Map, dialog: &Dialog, shown: &Shown, players: &str) -> Vec<Draw> {
         if !self.showing {
             return Vec::new();
         }
         let mut draws = self.bar.draws(dialog.place);
         for c in 0..8u8 {
             if let Some(row) = self.rows[usize::from(c)] {
-                let seat = seats[usize::from(c)];
-                draws.extend(self.row_draws((seat, c, row), dialog, shown, players));
+                draws.extend(self.row_draws((map, c, row), dialog, shown, players));
             }
         }
         draws
@@ -931,11 +1057,12 @@ impl Advanced {
     /// picture and arrows; the name.
     fn row_draws(
         &self,
-        (seat, c, row): (Seat, u8, i32),
+        (map, c, row): (&Map, u8, i32),
         dialog: &Dialog,
         shown: &Shown,
         players: &str,
     ) -> Vec<Draw> {
+        let seat = map.seats[usize::from(c)];
         let look = &self.texts.look;
         let record = self.record(c);
         let [px, py] = dialog.place;
@@ -998,7 +1125,7 @@ impl Advanced {
             }
         }
         draws.extend(items(&[HERO_LEFT, HERO_RIGHT]));
-        match self.shown_hero(seat, c) {
+        match self.shown_hero(map, c) {
             Hero::Random => {
                 let random = look.hero.random.clone().unwrap_or_default();
                 draws.push(picture(random, look.hero.at));
@@ -1009,8 +1136,15 @@ impl Advanced {
                 draws.push(picture(none, look.hero.at));
                 draws.push(text(&look.hero_name, t.none.clone()));
             }
-            // A main hero's portrait and name: T3b.
-            Hero::Portrait => {}
+            Hero::Portrait {
+                portrait,
+                hero_type,
+            } => {
+                let at = look.hero.at;
+                let portrait = t.portraits.get(usize::from(portrait));
+                draws.extend(portrait.map(|p| picture(p.clone(), at)));
+                draws.push(text(&look.hero_name, self.hero_name(map, c, hero_type)));
+            }
         }
         // (A resource under a Random town was made Random by `refresh`.)
         let bonus_name = match record.bonus {
