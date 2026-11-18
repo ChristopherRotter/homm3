@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
-use h3_map_view::{hover, panels, status, turn};
+use h3_map_view::{finds, hover, panels, status, turn};
 use h3_ui::text::Catalogue;
 use h3_ui::text::keys::{EXECUTABLE, Entry, Keys, KeysFile, Row, address_field};
 use h3_ui::text::pack::{Pack, Tables};
@@ -27,8 +27,10 @@ use crate::files;
 /// design §4.11); since T6a2b the owners' and contents' names (design §4.12: a colour's, a
 /// dwelling's, a resource's, a mine's, a bank's, a spell's, a Tree's price, a skill's, a seer's,
 /// an artifact's); since E24 M4 T1a a normal month's and week's names (`month-name.6`,
-/// `week-name.4`, design §5.1).
-pub const FAMILIES: [&str; 24] = [
+/// `week-name.4`, design §5.1); since E24 M4 T2a2 a secondary skill's level's name, a default
+/// sign's text and an artifact's pickup text (`skill-level.0`, `sign.5`, `artifact-event.7`,
+/// design §5.3).
+pub const FAMILIES: [&str; 27] = [
     "hero",
     "town-name",
     "map-hint",
@@ -53,6 +55,9 @@ pub const FAMILIES: [&str; 24] = [
     "player-colour",
     "month-name",
     "week-name",
+    "skill-level",
+    "sign",
+    "artifact-event",
 ];
 
 /// The committed key catalogue (`clients/text/keys.toml`).
@@ -98,6 +103,7 @@ pub fn keys(text: &str, ids: &BTreeMap<String, usize>) -> Result<Keys, String> {
         .chain(hover::KEYS)
         .chain(hover::contents::KEYS)
         .chain(turn::KEYS)
+        .chain(finds::KEYS)
     {
         let key = all
             .keys
@@ -250,6 +256,7 @@ mod tests {
                 .chain(hover::KEYS)
                 .chain(hover::contents::KEYS)
                 .chain(turn::KEYS)
+                .chain(finds::KEYS)
                 .collect();
             ids.extend(["hero.0", "hero.1", "town-name.0"]);
             ids.sort_unstable();

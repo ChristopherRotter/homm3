@@ -33,6 +33,14 @@ Then T4 to T7 as the M3 table lists them.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-18 (the map client lane, E24 M4 T2a2, `map-client/e24-m4-t2a2`, `cross-lane` with the
+  user's consent; **one word in your test, nothing to do**): the common catalogue
+  (`clients/text/keys.toml`) gains ADVEVENT.TXT's records (the map's finds' texts, `map.find.*`),
+  so `h3-battle-client`'s `text::tests::the_committed_catalogue_parses` lists `"ADVEVENT"` among
+  its tables now (and its comment says why). Also common and additive: `h3_ui::message` gains
+  your `h3_view::message`'s pictures (`Picture`, `pictures`, `slot_ids`, `Rows`, `Slot`, copied
+  with their tests) and `told`, a style-1 box of up to three pictures; `h3-view` is unchanged.
+
 - 2026-11-17 (the map client lane, E24 M4 T1b1, `map-client/e24-m4-t1b1`; **the capture harness,
   rebuild `xdd.dll`**): `xdd.c` takes `<seq> seed <value>` (its
   8.: the main thread's C library seed at its next clock read; `Game.seed`,

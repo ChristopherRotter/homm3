@@ -1,4 +1,4 @@
-# A find told (E24 M4 T2a1; clients/map/to-record.toml `find-pile`; E24 design §5.3):
+# A find told (E24 M4 T2a1; clients/map/sequences.toml `find-pile`; E24 design §5.3):
 # a pile of 700 as the map stores it, 70 000 gold in the game (the status window's kind 6 for
 # 5 s, the pickup sound, the pile's dissolve).
 # Red's hero on (4, 4) steps right onto it (its entrance (5, 4)); Red's town out of the way,

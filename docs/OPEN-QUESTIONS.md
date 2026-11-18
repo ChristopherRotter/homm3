@@ -143,6 +143,20 @@ original's behind `--bugs original`. **Recommended (a)**: one tile of lead at th
 and the computer's walk then reads as one movement. Built as the original's meanwhile (T1b2).
 Blocks nothing.
 
+#### MCL-Q32 — Two spells in a reward's first box replace the map's own text (E24 M4 T2a2, a reading)
+
+`grant_rewards` 0x49FA90 (an event's or a Pandora's Box's rewards, E24 design §5.3 "The rewards'
+boxes") shows the map's text in its first box and each part's own line in the later ones. For
+the spells it sets the box's text to ADVEVENT 188 ("%s learns spells.") whenever the box already
+holds a picture (0x4A05C4), without the test the other parts make (only when the text is empty).
+So an event or a box whose rewards are two or more spells and nothing before them (no experience,
+skills, spell points, morale, luck, resources or artifacts) shows "<hero> learns spells." instead
+of the map maker's text, which is lost. No recording shows it; the shipped maps were not searched.
+Options: (a) the original's; (b) the client keeps the map's text there (188 only over a part's
+own line), the original's behind `--bugs original` for the comparisons. **Recommended (b)**: the
+map's text is the map maker's message, and the other parts never overwrite it. Built as the
+original's meanwhile (T2a2). Blocks nothing.
+
 ### Town lane (`TWN-Q<n>`)
 
 (no open questions)
