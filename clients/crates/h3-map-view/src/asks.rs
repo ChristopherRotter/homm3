@@ -21,6 +21,13 @@
 //! asked after its offer declined, the monster gone after its flight declined) and [`Reply`] an
 //! answer's boxes, gain, next question, the object taken off the map and the terrains revealed.
 //!
+//! Since part B (*provisional*): the choices (design §5.4's choices' table), a box of style 7 or
+//! 10 ([`Ask::style`]) whose pictures are chosen: a treasure chest's gold or experience with the
+//! "or" between them ([`Ask::or`]), the Arena's +2 Attack or +2 Defense and a School of Magic's
+//! +1 Spell Power or +1 Knowledge for its price; [`Ask::yes`] the first picture's answer,
+//! [`Ask::second`] the second's, [`Ask::no`] the Cancel's (the Arena's the Attack: MCL-Q33, the
+//! original's; the School's neither, unpaid and unmarked).
+//!
 //! *Not built:* every other answer (a battle, a level-up, the recruit dialog: [`Ask::yes`] none;
 //! the engine's, M4 T5 and M5), a mine of another player with guards (ADVEVENT 187: none at a new
 //! game), a guarded artifact's several stacks (", " and GENRLTXT 142 between them), a pile's and an
@@ -28,7 +35,11 @@
 //! (112), a free Tree (148: its level-up at once); since part A2 a monster's message and treasure
 //! (its word's bit 31), its fight and its insult (87), a join without room (the army dialog), a
 //! Border Guard without the key, a Cartographer visited (24) or too dear (28), Pandora's Box with
-//! a message or guards (16) or empty (15).
+//! a message or guards (16) or empty (15); since part B a chest's artifact (bit 10), a level
+//! the chest's experience reaches (`hero_level_up` 0x4DA720: T2c's; the viewer does not know the
+//! hero's experience) and its Learning (the experience the gold less 500 alone), the Arena
+//! visited, a School visited (ADVEVENT 72) or too dear (73), the School of War (158, its code the
+//! Magic's: not recorded).
 
 use alloc::boxed::Box;
 use alloc::format;
@@ -37,6 +48,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_map::model::Rewards;
+use h3_ui::message::Style;
 use h3_ui::text::{Args, Catalogue};
 use serde::Deserialize;
 
@@ -70,6 +82,17 @@ pub struct AskArt {
     /// manager's +0xE0 at 0x407247: two frames a creature, facing left and right;
     /// [`crate::live::Attacking`]).
     pub attacking: String,
+    /// A treasure chest's gold by a step of its word's bits 11 to 14 (500; the rewards' survey
+    /// §2) and what the experience offered is less than the gold (500: `chest_gold_or_experience`
+    /// 0x4A6440, before the hero's Learning; part B).
+    pub chest: [i32; 2],
+    /// The Arena's gain to the skill chosen (2: `visit_arena` 0x49E7D0; part B).
+    pub arena: i8,
+    /// A School of Magic's gain to the skill chosen (1) and its price, `[resource, amount]`
+    /// (1 000 gold: `visit_school_of_magic` 0x4A33E0; part B).
+    pub school: i8,
+    /// The School's price.
+    pub school_price: [i32; 2],
 }
 
 impl AskArt {
@@ -82,7 +105,7 @@ impl AskArt {
 
 /// The string catalogue's keys the questions show (`clients/text/keys.toml`); the names are the
 /// families `creature`, `artifact`, `bank` and `dwelling1`'s.
-pub const KEYS: [&str; 40] = [
+pub const KEYS: [&str; 44] = [
     "map.ask.size.0",
     "map.ask.size.1",
     "map.ask.size.2",
@@ -123,6 +146,10 @@ pub const KEYS: [&str; 40] = [
     "map.ask.maps-land",
     "map.ask.maps-underground",
     "map.ask.open-box",
+    "map.ask.or",
+    "map.ask.chest",
+    "map.ask.arena",
+    "map.ask.school",
 ];
 
 /// The classes a question is asked at (as the game holds them): an artifact, a resource pile, a
@@ -154,6 +181,19 @@ const BORDER_GUARD: u32 = 9;
 const CARTOGRAPHER: u32 = 13;
 const PANDORA: u32 = 6;
 
+/// Part B's classes: a treasure chest, the Arena, a School of Magic.
+const CHEST: u32 = 101;
+const ARENA: u32 = 4;
+const SCHOOL: u32 = 47;
+
+/// A chest's word (the rewards' survey §2): an artifact's bit 10, its gold's steps in bits 11 to
+/// 14.
+const CHEST_ARTIFACT: u32 = 10;
+const CHEST_GOLD: u32 = 11;
+
+/// The primary skills' picture types (31 to 34: Attack, Defense, Spell Power, Knowledge).
+const PRIMARY: u32 = 31;
+
 /// A monster's word (`map_item` +0x0 at the load, the battles' survey §1.2): its count in bits 0
 /// to 11, its aggression in 12 to 16 (signed), "never flees" bit 17, "has a message" bit 31.
 const COUNT: u32 = 0xFFF;
@@ -172,7 +212,7 @@ const GOLD: usize = 6;
 const GOLD_PICTURE: u32 = 6;
 
 /// The picture types the questions and their answers show: the experience's (17, subtype −1 its
-/// "+1 Level"), an artifact's (8), the bad morale's (16).
+/// "+1 Level"; a chest's its amount), an artifact's (8), the bad morale's (16).
 const EXPERIENCE: (u32, i32) = (17, -1);
 const ARTIFACT_PICTURE: u32 = 8;
 const BAD_MORALE: (u32, i32) = (16, 0);
@@ -278,6 +318,9 @@ pub struct Reply {
     pub taken: Option<Fade>,
     /// The terrains revealed.
     pub reveal: u32,
+    /// A Cancel's answer marks the find answered as an OK's does (part B: the Arena's, which
+    /// gives the Attack: MCL-Q33).
+    pub marks: bool,
 }
 
 /// A hero's power against a wandering monster (`hero_army_power` 0x427650): its army's value
@@ -431,6 +474,27 @@ pub enum Ask {
         /// The hero's name.
         hero: String,
     },
+    /// A treasure chest's choice (part B; `chest_gold_or_experience` 0x4A6440: ADVEVENT 146,
+    /// style 7 with the "or"): its gold (its word's bit 10 clear) or the experience, the gold
+    /// less the tables' 500 (*provisional*: the hero's Learning not known, none).
+    Chest {
+        /// The gold.
+        gold: i32,
+        /// The experience.
+        experience: i32,
+    },
+    /// The Arena's (part B; `visit_arena` 0x49E7D0: ADVEVENT 0, style 10), not visited by the
+    /// hero: the tables' gain to Attack or to Defense; its Cancel the Attack's (MCL-Q33).
+    Arena(i8),
+    /// A School of Magic's (part B; `visit_school_of_magic` 0x4A33E0: ADVEVENT 71, style 10), not
+    /// visited by the hero and its price held: the gain to Spell Power or to Knowledge for the
+    /// price, or neither (the Cancel).
+    School {
+        /// The gain.
+        gain: i8,
+        /// The price, `[resource, amount]`.
+        price: [i32; 2],
+    },
 }
 
 /// A monster's aggression in its `word` (bits 12 to 16, signed: −16 to 15).
@@ -550,6 +614,31 @@ impl Ask {
                 }
                 Self::Maps(subclass)
             }
+            CHEST if !bit(CHEST_ARTIFACT) => {
+                let steps = seen.word.map_or(0, |w| (w >> CHEST_GOLD) & 0xF);
+                let [step, less] = art.chest;
+                let gold = i32::try_from(steps).unwrap_or(0).saturating_mul(step);
+                Self::Chest {
+                    gold,
+                    experience: gold.saturating_sub(less),
+                }
+            }
+            ARENA if !seen.visited => Self::Arena(art.arena),
+            SCHOOL if !seen.visited => {
+                let [resource, amount] = art.school_price;
+                let have = usize::try_from(resource)
+                    .ok()
+                    .and_then(|r| visitor.resources.get(r))
+                    .copied()
+                    .unwrap_or(0);
+                if have < amount {
+                    return None;
+                }
+                Self::School {
+                    gain: art.school,
+                    price: art.school_price,
+                }
+            }
             PANDORA if seen.message.is_none() => {
                 let rewards = seen.rewards.clone()?;
                 if rewards == Rewards::default() {
@@ -637,7 +726,8 @@ impl Ask {
     }
 
     /// Whether its object blocks its entrance (a pile, a scroll, an artifact; since part A2 a
-    /// monster, a Border Guard, Pandora's Box): a key's step onto it visits it from beside.
+    /// monster, a Border Guard, Pandora's Box; since part B a chest): a key's step onto it visits
+    /// it from beside.
     #[must_use]
     pub const fn beside(&self) -> bool {
         matches!(
@@ -647,7 +737,27 @@ impl Ask {
                 | Self::Monster { .. }
                 | Self::Pass
                 | Self::OpenBox { .. }
+                | Self::Chest { .. }
         )
+    }
+
+    /// Its box's style (part B): a chest's 7, the Arena's and a School's 10 (their pictures
+    /// chosen), every other question's 2, a box that asks nothing 1 ([`Ask::asks`]).
+    #[must_use]
+    pub const fn style(&self) -> Style {
+        match self {
+            Self::Chest { .. } => Style::Choose,
+            Self::Arena(_) | Self::School { .. } => Style::ChooseCancel,
+            _ if self.asks() => Style::OkCancel,
+            _ => Style::Ok,
+        }
+    }
+
+    /// The "or" its box shows between its pictures (part B: a chest's, the call's flag; GENRLTXT
+    /// 5) through `texts`; none for another.
+    #[must_use]
+    pub fn or(&self, texts: &Catalogue) -> Option<String> {
+        matches!(self, Self::Chest { .. }).then(|| texts.text("map.ask.or", &Args::new()))
     }
 
     /// A monster's picture while the hero visits it (part A2): twice its creature, the attack
@@ -765,6 +875,21 @@ impl Ask {
                 _ => "map.ask.maps-underground",
             }),
             Self::OpenBox { .. } => plain("map.ask.open-box"),
+            Self::Chest { gold, experience } => Told {
+                text: texts.text("map.ask.chest", &Args::new()),
+                pictures: vec![(GOLD_PICTURE, *gold), (EXPERIENCE.0, *experience)],
+            },
+            Self::Arena(gain) => Told {
+                text: texts.text("map.ask.arena", &Args::new()),
+                pictures: vec![(PRIMARY, i32::from(*gain)), (PRIMARY + 1, i32::from(*gain))],
+            },
+            Self::School { gain, .. } => Told {
+                text: texts.text("map.ask.school", &Args::new()),
+                pictures: vec![
+                    (PRIMARY + 2, i32::from(*gain)),
+                    (PRIMARY + 3, i32::from(*gain)),
+                ],
+            },
         }
     }
 
@@ -780,7 +905,10 @@ impl Ask {
     /// Border Guard taken with a pickup's sound (`ask-guard`), a Cartographer's price paid and
     /// its kind's terrains revealed by the tables `asks` (`ask-cartographer`), Pandora's Box's
     /// `grant_rewards` boxes without the map's text (`finds::rewards`), then the box taken with a
-    /// pickup's sound (`ask-pandora`). None for every other answer (*Not built* above).
+    /// pickup's sound (`ask-pandora`). Part B's: a choice's first picture chosen, a chest's gold
+    /// given and the chest taken with a pickup's sound (`choose-chest-gold`), the Arena's gain to
+    /// Attack, a School's to Spell Power for its price ([`Ask::chosen`]). None for every other
+    /// answer (*Not built* above).
     #[must_use]
     pub fn yes(&self, art: &FindArt, asks: &AskArt, texts: &Catalogue) -> Option<Reply> {
         let morale = [asks.tomb_morale; 2];
@@ -900,18 +1028,69 @@ impl Ask {
                     ..Reply::default()
                 })
             }
+            Self::Chest { .. } | Self::Arena(_) | Self::School { .. } => self.chosen(0),
             _ => None,
         }
+    }
+
+    /// What a choice's second picture chosen does (part B; 0x780A): a chest's experience (nothing
+    /// the panels show: its level-up not built) and the chest taken with a pickup's sound
+    /// (`choose-chest`), the Arena's gain to Defense (`choose-arena`), a School's to Knowledge
+    /// for its price (`choose-school`); none for a question.
+    #[must_use]
+    pub fn second(&self) -> Option<Reply> {
+        self.chosen(1)
+    }
+
+    /// A choice's picture `n` (0 or 1) chosen (part B): the gain, a School's price paid, a
+    /// chest's taken.
+    fn chosen(&self, n: usize) -> Option<Reply> {
+        let mut gain = Gain::default();
+        let mut taken = None;
+        match *self {
+            Self::Chest { gold, .. } => {
+                if n == 0 {
+                    gain.resources[GOLD] = gold;
+                }
+                taken = Some(Fade::Pickup);
+            }
+            Self::Arena(more) => gain.skills[n] = more,
+            Self::School {
+                gain: more,
+                price: [resource, amount],
+            } => {
+                gain.skills[2 + n] = more;
+                if let Some(paid) = usize::try_from(resource)
+                    .ok()
+                    .and_then(|r| gain.resources.get_mut(r))
+                {
+                    *paid = amount.saturating_neg();
+                }
+            }
+            _ => return None,
+        }
+        Some(Reply {
+            gain,
+            taken,
+            ..Reply::default()
+        })
     }
 
     /// What its Cancel does (part A2): a monster's declined offer its flight's question when it
     /// flees (recorded, `ask-join-no`: 91 in the Cancel's millisecond), its declined flight the
     /// monster taken off the map without its treasure with `killfade.82M` (`monster_flee_offer`
     /// 0x4A6DF0); none where it fights (the insult at the decision's C, 87, then the battle: not
-    /// built); every other question's ends the visit ([`Reply::default`]).
+    /// built); every other question's ends the visit ([`Reply::default`]). Part B's: the Arena's
+    /// Cancel gives the Attack as its first picture does and marks it (MCL-Q33: every answer but
+    /// 0x780A; `choose-arena-cancel`), a School's leaves (`choose-school-leave`), a chest's box
+    /// has none.
     #[must_use]
     pub fn no(&self) -> Option<Reply> {
         match self {
+            Self::Arena(_) => self.chosen(0).map(|reply| Reply {
+                marks: true,
+                ..reply
+            }),
             Self::Monster {
                 offer: Offer::Flee, ..
             } => Some(Reply {

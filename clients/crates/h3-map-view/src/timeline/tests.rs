@@ -239,6 +239,7 @@ fn start(situation: &str, speed: usize) -> Start {
         sound: None,
         kingdom: Kingdom::default(),
         points: Vec::new(),
+        reached: Vec::new(),
         buttons: None,
         asked: None,
         hover: None,
@@ -382,7 +383,13 @@ fn the_walks_frames_are_m2_t3bs() {
             "ask-join-gold",
             "ask-guard",
             "ask-cartographer",
-            "ask-pandora"
+            "ask-pandora",
+            "choose-chest",
+            "choose-chest-gold",
+            "choose-arena",
+            "choose-arena-cancel",
+            "choose-school",
+            "choose-school-leave"
         ]
     );
 }
@@ -402,6 +409,7 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         sound: None,
         kingdom: Kingdom::default(),
         points: Vec::new(),
+        reached: Vec::new(),
         buttons: None,
         asked: None,
         hover: None,
@@ -612,6 +620,7 @@ fn what_it_cannot_play_yet() {
         sound: None,
         kingdom: Kingdom::default(),
         points: Vec::new(),
+        reached: Vec::new(),
         buttons: None,
         asked: None,
         hover: None,
@@ -754,6 +763,7 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         sound: None,
         kingdom: Kingdom::default(),
         points: Vec::new(),
+        reached: Vec::new(),
         buttons: None,
         asked: None,
         hover: None,
@@ -1401,6 +1411,7 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         sound: None,
         kingdom: Kingdom::default(),
         points: Vec::new(),
+        reached: Vec::new(),
         buttons: None,
         asked: None,
         hover: None,
@@ -2011,6 +2022,7 @@ fn hovering(live: bool, bugs: Bugs) -> Loop {
         sound: None,
         kingdom,
         points: Vec::new(),
+        reached: Vec::new(),
         buttons: None,
         asked: None,
         hover: Some(hover),
@@ -3041,6 +3053,7 @@ fn a_hotkeys_up_during_a_hold_releases_its_button_in_the_client() {
 }
 
 mod asks;
+mod choices;
 mod computers;
 mod finds;
 mod replies;

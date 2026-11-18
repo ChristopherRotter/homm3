@@ -1346,7 +1346,8 @@ question for an artifact and a fight at once for a pile) and Pandora's Box's `re
 marks): a monster's `aggression` (−16 to 15), a chest's `gold` (500 to 7 500 in 500s, as gold)
 and a Tree of Knowledge's `price` (0 free, 1 gold, 2 gems); a hero its `diplomacy` (0 to 3, the
 level alone, `Mem.write_diplomacy`: a monster's offer to join for gold). T2b1's sequences
-(`ask-*`, `choose-*`) wait in `map/to-record.toml` until T2b2 has the viewer play them.
+(`ask-*`, `choose-*`) waited in `map/to-record.toml` until T2b2 moved them into `sequences.toml`
+(the file removed).
 
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live

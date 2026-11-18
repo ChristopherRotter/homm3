@@ -17,7 +17,7 @@ fn one(rest: &str) -> Sequence {
 #[test]
 fn reads_the_recorded_sequences() {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
-    assert_eq!(sequences.sequence.len(), 74);
+    assert_eq!(sequences.sequence.len(), 80);
     // The status window's kind asked at 0 (E24 M3 T5b2).
     let date = sequences.get("status-date-end").unwrap();
     assert_eq!(date.asked(), Ok(Some(Asked { kind: 1, end: 3000 })));
@@ -288,6 +288,37 @@ fn the_paths_the_clicks_showed() {
     ] {
         assert_eq!(
             s.paths(bad),
+            Err(format!("s: the line `{bad}` does not read")),
+            "{bad}"
+        );
+    }
+}
+
+#[test]
+fn the_adventure_cursors_frames() {
+    // E24 M4 T2b2 part B: each `cursor` line of the adventure cursor (type 1) with its
+    // millisecond, in order; the default cursor's left out.
+    let recorded = "0 cursor 1 0 700 300
+100 cursor 0 0 700 300
+100 points 1600
+                    1460 cursor 1 4 462 364
+";
+    assert_eq!(one("").reached(recorded), Ok(vec![(0, 0), (1460, 4)]));
+    assert_eq!(
+        one("").reached(
+            "0 view 1 2 0
+"
+        ),
+        Ok(Vec::new())
+    );
+    for bad in [
+        "x cursor 1 0 1 1",
+        "5 cursor 1 0 1",
+        "5 cursor 1 z 1 1",
+        "5 cursor",
+    ] {
+        assert_eq!(
+            one("").reached(bad),
             Err(format!("s: the line `{bad}` does not read")),
             "{bad}"
         );

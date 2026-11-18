@@ -95,6 +95,7 @@ fn flight(attacker: u32) -> Question {
             ..Answer::default()
         }),
         attacker: Some(attacker),
+        second: None,
     }
 }
 
@@ -169,6 +170,7 @@ fn question(id: &str) -> Found {
             yes: Some(yes),
             no,
             attacker,
+            second: None,
         }),
     }
 }

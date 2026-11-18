@@ -1,4 +1,4 @@
-# A question or a choice (E24 M4 T2b1; clients/map/to-record.toml `ask-join-gold`; E24 design §5.4):
+# A question or a choice (E24 M4 T2b1; clients/map/sequences.toml `ask-join-gold`; E24 design §5.4):
 # a monster's offer to join for gold (ADVEVENT 89 and 90, the gold's picture): its
 # aggression 3 written, the hero's Diplomacy 1 (Sy + L + 1 < 3 <= Sy + 2L + 1).
 # Red's hero on (5, 5) steps up onto its entrance (5, 4); Red's town out of the way, so that no

@@ -123,6 +123,7 @@ fn question(id: &str) -> Found {
             yes,
             no: Some(Answer::default()),
             attacker: None,
+            second: None,
         }),
     }
 }

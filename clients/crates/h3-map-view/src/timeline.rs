@@ -711,6 +711,12 @@ pub struct Start {
     /// cost is the engine's, M4). A step's end takes the one at its millisecond. Empty: the
     /// kingdom's, which a walk leaves.
     pub points: Vec<(u32, i32)>,
+    /// The cursor's frames over the view after the selected hero walked, each with its
+    /// millisecond (E24 M4 T2b2 part B, *provisional*): the reach there is the engine's pathfinder's
+    /// (the mouse-over's facts are the hero's where it stood at 0), so a recording gives them (its
+    /// `cursor` lines of the adventure cursor, `Sequence::reached`: `choose-arena`'s at 1460,
+    /// `choose-chest`'s at 2380), as [`Start::points`] the points. Empty: the arrow (M3's).
+    pub reached: Vec<(u32, u32)>,
     /// Move hero's and next hero's states at 0 as the original last set them (a recording's, read
     /// from its memory); none: as the kingdom and the path give them ([`Buttons::of`]).
     pub buttons: Option<Buttons>,
@@ -807,6 +813,10 @@ pub struct Question {
     /// attack DEF from the visit's start ([`crate::live::Attacking`]; plus 1 with the hero left
     /// of it), none else.
     pub attacker: Option<u32>,
+    /// A choice's (E24 M4 T2b2 part B: style 7 or 10, its OK closing with the picture chosen):
+    /// what its second picture shows (0x780A); its first's is [`Question::yes`], its Cancel's
+    /// [`Question::no`].
+    pub second: Option<Answer>,
 }
 
 /// What a question's answer shows (E24 M4 T2b2 part A1): its boxes one after another, each with
@@ -831,6 +841,9 @@ pub struct Answer {
     pub taken: Option<(usize, Fade)>,
     /// The terrains revealed (a bit per terrain, `reveal_terrain_mask` 0x4CA240).
     pub reveal: u32,
+    /// A Cancel's answer marks the find answered as an OK's does (E24 M4 T2b2 part B: the
+    /// Arena's, MCL-Q33).
+    pub marks: bool,
 }
 
 /// The viewer's boxes of a turn without a town (E24 M4 T2a2, design §5.3): the warning at its
@@ -1127,6 +1140,10 @@ pub struct Loop {
     kingdom: Kingdom,
     /// The selected hero's points by millisecond ([`Start::points`]).
     points: Vec<(u32, i32)>,
+    /// The cursor's frames after a walk by millisecond ([`Start::reached`]) and the millisecond
+    /// run now.
+    reached: Vec<(u32, u32)>,
+    now: u32,
     /// Move hero's and next hero's states.
     buttons: Buttons,
     /// The status window's kind asked (the manager's +0x398; 0 the selection's) and its end
@@ -1422,6 +1439,8 @@ impl Loop {
             sound: start.sound.clone(),
             kingdom: start.kingdom.clone(),
             points: start.points.clone(),
+            reached: start.reached.clone(),
+            now: 0,
             buttons: start
                 .buttons
                 .unwrap_or_else(|| Buttons::of(&start.kingdom, &start.path)),
@@ -1582,6 +1601,7 @@ impl Loop {
     /// # Errors
     /// An action the loop cannot play yet ([`Unplayable`]).
     pub fn run(&mut self, t: u32, actions: &[Action]) -> Result<(), Unplayable> {
+        self.now = t;
         self.within.clear();
         // The loop's turn and a walk's wait alike run the tick (0x4ED490: the poll, the palettes).
         self.tick(t);
@@ -2617,7 +2637,14 @@ impl Loop {
         self.set_cursor(kind, frame);
         match boxed.told {
             Told::Found(i, k) => return self.found_closed(t, i, k),
-            Told::Asked(i, question) => return self.answer(t, i, *question, id),
+            Told::Asked(i, question) => {
+                // A choice's OK closes with the picture chosen (E24 M4 T2b2 part B).
+                let id = match (id, boxed.open.chosen()) {
+                    (boxes::OK, Some(chosen)) => chosen,
+                    _ => id,
+                };
+                return self.answer(t, i, *question, id);
+            }
             Told::Answer(i, k, answer) => return self.answered(t, i, k + 1, *answer),
             Told::DaysLeft => self.choose(t, true),
             _ => {}
@@ -2741,12 +2768,18 @@ impl Loop {
     /// Find `i`'s question closed by its button `id` (E24 M4 T2b2 part A1): its OK's answer or
     /// its Cancel's shown ([`Loop::answered`]; an OK's marks the find answered), refused where
     /// the answer is not built (live: the visit ended, [`Loop::visited`]; recorded, `ask-pile`'s
-    /// and `ask-mine`'s Cancel: the idle step at 1060).
+    /// and `ask-mine`'s Cancel: the idle step at 1060). Since part B a choice's `id` the picture
+    /// chosen: the first's answer [`Question::yes`] (a plain OK's too), the second's
+    /// [`Question::second`], its Cancel's [`Question::no`] (marking the find where it
+    /// [`Answer::marks`]: the Arena's).
     fn answer(&mut self, t: u32, i: usize, question: Question, id: u16) -> Result<(), Unplayable> {
-        let yes = id == boxes::YES;
-        let reply = if yes { question.yes } else { question.no };
+        let reply = match id {
+            boxes::YES | boxes::OK | boxes::CHOICE => question.yes,
+            _ if id == boxes::CHOICE + 1 => question.second,
+            _ => question.no,
+        };
         if let Some(reply) = reply {
-            if yes {
+            if !matches!(id, boxes::NO | boxes::CANCEL) || reply.marks {
                 self.answered.push(i);
             }
             return self.answered(t, i, 0, reply);
@@ -2796,11 +2829,17 @@ impl Loop {
     }
 
     /// Find `i`'s visit ended with nothing more to show (E24 M4 T2b2 part A1): one from beside
-    /// ends its step first ([`Loop::finish`], as after a dissolve), then the idle step.
+    /// ends its step first ([`Loop::finish`], as after a dissolve), one on its entrance looks at
+    /// the mouse again as the step's end does (part B: `choose-arena`'s cursor over the view at
+    /// 1460, the mouse moved there during the box; *provisional*: the visit's place in the step,
+    /// `hero_move_step` 0x4805E0, not read), then the idle step.
     fn visited(&mut self, t: u32, i: usize) {
         self.drawn.attacking = None;
         if self.finds.get(i).is_some_and(|f| f.blocks.is_some()) {
             self.finish(t, true);
+        } else {
+            self.column = None;
+            self.moved();
         }
         self.idle_message(t);
     }
@@ -3414,6 +3453,15 @@ impl Loop {
         let cursor = hover.cursor(tile, selection, !self.walked);
         self.cursor.frame = cursor.frame;
         self.action = cursor.action;
+        // After a walk the reach is the engine's: the recording's frame at this millisecond, if
+        // any (E24 M4 T2b2 part B, *provisional*; a click there is not built).
+        if self.walked
+            && cursor.frame == hover::frame::ARROW
+            && let Some(&(_, frame)) = self.reached.iter().find(|&&(at, _)| at == self.now)
+        {
+            self.cursor.frame = frame;
+            self.action = -1;
+        }
     }
 
     /// The panel's hint (`adventure_panel_hint` 0x403010): the item under the mouse, when it is

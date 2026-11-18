@@ -1414,6 +1414,25 @@ original = [{ at = "ADVEVENT:27" }]
 id = "map.ask.open-box"
 original = [{ at = "ADVEVENT:14" }]
 
+# The choices (E24 M4 T2b2 part B; design §5.4): the "or" between a chest's pictures
+# (`message_box_build` 0x4F737D), a treasure chest's choice (`chest_gold_or_experience` 0x4A6440),
+# the Arena's (`visit_arena` 0x49E7D0), a School of Magic's (`visit_school_of_magic` 0x4A33E0).
+[[key]]
+id = "map.ask.or"
+original = [{ at = "GENRLTXT:5" }]
+
+[[key]]
+id = "map.ask.chest"
+original = [{ at = "ADVEVENT:146" }]
+
+[[key]]
+id = "map.ask.arena"
+original = [{ at = "ADVEVENT:0" }]
+
+[[key]]
+id = "map.ask.school"
+original = [{ at = "ADVEVENT:71" }]
+
 # A turn without a town (E24 M4 T2a2; design §5.3): at the turn's end GENRLTXT 7 with the player's
 # name (`scenario_condition_met` 0x4F2CE0), at each later day's start ArrayTxt 128 with the name and
 # the days left, 129 on the last day (`player_turn_start` 0x4CC7D0); the name the viewer's

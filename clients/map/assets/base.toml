@@ -245,7 +245,10 @@ artifact_skills = [
 # reveal_terrain_mask 0x4CA240's mask as a new game sets it: water, the seven land terrains but
 # subterranean, subterranean; the objects' survey §4); a monster's picture while a hero visits it
 # (avwattak.def, adventure_manager_start 0x407247: frame 2 x its creature, plus 1 with the hero left
-# of it; visit_object 0x4A97B9).
+# of it; visit_object 0x4A97B9). Part B: a treasure chest's gold by a step of its word's bits 11 to
+# 14 and what its experience is less than the gold (chest_gold_or_experience 0x4A6440: 500, 500;
+# the rewards' survey §2), the Arena's gain to the skill chosen (visit_arena 0x49E7D0: 2), a School
+# of Magic's (visit_school_of_magic 0x4A33E0: 1) and its price, [resource, amount] (1000 gold).
 [map.asks]
 levels = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 1, 1,
     2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 1, 1, 2, 2, 3, 3,
@@ -258,6 +261,10 @@ tomb_morale = -3
 maps_price = [6, 1000]
 reveals = [0x100, 0xBF, 0x40]
 attacking = "avwattak.def"
+chest = [500, 500]
+arena = 2
+school = 1
+school_price = [6, 1000]
 
 [map.status]
 portraits = [

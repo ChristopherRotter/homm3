@@ -1,4 +1,4 @@
-# A question or a choice (E24 M4 T2b1; clients/map/to-record.toml `choose-chest`; E24 design §5.4):
+# A question or a choice (E24 M4 T2b1; clients/map/sequences.toml `choose-chest`; E24 design §5.4):
 # a treasure chest's choice (ADVEVENT 146, style 7: the gold or the experience),
 # its gold written: 1 000.
 # Red's hero on (5, 5) steps up onto its entrance (5, 4); Red's town out of the way, so that no

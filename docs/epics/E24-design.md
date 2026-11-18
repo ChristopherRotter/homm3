@@ -3452,3 +3452,47 @@ and `seq-choose-*`).
   Cancel's millisecond and its Cancel, an OK and a Cancel not built refused, the guard and the Box
   taken, the land revealed; the scene's attack pieces), 100 % lines, regions and functions of
   `h3-map-view`'s library and of `h3-ui` but its `scrollbar.rs` (untouched).
+- **Built** (M4 T2b2 part B, *provisional*): `h3_ui::message` (common, additive) gains style 7
+  (`Style::Choose`: the OK placed as style 1's) and 10 (`Style::ChooseCancel`: the Cancel 0x7801,
+  its back 0x7865, built before the OK 0x7802, its back 0x7866, both placed as style 2's: 0x4F6DF6
+  to 0x4F6F1E), their OK disabled (a disabled button takes no press and no key: `choose-chest`'s
+  Enter at 600), each picture's frame an area 0x7809 + its slot one pixel out, hidden, and
+  `choice`'s "or" (GENRLTXT 5, an id of its own: as wide as its text and a line high, centred, a
+  line above the first caption, 0x4F73FC); `Open::press` on a frame chooses it (at the press: the
+  frame's own message not read; recorded clicks only): it shown, the other hidden, the OK enabled,
+  `Open::chosen`; a third frame does nothing; `MessageBox::frame_draws` a shown frame's one-pixel
+  outline in the game palette's entry **45** (`game_palette16` +0x76 with its colours from +0x1C:
+  T2b1's 59 a misreading, `map.toml` corrected; recorded (237, 213, 122)); a press keeps a button's
+  other states. `asks`: `Ask::Chest` (class 101, bit 10 clear: the gold 500 × its word's bits 11 to
+  14, the experience the gold less 500, the hero's Learning not known), `Ask::Arena` (class 4, not
+  visited: +2) and `Ask::School` (class 47, not visited and 1 000 gold held: +1), the tables'
+  `[map.asks]` `chest`, `arena`, `school`, `school_price`, the keys `map.ask.or`, `.chest`,
+  `.arena`, `.school`; `Ask::style`, `Ask::or`, `Ask::second`; a chest's gold (or nothing shown:
+  the experience), taken with a pickup's sound; the Arena's Attack or Defense, its Cancel the
+  Attack, marked (`Reply::marks`: MCL-Q33, the original's); a School's Spell Power or Knowledge,
+  paid, its Cancel neither. The timeline: `Question::second`, `Answer::marks`; a choice's OK
+  closes with the picture chosen (`Loop::answer`: 0x7809 and a plain OK the first's, 0x780A the
+  second's; a Cancel marks the find only where its answer does); a visit on its entrance ended
+  looks at the mouse again as the step's end does (`choose-arena`'s cursor at 1460, the mouse
+  moved during the box; the visit's place in `hero_move_step` 0x4805E0 not read); over the view
+  after a walk, where the viewer's cursor is the arrow for want of the reach (the engine's
+  pathfinder's), the recording's frame at that millisecond (`Start::reached`,
+  `Sequence::reached`, as `Start::points` the points; live the arrow, a click there not built).
+  The cursor drawn at the click 19 to 23 ms later and the pixels at x = 709 are the mouse poll's
+  (the cursor's old place at (700, 300) cleared): nothing new. The binary lays the choice out
+  (`Painter::choice`) and draws its frames. Not built: an artifact's chest (bit 10), the chest's
+  level-up (`hero_level_up` 0x4DA720: T2c's; the viewer has no experience) and Learning, the Arena
+  visited, a School visited (72) or too dear (73), the School of War (158), a frame's right-click
+  popup (`choice_frame_popup` 0x4F0B20).
+- **Checked** (M4 T2b2 part B): the six moved into `sequences.toml`, `to-record.toml` removed;
+  `frames --only <id> --reuse` on them: every frame exact (`choose-chest` 21, `choose-chest-gold`
+  19, `choose-arena` 9, `choose-arena-cancel` 7, `choose-school` 9, `choose-school-leave` 7), the
+  viewer's timelines the recorded ones line for line (57, 52, 36, 31, 36, 31; `<id>-frames.txt`
+  kept); `ask-join`, `ask-tomb` and `ask-pandora` still exact; `h3-map-view sequences` the 80 as
+  recorded; unit tests (the choice boxes' items, frames, "or" and disabled OK, a choice by a
+  click, the frames' outline, a third frame and one picture; the chest's, the Arena's and the
+  School's facts, boxes and answers, visited, too poor, an artifact's chest; the `cursor` lines
+  read; the six replayed headless, Enter before a choice, the frames shown and hidden, the
+  answers, the Cancels, a plain OK, the cursor after the walk recorded or not), 100 % lines,
+  regions and functions of `h3-map-view`'s library and of `h3-ui` but its `scrollbar.rs`
+  (untouched).

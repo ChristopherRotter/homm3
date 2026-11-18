@@ -27,7 +27,8 @@ fn texts() -> Catalogue {
         r#""join-gold": "An offer:\n\n", "#,
         r#""join-price": "All {{amount}} of the {{creature}} for {{price}} gold.", "#,
         r#""flee": "The {{creature}} scatter.", "pass": "PASS", "maps-sea": "SEA", "#,
-        r#""maps-land": "LAND", "maps-underground": "TUNNELS", "open-box": "OPEN?" }, "#,
+        r#""maps-land": "LAND", "maps-underground": "TUNNELS", "open-box": "OPEN?", "#,
+        r#""or": "or", "chest": "CHEST", "arena": "ARENA", "school": "SCHOOL" }, "#,
         r#""find": { "reward-treasure": "{{hero}} has found treasure." } }, "#,
         r#""creature": { "0_one": "Pikeman", "0_other": "Pikemen", "8_one": "Monk", "#,
         r#""8_other": "Monks", "139_one": "Peasant", "139_other": "Peasants" }, "#,
@@ -759,4 +760,128 @@ fn pandoras_box() {
 fn part_a1s_cancel_ends_the_visit() {
     assert_eq!(ask(&seen(63, 0, 0)).unwrap().no(), Some(Reply::default()));
     assert_eq!(ask(&seen(63, 0, 0)).unwrap().attacker(), None);
+}
+
+#[test]
+fn the_tables_choices() {
+    let art = art();
+    assert_eq!((art.chest, art.arena), ([500, 500], 2));
+    assert_eq!((art.school, art.school_price), (1, [6, 1000]));
+}
+
+/// What a choice's answer gives that the panels show: `gold` more, `skills` gained.
+fn gives(reply: &Reply) -> (i32, [i8; 4]) {
+    assert!(reply.boxes.is_empty() && !reply.granted && !reply.chooses);
+    assert_eq!((&reply.then, reply.reveal), (&None, 0));
+    (reply.gain.resources[6], reply.gain.skills)
+}
+
+#[test]
+fn a_treasure_chests_choice() {
+    // `choose-chest`: 1 000 gold (its word's bits 11 to 14 two steps of 500), style 7 with the
+    // "or", the gold's picture then the experience's, 500.
+    let chest = ask(&seen(101, 0, 2 << 11)).unwrap();
+    assert_eq!(
+        chest,
+        Ask::Chest {
+            gold: 1000,
+            experience: 500
+        }
+    );
+    assert!(chest.asks() && chest.chooses() && chest.beside());
+    assert_eq!((chest.style(), chest.attacker()), (Style::Choose, None));
+    assert_eq!(chest.or(&texts()).as_deref(), Some("or"));
+    let told = chest.told(&texts());
+    assert_eq!(told.text, "CHEST");
+    assert_eq!(told.pictures, vec![(6, 1000), (17, 500)]);
+    // The gold's picture the gold, the experience's nothing the panels show; taken either way
+    // with a pickup's sound. No Cancel: the default.
+    let yes = chest.yes(&tables().map.finds, &art(), &texts()).unwrap();
+    assert_eq!(
+        (gives(&yes), yes.taken, yes.marks),
+        ((1000, [0; 4]), Some(Fade::Pickup), false)
+    );
+    let second = chest.second().unwrap();
+    assert_eq!(
+        (gives(&second), second.taken),
+        ((0, [0; 4]), Some(Fade::Pickup))
+    );
+    assert_eq!(chest.no(), Some(Reply::default()));
+    // An artifact's chest (bit 10): not built.
+    assert_eq!(ask(&seen(101, 0, 1 << 10 | 2 << 11)), None);
+}
+
+#[test]
+fn the_arenas_and_a_schools_choices() {
+    // `choose-arena`: style 10, +2 Attack or +2 Defense, no "or"; its Cancel the Attack, marked
+    // (MCL-Q33).
+    let arena = ask(&seen(4, 0, 0)).unwrap();
+    assert_eq!(arena, Ask::Arena(2));
+    assert!(arena.asks() && arena.chooses() && !arena.beside());
+    assert_eq!(
+        (arena.style(), arena.or(&texts())),
+        (Style::ChooseCancel, None)
+    );
+    let told = arena.told(&texts());
+    assert_eq!(
+        (told.text.as_str(), told.pictures),
+        ("ARENA", vec![(31, 2), (32, 2)])
+    );
+    let yes = arena.yes(&tables().map.finds, &art(), &texts()).unwrap();
+    assert_eq!((gives(&yes), yes.taken), ((0, [2, 0, 0, 0]), None));
+    assert_eq!(gives(&arena.second().unwrap()), (0, [0, 2, 0, 0]));
+    let no = arena.no().unwrap();
+    assert_eq!((gives(&no), no.marks), ((0, [2, 0, 0, 0]), true));
+    // Visited by the hero: not built.
+    let visited = Seen {
+        visited: true,
+        ..seen(4, 0, 0)
+    };
+    assert_eq!(ask(&visited), None);
+    // `choose-school`: +1 Spell Power or +1 Knowledge for 1 000 gold; its Cancel neither.
+    let school = ask(&seen(47, 0, 0)).unwrap();
+    assert_eq!(
+        school,
+        Ask::School {
+            gain: 1,
+            price: [6, 1000]
+        }
+    );
+    assert_eq!(school.style(), Style::ChooseCancel);
+    let told = school.told(&texts());
+    assert_eq!(
+        (told.text.as_str(), told.pictures),
+        ("SCHOOL", vec![(33, 1), (34, 1)])
+    );
+    let yes = school.yes(&tables().map.finds, &art(), &texts()).unwrap();
+    assert_eq!(gives(&yes), (-1000, [0, 0, 1, 0]));
+    assert_eq!(gives(&school.second().unwrap()), (-1000, [0, 0, 0, 1]));
+    assert_eq!(school.no(), Some(Reply::default()));
+    // Visited, or the kingdom too poor: not built (ADVEVENT 72, 73).
+    let visited = Seen {
+        visited: true,
+        ..seen(47, 0, 0)
+    };
+    assert_eq!(ask(&visited), None);
+    let mut poor = red();
+    poor.resources[6] = 999;
+    assert_eq!(Ask::of(&seen(47, 0, 0), &poor, &art()), None);
+    // A price past the resources: free, nothing paid.
+    let odd = AskArt {
+        school_price: [9, 0],
+        ..art()
+    };
+    let free = Ask::of(&seen(47, 0, 0), &red(), &odd).unwrap();
+    assert_eq!(gives(&free.second().unwrap()), (0, [0, 0, 0, 1]));
+}
+
+#[test]
+fn the_styles_of_the_others() {
+    // A question's style 2, a box that asks nothing style 1; neither has a second picture or an
+    // "or".
+    let pyramid = ask(&seen(63, 0, 0)).unwrap();
+    assert_eq!((pyramid.style(), pyramid.second()), (Style::OkCancel, None));
+    assert_eq!(pyramid.or(&texts()), None);
+    let looted = ask(&seen(16, 0, 1 << 25)).unwrap();
+    assert_eq!(looted.style(), Style::Ok);
 }

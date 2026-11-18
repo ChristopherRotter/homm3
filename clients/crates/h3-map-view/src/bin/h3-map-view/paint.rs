@@ -181,6 +181,8 @@ pub fn for_sequence<'a>(
         kingdom: painter.live.kingdom.clone(),
         // The selected hero's points memory held (E24 M3 T4b): the recording's.
         points: sequence.points(recorded.as_deref().unwrap_or_default())?,
+        // The cursor over the view after a walk (E24 M4 T2b2 part B): the recording's.
+        reached: sequence.reached(recorded.as_deref().unwrap_or_default())?,
         buttons: painter.live.buttons,
         // The status window's kind the recording asked at 0 (E24 M3 T5b2).
         asked: sequence.asked()?,
@@ -271,6 +273,7 @@ pub fn for_situation<'a>(
         sound,
         kingdom: painter.live.kingdom.clone(),
         points: Vec::new(),
+        reached: Vec::new(),
         buttons: painter.live.buttons,
         asked: None,
         hover,
@@ -952,15 +955,26 @@ impl<'a> Painter<'a> {
     }
 
     /// `ask`'s question about object `o` laid out (E24 M4 T2b2): its box of style 2, its OK's and
-    /// its Cancel's answers where built ([`Painter::answer`]).
+    /// its Cancel's answers where built ([`Painter::answer`]); since part B a choice's box of
+    /// style 7 or 10 ([`Painter::choice`]) and its second picture's answer.
     fn question(&mut self, ask: &Ask, o: usize) -> Result<Question, String> {
         let tables = self.assets.tables;
-        let asked = self.told_in(&ask.told(&tables.texts), Style::OkCancel)?;
+        let told = ask.told(&tables.texts);
+        let asked = match ask.style() {
+            style if style.chooses() => {
+                self.choice(&told, style, ask.or(&tables.texts).as_deref())?
+            }
+            _ => self.told_in(&told, Style::OkCancel)?,
+        };
         let yes = match ask.yes(&tables.map.finds, &tables.map.asks, &tables.texts) {
             Some(reply) => Some(self.answer(reply, o)?),
             None => None,
         };
         let no = match ask.no() {
+            Some(reply) => Some(self.answer(reply, o)?),
+            None => None,
+        };
+        let second = match ask.second() {
             Some(reply) => Some(self.answer(reply, o)?),
             None => None,
         };
@@ -970,7 +984,30 @@ impl<'a> Painter<'a> {
             yes,
             no,
             attacker: ask.attacker(),
+            second,
         })
+    }
+
+    /// A choice's box (E24 M4 T2b2 part B, design §5.4): `told`'s text and pictures in a box of
+    /// `style` (7 or 10, `message::choice`) with `or` between the pictures, framed in the
+    /// viewer's colours.
+    fn choice(
+        &mut self,
+        told: &Told,
+        style: Style,
+        or: Option<&str>,
+    ) -> Result<Arc<MessageBox>, String> {
+        let pictures = self.pictures(told)?;
+        let assets = self.assets;
+        Ok(Arc::new(message::choice(
+            &assets.layout.message,
+            self.fonts()?,
+            &told.text,
+            style,
+            &pictures,
+            or,
+            (self.live.viewer, assets.bugs),
+        )))
     }
 
     /// An answer's `reply` about object `o` laid out (E24 M4 T2b2 part A2, *provisional*): its
@@ -1000,6 +1037,7 @@ impl<'a> Painter<'a> {
             then,
             taken: reply.taken.map(|fade| (o, fade)),
             reveal: reply.reveal,
+            marks: reply.marks,
         })
     }
 
@@ -1147,6 +1185,11 @@ impl<'a> Painter<'a> {
             scene
                 .draws
                 .extend(draws.into_iter().map(scene::Draw::Dialog));
+            // A choice's frame shown (E24 M4 T2b2 part B).
+            let frames = message.frame_draws(&assets.layout.message.font_palette);
+            scene
+                .draws
+                .extend(frames.into_iter().map(scene::Draw::Dialog));
         }
         Ok(scene)
     }
