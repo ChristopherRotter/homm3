@@ -106,6 +106,7 @@ steps = [
 id = "adv-hotseat"
 what = "§3.12, §3.13: the advanced options in the hot seat with two to eight players (Warlords, 8 colours); Back to New Game's menu between"
 maps = ["Warlords.h3m"]
+backgrounds = [0, 0, 1, 1, 0, 0, 1]
 steps = [
   "move:400,300", "until:main_menu",
   "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer", "type:A",

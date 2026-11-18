@@ -25,21 +25,22 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   +0.285; 0.552 head to head against `e25-imitate-1` #2): exit criterion 1 met on its point
   estimates, the faithful actor's win rate inside its interval; 217 samples a second, 28 hours a
   20 M on the GTX 1070. The GPU's memory capped at 90 % of the card (`gpu.cap`, `TRAPS.md`).
-  **Increment 8: probes, then one long run** (the epic file; `E25-log.md` T30 to T35): no probe
-  moved #2 past its interval: the network's size (T32, `hexconv` 96 × 6 stays), PPO's settings
-  (T33, #2 at its setup's plateau), the search at play (T34 (a)), the KL anchor (T34 (b),
-  `[ppo] imitation_teacher`: #2 teaching T27's clone reaches #2's level in 2 M), the outcome's
-  weight (T35, `[ppo] win_bonus` 0.1: 0.5007 ± 0.0019 head to head, reward v1 stays). A
-  `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31: 98 to 67 s an update).
-  **T36 prepared**: the user chose `e25-anchor-1` resumed from 2 M to 20 M (#2 teaching to
-  10 M); **the user's GPU next, about 19 hours** (the commands, rule and measures in `QUEUE.md`).
-- **Open pull requests:** #965 (`claude/adoring-turing-tl1huu`: T35's close, T36's
-  preparation). Merged: #948 (T34's (a)), #954 (T34's close, T35's probe).
+  **Increment 8 closed 2026-11-18** (`E25-archive.md`; `E25-log.md` T30 to T36): no probe (size,
+  PPO's settings, the search at play, the KL anchor, the outcome's weight) nor the long run
+  (`e25-anchor-1` to 20 M: 0.511 ± 0.018 against the faithful actor, level with #2) passed #2,
+  which stays the current best (AI-Q18). A `hexconv` run sets `accumulate = 4`, `chunk_align =
+  32` (T31). **A long run stops early** (the user, 2026-11-18): `[gate] futility` (built at T36;
+  `TRAPS.md`, Python). **Increment 9: a richer observation (v23)** (AI-Q18; the decisions the
+  agent's proposal, the user reviews the design): **T37, v23's design, next** (the sandbox, no
+  GPU; `QUEUE.md`).
+- **Open pull requests:** #1022 (`claude/adoring-turing-tl1huu`: T36's close, `[gate]
+  futility`, increment 9 refined) and #1023 (`shared/e25-increment-8`: the README's E25 row).
+  Merged: #954, #965 (T35's close, T36).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
   (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q18, AI-QUIRK-1, AI-STUB-2.
+  ids: AI-Q19, AI-QUIRK-1, AI-STUB-2.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -47,6 +48,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-18 — E25 T36 and increment 8 closed, the early stop, increment 9 refined
+
+- #965 merged. The user uploaded the 20 M run's `record.json` and `metrics.jsonl`, then its
+  ladders (the first measure files and the head-to-head were of the 2 M network: identical to
+  T34's; the 20 M head-to-head skipped by the user). No computer folder linked. Built `[gate]
+  futility` (the user's directive); `uv sync --group train` and `cargo build --release -p
+  h3-ffi` (1.5 minutes), the Python suite 270 (3.5 minutes). The user chose increment 9.
 
 ### 2026-11-16 — E25 T35 closed, T36 prepared
 
@@ -66,12 +75,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   the sampled policy 18, N 64 on the hero battles 27; #948 merged. (b)'s five files uploaded
   (three with CRLF, stripped); T34 closed. At T35 the user chose the win-bonus probe; built
   and its config tested.
-
-### 2026-11-13 — E25 T33 closed, T32 prepared
-
-- #862 merged. No computer folder linked: the user uploaded round 2's `record.json`,
-  `metrics.jsonl` and the three measures (the measures with CRLF, stripped on commit; the
-  update records read from `metrics.jsonl`, not committed). The user chose T32's arms. No setup
-  script run: cargo-llvm-cov, llvm-tools and llvm-20 installed by hand for the scoped verify,
-  `origin/master` fetched first (`check-lane` read a stale base); `uv sync --group train` for
-  T32's config test.

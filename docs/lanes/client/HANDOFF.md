@@ -17,7 +17,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   **T3c1 and T3c2 done** (2026-11-18: the flags' hover and press, the name's edit, the
   handicap drawn up, `CLT-STUB-10`; CLT-Q143 (b), decision 58; the duration's bar (the horizontal
   scroll bar's input), its texts, `CLT-STUB-11`; the options' hints; `adv-single-rest` 39 of 39
-  exact: design §26, §27). **Next: M3 T4** (the hot seat's advanced options: the queue), then T5.
+  exact: design §26, §27). **T4 cut in two** (decision 59); **T4a done** (2026-11-18: the hot
+  seat's screen as it opens, `adv-hotseat` 8 of 8 and both panels exact: design §28). **Next: M3
+  T4b** (the hot seat's presses: the queue), then T5.
   Decisions to carry: the dialogs' input one
   implementation (20; `h3_ui::input`); the shell's code as the battle's (21); decision 22's
   fixes; every pixel of a Smacker clip through its palette (24); every clip's sound at the
@@ -26,8 +28,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   edits type what the keyboard prints (39); a menu opening anew takes the hover (40); a silent
   Smacker clip's frames from their due times (43); the empty list's leftovers fixed (51); the
   description's bar takes no list key while the list shows (52); a main hero of its type's
-  portrait shown (55); a pick named by its own name (56); the name's edit drawn clean (58). Open pull request: T3c2's
-  (`client/e27-m3-t3c2`): watch it until it merges. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
+  portrait shown (55); a pick named by its own name (56); the name's edit drawn clean (58). Open pull request: T4a's
+  (`client/e27-m3-t4a`): watch it until it merges. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
   epic's "Placed at the closure", the queue's inbox). E28 and E29 are backlog sketches.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+
   drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`.
@@ -61,6 +63,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-18, E27 M3 T4a (done; `client/e27-m3-t4a`).** The PC's 64 files and the manuals
+  staged (SHA-256 checked). The hot seat's path read (Single's `scenario_new` after the
+  Multiplayer dialog; M1 had read its branches): T4 cut in two with the user (decision 59). Built
+  the hot seat's screen as it opens (the names' records, the list's filter, the rows, the
+  handicap's caption); `adv-hotseat`'s backgrounds from its run under Wine; `adv-hotseat` 8 of 8
+  and both panels exact, every other recipe as recorded. Record: `E27-log.md`, "M3 T4a".
 - **2026-11-18, E27 M3 T3c2 (done; `client/e27-m3-t3c2`).** The PC's 64 files and the manuals
   staged (SHA-256 checked). Read the scroll bar's horizontal branches (the press's thumb 16 wide),
   the duration's bar (no page) and `scenario_duration_scrolled`; built the bar's input, the
@@ -73,8 +81,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   (the edit's doubled frame, the name under it), the original's for the comparisons; built the hover,
   the press, the edit, the screen's flags from the moved colour; `adv-single-rest`'s first twelve
   shots exact, every other group as recorded. Record: `E27-log.md`, "M3 T3c1".
-- **2026-11-18, E27 M3 T3b2 (done; `client/e27-m3-t3b2`).** The PC's 64 files and the manuals
-  staged (SHA-256 checked). The sandbox's `TMPDIR` crashed Wine; the harness drops it now
-  (`TRAPS.md`). Read `scenario_hero_popup` whole; built the popup (`own_hero_popup`, the keys
-  `shell.advanced.hero-popup.*`, `hero-specialty`, the classes from the game's rules); the four
-  hero popups exact, every other group as recorded. Record: `E27-log.md`, "M3 T3b2".

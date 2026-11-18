@@ -18,11 +18,13 @@ also accepts schema 4, before the league: `t3b-1`, its config's `[pool]`):
   promoted index, samples and updates), or null.
 - `config`: every setting, resolved, by table (as the config file groups them).
 - `progress`: samples, updates, episodes, minutes, the gates' and ladders' minutes
-  (`evaluation_minutes`, their share of the run) and how it ended (`budget`, `stop`).
+  (`evaluation_minutes`, their share of the run) and how it ended (`budget`, `stop`; from E25
+  T36 `futile`: `[gate] futility` gates in a row promoted nobody before the budget).
 - `segments` (schema 2, E06 T2b1): the run's first part and each `--resume`'s, in order: its batch
   seed, when it started, the commit and `dirty`, the device, the config keys it changed, its
-  samples, updates and minutes at its start and end, how it ended (`budget`, `stop`, or `lost`: no
-  record of its end, a kill or a crash) and its records dropped after its last checkpoint.
+  samples, updates and minutes at its start and end, how it ended (`budget`, `futile`, `stop`, or
+  `lost`: no record of its end, a kill or a crash) and its records dropped after its last
+  checkpoint.
 - `curve`: per gate interval, the means of its updates' losses, entropy, KL, clip fraction,
   explained variance, samples per second and training rates (schema 5: the learner's score
   against the league's members, `league_score`, and the frozen networks a call passed,

@@ -4,13 +4,14 @@ Date: 2026-11-18. Scope: E08 increment 14 (decisions 361, 362), input for T127b'
 drafts, the design note and the cut. **In two parts** (the user at T127a's start, decision 363,
 after the reading was measured: about 30 KB of code, the market about 15 KB, the Altar of
 Sacrifice about 8 KB of a 22 KB dialog, the Hill Fort about 5 KB, the War Machine Factory about
-1.5 KB; T118a's whole survey had read about 5 KB): **T127a1** (this part, §0 to §11) the census of
+1.5 KB; T118a's whole survey had read about 5 KB): **T127a1** (§0 to §11) the census of
 the seven classes and the market: the Trading Posts (99, 221), the Freelancer's Guild (213), the
 Black Market (7) and the trade window they share with the town's Marketplace, its rates;
-**T127a2** the services (the Altar of Sacrifice 2, the Hill Fort 35, the War Machine Factory 106)
-with their VCMI and wiki comparison, the interfaces' sketch, batch E14's plan, the proposed rule
-ids and the checkpoint's questions (§12 on). Input, not rules (`README.md`): a fact becomes binding
-when a task writes it into the catalog with its sources and tests.
+**T127a2** (§12 to §20, whole: the user at its start, decision 364, after its reading was measured
+again at about 14.5 KB) the services (the Altar of Sacrifice 2, the Hill Fort 35, the War Machine
+Factory 106) with their VCMI and wiki comparison, the interfaces' sketch for all seven, batch E14's
+plan, the proposed rule ids and the checkpoint's questions. Input, not rules (`README.md`): a fact
+becomes binding when a task writes it into the catalog with its sources and tests.
 
 **Sources** (retrieved 2026-11-18):
 
@@ -56,6 +57,47 @@ when a task writes it into the catalog with its sources and tests.
   committed). The rates' comparison (§4, §9): a throwaway script emulating the binary32 steps over
   ARTRAITS.TXT's costs and CRTRAITS.TXT's gold costs (not committed).
 
+**Sources of part 2** (T127a2, retrieved 2026-11-18):
+
+- `original-data`, the human player's path. **Read whole:** the Altar's run
+  (`altar_dialog_run` 0x5653B0), screens (`altar_show_artifacts` 0x562A20, `altar_show_creatures`
+  0x563150), update (`altar_update` 0x562500), the clicks on the hero's positions
+  (`altar_worn_click` 0x5632A0) and the buttons (`altar_backpack_to_altar` 0x564060,
+  `altar_all_to_altar` 0x564340, `altar_sacrifice` 0x5646A0, `altar_to_creatures` 0x564910,
+  `altar_done` 0x564A80, `altar_all_creatures` 0x564CF0, `altar_creature_max` 0x564DE0,
+  `altar_to_artifacts` 0x564E70, `altar_slider_moved` 0x565380), the experience
+  (`altar_artifact_entry` 0x55FC30, `altar_set_creature_amount` 0x564C00) and the turn's end
+  (`altar_time_expired` 0x565430); the Hill Fort's `hill_fort_dialog_run` 0x4E7E90,
+  `hill_fort_rows` 0x4E7EB0, `hill_fort_upgrade_slot` 0x4E8500 and `upgrade_cost` 0x54E750; the
+  factory's dispatch (0x4AA622 to its end) and `war_machine_creature` 0x550360. **Read in part:**
+  `altar_dialog_create` 0x55FDD0 (the modes), `altar_artifacts_create` 0x560380 (the places),
+  `altar_backpack_click` 0x5636C0, `altar_select_creature_slot` 0x564FE0 (the slider's most),
+  `altar_dialog_destroy` 0x5623A0 (its calls), `hill_fort_dialog_proc` 0x4E8850 (the clicks), the
+  war machines' branches of `recruit_dialog_select` 0x5503A0 and `recruit_dialog_proc` 0x550940.
+  **Inferred, not read:** `altar_creatures_create` 0x5610F0, `altar_place_click` 0x563A80,
+  `hill_fort_dialog_create` 0x4E75F0. **Not followed:** the computer's visits
+  (`ai_hill_fort_visit` 0x527BB0, `ai_war_machine_factory_visit` 0x524FC0: E10's), the redraws,
+  pictures, texts and sounds, the Hill Fort's hints on a mouse move.
+- `vcmi` (tag `1.7.5`): `lib/mapObjects/IMarket.cpp` (`getOffer`'s `CREATURE_EXP` and
+  `ARTIFACT_EXP`), `server/CGameHandler.cpp` (`sacrificeCreatures`, `sacrificeArtifact`,
+  `upgradeCreature`, `recruitCreatures`), `client/windows/CMarketWindow.cpp` (the Altar's screens by
+  alignment), `lib/entities/artifact/CArtifact.cpp` (`isTradable`, `isBig`),
+  `lib/mapObjects/CGHeroInstance.cpp` (`calculateXp`, `getAlignment`), `config/factions/*.json`
+  (the alignments), `config/objects/generic.json` (the Hill Fort's `upgradeCostFactor`, the
+  factory's creatures), `lib/mapObjects/MiscObjects.cpp` (`HillFort::fillUpgradeInfo`),
+  `lib/gameState/UpgradeInfo.cpp` (`addUpgrade`), `lib/mapObjects/CGDwelling.cpp` (the factory's
+  machines).
+- `wiki`, through search snippets only (the fandom pages refuse a fetch from this session):
+  <https://heroes.shoutwiki.com/wiki/List_of_adventure_map_objects> (the Altar's line),
+  <https://heroes.shoutwiki.com/wiki/Restoration_of_Erathia_Manual_Page_117> (the war machines'
+  prices, one of each per hero), <https://heroes.shoutwiki.com/wiki/Catapult> (the factory sells
+  every machine but the Catapult), VCMI's bug <https://bugs.vcmi.eu/view.php?id=558> (the original's
+  22 artifacts on the altar per sacrifice). No page read gives the Altar's experience values or the
+  Hill Fort's percentages; the user's manuals (`D:\Heroes3\HoMM 3 Complete`, the three PDFs and
+  `HEROES3.HLP`) describe none of the three objects.
+- The Hill Fort's comparison (§15): a throwaway script over the packs' creatures, their levels,
+  costs and upgrades (not committed).
+
 ## 0. Findings in short (part 1)
 
 - **The census** (§1): 1 058 objects of the seven classes on 148 of the 160 maps; every one has
@@ -83,6 +125,36 @@ when a task writes it into the catalog with its sources and tests.
   doubles where one unit buys several: **D-70** (the resources at 2, 4 and 8 Marketplaces, the
   town lane's; none at five) and **D-71** (the creature sale: 99 of 504 cases differ at five).
   **A-46**: the purchase from a hero who cannot take the artifact takes the price and loses it.
+
+**Part 2:**
+
+- **The Altar of Sacrifice** (§12): its screens by the hero's class's faction: Castle, Rampart and
+  Tower heroes sacrifice artifacts only, Inferno, Necropolis and Dungeon heroes creatures only,
+  Stronghold, Fortress and Conflux heroes both (the artifacts first). An artifact gives **1 000,
+  1 500, 3 000 or 6 000** experience by its class (treasure, minor, major, relic), a special one
+  **0**; a creature **5 × ⌊AI value / 40⌋**; the hero's Learning factor (HER-EXP-001's product) is
+  applied per artifact and per stack and truncated each time. Every artifact but the Spell Book
+  and the Catapult may go onto the altar (the Ballista, the Ammo Cart, the First Aid Tent, a Spell
+  Scroll and the Grail for 0); the army keeps one creature; Sacrifice needs a total above 0 and
+  gives the levels at once, the dialog staying open; 22 places on the altar (and the one artifact
+  held) per sacrifice, as many sacrifices as the player likes.
+- **The Hill Fort** (§13): each of the visitor's stacks of a town's unupgraded creature (on a RoE
+  map not the four elementals) upgrades to its town's upgrade for the cost difference times the
+  count, **the gold alone scaled by the creature's level**: free at level 1, **25 %, 50 %, 75 %**
+  at levels 2 to 4, whole from level 5, truncated once per stack; one stack at a time, or all
+  when the whole is affordable.
+- **The War Machine Factory** (§14): a question, then the hire dialog with the Ballista, the First
+  Aid Tent and the Ammo Cart at their gold costs (2 500, 750, 1 000), one of each the hero lacks,
+  bought as the artifact into its position.
+- **VCMI** (§15) agrees on the screens by alignment, the experience values and the per-creature
+  formula, the last creature, the Hill Fort's factors and the factory; it differs on the war
+  machines at the Altar (**D-72**: refused), the Learning's rounding (**D-73**: once over the sum)
+  and the Hill Fort's rounding (**D-74**: per creature, every resource scaled). **A-47**: a
+  special artifact sacrificed for no experience; **A-48**: what lies on the altar lost when the
+  turn's time runs out.
+- **For T127b** (§17 to §20): the interfaces' sketch of all seven (decisions as the University's
+  and the hire dialog's, recommended), batch E14's plan (15 rows), the proposed ids (ADV-MKT,
+  ADV-ALT, ADV-HFT, ADV-WMF, GAM-DEC-011 to -013), the checkpoint's questions.
 
 ## 1. The census (the seven classes)
 
@@ -121,9 +193,9 @@ hero's owner a human) decides:
 | 7 Black Market (0x4A86AD) | `black_market_trade` 0x5EA100 with the hero and the market's record (§7) | `ai_black_market_visit` 0x5243F0 (not read; E10's, E13's) | none |
 | 99 (and 221) Trading Post (0x4AA2CE) | `trading_post_trade` 0x5EA0C0 (§5) | nothing | none |
 | 213 Freelancer's Guild (0x4A8E34) | `freelancers_guild_trade` 0x5E9E60 with the hero (§6) | nothing | none |
-| 2 Altar of Sacrifice (0x4A8541) | its own dialog (T127a2) | nothing | the team's kind mark k 28 (game +0x4E360), a human's visit only |
-| 35 Hill Fort (0x4A9172) | its own dialog (T127a2) | its own routine (not read) | the team's kind mark k 14 (game +0x4E352), every visit |
-| 106 War Machine Factory (0x4AA622) | ADVEVENT's question, then the hire dialog with the three war machines (T127a2) | its own routine (not read) | none |
+| 2 Altar of Sacrifice (0x4A8541) | its own dialog (§12) | nothing | the team's kind mark k 28 (game +0x4E360), a human's visit only |
+| 35 Hill Fort (0x4A9172) | its own dialog (§13) | `ai_hill_fort_visit` 0x527BB0 (not read) | the team's kind mark k 14 (game +0x4E352), every visit |
+| 106 War Machine Factory (0x4AA622) | ADVEVENT's question, then the hire dialog with the three war machines (§14) | `ai_war_machine_factory_visit` 0x524FC0 (not read) | none |
 
 - No visit tests a day, a week, an owner or an earlier visit: a hero may trade at the same object
   every time it visits it (a visit from a neighbour, so leaving and stepping back, or the
@@ -342,7 +414,7 @@ modders' page names the Trading Post's transfer to another player. No source sta
 - **D-71** (the map's Freelancer's Guild and the town's): the creature sale's rounding, the
   original's half up after binary32 against VCMI's ceiling (99 of 504 cases at five, many at a
   creature's resource rate: one wood instead of two for a 360-gold creature). Recommended: the
-  original's (the code reading of this build; a batch E14 row to confirm, T127a2's plan).
+  original's (the code reading of this build; a batch E14 row to confirm: E14-1, §18).
 - **A-46** (quirk candidate, the Black Market and the town's Artifact Merchants): the price taken
   and the artifact lost when the hero can hold nothing more. Options: as the original (the loss), or
   fixed (the purchase refused before paying, as a pickup with a full backpack, GAM's rule).
@@ -363,10 +435,335 @@ Merchants' seven at game +0x1F664, `new_month` 0x4C8F40's draw) with A-46. Not r
 `market_artifact_sale_rate`, is §4's) and the merchants' monthly draw. D-70 is the town's alone;
 D-71 and A-46 are shared.
 
-## 12. Part 2 (T127a2)
+## 12. The Altar of Sacrifice (2)
 
-To come: the Altar of Sacrifice (its dialog, what it takes for experience by the hero's alignment),
-the Hill Fort (its upgrade prices), the War Machine Factory (the hire dialog's war machines); their
-VCMI and wiki comparison and disputes from D-72, quirk candidates from A-47; the interfaces' sketch;
-batch E14's plan (D-71's and A-46's rows among them); the proposed rule ids; the checkpoint's
-questions.
+### 12.1 The dialog and its two screens
+
+`visit_object`'s case 2 (0x4A8541), a human only: `altar_dialog_create` 0x55FDD0 with the hero,
+`altar_dialog_run` 0x5653B0, the destructor (`altar_dialog_destroy` 0x5623A0), then the team's kind
+mark k 28 (§2). The computer does nothing there.
+
+- **The screens by alignment.** The dialog reads the faction of the hero's class (hero +0x30, the
+  class record's first word): **artifacts allowed** (+0x75) for factions 0 to 2 and 6 to 8,
+  **creatures allowed** (+0x76) for 3 to 8. The run opens the artifacts' screen
+  (`altar_show_artifacts` 0x562A20) when artifacts are allowed, else the creatures'
+  (`altar_show_creatures` 0x563150); each screen's button to the other is enabled by the other's
+  flag. So **Castle, Rampart and Tower** heroes sacrifice artifacts only, **Inferno, Necropolis and
+  Dungeon** heroes creatures only, **Stronghold, Fortress and Conflux** heroes both, starting on the
+  artifacts. Leaving a screen undoes it: every artifact taken goes back to the hero and the total is
+  cleared (`altar_to_creatures` 0x564910, `altar_to_artifacts` 0x564E70); the creatures' amounts are
+  cleared when their screen opens.
+- **The total** (+0x78) is what Sacrifice gives: `altar_update` 0x562500 shows it with the
+  experience the hero lacks for its next level, and **enables Sacrifice only while the total is
+  above 0**.
+- **Sacrifice** (`altar_sacrifice` 0x5646A0) destroys what the screen offers (§12.2, §12.3), then
+  calls `hero_gain_experience` 0x4E33B0 with the total, the levels given and the owner told (its
+  level-up dialogs over the altar's), clears the total and **leaves the dialog open**: the player
+  may sacrifice again, and with the levels' new Learning. No visit limit (§2): every visit opens
+  the dialog. **Done** (`altar_done` 0x564A80) returns every artifact taken and closes.
+
+### 12.2 The artifacts
+
+- **Where they come from:** the hero's worn positions (18; 19 in SoD, game +0x1F698 ≥ 2, the fifth
+  misc) and its backpack (64). The altar has **22 places** (`altar_slot_rows` 0x6412C0, five rows;
+  `altar_slot_row_counts` 0x6412E8: 5, 5, 5, 5, 2) and the cursor holds one more.
+- **Taking one** (`altar_worn_click` 0x5632A0, `altar_backpack_click` 0x5636C0): a worn artifact is
+  taken off the hero (`hero_remove_artifact` 0x4E2BD0, its primary skills with it) onto the cursor,
+  **except the Spell Book** (the click opens the book) **and the Catapult** (a message); so the
+  Ballista, the Ammo Cart and the First Aid Tent may be taken. Any backpack artifact may be taken:
+  the Grail, a Spell Scroll. The cursor's artifact goes onto an altar place (`altar_place_click`
+  0x563A80) or back onto the hero, a position its kind allows (`hero_can_replace_artifact`
+  0x4E2840), its experience leaving the total. `altar_backpack_to_altar` 0x564060 moves the
+  backpack's artifacts in order onto the free places; `altar_all_to_altar` 0x564340 the worn
+  positions 0 to 15 (the three machines among them; not the Catapult 16, the book 17 nor the fifth
+  misc 18), then the backpack, both until the places run out. No class is tested.
+- **The experience** (`altar_artifact_entry` 0x55FC30 and the clicks' copies of it), when an
+  artifact is taken: by its class (`artifact_setup` +0xC): **treasure 1 000, minor 1 500, major
+  3 000, relic 6 000, special 0** (the seven special artifacts: the Spell Book, a Spell Scroll, the
+  Grail and the four war machines, ARTRAITS.TXT's class S), times the hero's Learning factor
+  (`hero_learning` 0x4E4840) as HER-EXP-001's product, **trunc(L × f32(base)) for each artifact**,
+  added to the total. The SoD combinations are relics (the `sod` pack): 6 000.
+- **Sacrifice:** every artifact on the altar and the one on the cursor is destroyed. **Done** and
+  the switch to the creatures return each taken artifact to its former worn position, else any
+  position that takes it, else the backpack (always room: it came from the hero).
+- A sacrifice of a special artifact alone cannot be made (a total of 0), but with others it is
+  destroyed for nothing (**A-47**).
+
+### 12.3 The creatures
+
+- **The amounts** (+0x138 by slot): `altar_select_creature_slot` 0x564FE0 sets the slider's most to
+  the stack's count, **less one when every other slot's amount is its whole count or the slot is
+  empty**: the army keeps one creature. `altar_set_creature_amount` 0x564C00 sets a slot's amount
+  and moves the total by the difference of **trunc(L × f32(amount × e))**, e = **5 × ⌊AI value /
+  40⌋** (`creature_record` +0x40; the division signed, every value positive): the Learning
+  truncated per stack. `altar_all_creatures` 0x564CF0 takes every stack whole from slot 6 down to
+  0, the last processed less one (the lowest occupied slot keeps a creature); `altar_creature_max`
+  0x564DE0 the selected slot's most.
+- **Sacrifice:** each slot's count lowered by its amount, a slot at 0 cleared (`army_clear_slot`
+  0x44AB60), the experience as above. Any creature, of any faction, level or upgrade; the war
+  machines are not in the army.
+- At five Pikemen (AI value 80): 10 each, 50; an Angel (5 019): 625; a Skeleton (60): 5.
+
+### 12.4 The turn's time (A-48)
+
+When the turn's time runs out, `dialog_proc_base` 0x41B1C0 calls the dialog's vtable +0x38
+(`altar_dialog_vtable` 0x641620): `altar_time_expired` 0x565430 returns **only the artifact on the
+cursor** and closes; the destructor returns nothing. The artifacts lying on the altar are lost, for
+no experience (**A-48**; a timed game only).
+
+## 13. The Hill Fort (35)
+
+`visit_object`'s case 35 (0x4A9172): a human `hill_fort_dialog_create` 0x4E75F0 (its controls, not
+read) and `hill_fort_dialog_run` 0x4E7E90 (`hill_fort_rows` 0x4E7EB0, then the modal loop with
+`hill_fort_dialog_proc` 0x4E8850); the computer `ai_hill_fort_visit` 0x527BB0 (not read); then
+every visit the team's kind mark k 14 (§2). The army is the current player's selected hero's, the
+visitor's.
+
+- **Which stacks** (`hill_fort_rows`, per slot): a stack upgrades when its creature is a town's
+  unupgraded one (`creature_is_unupgraded` 0x47B120: the town creature table holds it as a base)
+  and, on a map of game version 0 (RoE, game +0x1F698), it is not one of the four elementals (Air,
+  Earth, Fire, Water: 112 to 115; their upgrades are AB's); its upgrade is `creature_upgrade`
+  0x47B1A0's. Neutral and upgraded creatures do not.
+- **The price:** `upgrade_cost` 0x54E750 (also the town's creature dialog's and the computer's):
+  for each of the seven resources max(0, the upgrade's cost − the creature's) **× the count**; then
+  **the gold alone** becomes **trunc(f32(gold) × factor)**, the factor by the creature's level
+  (`creature_record` +4, `hill_fort_gold_factors` 0x63EB4C): **0, 0.25, 0.5, 0.75, 1, 1, 1** for
+  levels 1 to 7. A level-1 stack's price is not computed at all: **free**, a text in its place. The
+  other resources are not scaled; no town creature of levels 1 to 4 costs more of another resource
+  than its base (the packs), so the gold decides. 10 Archers (50 more gold each): 125 gold;
+  3 Pegasi (25 more): trunc(75 × 0.75) = 56.
+- **The states:** each row 0 (no upgrade), 1 (every resource of its price within the treasury) or 2;
+  the whole (+0x298) 1 when the sum of the rows' prices is affordable and a row upgrades, 0 when
+  none upgrades, else 2.
+- **The upgrade** (`hill_fort_dialog_proc`): a row's button (items 261 to 267) calls
+  `hill_fort_upgrade_slot` 0x4E8500: state 1 replaces the stack's creature by its upgrade (the count
+  kept) and pays the row's price from the treasury (+0x9C); state 0 or 2 shows a message, nothing
+  else. **All** (item 204): the whole's state 1 upgrades every row of state 1 in slot order; 0 or 2
+  a message, nothing. After either the rows are computed again. Nothing is tested again at the
+  click, so the states are the only bound; no limit per visit, no movement spent.
+
+## 14. The War Machine Factory (106)
+
+`visit_object`'s case 106 (0x4AA622): the computer `ai_war_machine_factory_visit` 0x524FC0 (not
+read); a human ADVEVENT's question, a yes and the hire dialog (`H3RecruitMgr`, increment 10's,
+`E08-dwellings.md` §5) for the hero with three creatures in this order: the **Ballista** (146), the
+**First Aid Tent** (147), the **Ammo Cart** (148), the three sharing one count of 4 000; no mark.
+
+- **The most** (`recruit_dialog_select` 0x5503A0): for a war machine (creature flag 0x40) the count
+  is first set to 1 less whether the hero holds its artifact (`hero_has_artifact` 0x4D91B0;
+  `war_machine_creature` 0x550360 maps the artifacts 3 to 6 to the creatures 145, 146, 148, 147),
+  at least 0; the most is then the least of the count and the gold over the cost: **1 or 0**.
+- **The prices:** the creatures' gold costs: Ballista 2 500, First Aid Tent 750, Ammo Cart 1 000.
+- **The purchase** (`recruit_dialog_proc` 0x550940's Recruit): the gold paid, `hero_give_artifact`
+  0x4E3070 with the machine's artifact (4, 6, 5) into its position; three creatures, so the dialog
+  stays open for the others. The Catapult is never offered.
+
+## 15. VCMI and the wiki (part 2)
+
+**VCMI 1.7.5:**
+
+- **The Altar's screens:** `markets.json` gives the Altar both experience modes; `CMarketWindow`
+  blocks the creatures for a good hero and the artifacts for an evil one, the alignment being the
+  hero's class's faction's (`config/factions`: Castle, Rampart, Tower good; Inferno, Necropolis,
+  Dungeon evil; Stronghold, Fortress, Conflux neutral): **agrees**. Its server refuses an evil
+  hero's artifacts and tests no alignment for creatures (the client's only).
+- **The values** (`IMarket::getOffer`): `CREATURE_EXP` (AI value / 40) × 5 per creature;
+  `ARTIFACT_EXP` 1 000, 1 500, 3 000, 6 000 by class, any other class 0: **agree**.
+- **Which artifacts:** `sacrificeArtifact` takes only a tradable one (`CArtifact::isTradable`: not
+  the Spell Book, not a war machine, `isBig`); a Spell Scroll and the Grail are tradable and sum 0.
+  So VCMI refuses the Ballista, the Ammo Cart and the First Aid Tent the original takes for 0
+  (**D-72**); the Grail and a scroll for 0 agree (A-47's case).
+- **The Learning:** VCMI sums a sacrifice's experience and applies `calculateXp` once (× the
+  experience percentage / 100.0, truncated); the original truncates per artifact and per stack. With
+  Learning the original's is lower by up to one per artifact or stack after the first (**D-73**):
+  Advanced Learning, 3 and 1 Skeletons in two stacks: 16 + 5 = 21 against 22.
+- **The last creature:** `sacrificeCreatures` refuses to empty the last stack: **agrees** (one kept).
+  The 22 places: VCMI's bug 558 reports the original's 22 artifacts per sacrifice: **agrees**.
+- **The Hill Fort** (`generic.json`'s `upgradeCostFactor` 0, 25, 50, 75, 100 from level 5;
+  `HillFort::fillUpgradeInfo`): **the factors agree**. `UpgradeInfo::addUpgrade` scales every
+  resource of the difference per creature, truncating (× percentage / 100), and
+  `CGameHandler::upgradeCreature` multiplies by the count; the original truncates the stack's gold
+  once and scales no other resource (**D-74**). With the packs' costs only the gold differs: 11
+  pairs at levels 2 to 4 (Archer, Dwarf, Wood Elf, Pegasus, Stone Gargoyle, Gog, Walking Dead,
+  Medusa, Orc, Lizardman, Basilisk) whenever the count is not a multiple of 2 or 4: 10 Archers 125
+  against 120, 3 Wood Elves 37 against 36, 3 Pegasi 56 against 54. Which stacks: VCMI's creatures'
+  `upgrades` (none for a neutral): agrees; the RoE elementals' test not checked.
+- **The factory** (`generic.json`: ballista, firstAidTent, ammoCart; `CGDwelling`: one of each the
+  hero lacks, the question ADVOB_TXT 157; `recruitCreatures`: the Catapult refused, the machine
+  given): **agrees**.
+
+**The wiki** (search snippets): the mirror's list of objects: good heroes sacrifice artifacts only,
+evil ones creatures only, neutral ones both (agrees); the RoE manual's page 117: the Ammo Cart
+1 000, the Ballista 2 500, the First Aid Tent 750, one of each per hero (agrees); the mirror's war
+machine page: the factory sells every machine but the Catapult (agrees). No page read gives the
+Altar's values or the Hill Fort's percentages: VCMI and the code reading are their two sources.
+
+## 16. Disputes, quirk candidates and open points (part 2)
+
+- **D-72** (the Altar): the Ballista, the Ammo Cart and the First Aid Tent sacrificed for 0 (the
+  original) or refused (VCMI). Recommended: the original's, with A-47's answer (a batch E14 row).
+- **D-73** (the Altar): the Learning truncated per artifact and per stack (the original) or once
+  over the sum (VCMI). Recommended: the original's (HER-EXP-001's product per item; a row).
+- **D-74** (the Hill Fort): the stack's gold scaled and truncated once, the other resources whole
+  (the original), or every resource per creature (VCMI). Recommended: the original's (a row).
+- **A-47** (quirk candidate): a special artifact (the Grail, a Spell Scroll, the Ballista, the Ammo
+  Cart, the First Aid Tent) destroyed for no experience beside others on the altar. Options: as the
+  original (recommended: nothing is corrupted, the total shown before the press is the player's
+  choice), or refused (the engine's Altar takes only the four classes; VCMI refuses the machines
+  only).
+- **A-48** (quirk candidate): the artifacts on the altar lost when the turn's time runs out.
+  Options: fixed (recommended: in the engine a sacrifice names its artifacts in one answer, so no
+  artifact lies on an altar between commands; the decision's default answer at the time's end
+  leaves with everything kept), or as the original (a held list lost at the default answer).
+- **Open for T127b** (the design; part 1's in §10):
+  - **The levels inside the Altar.** The original gives a sacrifice's levels at once, the dialog
+    open beneath them, and a later sacrifice reads the Learning they brought. The engine's player
+    has one open decision (ADR-0017 point 6). Options: each sacrifice closes the Altar's decision,
+    its levels come (GAM-DEC-002) and the Altar opens again as their rest (GAM-DEC-007; the
+    original's order), or the levels wait until the Altar is left (a Learning specialist's later
+    sacrifices read the old level).
+  - **The answers' shape:** a sacrifice of artifacts by position (worn or backpack), bounded by the
+    22 places and the cursor (23) or not (the same experience once the levels come between
+    sacrifices); a sacrifice of creatures by an amount per slot.
+  - **The Hill Fort's two answers** (a slot, all) and its view (each slot's price and state).
+  - **The factory** as the hire dialog with a source of war machines (GAM-DEC-008, ADV-HIR-002): a
+    machine's purchase gives its artifact (no army room), its most 1 or 0.
+
+## 17. The interfaces' sketch (the seven classes)
+
+For T127b's drafts and design note (ADR-0015 to -0017, ADR-0013); a sketch, not decided.
+
+- **Commands:** none new for the visits: a move's last step toward the object (every entrance is
+  visited from a neighbour, §1) or `Revisit`. Each object's window as **a decision of the
+  visitor's owner** (GAM-DEC-001), opened by the visit as the University (GAM-DEC-006) and the hire
+  dialog (GAM-DEC-008) are, with its kind's answers (recommended: the original's windows are modal,
+  the decision holds the trade's context, the default answer closes it). Not chosen: commands valid
+  while the hero stands beside the object (no open state, but every trade re-proves the object and
+  nothing ends it). Every player answers: the original's human-only branches (§2) are the computer
+  player's behaviour (E10), not a rule of the engine.
+  - **The market** (`Decision::Market`; 99, 221, 213, 7): the screens by the object's kind (a Trading
+    Post 0 and 1, the guild 4, the Black Market 2; the town's Marketplace E09's); answers
+    `Trade { give, take, amount }` (screen 0, the amount in the slider's unit, §5), `Transfer {
+    resource, amount, to }` (screen 1), `Sell { slot, take, amount }` (screen 4, §6), `Buy {
+    entry, pay }` (screen 2, §7.2), `Leave`. The validation re-tests what the original's slider
+    bounds (§3): the amount 1 to the most, the treasury, the recipient in the game, the army's
+    last creature, the entry not sold. The rates in the ruleset, built once with the town lane
+    (decision 361; §4's binary32 steps through `kernel::num` or checked tables).
+  - **The Altar** (`Decision::Altar`): the screens the hero's alignment allows (§12.1); answers
+    `Artifacts(positions)`, `Creatures(amounts by slot)`, `Leave`; the view the total each would
+    give and the experience to the next level.
+  - **The Hill Fort** (`Decision::HillFort`): answers `Upgrade(slot)`, `All`, `Leave`; the view each
+    slot's upgrade, price and state (§13).
+  - **The factory:** the hire question (the offer, as a dwelling's) and `Decision::Hire` with a
+    source of three machines; `HireAnswer::Buy { creature, amount: 1 }` gives the artifact.
+- **Events:** a window's opening (`MarketOpened`, `AltarOpened`, `HillFortOpened`: the hero, the
+  object by type and anchor) and closing (`DecisionClosed`); the resources paid and gained
+  (`ResourcePaid` and its gain); the transfer told to the recipient (its treasury's change, from
+  whom); a stack sold, sacrificed or upgraded (`StackChanged`); an artifact bought, taken or
+  sacrificed (the hero's changes); the experience and its levels; a Black Market's entry emptied (to
+  the visitor). A new variant of `h3-game`'s or `h3-adventure`'s events breaks `h3-protocol`'s build
+  until mapped (the global trap: `cross-lane`, or the server lane first).
+- **The observation:** every class's type to every viewer of its tile; no owner; the Altar's and the
+  Hill Fort's kind marks for the hints (k 28, k 14; ADV-VIS-006, increment 12's marks); a Black
+  Market's seven only in the visitor's open decision, server-only otherwise; what a viewer keeps of
+  a market it visited: nothing (recommended, as the original) or the last seen seven (a knowledge
+  by object, ADV-VIS-006). The rates are the ruleset's, public. No flat encoding (decision 187).
+- **State and versions:** the Black Markets' records drawn at the build (the adventure state hash;
+  their place in the build's order of draws, `setup_map_objects`' walk, is T127b's), the kinds and
+  rates (the adventure ruleset part, perhaps the core's for the shared rates), the seven classes'
+  import typed (map import version; 221 as the Trading Post, its class kept), the decisions (game
+  state hash). Replays: new answers, new words (adventure replay format). The env (the AI lane's):
+  new decision kinds to encode; `legal_commands` lists one answer per pair or slot at its most, as
+  the hire dialog does (every amount would be thousands).
+- **Benchmarks:** the 1 058 objects stop being inert blockers on 148 shipped maps (their
+  neighbours' steps end paths, ADV-OBJ-003), and their answers enter the random agent's draws (the
+  lane's trap: every random game's course moves): the `random-play-*` workloads re-baselined with
+  the reason; a market-heavy workload if T127b's cut wants one (`homm3-bench-regression`).
+
+## 18. Batch E14's plan
+
+Increment 14's batch, **batch E14**, runs on the client lane's harness in SoD on Easy, hot seat,
+from maps `h3-experiment` writes (`docs/experiments/README.md`), as batches E3 to E13; its spec and
+recipe are tasks of T127b's cut. Two players (Blue for the transfer), days 1 and 2, and day 29 for
+E14-3 (28 days' turns ended); every price, rate and total read from the window before the click.
+
+| Row | Settles | Setup | Record | The reading predicts |
+|---|---|---|---|---|
+| E14-1 | §6, D-71 | Red's hero sells at a Freelancer's Guild 10 Pixies for gold, then 2 Vampires for wood | the treasury after each | 170 gold (VCMI 180); 2 wood (VCMI 4) |
+| E14-2 | §6 | the guild with the hero's only stack of 10 | the slider's most | 9 |
+| E14-3 | §7.1 | two Black Markets on a map that bans some artifacts | each market's seven at day 1 and day 29 | three treasures, three minors, one major, no banned one, the two markets distinct; unchanged at day 29 |
+| E14-4 | §7.2, A-46 | Red's hero with every body position full and 64 in the backpack buys at a Black Market | the treasury, the hero's artifacts, the entry | the price paid, the artifact nowhere, the entry empty |
+| E14-5 | §4, §5 | Red at a Trading Post: 2 wood for gold, 833 gold for a wood, 3 mercury for a gem | the treasury | +150 gold; +1 wood; +1 gem |
+| E14-6 | §5 | Red transfers 5 ore to Blue at a Trading Post | both treasuries | Red −5, Blue +5 |
+| E14-7 | §12.1 | a Castle, a Necropolis and a Fortress hero visit an Altar | the first screen; the other screen's button | artifacts, disabled; creatures, disabled; artifacts, enabled |
+| E14-8 | §12.2 | a Castle hero without Learning sacrifices a treasure, a minor, a major and a relic | the experience before and after | +11 500 |
+| E14-9 | §12.2, D-72, A-47 | a Fortress hero puts its Ballista, a Spell Scroll and the Grail with a treasure on the altar, then clicks its Catapult | the total; the artifacts after Sacrifice; the Catapult's click | 1 000; the four gone; a message, the Catapult kept (VCMI: the Ballista refused) |
+| E14-10 | §12.3, D-73 | a Necropolis hero with Advanced Learning sacrifices 3 Skeletons and 1 Skeleton in two slots, a third stack kept | the total and the experience | 21 (VCMI 22) |
+| E14-11 | §12.3 | the same hero's only stack of 10 Skeletons | the slider's most; all's amounts | 9; 9 |
+| E14-12 | §13, D-74 | Red's hero with Pikemen, 10 Archers, 3 Wood Elves, 3 Pegasi and 1 Angel at a Hill Fort | each row's price; the treasury after all | 0; 125; 37; 56; 2 000 gold and 2 gems (VCMI 120, 36, 54); the sum paid |
+| E14-13 | §13 | a hero with Rogues, Marksmen and a Pegasus stack at a Hill Fort, too poor for the Pegasi | the rows' states; all's message | Rogues and Marksmen not upgradable; the Pegasi state 2; all refused, nothing paid |
+| E14-14 | §13 | a RoE map: a hero with Air Elementals at a Hill Fort | the row | not upgradable |
+| E14-15 | §14 | a hero with a Ballista at a War Machine Factory buys what it can, then revisits | the dialog's counts; the treasury; the positions | Ballista 0, the tent and the cart 1; −1 750; both equipped; then all 0 |
+
+**Not in the batch:** the computer's visits (E10), network play, the town's Marketplace (the town
+lane's), A-48 (a timed turn: only if the harness can set the turn's duration in the original's hot
+seat; else left to the reading). **What the harness lacks** (`clients/capture/`): reads of the
+market window (the screen, the selected pair, the slider's most), of the Altar's dialog (+0x78 the
+total, the places, the slider's most), of the Hill Fort's rows (prices, states, the whole) and of
+the Black Markets' records (game +0x1F680); the hero's experience, artifacts and army and the
+treasury (earlier batches' reads). **What the spec lacks** (`h3-experiment`, battle-owned:
+`cross-lane`; the writer is this lane's): the seven classes by template (no body), a hero's
+secondary skills, war machines and backpack at the start (64 artifacts for E14-4, the Grail and a
+scroll for E14-9), a map's banned artifacts (E14-3), a RoE map (E14-14).
+
+## 19. The proposed rule ids
+
+Four families and three decisions (GAM-DEC-010 is the town lane's tavern):
+
+- **ADV-MKT** the map's markets: **-001** the objects (99, 221 as 99, 213, 7: one blocked entrance
+  each, no body; visited from a neighbour every time, no mark, no owner); **-002** the rates (the
+  values, the three factor tables, the binary32 steps and half-up rounding; built once with the
+  town lane, decision 361); **-003** the Trading Post's trade (screen 0 at five Marketplaces);
+  **-004** the transfer (screen 1: 1 : 1 to a player in the game); **-005** the Freelancer's
+  Guild's sale (screen 4, the army keeps a creature, D-71); **-006** the Black Market's draw at the
+  build (three, three, one; the bans; once per game, never restocked); **-007** its purchase (the
+  price, one at a time, the entry emptied, A-46); **-008** what a viewer sees (the stock hidden,
+  §8).
+- **ADV-ALT** the Altar of Sacrifice: **-001** the visit (the window of the visitor's owner, the
+  screens by the class's faction, the kind mark k 28); **-002** the artifacts (which, the experience
+  by class, the Learning per artifact, D-72, A-47, the levels); **-003** the creatures (5 × ⌊AI value
+  / 40⌋, the Learning per stack, D-73, the army keeps a creature).
+- **ADV-HFT** the Hill Fort: **-001** the visit and which stacks (a town's unupgraded creature; the
+  RoE elementals; the kind mark k 14); **-002** the price (the difference times the count, the gold
+  by level, truncated per stack, D-74) and the upgrade (a slot, all when the whole is affordable).
+- **ADV-WMF** the War Machine Factory: **-001** the question and the machines (one of each the hero
+  lacks, the gold cost, the artifact into its position).
+- **GAM-DEC-011** the market's decision, **GAM-DEC-012** the Altar's, **GAM-DEC-013** the Hill
+  Fort's.
+
+Also amended: GAM-DEC-008 and ADV-HIR-002 (a source of war machines), GAM-DEC-007 (the Altar's
+reopening after its levels, if T127b so designs), ADV-OBJ-003 (the seven's entrances end a path),
+ADV-VIS-006 (the two kind marks' hints), HER-EXP-001 (the Altar's products); the town lane's rules
+when E09 increment 5's Marketplace reuses ADV-MKT-002 to -007.
+
+## 20. For T127b: the checkpoint's questions
+
+Asked at T127a2's end (`docs/OPEN-QUESTIONS.md`, ADV-Q57; the answers in the epic as decisions from
+365):
+
+1. **The roundings, D-71, D-73, D-74:** the original's in each (recommended: the code reading of
+   this build, each confirmed by a batch E14 row), or VCMI's ceilings and per-creature steps.
+2. **The losses, A-46 and A-48:** both fixed (recommended: a Black Market purchase refused before
+   paying when the hero cannot take the artifact, as a pickup's room rule; the Altar's default
+   answer keeps everything), or as the original.
+3. **The special artifacts at the Altar, A-47 and D-72:** as the original (recommended: the Grail,
+   a Spell Scroll and the three machines taken for 0 beside others), refused (the four classes
+   only), or VCMI's (the machines refused).
+4. **Batch E14:** before the build (recommended, as batches E9 to E13), after it, or not at all.
+
+D-70 is the town lane's (§10, §11). The open points of §10 and §16 are T127b's calls.
+
+**Answered** (2026-11-18, `AskUserQuestion`, one round; the epic's decisions 365 to 368; ADV-Q57):
+(1) D-71, D-73 and D-74 **the original's** in each; (2) A-46 and A-48 **both fixed**; (3) the special
+artifacts **as the original** (A-47 harmless and accepted, D-72 the original's); (4) **batch E14 before
+the build**. All as recommended.

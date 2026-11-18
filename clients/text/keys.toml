@@ -3451,6 +3451,18 @@ id = "shell.advanced.kind.computer"
 original = [{ at = "ARRAYTXT:208" }]
 
 [[key]]
+id = "shell.advanced.handicap.0"
+original = [{ at = "ARRAYTXT:210" }]
+
+[[key]]
+id = "shell.advanced.handicap.1"
+original = [{ at = "ARRAYTXT:211" }]
+
+[[key]]
+id = "shell.advanced.handicap.2"
+original = [{ at = "ARRAYTXT:212" }]
+
+[[key]]
 id = "shell.advanced.town.0"
 original = [{ at = "ARRAYTXT:219" }]
 

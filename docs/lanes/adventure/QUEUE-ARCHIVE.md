@@ -1947,6 +1947,31 @@ file `docs/rules/surveys/E08-trades.md`)
 - **Depends on:** T126 (done). **Status:** ready (the original data and the shipped maps: staging
   per `docs/08-work-process.md`, "Cloud sandbox").
 
+## T127a2 (moved 2026-11-18, done whole: `adventure/e08-t127a2`, decision 364)
+
+**E08 T127a2 — the trades and services survey, part 2: the services and the checkpoint**
+(decisions 362, 363; survey `docs/rules/surveys/E08-trades.md` from §12)
+
+- **Scope:** the code reading of the Altar of Sacrifice (2: its dialog, what it takes by the
+  hero's alignment and the experience for each artifact or creature, the team's kind mark k 28),
+  the Hill Fort (35: its dialog, which creatures it upgrades and at what price, the mark k 14) and
+  the War Machine Factory (106: the question, the hire dialog's war machines, a count of 4000
+  each, their prices and what a hero already holding one can buy); `visit_object`'s three cases
+  are mapped (§2); the computer's routines not followed. Their VCMI 1.7.5 and wiki comparison,
+  disputes from D-72 and reading quirk candidates from A-47; the interfaces' sketch for all seven
+  classes (§0 to §11's open points: the window as a decision or as commands beside the object, the
+  slider's validation, the rates' representation, what a viewer keeps of a Black Market's stock,
+  the transfer's event); batch E14's plan on the client lane's harness (D-71's sale, A-46's
+  purchase with a full backpack, the market not restocked after a month, the Trading Post's rates,
+  the last creature kept, and the services' rows); the proposed rule ids; the checkpoint's
+  questions (D-71, A-46 and part 2's), asked with the user at its end.
+- **Inputs:** survey `E08-trades.md` §0 to §12 (T127a1); decisions 361 to 363; ADR-0015 to -0017,
+  ADR-0013 (the hero's experience and artifacts); increment 6's army commands, increment 10's hire
+  dialog (`recruit_dialog_proc`'s war machine branch, `E08-dwellings.md` §5), increment 13's
+  army dialog; `docs/exe/README.md`; the lane's `TRAPS.md`.
+- **Depends on:** T127a1 (done). **Status:** ready (the executable and `extracted.tar` staged per
+  `docs/08-work-process.md`, "Cloud sandbox"; the census is done).
+
 ## Inbox notes settled or for information (moved 2026-11-18, E08 T126)
 
 *(Moved verbatim at increment 13's closure: the other lanes' notes of changes in this lane's paths (the town lane's E09 T29b to T38b1, the map client lane's harness rebuilds), built on by T123b to T125b2b and T126's audit, CI green on each; their lasting rules are one line in `TRAPS.md`, "The town lane's parts of your crates"; the versions they took are the HANDOFF's.)*

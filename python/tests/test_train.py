@@ -1268,6 +1268,55 @@ def test_the_end_gates_only_after_training_since_the_last_gate(tmp_path, monkeyp
     assert ladders == [(0, False), (0, True)] and records[-1]["type"] == "end"
 
 
+def _gates(*results: str):
+    """A stand-in for `gate.gate` that decides each call by the next of `results`."""
+    queue = list(results)
+
+    def decided(candidate, best, bounds, **settings) -> dict:
+        return _gate(queue.pop(0))(candidate, best, bounds, **settings)
+
+    return decided
+
+
+def test_futility_ends_a_run_after_so_many_gates_in_a_row_without_a_promotion(
+    tmp_path, monkeypatch
+) -> None:
+    # E25 T36: a gate after every update, `futility` 2. The promotion at the second resets the
+    # count, so the run ends at the fourth, before its budget: the best's final ladder played,
+    # the run `futile`. A resume continues it; past the check (`futility` 0) to its budget.
+    gates = _gates("rejected", "promoted", "inconclusive", "rejected")
+    monkeypatch.setattr("h3env.train.ppo.gate", gates)
+    config = Config(**{**SMALL, "gate_every": 1, "futility": 2}, samples=8 * ONE_UPDATE)
+    trainer = train(config, tmp_path)
+    records = _records(tmp_path)
+    assert [r["update"] for r in records if r["type"] == "gate"] == [1, 2, 3, 4]
+    assert trainer.updates == 4 and trainer.unpromoted == 2 and trainer.samples < config.samples
+    ladders = [(r["index"], r["final"]) for r in records if r["type"] == "ladder"]
+    assert ladders == [(0, False), (1, False), (1, True)]
+    assert records[-1]["type"] == "end" and records[-1]["reason"] == "futile"
+    record = json.loads((tmp_path / "record.json").read_text())
+    assert check_record(record) == [] and record["progress"]["ended"] == "futile"
+    assert torch.load(tmp_path / "checkpoint.pt", weights_only=True)["unpromoted"] == 2
+    monkeypatch.setattr("h3env.train.ppo.gate", _gate("rejected"))
+    finished = resume(tmp_path, ["gate.futility=0"])
+    assert finished.samples >= config.samples and finished.unpromoted > 2
+    record = json.loads((tmp_path / "record.json").read_text())
+    assert check_record(record) == [] and record["progress"]["ended"] == "budget"
+    assert [s["ended"] for s in record["segments"]] == ["futile", "budget"]
+    assert record["segments"][-1]["changed"] == {"futility": [2, 0]}
+
+
+def test_a_run_at_its_budget_ends_there_whatever_its_gates(tmp_path, monkeypatch) -> None:
+    # The budget reached at a gate that meets `futility` (the first update's): the run's end is
+    # its budget's.
+    monkeypatch.setattr("h3env.train.ppo.gate", _gate("rejected"))
+    config = Config(**{**SMALL, "gate_every": 1, "futility": 1}, samples=1)
+    trainer = train(config, tmp_path)
+    records = _records(tmp_path)
+    assert trainer.updates == 1 and trainer.unpromoted == 1
+    assert records[-1]["type"] == "end" and records[-1]["reason"] == "budget"
+
+
 def test_promotions_keep_their_networks_and_ladder_the_one_before(tmp_path, monkeypatch) -> None:
     # Every gate promotes: each promoted network is kept and becomes best.pt; its ladder plays
     # the engine's seats and the promoted network before it (both seats external).

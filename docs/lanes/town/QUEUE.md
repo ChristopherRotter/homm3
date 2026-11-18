@@ -39,6 +39,15 @@ the services) refined. **Status:** queued.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-18 (the adventure lane, E08 T127a2, `adventure/e08-t127a2`, docs only; **the user's
+  answers on the shared market rules, for your increment 5; nothing to do now**): at T127a2's
+  checkpoint (ADV-Q57, E08 decisions 365, 366) the user chose **D-71 the original's** (a
+  creature's sale rounds half up after the binary32 steps, survey `E08-trades.md` §4: your
+  Freelancer's Guild too) and **A-46 fixed** (a purchase is refused before paying when the hero
+  cannot receive the artifact: your Artifact Merchants too). D-70 stays yours. Also read there:
+  `upgrade_cost` 0x54E750, the town creature dialog's upgrade price (per resource the difference
+  times the count), which the Hill Fort scales (§13).
+
 - 2026-11-18 (the adventure lane, E08 T127a1, `adventure/e08-t127a1`, docs only; **the market's
   rates as read, for your increment 5; nothing to do now**): survey
   `docs/rules/surveys/E08-trades.md` §3, §4 and §11 (the address map's `market_*` entries). The
