@@ -1205,6 +1205,30 @@ fn the_list_moves_at_a_key_s_press_the_description_at_its_release() {
 }
 
 #[test]
+fn the_client_s_bar_takes_no_list_key_while_the_list_shows() {
+    // CLT-Q140 (b): the list's keys move the list alone; Left and Right are still the bar's.
+    let mut s = long(Bugs::Fixed);
+    let down = Some(Command::List(Scroll::Down));
+    assert!(s.key(down, "Down").changed);
+    assert!(!s.key_up("Down").changed);
+    assert_eq!(described(&s), (Some("line 0".into()), Some(thumb_at(0))));
+    // On the last row Down and Page Down do nothing.
+    s.key(down, "Down");
+    assert!(!s.key_up("Down").changed);
+    s.key(Some(Command::List(Scroll::PageDown)), "Next");
+    assert!(!s.key_up("Next").changed);
+    assert_eq!(described(&s), (Some("line 0".into()), Some(thumb_at(0))));
+    s.key(Some(Command::List(Scroll::Right)), "Right");
+    assert!(s.key_up("Right").changed);
+    assert_eq!(described(&s), (Some("line 1".into()), Some(thumb_at(1))));
+    // With the list hidden the list's keys step the bar.
+    assert!(click(&mut s, [514, 91]).changed);
+    s.key(Some(Command::List(Scroll::PageDown)), "Next");
+    assert!(s.key_up("Next").changed);
+    assert_eq!(described(&s), (Some("line 8".into()), Some(thumb_at(8))));
+}
+
+#[test]
 fn the_mouse_scrolls_the_description_by_its_bar() {
     let mut s = long(Bugs::Original);
     s.key(Some(Command::List(Scroll::Down)), "Down");

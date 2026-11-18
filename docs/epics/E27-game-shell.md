@@ -377,6 +377,16 @@ The user, 2026-11-17 (M3 T2's start):
     one team of the eight colours) and always shows the chosen difficulty (the original's none with
     no map at all until a press); no rating, as the original's. The original's for the comparisons
     only. Built in T2b.
+52. **The list's keys and a long description's bar** (CLT-Q140 (b), 2026-11-18): while the list
+    shows, the client's description bar takes none of the list's keys (Up, Down, Page Up, Page
+    Down), Left and Right always; with the list hidden the list's keys step it. The original's
+    (the bar steps at the key's release after the list moved at its press) for the comparisons
+    only. Built at T3a's start.
+53. **T3 cut in three, by recipe** (offered: three by recipe, two by drawing and choices, two by
+    recipe; the user, 2026-11-18): T3a the panel, the rows, the town's and the bonus's arrows and
+    popups (`adv-single-town`); T3b the hero's arrows and popups, the computer's rows
+    (`adv-single-hero`, `adv-single-maps`); T3c the flags, the name's edit, the handicap, the
+    duration, the hints (`adv-single-rest`, §6.4's `popup-hero-arrow` recorded again on row 2).
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing

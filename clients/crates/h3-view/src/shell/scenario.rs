@@ -1570,12 +1570,16 @@ impl Scenario {
                 Did::held(self.input.key(&mut self.shown, id, by))
             }
             (Over::Nothing, Some(Command::List(scroll))) => {
-                // The description's bar steps at the key's release (E27 M3 T2c).
-                self.description.key_down(scroll, by);
+                let list = !matches!(scroll, Scroll::Left | Scroll::Right);
+                // The description's bar steps at the key's release (E27 M3 T2c); in the client's
+                // profile it takes no list key while the list shows, Left and Right always
+                // (CLT-Q140 (b)).
+                if !(list && self.showing && self.bugs == Bugs::Fixed) {
+                    self.description.key_down(scroll, by);
+                }
                 if self.showing {
                     self.scroll(scroll);
                 }
-                let list = !matches!(scroll, Scroll::Left | Scroll::Right);
                 if self.showing && list {
                     Did::CHANGED
                 } else {

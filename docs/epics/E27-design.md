@@ -2767,7 +2767,8 @@ shipped maps' recipes stay exact; none of the 159 descriptions has a brace).
   take the release first: Down onto a long description selects it at its first line, then its
   release steps the bar (`down-pressed`, `down-released`: shown from its second line); Down on
   the last row and Page Down in a list of one page step the bar alone; Up onto a short one finds
-  no bar. With the list hidden the keys step the bar alone.
+  no bar. With the list hidden the keys step the bar alone. The client's profile (CLT-Q140 (b),
+  decision 52): while the list shows the bar takes none of the list's keys, Left and Right always.
 
 ### 22.4 What a select resets, what the screen shows
 
