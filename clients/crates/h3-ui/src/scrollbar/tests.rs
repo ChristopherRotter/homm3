@@ -247,3 +247,99 @@ fn the_keys_step_a_tick_or_a_page_within_the_ticks() {
     bar.set_value(4);
     assert_eq!(bar.key(KeyStep::Back), Some(3));
 }
+
+/// The advanced options' duration's bar (E27 M3 T3c2): (58, 557), 194 × 16, `SlideBuH.def`'s
+/// 16-pixel buttons, no page, 11 ticks at `value`.
+fn duration(value: i32) -> Scrollbar {
+    let mut bar = Scrollbar::new(Look {
+        id: 338,
+        at: [58, 557],
+        size: [194, 16],
+        def: String::from("SlideBuH.def"),
+        track: String::from("slider.pcx"),
+        button: 16,
+        step: 0,
+    });
+    bar.reset(11);
+    bar.set_value(value);
+    let _ = bar.report();
+    bar
+}
+
+/// A horizontal bar's DEF frames by x.
+fn frames_x(bar: &Scrollbar) -> Vec<(u32, i32)> {
+    bar.draws([0, 0])
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Button { frame, x, .. } => Some((*frame, *x)),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn a_horizontal_bar_s_arrows_step_at_the_release_drawn_pressed_meanwhile() {
+    // `adv-single-rest` duration-9: the left arrow pressed, then let go; the thumb at
+    // 58 + 16 + 146 × value / 10.
+    let mut bar = duration(10);
+    assert_eq!(frames_x(&bar), Vec::from([(0, 58), (2, 236), (4, 220)]));
+    assert_eq!(bar.press([66, 565]), None);
+    assert_eq!(frames_x(&bar), Vec::from([(1, 58), (2, 236), (4, 220)]));
+    assert_eq!(bar.release(), Some(9));
+    assert_eq!(frames_x(&bar), Vec::from([(0, 58), (2, 236), (4, 205)]));
+    // The right arrow (duration-1-right): its first column presses but neither draws pressed nor
+    // steps (more than a button from the right, as the vertical bar's foot).
+    assert_eq!(bar.press([58 + 178, 565]), None);
+    assert_eq!(frames_x(&bar)[1], (2, 236));
+    assert_eq!(bar.release(), None);
+    assert_eq!(bar.press([244, 600]), None);
+    assert_eq!(frames_x(&bar)[1], (3, 236));
+    assert_eq!(bar.release(), Some(10));
+    // At either end its arrow steps nothing.
+    let _ = bar.press([244, 565]);
+    assert_eq!(bar.release(), None);
+    let mut bar = duration(0);
+    let _ = bar.press([60, 557]);
+    assert_eq!(bar.release(), None);
+}
+
+#[test]
+fn a_horizontal_bar_drags_along_x_its_y_kept_near() {
+    // No page: the track drags the thumb's middle to the mouse.
+    let mut bar = duration(10);
+    assert_eq!(bar.press([130, 565]), Some(3));
+    // Held, within 40 pixels above or below its y counts as the bar's; further off it is not over
+    // the track; over an arrow it records only.
+    assert_eq!(bar.moved([200, 540]), Some(8));
+    assert_eq!(bar.moved([90, 600]), Some(1));
+    assert_eq!(bar.moved([150, 500]), None);
+    assert_eq!(bar.moved([150, 640]), None);
+    assert_eq!(bar.moved([240, 565]), None);
+    // Let go over the right arrow: a tick on.
+    assert_eq!(bar.release(), Some(2));
+    assert_eq!(bar.moved([150, 565]), None);
+}
+
+#[test]
+fn a_horizontal_bar_s_thumb_is_sixteen_wide_for_a_page() {
+    // A bar of 10-pixel buttons and a page of 3 (no such bar in the game): the thumb at
+    // 170 × 5 / 10 + 10 = 95; the press takes it 16 wide (0x5969DE), not its button's 10.
+    let mut bar = Scrollbar::new(Look {
+        id: 1,
+        at: [0, 0],
+        size: [200, 10],
+        def: String::from("SlideBuH.def"),
+        track: String::from("slider.pcx"),
+        button: 10,
+        step: 3,
+    });
+    bar.reset(11);
+    bar.set_value(5);
+    let _ = bar.report();
+    assert_eq!(bar.press([107, 5]), None);
+    assert_eq!(bar.value(), 5);
+    let _ = bar.release();
+    assert_eq!(bar.press([111, 5]), Some(8));
+    let _ = bar.release();
+    assert_eq!(bar.press([60, 5]), Some(5));
+}

@@ -1,9 +1,10 @@
 //! A dialog's scroll bar (`H3DlgScrollbar`, vtable 0x641D50; E27 M3 T1b1, read for the scenario
 //! list's, design §19.2): two arrows, a track and a thumb, the value a tick of `ticks`. The
-//! vertical bar is built whole (a bar taller than wide); the horizontal one (wider than tall: E27
+//! vertical bar was built first (a bar taller than wide); the horizontal one (wider than tall: E27
 //! M3 T3a, the advanced options' turn duration, `SlideBuH.def` and `slider.pcx`, its button the
-//! DEF's width, `scrollbar_load_art` 0x596050) is drawn on the x axis, its input not yet
-//! (*provisional*: M3 T3c, the duration's bar).
+//! DEF's width, `scrollbar_load_art` 0x596050) is drawn and takes the mouse on the x axis (E27 M3
+//! T3c2: each of the functions below read for its horizontal branch, the rules alike with x for y:
+//! design §27.1).
 //!
 //! The original's rules:
 //! - **Its art** (`H3DlgScrollbar::Create` 0x5960D0, `loadButton` 0x596050): the DEF's frames 0
@@ -21,12 +22,15 @@
 //!   drawn pressed; in the track above the thumb the value less a page (`step`, +0x50: the
 //!   scenario list's rows), below it the value more a page; on the thumb (or with no page) the
 //!   thumb dragged to the mouse (0x597020: its middle at the mouse, the value the nearest tick).
-//!   The bar runs its own loop until a release: each move records the mouse (its x taken as the
-//!   bar's within 40 pixels of either side) and, over the track, drags the thumb there (0x5965F7
-//!   with its argument 1: from an arrow too).
-//! - **The release** (0x596AF0): with the mouse last recorded on the top arrow (no test of x) the
-//!   value less one, on the bottom arrow more one, within the ticks. No repeat while an arrow is
-//!   held: the loop reads no clock (the procedure's timer at 0x5964F9 runs only outside it).
+//!   A horizontal bar's thumb is 16 pixels wide there whatever its button (0x5969DE: `add ecx,
+//!   0x10`; the vertical one's the button, 0x596A37). The bar runs its own loop until a release:
+//!   each move records the mouse (its x taken as the bar's within 40 pixels of either side; a
+//!   horizontal bar's y, 0x596656) and, over the track, drags the thumb there (0x5965F7 with its
+//!   argument 1: from an arrow too).
+//! - **The release** (0x596AF0): with the mouse last recorded on the top (left) arrow (no test of
+//!   the other axis) the value less one, on the bottom (right) arrow more one, within the ticks.
+//!   No repeat while an arrow is held: the loop reads no clock (the procedure's timer at 0x5964F9
+//!   runs only outside it).
 //! - **The callback** (+0x64): after a press, a move or a release that changed the value since it
 //!   was last called, with the value (the caller's [`Scrollbar::press`], [`Scrollbar::moved`] and
 //!   [`Scrollbar::release`] return it).
@@ -88,6 +92,9 @@ pub struct Scrollbar {
 /// How far either side of the bar a held mouse still counts as over it (0x596656: 0x28).
 const NEAR: i32 = 40;
 
+/// A horizontal bar's thumb's width for a press (0x5969DE: 0x10, not the bar's button).
+const HORIZONTAL_THUMB: i32 = 16;
+
 /// A key's step of a bar with its arrows' keys (the module's notes, "The keys").
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KeyStep {
@@ -146,14 +153,25 @@ impl Scrollbar {
         self.look.size[0] > self.look.size[1]
     }
 
+    /// The axis the bar lies on: 0 (x) for a horizontal bar, 1 (y) for a vertical one.
+    const fn axis(&self) -> usize {
+        if self.horizontal() { 0 } else { 1 }
+    }
+
+    /// The bar's length on its axis (+0x4C).
+    const fn length(&self) -> i32 {
+        self.look.size[self.axis()]
+    }
+
     /// The thumb's travel: the length less three buttons (+0x44).
     const fn travel(&self) -> i32 {
-        let length = if self.horizontal() {
-            self.look.size[0]
-        } else {
-            self.look.size[1]
-        };
-        length - 3 * self.look.button
+        self.length() - 3 * self.look.button
+    }
+
+    /// The mouse last recorded on the bar's axis, from the bar's corner.
+    const fn offset(&self) -> i32 {
+        let a = self.axis();
+        self.mouse[a] - self.look.at[a]
     }
 
     /// Reset (0x5970F0): `ticks` ticks (at least 1), the value 0, the thumb at the top.
@@ -194,48 +212,53 @@ impl Scrollbar {
     pub fn press(&mut self, point: [i32; 2]) -> Option<i32> {
         self.held = true;
         self.mouse = point;
-        let offset = point[1] - self.look.at[1];
+        let offset = self.offset();
         let button = self.look.button;
-        let on_track = (button..self.look.size[1] - button).contains(&offset);
+        let on_track = (button..self.length() - button).contains(&offset);
         if on_track {
+            let thumb = if self.horizontal() {
+                HORIZONTAL_THUMB
+            } else {
+                button
+            };
             if self.look.step > 0 {
                 if offset < self.thumb {
                     self.set_raw(self.value - self.look.step);
-                } else if offset >= self.thumb + button {
+                } else if offset >= self.thumb + thumb {
                     self.set_raw(self.value + self.look.step);
                 } else {
-                    self.drag(point[1]);
+                    self.drag(point[self.axis()]);
                 }
             } else {
-                self.drag(point[1]);
+                self.drag(point[self.axis()]);
             }
         }
         self.report()
     }
 
     /// The mouse moved to `point` (from the dialog's corner) while it holds the bar: recorded, its
-    /// x the bar's within [`NEAR`] of either side; over the track the thumb dragged there. The
-    /// value when it changed.
+    /// coordinate across the bar the bar's within [`NEAR`] of either side (a vertical bar's x, a
+    /// horizontal one's y); over the track the thumb dragged there. The value when it changed.
     pub fn moved(&mut self, point: [i32; 2]) -> Option<i32> {
         if !self.held {
             return None;
         }
-        let [x, w] = [self.look.at[0], self.look.size[0]];
+        let (a, b) = (self.axis(), 1 - self.axis());
+        let [at, size, button] = [self.look.at, self.look.size, [self.look.button; 2]];
         let mut mouse = point;
-        let left = x - mouse[0];
-        if left > 0 && left < NEAR {
-            mouse[0] = x;
+        let before = at[b] - mouse[b];
+        if before > 0 && before < NEAR {
+            mouse[b] = at[b];
         }
-        let right = mouse[0] - x - w;
-        if right > 0 && right < NEAR {
-            mouse[0] = x;
+        let after = mouse[b] - at[b] - size[b];
+        if after > 0 && after < NEAR {
+            mouse[b] = at[b];
         }
         self.mouse = mouse;
-        let [y, h, button] = [self.look.at[1], self.look.size[1], self.look.button];
-        let over_track =
-            (x..x + w).contains(&mouse[0]) && (y + button..y + h - button).contains(&mouse[1]);
-        if over_track {
-            self.drag(mouse[1]);
+        let along = (at[a] + button[a]..at[a] + size[a] - button[a]).contains(&mouse[a]);
+        let across = (at[b]..at[b] + size[b]).contains(&mouse[b]);
+        if along && across {
+            self.drag(mouse[a]);
         }
         self.report()
     }
@@ -247,14 +270,14 @@ impl Scrollbar {
             return None;
         }
         self.held = false;
-        let offset = self.mouse[1] - self.look.at[1];
+        let offset = self.offset();
         let button = self.look.button;
         if offset < button {
             if self.value > 0 {
                 self.value -= 1;
                 self.place_thumb();
             }
-        } else if offset > self.look.size[1] - button && self.value < self.ticks - 1 {
+        } else if offset > self.length() - button && self.value < self.ticks - 1 {
             self.value += 1;
             self.place_thumb();
         }
@@ -304,11 +327,13 @@ impl Scrollbar {
         self.reported = reported;
     }
 
-    /// The thumb dragged so that its middle is at `y` (0x597020): the nearest tick.
-    fn drag(&mut self, y: i32) {
+    /// The thumb dragged so that its middle is at `coordinate` on the bar's axis (0x597020): the
+    /// nearest tick.
+    fn drag(&mut self, coordinate: i32) {
         let button = self.look.button;
         let travel = self.travel();
-        let at = (y - self.look.at[1] - button - button / 2).clamp(0, travel.max(0));
+        let start = self.look.at[self.axis()];
+        let at = (coordinate - start - button - button / 2).clamp(0, travel.max(0));
         if travel > 0 {
             self.value = ((self.ticks - 1) * at + travel / 2) / travel;
         }
@@ -332,7 +357,7 @@ impl Scrollbar {
         }
         let [w, h] = self.look.size;
         let button = self.look.button;
-        let offset = self.mouse[1] - self.look.at[1];
+        let offset = self.offset();
         let frame = |frame: u32, y: i32| Draw::Button {
             def: self.look.def.clone(),
             frame,
@@ -359,11 +384,14 @@ impl Scrollbar {
 }
 
 impl Scrollbar {
-    /// A horizontal bar's draw list at `[x, y]` (*provisional*, the vertical one's on the x axis):
-    /// the left arrow, the right one a button left of the end, the track between them, the thumb.
+    /// A horizontal bar's draw list at `[x, y]` (0x596C56 to 0x596E2C, the vertical one's on the x
+    /// axis): the left arrow (pressed while held with the mouse less than a button from the left),
+    /// the right one a button left of the end (pressed while held with the mouse more than a
+    /// button from the right), the track between them, the thumb.
     fn horizontal_draws(&self, [x, y]: [i32; 2]) -> Vec<Draw> {
         let [w, h] = self.look.size;
         let button = self.look.button;
+        let offset = self.offset();
         let frame = |frame: u32, x: i32| Draw::Button {
             def: self.look.def.clone(),
             frame,
@@ -372,9 +400,11 @@ impl Scrollbar {
             mirrored: false,
             player: None,
         };
+        let left = u32::from(self.held && offset < button);
+        let right = 2 + u32::from(self.held && offset > w - button);
         alloc::vec![
-            frame(0, x),
-            frame(2, x + w - button),
+            frame(left, x),
+            frame(right, x + w - button),
             Draw::Picture {
                 picture: self.look.track.clone(),
                 x: x + button,
