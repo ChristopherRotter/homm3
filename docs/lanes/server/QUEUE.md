@@ -12,6 +12,13 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-18 (the adventure lane, E08 T125b1, `adventure/e08-t125b1`, `cross-lane` with the
+  user's consent; **your paths changed, for your review**): nine new golden adventure replays on
+  the creature banks map `fixtures/maps/e08-banks-36.h3m` (`banks-*`: three of random play, six
+  scripted: the banks' questions, battles, rewards with the army dialog, once-marks, the deck and
+  a flight), so the counts are 98: `h3-protocol`'s `tests/game_fold.rs` (`golden`) and
+  `tests/game_session.rs` (`restores`), `h3-server`'s `tests/record.rs`; all three pass over
+  them. No hash, version or format moved.
 - 2026-11-17 (the town lane, E09 T38a1, `town/e09-t38a1`, `cross-lane` with the user's consent;
   **your paths changed, for your review; protocol v71 taken**): `TownCommand::Hire { town, slot }`,
   the refusals `NoTavern`, `UnknownSlot`, `EmptySlot`, `GameEvent::HeroHired` (the slot `None` for
