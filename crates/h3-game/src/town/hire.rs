@@ -5,22 +5,23 @@
 //! room and entrance and the treasury, each refusal changing nothing and drawing nothing; then
 //! the price paid, the hero placed on the town's entrance as its visitor with its away record, the
 //! slot refilled from the hirer's stream. The original's `town_tavern_hire` 0x5C12E0, read whole.
-//! A hired hero learning the town's guild spells is increment 5's (`TWN-STUB-15`); the listing,
-//! the env's entry and the map's Tavern come later (E09 T38a2, T39a).
+//! A hired hero learning the town's guild spells is increment 5's (`TWN-STUB-15`); the map's
+//! Tavern comes later (E09 T39a). Since E09 T38a2 the legal commands list the hires that pass
+//! ([`legal_hires`], the same checks).
 
 use alloc::sync::Arc;
 use alloc::vec;
 
-use h3_adventure::HeroOnMap;
-use h3_content::SpellId;
-use h3_contracts::{ArmyStack, PlayerId, TownId};
+use h3_adventure::{HeroOnMap, Pos};
+use h3_content::{HeroTypeId, ResourceId, SpellId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_heroes::{ArtifactInstance, HeroDetails, OfferLevels};
-use h3_towns::TownCommandError;
+use h3_towns::{TownCommand, TownCommandError};
 
 use super::command::owner;
 use super::rows::{most_heroes, town_error};
 use super::tavern::{self, Parts, TAVERN_BACKPACK_SHOWN};
-use crate::command::{GameCommandError, GameEvent, Sink};
+use crate::command::{GameCommand, GameCommandError, GameEvent, Sink};
 use crate::{GameRuleset, GameState};
 
 /// A part of a hired hero's details that its tavern slot's view did not show (E09 T38a1, decision
@@ -88,7 +89,6 @@ impl HiredPart {
 ///
 /// [`GameCommandError::Town`] with the town's refusal, or [`GameCommandError::CannotPay`].
 // rule: TWN-TAV-003
-// stub: TWN-STUB-19 (not yet in the legal commands nor the env's encoding: E09 T38a2)
 pub(crate) fn hire<S: Sink>(
     state: &mut GameState,
     rules: &GameRuleset,
@@ -96,31 +96,12 @@ pub(crate) fn hire<S: Sink>(
     (town, slot): (TownId, u8),
     sink: &mut S,
 ) -> Result<(), GameCommandError> {
-    let refused = GameCommandError::Town;
-    let record = state
-        .towns()
-        .get(town)
-        .ok_or(refused(TownCommandError::UnknownTown))?;
-    if owner(state, town) != Some(player) {
-        return Err(refused(TownCommandError::NotOwner));
-    }
-    let price = h3_towns::check_hire(record, rules.towns()).map_err(refused)?;
-    let pool = state.pool();
-    let slots = pool.tavern(player).map_or([None; 2], |tavern| tavern.slots);
-    let held = slots
-        .get(usize::from(slot))
-        .ok_or(refused(TownCommandError::UnknownSlot))?;
-    // A slot's type has its record (the fill's).
-    let (hero_type, hero) = held
-        .and_then(|t| pool.record(t).map(|id| (t, id)))
-        .ok_or(refused(TownCommandError::EmptySlot))?;
-    let pos = state
-        .adventure()
-        .check_tavern_hire(player, (town, most_heroes(rules)))
-        .map_err(|error| refused(town_error(error)))?;
-    if !state.can_pay(player, price) {
-        return Err(GameCommandError::CannotPay);
-    }
+    let Checked {
+        price,
+        hero_type,
+        hero,
+        pos,
+    } = check(state, rules, player, (town, slot))?;
     let before = S::RECORDS.then(|| tavern::all_views(state));
     state.pay_price(player, price, sink);
     let colour = state.colour(player).unwrap_or(u8::MAX);
@@ -160,6 +141,106 @@ pub(crate) fn hire<S: Sink>(
     }
     Ok(())
 }
+
+/// What a hire that passes [`check`] takes: the price, the slot's hero's type and record, the
+/// town's entrance.
+struct Checked<'a> {
+    price: &'a [(ResourceId, u32)],
+    hero_type: HeroTypeId,
+    hero: HeroId,
+    pos: Pos,
+}
+
+/// [`hire`]'s checks in its order, changing nothing and drawing nothing.
+fn check<'a>(
+    state: &GameState,
+    rules: &'a GameRuleset,
+    player: PlayerId,
+    (town, slot): (TownId, u8),
+) -> Result<Checked<'a>, GameCommandError> {
+    let refused = GameCommandError::Town;
+    let record = state
+        .towns()
+        .get(town)
+        .ok_or(refused(TownCommandError::UnknownTown))?;
+    if owner(state, town) != Some(player) {
+        return Err(refused(TownCommandError::NotOwner));
+    }
+    let price = h3_towns::check_hire(record, rules.towns()).map_err(refused)?;
+    let pool = state.pool();
+    let slots = pool.tavern(player).map_or([None; 2], |tavern| tavern.slots);
+    let held = slots
+        .get(usize::from(slot))
+        .ok_or(refused(TownCommandError::UnknownSlot))?;
+    // A slot's type has its record (the fill's).
+    let (hero_type, hero) = held
+        .and_then(|t| pool.record(t).map(|id| (t, id)))
+        .ok_or(refused(TownCommandError::EmptySlot))?;
+    let pos = state
+        .adventure()
+        .check_tavern_hire(player, (town, most_heroes(rules)))
+        .map_err(|error| refused(town_error(error)))?;
+    if !state.can_pay(player, price) {
+        return Err(GameCommandError::CannotPay);
+    }
+    Ok(Checked {
+        price,
+        hero_type,
+        hero,
+        pos,
+    })
+}
+
+/// The slots of `player`'s tavern a listing may hire from anywhere now (E09 T38a2, design §64,
+/// §76): those holding a hero, when the treasury holds the part's price and the map has room for
+/// another of its heroes (the part's most, the garrison heroes not counted); none when either
+/// fails or no slot holds a hero. Tested once a listing ([`legal_hires`] then tests each town).
+pub(crate) fn hire_slots(
+    state: &GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+) -> Option<[bool; 2]> {
+    let price = rules
+        .towns()
+        .params()
+        .map_or(&[][..], |params| params.hire_price.as_slice());
+    let room = state.adventure().has_room(player, most_heroes(rules));
+    if !room || !state.can_pay(player, price) {
+        return None;
+    }
+    let pool = state.pool();
+    let slots = pool.tavern(player).map_or([None; 2], |tavern| tavern.slots);
+    let held = slots.map(|slot| slot.is_some_and(|t| pool.record(t).is_some()));
+    held.contains(&true).then_some(held)
+}
+
+/// The hires `player` may give at `town`, one of its own, now, for [`crate::legal_commands`] in
+/// its turn without a decision (E09 T38a2, design §64, §76; TWN-TAV-003): with `slots` its
+/// player-wide part ([`hire_slots`]), a `Hire` of each slot it names, in slot order, when no hero
+/// stands on the town's entrance and the town has a standing Tavern; so a listed hire passes
+/// every check of [`hire`] (the same conditions, the cheapest first). None for a town without a
+/// Tavern or with its entrance held.
+// rule: TWN-TAV-003
+pub(crate) fn legal_hires<'a>(
+    state: &'a GameState,
+    rules: &'a GameRuleset,
+    (town, slots): (TownId, Option<[bool; 2]>),
+) -> impl Iterator<Item = GameCommand> + 'a {
+    let open = slots.filter(|_| {
+        state.adventure().entrance_free(town)
+            && state
+                .towns()
+                .get(town)
+                .is_some_and(|record| h3_towns::has_tavern(record, rules.towns()))
+    });
+    let held = open.unwrap_or([false; 2]);
+    (0..TAVERN_SLOTS)
+        .filter(move |&slot| held[usize::from(slot)])
+        .map(move |slot| GameCommand::Town(TownCommand::Hire { town, slot }))
+}
+
+/// A player's tavern slots (TWN-SET-005).
+const TAVERN_SLOTS: u8 = 2;
 
 /// The replacement (TWN-TAV-004; `tavern_slot_replace` 0x4C86A0, survey `E09-tavern.md` §3; design
 /// note §65): at once after a hire, `player`'s emptied `slot` (0 or 1) refilled from the hirer's

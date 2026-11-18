@@ -6,8 +6,10 @@
 //! (encoding v9) a town's owner builds with the entry `BUILD` (its town's entrance in the tile
 //! head, the building in the building head; TWN-BLD-001), and since E09 T27 (encoding v10) it
 //! recruits with `RECRUIT` (the same heads; TWN-REC-001, -002), the dialog's purchases its hire
-//! entries. Random play of one seed (searched again at E09 T27, and at T19c1: the recruitments and
-//! the builds in the random agent's draw changed every random game's course, as the revisits did
+//! entries, and since E09 T38a2 (encoding v12) it hires with `TAVERN_HIRE` (the town's entrance in
+//! the tile head; TWN-TAV-003). Random play of one seed (searched again at E09 T38a2, T27 and
+//! T19c1: the hires, the recruitments and the builds in the random agent's draw changed every
+//! random game's course, as the revisits did
 //! at E08 T105b2; the golden replays `towns-s173-d21`, `-s1702-d21` and `-s3435-d21` keep the
 //! games of before as their commands) runs to the day limit with the masks agreeing with the game
 //! at every step and meets the town's features, its builds and its recruitments; the main property
@@ -58,6 +60,8 @@ struct Played {
     recruited: u32,
     /// Purchases into a town's garrison (a garrison's `StackChanged` in a step with no battle).
     bought: u32,
+    /// Tavern heroes hired at a town (E09 T38a2, TWN-TAV-003: a `HeroHired` of a slot).
+    hired: u32,
 }
 
 /// Plays the town map with the env's random agent (as `random_rollout` and `h3 adventure run
@@ -89,6 +93,7 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
             Action::Adventure(a) => {
                 a.entry == BUILD
                     || a.entry == RECRUIT
+                    || a.entry >= TAVERN_HIRE
                     || is_move(a.entry)
                         && tile_pos(env.state(), a.tile).is_some_and(|p| gates.contains(&p))
             }
@@ -134,6 +139,10 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
                     target: h3_game::HireTarget::Garrison(_),
                     ..
                 } => played.recruited += 1,
+                GameEvent::HeroHired { slot: Some(_), .. } => {
+                    played.hired += 1;
+                    touched = true;
+                }
                 GameEvent::BattleStarted { tile, .. } => {
                     if let Some(town) = map.town_at(tile) {
                         played.sieges += 1;
@@ -188,20 +197,23 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
     (env, played)
 }
 
-/// Random play on the town map (E09 T27: a search over the seeds 1 to 399 after the recruitments
-/// joined the agent's draw, seed 70 alone meeting the town's features in 439 steps, 27 builds and
-/// 83 dialogs; E09 T19c1's 142 and 244, the shortest pair then, E08 T105b2's 36 and 330 and E09
-/// T9a's, the golden replays' three, changed course with the recruitments, the builds and the
-/// revisits) plays through the env to its day limit: the masks agree with the game before each
+/// Random play on the town map (E09 T38a2: a search over the seeds 1 to 2 400 after the hires
+/// joined the agent's draw, encoding v12: every game hires, 10 to 16 heroes, and a siege against
+/// a visitor with the garrison merged is the rare feature, 8 games of the first 399; seed 2369 the
+/// shortest of the ten meeting every feature, 505 steps, 24 builds, 39 dialogs and 11 hires; E09
+/// T27's seed 70, E09 T19c1's 142 and 244, E08 T105b2's 36 and 330 and E09 T9a's, the golden
+/// replays' three, changed course with the hires, the recruitments, the builds and the revisits)
+/// plays through the env to its day limit: the masks agree with the game before each
 /// step ([`play`]), each chosen action is legal by them and accepted, a captured town is its new
 /// owner's in its observation; it meets an undefended capture, a siege against a garrison alone
 /// and one against a visitor with the garrison merged, a siege won (the town captured after it)
-/// and one lost, builds by the towns' owners, each town's the only one of its day, and town hire
-/// dialogs with purchases into a garrison (TWN-REC-001; [`play`]). The game ends on the day after
+/// and one lost, builds by the towns' owners, each town's the only one of its day, town hire
+/// dialogs with purchases into a garrison (TWN-REC-001; [`play`]) and tavern heroes hired
+/// (TWN-TAV-003, E09 T38a2). The game ends on the day after
 /// the limit with no seat to move.
 #[test]
 fn the_env_plays_the_town_map_to_its_end_of_days() {
-    let (env, all) = play(70, 21);
+    let (env, all) = play(2369, 21);
     assert!(env.is_done());
     assert_eq!((env.day(), env.to_move().count()), (22, 0));
     assert_eq!(
@@ -214,21 +226,22 @@ fn the_env_plays_the_town_map_to_its_end_of_days() {
     assert_eq!(all.won + all.lost, all.sieges, "{all:?}");
     assert!(all.built > 0, "{all:?}");
     assert!(all.recruited > 0 && all.bought > 0, "{all:?}");
+    assert!(all.hired > 0, "{all:?}");
 }
 
-/// The town map's rollouts are deterministic, and a fork taken while a siege is open (seed 70: a
-/// siege on day 1; seed 46's before E09 T28a, 244's before E09 T27, 330's before E09 T19c1,
+/// The town map's rollouts are deterministic, and a fork taken while a siege is open (seed 6: a
+/// siege by day 3; seed 70's before E09 T38a2, 46's before E09 T28a, 244's before E09 T27, 330's before E09 T19c1,
 /// 3435's before E08 T105b2) carries it: played on by one agent, the fork and its parent evolve
 /// identically, and another agent's play on a fork leaves the parent as it was.
 #[test]
 fn town_map_rollouts_and_forks_are_deterministic() {
-    let new = || AdventureEnv::new(FAITHFUL.clone(), town_setup(&FAITHFUL, 1), 70, 3).unwrap();
+    let new = || AdventureEnv::new(FAITHFUL.clone(), town_setup(&FAITHFUL, 1), 6, 3).unwrap();
     let (mut a, mut b) = (new(), new());
-    let ra = random_rollout(&mut a, 70, 0);
-    assert_eq!(ra, random_rollout(&mut b, 70, 0));
+    let ra = random_rollout(&mut a, 6, 0);
+    assert_eq!(ra, random_rollout(&mut b, 6, 0));
     assert_eq!(a.state_hash(), b.state_hash());
     let mut parent = new();
-    let mut rng = Rng::for_stream(70, StreamId::AGENT);
+    let mut rng = Rng::for_stream(6, StreamId::AGENT);
     let besieged = |env: &AdventureEnv| {
         let map = env.state().adventure().map();
         (0..env.state().players()).any(|p| {
@@ -335,6 +348,56 @@ fn a_build_action_names_its_town_by_the_entrance() {
     assert_eq!((mask[0], mask.iter().filter(|&&b| b).count()), (true, 1));
     env.building_mask(red, END_TURN, 1, &mut mask);
     assert_eq!(mask, [false; BUILDING_COUNT]);
+}
+
+/// A hire's action names its town by the town's entrance and the slot by its entry (E09 T38a2,
+/// encoding v12): each listed hire of red's on the town map's first turn encodes so, decodes back
+/// and is legal by the masks; a slot past the two encodes to nothing, and a tile that is no town's
+/// entrance, a tile off the map or a building other than 0 decode to nothing.
+#[test]
+fn a_hire_action_names_its_town_by_the_entrance_and_the_slot_by_its_entry() {
+    let env = AdventureEnv::new(FAITHFUL.clone(), town_setup(&FAITHFUL, 1), 173, 21).unwrap();
+    let (state, rules) = (env.state(), env.rules());
+    let red = PlayerId::new(0);
+    let hires: Vec<GameCommand> = legal_commands(state, rules, Actor::Player(red))
+        .into_iter()
+        .filter(|c| matches!(c, GameCommand::Town(TownCommand::Hire { .. })))
+        .collect();
+    assert!(!hires.is_empty());
+    for hire in &hires {
+        let GameCommand::Town(TownCommand::Hire { town, slot }) = *hire else {
+            unreachable!()
+        };
+        let action = Action::tavern_hire(town_tile(state, town).unwrap(), usize::from(slot));
+        assert_eq!(action::encode(state, rules, red, hire), Some(action));
+        assert_eq!(
+            action::decode(state, rules, red, action),
+            Some(hire.clone())
+        );
+        assert!(
+            legal_by_masks(&env, Seat::Player(red), action),
+            "{action:?}"
+        );
+    }
+    let GameCommand::Town(TownCommand::Hire { town, .. }) = hires[0] else {
+        unreachable!()
+    };
+    let gate = town_tile(state, town).unwrap();
+    let past = GameCommand::Town(TownCommand::Hire { town, slot: 2 });
+    assert_eq!(action::encode(state, rules, red, &past), None);
+    let count = u32::try_from(env.tile_count()).unwrap();
+    let elsewhere = (0..count).find(|&t| town_of(state, t).is_none()).unwrap();
+    for none in [
+        Action::tavern_hire(elsewhere, 0),
+        Action::tavern_hire(count, 1),
+        Action::Adventure(MapAction {
+            entry: TAVERN_HIRE,
+            tile: gate,
+            building: 1,
+        }),
+    ] {
+        assert_eq!(action::decode(state, rules, red, none), None, "{none:?}");
+    }
 }
 
 /// The town whose entrance is the tile at `index`, if one's is.

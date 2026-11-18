@@ -45,12 +45,14 @@ use crate::{GameRuleset, GameState, OpenBattle};
 /// revisit without end, increment 11's design note §18), then since E09 T18b2b a town's build
 /// (`GameCommand::Town`) for each town the player owns, in `TownId` order, and each building its
 /// hall offers whose price the treasury holds, in the record's order (TWN-BLD-001:
-/// `GameState::town_offer`'s payable set; none for a town built in today, TWN-BLD-004). Empty for
+/// `GameState::town_offer`'s payable set; none for a town built in today, TWN-BLD-004), each
+/// town's builds followed by its recruitments (E09 T27), its Tavern's hires by slot (E09 T38a2,
+/// TWN-TAV-003) and its hero moves between its bars (E09 T28a). Empty for
 /// a player whose turn is not running or who is not in the game, by `apply`'s own checks
 /// (ADR-0017's consequence). The moves are [`legal_moves`]; a meeting's, an army dialog's and an
 /// exchange's management commands [`legal_management`]'s.
 // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006, GAM-BAT-001
-// rule: GAM-DEC-008, GAM-DEC-009, ADV-SHY-003, ADV-TEL-008, TWN-BLD-001
+// rule: GAM-DEC-008, GAM-DEC-009, ADV-SHY-003, ADV-TEL-008, TWN-BLD-001, TWN-TAV-003
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {
     if state.check_held(actor).is_err() {
         return Vec::new();
@@ -91,12 +93,20 @@ pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> V
         .adventure()
         .revisitable(rules.adventure(), player)
         .map(|hero| GameCommand::Adventure(AdventureCommand::Revisit { hero }));
+    // E09 T38a2: folded into a list sized for a turn's usual commands (the end, a town's builds,
+    // recruitments and hires), so that the chain's parts run without the nested `next` and the
+    // list without its first regrowths (`legal-towns-36`).
+    let mut listed = Vec::with_capacity(LISTED);
     core::iter::once(GameCommand::EndTurn)
         .chain(boats)
         .chain(revisits)
         .chain(crate::town::legal_builds(state, rules, player))
-        .collect()
+        .for_each(|command| listed.push(command));
+    listed
 }
+
+/// The room [`legal_commands`] reserves for a player's commands in its turn (E09 T38a2).
+const LISTED: usize = 16;
 
 /// The answers to `player`'s first open decision but a battle (ADR-0017 point 6; E08 T63a: typed
 /// by the decision's kind), in this order: an offer's `Accept` while it stands (ADR-0017 point
