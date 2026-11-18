@@ -40,7 +40,7 @@ Licensed **GPL-2.0-or-later** ([LICENSE](LICENSE), [ADR-0009](docs/adr/0009-lice
 ## Status
 
 The project is developed incrementally, in parallel work lanes ([docs/BACKLOG.md](docs/BACKLOG.md)
-has every epic in order, each lane's state is in `docs/lanes/<lane>/HANDOFF.md`). As of 2026-11-17.
+has every epic in order, each lane's state is in `docs/lanes/<lane>/HANDOFF.md`). As of 2026-11-18.
 
 Progress is the share of an epic's refined increments (**I**) or milestones (**M**) that are closed;
 epics whose later increments are still sketches grow as those get refined, so their bar can step back.
@@ -56,7 +56,7 @@ epics whose later increments are still sketches grow as those get refined, so th
 | [E06](docs/epics/E06-battle-ai.md) | Battle AI v1: PPO self-play, league, evaluation gate, ladders | ai | `██████████` done | 2026-10-27 |
 | [E17](docs/epics/E17-clients.md) | Battle client (SDL 3, assets from your copy, frame-exact against the original) | client | `██████████` done (M0–M7) | 2026-11-12 |
 | [E16](docs/epics/E16-server.md) | Server: protocol, lobbies, accounts, ranked ladders, whole games, spectators | server | `██████████` done (M0–M6) | 2026-11-15 |
-| [E08](docs/epics/E08-adventure-map.md) | Adventure map core on real `.h3m` maps: movement, fog, objects, monsters, heroes, garrisons | adventure | `█████████░` 12/13 I | creature banks (I13) next; later increments sketched |
+| [E08](docs/epics/E08-adventure-map.md) | Adventure map core on real `.h3m` maps: movement, fog, objects, monsters, heroes, garrisons, creature banks | adventure | `█████████░` 13/14 I | the trades and services (I14) next; later increments sketched |
 | [E24](docs/epics/E24-map-client.md) | Adventure map client | map-client | `██████░░░░` 3/5 M | M1–M3 closed (stills, map moving, adventure screen); M4 next |
 | [E26](docs/epics/E26-fair-system-actor.md) | Fair system actor: the original's AI on what its side may know | battle | `█████░░░░░` 1/2 I | increment 1 built; checkpoint with you next |
 | [E09](docs/epics/E09-towns.md) | Towns and economy | town | `█████░░░░░` 3/6 I | I1–I3 closed (towns on the map, construction, growth and recruitment); I4 (the Tavern) refined; guild, travel and Grail follow |
