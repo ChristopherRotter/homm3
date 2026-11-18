@@ -29,7 +29,11 @@ and the drafts.
 market's rates built once, by whichever lane needs them first, the other reusing them), the first
 round (362), the survey in two parts (363, 364), the original's roundings D-71, D-73, D-74 (365),
 A-46 and A-48 fixed (366), the Altar's special artifacts as the original, A-47 harmless and
-accepted, D-72 the original's (367), batch E14 before the build (368), this task whole (369).
+accepted, D-72 the original's (367), batch E14 before the build (368), this task whole (369);
+**T127b's checkpoint** (ADV-Q58, decisions 370 to 373): the rates in the adventure part (370,
+§2), the Altar's close and return around a level-up with a note for the clients (371, §14), the
+env's 67 entries `cross-lane` (372, §18), the cut and every other agent's call as written (373).
+The note and the two drafts accepted.
 
 **A correction to the survey** (this task; survey §0, §1, §2, §17 and §19 corrected in the same
 change): the seven classes are **entered**, not visited from a neighbour. The survey read the visit
@@ -94,8 +98,8 @@ Batch E14 records where the hero stands (§20, E14-16).
   creature cost and artifact cost × 7 × 10), which grow with the content and need the same
   computation to check them; `kernel::num`'s `Real` with a new conversion to binary32 (a `shared/`
   change for what `X87` already models).
-- **The home** (decision 361: built once, by the first lane, reused by the other). *Agent's
-  call:* the adventure part's `[market]` with the computation in `h3-adventure`, as increment 10's
+- **The home** (decision 361: built once, by the first lane, reused by the other). *Decided*
+  (decision 370, the user at ADV-Q58; recommended): the adventure part's `[market]` with the computation in `h3-adventure`, as increment 10's
   `hire_price` and `HireSource` serve E09's recruitment: the town lane's Marketplace (in its
   `h3-game` modules) calls `h3_adventure::market` with its own count; `h3-towns` needs no rate (the
   treasury and the trade are `h3-game`'s). Not chosen: the core ruleset (`h3-content`, a `shared/`
@@ -370,7 +374,15 @@ original's windows stay open for more trades). The system actor's default is `Le
   Learning (a Learning specialty grows by level), as the original's dialog open beneath its level-up
   dialogs. The player keeps one open decision (ADR-0017 point 6). Not chosen: the levels held
   until the Altar is left (a Learning specialist's later sacrifices would read the old level);
-  the level-ups queued in front of the open Altar (two open decisions of one player).
+  the level-ups queued in front of the open Altar (two open decisions of one player). *Decided*
+  (decision 371, the user at ADV-Q58).
+- **For the clients** (decision 371; the map client lane's inbox told): the close and the return
+  are the engine's bookkeeping, not a screen change. A client anticipates them and keeps the
+  Altar's dialog drawn beneath the level-up dialogs (its `DecisionClosed` followed, after the
+  level-ups, by `AltarOpened` for the same hero and object), unless the level-up covers the
+  Altar entirely, as the original draws them (`altar_sacrifice` 0x5646A0 calls
+  `hero_gain_experience` 0x4E33B0 with the dialog open, its level-up dialogs over it; the client
+  confirms the drawing against the original).
 - **The view** `DecisionView::Altar(AltarView)`: the hero, the screens its faction allows, each
   place's artifact with the experience it gives (with Learning) or none for a kept one, each slot's
   experience per creature before Learning (e) and for its most with Learning, the experience to
@@ -436,7 +448,8 @@ original's windows stay open for more trades). The system actor's default is `Le
   `ALTAR_ARTIFACTS`, `ALTAR_CREATURES`, `HILL_FORT_UPGRADE + 7`, `HILL_FORT_ALL` and one `LEAVE`
   for the three kinds: 67 entries, tile 0 alone, legal where `legal_commands` lists the answer. The
   factory needs none (the offer's and the hire dialog's entries). An amount head stays the AI
-  lane's. The AI lane's inbox told.
+  lane's. The AI lane's inbox told. *Decided* (decision 372, the user at ADV-Q58: the `cross-lane`
+  change consented for T135a).
 - **Replays** (the adventure replay format's next version, v19 today; the town lane's T39a plans
   v19 too): `answer market trade <give> <take> <lots>`, `answer market transfer <resource>
   <amount> <player>`, `answer market sell <slot> <take> <lots>`, `answer market buy <entry> <pay>`,

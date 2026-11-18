@@ -1972,6 +1972,23 @@ file `docs/rules/surveys/E08-trades.md`)
 - **Depends on:** T127a1 (done). **Status:** ready (the executable and `extracted.tar` staged per
   `docs/08-work-process.md`, "Cloud sandbox"; the census is done).
 
+## T127b (moved 2026-11-18, done whole: `adventure/e08-t127b`, decision 369; the checkpoint ADV-Q58, decisions 370 to 373; T128 queued)
+
+**E08 T127b — the ADR amendment drafts, the design note and the cut** (decision 362)
+
+- **Scope:** as T118b for increment 13: the drafts `adr-drafts/0016-increment-14.md` and
+  `0017-increment-14.md` (and ADR-0013's if the survey finds a change of the hero's derived
+  properties; the town lane's ADRs where the market's rates are shared, with its consent), increment
+  14's design note `E08-design.md` (its parts by side), the building tasks' cut and the exit
+  criteria; the checkpoint with the user (the note, the drafts, the agent's calls, the cut).
+- **Inputs:** the survey `docs/rules/surveys/E08-trades.md` (its open points §10 and §16, the
+  interfaces' sketch §17, batch E14 §18, the proposed ids §19); decisions 361 to 368 (the
+  checkpoint's answers 365 to 368: the original's roundings, A-46 and A-48 fixed, the Altar's
+  special artifacts as the original, batch E14 before the build: its spec and recipe in the cut); ADR-0015
+  to -0017, ADR-0013; the town lane's answer on the market's rates, if any; T118b's drafts as the
+  form.
+- **Depends on:** T127a2 (done, its checkpoint answered). **Status:** ready (docs only).
+
 ## Inbox notes settled or for information (moved 2026-11-18, E08 T126)
 
 *(Moved verbatim at increment 13's closure: the other lanes' notes of changes in this lane's paths (the town lane's E09 T29b to T38b1, the map client lane's harness rebuilds), built on by T123b to T125b2b and T126's audit, CI green on each; their lasting rules are one line in `TRAPS.md`, "The town lane's parts of your crates"; the versions they took are the HANDOFF's.)*

@@ -1,6 +1,7 @@
 # ADR-0017 amendment (draft): increment 14, the trades and services
 
-- Status: Draft (E08 T127b, 2026-11-18), for the checkpoint at T127b's end (ADV-Q58); applied to
+- Status: Draft (E08 T127b, 2026-11-18), accepted at T127b's checkpoint (ADV-Q58, E08 decisions
+  370 to 373); applied to
   ADR-0017 by increment 14's `shared/` task (T131) with batch E14's outcome (T130), then deleted.
 - Amends: ADR-0017 point 1 (no command), point 6 (three decision kinds; the factory's question and
   dialog; the Altar's return after its levels), point 8 (the env's entries), point 9 (versions),
@@ -37,8 +38,9 @@
      as experience with its levels: levels without a decision at once, the Altar staying open;
      when a level-up opens, **the Altar closes before it and its visit is the visit's rest**
      (GAM-DEC-007, `Rest::Visit`): once the level-ups are answered the Altar opens again and a
-     later sacrifice reads the new level (the original's dialog beneath its level-up dialogs). A
-     player keeps one open decision. Its view shows each artifact's and each stack's experience
+     later sacrifice reads the new level (the original's dialog beneath its level-up dialogs; a
+     client keeps the Altar drawn beneath them, E08 decision 371). A player keeps one open
+     decision. Its view shows each artifact's and each stack's experience
      and the experience to the next level.
    - **A Hill Fort** (GAM-DEC-013), answered **`HillFort(HillFortAnswer)`**: `Upgrade(slot)` a row
      whose price the treasury holds, `All` when some row upgrades and the treasury holds every

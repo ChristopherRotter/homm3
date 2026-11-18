@@ -1,6 +1,7 @@
 # ADR-0016 amendment (draft): increment 14, the trades and services
 
-- Status: Draft (E08 T127b, 2026-11-18), for the checkpoint at T127b's end (ADV-Q58); applied to
+- Status: Draft (E08 T127b, 2026-11-18), accepted at T127b's checkpoint (ADV-Q58, E08 decisions
+  370 to 373); applied to
   ADR-0016 by increment 14's `shared/` task (T131) with batch E14's outcome (T130), then deleted.
 - Amends: ADR-0016 point 1 (storage: increment 14's objects), point 4 (increment 14's kinds),
   point 6 (information: the markets, the Altar, the Hill Fort); the Consequences, the
