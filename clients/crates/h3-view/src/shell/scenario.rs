@@ -19,8 +19,10 @@
 //!   Game's menu again). The hover changes nothing (no status line).
 //! - **A right press** (`scenario_dialog_right_click` 0x5822D0, §3.8, §20): the item's `Help.txt`
 //!   right-click text (record id − 83) in a popup of style 4 while the right button is held, the
-//!   cursor hidden; the list's bar's too (337: record 254); none for an item without one, a list
-//!   row, nor while the mouse holds a button. On the flags' strip (387) the teams' dialog
+//!   cursor hidden; the list's bar's too (337: record 254), the advanced options' headers, bar and
+//!   each colour's items (M3 T3c2: [`HELPED`], [`COLOUR_HELPED`]); none for an item without one,
+//!   a list row, an item not enabled (`dialog_item_at` 0x5FF3E0: a single player's handicap), nor
+//!   while the mouse holds a button or a bar. On the flags' strip (387) the teams' dialog
 //!   (`scenario_teams_dialog` 0x576540, M3 T1b2) while the right button is held, the cursor
 //!   showing: "Team %d" of each team of the colours that play, in the order of their first
 //!   colour, each with its colours' flags. The screen is redrawn whole as either closes.
@@ -203,8 +205,9 @@ pub const COLONED: [u16; 4] = [132, 133, 1013, 386];
 /// The items with a right press's popup, by id, with their names in the key catalogue
 /// (`shell.scenario.help.<name>`: `Help.txt`'s record id − 83, its right-click text): every item
 /// of 104 to 344 the screen has but the rows (none) and the flags (under the strip, [`TEAMS`]),
-/// and the bar ([`BAR`]).
-pub const HELPED: [(u16, &str); 27] = [
+/// the bar ([`BAR`]); the advanced options' headers, the duration's label and bar (E27 M3 T3c2)
+/// and each colour's items ([`COLOUR_HELPED`]).
+pub const HELPED: [(u16, &str); 33] = [
     (LIST, "list"),
     (ADVANCED, "advanced"),
     (RANDOM, "random"),
@@ -232,6 +235,33 @@ pub const HELPED: [(u16, &str); 27] = [
     (194, "sort-victory"),
     (195, "sort-loss"),
     (BAR, "bar"),
+    // The advanced options' (E27 M3 T3c2): the headers (the town's 342 on AB and Complete, record
+    // 259 the one with Conflux), the duration's label and its bar (338, record 255).
+    (339, "name-header"),
+    (342, "town-header"),
+    (343, "hero-header"),
+    (344, "bonus-header"),
+    (340, "duration-label"),
+    (advanced::BAR, "duration-bar"),
+];
+
+/// The advanced options' items of every colour with a right press's popup (E27 M3 T3c2), by
+/// colour 0's id (colour `c`'s `+ c`, its record `+ c`), with their names in the key catalogue
+/// (`shell.scenario.help.<name>`): who may play (record 116), the handicap (124: a single player's
+/// is not enabled, so the panel under it has none), the town's, the hero's and the bonus's arrows
+/// (132 to 179) and the flag (180). Each colour's record is its own in `Help.txt`, the eight one
+/// text in both LODs: one key, colour 0's record, for all eight (*provisional*). The names, the
+/// edits and the areas (their popups or none) have no hint.
+pub const COLOUR_HELPED: [(u16, &str); 9] = [
+    (advanced::KIND, "kind"),
+    (advanced::HANDICAP, "handicap"),
+    (advanced::TOWN_LEFT, "town-left"),
+    (advanced::TOWN_RIGHT, "town-right"),
+    (advanced::HERO_LEFT, "hero-left"),
+    (advanced::HERO_RIGHT, "hero-right"),
+    (advanced::BONUS_LEFT, "bonus-left"),
+    (advanced::BONUS_RIGHT, "bonus-right"),
+    (advanced::FLAG, "flag"),
 ];
 
 /// The ratings by the chosen difficulty (`scenario_ratings` 0x683440), in percent.
@@ -470,7 +500,7 @@ pub struct Texts {
     pub with_standard: Vec<String>,
     /// The losses' texts (`loss_texts` 0x69FC1C: LcDesc.txt's records, the standard's first).
     pub losses: Vec<String>,
-    /// The right press's popups by item ([`HELPED`]; style 4).
+    /// The right press's popups by item ([`HELPED`], [`COLOUR_HELPED`] for each colour; style 4).
     pub help: BTreeMap<u16, MessageBox>,
     /// The list's players column (`"%d/%d"`, 0x679DC8) by the players and the humans, 0 to 8
     /// each: the text of `p` players and `h` humans at `9 × p + h`.
@@ -848,6 +878,13 @@ impl Scenario {
         self.advanced.as_ref().map(Advanced::records)
     }
 
+    /// The turn's duration the advanced options chose (E27 M3 T3c2: `turndur.txt`'s record, 10
+    /// unlimited; no timer runs it yet, `CLT-STUB-11`), none without the options.
+    #[must_use]
+    pub fn duration(&self) -> Option<u8> {
+        self.advanced.as_ref().map(Advanced::duration)
+    }
+
     /// Whether the advanced options show.
     #[must_use]
     pub fn advanced_showing(&self) -> bool {
@@ -1204,6 +1241,20 @@ impl Scenario {
         let frame = self.shown.frames.get(&SIZE).copied().unwrap_or(0);
         self.drawn_size = (self.shown.state(SIZE), frame);
         self.description.drew();
+    }
+
+    /// Whether the mouse holds the advanced options' duration's bar (E27 M3 T3c2).
+    fn duration_held(&self) -> bool {
+        self.advanced.as_ref().is_some_and(Advanced::bar_held)
+    }
+
+    /// The duration's bar drawn after an input (pressed, moved or let go); when it reported a
+    /// value (`scenario_duration_scrolled` 0x57C7F0) the screen redrawn whole (E27 M3 T3c2).
+    fn duration_scrolled(&mut self, changed: bool) -> Did {
+        if changed {
+            self.whole();
+        }
+        Did::CHANGED
     }
 
     /// The description's label shows its lines as they are now (its bar moved: E27 M3 T2c).
@@ -1566,6 +1617,15 @@ impl Scenario {
             self.description.moved(self.inside(point));
             return self.described();
         }
+        // The duration's bar's own loop (E27 M3 T3c2).
+        if self.duration_held() {
+            let inside = self.inside(point);
+            let changed = self
+                .advanced
+                .as_mut()
+                .is_some_and(|a| a.bar_moved(inside, &mut self.shown));
+            return self.duration_scrolled(changed);
+        }
         match &mut self.over {
             Over::Nothing => {
                 // The flags' hover (E27 M3 T3c1), unless a button's own loop holds the mouse.
@@ -1607,6 +1667,11 @@ impl Scenario {
             self.scrolled(value);
             return Did::CHANGED;
         }
+        // The duration's bar (338, E27 M3 T3c2): its arrow drawn pressed, a drag or a page moved.
+        if let Some(advanced) = self.advanced.as_mut().filter(|a| a.on_bar(inside)) {
+            let changed = advanced.bar_press(inside, &mut self.shown);
+            return self.duration_scrolled(changed);
+        }
         if self.row.is_none() && self.description.press(inside) {
             return self.described();
         }
@@ -1640,6 +1705,13 @@ impl Scenario {
             let value = self.bar.release();
             self.scrolled(value);
             return Did::CHANGED;
+        }
+        if self.duration_held() {
+            let changed = self
+                .advanced
+                .as_mut()
+                .is_some_and(|a| a.bar_release(&mut self.shown));
+            return self.duration_scrolled(changed);
         }
         if self.description.held() {
             self.description.release();
@@ -1689,14 +1761,21 @@ impl Scenario {
             || self.input.holds_button()
             || self.bar.held()
             || self.description.held()
+            || self.duration_held()
         {
             return Did::default();
         }
-        let on_bar = self.showing && self.bar.contains(self.inside(point));
+        let inside = self.inside(point);
+        let on_bar = self.showing && self.bar.contains(inside);
+        let on_duration = self.advanced.as_ref().is_some_and(|a| a.on_bar(inside));
+        // The item there (`dialog_item_at` 0x5FF3E0: shown and enabled; a single player's
+        // handicap is not, E27 M3 T3c2: the panel under it has no hint), the bars' own.
         let id = if on_bar {
             Some(BAR)
+        } else if on_duration {
+            Some(advanced::BAR)
         } else {
-            self.item_at(point)
+            self.item_at(point).filter(|&id| Advanced::takes(id))
         };
         if id == Some(TEAMS) {
             return self.teams_dialog().map_or_else(Did::default, |m| {
@@ -1804,7 +1883,7 @@ impl Scenario {
     /// The right button released: the popup closed; the bar or a button the mouse holds released
     /// as by the left button (the bar's loop ends at either release, 0x596607).
     pub fn right_release(&mut self) -> Did {
-        if self.bar.held() || self.description.held() {
+        if self.bar.held() || self.description.held() || self.duration_held() {
             return self.release();
         }
         match &mut self.over {
@@ -1827,7 +1906,7 @@ impl Scenario {
     /// clicks); the list's keys while it shows. None while the bar is held (its loop takes no
     /// key). The name's edit while it shows first (E27 M3 T3c1).
     pub fn key(&mut self, scan: Option<Scan>, command: Option<Command>, by: &str) -> Did {
-        if self.bar.held() || self.description.held() {
+        if self.bar.held() || self.description.held() || self.duration_held() {
             return Did::default();
         }
         if let Over::Notice(open) = &mut self.over {

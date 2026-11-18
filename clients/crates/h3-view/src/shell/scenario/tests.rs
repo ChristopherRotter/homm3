@@ -43,7 +43,15 @@ pub(crate) fn texts(bugs: Bugs) -> Texts {
         victories: numbered("victory", 12),
         with_standard: numbered("victory or standard", 11),
         losses: numbered("loss", 4),
-        help: HELPED.iter().map(|&(id, n)| (id, laid(n))).collect(),
+        help: HELPED
+            .iter()
+            .map(|&(id, n)| (id, laid(n)))
+            .chain(
+                COLOUR_HELPED
+                    .iter()
+                    .flat_map(|&(id, n)| (0..8u16).map(move |c| (id + c, laid(n)))),
+            )
+            .collect(),
         players: (0..9)
             .flat_map(|p| (0..9).map(move |h| format!("{p}/{h}")))
             .collect(),

@@ -660,7 +660,14 @@ fn menus(
             .collect(),
         help: scenario::HELPED
             .iter()
-            .map(|&(id, name)| {
+            .map(|&(id, name)| (id, name))
+            // The advanced options' items of every colour (T3c2): one key, eight items.
+            .chain(
+                scenario::COLOUR_HELPED
+                    .iter()
+                    .flat_map(|&(id, name)| (0..8u16).map(move |c| (id + c, name))),
+            )
+            .map(|(id, name)| {
                 let key = format!("shell.scenario.help.{name}");
                 (id, laid(&key, Style::Popup))
             })

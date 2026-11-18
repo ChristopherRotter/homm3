@@ -3268,6 +3268,69 @@ original = [{ at = "HELP:112:1" }]
 id = "shell.scenario.help.bar"
 original = [{ at = "HELP:254:1" }]
 
+# The advanced options' (E27 M3 T3c2): the headers (the town's 342: record 259, the one with
+# Conflux), the duration's label (340) and bar (338), then each colour's items by colour 0's record
+# (the eight colours' records hold one text: one key for all eight).
+[[key]]
+id = "shell.scenario.help.name-header"
+original = [{ at = "HELP:256:1" }]
+
+[[key]]
+id = "shell.scenario.help.town-header"
+original = [{ at = "HELP:259:1" }]
+
+[[key]]
+id = "shell.scenario.help.hero-header"
+original = [{ at = "HELP:260:1" }]
+
+[[key]]
+id = "shell.scenario.help.bonus-header"
+original = [{ at = "HELP:261:1" }]
+
+[[key]]
+id = "shell.scenario.help.duration-label"
+original = [{ at = "HELP:257:1" }]
+
+[[key]]
+id = "shell.scenario.help.duration-bar"
+original = [{ at = "HELP:255:1" }]
+
+[[key]]
+id = "shell.scenario.help.kind"
+original = [{ at = "HELP:116:1" }]
+
+[[key]]
+id = "shell.scenario.help.handicap"
+original = [{ at = "HELP:124:1" }]
+
+[[key]]
+id = "shell.scenario.help.town-left"
+original = [{ at = "HELP:132:1" }]
+
+[[key]]
+id = "shell.scenario.help.town-right"
+original = [{ at = "HELP:140:1" }]
+
+[[key]]
+id = "shell.scenario.help.hero-left"
+original = [{ at = "HELP:148:1" }]
+
+[[key]]
+id = "shell.scenario.help.hero-right"
+original = [{ at = "HELP:156:1" }]
+
+[[key]]
+id = "shell.scenario.help.bonus-left"
+original = [{ at = "HELP:164:1" }]
+
+[[key]]
+id = "shell.scenario.help.bonus-right"
+original = [{ at = "HELP:172:1" }]
+
+[[key]]
+id = "shell.scenario.help.flag"
+original = [{ at = "HELP:180:1" }]
+
 [[key]]
 id = "shell.scenario.teams.title"
 original = [{ at = "GENRLTXT:658" }]

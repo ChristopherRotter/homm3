@@ -79,7 +79,7 @@ steps = [
   "right:276,108", "shot:popup-hero-header", "right-up", "right:352,108", "shot:popup-bonus-header", "right-up",
   "right:225,544", "shot:popup-duration-label", "right-up", "right:155,565", "shot:popup-duration-bar", "right-up",
   "right:35,155", "shot:popup-flag", "right-up", "right:169,145", "shot:popup-town-arrow", "right-up",
-  "right:245,145", "shot:popup-hero-arrow", "right-up", "right:321,145", "shot:popup-bonus-arrow", "right-up",
+  "click:230,245", "move:790,300", "right:245,245", "shot:popup-hero-arrow", "right-up", "right:321,145", "shot:popup-bonus-arrow", "right-up",
   "right:135,163", "shot:popup-handicap", "right-up", "right:85,163", "shot:popup-kind", "right-up",
   "right:110,138", "shot:popup-name", "right-up", "shot:closed",
   "click:514,519", "move:790,300", "shot:hidden",

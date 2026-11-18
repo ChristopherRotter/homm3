@@ -944,7 +944,8 @@ step = 7
 
 # The advanced options (M3 T3a; design §3.13 to §3.15, §23): the colours' letters of the per-colour
 # files (colour_letters 0x641AE0), a row's height; the duration's bar (338: H3DlgScrollbar::Create
-# with 11 ticks, horizontal: SlideBuH.def, slider.pcx, its button the DEF's 16-pixel width); a
+# with 11 ticks, blue, no page (M3 T3c2: 0x57AF06, a press in the track drags the thumb), no keys,
+# horizontal: SlideBuH.def, slider.pcx, its button the DEF's 16-pixel width); a
 # colour's items at row 0, colour 0's ids (the constructor 0x57AF82: the flag at y - 3, who may play
 # and the handicap 18 below the arrows; M3 T3c1: the single player's name's edit 353, the
 # constructor's edit_create 0x57B4CD: smalfont.fnt, colour 1, left, 21 with its terminator, moved
@@ -955,7 +956,7 @@ step = 7
 [scenario.advanced]
 letters = "rbygopts"
 step = 50
-bar = { id = 338, at = [58, 557], size = [194, 16], def = "SlideBuH.def", track = "slider.pcx", button = 16, step = 1 }
+bar = { id = 338, at = [58, 557], size = [194, 16], def = "SlideBuH.def", track = "slider.pcx", button = 16, step = 0 }
 flag = { id = 263, def = "AOFLGB{}.DEF", at = [14, 130], size = [42, 50] }
 kind = { id = 199, at = [62, 151], size = [46, 24], font = "tiny.fnt", font_palette = "game.pal", colour = 4, align = 5 }
 handicap = { id = 207, def = "adopb2{}.def", at = [110, 151], size = [50, 24] }
