@@ -1027,6 +1027,7 @@ mod events;
 mod garrison;
 mod growth;
 mod heroes;
+mod hire;
 mod income;
 mod offer;
 mod pool;

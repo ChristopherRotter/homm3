@@ -12,6 +12,15 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-17 (the town lane, E09 T38a1, `town/e09-t38a1`, `cross-lane` with the user's consent;
+  **your paths changed, for your review; protocol v71 taken**): `TownCommand::Hire { town, slot }`,
+  the refusals `NoTavern`, `UnknownSlot`, `EmptySlot`, `GameEvent::HeroHired` (the slot `None` for
+  another viewer) and `HiredPartSeen` (`HiredPart`: `Details`, `Carried`, `Spell`) mapped both ways
+  and folded (`wire/game/fold.rs`' `hire` and `HeroDetails::see`); the round trips (119
+  rejections, 43 kinds of event) and `src/tests/game_fold.rs`' `a_hire_folds_as_observe_shows_it` (a
+  hire on three golden games, every viewer's fold against `observe`). Your next bump is v72. No
+  golden hires yet (the listing is E09 T38a2's), so the fold gate's counts did not move.
+
 - 2026-11-17 (the town lane, E09 T37b, `town/e09-t37b`, `cross-lane` with the user's consent;
   **your paths changed, for your review**): map import v25, so `tests/record.rs`' `import` case
   reads `import_version = 25` (its broken case 24); `army-dialog-s1` moved with its map's new

@@ -2247,6 +2247,19 @@ hero type keeps its war machines apart from its starting stacks, whose first is 
 (GAM-SET-001's `HeroType::war_machines`); no ledger row (*agent's call*, decision 107's note
 closed).
 
+*As built* (T38a1, decisions 140 to 142, `TWN-Q22`): §64 and §65 as drafted in `h3-game`'s
+`town/hire.rs` (`hire`, `replace`, `HiredPart`), `h3-towns`' `check_hire` (`NoTavern`; the
+price) and the adventure's `src/town/hire.rs` (`check_tavern_hire`: the room, then the entrance;
+`place_hired`: a hero's arrival, the tile's viewers). `UnknownSlot` and `EmptySlot` are the town's
+refusals. The pool's `hire` empties the slot, clears its returning mark, takes the type by the
+colour with its bit in the mask and hands the away record over (dropped from the pool: the turn's
+derivation and the day's regain read only heroes off the map). A new record's draws are the fill's
+(`tavern::record_of`), from the hirer's stream (`GameState::taverns_for`). The guild's spells are
+`TWN-STUB-15`; the listing and the env's entry `TWN-STUB-19` (T38a2). The replay word `town hire
+<town> <slot>` and the format v17 came with T38a1, not T38a2: the server journals every command
+the wire takes in the replay text (`h3-server`'s `journal/whole.rs`), so the word and the bump go
+with the wire's command.
+
 ### 66. The adventure map's Tavern (class 95; the kind `Tavern`; GAM-DEC-010; `map_tavern_visit` 0x5D7E90, `map_tavern_hire` 0x4D7890)
 
 - **The kind** (ADR-0016's draft point 4; the adventure lane's paths, `cross-lane`): **visited
@@ -2551,6 +2564,17 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   too; `h3-map`'s told-views property folds them likewise. For T38a: a hire's owner learns the
   hired hero's spells and offered levels from no tavern view, so its `HeroHired` (or parts after
   it) must tell them for the fold to stay exact.
+- *As built* (T38a1, decision 141): **`HeroHired { player, hero, hero_type, slot: Option<u8>, pos,
+  seen_by }`**, the slot blanked by the projection for another viewer, then to the owner alone
+  **`HiredPartSeen { player, hero, part: HiredPart }`** per part its slot's view lacked:
+  `Details { offered, positions }` once (the levels last offered and the worn positions' count, the
+  details' `worn` holding one entry per position), `Carried` per backpack artifact past
+  `TAVERN_BACKPACK_SHOWN`, `Spell` per learned spell; then the slot's `TavernOffered` (its
+  replacement or its emptying, `tavern::tell` against the views before). Protocol **v71** (the
+  command, the three refusals, both events; the fold adds the hero to every viewer's heroes on the
+  map and, for the owner, moves the slot's view into its heroes, the worn positions grown to the
+  told count). `h3-protocol`'s `a_hire_folds_as_observe_shows_it` plays a hire on three golden
+  games (none of them hires: `TWN-STUB-19`) and compares every viewer's fold with `observe`.
 
 ### 76. The env and the protocol
 

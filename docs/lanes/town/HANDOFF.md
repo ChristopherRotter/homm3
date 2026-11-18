@@ -5,14 +5,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E09** (towns): increments 1 to 3 closed (T10, T20, T30; `E09-archive.md`, design notes Parts A
-  to E). **Increment 4** (the Tavern; decisions 98–136, `TWN-Q15` to `-Q20`): T31 to T36 done;
-  T37a done (decisions 133–136); **T37b done** (whole, decisions 137–139, `TWN-Q21`: every hero
-  of a customised type takes its entry, a record per such free type at the build; map import
-  v25). **Next:** T38a (the hire; `QUEUE.md`), its cut confirmed at its start. The guild and the services are increment
-  5, travel and the Grail 6. Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6`
-  and `-13` (increment 5), `TWN-STUB-2` (the victory conditions).
-- **Open pull requests:** T37b's `town/e09-t37b` (`cross-lane`), opened at the session's end;
-  watch it until it merges.
+  to E). **Increment 4** (the Tavern; decisions 98–142, `TWN-Q15` to `-Q22`): T31 to T37b done;
+  T38a cut in two (decision 140): **T38a1 done** (the town's hire, the replacement, `HeroHired`
+  and the owner's `HiredPartSeen`, protocol v71, replay format v17; decisions 141, 142).
+  **Next:** T38a2 (the hire listed: `legal_commands`, the env's `HIRE` v12, the plans, the bench;
+  `QUEUE.md`), its cut confirmed at its start. The guild and the services are increment 5, travel
+  and the Grail 6. Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6`, `-13`
+  and `-15` (increment 5), `TWN-STUB-2` (the victory conditions), `TWN-STUB-19` (T38a2).
+- **Open pull requests:** T38a1's `town/e09-t38a1` (#1001, `cross-lane`; its `shared/` half #999
+  merged), opened at the session's end; watch it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -20,17 +21,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   merged in order with its pull requests.
 - **Versions:** the lane's own: the town state hash (`TOWN_STATE_HASH_VERSION`, v3) and the town
   ruleset part (`TOWN_RULESET_HASH_VERSION`, v7: T36), both in `h3-towns`; the adventure lane's
-  (game state hash v33 by T37a, adventure state hash v26 by E08's T124b1, **map import v25 by
-  T37b**: T39a takes v26, replay format v16 by T28a), the env's (v11 by T28a) and the protocol's (**v70 by
-  T37a**) are bumped `cross-lane` (each task's record in `E09-log.md`; the plan in design §77).
-  Shared: core ruleset hash v53, pack format v52 (T24), quirk flags 43 and `StreamId::TAVERNS` (8)
-  by T35b.
-- **Ids** (next): questions `TWN-Q22`; decisions 140; quirks `TWN-QUIRK-14` (`-12`, `-13` entered
-  by T35b, their tests with T38b, T39b); stubs `TWN-STUB-19` (`-11`, `-12` planned by §34; `-15`
-  to `-18` by §71, §77); rules: TWN-TAV-001, -002, -005 built (T37a), TWN-TAV-003, -004, -006 to
-  -009, GAM-DEC-010, GAM-MAN-003 planned; experiment batch `TWN-5`; disputes `TD-25` (TD-24 by
-  T37b); quirk
-  candidates `T-18`. ADR-0028 is the lane's; no drafts open.
+  (game state hash v33 by T37a, adventure state hash v26 by E08's T124b1, map import v25 by
+  T37b: T39a takes v26, **replay format v17 by T38a1**), the env's (v11 by T28a; T38a2 takes v12)
+  and the protocol's (**v71 by T38a1**) are bumped `cross-lane` (each task's record in
+  `E09-log.md`; the plan in design §77). Shared: core ruleset hash v53, pack format v52 (T24),
+  quirk flags 43 and `StreamId::TAVERNS` (8) by T35b.
+- **Ids** (next): questions `TWN-Q23`; decisions 143; quirks `TWN-QUIRK-14` (`-12`, `-13` entered
+  by T35b, their tests with T38b, T39b); stubs `TWN-STUB-20` (`-11`, `-12` planned by §34; `-16`
+  to `-18` by §71, §77); rules: TWN-TAV-001 to -005 built, TWN-TAV-006 to -009, GAM-DEC-010,
+  GAM-MAN-003 planned; experiment batch `TWN-5`; disputes `TD-25`; quirk candidates `T-18`.
+  ADR-0028 is the lane's; no drafts open.
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at
   each round; the user confirms seams and ADRs; tokens first.
 
@@ -39,6 +39,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-17 — T38a1: the town's hire, protocol v71, replay format v17
+
+Baseline 7a0da76 (#995 to #997 merged; CI's fingerprint on `master`, the setup ran the light
+gates). The user's computer was connected at the start only: 16 files staged (the four LODs, both
+executables, both tars, the saves, the manuals, two help files; SHA-256 checked). The user cut T38a
+in two (decision 140) and chose the owner's parts for what the slot's view lacks (141); the agent
+moved the replay word into T38a1 (the server journals what the wire takes) and told the user.
+Built: design §64, §65, §75's As built (`h3-game`'s `town/hire.rs`, the adventure's
+`src/town/hire.rs`, `h3_towns::check_hire`); the wire's fold of a hire, tested on three golden
+games; the 89 goldens' format line. #999 the `shared/` half (merged), #1001 the code.
 
 ### 2026-11-17 — T37b: the map's customised types, map import v25
 
@@ -65,14 +76,3 @@ week-start benches measured, one design pass, re-baselined (+13 to +99 %: the we
 replays re-recorded; #984 the `shared/` half. CI's first run on #987 met `master`'s latent
 `check-exe-map` gap (E24 M4 T1a's 14 cited addresses): entries added, the map-client lane told;
 the Clients job is red on `master` too (`h3-ui`'s `message.rs`, not this branch's).
-
-### 2026-11-17 — T35b and T36: the taverns' stream, the two flags, the town part v7
-
-Baseline 4f4fbbc (#976 merged; the setup verified the code, e3cedff5, after a VM restart). The user
-kept T35b whole and T36 after it, both `cross-lane` (decisions 129, 130). The user's computer was
-connected at the start only: 11 files staged for T35b and T36 (the four LODs, both executables,
-both tars, the saves; SHA-256 checked). Built: `StreamId::TAVERNS`, `QuirkFlag(42)`, `(43)`, the
-profiles, the ledger entries; the 86 replays' `ruleset_hash`, the bot reports, the server literal
-(#979). T36 stacked on it: the records' tavern weights and the hire's price (part v7), the
-harvest, the AB pack's overrides (the base records cannot name its classes), the 89 replays'
-`town_ruleset_hash`.

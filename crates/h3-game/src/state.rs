@@ -1577,6 +1577,17 @@ impl GameState {
         }
     }
 
+    /// What a hire's replacement writes (E09 T38a1, TWN-TAV-004): the taverns' parts
+    /// ([`Self::taverns`]) with the hirer's stream in place of the taverns' (ADR-0017 point 4).
+    pub(crate) fn taverns_for(&mut self, player: PlayerId) -> town::tavern::Parts<'_> {
+        town::tavern::Parts {
+            pool: &mut self.pool,
+            heroes: &mut self.heroes,
+            progression: &mut self.progression,
+            draws: &mut self.players[player.index()].rng,
+        }
+    }
+
     /// The adventure context's state.
     pub const fn adventure(&self) -> &AdventureState {
         &self.adventure
@@ -2065,6 +2076,12 @@ impl GameState {
     pub(crate) fn set_backpack(&mut self, hero: HeroId, backpack: Vec<ArtifactInstance>) {
         let store = Arc::make_mut(&mut self.heroes);
         Arc::make_mut(&mut store[usize::from(hero.raw())]).backpack = backpack;
+    }
+
+    /// Sets `hero`'s learned spells (tests of a hire's parts, E09 T38a1).
+    pub(crate) fn set_spells(&mut self, hero: HeroId, spells: Vec<h3_content::SpellId>) {
+        let store = Arc::make_mut(&mut self.heroes);
+        Arc::make_mut(&mut store[usize::from(hero.raw())]).spells = spells;
     }
 
     /// Sets `player`'s returning mark of `slot` (tests of the week's release and the marks' clears,

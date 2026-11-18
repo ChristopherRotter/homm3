@@ -2,7 +2,7 @@
 //! adventure-owned, `lanes.toml`): the packs with their adventure, battle and town files and the
 //! `.h3m` maps read from disk, and the adventure replay file format (TOML).
 //!
-//! Replay file format v15 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
+//! Replay file format v17 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
 //! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
 //! refused by its format version; a later file without one is malformed; v3 added the battle
 //! commands, E08 T19b1, and names each command's actor: a player by its number; v4 the system
@@ -28,7 +28,8 @@
 //! town's hire dialog opened at a building, E09 T27, its purchases the hire dialog's answers;
 //! v16 `town heroes <town> enter|leave|swap`, a hero's move between a town's two bars, E09 T28a,
 //! and the management lines naming a town's upper bar, `t<town>:<slot>` its garrison or a garrison
-//! hero's army by the hero):
+//! hero's army by the hero; v17 `town hire <town> <slot>`, a tavern hero hired at a town's Tavern,
+//! E09 T38a1, the slot 0 or 1):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -51,12 +52,13 @@
 //!     "0 town build 2 7",             #   `<player> town build <town> <building>` (format 11)
 //!     "0 town recruit 2 30",          #   `<player> town recruit <town> <building>` (format 15)
 //!     "0 town heroes 2 enter",        #   `<player> town heroes <town> enter|leave|swap` (16)
+//!     "0 town hire 2 1",              #   `<player> town hire <town> <slot>` (format 17)
 //!     "0 revisit 1",                  #   `<player> revisit <hero>` (format 12)
 //! ]
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 16
+//! format = 17
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -293,7 +295,8 @@ fn parse_hex64(s: &str) -> Result<u64> {
 /// E09 T18b1) by its town and building; a `Revisit` (format v12, E08 T105b2) by its hero; a
 /// system command (format v14, E16 M5 T14) by `for`, its player and its words; a town's
 /// recruitment (format v15, E09 T27) by its town and building; a hero's move between a town's
-/// bars (format v16, E09 T28a) by its town and move.
+/// bars (format v16, E09 T28a) by its town and move; a town's hire (format v17, E09 T38a1) by its
+/// town and slot.
 pub fn format_command(actor: Actor, command: &GameCommand) -> String {
     let player = match actor {
         Actor::Player(player) => player.raw().to_string(),
@@ -354,6 +357,10 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
         }
         GameCommand::Town(TownCommand::Recruit { town, building }) => {
             format!("{player} town recruit {} {}", town.raw(), building.index())
+        }
+        // Format v17 (E09 T38a1).
+        GameCommand::Town(TownCommand::Hire { town, slot }) => {
+            format!("{player} town hire {} {slot}", town.raw())
         }
     }
 }
@@ -662,6 +669,15 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
                 _ => return Err(bad()),
             };
             GameCommand::Town(TownCommand::Heroes { town, change })
+        }
+        // Format v17 (E09 T38a1): a tavern hero hired at a town's Tavern.
+        Some("town") if words.clone().next() == Some("hire") => {
+            let (_, Some(town), Some(slot)) = (words.next(), words.next(), words.next()) else {
+                return Err(bad());
+            };
+            let town = town.parse().map(TownId::new).map_err(|_| bad())?;
+            let slot = slot.parse().map_err(|_| bad())?;
+            GameCommand::Town(TownCommand::Hire { town, slot })
         }
         // Format v11 (E09 T18b1): a town's build, without a hero; v15 (E09 T27) its recruitment.
         Some("town") => {

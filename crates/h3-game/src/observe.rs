@@ -471,6 +471,22 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
             result,
             seen_by: alone,
         }),
+        // rule: TWN-TAV-003
+        GameEvent::HeroHired {
+            player: owner,
+            hero,
+            hero_type,
+            slot,
+            pos,
+            seen_by,
+        } => seen_by.contains(player).then_some(GameEvent::HeroHired {
+            player: owner,
+            hero,
+            hero_type,
+            slot: slot.filter(|_| owner == player),
+            pos,
+            seen_by: alone,
+        }),
         GameEvent::ResourceGained { player: owner, .. }
         | GameEvent::ResourceLost { player: owner, .. }
         | GameEvent::ResourcePaid { player: owner, .. }
@@ -481,6 +497,7 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::TownIncomeSeen { player: owner, .. }
         | GameEvent::TavernOffered { player: owner, .. }
         | GameEvent::TavernPartSeen { player: owner, .. }
+        | GameEvent::HiredPartSeen { player: owner, .. }
         | GameEvent::GarrisonChanged { player: owner, .. }
         | GameEvent::GarrisonStackSeen { player: owner, .. }
         | GameEvent::HeroChanged { player: owner, .. }

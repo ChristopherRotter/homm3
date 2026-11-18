@@ -1184,6 +1184,16 @@ fn check_told(
                     }
                 }
             }
+            // E09 T38a1 (TWN-TAV-003): a hire takes its slot's hero out of the owner's tavern,
+            // the slot named to it alone; its slot's refill follows as a `TavernOffered`, its
+            // details' parts to the owner alone.
+            GameEvent::HeroHired { player, slot, .. } => {
+                prop_assert_eq!(slot.is_some(), player == viewer, "{:?}", event);
+                if let Some(view) = slot.and_then(|slot| tavern.get_mut(usize::from(slot))) {
+                    *view = None;
+                }
+            }
+            GameEvent::HiredPartSeen { player, .. } => prop_assert_eq!(player, viewer),
             GameEvent::HeroChanged { player, hero, .. }
             | GameEvent::CreaturesRaised { player, hero, .. }
             | GameEvent::LevelGained { player, hero, .. } => {

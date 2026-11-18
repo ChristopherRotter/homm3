@@ -214,6 +214,29 @@ impl HeroPool {
         self.set(id, HeroStatus::Offered);
     }
 
+    /// The hire of `hero_type`, `player`'s tavern hero in `slot` (TWN-TAV-003; `hero_place`
+    /// 0x4D7900 with its flag, design note §64; E09 T38a1): the slot emptied and its returning
+    /// mark cleared, the type taken by `colour` with the colour's bit added to its mask, and its
+    /// away record handed over (the adventure keeps a hero on the map's: the turn's derivation and
+    /// the day's regain read only the away records of heroes off the map). The caller checked the
+    /// slot's type; a fill gives every offered type its away record, so none is a new record's.
+    // rule: TWN-TAV-003
+    pub(super) fn hire(
+        &mut self,
+        (player, slot): (PlayerId, usize),
+        hero_type: HeroTypeId,
+        colour: u8,
+    ) -> Away {
+        let tavern = &mut self.players[player.index()];
+        tavern.slots[slot] = None;
+        tavern.returning[slot] = false;
+        let entry = &mut self.types[hero_type.index()];
+        entry.status = HeroStatus::Taken(colour);
+        entry.mask |= 1_u8.checked_shl(u32::from(colour)).unwrap_or(0);
+        let away = self.records[hero_type.index()].away.take();
+        away.unwrap_or(Away::new(Vec::new()))
+    }
+
     /// The build's records (E09 T37a, design note §61): each hero's type in hero order names its
     /// hero's id (`types`: the setup's heroes, then the main towns'), the first hero of a type
     /// where a setup repeats one.

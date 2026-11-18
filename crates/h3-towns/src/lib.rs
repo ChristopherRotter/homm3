@@ -26,7 +26,9 @@
 //! growth and the month's ([`WeekKind`], [`week_growth`], [`MonthGrowth`], [`month`]; E09 T25b1),
 //! a neutral town's garrison week and the Portal's draw ([`garrison_week`], [`summon`]; E09
 //! T25b2); recruitment ([`recruit_source`], [`recruiting`], [`recruit_stock`], [`check_recruit`], [`recruit`];
-//! E09 T27). What comes next: the town's two bars and the garrison hero (E09 T28).
+//! E09 T27); the town's two bars ([`TownHeroChange`]; E09 T28a). Increment 4 (the Tavern, E09
+//! design Part F): the tavern weights and the hire's price in the part (E09 T36), a hire's town
+//! half ([`check_hire`]; E09 T38a1).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -65,6 +67,7 @@ mod ruleset;
 mod setup;
 mod siege;
 mod store;
+mod tavern;
 mod view;
 mod week;
 
@@ -95,6 +98,7 @@ pub use setup::{
 };
 pub use siege::{defender_bonus, fort_level, siege, siege_obstacles};
 pub use store::{MAX_TOWNS, TownFacts, Towns};
+pub use tavern::check_hire;
 pub use view::has_tavern;
 pub use week::{
     MonthGrowth, WeekKind, building_week, draw_week, month, week_creatures, week_growth,

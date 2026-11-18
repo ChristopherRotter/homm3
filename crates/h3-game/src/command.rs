@@ -13,7 +13,7 @@ use h3_adventure::{
     AdventureCommand, AdventureCommandError, AdventureEvent, ArmySlot, HireError, HireTarget,
     ObjectTypeId, Pick, Pos, Viewers,
 };
-use h3_content::{CreatureTypeId, Formation, ResourceId, SkillId};
+use h3_content::{CreatureTypeId, Formation, HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, BattleResult, FortLevel, HeroId, PlayerId, TownId};
 use h3_heroes::{Choice, HeroChange, PrimarySkill};
 use h3_towns::{BuildingId, TownCommand, TownCommandError};
@@ -21,6 +21,7 @@ use h3_towns::{BuildingId, TownCommand, TownCommandError};
 use crate::manage::{Manage, ManageError};
 use crate::observe::HireSeen;
 use crate::system::SystemCommand;
+use crate::town::hire::HiredPart;
 use crate::town::tavern::{TavernHero, TavernPart};
 use crate::town::view::{GarrisonStackView, TownBuildingsView};
 use crate::{GameRuleset, GameState, MonthKind, OpenBattle, WeekKind};
@@ -753,6 +754,40 @@ pub enum GameEvent {
         slot: u8,
         /// The part.
         part: TavernPart,
+    },
+    /// A player hired its tavern hero (TWN-TAV-003; E09 T38a1, design note §75, ADR-0017 point 2):
+    /// the hero placed on `pos`, a town's entrance, as its visitor. Told after the price's
+    /// `ResourcePaid`, before the owner's [`Self::HiredPartSeen`] and the slot's
+    /// [`Self::TavernOffered`] (its replacement, or its emptying). Seen by its owner and by every
+    /// player that sees the tile (`seen_by`, as a step's `seen_to`, ADV-FOG-004, -005), each
+    /// projected naming the viewer alone; the slot to the owner alone (none to another viewer).
+    /// A viewer's fold adds the hero on the map (owner, tile, type; on land); its owner's moves
+    /// the slot's view into its heroes (details, army, formation, tactics), completed by the parts,
+    /// its points by the command's `MovementChanged`.
+    HeroHired {
+        /// The hirer: the hero's owner.
+        player: PlayerId,
+        /// The hero.
+        hero: HeroId,
+        /// Its type: identity and class.
+        hero_type: HeroTypeId,
+        /// The tavern slot it was hired from, for its owner alone.
+        slot: Option<u8>,
+        /// Its tile.
+        pos: Pos,
+        /// The players that see it (the owner among them).
+        seen_by: Viewers,
+    },
+    /// A part of a hired hero's details its tavern slot's view did not show (E09 T38a1, decision
+    /// 141): told after its [`Self::HeroHired`], one per part in [`HiredPart`]'s order, so that
+    /// the owner's fold of the slot's view gives the hero's details whole. Seen by `player`.
+    HiredPartSeen {
+        /// The hirer: the hero's owner.
+        player: PlayerId,
+        /// The hero.
+        hero: HeroId,
+        /// The part.
+        part: HiredPart,
     },
     /// A player's view of a map garrison changed (ADV-GAR-006; E08 T114b, increment 12's design
     /// note §10 and §15; SRV-Q26): the garrison's facts as `player` now sees it

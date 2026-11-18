@@ -30,10 +30,10 @@ use alloc::vec::Vec;
 
 use super::{
     Adventure, AdventureEvent, AdventureReveal, Amount, ArmyRef, ArmySlot, ArmyStack, Artifact,
-    ArtifactPlace, Boat, Decision, GameEvent, GameObservation, GameReveal, Garrison, GarrisonHero,
-    GarrisonStack, Guards, HeroChange, HeroDetails, LevelUp, MapGarrison, MapHero, Monster, Object,
-    ObjectRef, OwnMapHero, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, TavernHero,
-    TavernPart, Tile, Town, TownOwnerFacts,
+    ArtifactPlace, Boat, Bonuses, Decision, GameEvent, GameObservation, GameReveal, Garrison,
+    GarrisonHero, GarrisonStack, Guards, HeroChange, HeroDetails, HeroInfo, HiredPart, LevelUp,
+    MapGarrison, MapHero, Monster, Object, ObjectRef, OfferLevels, OwnMapHero, Pos, PrimarySkill,
+    RevealedArea, RevealedView, SkillLevel, TavernHero, TavernPart, Tile, Town, TownOwnerFacts,
 };
 use crate::wire::WireU64;
 
@@ -300,6 +300,38 @@ impl GameObservation {
                 if let Some(view) = view.and_then(Option::as_mut) {
                     view.see(part);
                 }
+            }
+            // A hire (E09 T38a1, TWN-TAV-003): the hero on the map as the viewer sees it; its
+            // owner's view of it the slot's, its details completed by the parts following, its
+            // points by the command's `MovementChanged`.
+            GameEvent::HeroHired {
+                player,
+                hero,
+                hero_type,
+                slot,
+                pos,
+            } => {
+                let held = slot.and_then(|slot| self.tavern.get_mut(usize::from(slot)));
+                let view = held.and_then(Option::take);
+                self.hire(
+                    MapHero {
+                        id: hero,
+                        owner: player,
+                        pos,
+                        boat: None,
+                        own: None,
+                    },
+                    hero_type,
+                    view,
+                );
+            }
+            GameEvent::HiredPartSeen {
+                player: _,
+                hero,
+                part,
+            } => {
+                let details = self.details_mut(hero);
+                details.into_iter().for_each(|details| details.see(part));
             }
             // The viewer's whole view of a map garrison, its stacks following (E08 T114b,
             // ADV-GAR-006): put in its place, a garrison the viewer did not see yet too. A change
@@ -711,6 +743,77 @@ impl GameObservation {
             .garrison_heroes
             .retain(|held| held.id != hero);
         self.heroes.retain(|info| info.id != hero);
+    }
+
+    /// A hired hero came onto the map (E09 T38a1, TWN-TAV-003): `seen` with its type among the
+    /// heroes, in id order; with `view`, the owner's tavern slot's view it was hired from, the
+    /// owner's own view of it (its army, formation and tactics flag, its details but what its
+    /// [`HiredPart`]s tell, its points none until told).
+    fn hire(&mut self, mut seen: MapHero, hero_type: u16, view: Option<TavernHero>) {
+        let id = seen.id;
+        let details = view.map(|view| {
+            let TavernHero {
+                hero,
+                army,
+                skills,
+                artifacts,
+            } = view;
+            seen.own = Some(OwnMapHero {
+                army,
+                movement: 0,
+                max_movement: 0,
+                formation: hero.formation,
+                tactics: hero.tactics,
+                marks: Vec::new(),
+                bonuses: Bonuses {
+                    morale: 0,
+                    luck: 0,
+                    once: Vec::new(),
+                },
+                timed: Vec::new(),
+            });
+            let mut details = HeroDetails {
+                hero_type,
+                level: hero.level,
+                experience: hero.experience,
+                offered: OfferLevels {
+                    wisdom: 0,
+                    school: 0,
+                },
+                primary: hero.primary,
+                skills,
+                worn: Vec::new(),
+                backpack: Vec::new(),
+                spells: Vec::new(),
+                mana: hero.mana,
+            };
+            // The worn ones by position (the positions after the last told by its parts), then
+            // the backpack's first places in order.
+            for (place, artifact) in artifacts {
+                match place {
+                    ArtifactPlace::Worn { position } => {
+                        let at = usize::from(position);
+                        let len = details.worn.len().max(at + 1);
+                        details.worn.resize(len, None);
+                        details.worn[at] = Some(artifact);
+                    }
+                    ArtifactPlace::Backpack { index: _ } => details.backpack.push(artifact),
+                }
+            }
+            details
+        });
+        let heroes = &mut self.adventure.heroes;
+        let at = heroes.partition_point(|h| h.id < id);
+        heroes.insert(at, seen);
+        let at = self.heroes.partition_point(|h| h.id < id);
+        self.heroes.insert(
+            at,
+            HeroInfo {
+                id,
+                hero_type,
+                details,
+            },
+        );
     }
 
     /// The details of the viewer's hero `hero`.
@@ -1167,6 +1270,20 @@ impl HeroDetails {
                     self.backpack.remove(index);
                 }
             }
+        }
+    }
+
+    /// A part of a hired hero's details its tavern slot's view did not show (`HiredPartSeen`, E09
+    /// T38a1), after the ones before it: the offered levels and the worn positions' count (the
+    /// positions the view named kept), a backpack's artifact after the others, a learned spell.
+    fn see(&mut self, part: HiredPart) {
+        match part {
+            HiredPart::Details { offered, positions } => {
+                self.offered = offered;
+                self.worn.resize(usize::from(positions), None);
+            }
+            HiredPart::Carried { artifact } => self.backpack.push(artifact),
+            HiredPart::Spell { spell } => self.spells.push(spell),
         }
     }
 
