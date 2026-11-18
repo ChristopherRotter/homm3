@@ -327,7 +327,7 @@ enum Given {
 /// a stub's: its notice is the client's), `previous` what took them before (the Multiplayer
 /// dialog's menu).
 fn whole(
-    menus: &Menus,
+    menus: &mut Menus,
     screen: Screen,
     previous: Option<Front>,
     pointer: [i32; 2],
@@ -372,7 +372,8 @@ impl Replay {
             let _ = shell.end(Ended::Start);
         }
         let times = vec![0; ops.len()];
-        let front = whole(menus, shell.screen(), None, pointer);
+        let mut menus = menus.clone();
+        let front = whole(&mut menus, shell.screen(), None, pointer);
         Self {
             shell,
             time: 0,
@@ -382,7 +383,7 @@ impl Replay {
             ops,
             times,
             front,
-            menus: menus.clone(),
+            menus,
             keys: Keys::original(),
             sample_ms: None,
             samples: Samples::default(),
@@ -583,7 +584,8 @@ impl Replay {
     fn end(&mut self, ended: Ended) {
         let _ = self.shell.end(ended);
         let previous = self.front.take();
-        self.front = whole(&self.menus, self.screen(), previous, self.pointer);
+        let screen = self.screen();
+        self.front = whole(&mut self.menus, screen, previous, self.pointer);
         if let Some(front) = self.front.as_mut() {
             front.clock(self.time);
         }

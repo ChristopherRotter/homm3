@@ -30,8 +30,16 @@
 //!   was last called, with the value (the caller's [`Scrollbar::press`], [`Scrollbar::moved`] and
 //!   [`Scrollbar::release`] return it).
 //!
-//! The keys of a bar with its arrows' keys (+0x5C, 0x596230) are not built: the scenario list's
-//! bar has none (its keys are the dialog's).
+//! - **The keys** (E27 M3 T2c: a bar with its arrows' keys, +0x5C, as the scenario screen's
+//!   description's; the procedure 0x5964E0, `scrollbar_key_step` 0x596230 read whole): at a key's
+//!   **release** (message type 2), while the bar shows and is enabled: Up and Left a tick back
+//!   when the value is above 0, Down and Right one on when it is below the last tick, Page Up and
+//!   Page Down a page (`set_value`, clamped) whatever the value ([`Scrollbar::key`]). The step
+//!   draws its arrow pressed (the top one for Up, Left and Page Up), shows it, waits 60 ms of the
+//!   clock (`clock_ms` + 0x3C into 0x6989A0, the adventure tick and the messages pumped
+//!   meanwhile), then shows the bar with its new value and reports it. The client steps at once,
+//!   its arrow not drawn pressed (*provisional*: the 60 ms are under every recipe's input step).
+//!   The scenario list's bar has none (its keys are the dialog's).
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -78,6 +86,19 @@ pub struct Scrollbar {
 
 /// How far either side of the bar a held mouse still counts as over it (0x596656: 0x28).
 const NEAR: i32 = 40;
+
+/// A key's step of a bar with its arrows' keys (the module's notes, "The keys").
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeyStep {
+    /// A tick back (Up, Left: scan codes 0x48, 0x4B).
+    Back,
+    /// A tick on (Down, Right: 0x50, 0x4D).
+    On,
+    /// A page back (Page Up: 0x49).
+    PageBack,
+    /// A page on (Page Down: 0x51).
+    PageOn,
+}
 
 impl Scrollbar {
     /// The bar of `look`, one tick, its value 0.
@@ -227,6 +248,42 @@ impl Scrollbar {
             self.place_thumb();
         }
         self.report()
+    }
+
+    /// Whether the key step `step` runs (0x5967F5, 0x596818: a tick back only above 0, a tick
+    /// on only below the last tick; a page always), drawing the bar.
+    #[must_use]
+    pub const fn takes_key(&self, step: KeyStep) -> bool {
+        match step {
+            KeyStep::Back => self.value > 0,
+            KeyStep::On => self.value < self.ticks - 1,
+            KeyStep::PageBack | KeyStep::PageOn => true,
+        }
+    }
+
+    /// A key's step (`scrollbar_key_step` 0x596230), when the bar takes it ([`takes_key`]): a
+    /// value not yet reported reported first (0x5963A3), then a tick back or on, or a page through
+    /// `set_value`; the value when it changed since last reported.
+    ///
+    /// [`takes_key`]: Scrollbar::takes_key
+    pub fn key(&mut self, step: KeyStep) -> Option<i32> {
+        if !self.takes_key(step) {
+            return None;
+        }
+        let before = self.report();
+        match step {
+            KeyStep::Back => {
+                self.value -= 1;
+                self.place_thumb();
+            }
+            KeyStep::On => {
+                self.value += 1;
+                self.place_thumb();
+            }
+            KeyStep::PageBack => self.set_value(self.value - self.look.step),
+            KeyStep::PageOn => self.set_value(self.value + self.look.step),
+        }
+        self.report().or(before)
     }
 
     /// The value set by a press (the vtable's +0x38: clamped, the thumb placed), not reported.

@@ -2713,4 +2713,95 @@ of 6 up to its load; the `scenario` and `advanced` groups otherwise as recorded.
 The description's scroll bar (`H3DlgScrollableText`'s path for more lines than the box holds,
 0x5BA19E, *not read*): no shipped map reaches it (159 maps: the longest descriptions fill 7 of the
 box's 7 lines at width − 24, 300 characters the longest), so its recording needs a map of
-the harness's own with a longer text (T2c). Begin with a map (T6).
+the harness's own with a longer text (T2c: §22). Begin with a map (T6).
+
+## 22. The description's scroll bar (M3 T2c, 2026-11-17)
+
+Read from `Heroes3.exe` (`H3DlgScrollableText` whole: `scrollable_text_create` 0x5B9FB0, its
+vtable 0x642D0C, `scrollable_text_set` 0x5BA6E0, the bar's subclass 0x642CC8; `font_split_lines`
+0x4B5B90; `scrollbar_key_step` 0x596230) and recorded (`scn-long-text`, new: a map of the
+harness's own). The client: `h3_view::shell::scenario::description` (`Description`,
+`DescriptionLook`, the layout's `[scenario.description]`), `h3_render::text::split_lines`,
+`h3_ui::scrollbar`'s keys (`KeyStep`), the harness's `made` maps.
+
+### 22.1 The scrolling text
+
+- **Built** (§18.1 completed): id −1; the text split at width − 24 (319 − 24 = 295); more lines
+  than the box shows (115 ÷ 16 = 7) keep that split, else it is split again at width − 3 and padded
+  with empty lines. Seven text items (id −1, alignment 0, colour 4) at (422, 155 + 16 k, 319, 16)
+  hold the first lines; the bar (`scrollbar_create`) at (725, 155, 16, 115), id −1, lines − 7 + 1
+  ticks, no callback, blue, a page of 7, its arrows' keys. Added to the dialog (vtable +4,
+  0x5BA2E0) the items and the bar come after it; a text that fits hides the bar.
+- **Set** (`scrollable_text_set`, from `scenario_to_game`): split again as built, the bar reset to
+  the new ticks at 0, shown (0x5BA82C) or hidden; each item takes its line; nothing drawn.
+- **Scrolled** (the bar's +0x40, 0x5B9FA0 → 0x5BA600, at every change its press, move, release or
+  key reports): the box less the bar's column put back from its copy of the screen (taken at its
+  first redraw, 0x5BA571), the items given lines value to value + 6 and drawn, the box shown.
+- **The record's 300 bytes** (`scenario_header_read` 0x583170: `strncpy` of 0x12C into +0x5C9;
+  `scenario_to_game` gives that copy): Jihad's description of exactly 300 shows whole with nothing
+  after it (`scn-long-text` `jihad`: the record's next byte 0 there). The client cuts at 300
+  (`DESCRIPTION_BYTES`; past them the record's next bytes are *not read*, *provisional*).
+
+### 22.2 The split (`font_split_lines` 0x4B5B90)
+
+Not the drawer's breaking (§18.1's one label held on the recorded maps): words up to a space, a newline or the end; **each byte at its glyph's
+advance, `{` and `}` too** (7 pixels each in `smalfont.fnt`; the drawer counts neither); a newline
+ends the line (the spaces before it dropped, an empty line kept); a word joins with its spaces
+while the line stays at most the width, else the line ends and the word starts the next without
+them; a word wider than the width is cut byte by byte. Each line being an item of its own, a
+highlight ends with its line (`scn-long-text`: "past the break,}" drawn plain). The client draws
+the lines shown as one label, a line left highlighted closed by a `}`, the fitting case too (the
+shipped maps' recipes stay exact; none of the 159 descriptions has a brace).
+
+### 22.3 The bar and its keys
+
+- The mouse as the list's (§19.2): an arrow at the release, the track a page of 7 at the press,
+  the thumb dragged.
+- **Its keys** (`scrollbar_proc` 0x5964E0 with +0x5C, read): at a key's **release** (message type
+  2) while the bar shows and is enabled: Up and Left a line back above 0, Down and Right one on
+  below the last, Page Up and Page Down a page (`set_value`, clamped) at any value. The step draws
+  its arrow pressed, waits 60 ms of the clock (`scrollbar_key_time` 0x6989A0), then shows the new
+  value (the client steps at once, *provisional*: no recipe's step is under 60 ms).
+- **With the list's keys** (CLT-Q140): the list moves at the key's **press**
+  (`scenario_dialog_proc`, message type 1; its table has nothing for Left and Right), the items
+  take the release first: Down onto a long description selects it at its first line, then its
+  release steps the bar (`down-pressed`, `down-released`: shown from its second line); Down on
+  the last row and Page Down in a list of one page step the bar alone; Up onto a short one finds
+  no bar. With the list hidden the keys step the bar alone.
+
+### 22.4 What a select resets, what the screen shows
+
+- `scenario_select` calls `scenario_to_game` whatever the change (0x58576F), so every select sets
+  the description anew (line 0, the bar at 0); `scenario_list_sort` calls it too, before its whole
+  redraw (0x5852A1, 0x5852BF), the click's select after. A difficulty's press and the list's
+  showing select nothing: the scroll stays (`hard`, `list-hidden`).
+- **The partial redraw** (§19.4, CLT-Q138) draws neither the items nor the bar: the select of the
+  row already selected leaves the screen's lines and thumb as last drawn while both are reset
+  (`row-again`); the top arrow at 0 then draws the bar alone (`row-again-up`: the thumb at the
+  top, the lines still scrolled); Page Up over the list redraws whole, selects, then its release
+  draws the bar at 0 (`page-up-list`). The client's original profile keeps what it last drew
+  (`Description::drew`), its own draws whole (decision 48).
+- **A right press** that shows no popup (no hint, not a row) redraws the screen whole at once
+  (§20.1): the client's `right` now does so (the partial redraw's leftovers gone).
+- **The kept map** (`scenario_last_map` 0x683238): every select of a new game keeps its file's
+  name, the next opening selects it (`reopened`: "Arrogance Retold"). The client keeps it at every
+  select and carries it to the next opening (`Menus::front`, `Scenario::keep`); before T2c it kept
+  Arrogance.
+
+### 22.5 The harness's own map and the recording
+
+A recipe's `[[recipe.made]]` (`file`, `from`, `name`, `description`) makes a shipped map's copy with
+its header's name and description replaced (`h3shell.py`'s `made_map`: the 10 bytes before the
+name, the two strings, the rest as read, compressed again without a time), written into the run's
+`Maps` at each run's start and into `drawn`'s folder, the viewer given its path (`--maps`: a name
+with a `/`). Never kept, never committed (ADR-0009); the description is ours. `scn-long-text`:
+Jihad (AB), Arrogance and "Arrogance Retold" (SoD, 277 bytes: two spaces, three before a newline,
+an empty line, an indent, a word wider than a line, braces and a highlight across a line's end,
+code-page letters; 18 lines at 295, 12 ticks). 36 shots, both runs alike; `drawn` 36 of 36 exact,
+every other `scenario` recipe as recorded.
+
+### 22.6 Not built (T3 on)
+
+The 60 ms of a key's step (above); a description past 300 bytes (the record's next bytes); a
+scrolling text elsewhere (the message box's long texts, 0x4F6BC7: M4's or the map client's,
+through `Description` or the foundation's when needed).

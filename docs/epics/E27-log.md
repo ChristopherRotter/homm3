@@ -1088,3 +1088,44 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
   in the PC's `original-data/install` (from the installation: the HANDOFF's staging line). The
   setup's baseline stopped at coverage by the watcher (its tests run under coverage: none ran);
   CI's green `master` stood in.
+
+## M3 T2c — the description's scroll bar (2026-11-17)
+
+- **Whole** (the user: a couple of small tasks or one bigger one; T2c taken as one, the fallback
+  cut reading-and-recording against the viewer named at the start, not needed).
+- **Read** (design §22): `H3DlgScrollableText` whole (`scrollable_text_create` 0x5B9FB0, the
+  vtable 0x642D0C: added 0x5BA2E0, its procedure 0x5BA4C0, `scrollable_text_set` 0x5BA6E0,
+  `scrollable_text_scroll` 0x5BA600; the bar's subclass 0x642CC8, +0x40 0x5B9FA0);
+  `font_split_lines` 0x4B5B90 (words, braces counted, a long word cut byte by byte);
+  `scrollbar_key_step` 0x596230 (at a key's release; 60 ms with the arrow pressed); the list
+  record's `strncpy` of 300 (`scenario_header_read`); `scenario_select` and `scenario_list_sort`
+  calling `scenario_to_game` (every select resets the description; the sort before its redraw);
+  `scenario_dialog_proc`'s keys at their press (nothing for Left and Right).
+- **The harness** (additive): a recipe's `[[recipe.made]]` maps (`made_map`: a shipped map's copy,
+  its header's name and description ours, written at each run and for `drawn`, never kept);
+  `drawn` gives their paths in `--maps`, the viewer reads a name with a `/` as a file.
+- **Recorded:** `scn-long-text` (new; Jihad, Arrogance and "Arrogance Retold", 36 shots; both runs
+  alike): the key's press and release apart, the arrows, the track, a drag, the selected row again
+  (the partial redraw leaving the lines and thumb as drawn), Page Up over the list, a whole redraw
+  scrolled, the keys with the list hidden, Jihad's 300 bytes, the reopening.
+- **Asked:** CLT-Q140 (the list's keys at their press and the bar's at their release: Down onto a
+  long description shows it from its second line).
+- **Built:** `h3_render::text::split_lines`; `h3_ui::scrollbar::KeyStep`, `takes_key`, `key`;
+  `h3_view::shell::scenario::description` (`Description`, `DescriptionLook`,
+  `description_names`, `DESCRIPTION_BYTES`), `Texts::description_font`, the layout's
+  `[scenario.description]`, `ScenarioLayout::description`; `Scenario::new` takes the description's
+  look beside the list's; `select` (every select: the kept map, `give_to_game`, the panel) apart
+  from `show` (a difficulty's press and the list's showing reset nothing); the description out of
+  the partial redraw's own (`redrawn`); a right press with no popup redraws whole (but a row's);
+  `Scroll::Left` and `Right` (`scenario-left`, `scenario-right`); `Scenario::keep` and
+  `Menus::front(&mut self)` carry the kept map to the next opening (it stayed Arrogance before);
+  `h3-battle-client`: the font's metrics (`metrics`), `maps::named` reads paths, the description
+  cut at 300 bytes. Eight map entries new (one a global), four updated.
+- **Compared:** `scn-long-text` 36 of 36 exact (30 at the first build: the difficulty's press
+  reset the scroll; then the kept map); the `scenario` group otherwise as recorded (`scn-sort` 5
+  of 13 again once the sort's `scenario_to_game` came before its redraw without the size mark),
+  `advanced`, `menus`, `multiplayer` as recorded.
+- **The sandbox:** the PC's 63 files of `original-data/` (with `MP3DEC.ASI`, now in its
+  `install/`), the four manuals and three help files staged at once, each checked against the
+  PC's `sha256sum`; the setup's baseline stopped at coverage by the watcher; CI's green `master`
+  stood in.

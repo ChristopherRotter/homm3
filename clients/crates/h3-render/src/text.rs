@@ -33,6 +33,8 @@
 //! font of height 0 draws nothing (the executable would loop for ever on a text of more lines
 //! than its box holds).
 
+use alloc::vec::Vec;
+
 use h3_assets::fnt::{Font, INK};
 
 use crate::Bugs;
@@ -517,6 +519,90 @@ pub fn wrapped_width(font: &Font, text: &[u8], width: i64) -> i64 {
         i += 1;
     }
     widest
+}
+
+/// `text` split into lines at `width` (H3API's `H3Font::SplitTextIntoLines`, 0x4B5B90; E27 M3
+/// T2c, read whole; the scrolling texts' split, `scrollable_text_create` 0x5B9FB0): by words, a
+/// word the bytes up to a space, a newline or the text's end, each byte counted at its glyph's
+/// advance, **`{` and `}` too** (the drawer counts neither). A newline ends the line (an empty one
+/// too), the spaces before it dropped. A word joins the line with the spaces before it while the
+/// line, they and it fit (at most `width`); else the line ends (when it has a width) and the
+/// word starts the next without them. A word wider than `width` is cut byte by byte, each line as
+/// full as it fits, the rest starting the next. The spaces at a line's start (the text's or a
+/// newline's) and at the text's end are kept; a last line of no width is not.
+///
+/// What the executable does that this does not: a glyph wider than `width` alone on a line loops
+/// for ever (no font of the game has one at the widths it splits at); here it takes a line of its
+/// own.
+#[must_use]
+pub fn split_lines(font: &Font, text: &[u8], width: i64) -> Vec<Vec<u8>> {
+    let at = |i: usize| text.get(i).copied().unwrap_or(0);
+    let advance = |c: u8| i64::from(font.glyph(c).advance());
+    let space = advance(b' ');
+    let mut lines = Vec::new();
+    let (mut line, mut line_width) = (Vec::new(), 0);
+    let mut i = 0;
+    if at(0) == 0 {
+        return lines;
+    }
+    loop {
+        // The spaces and newlines before the next word (0x4B5C29).
+        let (mut spaces, mut spaces_width) = (0, 0);
+        while matches!(at(i), b' ' | b'\n') {
+            if at(i) == b'\n' {
+                lines.push(core::mem::take(&mut line));
+                (line_width, spaces, spaces_width) = (0, 0, 0);
+            } else {
+                spaces += 1;
+                spaces_width += space;
+            }
+            i += 1;
+        }
+        // The word (0x4B5CBA), measured.
+        let mut end = i;
+        let mut word = 0;
+        while !matches!(at(end), 0 | b' ' | b'\n') {
+            word += advance(at(end));
+            end += 1;
+        }
+        if line_width + spaces_width + word > width {
+            if line_width > 0 {
+                lines.push(core::mem::take(&mut line));
+                line_width = 0;
+            }
+            (spaces, spaces_width) = (0, 0);
+            // A word wider than the line, cut where each line is full (0x4B5D81).
+            while word > width {
+                while !matches!(at(i), 0 | b' ' | b'\n') {
+                    let glyph = advance(at(i));
+                    if glyph + line_width > width && !line.is_empty() {
+                        break;
+                    }
+                    line.push(at(i));
+                    word -= glyph;
+                    line_width += glyph;
+                    i += 1;
+                    if glyph > width {
+                        break;
+                    }
+                }
+                lines.push(core::mem::take(&mut line));
+                line_width = 0;
+            }
+        }
+        // The spaces and the word (or its rest) join the line (0x4B5E49).
+        line.extend(core::iter::repeat_n(b' ', spaces));
+        line.extend_from_slice(&text[i..end]);
+        line_width += spaces_width + word;
+        i = end;
+        if at(i) == 0 {
+            break;
+        }
+    }
+    if line_width > 0 {
+        lines.push(line);
+    }
+    lines
 }
 
 /// Where a measure's line at `start` that broke with no space before it ends, the next line

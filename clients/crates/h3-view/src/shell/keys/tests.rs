@@ -91,7 +91,9 @@ fn the_commands_have_names_in_the_shell_s_table() {
             "scenario-up",
             "scenario-down",
             "scenario-page-up",
-            "scenario-page-down"
+            "scenario-page-down",
+            "scenario-left",
+            "scenario-right"
         ]
     );
     assert_eq!(Command::from_name("quit"), Some(Command::Button(105)));

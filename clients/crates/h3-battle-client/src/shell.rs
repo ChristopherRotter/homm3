@@ -686,6 +686,8 @@ fn menus(
         }),
         // Begin's message over an empty list (T2b: GENRLTXT 530).
         no_maps: Some(laid("shell.scenario.no-maps", Style::Ok)),
+        // The description's split (T2c): the font's metrics alone.
+        description_font: Some(metrics(font(&layout.scenario.description.font)?)),
     };
     Ok(Menus {
         main,
@@ -700,12 +702,24 @@ fn menus(
         ),
         scenario: Scenario::new(
             layout.scenario.dialog.clone(),
-            layout.scenario.list.clone(),
+            (
+                layout.scenario.list.clone(),
+                layout.scenario.description.clone(),
+            ),
             scenario_texts,
             crate::maps::named(crate::maps::entries(install), maps),
             bugs,
         ),
     })
+}
+
+/// A font's metrics alone (its glyphs' pixels dropped): what a split measures.
+fn metrics(font: &h3_assets::fnt::Font) -> h3_assets::fnt::Font {
+    let mut metrics = font.clone();
+    for glyph in &mut metrics.glyphs {
+        glyph.pixels = Vec::new();
+    }
+    metrics
 }
 
 /// A start clip parsed.
@@ -989,6 +1003,8 @@ fn replay_steps(options: &Options, drawer: &Drawer) -> Result<(), String> {
 /// start's clips on the window's clock (T5a), a key or a left press skipping them.
 fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(), String> {
     let mut shell = Shell::new(options.intro);
+    // The menus as they open, the scenario screen's kept map carried from one to the next.
+    let mut menus = drawer.menus.clone();
     let bytes = if options.intro {
         drawer.clips(options.bink_video)
     } else {
@@ -1260,9 +1276,7 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
         // E24-design §3.11).
         if on != Some(shell.screen()) {
             on = Some(shell.screen());
-            front = drawer
-                .menus
-                .front(shell.screen(), previous.take(), pointer.unwrap_or(PARK));
+            front = menus.front(shell.screen(), previous.take(), pointer.unwrap_or(PARK));
             // The scenario screen's background, the client's own draw (E27 M3 T1a, a look):
             // `random_between(1, 100) < 51` gives `gamselb1.pcx`.
             if let Some(Front::Scenario(s)) = front.as_mut() {

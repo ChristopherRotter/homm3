@@ -69,6 +69,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 
+use h3_assets::fnt::Font;
 use h3_render::Bugs;
 use h3_ui::input::Input;
 use h3_ui::scrollbar::{self, Scrollbar};
@@ -79,6 +80,11 @@ use super::Ended;
 use super::keys::{Command, Context, Scroll};
 use super::menu::{Arrow, Did, Hovers};
 use crate::message::{MessageBox, Open, Outcome};
+
+mod description;
+
+use description::Description;
+pub use description::{DESCRIPTION_BYTES, DescriptionLook, description_names};
 
 /// Show Available Scenarios (128: S).
 pub const LIST: u16 = 128;
@@ -406,6 +412,9 @@ pub struct Texts {
     /// Begin's message over an empty list (GENRLTXT 530 in an OK box, E27 M3 T2b; none: Begin
     /// does nothing there).
     pub no_maps: Option<MessageBox>,
+    /// The description's font (`smalfont.fnt`, its metrics: E27 M3 T2c, the split); none: the
+    /// description one label, never scrolling.
+    pub description_font: Option<Font>,
 }
 
 /// The teams' dialog's look (`scenario_teams_dialog` 0x576540; the layout's `[scenario.teams]`):
@@ -539,6 +548,8 @@ pub struct Scenario {
     top: usize,
     look: ListLook,
     bar: Scrollbar,
+    /// The description, its split and its bar (E27 M3 T2c).
+    description: Description,
     /// The list shows (+0x37D).
     showing: bool,
     /// The list was built (+0x1864): its first showing.
@@ -576,14 +587,14 @@ pub struct Scenario {
 }
 
 impl Scenario {
-    /// The screen from the layout's `dialog` and the list's look `look`, its texts `texts` and
-    /// the maps `entries` (in the list's order, [`sort`]), the kept map [`KEPT_MAP`] and the
-    /// difficulty [`OPENING_DIFFICULTY`], in the profile `bugs`; the list hidden, the flags too
-    /// until a map shows (the constructor's).
+    /// The screen from the layout's `dialog`, the list's look `look` and the description's
+    /// `description`, its texts `texts` and the maps `entries` (in the list's order, [`sort`]),
+    /// the kept map [`KEPT_MAP`] and the difficulty [`OPENING_DIFFICULTY`], in the profile
+    /// `bugs`; the list hidden, the flags too until a map shows (the constructor's).
     #[must_use]
     pub fn new(
         dialog: Dialog,
-        look: ListLook,
+        (look, description): (ListLook, DescriptionLook),
         texts: Texts,
         entries: Vec<Entry>,
         bugs: Bugs,
@@ -596,6 +607,7 @@ impl Scenario {
             shown.states.insert(id, hidden());
         }
         let bar = Scrollbar::new(look.bar.clone());
+        let description = Description::new(description, texts.description_font.clone());
         let chosen = !entries.is_empty();
         let listed = (0..entries.len()).collect();
         let mut scenario = Self {
@@ -609,6 +621,7 @@ impl Scenario {
             top: 0,
             look,
             bar,
+            description,
             showing: false,
             built: false,
             key: BUILT_KEY,
@@ -633,6 +646,12 @@ impl Scenario {
         scenario.selecting()
     }
 
+    /// The map `left` kept, for the screen's next opening (E27 M3 T2c: `scenario_last_map`
+    /// 0x683238 outlives the screen).
+    pub fn keep(&mut self, left: &Self) {
+        self.kept.clone_from(&left.kept);
+    }
+
     /// The screen opened anew (`scenario_new` 0x4F0490), the menus' last items `hovers` carried
     /// for the menu after it, its background `gamselb0.pcx` until the caller draws
     /// ([`Scenario::with_background`]): the kept map selected, the difficulty
@@ -649,7 +668,7 @@ impl Scenario {
         };
         let mut opened = Self::new(
             self.dialog.clone(),
-            self.look.clone(),
+            (self.look.clone(), self.description.look().clone()),
             self.texts.clone(),
             self.entries.clone(),
             self.bugs,
@@ -753,7 +772,7 @@ impl Scenario {
     fn selecting(mut self) -> Self {
         let kept = self.kept_row();
         self.selected = kept.or_else(|| (!self.listed.is_empty()).then_some(0));
-        self.show();
+        self.select();
         self.whole();
         self
     }
@@ -862,10 +881,13 @@ impl Scenario {
             self.key = key;
         }
         self.sort_list(key, self.descending);
-        // The sort redraws whole before the click selects its first row (0x5852BF), which it
-        // already is: the select's partial redraw (CLT-Q138).
+        // The sort gives its first row's map to the game (`scenario_to_game` from 0x5852A1: the
+        // description set, E27 M3 T2c; the size mark as it was) and redraws whole (0x5852BF)
+        // before the click selects that row, which it already is: the select's partial redraw
+        // (CLT-Q138).
+        self.give_to_game();
         self.whole();
-        self.show();
+        self.select();
         self.partial = true;
     }
 
@@ -880,7 +902,7 @@ impl Scenario {
         self.selected = (!self.listed.is_empty()).then_some(0);
         self.bar.reset(self.ticks());
         self.shown.frames.insert(SIZE, size_frame(size));
-        self.show();
+        self.select();
         self.whole();
     }
 
@@ -888,7 +910,7 @@ impl Scenario {
     fn scrolled(&mut self, value: Option<i32>) {
         if let Some(value) = value {
             self.top = usize::try_from(value).unwrap_or(0);
-            self.show();
+            self.select();
             self.partial = true;
         }
     }
@@ -933,6 +955,8 @@ impl Scenario {
                 }
                 self.selected = Some(new);
             }
+            // The description's bar's keys alone (the dialog's procedure's table: nothing).
+            Scroll::Left | Scroll::Right => return,
             Scroll::PageUp | Scroll::PageDown => {
                 if scroll == Scroll::PageUp {
                     self.top = self.top.saturating_sub(page);
@@ -951,7 +975,7 @@ impl Scenario {
         // The key redraws whole (0x587ED5), then selects: a selection that stays redraws part
         // (CLT-Q138).
         self.whole();
-        self.show();
+        self.select();
         if self.selected == before {
             self.partial = true;
         } else {
@@ -984,7 +1008,7 @@ impl Scenario {
         self.last_row = Some((self.now, Some(index)));
         let same = self.selected == Some(index);
         self.selected = Some(index);
-        self.show();
+        self.select();
         if same {
             self.partial = true;
         } else {
@@ -997,6 +1021,15 @@ impl Scenario {
         self.partial = false;
         let frame = self.shown.frames.get(&SIZE).copied().unwrap_or(0);
         self.drawn_size = (self.shown.state(SIZE), frame);
+        self.description.drew();
+    }
+
+    /// The description's label shows its lines as they are now (its bar moved: E27 M3 T2c).
+    fn described(&mut self) -> Did {
+        self.shown
+            .texts
+            .insert(DESCRIPTION, self.description.text());
+        Did::CHANGED
     }
 
     /// Whether the screen shows the partial redraw (the original's profile, the list showing).
@@ -1037,7 +1070,7 @@ impl Scenario {
             entry.name.clone()
         };
         shown.texts.insert(NAME, name);
-        shown.texts.insert(DESCRIPTION, entry.description.clone());
+        shown.texts.insert(DESCRIPTION, self.description.text());
         let victory = match entry.victory {
             Some(goal) if entry.standard => text_at(&t.with_standard, usize::from(goal)),
             Some(goal) => text_at(&t.victories, usize::from(goal) + 1),
@@ -1074,12 +1107,39 @@ impl Scenario {
         }
     }
 
+    /// A select (`scenario_select` 0x585500, whatever the change: `scenario_to_game` 0x583580):
+    /// the map kept for the next opening (`scenario_last_map` 0x683238), the panel shown, the
+    /// description set anew from its first line (E27 M3 T2c, `scrollable_text_set` 0x5BA6E0;
+    /// empty over an empty list, the kept map as it was). A difficulty's press and the list's
+    /// showing select nothing.
+    fn select(&mut self) {
+        if let Some(file) = self.entry().map(|e| e.file.clone()) {
+            self.kept = file;
+        }
+        self.give_to_game();
+        self.show();
+    }
+
+    /// The selected map given to the game (`scenario_to_game` 0x583580): the description set
+    /// anew (`scrollable_text_set` 0x5BA6E0), empty over an empty list.
+    fn give_to_game(&mut self) {
+        let text = self
+            .entry()
+            .map(|e| e.description.clone())
+            .unwrap_or_default();
+        self.description.set(&text);
+        self.shown
+            .texts
+            .insert(DESCRIPTION, self.description.text());
+    }
+
     /// The panel over an empty list (E27 M3 T2b, design §21.2): the select does nothing there
     /// (0x58553C) and `scenario_info_draw` 0x5840F0 draws nothing of a map (0x584128), the rating
     /// neither. The original's size mark and flags keep what they showed (a filter's size, set
     /// first, or the constructor's S; the last map's flags); the client's size mark shows frame 4
     /// (CLT-Q115 (b)) and no flags (CLT-Q139 (b)).
     fn show_empty(&mut self) {
+        self.description.set("");
         let shown = &mut self.shown;
         for id in [NAME, DESCRIPTION, VICTORY, LOSS, MAP_DIFFICULTY, RATING] {
             shown.texts.insert(id, String::new());
@@ -1142,12 +1202,17 @@ impl Scenario {
             let (state, frame) = self.drawn_size;
             rest.states.insert(SIZE, state);
             rest.frames.insert(SIZE, frame);
+            // The description's lines as last drawn (E27 M3 T2c: the select reset them, undrawn).
+            let drawn = String::from(self.description.drawn_text());
+            rest.texts.insert(DESCRIPTION, drawn);
             let mut draws = self.dialog.draws(&rest, players);
             draws.extend(self.dialog.draws(&again, players));
             draws
         } else {
             self.dialog.draws(&self.shown, players)
         };
+        let stale = self.stale();
+        draws.extend(self.description.bar_draws(self.dialog.place, stale));
         if self.showing {
             draws.extend(self.bar.draws(self.dialog.place));
             draws.extend(self.row_draws());
@@ -1272,6 +1337,10 @@ impl Scenario {
             self.scrolled(value);
             return Did::CHANGED;
         }
+        if self.description.held() {
+            self.description.moved(self.inside(point));
+            return self.described();
+        }
         match &mut self.over {
             Over::Nothing => Did::held(self.input.moved(&self.dialog, &mut self.shown, point)),
             Over::Notice(open) => Did::of_box(open.moved(point)),
@@ -1295,6 +1364,9 @@ impl Scenario {
             let value = self.bar.press(inside);
             self.scrolled(value);
             return Did::CHANGED;
+        }
+        if self.row.is_none() && self.description.press(inside) {
+            return self.described();
         }
         let rows = ROW..ROW.saturating_add(self.look.rows);
         match self.item_at(point) {
@@ -1322,6 +1394,10 @@ impl Scenario {
             self.scrolled(value);
             return Did::CHANGED;
         }
+        if self.description.held() {
+            self.description.release();
+            return self.described();
+        }
         if let Some(row) = self.row.take() {
             let over = self.item_at(self.pointer) == Some(row);
             if self.bugs == Bugs::Original || over {
@@ -1345,9 +1421,13 @@ impl Scenario {
 
     /// The right button pressed at `point` (`scenario_dialog_right_click` 0x5822D0): on the
     /// flags' strip the teams' dialog, on the list's bar or another item its help, unless the
-    /// mouse holds a button or the bar.
+    /// mouse holds a button or a bar; anywhere else but a row the screen redrawn whole.
     pub fn right(&mut self, point: [i32; 2]) -> Did {
-        if self.over != Over::Nothing || self.input.holds_button() || self.bar.held() {
+        if self.over != Over::Nothing
+            || self.input.holds_button()
+            || self.bar.held()
+            || self.description.held()
+        {
             return Did::default();
         }
         let on_bar = self.showing && self.bar.contains(self.inside(point));
@@ -1367,7 +1447,15 @@ impl Scenario {
                 self.over = Over::Help(id);
                 Did::CHANGED
             }
-            None => Did::default(),
+            // No popup: the screen redrawn whole at once, but on a row (E27 M3 T2c: the
+            // description's lines and its bar, design §20.1).
+            None if id.is_some_and(|id| (ROW..ROW + self.look.rows).contains(&id)) => {
+                Did::default()
+            }
+            None => {
+                self.whole();
+                Did::CHANGED
+            }
         }
     }
 
@@ -1447,7 +1535,7 @@ impl Scenario {
     /// The right button released: the popup closed; the bar or a button the mouse holds released
     /// as by the left button (the bar's loop ends at either release, 0x596607).
     pub fn right_release(&mut self) -> Did {
-        if self.bar.held() {
+        if self.bar.held() || self.description.held() {
             return self.release();
         }
         match &mut self.over {
@@ -1468,7 +1556,7 @@ impl Scenario {
     /// A key down: the key table's `command` for it, `by` its name (whose release clicks); the
     /// list's keys while it shows. None while the bar is held (its loop takes no key).
     pub fn key(&mut self, command: Option<Command>, by: &str) -> Did {
-        if self.bar.held() {
+        if self.bar.held() || self.description.held() {
             return Did::default();
         }
         if let Over::Notice(open) = &mut self.over {
@@ -1481,9 +1569,18 @@ impl Scenario {
             (Over::Nothing, Some(Command::Dialog(id))) if self.has(id) => {
                 Did::held(self.input.key(&mut self.shown, id, by))
             }
-            (Over::Nothing, Some(Command::List(scroll))) if self.showing => {
-                self.scroll(scroll);
-                Did::CHANGED
+            (Over::Nothing, Some(Command::List(scroll))) => {
+                // The description's bar steps at the key's release (E27 M3 T2c).
+                self.description.key_down(scroll, by);
+                if self.showing {
+                    self.scroll(scroll);
+                }
+                let list = !matches!(scroll, Scroll::Left | Scroll::Right);
+                if self.showing && list {
+                    Did::CHANGED
+                } else {
+                    Did::default()
+                }
             }
             _ => Did::default(),
         }
@@ -1491,10 +1588,16 @@ impl Scenario {
 
     /// The key `by` released.
     pub fn key_up(&mut self, by: &str) -> Did {
+        // The description's bar first (an item of the dialog: the key's release reaches the items
+        // before the screen's procedure), with nothing over the screen (E27 M3 T2c).
+        let free = self.over == Over::Nothing;
+        let stepped = self.description.key_up(by, free) && self.described().changed;
         match &mut self.over {
             Over::Nothing => {
                 let did = self.input.key_up(&mut self.shown, by);
-                self.clicked(did.changed, did.clicked)
+                let mut did = self.clicked(did.changed, did.clicked);
+                did.changed |= stepped;
+                did
             }
             Over::Help(_) | Over::Teams(_) => {
                 let did = self.input.let_go(&mut self.shown, Some(by));
@@ -1589,10 +1692,10 @@ impl Scenario {
 
 /// Whether the partial redraw (`scenario_select` 0x585500 with the selection unchanged, from
 /// 0x585A06) draws item `id` again: the list's panel, its title, the filters and the columns, and
-/// what the redraw draws itself (the client's ids but the right-hand panel and the constructor's
-/// labels).
+/// what the redraw draws itself (the client's ids but the right-hand panel, the constructor's
+/// labels and the description's lines, items of the scrolling text: E27 M3 T2c).
 fn redrawn(id: u16) -> bool {
-    let own = (NAME..=RATING).contains(&id) || id == SIZES;
+    let own = ((NAME..=RATING).contains(&id) && id != DESCRIPTION) || id == SIZES;
     own || id == PANEL
         || id == TITLE
         || FILTERS.iter().any(|&(f, _)| f == id)

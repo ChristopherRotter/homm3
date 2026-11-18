@@ -35,6 +35,10 @@ A recipe (a `[[recipe]]` of shell/<group>.toml): `id`, `what` (the catalogue's s
   registry  dwords of the settings key for this run, over setup.sh's (`Show Intro`, …)
   maps      the run's Maps/: "all" (the default: original-data/install/Maps), or a list of names
             (the viewer's too since E27 M3 T1b1: `drawn` gives them as `--maps`)
+  made      maps of the harness's own (E27 M3 T2c; `[[recipe.made]]` tables): `file` (its name in
+            the run's Maps/, listed in `maps`), `from` (the shipped map it copies), `name` and
+            `description` (its header's, ours, Windows-1252), written at each run's start
+            (`made_map`) and given to the viewer by path; never kept, never committed (ADR-0009)
   games     the run's Games/: files of original-data/games (default none)
   frozen    false: the clock runs in real time until a step freezes it (default true)
   sound     true: the game plays its sounds (h3drive's `sound`: an audio driver, the effects at
@@ -52,11 +56,13 @@ Every run starts from setup.sh's registry (the settings key removed and written 
 run saved never reaches the next), no HiScore.dat, the listed maps and saves.
 """
 
+import gzip
 import hashlib
 import math
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import time
@@ -231,18 +237,57 @@ def registry_file(values):
     return (head + "\r\n\r\n" + "\r\n".join(lines) + "\r\n" + rest).encode("cp1252")
 
 
+SHIPPED_MAPS = DATA / "install" / "Maps"
+# A map file's formats whose header starts as `made_map` reads it (RoE, AB, SoD: h3m.md).
+MADE_FORMATS = (0x0E, 0x15, 0x1C)
+
+
+def made_map(made):
+    """A map of the harness's own (E27 M3 T2c): the shipped map `from` with its header's name and
+    description replaced (each a length and Windows-1252 bytes after the format, the players'
+    flag, the size and the levels: 10 bytes), compressed again (no file time: the same bytes at
+    every run)."""
+    raw = gzip.decompress((SHIPPED_MAPS / made["from"]).read_bytes())
+    if struct.unpack_from("<I", raw, 0)[0] not in MADE_FORMATS:
+        raise ValueError(f"{made['from']}: not a RoE, AB or SoD map")
+
+    def field(at):
+        return at + 4 + struct.unpack_from("<I", raw, at)[0]
+
+    name_end = field(10)
+    description_end = field(name_end)
+    name = made.get("name")
+    name = raw[14:name_end] if name is None else name.encode("cp1252")
+    description = made["description"].encode("cp1252")
+    header = b"".join(struct.pack("<I", len(s)) + s for s in (name, description))
+    return gzip.compress(raw[:10] + header + raw[description_end:], mtime=0)
+
+
+def write_made(recipe, folder):
+    """The recipe's own maps (`made`) written into `folder`; their paths."""
+    folder.mkdir(parents=True, exist_ok=True)
+    paths = []
+    for made in recipe.get("made", []):
+        path = folder / made["file"]
+        path.write_bytes(made_map(made))
+        paths.append(path)
+    return paths
+
+
 def prepare(recipe):
     game = h3drive.GAME_DIR
     maps = recipe.get("maps", "all")
-    shipped = DATA / "install" / "Maps"
+    shipped = SHIPPED_MAPS
+    made = {m["file"] for m in recipe.get("made", [])}
     if maps == "all":
         chosen = sorted(p for p in shipped.iterdir() if p.is_file())
     else:
-        chosen = [shipped / m for m in maps]
+        chosen = [shipped / m for m in maps if m not in made]
     missing = [str(p) for p in chosen if not p.is_file()]
     if missing:
         raise RuntimeError(f"{recipe['id']}: maps not staged: {missing}")
     fill(game / "Maps", chosen)
+    write_made(recipe, game / "Maps")
     saves = [DATA / "games" / g for g in recipe.get("games", [])]
     missing = [str(p) for p in saves if not p.is_file()]
     if missing:
@@ -886,9 +931,15 @@ def drawn_recipe(recipe, out):
     if recipe.get("backgrounds"):
         args += ["--backgrounds", ",".join(str(int(b)) for b in recipe["backgrounds"])]
     # E27 M3 T1b1: a recipe's own maps (its run's Maps/), a name a line; "all" gives every map.
+    # E27 M3 T2c: a map of the harness's own by its path (written here).
     maps = recipe.get("maps", "all")
-    if maps != "all":
-        (here / "maps.txt").write_text("".join(m + "\n" for m in maps))
+    made = {p.name: p for p in write_made(recipe, here / "made")}
+    if maps == "all":
+        maps = sorted(p.name for p in SHIPPED_MAPS.iterdir() if p.is_file()) if made else None
+    if maps is not None:
+        lines = [str(made[m].resolve()) if m in made else m for m in maps]
+        lines += [str(p.resolve()) for name, p in made.items() if name not in maps]
+        (here / "maps.txt").write_text("".join(m + "\n" for m in lines))
         args += ["--maps", str(here / "maps.txt")]
     # E27 M2 T5b1: a sound recipe's effects (h3drive's volume 5): the clips with their sound, its
     # starts and stops listed (`sound`, `quiet`; compared from T5b2 on).

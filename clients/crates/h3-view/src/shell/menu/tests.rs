@@ -795,7 +795,7 @@ fn a_stub_s_notice_takes_the_box_s_inputs_and_its_ok_ends_the_screen() {
 #[test]
 fn the_front_is_a_menu_or_the_multiplayer_dialog_over_its_menu() {
     // E27 M2 T7.
-    let all = menus(Bugs::Fixed);
+    let mut all = menus(Bugs::Fixed);
     let mut front = all
         .front(Screen::GameType(Game::New), None, [400, 300])
         .unwrap();
@@ -834,7 +834,7 @@ fn the_front_is_a_menu_or_the_multiplayer_dialog_over_its_menu() {
     // New Game's menu again: the pointer over Multiplayer drawn hovered at the first move
     // (CLT-Q128, fixed); in the original's profile its procedure's last item is still
     // Multiplayer, so that move is no change.
-    let original = menus(Bugs::Original);
+    let mut original = menus(Bugs::Original);
     let mut kept = original
         .front(
             Screen::GameType(Game::New),
@@ -915,7 +915,7 @@ fn the_scenario_screen_is_a_stub_over_its_game_type_menu() {
 fn a_new_single_scenario_s_screen_takes_its_inputs_through_the_front() {
     // E27 M3 T1a: opened from New Game's menu, the adventure map's arrow (CLT-Q137) and the
     // menus' statics carried.
-    let all = menus(Bugs::Original);
+    let mut all = menus(Bugs::Original);
     let screen = Screen::Scenario(Game::New, ScenarioKind::Single);
     let new_game = all.front(Screen::GameType(Game::New), None, [0, 0]);
     let mut front = all.front(screen, new_game, [790, 300]).unwrap();

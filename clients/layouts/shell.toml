@@ -827,3 +827,20 @@ team = { id = 2, at = [10, 56], size = [236, 18], font = "smalfont.fnt", font_pa
 flag = { id = 10, def = "itgflags.def", at = [0, 76], size = [15, 20] }
 step = 50
 flag_step = 18
+
+# The description (E27 M3 T2c: scrollable_text_create 0x5B9FB0 at (422, 155, 319, 115),
+# smalfont.fnt, the label 1002's): split at the width less 24 (scrolling) or 3, the box's 7
+# lines; its bar at the box's right edge (x + width - 16), 16 wide and the box's height, blue, a
+# page of the 7 lines shown (the bar's id the original's -1: the client's own).
+[scenario.description]
+font = "smalfont.fnt"
+size = [319, 115]
+
+[scenario.description.bar]
+id = 1021
+at = [725, 155]
+size = [16, 115]
+def = "SlideBuV.def"
+track = "sliderV.pcx"
+button = 16
+step = 7
