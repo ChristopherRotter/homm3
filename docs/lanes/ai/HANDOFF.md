@@ -33,9 +33,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `TRAPS.md`, Python). **Increment 9: a richer observation (v23)** (AI-Q18; the decisions the
   agent's proposal, the user reviews the design): **T37, v23's design, next** (the sandbox, no
   GPU; `QUEUE.md`).
-- **Open pull requests:** the one of `claude/adoring-turing-tl1huu` (T36's close, `[gate]
-  futility`, increment 9 refined) and its `shared/` companion (the README's E25 row). Merged:
-  #954, #965 (T35's close, T36).
+- **Open pull requests:** #1022 (`claude/adoring-turing-tl1huu`: T36's close, `[gate]
+  futility`, increment 9 refined) and #1023 (`shared/e25-increment-8`: the README's E25 row).
+  Merged: #954, #965 (T35's close, T36).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
