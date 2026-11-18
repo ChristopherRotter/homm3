@@ -387,6 +387,20 @@ The user, 2026-11-17 (M3 T2's start):
     popups (`adv-single-town`); T3b the hero's arrows and popups, the computer's rows
     (`adv-single-hero`, `adv-single-maps`); T3c the flags, the name's edit, the handicap, the
     duration, the hints (`adv-single-rest`, §6.4's `popup-hero-arrow` recorded again on row 2).
+54. **T3b cut in two** (offered at its start, the user, 2026-11-18): T3b1 the engine's offer (each
+    map's import, `GameSetup::offer` by faction), the hero's arrows and pick, a hero's small
+    portrait and name in the row, Random's popup, CLT-Q112's rows (`adv-single-hero`,
+    `adv-single-maps` but the hero popups' four shots); T3b2 a hero's own popup
+    (`scenario_hero_popup` 0x575A90 read whole).
+55. **A main hero of its type's portrait shows that hero** (CLT-Q141 (b), the user, 2026-11-18):
+    the original keeps the file's 0xFF as −1 and its row shows None (Random under a Random town),
+    its name dropped (52 main heroes of the shipped maps); the client shows the type's portrait and
+    the map's name, else the type's, its right press the hero's popup (T3b2); the original's for the
+    comparisons only. Built at T3b1.
+56. **A pick named by its own name** (CLT-Q142 (b), the user, 2026-11-18): with a flag and a named
+    main hero the original names every pick by the main hero (no shipped map reaches it); the
+    client names a pick by the map's customised name, else its type's; the original's for the
+    comparisons only. Built at T3b1.
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
@@ -490,8 +504,9 @@ catalogue: design §3; the shell's frame, menus, edits and the hot seat's names:
 | T2b | The empty list and Begin's messages (§3.5, §3.6; decision 50): the empty list's panel, its teams' dialog, a difficulty's press over it, GENRLTXT 530; exact against `scn-begin-none` (its strip and a press added), `scn-begin-filter` up to its load, `scn-empty-filter` (new) | **done** 2026-11-17 (CLT-Q139 (b), decision 51): `show_empty`, `begin`, `Over::Notice` (the box's default arrow), `Texts::no_maps`, the key `shell.scenario.no-maps`; `scn-begin-none` 7 of 7, `scn-begin-filter` 6 of 6 up to its load, `scn-empty-filter` 5 of 5 exact; log "M3 T2a, T2b", design §21.2, §21.3 |
 | T2c | The description's scroll bar (§3.5; design §18.1, §21.5; decision 50): `H3DlgScrollableText`'s path for a text longer than its box (0x5BA19E) read and built; no shipped map reaches it, so a map of the harness's own with a longer description (made from a shipped one) and a recipe of it; exact against that recipe | **done** 2026-11-17: `scenario::description` (`Description`, `DescriptionLook`, `[scenario.description]`), `h3_render::text::split_lines` (0x4B5B90), `h3_ui::scrollbar`'s keys (0x596230), `Scroll::Left`/`Right`; the kept map carried (`Menus::front`); the harness's `made` maps; `scn-long-text` 36 of 36 exact; CLT-Q140 asked; log "M3 T2c", design §22 |
 | T3a | The advanced options' panel and rows, the town's and the bonus's arrows and popups (§3.12 to §3.15; decision 53: T3 cut in three by recipe): the panel, the headers, the duration's text and bar drawn; a row per colour that plays; the records (`GameSetup`'s choices at T6: `PlayerStart.choice`), the bonus a `CLT-STUB`; exact against `adv-single-town` | **done** 2026-11-18: `scenario::advanced` (`Advanced`, `AdvancedLook`, `AdvancedTexts`, `Record`, `Bonus`), `Scenario::records`, the layout's `[scenario.advanced]`, the seats' factions and flags, `h3_ui::scrollbar`'s horizontal draw, `CLT-STUB-9`; CLT-Q140 (b) built (decision 52); `adv-single-town` 27 of 27 exact, `adv-single-hero` and `adv-single-maps` exact but the hero's box; log "M3 T3a", design §23 |
-| T3b | The hero's arrows and popups and a main hero's portrait and name (§3.14, §3.15; the heroes' small portraits, `GameSetup::offer`'s pick, the clash stepped on); the computers' rows; exact against `adv-single-hero`, `adv-single-maps` | after T3a |
-| T3c | The flags' press and hover, the name's edit, the handicap (single: no press), the duration's bar's input and texts, the items' hints (§3.13 to §3.15; the handicap and the timer each a `CLT-STUB`, decision 6); exact against `adv-single-rest` (§6.4: `popup-hero-arrow` recorded again on row 2's arrow) | after T3b |
+| T3b1 | The hero's arrows and a hero's portrait and name (§3.14, §3.15; decision 54): the engine's offer from each map's import, the pick into the records, the heroes' small portraits, the main heroes' and the map's names, Random's popup, CLT-Q112's rows; exact against `adv-single-hero`, `adv-single-maps` but a hero's popup | **done** 2026-11-18: `scenario::Heroes`, `CustomHero`, `Entry::heroes`, `MainHero::portrait` (CLT-Q141 (b), decision 55), the options' hero list, step, show and name (CLT-Q142 (b), decision 56), Random's popup; `h3-battle-client`'s `maps::rules`, `maps::heroes` (`h3-files`, `h3-game` dependencies); the asset tables' `small_portrait` (the harvest's +0x30); `adv-single-hero` 26 of 28, `adv-single-maps` 11 of 13 exact (the four hero popups T3b2's); log "M3 T3b1", design §24 |
+| T3b2 | A hero's own popup (§3.15, design §24.3: `scenario_hero_popup` 0x575A90 read whole: the name, the portrait, the class and level, GENRLTXT 78 and 79's headings, the specialty's picture and text); exact against `adv-single-hero`, `adv-single-maps` | after T3b1 |
+| T3c | The flags' press and hover, the name's edit, the handicap (single: no press), the duration's bar's input and texts, the items' hints (§3.13 to §3.15; the handicap and the timer each a `CLT-STUB`, decision 6); exact against `adv-single-rest` (§6.4: `popup-hero-arrow` recorded again on row 2's arrow) | after T3b2 |
 | T4 | The advanced options in the hot seat (§3.14): two to eight humans, the flags' cycle, the names from the Multiplayer dialog (`Multiplayer::names`, M2's item 61); exact against `adv-hotseat`, `adv-hotseat-rows`, `adv-hotseat-two` | after T3c |
 | T5 | The random map's tab (§3.16; CLT-Q92: drawn, its generator a stub); exact against `adv-random` (§6.4: Begin after `tab-again`) | after T4 |
 | T6 | The game's begin (§3.17, §2.1; CLT-Q95, CLT-Q135): the setup built and validated by the engine (a refusal shown), the loading bar (`loadbar.pcx`, `loadprog.def`; the client's steps), the begin's notice (a `CLT-STUB`) and back to the menu, the setup kept for E24 M5 (the map-client lane's inbox); exact against `adv-begin` and `adv-hotseat-begin` up to the bar | after T5 |
@@ -529,6 +544,11 @@ the mouse a dialog without the options' hidden items (`mouse_dialog`) rather tha
 passing over hidden items; the records kept in the screen (`Scenario::records`) for T6's
 `GameSetup`; the popups' pictures centred by the layout (`picture = [104, 60]`: 48-pixel
 pictures); the horizontal scroll bar drawn by symmetry (*provisional* until T3c's presses).
+(14) T3b1: the offers computed at the shell's start from each map's import with the repository's
+packs (`maps::rules`: base, ab, sod, `base:faithful`; a map that does not import offers none) and
+kept in the entry (`Heroes`: 8 × 9 lists), not the setup itself (T6 imports the chosen map again);
+the record keeps the hero type, not the original's index; the small portraits in the asset tables
+by hero type (`small_portrait`), the campaign heroes' seven portraits not tabled (not drawn).
 
 ## Dependencies and boundaries
 

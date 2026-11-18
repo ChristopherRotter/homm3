@@ -1159,3 +1159,27 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
   `scenario` as recorded after `mouse_dialog` (the hidden headers had taken the columns' and
   filters' presses: `scn-sort`, `scn-filter`, `scn-info`, `scn-begin-filter`, `scn-empty-filter`);
   `multiplayer` as recorded; `drawn.txt` recorded for `advanced`.
+
+## M3 T3b1 — the hero's offer, arrows, portraits and names (2026-11-18)
+
+- **Cut** (the user, decision 54): T3b in two (offered: two, the hero's own popup apart); T3b1 this
+  session.
+- **Staged** from the PC at once: the 64 files and the seven manuals and help files, each checked
+  by SHA-256 against the PC's (one digest of the sorted hashes each side, `619ed1bc…`). The setup's
+  baseline stopped at `check.sh`'s coverage by a watcher (fmt, clippy, doc tests, deny passed).
+- **Read** (design §24): the step, the hero arrows' clicks, `scenario_shown_hero` and
+  `scenario_shown_hero_name` whole, the row's hero draw, the right press's hero areas, the
+  constructor's 163 portraits. Two oddities asked and answered: CLT-Q141 (b) (a main hero of its
+  type's portrait shows none; decision 55), CLT-Q142 (b) (a pick named by the main hero; decision
+  56).
+- **Built:** `scenario::Heroes`, `CustomHero`, `Entry::heroes`, `MainHero::portrait` an `Option`;
+  `advanced::Map` (the options' seats, heroes and local colour), `Advanced`'s `hero_list`,
+  `step_hero`, `shown_hero`, `hero_name`, `hero_popup` and its profile (`bugs`);
+  `AdvancedTexts::hero_names`, `portraits`, `random_hero`; the keys
+  `shell.advanced.random-hero.*`; `h3-battle-client`: `maps::rules`, `maps::heroes` (the import
+  and the offer by faction; `h3-files` and `h3-game` dependencies), the shell's portraits in its
+  batch, `menus` taking the tables; the harvest's `small_portrait` (+0x30) and the asset tables'
+  156 (base 128, ab 28; the gate checks both portraits now).
+- **Compared:** `adv-single-hero` 26 of 28, `adv-single-maps` 11 of 13 exact (only a hero's own
+  popup differs: T3b2), `adv-begin`'s panel exact; every other group as recorded; `drawn.txt`
+  recorded for `advanced`.

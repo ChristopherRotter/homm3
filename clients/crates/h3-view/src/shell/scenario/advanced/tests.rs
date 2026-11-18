@@ -296,7 +296,10 @@ fn the_hero_s_arrows_step_through_the_offer_and_random() {
     let mut s = shown(vec![arrogance_offered()]);
     // Castle: right from Random to the offer's first, on to its last, past it to Random.
     click(&mut s, [230, 145]);
-    let random = (vec![String::from("Random")], Some(String::from("hpsrand1.pcx")));
+    let random = (
+        vec![String::from("Random")],
+        Some(String::from("hpsrand1.pcx")),
+    );
     assert_eq!(hero_of(&s, 0), random);
     for k in 0..3 {
         assert!(click(&mut s, [306, 145]));
@@ -348,22 +351,30 @@ fn a_pick_shows_the_map_s_customised_portrait_and_name() {
     click(&mut s, [230, 145]);
     click(&mut s, [306, 145]);
     click(&mut s, [306, 145]);
-    let one = (vec![String::from("Sir One")], Some(String::from("HPS040.pcx")));
+    let one = (
+        vec![String::from("Sir One")],
+        Some(String::from("HPS040.pcx")),
+    );
     assert_eq!(hero_of(&s, 0), one);
     click(&mut s, [306, 145]);
-    let two = (vec![String::from("hero 2")], Some(String::from("HPS002.pcx")));
+    let two = (
+        vec![String::from("hero 2")],
+        Some(String::from("HPS002.pcx")),
+    );
     assert_eq!(hero_of(&s, 0), two);
-    // A main hero's own name of the map names any pick (`scenario_shown_hero_name` 0x58D33A,
-    // CLT-Q142: the original's).
+    // A main hero's own name of the map names a pick in the original alone
+    // (`scenario_shown_hero_name` 0x58D33A, CLT-Q142 (b)).
     map.seats[0].main_hero = Some(MainHero {
         hero_type: 7,
         portrait: Some(19),
     });
     map.heroes.main_names[0] = String::from("Tovar");
-    let mut s = shown(vec![map]);
-    click(&mut s, [230, 145]);
-    click(&mut s, [306, 145]);
-    assert_eq!(hero_of(&s, 0).0, ["Tovar"]);
+    for (bugs, name) in [(Bugs::Fixed, "hero 0"), (Bugs::Original, "Tovar")] {
+        let mut s = shown_in(vec![map.clone()], bugs);
+        click(&mut s, [230, 145]);
+        click(&mut s, [306, 145]);
+        assert_eq!(hero_of(&s, 0).0, [name]);
+    }
 }
 
 /// Adventures of Jared Haret's kinds of rows (`adv-single-maps` map-2), and two more: red's main

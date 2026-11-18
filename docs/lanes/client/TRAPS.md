@@ -364,6 +364,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   selection must pick the right one, and check what the partial redraw leaves (`Description::drew`
   only at a whole redraw or the bar's own draws). The kept map outlives the screen: `Menus::front`
   takes it from the screen that closes.
+- **The scenario list imports every map** (E27 M3 T3b1): `maps::entries` takes the game's rules
+  (`maps::rules`: the repository's `packs/` beside `clients/`, base, ab, sod) and imports each map
+  for the engine's hero offers (`Entry::heroes`); an engine change to the import, the packs' heroes
+  or `GameSetup::offer` changes the advanced options' rows, so run `h3shell.py drawn --group
+  advanced` after merging such a `master`. A map that does not import offers no hero (no error).
 - **Coverage with the original data staged restarts the sandbox's VM** (E27 M2 T5b2 and T6a: the
   setup's baseline and `check.sh`, three runs, one build job or two; every step before coverage
   passed; E27 M3 T1a: a watcher that kills `verify-once.sh`'s tree at `== coverage` leaves

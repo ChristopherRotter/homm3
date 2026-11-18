@@ -28,7 +28,7 @@
 //!   flag the map's main hero (its portrait, CLT-Q141), else the record's pick through the map's
 //!   customised heroes (`scenario_shown_hero` 0x58D0E0); its small portrait (`hero_table`
 //!   0x679DD0's +0x30) and its name (`scenario_shown_hero_name` 0x58D1F0: the main hero's own
-//!   name of the map, a customised hero's, the type's).
+//!   name of the map, a customised hero's, the type's; CLT-Q142).
 //! - **The hero's arrows** (231 to 246, the single player's colour; `scenario_hero_step`
 //!   0x58AF20): through the list its town offers (`GameSetup::offer`, the original's
 //!   `scenario_hero_lists` 0x583890): right from Random to the first, on to the last, past it to
@@ -410,7 +410,7 @@ pub(in crate::shell) struct Map {
 pub(super) struct Advanced {
     texts: AdvancedTexts,
     /// The original's for the comparisons: a main hero of its type's own portrait not shown
-    /// (CLT-Q141), Random's popup over a None (CLT-Q112).
+    /// (CLT-Q141), Random's popup over a None (CLT-Q112), a pick named by the main hero (CLT-Q142).
     bugs: Bugs,
     /// The options show (+0x37C).
     showing: bool,
@@ -757,11 +757,14 @@ impl Advanced {
     }
 
     /// The name under colour `c`'s hero of type `hero_type` over `map` (`scenario_shown_hero_name`
-    /// 0x58D1F0): the main hero's own name of the map where it has one (whatever hero shows: with a
-    /// flag, a pick's too, CLT-Q142), else a customised hero's of the map, else the type's.
+    /// 0x58D1F0): the main hero's own name of the map under the main hero (the original's under a
+    /// pick too, a colour with a flag: CLT-Q142 (b), for the comparisons only), else a customised
+    /// hero's of the map, else the type's.
     fn hero_name(&self, map: &Map, c: u8, hero_type: u8) -> String {
+        let seat = map.seats[usize::from(c)];
+        let pick = seat.generates || seat.random_hero;
         let main = &map.heroes.main_names[usize::from(c)];
-        if !main.is_empty() {
+        if !main.is_empty() && (!pick || self.bugs == Bugs::Original) {
             return main.clone();
         }
         map.heroes
@@ -1039,7 +1042,13 @@ impl Advanced {
 
     /// The draws of the options after the dialog's items (`scenario_dialog_redraw` 0x584550): the
     /// duration's bar, then each row (`scenario_player_row_draw` 0x58D510).
-    pub(super) fn draws(&self, map: &Map, dialog: &Dialog, shown: &Shown, players: &str) -> Vec<Draw> {
+    pub(super) fn draws(
+        &self,
+        map: &Map,
+        dialog: &Dialog,
+        shown: &Shown,
+        players: &str,
+    ) -> Vec<Draw> {
         if !self.showing {
             return Vec::new();
         }

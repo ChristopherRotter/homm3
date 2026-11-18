@@ -309,12 +309,14 @@ mod tests {
         let entries = entries(&install, &rules);
         let map = |file: &str| entries.iter().find(|e| e.file == file).unwrap();
         // Arrogance's red as Castle (`hero-1` to `hero-last`): Orrin first, 16 at most; none of
-        // another faction's; a colour that does not play none.
+        // Rampart's; a colour that does not play none.
         let arrogance = map("Arrogance.h3m");
         let castle = &arrogance.heroes.offers[0][0];
         assert_eq!(castle.first(), Some(&0));
-        assert!(castle.len() <= 16 && castle.iter().all(|&h| h < 16));
-        assert!(arrogance.heroes.offers[0][1].iter().all(|&h| (16..32).contains(&h)));
+        assert_eq!(castle.len(), 16);
+        let rampart = &arrogance.heroes.offers[0][1];
+        assert_eq!(rampart.first(), Some(&16));
+        assert!(rampart.iter().all(|h| !castle.contains(h)));
         assert!(arrogance.heroes.offers[2].iter().all(Vec::is_empty));
         // Adventures of Jared Haret (`map-2`): red's main hero Orrin's portrait named "Jared
         // Haret"; blue's of its type's own portrait (CLT-Q141); tan's named "Thenith".
@@ -328,7 +330,11 @@ mod tests {
         // The disposed heroes the shipped maps list keep their types' portraits and names.
         let custom: Vec<_> = entries.iter().flat_map(|e| &e.heroes.custom).collect();
         assert!(!custom.is_empty());
-        assert!(custom.iter().all(|h| h.portrait.is_none() && h.name.is_empty()));
+        assert!(
+            custom
+                .iter()
+                .all(|h| h.portrait.is_none() && h.name.is_empty())
+        );
     }
 
     #[test]
