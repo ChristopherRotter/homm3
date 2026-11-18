@@ -3544,6 +3544,14 @@ fn visit_town(
         3 => Some(TownHeroChange::Swap),
         _ => None,
     };
+    // E09 T38a2: a listed hire (TWN-TAV-003) in one step of eight, so that hired heroes walk,
+    // fight and enter garrisons in the plans' games.
+    let hire = legal
+        .iter()
+        .find(|c| matches!(c, GameCommand::Town(TownCommand::Hire { .. })));
+    if let Some(hire) = hire.filter(|_| n % 8 == 5) {
+        return hire.clone();
+    }
     let row = legal.iter().find(|c| {
         matches!(c, GameCommand::Town(TownCommand::Heroes { change, .. }) if Some(*change) == wanted)
     });
@@ -6194,7 +6202,8 @@ fn check_build_boat(
 
 /// Every town command to probe in `state` (E09 T18b2b): for each town of the store and one past it,
 /// in `TownId` order, a build of each building of its faction's record and one past it, in index
-/// order, then (E09 T27) a recruitment at each of them, in the same order.
+/// order, then (E09 T27) a recruitment at each of them, in the same order, then (E09 T38a2) a hire
+/// of each tavern slot and one past them, then (E09 T28a) the three hero moves.
 fn town_builds<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
@@ -6209,6 +6218,8 @@ fn town_builds<'a>(
         let ids = move || (0..=buildings).filter_map(BuildingId::from_index);
         let builds = ids().map(move |building| TownCommand::Build { town, building });
         let recruits = ids().map(move |building| TownCommand::Recruit { town, building });
+        // E09 T38a2: the hires of its Tavern (TWN-TAV-003).
+        let hires = (0..=2).map(move |slot| TownCommand::Hire { town, slot });
         // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
         let rows = [
             TownHeroChange::Enter,
@@ -6218,6 +6229,7 @@ fn town_builds<'a>(
         .map(move |change| TownCommand::Heroes { town, change });
         builds
             .chain(recruits)
+            .chain(hires)
             .chain(rows)
             .map(move |command| (town, GameCommand::Town(command)))
     })
@@ -6359,6 +6371,59 @@ fn check_town_heroes(
     Ok(())
 }
 
+/// A listed hire of `actor`'s tavern slot `slot` at `town` (E09 T38a2; TWN-TAV-003), from
+/// `state` to `after`, by an independent reading: the slot's hero in the actor's tavern view
+/// before stands on the town's entrance after as its visitor, the actor's, with the view's army,
+/// formation and tactics flag; no hero stood there and the actor had fewer heroes on the map than
+/// the part's most; the part's price paid; `HeroHired` of the slot told; the town's record
+/// unchanged.
+fn check_town_hire(
+    (state, after): (&GameState, &GameState),
+    rules: &GameRuleset,
+    actor: PlayerId,
+    (town, slot): (TownId, u8),
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let seen = observe(state, rules, Viewer::Player(actor));
+    let view = seen.tavern.get(usize::from(slot)).cloned().flatten();
+    let view = view.ok_or_else(|| fail(format!("hire of {slot}: no hero in the view")))?;
+    let (was, now) = (state.adventure(), after.adventure());
+    let index = was.map().town_object(town).unwrap();
+    prop_assert_eq!(was.owner(index), Some(actor));
+    let entrance = was.map().town_entrance(town).unwrap();
+    prop_assert!(was.heroes().iter().all(|h| h.pos != entrance));
+    let params = rules.towns().params().unwrap();
+    let own = |a: &AdventureState| a.heroes().iter().filter(|h| h.owner == actor).count();
+    prop_assert!(own(was) < usize::from(params.most_heroes));
+    prop_assert_eq!(own(now), own(was) + 1);
+    let id = view.hero.id;
+    prop_assert!(was.hero(id).is_none() && was.town_heroes().iter().all(|(_, h)| h.id != id));
+    let hired = now
+        .hero(id)
+        .ok_or_else(|| fail(format!("{id:?} not on the map")))?;
+    prop_assert_eq!(
+        (hired.owner, hired.pos, &hired.army),
+        (actor, entrance, &view.army)
+    );
+    prop_assert_eq!(
+        (hired.formation, hired.tactics),
+        (view.hero.formation, view.hero.tactics)
+    );
+    prop_assert_eq!(now.town_visitor(town), Some(id));
+    let mut treasury = state.treasury(actor).unwrap().to_vec();
+    for &(r, amount) in &params.hire_price {
+        treasury[r.index()] -= amount;
+    }
+    prop_assert_eq!(after.treasury(actor).unwrap(), &treasury[..]);
+    let told = events.iter().any(|e| {
+        matches!(*e, GameEvent::HeroHired { player, hero, slot: Some(s), pos, .. }
+            if player == actor && hero == id && s == slot && pos == entrance)
+    });
+    prop_assert!(told, "{:?}", events);
+    prop_assert_eq!(after.towns().get(town), state.towns().get(town));
+    Ok(())
+}
+
 fn check_town_builds(
     state: &GameState,
     rules: &GameRuleset,
@@ -6407,6 +6472,11 @@ fn check_town_builds(
             // after (TWN-ROW-002 to -004).
             GameCommand::Town(TownCommand::Heroes { change, .. }) => {
                 check_town_heroes(state, &probe, actor, (town, change))?;
+                continue;
+            }
+            // E09 T38a2: a listed hire, by an independent reading of the actor's tavern view.
+            GameCommand::Town(TownCommand::Hire { slot, .. }) => {
+                check_town_hire((state, &probe), rules, actor, (town, slot), &events)?;
                 continue;
             }
             _ => return Err(fail(format!("{command:?}"))),
@@ -6961,6 +7031,8 @@ fn check_timed(
 /// choice and a University's purchases; a hero's details change by its changes and its levels
 /// in the order it is told them (a reward's rest after a level-up, GAM-DEC-007). Since E08 T95b a
 /// hire dialog's purchase pays the cost of one times the amount and joins the amount as a join does.
+/// Since E09 T38a2 a town's hire pays the part's price, and its hero joins the map with its tavern
+/// slot's army; its slot's refill may add a record.
 fn check_conservation(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -6977,9 +7049,17 @@ fn check_conservation(
     let week = events
         .iter()
         .any(|e| matches!(e, GameEvent::WeekStarted { .. }));
+    // E09 T38a2: and a hire's refill of its slot (TWN-TAV-004), the hirer's.
+    let hirers: Vec<PlayerId> = events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::HeroHired { player, .. } => Some(player),
+            _ => None,
+        })
+        .collect();
     let offered: Vec<HeroId> = (0..=u8::MAX)
         .take(after.players())
-        .filter(|_| week)
+        .filter(|&p| week || hirers.contains(&PlayerId::new(p)))
         .flat_map(|p| observe(after, rules, Viewer::Player(PlayerId::new(p))).tavern)
         .flatten()
         .map(|view| view.hero.id)
@@ -7040,8 +7120,8 @@ fn check_conservation(
         }
         prop_assert_eq!(&told, &**a);
     }
-    // Nothing but a week's fill adds a record, each a player's tavern hero.
-    if week {
+    // Nothing but a week's fill (or a hire's refill) adds a record, each a player's tavern hero.
+    if week || !hirers.is_empty() {
         let new = (before.heroes().len()..after.heroes().len())
             .map(|i| HeroId::new(u16::try_from(i).unwrap()));
         for id in new {
@@ -7244,6 +7324,13 @@ fn check_conservation(
             .map(|building| &building.cost),
         _ => None,
     };
+    // E09 T38a2: a town's hire pays the part's price (TWN-TAV-003).
+    let hire = match *command {
+        GameCommand::Town(TownCommand::Hire { .. }) => {
+            rules.towns().params().map(|params| &params.hire_price)
+        }
+        _ => None,
+    };
     let accepted = events.iter().find_map(|e| match *e {
         GameEvent::OfferAnswered {
             player,
@@ -7279,7 +7366,11 @@ fn check_conservation(
                             || before.university(owner).is_some()
                             || hiring(before, owner));
                     prop_assert!(
-                        accepted == Some(owner) || answered || boat.is_some() || build.is_some(),
+                        accepted == Some(owner)
+                            || answered
+                            || boat.is_some()
+                            || build.is_some()
+                            || hire.is_some(),
                         "{:?} without an offer",
                         event
                     );
@@ -7303,6 +7394,8 @@ fn check_conservation(
             prop_assert_eq!(&paid[..], &price[..]);
         } else if let Some(price) = build.filter(|_| !paid.is_empty()) {
             prop_assert_eq!(&paid[..], &price[..]);
+        } else if let Some(price) = hire.filter(|_| !paid.is_empty()) {
+            prop_assert_eq!(&paid[..], &price[..]);
         } else if let Some(choice) = before.choice(player).filter(|_| !paid.is_empty()) {
             prop_assert_eq!(&paid[..], choice.price());
         } else if let Some(visit) = before.university(player).filter(|_| !paid.is_empty()) {
@@ -7321,6 +7414,24 @@ fn check_conservation(
         }
     }
     let mut expected = armies(before);
+    // E09 T38a2: a hired hero joins with its tavern slot's army as its owner's view showed it
+    // (TWN-TAV-003).
+    for event in events {
+        if let GameEvent::HeroHired {
+            player,
+            hero,
+            slot: Some(slot),
+            ..
+        } = *event
+        {
+            let seen = observe(before, rules, Viewer::Player(player));
+            let view = seen.tavern.get(usize::from(slot)).cloned().flatten();
+            let army = view.filter(|v| v.hero.id == hero).map(|v| v.army);
+            let army = army.ok_or_else(|| fail(format!("{event:?} of no slot's hero")))?;
+            let at = expected.iter().position(|&(id, _)| id > hero);
+            expected.insert(at.unwrap_or(expected.len()), (hero, army));
+        }
+    }
     // E08 T95b: into the first stack of the creature that takes them within a stack's most, else
     // the first free slot (ADV-ARM-007; a purchase may not fit the first stack).
     let most = rules.adventure().params().max_stack_count();
@@ -10930,7 +11041,8 @@ fn told_army(
     army
 }
 
-/// Ownership isolation: a command of `actor` moves no other player's hero, changes no other
+/// Ownership isolation (since E09 T38a2 a hero the actor hires joins the map): a command of
+/// `actor` moves no other player's hero, changes no other
 /// player's army (but for a siege's merge into a town's visitor's army, E09 T9b1,
 /// [`told_army`]), explored tiles (but for a new day's reveal in strict-fixed, which only adds,
 /// E08 T40, and a town's capture after a siege its owner's garrison lost, E09 T9b1), treasury
@@ -10980,9 +11092,15 @@ fn check_isolation(
         let started = events.contains(&GameEvent::TurnStarted { player: b.owner });
         prop_assert!(started || b.movement == a.movement);
     }
-    // E09 T28a: or the actor's garrison hero out onto its town's entrance (TWN-ROW-003, -004).
+    // E09 T28a: or the actor's garrison hero out onto its town's entrance (TWN-ROW-003, -004);
+    // E09 T38a2: or the actor's hero hired onto it (TWN-TAV-003), told by its `HeroHired`.
+    let hired = |id: HeroId| {
+        events.iter().any(
+            |e| matches!(*e, GameEvent::HeroHired { player, hero, .. } if player == actor && hero == id),
+        )
+    };
     let out = |a: &h3_adventure::HeroOnMap| {
-        a.owner == actor && before.adventure().garrisoned(a.id).is_some()
+        a.owner == actor && (before.adventure().garrisoned(a.id).is_some() || hired(a.id))
     };
     prop_assert!(a.iter().all(|a| b.iter().any(|b| b.id == a.id) || out(a)));
     // E09 T28b1: another player's garrison hero keeps its record, but at its owner's turn start

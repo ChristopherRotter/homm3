@@ -147,7 +147,7 @@ fn the_duel_starts_with_red_to_move_and_both_its_heroes_free() {
         [
             true, true, true, false, false, false, false, false, false, false, false, false, false,
             false, false, false, false, false, false, false, false, false, false, false, false,
-            false, false, false, false, false, false, false, false, false, false
+            false, false, false, false, false, false, false, false, false, false, false, false
         ]
     );
     env.legal_mask(PlayerId::new(1), &mut mask);
@@ -181,8 +181,8 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 11);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 35));
+    assert_eq!(ACTION_ENCODING_VERSION, 12);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 37));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!((HIRE_BASE, HIRE_SLOTS, REVISIT_BASE), (18, 4, 22));
     assert_eq!((BUILD, RECRUIT, BUILDING_COUNT), (30, 31, 64));
@@ -191,6 +191,12 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(
         TOWN_HERO_MOVES.map(|change| Action::town_heroes(9, change)),
         [Action::map(32, 9), Action::map(33, 9), Action::map(34, 9)]
+    );
+    // E09 T38a2 (v12): a hire of each of the two tavern slots.
+    assert_eq!((TAVERN_HIRE, TAVERN_SLOTS), (35, 2));
+    assert_eq!(
+        [Action::tavern_hire(9, 0), Action::tavern_hire(9, 1)],
+        [Action::map(35, 9), Action::map(36, 9)]
     );
     assert_eq!(
         Action::recruit(7, 19),
@@ -306,7 +312,8 @@ fn is_move(entry: usize) -> bool {
 /// the towns of the listed builds and its buildings theirs ([`check_build`], E09 T19c1), and
 /// [`RECRUIT`]'s those of the listed recruitments (E09 T27); a [`TOWN_HEROES`] entry's the
 /// entrances of the towns of the listed hero moves of its kind, each decoding to that move
-/// ([`check_town_heroes`], E09 T28a); after
+/// ([`check_town_heroes`], E09 T28a), and a [`TAVERN_HIRE`] entry's those of the listed hires of
+/// its slot (E09 T38a2); after
 /// another entry the building head allows 0 alone at its first legal tile, nothing after an
 /// illegal entry, and a building other than 0 decodes to nothing. In the battle phase (the neutral
 /// seat's only phase) every map mask is empty. The battle masks: [`check_battle_masks`].
@@ -479,7 +486,8 @@ fn check_build_boat(
 /// such town the building mask is empty. [`RECRUIT`]'s the same with the listed recruitments (E09
 /// T27).
 /// A [`TOWN_HEROES`] entry's tiles (E09 T28a): the entrances of the towns of the listed hero
-/// moves of its kind, each decoding to its move, which encodes back to it.
+/// moves of its kind, each decoding to its move, which encodes back to it; a [`TAVERN_HIRE`]
+/// entry's the same with the listed hires of its slot (E09 T38a2).
 fn check_town_heroes(
     env: &AdventureEnv,
     (player, entry): (PlayerId, usize),
@@ -487,11 +495,17 @@ fn check_town_heroes(
     tiles: &[bool],
 ) -> Result<(), TestCaseError> {
     let (state, rules) = (env.state(), env.rules());
-    let kind = TOWN_HERO_MOVES[entry - TOWN_HEROES];
+    let kind = TOWN_HERO_MOVES.get(entry - TOWN_HEROES).copied();
+    let slot = entry.checked_sub(TAVERN_HIRE);
     let mut gates: Vec<u32> = commands
         .iter()
         .filter_map(|command| match *command {
-            GameCommand::Town(TownCommand::Heroes { town, change }) if change == kind => {
+            GameCommand::Town(TownCommand::Heroes { town, change }) if Some(change) == kind => {
+                town_tile(state, town)
+            }
+            GameCommand::Town(TownCommand::Hire { town, slot: s })
+                if Some(usize::from(s)) == slot =>
+            {
                 town_tile(state, town)
             }
             _ => None,
