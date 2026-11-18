@@ -84,7 +84,7 @@ fn one_of(rules: &GameRuleset, game: &GameState, hero: HeroId) -> ArmyStack {
     }
 }
 
-// covers: TWN-TAV-006, GAM-BAT-003, TWN-QUIRK-12
+// covers: TWN-TAV-006, GAM-BAT-003
 #[test]
 fn a_beaten_hero_leaves_with_one_creature_full_spell_points_and_its_land_maximum() {
     for profile in ["t:faithful", "t:leave"] {
