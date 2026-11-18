@@ -1235,3 +1235,30 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
 - **Compared:** `adv-single-rest`'s first twelve shots exact (decision 57's "ten" counted twelve
   by name), and `hidden`; its other 26 T3c2's (the duration and the hints); every other group as
   recorded (93 recipes, 490 shots exact); `drawn.txt` recorded for `adv-single-rest`.
+
+## M3 T3c2 — the duration's bar and the hints (2026-11-18)
+
+- **Staged** from the PC at once: the 64 files and the seven manuals and help files, each checked
+  by SHA-256 against the PC's (every hash line equal; the PC's shell dropped about 45 minutes in,
+  the staging done by then). The setup's baseline stopped at `check.sh`'s coverage by a watcher (fmt,
+  clippy, doc tests, deny passed).
+- **Read** (design §27): the scroll bar's press, release, drag, move and draw for their
+  horizontal branches (the rules on x; the press's thumb 16 wide, not the button), the duration's
+  bar's creation (11 ticks, blue, no page, no keys), `scenario_duration_scrolled` whole (the
+  duration, a host's message, the whole redraw), `dialog_item_at` (shown and enabled) and
+  `dialog_right_click`. The hints of 104 to 344 (record id − 83) for the options' items: one
+  text for the eight colours of each group in both LODs.
+- **Recipe:** §6.4's `popup-hero-arrow` on row 2's arrow showed none (the hero's arrows hide under
+  a Random town, as on row 0, a computer's); the recipe presses the row's town arrow first. Played
+  twice and recorded: the seven shots from `popup-hero-arrow` to `hidden` changed.
+- **Built:** `h3_ui::scrollbar`'s horizontal input (`axis`, `length`, `offset`, the press, move,
+  release and drag on the bar's axis, `HORIZONTAL_THUMB`, the arrows drawn pressed on x);
+  `advanced::BAR`, `Advanced::duration`, `on_bar`, `bar_held`, `bar_press`, `bar_moved`,
+  `bar_release`, `scrolled` (`CLT-STUB-11`: no timer); the screen's duration bar in `press`,
+  `moved`, `release`, `right`, `right_release`, `key` (`duration_held`, `duration_scrolled`: the
+  whole redraw), `Scenario::duration`; `HELPED` with the headers, the label and the bar,
+  `COLOUR_HELPED` (one key a group for the eight colours), the right press passing over an item
+  not enabled (`Advanced::takes`); the keys `shell.scenario.help.*` (15); the layout's duration
+  bar without a page (T3a's `step = 1` was a guess).
+- **Compared:** `adv-single-rest` 39 of 39 exact; every other recipe of the `advanced` and
+  `scenario` groups as recorded; `drawn.txt` recorded for `adv-single-rest`.
