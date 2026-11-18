@@ -3040,6 +3040,250 @@ id = "shell.scenario.teams.team"
 args = { team = "number" }
 original = [{ at = "GENRLTXT:657", printf = ["team"] }]
 
+# The scenario screen's advanced options (E27 M3 T3a; design §3.13 to §3.15, §23): the title and
+# the line under it, the headers and the duration's label (GENRLTXT 516 to 522), Random and none
+# (523, 524), a computer's name (469), who may play (`player_kind_texts` 0x6A7E18: ArrayTxt 206 both,
+# 207 a human only, 208 the computer only), the factions' names (`town_type_names`: ArrayTxt 219 to
+# 227), the bonuses' (`bonus_names` 0x6A5E14: ArrayTxt 214 to 216), the turn's durations
+# (`turn_duration_texts` 0x69FB44: turndur.txt 0 to 10).
+[[key]]
+id = "shell.scenario.advanced-title"
+original = [{ at = "GENRLTXT:516" }]
+
+[[key]]
+id = "shell.scenario.advanced-subtitle"
+original = [{ at = "GENRLTXT:517" }]
+
+[[key]]
+id = "shell.scenario.name-header"
+original = [{ at = "GENRLTXT:518" }]
+
+[[key]]
+id = "shell.scenario.town-header"
+original = [{ at = "GENRLTXT:519" }]
+
+[[key]]
+id = "shell.scenario.hero-header"
+original = [{ at = "GENRLTXT:520" }]
+
+[[key]]
+id = "shell.scenario.bonus-header"
+original = [{ at = "GENRLTXT:521" }]
+
+[[key]]
+id = "shell.scenario.duration-label"
+original = [{ at = "GENRLTXT:522" }]
+
+[[key]]
+id = "shell.advanced.random"
+original = [{ at = "GENRLTXT:523" }]
+
+[[key]]
+id = "shell.advanced.none"
+original = [{ at = "GENRLTXT:524" }]
+
+[[key]]
+id = "shell.advanced.computer"
+original = [{ at = "GENRLTXT:469" }]
+
+[[key]]
+id = "shell.advanced.kind.both"
+original = [{ at = "ARRAYTXT:206" }]
+
+[[key]]
+id = "shell.advanced.kind.human"
+original = [{ at = "ARRAYTXT:207" }]
+
+[[key]]
+id = "shell.advanced.kind.computer"
+original = [{ at = "ARRAYTXT:208" }]
+
+[[key]]
+id = "shell.advanced.town.0"
+original = [{ at = "ARRAYTXT:219" }]
+
+[[key]]
+id = "shell.advanced.town.1"
+original = [{ at = "ARRAYTXT:220" }]
+
+[[key]]
+id = "shell.advanced.town.2"
+original = [{ at = "ARRAYTXT:221" }]
+
+[[key]]
+id = "shell.advanced.town.3"
+original = [{ at = "ARRAYTXT:222" }]
+
+[[key]]
+id = "shell.advanced.town.4"
+original = [{ at = "ARRAYTXT:223" }]
+
+[[key]]
+id = "shell.advanced.town.5"
+original = [{ at = "ARRAYTXT:224" }]
+
+[[key]]
+id = "shell.advanced.town.6"
+original = [{ at = "ARRAYTXT:225" }]
+
+[[key]]
+id = "shell.advanced.town.7"
+original = [{ at = "ARRAYTXT:226" }]
+
+[[key]]
+id = "shell.advanced.town.8"
+original = [{ at = "ARRAYTXT:227" }]
+
+[[key]]
+id = "shell.advanced.bonus.artifact"
+original = [{ at = "ARRAYTXT:214" }]
+
+[[key]]
+id = "shell.advanced.bonus.gold"
+original = [{ at = "ARRAYTXT:215" }]
+
+[[key]]
+id = "shell.advanced.bonus.resource"
+original = [{ at = "ARRAYTXT:216" }]
+
+[[key]]
+id = "shell.advanced.duration.0"
+original = [{ at = "TURNDUR:0" }]
+
+[[key]]
+id = "shell.advanced.duration.1"
+original = [{ at = "TURNDUR:1" }]
+
+[[key]]
+id = "shell.advanced.duration.2"
+original = [{ at = "TURNDUR:2" }]
+
+[[key]]
+id = "shell.advanced.duration.3"
+original = [{ at = "TURNDUR:3" }]
+
+[[key]]
+id = "shell.advanced.duration.4"
+original = [{ at = "TURNDUR:4" }]
+
+[[key]]
+id = "shell.advanced.duration.5"
+original = [{ at = "TURNDUR:5" }]
+
+[[key]]
+id = "shell.advanced.duration.6"
+original = [{ at = "TURNDUR:6" }]
+
+[[key]]
+id = "shell.advanced.duration.7"
+original = [{ at = "TURNDUR:7" }]
+
+[[key]]
+id = "shell.advanced.duration.8"
+original = [{ at = "TURNDUR:8" }]
+
+[[key]]
+id = "shell.advanced.duration.9"
+original = [{ at = "TURNDUR:9" }]
+
+[[key]]
+id = "shell.advanced.duration.10"
+original = [{ at = "TURNDUR:10" }]
+
+
+# The popups of a right press (design §3.15): a town's (`scenario_town_popup` 0x575E60: its title,
+# its creatures' heading), a Random town's (`scenario_info_popup` 0x5757E0), a bonus's
+# (`scenario_bonus_popup` 0x5754F0, `scenario_dialog_right_click` 0x5828A4): each bonus's title,
+# caption and text, a resource's by the town's resource (wood and ore, crystal, gems, mercury,
+# sulfur).
+[[key]]
+id = "shell.advanced.alignment"
+original = [{ at = "GENRLTXT:81" }]
+
+[[key]]
+id = "shell.advanced.creatures"
+original = [{ at = "GENRLTXT:80" }]
+
+[[key]]
+id = "shell.advanced.random-town.title"
+original = [{ at = "GENRLTXT:104" }]
+
+[[key]]
+id = "shell.advanced.random-town.text"
+original = [{ at = "GENRLTXT:105" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.artifact.title"
+original = [{ at = "GENRLTXT:84" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.artifact.text"
+original = [{ at = "GENRLTXT:91" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.gold.title"
+original = [{ at = "GENRLTXT:85" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.gold.caption"
+original = [{ at = "GENRLTXT:88" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.gold.text"
+original = [{ at = "GENRLTXT:93" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.resource.title"
+original = [{ at = "GENRLTXT:86" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.random.title"
+original = [{ at = "GENRLTXT:87" }]
+
+[[key]]
+id = "shell.advanced.bonus-popup.random.text"
+original = [{ at = "GENRLTXT:95" }]
+
+[[key]]
+id = "shell.advanced.resource.wood-ore.caption"
+original = [{ at = "GENRLTXT:90" }]
+
+[[key]]
+id = "shell.advanced.resource.wood-ore.text"
+original = [{ at = "GENRLTXT:94" }]
+
+[[key]]
+id = "shell.advanced.resource.crystal.caption"
+original = [{ at = "GENRLTXT:693" }]
+
+[[key]]
+id = "shell.advanced.resource.crystal.text"
+original = [{ at = "GENRLTXT:689" }]
+
+[[key]]
+id = "shell.advanced.resource.gems.caption"
+original = [{ at = "GENRLTXT:694" }]
+
+[[key]]
+id = "shell.advanced.resource.gems.text"
+original = [{ at = "GENRLTXT:690" }]
+
+[[key]]
+id = "shell.advanced.resource.mercury.caption"
+original = [{ at = "GENRLTXT:695" }]
+
+[[key]]
+id = "shell.advanced.resource.mercury.text"
+original = [{ at = "GENRLTXT:691" }]
+
+[[key]]
+id = "shell.advanced.resource.sulfur.caption"
+original = [{ at = "GENRLTXT:696" }]
+
+[[key]]
+id = "shell.advanced.resource.sulfur.text"
+original = [{ at = "GENRLTXT:692" }]
+
 # The client's own texts (E27 M2 T6b2, decision 37): no original form, their messages in the
 # client's own pack beside this file (`en.json`; E17 design §9.2), which must give each one.
 #

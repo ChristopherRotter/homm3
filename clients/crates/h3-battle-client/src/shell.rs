@@ -688,6 +688,12 @@ fn menus(
         no_maps: Some(laid("shell.scenario.no-maps", Style::Ok)),
         // The description's split (T2c): the font's metrics alone.
         description_font: Some(metrics(font(&layout.scenario.description.font)?)),
+        // The advanced options (T3a).
+        advanced: Some(advanced_texts(
+            &layout.scenario.advanced,
+            &tables,
+            &catalogue,
+        )),
     };
     Ok(Menus {
         main,
@@ -711,6 +717,96 @@ fn menus(
             bugs,
         ),
     })
+}
+
+/// The advanced options' texts (E27 M3 T3a): the catalogue's `shell.advanced.*` and, for the
+/// towns' popups, each creature's singular name by its original id (the asset tables' key).
+fn advanced_texts(
+    look: &scenario::AdvancedLook,
+    tables: &h3_view::tables::Tables,
+    catalogue: &h3_ui::text::Catalogue,
+) -> scenario::AdvancedTexts {
+    let text = |key: &str| catalogue.text(key, &Args::new());
+    let ids: std::collections::BTreeSet<u16> = look
+        .town_popup
+        .creatures
+        .iter()
+        .flatten()
+        .copied()
+        .collect();
+    let creature_names = ids
+        .into_iter()
+        .map(|id| {
+            let name = tables
+                .creatures
+                .iter()
+                .find(|(_, c)| c.original == id)
+                .map(|(key, _)| catalogue.text(&format!("creature.{key}"), &Args::new().count(1)))
+                .unwrap_or_default();
+            (id, name)
+        })
+        .collect();
+    let resource = |name: &str| {
+        [
+            text(&format!("shell.advanced.resource.{name}.caption")),
+            text(&format!("shell.advanced.resource.{name}.text")),
+        ]
+    };
+    // A faction's resource (design §3.15): wood and ore, crystal (Rampart), gems (Tower), mercury
+    // (Inferno, Conflux), sulfur (Dungeon).
+    let resources = [
+        "wood-ore", "crystal", "gems", "mercury", "wood-ore", "sulfur", "wood-ore", "wood-ore",
+        "mercury",
+    ]
+    .map(resource)
+    .to_vec();
+    let popup = |bonus: &str, caption: bool, body: bool| {
+        let key = |part: &str| format!("shell.advanced.bonus-popup.{bonus}.{part}");
+        [
+            text(&key("title")),
+            if caption {
+                text(&key("caption"))
+            } else {
+                String::new()
+            },
+            if body {
+                text(&key("text"))
+            } else {
+                String::new()
+            },
+        ]
+    };
+    scenario::AdvancedTexts {
+        look: look.clone(),
+        kinds: ["both", "human", "computer"].map(|k| text(&format!("shell.advanced.kind.{k}"))),
+        computer: text("shell.advanced.computer"),
+        random: text("shell.advanced.random"),
+        none: text("shell.advanced.none"),
+        towns: (0..9)
+            .map(|t| text(&format!("shell.advanced.town.{t}")))
+            .collect(),
+        bonuses: ["artifact", "gold", "resource"]
+            .iter()
+            .map(|b| text(&format!("shell.advanced.bonus.{b}")))
+            .collect(),
+        durations: (0..11)
+            .map(|d| text(&format!("shell.advanced.duration.{d}")))
+            .collect(),
+        alignment: text("shell.advanced.alignment"),
+        creatures: text("shell.advanced.creatures"),
+        creature_names,
+        random_town: [
+            text("shell.advanced.random-town.title"),
+            text("shell.advanced.random-town.text"),
+        ],
+        bonus_popups: [
+            popup("artifact", false, true),
+            popup("gold", true, true),
+            popup("resource", false, false),
+            popup("random", false, true),
+        ],
+        resources,
+    }
 }
 
 /// A font's metrics alone (its glyphs' pixels dropped): what a split measures.
