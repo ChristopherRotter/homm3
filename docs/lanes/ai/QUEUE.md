@@ -126,6 +126,15 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
   every feature). The fork test's seed 6 holds. A returned hero shows in its owner's
   `GameObservation::tavern` as any tavern hero.
 
+- 2026-11-18 (the town lane, E09 T39a, `town/e09-t39a`, `cross-lane` with the user's consent, E09
+  decision 149; **the env's action encoding v13, for the adventure agents; the bots tables'
+  `engine.adventure` line**): the adventure map's Tavern opens a decision (GAM-DEC-010) whose
+  answers map onto the roles, no new entry (`answer_entry`): the hire of tavern slot 0 `FIRST`,
+  of slot 1 `SECOND`, its `Close` `DECLINE` (masked by `legal_commands`: the hires that pass,
+  then `Close`). The adventure part's hash moved (v22, the two kinds), so both bots tables were
+  regenerated (only their `engine` line). Shipped maps with a Tavern or a Den import now when
+  nothing else blocks them; no env map or golden holds one.
+
 - 2026-11-18 (the town lane, E09 T38a2, `town/e09-t38a2`, `cross-lane` with the user's consent, E09
   decision 143; **the env's action encoding v12, for the adventure agents**): `action.rs` appends
   the two entries `TAVERN_HIRE` (35, 36; `ENTRY_COUNT` 37; `TAVERN_SLOTS`; the design note's

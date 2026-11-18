@@ -2279,6 +2279,21 @@ with the wire's command.
   writer writes it. Which of the 47 maps import whole once the Den of Thieves is typed too is
   T33b's census.
 - **Replay:** `answer tavern hire <slot>`, `answer tavern close`. Its view and the env (T33b).
+- *As built* (T39a, decisions 149, 150): `ObjectKind::Tavern` (ADV-VIS-007; the base pack's
+  `base:tavern`, `visit = "neighbour"`, not from above; part hash tag 45, the adventure part
+  v22), class 95 imported (map import v26). Its visit's outcome `AdventureOutcome::tavern`, a
+  `TavernVisit` (the hero, the type, the anchor, the visitable tile), opens `Decision::Tavern`
+  (`GameState::open_tavern`: `TavernOpened` to the owner, whatever its gold and room; hash kind 9,
+  game state hash v34). `Answer::Tavern(TavernAnswer::Hire { slot } | Close)`: the hire through
+  `h3-game`'s `town::hire::map_hire` (the slot, `AdventureState::check_map_tavern_hire`'s room
+  and tile, the price; `TavernError::{UnknownSlot, EmptySlot, TooManyHeroes, Occupied}`, then
+  `CannotPay`), applied by the town hire's own `place` with the Tavern's tile, then
+  `DecisionClosed`; `Close` only closes (the default answer). The listing `map_hires` (the
+  `hire_slots` part, the tile free) then `Close`. `DecisionView::Tavern { hero, object_type,
+  anchor }`. The env's v13 (the answers by role), the replay format v19, the protocol v73 (the
+  answer, `TavernReject`, `Decision::Tavern`, `TavernOpened` folded whole). A hired hero stands on
+  the Tavern's tile: a step toward it meets that hero, its `Revisit` is never listed (a
+  neighbour-visited object's), and a setup still places no hero there (ADV-MAP-001).
 
 ### 67. A hero that leaves the game (TWN-TAV-006; GAM-BAT-003 and the capture's leave amended; `hero_leave_game` 0x4D9EC0; T-16)
 
@@ -2557,6 +2572,11 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   T119's banks). A map with a Den and no Tavern loses no blocker beyond it.
 - **Tests:** the visit's view at everything whatever the visitor's taverns; a second visit the
   same day; a `Revisit`; the event told to the owner alone.
+- *As built* (T39a, the kind only; decision 149): `ObjectKind::DenOfThieves` (ADV-VIS-008; the
+  base pack's `base:den_of_thieves`, `visit = "enter"`, not from above; part hash tag 46), class
+  97 imported (map import v26); a step onto it ends the move there and its `Revisit` is listed;
+  its visit gives nothing yet (`TWN-STUB-20`, `h3-adventure`'s `visit`): T39b adds the outcome and
+  `ThievesGuildSeen`.
 
 ### 75. The views and events (both halves; `docs/06-security.md`'s town section by the `shared/` task)
 

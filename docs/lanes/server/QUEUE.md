@@ -12,6 +12,17 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-18 (the town lane, E09 T39a, `town/e09-t39a`, `cross-lane` with the user's consent;
+  **your paths changed, for your review; protocol v73 taken**): the map Tavern's decision
+  (GAM-DEC-010): `Answer::Tavern { answer: TavernAnswer::{Hire { slot }, Close {}} }`,
+  `GameReject::Tavern { error: TavernReject::{UnknownSlot, EmptySlot, TooManyHeroes, Occupied} }`,
+  `Decision::Tavern { hero, object }` and the event `TavernOpened` (the hero, the Tavern's type
+  and anchor), mapped both ways; the fold opens the decision whole from `TavernOpened` (its offers
+  are the tavern heroes), `DecisionClosed` closes it; the round trips (126 rejections, 44 kinds
+  of event, a Tavern view). The journal writes the answers as `answer tavern hire <slot>|close`
+  (format v19); the 98 goldens' hashes moved (game state hash v34): `tests/record.rs`' literals
+  with them. No golden meets a Tavern. Your next bump is v74.
+
 - 2026-11-18 (the town lane, E09 T38b2, `town/e09-t38b2`, `cross-lane` with the user's consent;
   **your paths changed, for your review; protocol v72 taken**): `Manage::Dismiss { hero }`
   (GAM-MAN-003) and the refusals `ManageReject::{NotOnMap, InTown, LastHero}` mapped both ways

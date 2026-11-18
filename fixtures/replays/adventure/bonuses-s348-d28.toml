@@ -600,33 +600,33 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xfc56c5a0f5ef95c4",
-    "0xa83afd88c235dda8",
-    "0x214d5ea098d53783",
-    "0xc6a78f37edf32616",
-    "0x516019d23d0082fc",
-    "0xad73acec32740f81",
-    "0x937a89509d1b928c",
-    "0x5f203279106998df",
-    "0xe4673f3d05e515e2",
-    "0xfb83c1cf7560da97",
-    "0x4803cbaeff1b3c3d",
-    "0x3122ad7ef353fbc0",
-    "0xcb76faab4a624874",
-    "0xe0288156145ce61d",
-    "0x58d944e40d6b0232",
-    "0x3ca6e2d3c94061f1",
-    "0x2b38372cca9b30ca",
-    "0x81eab949d923a5f4",
-    "0x0a3fc75441fbf739",
-    "0x3152c0c08daa0b62",
-    "0x6617ebcee36ad9dc",
-    "0xb07d16821a899009",
-    "0x385e9a87b75b8fd6",
+    "0xe1faef569fcacf31",
+    "0x60a290efcc5d557d",
+    "0x5a73d135dc57017a",
+    "0x88bdf411b3e38dcd",
+    "0x4ea32b6747a40ea3",
+    "0x392501703332f526",
+    "0x1d2ad47672ef9147",
+    "0xaa61c21cc35b2070",
+    "0x6fd2c1c8b4f8c071",
+    "0xd9cd80fbf5ddf3f0",
+    "0x85d1d2ab443e3bb2",
+    "0x6c4524fc49575e47",
+    "0x0cbc6e37a66adb5b",
+    "0x32f374059c331fe8",
+    "0xe33657952d79be2f",
+    "0x6d092570e3cae100",
+    "0x3099ae488c5db963",
+    "0x0ef03c0fec344d6d",
+    "0x6e7eff275169d4f4",
+    "0xa0e7d7fb6368a31b",
+    "0xf4a17642fd51519d",
+    "0x687559b03be196d4",
+    "0x60e1e8086875329b",
 ]
 
 [replay]
-format = 18
+format = 19
 engine = "0.1.0"
 seed = "348"
 difficulty = 1
@@ -646,21 +646,21 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x6ba8109889b34a25"
-adventure_ruleset_hash = "0xa5809e7fd9e842dd"
+adventure_ruleset_hash = "0x56c46df30c45ce3a"
 town_ruleset_hash = "0xabc9756b93a29a55"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 33
+game_state_hash_version = 34
 adventure_state_hash_version = 26
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-bonuses-36.h3m"
 hash = "0x25a3fac98e5682f3"
-import_version = 25
+import_version = 26
 
 [result]
 day = 29
-final_hash = "0xd860da1a4bf384a3"
+final_hash = "0xc15fb8427f6ae794"

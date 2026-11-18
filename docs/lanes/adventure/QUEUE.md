@@ -44,6 +44,27 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-18 (the town lane, E09 T39a, `town/e09-t39a`, `cross-lane` with the user's consent, E09
+  decision 149; **your paths changed, for your review; map import v26, part v22, game state hash
+  v34 and replay format v19 taken**): two kinds, `ObjectKind::Tavern` (ADV-VIS-007: visited from
+  a neighbour, its visit `AdventureOutcome::tavern`, an `h3_adventure::TavernVisit`) and
+  `ObjectKind::DenOfThieves` (ADV-VIS-008: entered, its visit nothing until E09 T39b,
+  `TWN-STUB-20` in `state.rs`' `visit`), their `Effect`s, defs (`tavern = {}`,
+  `den_of_thieves = {}`), the visit-mode checks and hash tags 45, 46 (`ruleset/objects.rs`,
+  **adventure part v22**); the base pack's `base:tavern` and `base:den_of_thieves` appended last
+  among base's types, so the AB and SoD types' ids moved by 2 (the duel's and the sea's replays'
+  hashes with them); `h3-map`'s `codes.rs` types classes 95 and 97 (**map import v26**; the
+  typed-classes test's cases, `tests/taverns.rs`). `h3-game`: `Decision::Tavern` (hash kind 9,
+  **game state hash v34**), `Answer::Tavern(TavernAnswer)`, `GameCommandError::Tavern`,
+  `GameEvent::TavernOpened`, `DecisionView::Tavern`, `GameState::tavern`, the answer's arm in
+  `state.rs` (the hire is the town lane's `town::hire::map_hire`), the listing and the default
+  answer in `legal.rs`. `check_stand`'s doc: a map Tavern's hire places a hero on a
+  neighbour-visited tile. The replay format **v19** (`answer tavern hire <slot>|close`): the 98
+  goldens re-recorded from their commands (only the version lines, the part hash, the
+  checkpoints and `final_hash` moved), `h3-cli`'s literals, `h3-server`'s `tests/record.rs`; the
+  bots tables' `engine.adventure` line. The plans name the kind in `settle` and `hiring` only.
+  Your next bumps: import v27, part v23, game state hash v35, replay format v20.
+
 - 2026-11-18 (the town lane, E09 T38b2, `town/e09-t38b2`, `cross-lane` with the user's consent;
   **your paths changed, for your review; replay format v18 taken**): `h3_game::Manage::Dismiss
   { hero }` (GAM-MAN-003) with `ManageError::{NotOnMap, InTown, LastHero}` (`manage.rs`),

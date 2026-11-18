@@ -583,33 +583,33 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x6cbdc9ceb46762b1",
-    "0x24f7cdbe2e81d0ce",
-    "0x1402a930078eab6c",
-    "0x5675c077f77de161",
-    "0x82e33c36fed8f297",
-    "0x649446248e2c2d33",
-    "0x80f0c13a60fa9889",
-    "0x8a9969c20f8faed5",
-    "0x16b88751f91907d4",
-    "0x2748b6be8a4de4fb",
-    "0x9ba34bf15bd5db2b",
-    "0x316c41d445d962c4",
-    "0x67ad93320c5ec8af",
-    "0x441bedae91621ee8",
-    "0xcb79ec485fbbd72a",
-    "0xc460abf0837ef1bf",
-    "0x0ec058b37f0ff397",
-    "0x9c04434ec7f08ac8",
-    "0x42722e799f194800",
-    "0x41903fdd29eead59",
-    "0x8214064695418fc2",
-    "0xd336bff79821fa6b",
-    "0x2bbb548bd0387abd",
+    "0x0d957382b2a16711",
+    "0x5d857740a3c1a8a1",
+    "0x0a2b4934a27a61a6",
+    "0x7aa74d16114f973b",
+    "0xf9d1d3319ab379c5",
+    "0x35285579e50f07e9",
+    "0x1247b5d9d9304bf3",
+    "0x34586057e94b68e3",
+    "0xa76d6cabb30988a2",
+    "0x90acbbd4617ba5ad",
+    "0xeb0b1e114e9ee18d",
+    "0x66342483364a3e6a",
+    "0x64bbcc82925848a9",
+    "0x7c35ec4d4b9f4eba",
+    "0xc1ac5e83db92c954",
+    "0x251e48d78fef214d",
+    "0xb62ec250a9f7b389",
+    "0x20efbd55d8432a3a",
+    "0xb879594ab99b8aae",
+    "0x758f41da4a0888eb",
+    "0x2dec7a3cb8d7aa60",
+    "0x1f83b47556e82baf",
+    "0x79abb701b8fe0ecb",
 ]
 
 [replay]
-format = 18
+format = 19
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -629,21 +629,21 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x6ba8109889b34a25"
-adventure_ruleset_hash = "0xa5809e7fd9e842dd"
+adventure_ruleset_hash = "0x56c46df30c45ce3a"
 town_ruleset_hash = "0xabc9756b93a29a55"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 33
+game_state_hash_version = 34
 adventure_state_hash_version = 26
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
 hash = "0x5918efa3271a85e0"
-import_version = 25
+import_version = 26
 
 [result]
 day = 29
-final_hash = "0xc519fb63da2e924c"
+final_hash = "0xffdc4f6226fd344e"
