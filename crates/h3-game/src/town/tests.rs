@@ -337,7 +337,7 @@ pub(super) fn rules_with_adventure(
 }
 
 /// [`rules_of`] with `edit` made to the adventure pack before it compiles.
-fn rules_edited(
+pub(super) fn rules_edited(
     core: Ruleset,
     towns: &TownPack,
     elf: bool,

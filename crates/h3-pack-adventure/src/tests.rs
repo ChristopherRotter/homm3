@@ -392,10 +392,10 @@ fn the_base_pack_types_the_objects_of_increment_2() {
     // the Refugee Camp, the random dwelling); E09 T8a1: the town; E08 T103a: increment 11's
     // eleven (nine monoliths, the Subterranean Gate, the Whirlpool); E08 T113a: increment 12's
     // seventeen (two garrisons, the fifteen bonus visitables); E08 T123a: increment 13's eleven
-    // creature banks.
+    // creature banks; E09 T39a: the map's Tavern and the Den of Thieves.
     assert_eq!(
         part.object_types().len(),
-        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64 + 1 + 11 + 17 + 11
+        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64 + 1 + 11 + 17 + 11 + 2
     );
     // E09 T8a1: one type for the classes 77 and 98, ownable and entered, not from above; E09
     // T18a: the original's two boat offsets (town_buildings_setup 0x5C08C0).
@@ -2794,3 +2794,41 @@ fn the_packs_type_the_garrisons_and_the_bonus_visitables_of_increment_12() {
 }
 
 mod banks;
+
+// covers: ADV-VIS-007, ADV-VIS-008
+#[test]
+fn the_base_pack_types_the_tavern_and_the_den_of_thieves() {
+    // E09 T39a (the town epic's design note §66, §74): base's two kinds without a parameter, the
+    // Tavern visited from a neighbour, the Den entered, neither from above nor marked; ab and sod
+    // add none.
+    let kinds = |part: &AdventureRuleset| {
+        part.object_types()
+            .iter()
+            .filter(|t| matches!(t.kind, ObjectKind::Tavern | ObjectKind::DenOfThieves))
+            .map(|t| {
+                (
+                    t.key.as_str().to_owned(),
+                    t.visit,
+                    t.from_above,
+                    t.kind_mark,
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    let (_, base) = compile(&ORIGINAL_PACKS[..1], PROFILE).unwrap();
+    let (_, sod) = compile(&ORIGINAL_PACKS, PROFILE).unwrap();
+    let expected = vec![
+        ("base:tavern".to_owned(), Visit::Neighbour, false, false),
+        ("base:den_of_thieves".to_owned(), Visit::Enter, false, false),
+    ];
+    assert_eq!(kinds(&base), expected);
+    assert_eq!(kinds(&sod), expected);
+    let kind = |table: &str| {
+        let text = format!(
+            "[[object_type]]\nid = \"o\"\nname = \"O\"\nvisit = \"enter\"\nfrom_above = false\n{table}"
+        );
+        parse(&text).unwrap().object_types.remove(0).kind
+    };
+    assert_eq!(kind("tavern = {}"), ObjectKindDef::Tavern);
+    assert_eq!(kind("den_of_thieves = {}"), ObjectKindDef::DenOfThieves);
+}

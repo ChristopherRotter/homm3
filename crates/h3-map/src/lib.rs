@@ -87,8 +87,9 @@ pub use parse::parse;
 /// seven land kinds, a subclass past 6 refused) and 85, 24, 84 and 25 each at subclass 0 (a
 /// subclass past 0 refused), none with a body. v25 (E09 T37b): SoD's customised hero types into
 /// the game's setup (`GameSetup::custom_types`: each entry that sets a field the game keeps, as a
-/// placed hero's customisations; a type code past the table refused).
-pub const MAP_IMPORT_VERSION: u32 = 25;
+/// placed hero's customisations; a type code past the table refused). v26 (E09 T39a): the map's
+/// Tavern (class 95) and the Den of Thieves (97) typed, without a body.
+pub const MAP_IMPORT_VERSION: u32 = 26;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

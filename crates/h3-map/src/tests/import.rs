@@ -466,6 +466,9 @@ fn the_typed_classes_import_as_their_object_types() {
     ] {
         cases.push((class, 0, format!("base:{key}")));
     }
+    // E09 T39a: the map's Tavern and the Den of Thieves.
+    cases.push((95, 0, "base:tavern".into()));
+    cases.push((97, 0, "base:den_of_thieves".into()));
     let part = SOD.adventure();
     for (class, subclass, key) in &cases {
         let body = match class {
@@ -505,8 +508,8 @@ fn the_typed_classes_import_as_their_object_types() {
     // Every object type of the original packs has its class, but increment 10's dwellings, Refugee
     // Camp and random dwelling (E08 T93a's content), whose classes the import types from T93b
     // (`dwellings.rs`; since E08 T103b increment 11's teleporters, since E08 T113b increment 12's
-    // garrisons and bonus visitables and since E08 T123b increment 13's creature banks are among
-    // the cases).
+    // garrisons and bonus visitables, since E08 T123b increment 13's creature banks and since E09
+    // T39a the map's Tavern and the Den of Thieves are among the cases).
     let typed = part
         .object_types()
         .iter()

@@ -219,6 +219,12 @@ where  = "crates/h3-game/src/town/leave.rs::check_dismissal"
 reason = "A hero the scenario's loss condition \"lose this hero\" names may be dismissed (GAM-MAN-003; E09 T38b2, design note E09-design.md section 69): the original's hero_screen_refresh 0x4E1A50 disables the dismissal while hero_mission_critical 0x5F2A40 holds (the loss condition names the hero's type, or a campaign's scenario keeps it; survey E09-tavern.md section 12). The engine reads no victory or loss conditions yet; lifted with E10's scenarios"
 epic   = "E09"
 
+[[stub]]
+id     = "TWN-STUB-20"
+where  = "crates/h3-adventure/src/state.rs::visit"
+reason = "A Den of Thieves' visit gives nothing (ADV-VIS-008; E09 T39a, design note E09-design.md section 74): the original's visit_object 0x4A84F0 case 97 opens the Thieves' Guild window at its top level for the visitor's owner, which the engine tells as ThievesGuildSeen (TWN-TAV-007 to -009, design note section 73). The guild's query and view are E09 T39b's; lifted there"
+epic   = "E09"
+
 # --- ai (AI-STUB-<n>) ---
 
 [[stub]]

@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 use h3_adventure::{
     AdventureOutcome, AdventureState, ArmyRef, ArmySlot, Choice, ChoiceKind, Drowned, Exchange,
     Garrison, HeroGains, HireDialog, HireSource, HireTarget, Meeting, ObjectTypeId, Offer,
-    OfferKind, Pick, Pos, TownReveal, UniversityVisit, Weekday,
+    OfferKind, Pick, Pos, TavernVisit, TownReveal, UniversityVisit, Weekday,
 };
 use h3_content::{ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId, TownId};
@@ -27,7 +27,7 @@ use h3_towns::{Towns, WeekKind};
 
 use crate::command::{
     Actor, AdventureSink, Answer, Consent, GameCommandError, GameEvent, HireAnswer, Sink,
-    UniversityAnswer,
+    TavernAnswer, UniversityAnswer,
 };
 use crate::observe::LevelUpView;
 use crate::town::{self, HeroPool};
@@ -69,7 +69,7 @@ struct PlayerState {
 /// owner also manages the heroes (and the group) it holds together (GAM-MAN-001); since E08 T63a
 /// a choice (GAM-DEC-005) and a University (GAM-DEC-006); since E08 T95b a hire dialog
 /// (GAM-DEC-008); since E08 T114a2 a map garrison's exchange (GAM-DEC-009), during which its owner
-/// manages the hero's army and the garrison's.
+/// manages the hero's army and the garrison's; since E09 T39a a map Tavern (GAM-DEC-010).
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Decision {
     /// An offer, answered by its owner.
@@ -150,6 +150,15 @@ enum Decision {
         /// The hero and the garrison.
         exchange: Exchange,
     },
+    /// A map Tavern's decision (GAM-DEC-010, ADV-VIS-007; E09 T39a, the town epic's design note
+    /// §66; the original's tavern dialog, `map_tavern_visit` 0x5D7E90), answered by its owner with
+    /// a hire of one of its tavern heroes, which closes it, or its `Close`.
+    Tavern {
+        /// The visitor's owner, who answers it.
+        owner: PlayerId,
+        /// The visit: the hero, the Tavern and its visitable tile.
+        visit: TavernVisit,
+    },
 }
 
 /// What holds an army dialog's group (GAM-DEC-004 amended; E08 T84a): a join's (or a reward
@@ -203,7 +212,8 @@ impl Decision {
             | Self::Choice { owner, .. }
             | Self::University { owner, .. }
             | Self::Hire { owner, .. }
-            | Self::Exchange { owner, .. } => *owner == player,
+            | Self::Exchange { owner, .. }
+            | Self::Tavern { owner, .. } => *owner == player,
             Self::Battle(battle) => battle.owners().contains(&Some(player)),
         }
     }
@@ -598,9 +608,10 @@ impl GameState {
     /// dialog ([`Self::open_army_dialog`], T51b), the choice ([`Self::open_choice`], T63a), the
     /// University ([`Self::open_university`], T63a) or the hire dialog ([`Self::open_hire`], E08
     /// T95b): an outcome has at most one of the offer, the battle, the meeting, the group without
-    /// room, the choice, the University and the hire dialog.
+    /// room, the choice, the University and the hire dialog; since E09 T39a the map Tavern's
+    /// decision ([`Self::open_tavern`]), alone.
     // rule: GAM-DEC-001, GAM-DEC-005, GAM-DEC-006, GAM-DEC-007, GAM-DEC-008, ADV-MON-006
-    // rule: TWN-SIE-002, GAM-DEC-009, TWN-GRO-007
+    // rule: TWN-SIE-002, GAM-DEC-009, TWN-GRO-007, GAM-DEC-010
     pub(crate) fn settle_outcome<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -689,7 +700,28 @@ impl GameState {
             if let Some(dialog) = outcome.hire {
                 self.open_hire(player, dialog, sink);
             }
+            if let Some(visit) = outcome.tavern {
+                self.open_tavern(player, visit, sink);
+            }
         }
+    }
+
+    /// Opens the map Tavern's decision a visit of `player`'s hero made (GAM-DEC-010, ADV-VIS-007;
+    /// E09 T39a, the town epic's design note §66), told to it alone (`TavernOpened`): its offers
+    /// are the player's tavern heroes, whatever its gold and room (the original's dialog opens and
+    /// disables its Recruit button).
+    // rule: GAM-DEC-010
+    fn open_tavern<S: Sink>(&mut self, player: PlayerId, visit: TavernVisit, sink: &mut S) {
+        sink.emit(GameEvent::TavernOpened {
+            player,
+            hero: visit.hero,
+            object_type: visit.object_type,
+            anchor: visit.anchor,
+        });
+        self.push_decision(Decision::Tavern {
+            owner: player,
+            visit,
+        });
     }
 
     /// Gives `player`'s hero the experience of what a Sirens' visit took from its army
@@ -968,16 +1000,18 @@ impl GameState {
     /// a meeting's or an army dialog's `Close` ([`Self::close_exchange`]; GAM-DEC-003,
     /// GAM-DEC-004, E08 T51b), a choice's ([`Self::answer_choice`], GAM-DEC-005), a University's
     /// purchase ([`Self::buy`]) or leaving (GAM-DEC-006), a hire dialog's purchase
-    /// ([`Self::hire`]) or closing (GAM-DEC-008, E08 T95b).
+    /// ([`Self::hire`]) or closing (GAM-DEC-008, E08 T95b), a map Tavern's hire or closing, each
+    /// closing it (GAM-DEC-010, E09 T39a).
     ///
     /// # Errors
     ///
     /// `UnknownPlayer`, then `NoDecision`, then `BattleOpen` when the first is a battle (E08
     /// T19a), then `WrongAnswer` for an answer of another kind (E08 T30, T63a), then `OfferGone`
     /// for an acceptance, `SlotClosed` and `CannotPay` for a University's purchase (T63a), `Hire`
-    /// and `CannotPay` for a hire dialog's (T95b); the state is then unchanged.
+    /// and `CannotPay` for a hire dialog's (T95b), `Tavern` and `CannotPay` for a map Tavern's
+    /// hire (E09 T39a: [`town::hire::map_hire`]); the state is then unchanged.
     // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006
-    // rule: GAM-DEC-008
+    // rule: GAM-DEC-008, GAM-DEC-010
     pub(crate) fn answer<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -1036,6 +1070,15 @@ impl GameState {
             }
             (Decision::Hire { dialog, .. }, Answer::Hire(HireAnswer::Buy { creature, amount })) => {
                 self.hire(rules, (player, at), &dialog, (creature, amount), sink)
+            }
+            // rule: GAM-DEC-010
+            (Decision::Tavern { visit, .. }, Answer::Tavern(answer)) => {
+                if let TavernAnswer::Hire { slot } = answer {
+                    town::hire::map_hire(self, rules, player, (&visit, slot), sink)?;
+                }
+                self.close(at);
+                sink.emit(GameEvent::DecisionClosed { player });
+                Ok(())
             }
             _ => Err(GameCommandError::WrongAnswer),
         }
@@ -1269,6 +1312,16 @@ impl GameState {
     pub fn exchange(&self, player: PlayerId) -> Option<&Exchange> {
         match self.first_decision(player)? {
             Decision::Exchange { exchange, .. } => Some(exchange),
+            _ => None,
+        }
+    }
+
+    /// The map Tavern of `player`'s first open decision, if it is one (GAM-DEC-010, E09 T39a): the
+    /// visiting hero, the Tavern and its visitable tile. While it is open the player hires one of
+    /// its tavern heroes there or closes it.
+    pub fn tavern(&self, player: PlayerId) -> Option<&TavernVisit> {
+        match self.first_decision(player)? {
+            Decision::Tavern { visit, .. } => Some(visit),
             _ => None,
         }
     }
@@ -1890,6 +1943,15 @@ impl CanonicalHash for GameState {
                     h.write_u32(exchange.garrison);
                     exchange.object_type.hash_into(h);
                     exchange.anchor.hash_into(h);
+                }
+                // E09 T39a (game state hash v34).
+                Decision::Tavern { owner, visit } => {
+                    h.write_u8(9);
+                    h.write_u8(owner.raw());
+                    h.write_u16(visit.hero.raw());
+                    visit.object_type.hash_into(h);
+                    visit.anchor.hash_into(h);
+                    visit.entrance.hash_into(h);
                 }
             }
         }

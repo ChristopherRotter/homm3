@@ -2129,6 +2129,27 @@ levels = [
     { chance = 10, guards = [{ creature = "green_dragon", count = 8 }, { creature = "red_dragon", count = 7 }, { creature = "gold_dragon", count = 6 }, { creature = "black_dragon", count = 5 }], resources = { gold = 50000 }, artifacts = { relic = 4 } },
 ]
 
+# ADV-VIS-007 (E09 T39a; the town epic's design note section 66, survey E09-tavern.md section 3):
+# the adventure map's Tavern (class 95; visit_object's case 95, map_tavern_visit 0x5D7E90),
+# visited from a neighbour (object_classes_not_entered 0x63AA58), not from above: the tavern
+# decision for the visitor's owner, whose hire places the hero on its visitable tile.
+[[object_type]]
+id = "tavern"
+name = "Tavern"
+visit = "neighbour"
+from_above = false
+tavern = {}
+
+# ADV-VIS-008 (E09 T39a; design note section 74, survey section 6): the Den of Thieves (class 97;
+# visit_object's case 97), entered (on neither of the original's lists): the Thieves' Guild at
+# everything for the visitor's owner, every visit.
+[[object_type]]
+id = "den_of_thieves"
+name = "Den of Thieves"
+visit = "enter"
+from_above = false
+den_of_thieves = {}
+
 # ADV-DWL-005 (E08 T93a, increment 10's design note section 2): what a random dwelling of level n
 # of the faction becomes. The original derives it (random_dwellings_resolve 0x502B60 steps 3 and
 # 4; survey E08-dwellings.md section 3.2): town_creatures 0x6747B4[faction x 14 + level], the

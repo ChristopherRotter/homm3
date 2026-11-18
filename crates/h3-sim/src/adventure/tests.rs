@@ -181,7 +181,7 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 12);
+    assert_eq!(ACTION_ENCODING_VERSION, 13);
     assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 37));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!((HIRE_BASE, HIRE_SLOTS, REVISIT_BASE), (18, 4, 22));
@@ -191,6 +191,17 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(
         TOWN_HERO_MOVES.map(|change| Action::town_heroes(9, change)),
         [Action::map(32, 9), Action::map(33, 9), Action::map(34, 9)]
+    );
+    // E09 T39a (v13): a map Tavern's answers by role, no new entry.
+    let tavern = |answer| answer_entry(h3_game::Answer::Tavern(answer));
+    assert_eq!(
+        [
+            tavern(h3_game::TavernAnswer::Hire { slot: 0 }),
+            tavern(h3_game::TavernAnswer::Hire { slot: 1 }),
+            tavern(h3_game::TavernAnswer::Hire { slot: 2 }),
+            tavern(h3_game::TavernAnswer::Close),
+        ],
+        [Some(FIRST), Some(SECOND), None, Some(DECLINE)]
     );
     // E09 T38a2 (v12): a hire of each of the two tavern slots.
     assert_eq!((TAVERN_HIRE, TAVERN_SLOTS), (35, 2));
