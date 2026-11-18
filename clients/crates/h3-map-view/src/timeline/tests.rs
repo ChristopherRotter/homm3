@@ -396,7 +396,11 @@ fn the_walks_frames_are_m2_t3bs() {
             "level-up-right",
             "level-up-one",
             "level-up-none",
-            "level-up-twice"
+            "level-up-twice",
+            "flag-mine",
+            "flag-mine-blue",
+            "flag-lighthouse",
+            "flag-dwelling"
         ]
     );
 }
@@ -1604,6 +1608,7 @@ fn the_minimap_drawn_again_by_a_scroll_a_lift_and_each_steps_end() {
         view: ViewAt { x, y, z: 0 },
         hero: Some(Pos { x: hx, y: hy, z: 0 }),
         index: None,
+        owners: Arc::new(Vec::new()),
     };
     let run = |l: &mut Loop, from: u32, to: u32| {
         for t in from..=to {
@@ -3073,6 +3078,7 @@ mod asks;
 mod choices;
 mod computers;
 mod finds;
+mod flags;
 mod levels;
 mod replies;
 mod turns;

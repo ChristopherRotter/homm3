@@ -139,6 +139,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   T2a sequence recorded again (`find-*`, `turn-*`) keeps a live part with more tables than git's:
   expected, nothing of the viewer reads them. A choice's OK is disabled until a picture is
   chosen (styles 7 and 10): a sequence's Enter before the click does nothing.
+- **Two tests pin the recorded sequences** (M4 T2d1): moving a task's sequences from
+  `to-record.toml` into `sequences.toml` fails `sequence::tests::reads_the_recorded_sequences`
+  (their count) and `timeline::tests::the_walks_frames_are_m2_t3bs` (the ids replayed, in order)
+  until both list them; `drawn` then reports them `new` (`drawn --only <id> --record` each).
 - **A hero's secondary skills written show at the walk** (M4 T2c, design §5.5): a situation's
   `secondary` is written without a selection (none of another hero to make), after the status
   window at 0 was built; the walk's first step builds it again from the hero. So the skills

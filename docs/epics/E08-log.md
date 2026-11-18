@@ -19518,3 +19518,108 @@ amended, `new_month`, `object_class_values`, `random_artifact_of_level` cited; `
 **Verify:** docs and the address map only: the docs gates (`check-docs`, `check-exe-map`) and
 `scripts/exe.py check`. No code, version or replay moved; CI's run on the pull request is the
 record. **Next:** T127a2.
+
+### Increment 14, round 1: T127a2, the trades survey's second part: the services and the checkpoint (2026-11-18, `adventure/e08-t127a2`)
+
+**The cut** (decision 364, the user at T127a2's start after the reading was measured again: about
+14.5 KB of code, the Altar about 8 KB of its 24 KB dialog, the Hill Fort about 5, the factory about
+1.5 on increment 10's hire dialog; offered: the reading first and the planning second, recommended,
+or the Altar alone first): **whole**. **Baseline:** `master` 5ee8c88 (#1019, T127a1, merged); a
+docs-only task, no setup run. Staged the executable, `maps.tar` and `extracted.tar` (SHA-256 checked
+against the PC's). Survey `docs/rules/surveys/E08-trades.md` §12 to §20 (and part 2's sources and
+findings in short):
+
+- **The Altar of Sacrifice** (§12): the screens by the hero's class's faction (Castle, Rampart,
+  Tower artifacts; Inferno, Necropolis, Dungeon creatures; Stronghold, Fortress, Conflux both,
+  artifacts first); an artifact 1 000, 1 500, 3 000, 6 000 by class, a special one 0; a creature
+  5 × ⌊AI value / 40⌋; the Learning per artifact and per stack, truncated each; every artifact but
+  the Spell Book and the Catapult may go on the altar (22 places and the cursor); the army keeps a
+  creature; Sacrifice needs a total above 0, gives the levels at once and leaves the dialog open;
+  A-48, the turn's time end.
+- **The Hill Fort** (§13): a town's unupgraded creature (not the RoE elementals) at
+  `upgrade_cost` 0x54E750's difference times the count, the gold alone scaled by the level (0, 25,
+  50, 75 % to level 4, whole after) and truncated once; a slot or all (all only when affordable).
+- **The War Machine Factory** (§14): the question, the hire dialog with the Ballista, the First Aid
+  Tent and the Ammo Cart, one of each the hero lacks at its gold cost, the artifact given.
+- **VCMI 1.7.5 and the wiki** (§15; a throwaway script over the packs, deleted): the screens, the
+  values, the last creature, the factors and the factory agree; **D-72** (the machines on the
+  altar), **D-73** (the Learning once over the sum), **D-74** (the Hill Fort per creature); the wiki
+  through search snippets only (the Altar's alignment rule, the machines' prices, the factory).
+- **Quirk candidates** (§16): **A-47** (a special artifact sacrificed for nothing beside others),
+  **A-48** (the altar's artifacts lost at a timed turn's end). **For T127b:** the levels inside the
+  Altar, the answers' shapes, the factory as the hire dialog.
+- **The interfaces' sketch** (§17, every class a decision of the visitor's owner, as GAM-DEC-006 and
+  -008), **batch E14's plan** (§18, E14-1 to E14-15), **the ids** (§19: ADV-MKT-001 to -008,
+  ADV-ALT-001 to -003, ADV-HFT-001, -002, ADV-WMF-001, GAM-DEC-011 to -013), **the checkpoint**
+  (§20, ADV-Q57).
+
+**The checkpoint** (ADV-Q57, one round, decisions 365 to 368, all as recommended): the original's
+roundings (D-71, D-73, D-74); A-46 and A-48 fixed; the Altar's special artifacts as the original
+(A-47 harmless and accepted, D-72 the original's); batch E14 before the build. The town lane's
+inbox told (D-71, A-46 and `upgrade_cost`).
+
+**The address map:** 38 new entries (33 functions: the Altar's 24, its dialog with its run,
+screens, update, clicks, buttons, experience and time's end (two inferred), the Hill Fort's run, rows,
+upgrade and procedure (its constructor inferred), `upgrade_cost`, `war_machine_creature`, the
+computer's two visits (inferred); 5 tables: the Altar's two place tables and vtable, the Hill
+Fort's factors and vtable); the three visit cases, `recruit_dialog_select` and
+`recruit_dialog_proc` amended. `scripts/exe.py check` agrees with the executable.
+
+**Verify:** docs and the address map only: `check-docs`, `check-exe-map`, `check-lane` and
+`scripts/exe.py check`. No code, version or replay moved; CI's run on the pull request is the
+record. **Next:** T127b.
+
+### Increment 14, round 1: T127b, the design note, the drafts, the cut and the checkpoint (2026-11-18, `adventure/e08-t127b`)
+
+**The cut** (decision 369, the user at T127b's start, offered after increment 13's 66 KB note was
+weighed against increment 14's seven classes, four decision kinds and shared rates: by side,
+recommended; by object; whole): **whole**. **Baseline:** `master` 4d08ca8 (#1024, T127a2, merged);
+docs only, nothing staged (the survey and the address map hold the readings).
+
+**A correction to the survey** (§0, §1, §2, §17 and §19 corrected): the seven classes are
+**entered**, not visited from a neighbour: `object_classes_not_entered` 0x63AA58 and
+`object_classes_from_above` 0x63AB00 list none of them (E08 decision 317's rule: the class lists,
+not the template's blocked tile); VCMI 1.7.5's `markets.json` and `generic.json` agree (no
+`blockedVisitable`). No new question (decision 317's rule); batch E14 records the hero's tile
+(E14-16).
+
+**The design note** `E08-design.md` for increment 14 (§1 to §22): **A** the content (§1 the market
+kind `market { screens, count, stock }` for the Trading Post (99, 221), the Black Market (7) and the
+ab pack's Freelancer's Guild (213); §2 the rates as lots from the adventure part's `[market]`
+parameters, the original's binary32 steps in `h3_kernel::arith::X87` (Q-0005's model; no
+`kernel::num` change, no ADR-0003 amendment), the home reused by the town's Marketplace; §3 the
+Altar `altar { artifacts, keeps, places = 23, creature, artifact_factions, creature_factions }`;
+§4 the Hill Fort `hill_fort { gold percents, roe_except }` in integers; §5 the factory
+`war_machine_factory { machines }`; §6 the packs and the eighth original-data check); **B** the map
+(§7 the import, 221 as the Trading Post, `Holds::RoE` on an RoE map's Hill Forts; §8 the stock as
+`Resolved::Stock`, the sold entries in the visits block; §9 the draw in `resolve_rewards`' second
+walk from the one pool; §10 the visits, entered, every player, `AdventureOutcome::service`, the
+factory's hire question; §11 the adventure's checks: the sale's lots and last creature, the
+purchase's room by `AddArtifact`'s check (A-46 fixed, not A-25's count), the sacrifices per item
+by `gained_experience` (D-73), the upgrade's rows, the factory's source; §12 the stock server-only,
+nothing kept); **C** the game (§13 GAM-DEC-011 with `Trade`, `Transfer`, `Sell`, `Buy` and `Leave`,
+the view carrying the rates; §14 GAM-DEC-012, the close and return around a level-up as
+`Rest::Visit`; §15 GAM-DEC-013's rows and `All`; §16 the factory through GAM-DEC-008; §17 three
+events, the wire per task `cross-lane`; §18 `legal_commands`' representative answers, the env's 67
+entries, the replay words, the maps, plans, oracles and workloads; §19 versions, ids, quirks
+ADV-QUIRK-48 to -50, no stub); **D** (§20 batch E14 with E14-16 and E14-17 added, the specs, the
+harness's reads, the recipe; §21 the shared and `cross-lane` work, the cut T128 to T136, ten exit
+criteria; §22 risks).
+
+**The drafts** `docs/lanes/adventure/adr-drafts/0016-increment-14.md` (points 1, 4, 6) and
+`0017-increment-14.md` (points 1, 6, 8, 9, 10), each with its consequences, alternatives and
+history lines. ADR-0013 and ADR-0015 need none (the note's preamble).
+
+**The checkpoint** (ADV-Q58, one round of four; decisions 370 to 373): the rates in the adventure
+part (370); the Altar's close and return, with the user's note for the clients to keep both
+dialogs drawn unless the level-up covers the Altar, if the original does so (371; design §14, the
+map client lane's inbox); the env's 67 entries `cross-lane` at T135a (372); the cut and every other
+call as written (373). All as recommended, the second with the note.
+
+**Docs:** decisions 369 to 373 in the epic with the tasks T128 to T136; ADV-Q58 in
+`QUESTIONS-ANSWERED.md`; T127b's entry to `QUEUE-ARCHIVE.md`, T128 queued; the inboxes of the town
+lane (the rates' home and API, screen 3 theirs, the versions both lanes plan), the map client lane
+(the seven types, the kind marks, the Altar's note), the AI lane (the 67 entries), the server lane
+(the wire per task) and the battle lane (T128's spec fields). **Verify:** docs only: `check-docs`,
+`check-lane`, `check-exe-map`. No code, version or replay moved; CI's run on the pull request is
+the record. **Next:** T128.

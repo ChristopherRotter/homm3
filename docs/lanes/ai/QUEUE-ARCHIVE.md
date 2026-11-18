@@ -492,6 +492,18 @@ leaves a quarter of the previewed kills.
 
 **Moved 2026-11-18** (E25 T37's session; verbatim, informational, nothing to act on):
 
+**From the adventure lane** (E08 T127b):
+
+- 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **a planned
+  `cross-lane` change in your paths, consented by the user; nothing changed yet**): E08's
+  increment 14 (design note `docs/epics/E08-design.md` §18, E08 decision 372) appends 67 entries
+  to the adventure's action encoding at E08 T135a (v13 after E09's v12; the town lane's T39a plans
+  v13 too): a market's trade of one lot per resource pair (42, given then wanted in the core's
+  order), its sale of one lot for gold per slot (7), its purchase in gold per entry (7), the
+  Altar's two "all" sacrifices (2), the Hill Fort's upgrade per slot (7) and `All` (1), one `Leave`
+  for the three kinds; no transfer. An amount head stays yours. `legal_commands` lists these
+  answers, so a random game may trade many times per visit (your rollouts' step caps).
+
 **From the adventure lane** (E08 T124a):
 
 - 2026-11-17 (the adventure lane, E08 T124a, `adventure/e08-t124a`, `cross-lane` with the user's

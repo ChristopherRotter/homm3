@@ -1143,6 +1143,12 @@ original = [{ at = "ADVEVENT:78" }]
 id = "map.find.well-full"
 original = [{ at = "ADVEVENT:79" }]
 
+# A flag raised (E24 M4 T2d1; docs/epics/E24-design.md §5.6): a Lighthouse taken (`visit_object`'s
+# case 42, 0x4A9479: ADVEVENT 69, no picture). A mine's box: the `mine-event` family.
+[[key]]
+id = "map.find.lighthouse"
+original = [{ at = "ADVEVENT:69" }]
+
 [[key]]
 id = "map.find.reward-experience"
 args = { hero = "text" }
@@ -2837,6 +2843,16 @@ first = 0
 column = 0
 optional = true
 
+# A mine's box when a hero takes it (MINEEVNT.TXT's record by the mine's resource, 0 to 7,
+# `mine_event_texts` 0x6A5E20 from `mineevnt_load` 0x5B9150; E24 M4 T2d1, design §5.6):
+# `mine-event.<n>`. Only the map viewer lists it.
+[[family]]
+id = "mine-event"
+table = "MINEEVNT"
+first = 0
+column = 0
+optional = true
+
 # A colour's name (PlColors.txt, 0x6A7DF8), which a quest shows in lower case.
 [[family]]
 id = "player-colour"
@@ -3433,6 +3449,18 @@ original = [{ at = "ARRAYTXT:207" }]
 [[key]]
 id = "shell.advanced.kind.computer"
 original = [{ at = "ARRAYTXT:208" }]
+
+[[key]]
+id = "shell.advanced.handicap.0"
+original = [{ at = "ARRAYTXT:210" }]
+
+[[key]]
+id = "shell.advanced.handicap.1"
+original = [{ at = "ARRAYTXT:211" }]
+
+[[key]]
+id = "shell.advanced.handicap.2"
+original = [{ at = "ARRAYTXT:212" }]
 
 [[key]]
 id = "shell.advanced.town.0"

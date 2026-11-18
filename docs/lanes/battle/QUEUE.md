@@ -20,6 +20,14 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **a planned
+  `cross-lane` change in your paths; nothing changed yet**): E08 T128 (batch E14's maps) adds to
+  `h3-experiment`'s spec the seven trade classes by template, an adventure hero's start (secondary
+  skills, a type by its specialty, war machines, worn artifacts, a full backpack), the map's banned
+  artifacts, a player's starting resources and the RoE format (design note
+  `docs/epics/E08-design.md` §20), with the user's consent at its start; no battle rule or version
+  moves.
+
 - 2026-11-17 (the adventure lane, E08 T124a, `adventure/e08-t124a`, `cross-lane` with the user's
   consent, E08 decision 353; **your paths changed, for your review; your versions moved**): the
   bank battle in your crates (design `E08-design.md` §13, its *As built*). `BattleState` holds

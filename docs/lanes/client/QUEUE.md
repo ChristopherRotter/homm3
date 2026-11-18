@@ -15,17 +15,20 @@ need the five DLLs (`MP3DEC.ASI` in the PC's `original-data/install` too since 2
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T4
+#### E27 M3 T4b
 
-T4 The advanced options in the hot seat (§3.14; the M3 table): the scenario screen opened from the
-Multiplayer dialog's hot seat (`h3shell.py drawn` stops there now: "not-built scenario (new game,
-multiplayer)"), two to eight humans, their names from the Multiplayer dialog
-(`Multiplayer::names`, M2's item 61), the flags' cycle (CLT-Q94, decision 13: the client's; the
-original's for the comparisons), the handicap a caption button with its press (+1 modulo 3,
-`handicap_names`) and its hint (T3c2's `COLOUR_HELPED` has it; `Advanced::takes` by the mode), the
-names' edits hidden, the duration's bar enabled. Exact against `adv-hotseat`, `adv-hotseat-rows`,
-`adv-hotseat-two`. Its size is unknown until the hot seat's entry to the screen is read: confirm a
-cut with the user at its start. Then T5 to T7 as the M3 table lists them.
+T4b The hot seat's presses (decision 59; design §3.6, §3.14, §3.15, §28.4; the M3 table): the
+handicap's press (+1 modulo 3, its caption `handicap_names`, the row drawn again; T4a made it a
+caption button taking the mouse), the flags' cycle (CLT-Q94, decision 13: the client's passes the
+colour to the next player after its holder; the original's `hot_seat_colour_cycle` 0x577AE0 for
+the comparisons; until then `Advanced::flag_click` moves no colour in the hot seat), a hero
+another human record holds passed over by the hero's arrows and stepped on after a town's change
+and at the showing (`scenario_hero_step` 0x58AF20, `scenario_heroes_unclash` 0x58BBC0; the
+client keeps hero types, not the original's indices), the name's press taking nothing (built at
+T4a: check `name-press`), Begin's GENRLTXT 83 (fewer than two placed players) and 531 (the first
+player without a colour). Exact against the rest of `adv-hotseat-rows` (`handicap-1`,
+`handicap-2`, the flags', `row-1-choices`, `name-press`) and `adv-hotseat-two` (its six after
+`panel`). Then T5 to T7 as the M3 table lists them.
 
 ## Inbox
 

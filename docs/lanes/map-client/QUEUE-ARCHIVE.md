@@ -868,3 +868,10 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
   - **T2c, a level-up's choice:** the level-up dialog (0x63FE60, `level_up`; the engine's
     `DecisionView::LevelUp`): the primary skill gained, one or two secondary offers, its own layout.
     **Depends on:** T2a.
+- 2026-11-18 (this lane, E24 M4 T2d1): T2d cut in three by the user at its start (by family:
+  T2d1 a flag raised, T2d2 a boat boarded and left, T2d3 a spell cast on the map; "a monster
+  beaten" moved to T5); T2d1 done, the log's "M4 T2d1". T2d's entry before the cut:
+  - **T2d, the map changed by a visit:** an object taken or a monster beaten (the map, the minimap
+    and the panels redrawn); a flag raised (the owner's colour on the object and the minimap); a
+    boat boarded and left; a spell cast on the map recorded (MCL-Q14: if the stale mana bar shows,
+    the client shows the slot whole, the original's behind `--bugs original`). **Depends on:** T1a.
