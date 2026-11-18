@@ -77,6 +77,8 @@ pub(crate) fn legal_builds<'a>(
     let adventure = state.adventure();
     let map = adventure.map();
     let part = rules.towns();
+    // E09 T38a2: the hires' player-wide tests, once a listing.
+    let hiring = super::hire::hire_slots(state, rules, player);
     map.towns()
         .iter()
         .filter(move |&&index| adventure.owner(index) == Some(player))
@@ -100,7 +102,7 @@ pub(crate) fn legal_builds<'a>(
                 .iter()
                 .map(move |building| GameCommand::Town(TownCommand::Recruit { town, building }));
             // E09 T38a2: the hires of its Tavern (TWN-TAV-003).
-            let hires = super::hire::legal_hires(state, rules, player, town);
+            let hires = super::hire::legal_hires(state, rules, (town, hiring));
             // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
             let moves = super::rows::legal_moves(state, rules, player, town);
             builds.chain(recruits).chain(hires).chain(moves)

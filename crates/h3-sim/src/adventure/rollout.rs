@@ -1,7 +1,8 @@
 //! The uniformly random legal agent of the adventure (E08 T9a; T9b's benchmark workload and
 //! golden replays play it; it answers an open decision since T14b, plays its battles since T19b1
 //! and the neutral seat's since T20b3a; a town's build since E09 T19c1, encoding v9's entry; the
-//! listed builds skipped before it, E09 T18b2b, decision 56).
+//! listed builds skipped before it, E09 T18b2b, decision 56; a town's hire since E09 T38a2,
+//! encoding v12).
 
 use h3_adventure::Reach;
 use h3_battle::LegalCommands;
@@ -58,7 +59,8 @@ pub fn random_rollout(env: &mut AdventureEnv, agent_seed: u64, max_steps: u32) -
 /// and ended the turn), each hero's `Revisit` (E08 T105b2, encoding v8: at 0 points too, so a
 /// turn's revisits end only by the draw of another entry) and each town's build (by its town's
 /// entrance and its building, E09 T19c1, encoding v9; from E09 T18b2b to T19c1 the listed builds
-/// were left out of the draw, decision 56), or with an open decision its answers alone (`Decline`, and `Accept` while
+/// were left out of the draw, decision 56), its recruitments and hero moves (E09 T27, T28a) and
+/// its hires (by its entrance and the slot, E09 T38a2, encoding v12), or with an open decision its answers alone (`Decline`, and `Accept` while
 /// the offer stands; a level-up's `First` and `Second`, E08 T30), each at even odds
 /// with each hero's move (GAM-DEC-001, GAM-DEC-002; E08 T14b, T15a). `EndTurn` when the seat has
 /// no legal entry (the neutral seat while no battle waits for it). In the battle phase: the

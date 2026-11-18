@@ -93,12 +93,20 @@ pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> V
         .adventure()
         .revisitable(rules.adventure(), player)
         .map(|hero| GameCommand::Adventure(AdventureCommand::Revisit { hero }));
+    // E09 T38a2: folded into a list sized for a turn's usual commands (the end, a town's builds,
+    // recruitments and hires), so that the chain's parts run without the nested `next` and the
+    // list without its first regrowths (`legal-towns-36`).
+    let mut listed = Vec::with_capacity(LISTED);
     core::iter::once(GameCommand::EndTurn)
         .chain(boats)
         .chain(revisits)
         .chain(crate::town::legal_builds(state, rules, player))
-        .collect()
+        .for_each(|command| listed.push(command));
+    listed
 }
+
+/// The room [`legal_commands`] reserves for a player's commands in its turn (E09 T38a2).
+const LISTED: usize = 16;
 
 /// The answers to `player`'s first open decision but a battle (ADR-0017 point 6; E08 T63a: typed
 /// by the decision's kind), in this order: an offer's `Accept` while it stands (ADR-0017 point

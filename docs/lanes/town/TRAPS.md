@@ -35,7 +35,10 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   T19c1, T27): the env's agent draws it, so `h3-sim`'s town-map tests (`tests/towns.rs`: the
   play's seed, the fork's siege seed) and the `*-towns-36` workloads move. Search seeds with a
   throwaway `#[ignore]` test in release, its `CARGO_TARGET_DIR` outside the worktree: only
-  `/target` is ignored, and `git add -A` took a `target-rel/` (E09 T27).
+  `/target` is ignored, and `git add -A` took a `target-rel/` (E09 T27). Since the hires (E09
+  T38a2, encoding v12) every game hires 10 to 16 heroes and spends its gold on them: a siege
+  against a visitor with the garrison merged met 8 games of 399; search a few thousand seeds
+  (400 games of 21 days about 50 s in release, without the masks' checks).
 - **A new golden adventure replay moves three counts in the server lane's tests** (E09 T29a's
   CI): `h3-protocol`'s `tests/game_fold.rs` (`golden`) and `tests/game_session.rs` (the
   restores), `h3-server`'s `tests/record.rs`; their fold, query and session gates also play every
@@ -46,6 +49,12 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 - **A hire dialog's creatures for the env come from `GameState::hire_stock`** (E09 T27): a new
   source served elsewhere leaves its `Buy`s without an entry, and the random agent falls back on
   `EndTurn`, which the game refuses (`DecisionOpen`).
+- **A listing is folded, not collected** (E09 T38a2): `legal_commands` pushes its chain into a
+  list sized 16 with `for_each`, which runs each part's own fold; `collect()` went through the
+  nested `Chain`'s `next` and the list's regrowths, which the hires' longer lists made cost
+  `legal-towns-36` +17 % on the same games (+4.6 % folded; a size of 8 was worse). A test that
+  does not depend on the town (the price, the room on the map) runs once a listing
+  (`town::hire::hire_slots`), the town's own (the entrance, the Tavern) after it.
 - **A town's entrance from its template is dear in a listing** (E09 T28a): `MapObject::entrance`
   walks the visitable mask's offsets; three checks a town a listing cost `legal-towns-36` +56 %.
   Read `StaticMap::town_entrance` (cached at the build) and find a visitor by comparing the
@@ -122,6 +131,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   after changing what a step plays, run the properties of `play.rs` and `view.rs` at five times
   their cases once, `every_step_keeps_the_commands_invariants` at ten (raise the two blocks'
   `cases`, then put 48 back): 240 cases missed two that CI's seeds met.
+- **A tavern hero shown ends the hygiene's comparison** (E09 T38a2): the slots' heroes are draws
+  of the taverns' stream, which the other game's seed and types move (`without_tavern` hides the
+  viewer's slots), so a hire the viewer is told (its own, or another player's on a tile it sees)
+  ends it, as a battle does. A new way a tavern hero reaches the map (T38b's returns, T39a's
+  map Tavern) ends it too.
 - **The hygiene's other game keeps every ownable object's entrance land** (`view.rs`' `vary`,
   its `entrances`): the import refuses one entered from water (`OwnedOnWater`). A new ownable
   body (E08 T116b1's map garrisons, missed until T29b) joins that list.

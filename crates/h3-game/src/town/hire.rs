@@ -151,8 +151,7 @@ struct Checked<'a> {
     pos: Pos,
 }
 
-/// [`hire`]'s checks in its order, changing nothing and drawing nothing (E09 T38a2: the listing's
-/// too, [`legal_hires`]).
+/// [`hire`]'s checks in its order, changing nothing and drawing nothing.
 fn check<'a>(
     state: &GameState,
     rules: &'a GameRuleset,
@@ -192,25 +191,53 @@ fn check<'a>(
     })
 }
 
-/// The hires `player` may give at `town` now, for [`crate::legal_commands`] in its turn without a
-/// decision (E09 T38a2, design §64, §76; TWN-TAV-003): a `Hire` of each of its two slots, in slot
-/// order, that passes every check of [`hire`] (an own town with a standing Tavern, a hero in the
-/// slot, room on the map, a free entrance, the price in the treasury). None for a town without a
-/// Tavern, which costs one test.
+/// The slots of `player`'s tavern a listing may hire from anywhere now (E09 T38a2, design §64,
+/// §76): those holding a hero, when the treasury holds the part's price and the map has room for
+/// another of its heroes (the part's most, the garrison heroes not counted); none when either
+/// fails or no slot holds a hero. Tested once a listing ([`legal_hires`] then tests each town).
+pub(crate) fn hire_slots(
+    state: &GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+) -> Option<[bool; 2]> {
+    let price = rules
+        .towns()
+        .params()
+        .map_or(&[][..], |params| params.hire_price.as_slice());
+    let room = state.adventure().has_room(player, most_heroes(rules));
+    if !room || !state.can_pay(player, price) {
+        return None;
+    }
+    let pool = state.pool();
+    let held = pool
+        .tavern(player)?
+        .slots
+        .map(|slot| slot.is_some_and(|t| pool.record(t).is_some()));
+    held.contains(&true).then_some(held)
+}
+
+/// The hires `player` may give at `town`, one of its own, now, for [`crate::legal_commands`] in
+/// its turn without a decision (E09 T38a2, design §64, §76; TWN-TAV-003): with `slots` its
+/// player-wide part ([`hire_slots`]), a `Hire` of each slot it names, in slot order, when no hero
+/// stands on the town's entrance and the town has a standing Tavern; so a listed hire passes
+/// every check of [`hire`] (the same conditions, the cheapest first). None for a town without a
+/// Tavern or with its entrance held.
 // rule: TWN-TAV-003
 pub(crate) fn legal_hires<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
-    player: PlayerId,
-    town: TownId,
+    (town, slots): (TownId, Option<[bool; 2]>),
 ) -> impl Iterator<Item = GameCommand> + 'a {
-    let tavern = state
-        .towns()
-        .get(town)
-        .is_some_and(|record| h3_towns::has_tavern(record, rules.towns()));
-    let slots = if tavern { 0..TAVERN_SLOTS } else { 0..0 };
-    slots
-        .filter(move |&slot| check(state, rules, player, (town, slot)).is_ok())
+    let open = slots.filter(|_| {
+        state.adventure().entrance_free(town)
+            && state
+                .towns()
+                .get(town)
+                .is_some_and(|record| h3_towns::has_tavern(record, rules.towns()))
+    });
+    let held = open.unwrap_or([false; 2]);
+    (0..TAVERN_SLOTS)
+        .filter(move |&slot| held[usize::from(slot)])
         .map(move |slot| GameCommand::Town(TownCommand::Hire { town, slot }))
 }
 

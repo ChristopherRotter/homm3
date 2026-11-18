@@ -117,6 +117,18 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 
 **From the town lane** (E09 T8c1, T8c2, T19c1; T19c1's encoding v9 for the adventure agents):
 
+- 2026-11-18 (the town lane, E09 T38a2, `town/e09-t38a2`, `cross-lane` with the user's consent, E09
+  decision 143; **the env's action encoding v12, for the adventure agents**): `action.rs` appends
+  the two entries `TAVERN_HIRE` (35, 36; `ENTRY_COUNT` 37; `TAVERN_SLOTS`; the design note's
+  `HIRE + s`): a town's entrance in the tile head hires the hero in the player's tavern slot `s`
+  there (`TownCommand::Hire`, TWN-TAV-003: an own town with a standing Tavern, a hero in the slot,
+  fewer than eight heroes on the map, a free entrance, 2 500 gold), the building head 0, masked by
+  `legal_commands`' hires (each own town's after its recruitments, before its hero moves);
+  `Action::tavern_hire`. A hired hero takes its owner's hero slot by its id. The random agent now
+  draws the hires where they are listed (10 to 16 hires a game on the town map), so the town map's
+  play and fork tests took new seeds (`tests/towns.rs`: 2369 and 6); the observation is unchanged
+  (the slots' heroes are `GameObservation::tavern`, since E09 T37a).
+
 - 2026-11-14 (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent, E09
   decision 93; **the env's action encoding v11, for the adventure agents**): `action.rs` appends
   the three entries `TOWN_HEROES` (32 to 34; `ENTRY_COUNT` 35; `TOWN_HERO_MOVES`): a town's
