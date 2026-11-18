@@ -654,3 +654,212 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
   - **T2b2, the viewer:** the viewer plays T2b1's sequences frame-exact (a cut offered at its
     start, as T2a2's). **Depends on:** T2b1.
   **Status:** done 2026-11-18 (the log's "M4 T2b1").
+
+### E24 M4 T2b2 — the questions and choices, played by the viewer
+
+  - **T2b2, the viewer:** the viewer plays T2b1's 22 sequences frame-exact, each then moved into
+    `sequences.toml` (`to-record.toml` removed once empty), `drawn --record`: style 2's Yes/No
+    with a picture, styles 7 and 10's choice (the frames, the OK disabled until a pick, a click
+    on a picture, the "or"), the texts through the catalogue (ADVEVENT's and GENRLTXT's records
+    the design's tables name; the guarded artifact's GENRLTXT 421 from the guards), the answers'
+    ends (a join's and a flight's dissolve with `killfade`, a Border Guard's and Pandora's with a
+    pickup sound, the Cartographer's reveal, the army and skills in the status window). MCL-Q33
+    built as the original's. A cut offered at its start (as T2a2's; a seam: the Yes/No questions
+    first, the choices after). **Depends on:** T2b1 (done).
+  **Status:** done 2026-11-18 (whole: the user kept it uncut at its start; built in three parts by
+  three workers in turn; the log's "M4 T2b2").
+
+### Inbox notices moved at E24 M4 T2b2 (2026-11-18): informational, nothing to act on
+
+- 2026-11-17 (the client lane, E27 M2 T8, `client/e27-m2-t8`; **the foundation's API, nothing of
+  yours breaks**): `h3_sdl::KeyScan` loses `code` and `h3_sdl::set1` is gone (nothing read them
+  since T7b); `KeyScan::shift` and `Window::scans` are unchanged. `h3_ui::keys::Command` gains a
+  provided method `asked_together(a, b)` (a context alone by default, so your table needs no
+  change): override it if one key down of yours asks several contexts in turn, and a chord bound
+  in two of them is then refused by the key file's check.
+
+- 2026-11-15 (the server lane, E16 M5 T24, `claude/adoring-fermi-l0mvur`, `cross-lane`; **a
+  protocol version taken; for when a seat of yours joins a whole game**): protocol **v68**
+  (after the town lane's v67; SRV-Q38, 2c's reviewer: a seat watched without agreeing).
+  `GameJoined` gains `spectators` (whether the game may be watched, as the lobby lists it:
+  taking the seat agrees to it), and the new numbered `GameSpectators { n, open }` tells
+  every player but the host the host's `SetSpectators` before the start (the host still gets
+  `SpectatorsSet`), so a seat that does not agree may leave before the start: show both if you
+  show the lobby's flag. On a server that requires logins a `GameWatch` now needs one
+  (`NotLoggedIn`), as a battle's spectator's `Join`. Nothing of yours breaks (your matches
+  have wildcards); `GameSpectators` takes its number in a seat's record.
+
+- 2026-11-14 (the server lane, E16 M5 T21a and T22a, `claude/festive-albattani-mdvj1a`,
+  `cross-lane`; **a protocol version taken; for when you show a whole game to someone who does
+  not play it**): protocol **v66**. The user (SRV-Q36): a whole game's spectator sees **every
+  player's view**, live, only in a game its creator opened before the start (closed by
+  default), never a ranked one. On the wire: `CreateMapGame`'s `spectators: Option<bool>` (left
+  out: closed), `GameWatch { game }` answered `GameWatching { game, manifest }`, then each
+  player's messages wrapped as `GameWatched { n, player, message }` (`n` the spectator's own
+  number, `message` exactly as that player's seat got it, with the player's own `n`); a watch
+  starts with each player's `GameSnapshot`, its `GameClock` and its `GameTurn` as a re-taken
+  seat gets them, numbered as the player's last message. A client folds each player's stream
+  as it folds a seat's (`GameObservation::fold`), one view per player. `SetSpectators` works
+  in a whole game (the host's, until the start: `GameReject::NotHost`, `AlreadyStarted`), the
+  lobby's `MapGameInfo::spectators` says whether a game takes them. `h3-server` hosts them
+  since T22b (2026-11-14, still v66: a paused game is listed taking none and refuses a watch
+  `NoSpectators`; a spectator hears the pause, a void and the stop as the seats do). Nothing to build until you want a spectator's screen.
+
+- 2026-11-14 (the server lane, E16 M5 T20, `claude/sweet-gauss-ngra43`; **a protocol version
+  taken**): protocol **v65** (after the town lane's E09 T28a's v64): a whole game is void when the server's own
+  commands in one of its battles reach `[limits] system_commands_per_battle` (10 000) with the
+  battle still open (a battle both of whose sides the server's computer plays, which it did not
+  end; SRV-Q35). Its connections hear `Goodbye { CommandLimit }` (until now a battle's alone), its
+  journal goes to the void, it leaves the lobby; an in-process `GameSession` that is void
+  (`GameSession::void`) rejects every command `GameReject::NotStarted {}`. No new message or
+  field. Show the goodbye's reason for a whole game too if you show it; nothing else to build.
+
+- 2026-11-14 (the client lane, E27 M2 T3a, `client/e27-m2-t3a`; **for your information, an
+  addition to `h3-ui`, nothing changed**): `h3_ui::input` (`Input`, `Held`, `Did`), a dialog's
+  press, hold and release of its DEF buttons and DEF pictures (boxes, bars) and its button held by
+  a key, the right release ending a button's own loop, the item a right press's help names; the
+  original's profile (`Bugs::Original`) clicks a picture at a release anywhere, the client's over
+  it alone (E27 decision 20, CLT-Q102). The battle's combat options use it; the shell's dialogs
+  will. Use it for a dialog of the map's if it fits.
+
+- 2026-11-14 (the server lane, E16 M5 T19, `claude/gracious-maxwell-gu6rjb`; **a protocol
+  version taken**): protocol **v63** (after T18's v62), 2b's reviewer's findings:
+  `GameReject::WaitingForLevelUp {}` no longer names whose level-up holds the game (SRV-Q31:
+  show only that the game waits, as `GameClock`'s `waits`); the lobby's `wire::game::MapGameInfo`
+  gains `clock` (`OfferClock`, the game's own: the offer's at its creation, which a restart keeps
+  whatever the offer's is now; show it for a listed game rather than its offer's); a seat whose
+  turn or battle side's chess clock ran out gets no battle commands in its `GameTurn` (the
+  computer plays the side at once); the join that starts a game now tells every player its clock
+  as it runs (before, the first turn's timer looked stopped until the next reading). Nothing else
+  to build.
+
+- 2026-11-13 (the server lane, E16 M5 T15, `server/e16-m5-t15`; **for showing `GameClock`,
+  nothing to do before it**): the original's turn timer is read in `docs/epics/E16-timer-survey.md`:
+  the warnings' schedule and texts in the adventure screen's chat line (§3: "<SYSTEM>:" with
+  GENRLTXT 627 to 630, at a quarter elapsed, a quarter left, a minute, ten seconds, then each
+  second), the end's box GENRLTXT 202 (§4), the hot seat's covered "your turn" box outside the
+  turn's time and the network one inside it (§8).
+
+- 2026-11-14 (the server lane, E16 M5 T18, `claude/awesome-sagan-lue93w`; **a protocol
+  version taken**): protocol **v62** (after the adventure lane's T115b's v61): the server bounds a whole game's seat's commands
+  (`session::game::CommandBounds`, `GameOptions::commands`; `[limits] commands_per_turn`, 1 000,
+  and `commands_per_battle`, 4 000). Past its turn's bound a seat's map commands (an adventure's,
+  a management one, a town's) are rejected `GameReject::TurnLimit {}`, while ending the turn,
+  answering a decision and battle commands stay accepted; past its battle's bound the server's
+  computer plays its side for the rest of the battle (the system's `SystemCommand::Battle`
+  events, as for a side whose chess clock ran out) and its own battle commands are rejected
+  `GameReject::BattleLimit {}`. `GameTurn` leaves out what a bound refuses (no `GameTurn` when
+  nothing is left). Show the two rejections if you show rejections; nothing else to build.
+
+- 2026-11-14 (the server lane, E16 M5 T17, `claude/admiring-lovelace-jlv0hu`; **a protocol
+  version taken**): protocol **v60** (after the town lane's T27's v59): a map offer shows how its games are timed,
+  `wire::game::MapOffer`'s `clock` (`wire::game::OfferClock`: `turn_ms`, none for unlimited, an
+  offer's one of the original's 1, 2, 4, 6, 8, 10, 15, 20, 25 or 30 minutes; `level_up_ms`, none
+  when the game waits for a level-up; `battle_ms` and `increment_ms`, each side's chess clock in a
+  battle between two players' heroes under a limited turn). The server's whole games are timed
+  by their offer now (`[[map]] turn_minutes`, 60 s a level-up by default), so `GameClock` is told
+  with running timers; T16's note above stands. Nothing to build unless your lobby shows the
+  offer's clock (it decodes the new field with the crate).
+
+- 2026-11-13 (the server lane, E16 M5 T16, `claude/charming-edison-866oew`; **a protocol version
+  taken**): protocol **v58** (after the adventure lane's T115a's v57), the whole game's clock: `ServerMessage::GameClock { n, clock }`
+  (`wire::game::GameClock`: the player's own `turn` timer, its battle's chess clocks `battle`
+  against another player's hero (`Duel`'s attacker and defender), its own `level_up` time, and
+  `waits`, the game waiting for another player's level-up), each `Timer` the milliseconds left
+  when sent and whether it runs (count it down locally; a battle side at 0 is the server's
+  computer's for the rest of the battle). Numbered and recorded: after a command's other
+  messages and before the `GameTurn`s, alone when a timer ran out, and after a `GameSnapshot`
+  that leaves something to tell. In an untimed game (every game until the server lane's T17)
+  only `waits` is ever told. At a timer's end the server acts for the player with the system
+  actor's commands (T14's `GameCommand::System`), told as every command's. Your readers'
+  wildcards skip it; showing it is yours (E28's screens).
+
+- 2026-11-13 (the client lane, E27 M1 T2, `client/e27-m1-t2`; the capture harness, **rerun
+  `setup.sh` in a fresh sandbox as before**): `xdd.dll`'s ack has 13 fields (a stale `xdd.dll` in a
+  run directory fails every run: rerun `setup.sh`); the run's `VIDEO.VID` joins `battle-videos.vid`
+  with `shell-videos.vid` when both are staged (the start's clips play only with `Show Intro` on,
+  which the harness's settings keep off); `SMACKW32.DLL` reads the virtual clock too and
+  `BinkGetSummary` is guarded (a full-screen clip's end on a frozen clock). `h3drive.Game` takes
+  `frozen` (`H3FROZEN`). New: `h3shell.py`, the shell's screens (the runbook's "The shell's
+  screens"). The harness check passed.
+
+- 2026-11-12 (the server lane, E16 M5 T11, branch `claude/vibrant-albattani-ml282o`; **for online
+  play, nothing to do before it**): protocol **v50**, the game's queries: a seat sends `GameQuery {
+  seq, query }` and gets `GameAnswer { n, seq, answer }`, unnumbered (`n` the number of its last
+  message) and not recorded, so your record readers never meet it; a hero's moves come as
+  `GameAnswer::Moves { moves: Option<wire::game::Moves> }`, a path tree read with `Moves::tiles`,
+  `points_left` and `path` (the engine's `Reach`'s), the path one `MoveHero` takes; a town's hall as
+  `GameAnswer::TownOffer` (`possible`, `buildable`, `payable` bit sets). A whole game's start now
+  tells a player its town events of the build (day 1's of the first group) in one `GameEvents` after
+  its `GameSnapshot`, before its turn (record format **v5**).
+
+- 2026-11-12 (the adventure lane, E08 T110, branch `adventure/e08-t110`; the capture harness, informational): `h3adv` gains a garrison's exchange as a screen (`garrison`, vtable 0x643890; `garrison_dialogs`, `bar:selected`, `bar:clicks`, `creature_windows`), the battle plan `{ book = "<spell>", then }` (the key C at each side's first stack's turn; `book:<side>`; `h3mem`'s stacks gain `spells`, `battlefield` gains `anti_magic`), a step's `cast` (the adventure book), a list of `hint` tiles (`hints`; an unexplored tile's hint says so), an end-turn step's `to_day`, `skip_quietly`, the hero screen's `morale` and `luck` (items 116, 117) with `popup:lines`, and `garrison:x,y`, `anti_magic`, `fountain:x,y`, `spring:x,y`, `hero:bit:<n>`, `hero:word:<offset>`, `dialog:items|boxes` (`h3mem.garrisons`, `battle_hero`). **Behaviour changed:** `h3drive.gold_bonus` clicks each row's arrow until the memory reads Gold (at most four: a heroless town player has no Artifact); `hint_at` parks the mouse first and reads until two reads agree (at most 3 s); `play_turns` gives no order once the battle is decided; an action's `row:` and `+` fields; a recipe's `+anything odd` kept beside the notes. The harness check passed. `clients/capture/README.md`, "Garrisons and the bonus visitables".
+
+- 2026-11-11 (the town lane, E09 T23, branch `town/e09-t23`, `cross-lane`; **the capture harness
+  changed**; `clients/capture/README.md`, "Forced rolls" and "Growth, the garrison hero and a
+  town's hire"): xdd.dll's table gains twelve adventure-map sites (four forced: `week_chance`,
+  `week_creature`, `month_kind`, `month_creature`; eight logged: the neutral garrisons' and the
+  Portal's draws), so `h3drive.ROLLS` and `LOGGED` hold 30 calls: a battle sequence checks that
+  xdd.dll redirected all 30, and a stale `xdd.dll` (one built before) fails that check: rebuild it
+  with `clients/capture/setup.sh`. `h3adv` gains a recipe's and a step's `rolls`, `roll` and
+  `date`, the reads `draws`, `turn_draws`, `kinds`, the town parts `counts`, `count:<i>`,
+  `dwellings`, `portal`, `garrison_hero`, `hire:creatures`, the town screen actions `hero_in` and
+  `building`; `h3mem`'s town record gains `recruits`, `portal`, `dwellings`. Nothing else moved;
+  the harness check passed after it (its first run stopped at the known `attack` flake).
+
+- 2026-11-07 (the town lane, E09 T14b, branch `town/e09-t14`; the capture harness, informational):
+  `h3adv` plays a walk's `actions` on the town screen when it opens (then closes what they left
+  open), with the new actions `hall = true` (a click on the shown hall building, items 10 to 13: the
+  hall, vtable 0x6437A0) and `slot = <building id>` (the hall's slot showing it: the building's
+  dialog, 0x643944; `click = ["build"]` its Build 30722, `cancel` 30721), and the reads
+  `town:x,y:mark`, `hall:slot:<id>`, `build:button`, `build:text`, `screen`, `town_screen_closed`;
+  `h3mem`'s town record gains `mark` (+0x2), `h3lod` gains `building_names`. A walk without
+  `actions` behaves as before. Learned: the panel's hall picture opens nothing; a map whose players
+  are all allies ends at a visit's close (an enemy is needed). The harness check passed after.
+  `clients/capture/README.md`, "The hall and the build".
+
+- 2026-11-07 (the adventure lane, E08 T100b, branch `adventure/e08-t100b`; the capture harness, informational): `h3adv` gains a `key` step's `repeat = { most, first, until = { with } }` (the key pressed again and again, a row each: `presses`, `presses:<columns>`, `presses:changed`), a recipe's `[places]` (`hero:place`, `hero:at`), a step `look = "<hero>"` (the view centred by the minimap, nobody selected; its `before:` reads before the scroll), `walk = "off"` (the first open neighbour), `only_if`'s `empty` and `occupied`, and the observations `whirlpools` (`h3mem.whirlpools`: game +0x4E77C's vector, begin and end at +0x4E780), `tile:x0,y0..x1,y1`, `tile:from`, `tile:here`, `tile:hero[<name>]`, `answers`, `selected`, `target`. No behaviour of an existing step changes. Observed: the selected hero is lifted off its tile's record after its move and at its turn's start, and a scroll of the view puts it back (a tile read depends on the last scroll). `clients/capture/README.md`, "Teleporters and Replay Opponent Turn".
+
+- 2026-11-06 (the adventure lane, E08 T100a, branch `adventure/e08-t100a`; the capture harness, informational): `h3adv` gains a step's `replay` (Replay Opponent Turn: the panel's Adventure Options button, the map dialog's item 9; its dialog vtable 0x63A610, item 5; played on the frozen clock, stepped 20 ms, the flag 0x696A04; `dumps = "every"`) and `at_opening` (reads as a step's first battle opens), `only_if = { at = [x, y] }`, `again_if = { marks = "any" }`, and the observations `replay`, `replay:views`, `replay:watched`, `replay:options`, `view:before`, `view:after`, `view:size`, `explored:x0,y0..x1,y1`, `at_opening:`, `battles`, `exchange`, `army:rows`, `hero:in_boat`. Behaviour changes: a `key` step plays what the key brings by the step's `answer`, `battle` and `level_up` (it stopped at a battle before); a skipped step leaves a field another step filled (it wrote "not played" over it). `clients/capture/README.md`, "Teleporters and Replay Opponent Turn".
+
+- 2026-11-03 (the adventure lane, E08 T90, branch `adventure/e08-t90`; the capture harness, informational): `h3adv` and `h3mem` gain the dwellings' records (`dwelling:x,y`, game +0x4E39C), `teams`, `objects:` and `access:` (a rectangle's map objects with class and subclass, its tiles' blocked and visitable bits), `camp:x,y`, the hire dialog as a screen (vtable 0x640C4C; `hire`, `hire:opening`, `hire:after`; actions `click = ["max", "recruit"]`, `amount = <n>`), a step's `hint = [x, y]` and `popup = [x, y]`, `opening:defender`, `ai_turns`. Behaviour change: `end_turn` now waits out a computer player's turn (it returned during it); nothing changes on maps with humans only. `clients/capture/README.md`, "Dwellings, the hire dialog and a computer player's turn".
+
+- 2026-11-03 (the town lane, E09 T3b, branch `town/e09-t3b`; the capture harness, informational
+  unless you play battles with `attack`): `h3adv` gains the town reads (`town:x,y:owner`,
+  `visitor`, `built`, `every`, `garrison`, `slot:N`; `towns:every_vs_built`,
+  `towns:owned_garrisons`), `hero[NAME]:slot:N`, `opening:slot:N:<side>`, `town_screen`,
+  `unknown_screens`, a `new_game = true` step, the town screen (vtable 0x64372C, closed by item
+  30720) and the level-up dialog (0x63FE60, `level_up`) as known screens, and a list of creatures
+  in the table battle plan's `attack`. Behaviour changes: `play_turns` reads the turn again after
+  its 0.5 s wait (an order went into the next stack's turn), a retreat waits out the retreating
+  side's Catapult, a `text:` literal ending in `: ` joins the next value without `; `, and `batch
+  --map` fills the template beside the map when its stamp matches (no cargo build). A town's
+  visitor (+0x10) reads −1 while its hero is the selected one. The harness check passed before and
+  after. `clients/capture/README.md`, "Towns (E09 T3b)".
+
+- 2026-11-02 (the client lane, E17 M6 T2a1; for information, nothing to do): additions to the
+  common crates for the battle's stack stats dialog (`docs/epics/E17-design.md` §12.1):
+  `h3_render::blit::draw_frame_clipped`; `h3_ui::ui::Def`'s `group`, `creature` and `frames_of`
+  (serde defaults: a layout without them reads as before) and the
+  `ui::Draw` variants `Creature` (a creature DEF item, the flags 0x12: the shadowed drawer, its
+  canvas placed by group 2's first frame, cut to the item) and `Shared` (another DEF's frame in
+  the item's DEF's colours: the executable keeps frames by name, CLT-Q36), both drawn by
+  `h3_ui::paint` (`names`, `draw`, `reach`; `creature_frame`). Every existing draw is the same;
+  a `match` on `ui::Draw` needs the two arms.
+
+- 2026-11-02 (the battle lane; for your information): `h3_formats::text::TextTable` now makes
+  each run of quotes in a quoted field one, as the executable's text-table readers do
+  (`installation.md` §4): a text `h3-map-view` reads from a table shows single quotes where the
+  game does.
+
+- 2026-10-30 (the client lane, E17 M5 T8b1, reviewer R7's fixes; **your harness changed**):
+  after it merges, run `clients/capture/setup.sh` again for every run directory you use: the
+  hook DLL's ack has ten fields now, and an older `xdd.dll` stops a run with "stale xdd.dll".
+  `H3_RUN` without `WINEPREFIX` is refused (both scripts); the run directory is resolved
+  absolute and `Game.start` fails unless the prefix's `d:` points at it. A run also fails when
+  the ack's clip-clock field is not 1, when a capture reaches a result window with an empty
+  `VIDEO.VID`, and in a sound run when a sample could not be parsed or more than 32 handles
+  played. Sound runs: the battle's start sound must be a new sample still playing at the
+  opening (else the run raises), loops counted (`sounds_settled` too); a paused sample answers
+  Miles' 8; `wineserver -w` waits at most 60 s. Nothing else drives the original otherwise
+  (runbook, "Sound", "The clips", "Traps").

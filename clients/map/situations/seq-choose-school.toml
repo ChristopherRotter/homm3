@@ -1,4 +1,4 @@
-# A question or a choice (E24 M4 T2b1; clients/map/to-record.toml `choose-school`; E24 design §5.4):
+# A question or a choice (E24 M4 T2b1; clients/map/sequences.toml `choose-school`; E24 design §5.4):
 # a School of Magic's choice (ADVEVENT 71, style 10: +1 Spell Power or +1
 # Knowledge for 1 000 gold, or neither).
 # Red's hero on (5, 5) steps up onto its entrance (5, 4); Red's town out of the way, so that no

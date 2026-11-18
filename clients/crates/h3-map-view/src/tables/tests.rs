@@ -134,6 +134,7 @@ found_ms = 5000
 dissolve = [192, 160, 224, 224]
 dissolve_ms = 65
 pickups = ["pickup01.wav"]
+killfade = "killfade.wav"
 artifact_skills = [[7, 2, 0, 0, 0]]
 
 [[terrain]]

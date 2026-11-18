@@ -12,7 +12,8 @@ use std::path::{Path, PathBuf};
 
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
-use h3_map_view::{finds, hover, panels, status, turn};
+use h3_map_view::asks::Traits;
+use h3_map_view::{asks, finds, hover, panels, status, turn};
 use h3_ui::text::Catalogue;
 use h3_ui::text::keys::{EXECUTABLE, Entry, Keys, KeysFile, Row, address_field};
 use h3_ui::text::pack::{Pack, Tables};
@@ -104,6 +105,7 @@ pub fn keys(text: &str, ids: &BTreeMap<String, usize>) -> Result<Keys, String> {
         .chain(hover::contents::KEYS)
         .chain(turn::KEYS)
         .chain(finds::KEYS)
+        .chain(asks::KEYS)
     {
         let key = all
             .keys
@@ -206,6 +208,26 @@ pub fn growth(archives: &[LodArchive<'_>], creature: u16) -> Result<i32, String>
         .ok_or_else(|| format!("{name}: no growth of creature {creature}"))
 }
 
+/// Every creature's gold cost and AI value (its record's +0x38 and +0x40: `CRTRAITS.TXT`'s Gold
+/// and AI Value, columns 8 and 10 of its non-blank record from record 2, as [`growth`]'s; E24 M4
+/// T2b2 part A2, a monster's offer) from `archives`, by its number; a field that is no number 0.
+pub fn traits(archives: &[LodArchive<'_>]) -> Result<Vec<Traits>, String> {
+    let name = "CRTRAITS.TXT";
+    let (_, bytes) = files::find(archives, name)?.ok_or_else(|| format!("no {name}"))?;
+    let table = TextTable::parse(&bytes).map_err(|e| format!("{name}: {e:?}"))?;
+    let number = |r: &[String], at: usize| r.get(at).and_then(|f| f.trim().parse().ok());
+    Ok(table
+        .records
+        .iter()
+        .skip(2)
+        .filter(|r| !r.iter().all(|f| f.trim().is_empty()))
+        .map(|r| Traits {
+            gold: number(r, 8).unwrap_or(0),
+            value: number(r, 10).unwrap_or(0),
+        })
+        .collect())
+}
+
 /// The executable's string at file offset `at`: at most 256 bytes to a NUL, each printable ASCII
 /// or a space; none for any other or without the NUL.
 fn exe_string(exe: &[u8], at: Option<usize>) -> Option<String> {
@@ -257,6 +279,7 @@ mod tests {
                 .chain(hover::contents::KEYS)
                 .chain(turn::KEYS)
                 .chain(finds::KEYS)
+                .chain(asks::KEYS)
                 .collect();
             ids.extend(["hero.0", "hero.1", "town-name.0"]);
             ids.sort_unstable();

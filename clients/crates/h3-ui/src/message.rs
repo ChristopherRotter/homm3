@@ -16,8 +16,16 @@
 //! copied): no popup (style 4), no frame colours by the acting side (CLT-Q28 (2) is the battle's).
 //! The battle's own stays the client lane's; whether it moves here is theirs to say.
 //!
+//! The choices (E24 M4 T2b2 part B, design §5.4, *provisional*): [`Style::Choose`] and
+//! [`Style::ChooseCancel`] (styles 7 and 10), their OK disabled until a picture is chosen, each
+//! picture's hidden frame ([`CHOICE`] + its slot: an [`Area`] the box's [`Open::press`] chooses,
+//! drawn as [`MessageBox::frame_draws`] says while shown) and [`choice`]'s "or" between the
+//! pictures.
+//!
 //! *Not built* (no caller needs them): a text above 200 pixels high (the executable's scrolling
-//! text), the styles 3 to 10, the hidden frames around the pictures, the network game's timeout.
+//! text), the styles 3 to 6, 8 and 9, the hidden frames around the pictures of the other styles
+//! (never shown there), a choice frame's right-click popup (`choice_frame_popup` 0x4F0B20), the
+//! network game's timeout.
 //!
 //! *The client's* (E17 M5 T8b2): the text's width stops at 578 when a word is wider (the
 //! executable's box takes the word whole, past the screen) and the box at 768 × 576, so a server's
@@ -33,7 +41,9 @@ use h3_render::text::{line_count, widest_line, widest_word, wrapped_width};
 use serde::Deserialize;
 
 use crate::text::encode_1252;
-use crate::ui::{Button, Def, Dialog, Frames, Item, Label, Picture as Image, Shown, State};
+use crate::ui::{
+    Area, Button, Def, Dialog, Draw, Frames, Item, Label, Picture as Image, Shown, State,
+};
 
 /// The text's item.
 pub const TEXT: u16 = 1;
@@ -45,10 +55,18 @@ pub const OK: u16 = 0x7802;
 pub const YES: u16 = 0x7805;
 /// A style-2 box's Cancel.
 pub const NO: u16 = 0x7806;
+/// A choice box's Cancel (styles 3 and 10, 0x4F6E5B; E24 M4 T2b2 part B).
+pub const CANCEL: u16 = 0x7801;
 /// The first picture's hidden frame (a choice's mark, 0x4F6990: slot n's `CHOICE + n`, hidden at
-/// once and never drawn; E17 design §7.19, E24 design §5.3): not built, the id told for a box's
-/// buttons as the harness lists them.
+/// once; E17 design §7.19, E24 design §5.3 and §5.4): built in the choice styles alone (E24 M4
+/// T2b2 part B: [`Style::Choose`], [`Style::ChooseCancel`]), where a click shows it.
 pub const CHOICE: u16 = 0x7809;
+/// The "or" between a choice's pictures (GENRLTXT 5, 0x4F73FC: the executable's id −1), an id of
+/// its own so that its text is told apart (E24 M4 T2b2 part B, *provisional*).
+pub const OR: u16 = 0xFEFF;
+/// The game palette's entry a choice's frame is drawn in (45: `game_palette16` +0x76 at 0x4F7313,
+/// its colours from +0x1C; recorded, the frames' (237, 213, 122)).
+pub const FRAME_ENTRY: u32 = 45;
 /// The most pictures a box of [`pictures`] shows (its eight slots, 0x4F5DA6).
 pub const SLOTS: usize = 8;
 /// The most pictures a box of [`told`] shows (`message_box` 0x4F6570's three types and subtypes).
@@ -95,6 +113,20 @@ pub enum Style {
     Ok,
     /// Style 2: an OK ([`YES`], Enter) and a Cancel ([`NO`], Escape).
     OkCancel,
+    /// Style 7 (E24 M4 T2b2 part B): the pictures to choose, each with its hidden frame, and an
+    /// OK ([`OK`], Enter) disabled until one is chosen (0x4F7083), placed as style 1's.
+    Choose,
+    /// Style 10: as style 7 with a Cancel ([`CANCEL`], Escape), built before the OK (0x4F6DF6)
+    /// and placed as style 2's (the OK's disabling at 0x4F6F2E).
+    ChooseCancel,
+}
+
+impl Style {
+    /// Whether its pictures are chosen (styles 7 and 10).
+    #[must_use]
+    pub const fn chooses(self) -> bool {
+        matches!(self, Self::Choose | Self::ChooseCancel)
+    }
 }
 
 /// What a key does in an open box (its keys a viewer's table's: the buttons' hotkeys
@@ -103,7 +135,7 @@ pub enum Style {
 pub enum Key {
     /// The OK ([`OK`] or [`YES`]) pressed.
     Ok,
-    /// The Cancel ([`NO`]) pressed, when the box has one.
+    /// The Cancel ([`NO`] or [`CANCEL`]) pressed, when the box has one.
     Cancel,
 }
 
@@ -183,7 +215,7 @@ pub fn layout(
         (medium, medium),
         text,
         (style, bugs == Bugs::Fixed, bugs),
-        &[],
+        (&[], None),
         player,
     )
 }
@@ -213,7 +245,7 @@ pub fn told(
         (medium, small),
         text,
         (style, bugs == Bugs::Fixed, bugs),
-        &pictures,
+        (&pictures, None),
         player,
     )
 }
@@ -242,20 +274,52 @@ pub fn pictures(
         (medium, small),
         text,
         (Style::Ok, true, bugs),
-        &pictures,
+        (&pictures, None),
         player,
     )
 }
 
-/// The box of `style` with `text` and `pictures` (each with its DEF item's and caption's ids), the
-/// text centred on the box (`centred`: x 25) or at x 20 (0x4F5D80, 0x48FF00, 0x4F6990), the
-/// pictures' rows placed in the profile `bugs` ([`Rows::places`]).
+/// Lays out a choice's box (E24 M4 T2b2 part B, design §5.4: `message_box` 0x4F6570 of style 7
+/// or 10, [`Style::chooses`]): as [`told`], each picture with its hidden frame and the OK
+/// disabled, and `or` (GENRLTXT 5, the call's "or" flag) between the pictures: a text item in
+/// the medium font as wide as the text and a line high, centred on the box (halves rounded
+/// toward zero), one line above the first picture's caption (0x4F737D to 0x4F7461). Another
+/// style lays out as [`told`] with `or`.
+#[must_use]
+pub fn choice(
+    layout: &MessageLayout,
+    (medium, small): (&Font, &Font),
+    text: &str,
+    style: Style,
+    pictures: &[Picture],
+    or: Option<&str>,
+    (player, bugs): (u8, Bugs),
+) -> MessageBox {
+    let pictures: Vec<(&Picture, [u16; 2])> = pictures
+        .iter()
+        .take(TOLD_SLOTS)
+        .enumerate()
+        .map(|(slot, p)| (p, slot_ids(slot)))
+        .collect();
+    build(
+        layout,
+        (medium, small),
+        text,
+        (style, bugs == Bugs::Fixed, bugs),
+        (&pictures, or),
+        player,
+    )
+}
+
+/// The box of `style` with `text` and `pictures` (each with its DEF item's and caption's ids) and
+/// a choice's `or`, the text centred on the box (`centred`: x 25) or at x 20 (0x4F5D80,
+/// 0x48FF00, 0x4F6990), the pictures' rows placed in the profile `bugs` ([`Rows::places`]).
 fn build(
     layout: &MessageLayout,
     (medium, small): (&Font, &Font),
     text: &str,
     (style, centred, bugs): (Style, bool, Bugs),
-    pictures: &[(&Picture, [u16; 2])],
+    (pictures, or): (&[(&Picture, [u16; 2])], Option<&str>),
     player: u8,
 ) -> MessageBox {
     let bytes = encode_1252(text).0;
@@ -310,14 +374,14 @@ fn build(
     }));
     let back_y = i32_of(height) - BACK_BOTTOM;
     let half = i32_of(width) / 2;
+    let left = (half - 74).max(1);
+    let right = (half + 8).min(i32_of(width) - BACK[0]);
     match style {
-        Style::Ok => {
+        Style::Ok | Style::Choose => {
             let x = (i32_of(width) - BACK[0]) / 2;
             items.extend(button(layout, (0x7866, OK), &layout.ok, [x, back_y]));
         }
         Style::OkCancel => {
-            let left = (half - 74).max(1);
-            let right = (half + 8).min(i32_of(width) - BACK[0]);
             items.extend(button(layout, (0x7869, YES), &layout.ok, [left, back_y]));
             items.extend(button(
                 layout,
@@ -326,13 +390,44 @@ fn build(
                 [right, back_y],
             ));
         }
+        Style::ChooseCancel => {
+            // The Cancel first (its back 0x7865), then the OK (0x4F6DF6 to 0x4F6F1E).
+            items.extend(button(
+                layout,
+                (0x7865, CANCEL),
+                &layout.cancel,
+                [right, back_y],
+            ));
+            items.extend(button(layout, (0x7866, OK), &layout.ok, [left, back_y]));
+        }
+    }
+    let mut states = BTreeMap::new();
+    if style.chooses() {
+        // The OK disabled until a picture is chosen (0x4F6F2E, 0x4F7083).
+        let disabled = State {
+            disabled: true,
+            ..State::default()
+        };
+        states.insert(OK, disabled);
     }
     let mut texts = BTreeMap::new();
     texts.insert(TEXT, String::from(text));
     // The pictures in slot order (0x4F7154 to 0x4F7377): each DEF item, then its caption when it
-    // has one; the hidden frame around it (a choice's mark) is never drawn.
+    // has one; in the choice styles its frame one pixel out, hidden (elsewhere never shown, so
+    // not built).
     let places = rows.places(&slots, width, height - BUTTONS, bugs);
-    for (((p, [def, caption]), s), (x, caption_top)) in pictures.iter().zip(&slots).zip(places) {
+    let first_caption = places.first().map(|&(_, top)| top);
+    for (slot, (((p, [def, caption]), s), (x, caption_top))) in
+        pictures.iter().zip(&slots).zip(places).enumerate()
+    {
+        let frame = style.chooses().then(|| {
+            Item::Area(Area {
+                id: CHOICE.saturating_add(u16::try_from(slot).unwrap_or(u16::MAX)),
+                at: [i32_of(x - 1), i32_of(caption_top - s.size[1] - 1)],
+                size: [i32_of(s.size[0] + 2), i32_of(s.size[1] + 2)],
+                hint: None,
+            })
+        });
         items.push(Item::Def(Def {
             id: *def,
             def: Some(p.def.clone()),
@@ -345,24 +440,48 @@ fn build(
             frames_of: None,
             repeat: None,
         }));
-        if p.caption.is_empty() {
-            continue;
+        if !p.caption.is_empty() {
+            items.push(Item::Label(Label {
+                id: *caption,
+                at: [
+                    i32_of(x + (s.size[0] - s.caption[0]) / 2),
+                    i32_of(caption_top),
+                ],
+                size: [i32_of(s.caption[0]), i32_of(s.caption[1])],
+                font: layout.caption_font.clone(),
+                font_palette: layout.font_palette.clone(),
+                colour: 1,
+                align: 1,
+                hint: None,
+                repeat: None,
+            }));
+            texts.insert(*caption, p.caption.clone());
         }
+        if let Some(frame) = frame {
+            let hidden = State {
+                hidden: true,
+                ..State::default()
+            };
+            states.insert(frame.id(), hidden);
+            items.push(frame);
+        }
+    }
+    // The "or" (0x4F737D to 0x4F7461): as wide as its text, a line high, one line above the first
+    // picture's caption.
+    if let (Some(or), Some(top)) = (or, first_caption) {
+        let w = widest_line(medium, &encode_1252(or).0);
         items.push(Item::Label(Label {
-            id: *caption,
-            at: [
-                i32_of(x + (s.size[0] - s.caption[0]) / 2),
-                i32_of(caption_top),
-            ],
-            size: [i32_of(s.caption[0]), i32_of(s.caption[1])],
-            font: layout.caption_font.clone(),
+            id: OR,
+            at: [i32_of((width - w) / 2), i32_of(top - font_height)],
+            size: [i32_of(w), i32_of(font_height)],
+            font: layout.font.clone(),
             font_palette: layout.font_palette.clone(),
             colour: 1,
             align: 1,
             hint: None,
             repeat: None,
         }));
-        texts.insert(*caption, p.caption.clone());
+        texts.insert(OR, String::from(or));
     }
     // The frame's pieces in the viewing player's colours (0x4F6B5D); the tiles keep theirs.
     let players = items
@@ -379,11 +498,51 @@ fn build(
             items,
         },
         shown: Shown {
+            states,
             texts,
             players,
             ..Shown::default()
         },
     }
+}
+
+impl MessageBox {
+    /// The choice frames shown (E24 M4 T2b2 part B, design §5.4): each its one-pixel outline in
+    /// the entry [`FRAME_ENTRY`] of the game palette `palette` (`game.pal`), four fills on the
+    /// screen (*provisional*: the H3DlgFrame's drawer 0x450130 not read, the recording's
+    /// pixels), drawn over the box's items (nothing it outlines overlaps a later item: the
+    /// executable draws it after its caption); none while hidden.
+    #[must_use]
+    pub fn frame_draws(&self, palette: &str) -> Vec<Draw> {
+        let [px, py] = self.dialog.place;
+        let frames = self.dialog.items.iter().filter_map(|item| match item {
+            Item::Area(a) if is_choice(a.id) && !self.shown.state(a.id).hidden => Some(a),
+            _ => None,
+        });
+        frames
+            .flat_map(|a| {
+                let [x, y] = [px.saturating_add(a.at[0]), py.saturating_add(a.at[1])];
+                let [w, h] = a.size;
+                let (right, bottom) = (x.saturating_add(w - 1), y.saturating_add(h - 1));
+                [
+                    [x, y, w, 1],
+                    [x, bottom, w, 1],
+                    [x, y.saturating_add(1), 1, h - 2],
+                    [right, y.saturating_add(1), 1, h - 2],
+                ]
+                .map(|rect| Draw::Fill {
+                    rect,
+                    palette: String::from(palette),
+                    entry: FRAME_ENTRY,
+                })
+            })
+            .collect()
+    }
+}
+
+/// Whether `id` is a choice frame's (the first three slots').
+fn is_choice(id: u16) -> bool {
+    (CHOICE..CHOICE.saturating_add(3)).contains(&id)
 }
 
 /// The pictures' rows (0x4F5D80's pictures, E17 design §12.21): at most four a row, the first row
@@ -682,16 +841,18 @@ pub enum Outcome {
     Nothing,
     /// A button went down or up: draw it again.
     Changed,
-    /// A button's click closed the box: its id ([`OK`], [`YES`] or [`NO`]).
+    /// A button's click closed the box: its id ([`OK`], [`YES`], [`NO`] or [`CANCEL`]).
     Closed(u16),
 }
 
-/// The box on the screen: its layout, its buttons' states and the button a press or a key holds.
+/// The box on the screen: its layout, its buttons' states, the button a press or a key holds and
+/// the picture chosen (styles 7 and 10).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Open {
     /// The laid-out box.
     pub message: MessageBox,
     held: Option<Held>,
+    chosen: Option<u16>,
 }
 
 /// A button held down: by the mouse (whether the mouse is over it) or by its key.
@@ -709,23 +870,56 @@ impl Open {
         Self {
             message,
             held: None,
+            chosen: None,
         }
     }
 
+    /// The picture chosen (E24 M4 T2b2 part B: `message_box_chosen` 0x6993D4, [`CHOICE`] or
+    /// [`CHOICE`] + 1), none while none is.
+    #[must_use]
+    pub const fn chosen(&self) -> Option<u16> {
+        self.chosen
+    }
+
     /// The left button pressed at `point`: a button there goes down (the DEF button's handler
-    /// 0x456328).
+    /// 0x456328), unless disabled; since E24 M4 T2b2 part B a choice frame there is chosen
+    /// ([`Open::choose`]; *provisional*: at the press, the frame's own message not read).
     pub fn press(&mut self, point: [i32; 2]) -> Outcome {
         if self.held.is_some() {
             return Outcome::Nothing;
         }
+        if let Some(Item::Area(a)) = self.message.dialog.item_at(point)
+            && is_choice(a.id)
+        {
+            return self.choose(a.id);
+        }
         match self.message.dialog.button_at(point) {
-            Some(id) => self.hold(Held {
+            Some(id) if !self.message.shown.state(id).disabled => self.hold(Held {
                 id,
                 key: None,
                 over: true,
             }),
-            None => Outcome::Nothing,
+            _ => Outcome::Nothing,
         }
+    }
+
+    /// A choice frame's command (`dialog_default_proc` 0x4F0FC0, styles 7 and 10): frame `id`
+    /// shown and the other hidden, the OK enabled, the picture chosen; the box drawn again (whole,
+    /// as the dialog's redraw). Only the first two frames are handled (a third does nothing).
+    fn choose(&mut self, id: u16) -> Outcome {
+        let other = match id {
+            CHOICE => CHOICE + 1,
+            _ if id == CHOICE + 1 => CHOICE,
+            _ => return Outcome::Nothing,
+        };
+        let states = &mut self.message.shown.states;
+        states.entry(id).or_default().hidden = false;
+        if let Some(state) = states.get_mut(&other) {
+            state.hidden = true;
+        }
+        states.entry(OK).or_default().disabled = false;
+        self.chosen = Some(id);
+        Outcome::Changed
     }
 
     /// The mouse moved to `point`: the button it holds follows it on or off.
@@ -769,14 +963,17 @@ impl Open {
         }
         let ids: &[u16] = match key {
             Key::Ok => &[OK, YES],
-            Key::Cancel => &[NO],
+            Key::Cancel => &[NO, CANCEL],
         };
+        // A disabled button takes no key (a choice's OK before its choice).
         let has = |id: &&u16| {
-            self.message
-                .dialog
-                .items
-                .iter()
-                .any(|i| matches!(i, Item::Button(b) if b.id == **id))
+            !self.message.shown.state(**id).disabled
+                && self
+                    .message
+                    .dialog
+                    .items
+                    .iter()
+                    .any(|i| matches!(i, Item::Button(b) if b.id == **id))
         };
         match ids.iter().find(has) {
             Some(&id) => self.hold(Held {
@@ -822,13 +1019,7 @@ impl Open {
     }
 
     fn set_pressed(&mut self, id: u16, pressed: bool) {
-        self.message.shown.states.insert(
-            id,
-            State {
-                pressed,
-                ..State::default()
-            },
-        );
+        self.message.shown.states.entry(id).or_default().pressed = pressed;
     }
 }
 

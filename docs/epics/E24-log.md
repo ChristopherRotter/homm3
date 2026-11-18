@@ -2607,3 +2607,54 @@ tests and deny passed), CI's green `master` standing in.
   h3-map-view`, `H3_INSTALL` empty); the clients workspace's fmt and clippy clean; `cargo xtask
   verify --scope map-client --summary --with-original-data` no failing step; `scripts/exe.py
   check` and `cited` clean. No existing situation changes, so `drawn` was not run.
+
+### M4 T2b2 — the questions and choices, played by the viewer (2026-11-18)
+
+On `map-client/e24-m4-t2b2`, the user present at the start; `master` at `dba73b7`, merged
+again at #1012. Original data staged from the PC at the start (63 files, SHA-256 checked against
+the PC's: one digest of the sorted hash lines, `9c890f81…`; the PC's own clone behind GitHub's,
+nothing uncommitted); the setup's baseline stopped at its coverage step by a watcher (fmt,
+clippy, doc tests and deny passed), CI's green `master` standing in. The VM restarted once during
+the setup; the server behind the session stopped twice during part B (its worker resumed).
+
+- **No cut** (the user, at the start): T2b2 whole, though three parts were offered (style 2 and
+  the ten that end in a box or nothing, the six accepted that change the map, the six choices).
+  Built in those three parts by three workers one after the other.
+- **Wine at its start** (found here and by the client lane at E27 M3 T3b2 the same day): the
+  sandbox now sets `TMPDIR=/tmp`, which Wine 9's 32-bit loader does not survive (`free(): invalid
+  pointer`); this branch's harness fix (dropping `TMP`, `TEMP`, `TMPDIR`) gave way to `master`'s
+  (`TMPDIR` alone) at the merge, a unit test kept (`test_h3drive.WineEnvironment`). The client
+  lane's TRAPS has it.
+- **Recorded again here** (the original's screens are local): the 22, each `ok` against its kept
+  timeline and exact at 0 (`frames --sequences map/to-record.toml --no-check`, one id per run, a
+  ballast file for the game's disk check; about an hour).
+- **Read** (design §5.4's *Built* bullets): `visit_object`'s case 54 (0x4A97B2, a `map.toml`
+  site: a visited monster drawn from `avwattak.def` until the decision returns, the adventure
+  manager's +0x218 to +0x220, passes 5 and 7); `message_box_build`'s style 10 buttons, picture
+  loop and "or" item in detail. Corrected: the choice frame's colour is the game palette's entry
+  45 (T2b1 read 59; recorded (237, 213, 122)); §5.4's addresses of `visit_guarded_artifact`
+  (0x49F070) and `visit_search_bank` (0x4AC490), whose `map.toml` entries were right.
+- **Built** (design §5.4, parts A1, A2 and B; *provisional*, M4's review list): the module
+  `asks` (`Ask`: every offer's and choice's facts, box and replies; a monster's offer decided in
+  integers), `Reply`, the tables' `[map.asks]`, the catalogue's `map.ask.*`; `h3_ui::message`'s
+  styles 7 and 10 (the OK disabled until a pick, the choice frames, the "or"; common, additive);
+  the timeline's `Found::blocks` and `ask`, `Question`, `Answer`, `Loop::ask`, `pose`, `answer`,
+  `answered`, `visited`, the attack's picture (`live::Attacking`), the reveal, the removals with
+  `killfade` or a pickup's sound and the dissolve, `Start::reached` (the cursor after a walk from
+  the recording); the binary's `Painter::asked`, `question`, `answer`, `choice`, `reveal`.
+  MCL-Q33 built as the original's (the Arena's Cancel +2 Attack).
+- **Checked:** the 22 moved into `sequences.toml` (`to-record.toml` removed), every frame exact by
+  `frames --only <id> --reuse` (`ask-pile`, `-artifact`, `-mine`, `-bank`, `-crypt`, `-tree`,
+  `-pyramid`, `-dwelling-guards` 7 each, `ask-tomb`, `ask-hire` 9, `ask-join` 17, `ask-join-no` 19,
+  `ask-join-gold` 17, `ask-guard` 17, `ask-cartographer` 10, `ask-pandora` 18, `choose-chest` 21,
+  `-chest-gold` 19, `choose-arena`, `choose-school` 9, `choose-arena-cancel`,
+  `choose-school-leave` 7) and the viewer's timelines the recorded ones; `h3-map-view sequences`
+  the 80 as recorded; `drawn` the 50 situations and 58 earlier sequences the same, then
+  `--record`; coverage of `h3-map-view`'s library 100 % lines, regions and functions and of
+  `h3-ui` but its `scrollbar.rs` (the client lane's, untouched: its tests are `h3-view`'s);
+  `RUST_TEST_THREADS=1 check.sh --no-coverage` all gates (after `master`'s merge: the client
+  lane's catalogue test passes, every key from tables it lists); the window under Xvfb (`--check
+  10`) on `ask-join` (its dissolve) and `choose-chest` (the frames), 58 of 58 frames each read back
+  exact, 59 of 59 changes the headless loop's; `scripts/exe.py check` and `cited` clean
+  (`dialog_frame_create` 0x450130, part B's citation, a `map.toml` entry); `cargo xtask verify
+  --scope map-client --summary --with-original-data` no failing step.

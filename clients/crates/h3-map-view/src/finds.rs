@@ -79,6 +79,9 @@ pub struct FindArt {
     /// The pickup's sounds (`pickup01` to `pickup07`, `pickup_sound_format`: the game's
     /// `random_between(1, 7)` at 0x4A4D18; the viewer's own choice, [`pickup`]).
     pub pickups: Vec<String>,
+    /// A monster's removal's sound (`killfade.82M`: `hero_loss_effect` 0x4ACBB0 with 0; E24 M4
+    /// T2b2 part A2, `crate::asks::Fade`).
+    pub killfade: String,
     /// The artifacts' primary skills, each `[artifact, attack, defense, power, knowledge]` (the
     /// packs' `primary_skills` effects; *provisional*: the engine's in time, an artifact picked
     /// up taken as worn): what the hero's window shows at a pickup's end.

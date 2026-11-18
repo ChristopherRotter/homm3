@@ -370,6 +370,29 @@ impl Sequence {
         Ok(points)
     }
 
+    /// The adventure cursor's frames as its recorded timeline shows them (`h3map.py frames`'
+    /// `<ms> cursor 1 <frame> <x> <y>` lines), each with its millisecond, in order: E24 M4 T2b2
+    /// part B, the cursor over the view after a walk ([`crate::timeline::Start::reached`]).
+    ///
+    /// # Errors
+    /// A `cursor` line that does not read.
+    pub fn reached(&self, recorded: &str) -> Result<Vec<(u32, u32)>, String> {
+        let mut out = Vec::new();
+        for line in recorded.lines() {
+            let words: Vec<&str> = line.split_whitespace().collect();
+            let [t, "cursor", rest @ ..] = words.as_slice() else {
+                continue;
+            };
+            let numbers: Option<Vec<u32>> = rest.iter().map(|w| w.parse().ok()).collect();
+            match (t.parse::<u32>(), numbers.as_deref()) {
+                (Ok(t), Some(&[1, frame, _, _])) => out.push((t, frame)),
+                (Ok(_), Some(&[_, _, _, _])) => {}
+                _ => return Err(format!("{}: the line `{line}` does not read", self.id)),
+            }
+        }
+        Ok(out)
+    }
+
     /// The current player's selected hero as its recorded timeline shows it where it changes
     /// (`h3map.py frames`' `<ms> hero <x> <y> <level> <facing>` lines; a line without numbers, no
     /// hero selected, left out), each with its millisecond, in order: E24 M4 T1b2, a computer

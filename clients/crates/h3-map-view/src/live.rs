@@ -753,6 +753,22 @@ pub struct Walking {
     /// The hero lifted off its tile, drawn at the view's middle (passes 5, 7 and 9); none while
     /// every hero stands on its tile.
     pub lifted: Option<Lifted>,
+    /// The monster a hero visits (E24 M4 T2b2 part A2), drawn as its attack in passes 5 and 7;
+    /// none else.
+    pub attacking: Option<Attacking>,
+}
+
+/// A monster a hero visits (the adventure manager's +0x218, its object, from `visit_object`
+/// 0x4A97B9 to `monster_visit_decision`'s return; E24 M4 T2b2 part A2): passes 5 and 7 draw its
+/// cells from the tables' attack DEF (+0xE0, `avwattak.def`) at frame +0x220 + 2 × +0x21C (its
+/// creature twice, plus 1 with the hero left of it), not its own (`view_objects_pass` 0x4110EA,
+/// `view_objects_shadow_pass` 0x4118E2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Attacking {
+    /// The object, by its index in the map's order.
+    pub object: usize,
+    /// The frame.
+    pub frame: u32,
 }
 
 /// The hero lifted off its tile (+0x1EC; design §3.5): the selected hero of a human player from

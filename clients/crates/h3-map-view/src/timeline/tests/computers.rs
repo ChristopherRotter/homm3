@@ -54,7 +54,7 @@ fn heroes_of(live: &str) -> Vec<LiveHero> {
 
 /// The mouse-over of a kept live part on the situations' 36-tile grass map without objects: its
 /// facts and the viewer's explored tiles (all a computer's turn reads of it).
-fn hover_of(live: &str) -> Arc<Hover> {
+pub(super) fn hover_of(live: &str) -> Arc<Hover> {
     let table: toml::Table = live.parse().unwrap();
     let heroes = heroes_of(live);
     let objects = table["anchors"].as_array().unwrap().len();

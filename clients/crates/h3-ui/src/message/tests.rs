@@ -619,3 +619,195 @@ fn an_empty_caption_has_no_item() {
     assert_eq!(corners(&none), (Vec::new(), [256, 128]));
     assert!(none.dialog.item(OK).is_some());
 }
+
+/// A choice's box (E24 M4 T2b2 part B) of `style` with two spells and the "or".
+fn choice_of(style: Style, or: Option<&str>) -> MessageBox {
+    let medium = font(8, 16);
+    let small = font(5, 10);
+    choice(
+        &assets(),
+        (&medium, &small),
+        "x",
+        style,
+        &[spell(1, "A"), spell(2, "B")],
+        or,
+        (0, Bugs::Original),
+    )
+}
+
+/// The button item `id`'s corner.
+fn button_at(message: &MessageBox, id: u16) -> [i32; 2] {
+    match message.dialog.item(id) {
+        Some(Item::Button(b)) => b.at,
+        _ => panic!("no button {id}"),
+    }
+}
+
+#[test]
+fn a_choices_box_has_its_frames_hidden_and_its_ok_disabled() {
+    assert!(Style::Choose.chooses() && Style::ChooseCancel.chooses());
+    assert!(!Style::Ok.chooses() && !Style::OkCancel.chooses());
+    // Style 7: the OK alone as style 1's, disabled; each picture's frame one pixel out, hidden.
+    let m = choice_of(Style::Choose, Some("or"));
+    assert_eq!(
+        (m.dialog.place, m.dialog.shadow),
+        ([272, 172], Some([256, 256]))
+    );
+    assert_eq!(button_at(&m, OK), [96, 195]);
+    assert!(m.dialog.item(CANCEL).is_none() && m.dialog.item(0x7866).is_some());
+    assert!(m.shown.state(OK).disabled);
+    let frames: Vec<(u16, [i32; 2], [i32; 2])> = m
+        .dialog
+        .items
+        .iter()
+        .filter_map(|i| match i {
+            Item::Area(a) => Some((a.id, a.at, a.size)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        frames,
+        [
+            (CHOICE, [22, 102], [87, 65]),
+            (CHOICE + 1, [147, 102], [87, 65])
+        ]
+    );
+    assert!(m.shown.state(CHOICE).hidden && m.shown.state(CHOICE + 1).hidden);
+    // The "or" as wide as its text, a line high, centred, a line above the first caption.
+    let or = label(&m, OR);
+    assert_eq!(
+        (or.at, or.size, or.font.as_str()),
+        ([120, 150], [16, 16], "medfont.fnt")
+    );
+    assert_eq!(m.shown.texts[&OR], "or");
+    // Style 10: the Cancel first (0x7801, its back 0x7865), then the OK, placed as style 2's.
+    let m = choice_of(Style::ChooseCancel, None);
+    assert_eq!(
+        (button_at(&m, CANCEL), button_at(&m, OK)),
+        ([137, 195], [55, 195])
+    );
+    let ids: Vec<u16> = m.dialog.items.iter().map(Item::id).collect();
+    let at = |id: u16| ids.iter().position(|&i| i == id).unwrap();
+    assert!(at(0x7865) < at(CANCEL) && at(CANCEL) < at(0x7866) && at(0x7866) < at(OK));
+    assert!(m.dialog.item(OR).is_none() && m.shown.state(OK).disabled);
+    // Another style: no frames, the OK enabled; an "or" without pictures: none.
+    let m = choice_of(Style::Ok, Some("or"));
+    assert!(m.dialog.item(CHOICE).is_none() && !m.shown.state(OK).disabled);
+    assert!(m.dialog.item(OR).is_some());
+    let bare = choice(
+        &assets(),
+        (&font(8, 16), &font(5, 10)),
+        "x",
+        Style::Choose,
+        &[],
+        Some("or"),
+        (0, Bugs::Original),
+    );
+    assert!(bare.dialog.item(OR).is_none());
+}
+
+#[test]
+fn a_click_on_a_picture_chooses_it_and_enables_the_ok() {
+    let mut open = Open::new(choice_of(Style::ChooseCancel, None));
+    let [x, y] = open.message.dialog.place;
+    let first = [x + 32, y + 112];
+    let second = [x + 157, y + 112];
+    let ok = [x + 60, y + 200];
+    assert_eq!(open.chosen(), None);
+    assert!(open.message.frame_draws("game.pal").is_empty());
+    // The disabled OK takes no press and no key.
+    assert_eq!(open.press(ok), Outcome::Nothing);
+    assert_eq!(open.key(Key::Ok, "Return"), Outcome::Nothing);
+    // The first chosen: its frame shown, the OK enabled; drawn as its outline in entry 45.
+    assert_eq!(open.press(first), Outcome::Changed);
+    assert_eq!(open.chosen(), Some(CHOICE));
+    let shown = &open.message.shown;
+    assert!(!shown.state(CHOICE).hidden && shown.state(CHOICE + 1).hidden);
+    assert!(!shown.state(OK).disabled);
+    let fill = |rect| Draw::Fill {
+        rect,
+        palette: "game.pal".to_string(),
+        entry: FRAME_ENTRY,
+    };
+    assert_eq!(
+        open.message.frame_draws("game.pal"),
+        [
+            fill([294, 274, 87, 1]),
+            fill([294, 338, 87, 1]),
+            fill([294, 275, 1, 63]),
+            fill([380, 275, 1, 63]),
+        ]
+    );
+    assert_eq!(FRAME_ENTRY, 45);
+    // The second: the first hidden again.
+    assert_eq!(open.press(second), Outcome::Changed);
+    assert_eq!(open.chosen(), Some(CHOICE + 1));
+    assert!(open.message.shown.state(CHOICE).hidden);
+    assert_eq!(open.message.frame_draws("game.pal").len(), 4);
+    // The OK's press and release close the box; its key too.
+    assert_eq!(open.press(ok), Outcome::Changed);
+    assert_eq!(open.release(), Outcome::Closed(OK));
+    assert_eq!(open.key(Key::Ok, "Return"), Outcome::Changed);
+    assert_eq!(open.key_up("Return"), Outcome::Closed(OK));
+    // Escape the Cancel (0x7801), the OK's disabling kept while it is held.
+    let mut open = Open::new(choice_of(Style::ChooseCancel, None));
+    assert_eq!(open.key(Key::Cancel, "Escape"), Outcome::Changed);
+    assert!(open.message.shown.state(CANCEL).pressed && open.message.shown.state(OK).disabled);
+    assert_eq!(open.key_up("Escape"), Outcome::Closed(CANCEL));
+}
+
+#[test]
+fn only_the_first_two_frames_choose() {
+    // A third picture's frame does nothing (`dialog_default_proc` handles two); another area
+    // there neither.
+    let three = [spell(1, "A"), spell(2, "B"), spell(3, "C")];
+    let m = choice(
+        &assets(),
+        (&font(8, 16), &font(5, 10)),
+        "x",
+        Style::Choose,
+        &three,
+        None,
+        (0, Bugs::Original),
+    );
+    let Some(Item::Area(third)) = m.dialog.item(CHOICE + 2).cloned() else {
+        panic!("no third frame");
+    };
+    let [x, y] = m.dialog.place;
+    let point = [x + third.at[0] + 5, y + third.at[1] + 5];
+    let mut open = Open::new(m);
+    assert_eq!(open.press(point), Outcome::Nothing);
+    assert_eq!(open.chosen(), None);
+    // A frame shown by its state alone draws; the others' areas none.
+    open.message.dialog.items.push(Item::Area(Area {
+        id: 5,
+        at: [0, 0],
+        size: [10, 10],
+        hint: None,
+    }));
+    assert_eq!(open.press([x + 2, y + 2]), Outcome::Nothing);
+    open.message
+        .shown
+        .states
+        .insert(CHOICE + 2, State::default());
+    assert_eq!(open.message.frame_draws("game.pal").len(), 4);
+    // A box of one picture: chosen, no other to hide.
+    let one = choice(
+        &assets(),
+        (&font(8, 16), &font(5, 10)),
+        "x",
+        Style::Choose,
+        &[spell(1, "A")],
+        None,
+        (0, Bugs::Original),
+    );
+    let Some(Item::Area(frame)) = one.dialog.item(CHOICE).cloned() else {
+        panic!("no frame");
+    };
+    let [x, y] = one.dialog.place;
+    let mut open = Open::new(one);
+    let point = [x + frame.at[0] + 5, y + frame.at[1] + 5];
+    assert_eq!(open.press(point), Outcome::Changed);
+    assert_eq!(open.chosen(), Some(CHOICE));
+    assert!(!open.message.shown.states.contains_key(&(CHOICE + 1)));
+}

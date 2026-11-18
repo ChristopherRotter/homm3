@@ -23,14 +23,15 @@ use h3_map::Limits;
 use h3_map::model::{Body, EventBody, Pos, RawMap};
 use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::MapArt;
+use h3_map_view::asks::{self, Ask, Reply, Seen, Visitor};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
 use h3_map_view::damage::{Held, History, drop_held};
 use h3_map_view::finds::{self, Find, Gain, Told};
-use h3_map_view::hover::Hover;
+use h3_map_view::hover::{Facts, Hover, Tile};
 use h3_map_view::layout::{AdventureLayout, CursorArt};
 use h3_map_view::live::{
-    Buttons, Calendar, Facing, Lifted, Live, Moment, Selected, Status, Walking,
+    Buttons, Calendar, Explored, Facing, Lifted, Live, Moment, Selected, Stack, Status, Walking,
 };
 use h3_map_view::minimap::Shown;
 use h3_map_view::objects::{self, DrawLists, Shapes};
@@ -40,8 +41,8 @@ use h3_map_view::situation::Situation;
 use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
-    Action, Computer, Cursor, DEFAULT_CURSOR, Direction, Dissolve, Draw, Found, Hero, NextTurn,
-    Start, TownBoxes,
+    Action, Answer, Computer, Cursor, DEFAULT_CURSOR, Direction, Dissolve, Draw, Found, Hero,
+    NextTurn, Question, Start, TownBoxes,
 };
 use h3_map_view::{status, turn};
 use h3_render::Bugs;
@@ -65,6 +66,11 @@ const HISTORY: usize = 64;
 
 /// The most assets a view decodes as it is drawn (each one the scene drawn again).
 const MOST_DECODED: usize = 64;
+
+/// A wandering monster's class and a Keymaster's Tent's (E24 M4 T2b2 part A2: a monster's
+/// numbers read, a Border Guard's key).
+const MONSTER: u32 = 54;
+const KEYMASTER: u32 = 10;
 
 /// A frame widened for the window (E24 M3 T2b2, *provisional*): its pixels, and what they hold.
 #[derive(Debug, Default)]
@@ -138,6 +144,17 @@ pub fn for_sequence<'a>(
     } else {
         (None, Vec::new())
     };
+    // The selected hero's Diplomacy as the harness writes it (E24 M4 T2b2 part A2: a monster's
+    // offer for gold), found by where its walk leaves it.
+    painter.diplomacy = hero
+        .and_then(|h| {
+            situation.heroes.iter().find(|spec| {
+                let [x, y] = spec.walk.last().copied().unwrap_or(spec.at);
+                [x, y] == [h.at.x, h.at.y]
+            })
+        })
+        .and_then(|spec| spec.diplomacy)
+        .unwrap_or(0);
     let sound = painter.sound(hero.map(|h| h.at))?;
     // End Turn's question and the turns' messages (E24 M4 T1a); a computer's walks from the
     // recorded `hero` lines (E24 M4 T1b2).
@@ -164,6 +181,8 @@ pub fn for_sequence<'a>(
         kingdom: painter.live.kingdom.clone(),
         // The selected hero's points memory held (E24 M3 T4b): the recording's.
         points: sequence.points(recorded.as_deref().unwrap_or_default())?,
+        // The cursor over the view after a walk (E24 M4 T2b2 part B): the recording's.
+        reached: sequence.reached(recorded.as_deref().unwrap_or_default())?,
         buttons: painter.live.buttons,
         // The status window's kind the recording asked at 0 (E24 M3 T5b2).
         asked: sequence.asked()?,
@@ -254,6 +273,7 @@ pub fn for_situation<'a>(
         sound,
         kingdom: painter.live.kingdom.clone(),
         points: Vec::new(),
+        reached: Vec::new(),
         buttons: painter.live.buttons,
         asked: None,
         hover,
@@ -315,6 +335,10 @@ pub struct Painter<'a> {
     index: Vec<TileIndex>,
     gone: Arc<Vec<usize>>,
     spare: Option<(Arc<Vec<usize>>, Vec<TileIndex>)>,
+    /// The terrains revealed by the draw last drawn (E24 M4 T2b2 part A2: `Draw::revealed`) and
+    /// the tiles the live part at 0 has explored, which the revealed ones join.
+    revealed: u32,
+    explored: Explored,
     batch: Batch,
     added: BTreeSet<String>,
     /// The frame the last view was drawn into, and that view's draw and buttons.
@@ -329,6 +353,10 @@ pub struct Painter<'a> {
     /// A walk's hero (its index in the live part's heroes): each draw puts it where the draw has
     /// it, lifted or on its tile; none for a map that walks no hero.
     selected: Option<usize>,
+    /// The selected hero's Diplomacy level a monster's offer takes (E24 M4 T2b2 part A2,
+    /// *provisional*: the situation's `diplomacy`, which the harness writes and the live part does
+    /// not read; 0 without one, the type's not known; the difficulty Normal's, no Easy bonus).
+    diplomacy: u8,
 }
 
 impl<'a> Painter<'a> {
@@ -379,6 +407,7 @@ impl<'a> Painter<'a> {
             })
             .collect::<Result<Vec<_>, String>>()?;
         let composer = Composer::new(assets.layout.frame).map_err(|e| e.to_string())?;
+        let explored = start.explored.clone();
         let mut painter = Self {
             assets,
             art,
@@ -388,6 +417,8 @@ impl<'a> Painter<'a> {
             index,
             gone: Arc::new(Vec::new()),
             spare: None,
+            revealed: 0,
+            explored,
             batch: Batch::default(),
             added: BTreeSet::new(),
             composer,
@@ -397,6 +428,7 @@ impl<'a> Painter<'a> {
             widening: Widening::new(FORMAT),
             cursors: BTreeMap::new(),
             selected: None,
+            diplomacy: 0,
         };
         painter.add([
             assets.layout.cursor.def.to_ascii_uppercase(),
@@ -582,13 +614,18 @@ impl<'a> Painter<'a> {
     /// pictures in an OK box of `message_box` 0x4F6570 (`message::told`), framed in the viewer's
     /// colours.
     fn told(&mut self, told: &Told) -> Result<Arc<MessageBox>, String> {
+        self.told_in(told, Style::Ok)
+    }
+
+    /// `told` in a box of `style` (E24 M4 T2b2: a question's OK and Cancel).
+    fn told_in(&mut self, told: &Told, style: Style) -> Result<Arc<MessageBox>, String> {
         let pictures = self.pictures(told)?;
         let assets = self.assets;
         Ok(Arc::new(message::told(
             &assets.layout.message,
             self.fonts()?,
             &told.text,
-            Style::Ok,
+            style,
             &pictures,
             (self.live.viewer, assets.bugs),
         )))
@@ -639,8 +676,8 @@ impl<'a> Painter<'a> {
     /// find's class by its entrance tile (the mouse-over's tiles), its facts from the live part's
     /// `[hover]` facts and a sign's text from the map `raw` (*provisional*: `Find::of`, the facts
     /// at 0), its first visit's box and its later one's; a pile's and an artifact's with a
-    /// message or guards left out (their question: T2b); then each event's boxes (part B,
-    /// [`Painter::event`]); none without the facts.
+    /// message or guards left out (their question: T2b2's, [`Painter::asked`]); then each event's
+    /// boxes (part B, [`Painter::event`]); none without the facts.
     fn finds(&mut self, raw: &RawMap, hover: Option<&Hover>) -> Result<Vec<Found>, String> {
         let Some(hover) = hover else {
             return Ok(Vec::new());
@@ -674,6 +711,10 @@ impl<'a> Painter<'a> {
                         )
                     );
                     if asks || !finds::CLASSES.contains(&tile.class) {
+                        // A question's find (E24 M4 T2b2 part A1).
+                        if let Some(found) = self.asked((pos, o), tile, body, facts)? {
+                            out.push(found);
+                        }
                         continue;
                     }
                     let text = match body {
@@ -706,6 +747,8 @@ impl<'a> Painter<'a> {
                         found: find.found(texts),
                         taken: find.taken().then_some(o),
                         event: false,
+                        blocks: find.taken().then_some(o),
+                        ask: None,
                     });
                 }
             }
@@ -770,7 +813,232 @@ impl<'a> Painter<'a> {
             found: None,
             taken: None,
             event: true,
+            blocks: None,
+            ask: None,
         }))
+    }
+
+    /// A question's find (E24 M4 T2b2 part A1, design §5.4; *provisional*: `asks::Ask::of`, the
+    /// facts at 0): object `o` at `pos` on its entrance `tile`, its map `body` (a pile's, a
+    /// scroll's, an artifact's or since part A2 Pandora's Box's message, the Box's rewards), the
+    /// mouse-over's `facts` (its word, the hero's mark, a Keymaster's Tent's key), the live part's
+    /// owner and the viewer's kingdom (its resources, the selected hero's army and skills in the
+    /// status window), a dwelling's creature by the tables' `dwelling_creatures` with its growth
+    /// from `CRTRAITS.TXT`, a monster's creature's gold cost and AI value from it and the hero's
+    /// power by them (part A2), its Diplomacy the situation's ([`Painter::diplomacy`]). Its box
+    /// laid out of style 2 (style 1 where it asks nothing: a looted bank's, the Tree's visited or
+    /// too poor, told at every visit), its answers where built ([`Painter::question`]); none for
+    /// an object that asks nothing these parts build.
+    fn asked(
+        &mut self,
+        (pos, o): (Pos, usize),
+        tile: Tile,
+        body: Option<&Body>,
+        facts: &Facts,
+    ) -> Result<Option<Found>, String> {
+        let assets = self.assets;
+        let tables = assets.tables;
+        let message = match body {
+            Some(
+                Body::Resource {
+                    message: Some(m), ..
+                }
+                | Body::Scroll {
+                    message: Some(m), ..
+                }
+                | Body::Artifact(Some(m))
+                | Body::Pandora {
+                    message: Some(m), ..
+                },
+            ) => Some(m),
+            _ => None,
+        };
+        let message = message.map(|m| {
+            let guards = m
+                .guards
+                .iter()
+                .flatten()
+                .flatten()
+                .map(|s| Stack {
+                    creature: s.creature,
+                    count: i32::from(s.count),
+                })
+                .collect();
+            (decode_windows_1252(m.text.as_bytes()), guards)
+        });
+        let rewards = match body {
+            Some(Body::Pandora { rewards, .. }) => Some(rewards.clone()),
+            _ => None,
+        };
+        let creature = match (tile.class, &tables.map.sound) {
+            (17, Some(sound)) => usize::try_from(tile.subclass)
+                .ok()
+                .and_then(|s| sound.dwelling_creatures.get(s))
+                .and_then(|&c| u16::try_from(c).ok()),
+            _ => None,
+        };
+        let dwelling = match creature {
+            Some(c) => Some((c, crate::texts::growth(assets.archives, c)?)),
+            None => None,
+        };
+        let kingdom = &self.live.kingdom;
+        let (army, skills) = match &kingdom.status {
+            Some(Status::Hero(hero)) => (hero.army, hero.skills),
+            _ => ([None; 7], [0; 4]),
+        };
+        // A monster's numbers and the hero's power by them (part A2).
+        let (monster, power) = if tile.class == MONSTER {
+            let traits = crate::texts::traits(assets.archives)?;
+            let of = |c: u16| traits.get(usize::from(c)).copied().unwrap_or_default();
+            let creature = u16::try_from(tile.subclass).unwrap_or(u16::MAX);
+            let power = asks::power(&army, |c| of(c).value, [skills[0], skills[1]]);
+            (Some(of(creature)), power)
+        } else {
+            (None, 0)
+        };
+        // A Border Guard's key: a Keymaster's Tent of its colour with the viewer's mark.
+        let key = self.live.objects.iter().enumerate().any(|(i, object)| {
+            let drawn = object.drawn.as_ref().map(|d| (d.class, d.subclass));
+            let kind =
+                drawn.or_else(|| objects::template(&self.art, i).map(|t| (t.class, t.subclass)));
+            kind == Some((KEYMASTER, tile.subclass))
+                && facts.visits.get(i).and_then(|v| v.visited) == Some(true)
+        });
+        let visitor = Visitor {
+            colour: self.live.viewer,
+            teams: facts.teams,
+            resources: kingdom.resources,
+            army,
+            power,
+            diplomacy: self.diplomacy,
+            hero: self.hero_name(),
+        };
+        let seen = Seen {
+            class: [tile.class, tile.subclass],
+            word: tile.word,
+            owner: self.live.objects.get(o).and_then(|object| object.owner),
+            visited: facts.visits.get(o).and_then(|v| v.visited) == Some(true),
+            message,
+            dwelling,
+            monster,
+            key,
+            rewards,
+        };
+        let Some(ask) = Ask::of(&seen, &visitor, &tables.map.asks) else {
+            return Ok(None);
+        };
+        if !ask.asks() {
+            let shown = self.told(&ask.told(&tables.texts))?;
+            return Ok(Some(Found {
+                at: pos,
+                first: vec![(Arc::clone(&shown), Gain::default())],
+                again: Some(shown),
+                gain: Gain::default(),
+                found: None,
+                taken: None,
+                event: false,
+                blocks: None,
+                ask: None,
+            }));
+        }
+        Ok(Some(Found {
+            at: pos,
+            first: Vec::new(),
+            again: None,
+            gain: Gain::default(),
+            found: None,
+            taken: None,
+            event: false,
+            blocks: ask.beside().then_some(o),
+            ask: Some(self.question(&ask, o)?),
+        }))
+    }
+
+    /// `ask`'s question about object `o` laid out (E24 M4 T2b2): its box of style 2, its OK's and
+    /// its Cancel's answers where built ([`Painter::answer`]); since part B a choice's box of
+    /// style 7 or 10 ([`Painter::choice`]) and its second picture's answer.
+    fn question(&mut self, ask: &Ask, o: usize) -> Result<Question, String> {
+        let tables = self.assets.tables;
+        let told = ask.told(&tables.texts);
+        let asked = match ask.style() {
+            style if style.chooses() => {
+                self.choice(&told, style, ask.or(&tables.texts).as_deref())?
+            }
+            _ => self.told_in(&told, Style::OkCancel)?,
+        };
+        let yes = match ask.yes(&tables.map.finds, &tables.map.asks, &tables.texts) {
+            Some(reply) => Some(self.answer(reply, o)?),
+            None => None,
+        };
+        let no = match ask.no() {
+            Some(reply) => Some(self.answer(reply, o)?),
+            None => None,
+        };
+        let second = match ask.second() {
+            Some(reply) => Some(self.answer(reply, o)?),
+            None => None,
+        };
+        Ok(Question {
+            asked,
+            chooses: ask.chooses(),
+            yes,
+            no,
+            attacker: ask.attacker(),
+            second,
+        })
+    }
+
+    /// A choice's box (E24 M4 T2b2 part B, design §5.4): `told`'s text and pictures in a box of
+    /// `style` (7 or 10, `message::choice`) with `or` between the pictures, framed in the
+    /// viewer's colours.
+    fn choice(
+        &mut self,
+        told: &Told,
+        style: Style,
+        or: Option<&str>,
+    ) -> Result<Arc<MessageBox>, String> {
+        let pictures = self.pictures(told)?;
+        let assets = self.assets;
+        Ok(Arc::new(message::choice(
+            &assets.layout.message,
+            self.fonts()?,
+            &told.text,
+            style,
+            &pictures,
+            or,
+            (self.live.viewer, assets.bugs),
+        )))
+    }
+
+    /// An answer's `reply` about object `o` laid out (E24 M4 T2b2 part A2, *provisional*): its
+    /// boxes (`grant_rewards`' in `message_box_pictures`' layout, else style 1), its next
+    /// question, the object it takes.
+    fn answer(&mut self, reply: Reply, o: usize) -> Result<Answer, String> {
+        let boxes = reply
+            .boxes
+            .iter()
+            .map(|r| {
+                let laid = if reply.granted {
+                    self.pictured(&r.told)?
+                } else {
+                    self.told(&r.told)?
+                };
+                Ok((laid, r.shows))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        let then = match &reply.then {
+            Some(next) => Some(Box::new(self.question(next, o)?)),
+            None => None,
+        };
+        Ok(Answer {
+            boxes,
+            gain: reply.gain,
+            chooses: reply.chooses,
+            then,
+            taken: reply.taken.map(|fade| (o, fade)),
+            reveal: reply.reveal,
+            marks: reply.marks,
+        })
     }
 
     /// The viewer's boxes of a turn without a town (E24 M4 T2a2, design §5.3): the warning and
@@ -867,6 +1135,7 @@ impl<'a> Painter<'a> {
                 self.live.walking = Walking {
                     offset: draw.offset,
                     lifted: None,
+                    attacking: draw.attacking,
                 };
             }
             // No hero selected from the start: the live part's as it is.
@@ -888,7 +1157,8 @@ impl<'a> Painter<'a> {
         self.live.buttons = Some(buttons);
         // The status bar's hint as last shown (E24 M3 T6a1).
         self.live.hint = Some(draw.hint.clone());
-        // The objects taken off the map (E24 M4 T2a2 part B).
+        // The objects taken off the map (E24 M4 T2a2 part B), the terrains revealed (T2b2).
+        self.reveal(draw.revealed)?;
         self.taken(&draw.gone)?;
         let assets = self.assets;
         let z = draw.view.z;
@@ -915,6 +1185,11 @@ impl<'a> Painter<'a> {
             scene
                 .draws
                 .extend(draws.into_iter().map(scene::Draw::Dialog));
+            // A choice's frame shown (E24 M4 T2b2 part B).
+            let frames = message.frame_draws(&assets.layout.message.font_palette);
+            scene
+                .draws
+                .extend(frames.into_iter().map(scene::Draw::Dialog));
         }
         Ok(scene)
     }
@@ -960,6 +1235,49 @@ impl<'a> Painter<'a> {
         Ok(())
     }
 
+    /// The tiles explored as the live part at 0 has them and every tile of the terrains in `mask`
+    /// on both levels (E24 M4 T2b2 part A2: a Cartographer's, `reveal_terrain_mask` 0x4CA240, a
+    /// bit per terrain code), each level's index built again for them (TRAPS: "A level's index
+    /// holds for the objects it was built for"; the other set's indexes dropped).
+    fn reveal(&mut self, mask: u32) -> Result<(), String> {
+        if self.revealed == mask {
+            return Ok(());
+        }
+        let mut explored = self.explored.clone();
+        for z in 0..self.art.levels {
+            let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
+            for y in 0..self.art.size {
+                for x in 0..self.art.size {
+                    let at = [x, y].map(|v| i32::try_from(v).unwrap_or(i32::MAX));
+                    let terrain = self.art.tile(at[0], at[1], z).map(|t| t.terrain.code);
+                    if terrain.is_some_and(|code| mask >> code & 1 == 1) {
+                        explored.set(at[0], at[1], z, true);
+                    }
+                }
+            }
+        }
+        self.live.explored = explored;
+        self.revealed = mask;
+        let assets = self.assets;
+        self.index = (0..self.art.levels)
+            .map(|z| {
+                let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
+                TileIndex::build(
+                    &self.art,
+                    &self.live,
+                    assets.tables,
+                    assets.layout,
+                    &self.shapes,
+                    z,
+                    assets.bugs,
+                )
+                .map_err(|e| e.to_string())
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        self.spare = None;
+        Ok(())
+    }
+
     /// A dissolve's screen (E24 M4 T2a2 part B, design §5.3): the view of the draw before, its
     /// rectangle `step` eighths of the way to `drawn`'s (`h3_render::Screen::dissolve_rect`).
     fn dissolved(
@@ -995,6 +1313,7 @@ impl<'a> Painter<'a> {
                 group,
                 frame,
             }),
+            attacking: draw.attacking,
         };
     }
 

@@ -1,4 +1,4 @@
-# A question or a choice (E24 M4 T2b1; clients/map/to-record.toml `choose-arena`; E24 design §5.4):
+# A question or a choice (E24 M4 T2b1; clients/map/sequences.toml `choose-arena`; E24 design §5.4):
 # the Arena's choice (ADVEVENT 0, style 10: +2 Attack or +2 Defense).
 # Red's hero on (5, 5) steps up onto its entrance (5, 4); Red's town out of the way, so that no
 # visit's scenario test warns of a town lost; Blue's hero far off in the fog.

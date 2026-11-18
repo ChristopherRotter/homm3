@@ -9,7 +9,7 @@ use h3_map::Limits;
 use h3_map::writer::{self, AnyObject, Extras, GivenTile, RiverKind, RoadKind, Terrain};
 
 use crate::art::tests::{map, raw, template};
-use crate::live::{Arrow, Boat, Moment};
+use crate::live::{Arrow, Attacking, Boat, Moment};
 use crate::objects::Shape;
 use crate::tables;
 
@@ -729,6 +729,51 @@ fn an_objects_shadow_and_body_pieces_in_their_masks_cells() {
     let (shadows, last_shadow) = span(&s, Pass::Shadow);
     let (bodies, _) = span(&s, Pass::Body);
     assert!(roads < shadows && last_shadow < bodies);
+    // A monster a hero visits (E24 M4 T2b2 part A2): the same cells from the tables' attack DEF
+    // at its frame, whatever the step; another object as it is.
+    live.walking.attacking = Some(Attacking {
+        object: tree,
+        frame: 279,
+    });
+    let s = scene(
+        &art,
+        &live,
+        &tables(),
+        &layout(),
+        &shapes,
+        at(0, 0),
+        Bugs::Fixed,
+    )
+    .unwrap();
+    let attack = |x, y| {
+        (
+            "avwattak.def".to_string(),
+            279,
+            [128, 136],
+            [false, false],
+            tile(x, y),
+        )
+    };
+    assert_eq!(pieces(&s, Pass::Shadow), [attack(4, 4), attack(4, 5)]);
+    assert_eq!(
+        pieces(&s, Pass::Body),
+        [attack(5, 4), attack(4, 5), attack(5, 5)]
+    );
+    live.walking.attacking = Some(Attacking {
+        object: tree + 1,
+        frame: 279,
+    });
+    let s = scene(
+        &art,
+        &live,
+        &tables(),
+        &layout(),
+        &shapes,
+        at(0, 0),
+        Bugs::Fixed,
+    )
+    .unwrap();
+    assert_eq!(pieces(&s, Pass::Shadow), [piece(4, 4), piece(4, 5)]);
 }
 
 /// The flag entries of one pass's pieces of `def`, in order.
@@ -1416,6 +1461,7 @@ fn walking(live: &Live, index: usize, group: u32, frame: u32, offset: [i32; 2]) 
             group,
             frame,
         }),
+        attacking: None,
     };
     live
 }

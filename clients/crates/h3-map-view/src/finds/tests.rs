@@ -68,6 +68,7 @@ fn art() -> FindArt {
         dissolve: [192, 160, 224, 224],
         dissolve_ms: 65,
         pickups: vec!["pickup01.wav".to_string(), "pickup02.wav".to_string()],
+        killfade: "killfade.wav".to_string(),
         artifact_skills: vec![[7, 2, 0, 0, 0], [12, 12, -3, 0, 0]],
     }
 }

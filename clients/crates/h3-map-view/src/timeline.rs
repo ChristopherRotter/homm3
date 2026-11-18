@@ -58,7 +58,18 @@
 //! object taken off the map, the view's middle dissolved into the view without it in eight
 //! steps ([`Draw::dissolve`]), the map stopped meanwhile; an event's boxes one after another, the
 //! resources shown as their box opens.
+//!
+//! The questions (E24 M4 T2b2 part A1, design §5.4, *provisional*): a find's [`Question`] (laid
+//! out by the adapter from `crate::asks`) opens after its first boxes, on its entrance or from
+//! beside ([`Found::blocks`]: a guarded pile, an artifact), the status window built again first
+//! where its handler does; its Cancel ends the visit, its OK shows its [`Answer`]'s boxes and then
+//! what the panels show, or is refused where the answer is not built ([`Unplayable::Answer`]).
+//! Since part A2 the Cancel's [`Question::no`] is an answer too (a monster's flight asked next, the
+//! monster taken), and an answer may take its object off the map with its sound
+//! ([`Answer::taken`]: the dissolve), build the status window again and reveal terrains
+//! ([`Draw::revealed`]: the view and the minimap drawn again).
 
+use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::format;
 use alloc::string::String;
@@ -71,13 +82,14 @@ use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_ui::message::{self as boxes, Key, MessageBox, Open, Outcome};
 
+use crate::asks::Fade;
 use crate::finds::{FindArt, Gain, pickup};
 use crate::hover::{self, Hint, Hover, PanelItems, Selection};
 use crate::layout::{AdventureLayout, DIRECTIONS};
 use crate::lists::{SLOTS, top_showing};
 use crate::live::{
-    Arrow, Buttons, Chosen, ChosenHero, ChosenTown, Date, DateStatus, FoundStatus, HeroStatus,
-    Kingdom, KingdomStatus, Selected, Stack, Status, Turn, TurnStatus,
+    Arrow, Attacking, Buttons, Chosen, ChosenHero, ChosenTown, Date, DateStatus, FoundStatus,
+    HeroStatus, Kingdom, KingdomStatus, Selected, Stack, Status, Turn, TurnStatus,
 };
 use crate::minimap::{MinimapArt, divided};
 use crate::panels;
@@ -403,6 +415,9 @@ pub enum Unplayable {
     /// Space with the selected hero on an object's entrance (E24 M3 T6b3): its visit is the
     /// engine's (M4, M5).
     Visit([i32; 3]),
+    /// A question's OK whose answer is not built (E24 M4 T2b2: a battle, a level-up, the recruit
+    /// dialog; the engine's, M4 T5 and M5), by its find's tile.
+    Answer([i32; 3]),
 }
 
 impl fmt::Display for Unplayable {
@@ -416,6 +431,12 @@ impl fmt::Display for Unplayable {
             Self::Command(id) => write!(f, "button {id}'s command (a dialog or the engine's)"),
             Self::Visit([x, y, z]) => {
                 write!(f, "a visit of the object at ({x}, {y}, {z}) (the engine's)")
+            }
+            Self::Answer([x, y, z]) => {
+                write!(
+                    f,
+                    "the answer of the question at ({x}, {y}, {z}) (the engine's)"
+                )
             }
         }
     }
@@ -690,6 +711,12 @@ pub struct Start {
     /// cost is the engine's, M4). A step's end takes the one at its millisecond. Empty: the
     /// kingdom's, which a walk leaves.
     pub points: Vec<(u32, i32)>,
+    /// The cursor's frames over the view after the selected hero walked, each with its
+    /// millisecond (E24 M4 T2b2 part B, *provisional*): the reach there is the engine's pathfinder's
+    /// (the mouse-over's facts are the hero's where it stood at 0), so a recording gives them (its
+    /// `cursor` lines of the adventure cursor, `Sequence::reached`: `choose-arena`'s at 1460,
+    /// `choose-chest`'s at 2380), as [`Start::points`] the points. Empty: the arrow (M3's).
+    pub reached: Vec<(u32, u32)>,
     /// Move hero's and next hero's states at 0 as the original last set them (a recording's, read
     /// from its memory); none: as the kingdom and the path give them ([`Buttons::of`]).
     pub buttons: Option<Buttons>,
@@ -758,6 +785,65 @@ pub struct Found {
     /// the step's end draws the hero's slot (recorded, `find-event`: the movement bar's points at
     /// 2260), the scenario's test after them (*provisional*: its place not read).
     pub event: bool,
+    /// The object whose entrance blocks its tile (E24 M4 T2b2: its index in the map's order): a
+    /// key's step onto it visits it from beside ([`Loop::visit_beside`]) until it is taken; a
+    /// pile's and an artifact's, [`Found::taken`] too when the visit takes it.
+    pub blocks: Option<usize>,
+    /// The question the visit asks after its first boxes (E24 M4 T2b2 part A1, design §5.4): asked
+    /// at every visit until its OK is taken; after that the find tells nothing (*provisional*: the
+    /// find as its answer leaves it is the engine's facts).
+    pub ask: Option<Question>,
+}
+
+/// A visit's question (E24 M4 T2b2 part A1, design §5.4, *provisional*: the viewer's facts at 0,
+/// `crate::asks::Ask`): its box of style 2, whether the status window is built again before it
+/// (`status_window_choose` 0x415DE0 with 0, 1, 1) and what its OK and its Cancel show (none: not
+/// built, refused in a recording; A1's every Cancel the default answer, the visit ended).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Question {
+    /// The question's box.
+    pub asked: Arc<MessageBox>,
+    /// The status window chosen again before it.
+    pub chooses: bool,
+    /// What its OK shows.
+    pub yes: Option<Answer>,
+    /// What its Cancel shows (E24 M4 T2b2 part A2).
+    pub no: Option<Answer>,
+    /// A monster's question (E24 M4 T2b2 part A2): twice its creature, its picture's frame in the
+    /// attack DEF from the visit's start ([`crate::live::Attacking`]; plus 1 with the hero left
+    /// of it), none else.
+    pub attacker: Option<u32>,
+    /// A choice's (E24 M4 T2b2 part B: style 7 or 10, its OK closing with the picture chosen):
+    /// what its second picture shows (0x780A); its first's is [`Question::yes`], its Cancel's
+    /// [`Question::no`].
+    pub second: Option<Answer>,
+}
+
+/// What a question's answer shows (E24 M4 T2b2 part A1): its boxes one after another, each with
+/// what the panels show as it opens, and what they show at the last one's close (recorded:
+/// `ask-tomb`'s morale, `ask-hire`'s army at 1660); since part A2 (*provisional*, `crate::asks::Reply`)
+/// then the status window built again (a monster's join: `ask-join`'s army at 1060), the question
+/// asked next (`ask-join-no`'s flight at 1060), the object taken off the map (its index in the
+/// map's order) with its sound ([`Loop::take`]: `ask-join`, `ask-guard`, `ask-pandora`) or the
+/// terrains revealed with the view and the minimap drawn again (`ask-cartographer` at 1060); the
+/// default ends the visit.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Answer {
+    /// The boxes.
+    pub boxes: Vec<(Arc<MessageBox>, Gain)>,
+    /// What the panels show at the end.
+    pub gain: Gain,
+    /// The status window built again after the gain (`status_window_choose` 0x415DE0 with 1, 1, 1).
+    pub chooses: bool,
+    /// The question asked next.
+    pub then: Option<Box<Question>>,
+    /// The object taken off the map, and its sound.
+    pub taken: Option<(usize, Fade)>,
+    /// The terrains revealed (a bit per terrain, `reveal_terrain_mask` 0x4CA240).
+    pub reveal: u32,
+    /// A Cancel's answer marks the find answered as an OK's does (E24 M4 T2b2 part B: the
+    /// Arena's, MCL-Q33).
+    pub marks: bool,
 }
 
 /// The viewer's boxes of a turn without a town (E24 M4 T2a2, design §5.3): the warning at its
@@ -931,6 +1017,12 @@ pub struct Draw {
     /// A dissolve's step shown (E24 M4 T2a2 part B, design §5.3): over this draw, its rectangle
     /// the picture before blended towards this one.
     pub dissolve: Option<Dissolve>,
+    /// The terrains a Cartographer revealed to the viewer since 0 (E24 M4 T2b2 part A2: a bit per
+    /// terrain, `reveal_terrain_mask` 0x4CA240): every tile of them on both levels explored (each
+    /// level's index built again).
+    pub revealed: u32,
+    /// The monster a hero visits, drawn as its attack (E24 M4 T2b2 part A2).
+    pub attacking: Option<Attacking>,
 }
 
 /// A dissolve's step (`screen_dissolve` 0x602DC0; E17 design §7.25, E24 design §5.3): the
@@ -1048,6 +1140,10 @@ pub struct Loop {
     kingdom: Kingdom,
     /// The selected hero's points by millisecond ([`Start::points`]).
     points: Vec<(u32, i32)>,
+    /// The cursor's frames after a walk by millisecond ([`Start::reached`]) and the millisecond
+    /// run now.
+    reached: Vec<(u32, u32)>,
+    now: u32,
     /// Move hero's and next hero's states.
     buttons: Buttons,
     /// The status window's kind asked (the manager's +0x398; 0 the selection's) and its end
@@ -1110,9 +1206,11 @@ pub struct Loop {
     /// (E24 M4 T2a2: the days left's, then the week's).
     boxed: Option<Boxed>,
     waiting: VecDeque<(Arc<MessageBox>, Told)>,
-    /// The finds ([`Start::finds`]) and those told once, by their place among them.
+    /// The finds ([`Start::finds`]) and those told once, by their place among them; those whose
+    /// question's OK was taken (E24 M4 T2b2).
     finds: Arc<Vec<Found>>,
     told: Vec<usize>,
+    answered: Vec<usize>,
     /// The viewer's boxes of a turn without a town ([`Start::town`]) and its days without a town
     /// (the player's +0x3D: −1 not counting, *provisional*: a new game's at 0).
     town: Option<Arc<TownBoxes>>,
@@ -1219,7 +1317,7 @@ fn joined(army: &mut [Option<Stack>; 7], stack: Stack) {
 }
 
 /// What an open box is, which says what its close does (E24 M4 T2a2).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Told {
     /// End Turn's question: its OK ends the turn.
     Question,
@@ -1232,6 +1330,13 @@ enum Told {
     /// first ones): its close opens the next with what it shows, after the last shows the gain,
     /// takes the object or tests the scenario, then the idle step.
     Found(usize, usize),
+    /// A find's question (E24 M4 T2b2 part A1; the find's place among [`Start::finds`], since
+    /// part A2 the question itself: a first one or an answer's next): its OK and its Cancel show
+    /// their answers.
+    Asked(usize, Box<Question>),
+    /// A question's answer's box (its find's place, the box's among the answer's, the answer):
+    /// its close opens the next, after the last the answer's end ([`Loop::answered`]).
+    Answer(usize, usize, Box<Answer>),
     /// The days left to take a town: at its close the turn's selection's window built again
     /// (*provisional*: `turn-no-town` at 2060 shows the date's window unstepped, as `hero_select`
     /// after the box would build it; not read), then the idle step.
@@ -1313,6 +1418,8 @@ impl Loop {
                 heroes: Arc::new(start.heroes.clone()),
                 gone: Arc::new(Vec::new()),
                 dissolve: None,
+                revealed: 0,
+                attacking: None,
             },
             hero: start.hero,
             lifted: false,
@@ -1332,6 +1439,8 @@ impl Loop {
             sound: start.sound.clone(),
             kingdom: start.kingdom.clone(),
             points: start.points.clone(),
+            reached: start.reached.clone(),
+            now: 0,
             buttons: start
                 .buttons
                 .unwrap_or_else(|| Buttons::of(&start.kingdom, &start.path)),
@@ -1369,6 +1478,7 @@ impl Loop {
             waiting: VecDeque::new(),
             finds: Arc::new(start.finds.clone()),
             told: Vec::new(),
+            answered: Vec::new(),
             town: start.town.clone().map(Arc::new),
             days: -1,
             found: None,
@@ -1491,6 +1601,7 @@ impl Loop {
     /// # Errors
     /// An action the loop cannot play yet ([`Unplayable`]).
     pub fn run(&mut self, t: u32, actions: &[Action]) -> Result<(), Unplayable> {
+        self.now = t;
         self.within.clear();
         // The loop's turn and a walk's wait alike run the tick (0x4ED490: the poll, the palettes).
         self.tick(t);
@@ -2526,6 +2637,15 @@ impl Loop {
         self.set_cursor(kind, frame);
         match boxed.told {
             Told::Found(i, k) => return self.found_closed(t, i, k),
+            Told::Asked(i, question) => {
+                // A choice's OK closes with the picture chosen (E24 M4 T2b2 part B).
+                let id = match (id, boxed.open.chosen()) {
+                    (boxes::OK, Some(chosen)) => chosen,
+                    _ => id,
+                };
+                return self.answer(t, i, *question, id);
+            }
+            Told::Answer(i, k, answer) => return self.answered(t, i, k + 1, *answer),
             Told::DaysLeft => self.choose(t, true),
             _ => {}
         }
@@ -2560,8 +2680,12 @@ impl Loop {
             self.open_box(Arc::clone(next), Told::Found(i, k + 1));
             return Ok(());
         }
+        // Its question after its first boxes (E24 M4 T2b2).
+        if self.ask(t, i) {
+            return Ok(());
+        }
         if let Some(object) = found.taken {
-            self.take(t, object, found.gain);
+            self.take(t, object, found.gain, Fade::Pickup);
             return Ok(());
         }
         self.gain(found.gain);
@@ -2580,33 +2704,144 @@ impl Loop {
 
     /// A find on the tile a walk ends on told (E24 M4 T2a2, design §5.3: the step and its box in
     /// one millisecond, recorded): its first boxes, told again its later one; whether one opened.
-    /// A find taken from beside ([`Found::taken`]) is a key's step's ([`Loop::visit_beside`]).
-    fn tell_find(&mut self) -> bool {
+    /// A find whose object blocks its tile ([`Found::blocks`]) is a key's step's
+    /// ([`Loop::visit_beside`]). Since E24 M4 T2b2 a find with a question asks it after its first
+    /// boxes at every visit, until its OK is taken; then it tells nothing.
+    fn tell_find(&mut self, t: u32) -> bool {
         let Some(at) = self.hero.map(|h| h.at) else {
             return false;
         };
         let Some(i) = self
             .finds
             .iter()
-            .position(|f| f.at == at && f.taken.is_none())
+            .position(|f| f.at == at && f.blocks.is_none())
         else {
             return false;
         };
         let found = Arc::clone(&self.finds);
         let found = &found[i];
-        let opened = if self.told.contains(&i) {
-            found
+        if self.answered.contains(&i) {
+            return false;
+        }
+        if self.told.contains(&i) && found.ask.is_none() {
+            return found
                 .again
                 .clone()
                 .map(|again| self.open_box(again, Told::Plain))
-        } else {
+                .is_some();
+        }
+        if !self.told.contains(&i) {
             self.told.push(i);
-            found.first.first().map(|(first, shows)| {
+        }
+        match found.first.first() {
+            Some((first, shows)) => {
                 self.gain(*shows);
                 self.open_box(Arc::clone(first), Told::Found(i, 0));
-            })
+                true
+            }
+            None => self.ask(t, i),
+        }
+    }
+
+    /// Find `i`'s question asked (E24 M4 T2b2 part A1, design §5.4; recorded in the visit's
+    /// millisecond, [`Loop::pose`]); whether it has one.
+    fn ask(&mut self, t: u32, i: usize) -> bool {
+        let finds = Arc::clone(&self.finds);
+        let Some(question) = finds.get(i).and_then(|f| f.ask.as_ref()) else {
+            return false;
         };
-        opened.is_some()
+        self.pose(t, i, question.clone());
+        true
+    }
+
+    /// Find `i`'s `question` asked: the status window built again first when its handler does
+    /// (`status_window_choose` 0x415DE0 with 0, 1, 1), then its box (E24 M4 T2b2 part A2: kept as
+    /// the one open, a first question's or an answer's next).
+    fn pose(&mut self, t: u32, i: usize, question: Question) {
+        if question.chooses {
+            self.choose(t, true);
+        }
+        let asked = Arc::clone(&question.asked);
+        self.open_box(asked, Told::Asked(i, Box::new(question)));
+    }
+
+    /// Find `i`'s question closed by its button `id` (E24 M4 T2b2 part A1): its OK's answer or
+    /// its Cancel's shown ([`Loop::answered`]; an OK's marks the find answered), refused where
+    /// the answer is not built (live: the visit ended, [`Loop::visited`]; recorded, `ask-pile`'s
+    /// and `ask-mine`'s Cancel: the idle step at 1060). Since part B a choice's `id` the picture
+    /// chosen: the first's answer [`Question::yes`] (a plain OK's too), the second's
+    /// [`Question::second`], its Cancel's [`Question::no`] (marking the find where it
+    /// [`Answer::marks`]: the Arena's).
+    fn answer(&mut self, t: u32, i: usize, question: Question, id: u16) -> Result<(), Unplayable> {
+        let reply = match id {
+            boxes::YES | boxes::OK | boxes::CHOICE => question.yes,
+            _ if id == boxes::CHOICE + 1 => question.second,
+            _ => question.no,
+        };
+        if let Some(reply) = reply {
+            if !matches!(id, boxes::NO | boxes::CANCEL) || reply.marks {
+                self.answered.push(i);
+            }
+            return self.answered(t, i, 0, reply);
+        }
+        let at = self.finds[i].at;
+        self.unbuilt(Unplayable::Answer([
+            i32::from(at.x),
+            i32::from(at.y),
+            i32::from(at.z),
+        ]))?;
+        self.visited(t, i);
+        Ok(())
+    }
+
+    /// Find `i`'s answer's box `k` opened, what it shows shown first (E24 M4 T2b2 part A1:
+    /// `ask-tomb`'s 162, `ask-hire`'s GENRLTXT 424 in the OK's millisecond); past the last the
+    /// answer's gain shown, then (part A2) the status window built again where the answer does,
+    /// its next question asked, its object taken ([`Loop::take`]: the step's end after the
+    /// dissolve) or its terrains revealed (the view and the minimap drawn again: `visit_object`'s
+    /// common end 0x4A9AD3), and the visit ended.
+    fn answered(&mut self, t: u32, i: usize, k: usize, answer: Answer) -> Result<(), Unplayable> {
+        if let Some((next, shows)) = answer.boxes.get(k) {
+            self.gain(*shows);
+            let next = Arc::clone(next);
+            self.open_box(next, Told::Answer(i, k, Box::new(answer)));
+            return Ok(());
+        }
+        self.gain(answer.gain);
+        if answer.chooses {
+            self.choose(t, true);
+        }
+        if let Some(then) = answer.then {
+            self.pose(t, i, *then);
+            return Ok(());
+        }
+        if let Some((object, fade)) = answer.taken {
+            self.take(t, object, Gain::default(), fade);
+            return Ok(());
+        }
+        if answer.reveal != 0 {
+            self.drawn.revealed |= answer.reveal;
+            self.draw(t);
+            self.draw_minimap();
+        }
+        self.visited(t, i);
+        Ok(())
+    }
+
+    /// Find `i`'s visit ended with nothing more to show (E24 M4 T2b2 part A1): one from beside
+    /// ends its step first ([`Loop::finish`], as after a dissolve), one on its entrance looks at
+    /// the mouse again as the step's end does (part B: `choose-arena`'s cursor over the view at
+    /// 1460, the mouse moved there during the box; *provisional*: the visit's place in the step,
+    /// `hero_move_step` 0x4805E0, not read), then the idle step.
+    fn visited(&mut self, t: u32, i: usize) {
+        self.drawn.attacking = None;
+        if self.finds.get(i).is_some_and(|f| f.blocks.is_some()) {
+            self.finish(t, true);
+        } else {
+            self.column = None;
+            self.moved();
+        }
+        self.idle_message(t);
     }
 
     /// Whether the selected hero stands on an event not told yet (E24 M4 T2a2 part B).
@@ -2619,12 +2854,12 @@ impl Loop {
     }
 
     /// The find a key's step onto `at` visits from beside (E24 M4 T2a2 part B): one whose object
-    /// the visit takes, not taken yet; its place among the finds and the object.
-    fn beside(&self, at: Pos) -> Option<(usize, usize)> {
-        self.finds.iter().enumerate().find_map(|(i, f)| {
-            f.taken
-                .filter(|o| f.at == at && !self.drawn.gone.contains(o))
-                .map(|o| (i, o))
+    /// blocks its tile (since T2b2 [`Found::blocks`]: a guarded pile's too), not taken yet; its
+    /// place among the finds.
+    fn beside(&self, at: Pos) -> Option<usize> {
+        self.finds.iter().position(|f| {
+            f.blocks
+                .is_some_and(|o| f.at == at && !self.drawn.gone.contains(&o))
         })
     }
 
@@ -2635,8 +2870,10 @@ impl Loop {
     /// (`visit_resource_pile` 0x4A4BE0, `visit_artifact` 0x49F7E0): a pile's resources shown on
     /// the resource bar and its kind 6 asked, chosen and drawn, then the pile taken; an
     /// artifact's box (the mouse shown over it), the artifact taken at its close. The step's end
-    /// ([`Loop::finish`]) comes after the dissolve.
-    fn visit_beside(&mut self, t: u32, direction: Direction, (i, object): (usize, usize)) {
+    /// ([`Loop::finish`]) comes after the dissolve. Since E24 M4 T2b2 a find with a question
+    /// asks it (the mouse shown over it; recorded, `ask-pile`, `ask-artifact`), its visit's end
+    /// the step's ([`Loop::visited`]).
+    fn visit_beside(&mut self, t: u32, direction: Direction, i: usize) {
         self.cursor.shown = false;
         self.walked = true;
         if !self.lifted {
@@ -2660,6 +2897,24 @@ impl Loop {
             self.open_box(Arc::clone(first), Told::Found(i, 0));
             return;
         }
+        if let Some(question) = &found.ask {
+            // A monster drawn as its attack (its frame + 1 with the hero left of it), the view
+            // drawn and shown (`visit_object` 0x4A97B2 to 0x4A97F4; E24 M4 T2b2 part A2).
+            if let (Some(frame), Some(object), Some(hero)) =
+                (question.attacker, found.blocks, self.hero)
+            {
+                let left = u32::from(hero.at.x < found.at.x);
+                self.drawn.attacking = Some(Attacking {
+                    object,
+                    frame: frame + left,
+                });
+                self.draw(t);
+                self.step_objects(t);
+            }
+            self.cursor.shown = true;
+            self.ask(t, i);
+            return;
+        }
         self.gain(found.gain);
         if let Some(status) = &found.found {
             // Kind 6 asked until the tables' time from now, the chooser at once (1, 1, 1).
@@ -2668,24 +2923,33 @@ impl Loop {
             self.end = t.saturating_add(self.rules.finds.found_ms);
             self.choose(t, true);
         }
-        self.take(t, object, Gain::default());
+        match found.taken {
+            Some(object) => self.take(t, object, Gain::default(), Fade::Pickup),
+            None => self.visited(t, i),
+        }
     }
 
     /// The object `object` taken off the map (`remove_map_object` 0x4AABB0 between the view's
     /// draws of `visit_resource_pile` 0x4A4BE0 and `artifact_pickup_remove` 0x49E170; design
     /// §5.3): the palettes' cycling held, the view drawn and shown with it, the object removed,
-    /// the pickup's sound (the viewer's own, [`pickup`]), the mouse hidden, the view drawn without
-    /// it and the tables' rectangle dissolved into that in eight steps from now
+    /// the pickup's sound (the viewer's own, [`pickup`]; since E24 M4 T2b2 part A2 by `fade`,
+    /// `hero_loss_effect` 0x4ACBB0's: a monster's `killfade.82M`), the mouse hidden, the view
+    /// drawn without it and the tables' rectangle dissolved into that in eight steps from now
     /// ([`Loop::dissolve_step`]), `gain` shown at its end.
-    fn take(&mut self, t: u32, object: usize, gain: Gain) {
+    fn take(&mut self, t: u32, object: usize, gain: Gain, fade: Fade) {
         self.draw(t);
         let before = Arc::new(self.drawn.clone());
+        self.drawn.attacking = None;
         let taken = self.drawn.gone.len();
         let gone = Arc::make_mut(&mut self.drawn.gone);
         gone.push(object);
         gone.sort_unstable();
         gone.dedup();
-        if let (Some(sound), Some(name)) = (&mut self.sound, pickup(&self.rules.finds, taken)) {
+        let name = match fade {
+            Fade::Pickup => pickup(&self.rules.finds, taken),
+            Fade::Killfade => Some(self.rules.finds.killfade.as_str()),
+        };
+        if let (Some(sound), Some(name)) = (&mut self.sound, name) {
             sound.effect(t, name);
         }
         self.cursor.shown = false;
@@ -3189,6 +3453,15 @@ impl Loop {
         let cursor = hover.cursor(tile, selection, !self.walked);
         self.cursor.frame = cursor.frame;
         self.action = cursor.action;
+        // After a walk the reach is the engine's: the recording's frame at this millisecond, if
+        // any (E24 M4 T2b2 part B, *provisional*; a click there is not built).
+        if self.walked
+            && cursor.frame == hover::frame::ARROW
+            && let Some(&(_, frame)) = self.reached.iter().find(|&&(at, _)| at == self.now)
+        {
+            self.cursor.frame = frame;
+            self.action = -1;
+        }
     }
 
     /// The panel's hint (`adventure_panel_hint` 0x403010): the item under the mouse, when it is
@@ -3502,7 +3775,7 @@ impl Loop {
             let Some((direction, next)) = moving.rest.pop_front() else {
                 self.finish(t, moving.key);
                 // A find on its last tile told (E24 M4 T2a2): its box empties the queue.
-                if self.tell_find() {
+                if self.tell_find(t) {
                     moving.queued.clear();
                 }
                 return Some(moving.queued);
@@ -3770,6 +4043,8 @@ impl Loop {
             },
             gone: Arc::clone(&self.drawn.gone),
             dissolve: None,
+            revealed: self.drawn.revealed,
+            attacking: self.drawn.attacking,
         };
         self.choose(t, false);
     }

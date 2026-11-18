@@ -98,6 +98,8 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   original's is the tile's; a click that starts a walk records that frame even hidden (its
   `cursor` line). A sequence walks a path again only from the staged tile: `walk-stopped`'s first
   run, which clicked the destination again after each walk it ended, became three sequences.
+  Since M4 T2b2 a sequence takes that cursor's frame from its recorded timeline (`Start::reached`,
+  as the points): a box closed with the mouse over the view checks only when the cursor changes.
 - **The input ring counts messages, not actions** (M3 T6b3, design §4.15): a click two, every
   other action one; a scroll's Control key's own down and up and a button's move before it are not
   counted, so a sequence that fills the ring uses keys without Ctrl (`walk-queue`). The ring holds

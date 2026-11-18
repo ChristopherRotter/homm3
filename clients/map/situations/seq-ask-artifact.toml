@@ -1,4 +1,4 @@
-# A question or a choice (E24 M4 T2b1; clients/map/to-record.toml `ask-artifact`; E24 design §5.4):
+# A question or a choice (E24 M4 T2b1; clients/map/sequences.toml `ask-artifact`; E24 design §5.4):
 # a guarded artifact's question without a text of the map's (GENRLTXT 421).
 # Red's hero on (5, 5) steps up onto its entrance (5, 4); Red's town out of the way, so that no
 # visit's scenario test warns of a town lost; Blue's hero far off in the fog.

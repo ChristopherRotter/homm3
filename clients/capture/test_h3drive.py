@@ -78,5 +78,18 @@ class HeldInputs(unittest.TestCase):
                          [*released, ["started", "wine", "Heroes3.exe"]])
 
 
+class WineEnvironment(unittest.TestCase):
+    """E27 M3 T3b2, E24 M4 T2b2: Wine 9's 32-bit loader crashes at its start where TMPDIR is set
+    (`free(): invalid pointer`), so the harness's commands run without it."""
+
+    def test_tmpdir_never_reaches_wine(self):
+        environ = {"TMPDIR": "/tmp", "HOME": "/root"}
+        with mock.patch.dict(os.environ, environ, clear=True), \
+                mock.patch.object(h3drive, "instance_fault", return_value=None):
+            e = h3drive.env()
+        self.assertNotIn("TMPDIR", e)
+        self.assertEqual((e["HOME"], e["WINEPREFIX"]), ("/root", "/root/.wine-h3"))
+
+
 if __name__ == "__main__":
     unittest.main()

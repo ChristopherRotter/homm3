@@ -3247,8 +3247,8 @@ choice's box in the handlers the engine's offers and choices copy (each handler'
 computer's answers not followed): `monster_visit_decision` 0x4A7740, `monster_join_free` 0x4A7000,
 `monster_join_for_gold` 0x4A7250, `monster_flee_offer` 0x4A6DF0, `visit_object` 0x4A84F0's Border
 Guard (0x4A8734) and Cartographer (0x4A8A14), `visit_guarded_resource` 0x4A4BE0,
-`visit_guarded_artifact` 0x49EEB0, `visit_mine` 0x4A39F0, `visit_creature_bank` 0x4A15D0,
-`visit_search_bank` 0x4AC440, `visit_tree_of_knowledge` 0x4A6710, `visit_warriors_tomb` 0x4A7C30,
+`visit_guarded_artifact` 0x49F070, `visit_mine` 0x4A39F0, `visit_creature_bank` 0x4A15D0,
+`visit_search_bank` 0x4AC490, `visit_tree_of_knowledge` 0x4A6710, `visit_warriors_tomb` 0x4A7C30,
 `visit_pandora_box` 0x4A0C50, `visit_pyramid` 0x4A4230, `visit_dwelling` 0x4A1950, `visit_arena`
 0x49E7D0, `chest_gold_or_experience` 0x4A6440, `visit_school_of_magic` 0x4A33E0
 (`visit_school_of_war` 0x4A7A40 the same code). `visit_guarded_scroll` 0x4A5AB0 and
@@ -3267,7 +3267,7 @@ and `seq-choose-*`).
   0x7801 (Escape) beside it (the OK's disabling at 0x4F6F2E; the Arena, the Schools). A disabled OK
   takes no key: Enter does nothing (recorded, `choose-chest` at 600). Every picture has a frame item
   one pixel out, hidden (0x4F72C9 to 0x4F7368: an H3DlgFrame at the picture's place less 1, its size
-  + 2, the game palette's entry 59, flags 0x400, id 0x7809 + its slot; its vtable then
+  + 2, the game palette's entry 45 (T2b2; read 59 at T2b1), flags 0x400, id 0x7809 + its slot; its vtable then
   `choice_frame_vtable` 0x63FE1C, whose right-click is a popup by the picture's type,
   `choice_frame_popup` 0x4F0B20, not read further). The "or" flag puts GENRLTXT 5 between the
   pictures (0x4F737D to 0x4F7461: a medfont text item centred on the box, one font height above the
@@ -3339,3 +3339,160 @@ and `seq-choose-*`).
   and a few pixels at x = 709, not read), the answers' ends (the dissolve after a join, a flight, a
   Border Guard, a chest and Pandora's Box; the reveal; the joining army and the skills in the status
   window).
+- **Built** (M4 T2b2 part A1, *provisional*): the module `asks`: `Ask`, a question's facts
+  (`Ask::of` from `Seen`, the object's class, subclass, entrance word and owner, the selected
+  hero's mark, a pile's, scroll's or artifact's message on the map and a dwelling's creature and
+  growth, and `Visitor`, the colour, the teams, the resources and the selected hero's army): a
+  guarded pile's, scroll's or artifact's with the map's text, an artifact's GENRLTXT 421 by its one
+  stack (its size word of form 2, ARRAYTXT 176 + 3 n), a neutral abandoned mine's 84, a bank's 32
+  (looted 33, a box alone), the search kinds' 41, 119 and 122, the Tree of Knowledge's 149 and 151
+  with the experience's picture (147 visited, 150 and 152 too poor: boxes alone), the Pyramid's
+  105, the Warrior's Tomb's 161, a dwelling's guards' GENRLTXT 422 (a new game's: a creature of
+  level 5 or more, three weeks of its growth; the dwellings' survey §2) and a hire's 35 (a dwelling
+  of the visitor's team); `Ask::told`, `asks`, `chooses` (the status window built again before the
+  box: all but the search kinds', the Tree's and the Tomb's; the hire's as the guards'), `beside`
+  (a pile, a scroll, an artifact); `Ask::yes`, the OK's box and gain where built: the Tomb's 162
+  with its artifact (the word's bits 13 to 22 while bit 0 is set; its primary skills, as worn) or
+  163 with three pictures of bad morale, the tables' morale lost either way; a free hire's GENRLTXT
+  424 (423 none to hire, 426 no room; one creature's name the singular, not recorded) and the army
+  joined. The catalogue's keys `map.ask.*` (30: the size words, GENRLTXT 421 to 426 and ADVEVENT's
+  records); the tables' `[map.asks]`: each creature's level (`creature_table` 0x6703B8's +4 plus 1,
+  read from the SoD executable: its Air and Water Elementals' 2 and 3 are the AB pack's, the
+  base pack's 4 RoE's), the guards' `[5, 3]`, the Tree's prices (2 000 gold, 10 gems) and the Tomb's −3. The
+  timeline: `Found::blocks` (the object a key's step visits from beside until it is taken: a pile's
+  and an artifact's with `taken` too, a guarded pile's alone) and `Found::ask` (`Question`: its box,
+  `chooses`, `yes` an `Answer` of boxes and a gain); a find's question after its first boxes, on its
+  entrance (`Loop::tell_find`) or from beside (`Loop::visit_beside`, the mouse shown over it), in
+  the step's millisecond (`Loop::ask`), asked again at every visit until its OK; its Cancel ends the
+  visit (`Loop::visited`: from beside the step's end, `Loop::finish`, as after a dissolve; then the
+  idle step: recorded, the redraws due at 1060); its OK opens the answer's boxes one after another
+  in that millisecond (`Loop::answered`: `ask-tomb`'s 162 at 1060, no idle step between) and shows
+  the gain at the last one's close (`ask-tomb`'s morale, `ask-hire`'s Pikemen in the hero's window
+  at 1660), or is refused where the answer is not built (`Unplayable::Answer`; live as the Cancel);
+  a find answered tells nothing at a later visit. The binary lays each question out
+  (`Painter::asked`: `message::told` of style 2 by `Painter::told_in`), a dwelling's creature by
+  the sound tables' `dwelling_creatures`, its growth from `CRTRAITS.TXT`. Not built: every other
+  answer (the battles, the Tree's level-up, the recruit dialog: M4 T5 and M5), a find after its OK
+  (the Tomb's 163, the hire's 423 at a later visit, the Tree's 147: the engine's facts), a mine of
+  another player's (187), a guarded artifact's several stacks, a pile's or artifact's message
+  without guards, a guarded pile or scroll without a text (the battle at once), a dwelling of class
+  20 (36) and the Refugee Camp (112), a free Tree (148), part A2's questions and part B's choices.
+- **Checked** (M4 T2b2 part A1): T2b1's 22 sequences recorded again in this sandbox (each `ok`, the
+  frame at 0 exact), the ten moved into `sequences.toml`; `frames --only <id> --reuse` on them:
+  every frame exact (`ask-pile`, `ask-artifact`, `ask-mine`, `ask-bank`, `ask-crypt`, `ask-tree`,
+  `ask-pyramid`, `ask-dwelling-guards` 7 each, `ask-tomb` and `ask-hire` 9), the viewer's timelines
+  the recorded ones line for line (31 each, 36 and 36; `<id>-frames.txt` kept); `h3-map-view
+  sequences` the 68 as recorded; unit tests (every question's facts, box and answer through the
+  tables and a catalogue of its own; the ten replayed headless; a question from beside and on its
+  entrance, its Cancel, asked again, an answer not built refused and live as the Cancel, an
+  answer's box and its gain at the close, a question after a first box, an answer without a box, a
+  blocking find with nothing to tell), 100 % lines, regions and functions of `h3-map-view` and of
+  `h3-ui` but its `scrollbar.rs` (the client lane's, untouched: its callers and their tests are
+  `h3-view`'s).
+- **Built** (M4 T2b2 part A2, *provisional*): `asks` gains a wandering monster's offers
+  (`Ask::Monster`: its stack, `Offer` `Join`, `Gold` with the price or `Flee`, room in the army,
+  its flight after a declined offer), decided as `monster_visit_decision` 0x4A7740 does
+  (the battles' survey §3.2) in integers: `power` (`hero_army_power` 0x427650: the army's AI
+  values times √((20 + A)(20 + D)) over 20, truncated; the game's float factor and its 32-bit sum
+  not reproduced), the strength step (r = power over the stack's AI value times its count: 11, ⌊2r
+  − 2⌋, −1, −2, −3), the sympathy (its own type and its pair's, 2 n and 2 n + 1 below 112: Conflux's
+  pairs not built), the hero's Diplomacy the situation's `diplomacy` (the live part does not read
+  it; Normal's difficulty, no Easy bonus), the aggression and "never flees" from the tile's word;
+  a Border Guard's passage (`Pass`, its colour's key the viewer's mark on a Keymaster's Tent of that
+  colour), a Cartographer's maps (`Maps`, its kind: not visited and the tables' price held) and
+  Pandora's Box (`OpenBox`: its rewards and the hero's name, no message, not empty). Their boxes
+  (ADVEVENT 86; 88, or 89 then 90, with the gold's picture of the price; 91; 17; 25 to 27; 14), the
+  catalogue's keys `map.ask.join`, `-one`, `-gold`, `-price`, `.flee`, `.pass`, `.maps-sea`,
+  `-land`, `-underground`, `.open-box`. `Ask::yes` and the new `Ask::no` give a `Reply`: its boxes
+  (`granted`: `grant_rewards`' in `message_box_pictures`' layout), the gain after them, the status
+  window built again (`chooses`), the question asked next (`then`), the object taken and how
+  (`Fade`: a pickup's sound or `killfade.82M`, the tables' `[map.finds]` `killfade`), the terrains
+  revealed. A join's OK: its price paid and the army joined, the status window built again, the
+  monster taken with `killfade`; its Cancel the flight's question when it flees, else the insult
+  and the battle (none: not built); the flight's OK the battle (not built), its Cancel the monster
+  taken with `killfade`, no treasure; the guard's OK it taken with a pickup's sound; the
+  Cartographer's 1 000 gold paid (the tables' `[map.asks]` `maps_price`) and its kind's terrains
+  revealed (`reveals`: 0x100, 0xBF, 0x40, `reveal_terrain_mask` 0x4CA240's masks); Pandora's
+  `finds::rewards` boxes without the map's text, then the Box taken with a pickup's sound; every
+  A1 question's Cancel the default reply (the visit ended). **Read** (the detail §5.4 left open):
+  `visit_object`'s case 54 (0x4A97B2, a `map.toml` site) puts the visited monster's object in the
+  adventure manager's +0x218, its creature in +0x21C and the hero's being left of it in +0x220,
+  draws and shows the view, then decides; until the decision returns passes 5 and 7 draw that
+  object from `avwattak.def` (+0xE0, loaded at 0x407247) at frame +0x220 + 2 × +0x21C (0x4118E2,
+  0x4110EA): `live::Attacking` (in `Walking`), the tables' `[map.asks]` `attacking`, the scene's
+  object piece (recorded: the frames before every monster's dissolve). The timeline: `Question`
+  gains `no` and `attacker`, `Answer` `chooses`, `then`, `taken` and `reveal`, `Draw` `revealed`
+  and `attacking`; the open question and an answer's boxes travel in `Told::Asked` and
+  `Told::Answer` (`Loop::pose` asks a first or a next question, `Loop::answer` either button's
+  reply, an OK's marking the find answered, a reply not built refused); a monster's visit from
+  beside sets `attacking`, draws the view and steps the objects as `view_show_step` does before
+  the question; an answer's end shows the gain, builds the status window again, asks its next
+  question in that millisecond (`ask-join-no`'s 91 at 1060), takes its object (`Loop::take` with
+  its `Fade`: the view with the attack's picture dissolved, the step's end after it) or reveals its
+  terrains with the view and the minimap drawn again (`visit_object`'s common end, then the idle
+  step: `ask-cartographer`'s redraws due at 1060); `attacking` dropped at the take and at the
+  visit's end. The binary reads every creature's gold cost and AI value from `CRTRAITS.TXT`
+  (`texts::traits`), finds the key by the Tents' marks, lays a reply's boxes and its next
+  question out (`Painter::question`, `Painter::answer`), and makes every tile of the revealed
+  terrains explored on both levels (`Painter::reveal`, each level's index built again). Not
+  built: a monster's message and treasure (word bit 31), its battle and its insult (87), a join
+  without room (the army dialog), a Border Guard without the key, a Cartographer visited (24) or
+  too dear (28), Pandora's Box with a message or guards (16) or empty (15), the Cartographer's mark
+  on the mouse-over.
+- **Checked** (M4 T2b2 part A2): the six moved into `sequences.toml`; `frames --only <id> --reuse`
+  on them: every frame exact (`ask-join` 17, `ask-join-no` 19, `ask-join-gold` 17, `ask-guard` 17,
+  `ask-cartographer` 10, `ask-pandora` 18), the viewer's timelines the recorded ones line for line
+  (46, 51, 46, 46, 40, 48; `<id>-frames.txt` kept); `ask-tomb`, `ask-hire` and `ask-pile` still
+  exact; `h3-map-view sequences` the 74 as recorded; unit tests (the power, the strength steps,
+  the sympathy and the aggression's sign; every offer's facts, box and replies, a fight, a monster
+  that never flees or stands at C, no room, too poor, no Diplomacy; the guard with and without its
+  key, the Cartographer's kinds, visited, too poor, a price or kind past the tables; Pandora's
+  rewards, message and emptiness; the six replayed headless, the attack's picture and its frame
+  with the hero left of it, the join's army, price, `killfade` and dissolve, the flight in the
+  Cancel's millisecond and its Cancel, an OK and a Cancel not built refused, the guard and the Box
+  taken, the land revealed; the scene's attack pieces), 100 % lines, regions and functions of
+  `h3-map-view`'s library and of `h3-ui` but its `scrollbar.rs` (untouched).
+- **Built** (M4 T2b2 part B, *provisional*): `h3_ui::message` (common, additive) gains style 7
+  (`Style::Choose`: the OK placed as style 1's) and 10 (`Style::ChooseCancel`: the Cancel 0x7801,
+  its back 0x7865, built before the OK 0x7802, its back 0x7866, both placed as style 2's: 0x4F6DF6
+  to 0x4F6F1E), their OK disabled (a disabled button takes no press and no key: `choose-chest`'s
+  Enter at 600), each picture's frame an area 0x7809 + its slot one pixel out, hidden, and
+  `choice`'s "or" (GENRLTXT 5, an id of its own: as wide as its text and a line high, centred, a
+  line above the first caption, 0x4F73FC); `Open::press` on a frame chooses it (at the press: the
+  frame's own message not read; recorded clicks only): it shown, the other hidden, the OK enabled,
+  `Open::chosen`; a third frame does nothing; `MessageBox::frame_draws` a shown frame's one-pixel
+  outline in the game palette's entry **45** (`game_palette16` +0x76 with its colours from +0x1C:
+  T2b1's 59 a misreading, `map.toml` corrected; recorded (237, 213, 122)); a press keeps a button's
+  other states. `asks`: `Ask::Chest` (class 101, bit 10 clear: the gold 500 × its word's bits 11 to
+  14, the experience the gold less 500, the hero's Learning not known), `Ask::Arena` (class 4, not
+  visited: +2) and `Ask::School` (class 47, not visited and 1 000 gold held: +1), the tables'
+  `[map.asks]` `chest`, `arena`, `school`, `school_price`, the keys `map.ask.or`, `.chest`,
+  `.arena`, `.school`; `Ask::style`, `Ask::or`, `Ask::second`; a chest's gold (or nothing shown:
+  the experience), taken with a pickup's sound; the Arena's Attack or Defense, its Cancel the
+  Attack, marked (`Reply::marks`: MCL-Q33, the original's); a School's Spell Power or Knowledge,
+  paid, its Cancel neither. The timeline: `Question::second`, `Answer::marks`; a choice's OK
+  closes with the picture chosen (`Loop::answer`: 0x7809 and a plain OK the first's, 0x780A the
+  second's; a Cancel marks the find only where its answer does); a visit on its entrance ended
+  looks at the mouse again as the step's end does (`choose-arena`'s cursor at 1460, the mouse
+  moved during the box; the visit's place in `hero_move_step` 0x4805E0 not read); over the view
+  after a walk, where the viewer's cursor is the arrow for want of the reach (the engine's
+  pathfinder's), the recording's frame at that millisecond (`Start::reached`,
+  `Sequence::reached`, as `Start::points` the points; live the arrow, a click there not built).
+  The cursor drawn at the click 19 to 23 ms later and the pixels at x = 709 are the mouse poll's
+  (the cursor's old place at (700, 300) cleared): nothing new. The binary lays the choice out
+  (`Painter::choice`) and draws its frames. Not built: an artifact's chest (bit 10), the chest's
+  level-up (`hero_level_up` 0x4DA720: T2c's; the viewer has no experience) and Learning, the Arena
+  visited, a School visited (72) or too dear (73), the School of War (158), a frame's right-click
+  popup (`choice_frame_popup` 0x4F0B20).
+- **Checked** (M4 T2b2 part B): the six moved into `sequences.toml`, `to-record.toml` removed;
+  `frames --only <id> --reuse` on them: every frame exact (`choose-chest` 21, `choose-chest-gold`
+  19, `choose-arena` 9, `choose-arena-cancel` 7, `choose-school` 9, `choose-school-leave` 7), the
+  viewer's timelines the recorded ones line for line (57, 52, 36, 31, 36, 31; `<id>-frames.txt`
+  kept); `ask-join`, `ask-tomb` and `ask-pandora` still exact; `h3-map-view sequences` the 80 as
+  recorded; unit tests (the choice boxes' items, frames, "or" and disabled OK, a choice by a
+  click, the frames' outline, a third frame and one picture; the chest's, the Arena's and the
+  School's facts, boxes and answers, visited, too poor, an artifact's chest; the `cursor` lines
+  read; the six replayed headless, Enter before a choice, the frames shown and hidden, the
+  answers, the Cancels, a plain OK, the cursor after the walk recorded or not), 100 % lines,
+  regions and functions of `h3-map-view`'s library and of `h3-ui` but its `scrollbar.rs`
+  (untouched).

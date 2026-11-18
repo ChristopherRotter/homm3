@@ -1292,11 +1292,18 @@ impl<'a> View<'a> {
             let step = u64::from(look.phase) + u64::from(self.live.moment.frames);
             let frame = step.checked_rem(u64::from(shape.frames)).unwrap_or(0);
             let (columns, rows) = (i32::from(shape.width), i32::from(shape.height));
+            // A monster a hero visits: its attack's picture (E24 M4 T2b2 part A2).
+            let (def, frame) = match self.live.walking.attacking {
+                Some(a) if a.object == entry.object => {
+                    (self.tables.map.asks.attacking.clone(), a.frame)
+                }
+                _ => (look.def.clone(), u32::try_from(frame).unwrap_or(0)),
+            };
             Draw::Piece {
                 pass,
-                def: look.def.clone(),
+                def,
                 group: 0,
-                frame: u32::try_from(frame).unwrap_or(0),
+                frame,
                 x: place[0] - tile * (columns - 1 - i32::from(dx)),
                 y: place[1] - tile * (rows - 1 - i32::from(dy)),
                 mirror_x: false,
