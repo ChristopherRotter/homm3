@@ -2136,3 +2136,27 @@ an entry only where a task builds on it.
   The second head-to-head file uploaded (`head-to-head-20m.json`) measured `best.pt`, the 2 M
   network: its pairs are T34's to the count (the fixed head-to-head is deterministic on the
   user's card). (a) of the 20 M network is not measured.
+- **The read, by the rule stated before it ran:** against the faithful actor 0.511 ± 0.018, so
+  the rate less its half-width 0.493: **the aim is not met.** (a) of the 20 M network was not
+  measured (the user, 2026-11-18: skipped; the run's gates put it at about 0.49 ± 0.013 against
+  #2, two gates of no gain over a network 0.496 against it), so the rule's middle case rests on
+  (b), where every row lies within 0.007 of #2's: **#2 stays the current best**; the taught
+  regime does not pass the plateau at 20 M.
+  1. **Every lever of increment 8 and its long run ends at #2's level:** the network's size,
+     PPO's settings, the search at play, the anchor, the outcome's weight (T32 to T35), and
+     18 M of the anchor's regime past #2's level. The setup's plateau (T33) holds for the
+     regimes and sizes tried; what is left is what the network is shown (the epic's risk, the
+     information observation v22 lacks) and what it trains against.
+  2. **The run's cost, and the early stop:** the run's 10 M gate (no gain over its 2 M network,
+     0.487) showed the plateau at 627 minutes of its 1 185; the rest (558 minutes, about 9.3
+     hours of the user's GPU) changed no measure. **The user, 2026-11-18: a long run stops early
+     once its goal can evidently not be met.** Built: `[gate] futility` (N gates in a row without
+     a promotion end the run before its budget, the best's final ladder played, the run ended
+     `futile`, a resume past it with `--set gate.futility=0`; tests in `test_train.py`). With 1
+     and its 10 M gate this run would have stopped there. A long run's config from now on sets it
+     (at least 1) and gates at least every quarter of its budget, and its rule names the check
+     (`docs/lanes/ai/TRAPS.md`, Python).
+- **The user's choice** (2026-11-18, AI-Q18, of four offered: E25 closed on #2, an exploiter
+  league, expert iteration in Rust, a richer observation): **increment 9, a richer observation
+  (v23)**. **T36 closed** 2026-11-18; **increment 8 closed** (its decisions and tasks in
+  `E25-archive.md`).
