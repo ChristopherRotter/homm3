@@ -91,6 +91,15 @@ report set as `inspect` records it, one JSON line each, and the tactics phase's 
 battle (`--summary`); its files stay outside git (7 MB a run), the findings in
 `docs/epics/E25-log.md` T2b.
 
+`inspect/disagree.py` (E25 T37, a one-off script): where a network and the fair system actor
+choose differently on the cloning bench's held-out states, by the categories of their entries,
+with the features the fair actor's inputs read (approximated from observation v22: the threat of
+the enemies' reach, the distances, the targets' kills) and two tests of what each reads against a
+uniform legal choice; `uv run --group train python records/inspect/disagree.py
+runs/<run>/best.pt records/inspect/<run>-disagree.json` from `python/` (about a minute on the
+sandbox's CPU). `inspect/e25-structure-1-disagree.json`: #2's (the findings in
+`docs/epics/E25-log.md` T37 (b)).
+
 `inspect/<run>-order-probe.json` (E06, the turn-order probe, 2026-10-26): whether the run's
 trunk knows which stack acts next, from `inspect/probe_order.py` (a one-off script, not a module:
 `uv run --group train python records/inspect/probe_order.py runs/<run>/best.pt 600` from

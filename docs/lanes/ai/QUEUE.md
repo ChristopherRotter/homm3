@@ -12,25 +12,44 @@ the long run passed #2, `E25-log.md` T30 to T36); **`e25-structure-1` #2 the cur
 (AI-Q17, T29: 0.511 and 0.507 against the fair and the all-seeing system actor, the neutral set
 +0.302). **A long run stops early** (the user, 2026-11-18, T36): `[gate] futility` at least 1,
 gates at least every quarter of the budget, the check named in its rule (`TRAPS.md`, Python).
-**Increment 9, a richer observation (v23)** (the user at T36, 2026-11-18, AI-Q18; its decisions,
-the agent's proposal, in the epic file; the user reviews the design at T37's end):
+**Increment 9, a richer observation (v23)** (the user at T36, 2026-11-18, AI-Q18; its decisions
+in the epic file). **T37 closed** 2026-11-18 (`E25-log.md` T37, the user's review AI-Q19): #2's
+moves are blind to the enemies' reach (0.468, chance 0.455), its strikes read the kills; **v23 is
+the reach block** (the design's points 1 to 5), the kill preview for `hexconv` a bench arm
+(point 6), T39's rule the clone's ladder +0.02 (point 7).
 
-- **T37 — v23's design** (increment 9's decision 2; the sandbox, no GPU; one session).
-  - **(a) What the fair actor reads:** the inputs of `h3_battle_ai`'s fair choice (each
-    enemy's best hex to strike it from and its melee value, the enemies' reach and the Fire Walls
-    and moat in its hex scores, the odds of the stronger side, `h3-battle-ai`'s module doc)
-    against v22's features and the legal mask, each one shown, derivable from what is shown (a
-    position, a speed, an obstacle), or hidden.
-  - **(b) Where #2 and the fair actor choose differently:** T30's states by category
-    (`python/records/inspect/battles.py`), each tied to an input of (a) where one explains it.
-  - **(c) The candidates** (the kill preview for `hexconv` first: built since E06 T6d, the
-    MLP's only; then per-hex reach and threat planes per side, per-stack distances and a
-    shooter's blocked state) with their cost: the batch's samples a second (`benches/ai/`, an
-    engine query per stack and decision), the observation's length, the network's parameters
-    and the update's time on the GTX 1070 (T31's measure).
-  - **Acceptance:** the design in `E25-log.md` T37 (the features, their source in the engine,
-    the versions: observation v23 and the C ABI's, which lane writes what, the golden replays),
-    the user's review, T38 and T39's rule refined.
+- **T38a — v23 in the engine** (`cross-lane`, the user's consent at T37; the sandbox; one
+  pull request; the design's points 1 to 5).
+  - **(a) The query in `h3-battle`:** a stack's reach as a viewer may know it, the positions
+    the rules' pathfinder reaches within its speed now (flight, shape, its side's gate, Force
+    Fields), its stops only the pits both its controller and the viewer see. Tests: the other
+    side's hidden Quicksand or Land Mine changes nothing, a seen one stops the walk; a flyer; a
+    two-hex stack; the gate; a bound stack. The battle lane's inbox told (its code).
+  - **(b) Observation encoding v23 in `h3-sim`:** the reach block after the turn order
+    (`REACH` = 9 008; two planes, per slot three features; 9 644), from
+    `BattleEnv::encode_observation`'s state; `observation::encode` takes the block. Tests: its
+    columns on built battles; two worlds of a battle (`determinized`, two seeds) give the viewer
+    the same encoding (a property); the layout against `layout.py`. C ABI v38 (`_ffi.py`);
+    `layout.py`'s `REACH`; the MLP and the entity network bounded at `REACH` (a saved network
+    loads and plays as before: a test).
+  - **(c) The measures:** the batch workloads re-baselined (lane-only; the reason in the
+    commit), `cargo xtask determinism` (the golden replays unchanged), `bench-check` of the
+    battle lane's workloads (unchanged), the Python suite, `scripts/verify-once.sh clients`.
+  - **Acceptance:** the pull request labelled `cross-lane`, CI green; the versions in the
+    HANDOFF; a trap for a state-read feature (viewer-safe) in `TRAPS.md`.
+- **T38b — the networks and the bench** (Python; the sandbox; after T38a; the design's points 5
+  to 7): `[network] reach` for the hex kinds (the planes into each hex's drawn vector, the slot
+  features into the stack tokens; default off, a test that the default computes what the older
+  code did); `[network] preview` for the hex kinds (`Mlp.with_preview`'s bias from the hex
+  network's context); the cloning bench collecting the batch's preview (its rows and held-out
+  set; a preview student no longer refused); T39's config (three students: the control, `reach`,
+  `reach` with `preview`; T32's settings, 4 M, the same seed), its CPU smoke and resume test.
+- **T39 — the bench probe** (the user's GPU, about 6 hours in parts under 2 hours; the design's
+  point 7): the rule stated before it runs: an arm passes when its clone's ladder against the
+  fair actor (500 a kind, the same episodes) leads the control's by at least 0.02 and its
+  agreement is not below the control's; T40 starts from the passing arm with the better ladder,
+  the preview's only when it also leads the `reach` arm's by 0.02; none passing closes increment
+  9 at T41. The user uploads the bench's record.
 
 ## Inbox
 
@@ -38,164 +57,8 @@ Sorted by destination at E06's audit (T9a, 2026-10-27; E05's at its T9a, 2026-10
 origin stays in brackets. Moved to `QUEUE-ARCHIVE.md` as done or informational: the notices of
 E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last part, the battle
 lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's fair system actor
-(folded into T14).
-
-**From the adventure lane** (E08 T124a):
-
-- 2026-11-17 (the adventure lane, E08 T124a, `adventure/e08-t124a`, `cross-lane` with the user's
-  consent, E08 decision 353; **your paths changed, for your information; none of your versions
-  moved**): the battle part's hash moved (v8, `bank_positions`; `engine.battle` `c14c573e9d2ee26f`
-  → `fdf3b53f6f885cde`), so both bots tables were regenerated (only their `engine` line moved;
-  the policy, the encodings and the C ABI unchanged). The battle state hash is v56 (a creature
-  bank's flag and supply; no observation field). Your run records under `python/records/` keep
-  the hash their runs used.
-
-**From the town lane** (E09 T33b):
-
-- 2026-11-16 (the town lane, E09 T33b, `town/e09-t33b`, docs only; **planned `cross-lane` changes
-  in your paths; nothing changed yet**): E09 increment 4 (the Tavern; `TWN-Q18`, decision 120;
-  `docs/epics/E09-design.md` §76) appends to the adventure's action encoding `HIRE + s`, s < 2
-  (a town's tavern hero of slot s, the town by its entrance in the tile head; v12, T38a) and maps
-  the map Tavern's decision onto the answers by role (its two hires the first and second, its
-  `Close` the closing role; v13, T39a); no entry for the dismissal (a management command). The
-  Thieves' Guild is a query (`h3_game::thieves_guild`, T39b) your agents may read; the observation
-  struct gains the viewer's two tavern heroes (`GameObservation::tavern`, T37a). Each with your
-  consent at its task.
-
-**From the server lane** (E16 M5 T14):
-
-- 2026-11-13 (the server lane, E16 M5 T14, `claude/quirky-mccarthy-pgu2o6`, `cross-lane` with
-  the user's consent; **your path changed, informational**): `h3_game::GameCommand` gains
-  `System(SystemCommand)`, the trusted host's commands for a player whose time ran out (ADR-0017
-  point 2 amended); `crates/h3-sim/src/adventure/action.rs`' `tileless_entry` gives it no entry
-  (the host's, never a seat's; the action encoding is unchanged), and `legal_commands` never
-  lists it, so the env's seats and its neutral seat draw as before. The adventure replay format
-  is v14 (the adventure lane's version).
-
-**From the adventure lane** (E08 T115a):
-
-- 2026-11-13 (the adventure lane, E08 T115a, `adventure/e08-t115a`, `cross-lane` with the user's
-  consent; **informational**): `h3_heroes::HeroDetails` lost `bonuses` and `derive_battle_hero`
-  takes the battle bonuses beside the details (`h3_heroes::BattleBonuses::NONE` for none): your
-  `h3-sim` `encounter/hero.rs` literal and call changed so, no behaviour moved. The adventure's
-  heroes hold their bonuses and timed marks in the state (`AdventureState::visit_marks`); the env's
-  action encoding is unchanged, the observation's `OwnHeroView` gains `bonuses` and `timed` (yours
-  to encode, decision 187). The bots tables are unchanged (the part's hash did not move).
-
-**From the town lane** (E09 T8c1, T8c2, T19c1; T19c1's encoding v9 for the adventure agents):
-
-- 2026-11-18 (the town lane, E09 T38b1, `town/e09-t38b1`, `cross-lane` with the user's consent, E09
-  decision 145; **your path changed, for your review; no encoding moved**): a hero that leaves the
-  game now comes back (TWN-TAV-006: after its side's retreat or surrender into its owner's tavern,
-  its slot drawn from its owner's stream; every other leave's type free with one creature), so the
-  random games on the town map changed course: `tests/towns.rs`' end-of-days seed is **2541** (a
-  release search over 1 to 3 000, the shortest of ten meeting every feature; 2369 no longer met
-  every feature). The fork test's seed 6 holds. A returned hero shows in its owner's
-  `GameObservation::tavern` as any tavern hero.
-
-- 2026-11-18 (the town lane, E09 T38a2, `town/e09-t38a2`, `cross-lane` with the user's consent, E09
-  decision 143; **the env's action encoding v12, for the adventure agents**): `action.rs` appends
-  the two entries `TAVERN_HIRE` (35, 36; `ENTRY_COUNT` 37; `TAVERN_SLOTS`; the design note's
-  `HIRE + s`): a town's entrance in the tile head hires the hero in the player's tavern slot `s`
-  there (`TownCommand::Hire`, TWN-TAV-003: an own town with a standing Tavern, a hero in the slot,
-  fewer than eight heroes on the map, a free entrance, 2 500 gold), the building head 0, masked by
-  `legal_commands`' hires (each own town's after its recruitments, before its hero moves);
-  `Action::tavern_hire`. A hired hero takes its owner's hero slot by its id. The random agent now
-  draws the hires where they are listed (10 to 16 hires a game on the town map), so the town map's
-  play and fork tests took new seeds (`tests/towns.rs`: 2369 and 6); the observation is unchanged
-  (the slots' heroes are `GameObservation::tavern`, since E09 T37a).
-
-- 2026-11-14 (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent, E09
-  decision 93; **the env's action encoding v11, for the adventure agents**): `action.rs` appends
-  the three entries `TOWN_HEROES` (32 to 34; `ENTRY_COUNT` 35; `TOWN_HERO_MOVES`): a town's
-  entrance in the tile head moves a hero between its two bars (`TownCommand::Heroes`: 0 the
-  visitor into the garrison, 1 the garrison hero out, 2 the two swapped; TWN-ROW-002 to -004),
-  the building head 0, masked by `legal_commands`' moves (each own town's after its
-  recruitments); `Action::town_heroes`. A garrison hero is off the map: it holds no hero slot
-  (the slots are the heroes on the map's). The random agent now draws these moves where they are
-  listed, so the town map's play and fork tests took new seeds (`tests/towns.rs`); the army
-  commands between the bars have no entry (decision 99's).
-
-- 2026-11-13 (the town lane, E09 T27, `town/e09-t27`, `cross-lane` with the user's consent, E09
-  decision 92; **the env's action encoding v10, for the adventure agents**): `action.rs` appends
-  the entry `RECRUIT` (31; `ENTRY_COUNT` 32) with `BUILD`'s tile and building heads: a town's
-  entrance and a building opens that building's hire dialog (`TownCommand::Recruit`,
-  TWN-REC-001, -002: a standing dwelling, horde, or Portal holding a creature), masked by
-  `legal_commands`' recruitments (each own town's after its builds); the dialog's purchases are
-  the four hire entries as a dwelling's (`HIRE_BASE`), read from `GameState::hire_stock` (any
-  source's stock; an upgraded index sells two creatures from one count). `rollout::choose` draws
-  every listed recruitment, so random play changed course on every map with an owned town with a
-  dwelling (the town map's env tests on new seeds: 70 alone, and 46 for the fork test). A policy
-  trained on v9 sees one new entry. Nothing else of yours moved.
-
-- 2026-11-10 (the town lane, E09 T19c1, `town/e09-t19c1`, `cross-lane` with the user's consent,
-  E09 decisions 7, 58, 62; **the env's action encoding v9, for the adventure agents**; it replaces
-  the town lane's note of T18b2b): `crates/h3-sim/src/adventure/action.rs` appends the entry
-  `BUILD` (30; `ENTRY_COUNT` 31) and a third map head, the **building head**
-  (`MapAction::building`, `BUILDING_COUNT` 64 = `h3_towns::MAX_BUILDINGS`, a building's index in
-  its town's record): `BUILD` with a town's entrance in the tile head (`action::town_tile`) and a
-  building builds it (`TownCommand::Build`, TWN-BLD-001), masked by `legal_commands`' builds
-  (`building_mask`, also on `AdventureEnv`: after `BUILD` the town's listed buildings, after
-  another entry 0 alone at a legal tile; with another entry a building other than 0 decodes to
-  nothing). `rollout::choose` draws every listed build (each one choice, as `BuildBoat`'s;
-  `drawn_commands` gone), so random play changed course on every map with an owned town (the
-  town map's env tests on new seeds 142 and 244; three `towns-36` workloads re-baselined); a
-  policy trained on v8 sees one new entry and a new head. Nothing else of yours moved.
-
-- 2026-11-06 (the town lane, E09 T8c1 `town/e09-t8c1` (#750, merged) and T8c2 `town/e09-t8c2`,
-  `cross-lane`): `h3_game::GameObservation` gains `towns: Vec<TownView>` (each seen town's public
-  facts, its garrison by the viewer's level, the owner's facts at the top level; design note
-  `E09-design.md` §17, `docs/06-security.md` "Towns") and `h3_adventure::ObjectView::town`. The
-  day's advance pays each owned town's `h3_towns::daily_income` (its hall's gold, the Grail's, its
-  silo's resources) from day 2, in the same `ResourceGained` as the mines' and the heroes'
-  (TWN-INC-001, -002). Since T8c2 a Rogue in a hero's army shows another team's town within its
-  Visions radius at the top level (TWN-VEW-003). The town part's hash (v3 since T8c2) is in the
-  adventure replays' headers only. E09 T9 (the env's town fixtures, design §18) comes next.
-
-**From the adventure lane** (E08 T95b, T105b2; the adventure agents' action space grows):
-
-- 2026-11-13 (the adventure lane, E08 T114b, `adventure/e08-t114b`; **nothing to change, for
-  your docs and the observation's encoding**): a map garrison's exchange (GAM-DEC-009, E08 T114a2)
-  is answered by `Close` alone (its default too), which `answer_entry` already decodes as
-  `DECLINE`: action encoding **v8 is kept** (increment 12's design note §16); the module comment's
-  list of roles may name it beside the meeting's and the army dialog's. `GameObservation` gains
-  `garrisons` (`h3_game::MapGarrisonView`: each map garrison the player explored, its owner, its
-  army at the player's level, its removable flag to the owner's team), yours to encode when the
-  adventure gets a flat observation (decision 187).
-
-- 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane` with the
-  user's consent, E08 decision 268; **the env's action encoding v8, for the adventure agents, and
-  a step cap**): `crates/h3-sim/src/adventure/action.rs` appends eight entries `REVISIT_BASE + s`
-  (22 to 29, one per hero slot; `ENTRY_COUNT` 30): the hero in slot `s` revisits the entered
-  object it stands on (`AdventureCommand::Revisit`, ADV-TEL-008), tile 0 alone as the answers',
-  masked by `legal_commands` (which lists one per such hero after the `BuildBoat`s). A revisit
-  costs no points, so a turn may revisit without end (the original's space key: a two-way
-  monolith re-drawn, a Whirlpool's loss again; increment 11's design note §18): **an agent's
-  rollout needs a step cap per turn**, your call (`random_rollout` ends only when another entry is
-  drawn). Random play changed course on every map with an entered object (the `random-play-*`
-  workloads re-baselined, the town map's env tests on new seeds 36 and 330); a policy trained on
-  v7 sees eight new entries.
-
-- 2026-11-07 (the adventure lane, E08 T103b, `adventure/e08-t103b`; **for when you regenerate
-  `census-v1.toml`**): `h3 ai census original-data/install/Maps` counts 1 of the 159 maps on
-  `master` and on this branch: every other map stops at `GameState::new` with "object N has an
-  owner it may not have" (`SetupError`), as `src/ai/census.rs`' setup plays colour 0 alone while
-  the maps' owned objects and towns (typed since E08 T83a and E09 T8a1) belong to other colours.
-  `h3-map`'s `original_data` builds each map in a game of its own players (the map's colours whose
-  human or computer flag is set); the same would let the census count all 159 again. The committed
-  `census-v1.toml` is untouched (no gate regenerates it). T103b's change (the teleporters typed,
-  map import v21) should move none of its numbers (their tiles block and are visited as before),
-  unchecked while the census stops.
-
-- 2026-11-05 (the adventure lane, E08 T95b, `adventure/e08-t95b`, `cross-lane` with the user's
-  consent, E08 decision 243; **the env's action encoding v7, for the adventure agents**):
-  `crates/h3-sim/src/adventure/action.rs` appends four entries `HIRE_BASE + c` (18 to 21,
-  `HIRE_SLOTS = 4`; `ENTRY_COUNT` 22): buy the most of creature `c`, in its source's order, of
-  the player's open hire dialog (masked by `legal_commands`: a creature of none to buy is
-  masked); the dialog's `Close` is entry 10. The most only, as the original's Max then
-  Recruit: an amount head is the AI lane's call. A policy trained on v6 sees four new entries,
-  masked on every map without a dwelling or a Refugee Camp (no committed map has one before
-  E08 T96).
+(folded into T14); at E25 T37 (2026-11-18) every other lane's informational notice of E08 T63a
+to T124a, E09 T8c to T38b1 and E16 M5 T14.
 
 **From the battle lane** (CLT-Q40, BAT-Q64; `claude/keen-cori-oaahgi`, `cross-lane`; for your
 information and one choice):
@@ -210,44 +73,16 @@ information and one choice):
 
 **The adventure env** (yours since E08 T45):
 
-- 2026-11-02 (the adventure lane, E08 T85b2b, `adventure/e08-t85b`, `cross-lane`, decision 203;
-  for your information, nothing to do): the adventure env's **action encoding v6** appends
-  `BUILD_BOAT` (entry 17; `ENTRY_COUNT` 18): its tile head names a Shipyard by its anchor's tile,
-  masked by the `BuildBoat`s `h3_game::legal_commands` lists (ADV-SHY-003: the player's or an
-  ally's Shipyard, its boat tile free, the price in the treasury); `decode` builds the command at a
-  Shipyard the adventure lets the player use (`AdventureState::buildable_shipyards`), the game
-  refusing it out of its turn or without the price. The random agent's draw of a listed
-  `BuildBoat` now builds (it ended the turn before); no committed map has a Shipyard, so no
-  replay, bench or bots record moves. The same branch brings game state hash v22 (T85b1: the
-  month's kind, the timed events) and `GameObservation::month` and `events_today`.
-
-- 2026-10-31 (the adventure lane, E08 T83a, `adventure/e08-t82-t83a`, `cross-lane`; for your
-  information, nothing to do): adventure ruleset part v14 (increment 9's seven kinds, the
-  calendar, the growth and the months), map import v15, adventure state hash v17.
-  `python/records/bots-report-v1.json` and `bots-neutral-v1.json` regenerated: only
-  `engine.adventure` moved (`7576c6249341c03a`). Two setup fields reached your test literals:
-  `owner: None` in `crates/h3-sim/src/adventure/tests.rs` and `tests/monsters.rs`'
-  `ObjectSetup`s, `events: Vec::new()` in `tests/decisions.rs`' and `crates/h3-cli/src/ai/
-  census.rs`' `GameSetup`s; no encoding of yours moves.
-
-- 2026-10-30 (the adventure lane, E08 T81b, `shared/e08-t81b`, `cross-lane`; for your
-  information, nothing to do): core ruleset hash v51 (four hero effect kinds, two hero parameters,
-  a creature's abilities outside battle; pack format v50). `python/records/bots-report-v1.json`
-  and `bots-neutral-v1.json` regenerated: only `engine.core` moved (`962e87e7a01056f6`); the
-  `e25-*` run records keep the hash they ran with. Nothing reaches the battle's observation or
-  your encodings.
-
-- 2026-10-30 (the adventure lane, E08 T77b, `adventure/e08-t77b`; decisions 202, 203; **for
-  you: a notice, nothing to do now**): increment 9 (mines, the week and owned objects) adds one
-  command, `AdventureCommand::BuildBoat { object_type, anchor }` (a boat from an own or allied
-  Shipyard without a visit, no hero named). The user chose (decision 203, as decision 172) that the
-  adventure lane makes the **action encoding v6** change `cross-lane` in its task T85b: one entry
-  per Shipyard the viewer may use, by its anchor's tile index, masked by `legal_commands`. The
-  observation gains the owners, the weekly objects' visited marks, the month's kind and
-  `PlayerView::events_today`; no flat observation encoding exists (decision 187), so nothing of
-  yours moves there. The army dialog (Leave Guards) and the new offer kind (a boat for a price)
-  are typed answers already. Design: `docs/epics/E08-design.md` §8, §14, §15.
-
+- 2026-11-07 (the adventure lane, E08 T103b, `adventure/e08-t103b`; **for when you regenerate
+  `census-v1.toml`**): `h3 ai census original-data/install/Maps` counts 1 of the 159 maps on
+  `master` and on this branch: every other map stops at `GameState::new` with "object N has an
+  owner it may not have" (`SetupError`), as `src/ai/census.rs`' setup plays colour 0 alone while
+  the maps' owned objects and towns (typed since E08 T83a and E09 T8a1) belong to other colours.
+  `h3-map`'s `original_data` builds each map in a game of its own players (the map's colours whose
+  human or computer flag is set); the same would let the census count all 159 again. The committed
+  `census-v1.toml` is untouched (no gate regenerates it). T103b's change (the teleporters typed,
+  map import v21) should move none of its numbers (their tiles block and are visited as before),
+  unchecked while the census stops.
 - 2026-10-29 (the adventure lane, E08 T74b, `adventure/e08-t74b`; decision 187, replacing T66b's
   notice of decision 172; **for you: one point to decide, the census below**): increment 8 (boats
   and the sea) moves **no encoding of yours**. The adventure env has no flat observation encoding:
@@ -262,23 +97,6 @@ information and one choice):
   a monster's battle is on the deck (`sea_battle_ground(…, 1)`), which the census counts at the
   water tile's own ground; whether it should is yours. When you encode the adventure for learning,
   the boats are in the views. Design: `docs/epics/E08-design.md` §12, §13, §15.
-- 2026-10-27 (the adventure lane, E08 T63a, `adventure/e08-t63a`, `cross-lane` with the user's
-  consent; decision 153; **for you**): **the answers are typed and your action mapping moved with
-  them (encoding v5).** `h3_game::Answer` is an enum by decision kind: `Offer(Consent)`
-  (`Accept`, `Decline`), `LevelUp(SkillOffer)`, `Close` (a meeting, an army dialog), `Chest`
-  (`Gold`, `Experience`), `Arena` (`Attack`, `Defense`), `School` (`First`, `Second`, `Leave`),
-  `University` (`Buy(slot)`, `Leave`). `src/adventure/action.rs` maps answers onto entries by role
-  (`answer_entry`): 9 an offer's acceptance; 10 a declined offer, a closed meeting or army dialog,
-  a School or University left; 11 and 12 the first and second of a level-up's, a chest's, the
-  Arena's and a School's answers; **13 to 16 (new) a University's purchase of slot 0 to 3**
-  (`BUY_BASE`, `UNIVERSITY_SLOTS`; the user chose the entries now). `decode` takes the listed
-  answer of the entry's role, else the offer's or level-up's answer or the purchase, which the game
-  rejects; the masks come from `legal_commands` as before, so every decision has a legal entry.
-  The new decisions' views (`DecisionView::Choice`, `DecisionView::University { visit, slots }`)
-  are in the observation; whether your encoding reads them is yours (this replaces T55b's notice
-  of 2026-10-26). The rollout's legal-command order keeps the old games' draws: the twelve golden
-  replays recorded the same commands. **A-23 withdrawn** (E08 T58: `legal_moves` never reads events). Design:
-  `docs/epics/E08-design.md` §14, §16; ADR-0017 points 6, 8.
 
 **For E25's closure** (a `shared/` pull request): `docs/07-simulation-and-ai.md` §1.2, the
 pipeline as built, gains E25's training levers: shaping (T2a), the tactics bound (T4a), the
