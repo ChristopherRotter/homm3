@@ -4813,9 +4813,10 @@ The agent's calls: decision 146.
 - **Catalog:** TWN-TAV-006 new (`verified`: batch TWN-4's TWN-4-3, -4 as the reading);
   GAM-BAT-003, TWN-TAV-004 and TWN-SET-005 amended; `TWN-QUIRK-12`'s regression test named;
   `ADV-STUB-9`'s reason (the Tavern fact ready).
-- **Tests:** `town/tests/hire/leave.rs` (four: a loss under both flag settings, a draw and a
+- **Tests:** `town/tests/hire/leave.rs` (five: a loss under both flag settings, a draw and a
   created-stacks winner, a retreat with its slot, view, events, turn start and rehire, a
-  surrender with the marks and without survivors); the capture's away record in `rows.rs`'s
+  surrender with the marks and without survivors, a repeated type's other hero beside an offered
+  record); the capture's away record in `rows.rs`'s
   `TWN-QUIRK-11` test; the replacement's points; the older tests' beaten heroes refilled (the
   aftermath's and the siege's spell points, the surrender's events). The town tests' setups place
   two heroes of type 0: a leave of the type's second hero makes it the record (decision 146).
@@ -4831,3 +4832,7 @@ The agent's calls: decision 146.
   commands (hash lines only); the bot reports unchanged; `h3-sim`'s town-map end-of-days seed
   **2541** (a release search over 1 to 3 000: ten met every feature, none returns a hero; 543
   steps, 28 builds, 58 dialogs, 13 hires). No version moved (the pool's hashed fields were there).
+- **Verify** (`--scope town --with-original-data`): every step but `check-lane` (`cross-lane`:
+  `check-lane --cross-lane` ok) passed once the leave's unreachable `None` paths were indexed and
+  the repeated type's offered record got its test (coverage's two rounds); the protocol's fold,
+  session and record tests over the new goldens passed.

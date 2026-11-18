@@ -2345,9 +2345,9 @@ army the survivors (one creature when none: decision 146), the points kept and `
 by the record's spell points. A hero that is not its type's record becomes it as it leaves unless
 the type is offered (decision 146: the town tests' setups place two heroes of type 0). Point 5
 built in the replacement (`hire::replace`: a new record's away points the land maximum of its one
-creature). Tests: `town/tests/hire/leave.rs` (four: a loss under both settings of the flag, a draw
+creature). Tests: `town/tests/hire/leave.rs` (five: a loss under both settings of the flag, a draw
 and a created-stacks winner, a retreat with its slot, view, turn start and rehire, a surrender
-with the marks and without survivors), the capture's in `rows.rs`; the plans' battle oracle
+with the marks and without survivors, a repeated type's other hero beside an offered record), the capture's in `rows.rs`; the plans' battle oracle
 (`h3-map`'s `check_heroes_after_battle`) taught the untold refill of a hero that leaves without
 returning.
 

@@ -291,3 +291,28 @@ fn a_surrendered_hero_returns_with_its_survivors_and_a_marked_slot_is_spared() {
     let away = after.pool().away(red_type).unwrap();
     assert_eq!(away.army, [one_of(&rules, &after, red)]);
 }
+
+// covers: TWN-TAV-006
+#[test]
+fn a_repeated_types_other_hero_leaves_an_offered_record_as_it_is() {
+    let rules = rules();
+    let game = game(&rules, &towns_setup(&rules), 5000);
+    // The setup's two heroes, red's 0 and blue's 1, are both of type 0, whose record is red's.
+    let (red, blue) = (HeroId::new(0), HeroId::new(1));
+    let ty = game.hero(red).unwrap().hero_type;
+    assert_eq!(game.hero(blue).unwrap().hero_type, ty);
+    assert_eq!(game.pool().record(ty), Some(red));
+    // Red retreats: its record returns, offered; blue, left with created stacks only, leaves
+    // after it and changes nothing of the type's (decision 146).
+    let fled = outcome(BattleResult::Retreat(BattleSide::Attacker), [&[], &[]], 0);
+    let (after, _) = ended(&rules, &game, (red, blue), &fled);
+    let pool = after.pool();
+    assert_eq!(pool.status(ty), Some(HeroStatus::Offered));
+    assert_eq!(pool.record(ty), Some(red));
+    assert!(pool.tavern(RED).unwrap().slots.contains(&Some(ty)));
+    let away = pool.away(ty).unwrap();
+    assert_eq!(away.army, [one_of(&rules, &after, red)]);
+    let on_map = game.adventure().hero(red).unwrap();
+    assert_eq!(away.movement, on_map.movement);
+    assert!(away.stale);
+}
