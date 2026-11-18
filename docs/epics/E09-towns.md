@@ -1,6 +1,6 @@
 # E09 — Towns
 
-Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63), increment 3 (growth, recruitment and the army rows) on 2026-11-15 (T30; decisions 64–97), all three in `E09-archive.md`; increment 4 (the Tavern) refined the same day (TWN-Q15, decisions 98–102), its drafts accepted at T33b (TWN-Q18, decisions 114–122), batch TWN-4 run and scored by T34 (decisions 123, 124), T35 cut in two at its start (TWN-Q19, decisions 125–128): T35a the ADRs done, T35b the code done (decisions 129–131), T36 the town part v7 done (decision 132), T37a done (decisions 133–136), T37b done (decisions 137–139), T38a cut in two at its start (TWN-Q22, decisions 140–142): T38a1 done, T38a2 next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
+Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63), increment 3 (growth, recruitment and the army rows) on 2026-11-15 (T30; decisions 64–97), all three in `E09-archive.md`; increment 4 (the Tavern) refined the same day (TWN-Q15, decisions 98–102), its drafts accepted at T33b (TWN-Q18, decisions 114–122), batch TWN-4 run and scored by T34 (decisions 123, 124), T35 cut in two at its start (TWN-Q19, decisions 125–128): T35a the ADRs done, T35b the code done (decisions 129–131), T36 the town part v7 done (decision 132), T37a done (decisions 133–136), T37b done (decisions 137–139), T38a cut in two at its start (TWN-Q22, decisions 140–142): T38a1 done, T38a2 done (decisions 143, 144), T38b next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
 
 ## Goal
 
@@ -269,6 +269,18 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
      in the event as `Option<u8>` (the projection blanks another viewer's); the parts only for a
      sink that keeps events; a new record's draws shared with the fill (`tavern::record_of`); the
      replacement's war machines none (the one-creature form gives only the first stack).
+143. **T38a2 whole** (the user; the agent recommended a cut in two: the listing with the plans
+     and every oracle taught a hire, the random agent skipping the listed hires as decision 56 did
+     for the builds; then the env's entries with the seeds and the workloads): one `cross-lane`
+     pull request, the listing, the plans, the env's v12, the seeds and the benches together.
+144. *Agent's calls at T38a2 (change freely; design §64, §76's As built):* a town's hires listed
+     after its recruitments and before its hero moves (§64's "after its recruitments", §76's
+     "after a town's builds and recruitments"); the listing reuses the hire's checks
+     (`town::hire::check`, one test of the Tavern a town before them); the env's entries named
+     `TAVERN_HIRE + s` (`HIRE_BASE` already names the hire dialog's purchases), their mask and
+     decoding as the hero moves' between the bars; the plans' `Step::Town` hires a listed hero in
+     one step of eight; the hygiene's comparison ends at a hire the viewer is told (the hired hero
+     is a draw of the taverns' stream the hidden differences move).
 
 ### Exit criteria (accepted at `TWN-Q18`, decision 121; design note §80)
 
@@ -312,7 +324,7 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
   glossary, `docs/06-security.md`: done 2026-11-16 (`TWN-Q19`, decisions 125–128: the marks cleared
   at every day's start, every record's day's spell points; the drafts deleted; `E09-log.md`).
   **T35b** `StreamId::TAVERNS`, the two quirk flags, the packs and the replays' hashes: done
-  2026-11-17 (whole, decisions 129, 131; the base faithful hash 0x6ba8109889b34a25; `E09-log.md`). **T36** the town part v7 (round 4): done 2026-11-17 (whole, decisions 130, 132; `E09-log.md`). **T37** T37a the pool, the draw and the fills, the turn's points and marks, the views and the protocol: done 2026-11-17 (whole, decisions 133–136; game state hash v33, protocol v70; `E09-log.md`); T37b the map's customised types: done 2026-11-17 (whole, decisions 137–139; map import v25; `E09-log.md`). **T38** T38a the town's hire and the replacement, cut in two at its start (decision 140): T38a1 the hire's rule, the replacement, `HeroHired` and its parts, the protocol and the replay word: done 2026-11-17 (decisions 140–142; protocol v71, replay format v17; `E09-log.md`); T38a2 the hire listed (the legal commands, the env's `HIRE` v12); T38b the leaves, the returns and the dismissal (round 6). **T39** T39a the Tavern and the Den of Thieves with the tavern decision, T39b the Thieves' Guild (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
+  2026-11-17 (whole, decisions 129, 131; the base faithful hash 0x6ba8109889b34a25; `E09-log.md`). **T36** the town part v7 (round 4): done 2026-11-17 (whole, decisions 130, 132; `E09-log.md`). **T37** T37a the pool, the draw and the fills, the turn's points and marks, the views and the protocol: done 2026-11-17 (whole, decisions 133–136; game state hash v33, protocol v70; `E09-log.md`); T37b the map's customised types: done 2026-11-17 (whole, decisions 137–139; map import v25; `E09-log.md`). **T38** T38a the town's hire and the replacement, cut in two at its start (decision 140): T38a1 the hire's rule, the replacement, `HeroHired` and its parts, the protocol and the replay word: done 2026-11-17 (decisions 140–142; protocol v71, replay format v17; `E09-log.md`); T38a2 the hire listed (the legal commands, the env's `TAVERN_HIRE` v12, the plans, the town-map seeds, the benches): done 2026-11-18 (whole, decisions 143, 144; action encoding v12; `E09-log.md`); T38b the leaves, the returns and the dismissal (round 6). **T39** T39a the Tavern and the Den of Thieves with the tavern decision, T39b the Thieves' Guild (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
 
 ## Risks
 

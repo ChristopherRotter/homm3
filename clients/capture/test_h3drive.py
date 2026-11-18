@@ -79,15 +79,15 @@ class HeldInputs(unittest.TestCase):
 
 
 class WineEnvironment(unittest.TestCase):
-    """E24 M4 T2b2: Wine 9.0's 32-bit loader frees the value of TMP, TEMP or TMPDIR (every wine
-    command aborted at its start), so the harness's commands run without them."""
+    """E27 M3 T3b2, E24 M4 T2b2: Wine 9's 32-bit loader crashes at its start where TMPDIR is set
+    (`free(): invalid pointer`), so the harness's commands run without it."""
 
-    def test_no_temporary_folder_variable_reaches_wine(self):
-        environ = {"TMP": "/tmp", "TEMP": "/tmp", "TMPDIR": "/tmp", "HOME": "/root"}
+    def test_tmpdir_never_reaches_wine(self):
+        environ = {"TMPDIR": "/tmp", "HOME": "/root"}
         with mock.patch.dict(os.environ, environ, clear=True), \
                 mock.patch.object(h3drive, "instance_fault", return_value=None):
             e = h3drive.env()
-        self.assertFalse({"TMP", "TEMP", "TMPDIR"} & e.keys())
+        self.assertNotIn("TMPDIR", e)
         self.assertEqual((e["HOME"], e["WINEPREFIX"]), ("/root", "/root/.wine-h3"))
 
 

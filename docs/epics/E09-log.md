@@ -4701,3 +4701,84 @@ both written without a branch, `verify-step coverage --scope server` clean (`TRA
 alone clean; `bench-check` inside every gate, `original-data` passed); the tests of
 `h3-cli`, `h3-protocol`, `h3-server`, `h3-sim`, `h3-map` and `cargo clippy --workspace
 --all-targets` on their own; CI on the pull requests is the record.
+
+### T38a2 — the hire listed, the env's `TAVERN_HIRE` v12, the plans hire (2026-11-18)
+
+One session, the user present; branch `town/e09-t38a2` (`cross-lane`: the adventure lane's
+`h3-game` `legal.rs`, `h3-map`'s `tests/play.rs` and `tests/view.rs`, `h3-sim`'s
+`src/adventure/` (action encoding v12, the rollout's docs, the tests, the town-map seeds), the
+adventure workloads in `benches/adventure/`; with the user's consent). Starting point: `master` at
+52a3cb5 (#1001 merged; the setup found CI's fingerprint, the light gates green). The user's
+computer was connected at the start only: 16 files staged (the four LODs, both executables,
+both tars, the three saves, the three manuals, two help files; SHA-256 checked against the PC's).
+The agent recommended a cut in two (the listing with the plans and every oracle, the random agent
+skipping the listed hires as decision 56 did; then the env); **the user kept T38a2 whole**
+(decision 143). The agent's calls: decision 144.
+
+- **The listing** (`h3-game`'s `town/offer.rs`, `town/hire.rs`): `legal_builds` gives each own
+  town's builds, recruitments, **hires**, then hero moves; `hire::check` (the hire's checks in
+  order, no change, no draw) serves `hire`; the listing's `hire_slots` (once a listing: the part's
+  price in the treasury, room for another hero on the map, the slots holding a hero) and
+  `legal_hires` (a town: its entrance free, then its standing Tavern) test the same conditions,
+  the cheapest first. The adventure's `has_room` and `entrance_free` (`src/town/hire.rs`) are
+  `check_tavern_hire`'s room and entrance. `legal_commands` folds its chain into a list sized 16
+  (the bench below). `TWN-STUB-19` lifted; TWN-TAV-003's catalog entry names the listing.
+- **The env** (action encoding **v12**): `TAVERN_HIRE` (35, 36), `TAVERN_SLOTS` (2),
+  `ENTRY_COUNT` 37, `Action::tavern_hire`; the tile mask the entrances of the towns of the listed
+  hires of the entry's slot, the decoding by the town at the tile (building 0), the encoding back.
+  The mask property (`check_masks`' `check_town_heroes`) covers both entries; the layout test the
+  numbers. ADR-0017 point 8 already held v12's entries (the design note's `HIRE + s`).
+- **The town-map seeds** (`h3-sim`'s `tests/towns.rs`, a throwaway search in release): every game
+  now hires 10 to 16 heroes; a siege against a visitor with the garrison merged met 8 games of
+  the first 399, none with every other feature; seeds 1 to 2 400 gave ten, **2369** the shortest
+  (505 steps, 24 builds, 39 dialogs, 11 hires) for the end of days; **6** for the forks (a siege
+  by day 3). `Played` counts the hires.
+- **The plans** (`h3-map`): `town_builds` probes the hires of slots 0 to 2 after the
+  recruitments; `check_town_hire` reads a listed hire apart (the actor's tavern view's hero on
+  the town's entrance as its visitor with the view's army, formation and tactics; the room and
+  the entrance before; the part's price; `HeroHired` of the slot; the town's record unchanged);
+  `Step::Town` hires a listed hero in one step of eight. Oracles taught: `check_isolation` (a
+  hired hero joins the map), `check_conservation` (the price paid, the hero's army from its
+  slot's view, the refill's record and points), the told views (`HeroHired` shows the hero on its
+  tile to every viewer told; the owner's slot view folded with its `HiredPartSeen`s equals its
+  details, `check_hired`), the hygiene (a hire the viewer is told ends the comparison: the hired
+  hero is a draw of the taverns' stream). All of `h3-map`'s tests passed at once after the
+  isolation and conservation changes; then the play and view blocks once at 240 cases.
+- **Tests:** `h3-game`'s
+  `the_legal_commands_list_each_hire_that_passes_after_the_towns_recruitments` (both slots after
+  the recruitments and before the hero moves, each accepted; none in another player's turn, none
+  without a Tavern, below the price, with no room or the entrance held; an empty slot's alone).
+- **The bench** (`master` built in `target/wt-master`, per function): the first build cost
+  `legal-towns-36` +106 % with the changed games; on master's games (the agent made to skip the
+  listed hires, an experiment) the listing cost +17.1 %: `has_tavern` three times a town, the
+  nested `Chain`'s `next` and the list's regrowths. One design pass: the player-wide tests once a
+  listing, the Tavern last, the chain folded into a list sized 16 (8 measured worse): +4.6 % on
+  master's games (`has_tavern` about 280 Ir a listing, the rule's own cost). Re-baselined with the
+  random agent hiring (encoding v12; the same counted code, no new function): `legal-towns-36`
+  +60.1 % (master 14 906 102 in the same sandbox), `reach-towns-36` +194.2 % (11 186 queries for
+  3 554), `day-start-builds-36` +104.7 %, `day-start-towns-36` +51.1 %, `month-start-builds-36`
+  +68.9 %, `fork-towns-36` +38.8 % (more heroes in the states); the other adventure workloads
+  within their gates (`random-play-bonuses-36` +1.67 % the largest: the fold, the listing).
+  CI's first full verify on #1006 was cancelled at its 40-minute limit in `bench-check`
+  (`master`'s run takes 36): `reach-towns-36`'s 28 days ran 107 s under callgrind for 17 s
+  with the hired heroes; its games cut to 10 days (2 418 queries, 10 s, 887 907 696 Ir). The
+  second run was cancelled at 40 minutes too (the runner's apt step 10 minutes, coverage 21 for
+  `master`'s 19 with the hiring plans): the user raised the job's limit to 55 (#1009, `shared/`).
+- **Versions:** action encoding v12 alone; no protocol, replay format or hash moved (the 89
+  goldens replay unchanged).
+
+The play and view blocks at 240 cases found one hygiene case `master`'s oracles had not met:
+another player's hire out of the viewer's sight in both games, the same record of another type in
+the other game (the taverns' draw), its hero walking into sight later. `outcome` gained the
+heroes a command hired as they joined the map (type, army, details): a hire that differs ends
+the comparison (the case kept in `proptest-regressions/tests/view.txt`). Then both blocks at 480
+cases: all 177 of `h3-map`'s tests passed. `master` merged in once, after #1002 (E08 T125b1's
+nine goldens), #1003 and #1004: no conflict.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data` (every step but
+`check-lane`, as on a `cross-lane` branch, `fmt` (the new `h3-sim` test) and one coverage miss
+(`hire_slots`' `?` on a player without a tavern entry: written without the branch, as `check`
+reads the slots); then `fmt` and `verify-step coverage --scope town` clean; `determinism`,
+`bench-check`, `original-data` passed); `cargo test -p h3-cli -p h3-protocol -p h3-server`,
+`-p h3-sim`, `-p h3-map`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo xtask
+check-lane --cross-lane`; CI on the pull request is the record.

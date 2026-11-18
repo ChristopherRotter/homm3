@@ -208,9 +208,10 @@ def env():
     fault = instance_fault()
     if fault:
         raise RuntimeError(fault)
-    # Wine 9.0's 32-bit loader frees the value of TMP, TEMP or TMPDIR when one is set (E24 M4
-    # T2b2: every wine command aborts at its start), so none reaches it.
-    e = {k: v for k, v in os.environ.items() if k not in ("TMP", "TEMP", "TMPDIR")}
+    e = dict(os.environ)
+    # Wine 9's 32-bit loader crashes at its start where TMPDIR is set (E27 M3 T3b2: the sandbox's
+    # TMPDIR=/tmp; `free(): invalid pointer` or a segfault in libc), so no Wine command takes it.
+    e.pop("TMPDIR", None)
     e.setdefault("WINEPREFIX", str(Path.home() / ".wine-h3"))
     e["WINEDEBUG"] = "-all"
     e["DISPLAY"] = DISPLAY

@@ -21,6 +21,7 @@
 //! | 30 | Build the building in the building head in the town whose entrance is the tile in the tile head (E09 T19c1) |
 //! | 31 | Open the hire dialog of the building in the building head in the town whose entrance is the tile in the tile head (E09 T27) |
 //! | 32 + m, m < 3 | Move a hero between the two bars of the town whose entrance is the tile in the tile head: `m` 0 the visitor into the garrison, 1 the garrison hero out, 2 the two swapped (E09 T28a) |
+//! | 35 + s, s < 2 | Hire the hero in slot `s` of the player's tavern at the town whose entrance is the tile in the tile head (E09 T38a2) |
 //!
 //! A player's hero slots are its heroes on the map in the order of their ids, the first
 //! [`HERO_SLOTS`] (the original allows a player eight heroes on the map); a hero's slot changes
@@ -44,7 +45,8 @@
 //! packs have one Shipyard type). After [`BUILD`] it allows the entrances of the towns of the
 //! listed builds (E09 T19c1: the player's own towns, the entrance its hero enters by, TWN-VIS-001;
 //! one town an entrance), after [`RECRUIT`] those of the listed recruitments (E09 T27), after a
-//! [`TOWN_HEROES`] entry those of the listed hero moves of its kind (E09 T28a). A move's destination is a tile the hero's reachable-tiles query
+//! [`TOWN_HEROES`] entry those of the listed hero moves of its kind (E09 T28a), after a
+//! [`TAVERN_HIRE`] entry those of the listed hires of its slot (E09 T38a2). A move's destination is a tile the hero's reachable-tiles query
 //! lists, not its own; a tile another player's hero stands on is one (the visit is a battle,
 //! GAM-BAT-004). The action carries no path: the command takes the path the query chose
 //! (`h3_game::legal_moves`). A client may send any other path the hero can pay (`apply` checks
@@ -105,6 +107,12 @@
 //! between a town's two bars (`TownCommand::Heroes`, TWN-ROW-002 to -004) by its town's entrance
 //! in the tile head, the building head 0. A garrison hero is off the map: it holds no hero slot.
 //! The army commands between the bars have no entry, as every management command (decision 99).
+//! Version 12 (E09 T38a2, the town lane's `cross-lane` change with the user's consent, E09
+//! decision 143; the town epic's design note §76; ADR-0017 point 8) appended the two
+//! [`TAVERN_HIRE`] entries (the design note's `HIRE + s`): a town's hire of the hero in the
+//! player's tavern slot `s` (`TownCommand::Hire`, TWN-TAV-003) by its town's entrance in the tile
+//! head, the building head 0; one action per listed `Hire`. A hero hired takes the player's next
+//! hero slot by its id.
 
 use h3_adventure::{AdventureCommand, Pos, Reach};
 use h3_battle::{BattleState, LegalCommands};
@@ -120,7 +128,7 @@ use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand, TownHeroChange};
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 11;
+pub const ACTION_ENCODING_VERSION: u32 = 12;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -190,8 +198,16 @@ pub const TOWN_HERO_MOVES: [TownHeroChange; 3] = [
     TownHeroChange::Swap,
 ];
 
+/// A player's tavern slots the entries hire from (E09 T38a2; TWN-SET-005: the original's two).
+pub const TAVERN_SLOTS: usize = 2;
+
+/// The entry that hires the hero in slot 0 of the player's tavern at the town whose entrance is
+/// the tile in the tile head; slot `s` is `TAVERN_HIRE + s` (E09 T38a2; TWN-TAV-003; the design
+/// note's `HIRE + s`).
+pub const TAVERN_HIRE: usize = TOWN_HEROES + TOWN_HERO_MOVES.len();
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = TOWN_HEROES + TOWN_HERO_MOVES.len();
+pub const ENTRY_COUNT: usize = TAVERN_HIRE + TAVERN_SLOTS;
 
 /// The building head's size (E09 T19c1): the most buildings of a town's record
 /// (`h3_towns::MAX_BUILDINGS`), each named by its index there.
@@ -347,6 +363,12 @@ impl Action {
         Self::map(TOWN_HEROES + town_hero_index(change), tile)
     }
 
+    /// Hires the hero in `slot` of the player's tavern at the town whose entrance is the tile at
+    /// `tile` (E09 T38a2): [`TAVERN_HIRE`] plus the slot.
+    pub const fn tavern_hire(tile: u32, slot: usize) -> Self {
+        Self::map(TAVERN_HIRE + slot, tile)
+    }
+
     /// The map phase's action of `entry` with `tile` (building 0).
     pub const fn map(entry: usize, tile: u32) -> Self {
         Self::Adventure(MapAction {
@@ -452,7 +474,8 @@ pub fn moves(
 /// Fills `mask` with the legal map entries of `seat`: the commands [`legal_commands`] lists
 /// (`EndTurn` while its turn runs, and [`BUILD_BOAT`] when it lists a `BuildBoat`, E08 T85b2b; a
 /// hero's revisit entry when it lists the hero's `Revisit`, E08 T105b2; [`BUILD`] when it lists a
-/// town's build, E09 T19c1, [`RECRUIT`] a town's recruitment, E09 T27;
+/// town's build, E09 T19c1, [`RECRUIT`] a town's recruitment, E09 T27, a [`TOWN_HEROES`] entry
+/// a hero move of its kind, E09 T28a, a [`TAVERN_HIRE`] entry a hire of its slot, E09 T38a2;
 /// or with an open decision its answers alone: `Decline`, and `Accept` while the offer stands,
 /// E08 T15a; a level-up's `First` and `Second`, E08 T30; a hire dialog's purchases by their
 /// creatures' places, E08 T95b), and each hero slot with a tile to move to ([`legal_moves`]: none
@@ -483,8 +506,8 @@ pub fn legal_mask(
 /// reachable tiles of a hero's legal move but its own, the anchors of the Shipyards of the listed
 /// `BuildBoat`s after [`BUILD_BOAT`] (E08 T85b2b), the entrances of the towns of the listed builds
 /// after [`BUILD`] (E09 T19c1, [`town_tile`]) and of the listed recruitments after [`RECRUIT`]
-/// (E09 T27), and of the listed hero moves of a [`TOWN_HEROES`] entry's kind after it (E09 T28a);
-/// none after an illegal entry or in the battle phase (none for the neutral seat).
+/// (E09 T27), of the listed hero moves of a [`TOWN_HEROES`] entry's kind after it (E09 T28a), and
+/// of the listed hires of a [`TAVERN_HIRE`] entry's slot after it (E09 T38a2); none after an illegal entry or in the battle phase (none for the neutral seat).
 pub fn tile_mask(
     state: &GameState,
     rules: &GameRuleset,
@@ -524,6 +547,15 @@ pub fn tile_mask(
                 change: listed,
             }) = command
                 && listed == change
+                && let Some(index) = town_tile(state, town)
+            {
+                mask[index as usize] = true;
+            }
+        }
+    } else if let Some(slot) = tavern_slot(entry) {
+        for command in legal_commands(state, rules, seat.actor()) {
+            if let GameCommand::Town(TownCommand::Hire { town, slot: listed }) = command
+                && listed == slot
                 && let Some(index) = town_tile(state, town)
             {
                 mask[index as usize] = true;
@@ -834,6 +866,7 @@ fn command_entry(
         GameCommand::Town(TownCommand::Heroes { change, .. }) => {
             Some(TOWN_HEROES + town_hero_index(*change))
         }
+        GameCommand::Town(TownCommand::Hire { slot, .. }) => tavern_entry(*slot),
         other => tileless_entry(other, hire),
     }
 }
@@ -852,6 +885,20 @@ fn town_hero_move(entry: usize) -> Option<TownHeroChange> {
     entry
         .checked_sub(TOWN_HEROES)
         .and_then(|m| TOWN_HERO_MOVES.get(m).copied())
+}
+
+/// The [`TAVERN_HIRE`] entry of a hire of tavern slot `slot` (E09 T38a2); none past the slots.
+fn tavern_entry(slot: u8) -> Option<usize> {
+    let slot = usize::from(slot);
+    (slot < TAVERN_SLOTS).then_some(TAVERN_HIRE + slot)
+}
+
+/// The tavern slot of a [`TAVERN_HIRE`] entry (E09 T38a2); none for another entry.
+fn tavern_slot(entry: usize) -> Option<u8> {
+    entry
+        .checked_sub(TAVERN_HIRE)
+        .filter(|&s| s < TAVERN_SLOTS)
+        .and_then(|s| u8::try_from(s).ok())
 }
 
 /// The revisit entry of `player`'s hero `hero` (E08 T105b2): [`REVISIT_BASE`] plus its slot among
@@ -897,7 +944,8 @@ fn build_boat(
 /// at a Shipyard its player may use, anchored on the tile ([`build_boat`], E08 T85b2b), or a
 /// town's build of the building at the building head's index in the town whose entrance is the
 /// tile (E09 T19c1), or since E09 T27 its recruitment there, or since E09 T28a a hero's move
-/// between its bars of a [`TOWN_HEROES`] entry's kind (building 0) (a building other than 0 with another
+/// between its bars of a [`TOWN_HEROES`] entry's kind (building 0), or since E09 T38a2 its hire of
+/// the hero in the player's tavern slot of a [`TAVERN_HIRE`] entry (building 0) (a building other than 0 with another
 /// entry names none); none for the neutral
 /// seat. In the battle phase: the battle command the battle's encoding decodes the
 /// action to ([`battle::decode`]), for the seat's battle ([`battle_of`]). Whether the command may
@@ -921,6 +969,11 @@ pub fn decode(
         let town = town_of_tile(state, action.tile)?;
         return (action.building == 0)
             .then_some(GameCommand::Town(TownCommand::Heroes { town, change }));
+    }
+    if let Some(slot) = tavern_slot(action.entry) {
+        let town = town_of_tile(state, action.tile)?;
+        return (action.building == 0)
+            .then_some(GameCommand::Town(TownCommand::Hire { town, slot }));
     }
     if action.entry == BUILD || action.entry == RECRUIT {
         let town = town_of_tile(state, action.tile)?;
@@ -969,7 +1022,8 @@ pub fn decode(
 /// its Shipyard's anchor (E08 T85b2b), a `Revisit` by its hero's slot (tile 0, E08 T105b2), a
 /// town's build by its town's entrance and its building's index (E09 T19c1), its recruitment the
 /// same way (E09 T27), a hero's move between its bars by its kind's entry and the town's entrance
-/// (E09 T28a; none of these for the neutral seat), a battle command by the
+/// (E09 T28a), a hire by its slot's entry and the town's entrance (E09 T38a2; none of these for
+/// the neutral seat), a battle command by the
 /// battle's encoding for the seat's battle ([`battle::encode`]). [`decode`] gives the command back
 /// when a move's path is the one the hero's query chose (a move along another path decodes to the
 /// query's path to the same tile) and a `BuildBoat`'s Shipyard is one the player may use.
@@ -1001,6 +1055,11 @@ pub fn encode(
         }
         GameCommand::Town(TownCommand::Heroes { town, change }) => {
             return town_tile(state, *town).map(|tile| Action::town_heroes(tile, *change));
+        }
+        GameCommand::Town(TownCommand::Hire { town, slot }) => {
+            tavern_entry(*slot)?;
+            return town_tile(state, *town)
+                .map(|tile| Action::tavern_hire(tile, usize::from(*slot)));
         }
         GameCommand::Answer(Answer::Hire(HireAnswer::Buy { .. })) => {
             let listed = legal_commands(state, rules, seat.actor());

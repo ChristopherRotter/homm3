@@ -31,14 +31,30 @@ impl AdventureState {
         (town, most): (TownId, u8),
     ) -> Result<Pos, TownHeroError> {
         let (_, entrance) = self.town_entrance(town)?;
-        let on_map = self.heroes().iter().filter(|on| on.owner == player).count();
-        if on_map >= usize::from(most) {
+        if !self.has_room(player, most) {
             return Err(TownHeroError::TooManyHeroes);
         }
         if self.heroes().iter().any(|on| on.pos == entrance) {
             return Err(TownHeroError::EntranceHeld);
         }
         Ok(entrance)
+    }
+
+    /// Whether `player` has fewer than `most` heroes on the map, a town's garrison heroes not
+    /// counted: [`Self::check_tavern_hire`]'s room (TWN-TAV-003; E09 T38a2: a listing's test once).
+    // rule: TWN-TAV-003
+    pub fn has_room(&self, player: PlayerId, most: u8) -> bool {
+        let on_map = self.heroes().iter().filter(|on| on.owner == player).count();
+        on_map < usize::from(most)
+    }
+
+    /// Whether `town`'s entrance is the map's and no hero stands on it, another player's included:
+    /// [`Self::check_tavern_hire`]'s entrance (TWN-TAV-003; E09 T38a2: a listing's test a town).
+    // rule: TWN-TAV-003
+    pub fn entrance_free(&self, town: TownId) -> bool {
+        self.map()
+            .town_entrance(town)
+            .is_some_and(|entrance| self.heroes().iter().all(|on| on.pos != entrance))
     }
 
     /// Places `hero`, a hired hero with the away record the game gives (its army, points left and

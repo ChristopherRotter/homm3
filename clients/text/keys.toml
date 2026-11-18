@@ -2245,6 +2245,17 @@ table = "HOTRAITS"
 first = 2
 column = 0
 
+# A hero type's specialty's name (HeroSpec.txt's first column, its non-blank records from record 2
+# the hero types in order; `hero_specialty_text` 0x4D7220 reads the specialty record's +0x1C; E27
+# M3 T3b2): a hero's popup of the scenario screen's advanced options, a key per hero of the asset
+# tables, `hero-specialty.<table>:<key>`.
+[[family]]
+id = "hero-specialty"
+list = "hero"
+table = "HEROSPEC"
+first = 2
+column = 0
+
 # A town's name (TownName.txt's records, 16 a faction in the factions' order; E24 M3 T5b1): a new
 # game names each town of a map without a name of its own by one of its faction's (the map viewer's
 # status window; a map's own name is not read). Only the map viewer lists it.
@@ -2282,7 +2293,8 @@ optional = true
 
 # A hero class's name (HCTRAITS.TXT's first column, its non-blank records from record 2 the
 # classes in order; `hero_class_name` 0x4D8F70 reads the class record's +0x4; E24 M3 T6a1): the
-# hints over a hero, `hero-class.<class>`. Only the map viewer lists it.
+# hints over a hero, `hero-class.<class>`; since E27 M3 T3b2 a hero's popup of the scenario
+# screen's advanced options (the battle client lists it too).
 [[family]]
 id = "hero-class"
 table = "HCTRAITS"
@@ -3437,6 +3449,23 @@ original = [{ at = "GENRLTXT:102" }]
 [[key]]
 id = "shell.advanced.random-hero.text"
 original = [{ at = "GENRLTXT:103" }]
+
+# A hero's own popup (`scenario_hero_popup` 0x575A90, E27 M3 T3b2: design §25): its title, its
+# specialty's heading, and its line of the hero's name and class ("%s - %s", `name_dash_format`
+# 0x66033C, as `map.hint.owned`); the class's name (`hero-class`) and the specialty's
+# (`hero-specialty`) by the hero type.
+[[key]]
+id = "shell.advanced.hero-popup.title"
+original = [{ at = "GENRLTXT:78" }]
+
+[[key]]
+id = "shell.advanced.hero-popup.specialty"
+original = [{ at = "GENRLTXT:79" }]
+
+[[key]]
+id = "shell.advanced.hero-popup.name"
+args = { name = "text", class = "text" }
+original = [{ at = "EXE:0x66033C", printf = ["name", "class"] }]
 
 [[key]]
 id = "shell.advanced.random-town.title"

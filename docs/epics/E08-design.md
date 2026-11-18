@@ -658,6 +658,20 @@ battles on land and on the deck, won and lost, the reward after the battle and a
 the creature joined and held, artifacts, a looted search's once-bonus and a mark already held. No
 engine fault; no version moved. The benchmarks and `--with-original-data` are T125b2b's.
 
+*As built* (T125b2b, `adventure/e08-t125b2b`; decision 359: whole): three workloads in
+`benches/adventure/`, each at its first count, their rows in `benches/README.md`
+(`shared/e08-t125b2b-benches`, #1010). **`reach-banks-xl-144`** (seed 32, 2 games of 28 days on
+`e08-banks-144.h3m`): every hero's query under one pattern, `*_queries*` (the walkers'
+`reach_queries` 58 %, the flyers' and water walkers' `lifted_queries` 42 %, the boats'
+`sail_queries` 0.2 %): 9 601 queries, 412 of the 7 670 walkers' listing a coast Shipwreck's water
+entrance, 366 of the 1 925 lifted ones reaching an island beyond one; 1 665 110 723 Ir.
+**`build-banks-xl-144`** (2 builds, as `build-gates-xl-144`): about 4.46 M Ir a build, `bank_draw`
+6.6 %; 8 919 109 Ir. **`random-play-banks-36`** (seed 52, 5 games of 28 days on `e08-banks-36.h3m`):
+3 718 steps, 15 bank battles, 10 banks looted; 5 725 747 455 Ir. No fork workload (as planned).
+`--with-original-data`: the scoped verify's original-data step as T123a to T124b1 built it (the
+census, the 160 shipped maps imported and built with their banks drawn, the seventh pack check, the
+re-harvest with the bank positions). No engine code; no version moved.
+
 ### 18. Versions, rule ids, quirks, stubs
 
 | Version | From | To | By |

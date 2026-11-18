@@ -18469,3 +18469,48 @@ session.
   preference, `check_bank_views` apart from `check_told`.
 - **Gates:** `h3-map`'s whole lib suite (180 tests); the main property soaked over 8 runs of 48
   random cases and the view properties over 3; the scoped verify (below).
+
+### Increment 13, round 7: T125b2b, the banks' benchmarks and the original data (2026-11-18, `adventure/e08-t125b2b`)
+
+**The cut** (decision 359): whole, no seam offered (the user's instruction for the session: a seam
+is confirmed only for a significantly big task; both maps existed and every original-data check was
+built by T123a to T124b1). **Baseline:** `master` 73f5c86 (#1005, T125b2a, merged; CI green on
+it; the setup's `verify-once` found the code verified there, light gates only). The original data
+staged from the user's repo folder (the two LODs, the executable, `maps.tar`, `extracted.tar`;
+SHA-256 checked, one digest of the sorted lines `a77e78cc…` on both sides). Built by the main
+session.
+
+- **The seeds** by a scratch probe (not committed: a release test in `h3-cli` replaying each
+  workload's games with the bench's agent): `e08-banks-144.h3m`'s seeds 1 to 48 by the walkers'
+  queries listing a coast Shipwreck's water entrance plus the flyers' and water walkers' reaching
+  an island beyond one (seed 32: 412 + 366, the most; 225 to 428 and 184 to 393 over the range);
+  `e08-banks-36.h3m`'s 1 to 100 by the steps that changed a bank's guards and the banks looted
+  (seeds 50 and 52: 13 and 10, 52 in fewer steps; seed 99 the third with 13 and 9). Random play on
+  the XL map meets the banks seldom (0 to 3 fought, at most 1 looted in the 48), as T116c's XL
+  met its bonuses: the XL's workloads are the reach's and the build's.
+- **The workloads** (`benches/adventure/`, each baselined at its first count; the benches README's
+  rows in `shared/e08-t125b2b-benches`, #1010):
+
+  | Workload | Seed | What it plays | Ir | Per operation |
+  |---|---|---|---|---|
+  | `reach-banks-xl-144` | 32 | 2 games of 28 days on the banks XL: 3 268 steps, 25 battles; every hero's query under `*_queries*`: 7 670 walkers' (412, 5.4 %, listing a coast Shipwreck's entrance, ADV-MOV-009), 1 925 flyers' and water walkers' (366, 19 %, reaching an island across a Shipwreck, ADV-SEA-002), 6 in boats | 1 665 110 723 | 173 k a query (a walker's 125 k, a lifted one's 364 k); 96 % in `legal_moves`, `Reach::search` 36 % itself, `passage` 17 %, `expand_layered` 10 %; `reach_queries` 58 %, `lifted_queries` 42 %, `sail_queries` 0.2 % |
+  | `build-banks-xl-144` | 1 | 2 builds of the banks XL (106 banks drawn each) | 8 919 109 | 4.46 M a build; `bank_draw` 6.6 % (about 2 800 Ir a bank), the artifact pool 3.9 %, `terrain_shares` 22 %, `AdventureState::new` 19 %, the static map's hash 14 %, malloc and free 6 % |
+  | `random-play-banks-36` | 52 | 5 games of 28 days on the banks map: 3 718 steps, 18 battles, 15 of them bank battles, 10 banks looted | 5 725 747 455 | 1 540 000 a step; 84 % in `legal_moves`, `Reach::search` 55 % itself, `visit_at` 0.9 %; the banks' own code (`enter_bank`, `bank_battle`, `loot_bank`) under 0.01 % |
+
+- *Agent's calls (change freely):* the seeds' criteria; `reach-banks-xl-144` as one workload
+  counting every hero's query of its games (`*_queries*` matches the three counted functions and
+  no other symbol of `h3`: `management_queries` and `legal_queries` run only in their own
+  workloads), not two by kind of hero as `reach-xl-144` and `reach-lifted-xl-144`; the build of 2
+  games as `build-gates-xl-144` (its malloc share 6 %, below the trap's small-workload case).
+- **Gates:** the scoped verify `--with-original-data` passed every step it runs on its first run
+  (`check-lane` included: no `cross-lane` path): coverage 849 s, determinism 323 s (the golden
+  replays unchanged), bench-check 397 s (the three new at their first counts, `random-play-banks-36`
+  30 Ir under it in the verify's run of the same binary; every other inside its gate as `master`
+  left it, the nearest `random-play-bonuses-36` at +1.66 % and `fork-economy-xl-144` at +1.28 %:
+  for T126's criterion 9), original-data 36 s (the re-harvest equal to the committed packs, the
+  bank positions among them; `h3-pack-adventure`'s 11 bank types against `CrBanks.txt`'s four levels
+  and the executable's guard and reward creatures; the 160 shipped maps read and built with their
+  banks drawn; increment 13's census as the survey's: 2 137 banks of 11 types on 148 maps, 143 with
+  class 16, 571 entered from water, at most 106 on one map). No code in `h3-cli` changed (the
+  probe not committed). PR #1011.
+- **Versions:** none (no engine code changed).

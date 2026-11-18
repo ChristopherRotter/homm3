@@ -4,25 +4,38 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 and T118b2 done 2026-11-15, decisions 340 to 342; the checkpoint ADV-Q54, decisions 343 to 345: the note, the drafts and the cut T119 to T126 accepted). Round 2: T119 done 2026-11-15 (`adventure/e08-t119`, `cross-lane`, whole: decision 346; the writer's banks, the spec's pictures and `slots`, batch E13's spec). Round 3: T120 done 2026-11-16 (`adventure/e08-t120`, alone: decision 347; the harness's reads, the recipe, three runs, the template filled); T121 done 2026-11-16 (`adventure/e08-t121`, whole, docs only: survey `E08-banks.md` §14, every row as predicted; the checkpoint ADV-Q55, decisions 348, 349). Round 4: T122 done 2026-11-16 (`shared/e08-t122`, `cross-lane`, whole: decision 350; the three drafts in ADR-0013, -0016, -0017, -0022 with batch E13's rows, the glossary, the security lines, `BattleSetup::creature_bank`). Round 5: T123a done 2026-11-16 (`adventure/e08-t123a`, `cross-lane`, alone: decision 351; the kind, the packs, the seventh check; part v21); T123b done 2026-11-16 (`adventure/e08-t123b`, `cross-lane`, whole: decision 352; the import, the census, map import v24). Round 6: T124a done 2026-11-17 (`adventure/e08-t124a`, `cross-lane`, whole: decision 353; the bank battle in `h3-battle`, the battle pack's `bank_positions`); T124b in two (decision 354): T124b1 done 2026-11-17 (`adventure/e08-t124b1`, `cross-lane`, alone: the state and the draw, adventure state hash v26); T124b2 done 2026-11-17 (`adventure/e08-t124b2`, whole: decision 355; the visit, the battle, the reward and the once-marks). Round 7: T125a done 2026-11-17 (`adventure/e08-t125a`, whole: decision 356; the hint and its events, the Shipwreck's passage); T125b in two (decision 357): T125b1 done 2026-11-18 (`adventure/e08-t125b1`, `cross-lane`: the two banks maps, nine golden replays, the server lane's counts); T125b2 in two (decision 358): T125b2a done 2026-11-18 (`adventure/e08-t125b2a`: the banks in the plans' properties, the views, the cover test); T125b2b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 and T118b2 done 2026-11-15, decisions 340 to 342; the checkpoint ADV-Q54, decisions 343 to 345: the note, the drafts and the cut T119 to T126 accepted). Round 2: T119 done 2026-11-15 (`adventure/e08-t119`, `cross-lane`, whole: decision 346; the writer's banks, the spec's pictures and `slots`, batch E13's spec). Round 3: T120 done 2026-11-16 (`adventure/e08-t120`, alone: decision 347; the harness's reads, the recipe, three runs, the template filled); T121 done 2026-11-16 (`adventure/e08-t121`, whole, docs only: survey `E08-banks.md` §14, every row as predicted; the checkpoint ADV-Q55, decisions 348, 349). Round 4: T122 done 2026-11-16 (`shared/e08-t122`, `cross-lane`, whole: decision 350; the three drafts in ADR-0013, -0016, -0017, -0022 with batch E13's rows, the glossary, the security lines, `BattleSetup::creature_bank`). Round 5: T123a done 2026-11-16 (`adventure/e08-t123a`, `cross-lane`, alone: decision 351; the kind, the packs, the seventh check; part v21); T123b done 2026-11-16 (`adventure/e08-t123b`, `cross-lane`, whole: decision 352; the import, the census, map import v24). Round 6: T124a done 2026-11-17 (`adventure/e08-t124a`, `cross-lane`, whole: decision 353; the bank battle in `h3-battle`, the battle pack's `bank_positions`); T124b in two (decision 354): T124b1 done 2026-11-17 (`adventure/e08-t124b1`, `cross-lane`, alone: the state and the draw, adventure state hash v26); T124b2 done 2026-11-17 (`adventure/e08-t124b2`, whole: decision 355; the visit, the battle, the reward and the once-marks). Round 7: T125a done 2026-11-17 (`adventure/e08-t125a`, whole: decision 356; the hint and its events, the Shipwreck's passage); T125b in two (decision 357): T125b1 done 2026-11-18 (`adventure/e08-t125b1`, `cross-lane`: the two banks maps, nine golden replays, the server lane's counts); T125b2 in two (decision 358): T125b2a done 2026-11-18 (`adventure/e08-t125b2a`: the banks in the plans' properties, the views, the cover test); T125b2b done 2026-11-18 (`adventure/e08-t125b2b`, whole: decision 359; the three workloads, the original data); round 7 done. Round 8: T126 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T125b2b — the benchmarks, `--with-original-data`** (round 7; design `E08-design.md` §17,
-§20; decisions 357, 358)
+**E08 T126 — increment 13's audit** (round 8; design `E08-design.md` §20's exit criteria)
 
-- **Scope:** (`adventure/e08-t125b2b`): the benchmarks `reach-banks-xl-144` (walkers and flyers on
-  T125b1's `e08-banks-144.h3m`: the coast's Shipwrecks met and crossed), `build-banks-xl-144` (the
-  game's build with its draws, as `build-gates-xl-144`) and `random-play-banks-36` (T125b1's
-  `e08-banks-36.h3m`) baselined (`homm3-bench-regression`; their README rows in a `shared/` pull
-  request, as T116c's); `--with-original-data` (the census, the 160 shipped maps built with their
-  banks drawn, the seventh pack check, the bank positions). Versions: none planned.
-- **Inputs:** design §17, §20's exit criteria 1, 2, 5, 7 and 9; T125b1's record in `E08-log.md`
-  (the maps' layouts); the templates `benches/adventure/`'s `reach-garrisons-xl-144`,
-  `build-gates-xl-144` and `random-play-bonuses-36` (T116c's record); the lane's `TRAPS.md` (a
-  workload's `collect` pattern, a new workload's first count); skill `homm3-bench-regression`.
-- **Depends on:** T125b2a (`adventure/e08-t125b2a`, merged first). **Status:** ready once T125b2a
-  merges; its cut confirmed at its start (likely whole, as T116c). T126 (the audit) after it.
+- **Scope:** (`adventure/e08-t126`): the audit against the nine exit criteria with a fresh
+  reviewer; increment 13 closed (its scope, decisions 333 to 359 and tasks to `E08-archive.md`,
+  the design note to `E08-log.md`; the README's epic table in the session's `shared/` pull
+  request); increment 14 refined with the user (the sketch's item 14, quests, or another order).
+  Criterion 9's benchmarks: T125b2b baselined the three new workloads and ran every other inside
+  its gate (its record in `E08-log.md`).
+- **Inputs:** design §20 (the exit criteria), §17's and §9's *As built*; T117's audit
+  (`E08-log.md`) as the form; the epic's sketch.
+- **Depends on:** T125b2b (`adventure/e08-t125b2b`, merged first). **Status:** ready once
+  T125b2b merges (the original data to stage for criterion 1's census and criterion 9's gates);
+  its cut confirmed at its start.
 
 ## Inbox
+
+- 2026-11-18 (the town lane, E09 T38a2, `town/e09-t38a2`, `cross-lane` with the user's consent;
+  **your paths changed, for your review**): `h3_game::legal_commands` lists each own town's hires
+  after its recruitments (TWN-TAV-003) and now folds its chain into a list sized 16 (`for_each`,
+  `legal.rs`: `collect()` cost `legal-towns-36` +17 % with the longer lists, the town lane's
+  `TRAPS.md`); a new part of the listing goes into that fold. The plans hire (`h3-map`:
+  `town_builds` probes `Hire`, `check_town_hire`, `Step::Town` hires in one step of eight), and
+  four oracles know a hired hero: `check_isolation` (it joins the map), `check_conservation` (the
+  price, its army from the slot's view, the refill's record), `view.rs`' told views (`HeroHired`
+  shows it on its tile; `check_hired` folds the owner's slot view with `HiredPartSeen`) and the
+  hygiene (a hire the viewer is told ends the comparison). Every random game on a map with owned
+  towns hires now (env encoding v12): six workloads of yours on the town maps re-baselined
+  (`reach-towns-36` +194 %, `day-start-builds-36` +105 %, `month-start-builds-36` +69 %,
+  `legal-towns-36` +60 %, `day-start-towns-36` +51 %, `fork-towns-36` +39 %; more heroes, the
+  same counted code). No hash, replay or protocol version moved.
 
 - 2026-11-17 (the town lane, E09 T38a1, `town/e09-t38a1`, `cross-lane` with the user's consent;
   **your paths changed, for your review; replay format v17 taken**): the adventure replay format is
