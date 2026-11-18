@@ -635,3 +635,22 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
   --record`; MCL-Q30's sound run; MCL-Q31 built as the original's.
 - **Acceptance:** as T1a's.
 - **Depends on:** T1b1 (done 2026-11-17). **Status:** done 2026-11-17 (whole; the log's "M4 T1b2").
+
+### E24 M4 T2b1 — the questions and choices, read and recorded
+
+- **T2b, the questions and choices** (an answer): Yes/No with pictures for the engine's offers
+  (`h3_adventure::OfferKind`: a guard's passage, a monster's join free or for a price, its
+  flight, a Cartographer's price; a guarded pile's, artifact's, scroll's, mine's and bank's
+  question; the Tree of Knowledge's price, a search (the Warrior's Tomb, a bank), Pandora's Box,
+  the Pyramid, a dwelling's hire and guards questions) and the choice box for its choices
+  (`Choice`: a chest's gold or experience, the Arena's and a School's two skills; the pictures
+  chosen by a click, the hidden frame a choice's mark), the answer the harness gives. Not the
+  Shipyard's boat dialog and the recruit dialog (screens of their own: M5). **Cut in two by the
+  user at its start** (2026-11-18, as T2a was; recommended was three, the choice box apart):
+  - **T2b1, read and recorded:** every question's and choice's box read (its style, text,
+    pictures, sounds, the answer's effect on the screen up to the box's close), the harness
+    giving the answers, the sequences recorded twice into `clients/map/to-record.toml`. **Status:**
+    in progress (`map-client/e24-m4-t2b1`, 2026-11-18T08:00Z).
+  - **T2b2, the viewer:** the viewer plays T2b1's sequences frame-exact (a cut offered at its
+    start, as T2a2's). **Depends on:** T2b1.
+  **Status:** done 2026-11-18 (the log's "M4 T2b1").

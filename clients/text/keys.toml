@@ -3192,7 +3192,8 @@ original = [{ at = "TURNDUR:10" }]
 
 
 # The popups of a right press (design §3.15): a town's (`scenario_town_popup` 0x575E60: its title,
-# its creatures' heading), a Random town's (`scenario_info_popup` 0x5757E0), a bonus's
+# its creatures' heading), a Random town's and a Random hero's (`scenario_info_popup` 0x5757E0;
+# the hero's E27 M3 T3b1, 0x5824B9), a bonus's
 # (`scenario_bonus_popup` 0x5754F0, `scenario_dialog_right_click` 0x5828A4): each bonus's title,
 # caption and text, a resource's by the town's resource (wood and ore, crystal, gems, mercury,
 # sulfur).
@@ -3203,6 +3204,14 @@ original = [{ at = "GENRLTXT:81" }]
 [[key]]
 id = "shell.advanced.creatures"
 original = [{ at = "GENRLTXT:80" }]
+
+[[key]]
+id = "shell.advanced.random-hero.title"
+original = [{ at = "GENRLTXT:102" }]
+
+[[key]]
+id = "shell.advanced.random-hero.text"
+original = [{ at = "GENRLTXT:103" }]
 
 [[key]]
 id = "shell.advanced.random-town.title"

@@ -374,13 +374,16 @@ impl Drawer {
         let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
         let layout = look::parse_layout(&text).map_err(|e| format!("{}: {e}", path.display()))?;
         let lods = Lods::open(install)?;
+        let tables = assets::load(&assets::default_dir(), assets::ALL)?;
         let mut names = look::names(&layout);
         names.push(String::from(RIM));
+        // The heroes' small portraits (E27 M3 T3b1: the advanced options' rows).
+        names.extend(portraits(&tables));
         let mut batch = Batch::with_bugs(bugs);
         for (name, bytes) in names.iter().zip(lods.batch(&names)?) {
             batch.add(name, &bytes).map_err(|e| e.to_string())?;
         }
-        let menus = menus(&layout, &batch, &lods, (install, maps), bugs)?;
+        let menus = menus(&layout, (&batch, &tables), &lods, (install, maps), bugs)?;
         let mut lines = Vec::new();
         let button = crate::audio::clips(install, &[BUTTON_ENTRY.to_owned()], &mut lines)?
             .into_values()
@@ -510,14 +513,13 @@ fn copy_rect(to: &mut Pixels, from: &Pixels, [x, y, w, h]: [i32; 4]) {
 /// 1), framed in the viewing player's colours.
 fn menus(
     layout: &ShellLayout,
-    batch: &Batch,
+    (batch, tables): (&Batch, &h3_view::tables::Tables),
     lods: &Lods,
     (install, maps): (&Path, Option<&[String]>),
     bugs: Bugs,
 ) -> Result<Menus, String> {
-    let tables = assets::load(&assets::default_dir(), assets::ALL)?;
     let exe = crate::text::executable(install)?;
-    let catalogue = crate::log::catalogue(&tables, lods, &exe)?;
+    let catalogue = crate::log::catalogue(tables, lods, &exe)?;
     let font = |name: &str| {
         batch
             .font(name)
@@ -691,7 +693,7 @@ fn menus(
         // The advanced options (T3a).
         advanced: Some(advanced_texts(
             &layout.scenario.advanced,
-            &tables,
+            tables,
             &catalogue,
         )),
     };
@@ -713,7 +715,10 @@ fn menus(
                 layout.scenario.description.clone(),
             ),
             scenario_texts,
-            crate::maps::named(crate::maps::entries(install), maps),
+            {
+                let rules = crate::maps::rules()?;
+                crate::maps::named(crate::maps::entries(install, &rules), maps, &rules)
+            },
             bugs,
         ),
     })
@@ -776,8 +781,28 @@ fn advanced_texts(
             },
         ]
     };
+    // The hero types by their original ids (E27 M3 T3b1): their names and small portraits, in
+    // type order.
+    let mut heroes: Vec<(u16, &str, Option<&String>)> = tables
+        .heroes
+        .iter()
+        .map(|(key, h)| (h.original, key.as_str(), h.small_portrait.as_ref()))
+        .collect();
+    heroes.sort_unstable_by_key(|h| h.0);
     scenario::AdvancedTexts {
         look: look.clone(),
+        hero_names: heroes
+            .iter()
+            .map(|(_, key, _)| catalogue.text(&format!("hero.{key}"), &Args::new()))
+            .collect(),
+        portraits: heroes
+            .iter()
+            .map(|(_, _, p)| p.cloned().unwrap_or_default())
+            .collect(),
+        random_hero: [
+            text("shell.advanced.random-hero.title"),
+            text("shell.advanced.random-hero.text"),
+        ],
         kinds: ["both", "human", "computer"].map(|k| text(&format!("shell.advanced.kind.{k}"))),
         computer: text("shell.advanced.computer"),
         random: text("shell.advanced.random"),
@@ -807,6 +832,15 @@ fn advanced_texts(
         ],
         resources,
     }
+}
+
+/// The heroes' small portraits the asset tables name (E27 M3 T3b1), in their keys' order.
+fn portraits(tables: &h3_view::tables::Tables) -> Vec<String> {
+    tables
+        .heroes
+        .values()
+        .filter_map(|h| h.small_portrait.clone())
+        .collect()
 }
 
 /// A font's metrics alone (its glyphs' pixels dropped): what a split measures.

@@ -21,8 +21,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   exact: design §21). **T2c done** (2026-11-17: the description's scroll bar, `scn-long-text` 36
   of 36 exact: design §22). **T3 cut in three by recipe** (decision 53). **T3a done** (2026-11-18:
   the advanced options' panel and rows, the town's and the bonus's arrows and popups,
-  `adv-single-town` 27 of 27 exact; CLT-Q140 (b) built, decision 52: design §23).
-  **Next: M3 T3b** (the hero's arrows, portraits and popups: the queue), then T3c.
+  `adv-single-town` 27 of 27 exact; CLT-Q140 (b) built, decision 52: design §23). **T3b cut in
+  two** (decision 54). **T3b1 done** (2026-11-18: the engine's offer from each map's import, the
+  hero's arrows, portraits and names, Random's popup; CLT-Q141 (b), CLT-Q142 (b), decisions 55
+  and 56; `adv-single-hero` 26 of 28, `adv-single-maps` 11 of 13 exact, the rest a hero's own
+  popup: design §24). **Next: M3 T3b2** (a hero's own popup: the queue), then T3c.
   Decisions to carry: the dialogs' input one
   implementation (20; `h3_ui::input`); the shell's code as the battle's (21); decision 22's
   fixes; every pixel of a Smacker clip through its palette (24); every clip's sound at the
@@ -30,8 +33,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (32); a clip's track played out (34); the main menu's buttons drawn in their order (36); the
   edits type what the keyboard prints (39); a menu opening anew takes the hover (40); a silent
   Smacker clip's frames from their due times (43); the empty list's leftovers fixed (51); the
-  description's bar takes no list key while the list shows (52). Open pull request: T3a's
-  #1004 (`client/e27-m3-t3a`): watch it until it merges. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
+  description's bar takes no list key while the list shows (52); a main hero of its type's
+  portrait shown (55); a pick named by its own name (56). Open pull request: T3b1's
+  #1008 (`client/e27-m3-t3b1`): watch it until it merges. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
   epic's "Placed at the closure", the queue's inbox). E28 and E29 are backlog sketches.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+
   drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`.
@@ -45,7 +49,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   battle between two of the host's humans) and `CLT-STUB-6` (the Multiplayer dialog's network
   modes), `CLT-STUB-7` and `-8` (Campaign, Tutorial) and `CLT-STUB-9` (the starting bonus) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q141, CLT-STUB-10.
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q143, CLT-STUB-10.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs (`MP3DEC.ASI` there too since 2026-11-17), `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens) and the 40 non-campaign MP3s; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -65,6 +69,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-18, E27 M3 T3b1 (done; `client/e27-m3-t3b1`, #1008).** T3b cut in two with the user. The
+  PC's 64 files and the manuals staged at once (SHA-256 checked). Read the hero's list, step, shown
+  hero and name, the row's hero draw and the right press; CLT-Q141 and CLT-Q142 asked and
+  answered (b); built the offers from each map's import (`maps::heroes`, the engine's
+  `GameSetup::offer`), the hero's arrows, portraits and names, Random's popup, the asset tables'
+  `small_portrait`; `adv-single-hero` 26 of 28 and `adv-single-maps` 11 of 13 exact (a hero's own
+  popup: T3b2). Record: `E27-log.md`, "M3 T3b1".
 - **2026-11-18, E27 M3 T3a (done; `client/e27-m3-t3a`).** CLT-Q140 answered (b) and built; T3
   cut in three by recipe with the user. The PC's 64 files and the manuals staged at once (SHA-256
   checked). Read the advanced toggle, the constructor's colour loop, the row's draw, the town's and
@@ -78,10 +89,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   split, bar and keys, the selects apart from the panel's shows, the kept map carried;
   `scn-long-text` 36 of 36 exact, the other groups as recorded. CLT-Q140 asked. Record:
   `E27-log.md`, "M3 T2c".
-- **2026-11-17, E27 M3 T2a and T2b (done; `client/e27-m3-t2ab`).** T2 cut in three with the
-  user (decision 50). The PC's 63 files, `MP3DEC.ASI` and the manuals staged at once (SHA-256
-  checked). Read the difficulty's press, the opening's difficulty (the record's +0x33C: Normal),
-  the empty list's panel and Begin's path, `victory_standard_set` 0x4BF780; recorded
-  `scn-difficulty` reopened, `scn-begin-none`'s strip and press, `scn-empty-filter`; CLT-Q139 asked
-  and answered (b). Every T2 recipe exact; the adventure lane's inbox told (E10's standard
-  victory). Record: `E27-log.md`, "M3 T2a, T2b".

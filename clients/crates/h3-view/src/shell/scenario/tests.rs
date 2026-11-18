@@ -95,6 +95,7 @@ fn map(file: &str, name: &str) -> Entry {
         loss: None,
         seats,
         teams: [0, 1, 0, 3, 4, 5, 6, 7],
+        heroes: Heroes::default(),
     }
 }
 

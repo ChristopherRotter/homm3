@@ -2566,3 +2566,44 @@ B's worker resumed from its checkpoint commit).
   failed on the client lane's `h3-battle-client` test `the_committed_catalogue_parses`, which
   lists the common catalogue's tables: `"ADVEVENT"` added to it (one word and its comment), the
   client lane's inbox told.
+
+### M4 T2b1 — the questions and choices, read and recorded (2026-11-18)
+
+On `map-client/e24-m4-t2b1`, the user present at the start (the cut); `master` at #1003. Original
+data staged from the PC before it went offline (63 files, SHA-256 checked against the PC's: one
+digest of the sorted hash lines, `28fcf718…`; the PC's own clone behind GitHub's, nothing
+uncommitted); the setup's baseline stopped at its coverage step by a watcher (fmt, clippy, doc
+tests and deny passed), CI's green `master` standing in.
+
+- **The cut** (the user, at the start): T2b in two as T2a was, T2b1 the reading and the
+  recordings, T2b2 the viewer (recommended was three: the Yes/No questions' reading and
+  recordings, their viewer, then the choice box whole). Since the queue's entry the engine's
+  offers had grown to fourteen kinds; the Shipyard's boat dialog and the recruit dialog stay M5's.
+- **Read** (design §5.4; `docs/exe/map.toml`): `message_box`'s arguments again (the "or" flag and
+  the network timeout come before the third picture: E17's order, and H3API's, corrected, nothing
+  built changes); styles 2, 7 and 10 (`message_box_build`: style 7's OK disabled until a choice,
+  0x4F7083, as style 10's); the choice frames (`choice_frame_vtable` 0x63FE1C,
+  `choice_frame_popup` 0x4F0B20 in part) and `dialog_default_proc`'s choice
+  (`message_box_chosen` 0x6993D4 new); the "or"; every question's and choice's box in the
+  handlers the engine's offers and choices copy: a monster's join free and for gold and its
+  flight, the Border Guard, the Cartographer, a guarded pile, artifact, scroll and mine, a bank of
+  each kind, the Tree of Knowledge, the Warrior's Tomb, Pandora's Box, the Pyramid, a dwelling's
+  guards and hire, a chest, the Arena, the Schools. One reading corrected by the first recording
+  (style 7's OK had been read as enabled from the start). MCL-Q33: the Arena's Cancel gives +2
+  Attack.
+- **The harness** (common, additive): the `[[message]]` table's `style`, `chosen` and `marks`;
+  `Mem.write_fields` (a monster's aggression, a chest's gold, a Tree's price) and
+  `Mem.write_diplomacy`; the situations' `monster`, `guards` and Pandora's `rewards`
+  (`h3_map_view::situation`), the visits' new words and a hero's `diplomacy`, a unit test.
+- **Recorded** (each twice, the second run `ok`, the frame at 0 exact): `ask-join` (46 timeline
+  lines, 17 screens), `ask-join-no` (51, 19), `ask-join-gold` (46, 17), `ask-guard` (46, 17),
+  `ask-cartographer` (40, 10), `ask-tomb` (36, 9), `ask-pandora` (48, 18), `ask-hire` (36, 9),
+  `ask-pile`, `-artifact`, `-mine`, `-bank`, `-crypt`, `-tree`, `-pyramid`, `-dwelling-guards` (31,
+  7 each), `choose-chest` (57, 21), `choose-chest-gold` (52, 19), `choose-arena`, `choose-school`
+  (36, 9), `choose-arena-cancel`, `choose-school-leave` (31, 7). Situations `seq-ask-*` and
+  `seq-choose-*` (19); timelines and live parts in `map/timelines/`; the sequences in
+  `map/to-record.toml`.
+- **Checked:** `h3-map-view`'s tests at 100 % lines, regions and functions (`cargo llvm-cov -p
+  h3-map-view`, `H3_INSTALL` empty); the clients workspace's fmt and clippy clean; `cargo xtask
+  verify --scope map-client --summary --with-original-data` no failing step; `scripts/exe.py
+  check` and `cited` clean. No existing situation changes, so `drawn` was not run.
