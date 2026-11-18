@@ -415,6 +415,14 @@ picture = "AdvOptBk.pcx"
 at = [3, 6]
 size = [557, 585]
 
+# The random map's panel (103, as 102; hidden until Random Map shows its tab; M3 T5a).
+[[scenario.dialog.items]]
+kind = "picture"
+id = 103
+picture = "RanMapBk.pcx"
+at = [3, 6]
+size = [557, 585]
+
 # The difficulty's labels (132 "%s:" GENRLTXT 493, 133 "%s:" 219, 134 GENRLTXT 495), then the panel's
 # (the original's 100s, 105), the description (a scrolling text: its lines split at its width - 3,
 # each in its own text item at alignment 0; the box here 319 - 3 wide), victory's and loss's.
@@ -698,6 +706,468 @@ font_palette = "game.pal"
 colour = 2
 align = 5
 
+# The random map's tab (M3 T5a; design §3.16, §30): random_map_items_create 0x57D170's items in its
+# order, hidden until Random Map shows them: the labels (GENRLTXT 753 to 759, smalfont.fnt colour 1),
+# the sizes and the two levels' switch (the default frames), then each count's buttons, Random's
+# last (their disabled frame 1 and selected frame 2: +0x3C and +0x40 set by the constructor), the
+# water's, the monsters', Show Random Maps.
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 280
+at = [58, 82]
+size = [99, 31]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 5
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 281
+def = "RanSizS.def"
+at = [161, 81]
+size = [44, 33]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 282
+def = "RanSizM.def"
+at = [208, 81]
+size = [44, 33]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 283
+def = "RanSizL.def"
+at = [255, 81]
+size = [44, 33]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 284
+def = "RanSizX.def"
+at = [302, 81]
+size = [44, 33]
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 285
+def = "RanUndr.def"
+at = [349, 81]
+size = [44, 33]
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 286
+at = [71, 133]
+size = [250, 16]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 0
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 287
+def = "RanNum1.def"
+at = [70, 153]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 288
+def = "RanNum2.def"
+at = [102, 153]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 289
+def = "RanNum3.def"
+at = [134, 153]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 290
+def = "RanNum4.def"
+at = [166, 153]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 291
+def = "RanNum5.def"
+at = [198, 153]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 292
+def = "RanNum6.def"
+at = [230, 153]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 293
+def = "RanNum7.def"
+at = [262, 153]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 294
+def = "RanNum8.def"
+at = [294, 153]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 295
+def = "RanRand.def"
+at = [326, 153]
+size = [55, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 296
+at = [71, 199]
+size = [250, 16]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 0
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 297
+def = "RanNum0.def"
+at = [70, 219]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 298
+def = "RanNum1.def"
+at = [102, 219]
+size = [30, 24]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 299
+def = "RanNum2.def"
+at = [134, 219]
+size = [30, 24]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 300
+def = "RanNum3.def"
+at = [166, 219]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 301
+def = "RanNum4.def"
+at = [198, 219]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 302
+def = "RanNum5.def"
+at = [230, 219]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 303
+def = "RanNum6.def"
+at = [262, 219]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 304
+def = "RanNum7.def"
+at = [294, 219]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 305
+def = "RanRand.def"
+at = [326, 219]
+size = [55, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 306
+at = [71, 265]
+size = [250, 16]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 0
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 307
+def = "RanNum0.def"
+at = [70, 285]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 308
+def = "RanNum1.def"
+at = [102, 285]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 309
+def = "RanNum2.def"
+at = [134, 285]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 310
+def = "RanNum3.def"
+at = [166, 285]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 311
+def = "RanNum4.def"
+at = [198, 285]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 312
+def = "RanNum5.def"
+at = [230, 285]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 313
+def = "RanNum6.def"
+at = [262, 285]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 314
+def = "RanNum7.def"
+at = [294, 285]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 315
+def = "RanRand.def"
+at = [326, 285]
+size = [55, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 316
+at = [71, 331]
+size = [250, 16]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 0
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 317
+def = "RanNum0.def"
+at = [70, 351]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 318
+def = "RanNum1.def"
+at = [102, 351]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 319
+def = "RanNum2.def"
+at = [134, 351]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 320
+def = "RanNum3.def"
+at = [166, 351]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 321
+def = "RanNum4.def"
+at = [198, 351]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 322
+def = "RanNum5.def"
+at = [230, 351]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 323
+def = "RanNum6.def"
+at = [262, 351]
+size = [30, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 324
+def = "RanRand.def"
+at = [326, 351]
+size = [55, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 325
+at = [71, 398]
+size = [105, 16]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 0
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 326
+def = "RanNone.def"
+at = [70, 419]
+size = [83, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 327
+def = "RanNorm.def"
+at = [155, 419]
+size = [83, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 328
+def = "RanIsld.def"
+at = [240, 419]
+size = [83, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 329
+def = "RanRand.def"
+at = [326, 419]
+size = [55, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 330
+at = [71, 465]
+size = [105, 16]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 0
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 331
+def = "RanWeak.def"
+at = [70, 485]
+size = [83, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 332
+def = "RanNorm.def"
+at = [155, 485]
+size = [83, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 333
+def = "RanStrg.def"
+at = [240, 485]
+size = [83, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 334
+def = "RanRand.def"
+at = [326, 485]
+size = [55, 32]
+frames = { normal = 0, pressed = 1, disabled = 1, selected = 2 }
+
+[[scenario.dialog.items]]
+kind = "button"
+id = 335
+def = "RanShow.def"
+at = [57, 535]
+size = [337, 40]
+
 # The panel buttons (caption buttons, gspbutt.def; their texts GENRLTXT 501, 502, 760), in the order
 # added: Show Available Scenarios, Show Advanced Options, Random Map.
 [[scenario.dialog.items]]
@@ -884,6 +1354,28 @@ font = "smalfont.fnt"
 font_palette = "game.pal"
 colour = 4
 align = 5
+
+# What the redraw draws itself with the random map's tab (M3 T5a: scenario_dialog_redraw 0x584B24):
+# the title (GENRLTXT 739) and the line under it (740).
+[[scenario.dialog.items]]
+kind = "label"
+id = 1040
+at = [58, 24]
+size = [334, 25]
+font = "bigfont.fnt"
+font_palette = "game.pal"
+colour = 8
+align = 1
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 1041
+at = [58, 48]
+size = [334, 34]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
 
 # The list's rows as the redraw draws them (scenario_dialog_redraw 0x584550; M3 T1b1, design §3.4,
 # §19.1): each cell at the first row (its texts a pixel above the row's top), the rows 25 apart,

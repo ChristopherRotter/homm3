@@ -89,7 +89,15 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Client lane (`CLT-Q<n>`)
 
-(no open questions)
+#### CLT-Q146 — Two team buttons of the random map's tab take the mouse in their upper 24 rows only (E27 M3 T5a, a reading)
+
+`random_map_items_create` 0x57D170 makes the human or computer teams' buttons 1 and 2 (298, 299:
+`RanNum1`, `RanNum2.def`) 30 × 24 (0x57D85B, 0x57D8A9), every other count's button 30 × 32 like
+their DEFs' frames (30 × 32, drawn whole). So a press on the lowest 8 rows of those two numbers
+does nothing (the computer only players' 1 and 2 below them are 32 high). No recording presses
+there (`adv-random` presses their middles); built as the original's (design §30.2). Options: (a)
+the original's everywhere; (b) the client's profile makes them 32 high like the rest, the
+original's for the comparisons. **Recommended (b).** Blocks nothing (T5b can build the answer).
 
 ### Map client lane (`MCL-Q<n>`)
 

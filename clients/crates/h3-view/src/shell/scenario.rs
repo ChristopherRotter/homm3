@@ -64,11 +64,14 @@
 //!   (CLT-Q139 (b)). **Begin** there shows GENRLTXT 530 in an OK box (`scenario_begin` 0x58BCE0);
 //!   the original's only once a map was shown (with no map at all it does nothing: CLT-Q114 (b)).
 //!
-//! *Not built yet:* Begin with a map (T6: a double press begins nothing yet either), the advanced
-//! options (129: T3), the random map (130: T5), a description too long for its box (its scroll
-//! bar: T2c), the load's modes (the client's stub until M4), GENRLTXT
-//! 503 while the list is read again (a network game's message 1015 alone, `sub_58B120` 0x58B120:
-//! the network modes', `CLT-STUB-6`; design §20.3).
+//! - **The random map** (E27 M3 T5a; §3.16, §30): Random Map (130) shows its tab over the list's
+//!   place (`random`); a chosen random map's own record is what the panel, the game and the
+//!   advanced options read first (`scenario_to_game` 0x583580, `scenario_entry_name` 0x584010).
+//!
+//! *Not built yet:* Begin with a map (T6: a double press begins nothing yet either), the random
+//! map's right press, Show Random Maps and Begin with it (T5b), the load's modes (the client's
+//! stub until M4), GENRLTXT 503 while the list is read again (a network game's message 1015
+//! alone, `sub_58B120` 0x58B120: the network modes', `CLT-STUB-6`; design §20.3).
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
@@ -91,6 +94,7 @@ use crate::message::{MessageBox, Open, Outcome};
 
 mod advanced;
 mod description;
+mod random;
 
 use advanced::{Advanced, Map, Refusal};
 pub use advanced::{
@@ -99,6 +103,8 @@ pub use advanced::{
 };
 use description::Description;
 pub use description::{DESCRIPTION_BYTES, DescriptionLook, description_names};
+pub use random::Choices;
+use random::{Pressed, RandomMap};
 
 /// Every asset the advanced options' look names (the adapter's batch at the shell's start).
 #[must_use]
@@ -178,7 +184,7 @@ pub const DOUBLE_MS: u32 = 400;
 /// The labels and captions whose text the screen sets as it opens, by id, with their names in
 /// the key catalogue (`shell.scenario.<name>`): the constructor's texts (GENRLTXT's; the title
 /// ArrayTxt.txt's) and the list's sizes label the redraw draws.
-pub const LABELS: [(u16, &str); 21] = [
+pub const LABELS: [(u16, &str); 30] = [
     (TITLE, "title"),
     (SIZES, "sizes"),
     (132, "player-difficulty"),
@@ -201,6 +207,16 @@ pub const LABELS: [(u16, &str); 21] = [
     (343, "hero-header"),
     (344, "bonus-header"),
     (340, "duration-label"),
+    // The random map's tab (E27 M3 T5a: GENRLTXT 739, 740, 753 to 759).
+    (random::TITLE, "random-title"),
+    (random::SUBTITLE, "random-subtitle"),
+    (random::LABELS[0], "random-size"),
+    (random::LABELS[1], "random-players"),
+    (random::LABELS[2], "random-teams"),
+    (random::LABELS[3], "random-computers"),
+    (random::LABELS[4], "random-computer-teams"),
+    (random::LABELS[5], "random-water"),
+    (random::LABELS[6], "random-monsters"),
 ];
 
 /// The labels whose word takes a colon (the executable's "%s:": the player's difficulty, the
@@ -535,6 +551,8 @@ pub struct Texts {
     pub description_font: Option<Font>,
     /// The advanced options (E27 M3 T3a; none: Show Advanced Options does nothing).
     pub advanced: Option<AdvancedTexts>,
+    /// A random map's name and description (E27 M3 T5a: GENRLTXT 741, 742).
+    pub random: [String; 2],
 }
 
 /// The teams' dialog's look (`scenario_teams_dialog` 0x576540; the layout's `[scenario.teams]`):
@@ -710,6 +728,8 @@ pub struct Scenario {
     game: Option<Entry>,
     /// The advanced options (E27 M3 T3a), none without their texts.
     advanced: Option<Advanced>,
+    /// The random map's tab (E27 M3 T5a).
+    random: RandomMap,
     /// The selection the last select made (+0x374 as `scenario_select` 0x585500 compares it).
     last_select: Option<usize>,
     background: u8,
@@ -789,6 +809,7 @@ impl Scenario {
             chosen,
             game: None,
             advanced,
+            random: RandomMap::default(),
             last_select: None,
             background: 0,
             over: Over::Nothing,
@@ -797,6 +818,7 @@ impl Scenario {
             bugs,
         };
         Advanced::hide_items(&mut scenario.shown);
+        RandomMap::hide_items(&mut scenario.shown);
         scenario.list_items(false);
         scenario.selecting()
     }
@@ -942,6 +964,19 @@ impl Scenario {
         self.advanced.as_ref().is_some_and(Advanced::showing)
     }
 
+    /// Whether the random map's tab shows (E27 M3 T5a).
+    #[must_use]
+    pub const fn random_showing(&self) -> bool {
+        self.random.showing()
+    }
+
+    /// The random map's choices while a random map is chosen (E27 M3 T5a: what Begin would
+    /// generate, T5b), none otherwise.
+    #[must_use]
+    pub fn random_map(&self) -> Option<Choices> {
+        self.random.chosen().then(|| self.random.choices())
+    }
+
     /// The chosen difficulty (0 easy to 4 impossible).
     #[must_use]
     pub const fn difficulty(&self) -> u8 {
@@ -1029,7 +1064,11 @@ impl Scenario {
             self.whole();
             return;
         }
-        // The advanced options hidden first (`scenario_advanced_hide` 0x581B20; E27 M3 T3a).
+        // The random map's tab and the advanced options hidden first (`random_map_hide`
+        // 0x581D80, E27 M3 T5a; `scenario_advanced_hide` 0x581B20, T3a), no random map chosen
+        // any longer (0x580AAA).
+        self.random.hide(&mut self.shown);
+        self.random.unchoose();
         if let Some(advanced) = &mut self.advanced {
             advanced.hide(&mut self.shown);
         }
@@ -1067,10 +1106,16 @@ impl Scenario {
         }
     }
 
-    /// The map whose players the advanced options show: the entry selected, else the game's (the
-    /// last shown; E27 M3 T3a), with its heroes (T3b1).
+    /// The map the screen gives the game (`scenario_to_game` 0x583580): a chosen random map's own
+    /// record (E27 M3 T5a), else the entry selected.
+    fn shown_entry(&self) -> Option<&Entry> {
+        self.random.record().or_else(|| self.entry())
+    }
+
+    /// The map whose players the advanced options show: the one the screen gives the game, else
+    /// the game's (the last shown; E27 M3 T3a), with its heroes (T3b1).
     fn players(&self) -> Map {
-        self.entry()
+        self.shown_entry()
             .or(self.game.as_ref())
             .map_or_else(Map::default, |e| Map {
                 seats: e.seats,
@@ -1095,6 +1140,8 @@ impl Scenario {
                 self.showing = false;
                 self.list_items(false);
             }
+            // The random map's tab hidden too (0x58136F; E27 M3 T5a), a random map still chosen.
+            self.random.hide(&mut self.shown);
             let map = self.players();
             let (dialog, shown) = (&mut self.dialog, &mut self.shown);
             self.advanced
@@ -1118,13 +1165,81 @@ impl Scenario {
         if (advanced::FLAG..advanced::FLAG + 8).contains(&id) {
             let c = u8::try_from(id - advanced::FLAG).unwrap_or(0);
             advanced.flag_click(c, &map, &mut self.shown);
-            if let Some(entry) = self.entry().or(self.game.as_ref()).cloned() {
+            if let Some(entry) = self.shown_entry().or(self.game.as_ref()).cloned() {
                 self.team_flags(&entry);
             }
             self.strip = self.bugs == Bugs::Original;
             return true;
         }
         advanced.click(id, &map, &mut self.shown)
+    }
+
+    /// Random Map (130, `random_map_toggle` 0x57FEB0, then `random_map_tab_draw` 0x57EF70 and the
+    /// redraw; E27 M3 T5a): shown, hidden (`random_map_hide` 0x581D80), a random map still
+    /// chosen; else the list and the advanced options hidden, the tab shown, the map given to the
+    /// game (`scenario_to_game` 0x583580) and, with no random map chosen yet, the own record built
+    /// (in the client's profile at each opening: CLT-Q111 (b)); the screen redrawn whole.
+    fn toggle_random(&mut self) {
+        if self.random.showing() {
+            self.random.hide(&mut self.shown);
+        } else {
+            if self.showing {
+                self.showing = false;
+                self.list_items(false);
+            }
+            if let Some(advanced) = &mut self.advanced {
+                advanced.hide(&mut self.shown);
+            }
+            self.random.show(&mut self.shown);
+            self.give_to_game();
+            if !self.random.chosen() || self.bugs == Bugs::Fixed {
+                self.random_built();
+            }
+        }
+        self.whole();
+    }
+
+    /// The random map's own record built (`random_map_info_build` 0x580430; E27 M3 T5a): a random
+    /// map chosen, the advanced options' records made again at their next showing
+    /// (`scenario_players_init` 0x584C40), the record given to the game (its description from
+    /// its first line) and shown, its flags too (`scenario_team_flags` 0x585300).
+    fn random_built(&mut self) {
+        let [name, description] = &self.texts.random;
+        self.random.build(name, description);
+        if let Some(advanced) = &mut self.advanced {
+            advanced.selection_changed();
+        }
+        self.give_to_game();
+        self.show();
+    }
+
+    /// A press `id` of the random map's tab while it shows (`scenario_dialog_click` 0x586DCC to
+    /// 0x586F7A; E27 M3 T5a): its choice set, the own record built again after a count's, the
+    /// tab's state and the screen redrawn whole. Whether it was one.
+    fn random_click(&mut self, id: u16) -> bool {
+        if !self.random.showing() {
+            return false;
+        }
+        let Some(pressed) = self.random.click(id) else {
+            return false;
+        };
+        if pressed == Pressed::Counted {
+            self.random_built();
+        }
+        self.random_size_mark();
+        self.random.states(&mut self.shown);
+        self.whole();
+        true
+    }
+
+    /// The size mark over a chosen random map (E27 M3 T5a): in the client's profile the chosen
+    /// size's (CLT-Q115 (b)); the original's keeps what it showed (only a select sets it).
+    fn random_size_mark(&mut self) {
+        if self.bugs == Bugs::Fixed && self.random.chosen() {
+            let frame = size_frame(self.random.choices().size);
+            self.shown.states.insert(SIZE, State::default());
+            self.shown.frames.insert(SIZE, frame);
+        }
     }
 
     /// The full list sorted by `key` (`scenario_list_sort` 0x585050), the shown list rebuilt in
@@ -1337,14 +1452,11 @@ impl Scenario {
             let selected = chosen && usize::from(self.difficulty) == k;
             self.shown.states.insert(id, State { selected, ..state });
         }
-        let entry = self
-            .selected
-            .and_then(|i| self.listed.get(i))
-            .and_then(|&e| self.entries.get(e));
-        let Some(entry) = entry.cloned() else {
+        let Some(entry) = self.shown_entry().cloned() else {
             self.show_empty();
             return;
         };
+        let random = self.random.chosen();
         self.game = Some(entry.clone());
         let rating = text_at(&self.texts.ratings, usize::from(self.difficulty));
         let shown = &mut self.shown;
@@ -1370,10 +1482,15 @@ impl Scenario {
         shown.texts.insert(LOSS, loss);
         let difficulty = text_at(&t.difficulties, usize::from(entry.difficulty));
         shown.texts.insert(MAP_DIFFICULTY, difficulty);
-        for id in [SIZE, VICTORY_MARK, LOSS_MARK] {
+        for id in [VICTORY_MARK, LOSS_MARK] {
             shown.states.insert(id, State::default());
         }
-        shown.frames.insert(SIZE, size_frame(entry.size));
+        // The size mark is the select's (`scenario_select` 0x585500): a chosen random map's
+        // draw leaves it (E27 M3 T5a, CLT-Q115).
+        if !random {
+            shown.states.insert(SIZE, State::default());
+            shown.frames.insert(SIZE, size_frame(entry.size));
+        }
         // The marks: the goal's frame (0 to 10), 11 for none; the loss's (0 to 2), 3 for none.
         let victory_mark = entry.victory.map_or(11, u32::from);
         shown.frames.insert(VICTORY_MARK, victory_mark);
@@ -1381,6 +1498,7 @@ impl Scenario {
             .frames
             .insert(LOSS_MARK, entry.loss.map_or(3, u32::from));
         self.team_flags(&entry);
+        self.random_size_mark();
     }
 
     /// The flags of `entry`'s colours (`scenario_team_flags` 0x585300): each colour that plays, in
@@ -1441,11 +1559,12 @@ impl Scenario {
         self.show();
     }
 
-    /// The selected map given to the game (`scenario_to_game` 0x583580): the description set
-    /// anew (`scrollable_text_set` 0x5BA6E0), empty over an empty list.
+    /// The selected map (a chosen random map's own record: E27 M3 T5a) given to the game
+    /// (`scenario_to_game` 0x583580): the description set anew (`scrollable_text_set` 0x5BA6E0),
+    /// empty over an empty list.
     fn give_to_game(&mut self) {
         let text = self
-            .entry()
+            .shown_entry()
             .map(|e| e.description.clone())
             .unwrap_or_default();
         self.description.set(&text);
@@ -2172,7 +2291,10 @@ impl Scenario {
             did.changed = true;
         } else if id == ADVANCED {
             did.changed |= self.toggle_advanced();
-        } else if self.advanced_click(id) {
+        } else if id == RANDOM {
+            self.toggle_random();
+            did.changed = true;
+        } else if self.random_click(id) || self.advanced_click(id) {
             did.changed = true;
         } else if let Some(&(_, size)) = FILTERS.iter().find(|&&(f, _)| f == id) {
             self.filter_by(size);
@@ -2190,14 +2312,16 @@ impl Scenario {
     }
 }
 
-/// `dialog` as the mouse finds its items: without the advanced options' hidden items (E27 M3 T3a:
-/// their panel, headers and rows lie over the list's columns, filters and rows; the original's
-/// `dialog_item_at` 0x5FF3E0 passes over a hidden item, the shared input does not).
+/// `dialog` as the mouse finds its items: without the advanced options' and the random map's
+/// tab's hidden items (E27 M3 T3a, T5a: their panels, headers, rows and buttons lie over the
+/// list's columns, filters and rows and over each other; the original's `dialog_item_at`
+/// 0x5FF3E0 passes over a hidden item, the shared input does not).
 fn mouse_dialog(dialog: &Dialog, shown: &Shown) -> Dialog {
     let mut dialog = dialog.clone();
-    dialog
-        .items
-        .retain(|i| !(Advanced::owns(i.id()) && shown.state(i.id()).hidden));
+    dialog.items.retain(|i| {
+        let id = i.id();
+        !((Advanced::owns(id) || RandomMap::owns(id)) && shown.state(id).hidden)
+    });
     dialog
 }
 

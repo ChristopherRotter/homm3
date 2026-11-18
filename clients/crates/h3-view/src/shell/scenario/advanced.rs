@@ -2017,4 +2017,4 @@ fn text_at(texts: &[String], k: usize) -> String {
 }
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;
