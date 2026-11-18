@@ -151,6 +151,13 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   its `entrances`): the import refuses one entered from water (`OwnedOnWater`). A new ownable
   body (E08 T116b1's map garrisons, missed until T29b) joins that list.
 
+- **The plans lay out no map Tavern** (E09 T39a): `settle` answers a Tavern decision from its
+  listing and `hiring` names the kind, but `check_legal` expects the turn's listing for it (it
+  falls to its last branch) and no oracle knows a hire placed on the Tavern's tile. A plan that
+  lays out a Tavern (T40) teaches `check_legal`, `check_isolation` and `check_conservation` the
+  hire first. A hero hired there stands on a neighbour-visited tile, which a setup refuses
+  (`check_stand`): an oracle over where heroes stand exempts it.
+
 ## The views (`h3-game` `src/town/view.rs`)
 
 - **Every change of a viewer's town view is told** (E09 T18b2a, SRV-Q26): a new write of a town's

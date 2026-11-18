@@ -4892,3 +4892,66 @@ cut in two as T38a's). The agent's calls: decision 148.
   `check-lane --cross-lane` ok) passed once the three new refusals' messages got their test
   (coverage's two rounds); `h3-protocol`'s coverage (`verify-step coverage --scope server`) ok;
   `h3-protocol`'s and `h3-server`'s tests, `cargo clippy --workspace --all-targets` clean.
+
+### T39a — the map's Tavern and the Den of Thieves, the tavern decision (2026-11-18)
+
+One session, the user present at the start; branch `town/e09-t39a` (`cross-lane`: the adventure
+lane's `h3-adventure` kinds (`ruleset/objects.rs`), `command.rs`, `state.rs`, `state/revisits.rs`,
+`lib.rs`, `h3-pack-adventure`, `packs/base/adventure.toml`, `h3-map`'s `import/codes.rs`, `lib.rs`
+and tests, `h3-game`'s `command.rs`, `state.rs`, `observe.rs`, `legal.rs`, `lib.rs`, `h3-files`'
+replay words, `h3-sim`'s replay format, `h3-cli`'s literals, the 98 golden adventure replays; the
+AI lane's env (`h3-sim`'s `adventure/action.rs`) and bots tables; the server lane's `h3-protocol`
+and `h3-server`'s `tests/record.rs`; with the user's consent). Starting point: `master` at
+34dddd8 (#1018 merged; the setup found CI's fingerprint, the light gates green). The user's
+computer was connected at the start only: 28 files staged (the four LODs, both executables, the
+five DLLs, both `.snd`, `H3ab_ahd.vid`, `battle-videos.vid`, both tars, the three saves, the
+three manuals, two help files, `README.TXT`, the two `goggame` files; SHA-256 checked against the
+PC's). **The user kept T39a whole as queued** (decision 149, `TWN-Q25`, against the agent's
+Tavern now with the Den moved to T39b) and consented to the `cross-lane` pull request with the
+game state hash v34. The agent's calls: decision 150.
+
+- **The kinds** (the adventure part **v22**): `ObjectKind::Tavern` (ADV-VIS-007; visited from a
+  neighbour, not from above; hash tag 45) and `ObjectKind::DenOfThieves` (ADV-VIS-008; entered;
+  tag 46), their `Effect`s and defs (`tavern = {}`, `den_of_thieves = {}`), a pack's Tavern
+  entered or Den visited from a neighbour refused; the base pack's `base:tavern` and
+  `base:den_of_thieves`, appended last among base's types (the AB and SoD types' ids moved by 2).
+  Classes 95 and 97 typed by the import (**map import v26**).
+- **The visits** (`h3-adventure`'s `visit`): the Tavern's outcome `AdventureOutcome::tavern`, an
+  `h3_adventure::TavernVisit` (the hero, the type, the anchor, the visitable tile); the Den's
+  nothing until T39b (`TWN-STUB-20`). The town lane's `town/hire.rs` in the adventure:
+  `check_map_tavern_hire` (the room, then the tile, `TownHeroError`'s) and `tile_free`.
+- **The decision** (GAM-DEC-010): `Decision::Tavern { owner, visit }` (hash kind 9 with the tile,
+  **game state hash v34**), opened by `settle_outcome`'s `open_tavern` (`TavernOpened` to the
+  owner) whatever the gold and room; `Answer::Tavern(TavernAnswer::{Hire { slot }, Close})`; the
+  hire `town::hire::map_hire` (the slot, the room and the tile, the price:
+  `GameCommandError::Tavern(TavernError::{UnknownSlot, EmptySlot, TooManyHeroes, Occupied})`,
+  then `CannotPay`), applied by the town hire's own `place` (factored out of `hire`, the price,
+  the pool, `HeroHired` and its parts, the replacement, the slot told) with the Tavern's tile and
+  no guild spells, then `DecisionClosed`; `Close` only closes and is the default answer;
+  `GameState::tavern`, `DecisionView::Tavern { hero, object_type, anchor }`; the listing
+  `map_hires` (`hire_slots`' part, the tile free) then `Close`.
+- **The wire, the env, the replays:** protocol **v73** (`Answer::Tavern`, `TavernAnswer`,
+  `GameReject::Tavern`, `TavernReject`, `Decision::Tavern`, `TavernOpened` both ways, the fold
+  opening the decision whole); the env's action encoding **v13** (`answer_entry`: slot 0 `FIRST`,
+  slot 1 `SECOND`, `Close` `DECLINE`; no new entry); the replay format **v19** (`answer tavern hire
+  <slot>`, `answer tavern close`). The 98 goldens re-recorded from their commands (only the
+  version lines, the part hash, the checkpoints and `final_hash` moved), `h3-server`'s
+  `tests/record.rs` literals with them; the bots tables' `engine.adventure` line (both
+  regenerated, nothing else moved).
+- **Catalog:** GAM-DEC-010, ADV-VIS-007 and ADV-VIS-008 written `implemented` (the code reading,
+  the census, VCMI; batch TWN-4 had no map Tavern row); `TWN-STUB-20` registered.
+- **Tests:** the ruleset's `ruleset/tests/taverns.rs` (the kinds, their effects, the refused
+  visit modes, the hash), the pack's `the_base_pack_types_the_tavern_and_the_den_of_thieves` and
+  the type count, the adventure's `a_map_tavern_s_hire_needs_room_on_the_map_and_its_tile_free`,
+  `h3-game`'s `town/tests/hire/map.rs` (four: the decision opened beside the Tavern, told and
+  projected, its view, its listing and default, `EndTurn` and another kind's answer refused, the
+  close changing nothing else; the hire on the Tavern's tile with its events, the decision closed
+  after them, no revisit, a later step meeting the hired hero; every refusal with its listing and
+  the messages, `Occupied` with a hero placed on the tile while it is open; the Den entered and
+  revisited), `h3-map`'s import cases and `tests/taverns.rs` (the writer's two classes import
+  typed), `h3-files`' two words, `h3-sim`'s answer entries and version, `h3-protocol`'s round
+  trips (126 rejections, 44 kinds of event, a Tavern view). The plans name the kind in `settle`
+  and `hiring` (their maps lay out no Tavern).
+- **The bench** (`bench-check --lane adventure` right after the first build): every workload
+  inside its gate, none re-baselined; `random-play-bonuses-36` +1.65 % and `manage-army-12`
+  +1.36 % (as at T38b2), every other within 1.3 %.
