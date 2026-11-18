@@ -374,7 +374,10 @@ fn a_hire_action_names_its_town_by_the_entrance_and_the_slot_by_its_entry() {
             action::decode(state, rules, red, action),
             Some(hire.clone())
         );
-        assert!(legal_by_masks(&env, Seat::Player(red), action), "{action:?}");
+        assert!(
+            legal_by_masks(&env, Seat::Player(red), action),
+            "{action:?}"
+        );
     }
     let GameCommand::Town(TownCommand::Hire { town, .. }) = hires[0] else {
         unreachable!()

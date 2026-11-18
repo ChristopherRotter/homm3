@@ -4762,5 +4762,18 @@ skipping the listed hires as decision 56 did; then the env); **the user kept T38
 - **Versions:** action encoding v12 alone; no protocol, replay format or hash moved (the 89
   goldens replay unchanged).
 
-**Verify:** see the pull request (the scoped verify with original data; the tests of `h3-cli`,
-`h3-protocol`, `h3-server`, `h3-sim`, `h3-map`; `cargo clippy --workspace --all-targets`).
+The play and view blocks at 240 cases found one hygiene case `master`'s oracles had not met:
+another player's hire out of the viewer's sight in both games, the same record of another type in
+the other game (the taverns' draw), its hero walking into sight later. `outcome` gained the
+heroes a command hired as they joined the map (type, army, details): a hire that differs ends
+the comparison (the case kept in `proptest-regressions/tests/view.txt`). Then both blocks at 480
+cases: all 177 of `h3-map`'s tests passed. `master` merged in once, after #1002 (E08 T125b1's
+nine goldens), #1003 and #1004: no conflict.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data` (every step but
+`check-lane`, as on a `cross-lane` branch, `fmt` (the new `h3-sim` test) and one coverage miss
+(`hire_slots`' `?` on a player without a tavern entry: written without the branch, as `check`
+reads the slots); then `fmt` and `verify-step coverage --scope town` clean; `determinism`,
+`bench-check`, `original-data` passed); `cargo test -p h3-cli -p h3-protocol -p h3-server`,
+`-p h3-sim`, `-p h3-map`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo xtask
+check-lane --cross-lane`; CI on the pull request is the record.

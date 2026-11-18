@@ -209,10 +209,8 @@ pub(crate) fn hire_slots(
         return None;
     }
     let pool = state.pool();
-    let held = pool
-        .tavern(player)?
-        .slots
-        .map(|slot| slot.is_some_and(|t| pool.record(t).is_some()));
+    let slots = pool.tavern(player).map_or([None; 2], |tavern| tavern.slots);
+    let held = slots.map(|slot| slot.is_some_and(|t| pool.record(t).is_some()));
     held.contains(&true).then_some(held)
 }
 
