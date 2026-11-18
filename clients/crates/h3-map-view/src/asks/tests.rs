@@ -302,13 +302,13 @@ fn a_dwellings_guards() {
         "the Monastery is guarded by several Monks."
     );
     assert!(guarded.yes(&tables().map.finds, &art(), &texts()).is_none());
-    // Another player's too; a creature below level 5 guards nothing (its flag: not built); no
-    // creature known, none.
+    // Another player's too; a creature below level 5 guards nothing (its flag, then its hire:
+    // below); no creature known, none.
     assert!(matches!(
         ask(&dwelling(35, 8, 3, Some(1))),
         Some(Ask::Guarded { .. })
     ));
-    assert_eq!(ask(&dwelling(56, 0, 14, None)), None);
+    assert!(!guarded.flags());
     assert_eq!(ask(&seen(17, 56, 0)), None);
 }
 
@@ -322,7 +322,8 @@ fn a_dwellings_hire() {
             dwelling: 56,
             joins: pikemen(14),
             free: true,
-            room: true
+            room: true,
+            flag: false
         }
     );
     assert!(hire.asks() && hire.chooses() && !hire.beside());
@@ -338,6 +339,7 @@ fn a_dwellings_hire() {
         joins: pikemen(1),
         free: true,
         room: true,
+        flag: false,
     };
     assert_eq!(
         said(one.yes(&finds, &art(), &texts())).0.text,
@@ -348,6 +350,7 @@ fn a_dwellings_hire() {
         joins: pikemen(0),
         free: true,
         room: true,
+        flag: false,
     };
     let (told, gain) = said(none.yes(&finds, &art(), &texts()));
     assert_eq!(told.text, "There are no Pikemen here to recruit.");
@@ -381,9 +384,44 @@ fn a_dwellings_hire() {
     };
     let ally = Ask::of(&dwelling(56, 0, 14, Some(1)), &allied, &art()).unwrap();
     assert!(matches!(ally, Ask::Hire { free: false, .. }));
-    // A colour past the teams is no ally.
+    // A colour past the teams is no ally: its flag taken (below).
     let stranger = Ask::of(&dwelling(56, 0, 14, Some(9)), &red(), &art());
-    assert_eq!(stranger, None);
+    assert!(matches!(stranger, Some(Ask::Hire { flag: true, .. })));
+    assert!(!hire.flags() && !ally.flags());
+}
+
+#[test]
+fn a_dwelling_of_another_team_without_guards_takes_its_flag_then_asks_its_hire() {
+    // E24 M4 T2d1 (design §5.6): a neutral Guardhouse (`flag-dwelling`): Red's flag raised first,
+    // then its hire as Red's own, its Pikemen free (level 1), told as `ask-hire`'s.
+    let hire = ask(&dwelling(56, 0, 14, None)).unwrap();
+    assert_eq!(
+        hire,
+        Ask::Hire {
+            dwelling: 56,
+            joins: pikemen(14),
+            free: true,
+            room: true,
+            flag: true
+        }
+    );
+    assert!(hire.flags() && hire.asks() && hire.chooses() && !hire.beside());
+    assert_eq!(hire.told(&texts()).text, "[Guardhouse] recruit Pikemen?");
+    let (joined, gain) = said(hire.yes(&tables().map.finds, &art(), &texts()));
+    assert_eq!(joined.text, "14 Pikemen join your army.");
+    assert_eq!(gain.army[0], Some(pikemen(14)));
+    // Blue's alike; a level-2 creature's flag taken, then the recruit dialog (not built).
+    assert_eq!(ask(&dwelling(56, 0, 14, Some(1))), Some(hire));
+    let archers = ask(&dwelling(57, 2, 9, None)).unwrap();
+    assert!(matches!(
+        archers,
+        Ask::Hire {
+            free: false,
+            flag: true,
+            ..
+        }
+    ));
+    assert!(archers.yes(&tables().map.finds, &art(), &texts()).is_none());
 }
 
 // Part A2: a monster's offers, a Border Guard's, a Cartographer's and Pandora's Box's questions.

@@ -221,12 +221,12 @@ fn the_computers_screen() {
     );
     // The minimap's draw returns at once, the chooser builds nothing; the input waits.
     let mut l = l;
-    let minimap = l.drawn.minimap;
+    let minimap = l.drawn.minimap.clone();
     l.view = ViewAt { x: 5, y: 5, z: 0 };
     l.draw_minimap();
     l.choose(161, true);
     assert_eq!(
-        (l.drawn.minimap, l.kingdom.status.clone()),
+        (l.drawn.minimap.clone(), l.kingdom.status.clone()),
         (minimap, s.drawn.kingdom.status.clone())
     );
     l.run(

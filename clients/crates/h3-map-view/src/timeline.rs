@@ -78,6 +78,15 @@
 //! the millisecond the last closes; its keys 1 and 2 ([`Action::Offer`]) or a click on a picture
 //! or its frame choose an offer, its OK (Enter and Escape) closes it; after the last the primary
 //! skills raised are shown and the mouse looked at again.
+//!
+//! A flag raised (E24 M4 T2d1, design §5.6, *provisional*): a find's [`Found::flag`] makes its
+//! object the visitor's in memory ([`Owners`]: a mine's and a Lighthouse's after their box, a
+//! dwelling's before its hire), drawing nothing; the visit's end draws the minimap
+//! (`visit_and_update` 0x4AAAA0) with the object's new colour ([`Minimap::owners`]), the view's
+//! next draw its flag ([`Draw::owners`]: the idle step's at the box's close). *Not built:* the
+//! mouse-over's owners (the live part's at 0: a hint or a cursor over the object after its visit)
+//! and the rest of `visit_and_update`'s redraws (the lists, the status window, the resource bar:
+//! nothing they show changes in the recordings).
 
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
@@ -842,6 +851,12 @@ pub struct Found {
     /// at every visit until its OK is taken; after that the find tells nothing (*provisional*: the
     /// find as its answer leaves it is the engine's facts).
     pub ask: Option<Question>,
+    /// The flag the visit raises (E24 M4 T2d1, design §5.6): the object (its index in the map's
+    /// order) and the visitor's colour, its owner after its first boxes and before its question
+    /// (a mine's and a Lighthouse's after their box, `set_mine_owner` 0x4C66E0; a dwelling's
+    /// before its hire, `set_dwelling_owner` 0x4C67B0). Nothing is drawn by it: the visit's end
+    /// draws the minimap with it, the view's next draw its flag.
+    pub flag: Option<(usize, u8)>,
 }
 
 /// A visit's question (E24 M4 T2b2 part A1, design §5.4, *provisional*: the viewer's facts at 0,
@@ -1008,8 +1023,9 @@ pub struct Walk {
 /// draws it again (`view_scroll` 0x41973E), so does a hero's selection that centres the view
 /// (`hero_select` 0x418046: a step lifting a hero not lifted) and each step's end
 /// (`after_step_guard_check` 0x4800A5); through a step's frames its box and hero stay where they
-/// were.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// were. Since E24 M4 T2d1 the objects' owners changed as they were then (a visit's end draws it,
+/// `visit_and_update` 0x4AAAA0: a flag raised shows on it before the view's next draw).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Minimap {
     /// The view's corner.
     pub view: ViewAt,
@@ -1017,7 +1033,14 @@ pub struct Minimap {
     pub hero: Option<Pos>,
     /// The selected hero's index among the map's heroes ([`Start::heroes`]).
     pub index: Option<usize>,
+    /// The objects' owners changed since 0 (E24 M4 T2d1).
+    pub owners: Owners,
 }
+
+/// The objects whose owner changed since the sequence's 0 (E24 M4 T2d1, design §5.6: a flag
+/// raised), each by its index in the map's order with its owner's colour now, in the order first
+/// changed: the live part at 0's owners with these over them (each level's index built again).
+pub type Owners = Arc<Vec<(usize, u8)>>;
 
 /// A draw of the view: its corner, the objects' frame steps and the palette steps since the
 /// sequence's 0 (the draw at 0 shows 0 of each: the still the live part at 0 gives), and the walk's
@@ -1075,6 +1098,9 @@ pub struct Draw {
     pub revealed: u32,
     /// The monster a hero visits, drawn as its attack (E24 M4 T2b2 part A2).
     pub attacking: Option<Attacking>,
+    /// The objects' owners changed since 0 as the view was last drawn (E24 M4 T2d1, design §5.6:
+    /// the flags' colours; the minimap's are [`Minimap::owners`]).
+    pub owners: Owners,
 }
 
 /// A dissolve's step (`screen_dissolve` 0x602DC0; E17 design §7.25, E24 design §5.3): the
@@ -1263,6 +1289,9 @@ pub struct Loop {
     finds: Arc<Vec<Found>>,
     told: Vec<usize>,
     answered: Vec<usize>,
+    /// The objects' owners changed since 0 in memory (E24 M4 T2d1: the flags raised), which the
+    /// view and the minimap take at their draws.
+    owners: Owners,
     /// The viewer's boxes of a turn without a town ([`Start::town`]) and its days without a town
     /// (the player's +0x3D: −1 not counting, *provisional*: a new game's at 0).
     town: Option<Arc<TownBoxes>>,
@@ -1472,6 +1501,7 @@ impl Loop {
             view: start.view,
             hero: start.hero.map(|h| h.at),
             index: start.index,
+            owners: Arc::new(Vec::new()),
         };
         let mut l = Self {
             last: start.size.saturating_sub(1),
@@ -1506,6 +1536,7 @@ impl Loop {
                 dissolve: None,
                 revealed: 0,
                 attacking: None,
+                owners: Arc::new(Vec::new()),
             },
             hero: start.hero,
             lifted: false,
@@ -1565,6 +1596,7 @@ impl Loop {
             finds: Arc::new(start.finds.clone()),
             told: Vec::new(),
             answered: Vec::new(),
+            owners: Arc::new(Vec::new()),
             town: start.town.clone().map(Arc::new),
             days: -1,
             found: None,
@@ -2808,6 +2840,8 @@ impl Loop {
             self.open_box(Arc::clone(next), Told::Found(i, k + 1));
             return Ok(());
         }
+        // Its flag raised after its first boxes (E24 M4 T2d1: a mine's, a Lighthouse's).
+        self.raise(found.flag);
         // Its question after its first boxes (E24 M4 T2b2).
         if self.ask(t, i) {
             return Ok(());
@@ -2826,12 +2860,15 @@ impl Loop {
     }
 
     /// Find `i`'s first visit's end after its gain (and since E24 M4 T2c its level-ups): an
-    /// event's hero's slot drawn and the scenario's test (its warning a box of its own), else the
-    /// idle step.
+    /// event's hero's slot drawn and the scenario's test (its warning a box of its own), else
+    /// (E24 M4 T2d1) the minimap drawn (`visit_and_update` 0x4AAAA0 after the visit: a flag
+    /// raised shows there, `flag-mine`'s at 1060); then the idle step.
     fn found_end(&mut self, t: u32, i: usize) -> Result<(), Unplayable> {
         let event = self.finds.get(i).is_some_and(|f| f.event);
         if event {
             self.draw_slot();
+        } else {
+            self.draw_minimap();
         }
         if event && let Some(warning) = self.town_test()? {
             self.open_box(warning, Told::Plain);
@@ -2980,7 +3017,11 @@ impl Loop {
                 self.open_box(Arc::clone(first), Told::Found(i, 0));
                 true
             }
-            None => self.ask(t, i),
+            None => {
+                // Its flag raised before its question (E24 M4 T2d1: a dwelling's).
+                self.raise(found.flag);
+                self.ask(t, i)
+            }
         }
     }
 
@@ -3094,10 +3135,30 @@ impl Loop {
         if self.finds.get(i).is_some_and(|f| f.blocks.is_some()) {
             self.finish(t, true);
         } else {
+            // The minimap drawn after the visit (`visit_and_update` 0x4AAAA0; E24 M4 T2d1: a
+            // dwelling's flag raised before its hire, `flag-dwelling`'s at 1660).
+            self.draw_minimap();
             self.column = None;
             self.moved();
         }
         self.idle_message(t);
+    }
+
+    /// The flag `flag` raised (E24 M4 T2d1, design §5.6): the object's owner the colour in memory
+    /// ([`Loop::owners`]), nothing drawn: the minimap shows it at the visit's end, the view at its
+    /// next draw. A flag already raised changes nothing.
+    fn raise(&mut self, flag: Option<(usize, u8)>) {
+        let Some((object, colour)) = flag else {
+            return;
+        };
+        if self.owners.contains(&(object, colour)) {
+            return;
+        }
+        let owners = Arc::make_mut(&mut self.owners);
+        match owners.iter_mut().find(|(o, _)| *o == object) {
+            Some(owner) => owner.1 = colour,
+            None => owners.push((object, colour)),
+        }
     }
 
     /// Whether the selected hero stands on an event not told yet (E24 M4 T2a2 part B).
@@ -4265,8 +4326,8 @@ impl Loop {
         }
     }
 
-    /// The minimap drawn (`minimap_draw` 0x412C40) and shown: the view's corner and the selected
-    /// hero's tile now; in a computer player's turn nothing (E24 M4 T1b2, design §5.2: the draw
+    /// The minimap drawn (`minimap_draw` 0x412C40) and shown: the view's corner, the selected
+    /// hero's tile and (E24 M4 T2d1) the objects' owners now; in a computer player's turn nothing (E24 M4 T1b2, design §5.2: the draw
     /// returns at once, the shield standing).
     fn draw_minimap(&mut self) {
         if self.ai.is_some() {
@@ -4276,6 +4337,7 @@ impl Loop {
             view: self.view,
             hero: self.hero.map(|h| h.at),
             index: self.index,
+            owners: Arc::clone(&self.owners),
         };
     }
 
@@ -4292,7 +4354,7 @@ impl Loop {
             hero: self.hero,
             lifted: self.lifted.then_some([self.walk.group, self.walk.frame]),
             path: self.arrows(),
-            minimap: self.drawn.minimap,
+            minimap: self.drawn.minimap.clone(),
             kingdom: Arc::clone(&self.drawn.kingdom),
             hint: self.drawn.hint.clone(),
             selected: self.index,
@@ -4308,6 +4370,7 @@ impl Loop {
             dissolve: None,
             revealed: self.drawn.revealed,
             attacking: self.drawn.attacking,
+            owners: Arc::clone(&self.owners),
         };
         self.choose(t, false);
     }

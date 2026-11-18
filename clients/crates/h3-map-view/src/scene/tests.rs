@@ -829,6 +829,23 @@ fn an_owned_objects_flag_pixels_take_its_owners_entry() {
 }
 
 #[test]
+fn a_minimap_built_again_takes_the_new_owners_and_keeps_the_views_flags() {
+    // E24 M4 T2d1: Blue's mine made Red's after the index was built; its minimap built again
+    // shows it as a fresh index's does, the view's flag stays Blue's (its next draw's index).
+    let (art, mut live) = art_with_objects(vec![owned("mine.def", 53, 5, 5, Some(1))]);
+    let mine = art.objects.len() - 1;
+    let (t, l, shapes) = (tables(), layout(), shapes_of(&art));
+    let mut index = TileIndex::build(&art, &live, &t, &l, &shapes, 0, Bugs::Fixed).unwrap();
+    live.objects[mine].owner = Some(0);
+    let fresh = TileIndex::build(&art, &live, &t, &l, &shapes, 0, Bugs::Fixed).unwrap();
+    assert_ne!(index.minimap, fresh.minimap);
+    index.minimap_again(&art, &live, &t, &l, Bugs::Fixed);
+    assert_eq!(index.minimap, fresh.minimap);
+    let s = scene_in(&index, &art, &live, &t, &l, &shapes, at(0, 0), Bugs::Fixed).unwrap();
+    assert_eq!(flags(&s, Pass::Body, "mine.def"), [Some(65)]);
+}
+
+#[test]
 fn an_object_without_an_entrance_on_the_map_takes_tile_zeros_owner_with_the_bugs() {
     // Green's mine anchored two columns past the right edge, its entrance (one left of the
     // anchor) off the map, its body's third column on it (x 35); Purple's mine at (1, 0), whose
