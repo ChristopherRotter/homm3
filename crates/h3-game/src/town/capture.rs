@@ -9,6 +9,7 @@ use h3_adventure::AdventureState;
 use h3_contracts::{PlayerId, TownId};
 use h3_towns::{TownRuleset, Towns};
 
+use super::leave::{self, Leave};
 use super::view::Told;
 use super::{adventure_reveal, portal};
 use crate::command::{AdventureSink, Sink};
@@ -67,12 +68,12 @@ pub(crate) fn capture<S: Sink>(
     // TownCount`), so the capture's viewers (none for a town the map lacks) are not needed.
     let (adventure, _) = state.adventure_with_heroes();
     let events = &mut AdventureSink(&mut *sink);
-    // `TWN-QUIRK-11` (T-5): a garrison hero without a stack goes back to the pool (TWN-SET-005).
+    // `TWN-QUIRK-11` (T-5): a garrison hero without a stack leaves the game (TWN-SET-005; since
+    // E09 T38b1 the leave's, TWN-TAV-006: no return).
     let released = adventure.release_town_hero(town, events);
     let _ = adventure.capture_town(rules.core(), town, player, reveal, events);
-    if let Some(details) = released.and_then(|hero| state.hero(hero)) {
-        let hero_type = details.hero_type;
-        state.free_hero_types(&[hero_type]);
+    if let Some(released) = released {
+        leave::leave(state, rules, &released, Leave::Gone);
     }
     // rule: TWN-BLD-004
     let human = |p: PlayerId| state.human(p) == Some(true);

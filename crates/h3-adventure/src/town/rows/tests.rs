@@ -801,7 +801,11 @@ fn a_released_garrison_hero_leaves_the_game() {
     assert_eq!(state.release_town_hero(TownId::new(3), &mut events), None);
     assert_eq!(events, []);
     row(&rules, &mut state, RED, (TOWN, TownHeroMove::Enter)).unwrap();
-    assert_eq!(state.release_town_hero(TOWN, &mut events), Some(VISITOR));
+    let released = state.release_town_hero(TOWN, &mut events);
+    assert_eq!(
+        released.map(|on| (on.id, on.pos)),
+        Some((VISITOR, ENTRANCE))
+    );
     assert!(state.town_heroes().is_empty());
     assert!(state.hero(VISITOR).is_none());
     assert_eq!(

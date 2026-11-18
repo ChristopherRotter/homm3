@@ -443,10 +443,11 @@ impl AdventureState {
     /// hero back to the pool with its artifacts, no battle, no experience, nothing taken;
     /// [`Self::town_visit`]), and a garrison hero its battle took off ([`Self::end_town_hero_battle`]):
     /// its record and marks gone, told to its owner alone ([`AdventureEventKind::HeroRemoved`] at
-    /// the entrance: no other viewer sees it). Returns the hero, whose type the game frees; none
+    /// the entrance: no other viewer sees it). Returns the hero as it stood in its garrison (since
+    /// E09 T38b1 the game's leave reads its formation, tactics flag and points, TWN-TAV-006); none
     /// without one.
     // rule: TWN-SIE-001, TWN-CAP-003
-    pub fn release_town_hero<S: Sink>(&mut self, town: TownId, sink: &mut S) -> Option<HeroId> {
+    pub fn release_town_hero<S: Sink>(&mut self, town: TownId, sink: &mut S) -> Option<HeroOnMap> {
         let entrance = self.town_entrance(town).ok()?.1;
         let owner = self.town_hero(town)?.owner;
         let (_, block) = self.rows_mut();
@@ -459,7 +460,7 @@ impl AdventureState {
             },
             seen_by: Viewers::NONE.with(owner),
         });
-        Some(hero.id)
+        Some(hero)
     }
 
     /// The end of a battle for the garrison hero `hero`, off the map, which defended its town's
@@ -469,26 +470,26 @@ impl AdventureState {
     /// record (none left when only creatures the battle made survived, BAT-END-001: the hero
     /// stays with an empty army, the original's, so that its town falls to the next visitor
     /// without a battle, `TWN-QUIRK-11`); without, it leaves the game
-    /// ([`Self::release_town_hero`]). [`Self::end_battle`] calls it for a hero not on the map;
-    /// nothing for a hero that is no garrison hero.
+    /// ([`Self::release_town_hero`]), returned as it stood (E09 T38b1). [`Self::end_battle`] calls
+    /// it for a hero not on the map; nothing for a hero that is no garrison hero.
     // rule: TWN-SIE-001, TWN-CAP-003
     pub(crate) fn end_town_hero_battle<S: Sink>(
         &mut self,
         hero: HeroId,
         army: Option<&[ArmyStack]>,
         sink: &mut S,
-    ) {
+    ) -> Option<HeroOnMap> {
         match army {
             Some(army) => {
                 let at = self.town_heroes().iter().position(|(_, on)| on.id == hero);
                 if let Some(held) = at.and_then(|at| self.town_hero_at_mut(at)) {
                     held.army = army.to_vec();
                 }
+                None
             }
             None => {
-                if let Some((town, _)) = self.garrisoned(hero) {
-                    let _ = self.release_town_hero(town, sink);
-                }
+                let (town, _) = self.garrisoned(hero)?;
+                self.release_town_hero(town, sink)
             }
         }
     }

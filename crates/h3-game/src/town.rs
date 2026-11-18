@@ -16,7 +16,8 @@
 //! player's turn start ([`events`]); since E09 T26a1 it grows the towns' counts each week and
 //! month ([`growth`]); since E09 T26b it grows the neutral towns' garrisons each week
 //! ([`garrison`]) and draws the Portals of Summoning ([`portal`]); since E09 T27 it opens a town's
-//! hire dialog and makes its purchases ([`recruit`]).
+//! hire dialog and makes its purchases ([`recruit`]); since E09 T38b1 a hero that leaves the game
+//! goes back to the hero pool or its owner's tavern ([`leave`]).
 
 use alloc::vec::Vec;
 
@@ -37,6 +38,7 @@ pub(crate) mod growth;
 pub(crate) mod heroes;
 pub(crate) mod hire;
 pub(crate) mod income;
+pub(crate) mod leave;
 pub(crate) mod offer;
 pub(crate) mod pool;
 pub(crate) mod portal;

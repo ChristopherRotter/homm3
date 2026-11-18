@@ -11,7 +11,9 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_adventure::{AdventureEventKind, HeroOnMap, Pos, Viewers};
-use h3_content::{ArtifactTypeId, HeroTypeId, ResourceId, Ruleset, SpellId, StartingStackDef};
+use h3_content::{
+    ArtifactTypeId, HeroTypeId, ProfileDef, ResourceId, Ruleset, SpellId, StartingStackDef,
+};
 use h3_contracts::{ArmyStack, PlayerId, TownId};
 use h3_heroes::{ArtifactInstance, max_mana};
 use h3_towns::{
@@ -38,6 +40,14 @@ const TAVERN_SLOT: u8 = 5;
 /// and the cleric 2 (as the tavern tests'), the part edited by `edit`; every hero type has a
 /// starting army (a type without one 2 to 3 imps), so that a replacement's is one creature.
 fn rules_with(edit: impl FnOnce(&mut TownPack)) -> GameRuleset {
+    rules_in(("t:faithful", false), edit)
+}
+
+/// [`rules_with`] under `profile`, the test pack's `t:faithful` (no quirk flag on) or (E09 T38b1)
+/// `t:leave` (`TWN-QUIRK-12`'s flag on: a leave's points over the cleared army); with `slow`
+/// every hero type's first starting stack 2 to 3 gogs (speed 2: one gog's land points are below
+/// the test part's most).
+fn rules_in((profile, slow): (&str, bool), edit: impl FnOnce(&mut TownPack)) -> GameRuleset {
     let mut towns = town_pack(false);
     towns.towns[0].buildings.push(BuildingDef {
         key: "tavern".to_string(),
@@ -56,13 +66,25 @@ fn rules_with(edit: impl FnOnce(&mut TownPack)) -> GameRuleset {
     towns.towns[0].tavern = vec![(key("t:knight"), 3), (key("t:cleric"), 2)];
     edit(&mut towns);
     let mut core = towns_core_pack(false);
-    for ty in core.heroes.iter_mut().filter(|ty| ty.army.is_empty()) {
+    for ty in core
+        .heroes
+        .iter_mut()
+        .filter(|ty| slow || ty.army.is_empty())
+    {
+        let creature = key(if slow { "t:gog" } else { "t:imp" });
         ty.army = vec![StartingStackDef {
-            creature: key("t:imp"),
+            creature,
             count: [2, 3],
         }];
     }
-    let core = Ruleset::compile(&[core], "t:faithful").unwrap();
+    core.profiles.push(ProfileDef {
+        key: key("t:leave"),
+        quirks: vec![(
+            "quirk.town.leave_points_over_cleared_army".to_string(),
+            true,
+        )],
+    });
+    let core = Ruleset::compile(&[core], profile).unwrap();
     rules_of(core, &towns, false, 4)
 }
 
@@ -205,7 +227,9 @@ fn the_slot_is_refilled_from_the_hirers_stream_with_one_creature_of_the_first_st
     let id = pool.record(new).unwrap();
     assert_eq!(usize::from(id.raw()), records);
     assert_ne!(game.stream(RED), stream);
-    // One creature of its type's first starting stack; its spell points full; no points yet.
+    // One creature of its type's first starting stack; its spell points full; since E09 T38b1 a
+    // new record's points the land maximum of that one creature (design note §67 point 5), stale
+    // for red's next turn start.
     let first = rules.core().hero_type(new).unwrap().army[0].creature;
     let away = pool.away(new).unwrap();
     let one = ArmyStack {
@@ -214,9 +238,15 @@ fn the_slot_is_refilled_from_the_hirers_stream_with_one_creature_of_the_first_st
         count: 1,
     };
     assert_eq!(away.army, [one]);
-    assert_eq!((away.movement, away.stale, away.full), (0, true, true));
     let details = game.hero(id).unwrap();
     assert_eq!(details.mana, max_mana(details, rules.core()));
+    let (core, part) = (rules.core(), rules.adventure());
+    let points = h3_adventure::day_points(core, part, Some(details), &[one], 0);
+    assert!(points > 0);
+    assert_eq!(
+        (away.movement, away.max_movement, away.stale, away.full),
+        (points, points, true, true)
+    );
     // The hired hero holds the entrance now: the other slot waits for it to leave.
     game.set_resource(RED, GOLD, 5000);
     assert_eq!(
@@ -503,3 +533,5 @@ fn the_legal_commands_list_each_hire_that_passes_after_the_towns_recruitments() 
     pool.tavern_mut(RED).unwrap().slots[0] = None;
     assert_eq!(listed_hires(&rules, &one, RED), vec![hire(T0, 1)]);
 }
+
+mod leave;

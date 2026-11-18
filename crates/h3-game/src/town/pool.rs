@@ -184,6 +184,13 @@ impl HeroPool {
             .is_some_and(|entry| entry.status == HeroStatus::Free)
     }
 
+    /// Whether `id` is a tavern hero (a player's slot holds it; E09 T38b1).
+    pub(crate) fn is_offered(&self, id: HeroTypeId) -> bool {
+        self.types
+            .get(id.index())
+            .is_some_and(|entry| entry.status == HeroStatus::Offered)
+    }
+
     /// `id`'s colour mask; `None` for a type the ruleset does not have.
     #[cfg(test)]
     pub(crate) fn mask(&self, id: HeroTypeId) -> Option<u8> {
@@ -197,9 +204,9 @@ impl HeroPool {
         }
     }
 
-    /// `id` goes back free (TWN-SET-005: a hero that leaves the map, the original's 0x4D9EC0;
-    /// an unused pick after the main towns' heroes, [`super::main_town_heroes`]; a tavern hero the
-    /// week's release lets go, TWN-TAV-002). Its record and away record stay.
+    /// `id` goes back free (TWN-SET-005: an unused pick after the main towns' heroes,
+    /// [`super::main_town_heroes`]; since E09 T38b1 a hero that leaves the map is the leave's,
+    /// [`Self::leave`]). Its record and away record stay.
     pub(crate) fn free(&mut self, id: HeroTypeId) {
         self.set(id, HeroStatus::Free);
     }
@@ -235,6 +242,41 @@ impl HeroPool {
         entry.mask |= 1_u8.checked_shl(u32::from(colour)).unwrap_or(0);
         let away = self.records[hero_type.index()].away.take();
         away.unwrap_or(Away::new(Vec::new()))
+    }
+
+    /// `id`, a hero that left the game without returning (TWN-TAV-006; E09 T38b1, design note
+    /// §67), goes back free with `away` as its away record (its record stays).
+    // rule: TWN-TAV-006
+    pub(super) fn leave(&mut self, id: HeroTypeId, away: Away) {
+        self.set(id, HeroStatus::Free);
+        if let Some(record) = self.records.get_mut(id.index()) {
+            record.away = Some(away);
+        }
+    }
+
+    /// `id`, a hero that left the game after its side's retreat or surrender (TWN-TAV-006; E09
+    /// T38b1, design note §67), returns into `player`'s tavern in `slot` (0 or 1): the slot's hero,
+    /// if any, goes free (its record and away record kept); the type offered and held by the slot,
+    /// its returning mark set (TD-18), `away` its away record. Nothing for a player not of the game.
+    // rule: TWN-TAV-006
+    pub(super) fn return_to(
+        &mut self,
+        (player, slot): (PlayerId, usize),
+        id: HeroTypeId,
+        away: Away,
+    ) {
+        let Some(tavern) = self.players.get_mut(player.index()) else {
+            return;
+        };
+        let freed = tavern.slots[slot].replace(id);
+        tavern.returning[slot] = true;
+        if let Some(freed) = freed {
+            self.set(freed, HeroStatus::Free);
+        }
+        self.set(id, HeroStatus::Offered);
+        if let Some(record) = self.records.get_mut(id.index()) {
+            record.away = Some(away);
+        }
     }
 
     /// The build's records (E09 T37a, design note §61): each hero's type in hero order names its

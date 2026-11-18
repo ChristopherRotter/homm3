@@ -2278,17 +2278,21 @@ impl AdventureState {
     /// ([`Self::remove_boat`], ADV-SEA-006), and a winner in a boat stays in it. Since E09 T28b2 a
     /// town's garrison hero that defended its siege ends it in its town
     /// ([`Self::end_town_hero_battle`]: an empty army kept, `TWN-QUIRK-11`). Infallible: a hero
-    /// neither on the map nor in a garrison is skipped.
+    /// neither on the map nor in a garrison is skipped. Returns the heroes that left, in the order
+    /// given, each as it stood before the battle's end (its army the one it fought with, its
+    /// formation, tactics flag and points; its marks gone, its boat freed): since E09 T38b1 the
+    /// game's leave (the town lane's, `cross-lane`; TWN-TAV-006) makes its away record of them.
     // rule: GAM-BAT-002, GAM-BAT-003, ADV-SEA-006, TWN-SIE-001
     pub fn end_battle<S: Sink>(
         &mut self,
         core: &Ruleset,
         heroes: &[(HeroId, Option<&[ArmyStack]>)],
         sink: &mut S,
-    ) {
+    ) -> Vec<HeroOnMap> {
+        let mut left = Vec::new();
         for &(id, army) in heroes {
             let Ok(index) = self.heroes.binary_search_by_key(&id, |h| h.id) else {
-                self.end_town_hero_battle(id, army, sink);
+                left.extend(self.end_town_hero_battle(id, army, sink));
                 continue;
             };
             match army {
@@ -2307,9 +2311,11 @@ impl AdventureState {
                     if let Some(boat) = hero.boat {
                         self.remove_boat((id, boat, hero.pos), seen_by, sink);
                     }
+                    left.push(hero);
                 }
             }
         }
+        left
     }
 
     /// Adds creatures a battle raised to a hero's army (GAM-BAT-006, E08 T19a2b; a hero's

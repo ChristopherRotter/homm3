@@ -426,21 +426,41 @@ fn a_sieges_defending_hero_keeps_at_most_the_spell_points_it_had() {
             BattleSide::Defender => [&[], &[survivor]],
         };
         let outcome = ended(BattleResult::Victory(winner), survivors, [red + 9, left]);
-        after.end_battle(&rules, sides, town, &outcome, &mut Vec::new());
-        (
-            after.hero(HERO).unwrap().mana,
-            after.hero(BLUE_HERO).unwrap().mana,
-        )
+        let mut events = Vec::new();
+        after.end_battle(&rules, sides, town, &outcome, &mut events);
+        (after, events)
     };
-    // The town's 150 left over: back to those it had; fewer left: those; whoever won (the beaten
-    // visitor's details keep them). The attacker's are its own: its 9 more.
-    for winner in BattleSide::BOTH {
-        assert_eq!(end(Some(T1), winner, before + 150), (red + 9, before));
-        assert_eq!(end(Some(T1), winner, before - 1), (red + 9, before - 1));
+    let core = rules.core();
+    let mana = |after: &GameState, hero| after.hero(hero).unwrap().mana;
+    let full = |after: &GameState, hero| h3_heroes::max_mana(after.hero(hero).unwrap(), core);
+    let told = |events: &[GameEvent], id| {
+        events.iter().find_map(|e| match *e {
+            GameEvent::HeroChanged {
+                hero,
+                change: HeroChange::SetSpellPoints(points),
+                ..
+            } if hero == id => Some(points),
+            _ => None,
+        })
+    };
+    // The town's 150 left over: back to those it had; fewer left: those; whoever won. The
+    // attacker's are its own: its 9 more. Since E09 T38b1 a beaten hero leaves the game, its
+    // spell points full after (TWN-TAV-006): a beaten defender's cap shows as the change told.
+    for (left, kept) in [(before + 150, before), (before - 1, before - 1)] {
+        let (won, _) = end(Some(T1), BattleSide::Defender, left);
+        assert_eq!(mana(&won, BLUE_HERO), kept);
+        assert_eq!(mana(&won, HERO), full(&won, HERO));
+        let (lost, events) = end(Some(T1), BattleSide::Attacker, left);
+        assert_eq!(mana(&lost, HERO), red + 9);
+        assert_eq!(told(&events, BLUE_HERO), (kept != before).then_some(kept));
+        assert_eq!(mana(&lost, BLUE_HERO), full(&lost, BLUE_HERO));
     }
     // Outside a siege the spell points left stand.
     let defender = BattleSide::Defender;
-    assert_eq!(end(None, defender, before + 150).1, before + 150);
+    assert_eq!(
+        mana(&end(None, defender, before + 150).0, BLUE_HERO),
+        before + 150
+    );
     assert_eq!((mana_after(3, 5), mana_after(9, 5)), (3, 5));
 }
 
