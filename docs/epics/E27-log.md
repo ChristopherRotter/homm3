@@ -1183,3 +1183,25 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
 - **Compared:** `adv-single-hero` 26 of 28, `adv-single-maps` 11 of 13 exact (only a hero's own
   popup differs: T3b2), `adv-begin`'s panel exact; every other group as recorded; `drawn.txt`
   recorded for `advanced`.
+
+## M3 T3b2 — a hero's own popup (2026-11-18)
+
+- **Staged** from the PC at once: the 64 files and the seven manuals and help files, each checked
+  by SHA-256 against the PC's (one digest of the sorted hashes each side: `25d4cb3e…`, the
+  manuals `41b14d5a…`). The setup's baseline stopped at `check.sh`'s coverage by a watcher (fmt,
+  clippy, doc tests, deny passed).
+- **Wine** would not start (wineboot's segfault in i386 libc, then `free(): invalid pointer`): the
+  sandbox sets `TMPDIR=/tmp`, which Wine 9's 32-bit loader does not survive (found by halving the
+  environment). `setup.sh` unsets it, `h3drive.env()` drops it (the harness, common; a trap in
+  `TRAPS.md`). `adv-single-hero` and `adv-single-maps` then played once, every shot as kept.
+- **Read** (design §25): `scenario_hero_popup` whole and its call: the dialog 300 × 256 rounded
+  to 320 × 256, GENRLTXT 78, the shown small portrait, "%s - %s" of the row's name and the type's
+  class, GENRLTXT 79, `un44.def` at the type's frame (156 frames), the specialty's short name
+  (HeroSpec.txt's first column, recorded). No oddity.
+- **Built:** `advanced::own_hero_popup`, `HeroPopupLook` (`[scenario.advanced.hero_popup]`),
+  `AdvancedTexts`' `hero_popup`, `hero_line` (`HERO_NAME`, `HERO_CLASS`), `hero_classes`,
+  `specialties`; the keys `shell.advanced.hero-popup.title`, `.specialty`, `.name` (`EXE:0x66033C`),
+  the family `hero-specialty` (HEROSPEC, by hero), the battle client's entries of `hero-class`
+  (18); `menus` loads the game's rules once (the maps and the classes).
+- **Compared:** `adv-single-hero` 28 of 28, `adv-single-maps` 13 of 13 exact (the four hero
+  popups at the first build); every other group as recorded; `drawn.txt` recorded for the two.
