@@ -4,8 +4,9 @@
 //! checks the treasury, then pays and builds through [`crate::Towns::build`]; since E09 T27 a
 //! recruitment opens the hire dialog of what a building sells ([`crate::recruit_source`]); since
 //! E09 T28a a hero moves between the town's two bars ([`TownHeroChange`], the rules the adventure
-//! context's, whose records the garrison hero and the visitor are, ADR-0028 point 2). A refused
-//! command changes nothing.
+//! context's, whose records the garrison hero and the visitor are, ADR-0028 point 2); since E09
+//! T38a1 a tavern hero is hired at the town's Tavern ([`crate::check_hire`], TWN-TAV-003). A
+//! refused command changes nothing.
 
 use core::fmt;
 
@@ -17,7 +18,7 @@ use crate::building::BuildingId;
 /// and increment 5's services add their variants; exhaustive, as the game's other commands, so
 /// that the game and the wire match every variant (SRV-Q25; E09 T18b1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-// rule: TWN-BLD-001, TWN-REC-001, TWN-ROW-002, TWN-ROW-003, TWN-ROW-004
+// rule: TWN-BLD-001, TWN-REC-001, TWN-ROW-002, TWN-ROW-003, TWN-ROW-004, TWN-TAV-003
 pub enum TownCommand {
     /// Builds `building` in `town`, the player's, as its hall offers it ([`crate::buildable`]),
     /// for the part's price (TWN-BLD-001): no hero, no visit, no field trusted but the two ids.
@@ -45,6 +46,16 @@ pub enum TownCommand {
         town: TownId,
         /// The move.
         change: TownHeroChange,
+    },
+    /// Hires the player's tavern hero in `slot` at `town`'s Tavern, the town the player's, for the
+    /// part's price (TWN-TAV-003; E09 T38a1, design §64: the original's tavern dialog from the
+    /// town screen, `town_tavern_hire` 0x5C12E0): the hero onto the town's entrance as its visitor,
+    /// the slot refilled (TWN-TAV-004). No field trusted but the town's id and the slot.
+    Hire {
+        /// The town.
+        town: TownId,
+        /// The player's tavern slot: 0 or 1.
+        slot: u8,
     },
 }
 
@@ -118,6 +129,13 @@ pub enum TownCommandError {
     TooManyHeroes,
     /// The garrison hero's army holds no stack (TWN-ROW-003: GENRLTXT 20).
     EmptyArmy,
+    /// The town has no standing Tavern (TWN-TAV-003: the Tavern, or Castle's Brotherhood of the
+    /// Sword over it).
+    NoTavern,
+    /// The slot is not one of the player's two tavern slots (TWN-TAV-003).
+    UnknownSlot,
+    /// The slot holds no hero (TWN-TAV-003: no type was free at its last fill).
+    EmptySlot,
 }
 
 impl fmt::Display for TownCommandError {
@@ -146,6 +164,9 @@ impl fmt::Display for TownCommandError {
             Self::EntranceHeld => f.write_str("a hero stands on the town's entrance"),
             Self::TooManyHeroes => f.write_str("the player has the most heroes on the map"),
             Self::EmptyArmy => f.write_str("the garrison hero's army is empty"),
+            Self::NoTavern => f.write_str("the town has no standing Tavern"),
+            Self::UnknownSlot => f.write_str("no such tavern slot"),
+            Self::EmptySlot => f.write_str("the tavern slot holds no hero"),
         }
     }
 }
@@ -185,6 +206,9 @@ mod tests {
             TownCommandError::EntranceHeld,
             TownCommandError::TooManyHeroes,
             TownCommandError::EmptyArmy,
+            TownCommandError::NoTavern,
+            TownCommandError::UnknownSlot,
+            TownCommandError::EmptySlot,
         ];
         for error in errors {
             assert!(!error.to_string().is_empty(), "{error:?}");
@@ -215,5 +239,11 @@ mod tests {
             building,
         };
         assert_ne!(recruit, command);
+        // covers: TWN-TAV-003
+        let hire = TownCommand::Hire {
+            town: TownId::new(2),
+            slot: 1,
+        };
+        assert_ne!(hire, command);
     }
 }

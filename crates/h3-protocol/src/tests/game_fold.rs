@@ -2288,3 +2288,177 @@ fn a_view_of_the_largest_sides_folds_its_far_corner_without_a_panic() {
 fn views_of(v: &GameObservation) -> Vec<Tile> {
     (0..6).map(|i| *v.adventure.tile(i).unwrap()).collect()
 }
+
+/// A hire (E09 T38a1, TWN-TAV-003) folds into every viewer's view as `observe` shows it after:
+/// the hero on the map for the players that see its tile, its owner's view of it whole (the slot's
+/// view with the parts it lacked, its points), the price and the slot's refill. On the golden
+/// replays of the towns and builds maps, the first state in each where the actor hires at a town of
+/// its own (none of them hires: the hire is not listed before E09 T38a2).
+#[test]
+fn a_hire_folds_as_observe_shows_it() {
+    let names = ["towns-s173-d21", "builds-s262-d14", "towns-visitor-s1"];
+    let mut hired = 0;
+    for name in names {
+        let (rules, setup, replay) = one(name);
+        let mut state = GameState::new(&rules, &setup, replay.seed).unwrap();
+        for (actor, command) in &replay.commands {
+            let h3_game::Actor::Player(player) = *actor else {
+                apply(&mut state, &rules, *actor, command.clone(), &mut Vec::new()).unwrap();
+                continue;
+            };
+            let towns = u16::try_from(state.towns().len()).unwrap();
+            let hire = (0..towns).find_map(|town| {
+                let mut trial = state.clone();
+                let mut told = Vec::new();
+                let command = h3_game::GameCommand::Town(h3_game::TownCommand::Hire {
+                    town: h3_contracts::TownId::new(town),
+                    slot: 0,
+                });
+                let viewers: Vec<Viewer> = (0..=u8::MAX)
+                    .take(state.players())
+                    .map(|p| Viewer::Player(PlayerId::new(p)))
+                    .collect();
+                let before: Vec<GameObservation> = viewers
+                    .iter()
+                    .map(|&v| observe(&state, &rules, v))
+                    .collect();
+                apply(&mut trial, &rules, *actor, command, &mut told).ok()?;
+                Some((trial, told, viewers, before))
+            });
+            if let Some((trial, told, viewers, before)) = hire {
+                for (viewer, mut view) in viewers.into_iter().zip(before) {
+                    let wire = events(&told, viewer);
+                    let own = viewer == Viewer::Player(player);
+                    let slot = wire.iter().find_map(|e| match e {
+                        GameEvent::HeroHired { slot, .. } => Some(slot.is_some()),
+                        _ => None,
+                    });
+                    // The owner is told it with its slot; another viewer without.
+                    assert!(!own || slot == Some(true), "{name}: {viewer:?}");
+                    assert!(own || slot != Some(true), "{name}: {viewer:?}");
+                    for event in &wire {
+                        view.fold(event);
+                    }
+                    assert_eq!(view, observe(&trial, &rules, viewer), "{name}: {viewer:?}");
+                }
+                hired += 1;
+                break;
+            }
+            apply(&mut state, &rules, *actor, command.clone(), &mut Vec::new()).unwrap();
+        }
+    }
+    assert!(hired >= 2, "{hired} of the replays met a hire");
+}
+
+/// A hire's fold by hand (E09 T38a1, TWN-TAV-003): the owner's slot view moves into its heroes, a
+/// worn artifact by its position and the backpack's first places in order, its parts completing
+/// the details (the positions to their count, the backpack's rest, the spells, the offered
+/// levels); another viewer adds the hero alone, its slot untold.
+#[test]
+fn a_hire_moves_the_owners_slot_view_into_its_heroes() {
+    let ring = Artifact {
+        artifact: 4,
+        spell: None,
+    };
+    let scroll = Artifact {
+        artifact: 1,
+        spell: Some(9),
+    };
+    let offer = TavernHero {
+        hero: TavernHeroHead {
+            id: 40,
+            hero_type: 7,
+            level: 3,
+            experience: 2000,
+            primary: [1, 2, 3, 4],
+            mana: 30,
+            carried: 3,
+            formation: Formation::Tight,
+            tactics: false,
+        },
+        army: vec![stack(0, 1)],
+        skills: vec![SkillLevel { skill: 5, level: 2 }],
+        artifacts: vec![
+            (ArtifactPlace::Worn { position: 2 }, ring),
+            (ArtifactPlace::Backpack { index: 0 }, scroll),
+        ],
+    };
+    let hired = |slot| GameEvent::HeroHired {
+        player: 0,
+        hero: 40,
+        hero_type: 7,
+        slot,
+        pos: at(1, 1),
+    };
+    let part = |part| GameEvent::HiredPartSeen {
+        player: 0,
+        hero: 40,
+        part,
+    };
+    let mut own = view();
+    own.viewer = 0;
+    own.adventure.viewer = 0;
+    own.tavern[1] = Some(offer.clone());
+    let heroes = own.heroes.len();
+    fold(
+        &mut own,
+        &[
+            hired(Some(1)),
+            part(HiredPart::Details {
+                offered: OfferLevels {
+                    wisdom: 2,
+                    school: 3,
+                },
+                positions: 4,
+            }),
+            part(HiredPart::Carried { artifact: ring }),
+            part(HiredPart::Spell { spell: 12 }),
+        ],
+    );
+    assert_eq!(own.tavern[1], None);
+    assert_eq!(own.heroes.len(), heroes + 1);
+    let info = own.heroes.iter().find(|h| h.id == 40).unwrap();
+    assert_eq!(
+        info.details,
+        Some(HeroDetails {
+            hero_type: 7,
+            level: 3,
+            experience: 2000,
+            offered: OfferLevels {
+                wisdom: 2,
+                school: 3,
+            },
+            primary: [1, 2, 3, 4],
+            skills: vec![SkillLevel { skill: 5, level: 2 }],
+            worn: vec![None, None, Some(ring), None],
+            backpack: vec![scroll, ring],
+            spells: vec![12],
+            mana: 30,
+        })
+    );
+    let seen = own.adventure.heroes.iter().find(|h| h.id == 40).unwrap();
+    let mine = seen.own.as_ref().unwrap();
+    assert_eq!((seen.owner, seen.pos, seen.boat), (0, at(1, 1), None));
+    assert_eq!(
+        (
+            mine.army.clone(),
+            mine.formation,
+            mine.tactics,
+            mine.movement
+        ),
+        (vec![stack(0, 1)], Formation::Tight, false, 0)
+    );
+    // Another viewer: the hero on the map with its type, nothing of its own.
+    let mut other = view();
+    other.viewer = 1;
+    other.adventure.viewer = 1;
+    let slots = other.tavern.clone();
+    fold(&mut other, &[hired(None)]);
+    assert_eq!(other.tavern, slots);
+    let info = other.heroes.iter().find(|h| h.id == 40).unwrap();
+    assert_eq!((info.hero_type, info.details.is_none()), (7, true));
+    let seen = other.adventure.heroes.iter().find(|h| h.id == 40).unwrap();
+    assert!(seen.own.is_none());
+    // In id order among the heroes.
+    assert!(other.heroes.windows(2).all(|w| w[0].id < w[1].id));
+}

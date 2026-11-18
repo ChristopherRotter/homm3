@@ -510,7 +510,7 @@ impl AdventureState {
 
     /// `town`'s object index and entrance, if the map has the town and it is visited from a tile
     /// (every town's is: the setup refuses one without).
-    fn town_entrance(&self, town: TownId) -> Result<(usize, Pos), TownHeroError> {
+    pub(super) fn town_entrance(&self, town: TownId) -> Result<(usize, Pos), TownHeroError> {
         let map = self.map();
         map.town_object(town)
             .zip(map.town_entrance(town))
@@ -550,7 +550,7 @@ fn take(block: &mut Option<Arc<TownHeroes>>, town: TownId) -> HeroOnMap {
 }
 
 /// Puts `hero` onto the map at `entrance`, on land, among `heroes` in id order.
-fn arrive(heroes: &mut Vec<HeroOnMap>, mut hero: HeroOnMap, entrance: Pos) {
+pub(super) fn arrive(heroes: &mut Vec<HeroOnMap>, mut hero: HeroOnMap, entrance: Pos) {
     hero.pos = entrance;
     hero.boat = None;
     let at = heroes.partition_point(|on| on.id < hero.id);

@@ -89,7 +89,20 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Client lane (`CLT-Q<n>`)
 
-(no open questions)
+#### CLT-Q140 — The list's keys move the description too (E27 M3 T2c, a reading and a recording)
+
+The scenario screen's list takes Up, Down, Page Up and Page Down at the key's **press**
+(`scenario_dialog_proc` 0x587D00); a description longer than its box has a scroll bar with its
+arrows' keys, which takes the same keys (and Left and Right) at their **release**
+(`scrollbar_key_step` 0x596230), the items before the screen. So Down onto a long description
+selects it at its first line and its release scrolls it one line on (`scn-long-text`
+`down-released`); Page Down onto it a page on; Down on the last row and Page Down in a list of one
+page scroll it alone. No shipped map has such a description (a map editor's or another map's
+could). Built as the original's (design §22.3). Options: (a) the original's everywhere; (b) the
+client's bar takes no key while the list shows (Left and Right, the bar's own, always), the
+original's behind `--bugs original` for the comparisons; (c) the bar takes no key at all.
+**Recommended (b)**: the keys then move what the screen shows the list for, and still scroll a long
+description with the list hidden. Blocks nothing (T3 goes on).
 
 ### Map client lane (`MCL-Q<n>`)
 

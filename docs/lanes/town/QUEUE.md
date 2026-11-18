@@ -8,20 +8,27 @@ Epic: `docs/epics/E09-towns.md` (increment 4: the Tavern, refined at T30, `TWN-Q
 to 128; its drafts accepted at T33b, `TWN-Q18`; batch TWN-4 scored by T34; the drafts in the ADRs
 by T35a, `TWN-Q19`; its code by T35b, decisions 129 to 131; the town part v7 by T36, decision
 132; the pool in the game by T37a, `TWN-Q20`, decisions 133 to 136; the map's customised types
-by T37b, `TWN-Q21`, decisions 137 to 139); done tasks in `E09-log.md`; increments 1 to 3
+by T37b, `TWN-Q21`, decisions 137 to 139; T38a cut in two, `TWN-Q22`, decisions 140 to 142);
+done tasks in `E09-log.md`; increments 1 to 3
 (closed by T10, T20 and T30) in `E09-archive.md`. The building tasks are the design note's
 `E09-design.md` §79 (round by round, with the order against E08's increment 13); each task's cut
 confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`) and the exit criteria it serves (the epic's list, decision 121).
 
 **E09 T38 — the hire and the leaves** (round 6; `cross-lane`; design §64, §65, §67, §69, §75,
-§76): T38a `TownCommand::Hire` (TWN-TAV-003), the adventure's placement, the replacement
-(TWN-TAV-004), `HeroHired`, the legal commands, `town hire`, the env's `HIRE` (v12), the protocol;
+§76): T38a cut in two (decision 140, `TWN-Q22`): T38a1 the hire's rule, the replacement,
+`HeroHired` and its parts, the protocol v71 and `town hire` (replay format v17) **done**;
+**T38a2 next**: the hire listed (`TWN-STUB-19`: `legal_commands` a `Hire` per slot that passes
+after each own town's recruitments, design §76; the env's `HIRE + s` v12 by the town's entrance,
+the AI lane's `h3-sim`, its mask property; `h3-map`'s plans probing it and folding `HeroHired`
+and `HiredPartSeen` in `tests/view.rs`' told views; `h3-sim`'s town-map seeds and the
+`*-towns-36` workloads, the town lane's `TRAPS.md`: a new town command in the legal set changes
+every random game with an owned town; the bench against `master`);
 T38b a hero that leaves the game (TWN-TAV-006; GAM-BAT-003, the capture's leave;
 `TWN-QUIRK-12`), the returns (TD-18, TD-19), the dismissal (GAM-MAN-003, TD-22, `manage dismiss`;
 no env entry), the protocol; in merge order with E08's T124b. T37b's note: a customised
 type's record exists from the build (no away record until its first fill), so a hire or a
-leave meets a record made before any draw. **Status:** next.
+leave meets a record made before any draw. **Status:** T38a2 next.
 
 **E09 T39 — the map's objects and the information** (round 7; `cross-lane`, after E08's T123;
 design §66, §73 to §76): T39a the kinds `Tavern` and `DenOfThieves` (the adventure part, classes

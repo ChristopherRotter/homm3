@@ -499,3 +499,39 @@ fn the_caret_stops_with_the_line_at_the_boxs_edges() {
     draw_line(&mut screen, &f, &colours(), b"x", line, area, (13, Some(5)));
     assert_eq!(rows(&screen), ["...", "A.."]);
 }
+
+/// [`split_lines`] of `text` at `width` with [`font`]'s glyphs and braces one wide, as strings.
+fn split(text: &str, width: i64) -> Vec<String> {
+    let mut f = font();
+    f.glyphs[usize::from(b'{')] = glyph(0, 1, 0, &[INK]);
+    f.glyphs[usize::from(b'}')] = glyph(0, 1, 0, &[INK]);
+    split_lines(&f, text.as_bytes(), width)
+        .into_iter()
+        .map(|l| String::from_utf8(l).unwrap())
+        .collect()
+}
+
+#[test]
+fn a_text_splits_by_words_as_the_executable() {
+    // Words join with their spaces while they fit; the spaces at a break dropped.
+    assert_eq!(split("xx xx xx", 5), ["xx xx", "xx"]);
+    assert_eq!(split("xx  xx xx", 5), ["xx", "xx xx"]);
+    // A newline ends the line, the spaces before it dropped; an empty line; the spaces after it
+    // and at the text's end kept; a last empty line not listed.
+    assert_eq!(split("xx  \n\n  x  ", 9), ["xx", "", "  x  "]);
+    assert_eq!(split("x\n", 9), ["x"]);
+    assert!(split("", 9).is_empty());
+    assert_eq!(split("   ", 9), ["   "]);
+    // The braces count (the drawer's measures do not).
+    assert_eq!(split("{xx} x", 5), ["{xx}", "x"]);
+    // A word wider than the line cut where each line is full, its rest starting the next.
+    assert_eq!(
+        split("x xxxxxxxxxxx x", 4),
+        ["x", "xxxx", "xxxx", "xxx", "x"]
+    );
+    assert_eq!(split("xxxwxx", 4), ["xxx", "wx", "x"]);
+    // A text's NUL ends it.
+    assert_eq!(split("xx\0xx", 9), ["xx"]);
+    // A glyph wider than the line (the executable's hang): a line of its own.
+    assert_eq!(split("xwx", 2), ["x", "w", "x"]);
+}

@@ -22,6 +22,15 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   T18b1): `h3-map`'s property tests (`play.rs`' `as_move`, `view.rs`' told views), `h3-sim`'s
   action entries, `h3-files`' replay words; the scoped verify builds `h3-map`'s tests only in its
   clippy and coverage steps. Run `cargo check --workspace --all-targets` right after adding one.
+- **A new command on the wire takes its replay word in the same pull request** (E09 T38a1):
+  `h3-server` journals every command the wire accepts in the replay text
+  (`h3_files::adventure::format_command`, `journal/whole.rs`), so the word (`h3-files`) and the
+  adventure replay format's bump (`h3-sim`'s `REPLAY_FORMAT_VERSION`, the goldens' `format` line,
+  `h3-cli`'s and `h3-sim`'s literals) go with the command's variant, whether or not it is listed.
+- **The town scope's coverage does not gate `h3-protocol`** (E09 T38a1's CI: two regions of a
+  new fold, an `if let`'s untaken path and an `if` that never failed): after mapping or folding a
+  new wire type, run `target/debug/xtask verify-step coverage --scope server` (after `source
+  scripts/llvm-tools.sh && llvm_tools_env`; about 10 minutes) before the pull request.
 - **A new town command in the legal set changes every random game with an owned town** (E09
   T19c1, T27): the env's agent draws it, so `h3-sim`'s town-map tests (`tests/towns.rs`: the
   play's seed, the fork's siege seed) and the `*-towns-36` workloads move. Search seeds with a

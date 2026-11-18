@@ -8,7 +8,7 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use h3_content::{FactionId, Formation, HeroClassId, HeroTypeId, Ruleset, SkillId};
+use h3_content::{FactionId, Formation, HeroClassId, HeroType, HeroTypeId, Ruleset, SkillId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{ArtifactInstance, ArtifactPlace, HeroDetails, Position};
 use h3_kernel::Rng;
@@ -301,18 +301,7 @@ fn fill(parts: Parts<'_>, rules: &GameRuleset, colours: &[u8], undrawn: &[Option
                 .for_each(|tavern| tavern.slots[slot] = Some(hero_type));
             let store = Arc::make_mut(heroes);
             let made = pool.record(hero_type).is_none();
-            let id = match pool.record(hero_type) {
-                Some(id) => id,
-                None => {
-                    let id = HeroId::new(u16::try_from(store.len()).unwrap_or(u16::MAX));
-                    let custom = HeroDetailsSetup::default();
-                    let details = hero_details(core, &custom, (hero_type, ty), &[], draws);
-                    Arc::make_mut(progression).record(draws);
-                    store.push(Arc::new(details));
-                    pool.set_record(hero_type, id);
-                    id
-                }
-            };
+            let id = record_of(pool, (store, progression), (core, hero_type, ty), draws);
             // A record's id indexes the store (the build's, or pushed above).
             let details = Arc::make_mut(&mut store[usize::from(id.raw())]);
             let changes = h3_heroes::backpack_equipped(details, core);
@@ -331,6 +320,30 @@ fn fill(parts: Parts<'_>, rules: &GameRuleset, colours: &[u8], undrawn: &[Option
             pool.set_army(hero_type, army, full);
         }
     }
+}
+
+/// The record of `hero_type` (`ty` its type), an offered type (design note §61, decision 109):
+/// its record in the pool, else a new one made now, the next hero id with GAM-HER-001's defaults
+/// and the default experience, then its level seed (GAM-HER-002), drawn from `draws` in that
+/// order (a fill's from the taverns' stream, TWN-TAV-002; a replacement's from the hirer's,
+/// TWN-TAV-004).
+// rule: GAM-HER-001, GAM-HER-002
+pub(super) fn record_of(
+    pool: &mut HeroPool,
+    (store, progression): (&mut Vec<Arc<HeroDetails>>, &mut Arc<Progression>),
+    (core, hero_type, ty): (&Ruleset, HeroTypeId, &HeroType),
+    draws: &mut Rng,
+) -> HeroId {
+    if let Some(id) = pool.record(hero_type) {
+        return id;
+    }
+    let id = HeroId::new(u16::try_from(store.len()).unwrap_or(u16::MAX));
+    let custom = HeroDetailsSetup::default();
+    let details = hero_details(core, &custom, (hero_type, ty), &[], draws);
+    Arc::make_mut(progression).record(draws);
+    store.push(Arc::new(details));
+    pool.set_record(hero_type, id);
+    id
 }
 
 /// The game's start's fill (TWN-TAV-002; `new_game_heroes` 0x4C00C0's taverns, after the main
@@ -402,7 +415,7 @@ fn colours(state: &GameState) -> Vec<u8> {
 }
 
 /// Every player's two tavern heroes' views, by player id.
-fn all_views(state: &GameState) -> Vec<[Option<TavernHeroView>; 2]> {
+pub(super) fn all_views(state: &GameState) -> Vec<[Option<TavernHeroView>; 2]> {
     (0..=u8::MAX)
         .take(state.players())
         .map(|p| views(state, PlayerId::new(p)))

@@ -14,8 +14,8 @@ use super::{
     ArmySlot, ArmyStack, Artifact, ArtifactPlace, Formation, HireSeen, HireTarget, Month, Week,
 };
 use super::{
-    GarrisonStack, OfferLevels, Pos, PrimarySkill, TavernHeroHead, TavernPart, TownBuildings,
-    VisitBonus,
+    GarrisonStack, HiredPart, OfferLevels, Pos, PrimarySkill, TavernHeroHead, TavernPart,
+    TownBuildings, VisitBonus,
 };
 use crate::wire::{Event, Outcome};
 
@@ -216,6 +216,19 @@ pub enum GameEvent {
         player: u8,
         slot: u8,
         part: TavernPart,
+    },
+    // E09 T38a1 (v71).
+    HeroHired {
+        player: u8,
+        hero: u16,
+        hero_type: u16,
+        slot: Option<u8>,
+        pos: Pos,
+    },
+    HiredPartSeen {
+        player: u8,
+        hero: u16,
+        part: HiredPart,
     },
     GarrisonChanged {
         player: u8,

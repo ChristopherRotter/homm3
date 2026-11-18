@@ -18342,7 +18342,9 @@ replays first (recommended was three as increment 12's T116: the 36 map and its 
 properties, the XL map with the benchmarks); T125b2 the properties, the benchmarks and
 `--with-original-data`. **Baseline:** `master` 45aed4c (#998, T125a, merged; CI green on it; the
 setup's `verify-once` found the engine code verified there, light gates only); `master`'s
-ae61c26 (E09 T38a1's ADRs, docs only) merged in. No original data staged: nothing of the import
+ae61c26 (E09 T38a1's ADRs, docs only) merged in; then 52a3cb5 (#1000, #1001: the town lane's
+replay format v17), the server lane's inbox's conflict resolved by keeping both notes, the nine
+replays re-recorded from their commands (their format line alone moved). No original data staged: nothing of the import
 or the census moved.
 
 - **The banks map** (`fixtures/maps/e08-banks-36.h3m`; `h3-map`'s `tests/banks_map.rs`,

@@ -44,8 +44,10 @@ use super::rollout::choose;
 /// (`h3_towns::TownCommand::Recruit` by its town and building, TWN-REC-001); version 16 (E09
 /// T28a): a hero's move between a town's two bars (`h3_towns::TownCommand::Heroes` by its town
 /// and move, TWN-ROW-002 to -004) and the management commands naming a town's upper bar
-/// (TWN-ROW-001). A replay of another version is refused ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 16;
+/// (TWN-ROW-001); version 17 (E09 T38a1): a tavern hero's hire at a town's Tavern
+/// (`h3_towns::TownCommand::Hire` by its town and slot, TWN-TAV-003). A replay of another version
+/// is refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 17;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

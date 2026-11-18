@@ -4639,3 +4639,65 @@ build (decision 138: the open order settled as the build's, the seed first), T37
   with the reason; the other workloads inside the gate (the build is not counted). The same
   change of the XL map's games moved `h3-protocol`'s `game_bounds` test off its whole map's reveal:
   its XL seed 13 (5 before; a throwaway search over seeds 1 to 24), the server lane told.
+
+### T38a1 — the town's hire, the replacement, `HeroHired` and its parts (2026-11-17)
+
+One session, the user present; branches `town/e09-t38a1` (`cross-lane`: the adventure lane's
+`h3-game` `command.rs`, `observe.rs`, `state.rs`, `lib.rs`, `h3-files`' replay word, `h3-sim`'s
+replay version, the 89 goldens' format line, `h3-map`'s told-views arms, `h3-cli`'s literals; the
+server lane's `h3-protocol`; with the user's consent) and `shared/e09-t38a1` (#999: ADR-0016
+point 6, ADR-0017 point 2, `06-security.md`, a sentence each). Starting point: `master` at
+7a0da76 (#995, #996, #997 merged; the setup found CI's fingerprint, the light gates green). The
+user's computer was connected at the start only: 16 files staged (the four LODs, both
+executables, both tars, the three saves, the three manuals, two help files; SHA-256 checked
+against the PC's). **T38a cut in two at its start** (decision 140, `TWN-Q22`): T38a1 the rule,
+T38a2 the listing; the agent then moved the replay word into T38a1 (the server journals every
+command the wire takes). **The owner told what the slot's view lacked** (decision 141). The
+agent's calls: decision 142.
+
+- **The town's half** (`h3-towns`): `TownCommand::Hire { town, slot }`, `TownCommandError::NoTavern`,
+  `UnknownSlot`, `EmptySlot`; `check_hire` (`src/tavern.rs`: a standing Tavern, then the part's
+  `hire_price`).
+- **The adventure's half** (the town lane's `src/town/hire.rs`): `check_tavern_hire` (the town,
+  the room below the most heroes with the garrison heroes not counted, then any hero on the
+  entrance), `place_hired` (a hero's arrival on the entrance, the tile's viewers); `rows.rs`'
+  `town_entrance` and `arrive` made `pub(super)`.
+- **The game** (`town/hire.rs`): `hire` (design §64's checks and application), `replace`
+  (TWN-TAV-004: the draw with the other slot's class avoided and any faction from the hirer's
+  stream, `GameState::taverns_for`; a new record by `tavern::record_of`, factored out of the
+  fill; spell points full; one creature of the first stack; no equip, no points), `HiredPart`
+  (`Details { offered, positions }`, `Carried`, `Spell`; `HiredPart::of`); the pool's `hire` (the
+  slot emptied, its mark cleared, the type `Taken` by the colour with its bit in the mask, the
+  away record handed over); `GameEvent::HeroHired` (seen by the tile's viewers, the slot `None`
+  to another viewer by `project`) and `HiredPartSeen` (the owner alone); then `tavern::tell` of
+  the changed slot. `TWN-STUB-15` (the guild's spells) and `TWN-STUB-19` (not listed) registered.
+- **The wire** (protocol **v71**): the command both ways, the three refusals, both events and
+  `HiredPart`; the fold's `hire` (the hero among every viewer's heroes on the map; the owner's view
+  from the slot's, its worn positions grown to the told count) and `HeroDetails::see`.
+- **The replays:** the adventure replay format **v17** (`town hire <town> <slot>`); the 89 goldens'
+  `format` line only (no golden hires); `h3-cli`'s and `h3-sim`'s literals.
+- **Tests:** `h3-towns`' `a_hire_needs_a_standing_tavern_and_costs_the_parts_price` and the
+  refusals' messages; `h3-adventure`'s `town/hire/tests.rs` (2: the checks in order, the placement
+  in id order with nothing revealed); `h3-game`'s `town/tests/hire.rs` (5: the placement with the
+  away record, the pool's statuses and the observation; the replacement against the draw on red's
+  stream with one imp of a 2 to 3 stack; the events, the parts and who sees them; each refusal
+  changing nothing, `NotYourTurn` included; no type free leaving the slot empty, a sink keeping
+  nothing reaching the same state); `h3-protocol`'s round trips (119 rejections, 43 kinds of
+  event), `a_hire_folds_as_observe_shows_it` (a hire on three golden games, every viewer's fold
+  equal to `observe`) and `a_hire_moves_the_owners_slot_view_into_its_heroes` (by hand: a worn
+  artifact, the backpack's first places and its rest, a spell, another viewer). The first scoped
+  verify's coverage found the `Spell` part's closure unrun (no test hero had a spell):
+  `GameState::set_spells` (tests) and the parts test's spell.
+- **Catalog:** TWN-TAV-003 and -004 entered `verified` (the code reading, batch TWN-4's rows
+  TWN-4-2, -5 and -6, VCMI, the manual).
+
+`master` merged in once, after #998 (E08 T125a, no version moved) and #999 (the `shared/` half).
+CI's first full verify on #1001 found two regions of the new fold unrun (`h3-protocol`, which the
+town scope's coverage does not gate: an `if let`'s untaken path, the worn positions' resize test):
+both written without a branch, `verify-step coverage --scope server` clean (`TRAPS.md`).
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data` (every step but
+`check-lane`, as on a `cross-lane` branch, and the coverage miss above, then the coverage step
+alone clean; `bench-check` inside every gate, `original-data` passed); the tests of
+`h3-cli`, `h3-protocol`, `h3-server`, `h3-sim`, `h3-map` and `cargo clippy --workspace
+--all-targets` on their own; CI on the pull requests is the record.

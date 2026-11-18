@@ -356,6 +356,14 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   map's players drawn (design §21.2; the client keeps it in `Scenario::game`). The opening also
   rebuilds the list and resets the difficulty from the record (§21.1): check what an opening
   resets before carrying a choice across `Scenario::opened`.
+- **A select is not a show** (E27 M3 T2c): `scenario_select` calls `scenario_to_game` whatever
+  the change (the description back at its first line, its bar at 0; the kept map taken), the
+  sort calls it once more before its own whole redraw, and a difficulty's press or the list's
+  showing call neither. In `h3_view::shell::scenario` a select goes through `select` (the kept map,
+  `give_to_game`, `show`), a redraw of the panel through `show` alone; a new path that changes the
+  selection must pick the right one, and check what the partial redraw leaves (`Description::drew`
+  only at a whole redraw or the bar's own draws). The kept map outlives the screen: `Menus::front`
+  takes it from the screen that closes.
 - **Coverage with the original data staged restarts the sandbox's VM** (E27 M2 T5b2 and T6a: the
   setup's baseline and `check.sh`, three runs, one build job or two; every step before coverage
   passed; E27 M3 T1a: a watcher that kills `verify-once.sh`'s tree at `== coverage` leaves

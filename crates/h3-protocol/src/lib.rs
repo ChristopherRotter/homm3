@@ -205,7 +205,13 @@ pub mod wire;
 /// (`TavernHero`: no learned spells, no offered levels, the backpack's first five places and its
 /// count), and `GameEvent::TavernOffered` (a slot's head) with `TavernPartSeen` per part after the
 /// week's release and fill.
-pub const PROTOCOL_VERSION: u32 = 70;
+/// v71 (E09 T38a1, the town lane's, `cross-lane`): a tavern hero's hire at a town's Tavern
+/// (TWN-TAV-003): `TownCommand::Hire` (the town, the slot), the refusals `NoTavern`,
+/// `UnknownSlot` and `EmptySlot`, `GameEvent::HeroHired` (the hero, its type, owner and tile; its
+/// slot to the owner alone) and the owner's `HiredPartSeen` per part its slot's view did not show
+/// (the offered levels with the worn positions' count, the backpack past its first five, the
+/// learned spells), folded into the viewer's heroes on the map.
+pub const PROTOCOL_VERSION: u32 = 71;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

@@ -199,3 +199,51 @@ fn it_draws_its_arrows_its_track_cut_to_it_and_its_thumb() {
         matches!(&draws[3], Draw::Button { frame: 4, y: 128, def, .. } if def == "SlideBuV.def")
     );
 }
+
+/// The scenario screen's description's bar (E27 M3 T2c): (725, 155), 16 × 115, a page of 7 lines,
+/// with `ticks` ticks at `value`.
+fn description(ticks: i32, value: i32) -> Scrollbar {
+    let mut bar = Scrollbar::new(Look {
+        id: 1021,
+        at: [725, 155],
+        size: [16, 115],
+        step: 7,
+        ..look()
+    });
+    bar.reset(ticks);
+    bar.set_value(value);
+    let _ = bar.report();
+    bar
+}
+
+#[test]
+fn the_keys_step_a_tick_or_a_page_within_the_ticks() {
+    // `scn-long-text`: 12 ticks; Down and Right a tick on, Page Down a page (clamped), Up and
+    // Left a tick back, Page Up a page back.
+    let mut bar = description(12, 8);
+    assert_eq!(bar.key(KeyStep::On), Some(9));
+    assert_eq!(bar.key(KeyStep::PageOn), Some(11));
+    assert!(bar.takes_key(KeyStep::PageOn));
+    assert_eq!(bar.key(KeyStep::PageOn), None);
+    assert!(!bar.takes_key(KeyStep::On));
+    assert_eq!(bar.key(KeyStep::On), None);
+    assert_eq!(bar.key(KeyStep::Back), Some(10));
+    assert_eq!(bar.key(KeyStep::PageBack), Some(3));
+    assert_eq!(bar.key(KeyStep::PageBack), Some(0));
+    // At the top a tick back is not taken (the step not run), a page back is but changes nothing.
+    assert!(!bar.takes_key(KeyStep::Back));
+    assert_eq!(bar.key(KeyStep::Back), None);
+    assert!(bar.takes_key(KeyStep::PageBack));
+    assert_eq!(bar.key(KeyStep::PageBack), None);
+    assert_eq!(frames(&bar), (alloc::vec![0, 2, 4], 155 + 16));
+    // A value the caller set and not yet reported is reported first (0x5963A3).
+    let mut bar = description(12, 0);
+    bar.set_value(5);
+    assert_eq!(bar.key(KeyStep::PageBack), Some(0));
+    let mut bar = description(12, 0);
+    bar.set_value(5);
+    assert_eq!(bar.key(KeyStep::PageOn), Some(12 - 1));
+    let mut bar = description(12, 3);
+    bar.set_value(4);
+    assert_eq!(bar.key(KeyStep::Back), Some(3));
+}

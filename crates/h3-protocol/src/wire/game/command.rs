@@ -106,6 +106,14 @@ pub enum TownCommand {
         /// The move.
         change: TownHeroChange,
     },
+    /// Hires the actor's tavern hero in a slot at a town of the actor's with a standing Tavern
+    /// (TWN-TAV-003; E09 T38a1, v71).
+    Hire {
+        /// The town.
+        town: u16,
+        /// The slot: 0 or 1 (another is refused, [`TownReject::UnknownSlot`]).
+        slot: u8,
+    },
 }
 
 /// A hero's move between a town's two bars (`h3_towns::TownHeroChange`; E09 T28a, v64).
@@ -543,6 +551,12 @@ pub enum TownReject {
     TooManyHeroes {},
     /// The garrison hero's army holds no stack (TWN-ROW-003).
     EmptyArmy {},
+    /// The town has no standing Tavern (TWN-TAV-003; E09 T38a1, v71).
+    NoTavern {},
+    /// The slot is not one of the actor's two tavern slots (TWN-TAV-003).
+    UnknownSlot {},
+    /// The slot holds no hero (TWN-TAV-003).
+    EmptySlot {},
 }
 
 /// Why the adventure map refused a command (`h3_adventure::AdventureCommandError`); a step is
