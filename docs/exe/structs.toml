@@ -406,6 +406,8 @@ fields = [
   { offset = 0x1F45C, name = "campaign_index", type = "i32", summary = "H3API's campaignInfo.bigCampaignIndex, the campaign's number (E08 T24a2a; T24a1 guessed a scenario): compared with 14 (with 0x69774C and hero 45) by the level-up's campaign branch and with 8 by a campaign case of the new game (called at 0x4C004D) and of placed_hero_setup", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §2.3"] },
   { offset = 0x1F636, name = "defeated", type = "u8[8]", summary = "per colour a flag set when the player is defeated (player_defeated 0x4F11A0)", confidence = "read", refs = ["rules/surveys/E08-economy.md §2.5"] },
   { offset = 0x1F63E, name = "date", type = "u16[3]", summary = "the day of the week (1-7), the week (1-4) and the month (H3API's date): the day number (4 x month + week - 5) x 7 + day (town_timed_events 0x4CDA1B)", confidence = "read", refs = ["rules/surveys/E08-economy.md §7.1", "rules/surveys/E09-construction.md §8.2"] },
+  { offset = 0x1F664, name = "merchant_artifacts", type = "i32[7]", summary = "the Artifact Merchants' seven for sale, the same in every town (-1 sold), redrawn by new_month 0x4C8F40; the trade window's market_artifacts for a town and a Trading Post", confidence = "read", refs = ["rules/surveys/E08-trades.md §3", "rules/surveys/E08-trades.md §11"] },
+  { offset = 0x1F680, name = "black_markets", type = "vector<black_market>", summary = "the Black Markets' records (begin +0x1F684, end +0x1F688), one per market in the setup's walk order, the object's word its index (black_market_draw 0x4C0E31)", confidence = "read", refs = ["rules/surveys/E08-trades.md §7.1"] },
   { offset = 0x1F698, name = "map_kind", type = "i32", summary = "H3API's mapKind, 0 RoE, 1 AB, 2 SoD: the game's version for the rules that test it (the siege's moat and its damage, the Tower's mines, the elementals' faction); restored by the saved-game loader (0x4BCDA0); at a new game new_game_heroes writes it (0x4BFF09) from new_game_start's scenario dialog version (0x58C593), a campaign's by its index (E09 T1b1)", confidence = "inferred", refs = ["installation.md §7.27", "rules/surveys/E09-towns.md §9.4"] },
   { offset = 0x1F69C, name = "cheated", type = "u8", summary = "set by typed codes (0x4F43D6 before the win, cheat_win_call 0x4F43F3; 0x4F4419 another code's, not read): the won screen's rank and the high score's land become GENRLTXT 261, the score takes the eleventh row (E27 M1 T1b3b)", confidence = "read", refs = ["epics/E27-design.md §5"] },
   { offset = 0x1F69D, name = "flagged_start", type = "u8", summary = "read by the end-turn button and the battle start; set, a human starts with 0x6779C8's resources (probably the tutorial)", confidence = "inferred", refs = ["rules/surveys/E08-objects.md §7.2"] },
@@ -574,6 +576,7 @@ refs = ["epics/E08-log.md T32b1"]
 h3api = "H3ArtifactSetup"
 fields = [
   { offset = 0x0, name = "name", type = "char*", summary = "the artifact's name; observed in the running game (h3mem.py: Ballista, Catapult, Centaurs Axe), not read", confidence = "inferred", refs = ["epics/E08-log.md T32b1"] },
+  { offset = 0x4, name = "cost", type = "i32", summary = "the cost, ARTRAITS.TXT's Cost: the market's prices (market_buy_artifact_proc 0x5ED9E0, market_artifact_sale_rate 0x5ECDC0); agrees with VCMI's prices for every artifact (E08 T127a1)", confidence = "read", refs = ["rules/surveys/E08-trades.md §4"] },
   { offset = 0xC, name = "class", type = "u32", summary = "the class: 1 special, 2 treasure, 4 minor, 8 major, 16 relic (H3API's type); observed in the running game, the 14 artifacts of batch E13's first run as ARTRAITS.TXT's class column has them (E08 T120), not read", confidence = "inferred", refs = ["epics/E08-log.md T120"] },
 ]
 
@@ -834,6 +837,15 @@ fields = [
   { offset = 0x54, name = "creature", type = "i32", summary = "the reward's creature, -1 none", confidence = "read", refs = ["rules/surveys/E08-banks.md §6"] },
   { offset = 0x58, name = "creature_count", type = "i8", summary = "the reward's creature count", confidence = "read", refs = ["rules/surveys/E08-banks.md §6"] },
   { offset = 0x5C, name = "artifacts", type = "vector<i32>", summary = "the reward's artifacts, relics first (begin +0x60, end +0x64)", confidence = "read", refs = ["rules/surveys/E08-banks.md §3", "rules/surveys/E08-banks.md §6"] },
+]
+
+[[struct]]
+name = "black_market"
+size = 0x1C
+summary = "A Black Market's seven artifacts (E08 T127a1): in game +0x1F680's vector, drawn by black_market_draw 0x4C0E31 at a new game (three treasures, three minors, one major), never redrawn."
+refs = ["rules/surveys/E08-trades.md §7"]
+fields = [
+  { offset = 0x0, name = "artifacts", type = "i32[7]", summary = "the artifacts in the draw's order, -1 once bought (market_buy_artifact_proc 0x5ED9E0)", confidence = "read", refs = ["rules/surveys/E08-trades.md §7"] },
 ]
 
 [[struct]]
