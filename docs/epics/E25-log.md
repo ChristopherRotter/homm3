@@ -2118,6 +2118,21 @@ an entry only where a task builds on it.
 - **The read so far:** after T34 (b)'s 2 M the run steps about twice as far an update as #2's
   run did (KL 0.018 to 0.026 against 0.010, until the rate falls past 16 M) and ends as sharp as
   #2 (entropy 1.00), yet neither of its gates finds a gain over its own 2 M network. The
-  agreement with #2 peaks at 4 to 6 M (0.54) and falls as the loss's weight does. (a) and (b) of
-  the 20 M network (`checkpoint.pt`) are the user's GPU next: the uploaded measure files were
-  T34's (identical to `python/records/anchor/`).
+  agreement with #2 peaks at 4 to 6 M (0.54) and falls as the loss's weight does.
+- **(b) The 20 M network's ladders** (`checkpoint.pt`, 500 a kind; the measures
+  `python/records/anchor/e25-anchor-1-{ladder,neutral}-20m.json`; a ladder's episodes and draws
+  are seeded alike for every network, so these differ from T34's 2 M rows only by the network):
+
+  | Opponent | `e25-anchor-1` at 20 M | #2 (T28's final) | at 2 M (T34 (b)) |
+  |---|---|---|---|
+  | Random | 0.880 ± 0.011 (+0.341) | 0.887 (+0.343) | |
+  | Aggressor | 0.710 ± 0.016 (+0.184) | 0.707 (+0.179) | |
+  | Greedy | 0.678 ± 0.017 (+0.154) | 0.673 (+0.149) | |
+  | fair actor | 0.514 ± 0.019 (+0.031) | 0.511 (+0.027) | 0.503 (+0.021) |
+  | hero (attacking, defending), siege hero, siege garrison | 0.512 (0.711, 0.312), 0.522, 0.504 | 0.509 (0.707, 0.306), 0.519, 0.505 | 0.498 (0.697, 0.298), 0.515, 0.500 |
+  | all-seeing (the faithful actor) | **0.511 ± 0.018** (+0.027) | 0.507 (+0.026) | 0.506 (+0.021) |
+  | neutral set | 0.993, +0.305 | 0.991, +0.302 | 0.989, +0.299 |
+
+  The second head-to-head file uploaded (`head-to-head-20m.json`) measured `best.pt`, the 2 M
+  network: its pairs are T34's to the count (the fixed head-to-head is deterministic on the
+  user's card). (a) of the 20 M network is not measured.
