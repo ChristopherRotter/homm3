@@ -57,6 +57,7 @@ fn live(kingdom: Kingdom) -> Live {
         pressed: Vec::new(),
         turns: Vec::new(),
         computer: false,
+        level_ups: Vec::new(),
     }
 }
 

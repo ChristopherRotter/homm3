@@ -661,5 +661,13 @@ fn what_a_visit_gives_the_panels() {
     );
     assert_eq!(Find::Axis { visited: true }.gain(&art), Gain::default());
     assert_eq!(Find::Temple { visited: false }.gain(&art).morale, [1, 2]);
-    assert_eq!(Find::Stone { visited: false }.gain(&art), Gain::default());
+    // The Learning Stone's experience (E24 M4 T2c: its levels' dialogs after its box).
+    assert_eq!(
+        Find::Stone { visited: false }.gain(&art),
+        Gain {
+            experience: art.experience,
+            ..Gain::default()
+        }
+    );
+    assert_eq!(Find::Stone { visited: true }.gain(&art), Gain::default());
 }

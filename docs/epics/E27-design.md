@@ -1510,7 +1510,8 @@ are 10 ms earlier (the Smacker copy's open fell inside a clock step; its kept li
   `games-time` gives day = month, and Wine's time zone enters the digest: a day above 12 and a
   pinned TZ); `up-past-top` never reaches the list's first row (§3.4: Page Up first; done at M3
   T1b1, `up-at-first`, §19.5);
-  `popup-hero-arrow` pressed a computer row (§3.13's hints: row 2's arrow); `scn-load` size-1
+  `popup-hero-arrow` pressed a computer row (§3.13's hints: row 2's arrow; done at M3 T3c2 after
+  a town's press on that row, §27.3); `scn-load` size-1
   changes nothing (both saves XL: a save of another size); the Random Map button in a load (`adv-load`,
   §3.16); Begin after `tab-again` (§3.16); `scn-begin-none`'s `what` line (530 is a filter's,
   §3.6); GENRLTXT 503 (reading the map files, §3.3) in no shot; Delete of the last save not
@@ -2895,7 +2896,7 @@ name (item). Every arrow's press redraws its row alone (no other item changes).
 `scrollbar_create` with a bar wider than tall loads `SlideBuH.def` (blue) and `slider.pcx`, its
 button the DEF's width (16); drawn as the vertical one on the x axis (the left arrow, the right one
 a button from the end, the track between, the thumb at button + travel × value ÷ 10): exact at
-value 10 in every shot. Its presses are T3c's.
+value 10 in every shot. Its presses: T3c2, §27.1.
 
 ### 23.6 The recordings and the comparisons
 
@@ -3130,3 +3131,64 @@ The hot seat's flags, handicap and names (T4); the name written to `Network Defa
 at the next opening and by the Multiplayer dialog (M4: the settings); the handicap's effect
 (`CLT-STUB-10`); Begin pressed by the mouse while the edit is open (T6: the record's name not yet
 taken).
+
+## 27. The advanced options: the duration's bar and the hints (M3 T3c2, 2026-11-18)
+
+Read from `Heroes3.exe` (the horizontal branches of `scrollbar_press` 0x596980,
+`scrollbar_release` 0x596AF0, `scrollbar_drag` 0x597020, the procedure's move 0x596621 to
+0x5966DD and `scrollbar_draw` 0x596C40; `scenario_duration_scrolled` 0x57C7F0 whole; the bar's
+creation 0x57AF06; `dialog_item_at` 0x5FF3E0 and `dialog_right_click` 0x5FF790) against
+`adv-single-rest`, played again under Wine this session (§27.3). The client: `h3_ui::scrollbar`'s
+horizontal input, `Advanced`'s `bar_press`, `bar_moved`, `bar_release` and `scrolled`, the screen's
+`HELPED` and `COLOUR_HELPED`.
+
+### 27.1 The horizontal bar
+
+- **The press, the release, the drag and the draw** test the bar's width against its height
+  (+0x1C, +0x1E) and take a horizontal bar's x (the mouse +0x58, the bar +0x18) where a vertical
+  one's y: the arrows a button from either end of the length (+0x4C), the release's step by the
+  arrow the mouse was last on, the drag's middle at the mouse, the arrows drawn pressed (frames 1
+  and 3) as the vertical one's. One difference: the press's thumb is 16 wide (0x5969DE, `add ecx,
+  0x10`), the vertical one's its button (0x596A37); the duration's button is 16 (`SlideBuH.def`),
+  so no shot shows it.
+- **A move while held** (0x596656): a horizontal bar's y taken as the bar's within 40 pixels above
+  or below it (a vertical one's x, left or right); over the track (x from the left arrow's end to
+  the right arrow's start, y within the bar) the thumb dragged there.
+- **The duration's bar** (338, `scrollbar_create` at 0x57AF06): (58, 557, 194, 16), 11 ticks, the
+  callback `scenario_duration_scrolled`, blue, **no page** (the layout's `step` 1 of T3a corrected
+  to 0: a press in the track drags the thumb), no keys.
+
+### 27.2 The duration and the hints
+
+- **`scenario_duration_scrolled`** (the bar's callback, with the value): the value into +0x378 and
+  the game's +0x1F843; a network host sends the setup (message 0x402: not built); then the dialog's
+  items drawn (vtable +0x14 with 0, 0xFFFF0001, 0xFFFF) and `scenario_dialog_redraw`: the client's
+  whole redraw (the strip a flag's press left stale drawn again). An arrow's release at either end
+  reports nothing: the bar alone drawn (`duration-0-again` as `duration-0`). The text:
+  `turndur.txt`'s record by the duration (§3.13). No timer runs it in the client (`CLT-STUB-11`,
+  decision 6).
+- **The hints** (§3.8): items 104 to 344 take `Help.txt`'s record id − 83; for the options the bar
+  (338: 255), the headers (339: 256; the town's 342: 259, the one with Conflux; 343: 260; 344:
+  261) and the duration's label (340: 257); each colour *c*'s who may play (199 + *c*: 116 + *c*),
+  handicap (124 + *c*), arrows (215 + *c* to 262: 132 + *c* to 179) and flag (263 + *c*: 180 +
+  *c*). The eight colours' records are one text in both LODs: the client has one key a group, the
+  first colour's record (*provisional*, review list item 17). The names (345 on), the edits and the
+  areas get none (their popups are the screen's, §3.15).
+- **The right press** finds its item by `dialog_item_at` (shown and enabled, not disabled): a
+  single player's handicap is not enabled, so the panel under it (102, no hint) is found: no popup,
+  the screen redrawn whole (`popup-handicap`, as a name's `popup-name`). A hidden arrow likewise.
+
+### 27.3 The recordings and the comparisons
+
+`popup-hero-arrow` (§6.4) pressed row 0's hero arrow, hidden on a computer's row; on the single
+player's row (row 2 after `name-after-flag`) it is hidden too while the row's town is Random (the
+hero's arrows need a shown town, §3.14). The recipe now presses that row's town arrow first
+(`click:230,245`), then the hero's left arrow (`right:245,245`): its hint shows (record 148).
+Recorded again (`run --only adv-single-rest --record`, both runs alike): the seven shots from
+`popup-hero-arrow` to `hidden` changed, the others as kept. `adv-single-rest` 39 of 39 exact; every other recipe of
+the `advanced` and `scenario` groups as recorded; `drawn.txt` recorded for `adv-single-rest`.
+
+### 27.4 Not built
+
+The hot seat's bar (enabled for every player there, T4); a network host's message (no network
+play); the timer (`CLT-STUB-11`: the hot seat's clock, E24 M5).

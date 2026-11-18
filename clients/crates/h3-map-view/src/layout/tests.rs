@@ -160,6 +160,34 @@ cancel = "iCancel.def"
 font = "medfont.fnt"
 caption_font = "smalfont.fnt"
 font_palette = "game.pal"
+
+[level_up.dialog]
+place = [205, 65]
+shadow = [385, 470]
+
+[[level_up.dialog.items]]
+kind = "picture"
+id = 2000
+picture = "lvlupbkg.pcx"
+at = [0, 0]
+size = [385, 470]
+
+[[level_up.two]]
+kind = "def"
+id = 2010
+def = "secskill.def"
+at = [124, 326]
+size = [44, 44]
+
+[[level_up.one]]
+kind = "label"
+id = 2007
+at = [149, 375]
+size = [87, 40]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 5
 "#;
 
 #[test]
@@ -224,8 +252,10 @@ fn loads_a_layout_and_places_its_tiles() {
             "ITGFLAGS.DEF",
             "ITPA.DEF",
             "ITPT.DEF",
+            "LVLUPBKG.PCX",
             "MEDFONT.FNT",
             "PLAYERS.PAL",
+            "SECSKILL.DEF",
             "SMALFONT.FNT",
         ]
     );

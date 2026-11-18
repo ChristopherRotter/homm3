@@ -80,7 +80,7 @@ fn font(advance: i32, height: u8) -> Font {
 /// A choice's box of `style` in test fonts, as the recorded one sits (320 × 448 at (240, 76),
 /// its two pictures' frames under the recorded clicks: eleven lines of text, two pictures 82 × 93
 /// with a caption a line high).
-fn chosen(style: Style, or: Option<&str>) -> Arc<MessageBox> {
+pub(super) fn chosen(style: Style, or: Option<&str>) -> Arc<MessageBox> {
     let layout =
         AdventureLayout::parse(include_str!("../../../../../map/layouts/adventure.toml")).unwrap();
     let text = vec!["x".repeat(30); 11].join("\n");

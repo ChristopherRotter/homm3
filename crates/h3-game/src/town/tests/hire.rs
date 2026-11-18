@@ -534,4 +534,5 @@ fn the_legal_commands_list_each_hire_that_passes_after_the_towns_recruitments() 
     assert_eq!(listed_hires(&rules, &one, RED), vec![hire(T0, 1)]);
 }
 
+mod dismiss;
 mod leave;

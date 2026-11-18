@@ -20,8 +20,8 @@
 //! clock of milliseconds, its redraws, palette steps, scroll and cursor; [`sequence`] the recorded
 //! sequences it replays; [`turn`] the turn's end and the next day's texts (E24 M4 T1a), [`finds`]
 //! the finds told and a turn without a town's boxes (E24 M4 T2a2), [`asks`] the questions a
-//! visit asks (E24 M4 T2b2). For the window (E24 M2 T4a): [`replay`] runs the timeline forward
-//! as its clock (`h3_ui::clock`) needs, [`keys`] are the window's commands (the table of what
+//! visit asks (E24 M4 T2b2), [`levels`] a level-up's dialog and choice (E24 M4 T2c). For the
+//! window (E24 M2 T4a): [`replay`] runs the timeline forward as its clock (`h3_ui::clock`) needs, [`keys`] are the window's commands (the table of what
 //! each key does: `h3_ui::keys`); [`sound`] the map's sound as cues (M2 T5), its music the
 //! original's music
 //! thread (`h3_ui::music`, M2 T6a2). What both viewers share is the common crate `h3-ui`'s (E24
@@ -60,6 +60,7 @@ pub mod finds;
 pub mod hover;
 pub mod keys;
 pub mod layout;
+pub mod levels;
 pub mod lists;
 pub mod live;
 pub mod minimap;

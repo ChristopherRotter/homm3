@@ -15,14 +15,17 @@ need the five DLLs (`MP3DEC.ASI` in the PC's `original-data/install` too since 2
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T3c2
+#### E27 M3 T4
 
-T3c2 The duration's bar and the hints (decision 57): the duration's bar's input
-(`h3_ui::scrollbar` on the x axis: presses, drags, `scenario_duration_scrolled` 0x57C7F0) and its
-eleven texts, the items' hints (`HELPED`: the headers, the bar, the flags, the arrows, the handicap,
-who may play, the name); the timer a `CLT-STUB` (decision 6). Exact against the rest of
-`adv-single-rest` (§6.4: record `popup-hero-arrow` again on row 2's arrow). Then T4 to T7 as the
-M3 table lists them.
+T4 The advanced options in the hot seat (§3.14; the M3 table): the scenario screen opened from the
+Multiplayer dialog's hot seat (`h3shell.py drawn` stops there now: "not-built scenario (new game,
+multiplayer)"), two to eight humans, their names from the Multiplayer dialog
+(`Multiplayer::names`, M2's item 61), the flags' cycle (CLT-Q94, decision 13: the client's; the
+original's for the comparisons), the handicap a caption button with its press (+1 modulo 3,
+`handicap_names`) and its hint (T3c2's `COLOUR_HELPED` has it; `Advanced::takes` by the mode), the
+names' edits hidden, the duration's bar enabled. Exact against `adv-hotseat`, `adv-hotseat-rows`,
+`adv-hotseat-two`. Its size is unknown until the hot seat's entry to the screen is read: confirm a
+cut with the user at its start. Then T5 to T7 as the M3 table lists them.
 
 ## Inbox
 

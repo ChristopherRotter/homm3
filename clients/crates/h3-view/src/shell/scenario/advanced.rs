@@ -59,8 +59,14 @@
 //!   opening pastes the colour's bar's piece at the bar's corner, not under the edit (CLT-Q143:
 //!   the original's for the comparisons only).
 //!
-//! *Not built yet:* the duration's bar's input and the hints (T3c2); the hot seat (T4: its
-//! handicap's press, its flags' cycle) and a hero two human records hold; the name written to
+//! - **The duration** (T3c2; design §27): its bar (338, `h3_ui::scrollbar` on the x axis: 11
+//!   ticks, no page, an arrow's step at the release, the track's drag) reports its value to
+//!   `scenario_duration_scrolled` 0x57C7F0: the duration (`turndur.txt`'s record) and its text, the
+//!   screen redrawn whole; no timer runs it (`CLT-STUB-11`). A right press on the headers, the bar
+//!   and each colour's items shows their `Help.txt` hints (the screen's `HELPED` and
+//!   `COLOUR_HELPED`); the names, the areas and a single player's handicap (not enabled) none.
+//!
+//! *Not built yet:* the hot seat (T4: its handicap's press, its flags' cycle) and a hero two human records hold; the name written to
 //! the setting `Network Default Name` (0x698817 and `settings_save` 0x50C1B0 at the edit's close:
 //! the client has no settings, M4); a town a human-only colour draws at the list's read (no
 //! shipped map has one; CLT-Q95); the edition's version (+0x1898: a single player's is SoD, so
@@ -98,6 +104,8 @@ pub const SUBTITLE: u16 = 1031;
 pub const DURATION: u16 = 1032;
 /// The duration of a new game (10: unlimited; `scenario_slots_new` 0x57F740).
 pub const UNLIMITED: u8 = 10;
+/// The duration's bar (a scroll bar of the dialog: drawn by the options, E27 M3 T3c2).
+pub const BAR: u16 = 338;
 
 /// A colour's items, colour 0's ids (`+ c` for colour `c`): the flag, who may play, the handicap,
 /// the town's, the hero's and the bonus's arrows, the name, the hero's, the town's and the
@@ -498,8 +506,12 @@ pub(super) struct Advanced {
     computers: [Record; 8],
     /// Each colour's row while the options show.
     rows: [Option<i32>; 8],
-    /// The turn's duration's index (+0x378: `turndur.txt`'s record).
+    /// The turn's duration's index (+0x378 and the game's +0x1F843: `turndur.txt`'s record), set
+    /// by its bar (E27 M3 T3c2); no timer runs it yet (decision 6: the engine has none, the hot
+    /// seat's clock is E24 M5's).
+    // stub: CLT-STUB-11
     duration: u8,
+    /// The duration's bar (338: 11 ticks, enabled for a single player).
     bar: Scrollbar,
     /// The single player's name (the local record's +4: `network_default_name` at the slot's
     /// making, none in the client; E27 M3 T3c1).
@@ -774,6 +786,56 @@ impl Advanced {
         if self.bugs == Bugs::Original || !editing {
             set(shown, PLAYER + u16::from(c), |s| s.hidden = false);
         }
+    }
+
+    /// The turn's duration (`turndur.txt`'s record: 0 to 9 one to thirty minutes, 10 unlimited).
+    pub(super) const fn duration(&self) -> u8 {
+        self.duration
+    }
+
+    /// Whether `point` (from the dialog's corner) is on the duration's bar while the options show.
+    pub(super) fn on_bar(&self, point: [i32; 2]) -> bool {
+        self.showing && self.bar.contains(point)
+    }
+
+    /// Whether the mouse holds the duration's bar (its own loop runs: no hover, key or right
+    /// press reaches the screen).
+    pub(super) const fn bar_held(&self) -> bool {
+        self.bar.held()
+    }
+
+    /// The duration's bar pressed at `point` (from the dialog's corner; `h3_ui::scrollbar`):
+    /// whether the duration changed ([`Advanced::scrolled`]).
+    pub(super) fn bar_press(&mut self, point: [i32; 2], shown: &mut Shown) -> bool {
+        let value = self.bar.press(point);
+        self.scrolled(value, shown)
+    }
+
+    /// The mouse moved to `point` while it holds the duration's bar: whether the duration changed.
+    pub(super) fn bar_moved(&mut self, point: [i32; 2], shown: &mut Shown) -> bool {
+        let value = self.bar.moved(point);
+        self.scrolled(value, shown)
+    }
+
+    /// The duration's bar let go (an arrow steps it): whether the duration changed.
+    pub(super) fn bar_release(&mut self, shown: &mut Shown) -> bool {
+        let value = self.bar.release();
+        self.scrolled(value, shown)
+    }
+
+    /// The bar's value reported (`scenario_duration_scrolled` 0x57C7F0, the bar's callback): the
+    /// duration (+0x378, the game's +0x1F843; a network host would send the setup, message 0x402:
+    /// no network play) and its text (`turn_duration_texts` 0x69FB44); the caller redraws the screen
+    /// whole (the dialog's items, vtable +0x14 with 0, 0xFFFF0001, 0xFFFF, then
+    /// `scenario_dialog_redraw`). Whether a value was reported.
+    fn scrolled(&mut self, value: Option<i32>, shown: &mut Shown) -> bool {
+        let Some(value) = value else {
+            return false;
+        };
+        self.duration = u8::try_from(value).unwrap_or(UNLIMITED);
+        let text = text_at(&self.texts.durations, usize::from(self.duration));
+        shown.texts.insert(DURATION, text);
+        true
     }
 
     /// The mouse over item `id` (none: no item; `scenario_dialog_proc` 0x5881B2): over another

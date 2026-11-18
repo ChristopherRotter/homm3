@@ -24,7 +24,8 @@
 # Turn asks while a hero can move) and `rolls` (each forced draw's value); since T1b1 a computer
 # player's turn's `computer_speed` (Computer Walk Speed, 2 to 5; none the harness's settings' 3),
 # `blackout` (Blackout Computer, 0 or 1) and `seed` (the game's generator seeded before Begin and
-# at 0; capture/README.md, "A computer player's turn").
+# at 0; capture/README.md, "A computer player's turn"). Since E24 M4 T2c the keys `1` and `2` (a
+# level-up's offers).
 
 [[sequence]]
 id = "idle-cycles"
@@ -1304,4 +1305,86 @@ why = "a School of Magic's choice left by Escape"
 inputs = [
     { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
     { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+# A level-up's choice (E24 M4 T2c recorded and plays them; design §5.5): a Learning Stone's
+# experience or a chest's (chosen in its style-7 box) takes Mephala (the Ranger seed 7 draws) to
+# level 2, or 3 too, after the visit's box (the chest's after its dissolve); the dialog at (205,
+# 65), 385 x 470: its offers' pictures at (329, 391) and (427, 391), 44 x 44, the OK at (501, 478),
+# 64 x 30; an offer taken by its key (1, 2) or a click, the OK by Enter, Escape or a click; one
+# offer shown chosen, none with eight skills at Expert. The offers are the original's draws (the
+# live parts' `[[level_up]]` tables).
+
+[[sequence]]
+id = "level-up"
+situation = "seq-level-up"
+ms = 2800
+hero_speed = 4
+seed = 7
+why = "a Learning Stone's experience, a level: Enter with no offer chosen does nothing, the left one clicked, Enter"
+inputs = [
+    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1400, keydown = "Return" }, { at = 1460, keyup = "Return" },
+    { at = 1800, click = [351, 413] },
+    { at = 2200, keydown = "Return" }, { at = 2260, keyup = "Return" },
+]
+
+[[sequence]]
+id = "level-up-right"
+situation = "seq-level-up"
+ms = 2400
+hero_speed = 4
+seed = 7
+why = "a Learning Stone's experience, a level: the right offer taken by its key 2, the left by 1, the right by a click, the OK clicked"
+inputs = [
+    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1400, keydown = "2" }, { at = 1460, keyup = "2" },
+    { at = 1600, keydown = "1" }, { at = 1660, keyup = "1" },
+    { at = 1800, click = [449, 413] },
+    { at = 2000, click = [533, 493] },
+]
+
+[[sequence]]
+id = "level-up-one"
+situation = "seq-level-up-one"
+ms = 2200
+hero_speed = 4
+seed = 7
+why = "a Learning Stone's experience, a level with one offer (eight skills known): shown chosen, closed by Enter"
+inputs = [
+    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1600, keydown = "Return" }, { at = 1660, keyup = "Return" },
+]
+
+[[sequence]]
+id = "level-up-none"
+situation = "seq-level-up-none"
+ms = 2200
+hero_speed = 4
+seed = 7
+why = "a Learning Stone's experience, a level with no offer (eight skills at Expert): the primary skill alone, closed by Escape"
+inputs = [
+    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1600, keydown = "Escape" }, { at = 1660, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "level-up-twice"
+situation = "seq-level-up-twice"
+ms = 6000
+hero_speed = 4
+seed = 7
+why = "a chest's experience taken, two levels: each dialog's left offer clicked, Enter"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, click = [462, 380] },
+    { at = 1400, keydown = "Return" }, { at = 1460, keyup = "Return" },
+    { at = 3800, click = [351, 413] },
+    { at = 4200, keydown = "Return" }, { at = 4260, keyup = "Return" },
+    { at = 4800, click = [351, 413] },
+    { at = 5200, keydown = "Return" }, { at = 5260, keyup = "Return" },
 ]

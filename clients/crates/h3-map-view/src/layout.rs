@@ -15,6 +15,8 @@ use h3_ui::message::MessageLayout;
 use h3_ui::ui::{Dialog, Item};
 use serde::Deserialize;
 
+use crate::levels::LevelUpLayout;
+
 /// The adventure screen's layout.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -58,6 +60,9 @@ pub struct AdventureLayout {
     /// week's and the month's message; E17 design §7.19), the battle's `[message]` less its
     /// pictures.
     pub message: MessageLayout,
+    /// A level-up's dialog (E24 M4 T2c, design §5.5: `level_up_dialog` 0x4F8880): its items
+    /// without an offer and those one or two add.
+    pub level_up: LevelUpLayout,
 }
 
 /// What the panels' logic needs of the dialog's items (E24 M3 T2a, design §4.1).
@@ -237,8 +242,8 @@ impl AdventureLayout {
         Ok(())
     }
 
-    /// Every name the dialog, the resource bar, the status window's panels, the panels' data and
-    /// the message box mention, with the extension each must have.
+    /// Every name the dialog, the resource bar, the status window's panels, the panels' data, the
+    /// message box and the level-up's dialog mention, with the extension each must have.
     fn dialog_names(&self) -> Vec<(&str, &'static str)> {
         let items = self
             .dialog
@@ -250,7 +255,10 @@ impl AdventureLayout {
             .chain(&self.status_hero.items)
             .chain(&self.status_town.items)
             .chain(&self.status_other.items)
-            .chain(&self.status_found.items);
+            .chain(&self.status_found.items)
+            .chain(&self.level_up.dialog.items)
+            .chain(&self.level_up.two)
+            .chain(&self.level_up.one);
         let mut out = Vec::new();
         for item in items {
             match item {

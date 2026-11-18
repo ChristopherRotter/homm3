@@ -863,4 +863,5 @@ fn the_items_and_names_of_every_colour() {
     assert_eq!(shown.state(HANDICAP), State::default());
 }
 
+mod duration;
 mod flags;

@@ -186,8 +186,8 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   whole: the user kept it uncut; the log's "M4 T2a2"); T2b, the questions and
   choices, cut in two by the user at its start (2026-11-18, as T2a): T2b1, the reading and the
   recordings (**done** 2026-11-18, the log's "M4 T2b1"), T2b2, the viewer (**done** 2026-11-18,
-  whole: the user kept it uncut; the log's "M4 T2b2"); T2c, a level-up's choice, T2d, the map changed
-  by a visit; T3, a record's start (after the server lane's whole-game record
+  whole: the user kept it uncut; the log's "M4 T2b2"); T2c, a level-up's choice (**done**
+  2026-11-18, whole: the user kept it uncut; the log's "M4 T2c"), T2d, the map changed by a visit; T3, a record's start (after the server lane's whole-game record
   and the adventure lane's object identity); T4, a record played; T5, the battles handed over
   (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
   with the user.
@@ -317,3 +317,22 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   four of the six choices (`choose-chest`, `-chest-gold`, `-arena`, `-school`) check only when it
   changes. Live the arrow. The engine's reach (Part B) replaces it; the alternative, re-recording
   them with the mouse moved off the view before the box closes.
+- **M4 T2c, a level-up's facts without the engine** (*provisional*; design §5.5, *Built*): the
+  levels a visit's experience reaches from the tables' thresholds and the situation's experience
+  (none given: no level, a new game's draw not known; the hero selected at 0 alone), each level's
+  facts (the primary skill, the offers) from the live part's `[[level_up]]` tables in order (the
+  primary skill read as the third picture from the end: the harness's item order); the dialog
+  shown after a find's boxes, an answer's gain or a chest's dissolve (`Reply::after`,
+  `Answer::after`); the offer learned shown only where the status window shows it (Leadership's
+  morale, Luck's luck: the tables' list). M4's Part B (T3, T4) takes the facts from the engine's
+  `LevelUpView` instead.
+- **M4 T2c, the dialog's input** (*provisional*): an offer chosen at the mouse's press (as the
+  choice boxes'); the keys 1 and 2 bound in the box's context alone (`offer-left`,
+  `offer-right`); a box's close (every box's) keeps the cursor where the mouse manager last drew
+  it until the next poll (recorded: `level-up-right` at 2000 and 2013). Not built: the Tree of
+  Knowledge's level (its OK), a battle's (T5), the offers' right-click popups, the deadline and the
+  computer's choice.
+- **M4 T2c, the harness's secondary skills** (*provisional*; design §5.5): a hero's eight skills
+  written after the staging (every level and slot cleared first, no selection), so that a level
+  offers one advance or none without a seed's search; they and the type's cleared must not change
+  the morale or luck the status window shows (TRAPS).

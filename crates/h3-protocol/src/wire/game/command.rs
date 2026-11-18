@@ -316,6 +316,11 @@ pub enum Manage {
         /// The combination's position.
         at: u16,
     },
+    /// Dismisses a hero (GAM-MAN-003): it leaves the game with every artifact it holds.
+    Dismiss {
+        /// The hero.
+        hero: u16,
+    },
 }
 
 /// An army command (`h3_adventure::ArmyCommand`).
@@ -644,6 +649,12 @@ pub enum ManageReject {
         /// Why.
         error: CombineReject,
     },
+    /// The hero to dismiss is the actor's garrison hero, not on the map (GAM-MAN-003).
+    NotOnMap {},
+    /// The hero to dismiss visits a town (GAM-MAN-003).
+    InTown {},
+    /// The hero to dismiss is the actor's one hero on the map, and it owns no town (GAM-MAN-003).
+    LastHero {},
 }
 
 /// Why an army command was refused (`h3_adventure::ArmyCommandError`).

@@ -311,7 +311,8 @@ fn in_a_meeting_stacks_and_artifacts_move_between_its_two_heroes() {
 /// Every management command of red on `hero` but the splits, `toward` another army: its army's
 /// moves onto its own and the other army's slots and its dismissals, the formations and the flag's
 /// values, its artifacts' moves onto its own places and the other hero's (`worn` positions,
-/// backpack indices up to `carried`), its assemblies and disassemblies; with the group, the group's
+/// backpack indices up to `carried`), its assemblies and disassemblies, its dismissal (E09
+/// T38b2); with the group, the group's
 /// moves onto its own and the hero's slots and its dismissals.
 fn candidates(
     rules: &GameRuleset,
@@ -369,6 +370,8 @@ fn candidates(
         all.push(Manage::Assemble { hero, at: p });
         all.push(Manage::Disassemble { hero, at: p });
     }
+    // E09 T38b2: the hero's dismissal (GAM-MAN-003), outside a meeting.
+    all.push(Manage::Dismiss { hero });
     all
 }
 

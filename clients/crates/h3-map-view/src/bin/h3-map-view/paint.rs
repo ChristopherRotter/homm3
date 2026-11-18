@@ -30,6 +30,7 @@ use h3_map_view::damage::{Held, History, drop_held};
 use h3_map_view::finds::{self, Find, Gain, Told};
 use h3_map_view::hover::{Facts, Hover, Tile};
 use h3_map_view::layout::{AdventureLayout, CursorArt};
+use h3_map_view::levels;
 use h3_map_view::live::{
     Buttons, Calendar, Explored, Facing, Lifted, Live, Moment, Selected, Stack, Status, Walking,
 };
@@ -42,7 +43,7 @@ use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
     Action, Answer, Computer, Cursor, DEFAULT_CURSOR, Direction, Dissolve, Draw, Found, Hero,
-    NextTurn, Question, Start, TownBoxes,
+    LevelBox, NextTurn, Question, Start, TownBoxes,
 };
 use h3_map_view::{status, turn};
 use h3_render::Bugs;
@@ -50,6 +51,7 @@ use h3_render::screen::{Screen, Widening};
 use h3_ui::cursor::{Cursor as Sprite, Image};
 use h3_ui::message::{self, MessageBox, Picture, Style};
 use h3_ui::text::Args;
+use h3_ui::ui::Item;
 
 use crate::{files, render, situation};
 
@@ -145,16 +147,16 @@ pub fn for_sequence<'a>(
         (None, Vec::new())
     };
     // The selected hero's Diplomacy as the harness writes it (E24 M4 T2b2 part A2: a monster's
-    // offer for gold), found by where its walk leaves it.
-    painter.diplomacy = hero
-        .and_then(|h| {
-            situation.heroes.iter().find(|spec| {
-                let [x, y] = spec.walk.last().copied().unwrap_or(spec.at);
-                [x, y] == [h.at.x, h.at.y]
-            })
+    // offer for gold), found by where its walk leaves it; its experience as the map gives it
+    // (E24 M4 T2c: the levels a visit's experience reaches).
+    let spec = hero.and_then(|h| {
+        situation.heroes.iter().find(|spec| {
+            let [x, y] = spec.walk.last().copied().unwrap_or(spec.at);
+            [x, y] == [h.at.x, h.at.y]
         })
-        .and_then(|spec| spec.diplomacy)
-        .unwrap_or(0);
+    });
+    painter.diplomacy = spec.and_then(|spec| spec.diplomacy).unwrap_or(0);
+    let experience = spec.and_then(|spec| spec.experience);
     let sound = painter.sound(hero.map(|h| h.at))?;
     // End Turn's question and the turns' messages (E24 M4 T1a); a computer's walks from the
     // recorded `hero` lines (E24 M4 T1b2).
@@ -166,6 +168,8 @@ pub fn for_sequence<'a>(
     let hover = painter.hover()?;
     let finds = painter.finds(&raw, hover.as_deref())?;
     let town = painter.town()?;
+    // The level-ups' dialogs (E24 M4 T2c): the recording's facts.
+    let level_ups = painter.level_ups(hover.as_deref())?;
     let start = Start {
         view,
         size: i32::from(situation.size),
@@ -201,6 +205,8 @@ pub fn for_sequence<'a>(
         },
         finds,
         town: Some(town),
+        experience,
+        level_ups,
     };
     Ok(Setup {
         painter,
@@ -289,6 +295,9 @@ pub fn for_situation<'a>(
         computer: Computer::default(),
         finds,
         town: Some(town),
+        // A still reaches no level (E24 M4 T2c: its hero's experience not known).
+        experience: None,
+        level_ups: Vec::new(),
     };
     Ok(Setup {
         painter,
@@ -1036,9 +1045,86 @@ impl<'a> Painter<'a> {
             chooses: reply.chooses,
             then,
             taken: reply.taken.map(|fade| (o, fade)),
+            after: reply.after,
             reveal: reply.reveal,
             marks: reply.marks,
         })
+    }
+
+    /// The selected hero's level-ups' dialogs (E24 M4 T2c, design §5.5): each of the live part's
+    /// level-ups of the status window's hero (*provisional*: the recording's facts) laid out
+    /// (`levels::dialog`) with the hero's name, its class's (the mouse-over's hero list), its
+    /// large portrait (the status window's) and its owner's colours (the viewer's), the layout's
+    /// pictures, DEFs and fonts decoded; none without a hero's window.
+    fn level_ups(&mut self, hover: Option<&Hover>) -> Result<Vec<LevelBox>, String> {
+        let assets = self.assets;
+        let kingdom = &self.live.kingdom;
+        let (Some(Status::Hero(status)), Selected::Hero(slot)) =
+            (&kingdom.status, kingdom.selected)
+        else {
+            return Ok(Vec::new());
+        };
+        let hero = status.hero;
+        let ups: Vec<_> = self
+            .live
+            .level_ups
+            .iter()
+            .filter(|up| up.hero == hero)
+            .cloned()
+            .collect();
+        if ups.is_empty() {
+            return Ok(Vec::new());
+        }
+        let portrait = kingdom
+            .heroes
+            .get(slot)
+            .and_then(|h| {
+                assets
+                    .tables
+                    .map
+                    .status
+                    .portraits
+                    .get(usize::from(h.portrait))
+            })
+            .ok_or("a level-up's hero's portrait is past the tables'")?
+            .clone();
+        let texts = &assets.tables.texts;
+        let class = hover
+            .and_then(|h| h.facts().hero_list.iter().find(|(id, ..)| *id == hero))
+            .and_then(|&(_, class, _)| texts.known(&format!("hero-class.{class}"), &Args::new()))
+            .unwrap_or_default();
+        let name = self.hero_name();
+        let layout = &assets.layout.level_up;
+        let names = layout
+            .dialog
+            .items
+            .iter()
+            .chain(&layout.two)
+            .chain(&layout.one)
+            .filter_map(|item| match item {
+                Item::Picture(p) => Some(p.picture.clone()),
+                Item::Def(d) => d.def.clone(),
+                Item::Button(b) => Some(b.def.clone()),
+                Item::Label(l) => Some(l.font.clone()),
+                _ => None,
+            })
+            .chain([portrait.clone()])
+            .map(|n| n.to_ascii_uppercase())
+            .collect::<Vec<_>>();
+        self.add(names)?;
+        Ok(ups
+            .iter()
+            .map(|up| {
+                let shown = up.texts(texts, &name, &class);
+                let dialog = levels::dialog(layout, up, shown, &portrait, self.live.viewer);
+                LevelBox {
+                    level: up.level,
+                    dialog: Arc::new(dialog),
+                    offers: up.offers.clone(),
+                    primary: up.primary,
+                }
+            })
+            .collect())
     }
 
     /// The viewer's boxes of a turn without a town (E24 M4 T2a2, design §5.3): the warning and
@@ -1185,11 +1271,13 @@ impl<'a> Painter<'a> {
             scene
                 .draws
                 .extend(draws.into_iter().map(scene::Draw::Dialog));
-            // A choice's frame shown (E24 M4 T2b2 part B).
-            let frames = message.frame_draws(&assets.layout.message.font_palette);
+            // A choice's frame shown (E24 M4 T2b2 part B), a level-up's (E24 M4 T2c).
+            let palette = &assets.layout.message.font_palette;
+            let frames = message.frame_draws(palette);
+            let offers = levels::frame_draws(message, palette);
             scene
                 .draws
-                .extend(frames.into_iter().map(scene::Draw::Dialog));
+                .extend(frames.into_iter().chain(offers).map(scene::Draw::Dialog));
         }
         Ok(scene)
     }

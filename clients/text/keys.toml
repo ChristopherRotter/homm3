@@ -1433,6 +1433,42 @@ original = [{ at = "ADVEVENT:0" }]
 id = "map.ask.school"
 original = [{ at = "ADVEVENT:71" }]
 
+# A level-up's dialog (E24 M4 T2c; design §5.5: `level_up_dialog` 0x4F8880): the hero's name
+# gaining a level (2002), its name, new level and class (2003), the primary skill's name raised
+# (2004: the executable's own text), the sentence naming the offers (2005: one's level and skill
+# for one, both for two, the left's first; its two leading line breaks put it below its box,
+# MCL-Q34) and an offer's caption under its picture (2007, 2008: its level's name and its
+# skill's); the "or" between two is `map.ask.or`'s.
+[[key]]
+id = "map.level-up.gained"
+args = { name = "text" }
+original = [{ at = "GENRLTXT:445", printf = ["name"] }]
+
+[[key]]
+id = "map.level-up.now"
+args = { name = "text", level = "number", class = "text" }
+original = [{ at = "GENRLTXT:446", printf = ["name", "level", "class"] }]
+
+[[key]]
+id = "map.level-up.primary"
+args = { skill = "text" }
+original = [{ at = "EXE:0x67FA40", printf = ["skill"] }]
+
+[[key]]
+id = "map.level-up.learned"
+args = { level = "text", skill = "text" }
+original = [{ at = "GENRLTXT:204", printf = ["level", "skill"] }]
+
+[[key]]
+id = "map.level-up.either"
+args = { level = "text", skill = "text", second_level = "text", second = "text" }
+original = [{ at = "GENRLTXT:205", printf = ["level", "skill", "second_level", "second"] }]
+
+[[key]]
+id = "map.level-up.caption"
+args = { level = "text", skill = "text" }
+original = [{ at = "EXE:0x67FA38", printf = ["level", "skill"] }]
+
 # A turn without a town (E24 M4 T2a2; design §5.3): at the turn's end GENRLTXT 7 with the player's
 # name (`scenario_condition_met` 0x4F2CE0), at each later day's start ArrayTxt 128 with the name and
 # the days left, 129 on the last day (`player_turn_start` 0x4CC7D0); the name the viewer's
@@ -3267,6 +3303,69 @@ original = [{ at = "HELP:112:1" }]
 [[key]]
 id = "shell.scenario.help.bar"
 original = [{ at = "HELP:254:1" }]
+
+# The advanced options' (E27 M3 T3c2): the headers (the town's 342: record 259, the one with
+# Conflux), the duration's label (340) and bar (338), then each colour's items by colour 0's record
+# (the eight colours' records hold one text: one key for all eight).
+[[key]]
+id = "shell.scenario.help.name-header"
+original = [{ at = "HELP:256:1" }]
+
+[[key]]
+id = "shell.scenario.help.town-header"
+original = [{ at = "HELP:259:1" }]
+
+[[key]]
+id = "shell.scenario.help.hero-header"
+original = [{ at = "HELP:260:1" }]
+
+[[key]]
+id = "shell.scenario.help.bonus-header"
+original = [{ at = "HELP:261:1" }]
+
+[[key]]
+id = "shell.scenario.help.duration-label"
+original = [{ at = "HELP:257:1" }]
+
+[[key]]
+id = "shell.scenario.help.duration-bar"
+original = [{ at = "HELP:255:1" }]
+
+[[key]]
+id = "shell.scenario.help.kind"
+original = [{ at = "HELP:116:1" }]
+
+[[key]]
+id = "shell.scenario.help.handicap"
+original = [{ at = "HELP:124:1" }]
+
+[[key]]
+id = "shell.scenario.help.town-left"
+original = [{ at = "HELP:132:1" }]
+
+[[key]]
+id = "shell.scenario.help.town-right"
+original = [{ at = "HELP:140:1" }]
+
+[[key]]
+id = "shell.scenario.help.hero-left"
+original = [{ at = "HELP:148:1" }]
+
+[[key]]
+id = "shell.scenario.help.hero-right"
+original = [{ at = "HELP:156:1" }]
+
+[[key]]
+id = "shell.scenario.help.bonus-left"
+original = [{ at = "HELP:164:1" }]
+
+[[key]]
+id = "shell.scenario.help.bonus-right"
+original = [{ at = "HELP:172:1" }]
+
+[[key]]
+id = "shell.scenario.help.flag"
+original = [{ at = "HELP:180:1" }]
 
 [[key]]
 id = "shell.scenario.teams.title"

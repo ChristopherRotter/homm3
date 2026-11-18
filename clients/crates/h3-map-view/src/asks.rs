@@ -35,11 +35,10 @@
 //! (112), a free Tree (148: its level-up at once); since part A2 a monster's message and treasure
 //! (its word's bit 31), its fight and its insult (87), a join without room (the army dialog), a
 //! Border Guard without the key, a Cartographer visited (24) or too dear (28), Pandora's Box with
-//! a message or guards (16) or empty (15); since part B a chest's artifact (bit 10), a level
-//! the chest's experience reaches (`hero_level_up` 0x4DA720: T2c's; the viewer does not know the
-//! hero's experience) and its Learning (the experience the gold less 500 alone), the Arena
-//! visited, a School visited (ADVEVENT 72) or too dear (73), the School of War (158, its code the
-//! Magic's: not recorded).
+//! a message or guards (16) or empty (15); since part B a chest's artifact (bit 10), its
+//! Learning (the experience the gold less 500 alone; the levels it reaches are T2c's, the
+//! timeline's: `crate::levels`), the Arena visited, a School visited (ADVEVENT 72) or too dear
+//! (73), the School of War (158, its code the Magic's: not recorded).
 
 use alloc::boxed::Box;
 use alloc::format;
@@ -299,9 +298,10 @@ pub enum Fade {
 /// engine's in time): its boxes (style 1, or `grant_rewards`' `message_box_pictures`), each with
 /// what the panels show as it opens; what they show after the last; the status window built
 /// again (`status_window_choose` 0x415DE0 with 1, 1, 1: a monster's join); the question asked
-/// next; the object taken off the map; the terrains revealed (a bit per terrain: then the view
-/// and the minimap drawn again, `visit_object`'s common end 0x4A9AD3). Its default ends the
-/// visit with nothing shown (A1's every Cancel).
+/// next; the object taken off the map and (E24 M4 T2c) what the panels show at its dissolve's
+/// end; the terrains revealed (a bit per terrain: then the view and the minimap drawn again,
+/// `visit_object`'s common end 0x4A9AD3). Its default ends the visit with nothing shown (A1's
+/// every Cancel).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Reply {
     /// The boxes.
@@ -316,6 +316,10 @@ pub struct Reply {
     pub then: Option<Box<Ask>>,
     /// The object taken off the map, and how.
     pub taken: Option<Fade>,
+    /// What the panels show at the taken object's dissolve's end (E24 M4 T2c, design §5.5: a
+    /// chest's experience, whose levels follow the chest's removal, `visit_treasure_chest`
+    /// 0x4A6520's `hero_level_up`).
+    pub after: Gain,
     /// The terrains revealed.
     pub reveal: u32,
     /// A Cancel's answer marks the find answered as an OK's does (part B: the Arena's, which
@@ -1034,8 +1038,8 @@ impl Ask {
     }
 
     /// What a choice's second picture chosen does (part B; 0x780A): a chest's experience (nothing
-    /// the panels show: its level-up not built) and the chest taken with a pickup's sound
-    /// (`choose-chest`), the Arena's gain to Defense (`choose-arena`), a School's to Knowledge
+    /// the panels show; since E24 M4 T2c its levels' dialogs at the dissolve's end) and the chest
+    /// taken with a pickup's sound (`choose-chest`, `level-up-twice`), the Arena's gain to Defense (`choose-arena`), a School's to Knowledge
     /// for its price (`choose-school`); none for a question.
     #[must_use]
     pub fn second(&self) -> Option<Reply> {
@@ -1046,11 +1050,14 @@ impl Ask {
     /// chest's taken.
     fn chosen(&self, n: usize) -> Option<Reply> {
         let mut gain = Gain::default();
+        let mut after = Gain::default();
         let mut taken = None;
         match *self {
-            Self::Chest { gold, .. } => {
+            Self::Chest { gold, experience } => {
                 if n == 0 {
                     gain.resources[GOLD] = gold;
+                } else {
+                    after.experience = experience;
                 }
                 taken = Some(Fade::Pickup);
             }
@@ -1072,6 +1079,7 @@ impl Ask {
         Some(Reply {
             gain,
             taken,
+            after,
             ..Reply::default()
         })
     }

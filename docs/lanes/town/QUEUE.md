@@ -9,38 +9,22 @@ to 128; its drafts accepted at T33b, `TWN-Q18`; batch TWN-4 scored by T34; the d
 by T35a, `TWN-Q19`; its code by T35b, decisions 129 to 131; the town part v7 by T36, decision
 132; the pool in the game by T37a, `TWN-Q20`, decisions 133 to 136; the map's customised types
 by T37b, `TWN-Q21`, decisions 137 to 139; T38a cut in two, `TWN-Q22`, decisions 140 to 142;
-T38a2 whole, decisions 143, 144; T38b cut in two, `TWN-Q23`, decisions 145, 146);
+T38a2 whole, decisions 143, 144; T38b cut in two, `TWN-Q23`, decisions 145, 146; T38b2
+whole, `TWN-Q24`, decisions 147, 148; T38 done);
 done tasks in `E09-log.md`; increments 1 to 3
 (closed by T10, T20 and T30) in `E09-archive.md`. The building tasks are the design note's
 `E09-design.md` §79 (round by round, with the order against E08's increment 13); each task's cut
 confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`) and the exit criteria it serves (the epic's list, decision 121).
 
-**E09 T38 — the hire and the leaves** (round 6; `cross-lane`; design §64, §65, §67, §69, §75,
-§76): T38a cut in two (decision 140, `TWN-Q22`): T38a1 the hire's rule, the replacement,
-`HeroHired` and its parts, the protocol v71 and `town hire` (replay format v17) **done**;
-T38a2 the hire listed (`legal_commands`, the env's `TAVERN_HIRE` v12, the plans, the seeds, the
-benches; decisions 143, 144) **done**;
-T38b cut in two (decision 145, `TWN-Q23`): T38b1 every leave by a battle or a capture
-(TWN-TAV-006, the returns TD-18, TD-19, `TWN-QUIRK-12`; decision 146) **done**;
-**T38b2 next**: the dismissal (GAM-MAN-003, TD-22, `Manage::Dismiss { hero }` with its
-refusals `NotOnMap`, `InTown`, `LastHero`; `TWN-STUB-16`; no env entry, decision 120), the
-legal commands (a `Dismiss` per own hero on the map that passes, after its management
-commands), `manage dismiss` (replay format v18), the protocol (v72: the command and its
-refusals), the plans taught a dismissal. T38b1's notes: the leave is `town::leave::leave(state,
-rules, &hero, Leave::Gone)` over the `HeroOnMap` the adventure takes off (a new adventure call
-that removes the hero, frees its boat, calls `leave_marks` and tells `HeroRemoved` to its owner
-and the players that see its tile, as `end_battle`'s); a dismissed hero keeps every artifact
-(decision 105). A hero that leaves without returning ends at its full spell points untold: the
-plans' oracles over a management command (`check_conservation`, `check_managing`) meet it.
-**Status:** T38b2 next.
-
 **E09 T39 — the map's objects and the information** (round 7; `cross-lane`, after E08's T123;
 design §66, §73 to §76): T39a the kinds `Tavern` and `DenOfThieves` (the adventure part, classes
 95 and 97 imported and written), the tavern decision (GAM-DEC-010, `TavernOpened`, `answer
 tavern`, the env's answers by role v13); T39b the Thieves' Guild (TWN-TAV-007 to -009: the query,
 the Den's `ThievesGuildSeen`, TD-23, `TWN-QUIRK-13`, `TWN-STUB-17`, `-18`; the adventure's power
-and the day's gold made public), the protocol's request. **Status:** queued.
+and the day's gold made public), the protocol's request. Versions to take: map import v26,
+replay format v19 (`answer tavern`), protocol v73, the env's v13. **Status:** next (T39a), its
+cut confirmed at its start.
 
 **E09 T40 — the gates** (round 8; design §78): the taverns map and its scripted replays, the
 census of the 160 maps' first offers and of the maps classes 95 and 97 unblock, the pool's
@@ -54,6 +38,28 @@ the services) refined. **Status:** queued.
 
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
+
+- 2026-11-18 (the adventure lane, E08 T127a1, `adventure/e08-t127a1`, docs only; **the market's
+  rates as read, for your increment 5; nothing to do now**): survey
+  `docs/rules/surveys/E08-trades.md` §3, §4 and §11 (the address map's `market_*` entries). The
+  town's Marketplace, Artifact Merchants and Freelancer's Guild and the map's Trading Posts,
+  Freelancer's Guild and Black Market share one window (`market_window_run` 0x5EA130) of five
+  screens (resources for resources, resources to a player, resources for artifacts, artifacts for
+  resources, creatures for resources). **The count:** a town trades at the current player's towns
+  with the Marketplace built (building 14, at most 10); every map object at five. **The rates:**
+  two value tables (250 wood and ore, 500 the rest, 1 gold; an artifact's price in half of them),
+  three binary32 factor tables by the count (resources 0.1 to 0.5, artifacts 0.2 to 0.6, creatures
+  0.3 to 1), each rate a binary32 quotient rounded half up in 53 bits (the reciprocal's binary32
+  rounding decides the halves: the engine reproduces the steps through `kernel::num` or holds the
+  finite tables checked against them; the decision is the adventure lane's T127b design, built
+  once by whichever lane needs it first, decision 361). **Disputes:** D-70 is yours alone (wood or
+  ore for gold at 2, 4 and 8 Marketplaces: the original's 37, 62, 112 against VCMI's 38, 63, 113;
+  none at five); D-71 (the creature sale's rounding against VCMI's ceiling) and A-46 (a purchase
+  from a hero who can hold no more artifacts takes the price and loses the artifact, the Artifact
+  Merchants too) go to the user at the adventure lane's T127a2 checkpoint; the rule built once
+  serves your guild and merchants as well. Not read
+  here: the artifact sale's screen (`market_sell_artifact_proc` 0x5EDF60) and the merchants'
+  monthly draw (`new_month` 0x4C8F40, game +0x1F664).
 
 - 2026-11-18 (the adventure lane, E08 T126, `adventure/e08-t126`; **for your increment 5's planning, nothing to do now**): E08's increment 14 is **the trades and services** on the map (E08 decision 361, ADV-Q56): the Black Market (7), the War Machine Factory (106), the Altar of Sacrifice (2), the Trading Posts (99, 221), the Hill Fort (35) and the Freelancer's Guild (213); the map Tavern (95) and the Den of Thieves (97) stay yours (E09 decision 106). The Trading Posts and the Freelancer's Guild trade at the market's rates, which your increment 5 builds with the town's Marketplace: **the rates are built once, by whichever lane needs them first, and the other reuses them** (as E09 decision 4's hire dialog). The adventure lane's survey (E08 T127a, `docs/rules/surveys/E08-trades.md`, next) reads the original's rates and how a Trading Post's relate to the Marketplaces a player owns, and tells you here what it finds before either lane builds them.
 

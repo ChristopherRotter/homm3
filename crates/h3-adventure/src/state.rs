@@ -2297,25 +2297,47 @@ impl AdventureState {
             };
             match army {
                 Some(army) => self.heroes[index].army = army.to_vec(),
-                None => {
-                    let hero = self.heroes.remove(index);
-                    self.leave_marks(id);
-                    let seen_by = self.viewers(core, hero.owner, hero.pos);
-                    sink.emit(AdventureEvent {
-                        kind: AdventureEventKind::HeroRemoved {
-                            hero: id,
-                            pos: hero.pos,
-                        },
-                        seen_by,
-                    });
-                    if let Some(boat) = hero.boat {
-                        self.remove_boat((id, boat, hero.pos), seen_by, sink);
-                    }
-                    left.push(hero);
-                }
+                None => left.push(self.remove_at(core, index, sink)),
             }
         }
         left
+    }
+
+    /// Takes `player`'s hero `hero` off the map (GAM-MAN-003, the dismissal; since E09 T38b2, the
+    /// town lane's, `cross-lane`): as a battle's hero without an army ([`Self::end_battle`]): its
+    /// marks gone, told to its owner and the players that see its tile (ADV-FOG-004) as
+    /// [`AdventureEventKind::HeroRemoved`], its boat freed ([`Self::remove_boat`], ADV-SEA-006).
+    /// Returns the hero as it stood; none (nothing changed) for a hero that is not `player`'s on
+    /// the map. The game checks the dismissal's rules first.
+    // rule: GAM-MAN-003, ADV-SEA-006
+    pub fn remove_hero<S: Sink>(
+        &mut self,
+        core: &Ruleset,
+        (player, hero): (PlayerId, HeroId),
+        sink: &mut S,
+    ) -> Option<HeroOnMap> {
+        let index = self.heroes.binary_search_by_key(&hero, |h| h.id).ok()?;
+        (self.heroes[index].owner == player).then(|| self.remove_at(core, index, sink))
+    }
+
+    /// Removes the hero at `index` of the heroes on the map: its marks gone, `HeroRemoved` told to
+    /// its owner and the players that see its tile, its boat freed with it.
+    fn remove_at<S: Sink>(&mut self, core: &Ruleset, index: usize, sink: &mut S) -> HeroOnMap {
+        let hero = self.heroes.remove(index);
+        let id = hero.id;
+        self.leave_marks(id);
+        let seen_by = self.viewers(core, hero.owner, hero.pos);
+        sink.emit(AdventureEvent {
+            kind: AdventureEventKind::HeroRemoved {
+                hero: id,
+                pos: hero.pos,
+            },
+            seen_by,
+        });
+        if let Some(boat) = hero.boat {
+            self.remove_boat((id, boat, hero.pos), seen_by, sink);
+        }
+        hero
     }
 
     /// Adds creatures a battle raised to a hero's army (GAM-BAT-006, E08 T19a2b; a hero's

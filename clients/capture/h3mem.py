@@ -372,6 +372,16 @@ WORD_FIELDS = {"aggression": (54, 12, 5), "gold": (101, 11, 4), "price": (102, 1
 CHEST_ARTIFACT_BIT = 10
 # A hero's Diplomacy level (the secondary skills' levels +0xC9, Diplomacy the fifth).
 DIPLOMACY = SECONDARY + 4
+# A hero's secondary skills known (E24 M4 T2c, design §5.5; structs.toml `hero`): their count
+# (i32 +0x101) beside the levels (SECONDARY) and the slots (SLOTS), a byte for each of 28 skills.
+SKILL_COUNT, SKILLS_KNOWN = 28, 0x101
+# The level-up dialog (level_up_dialog 0x4F8880; E24 M4 T2c, design §5.5): its vtable, its
+# picture items (the background and the portrait: dialog_picture_create's vtable 0x63BA94, the
+# PCX at +0x30), the picture arguments it keeps (+0x60 the left, +0x64 the right, -1 none) and
+# the offer chosen (+0x68: 0x7DA the left, 0x7DB the right, 0 none), its marks (the frames 0x7DC
+# and 0x7DD, the OK 0x7802).
+LEVEL_UP_VTABLE, PCX_VTABLE, LEVEL_UP_OFFERS, LEVEL_UP_CHOSEN = 0x63FE60, 0x63BA94, 0x60, 0x68
+LEVEL_UP_MARKS = (0x7DC, 0x7DD, 0x7802)
 MOVE_HERO, NEXT_HERO, QUEST_LOG = 7, 11, 5
 # A path arrow's frame: 0 none, 1 to 25 a move today (green), 26 to 50 a later one (red).
 GREEN_FRAMES = range(1, 26)
@@ -1228,6 +1238,18 @@ class Mem:
         record = self.game() + HEROES + HERO_SIZE * index
         self.write_bytes(record + DIPLOMACY, bytes([level]))
 
+    def write_secondary(self, index, skills):
+        """A hero's secondary skills (E24 M4 T2c, design §5.5: a situation's hero's
+        `secondary`, [skill, level 1 to 3] in the list's order, at most eight): every level and
+        slot cleared, then each skill's level, its slot (1 on) and the count."""
+        record = self.game() + HEROES + HERO_SIZE * index
+        levels, slots = bytearray(SKILL_COUNT), bytearray(SKILL_COUNT)
+        for slot, (skill, level) in enumerate(skills, 1):
+            levels[skill], slots[skill] = level, slot
+        self.write_bytes(record + SECONDARY, bytes(levels))
+        self.write_bytes(record + SLOTS, bytes(slots))
+        self.write_bytes(record + SKILLS_KNOWN, struct.pack("<i", len(skills)))
+
     def write_bonuses(self, index, morale, luck):
         """A hero's morale and luck until its next battle (E24 M3 T5b1: a situation's hero's
         `morale` and `luck`; i8 +0x11A, +0x11B)."""
@@ -1387,9 +1409,11 @@ class Mem:
         """The message box on top (E24 M4 T2a1, design §5.3), None when the adventure dialog (or
         nothing) is: its box (x, y, width, height), its text items' texts in item order (the
         text, then the pictures' captions), its pictures (`dialog_pictures`: [def, frame,
-        caption]) and its buttons' ids (0x7801 to 0x780A)."""
+        caption]) and its buttons' ids (0x7801 to 0x780A). Since E24 M4 T2c None under the
+        level-up dialog too (`level_up_box`)."""
         shown = self.dialog()
-        if shown is None or shown["at"] == self.manager_field(ADVENTURE_DIALOG):
+        if (shown is None or shown["at"] == self.manager_field(ADVENTURE_DIALOG)
+                or shown["vtable"] == LEVEL_UP_VTABLE):
             return None
         items = self.dialog_items()
         return {"box": shown["box"],
@@ -1403,6 +1427,35 @@ class Mem:
                 "chosen": self.i32(MESSAGE_BOX_CHOSEN),
                 "marks": [[i["id"], *i["box"], i["state"]] for i in items
                           if i["id"] in BOX_BUTTONS]}
+
+    def level_up_box(self):
+        """The level-up dialog on top (E24 M4 T2c, design §5.5), None if another or none shows:
+        its box (x, y, width, height), its text items' texts in item order, its pictures in item
+        order ([name, frame]: the PCX items' names with frame -1, the DEF items' names and
+        frames), the picture arguments it keeps ([left, right], -1 none: a skill's secskill.def
+        frame), the offer `chosen` (0x7DA, 0x7DB, 0 none) and its `marks`, the frames' and the
+        OK's [id, x, y, width, height, state]; the `hero` (the current player's selected hero,
+        the visitor: the dialog keeps none) and its `level` (u16 +0x55, already the new one)."""
+        shown = self.dialog()
+        if shown is None or shown["vtable"] != LEVEL_UP_VTABLE:
+            return None
+        hero = self.selected()[0]
+        level = (struct.unpack("<H", self.read(self.game() + HEROES + HERO_SIZE * hero
+                                               + HERO_LEVEL, 2))[0] if hero >= 0 else -1)
+        items = self.dialog_items()
+        pictures = []
+        for i in items:
+            if i["vtable"] in (PICTURE_VTABLE, PCX_VTABLE) and i["def"]:
+                name = self.c_string(i["def"] + DEF_NAME, 13).lower()
+                pictures.append([name, i["frame"] if i["vtable"] == PICTURE_VTABLE else -1])
+        return {"box": shown["box"], "hero": hero, "level": level,
+                "texts": [i["text"] for i in items
+                          if i["vtable"] == TEXT_VTABLE and i["text"] is not None],
+                "pictures": pictures,
+                "offers": list(struct.unpack("<2i", self.read(shown["at"] + LEVEL_UP_OFFERS, 8))),
+                "chosen": self.i32(shown["at"] + LEVEL_UP_CHOSEN),
+                "marks": [[i["id"], *i["box"], i["state"]] for i in items
+                          if i["id"] in LEVEL_UP_MARKS]}
 
     def town(self, index):
         """The town `index` of the game's towns (E24 M3 T4a): its record's address, faction,

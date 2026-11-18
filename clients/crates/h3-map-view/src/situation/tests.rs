@@ -1305,4 +1305,28 @@ visits = [{ at = [5, 10], aggression = -4 }, { at = [7, 7], gold = 1000 }]"#,
         .build(&BTreeMap::new(), &templates)
         .unwrap_err();
     assert_eq!(expert, "the hero at [4, 4]: Diplomacy past Expert");
+    // A level-up's offers (E24 M4 T2c): the secondary skills as given, checked.
+    let known = |skills: &str| text("").replace("diplomacy = 2", &format!("secondary = {skills}"));
+    let eight = known("[[0, 3], [1, 3], [2, 3], [3, 3], [4, 3], [5, 3], [6, 3], [7, 2]]");
+    assert_eq!(
+        Situation::parse(&eight).unwrap().heroes[0].secondary[7],
+        [7, 2]
+    );
+    for bad in [
+        "[[0, 3], [1, 3], [2, 3], [3, 3], [4, 3], [5, 3], [6, 3], [7, 2], [8, 1]]",
+        "[[28, 1]]",
+        "[[0, 0]]",
+        "[[0, 4]]",
+        "[[0, 1], [0, 2]]",
+    ] {
+        let refused = Situation::parse(&known(bad))
+            .unwrap()
+            .build(&BTreeMap::new(), &templates)
+            .unwrap_err();
+        assert_eq!(
+            refused,
+            "the hero at [4, 4]: secondary skills past eight, unknown, twice or at no level",
+            "{bad}"
+        );
+    }
 }

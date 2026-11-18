@@ -4836,3 +4836,59 @@ The agent's calls: decision 146.
   `check-lane --cross-lane` ok) passed once the leave's unreachable `None` paths were indexed and
   the repeated type's offered record got its test (coverage's two rounds); the protocol's fold,
   session and record tests over the new goldens passed.
+
+### T38b2 — the dismissal: `Manage::Dismiss`, its refusals, the listing, the plans (2026-11-18)
+
+One session, the user present; branch `town/e09-t38b2` (`cross-lane`: the adventure lane's
+`h3-adventure` `state.rs` and `state/tests/sea_battles.rs`, `h3-game`'s `manage.rs`, `legal.rs`,
+`state/manage.rs`, `tests/manage.rs`, `tests/exchanges.rs`, `h3-files`' replay word, `h3-sim`'s
+replay format, `h3-cli`'s literals, `h3-map`'s `tests/play.rs`, the 98 golden adventure replays'
+`format` line; the server lane's `h3-protocol`; with the user's consent). Starting point:
+`master` at 8625fed (#1013 and #1014 merged; the setup found CI's fingerprint, the light gates
+green). The user's computer was connected at the start only: 16 files staged (the four LODs,
+both executables, both tars, the three saves, the three manuals, two help files; SHA-256 checked
+against the PC's). **The user kept T38b2 whole** (decision 147, `TWN-Q24`, against the agent's
+cut in two as T38a's). The agent's calls: decision 148.
+
+- **The command** (`cross-lane`): `Manage::Dismiss { hero }` and `ManageError::{NotOnMap, InTown,
+  LastHero}` (`h3-game`'s `manage.rs`, with their messages); `GameState::manage` refuses it with
+  `DecisionOpen` unless no decision is open and hands it to the town lane's
+  `town::leave::dismiss`. The adventure's `AdventureState::remove_hero((player, hero))`:
+  `end_battle`'s removal (the marks, `HeroRemoved` to the owner and the tile's viewers, the boat
+  freed) made one private `remove_at`, shared; `None` for a hero not the player's on the map.
+- **The dismissal** (`h3-game`'s `town/leave.rs`; design §69's As built): a garrison hero of the
+  player's `NotOnMap`; for its hero on the map `check_dismissal` (`InTown` by `StaticMap::town_at`
+  on its tile, `LastHero` without another own hero on the map and without an owned town;
+  `TWN-STUB-16` marks it: the loss condition's hero); then the removal (`NotYourHero` by its
+  `None`) and `leave(.., Leave::Gone)`: one creature, the spell points full, T-16's points, the
+  type free with every artifact, no draw. Batch TWN-4's row TWN-4-5 saw exactly that.
+- **The listing:** `legal_management` gives the dismissal last, outside a decision, for a hero on
+  the map that `check_dismissal` passes (a garrison hero's listing none).
+- **The replay word and the protocol:** `dismiss <hero>` (format **v18**; decision 148), the 98
+  goldens' `format` line, `h3-cli`'s and `h3-sim`'s literals; protocol **v72**: `Manage::Dismiss`
+  and `ManageReject::{NotOnMap, InTown, LastHero}` both ways, the round trips (122 rejections),
+  `a_dismissal_folds_as_observe_shows_it` (three golden games, every viewer's fold of the first
+  dismissal that passes against `observe`).
+- **Catalog:** GAM-MAN-003 new (`verified`: TWN-4-5 as the reading, the refusals by the code
+  reading, TD-22's dispute in its VCMI source); TWN-TAV-006 amended; `TWN-STUB-16` registered.
+- **Tests:** `town/tests/hire/dismiss.rs` (three: the leave with every artifact, its type free,
+  one creature, full spell points, no draw, told as the removal; every refusal with the listing
+  beside it and the messages; a meeting holding the turn), the adventure's
+  `a_removed_hero_leaves_the_map_with_its_boat_as_a_beaten_one`, `h3-files`' word and its
+  malformed lines; the management listings' candidates (`tests/manage.rs`, `tests/exchanges.rs`)
+  hold the dismissal.
+- **The plans:** `managing` leaves the dismissals out (the other steps play as before);
+  `dismissal` plays one in one `Step::Manage` of sixteen; `check_management` (its removal and its
+  boat's, nothing else told, its record and artifacts kept), `check_conservation` (its record's
+  spell points full untold, its army off the map) and `check_isolation` (the actor's hero off the
+  map by its `HeroRemoved`) know it; `the_plans_meet_and_manage` counts the heroes dismissed. The
+  properties of `play.rs` and `view.rs` passed at five times their cases and
+  `every_step_keeps_the_commands_invariants` at ten (release), then at 48 again.
+- **The bench** (the scoped verify's `bench-check`): every workload inside its gate, none
+  re-baselined; `manage-army-12` +1.37 % (the listing's dismissal test, outside a meeting only:
+  in a meeting one comparison), `random-play-bonuses-36` +1.67 % (as before this task, T125b2b's
+  +1.66 %), every other within 1.3 %.
+- **Verify** (`--scope town --with-original-data`): every step but `check-lane` (`cross-lane`:
+  `check-lane --cross-lane` ok) passed once the three new refusals' messages got their test
+  (coverage's two rounds); `h3-protocol`'s coverage (`verify-step coverage --scope server`) ok;
+  `h3-protocol`'s and `h3-server`'s tests, `cargo clippy --workspace --all-targets` clean.

@@ -16,6 +16,7 @@ use h3_map::model::{Body, Buildings, Pos};
 
 use crate::art::{CELLS, MapArt, TemplateArt};
 use crate::hover::{Facts, Hint};
+use crate::levels::LevelUp;
 use crate::minimap::Shown;
 use crate::tables::{self, TownArt};
 
@@ -72,6 +73,10 @@ pub struct Live {
     /// sleep, move hero, cast a spell and End Turn disabled (the layout's `[panels]` `computer`)
     /// and the shield (`aishield.pcx`, `ai_shield_draw` 0x4CA780) in the minimap's place.
     pub computer: bool,
+    /// The level-ups a recording reaches, in order (E24 M4 T2c, design §5.5, *provisional*: a
+    /// comparison's `[[level_up]]` tables, the original's random draws; the engine's from Part
+    /// B): what each level's dialog shows.
+    pub level_ups: Vec<LevelUp>,
 }
 
 /// A turn's start (E24 M4 T1a, design §5.1, *provisional*): a comparison's `[[turn]]` table, as the
@@ -1310,6 +1315,7 @@ impl Live {
             chosen,
             pressed: Vec::new(),
             turns: Vec::new(),
+            level_ups: Vec::new(),
             computer: false,
         }
     }

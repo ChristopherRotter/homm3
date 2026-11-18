@@ -119,6 +119,7 @@ pub(super) fn every_command() -> Vec<GameCommand> {
             hero,
             at: Position(0),
         },
+        Manage::Dismiss { hero },
     ];
     commands.extend(manage.map(GameCommand::Manage));
     commands.push(GameCommand::Town(TownCommand::Build {
@@ -271,6 +272,14 @@ fn every_rejection() -> Vec<GameCommandError> {
     );
     errors.extend(
         [
+            ManageError::NotOnMap,
+            ManageError::InTown,
+            ManageError::LastHero,
+        ]
+        .map(E::Manage),
+    );
+    errors.extend(
+        [
             HireError::NoSource,
             HireError::NotOffered(CreatureTypeId::from_raw(13)),
             HireError::Amount(0),
@@ -420,6 +429,9 @@ fn manage_back(error: w::ManageReject) -> ManageError {
                 CombineError::NotCombination(Position(at.into()))
             }
         }),
+        w::ManageReject::NotOnMap {} => ManageError::NotOnMap,
+        w::ManageReject::InTown {} => ManageError::InTown,
+        w::ManageReject::LastHero {} => ManageError::LastHero,
     }
 }
 
@@ -546,8 +558,9 @@ fn every_rejection_maps_back_and_round_trips() {
     // (E08 T105b2: `NothingToRevisit`), 13 of the army's (E08 T114a2: `NoGarrison`, `NotOwn`,
     // `OnlyEmpty`), 6 of an artifact's move, 3 of a combination's, 4 of a hire's, 24 of a town's
     // (E09 T27: `NotRecruiting`, `NotStanding`, `NothingSummoned`; E09 T28a: `GarrisonHeld` to
-    // `EmptyArmy`; E09 T38a1: `NoTavern`, `UnknownSlot`, `EmptySlot`).
-    assert_eq!(errors.len(), 119);
+    // `EmptyArmy`; E09 T38a1: `NoTavern`, `UnknownSlot`, `EmptySlot`), 3 of a dismissal's (E09
+    // T38b2: `NotOnMap`, `InTown`, `LastHero`).
+    assert_eq!(errors.len(), 122);
     let wire: BTreeSet<String> = errors.iter().map(|&e| kinds(&reject(e))).collect();
     assert_eq!(wire.len(), errors.len(), "distinct on the wire");
     for e in errors {

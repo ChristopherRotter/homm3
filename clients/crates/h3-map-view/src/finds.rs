@@ -416,7 +416,8 @@ pub enum Find {
 /// in time; recorded at the box's close, `find-windmill`'s resource bar, `find-axis`'s and
 /// `find-temple`'s status window, `find-event`'s; a pile's at once, `find-pile`'s): the
 /// resources the kingdom gains, the hero's primary skills' gains, its morale's on another day and
-/// on the week's seventh, its luck's, its spell points' and the creatures joining it.
+/// on the week's seventh, its luck's, its spell points' and the creatures joining it; since E24 M4
+/// T2c the experience it gains, which no panel shows but whose levels' dialogs follow the visit.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Gain {
     /// The resources, in the resource bar's order.
@@ -432,6 +433,9 @@ pub struct Gain {
     /// The creatures joining the hero's army (each the slot of its kind, else the first empty
     /// one; *provisional*: one without room is dropped, `army_dialog_with` not built).
     pub army: [Option<Stack>; 7],
+    /// The experience (E24 M4 T2c, design §5.5: the levels it reaches, `hero_level_up` 0x4DA720,
+    /// each its dialog after the visit's boxes).
+    pub experience: i32,
 }
 
 /// A box's text and pictures (type and subtype each).
@@ -605,8 +609,9 @@ impl Find {
 
     /// What the visit gives that the panels show ([`Gain`]): a Windmill's resource, a Star
     /// Axis's Spell Power, a Temple's morale, a pile's resource, an artifact's primary skills
-    /// (`art`'s); nothing visited, nothing else (*provisional*: the Well's spell points not
-    /// shown, the viewer knowing no maximum).
+    /// (`art`'s); since E24 M4 T2c the Learning Stone's experience (`art`'s, its levels after its
+    /// box: `visit_learning_stone` 0x4A6330); nothing visited, nothing else (*provisional*: the
+    /// Well's spell points not shown, the viewer knowing no maximum).
     #[must_use]
     pub fn gain(&self, art: &FindArt) -> Gain {
         let resources = |resource: i32, amount: i32| {
@@ -636,6 +641,10 @@ impl Find {
             },
             Self::Artifact { artifact } => Gain {
                 skills: art.skills_of(*artifact),
+                ..Gain::default()
+            },
+            Self::Stone { visited: false } => Gain {
+                experience: art.experience,
                 ..Gain::default()
             },
             _ => Gain::default(),
@@ -843,7 +852,8 @@ impl Granted<'_> {
 /// −100 000); the artifacts (8); the spells (9: two in a box tell 188, even over the map's
 /// text); the creatures (21: 185 for one, 186 for more) — the map's `text` in the first box
 /// alone; and what the panels show after the last box closes (*provisional*: the skills each
-/// learned, the spells each new, the artifacts each with room).
+/// learned, the spells each new, the artifacts each with room; since E24 M4 T2c the experience,
+/// given last with its levels: `hero_gain_experience`).
 #[must_use]
 pub fn rewards(
     rewards: &Rewards,
@@ -973,6 +983,7 @@ pub fn rewards(
     }
     g.flush();
     let gain = Gain {
+        experience: i32::try_from(rewards.experience).unwrap_or(i32::MAX),
         skills: rewards.primary.map(|v| i8::try_from(v).unwrap_or(i8::MAX)),
         morale: [rewards.morale; 2],
         luck: rewards.luck,

@@ -17,6 +17,7 @@ use h3_map_view::art::{MapArt, TemplateArt};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
 use h3_map_view::hover::{self, Facts};
+use h3_map_view::levels::LevelUp;
 use h3_map_view::live::{
     Arrow, Buttons, Chosen, Drawn, Explored, Kingdom, Live, LiveBoat, LiveHero, Moment, Status,
     TOWN_CLASS, Turn,
@@ -618,6 +619,16 @@ pub fn read_live(
             failed(
                 "`[[turn]]` is not at, player, kingdom = { ... }, status = { ... }, week = [kind, \
                  n] and month = [kind, n], with heroes and boats as the live part's",
+            )
+        })?;
+    }
+    if let Some(value) = table.get("level_up") {
+        // The level-ups the recording reached (E24 M4 T2c, design §5.5).
+        live.level_ups = LevelUp::read_all(value).ok_or_else(|| {
+            failed(
+                "`[[level_up]]` is not hero, level, offers = [left, right] (secskill.def's \
+                 frames, -1 none) and pictures = [[def, frame], ...] (the primary skill's third \
+                 from the end)",
             )
         })?;
     }
