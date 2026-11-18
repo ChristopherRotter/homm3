@@ -3389,3 +3389,66 @@ and `seq-choose-*`).
   blocking find with nothing to tell), 100 % lines, regions and functions of `h3-map-view` and of
   `h3-ui` but its `scrollbar.rs` (the client lane's, untouched: its callers and their tests are
   `h3-view`'s).
+- **Built** (M4 T2b2 part A2, *provisional*): `asks` gains a wandering monster's offers
+  (`Ask::Monster`: its stack, `Offer` `Join`, `Gold` with the price or `Flee`, room in the army,
+  its flight after a declined offer), decided as `monster_visit_decision` 0x4A7740 does
+  (the battles' survey §3.2) in integers: `power` (`hero_army_power` 0x427650: the army's AI
+  values times √((20 + A)(20 + D)) over 20, truncated; the game's float factor and its 32-bit sum
+  not reproduced), the strength step (r = power over the stack's AI value times its count: 11, ⌊2r
+  − 2⌋, −1, −2, −3), the sympathy (its own type and its pair's, 2 n and 2 n + 1 below 112: Conflux's
+  pairs not built), the hero's Diplomacy the situation's `diplomacy` (the live part does not read
+  it; Normal's difficulty, no Easy bonus), the aggression and "never flees" from the tile's word;
+  a Border Guard's passage (`Pass`, its colour's key the viewer's mark on a Keymaster's Tent of that
+  colour), a Cartographer's maps (`Maps`, its kind: not visited and the tables' price held) and
+  Pandora's Box (`OpenBox`: its rewards and the hero's name, no message, not empty). Their boxes
+  (ADVEVENT 86; 88, or 89 then 90, with the gold's picture of the price; 91; 17; 25 to 27; 14), the
+  catalogue's keys `map.ask.join`, `-one`, `-gold`, `-price`, `.flee`, `.pass`, `.maps-sea`,
+  `-land`, `-underground`, `.open-box`. `Ask::yes` and the new `Ask::no` give a `Reply`: its boxes
+  (`granted`: `grant_rewards`' in `message_box_pictures`' layout), the gain after them, the status
+  window built again (`chooses`), the question asked next (`then`), the object taken and how
+  (`Fade`: a pickup's sound or `killfade.82M`, the tables' `[map.finds]` `killfade`), the terrains
+  revealed. A join's OK: its price paid and the army joined, the status window built again, the
+  monster taken with `killfade`; its Cancel the flight's question when it flees, else the insult
+  and the battle (none: not built); the flight's OK the battle (not built), its Cancel the monster
+  taken with `killfade`, no treasure; the guard's OK it taken with a pickup's sound; the
+  Cartographer's 1 000 gold paid (the tables' `[map.asks]` `maps_price`) and its kind's terrains
+  revealed (`reveals`: 0x100, 0xBF, 0x40, `reveal_terrain_mask` 0x4CA240's masks); Pandora's
+  `finds::rewards` boxes without the map's text, then the Box taken with a pickup's sound; every
+  A1 question's Cancel the default reply (the visit ended). **Read** (the detail §5.4 left open):
+  `visit_object`'s case 54 (0x4A97B2, a `map.toml` site) puts the visited monster's object in the
+  adventure manager's +0x218, its creature in +0x21C and the hero's being left of it in +0x220,
+  draws and shows the view, then decides; until the decision returns passes 5 and 7 draw that
+  object from `avwattak.def` (+0xE0, loaded at 0x407247) at frame +0x220 + 2 × +0x21C (0x4118E2,
+  0x4110EA): `live::Attacking` (in `Walking`), the tables' `[map.asks]` `attacking`, the scene's
+  object piece (recorded: the frames before every monster's dissolve). The timeline: `Question`
+  gains `no` and `attacker`, `Answer` `chooses`, `then`, `taken` and `reveal`, `Draw` `revealed`
+  and `attacking`; the open question and an answer's boxes travel in `Told::Asked` and
+  `Told::Answer` (`Loop::pose` asks a first or a next question, `Loop::answer` either button's
+  reply, an OK's marking the find answered, a reply not built refused); a monster's visit from
+  beside sets `attacking`, draws the view and steps the objects as `view_show_step` does before
+  the question; an answer's end shows the gain, builds the status window again, asks its next
+  question in that millisecond (`ask-join-no`'s 91 at 1060), takes its object (`Loop::take` with
+  its `Fade`: the view with the attack's picture dissolved, the step's end after it) or reveals its
+  terrains with the view and the minimap drawn again (`visit_object`'s common end, then the idle
+  step: `ask-cartographer`'s redraws due at 1060); `attacking` dropped at the take and at the
+  visit's end. The binary reads every creature's gold cost and AI value from `CRTRAITS.TXT`
+  (`texts::traits`), finds the key by the Tents' marks, lays a reply's boxes and its next
+  question out (`Painter::question`, `Painter::answer`), and makes every tile of the revealed
+  terrains explored on both levels (`Painter::reveal`, each level's index built again). Not
+  built: a monster's message and treasure (word bit 31), its battle and its insult (87), a join
+  without room (the army dialog), a Border Guard without the key, a Cartographer visited (24) or
+  too dear (28), Pandora's Box with a message or guards (16) or empty (15), the Cartographer's mark
+  on the mouse-over.
+- **Checked** (M4 T2b2 part A2): the six moved into `sequences.toml`; `frames --only <id> --reuse`
+  on them: every frame exact (`ask-join` 17, `ask-join-no` 19, `ask-join-gold` 17, `ask-guard` 17,
+  `ask-cartographer` 10, `ask-pandora` 18), the viewer's timelines the recorded ones line for line
+  (46, 51, 46, 46, 40, 48; `<id>-frames.txt` kept); `ask-tomb`, `ask-hire` and `ask-pile` still
+  exact; `h3-map-view sequences` the 74 as recorded; unit tests (the power, the strength steps,
+  the sympathy and the aggression's sign; every offer's facts, box and replies, a fight, a monster
+  that never flees or stands at C, no room, too poor, no Diplomacy; the guard with and without its
+  key, the Cartographer's kinds, visited, too poor, a price or kind past the tables; Pandora's
+  rewards, message and emptiness; the six replayed headless, the attack's picture and its frame
+  with the hero left of it, the join's army, price, `killfade` and dissolve, the flight in the
+  Cancel's millisecond and its Cancel, an OK and a Cancel not built refused, the guard and the Box
+  taken, the land revealed; the scene's attack pieces), 100 % lines, regions and functions of
+  `h3-map-view`'s library and of `h3-ui` but its `scrollbar.rs` (untouched).

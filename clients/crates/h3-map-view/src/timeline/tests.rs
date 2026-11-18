@@ -376,7 +376,13 @@ fn the_walks_frames_are_m2_t3bs() {
             "ask-pyramid",
             "ask-dwelling-guards",
             "ask-tomb",
-            "ask-hire"
+            "ask-hire",
+            "ask-join",
+            "ask-join-no",
+            "ask-join-gold",
+            "ask-guard",
+            "ask-cartographer",
+            "ask-pandora"
         ]
     );
 }
@@ -3037,4 +3043,5 @@ fn a_hotkeys_up_during_a_hold_releases_its_button_in_the_client() {
 mod asks;
 mod computers;
 mod finds;
+mod replies;
 mod turns;

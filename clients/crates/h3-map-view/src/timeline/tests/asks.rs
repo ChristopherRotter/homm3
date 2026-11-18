@@ -95,6 +95,7 @@ fn question(id: &str) -> Found {
                 morale: [-3, -3],
                 ..Gain::default()
             },
+            ..Answer::default()
         }),
         "ask-hire" => Some(Answer {
             boxes: vec![(laid("Pikemen join.", Style::Ok), Gain::default())],
@@ -102,6 +103,7 @@ fn question(id: &str) -> Found {
                 army: [Some(PIKEMEN), None, None, None, None, None, None],
                 ..Gain::default()
             },
+            ..Answer::default()
         }),
         _ => None,
     };
@@ -119,6 +121,8 @@ fn question(id: &str) -> Found {
             asked: laid("Will you?", Style::OkCancel),
             chooses: !matches!(id, "ask-crypt" | "ask-tree" | "ask-tomb"),
             yes,
+            no: Some(Answer::default()),
+            attacker: None,
         }),
     }
 }
@@ -304,8 +308,8 @@ fn a_question_after_the_first_boxes_and_a_visit_from_beside_without_one() {
     l.run(201, &[Action::BoxKeyUp(Key::Ok)]).unwrap();
     assert_eq!(text(&l).as_deref(), Some("Will you?"));
     assert!(matches!(
-        l.boxed.as_ref().map(|b| b.told),
-        Some(Told::Asked(0))
+        l.boxed.as_ref().map(|b| &b.told),
+        Some(Told::Asked(0, _))
     ));
     // An answer with no box: its gain at once, then the idle step.
     let (mut start, actions, _, _) = asking("ask-tomb");
@@ -318,7 +322,7 @@ fn a_question_after_the_first_boxes_and_a_visit_from_beside_without_one() {
     assert!(l.boxed.is_none());
     assert_eq!(l.answered, vec![0]);
     // An answer's box of a find past the finds closes to the idle step.
-    assert_eq!(l.answered(1061, 5, 0), Ok(()));
+    assert_eq!(l.answered(1061, 5, 0, Answer::default()), Ok(()));
     assert!(l.boxed.is_none());
     // A find blocking its tile with no box, no question and nothing taken: the visit and the
     // step end at once.

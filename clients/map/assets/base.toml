@@ -198,10 +198,11 @@ town_days = 7
 # an object taken (visit_resource_pile 0x4A4BE0, artifact_pickup_remove 0x49E170): the rectangle
 # (192, 160) 224 x 224 dissolved in steps of 65 ms (screen_dissolve 0x602DC0's argument), the
 # pickup's sound one of pickup01 to pickup07 (the game's random_between(1, 7) at 0x4A4D18; the
-# viewer's own choice, *provisional*: in turn). An artifact's primary skills, shown in the hero's
-# window at the pickup's end (find-artifact's Centaurs Axe, +2 Attack): [artifact, attack, defense,
-# power, knowledge], from the packs' `primary_skills` effects (packs/base, ab, sod core.toml;
-# *provisional*: the engine's in time, the artifact taken as worn).
+# viewer's own choice, *provisional*: in turn); a monster's removal's sound killfade.82M
+# (hero_loss_effect 0x4ACBB0 with 0; E24 M4 T2b2 part A2). An artifact's primary skills, shown in
+# the hero's window at the pickup's end (find-artifact's Centaurs Axe, +2 Attack): [artifact,
+# attack, defense, power, knowledge], from the packs' `primary_skills` effects (packs/base, ab, sod
+# core.toml; *provisional*: the engine's in time, the artifact taken as worn).
 [map.finds]
 resources = "resour82.def"
 artifacts = "artifact.def"
@@ -221,6 +222,7 @@ pickups = [
     "pickup01.wav", "pickup02.wav", "pickup03.wav", "pickup04.wav", "pickup05.wav", "pickup06.wav",
     "pickup07.wav",
 ]
+killfade = "killfade.wav"
 artifact_skills = [
     [7, 2, 0, 0, 0], [8, 3, 0, 0, 0], [9, 4, 0, 0, 0], [10, 5, 0, 0, 0], [11, 6, 0, 0, 0],
     [12, 12, -3, 0, 0], [13, 0, 2, 0, 0], [14, 0, 3, 0, 0], [15, 0, 4, 0, 0], [16, 0, 5, 0, 0],
@@ -238,6 +240,12 @@ artifact_skills = [
 # weeks of its growth (the dwellings' survey §2: visit_dwelling 0x4A18B0 asks GENRLTXT 422); the
 # Tree of Knowledge's prices 1 and 2, [resource, amount] (visit_tree_of_knowledge 0x4A6710: 2000
 # gold, 10 gems); the morale the Warrior's Tomb's search costs (visit_warriors_tomb 0x4A7C30).
+# Part A2: a Cartographer's price, [resource, amount] (visit_object 0x4A8A14: 1000 gold, paid at
+# 0x4A8B60), and the terrains each kind reveals (sea, land, underground; a bit per terrain,
+# reveal_terrain_mask 0x4CA240's mask as a new game sets it: water, the seven land terrains but
+# subterranean, subterranean; the objects' survey §4); a monster's picture while a hero visits it
+# (avwattak.def, adventure_manager_start 0x407247: frame 2 x its creature, plus 1 with the hero left
+# of it; visit_object 0x4A97B9).
 [map.asks]
 levels = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 1, 1,
     2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 1, 1, 2, 2, 3, 3,
@@ -247,6 +255,9 @@ levels = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5
 guards = [5, 3]
 tree_prices = [[6, 2000], [5, 10]]
 tomb_morale = -3
+maps_price = [6, 1000]
+reveals = [0x100, 0xBF, 0x40]
+attacking = "avwattak.def"
 
 [map.status]
 portraits = [

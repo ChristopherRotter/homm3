@@ -14,22 +14,33 @@
 //! of level 5 or more: the dwellings' survey §2, the tables' [`AskArt`]), and the Tomb's morale is
 //! lost at its first search (the hero's status bit 21 not known).
 //!
+//! Since part A2 (*provisional*): a wandering monster's offers (to join free or for gold, to flee:
+//! [`Ask::of`] decides as `monster_visit_decision` 0x4A7740 does, in integers, from the hero's
+//! [`power`], its creatures' sympathy and its Diplomacy), a Border Guard's passage, a
+//! Cartographer's map and Pandora's Box; [`Ask::no`] what the Cancel does (a monster's flight
+//! asked after its offer declined, the monster gone after its flight declined) and [`Reply`] an
+//! answer's boxes, gain, next question, the object taken off the map and the terrains revealed.
+//!
 //! *Not built:* every other answer (a battle, a level-up, the recruit dialog: [`Ask::yes`] none;
 //! the engine's, M4 T5 and M5), a mine of another player with guards (ADVEVENT 187: none at a new
 //! game), a guarded artifact's several stacks (", " and GENRLTXT 142 between them), a pile's and an
 //! artifact's message without guards, a dwelling of class 20 (ADVEVENT 36) and the Refugee Camp
-//! (112), a free Tree (148: its level-up at once), and part A2's questions (a monster's, a Border
-//! Guard's, a Cartographer's, Pandora's Box's).
+//! (112), a free Tree (148: its level-up at once); since part A2 a monster's message and treasure
+//! (its word's bit 31), its fight and its insult (87), a join without room (the army dialog), a
+//! Border Guard without the key, a Cartographer visited (24) or too dear (28), Pandora's Box with
+//! a message or guards (16) or empty (15).
 
+use alloc::boxed::Box;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
+use h3_map::model::Rewards;
 use h3_ui::text::{Args, Catalogue};
 use serde::Deserialize;
 
-use crate::finds::{FindArt, Gain, Told};
+use crate::finds::{self, FindArt, Gain, Reward, Told};
 use crate::hover::SIZES;
 use crate::live::Stack;
 
@@ -48,6 +59,17 @@ pub struct AskArt {
     pub tree_prices: Vec<[i32; 2]>,
     /// The morale the Warrior's Tomb's search costs (−3, `visit_warriors_tomb` 0x4A7C30).
     pub tomb_morale: i8,
+    /// A Cartographer's price, `[resource, amount]` (1 000 gold: `visit_object` 0x4A8A14, paid
+    /// at 0x4A8B60; E24 M4 T2b2 part A2).
+    pub maps_price: [i32; 2],
+    /// The terrains each Cartographer's kind reveals (sea, land, underground: a bit per terrain,
+    /// `reveal_terrain_mask` 0x4CA240's mask, set at a new game: 0x100, 0xBF, 0x40; the objects'
+    /// survey §4).
+    pub reveals: Vec<u32>,
+    /// A monster's picture while a hero visits it (`avwattak.def`, loaded into the adventure
+    /// manager's +0xE0 at 0x407247: two frames a creature, facing left and right;
+    /// [`crate::live::Attacking`]).
+    pub attacking: String,
 }
 
 impl AskArt {
@@ -60,7 +82,7 @@ impl AskArt {
 
 /// The string catalogue's keys the questions show (`clients/text/keys.toml`); the names are the
 /// families `creature`, `artifact`, `bank` and `dwelling1`'s.
-pub const KEYS: [&str; 30] = [
+pub const KEYS: [&str; 40] = [
     "map.ask.size.0",
     "map.ask.size.1",
     "map.ask.size.2",
@@ -91,6 +113,16 @@ pub const KEYS: [&str; 30] = [
     "map.ask.joined",
     "map.ask.none",
     "map.ask.no-room",
+    "map.ask.join",
+    "map.ask.join-one",
+    "map.ask.join-gold",
+    "map.ask.join-price",
+    "map.ask.flee",
+    "map.ask.pass",
+    "map.ask.maps-sea",
+    "map.ask.maps-land",
+    "map.ask.maps-underground",
+    "map.ask.open-box",
 ];
 
 /// The classes a question is asked at (as the game holds them): an artifact, a resource pile, a
@@ -113,6 +145,31 @@ const DWELLING: u32 = 17;
 
 /// A bank's word's looted bit (25, `visit_creature_bank` 0x4A15A0).
 const LOOTED: u32 = 25;
+
+/// Part A2's classes: a wandering monster (its creature the subclass), a Border Guard (its
+/// colour the subclass), a Cartographer (its kind the subclass: sea, land, underground) and
+/// Pandora's Box.
+const MONSTER: u32 = 54;
+const BORDER_GUARD: u32 = 9;
+const CARTOGRAPHER: u32 = 13;
+const PANDORA: u32 = 6;
+
+/// A monster's word (`map_item` +0x0 at the load, the battles' survey §1.2): its count in bits 0
+/// to 11, its aggression in 12 to 16 (signed), "never flees" bit 17, "has a message" bit 31.
+const COUNT: u32 = 0xFFF;
+const AGGRESSION: u32 = 12;
+const NEVER_FLEES: u32 = 17;
+const MESSAGE: u32 = 31;
+
+/// The creatures below this number pair a creature with its upgrade (2 n and 2 n + 1: the eight
+/// towns' fourteen each), the related type a monster's sympathy counts (*provisional*:
+/// `monster_sympathy` 0x4A75C0 finds it through the town creature table by faction and level;
+/// Conflux's pairs not built, none for the neutral creatures).
+const PAIRED: u16 = 112;
+
+/// The gold's resource and picture type (6), the price's picture.
+const GOLD: usize = 6;
+const GOLD_PICTURE: u32 = 6;
 
 /// The picture types the questions and their answers show: the experience's (17, subtype −1 its
 /// "+1 Level"), an artifact's (8), the bad morale's (16).
@@ -137,6 +194,13 @@ pub struct Seen {
     pub message: Option<(String, Vec<Stack>)>,
     /// A dwelling's creature (`dwelling_creatures` 0x63D570 by the subclass) and its growth.
     pub dwelling: Option<(u16, i32)>,
+    /// A wandering monster's creature's numbers (part A2).
+    pub monster: Option<Traits>,
+    /// A Border Guard's: the viewer holds its colour's key (game +0x4E364; *provisional*: a
+    /// Keymaster's Tent of its colour with the viewer's mark).
+    pub key: bool,
+    /// Pandora's Box's rewards (its message in [`Seen::message`]).
+    pub rewards: Option<Rewards>,
 }
 
 /// The visiting player's facts a question reads (*provisional*: the live part's at 0).
@@ -150,6 +214,134 @@ pub struct Visitor {
     pub resources: [i32; 7],
     /// The selected hero's army (the status window's).
     pub army: [Option<Stack>; 7],
+    /// The selected hero's power against a monster ([`power`]; part A2).
+    pub power: i64,
+    /// Its Diplomacy's level as the monster's decision takes it, 0 to 3 (hero +0xCD, one higher
+    /// on Easy for a human: 0x4A787E; *provisional*: the binary's, the difficulty Normal's).
+    pub diplomacy: u8,
+    /// Its name (Pandora's Box's boxes', `grant_rewards` 0x49FA90's `%s`).
+    pub hero: String,
+}
+
+/// A creature's numbers a monster's offer reads (`CRTRAITS.TXT`'s, as the creature record holds
+/// them: its gold cost +0x38, its AI value +0x40).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Traits {
+    /// Its gold cost.
+    pub gold: i32,
+    /// Its AI value.
+    pub value: i32,
+}
+
+/// A wandering monster's offer (`monster_visit_decision` 0x4A7740; the battles' survey §3.2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Offer {
+    /// To join for free (`monster_join_free` 0x4A7000: ADVEVENT 86).
+    Join,
+    /// To join for gold, its price (`monster_join_for_gold` 0x4A7250: the creature's gold cost
+    /// times the count; ADVEVENT 88 for one creature, else 89 then 90).
+    Gold(i32),
+    /// To flee (`monster_flee_offer` 0x4A6DF0: ADVEVENT 91).
+    Flee,
+}
+
+/// How an object taken off the map is told (`hero_loss_effect` 0x4ACBB0's argument): a pickup's
+/// sound (1; the pile's and the artifact's own) or `killfade.82M` (0), then the dissolve.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Fade {
+    /// A pickup's sound.
+    Pickup,
+    /// `killfade.82M`.
+    Killfade,
+}
+
+/// What an answer does where the viewer builds it ([`Ask::yes`], [`Ask::no`]; *provisional*: the
+/// engine's in time): its boxes (style 1, or `grant_rewards`' `message_box_pictures`), each with
+/// what the panels show as it opens; what they show after the last; the status window built
+/// again (`status_window_choose` 0x415DE0 with 1, 1, 1: a monster's join); the question asked
+/// next; the object taken off the map; the terrains revealed (a bit per terrain: then the view
+/// and the minimap drawn again, `visit_object`'s common end 0x4A9AD3). Its default ends the
+/// visit with nothing shown (A1's every Cancel).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Reply {
+    /// The boxes.
+    pub boxes: Vec<Reward>,
+    /// They are `grant_rewards`' (`message_box_pictures` 0x4F7690), not `message_box`'s.
+    pub granted: bool,
+    /// What the panels show after the last.
+    pub gain: Gain,
+    /// The status window built again after the gain.
+    pub chooses: bool,
+    /// The question asked next.
+    pub then: Option<Box<Ask>>,
+    /// The object taken off the map, and how.
+    pub taken: Option<Fade>,
+    /// The terrains revealed.
+    pub reveal: u32,
+}
+
+/// A hero's power against a wandering monster (`hero_army_power` 0x427650): its army's value
+/// (`army_value` 0x44AC80: each stack's AI value by `value` times its count) times
+/// √((1 + 0.05 Defense)(1 + 0.05 Attack)) (`hero_attack_defense_factor` 0x4E5400, the skills
+/// held in 0 to 99), truncated. *Provisional:* in integers, exact where the game's float factor
+/// and its 32-bit sum are not (√ of value² (20 + D)(20 + A), over 20).
+#[must_use]
+pub fn power(
+    army: &[Option<Stack>; 7],
+    value: impl Fn(u16) -> i32,
+    [attack, defense]: [i8; 2],
+) -> i64 {
+    let worth = army
+        .iter()
+        .flatten()
+        .map(|s| i128::from(value(s.creature)) * i128::from(s.count))
+        .fold(0i128, i128::saturating_add)
+        .max(0);
+    let factor = |skill: i8| 20 + i128::from(skill.clamp(0, 99));
+    let squared = worth
+        .saturating_mul(worth)
+        .saturating_mul(factor(attack))
+        .saturating_mul(factor(defense));
+    let root = u128::try_from(squared).map_or(0, u128::isqrt);
+    i64::try_from(root / 20).unwrap_or(i64::MAX)
+}
+
+/// The strength step of a hero's `power` over a monster's `strength` (0x4A780E to 0x4A7879, the
+/// ratio r: 11 at 7 or more; ⌊2r − 2⌋ at 1 or more; −1 above 0.5, −2 above 0.333, else −3).
+/// *Provisional:* in integers, exact where the game's single-precision ratio is not.
+fn step(power: i64, strength: i64) -> i32 {
+    let (p, s) = (i128::from(power), i128::from(strength.max(0)));
+    if s == 0 || p >= 7 * s {
+        11
+    } else if p >= s {
+        i32::try_from(2 * p / s - 2).unwrap_or(11)
+    } else if 2 * p > s {
+        -1
+    } else if 1000 * p > 333 * s {
+        -2
+    } else {
+        -3
+    }
+}
+
+/// A hero's `army`'s sympathy for a monster of `creature` (`monster_sympathy` 0x4A75C0): 0 with
+/// none of its type or the related one ([`PAIRED`]), 2 with more than half of its creatures, else
+/// 1.
+fn sympathy(army: &[Option<Stack>; 7], creature: u16) -> i32 {
+    let related = (creature < PAIRED).then_some(creature ^ 1);
+    let (similar, total) = army
+        .iter()
+        .flatten()
+        .fold((0i64, 0i64), |(similar, total), s| {
+            let count = i64::from(s.count);
+            let like = s.creature == creature || Some(s.creature) == related;
+            (similar + if like { count } else { 0 }, total + count)
+        });
+    match similar {
+        0 => 0,
+        _ if 2 * similar > total => 2,
+        _ => 1,
+    }
 }
 
 /// A question's facts (design §5.4's table; *provisional*: [`Ask::of`]).
@@ -211,6 +403,40 @@ pub enum Ask {
         /// The army has a slot of their kind or an empty one.
         room: bool,
     },
+    /// A wandering monster's offer (part A2; `monster_visit_decision` 0x4A7740): its stack, the
+    /// offer, whether the hero's army has room for it (`army_add_stack` 0x44ACE0: a slot of its
+    /// kind or an empty one) and whether its flight is offered after the offer declined (its
+    /// aggression not the decision's C, and it flees; else the insult and the fight).
+    Monster {
+        /// Its creature and count.
+        stack: Stack,
+        /// The offer.
+        offer: Offer,
+        /// The army has room for it.
+        room: bool,
+        /// Its flight follows a declined offer.
+        flees: bool,
+    },
+    /// A Border Guard's passage, its colour's key held (part A2; `visit_object` 0x4A8734:
+    /// ADVEVENT 17).
+    Pass,
+    /// A Cartographer's map (part A2; `visit_object` 0x4A8A14: ADVEVENT 25 + its kind) for the
+    /// tables' price: its kind (0 sea, 1 land, 2 underground).
+    Maps(u32),
+    /// Pandora's Box (part A2; `visit_pandora_box` 0x4A0C50: ADVEVENT 14): what it gives and the
+    /// hero its boxes name.
+    OpenBox {
+        /// What it gives.
+        rewards: Rewards,
+        /// The hero's name.
+        hero: String,
+    },
+}
+
+/// A monster's aggression in its `word` (bits 12 to 16, signed: −16 to 15).
+fn aggression(word: u32) -> i32 {
+    let raw = i32::try_from((word >> AGGRESSION) & 0x1F).unwrap_or(0);
+    if raw >= 16 { raw - 32 } else { raw }
 }
 
 impl Ask {
@@ -300,7 +526,84 @@ impl Ask {
                     return None;
                 }
             }
+            MONSTER if !bit(MESSAGE) => {
+                let traits = seen.monster?;
+                let word = seen.word.unwrap_or(0);
+                let creature = u16::try_from(subclass).unwrap_or(u16::MAX);
+                let stack = Stack {
+                    creature,
+                    count: i32::try_from(word & COUNT).unwrap_or(0),
+                };
+                Self::monster(stack, aggression(word), bit(NEVER_FLEES), traits, visitor)?
+            }
+            BORDER_GUARD if seen.key => Self::Pass,
+            CARTOGRAPHER if !seen.visited => {
+                let [resource, amount] = art.maps_price;
+                let have = usize::try_from(resource)
+                    .ok()
+                    .and_then(|r| visitor.resources.get(r))
+                    .copied()
+                    .unwrap_or(0);
+                let known = usize::try_from(subclass).is_ok_and(|k| k < art.reveals.len());
+                if have < amount || !known {
+                    return None;
+                }
+                Self::Maps(subclass)
+            }
+            PANDORA if seen.message.is_none() => {
+                let rewards = seen.rewards.clone()?;
+                if rewards == Rewards::default() {
+                    return None;
+                }
+                Self::OpenBox {
+                    rewards,
+                    hero: visitor.hero.clone(),
+                }
+            }
             _ => return None,
+        })
+    }
+
+    /// A wandering monster's offer to `visitor` (`monster_visit_decision` 0x4A7740; the battles'
+    /// survey §3.2): with C its strength step ([`step`] of the hero's power over the stack's AI
+    /// value times its count) plus the sympathy Sy ([`sympathy`]) plus the Diplomacy L, an
+    /// aggression above C fights; else at most Sy + L + 1 offers to join free, at most
+    /// Sy + 2L + 1 for gold when the kingdom can pay; else the flight unless the aggression is C or
+    /// the monster never flees (the fight). None for a fight (not built).
+    fn monster(
+        stack: Stack,
+        aggression: i32,
+        never_flees: bool,
+        traits: Traits,
+        visitor: &Visitor,
+    ) -> Option<Self> {
+        let strength = i64::from(traits.value) * i64::from(stack.count);
+        let sy = sympathy(&visitor.army, stack.creature);
+        let l = i32::from(visitor.diplomacy);
+        let c = step(visitor.power, strength) + sy + l;
+        if aggression > c {
+            return None;
+        }
+        let flees = aggression != c && !never_flees;
+        let price = traits.gold.saturating_mul(stack.count);
+        let offer = if aggression <= sy + l + 1 {
+            Offer::Join
+        } else if aggression <= sy + 2 * l + 1 && visitor.resources[GOLD] >= price {
+            Offer::Gold(price)
+        } else if flees {
+            Offer::Flee
+        } else {
+            return None;
+        };
+        let room = visitor
+            .army
+            .iter()
+            .any(|s| s.is_none_or(|s| s.creature == stack.creature));
+        Some(Self::Monster {
+            stack,
+            offer,
+            room,
+            flees,
         })
     }
 
@@ -321,14 +624,41 @@ impl Ask {
     /// and the Pyramid's; *provisional* for a dwelling's hire, as its guards').
     #[must_use]
     pub const fn chooses(&self) -> bool {
-        !matches!(self, Self::Search(_) | Self::Tree { .. } | Self::Tomb(_))
+        !matches!(
+            self,
+            Self::Search(_)
+                | Self::Tree { .. }
+                | Self::Tomb(_)
+                | Self::Monster { .. }
+                | Self::Pass
+                | Self::Maps(_)
+                | Self::OpenBox { .. }
+        )
     }
 
-    /// Whether its object blocks its entrance (a pile, a scroll, an artifact): a key's step onto
-    /// it visits it from beside.
+    /// Whether its object blocks its entrance (a pile, a scroll, an artifact; since part A2 a
+    /// monster, a Border Guard, Pandora's Box): a key's step onto it visits it from beside.
     #[must_use]
     pub const fn beside(&self) -> bool {
-        matches!(self, Self::Text(_) | Self::Artifact(_))
+        matches!(
+            self,
+            Self::Text(_)
+                | Self::Artifact(_)
+                | Self::Monster { .. }
+                | Self::Pass
+                | Self::OpenBox { .. }
+        )
+    }
+
+    /// A monster's picture while the hero visits it (part A2): twice its creature, the attack
+    /// DEF's frame with the hero not left of it ([`crate::live::Attacking`]); none for another
+    /// question.
+    #[must_use]
+    pub fn attacker(&self) -> Option<u32> {
+        match self {
+            Self::Monster { stack, .. } => Some(u32::from(stack.creature) * 2),
+            _ => None,
+        }
     }
 
     /// Its box's text and pictures (design §5.4's table) through `texts`.
@@ -399,27 +729,76 @@ impl Ask {
                     .text("creature", &name(texts, joins.creature, 2));
                 alone(texts.text("map.ask.hire", &args))
             }
+            Self::Monster { stack, offer, .. } => {
+                let plural = Args::new().text("creature", &name(texts, stack.creature, 2));
+                match *offer {
+                    Offer::Join => alone(texts.text("map.ask.join", &plural)),
+                    Offer::Flee => alone(texts.text("map.ask.flee", &plural)),
+                    Offer::Gold(price) => {
+                        let gold = i64::from(price);
+                        let text = if stack.count == 1 {
+                            let args = Args::new()
+                                .text("creature", &name(texts, stack.creature, 1))
+                                .number("price", gold);
+                            texts.text("map.ask.join-one", &args)
+                        } else {
+                            // 89 ends with its blank line, 90 follows it (`monster_join_for_gold`
+                            // 0x4A7250).
+                            let args = plural
+                                .number("amount", i64::from(stack.count))
+                                .number("price", gold);
+                            let mut text = texts.text("map.ask.join-gold", &Args::new());
+                            text.push_str(&texts.text("map.ask.join-price", &args));
+                            text
+                        };
+                        Told {
+                            text,
+                            pictures: vec![(GOLD_PICTURE, price)],
+                        }
+                    }
+                }
+            }
+            Self::Pass => plain("map.ask.pass"),
+            Self::Maps(kind) => plain(match *kind {
+                0 => "map.ask.maps-sea",
+                1 => "map.ask.maps-land",
+                _ => "map.ask.maps-underground",
+            }),
+            Self::OpenBox { .. } => plain("map.ask.open-box"),
         }
     }
 
-    /// What its OK shows where the viewer builds it: its boxes (style 1) and what the panels show
-    /// at the last one's close (recorded, `ask-tomb` and `ask-hire` at 1660), the artifacts'
-    /// skills `art`'s. The Warrior's Tomb's: ADVEVENT 162 with its artifact (its skills, the
-    /// artifact taken as worn), else 163 with three pictures of bad morale; the tables' morale
-    /// lost either way. A dwelling's creatures joining free (`visit_dwelling` 0x4A18B0's own
-    /// path): GENRLTXT 424 with their count and name (one's the singular, *provisional*: not
-    /// recorded) and the army joined, else 423 (none to hire) or 426 (no room). None for every
-    /// other answer (*Not built* above).
+    /// What its OK shows where the viewer builds it ([`Reply`]): A1's boxes (style 1) and what
+    /// the panels show at the last one's close (recorded, `ask-tomb` and `ask-hire` at 1660), the
+    /// artifacts' skills `art`'s. The Warrior's Tomb's: ADVEVENT 162 with its artifact (its
+    /// skills, the artifact taken as worn), else 163 with three pictures of bad morale; the
+    /// tables' morale lost either way. A dwelling's creatures joining free (`visit_dwelling`
+    /// 0x4A18B0's own path): GENRLTXT 424 with their count and name (one's the singular,
+    /// *provisional*: not recorded) and the army joined, else 423 (none to hire) or 426 (no room).
+    /// Part A2's: a monster's join (its price paid, the army joined, the status window built
+    /// again, the monster taken with `killfade.82M`; recorded, `ask-join`, `ask-join-gold`), a
+    /// Border Guard taken with a pickup's sound (`ask-guard`), a Cartographer's price paid and
+    /// its kind's terrains revealed by the tables `asks` (`ask-cartographer`), Pandora's Box's
+    /// `grant_rewards` boxes without the map's text (`finds::rewards`), then the box taken with a
+    /// pickup's sound (`ask-pandora`). None for every other answer (*Not built* above).
     #[must_use]
-    pub fn yes(&self, art: &FindArt, asks: &AskArt, texts: &Catalogue) -> Option<(Told, Gain)> {
+    pub fn yes(&self, art: &FindArt, asks: &AskArt, texts: &Catalogue) -> Option<Reply> {
         let morale = [asks.tomb_morale; 2];
+        let told = |told: Told, gain: Gain| Reply {
+            boxes: vec![Reward {
+                told,
+                shows: Gain::default(),
+            }],
+            gain,
+            ..Reply::default()
+        };
         match self {
             Self::Tomb(Some(artifact)) => {
                 let named = texts
                     .known(&format!("artifact.{artifact}"), &Args::new())
                     .unwrap_or_default();
                 let args = Args::new().text("artifact", &named);
-                Some((
+                Some(told(
                     Told {
                         text: texts.text("map.ask.tomb-found", &args),
                         pictures: vec![(ARTIFACT_PICTURE, i32::from(*artifact))],
@@ -431,7 +810,7 @@ impl Ask {
                     },
                 ))
             }
-            Self::Tomb(None) => Some((
+            Self::Tomb(None) => Some(told(
                 Told {
                     text: texts.text("map.ask.tomb-empty", &Args::new()),
                     pictures: vec![BAD_MORALE; 3],
@@ -459,7 +838,7 @@ impl Ask {
                 if key == "map.ask.joined" {
                     gain.army[0] = Some(*joins);
                 }
-                Some((
+                Some(told(
                     Told {
                         text: texts.text(key, &args),
                         pictures: Vec::new(),
@@ -467,7 +846,94 @@ impl Ask {
                     gain,
                 ))
             }
+            Self::Monster {
+                stack,
+                offer,
+                room: true,
+                ..
+            } => {
+                let mut gain = Gain::default();
+                match *offer {
+                    Offer::Join => {}
+                    Offer::Gold(price) => gain.resources[GOLD] = price.saturating_neg(),
+                    Offer::Flee => return None,
+                }
+                gain.army[0] = Some(*stack);
+                Some(Reply {
+                    gain,
+                    chooses: true,
+                    taken: Some(Fade::Killfade),
+                    ..Reply::default()
+                })
+            }
+            Self::Pass => Some(Reply {
+                taken: Some(Fade::Pickup),
+                ..Reply::default()
+            }),
+            Self::Maps(kind) => {
+                let [resource, amount] = asks.maps_price;
+                let mut gain = Gain::default();
+                if let Some(paid) = usize::try_from(resource)
+                    .ok()
+                    .and_then(|r| gain.resources.get_mut(r))
+                {
+                    *paid = amount.saturating_neg();
+                }
+                let reveal = usize::try_from(*kind)
+                    .ok()
+                    .and_then(|k| asks.reveals.get(k))
+                    .copied()
+                    .unwrap_or(0);
+                Some(Reply {
+                    gain,
+                    reveal,
+                    ..Reply::default()
+                })
+            }
+            Self::OpenBox { rewards, hero } => {
+                let (boxes, gain) = finds::rewards(rewards, texts, hero, "");
+                Some(Reply {
+                    boxes,
+                    granted: true,
+                    gain,
+                    taken: Some(Fade::Pickup),
+                    ..Reply::default()
+                })
+            }
             _ => None,
+        }
+    }
+
+    /// What its Cancel does (part A2): a monster's declined offer its flight's question when it
+    /// flees (recorded, `ask-join-no`: 91 in the Cancel's millisecond), its declined flight the
+    /// monster taken off the map without its treasure with `killfade.82M` (`monster_flee_offer`
+    /// 0x4A6DF0); none where it fights (the insult at the decision's C, 87, then the battle: not
+    /// built); every other question's ends the visit ([`Reply::default`]).
+    #[must_use]
+    pub fn no(&self) -> Option<Reply> {
+        match self {
+            Self::Monster {
+                offer: Offer::Flee, ..
+            } => Some(Reply {
+                taken: Some(Fade::Killfade),
+                ..Reply::default()
+            }),
+            Self::Monster {
+                stack,
+                room,
+                flees: true,
+                ..
+            } => Some(Reply {
+                then: Some(Box::new(Self::Monster {
+                    stack: *stack,
+                    offer: Offer::Flee,
+                    room: *room,
+                    flees: true,
+                })),
+                ..Reply::default()
+            }),
+            Self::Monster { .. } => None,
+            _ => Some(Reply::default()),
         }
     }
 }

@@ -1363,6 +1363,57 @@ id = "map.ask.no-room"
 args = { creature = "text" }
 original = [{ at = "GENRLTXT:426", printf = ["creature"] }]
 
+# E24 M4 T2b2 part A2: a wandering monster's offers (`monster_join_free` 0x4A7000: ADVEVENT 86 with
+# the creature's plural; `monster_join_for_gold` 0x4A7250: 88 with one creature's singular and the
+# price, else 89 and then 90 with the count, the plural and the price; `monster_flee_offer`
+# 0x4A6DF0: 91 with the plural), a Border Guard's passage (`visit_object` 0x4A8734: 17), a
+# Cartographer's maps by its kind (0x4A8A14: 25 sea, 26 land, 27 underground) and Pandora's Box
+# (`visit_pandora_box` 0x4A0C50: 14).
+
+[[key]]
+id = "map.ask.join"
+args = { creature = "text" }
+original = [{ at = "ADVEVENT:86", printf = ["creature"] }]
+
+[[key]]
+id = "map.ask.join-one"
+args = { creature = "text", price = "number" }
+original = [{ at = "ADVEVENT:88", printf = ["creature", "price"] }]
+
+[[key]]
+id = "map.ask.join-gold"
+original = [{ at = "ADVEVENT:89" }]
+
+[[key]]
+id = "map.ask.join-price"
+args = { amount = "number", creature = "text", price = "number" }
+original = [{ at = "ADVEVENT:90", printf = ["amount", "creature", "price"] }]
+
+[[key]]
+id = "map.ask.flee"
+args = { creature = "text" }
+original = [{ at = "ADVEVENT:91", printf = ["creature"] }]
+
+[[key]]
+id = "map.ask.pass"
+original = [{ at = "ADVEVENT:17" }]
+
+[[key]]
+id = "map.ask.maps-sea"
+original = [{ at = "ADVEVENT:25" }]
+
+[[key]]
+id = "map.ask.maps-land"
+original = [{ at = "ADVEVENT:26" }]
+
+[[key]]
+id = "map.ask.maps-underground"
+original = [{ at = "ADVEVENT:27" }]
+
+[[key]]
+id = "map.ask.open-box"
+original = [{ at = "ADVEVENT:14" }]
+
 # A turn without a town (E24 M4 T2a2; design §5.3): at the turn's end GENRLTXT 7 with the player's
 # name (`scenario_condition_met` 0x4F2CE0), at each later day's start ArrayTxt 128 with the name and
 # the days left, 129 on the last day (`player_turn_start` 0x4CC7D0); the name the viewer's

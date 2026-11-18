@@ -579,7 +579,7 @@ fn a_taken_find_is_no_walks_and_an_army_has_room() {
     // The pickup's sound as the object is taken (the viewer's first).
     let tiles = crate::sound::tests::tiles(36, |_, _| 0, |_, _| None);
     l.sound = Some(crate::sound::tests::sound(tiles));
-    l.take(20, OBJECT, Gain::default());
+    l.take(20, OBJECT, Gain::default(), Fade::Pickup);
     assert!(
         l.take_cues()
             .contains(&(20, Cue::Effect("pickup01.wav".into())))
