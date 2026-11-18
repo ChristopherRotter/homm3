@@ -4,6 +4,22 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-18, E08 T126: the "Tasks" text's lead with increment 13's chronicle, and the T126 entry as they stood before T126 closed increment 13; done whole, decision 360; the record in `E08-log.md`; T127a and T127b queued.)* Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 and T118b2 done 2026-11-15, decisions 340 to 342; the checkpoint ADV-Q54, decisions 343 to 345: the note, the drafts and the cut T119 to T126 accepted). Round 2: T119 done 2026-11-15 (`adventure/e08-t119`, `cross-lane`, whole: decision 346; the writer's banks, the spec's pictures and `slots`, batch E13's spec). Round 3: T120 done 2026-11-16 (`adventure/e08-t120`, alone: decision 347; the harness's reads, the recipe, three runs, the template filled); T121 done 2026-11-16 (`adventure/e08-t121`, whole, docs only: survey `E08-banks.md` §14, every row as predicted; the checkpoint ADV-Q55, decisions 348, 349). Round 4: T122 done 2026-11-16 (`shared/e08-t122`, `cross-lane`, whole: decision 350; the three drafts in ADR-0013, -0016, -0017, -0022 with batch E13's rows, the glossary, the security lines, `BattleSetup::creature_bank`). Round 5: T123a done 2026-11-16 (`adventure/e08-t123a`, `cross-lane`, alone: decision 351; the kind, the packs, the seventh check; part v21); T123b done 2026-11-16 (`adventure/e08-t123b`, `cross-lane`, whole: decision 352; the import, the census, map import v24). Round 6: T124a done 2026-11-17 (`adventure/e08-t124a`, `cross-lane`, whole: decision 353; the bank battle in `h3-battle`, the battle pack's `bank_positions`); T124b in two (decision 354): T124b1 done 2026-11-17 (`adventure/e08-t124b1`, `cross-lane`, alone: the state and the draw, adventure state hash v26); T124b2 done 2026-11-17 (`adventure/e08-t124b2`, whole: decision 355; the visit, the battle, the reward and the once-marks). Round 7: T125a done 2026-11-17 (`adventure/e08-t125a`, whole: decision 356; the hint and its events, the Shipwreck's passage); T125b in two (decision 357): T125b1 done 2026-11-18 (`adventure/e08-t125b1`, `cross-lane`: the two banks maps, nine golden replays, the server lane's counts); T125b2 in two (decision 358): T125b2a done 2026-11-18 (`adventure/e08-t125b2a`: the banks in the plans' properties, the views, the cover test); T125b2b done 2026-11-18 (`adventure/e08-t125b2b`, whole: decision 359; the three workloads, the original data); round 7 done. Round 8: T126 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+
+**E08 T126 — increment 13's audit** (round 8; design `E08-design.md` §20's exit criteria)
+
+- **Scope:** (`adventure/e08-t126`): the audit against the nine exit criteria with a fresh
+  reviewer; increment 13 closed (its scope, decisions 333 to 359 and tasks to `E08-archive.md`,
+  the design note to `E08-log.md`; the README's epic table in the session's `shared/` pull
+  request); increment 14 refined with the user (the sketch's item 14, quests, or another order).
+  Criterion 9's benchmarks: T125b2b baselined the three new workloads and ran every other inside
+  its gate (its record in `E08-log.md`).
+- **Inputs:** design §20 (the exit criteria), §17's and §9's *As built*; T117's audit
+  (`E08-log.md`) as the form; the epic's sketch.
+- **Depends on:** T125b2b (`adventure/e08-t125b2b`, merged first). **Status:** ready once
+  T125b2b merges (the original data to stage for criterion 1's census and criterion 9's gates);
+  its cut confirmed at its start.
+
 *(Moved 2026-11-16, E08 T123b: done whole, decision 352, `cross-lane` for `h3-server`'s `tests::record`; the record in `E08-log.md`; T124 queued.)* **E08 T123b — the import** (round 5; design `E08-design.md` §3, §18; as T113b for increment 12)
 
 - **Scope:** `adventure/e08-t123b`: `codes::object_type`'s class 16 by subclass 0 to 6 to the
@@ -1900,3 +1916,122 @@ design `E08-design.md` §4 to §8, §12 to §15, §18, §20)
   workload's `collect` pattern, a new workload's first count); skill `homm3-bench-regression`.
 - **Depends on:** T125b2a (`adventure/e08-t125b2a`, merged first). **Status:** ready once T125b2a
   merges; its cut confirmed at its start (likely whole, as T116c). T126 (the audit) after it.
+
+## Inbox notes settled or for information (moved 2026-11-18, E08 T126)
+
+*(Moved verbatim at increment 13's closure: the other lanes' notes of changes in this lane's paths (the town lane's E09 T29b to T38b1, the map client lane's harness rebuilds), built on by T123b to T125b2b and T126's audit, CI green on each; their lasting rules are one line in `TRAPS.md`, "The town lane's parts of your crates"; the versions they took are the HANDOFF's.)*
+
+- 2026-11-18 (the town lane, E09 T38b1, `town/e09-t38b1`, `cross-lane` with the user's consent;
+  **your paths changed, for your review**): `AdventureState::end_battle` returns the heroes that
+  left the map (`Vec<HeroOnMap>`, in the order given, as each stood before the end: the army it
+  fought with, its formation, tactics flag and points; its marks gone, its boat freed), and
+  `release_town_hero` the garrison hero it took (`Option<HeroOnMap>`); `h3-game`'s `end_battle`
+  hands them to the town lane's `town::leave::after_battle` **last, after the winner's levels**
+  (TWN-TAV-006: a retreated or surrendered hero back into its owner's tavern, its slot drawn
+  from its owner's stream, `TavernOffered` told last; every other's type free with one creature
+  and its spell points full, untold); `GameState::free_hero_types` is gone. A new way off the map
+  (E09 T38b2's dismissal) goes through `town::leave::leave`. The plans' battle oracle
+  (`check_heroes_after_battle`) lets a hero that leaves without returning end at its full spell
+  points. Golden replays re-recorded (the battles' leaves moved their hashes); no version moved.
+
+- 2026-11-18 (the town lane, E09 T38a2, `town/e09-t38a2`, `cross-lane` with the user's consent;
+  **your paths changed, for your review**): `h3_game::legal_commands` lists each own town's hires
+  after its recruitments (TWN-TAV-003) and now folds its chain into a list sized 16 (`for_each`,
+  `legal.rs`: `collect()` cost `legal-towns-36` +17 % with the longer lists, the town lane's
+  `TRAPS.md`); a new part of the listing goes into that fold. The plans hire (`h3-map`:
+  `town_builds` probes `Hire`, `check_town_hire`, `Step::Town` hires in one step of eight), and
+  four oracles know a hired hero: `check_isolation` (it joins the map), `check_conservation` (the
+  price, its army from the slot's view, the refill's record), `view.rs`' told views (`HeroHired`
+  shows it on its tile; `check_hired` folds the owner's slot view with `HiredPartSeen`) and the
+  hygiene (a hire the viewer is told ends the comparison). Every random game on a map with owned
+  towns hires now (env encoding v12): six workloads of yours on the town maps re-baselined
+  (`reach-towns-36` +194 %, `day-start-builds-36` +105 %, `month-start-builds-36` +69 %,
+  `legal-towns-36` +60 %, `day-start-towns-36` +51 %, `fork-towns-36` +39 %; more heroes, the
+  same counted code). No hash, replay or protocol version moved.
+
+- 2026-11-17 (the town lane, E09 T38a1, `town/e09-t38a1`, `cross-lane` with the user's consent;
+  **your paths changed, for your review; replay format v17 taken**): the adventure replay format is
+  **v17** (`town hire <town> <slot>`, `h3_towns::TownCommand::Hire`; `h3-files`' word and doc,
+  `h3-sim`'s `REPLAY_FORMAT_VERSION`, the 89 goldens' `format` line only, `h3-cli`'s and `h3-sim`'s
+  literals): your next bump is v18. `h3-game` gained `GameEvent::HeroHired` and `HiredPartSeen`
+  (`observe.rs`' `project`, `h3-map`'s `tests/view.rs` told-views arms) and
+  `GameState::taverns_for` (`state.rs`); `h3-adventure`'s town module gained `check_tavern_hire`
+  and `place_hired` (`src/town/hire.rs`; `rows.rs`' `town_entrance` and `arrive` made
+  `pub(super)`). No hash version moved; the hire is not in `legal_commands` until E09 T38a2
+  (`TWN-STUB-19`), which also changes `legal.rs` (`cross-lane`).
+
+- 2026-11-17 (the map client lane, E24 M4 T1b1, `map-client/e24-m4-t1b1`; **the capture harness, rebuild `xdd.dll`**): `clients/capture/xdd.c` takes a new command, `<seq> seed <value>` (its 8.: the main thread's C library seed set at its next clock read, so that a computer player's turn draws alike in every run; `Game.seed`, and `h3drive.to_scenario(game, seed=...)` seeds just before Begin), and its acknowledgement has a sixteenth field (the seeds set): `h3drive.ACK_FIELDS` is 16, so a run with an `xdd.dll` built before fails as stale where it reads the acknowledgement whole (a forced roll, a batch's or a sequence's checks, a seed): rebuild it with `clients/capture/setup.sh`. Nothing else of `h3drive`, `h3adv` or `h3mem` changed in behaviour (`Mem.other_turn` is new; `Mem.status_items` also returns kind 5's items, ids 2190 to 2193).
+
+- 2026-11-17 (the town lane, E09 T37b, `town/e09-t37b`, `cross-lane` with the user's consent;
+  **your paths changed, for your review**; design note `E09-design.md` §70 As built, decisions
+  137, 138): **map import v25** (`h3-map`: `GameSetup::custom_types` from SoD's map-wide entries
+  that set a field, a type code past the table refused; `hero_type_of` factored out of `hero`):
+  your next import change takes v26. `h3-game`'s `setup.rs`: `GameSetup::custom_types`,
+  `HeroDetailsSetup::over`, `GameSetupError::CustomType` and `CustomDetails` (checked after the
+  banned sets, before any draw), every hero's details its own over its type's entry (a random
+  hero's by its drawn type, a main town's), a record per customised type still free after the
+  build's heroes (`town::custom_records`), `Prepared`'s last part each store hero's
+  customisations as built; `state.rs`: the level seeds, sexes and levels at load read those (the
+  records last); `tests/mod.rs`' `levels` module and `levels::oracle` `pub(crate)` (the town tests
+  reuse the oracle). No hash version moved; the game state hash's encoding is unchanged. The 89
+  goldens re-recorded: `import_version` 25 in each, and `army-meeting-s1` and `army-dialog-s1`
+  moved their checkpoints and final hashes (`e08-army-12`'s engine-written entry of type 3 now
+  gives a record at the build); the bot reports unchanged. **A `GameSetup` literal** needs
+  `custom_types` (four did: `h3-cli`'s census, `h3-map`'s census example and `tests/rewards.rs`,
+  `h3-game`'s `tests::setup`).
+
+- 2026-11-17 (the town lane, E09 T37a, `town/e09-t37a`, `cross-lane` with the user's consent;
+  **your paths changed, for your review**; design note `E09-design.md` §61 to §63, §68, §75 As
+  built): **game state hash v33** (the taverns' stream after the towns'; the pool's offered status,
+  records, away records, factions and tavern slots). `state.rs`: `taverns_rng`, `pool()` and
+  `taverns()` (the tavern parts' borrows), the start's fill in `GameState::new` before the first
+  group's turn, `town::tavern::start_turn` after the adventure's turn start, the marks' clear at
+  `EndTurn`; `state/day.rs`: the week's fill after `grow_week`, before your week step, the marks'
+  clear before the towns' day, `regain_mana` skipping a tavern record the pool marks full
+  (`Away::full`: `day_mana` never changes points at the maximum); `state/levels.rs`: the seeds and
+  sexes a `Vec`, `Progression::record`; `setup.rs`: `hero_details` takes a `HeroDetailsSetup`,
+  `starting_army` and `wear_machines` split out, the records and factions kept after the main towns'
+  heroes; `command.rs`/`observe.rs`: `GameEvent::TavernOffered`, `TavernPartSeen`,
+  `GameObservation::tavern`; `h3-heroes`: `backpack_equipped` (ADR-0013 point 14.5), `first_free`
+  and `fits` without allocating the positions; `h3-map`'s told-views property folds the tavern
+  heroes. The 89 golden replays re-recorded (only hash lines moved); the week-start benches
+  re-baselined (the week's fill). **When you write a tavern hero's record** (none of yours does
+  today): clear its `Away::full` and set `Away::stale`, or the day's regain and the turn's points
+  skip it.
+
+- 2026-11-17 (the map client lane, E24 M4 T1a, `map-client/e24-m4-t1a`; **the capture harness, rebuild `xdd.dll`**): `clients/capture/xdd.c` forces two more draws (`week_name` 0x4C87A6, the week's name, and `month_name` 0x4C8FCC, a normal month's; `h3drive.ROLLS` grew by two), so a batch or sequence run with an `xdd.dll` built before fails the count of redirected calls: rebuild it with `clients/capture/setup.sh`. Nothing else of `h3adv` or `h3mem` changed in behaviour (`Mem.calendar` is new: the week's and the month's kinds and names).
+
+- 2026-11-17 (the town lane, E09 T36, `town/e09-t36`, `cross-lane` with the user's consent; **your replays' header, mechanical**): the town ruleset part v7 (the records' tavern weights, the hire's price) moved `town_ruleset_hash` 0x0d7be940b64312a6 to 0xabc9756b93a29a55 in all 89 replays (re-recorded from their commands, nothing else moved). As with T35b's note below: a replay recorded on a branch from before the merge carries the old line. `TownRecord::tavern` and `TownParams::hire_price` are read by no rule yet (E09 T37a, T38a).
+
+- 2026-11-17 (the town lane, E09 T35b, `shared/e09-t35b`, `cross-lane` with the user's consent; **your replays' header, mechanical**): two `quirk.town` flags (`QuirkFlag(42)`, `(43)`, on in `faithful`) moved the base faithful ruleset hash 0xb5c01c8736eb73f9 to 0x6ba8109889b34a25; your 86 replays on it keep commands and state hashes, only `ruleset_hash` moved (the three strict-fixed ones unchanged). A replay you record on a branch from before the merge carries the old line: re-record it or patch the line after merging `master`. `StreamId::TAVERNS` (8) is new, no draw yet (E09 T37a draws from it).
+
+- 2026-11-16 (the town lane, E09 T35a, `shared/e09-t35a`, docs only; **ADRs in your paths, for your planning**): E09 increment 4's drafts are in the ADRs, each part after E09 increment 3's (so before your increment 10 to 13 parts where the points interleave): ADR-0016 points 3 (a hire's placement with the game's away record, the leave's hand-back, the dismissal's removal), 4 (the kinds `Tavern` and `DenOfThieves`, after E09's kind `Town`) and 6; ADR-0017 points 1 to 4, 6, 8 to 11; ADR-0013 points 14.5 and 16.5; each Consequences and Alternatives a line. Two decisions at T35's start (`TWN-Q19`, E09 decisions 126, 127), both for the town lane's T37a in your `state/day.rs` (`cross-lane` then): every day's start clears every player's tavern returning marks after the taverns' week (the original's `new_day` 0x4C80CF to 0x4C80FD), and `GameState::regain_mana` stays over every record of the store, tavern heroes and heroes out of the game included (HER-MAN-002 as you built it; the design's planned exception dropped). ADR-0017 point 9 and ADR-0028 point 9 name no adventure state hash bump for increment 4 (design §77: the kinds hold no state). Nothing for you to build now.
+
+- 2026-11-16 (the town lane, E09 T34, `town/e09-t34`, `cross-lane` with the user's consent; **the capture harness and your writer**): `clients/capture/xdd.c` logs three more sites (`tavern_class`, `tavern_type`, `leave_slot`, with their ranges; `h3drive.LOGGED` grew by three), so a sequence or batch run with an `xdd.dll` built before it fails the count of redirected calls: rebuild it with `clients/capture/setup.sh`. Also new and common: the reads and actions of README "Taverns and the Thieves' Guild" (the tavern dialog, the guild window, a town opened from the town list, a step's `resources`, `mana`, `narrow_pool`, a field `<encounter>|<field>`), and `auto_combat` returns when the battle ended before a human stack's turn (a loss to faster monsters kept pressing `a` until the limit). In your `h3_map::writer`: `TAVERN_OBJECT` (95) and `DEN_OF_THIEVES_OBJECT` (97) joined `PLAIN_OBJECTS` (no body; `tests/taverns.rs`): merge in order if you touch the list (the import of both stays the town lane's T39a).
+
+- 2026-11-15 (the town lane, E09 T31, `town/e09-t31`, `cross-lane` with the user's consent, E09
+  decision 101; **your paths changed, for your review; no version moved**): `command.rs`'s
+  `AdventureEventKind::GarrisonEntered` and `GarrisonLeft` have a field `named: Viewers`, the
+  viewers told the move by name (the owner's team and, from the game, a viewer whose view of the
+  town is at level 3 by Visions); `observe.rs`' `AdventureEvent::project` tells any other viewer
+  `HeroRemoved` at the entrance and `HeroStepped { from: None, to: Some(entrance), .. }` (a hero
+  coming into sight) in their place, as a step's unseen ends are left out. `h3-map`'s
+  `tests/view.rs`: `views_move_as_the_events_say` checks each viewer's projection of every garrison
+  move (`check_garrison_moves`, beside `check_jump_ends`). No hash, replay or format moved (events
+  are not hashed). A new constructor of either event passes `named` (`Viewers::NONE` names the
+  owner alone: `move_town_hero` adds it).
+
+- 2026-11-15 (the town lane, E09 T29b, `town/e09-t29b`, `cross-lane` with the user's consent, E09
+  decision 97; **your paths changed, for your review; no version moved, no engine code**):
+  `h3-map`'s `play.rs`: `Step::Town` (`visit_town`) gives a listed `TownCommand::Heroes` move at
+  an own town in five steps of eight, so every property's and cover test's games with town runs
+  moved (all of `h3-map`'s tests pass, the properties also at 240 cases); `town_events` gives
+  65 535 of a level where it drew 20; `check_invariants` bounds the towns' counts;
+  `check_towns` takes the command (the Plague, a purchase's amount); a new property
+  `a_forks_week_is_its_parents`; `hero_anywhere` (a hero on the map or a garrison hero) in
+  `check_battle_end`, `check_heroes_after_battle`, `check_conservation` and `check_progression`,
+  and `check_isolation` exempting the battle's garrison hero, which met a garrison hero
+  defending, raising and levelling up. `view.rs`' `vary` keeps a map garrison's entrance land (a case
+  of `master`'s, `OwnedOnWater`; your E08 T116b1's ownable garrisons were not in its
+  `entrances`). A new workload `benches/adventure/month-start-builds-36.toml` (the step that
+  starts day 29 on the builds map), its README row by #942.

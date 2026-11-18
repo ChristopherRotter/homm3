@@ -14762,6 +14762,8 @@ fn bank_plans() -> impl Strategy<Value = (Plan, bool, u64, Vec<Step>)> {
 /// visits in [`landing`] and [`check_sea_move`], [`check_decisions`], [`check_conservation`])
 /// see each.
 // covers: ADV-BNK-002, ADV-BNK-003, ADV-BNK-004, ADV-BNK-005, HER-ADV-008, GAM-DEC-007
+// covers: ADV-BNK-006, ADV-MOV-009, ADV-SEA-002, ADV-TEL-008, GAM-BAT-001
+// covers: BAT-SET-001, BAT-TAC-001, BAT-GEO-004, BAT-WAR-001
 #[test]
 fn the_plans_visit_and_fight_the_banks() {
     use proptest::strategy::ValueTree;

@@ -870,10 +870,10 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
     players the second press on red leaves both colours to the computer; the last shot has only
     A placed, on green. In a hot-seat load a flag press can turn a saved human's colour into
     Computer (recorded, M1 T3: `adv-load` pressed; CLT-Q110).
-  - then the whole screen redrawn.
+  - then `scenario_dialog_redraw` (T3c1, §26.1: the items not drawn again).
 - **The name** (345 to 352, `scenario_name_click` 0x58B620): single only, the own colour: the edit
   shown over the name with the record's name, the name hidden, the focus to it (`dialog_set_focus`
-  0x5FF490). Where the edit's text returns to the record: *not read*; recorded, M1 T3: Return
+  0x5FF490). Where the edit's text returns to the record: read at T3c1 (§26.2); recorded, M1 T3: Return
   closes the edit and shows the name ("Zed"), which moves with the player to another colour
   (`adv-single-rest` name-enter, name-after-flag).
 
@@ -3047,3 +3047,86 @@ leftovers, now exact); every other group as recorded.
 
 A hero's popup in a load (M4) and in the hot seat (T4: the same function); the campaign's class
 text (GENRLTXT 736: no campaign here); a hero type past `un44.def`'s frames (none tabled).
+
+## 26. The advanced options: the flags, the handicap and the name (M3 T3c1, 2026-11-18)
+
+Read from `Heroes3.exe` (`scenario_flag_click` 0x58B790 whole, its call 0x5870E1 to 0x5870F5;
+`scenario_name_click` 0x58B620 whole; the hover in `scenario_dialog_proc` 0x5881B2 to 0x588295;
+the end of `scenario_player_row_draw` 0x58DEBA to 0x58DF28; the name's edit's creation 0x57B487
+and its vtable 0x641C14 against the base edit's 0x642D40: +0x2C 0x57CEE0 and +0x3C 0x57CDC0, both
+read whole; the showing's move of the edit 0x58165C; `dialog_set_focus` 0x5FF490; the text item's
+press and release `text_item_message` 0x5BC440) against `adv-single-rest`, played again under Wine
+this session (every shot as kept). The client: `h3_view::shell::scenario::advanced`'s hover,
+`flag_click`, `name_click`, the edit (`EDIT`, `AdvancedLook::edit`, the layout's `edit`), the
+screen's flags from the moved colour (`Scenario::team_flags`), the strip and the piece as stale
+rectangles in the original's profile.
+
+### 26.1 The flags
+
+- **The hover** (a mouse move reaching the screen's procedure, not a button's own loop): the item
+  under the mouse (`dialog_item_id_at` 0x5FF3B0); when it is a flag 263 to 270 other than the one
+  hovered (`scenario_hovered` 0x683470), the hovered one's state 0x10 cleared and its row drawn,
+  then (not for a network guest) the new one's set and its row drawn, the new one hovered; off the
+  flags the hovered one cleared and drawn, none hovered. 0x10 draws the button's selected frame:
+  `AOFLGB%c.DEF` has four frames, `n`, `s`, `s` and `h` (3, the white frame: recorded
+  `flag-hover-own`, `flag-hover-blue`). The showing does not touch 0x10 (a flag hidden while
+  hovered, by the key, keeps it until the next move).
+- **The press** (single): the focus taken first (`dialog_set_focus` −1: the name's edit closes,
+  §26.2); to a colour a human may play (the players block's +0xA0 byte) that is not the local
+  record's: the old flag's 0x10 cleared, the game's +0x1F6D0 bytes of the old and new colour
+  rewritten (*not understood*: both stay non-negative, so both still play), the local record's
+  colour the new one, its hero and town −1, `scenario_hero_lists`; in every case
+  `scenario_team_flags` with its redraw flag, then the caller's `scenario_dialog_redraw` alone (no
+  items' draw): the strip restored from its copy keeps the allies' label's colon without its
+  shadow (recorded from `flag-own-pressed` on: CLT-Q138's, the client's profile draws whole). The
+  allies are the moved colour's team (`flag-blue`); the names follow the record (the redraw sets
+  them: `name-after-flag`).
+
+### 26.2 The name's edit
+
+- **The edit** (the constructor, single only): `edit_create` (62, 130 + 50 *c*, the flag's y,
+  moved to 130 + 50 *r* at the showing; 97 × 17, room 21, empty, `smalfont.fnt`, colour 1, left,
+  id 353 + *c*), its vtable 0x641C14 (the base edit's with its own key and loss of focus), hidden.
+- **The click** on a name (a text item: pressed while shown and enabled, clicked at the release
+  wherever the mouse is; CLT-Q43 (2)'s rule in the client): `scenario_name_click` (single, not
+  network): the focus taken; on the local record's colour only: the colour's bar
+  `adop%cpnl.pcx` drawn from the edit's offset in it (5, 2) with the edit's size at (57, 128 +
+  50 *r*), the bar's corner, where the edit's place was meant; recorded (`name-edit`,
+  `name-typed`): the bar shifted 5 left and 2 up inside (62, 130 + 50 *r*) to (154, 145 + 50 *r*),
+  the name box's frame doubled until the row is drawn again (**CLT-Q143**, (b): decision 58); the edit shown and
+  enabled with the record's name (its caret at the end), the name hidden and given the same text,
+  the focus to the edit (the caret `_` drawn).
+- **Its keys** (0x57CDC0, every key down while it shows): scan code 0x1C (Enter, the keypad's too)
+  hides it, takes the focus, copies its text into the human record holding its colour and into
+  `network_default_name` (`settings_save`), sets the name's text and draws the row; any other key
+  to `edit_key` (§16.1: Escape and Tab left to the dialog, Escape then Back's; every other key the
+  edit's, no hotkey: S, A and R type). Enter's release clicks nothing (Begin was never pressed).
+  **The loss of the focus** (0x57CEE0: a flag's press, a name's click, the options' hiding) does
+  the same. No other click takes the focus (an arrow's press leaves the edit open).
+- **A row's draw** shows the name (5, 6) and draws it, then the edit: while the edit is open on
+  that row (a flag's hover, an arrow) the name shows again under it (empty until the record has a
+  name; then the centred name under the edit's left one: CLT-Q143, not recorded).
+
+### 26.3 The client
+
+The edit is `h3_ui::edit` (decision 20): by scan code in the original's profile (Enter closes it,
+any key but Escape and Tab taken); in the client's the window's text input types, the edit's own
+keys are the key table's (`Context::Edit` first), Begin's command closes it as the original's
+Enter, Back's is the screen's and every other key is taken. The name lives in the screen
+(`Advanced::name`), not written to a setting (the client has none: M4). The flags' strip of a
+flag's press and the edit's piece are stale rectangles in the original's profile (the piece: the
+screen, the bar shifted, the edit over it, in its rectangle); the client's profile draws whole and
+keeps the name hidden under the open edit (CLT-Q143 (b), decision 58). The handicap stays drawn
+up and takes no press; the record's handicap reaches no game (`CLT-STUB-10`).
+
+### 26.4 The recordings and the comparisons
+
+`adv-single-rest`'s first twelve shots (`flag-hover-own` to `name-after-flag`; decision 57 counted
+ten) exact, `hidden` too; its other 26 T3c2's; every other group as recorded.
+
+### 26.5 Not built
+
+The hot seat's flags, handicap and names (T4); the name written to `Network Default Name` and read
+at the next opening and by the Multiplayer dialog (M4: the settings); the handicap's effect
+(`CLT-STUB-10`); Begin pressed by the mouse while the edit is open (T6: the record's name not yet
+taken).

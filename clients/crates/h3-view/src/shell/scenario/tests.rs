@@ -341,7 +341,10 @@ fn a_right_press_shows_the_item_s_help_while_held() {
     // Nothing else while it shows; a second right press neither.
     assert_eq!(s.right([497, 555]), Did::default());
     assert_eq!(s.moved([1, 1]), Did::default());
-    assert_eq!(s.key(Some(Command::Dialog(BACK)), "Escape"), Did::default());
+    assert_eq!(
+        s.key(None, Some(Command::Dialog(BACK)), "Escape"),
+        Did::default()
+    );
     assert!(!s.key_up("Escape").changed);
     assert!(s.right_release().changed);
     assert!(s.cursor());
@@ -364,20 +367,23 @@ fn a_right_press_shows_the_item_s_help_while_held() {
 #[test]
 fn the_hotkeys_press_and_click_their_buttons() {
     let mut s = scenario(Bugs::Original);
-    let did = s.key(Some(Command::Dialog(BACK)), "Escape");
+    let did = s.key(None, Some(Command::Dialog(BACK)), "Escape");
     assert!(did.changed && did.sample);
     assert_eq!(s.key_up("Escape").ended, Some(Ended::Scenario(false)));
     // Begin's and the panel buttons' click nothing yet (their tasks').
     let mut s = scenario(Bugs::Original);
-    s.key(Some(Command::Dialog(BEGIN)), "Return");
+    s.key(None, Some(Command::Dialog(BEGIN)), "Return");
     assert_eq!(s.key_up("Return").ended, None);
     // Another dialog's button, or no command, takes nothing.
-    assert_eq!(s.key(Some(Command::Dialog(124)), "Escape"), Did::default());
-    assert_eq!(s.key(None, "B"), Did::default());
+    assert_eq!(
+        s.key(None, Some(Command::Dialog(124)), "Escape"),
+        Did::default()
+    );
+    assert_eq!(s.key(None, None, "B"), Did::default());
     let mut s = scenario(Bugs::Original);
     s.press([514, 519]);
     // A key while the mouse holds a button takes nothing.
-    assert!(!s.key(Some(Command::Dialog(RANDOM)), "R").changed);
+    assert!(!s.key(None, Some(Command::Dialog(RANDOM)), "R").changed);
     assert!(s.release().changed);
     // An item's state kept as the screen shows it: the difficulties' selection.
     let draws = s.draws("PLAYERS.PAL");
@@ -456,7 +462,10 @@ fn the_strip_s_right_press_shows_the_teams_while_held() {
     assert_eq!(s.press([1, 1]), Did::default());
     assert_eq!(s.release(), Did::default());
     assert_eq!(s.moved([2, 2]), Did::default());
-    assert_eq!(s.key(Some(Command::Dialog(BACK)), "Escape"), Did::default());
+    assert_eq!(
+        s.key(None, Some(Command::Dialog(BACK)), "Escape"),
+        Did::default()
+    );
     assert_eq!(s.right([514, 91]), Did::default());
     assert!(s.right_release().changed);
     assert!(s.box_draws("PLAYERS.PAL").is_empty());
@@ -587,7 +596,7 @@ fn the_list_shows_and_hides_with_its_items_and_draws_its_rows() {
     assert!(!s.showing());
     assert!(names(&s.draws("PLAYERS.PAL")).is_empty());
     // Shown again: not built again.
-    s.key(Some(Command::List(Scroll::Down)), "Down");
+    s.key(None, Some(Command::List(Scroll::Down)), "Down");
     click(&mut s, [514, 91]);
     assert_eq!(s.rows(), (Some(0), 0));
 }
@@ -710,7 +719,7 @@ fn the_filters_keep_a_size_and_the_selection_goes_to_the_first() {
 #[test]
 fn the_keys_move_the_selection_and_the_top() {
     let mut s = shown(many(40), Bugs::Fixed);
-    let key = |s: &mut Scenario, scroll| s.key(Some(Command::List(scroll)), "k");
+    let key = |s: &mut Scenario, scroll| s.key(None, Some(Command::List(scroll)), "k");
     // Up on the first row: nothing.
     assert!(key(&mut s, Scroll::Up).changed);
     assert_eq!(s.rows(), (Some(0), 0));
@@ -779,7 +788,7 @@ fn the_bar_moves_the_top_and_holds_the_mouse() {
     assert_eq!(frame(&draws, "SlideBuV.def", [375, 556]), Some(3));
     // Held, it takes no key and no right press; its move follows the mouse.
     assert_eq!(
-        s.key(Some(Command::List(Scroll::Down)), "Down"),
+        s.key(None, Some(Command::List(Scroll::Down)), "Down"),
         Did::default()
     );
     assert_eq!(s.right([514, 91]), Did::default());
@@ -910,7 +919,7 @@ fn the_original_s_partial_redraw_leaves_the_size_mark_and_the_strip() {
     s.right_release();
     assert!(s.stale_draws("PLAYERS.PAL").is_none());
     // A key whose selection stays (Page Down on the last page): partial; Down: whole.
-    let key = |s: &mut Scenario, scroll| s.key(Some(Command::List(scroll)), "k");
+    let key = |s: &mut Scenario, scroll| s.key(None, Some(Command::List(scroll)), "k");
     key(&mut s, Scroll::PageDown);
     key(&mut s, Scroll::PageDown);
     assert_eq!(s.rows(), (Some(22), 23));
@@ -1064,12 +1073,15 @@ fn begin_over_an_empty_list_shows_its_message() {
     // The box's own loop shows the default arrow, the screen's back after it.
     assert_eq!(s.hovers().arrow, Arrow::Default);
     // Nothing else takes an input meanwhile: the screen's keys, a right press.
-    assert_eq!(s.key(Some(Command::Dialog(BACK)), "Escape"), Did::default());
+    assert_eq!(
+        s.key(None, Some(Command::Dialog(BACK)), "Escape"),
+        Did::default()
+    );
     assert_eq!(s.right([600, 414]), Did::default());
     assert_eq!(s.right_release(), Did::default());
     assert_eq!(s.press([10, 10]), Did::default());
     // Enter's OK closes it at the key's release, the screen drawn again.
-    let did = s.key(Some(Command::Message(message::Key::Ok)), "Return");
+    let did = s.key(None, Some(Command::Message(message::Key::Ok)), "Return");
     assert!(did.changed && did.sample);
     assert_eq!(s.key_up("Escape"), Did::default());
     assert!(s.key_up("Return").changed);
@@ -1178,32 +1190,35 @@ fn the_list_moves_at_a_key_s_press_the_description_at_its_release() {
     assert_eq!(described(&s), (Some("A map.".into()), None));
     let down = Some(Command::List(Scroll::Down));
     // Down's press selects the long description at its first line, its release steps the bar.
-    assert!(s.key(down, "Down").changed);
+    assert!(s.key(None, down, "Down").changed);
     assert_eq!(described(&s), (Some("line 0".into()), Some(thumb_at(0))));
     assert!(s.key_up("Down").changed);
     assert_eq!(described(&s), (Some("line 1".into()), Some(thumb_at(1))));
     // On the last row the list does nothing, the bar steps; Page Down a page.
-    s.key(down, "Down");
+    s.key(None, down, "Down");
     s.key_up("Down");
-    s.key(Some(Command::List(Scroll::PageDown)), "Next");
+    s.key(None, Some(Command::List(Scroll::PageDown)), "Next");
     s.key_up("Next");
     assert_eq!(described(&s), (Some("line 9".into()), Some(thumb_at(9))));
     // Up's press selects the short one: its release finds no bar.
-    s.key(Some(Command::List(Scroll::Up)), "Up");
+    s.key(None, Some(Command::List(Scroll::Up)), "Up");
     assert!(!s.key_up("Up").changed);
     assert_eq!(described(&s), (Some("A map.".into()), None));
     // Left and Right are the bar's alone.
-    s.key(down, "Down");
+    s.key(None, down, "Down");
     s.key_up("Down");
     assert_eq!(s.rows(), (Some(1), 0));
-    assert!(!s.key(Some(Command::List(Scroll::Right)), "Right").changed);
+    assert!(
+        !s.key(None, Some(Command::List(Scroll::Right)), "Right")
+            .changed
+    );
     assert!(s.key_up("Right").changed);
     assert_eq!(s.rows(), (Some(1), 0));
     assert_eq!(described(&s), (Some("line 2".into()), Some(thumb_at(2))));
     // With the list hidden the keys step the bar alone.
     assert!(click(&mut s, [514, 91]).changed);
     assert!(!s.showing());
-    s.key(Some(Command::List(Scroll::Left)), "Left");
+    s.key(None, Some(Command::List(Scroll::Left)), "Left");
     s.key_up("Left");
     assert_eq!(described(&s), (Some("line 1".into()), Some(thumb_at(1))));
 }
@@ -1213,21 +1228,21 @@ fn the_client_s_bar_takes_no_list_key_while_the_list_shows() {
     // CLT-Q140 (b): the list's keys move the list alone; Left and Right are still the bar's.
     let mut s = long(Bugs::Fixed);
     let down = Some(Command::List(Scroll::Down));
-    assert!(s.key(down, "Down").changed);
+    assert!(s.key(None, down, "Down").changed);
     assert!(!s.key_up("Down").changed);
     assert_eq!(described(&s), (Some("line 0".into()), Some(thumb_at(0))));
     // On the last row Down and Page Down do nothing.
-    s.key(down, "Down");
+    s.key(None, down, "Down");
     assert!(!s.key_up("Down").changed);
-    s.key(Some(Command::List(Scroll::PageDown)), "Next");
+    s.key(None, Some(Command::List(Scroll::PageDown)), "Next");
     assert!(!s.key_up("Next").changed);
     assert_eq!(described(&s), (Some("line 0".into()), Some(thumb_at(0))));
-    s.key(Some(Command::List(Scroll::Right)), "Right");
+    s.key(None, Some(Command::List(Scroll::Right)), "Right");
     assert!(s.key_up("Right").changed);
     assert_eq!(described(&s), (Some("line 1".into()), Some(thumb_at(1))));
     // With the list hidden the list's keys step the bar.
     assert!(click(&mut s, [514, 91]).changed);
-    s.key(Some(Command::List(Scroll::PageDown)), "Next");
+    s.key(None, Some(Command::List(Scroll::PageDown)), "Next");
     assert!(s.key_up("Next").changed);
     assert_eq!(described(&s), (Some("line 8".into()), Some(thumb_at(8))));
 }
@@ -1235,12 +1250,15 @@ fn the_client_s_bar_takes_no_list_key_while_the_list_shows() {
 #[test]
 fn the_mouse_scrolls_the_description_by_its_bar() {
     let mut s = long(Bugs::Original);
-    s.key(Some(Command::List(Scroll::Down)), "Down");
+    s.key(None, Some(Command::List(Scroll::Down)), "Down");
     // The bottom arrow, held then released; the track below the thumb a page on.
     s.moved([733, 262]);
     assert!(s.press([733, 262]).changed);
     // Neither key nor right press while the mouse holds the bar.
-    assert_eq!(s.key(Some(Command::List(Scroll::Up)), "Up"), Did::default());
+    assert_eq!(
+        s.key(None, Some(Command::List(Scroll::Up)), "Up"),
+        Did::default()
+    );
     assert_eq!(s.right([733, 262]), Did::default());
     assert!(s.moved([733, 262]).changed);
     assert!(s.release().changed);
@@ -1260,7 +1278,7 @@ fn the_mouse_scrolls_the_description_by_its_bar() {
 fn the_selected_row_again_leaves_the_description_as_drawn_in_the_original_s_profile() {
     for bugs in [Bugs::Original, Bugs::Fixed] {
         let mut s = long(bugs);
-        s.key(Some(Command::List(Scroll::Down)), "Down");
+        s.key(None, Some(Command::List(Scroll::Down)), "Down");
         click(&mut s, [733, 240]);
         assert_eq!(described(&s), (Some("line 7".into()), Some(thumb_at(7))));
         // The select resets the text and the bar; the partial redraw draws neither.
