@@ -138,6 +138,9 @@ const FLAGS: [u32; 2] = [0x66_FF04, 0x66_FEF8];
 const HERO_INFO: (u32, usize, usize) = (0x67_9DD0, 156, 0x5C);
 /// A hero record's large portrait's name (+0x34; E17 M5 T4b1: the result window, 0x47055A).
 const HERO_PORTRAIT: usize = 0x34;
+/// A hero record's small portrait's name (+0x30; E27 M3 T3b1: the scenario screen's advanced
+/// options, `scenario_dialog_create` 0x57C43E).
+const HERO_SMALL_PORTRAIT: usize = 0x30;
 const HERO_CLASSES: (u32, usize, usize) = (0x67_D868, 18, 0x40);
 const HERO_DEFS: (u32, usize, usize) = (0x63_BD40, 18, 0x10);
 /// The magic animations (E17 M3 T3b, design §7.15): `PlayMagicAnimation` 0x496840's table, 83
@@ -320,6 +323,8 @@ struct Harvest {
     hero_records: Vec<usize>,
     /// The heroes' large portraits (the static hero table's +0x34; E17 M5 T4b1), by hero type.
     hero_portraits: Vec<String>,
+    /// The heroes' small portraits (the static hero table's +0x30; E27 M3 T3b1), by hero type.
+    hero_small_portraits: Vec<String>,
     /// Whether each hero type is female (the static hero table's +0; E17 M6 T5a: the Summons'
     /// box, GENRLTXT 540 or 541), by hero type.
     hero_female: Vec<bool>,
@@ -540,6 +545,7 @@ fn read_harvest(
     let mut hero_defs = Vec::new();
     let mut hero_casts = Vec::new();
     let mut hero_portraits = Vec::new();
+    let mut hero_small_portraits = Vec::new();
     let mut hero_female = Vec::new();
     let mut hero_records = Vec::new();
     for id in 0..HERO_INFO.1 {
@@ -550,6 +556,7 @@ fn read_harvest(
             HERO_PORTRAIT + 4,
         )?;
         hero_portraits.push(string(u32_at(&info, HERO_PORTRAIT))?);
+        hero_small_portraits.push(string(u32_at(&info, HERO_SMALL_PORTRAIT))?);
         let (female, class) = (u32_at(&info, 0), u32_at(&info, 8) as usize);
         if female > 1 || class >= HERO_CLASSES.1 {
             return Err(format!("hero {id}: female {female}, class {class}"));
@@ -722,6 +729,7 @@ fn read_harvest(
         hero_pictures: battle_defs,
         hero_records,
         hero_portraits,
+        hero_small_portraits,
         hero_female,
         hero_names: hero_names(hotraits),
         flags: [string(FLAGS[0])?, string(FLAGS[1])?],
@@ -1100,8 +1108,9 @@ fn write_table(
             .get(n)
             .zip(h.hero_casts.get(n))
             .zip(h.hero_portraits.get(n))
+            .zip(h.hero_small_portraits.get(n))
             .filter(|_| h.hero_names.get(n).map(String::as_str) == Some(name));
-        let Some(((def, (point, frames)), portrait)) = def else {
+        let Some((((def, (point, frames)), portrait), small)) = def else {
             gaps.push(format!(
                 "{id}:{}: `{name}` is not hero type {n} of hotraits.txt",
                 hero.id
@@ -1110,11 +1119,12 @@ fn write_table(
         };
         let _ = write!(
             t,
-            "\n[[hero]]\nkey = \"{}\"\noriginal = {n}\ndef = \"{}\"\ncast = [{}]\ncast_frames = {frames}\nportrait = \"{}\"\n",
+            "\n[[hero]]\nkey = \"{}\"\noriginal = {n}\ndef = \"{}\"\ncast = [{}]\ncast_frames = {frames}\nportrait = \"{}\"\nsmall_portrait = \"{}\"\n",
             plain(&hero.id)?,
             plain(def)?,
             numbers(point),
-            plain(portrait)?
+            plain(portrait)?,
+            plain(small)?
         );
         // Only a female hero type says so (E17 M6 T5a).
         if h.hero_female.get(n) == Some(&true) {

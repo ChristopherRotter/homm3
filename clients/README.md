@@ -324,7 +324,8 @@ on the M1 review list):
   `hotraits.txt`'s; M3 T7b-1), `def`, its battle picture (by its class's town and its sex, design
   §4.5; M3 T3a), and from the same record `cast` (its cast point in the DEF's frame, x, y) and
   `cast_frames` (the casting group's frames played before the spell; M3 T7b-1, design §7.16);
-  `female = true` for a female hero type (the static hero table's +0; E17 M6 T5a: the Summons'
+  `small_portrait` (its small portrait, the same record's +0x30; E27 M3 T3b1: the scenario
+  screen's advanced options); `female = true` for a female hero type (the static hero table's +0; E17 M6 T5a: the Summons'
   box's pronoun, design §12.17); `picture` (its own record of `hero_pictures`, the same DEF and
   cast, of its own sex: the client draws the other sex's when a map gave it; E17 M7 T3b2).
 - `[[spell]]` (M3 T7b-1): `key`, `original` (its spell number, its record among `sptraits.txt`'s

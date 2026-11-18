@@ -15,17 +15,17 @@ need the five DLLs (`MP3DEC.ASI` in the PC's `original-data/install` too since 2
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T3b
+#### E27 M3 T3b2
 
-T3b The hero's arrows and popups of a single player's advanced options (decision 53; the epic's
-M3 table; design §3.14, §3.15, §23.7): the hero's arrows (`scenario_hero_step` 0x58AF20 through
-`GameSetup::offer`'s list, `scenario_hero_lists` 0x583890, a clash stepped on), a main hero's
-portrait and name (`scenario_shown_hero` 0x58D0E0, `scenario_shown_hero_name` 0x58D1F0: the
-heroes' small portraits, `hero_table`'s +0x30, into the asset tables), the hero's popup
-(`scenario_hero_popup` 0x575A90: the class and level not read yet) and a Random hero's
-(`scenario_info_popup`, GENRLTXT 102, 103), CLT-Q112's rows; the pick into the records
-(`Record::hero`). Exact against `adv-single-hero`, `adv-single-maps` (today every difference lies
-in the hero's box: design §23.6). Offer the user a cut at its start if it grows.
+T3b2 A hero's own popup of a single player's advanced options (decision 54; the epic's M3 table;
+design §3.15, §24.3): `scenario_hero_popup` 0x575A90 read whole (320 × 256 at (250, 172): the name
+in `medfont.fnt`, the portrait, "%s - %s" (not read; its arguments include `hero_class_name`
+0x4D8F70 and `hero_specialty_text` 0x4D7220), GENRLTXT 78 and 79's headings, the specialty's
+picture and text), its
+texts into the catalogue and its pictures into the asset tables; the popup over a hero the row
+shows (a main hero's, CLT-Q141 (b) included; a pick's). Exact against `adv-single-hero`
+(`hero-popup-1`, `hero-popup-last`) and `adv-single-maps` (`map-0-hero-popup`, `map-2-hero-popup`):
+today every other shot of both is exact.
 
 #### E27 M3 T3c
 

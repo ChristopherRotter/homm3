@@ -84,7 +84,7 @@ use crate::message::{MessageBox, Open, Outcome};
 mod advanced;
 mod description;
 
-use advanced::Advanced;
+use advanced::{Advanced, Map};
 pub use advanced::{
     AdvancedLook, AdvancedTexts, Bonus, CreatureRow, Pictured, PopupLook, Record, TownPopupLook,
 };
@@ -294,8 +294,35 @@ pub struct Seat {
 pub struct MainHero {
     /// Its hero type.
     pub hero_type: u8,
-    /// Its portrait (the type's own when the map gives none).
-    pub portrait: u8,
+    /// Its portrait, none where the map leaves it at its type's own (the file's 0xFF: the
+    /// original keeps −1 and its row shows no hero; CLT-Q141 (b) shows the type's).
+    pub portrait: Option<u8>,
+}
+
+/// What the map's import gives the advanced options of its heroes (E27 M3 T3b1; design §24): the
+/// engine's offers, the main heroes' names and the map's customised heroes.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Heroes {
+    /// Each colour's offer by faction, red and Castle first (`h3_game::GameSetup::offer` with that
+    /// faction chosen, TWN-SET-006: the hero types a human may pick, at most 16, in type order;
+    /// the original's `scenario_hero_lists` 0x583890); empty where the engine offers none.
+    pub offers: [[Vec<u8>; 9]; 8],
+    /// Each colour's main hero's name of the map (the players block's +0x24), empty for none.
+    pub main_names: [String; 8],
+    /// The map's customised heroes (its disposed heroes, the original's game +0x1FB2C), in the
+    /// map's order.
+    pub custom: Vec<CustomHero>,
+}
+
+/// A hero type the map customises (its disposed heroes): its portrait and name.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct CustomHero {
+    /// The hero type.
+    pub hero_type: u8,
+    /// Its portrait, none for its type's own.
+    pub portrait: Option<u8>,
+    /// Its name, empty for its type's own.
+    pub name: String,
 }
 
 impl Seat {
@@ -332,6 +359,8 @@ pub struct Entry {
     pub seats: [Seat; 8],
     /// Each colour's team (a map without teams: each its own).
     pub teams: [u8; 8],
+    /// The heroes its import offers and customises (E27 M3 T3b1).
+    pub heroes: Heroes,
 }
 
 impl Entry {
@@ -658,7 +687,7 @@ impl Scenario {
                     .unwrap_or(dialog.items.len());
                 dialog.items.splice(at..at, items);
             }
-            Advanced::new(a)
+            Advanced::new(a, bugs)
         });
         let mut shown = Shown::default();
         for (id, text) in &texts.labels {
@@ -935,12 +964,14 @@ impl Scenario {
     }
 
     /// The map whose players the advanced options show: the entry selected, else the game's (the
-    /// last shown; E27 M3 T3a).
-    fn players(&self) -> ([Seat; 8], Option<u8>) {
+    /// last shown; E27 M3 T3a), with its heroes (T3b1).
+    fn players(&self) -> Map {
         self.entry()
             .or(self.game.as_ref())
-            .map_or(([Seat::default(); 8], None), |e| {
-                (e.seats, e.local().and_then(|c| u8::try_from(c).ok()))
+            .map_or_else(Map::default, |e| Map {
+                seats: e.seats,
+                heroes: e.heroes.clone(),
+                local: e.local().and_then(|c| u8::try_from(c).ok()),
             })
     }
 
@@ -960,11 +991,11 @@ impl Scenario {
                 self.showing = false;
                 self.list_items(false);
             }
-            let (seats, local) = self.players();
+            let map = self.players();
             let (dialog, shown) = (&mut self.dialog, &mut self.shown);
             self.advanced
                 .iter_mut()
-                .for_each(|a| a.show((&seats, local), dialog, shown));
+                .for_each(|a| a.show(&map, dialog, shown));
             self.give_to_game();
         }
         self.whole();
@@ -974,10 +1005,10 @@ impl Scenario {
     /// An advanced option's arrow `id` clicked (E27 M3 T3a): its row drawn again; whether it was
     /// one.
     fn advanced_click(&mut self, id: u16) -> bool {
-        let (seats, _) = self.players();
+        let map = self.players();
         self.advanced
             .as_mut()
-            .is_some_and(|a| a.click(id, &seats, &mut self.shown))
+            .is_some_and(|a| a.click(id, &map, &mut self.shown))
     }
 
     /// The full list sorted by `key` (`scenario_list_sort` 0x585050), the shown list rebuilt in
@@ -1353,8 +1384,8 @@ impl Scenario {
             draws.extend(self.row_draws());
         }
         if let Some(advanced) = &self.advanced {
-            let (seats, _) = self.players();
-            draws.extend(advanced.draws(&seats, &self.dialog, &self.shown, players));
+            let map = self.players();
+            draws.extend(advanced.draws(&map, &self.dialog, &self.shown, players));
         }
         draws
     }
@@ -1584,9 +1615,9 @@ impl Scenario {
                 Did::CHANGED
             });
         }
-        // A town's or a bonus's popup of the advanced options (E27 M3 T3a).
-        let (seats, _) = self.players();
-        let popup = id.and_then(|id| self.advanced.as_ref()?.popup(id, &seats));
+        // A town's, a hero's or a bonus's popup of the advanced options (E27 M3 T3a, T3b1).
+        let map = self.players();
+        let popup = id.and_then(|id| self.advanced.as_ref()?.popup(id, &map));
         if let Some(m) = popup {
             self.over = Over::Popup(m);
             return Did::CHANGED;
