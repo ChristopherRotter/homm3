@@ -1291,3 +1291,41 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
   T4b's); `hotseat-names`' and `hotseat-long`'s new `scenario` and `advanced` shots exact; every
   other recipe of every group as recorded. `drawn.txt` recorded for the `advanced` group and
   those two recipes.
+
+## M3 T4b — the hot seat's presses (2026-11-18)
+
+- **Staged** from the PC at once: the 64 files and the seven manuals and help files, each checked
+  by SHA-256 against the PC's (71 of 71 equal). The setup's baseline stopped at `check.sh`'s
+  coverage by a watcher (fmt, clippy, the doc tests and deny passed; CI's green `master` stands
+  in).
+- **Kept whole** (the agent's call: five small presses on the reading M1 left, the T4 cut's
+  second half). **Asked at the start:** CLT-Q144 (the handicap's caption stays with the colour
+  while the player moves: (b), the client's follows the player, decision 60) and CLT-Q145 (more
+  names than colours never begin in the client's profile: (c), kept, decision 61).
+- **Read** (design §29): `hot_seat_colour_cycle` 0x577AE0 whole, the flag's hot-seat branch (no
+  clash step, no highlight cleared outside network play), the handicap's press 0x58706A,
+  `scenario_hero_step` and `scenario_heroes_unclash` whole with the showing's loop and the town's
+  arrow, `scenario_begin_tail`'s 531 and 83, the hiding's +0x1824. **Played** `adv-hotseat-rows`,
+  `adv-hotseat-two` and `adv-hotseat-begin` under Wine (every shot as kept) and read their rows:
+  the cycle's search starts after the holder's index (+0x74, which M1 had read as −1 at its
+  start; its writer not found), so M1's description (the colour to the first player) was wrong;
+  §3.14 corrected.
+- **Built:** `Advanced::cycle` (the original's: the holder's index + 1, the colour pressed last
+  `pressed`, the kept one `kept`, `pressed` forgotten at the hiding), `pass` (CLT-Q94: the next
+  player, the two exchanging), the hot-seat branch of `flag_click`; `step_handicap` (+1 modulo 3,
+  the caption) and the client's caption from the record at each `refresh` (CLT-Q144 (b));
+  `step_hero` passing over `held_elsewhere`, `unclash` after a town's arrow and at the showing;
+  `seating` (shared by `seat_humans`), `refusal` and `Refusal`; the screen's Begin over a map
+  (`Texts::unplaced`, `too_few`; the keys `shell.scenario.unplaced` GENRLTXT 531 and
+  `shell.scenario.too-few` GENRLTXT 83); Begin's box closed without the screen drawn again
+  whole (the original keeps a stale strip: `closed-1`). Tests: `advanced/tests/presses.rs`
+  (ten).
+- **Compared:** `adv-hotseat-rows` 12 of 12, `adv-hotseat-two` 7 of 7 and `adv-hotseat-begin` 7 of
+  7 up to its begin exact (`closed-1` of both first differed by the strip's colon, 2 pixels: the
+  box's close); every other recipe of every group as recorded (93 recipes). `drawn.txt` recorded
+  for the three.
+- **Gates:** `RUST_TEST_THREADS=1 check.sh --no-coverage` passed (4 minutes); `h3-view`'s
+  coverage 100% of lines and regions but `book.rs`' known per-crate lines (the hot seat's flag of
+  a computer-only colour is hidden, so its press is tested by a direct call); the real-asset
+  `gate` passed; the scoped verify with original data passed every step (`check-exe-map` after a
+  site for Begin's players' checks, 0x58C11F).

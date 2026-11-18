@@ -697,6 +697,9 @@ fn menus(
         }),
         // Begin's message over an empty list (T2b: GENRLTXT 530).
         no_maps: Some(laid("shell.scenario.no-maps", Style::Ok)),
+        // Begin's messages over a map (T4b: GENRLTXT 531, 83).
+        unplaced: Some(laid("shell.scenario.unplaced", Style::Ok)),
+        too_few: Some(laid("shell.scenario.too-few", Style::Ok)),
         // The description's split (T2c): the font's metrics alone.
         description_font: Some(metrics(font(&layout.scenario.description.font)?)),
         // The advanced options (T3a).

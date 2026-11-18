@@ -18,8 +18,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   handicap drawn up, `CLT-STUB-10`; CLT-Q143 (b), decision 58; the duration's bar (the horizontal
   scroll bar's input), its texts, `CLT-STUB-11`; the options' hints; `adv-single-rest` 39 of 39
   exact: design §26, §27). **T4 cut in two** (decision 59); **T4a done** (2026-11-18: the hot
-  seat's screen as it opens, `adv-hotseat` 8 of 8 and both panels exact: design §28). **Next: M3
-  T4b** (the hot seat's presses: the queue), then T5.
+  seat's screen as it opens, `adv-hotseat` 8 of 8 and both panels exact: design §28); **T4b
+  done** (2026-11-18: the handicap, the flags' cycle (the original's as recorded, the client's
+  CLT-Q94), a hero held elsewhere, Begin's 531 and 83; CLT-Q144 (b), CLT-Q145 (c), decisions 60,
+  61; `adv-hotseat-rows`, `adv-hotseat-two` and `adv-hotseat-begin` up to its begin exact: design
+  §29). **Next: M3 T5** (the random map's tab: the queue), then T6, T7.
   Decisions to carry: the dialogs' input one
   implementation (20; `h3_ui::input`); the shell's code as the battle's (21); decision 22's
   fixes; every pixel of a Smacker clip through its palette (24); every clip's sound at the
@@ -28,8 +31,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   edits type what the keyboard prints (39); a menu opening anew takes the hover (40); a silent
   Smacker clip's frames from their due times (43); the empty list's leftovers fixed (51); the
   description's bar takes no list key while the list shows (52); a main hero of its type's
-  portrait shown (55); a pick named by its own name (56); the name's edit drawn clean (58). Open pull request: T4a's
-  (`client/e27-m3-t4a`): watch it until it merges. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
+  portrait shown (55); a pick named by its own name (56); the name's edit drawn clean (58); the hot seat's handicap caption the player's (60); more names
+  than colours never begin in the client's profile (61). Open pull request: T4b's
+  (`client/e27-m3-t4b`): watch it until it merges. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
   epic's "Placed at the closure", the queue's inbox). E28 and E29 are backlog sketches.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+
   drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`.
@@ -43,7 +47,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   battle between two of the host's humans) and `CLT-STUB-6` (the Multiplayer dialog's network
   modes), `CLT-STUB-7` and `-8` (Campaign, Tutorial), `CLT-STUB-9` (the starting bonus), `CLT-STUB-10` (the handicap) and `CLT-STUB-11` (the turn's timer) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q144, CLT-STUB-12.
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q146, CLT-STUB-12.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs (`MP3DEC.ASI` there too since 2026-11-17), `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens) and the 40 non-campaign MP3s; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -63,6 +67,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-18, E27 M3 T4b (done; `client/e27-m3-t4b`).** The PC's 64 files and the manuals
+  staged (SHA-256 checked). Kept whole; CLT-Q144 and CLT-Q145 asked and answered at the start.
+  Read the cycle, the handicap's press, the hero's step and clash, Begin's tail; the three
+  hot-seat recipes played under Wine showed the cycle starts after the holder's index (M1's
+  reading corrected). Built the presses and Begin's messages; the box's close keeps the screen
+  as it was. Every shot of the three recipes exact up to the begin, every other recipe as
+  recorded. Record: `E27-log.md`, "M3 T4b".
 - **2026-11-18, E27 M3 T4a (done; `client/e27-m3-t4a`).** The PC's 64 files and the manuals
   staged (SHA-256 checked). The hot seat's path read (Single's `scenario_new` after the
   Multiplayer dialog; M1 had read its branches): T4 cut in two with the user (decision 59). Built
@@ -75,9 +86,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   duration's texts, the options' hints (one key a group); `popup-hero-arrow` recorded again after
   the row's town (its hero's arrows hide under Random); `adv-single-rest` 39 of 39 exact, every
   other group as recorded. Record: `E27-log.md`, "M3 T3c2".
-- **2026-11-18, E27 M3 T3c1 (done; `client/e27-m3-t3c1`).** The PC's 64 files and the manuals
-  staged (SHA-256 checked). Read the flag's press, the name's click, the hover, the name's edit's
-  own key and loss of focus (its text back to the record); CLT-Q143 asked and answered (b)
-  (the edit's doubled frame, the name under it), the original's for the comparisons; built the hover,
-  the press, the edit, the screen's flags from the moved colour; `adv-single-rest`'s first twelve
-  shots exact, every other group as recorded. Record: `E27-log.md`, "M3 T3c1".
