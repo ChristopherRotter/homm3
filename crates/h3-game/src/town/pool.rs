@@ -248,16 +248,16 @@ impl HeroPool {
     /// §67), goes back free with `away` as its away record (its record stays).
     // rule: TWN-TAV-006
     pub(super) fn leave(&mut self, id: HeroTypeId, away: Away) {
-        self.set(id, HeroStatus::Free);
-        if let Some(record) = self.records.get_mut(id.index()) {
-            record.away = Some(away);
-        }
+        // A hero's type is the ruleset's.
+        self.types[id.index()].status = HeroStatus::Free;
+        self.records[id.index()].away = Some(away);
     }
 
     /// `id`, a hero that left the game after its side's retreat or surrender (TWN-TAV-006; E09
     /// T38b1, design note §67), returns into `player`'s tavern in `slot` (0 or 1): the slot's hero,
     /// if any, goes free (its record and away record kept); the type offered and held by the slot,
-    /// its returning mark set (TD-18), `away` its away record. Nothing for a player not of the game.
+    /// its returning mark set (TD-18), `away` its away record. A hero's owner is a player of the
+    /// game and its type the ruleset's.
     // rule: TWN-TAV-006
     pub(super) fn return_to(
         &mut self,
@@ -265,18 +265,14 @@ impl HeroPool {
         id: HeroTypeId,
         away: Away,
     ) {
-        let Some(tavern) = self.players.get_mut(player.index()) else {
-            return;
-        };
+        let tavern = &mut self.players[player.index()];
         let freed = tavern.slots[slot].replace(id);
         tavern.returning[slot] = true;
         if let Some(freed) = freed {
             self.set(freed, HeroStatus::Free);
         }
-        self.set(id, HeroStatus::Offered);
-        if let Some(record) = self.records.get_mut(id.index()) {
-            record.away = Some(away);
-        }
+        self.types[id.index()].status = HeroStatus::Offered;
+        self.records[id.index()].away = Some(away);
     }
 
     /// The build's records (E09 T37a, design note §61): each hero's type in hero order names its

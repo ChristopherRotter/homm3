@@ -64,10 +64,9 @@ pub(crate) enum Leave<'a> {
 // rule: TWN-TAV-006, GAM-SET-001
 pub(crate) fn leave(state: &mut GameState, rules: &GameRuleset, hero: &HeroOnMap, how: Leave<'_>) {
     let core = rules.core();
-    let hero_type = state.hero(hero.id).map(|details| details.hero_type);
-    let Some((hero_type, ty)) = hero_type.and_then(|t| core.hero_type(t).map(|ty| (t, ty))) else {
-        return;
-    };
+    // A hero the adventure held has its record in the store, of a type of the ruleset.
+    let hero_type = state.heroes()[usize::from(hero.id.raw())].hero_type;
+    let ty = &core.hero_types()[hero_type.index()];
     if state.pool().record(hero_type) != Some(hero.id) {
         if state.pool().is_offered(hero_type) {
             return;
