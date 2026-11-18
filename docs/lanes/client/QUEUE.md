@@ -15,20 +15,14 @@ need the five DLLs (`MP3DEC.ASI` in the PC's `original-data/install` too since 2
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T4b
+#### E27 M3 T5
 
-T4b The hot seat's presses (decision 59; design §3.6, §3.14, §3.15, §28.4; the M3 table): the
-handicap's press (+1 modulo 3, its caption `handicap_names`, the row drawn again; T4a made it a
-caption button taking the mouse), the flags' cycle (CLT-Q94, decision 13: the client's passes the
-colour to the next player after its holder; the original's `hot_seat_colour_cycle` 0x577AE0 for
-the comparisons; until then `Advanced::flag_click` moves no colour in the hot seat), a hero
-another human record holds passed over by the hero's arrows and stepped on after a town's change
-and at the showing (`scenario_hero_step` 0x58AF20, `scenario_heroes_unclash` 0x58BBC0; the
-client keeps hero types, not the original's indices), the name's press taking nothing (built at
-T4a: check `name-press`), Begin's GENRLTXT 83 (fewer than two placed players) and 531 (the first
-player without a colour). Exact against the rest of `adv-hotseat-rows` (`handicap-1`,
-`handicap-2`, the flags', `row-1-choices`, `name-press`) and `adv-hotseat-two` (its six after
-`panel`). Then T5 to T7 as the M3 table lists them.
+T5 The random map's tab (design §3.16, `random_map_toggle` 0x57FEB0, button 130; CLT-Q92,
+decision 13: its choices drawn and taken as the original's, Begin with a random map chosen a
+stub's message, Show Random Maps listing the client's own `random_maps` (empty), no generator):
+exact against `adv-random` (§6.4: Begin after `tab-again`, recorded by this task with
+`h3shell.py run --only adv-random --record`). Look for a seam at its start (the tab's drawing and
+its presses). Then T6 and T7 as the M3 table lists them.
 
 ## Inbox
 

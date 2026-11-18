@@ -418,6 +418,17 @@ The user, 2026-11-17 (M3 T2's start):
     presses (the handicap's, the flags' cycle, a hero another player holds, the name's press,
     Begin's GENRLTXT 83 and 531; the other 17 shots of `adv-hotseat-rows` and `adv-hotseat-two`).
 
+The user, 2026-11-18 (M3 T4b's start; `CLT-Q144`, `CLT-Q145`; T4b kept whole):
+
+60. **The hot seat's handicap caption follows the player** (CLT-Q144 (b)): the original sets a
+    colour's handicap caption only at its press, so a player a flag moves keeps its handicap while
+    the rows keep the captions pressed there; the client's caption is the handicap of the record
+    holding the colour, the original's for the comparisons only. Built at T4b.
+61. **More names than colours: kept as is** (CLT-Q145 (c)): the hot seat lists every map two
+    humans may play (the original's), and the client's Begin refuses while a named player has no
+    colour (decision 22), so a map with fewer colours a human may play than names is listed but
+    never begun in the client's profile.
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -525,7 +536,7 @@ catalogue: design §3; the shell's frame, menus, edits and the hot seat's names:
 | T3c1 | The flags' hover and press (single: `scenario_flag_click` 0x58B790, CLT-Q93), the handicap (single: shown, no press), the name's edit (353, `scenario_name_click` 0x58B620) (§3.13, §3.14; decision 57; the handicap a `CLT-STUB`, decision 6); exact against `adv-single-rest`'s first ten shots (`flag-hover-own` to `name-after-flag`) | **done** 2026-11-18: the flags' hover and press (`Advanced::hover`, `flag_click`; the screen's flags from the moved colour, `Scenario::team_flags`), the name's edit (`EDIT`, the layout's `edit`, `name_click`, its keys by scan code and by the key table and text input, `Scenario::typing`, `contexts`, `typed`), the handicap drawn up (`CLT-STUB-10`); the original's strip after a flag's press and the edit's piece as stale rectangles (CLT-Q143 (b), decision 58); `adv-single-rest`'s first twelve shots exact; log "M3 T3c1", design §26 |
 | T3c2 | The duration's bar's input and texts (`scenario_duration_scrolled` 0x57C7F0), the items' hints (`HELPED`) (§3.13 to §3.15; decision 57; the timer a `CLT-STUB`, decision 6); exact against the rest of `adv-single-rest` (§6.4: `popup-hero-arrow` recorded again on row 2's arrow) | **done** 2026-11-18: `h3_ui::scrollbar`'s horizontal input (the press's thumb 16 wide), the duration's bar (`Advanced::bar_press`, `bar_moved`, `bar_release`, `scrolled`; no page: the layout's `step` 0), `Scenario::duration`, `CLT-STUB-11` (no timer); `HELPED`'s headers, label and bar, `COLOUR_HELPED`, the right press past an item not enabled; the keys `shell.scenario.help.*`; `popup-hero-arrow` after the row's town (its hero's arrows hide under Random); `adv-single-rest` 39 of 39 exact; log "M3 T3c2", design §27 |
 | T4a | The hot seat's screen and advanced options as they open (§3.12 to §3.14; decision 59): the entry from the Multiplayer dialog's names (`Multiplayer::names`, M2's item 61), two to eight human records, the list of the maps two humans may play, each colour a human may play to the next name, the rows (the names, the handicap a caption button, the arrows by the hot seat's rules), the flags' strip from the first player's colour, Back; exact against `adv-hotseat`, `adv-hotseat-rows`' and `adv-hotseat-two`'s `panel` | **done** 2026-11-18: `Scenario::opened_hot_seat`, `hot_seat`, `Entry::first_human`, `Menus::front`'s hot seat; `Advanced::seated`, its human records (`Human`, the single player's the first), `seat_humans`, `row_items` (the handicap's caption), `takes` by the mode; `Screen::Scenario(New, Multiplayer)` built whole (no longer a stub); the layout's `handicap_caption`, the keys `shell.advanced.handicap.*`; `adv-hotseat`'s `backgrounds`; `adv-hotseat` 8 of 8, both panels exact (also `handicap-3`, `handicap-popup`, `flag-hover-green`; `hotseat-names`' and `hotseat-long`'s screen shots); log "M3 T4a", design §28 |
-| T4b | The hot seat's presses (§3.6, §3.14, §3.15; decision 59): the handicap's (+1 modulo 3, `handicap_names`), the flags' cycle (CLT-Q94, decision 13: the client's; the original's `hot_seat_colour_cycle` for the comparisons), a hero another human record holds passed over and stepped on (`scenario_hero_step`, `scenario_heroes_unclash`), the name's press taking nothing, Begin's GENRLTXT 83 and 531; exact against the rest of `adv-hotseat-rows` and `adv-hotseat-two` | after T4a |
+| T4b | The hot seat's presses (§3.6, §3.14, §3.15; decision 59): the handicap's (+1 modulo 3, `handicap_names`), the flags' cycle (CLT-Q94, decision 13: the client's; the original's `hot_seat_colour_cycle` for the comparisons), a hero another human record holds passed over and stepped on (`scenario_hero_step`, `scenario_heroes_unclash`), the name's press taking nothing, Begin's GENRLTXT 83 and 531; exact against the rest of `adv-hotseat-rows` and `adv-hotseat-two` | **done** 2026-11-18 (CLT-Q144 (b), CLT-Q145 (c): decisions 60, 61): `Advanced::cycle` (the original's, as recorded: the holder's index + 1, the colour pressed last and the kept one), `pass` (CLT-Q94's exchange), `step_handicap` (the client's caption the record's), `held_elsewhere`, `unclash`, `refusal` (`Refusal`), `seating`; the screen's Begin over a map (`Texts::unplaced`, `too_few`; the keys `shell.scenario.unplaced`, `too-few`), the box's close keeping the screen as it was; `adv-hotseat-rows` 12 of 12, `adv-hotseat-two` 7 of 7, `adv-hotseat-begin` 7 of 7 up to its begin exact; log "M3 T4b", design §29 |
 | T5 | The random map's tab (§3.16; CLT-Q92: drawn, its generator a stub); exact against `adv-random` (§6.4: Begin after `tab-again`) | after T4b |
 | T6 | The game's begin (§3.17, §2.1; CLT-Q95, CLT-Q135): the setup built and validated by the engine (a refusal shown), the loading bar (`loadbar.pcx`, `loadprog.def`; the client's steps), the begin's notice (a `CLT-STUB`) and back to the menu, the setup kept for E24 M5 (the map-client lane's inbox); exact against `adv-begin` and `adv-hotseat-begin` up to the bar | after T5 |
 | T7 | M3's closure: a fresh reviewer, the review list, M4's refinement (M4 T0: the saves' record and its extension, decision 8; Options with the menu in play, CLT-Q136; the load and save modes with §6.4's recipes for them) | after T6 |
@@ -587,6 +598,12 @@ first, the hot seat's the names'), the mode a flag of the options and of the scr
 seat's list filtered at its opening from the list read at the shell's start (the original reads
 the files at each opening); the handicap's caption the item's text, set at the showing where
 none is (the press sets it: T4b); the hot seat's records new at each opening (as single's).
+(19) T4b: the original's cycle reads the holder's +0x74 as its index (recorded; its writer not
+found); its restore keeps the holder's town and hero type (the original's index into the new
+colour's list not modelled: no recording reaches it); the client's exchange gives both movers a
+Random town and hero; the clash's step built though unreachable; Begin's check before the first
+showing reads the colours the showing will give; the client's caption set at each refresh of
+the rows (`Advanced::refresh`); Begin's box closed without the screen drawn again whole.
 
 ## Dependencies and boundaries
 
