@@ -101,8 +101,9 @@ becomes binding when a task writes it into the catalog with its sources and test
 ## 0. Findings in short (part 1)
 
 - **The census** (§1): 1 058 objects of the seven classes on 148 of the 160 maps; every one has
-  subclass 0, no body in the map file and one entrance, blocked (visited from a neighbour, on
-  land). The Freelancer's Guild (213) and the snow Trading Post (221) are on AB and SoD maps only.
+  subclass 0, no body in the map file and one entrance, on land, **entered** (corrected by T127b:
+  the class lists, not the template's blocked tile). The Freelancer's Guild (213) and the snow
+  Trading Post (221) are on AB and SoD maps only.
 - **One window, five screens** (§3): the Trading Posts, the Freelancer's Guild and the Black
   Market open the town's market window in a mode of their own that shows one or two of its five
   screens (resources for resources, resources to a player, resources for artifacts, artifacts for
@@ -172,9 +173,13 @@ Over the 160 shipped maps (49 RoE, 55 AB, 56 SoD; T97c's counts confirmed):
 
 - 148 maps hold one or more of the seven (T97c's 149 counted the map Tavern beside them).
 - Every object has **subclass 0** and **no body** (`docs/formats/h3m.md`'s "every other class:
-  nothing"); its template has **one visitable tile, blocked**: each is visited from a neighbouring
-  tile, as a resource pile. Every entrance stands on land (no water entrance); the 33 class-221
-  posts all on snow. The War Machine Factory's two masks differ only in where the entrance is
+  nothing"); its template has **one visitable tile**, marked blocked in the mask. *Corrected by
+  T127b* (increment 14's design note, preamble): the mask does not decide the visit mode, the
+  original's class lists do (E08 decision 317's rule): `object_classes_not_entered` 0x63AA58 and
+  `object_classes_from_above` 0x63AB00 list none of the seven, so **each is entered** (the hero
+  stands on the entrance) and none from above; VCMI 1.7.5's configs agree (no `blockedVisitable`).
+  T127a read "visited from a neighbouring tile, as a resource pile" from the mask. Every entrance
+  stands on land (no water entrance); the 33 class-221 posts all on snow. The War Machine Factory's two masks differ only in where the entrance is
   (255 and 3 objects).
 - **The Black Market:** one on 70 maps, two on 28, three on 2, four on 4, six on 1; 78 of its 105
   maps ban artifacts (a ban takes an artifact out of the market's draw, §7.1).
@@ -198,9 +203,9 @@ hero's owner a human) decides:
 | 106 War Machine Factory (0x4AA622) | ADVEVENT's question, then the hire dialog with the three war machines (§14) | `ai_war_machine_factory_visit` 0x524FC0 (not read) | none |
 
 - No visit tests a day, a week, an owner or an earlier visit: a hero may trade at the same object
-  every time it visits it (a visit from a neighbour, so leaving and stepping back, or the
-  engine's `Revisit`, ADV-OBJ's).
-- No visit spends anything but the step onto the neighbour: the window's trades take no movement
+  every time it visits it (an entered object, corrected by T127b: stepping off and on again, or
+  the engine's `Revisit`, ADV-TEL-008).
+- No visit spends anything but the step onto the entrance: the window's trades take no movement
   points (none is read in the procedures of §5 to §7).
 
 ## 3. The trade window (shared with the town)
@@ -633,8 +638,8 @@ Altar's values or the Hill Fort's percentages: VCMI and the code reading are the
 
 For T127b's drafts and design note (ADR-0015 to -0017, ADR-0013); a sketch, not decided.
 
-- **Commands:** none new for the visits: a move's last step toward the object (every entrance is
-  visited from a neighbour, §1) or `Revisit`. Each object's window as **a decision of the
+- **Commands:** none new for the visits: a move's last step onto the object's entrance (every
+  one is entered, §1 as corrected by T127b) or `Revisit`. Each object's window as **a decision of the
   visitor's owner** (GAM-DEC-001), opened by the visit as the University (GAM-DEC-006) and the hire
   dialog (GAM-DEC-008) are, with its kind's answers (recommended: the original's windows are modal,
   the decision holds the trade's context, the default answer closes it). Not chosen: commands valid
@@ -676,7 +681,7 @@ For T127b's drafts and design note (ADR-0015 to -0017, ADR-0013); a sketch, not 
   new decision kinds to encode; `legal_commands` lists one answer per pair or slot at its most, as
   the hire dialog does (every amount would be thousands).
 - **Benchmarks:** the 1 058 objects stop being inert blockers on 148 shipped maps (their
-  neighbours' steps end paths, ADV-OBJ-003), and their answers enter the random agent's draws (the
+  entrances end paths, ADV-OBJ-003; T127b's correction), and their answers enter the random agent's draws (the
   lane's trap: every random game's course moves): the `random-play-*` workloads re-baselined with
   the reason; a market-heavy workload if T127b's cut wants one (`homm3-bench-regression`).
 
@@ -720,8 +725,8 @@ scroll for E14-9), a map's banned artifacts (E14-3), a RoE map (E14-14).
 
 Four families and three decisions (GAM-DEC-010 is the town lane's tavern):
 
-- **ADV-MKT** the map's markets: **-001** the objects (99, 221 as 99, 213, 7: one blocked entrance
-  each, no body; visited from a neighbour every time, no mark, no owner); **-002** the rates (the
+- **ADV-MKT** the map's markets: **-001** the objects (99, 221 as 99, 213, 7: one entrance each,
+  entered (T127b's correction), no body; visited every time, no mark, no owner); **-002** the rates (the
   values, the three factor tables, the binary32 steps and half-up rounding; built once with the
   town lane, decision 361); **-003** the Trading Post's trade (screen 0 at five Marketplaces);
   **-004** the transfer (screen 1: 1 : 1 to a player in the game); **-005** the Freelancer's

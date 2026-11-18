@@ -4,22 +4,24 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1, the survey (T127a, in two parts by decision 363: T127a1 and T127a2 done, the checkpoint answered: decisions 365 to 368) and the ADR amendment drafts with the design note and the cut (T127b) below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21), T128 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T127b — the ADR amendment drafts, the design note and the cut** (decision 362)
+**E08 T128 — batch E14's maps: the writer's seven classes, the spec's fields, the specs** (round 2;
+decisions 368, 373; as T119 for increment 13)
 
-- **Scope:** as T118b for increment 13: the drafts `adr-drafts/0016-increment-14.md` and
-  `0017-increment-14.md` (and ADR-0013's if the survey finds a change of the hero's derived
-  properties; the town lane's ADRs where the market's rates are shared, with its consent), increment
-  14's design note `E08-design.md` (its parts by side), the building tasks' cut and the exit
-  criteria; the checkpoint with the user (the note, the drafts, the agent's calls, the cut).
-- **Inputs:** the survey `docs/rules/surveys/E08-trades.md` (its open points §10 and §16, the
-  interfaces' sketch §17, batch E14 §18, the proposed ids §19); decisions 361 to 368 (the
-  checkpoint's answers 365 to 368: the original's roundings, A-46 and A-48 fixed, the Altar's
-  special artifacts as the original, batch E14 before the build: its spec and recipe in the cut); ADR-0015
-  to -0017, ADR-0013; the town lane's answer on the market's rates, if any; T118b's drafts as the
-  form.
-- **Depends on:** T127a2 (done, its checkpoint answered). **Status:** ready (docs only).
+- **Scope:** design note `E08-design.md` §20, §21's round 2: `h3_map::writer` writes the seven
+  classes by template (2, 7, 35, 99 and 106 at subclass 0; 213 and 221 in the AB and SoD formats
+  only; no body); `h3-experiment`'s spec gains them by template and what its adventure hero lacks
+  at the start (secondary skills such as Advanced Learning, a hero of the Learning specialty by
+  type, war machines, worn artifacts and a full backpack, the map's banned artifacts, Blue's
+  starting resources, the RoE format; battle-owned: `cross-lane` with the user's consent, label
+  it); the specs `experiments/specs/E08-batch-14.toml` (SoD: survey §18's E14-1 to E14-13 and
+  E14-15 with the note's E14-16 and E14-17; Red and Blue; days 1, 2 and 29) and
+  `E08-batch-14-roe.toml` (E14-14).
+- **Inputs:** survey `docs/rules/surveys/E08-trades.md` §1 (the templates, as corrected: all
+  entered), §18 (the rows); design note §20; T119's record in `E08-log.md` as the form.
+- **Depends on:** T127b (done). **Status:** ready (the original data: the executable and both
+  tars, to compile the maps and check them in the editor's reader; confirm the cut at its start).
 
 ## Inbox
 

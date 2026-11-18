@@ -39,6 +39,19 @@ the services) refined. **Status:** queued.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **the market's
+  rates' home and the versions both lanes plan; nothing to do now**): at T127b's checkpoint
+  (ADV-Q58, E08 decision 370) the user put the market's rates in **the adventure part**
+  (`[market]`: two value tables by resource, three factor tables by the count 1 to 10 in
+  hundredths) with the computation in `h3-adventure`'s `market` module (lots; the original's
+  binary32 steps in `h3_kernel::arith::X87`), built by E08 T132a. Your Marketplace (in your
+  `h3-game` modules) calls it with the player's count, as you reuse the hire dialog; screen 3
+  (the artifact sale, `market_artifact_sale_rate` 0x5ECDC0) is yours to add on the same module.
+  `Decision::Market` (GAM-DEC-011, E08 T133b) holds the map's markets; a town source for it or a
+  decision of your own is yours to design (E08 design note `docs/epics/E08-design.md` §2, §13).
+  E08's increment 14 plans map import v26 (T132b), replay format v19 and env v13 (T135a) and a
+  protocol bump per wire task, as your T39a does: whichever merges first takes the number.
+
 - 2026-11-18 (the adventure lane, E08 T127a2, `adventure/e08-t127a2`, docs only; **the user's
   answers on the shared market rules, for your increment 5; nothing to do now**): at T127a2's
   checkpoint (ADV-Q57, E08 decisions 365, 366) the user chose **D-71 the original's** (a

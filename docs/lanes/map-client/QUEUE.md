@@ -99,6 +99,19 @@ reading and recordings, then the viewer's build, as T1b was).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **the trades and
+  services, for your planning; nothing to do now**): E08's increment 14 (design note
+  `docs/epics/E08-design.md`) types the seven classes (2, 7, 35, 99 and 221, 106, 213), all
+  **entered** (the hero stands on the entrance; T132b), the Altar's and the Hill Fort's kind marks
+  (the original's k 28, k 14) for your hints (T134), and three windows as decisions
+  (`DecisionView::Market`, `Altar`, `HillFort`; T133b, T134). **The user's note for the Altar**
+  (E08 decision 371): when a sacrifice opens a level-up, the engine closes the Altar
+  (`DecisionClosed`) and opens it again (`AltarOpened`, the same hero and object) once the
+  level-ups are answered. A client anticipates this and keeps the Altar's dialog drawn beneath the
+  level-up dialogs, unless the level-up covers the Altar entirely, as the original draws them
+  (`altar_sacrifice` 0x5646A0 calls `hero_gain_experience` 0x4E33B0 with the dialog open):
+  confirm the drawing against the original when you build the window (design note §14).
+
 - 2026-11-17 (the adventure lane, E08 T125a, `adventure/e08-t125a`; **a creature bank's hint and
   the Shipwreck from the coast, for your hint and your moves**; E08 design note §9, §10, §16,
   ADV-BNK-006): a bank's `ObjectView` now carries its team's mark (`visited`: "(Not visited)" when
