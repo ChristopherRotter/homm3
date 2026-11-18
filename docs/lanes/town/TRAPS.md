@@ -63,11 +63,12 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   resources over the upper bars' stacks as a `Chain` of `Flatten`s into a `BTreeSet` cost
   `day-start-builds-36` +7.9 % and `day-start-towns-36` +5 %; noting only the creature types
   with an ability in a short `Vec` (most stacks pass over with one lookup) left +0.2 %.
-- **CI's verify job stops at 40 minutes** (`ci.yml`'s `timeout-minutes`; `master`'s full run
-  about 36, `bench-check` about 6 of them): a workload whose random games grow (E09 T38a2: the
-  hires tripled `reach-towns-36`'s queries, 107 s under callgrind for 17 s) can push every pull
-  request's run past it. Time a re-baselined workload against `master`'s and shorten its games
-  in the same task when it grew by more than a few seconds.
+- **CI's verify job stops at 55 minutes** (`ci.yml`'s `timeout-minutes`, 40 until #1009; the
+  user, 2026-11-18): `master`'s full run about 36, the runner's apt step 6 to 10 of them,
+  `bench-check` about 6. A workload whose random games grow (E09 T38a2: the hires tripled
+  `reach-towns-36`'s queries, 107 s under callgrind for 17 s) adds to every pull request's run:
+  time a re-baselined workload against `master`'s and shorten its games in the same task when it
+  grew by more than a few seconds.
 - **The adventure benchmarks follow the heap:** a change that only adds a few small allocations
   at the build (the town part's content) moved `day-start-xl-144` by +1.6 % through glibc's
   `_int_malloc` alone (E09 T8c2). Compare per function with `master` built in the same sandbox
