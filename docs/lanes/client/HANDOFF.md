@@ -15,7 +15,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   right press, the difficulty, the empty list, the description's bar, the advanced options' panel,
   rows, town, bonus and hero; each recipe exact as the epic's M3 table says: design §18 to §25).
   **T3c1 done** (2026-11-18: the flags' hover and press, the name's edit, the
-  handicap drawn up, `CLT-STUB-10`; CLT-Q143 asked; `adv-single-rest`'s first twelve shots exact:
+  handicap drawn up, `CLT-STUB-10`; CLT-Q143 (b), decision 58; `adv-single-rest`'s first twelve shots exact:
   design §26). **Next: M3 T3c2** (the duration's bar and the hints: the queue), then T4.
   Decisions to carry: the dialogs' input one
   implementation (20; `h3_ui::input`); the shell's code as the battle's (21); decision 22's
@@ -25,7 +25,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   edits type what the keyboard prints (39); a menu opening anew takes the hover (40); a silent
   Smacker clip's frames from their due times (43); the empty list's leftovers fixed (51); the
   description's bar takes no list key while the list shows (52); a main hero of its type's
-  portrait shown (55); a pick named by its own name (56). Open pull request: T3c1's
+  portrait shown (55); a pick named by its own name (56); the name's edit drawn clean (58). Open pull request: T3c1's
   (`client/e27-m3-t3c1`): watch it until it merges. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
   epic's "Placed at the closure", the queue's inbox). E28 and E29 are backlog sketches.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+
@@ -34,8 +34,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*`, `E27*` (since E17 closed: #866) and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first (at M1 T3: one per area, the
-  shots as contact sheets). **Open:** CLT-Q143 (the name's edit over a doubled frame and the name;
-  recommended (b), built so in the client's profile). Answered, waiting on other lanes: CLT-Q63 (a), Q65 (b), Q69 (a) (the queue's inbox,
+  shots as contact sheets). **Open:** none. Answered, waiting on other lanes: CLT-Q63 (a), Q65 (b), Q69 (a) (the queue's inbox,
   "E17's leftovers"). `CLT-STUB-1` (a server's seat lacks the other hero's Orb and Cloak),
   `CLT-STUB-4` (no Auto Combat switch in a live game's battle), `CLT-STUB-5` (a hot-seat
   battle between two of the host's humans) and `CLT-STUB-6` (the Multiplayer dialog's network
@@ -63,8 +62,8 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 - **2026-11-18, E27 M3 T3c1 (done; `client/e27-m3-t3c1`).** The PC's 64 files and the manuals
   staged (SHA-256 checked). Read the flag's press, the name's click, the hover, the name's edit's
-  own key and loss of focus (its text back to the record); CLT-Q143 asked (the edit's doubled
-  frame, the name under it), built (b) with the original's for the comparisons; built the hover,
+  own key and loss of focus (its text back to the record); CLT-Q143 asked and answered (b)
+  (the edit's doubled frame, the name under it), the original's for the comparisons; built the hover,
   the press, the edit, the screen's flags from the moved colour; `adv-single-rest`'s first twelve
   shots exact, every other group as recorded. Record: `E27-log.md`, "M3 T3c1".
 - **2026-11-18, E27 M3 T3b2 (done; `client/e27-m3-t3b2`).** The PC's 64 files and the manuals

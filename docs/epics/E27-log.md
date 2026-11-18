@@ -1221,10 +1221,9 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
   to `network_default_name`), the showing's move of the edit, `dialog_set_focus`. The flag's
   press is followed by `scenario_dialog_redraw` alone: the strip's colon stays without its shadow
   (CLT-Q138's mechanism). New in the address map: 0x57CDC0, 0x57CEE0, 0x641C14.
-- **Asked:** CLT-Q143 (the edit's opening pastes the bar's piece at the bar's corner, the name's
-  frame doubled; a row's draw shows the name again under the open edit): recommended (b), built
-  as (b) in the client's profile (the binding E17 decision on drawing bugs), the original's for
-  the comparisons.
+- **Asked and answered:** CLT-Q143 (the edit's opening pastes the bar's piece at the bar's
+  corner, the name's frame doubled; a row's draw shows the name again under the open edit): the
+  user (b), decision 58; built so in the client's profile, the original's for the comparisons.
 - **Built:** `advanced::EDIT`, `AdvancedLook::edit` (the layout's `edit`), `Advanced::hover`,
   `flag_click`, `name_click`, `close_edit`, `edit_key`, `edit_caret`, `edit_typed`, `piece`,
   `place_edit`, `local_colour`; the screen's `hover`, the name's press and release (CLT-Q43 (2)'s

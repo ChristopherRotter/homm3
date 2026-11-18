@@ -3093,7 +3093,7 @@ rectangles in the original's profile.
   `adop%cpnl.pcx` drawn from the edit's offset in it (5, 2) with the edit's size at (57, 128 +
   50 *r*), the bar's corner, where the edit's place was meant; recorded (`name-edit`,
   `name-typed`): the bar shifted 5 left and 2 up inside (62, 130 + 50 *r*) to (154, 145 + 50 *r*),
-  the name box's frame doubled until the row is drawn again (**CLT-Q143**); the edit shown and
+  the name box's frame doubled until the row is drawn again (**CLT-Q143**, (b): decision 58); the edit shown and
   enabled with the record's name (its caret at the end), the name hidden and given the same text,
   the focus to the edit (the caret `_` drawn).
 - **Its keys** (0x57CDC0, every key down while it shows): scan code 0x1C (Enter, the keypad's too)
@@ -3116,7 +3116,7 @@ Enter, Back's is the screen's and every other key is taken. The name lives in th
 (`Advanced::name`), not written to a setting (the client has none: M4). The flags' strip of a
 flag's press and the edit's piece are stale rectangles in the original's profile (the piece: the
 screen, the bar shifted, the edit over it, in its rectangle); the client's profile draws whole and
-keeps the name hidden under the open edit (CLT-Q143, recommended (b)). The handicap stays drawn
+keeps the name hidden under the open edit (CLT-Q143 (b), decision 58). The handicap stays drawn
 up and takes no press; the record's handicap reaches no game (`CLT-STUB-10`).
 
 ### 26.4 The recordings and the comparisons

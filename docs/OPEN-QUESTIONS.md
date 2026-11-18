@@ -89,20 +89,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Client lane (`CLT-Q<n>`)
 
-#### CLT-Q143 — The name's edit drawn over a doubled frame and over the name (E27 M3 T3c1, a reading and a recording)
-
-**Context.** The advanced options' single player clicks its name to edit it (`scenario_name_click`
-0x58B620; `docs/epics/E27-design.md` §26.2). (1) To clear the name under the edit, the original
-draws a piece of the colour's bar, but at the bar's corner instead of under the edit: the name
-box's frame shows doubled (5 px left, 2 px up) while the edit is open, until the row is drawn
-again (recorded: `adv-single-rest` name-edit, name-typed). (2) A row's draw always shows the name
-again (`scenario_player_row_draw` 0x58DEBA): moving over a flag or pressing an arrow while the edit
-is open draws the record's name centred under the edit's text (invisible the first time, the
-record's name being empty; doubled text from the second edit on; not recorded). **Options:** (a)
-copy both; (b) fix both: the name box clean and the name hidden while the edit is open, the
-original's for the comparisons only; (c) an option. **Recommendation:** (b) (E17's binding
-decision on drawing bugs). Built as (b) in the client's profile meanwhile, the original's in
-`Bugs::Original` (`Advanced::piece`, `row_drawn`).
+(no open questions)
 
 ### Map client lane (`MCL-Q<n>`)
 
