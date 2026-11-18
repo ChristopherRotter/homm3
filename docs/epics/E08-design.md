@@ -336,6 +336,25 @@ bank's entrance (decision 268). By the kind's question:
 - The Derelict Ship stays D-46's: visited only from a boat, never crossed by a flight.
 - Untested in the original (`E08-sea.md` §16: a flight over class 85): batch E13 gains a row (part
   D).
+- *As built* (T125a, `adventure/e08-t125a`, whole: decision 356): `state/banks.rs`'
+  `coast_visit` and `is_coast_entrance` (`#[cold]`, out of line: the live tile visitable and the
+  tile's object a bank of a `coast` kind, so another object visited from the tile after it closes
+  it, ADV-OBJ-003);
+  `check_step`'s water case (an empty boat, else the coast's visit, before the step across a top);
+  `passage`'s water branch after the empty boat (a stop node's visit, a flight's pass, a water
+  walk's pass refused `Blocked`) and its step up off a closed top (a flight passes it);
+  `StaticMap::coast_entrances` (the coast kinds' visitable water tiles, listed with the economy's
+  objects) marked in the walking search's `occupied` by the empty boats' loop, chained, so the
+  window's rare `AFLOAT` case visits it in `afloat` (a hero first, then an empty boat, then the
+  coast's visit with the walker's drop); the layered search through `passage`.
+  ADV-STUB-12 lifted; ADV-MOV-009, ADV-MOV-010, ADV-SEA-002 amended. Measured right after the
+  first build (`homm3-bench-regression`): a pass of its own before the loop (`#[cold]`, behind an
+  emptiness test) cost `Reach::search` +1.9 % on `reach-xl-144` (no Shipwreck) and put
+  `random-play-bonuses-36` over its gate; chained into the boats' loop `reach-xl-144`,
+  `reach-sea-xl-144` and `reach-lifted-xl-144` are flat against `master` (+0.04 %, −0.79 %,
+  −0.49 % to the baselines; `master` +0.05 % on the first), every workload inside its gate, the
+  random-play ones +0.0 to +1.6 % against `master` (`Reach::search`'s code with `afloat`'s third
+  case, which no shape tried removed: the lane's `TRAPS.md`).
 
 ### 10. Information and the events (ADV-BNK-006; ADR-0016 point 6; survey §7)
 
@@ -358,6 +377,16 @@ bank's entrance (decision 268). By the kind's question:
   creature or word changed or it was looted (`count_word` none).
 - So an attack kind's declined visit teaches its team the guards' word without a fight, a search
   kind's only a yes (D-66's form; the Pyramid's knowledge works the same).
+- *As built* (T125a, decision 356): `state/banks.rs`' `bank_view` (`object_view` asks it for a
+  bank instead of the weekly mark and the mine's guards: the mark `knows`, the hint
+  `bank_hint` = `observe::guards_hint`, the mine's and the bank's one reading of
+  `army_description_text`, over `guards_left` unless looted), `mark_bank` (the team's marks for
+  `allied` players not holding them, `ObjectMarked`, then the hint) replacing `learn` in
+  `visit_bank` and `enter_bank`, `tell_hint` from `end_bank_battle` (now with the part, the type
+  and the sink). *Agent's call:* no `GuardsChanged` at a mark when no hint shows (looted, none
+  standing: the view as before the mark, as a mine's hint that stays), and none at the loot (a
+  bank is looted only with none standing, whose hint its battle's end told). ADV-BNK-006
+  `verified`; ADV-VIS-006, ADV-OWN-003 amended.
 
 ### 11. Ids, quirks, stubs and versions (parts A to C)
 
@@ -538,6 +567,10 @@ the machines and the supply, a side without a hero or a cart unsupplied; the has
 - **`docs/06-security.md`** (the `shared/` task): increment 13's lines (§10's hidden facts: the
   level, the counts, the upgrade, the artifacts and the reward until the battle and the win; the
   team's mark and hint; the once-bonus to the owner).
+- *As built* (T125a): as written; `GameObservation` carries the adventure's `ObjectView`, no field
+  moved, no version (the fold folds both events by type and anchor; `h3-map`'s `check_told` and
+  `reveal`'s oracle take them as a mine's). No fixture map holds a bank, so no golden replay and no
+  observation hash moved.
 
 ### 17. The env, replays, maps, properties, benchmarks
 

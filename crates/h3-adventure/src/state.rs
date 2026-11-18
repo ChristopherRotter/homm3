@@ -331,6 +331,11 @@ pub struct StaticMap {
     /// §5: [`ObjectKind::FountainOfFortune`]); the state's fortunes are by their place here.
     /// Follows from the objects.
     fountains: Vec<usize>,
+    /// The water tiles a creature bank of a `coast` kind is visited from (E08 T125a; increment
+    /// 13's design note §9: the Shipwreck's, which a walker, a water walker and a flyer visit from
+    /// the coast), in object order: the walking search looks at these water tiles, as at an empty
+    /// boat's, only in a window holding one (`bench-check`). Follows from the objects.
+    coast_entrances: Vec<Pos>,
     /// Each camp's kind's levels, by camp index (E08 T94b): what its draws read
     /// ([`dwellings::draw_camp`]). Follows from the objects.
     camp_levels: Vec<[u8; 2]>,
@@ -419,6 +424,7 @@ impl StaticMap {
             town_entrances: Vec::new(),
             weeklies: Vec::new(),
             fountains: Vec::new(),
+            coast_entrances: Vec::new(),
             dwellings: Vec::new(),
             full_weeks: Vec::new(),
             camps: Vec::new(),
@@ -614,7 +620,8 @@ impl StaticMap {
     /// E08 T94a the dwellings and the camps ([`Self::dwellings`], [`Self::camps`]), after the
     /// random dwellings resolved; since T94b each dwelling's week as it begins and each camp's
     /// levels; since E09 T8a1 the towns ([`Self::towns`]), since E09 T28a with their entrances;
-    /// since E08 T115b the Fountains of Fortune ([`Self::fountains`]).
+    /// since E08 T115b the Fountains of Fortune ([`Self::fountains`]); since E08 T125a the coast
+    /// banks' water entrances ([`Self::coast_entrances`]).
     fn list_economy(&mut self, core: &Ruleset, part: &AdventureRuleset) {
         for (index, object) in self.objects.iter().enumerate() {
             let kind = object
@@ -640,6 +647,21 @@ impl StaticMap {
             }
             if matches!(kind, Some(ObjectKind::FountainOfFortune { .. })) {
                 self.fountains.push(index);
+            }
+            if kind
+                .and_then(ObjectKind::bank)
+                .is_some_and(|bank| bank.coast)
+            {
+                let water = |pos: &Pos| {
+                    matches!(part.passage(self.at(*pos).terrain), Some(Passage::Water(_)))
+                };
+                let entrances: Vec<Pos> = object
+                    .visitable
+                    .offsets()
+                    .filter_map(|(column, row)| self.offset_pos(object.anchor, column, row))
+                    .filter(water)
+                    .collect();
+                self.coast_entrances.extend(entrances);
             }
         }
         // E09 T28a: each town's entrance, once.
@@ -1102,6 +1124,12 @@ impl StaticMap {
     /// §5): the state's fortunes are by their place here.
     pub fn fountains(&self) -> &[usize] {
         &self.fountains
+    }
+
+    /// The water tiles a `coast` kind's creature bank is visited from, in object order (E08 T125a;
+    /// [`Self::coast_entrances`]).
+    pub(crate) fn coast_entrances(&self) -> &[Pos] {
+        &self.coast_entrances
     }
 
     /// The place of the object at `index` among the Fountains of Fortune, if it is one.
@@ -2484,7 +2512,9 @@ impl AdventureState {
             Effect::Sirens { mark, keep } => {
                 outcome = self.visit_sirens((player, hero), visited, (mark, keep), sink);
             }
-            Effect::Bank(bank) => outcome = self.visit_bank((player, hero), object, bank, sink),
+            Effect::Bank(bank) => {
+                outcome = self.visit_bank(rules.1, (player, hero), object, bank, sink);
+            }
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
             Effect::Message(leaves) => {
@@ -2881,7 +2911,9 @@ impl AdventureState {
     /// since T14a), none for a border gate the player passes (ADV-VIS-005, T15b). The explored test
     /// comes first, so a rejection tells nothing about a hidden tile. Since E08 T73 a step onto an
     /// empty boat's tile on water boards it ([`Meets::Board`], ADV-SEA-002: the walk ends there,
-    /// no guard attacks on it), and a hero in a boat is visited from the shore as any hero.
+    /// no guard attacks on it), and a hero in a boat is visited from the shore as any hero; since
+    /// E08 T125a a `coast` kind's water entrance (the Shipwreck's) is visited from the shore too
+    /// ([`Self::coast_visit`], ADV-SEA-002 amended).
     // rule: ADV-MOV-007, ADV-MOV-008, ADV-OBJ-004, ADV-SEA-002
     fn check_step<'p>(
         &self,
@@ -2927,23 +2959,26 @@ impl AdventureState {
             }
             return Ok((tile, Some(Meets::Hero(other))));
         }
-        let (tile, boat) = match self.check_tile(part, pos, Some(mover)) {
+        let (tile, afloat) = match self.check_tile(part, pos, Some(mover)) {
             Ok(tile) => (tile, None),
-            // Water: an empty boat's tile only (0x481D0D; class 85's, the Shipwreck's, is an
-            // untyped blocker's here, ADV-STUB-12).
+            // Water: an empty boat's tile, boarded, and (E08 T125a) a `coast` kind's water
+            // entrance, the Shipwreck's, visited from the land tile (0x481D0D takes class 85's as
+            // a boat's; increment 13's design note §9); no other.
             Err(error @ StandError::Terrain) => {
-                let boat = self
+                let met = self
                     .empty_boat(pos)
+                    .map(Meets::Board)
+                    .or_else(|| self.coast_visit(part, player, pos).map(Meets::Object))
                     .ok_or(AdventureCommandError::Blocked { step, error })?;
-                (self.live(pos, self.map.at(pos)), Some(boat))
+                (self.live(pos, self.map.at(pos)), Some(met))
             }
             Err(error) => return Err(AdventureCommandError::Blocked { step, error }),
         };
         if closed() {
             return Err(AdventureCommandError::FromAbove { step });
         }
-        if let Some(boat) = boat {
-            return Ok((tile, Some(Meets::Board(boat))));
+        if afloat.is_some() {
+            return Ok((tile, afloat));
         }
         if !tile.visitable {
             return Ok((tile, None));

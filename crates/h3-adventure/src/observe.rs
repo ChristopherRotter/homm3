@@ -173,13 +173,17 @@ pub struct ObjectView {
     /// only (ADV-OWN-003; `mine_hint_text` 0x40D670), so an abandoned mine's drawn resource is
     /// hidden from every other viewer; none for every other viewer and object.
     pub production: Option<(ResourceId, u32)>,
-    /// A mine's guards as the viewer sees them (ADV-OWN-003); none for a mine without guards and
-    /// for every other object (a guarded pile's guards stay hidden, ADV-PIK-004).
+    /// A mine's guards as the viewer sees them (ADV-OWN-003); since E08 T125a a creature bank's
+    /// hint, without its army, to a viewer whose team holds its mark while guards stand on it
+    /// (ADV-BNK-006; increment 13's design note §10: never its level, counts, upgrade, artifacts
+    /// or reward); none for a mine without guards, for a bank not visited, looted or with none
+    /// standing, and for every other object (a guarded pile's guards stay hidden, ADV-PIK-004).
     pub guards: Option<GuardsView>,
     /// A weekly object's visited mark, the viewer's own (ADV-OWN-003; survey `E08-economy.md`
     /// §9.4): set by a visit of its team's (a Garden's too, `ADV-QUIRK-35`) and kept through the
-    /// weeks, so it says "visited once", never "emptied"; false for every other object. Its
-    /// contents never show.
+    /// weeks, so it says "visited once", never "emptied"; since E08 T125a a creature bank's, its
+    /// team's mark (ADV-BNK-006: an attack kind's at its visit, a search kind's after the yes),
+    /// never whether it is looted; false for every other object. Its contents never show.
     pub visited: bool,
     /// A Shipyard's boat tile, fixed when the game was built (ADV-SHY-001), for a viewer of its
     /// owner's team only (ADV-OWN-003, E08 decision 229): that team has explored every offset (the
@@ -197,7 +201,9 @@ pub struct ObjectView {
 /// A mine's guards as a viewer sees them (ADV-OWN-003, E08 T83b2b): what the original's hint shows
 /// every viewer (`mine_hint_text` 0x40D670 with `army_description_text` 0x40ABE0, as the map
 /// client lane read them, E24 design §4.12), the word of their total count and their creature when
-/// they are of one; their stacks only to the owner's team (ADR-0016 point 6).
+/// they are of one; their stacks only to the owner's team (ADR-0016 point 6). Since E08 T125a a
+/// creature bank's hint too (ADV-BNK-006; increment 13's design note §10), as a mine's without the
+/// army, to a viewer whose team visited it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GuardsView {
     /// Their creature when all their stacks are of one; none for several (the original's generic
@@ -206,7 +212,7 @@ pub struct GuardsView {
     /// The word of their total count, every stack counted ([`crate::MonsterParams::count_word`]).
     pub count_word: u8,
     /// Their stacks by slot with their counts, for a viewer of the owner's team only: none for
-    /// every other viewer and for a neutral mine's.
+    /// every other viewer, for a neutral mine's and for a creature bank's (E08 T125a).
     pub army: Option<Vec<ArmyStack>>,
 }
 
@@ -513,8 +519,8 @@ impl AdventureState {
     /// `viewer`'s view of the object at `index` of type `object_type`, an object it sees
     /// (ADV-OWN-003): a monster's creature and count's word, the owner, a mine's production and a
     /// Shipyard's boat tile to the owner's team, a mine's guards, the viewer's visited mark, the
-    /// town it is.
-    // rule: ADV-OWN-003
+    /// town it is; since E08 T125a a creature bank's mark and hint ([`Self::bank_view`]).
+    // rule: ADV-OWN-003, ADV-BNK-006
     fn object_view(
         &self,
         part: &AdventureRuleset,
@@ -524,6 +530,17 @@ impl AdventureState {
         let map = self.map();
         let owner = self.owner(index);
         let ours = owner.is_some_and(|owner| allied(owner, viewer));
+        let bank = part
+            .object_type(object_type)
+            .is_some_and(|ty| ty.kind.bank().is_some());
+        let (visited, guards) = if bank {
+            self.bank_view(part, viewer, index)
+        } else {
+            (
+                self.visited_by(index, viewer),
+                self.guards_view(part, index, ours),
+            )
+        };
         ObjectView {
             object_type,
             anchor: object.anchor,
@@ -538,8 +555,8 @@ impl AdventureState {
             }),
             owner,
             production: ours.then(|| self.production(part, index)).flatten(),
-            guards: self.guards_view(part, index, ours),
-            visited: self.visited_by(index, viewer),
+            guards,
+            visited,
             // A town's spot is its Shipyard's (E09 T18a), not the object's.
             boat_tile: (ours && map.town_id(index).is_none())
                 .then(|| object.resolved.boat_tile())
@@ -560,19 +577,10 @@ impl AdventureState {
         ours: bool,
     ) -> Option<GuardsView> {
         let army = self.mine_guards(part, index);
-        let creature = army.first()?.creature;
-        let total = army
-            .iter()
-            .fold(0_u32, |total, stack| total.saturating_add(stack.count));
+        let (creature, count_word) = guards_hint(part, &army)?;
         Some(GuardsView {
-            creature: army
-                .iter()
-                .all(|stack| stack.creature == creature)
-                .then_some(creature),
-            count_word: part
-                .params()
-                .monsters()
-                .map_or(0, |words| words.count_word(total)),
+            creature,
+            count_word,
             army: ours.then_some(army),
         })
     }
@@ -642,6 +650,30 @@ impl AdventureState {
             })
             .collect()
     }
+}
+
+/// The hint of the guards `army` every viewer that is shown them sees (`army_description_text`
+/// 0x40ABE0, a mine's and a creature bank's alike; ADV-OWN-003, ADV-BNK-006): their creature when
+/// all their stacks are of one (none for several, an upgraded stack beside its base creature's
+/// too) and the word of their total count, every stack counted
+/// ([`crate::MonsterParams::count_word`]); none for no guards.
+pub(crate) fn guards_hint(
+    part: &AdventureRuleset,
+    army: &[ArmyStack],
+) -> Option<(Option<CreatureTypeId>, u8)> {
+    let creature = army.first()?.creature;
+    let total = army
+        .iter()
+        .fold(0_u32, |total, stack| total.saturating_add(stack.count));
+    let creature = army
+        .iter()
+        .all(|stack| stack.creature == creature)
+        .then_some(creature);
+    let word = part
+        .params()
+        .monsters()
+        .map_or(0, |words| words.count_word(total));
+    Some((creature, word))
 }
 
 /// What a viewer sees of a tile (ADV-FOG-004, ADV-FOG-005), `tile` the static map's there and

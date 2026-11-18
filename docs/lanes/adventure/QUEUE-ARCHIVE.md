@@ -1819,3 +1819,35 @@ design `E08-design.md` §4 to §8, §12 to §15, §18, §20)
   `Fight` routing (`mines.rs`).
 - **Depends on:** T124b1 (`adventure/e08-t124b1`, merged first). **Status:** ready once T124b1
   merges; its cut confirmed at its start.
+
+## T125a (moved 2026-11-17, done whole: `adventure/e08-t125a`, decision 356)
+
+**E08 T125a — the hint and its events, the Shipwreck's passage** (round 7; design
+`E08-design.md` §9, §10, §16, §20)
+
+- **Scope:** (`adventure/e08-t125a`): what a viewer sees of a bank (§10, ADV-BNK-006, ADV-VIS-006
+  and ADV-OWN-003 amended: its type to every viewer; by its team's mark `ObjectView::visited`, and
+  `ObjectView::guards` as a `GuardsView` without the army, the creature when every stack is of one
+  and the count's word, none when looted or none stand; never the level, the counts, the upgrade,
+  the artifacts or the reward); the events (§16): `ObjectMarked` to each player whose mark is set
+  anew (T124b2 sets the marks silently: an attack kind's at the visit, a search kind's after the
+  yes, `state/banks.rs`), then `GuardsChanged` with the hint to the same players, and after a
+  battle's end and the loot to the teams that visited, when the word or the creature changed or it
+  was looted; `check_told` and `reveal` see them. The Shipwreck's passage (§9; ADV-STUB-12 lifted,
+  ADV-MOV-009, ADV-SEA-002 amended): its water entrance a step from a stop node on land (walking,
+  water walking, flying: the visit from the neighbour, the hero on land) and a flight's pass from
+  land or water, never a water walk's; `passage`'s water branch, `check_tile`, the reach; the
+  Derelict Ship stays D-46's. Measured right after the first build against `master`
+  (`reach-xl-144`, `reach-sea-xl-144`, `reach-lifted-xl-144`, the random-play workloads;
+  `homm3-bench-regression`). Versions: none planned (the fold maps `ObjectMarked` and
+  `GuardsChanged` for any object, §16; protocol v70 stays; check the observation's hash if the
+  view's fields move it).
+- **Inputs:** design §9, §10, §16; T124b2's *As built* in §6 to §8 and §14 (the marks silent, a
+  visited bank in `known` as `Known::Visited`); survey `E08-banks.md` §7, §14 (E13-2, E13-9,
+  E13-12); the lane's `TRAPS.md` (the reach's codegen partition and the passage's loops, the
+  hygiene property's ends, a command's exact events). The templates in code: a mine's
+  `GuardsView` and `GuardsChanged` (`mines.rs`, `observe.rs`), a weekly object's `visited` and
+  `ObjectMarked` (`weekly.rs`), the empty boat's tile in `passage`.
+- **Depends on:** T124b2 (`adventure/e08-t124b2`, merged first). **Status:** ready once T124b2
+  merges; its cut confirmed at its start. T125b (the two maps, the replays, the properties, the
+  benchmarks, `--with-original-data`) after it.
