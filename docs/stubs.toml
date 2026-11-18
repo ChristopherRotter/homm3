@@ -201,12 +201,6 @@ where  = "crates/h3-game/src/town/hire.rs::hire"
 reason = "A hired hero learns none of the town's guild spells (TWN-TAV-003; E09 T38a1, design note E09-design.md section 64): the original's town_tavern_hire 0x5C12E0 calls town_heroes_learn_spells 0x5BE030 with 0 after hero_place, which teaches the town's visitor (the hired hero, first) and its garrison hero the spells of the town's Mage Guild when that hero has a spell book (batch TWN-4's TWN-4-2: Clavius, Xarfax and Fafner learned them, a Knight none; VCMI 1.7.5's objectVisited(town) too). The guild's spells are not drawn yet (increment 5, the mage guild and the services); lifted there with TWN-STUB-6"
 epic   = "E09"
 
-[[stub]]
-id     = "TWN-STUB-19"
-where  = "crates/h3-game/src/town/hire.rs::hire"
-reason = "The town's hire is a command the game, the wire and the replays take (E09 T38a1) but not yet a legal one: h3_game::legal_commands lists no TownCommand::Hire and the env's action encoding has no HIRE entry (v12), so the random agent, the AI lane's env and the property plans never hire (the user's cut of T38a, decision 140). Lifted by E09 T38a2 (design note sections 64 and 76: a Hire per slot that passes after each own town's recruitments; HIRE + s by the town's entrance)"
-epic   = "E09"
-
 # --- ai (AI-STUB-<n>) ---
 
 [[stub]]
