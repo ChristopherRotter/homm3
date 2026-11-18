@@ -31,10 +31,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `[ppo] imitation_teacher`: #2 teaching T27's clone reaches #2's level in 2 M), the outcome's
   weight (T35, `[ppo] win_bonus` 0.1: 0.5007 ± 0.0019 head to head, reward v1 stays). A
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31: 98 to 67 s an update).
-  **T36 prepared**: the user chose `e25-anchor-1` resumed from 2 M to 20 M (#2 teaching to
-  10 M); **the user's GPU next, about 19 hours** (the commands, rule and measures in `QUEUE.md`).
-- **Open pull requests:** #965 (`claude/adoring-turing-tl1huu`: T35's close, T36's
-  preparation). Merged: #948 (T34's (a)), #954 (T34's close, T35's probe).
+  **T36 run** (`E25-log.md` T36): `e25-anchor-1` resumed from 2 M to 20 M (#2 teaching to 10 M),
+  1 185 minutes; both gates rejected the learner against its 2 M network (10 M 0.487, 20 M
+  0.496), `best.pt` stays T34's. **The 20 M network's measures next** (the user's GPU, about 15
+  minutes; the commands in `QUEUE.md`), then the read by T36's rule and E25's next step.
+- **Open pull requests:** none (this session's branch `claude/adoring-turing-tl1huu` opens one
+  once the measures are read). Merged: #954 (T34's close, T35's probe), #965 (T35's close, T36).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -47,6 +49,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-18 — E25 T36 (the run recorded, the 20 M network's measures next)
+
+- #965 merged. The user uploaded the 20 M run's `record.json` and `metrics.jsonl` (no CRLF) with
+  three measure files that were T34's (byte-identical to `python/records/anchor/`); no computer
+  folder linked. The record committed, the run's gates and update records read; **in progress:**
+  the measures of `checkpoint.pt` asked of the user, the read and the pull request after them.
 
 ### 2026-11-16 — E25 T35 closed, T36 prepared
 
@@ -66,12 +75,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   the sampled policy 18, N 64 on the hero battles 27; #948 merged. (b)'s five files uploaded
   (three with CRLF, stripped); T34 closed. At T35 the user chose the win-bonus probe; built
   and its config tested.
-
-### 2026-11-13 — E25 T33 closed, T32 prepared
-
-- #862 merged. No computer folder linked: the user uploaded round 2's `record.json`,
-  `metrics.jsonl` and the three measures (the measures with CRLF, stripped on commit; the
-  update records read from `metrics.jsonl`, not committed). The user chose T32's arms. No setup
-  script run: cargo-llvm-cov, llvm-tools and llvm-20 installed by hand for the scoped verify,
-  `origin/master` fetched first (`check-lane` read a stale base); `uv sync --group train` for
-  T32's config test.

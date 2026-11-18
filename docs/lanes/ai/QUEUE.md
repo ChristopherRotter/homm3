@@ -21,7 +21,8 @@ from T27's 16 M clone, #2's start; **T34 done** 2026-11-15, the regimes, `E25-lo
 search at play gains nothing on #2 at N 16 or N 64, the KL anchor brings T27's clone to #2's level
 in 2 M, 0.496 ± 0.002 head to head; **T35 done** 2026-11-16, the probes' checkpoint, `E25-log.md`
 T35: the outcome's weight (`win_bonus` 0.1) moves nothing, 0.5007 ± 0.0019 head to head, reward
-v1 stays; **T36, the long run**: the anchor resumed to 20 M):
+v1 stays; **T36, the long run**: the anchor resumed to 20 M, run 2026-11-18, the 20 M
+network's measures next):
 
 - **T36 — The long run and its checkpoint** (refined 2026-11-16, decision 4; the user's choice
   at T35, of four offered: not #2's regime nor the anchor's at 40 M, about 37 and 42 hours, nor
@@ -30,7 +31,9 @@ v1 stays; **T36, the long run**: the anchor resumed to 20 M):
   teacher: T27's clone, the loss 0.5 falling to 0 at 10 M, the rate 2.5e-4 annealed to its floor
   1.25e-5 at 20 M, reward v1; T34 (b) at 2 M: #2's level, 0.496 ± 0.002 head to head, its
   entropy 1.35). T35's read: the outcome's weight moves nothing, reward v1
-  stays. **Prepared, the user's GPU next.**
+  stays. **Run** 2026-11-18 (`E25-log.md` T36: 20 M in 1 185 minutes; both gates rejected the
+  learner against its 2 M network, so `best.pt` is T34's): **the 20 M network's measures next**
+  (the commands below, on `checkpoint.pt`; the files uploaded with the record were T34's).
   - **Its question:** does a taught run pass #2's plateau once the teacher's loss ends (T34 (b)
     reached #2's level in 2 M, leaving 18 M; T33: PPO from #2 itself did not pass it).
   - **The measures:** (a) the fixed head-to-head of the run's promoted network (`best.pt`)
@@ -52,15 +55,14 @@ v1 stays; **T36, the long run**: the anchor resumed to 20 M):
     second, to 10 M; then T33's 300 without it; the two gates at 10 M and 20 M; the measures
     about 20 minutes). Parts under 2 hours: Ctrl-C, then the same `--resume` line (its `--set`
     a no-op once applied).
-  - **The user's commands** (from `python/`; the run's directory and #2's `best.pt` as T34
-    left them):
+  - **The user's commands** (from `python/`; the run done; `best.pt` is T34's 2 M network,
+    measured, so these measure the 20 M one; any earlier `*-20m.json` may be overwritten):
 
-        uv run --group train python -m h3env.train --resume runs/e25-anchor-1 --set samples=20_000_000
-        uv run --group train python -m h3env.train.gate --candidate runs/e25-anchor-1/best.pt --best runs/e25-structure-1/best.pt --device cuda --fixed --json runs/e25-anchor-1/head-to-head-20m.json
-        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-anchor-1/best.pt --device cuda --json runs/e25-anchor-1/ladder-20m.json
-        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-anchor-1/best.pt --set neutral-v1 --device cuda --json runs/e25-anchor-1/neutral-20m.json
+        uv run --group train python -m h3env.train.gate --candidate runs/e25-anchor-1/checkpoint.pt --best runs/e25-structure-1/best.pt --device cuda --fixed --json runs/e25-anchor-1/head-to-head-20m.json
+        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-anchor-1/checkpoint.pt --device cuda --json runs/e25-anchor-1/ladder-20m.json
+        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-anchor-1/checkpoint.pt --set neutral-v1 --device cuda --json runs/e25-anchor-1/neutral-20m.json
 
-    The upload: `record.json`, `metrics.jsonl`, the three measures (no network). **Acceptance:**
+    The upload: the three `*-20m.json` (the record and metrics are in; no network). **Acceptance:**
     the record committed (`python/records/e25-anchor-1.json` replaced: the same run, its 20 M
     segments), the measures under `python/records/anchor/` (`e25-anchor-1-*-20m.json`), the
     read in `E25-log.md` T36, E25's next step agreed with the user.

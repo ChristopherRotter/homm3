@@ -2087,3 +2087,37 @@ an entry only where a task builds on it.
   regime or the anchor's at 40 M, E25 closed on #2): **`e25-anchor-1` resumed from 2 M to
   20 M** (T36), its config as built for 20 M. Its rule, measures and budget as the AI queue
   stated them before the run. **T35 closed** 2026-11-16.
+
+## T36 — The long run (2026-11-16 to 2026-11-18)
+
+- **The run** (the user's GPU, 2026-11-16 to 2026-11-18; `e25-anchor-1` resumed from T34 (b)'s
+  2 M with `samples` 20 M, six parts, commits `fcc19e7` to `d5e5742`, each clean; the record
+  `python/records/e25-anchor-1.json` replaced by the 20 M one): 20 013 191 samples in 784
+  updates, 1 185 minutes in all (the resume's 1 055), 265 to 280 samples a second with #2's pass
+  to 10 M, 287 to 312 after it.
+- **The run's gates:** both rejected the learner against the 2 M network promoted at T34 (b):
+  at 10 M 0.487 (56 pairs, Elo −9.3), at 20 M 0.496 (118 pairs, Elo −2.9). `best.pt` stays that
+  2 M network (T34's measures: 0.4961 ± 0.0020 head to head against #2, 0.503 and 0.506 against
+  the system actors). #2's own run was promoted at both of its gates (10 M 0.541 over 115 pairs,
+  20 M 0.517 over 713).
+- **(c) The update records** (means over 2 M windows; #2's run beside, its gate intervals'
+  means; the teacher #2 here, the fair actor there):
+
+  | Samples | Loss weight | Teacher's agreement (loss, nats) | Entropy | KL | Clip | Explained variance |
+  |---|---:|---|---:|---:|---:|---:|
+  | 0 to 2 M (T34 (b)) | 0.45 | 0.48 (1.56) | 1.53 | 0.028 | 0.20 | 0.76 |
+  | 2 to 4 M | 0.35 | 0.53 (1.34) | 1.33 | 0.026 | 0.21 | 0.79 |
+  | 8 to 10 M | 0.05 | 0.51 (1.48) | 1.36 | 0.018 | 0.17 | 0.82 |
+  | 10 to 12 M | 0 | | 1.37 | 0.018 | 0.16 | 0.81 |
+  | 16 to 18 M | 0 | | 1.16 | 0.008 | 0.08 | 0.81 |
+  | 18 to 20 M (the last update) | 0 | | 1.06 (1.00) | 0.003 | 0.04 | 0.82 |
+  | #2's run, 0 to 10 M; 10 to 20 M (its end) | 0.5 to 0 | 0.69 | 0.74; 1.20 (1.00) | 0.010 | 0.08 to 0.09 | 0.77 to 0.79 |
+
+  The self-play attacker's wins by kind level with #2's run's (hero 0.703 to 0.707, siege hero
+  0.556 to 0.570; #2's 0.703 to 0.708, 0.550 to 0.586).
+- **The read so far:** after T34 (b)'s 2 M the run steps about twice as far an update as #2's
+  run did (KL 0.018 to 0.026 against 0.010, until the rate falls past 16 M) and ends as sharp as
+  #2 (entropy 1.00), yet neither of its gates finds a gain over its own 2 M network. The
+  agreement with #2 peaks at 4 to 6 M (0.54) and falls as the loss's weight does. (a) and (b) of
+  the 20 M network (`checkpoint.pt`) are the user's GPU next: the uploaded measure files were
+  T34's (identical to `python/records/anchor/`).
