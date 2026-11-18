@@ -43,6 +43,7 @@ fn advanced_texts() -> AdvancedTexts {
         specialties: numbered("specialty", 156),
         kinds: ["both", "human", "computer"].map(String::from),
         computer: String::from("Computer"),
+        handicaps: ["None", "Mild", "Severe"].map(String::from),
         random: String::from("Random"),
         none: String::from("None"),
         towns: numbered("town", 9),
@@ -829,7 +830,10 @@ fn the_items_and_names_of_every_colour() {
     assert!(names.iter().any(|n| n == "cprsmall.def"));
     assert!(Advanced::owns(BONUS_AREA + 7) && !Advanced::owns(BONUS_AREA + 8));
     assert!(Advanced::owns(EDIT + 7) && !Advanced::owns(EDIT + 8));
-    assert!(Advanced::takes(TOWN_LEFT) && !Advanced::takes(HANDICAP + 3));
+    let single = Advanced::new(advanced_texts(), Bugs::Fixed);
+    assert!(single.takes(TOWN_LEFT) && !single.takes(HANDICAP + 3));
+    let hot_seat = single.seated(&[String::from("A")]);
+    assert!(hot_seat.takes(HANDICAP + 3));
     // Out of the letters: none; a mask with no faction: Castle; codes modulo 4.
     let short = AdvancedLook {
         letters: String::from("r"),
@@ -865,3 +869,4 @@ fn the_items_and_names_of_every_colour() {
 
 mod duration;
 mod flags;
+mod hot_seat;
