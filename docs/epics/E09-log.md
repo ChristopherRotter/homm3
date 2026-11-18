@@ -4955,3 +4955,12 @@ game state hash v34. The agent's calls: decision 150.
 - **The bench** (`bench-check --lane adventure` right after the first build): every workload
   inside its gate, none re-baselined; `random-play-bonuses-36` +1.65 % and `manage-army-12`
   +1.36 % (as at T38b2), every other within 1.3 %.
+- **Verify** (`--scope town --with-original-data`): every step passed (coverage, determinism,
+  bench-check, original-data) but `fmt` and `check-rules` (the VCMI sources' URLs and dates),
+  both fixed after, and `check-lane` (`cross-lane`: `check-lane --cross-lane` ok). `h3-protocol`'s
+  coverage (`verify-step coverage --scope server`) found the tavern part's fold for an empty slot
+  unrun (T37a's `if let`, run on `master` by a played game this task's changes no longer reach;
+  which was not traced): a fold test for it and the decision (`a_map_taverns_decision_folds_whole_and_a_stray_part_changes_nothing`),
+  then clean. The tests of `h3-cli`, `h3-files`, `h3-sim`, `h3-protocol` and `h3-server` and
+  `cargo clippy --workspace --all-targets` on their own. `master` merged in once (docs only:
+  the lanes' inboxes, E08 T127b's planned versions, which this task takes first).
