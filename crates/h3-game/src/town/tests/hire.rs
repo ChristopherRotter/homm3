@@ -441,3 +441,65 @@ fn no_type_free_leaves_the_slot_empty() {
     .unwrap();
     assert_eq!(quiet.state_hash(), game.state_hash());
 }
+
+/// `player`'s listed hires (E09 T38a2) in their order.
+fn listed_hires(rules: &GameRuleset, game: &GameState, player: PlayerId) -> Vec<GameCommand> {
+    crate::legal_commands(game, rules, Actor::Player(player))
+        .into_iter()
+        .filter(|c| matches!(c, GameCommand::Town(TownCommand::Hire { .. })))
+        .collect()
+}
+
+// covers: TWN-TAV-003
+#[test]
+fn the_legal_commands_list_each_hire_that_passes_after_the_towns_recruitments() {
+    let rules = rules();
+    let setup = towns_setup(&rules);
+    let game = game(&rules, &setup, 5000);
+    let legal = crate::legal_commands(&game, &rules, Actor::Player(RED));
+    let hires = listed_hires(&rules, &game, RED);
+    assert_eq!(hires, vec![hire(T0, 0), hire(T0, 1)]);
+    // After the town's recruitments, before its hero moves (design §64, §76).
+    let at = |wanted: fn(&TownCommand) -> bool| {
+        legal
+            .iter()
+            .rposition(|c| matches!(c, GameCommand::Town(t) if wanted(t)))
+    };
+    let first_hire = legal.iter().position(|c| *c == hire(T0, 0)).unwrap();
+    let recruit = at(|t| matches!(t, TownCommand::Recruit { .. }));
+    assert!(recruit.is_none_or(|r| r < first_hire), "{legal:?}");
+    let moves = legal
+        .iter()
+        .position(|c| matches!(c, GameCommand::Town(TownCommand::Heroes { .. })));
+    assert!(moves.is_none_or(|m| m > first_hire + 1), "{legal:?}");
+    // Each listed hire is one `apply` accepts.
+    for command in hires {
+        let mut probe = game.clone();
+        run(&rules, &mut probe, RED, command).unwrap();
+    }
+    // None in another player's turn, none for its town.
+    assert!(listed_hires(&rules, &game, BLUE).is_empty());
+    // None where a check refuses: no Tavern, below the price, no room, the entrance held; an
+    // empty slot's alone.
+    let mut bare = setup.clone();
+    bare.towns[0].buildings = BuildingsSetup::Custom {
+        built: SlotSet::EMPTY,
+        forbidden: SlotSet::EMPTY,
+    };
+    let mut visited = setup.clone();
+    visited.heroes[0].pos = ENTRANCE;
+    let most = rules_with(|towns| towns.params.as_mut().unwrap().most_heroes = 1);
+    let unlisted = [
+        (self::game(&rules, &bare, 5000), &rules),
+        (self::game(&rules, &setup, 2499), &rules),
+        (self::game(&rules, &visited, 5000), &rules),
+        (self::game(&most, &towns_setup(&most), 5000), &most),
+    ];
+    for (game, rules) in &unlisted {
+        assert!(listed_hires(rules, game, RED).is_empty());
+    }
+    let mut one = game.clone();
+    let pool = Arc::make_mut(one.taverns().pool);
+    pool.tavern_mut(RED).unwrap().slots[0] = None;
+    assert_eq!(listed_hires(&rules, &one, RED), vec![hire(T0, 1)]);
+}

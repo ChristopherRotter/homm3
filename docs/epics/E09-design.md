@@ -2599,6 +2599,23 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   <slot>`, `answer tavern hire <slot>|close`, `manage dismiss <hero>` (format bumps at T38a, T38b
   and T39a, or fewer when they land together).
 
+*As built* (T38a2, decisions 143, 144): the listing in `h3-game`'s `town/offer.rs`
+(`legal_builds`: each own town's builds, recruitments, **hires**, then hero moves) through
+`town/hire.rs`' `hire_slots` (once a listing: the part's price in the treasury, room below the most
+heroes, `AdventureState::has_room`; the slots holding a hero) and `legal_hires` (a town: its
+entrance free, `AdventureState::entrance_free`, then its standing Tavern), the same conditions as
+`hire`'s checks, the cheapest first; `legal_commands` folds its chain into a list sized 16 (the
+bench, the town lane's `TRAPS.md`). The env's **v12**: `TAVERN_HIRE + s` (35, 36; `TAVERN_SLOTS`;
+`Action::tavern_hire`), masked and decoded as the hero moves between the bars (the town's entrance
+in the tile head, the building head 0). The plans: `town_builds` probes the hires of slots 0 to 2
+after the recruitments, `check_town_hire` reads a listed hire apart (the actor's tavern view's
+hero on the entrance with the view's army, the price, `HeroHired`), `Step::Town` hires in one step
+of eight; the oracles taught: the isolation (a hired hero joins), the conservation (the price, the
+army from the slot's view, the refill's record), the told views (`HeroHired` shows the hero on its
+tile; the owner's slot view folded with its `HiredPartSeen`s is its details whole, `check_hired`),
+the hygiene (a hire told ends the comparison). No protocol, replay or hash version moved
+(`TWN-STUB-19` lifted).
+
 ### 77. The increment's ids, versions, quirks and stubs
 
 - **Rule ids** (`town.toml`): TWN-TAV-001 the draw, -002 the fills and the week, -003 the town's
