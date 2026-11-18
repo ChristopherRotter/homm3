@@ -366,7 +366,17 @@ fn the_walks_frames_are_m2_t3bs() {
             "find-sign",
             "find-pile",
             "find-artifact",
-            "find-event"
+            "find-event",
+            "ask-pile",
+            "ask-artifact",
+            "ask-mine",
+            "ask-bank",
+            "ask-crypt",
+            "ask-tree",
+            "ask-pyramid",
+            "ask-dwelling-guards",
+            "ask-tomb",
+            "ask-hire"
         ]
     );
 }
@@ -3024,6 +3034,7 @@ fn a_hotkeys_up_during_a_hold_releases_its_button_in_the_client() {
     }
 }
 
+mod asks;
 mod computers;
 mod finds;
 mod turns;

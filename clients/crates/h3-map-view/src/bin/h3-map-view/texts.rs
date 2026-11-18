@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
-use h3_map_view::{finds, hover, panels, status, turn};
+use h3_map_view::{asks, finds, hover, panels, status, turn};
 use h3_ui::text::Catalogue;
 use h3_ui::text::keys::{EXECUTABLE, Entry, Keys, KeysFile, Row, address_field};
 use h3_ui::text::pack::{Pack, Tables};
@@ -104,6 +104,7 @@ pub fn keys(text: &str, ids: &BTreeMap<String, usize>) -> Result<Keys, String> {
         .chain(hover::contents::KEYS)
         .chain(turn::KEYS)
         .chain(finds::KEYS)
+        .chain(asks::KEYS)
     {
         let key = all
             .keys
@@ -257,6 +258,7 @@ mod tests {
                 .chain(hover::contents::KEYS)
                 .chain(turn::KEYS)
                 .chain(finds::KEYS)
+                .chain(asks::KEYS)
                 .collect();
             ids.extend(["hero.0", "hero.1", "town-name.0"]);
             ids.sort_unstable();

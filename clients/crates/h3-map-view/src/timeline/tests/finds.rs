@@ -70,6 +70,8 @@ fn finding(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
         found: None,
         taken: None,
         event: false,
+        blocks: None,
+        ask: None,
     }];
     (start, actions, ms, timeline)
 }
@@ -151,7 +153,7 @@ fn no_find_no_box() {
     let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
     l.run(100, &actions[&100]).unwrap();
     assert!(l.boxed.is_none());
-    assert!(!l.tell_find());
+    assert!(!l.tell_find(10));
 }
 
 /// `turn-no-town`'s loop run to `until`.
@@ -331,6 +333,8 @@ fn picking(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
             }),
             taken: Some(OBJECT),
             event: false,
+            blocks: Some(OBJECT),
+            ask: None,
         },
         "find-artifact" => Found {
             at: ENTRANCE,
@@ -343,6 +347,8 @@ fn picking(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
             found: None,
             taken: Some(OBJECT),
             event: false,
+            blocks: Some(OBJECT),
+            ask: None,
         },
         _ => Found {
             at: ENTRANCE,
@@ -378,6 +384,8 @@ fn picking(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
             found: None,
             taken: None,
             event: true,
+            blocks: None,
+            ask: None,
         },
     };
     start.finds = vec![found];
@@ -551,7 +559,7 @@ fn a_taken_find_is_no_walks_and_an_army_has_room() {
         at: ENTRANCE,
         facing: Direction::East,
     });
-    assert!(!l.tell_find());
+    assert!(!l.tell_find(10));
     assert_eq!(l.found_closed(10, 5, 0), Ok(()));
     assert!(l.dissolve_step(10));
     // A gain of spell points with the hero not on the lists as drawn: memory's alone.
@@ -584,14 +592,14 @@ fn a_taken_find_is_no_walks_and_an_army_has_room() {
         facing: Direction::East,
     });
     l.told.push(0);
-    assert!(!l.tell_find());
+    assert!(!l.tell_find(10));
     start.finds[0].first.clear();
     let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
     l.hero = Some(Hero {
         at: ENTRANCE,
         facing: Direction::East,
     });
-    assert!(!l.tell_find());
+    assert!(!l.tell_find(10));
     // The mouse's point of the actions that give one.
     for (action, point) in [
         (Action::Pointer([1, 2]), Some([1, 2])),

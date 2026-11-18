@@ -22,6 +22,7 @@ use core::ops::Range;
 use serde::Deserialize;
 
 use crate::art::Layer;
+use crate::asks::AskArt;
 use crate::finds::FindArt;
 use crate::lists::ListArt;
 use crate::minimap::MinimapArt;
@@ -109,6 +110,11 @@ pub struct ViewArt {
     /// The finds told: the pictures' DEFs, the Learning Stone's experience (E24 M4 T2a2; design
     /// §5.3).
     pub finds: FindArt,
+    /// The questions' numbers: the creatures' levels, a new game's dwelling guards, the Tree of
+    /// Knowledge's prices, the Warrior's Tomb's morale (E24 M4 T2b2 part A1; design §5.4): none, and
+    /// no dwelling or Tree asks (*provisional*).
+    #[serde(default)]
+    pub asks: AskArt,
     /// The map's sounds (E24 M2 T5; design §3.11): none, and the map plays none.
     #[serde(default)]
     pub sound: Option<SoundArt>,

@@ -23,14 +23,15 @@ use h3_map::Limits;
 use h3_map::model::{Body, EventBody, Pos, RawMap};
 use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::MapArt;
+use h3_map_view::asks::{Ask, Seen, Visitor};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
 use h3_map_view::damage::{Held, History, drop_held};
 use h3_map_view::finds::{self, Find, Gain, Told};
-use h3_map_view::hover::Hover;
+use h3_map_view::hover::{Facts, Hover, Tile};
 use h3_map_view::layout::{AdventureLayout, CursorArt};
 use h3_map_view::live::{
-    Buttons, Calendar, Facing, Lifted, Live, Moment, Selected, Status, Walking,
+    Buttons, Calendar, Facing, Lifted, Live, Moment, Selected, Stack, Status, Walking,
 };
 use h3_map_view::minimap::Shown;
 use h3_map_view::objects::{self, DrawLists, Shapes};
@@ -40,8 +41,8 @@ use h3_map_view::situation::Situation;
 use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
-    Action, Computer, Cursor, DEFAULT_CURSOR, Direction, Dissolve, Draw, Found, Hero, NextTurn,
-    Start, TownBoxes,
+    Action, Answer, Computer, Cursor, DEFAULT_CURSOR, Direction, Dissolve, Draw, Found, Hero,
+    NextTurn, Question, Start, TownBoxes,
 };
 use h3_map_view::{status, turn};
 use h3_render::Bugs;
@@ -582,13 +583,18 @@ impl<'a> Painter<'a> {
     /// pictures in an OK box of `message_box` 0x4F6570 (`message::told`), framed in the viewer's
     /// colours.
     fn told(&mut self, told: &Told) -> Result<Arc<MessageBox>, String> {
+        self.told_in(told, Style::Ok)
+    }
+
+    /// `told` in a box of `style` (E24 M4 T2b2: a question's OK and Cancel).
+    fn told_in(&mut self, told: &Told, style: Style) -> Result<Arc<MessageBox>, String> {
         let pictures = self.pictures(told)?;
         let assets = self.assets;
         Ok(Arc::new(message::told(
             &assets.layout.message,
             self.fonts()?,
             &told.text,
-            Style::Ok,
+            style,
             &pictures,
             (self.live.viewer, assets.bugs),
         )))
@@ -639,8 +645,8 @@ impl<'a> Painter<'a> {
     /// find's class by its entrance tile (the mouse-over's tiles), its facts from the live part's
     /// `[hover]` facts and a sign's text from the map `raw` (*provisional*: `Find::of`, the facts
     /// at 0), its first visit's box and its later one's; a pile's and an artifact's with a
-    /// message or guards left out (their question: T2b); then each event's boxes (part B,
-    /// [`Painter::event`]); none without the facts.
+    /// message or guards left out (their question: T2b2's, [`Painter::asked`]); then each event's
+    /// boxes (part B, [`Painter::event`]); none without the facts.
     fn finds(&mut self, raw: &RawMap, hover: Option<&Hover>) -> Result<Vec<Found>, String> {
         let Some(hover) = hover else {
             return Ok(Vec::new());
@@ -674,6 +680,10 @@ impl<'a> Painter<'a> {
                         )
                     );
                     if asks || !finds::CLASSES.contains(&tile.class) {
+                        // A question's find (E24 M4 T2b2 part A1).
+                        if let Some(found) = self.asked((pos, o), tile, body, facts)? {
+                            out.push(found);
+                        }
                         continue;
                     }
                     let text = match body {
@@ -706,6 +716,8 @@ impl<'a> Painter<'a> {
                         found: find.found(texts),
                         taken: find.taken().then_some(o),
                         event: false,
+                        blocks: find.taken().then_some(o),
+                        ask: None,
                     });
                 }
             }
@@ -770,6 +782,123 @@ impl<'a> Painter<'a> {
             found: None,
             taken: None,
             event: true,
+            blocks: None,
+            ask: None,
+        }))
+    }
+
+    /// A question's find (E24 M4 T2b2 part A1, design §5.4; *provisional*: `asks::Ask::of`, the
+    /// facts at 0): object `o` at `pos` on its entrance `tile`, its map `body` (a pile's, a
+    /// scroll's or an artifact's message), the mouse-over's `facts` (its word, the hero's mark),
+    /// the live part's owner and the viewer's kingdom (its resources, the selected hero's army in
+    /// the status window), a dwelling's creature by the tables' `dwelling_creatures` with its
+    /// growth from `CRTRAITS.TXT`. Its box laid out of style 2 (style 1 where it asks nothing: a
+    /// looted bank's, the Tree's visited or too poor, told at every visit), its OK's box where
+    /// built; none for an object that asks nothing this part builds.
+    fn asked(
+        &mut self,
+        (pos, o): (Pos, usize),
+        tile: Tile,
+        body: Option<&Body>,
+        facts: &Facts,
+    ) -> Result<Option<Found>, String> {
+        let assets = self.assets;
+        let tables = assets.tables;
+        let message = match body {
+            Some(
+                Body::Resource {
+                    message: Some(m), ..
+                }
+                | Body::Scroll {
+                    message: Some(m), ..
+                }
+                | Body::Artifact(Some(m)),
+            ) => Some(m),
+            _ => None,
+        };
+        let message = message.map(|m| {
+            let guards = m
+                .guards
+                .iter()
+                .flatten()
+                .flatten()
+                .map(|s| Stack {
+                    creature: s.creature,
+                    count: i32::from(s.count),
+                })
+                .collect();
+            (decode_windows_1252(m.text.as_bytes()), guards)
+        });
+        let creature = match (tile.class, &tables.map.sound) {
+            (17, Some(sound)) => usize::try_from(tile.subclass)
+                .ok()
+                .and_then(|s| sound.dwelling_creatures.get(s))
+                .and_then(|&c| u16::try_from(c).ok()),
+            _ => None,
+        };
+        let dwelling = match creature {
+            Some(c) => Some((c, crate::texts::growth(assets.archives, c)?)),
+            None => None,
+        };
+        let kingdom = &self.live.kingdom;
+        let army = match &kingdom.status {
+            Some(Status::Hero(hero)) => hero.army,
+            _ => [None; 7],
+        };
+        let visitor = Visitor {
+            colour: self.live.viewer,
+            teams: facts.teams,
+            resources: kingdom.resources,
+            army,
+        };
+        let seen = Seen {
+            class: [tile.class, tile.subclass],
+            word: tile.word,
+            owner: self.live.objects.get(o).and_then(|object| object.owner),
+            visited: facts.visits.get(o).and_then(|v| v.visited) == Some(true),
+            message,
+            dwelling,
+        };
+        let Some(ask) = Ask::of(&seen, &visitor, &tables.map.asks) else {
+            return Ok(None);
+        };
+        let told = ask.told(&tables.texts);
+        if !ask.asks() {
+            let shown = self.told(&told)?;
+            return Ok(Some(Found {
+                at: pos,
+                first: vec![(Arc::clone(&shown), Gain::default())],
+                again: Some(shown),
+                gain: Gain::default(),
+                found: None,
+                taken: None,
+                event: false,
+                blocks: None,
+                ask: None,
+            }));
+        }
+        let asked = self.told_in(&told, Style::OkCancel)?;
+        let yes = match ask.yes(&tables.map.finds, &tables.map.asks, &tables.texts) {
+            Some((told, gain)) => Some(Answer {
+                boxes: vec![(self.told(&told)?, Gain::default())],
+                gain,
+            }),
+            None => None,
+        };
+        Ok(Some(Found {
+            at: pos,
+            first: Vec::new(),
+            again: None,
+            gain: Gain::default(),
+            found: None,
+            taken: None,
+            event: false,
+            blocks: ask.beside().then_some(o),
+            ask: Some(Question {
+                asked,
+                chooses: ask.chooses(),
+                yes,
+            }),
         }))
     }
 

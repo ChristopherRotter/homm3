@@ -58,6 +58,12 @@
 //! object taken off the map, the view's middle dissolved into the view without it in eight
 //! steps ([`Draw::dissolve`]), the map stopped meanwhile; an event's boxes one after another, the
 //! resources shown as their box opens.
+//!
+//! The questions (E24 M4 T2b2 part A1, design §5.4, *provisional*): a find's [`Question`] (laid
+//! out by the adapter from `crate::asks`) opens after its first boxes, on its entrance or from
+//! beside ([`Found::blocks`]: a guarded pile, an artifact), the status window built again first
+//! where its handler does; its Cancel ends the visit, its OK shows its [`Answer`]'s boxes and then
+//! what the panels show, or is refused where the answer is not built ([`Unplayable::Answer`]).
 
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::format;
@@ -403,6 +409,9 @@ pub enum Unplayable {
     /// Space with the selected hero on an object's entrance (E24 M3 T6b3): its visit is the
     /// engine's (M4, M5).
     Visit([i32; 3]),
+    /// A question's OK whose answer is not built (E24 M4 T2b2: a battle, a level-up, the recruit
+    /// dialog; the engine's, M4 T5 and M5), by its find's tile.
+    Answer([i32; 3]),
 }
 
 impl fmt::Display for Unplayable {
@@ -416,6 +425,12 @@ impl fmt::Display for Unplayable {
             Self::Command(id) => write!(f, "button {id}'s command (a dialog or the engine's)"),
             Self::Visit([x, y, z]) => {
                 write!(f, "a visit of the object at ({x}, {y}, {z}) (the engine's)")
+            }
+            Self::Answer([x, y, z]) => {
+                write!(
+                    f,
+                    "the answer of the question at ({x}, {y}, {z}) (the engine's)"
+                )
             }
         }
     }
@@ -758,6 +773,39 @@ pub struct Found {
     /// the step's end draws the hero's slot (recorded, `find-event`: the movement bar's points at
     /// 2260), the scenario's test after them (*provisional*: its place not read).
     pub event: bool,
+    /// The object whose entrance blocks its tile (E24 M4 T2b2: its index in the map's order): a
+    /// key's step onto it visits it from beside ([`Loop::visit_beside`]) until it is taken; a
+    /// pile's and an artifact's, [`Found::taken`] too when the visit takes it.
+    pub blocks: Option<usize>,
+    /// The question the visit asks after its first boxes (E24 M4 T2b2 part A1, design §5.4): asked
+    /// at every visit until its OK is taken; after that the find tells nothing (*provisional*: the
+    /// find as its answer leaves it is the engine's facts).
+    pub ask: Option<Question>,
+}
+
+/// A visit's question (E24 M4 T2b2 part A1, design §5.4, *provisional*: the viewer's facts at 0,
+/// `crate::asks::Ask`): its box of style 2, whether the status window is built again before it
+/// (`status_window_choose` 0x415DE0 with 0, 1, 1) and what its OK shows (none: not built, refused
+/// in a recording); its Cancel does nothing (every question of part A1's).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Question {
+    /// The question's box.
+    pub asked: Arc<MessageBox>,
+    /// The status window chosen again before it.
+    pub chooses: bool,
+    /// What its OK shows.
+    pub yes: Option<Answer>,
+}
+
+/// What a question's OK shows (E24 M4 T2b2 part A1): its boxes one after another, each with what
+/// the panels show as it opens, and what they show at the last one's close (recorded: `ask-tomb`'s
+/// morale, `ask-hire`'s army at 1660).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Answer {
+    /// The boxes.
+    pub boxes: Vec<(Arc<MessageBox>, Gain)>,
+    /// What the panels show at the end.
+    pub gain: Gain,
 }
 
 /// The viewer's boxes of a turn without a town (E24 M4 T2a2, design §5.3): the warning at its
@@ -1110,9 +1158,11 @@ pub struct Loop {
     /// (E24 M4 T2a2: the days left's, then the week's).
     boxed: Option<Boxed>,
     waiting: VecDeque<(Arc<MessageBox>, Told)>,
-    /// The finds ([`Start::finds`]) and those told once, by their place among them.
+    /// The finds ([`Start::finds`]) and those told once, by their place among them; those whose
+    /// question's OK was taken (E24 M4 T2b2).
     finds: Arc<Vec<Found>>,
     told: Vec<usize>,
+    answered: Vec<usize>,
     /// The viewer's boxes of a turn without a town ([`Start::town`]) and its days without a town
     /// (the player's +0x3D: −1 not counting, *provisional*: a new game's at 0).
     town: Option<Arc<TownBoxes>>,
@@ -1232,6 +1282,12 @@ enum Told {
     /// first ones): its close opens the next with what it shows, after the last shows the gain,
     /// takes the object or tests the scenario, then the idle step.
     Found(usize, usize),
+    /// A find's question (E24 M4 T2b2 part A1; the find's place among [`Start::finds`]): its OK
+    /// shows its answer, its Cancel ends the visit.
+    Asked(usize),
+    /// A question's answer's box (its find's place, the box's among the answer's): its close opens
+    /// the next, after the last the answer's gain shown and the visit ended.
+    Answer(usize, usize),
     /// The days left to take a town: at its close the turn's selection's window built again
     /// (*provisional*: `turn-no-town` at 2060 shows the date's window unstepped, as `hero_select`
     /// after the box would build it; not read), then the idle step.
@@ -1369,6 +1425,7 @@ impl Loop {
             waiting: VecDeque::new(),
             finds: Arc::new(start.finds.clone()),
             told: Vec::new(),
+            answered: Vec::new(),
             town: start.town.clone().map(Arc::new),
             days: -1,
             found: None,
@@ -2526,6 +2583,8 @@ impl Loop {
         self.set_cursor(kind, frame);
         match boxed.told {
             Told::Found(i, k) => return self.found_closed(t, i, k),
+            Told::Asked(i) => return self.answer(t, i, id),
+            Told::Answer(i, k) => return self.answered(t, i, k + 1),
             Told::DaysLeft => self.choose(t, true),
             _ => {}
         }
@@ -2560,6 +2619,10 @@ impl Loop {
             self.open_box(Arc::clone(next), Told::Found(i, k + 1));
             return Ok(());
         }
+        // Its question after its first boxes (E24 M4 T2b2).
+        if self.ask(t, i) {
+            return Ok(());
+        }
         if let Some(object) = found.taken {
             self.take(t, object, found.gain);
             return Ok(());
@@ -2580,33 +2643,111 @@ impl Loop {
 
     /// A find on the tile a walk ends on told (E24 M4 T2a2, design §5.3: the step and its box in
     /// one millisecond, recorded): its first boxes, told again its later one; whether one opened.
-    /// A find taken from beside ([`Found::taken`]) is a key's step's ([`Loop::visit_beside`]).
-    fn tell_find(&mut self) -> bool {
+    /// A find whose object blocks its tile ([`Found::blocks`]) is a key's step's
+    /// ([`Loop::visit_beside`]). Since E24 M4 T2b2 a find with a question asks it after its first
+    /// boxes at every visit, until its OK is taken; then it tells nothing.
+    fn tell_find(&mut self, t: u32) -> bool {
         let Some(at) = self.hero.map(|h| h.at) else {
             return false;
         };
         let Some(i) = self
             .finds
             .iter()
-            .position(|f| f.at == at && f.taken.is_none())
+            .position(|f| f.at == at && f.blocks.is_none())
         else {
             return false;
         };
         let found = Arc::clone(&self.finds);
         let found = &found[i];
-        let opened = if self.told.contains(&i) {
-            found
+        if self.answered.contains(&i) {
+            return false;
+        }
+        if self.told.contains(&i) && found.ask.is_none() {
+            return found
                 .again
                 .clone()
                 .map(|again| self.open_box(again, Told::Plain))
-        } else {
+                .is_some();
+        }
+        if !self.told.contains(&i) {
             self.told.push(i);
-            found.first.first().map(|(first, shows)| {
+        }
+        match found.first.first() {
+            Some((first, shows)) => {
                 self.gain(*shows);
                 self.open_box(Arc::clone(first), Told::Found(i, 0));
-            })
+                true
+            }
+            None => self.ask(t, i),
+        }
+    }
+
+    /// Find `i`'s question asked (E24 M4 T2b2 part A1, design §5.4; recorded in the visit's
+    /// millisecond): the status window built again first when its handler does
+    /// (`status_window_choose` 0x415DE0 with 0, 1, 1), then its box; whether it has one.
+    fn ask(&mut self, t: u32, i: usize) -> bool {
+        let finds = Arc::clone(&self.finds);
+        let Some(question) = finds.get(i).and_then(|f| f.ask.as_ref()) else {
+            return false;
         };
-        opened.is_some()
+        if question.chooses {
+            self.choose(t, true);
+        }
+        self.open_box(Arc::clone(&question.asked), Told::Asked(i));
+        true
+    }
+
+    /// Find `i`'s question closed by its button `id` (E24 M4 T2b2 part A1): its OK shows the
+    /// answer ([`Loop::answered`]), refused where the answer is not built (live: as the Cancel);
+    /// its Cancel ends the visit ([`Loop::visited`]: recorded, `ask-pile`'s and `ask-mine`'s
+    /// idle step at 1060).
+    fn answer(&mut self, t: u32, i: usize, id: u16) -> Result<(), Unplayable> {
+        let finds = Arc::clone(&self.finds);
+        let found = &finds[i];
+        if id == boxes::YES {
+            if found.ask.as_ref().is_some_and(|q| q.yes.is_some()) {
+                self.answered.push(i);
+                return self.answered(t, i, 0);
+            }
+            let Pos { x, y, z } = found.at;
+            self.unbuilt(Unplayable::Answer([
+                i32::from(x),
+                i32::from(y),
+                i32::from(z),
+            ]))?;
+        }
+        self.visited(t, i);
+        Ok(())
+    }
+
+    /// Find `i`'s answer's box `k` opened, what it shows shown first (E24 M4 T2b2 part A1:
+    /// `ask-tomb`'s 162, `ask-hire`'s GENRLTXT 424 in the OK's millisecond); past the last the
+    /// answer's gain shown and the visit ended.
+    fn answered(&mut self, t: u32, i: usize, k: usize) -> Result<(), Unplayable> {
+        let finds = Arc::clone(&self.finds);
+        let answer = finds
+            .get(i)
+            .and_then(|f| f.ask.as_ref())
+            .and_then(|q| q.yes.as_ref());
+        if let Some(answer) = answer {
+            if let Some((next, shows)) = answer.boxes.get(k) {
+                self.gain(*shows);
+                self.open_box(Arc::clone(next), Told::Answer(i, k));
+                return Ok(());
+            }
+            self.gain(answer.gain);
+        }
+        self.visited(t, i);
+        Ok(())
+    }
+
+    /// Find `i`'s visit ended with nothing more to show (E24 M4 T2b2 part A1): one from beside
+    /// ends its step first ([`Loop::finish`], as after a dissolve), then the idle step.
+    fn visited(&mut self, t: u32, i: usize) {
+        if self.finds.get(i).is_some_and(|f| f.blocks.is_some()) {
+            self.finish(t, true);
+        }
+        self.idle_message(t);
     }
 
     /// Whether the selected hero stands on an event not told yet (E24 M4 T2a2 part B).
@@ -2619,12 +2760,12 @@ impl Loop {
     }
 
     /// The find a key's step onto `at` visits from beside (E24 M4 T2a2 part B): one whose object
-    /// the visit takes, not taken yet; its place among the finds and the object.
-    fn beside(&self, at: Pos) -> Option<(usize, usize)> {
-        self.finds.iter().enumerate().find_map(|(i, f)| {
-            f.taken
-                .filter(|o| f.at == at && !self.drawn.gone.contains(o))
-                .map(|o| (i, o))
+    /// blocks its tile (since T2b2 [`Found::blocks`]: a guarded pile's too), not taken yet; its
+    /// place among the finds.
+    fn beside(&self, at: Pos) -> Option<usize> {
+        self.finds.iter().position(|f| {
+            f.blocks
+                .is_some_and(|o| f.at == at && !self.drawn.gone.contains(&o))
         })
     }
 
@@ -2635,8 +2776,10 @@ impl Loop {
     /// (`visit_resource_pile` 0x4A4BE0, `visit_artifact` 0x49F7E0): a pile's resources shown on
     /// the resource bar and its kind 6 asked, chosen and drawn, then the pile taken; an
     /// artifact's box (the mouse shown over it), the artifact taken at its close. The step's end
-    /// ([`Loop::finish`]) comes after the dissolve.
-    fn visit_beside(&mut self, t: u32, direction: Direction, (i, object): (usize, usize)) {
+    /// ([`Loop::finish`]) comes after the dissolve. Since E24 M4 T2b2 a find with a question
+    /// asks it (the mouse shown over it; recorded, `ask-pile`, `ask-artifact`), its visit's end
+    /// the step's ([`Loop::visited`]).
+    fn visit_beside(&mut self, t: u32, direction: Direction, i: usize) {
         self.cursor.shown = false;
         self.walked = true;
         if !self.lifted {
@@ -2660,6 +2803,11 @@ impl Loop {
             self.open_box(Arc::clone(first), Told::Found(i, 0));
             return;
         }
+        if found.ask.is_some() {
+            self.cursor.shown = true;
+            self.ask(t, i);
+            return;
+        }
         self.gain(found.gain);
         if let Some(status) = &found.found {
             // Kind 6 asked until the tables' time from now, the chooser at once (1, 1, 1).
@@ -2668,7 +2816,10 @@ impl Loop {
             self.end = t.saturating_add(self.rules.finds.found_ms);
             self.choose(t, true);
         }
-        self.take(t, object, Gain::default());
+        match found.taken {
+            Some(object) => self.take(t, object, Gain::default()),
+            None => self.visited(t, i),
+        }
     }
 
     /// The object `object` taken off the map (`remove_map_object` 0x4AABB0 between the view's
@@ -3502,7 +3653,7 @@ impl Loop {
             let Some((direction, next)) = moving.rest.pop_front() else {
                 self.finish(t, moving.key);
                 // A find on its last tile told (E24 M4 T2a2): its box empties the queue.
-                if self.tell_find() {
+                if self.tell_find(t) {
                     moving.queued.clear();
                 }
                 return Some(moving.queued);

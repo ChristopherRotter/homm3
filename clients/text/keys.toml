@@ -1208,6 +1208,161 @@ id = "map.find.reward-creatures"
 args = { creatures = "text", hero = "text" }
 original = [{ at = "ADVEVENT:186", printf = ["creatures", "hero"] }]
 
+# The questions a visit asks (E24 M4 T2b2 part A1; docs/epics/E24-design.md §5.4, h3_map_view::asks).
+# The size words of a count in the form the guards' questions take (`creature_quantity_word`
+# 0x44ADE0 with form 2: below 5, 10, 20, 50, 100, 250, 500 and 1000, else the ninth; ARRAYTXT.TXT's
+# records 174 + 3 n + 2 as `arraytxt_load` loads them to 0x6A5BB8).
+
+[[key]]
+id = "map.ask.size.0"
+original = [{ at = "ARRAYTXT:176" }]
+
+[[key]]
+id = "map.ask.size.1"
+original = [{ at = "ARRAYTXT:179" }]
+
+[[key]]
+id = "map.ask.size.2"
+original = [{ at = "ARRAYTXT:182" }]
+
+[[key]]
+id = "map.ask.size.3"
+original = [{ at = "ARRAYTXT:185" }]
+
+[[key]]
+id = "map.ask.size.4"
+original = [{ at = "ARRAYTXT:188" }]
+
+[[key]]
+id = "map.ask.size.5"
+original = [{ at = "ARRAYTXT:191" }]
+
+[[key]]
+id = "map.ask.size.6"
+original = [{ at = "ARRAYTXT:194" }]
+
+[[key]]
+id = "map.ask.size.7"
+original = [{ at = "ARRAYTXT:197" }]
+
+[[key]]
+id = "map.ask.size.8"
+original = [{ at = "ARRAYTXT:200" }]
+
+# A guarded artifact's question without a text of its own (`visit_guarded_artifact` 0x49F070:
+# GENRLTXT 421 with its guards' size word and their name twice); a dwelling's guards'
+# (`visit_dwelling` 0x4A18B0: GENRLTXT 422 with the dwelling's name, the size word of the guards'
+# total and the first stack's creature).
+
+[[key]]
+id = "map.ask.artifact"
+args = { size = "text", creature = "text" }
+original = [{ at = "GENRLTXT:421", printf = ["size", "creature", "creature"] }]
+
+[[key]]
+id = "map.ask.guarded"
+args = { dwelling = "text", size = "text", creature = "text" }
+original = [{ at = "GENRLTXT:422", printf = ["dwelling", "size", "creature"] }]
+
+# A neutral abandoned mine's question (`visit_mine` 0x4A39A0, ADVEVENT 84); a creature bank's, with
+# its kind's name (`visit_creature_bank` 0x4A15A0: 32, a looted one's box 33); the search kinds'
+# first texts (`visit_search_bank` 0x4AC490: the Derelict Ship's 41, the Crypt's 119, the
+# Shipwreck's 122).
+
+[[key]]
+id = "map.ask.mine"
+original = [{ at = "ADVEVENT:84" }]
+
+[[key]]
+id = "map.ask.bank"
+args = { bank = "text" }
+original = [{ at = "ADVEVENT:32", printf = ["bank"] }]
+
+[[key]]
+id = "map.ask.bank-looted"
+args = { bank = "text" }
+original = [{ at = "ADVEVENT:33", printf = ["bank"] }]
+
+[[key]]
+id = "map.ask.derelict-ship"
+original = [{ at = "ADVEVENT:41" }]
+
+[[key]]
+id = "map.ask.crypt"
+original = [{ at = "ADVEVENT:119" }]
+
+[[key]]
+id = "map.ask.shipwreck"
+original = [{ at = "ADVEVENT:122" }]
+
+# The Tree of Knowledge's (`visit_tree_of_knowledge` 0x4A6710): its price's questions (2 000 gold
+# 149, ten gems 151), the hero taught already (147), the kingdom too poor (150, 152).
+
+[[key]]
+id = "map.ask.tree-gold"
+original = [{ at = "ADVEVENT:149" }]
+
+[[key]]
+id = "map.ask.tree-gems"
+original = [{ at = "ADVEVENT:151" }]
+
+[[key]]
+id = "map.ask.tree-visited"
+original = [{ at = "ADVEVENT:147" }]
+
+[[key]]
+id = "map.ask.tree-poor-gold"
+original = [{ at = "ADVEVENT:150" }]
+
+[[key]]
+id = "map.ask.tree-poor-gems"
+original = [{ at = "ADVEVENT:152" }]
+
+# The Pyramid's question (`visit_pyramid` 0x4A4230, ADVEVENT 105); the Warrior's Tomb's
+# (`visit_warriors_tomb` 0x4A7C30: 161) and its search's finds, its artifact's name (162) or nothing
+# (163).
+
+[[key]]
+id = "map.ask.pyramid"
+original = [{ at = "ADVEVENT:105" }]
+
+[[key]]
+id = "map.ask.tomb"
+original = [{ at = "ADVEVENT:161" }]
+
+[[key]]
+id = "map.ask.tomb-found"
+args = { artifact = "text" }
+original = [{ at = "ADVEVENT:162", printf = ["artifact"] }]
+
+[[key]]
+id = "map.ask.tomb-empty"
+original = [{ at = "ADVEVENT:163" }]
+
+# A dwelling's hire (`visit_dwelling` 0x4A18B0: ADVEVENT 35 with the dwelling's name and the
+# creature's plural) and, on its own player's dwelling, its level-1 creatures joining free: GENRLTXT
+# 424 with their count and name, 423 none to hire, 426 no room.
+
+[[key]]
+id = "map.ask.hire"
+args = { dwelling = "text", creature = "text" }
+original = [{ at = "ADVEVENT:35", printf = ["dwelling", "creature"] }]
+
+[[key]]
+id = "map.ask.joined"
+args = { amount = "number", creature = "text" }
+original = [{ at = "GENRLTXT:424", printf = ["amount", "creature"] }]
+
+[[key]]
+id = "map.ask.none"
+args = { creature = "text" }
+original = [{ at = "GENRLTXT:423", printf = ["creature"] }]
+
+[[key]]
+id = "map.ask.no-room"
+args = { creature = "text" }
+original = [{ at = "GENRLTXT:426", printf = ["creature"] }]
+
 # A turn without a town (E24 M4 T2a2; design §5.3): at the turn's end GENRLTXT 7 with the player's
 # name (`scenario_condition_met` 0x4F2CE0), at each later day's start ArrayTxt 128 with the name and
 # the days left, 129 on the last day (`player_turn_start` 0x4CC7D0); the name the viewer's

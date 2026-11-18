@@ -3339,3 +3339,53 @@ and `seq-choose-*`).
   and a few pixels at x = 709, not read), the answers' ends (the dissolve after a join, a flight, a
   Border Guard, a chest and Pandora's Box; the reveal; the joining army and the skills in the status
   window).
+- **Built** (M4 T2b2 part A1, *provisional*): the module `asks`: `Ask`, a question's facts
+  (`Ask::of` from `Seen`, the object's class, subclass, entrance word and owner, the selected
+  hero's mark, a pile's, scroll's or artifact's message on the map and a dwelling's creature and
+  growth, and `Visitor`, the colour, the teams, the resources and the selected hero's army): a
+  guarded pile's, scroll's or artifact's with the map's text, an artifact's GENRLTXT 421 by its one
+  stack (its size word of form 2, ARRAYTXT 176 + 3 n), a neutral abandoned mine's 84, a bank's 32
+  (looted 33, a box alone), the search kinds' 41, 119 and 122, the Tree of Knowledge's 149 and 151
+  with the experience's picture (147 visited, 150 and 152 too poor: boxes alone), the Pyramid's
+  105, the Warrior's Tomb's 161, a dwelling's guards' GENRLTXT 422 (a new game's: a creature of
+  level 5 or more, three weeks of its growth; the dwellings' survey §2) and a hire's 35 (a dwelling
+  of the visitor's team); `Ask::told`, `asks`, `chooses` (the status window built again before the
+  box: all but the search kinds', the Tree's and the Tomb's; the hire's as the guards'), `beside`
+  (a pile, a scroll, an artifact); `Ask::yes`, the OK's box and gain where built: the Tomb's 162
+  with its artifact (the word's bits 13 to 22 while bit 0 is set; its primary skills, as worn) or
+  163 with three pictures of bad morale, the tables' morale lost either way; a free hire's GENRLTXT
+  424 (423 none to hire, 426 no room; one creature's name the singular, not recorded) and the army
+  joined. The catalogue's keys `map.ask.*` (30: the size words, GENRLTXT 421 to 426 and ADVEVENT's
+  records); the tables' `[map.asks]`: each creature's level (`creature_table` 0x6703B8's +4 plus 1,
+  read from the SoD executable: the packs give the Air and Water Elementals level 4 where it has 2
+  and 3), the guards' `[5, 3]`, the Tree's prices (2 000 gold, 10 gems) and the Tomb's −3. The
+  timeline: `Found::blocks` (the object a key's step visits from beside until it is taken: a pile's
+  and an artifact's with `taken` too, a guarded pile's alone) and `Found::ask` (`Question`: its box,
+  `chooses`, `yes` an `Answer` of boxes and a gain); a find's question after its first boxes, on its
+  entrance (`Loop::tell_find`) or from beside (`Loop::visit_beside`, the mouse shown over it), in
+  the step's millisecond (`Loop::ask`), asked again at every visit until its OK; its Cancel ends the
+  visit (`Loop::visited`: from beside the step's end, `Loop::finish`, as after a dissolve; then the
+  idle step: recorded, the redraws due at 1060); its OK opens the answer's boxes one after another
+  in that millisecond (`Loop::answered`: `ask-tomb`'s 162 at 1060, no idle step between) and shows
+  the gain at the last one's close (`ask-tomb`'s morale, `ask-hire`'s Pikemen in the hero's window
+  at 1660), or is refused where the answer is not built (`Unplayable::Answer`; live as the Cancel);
+  a find answered tells nothing at a later visit. The binary lays each question out
+  (`Painter::asked`: `message::told` of style 2 by `Painter::told_in`), a dwelling's creature by
+  the sound tables' `dwelling_creatures`, its growth from `CRTRAITS.TXT`. Not built: every other
+  answer (the battles, the Tree's level-up, the recruit dialog: M4 T5 and M5), a find after its OK
+  (the Tomb's 163, the hire's 423 at a later visit, the Tree's 147: the engine's facts), a mine of
+  another player's (187), a guarded artifact's several stacks, a pile's or artifact's message
+  without guards, a guarded pile or scroll without a text (the battle at once), a dwelling of class
+  20 (36) and the Refugee Camp (112), a free Tree (148), part A2's questions and part B's choices.
+- **Checked** (M4 T2b2 part A1): T2b1's 22 sequences recorded again in this sandbox (each `ok`, the
+  frame at 0 exact), the ten moved into `sequences.toml`; `frames --only <id> --reuse` on them:
+  every frame exact (`ask-pile`, `ask-artifact`, `ask-mine`, `ask-bank`, `ask-crypt`, `ask-tree`,
+  `ask-pyramid`, `ask-dwelling-guards` 7 each, `ask-tomb` and `ask-hire` 9), the viewer's timelines
+  the recorded ones line for line (31 each, 36 and 36; `<id>-frames.txt` kept); `h3-map-view
+  sequences` the 68 as recorded; unit tests (every question's facts, box and answer through the
+  tables and a catalogue of its own; the ten replayed headless; a question from beside and on its
+  entrance, its Cancel, asked again, an answer not built refused and live as the Cancel, an
+  answer's box and its gain at the close, a question after a first box, an answer without a box, a
+  blocking find with nothing to tell), 100 % lines, regions and functions of `h3-map-view` and of
+  `h3-ui` but its `scrollbar.rs` (the client lane's, untouched: its callers and their tests are
+  `h3-view`'s).

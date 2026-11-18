@@ -1032,3 +1032,125 @@ inputs = [
     { at = 1600, keydown = "Return" }, { at = 1660, keyup = "Return" },
     { at = 2200, keydown = "Return" }, { at = 2260, keyup = "Return" },
 ]
+
+[[sequence]]
+id = "ask-pile"
+situation = "seq-ask-pile"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "a guarded pile's question (the map's text) declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-artifact"
+situation = "seq-ask-artifact"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "a guarded artifact's question (the game's own text) declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-mine"
+situation = "seq-ask-mine"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "an abandoned mine's question declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-bank"
+situation = "seq-ask-bank"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "a creature bank's question declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-crypt"
+situation = "seq-ask-crypt"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "the Crypt's question declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-tree"
+situation = "seq-ask-tree"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "a Tree of Knowledge's price (the experience's picture) declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-pyramid"
+situation = "seq-ask-pyramid"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "the Pyramid's question declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-dwelling-guards"
+situation = "seq-ask-dwelling-guards"
+ms = 1600
+hero_speed = 4
+seed = 7
+why = "a neutral Monastery's guards' question declined by Escape"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Escape" }, { at = 1060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "ask-tomb"
+situation = "seq-ask-tomb"
+ms = 2200
+hero_speed = 4
+seed = 7
+why = "the Warrior's Tomb searched (Enter): what it finds, closed by Enter"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1600, keydown = "Return" }, { at = 1660, keyup = "Return" },
+]
+
+[[sequence]]
+id = "ask-hire"
+situation = "seq-ask-hire"
+ms = 2200
+hero_speed = 4
+seed = 7
+why = "Red's own Guardhouse's question accepted by Enter: its Pikemen join free, told"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1600, keydown = "Return" }, { at = 1660, keyup = "Return" },
+]
