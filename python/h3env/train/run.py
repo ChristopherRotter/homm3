@@ -243,6 +243,11 @@ class Config:
     alpha: float = field(default=0.05, metadata=_in("gate"))
     beta: float = field(default=0.05, metadata=_in("gate"))
     max_pairs: int = field(default=4000, metadata=_in("gate"))
+    #: Gates in a row without a promotion that end the run before its budget (E25 T36, the user,
+    #: 2026-11-18: a long run stops once its goal can evidently not be met): the best's final
+    #: ladder still plays and the run ends `futile` (a resume continues it, with `--set
+    #: gate.futility=0` past the check); 0: never. A run's end at its budget is never futile.
+    futility: int = field(default=0, metadata=_in("gate"))
     #: The engine seats each promoted network's ladder plays (design §7), on the report set v1
     #: (the system actor among them since E06 T7c).
     ladder_opponents: list[str] = field(
@@ -286,6 +291,7 @@ RESUMABLE = (
     "torch_threads",
     "checkpoint_minutes",
     "cudnn_autotune",
+    "futility",
 )
 
 
@@ -451,6 +457,7 @@ def resolve(config: Config) -> Config:
         "live_every",
         "retire_games",
         "gate_every",
+        "futility",
         "torch_threads",
         "ladder_promoted",
         "tactics_rounds",
@@ -759,7 +766,8 @@ def _segment(record: dict[str, Any]) -> dict[str, Any]:
         "changed": record.get("changed", {}),
         "start": at,
         "end": dict(at),
-        #: "budget" (its `end`), "stop" (its `stop`), "lost" (killed or crashed: the next
+        #: "budget" (its `end`), "futile" (its `end` before the budget, `[gate] futility`),
+        #: "stop" (its `stop`), "lost" (killed or crashed: the next
         #: segment found no record of its end), None (running).
         "ended": None,
         #: Its records after its last checkpoint, cut at the next segment's start.
