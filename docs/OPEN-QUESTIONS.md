@@ -157,6 +157,20 @@ own line), the original's behind `--bugs original` for the comparisons. **Recomm
 map's text is the map maker's message, and the other parts never overwrite it. Built as the
 original's meanwhile (T2a2). Blocks nothing.
 
+#### MCL-Q33 — The Arena's Cancel button gives +2 Attack (E24 M4 T2b1, a reading and a recording)
+
+The Arena's choice (`visit_arena` 0x49E7D0, E24 design §5.4) is a box of style 10: its two
+pictures, +2 Attack and +2 Defense, an OK enabled once one is chosen, and a Cancel. Every answer
+but Defense's frame (0x780A) gives Attack, the Cancel's too (recorded: `choose-arena-cancel`, the
+status window's Attack 1 to 3), so the Cancel cancels nothing; the Schools' box of the same style
+lets the Cancel leave without paying. The engine has the Arena's choice without a way to leave
+(`h3_adventure::ChoiceKind::Primary`, `leave` false), so a record never holds it; it matters when
+the client plays (M5). Options: (a) the original's: a Cancel that gives Attack; (b) the client's
+Arena box has no Cancel (the OK alone, enabled once a picture is chosen), the original's behind
+`--bugs original` for the comparisons; (c) the Cancel shown but disabled. **Recommended (b)**: a
+button that says Cancel and grants a skill misleads, and the engine offers no leaving. The viewer
+plays the original's meanwhile (T2b2). Blocks nothing.
+
 ### Town lane (`TWN-Q<n>`)
 
 (no open questions)

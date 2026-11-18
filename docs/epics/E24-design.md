@@ -3237,3 +3237,105 @@ two boxes: the client lane's reading of `scenario_condition_met` 0x4F2CE0 (E27 d
   `sequences.toml`, `to-record.toml` removed; `drawn` the 50 situations and 55 earlier sequences
   the same, then `--record`; the window under Xvfb (`--check 10`) on `find-pile` (62 of 62
   frames read back exact, its dissolve's frames among them) and `find-windmill` (54 of 54).
+
+### 5.4 The questions and choices (M4 T2b1)
+
+Read (T2b cut in two by the user at its start, 2026-11-18, as T2a: T2b1 this reading and the
+recordings, T2b2 the viewer): `message_box` 0x4F6570's arguments again, `message_box_build`
+0x4F6990's choice frames and "or", `dialog_default_proc` 0x4F0FC0's choice, and every question's and
+choice's box in the handlers the engine's offers and choices copy (each handler's human path; the
+computer's answers not followed): `monster_visit_decision` 0x4A7740, `monster_join_free` 0x4A7000,
+`monster_join_for_gold` 0x4A7250, `monster_flee_offer` 0x4A6DF0, `visit_object` 0x4A84F0's Border
+Guard (0x4A8734) and Cartographer (0x4A8A14), `visit_guarded_resource` 0x4A4BE0,
+`visit_guarded_artifact` 0x49EEB0, `visit_mine` 0x4A39F0, `visit_creature_bank` 0x4A15D0,
+`visit_search_bank` 0x4AC440, `visit_tree_of_knowledge` 0x4A6710, `visit_warriors_tomb` 0x4A7C30,
+`visit_pandora_box` 0x4A0C50, `visit_pyramid` 0x4A4230, `visit_dwelling` 0x4A1950, `visit_arena`
+0x49E7D0, `chest_gold_or_experience` 0x4A6440, `visit_school_of_magic` 0x4A33E0
+(`visit_school_of_war` 0x4A7A40 the same code). `visit_guarded_scroll` 0x4A5AB0 and
+`visit_refugee_camp` 0x4A4600 read for their boxes, not recorded (the pile's and the hire's paths).
+Recorded by the harness (the sequences in `clients/map/to-record.toml`, the situations `seq-ask-*`
+and `seq-choose-*`).
+
+- **The box's arguments** (`message_box`, read again at 0x4F661D to 0x4F669D): on the stack x, y,
+  the first picture (type, subtype), the second, then the "or" flag (the record's +0x298) and the
+  network timeout (+0x29C), and only then the third picture. E17 had the third picture before the
+  flag and the timeout, as H3API's parameter list does; no box E17 or T2a built passed a third
+  picture or the flag, so nothing built changes. Every question here is centred (x = y = −1).
+- **The styles** (`message_box_build`; E17 design §7.19's buttons): **2**, a question, OK 0x7805
+  (Enter) and Cancel 0x7806 (Escape), every Yes/No below; **7**, the pictures to choose and an OK
+  0x7802 (Enter), disabled until one is chosen (0x4F7083; the chest); **10**, the same with a Cancel
+  0x7801 (Escape) beside it (the OK's disabling at 0x4F6F2E; the Arena, the Schools). A disabled OK
+  takes no key: Enter does nothing (recorded, `choose-chest` at 600). Every picture has a frame item
+  one pixel out, hidden (0x4F72C9 to 0x4F7368: an H3DlgFrame at the picture's place less 1, its size
+  + 2, the game palette's entry 59, flags 0x400, id 0x7809 + its slot; its vtable then
+  `choice_frame_vtable` 0x63FE1C, whose right-click is a popup by the picture's type,
+  `choice_frame_popup` 0x4F0B20, not read further). The "or" flag puts GENRLTXT 5 between the
+  pictures (0x4F737D to 0x4F7461: a medfont text item centred on the box, one font height above the
+  first picture's caption).
+- **A choice** (`dialog_default_proc`, styles 7 and 10 alone): a command from frame 0x7809 shows it
+  and hides 0x780A (`dialog_item_send` (5, 4) and (6, 4)), enables the OK, sets `message_box_chosen`
+  0x6993D4 to its id and redraws the dialog whole; 0x780A the same the other way; the OK, enabled
+  only then, closes the box with `message_box_chosen` (−1 while nothing is chosen: 0x4F6A9C, the
+  earlier value back at the build's end, 0x4F7577). Only two frames are handled: a third picture
+  could not be chosen (no choice of the game has three).
+- **The questions** (style 2, no picture unless named; the answer's id read by each handler;
+  ADVEVENT's records unless named; T2a's picture types, §5.3):
+
+  | Offer (the engine's `OfferKind`) | Its box | Yes | No |
+  |---|---|---|---|
+  | A monster's join, free (`Join`) | 86 with the creature's plural (none above 150) | `army_add_stack` (else the army dialog, M5), the treasure, `status_window_choose` (1, 1, 1), the view drawn, the monster removed, `killfade.82M`, the view's middle dissolved (192, 160, 224 × 224, 65 ms) | at M = C: 87 (style 1), then the fight; else its flight (`Pursue`) unless it never flees |
+  | A monster's join for gold (`JoinForGold`) | one creature: 88 with the singular and the price; else 89 then 90 with the count, the plural and the price; one picture, gold (6) the price | paid, then as a free join | as a free join's |
+  | A monster's flight (`Pursue`) | 91 with the plural | the fight (T5's) | removed without its treasure: `killfade.82M`, the dissolve |
+  | A Border Guard's passage (`Pass`), its key held (game +0x4E364 by the subclass) | 17 | the view drawn, removed, `hero_loss_effect` (1): a pickup sound and the dissolve | nothing |
+  | A Cartographer's (`Reveal`), not visited by the player (+0x4E372) and 1 000 gold held | 25, 26, 27 by the subclass (sea, land, underground) | 1 000 gold paid, `reveal_terrain_mask`, the mark, then `visit_object`'s common end (0x4A9AD3; recorded: the view and the minimap drawn again) | nothing |
+  | A guarded pile's, scroll's (`Fight`) | the map's text (a scroll's or a pile's guards without one fight at once) | the battle | nothing |
+  | A guarded artifact's (`Fight`) | the map's text, else GENRLTXT 421 with the guards' size word and their names twice (several stacks: ", " and GENRLTXT 142 between them) | the battle | nothing |
+  | A guarded mine's (`Fight`) | 84 when neutral (an abandoned mine's Troglodytes), 187 when another player's | the battle | nothing |
+  | A creature bank's, attack kind (`Fight`) | 32 with its kind's name; a looted one 33 (style 1) instead | `bank_battle_reward` | nothing |
+  | A search kind's (`Search`) | its first text: 41 (Derelict Ship), 119 (Crypt), 122 (Shipwreck), looted or not | its second (looted) or its battle | nothing |
+  | The Warrior's Tomb's (`Search`) | 161 | 162 with the artifact (8), or 163 with three pictures of type 16 (no caption); the mark and −3 morale | nothing |
+  | The Tree of Knowledge's price (`Gift`) | 149 (2 000 gold) or 151 (ten gems), one picture, experience (17) −1 ("+1 Level", GENRLTXT 443); free: 148 (style 1); visited 147; too poor 150 or 152 (style 1) | paid, the experience, `hero_level_up` (T2c's) | nothing |
+  | Pandora's Box (`OpenBox`) | the map's text first when it has one (style 1), then 14 | guards: 16 (style 1), the battle; else `grant_rewards` without the text (§5.3; nothing: 15), removed, a pickup sound, the dissolve | nothing |
+  | The Pyramid (`SearchPyramid`) | 105, at every visit | looted: 107 with two pictures of type 13 (−2 luck); else the battle | nothing |
+  | A dwelling's guards (`Guarded`) | GENRLTXT 422 with the dwelling's name, the size word of the guards' total and the first slot's creature | the battle | nothing |
+  | A dwelling's hire (`Hire`) | 35 (36 for class 20's four) with the dwelling's name and the creature's plural; a camp 112 | its own: each level-1 creature joins free, told in one box of GENRLTXT 424 lines (423 none, 426 no room); else the recruit dialog (M5) | nothing |
+
+  Before most questions the handler asks the status window again (`status_window_choose` (0, 1,
+  1): the pile's, artifact's, mine's, bank's, dwelling's, Pyramid's, the Schools'); the monster's
+  question comes after its own message, if the map gives one (style 1).
+- **The choices:**
+
+  | Choice (the engine's `ChoiceKind`) | Its box | The answers |
+  |---|---|---|
+  | A chest's (`Chest`): bit 10 clear, its gold | `status_window_set_kind` (0, −1), `status_window_choose` (0, 1, 1); style 7, 146, gold (6, the gold) or experience (17, (gold − 500) × Learning), "or" | 0x7809 the gold; anything else (0x780A) the experience; then removed with a pickup sound and the dissolve, `hero_level_up` |
+  | The Arena's (`Primary`, no leave) | `status_window_choose` (0, 1, 1); style 10, ADVEVENT 0, +2 Attack (31, 2) or +2 Defense (32, 2) | 0x780A Defense; anything else (0x7809, and the Cancel) Attack; the mark |
+  | A School's (`Primary`, leave) | visited 72 (Magic) or 159 (War), style 1; else the team's mark, then too poor 73 or 160 (style 1); else `status_window_choose` (0, 1, 1), style 10, 71 (Magic: +1 Spell Power (33, 1) or +1 Knowledge (34, 1)) or 158 (War: +1 Attack (31, 1) or +1 Defense (32, 1)) | the Cancel 0x7801 neither, unpaid and unmarked; 0x780A the second; anything else the first; then 1 000 gold paid and the hero's bit |
+- **The oddity** (MCL-Q33): the Arena's Cancel gives +2 Attack (every answer but 0x780A), where the
+  Schools' Cancel leaves; recorded (`choose-arena-cancel`: the status window's Attack 1 to 3). The
+  engine has no leaving there (`ChoiceKind::Primary`'s `leave` false); the viewer plays the
+  original's meanwhile. (The engine's `Choice::default_pick` comment calls the chest's gold the
+  original's plain OK: the original has no OK without a choice; the system actor's default is the
+  engine's own, nothing to fix there.)
+- **The harness** (common, additive; the runbook's "The questions and choices"): the `[[message]]`
+  table's `style`, `chosen` and `marks` (each button's and choice frame's place and state: a choice
+  or a button's state changed appends a table); the situations' monster bodies, guards and Pandora's
+  rewards (`h3_map_view::situation`'s `MonsterSpec`, `GuardsSpec`), the visits' words the load draws
+  (`aggression`, a chest's `gold`, a Tree's `price`: `Mem.write_fields`) and a hero's `diplomacy`
+  (`Mem.write_diplomacy`), a unit test.
+- **Recorded** (each twice, the second run `ok`, the frame at 0 exact; the situations `seq-ask-*`,
+  `seq-choose-*`: Red's hero on (5, 5) steps up onto the entrance (5, 4), a monster or a pickup
+  visited from beside): `ask-join` (46 timeline lines, 17 screens kept), `ask-join-no` (51, 19: the
+  flight's box after the join's), `ask-join-gold` (46, 17), `ask-guard` (46, 17), `ask-cartographer`
+  (40, 10), `ask-tomb` (36, 9), `ask-pandora` (48, 18), `ask-hire` (36, 9: "14 Pikemen join"), the
+  declined `ask-pile`, `-artifact`, `-mine`, `-bank`, `-crypt`, `-tree`, `-pyramid`,
+  `-dwelling-guards` (31, 7 each), `choose-chest` (57, 21: Enter ignored, the gold chosen, then the
+  experience, Enter), `choose-chest-gold` (52, 19), `choose-arena` and `choose-school` (36, 9: the
+  second picture by a click, Enter), `choose-arena-cancel` and `choose-school-leave` (31, 7:
+  Escape). Every box's texts, pictures, style and buttons as read; the join for gold's offer as 89
+  then 90 (five Pikemen, 300 gold), the guarded artifact's as GENRLTXT 421 (a pack of ten Pikemen),
+  the Tomb's find an artifact (162), Pandora's gold box `grant_rewards`' (§5.3). What T2b2 builds
+  from them: style 2's two buttons and style 7's and 10's choice frames, their selection by a click
+  (the frame shown and the OK enabled at once; 19 to 23 ms later the cursor drawn back at the click
+  and a few pixels at x = 709, not read), the answers' ends (the dissolve after a join, a flight, a
+  Border Guard, a chest and Pandora's Box; the reveal; the joining army and the skills in the status
+  window).

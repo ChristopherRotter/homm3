@@ -1333,6 +1333,21 @@ Witch Hut's `skills` (one drawn), an event's `rewards` (a table: `experience`, `
 it reaches given at the start). T2a1's eleven (`find-*`, `turn-no-town`) waited in
 `map/to-record.toml` until T2a2 moved them into `sequences.toml` (the file removed).
 
+**The questions and choices** (E24 M4 T2b1, design §5.4): a `[[message]]` table also holds the
+box's `style` (`message_box_style` 0x699520), the picture `chosen` in styles 7 and 10
+(`message_box_chosen` 0x6993D4: 0x7809 or 0x780A, −1 none) and its `marks`, each button's and
+choice frame's `[id, x, y, width, height, state]` as the dialog's items hold them (a click's
+place: a frame's middle); a choice made or a button's state changed (a key held on it, the OK
+enabled) appends a table of its own. A situation's object may also carry a monster's body
+(`monster = { count, disposition, never_flees }`, class 54), a pile's or an artifact's `guards`
+(`{ army = [[creature, count], ...], text = "..." }`: our own words; none, the game's own
+question for an artifact and a fight at once for a pile) and Pandora's Box's `rewards`; a
+`visits` entry the words the map's load draws (`Mem.write_fields`, written before the visit
+marks): a monster's `aggression` (−16 to 15), a chest's `gold` (500 to 7 500 in 500s, as gold)
+and a Tree of Knowledge's `price` (0 free, 1 gold, 2 gems); a hero its `diplomacy` (0 to 3, the
+level alone, `Mem.write_diplomacy`: a monster's offer to join for gold). T2b1's sequences
+(`ask-*`, `choose-*`) wait in `map/to-record.toml` until T2b2 has the viewer play them.
+
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
 <out>/<id>/live.toml`: the map's timeline from the situation, this run's live part at 0 and the
