@@ -2970,8 +2970,8 @@ A new game (0x5823FF): the colour's human record, else its computer record; with
 the colour with neither flag nor a main hero: no popup. Then with the hero −1 and none shown
 (−1): Random's popup (`scenario_info_popup`: GENRLTXT 102, `hpsrand1.pcx`, 523, 103; the small
 popup of §23.4). Else the hero's type (no flag: the main hero's, else the list's) and its popup
-(`scenario_hero_popup` with the portrait, the name, `hero_class_name` 0x4D8F70 and 0x4D7220's
-text: T3b2). So a None over a main hero of its type's portrait gives Random's popup (CLT-Q112's
+(`scenario_hero_popup` with the portrait, the name, `hero_class_name` 0x4D8F70 and
+`hero_specialty_text` 0x4D7220: T3b2). So a None over a main hero of its type's portrait gives Random's popup (CLT-Q112's
 recording, `map-2-computer-hero-popup`); with CLT-Q141 (b) the client shows that hero, and a None
 (no hero at all) gives none.
 

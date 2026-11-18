@@ -776,6 +776,10 @@ fn the_items_and_names_of_every_colour() {
     };
     advanced.show(&map, &mut dialog, &mut shown);
     assert!(!advanced.click(PLAYER, &map, &mut shown));
+    // A hero's arrow of a colour no human record holds (its arrows hidden): no list, no step
+    // (`scenario_dialog_click` 0x586A93).
+    assert!(advanced.click(HERO_RIGHT + 1, &map, &mut shown));
+    assert_eq!(advanced.record(1).hero, None);
     assert_eq!(advanced.popup(PLAYER, &map), None);
     assert_eq!(shown.state(HANDICAP), State::default());
 }

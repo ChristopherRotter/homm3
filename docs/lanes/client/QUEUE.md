@@ -19,8 +19,9 @@ CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- g
 
 T3b2 A hero's own popup of a single player's advanced options (decision 54; the epic's M3 table;
 design §3.15, §24.3): `scenario_hero_popup` 0x575A90 read whole (320 × 256 at (250, 172): the name
-in `medfont.fnt`, the portrait, "%s - %s" of `hero_class_name` 0x4D8F70 and 0x4D7220's text (not
-read: the class and level), GENRLTXT 78 and 79's headings, the specialty's picture and text), its
+in `medfont.fnt`, the portrait, "%s - %s" (not read; its arguments include `hero_class_name`
+0x4D8F70 and `hero_specialty_text` 0x4D7220), GENRLTXT 78 and 79's headings, the specialty's
+picture and text), its
 texts into the catalogue and its pictures into the asset tables; the popup over a hero the row
 shows (a main hero's, CLT-Q141 (b) included; a pick's). Exact against `adv-single-hero`
 (`hero-popup-1`, `hero-popup-last`) and `adv-single-maps` (`map-0-hero-popup`, `map-2-hero-popup`):
