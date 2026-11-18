@@ -13,7 +13,7 @@ commands = [
 ]
 checkpoints = [
     "0x039ebd8f41651e54",
-    "0x125628472deb07b5",
+    "0x6440af93e33fda38",
 ]
 
 [replay]
@@ -54,4 +54,4 @@ import_version = 25
 
 [result]
 day = 3
-final_hash = "0x7722563fd53348e7"
+final_hash = "0x703e77df13326ac6"

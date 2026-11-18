@@ -2321,6 +2321,36 @@ as now, the owner's slot changes. `ADV-STUB-9` stays E10's whole: the Tavern fac
 facts is `has_tavern` over the owner's towns other than the battle's, ready, but only a computer's
 hero reads the facts.
 
+*As built* (T38b1, decisions 145, 146; the dismissal's leave is T38b2's): `h3-game`'s
+`town/leave.rs` (new): `leave(state, rules, hero, how)` with `Leave::{Retreated, Surrendered(
+survivors), Gone}` over the `HeroOnMap` the adventure took off, and `after_battle` (the side that
+retreated or surrendered returns, every other is `Gone`; the owner's changed slots told by
+`tavern::tell` against the views before, only for a recording sink and only when a hero returns).
+The adventure hands the heroes back (`cross-lane`): `AdventureState::end_battle` returns the heroes
+that left in the order given (`Vec<HeroOnMap>`, as each stood before the end: the army it fought
+with, its formation, tactics flag and points; its marks gone, its boat freed), and
+`release_town_hero` and `end_town_hero_battle` the garrison hero (`Option<HeroOnMap>`). The game's
+`end_battle` composes the leave **last, after the winner's levels** (the original's leave call
+0x4AE6D5 after its levels 0x4AE324), `free_hero_types` removed; the capture's empty garrison hero
+leaves `Gone`. The pool's writes `HeroPool::leave` (the type free, the away record) and
+`return_to` (the slot's hero free, the type offered and held, the mark set, the away record). A
+`Gone` leave: one creature (`leave::one_creature`, the replacement's too), the record's spell
+points written only when not full, the points `h3_adventure::day_points` over `&[]` with
+`LEAVE_POINTS_OVER_CLEARED_ARMY` (an empty army counts as the fastest: the table's most, which the
+original's speed 20 reaches in every pack's table) else over the one creature, `stale` off and
+`full` on (a free type is no slot's: every draw sets `stale` again, and a replacement keeps these
+points until its owner's turn start, so T-16 shows only for a replacement hired at once). A
+return: the slot `range_inclusive(0, 1)` from the owner's stream, the marked slot's other; the
+army the survivors (one creature when none: decision 146), the points kept and `stale` on, `full`
+by the record's spell points. A hero that is not its type's record becomes it as it leaves unless
+the type is offered (decision 146: the town tests' setups place two heroes of type 0). Point 5
+built in the replacement (`hire::replace`: a new record's away points the land maximum of its one
+creature). Tests: `town/tests/hire/leave.rs` (four: a loss under both settings of the flag, a draw
+and a created-stacks winner, a retreat with its slot, view, turn start and rehire, a surrender
+with the marks and without survivors), the capture's in `rows.rs`; the plans' battle oracle
+(`h3-map`'s `check_heroes_after_battle`) taught the untold refill of a hero that leaves without
+returning.
+
 ### 68. The tavern heroes over a turn (TWN-TAV-005; ADV-MOV-002's derivation; `next_player_turn` 0x4C6FE0)
 
 - **At its owner's turn start**, after the player's heroes on the map and before its garrison

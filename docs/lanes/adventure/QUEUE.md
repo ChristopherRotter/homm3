@@ -24,6 +24,18 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-18 (the town lane, E09 T38b1, `town/e09-t38b1`, `cross-lane` with the user's consent;
+  **your paths changed, for your review**): `AdventureState::end_battle` returns the heroes that
+  left the map (`Vec<HeroOnMap>`, in the order given, as each stood before the end: the army it
+  fought with, its formation, tactics flag and points; its marks gone, its boat freed), and
+  `release_town_hero` the garrison hero it took (`Option<HeroOnMap>`); `h3-game`'s `end_battle`
+  hands them to the town lane's `town::leave::after_battle` **last, after the winner's levels**
+  (TWN-TAV-006: a retreated or surrendered hero back into its owner's tavern, its slot drawn
+  from its owner's stream, `TavernOffered` told last; every other's type free with one creature
+  and its spell points full, untold); `GameState::free_hero_types` is gone. A new way off the map
+  (E09 T38b2's dismissal) goes through `town::leave::leave`. The plans' battle oracle
+  (`check_heroes_after_battle`) lets a hero that leaves without returning end at its full spell
+  points. Golden replays re-recorded (the battles' leaves moved their hashes); no version moved.
 - 2026-11-18 (the town lane, E09 T38a2, `town/e09-t38a2`, `cross-lane` with the user's consent;
   **your paths changed, for your review**): `h3_game::legal_commands` lists each own town's hires
   after its recruitments (TWN-TAV-003) and now folds its chain into a list sized 16 (`for_each`,

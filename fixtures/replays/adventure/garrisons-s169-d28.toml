@@ -778,12 +778,12 @@ checkpoints = [
     "0x89ca7161acbfefdb",
     "0x571b9275958c532b",
     "0x6a6825ebee100af0",
-    "0xd6d4dfd36ceb3ec2",
-    "0x23a5f63066de88bb",
-    "0xe94fe817dc191b22",
-    "0x47f7916674dc280a",
-    "0x6435785ecb350087",
-    "0x35628fa42c0c83ab",
+    "0x417dccc79fac1e8d",
+    "0x09b46bd236db5078",
+    "0x454e13ef1a65d51a",
+    "0xf7f65c35ddd8c75e",
+    "0x6431ff966fe55190",
+    "0xbeb756f54dfb7c70",
 ]
 
 [replay]
