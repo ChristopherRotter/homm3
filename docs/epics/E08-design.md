@@ -628,6 +628,36 @@ on columns 96 to 143, the 106 in the census's shares, fourteen coast Shipwrecks 
 island beyond it, a flyer of each player in front of one. The properties, the three workloads
 and `--with-original-data` are T125b2's.
 
+*As built* (T125b2a, `adventure/e08-t125b2a`; decision 358: T125b2 in two, the properties
+first): **the plans** (`h3-map`'s `play.rs`): `KINDS` 122 to 132 (`BANKS`, `BANK_OBJECTS`): the
+nine on land with the original's templates (`banks.rs`' `LAND_BANKS`, the Crypt's first picture),
+the Derelict Ship and the Shipwreck one tile each (the Derelict Ship's two columns would close the
+narrowest strait, as the Whirlpool's three); `Plan::banks` (`Banks`, drawn last after the bonus
+visitables, in two plans of three: one to three on land near the heroes, up to two of the sea's on
+a strait, the coast's column in two cases of three; 20 to 80 Archangels for the first land bank's
+hero in three cases of four), laid out with the bonus visitables. `Step::Bank` (`seek_bank`: the
+bank's question accepted, declined in one of four; a revisit; a move onto or toward an entrance,
+the Shipwreck's from a boat or the coast; the banks not looted first in three steps of four, as a
+looted coast Shipwreck asks again and again at no points' cost), runs of 16 to 95 in `steps()`.
+**The oracles:** `check_banks` (the draw unchanged, the guards but by a battle at the bank, never
+removed; looted only by a won battle's command, its winner's level-up answer or a yes without
+guards, then exactly the level's resources, the drawn artifacts the hero can receive, the
+creature joined or held, nothing else, no level after the reward's first event);
+`check_bank_answer` (`check_decisions`' arm: the team marked, a looted one told and its search's
+once-bonus, else the battle at once at its entrance, unowned, the two armies by slot at the bank
+positions, no obstacle, no tactics phase, no war machine); `check_bank_battle_end`
+(`check_unowned_battle_end`'s arm); the old oracles met (`landing`'s mark and hint,
+`check_sea_move`'s coast entrance, `check_decisions`' question and looted emptiness,
+`check_conservation`'s loot outside a battle, `check_heroes_after_battle`'s drawn artifacts).
+**The views** (`view.rs`): `check_bank_views` in the told-views property (the mark and the hint
+only as told, the hint only with the mark and never with the army); the hygiene property's
+comparison blind to a bank's hint at the viewer's own mark (the guards' word drawn from the seed).
+The cover test `the_plans_visit_and_fight_the_banks` (512 fixed cases): every kind laid out and
+asked, both answers, the coast and the boat, revisits, the hints at marks and at battles' ends,
+battles on land and on the deck, won and lost, the reward after the battle and after the level-up,
+the creature joined and held, artifacts, a looted search's once-bonus and a mark already held. No
+engine fault; no version moved. The benchmarks and `--with-original-data` are T125b2b's.
+
 ### 18. Versions, rule ids, quirks, stubs
 
 | Version | From | To | By |
