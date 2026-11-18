@@ -906,7 +906,8 @@ impl Advanced {
         players: &str,
     ) -> Option<([i32; 4], Vec<Draw>)> {
         let c = self.pasted?;
-        let row = self.rows[usize::from(c)]?;
+        // (A pasted colour has its row: the hiding takes the paste back first.)
+        let row = self.rows[usize::from(c)].unwrap_or_default();
         let look = &self.texts.look;
         let [px, py] = dialog.place;
         let [bx, by] = look.panel_at;

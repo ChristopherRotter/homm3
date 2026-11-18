@@ -126,6 +126,15 @@ fn a_flag_moves_only_to_a_colour_a_human_may_play() {
     advanced.show(&map, &mut dialog, &mut shown);
     advanced.flag_click(2, &map, &mut shown);
     assert_eq!(advanced.record(0).colour, Some(0));
+    // A single player holding no colour takes the one pressed (no old flag to clear).
+    let mut free = Advanced::new(advanced_texts(), Bugs::Fixed);
+    let unheld = Map {
+        local: None,
+        ..map.clone()
+    };
+    free.show(&unheld, &mut dialog, &mut shown);
+    free.flag_click(0, &unheld, &mut shown);
+    assert_eq!(free.record(0).colour, Some(0));
     // Neither shown nor without an edit, a name opens nothing and closes nothing; no edit takes
     // a key.
     let mut hidden = Advanced::new(advanced_texts(), Bugs::Fixed);
@@ -239,4 +248,14 @@ fn the_name_s_edit_types_through_the_text_input_in_the_client_s_profile() {
     click(&mut s, [110, 138]);
     s.key(None, Some(Command::Dialog(BACK)), "Escape");
     assert!(s.key_up("Escape").ended.is_some());
+}
+
+#[test]
+fn over_no_map_a_flag_s_press_moves_no_screen_flag() {
+    // The options shown over no map (no row, no flag to press): a flag's click changes no record
+    // and no screen flag.
+    let mut s = with_options(Vec::new());
+    assert!(click(&mut s, [514, 519]));
+    assert!(s.advanced_click(FLAG));
+    assert_eq!(s.records().unwrap(), [Record::NEW; 8]);
 }
