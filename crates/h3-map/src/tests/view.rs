@@ -959,6 +959,92 @@ fn check_garrison_moves(
     Ok(())
 }
 
+/// What `viewer` is shown of the creature banks from `before` to `after` given what it is `told`
+/// (E08 T125b2a; ADV-BNK-006, ADV-VIS-006; increment 13's design note §10, §16): a bank's mark
+/// (`visited`) is never lost and set only as told (`ObjectMarked`); its hint (`guards`) only with
+/// the mark and never with the army, changed only as told (`GuardsChanged`: the creature and the
+/// word, none when no word, looted or with none standing), the last told shown.
+fn check_bank_views(
+    rules: &GameRuleset,
+    viewer: PlayerId,
+    (before, after): (&GameObservation, &GameObservation),
+    told: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let part = rules.adventure();
+    let bank = |o: &ObjectView| {
+        matches!(
+            part.object_type(o.object_type).map(|t| &t.kind),
+            Some(ObjectKind::Bank(_))
+        )
+    };
+    let named = |o: &ObjectView| (o.object_type, o.anchor);
+    for now in after.adventure.objects.iter().filter(|o| bank(o)) {
+        prop_assert!(
+            now.guards.is_none() || now.visited,
+            "{:?}'s hint unmarked for {:?}",
+            named(now),
+            viewer
+        );
+        prop_assert!(
+            now.guards.as_ref().is_none_or(|g| g.army.is_none()),
+            "{:?}",
+            now
+        );
+        let marked = told.iter().any(|e| {
+            matches!(
+                *e,
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::ObjectMarked { object_type, anchor },
+                    ..
+                }) if (object_type, anchor) == named(now)
+            )
+        });
+        let hint = told.iter().rev().find_map(|e| match *e {
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::GuardsChanged {
+                        object_type,
+                        anchor,
+                        creature,
+                        count_word,
+                    },
+                ..
+            }) if (object_type, anchor) == named(now) => {
+                Some(count_word.map(|count_word| GuardsView {
+                    creature,
+                    count_word,
+                    army: None,
+                }))
+            }
+            _ => None,
+        });
+        let was = before
+            .adventure
+            .objects
+            .iter()
+            .find(|o| named(o) == named(now));
+        if let Some(was) = was {
+            prop_assert!(!was.visited || now.visited, "{:?} unmarked", named(now));
+            prop_assert_eq!(
+                now.visited,
+                was.visited || marked,
+                "{:?} for {:?}",
+                named(now),
+                viewer
+            );
+            prop_assert_eq!(
+                &now.guards,
+                hint.as_ref().unwrap_or(&was.guards),
+                "{:?}",
+                told
+            );
+        } else if let Some(hint) = &hint {
+            prop_assert_eq!(&now.guards, hint, "{:?}", told);
+        }
+    }
+    Ok(())
+}
+
 /// What a viewer is shown of the teleporters (E08 T106b2; increment 11's design note §10): each
 /// kind is public where the viewer sees it, so its type (a monolith's channel, the picture's
 /// colour) and its own tiles, and nothing else: no owner, guards, mark or tile of another object,
@@ -2895,7 +2981,11 @@ proptest! {
     /// player's jump to an exit the viewer sees in neither game goes on ([`outcome`]), the viewer
     /// told its entrance alone or nothing in both; the viewer's own visit of a teleporter shows
     /// it the exit drawn, which ends the comparison when the two games' differ (below); and every
-    /// step checks what it is told of the jumps in both games ([`check_jump_ends`]).
+    /// step checks what it is told of the jumps in both games ([`check_jump_ends`]). Since E08
+    /// T125b2a the plans hold creature banks, whose draws (their levels, guards and artifacts, from
+    /// the seed: ADV-BNK-002) the viewer never sees but by its team's mark (ADV-BNK-006): the hint
+    /// its own visit or yes tells it ends the comparison as a visit's contents do, its battle as
+    /// any battle, and another player's bank battle must go alike in both games ([`outcome`]).
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in hygienic(),
@@ -3147,7 +3237,9 @@ proptest! {
                 // which the build drew from the seed (ADV-BON-003; the other game's differs), and
                 // whether a Magic Spring's entrance was emptied, by a visit of another player's
                 // hero the viewer never saw, in one game alone (ADV-BON-007: nothing told, or the
-                // spell points, a hero's change).
+                // spell points, a hero's change); (E08 T125b2a) a creature bank's hint told at its
+                // mark, the creature and word of its guards, which the build drew from the seed
+                // (ADV-BNK-002, ADV-BNK-006; the other game's differ).
                 let drawn = |e: &GameEvent| match *e {
                     GameEvent::Adventure(AdventureEvent {
                         kind: AdventureEventKind::OnceMarkChanged { bonus, .. },
@@ -3161,6 +3253,13 @@ proptest! {
                     }) => matches!(
                         rules.adventure().object_type(object_type).map(|t| &t.kind),
                         Some(ObjectKind::MagicSpring)
+                    ),
+                    GameEvent::Adventure(AdventureEvent {
+                        kind: AdventureEventKind::GuardsChanged { object_type, .. },
+                        ..
+                    }) => matches!(
+                        rules.adventure().object_type(object_type).map(|t| &t.kind),
+                        Some(ObjectKind::Bank(_))
                     ),
                     _ => false,
                 };
@@ -3238,7 +3337,8 @@ proptest! {
     /// T9b2a) on the plans' towns, and what each is shown of them ([`check_town_views`]); (E08
     /// T106b2) on the plans' teleporters, what each is told of the jumps ([`check_jump_ends`]) and
     /// shown of the teleporters ([`check_teleporter_views`]); (E09 T31) and of the garrison moves
-    /// ([`check_garrison_moves`]).
+    /// ([`check_garrison_moves`]); (E08 T125b2a) and of the creature banks' marks and hints
+    /// ([`check_bank_views`]).
     #[test]
     fn views_move_as_the_events_say(
         plan in plan(),
@@ -3278,6 +3378,8 @@ proptest! {
                 check_teleporter_views(rules, &after)?;
                 // E09 T31: the garrison moves, by name only to a viewer that sees the garrison.
                 check_garrison_moves(player, &after, &events)?;
+                // E08 T125b2a: the creature banks' marks and hints, as told.
+                check_bank_views(rules, player, (view, &after), &told)?;
                 *view = after;
             }
         }
@@ -3455,6 +3557,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         towns: Vec::new(),
         garrisons: Vec::new(),
         bonuses: Vec::new(),
+        banks: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -3556,6 +3659,7 @@ fn vary_keeps_a_random_dwelling_whose_resolved_tiles_may_show() {
         towns: Vec::new(),
         garrisons: Vec::new(),
         bonuses: Vec::new(),
+        banks: Vec::new(),
     };
     let m = lay_out(&plan);
     let random = |m: &RawMap| -> Vec<(Spot, u32)> {
@@ -3632,6 +3736,7 @@ fn vary_keeps_a_shipyard_s_boat_tiles() {
         towns: Vec::new(),
         garrisons: Vec::new(),
         bonuses: Vec::new(),
+        banks: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -3714,6 +3819,7 @@ fn vary_changes_the_teleporters_the_viewer_never_sees_only() {
         towns: Vec::new(),
         garrisons: Vec::new(),
         bonuses: Vec::new(),
+        banks: Vec::new(),
     };
     let m = lay_out(&plan);
     let objects = |m: &RawMap| -> Vec<(u8, u8, u32)> {
@@ -3835,6 +3941,7 @@ fn vary_changes_the_towns_the_viewer_never_sees_only() {
         ],
         garrisons: Vec::new(),
         bonuses: Vec::new(),
+        banks: Vec::new(),
     };
     let m = lay_out(&plan);
     // Each town's anchor, owner, garrison and buildings.
@@ -3973,6 +4080,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         towns: Vec::new(),
         garrisons: Vec::new(),
         bonuses: Vec::new(),
+        banks: Vec::new(),
     };
     let m = lay_out(&plan);
     let red = PlayerId::new(0);
@@ -4047,6 +4155,7 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         towns: Vec::new(),
         garrisons: Vec::new(),
         bonuses: Vec::new(),
+        banks: Vec::new(),
     };
     let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
     let attack = GameCommand::Adventure(AdventureCommand::MoveHero {
