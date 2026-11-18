@@ -595,6 +595,31 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
   and `actions`; a battle's tactics phase ended at once in `fight` (its message's OK, then Start).
   The harness check gained Kit and Full (Blue's eight heroes): passed under Wine.
 
+### E24 M4 T2a — the finds told
+
+- **T2a, the finds told** (an OK alone): the adventure's message box with pictures
+  (`message_box_pictures` 0x4F7690, `message_with_pictures` 0x429110: up to eight, their
+  captions, the picture types the engine's finds give; its sounds, its place), the text through
+  the catalogue, for a find with nothing to answer (a pile with its message, a Campfire's or a
+  Windmill's resources, an artifact, an event's or a sign's text, a Learning Stone's experience);
+  the status window's kind 6 (a resource found, 0x451220, 5 seconds) and kind 7 (a text,
+  0x451820). The turn's boxes T1a left: the scenario's tests' "you have lost your last town" at a
+  turn's end with no town (the player's flag, picture type 10; its text starts with an empty
+  player name in the harness's game: whether a menu-started game names the player, read first)
+  and `player_turn_start`'s days left (ArrayTxt 128, 129; design §5.1). **Depends on:** T1a
+  (done: `h3_ui::message`, styles 1 and 2 without pictures). Cut again at its start (2026-11-17,
+  the fallback the user agreed with the cut): **T2a1**, the reading and the recordings
+  (`map-client/e24-m4-t2a`; design §5.3, the sequences in `clients/map/to-record.toml`), then
+  **T2a2**, the viewer: `h3_ui::message`'s pictures (the client lane's `h3_view::message`'s
+  `pictures` and its picture slots copied, as T1a did), the finds' boxes composed from their
+  facts (the map, the live part's entrance words and hero, the catalogue's records: ADVEVENT,
+  ARTEVENT, RANDSIGN, GENRLTXT, ArrayTxt), kind 6 and the pile's dissolve (an object taken: the
+  view drawn without it, `h3_render::Screen::dissolve_rect`), the turn's two boxes (CLT-Q100
+  (b): a single scenario's player named, the original's empty name behind `--bugs original`),
+  the sequences moved into `sequences.toml`. **Kind 7** (a text) is a network game's message
+  alone (`status_text_set` 0x416210): not M4's.
+- **Status:** done 2026-11-18 (T2a1 2026-11-17, the log's "M4 T2a1"; T2a2 whole, the user kept it uncut: the log's "M4 T2a2").
+
 ### E24 M4 T1b2 — a computer player's moves in sight, played by the viewer
 
 - **Scope:** T1b cut in two by the user at its start (2026-11-17); T1b1 read and recorded it
