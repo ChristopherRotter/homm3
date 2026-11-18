@@ -138,6 +138,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   reads it refuses none; a melee entry's attack hex is `geometry.attack_hexes`, never a copy. Time
   a kind with `python -m h3env.train.network --time` (the sandbox's CPU is noisy: `--repeats
   30`), a bench's students side by side with `--bench`.
+- **A long run stops early** (the user, 2026-11-18, E25 T36: once its goal can evidently not
+  be met): its config sets `[gate] futility` (at least 1: the run ends `futile` after so many
+  gates in a row without a promotion) and `gate_every` at most a quarter of its `samples`, and
+  the rule stated before it runs names the check. A resume past it: `--set gate.futility=0`.
 - **A user's run over 2 hours must resume** (the user, 2026-11-05; no overnight runs): the
   trainer's `--resume`, the benches' since E25 T26a; a run that cannot resume is split into parts
   under 2 hours or not handed over.

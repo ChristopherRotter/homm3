@@ -4,6 +4,51 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E25 increment 8, T36** (moved 2026-11-18, done: `E25-log.md` T36; T36 and increment 8 closed):
+
+- **T36 — The long run and its checkpoint** (refined 2026-11-16, decision 4; the user's choice
+  at T35, of four offered: not #2's regime nor the anchor's at 40 M, about 37 and 42 hours, nor
+  E25 closed on #2): **`e25-anchor-1` resumed from 2 M to 20 M**, its config as built for 20 M
+  (`configs/e25-anchor.toml`: #2's settings with #2 for the fair actor as the imitation loss's
+  teacher: T27's clone, the loss 0.5 falling to 0 at 10 M, the rate 2.5e-4 annealed to its floor
+  1.25e-5 at 20 M, reward v1; T34 (b) at 2 M: #2's level, 0.496 ± 0.002 head to head, its
+  entropy 1.35). T35's read: the outcome's weight moves nothing, reward v1
+  stays. **Run** 2026-11-18 (`E25-log.md` T36: 20 M in 1 185 minutes; both gates rejected the
+  learner against its 2 M network, so `best.pt` is T34's): **the 20 M network's measures next**
+  (the commands below, on `checkpoint.pt`; the files uploaded with the record were T34's).
+  - **Its question:** does a taught run pass #2's plateau once the teacher's loss ends (T34 (b)
+    reached #2's level in 2 M, leaving 18 M; T33: PPO from #2 itself did not pass it).
+  - **The measures:** (a) the fixed head-to-head of the run's promoted network (`best.pt`)
+    against #2 (± 0.002); (b) its ladders (500 a kind): the report set against all five
+    opponents and the neutral set; (c) the update records (the teacher's agreement, the
+    entropy, KL, clip) beside #2's run at the same samples. If the run's last gate rejected its
+    learner, (a) and (b)'s system rows for `checkpoint.pt` too.
+  - **The rule, stated before it runs** (decision 1 of increment 8): against the faithful
+    (all-seeing) actor a win rate beyond its interval (the rate less its 95 % half-width above
+    0.5, about 0.519 at 500 a kind) and a positive value, decision 1's other parts kept (the
+    neutral set's value above +0.285, a win rate above 0.5 and a positive value against Random,
+    Aggressor and Greedy; the fair actor beside): **the aim met**, the network the current best,
+    E25's exit criteria checked at the checkpoint. Not met, but (a) above #2 by more than two
+    standard errors (at least 0.504): the current best, E25's next step at the checkpoint. Within
+    or below: #2 stays; the taught regime does not pass the plateau at 20 M; the checkpoint
+    decides between closing E25 on #2 and another lever (expert iteration in Rust, an exploiter
+    league).
+  - **Budget:** about 19 hours (T34 (b): 2 M in 129 minutes with the teacher, 260 samples a
+    second, to 10 M; then T33's 300 without it; the two gates at 10 M and 20 M; the measures
+    about 20 minutes). Parts under 2 hours: Ctrl-C, then the same `--resume` line (its `--set`
+    a no-op once applied).
+  - **The user's commands** (from `python/`; the run done; `best.pt` is T34's 2 M network,
+    measured, so these measure the 20 M one; any earlier `*-20m.json` may be overwritten):
+
+        uv run --group train python -m h3env.train.gate --candidate runs/e25-anchor-1/checkpoint.pt --best runs/e25-structure-1/best.pt --device cuda --fixed --json runs/e25-anchor-1/head-to-head-20m.json
+        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-anchor-1/checkpoint.pt --device cuda --json runs/e25-anchor-1/ladder-20m.json
+        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-anchor-1/checkpoint.pt --set neutral-v1 --device cuda --json runs/e25-anchor-1/neutral-20m.json
+
+    The upload: the three `*-20m.json` (the record and metrics are in; no network). **Acceptance:**
+    the record committed (`python/records/e25-anchor-1.json` replaced: the same run, its 20 M
+    segments), the measures under `python/records/anchor/` (`e25-anchor-1-*-20m.json`), the
+    read in `E25-log.md` T36, E25's next step agreed with the user.
+
 **E25 increment 8, T35** (moved 2026-11-16, done: `E25-log.md` T35; T35 closed):
 
 - **T35 — The probes' checkpoint** (the user, 2026-11-15; `E25-log.md` T35): of four offered

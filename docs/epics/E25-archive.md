@@ -1,7 +1,7 @@
 # E25 — archive: closed increments
 
 Moved out of `E25-battle-ai-v2.md` verbatim when an increment closes (increment 1 on
-2026-10-28, increment 2 on 2026-10-29, increments 3 and 4 on 2026-11-02, increment 5 on 2026-11-03, at their checkpoints), so that the epic file holds what
+2026-10-28, increment 2 on 2026-10-29, increments 3 and 4 on 2026-11-02, increment 5 on 2026-11-03, 6 on 2026-11-04, 7 on 2026-11-10, 8 on 2026-11-18, at their checkpoints), so that the epic file holds what
 is open and the decisions that apply to the whole epic. Each task's full record is in `E25-log.md` (grep its id).
 
 ## Increment 1 (closed 2026-10-28)
@@ -214,3 +214,45 @@ against the fair actor before any RL run.
 | T27 | The long clone of the best candidate, its ladder against decision 5's second gate | done 2026-11-06 (the gate passed: `hexconv` 0.809 agreement at 16 M against the MLP's 0.574, its ladder 0.481 ± 0.019 against the fair actor against 0.411; `records/distill/clone-3.json`; T19's tool 0.810 on its states, the casts 0.748 the one category below the MLP's) |
 | T28 | The A/B: PPO from T27's student with the imitation loss, against `e25-imitate-1` #2 | done 2026-11-10 (the structure wins: `e25-structure-1` #2 0.511 ± 0.019, +0.027 against the fair actor, 0.507 ± 0.019, +0.026 against the all-seeing one, the neutral set +0.302: exit criterion 1 met on its point estimates; 217 samples a second, 22 times the MLP's time; the GPU's memory capped at 90 % of the card; the head-to-head left to T29) |
 | T29 | The checkpoint: structure against the MLP (clone, RL, cost), the current best, increment 8 | done 2026-11-10 (`E25-log.md` T29, AI-Q17: the head-to-head 0.552 after 77 pairs; `e25-structure-1` #2 the current best; increment 8 probes, then one long run) |
+
+## Increment 8 (closed 2026-11-18)
+
+**Increment 8: probes, then one long run** (the user at T29, 2026-11-10, AI-Q17).
+`e25-structure-1` #2 meets exit criterion 1 on its point estimates, but its lead over the
+faithful actor (0.507 ± 0.019) lies inside its interval. Increment 8 analyses #2 and probes
+architectures, PPO's settings and training regimes at a small cost each before one long run,
+which aims at a margin beyond the interval.
+
+*Decisions* (the user, 2026-11-10, AI-Q17; the agent's details, change at a checkpoint):
+
+1. **The aim:** the long run's promoted network beats the faithful actor on the report set v1
+   beyond its interval (the final ladder, 500 a kind), decision 1's other parts kept. E25 stays
+   open until then, or until a checkpoint decides otherwise.
+2. **Analysis first** (the sandbox's CPU): where #2 wins and loses against the fair actor by kind
+   and side, beside the fair actor's own mirror on the same episodes; the temperature diagnostic
+   (T9a); where it leaves its teacher (T19's states by category). Its read ranks the probes.
+3. **The probes** (the user's GPU, about 20 hours in all, parts under 2 hours): **the update's
+   speed first** (a profile of PPO's passes, cuDNN's autotuner on fixed chunk shapes, the
+   epochs), then **architectures** on the cloning bench with its ladder (the clone's ladder
+   predicted PPO's endpoint at T22 and T28, +0.03 to +0.05 above it), **PPO's settings** by short
+   continuations from #2 (a few M samples each, judged by the gate against #2 and a ladder against
+   the fair actor), **training regimes** (#2 distilled into another network, a KL anchor to #2, a
+   search at play or expert iteration on ADR-0025 point 12a's worlds). Each probe's measure and
+   budget is stated before it runs; the agent's split about 1, 8, 8 and 3 hours, rebalanced at
+   T30's read.
+4. **The long run** follows the probes' checkpoint (T35): its start (#2 or a new clone), network,
+   settings and length are agreed there. **Agreed** (the user, 2026-11-16, T35): `e25-anchor-1`
+   resumed to 20 M (T27's clone, #2 the imitation loss's teacher to 10 M; reward v1).
+5. **Unchanged:** decision 1's evaluation; the fair actor the only system actor that teaches
+   (decision 3's KL anchor has #2 teach, T34), the faithful one training no agent (decision 2); observation v22 and action v13 (an encoding change only at a
+   checkpoint, on the analysis's evidence); fp32; the GPU's memory cap (T28).
+
+| Task | Scope | Status |
+|---|---|---|
+| T30 | The analysis of #2 (decision 2) | done 2026-11-10 (`E25-log.md` T30: the margin lies in the hero battles, where #2 keeps more army but wins as often; temperature 0.5 +0.011; it keeps the teacher's kind of action, not its hex; no encoding change asked) |
+| T31 | The update's speed: a profile on the user's GPU, then the change that pays | done 2026-11-10 (`E25-log.md` T31: cuDNN's autotuner in the update, `[ppo] accumulate` 4 and `chunk_align` 32 for `hexconv`: 958 to 649 µs a sample-pass, 98 to 67 s an update; `gpu.cap`'s card index fixed) |
+| T32 | Architecture probes on the cloning bench with its ladder, `hexconv` 96 × 6 the control | done 2026-11-15 (`E25-log.md` T32: at 4 M the control 0.752, 2e-3 0.760, 128 × 6 0.761, 64 × 10 0.753, the ladders 0.449 to 0.461 inside the control's interval: no arm leads by 0.02, so `hexconv` 96 × 6 stays and T35's long run starts from T27's 16 M clone) |
+| T33 | PPO's settings by short continuations from #2: the entropy bonus at 0, the imitation loss held at a small weight, then the learning rate and the epochs | done 2026-11-13 (`E25-log.md` T33: no arm gains; head to head against #2 the bonus at 0 0.494, a quarter of the rate 0.493, the loss held 0.478, that rate annealed to #2's floor 0.503, ± 0.002: #2 sits at this setup's plateau, so T35's long run starts from T32's best clone) |
+| T34 | Training regimes: the search at play with #2 (the sandbox's CPU) and the KL anchor to #2 (PPO from T27's clone, #2 the imitation loss's teacher) | done 2026-11-15 (`E25-log.md` T34: the search gains nothing on #2, 0.508 against 0.511 at N 16, +0.003 at N 64 on the hero battles; the anchor reaches #2's level in 2 M, 0.496 ± 0.002 head to head (−1.97 SE), 0.503 against the fair actor) |
+| T35 | The probes' checkpoint: the long run's start, network, settings and length | done 2026-11-16 (`E25-log.md` T35: the outcome's weight probed first, decision 6 amended; `e25-win-bonus-1`, T33's annealed arm with `win_bonus` 0.1, 0.5007 ± 0.0019 head to head against #2, the annealed arm's 0.5029: it moves nothing, reward v1 stays; the user: the long run is the anchor resumed to 20 M) |
+| T36 | The long run and its checkpoint | done 2026-11-18 (`E25-log.md` T36: `e25-anchor-1` resumed from 2 M to 20 M, #2 teaching T27's clone to 10 M; both gates rejected the learner against its 2 M network; at 20 M 0.511 ± 0.018 against the faithful actor, every row within 0.007 of #2's: the aim not met, #2 stays; the user: a long run stops early, `[gate] futility`; increment 9, a richer observation) |

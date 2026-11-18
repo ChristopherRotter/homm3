@@ -7,63 +7,30 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **E05** closed 2026-10-20, **E06** closed 2026-10-27 (`t7-1` the battle AI v1 and the baseline); their tasks' history and E06's closing numbers in `QUEUE-ARCHIVE.md`.
 
 **E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`): increments 1
-to 7 closed (`E25-archive.md`; increment 7, the structured network, 2026-11-10); **`e25-structure-1`
-#2 the current best** (AI-Q17, T29: 0.511 and 0.507 against the fair and the all-seeing system
-actor, the neutral set +0.302, 0.552 head to head against `e25-imitate-1` #2). **Increment 8,
-probes, then one long run** (refined at T29, 2026-11-10, AI-Q17; its decisions in the epic file;
-the probes about 20 hours of the user's GPU; **T30 done** 2026-11-10, the analysis of #2,
-`E25-log.md` T30; **T31 done** 2026-11-10, the update's speed, `E25-log.md` T31: 98 to 67 s an
-update; **T33 done** 2026-11-13, PPO's settings, `E25-log.md` T33: no continuation from #2 gains,
-the annealed one level at 0.503 ± 0.002, so #2 sits at this setup's plateau and T35's long run
-starts from T32's best clone; **T32 done** 2026-11-15, the architectures, `E25-log.md` T32: no arm
-leads the control by 0.02 (the best +0.009), so `hexconv` 96 × 6 stays and T35's long run starts
-from T27's 16 M clone, #2's start; **T34 done** 2026-11-15, the regimes, `E25-log.md` T34: the
-search at play gains nothing on #2 at N 16 or N 64, the KL anchor brings T27's clone to #2's level
-in 2 M, 0.496 ± 0.002 head to head; **T35 done** 2026-11-16, the probes' checkpoint, `E25-log.md`
-T35: the outcome's weight (`win_bonus` 0.1) moves nothing, 0.5007 ± 0.0019 head to head, reward
-v1 stays; **T36, the long run**: the anchor resumed to 20 M):
+to 8 closed (`E25-archive.md`; increment 8, probes, then one long run, 2026-11-18: no probe nor
+the long run passed #2, `E25-log.md` T30 to T36); **`e25-structure-1` #2 the current best**
+(AI-Q17, T29: 0.511 and 0.507 against the fair and the all-seeing system actor, the neutral set
++0.302). **A long run stops early** (the user, 2026-11-18, T36): `[gate] futility` at least 1,
+gates at least every quarter of the budget, the check named in its rule (`TRAPS.md`, Python).
+**Increment 9, a richer observation (v23)** (the user at T36, 2026-11-18, AI-Q18; its decisions,
+the agent's proposal, in the epic file; the user reviews the design at T37's end):
 
-- **T36 — The long run and its checkpoint** (refined 2026-11-16, decision 4; the user's choice
-  at T35, of four offered: not #2's regime nor the anchor's at 40 M, about 37 and 42 hours, nor
-  E25 closed on #2): **`e25-anchor-1` resumed from 2 M to 20 M**, its config as built for 20 M
-  (`configs/e25-anchor.toml`: #2's settings with #2 for the fair actor as the imitation loss's
-  teacher: T27's clone, the loss 0.5 falling to 0 at 10 M, the rate 2.5e-4 annealed to its floor
-  1.25e-5 at 20 M, reward v1; T34 (b) at 2 M: #2's level, 0.496 ± 0.002 head to head, its
-  entropy 1.35). T35's read: the outcome's weight moves nothing, reward v1
-  stays. **Prepared, the user's GPU next.**
-  - **Its question:** does a taught run pass #2's plateau once the teacher's loss ends (T34 (b)
-    reached #2's level in 2 M, leaving 18 M; T33: PPO from #2 itself did not pass it).
-  - **The measures:** (a) the fixed head-to-head of the run's promoted network (`best.pt`)
-    against #2 (± 0.002); (b) its ladders (500 a kind): the report set against all five
-    opponents and the neutral set; (c) the update records (the teacher's agreement, the
-    entropy, KL, clip) beside #2's run at the same samples. If the run's last gate rejected its
-    learner, (a) and (b)'s system rows for `checkpoint.pt` too.
-  - **The rule, stated before it runs** (decision 1 of increment 8): against the faithful
-    (all-seeing) actor a win rate beyond its interval (the rate less its 95 % half-width above
-    0.5, about 0.519 at 500 a kind) and a positive value, decision 1's other parts kept (the
-    neutral set's value above +0.285, a win rate above 0.5 and a positive value against Random,
-    Aggressor and Greedy; the fair actor beside): **the aim met**, the network the current best,
-    E25's exit criteria checked at the checkpoint. Not met, but (a) above #2 by more than two
-    standard errors (at least 0.504): the current best, E25's next step at the checkpoint. Within
-    or below: #2 stays; the taught regime does not pass the plateau at 20 M; the checkpoint
-    decides between closing E25 on #2 and another lever (expert iteration in Rust, an exploiter
-    league).
-  - **Budget:** about 19 hours (T34 (b): 2 M in 129 minutes with the teacher, 260 samples a
-    second, to 10 M; then T33's 300 without it; the two gates at 10 M and 20 M; the measures
-    about 20 minutes). Parts under 2 hours: Ctrl-C, then the same `--resume` line (its `--set`
-    a no-op once applied).
-  - **The user's commands** (from `python/`; the run's directory and #2's `best.pt` as T34
-    left them):
-
-        uv run --group train python -m h3env.train --resume runs/e25-anchor-1 --set samples=20_000_000
-        uv run --group train python -m h3env.train.gate --candidate runs/e25-anchor-1/best.pt --best runs/e25-structure-1/best.pt --device cuda --fixed --json runs/e25-anchor-1/head-to-head-20m.json
-        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-anchor-1/best.pt --device cuda --json runs/e25-anchor-1/ladder-20m.json
-        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-anchor-1/best.pt --set neutral-v1 --device cuda --json runs/e25-anchor-1/neutral-20m.json
-
-    The upload: `record.json`, `metrics.jsonl`, the three measures (no network). **Acceptance:**
-    the record committed (`python/records/e25-anchor-1.json` replaced: the same run, its 20 M
-    segments), the measures under `python/records/anchor/` (`e25-anchor-1-*-20m.json`), the
-    read in `E25-log.md` T36, E25's next step agreed with the user.
+- **T37 — v23's design** (increment 9's decision 2; the sandbox, no GPU; one session).
+  - **(a) What the fair actor reads:** the inputs of `h3_battle_ai`'s fair choice (each
+    enemy's best hex to strike it from and its melee value, the enemies' reach and the Fire Walls
+    and moat in its hex scores, the odds of the stronger side, `h3-battle-ai`'s module doc)
+    against v22's features and the legal mask, each one shown, derivable from what is shown (a
+    position, a speed, an obstacle), or hidden.
+  - **(b) Where #2 and the fair actor choose differently:** T30's states by category
+    (`python/records/inspect/battles.py`), each tied to an input of (a) where one explains it.
+  - **(c) The candidates** (the kill preview for `hexconv` first: built since E06 T6d, the
+    MLP's only; then per-hex reach and threat planes per side, per-stack distances and a
+    shooter's blocked state) with their cost: the batch's samples a second (`benches/ai/`, an
+    engine query per stack and decision), the observation's length, the network's parameters
+    and the update's time on the GTX 1070 (T31's measure).
+  - **Acceptance:** the design in `E25-log.md` T37 (the features, their source in the engine,
+    the versions: observation v23 and the C ABI's, which lane writes what, the golden replays),
+    the user's review, T38 and T39's rule refined.
 
 ## Inbox
 

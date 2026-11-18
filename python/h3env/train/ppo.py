@@ -22,6 +22,8 @@ plays the best on the gate set v1 and an SPRT decides (`gate`). A promoted learn
 `promoted/<n>.pt` and `best.pt`, and its ladder plays it against the engine's seats and the
 promoted networks before it on the report set v1 (§7); at the end the final best's on the whole
 set. A gate or ladder that began after the last checkpoint is pending: a resume runs it first.
+With `[gate] futility` N (E25 T36) a run ends before its budget once N gates in a row promoted
+nobody: the final best's ladder plays, and the run ends `futile` (a resume continues it).
 
 The league (E06 T4a, design §8; `league`): a snapshot of the learner every `snapshot_every`
 samples and every promoted network join it; an episode is self-play or against a live member,
@@ -443,6 +445,8 @@ class Trainer:
         self.gates = Cadence(c.gate_every)
         #: The update of the last gate (-1: none yet).
         self.last_gate = -1
+        #: The gates since the last promotion that promoted nobody (`[gate] futility`, E25 T36).
+        self.unpromoted = 0
         #: The promoted network and update of the last final ladder (none yet).
         self.last_final: list[int] | None = None
         #: Each promoted network's entry (index, how, samples, update, minutes), in order.
@@ -470,6 +474,7 @@ class Trainer:
             "next_snapshot": self.snapshots.next,
             "next_gate": self.gates.next,
             "last_gate": self.last_gate,
+            "unpromoted": self.unpromoted,
             "last_final": self.last_final,
             "promoted": self.promoted,
             "pending": self.pending,
@@ -501,6 +506,8 @@ class Trainer:
         self.episodes = state["episodes"]
         self.snapshots.next, self.gates.next = state["next_snapshot"], state["next_gate"]
         self.last_gate, self.last_final = state["last_gate"], state["last_final"]
+        # A checkpoint from before E25 T36 counts no gate without a promotion.
+        self.unpromoted = state.get("unpromoted", 0)
         self.promoted, self.pending = list(state["promoted"]), state["pending"]
         self.lineage = [
             (e["index"], load(out / "promoted" / f"{e['index']}.pt", self.device).frozen())
@@ -1300,7 +1307,9 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
                 result = trainer.gate(stop)
                 run.emit({"type": "gate", **counters(), **result, "league": trainer.league.table()})
                 trainer.pending = None
-                if result["result"] == "promoted":
+                promoted = result["result"] == "promoted"
+                trainer.unpromoted = 0 if promoted else trainer.unpromoted + 1
+                if promoted:
                     promote("gate")
             else:
                 result = trainer.ladder(trainer.pending["final"], stop)
@@ -1314,6 +1323,7 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
             if opening["type"] == "start":
                 promote("init" if run.record.parent else "start")
             settle()
+            futile = False
             while trainer.samples < config.samples and not stop.requested:
                 lr = learning_rate(config, trainer.samples)
                 bonus = entropy_bonus(config, trainer.samples)
@@ -1339,6 +1349,10 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
                 if trainer.gates.due(trainer.samples):
                     trainer.pending = {"kind": "gate"}
                     settle()
+                    # `[gate] futility` (E25 T36): so many gates in a row promoted nobody.
+                    futile = 0 < config.futility <= trainer.unpromoted
+                    if futile and trainer.samples < config.samples:
+                        break
                 elif time.monotonic() - last_save >= 60 * config.checkpoint_minutes:
                     checkpoint()
             if stop.requested:
@@ -1351,7 +1365,8 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
             if config.ladder_final_episodes and trainer.last_final != [best, trainer.updates]:
                 trainer.pending = {"kind": "ladder", "final": True}
                 settle()
-            run.emit({"type": "end", "reason": "budget", **counters()})
+            reason = "futile" if futile and trainer.samples < config.samples else "budget"
+            run.emit({"type": "end", "reason": reason, **counters()})
             checkpoint(finished=True)
         except Stopped:
             run.emit({"type": "stop", **counters()})
