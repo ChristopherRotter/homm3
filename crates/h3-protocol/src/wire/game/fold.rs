@@ -330,9 +330,8 @@ impl GameObservation {
                 hero,
                 part,
             } => {
-                if let Some(details) = self.details_mut(hero) {
-                    details.see(part);
-                }
+                let details = self.details_mut(hero);
+                details.into_iter().for_each(|details| details.see(part));
             }
             // The viewer's whole view of a map garrison, its stacks following (E08 T114b,
             // ADV-GAR-006): put in its place, a garrison the viewer did not see yet too. A change
@@ -794,9 +793,8 @@ impl GameObservation {
                 match place {
                     ArtifactPlace::Worn { position } => {
                         let at = usize::from(position);
-                        if details.worn.len() <= at {
-                            details.worn.resize(at + 1, None);
-                        }
+                        let len = details.worn.len().max(at + 1);
+                        details.worn.resize(len, None);
                         details.worn[at] = Some(artifact);
                     }
                     ArtifactPlace::Backpack { index: _ } => details.backpack.push(artifact),

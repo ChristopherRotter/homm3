@@ -27,6 +27,10 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   (`h3_files::adventure::format_command`, `journal/whole.rs`), so the word (`h3-files`) and the
   adventure replay format's bump (`h3-sim`'s `REPLAY_FORMAT_VERSION`, the goldens' `format` line,
   `h3-cli`'s and `h3-sim`'s literals) go with the command's variant, whether or not it is listed.
+- **The town scope's coverage does not gate `h3-protocol`** (E09 T38a1's CI: two regions of a
+  new fold, an `if let`'s untaken path and an `if` that never failed): after mapping or folding a
+  new wire type, run `target/debug/xtask verify-step coverage --scope server` (after `source
+  scripts/llvm-tools.sh && llvm_tools_env`; about 10 minutes) before the pull request.
 - **A new town command in the legal set changes every random game with an owned town** (E09
   T19c1, T27): the env's agent draws it, so `h3-sim`'s town-map tests (`tests/towns.rs`: the
   play's seed, the fork's siege seed) and the `*-towns-36` workloads move. Search seeds with a

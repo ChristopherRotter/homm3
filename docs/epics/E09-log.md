@@ -4692,6 +4692,9 @@ agent's calls: decision 142.
   TWN-4-2, -5 and -6, VCMI, the manual).
 
 `master` merged in once, after #998 (E08 T125a, no version moved) and #999 (the `shared/` half).
+CI's first full verify on #1001 found two regions of the new fold unrun (`h3-protocol`, which the
+town scope's coverage does not gate: an `if let`'s untaken path, the worn positions' resize test):
+both written without a branch, `verify-step coverage --scope server` clean (`TRAPS.md`).
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data` (every step but
 `check-lane`, as on a `cross-lane` branch, and the coverage miss above, then the coverage step
