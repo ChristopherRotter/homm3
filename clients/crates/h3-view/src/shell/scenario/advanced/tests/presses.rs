@@ -178,11 +178,15 @@ fn the_client_passes_a_colour_to_the_next_player() {
         assert!(click(&mut s, flag(row)), "{k}");
         assert_eq!(players(&s, &[0, 3]), want, "{k}");
     }
-    // A colour only the computer may play takes no press.
+    // A colour only the computer may play takes no press (its flag hidden; the press tests the
+    // colour too, 0x58B7FF).
     let mut map = arrogance();
     map.seats[6].human = false;
     let mut s = hot_seat(vec![map], 2);
     click(&mut s, flag(3));
+    let map = s.players();
+    let (advanced, shown) = (s.advanced.as_mut().unwrap(), &mut s.shown);
+    advanced.flag_click(6, &map, shown);
     assert_eq!(
         players(&s, &[0, 1, 5, 6]),
         ["A", "B", "Computer", "Computer"]

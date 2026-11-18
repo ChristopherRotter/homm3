@@ -3259,8 +3259,8 @@ The hot seat's presses (T4b: built, §29). A hot-seat load (M4).
 Read from `Heroes3.exe` (`hot_seat_colour_cycle` 0x577AE0 whole; `scenario_flag_click`
 0x58B790's hot-seat branch 0x58B7F5 to 0x58B829; the handicap's press 0x58706A to 0x5870CA;
 `scenario_hero_step` 0x58AF20 and `scenario_heroes_unclash` 0x58BBC0 whole, the showing's own loop
-0x5817C1 to 0x581856, the town's arrow 0x586A23 to 0x586A47; `scenario_begin_tail` 0x58C11F to
-0x58C212; `scenario_advanced_hide`'s 0x581D5F) against `adv-hotseat-rows`, `adv-hotseat-two` and
+0x5817C1 to 0x581856, the town's arrow 0x586A23 to 0x586A47; `scenario_begin_tail`'s players'
+checks 0x58C11F; `scenario_advanced_hide`'s 0x581D5F) against `adv-hotseat-rows`, `adv-hotseat-two` and
 `adv-hotseat-begin`, played again under Wine this session (every shot as kept). The client:
 `Advanced`'s `cycle`, `pass`, `step_handicap`, `held_elsewhere`, `unclash`, `refusal`, `Refusal`,
 the screen's Begin over a map (`Texts::unplaced`, `too_few`).
