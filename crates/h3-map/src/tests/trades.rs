@@ -195,6 +195,7 @@ fn the_writer_refuses_ab_s_trades_in_roe() {
     assert!(refused(in_roe).is_ok());
 }
 
+// covers: GAM-SET-003
 #[test]
 fn the_map_s_banned_artifacts_are_written_beside_the_default_ones() {
     // E14-3's ban (survey §7.1): a set bit per code below the format's 144 artifacts, beside

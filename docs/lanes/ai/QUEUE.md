@@ -42,6 +42,11 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 
 **From the adventure lane** (E08 T127b):
 
+- 2026-11-19 (the adventure lane, E08 T128, `adventure/e08-t128`, `cross-lane` with the user's
+  consent; **one line in your file, nothing to do**): `h3-cli/src/ai/tests.rs`' writer `Map`
+  literal gains `banned_artifacts: Vec::new()` (`h3_map::writer::Map::banned_artifacts`, E08
+  decision 375: the map's bans beside the editor's default ones).
+
 - 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **a planned
   `cross-lane` change in your paths, consented by the user; nothing changed yet**): E08's
   increment 14 (design note `docs/epics/E08-design.md` §18, E08 decision 372) appends 67 entries

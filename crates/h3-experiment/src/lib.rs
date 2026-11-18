@@ -251,8 +251,9 @@ pub struct MapSpec {
     pub town: Vec<MapTownSpec>,
     /// The map's format (E08 T56): "sod" (the default) or "roe" (batch E7's row E7-7: an RoE
     /// map's Witch Huts). An RoE map holds no level limit, banned skills or artifacts, towns, AB's
-    /// trades (the Freelancer's Guild, the snow Trading Post), hero spells or
-    /// primary skills (its heroes take `defaults`), and RoE's codes only.
+    /// trades (the Freelancer's Guild, the snow Trading Post), hero spells or primary skills (its
+    /// heroes take `defaults`, or since E08 T128 their own army, experience, skills and artifacts
+    /// with no `primary` and no `spells`: their types'), and RoE's codes only.
     #[serde(default)]
     pub format: Option<String>,
     /// Artifacts and random artifacts (`[[map.artifact]]`, E08 T56), on the surface.
@@ -903,7 +904,8 @@ pub struct HeroSpec {
     /// Experience (0 = level 1).
     #[serde(default)]
     pub experience: u32,
-    /// Attack, defense, power, knowledge (required unless [`HeroSpec::defaults`]).
+    /// Attack, defense, power, knowledge (required unless [`HeroSpec::defaults`]; none on an RoE
+    /// map, E08 T128: the hero type's).
     #[serde(default)]
     pub primary: Option<[u8; 4]>,
     /// Secondary skills as (name, level 1–3); replaces the hero type's.
@@ -1088,7 +1090,8 @@ pub fn build_only(
     if ![36, 72, 108, 144].contains(&size) {
         return Err(format!("map size {size} (36, 72, 108 or 144)"));
     }
-    map_format(spec)?;
+    // An RoE map's heroes take their types' primary skills and spells (E08 T128).
+    let roe = map_format(spec)? == Format::RoE;
     let base = terrain(&spec.map.terrain)?;
     let patches = level_patches(&spec.map.patch, size)?;
     let below = spec
@@ -1240,7 +1243,7 @@ pub fn build_only(
         }
         let mut add_hero = |h: &HeroSpec, tile: (u8, u8), name: Option<&str>, owner: &str| {
             let tile = h.at.map_or(tile, |[x, y]| (x, y));
-            let hero = hero(h, tables, tile, name, owner).map_err(ctx)?;
+            let hero = hero(h, tables, tile, name, owner, roe).map_err(ctx)?;
             if used_types.contains(&hero.hero_type) {
                 return Err(ctx(format!(
                     "hero type {} is used twice",
@@ -2071,12 +2074,15 @@ fn lookup(list: &[String], name: &str, what: &str) -> Result<usize, String> {
     }
 }
 
+/// A hero of the map; on an RoE map (`roe`, E08 T128: batch E14's E14-14) without primary skills
+/// or spells, which the format cannot hold: the hero type's are its own.
 fn hero(
     h: &HeroSpec,
     tables: &Tables,
     tile: (u8, u8),
     name: Option<&str>,
     default_owner: &str,
+    roe: bool,
 ) -> Result<Hero, String> {
     let hero_type = match &h.hero_type {
         NameOrId::Name(n) => lookup(&tables.heroes, n, "hero")?,
@@ -2132,9 +2138,23 @@ fn hero(
             primary: None,
         });
     }
-    let primary = h
-        .primary
-        .ok_or("`primary` is required unless the hero has `defaults`")?;
+    let primary = match (h.primary, roe) {
+        (Some(_), true) => {
+            return Err(
+                "an RoE map holds no primary skills: its heroes take their types' \
+                        (no `primary`)"
+                    .into(),
+            );
+        }
+        (None, true) => None,
+        (Some(primary), false) => Some(primary),
+        (None, false) => {
+            return Err("`primary` is required unless the hero has `defaults`".into());
+        }
+    };
+    if roe && !h.spells.is_empty() {
+        return Err("an RoE map holds no hero spells".into());
+    }
     if h.skills.len() > 8 {
         return Err("at most 8 secondary skills".into());
     }
@@ -2225,8 +2245,8 @@ fn hero(
         army: Some(army),
         tight_formation: h.tight,
         artifacts: Some(HeroArtifacts { worn, backpack }),
-        spells: Some(spells),
-        primary: Some(primary),
+        spells: (!roe).then_some(spells),
+        primary,
     })
 }
 
@@ -2741,14 +2761,18 @@ fn hero_summary(h: &HeroSpec, hero: &Hero, tables: &Tables) -> String {
         .name
         .as_deref()
         .unwrap_or(&tables.heroes[usize::from(hero.hero_type)]);
-    let Some([a, d, p, k]) = h.primary else {
+    if h.defaults {
         return format!(
             "{owner} hero **{name}** ({}, specialty {}): everything its hero type's own (army, \
              skills, artifacts, spells)",
             tables.heroes[usize::from(hero.hero_type)],
             h.specialty,
         );
-    };
+    }
+    let primary = h.primary.map_or_else(
+        || "its hero type's primary skills".to_owned(),
+        |[a, d, p, k]| format!("attack {a}, defense {d}, power {p}, knowledge {k}"),
+    );
     let skills = if h.skills.is_empty() {
         "no skills".to_owned()
     } else {
@@ -2803,8 +2827,8 @@ fn hero_summary(h: &HeroSpec, hero: &Hero, tables: &Tables) -> String {
         format!(", {} experience", h.experience)
     };
     format!(
-        "{owner} hero **{}** ({}, specialty {}{level}): attack {a}, defense {d}, power {p}, \
-         knowledge {k}; {skills}; {artifacts}; {spells}; army {army}",
+        "{owner} hero **{}** ({}, specialty {}{level}): {primary}; {skills}; {artifacts}; \
+         {spells}; army {army}",
         name,
         tables.heroes[usize::from(hero.hero_type)],
         h.specialty,
@@ -4430,6 +4454,53 @@ mod tests {
         assert!(h3_map::writer::write_in(&map, Format::RoE).is_err());
         let sod = text.replacen(" RoE ", "sod", 1);
         assert_eq!(map_format(&parse(&sod).expect("spec")), Ok(Format::Sod));
+        // E08 T128 (batch E14's E14-14): an RoE hero's own army, experience, skills and
+        // artifacts, its type's primary skills and spells (none written); `primary` or `spells`
+        // refused there.
+        let own = text.replacen(
+            "defaults = true",
+            "experience = 1500\n            skills = [[\"Archery\", 2]]\n            \
+             army = [[\"Archangel\", 2]]\n            artifacts = { \"war machine 1\" = \"Ballista\" }",
+            1,
+        );
+        let (map, text_out) =
+            build(&parse(&own).expect("spec"), &tables(), "roe.h3m").expect("build");
+        let hero = map
+            .objects
+            .iter()
+            .find_map(|o| match o {
+                MapObject::Hero(h) => Some(h),
+                _ => None,
+            })
+            .expect("the hero");
+        assert_eq!(
+            (hero.primary, hero.spells, hero.experience),
+            (None, None, Some(1500))
+        );
+        assert_eq!(hero.army.expect("army")[0], Some((1, 2)));
+        assert!(
+            text_out.contains("its hero type's primary skills; Advanced Archery"),
+            "{text_out}"
+        );
+        let raw = h3_map::parse(
+            &h3_map::writer::write_in(&map, Format::RoE).expect("writes"),
+            &h3_map::Limits::default(),
+        )
+        .expect("reads back");
+        assert_eq!(raw.objects.len(), 9);
+        for (extra, error) in [
+            (
+                "primary = [1, 1, 1, 1]",
+                "an RoE map holds no primary skills",
+            ),
+            ("spells = [\"Spell 0\"]", "an RoE map holds no hero spells"),
+        ] {
+            let spec =
+                parse(&own.replacen("experience", &format!("{extra}\n            experience"), 1))
+                    .expect("spec");
+            let err = build(&spec, &tables(), "roe.h3m").expect_err(extra);
+            assert!(err.contains(error), "{extra}: {err}");
+        }
     }
 
     /// Batch E11's objects (E08 T99a): two levels, water on both; a one-way entrance on the

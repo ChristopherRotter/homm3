@@ -19623,3 +19623,90 @@ lane (the rates' home and API, screen 3 theirs, the versions both lanes plan), t
 (the wire per task) and the battle lane (T128's spec fields). **Verify:** docs only: `check-docs`,
 `check-lane`, `check-exe-map`. No code, version or replay moved; CI's run on the pull request is
 the record. **Next:** T128.
+
+### Increment 14, round 2: T128, batch E14's maps: the writer's trades and bans, the spec's fields and the two specs (2026-11-19, `adventure/e08-t128`, `cross-lane`)
+
+Baseline: `master` 43edd29 (#1026, #1027 merged; CI green on it, standing in for the sandbox's
+baseline, stopped at its coverage step: fmt, clippy, deny and the check steps had passed).
+Staged: the executable, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar` (SHA-256
+checked against the PC's). **The cut** (decision 374): in two parts, both in this session (not the
+recommendation, T128b in the next); the `cross-lane` change of `h3-experiment` consented at the
+start, the bans' field on `Map` with its other lanes' lines at T128a (decision 375).
+
+**T128a, the writer** (`h3_map::writer`): `TRADE_OBJECTS` (2, 7, 35, 99, 106, 213, 221) among
+`PLAIN_OBJECTS` (56 classes; no body, subclass 0, as the game's maps), `AB_TRADE_OBJECTS` (213,
+221) refused in `Format::RoE` ("an AB trade in an RoE map"; `validate_plain` takes the codes);
+`Map::banned_artifacts`, codes below the format's artifact count, OR'd into the editor's default
+bans (127 to 143), refused in RoE ("banned artifact in an RoE map"). Every `Map` literal gained the
+field: `h3-map`'s tests and examples, `h3-experiment`, the client lane's `h3-view` situation, the
+map client lane's situation and art tests, the AI lane's `h3-cli` test (`cross-lane`, their
+inboxes told). Tests (`tests/trades.rs`): the nine pictures read back as written in SoD and, but
+for AB's two, RoE, no body; the masks as the game's (one entrance on the bottom row, blocked: at
+the anchor for seven, west of it for the factory and the guild; the anchor and its west neighbour
+blocked, the guild also the second west; every terrain; the editor's menus, the Hill Forts' dirt
+and grass, the posts' dirt and grass, rough, snow); the RoE refusals in the order written; the bans
+written and imported (GAM-SET-003: the map's before the defaults), a code past 143 refused; the
+import as blockers until T132b (no type, the blocked mask and one entrance, valid under SoD and
+RoE).
+
+**T128a, the spec** (`h3-experiment`, battle-owned, `cross-lane`): the seven by picture through
+`Tables::plains` (the docs of `ObjectSpec::picture`, `Tables::plains`, `MapSpec::object` list them
+with their entrances); `MapSpec::banned_artifacts` by `ARTRAITS.TXT` name; **an RoE map's hero**
+(*agent's call*, the queue's "the RoE format"): its own army, experience, skills and artifacts with
+no `primary` and no `spells` (its type's; the writer refuses both in RoE, so a hero there could only
+take `defaults`): `hero()` takes `roe`, `hero_summary` says "its hero type's primary skills".
+Tests: `builds_increment_14_s_objects` (the nine pictures by name in any case, a hero on an
+entrance or a blocked tile refused, the ban written beside the defaults, refused in RoE, an unknown
+name), `builds_an_roe_map` extended (the RoE hero's own army written and read back; `primary` and
+`spells` refused), the tables' test with two trade lines. No field for a player's starting
+resources: the format holds none (E14-6 reads Blue's treasury from memory). The experiments
+README: "Increment 14's objects", `banned_artifacts`, `format`, the levels at load, the batch
+table's row E08 14.
+
+**T128b, the specs.** `E08-batch-14` (36 × 36 grass; SoD on Easy, hot seat, day 1 and Red's day
+29; stamp 7945e78d): the guild G (entrance (5, 8)), the Black Markets M1 (12, 8) and M2 (18, 8),
+the Trading Posts P1 (24, 8) and P2 (snow, 26, 10), the Altars A1 to A3 (6, 18), (12, 18), (18, 18)
+and A4 (12, 26), the Hill Forts H1 (24, 18) and H2 (24, 26), the factory F (29, 18), a Haste scroll
+(13, 20), a town for each player (day 29); the bans leave seven treasures, seven minors and three
+majors (80 banned by name), every hero's starting artifact banned, a relic or special. Red's eight
+heroes (the most a player holds): E14-1 Orrin at the guild (E14-1, E14-2), E14-4 Valeska with 14
+worn and 64 carried at M1 (E14-3's reads at day 1 and day 29, E14-4), E14-5 Edric at P1 and P2
+(E14-5, E14-6), E14-8 Sorsha above A1 (the step from above, E14-7's Castle, E14-8), E14-9 Bron at
+A2 (E14-7's Fortress, E14-9), E14-10 Straker at A3 (E14-7's Necropolis, E14-10, E14-11), E14-12
+Tyris at H1, E14-15 Adela at F; Blue's two: E14-13 Mephala at H2, E14-17 Alkin at A4; E14-16 in
+the visits. `E08-batch-14-roe` (stamp a88dd771): one Hill Fort, Orrin with Air Elementals and
+Pikemen (E14-14). **Changes from design §20** (*agent's calls*, the header says so): **E14-17**
+without a Learning specialist (none of the 156 hero types has one): a Fortress hero at level 1 with
+seven Expert skills and Basic Learning, a treasure's 1 050 for one level offering Advanced Learning
+alone, then 10 Gnolls read 55 (Basic's 52); **levels at load** (GAM-SET-002: a hero placed with
+experience takes its levels at the new game, the computer choosing; a first build gave E14-8's
+hero Expert Logistics, 2 028 points): E14-8 (68 700) and E14-9 (2 100) know eight Expert skills, so
+their levels at load add primary skills only; E14-12 adds four Air Elementals (25, VCMI 24: D-74's
+SoD side of E14-14); E14-13's 3 000 Pegasi (56 250) instead of making Blue poor; E14-9's scroll
+picked up from the map (a hero's artifacts in the format hold no spell); every row on day 1.
+
+**The checks** (a throwaway test outside the commit: the written maps imported and validated, each
+hero's day points and its first steps priced by the engine's reach; the seven still blockers, so
+the entrances' steps priced by hand): 1 560 for the speed-4 armies, 1 630 for Valeska (her Archers
+one faster), 1 700 for E14-13; the from-above path's diagonal 141; the levels and skills at load as
+planned; both maps played two days by `h3 adventure run` (in `target/`, not committed). The maps
+were not copied to the user's folder (the session's device tools could not write there); T129
+compiles them again.
+
+**The review** (a fresh agent against survey §1, §2, §4 to §7, §12 to §15, §18, design §20, the
+masks and the walks; 8 findings, all taken): (1) the scroll's placement stated among the changes;
+(2) records added for E14-9's points, E14-17's tile, P2's screen, E14-8's Space; (3) the sliders'
+most predicted (32 wood, ⌊gold ÷ 833⌋, 5 gems; the Vampires' 2); (4) the experience lacking (13 261
+and 1 000, or with the total subtracted); (5) the template's Space instruction "where the procedure
+says"; (6) Blue's ore 30 to 35; (7) E14-3's table by market and day; (8) a stale speed line. Found
+right: every footprint, entrance and start tile, the walks (241 the only two-step route, 482 the
+minimum), the rates, the ban list's seventeen, the Altar's totals, the Hill Fort's prices with the
+packs' overrides, the factory, the thresholds, the heroes' setups (no combination completed).
+
+**Versions:** none moved (the writer's list and header field; the import reads the seven as
+before). **Verify:** the scoped `cargo xtask verify --scope adventure --summary
+--with-original-data` passed every step it runs but `check-lane` (by design on a `cross-lane`
+branch; `cargo xtask check-lane --cross-lane` ok); `cargo check --workspace --all-targets` and
+clippy with `-D warnings` on `h3-map` and `h3-experiment` clean; the clients' build is CI's
+(`Clients`, the client files' lines). CI's full verify on the pull request is the record.
+**Next:** T129.
