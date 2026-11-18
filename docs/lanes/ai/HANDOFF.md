@@ -36,7 +36,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   viewer-safe reach query in `h3-battle`, the kill preview for `hexconv` a bench arm. **Next:
   T38a** (the query, v23, C ABI v38; one `cross-lane` pull request, the user's consent given at
   T37), then T38b (the networks, the bench), T39 (the bench on the GPU; `QUEUE.md`).
-- **Open pull requests:** this session's (T37's design; its number in the newest session entry).
+- **Open pull requests:** #1028 (`claude/fervent-bardeen-n2suw6`: T37's design, AI-Q19).
   Merged: #1022, #1023 (T36's close, increment 9 refined, the README's E25 row).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v12 (E09 T38a2), C ABI v37 (E25 T16:
@@ -57,7 +57,7 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   `python/runs/`, ignored); `uv sync --group train`, `cargo build --release -p h3-ffi -p h3-cli`
   (75 s). (b)'s script `python/records/inspect/disagree.py` (68 s on 25 600 states); (c)'s reach
   cost by a scratch timing in `h3 ai bench`, reverted. The user reviewed the design (AI-Q19).
-  The queue's inbox trimmed to 12 KB (informational notices to `QUEUE-ARCHIVE.md`).
+  The queue's inbox trimmed to 12 KB (informational notices to `QUEUE-ARCHIVE.md`). #1028.
 
 ### 2026-11-18 — E25 T36 and increment 8 closed, the early stop, increment 9 refined
 
