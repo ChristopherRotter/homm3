@@ -4782,3 +4782,57 @@ reads the slots); then `fmt` and `verify-step coverage --scope town` clean; `det
 `bench-check`, `original-data` passed); `cargo test -p h3-cli -p h3-protocol -p h3-server`,
 `-p h3-sim`, `-p h3-map`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo xtask
 check-lane --cross-lane`; CI on the pull request is the record.
+
+### T38b1 — a hero that leaves the game: the away record back, the returns (2026-11-18)
+
+One session, the user present; branch `town/e09-t38b1` (`cross-lane`: the adventure lane's
+`h3-adventure` `state.rs` (`end_battle`), `h3-game`'s `state.rs`, `state/battle.rs`,
+`tests/aftermath.rs`, `tests/battles.rs`, `h3-map`'s `tests/play.rs`, `h3-sim`'s town-map test,
+the golden adventure replays and four adventure workloads; with the user's consent). Starting
+point: `master` at d5e5742 (#1006 merged; the setup found CI's fingerprint, the light gates
+green). The user's computer was connected at the start only: 16 files staged (the four LODs, both
+executables, both tars, the three saves, the three manuals, two help files; SHA-256 checked
+against the PC's; its shell dropped soon after, nothing more needed). **The user cut T38b in two**
+(decision 145, `TWN-Q23`, as recommended): T38b1 the leaves and the returns, T38b2 the dismissal.
+The agent's calls: decision 146.
+
+- **The adventure's half** (`cross-lane`): `AdventureState::end_battle` returns the heroes that
+  left (`Vec<HeroOnMap>`, in the order given, as each stood before the end); `release_town_hero`
+  and `end_town_hero_battle` the garrison hero (`Option<HeroOnMap>`, the town lane's
+  `src/town/rows.rs`).
+- **The leave** (`h3-game`'s `town/leave.rs`, new; design §67's As built): `leave` by
+  `Leave::{Retreated, Surrendered, Gone}` and `after_battle`, last in the game's `end_battle`
+  (after the winner's levels, the original's order); the capture's empty garrison hero `Gone`;
+  `GameState::free_hero_types` removed. The pool's `leave` and `return_to` (`pool.rs`), its
+  `is_offered`. A `Gone` leave: one creature, the spell points full, the land maximum over the
+  cleared army under `TWN-QUIRK-12` (the test pack's new `t:leave` profile) or over the one
+  creature. A return: the slot from the owner's stream, the marked slot's other, the slot's hero
+  free, the mark set, the survivors or one creature, the points kept and stale; told to the owner
+  last (`tavern::tell`). Design §67 point 5 (a new record's replacement takes the land points of
+  its one creature) built in `hire::replace`.
+- **Catalog:** TWN-TAV-006 new (`verified`: batch TWN-4's TWN-4-3, -4 as the reading);
+  GAM-BAT-003, TWN-TAV-004 and TWN-SET-005 amended; `TWN-QUIRK-12`'s regression test named;
+  `ADV-STUB-9`'s reason (the Tavern fact ready).
+- **Tests:** `town/tests/hire/leave.rs` (five: a loss under both flag settings, a draw and a
+  created-stacks winner, a retreat with its slot, view, events, turn start and rehire, a
+  surrender with the marks and without survivors, a repeated type's other hero beside an offered
+  record); the capture's away record in `rows.rs`'s
+  `TWN-QUIRK-11` test; the replacement's points; the older tests' beaten heroes refilled (the
+  aftermath's and the siege's spell points, the surrender's events). The town tests' setups place
+  two heroes of type 0: a leave of the type's second hero makes it the record (decision 146).
+- **The plans:** `check_heroes_after_battle` lets a hero that leaves without returning end at its
+  full spell points (untold); a return is named by its owner's `TavernOffered`. Every `h3-map`
+  test passed (the hygiene ends at the viewer's battle, before any return it could see).
+- **The bench** (`master` in `target/wt-master`, all 34 adventure workloads in both trees, one
+  CPU each): the same shape per function, `town::leave` in none; the town map's random games
+  changed course: `reach-towns-36` +3.82 % (master 887 794 829), `day-start-towns-36` +2.11 %,
+  `month-start-builds-36` −2.39 %, `legal-towns-36` −1.73 %, re-baselined; every other workload
+  within 0.8 % of master's.
+- **Replays and seeds:** 33 of the 98 golden adventure replays re-recorded from their own
+  commands (hash lines only); the bot reports unchanged; `h3-sim`'s town-map end-of-days seed
+  **2541** (a release search over 1 to 3 000: ten met every feature, none returns a hero; 543
+  steps, 28 builds, 58 dialogs, 13 hires). No version moved (the pool's hashed fields were there).
+- **Verify** (`--scope town --with-original-data`): every step but `check-lane` (`cross-lane`:
+  `check-lane --cross-lane` ok) passed once the leave's unreachable `None` paths were indexed and
+  the repeated type's offered record got its test (coverage's two rounds); the protocol's fold,
+  session and record tests over the new goldens passed.

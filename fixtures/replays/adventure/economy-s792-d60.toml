@@ -1057,25 +1057,25 @@ checkpoints = [
     "0xd9553a8718fba969",
     "0x6aabd1a2c7686c0c",
     "0x18d37ef48ad6f9b7",
-    "0x8175db85b61d1cf8",
-    "0xde7bd909af34f557",
-    "0xb9488a43b04058af",
-    "0xa69bd3dfaba4dde4",
-    "0x2d3695d83bbb4bba",
-    "0x52291fe9cbb2961a",
-    "0xd09688d49f4af318",
-    "0xc08dd890ba755172",
-    "0x794ed45f405b1307",
-    "0x3541e57d51d7efdc",
-    "0x98d4135bc8a2b314",
-    "0x3cfd0327d0c15ee1",
-    "0x68c1f81c1a476d89",
-    "0x0aebc2f918ff3b64",
-    "0xd52ebc3aae043f7a",
-    "0x4efa9730ff4cc2a0",
-    "0x02d697b63122590d",
-    "0x6c2c64c51a448658",
-    "0x454709d30851d394",
+    "0x0a5034d750db3e91",
+    "0x79b1a87e717bab40",
+    "0x9873fac4093d28e2",
+    "0xf69645618bade389",
+    "0xa89bb5848a53c6ed",
+    "0x8193f0324c0b8d8d",
+    "0xcfc1a0e89f3f2e07",
+    "0x660f8d18ebd3edc7",
+    "0x92ee2d70cb4e646a",
+    "0x0223b0c49cc983af",
+    "0xf29a8b64df06a887",
+    "0x3dfed1a0f7781ec0",
+    "0x5a3ef8c7c3487d28",
+    "0x9be2b65cd625cb24",
+    "0xa09f754e37102cec",
+    "0x97c075578f3f1222",
+    "0xe0c2edbf7476f0f0",
+    "0xa6edc629c01a1ef2",
+    "0x22439b18d3857bce",
 ]
 
 [replay]
@@ -1116,4 +1116,4 @@ import_version = 25
 
 [result]
 day = 61
-final_hash = "0x230eeb3bbec8acff"
+final_hash = "0x7b0f69eaa5dda409"

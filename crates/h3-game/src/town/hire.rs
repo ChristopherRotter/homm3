@@ -10,15 +10,15 @@
 //! ([`legal_hires`], the same checks).
 
 use alloc::sync::Arc;
-use alloc::vec;
 
 use h3_adventure::{HeroOnMap, Pos};
 use h3_content::{HeroTypeId, ResourceId, SpellId};
-use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
+use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_heroes::{ArtifactInstance, HeroDetails, OfferLevels};
 use h3_towns::{TownCommand, TownCommandError};
 
 use super::command::owner;
+use super::leave;
 use super::rows::{most_heroes, town_error};
 use super::tavern::{self, Parts, TAVERN_BACKPACK_SHOWN};
 use crate::command::{GameCommand, GameCommandError, GameEvent, Sink};
@@ -248,9 +248,12 @@ const TAVERN_SLOTS: u8 = 2;
 /// **any faction**, the player's faction's weights); a type found is offered and the slot holds
 /// it, its record made when it has none (the new record's draws, [`tavern::record_of`]); its spell
 /// points full; its army **one creature of its type's first starting stack** (GAM-SET-001's first
-/// stack at a count of 1, no draw; none for a type without one) with no war machine; **no backpack
-/// equipping and no points set**: its points are its away record's until its owner's next turn
-/// start (TWN-TAV-005; a new record's none). No type free: the slot stays empty.
+/// stack at a count of 1, no draw; none for a type without one; [`leave::one_creature`]) with no
+/// war machine; **no backpack equipping and no points set**: its points are its away record's
+/// until its owner's next turn start (TWN-TAV-005), since E09 T38b1 a new record's the land
+/// maximum of that one creature (design note §67 point 5, the agent's call: the original sets
+/// every record's at the new game with its full starting army, which only a replacement hired in
+/// its first turn shows). No type free: the slot stays empty.
 // rule: TWN-TAV-004, GAM-SET-001
 pub(crate) fn replace(state: &mut GameState, rules: &GameRuleset, player: PlayerId, slot: usize) {
     let (core, towns) = (rules.core(), rules.towns());
@@ -281,16 +284,19 @@ pub(crate) fn replace(state: &mut GameState, rules: &GameRuleset, player: Player
     held.into_iter()
         .for_each(|tavern| tavern.slots[slot] = Some(hero_type));
     let store = Arc::make_mut(heroes);
+    let made = pool.record(hero_type).is_none();
     let id = tavern::record_of(pool, (store, progression), (core, hero_type, ty), draws);
     // A record's id indexes the store (the build's, or pushed above).
     let details = Arc::make_mut(&mut store[usize::from(id.raw())]);
     details.mana = h3_heroes::max_mana(details, core);
-    let army = ty.army.first().map_or(vec![], |first| {
-        vec![ArmyStack {
-            slot: 0,
-            creature: first.creature,
-            count: 1,
-        }]
-    });
+    let army = leave::one_creature(ty);
+    let points =
+        made.then(|| h3_adventure::day_points(core, rules.adventure(), Some(details), &army, 0));
     pool.set_army(hero_type, army, true);
+    // rule: TWN-TAV-004
+    let away = pool.away_mut(hero_type).zip(points);
+    if let Some((away, points)) = away {
+        away.movement = points;
+        away.max_movement = points;
+    }
 }

@@ -9,7 +9,7 @@ to 128; its drafts accepted at T33b, `TWN-Q18`; batch TWN-4 scored by T34; the d
 by T35a, `TWN-Q19`; its code by T35b, decisions 129 to 131; the town part v7 by T36, decision
 132; the pool in the game by T37a, `TWN-Q20`, decisions 133 to 136; the map's customised types
 by T37b, `TWN-Q21`, decisions 137 to 139; T38a cut in two, `TWN-Q22`, decisions 140 to 142;
-T38a2 whole, decisions 143, 144);
+T38a2 whole, decisions 143, 144; T38b cut in two, `TWN-Q23`, decisions 145, 146);
 done tasks in `E09-log.md`; increments 1 to 3
 (closed by T10, T20 and T30) in `E09-archive.md`. The building tasks are the design note's
 `E09-design.md` §79 (round by round, with the order against E08's increment 13); each task's cut
@@ -21,13 +21,19 @@ confirmed at its start; every entry's acceptance includes the Definition of Done
 `HeroHired` and its parts, the protocol v71 and `town hire` (replay format v17) **done**;
 T38a2 the hire listed (`legal_commands`, the env's `TAVERN_HIRE` v12, the plans, the seeds, the
 benches; decisions 143, 144) **done**;
-**T38b next**: a hero that leaves the game (TWN-TAV-006; GAM-BAT-003, the capture's leave;
-`TWN-QUIRK-12`), the returns (TD-18, TD-19), the dismissal (GAM-MAN-003, TD-22, `manage dismiss`;
-no env entry), the protocol; in merge order with E08's T124b. T37b's note: a customised
-type's record exists from the build (no away record until its first fill), so a hire or a
-leave meets a record made before any draw. T38a2's notes: a returning hero reaching the map
-ends the hygiene's comparison as a hire does (`TRAPS.md`); the plans' `Step::Town` hires in one
-step of eight, so the leaves meet hired heroes. **Status:** T38b next.
+T38b cut in two (decision 145, `TWN-Q23`): T38b1 every leave by a battle or a capture
+(TWN-TAV-006, the returns TD-18, TD-19, `TWN-QUIRK-12`; decision 146) **done**;
+**T38b2 next**: the dismissal (GAM-MAN-003, TD-22, `Manage::Dismiss { hero }` with its
+refusals `NotOnMap`, `InTown`, `LastHero`; `TWN-STUB-16`; no env entry, decision 120), the
+legal commands (a `Dismiss` per own hero on the map that passes, after its management
+commands), `manage dismiss` (replay format v18), the protocol (v72: the command and its
+refusals), the plans taught a dismissal. T38b1's notes: the leave is `town::leave::leave(state,
+rules, &hero, Leave::Gone)` over the `HeroOnMap` the adventure takes off (a new adventure call
+that removes the hero, frees its boat, calls `leave_marks` and tells `HeroRemoved` to its owner
+and the players that see its tile, as `end_battle`'s); a dismissed hero keeps every artifact
+(decision 105). A hero that leaves without returning ends at its full spell points untold: the
+plans' oracles over a management command (`check_conservation`, `check_managing`) meet it.
+**Status:** T38b2 next.
 
 **E09 T39 — the map's objects and the information** (round 7; `cross-lane`, after E08's T123;
 design §66, §73 to §76): T39a the kinds `Tavern` and `DenOfThieves` (the adventure part, classes

@@ -615,8 +615,19 @@ fn a_surrender_pays_the_winners_owner_and_a_retreat_leaves_the_map() {
         .surrender_price(rules.battle(), side)
         .unwrap();
     assert!(price > 0);
+    // The payment, then (E09 T38b1) the surrendered hero's return into its owner's tavern told
+    // last (TWN-TAV-006: the town lane's tests).
+    let paid = events
+        .iter()
+        .position(|e| matches!(e, GameEvent::ResourcePaid { .. }))
+        .unwrap();
+    assert!(matches!(
+        events.last(),
+        Some(GameEvent::TavernOffered { player, .. } | GameEvent::TavernPartSeen { player, .. })
+            if *player == owner
+    ));
     assert_eq!(
-        events[events.len() - 2..],
+        events[paid..paid + 2],
         [
             GameEvent::ResourcePaid {
                 player: owner,

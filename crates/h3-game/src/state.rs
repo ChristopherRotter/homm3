@@ -15,7 +15,7 @@ use h3_adventure::{
     Garrison, HeroGains, HireDialog, HireSource, HireTarget, Meeting, ObjectTypeId, Offer,
     OfferKind, Pick, Pos, TownReveal, UniversityVisit, Weekday,
 };
-use h3_content::{HeroTypeId, ResourceId, SkillId};
+use h3_content::{ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId, TownId};
 use h3_heroes::{
     ArtifactInstance, HeroChange, HeroDetails, LevelUp, OfferLevels, Offers, SlotState,
@@ -1591,14 +1591,6 @@ impl GameState {
     /// The adventure context's state.
     pub const fn adventure(&self) -> &AdventureState {
         &self.adventure
-    }
-
-    /// Each of `types` goes back free in the hero pool (TWN-SET-005: their heroes left the map,
-    /// the original's 0x4D9EC0), the pool copied first when a fork shares it.
-    pub(crate) fn free_hero_types(&mut self, types: &[HeroTypeId]) {
-        for &hero_type in types {
-            Arc::make_mut(&mut self.pool).free(hero_type);
-        }
     }
 
     /// The adventure state to change, with the store of heroes it reads (E08 T20a2b).

@@ -117,6 +117,15 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 
 **From the town lane** (E09 T8c1, T8c2, T19c1; T19c1's encoding v9 for the adventure agents):
 
+- 2026-11-18 (the town lane, E09 T38b1, `town/e09-t38b1`, `cross-lane` with the user's consent, E09
+  decision 145; **your path changed, for your review; no encoding moved**): a hero that leaves the
+  game now comes back (TWN-TAV-006: after its side's retreat or surrender into its owner's tavern,
+  its slot drawn from its owner's stream; every other leave's type free with one creature), so the
+  random games on the town map changed course: `tests/towns.rs`' end-of-days seed is **2541** (a
+  release search over 1 to 3 000, the shortest of ten meeting every feature; 2369 no longer met
+  every feature). The fork test's seed 6 holds. A returned hero shows in its owner's
+  `GameObservation::tavern` as any tavern hero.
+
 - 2026-11-18 (the town lane, E09 T38a2, `town/e09-t38a2`, `cross-lane` with the user's consent, E09
   decision 143; **the env's action encoding v12, for the adventure agents**): `action.rs` appends
   the two entries `TAVERN_HIRE` (35, 36; `ENTRY_COUNT` 37; `TAVERN_SLOTS`; the design note's

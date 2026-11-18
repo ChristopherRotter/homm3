@@ -520,8 +520,8 @@ checkpoints = [
     "0x56e007d88456e082",
     "0x3b130b4b42b435f1",
     "0x1eb49f56393f38f2",
-    "0xb38bb82ff7c16b55",
-    "0x18728dba9422bfc1",
+    "0x01141c91905dcaac",
+    "0x801e8f3fa66cae18",
 ]
 
 [replay]

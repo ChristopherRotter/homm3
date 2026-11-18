@@ -13,9 +13,7 @@ use h3_adventure::{
     BattleStart, Combatant, Defender, Pos, TileRand, Viewers, split, split_with_second,
 };
 use h3_battle::{BattleState, Command, Event, Visibility, generate_setup_obstacles};
-use h3_content::{
-    FULL_BP, HeroTypeId, OBSTACLES_FROM_TILE, Ruleset, SINGLE_PRECISION_RATES, SPLIT_FROM_TILE,
-};
+use h3_content::{FULL_BP, OBSTACLES_FROM_TILE, Ruleset, SINGLE_PRECISION_RATES, SPLIT_FROM_TILE};
 use h3_contracts::{
     Army, ArmyStack, BattleHero, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroId,
     PlayerId, StackOrigin, StackRecord, TownId,
@@ -496,8 +494,8 @@ impl GameState {
     /// whose side won and has army survivors keeps them as its army (a damaged top creature
     /// forgotten), every other hero — lost, retreated, surrendered, in a draw, or left with stacks
     /// created in the battle only (BAT-END-001) — leaves the map, a hero in a boat with its boat
-    /// (ADV-SEA-006, E08 T74b), its type going back free in the hero pool (TWN-SET-005, E09
-    /// T7b1: the original's 0x4D9EC0); since E09 T28b2 a town's garrison hero that defended its
+    /// (ADV-SEA-006, E08 T74b), and since E09 T38b1 leaves the game last (below); since E09 T28b2
+    /// a town's garrison hero that defended its
     /// siege so in its town, but that as the winner it keeps its survivors even when none is left
     /// (`TWN-QUIRK-11`; survey `E09-towns.md` §9.3), the town's views it changes told after the
     /// heroes' part and the bonuses (TWN-VEW-002); then the heroes' part
@@ -527,11 +525,16 @@ impl GameState {
     /// attacker's win with a hero defending holds the capture as a rest of the visit for the
     /// attacker (TWN-CAP-003: `AdventureState::give_won` once its owner has no open decision, as
     /// the unowned battle's end holds it against a garrison), the attacker staying outside.
-    /// Last (E08 T30) the winner's hero gets its pending levels
+    /// Then (E08 T30) the winner's hero gets its pending levels
     /// ([`Self::give_levels`], GAM-BAT-008): after the whole outcome, Necromancy and Eagle Eye
     /// included, as the original gives a human player's after the battle's screen (0x4AE324).
+    /// Last (E09 T38b1, the town lane's, `cross-lane`; its design note §67) each hero that left
+    /// the map leaves the game (`town::leave::after_battle`, TWN-TAV-006: the hero of the side
+    /// that retreated or surrendered back into its owner's tavern, every other's type free in the
+    /// hero pool, TWN-SET-005), as the original's `hero_leave_game` 0x4D9EC0 after the levels
+    /// (0x4AE6D5), a return told to its owner (`TavernOffered`).
     // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005, GAM-BAT-008, ADV-MON-010, ADV-PIK-004
-    // rule: GAM-BAT-014, GAM-DEC-007, TWN-SET-005, TWN-CAP-003
+    // rule: GAM-BAT-014, GAM-DEC-007, TWN-SET-005, TWN-CAP-003, TWN-TAV-006
     pub(crate) fn end_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -563,15 +566,9 @@ impl GameState {
             .into_iter()
             .filter_map(|side| heroes[side.index()].map(|hero| (hero, army(side))))
             .collect();
-        self.adventure
-            .end_battle(rules.core(), &changes, &mut AdventureSink(&mut *sink));
-        // rule: TWN-SET-005
-        let left: Vec<HeroTypeId> = changes
-            .iter()
-            .filter(|(_, army)| army.is_none())
-            .filter_map(|&(hero, _)| self.hero(hero).map(|details| details.hero_type))
-            .collect();
-        self.free_hero_types(&left);
+        let left =
+            self.adventure
+                .end_battle(rules.core(), &changes, &mut AdventureSink(&mut *sink));
         let winner = result.winner().filter(|&side| army(side).is_some());
         let sides = (owners, heroes, town.is_some());
         self.heroes_after_battle(rules, sides, outcome, winner, sink);
@@ -640,6 +637,9 @@ impl GameState {
         if let Some(hero) = levelled {
             self.give_levels(rules, hero, sink);
         }
+        // rule: TWN-TAV-006, TWN-SET-005
+        let survivors = BattleSide::BOTH.map(|side| &outcome.survivors[side.index()].stacks[..]);
+        town::leave::after_battle(self, rules, (&left, heroes), (result, survivors), sink);
     }
 
     /// The heroes' part of an ended battle's outcome (ADR-0017 point 11; E08 T19a2a), after the

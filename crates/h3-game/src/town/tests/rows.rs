@@ -514,7 +514,7 @@ fn each_refusal_of_a_move_is_the_town_command_s_own() {
     }
 }
 
-// covers: TWN-SET-005, TWN-VIS-001, TWN-CAP-001
+// covers: TWN-SET-005, TWN-VIS-001, TWN-CAP-001, TWN-TAV-006
 #[test]
 fn twn_quirk_11_a_garrison_hero_without_a_stack_does_not_defend() {
     let rules = rules();
@@ -575,6 +575,19 @@ fn twn_quirk_11_a_garrison_hero_without_a_stack_does_not_defend() {
         game.pool().status(hero_type),
         Some(crate::town::pool::HeroStatus::Free)
     );
+    // Since E09 T38b1 it leaves the game without returning (TWN-TAV-006): the type's record, one
+    // creature of its type's first starting stack (none for a type without), its spell points
+    // full, its formation kept.
+    let pool = game.pool();
+    assert_eq!(pool.record(hero_type), Some(hero));
+    let away = pool.away(hero_type).unwrap();
+    let ty = rules.core().hero_type(hero_type).unwrap();
+    let one: Vec<(u8, u32)> = ty.army.first().map(|_| (0, 1)).into_iter().collect();
+    let kept: Vec<(u8, u32)> = away.army.iter().map(|s| (s.slot, s.count)).collect();
+    assert_eq!(kept, one);
+    assert_eq!((away.formation, away.full), (Formation::Loose, true));
+    let details = game.hero(hero).unwrap();
+    assert_eq!(details.mana, h3_heroes::max_mana(details, rules.core()));
 }
 
 // covers: TWN-VEW-001, TWN-VEW-002, TWN-VEW-003

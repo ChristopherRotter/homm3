@@ -10876,7 +10876,8 @@ fn experience_cap(rules: &GameRuleset, state: &GameState, level: u8) -> u32 {
 /// received and lost, its level, primary and secondary skills by the levels it is told it gained
 /// (E08 T30: only one that stays on the map, each the next level), and nothing else of it
 /// changes; the two heroes' artifacts only move between them or leave with a destroyed war
-/// machine. Since E08 T64b the winner that stays also changes by a reward's changes after the
+/// machine; since E09 T38b1 one that leaves without returning ends with its spell points full.
+/// Since E08 T64b the winner that stays also changes by a reward's changes after the
 /// battle (a guarded object's, an event's; GAM-DEC-007), applied in the order told with its
 /// levels, every battle hero's bonuses end (GAM-BAT-014), and an artifact appears only as one an
 /// object that left the map held (a guarded artifact's, a monster's treasure, ADV-MON-011) or (E08
@@ -10972,6 +10973,15 @@ fn check_heroes_after_battle(
                 }
                 _ => {}
             }
+        }
+        // E09 T38b1: a hero that leaves the game without returning has its spell points full
+        // after, untold (TWN-TAV-006); a returning one, named by its owner's `TavernOffered`,
+        // keeps the battle's.
+        let returned = events.iter().any(
+            |e| matches!(*e, GameEvent::TavernOffered { hero: Some(view), .. } if view.id == id),
+        );
+        if !stays && !returned {
+            mana = h3_heroes::max_mana(a, rules.core());
         }
         prop_assert_eq!((a.experience, a.mana), (experience, mana));
         prop_assert_eq!(a.worn.iter().flatten().count() + a.backpack.len(), items);

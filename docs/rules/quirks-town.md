@@ -151,7 +151,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 
 ### TWN-QUIRK-12 — A leave's movement points over the cleared army
 - Class: fix-optional (the user, 2026-11-16, TWN-Q18, T-16: "fix-optional flag, on in faithful"; the epic's decision 116)
-- Context / rules affected: town, TWN-TAV-006 (a hero that leaves the game; planned, E09 T38b), GAM-BAT-003 and the capture's leave (amended by T38b), TWN-TAV-004 (the replacement)
+- Context / rules affected: town, TWN-TAV-006 (a hero that leaves the game; built by E09 T38b1, the dismissal's leave by T38b2), GAM-BAT-003 and the capture's leave (amended by T38b1), TWN-TAV-004 (the replacement)
 - Original behavior: `hero_leave_game` (0x4D9EC0) frees a hero that leaves without returning (a loss, a draw, the capture's leave, the dismissal), refills its spell points and its movement points, then puts one creature of its first starting stack into its emptied army: the refill runs while the seven slots are empty, so `hero_max_land_movement` (0x4E4990) starts from the empty slots' speed, 20, the land table's most (with the hero's Logistics and artifacts), whatever the one creature's speed.
 - Intended/expected behavior: with the flag off the points left and the day's maximum are the land maximum of the one creature the hero keeps.
 - Impact: gameplay, small: the points are seen only when the freed type is drawn as a replacement and hired in the same turn (a week's or a start's fill sets them again at the owner's turn start, design `E09-design.md` §68); such a hero walks with the table's most on its first day.
@@ -159,7 +159,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Sources: code reading of `hero_leave_game` 0x4D9EC0 (E09 T32, the refill's order by T33a; survey `docs/rules/surveys/E09-tavern.md` §4; design `E09-design.md` §67); batch TWN-4's row TWN-4-4 (`experiments/results/E09-batch-4b.md`, `-4b-run2.md`: TWN-4-4b lost, its 1 Centaur with 2 000 points of 2 000; survey §14).
 - Flag: `quirk.town.leave_points_over_cleared_army` (`LEAVE_POINTS_OVER_CLEARED_ARMY`, registry position 42, E09 T35b)
 - Defaults: faithful = on (the cleared army's), strict-fixed = off (the one creature's)
-- Regression test: planned with the leave (E09 T38b, `crates/h3-game`'s pool tests, both settings)
+- Regression test: `crates/h3-game/src/town/tests/hire/leave.rs`, `a_beaten_hero_leaves_with_one_creature_full_spell_points_and_its_land_maximum` (E09 T38b1; both settings: the test pack's `t:leave` on, `t:faithful` off; `h3_game`'s `town::leave` reads the flag)
 - Decided by / date: the user, 2026-11-16 (TWN-Q18; decision 116); the flag added and the entry made by E09 T35b, 2026-11-16
 
 ### TWN-QUIRK-13 — The Thieves' Guild counts the backpacks' artifacts alone

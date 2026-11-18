@@ -189,7 +189,10 @@ fn a_victory_over_a_hero_gives_experience_and_its_artifacts() {
         red.experience,
         game.hero(RED_HERO).unwrap().experience + experience
     );
-    assert_eq!((red.mana, blue.mana), (3, 7));
+    // Since E09 T38b1 the beaten blue leaves the game after its changes, its spell points full
+    // (TWN-TAV-006), untold.
+    let full = h3_heroes::max_mana(blue, rules.core());
+    assert_eq!((red.mana, blue.mana), (3, full));
     assert_eq!(blue.worn, [Some(art(&rules, "t:book")), None, None, None]);
     assert!(blue.backpack.is_empty());
     assert_eq!(blue.experience, game.hero(BLUE_HERO).unwrap().experience);
@@ -198,6 +201,9 @@ fn a_victory_over_a_hero_gives_experience_and_its_artifacts() {
         let mut details = game.hero(id).unwrap().clone();
         for &(_, _, change) in changes.iter().filter(|&&(_, hero, _)| hero == id) {
             h3_heroes::apply_change(&mut details, rules.core(), change);
+        }
+        if id == BLUE_HERO {
+            details.mana = full;
         }
         assert_eq!(ended.hero(id), Some(&details));
     }
