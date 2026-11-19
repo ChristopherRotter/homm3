@@ -26,9 +26,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   and the description drawn whole in the client's profile (48, CLT-Q148 (b)); the client's
   profile: a map's name and description whole (CLT-Q151 (b)), the advanced rows made again when
   the map changes (CLT-Q152 (b)); a press's stale edges as CLT-Q118's (§34.2); the credits'
-  background's key pixel as a drawing bug (§36.3). Open pull requests: T1b's #1060
-  (`client/e27-m4-t1b`) and T2's, stacked on it (`client/e27-m4-t2`; once #1060 squash-merges,
-  `git rebase --onto origin/master` its old head): watch both until they merge. E17 done (`E17-archive.md`,
+  background's key pixel as a drawing bug (§36.3). Open pull request: T2's
+  (`client/e27-m4-t2`; T1b's #1060 merged): watch it until it merges. E17 done (`E17-archive.md`,
   `E17-log.md`; its open threads: the epic's "Placed at the closure", the queue's inbox). E28 and
   E29 are backlog sketches. Workspace `clients/` (`clients/README.md`), gates
   `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
