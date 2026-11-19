@@ -223,10 +223,12 @@ fn the_defaults_are_camp_high_s_records_1_to_11_and_13_to_23() {
         }
     );
     assert_eq!(tables.of(Tab::Campaigns)[10].score, 250);
-    // A record short of a field, or too few records: none.
-    let mut short = records();
-    short[5].truncate(4);
-    assert_eq!(Tables::defaults(&short), None);
+    // A record short of a field (its player, land, days or score), or too few records: none.
+    for fields in 1..5 {
+        let mut short = records();
+        short[5].truncate(fields);
+        assert_eq!(Tables::defaults(&short), None, "{fields}");
+    }
     assert_eq!(Tables::defaults(&records()[..23]), None);
 }
 
