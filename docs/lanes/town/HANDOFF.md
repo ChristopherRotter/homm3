@@ -11,7 +11,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (the drafts, Part G, the cut). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox),
   `TWN-STUB-6` and `-15` (increment 5), `-13` (Visions' reach), `TWN-STUB-2` (the victory
   conditions), `TWN-STUB-16` (E10's loss condition), `-17` (increment 7), `-18` (E13).
-- **Open pull requests:** T42a's (`town/e09-t42a`, docs only), opened at the session's end;
+- **Open pull requests:** T42a's (#1061, `town/e09-t42a`, docs only), opened at the session's end;
   watch it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
@@ -48,7 +48,7 @@ user's computer was connected at the start only: 61 files of `original-data/` (t
 executables, DLLs, sounds and videos but `shell-videos.vid`, both archives, the 40 MP3s, the
 three saved games) and the four manuals with three help files staged, SHA-256 checked. The user cut T42 in two, the guild first (decision 165). Read and
 counted: survey `E09-guild.md` §0 to §9 (the chances, the draw, the counts, the Aurora, the
-window, the census; TD-25, TD-26, T-18; batch TWN-5's three rows for T42b). PR at the end.
+window, the census; TD-25, TD-26, T-18; batch TWN-5's three rows for T42b). PR #1061.
 
 ### 2026-11-19 — T41: the audit, increment 4 closed, increment 5 refined
 
