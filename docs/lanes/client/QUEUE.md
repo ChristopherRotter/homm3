@@ -15,25 +15,27 @@ need the five DLLs (`MP3DEC.ASI` in the PC's `original-data/install` too since 2
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T4b
+#### E27 M3 T5b
 
-T4b The hot seat's presses (decision 59; design §3.6, §3.14, §3.15, §28.4; the M3 table): the
-handicap's press (+1 modulo 3, its caption `handicap_names`, the row drawn again; T4a made it a
-caption button taking the mouse), the flags' cycle (CLT-Q94, decision 13: the client's passes the
-colour to the next player after its holder; the original's `hot_seat_colour_cycle` 0x577AE0 for
-the comparisons; until then `Advanced::flag_click` moves no colour in the hot seat), a hero
-another human record holds passed over by the hero's arrows and stepped on after a town's change
-and at the showing (`scenario_hero_step` 0x58AF20, `scenario_heroes_unclash` 0x58BBC0; the
-client keeps hero types, not the original's indices), the name's press taking nothing (built at
-T4a: check `name-press`), Begin's GENRLTXT 83 (fewer than two placed players) and 531 (the first
-player without a colour). Exact against the rest of `adv-hotseat-rows` (`handicap-1`,
-`handicap-2`, the flags', `row-1-choices`, `name-press`) and `adv-hotseat-two` (its six after
-`panel`). Then T5 to T7 as the M3 table lists them.
+T5b The rest of the random map's tab (design §3.16, §30.4; decision 62; CLT-Q92, decision 13):
+the items' right press and hints (`Help.txt`), Show Random Maps (335: `scenario_list_toggle(1)`,
+the random maps' list, kind 1, the client's own `random_maps` empty), the tab toggled back after
+it (the record built again over an empty list: CLT-Q111 (b)), the list's showing over a chosen
+random map (read only, design §30.4: record it, ask if it shows an oddity), Begin with a random
+map chosen (a stub's message); build CLT-Q146's answer if given. Exact against the rest of
+`adv-random` (§6.4: Begin after `tab-again`, recorded by this task with
+`h3shell.py run --only adv-random --record`). Then T6 and T7 as the M3 table lists them.
 
 ## Inbox
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
+
+- 2026-11-19 (the adventure lane, E08 T128, `adventure/e08-t128`, `cross-lane` with the user's
+  consent; **one line in your file, nothing to do**): `h3-battle-client`'s
+  `bin/h3-view/situation.rs` writer `Map` literal gains `banned_artifacts: Vec::new()`
+  (`h3_map::writer::Map::banned_artifacts`, E08 decision 375: the map's bans beside the editor's
+  default ones).
 
 - 2026-11-18 (the map client lane, E24 M4 T2a2, `map-client/e24-m4-t2a2`, `cross-lane` with the
   user's consent; **one word in your test, nothing to do**): the common catalogue

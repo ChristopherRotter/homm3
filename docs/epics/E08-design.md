@@ -200,7 +200,10 @@ Batch E14 records where the hero stands (§20, E14-16).
   later rule could read, not needed yet); the pack set alone (under the ab and sod packs an RoE
   map's elementals would upgrade, the original refusing them).
 - **The writer** (`h3_map::writer`): the seven classes by template, no body, for the fixtures and
-  batch E14's maps (§20); class 221 only in the AB and SoD formats, 213 likewise.
+  batch E14's maps (§20); class 221 only in the AB and SoD formats, 213 likewise. *As built*
+  (T128a): `TRADE_OBJECTS` among `PLAIN_OBJECTS`, `AB_TRADE_OBJECTS` refused in RoE ("an AB trade
+  in an RoE map"); `Map::banned_artifacts` beside the editor's default bans (decision 375); the
+  import reads the seven as untyped blockers until T132b (`tests/trades.rs`).
 - **Versions:** map import's next (v26 today; the town lane's T39a plans v26 too: whichever merges
   first takes it, the other the next).
 
@@ -528,6 +531,16 @@ changes:
   Marketplace, A-48 (a timed turn) unless the harness sets the hot seat's turn time.
 - **Scored** in the survey's new §21 (each row: as predicted, or the finding and its effect on this
   note and the drafts).
+- *As built* (T128): the specs `experiments/specs/E08-batch-14.toml` (36 × 36 grass; Red's eight
+  heroes and Blue's two, two towns for day 29; the bans leave seven treasures, seven minors and
+  three majors) and `E08-batch-14-roe.toml`, their headers listing the changes: E14-17 a Fortress
+  hero at level 1 with seven Expert skills and Basic Learning (no hero type has the Learning
+  specialty): a treasure's 1 050 gives a level offering Advanced Learning alone, then 10 Gnolls
+  read 55; heroes placed with experience take their levels at load (GAM-SET-002), so E14-8's and
+  E14-9's know eight Expert skills; E14-12 adds four Air Elementals (25, VCMI 24); E14-13's 3 000
+  Pegasi cost more than Blue holds; Blue's treasury read from memory (no field); every row on day
+  1; E14-16 inside the other rows' visits. The spec gained an RoE hero's own army (no `primary`,
+  no `spells`).
 
 ### 21. Shared and `cross-lane` work; the building tasks; the exit criteria
 

@@ -2157,6 +2157,54 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "ADV-VIS-007"
+title    = "The adventure map's Tavern: visited from a neighbour, its tavern decision"
+context  = "adventure"
+status   = "implemented"
+summary  = "The map's Tavern (`ObjectKind::Tavern`, the original's class 95; E09 T39a, the town epic's design note section 66; the base pack's `base:tavern`, imported from class 95 since map import v26) has no owner, no mark, no parameter and no draw. It is visited from a neighbour (`Visit::Neighbour`: class 95 is on the original's object_classes_not_entered 0x63AA58), not from above (not on object_classes_from_above 0x63AB00); a step toward its visitable tile from a beside tile visits it from there, pays the step and ends the move (ADV-OBJ-003), its outcome the tavern decision for the visitor's owner (`AdventureOutcome::tavern`: the hero, the Tavern's type and anchor, its visitable tile; GAM-DEC-010), every player's hero alike (the original's computer has its own code, E13). A hero standing on its visitable tile (one a map Tavern's hire placed there: a setup places none, ADV-MAP-001) hides it: a step toward it meets or fights that hero, and its `Revisit` visits nothing (a neighbour-visited object is never revisited, ADV-TEL-008; the original skips case 95 under its visitor). A pack's Tavern type entered is refused."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E09-tavern.md section 3; docs/exe/map.toml): object_classes_not_entered 0x63AA58 lists class 95, object_classes_from_above 0x63AB00 does not; visit_object 0x4A84F0 case 95 skipped when the visitor stands on the visited tile, else map_tavern_visit 0x5D7E90"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "The census of the 159 shipped maps (survey E09-tavern.md section 1; E08 T127a1's census): 93 Taverns on 47 maps, subclass 0, no body"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0016 point 4 as amended by E09 T35a (the kinds Tavern and DenOfThieves); the town epic's design note E09-design.md section 66; E09 decisions 106, 149"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-VIS-008"
+title    = "The Den of Thieves: entered, the Thieves' Guild at everything"
+context  = "adventure"
+status   = "implemented"
+summary  = "The Den of Thieves (`ObjectKind::DenOfThieves`, the original's class 97; E09 T39a, the town epic's design note section 74; the base pack's `base:den_of_thieves`, imported from class 97 since map import v26) has no owner, no mark, no parameter and no draw. It is entered (`Visit::Enter`: class 97 is on neither of the original's lists), not from above: a step onto its visitable tile visits it and ends the move there, every visit the same, a `Revisit` too (ADV-TEL-008). Its visit shows the visitor's owner the Thieves' Guild at everything (TWN-TAV-007 to -009, `ThievesGuildSeen`): from E09 T39b (`TWN-STUB-20`); until then it gives nothing. A pack's Den type visited from a neighbour is refused."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E09-tavern.md section 6; docs/exe/map.toml): class 97 on neither object_classes_not_entered 0x63AA58 nor object_classes_from_above 0x63AB00; visit_object 0x4A84F0 case 97 opens the Thieves' Guild window at its top level"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-tavern.md section 7: the Den of Thieves shows the Thieves' Guild at everything (getThievesGuildInfo)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/callback/CGameInfoCallback.cpp"
+  retrieved  = "2026-11-15"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "The census of the 159 shipped maps (survey E09-tavern.md section 1): 227 Dens of Thieves on 107 maps, subclass 0, no body"
+  confidence = "high"
+
+[[rule]]
 id       = "ADV-RWD-001"
 title    = "A reward record's parts and their order"
 context  = "adventure"

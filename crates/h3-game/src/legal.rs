@@ -25,7 +25,7 @@ use h3_heroes::{
 
 use crate::command::{
     Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, HireAnswer, SchoolChoice,
-    SkillOffer, UniversityAnswer,
+    SkillOffer, TavernAnswer, UniversityAnswer,
 };
 use crate::manage::Manage;
 use crate::state::Together;
@@ -53,6 +53,7 @@ use crate::{GameRuleset, GameState, OpenBattle};
 /// exchange's management commands [`legal_management`]'s.
 // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006, GAM-BAT-001
 // rule: GAM-DEC-008, GAM-DEC-009, ADV-SHY-003, ADV-TEL-008, TWN-BLD-001, TWN-TAV-003
+// rule: GAM-DEC-010
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {
     if state.check_held(actor).is_err() {
         return Vec::new();
@@ -117,7 +118,8 @@ const LISTED: usize = 16;
 /// University's `Buy` of each slot open for the hero while the treasury can pay its price, in
 /// slot order, then `Leave` (GAM-DEC-006); a hire dialog's `Buy` of the most of each creature in
 /// the source's order whose most is at least 1 (`GameState::hire_mosts`), then `Close`
-/// (GAM-DEC-008, E08 T95b).
+/// (GAM-DEC-008, E08 T95b); a map Tavern's `Hire` of each slot whose hire passes, in slot order,
+/// then `Close` (GAM-DEC-010, E09 T39a).
 fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answer> {
     if let Some(offer) = state.decision(player) {
         let accept = state.adventure().offer_stands(offer);
@@ -170,6 +172,12 @@ fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answ
             .chain([Answer::Hire(HireAnswer::Close)])
             .collect();
     }
+    // rule: GAM-DEC-010
+    if let Some(visit) = state.tavern(player) {
+        return crate::town::hire::map_hires(state, rules, (player, visit))
+            .chain([Answer::Tavern(TavernAnswer::Close)])
+            .collect();
+    }
     // The other decisions but a battle: a meeting, an army dialog or an exchange.
     vec![Answer::Close]
 }
@@ -179,13 +187,14 @@ fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answ
 /// lane's M5): an offer's `Decline`; a meeting's and an army dialog's `Close` (E08 T51b), an
 /// exchange's (E08 T114a2); a
 /// chest's `Gold` (the original's plain OK), the Arena's `Attack` (its Cancel), a School's and a
-/// University's `Leave`, a hire dialog's `Close` (the original's Close, E08 T95b); for a level-up
+/// University's `Leave`, a hire dialog's `Close` (the original's Close, E08 T95b), a map Tavern's
+/// `Close` (E09 T39a); for a level-up
 /// the offer the original's choice takes (HER-LVL-006, the original's when the dialog's time runs
 /// out), with the setup's army worth and the map's terrain shares, as at load (GAM-SET-002), until
 /// E10 gives the engine the computer player's state its flag-set path reads (ADR-0017 point 6,
 /// ADV-Q17: `ADV-STUB-8`); none for a battle (a battle's default is the server lane's) or without
 /// an open decision.
-// rule: GAM-DEC-002, GAM-DEC-005, GAM-DEC-006, GAM-DEC-008
+// rule: GAM-DEC-002, GAM-DEC-005, GAM-DEC-006, GAM-DEC-008, GAM-DEC-010
 pub fn default_answer(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Option<Answer> {
     if state.decision(player).is_some() {
         return Some(Answer::Offer(Consent::Decline));
@@ -202,6 +211,9 @@ pub fn default_answer(state: &GameState, rules: &GameRuleset, player: PlayerId) 
     }
     if state.hire_dialog(player).is_some() {
         return Some(Answer::Hire(HireAnswer::Close));
+    }
+    if state.tavern(player).is_some() {
+        return Some(Answer::Tavern(TavernAnswer::Close));
     }
     if !matches!(state.together(player), Some(Together::Alone) | None) {
         return Some(Answer::Close);

@@ -2,7 +2,7 @@
 //! adventure-owned, `lanes.toml`): the packs with their adventure, battle and town files and the
 //! `.h3m` maps read from disk, and the adventure replay file format (TOML).
 //!
-//! Replay file format v18 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
+//! Replay file format v19 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
 //! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
 //! refused by its format version; a later file without one is malformed; v3 added the battle
 //! commands, E08 T19b1, and names each command's actor: a player by its number; v4 the system
@@ -29,7 +29,8 @@
 //! v16 `town heroes <town> enter|leave|swap`, a hero's move between a town's two bars, E09 T28a,
 //! and the management lines naming a town's upper bar, `t<town>:<slot>` its garrison or a garrison
 //! hero's army by the hero; v17 `town hire <town> <slot>`, a tavern hero hired at a town's Tavern,
-//! E09 T38a1, the slot 0 or 1; v18 `dismiss <hero>`, a hero's dismissal, E09 T38b2):
+//! E09 T38a1, the slot 0 or 1; v18 `dismiss <hero>`, a hero's dismissal, E09 T38b2; v19 a map
+//! Tavern's answers, E09 T39a: `answer tavern hire <slot>|close`):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -97,7 +98,8 @@ use h3_contracts::{BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
     ChestChoice, Consent, GameCommand, GameRuleset, GameSetup, HireAnswer, Manage, Position,
-    SchoolChoice, SkillOffer, SystemCommand, TownCommand, TownHeroChange, UniversityAnswer,
+    SchoolChoice, SkillOffer, SystemCommand, TavernAnswer, TownCommand, TownHeroChange,
+    UniversityAnswer,
 };
 use h3_sim::adventure::replay::{
     MapRef, RecordError, Replay, ReplayError, ReplayHeader, map_content_hash,
@@ -388,13 +390,16 @@ fn format_answer(answer: Answer) -> String {
             return format!("hire buy {} {amount}", creature.raw());
         }
         Answer::Hire(HireAnswer::Close) => "hire close",
+        // Format v19 (E09 T39a).
+        Answer::Tavern(TavernAnswer::Hire { slot }) => return format!("tavern hire {slot}"),
+        Answer::Tavern(TavernAnswer::Close) => "tavern close",
         Answer::Close => "close",
     };
     words.to_owned()
 }
 
 /// Parses the words of an answer after `answer` (format v7, [`format_answer`]; a hire dialog's
-/// since v10); none for others.
+/// since v10, a map Tavern's since v19); none for others.
 fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> {
     let answer = match (words.next()?, words.next()) {
         ("offer", Some("accept")) => Answer::Offer(Consent::Accept),
@@ -417,6 +422,10 @@ fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> 
             amount: words.next()?.parse().ok()?,
         }),
         ("hire", Some("close")) => Answer::Hire(HireAnswer::Close),
+        ("tavern", Some("hire")) => Answer::Tavern(TavernAnswer::Hire {
+            slot: words.next()?.parse().ok()?,
+        }),
+        ("tavern", Some("close")) => Answer::Tavern(TavernAnswer::Close),
         ("close", None) => return Some(Answer::Close),
         _ => return None,
     };

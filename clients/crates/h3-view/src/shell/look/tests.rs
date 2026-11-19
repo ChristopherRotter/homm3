@@ -169,6 +169,7 @@ fn the_shell_s_assets_are_named_once() {
             "SCSelBck.pcx",
             "medfont.fnt",
             "AdvOptBk.pcx",
+            "RanMapBk.pcx",
             "scnrmpsz.def",
             "itgflags.def",
             "scsmbut.def",
@@ -182,6 +183,27 @@ fn the_shell_s_assets_are_named_once() {
             "scbutt3.def",
             "scbutt4.def",
             "scbutt5.def",
+            "RanSizS.def",
+            "RanSizM.def",
+            "RanSizL.def",
+            "RanSizX.def",
+            "RanUndr.def",
+            "RanNum1.def",
+            "RanNum2.def",
+            "RanNum3.def",
+            "RanNum4.def",
+            "RanNum5.def",
+            "RanNum6.def",
+            "RanNum7.def",
+            "RanNum8.def",
+            "RanRand.def",
+            "RanNum0.def",
+            "RanNone.def",
+            "RanNorm.def",
+            "RanIsld.def",
+            "RanWeak.def",
+            "RanStrg.def",
+            "RanShow.def",
             "gspbutt.def",
             "gspbut3.def",
             "gspbut4.def",
@@ -242,7 +264,7 @@ fn the_shell_s_assets_are_named_once() {
     // A name given twice in another case is kept once.
     let mut twice = layout;
     twice.cursor.def = String::from("MMENUNG.DEF");
-    assert_eq!(names(&twice).len(), 102);
+    assert_eq!(names(&twice).len(), 124);
 }
 
 #[test]

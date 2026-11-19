@@ -216,6 +216,21 @@ impl GameObservation {
                     army: Vec::new(),
                 });
             }
+            // E09 T39a: the Tavern's view whole (its offers are the tavern heroes').
+            GameEvent::TavernOpened {
+                player: _,
+                hero,
+                object_type,
+                anchor,
+            } => {
+                self.decision = Some(Decision::Tavern {
+                    hero,
+                    object: ObjectRef {
+                        object_type,
+                        anchor,
+                    },
+                });
+            }
             GameEvent::DecisionClosed { player: _ } => self.close_decision(),
             // Told after its dialog closed, with its group.
             GameEvent::GroupLost { .. } => {}

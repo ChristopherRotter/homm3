@@ -72,9 +72,16 @@
 //!   the name of the record holding its colour; the handicap a caption button (its first name,
 //!   enabled, taking the mouse and its hint), no name's edit; the hero's arrows a human record's,
 //!   the bonus's every colour's (0x58DE46); the local record the first name's.
+//! - **The hot seat's presses** (T4b; design §29): the handicap one on, modulo 3, its caption the
+//!   record's (the original's the colour's item's, set at the press alone; the client's follows
+//!   the record holding the colour: CLT-Q144 (b)); a flag passes its colour on
+//!   (`hot_seat_colour_cycle` 0x577AE0 as recorded, the original's; the client's to the next
+//!   player, the two exchanging: CLT-Q94); the hero's arrows pass over a hero another colour's
+//!   human record holds, a town's arrow and the showing step on a hero held twice
+//!   (`scenario_heroes_unclash` 0x58BBC0); Begin refused with GENRLTXT 531 (a player without a
+//!   colour: the original's the first player alone) or 83 (fewer than two placed).
 //!
-//! *Not built yet:* the hot seat's presses (T4b: its handicap's, its flags' cycle, a hero another
-//! human record holds passed over or stepped on); the name written to
+//! *Not built yet:* the name written to
 //! the setting `Network Default Name` (0x698817 and `settings_save` 0x50C1B0 at the edit's close:
 //! the client has no settings, M4); a town a human-only colour draws at the list's read (no
 //! shipped map has one; CLT-Q95); the edition's version (+0x1898: a single player's is SoD, so
@@ -548,6 +555,21 @@ pub(super) struct Advanced {
     /// The original's profile: the colour whose bar's piece the edit's opening pasted at the bar's
     /// corner, until the row is drawn again (CLT-Q143).
     pasted: Option<u8>,
+    /// The hot seat's cycle in the original's profile (`hot_seat_colour_cycle` 0x577AE0, E27 M3
+    /// T4b): the colour pressed last (+0x1824, none again at the options' hiding, 0x581D5F) and
+    /// the colour its taker left (+0x1830), to which a second press on it returns its holder.
+    pressed: Option<u8>,
+    /// See [`Advanced::pressed`].
+    kept: Option<u8>,
+}
+
+/// Why Begin is refused over a map (`scenario_begin_tail` 0x58BFC0, E27 M3 T4b).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Refusal {
+    /// GENRLTXT 531: a player has no colour.
+    Unplaced,
+    /// GENRLTXT 83: fewer than two players hold a colour (the hot seat's).
+    TooFew,
 }
 
 impl Advanced {
@@ -573,6 +595,8 @@ impl Advanced {
             editing: None,
             hovered: None,
             pasted: None,
+            pressed: None,
+            kept: None,
         }
     }
 
@@ -738,10 +762,12 @@ impl Advanced {
     }
 
     /// Hidden (`scenario_advanced_hide` 0x581B20): the name's edit closed first (its focus
-    /// taken), then every item of the options.
+    /// taken), then every item of the options; the hot seat's colour pressed last forgotten
+    /// (0x581D5F).
     pub(super) fn hide(&mut self, shown: &mut Shown) {
         self.close_edit(shown);
         self.showing = false;
+        self.pressed = None;
         Self::hide_items(shown);
     }
 
@@ -756,7 +782,8 @@ impl Advanced {
     /// Shown over `map` (`scenario_advanced_toggle` 0x581100): the rows made again after a change
     /// of the selection; each colour that plays on its row (its items moved there), its flag where
     /// a human may play it, its handicap not enabled (a single player's; the hot seat's a caption
-    /// button), who may play and its name set; the others' items hidden.
+    /// button), who may play and its name set; the others' items hidden; a hero another human
+    /// record holds stepped on (0x5817C1, as [`Advanced::unclash`]).
     pub(super) fn show(&mut self, map: &Map, dialog: &mut Dialog, shown: &mut Shown) {
         let seats = &map.seats;
         self.showing = true;
@@ -827,26 +854,55 @@ impl Advanced {
                 .insert(KIND + u16::from(c), self.texts.kinds[kind].clone());
             row += 1;
         }
+        self.unclash(map);
         self.set_names(shown);
         self.refresh(seats, shown);
     }
 
     /// The human records' colours from `map` (`scenario_players_init` 0x584C40, every record's
-    /// colour cleared before): single, the local record the map's single player's colour; the hot
-    /// seat, each colour a human may play, in colour order, to the next human record without one
-    /// (the loop 0x584DF0's hot-seat branch), the colours past the last name the computer's.
+    /// colour cleared before): [`Advanced::seating`].
     fn seat_humans(&mut self, map: &Map) {
+        let seating = self.seating(map);
+        for (human, c) in self.humans.iter_mut().zip(seating) {
+            human.record.colour = c;
+        }
+    }
+
+    /// The human records' colours as `scenario_players_init` 0x584C40 makes them over `map`:
+    /// single, the local record's the map's single player's colour (the only human record); the
+    /// hot seat, each colour a human may play, in colour order, to the next human record (the loop
+    /// 0x584DF0's hot-seat branch), the colours past the last name the computer's, the names past
+    /// the last such colour none.
+    fn seating(&self, map: &Map) -> Vec<Option<u8>> {
         if !self.hot_seat {
-            // (The single player's record is the only human one.)
-            for local in &mut self.humans {
-                local.record.colour = map.local;
-            }
-            return;
+            return self.humans.iter().map(|_| map.local).collect();
         }
-        let colours = (0..8u8).filter(|&c| map.seats[usize::from(c)].human);
-        for (human, c) in self.humans.iter_mut().zip(colours) {
-            human.record.colour = Some(c);
+        let mut colours = (0..8u8).filter(|&c| map.seats[usize::from(c)].human);
+        self.humans.iter().map(|_| colours.next()).collect()
+    }
+
+    /// Why Begin is refused over `map` (`scenario_begin_tail` 0x58C11F, a new game): GENRLTXT 531
+    /// where the local record (the single player's, the hot seat's first) has no colour, in the
+    /// client's profile where any human record has none (CLT-Q109 (b), decision 22: the
+    /// original's drops a named player without a colour at the begin; CLT-Q145 (c): a map with
+    /// fewer colours a human may play than names is listed but never begun); then the hot seat's
+    /// 83 where fewer than two human records hold a colour. The colours the rows hold, or while
+    /// they are made again at the next showing those that will make them.
+    pub(super) fn refusal(&self, map: &Map) -> Option<Refusal> {
+        let colours = if self.changed {
+            self.seating(map)
+        } else {
+            self.humans.iter().map(|h| h.record.colour).collect()
+        };
+        let unplaced = match self.bugs {
+            Bugs::Original => colours.first().is_some_and(Option::is_none),
+            Bugs::Fixed => colours.contains(&None),
+        };
+        if unplaced {
+            return Some(Refusal::Unplaced);
         }
+        let placed = colours.iter().flatten().count();
+        (self.hot_seat && placed < 2).then_some(Refusal::TooFew)
     }
 
     /// Each row's name (`scenario_dialog_redraw` 0x584550 sets them): the human record's that
@@ -953,18 +1009,25 @@ impl Advanced {
         true
     }
 
-    /// Colour `c`'s flag clicked over `map` (`scenario_flag_click` 0x58B790, single): the name's
-    /// edit closed first (`dialog_set_focus` −1), then to a colour a human may play that is not
-    /// the single player's own: the old flag's highlight cleared, the single player's record to
-    /// it, its town and hero Random (`scenario_hero_lists`); the names set and every row drawn
-    /// again (the redraw). The screen's flags are the caller's. (The hot seat's cycle,
-    /// `hot_seat_colour_cycle` 0x577AE0: T4b; until then its press moves no colour.)
+    /// Colour `c`'s flag clicked over `map` (`scenario_flag_click` 0x58B790): the name's edit
+    /// closed first (`dialog_set_focus` −1, single), then to a colour a human may play: single,
+    /// when it is not the single player's own, the old flag's highlight cleared, the single
+    /// player's record to it, its town and hero Random (`scenario_hero_lists`); the hot seat
+    /// (E27 M3 T4b), the colour passed on ([`Advanced::cycle`], the original's; the client's
+    /// [`Advanced::pass`], CLT-Q94); then the names set and every row drawn again (the redraw).
+    /// The screen's flags are the caller's.
     pub(super) fn flag_click(&mut self, c: u8, map: &Map, shown: &mut Shown) {
         self.close_edit(shown);
         let seat = map.seats[usize::from(c & 7)];
         let old = self.local_held();
-        if !self.hot_seat
-            && seat.human
+        if self.hot_seat {
+            if seat.human {
+                match self.bugs {
+                    Bugs::Original => self.cycle(c),
+                    Bugs::Fixed => self.pass(c),
+                }
+            }
+        } else if seat.human
             && old != Some(c)
             && let Some(local) = self.humans.first_mut()
         {
@@ -979,6 +1042,62 @@ impl Advanced {
         self.refresh(&map.seats, shown);
         for c in 0..8 {
             self.row_drawn(c, shown);
+        }
+    }
+
+    /// The hot seat's press on colour `c`'s flag as the original passes it on
+    /// (`hot_seat_colour_cycle` 0x577AE0; recorded: `adv-hotseat-rows`, `adv-hotseat-two`,
+    /// `adv-hotseat-begin`): its holder loses it; the taker is the human record after the holder
+    /// (the holder's +0x74 + 1: its index in the hot seat, as recorded), with no holder the first
+    /// record without a colour, else the first; a second press on the colour pressed last first
+    /// returns its holder to the colour the last taker left. The taker leaves its own colour
+    /// (kept for that return) and takes `c`, its town and hero Random; past the last record
+    /// nobody takes it (the computer's).
+    fn cycle(&mut self, c: u8) {
+        let holder = self.humans.iter().position(|h| h.record.colour == Some(c));
+        let free = self.humans.iter().position(|h| h.record.colour.is_none());
+        let taker = match holder {
+            Some(h) => {
+                self.humans[h].record.colour = None;
+                h + 1
+            }
+            None => free.unwrap_or(0),
+        };
+        if self.pressed == Some(c) {
+            if let (Some(k), Some(h)) = (self.kept, holder) {
+                self.humans[h].record.colour = Some(k);
+            }
+        } else {
+            self.pressed = Some(c);
+        }
+        self.kept = None;
+        if let Some(taker) = self.humans.get_mut(taker) {
+            self.kept = taker.record.colour;
+            taker.record.colour = Some(c);
+            taker.record.town = None;
+            taker.record.hero = None;
+        }
+    }
+
+    /// The hot seat's press on colour `c`'s flag as the client passes it on (CLT-Q94, decision
+    /// 13; *provisional* in its detail): to the human record after its holder, the two exchanging
+    /// colours (a taker without one leaves the holder with none); past the last record to the
+    /// computer, the holder left with none; with no holder the first record takes it, its own the
+    /// computer's. Each record that moves has its town and hero Random.
+    fn pass(&mut self, c: u8) {
+        let holder = self.humans.iter().position(|h| h.record.colour == Some(c));
+        let taker = holder.map_or(0, |h| h + 1);
+        let own = self.humans.get(taker).and_then(|t| t.record.colour);
+        let moved = |record: &mut Record, colour: Option<u8>| {
+            record.colour = colour;
+            record.town = None;
+            record.hero = None;
+        };
+        if let Some(h) = holder {
+            moved(&mut self.humans[h].record, own);
+        }
+        if let Some(taker) = self.humans.get_mut(taker) {
+            moved(&mut taker.record, Some(c));
         }
     }
 
@@ -1125,6 +1244,13 @@ impl Advanced {
             let town = self.shown_town(seat, c);
             if town.is_none() && self.record(c).bonus == Bonus::Resource {
                 self.record_mut(c).bonus = Bonus::Random;
+            }
+            // The hot seat's handicap in the client's profile: the caption of the record holding
+            // the colour (CLT-Q144 (b), decision 60); the original's is the colour's item's, set
+            // at its press alone, so a player moved by a flag shows the caption pressed there.
+            if self.hot_seat && self.bugs == Bugs::Fixed {
+                let caption = self.handicap_caption(c);
+                shown.texts.insert(HANDICAP + u16::from(c), caption);
             }
             let arrows = [
                 (TOWN_LEFT, TOWN_RIGHT, self.town_choosable(seat, c)),
@@ -1281,24 +1407,57 @@ impl Advanced {
     }
 
     /// A hero's arrow of colour `c` (`right` the right one; `scenario_hero_step` 0x58AF20): right
-    /// from Random to the list's first, on to its last, past it to Random; left the reverse;
-    /// nothing with an empty list. (A hero another human record holds, passed over: T4's.)
+    /// from Random to the list's first, on to its last, past it to Random; left the reverse,
+    /// passing over a hero another colour's human record holds (E27 M3 T4b: the hot seat's; Random
+    /// never passed over); nothing with an empty list.
     fn step_hero(&mut self, map: &Map, c: u8, right: bool) {
         let list = self.hero_list(map, c);
         let Some(last) = list.len().checked_sub(1) else {
             return;
         };
-        let at = self
+        let mut at = self
             .record(c)
             .hero
             .and_then(|t| list.iter().position(|&h| h == t));
-        let next = match (at, right) {
-            (None, true) => Some(0),
-            (Some(k), true) => (k < last).then_some(k + 1),
-            (None, false) => Some(last),
-            (Some(k), false) => k.checked_sub(1),
-        };
-        self.record_mut(c).hero = next.map(|k| list[k]);
+        loop {
+            at = match (at, right) {
+                (None, true) => Some(0),
+                (Some(k), true) => (k < last).then_some(k + 1),
+                (None, false) => Some(last),
+                (Some(k), false) => k.checked_sub(1),
+            };
+            if !at.is_some_and(|k| self.held_elsewhere(c, list[k])) {
+                break;
+            }
+        }
+        self.record_mut(c).hero = at.map(|k| list[k]);
+    }
+
+    /// Whether hero type `hero_type` is the pick of a human record holding a colour other than
+    /// `c` (`scenario_hero_step`'s test, 0x58AF93: each other colour's human record's).
+    fn held_elsewhere(&self, c: u8, hero_type: u8) -> bool {
+        self.humans
+            .iter()
+            .any(|h| h.record.colour.is_some_and(|o| o != c) && h.record.hero == Some(hero_type))
+    }
+
+    /// Each hero another colour's human record holds too stepped on (`scenario_heroes_unclash`
+    /// 0x58BBC0, after a town's arrow; the showing's own loop 0x5817C1): colours 7 down to 0, a
+    /// human record's pick held elsewhere stepped right once ([`Advanced::step_hero`] passes over
+    /// what is held). The steps never make a clash, so none is found in play (kept as the
+    /// original's).
+    fn unclash(&mut self, map: &Map) {
+        for c in (0..8u8).rev() {
+            let hero = self.human_of(c).and_then(|h| h.record.hero);
+            if hero.is_some_and(|t| self.held_elsewhere(c, t)) {
+                self.step_hero(map, c, true);
+            }
+        }
+    }
+
+    /// Colour `c`'s handicap's caption: its record's (`handicap_names` 0x6A7800).
+    fn handicap_caption(&self, c: u8) -> String {
+        self.texts.handicaps[usize::from(self.record(c).handicap % 3)].clone()
     }
 
     /// A bonus's arrow of colour `c` (`right` the right one): one back or on, modulo 4, the
@@ -1323,29 +1482,53 @@ impl Advanced {
         record.bonus = bonus;
     }
 
-    /// The click of item `id` over `map` (an arrow of the town, the hero or the bonus), its row
-    /// drawn again; whether it was one.
+    /// Colour `c`'s handicap pressed (207 + c, the hot seat's; `scenario_dialog_click` 0x58706A):
+    /// its record's handicap one on, modulo 3, the item's caption its name (`handicap_names`
+    /// 0x6A7800, `dialog_item_send` 3).
+    fn step_handicap(&mut self, c: u8, shown: &mut Shown) {
+        let record = self.record_mut(c);
+        record.handicap = (record.handicap + 1) % 3;
+        let caption = self.handicap_caption(c);
+        shown.texts.insert(HANDICAP + u16::from(c), caption);
+    }
+
+    /// The click of item `id` over `map` (an arrow of the town, the hero or the bonus; the hot
+    /// seat's handicap), its row drawn again; whether it was one. A town's arrow then steps on a
+    /// hero held twice (`scenario_heroes_unclash` 0x586A36).
     pub(super) fn click(&mut self, id: u16, map: &Map, shown: &mut Shown) -> bool {
         if !self.showing {
             return false;
         }
         let of = |first: u16| (first..first + 8).contains(&id).then(|| (id - first) as u8);
-        let (c, step): (u8, fn(&mut Self, &Map, u8)) = if let Some(c) = of(TOWN_LEFT) {
-            (c, |a, m, c| a.step_town(m.seats[usize::from(c)], c, false))
+        type Step = fn(&mut Advanced, &Map, u8, &mut Shown);
+        let (c, step): (u8, Step) = if let Some(c) = of(HANDICAP) {
+            (c, |a, _, c, shown| a.step_handicap(c, shown))
+        } else if let Some(c) = of(TOWN_LEFT) {
+            (c, |a, m, c, _| {
+                a.step_town(m.seats[usize::from(c)], c, false);
+                a.unclash(m);
+            })
         } else if let Some(c) = of(TOWN_RIGHT) {
-            (c, |a, m, c| a.step_town(m.seats[usize::from(c)], c, true))
+            (c, |a, m, c, _| {
+                a.step_town(m.seats[usize::from(c)], c, true);
+                a.unclash(m);
+            })
         } else if let Some(c) = of(HERO_LEFT) {
-            (c, |a, m, c| a.step_hero(m, c, false))
+            (c, |a, m, c, _| a.step_hero(m, c, false))
         } else if let Some(c) = of(HERO_RIGHT) {
-            (c, |a, m, c| a.step_hero(m, c, true))
+            (c, |a, m, c, _| a.step_hero(m, c, true))
         } else if let Some(c) = of(BONUS_LEFT) {
-            (c, |a, m, c| a.step_bonus(m.seats[usize::from(c)], c, false))
+            (c, |a, m, c, _| {
+                a.step_bonus(m.seats[usize::from(c)], c, false)
+            })
         } else if let Some(c) = of(BONUS_RIGHT) {
-            (c, |a, m, c| a.step_bonus(m.seats[usize::from(c)], c, true))
+            (c, |a, m, c, _| {
+                a.step_bonus(m.seats[usize::from(c)], c, true)
+            })
         } else {
             return false;
         };
-        step(self, map, c);
+        step(self, map, c, shown);
         self.refresh(&map.seats, shown);
         self.row_drawn(c, shown);
         true
@@ -1834,4 +2017,4 @@ fn text_at(texts: &[String], k: usize) -> String {
 }
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;

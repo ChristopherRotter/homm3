@@ -69,8 +69,25 @@ pub(crate) fn texts(bugs: Bugs) -> Texts {
             None,
             (BOX_PLAYER, bugs),
         )),
+        unplaced: Some(message::layout(
+            &layout.message,
+            (&medium, &small),
+            "Unplaced",
+            Style::Ok,
+            None,
+            (BOX_PLAYER, bugs),
+        )),
+        too_few: Some(message::layout(
+            &layout.message,
+            (&medium, &small),
+            "Too few",
+            Style::Ok,
+            None,
+            (BOX_PLAYER, bugs),
+        )),
         description_font: None,
         advanced: None,
+        random: [String::from("Random Map"), String::from("Randomly made")],
     }
 }
 

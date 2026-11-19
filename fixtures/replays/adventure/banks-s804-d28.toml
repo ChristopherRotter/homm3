@@ -592,33 +592,33 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x6b429e5d3c91468e",
-    "0x5ca6c0cefad89f34",
-    "0x60c75cbca076e282",
-    "0x4feb1d08552d49f4",
-    "0xaed050b0f7d18b55",
-    "0xf121cff815906f38",
-    "0xe867e9506cdb5e11",
-    "0x0b8ed61c13f8998d",
-    "0x935efcacb230de70",
-    "0x42d8f1cb42b8b632",
-    "0x6657dbd593a61c34",
-    "0x09a515b2ea316345",
-    "0x8f759a61f1f9c63b",
-    "0x4367ac4c9073bbe9",
-    "0x6b38c1d64b0eb2af",
-    "0xa291bddfee55dd9b",
-    "0xf4460e5dfebf549a",
-    "0x3aef93529f925396",
-    "0xe1485aa73ac13156",
-    "0xec5d5b3978a5a9d3",
-    "0xe29d28fc66f19498",
-    "0x7a08cfc545902f7d",
-    "0x278bb02ff1fcbf15",
+    "0x65f97e9470c9c44f",
+    "0xc954e8f550022511",
+    "0xb87f74207a4a2cdd",
+    "0xfcad0ef3251bcc5f",
+    "0x016779707c13730e",
+    "0xfe85db2ab47f0b67",
+    "0xf00411cd0c442c10",
+    "0xd740023af9c5b1a4",
+    "0x1455f01e9666cd6f",
+    "0x741a3e62eae025d9",
+    "0xa528f1836636d751",
+    "0xe56be4654a7e5418",
+    "0xfe6b040bfc1444fa",
+    "0xff40bcc8a8b76d40",
+    "0x08c5ef8805462dfa",
+    "0xd0c6b0693f3ff532",
+    "0x687bd5b07f4f2097",
+    "0x6c8f3d86742a5cdb",
+    "0xcbcd373bace03e3f",
+    "0x2d790ddf085886ec",
+    "0x728e031d9718fa8f",
+    "0xb9fef9d17f3a1992",
+    "0xb3a467ab33cf1f0e",
 ]
 
 [replay]
-format = 18
+format = 19
 engine = "0.1.0"
 seed = "804"
 difficulty = 1
@@ -638,21 +638,21 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x6ba8109889b34a25"
-adventure_ruleset_hash = "0xa5809e7fd9e842dd"
+adventure_ruleset_hash = "0x56c46df30c45ce3a"
 town_ruleset_hash = "0xabc9756b93a29a55"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 33
+game_state_hash_version = 34
 adventure_state_hash_version = 26
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-banks-36.h3m"
 hash = "0xda3dd80d4aa94083"
-import_version = 25
+import_version = 26
 
 [result]
 day = 29
-final_hash = "0x1e5e76cc390e452e"
+final_hash = "0x60fc6e9510a708f7"

@@ -193,6 +193,11 @@ pub enum Answer {
         /// The purchase or closing.
         answer: HireAnswer,
     },
+    /// A map Tavern's hire or closing (GAM-DEC-010; E09 T39a, v73).
+    Tavern {
+        /// The hire or closing.
+        answer: TavernAnswer,
+    },
     /// Closes a meeting (GAM-DEC-003) or an army dialog (GAM-DEC-004).
     Close {},
 }
@@ -269,6 +274,19 @@ pub enum HireAnswer {
         amount: u32,
     },
     /// Closes the dialog.
+    Close {},
+}
+
+/// A map Tavern's answer (`h3_game::TavernAnswer`, GAM-DEC-010; E09 T39a, v73).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum TavernAnswer {
+    /// Hires the tavern hero of this slot (0 or 1), which closes the Tavern.
+    Hire {
+        /// The slot.
+        slot: u8,
+    },
+    /// Closes the Tavern.
     Close {},
 }
 
@@ -474,6 +492,11 @@ pub enum GameReject {
     Town {
         /// Why.
         error: TownReject,
+    },
+    /// A map Tavern's hire the game refused (E09 T39a, v73).
+    Tavern {
+        /// Why.
+        error: TavernReject,
     },
     /// The session's, not the engine's (E16 M5 T8a, v45): the connection holds no seat of the
     /// game.
@@ -771,4 +794,18 @@ pub enum HireReject {
     },
     /// The army has no room for the creatures.
     NoRoom {},
+}
+
+/// Why a map Tavern's hire was refused (`h3_game::TavernError`, GAM-DEC-010; E09 T39a, v73).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum TavernReject {
+    /// The slot is not one of the player's two.
+    UnknownSlot {},
+    /// The slot holds no hero.
+    EmptySlot {},
+    /// The player has the most heroes on the map.
+    TooManyHeroes {},
+    /// A hero stands on the Tavern's visitable tile.
+    Occupied {},
 }

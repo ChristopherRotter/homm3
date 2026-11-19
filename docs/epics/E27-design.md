@@ -857,11 +857,13 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
     colour's index (*not understood*), the local record's colour the new one, its town and hero Random, the lists; then the flags (§3.5).
   - **the hot seat** (and a host): to a colour a human may play, `hot_seat_colour_cycle`
     0x577AE0: its holder loses it; the first human record with a player from index (the holder's
-    +0x74 + 1), always 0 outside network play, or with no holder from the first player without a
-    colour, takes it and leaves its own (kept at +0x1830; +0x1824 the colour pressed last: a
-    second press on it first returns the holder to the kept colour); then the lists, a clash
-    stepped on, the flags. So a press gives the colour to the first player without one, else to
-    the first player, and its holder is left with none (Begin then needs two placed players, §3.6).
+    +0x74 + 1: the holder's index in the hot seat, recorded at T4b, §29.1; M1 read it as always
+    0), or with no holder from the first player without a colour, else from 0, takes it and
+    leaves its own (kept at +0x1830; +0x1824 the colour pressed last: a second press on it first
+    returns the holder to the kept colour); then the lists (a clash stepped on: network play
+    only, 0x58B823), the flags. So a press on a held colour gives it to the player after its
+    holder (nobody after the last), on the computer's to the first player without one, else to the
+    first player; a holder is left with none (Begin then needs two placed players, §3.6).
     **CLT-Q94** (decision 13): the client passes the colour to the next player after its holder in
     the slots' order, the two exchanging colours (a taker without a colour leaves its holder with
     none); with no holder the first player takes it, leaving its own to the computer; after the
@@ -3250,7 +3252,179 @@ other recipe as recorded.
 
 ### 28.4 Not built
 
-The hot seat's presses (T4b): the handicap's (+1 modulo 3, its caption), the flags' cycle
-(`hot_seat_colour_cycle` 0x577AE0, CLT-Q94: until then a flag's press moves no colour), a hero
-another human record holds passed over and stepped on (`scenario_hero_step`,
-`scenario_heroes_unclash`), Begin's GENRLTXT 83 and 531. A hot-seat load (M4).
+The hot seat's presses (T4b: built, §29). A hot-seat load (M4).
+
+## 29. The hot seat's presses (M3 T4b, 2026-11-18)
+
+Read from `Heroes3.exe` (`hot_seat_colour_cycle` 0x577AE0 whole; `scenario_flag_click`
+0x58B790's hot-seat branch 0x58B7F5 to 0x58B829; the handicap's press 0x58706A to 0x5870CA;
+`scenario_hero_step` 0x58AF20 and `scenario_heroes_unclash` 0x58BBC0 whole, the showing's own loop
+0x5817C1 to 0x581856, the town's arrow 0x586A23 to 0x586A47; `scenario_begin_tail`'s players'
+checks 0x58C11F; `scenario_advanced_hide`'s 0x581D5F) against `adv-hotseat-rows`, `adv-hotseat-two` and
+`adv-hotseat-begin`, played again under Wine this session (every shot as kept). The client:
+`Advanced`'s `cycle`, `pass`, `step_handicap`, `held_elsewhere`, `unclash`, `refusal`, `Refusal`,
+the screen's Begin over a map (`Texts::unplaced`, `too_few`).
+
+### 29.1 The flags
+
+- **The hot seat's press** (0x58B7F5): a colour a human may play (the players block's +0xA0)
+  goes to `hot_seat_colour_cycle`, then `scenario_hero_lists`; outside network play nothing else
+  (the clash's step 0x58B8BC and the host's message are network play's), no highlight cleared;
+  then `scenario_team_flags` and the caller's `scenario_dialog_redraw` (§26.1: the strip stale).
+- **The cycle** (0x577AE0, on the human records): the holder (the record holding the colour)
+  loses it; the taker is searched from the holder's +0x74 + 1, with no holder from the first
+  record without a colour, else from 0: the first record with a player from there takes it
+  (its old colour kept at +0x1830, its town and hero −1); none past the last. A press on the
+  colour pressed last (+0x1824, set by every other press and forgotten at the options' hiding,
+  0x581D5F) first returns the holder to the kept colour (when one is kept); the kept colour is
+  cleared at every press before the taker's. The record's +0x74 starts at −1
+  (`scenario_player_init`); no write of it was found in the screen's code, but every recorded
+  press reads it as the record's index (below). The holder keeps its town and hero.
+- **Recorded** (each shot exact in the viewer's original profile):
+  - `adv-hotseat-rows` (Arrogance: red, blue, purple, teal; A, B, C): teal (no holder, everyone
+    placed): A takes it, red the computer's; teal again: A back to red, B takes teal, blue the
+    computer's; blue: A takes it (red the computer's); red: A takes it (blue the computer's).
+  - `adv-hotseat-two` (red, green; A, B): green (B's, the last): nobody, green the computer's;
+    red (A's): B takes it; red again (B's, nothing kept): nobody, both the computer's; green: A,
+    the first without a colour.
+  - `adv-hotseat-begin` (red, green; A, B, C): red (A's): B takes it (green kept); red again: B
+    back to green, C takes red; green (B's): C takes it; red: A, the first without one.
+- **The client** (CLT-Q94, decision 13; *provisional*): to the record after the holder, the two
+  exchanging colours (a taker without one leaves the holder with none); past the last to the
+  computer; with no holder the first record takes it, its own the computer's. Both movers' towns
+  and heroes Random.
+
+### 29.2 The handicap, the heroes, Begin
+
+- **The handicap's press** (207 + *c*, 0x58706A; enabled in the hot seat only): the record holding
+  the colour (a human's, else the computer's) one on, modulo 3, then the item's caption
+  `handicap_names`' (`dialog_item_send` 3, with the item's state bit 2 set meanwhile) and the row
+  drawn. Nothing else sets the caption (the row's draw reads no handicap), so a player a flag
+  moves keeps its handicap while each row keeps the caption pressed there: **CLT-Q144** (b),
+  decision 60: the client's caption is the record's, set at each row's refresh; the original's
+  for the comparisons. Recorded (`adv-hotseat-rows` handicap-1 to -3): Mild, Severe, None.
+- **The hero's step** (0x58AF20): the same walk as single's (§24.1), and after each step to a
+  hero (not to Random) the other colours' human records are compared, each by its pick's type;
+  a hero held there steps again. A record without a colour is compared with none.
+- **The clash** (`scenario_heroes_unclash` 0x58BBC0, after a town's arrow; the showing's same loop
+  0x5817C1): colours 7 down to 0, a human record whose pick another colour's human record also
+  holds steps once to the right. A town's arrow clears its own record's hero first and every
+  step passes over what is held, so no clash is reachable; built as the original's.
+  `row-1-choices` (blue's town, hero and bonus right arrows after the flags: blue the computer's,
+  Castle, no hero's arrows, the artifact) and `name-press` (nothing: §28.2) are exact.
+- **Begin** (0x58C11F, a new game): the local record (the hot seat's first) without a colour:
+  GENRLTXT 531; the hot seat or network play with fewer than two records holding a colour: 83;
+  each an OK box (as 530's, §21.3). Recorded: `adv-hotseat-two` begin-1 (83), `adv-hotseat-begin`
+  begin-1 (531). The client's 531 refuses while any record lacks a colour (CLT-Q109 (b), decision
+  22); with more names than the map's colours a human may play (listed: §28.1) one name is
+  always without, so such a game is never begun in the client's profile (**CLT-Q145** (c),
+  decision 61). Before the options are first shown the check reads the colours their showing
+  will give (`Advanced::seating`).
+- **The box's close** (`message_box`'s own restore): only the box's rectangle is drawn back, so
+  a flags' strip a press left stale stays stale (`closed-1` of both recipes: the allies' colon
+  without its shadow, 2 pixels); the client's screen is not drawn again whole at the box's close
+  (T2b's was: no stale part showed there).
+
+### 29.3 The recordings and the comparisons
+
+`adv-hotseat-rows` 12 of 12, `adv-hotseat-two` 7 of 7 exact; `adv-hotseat-begin` 7 of 7 up to its
+begin (T6's); every other recipe as recorded (`drawn.txt` recorded for the three).
+
+### 29.4 Not built
+
+The begin itself (T6); a hot-seat load's presses (M4, CLT-Q110 (b)); network play's clash step
+and messages (no network play).
+
+## 30. The random map's tab drawn and pressed (M3 T5a, 2026-11-19)
+
+T5 cut in two with the user at its start (decision 62): T5a the tab drawn and its left presses,
+T5b the right press and hints, Show Random Maps, the tab toggled back and Begin. Read from
+`Heroes3.exe` (`random_map_toggle` 0x57FEB0, `random_map_items_create` 0x57D170's arguments,
+`random_map_tab_draw` 0x57EF70 and `random_map_info_build` 0x580430 whole; `scenario_dialog_click`
+0x5865B0's cases 130 and 279 to 335; `random_map_hide` 0x581D80's ends; `scenario_info_draw`
+0x5840F0 and `scenario_entry_name` 0x584010 for what the panel reads; `scenario_dialog_redraw`'s
+tab part 0x584B24; `scenario_list_toggle` 0x580A70's and `scenario_advanced_toggle` 0x581100's
+calls) against `adv-random`, played again under Wine this session (52 of 52 as kept). The client:
+`scenario::random` (`RandomMap`, `Choices`), the screen's `toggle_random`, `random_built`,
+`random_click`, `shown_entry`; the layout's items 103, 280 to 335, 1040 and 1041; the keys
+`shell.scenario.random-*`.
+
+### 30.1 The choices and the presses
+
+- **The constructor's choices** (0x57D192 to 0x57D1D0; each opening of the screen starts from
+  them): size 72, two levels, the players Random (−1), their teams Random, the computer only
+  players **0**, their teams Random, the water Random (3), the monsters Random (−1).
+- **The presses** (`scenario_dialog_click`): 281 to 284 the size (36, 72, 108, 144), 285 the
+  levels (3 − levels), 287 to 294 the players (id − 286), 295 Random, 297 to 304 their teams
+  (id − 297), 305 Random, 307 to 314 the computer only players (id − 307), 315 Random, 317 to 323
+  their teams (id − 317), 324 Random, 326 to 329 the water (id − 326: none, normal, islands,
+  Random 3), 331 to 333 the monsters (id − 331), 334 Random; each `random_map_tab_draw`, the items
+  drawn again and `scenario_dialog_redraw`. The players' (287 to 295), their teams' counts (297 to
+  304, **not** Random's 305) and the computer only players' (307 to 315) then build the record
+  again (`random_map_info_build`); the others do not. 335 is `scenario_list_toggle(1)` (T5b), 279
+  Begin's generation (T5b, decision 13). A disabled button takes no press.
+- **The tab's state** (`random_map_tab_draw`, only while +0x37E): each group's chosen button
+  selected (0x10), the others not; the levels' switch selected for two levels. The caps: the
+  players' teams 1 and up enabled below the players' count, disabled from it on (Random players as
+  8: 1 to 7 enabled); the computer only players 1 and up enabled up to 8 less the players (Random
+  as 1: up to 7); their teams 1 and up enabled below the computer only players shown (their choice
+  up to its cap, Random as the cap). A choice above its cap is kept but shows its cap's button
+  selected (0x57F0C6, 0x57F153, 0x57F201: a disabled button then shows selected; no recording has
+  one, the client copies it). Group 0 (a count of 0) is never disabled, Random never.
+- **The items** (§3.16's table; the constructor's order, after the advanced options' items and
+  before Show Available Scenarios): the counts' buttons, Random's, the water's and the monsters'
+  have the disabled frame 1 and the selected frame 2 (their +0x3C and +0x40, 0x57D73E and the
+  loops after each group); the sizes, the levels' switch and Show Random Maps the defaults (2, 3).
+  The labels are text items of colour 1 with the flags 8 (as the panel's labels), 280 centred, the
+  others left. `scenario_dialog_redraw` draws 739 and 740 after the panel and calls
+  `random_map_tab_draw` last (its states show at the next draw of the items: every caller draws
+  them after a press).
+
+### 30.2 The own record and the panel
+
+- **`random_map_info_build`** (from the toggle's first opening, +0x37F clear, and the counts'
+  presses): a header of the version's format (the single player's SoD: 0x1C), the map's difficulty
+  1, the size and the levels chosen, no special victory or loss (0xFF), no teams (each colour its
+  own), a human may play the colours below the players (8 for Random), anyone those below the
+  players and the computer only players together (8 when either is Random), every faction, a
+  random town (+0xA), +0xB set (*inferred*: a main town), no main hero (+0x1C −1); its name GENRLTXT 741 and
+  description 742; the header into the game (`map_file_open_header` 0x513320, the players block
+  and the hero owners copied), the description into the scrollable text, every record's town and
+  hero cleared, `scenario_players_init`, `scenario_hero_lists`, `scenario_team_flags`, Begin
+  enabled, the items and the redraw. The client builds an `Entry` of it (`RandomMap::build`) and
+  makes the advanced options' records again at their next showing.
+- **What the panel shows** (`scenario_info_draw`): the name by `scenario_entry_name` (741 while
+  +0x37F), the rest from the game's header: the map's difficulty (Normal), the standard victory and
+  loss with their marks (11, 3), the rating, the flags (red the single player's, every other
+  colour that plays an enemy). `scenario_to_game` gives the game the own record while +0x37F
+  (the advanced toggle's and the tab's toggle's call), so the advanced options over a chosen random
+  map show its seats (the client's `shown_entry`).
+- **The size mark** is set by the select alone: in the tab it keeps what it showed (`adv-random`:
+  S, Arrogance's, whatever the size). The client's profile shows the chosen size's (CLT-Q115 (b),
+  decision 22); a size's press builds no record, so the client sets the mark from the choice.
+- **The toggles**: the tab's (130) shown hides it alone (+0x37E cleared, a random map still
+  chosen); else the list (`scenario_list_hide`) and the options hidden, 103 and 280 to 335 shown,
+  `scenario_to_game`, +0x37E set, and with +0x37F clear the record built (the client's profile at
+  each opening: CLT-Q111 (b)). The list's toggle hides the tab and clears +0x37F before it shows the
+  list (0x580A96, 0x580AAA); the advanced toggle hides the tab (0x58136F), +0x37F kept.
+- **The teams' 1 and 2** of the human or computer players are 30 × 24 items (0x57D85B, 0x57D8A9)
+  over 30 × 32 frames: their lowest 8 rows take no press (**CLT-Q146**, open; built as the
+  original's).
+- *The client's mouse* (*provisional*): the tab's hidden items left out of the shared input's
+  dialog (`mouse_dialog`), as the advanced options' (T3a): they lie over the list's columns and
+  over the options' rows.
+
+### 30.3 The recordings and the comparisons
+
+`adv-random` from `tab` to `monsters-random` (44 shots) exact, and `show-hover`; the other seven
+(the popups, `random-maps`, `tab-again`, `tab-hidden`) are T5b's (`drawn.txt` recorded for the
+recipe). Every other recipe as recorded.
+
+### 30.4 Not built (T5b)
+
+The tab's right press and hints (`Help.txt`); Show Random Maps (the random maps' list, kind 1,
+empty: CLT-Q92); the tab toggled back after it (the record built again with an empty list:
+CLT-Q111); Begin with a random map chosen (a stub's message, decision 13; `adv-random` gains a
+Begin after `tab-again`, recorded with `--record`); the list's showing over a chosen random map
+(read only: +0x37F cleared and no select, so the original's panel keeps the random record's header
+and description but the name; not recorded: to record at T5b and ask if it shows).

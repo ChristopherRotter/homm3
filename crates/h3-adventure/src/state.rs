@@ -39,7 +39,7 @@ use crate::setup::{
     AdventureSetup, ArmyError, Bans, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
     ObjectSetup, Pos, Scenery, Seat, SetupError, StandError, TileMask,
 };
-use crate::town::{TownHeroes, TownReveal};
+use crate::town::{TavernVisit, TownHeroes, TownReveal};
 
 /// How far around a battle's tile the battlefield picture's variant counts the scenery, in tiles
 /// along each axis (GAM-BAT-011, E08 T54; the original's 0x41ADB0: x − 3 to x + 3, y − 3 to y + 3).
@@ -1698,7 +1698,8 @@ impl AdventureState {
     /// hero stands on. A visitable tile is allowed even where a mask also blocks it (a hero may
     /// stand on a town's entrance, which the town's masks mark both ways), unless its object is
     /// visited from a neighbouring tile: no move ever enters such a tile (ADV-OBJ-003), so a setup
-    /// may not place a hero there either (E08 T14a). A border gate's tile is such a tile: only its
+    /// may not place a hero there either (E08 T14a; since E09 T39a a map Tavern's hire places one
+    /// on the Tavern's tile, which its moves leave as any other). A border gate's tile is such a tile: only its
     /// key's holders cross it (ADV-VIS-005, T15b), and no player holds a key at a setup; a hero a
     /// move stops on a gate leaves it as any tile.
     ///
@@ -2416,10 +2417,12 @@ impl AdventureState {
     /// ([`Self::visit_fortune`]), the Magic Well and the Magic Spring ([`Self::visit_well`],
     /// [`Self::visit_spring`]), the Stables ([`Self::visit_stables`]) and the Sirens
     /// ([`Self::visit_sirens`]). Since T124b2 a creature bank ([`Self::visit_bank`]: an attack
-    /// kind's marks and question unless looted, a search kind's question).
+    /// kind's marks and question unless looted, a search kind's question). Since E09 T39a the
+    /// map's Tavern (ADV-VIS-007: its visit, [`AdventureOutcome::tavern`], the game's tavern
+    /// decision) and the Den of Thieves (ADV-VIS-008: entered; its Thieves' Guild from T39b).
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
     // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017, ADV-DWL-004, ADV-RFG-001, ADV-BON-002
-    // rule: ADV-BNK-003
+    // rule: ADV-BNK-003, ADV-VIS-007, ADV-VIS-008
     fn visit<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -2543,6 +2546,18 @@ impl AdventureState {
             Effect::Bank(bank) => {
                 outcome = self.visit_bank(rules.1, (player, hero), object, bank, sink);
             }
+            // rule: ADV-VIS-007
+            Effect::Tavern => {
+                outcome.tavern = Some(TavernVisit {
+                    hero,
+                    object_type: visit.object_type,
+                    anchor,
+                    entrance: visit.tile,
+                });
+            }
+            // stub: TWN-STUB-20 (the Den's Thieves' Guild at everything, `ThievesGuildSeen`: E09
+            // T39b)
+            Effect::DenOfThieves => {}
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
             Effect::Message(leaves) => {
