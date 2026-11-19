@@ -180,6 +180,15 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
        never leaves the map.
      - **A team's visit** is the per-player **knowledge** of objects in increment 7's block, set
        for every player of the visitor's team.
+   - **Increment 14's objects** (E08 decision 361): **no new block.**
+     - **What the build drew** for a Black Market is the static map's: its seven artifacts in the
+       draw's order (three treasures, three minors, one major; an entry the pool could not fill
+       left out), beside every other object's drawn contents.
+     - **Its sold entries** are a map in increment 7's visits block, by object index a bit per
+       entry, absent for a market nothing was bought at; a purchase copies the block once.
+     - **Nothing else:** the Trading Posts, the Freelancer's Guild, the Altar of Sacrifice, the
+       Hill Fort and the War Machine Factory keep no state (no visit limit, no owner, no week);
+       the Altar's and the Hill Fort's visits set increment 12's kind marks.
 
    A fork is `Clone`: a few reference increments plus the plain arrays. The structures are
    hand-rolled in `h3-adventure` (no persistent-collections dependency) and move to the kernel
@@ -892,6 +901,66 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      its guards after a retreat, an upgraded stack as its own creature (E13-9), the deck from the
      coast and from a boat (E13-5) and the Shipwreck's water entrance a flight's pass and a visit
      from the coast and from above, never a water walk's (E13-12).
+   - **Increment 14's kinds** (the import maps classes 2, 7, 35, 99, 106, 213 and 221 at subclass
+     0, 221 to 99's type with its class kept for its picture; another subclass is refused, no body
+     is read). **Every one is entered** (the original's class lists, E08 decision 317's rule: the
+     hero stands on the entrance, the move ends there, `Revisit` visits it again), none from
+     above; visited every time, by every player (the original's human-only branches are the
+     computer player's behaviour, E10's):
+     - **The market** (`market`; ADV-MKT-001): the screens it shows (resources for resources,
+       resources to a player, resources for an artifact, creatures for resources), the count of
+       Marketplaces it trades as (5 for every map object) and a Black Market's stock classes. The
+       base pack's Trading Post (99, 221; trade and transfer) and Black Market (7; purchase), the
+       ab pack's Freelancer's Guild (213; sale).
+     - **The rates** (ADV-MKT-002): the adventure part's market parameters (two value tables by
+       resource, three factor tables by the count 1 to 10) and one computation in `h3-adventure`
+       that the town's Marketplace reuses with its own count (E08 decisions 361, 370): each step
+       as the original stores it, binary32 products and quotients rounded half up at the x87's 53
+       bits, computed exactly in integers (`h3_kernel::arith::X87`, as quirk Q-0005's rates); a
+       rate is a lot (so many given for one, or one for so many). D-71 the original's (E08
+       decision 365).
+     - **The Black Market's draw** (ADV-MKT-006), when the game is built, from the setup stream in
+       object order with increment 7's rewards and increment 13's banks: one artifact per stock
+       class in order from the one pool of the random artifacts, chests, finds and banks (the bans
+       and the map's artifacts marked). Never again (no restock).
+     - **The Altar of Sacrifice** (`altar`; ADV-ALT-001 to -003): the experience by artifact class
+       (1 000, 1 500, 3 000, 6 000, a special one 0), the artifacts never sacrificed (the Spell
+       Book, the Catapult), the most per sacrifice (23), a creature's experience (5 × ⌊AI value /
+       40⌋) and the factions whose heroes sacrifice artifacts or creatures (by the hero's class's
+       faction: Castle, Rampart, Tower artifacts; Inferno, Necropolis, Dungeon creatures;
+       Stronghold, Fortress, Conflux both). Each item's experience is the hero's gain
+       (HER-EXP-001) truncated per artifact and per stack (D-73 the original's); the special
+       artifacts go for 0 beside others (D-72 the original's, A-47 accepted: E08 decision 367);
+       a sacrifice of no experience is refused; the army keeps one creature. Its visit sets the
+       team's kind mark.
+     - **The Hill Fort** (`hill_fort`; ADV-HFT-001, -002): a stack of a creature with an upgrade
+       in the enabled packs upgrades for the cost difference times the count, the gold alone
+       scaled by the creature's level (free at 1, 25, 50 and 75 % at 2 to 4, whole from 5) and
+       rounded down once per stack (D-74 the original's). The four elementals have an upgrade only
+       under the ab pack, so with the base pack alone none upgrades, on every map alike (E08
+       decision 378: the original's game version 0, which skips them, is the scenario dialog's,
+       never the map's format; an RoE campaign's in the Complete edition, the recorded
+       deviation). Its visit sets the team's kind mark.
+     - **The War Machine Factory** (`war_machine_factory`; ADV-WMF-001): the war machines it sells
+       (the Ballista, the First Aid Tent, the Ammo Cart, never the Catapult), each at its
+       creature's cost, one of each the hero lacks, bought as its artifact into its position; the
+       visit asks the hire question, and its yes opens increment 10's hire dialog with the factory
+       as its source.
+     - **A Black Market's purchase** is refused before paying when the hero cannot receive the
+       artifact (no position takes it and the backpack is full: A-46 fixed, E08 decision 366).
+     Batch E14 (E08 T129a, T129b, T130; survey `E08-trades.md` §21) confirmed every row of it as
+     the original's: the seven entered, none from above, `Revisit` opening each again (E14-16);
+     the rates and D-71 (E14-1, E14-5: 10 Pixies 170 gold, 2 Vampires 2 wood; a wood 75 gold, 833
+     gold a wood, 3 mercury a gem), the guild's last creature kept (E14-2), the transfer 1 : 1 to
+     the other player (E14-6); the draw three, three and one from the allowed pool, never
+     restocked, a sold entry left empty (E14-3); A-46 as read (E14-4: the price paid, the artifact
+     lost, the entry emptied; the engine refuses it); the Altar's screens by faction (E14-7), its
+     values (E14-8), D-72 and A-47 (E14-9: the special ones for 0 beside a treasure, the Catapult
+     refused), D-73 (E14-10: 21), the last creature kept (E14-11), a level-up with the Altar
+     beneath (E14-17); the Hill Fort's prices and D-74 (E14-12: free, 125, 37, 56, 2 000 gold and
+     2 gems, four Air Elementals 25), its states (E14-13); the factory's machines (E14-15). E14-14's
+     RoE-format map played at the game's version SoD and upgraded its Air Elementals, as the
+     packs' rule above (E08 decision 378).
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
@@ -1047,6 +1116,14 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    players; the hint's change to the players whose team visited it. Batch E13 read the hint so
    (E13-2: the size word and the creature for the visitor's team, "not visited" for the other;
    E13-9: by the survivors). `docs/06-security.md` lists it (E08 T122).
+   From increment 14 every viewer that sees a **market**, an **Altar of Sacrifice**, a **Hill
+   Fort** or a **War Machine Factory** sees its type, the same to all (no owner); the market's rates
+   are the ruleset's, public. **A Black Market's stock** is server-only but in its visitor's open
+   decision, whose view shows the seven with the sold ones empty to the owner alone; a viewer keeps
+   nothing of a market it visited (the original shows the stock only in the window). The Altar's
+   and the Hill Fort's kind marks are increment 12's (told to the team that gains one). A trade's,
+   a sacrifice's and an upgrade's changes are the game's events to the owner; a transfer shows
+   its recipient its gain alone. `docs/06-security.md` lists it (E08 T131).
 
 ## Consequences
 
@@ -1133,6 +1210,13 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   hire's placement and a dismissal's removal reuse a hero's arrival and a lost hero's removal (no
   new event of the adventure's); the census counts the shipped maps that import whole once both
   classes do (E09 design §78).
+- Increment 14 (E08 T127b, T131): the seven classes are typed by five kinds of two packs, all
+  entered; the market's rates live in the adventure part and `h3-adventure` and serve the town's
+  Marketplace (E09 increment 5), so the town lane reads them through `h3-game` and `h3-towns`
+  needs no rate; a Black Market's stock is the static map's with its sold entries in the visits
+  block (adventure state hash's next version); the Hill Fort's elementals follow the enabled packs,
+  not the map's format (batch E14, E08 decision 378); 1 058 objects on 148 shipped maps stop being
+  inert blockers.
 
 ## Alternatives considered
 
@@ -1228,6 +1312,17 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
 - E09's increment 4 (`TWN-Q16`): the adventure map's Tavern left to E08's trades and services (E09
   decision 106); the Tavern visited from above, as its template says (the original blocks its
   entrance, VCMI's `blockVisit`).
+- Increment 14 (ADV-Q57, ADV-Q58, ADV-Q59): the rates in the core ruleset (`h3-content`, a
+  `shared/` change and ADR-0015 point 3 amended), so `h3-towns` could read them, not chosen as the
+  trade and the treasury are `h3-game`'s for both lanes (increment 10's hire dialog the
+  precedent); finite rate tables compiled into the part (they grow with the content and need the
+  same computation to check them); a Black Market's last seen stock kept by its visitor (a
+  snapshot that grows stale as others buy; the original shows nothing); VCMI's roundings (D-71,
+  D-73, D-74) and its machines refused at the Altar (D-72); an RoE map's Hill Forts marked by the
+  import so its elementals never upgrade (T127b's call, withdrawn by batch E14's E14-14, E08
+  decision 378: the original's game version is the scenario dialog's, from the players' editions,
+  so the Complete edition plays an RoE-format map at SoD's and upgrades them; the packs decide, E08
+  decision 104).
 
 ## Revision history
 
@@ -1371,3 +1466,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
 - 2026-11-17 (E09 T38a1 `shared/`; E09 decision 141, `TWN-Q22`): point 6's increment 4 part: the
   owner's view of a hired hero is its tavern slot's with the parts that view did not show
   (`HiredPartSeen`; ADR-0017 point 2).
+- 2026-11-19 (E08 T131 `shared/`; E08 decisions 361, 365 to 367, 370 to 373, 378; ADV-Q56 to
+  ADV-Q59): points 1, 4 and 6 amended for increment 14, the trades and services: no new block (a
+  Black Market's stock in the static map, its sold entries in the visits block); the kinds
+  `market` (with the rates, the draw, the purchase), `altar`, `hill_fort` and
+  `war_machine_factory`, all entered; the views; the Consequences and Alternatives. Drafted in
+  E08 T127b (design note `E08-design.md` §1 to §12, survey `E08-trades.md`); batch E14's outcome
+  (T130, survey §21: every row as read but the Hill Fort's RoE mark, withdrawn, decision 378)
+  folded in; placed after E09 increment 4's text.
