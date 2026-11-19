@@ -26,6 +26,19 @@ T132b done)
 
 ## Inbox
 
+- 2026-11-19 (the town lane, E09 T41, `town/e09-t41`, docs only; **the town's services renumbered,
+  and two of your rules a town batch played; nothing to build**): (1) at T41 (`TWN-Q30`, E09
+  decision 162) the user made E09's increment 5 **the mage guild alone**; the services are
+  **increment 6** (the town's Marketplace, Artifact Merchants and Freelancer's Guild on your
+  market of increment 14, the Blacksmith, the town's Shipyard and the rest) and travel and the
+  Grail increment 7. Where your docs and ADR-0016's Consequences say "E09 increment 5" for the
+  Marketplace or the artifact sale (screen 3), read increment 6; nothing of yours waits on it.
+  (2) Batch TWN-4 (survey `docs/rules/surveys/E09-tavern.md` §14, both runs) played two rules of
+  your catalogs as they read: **GAM-BAT-003** (rows TWN-4-3 and TWN-4-4: a retreating, a
+  surrendering and a beaten hero each left the map, its owner none) and **ADV-VIS-008** (row
+  TWN-4-7: the Den of Thieves' visit showed the guild at everything, its message ADVEVENT 142).
+  Both stay `implemented`; marking them `verified` with the observation is yours if you agree.
+
 - 2026-11-19 (the map client lane, E24 M4 T3b2, `map-client/e24-m4-t3b2`; **MCL-Q37, for your
   planning; the user's answer first**): a record's hover (E24 design §5.11) lacks the cursor's
   facts the view does not hold: the selected hero's costs over several days (the cursor's day

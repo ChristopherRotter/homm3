@@ -4,24 +4,27 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 
 ## Tasks
 
-Epic: `docs/epics/E09-towns.md` (increment 4: the Tavern, refined at T30, `TWN-Q15`, decisions 98
-to 128; its drafts accepted at T33b, `TWN-Q18`; batch TWN-4 scored by T34; the drafts in the ADRs
-by T35a, `TWN-Q19`; its code by T35b, decisions 129 to 131; the town part v7 by T36, decision
-132; the pool in the game by T37a, `TWN-Q20`, decisions 133 to 136; the map's customised types
-by T37b, `TWN-Q21`, decisions 137 to 139; T38a cut in two, `TWN-Q22`, decisions 140 to 142;
-T38a2 whole, decisions 143, 144; T38b cut in two, `TWN-Q23`, decisions 145, 146; T38b2
-whole, `TWN-Q24`, decisions 147, 148; T38 done; T39a whole, `TWN-Q25`, decisions 149, 150; T39b cut in two, `TWN-Q26`, decisions 151 to
-153; T39b2 whole, `TWN-Q27`, decisions 154, 155; T39 done; T40 cut in two, `TWN-Q28`,
-decisions 156 to 158, T40a done; T40b whole, `TWN-Q29`, decisions 159, 160; T40 done);
-done tasks in `E09-log.md`; increments 1 to 3
-(closed by T10, T20 and T30) in `E09-archive.md`. The building tasks are the design note's
-`E09-design.md` §79 (round by round, with the order against E08's increment 13); each task's cut
-confirmed at its start; every entry's acceptance includes the Definition of Done
-(`docs/05-testing.md`) and the exit criteria it serves (the epic's list, decision 121).
+Epic: `docs/epics/E09-towns.md` (increment 5: the mage guild, refined at T41, `TWN-Q30`, decisions
+161 to 164; the services are increment 6, travel and the Grail 7, decision 162); done tasks in
+`E09-log.md`; increments 1 to 4 (closed by T10, T20, T30 and T41) in `E09-archive.md`. Each
+task's cut confirmed at its start; every entry's acceptance includes the Definition of Done
+(`docs/05-testing.md`).
 
-**E09 T41 — the audit** (round 8): against the exit criteria; increment 4 closed (the archive,
-the README's epic row in the session's `shared/` pull request); increment 5 (the mage guild and
-the services) refined. **Status:** next.
+**E09 T42 — increment 5's survey** (round 1, decision 163), with its checkpoint (`TWN-Q31`): the
+code reading of `Heroes3.exe` (the guild's draw into its levels by the spells' town chances,
+`SPTRAITS.TXT`'s columns to harvest, RoE's without Conflux; a town's required and banned spells
+from the map; the faction's highest level and the Tower's Library; learning at a visit, at the
+start and at a hire with the spell book and Wisdom, `town_heroes_learn_spells` 0x5BE030,
+`TWN-STUB-6`'s dispute with VCMI, `TWN-STUB-15`; the spell book; the spell points restored in a
+town; the Dungeon's Mana Vortex; the Conflux's Aurora Borealis placed with the guild or the
+Grail); VCMI 1.7.5 and the wiki compared; a census of the 160 shipped maps (the towns' required
+and banned spells, the guilds standing at the start, the heroes with a spell book in a main
+town); batch TWN-5's rows proposed. The survey `docs/rules/surveys/E09-guild.md`. Needs
+`Heroes3.exe` and `extracted.tar` staged. **Status:** next.
+
+**E09 T43 — the drafts** (round 1, decision 163): the ADR amendment drafts
+(`docs/lanes/town/adr-drafts/`), the design note's Part G (`E09-design.md`, from §82), the cut
+into rounds and the exit criteria, accepted by the user before anything is built.
 
 ## Inbox
 
@@ -105,23 +108,6 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
 
 - 2026-11-17 (the map client lane, E24 M4 T1a, `map-client/e24-m4-t1a`; **the capture harness, rebuild `xdd.dll`**): `clients/capture/xdd.c` forces two more draws (`week_name` 0x4C87A6, the week's name, and `month_name` 0x4C8FCC, a normal month's; `h3drive.ROLLS` grew by two), so a batch or sequence run with an `xdd.dll` built before fails the count of redirected calls: rebuild it with `clients/capture/setup.sh`. Nothing else of `h3adv` or `h3mem` changed in behaviour (`Mem.calendar` is new: the week's and the month's kinds and names).
 
-- 2026-11-16 (the adventure lane, E08 T123b, `adventure/e08-t123b`; **for your T37b and T39a**):
-  E08's T123 is done, **map import v24** is taken (the creature banks typed: `h3-map`'s
-  `codes::object_type`, class 16 by subclass, 85, 24, 84, 25; `CREATURE_BANKS` beside
-  `BONUS_VISITABLES` in `import/codes.rs`). Your import changes take v25 (T37b took it: T39a's
-  takes v26; bump
-  `MAP_IMPORT_VERSION` and its doc line); the goldens then move their `import_version` line, and
-  `h3-server`'s `tests/record.rs` its `import` case (the adventure lane's `TRAPS.md`).
-
-- 2026-11-16 (the adventure lane, E08 T122, `shared/e08-t122`, `cross-lane`; **for your T35's
-  merge order**): E08 increment 13's drafts are in the ADRs: ADR-0016 points 1, 4 and 6 and
-  ADR-0017 points 1, 2, 4, 6, 9, 10 and 11 each gained a part **Increment 13** after its increment
-  12 part (ADR-0016 point 4 also a batch E13 paragraph), their consequences, alternatives and
-  revision histories a line each; ADR-0022 point 8 is new (the creature bank battle). Your T35
-  rebases its increment 4 text on them (ADR-0017 point 9's line names the merge order with E09's
-  increment 4). The glossary (`docs/03-domain.md`) and `docs/06-security.md` gained increment
-  13's lines after increment 12's.
-
 - 2026-11-13 (the adventure lane, E08 T115b, `adventure/e08-t115b`; **a signature in your
   callers, mechanical**): `AdventureState::apply` takes the day of the week beside the visitor's
   stream, `(player, weekday, draws): (PlayerId, Weekday, &mut Rng)`, and `visit_held` (with the
@@ -190,19 +176,13 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
 - (adventure archive, 2026-10-03, E04a T3a) Not harvested: the spells' town chances and the hero
   classes' tavern weights (RoE lacks the Conflux column: an override kind or a per-faction table).
   Increment 4, the Tavern (weights: only the tavern's draw reads them, survey `E09-towns.md`
-  §4.4; read by T32: `E09-tavern.md` §2.2, the Complete's file has the nine columns), increment 5
-  (chances).
-- (adventure queue, 2026-10-20, T24a2b1) `Marshland Menace` gives 15 hero types a map-wide
-  experience of 2 000 that only its taverns reach. Increment 4, the Tavern (read by T32:
-  `E09-tavern.md` §5, the customised types applied before the first draw).
-- (`ADV-STUB-9`, E10's) A Tavern town to hire a retreated hero again: a fact of the battle's
-  retreat setup. Increment 4, the Tavern, with E10 (read by T32: `E09-tavern.md` §4, the owner's
-  tavern at once).
+  §4.4; read by T32: `E09-tavern.md` §2.2, the Complete's file has the nine columns, harvested by T36),
+  increment 5 (chances: T42, `SPTRAITS.TXT`'s columns).
 - (ADR-0013 point 13.6; E08 decision 199, A-30) The Castle's Lighthouse building (sea movement).
-  Increment 5.
+  Increment 6, the services (decision 162).
 - (adventure archive, 2026-10-14, T19a2b) The Necropolis buildings' +10/+20 % Necromancy
-  (0x4E3CD0 with the building bits 0x66CE40, 0x66CE68). Increment 5.
+  (0x4E3CD0 with the building bits 0x66CE40, 0x66CE68). Increment 6, the services.
 - (adventure archive, 2026-10-03, E04a T3b) Combination artifacts' costs (blank in the original):
-  the Artifact Merchants. Increment 5.
+  the Artifact Merchants. Increment 6, the services.
 - (adventure archive, 2026-10-11, T8a; T34b) The new day's reveal around owned objects after a
-  Cover of Darkness hid tiles (0x4C7BA0). Increment 5.
+  Cover of Darkness hid tiles (0x4C7BA0). Increment 6, the services.

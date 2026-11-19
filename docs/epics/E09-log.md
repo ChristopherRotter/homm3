@@ -5188,3 +5188,120 @@ cut in two with the plans first and the queue's order) and consented to `cross-l
 
 **The queue:** T40b out, T40 done; T41 next (the audit, increment 4's closure, increment 5
 refined). Ids: decisions next 161, questions `TWN-Q30`.
+
+### T41 — the audit; increment 4 closed; increment 5 refined (2026-11-19)
+
+One session, the user present at the start; branch `town/e09-t41`, docs only, with the README's
+row in `shared/e09-t41-readme`. Starting point: `master` at 9404617 (#1053 merged; CI green
+there, the setup's light gates passed). The user's computer was connected at the start only: 63
+files of `original-data/` (the client lane's list without `shell-videos.vid`) and the four
+manuals with three help files staged, SHA-256 checked against the PC's. **At its start** (the
+user, asked with a first look at the audit, `TWN-Q30`): T41 whole (decision 161), increment 5
+the mage guild alone with the services 6 and travel and the Grail 7 (decision 162), the first
+round as before (decision 163).
+
+**The audit of increment 4's exit criteria** (`E09-archive.md`; design note §80), on `master`'s
+code:
+
+1. **The part, the slots, the pool's records.** `h3-pack-towns`' `the_original_taverns` (the
+   tavern weights of both editions and the price, part v7), `h3-towns`'
+   `a_hire_needs_a_standing_tavern_and_costs_the_parts_price`; the game's
+   `the_start_fills_each_players_slots_with_new_records`, `the_week_releases_and_refills_and_a_
+   record_keeps_its_id`, `a_hire_places_the_slots_hero_on_the_entrance_with_its_away_record`,
+   `a_repeated_types_other_hero_leaves_an_offered_record_as_it_is`; T40a's public readers and the
+   plans' `check_pool`. **Holds.**
+2. **The draw and the fills.** `the_draw_weighs_the_classes_with_a_free_type_by_the_players_
+   faction`, `the_draw_falls_back_to_every_free_type_then_fails`, `no_type_free_leaves_the_slot_
+   empty`, `a_fill_equips_the_backpack_and_fills_the_spell_points`, `a_returning_hero_stays_
+   through_the_weeks_release_and_the_marks_clear`, `a_random_choice_no_start_reads_is_drawn_at_
+   the_first_fill`; the census (T40a: 800 fills, 7 440 slots by its own walk of TWN-TAV-001, two
+   mutations caught); `taverns-weeks-s1` (`four_weeks_of_fills`). **Holds.**
+3. **The hires.** The game's `a_hire_places_the_slots_hero_on_the_entrance_with_its_away_record`,
+   `each_refusal_changes_nothing`, `the_slot_is_refilled_from_the_hirers_stream_with_one_creature_
+   of_the_first_stack`, the map Tavern's `a_step_toward_the_map_tavern_opens_its_decision_for_the_
+   visitors_owner`, `a_map_taverns_hire_places_the_hero_on_its_tile_and_closes_it`,
+   `each_refusal_of_a_map_taverns_hire_changes_nothing_and_leaves_it_open`; `h3-adventure`'s
+   `a_hire_needs_room_on_the_map_and_a_free_entrance`, `a_map_tavern_s_hire_needs_room_on_the_map_
+   and_its_tile_free`; the plans' `check_town_hire` and `check_map_hire` (T40b's
+   `the_plans_hire_at_map_taverns`: 15 hires); `taverns-hires-s1`. **Holds.**
+4. **The leaves and the returns.** `town/tests/hire/leave.rs`' five (a retreat into a slot from
+   the owner's stream, a surrender with its survivors sparing a marked slot, the beaten hero under
+   `TWN-QUIRK-12` in both settings, a draw and a winner of created stacks only, a repeated type's
+   other hero), `a_garrison_hero_keeps_its_town_as_the_winner_and_leaves_the_game_beaten`;
+   `taverns-retreats-s1` and `taverns-surrenders-s1` (TD-18 on day 8). **Holds.**
+5. **The turn.** `a_tavern_heros_points_are_set_at_its_owners_turn_start`,
+   `every_hero_regains_its_spell_points_at_a_new_day` (decision 127), the marks' clear in
+   `a_returning_hero_stays_through_the_weeks_release_and_the_marks_clear` (decision 126). **Holds.**
+6. **The dismissal.** `a_dismissed_hero_leaves_the_game_its_type_free_with_every_artifact`,
+   `a_dismissal_is_refused_for_a_hero_not_on_the_map_in_a_town_or_the_last`,
+   `a_dismissal_waits_for_an_open_meeting`; the plans' `check_dismissals` before every step;
+   `taverns-dismiss-s1` (`a_dismissed_type_is_drawn_again`). **Holds.**
+7. **The customised types.** `town/tests/custom.rs`' `a_customised_type_still_free_has_its_
+   record_at_the_build_and_is_offered_as_set`, `a_customised_type_is_the_rulesets_named_once_and_
+   valid_on_its_own`, `a_tavern_hero_keeps_a_starting_skill_its_map_bans`; the census (T40a: 17
+   customised types, 13 off the map at level 3 with `Marshland Menace`'s 2 000). **Holds.**
+8. **The Thieves' Guild.** `town/tests/hire/thieves.rs` (`the_guild_answers_in_its_viewers_turn_
+   by_its_towns_taverns`, `each_level_shows_its_rows_and_parts`, `each_row_counts_the_originals_
+   value`, `a_rows_places_go_from_the_highest_equal_values_sharing_one`, the best hero and the
+   best creature by TD-23, `the_artifacts_row_counts_the_backpacks_alone_under_twn_quirk_13`),
+   `a_map_taverns_decision_opens_the_guild_at_its_owners_taverns`, the Den's three (everything,
+   no recording sink, every visit alike); `TWN-STUB-17`, `-18` in place; `taverns-den-s1`. **Holds.**
+9. **Classes 95 and 97.** `h3-map`'s `the_import_types_the_tavern_and_the_den`,
+   `the_tavern_and_the_den_read_back_as_written`, `h3-adventure`'s `the_tavern_is_visited_from_a_
+   neighbour_and_the_den_entered`, `h3-pack-adventure`'s `the_base_pack_types_the_tavern_and_the_
+   den_of_thieves`; the census: 93 Taverns on 47 maps, 227 Dens on 107, all 160 maps imported
+   whole (T40a). **Holds.**
+10. **The views and the protocol.** `the_owner_sees_its_tavern_heroes_and_is_told_each_change`,
+    `the_owner_is_told_the_hire_its_parts_and_the_slots_new_view`,
+    `a_build_tells_each_viewer_its_changed_view_and_a_new_tavern_its_owners_raised_levels`; the
+    plans' `check_hired` and `check_hire_sources` (`view.rs`); protocol v70 to v74 (T37a to
+    T39b2) with the fold gate over the 104 goldens without a new gap (`h3-protocol`'s, CI's full
+    verify on `master` the record). **Holds.**
+11. **The env and the replays.** Action encoding v12 (`TAVERN_HIRE`,
+    `a_hire_action_names_its_town_by_the_entrance_and_the_slot_by_its_entry`) and v13 (the
+    tavern answers by role, `tiles_and_actions_encode_as_documented`); replay format v17 to v19
+    with the words `town hire`, `manage dismiss`, `answer tavern`; the six `taverns-*-s1`.
+    **Holds.**
+12. **Rules, quirks, gates, batch TWN-4.** TWN-TAV-001 to -009, GAM-DEC-010, GAM-MAN-003 and
+    ADV-VIS-007, -008 with their ids, sources and tests (`check-rules` passes); `TWN-QUIRK-12`
+    and `-13` in `quirks-town.md`, each with its regression test in both settings. The gates on
+    `master`'s code here: coverage (121 gated files in the four logic crates, no exclusion); determinism (debug, release and native, the 104 golden adventure replays among them); the census of `original_data` (all 160 maps import; 800 fills and 7 440 slots checked against its own walk of TWN-TAV-001 with the pool after every `EndTurn`, 3 694 slot 0s among the faction's classes; classes 95 and 97 and the customised types as criteria 9 and 7 say); the benchmarks (all 38 workloads inside their gates, from −0.99 % `reach-sea-xl-144` to +1.37 % `manage-army-12`; the day-start and month-start workloads re-baselined by T37a with their reasons, `week-start-taverns-36` baselined by T40b). Batch TWN-4 run and scored (T34, survey `E09-tavern.md` §14:
+    every row as the reading). **The gap fixed** (below). **Holds.**
+
+**The gap.** Criterion 12 wants batch TWN-4's consensus rows `verified`: the rules its rows settle
+(TWN-TAV-001 to -009, GAM-MAN-003) were marked by T37a to T39b1. One more town rule cited no row
+though rows played it: TWN-SET-005 (the pool), whose statuses rows TWN-4-1, -3, -4 and -5 read at
+game +0x4DF18 (each placed hero's type its owner's colour, the type draws over the class's free
+types only, a beaten or dismissed hero's type free and drawn again): the observation added,
+`verified`, with a note naming what no row played (a prisoner, SoD's masks, the picks). Two of
+the adventure lane's rules were played as well, GAM-BAT-003 (TWN-4-3, -4: each hero left the map)
+and ADV-VIS-008 (TWN-4-7: the Den's guild at everything): their status is that lane's, told in
+its inbox. TWN-SET-001 stays `implemented` (no row played a faction's choice: the batch's maps
+fix them). **Left open, by design:** `TWN-STUB-2`, `-16` (E10), `-6`, `-15` (increment 5), `-8`
+(the battle lane's inbox), `-13` (Visions' reach), `-17` (increment 7), `-18` (E13).
+
+**Increment 4 closed** (2026-11-19): its section (the refinement's note, decisions 98 to 160, the
+exit criteria and the task list with T41's line) moved verbatim to `E09-archive.md` (checked by
+script: every line of the old epic in the new epic or the archive, but the seven edited ones);
+its design note's Part F stays in `E09-design.md`, as Parts A to E (decision 40). The README's row
+(4 of 7) in `shared/e09-t41-readme`.
+
+**Increment 5 refined** (`TWN-Q30`; decisions 161 to 164): the mage guild alone (decision 162;
+the epic's sketch now seven increments, with the line for older citations); the survey with its
+checkpoint, then the drafts with Part G and the cut (decision 163). The inbox's four notes that
+increment 4 acted on (E08 T122's and T123b's, `Marshland Menace`'s, `ADV-STUB-9`'s) archived with
+where their work went (`QUEUE-ARCHIVE.md`); the market's six and the four service notes kept for
+increment 6 (their labels now say so), the town chances' for T42. `TWN-STUB-17`'s and
+TWN-BLD-002's "increment 6" now 7. The adventure lane's inbox told the services' number and its
+two rules. The queue holds T42 and T43.
+
+**Verify:** the engine's code is `master`'s. `cargo xtask verify --scope town --summary
+--with-original-data` on `master`'s code with no failing step (coverage 17.8 minutes, determinism
+8.2, bench-check 12.9, original-data 0.8; `deny` and `ffi-smoke` skipped by the scope); the setup
+had copied only `extracted/H3bitmap/Objects.txt`, so `h3-pack-adventure`'s example skipped itself: run
+apart after the staged `original-data/.` was copied in (`cp -r --update=none`), it passed. On the
+branch the docs gates (`check-docs`, `check-rules`, `check-stubs`, `doc-drift --base origin/master`)
+and `check-lane --base origin/master`; `shared/e09-t41-readme` `check-lane` and `check-docs`. CI on the
+pull requests is the record.
+
+**The queue:** T41 out; T42 next, T43 queued. Ids: decisions next 165, questions `TWN-Q31`.

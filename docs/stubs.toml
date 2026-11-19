@@ -254,7 +254,7 @@ epic   = "E09"
 [[stub]]
 id     = "TWN-STUB-17"
 where  = "crates/h3-game/src/town/thieves.rs::value"
-reason = "The Thieves' Guild's obelisks row ranks every player at 0 (TWN-TAV-008; E09 T39b1, design note E09-design.md section 73): the original's thieves_guild_row_value 0x5DEE70 case 5 counts the obelisks the player visited (player_obelisks_visited 0x4BABA0). The engine places no obelisks before the Grail (E09 increment 6); lifted there"
+reason = "The Thieves' Guild's obelisks row ranks every player at 0 (TWN-TAV-008; E09 T39b1, design note E09-design.md section 73): the original's thieves_guild_row_value 0x5DEE70 case 5 counts the obelisks the player visited (player_obelisks_visited 0x4BABA0). The engine places no obelisks before the Grail (E09 increment 7, decision 162); lifted there"
 epic   = "E09"
 
 [[stub]]
