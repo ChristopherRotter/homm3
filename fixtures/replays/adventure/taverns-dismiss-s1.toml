@@ -1,0 +1,71 @@
+commands = [
+    "0 dismiss 2",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 town hire 0 0",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0x66dfe1ac9286117b",
+    "0x6db015a6d080d5b3",
+    "0xb2b368f7c2766aea",
+    "0x96cf996529141e01",
+    "0x019bf1402433c6b5",
+    "0x71f806fe99166d56",
+    "0xc21dc22107cc5b66",
+    "0x8e303dfca4ee3ab1",
+    "0x8879b173147fd396",
+]
+
+[replay]
+format = 19
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x6ba8109889b34a25"
+adventure_ruleset_hash = "0x56c46df30c45ce3a"
+town_ruleset_hash = "0xab3ee3f1cb243f30"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 34
+adventure_state_hash_version = 26
+checkpoint_every = 2
+
+[map]
+path = "fixtures/maps/e09-taverns-36.h3m"
+hash = "0x5857a6118d8c8733"
+import_version = 26
+
+[result]
+day = 9
+final_hash = "0x8879b173147fd396"

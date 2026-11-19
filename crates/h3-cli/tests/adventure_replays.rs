@@ -807,6 +807,36 @@
 //!   and blue takes it the same day; blue builds there on day 14; the Harbour's Shipyard on day 7.
 //! - `builds-s290-d14` (29 builds): the Keep's Capitol on day 6, blue takes the Keep on day 10, the
 //!   Harbour's Shipyard on day 11 and red's second Capitol, the Harbour's, on day 13.
+//!
+//! The taverns map (E09 T40b, decision 159; the town epic's design note §78), `fixtures/maps/
+//! e09-taverns-36.h3m`: red (Castle) and blue (Rampart), red's main Castle "Bastion" with its
+//! Tavern and the Brotherhood of the Sword, blue's main Rampart "Glade" with its Tavern, a map
+//! Tavern, a Den of Thieves, forty Stone Golems, red's five heroes with five Royal Griffins each
+//! (Orrin 0 beside the golems, Valeska 2 below the map Tavern's tile with the Charm of Mana,
+//! Sorsha 3 and Cuthbert 4 either side of blue's Mephala 1, Edric 6 beside blue's Ufretin 5),
+//! blue's Ryland 7 below the Den; the map allows six hero types besides the placed ones, so the
+//! taverns' four slots leave two free at the start. Scripted, each with `h3-map`'s test of its
+//! name in `taverns_map.rs` that plays its commands and checks what it shows, recorded with `h3
+//! adventure run --map fixtures/maps/e09-taverns-36.h3m --seed 1 --checkpoint-every N --script
+//! <script> --record <replay>` (N 4 for the weeks, 2 for the dismissal, else 1):
+//!
+//! - `taverns-weeks-s1`: 28 days of turn ends: the start's fill and four weeks' (TWN-TAV-001,
+//!   -002), slot 0 of the player's faction's classes, none twice.
+//! - `taverns-hires-s1`: the Bastion's hire of slot 0 and its replacement (TWN-TAV-003, -004);
+//!   Valeska's visit of the map Tavern, its hire of slot 1 onto the Tavern's tile and the slot's
+//!   replacement (GAM-DEC-010); blue's hire, its slot left empty (no type free); on day 2 the hired
+//!   hero walks off the Tavern's tile and Valeska's second visit is closed.
+//! - `taverns-retreats-s1`: Orrin's retreat from the golems in red's turn, back into red's tavern
+//!   at once with one creature (TWN-TAV-006, TD-19), the mark cleared at the turn's end; Sorsha's
+//!   retreat from Mephala in blue's day-6 turn, Cuthbert's in blue's day-7 turn, kept through day
+//!   8's release (TD-18).
+//! - `taverns-surrenders-s1`: Edric's surrender to Ufretin in red's turn, Sorsha's to Mephala in
+//!   blue's, each paying 600 gold and back with its army (BAT-FLE-002, TWN-TAV-006); on day 2 the
+//!   Bastion hires Sorsha back with her Royal Griffins.
+//! - `taverns-dismiss-s1`: Valeska dismissed on day 1 (GAM-MAN-003), her type drawn again into
+//!   red's tavern by week 2's fill and hired back on day 8 with the Charm (T-14).
+//! - `taverns-den-s1`: Ryland enters the Den of Thieves: the Thieves' Guild at everything
+//!   (TWN-TAV-009, `ThievesGuildSeen` and its parts).
 
 use std::path::PathBuf;
 
