@@ -2596,6 +2596,16 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   97 imported (map import v26); a step onto it ends the move there and its `Revisit` is listed;
   its visit gives nothing yet (`TWN-STUB-20`, `h3-adventure`'s `visit`): T39b adds the outcome and
   `ThievesGuildSeen`.
+- *As built* (T39b2, decisions 154, 155): the visit's outcome a flag,
+  `AdventureOutcome::thieves_guild` (`h3-adventure`'s `visit`, `cross-lane`), which the game's
+  `settle_outcome` tells after the visit's other effects through `town::thieves::tell_den`:
+  `thieves_guild_at(state, rules, DEN_LEVEL)` whatever the visitor's Taverns, as §75's events.
+  Every visit alike (a second step onto it the same day, a `Revisit`); a sink that keeps nothing
+  is told nothing and nothing is computed (`Sink::RECORDS`; the state the same). `TWN-STUB-20`
+  lifted, ADV-VIS-008's summary amended. **The census:** the 98 golden replays play 12 maps with
+  no Den (and no map Tavern): none steps onto one, nothing re-recorded. Tests
+  `town/tests/hire/map.rs` (three: the guild at everything to red alone after the step, its parts
+  in order, blue told nothing; a `Revisit` and a second step alike; a `NoopSink` visit's state).
 
 ### 75. The views and events (both halves; `docs/06-security.md`'s town section by the `shared/` task)
 
@@ -2666,6 +2676,22 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   map and, for the owner, moves the slot's view into its heroes, the worn positions grown to the
   told count). `h3-protocol`'s `a_hire_folds_as_observe_shows_it` plays a hire on three golden
   games (none of them hires: `TWN-STUB-19`) and compares every viewer's fold with `observe`.
+- *As built* (T39b2, decisions 154, 155): **`ThievesGuildSeen { player, level }`** then
+  **`GuildPartSeen { player, part: GuildPart }`** per part (`GameEvent` stays `Copy`), in
+  `ThievesGuildView::parts`' order: `GuildPart::Place { row, of, place }` for each shown row's
+  players by id, the rows in order, then `GuildPart::Player { of, shown: GuildPlayer }` per
+  player; seen by `player` alone (`project`). The engine folds no parts. Protocol **v74**: the
+  wire's `GuildRow`, `GuildRanking`, `GuildHero`, `GuildPlayer`, `ThievesGuild` (with
+  `ThievesGuild::at(level)` and `see(part)`, a client's fold of the parts: a place of a row other
+  than the last begins that row), `GuildPart`; both events mapped and dropped by the fold (the
+  guild is not in the observation); `GameQuery::ThievesGuild` answered by
+  `GameAnswer::ThievesGuild { guild }` (`map::game::query::answer`: `h3_game::thieves_guild` for
+  the asking seat's player). Tests: `game_event`'s every event (46 kinds) and
+  `a_dens_guild_on_the_wire_is_the_guild_its_parts_make` (a level-5 view's parts map back, round
+  trip, and `see` gives the query's mapping), the fold's no-change list, `game_query`'s
+  `the_thieves_guild_is_the_engines_for_the_asking_player` (every golden's first 30 commands, each
+  player and one beyond), the wire's message round trips. `h3-map`'s told views take both events
+  as the viewer's own.
 
 ### 76. The env and the protocol
 
