@@ -223,6 +223,11 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
                 query: Query::CastTargets { spell: 15 },
             },
         },
+        // E09 T39b2 (v74).
+        ClientMessage::GameQuery {
+            seq: 40,
+            query: game::GameQuery::ThievesGuild,
+        },
     ];
     out.extend(
         commands()
@@ -798,6 +803,32 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             answer: game::GameAnswer::Battle {
                 targets: vec![Target::Stack { stack: 2 }, Target::Hex { hex: 40 }],
             },
+        },
+        // E09 T39b2 (v74): the Thieves' Guild, and none.
+        ServerMessage::GameAnswer {
+            n: 7,
+            seq: 18,
+            answer: game::GameAnswer::ThievesGuild {
+                guild: Some(game::ThievesGuild {
+                    level: 2,
+                    rows: vec![game::GuildRanking {
+                        row: game::GuildRow::Heroes,
+                        places: vec![0, 0],
+                    }],
+                    players: vec![game::GuildPlayer {
+                        hero: Some(game::GuildHero {
+                            hero_type: 9,
+                            skills: Some([3, 2, 1, 0]),
+                        }),
+                        creature: None,
+                    }],
+                }),
+            },
+        },
+        ServerMessage::GameAnswer {
+            n: 7,
+            seq: 19,
+            answer: game::GameAnswer::ThievesGuild { guild: None },
         },
         // E16 M5 T22a: a player's message as a spectator sees it.
         ServerMessage::GameWatched {

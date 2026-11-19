@@ -1,7 +1,8 @@
 //! The whole game's queries on the wire (E16 M5 T11): a seat's question answered by the engine's
 //! own queries for the seat's player ([`answer`]), a hero's reachable tiles packed as a path tree
 //! ([`moves`]). What leaves is the player's by construction: the engine answers a player's
-//! question about its own heroes, towns and battle side only.
+//! question about its own heroes, towns and battle side only, and since v74 the Thieves' Guild
+//! its Taverns open (every player's places and parts, as the original's window shows them).
 
 use alloc::collections::BTreeMap;
 use alloc::vec;
@@ -11,14 +12,15 @@ use h3_adventure::Reach;
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{Actor, GameRuleset, GameState};
 
-use super::pos;
+use super::{pos, thieves_guild};
 use crate::map::query as battle_query;
 use crate::wire::WireU64;
 use crate::wire::game::{GameAnswer, GameQuery, Moves, Pos, TownOffer};
 
 /// The answer to `player`'s `query` now: its hero's moves (`h3_game::legal_moves`), its town's
 /// hall (`h3_game::GameState::town_offer`), its battle's targets for the side it owns there (the
-/// battle's [`crate::map::query`]; none without a battle of its own).
+/// battle's [`crate::map::query`]; none without a battle of its own), its Thieves' Guild
+/// (`h3_game::thieves_guild`, v74).
 pub fn answer(
     state: &GameState,
     rules: &GameRuleset,
@@ -43,6 +45,10 @@ pub fn answer(
                 .and_then(|battle| battle.side_of(player).map(|side| (battle, side)))
                 .map(|(battle, side)| battle_query(battle.state(), rules.battle(), side, query))
                 .unwrap_or_default(),
+        },
+        // rule: TWN-TAV-007
+        GameQuery::ThievesGuild => GameAnswer::ThievesGuild {
+            guild: h3_game::thieves_guild(state, rules, player).map(|view| thieves_guild(&view)),
         },
     }
 }

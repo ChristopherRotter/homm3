@@ -3,8 +3,9 @@
 //! player of every player in the game: the rows its level shows, each ranking the players by a
 //! value as places (never the values), and from its level each player's best hero, that hero's
 //! primary skills and its best creature. A query: nothing is stored, the window is a snapshot when
-//! it opens. Its level is the viewer's towns with a Tavern ([`thieves_guild`]); a Den of Thieves
-//! shows everything ([`DEN_LEVEL`]; its visit is E09 T39b2's, `TWN-STUB-20`).
+//! it opens. Its level is the viewer's towns with a Tavern ([`thieves_guild`]); a Den of Thieves'
+//! visit shows everything ([`DEN_LEVEL`]), told to the visitor's owner in parts ([`tell_den`],
+//! [`GuildPart`]; E09 T39b2, design note §74, §75).
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
@@ -16,6 +17,7 @@ use h3_contracts::{ArmyStack, PlayerId};
 use h3_heroes::HeroDetails;
 
 use super::view::tavern_count;
+use crate::command::{GameEvent, Sink};
 use crate::{GameRuleset, GameState};
 
 /// The Thieves' Guild's highest level (TWN-TAV-007; `player_tavern_count` 0x4CCE30's count, whose
@@ -114,6 +116,78 @@ pub struct ThievesGuildView {
     pub rows: Vec<GuildRanking>,
     /// Every player of the game, by id (none is defeated before E10).
     pub players: Vec<GuildPlayer>,
+}
+
+/// A part of the Thieves' Guild as a Den of Thieves' visit tells it (TWN-TAV-008, -009; E09
+/// T39b2, design note §75; `GameEvent` stays `Copy`): told after its
+/// [`GameEvent::ThievesGuildSeen`], one per part in this order ([`ThievesGuildView::parts`]):
+/// each shown row's places, the rows in order and each row's players by id, then each player's
+/// parts beside the rows, by id: a place of a row other than the one before begins that row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GuildPart {
+    /// A player's place in a row (its [`GuildRanking::places`] entry).
+    Place {
+        /// The row.
+        row: GuildRow,
+        /// The player placed.
+        of: PlayerId,
+        /// Its place, 0 the first.
+        place: u8,
+    },
+    /// What the guild shows of a player beside the rows (its [`ThievesGuildView::players`]
+    /// entry).
+    Player {
+        /// The player.
+        of: PlayerId,
+        /// Its best hero and best creature.
+        shown: GuildPlayer,
+    },
+}
+
+impl ThievesGuildView {
+    /// The view's parts in [`GuildPart`]'s order: every row's places, then every player's parts.
+    pub fn parts(&self) -> impl Iterator<Item = GuildPart> + '_ {
+        let of = |index: usize| PlayerId::new(u8::try_from(index).unwrap_or(u8::MAX));
+        let places = self.rows.iter().flat_map(move |ranking| {
+            let row = ranking.row;
+            (ranking.places.iter().enumerate()).map(move |(index, &place)| GuildPart::Place {
+                row,
+                of: of(index),
+                place,
+            })
+        });
+        let players =
+            (self.players.iter().enumerate()).map(move |(index, &shown)| GuildPart::Player {
+                of: of(index),
+                shown,
+            });
+        places.chain(players)
+    }
+}
+
+/// Tells `player` the Thieves' Guild at everything after its hero's visit of a Den of Thieves
+/// (ADV-VIS-008, TWN-TAV-007; E09 T39b2, design note §74, §75; `visit_object`'s case 97):
+/// [`GameEvent::ThievesGuildSeen`], then a [`GameEvent::GuildPartSeen`] per part of
+/// [`thieves_guild_at`] at [`DEN_LEVEL`], every visit alike. Nothing for a sink that keeps nothing
+/// ([`Sink::RECORDS`]): the guild is not stored, so the state is the same either way.
+// rule: ADV-VIS-008
+pub(crate) fn tell_den<S: Sink>(
+    state: &GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    sink: &mut S,
+) {
+    if !S::RECORDS {
+        return;
+    }
+    let view = thieves_guild_at(state, rules, DEN_LEVEL);
+    sink.emit(GameEvent::ThievesGuildSeen {
+        player,
+        level: view.level,
+    });
+    for part in view.parts() {
+        sink.emit(GameEvent::GuildPartSeen { player, part });
+    }
 }
 
 /// The Thieves' Guild `viewer` may open now (TWN-TAV-007; E09 decision 119, design note §73):

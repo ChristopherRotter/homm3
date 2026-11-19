@@ -348,6 +348,9 @@ impl GameObservation {
                 let details = self.details_mut(hero);
                 details.into_iter().for_each(|details| details.see(part));
             }
+            // A Den of Thieves' Thieves' Guild (E09 T39b2): a snapshot, not in the observation (a
+            // client makes it with `ThievesGuild::see`).
+            GameEvent::ThievesGuildSeen { .. } | GameEvent::GuildPartSeen { .. } => {}
             // The viewer's whole view of a map garrison, its stacks following (E08 T114b,
             // ADV-GAR-006): put in its place, a garrison the viewer did not see yet too. A change
             // of a Visions holder's reach is not told (stub: TWN-STUB-13).

@@ -12,6 +12,18 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-19 (the town lane, E09 T39b2, `town/e09-t39b2`, `cross-lane` with the user's consent;
+  **your paths changed, for your review; protocol v74 taken**): the Thieves' Guild (TWN-TAV-007
+  to -009): `GameQuery::ThievesGuild` answered by `GameAnswer::ThievesGuild { guild:
+  Option<ThievesGuild> }` (`map::game::query::answer`: `h3_game::thieves_guild` for the asking
+  seat's player; none outside its turn or without a Tavern), the wire's `GuildRow`,
+  `GuildRanking`, `GuildHero`, `GuildPlayer`, `ThievesGuild` (`at` and `see`: a client's fold of
+  a Den's parts) and `GuildPart`; a Den of Thieves' `ThievesGuildSeen { player, level }` and
+  `GuildPartSeen { player, part }` mapped, dropped by the fold (the guild is not in the
+  observation); the round trips (46 kinds of event, the answer's messages), the query over the
+  goldens' first 30 commands. `GameSession::query` unchanged. No golden meets a Den. Your next
+  bump is v75.
+
 - 2026-11-18 (the town lane, E09 T39a, `town/e09-t39a`, `cross-lane` with the user's consent;
   **your paths changed, for your review; protocol v73 taken**): the map Tavern's decision
   (GAM-DEC-010): `Answer::Tavern { answer: TavernAnswer::{Hire { slot }, Close {}} }`,

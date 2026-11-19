@@ -324,6 +324,10 @@ pub struct AdventureOutcome {
     /// as the player's decision, whose hire places the hero on the Tavern's visitable tile
     /// ([`crate::AdventureState::check_map_tavern_hire`], [`crate::AdventureState::place_hired`]).
     pub tavern: Option<crate::TavernVisit>,
+    /// Whether the visit was a Den of Thieves' (ADV-VIS-008; E09 T39b2, the town epic's design
+    /// note §74): the game shows the visitor's owner the Thieves' Guild at everything (its
+    /// `ThievesGuildSeen`, TWN-TAV-007 to -009), every visit alike.
+    pub thieves_guild: bool,
 }
 
 /// What a Sirens' visit took from its hero's army ([`AdventureOutcome::drowned`]; E08 T115b).
