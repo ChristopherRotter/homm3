@@ -112,7 +112,8 @@ pub enum ImportError {
     /// a random dwelling of class 217 past level 6 or of class 218 past faction 8: A-36's input
     /// bound, `ADV-QUIRK-38`, not reproduced; since E08 T103b a monolith of class 43 to 45 past
     /// channel 7: A-39's, `ADV-QUIRK-41`; since E08 T123b a creature bank of class 16 past 6,
-    /// which the original indexes its kinds' table by without a test).
+    /// which the original indexes its kinds' table by without a test; since E08 T132b a trade or
+    /// service of class 2, 7, 35, 99, 106, 213 or 221 past 0).
     Subclass(usize),
     /// The hero object at this index belongs to a colour nobody plays.
     HeroOwner(usize),

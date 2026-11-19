@@ -707,12 +707,14 @@ impl Replay {
 
     /// Whether the client's notice shows: the network modes' over the Multiplayer dialog,
     /// Begin's with a random map chosen over the scenario screen (E27 M3 T5b: the original
-    /// generates the map there), or play's after its fade (T6: the original's play).
+    /// generates the map there), play's after its fade (T6: the original's play), or Reset's over
+    /// High Scores (E27 M4 T1a: its question is T1b's).
     fn noticing(&self) -> bool {
         match &self.front {
             Some(Front::Multiplayer(m)) => m.noticing(),
             Some(Front::Scenario(s)) => s.stubbed(),
             Some(Front::Play(p)) => p.noticing(),
+            Some(Front::Scores(s)) => s.noticing(),
             _ => false,
         }
     }

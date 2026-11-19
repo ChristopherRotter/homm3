@@ -3663,3 +3663,74 @@ with GENRLTXT 431 and 506, Begin disabled, and a map with no players with 507; �
 file reaches it. A held list key's repeats (the window takes no key repeats, §16.4) are not read
 or recorded: M4's load mode's list records them. No recipe drags the list's thumb (the scroll
 bar's own tests cover it).
+
+## 34. High Scores (M4 T1a, 2026-11-19)
+
+Read with `scripts/exe.py` (§2.8's functions again, for what the client needs) and recorded under
+Wine (`scores-tabs` played again, both runs as kept). Decision 70: T1 cut in two, T1a the dialog
+drawn and pressed, T1b Reset's question and the client's scores file.
+
+### 34.1 The reading
+
+- **The creatures' templates:** `game_init` 0x4ED650 calls 0x505DA0 on the game's map (game
+  +0x1FB70, at 0x4ED98C): `objects.txt` read (0x514D80), each template pushed onto its class's
+  list (map +0xDC + 16 × class; the class the template's +0x1C) in the file's order.
+  `class_template_last` 0x505EA0 then finds the last template of class 54 (0x36) whose subclass is
+  the creature; its +4, the DEF's name (0x63A608, an empty name, when null). At the start
+  `objects.txt`'s 141 templates of class 54 give every creature of the table one (one each). After
+  a played map: not read (§6.4's lead; M5's won screen reaches High Scores from play and records
+  it).
+- **`high_score_creature`** 0x4E9830, inlined at the dialog's constructor and at Reset: a
+  campaign's score divided by 5 (0x66666667, rounded toward 0), then the first pair whose score is
+  not below it; a score above the last pair's 32 767 runs the loop past the table (0x4E9859, no
+  bound): CLT-Q157 (a), the client takes the last pair (13).
+- **The defaults** (`high_score_defaults_load` 0x5B91D0, `high_scores_reset` 0x4E8FB0):
+  `CampHigh.txt`'s records 1 to 11 and 13 to 23, fields 1 to 4; the player and the land copied by
+  `strncpy` (41 bytes, so a 41-byte name keeps no terminator: none of the defaults; T1b's file and
+  M5's entry), the days and the score by `atoi`.
+- **The draw's order:** `high_scores_show` 0x4E9110 builds the dialog, calls `high_scores_draw`
+  (the tab's picture onto the screen's buffer, then the headings and rows), then `modal_loop`
+  shows the dialog (its items over them). A tab's switch and a step call `high_scores_draw` and
+  the dialog's +0x14 (1, 0xFFFF0001, 0xFFFF): every item drawn, the screen shown whole.
+- **The texts:** `text_draw`(`medium_font`, the text, the screen, *x*, *y*, *w*, 26, the colour, 5,
+  −1); the rank `"%d"` of *i* + 1; the scenarios' days (+0x58) at 531 (52) and score (+0x54) at 601
+  (52), the campaigns' score at 531 (122, the same box as their heading).
+- **A creature's item** (`dialog_def_create` 0x4EA720 with (649, 26 + 50 *i*, 64, 64, the id, the
+  name, 0, 0, 0, 0, 0x10)): drawn by its DEF's type (0x4EAE6C, the table 0x4EAFC8): a map
+  object's (0x43) by `def_draw_flagged_plain` 0x47BDC0 (group 0's frame, colour 0: runs of 5
+  skipped), the same pixels as the client's plain drawer of encoding 3 (`h3_render::blit`).
+- **The timer** (the procedure's last branch, 0x4EA570): any message but a key down (type 1) and a
+  command (0x200); +0x104 set by the constructor (0x4E98E2), the 22 counters (+0xA4) zeroed
+  (0x4E9AFD); a counter wraps at its DEF's group 0 count.
+- **The buttons:** `def_button_create` (*x*, *y*, 41, 199, the id, the DEF, 0, 1, 0, the key, 2):
+  Exit 0x1C, Reset none, Campaign 0x2E, Standard 0x1F, in that order; their DEFs 42 × 200 (four
+  frames: `*n`, `*s`, `*d`, `*h`).
+
+### 34.2 The recordings
+
+`scores-tabs` played again (both runs as kept). The viewer's replay against its 28 shots found:
+
+- **A press shows the button's box alone:** `button_press` 0x456860 draws the pressed frame and
+  shows the item's rectangle (41 × 199) of the 42 × 200 DEF, so its last column and row keep the
+  frame last shown whole (`standard-press`, `campaign-press`, `reset-press`, `exit-press`: 226 to
+  241 pixels). As CLT-Q118's menus (decision 22): the client draws the frame whole, the original's
+  profile keeps the edges (`Scores::stale`).
+- **No step while the mouse holds a button** (`reset-press`: its own loop takes the messages,
+  `def_button_message` 0x45641C), and **the release that ends the hold runs the step due at its
+  own time** (`exit-left` to `campaigns-anim`: the step at the release's 4 600, then 4 900 and
+  5 200, and the clip's 16 frames from 5 410 by 210; the message that runs it is not read).
+
+### 34.3 The client
+
+- **`h3_view::shell::scores`** (`Front::Scores`; `Screen::HighScores` built whole): the layout's
+  `[high_scores]` (the pairs, the columns by tab, the dialog's four buttons and 22 creature items,
+  `drawn` the buttons' canvas); the tables (`Tables::defaults` from `CampHigh.txt`'s records,
+  `atoi`); the creatures' pictures by creature (`Pictures`: the adapter's); the tab, the counters
+  and the timer (`Scores::clock`), the hold's rules, the original's stale edges; Exit's keys
+  (Enter and Escape, `scores-exit`) end it at their press, C and S press their tab's button (the
+  shell's key table, `Context::HighScores`); no popup, no hover. Reset shows the client's notice
+  (`shell.stub.scores-reset`, CLT-STUB-14) until T1b.
+- **The adapter** (`h3-battle-client`'s shell): `CampHigh.txt` and `OBJECTS.TXT` from the LODs;
+  the DEFs of the creatures the tables' rows show loaded into the start's batch, each with its
+  group 0's frame count; the headings through the key catalogue (`shell.high-scores.*`, GENRLTXT
+  434 to 437, 673, 76); the window steps the creatures on its clock.

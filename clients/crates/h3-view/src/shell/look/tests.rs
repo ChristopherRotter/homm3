@@ -153,6 +153,10 @@ fn the_shell_s_assets_are_named_once() {
             "gamselb1.pcx",
             "loadbar.pcx",
             "loadprog.def",
+            "hiscore2.pcx",
+            "hiscore.pcx",
+            "medfont.fnt",
+            "game.pal",
             "mupopup.pcx",
             "muBhot.def",
             "muBipx.def",
@@ -162,14 +166,12 @@ fn the_shell_s_assets_are_named_once() {
             "mubonl.def",
             "muBcanc.def",
             "smalfont.fnt",
-            "game.pal",
             "mumap.pcx",
             "muhotsea.pcx",
             "bigfont.fnt",
             "mubchck.def",
             "GSelPop1.pcx",
             "SCSelBck.pcx",
-            "medfont.fnt",
             "AdvOptBk.pcx",
             "RanMapBk.pcx",
             "scnrmpsz.def",
@@ -216,6 +218,10 @@ fn the_shell_s_assets_are_named_once() {
             "scnrback.def",
             "scnrvict.def",
             "scnrloss.def",
+            "HiScExt.def",
+            "HiScRes.def",
+            "HiScCam.def",
+            "HiScSta.def",
             "ScSelC.def",
             "SlideBuV.def",
             "sliderV.pcx",
@@ -266,7 +272,7 @@ fn the_shell_s_assets_are_named_once() {
     // A name given twice in another case is kept once.
     let mut twice = layout;
     twice.cursor.def = String::from("MMENUNG.DEF");
-    assert_eq!(names(&twice).len(), 126);
+    assert_eq!(names(&twice).len(), 132);
 }
 
 #[test]
