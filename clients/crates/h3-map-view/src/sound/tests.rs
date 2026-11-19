@@ -100,8 +100,9 @@ fn the_tables_sounds_are_the_originals() {
     assert_eq!(r.flying, "horse10.wav");
     // The loops, the step sounds, the flying one, (E24 M3 T6b1) the buttons' press, (E24 M3 T5b2)
     // the day's status window's, (E24 M4 T1a) the week's and the month's message's, (E24 M4
-    // T2c) a level-up's dialog's and (E24 M4 T2d3) Summon Boat's.
-    assert_eq!(r.wavs().len(), 87);
+    // T2c) a level-up's dialog's, (E24 M4 T2d3) Summon Boat's and (E24 M4 T4a) an object taken's:
+    // the seven pickups' and a monster's removal's.
+    assert_eq!(r.wavs().len(), 95);
     assert_eq!(
         r.effects,
         [
@@ -110,7 +111,15 @@ fn the_tables_sounds_are_the_originals() {
             "newweek.wav",
             "newmonth.wav",
             "nwherolv.wav",
-            "summboat.wav"
+            "summboat.wav",
+            "pickup01.wav",
+            "pickup02.wav",
+            "pickup03.wav",
+            "pickup04.wav",
+            "pickup05.wav",
+            "pickup06.wav",
+            "pickup07.wav",
+            "killfade.wav"
         ]
     );
     assert_eq!(r.button.as_deref(), Some("button.wav"));
@@ -214,18 +223,24 @@ fn the_tables_with_and_without_sound() {
     let sounds = t.sounds();
     // Since E24 M3 T5b2 the day's status window's sound among them, since T6b1 the buttons', since
     // E24 M4 T1a the week's and the month's message's, since T2c a level-up's dialog's, since T2d3
-    // Summon Boat's.
-    assert_eq!(sounds.len(), 87);
+    // Summon Boat's, since T4a the pickups' and a monster's removal's (`Loop::take`'s cues).
+    assert_eq!(sounds.len(), 95);
+    assert!((1..=7).all(|i| sounds.contains(&format!("PICKUP0{i}"))) && sounds.contains("KILLFADE"));
     assert!(sounds.contains("LOOPANIM") && sounds.contains("HORSE10") && sounds.contains("NEWDAY"));
     assert!(sounds.contains("BUTTON") && sounds.contains("NEWWEEK") && sounds.contains("NEWMONTH"));
     // Without a level-up's sound (E24 M4 T2c) none of its own.
     let silent = text.replace("sound = \"nwherolv.wav\"", "sound = \"\"");
     let quiet = tables::load(&[tables::parse(&silent).unwrap()], "base").unwrap();
-    assert_eq!(quiet.sounds().len(), 86);
+    assert_eq!(quiet.sounds().len(), 94);
     // Nor without Summon Boat's (E24 M4 T2d3).
     let silent = text.replace("summon_boat = \"summboat.wav\"", "summon_boat = \"\"");
     let quiet = tables::load(&[tables::parse(&silent).unwrap()], "base").unwrap();
-    assert_eq!(quiet.sounds().len(), 86);
+    assert_eq!(quiet.sounds().len(), 94);
+    // Nor without a monster's removal's (E24 M4 T4a).
+    let silent = text.replace("killfade = \"killfade.wav\"", "killfade = \"\"");
+    let quiet = tables::load(&[tables::parse(&silent).unwrap()], "base").unwrap();
+    assert_eq!(quiet.sounds().len(), 94);
+    assert!(!quiet.sounds().contains("KILLFADE"));
     assert_eq!(t.tracks().len(), 9);
     // Without `[map.sound]`, no sound; a river's music, an error.
     let without = text.replace("[map.sound]", "[unused]");
