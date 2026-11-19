@@ -581,13 +581,15 @@ enum Standing<'a> {
 
 /// The heroes and boats on level `z` by their tiles (the first on a tile, should two be given).
 fn standing(live: &Live, z: u8) -> BTreeMap<(i32, i32), Standing<'_>> {
-    // The lifted hero is off its tile (`hero_select` hides it from its tile's list, +0x20C).
+    // The lifted hero is off its tile (`hero_select` hides it from its tile's list, +0x20C), so
+    // is a hidden one (E24 M4 T2d2).
     let lifted = live.walking.lifted.map(|l| l.hero);
+    let hidden = live.walking.hidden;
     let heroes = live
         .heroes
         .iter()
         .enumerate()
-        .filter(|&(i, _)| Some(i) != lifted)
+        .filter(|&(i, _)| Some(i) != lifted && Some(i) != hidden)
         .map(|(_, h)| (h.at, Standing::Hero(h)));
     let boats = live.boats.iter().map(|b| (b.at, Standing::Boat(b)));
     let mut out = BTreeMap::new();
