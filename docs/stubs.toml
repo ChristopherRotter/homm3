@@ -184,6 +184,12 @@ epic   = "E16"
 # where  = "clients/crates/h3-view/src/shell/scenario/advanced.rs::Advanced"
 # reason = "The turn's duration of the advanced options (E27 M3 T3c2, decision 6; design section 27) is chosen with its bar and shown (turndur.txt's eleven texts) but no timer runs it: the engine has no turn timer and the hot seat's clock is E24 M5's. Lifted when the begin (M3 T6) hands it to the hot seat's clock"
 # epic   = "E27"
+#
+# [[stub]]
+# id     = "CLT-STUB-12"
+# where  = "clients/crates/h3-view/src/shell/scenario.rs::Scenario::begin"
+# reason = "Begin with a random map chosen (E27 decision 13, CLT-Q92; M3 T5b, design section 31) shows a notice in the client's words: the engine has no random map generator (the epic's non-goals), so the original's generation into random_maps (random_map_generate 0x5860E0, its window and its failures' messages) is not built, and Show Random Maps lists the client's own random maps, none. Lifted if a generator is ever planned"
+# epic   = "E27"
 
 # --- map-client (MCL-STUB-<n>) ---
 

@@ -438,6 +438,17 @@ The user, 2026-11-19 (M3 T5's start):
     hints, Show Random Maps, the tab toggled back with CLT-Q111's record, Begin after `tab-again`
     recorded: a stub's message).
 
+The user, 2026-11-19 (M3 T5b's start and reading; T5b kept whole):
+
+63. **The random map's teams 1 and 2 taken 32 high** (CLT-Q146 (b), "fix if the button sprite is
+    actually that large": their frames are buttons drawn to their 32nd row): the client's profile
+    takes the mouse over the whole frame; the original's 24 rows for the comparisons only.
+64. **The list shown after a random map gives the game its selection** (CLT-Q147 (b)): the
+    client's list showing over a chosen random map, and the files' list back after Show Random
+    Maps, show the selected map whole (its description, conditions and flags), where the
+    original's keeps the random map's description or flags under the selection's name; the
+    original's for the comparisons only.
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -547,7 +558,7 @@ catalogue: design §3; the shell's frame, menus, edits and the hot seat's names:
 | T4a | The hot seat's screen and advanced options as they open (§3.12 to §3.14; decision 59): the entry from the Multiplayer dialog's names (`Multiplayer::names`, M2's item 61), two to eight human records, the list of the maps two humans may play, each colour a human may play to the next name, the rows (the names, the handicap a caption button, the arrows by the hot seat's rules), the flags' strip from the first player's colour, Back; exact against `adv-hotseat`, `adv-hotseat-rows`' and `adv-hotseat-two`'s `panel` | **done** 2026-11-18: `Scenario::opened_hot_seat`, `hot_seat`, `Entry::first_human`, `Menus::front`'s hot seat; `Advanced::seated`, its human records (`Human`, the single player's the first), `seat_humans`, `row_items` (the handicap's caption), `takes` by the mode; `Screen::Scenario(New, Multiplayer)` built whole (no longer a stub); the layout's `handicap_caption`, the keys `shell.advanced.handicap.*`; `adv-hotseat`'s `backgrounds`; `adv-hotseat` 8 of 8, both panels exact (also `handicap-3`, `handicap-popup`, `flag-hover-green`; `hotseat-names`' and `hotseat-long`'s screen shots); log "M3 T4a", design §28 |
 | T4b | The hot seat's presses (§3.6, §3.14, §3.15; decision 59): the handicap's (+1 modulo 3, `handicap_names`), the flags' cycle (CLT-Q94, decision 13: the client's; the original's `hot_seat_colour_cycle` for the comparisons), a hero another human record holds passed over and stepped on (`scenario_hero_step`, `scenario_heroes_unclash`), the name's press taking nothing, Begin's GENRLTXT 83 and 531; exact against the rest of `adv-hotseat-rows` and `adv-hotseat-two` | **done** 2026-11-18 (CLT-Q144 (b), CLT-Q145 (c): decisions 60, 61): `Advanced::cycle` (the original's, as recorded: the holder's index + 1, the colour pressed last and the kept one), `pass` (CLT-Q94's exchange), `step_handicap` (the client's caption the record's), `held_elsewhere`, `unclash`, `refusal` (`Refusal`), `seating`; the screen's Begin over a map (`Texts::unplaced`, `too_few`; the keys `shell.scenario.unplaced`, `too-few`), the box's close keeping the screen as it was; `adv-hotseat-rows` 12 of 12, `adv-hotseat-two` 7 of 7, `adv-hotseat-begin` 7 of 7 up to its begin exact; log "M3 T4b", design §29 |
 | T5a | The random map's tab drawn and its left presses (§3.16; decision 62): the toggle (130) with the list and the options hidden, `RanMapBk.pcx` and items 280 to 335, the titles; every choice, the caps and disabled counts, the levels; the own record in the panel (GENRLTXT 741, 742, the flags), built again by the counts; the size mark (CLT-Q115 (b)); exact against `adv-random` from `tab` to `monsters-random` | **done** 2026-11-19: `scenario::random` (`RandomMap`, `Choices`, `Pressed`), the screen's `toggle_random`, `random_built`, `random_click`, `random_size_mark`, `shown_entry` (the panel, the game and the advanced options read a chosen random map's record), `Texts::random`, `random_showing`, `random_map`; the layout's 103, 280 to 335, 1040, 1041; the keys `shell.scenario.random-*`; the tab's hidden items out of the mouse's dialog; the record built at each opening in the client's profile (CLT-Q111 (b)); CLT-Q146 asked (built as the original's); `adv-random` 45 of 52 exact (the 44 and `show-hover`); log "M3 T5a", design §30 |
-| T5b | The rest of the random map's tab (§3.16; decision 62; CLT-Q92): the items' right press and hints, Show Random Maps (335: the random maps' list, kind 1, empty), the tab toggled back after it (CLT-Q111 (b)), the list's showing over a chosen random map (design §30.4), Begin with a random map chosen (a stub's message); CLT-Q146's answer; exact against the rest of `adv-random` (§6.4: Begin after `tab-again`, recorded by this task with `h3shell.py run --only adv-random --record`) | after T5a |
+| T5b | The rest of the random map's tab (§3.16; decision 62; CLT-Q92): the items' right press and hints, Show Random Maps (335: the random maps' list, kind 1, empty), the tab toggled back after it (CLT-Q111 (b)), the list's showing over a chosen random map (design §30.4), Begin with a random map chosen (a stub's message); CLT-Q146's answer; exact against the rest of `adv-random` (§6.4: Begin after `tab-again`, recorded by this task with `h3shell.py run --only adv-random --record`) | **done** 2026-11-19 (kept whole; CLT-Q146 (b), CLT-Q147 (b): decisions 63, 64): `random::HELPED` (the keys `shell.scenario.help.random-*`), `RandomMap::heights`; the screen's list kind (`random_list`, `toggle_list(random)`), the panel over an empty list (`blank_panel`, `show_with`; `give_to_game` and `select` of none as the original's), `random_built` setting the description and flags, Begin's stub (`Texts::random_stub`, `stubbed`, `CLT-STUB-12`, `shell.stub.random-map`), the replay stopping under it; `adv-random` recorded with Begin (53), `adv-random-list` new (12); `adv-random` 52 of 53 exact (the replay stops at `begin` under the stub), `adv-random-list` 12 of 12; log "M3 T5b", design §31 |
 | T6 | The game's begin (§3.17, §2.1; CLT-Q95, CLT-Q135): the setup built and validated by the engine (a refusal shown), the loading bar (`loadbar.pcx`, `loadprog.def`; the client's steps), the begin's notice (a `CLT-STUB`) and back to the menu, the setup kept for E24 M5 (the map-client lane's inbox); exact against `adv-begin` and `adv-hotseat-begin` up to the bar | after T5 |
 | T7 | M3's closure: a fresh reviewer, the review list, M4's refinement (M4 T0: the saves' record and its extension, decision 8; Options with the menu in play, CLT-Q136; the load and save modes with §6.4's recipes for them) | after T6 |
 
@@ -621,6 +632,12 @@ header read; the screen reading it before the selection (`shown_entry`) wherever
 set from the choice at each press (no record built by a size's press); the tab's hidden items out
 of the mouse's dialog (as the options', item (13)); the advanced options' records made again at
 their next showing after a build (the original's `scenario_players_init` at once).
+(21) T5b: the random maps' list a flag of the screen (`random_list`), the client's own random maps
+none (no folder read); the panel's header and flags passed apart to `show_with` for the original's
+list showing (CLT-Q147) rather than a game record kept apart from the entry shown; the client's
+profile over any empty list showing no description (decision 51 extended: the random maps' list
+leaves the random map's); Begin's stub over the screen as Begin's other messages (`Over::Notice`),
+told from them by a random map chosen; the tab's 56 records one key each.
 
 ## Dependencies and boundaries
 

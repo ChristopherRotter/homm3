@@ -1050,10 +1050,18 @@ fn stopped(k: usize, stop: &Stop) -> String {
                 screen.task()
             )
         }
-        Stop::Stub(screen) => format!(
-            "stop {k} stub {} (the client's notice: CLT-STUB-6, E28)",
-            text::name(*screen)
-        ),
+        // The network modes' notice (CLT-STUB-6), or Begin's with a random map chosen (E27 M3 T5b:
+        // the original generates it; CLT-Q92, decision 13).
+        Stop::Stub(screen) => {
+            let why = match screen {
+                h3_view::shell::Screen::Scenario(..) => "a random map: CLT-Q92, no generator",
+                _ => "CLT-STUB-6, E28",
+            };
+            format!(
+                "stop {k} stub {} (the client's notice: {why})",
+                text::name(*screen)
+            )
+        }
         Stop::NotShown { screens, screen } => {
             format!(
                 "stop {k} not-shown {} on {}",

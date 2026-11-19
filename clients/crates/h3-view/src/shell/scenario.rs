@@ -1091,13 +1091,18 @@ impl Scenario {
         // 0x581D80, E27 M3 T5a; `scenario_advanced_hide` 0x581B20, T3a), no random map chosen
         // any longer (0x580AAA).
         self.random.hide(&mut self.shown);
+        let was_random = self.random.chosen();
         self.random.unchoose();
         if let Some(advanced) = &mut self.advanced {
             advanced.hide(&mut self.shown);
         }
-        if random != self.random_list {
+        let kind = random != self.random_list;
+        if kind {
             self.random_list = random;
             self.sort_list(BUILT_KEY, false);
+            self.give_to_game();
+        } else if was_random && self.bugs == Bugs::Fixed {
+            // CLT-Q147 (b): the selection given to the game, its description too.
             self.give_to_game();
         }
         self.list_items(true);
@@ -1108,7 +1113,16 @@ impl Scenario {
         }
         self.bar.reset(self.ticks());
         self.set_bar();
-        self.show();
+        // The original's showing sets no flags and, the kind the same, gives the game nothing: a
+        // chosen random map's header and description stay under the selection's name; the
+        // client's shows the selection whole (CLT-Q147 (b); `adv-random-list` list, list-back).
+        match self.bugs {
+            Bugs::Original => {
+                let header = (!kind && was_random).then(|| self.game.clone()).flatten();
+                self.show_with(header, false);
+            }
+            Bugs::Fixed => self.show(),
+        }
         self.whole();
     }
 
@@ -1487,6 +1501,13 @@ impl Scenario {
     /// chosen difficulty's button selected (not before a press in the original's profile when the
     /// screen opened with no map).
     fn show(&mut self) {
+        self.show_with(None, true);
+    }
+
+    /// [`Scenario::show`] with the game's map `header` for the panel's texts and marks (none: the
+    /// entry shown), the flags set only with `flags` (E27 M3 T5b, CLT-Q147: the original's list
+    /// showing gives the game nothing, its name the list's selection's).
+    fn show_with(&mut self, header: Option<Entry>, flags: bool) {
         let chosen = self.chosen || self.bugs == Bugs::Fixed;
         for (k, &id) in DIFFICULTIES.iter().enumerate() {
             let state = self.shown.state(id);
@@ -1506,13 +1527,11 @@ impl Scenario {
             return;
         }
         let random = self.random.chosen();
-        self.game = Some(entry.clone());
+        let header = header.unwrap_or_else(|| entry.clone());
+        self.game = Some(header.clone());
         let rating = text_at(&self.texts.ratings, usize::from(self.difficulty));
         let shown = &mut self.shown;
         shown.texts.insert(RATING, rating);
-        for id in ALLIES..ENEMIES + 8 {
-            shown.states.insert(id, hidden());
-        }
         let t = &self.texts;
         let name = if entry.name.is_empty() {
             t.unnamed.clone()
@@ -1521,15 +1540,15 @@ impl Scenario {
         };
         shown.texts.insert(NAME, name);
         shown.texts.insert(DESCRIPTION, self.description.text());
-        let victory = match entry.victory {
-            Some(goal) if entry.standard => text_at(&t.with_standard, usize::from(goal)),
+        let victory = match header.victory {
+            Some(goal) if header.standard => text_at(&t.with_standard, usize::from(goal)),
             Some(goal) => text_at(&t.victories, usize::from(goal) + 1),
             None => text_at(&t.victories, 0),
         };
         shown.texts.insert(VICTORY, victory);
-        let loss = text_at(&t.losses, entry.loss.map_or(0, |l| usize::from(l) + 1));
+        let loss = text_at(&t.losses, header.loss.map_or(0, |l| usize::from(l) + 1));
         shown.texts.insert(LOSS, loss);
-        let difficulty = text_at(&t.difficulties, usize::from(entry.difficulty));
+        let difficulty = text_at(&t.difficulties, usize::from(header.difficulty));
         shown.texts.insert(MAP_DIFFICULTY, difficulty);
         for id in [VICTORY_MARK, LOSS_MARK] {
             shown.states.insert(id, State::default());
@@ -1541,12 +1560,14 @@ impl Scenario {
             shown.frames.insert(SIZE, size_frame(entry.size));
         }
         // The marks: the goal's frame (0 to 10), 11 for none; the loss's (0 to 2), 3 for none.
-        let victory_mark = entry.victory.map_or(11, u32::from);
+        let victory_mark = header.victory.map_or(11, u32::from);
         shown.frames.insert(VICTORY_MARK, victory_mark);
         shown
             .frames
-            .insert(LOSS_MARK, entry.loss.map_or(3, u32::from));
-        self.team_flags(&entry);
+            .insert(LOSS_MARK, header.loss.map_or(3, u32::from));
+        if flags {
+            self.team_flags(&entry);
+        }
         self.random_size_mark();
     }
 
@@ -1686,6 +1707,7 @@ impl Scenario {
     /// the advanced options' refusal (E27 M3 T4b, `scenario_begin_tail` 0x58C11F: GENRLTXT 531,
     /// the hot seat's 83; [`Advanced::refusal`]), else nothing yet (the game's begin: T6).
     fn begin(&mut self) -> bool {
+        // stub: CLT-STUB-12
         let message = if self.random.chosen() {
             self.texts.random_stub.clone()
         } else if self.entry().is_some() {
@@ -2037,16 +2059,15 @@ impl Scenario {
         let inside = self.inside(point);
         let on_bar = self.showing && self.bar.contains(inside);
         let on_duration = self.advanced.as_ref().is_some_and(|a| a.on_bar(inside));
-        // The item there (`dialog_item_at` 0x5FF3E0: shown and enabled, not disabled; a single
-        // player's handicap is not enabled, E27 M3 T3c2, nor is the random map's tab's count
-        // above its cap, T5b: the panel under it has no hint), the bars' own.
+        // The item there, shown and enabled (a single player's handicap is not, E27 M3 T3c2: the
+        // panel under it has no hint; the item's own press sends it, `dialog_proc_default`
+        // 0x5FF820: the random map's count above its cap, disabled, too, T5b), the bars' own.
         let id = if on_bar {
             Some(BAR)
         } else if on_duration {
             Some(advanced::BAR)
         } else {
-            self.item_at(point)
-                .filter(|&id| self.takes(id) && !self.shown.state(id).disabled)
+            self.item_at(point).filter(|&id| self.takes(id))
         };
         if id == Some(TEAMS) {
             return self.teams_dialog().map_or_else(Did::default, |m| {

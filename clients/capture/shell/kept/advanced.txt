@@ -204,6 +204,19 @@ adv-random show-hover t10100 038602899ac0e3ec
 adv-random random-maps t10300 f8941597cecd75e3
 adv-random tab-again t10500 74ec2e19ba8e30b1
 adv-random tab-hidden t10700 e4911aac9195a755
+adv-random begin t10800 fcfec45ef5092635
+adv-random-list tab t600 2a3e21549f1bb0ed
+adv-random-list teams-1-low t800 2a3e21549f1bb0ed
+adv-random-list teams-1 t1000 2e6c53c60db675f4
+adv-random-list players-1 t1200 e356f128a2ddce1c
+adv-random-list popup-disabled t1300 bcd616f69f06fc1f
+adv-random-list popup-label t1500 5a61c89dc8968fa5
+adv-random-list popups-closed t1700 e356f128a2ddce1c
+adv-random-list list t1900 4c94c8f845cef223
+adv-random-list tab-again t2100 e356f128a2ddce1c
+adv-random-list random-maps t2300 b9449bd494c47d47
+adv-random-list list-hidden t2500 51ead194762be394
+adv-random-list list-back t2700 85d2d9d7f2afd710
 adv-begin panel t1000 2ba2a5a0b018d34c
 adv-begin load clip 5@1100-1300 3e937e886a75a16c
 adv-begin map t1300 6879ac14319147e6
