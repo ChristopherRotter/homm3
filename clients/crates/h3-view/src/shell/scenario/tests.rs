@@ -51,6 +51,7 @@ pub(crate) fn texts(bugs: Bugs) -> Texts {
                     .iter()
                     .flat_map(|&(id, n)| (0..8u16).map(move |c| (id + c, laid(n)))),
             )
+            .chain(RANDOM_HELPED.iter().map(|&(id, n)| (id, laid(n))))
             .collect(),
         players: (0..9)
             .flat_map(|p| (0..9).map(move |h| format!("{p}/{h}")))
@@ -88,12 +89,20 @@ pub(crate) fn texts(bugs: Bugs) -> Texts {
         description_font: None,
         advanced: None,
         random: [String::from("Random Map"), String::from("Randomly made")],
+        random_stub: Some(message::layout(
+            &layout.message,
+            (&medium, &small),
+            "No random maps",
+            Style::Ok,
+            None,
+            (BOX_PLAYER, bugs),
+        )),
     }
 }
 
 /// A map of 36 tiles, red and blue a human's or the computer's, tan the computer's alone, red
 /// and tan allied.
-fn map(file: &str, name: &str) -> Entry {
+pub(crate) fn map(file: &str, name: &str) -> Entry {
     let both = Seat {
         human: true,
         computer: true,
@@ -1143,7 +1152,7 @@ fn begin_over_an_empty_list_shows_its_message() {
 }
 
 /// The OK button's middle in the open box.
-fn ok_button(s: &Scenario) -> [i32; 2] {
+pub(crate) fn ok_button(s: &Scenario) -> [i32; 2] {
     let Over::Notice(open) = &s.over else {
         panic!("no box open");
     };

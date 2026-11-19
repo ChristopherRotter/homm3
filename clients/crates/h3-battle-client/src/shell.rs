@@ -667,6 +667,8 @@ fn menus(
                     .iter()
                     .flat_map(|&(id, name)| (0..8u16).map(move |c| (id + c, name))),
             )
+            // The random map's tab (T5b).
+            .chain(scenario::RANDOM_HELPED.iter().copied())
             .map(|(id, name)| {
                 let key = format!("shell.scenario.help.{name}");
                 (id, laid(&key, Style::Popup))
@@ -713,6 +715,8 @@ fn menus(
             text("shell.scenario.random-name"),
             text("shell.scenario.random-description"),
         ],
+        // Begin with a random map chosen (T5b): the client's stub (CLT-Q92).
+        random_stub: Some(laid("shell.stub.random-map", Style::Ok)),
     };
     Ok(Menus {
         main,

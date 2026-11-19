@@ -35,7 +35,8 @@
 //! the window's text input gives it, between its key's down and up (`Front::typed`), and a key's
 //! command is asked with Shift as `shift+` holds it (`super::keys::command_for`). Its network
 //! modes' notice is the client's stub: a replay stops at a shot or a wait under it, and at any
-//! input but a move ([`Stop::Stub`]; M2's review: an input fed the notice before).
+//! input but a move ([`Stop::Stub`]; M2's review: an input fed the notice before); so does the
+//! scenario screen's Begin with a random map chosen (E27 M3 T5b: the original generates it).
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -698,13 +699,19 @@ impl Replay {
             .map(|name| Stop::Unknown(name.clone()))
     }
 
-    /// Whether the client's notice (the network modes') shows over the Multiplayer dialog.
+    /// Whether the client's notice shows: the network modes' over the Multiplayer dialog, or
+    /// Begin's with a random map chosen over the scenario screen (E27 M3 T5b: the original
+    /// generates the map there).
     fn noticing(&self) -> bool {
-        matches!(&self.front, Some(Front::Multiplayer(m)) if m.noticing())
+        match &self.front {
+            Some(Front::Multiplayer(m)) => m.noticing(),
+            Some(Front::Scenario(s)) => s.stubbed(),
+            _ => false,
+        }
     }
 
     /// The screen on, when it is not built whole (a stub's is the client's, not the original's),
-    /// or under the client's notice (the network modes').
+    /// or under the client's notice (the network modes', a random map's Begin).
     fn unbuilt(&self) -> Option<Stop> {
         (self.screen().built() != Built::Whole)
             .then(|| Stop::NotBuilt(self.screen()))
