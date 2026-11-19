@@ -809,6 +809,9 @@ pub struct Scenario {
     advanced: Option<Advanced>,
     /// The random map's tab (E27 M3 T5a).
     random: RandomMap,
+    /// Each faction's heroes a random map's row offers, Castle first (E27 M3 T7, recorded by
+    /// `adv-random-options`: [`Scenario::with_random_offers`]).
+    random_offers: [Vec<u8>; 9],
     /// The selection the last select made (+0x374 as `scenario_select` 0x585500 compares it).
     last_select: Option<usize>,
     /// The client's profile: the file of the map the advanced options' rows were last made over
@@ -899,6 +902,7 @@ impl Scenario {
             game: None,
             advanced,
             random: RandomMap::default(),
+            random_offers: Default::default(),
             last_select: None,
             options_map: None,
             described: None,
@@ -912,6 +916,16 @@ impl Scenario {
         RandomMap::hide_items(&mut scenario.shown);
         scenario.list_items(false);
         scenario.selecting()
+    }
+
+    /// The screen with each faction's heroes a random map's row offers, Castle first (E27 M3 T7;
+    /// `scenario_hero_lists` 0x583890 over the game `random_map_info_build` 0x580430 reset: every
+    /// hero free, each faction's first 16 hero types of its two classes in type order; recorded,
+    /// `adv-random-options`). Kept by every opening anew.
+    #[must_use]
+    pub fn with_random_offers(mut self, offers: [Vec<u8>; 9]) -> Self {
+        self.random_offers = offers;
+        self
     }
 
     /// The map `left` kept, for the screen's next opening (E27 M3 T2c: `scenario_last_map`
@@ -966,6 +980,7 @@ impl Scenario {
             opened.advanced = opened.advanced.take().map(|a| a.seated(names));
         }
         opened.kept.clone_from(&self.kept);
+        opened.random_offers.clone_from(&self.random_offers);
         opened.hovers = hovers;
         opened.selecting()
     }
@@ -1385,7 +1400,10 @@ impl Scenario {
     /// T5b: over the random maps' empty list too), then the panel drawn.
     fn random_built(&mut self) {
         let [name, description] = &self.texts.random;
-        let record = self.random.build(name, description).clone();
+        let record = self
+            .random
+            .build(name, description, &self.random_offers)
+            .clone();
         if let Some(advanced) = &mut self.advanced {
             advanced.selection_changed();
         }

@@ -33,9 +33,12 @@
 //! stub's notice). *Not built yet:* the generation itself (decision 13). *Provisional* (the
 //! agent's): what the record leaves of a header unread: each colour's main town generating its
 //! hero (the player's +0xB set, design §30.2; *inferred* a main town: E27 M3 T7, the review's
-//! C2), a random town, no hero offered and no main hero (T6 begins none).
+//! C2), a random town and no main hero (T6 begins none). Each colour offered each faction's free
+//! heroes (E27 M3 T7: `scenario_hero_lists` 0x583890 over the game the build resets: the faction's
+//! first 16 hero types of its two classes; recorded, `adv-random-options`).
 
 use alloc::string::String;
+use alloc::vec::Vec;
 
 use h3_render::Bugs;
 use h3_ui::ui::{Dialog, Item, Shown, State};
@@ -419,22 +422,23 @@ impl RandomMap {
     }
 
     /// The own record built from the choices (`random_map_info_build` 0x580430), named `name`
-    /// and described as `description`, and a random map chosen; the record.
-    pub(super) fn build(&mut self, name: &str, description: &str) -> &Entry {
+    /// and described as `description`, each colour offered each faction's `offers`, and a random
+    /// map chosen; the record.
+    pub(super) fn build(&mut self, name: &str, description: &str, offers: &[Vec<u8>; 9]) -> &Entry {
         self.chosen = true;
-        let made = self.made(name, description);
+        let made = self.made(name, description, offers);
         self.record.insert(made)
     }
 
     /// The own record of the choices.
-    fn made(&self, name: &str, description: &str) -> Entry {
+    fn made(&self, name: &str, description: &str, offers: &[Vec<u8>; 9]) -> Entry {
         let c = self.choices;
         let (humans, total) = (c.humans(), c.total());
         let seats = core::array::from_fn(|k| {
             let k = u8::try_from(k).unwrap_or(u8::MAX);
             // The generate flag set (+0xB, design §30.2): the row shows the hero Random, its
-            // arrows once a town is chosen (§3.14; E27 M3 T7, the review's C2). No hero offered
-            // and no main hero, *provisional* (the module's notes).
+            // arrows once a town is chosen (§3.14; E27 M3 T7, the review's C2); no main hero,
+            // *provisional* (the module's notes).
             Seat {
                 human: k < humans,
                 computer: k < total,
@@ -457,7 +461,12 @@ impl RandomMap {
             loss: None,
             seats,
             teams: [0, 1, 2, 3, 4, 5, 6, 7],
-            heroes: Heroes::default(),
+            // Each faction's free heroes (E27 M3 T7: `scenario_hero_lists` over the reset game,
+            // recorded by `adv-random-options`: Castle's first hero Orrin).
+            heroes: Heroes {
+                offers: core::array::from_fn(|_| offers.clone()),
+                ..Heroes::default()
+            },
         }
     }
 }

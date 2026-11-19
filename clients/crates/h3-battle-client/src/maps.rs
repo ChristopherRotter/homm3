@@ -131,6 +131,27 @@ pub fn entry(file: String, map: &RawMap, rules: &GameRuleset) -> Entry {
     }
 }
 
+/// Each faction's heroes a random map's row offers, Castle first (E27 M3 T7; design §33.2): the
+/// faction's first 16 hero types of its two classes, in type order, as `scenario_hero_lists`
+/// 0x583890 lists them over the game `random_map_info_build` 0x580430 resets (every hero free,
+/// no map's bans; recorded, `adv-random-options`: Castle's first Orrin).
+#[must_use]
+pub fn random_offers(rules: &GameRuleset) -> [Vec<u8>; 9] {
+    let core = rules.core();
+    let classes = core.hero_classes();
+    let mut offers: [Vec<u8>; 9] = Default::default();
+    for (k, hero) in core.hero_types().iter().enumerate() {
+        let faction = classes.get(hero.class.index()).map(|c| c.faction.index());
+        let offer = faction.and_then(|f| offers.get_mut(f));
+        if let (Some(offer), Ok(k)) = (offer, u8::try_from(k))
+            && offer.len() < 16
+        {
+            offer.push(k);
+        }
+    }
+    offers
+}
+
 /// What `map`'s import under `rules` gives the advanced options of its heroes (E27 M3 T3b1;
 /// design §24): each colour's offer by faction (its choice made each faction in turn,
 /// `GameSetup::offer`; none for a map that does not import), the main heroes' names, the map's
@@ -301,6 +322,17 @@ mod tests {
 
     /// E27 M3 T3b1: the engine's offers, the main heroes and the map's customised heroes as the
     /// advanced options read them (`adv-single-hero`, `adv-single-maps`).
+    #[test]
+    fn a_random_map_offers_each_faction_s_sixteen_heroes() {
+        // E27 M3 T7 (`adv-random-options`: Castle's first Orrin): each faction's first 16 hero
+        // types of its classes, in type order (the campaigns' heroes past 143 left out).
+        let offers = random_offers(&rules().unwrap());
+        assert!(offers.iter().all(|o| o.len() == 16));
+        assert_eq!(offers[0], (0..16).collect::<Vec<u8>>());
+        assert_eq!(offers[1].first(), Some(&16));
+        assert_eq!(offers[8].first(), Some(&128));
+    }
+
     #[test]
     fn the_shipped_maps_offer_their_heroes() {
         let Some(install) = staged() else {

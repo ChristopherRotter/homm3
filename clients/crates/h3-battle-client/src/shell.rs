@@ -753,7 +753,8 @@ fn menus(
             scenario_texts,
             crate::maps::named(crate::maps::entries(install, &rules), maps, &rules),
             bugs,
-        ),
+        )
+        .with_random_offers(crate::maps::random_offers(&rules)),
     };
     Ok((menus, rules, refused))
 }

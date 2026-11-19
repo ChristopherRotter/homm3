@@ -218,6 +218,15 @@ adv-random-list tab-again t2100 e356f128a2ddce1c
 adv-random-list random-maps t2300 b9449bd494c47d47
 adv-random-list list-hidden t2500 51ead194762be394
 adv-random-list list-back t2700 85d2d9d7f2afd710
+adv-random-options tab t600 2a3e21549f1bb0ed
+adv-random-options options t800 944daaf1c0b8eb46
+adv-random-options hero-popup t900 afadf46f3ba9c5b2
+adv-random-options hero-arrow t1200 944daaf1c0b8eb46
+adv-random-options town-1 t1400 464069cb5af55fec
+adv-random-options hero-1 t1600 884f0d01ce7d2d6a
+adv-random-options hero-popup-1 t1700 68cfb27ee2c1895c
+adv-random-options list t2000 8719425170a4629c
+adv-random-options options-again t2200 b9af94980d7875a0
 adv-begin panel t1000 2ba2a5a0b018d34c
 adv-begin bar clip 2@1100-1150 65a5ff92411b272f
 adv-begin load clip 4@1190-1300 dcd08df5c6d51c6b
