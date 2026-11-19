@@ -38,7 +38,8 @@
 //! campaigns' selection, the tutorial, High Scores and Credits as the client's stubs, a notice
 //! over the menu they were chosen from; T7: the Multiplayer dialog, and the scenario screen as a
 //! stub until M3; M3 T1a: the scenario screen of a new single scenario, the others stubs until
-//! T4 and M4).
+//! T4 and M4; M3 T6: play's start, the loading screen and its fade before the client's notice,
+//! [`play`]).
 
 use core::fmt;
 
@@ -46,6 +47,7 @@ pub mod keys;
 pub mod look;
 pub mod menu;
 pub mod multiplayer;
+pub mod play;
 pub mod replay;
 pub mod samples;
 pub mod scenario;
@@ -246,9 +248,11 @@ impl Screen {
     /// How much of the screen is built ([`look::look`] draws it unless [`Built::Not`]): the start,
     /// the main menu, the game type menus, the Multiplayer dialog (E27 M2 T5a, T6a, T6b1, T7), a
     /// new single scenario's screen (M3 T1a) and the hot seat's (M3 T4a: a new game's from the
-    /// Multiplayer dialog, its only path); the campaigns' selection, the tutorial, High Scores,
-    /// Credits and the loads' scenario screens the client's stubs (T6b2, T7: until E20, CLT-Q84's
-    /// tutorial mode, M4 and M4); the others a stand-in until their task ([`Screen::task`]).
+    /// Multiplayer dialog, its only path); play's start after a begin (M3 T6: the loading screen
+    /// and its fade, then the client's notice until E24 M5, [`play`]); the campaigns' selection,
+    /// the tutorial, High Scores, Credits and the loads' scenario screens the client's stubs (T6b2,
+    /// T7: until E20, CLT-Q84's tutorial mode, M4 and M4); the others a stand-in until their task
+    /// ([`Screen::task`]).
     #[must_use]
     pub const fn built(self) -> Built {
         match self {
@@ -256,7 +260,8 @@ impl Screen {
             | Self::MainMenu
             | Self::GameType(_)
             | Self::Multiplayer(_)
-            | Self::Scenario(Game::New, Kind::Single | Kind::Multiplayer) => Built::Whole,
+            | Self::Scenario(Game::New, Kind::Single | Kind::Multiplayer)
+            | Self::Play { restart: false } => Built::Whole,
             Self::Campaigns
             | Self::Tutorial
             | Self::HighScores

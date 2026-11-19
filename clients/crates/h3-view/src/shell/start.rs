@@ -82,6 +82,21 @@ pub const WIDTH: u32 = 800;
 pub const HEIGHT: u32 = 600;
 /// A fade's step (`0x6030E0`: each step waits until 50 ms after the last began).
 pub const FADE_STEP: u32 = 50;
+
+/// `from` written into `to` with each channel's level shifted down `shift` bits (a fade's step,
+/// `screen_fade_out` 0x6030E0: the copy's channels masked, shifted, masked again; E27 M3 T6:
+/// play's start's too). Both of one size and format.
+pub fn faded(from: &Pixels, to: &mut Pixels, shift: u8) {
+    let masks = from.format().channel_masks();
+    let shift = u32::from(shift);
+    for (out, &pixel) in to.pixels_mut().iter_mut().zip(from.pixels()) {
+        let p = u32::from(pixel);
+        let faded = masks
+            .iter()
+            .fold(0, |acc, &mask| acc | (((p & mask) >> shift) & mask));
+        *out = u16::try_from(faded).unwrap_or(0);
+    }
+}
 /// Where `H3Intro` plays inside its frame (`video_play_framed` 0x4EE1B0: (80, 187)).
 pub const FRAMED_AT: [u32; 2] = [80, 187];
 
@@ -902,15 +917,7 @@ impl<'c, 'a> Picture<'c, 'a> {
                 Bugs::Fixed => self.screen.clone(),
             },
         };
-        let masks = from.format().channel_masks();
-        let shift = u32::from(shift);
-        for (out, &pixel) in self.screen.pixels_mut().iter_mut().zip(from.pixels()) {
-            let p = u32::from(pixel);
-            let faded = masks
-                .iter()
-                .fold(0, |acc, &mask| acc | (((p & mask) >> shift) & mask));
-            *out = u16::try_from(faded).unwrap_or(0);
-        }
+        faded(&from, &mut self.screen, shift);
         self.fading = Some(from);
     }
 

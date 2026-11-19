@@ -404,10 +404,11 @@ fn the_hotkeys_press_and_click_their_buttons() {
     let did = s.key(None, Some(Command::Dialog(BACK)), "Escape");
     assert!(did.changed && did.sample);
     assert_eq!(s.key_up("Escape").ended, Some(Ended::Scenario(false)));
-    // Begin's and the panel buttons' click nothing yet (their tasks').
+    // Begin's begins (T6).
     let mut s = scenario(Bugs::Original);
     s.key(None, Some(Command::Dialog(BEGIN)), "Return");
-    assert_eq!(s.key_up("Return").ended, None);
+    assert_eq!(s.key_up("Return").ended, Some(Ended::Scenario(true)));
+    let mut s = scenario(Bugs::Original);
     // Another dialog's button, or no command, takes nothing.
     assert_eq!(
         s.key(None, Some(Command::Dialog(124)), "Escape"),
@@ -1083,9 +1084,9 @@ fn the_teams_dialog_over_an_empty_list() {
 
 #[test]
 fn begin_over_an_empty_list_shows_its_message() {
-    // With a map Begin does nothing yet (T6).
+    // With a map Begin ends the screen (T6: the game begins), no box.
     let mut s = scenario(Bugs::Original);
-    assert_eq!(click(&mut s, [497, 555]).ended, None);
+    assert_eq!(click(&mut s, [497, 555]).ended, Some(Ended::Scenario(true)));
     assert!(s.box_draws("PLAYERS.PAL").is_empty());
     // The original's with no map at all: nothing (CLT-Q114).
     let mut none = scenario_of(Vec::new(), Bugs::Original);

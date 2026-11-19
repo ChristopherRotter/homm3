@@ -36,7 +36,8 @@
 //! command is asked with Shift as `shift+` holds it (`super::keys::command_for`). Its network
 //! modes' notice is the client's stub: a replay stops at a shot or a wait under it, and at any
 //! input but a move ([`Stop::Stub`]; M2's review: an input fed the notice before); so does the
-//! scenario screen's Begin with a random map chosen (E27 M3 T5b: the original generates it).
+//! scenario screen's Begin with a random map chosen (E27 M3 T5b: the original generates it), and
+//! play's notice after the loading screen's fade (E27 M3 T6: the original's play, E24 M5).
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -588,6 +589,11 @@ impl Replay {
         let screen = self.screen();
         self.front = whole(&mut self.menus, screen, previous, self.pointer);
         if let Some(front) = self.front.as_mut() {
+            // Play's start (E27 M3 T6): the client's load takes no time on the frozen clock, the
+            // bar full and the fade begun at once (the adapter steps it as its work goes).
+            if let Front::Play(play) = front {
+                play.loaded(self.time);
+            }
             front.clock(self.time);
         }
         self.draw_background();
@@ -699,13 +705,14 @@ impl Replay {
             .map(|name| Stop::Unknown(name.clone()))
     }
 
-    /// Whether the client's notice shows: the network modes' over the Multiplayer dialog, or
+    /// Whether the client's notice shows: the network modes' over the Multiplayer dialog,
     /// Begin's with a random map chosen over the scenario screen (E27 M3 T5b: the original
-    /// generates the map there).
+    /// generates the map there), or play's after its fade (T6: the original's play).
     fn noticing(&self) -> bool {
         match &self.front {
             Some(Front::Multiplayer(m)) => m.noticing(),
             Some(Front::Scenario(s)) => s.stubbed(),
+            Some(Front::Play(p)) => p.noticing(),
             _ => false,
         }
     }

@@ -871,3 +871,60 @@ mod duration;
 mod flags;
 mod hot_seat;
 mod presses;
+
+/// E27 M3 T6: what Begin hands on: before the rows are made (or after the selection changed)
+/// the records the showing will make: the single player's colour the map's, Random towns and
+/// heroes; once shown the rows' (`adv-begin`'s: Castle, its first hero, gold); the human's name
+/// by its colour, the difficulty and the duration.
+#[test]
+fn begin_hands_on_the_records_the_rows_show_or_will_make() {
+    let s = with_options(vec![arrogance_offered()]);
+    let begun = s.begun().unwrap();
+    assert_eq!(begun.file, "Arrogance.h3m");
+    assert_eq!((begun.difficulty, begun.duration), (1, 10));
+    assert_eq!(begun.records[0].colour, Some(0));
+    assert!(
+        begun.records[1..]
+            .iter()
+            .all(|r| r.colour.is_none() && r.town.is_none())
+    );
+    assert_eq!(begun.names[0].as_deref(), Some(""));
+    assert!(begun.names[1..].iter().all(Option::is_none));
+    let mut s = shown(vec![arrogance_offered()]);
+    for at in [[230, 145], [306, 145], [382, 145], [382, 145]] {
+        assert!(click(&mut s, at));
+    }
+    let red = s.begun().unwrap().records[0];
+    assert_eq!(
+        (red.colour, red.town, red.hero),
+        (Some(0), Some(0), Some(0))
+    );
+    assert_eq!(red.bonus, Bonus::Gold);
+    assert_eq!(s.begun().unwrap().records, s.records().unwrap());
+    // Without the options' texts: the map's single player's colour alone.
+    let bare = scenario_of(vec![arrogance_offered()], Bugs::Fixed);
+    let begun = bare.begun().unwrap();
+    assert_eq!(begun.records[0].colour, Some(0));
+    assert_eq!(begun.names, <[Option<String>; 8]>::default());
+    // No map: none.
+    let none = with_options(Vec::new());
+    assert_eq!(none.begun(), None);
+}
+
+/// E27 M3 T6: the hot seat's names by the colours they hold.
+#[test]
+fn begin_hands_on_the_hot_seat_s_names_by_colour() {
+    let mut seats = [None; 8];
+    for c in [0, 2, 3] {
+        seats[c] = Some(open());
+    }
+    let map = map_of("Three.h3m", seats);
+    let names = [String::from("A"), String::from("B")];
+    let s = with_options(vec![map]).opened_hot_seat(crate::shell::menu::Hovers::default(), &names);
+    let begun = s.begun().unwrap();
+    assert_eq!(begun.names[0].as_deref(), Some("A"));
+    assert_eq!(begun.names[2].as_deref(), Some("B"));
+    assert_eq!(begun.names[3], None);
+    assert_eq!(begun.records[2].colour, Some(2));
+    assert_eq!(begun.records[3].colour, None);
+}

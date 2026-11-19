@@ -1398,3 +1398,34 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
   `shell.stub.random-map`); `h3-view`'s coverage 100% of lines and regions but `book.rs`' known
   per-crate lines (an unreachable branch of `random_built` removed: `RandomMap::build` returns the
   record); the real-asset `gate` passed; the scoped verify with original data passed every step.
+
+## M3 T6 — the game's begin (2026-11-19)
+
+- **Start:** the PC's 64 files and the manuals staged (SHA-256 checked against the PC's), the two
+  `random_maps` files too; the setup's baseline stopped at the coverage step (every earlier step
+  passed), the capture setup beside it; CI's green `master` (8930a1b). T6 offered cut in two (the
+  setup and the stub; the loading bar), kept whole by the user (decision 65).
+- **Read** (design §32): `loading_screen_open` and `load_progress_step` whole, the free
+  (0x4ED450, play's inline free), the begin's steps (more than 20: the bar full before play), the
+  adventure manager's start: the loading screen again and the fade out (1, 4, 1), the map faded in.
+- **Recorded:** `adv-begin` and `adv-hotseat-begin` played under Wine: their `load` clips were the
+  full bar's screen at shifts 1 and 2 (the same two digests in both), then the map's or the turn
+  dialog's fade in. Both recipes gained `clip:bar:90` (the two faded frames) and were recorded
+  again twice each, every other shot as kept.
+- **Built:** `Scenario::begin` ends the screen over a map passing its checks (Begin, Enter, a row's
+  double press), `Scenario::begun` (`Begun`) and `Advanced::begun` (the records as shown or as the
+  next showing makes them, `remake` shared with `show`); `h3-battle-client`'s `begin` (`map_path`,
+  `read`, `setup`, `validated`, `game`, `Game`, `STEPS`) and the window's begin (`begun_game`: the
+  bar stepped as the work goes, the game kept or the refusal shown, the fade on the window's clock,
+  its 5 ms wait); `h3_view::shell::play` (`Play`, `LoadingLook`, `STEPS`), `Front::Play`, `STUBS`'
+  play entry (the main menu under `shell.stub.play`), `Screen::Play { restart: false }` built,
+  `Look::shift`, the layout's `[loading]`, `start::faded` (the start's fade's pixels, shared), the
+  replay's load at once and stop under the notice; the keys `shell.stub.play`, `play-refused`
+  (`CLT-STUB-13`). Tests: `play/tests.rs` (four), the begun ones (`advanced/tests.rs` two,
+  `random/tests.rs` one), `replay/tests.rs` (one, and three changed: a double press, Begin and
+  the not-built example now begin), `begin`'s two (the recipes' choices validate; a hero no offer
+  has is refused).
+- **Compared:** `adv-begin` 2 of 4 drawn, `adv-hotseat-begin` 8 of 11, every one exact, the new
+  `bar` clips included (the replay stops at `load`: the adventure screen, E24's); the scenario,
+  advanced, menus and multiplayer groups and the start's recipes as recorded; `drawn.txt`
+  recorded for both.

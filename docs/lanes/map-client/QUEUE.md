@@ -87,6 +87,17 @@ while the work waits.
   silent (a reading of `bin/h3-map-view/audio.rs` `play`, not heard): add every effect the
   timeline cues (the finds', the asks', the boats') to `effects` and test the library's names.
 
+- 2026-11-19 (the client lane, E27 M3 T6, `client/e27-m3-t6`; **for E24 M5, nothing to do now**):
+  the scenario screen's Begin now builds the game's setup and the engine validates it
+  (`h3-battle-client`'s `begin`: the map imported again, the advanced options' records into each
+  player's `human`, `start.choice` and `start.pick`, the difficulty; `GameSetup::validate`), and
+  keeps it as `begin::Game` (the file, the `GameSetup`, and beside it what the setup has no field
+  for: the players' names by colour, the bonuses and handicaps, E10's, and the turn's duration,
+  the hot seat's clock). The shell then shows the loading screen and its fade
+  (`h3_view::shell::play`) and a notice (`CLT-STUB-13`) where the original's play starts:
+  `Screen::Play { restart: false }`, the shell's window's `game` (`h3-battle-client`'s
+  `shell::in_window`). E24 M5 takes the game from there (no seed is drawn yet: the build's).
+
 - 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **the trades and
   services, for your planning; nothing to do now**): E08's increment 14 (design note
   `docs/epics/E08-design.md`) types the seven classes (2, 7, 35, 99 and 221, 106, 213), all
