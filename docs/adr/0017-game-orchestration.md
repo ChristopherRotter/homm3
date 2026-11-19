@@ -282,7 +282,9 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    town with a standing Tavern, or its open decision is a tavern decision, at its level (its towns
    with a Tavern, counted to 5; 0 at a map Tavern without one: two rows and no part); otherwise
    none. A **Den of Thieves' visit** tells the visitor's owner the guild at everything
-   (`ThievesGuildSeen`, the view in the event). **The guild's view:** the players in the game in id
+   (`ThievesGuildSeen` with its level, then `GuildPartSeen` per part: each shown row's places in
+   row then player order, then each player's best hero and creature; `GameEvent` stays `Copy`,
+   E09 T39b2). **The guild's view:** the players in the game in id
    order; the rows its level shows (2 rows at 0 or 1, 4 at 2, 6 at 3, 8 at 4, all 9 from 5: towns,
    heroes, gold, wood and ore, the four rare resources, obelisks visited, artifacts, army strength,
    gold income), each as its places, from the highest value, equal values sharing a place (in player
@@ -1507,3 +1509,7 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   hire tells its owner what the tavern slot's view lacked (`HiredPartSeen`: the levels last offered
   with the worn positions' count, the backpack past its first five places, the learned spells), so
   that a fold of the slot's view is the hero's details whole (T37a's As built's note for T38a).
+- 2026-11-19 (E09 T39b2 `shared/`; E09 decision 154, `TWN-Q27`): point 2's increment 4 part: a Den
+  of Thieves' guild is told as `ThievesGuildSeen` (the level) with `GuildPartSeen` per part (a
+  row's place, a player's best hero and creature), as the tavern views' parts, not the view in
+  one event; the wire's (protocol v74) `GameQuery::ThievesGuild` answers the query.
