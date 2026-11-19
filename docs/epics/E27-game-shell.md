@@ -1,11 +1,8 @@
 # E27 — The game shell: main menu and the screens outside play
 
-Status: **refined** (2026-11-12, M0, with the user); **M1 closed** (2026-11-13, T3: the fresh
-reviews, the review list accepted, decisions 19 to 22); **M2 refined** (2026-11-13, at M1 T3);
-**M2 T1 done** (2026-11-13, decisions 23 and 24); **M2 T2 done** (2026-11-14, decisions 25 to
-27); **M2 T2b done** (2026-11-14, decision 28); **M2 T3a done** (2026-11-14, decision 29); **M2
-T3b done** (2026-11-14); **M2 T4 done** (2026-11-14, decision 30); **M2 T5a done** (2026-11-14,
-decisions 31, 32); **M2 T5a2 done** (2026-11-15); next **M2 T5b** (`docs/lanes/client/QUEUE.md`).
+Status: **refined** (2026-11-12, M0, with the user); **M1 closed** (2026-11-13), **M2 closed**
+(2026-11-17), **M3 closed** (2026-11-19, T7: the fresh reviews, decisions 66 to 68); **M4 refined**
+(2026-11-19, M4 T0 at M3 T7, decision 69); next **M4 T1** (`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
 catalogue and capture harness). Working detail (readings, the clips, layouts):
@@ -474,6 +471,13 @@ The user, 2026-11-19 (M3 T7's start):
     comparisons (CLT-Q151 (b)); the advanced options' rows made again whenever the map given to
     the game changes (CLT-Q152 (b)); a bonus kept across a map change, E10 told (CLT-Q153 (a)); the
     random map's count above its cap copied (CLT-Q154 (a)). Built in T7.
+69. **M4 refined** (M4 T0 at M3 T7): M4 the screens around play but outside it, a new **M5 in
+    play** (the system options and the menu in play, Save from play, Restart, the end of a
+    scenario) refined once the shell hosts play (E24 M5), so decision 7's four milestones are five
+    (CLT-Q155 (a)); a save is the engine's adventure replay extended with the setup's choices (each
+    colour's human flag, town and hero pick: the adventure lane's format, its inbox told) and a
+    table of the client's own (the names, bonuses, handicaps, the turn's duration) (CLT-Q156 (a));
+    M4's task table as proposed (below).
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
@@ -507,7 +511,7 @@ SoD) the shipped installation decides; E11 owns historical differences.
 - **Load Game and Save Game:** the lists, the dialogs, the engine's adventure record as the file
   (decision 8).
 - **Options:** the system options dialog (volumes, speeds, the original's settings), wherever the
-  original reaches it (T1b: the adventure screen alone; M4's with the menu in play, decision 44). From E17 (placed at its M7 T4): the volume settings (0x5996C0) and a
+  original reaches it (T1b: the adventure screen alone; M5's with the menu in play, decisions 44 and 69). From E17 (placed at its M7 T4): the volume settings (0x5996C0) and a
   track resuming where it stopped (0x59AA82), the client's own options beside the original's
   (CLT-Q25's step of a two-hex stack one hex back by the mouse, a gameplay option off by
   default); `lanes/client/NOTES.md`, "Options and layouts". The settings in the client's own
@@ -541,8 +545,9 @@ tasks are refined here.
 | M0 | Refinement with the user (done 2026-11-12: decisions 4 to 8, CLT-Q79 to CLT-Q83) |
 | M1 | (closed 2026-11-13) **Reading and captures:** the catalogue of the original's screens, each with its entry points, transitions, assets, texts (table and record) and sounds; the clips cut from the user's `VIDEO.VID`; the harness on every screen and its captures; the traps list; the questions the reading finds |
 | M2 | (closed 2026-11-16) **The start and the menus:** the Smacker decoder (decision 5); the clips at start and their sound; start-up loading by the LODs' tables (CLT-Q2); the main menu, New Game, Load Game's choice, Multiplayer and the hot seat's names, Quit's question, their hover, press, sounds and music, exact against the captures; the shell's state machine with a headless driver (the text client first, E17's pattern) |
-| M3 | (refined 2026-11-16) **A game's setup:** scenario selection, the players' setup, the advanced options, the game's begin (the filled `GameSetup` kept for E24 M5, CLT-Q135; the stubs of decision 6) |
-| M4 | **Around play:** Save and Load (the engine's record), the system menu in play and Options, one dialog (with the map-client lane; decision 44), the end of a scenario's screens, high scores, credits |
+| M3 | (closed 2026-11-19) **A game's setup:** scenario selection, the players' setup, the advanced options, the game's begin (the filled `GameSetup` kept for E24 M5, CLT-Q135; the stubs of decision 6) |
+| M4 | (refined 2026-11-19) **Around play, outside it:** High Scores, Credits, the save file (the engine's record with the setup's choices, decision 69), Load Game single and hot seat |
+| M5 | **In play** (decision 69; refined once the shell hosts play, E24 M5): the system menu in play and Options, one dialog (with the map-client lane; decision 44), Save from play, Restart, the end of a scenario's screens |
 
 ### M1 — reading and captures (closed 2026-11-13)
 
@@ -694,13 +699,33 @@ review, M4's): a file `h3_map::read` refuses is left out of the list (the origin
 an unknown format, GENRLTXT 431 and 506, Begin disabled; a map with no players 507; no shipped
 file reaches it); the list's held keys' repeats not recorded (M4's load mode records them).
 
+### M4 — around play, outside it (refined 2026-11-19, M4 T0 at M3 T7)
+
+Decisions 8 and 69 bind it: the screens around play that need no play (High Scores, Credits, Load
+Game), a save the engine's adventure replay with the setup's choices and the client's own table
+(CLT-Q156 (a)); what play reaches (the options, Save, Restart, the end of a scenario) is M5's
+(CLT-Q155 (a)). Each screen exact against its group's shots, each of design §6.4's recipe fixes
+recorded by the task that builds its screen. The readings: design §2.8, §2.9, §3.1 to §3.6 (the
+load mode), §3.12 to §3.14 (a load's rows).
+
+| Task | Scope | Status |
+|---|---|---|
+| T1 | High Scores (§2.8): the dialog, both tabs and their buttons, the eleven creatures stepping every 200 ms (the adventure map's DEFs by `high_score_creatures`), Reset's question (GENRLTXT 667), the client's own scores file (the defaults `CampHigh.txt`'s; never `HiScore.dat`), M2's stub lifted; exact against `scores-tabs`, `scores-reset` | next |
+| T2 | Credits (§2.9): `Credits.fnt`, `Credits.txt`'s two records wrapped to 328 px, the scroll of 2 px ten times a second (CLT-Q88), the closing text's moment read from the kept frames, a key (but F4) or a press ending it, M2's stub lifted; exact against `credits-scroll`, `credits-end` | after T1 |
+| T3 | The save file (decision 69): the engine's adventure replay with the setup's choices (the adventure lane's format, its inbox told; this lane cross-lane with the user's consent should it not be built yet) and the client's table (the names, bonuses, handicaps, the turn's duration, the save's name), written and read with its version; a load's setup rebuilt and its commands replayed by the engine; tests, no screen | after T2 |
+| T4 | Load Game single (§3.1, §3.3 to §3.6, the load mode): the client's saves listed (the map's header, the date, the difficulty shown, the turn's duration), the keys, the sort, Delete's question (688), the notice with none (686), Load's popup, the load to play's stub (as M3's begin); §6.4's fixes (the date's order: a day above 12 and a pinned time zone; a save of another size; Delete of the last save) and M3 T7's leftover (the list's held keys); exact against `scn-load`, `scn-load-none` (the viewer given client saves made to match the recipe's) | after T3 |
+| T5 | Load Game hot seat (§3.12 to §3.14, a load's rows: the saved choices, no arrows; §6.4's Random Map button in a load): exact against `mp-load`, `adv-load` | after T4 |
+| T6 | M4's closure: a fresh reviewer, M4's review list to the user, M4 to the archive, M5's refinement once the shell hosts play (else its prerequisites recorded) | after T5 |
+
+**M4's review list** (the agent's calls, *provisional*, for T6): none yet.
+
 ## Dependencies and boundaries
 
 - **E17 closed** (2026-11-12): the compositor, SDL adapter, fonts and string catalogue are used as
   they are; this epic adds screens, not a second renderer. `h3-bink` decodes the Bink clips.
 - **E24 M5 (hot seat)** starts its game from the filled `GameSetup` (decision 4); what else the
   hand-over carries (the hot seat's names, the map's file) is agreed with the map-client lane at
-  M3's T0 within the existing crates. The system menu in play (M4) draws over E24's screen.
+  M3's T0 within the existing crates. The system menu in play (M5, decision 69) draws over E24's screen.
 - **E10** (adventure lane) adds the starting bonus, the handicap and victory and defeat to the
   engine; **E13** the computer players; until then the stubs of decision 6.
 - **The engine and the server** own what a game is: the shell builds a game's setup and hands
@@ -721,4 +746,4 @@ file reaches it); the list's held keys' repeats not recorded (M4's load mode rec
   banks on 148 maps among them); the list shows every map as the original's (decision 44), so a
   game's begin starts maps that cannot yet be played as the original's (every map's game builds
   at the census's seed; M3's begin shows an engine refusal should one come).
-- **Unknown size:** the screens are listed from the code at M1; M2 to M4 are a sketch until then.
+- **Unknown size:** the screens are listed from the code at M1; M2 to M5 are a sketch until then.
