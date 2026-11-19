@@ -325,11 +325,15 @@ const SURVEY_INCREMENT_13: [usize; 3] = [148, 143, 106];
 struct Increment14 {
     classes: BTreeMap<u32, [usize; TRADE_COUNTS]>,
     most: BTreeMap<u32, (usize, String)>,
-    pictures: BTreeMap<u32, BTreeSet<(String, [u8; 6], [u8; 6])>>,
+    pictures: BTreeMap<u32, BTreeSet<Picture>>,
     maps: usize,
     factories: BTreeMap<(u8, u8), usize>,
     black_markets: BTreeMap<usize, usize>,
 }
+
+/// A picture of [`Increment14`]: its name in lower case without `.def`, its passable and visitable
+/// masks.
+type Picture = (String, [u8; 6], [u8; 6]);
 
 /// How many counts [`Increment14`] keeps by class: the objects, the maps holding them, those maps
 /// of RoE, AB and SoD, and the objects underground.

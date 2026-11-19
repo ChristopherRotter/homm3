@@ -20079,6 +20079,11 @@ census is the import's check), `cross-lane` with the user's consent for `h3-serv
   T132b's census); ADV-OBJ-002, ADV-MKT-001, ADV-ALT-001, ADV-HFT-002 and ADV-WMF-001 amended;
   `OVERVIEW.md`'s import line; the queue (T132b out, archived verbatim; T133 in); the inboxes of
   the server lane (the test) and the town lane (v27 taken).
+- **Gates:** the scoped verify (without `--with-original-data`: the LODs not staged; the map
+  reader's original-data example run apart, passing): fmt, the checks, coverage, determinism and
+  bench-check passing, `check-lane` failing by design (`check-lane --cross-lane` passes); clippy
+  found the census's set type too complex (`type_complexity`): `Picture` named, clippy clean on the
+  five crates. `cargo check --workspace --all-targets` clean.
 
 **Versions:** map import v27. The game state hash, the adventure state hash, the ruleset part and
 the replay format unchanged. Round 5 done; T133 next.
