@@ -2348,3 +2348,45 @@ an entry only where a task builds on it.
   against their baselines, `random-rollouts-siege` +0.79 % (`master` itself +0.82 %: −0.03 %
   against it). `cargo xtask determinism`: the golden replays unchanged. The Python suite 271
   passed, 1 skipped.
+
+## T38b — v23 in the networks, the bench (2026-11-19)
+
+- **(a) `[network] reach`** (the hex kinds'; `entity.Pointed.make_extra`, `hexnet`): the reach
+  block after `symlog`, its two planes (`layout.REACH` to `REACH_STACKS`, the field's hexes)
+  through a linear layer into each hex's drawn vector, each stack slot's three features through
+  one into its token before it is drawn; refused for the MLP and the entity network (`run.check`,
+  `policy.build`). Made after T25's keys: with the same seed a `reach` network has the other's
+  weights, its two layers beside them (672 parameters on `hexconv` 96 × 6). Tests
+  (`test_hexnet.py`): a file without the key builds and computes as before (the preview handed
+  or not); the key's modules at 0 compute the network without it; a count of the opponent's
+  plane at a hex moves that hex's drawn vector alone, a slot's feature that slot's token alone; a
+  hex past a smaller field is not drawn.
+- **(b) `[network] preview` for the hex kinds:** `Mlp.with_preview`'s bias moved into
+  `policy.make_preview` and `preview_bias` (the MLP's parameter names and order unchanged: its
+  files load), the hex kinds' `u` from the context (4 320 parameters on 96 × 6 at `embed` 32; the
+  MLP's 17 632 read its 512-unit trunk), made after `reach`'s. It plays wherever the batch writes
+  the preview (`act`, `evaluate`: rollouts, gates, ladders), not in `h3env.search`, which refuses
+  it as before. Tests: the key's modules at 0, a refusal without the preview, the MLP's preview
+  test on `hexconv` too (the bias moves the legal strikes alone; the update's log-probabilities
+  from the rollout's half-precision preview).
+- **(c) The bench:** a student that reads the preview is the clone mode's only (the distillation
+  bench refuses it before it writes anything); there the batches write the preview (the play the
+  same: the episodes and rows identical, a test) and the rows and the held-out set hold it (half
+  precision, as PPO's rollouts; `teacher.preview` in the report); `distill.heads` adds the bias.
+  **`same_start`** (a new bench key; the agent's call): the bench made its students in order
+  from one torch stream, so T32's control and its 2e-3 arm, one network, started from different
+  weights; with `same_start` each student is made from the bench's seed, and an arm whose keys add
+  modules starts with the control's weights (a test stops a bench of the three arms at its first
+  evaluation and compares the checkpoint's networks). Default off: every older bench as before.
+- **(d) T39's config** (`configs/distill/e25-reach.toml`; a test pins it to T32's `e25-arch.toml`
+  but `same_start` and the students): the control `hexconv-n-96x6-a` (#2's network, v22's
+  prefix), `-reach`, `-reach-preview`. **The CPU smoke** (the sandbox; `--set samples=16384
+  heldout=4096 eval_every=8192 envs=64 rollout=32 ladder_per_kind=2 device="cpu" threads=4`):
+  SIGINT 190 s into the run, stopped at 3 631 samples (pro rata), resumed with `--resume` to
+  16 400 and the ladders, 850 s in all; the teacher 21 696 decisions in 371 episodes, none lost
+  or truncated, its play 4.6 s with the preview. At the start the arms score alike (the entry's
+  cross-entropy 3.904, 3.904, 3.911); the µs a sample-pass on the CPU 7 024, 7 104, 7 144 (the
+  arms within 2 %). Too early to rank (agreement 0.245, 0.258, 0.333 at 16 k; the preview arm's
+  shots 0.467 from 3.6 k on: the bias finds the teacher's shot targets first). The checkpoint
+  54 MB, the held-out set 3.7 MB compressed. The Python suite 285 passed, 1 skipped (3.6
+  minutes).

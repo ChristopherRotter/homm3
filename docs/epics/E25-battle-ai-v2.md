@@ -167,8 +167,8 @@ blocked state; the kill preview (C ABI v33, E06 T6d) only the MLP reads.
 | Task | Scope | Status |
 |---|---|---|
 | T37 | v23's design: nothing the fair actor reads is hidden, the reach is left to a pathfinder; #2's moves are blind to it (0.468, chance 0.455), its strikes read the kills; v23 the reach block (AI-Q19) | done 2026-11-18 |
-| T38 | v23 built: T38a the reach block from a viewer-safe query in `h3-battle` (`cross-lane`), C ABI v38 (done 2026-11-19; the batch's step +140 % on the encounters); T38b `[network] reach`, the kill preview for the hex kinds and the bench | T38b next |
-| T39 | The bench probe: the control, v23 and v23 with the preview at 4 M; an arm's clone's ladder +0.02 | after T38 |
+| T38 | v23 built: T38a the reach block from a viewer-safe query in `h3-battle` (`cross-lane`), C ABI v38 (the batch's step +140 % on the encounters); T38b `[network] reach` and `preview` for the hex kinds, the cloning bench's preview rows and `same_start`, T39's config | done 2026-11-19 |
+| T39 | The bench probe: the control, v23 and v23 with the preview at 4 M (`configs/distill/e25-reach.toml`); an arm's clone's ladder +0.02 | next (the user's GPU) |
 | T40 | The long run from the v23 clone, on T39's gain, with the early stop | after T39 |
 | T41 | Increment 9's checkpoint | after T40 |
 

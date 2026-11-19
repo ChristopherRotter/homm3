@@ -149,6 +149,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   reads it refuses none; a melee entry's attack hex is `geometry.attack_hexes`, never a copy. Time
   a kind with `python -m h3env.train.network --time` (the sandbox's CPU is noisy: `--repeats
   30`), a bench's students side by side with `--bench`.
+- **A bench's students share one torch stream** (`distill.go`): in order, so two students that
+  differ by a key start from different weights. An A/B of a key on the bench sets `same_start`
+  (E25 T38b: each student from the bench's seed; a key's modules are made after the others, so
+  the arm starts with the control's weights). A student that reads the kill preview is the
+  clone mode's only (its rows hold the batch's preview; the distillation bench refuses it).
 - **A long run stops early** (the user, 2026-11-18, E25 T36: once its goal can evidently not
   be met): its config sets `[gate] futility` (at least 1: the run ends `futile` after so many
   gates in a row without a promotion) and `gate_every` at most a quarter of its `samples`, and
