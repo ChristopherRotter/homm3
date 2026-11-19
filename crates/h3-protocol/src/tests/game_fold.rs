@@ -908,6 +908,32 @@ fn the_fold_leaves_the_view_for_messages_and_what_no_event_carries() {
                 resource: 6,
                 amount: 1000,
             },
+            // E09 T39b2: a Den of Thieves' Thieves' Guild is not in the observation.
+            GameEvent::ThievesGuildSeen {
+                player: 1,
+                level: 5,
+            },
+            GameEvent::GuildPartSeen {
+                player: 1,
+                part: GuildPart::Place {
+                    row: GuildRow::Army,
+                    of: 0,
+                    place: 1,
+                },
+            },
+            GameEvent::GuildPartSeen {
+                player: 1,
+                part: GuildPart::Player {
+                    of: 1,
+                    shown: GuildPlayer {
+                        hero: Some(GuildHero {
+                            hero_type: 4,
+                            skills: Some([1, 2, 3, 4]),
+                        }),
+                        creature: Some(3),
+                    },
+                },
+            },
             adventure(AdventureEvent::TilesRevealed {
                 object_type: ty,
                 count: 3,

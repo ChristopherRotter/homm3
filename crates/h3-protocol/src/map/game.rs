@@ -23,11 +23,13 @@ use h3_adventure::{
 use h3_content::{CreatureTypeId, Formation as EngineFormation, ResourceId};
 use h3_contracts::{ArmyStack as EngineStack, FortLevel};
 use h3_game::{
-    DecisionView, GameRuleset, GameState, GarrisonStackView, GarrisonView, HeroInfo as EngineInfo,
-    HireCreature as EngineCreature, HireSeen as EngineSeen, HireView, HiredPart as EngineHiredPart,
-    LevelUpView, MapGarrisonView, MonthKind, PlayerView, SlotState as EngineSlot,
-    TavernHero as EngineTavernHero, TavernHeroView as EngineTavernView,
-    TavernPart as EngineTavernPart, TownBuildingsView, TownOwnerView, TownView, Viewer, WeekKind,
+    DecisionView, GameRuleset, GameState, GarrisonStackView, GarrisonView,
+    GuildHero as EngineGuildHero, GuildPart as EngineGuildPart, GuildPlayer as EngineGuildPlayer,
+    GuildRow as EngineGuildRow, HeroInfo as EngineInfo, HireCreature as EngineCreature,
+    HireSeen as EngineSeen, HireView, HiredPart as EngineHiredPart, LevelUpView, MapGarrisonView,
+    MonthKind, PlayerView, SlotState as EngineSlot, TavernHero as EngineTavernHero,
+    TavernHeroView as EngineTavernView, TavernPart as EngineTavernPart, ThievesGuildView,
+    TownBuildingsView, TownOwnerView, TownView, Viewer, WeekKind,
 };
 use h3_heroes::{
     ArtifactInstance, HeroDetails as EngineDetails, OfferLevels as EngineLevels,
@@ -39,11 +41,12 @@ use crate::wire::WireU64;
 use crate::wire::game::{
     Adventure, AdventureReveal, Amount, ArmyStack, Artifact, Boat, Bonuses, Choice, ChoiceKind,
     Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonHero, GarrisonStack,
-    Guards, HeroDetails, HeroInfo, Hire, HireCreature, HireSeen, HireTarget, HiredPart, Known,
+    Guards, GuildHero, GuildPart, GuildPlayer, GuildRanking, GuildRow, HeroDetails, HeroInfo,
+    Hire, HireCreature, HireSeen, HireTarget, HiredPart, Known,
     KnownObject as WireKnownObject, LevelUp, MapGarrison, MapHero, Monster, Month, Object,
     ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, RevealedArea,
-    RevealedView, SkillLevel, SlotState, Summoned, TavernHero, TavernHeroHead, TavernPart, Tile,
-    Town, TownBuildings, TownOwnerFacts, UniversityVisit, VisitBonus, Week,
+    RevealedView, SkillLevel, SlotState, Summoned, TavernHero, TavernHeroHead, TavernPart,
+    ThievesGuild, Tile, Town, TownBuildings, TownOwnerFacts, UniversityVisit, VisitBonus, Week,
 };
 
 mod command;
@@ -205,6 +208,61 @@ pub(super) const fn hired_part(part: EngineHiredPart) -> HiredPart {
             artifact: artifact(a),
         },
         EngineHiredPart::Spell(spell) => HiredPart::Spell { spell: spell.raw() },
+    }
+}
+
+/// A row of the Thieves' Guild on the wire (protocol v74, E09 T39b2).
+const fn guild_row(row: EngineGuildRow) -> GuildRow {
+    match row {
+        EngineGuildRow::Towns => GuildRow::Towns,
+        EngineGuildRow::Heroes => GuildRow::Heroes,
+        EngineGuildRow::Gold => GuildRow::Gold,
+        EngineGuildRow::Common => GuildRow::Common,
+        EngineGuildRow::Rare => GuildRow::Rare,
+        EngineGuildRow::Obelisks => GuildRow::Obelisks,
+        EngineGuildRow::Artifacts => GuildRow::Artifacts,
+        EngineGuildRow::Army => GuildRow::Army,
+        EngineGuildRow::Income => GuildRow::Income,
+    }
+}
+
+/// What the guild shows of a player on the wire (protocol v74).
+fn guild_player(EngineGuildPlayer { hero, creature }: EngineGuildPlayer) -> GuildPlayer {
+    GuildPlayer {
+        hero: hero.map(|EngineGuildHero { hero_type, skills }| GuildHero {
+            hero_type: hero_type.raw(),
+            skills,
+        }),
+        creature: creature.map(CreatureTypeId::raw),
+    }
+}
+
+/// A part of the Thieves' Guild on the wire (protocol v74, E09 T39b2).
+pub(super) fn guild_part(part: EngineGuildPart) -> GuildPart {
+    match part {
+        EngineGuildPart::Place { row, of, place } => GuildPart::Place {
+            row: guild_row(row),
+            of: of.raw(),
+            place,
+        },
+        EngineGuildPart::Player { of, shown } => GuildPart::Player {
+            of: of.raw(),
+            shown: guild_player(shown),
+        },
+    }
+}
+
+/// The Thieves' Guild on the wire (protocol v74, E09 T39b2): the guild query's answer.
+pub(crate) fn thieves_guild(view: &ThievesGuildView) -> ThievesGuild {
+    ThievesGuild {
+        level: view.level,
+        rows: (view.rows.iter())
+            .map(|ranking| GuildRanking {
+                row: guild_row(ranking.row),
+                places: ranking.places.clone(),
+            })
+            .collect(),
+        players: view.players.iter().copied().map(guild_player).collect(),
     }
 }
 

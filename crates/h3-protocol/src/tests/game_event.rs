@@ -14,7 +14,8 @@ use h3_content::Formation as EngineFormation;
 use h3_contracts::{ArmyStack as EngineStack, BattleResult, FortLevel, HeroId, PlayerId, TownId};
 use h3_game::{
     ArmyRef, ArmySlot, ArtifactPlace, BuildingId, BuildingSet, GameEvent, GarrisonStackView,
-    HeroChange, HireSeen, HireTarget, MonthKind, Position, TownBuildingsView, Viewer, WeekKind,
+    GuildHero, GuildPart, GuildPlayer, GuildRanking, GuildRow, HeroChange, HireSeen, HireTarget,
+    MonthKind, Position, ThievesGuildView, TownBuildingsView, Viewer, WeekKind,
 };
 use h3_heroes::{ArtifactInstance, OfferLevels, PrimarySkill as EnginePrimary};
 use h3_kernel::handle::Handle;
@@ -424,6 +425,75 @@ fn adventure_back(e: w::AdventureEvent, alone: Viewers) -> K {
 
 /// The engine's projected event for `viewer`; `battle` is the engine's battle event, whose wire
 /// form `e` must hold.
+/// The Thieves' Guild's rows on the wire and in the engine, pairwise (test code, independent of
+/// the mapping it checks).
+pub(super) const GUILD_ROWS: [(w::GuildRow, GuildRow); 9] = [
+    (w::GuildRow::Towns, GuildRow::Towns),
+    (w::GuildRow::Heroes, GuildRow::Heroes),
+    (w::GuildRow::Gold, GuildRow::Gold),
+    (w::GuildRow::Common, GuildRow::Common),
+    (w::GuildRow::Rare, GuildRow::Rare),
+    (w::GuildRow::Obelisks, GuildRow::Obelisks),
+    (w::GuildRow::Artifacts, GuildRow::Artifacts),
+    (w::GuildRow::Army, GuildRow::Army),
+    (w::GuildRow::Income, GuildRow::Income),
+];
+
+/// A row of the Thieves' Guild back to the engine's.
+fn guild_row_back(row: w::GuildRow) -> GuildRow {
+    GUILD_ROWS.iter().find(|(wire, _)| *wire == row).unwrap().1
+}
+
+/// The engine's Thieves' Guild as the wire should carry it (test code, independent of the
+/// mapping it checks): the rows by [`GUILD_ROWS`], the handles raw.
+pub(super) fn guild_wire(view: &ThievesGuildView) -> w::ThievesGuild {
+    let row = |row| GUILD_ROWS.iter().find(|(_, engine)| *engine == row).unwrap().0;
+    w::ThievesGuild {
+        level: view.level,
+        rows: (view.rows.iter())
+            .map(|ranking| w::GuildRanking {
+                row: row(ranking.row),
+                places: ranking.places.clone(),
+            })
+            .collect(),
+        players: (view.players.iter())
+            .map(|shown| w::GuildPlayer {
+                hero: shown.hero.map(|h| w::GuildHero {
+                    hero_type: h.hero_type.raw(),
+                    skills: h.skills,
+                }),
+                creature: shown.creature.map(Handle::raw),
+            })
+            .collect(),
+    }
+}
+
+/// What the guild shows of a player back to the engine's.
+fn guild_player_back(shown: w::GuildPlayer) -> GuildPlayer {
+    GuildPlayer {
+        hero: shown.hero.map(|h| GuildHero {
+            hero_type: Handle::from_raw(h.hero_type),
+            skills: h.skills,
+        }),
+        creature: shown.creature.map(Handle::from_raw),
+    }
+}
+
+/// A part of the Thieves' Guild back to the engine's.
+fn guild_part_back(part: w::GuildPart) -> GuildPart {
+    match part {
+        w::GuildPart::Place { row, of, place } => GuildPart::Place {
+            row: guild_row_back(row),
+            of: PlayerId::new(of),
+            place,
+        },
+        w::GuildPart::Player { of, shown } => GuildPart::Player {
+            of: PlayerId::new(of),
+            shown: guild_player_back(shown),
+        },
+    }
+}
+
 fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Event>) -> GameEvent {
     use w::GameEvent as G;
     let alone = Viewers::NONE.with(viewer);
@@ -819,6 +889,14 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
                 }
                 w::HiredPart::Spell { spell } => h3_game::HiredPart::Spell(Handle::from_raw(spell)),
             },
+        },
+        G::ThievesGuildSeen { player, level } => GameEvent::ThievesGuildSeen {
+            player: p(player),
+            level,
+        },
+        G::GuildPartSeen { player, part } => GameEvent::GuildPartSeen {
+            player: p(player),
+            part: guild_part_back(part),
         },
         G::GarrisonChanged {
             player,
@@ -1245,6 +1323,42 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             hero: HeroId::new(6),
             part: h3_game::HiredPart::Spell(Handle::from_raw(30)),
         },
+        // E09 T39b2 (v74): a Den of Thieves' guild, player 0's alone, a part of each kind.
+        GameEvent::ThievesGuildSeen {
+            player: P0,
+            level: 5,
+        },
+        GameEvent::GuildPartSeen {
+            player: P0,
+            part: GuildPart::Place {
+                row: GuildRow::Income,
+                of: P1,
+                place: 1,
+            },
+        },
+        GameEvent::GuildPartSeen {
+            player: P0,
+            part: GuildPart::Player {
+                of: P1,
+                shown: GuildPlayer {
+                    hero: Some(GuildHero {
+                        hero_type: Handle::from_raw(14),
+                        skills: Some([5, 4, 99, 0]),
+                    }),
+                    creature: Some(Handle::from_raw(8)),
+                },
+            },
+        },
+        GameEvent::GuildPartSeen {
+            player: P0,
+            part: GuildPart::Player {
+                of: P0,
+                shown: GuildPlayer {
+                    hero: None,
+                    creature: None,
+                },
+            },
+        },
         GameEvent::TownChanged {
             player: P0,
             town: TownId::new(1),
@@ -1620,10 +1734,11 @@ pub(super) fn every_event() -> Vec<GameEvent> {
 fn every_event_maps_back_for_its_viewers_and_round_trips() {
     let all = every_event();
     let distinct: BTreeSet<String> = all.iter().map(kinds).collect();
-    // The game's 43 kinds of event (the adventure's as one; E08 T114a2: `ExchangeOpened`; T114b:
+    // The game's 46 kinds of event (the adventure's as one; E08 T114a2: `ExchangeOpened`; T114b:
     // `GarrisonChanged`, `GarrisonStackSeen`; E09 T37a: `TavernOffered`, `TavernPartSeen`; T38a1:
-    // `HeroHired`, `HiredPartSeen`; T39a: `TavernOpened`).
-    assert_eq!(distinct.len(), 44, "{distinct:?}");
+    // `HeroHired`, `HiredPartSeen`; T39a: `TavernOpened`; T39b2: `ThievesGuildSeen`,
+    // `GuildPartSeen`).
+    assert_eq!(distinct.len(), 46, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);
@@ -1673,6 +1788,60 @@ fn every_event_maps_back_for_its_viewers_and_round_trips() {
         })
         .collect();
     assert_eq!(steps, [(true, true), (false, true), (true, false)]);
+}
+
+#[test]
+fn a_dens_guild_on_the_wire_is_the_guild_its_parts_make() {
+    // E09 T39b2 (v74): a guild at everything for two players, its events as a Den of Thieves'
+    // visit tells them (`ThievesGuildView::parts`), map back for its viewer alone and round-trip;
+    // seen in order from the told level (`ThievesGuild::see`), the parts make the whole guild's
+    // wire view, which is the query's mapping of it.
+    let hero = |ty, skills| {
+        Some(GuildHero {
+            hero_type: Handle::from_raw(ty),
+            skills,
+        })
+    };
+    let view = ThievesGuildView {
+        level: 5,
+        rows: (GuildRow::ALL.iter().zip(0_u8..))
+            .map(|(&row, k)| GuildRanking {
+                row,
+                places: vec![k % 2, (k + 1) % 2],
+            })
+            .collect(),
+        players: vec![
+            GuildPlayer {
+                hero: hero(3, Some([1, 2, 3, 99])),
+                creature: Some(Handle::from_raw(5)),
+            },
+            GuildPlayer {
+                hero: hero(7, None),
+                creature: None,
+            },
+        ],
+    };
+    let head = GameEvent::ThievesGuildSeen {
+        player: P0,
+        level: 5,
+    };
+    let parts = view.parts().map(|part| GameEvent::GuildPartSeen { player: P0, part });
+    let engine: Vec<GameEvent> = core::iter::once(head).chain(parts).collect();
+    assert_eq!(engine.len(), 1 + 9 * 2 + 2);
+    let wire = events(&engine, Viewer::Player(P0));
+    check(&engine, P0, &wire);
+    wire.iter().for_each(round_trips);
+    assert!(events(&engine, Viewer::Player(P1)).is_empty());
+    let mut told = w::ThievesGuild::at(5);
+    (wire.iter())
+        .filter_map(|e| match *e {
+            w::GameEvent::GuildPartSeen { part, .. } => Some(part),
+            _ => None,
+        })
+        .for_each(|part| told.see(part));
+    assert_eq!(told, guild_wire(&view));
+    assert_eq!(told, crate::map::game::thieves_guild(&view));
+    round_trips(&told);
 }
 
 #[test]

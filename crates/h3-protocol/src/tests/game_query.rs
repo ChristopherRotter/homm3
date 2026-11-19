@@ -13,6 +13,7 @@ use h3_adventure::{AdventureCommand as EngineAdventure, Reach};
 use h3_contracts::PlayerId;
 use h3_game::{Actor, GameCommand as EngineCommand, GameState, NoopSink, apply, legal_moves};
 
+use super::game_event::guild_wire;
 use super::game_fold::{golden, one};
 use super::game_seats::{MAP, OPTIONS, end_turn, join, send, to, token};
 use super::game_session::duel;
@@ -272,6 +273,32 @@ fn a_battles_targets_are_its_own_querys_for_the_players_side() {
     });
     assert!(checked > 200, "{checked}");
     assert!(aimed > 0, "{aimed}");
+}
+
+#[test]
+fn the_thieves_guild_is_the_engines_for_the_asking_player() {
+    // E09 T39b2 (v74): the guild a seat asks for is `h3_game::thieves_guild` for its player, its
+    // rows and players whole (`guild_wire`, test-side); none outside the player's turn or without
+    // a Tavern, and none for a player not in the game; before each of the golden replays' first
+    // 30 commands.
+    let (mut shown, mut none) = (0, 0);
+    golden(|name, rules, setup, replay| {
+        let mut state = GameState::new(rules, setup, replay.seed).unwrap();
+        for (actor, command) in replay.commands.iter().take(30) {
+            for player in (0..=u8::MAX).take(state.players() + 1).map(PlayerId::new) {
+                let engine = h3_game::thieves_guild(&state, rules, player);
+                shown += usize::from(engine.is_some());
+                none += usize::from(engine.is_none());
+                let expected = GameAnswer::ThievesGuild {
+                    guild: engine.as_ref().map(guild_wire),
+                };
+                let asked = answer(&state, rules, player, GameQuery::ThievesGuild);
+                assert_eq!(asked, expected, "{name}");
+            }
+            apply(&mut state, rules, *actor, command.clone(), &mut NoopSink).unwrap();
+        }
+    });
+    assert!(shown > 0 && none > 0, "{shown} {none}");
 }
 
 /// Connections of a test.

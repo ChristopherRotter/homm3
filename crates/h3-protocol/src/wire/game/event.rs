@@ -14,8 +14,8 @@ use super::{
     ArmySlot, ArmyStack, Artifact, ArtifactPlace, Formation, HireSeen, HireTarget, Month, Week,
 };
 use super::{
-    GarrisonStack, HiredPart, OfferLevels, Pos, PrimarySkill, TavernHeroHead, TavernPart,
-    TownBuildings, VisitBonus,
+    GarrisonStack, GuildPart, HiredPart, OfferLevels, Pos, PrimarySkill, TavernHeroHead,
+    TavernPart, TownBuildings, VisitBonus,
 };
 use crate::wire::{Event, Outcome};
 
@@ -236,6 +236,15 @@ pub enum GameEvent {
         player: u8,
         hero: u16,
         part: HiredPart,
+    },
+    // E09 T39b2 (v74): a Den of Thieves' Thieves' Guild, its parts following.
+    ThievesGuildSeen {
+        player: u8,
+        level: u8,
+    },
+    GuildPartSeen {
+        player: u8,
+        part: GuildPart,
     },
     GarrisonChanged {
         player: u8,

@@ -23,6 +23,7 @@ use crate::observe::HireSeen;
 use crate::system::SystemCommand;
 use crate::town::hire::{HiredPart, TavernError};
 use crate::town::tavern::{TavernHero, TavernPart};
+use crate::town::thieves::GuildPart;
 use crate::town::view::{GarrisonStackView, TownBuildingsView};
 use crate::{GameRuleset, GameState, MonthKind, OpenBattle, WeekKind};
 
@@ -826,6 +827,27 @@ pub enum GameEvent {
         hero: HeroId,
         /// The part.
         part: HiredPart,
+    },
+    /// A Den of Thieves' visit showed the visitor's owner the Thieves' Guild at everything
+    /// (ADV-VIS-008, TWN-TAV-007; E09 T39b2, design note §74, §75): its level
+    /// ([`crate::DEN_LEVEL`]), followed by a [`Self::GuildPartSeen`] for each part of its view
+    /// ([`crate::ThievesGuildView::parts`]); the view they make is the told one, a snapshot (the
+    /// guild is not in the observation). Told after the visit's step, every visit alike (a
+    /// `Revisit` too). Seen by `player`.
+    ThievesGuildSeen {
+        /// The player told: the visitor's owner.
+        player: PlayerId,
+        /// The guild's level.
+        level: u8,
+    },
+    /// A part of the Thieves' Guild a Den of Thieves' visit shows (TWN-TAV-008, -009; E09
+    /// T39b2), told after its [`Self::ThievesGuildSeen`], one per part in [`GuildPart`]'s order.
+    /// Seen by `player`.
+    GuildPartSeen {
+        /// The player told: the visitor's owner.
+        player: PlayerId,
+        /// The part.
+        part: GuildPart,
     },
     /// A player's view of a map garrison changed (ADV-GAR-006; E08 T114b, increment 12's design
     /// note §10 and §15; SRV-Q26): the garrison's facts as `player` now sees it
