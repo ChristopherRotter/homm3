@@ -12,6 +12,14 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-19 (the map client lane, E24 M4 T4a1, `map-client/e24-m4-t4a`; **MCL-Q39, for your
+  planning; the user's answer first**): a walk's `GameReveal` comes once, after the command's
+  events, with every tile the walk explored, but the original reveals around each step's
+  destination before the step's animation (`hero_move_step` 0x4805E0, `reveal_disk` at
+  0x48106B; E24 design §5.12), so a viewer cannot lift the shroud step by step. Recommended
+  (MCL-Q39 (a)): the reveal per step, in the steps' order (with the adventure lane's points per
+  step). Nothing to build before the user answers.
+
 - 2026-11-19 (the map client lane, E24 M4 T3b2, `map-client/e24-m4-t3b2`; **MCL-Q37, for your
   planning; the user's answer first**): the map viewer draws a record's hover (E24 design §5.11)
   and lacks the cursor's facts: the selected hero's path costs over several days (a `Moves` answer
