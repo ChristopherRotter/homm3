@@ -209,6 +209,41 @@ RL observation can use too; notes in the adventure and server lanes' inboxes (20
 Meanwhile the viewer shows morale and luck 0 and a hero able to move while it has points
 (`stub: MCL-Q36` in `h3_map_view::engine`'s panels). Blocks nothing.
 
+#### MCL-Q37 — A record's start lacks the cursor's facts and a visited bank's guards (E24 M4 T3b2, a comparison)
+
+The mouse-over drawn from a whole game's record (E24 design §5.11) needs facts its observation does
+not hold: the selected hero's path costs over several days (the cursor's day groups, 0x40E98F: the
+pathfinder's node cost of the tile under the mouse; a `Moves` query answers today's reach only and
+a record holds no answer), the tiles a monster guards (the attack cursor, the vision word's bit 8;
+the engine's reach knows them, ADV-MON-006, the view does not), whether another team's town or map
+garrison holds an army when the viewer's level is 0 (TWN-VEW-002 shows nothing; the attack cursor,
+`town_defended` 0x5BDFE0), and a visited creature bank's guards (the hint's "(guards)" after a
+visit, 0x40D3F0; the view shows a mine's guards only). The hints are exact without them (every
+explored tile of the six starts compared); the cursor differs only over a tile whose cost a
+capture read, none of the starts' stills. Options: (a) the engine carries them: the adventure
+lane a multi-day reach of the selected hero and the guarded tiles in the view (or a `Moves` answer
+extended to days and attacks), the server lane its record of the answers a viewer's client would
+ask (the cursor's), a bank's guards in the view to the visitor's team as a mine's; (b) the client
+derives them from the view and the rules (copied: not wanted, the user at T3b1's start);
+(c) a record viewed without them: the cursor over a reachable tile the arrow. **Recommended (a)**,
+as MCL-Q36's (notes in the adventure and server lanes' inboxes, 2026-11-19). Meanwhile none is
+written (no reach, no guarded tile, no army, no guards: `stub: MCL-Q37` in `h3_map_view::engine`'s
+hover). Blocks nothing until M4 T4 plays a record's walks.
+
+#### MCL-Q38 — A shipped map's town list at a new game is not in the map's order (E24 M4 T3b2, a capture)
+
+At a new game the original lists a player's towns in the map's order on every writer's map
+(`lists-towns`, `status-kingdom`: indices 0 to 6), but Hoard's Red lists its Fortress (the game's
+town 9) before its Castle (3) (`shipped-hoard`, `start-hoard`: `town_list = [9, 3]`), and Hoard
+names no main town for Red; the engine's view lists them in its towns' order (3, then 9), as the
+viewer does. Not read: how `setup_towns` 0x4CAA70 or the turn's start builds the list (the player
+record's +0x40). Options: (a) read it in the original (the list's build at a new game and the
+starting hero's town), then the client orders a record's list as the original does if the rule
+needs only the map, else the engine's view gives the order; (b) keep the view's order and list the
+difference where a comparison meets it. **Recommended (a)** at the task that first compares a start
+with several towns of the viewer's (M4 T4's scripted games or M5). Meanwhile the view's order
+(`stub: MCL-Q38`). Blocks nothing: the starts compared hold one town of Red's.
+
 ### Town lane (`TWN-Q<n>`)
 
 (no open questions)

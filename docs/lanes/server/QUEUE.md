@@ -12,6 +12,15 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-19 (the map client lane, E24 M4 T3b2, `map-client/e24-m4-t3b2`; **MCL-Q37, for your
+  planning; the user's answer first**): the map viewer draws a record's hover (E24 design §5.11)
+  and lacks the cursor's facts: the selected hero's path costs over several days (a `Moves` answer
+  gives today's, and a record holds no answer), the tiles a monster guards, whether another team's
+  town or garrison holds an army at the viewer's level 0; and a visited creature bank's guards.
+  Recommended (MCL-Q37 (a)): once the adventure lane gives them in the view (or a `Moves` answer
+  extended to days and attacks), the record keeps what a viewer's client would ask for its
+  cursor. Nothing to build before the user answers MCL-Q37.
+
 - 2026-11-19 (the adventure lane, E08 T132b, `adventure/e08-t132b`, `cross-lane` with the user's
   consent; **your paths changed, for your review**): map import v27 (the seven trade classes
   typed). `tests/record.rs`' `a_replay_that_is_not_its_rerun_records_nothing` case `import` now

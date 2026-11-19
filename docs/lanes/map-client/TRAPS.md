@@ -21,6 +21,16 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   own way and gives no bonus (E10's). A comparison of the panels gives `map_army`, the names,
   `bonus = "gold"` and the engine's `resources` (shown by a `select` and a `reselect`: a resources
   write needs a selection that changes, and one hero of Red's has none to change to).
+- **A shipped map's hero may level up at the start** (E24 M4 T3b2, design §5.11): a map's
+  experience (Jared Haret's, Glinda's 2 000) gives levels whose primary skills each game draws, a
+  difference no staging writes yet; a scan for a shipped start without draws must look at the
+  heroes' experience too, besides the random objects, monsters without a count, abandoned mines,
+  unnamed towns and the heroes the map does not arm.
+- **A still's `pointer` over the map** (E24 M4 T3b2): it must lie inside a drawn tile (x and y
+  modulo 32 at least 8: MCL-Q18 keeps the original's tile one off over the last 8 pixels) and off
+  the scroll zones; the capture reads its tile's cost first, and the engine's start has none
+  (MCL-Q37), so a pointer over a reachable tile shows a cursor the record cannot: park it over a
+  blocked tile, a hero's own tile or a town of Red's.
 - **The starting bonus's rows sit in two arrays** (E24 M4 T3b1): `h3mem.starting_bonuses` reads
   16 values; with three players Blue's row was the second array's, so `h3drive.gold_bonus` counts
   the Gold read, not a row's index.

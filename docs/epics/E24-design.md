@@ -4016,3 +4016,61 @@ to §4.9, §4.13), their capture `h3map.py set`.
   pixels); `engine-start-owners` (one hero of Red's: no reselection, the bonus's gold stays) in the
   resources and the morale (192 pixels). `tests/engine.rs`: the panels of a start, a town's window
   selected or nothing, a hero off its file tile, what differs.
+
+### 5.11 A record's start: the hover, the towns' pictures, the shipped maps (M4 T3b2)
+
+The second of T3b's two (kept whole by the user at its start, 2026-11-19; `MCL-STUB-1` still the
+adventure lane's). No reading of the original: the hover is M3's (§4.10 to §4.12), its capture
+`h3map.py set`.
+
+- **The mouse-over's facts** (`h3_map_view::engine`'s `hover`: the live part's `[hover]` as the
+  harness writes it, `hover::Facts`): per map object its entrance's word (a monster's count the
+  word's first count, the view giving the word only: the hint's thresholds are the view's,
+  ADV-FOG-006; a town's its index among the towns written), whether a town or a garrison holds an
+  army (its garrison as the viewer's level shows it, a hero on the town's entrance), what the
+  viewer knows (its team's kind marks; the selected hero's once-per-hero mark of the object, its
+  day or week mark of the type, its kind's once-mark; the player's own visits: what it learnt,
+  a weekly mark) by the class's rule of §4.11, and the contents of §4.12 (a mine's resource, its
+  production's for the owner's team, else its subclass; its guards' word and creature, several
+  as [`hover::SEVERAL`]; a Shrine's spell, a Tree's price, a Witch Hut's skill as the player's
+  visits learnt them, each learnt by the selected hero or not); the towns the viewer sees in the
+  view's order, a name the map's own (text) else its faction's first; the heroes in the view's
+  order by type and own name, the viewer's list by type; the map's teams; the selected hero's day
+  points (`max_movement`).
+- **Not in the record** (MCL-Q37, the adventure and server lanes' inboxes): the selected hero's
+  costs over several days (a `Moves` query answers today's, and no record holds an answer), the
+  tiles a monster guards, whether another team's town or garrison holds an army at the viewer's
+  level 0, a visited creature bank's guards; none written. They change only the cursor over a tile
+  a capture looked at (`reach`), so a still without the pointer's costs compares exactly; a Seer's
+  Hut's quest neither (the engine's views show no Seer's Hut or Quest Guard yet, nor an Obelisk:
+  their hint is their name).
+- **A town's picture** by its faction and its view's public fort and Capitol (0x4C9ADE's tests:
+  the Capitol's list, a Fort's to a Castle's, a village's), a random town a town of its faction;
+  a town the view does not show its new game's picture by the map's buildings (`Live::at_start`'s,
+  as the capture's).
+- **A town the map names** (shipped maps, kept captures): the harness writes 65535 for a name
+  `TownName.txt` lacks (`hover::MAP_TOWN_NAME`, M3 T7a's mark); the viewer names it from the map
+  (`MapArt::town_names`: the game's towns are the map's in its order; `Facts::name_towns`), the
+  engine's view by its own text.
+- **The comparison** (`render --record --check`): besides T3a's and T3b1's, the mouse-over of the
+  engine's start against the capture's over every tile either explored (`Hover::differences`:
+  explored, the hint's text, the cursor's frame and action, each with the selected hero of its own
+  kingdom; five tiles named, the rest counted); a still's pointer over the view (a situation's
+  `pointer`, inside a drawn tile off the scroll zones: MCL-Q18 stays out) shows the map's hint and
+  cursor there, the capture's cost of that tile read first (`look_over_view`).
+- **The shipped maps** (a scan of the 160 starts in the engine: random objects, monsters without a
+  count, abandoned mines and unnamed towns in Red's sight, random or generated heroes, heroes the
+  map does not arm): two show no draw in sight, Adventures of Jared Haret and Good Witch, Bad
+  Witch; a shipped situation may now give `bonus` with `players` (its rows), `resources`,
+  `select`, `reselect`, `pointer`. Both heroes start at level 3 by the map's experience: each
+  game draws their two level-ups' primary skills (and Glinda's mana by her Knowledge), the
+  differences left. The town list's order at a shipped map's start is not the map's (`start-hoard`:
+  the Fortress, index 9, before the Castle, 3; neither the map's main town): MCL-Q38, the view's
+  order kept.
+- **Checked** (M4 T3b2): `engine-start-hover` (new: Red's two heroes among a monster, mines,
+  visitables and a Shrine, Red's Castle and a neutral Rampart named by the map, the pointer over
+  the Rampart), `start-jared` and `start-good-witch` (new, shipped) captured exact (`set`, 0 of
+  480 000); `engine-start-town` and `-panels` captured again (their `[hover]` towns as the
+  harness writes them); `h3map.py engine`: all six starts as expected, every explored tile's
+  hint and cursor the capture's, the pixels only the panels' MCL-Q36 morale, the bonus's gold
+  (`engine-start-owners`) and the two level-ups' skills.
