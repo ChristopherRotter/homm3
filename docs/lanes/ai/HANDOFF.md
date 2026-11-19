@@ -39,7 +39,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (re-baselined); `[network] reach` and `preview` for the hex kinds, the cloning bench's preview
   rows and `same_start`. **Next: T39**, the bench probe on the user's GPU
   (`configs/distill/e25-reach.toml`, about 6 hours in parts; its rule in `QUEUE.md`).
-- **Open pull requests:** #1040 (`claude/intelligent-bohr-5ii8qn`: T38b). Merged: #1036 (T38a,
+- **Open pull requests:** #1040 (`claude/intelligent-bohr-5ii8qn`: T38b). Its CI verify failed
+  twice before it started (`apt-get install valgrind`: Ubuntu's mirrors 503, 2026-11-19, one
+  re-run); the full local verify on `9d2eea7` passed (`deny` run alone: its tool was missing). Merged: #1036 (T38a,
   `cross-lane`) and the `shared/` docs/07 line (v23).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
