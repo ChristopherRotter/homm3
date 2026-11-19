@@ -667,6 +667,8 @@ fn menus(
                     .iter()
                     .flat_map(|&(id, name)| (0..8u16).map(move |c| (id + c, name))),
             )
+            // The random map's tab (T5b).
+            .chain(scenario::RANDOM_HELPED.iter().copied())
             .map(|(id, name)| {
                 let key = format!("shell.scenario.help.{name}");
                 (id, laid(&key, Style::Popup))
@@ -713,6 +715,8 @@ fn menus(
             text("shell.scenario.random-name"),
             text("shell.scenario.random-description"),
         ],
+        // Begin with a random map chosen (T5b): the client's stub (CLT-Q92).
+        random_stub: Some(laid("shell.stub.random-map", Style::Ok)),
     };
     Ok(Menus {
         main,
@@ -1046,10 +1050,18 @@ fn stopped(k: usize, stop: &Stop) -> String {
                 screen.task()
             )
         }
-        Stop::Stub(screen) => format!(
-            "stop {k} stub {} (the client's notice: CLT-STUB-6, E28)",
-            text::name(*screen)
-        ),
+        // The network modes' notice (CLT-STUB-6), or Begin's with a random map chosen (E27 M3 T5b:
+        // the original generates it; CLT-Q92, decision 13).
+        Stop::Stub(screen) => {
+            let why = match screen {
+                Screen::Scenario(..) => "a random map: CLT-Q92, no generator",
+                _ => "CLT-STUB-6, E28",
+            };
+            format!(
+                "stop {k} stub {} (the client's notice: {why})",
+                text::name(*screen)
+            )
+        }
         Stop::NotShown { screens, screen } => {
             format!(
                 "stop {k} not-shown {} on {}",

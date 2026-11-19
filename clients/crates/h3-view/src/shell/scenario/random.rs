@@ -35,7 +35,8 @@
 
 use alloc::string::String;
 
-use h3_ui::ui::{Shown, State};
+use h3_render::Bugs;
+use h3_ui::ui::{Dialog, Item, Shown, State};
 
 use super::{Entry, Format, Heroes, Seat};
 
@@ -66,8 +67,78 @@ pub const COMPUTER_TEAMS: u16 = 317;
 pub const WATER: u16 = 326;
 /// The monsters' buttons: weak, normal, strong (`RanWeak`, `RanNorm`, `RanStrg.def`), Random.
 pub const MONSTERS: u16 = 331;
-/// Show Random Maps (`RanShow.def`; T5b).
+/// Show Random Maps (`RanShow.def`).
 pub const SHOW: u16 = 335;
+/// The human or computer players' teams 1 and 2 (`RanNum1`, `RanNum2.def`), made 30 × 24 over
+/// their DEFs' 30 × 32 frames (0x57D85B, 0x57D8A9): their lowest 8 rows take no press in the
+/// original's (CLT-Q146); the client's profile makes them 32 high like every other count (E27 M3
+/// T5b: their frames are buttons drawn to their last row).
+pub const SHORT: [u16; 2] = [TEAMS + 1, TEAMS + 2];
+/// The height every count's button takes the mouse over in the client's profile (its frames').
+pub const COUNT_HEIGHT: i32 = 32;
+
+/// The tab's items with a right press's popup (E27 M3 T5b), by id, with their names in the key
+/// catalogue (`shell.scenario.help.<name>`: `Help.txt`'s record id − 83, 197 to 252, its
+/// right-click text; `dialog_items_set_hints` gives every item of 104 to 344 its record): the
+/// labels, the sizes, the levels, each count, the water's, the monsters' and Show Random Maps.
+pub const HELPED: [(u16, &str); 56] = [
+    (280, "random-size-label"),
+    (281, "random-size-s"),
+    (282, "random-size-m"),
+    (283, "random-size-l"),
+    (284, "random-size-xl"),
+    (LEVELS, "random-levels"),
+    (286, "random-players-label"),
+    (287, "random-players-1"),
+    (288, "random-players-2"),
+    (289, "random-players-3"),
+    (290, "random-players-4"),
+    (291, "random-players-5"),
+    (292, "random-players-6"),
+    (293, "random-players-7"),
+    (294, "random-players-8"),
+    (295, "random-players-random"),
+    (296, "random-teams-label"),
+    (297, "random-teams-0"),
+    (298, "random-teams-1"),
+    (299, "random-teams-2"),
+    (300, "random-teams-3"),
+    (301, "random-teams-4"),
+    (302, "random-teams-5"),
+    (303, "random-teams-6"),
+    (304, "random-teams-7"),
+    (305, "random-teams-random"),
+    (306, "random-computers-label"),
+    (307, "random-computers-0"),
+    (308, "random-computers-1"),
+    (309, "random-computers-2"),
+    (310, "random-computers-3"),
+    (311, "random-computers-4"),
+    (312, "random-computers-5"),
+    (313, "random-computers-6"),
+    (314, "random-computers-7"),
+    (315, "random-computers-random"),
+    (316, "random-computer-teams-label"),
+    (317, "random-computer-teams-0"),
+    (318, "random-computer-teams-1"),
+    (319, "random-computer-teams-2"),
+    (320, "random-computer-teams-3"),
+    (321, "random-computer-teams-4"),
+    (322, "random-computer-teams-5"),
+    (323, "random-computer-teams-6"),
+    (324, "random-computer-teams-random"),
+    (325, "random-water-label"),
+    (326, "random-water-none"),
+    (327, "random-water-normal"),
+    (328, "random-water-islands"),
+    (329, "random-water-random"),
+    (330, "random-monsters-label"),
+    (331, "random-monsters-weak"),
+    (332, "random-monsters-normal"),
+    (333, "random-monsters-strong"),
+    (334, "random-monsters-random"),
+    (SHOW, "random-show"),
+];
 
 /// The tab's choices (the screen's +0x18A0 to +0x18BC); none is Random.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -192,6 +263,22 @@ impl RandomMap {
     /// Every item of the tab.
     fn ids() -> impl Iterator<Item = u16> {
         [PANEL, TITLE, SUBTITLE].into_iter().chain(280..=SHOW)
+    }
+
+    /// The teams' 1 and 2 of `dialog` as the profile `bugs` takes the mouse over them
+    /// (CLT-Q146, E27 M3 T5b): the original's 24 rows ([`SHORT`]), the client's
+    /// [`COUNT_HEIGHT`].
+    pub(super) fn heights(dialog: &mut Dialog, bugs: Bugs) {
+        if bugs != Bugs::Fixed {
+            return;
+        }
+        for item in &mut dialog.items {
+            if let Item::Button(b) = item
+                && SHORT.contains(&b.id)
+            {
+                b.size[1] = COUNT_HEIGHT;
+            }
+        }
     }
 
     /// Every item of the tab hidden in `shown` (the constructor's).
@@ -329,10 +416,11 @@ impl RandomMap {
     }
 
     /// The own record built from the choices (`random_map_info_build` 0x580430), named `name`
-    /// and described as `description`, and a random map chosen.
-    pub(super) fn build(&mut self, name: &str, description: &str) {
-        self.record = Some(self.made(name, description));
+    /// and described as `description`, and a random map chosen; the record.
+    pub(super) fn build(&mut self, name: &str, description: &str) -> &Entry {
         self.chosen = true;
+        let made = self.made(name, description);
+        self.record.insert(made)
     }
 
     /// The own record of the choices.

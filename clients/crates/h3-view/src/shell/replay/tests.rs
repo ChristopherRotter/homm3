@@ -890,6 +890,32 @@ fn the_scenario_screen_takes_the_original_s_background_draws_in_turn() {
 }
 
 #[test]
+fn begin_with_a_random_map_chosen_stops_the_replay_under_the_client_s_stub() {
+    // E27 M3 T5b: the original generates the map; the client's notice is its stub.
+    let steps = [
+        "until:main_menu",
+        "click:643,70",
+        "click:649,65",
+        "move:790,300",
+        "until:scenario_list",
+        "click:514,115",
+        "move:790,300",
+        "shot:tab",
+        "click-wait:497,555:3000",
+        "move:790,300",
+    ];
+    let (seen, stop, r) = replay(false, &steps);
+    assert_eq!((seen.len(), stop), (1, None));
+    assert!(matches!(r.front(), Some(Front::Scenario(s)) if s.stubbed()));
+    let (seen, stop, _) = replay_from(r, &["shot:begin"]);
+    assert!(seen.is_empty());
+    assert_eq!(
+        stop,
+        Some(Stop::Stub(Screen::Scenario(Game::New, Kind::Single)))
+    );
+}
+
+#[test]
 fn the_list_takes_xdotool_s_page_keys_as_the_adapter_s() {
     // E27 M3 T1b1: `scn-list-keys`' Next and Prior are the adapter's PageDown and PageUp; the
     // screen's double press is timed from its opening on the replay's clock.

@@ -103,7 +103,7 @@ pub use advanced::{
 };
 use description::Description;
 pub use description::{DESCRIPTION_BYTES, DescriptionLook, description_names};
-pub use random::Choices;
+pub use random::{Choices, HELPED as RANDOM_HELPED};
 use random::{Pressed, RandomMap};
 
 /// Every asset the advanced options' look names (the adapter's batch at the shell's start).
@@ -553,6 +553,10 @@ pub struct Texts {
     pub advanced: Option<AdvancedTexts>,
     /// A random map's name and description (E27 M3 T5a: GENRLTXT 741, 742).
     pub random: [String; 2],
+    /// Begin's notice with a random map chosen (E27 M3 T5b; CLT-Q92, decision 13: the client's
+    /// stub, `shell.stub.random-map`, where the original generates the map; none: Begin does
+    /// nothing there).
+    pub random_stub: Option<MessageBox>,
 }
 
 /// The teams' dialog's look (`scenario_teams_dialog` 0x576540; the layout's `[scenario.teams]`):
@@ -693,6 +697,9 @@ pub struct Scenario {
     showing: bool,
     /// The list was built (+0x1864): its first showing.
     built: bool,
+    /// The list's kind is the random maps' (+0x66 1, E27 M3 T5b: Show Random Maps): the client's
+    /// own `random_maps`, which hold none (CLT-Q92), so the shown list is empty while it is.
+    random_list: bool,
     /// The sort key recorded (+0x185C) and the order (+0x36C).
     key: u8,
     descending: bool,
@@ -753,6 +760,9 @@ impl Scenario {
         entries: Vec<Entry>,
         bugs: Bugs,
     ) -> Self {
+        // The random map's teams 1 and 2 take the mouse 32 rows high in the client's profile
+        // (CLT-Q146, E27 M3 T5b).
+        RandomMap::heights(&mut dialog, bugs);
         // The advanced options' rows (E27 M3 T3a): each colour's items where the constructor adds
         // them, before the options' headers (or Show Available Scenarios).
         // (An opening anew passes the dialog with them.)
@@ -793,6 +803,7 @@ impl Scenario {
             description,
             showing: false,
             built: false,
+            random_list: false,
             key: BUILT_KEY,
             descending: false,
             filter: 0,
@@ -992,6 +1003,13 @@ impl Scenario {
         }
     }
 
+    /// Whether the client's stub's notice shows (E27 M3 T5b: Begin with a random map chosen; not
+    /// the original's screen, which generates the map).
+    #[must_use]
+    pub fn stubbed(&self) -> bool {
+        matches!(self.over, Over::Notice(_)) && self.random.chosen()
+    }
+
     /// Whether the cursor shows (a help popup hides it; the teams' dialog and a message run with
     /// it).
     #[must_use]
@@ -1055,9 +1073,14 @@ impl Scenario {
         count - i32::from(self.look.rows) + 1
     }
 
-    /// Show Available Scenarios (128, `scenario_list_toggle` 0x580A70): a shown list hidden, else
-    /// shown, the bar's ticks the list's and its value the top, the first time the list built.
-    fn toggle_list(&mut self) {
+    /// Show Available Scenarios (128, `scenario_list_toggle` 0x580A70 with 0) or the random map's
+    /// Show Random Maps (335, with 1: `random`; E27 M3 T5b): a shown list hidden, else shown, the
+    /// bar's ticks the list's and its value the top, the first time the list built. A change of
+    /// the list's kind (+0x66) sorts the list of that kind by the version (`scenario_list_sort`
+    /// with 2, 0x580B38: the random maps' built first while empty, the client's none), the top
+    /// and the selection its first row, which goes to the game (none over an empty list), the
+    /// screen redrawn whole; the same kind keeps its list as it was.
+    fn toggle_list(&mut self, random: bool) {
         if self.showing {
             self.showing = false;
             self.list_items(false);
@@ -1068,9 +1091,19 @@ impl Scenario {
         // 0x581D80, E27 M3 T5a; `scenario_advanced_hide` 0x581B20, T3a), no random map chosen
         // any longer (0x580AAA).
         self.random.hide(&mut self.shown);
+        let was_random = self.random.chosen();
         self.random.unchoose();
         if let Some(advanced) = &mut self.advanced {
             advanced.hide(&mut self.shown);
+        }
+        let kind = random != self.random_list;
+        if kind {
+            self.random_list = random;
+            self.sort_list(BUILT_KEY, false);
+            self.give_to_game();
+        } else if was_random && self.bugs == Bugs::Fixed {
+            // CLT-Q147 (b): the selection given to the game, its description too.
+            self.give_to_game();
         }
         self.list_items(true);
         self.showing = true;
@@ -1080,7 +1113,16 @@ impl Scenario {
         }
         self.bar.reset(self.ticks());
         self.set_bar();
-        self.show();
+        // The original's showing sets no flags and, the kind the same, gives the game nothing: a
+        // chosen random map's header and description stay under the selection's name; the
+        // client's shows the selection whole (CLT-Q147 (b); `adv-random-list` list, list-back).
+        match self.bugs {
+            Bugs::Original => {
+                let header = (!kind && was_random).then(|| self.game.clone()).flatten();
+                self.show_with(header, false);
+            }
+            Bugs::Fixed => self.show(),
+        }
         self.whole();
     }
 
@@ -1201,15 +1243,18 @@ impl Scenario {
 
     /// The random map's own record built (`random_map_info_build` 0x580430; E27 M3 T5a): a random
     /// map chosen, the advanced options' records made again at their next showing
-    /// (`scenario_players_init` 0x584C40), the record given to the game (its description from
-    /// its first line) and shown, its flags too (`scenario_team_flags` 0x585300).
+    /// (`scenario_players_init` 0x584C40), the record into the game with its description from
+    /// its first line and its flags (`scenario_team_flags` 0x585300) whatever the list (E27 M3
+    /// T5b: over the random maps' empty list too), then the panel drawn.
     fn random_built(&mut self) {
         let [name, description] = &self.texts.random;
-        self.random.build(name, description);
+        let record = self.random.build(name, description).clone();
         if let Some(advanced) = &mut self.advanced {
             advanced.selection_changed();
         }
-        self.give_to_game();
+        self.describe(&record.description);
+        self.team_flags(&record);
+        self.game = Some(record);
         self.show();
     }
 
@@ -1245,15 +1290,23 @@ impl Scenario {
     /// The full list sorted by `key` (`scenario_list_sort` 0x585050), the shown list rebuilt in
     /// its order, the top and the selection its first row.
     fn sort_list(&mut self, key: u8, descending: bool) {
-        sort_by(&mut self.entries, key, descending);
+        // The random maps' list (E27 M3 T5b) is the client's own, empty: nothing to sort.
+        if !self.random_list {
+            sort_by(&mut self.entries, key, descending);
+        }
         self.relist();
         self.top = 0;
         self.selected = (!self.listed.is_empty()).then_some(0);
         self.bar.set_value(0);
     }
 
-    /// The shown list rebuilt from the full one: the filter's size, every one for 0.
+    /// The shown list rebuilt from the full one: the filter's size, every one for 0; none while the
+    /// list's kind is the random maps' (E27 M3 T5b: the client's own, empty).
     fn relist(&mut self) {
+        if self.random_list {
+            self.listed.clear();
+            return;
+        }
         let filter = self.filter;
         self.listed = (0..self.entries.len())
             .filter(|&e| filter == 0 || self.entries[e].size == filter)
@@ -1446,6 +1499,13 @@ impl Scenario {
     /// chosen difficulty's button selected (not before a press in the original's profile when the
     /// screen opened with no map).
     fn show(&mut self) {
+        self.show_with(None, true);
+    }
+
+    /// [`Scenario::show`] with the game's map `header` for the panel's texts and marks (none: the
+    /// entry shown), the flags set only with `flags` (E27 M3 T5b, CLT-Q147: the original's list
+    /// showing gives the game nothing, its name the list's selection's).
+    fn show_with(&mut self, header: Option<Entry>, flags: bool) {
         let chosen = self.chosen || self.bugs == Bugs::Fixed;
         for (k, &id) in DIFFICULTIES.iter().enumerate() {
             let state = self.shown.state(id);
@@ -1456,14 +1516,20 @@ impl Scenario {
             self.show_empty();
             return;
         };
+        // Over an empty shown list the original's draws nothing of a map, a chosen random map's
+        // neither (`scenario_info_draw` 0x584128 tests the list, not +0x37F; E27 M3 T5b: Show
+        // Random Maps, then the tab again): the description and the flags keep what they showed.
+        // The client's shows the random map's record (CLT-Q111 (b)).
+        if self.listed.is_empty() && self.bugs == Bugs::Original {
+            self.blank_panel();
+            return;
+        }
         let random = self.random.chosen();
-        self.game = Some(entry.clone());
+        let header = header.unwrap_or_else(|| entry.clone());
+        self.game = Some(header.clone());
         let rating = text_at(&self.texts.ratings, usize::from(self.difficulty));
         let shown = &mut self.shown;
         shown.texts.insert(RATING, rating);
-        for id in ALLIES..ENEMIES + 8 {
-            shown.states.insert(id, hidden());
-        }
         let t = &self.texts;
         let name = if entry.name.is_empty() {
             t.unnamed.clone()
@@ -1472,15 +1538,15 @@ impl Scenario {
         };
         shown.texts.insert(NAME, name);
         shown.texts.insert(DESCRIPTION, self.description.text());
-        let victory = match entry.victory {
-            Some(goal) if entry.standard => text_at(&t.with_standard, usize::from(goal)),
+        let victory = match header.victory {
+            Some(goal) if header.standard => text_at(&t.with_standard, usize::from(goal)),
             Some(goal) => text_at(&t.victories, usize::from(goal) + 1),
             None => text_at(&t.victories, 0),
         };
         shown.texts.insert(VICTORY, victory);
-        let loss = text_at(&t.losses, entry.loss.map_or(0, |l| usize::from(l) + 1));
+        let loss = text_at(&t.losses, header.loss.map_or(0, |l| usize::from(l) + 1));
         shown.texts.insert(LOSS, loss);
-        let difficulty = text_at(&t.difficulties, usize::from(entry.difficulty));
+        let difficulty = text_at(&t.difficulties, usize::from(header.difficulty));
         shown.texts.insert(MAP_DIFFICULTY, difficulty);
         for id in [VICTORY_MARK, LOSS_MARK] {
             shown.states.insert(id, State::default());
@@ -1492,12 +1558,14 @@ impl Scenario {
             shown.frames.insert(SIZE, size_frame(entry.size));
         }
         // The marks: the goal's frame (0 to 10), 11 for none; the loss's (0 to 2), 3 for none.
-        let victory_mark = entry.victory.map_or(11, u32::from);
+        let victory_mark = header.victory.map_or(11, u32::from);
         shown.frames.insert(VICTORY_MARK, victory_mark);
         shown
             .frames
-            .insert(LOSS_MARK, entry.loss.map_or(3, u32::from));
-        self.team_flags(&entry);
+            .insert(LOSS_MARK, header.loss.map_or(3, u32::from));
+        if flags {
+            self.team_flags(&entry);
+        }
         self.random_size_mark();
     }
 
@@ -1555,19 +1623,33 @@ impl Scenario {
                 advanced.selection_changed();
             }
         }
+        // The select of none (-1, an emptied list) empties the description (0x585639; E27 M3 T5b:
+        // the game's map stays as it was).
+        if self.entry().is_none() && !self.random.chosen() {
+            self.describe("");
+        }
         self.give_to_game();
         self.show();
     }
 
     /// The selected map (a chosen random map's own record: E27 M3 T5a) given to the game
-    /// (`scenario_to_game` 0x583580): the description set anew (`scrollable_text_set` 0x5BA6E0),
-    /// empty over an empty list.
+    /// (`scenario_to_game` 0x583580): the description set anew (`scrollable_text_set` 0x5BA6E0);
+    /// nothing over an empty shown list (0x583593; E27 M3 T5b: a chosen random map's record
+    /// neither: its build sets the description itself).
     fn give_to_game(&mut self) {
+        if self.listed.is_empty() {
+            return;
+        }
         let text = self
             .shown_entry()
             .map(|e| e.description.clone())
             .unwrap_or_default();
-        self.description.set(&text);
+        self.describe(&text);
+    }
+
+    /// The description set to `text` from its first line, its label showing it.
+    fn describe(&mut self, text: &str) {
+        self.description.set(text);
         self.shown
             .texts
             .insert(DESCRIPTION, self.description.text());
@@ -1575,24 +1657,33 @@ impl Scenario {
 
     /// The panel over an empty list (E27 M3 T2b, design §21.2): the select does nothing there
     /// (0x58553C) and `scenario_info_draw` 0x5840F0 draws nothing of a map (0x584128), the rating
-    /// neither. The original's size mark and flags keep what they showed (a filter's size, set
-    /// first, or the constructor's S; the last map's flags); the client's size mark shows frame 4
-    /// (CLT-Q115 (b)) and no flags (CLT-Q139 (b)).
+    /// neither. The original's description, size mark and flags keep what they showed (a select of
+    /// none empties the description; a filter's size, set first, or the constructor's S; the last
+    /// map's flags; E27 M3 T5b: Show Random Maps keeps a random map's description and flags); the
+    /// client's shows nothing of a map: no description (T5b), the size mark's frame 4 (CLT-Q115
+    /// (b)) and no flags (CLT-Q139 (b)).
     fn show_empty(&mut self) {
-        self.description.set("");
-        let shown = &mut self.shown;
-        for id in [NAME, DESCRIPTION, VICTORY, LOSS, MAP_DIFFICULTY, RATING] {
-            shown.texts.insert(id, String::new());
-        }
-        for id in [VICTORY_MARK, LOSS_MARK] {
-            shown.states.insert(id, hidden());
-        }
+        self.blank_panel();
         if self.bugs == Bugs::Fixed {
+            self.describe("");
+            let shown = &mut self.shown;
             shown.states.insert(SIZE, State::default());
             shown.frames.insert(SIZE, size_frame(0));
             for id in ALLIES..ENEMIES + 8 {
                 shown.states.insert(id, hidden());
             }
+        }
+    }
+
+    /// What `scenario_info_draw` 0x5840F0 draws over an empty list: nothing (0x584128): no name,
+    /// texts, marks, map's difficulty nor rating.
+    fn blank_panel(&mut self) {
+        let shown = &mut self.shown;
+        for id in [NAME, VICTORY, LOSS, MAP_DIFFICULTY, RATING] {
+            shown.texts.insert(id, String::new());
+        }
+        for id in [VICTORY_MARK, LOSS_MARK] {
+            shown.states.insert(id, hidden());
         }
     }
 
@@ -1606,13 +1697,18 @@ impl Scenario {
         self.whole();
     }
 
-    /// Begin (186, `scenario_begin` 0x58BCE0): over an empty list GENRLTXT 530 in an OK box, the
-    /// original's only once a map of a known format was shown (its check of the game's map comes
-    /// first: with no map at all Begin does nothing, CLT-Q114 (b)); over a map the advanced
-    /// options' refusal (E27 M3 T4b, `scenario_begin_tail` 0x58C11F: GENRLTXT 531, the hot seat's
-    /// 83; [`Advanced::refusal`]), else nothing yet (the game's begin: T6).
+    /// Begin (186, `scenario_begin` 0x58BCE0): with a random map chosen the client's stub's
+    /// notice, whatever the list (E27 M3 T5b; CLT-Q92, decision 13: the original generates the
+    /// map first, 0x58BD00, `random_map_generate` 0x5860E0); over an empty list GENRLTXT 530 in
+    /// an OK box, the original's only once a map of a known format was shown (its check of the
+    /// game's map comes first: with no map at all Begin does nothing, CLT-Q114 (b)); over a map
+    /// the advanced options' refusal (E27 M3 T4b, `scenario_begin_tail` 0x58C11F: GENRLTXT 531,
+    /// the hot seat's 83; [`Advanced::refusal`]), else nothing yet (the game's begin: T6).
     fn begin(&mut self) -> bool {
-        let message = if self.entry().is_some() {
+        // stub: CLT-STUB-12
+        let message = if self.random.chosen() {
+            self.texts.random_stub.clone()
+        } else if self.entry().is_some() {
             let map = self.players();
             match self.advanced.as_ref().and_then(|a| a.refusal(&map)) {
                 Some(Refusal::Unplaced) => self.texts.unplaced.clone(),
@@ -1961,8 +2057,9 @@ impl Scenario {
         let inside = self.inside(point);
         let on_bar = self.showing && self.bar.contains(inside);
         let on_duration = self.advanced.as_ref().is_some_and(|a| a.on_bar(inside));
-        // The item there (`dialog_item_at` 0x5FF3E0: shown and enabled; a single player's
-        // handicap is not, E27 M3 T3c2: the panel under it has no hint), the bars' own.
+        // The item there, shown and enabled (a single player's handicap is not, E27 M3 T3c2: the
+        // panel under it has no hint; the item's own press sends it, `dialog_proc_default`
+        // 0x5FF820: the random map's count above its cap, disabled, too, T5b), the bars' own.
         let id = if on_bar {
             Some(BAR)
         } else if on_duration {
@@ -2286,8 +2383,8 @@ impl Scenario {
         let Some(id) = clicked else {
             return did;
         };
-        if id == LIST {
-            self.toggle_list();
+        if id == LIST || (id == random::SHOW && self.random.showing()) {
+            self.toggle_list(id != LIST);
             did.changed = true;
         } else if id == ADVANCED {
             did.changed |= self.toggle_advanced();

@@ -15,16 +15,15 @@ need the five DLLs (`MP3DEC.ASI` in the PC's `original-data/install` too since 2
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T5b
+#### E27 M3 T6
 
-T5b The rest of the random map's tab (design §3.16, §30.4; decision 62; CLT-Q92, decision 13):
-the items' right press and hints (`Help.txt`), Show Random Maps (335: `scenario_list_toggle(1)`,
-the random maps' list, kind 1, the client's own `random_maps` empty), the tab toggled back after
-it (the record built again over an empty list: CLT-Q111 (b)), the list's showing over a chosen
-random map (read only, design §30.4: record it, ask if it shows an oddity), Begin with a random
-map chosen (a stub's message); build CLT-Q146's answer if given. Exact against the rest of
-`adv-random` (§6.4: Begin after `tab-again`, recorded by this task with
-`h3shell.py run --only adv-random --record`). Then T6 and T7 as the M3 table lists them.
+T6 The game's begin (design §3.17, §2.1; CLT-Q95, CLT-Q135; decisions 4, 6, 44): the setup built
+from the screen's records (`Scenario::records`, `duration`, the kept map) and validated by the
+engine (`GameSetup`; a refusal shown), the loading bar (`loadbar.pcx`, `loadprog.def`; the client's
+own steps), the begin's notice (a `CLT-STUB`) and back to the menu, the setup kept for E24 M5 (the
+map-client lane's inbox). Exact against `adv-begin` and `adv-hotseat-begin` up to the bar. Likely
+big (the engine's setup, the bar's reading, two recipes): look for a seam and confirm it with the
+user at its start. Then T7 (M3's closure) as the M3 table lists it.
 
 ## Inbox
 

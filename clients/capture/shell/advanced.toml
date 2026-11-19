@@ -202,7 +202,7 @@ steps = [
 
 [[recipe]]
 id = "adv-random"
-what = "§3.16: the random map's tab: each choice, the disabled counts, the levels, Show Random Maps (the empty list), the tab's toggle"
+what = "§3.16: the random map's tab: each choice, the disabled counts, the levels, Show Random Maps (the empty list), the tab's toggle, Begin with a random map chosen (E27 M3 T5b)"
 maps = ["Arrogance.h3m"]
 steps = [
   "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
@@ -235,6 +235,23 @@ steps = [
   "right:353,435", "shot:popup-water-random", "right-up", "right:225,555", "shot:popup-show", "right-up",
   "move:225,555", "shot:show-hover", "click:225,555", "move:790,300", "shot:random-maps",
   "click:514,115", "move:790,300", "shot:tab-again", "click:514,115", "move:790,300", "shot:tab-hidden",
+  "click-wait:497,555:3000", "shot:begin",
+]
+
+[[recipe]]
+id = "adv-random-list"
+what = "§3.16, design §30.4 (E27 M3 T5b): a team button's lowest rows (CLT-Q146), a choice over its cap, a disabled count's and a label's right press; the list shown over a chosen random map, the tab again, Show Random Maps, the files' list back"
+maps = ["Arrogance.h3m"]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click:514,115", "move:790,300", "shot:tab",
+  "click:117,247", "move:790,300", "shot:teams-1-low", "click:117,235", "move:790,300", "shot:teams-1",
+  "click:85,169", "move:790,300", "shot:players-1",
+  "right:117,235", "shot:popup-disabled", "right-up", "right:100,95", "shot:popup-label", "right-up",
+  "move:790,300", "shot:popups-closed",
+  "click:514,91", "move:790,300", "shot:list", "click:514,115", "move:790,300", "shot:tab-again",
+  "click:225,555", "move:790,300", "shot:random-maps", "click:514,91", "move:790,300", "shot:list-hidden",
+  "click:514,91", "move:790,300", "shot:list-back",
 ]
 
 [[recipe]]

@@ -1360,3 +1360,41 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
   lines and regions but `book.rs`' known per-crate lines (a difficulty's press over the tab covers
   the press that is no choice); the real-asset `gate` passed; the scoped verify with original
   data passed every step.
+
+## M3 T5b — the random map's tab: the right press, Show Random Maps, Begin (2026-11-19)
+
+- **Staged** from the PC at once: the 64 files and the seven manuals and help files, each checked
+  by SHA-256 against the PC's (71 of 71 equal); #1031 (T5a) had merged. The setup's baseline
+  stopped at `check.sh`'s coverage by a watcher (fmt, clippy, the doc tests and deny passed; CI's
+  green `master` stands in). The sandbox's apt took about 25 minutes (Wine at about 150 KB/s).
+- **Kept whole** with the user; **CLT-Q146** answered at the start ("fix if the button sprite is
+  actually that large"): `RanNum1` and `RanNum2.def`'s frames decoded, every one an opaque 30 × 32
+  button drawn to its last row: (b), decision 63.
+- **Read** (design §31): `scenario_list_toggle`'s kind path, `scenario_to_game`'s and
+  `scenario_info_draw`'s empty-list tests (before +0x37F), `scenario_select`'s select of none,
+  `scenario_begin`'s random map path, `scenario_dialog_click`'s 128 and 335, the right press's
+  dispatch (`dialog_proc_default`). CLT-Q111's recording read anew: the record is built again at
+  the tab's reopening; the panel draws nothing over the random maps' empty list.
+- **Recorded** under Wine, twice each, the same: `adv-random` with Begin after `tab-hidden` (the
+  original's generation fails under the harness: "Cannot create Random_Map.H3M in data
+  directory.", no `random_maps` folder) and `adv-random-list` (new, 12 shots: the teams' 1 lowest
+  rows, a choice over its cap, a disabled count's and a label's popups, the list over a chosen
+  random map, the tab again, Show Random Maps, the files' list back). Found: a disabled count shows
+  its popup (the right press is the item's own message); the list's showing after a random map
+  mixes two maps (**CLT-Q147**, asked and answered (b), decision 64).
+- **Built:** `random::HELPED` (the tab's 56 popups, the keys `shell.scenario.help.random-*`,
+  Help.txt 197 to 252), `RandomMap::heights`, `SHORT`, `COUNT_HEIGHT`; the screen's `random_list`,
+  `toggle_list(random)`, `relist` and `sort_list` by the kind, `give_to_game` nothing over an empty
+  list, `select` of none emptying the description, `describe`, `show_with` (the header and the
+  flags apart), `blank_panel`, `show_empty` (the client's no description), `random_built` setting
+  the description and flags itself, Begin's stub (`Texts::random_stub`, `stubbed`, the key
+  `shell.stub.random-map`, `CLT-STUB-12`), the replay stopping under it (`noticing`), the battle
+  client's stop line naming it; T5a's test of a screen without maps corrected (the original's
+  panel draws nothing there). Tests: `random/tests.rs` (ten new), `replay/tests.rs` (one).
+- **Compared:** `adv-random` 52 of 53 drawn, all exact, the replay stopping at `begin` under the
+  stub; `adv-random-list` 12 of 12 exact; every other recipe of every group as recorded (94
+  recipes); `drawn.txt` recorded for both.
+- **Gates:** `RUST_TEST_THREADS=1 check.sh --no-coverage` passed (after the own pack's key list took
+  `shell.stub.random-map`); `h3-view`'s coverage 100% of lines and regions but `book.rs`' known
+  per-crate lines (an unreachable branch of `random_built` removed: `RandomMap::build` returns the
+  record); the real-asset `gate` passed; the scoped verify with original data passed every step.

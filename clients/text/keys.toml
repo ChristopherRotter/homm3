@@ -3439,6 +3439,231 @@ original = [{ at = "HELP:172:1" }]
 id = "shell.scenario.help.flag"
 original = [{ at = "HELP:180:1" }]
 
+# E27 M3 T5b: the random map's tab (280 to 335: Help.txt's records 197 to 252).
+[[key]]
+id = "shell.scenario.help.random-size-label"
+original = [{ at = "HELP:197:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-size-s"
+original = [{ at = "HELP:198:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-size-m"
+original = [{ at = "HELP:199:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-size-l"
+original = [{ at = "HELP:200:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-size-xl"
+original = [{ at = "HELP:201:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-levels"
+original = [{ at = "HELP:202:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-players-label"
+original = [{ at = "HELP:203:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-players-1"
+original = [{ at = "HELP:204:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-players-2"
+original = [{ at = "HELP:205:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-players-3"
+original = [{ at = "HELP:206:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-players-4"
+original = [{ at = "HELP:207:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-players-5"
+original = [{ at = "HELP:208:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-players-6"
+original = [{ at = "HELP:209:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-players-7"
+original = [{ at = "HELP:210:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-players-8"
+original = [{ at = "HELP:211:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-players-random"
+original = [{ at = "HELP:212:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-teams-label"
+original = [{ at = "HELP:213:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-teams-0"
+original = [{ at = "HELP:214:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-teams-1"
+original = [{ at = "HELP:215:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-teams-2"
+original = [{ at = "HELP:216:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-teams-3"
+original = [{ at = "HELP:217:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-teams-4"
+original = [{ at = "HELP:218:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-teams-5"
+original = [{ at = "HELP:219:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-teams-6"
+original = [{ at = "HELP:220:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-teams-7"
+original = [{ at = "HELP:221:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-teams-random"
+original = [{ at = "HELP:222:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computers-label"
+original = [{ at = "HELP:223:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computers-0"
+original = [{ at = "HELP:224:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computers-1"
+original = [{ at = "HELP:225:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computers-2"
+original = [{ at = "HELP:226:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computers-3"
+original = [{ at = "HELP:227:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computers-4"
+original = [{ at = "HELP:228:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computers-5"
+original = [{ at = "HELP:229:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computers-6"
+original = [{ at = "HELP:230:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computers-7"
+original = [{ at = "HELP:231:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computers-random"
+original = [{ at = "HELP:232:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computer-teams-label"
+original = [{ at = "HELP:233:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computer-teams-0"
+original = [{ at = "HELP:234:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computer-teams-1"
+original = [{ at = "HELP:235:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computer-teams-2"
+original = [{ at = "HELP:236:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computer-teams-3"
+original = [{ at = "HELP:237:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computer-teams-4"
+original = [{ at = "HELP:238:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computer-teams-5"
+original = [{ at = "HELP:239:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computer-teams-6"
+original = [{ at = "HELP:240:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-computer-teams-random"
+original = [{ at = "HELP:241:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-water-label"
+original = [{ at = "HELP:242:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-water-none"
+original = [{ at = "HELP:243:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-water-normal"
+original = [{ at = "HELP:244:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-water-islands"
+original = [{ at = "HELP:245:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-water-random"
+original = [{ at = "HELP:246:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-monsters-label"
+original = [{ at = "HELP:247:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-monsters-weak"
+original = [{ at = "HELP:248:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-monsters-normal"
+original = [{ at = "HELP:249:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-monsters-strong"
+original = [{ at = "HELP:250:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-monsters-random"
+original = [{ at = "HELP:251:1" }]
+
+[[key]]
+id = "shell.scenario.help.random-show"
+original = [{ at = "HELP:252:1" }]
+
 [[key]]
 id = "shell.scenario.teams.title"
 original = [{ at = "GENRLTXT:658" }]
@@ -3756,3 +3981,8 @@ id = "shell.stub.network"
 
 [[key]]
 id = "shell.stub.scenario"
+
+# E27 M3 T5b: Begin with a random map chosen (CLT-Q92, decision 13: no generator), over the
+# scenario screen.
+[[key]]
+id = "shell.stub.random-map"

@@ -953,7 +953,8 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
   chosen shows a stub's message; Show Random Maps lists the client's own `random_maps` (empty).
 - *Recorded (M1 T3):* after Show Random Maps (an empty list) and the tab toggled back, the panel's
   name, conditions and rating blank, the description and the seven flags stale, Begin drawn
-  enabled (`adv-random` random-maps, tab-again, tab-hidden; CLT-Q111). The size mark (189, §3.2)
+  enabled (`adv-random` random-maps, tab-again, tab-hidden; CLT-Q111). *Corrected at M3 T5b*
+  (§31.2): the record is built again; the panel draws nothing over the random maps' empty list. The size mark (189, §3.2)
   stays on S in the tab whatever the size, and over an empty list; its frame 4 is never seen
   (`adv-random` size-xl, `scn-load-none` screen; CLT-Q115).
 
@@ -3428,3 +3429,87 @@ CLT-Q111); Begin with a random map chosen (a stub's message, decision 13; `adv-r
 Begin after `tab-again`, recorded with `--record`); the list's showing over a chosen random map
 (read only: +0x37F cleared and no select, so the original's panel keeps the random record's header
 and description but the name; not recorded: to record at T5b and ask if it shows).
+*Done at T5b* (§31).
+
+## 31. The random map's tab: the right press, Show Random Maps, Begin (M3 T5b, 2026-11-19)
+
+T5b kept whole with the user (decision 62's second half). Read from `Heroes3.exe`:
+`scenario_list_toggle` 0x580A70's kind path, `scenario_list_sort`'s call of `scenario_to_game`,
+`scenario_to_game` 0x583580's and `scenario_info_draw` 0x5840F0's empty-list tests, `scenario_select`
+0x585500's select of none, `scenario_begin` 0x58BCE0's random map path, `scenario_dialog_click`'s
+cases 128 and 335, `scenario_dialog_right_click`'s dispatch and `dialog_proc_default` 0x5FF820. Played
+under Wine and recorded: `adv-random` with Begin added (53 shots) and `adv-random-list` (new, 12
+shots), each twice, the same. The client: the list's kind, the tab's popups, the panel over an
+empty list, Begin's stub (`CLT-STUB-12`), CLT-Q146 (b) and CLT-Q147 (b) (decisions 63, 64).
+
+### 31.1 The right press and the hints
+
+- Items 280 to 335 take `Help.txt`'s records 197 to 252 (id − 83, §3.8): the labels, the sizes, the
+  levels, each count, the water's, the monsters', Show Random Maps; one record each (the client's
+  `random::HELPED`, the keys `shell.scenario.help.random-*`). `scenario_dialog_right_click` passes
+  them to `dialog_right_click` (its cases are 362 to 387 alone): the hint's popup, then the screen
+  redrawn whole. No status line (§3.8): the hints are the popups.
+- **A disabled count** (0x1000, above its cap) shows its popup too (`adv-random-list`
+  popup-disabled: "Create 1 human team" with one player): the item's own right press sends the
+  message (`dialog_proc_default` 0x5FF820 takes the id from it); `dialog_item_at` 0x5FF3E0, which
+  passes over 0x1000, is not on this path. A choice above its cap shows its cap's button selected
+  though disabled (`players-1`: teams 1; §30.1, now recorded).
+
+### 31.2 Show Random Maps and the list's kind
+
+- **335** is `scenario_list_toggle(1)`, then the items drawn and `scenario_dialog_redraw`; 128 the
+  same with 0 (0x586D3A). A shown list hides first (the kind kept); else the tab and the options
+  hidden, +0x37F cleared, and **a change of the kind** (+0x66) sets it, builds the random maps' list
+  (+0x1040) while it is empty (`random_maps\*.h3m`: the harness's run has no folder, so none) and
+  sorts the new kind's list by key 2 (`scenario_list_sort` 0x580B38): the top and the selection 0,
+  `scenario_to_game` of its first row (nothing over an empty list), the whole redraw. The same kind
+  sorts nothing and selects nothing.
+- **Over an empty shown list** `scenario_to_game` does nothing (0x583593: before its +0x37F test, so
+  a chosen random map's record neither) and `scenario_info_draw` draws nothing (0x584128, a random
+  map chosen or not): no name, conditions, marks, map's difficulty nor rating. The description and
+  the flags keep what they showed; the size mark too. Only `scenario_select` of none (−1, a
+  filter's) empties the description (0x585639, `empty_text`).
+- **The tab again** after Show Random Maps: the list hidden (its kind stays 1), `scenario_to_game`
+  (nothing), +0x37F clear, so the record is built again (CLT-Q111's recording read anew: the build
+  sets the description and the flags, the panel draws nothing over the empty list). `random-maps`,
+  `tab-again`, `tab-hidden` (adv-random) and `random-maps`, `list-hidden` (adv-random-list): the
+  panel blank, "Play a randomly created map" and the random map's flags.
+- **The files' list back** (128 twice after 335): the kind 0 again, sorted by the version, its first
+  row selected and given to the game (its description), the whole redraw; no select, so **the flags
+  stay the random map's** (`list-back`: Arrogance with red alone; CLT-Q147).
+- **The list over a chosen random map** (128 from the tab, the kind unchanged): +0x37F cleared, no
+  sort, no select, no `scenario_to_game`: the panel's name is the selection's (`scenario_entry_name`)
+  over the game's header, the random map's, its description and flags (`list`: "Arrogance" with
+  "Play a randomly created map" and red alone; the header's texts happen to equal Arrogance's).
+  **CLT-Q147** asked and answered (b): the client's showing gives the game the selection (its
+  description, conditions and flags), the original's for the comparisons (decision 64).
+
+### 31.3 Begin with a random map chosen
+
+`scenario_begin` tests +0x37F first (0x58BD00): `random_map_file_name`, then `random_map_generate`
+whatever the list; a failure ends Begin. Recorded (`adv-random` begin, after `tab-hidden`): "Cannot
+create Random_Map.H3M in data directory." in an OK box (the harness's run has no `random_maps`
+folder). The client shows its stub's notice in its own words (`shell.stub.random-map`, decision
+13, `CLT-STUB-12`); its OK closes it, the random map still chosen. A replay stops under it
+(`Stop::Stub`), as under the network modes' notice.
+
+### 31.4 CLT-Q146 and the client
+
+- The teams' 1 and 2 (298, 299) are 30 × 24 over frames whose buttons are drawn to their 32nd row
+  (`RanNum1`, `RanNum2.def`: every frame opaque 30 × 32, like `RanNum0` and `RanNum3`).
+  `adv-random-list` teams-1-low: a press on their lowest rows does nothing. **CLT-Q146 (b)**
+  (decision 63): the client's profile makes them 32 high (`RandomMap::heights`); the original's
+  for the comparisons.
+- **The client** (`h3_view::shell::scenario`): `random_list` (+0x66: the client's own random maps,
+  none), `toggle_list(random)`, `relist` and `sort_list` by the kind, `give_to_game` nothing over an
+  empty list, `select` of none emptying the description, `show_with` (the header and the flags
+  apart: the original's list showing sets no flags and keeps a random map's header),
+  `blank_panel`; `random_built` sets the description and the flags itself; `stubbed`. The client's
+  profile over an empty list shows nothing of a map (no description either, as decision 51's
+  flags), over the random maps' list with a random map chosen its record (CLT-Q111 (b)).
+
+### 31.5 The recordings and the comparisons
+
+`adv-random` 52 of 53 drawn, all exact, the replay stopping at `begin` under the stub (the
+original's message is its generator's); `adv-random-list` 12 of 12 exact. Every other recipe of
+every group as recorded.

@@ -8,12 +8,12 @@ use h3_render::Bugs;
 use h3_ui::ui::{Draw, Shown};
 
 use super::super::advanced::tests::with_options_in;
-use super::super::tests::{scenario, scenario_of};
+use super::super::tests::{map, ok_button, scenario, scenario_of};
 use super::super::{
-    DESCRIPTION, Did, Entry, LIST, LOSS, MAP_DIFFICULTY, NAME, RANDOM, Scenario, VICTORY,
+    DESCRIPTION, Did, Entry, LIST, LOSS, MAP_DIFFICULTY, NAME, Over, RANDOM, Scenario, VICTORY,
 };
 use super::*;
-use crate::shell::keys::Command;
+use crate::shell::keys::{Command, Context};
 
 /// The tab shown with `choices`.
 fn tab(choices: Choices) -> (RandomMap, Shown) {
@@ -435,9 +435,16 @@ fn the_advanced_options_hide_the_tab_and_show_the_random_map_s_players() {
 }
 
 #[test]
-fn a_screen_without_maps_shows_the_random_map_s_record() {
+fn a_screen_without_maps_shows_the_random_map_s_record_in_the_client_s_profile() {
+    // The original's panel draws nothing over an empty list (`scenario_info_draw` 0x584128, E27
+    // M3 T5b), a random map's record neither; its description shows.
     let mut s = scenario_of(Vec::<Entry>::new(), Bugs::Original);
     assert_eq!(label(&s.draws("PLAYERS.PAL"), NAME), Some(""));
+    click(&mut s, [514, 115]);
+    let draws = s.draws("PLAYERS.PAL");
+    assert_eq!(label(&draws, NAME), Some(""));
+    assert_eq!(label(&draws, DESCRIPTION), Some("Randomly made"));
+    let mut s = scenario_of(Vec::<Entry>::new(), Bugs::Fixed);
     click(&mut s, [514, 115]);
     assert_eq!(label(&s.draws("PLAYERS.PAL"), NAME), Some("Random Map"));
     // The hotkey R toggles the tab too.
@@ -454,4 +461,207 @@ fn a_difficulty_s_press_keeps_the_random_map_s_panel() {
     assert_eq!(s.difficulty(), 2);
     assert_eq!(label(&s.draws("PLAYERS.PAL"), NAME), Some("Random Map"));
     assert_eq!(s.random_map(), Some(Choices::default()));
+}
+
+// E27 M3 T5b: the right press, CLT-Q146, Show Random Maps, the tab again, Begin.
+
+#[test]
+fn every_item_of_the_tab_has_its_help_record() {
+    let ids: Vec<u16> = HELPED.iter().map(|&(id, _)| id).collect();
+    assert_eq!(ids, (280..=SHOW).collect::<Vec<_>>());
+    let s = opened(Bugs::Original);
+    assert!(ids.iter().all(|id| s.texts.help.contains_key(id)));
+}
+
+#[test]
+fn a_right_press_on_the_tab_shows_its_item_s_help_a_disabled_count_s_too() {
+    let mut s = opened(Bugs::Original);
+    // A size, the size's label, Show Random Maps, Random water.
+    for (point, id) in [
+        (at(281), 281),
+        ([100, 95], 280),
+        (at(SHOW), SHOW),
+        (at(WATER + 3), WATER + 3),
+    ] {
+        assert!(s.right(point).changed, "{id}");
+        assert_eq!(s.over, Over::Help(id));
+        assert!(!s.box_draws("PLAYERS.PAL").is_empty());
+        assert!(s.right_release().changed);
+    }
+    // One player: their teams' 1 disabled, its popup all the same (`adv-random-list`
+    // popup-disabled).
+    click(&mut s, at(PLAYERS));
+    assert!(s.shown.state(TEAMS + 1).disabled);
+    assert!(s.right(at(TEAMS + 1)).changed);
+    assert_eq!(s.over, Over::Help(TEAMS + 1));
+    assert!(s.right_release().changed);
+    // Hidden, the tab's items show none.
+    click(&mut s, [514, 115]);
+    assert!(s.right(at(281)).changed);
+    assert_eq!(s.over, Over::Nothing);
+}
+
+#[test]
+fn the_teams_1_and_2_take_the_mouse_32_rows_high_in_the_client_s_profile() {
+    // CLT-Q146: 30 × 24 in the original's, their lowest 8 rows (y 243 to 250) taking no press; the
+    // client's 32 high like their frames.
+    for (bugs, low) in [(Bugs::Original, None), (Bugs::Fixed, Some(1))] {
+        let mut s = opened(bugs);
+        click(&mut s, [117, 247]);
+        assert_eq!(s.random_map().map(|c| c.teams), Some(low), "{bugs:?}");
+        click(&mut s, [149, 249]);
+        let two = low.map(|_| 2);
+        assert_eq!(s.random_map().map(|c| c.teams), Some(two), "{bugs:?}");
+        // Their upper rows in both.
+        click(&mut s, [149, 222]);
+        assert_eq!(s.random_map().map(|c| c.teams), Some(Some(2)), "{bugs:?}");
+    }
+}
+
+#[test]
+fn show_random_maps_lists_none_and_the_original_s_panel_keeps_its_leftovers() {
+    let mut s = opened(Bugs::Original);
+    assert!(click(&mut s, at(SHOW)).changed);
+    assert!(s.showing() && !s.random_showing());
+    assert_eq!(s.random_map(), None);
+    assert_eq!((s.listed().count(), s.rows()), (0, (None, 0)));
+    // `scenario_info_draw` draws nothing over the empty list; the random map's description and
+    // flags stay, the size mark Arrogance's S.
+    let draws = s.draws("PLAYERS.PAL");
+    assert_eq!(label(&draws, NAME), Some(""));
+    assert_eq!(label(&draws, VICTORY), Some(""));
+    assert_eq!(label(&draws, DESCRIPTION), Some("Randomly made"));
+    assert_eq!(flags(&draws), (vec![0], vec![1, 2, 3, 4, 5, 6, 7]));
+    assert_eq!(size_mark(&draws), Some(0));
+    // The tab again: the record built anew over the random maps' empty list, the panel still
+    // drawing nothing of it (CLT-Q111's recording); hidden again, the same.
+    for showing in [true, false] {
+        assert!(click(&mut s, [514, 115]).changed);
+        assert_eq!(s.random_showing(), showing);
+        assert!(!s.showing() && s.random_map().is_some());
+        let draws = s.draws("PLAYERS.PAL");
+        assert_eq!(label(&draws, NAME), Some(""));
+        assert_eq!(label(&draws, LOSS), Some(""));
+        assert_eq!(label(&draws, DESCRIPTION), Some("Randomly made"));
+        assert_eq!(flags(&draws), (vec![0], vec![1, 2, 3, 4, 5, 6, 7]));
+    }
+}
+
+#[test]
+fn in_the_client_s_profile_the_random_maps_show_nothing_and_the_tab_again_its_record() {
+    let mut s = opened(Bugs::Fixed);
+    click(&mut s, at(SHOW));
+    let draws = s.draws("PLAYERS.PAL");
+    assert_eq!(label(&draws, NAME), Some(""));
+    assert_eq!(label(&draws, DESCRIPTION), Some(""));
+    assert_eq!(flags(&draws), (vec![], vec![]));
+    assert_eq!(size_mark(&draws), Some(4));
+    // CLT-Q111 (b): the tab again shows the random map's record.
+    click(&mut s, [514, 115]);
+    let draws = s.draws("PLAYERS.PAL");
+    assert_eq!(label(&draws, NAME), Some("Random Map"));
+    assert_eq!(label(&draws, VICTORY), Some("victory 0"));
+    assert_eq!(label(&draws, DESCRIPTION), Some("Randomly made"));
+    assert_eq!(flags(&draws), (vec![0], vec![1, 2, 3, 4, 5, 6, 7]));
+    assert_eq!(size_mark(&draws), Some(1));
+}
+
+#[test]
+fn the_files_list_back_after_the_random_maps_is_sorted_anew() {
+    // The list's kind changed back (`scenario_list_toggle` 0x580AB1): sorted by the version, its
+    // first row selected and given to the game, not the kept map.
+    let mut s = scenario_of(
+        vec![map("Arrogance.h3m", "Arrogance"), map("a.h3m", "Alpha")],
+        Bugs::Original,
+    );
+    assert_eq!(s.rows(), (Some(0), 0));
+    click(&mut s, [514, 115]);
+    click(&mut s, at(SHOW));
+    // Shown, the list hides at a press of Show Available Scenarios, its kind kept.
+    click(&mut s, [514, 91]);
+    assert!(!s.showing());
+    assert_eq!(s.listed().count(), 0);
+    click(&mut s, [514, 91]);
+    assert!(s.showing());
+    assert_eq!((s.listed().count(), s.rows()), (2, (Some(0), 0)));
+    assert_eq!(s.entry().map(|e| e.name.as_str()), Some("Alpha"));
+    let draws = s.draws("PLAYERS.PAL");
+    assert_eq!(label(&draws, NAME), Some("Alpha"));
+    // The same kind again keeps its order and selection.
+    click(&mut s, [514, 91]);
+    click(&mut s, [514, 91]);
+    assert_eq!(s.rows(), (Some(0), 0));
+}
+
+#[test]
+fn begin_with_a_random_map_chosen_shows_the_client_s_stub() {
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        let mut s = opened(bugs);
+        assert!(!s.stubbed());
+        assert!(click(&mut s, [497, 555]).changed);
+        assert!(s.stubbed(), "{bugs:?}");
+        assert_eq!(s.context(), Context::Question);
+        // Its OK closes it, the random map still chosen.
+        let ok = ok_button(&s);
+        s.press(ok);
+        assert!(s.release().changed);
+        assert!(!s.stubbed());
+        assert_eq!(s.context(), Context::Scenario);
+        assert!(s.random_map().is_some());
+    }
+    // Over the random maps' empty list no random map is chosen: GENRLTXT 530's box, no stub.
+    let mut s = opened(Bugs::Original);
+    click(&mut s, at(SHOW));
+    assert!(click(&mut s, [497, 555]).changed);
+    assert_eq!(s.context(), Context::Question);
+    assert!(!s.stubbed());
+    // Without the stub's text Begin does nothing with a random map chosen.
+    let mut s = opened(Bugs::Fixed);
+    s.texts.random_stub = None;
+    click(&mut s, [497, 555]);
+    assert_eq!(s.context(), Context::Scenario);
+    assert!(!s.stubbed());
+}
+
+#[test]
+fn the_list_over_a_chosen_random_map_mixes_the_two_in_the_original_s_profile() {
+    // CLT-Q147: the original's showing gives the game nothing (`adv-random-list` list): the
+    // selection's name over the random map's header, description and flags; the client's (b)
+    // shows the selection whole.
+    let mut s = opened(Bugs::Original);
+    click(&mut s, at(PLAYERS));
+    click(&mut s, [514, 91]);
+    let draws = s.draws("PLAYERS.PAL");
+    assert_eq!(label(&draws, NAME), Some("Arrogance"));
+    assert_eq!(label(&draws, MAP_DIFFICULTY), Some("difficulty 1"));
+    assert_eq!(label(&draws, DESCRIPTION), Some("Randomly made"));
+    assert_eq!(flags(&draws), (vec![0], vec![]));
+    let mut s = opened(Bugs::Fixed);
+    click(&mut s, at(PLAYERS));
+    click(&mut s, [514, 91]);
+    let draws = s.draws("PLAYERS.PAL");
+    assert_eq!(label(&draws, NAME), Some("Arrogance"));
+    assert_eq!(label(&draws, MAP_DIFFICULTY), Some("difficulty 2"));
+    assert_eq!(label(&draws, DESCRIPTION), Some("A map."));
+    assert_eq!(flags(&draws), (vec![0, 2], vec![1]));
+}
+
+#[test]
+fn the_files_list_back_keeps_the_random_map_s_flags_in_the_original_s_profile() {
+    // CLT-Q147: the sort gives the game the first row (its description) but sets no flags
+    // (`adv-random-list` list-back); the client's (b) sets them.
+    for (bugs, shown) in [
+        (Bugs::Original, (vec![0], vec![])),
+        (Bugs::Fixed, (vec![0, 2], vec![1])),
+    ] {
+        let mut s = opened(bugs);
+        click(&mut s, at(PLAYERS));
+        click(&mut s, at(SHOW));
+        click(&mut s, [514, 91]);
+        click(&mut s, [514, 91]);
+        let draws = s.draws("PLAYERS.PAL");
+        assert_eq!(label(&draws, NAME), Some("Arrogance"), "{bugs:?}");
+        assert_eq!(label(&draws, DESCRIPTION), Some("A map."), "{bugs:?}");
+        assert_eq!(flags(&draws), shown, "{bugs:?}");
+    }
 }
