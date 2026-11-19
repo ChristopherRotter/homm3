@@ -19933,3 +19933,44 @@ staged beyond T130's executable.
   the town lane's inbox (the ADRs' new parts and the versions), HANDOFF.
 
 **Versions:** none moved. T132 (round 5, its cut at its start) next.
+
+### Increment 14, round 5: T132a1, the market's rates (2026-11-19, `adventure/e08-t132a1`)
+
+**The cut** (decision 380; asked at T132's start, `AskUserQuestion`): T132a in two, the rates
+first, alone in this session's third pull request (stacked on T131's #1046 until it merges).
+**Baseline:** `master` defc293 (#1045 merged; CI green on 38d422b, the last code); the setup's
+baseline stopped at its coverage step (the disk at 11 GB free; CI stands for it). Only
+`Heroes3.exe` staged.
+
+- **The code read again** (`market_resources_proc` 0x5ECFE0, `market_creature_rate` 0x5ECE80,
+  `market_buy_artifact_proc` 0x5ED9E0): every integer `fild` then stored to binary32, the
+  product with the table's binary32 factor stored, the quotient at 53 bits stored, `fcomp 1.0`,
+  then `fadd` 0.5 (f64) and `crt_ftol` of q or of `fld1 / q`; the factor tables' bit patterns at
+  counts 1 to 10 (`scripts/exe.py data`). **A correction:** survey §4's table had a precious
+  resource for wood or ore at 1 : 2; q = 250 / 150 is at least 1, so 2 : 1 (VCMI's
+  `getOffer` agrees); the table corrected.
+- **`h3_adventure::MarketParams`** (`market.rs`; exported with `Lot` and `MarketParamsError`):
+  `new(values, artifact_values, rows)` (the value tables by resource as `u16`, the rows'
+  resources', artifacts' and creatures' factors in hundredths; refused: an empty or uneven table,
+  a 0 value, no row or more than 255, a 0 factor), `counts`, `factor_bits` (for T132a2's eighth
+  check), `resource_lot`, `creature_lot`, `artifact_price` (`// rule: ADV-MKT-002`). Each step in
+  `h3_kernel::arith::X87`; a stored quotient held scaled by 2^32 (neither rounding depends on a
+  power of two), since a dear creature sold for gold gives a quotient below 2^-11, where `X87`
+  would drop bits. *Agent's calls:* the parameters as one compiled type with a validating
+  constructor (T132a2's compile maps its error); a lot past `u32` or a price that rounds to 0 is
+  none.
+- **Tests** (`market/tests.rs`, `covers: ADV-MKT-002`): survey §4's table at five (corrected), the
+  wood-for-gold and gold-for-wood rows at every count (D-70's 37, 62, 112; 88 at 6), the creature
+  sale (E14-1's Pixie 17 gold and Vampire 1 wood, E14-2's Skeleton 42; 3 000 gold for 8 wood;
+  30 000 for 21 000 gold), the artifact's price (E14-4's 5 000; cost / 50 of wood, / 100 of a
+  precious one), the factors' bit patterns, the refusals, the constructor's errors and a property
+  (every lot at least 1, one side 1). A throwaway comparison against a binary32 model in Python
+  (`struct`'s float32 with Python's doubles) agreed on all 1 120 490 cases: every pair at every
+  count, creature and artifact costs 1 to 6 000 and on to 200 000 by 97, every resource. Coverage
+  of `market.rs`: 100 % of lines and regions; clippy, fmt, `check-rules`, `check-arch`.
+- **ADV-MKT-002** in the catalog, `verified` (the code reading, batch E14's E14-1, E14-2, E14-4,
+  E14-5, VCMI's `getOffer`, the wiki's merchants' percentages). The town lane's inbox told (the
+  API, the correction).
+
+**Versions:** none moved (no part, pack or hash change). T132a2 next (the kinds, `[market]` in the
+part, the packs, the eighth check, part v23).

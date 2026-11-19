@@ -4,6 +4,25 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-19, E08 T132a1: the T132 entry as it stood when T132a was cut in two, decision 380; T132a1 done, the record in `E08-log.md`; T132a2 and T132b queued.)* **E08 T132 — the kinds, the packs, the import** (round 5; decisions 370, 373, 378; design note
+§1 to §7, §19, §21)
+
+- **Scope:** T132a (`h3-adventure`, `h3-pack-adventure`, the packs): the five kinds `market`,
+  `altar`, `hill_fort { gold }` (no `roe_except`: decision 378), `war_machine_factory` and the
+  Black Market's stock classes, with their hash tags; `[market]` and the rates' module with its
+  tables (`h3_kernel::arith::X87`, survey §4's halves pinned; D-71's cases); the base and ab packs'
+  types (§6); the eighth original-data check (`--with-original-data`); adventure ruleset part's
+  next version (v23 after the town lane's v22). T132b (`h3-map`): the import of classes 2, 7, 35,
+  99, 106, 213 and 221 at subclass 0 (no body, no RoE mark), the writer's classes for fixtures, a
+  step onto one of the seven refused as an unbuilt visit's until its task; map import's next (v27);
+  the shipped-map census and the counts that move (`TRAPS.md`).
+- **Rules:** ADV-MKT-001, -002, ADV-HFT-001's which stacks, ADV-ALT's values, ADV-WMF-001's
+  machines, each with its sources (survey §21's rows as `observation` once built).
+- **Inputs:** design note §1 to §7, §19; ADR-0016 point 4 and ADR-0017 point 9 as applied (T131);
+  survey §4 to §14; `TRAPS.md` (shared changes, original data, extra target directories).
+- **Depends on:** T131 (its `shared/` pull request merged first). **Status:** ready; the cut
+  confirmed at its start (T132a and T132b as the note has them, one or both in a session).
+
 *(Moved 2026-11-19, E08 T131: done whole, decision 379; the record in `E08-log.md`; T132 queued.)* **E08 T131 — the `shared/` task** (round 4; decisions 370 to 373, 378, 379; as T122 for
 increment 13; `shared/e08-t131`, `cross-lane`)
 
