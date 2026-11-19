@@ -1,7 +1,12 @@
 use super::*;
 use alloc::vec;
+use alloc::vec::Vec;
 
-use crate::shell::menu::Arrow;
+use crate::shell::Screen;
+use crate::shell::look::{self, parse_layout};
+use crate::shell::menu::{Arrow, Front};
+
+const LAYOUT: &str = include_str!("../../../../../layouts/shell.toml");
 
 /// The shell's layout's `[credits]` (E27 M4 T2).
 fn look() -> CreditsLook {
@@ -251,4 +256,50 @@ fn the_originals_background_shows_its_keys_pixels_black_from_the_first_step() {
     assert!(!keyed(&c.opened(Hovers::default())));
     let (fixed, _) = stepped(1);
     assert!(!keyed(&fixed));
+}
+
+#[test]
+fn the_shell_opens_them_from_the_main_menu_and_their_front_takes_the_inputs() {
+    let mut menus = crate::shell::menu::tests::menus(Bugs::Fixed);
+    let main = menus.front(Screen::MainMenu, None, [300, 560]).unwrap();
+    let hovers = main.hovers();
+    let mut front = menus
+        .front(Screen::Credits, Some(main), [300, 560])
+        .unwrap();
+    assert!(matches!(&front, Front::Credits(_)));
+    assert_eq!(front.hovers(), hovers);
+    assert_eq!(front.context(), Context::Credits);
+    assert_eq!(front.contexts(), vec![Context::Credits]);
+    assert!(!front.typing());
+    assert_eq!(front.typed('a'), Did::default());
+    assert_eq!(front.question(), None);
+    // The clock steps them; a move, the releases and a key's up do nothing, F4 neither.
+    assert_eq!(front.clock(100), Did::default());
+    assert_eq!(front.clock(200), Did::CHANGED);
+    assert_eq!(front.moved([0, 0]), Did::default());
+    assert_eq!(front.release(), Did::default());
+    assert_eq!(front.right_release(), Did::default());
+    assert_eq!(front.key_up("C"), Did::default());
+    assert_eq!(front.key(None, None, "F4"), Did::default());
+    let done = Some(Ended::Done);
+    assert_eq!(front.key(None, None, "Escape").ended, done);
+    assert_eq!(front.press([1, 1]).ended, done);
+    assert_eq!(front.right([1, 1]).ended, done);
+    // Their look: the main menu's background and their draws, the cursor; none on another
+    // screen. Their pictures and fonts are in the start's batch.
+    let layout = parse_layout(LAYOUT).unwrap();
+    let shown = look::look(&layout, Screen::Credits, Some(&front)).unwrap();
+    let Front::Credits(c) = &front else {
+        panic!("the credits");
+    };
+    assert_eq!(shown.background, "GamSelBk.pcx");
+    assert_eq!(shown.draws, c.draws());
+    assert!(shown.cursor && shown.over.is_empty() && shown.stale.is_empty());
+    assert_eq!(shown.shift, 0);
+    assert_eq!(look::look(&layout, Screen::MainMenu, Some(&front)), None);
+    let names: Vec<String> = look::names(&layout);
+    for name in ["mainmenu.pcx", "Credits.fnt", "smalfont.fnt", "game.pal"] {
+        assert!(names.iter().any(|n| n == name), "{name}");
+    }
+    assert_eq!(layout.credits, look());
 }
