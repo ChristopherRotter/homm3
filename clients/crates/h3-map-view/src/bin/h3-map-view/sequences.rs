@@ -196,6 +196,11 @@ impl Context<'_> {
         let (mut kept, mut current): (Option<Screen>, Option<Screen>) = (None, None);
         let mut shown: Option<(Draw, Buttons, Cursor)> = None;
         for s in &states {
+            // The spell book's screens are M5's (E24 M4 T2d3): none kept while it shows, the next
+            // compared with the last kept before it.
+            if s.book {
+                continue;
+            }
             let now = (s.drawn.clone(), s.buttons, s.cursor);
             if shown.as_ref() != Some(&now) {
                 shown = Some(now);

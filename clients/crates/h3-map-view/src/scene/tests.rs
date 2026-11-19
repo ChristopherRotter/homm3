@@ -586,6 +586,7 @@ fn refuses_a_level_a_viewer_or_a_code_it_cannot_draw() {
     kingdom.heroes[5].portrait = 200;
     kingdom.selected = crate::live::Selected::Hero(5);
     kingdom.status = Some(crate::live::Status::Hero(crate::live::HeroStatus {
+        mana: None,
         hero: 0,
         own_name: false,
         skills: [0; 4],

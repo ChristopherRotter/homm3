@@ -92,6 +92,7 @@ fn live(objects: usize) -> Live {
         turns: Vec::new(),
         computer: false,
         level_ups: Vec::new(),
+        casts: Vec::new(),
     }
 }
 

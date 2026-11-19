@@ -3811,3 +3811,98 @@ Recorded by the harness (the sequences in `clients/map/to-record.toml`, the situ
   the dissolves' contents, the boat lifted and put back, the queued actions, the sounds, speed
   4, the refusals), 416 in the library, 100 % of `h3-map-view`'s library (lines, regions,
   functions).
+
+### 5.8 A spell cast on the map (M4 T2d3)
+
+The last of T2d's three (the user at T2d3's start, 2026-11-19: Summon Boat, the spell whose result
+the map shows with no target to pick; whole, the cut after the reading, the harness's cast and the
+recordings the fallback). Read: the cast button's command `adventure_cast_open` 0x41C2F0 whole
+(new), `adventure_spell` 0x41C490's switch (was `visions_cast`: the adventure spells by id),
+`summon_boat_cast` 0x41C8A0 whole, `hero_spend_mana` 0x4D92D0 again (its slot), the spell book's
+first opening on the map (`spell_book_dialog` 0x59C870: kind 1 takes the adventure bookmark, all
+schools, page 0) and its place's click with that bookmark (`spell_book_proc` 0x59D429: the spell
+returned and the book closed when it costs at most the hero's mana), `screen_dissolve`'s step −1
+(33 ms) and `view_clip` 0x691250 (new). Recorded by the harness (the sequences in
+`clients/map/to-record.toml`, the situations `seq-cast-boat*`), its book and `[[cast]]` below.
+
+- **The opening** (command 8, the cast button or its hotkey C's key up): with a selected hero
+  `mobilize_hero` with 0, 0, 1 (§5.7: lifted and centred, the whole screen shown; its lists'
+  redraw leaves the status bar empty, MCL-Q22), the view drawn and shown (`view_show_step`: the
+  objects' step when due), the adventure cursor; then the spell book, modal. Its screens are M5's:
+  the harness keeps none while it shows. Its close (0x7801) ends the command; a spell goes through
+  a ground's test (`hero_special_ground` 0x4E4EC0, not read: 21 with a spell above level 1 GENRLTXT 748's box, 33
+  GENRLTXT 685's; neither recorded) to `adventure_spell`, then `status_window_choose` with 1, 1, 1.
+  The screen when the book leaves is the map as the opening left it (`cast-boat`'s 300 against
+  100: the hero lifted, the button up, the bar empty; the palettes' step at 200, taken while the
+  book showed, not shown), the cursor the book's last (the default, frame 1 over its place) until
+  the cast ends.
+- **Summon Boat** (`summon_boat_cast` with the mastery). Refused with a box to a human and no cost:
+  the hero on water (GENRLTXT 334, its name), no free water neighbour (335: the first of the eight,
+  clockwise from up, with water and no object). The chance: `random_between(1, 100)` above the
+  spell's by mastery (spell table +0x34) fails (337, its name; the cost spent); Expert's 100 never
+  fails, the draw still made. The boat: the one the hero last left, else the nearest empty one of
+  the player or of none (`summon_boat_choice` 0x4E54A0), taken off its tile; when that tile lies in
+  the view's 19 × 17 tiles on its level, its box ((dx − 1) · 32, (dy − 1) · 32) to ((dx + 3) · 32,
+  (dy + 2) · 32), dx and dy from the view's corner, cut to `view_clip` (8, 8) to (615, 551), both
+  ends inclusive, saved, the view drawn without it and dissolved into it (eight steps of 33 ms);
+  then put on the neighbour, its facing and type kept. With none, at Advanced or Expert
+  `create_boat` there (type 0, facing 2, the hero's owner; no box), else GENRLTXT 336 and no cost.
+  Then the spell's sound (spell table +0x4), the neighbour's box likewise saved, the view drawn with
+  the boat and dissolved into it, `view_show_step`, the sound waited for, the cost spent
+  (`hero_spend_mana`: the hero list's slot drawn, its rectangle alone shown), and the opening's
+  `status_window_choose`. At that millisecond the map's own redraw, due since the book opened,
+  comes too: the objects two steps on (`view_show_step`'s and the loop's), the view and the status
+  window shown, the adventure cursor at the next poll.
+- **MCL-Q14 seen** (inferred at M3 T4b): the slot's rectangle holds the movement bar and the
+  portrait's first 40 columns, not the mana bar, so after the cast the hero list's slot is the same
+  pixel for pixel as at 0 (`cast-boat`: the mana 10 to 3, the bar's frame 2 to 1 drawn but not
+  shown), while the status window's kind 3, built again, shows 3. As the user answered (M3 T7c1):
+  the client shows the slot whole, the original's behind `--bugs original` (the comparisons').
+- **Recorded** (each twice, the timelines, the `[[cast]]` tables and the screens the same; speed 2,
+  `seed` 7; C down at 100 and up at 160, the book's place 0 clicked at 300, the pointer parked):
+  `cast-boat` (the boat in sight on (14, 8) to (9, 11): 48 lines, 24 screens; the book 160 to 300;
+  the first dissolve 300 to 531 over (416, 96) to (544, 192), the second 564 to 795 over (256, 192)
+  to (384, 288); the end at 828), `cast-boat-far` (the boat on (10, 1), above the view: moved in the
+  click's millisecond, one dissolve 300 to 531, the end at 564: 36, 15) and `cast-boat-new` (no
+  boat: one made, the same times: 36, 15). Two runs' palette steps at 0 differ (the load's real
+  time, TRAPS), so their screens may differ while each matches its own live part.
+- **The harness** (*provisional*): `Mem.spell_book` (the top dialog's vtable 0x641DCC), a state's
+  `book` and the timeline's `<ms> book 1` and `<ms> book 0`, no screen kept while it shows (the next
+  compared with the last kept before it); `Mem.message_box` none under it; a `[[cast]]` table
+  after the `[[found]]` tables' kind (`at` the book's close, the `spell` it answered by
+  `Mem.modal_answer`, `spent` the millisecond the hero's mana changed, the `mana` then, the `boats`
+  moved or made since the book opened, `[from x, y, level, to x, y, level, type, facing]`, from
+  −1 for one made); a situation's hero's `spells` (the writer's, the book worn in slot 17, its
+  artifacts then the book alone).
+- **The sound run** (`cast-boat` with `sound = true`, a scratch sequence; the samples by length):
+  the button's press at 100 (151 ms), the ambient loop restarted by the opening's lift at 160
+  (3 751 ms, looping), Summon Boat's own `SUMMBOAT` at the second dissolve's start (564, 1 200
+  ms), and the cast's end waiting for it (`wait_for_sample`): the end at 1 764, not 828. The
+  harness's look over the view had left the clock stepped, so a sound run with a click over the
+  view never settled: `frames` now lets it run first.
+- **Built** (M4 T2d3, one worker; *provisional*, M4's review list): `live::Cast` and
+  `live::Summoned` (`Live::casts`, the `[[cast]]` tables read and checked), `Start::casts`,
+  `State::book` and the timeline's `book` lines (the runner keeps no frame and writes no `screen`
+  line while it shows); command 8's `cast_open` (the lift, the view drawn and shown, the book
+  open), `book_act` (a click closes it with the next `[[cast]]`, whose `at` must be the click's;
+  other inputs dropped), `summon`, `arrive`, `cast_dissolve`, `in_view`, `boat_box` and `cast_end`
+  (the cost, the slot, the status window, the redraw due, the adventure cursor; `spent` checked);
+  the dissolve generalised (`Dissolving`'s `from`, `rect` and `step_ms`; `Then::Summoned` and
+  `Then::Cast`; the second dissolve blends from the back buffer the first one drew, at its later
+  palette step, so `Dissolve::from` and a nested ended `before` compose it); the tables'
+  `[map.cast]` (33 ms, the box in tiles, the clip, the view's 19 × 17) and `summboat.wav` among the
+  effects, the layout's book cursor (frame 1); MCL-Q14 by `HeroStatus::mana` and `draw_slot` (the
+  old bar kept under `Bugs::Original`, the slot shown whole under `Bugs::Fixed`, every slot draw);
+  refusals `Unplayable::Cast` (no table, another `at`, another `spent`) and `Unplayable::Spell`
+  (another spell, no boat or several). Left out: the wait for the spell's sample (the viewer's
+  sound knows no lengths: with sound the original ends at 1 764, the viewer at 828), the window's
+  cast (live it does nothing, as before), the book's own inputs, a cast opened with the hero
+  already lifted (tested, not recorded), the refusals' boxes.
+- **Checked** (M4 T2d3): the three moved into `sequences.toml`, `to-record.toml` removed; `frames
+  --only <id> --reuse` every frame exact (24, 15, 15), the timelines as recorded (48, 36, 36
+  lines), their `-frames.txt` kept; `drawn` the 50 situations and the 93 other sequences the same,
+  `--record` for the three; the window's read-back exact on `cast-boat` (live: no cast); unit tests
+  (`timeline/tests/casts.rs`: the three replayed headless, the book's span and refusals, both
+  dissolves' boxes and steps, the boat moved and made, MCL-Q14 in both profiles, the sound's cue,
+  the cursor, a second cast with the hero lifted), 430 in the library, 100 % of `h3-map-view`'s
+  library (lines, regions, functions).

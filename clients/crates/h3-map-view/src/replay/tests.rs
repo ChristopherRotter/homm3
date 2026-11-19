@@ -90,6 +90,7 @@ fn idle() -> Replay {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
     };
@@ -286,6 +287,7 @@ fn its_cues_are_handed_out_once() {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
     };

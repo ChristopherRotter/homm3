@@ -29,6 +29,7 @@ hot = [[0, 0], [1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15,
 default_def = "crdeflt.def"
 default_hot = [0, 0]
 busy = 2
+book = 1
 
 [dialog]
 place = [0, 0]

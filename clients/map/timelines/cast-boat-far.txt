@@ -1,0 +1,36 @@
+0 view 0 4 0
+0 objects 0
+0 cycles 0 0
+0 cursor 1 0 700 300
+0 buttons 0 1
+0 points 1630
+100 screen 711,260,743,292
+160 book 1
+200 cycles 1 1
+300 cursor 0 1 700 300
+300 book 0
+300 screen 248,238,743,572
+333 screen 258,192,385,289
+366 screen 258,192,385,289
+399 screen 258,192,385,289
+400 cycles 2 2
+432 screen 258,192,385,289
+465 screen 258,192,385,289
+498 screen 258,192,385,289
+531 screen 258,192,385,289
+564 objects 2
+564 cursor 1 0 700 300
+564 screen 32,8,776,502
+600 cycles 3 3
+744 objects 3
+744 screen 32,8,600,296
+800 cycles 4 4
+924 objects 4
+924 screen 32,8,600,296
+1000 cycles 5 5
+1104 objects 5
+1104 screen 32,8,600,296
+1200 cycles 6 6
+1284 objects 6
+1284 screen 32,8,600,296
+1400 cycles 7 7

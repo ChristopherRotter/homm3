@@ -119,6 +119,9 @@ pub struct CursorArt {
     /// The default cursor's frame a computer player's turn sets at its start (E24 M4 T1b2,
     /// design §5.1: `mouse_set_cursor(2, 0)` at 0x4C74FE).
     pub busy: u32,
+    /// The default cursor's frame the spell book leaves at its close (E24 M4 T2d3, design §5.8:
+    /// 1, over its place; *provisional*, the book is M5's), until the cast ends.
+    pub book: u32,
 }
 
 /// The scroll's directions, one edge cursor each.

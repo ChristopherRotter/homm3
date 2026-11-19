@@ -312,6 +312,7 @@ fn a_maps_start_its_kingdom_and_buttons() {
             // T5b1 (design §4.8): the selected hero's window, named by its type, nothing else
             // known.
             status: Some(Status::Hero(HeroStatus {
+                mana: None,
                 hero: 16,
                 own_name: false,
                 skills: [0; 4],
@@ -615,6 +616,88 @@ fn a_live_parts_kingdom_read() {
 }
 
 #[test]
+fn a_live_parts_casts_read() {
+    // E24 M4 T2d3: a boat moved and one made; -1 for a cost never spent.
+    let table: toml::Table = r#"
+        [[cast]]
+        at = 300
+        spell = 0
+        spent = 828
+        mana = 3
+        boats = [[14, 8, 0, 9, 11, 0, 1, 2], [-1, -1, -1, 8, 11, 0, 0, 2]]
+
+        [[cast]]
+        at = 900
+        spell = 69
+        spent = -1
+        mana = 0
+        boats = []
+    "#
+    .parse()
+    .unwrap();
+    let casts = Cast::read_all(&table["cast"]).unwrap();
+    let boat = |x: u8, kind: u8| LiveBoat {
+        at: pos(x, 11),
+        kind,
+        facing: Facing::Right,
+    };
+    assert_eq!(
+        casts,
+        [
+            Cast {
+                at: 300,
+                spell: 0,
+                spent: Some(828),
+                mana: 3,
+                boats: vec![
+                    Summoned {
+                        from: Some(pos(14, 8)),
+                        to: boat(9, 1),
+                    },
+                    Summoned {
+                        from: None,
+                        to: boat(8, 0),
+                    },
+                ],
+            },
+            Cast {
+                at: 900,
+                spell: 69,
+                spent: None,
+                mana: 0,
+                boats: Vec::new(),
+            },
+        ]
+    );
+    // Anything else refused.
+    let good = "at = 300\nspell = 0\nspent = 828\nmana = 3\nboats = [[14, 8, 0, 9, 11, 0, 1, 2]]";
+    for (from, to) in [
+        ("at = 300", "at = -1"),
+        ("spell = 0", "spell = 70"),
+        ("spent = 828", "spent = -2"),
+        ("mana = 3", "mana = -1"),
+        ("at = 300", ""),
+        ("spell = 0", ""),
+        ("spent = 828", ""),
+        ("mana = 3", ""),
+        ("[[14, 8, 0,", "[[-1, 8, 0,"),
+        ("[[14, 8, 0,", "[[-1, -1, 0,"),
+        ("[[14, 8, 0,", "[[14, -1, 0,"),
+        ("[[14, 8, 0,", "[[14, 8, -1,"),
+        ("0, 1, 2]]", "0, 3, 2]]"),
+        ("0, 1, 2]]", "0, 1, 2, 0]]"),
+        ("boats = [[14, 8, 0, 9, 11, 0, 1, 2]]", "boats = 1"),
+        ("boats = [[14, 8, 0, 9, 11, 0, 1, 2]]", ""),
+    ] {
+        let text = good.replace(from, to);
+        let bad: toml::Value = text.parse::<toml::Table>().unwrap().into();
+        assert_eq!(Cast::read(&bad), None, "{text}");
+    }
+    assert_eq!(Cast::read(&toml::Value::Integer(1)), None);
+    assert_eq!(Cast::read_all(&toml::Value::Integer(1)), None);
+}
+
+#[test]
 fn a_live_parts_status_read() {
     // E24 M3 T5b1 (design §4.8): `h3map.py`'s `status_toml`.
     let read = |text: &str| {
@@ -644,6 +727,7 @@ fn a_live_parts_status_read() {
     assert_eq!(
         read(&hero),
         Some(Status::Hero(HeroStatus {
+            mana: None,
             hero: 48,
             own_name: true,
             skills: [2, -2, 1, 127],
