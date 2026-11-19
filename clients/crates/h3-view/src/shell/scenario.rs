@@ -42,9 +42,10 @@
 //!   `h3_ui::scrollbar`); a row's release selects it (`text_item_message` 0x5BC440: at a release
 //!   anywhere in the original's profile, over the row in the client's), a second within 400 ms
 //!   begins (`scenario_row_click` 0x5872E4: in the original's profile any row's, the opening's
-//!   time too; the client's needs the same row, CLT-Q91 (c)). The order's ties: a stable sort,
-//!   the name then the file's name (CLT-Q90); the size's first press after the build descending
-//!   in the original's profile (its recorded key 1), ascending in the client's (CLT-Q91 (c)).
+//!   time too; the client's needs the same map, CLT-Q91 (c), E27 M3 T7). The order's ties: a
+//!   stable sort, the name then the file's name (CLT-Q90); the size's first press after the build
+//!   descending in the original's profile (its recorded key 1), ascending in the client's
+//!   (CLT-Q91 (c)).
 //!
 //! - **The hot seat** (E27 M3 T4a; §28): opened from the Multiplayer dialog's hot seat
 //!   ([`Scenario::opened_hot_seat`]): its players the hot seat's names, its list the maps two
@@ -73,8 +74,17 @@
 //!   what it hands the game's setup (the adapter's: the engine's `GameSetup`, decision 4), play's
 //!   start the loading screen ([`super::play`]).
 //!
+//! - **M3's review** (E27 M3 T7): a row or a name pressed before a box opened over the screen goes
+//!   without its click at the release (the box's); the list's keys do nothing while the mouse
+//!   holds a DEF button (its own loop); a map's name and description are the list's record's 60
+//!   and 300 bytes in the original's profile, whole in the client's (CLT-Q151 (b)). The client's
+//!   profile alone: the advanced options' rows made again whenever the map they read changes, by
+//!   its file (CLT-Q152 (b)); a select keeping the map keeps the description's scroll (CLT-Q148
+//!   (b)); Up and Down bring the page to a selection off it first (CLT-Q149 (b)); a row takes the
+//!   press from the players column's left, x 26 (CLT-Q150 (b)).
+//!
 //! *Not built yet:* the load's modes (the client's stub until M4), GENRLTXT 503 while the list is
-//! read again (a network game's message 1015 alone, `sub_58B120` 0x58B120: the network modes',
+//! read again (a network game's message 1015 alone, `scenario_list_reread` 0x58B120: the network modes',
 //! `CLT-STUB-6`; design §20.3).
 
 use alloc::boxed::Box;
@@ -482,38 +492,38 @@ impl Entry {
 
 /// The list's order as built (`scenario_list_finish` 0x582E90: key 2, the format then the name
 /// case-insensitively, `scenario_compare_version` 0x591190), the file's name breaking ties
-/// (CLT-Q90: case-insensitively, then as it is).
+/// (CLT-Q90: case-insensitively, then as it is); the names whole (the client's profile's).
 pub fn sort(entries: &mut [Entry]) {
-    sort_by(entries, BUILT_KEY, false);
+    sort_by(entries, BUILT_KEY, false, Bugs::Fixed);
 }
 
 /// The list sorted by `key` (`scenario_list_sort` 0x585050), descending when `descending`: the
 /// key's own comparison reversed, then a stable sort's tie-breakers (CLT-Q90, decision 12): the
-/// name case-insensitively, the file's name case-insensitively, then as it is.
-pub fn sort_by(entries: &mut [Entry], key: u8, descending: bool) {
+/// name case-insensitively, the file's name case-insensitively, then as it is. The names as the
+/// profile `bugs` keeps them ([`kept_name`]: the record's 60 bytes in the original's).
+pub fn sort_by(entries: &mut [Entry], key: u8, descending: bool, bugs: Bugs) {
     entries.sort_by(|a, b| {
-        let own = compare(key, a, b);
+        let own = compare(key, a, b, bugs);
         let own = if descending { own.reverse() } else { own };
-        own.then_with(|| caseless(&a.name).cmp(caseless(&b.name)))
+        let name = |e| sort_name(e, bugs);
+        own.then_with(|| name(a).cmp(name(b)))
             .then_with(|| caseless(&a.file).cmp(caseless(&b.file)))
             .then_with(|| a.file.cmp(&b.file))
     });
 }
 
-/// A sort key's comparison (design §3.4): 0 the names case-insensitively
+/// A sort key's comparison (design §3.4) in the profile `bugs`: 0 the names case-insensitively
 /// (`scenario_compare_name` 0x5903B0), 1 the size (0x591310), 2 the format then the name
 /// (`scenario_compare_version` 0x591190), 3 ten times the players plus the humans
 /// (`scenario_compare_players` 0x590E00), 4 the victory's code (`scenario_compare_victory`
 /// 0x591CB0), 5 the loss's (`scenario_compare_loss` 0x592030); another key none.
-fn compare(key: u8, a: &Entry, b: &Entry) -> Ordering {
+fn compare(key: u8, a: &Entry, b: &Entry, bugs: Bugs) -> Ordering {
     let players = |e: &Entry| 10 * u16::from(e.players()) + u16::from(e.humans());
+    let name = |e| sort_name(e, bugs);
     match key {
-        0 => caseless(&a.name).cmp(caseless(&b.name)),
+        0 => name(a).cmp(name(b)),
         1 => a.size.cmp(&b.size),
-        2 => a
-            .format
-            .cmp(&b.format)
-            .then_with(|| caseless(&a.name).cmp(caseless(&b.name))),
+        2 => a.format.cmp(&b.format).then_with(|| name(a).cmp(name(b))),
         3 => players(a).cmp(&players(b)),
         4 => a.victory_code().cmp(&b.victory_code()),
         5 => a.loss_code().cmp(&b.loss_code()),
@@ -521,14 +531,53 @@ fn compare(key: u8, a: &Entry, b: &Entry) -> Ordering {
     }
 }
 
+/// `entry`'s name as the profile `bugs` sorts it: kept ([`kept_name`]), case-insensitively.
+fn sort_name(entry: &Entry, bugs: Bugs) -> impl Iterator<Item = char> + '_ {
+    caseless(kept_name(&entry.name, bugs))
+}
+
 /// The count of an iterator's items (at most 8 here).
 fn count<T>(items: impl Iterator<Item = T>) -> u8 {
     u8::try_from(items.count()).unwrap_or(u8::MAX)
 }
 
-/// `text`'s characters lower-cased, for a case-insensitive comparison.
+/// `text`'s characters with the ASCII letters lower-cased, for a case-insensitive comparison (E27
+/// M3 T7, the review's A8: as [`Scenario::kept_row`]'s file's names; *provisional*: the
+/// original's compare not read, an MSVC C-locale fold, ASCII).
 fn caseless(text: &str) -> impl Iterator<Item = char> + '_ {
-    text.chars().flat_map(char::to_lowercase)
+    text.chars().map(|c| c.to_ascii_lowercase())
+}
+
+/// The bytes of a map's name the list's record keeps (`scenario_info` +0x58C, `char[61]`:
+/// `scenario_header_read` 0x583170): the original's profile's; the client's keeps the name whole
+/// (E27 M3 T7, CLT-Q151 (b)).
+pub const NAME_BYTES: usize = 60;
+
+/// `text`'s first `bytes` bytes in Windows-1252 (each character one byte: the entries' texts are
+/// decoded so, `h3_ui::text::decode_1252`).
+fn cut(text: &str, bytes: usize) -> &str {
+    text.char_indices()
+        .nth(bytes)
+        .and_then(|(at, _)| text.get(..at))
+        .unwrap_or(text)
+}
+
+/// A map's name as the profile `bugs` shows and sorts it (E27 M3 T7, CLT-Q151 (b)): the list's
+/// record's [`NAME_BYTES`] in the original's, whole in the client's.
+fn kept_name(name: &str, bugs: Bugs) -> &str {
+    match bugs {
+        Bugs::Original => cut(name, NAME_BYTES),
+        Bugs::Fixed => name,
+    }
+}
+
+/// A map's description as the profile `bugs` gives it to the game (E27 M3 T7, CLT-Q151 (b)): the
+/// list's record's [`DESCRIPTION_BYTES`] in the original's, whole in the client's.
+fn kept_description(description: &str, bugs: Bugs) -> &str {
+    match bugs {
+        Bugs::Original => cut(description, DESCRIPTION_BYTES),
+        Bugs::Fixed => description,
+    }
 }
 
 /// The screen's texts, laid out by the caller: the user's tables'.
@@ -691,7 +740,7 @@ enum Over {
     /// An item's help popup, while the right button is held.
     Help(u16),
     /// The teams' dialog (`scenario_teams_dialog` 0x576540) or an advanced option's popup (E27 M3
-    /// T3a: a town's, a bonus's), while the right button is held.
+    /// T3a: a town's, a bonus's; T3b2: a hero's), while the right button is held.
     Popup(MessageBox),
     /// Begin's message over an empty list (GENRLTXT 530), until its OK.
     Notice(Box<Open>),
@@ -744,10 +793,10 @@ pub struct Scenario {
     /// followed (`scenario_team_flags` 0x585300, then `scenario_dialog_redraw` alone: CLT-Q138's
     /// colon; E27 M3 T3c1).
     strip: bool,
-    /// The shell's clock (ms) and the last row press's time with its entry in the shown list
-    /// (+0x60; none for the screen's opening).
+    /// The shell's clock (ms) and the last row press's time with its map's file (+0x60; none for
+    /// the screen's opening).
     now: u32,
-    last_row: Option<(u32, Option<usize>)>,
+    last_row: Option<(u32, Option<String>)>,
     kept: String,
     difficulty: u8,
     /// The original's profile: the difficulty's buttons show the choice (the opening selects it
@@ -762,6 +811,12 @@ pub struct Scenario {
     random: RandomMap,
     /// The selection the last select made (+0x374 as `scenario_select` 0x585500 compares it).
     last_select: Option<usize>,
+    /// The client's profile: the file of the map the advanced options' rows were last made over
+    /// or marked to be made again for (E27 M3 T7, CLT-Q152 (b): [`Scenario::sync_options`]).
+    options_map: Option<String>,
+    /// The client's profile: the file of the map whose description the game was given last (E27 M3
+    /// T7, CLT-Q148 (b): a select keeping it keeps the description's scroll).
+    described: Option<String>,
     background: u8,
     over: Over,
     hovers: Hovers,
@@ -845,6 +900,8 @@ impl Scenario {
             advanced,
             random: RandomMap::default(),
             last_select: None,
+            options_map: None,
+            described: None,
             background: 0,
             over: Over::Nothing,
             hovers: Hovers::default(),
@@ -978,10 +1035,11 @@ impl Scenario {
         self.showing
     }
 
-    /// Each colour's record of the advanced options, red first (E27 M3 T3a: the town, the hero, the
-    /// bonus and the handicap chosen; the game's begin hands them on, T6); none without them.
-    #[must_use]
-    pub fn records(&self) -> Option<[Record; 8]> {
+    /// Each colour's record of the advanced options as the rows hold them, red first (E27 M3 T3a:
+    /// the town, the hero, the bonus and the handicap chosen); none without them. The tests' (E27
+    /// M3 T7, the review's B4): Begin hands on [`Scenario::begun`]'s.
+    #[cfg(test)]
+    pub(crate) fn records(&self) -> Option<[Record; 8]> {
         self.advanced.as_ref().map(Advanced::records)
     }
 
@@ -1004,8 +1062,8 @@ impl Scenario {
         self.random.showing()
     }
 
-    /// The random map's choices while a random map is chosen (E27 M3 T5a: what Begin would
-    /// generate, T5b), none otherwise.
+    /// The random map's choices while a random map is chosen (E27 M3 T5a: what the original's Begin
+    /// generates; the client's shows its stub's notice, T5b), none otherwise.
     #[must_use]
     pub fn random_map(&self) -> Option<Choices> {
         self.random.chosen().then(|| self.random.choices())
@@ -1178,15 +1236,70 @@ impl Scenario {
     }
 
     /// The map whose players the advanced options show: the one the screen gives the game, else
-    /// the game's (the last shown; E27 M3 T3a), with its heroes (T3b1).
+    /// the game's (the last shown; E27 M3 T3a), with its heroes (T3b1), its seats as the single
+    /// player's records make them ([`Scenario::seats_of`]).
     fn players(&self) -> Map {
-        self.shown_entry()
-            .or(self.game.as_ref())
-            .map_or_else(Map::default, |e| Map {
-                seats: e.seats,
-                heroes: e.heroes.clone(),
-                local: e.local().and_then(|c| u8::try_from(c).ok()),
-            })
+        self.options_entry().map_or_else(Map::default, |e| Map {
+            seats: self.seats_of(e),
+            heroes: e.heroes.clone(),
+            local: e.local().and_then(|c| u8::try_from(c).ok()),
+        })
+    }
+
+    /// The map the advanced options read: the one the screen gives the game, else the game's.
+    fn options_entry(&self) -> Option<&Entry> {
+        self.shown_entry().or(self.game.as_ref())
+    }
+
+    /// `entry`'s seats as the single player's records make them (`scenario_players_init`
+    /// 0x584C40, its loop 0x584DF0's first two; design §3.12; E27 M3 T7, CLT-Q93, decision 13):
+    /// where the single player takes a colour only a human may play, the original's makes that
+    /// colour and every later one a human may play the computer's alone (the player may then move
+    /// only to an earlier colour a human may play, never back; a colour no human may play as it
+    /// is, *inferred*), the client's only the other colours only a human may play (CLT-Q93 (b):
+    /// the player may return to its start). The hot seat's as the map's.
+    fn seats_of(&self, entry: &Entry) -> [Seat; 8] {
+        let mut seats = entry.seats;
+        let human_only = |s: Seat| s.human && !s.computer;
+        let Some(local) = entry
+            .local()
+            .filter(|&c| !self.hot_seat && human_only(seats[c]))
+        else {
+            return seats;
+        };
+        for (c, seat) in seats.iter_mut().enumerate() {
+            let turned = match self.bugs {
+                Bugs::Original => c >= local && seat.human,
+                Bugs::Fixed => c != local && human_only(*seat),
+            };
+            if turned {
+                seat.human = false;
+                seat.computer = true;
+            }
+        }
+        seats
+    }
+
+    /// The client's profile (E27 M3 T7, CLT-Q152 (b)): whether the map the advanced options read
+    /// is not the one their rows were made over, by its file (a chosen random map's record, of no
+    /// file, its own map). The original's compares the select's index alone
+    /// ([`Scenario::select`]: +0x1854, 0x585574).
+    fn options_moved(&self) -> bool {
+        self.bugs == Bugs::Fixed
+            && self.options_entry().map(|e| &e.file) != self.options_map.as_ref()
+    }
+
+    /// The advanced options' rows made again at their next showing where the map they read moved
+    /// ([`Scenario::options_moved`]: a sort or a filter leaving the selection's index with
+    /// another map there, the list's showing over a chosen random map, any other path giving the
+    /// game another map).
+    fn sync_options(&mut self) {
+        if self.options_moved() {
+            self.options_map = self.options_entry().map(|e| e.file.clone());
+            if let Some(advanced) = &mut self.advanced {
+                advanced.selection_changed();
+            }
+        }
     }
 
     /// Show Advanced Options (129, `scenario_advanced_toggle` 0x581100; E27 M3 T3a): shown, hidden;
@@ -1207,6 +1320,7 @@ impl Scenario {
             }
             // The random map's tab hidden too (0x58136F; E27 M3 T5a), a random map still chosen.
             self.random.hide(&mut self.shown);
+            self.sync_options();
             let map = self.players();
             let (dialog, shown) = (&mut self.dialog, &mut self.shown);
             self.advanced
@@ -1275,7 +1389,7 @@ impl Scenario {
         if let Some(advanced) = &mut self.advanced {
             advanced.selection_changed();
         }
-        self.describe(&record.description);
+        self.describe(kept_description(&record.description, self.bugs));
         self.team_flags(&record);
         self.game = Some(record);
         self.show();
@@ -1315,7 +1429,7 @@ impl Scenario {
     fn sort_list(&mut self, key: u8, descending: bool) {
         // The random maps' list (E27 M3 T5b) is the client's own, empty: nothing to sort.
         if !self.random_list {
-            sort_by(&mut self.entries, key, descending);
+            sort_by(&mut self.entries, key, descending, self.bugs);
         }
         self.relist();
         self.top = 0;
@@ -1385,6 +1499,9 @@ impl Scenario {
     /// Up the top up a page less one (to 0 at most), Page Down down one (to the last page at
     /// most; nothing in a list of one page), the selection keeping its distance from the top
     /// (none past the list; before it, *provisional*: the original selects a negative index).
+    /// With the selection off the page (the bar moved it) the original's Down moves the top by a
+    /// row, Up to the row above the selection; the client's first brings the page to the
+    /// selection (the top moved so it shows), then steps (E27 M3 T7, CLT-Q149 (b)).
     fn scroll(&mut self, scroll: Scroll) {
         let count = self.listed.len();
         let rows = usize::from(self.look.rows);
@@ -1392,33 +1509,38 @@ impl Scenario {
         let Some(selected) = self.selected else {
             return;
         };
+        let brought = self.bugs == Bugs::Fixed
+            && matches!(scroll, Scroll::Up | Scroll::Down)
+            && self.bring(selected, page);
         // The selection's row from the top, negative above it (its distance kept by a page).
         let signed = |n: usize| i64::try_from(n).unwrap_or(i64::MAX);
         let row = signed(selected) - signed(self.top);
         let before = self.selected;
         match scroll {
             Scroll::Up => {
-                let Some(new) = selected.checked_sub(1) else {
+                if let Some(new) = selected.checked_sub(1) {
+                    if new < self.top {
+                        self.top = new;
+                        self.set_bar();
+                    }
+                    self.selected = Some(new);
+                } else if !brought {
                     return;
-                };
-                if new < self.top {
-                    self.top = new;
-                    self.set_bar();
                 }
-                self.selected = Some(new);
             }
             Scroll::Down => {
                 let new = selected + 1;
-                if new >= count {
-                    return;
-                }
                 // The top follows (the original's clamp to count − rows never binds here: the
                 // next row is within the list, so the top stays at most count − rows).
-                if new > self.top + page {
-                    self.top += 1;
-                    self.set_bar();
+                if new < count {
+                    if new > self.top + page {
+                        self.top += 1;
+                        self.set_bar();
+                    }
+                    self.selected = Some(new);
+                } else if !brought {
+                    return;
                 }
-                self.selected = Some(new);
             }
             // The description's bar's keys alone (the dialog's procedure's table: nothing).
             Scroll::Left | Scroll::Right => return,
@@ -1448,6 +1570,21 @@ impl Scenario {
         }
     }
 
+    /// The page brought to the row `selected` off it (the client's, CLT-Q149 (b)): the top on it
+    /// above the page, `page` rows above it below the page. Whether the top moved.
+    fn bring(&mut self, selected: usize, page: usize) -> bool {
+        let top = if selected < self.top {
+            selected
+        } else if selected > self.top + page {
+            selected - page
+        } else {
+            return false;
+        };
+        self.top = top;
+        self.set_bar();
+        true
+    }
+
     /// The bar's value the top.
     fn set_bar(&mut self) {
         self.bar
@@ -1456,21 +1593,35 @@ impl Scenario {
 
     /// A row's click (`scenario_row_click` 0x5872E4): within the list, a second within
     /// [`DOUBLE_MS`] of the last (in the original's profile any row's or the opening; in the
-    /// client's the same row's, CLT-Q91 (c)) begins (as Begin, E27 M3 T6); else it is timed and
-    /// selected.
+    /// client's the same map's, CLT-Q91 (c), made the same map from the same row at E27 M3 T7:
+    /// the entry's file, so a sort, a filter, a key or a bar's move between the presses begins no
+    /// other map, the map pressed selected first) begins (as Begin, E27 M3 T6); else it is timed
+    /// and selected.
     fn row_click(&mut self, row: u16) -> Did {
         let index = self.top + usize::from(row - ROW);
-        if index >= self.listed.len() {
+        let Some(file) = self
+            .listed
+            .get(index)
+            .and_then(|&e| self.entries.get(e))
+            .map(|e| e.file.clone())
+        else {
             return Did::CHANGED;
-        }
-        let double = self.last_row.is_some_and(|(at, last)| {
-            let soon = self.now.saturating_sub(at) < DOUBLE_MS;
-            soon && (self.bugs == Bugs::Original || last == Some(index))
+        };
+        let double = self.last_row.as_ref().is_some_and(|(at, last)| {
+            let soon = self.now.saturating_sub(*at) < DOUBLE_MS;
+            soon && (self.bugs == Bugs::Original || last.as_ref() == Some(&file))
         });
         if double {
+            // The client's begins the map pressed twice, selected first (a key between the
+            // presses moved the selection off it).
+            if self.bugs == Bugs::Fixed && self.selected != Some(index) {
+                self.selected = Some(index);
+                self.select();
+                self.whole();
+            }
             return Did::CHANGED.with(self.begin());
         }
-        self.last_row = Some((self.now, Some(index)));
+        self.last_row = Some((self.now, Some(file)));
         let same = self.selected == Some(index);
         self.selected = Some(index);
         self.select();
@@ -1530,6 +1681,9 @@ impl Scenario {
     /// entry shown), the flags set only with `flags` (E27 M3 T5b, CLT-Q147: the original's list
     /// showing gives the game nothing, its name the list's selection's).
     fn show_with(&mut self, header: Option<Entry>, flags: bool) {
+        // The client's: the options' rows made again over another map before the flags read
+        // their local colour (CLT-Q152 (b)).
+        self.sync_options();
         let chosen = self.chosen || self.bugs == Bugs::Fixed;
         for (k, &id) in DIFFICULTIES.iter().enumerate() {
             let state = self.shown.state(id);
@@ -1558,7 +1712,7 @@ impl Scenario {
         let name = if entry.name.is_empty() {
             t.unnamed.clone()
         } else {
-            entry.name.clone()
+            String::from(kept_name(&entry.name, self.bugs))
         };
         shown.texts.insert(NAME, name);
         shown.texts.insert(DESCRIPTION, self.description.text());
@@ -1633,17 +1787,21 @@ impl Scenario {
     /// A select (`scenario_select` 0x585500, whatever the change: `scenario_to_game` 0x583580):
     /// the map kept for the next opening (`scenario_last_map` 0x683238), the panel shown, the
     /// description set anew from its first line (E27 M3 T2c, `scrollable_text_set` 0x5BA6E0;
-    /// empty over an empty list, the kept map as it was). A difficulty's press and the list's
-    /// showing select nothing.
+    /// empty over an empty list, the kept map as it was; in the client's profile a select keeping
+    /// the map, by its file, keeps the description as it shows, its scroll too: E27 M3 T7,
+    /// CLT-Q148 (b)). A difficulty's press and the list's showing select nothing.
     fn select(&mut self) {
         if let Some(file) = self.entry().map(|e| e.file.clone()) {
             self.kept = file;
         }
         // A changed selection makes the advanced options' rows again at their next showing
-        // (+0x1854; E27 M3 T3a).
+        // (+0x1854, 0x585574; E27 M3 T3a): the original's by the selection's index; the client's
+        // by the map they read, at the show ([`Scenario::sync_options`], E27 M3 T7: CLT-Q152 (b)).
         if self.selected != self.last_select {
             self.last_select = self.selected;
-            if let Some(advanced) = &mut self.advanced {
+            if self.bugs == Bugs::Original
+                && let Some(advanced) = &mut self.advanced
+            {
                 advanced.selection_changed();
             }
         }
@@ -1652,7 +1810,11 @@ impl Scenario {
         if self.entry().is_none() && !self.random.chosen() {
             self.describe("");
         }
-        self.give_to_game();
+        let kept = self.bugs == Bugs::Fixed
+            && self.described.as_deref() == self.shown_entry().map(|e| e.file.as_str());
+        if !kept {
+            self.give_to_game();
+        }
         self.show();
     }
 
@@ -1664,15 +1826,21 @@ impl Scenario {
         if self.listed.is_empty() {
             return;
         }
-        let text = self
+        let (file, text) = self
             .shown_entry()
-            .map(|e| e.description.clone())
+            .map(|e| {
+                let text = kept_description(&e.description, self.bugs);
+                (Some(e.file.clone()), String::from(text))
+            })
             .unwrap_or_default();
         self.describe(&text);
+        self.described = file;
     }
 
-    /// The description set to `text` from its first line, its label showing it.
+    /// The description set to `text` from its first line, its label showing it (no map's: see
+    /// [`Scenario::give_to_game`]).
     fn describe(&mut self, text: &str) {
+        self.described = None;
         self.description.set(text);
         self.shown
             .texts
@@ -1734,6 +1902,7 @@ impl Scenario {
         let message = if self.random.chosen() {
             self.texts.random_stub.clone()
         } else if self.entry().is_some() {
+            self.sync_options();
             let map = self.players();
             match self.advanced.as_ref().and_then(|a| a.refusal(&map)) {
                 Some(Refusal::Unplaced) => self.texts.unplaced.clone(),
@@ -1761,10 +1930,13 @@ impl Scenario {
 
     /// What Begin hands the game's setup (E27 M3 T6; §3.9, §3.17): the map selected, the
     /// difficulty, each colour's record and its human's name, the turn's duration; none without a
-    /// map, or with a random map chosen (its stub).
+    /// map, or with a random map chosen (its stub). In the client's profile the records made
+    /// again over a map the rows were not made over (E27 M3 T7, CLT-Q152 (b)) and the name's
+    /// open edit's text taken first ([`Advanced::begun`]).
     #[must_use]
     pub fn begun(&self) -> Option<Begun> {
         let entry = self.entry().filter(|_| !self.random.chosen())?;
+        let moved = self.options_moved();
         let map = self.players();
         let (records, names) = self.advanced.as_ref().map_or_else(
             || {
@@ -1775,7 +1947,7 @@ impl Scenario {
                 });
                 (records, Default::default())
             },
-            |a| a.begun(&map),
+            |a| a.begun(&map, moved),
         );
         Some(Begun {
             file: entry.file.clone(),
@@ -1914,7 +2086,7 @@ impl Scenario {
             let name = if entry.name.is_empty() {
                 self.texts.unnamed.clone()
             } else {
-                entry.name.clone()
+                String::from(kept_name(&entry.name, self.bugs))
             };
             draws.push(text(&look.name, name));
             draws.extend(mark(
@@ -2021,12 +2193,11 @@ impl Scenario {
         if self.row.is_none() && self.description.press(inside) {
             return self.described();
         }
-        let rows = ROW..ROW.saturating_add(self.look.rows);
+        if let Some(row) = self.row_at(point) {
+            self.row = Some(row);
+            return Did::default();
+        }
         match self.item_at(point) {
-            Some(id) if rows.contains(&id) => {
-                self.row = Some(id);
-                return Did::default();
-            }
             // A name of the advanced options, a text item as a row (E27 M3 T3c1).
             Some(id) if (advanced::PLAYER..advanced::PLAYER + 8).contains(&id) => {
                 self.name = Some(id);
@@ -2063,8 +2234,15 @@ impl Scenario {
             self.description.release();
             return self.described();
         }
+        // A row or a name pressed before a box, a popup or a notice opened over the screen goes
+        // without its click, the release the box's (E27 M3 T7, the review's A1: the original's
+        // modal loops take it).
+        if self.over != Over::Nothing {
+            self.row = None;
+            self.name = None;
+        }
         if let Some(row) = self.row.take() {
-            let over = self.item_at(self.pointer) == Some(row);
+            let over = self.row_at(self.pointer) == Some(row);
             if self.bugs == Bugs::Original || over {
                 return self.row_click(row);
             }
@@ -2274,6 +2452,9 @@ impl Scenario {
             (Over::Nothing, Some(Command::Dialog(id))) if self.has(id) => {
                 Did::held(self.input.key(&mut self.shown, id, by))
             }
+            // A DEF button's own loop (0x456341 to 0x45641C) takes every message and acts on its
+            // moves and its release alone: the list's keys dropped (E27 M3 T7, the review's A4).
+            (Over::Nothing, Some(Command::List(_))) if self.input.holds_button() => Did::default(),
             (Over::Nothing, Some(Command::List(scroll))) => {
                 let list = !matches!(scroll, Scroll::Left | Scroll::Right);
                 // The description's bar steps at the key's release (E27 M3 T2c); in the client's
@@ -2404,6 +2585,32 @@ impl Scenario {
             .map(h3_ui::ui::Item::id)
     }
 
+    /// The list's row at `point` (its text item, `dialog_item_at` 0x5FF3E0: from x 57, the
+    /// original's profile's); in the client's, the list showing, from the players column's left
+    /// too (x 26: E27 M3 T7, CLT-Q150 (b)) on a row's height.
+    fn row_at(&self, point: [i32; 2]) -> Option<u16> {
+        let rows = ROW..ROW.saturating_add(self.look.rows);
+        let id = self.item_at(point);
+        if id.is_some_and(|id| rows.contains(&id)) {
+            return id;
+        }
+        if self.bugs == Bugs::Original || !self.showing {
+            return None;
+        }
+        let [x, y] = self.inside(point);
+        let left = self.look.players.at[0];
+        self.dialog
+            .items
+            .iter()
+            .filter(|item| rows.contains(&item.id()))
+            .find(|item| {
+                item.area().is_some_and(|([l, top], [_, h])| {
+                    (left..l).contains(&x) && (top..top.saturating_add(h)).contains(&y)
+                })
+            })
+            .map(h3_ui::ui::Item::id)
+    }
+
     /// The help popup or the teams' dialog closed (0x58AE80, the dialog's redraw, then
     /// `scenario_dialog_redraw`), the screen redrawn whole (§3.8).
     fn close_help(&mut self) -> Did {
@@ -2428,9 +2635,10 @@ impl Scenario {
 
     /// A hold ended (`changed`: a button went up) with the click `clicked`, if any: its command
     /// (`scenario_dialog_click` 0x5865B0): Back ends the screen (0x7801), Show Available
-    /// Scenarios toggles the list, a filter and a column act on it, a difficulty is chosen, Begin
-    /// shows its message over an empty list; the others' commands are later tasks' (the module's
-    /// notes).
+    /// Scenarios (or Show Random Maps) toggles the list, Show Advanced Options the options, Random
+    /// Map the random map's tab, the tab's and the options' items act on them, a filter and a
+    /// column on the list, a difficulty is chosen, Begin begins or shows its message
+    /// ([`Scenario::begin`]).
     fn clicked(&mut self, changed: bool, clicked: Option<u16>) -> Did {
         let mut did = Did {
             changed,

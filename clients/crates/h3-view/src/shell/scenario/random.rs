@@ -28,10 +28,12 @@
 //!   (`scenario_to_game` 0x583580 and `scenario_entry_name` 0x584010 read it before the list's
 //!   selection).
 //!
-//! *Not built yet* (T5b): the items' right press and hints, Show Random Maps (335: the random
-//! maps' list, kind 1), Begin with a random map chosen (CLT-Q92: a stub's message); the
-//! generation itself is not built (decision 13). *Provisional* (the agent's): what the record
-//! leaves of a header unread (its main towns and heroes: no hero, a random town; T6 begins none).
+//! Built at T5b: the items' right press and hints, Show Random Maps (335: the random maps' list,
+//! kind 1, the client's empty: CLT-Q92), Begin with a random map chosen (CLT-Q92: the client's
+//! stub's notice). *Not built yet:* the generation itself (decision 13). *Provisional* (the
+//! agent's): what the record leaves of a header unread: each colour's main town generating its
+//! hero (the player's +0xB set, design §30.2; *inferred* a main town: E27 M3 T7, the review's
+//! C2), a random town, no hero offered and no main hero (T6 begins none).
 
 use alloc::string::String;
 
@@ -340,7 +342,8 @@ impl RandomMap {
     }
 
     /// Item `id` pressed (`scenario_dialog_click` 0x586DCC to 0x586F7A): its choice set and what
-    /// the press did; none for an item that is not one of the choices (Show Random Maps is T5b's).
+    /// the press did; none for an item that is not one of the choices (Show Random Maps is the
+    /// screen's, T5b: its list).
     pub(super) fn click(&mut self, id: u16) -> Option<Pressed> {
         let c = &mut self.choices;
         let offset = |first: u16| u8::try_from(id - first).unwrap_or(0);
@@ -429,11 +432,15 @@ impl RandomMap {
         let (humans, total) = (c.humans(), c.total());
         let seats = core::array::from_fn(|k| {
             let k = u8::try_from(k).unwrap_or(u8::MAX);
+            // The generate flag set (+0xB, design §30.2): the row shows the hero Random, its
+            // arrows once a town is chosen (§3.14; E27 M3 T7, the review's C2). No hero offered
+            // and no main hero, *provisional* (the module's notes).
             Seat {
                 human: k < humans,
                 computer: k < total,
                 factions: 0x1FF,
                 random_town: true,
+                generates: true,
                 ..Seat::default()
             }
         });

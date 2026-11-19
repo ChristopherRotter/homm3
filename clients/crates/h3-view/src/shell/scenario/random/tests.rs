@@ -435,6 +435,30 @@ fn the_advanced_options_hide_the_tab_and_show_the_random_map_s_players() {
 }
 
 #[test]
+fn a_random_map_s_row_shows_the_hero_random_and_its_arrows_once_a_town_is_chosen() {
+    // E27 M3 T7, the review's C2: the record's generate flag set (+0xB, design §30.2), so the
+    // hero is Random (`hpsrand1.pcx`, not None's `hpsrand6.pcx`), its arrows shown with a town
+    // (§3.14); no hero offered (*provisional*): the arrows keep it Random.
+    let mut s = with_options_in(vec![map("Arrogance.h3m", "Arrogance")], Bugs::Fixed);
+    click(&mut s, [514, 115]);
+    click(&mut s, [514, 519]);
+    assert!(s.players().seats.iter().all(|seat| seat.generates));
+    let hero = |s: &Scenario| {
+        s.draws("P").into_iter().find_map(|d| match d {
+            Draw::Picture { picture, x, y, .. } if [x, y] == [252, 130] => Some(picture),
+            _ => None,
+        })
+    };
+    assert_eq!(hero(&s).as_deref(), Some("hpsrand1.pcx"));
+    assert!(s.shown.state(231).hidden);
+    click(&mut s, [230, 145]);
+    assert!(!s.shown.state(231).hidden && !s.shown.state(239).hidden);
+    click(&mut s, [306, 145]);
+    assert_eq!(hero(&s).as_deref(), Some("hpsrand1.pcx"));
+    assert_eq!(s.records().unwrap()[0].hero, None);
+}
+
+#[test]
 fn a_screen_without_maps_shows_the_random_map_s_record_in_the_client_s_profile() {
     // The original's panel draws nothing over an empty list (`scenario_info_draw` 0x584128, E27
     // M3 T5b), a random map's record neither; its description shows.

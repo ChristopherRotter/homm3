@@ -6,8 +6,10 @@
 //! E10's; the turn's duration, the hot seat's clock) is kept beside it ([`Game`]) for E24 M5,
 //! which builds and hosts the game (the map client lane's inbox).
 //!
-//! - **Who is human** (§3.9; ADV-Q27's default the import's): a colour a human record holds; the
-//!   others the computer's (E13's turns: decision 6).
+//! - **Who is human** (§3.9; ADV-Q27's default the import's): a colour a human record holds and
+//!   the import lets a human play; the others the computer's (E13's turns: decision 6). A human
+//!   record on a colour the import makes the computer's alone is refused (E27 M3 T7: the screen
+//!   seats a human only where the map lets one play, so only a stale record reaches it).
 //! - **The town** (TWN-SET-001): a record's town `FactionChoice::Fixed`; its Random the import's
 //!   choice (`Random`, or `Fixed` where the map allows one faction: the original's offer, whose
 //!   Random is that one's), drawn by the engine when the game is built (CLT-Q95, decision 13).
@@ -46,16 +48,11 @@ pub struct Game {
     pub duration: u8,
 }
 
-/// The path of the map file `file`: a map of the harness's own given by its path in `maps` (a
-/// replay's `--maps`, E27 M3 T2c) by its file's name, else the installation copy's `Maps`'.
+/// The path of the map file `file`: the installation copy's `Maps`' (E27 M3 T7: a replay builds
+/// no setup, so no map of the harness's own reaches the begin).
 #[must_use]
-pub fn map_path(install: &Path, maps: Option<&[String]>, file: &str) -> PathBuf {
-    maps.unwrap_or_default()
-        .iter()
-        .filter(|n| n.contains('/'))
-        .map(PathBuf::from)
-        .find(|p| p.file_name().and_then(|n| n.to_str()) == Some(file))
-        .unwrap_or_else(|| install.join(crate::maps::MAPS).join(file))
+pub fn map_path(install: &Path, file: &str) -> PathBuf {
+    install.join(crate::maps::MAPS).join(file)
 }
 
 /// The map at `path`, read whole.
@@ -70,13 +67,22 @@ pub fn read(path: &Path) -> Result<RawMap, String> {
 /// The setup of `map` under `rules` with the choices `begun` (not validated: [`validated`]).
 ///
 /// # Errors
-/// The map does not import.
+/// The map does not import, or a human record holds a colour the import gives the computer
+/// alone (E27 M3 T7: the import's `human` the only may-be-human mark, which the engine cannot
+/// check again).
 pub fn setup(map: &RawMap, begun: &Begun, rules: &GameRuleset) -> Result<GameSetup, String> {
     let mut setup = h3_map::import(map, rules).map_err(|e| format!("the import: {e}"))?;
     setup.difficulty = begun.difficulty;
     for player in &mut setup.players {
         let record = begun.records[usize::from(player.colour & 7)];
-        player.human = record.colour.is_some();
+        if record.colour.is_some() && !player.human {
+            return Err(format!(
+                "a human holds colour {}, which the map gives the computer alone",
+                player.colour
+            ));
+        }
+        // The import's human flag cleared where no human record holds the colour.
+        player.human &= record.colour.is_some();
         // rule: TWN-SET-001
         if let Some(faction) = record
             .town
@@ -139,25 +145,51 @@ mod tests {
     };
 
     #[test]
-    fn a_map_of_the_harness_s_own_is_found_by_its_path() {
-        let install = Path::new("/install");
-        let maps = [
-            String::from("Arrogance.h3m"),
-            String::from("/run/Maps/Long.h3m"),
-        ];
+    fn a_map_is_found_in_the_installation_s_maps() {
         assert_eq!(
-            map_path(install, Some(&maps), "Long.h3m"),
-            PathBuf::from("/run/Maps/Long.h3m")
-        );
-        assert_eq!(
-            map_path(install, Some(&maps), "Arrogance.h3m"),
-            PathBuf::from("/install/Maps/Arrogance.h3m")
-        );
-        assert_eq!(
-            map_path(install, None, "Jihad.h3m"),
+            map_path(Path::new("/install"), "Jihad.h3m"),
             PathBuf::from("/install/Maps/Jihad.h3m")
         );
         assert!(read(Path::new("/nonexistent-h3-map.h3m")).is_err());
+    }
+
+    /// A committed map of the repository's (`fixtures/maps`), read whole.
+    fn fixture(file: &str) -> RawMap {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../fixtures/maps")
+            .join(file);
+        read(&path).unwrap()
+    }
+
+    /// E27 M3 T7 (the review's C8): a colour no human record holds is the computer's, the
+    /// import's human flag cleared; a human record on a colour the import gives the computer
+    /// alone is refused, not made human.
+    #[test]
+    fn a_human_record_takes_only_a_colour_a_human_may_play() {
+        let rules = crate::maps::rules().unwrap();
+        let mut map = fixture("e08-duel-36.h3m");
+        let imported = h3_map::import(&map, &rules).unwrap();
+        let first = imported.players.iter().find(|p| p.human).unwrap().colour;
+        let mut records = [NONE; 8];
+        records[usize::from(first)].colour = Some(first);
+        let begun = Begun {
+            file: String::from("e08-duel-36.h3m"),
+            difficulty: 2,
+            records,
+            names: Default::default(),
+            duration: 10,
+        };
+        let made = setup(&map, &begun, &rules).unwrap();
+        assert_eq!(made.difficulty, 2);
+        for p in &made.players {
+            assert_eq!(p.human, p.colour == first, "colour {}", p.colour);
+        }
+        // The same colour made the computer's alone in the map: the record refused.
+        let player = &mut map.players[usize::from(first)];
+        player.human = false;
+        player.computer = true;
+        let refused = setup(&map, &begun, &rules).unwrap_err();
+        assert!(refused.contains("computer alone"), "{refused}");
     }
 
     /// `adv-begin`'s choices on Arrogance (red Castle, its first hero, gold; Normal) and
@@ -169,7 +201,7 @@ mod tests {
             return;
         };
         let rules = crate::maps::rules().unwrap();
-        let map = read(&map_path(&install, None, "Arrogance.h3m")).unwrap();
+        let map = read(&map_path(&install, "Arrogance.h3m")).unwrap();
         let mut records = [NONE; 8];
         records[0] = Record {
             colour: Some(0),
@@ -213,7 +245,7 @@ mod tests {
         let made = super::setup(&map, &wrong, &rules).unwrap();
         assert!(validated(&made, &rules).is_err());
         // The hot seat: red and green A's and B's (`adv-hotseat-begin`'s flags), Random towns.
-        let map = read(&map_path(&install, None, "A Warm and Familiar Place.h3m")).unwrap();
+        let map = read(&map_path(&install, "A Warm and Familiar Place.h3m")).unwrap();
         let mut records = [NONE; 8];
         records[0].colour = Some(0);
         records[3].colour = Some(3);
