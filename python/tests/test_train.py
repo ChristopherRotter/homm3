@@ -1532,7 +1532,8 @@ def test_a_preview_run_gates_plays_its_ladder_and_resumes(tmp_path) -> None:
 
 def test_the_turn_order_reaches_the_trunk_only_with_order() -> None:
     # The turn-order probe (E06-log): a network with `[network] order` reads observation v22's
-    # turn order; one without, as every network saved before v22, only v21's prefix.
+    # turn order (v23's prefix: not the reach block, E25 T38a); one without, as every network
+    # saved before v22, only v21's prefix.
     batch = BattleBatch(8, threads=1, seed=3, max_steps=300)
     batch.add_scenario(scenario("full"))
     batch.add_encounters()
@@ -1540,7 +1541,7 @@ def test_the_turn_order_reaches_the_trunk_only_with_order() -> None:
     obs = torch.from_numpy(batch.obs.copy())
     # Each row's round has a first stack, its side's first; past the tactics phase (round 0,
     # whose order is the first round's) it is the active stack.
-    order = obs[:, L.ORDER :].view(len(obs), L.STACK_CAPACITY, L.ORDER_FEATURES)
+    order = obs[:, L.ORDER : L.REACH].view(len(obs), L.STACK_CAPACITY, L.ORDER_FEATURES)
     active = obs[:, L.STACKS : L.ORDER].view(len(obs), L.STACK_CAPACITY, L.STACK_FEATURES)
     first = order[..., L.ORDER_ROUND] == 1
     assert obs.shape[1] == L.OBSERVATION_LEN and first.sum(1).eq(1).all()
@@ -1553,10 +1554,10 @@ def test_the_turn_order_reaches_the_trunk_only_with_order() -> None:
     plain = build({"hidden": 32, "embed": 8}, batch)  # a saved config from before v22
     batch.close()
     assert reads.reads_order and not plain.reads_order
-    assert reads.trunk[0].in_features == L.OBSERVATION_LEN
+    assert reads.trunk[0].in_features == L.REACH
     assert plain.trunk[0].in_features == L.ORDER
     moved = obs.clone()
-    moved[:, L.ORDER :] += 5.0
+    moved[:, L.ORDER : L.REACH] += 5.0
     with torch.no_grad():
         assert not torch.equal(reads.encode(obs)[0], reads.encode(moved)[0])
         assert torch.equal(plain.encode(obs)[0], plain.encode(moved)[0])

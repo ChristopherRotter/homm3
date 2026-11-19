@@ -13,8 +13,8 @@ of it for the attacker's stack and left of it for the defender's. Sides are numb
 0 the attacker, 1 the defender.
 
 `attack_table` tabulates the attack positions of every attacker shape against every target
-position and shape; `attack_hexes` reads, for each stack slot of an observation v22 row
-(`layout`), the 24 hexes the active stack would attack it from. Neither considers occupancy,
+position and shape; `attack_hexes` reads, for each stack slot of an observation row (its stack
+slots, `layout`), the 24 hexes the active stack would attack it from. Neither considers occupancy,
 reach or who may attack whom: the legal mask does.
 """
 
@@ -198,7 +198,7 @@ def attack_table(width: int = FIELD_WIDTH, height: int = FIELD_HEIGHT) -> np.nda
 
 def attack_hexes(obs, table, width: int = FIELD_WIDTH):
     """Each stack slot's 24 attack positions as the active stack would attack it, from rows of
-    observation v22 (`[rows, OBSERVATION_LEN]`) and `attack_table`'s table as a tensor on their
+    observation v23 (`[rows, OBSERVATION_LEN]`) and `attack_table`'s table as a tensor on their
     device (its field `width` wide): a LongTensor `[rows, 42, 24]` of hexes (`y * width + x`,
     -1 none), entry `[s, k]` the hex action encoding v13's entry `ATTACK_BASE + 24 * s + k`
     attacks from. -1 for every `k` of a slot without a stack or off the field (a town's turret),

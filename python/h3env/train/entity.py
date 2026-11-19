@@ -242,7 +242,7 @@ class Pointed(Policy):
         rows = obs.shape[0]
         stacks = glob = planes = legal_from = None
         if self.reads_order:
-            order = x[:, L.ORDER : L.OBSERVATION_LEN].reshape(rows, L.STACK_CAPACITY, -1)
+            order = x[:, L.ORDER : L.REACH].reshape(rows, L.STACK_CAPACITY, -1)
             stacks = self.order_in(order)
         if self.reads_mask:
             inputs = self.mask_inputs(mask, x.dtype)

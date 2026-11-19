@@ -74,6 +74,7 @@ pub use magic::{
     second_targets,
 };
 pub use morale::{Bearer, Expiry, MODIFIER_CAPACITY, Modifiers, Stat};
+pub use movement::{SeenReach, reach_seen_by};
 pub use natural::{MAX_REMOVABLE_HEXES, MAX_REMOVABLE_OBSTACLES, RemovableObstacle};
 pub use observe::{Observation, Viewer, observe, observe_as, project, project_as};
 pub use obstacles::{OBSTACLE_CAPACITY, SpellObstacle};

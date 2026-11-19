@@ -147,9 +147,9 @@ def test_an_empty_slot_is_not_seen_and_the_slots_order_does_not_matter() -> None
 
 def test_the_entity_network_refuses_other_encodings(monkeypatch) -> None:
     batch = BattleBatch(1)
-    other = {"observation_encoding": 23, "action_encoding": 13}
+    other = {"observation_encoding": 24, "action_encoding": 13}
     monkeypatch.setattr(_ffi, "versions", lambda: other)
-    with pytest.raises(ValueError, match="observation encoding v22"):
+    with pytest.raises(ValueError, match="observation encoding v23"):
         Entity.for_batch(batch)
     batch.close()
     with pytest.raises(ValueError, match="no multiple"):

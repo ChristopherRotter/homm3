@@ -69,7 +69,8 @@ fn benches(c: &mut Criterion) {
     });
 
     // The agent's view of a step (E04b T9b): the structured observation of the side to act, then
-    // the flat encoding an RL agent reads (encoding v13, OBSERVATION_LEN floats).
+    // the flat encoding an RL agent reads (OBSERVATION_LEN floats; since v23 with the reach block,
+    // as `BattleEnv::encode_observation` computes it).
     c.bench_function("observe (side to act, mid-game)", |b| {
         let mut i = 0;
         b.iter(|| {
@@ -86,8 +87,10 @@ fn benches(c: &mut Criterion) {
         b.iter(|| {
             let s = &states[i % states.len()];
             i += 1;
-            let obs = observe(black_box(s), &ruleset, s.side_to_act().unwrap());
-            observation::encode(&obs, width, &mut out).unwrap();
+            let side = s.side_to_act().unwrap();
+            let obs = observe(black_box(s), &ruleset, side);
+            let reach = observation::ReachBlock::of(s, &ruleset, side);
+            observation::encode(&obs, width, &reach, &mut out).unwrap();
             black_box(out[0])
         })
     });
@@ -136,8 +139,10 @@ fn benches(c: &mut Criterion) {
         b.iter(|| {
             let s = &sieges[i % sieges.len()];
             i += 1;
-            let obs = observe(black_box(s), &siege_ruleset, s.side_to_act().unwrap());
-            observation::encode(&obs, width, &mut out).unwrap();
+            let side = s.side_to_act().unwrap();
+            let obs = observe(black_box(s), &siege_ruleset, side);
+            let reach = observation::ReachBlock::of(s, &siege_ruleset, side);
+            observation::encode(&obs, width, &reach, &mut out).unwrap();
             black_box(out[0])
         })
     });

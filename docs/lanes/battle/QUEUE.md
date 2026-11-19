@@ -28,6 +28,15 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
   "ore"], ["mercury", "sulfur", "crystal", "gems"]]` in the base pack's `[town_params]` (the
   harvest moved that one line); its tests in `towns/tests.rs`; `packs/README.md`'s towns row a
   clause.
+- 2026-11-19 (the AI lane, E25 T38a, `cross-lane` with the user's consent at T37, AI-Q19; **your
+  paths changed, for your review; no battle version moves**): `h3_battle::reach_seen_by` and
+  `SeenReach` (`movement.rs`): a stack's reach as a viewer may know it, the rules' movement within
+  its speed now (`reach`'s second instance), its walk stopping only at the pits both its controller
+  and the viewer see (`obstacles::pits_seen_by_both`) and a town's moat; tests
+  `src/tests/reach.rs`. Observation v23's reach block reads it (`h3_sim::observation::ReachBlock`):
+  a change to movement, the stops, the gate or `computer::shoots` moves the AI lane's encoding
+  (its tests compare the block with the legal attacks; two worlds of a battle must encode alike).
+  The replays, the state hash and the battle workloads are unchanged.
 
 - 2026-11-19 (the adventure lane, E08 T128, `adventure/e08-t128`, `cross-lane` with the user's
   consent, E08 decisions 374, 375; **your paths changed, for your review; no battle rule or

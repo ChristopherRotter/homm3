@@ -1,4 +1,4 @@
-//! Flat observation encoding (version 22) of a per-viewer [`Observation`].
+//! Flat observation encoding (version 23) of a per-viewer [`Observation`] and its reach block.
 //!
 //! Layout, in this order: [`GLOBALS`] global features; the public part of the two heroes,
 //! [`HERO_PUBLIC_FEATURES`] each (the viewer's, then the opponent's); the private part of the
@@ -6,7 +6,9 @@
 //! [`MAX_FIELD_HEXES`] features (one per hex index, as the action encoding's hex targets; plane
 //! after plane); then [`STACK_FEATURES`] features for each of the [`STACK_CAPACITY`] stack slots
 //! (zeros for unused slots); then the turn order, [`ORDER_FEATURES`] features for each stack slot
-//! (v22, after the rest so that v21's layout is its prefix). Values are raw game quantities as `f32` (normalisation is the
+//! (v22, after the rest so that v21's layout is its prefix); then the reach block (v23, at
+//! [`REACH`], v22's layout its prefix): two planes of [`MAX_FIELD_HEXES`] features, then
+//! [`REACH_FEATURES`] features for each stack slot. Values are raw game quantities as `f32` (normalisation is the
 //! trainer's business). Stacks, sides and obstacles are described relative to the viewer ("own"
 //! flag, "viewer"/"opponent"), so one policy can play both sides; a spectator's observation
 //! (SRV-Q4) is seen from the attacker's seat and has no private part. The encoding is complete
@@ -100,6 +102,14 @@
 //! the rest of the round's turns (1: the active stack; 0: none), its place among its side's turns
 //! in the rest of the round (1: its side's next), its place in the next round's turns (0:
 //! none)]`; in the tactics phase the round is the first.
+//! The reach block ([`ReachBlock`], `reach.rs`: computed from the battle's state for the viewer
+//! with what the viewer may know, not read off the [`Observation`]; zeros where `encode` is given
+//! [`ReachBlock::EMPTY`]): per hex, for the viewer's side and then the opponent's, the number of
+//! the side's strikers (living stacks with turns, no war machine or turret) that can strike in
+//! melee a stack standing on it on their next turn; per stack slot `[can shoot now (BAT-RNG-001),
+//! the stacks it may attack that it can strike in melee on its next turn, the strikers that may
+//! attack it and can strike it on theirs]` (BAT-MOV-001, BAT-MOV-002, BAT-ATK-001, BAT-MAG-031,
+//! BAT-MAG-032; the reach as `h3_battle::reach_seen_by` gives it).
 //!
 //! v3 (E03 T9): the two hero globals and the per-stack features from `morale` on. v4 (E04a
 //! T11b): the tactics, retreat and surrender globals, the hero blocks (instead of the two hero
@@ -124,7 +134,12 @@
 //! level as its last scalar (ADR-0013 point 4). v21 (E04c T10b): the layout unchanged; at a town
 //! the opponent-may-retreat global of the attacker's and a spectator's observation is 0, as the
 //! defender's Escape Tunnel shows to the defender only (BAT-Q50 (4)). v22 (E06, the turn-order
-//! probe): the turn order block after the stack slots, v21's layout unchanged before it.
+//! probe): the turn order block after the stack slots, v21's layout unchanged before it. v23 (E25
+//! T38a, AI-Q19): the reach block after the turn order, v22's layout unchanged before it.
+
+mod reach;
+
+pub use reach::{Neighbours, REACH_FEATURES, ReachBlock};
 
 use h3_battle::{
     DamageRoll, HeroView, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Observation, OwnHeroView,
@@ -136,7 +151,7 @@ use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 22;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 23;
 
 /// Global features.
 pub const GLOBALS: usize = 30 + MAX_WALL_TARGETS;
@@ -179,8 +194,10 @@ pub const STACKS: usize = FIELD + HEX_PLANES * MAX_FIELD_HEXES;
 pub const ORDER_FEATURES: usize = 3;
 /// Offset of the turn order, after the stack slots: the length of v21's layout.
 pub const ORDER: usize = STACKS + STACK_FEATURES * STACK_CAPACITY;
+/// Offset of the reach block, after the turn order: the length of v22's layout.
+pub const REACH: usize = ORDER + ORDER_FEATURES * STACK_CAPACITY;
 /// Length of the encoded observation.
-pub const OBSERVATION_LEN: usize = ORDER + ORDER_FEATURES * STACK_CAPACITY;
+pub const OBSERVATION_LEN: usize = REACH + 2 * MAX_FIELD_HEXES + REACH_FEATURES * STACK_CAPACITY;
 
 /// The statuses of a stack's effects, in their encoded order.
 const STATUSES: [Status; 8] = [
@@ -355,9 +372,15 @@ fn encode_obstacle(
     }
 }
 
-/// Encodes `obs` into `out`. Returns `Err(required_len)` if `out` is too short. `field_width`
-/// (from the ruleset) turns hex indices into coordinates.
-pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(), usize> {
+/// Encodes `obs` with its reach block `reach` (the battle's for the same viewer, or
+/// [`ReachBlock::EMPTY`]) into `out`. Returns `Err(required_len)` if `out` is too short.
+/// `field_width` (from the ruleset) turns hex indices into coordinates.
+pub fn encode(
+    obs: &Observation,
+    field_width: u8,
+    reach: &ReachBlock,
+    out: &mut [f32],
+) -> Result<(), usize> {
     let out = out.get_mut(..OBSERVATION_LEN).ok_or(OBSERVATION_LEN)?;
     out.fill(0.0);
     // The active stack's controller acts (a hypnotized stack's is the other side, BAT-MAG-026).
@@ -519,7 +542,8 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
             ]);
         }
     }
-    encode_order(obs, &mut out[ORDER..]);
+    encode_order(obs, &mut out[ORDER..REACH]);
+    reach.write(&mut out[REACH..]);
     Ok(())
 }
 
@@ -591,23 +615,28 @@ mod tests {
             ("ORDER_ROUND", 0),
             ("ORDER_SIDE", 1),
             ("ORDER_NEXT", 2),
+            ("REACH_FEATURES", REACH_FEATURES),
+            ("REACH_SHOOTS", 0),
+            ("REACH_STRIKES", 1),
+            ("REACH_STRUCK", 2),
         ] {
             assert_eq!(python(name), value, "{name}");
         }
         // The offsets follow from the sizes in the same order there; v21's layout is v22's
-        // prefix, the turn order last.
+        // prefix, the turn order next, then the reach block (v23; v22's layout its prefix).
         assert_eq!(
             (HEROES, OWN_HERO, FIELD),
             (GLOBALS, GLOBALS + 28, GLOBALS + 28 + OWN_HERO_FEATURES)
         );
         assert_eq!(ORDER, 8_882);
-        assert_eq!(OBSERVATION_LEN, ORDER + ORDER_FEATURES * STACK_CAPACITY);
+        assert_eq!(REACH, ORDER + ORDER_FEATURES * STACK_CAPACITY);
+        assert_eq!((REACH, OBSERVATION_LEN), (9_008, 9_644));
         let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_DUEL).unwrap();
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let obs = observe(&s, &r, BattleSide::Defender);
         let width = r.battle().field.width;
         let mut out = vec![0.0; OBSERVATION_LEN];
-        encode(&obs, width, &mut out).unwrap();
+        encode(&obs, width, &ReachBlock::EMPTY, &mut out).unwrap();
         let column = |name| python(name);
         for (i, st) in obs.stacks.iter().enumerate() {
             let f = stack(&out, i);
@@ -632,12 +661,18 @@ mod tests {
             h3_battle::apply(&mut s, &r, side, command, &mut h3_battle::NoopSink).unwrap();
         }
         let obs = observe(&s, &r, BattleSide::Defender);
-        encode(&obs, width, &mut out).unwrap();
+        encode(&obs, width, &ReachBlock::EMPTY, &mut out).unwrap();
         assert_eq!(out[column("ROUND")], f32::from(obs.round));
         // E25 T7a: the hex networks' side of a stack (`hexnet`).
         assert_eq!(out[column("VIEWER_ATTACKER")], 0.0);
         let mut attacker = vec![0.0; OBSERVATION_LEN];
-        encode(&observe(&s, &r, BattleSide::Attacker), width, &mut attacker).unwrap();
+        encode(
+            &observe(&s, &r, BattleSide::Attacker),
+            width,
+            &ReachBlock::EMPTY,
+            &mut attacker,
+        )
+        .unwrap();
         assert_eq!(attacker[column("VIEWER_ATTACKER")], 1.0);
         let mut flags = [0usize; 4];
         for (i, st) in obs.stacks.iter().enumerate() {
@@ -707,7 +742,7 @@ mod tests {
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let obs = observe(&s, &r, BattleSide::Defender);
         let mut out = vec![9.0; OBSERVATION_LEN + 3];
-        encode(&obs, r.battle().field.width, &mut out).unwrap();
+        encode(&obs, r.battle().field.width, &ReachBlock::EMPTY, &mut out).unwrap();
         // Round 1, the defender's view, the attacker to act; no tactics phase, no heroes, so no
         // retreat or surrender; no periodic cast yet on either side (BAT-MAG-053).
         // Not in the wait phase, no turn taken yet, the meadow, no summons, a side's view, no
@@ -794,10 +829,19 @@ mod tests {
                 .all(|v| *v == 0.0)
         );
         let mut short = vec![0.0; 3];
-        assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
+        assert_eq!(
+            encode(&obs, 17, &ReachBlock::EMPTY, &mut short),
+            Err(OBSERVATION_LEN)
+        );
         assert_eq!(
             OBSERVATION_LEN,
-            38 + 2 * 14 + (66 + 4 * 128) + 16 * 255 + (48 + 27 + 3 * 8) * 42 + 3 * 42
+            38 + 2 * 14
+                + (66 + 4 * 128)
+                + 16 * 255
+                + (48 + 27 + 3 * 8) * 42
+                + 3 * 42
+                + 2 * 255
+                + 3 * 42
         );
         assert_eq!(coords(20, 0), (0.0, 20.0));
         // A clone with three rounds left (BAT-MAG-038).
@@ -815,7 +859,7 @@ mod tests {
         obs.cast_candidates[1] = 5;
         // The round starts since each side's periodic cast, the viewer's first (BAT-MAG-053).
         obs.periodic_rounds = [2, 0];
-        encode(&obs, r.battle().field.width, &mut out).unwrap();
+        encode(&obs, r.battle().field.width, &ReachBlock::EMPTY, &mut out).unwrap();
         assert_eq!(stack(&out, 1)[31..36], [1.0, 1.0, 3.0, 2.0, 5.0]);
         assert_eq!(out[11..14], [5.0, 0.0, 2.0]);
     }
@@ -989,7 +1033,7 @@ mod tests {
             ),
         ] {
             let obs = observe(&s, &r, viewer);
-            encode(&obs, 17, &mut out).unwrap();
+            encode(&obs, 17, &ReachBlock::EMPTY, &mut out).unwrap();
             assert_eq!(out[..GLOBALS], globals);
             assert_eq!(hero(&out, 0), mine);
             assert_eq!(hero(&out, 1), other);
@@ -1055,14 +1099,14 @@ mod tests {
         hero_part.surrender_price = None;
         hero_part.ballista = None;
         obs.own_hero = Some(hero_part);
-        encode(&obs, 17, &mut out).unwrap();
+        encode(&obs, 17, &ReachBlock::EMPTY, &mut out).unwrap();
         assert_eq!(out[7..14], [1.0, 0.0, 0.0, 0.0, 0.0, 255.0, 255.0]);
         assert!(hero(&out, 1).iter().all(|v| *v == 0.0));
         assert_eq!(own(&out)[4..6], [0.0, 0.0]);
         assert_eq!(own(&out)[9], 0.0);
         // A spectator: the flag, and no private part (SRV-Q4).
         let spectator = h3_battle::observe_as(&s, &r, h3_battle::Viewer::Spectator);
-        encode(&spectator, 17, &mut out).unwrap();
+        encode(&spectator, 17, &ReachBlock::EMPTY, &mut out).unwrap();
         assert_eq!((out[1], out[19]), (1.0, 1.0));
         assert_eq!(hero(&out, 0), brea);
         assert!(own(&out).iter().all(|v| *v == 0.0));
@@ -1070,7 +1114,7 @@ mod tests {
         let mut field = spectator;
         field.battlefield = h3_content_battle::BattlefieldId::from_index(1);
         field.anti_magic = true;
-        encode(&field, 17, &mut out).unwrap();
+        encode(&field, 17, &ReachBlock::EMPTY, &mut out).unwrap();
         assert_eq!(out[20..22], [2.0, 1.0]);
     }
 
@@ -1082,7 +1126,7 @@ mod tests {
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let mut obs = observe(&s, &r, BattleSide::Attacker);
         let mut out = vec![0.0; OBSERVATION_LEN];
-        encode(&obs, 17, &mut out).unwrap();
+        encode(&obs, 17, &ReachBlock::EMPTY, &mut out).unwrap();
         let vale = f32::from(r.faction_by_key("synthetic:vale").unwrap().raw()) + 1.0;
         let globals = GLOBALS - MAX_WALL_TARGETS - 8;
         assert_eq!(out[globals..globals + 5], [vale, 2.0, 2.0, 0.0, 0.0]);
@@ -1092,9 +1136,9 @@ mod tests {
         let mut hard = obs.clone();
         hard.difficulty = 2;
         hard.human = [true, false];
-        encode(&hard, 17, &mut out).unwrap();
+        encode(&hard, 17, &ReachBlock::EMPTY, &mut out).unwrap();
         assert_eq!(out[globals + 5..globals + 8], [2.0, 1.0, 0.0]);
-        encode(&obs, 17, &mut out).unwrap();
+        encode(&obs, 17, &ReachBlock::EMPTY, &mut out).unwrap();
         // The wall-shot targets' hit points: a Citadel sets up the keep, not the towers
         // (BAT-SIE-010).
         assert_eq!(
@@ -1123,7 +1167,7 @@ mod tests {
         let mut town = obs.siege.unwrap();
         town.gate_open = true;
         obs.siege = Some(town);
-        encode(&obs, 17, &mut out).unwrap();
+        encode(&obs, 17, &ReachBlock::EMPTY, &mut out).unwrap();
         assert_eq!(out[globals + 3..globals + 5], [1.0, 0.0]);
         let moat = on(&out, SIEGE_PLANES + 1);
         assert_eq!(moat.len(), 20);
@@ -1135,7 +1179,13 @@ mod tests {
         let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_FULL).unwrap();
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let mut out = vec![0.0; OBSERVATION_LEN];
-        encode(&observe(&s, &r, BattleSide::Attacker), 17, &mut out).unwrap();
+        encode(
+            &observe(&s, &r, BattleSide::Attacker),
+            17,
+            &ReachBlock::EMPTY,
+            &mut out,
+        )
+        .unwrap();
         // Ids: attacker army 0..=6, its bolt thrower 7 and aid tent 8; defender army 9..=15,
         // its bolt thrower 16 and supply wagon 17.
         let kinds: Vec<[f32; 4]> = (0..18)
@@ -1160,7 +1210,7 @@ mod tests {
             .with(StackTraits::NO_DISTANCE_PENALTY, true)
             .with(StackTraits::SHOOTS_WHEN_ADJACENT, true);
         st.regeneration = 50;
-        encode(&obs, 17, &mut out).unwrap();
+        encode(&obs, 17, &ReachBlock::EMPTY, &mut out).unwrap();
         assert_eq!(stack(&out, 0)[19..24], [2.0, -1.0, 0.0, 1.0, 1.0]);
         assert_eq!(stack(&out, 0)[28..31], [1.0, 1.0, 50.0]);
     }
@@ -1199,7 +1249,7 @@ mod tests {
         st.spells.speed_percent = 50;
         let (attack, defense) = (f32::from(st.attack) - 2.0, f32::from(st.defense) - 40.0);
         let mut out = vec![0.0; OBSERVATION_LEN];
-        encode(&obs, 17, &mut out).unwrap();
+        encode(&obs, 17, &ReachBlock::EMPTY, &mut out).unwrap();
         let f = stack(&out, 0);
         assert_eq!([f[7], f[8], f[11]], [attack, defense, 1.0]);
         let e = STACK_VALUES;
@@ -1209,7 +1259,7 @@ mod tests {
         assert_eq!(f[SLOTS..SLOTS + 6], [hasten, 3.0, 0.0, corrode, -1.0, 2.0]);
         assert!(f[SLOTS + 6..].iter().all(|v| *v == 0.0));
         obs.stacks.as_mut_slice()[0].spells.damage = DamageRoll::Maximum(1);
-        encode(&obs, 17, &mut out).unwrap();
+        encode(&obs, 17, &ReachBlock::EMPTY, &mut out).unwrap();
         assert_eq!(stack(&out, 0)[e + 2..e + 5], [1.0, 0.0, 1.0]);
         assert!(stack(&out, 1)[SLOTS..].iter().all(|v| *v == 0.0));
     }
@@ -1258,7 +1308,7 @@ mod tests {
             obstacle(Fire, Defender, 74, 2, 30, true),
         ];
         let mut out = vec![0.0; OBSERVATION_LEN];
-        encode(&obs, 17, &mut out).unwrap();
+        encode(&obs, 17, &ReachBlock::EMPTY, &mut out).unwrap();
         let on = |p: usize| -> Vec<(usize, f32)> {
             (0..MAX_FIELD_HEXES)
                 .filter(|&h| plane(&out, p)[h] != 0.0)
@@ -1347,7 +1397,7 @@ mod tests {
         h.learned.insert(spell("synthetic:arc"));
         obs.own_hero = Some(h);
         let mut out = vec![0.0; OBSERVATION_LEN];
-        encode(&obs, 17, &mut out).unwrap();
+        encode(&obs, 17, &ReachBlock::EMPTY, &mut out).unwrap();
         let handle = |k: &str| f32::from(spell(k).raw()) + 1.0;
         assert_eq!(own(&out)[10..15], [500.0, 0.0, 0.0, 0.0, 700.0]);
         assert_eq!(
@@ -1414,7 +1464,7 @@ mod tests {
         st.spells.status = Status::default()
             .with(Status::HYPNOTIZED, true)
             .with(Status::PETRIFIED, true);
-        encode(&obs, 17, &mut out).unwrap();
+        encode(&obs, 17, &ReachBlock::EMPTY, &mut out).unwrap();
         let wisp = f32::from(r.creature_by_key("synthetic:wisp").unwrap().raw()) + 1.0;
         assert_eq!(out[14..19], [1.0, 2.0, 0.0, 0.0, wisp]);
         let f = stack(&out, 0);

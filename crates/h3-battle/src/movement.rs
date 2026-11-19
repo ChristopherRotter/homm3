@@ -9,7 +9,8 @@
 //! it enters a pit its controller sees (Quicksand, BAT-MAG-032) or a town's moat (BAT-SIE-004): it
 //! may stop there but not go on.
 
-use h3_content_battle::MAX_FIELD_HEXES;
+use h3_content_battle::{BattleRuleset, MAX_FIELD_HEXES};
+use h3_contracts::BattleSide;
 
 use crate::binds;
 use crate::geometry::{Field, Hex, HexSet};
@@ -97,6 +98,52 @@ pub(crate) fn reachable_within(
         let side = mover.controller();
         obstacles::seen_pits(state, side).union(siege::stops(state, side))
     })
+}
+
+/// A stack's reach as a viewer may know it ([`reach_seen_by`]): the positions it moves to this
+/// turn, the one it stands on among them, and those where its walk stops.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SeenReach {
+    /// The positions it reaches within its speed now, the one it stands on included (that one
+    /// alone for a bound stack or one without speed).
+    pub positions: HexSet,
+    /// The positions where its walk stops (a pit both its controller and the viewer see, a
+    /// town's moat): no attack follows a move there (BAT-MAG-032). None for a flyer, nor the
+    /// position it stands on.
+    pub stops: HexSet,
+}
+
+/// The reach of stack `id` as `viewer` may know it (E25 T38a, AI-Q19: the AI lane's observation,
+/// `h3_sim`): the positions the rules' movement reaches within its speed now (as its legal moves:
+/// its flight, shape, its side's gate and the Force Fields; none while it is bound), its walk
+/// stopping only at the pits both its controller and `viewer` see and at a town's moat. Its
+/// controller's own moves stop at every pit the controller sees: one `viewer` does not see (the
+/// other side's hidden Quicksand) is no stop here, so two battles that differ only in what
+/// `viewer` may not know (a world, [`BattleState::determinized`]) give the same reach. `id` must
+/// be a stack of `state`.
+// rule: BAT-MOV-001, BAT-MOV-002, BAT-MAG-031, BAT-MAG-032, BAT-MAG-045
+pub fn reach_seen_by(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    id: StackId,
+    viewer: BattleSide,
+) -> SeenReach {
+    let field = Field::new(ruleset.battle().field);
+    let mover = state.at(id);
+    let side = mover.controller();
+    let reach = reach(state, field, id, mover, range(state, id, mover), || {
+        obstacles::pits_seen_by_both(state, side, viewer).union(siege::stops(state, side))
+    });
+    let mut positions = HexSet::new();
+    for (i, &d) in reach.dist.iter().enumerate().take(field.hex_count()) {
+        if d != UNREACHABLE {
+            positions.insert(Hex(u8::try_from(i).unwrap_or(u8::MAX)));
+        }
+    }
+    SeenReach {
+        positions,
+        stops: reach.stops,
+    }
 }
 
 /// [`reachable_within`] for a walker that stops at the pits `seen` gives (asked only for a
