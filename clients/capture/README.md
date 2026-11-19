@@ -1582,9 +1582,13 @@ python3 h3shell.py drawn [--group menus] [--only menu-main] [--record]   # the v
   time, or the count and box of the pixels that differ when a `run`'s frames are in
   `clients/out/shell/<id>/run1/`) and with the viewer's own record, `shell/drawn.txt` (`same`;
   `CHANGED`, `new`, `GONE` fail; `--record` writes it). The viewer stops a recipe at a step it
-  cannot take, and says which and why: the harness's own (`poke`, `press`, `point`,
-  `until-button`, `games-time`, `freeze`), a screen name it does not know, a screen not built
-  yet, a press or a key on a screen built at rest (each names the task that builds it). Its
+  cannot take, and says which and why: the harness's own (`poke`, `games-time`, `freeze`), a
+  screen name it does not know, a screen not built yet, a press or a key on a screen built at
+  rest (each names the task that builds it). Since E27 M4 T1b `press`, `point` and
+  `until-button` find a button of an original's box the viewer shows (High Scores' Reset
+  question) where the probes `[button.ok]` and `[button.cancel]` find it (their 66 × 33 and 66 ×
+  32 from the button's frame, a pixel up and left of the button), and stop the recipe when it
+  does not show (`no-button`). Its
   frames stay in `clients/out/shell-drawn/<id>/` (`frames/`, `steps.txt`, `verdicts.txt`). A
   change to the shell's drawing runs `drawn` and records it; `run` only when the harness's side
   changes or a recipe is added.

@@ -8,8 +8,7 @@
       "scenario": "{Scenario Selection}\n\nThe scenario selection is not available yet.",
       "random-map": "{Random Map}\n\nMaking a random map is not available yet.",
       "play": "{Begin}\n\nThe game is set up, but playing it is not available yet.",
-      "play-refused": "{Begin}\n\nThe game cannot begin with these choices.",
-      "scores-reset": "{Reset}\n\nResetting the high scores is not available yet."
+      "play-refused": "{Begin}\n\nThe game cannot begin with these choices."
     }
   }
 }

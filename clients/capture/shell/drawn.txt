@@ -636,6 +636,15 @@ scores-tabs entered t9100 9f4ee4ac15c6fa8c
 scores-tabs opened t9200 52db78a38d3b7316
 scores-tabs exited t9300 dc62685f43b4f3fb
 scores-reset scenarios t100 52db78a38d3b7316
+scores-reset question t200 45c877a6505c1d51
+scores-reset ok-hover t300 9e75b6b8df372e3b
+scores-reset cancel-hover t400 3bd95084834439aa
+scores-reset cancelled t500 60bbc87497243514
+scores-reset reset t700 dce629271b7743c5
+scores-reset campaigns t800 43b806abbac59e17
+scores-reset question-campaigns t900 8983771692b5f7b3
+scores-reset reset-campaigns t1000 5bceace60424d9e5
+scores-reset menu t1100 b7dd66a1e899af04
 start-plain menu t0 e62581b7ce362971
 start-bink logo clip 68@0-5977 860a3323c1a880b2
 start-bink clips clip 2519@6000-180480 94fba25cd372b2ba

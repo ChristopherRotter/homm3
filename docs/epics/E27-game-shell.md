@@ -588,8 +588,8 @@ load mode), §3.12 to §3.14 (a load's rows).
 | Task | Scope | Status |
 |---|---|---|
 | T1a | High Scores (§2.8, §34; decision 70): the dialog, both tabs and their buttons and keys, the rows from `CampHigh.txt`'s defaults, the eleven creatures stepping (the adventure map's DEFs by `high_score_creatures`), M2's stub lifted, Reset a client's notice (CLT-STUB-14); exact against `scores-tabs` | done 2026-11-19 (`scores-tabs` 28 of 28 exact; CLT-Q157 (a)) |
-| T1b | High Scores' Reset (§2.8): its question (GENRLTXT 667) resetting both tables to the defaults, the client's own scores file (read at the start, written at Reset; never `HiScore.dat`), CLT-STUB-14 lifted; exact against `scores-reset` | next |
-| T2 | Credits (§2.9): `Credits.fnt`, `Credits.txt`'s two records wrapped to 328 px, the scroll of 2 px ten times a second (CLT-Q88), the closing text's moment read from the kept frames, a key (but F4) or a press ending it, M2's stub lifted; exact against `credits-scroll`, `credits-end` | after T1b |
+| T1b | High Scores' Reset (§2.8, §35): its question (GENRLTXT 667) resetting both tables to the defaults, the client's own scores file (read at the start, written at Reset; never `HiScore.dat`), CLT-STUB-14 lifted; exact against `scores-reset` | done 2026-11-19 (`scores-reset` 10 of 10 exact, `scores-tabs` 28 of 28; CLT-Q158 asked) |
+| T2 | Credits (§2.9): `Credits.fnt`, `Credits.txt`'s two records wrapped to 328 px, the scroll of 2 px ten times a second (CLT-Q88), the closing text's moment read from the kept frames, a key (but F4) or a press ending it, M2's stub lifted; exact against `credits-scroll`, `credits-end` | next |
 | T3 | The save file (decision 69): the engine's adventure replay with the setup's choices (the adventure lane's format, its inbox told; this lane cross-lane with the user's consent should it not be built yet) and the client's table (the names, bonuses, handicaps, the turn's duration, the save's name), written and read with its version; a load's setup rebuilt and its commands replayed by the engine; tests, no screen | after T2 |
 | T4 | Load Game single (§3.1, §3.3 to §3.6, the load mode): the client's saves listed (the map's header, the date, the difficulty shown, the turn's duration), the keys, the sort, Delete's question (688), the notice with none (686), Load's popup, the load to play's stub (as M3's begin); §6.4's fixes (the date's order: a day above 12 and a pinned time zone; a save of another size; Delete of the last save) and M3 T7's leftover (the list's held keys); exact against `scn-load`, `scn-load-none` (the viewer given client saves made to match the recipe's) | after T3 |
 | T5 | Load Game hot seat (§3.12 to §3.14, a load's rows: the saved choices, no arrows; §6.4's Random Map button in a load): exact against `mp-load`, `adv-load` | after T4 |
@@ -605,7 +605,19 @@ load mode), §3.12 to §3.14 (a load's rows).
    key the user binds; C and S press their buttons as hotkeys.
 4. (T1a) The creatures' DEFs loaded at the start for the tables' rows alone (T1b's file and M5's
    entry load what theirs need); a creature without a template shows none.
-5. (T1a) Reset shows the client's notice until T1b (CLT-STUB-14), the replay stopping under it.
+5. (T1a) Reset shows the client's notice until T1b (CLT-STUB-14), the replay stopping under it
+   (lifted at T1b).
+6. (T1b) The scores file (§35.3): `scores.toml` in the working directory (`--scores` names
+   another), TOML with a version, both tables of 11 rows; a file the window cannot read stops it
+   with the path and the reason, as the settings file; a name longer than the original's 40 bytes
+   kept whole.
+7. (T1b) A failed write of the scores file told on standard error, not the original's
+   `file_error_box` (GENRLTXT 11) over the dialog.
+8. (T1b) The close of Reset's question by a key runs the step due as the mouse's release does
+   (§35.2; only the mouse recorded).
+9. (T1b) The replay takes `press`, `point` and `until-button` on a front's original box alone
+   (`Front::question`: High Scores' question so far), at the probes' point by the box's layout,
+   not by a search of the frame.
 
 ## Dependencies and boundaries
 

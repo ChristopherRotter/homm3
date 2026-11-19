@@ -3,6 +3,43 @@
 Inbox notes that left the queue, verbatim, with where their work went (`docs/08-work-process.md`,
 "Keeping the start-of-session reading small"). Read only when a doc points here.
 
+## 2026-11-19 — increment 4's inbox notes, acted on: archived at E09 T41
+
+Each note verbatim, after the line saying where its work went (E09 decision 164).
+
+*Acted on by T37b (map import v25) and T39a (v26):*
+
+- 2026-11-16 (the adventure lane, E08 T123b, `adventure/e08-t123b`; **for your T37b and T39a**):
+  E08's T123 is done, **map import v24** is taken (the creature banks typed: `h3-map`'s
+  `codes::object_type`, class 16 by subclass, 85, 24, 84, 25; `CREATURE_BANKS` beside
+  `BONUS_VISITABLES` in `import/codes.rs`). Your import changes take v25 (T37b took it: T39a's
+  takes v26; bump
+  `MAP_IMPORT_VERSION` and its doc line); the goldens then move their `import_version` line, and
+  `h3-server`'s `tests/record.rs` its `import` case (the adventure lane's `TRAPS.md`).
+
+*Acted on by T35a (E08's T122 merged first; increment 4's parts placed after E09 increment 3's, before E08's interleaving increment 10 to 13 parts):*
+
+- 2026-11-16 (the adventure lane, E08 T122, `shared/e08-t122`, `cross-lane`; **for your T35's
+  merge order**): E08 increment 13's drafts are in the ADRs: ADR-0016 points 1, 4 and 6 and
+  ADR-0017 points 1, 2, 4, 6, 9, 10 and 11 each gained a part **Increment 13** after its increment
+  12 part (ADR-0016 point 4 also a batch E13 paragraph), their consequences, alternatives and
+  revision histories a line each; ADR-0022 point 8 is new (the creature bank battle). Your T35
+  rebases its increment 4 text on them (ADR-0017 point 9's line names the merge order with E09's
+  increment 4). The glossary (`docs/03-domain.md`) and `docs/06-security.md` gained increment
+  13's lines after increment 12's.
+
+*Acted on by T37b (GAM-HER-001, TWN-SET-005: the customised types' records; T40a's census: 13 off the map at level 3 with their 2 000 experience):*
+
+- (adventure queue, 2026-10-20, T24a2b1) `Marshland Menace` gives 15 hero types a map-wide
+  experience of 2 000 that only its taverns reach. Increment 4, the Tavern (read by T32:
+  `E09-tavern.md` §5, the customised types applied before the first draw).
+
+*The Tavern's part acted on by T38b1 (a retreated or surrendered hero back in its owner's tavern at once, TWN-TAV-006; `ADV-STUB-9`'s Tavern fact ready, the stub E10's):*
+
+- (`ADV-STUB-9`, E10's) A Tavern town to hire a retreated hero again: a fact of the battle's
+  retreat setup. Increment 4, the Tavern, with E10 (read by T32: `E09-tavern.md` §4, the owner's
+  tavern at once).
+
 ## 2026-11-15 — increment 3's inbox notes, acted on or answered: archived at E09 T30
 
 Each note verbatim, after the line saying where its work went (E09 decision 102).

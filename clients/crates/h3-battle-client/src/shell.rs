@@ -19,7 +19,10 @@
 //!   user's file over it as the battle window's, `--keys`, else `keys.toml` here: its `[shell]`),
 //!   New Game's and Load Game's menus theirs (T6b1), each press playing its sample
 //!   (`button.wav`); the music (`MAINMENU.MP3`, looping) is asked for as each menu opens, as
-//!   `main_menu_run` and `game_type_menu_run` ask for it (the track playing goes on).
+//!   `main_menu_run` and `game_type_menu_run` ask for it (the track playing goes on). High
+//!   Scores' tables are the window's scores file's (E27 M4 T1b: `--scores`, else `scores.toml`
+//!   here; none there: `CampHigh.txt`'s defaults), written whole as Reset's OK resets them; the
+//!   replay starts from the defaults and writes none.
 //!
 //! `--no-intro` starts at the main menu (the setting `Show Intro` off); else the start's clips
 //! play first (T5a: `h3_view::shell::start`, read from the video archives, `introrim.pcx` from the
@@ -133,12 +136,15 @@ pub struct Options {
     /// The window's key file (`--keys`; else `keys.toml` here if there is one: its `[shell]`
     /// table, M2's review of E27, as the battle window's `[battle]`).
     keys: Option<PathBuf>,
+    /// The window's scores file (E27 M4 T1b: `--scores`; else `scores.toml` here, beside the
+    /// settings' and the keys', *provisional*).
+    scores: Option<PathBuf>,
 }
 
 impl Options {
     /// Parses `[--script <file> | --steps <file> --frames <dir> [--pointer <x>,<y>]
     /// [--input-step <ms>] [--backgrounds <n>,…] [--maps <file>] | --window [--scale <n>]
-    /// [--keys <file>]] [--no-intro]
+    /// [--keys <file>] [--scores <file>]] [--no-intro]
     /// [--video-quality high|low] [--effects <0..9>] [--install <dir>]`; the installation
     /// defaults to `$H3_INSTALL`, then the repository's `original-data/install`.
     ///
@@ -155,6 +161,7 @@ impl Options {
         let (mut pointer, mut input_step, mut scale) = (None, None, None);
         let (mut intro, mut window, mut bink_video) = (true, false, true);
         let (mut effects, mut keys, mut backgrounds, mut maps) = (None, None, None, None);
+        let mut scores = None;
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -173,6 +180,7 @@ impl Options {
                 "--maps" => maps = Some(PathBuf::from(value()?)),
                 "--scale" => scale = Some(number(&value()?)?),
                 "--keys" => keys = Some(PathBuf::from(value()?)),
+                "--scores" => scores = Some(PathBuf::from(value()?)),
                 "--window" => window = true,
                 "--no-intro" => intro = false,
                 "--effects" => {
@@ -215,6 +223,7 @@ impl Options {
         )?;
         lone(!window && scale.is_some(), "--scale", "--window")?;
         lone(!window && keys.is_some(), "--keys", "--window")?;
+        lone(!window && scores.is_some(), "--scores", "--window")?;
         let mode = match (steps, frames) {
             (Some(steps), Some(frames)) => Mode::Replay {
                 steps,
@@ -238,7 +247,22 @@ impl Options {
                 .or(env)
                 .unwrap_or_else(|| manifest.join("../../../original-data/install")),
             keys,
+            scores,
         })
+    }
+}
+
+/// The window's scores file looked for in the working directory (E27 M4 T1b, *provisional*:
+/// beside `settings.toml` and `keys.toml`).
+const SCORES_FILE: &str = "scores.toml";
+
+/// The scores file's text at `path` (E27 M4 T1b): none when there is none yet (a first run's, or
+/// one never reset: the defaults).
+fn scores_text(path: &Path) -> Result<Option<String>, String> {
+    match fs::read_to_string(path) {
+        Ok(text) => Ok(Some(text)),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(format!("{}: {e}", path.display())),
     }
 }
 
@@ -284,11 +308,23 @@ fn point(s: &str) -> Result<[i32; 2], String> {
 pub fn run(options: &Options) -> ExitCode {
     let done = match &options.mode {
         Mode::Words(script) => return words(options.intro, script.as_deref()),
+        // A replay's High Scores start from the defaults (as the recipes' runs: no HiScore.dat)
+        // and write no file.
         Mode::Replay { maps, .. } => maps_named(maps.as_deref())
-            .and_then(|only| Drawer::load(&options.install, Bugs::Original, only.as_deref()))
+            .and_then(|only| Drawer::load(&options.install, Bugs::Original, only.as_deref(), None))
             .and_then(|drawer| replay_steps(options, &drawer)),
-        Mode::Window(scale) => Drawer::load(&options.install, Bugs::Fixed, None)
-            .and_then(|drawer| in_window(options, *scale, &drawer)),
+        Mode::Window(scale) => {
+            let path = options
+                .scores
+                .clone()
+                .unwrap_or_else(|| PathBuf::from(SCORES_FILE));
+            scores_text(&path)
+                .and_then(|text| {
+                    let file = text.as_deref().map(|t| (path.as_path(), t));
+                    Drawer::load(&options.install, Bugs::Fixed, None, file)
+                })
+                .and_then(|drawer| in_window(options, *scale, &drawer, &path))
+        }
     };
     match done {
         Ok(()) => ExitCode::SUCCESS,
@@ -374,8 +410,14 @@ struct Drawer {
 
 impl Drawer {
     /// The layout (`clients/layouts/shell.toml`) and its assets from `install`'s archives, read
-    /// by their tables in one batch (CLT-Q2).
-    fn load(install: &Path, bugs: Bugs, maps: Option<&[String]>) -> Result<Self, String> {
+    /// by their tables in one batch (CLT-Q2); High Scores' tables the scores file's (its path
+    /// and text, `scores`) over the defaults (E27 M4 T1b), the defaults with none.
+    fn load(
+        install: &Path,
+        bugs: Bugs,
+        maps: Option<&[String]>,
+        scores: Option<(&Path, &str)>,
+    ) -> Result<Self, String> {
         let path = assets::clients_dir().join("layouts").join("shell.toml");
         let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
         let layout = look::parse_layout(&text).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -385,8 +427,9 @@ impl Drawer {
         names.push(String::from(RIM));
         // The heroes' small portraits (E27 M3 T3b1: the advanced options' rows).
         names.extend(portraits(&tables));
-        // High Scores' defaults and the creatures' DEFs their rows show (E27 M4 T1a).
-        let (scores_tables, creature_defs) = scores_tables(&layout.high_scores, &lods)?;
+        // High Scores' defaults, a scores file's tables (T1b) and the creatures' DEFs the rows of
+        // both show (E27 M4 T1a).
+        let (scores_tables, creature_defs) = scores_tables(&layout.high_scores, &lods, scores)?;
         names.extend(creature_defs.values().cloned());
         let mut batch = Batch::with_bugs(bugs);
         for (name, bytes) in names.iter().zip(lods.batch(&names)?) {
@@ -533,20 +576,26 @@ fn copy_rect(to: &mut Pixels, from: &Pixels, [x, y, w, h]: [i32; 4]) {
 /// The objects' class of a map's monster (`class_template_last`'s 0x36 at High Scores' callers).
 const MONSTER: u32 = 54;
 
-/// High Scores' defaults (E27 M4 T1a: `CampHigh.txt`'s records, the user's tables; the client's
-/// own scores file is T1b's) and the DEF of each creature their rows show: the adventure map's
-/// last template of the creature (class 54, its subclass the creature) in `objects.txt`'s order,
-/// as `game_init` fills the game's map with them (0x505DA0) and `class_template_last` 0x505EA0
-/// finds them (a creature without one shows none).
+/// High Scores' defaults (E27 M4 T1a: `CampHigh.txt`'s records, the user's tables), the tables of
+/// the scores file `file` (its path and text) when there is one (T1b: `Tables::read`, over the
+/// defaults), and
+/// the DEF of each creature the rows of both show (Reset's OK sets the defaults again): the
+/// adventure map's last template of the creature (class 54, its subclass the creature) in
+/// `objects.txt`'s order, as `game_init` fills the game's map with them (0x505DA0) and
+/// `class_template_last` 0x505EA0 finds them (a creature without one shows none).
 fn scores_tables(
     look: &ScoresLook,
     lods: &Lods,
-) -> Result<(Tables, std::collections::BTreeMap<i32, String>), String> {
+    file: Option<(&Path, &str)>,
+) -> Result<(ScoresTables, std::collections::BTreeMap<i32, String>), String> {
     let bytes = lods.lookup("CAMPHIGH.TXT")?;
     let table =
         h3_formats::text::TextTable::parse(&bytes).map_err(|e| format!("CAMPHIGH.TXT: {e:?}"))?;
     let defaults = Tables::defaults(&table.records)
         .ok_or("CAMPHIGH.TXT: not 23 records of the player, the land, the days and the score")?;
+    let tables = file
+        .map(|(path, text)| Tables::read(text).map_err(|e| format!("{}: {e}", path.display())))
+        .transpose()?;
     // Latin-1, one byte a character; the first line the count.
     let objects: String = lods
         .lookup("OBJECTS.TXT")?
@@ -561,16 +610,27 @@ fn scores_tables(
             last.insert(template.subclass, template.def);
         }
     }
-    let defs = Tab::ALL
-        .iter()
-        .flat_map(|&tab| defaults.of(tab).iter().map(move |r| (tab, r.score)))
+    let defs = [Some(&defaults), tables.as_ref()]
+        .into_iter()
+        .flatten()
+        .flat_map(|t| {
+            Tab::ALL
+                .iter()
+                .flat_map(move |&tab| t.of(tab).iter().map(move |r| (tab, r.score)))
+        })
         .filter_map(|(tab, score)| look.creature(score, tab))
         .filter_map(|c| {
             let def = last.get(&u32::try_from(c).ok()?)?;
             Some((c, def.clone()))
         })
         .collect();
-    Ok((defaults, defs))
+    Ok((ScoresTables { defaults, tables }, defs))
+}
+
+/// High Scores' tables as the start reads them (E27 M4 T1b): the defaults, and a scores file's.
+struct ScoresTables {
+    defaults: Tables,
+    tables: Option<Tables>,
 }
 
 /// Each creature's picture: its DEF and the frames of its group 0 in `batch` (0 when the batch
@@ -592,14 +652,13 @@ fn creature_pictures(batch: &Batch, defs: std::collections::BTreeMap<i32, String
 /// `shell.main-menu.help.<button>`, `shell.game-type.help.<button>`: Load Game's the same as New
 /// Game's), and the stubs' notices (T6b2: `shell.stub.<screen>`, the client's own pack's, style
 /// 1), framed in the viewing player's colours; High Scores (E27 M4 T1a) with `scores`' tables and
-/// creatures, its headings the user's tables' (`shell.high-scores.*`), Reset's notice the
-/// client's (`shell.stub.scores-reset`).
+/// creatures, its headings and Reset's question (T1b) the user's tables' (`shell.high-scores.*`).
 fn menus(
     layout: &ShellLayout,
     (batch, tables): (&Batch, &h3_view::tables::Tables),
     lods: &Lods,
     (install, maps): (&Path, Option<&[String]>),
-    (scores_tables, pictures): (Tables, Pictures),
+    (scores_tables, pictures): (ScoresTables, Pictures),
     bugs: Bugs,
 ) -> Result<(Menus, GameRuleset, MessageBox), String> {
     let exe = crate::text::executable(install)?;
@@ -837,11 +896,12 @@ fn menus(
                 campaign: text("shell.high-scores.campaign"),
                 score: text("shell.high-scores.score"),
             },
-            scores_tables,
+            scores_tables.defaults.clone(),
             pictures,
-            laid("shell.stub.scores-reset", Style::Ok),
+            laid("shell.high-scores.reset", Style::OkCancel),
             bugs,
-        ),
+        )
+        .with_tables(scores_tables.tables.unwrap_or(scores_tables.defaults)),
     };
     Ok((menus, rules, refused))
 }
@@ -1146,6 +1206,7 @@ fn raw(pixels: &Pixels) -> Vec<u8> {
 fn stopped(k: usize, stop: &Stop) -> String {
     match stop {
         Stop::Harness(verb) => format!("stop {k} harness {verb}"),
+        Stop::NoButton(name) => format!("stop {k} no-button {name}"),
         Stop::Unknown(name) => format!("stop {k} unknown {name}"),
         Stop::NotBuilt(screen) => {
             format!(
@@ -1285,7 +1346,12 @@ fn replay_steps(options: &Options, drawer: &Drawer) -> Result<(), String> {
 
 /// The shell in a window (T4): the built screens drawn, the words from standard input; the
 /// start's clips on the window's clock (T5a), a key or a left press skipping them.
-fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(), String> {
+fn in_window(
+    options: &Options,
+    scale: Option<u32>,
+    drawer: &Drawer,
+    scores: &Path,
+) -> Result<(), String> {
     let mut shell = Shell::new(options.intro);
     // The menus as they open, the scenario screen's kept map carried from one to the next.
     let mut menus = drawer.menus.clone();
@@ -1457,6 +1523,15 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
                 }
             }
             dirty |= did.changed;
+            // High Scores' Reset (E27 M4 T1b): the scores file written whole as its OK resets
+            // the tables (the original's HiScore.dat; a failure told, *provisional*: the
+            // original's `file_error_box`).
+            if let Some(Front::Scores(s)) = front.as_mut()
+                && let Some(text) = s.take_save()
+                && let Err(e) = crate::window::write_whole(scores, &text)
+            {
+                eprintln!("h3-view shell: scores: {}: {e}", scores.display());
+            }
             if did.sample
                 && effects_heard
                 && let (Some(host), Some(pcm)) = (host.as_mut(), drawer.button.as_ref())
@@ -1749,9 +1824,10 @@ fn on_front(
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
     use std::path::{Path, PathBuf};
 
-    use super::{Given, Mode, Options, PARK, merged, refused_word, skips_start};
+    use super::{Given, Mode, Options, PARK, merged, refused_word, scores_text, skips_start};
     use h3_sdl::{Event, Key, KeyScan};
     use h3_ui::keys::Keys;
     use h3_view::shell::keys::Command;
@@ -1828,6 +1904,22 @@ mod tests {
         assert_eq!(merged(Vec::new(), &[], &[(0, 'é')]), [Given::Typed('é')]);
     }
 
+    #[test]
+    fn the_scores_file_is_read_when_there_is_one() {
+        // E27 M4 T1b: none there yet is a first run's (the defaults); a file's text as it is;
+        // one that cannot be read, an error naming it.
+        let dir = std::env::temp_dir().join(format!("h3-view-scores-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("scores.toml");
+        let _ = fs::remove_file(&path);
+        assert_eq!(scores_text(&path), Ok(None));
+        fs::write(&path, "version = 1\n").unwrap();
+        assert_eq!(scores_text(&path), Ok(Some(String::from("version = 1\n"))));
+        let refused = scores_text(&dir).unwrap_err();
+        assert!(refused.starts_with(&dir.display().to_string()), "{refused}");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
     fn parse(args: &[&str]) -> Result<Options, String> {
         let args: Vec<String> = args.iter().map(|a| String::from(*a)).collect();
         Options::parse_with(&args, Some(PathBuf::from("env")))
@@ -1897,6 +1989,12 @@ mod tests {
             parse(&["--window", "--keys", "k.toml"]).unwrap().keys,
             Some(PathBuf::from("k.toml"))
         );
+        // E27 M4 T1b: the window's scores file.
+        assert_eq!(none.scores, None);
+        assert_eq!(
+            parse(&["--window", "--scores", "s.toml"]).unwrap().scores,
+            Some(PathBuf::from("s.toml"))
+        );
         assert!(none.bink_video);
         assert!(!parse(&["--video-quality", "low"]).unwrap().bink_video);
         assert!(parse(&["--video-quality", "high"]).unwrap().bink_video);
@@ -1919,6 +2017,8 @@ mod tests {
             &["--scale", "2"],
             &["--keys", "k.toml"],
             &["--window", "--keys"],
+            &["--scores", "s.toml"],
+            &["--window", "--scores"],
             &["--video-quality", "medium"],
         ];
         for args in refused {

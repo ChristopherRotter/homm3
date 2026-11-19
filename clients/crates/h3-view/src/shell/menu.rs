@@ -797,7 +797,7 @@ impl Menus {
     /// its names the players (E27 M3 T4a); High Scores opened anew (E27 M4 T1a); none for
     /// another screen. A scenario screen `previous`
     /// leaves its kept map to the next (E27 M3 T2c: `scenario_last_map` 0x683238, the last
-    /// map selected).
+    /// map selected), High Scores its tables (E27 M4 T1b).
     #[must_use]
     pub fn front(
         &mut self,
@@ -807,6 +807,10 @@ impl Menus {
     ) -> Option<Front> {
         if let Some(Front::Scenario(left)) = &previous {
             self.scenario.keep(left);
+        }
+        // High Scores' tables outlive the dialog (E27 M4 T1b: the manager's, Reset's OK).
+        if let Some(Front::Scores(left)) = &previous {
+            self.scores.keep(left);
         }
         let hovers = previous.as_ref().map(Front::hovers).unwrap_or_default();
         match (screen, previous) {
@@ -911,6 +915,17 @@ impl Front {
             Self::Menu(_) | Self::Play(_) | Self::Scores(_) => false,
             Self::Multiplayer(m) => m.typing(),
             Self::Scenario(s) => s.typing(),
+        }
+    }
+
+    /// The original's box over it whose buttons a recipe's `press`, `point` and `until-button`
+    /// find (E27 M4 T1b: High Scores' Reset question; *provisional*: the other boxes' recipes are
+    /// not replayed yet), while it shows.
+    #[must_use]
+    pub fn question(&self) -> Option<&Open> {
+        match self {
+            Self::Scores(s) => s.question(),
+            Self::Menu(_) | Self::Multiplayer(_) | Self::Scenario(_) | Self::Play(_) => None,
         }
     }
 

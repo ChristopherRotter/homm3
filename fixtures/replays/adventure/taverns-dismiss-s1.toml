@@ -64,7 +64,7 @@ checkpoint_every = 2
 [map]
 path = "fixtures/maps/e09-taverns-36.h3m"
 hash = "0x5857a6118d8c8733"
-import_version = 26
+import_version = 27
 
 [result]
 day = 9

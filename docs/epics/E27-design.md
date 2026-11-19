@@ -3729,8 +3729,70 @@ drawn and pressed, T1b Reset's question and the client's scores file.
   and the timer (`Scores::clock`), the hold's rules, the original's stale edges; Exit's keys
   (Enter and Escape, `scores-exit`) end it at their press, C and S press their tab's button (the
   shell's key table, `Context::HighScores`); no popup, no hover. Reset shows the client's notice
-  (`shell.stub.scores-reset`, CLT-STUB-14) until T1b.
+  (`shell.stub.scores-reset`, CLT-STUB-14) until T1b (lifted: §35).
 - **The adapter** (`h3-battle-client`'s shell): `CampHigh.txt` and `OBJECTS.TXT` from the LODs;
   the DEFs of the creatures the tables' rows show loaded into the start's batch, each with its
   group 0's frame count; the headings through the key catalogue (`shell.high-scores.*`, GENRLTXT
   434 to 437, 673, 76); the window steps the creatures on its clock.
+
+## 35. High Scores' Reset (M4 T1b, 2026-11-19)
+
+Read with `scripts/exe.py` (`high_scores_proc`'s Reset branch, 0x4EA39C to 0x4EA55F, and the two
+DEF item setters) and recorded under Wine (`scores-reset` played once again, as kept).
+
+### 35.1 The reading
+
+- **The question:** `message_box` 0x4F6570 with GENRLTXT 667 (`general_text`'s +0x20, entry
+  0xA6C / 4), style 2, no picture; its own modal loop, so the dialog's procedure gets no message
+  (no step) while it shows. The answer is the window manager's +0x38: anything but 0x7805 (the
+  box's OK) returns at once, nothing changed, nothing redrawn.
+- **OK:** `high_scores_reset` 0x4E8FB0 (both tables from the defaults, §34.1); the file
+  `.\DATA\HiScore.dat` (`"%s%s"` of 0x677D88 and `high_score_file_name`) opened by 0x619B7D
+  (flags 0x8301, mode 0x80: created or truncated, binary, written), the manager's 0x898 bytes
+  from +0x38 written (0x62017F) and closed (0x619A9D); a failure to open shows `file_error_box`
+  0x4F3A60 (GENRLTXT 11 with the name) and goes on. Then for each row *i* (0 to 10): the
+  scenarios' creature item (dialog +0x78 + 4 *i*) given the DEF of its row's score
+  (`dialog_def_set_def` 0x4EB030: the old DEF released, the new one loaded) and frame 0
+  (`dialog_def_set_frame` 0x4EAFF0: the frame modulo the item's group's count; a DEF without
+  that group divides by 0), then the campaigns' (+0x4C + 4 *i*, the score divided by 5). The
+  counters (+0xA4) are not touched; the procedure redraws nothing.
+- **The step after it:** the next step sets each counter's next frame (§34.1's timer), so a
+  creature shows frame 0 from the OK until then and then its counter's next frame:
+  **CLT-Q158** (an oddity, built as the original's).
+
+### 35.2 The recordings
+
+`scores-reset` (10 shots) played once again under Wine, as kept. The viewer's replay found:
+
+- **The release that closes the box runs the step due at its own time**, as the release that
+  ends a button's hold (§34.2): Cancel's release at 400 stepped (opened at 0), so Reset's OK at
+  600 (200 ms later) did not and the tick at 700 did (`reset`: the frames two on from the
+  opening's, not one); then the campaigns' tab at 800 shows theirs at 0. Read as the box's loop
+  handing the release's follow-up message to the dialog's procedure (*inferred*).
+- The box (GENRLTXT 667, centred, style 2) and the pointer on its buttons (`ok-hover`,
+  `cancel-hover`) exact: the harness's `point:ok` is the middle of its probes' 66 × 33 from the
+  button's frame (`Box64x30.pcx`, a pixel up and left of the button), `point:cancel` of 66 × 32.
+
+### 35.3 The client
+
+- **`h3_view::shell::scores`:** Reset's question (`question`, style 2, `shell.high-scores.reset`);
+  Cancel keeps the tables; OK sets the defaults again (`Scores::new`'s, `CampHigh.txt`'s), every
+  creature's DEF and frame 0 (counters kept), and the scores file due (`Scores::take_save`); the
+  close runs the step due. The tables outlive the dialog (`Scores::keep`, from `Menus::front`
+  as the main menu opens after it) and a scores file's are given at the start
+  (`Scores::with_tables`).
+- **The scores file** (*provisional*, the agent's: M4's review list): `Tables::read` and
+  `Tables::write`, TOML: `version = 1` (`FILE_VERSION`), then `[[scenarios]]` and
+  `[[campaigns]]`, each 11 rows of `player`, `land` (a campaign's name in the campaigns'), `days`
+  and `score`. Another version, another count of rows, a missing or unknown field or a number out
+  of 32 bits is refused.
+- **The adapter:** the window's file (`--scores <file>`, else `scores.toml` in the working
+  directory, beside `settings.toml` and `keys.toml`) read at the start (none there: the
+  defaults; refused: the window does not start, the path and the reason told), the creatures'
+  DEFs of its rows loaded beside the defaults'; written whole at the OK (a sibling renamed over
+  it, as the settings file), a failure told on standard error (not the original's
+  `file_error_box`). The replay starts from the defaults and writes nothing.
+- **The replay** (`h3_view::shell::replay`): `press`, `point` and `until-button` on a front's
+  original box (`Front::question`: High Scores' alone so far) at the probes' point
+  (`replay::button_point`); `Stop::NoButton` when it does not show.
+
