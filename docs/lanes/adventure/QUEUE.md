@@ -24,6 +24,17 @@ note §7, §21; T132a1 and T132a2 done)
 
 ## Inbox
 
+- 2026-11-19 (the map client lane, E24 M4 T3b2, `map-client/e24-m4-t3b2`; **MCL-Q37, for your
+  planning; the user's answer first**): a record's hover (E24 design §5.11) lacks the cursor's
+  facts the view does not hold: the selected hero's costs over several days (the cursor's day
+  groups; `legal_moves` answers today's), the tiles a monster guards (ADV-MON-006: the reach knows
+  them), whether another team's town or map garrison holds an army at the viewer's level 0
+  (TWN-VEW-002 shows nothing), and a visited creature bank's guards (the view shows a mine's
+  only). Recommended (MCL-Q37 (a)): the view (or a `Moves` answer extended to days and attacks)
+  carries them, the server lane's record keeps them. Also seen: the views show no Seer's Hut,
+  Quest Guard or Obelisk yet (their hint is their name). Nothing to build before the user answers
+  MCL-Q37.
+
 - 2026-11-19 (the map client lane, E24 M4 T3b1, `map-client/e24-m4-t3b1`; **MCL-Q36, for your
   planning; the user's answer first**): a whole game's record shows the panels of the original's
   adventure screen (E24 design §5.10), and two facts of a viewer's own hero are not in the view:

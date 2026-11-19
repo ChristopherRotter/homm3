@@ -15,14 +15,18 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   status window, the kingdom's window and `[chosen]` from the record, a town's own name, MCL-Q15
   (b) as `tiny.fnt`; `h3map.py engine` and `set.toml`'s `engine` entries: `engine-start-panels`
   exact on the whole screen, `engine-start-town` but MCL-Q36's morale, `engine-start-owners` but
-  the bonus's gold and the morale). **Next: T3b2** (the hover's facts, a town's picture by its
-  buildings, shipped maps; its queue entry's notes from T3b1); then the inbox's window-sound item,
-  T4 (has T1b2's gaps), T5 for the client lane's battle entry, T6 the closure. Open questions:
-  **MCL-Q29**, **MCL-Q30** ((b) recommended), **MCL-Q31**, **MCL-Q32** ((b)), **MCL-Q33** ((b)),
-  **MCL-Q34** ((a)), **MCL-Q35** ((b)), **MCL-Q36** (a hero's morale, luck and whether it can move
-  not in the record; (a) recommended, the adventure and server lanes' inboxes told); none blocks.
-  Next ids **MCL-Q37**, **MCL-STUB-2**.
-- **Open pull requests** (2026-11-19): T3b1's (`map-client/e24-m4-t3b1`): check it first. Merged branches
+  the bonus's gold and the morale). **T3b2 done** (2026-11-19, kept whole by the user; design
+  §5.11: the `[hover]` facts from the record, every explored tile's hint and cursor compared, a
+  still's `pointer` over the map, a town's picture by its view, a map's own town names; two
+  shipped starts with no draw in sight, `start-jared` and `start-good-witch`; six engine starts as
+  expected). **Next: the inbox's window-sound item, then T4** (has T1b2's gaps and T3b2's notes),
+  T5 for the client lane's battle entry, T6 the closure. Open questions: **MCL-Q29**, **MCL-Q30**
+  ((b) recommended), **MCL-Q31**, **MCL-Q32** ((b)), **MCL-Q33** ((b)), **MCL-Q34** ((a)),
+  **MCL-Q35** ((b)), **MCL-Q36** and **MCL-Q37** (facts not in the record: a hero's morale, luck and
+  whether it can move; the cursor's costs, guarded tiles, a defended town, a visited bank's guards;
+  (a) recommended, the adventure and server lanes' inboxes told), **MCL-Q38** (a shipped map's town
+  list order; (a)); none blocks. Next ids **MCL-Q39**, **MCL-STUB-2**.
+- **Open pull requests** (2026-11-19): T3b2's (`map-client/e24-m4-t3b2`): check it first. Merged branches
   are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
@@ -47,6 +51,11 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-19, E24 M4 T3b2** (the user at the start: kept whole; MCL-STUB-1 still the adventure
+  lane's): the hover's facts from a record, the towns' pictures, two shipped starts found by a
+  scan of the 160 and compared, every explored tile's hint and cursor checked (the log's "M4
+  T3b2"; MCL-Q37, MCL-Q38). Original data staged (63 files and the manuals), SHA-256 checked; the
+  PC was not needed after the first minutes. Nothing is waiting on the user's computer.
 - **2026-11-19, E24 M4 T3b1** (the user at the start: T3b in two, the panels first; missing facts
   asked, never copied): the panels from a record's start, MCL-Q15 (b), `h3map.py engine`, three
   engine situations captured and compared (the log's "M4 T3b1"; MCL-Q36). Original data staged
@@ -58,10 +67,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   them, `tests/engine.rs` (the log's "M4 T3a"). Original data staged (63 files and the manuals),
   SHA-256 checked; the PC's shell went away about 15 minutes in, nothing needed by then. Nothing
   is waiting on the user's computer.
-- **2026-11-19, E24 M4 T2d3** (the user at the start: Summon Boat of the four, whole, the cut
-  after the reading, the harness's cast and the recordings the stated fallback, not needed): the
-  cast read (design §5.8; MCL-Q14's stale mana bar seen), the harness's spell book and `[[cast]]`
-  table and a hero's `spells`, `cast-boat`, `-far`, `-new` recorded twice and a sound run, the
-  viewer built by one worker, every frame exact (the log's "M4 T2d3"). Original data staged (63
-  files and the manuals) and a ballast file; the PC's tools went away about 90 minutes in.
-  Nothing is waiting on the user's computer.

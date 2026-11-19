@@ -2931,3 +2931,45 @@ set up beside it; a ballast file for the game's disk check.
   (the bonus's gold, one hero of Red's to select; the morale). `drawn`: the three changed or new
   (recorded), every other situation and sequence the same. `tests/engine.rs` (four new tests),
   the situation's, the live part's, the status window's and the resource bar's unit tests.
+
+### M4 T3b2 — a record's start: the hover, the towns' pictures, the shipped maps (2026-11-19)
+
+On `map-client/e24-m4-t3b2`, the user present at the start; `master` at #1052 (T3b1 merged).
+Original data staged from the PC at the start (63 files, the four manuals and three help files,
+SHA-256 checked); the setup's baseline stopped at its coverage step by a watcher (fmt, clippy, the
+doc tests and deny passed), the Wine capture set up beside it.
+
+- **The cut** (the user at the start, `AskUserQuestion`; the agent recommended two: the hover and
+  the towns' pictures, then the shipped maps): **kept whole**; `MCL-STUB-1` still the adventure
+  lane's (its note of 2026-11-19 unanswered), the facts the record lacks an `MCL-Q<n>`.
+- **Built** (design §5.11; *provisional*, M4's review list): `h3_map_view::engine`'s `hover` (the
+  `[hover]` table from the first observation), a town's picture by its view's fort and Capitol (a
+  town out of sight by the map's buildings), `Hover::differences` and `Hover::start_selection`,
+  `render --record --check` comparing the mouse-over over every explored tile, a still's pointer
+  over the view drawn (`render`: the map's hint and cursor at its tile), `Facts::name_towns` and
+  `MapArt::town_names` (a capture's 65535 named from the map), `hover::SEVERAL`,
+  `Hint::Town`'s `TownName`, a situation's `pointer`; the harness's still `pointer`
+  (`look_over_view` first), the shipped situations' staging keys, `h3map.py engine` on a shipped
+  (gzip) map.
+- **Found:** the engine's views show no Seer's Hut, Quest Guard or Obelisk yet (Dwarven Tunnels'
+  Obelisk: its name alone); a town out of the view's sight kept its editor's template where the
+  original draws its start's picture (Jared Haret's Capitol: fixed); a scan of the 160 shipped
+  starts in the engine (random objects, monsters without a count, abandoned mines and unnamed
+  towns in Red's sight, random or generated heroes, heroes the map does not arm; a scratch test,
+  not kept): two with no draw in sight, Adventures of Jared Haret and Good Witch, Bad Witch, both
+  heroes at level 3 by the map's experience (their level-ups' primary skills drawn in each game);
+  Hoard lists Red's Fortress before its Castle with no main town named (MCL-Q38: the main town
+  first was tried and dropped).
+- **Agent decisions** (change freely): the facts written in the capture's format (as T3a's and
+  T3b1's); the comparison by every tile's hint text and cursor rather than the facts' rows (the
+  counts are words in the view); the shipped starts' level-up draws listed, not staged.
+- **MCL-Q37** (asked; the adventure and server lanes' inboxes): the cursor's facts (costs over
+  several days, guarded tiles, a defended town at level 0) and a visited bank's guards are not in
+  the record. **MCL-Q38** (asked): a shipped map's town list at a new game.
+- **Checked:** `engine-start-hover` (new), `start-jared` and `start-good-witch` (new, shipped)
+  captured exact; `engine-start-town` and `-panels` captured again (`[hover]`'s towns as the harness
+  writes them); `h3map.py engine`: six starts as expected (every explored tile's hint and cursor the
+  capture's; pixels: MCL-Q36's morale, `engine-start-owners`' bonus gold, the shipped heroes'
+  level-up skills). `tests/engine.rs` (three new tests: the facts of a start, of what a player
+  learnt, the towns' names), the hover's unit tests (a town the map names, two mouse-overs
+  compared, the towns named from the map), the guards' `SEVERAL`.

@@ -804,6 +804,14 @@ fn two_mouse_overs_compared_over_every_tile() {
         ..kingdom()
     };
     assert_eq!(hover.start_selection(&far), None);
+    // A listed hero the live part's heroes do not have.
+    let mut gone = live.clone();
+    let mut facts = gone.hover.clone().unwrap();
+    facts.hero_list = vec![(99, 2, false)];
+    gone.hover = Some(facts);
+    let lists = [DrawLists::build(&art, &gone, &shapes_of(&art), 0).unwrap()];
+    let missing = Hover::new(&art, &gone, &tables().records, &lists).unwrap();
+    assert_eq!(missing.start_selection(&k), None);
     assert!(hover.differences(&k, &hover, &k, &names, &t).is_empty());
     // Another start: the town renamed, the monster's count a word lower, the garrison unarmed,
     // a tile unexplored, nothing selected.

@@ -874,6 +874,14 @@ at = [13, 16]
 [[objects]]
 def = "hv35.def"
 at = [30, 30]
+
+[[objects]]
+def = "hv14.def"
+at = [14, 16]
+
+[[objects]]
+def = "hv92.def"
+at = [15, 16]
 "#;
 
 /// The templates of `HOVER`'s objects: one tile, visited there, by class and subclass; a
@@ -903,6 +911,8 @@ fn hover_templates() -> Vec<ObjectTemplate> {
         ("hv105.def", 105, 0),
         ("hv537.def", 53, 7),
         ("hv53.def", 53, 2),
+        ("hv14.def", 14, 0),
+        ("hv92.def", 92, 0),
     ]
     .iter()
     .map(|&(def, class, subclass)| one(def, class, subclass))
@@ -1196,6 +1206,18 @@ fn the_hover_s_facts_of_what_the_player_learnt() {
     assert_eq!(visits[tent], [0, 1]);
     let armed = numbers(&hover["armed"]);
     assert_eq!((armed[garrison], armed[castle]), (1, 1));
+    // A Swan Pond's and the Sirens' once-marks the hero does not hold.
+    let (pond, sirens) = (index("hv14.def", [14, 16]), index("hv92.def", [15, 16]));
+    assert_eq!(
+        (visits[pond].clone(), visits[sirens].clone()),
+        (vec![0, 0], vec![0, 0])
+    );
+    // A town with a Capitol: its picture the Capitol's.
+    let mut capitol = o.clone();
+    capitol.towns[0].capitol = true;
+    let with = start(&g, &capitol).unwrap();
+    let defs = with.table["defs"].as_array().unwrap();
+    assert_eq!(defs[castle].as_str(), Some("capitol0.def"));
     // Without a hero of the viewer's: no mark a hero keeps, no day's points.
     let mut none = o.clone();
     none.adventure.heroes.retain(|h| h.owner != 0);
