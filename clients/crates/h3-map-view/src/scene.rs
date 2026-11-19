@@ -450,7 +450,7 @@ pub fn scene_in(
         panels::id::STATUS_BAR,
         hint.text(&art.hero_names, &tables.texts),
     );
-    let bar = panels::resource_bar(layout, live, &tables.texts);
+    let bar = panels::resource_bar(layout, live, &tables.texts, bugs);
     // The status window's panel (E24 M3 T5b1, design §4.8): its items join the dialog's after the
     // resource bar's (none overlaps another panel's).
     let status = status::window(

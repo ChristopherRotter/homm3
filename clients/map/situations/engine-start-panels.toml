@@ -1,0 +1,22 @@
+# The engine's start compared with the original's on the whole screen (E24 M4 T3b1; design
+# §5.10): Red's two heroes with their armies in the map (Rion's Castle troops, Astral's gremlins:
+# no morale or luck either way, MCL-Q36), Astral named by the map, Red's town named by the map
+# (its status window when chosen), Blue's hero out of sight. The starting bonus Gold and the
+# engine's resources written (the engine has no bonus yet, E10's), Astral selected then Rion
+# again: the start's selection, the first of the list by type. Each hero and town chosen in turn
+# (`[chosen]`). `h3map.py engine` compares the engine's start with it, the whole screen too.
+size = 36
+terrain = "grass"
+explored = "start"
+heroes = [
+    { at = [8, 10], class = 1, map_army = [[0, 15], [2, 5]] },
+    { at = [12, 12], class = 5, name = "Quillon", map_army = [[28, 20]] },
+    { at = [33, 33], owner = 1, class = 6 },
+]
+towns = [{ at = [16, 8], faction = 0, owner = 0, buildings = "fort", name = "Brightmoor" }]
+bonus = "gold"
+resources = [20, 10, 20, 10, 10, 10, 20000]
+select = { hero = [12, 12] }
+reselect = [8, 10]
+choose = true
+view = [0, 0, 0]

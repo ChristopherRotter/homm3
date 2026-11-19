@@ -268,8 +268,23 @@ why = "exact: the kingdom's status window, Red's towns by their halls, the teams
 id = "engine-start-owners"
 differing = 0
 why = "exact: owners-objects' map as the new game leaves it (E24 M4 T3a): the explored circles of Red's hero and of the two objects Red owns, the objects in sight with their owners' flags"
+# The engine's start (`h3map.py engine`, E24 M4 T3b1): the gold the starting bonus drew (no
+# other hero of Red's to select after writing the engine's), and the morale of Orrin's
+# Leadership the record lacks (MCL-Q36).
+engine = { differs = ["`kingdom.resources` differs", "`status.morale` differs (MCL-Q36: the record has none)"], pixels = 192 }
 
 [[situation]]
 id = "engine-start-town"
 differing = 0
 why = "exact: a start with Red's town and two heroes, Blue's hero in sight, empty boats, monsters and piles with their counts given, an artifact, Blue's mine (E24 M4 T3a), the explored tiles the start's"
+# The engine's start (`h3map.py engine`, E24 M4 T3b1): the morale of Orrin's Leadership the
+# record lacks (MCL-Q36).
+engine = { differs = ["`status.morale` differs (MCL-Q36: the record has none)"], pixels = 157 }
+
+[[situation]]
+id = "engine-start-panels"
+differing = 0
+why = "exact: Red's two heroes with their armies in the map (one named by it), Red's town named by it, each chosen in turn, the starting bonus Gold and the engine's resources written (E24 M4 T3b1): the engine's start's panels"
+# The engine's start (`h3map.py engine`, E24 M4 T3b1): its live part and the whole screen the
+# capture's.
+engine = {}

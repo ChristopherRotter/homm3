@@ -23,11 +23,12 @@ use alloc::vec::Vec;
 use h3_map::RawMap;
 use h3_map::model::{Mission, Rewards, Stack};
 use h3_map::writer::{
-    ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS, AnyObject, EVENT_OBJECT, Event, Extras, GivenTile,
-    Guards, Hero, HeroArtifacts, Map, MapObject, Message, Monster, ObjectTemplate, PANDORA_OBJECT,
-    Patch, Pile, Player, RewardBody, RewardObject, RiverKind, Road, RoadKind, SHRINE_OBJECTS,
-    Terrain, Town, TownBuildings, Underground, WITCH_HUT_OBJECT,
+    ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS, AnyObject, AnyTown, EVENT_OBJECT, Event, Extras,
+    GivenTile, Guards, Hero, HeroArtifacts, Map, MapObject, Message, Monster, ObjectTemplate,
+    PANDORA_OBJECT, Patch, Pile, Player, RewardBody, RewardObject, RiverKind, Road, RoadKind,
+    SHRINE_OBJECTS, Terrain, Town, TownBuildings, Underground, WITCH_HUT_OBJECT,
 };
+
 use serde::Deserialize;
 
 /// The spell book's artifact and its worn slot (`ArtSlots.txt`: 17), and the spells a book holds
@@ -98,6 +99,16 @@ pub struct Situation {
     /// a week from 1 to 4 and a day from 1 to 7; as the resources, with a hero's selection.
     #[serde(default)]
     pub date: Option<[u16; 3]>,
+    /// The hero of Red's (on its tile) the harness selects back after `select` (E24 M4 T3b1,
+    /// design §5.10): the turn start's, so that the resources written show with the start's
+    /// selection, as the engine's start has it; with a hero's `select` only.
+    #[serde(default)]
+    pub reselect: Option<[u8; 2]>,
+    /// The players' starting bonus the harness chooses (E24 M4 T3b1): `"gold"`, so that no
+    /// artifact changes a hero (the engine has no starting bonus yet, E10's: the situation writes
+    /// the resources); none the scenario's random.
+    #[serde(default)]
+    pub bonus: Option<Bonus>,
     /// The status window's kind the harness asks for after its selection (E24 M3 T5b2, design
     /// §4.9): 1 the date's, 2 the kingdom's, until long after the still (the manager's +0x398 and
     /// +0x39C, as `status_window_set_kind` 0x415D60 sets them); the next view draw builds it.
@@ -619,6 +630,10 @@ pub struct TownSpec {
     /// and that hero's army): Red's towns only.
     #[serde(default)]
     pub garrison_hero: Option<[u8; 2]>,
+    /// Its own name, written by the writer into the map (E24 M4 T3b1, design §5.10: the status
+    /// window names it so); none the new game's draw among its faction's names.
+    #[serde(default)]
+    pub name: Option<String>,
 }
 
 impl TownSpec {
@@ -636,6 +651,14 @@ impl TownSpec {
             other => other,
         }
     }
+}
+
+/// A starting bonus the harness chooses (E24 M4 T3b1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Bonus {
+    /// Gold, for every player.
+    Gold,
 }
 
 /// A town's buildings as a situation names them: the editor's standard set without or with a
@@ -757,9 +780,40 @@ pub struct HeroSpec {
     /// type's war machines left out); empty the type's spells and artifacts.
     #[serde(default)]
     pub spells: Vec<u8>,
+    /// Its own name, written by the writer into the map (E24 M4 T3b1, design §5.10: the status
+    /// window names it so); none the type's.
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Its army as the map gives it, [creature, count] by slot (E24 M4 T3b1: the new game then
+    /// draws none, so the engine's start and the original's hold the same; `army` is the
+    /// harness's write after the load); empty the type's drawn.
+    #[serde(default)]
+    pub map_army: Vec<[u16; 2]>,
 }
 
+/// An army as the writer takes it: [creature, count] by slot.
+type MapArmy = [Option<(u16, u16)>; ARMY_SLOTS];
+
 impl HeroSpec {
+    /// Its army in the map (E24 M4 T3b1): none for an empty `map_army`, else its stacks by slot,
+    /// at most seven, each of at least one creature (the writer checks the creature).
+    fn file_army(&self) -> Result<Option<MapArmy>, String> {
+        if self.map_army.is_empty() {
+            return Ok(None);
+        }
+        if self.map_army.len() > ARMY_SLOTS || self.map_army.iter().any(|&[_, n]| n == 0) {
+            return Err(format!(
+                "hero at {:?}: its map army has more than seven stacks or an empty one",
+                self.at
+            ));
+        }
+        let mut army = [None; ARMY_SLOTS];
+        for (slot, &[creature, count]) in army.iter_mut().zip(&self.map_army) {
+            *slot = Some((creature, count));
+        }
+        Ok(Some(army))
+    }
+
     /// Its worn spell book alone when it has spells (E24 M4 T2d3): artifact 0 in slot 17.
     fn book(&self) -> Option<HeroArtifacts> {
         if self.spells.is_empty() {
@@ -989,14 +1043,22 @@ impl Situation {
                 .ok_or_else(|| {
                     format!("town at {:?}: no template of faction {}", t.at, t.faction)
                 })?;
-            heroes.push(MapObject::Town(Town {
+            let town = Town {
                 tile: (t.at[0], t.at[1]),
                 template: template.clone(),
                 owner: t.owner,
                 garrison: None,
                 tight_formation: false,
                 buildings: t.writer_buildings(),
-            }));
+            };
+            // A town named by the map (E24 M4 T3b1) is the writer's town of any kind.
+            heroes.push(match &t.name {
+                Some(name) => MapObject::AnyTown(AnyTown {
+                    name: Some(name.clone()),
+                    ..AnyTown::from(&town)
+                }),
+                None => MapObject::Town(town),
+            });
         }
         heroes.extend(bodied);
         let map = Map {
@@ -1093,10 +1155,10 @@ impl Situation {
                 owner: h.owner,
                 hero_type,
                 class: h.class,
-                name: None,
+                name: h.name.clone(),
                 experience: h.experience,
                 skills: None,
-                army: None,
+                army: h.file_army()?,
                 tight_formation: false,
                 artifacts: h.book(),
                 spells: h.spell_bits()?,
@@ -1182,8 +1244,12 @@ impl Situation {
             return Err(format!("the date {:?} is no day of the game's", self.date));
         }
         let bar = self.resources.is_some() || self.date.is_some();
-        if bar && !matches!(self.select, Some(SelectSpec::Hero(_))) {
+        let hero_selected = matches!(self.select, Some(SelectSpec::Hero(_)));
+        if bar && !hero_selected {
             return Err("the resources or the date without a hero's selection".into());
+        }
+        if self.reselect.is_some() && !hero_selected {
+            return Err("`reselect` without a hero's selection".into());
         }
         // The status window's kind asked (E24 M3 T5b2): the date's or the kingdom's; the teams.
         if let Some(kind) = self.status

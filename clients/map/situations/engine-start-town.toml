@@ -2,25 +2,32 @@
 # to the top-left (as `boats`), Red's town, Red's two heroes (one beside the lake, one by the
 # town) and Blue's hero in sight of Red's, empty boats of the three types, monsters and piles with
 # their counts and amounts given (no draw), an artifact and Blue's mine; the explored tiles the
-# start's. `h3-map-view render --record` of the engine's start on the same map compares its live
+# start's. Since E24 M4 T3b1 the panels too: Red's heroes' armies in the map, its town named. `h3-map-view render --record` of the engine's start on the same map compares its live
 # part with this one's (`--check`).
 size = 36
 terrain = "grass"
 explored = "start"
 copy = [{ map = "Deluge.h3m", from = [4, 16], to = [22, 32], at = [0, 0] }]
 heroes = [
-    { at = [4, 8], class = 3 },
-    { at = [24, 14], class = 0 },
+    { at = [4, 8], class = 3, map_army = [[14, 12], [16, 6]] },
+    { at = [24, 14], class = 0, map_army = [[0, 14], [2, 7]] },
     { at = [27, 18], owner = 1, class = 9 },
     { at = [33, 33], owner = 2 },
 ]
-towns = [{ at = [30, 10], faction = 0, owner = 0, buildings = "fort" }]
+towns = [{ at = [30, 10], faction = 0, owner = 0, buildings = "fort", name = "Fairwater" }]
 boats = [
     { at = [1, 7], kind = 0 },
     { at = [4, 7], kind = 1 },
     { at = [7, 10], kind = 2 },
 ]
 view = [12, 4, 0]
+# The panels (E24 M4 T3b1, design §5.10): the armies in the map, the starting bonus Gold and the
+# engine's resources written (the engine has no bonus yet, E10's), shown with the start's
+# selection (Orrin, the first of the list by type: its Leadership's morale is MCL-Q36's gap).
+bonus = "gold"
+resources = [20, 10, 20, 10, 10, 10, 20000]
+select = { hero = [4, 8] }
+reselect = [24, 14]
 
 [[objects]]
 def = "AVTwood0.def"
