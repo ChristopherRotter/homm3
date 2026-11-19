@@ -19974,3 +19974,62 @@ baseline stopped at its coverage step (the disk at 11 GB free; CI stands for it)
 
 **Versions:** none moved (no part, pack or hash change). T132a2 next (the kinds, `[market]` in the
 part, the packs, the eighth check, part v23).
+
+### Increment 14, round 5: T132a2, the kinds, the packs and the eighth original-data check (2026-11-19, `adventure/e08-t132a1`, `cross-lane`)
+
+**The cut** (decision 381, the user: "do the next part on your current branch, then open the
+PR"): T132a2 on T132a1's branch, one pull request for T132a, `cross-lane` for the AI lane's two
+bots tables (asked before the change, consented). **Baseline:** `master` c84f854 (#1046 merged;
+T132a1's commits rebased on it). Staged beside `Heroes3.exe`: `extracted.tar` and `maps.tar`
+(the PC's tools back for a while; untarred into `original-data/`).
+
+- **The kinds** (`h3-adventure`'s new `ruleset/trades.rs`; design note §1, §3 to §5):
+  `ObjectKind::{Market, Altar, HillFort, WarMachineFactory}` and their definitions
+  (`Market` with `MarketScreen`; `Altar` from `AltarDef`; `HillFort`; `WarMachineFactory` from
+  `WarMachineFactoryDef`), the compile checks (screens, count, stock; kept artifacts, places,
+  divisor; percents; machines with one artifact each) and `Scope::artifact`
+  (`UnknownArtifact`), hash tags 47 to 50, every one entered (`a trade or service is not
+  entered`), `effect` none until T133 and T134. **`[params.market]`**:
+  `AdventureParamsDef::market` (`MarketParamsDef`), compiled into T132a1's `MarketParams`
+  (`compile_market_params`: every core resource once per table, the lists of one length) and
+  `AdventureParams::market()`; `MarketParams` hashed (the tables, the factors' bit patterns) and
+  given `value`, `artifact_value`. **The Altar's factions** (*agent's call*, design note §3's
+  *As built*): `AdventurePack::altar_factions` (`[[altar_faction]]`, `AltarFactionDef`), the
+  part's `altar_screens(faction)`, `AdventureCompileError::AltarFaction` (nothing sacrificed, a
+  second entry, none beside an Altar); `check_trades` (a market's count within the rows, the
+  parameters present, every faction's entry). **Part v23.**
+- **The pack syntax** (`h3-pack-adventure`): `market = { screens, count, stock }`,
+  `[object_type.altar]` (`experience` by class, 0 if left out; `keeps`; `places`;
+  `creature_factor`, `creature_divisor`), `hill_fort = { gold }`, `war_machine_factory = {
+  machines }`, `[params.market]`, `[[altar_faction]]`; in the format's doc block.
+- **The packs** (design note §6): base's five types after the Den of Thieves, `[params.market]`,
+  the eight factions' entries; ab's Freelancer's Guild and Conflux's entry; each with sources.
+- **Check 8** (`examples/original_data.rs`): the seven classes' types, kinds and visit modes
+  against the class lists, no other type of the four kinds; the market's values (`u16`s at
+  0x68C482, 0x68C492, a new `Exe::u16s`) and factors (bit patterns at counts 1 to 10) against the
+  executable's; the Hill Fort's percents against 0x63EB4C; the 63 creatures with an upgrade each
+  a town's unupgraded one with the town table's upgrade (`creature_is_unupgraded`,
+  `creature_upgrade`); the Altar and the Hill Fort added to check 6's kind marks. Passes on the
+  staged installation (every check's summary line); fails on three perturbations (wood's value
+  251, the Hill Fort's level 3 at 25, the creatures' factor at 10 as 99). The census moved to
+  T132b.
+- **Tests:** `h3-adventure`'s `ruleset/tests/trades.rs` (a core with factions, artifacts and war
+  machines: the four kinds compiled and unvisited, every check's reason, the market parameters'
+  errors, the factions' errors, every parameter in the hash); `h3-pack-adventure`'s
+  `tests/trades.rs` (every field and error of the syntax; the original packs' six types, their
+  kinds, visits and marks, the nine factions, the rates at five); the type counts (base + 5, ab
+  + 1) and the kind marks (+ 2) in `tests.rs`; `h3-map`'s typed classes' test leaving the six
+  out until T132b.
+- **Rules:** ADV-MKT-001, ADV-ALT-001, -002, -003, ADV-HFT-002, ADV-WMF-001 new, `implemented`
+  (the kinds' data and checks; the visits with T133, T134), each with the code reading, batch
+  E14's rows and VCMI or the wiki.
+- **Replays and records:** the 98 adventure goldens re-recorded from their commands (a scratch
+  script, `h3 adventure run --script` with each header's options): only hash lines moved, every
+  `adventure_ruleset_hash` (to `0x00ffbc3dd7a90159`), and in the 28 played with ab or sod the
+  checkpoints and `final_hash` (base's five new types move ab's and sod's ids). The AI lane's two
+  bots tables regenerated in release: only `engine.adventure` moved.
+- **Docs:** design note §1, §2, §3, §4, §5, §6's *As built*; decision 381 and the task's line;
+  `OVERVIEW.md`'s part line; the queue (T132a2 out, T132b in); the town lane's inbox note
+  (the accessor).
+
+**Versions:** adventure ruleset part v23. T132b (the import, map import v27) next.

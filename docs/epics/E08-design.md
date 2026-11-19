@@ -67,6 +67,12 @@ Batch E14 records where the hero stands (§20, E14-16).
   guards.
 - The part refuses a market without a screen, a `count` outside the rows, a `stock` with `Buy`
   missing or a Special class, and `Buy` without a `stock` (the compiler's errors, tested).
+- *As built* (T132a2): `ObjectKind::Market(Market)` (`ruleset/trades.rs`: `screens:
+  Vec<MarketScreen>` of `Trade`, `Transfer`, `Sell`, `Buy`, `count`, `stock`; `Market::shows`),
+  the same struct as its definition (no key); hash tag 47. The count is checked against
+  `[params.market]`'s rows once every pack is in (`check_trades`; a market without the
+  parameters refused). Every one of the four kinds entered (`a trade or service is not
+  entered`); no visit until T133 (`effect` none).
 
 ### 2. The market's rates (ADV-MKT-002; survey §4, §9; D-70 the town lane's, D-71 the original's)
 
@@ -112,6 +118,13 @@ Batch E14 records where the hero stands (§20, E14-16).
   artifact's 2.5 × its cost in gold; D-70's 37, 62 and 112 at 2, 4 and 8 (the town's rows, the
   original's); a property: every lot's `give` and `take` at least 1. Batch E14's E14-1 and E14-5
   confirm against the original.
+- *As built* (T132a2): `AdventureParamsDef::market: Option<MarketParamsDef>` (each value table
+  by resource key, the three factor lists in hundredths), compiled into T132a1's `MarketParams`
+  when the parameters resolve (`compile_market_params`: every core resource once in each table,
+  in any order, the lists of one length; the constructor's errors as `InvalidParams`), hashed
+  last in the part (v23); `AdventureParams::market()`. The parameters must reach every core
+  resource, so the pack that gives them depends on every resource's pack (the base pack: all
+  seven are base's). The pack syntax `[params.market]`; the base pack's values and factors.
 - *As built* (T132a1, decision 380): `h3_adventure::MarketParams` (`new` from the two value
   tables by resource as `u16` and the rows in hundredths, refusing an empty or uneven table, a 0
   value, no row or more than 255, a 0 factor: `MarketParamsError`), its `resource_lot`,
@@ -149,6 +162,17 @@ Batch E14 records where the hero stands (§20, E14-16).
   visit, since every player answers, §10).
 - The part refuses an empty `places`, a `divisor` of 0, a `keeps` artifact twice and a faction
   listed twice.
+- *As built* (T132a2): `ObjectKind::Altar(Altar)` (`experience: [u32; 5]` by `ArtifactClass`,
+  `keeps`, `places`, `creature_factor`, `creature_divisor`; `Altar::artifact_experience`), from
+  `AltarDef` (the kept artifacts by key; `AdventureCompileError::UnknownArtifact`); hash tag 48.
+  **The factions are part-level entries, not the kind's lists** (*agent's call*, changing this
+  section's: the adventure part has no way for the ab pack to change a base type, so Conflux
+  could not join the base type's lists): `[[altar_faction]]` (`AltarFactionDef`: a faction,
+  `artifacts`, `creatures`, one at least), each pack its own factions as the random dwellings'
+  tables (base's eight, ab's Conflux), compiled into `AdventureRuleset::altar_screens(faction)`;
+  with an Altar type every core faction has one (`AdventureCompileError::AltarFaction`); hashed
+  last in the part. Not chosen: an override of a base type by a later pack (a new mechanism for
+  one object), an alignment on the core's factions (a `shared/` change).
 
 ### 4. The Hill Fort kind (ADV-HFT-001, -002; survey §13; D-74 the original's)
 
@@ -177,6 +201,9 @@ Batch E14 records where the hero stands (§20, E14-16).
   for the stack (D-74). A level-1 stack is free.
 - **The base pack's type** `hill_fort` (class 35): `visit = "enter"`, `from_above = false`,
   **`kind_mark = true`** (the original's k 14, every visit).
+- *As built* (T132a2): `ObjectKind::HillFort(HillFort { gold: [u8; 7] })`, the percents checked
+  (to 100, multiples of 25); hash tag 49. Which stacks is the runtime's (T134b): a creature with
+  an upgrade in the enabled packs.
 
 ### 5. The War Machine Factory kind (ADV-WMF-001; survey §14)
 
@@ -188,6 +215,9 @@ Batch E14 records where the hero stands (§20, E14-16).
   false`, `kind_mark = false`.
 - The part refuses an empty list, a creature twice, and a creature that is not a war machine with
   one artifact.
+- *As built* (T132a2): `ObjectKind::WarMachineFactory(WarMachineFactory { machines })`, each
+  machine with its one artifact found in the core (`WarMachineFactoryDef` by creature key); hash
+  tag 50.
 
 ### 6. The packs and the eighth original-data check
 
@@ -203,6 +233,21 @@ Batch E14 records where the hero stands (§20, E14-16).
   (survey §1) over the shipped maps: 1 058 objects of the seven classes on 148 maps, every one at
   subclass 0.
 - **Versions:** the adventure ruleset part's next (v22 today; the kinds' tags, `[market]`).
+- *As built* (T132a2): base's five types after the Den of Thieves (`trading_post`,
+  `black_market`, `altar_of_sacrifice`, `hill_fort`, `war_machine_factory`), `[params.market]`
+  and the eight `[[altar_faction]]` entries; ab's `freelancers_guild` and Conflux's entry; each
+  with its sources in the pack's comments. **Check 8** (`h3-pack-adventure`'s `original_data`):
+  the seven classes' types, kinds and visit modes against the class lists, no other type of the
+  four kinds; `[params.market]`'s values and the factors' bit patterns at counts 1 to 10 against
+  the executable's tables; the Hill Fort's percents against its gold factors; the 63 creatures
+  with an upgrade each a town's unupgraded one whose upgrade the town table names; the Altar and
+  the Hill Fort among the kind marks (check 6). It passes on the staged installation and fails on
+  three perturbations (a value, a percent, a factor). **The census** of the seven classes over
+  the shipped maps moves to T132b, with the import that types them (the map reader's check).
+  **Part v23** (the town lane's T39a took v22): the 98 goldens' part hash lines, and the 28
+  played with ab or sod their checkpoints and final hashes (base's five new types move ab's and
+  sod's ids); the AI lane's two bots tables' `engine.adventure` (`cross-lane`, the user's
+  consent).
 
 ## Part B — the map (`h3-map`, `h3-adventure`)
 

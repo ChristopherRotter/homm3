@@ -4232,3 +4232,166 @@ numeric  = "float"
   url        = "https://heroes.shoutwiki.com/wiki/Artifact_merchants"
   retrieved  = "2026-11-18"
   confidence = "medium"
+
+[[rule]]
+id       = "ADV-MKT-001"
+title    = "The markets: the Trading Posts, the Freelancer's Guild and the Black Market"
+context  = "adventure"
+status   = "implemented"
+summary  = "One kind, market, for the original's classes 99 and 221 (the Trading Post), 213 (the Freelancer's Guild, AB's) and 7 (the Black Market): its window's screens (trade: resources for resources; transfer: resources 1 : 1 to another player; sell: creatures for resources; buy: resources for an artifact of its stock; at least one, distinct), the count of Marketplaces it trades as (from 1 to the market parameters' counts; 5 for every map object) and a Black Market's stock classes (exactly with buy, none special: three treasures, three minors, one major). Every market type is entered (none of the seven trade classes is on the original's not-entered list) and, in the original packs, none from above, without a mark or an owner. E08 T132a2: the kind, its checks, the packs' three types (base's trading_post and black_market, ab's freelancers_guild) and the eighth original-data check; the import (T132b), the stock's draw and the visits (T133) come later."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md sections 1 to 3, 5 to 7; design note E08-design.md section 1): visit_object's cases 7, 99, 213 and 221 open the trade window (market_dialog_create) at screen 2, 0 and 4 with market_count 5; object_classes_not_entered 0x63AA58 and object_classes_from_above 0x63AB00 list none of them (checked by check 8)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-14.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-19; survey E08-trades.md section 21): E14-16 (the hero on each entrance at the window, after it and after Space; none entered from above), E14-1 (the guild's screen 4), E14-4 and E14-3 (the Black Market's screen 2, three treasures, three minors, one major), E14-5 and E14-6 (the Trading Post's screens 0 and 1)"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/markets.json (VCMI 1.7.5; survey section 9): the Trading Posts resource-resource and resource-player, the Freelancer's Guild creature-resource, the Black Market resource-artifact, every map market at an efficiency of five; no blockedVisitable"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/markets.json"
+  retrieved  = "2026-11-18"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-ALT-001"
+title    = "The Altar of Sacrifice's visit: the screens by the hero's class's faction"
+context  = "adventure"
+status   = "implemented"
+summary  = "An Altar of Sacrifice (the original's class 2) is entered, none from above, and its visit sets the team's kind mark. Which screens its window allows follows the visiting hero's class's faction: Castle, Rampart and Tower heroes sacrifice artifacts only; Inferno, Necropolis and Dungeon heroes creatures only; Stronghold, Fortress and Conflux heroes both, the artifacts first. Each pack names its factions' entries (artifacts, creatures or both, one at least, once per faction); with an Altar type in the part every core faction has one. E08 T132a2: the kind, the factions' entries (base's eight, ab's Conflux) and their checks; the visit and its window come with T134a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md section 12.1): altar_dialog_create 0x55FDD0 enables the artifacts' screen for the hero class's factions 0, 1, 2, 5, 7, 8 and the creatures' for 3, 4, 5, 6, 7, 8 (Castle, Rampart, Tower, Stronghold, Fortress, Conflux; Inferno, Necropolis, Dungeon, Stronghold, Fortress, Conflux), the artifacts first; the kind mark k 28"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-14.md (survey section 21): E14-7 (a Castle hero the artifacts' screen, the creatures' disabled; a Necropolis hero the creatures', the artifacts' disabled; a Fortress hero the artifacts' first, the creatures' enabled), E14-16 (the hero on the Altar's entrance, none from above)"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "List of adventure map objects (the Altar of Sacrifice: good heroes sacrifice artifacts, evil heroes creatures, neutral heroes both)"
+  url        = "https://heroes.shoutwiki.com/wiki/List_of_adventure_map_objects"
+  retrieved  = "2026-11-18"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-ALT-002"
+title    = "The Altar of Sacrifice's artifacts"
+context  = "adventure"
+status   = "implemented"
+summary  = "An artifact put on the altar gives experience by its class: treasure 1 000, minor 1 500, major 3 000, relic 6 000, a special one 0 (the Grail, a Spell Scroll, the Ballista, the Ammo Cart, the First Aid Tent go for 0 beside others: A-47 harmless and accepted, D-72 the original's, E08 decision 367); the Spell Book and the Catapult are never put on it; a sacrifice takes at most 23 (the altar's 22 places and the one held); each artifact's experience is the hero's gain with Learning (HER-EXP-001), truncated per artifact. E08 T132a2: the kind's values (experience by class, kept artifacts, places) and their checks; the sacrifice comes with T134a."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md section 12.2): altar_artifact_entry 0x55FC30's immediates 1000, 1500, 3000, 6000 by class, 0 otherwise; altar_worn_click 0x5632A0 refuses the Spell Book and the Catapult (GENRLTXT 483); altar_slot_row_counts 0x6412E8 (22 places)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-14.md (survey section 21): E14-8 (1 000, 1 500, 3 000, 6 000: +11 500), E14-9 (the Ballista, a Spell Scroll and the Grail 0 beside a treasure's 1 000; the Catapult refused with GENRLTXT 483)"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGMarket.cpp, CAltarArtifacts (VCMI 1.7.5; survey section 15): the same values by class; the war machines refused (D-72, not the original's)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGMarket.cpp"
+  retrieved  = "2026-11-18"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-ALT-003"
+title    = "The Altar of Sacrifice's creatures"
+context  = "adventure"
+status   = "implemented"
+summary  = "A creature sacrificed gives factor x floor(AI value / divisor) experience (5 and 40), with the hero's Learning applied per stack and truncated (D-73 the original's, E08 decision 365); the army keeps one creature. E08 T132a2: the kind's factor and divisor (from 1) and their checks; the sacrifice comes with T134a."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md section 12.3): altar_set_creature_amount 0x564C00 (the AI value divided by 40, times 5, per creature; the stack's experience with the Learning factor, truncated)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-14.md (survey section 21): E14-10 (Advanced Learning, 3 and 1 Skeletons 16 + 5 = 21), E14-11 (the only stack's most 9; 49), E14-17 (10 Gnolls 55 with the new Advanced Learning)"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGMarket.cpp, CAltarCreatures (VCMI 1.7.5; survey section 15): the same values; the Learning once over the sum (D-73, not the original's)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGMarket.cpp"
+  retrieved  = "2026-11-18"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-HFT-002"
+title    = "The Hill Fort's price"
+context  = "adventure"
+status   = "implemented"
+summary  = "A stack's upgrade at a Hill Fort costs, for each resource, max(0, the upgrade's cost minus the creature's) times the count; the gold alone is then scaled by the creature's level, by the percents 0, 25, 50, 75, 100, 100, 100 for levels 1 to 7 (each a multiple of 25 to 100: the original's binary32 quarter times a gold below 2^24, truncated, equals the integer share), truncated once per stack (D-74 the original's, E08 decision 365); a level-1 stack is free. Which stacks upgrade is the enabled packs' (E08 decision 378). E08 T132a2: the kind's percents and their check; the rows and the upgrade come with T134b."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md section 13): upgrade_cost 0x54E750 (the difference times the count by resource, then the gold times hill_fort_gold_factors 0x63EB4C[level], truncated); hill_fort_rows 0x4E7EB0 (a level-1 stack free); the factors checked against the pack by check 8"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-14.md (survey section 21): E14-12 (Pikemen free, 10 Archers 125, 3 Wood Elves 37, 3 Pegasi 56, the Angel 2 000 gold and 2 gems, 4 Air Elementals 25), E14-13 (the states), E14-14 (5 Air Elementals 31 on an RoE-format map)"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/MiscObjects.cpp HillFort::fillUpgradeInfo and config/objects/generic.json upgradeCostPercentage (VCMI 1.7.5): the same percents; every resource scaled per creature (D-74, not the original's)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Hill Fort: any non-upgraded creature, level 1 free, 25 %, 50 %, 75 % at levels 2 to 4, normal from 5"
+  url        = "https://heroes.thelazy.net/index.php/Hill_Fort"
+  retrieved  = "2026-11-19"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-WMF-001"
+title    = "The War Machine Factory"
+context  = "adventure"
+status   = "implemented"
+summary  = "A War Machine Factory (the original's class 106) is entered, none from above, without a mark; its visit asks the hire question and its yes opens the hire dialog of its machines in order (the base pack's Ballista, First Aid Tent and Ammo Cart; never the Catapult), each at its creature's cost, one of each the hero lacks (a count of 1 while the hero lacks its artifact, else 0), bought as the machine's one artifact into its position. E08 T132a2: the kind (each machine a war machine creature with exactly one artifact in the core, at least one, distinct) and its checks; the visit and the purchase come with T134b."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md section 14): visit_object's case 106 (ADVEVENT 157, the hire dialog with creatures 146, 147, 148 sharing one count); recruit_dialog_select 0x5503A0 (a war machine's count 1 less while the hero holds its artifact, war_machine_creature 0x550360); hero_give_artifact 0x4E3070 at the purchase"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-14.md (survey section 21): E14-15 (ADVEVENT 157; with a Ballista: the Ballista 0, the First Aid Tent and the Ammo Cart 1; both bought for 1 750 into positions 15 and 14, the dialog open; then every count 0)"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/generic.json warMachineFactory and CGDwelling (VCMI 1.7.5; survey section 15): the Ballista, the First Aid Tent and the Ammo Cart, one of each the hero lacks, the Catapult refused"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/generic.json"
+  retrieved  = "2026-11-18"
+  confidence = "high"

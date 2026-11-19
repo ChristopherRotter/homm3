@@ -37,8 +37,8 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   (screen 0), `creature_lot(count, gold cost, take)` (screen 4), `artifact_price(count, cost, pay)`
   (screen 2), each `None` where the original has no rate, `count` from 1 to the parameters' rows
   (your D-70 mapping of a town's Marketplaces to a row is yours); D-70's rows hold as the original's
-  (wood for gold 37, 62, 112 at 2, 4, 8). The part's `[market]` compiles into it with E08 T132a2
-  (its accessor named there). **A correction** to survey `E08-trades.md` §4: a precious resource
+  (wood for gold 37, 62, 112 at 2, 4, 8). The part's `[params.market]` compiles into it since E08
+  T132a2: `AdventureRuleset::params().market()` (the base pack's values and factors). **A correction** to survey `E08-trades.md` §4: a precious resource
   for wood or ore is **2 : 1** at five Marketplaces (the first table had 1 : 2; the code read
   again). The artifact sale (screen 3) stays yours to add on the same module.
 

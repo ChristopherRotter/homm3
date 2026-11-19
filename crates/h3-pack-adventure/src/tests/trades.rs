@@ -188,7 +188,7 @@ fn parses_the_market_parameters_and_the_altar_factions() {
     ));
 }
 
-// covers: ADV-MKT-001, ADV-MKT-002, ADV-ALT-001, ADV-ALT-002, ADV-ALT-003, ADV-HFT-001, ADV-HFT-002, ADV-WMF-001
+// covers: ADV-MKT-001, ADV-MKT-002, ADV-ALT-001, ADV-ALT-002, ADV-ALT-003, ADV-HFT-002, ADV-WMF-001
 #[test]
 fn the_packs_type_the_trades_and_services_of_increment_14() {
     let (base_core, base) = compile(&ORIGINAL_PACKS[..1], PROFILE).unwrap();
