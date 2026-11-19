@@ -1547,3 +1547,104 @@ background = "loadbar.pcx"
 bar = "loadprog.def"
 at = [395, 548]
 step = 18
+
+# High Scores (E27 M4 T1a; design §2.8, §34: high_scores_dialog_init 0x4E9880, high_scores_draw
+# 0x4E9E50, high_scores_proc 0x4EA1D0; h3_view::shell::scores). The tab's picture copied whole to
+# (0, 0); the headings at y 11 and the eleven rows from y 53 by 50, each 26 high in its column's
+# box (left edge, width), in medfont.fnt, colour 1 (8 the newest row: M5), alignment 5; then the
+# dialog's items. A row's creature: the first pair of high_score_creatures 0x67F1FC (a score and
+# a creature) whose score is not below the row's (a campaign's divided by 5 first); its picture
+# the adventure map's (the adapter's, from objects.txt). The creatures step once more than 200 ms
+# have passed since the last step.
+[high_scores]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 1
+newest = 8
+align = 5
+headings = [11, 26]
+rows = [53, 50]
+step = 200
+# The buttons' DEFs' canvas: a press's redraw shows only the button's box (41 x 199), so the
+# original's profile keeps the last column and row as last shown whole (as CLT-Q118's menus).
+drawn = [42, 200]
+creatures = [
+    [4, 42], [8, 28], [12, 98], [16, 70], [20, 43], [24, 56], [28, 84], [32, 29],
+    [36, 85], [40, 0], [44, 71], [48, 57], [52, 99], [56, 58], [60, 14], [64, 1],
+    [68, 2], [72, 100], [76, 59], [80, 86], [84, 15], [88, 16], [92, 72], [96, 101],
+    [100, 44], [104, 30], [108, 3], [112, 88], [116, 31], [120, 87], [124, 17], [128, 18],
+    [132, 73], [136, 45], [140, 89], [144, 32], [148, 60], [152, 104], [156, 105], [160, 61],
+    [164, 115], [168, 113], [172, 19], [176, 74], [180, 114], [184, 4], [187, 112], [190, 46],
+    [193, 75], [196, 47], [199, 33], [202, 90], [205, 6], [208, 48], [211, 5], [214, 49],
+    [217, 8], [220, 22], [223, 76], [226, 20], [229, 21], [232, 106], [235, 62], [238, 34],
+    [241, 77], [244, 7], [247, 116], [250, 91], [253, 35], [256, 107], [259, 9], [262, 50],
+    [265, 117], [268, 63], [271, 23], [274, 78], [277, 64], [280, 36], [283, 102], [286, 37],
+    [289, 92], [292, 103], [295, 79], [298, 65], [301, 93], [304, 51], [307, 94], [310, 108],
+    [313, 95], [316, 109], [319, 80], [322, 81], [325, 52], [328, 24], [331, 53], [334, 10],
+    [337, 38], [340, 25], [343, 66], [346, 11], [349, 67], [352, 39], [355, 96], [358, 68],
+    [361, 40], [364, 110], [367, 69], [370, 82], [373, 26], [376, 12], [379, 54], [382, 111],
+    [385, 97], [388, 55], [391, 41], [394, 27], [397, 83], [32767, 13],
+]
+
+# The campaigns' tab (the dialog's +0xFC 0): Rank, Player, Campaign (GENRLTXT 673), Score.
+[high_scores.campaigns]
+picture = "hiscore2.pcx"
+columns = [[88, 58], [163, 122], [303, 210], [531, 122]]
+creatures = 1015
+
+# The scenarios' tab (+0xFC 1, the one shown first): Rank, Player, Land, Days, Score.
+[high_scores.scenarios]
+picture = "hiscore.pcx"
+columns = [[88, 58], [163, 122], [303, 210], [531, 52], [601, 52]]
+creatures = 1004
+
+# At (0, 0), no picture of its own. The DEF buttons (four frames: 0, pressed 1, disabled 2,
+# selected 3: the tab's) in the order the constructor adds them: Exit (0x7802, Enter), Reset
+# (0x3EB), Campaign (0x3E9, C), Standard (0x3EA, S); then the scenarios' eleven creatures (1004
+# to 1014) and the campaigns' (1015 to 1025), 64 x 64 at (649, 26 + 50 i), their DEFs and
+# frames the screen's (dialog_def_create with the flags 0x10: an adventure map DEF, type 0x43,
+# by def_draw_flagged_plain 0x47BDC0 with no colour, the plain drawer's encoding 3).
+[high_scores.dialog]
+place = [0, 0]
+
+[[high_scores.dialog.items]]
+kind = "button"
+id = 30722
+def = "HiScExt.def"
+at = [726, 346]
+size = [41, 199]
+
+[[high_scores.dialog.items]]
+kind = "button"
+id = 1003
+def = "HiScRes.def"
+at = [726, 114]
+size = [41, 199]
+
+[[high_scores.dialog.items]]
+kind = "button"
+id = 1001
+def = "HiScCam.def"
+at = [31, 114]
+size = [41, 199]
+
+[[high_scores.dialog.items]]
+kind = "button"
+id = 1002
+def = "HiScSta.def"
+at = [31, 346]
+size = [41, 199]
+
+[[high_scores.dialog.items]]
+kind = "def"
+id = 1004
+at = [649, 26]
+size = [64, 64]
+repeat = { count = [1, 11], step = [0, 50] }
+
+[[high_scores.dialog.items]]
+kind = "def"
+id = 1015
+at = [649, 26]
+size = [64, 64]
+repeat = { count = [1, 11], step = [0, 50] }

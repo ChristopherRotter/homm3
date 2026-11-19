@@ -10,7 +10,7 @@
 //! samples as the original's sound manager plays them (E27 M2 T6a); New Game's and Load Game's
 //! menus take theirs on the same machinery (E27 M2 T6b1); [`multiplayer`] the Multiplayer
 //! dialog's first stage and the hot seat's names (E27 M2 T7); [`scenario`] the scenario screen
-//! (E27 M3 T1a: a new single scenario's, the list hidden).
+//! (E27 M3 T1a: a new single scenario's, the list hidden); [`scores`] High Scores (E27 M4 T1a).
 //!
 //! **The loop** (§2.2): at its top the screen asked for (`screen_request` 0x6976D8: the request
 //! play ended with, [`PlayEnd::Request`]) is taken by the main menu's switch (0x4EEC0D): none or
@@ -51,6 +51,7 @@ pub mod play;
 pub mod replay;
 pub mod samples;
 pub mod scenario;
+pub mod scores;
 pub mod start;
 pub mod text;
 
@@ -240,7 +241,8 @@ impl Screen {
             Self::Campaigns => "E20",
             Self::Tutorial => "CLT-Q84",
             Self::Play { .. } => "E24 M5",
-            Self::HighScores | Self::Credits | Self::Lost | Self::Won => "E27 M4",
+            Self::HighScores => "E27 M4 T1",
+            Self::Credits | Self::Lost | Self::Won => "E27 M4",
             Self::End => "",
         }
     }
@@ -249,10 +251,10 @@ impl Screen {
     /// the main menu, the game type menus, the Multiplayer dialog (E27 M2 T5a, T6a, T6b1, T7), a
     /// new single scenario's screen (M3 T1a) and the hot seat's (M3 T4a: a new game's from the
     /// Multiplayer dialog, its only path); play's start after a begin (M3 T6: the loading screen
-    /// and its fade, then the client's notice until E24 M5, [`play`]); the campaigns' selection,
-    /// the tutorial, High Scores, Credits and the loads' scenario screens the client's stubs (T6b2,
-    /// T7: until E20, CLT-Q84's tutorial mode, M4 and M4); the others a stand-in until their task
-    /// ([`Screen::task`]).
+    /// and its fade, then the client's notice until E24 M5, [`play`]); High Scores (M4 T1a,
+    /// [`scores`]); the campaigns' selection, the tutorial, Credits and the loads' scenario
+    /// screens the client's stubs (T6b2, T7: until E20, CLT-Q84's tutorial mode, M4 T2 and M4);
+    /// the others a stand-in until their task ([`Screen::task`]).
     #[must_use]
     pub const fn built(self) -> Built {
         match self {
@@ -261,12 +263,9 @@ impl Screen {
             | Self::GameType(_)
             | Self::Multiplayer(_)
             | Self::Scenario(Game::New, Kind::Single | Kind::Multiplayer)
-            | Self::Play { restart: false } => Built::Whole,
-            Self::Campaigns
-            | Self::Tutorial
-            | Self::HighScores
-            | Self::Credits
-            | Self::Scenario(..) => Built::Stub,
+            | Self::Play { restart: false }
+            | Self::HighScores => Built::Whole,
+            Self::Campaigns | Self::Tutorial | Self::Credits | Self::Scenario(..) => Built::Stub,
             _ => Built::Not,
         }
     }

@@ -2,7 +2,8 @@
 
 Status: **refined** (2026-11-12, M0, with the user); **M1 closed** (2026-11-13), **M2 closed**
 (2026-11-17), **M3 closed** (2026-11-19, T7: the fresh reviews, decisions 66 to 68); **M4 refined**
-(2026-11-19, M4 T0 at M3 T7, decision 69); next **M4 T1** (`docs/lanes/client/QUEUE.md`).
+(2026-11-19, M4 T0 at M3 T7, decision 69); M4 T1a done (2026-11-19, decision 70); next **M4
+T1b** (`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
 catalogue and capture harness). Working detail (readings, the clips, layouts):
@@ -478,6 +479,12 @@ The user, 2026-11-19 (M3 T7's start):
     colour's human flag, town and hero pick: the adventure lane's format, its inbox told) and a
     table of the client's own (the names, bonuses, handicaps, the turn's duration) (CLT-Q156 (a));
     M4's task table as proposed (below).
+70. **T1 cut in two** (offered at its start: the dialog drawn and pressed, then Reset's question
+    and the scores file; or whole): T1a the dialog, both tabs, the buttons and keys, the rows from
+    `CampHigh.txt`'s defaults and the creatures' steps, exact against `scores-tabs`; T1b Reset's
+    question and the client's own scores file, exact against `scores-reset`. A score above the
+    creatures' table (32 767) shows the last pair's creature (CLT-Q157 (a); the original reads
+    past the table).
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
@@ -580,14 +587,25 @@ load mode), §3.12 to §3.14 (a load's rows).
 
 | Task | Scope | Status |
 |---|---|---|
-| T1 | High Scores (§2.8): the dialog, both tabs and their buttons, the eleven creatures stepping every 200 ms (the adventure map's DEFs by `high_score_creatures`), Reset's question (GENRLTXT 667), the client's own scores file (the defaults `CampHigh.txt`'s; never `HiScore.dat`), M2's stub lifted; exact against `scores-tabs`, `scores-reset` | next |
-| T2 | Credits (§2.9): `Credits.fnt`, `Credits.txt`'s two records wrapped to 328 px, the scroll of 2 px ten times a second (CLT-Q88), the closing text's moment read from the kept frames, a key (but F4) or a press ending it, M2's stub lifted; exact against `credits-scroll`, `credits-end` | after T1 |
+| T1a | High Scores (§2.8, §34; decision 70): the dialog, both tabs and their buttons and keys, the rows from `CampHigh.txt`'s defaults, the eleven creatures stepping (the adventure map's DEFs by `high_score_creatures`), M2's stub lifted, Reset a client's notice (CLT-STUB-14); exact against `scores-tabs` | done 2026-11-19 (`scores-tabs` 28 of 28 exact; CLT-Q157 (a)) |
+| T1b | High Scores' Reset (§2.8): its question (GENRLTXT 667) resetting both tables to the defaults, the client's own scores file (read at the start, written at Reset; never `HiScore.dat`), CLT-STUB-14 lifted; exact against `scores-reset` | next |
+| T2 | Credits (§2.9): `Credits.fnt`, `Credits.txt`'s two records wrapped to 328 px, the scroll of 2 px ten times a second (CLT-Q88), the closing text's moment read from the kept frames, a key (but F4) or a press ending it, M2's stub lifted; exact against `credits-scroll`, `credits-end` | after T1b |
 | T3 | The save file (decision 69): the engine's adventure replay with the setup's choices (the adventure lane's format, its inbox told; this lane cross-lane with the user's consent should it not be built yet) and the client's table (the names, bonuses, handicaps, the turn's duration, the save's name), written and read with its version; a load's setup rebuilt and its commands replayed by the engine; tests, no screen | after T2 |
 | T4 | Load Game single (§3.1, §3.3 to §3.6, the load mode): the client's saves listed (the map's header, the date, the difficulty shown, the turn's duration), the keys, the sort, Delete's question (688), the notice with none (686), Load's popup, the load to play's stub (as M3's begin); §6.4's fixes (the date's order: a day above 12 and a pinned time zone; a save of another size; Delete of the last save) and M3 T7's leftover (the list's held keys); exact against `scn-load`, `scn-load-none` (the viewer given client saves made to match the recipe's) | after T3 |
 | T5 | Load Game hot seat (§3.12 to §3.14, a load's rows: the saved choices, no arrows; §6.4's Random Map button in a load): exact against `mp-load`, `adv-load` | after T4 |
 | T6 | M4's closure: a fresh reviewer, M4's review list to the user, M4 to the archive, M5's refinement once the shell hosts play (else its prerequisites recorded) | after T5 |
 
-**M4's review list** (the agent's calls, *provisional*, for T6): none yet.
+**M4's review list** (the agent's calls, *provisional*, for T6):
+
+1. (T1a) High Scores' layout `[high_scores]`: the creatures' pairs as the executable's numbers,
+   the columns by tab, `drawn` (the buttons' canvas for the original's stale edges).
+2. (T1a) A press's stale edges (§34.2) taken as CLT-Q118's class (decision 22: the client draws
+   the frame whole, the original's profile for the comparisons), not asked again.
+3. (T1a) Exit's command (`scores-exit`: Enter and Escape) ends the dialog at its key down whatever
+   key the user binds; C and S press their buttons as hotkeys.
+4. (T1a) The creatures' DEFs loaded at the start for the tables' rows alone (T1b's file and M5's
+   entry load what theirs need); a creature without a template shows none.
+5. (T1a) Reset shows the client's notice until T1b (CLT-STUB-14), the replay stopping under it.
 
 ## Dependencies and boundaries
 

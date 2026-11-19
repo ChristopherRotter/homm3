@@ -10,7 +10,10 @@
 //! over the game type menu as that menu left the screen, the hot seat's names over it, a popup or
 //! the network's notice over them ([`super::multiplayer`]). The scenario screen (M3 T1a) is its
 //! drawn background, its dialog and its popup ([`super::scenario`]). Play's start (M3 T6) is the
-//! loading screen, its bar and the fade's step, then its stub's menu ([`super::play`]).
+//! loading screen, its bar and the fade's step, then its stub's menu ([`super::play`]). High
+//! Scores (M4 T1a) is its tab's picture, the headings and rows, its dialog over them and Reset's
+//! notice over all ([`super::scores`]); its creatures' DEFs are the adapter's (not in
+//! [`names`]).
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -21,6 +24,7 @@ use serde::Deserialize;
 use super::menu::{Arrow, Front, Kind, Stale, TITLE};
 use super::play::LoadingLook;
 use super::scenario::{DescriptionLook, ListLook, TeamsLook};
+use super::scores::ScoresLook;
 use super::{Game, Screen};
 use crate::message::MessageLayout;
 
@@ -53,6 +57,8 @@ pub struct ShellLayout {
     pub scenario: ScenarioLayout,
     /// The loading screen (§3.17, §32: `loading_screen_open` 0x4ED350; E27 M3 T6).
     pub loading: LoadingLook,
+    /// High Scores (§2.8, §34: `high_scores_dialog_init` 0x4E9880; E27 M4 T1a).
+    pub high_scores: ScoresLook,
 }
 
 /// The scenario screen: its two backgrounds, its dialog, its list's rows and bar, its teams'
@@ -158,6 +164,7 @@ pub fn parse_layout(text: &str) -> Result<ShellLayout, String> {
         &mut layout.multiplayer,
         &mut layout.hot_seat,
         &mut layout.scenario.dialog,
+        &mut layout.high_scores.dialog,
     ] {
         *dialog = dialog.clone().expanded();
     }
@@ -197,6 +204,19 @@ pub fn look(layout: &ShellLayout, screen: Screen, front: Option<&Front>) -> Opti
                 stale: stale.collect(),
                 over: scenario.box_draws(players),
                 cursor: scenario.cursor(),
+                arrow,
+                shift: 0,
+            });
+        }
+        // High Scores (E27 M4 T1a): the tab's picture, its headings, rows and the dialog over
+        // them; Reset's notice over all.
+        Front::Scores(scores) => {
+            return (screen == Screen::HighScores).then(|| Look {
+                background: String::from(scores.background()),
+                draws: scores.draws(players),
+                stale: scores.stale(players),
+                over: scores.box_draws(players),
+                cursor: true,
                 arrow,
                 shift: 0,
             });
@@ -270,10 +290,18 @@ pub fn names(layout: &ShellLayout) -> Vec<String> {
         layout.loading.background.clone(),
         layout.loading.bar.clone(),
     ]);
+    let scores = &layout.high_scores;
+    names.extend([
+        scores.campaigns.picture.clone(),
+        scores.scenarios.picture.clone(),
+        scores.font.clone(),
+        scores.font_palette.clone(),
+    ]);
     for dialog in [
         &layout.multiplayer,
         &layout.hot_seat,
         &layout.scenario.dialog,
+        &scores.dialog,
     ] {
         for draw in dialog.draws(&Shown::default(), "") {
             names.extend(h3_ui::paint::names(&draw).into_iter().map(String::from));
