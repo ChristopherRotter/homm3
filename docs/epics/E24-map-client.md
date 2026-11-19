@@ -191,7 +191,7 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   2026-11-18, whole: the user kept it uncut; the log's "M4 T2c"), T2d, the map changed by a
   visit, cut in three by the user at its start (2026-11-18, by family; "a monster beaten" moved to
   T5): T2d1, a flag raised (**done** 2026-11-18, the log's "M4 T2d1"), T2d2, a boat boarded and
-  left, T2d3, a spell cast on the map (MCL-Q14); T3, a record's start (after the server lane's whole-game record
+  left (**done** 2026-11-19, whole; the log's "M4 T2d2"; MCL-Q35), T2d3, a spell cast on the map (MCL-Q14); T3, a record's start (after the server lane's whole-game record
   and the adventure lane's object identity); T4, a record played; T5, the battles handed over
   (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
   with the user.
