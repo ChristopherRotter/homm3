@@ -50,7 +50,8 @@ help files; SHA-256 checked); its tools went away mid-session. The user cut T39b
 consented to `cross-lane` (decision 151), then put the guild's resource rows in the town part
 (decision 152, over the agent's core order). Built: design §73's As built (`town/thieves.rs`; part
 v8 `guild_resources`, harvested; `army_value`, `power`, `primary_skills`, `day_income` made
-public; the 98 goldens' `town_ruleset_hash`; nine guild tests).
+public; the 98 goldens' `town_ruleset_hash`; nine guild tests). `master`'s CI on 450e47e was red
+(an `h3-map` plan property, the adventure lane's: its inbox has the seed).
 
 ### 2026-11-18 — T39a: the map's Tavern and Den of Thieves, the tavern decision
 

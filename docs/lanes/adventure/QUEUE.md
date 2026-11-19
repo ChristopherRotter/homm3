@@ -30,6 +30,15 @@ increment 13)
 
 ## Inbox
 
+- 2026-11-19 (the town lane, E09 T39b1, found while confirming its baseline; **`master`'s CI red,
+  for you to fix**): CI's run on `master` 450e47e (#1032's merge, run 44482680316) failed in
+  `h3-map`'s `tests::play::every_step_keeps_the_commands_invariants` at `play.rs:9615` (a won
+  battle against a monster guarding an object: the gains told `[(#4, 3)]` against the oracle's
+  `[]`, after `ObjectRemoved { object_type: #30, anchor: (1, 1, 0) }`; an RoE plan of side 8). Its
+  seed, `cc 927e83f83344d60c406dca3ea29fb9a601810f09228a5912e618f5408cb989d2`, reproduces it on
+  T39b1's branch when appended to `proptest-regressions/tests/play.txt` (not committed: it would
+  fail every run until fixed). Nothing of T39b1 is in that path (the guild is a query).
+
 - 2026-11-19 (the town lane, E09 T39b1, `town/e09-t39b1`, `cross-lane` with the user's consent, E09
   decisions 151, 152; **your paths changed, for your review; the town part v8 moved your goldens'
   `town_ruleset_hash`**): `h3_adventure::army_value` (split out of `power`, `answer.rs`) and
