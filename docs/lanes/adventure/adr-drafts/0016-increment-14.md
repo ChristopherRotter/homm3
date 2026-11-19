@@ -55,8 +55,8 @@
        a sacrifice of no experience is refused; the army keeps one creature. Its visit sets the
        team's kind mark.
      - **The Hill Fort** (`hill_fort`; ADV-HFT-001, -002): a stack of a creature with an upgrade
-       (not an RoE map's four elementals, which the import marks on that map's Hill Forts)
-       upgrades for the cost difference times the count, the gold alone scaled by the creature's
+       in the enabled packs (the four elementals none under the base pack alone, every map alike:
+       E08 decision 378) upgrades for the cost difference times the count, the gold alone scaled by the creature's
        level (free at 1, 25, 50 and 75 % at 2 to 4, whole from 5) and rounded down once per stack
        (D-74 the original's). Its visit sets the team's kind mark.
      - **The War Machine Factory** (`war_machine_factory`; ADV-WMF-001): the war machines it sells
@@ -85,8 +85,8 @@
   the market's rates live in the adventure part and `h3-adventure` and serve the town's
   Marketplace (E09 increment 5), so the town lane reads them through `h3-game` and `h3-towns`
   needs no rate; a Black Market's stock is the static map's with its sold entries in the visits
-  block (adventure state hash's next version); an RoE map's Hill Forts carry a mark the import
-  writes; 1 058 objects on 148 shipped maps stop being inert blockers.
+  block (adventure state hash's next version); the Hill Fort's elementals follow the enabled packs,
+  not the map's format (batch E14, E08 decision 378); 1 058 objects on 148 shipped maps stop being inert blockers.
 
 ## Alternatives considered (append)
 
@@ -96,14 +96,18 @@
   compiled into the part:** not chosen; they grow with the content and need the same computation
   to check them. **A Black Market's last seen stock kept by its visitor** (a knowledge as a
   visited University's skills): not chosen, a snapshot that grows stale as others buy; the
-  original shows nothing. **The pack set alone for the RoE elementals** (no mark): not chosen;
-  an RoE map played with the ab and sod packs would upgrade them, the original refusing.
+  original shows nothing. **An RoE map's Hill Forts marked by the import** (the original's RoE
+  elementals refused on an RoE-format map): not chosen (batch E14's E14-14, E08 decision 378,
+  replacing T127b's mark): the original's game version is the scenario dialog's, from the players'
+  editions, so the Complete edition plays an RoE-format map at SoD's and upgrades them; the packs
+  decide (E08 decision 104), the original's version 0 (an RoE campaign) the recorded deviation.
 
 ## Revision history (append)
 
 - 2026-11-?? (E08 T131's `shared/` part; drafted in E08 T127b, survey `E08-trades.md`, the
-  checkpoints ADV-Q56 to ADV-Q58): point 1's increment 14 objects (no new block: the Black
+  checkpoints ADV-Q56 to ADV-Q59): point 1's increment 14 objects (no new block: the Black
   Market's stock drawn, its sold entries in the visits block), point 4's increment 14 kinds (the
   market with its rates, the Black Market's draw, the Altar, the Hill Fort, the factory; all
   entered; D-71, D-73, D-74 and D-72 the original's, A-46 fixed, A-47 accepted), point 6's
-  information (the stock in the visitor's decision only). Batch E14's outcome (T130) folded in.
+  information (the stock in the visitor's decision only). Batch E14's outcome (T130, survey §21):
+  every point as drafted but the Hill Fort's RoE mark, withdrawn (E08 decision 378).

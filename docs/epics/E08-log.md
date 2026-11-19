@@ -19867,3 +19867,37 @@ user if the sources disagree.
 
 **Versions:** none moved (the harness, the recipes, the filled templates, the address map and
 structs, docs).
+
+### Increment 14, round 3: T130, batch E14 scored (2026-11-19, `adventure/e08-t130`)
+
+Baseline: `master` ea613a1 (#1044, T129b's merge). Docs and one code reading: only
+`original-data/install/Heroes3.exe` staged (SHA-256 `aac39e8c…` checked), `scripts/exe.py`.
+**The checkpoint** (ADV-Q59, asked once the version was read, one round of two): (1) E14-14's
+rule: the enabled packs decide (decision 378); (2) T130, then T131 in this session (decision 379).
+
+- **The version read** (survey §21's finding; `docs/exe/structs.toml` `map_kind` now `read`,
+  `docs/exe/map.toml` `scenario_version_from_slots`): `new_game_heroes` 0x4BFF09 writes game
+  +0x1F698 from `new_game_start`'s scenario dialog version (+0x1898, 0x58C593), which starts at
+  the edition (0x579BD9, 3) and becomes the highest format every colour slot's edition allows
+  (`scenario_version_from_slots` 0x58E700, `edition_formats` 0x699240); the selected map's or
+  save's format is only tested against it (0x58E7B7 to 0x58E871). So an RoE-format map plays at
+  SoD's in every single and hot-seat game; version 0 only in an RoE campaign (index below 7,
+  0x4BFF24) or beside a network peer with RoE alone. VCMI 1.7.5's `HillFort::fillUpgradeInfo`
+  (every `upgrades` entry, no version) and the wiki's Hill Fort page (any non-upgraded creature)
+  have no RoE exception.
+- **Scored** (survey `E08-trades.md` §21, a table of the seventeen rows): every row as predicted
+  but E14-14; D-71 to D-74 confirmed as the original (decisions 365, 367), A-46 and A-47 seen;
+  E14-17's level-up drawn over the Altar without covering it (the map client lane's inbox told,
+  decision 371's note); the rules toward `verified` listed by building task; the drafts' changes
+  for T131.
+- **Decision 378's effect:** design note §4 (`hill_fort { gold }`, `roe_except` withdrawn; which
+  stacks by the ruleset's upgrades, the elementals' only under the ab pack's override), §7 (no
+  import mark), §20 (*Scored*), §21 (T132b without `Holds::RoE`; exit criterion 6), §22; the
+  drafts (`0016-increment-14.md`'s Hill Fort point, consequence, alternative and history;
+  `0017-`'s point 9 and history); survey §0 and §13 reworded; `TRAPS.md`'s RoE line; the battle
+  lane's inbox told (a lead for E11 T1: RoE and AB rules observable only in their campaigns or the
+  older executables).
+- **Docs:** decisions 378, 379 and the task's line; ADV-Q59 in `QUESTIONS-ANSWERED.md`; the queue
+  (T130 out to `QUEUE-ARCHIVE.md`, T131 in).
+
+**Versions:** none moved. T131 (round 4, `shared/`) next, in this session (decision 379).

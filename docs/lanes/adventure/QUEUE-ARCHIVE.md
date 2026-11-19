@@ -4,6 +4,25 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-19, E08 T130: done whole, decisions 378, 379; the record in `E08-log.md`; survey `E08-trades.md` §21; T131 queued.)* **E08 T130 — batch E14 scored** (round 3; decisions 368, 373; T129a and T129b the runs, done)
+
+- **Scope:** the survey `docs/rules/surveys/E08-trades.md`'s new §21: each of E14-1 to E14-17
+  scored against the reading (§3 to §14) and the specs' predictions (their headers): as predicted,
+  or the finding and its effect on the design note `E08-design.md` and the drafts
+  `adr-drafts/0016-`, `0017-increment-14.md` (T131 applies them). The results:
+  `experiments/results/E08-batch-14.md` (T129b's run, every section) and `-14-roe.md`; T129a's
+  run of the markets in `E08-log.md` (the draws differ by start).
+- **The finding to settle first:** E14-14: the game's version (game +0x1F698) reads SoD on the
+  RoE-format map (as batch E7a's RoE map), so its Air Elementals were offered and upgraded; the
+  reading's exclusion (`hill_fort_rows`, survey §13) keys on game version 0, which a new game of
+  an RoE map does not take on this executable. Design note §4 and exit criterion 6 ("not an RoE
+  map's elementals") rest on it: read where +0x1F698 is set at a new game, compare the wiki and
+  VCMI; a question for the user if they disagree (gameplay impact).
+- **Inputs:** T129b's record in `E08-log.md` (the raw observations, the notes), the specs'
+  headers, survey §18.
+- **Then T131** (`shared/`, `cross-lane`).
+- **Depends on:** T129b (done). **Status:** ready (docs; the executable for the +0x1F698 reading).
+
 *(Moved 2026-11-18, E08 T126: the "Tasks" text's lead with increment 13's chronicle, and the T126 entry as they stood before T126 closed increment 13; done whole, decision 360; the record in `E08-log.md`; T127a and T127b queued.)* Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 and T118b2 done 2026-11-15, decisions 340 to 342; the checkpoint ADV-Q54, decisions 343 to 345: the note, the drafts and the cut T119 to T126 accepted). Round 2: T119 done 2026-11-15 (`adventure/e08-t119`, `cross-lane`, whole: decision 346; the writer's banks, the spec's pictures and `slots`, batch E13's spec). Round 3: T120 done 2026-11-16 (`adventure/e08-t120`, alone: decision 347; the harness's reads, the recipe, three runs, the template filled); T121 done 2026-11-16 (`adventure/e08-t121`, whole, docs only: survey `E08-banks.md` §14, every row as predicted; the checkpoint ADV-Q55, decisions 348, 349). Round 4: T122 done 2026-11-16 (`shared/e08-t122`, `cross-lane`, whole: decision 350; the three drafts in ADR-0013, -0016, -0017, -0022 with batch E13's rows, the glossary, the security lines, `BattleSetup::creature_bank`). Round 5: T123a done 2026-11-16 (`adventure/e08-t123a`, `cross-lane`, alone: decision 351; the kind, the packs, the seventh check; part v21); T123b done 2026-11-16 (`adventure/e08-t123b`, `cross-lane`, whole: decision 352; the import, the census, map import v24). Round 6: T124a done 2026-11-17 (`adventure/e08-t124a`, `cross-lane`, whole: decision 353; the bank battle in `h3-battle`, the battle pack's `bank_positions`); T124b in two (decision 354): T124b1 done 2026-11-17 (`adventure/e08-t124b1`, `cross-lane`, alone: the state and the draw, adventure state hash v26); T124b2 done 2026-11-17 (`adventure/e08-t124b2`, whole: decision 355; the visit, the battle, the reward and the once-marks). Round 7: T125a done 2026-11-17 (`adventure/e08-t125a`, whole: decision 356; the hint and its events, the Shipwreck's passage); T125b in two (decision 357): T125b1 done 2026-11-18 (`adventure/e08-t125b1`, `cross-lane`: the two banks maps, nine golden replays, the server lane's counts); T125b2 in two (decision 358): T125b2a done 2026-11-18 (`adventure/e08-t125b2a`: the banks in the plans' properties, the views, the cover test); T125b2b done 2026-11-18 (`adventure/e08-t125b2b`, whole: decision 359; the three workloads, the original data); round 7 done. Round 8: T126 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T126 — increment 13's audit** (round 8; design `E08-design.md` §20's exit criteria)
