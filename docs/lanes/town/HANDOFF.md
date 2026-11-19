@@ -24,11 +24,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **Versions:** the lane's own: the town state hash (`TOWN_STATE_HASH_VERSION`, v3) and the town
   ruleset part (`TOWN_RULESET_HASH_VERSION`, v8: T39b1), both in `h3-towns`; the adventure lane's
   (game state hash v34, the adventure part v22, map import v26 and replay format v19, all by
-  T39a; adventure state hash v26 by E08's T124b1), the env's (v13 by T39a) and the protocol's
+  T39a; the part v23 since E08 T132a2; adventure state hash v26 by E08's T124b1), the env's (v13 by T39a) and the protocol's
   (v74 by T39b2) are bumped `cross-lane` (each task's record in `E09-log.md`; the
   plan in design §77). Shared: core ruleset hash v53, pack format v52 (T24),
-  quirk flags 43 and `StreamId::TAVERNS` (8) by T35b. (E08's increment 14 has since moved some
-  of the adventure lane's: read their HANDOFF before a bump.)
+  quirk flags 43 and `StreamId::TAVERNS` (8) by T35b.
 - **Ids** (next): questions `TWN-Q30`; decisions 161; quirks `TWN-QUIRK-14` (`-12`, `-13` entered
   by T35b; their tests by T38b1, T39b1); stubs `TWN-STUB-21` (`-11`, `-12` planned by §34; `-16`
   by T38b2, `-17`, `-18` by T39b1; `-20` lifted by T39b2); rules: TWN-TAV-001 to -009, GAM-MAN-003,
