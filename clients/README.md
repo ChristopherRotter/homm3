@@ -88,8 +88,10 @@ search the parent directories).
   video archives, `shell-videos.vid` standing in for `VIDEO.VID`; `--video-quality low` plays the
   Smacker copies), in the replay as the DLLs show them, in the window whole; a key or a press
   skips them. The menus take their inputs since T6a and T6b1; since T6b2 New Game's Campaign and
-  Tutorial and the main menu's High Scores and Credits show the client's stub, a notice over
-  their menu whose OK goes back to it (the replay stops there: not the original's screens).
+  Tutorial and the main menu's Credits show the client's stub, a notice over their menu whose OK
+  goes back to it (the replay stops there: not the original's screens). High Scores is built
+  since E27 M4 T1a (`h3_view::shell::scores`: both tables, `CampHigh.txt`'s defaults, the
+  creatures stepping; Reset a notice until T1b).
 - **A look at the drawers:** `cargo run --release -p h3-battle-client -- sprite CPKMAN.DEF --group 2
   --background CmBkGrMt.pcx [--mirror]` draws every frame of one group of a DEF side by side over
   a PCX, as the battle draws a stack, into `clients/out/sprite/` (the base archives searched

@@ -15,16 +15,16 @@ computer must be online); never from the installation. The captures need the fiv
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M4 T1
+#### E27 M4 T1b
 
-T1 High Scores (the epic's M4 table; design §2.8): the dialog (800 × 600, `hiscore.pcx` and
-`hiscore2.pcx`), its four buttons (Standard, Campaign, Reset, Exit; S, C, Enter, Escape), both
-tabs' headings and eleven rows, the newest row in colour 8, the eleven creatures stepping every
-200 ms (the adventure map's DEF of the creature each row's score earns: `high_score_creatures`
-0x67F1FC, a campaign's score divided by 5), Reset's question (GENRLTXT 667) resetting both tables
-to the defaults; the client's own scores file (the defaults `CampHigh.txt`'s rows 1 to 11 and 13
-to 23; never the installation's `HiScore.dat`); M2's stub lifted. Exact against `scores-tabs` and
-`scores-reset` (`h3shell.py drawn --group scores`). Confirm the cut at the start (Credits is T2).
+T1b High Scores' Reset (the epic's M4 table, decision 70; design §2.8, §34): Reset's question
+(GENRLTXT 667, style 2: its Cancel keeps the tables, its OK resets both to `CampHigh.txt`'s
+defaults and sets every creature's DEF again), the client's own scores file (read at the start
+over the defaults, written at Reset with its version; never the installation's `HiScore.dat`;
+its place and format the agent's, *provisional*), CLT-STUB-14 lifted (`shell.stub.scores-reset`
+gone). Exact against `scores-reset` (`h3shell.py drawn --group scores`); `scores-tabs` stays
+exact. T1a's notes: the scores' creatures' DEFs are loaded at the start for the tables' rows
+(`scores_tables`): a file's scores need theirs; the step's rules are §34.2's.
 
 ## Inbox
 

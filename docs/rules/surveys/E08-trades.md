@@ -188,6 +188,9 @@ Over the 160 shipped maps (49 RoE, 55 AB, 56 SoD; T97c's counts confirmed):
   the visit never meets 221, and VCMI's config gives both one handler. The engine's import types
   221 as the Trading Post too (the map's own class kept for its picture, as 220 for the abandoned
   mine).
+- *Checked* (E08 T132b): the map reader's original-data check holds this census (`h3-map`'s
+  `original_data`, `increment_14`), every count above on its first run; the War Machine Factory's
+  255 have the entrance west of the anchor (the game's `Objects.txt` line), the 3 others at it.
 
 ## 2. The visit (`visit_object`'s seven cases)
 

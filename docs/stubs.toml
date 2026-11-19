@@ -196,6 +196,12 @@ epic   = "E16"
 # where  = "clients/crates/h3-view/src/shell/play.rs::Play"
 # reason = "A game begun from the scenario screen (E27 decision 44, CLT-Q135 (a); M3 T6, design section 32) has its setup built and validated by the engine and kept (h3-battle-client's begin::Game), the loading screen and its fade shown, then a notice in the client's words over the main menu, its OK the main menu: nothing hosts the game yet. Lifted by E24 M5 (the hot seat), which starts the game from the kept setup"
 # epic   = "E27"
+#
+# [[stub]]
+# id     = "CLT-STUB-14"
+# where  = "clients/crates/h3-view/src/shell/scores.rs::Scores::clicked"
+# reason = "High Scores' Reset (E27 M4 T1a, decision 70; design section 34) shows a notice in the client's words over the dialog, its OK closing it: its question (GENRLTXT 667), the tables' reset to the defaults and the client's own scores file are M4 T1b's, which lifts it"
+# epic   = "E27"
 
 # --- map-client (MCL-STUB-<n>) ---
 

@@ -80,11 +80,7 @@ pub(super) fn insert(
         .filter_map(|(i, h)| info(h.id).map(|info| (i, h, info)))
         .collect();
     heroes.sort_by_key(|&(i, _, info)| (info.hero_type, i));
-    let towns: Vec<&Town> = observation
-        .towns
-        .iter()
-        .filter(|t| t.owner == Some(viewer))
-        .collect();
+    let towns = viewer_towns(observation);
     let hero_status: Vec<Table> = heroes
         .iter()
         .map(|&(_, hero, info)| hero_status(hero, info, art))
@@ -195,6 +191,20 @@ pub(super) fn insert(
         ),
     );
     table.insert("chosen".into(), Value::Table(chosen));
+}
+
+/// The viewer's towns in its town list's order at a new game (E24 M4 T3b2, *provisional*): the
+/// view's order, as the writer's maps' captures list them (`lists-towns`: the map's order). A
+/// shipped map's list need not be (`start-hoard`'s Fortress before its Castle, neither the map's
+/// main town: MCL-Q38).
+pub(super) fn viewer_towns(observation: &GameObservation) -> Vec<&Town> {
+    let viewer = observation.adventure.viewer;
+    // stub: MCL-Q38 (a shipped map's town list at a new game: not the map's order)
+    observation
+        .towns
+        .iter()
+        .filter(|t| t.owner == Some(viewer))
+        .collect()
 }
 
 /// The map file's hero (its body) standing on `hero`'s tile.

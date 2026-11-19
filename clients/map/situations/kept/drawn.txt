@@ -6,9 +6,10 @@ boats-colours e00ef03356f2c961
 deluge-coast 20213e2b2d498d2c
 edge-bottom-right 8f93e7f940b5af7a
 edge-top-left afae8bae7c98cea8
+engine-start-hover 5270fcb06754389c
 engine-start-owners 792099690af3034a
-engine-start-panels 9be9f054038659e4
-engine-start-town d2d806e44e023cd3
+engine-start-panels 4f0210778cdefa32
+engine-start-town 8f6af8381fdbc57e
 heroes-classes-0 50f65f8055343174
 heroes-classes-1 2a020fc2c35085ca
 heroes-classes-2 89f6b2513728529d
@@ -42,7 +43,9 @@ shipped-hoard adf5713ec2eb6b8a
 shipped-tale-of-two-lands 99512dcc6620915e
 shipped-too-many-monsters c1036b370070efec
 start-dwarven-tunnels 1a68366478c9c011
+start-good-witch 4b10315feba86fc3
 start-hoard d4443218694f22f0
+start-jared 5931a8e4812ff776
 status-date 713bf5a5dbb3ff23
 status-garrison 634d3ba415b7328b
 status-hero 929c5866a905f978

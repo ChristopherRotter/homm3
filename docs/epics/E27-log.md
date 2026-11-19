@@ -1514,3 +1514,39 @@ replay read).
   (the 3DO logo at 1 ms steps).
 - **Change freely** (the agent's): the contact sheets and crop tools, the replay's runner and the
   text tool for loose-whitespace edits (`/home/claude/tools/`, outside the repo).
+
+## M4 T1a — High Scores: both tables, their buttons and keys, the creatures' steps (2026-11-19)
+
+On `client/e27-m4-t1a`, the user present at the start; `master` at `33efd6c` (#1050, #1051
+merged; CI's `Clients` and engine runs green). The original data staged at once (64 files, the
+four manuals and three help files, checked by SHA-256 against the user's computer), `cp -rn` into
+the clone; the setup's baseline stopped by a watcher at coverage (fmt, clippy, the doc tests and
+deny passed), CI's green `master` standing in. **Cut in two at the start** (decision 70): T1a the
+dialog, T1b Reset's question and the client's scores file.
+
+- **Read** (design §34.1): the creatures' templates (`game_init` fills the game's map's class
+  lists from `objects.txt`, 0x505DA0, now `map_templates_load` in `docs/exe/map.toml`), the
+  creature's lookup and its unbounded loop (CLT-Q157), the defaults' fields, the draw's order, the
+  texts' boxes, a creature item's drawer by its DEF's type (a map object's: the plain drawer's
+  encoding 3), the timer's messages, the buttons' arguments.
+- **Recorded:** `scores-tabs` played again under Wine (both runs as kept). The viewer's replay found
+  the press's stale edges and the hold's rules (§34.2).
+- **Built, pure** (`h3-view`): `shell::scores` (`Scores`, `ScoresLook`, `Tables`, `Record`,
+  `Pictures`, `Texts`, `atoi`), `Front::Scores`, `Menus::scores`, `Screen::HighScores` built whole
+  (the stub's notice gone from `STUBS`), the key table's `Context::HighScores` and `SCORES`
+  (`scores-campaign` C, `scores-standard` S, `scores-exit` Enter and Escape), `look`'s High Scores
+  (its stale edges in the original's profile), the replay's notice under Reset; the layout's
+  `[high_scores]`.
+- **Built, the adapters** (`h3-battle-client`): `scores_tables` (`CampHigh.txt`'s defaults, the
+  creatures' DEFs from `OBJECTS.TXT`'s last template of class 54), `creature_pictures` (each DEF's
+  group 0 count from the batch), the headings' keys `shell.high-scores.*` (GENRLTXT 434 to 437,
+  673, 76), the own key `shell.stub.scores-reset` (`shell.stub.high-scores` gone), the window's
+  clock stepping the creatures.
+- **The comparisons:** `drawn --group scores`: `scores-tabs` 28 of 28 exact; `scores-reset` stops at
+  Reset's notice (CLT-STUB-14, T1b); every other group as recorded. The window checked under Xvfb:
+  High Scores by the mouse and by H, both tabs by the mouse and by C and S, the creatures stepping,
+  Reset's notice and its OK, Escape and Exit back to the main menu.
+- **Questions:** CLT-Q157 (a score above the table), asked and answered (a) in the session
+  (decision 70). The press's stale edges taken as CLT-Q118's class (review list item 2).
+  CLT-STUB-14 commented in `docs/stubs.toml`. **The agent's calls** (*provisional*: M4's review
+  list items 1 to 5).

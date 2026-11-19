@@ -469,6 +469,17 @@ fn the_typed_classes_import_as_their_object_types() {
     // E09 T39a: the map's Tavern and the Den of Thieves.
     cases.push((95, 0, "base:tavern".into()));
     cases.push((97, 0, "base:den_of_thieves".into()));
+    // E08 T132b: the trades and services at subclass 0 (the snow Trading Post, 221, below).
+    for (class, key) in [
+        (2, "base:altar_of_sacrifice"),
+        (7, "base:black_market"),
+        (35, "base:hill_fort"),
+        (99, "base:trading_post"),
+        (106, "base:war_machine_factory"),
+        (213, "ab:freelancers_guild"),
+    ] {
+        cases.push((class, 0, key.into()));
+    }
     let part = SOD.adventure();
     for (class, subclass, key) in &cases {
         let body = match class {
@@ -508,9 +519,9 @@ fn the_typed_classes_import_as_their_object_types() {
     // Every object type of the original packs has its class, but increment 10's dwellings, Refugee
     // Camp and random dwelling (E08 T93a's content), whose classes the import types from T93b
     // (`dwellings.rs`; since E08 T103b increment 11's teleporters, since E08 T113b increment 12's
-    // garrisons and bonus visitables, since E08 T123b increment 13's creature banks and since E09
-    // T39a the map's Tavern and the Den of Thieves are among the cases); E08 T132a2's six trade
-    // types (increment 14's four kinds) are typed by the import from T132b.
+    // garrisons and bonus visitables, since E08 T123b increment 13's creature banks, since E09
+    // T39a the map's Tavern and the Den of Thieves and since E08 T132b increment 14's six trade
+    // types are among the cases).
     let typed = part
         .object_types()
         .iter()
@@ -520,15 +531,11 @@ fn the_typed_classes_import_as_their_object_types() {
                 h3_adventure::ObjectKind::Dwelling { .. }
                     | h3_adventure::ObjectKind::RandomDwelling
                     | h3_adventure::ObjectKind::RefugeeCamp { .. }
-                    | h3_adventure::ObjectKind::Market(_)
-                    | h3_adventure::ObjectKind::Altar(_)
-                    | h3_adventure::ObjectKind::HillFort(_)
-                    | h3_adventure::ObjectKind::WarMachineFactory(_)
             )
         })
         .count();
     assert_eq!(cases.len(), typed);
-    assert_eq!(part.object_types().len() - typed, 82 + 2 + 6);
+    assert_eq!(part.object_types().len() - typed, 82 + 2);
     let town = import(&typed_map(98, 0, Body::None), &SOD).unwrap();
     assert_eq!(
         (town.map.objects[0].owner, &town.map.objects[0].holds),
@@ -577,6 +584,21 @@ fn the_typed_classes_import_as_their_object_types() {
         assert_eq!(
             import(&typed_map(class, 8, set()), &SOD).unwrap_err(),
             ImportError::Subclass(0)
+        );
+    }
+    // E08 T132b: the snow Trading Post (221) is the Trading Post, as the original loads it as 99
+    // (`object_class_values` 0x63A6E4); a trade's or service's subclass past 0 is one its class
+    // does not define.
+    let post = import(&typed_map(221, 0, Body::None), &SOD).unwrap();
+    assert_eq!(
+        post.map.objects[0].object_type,
+        part.object_type_by_key("base:trading_post")
+    );
+    for class in [2, 7, 35, 99, 106, 213, 221] {
+        assert_eq!(
+            import(&typed_map(class, 1, Body::None), &SOD).unwrap_err(),
+            ImportError::Subclass(0),
+            "{class}"
         );
     }
     // E08 T103b: a monolith past channel 7 (A-39, `ADV-QUIRK-41`: the original writes past its

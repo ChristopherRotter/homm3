@@ -84,6 +84,7 @@ use h3_view::shell::menu::{self, Arrow, Boxes, Front, Kind, Menu, Menus};
 use h3_view::shell::multiplayer::{self, Multiplayer, Texts};
 use h3_view::shell::replay::{self, INPUT_STEP, Replay, Stop, Take};
 use h3_view::shell::scenario::{self, Begun, Scenario};
+use h3_view::shell::scores::{self, Pictures, Scores, ScoresLook, Tab, Tables};
 use h3_view::shell::start::{self as clips, Header, Op, Pace, Part, Picture, Source, Start};
 use h3_view::shell::{Ended, Game, Screen, Shell, text};
 
@@ -384,12 +385,22 @@ impl Drawer {
         names.push(String::from(RIM));
         // The heroes' small portraits (E27 M3 T3b1: the advanced options' rows).
         names.extend(portraits(&tables));
+        // High Scores' defaults and the creatures' DEFs their rows show (E27 M4 T1a).
+        let (scores_tables, creature_defs) = scores_tables(&layout.high_scores, &lods)?;
+        names.extend(creature_defs.values().cloned());
         let mut batch = Batch::with_bugs(bugs);
         for (name, bytes) in names.iter().zip(lods.batch(&names)?) {
             batch.add(name, &bytes).map_err(|e| e.to_string())?;
         }
-        let (menus, rules, refused) =
-            menus(&layout, (&batch, &tables), &lods, (install, maps), bugs)?;
+        let pictures = creature_pictures(&batch, creature_defs);
+        let (menus, rules, refused) = menus(
+            &layout,
+            (&batch, &tables),
+            &lods,
+            (install, maps),
+            (scores_tables, pictures),
+            bugs,
+        )?;
         let mut lines = Vec::new();
         let button = crate::audio::clips(install, &[BUTTON_ENTRY.to_owned()], &mut lines)?
             .into_values()
@@ -519,16 +530,76 @@ fn copy_rect(to: &mut Pixels, from: &Pixels, [x, y, w, h]: [i32; 4]) {
     }
 }
 
+/// The objects' class of a map's monster (`class_template_last`'s 0x36 at High Scores' callers).
+const MONSTER: u32 = 54;
+
+/// High Scores' defaults (E27 M4 T1a: `CampHigh.txt`'s records, the user's tables; the client's
+/// own scores file is T1b's) and the DEF of each creature their rows show: the adventure map's
+/// last template of the creature (class 54, its subclass the creature) in `objects.txt`'s order,
+/// as `game_init` fills the game's map with them (0x505DA0) and `class_template_last` 0x505EA0
+/// finds them (a creature without one shows none).
+fn scores_tables(
+    look: &ScoresLook,
+    lods: &Lods,
+) -> Result<(Tables, std::collections::BTreeMap<i32, String>), String> {
+    let bytes = lods.lookup("CAMPHIGH.TXT")?;
+    let table =
+        h3_formats::text::TextTable::parse(&bytes).map_err(|e| format!("CAMPHIGH.TXT: {e:?}"))?;
+    let defaults = Tables::defaults(&table.records)
+        .ok_or("CAMPHIGH.TXT: not 23 records of the player, the land, the days and the score")?;
+    // Latin-1, one byte a character; the first line the count.
+    let objects: String = lods
+        .lookup("OBJECTS.TXT")?
+        .into_iter()
+        .map(char::from)
+        .collect();
+    let mut last = std::collections::BTreeMap::new();
+    for line in objects.lines().skip(1) {
+        if let Ok(template) = h3_map::writer::ObjectTemplate::from_objects_txt(line)
+            && template.class == MONSTER
+        {
+            last.insert(template.subclass, template.def);
+        }
+    }
+    let defs = Tab::ALL
+        .iter()
+        .flat_map(|&tab| defaults.of(tab).iter().map(move |r| (tab, r.score)))
+        .filter_map(|(tab, score)| look.creature(score, tab))
+        .filter_map(|c| {
+            let def = last.get(&u32::try_from(c).ok()?)?;
+            Some((c, def.clone()))
+        })
+        .collect();
+    Ok((defaults, defs))
+}
+
+/// Each creature's picture: its DEF and the frames of its group 0 in `batch` (0 when the batch
+/// lacks it).
+fn creature_pictures(batch: &Batch, defs: std::collections::BTreeMap<i32, String>) -> Pictures {
+    defs.into_iter()
+        .map(|(creature, def)| {
+            let frames = batch
+                .sprite(&def)
+                .and_then(|s| s.def.groups.iter().find(|g| g.id == 0))
+                .map_or(0, |g| u32::try_from(g.frames.len()).unwrap_or(u32::MAX));
+            (creature, scores::Picture { def, frames })
+        })
+        .collect()
+}
+
 /// The menus as they open (T6a, T6b1): the layout's dialogs, Quit's question and the buttons'
 /// help laid out in the batch's fonts, their texts the user's tables' (`shell.main-menu.quit`,
 /// `shell.main-menu.help.<button>`, `shell.game-type.help.<button>`: Load Game's the same as New
 /// Game's), and the stubs' notices (T6b2: `shell.stub.<screen>`, the client's own pack's, style
-/// 1), framed in the viewing player's colours.
+/// 1), framed in the viewing player's colours; High Scores (E27 M4 T1a) with `scores`' tables and
+/// creatures, its headings the user's tables' (`shell.high-scores.*`), Reset's notice the
+/// client's (`shell.stub.scores-reset`).
 fn menus(
     layout: &ShellLayout,
     (batch, tables): (&Batch, &h3_view::tables::Tables),
     lods: &Lods,
     (install, maps): (&Path, Option<&[String]>),
+    (scores_tables, pictures): (Tables, Pictures),
     bugs: Bugs,
 ) -> Result<(Menus, GameRuleset, MessageBox), String> {
     let exe = crate::text::executable(install)?;
@@ -755,6 +826,22 @@ fn menus(
             bugs,
         )
         .with_random_offers(crate::maps::random_offers(&rules)),
+        // High Scores (E27 M4 T1a).
+        scores: Scores::new(
+            layout.high_scores.clone(),
+            scores::Texts {
+                rank: text("shell.high-scores.rank"),
+                player: text("shell.high-scores.player"),
+                land: text("shell.high-scores.land"),
+                days: text("shell.high-scores.days"),
+                campaign: text("shell.high-scores.campaign"),
+                score: text("shell.high-scores.score"),
+            },
+            scores_tables,
+            pictures,
+            laid("shell.stub.scores-reset", Style::Ok),
+            bugs,
+        ),
     };
     Ok((menus, rules, refused))
 }
@@ -1476,6 +1563,7 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             Front::Multiplayer(m) => !m.cursor(),
             Front::Scenario(s) => !s.cursor(),
             Front::Play(p) => !p.noticing() || !p.menu().cursor(),
+            Front::Scores(_) => false,
         });
         // Which arrow (CLT-Q137): the adventure map's after the scenario screen's busy cursor.
         let arrow = front.as_ref().map(Front::hovers).unwrap_or_default().arrow;
@@ -1545,8 +1633,8 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             }
             dirty = true;
         }
-        // Play's fade (T6) on the window's clock.
-        if let Some(f @ Front::Play(_)) = front.as_mut() {
+        // Play's fade (T6) and High Scores' creatures (E27 M4 T1a) on the window's clock.
+        if let Some(f @ (Front::Play(_) | Front::Scores(_))) = front.as_mut() {
             dirty |= f.clock(now(&win));
         }
         if dirty {

@@ -59,7 +59,7 @@ checkpoint_every = 5
 [map]
 path = "fixtures/maps/e08-banks-36.h3m"
 hash = "0xda3dd80d4aa94083"
-import_version = 26
+import_version = 27
 
 [result]
 day = 3

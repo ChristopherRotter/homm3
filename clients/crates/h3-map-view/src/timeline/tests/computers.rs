@@ -84,6 +84,7 @@ pub(super) fn hover_of(live: &str) -> Arc<Hover> {
         templates: Vec::new(),
         objects: Vec::new(),
         hero_names: BTreeMap::new(),
+        town_names: Vec::new(),
     };
     let live = Live {
         objects: Vec::new(),

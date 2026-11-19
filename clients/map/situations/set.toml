@@ -288,3 +288,32 @@ why = "exact: Red's two heroes with their armies in the map (one named by it), R
 # The engine's start (`h3map.py engine`, E24 M4 T3b1): its live part and the whole screen the
 # capture's.
 engine = {}
+
+[[situation]]
+id = "engine-start-hover"
+differing = 0
+why = "exact: the pointer over a neutral town the map names (its hint and the arrow), Red's two heroes with their armies in the map, a monster, mines, visitables and a Shrine in sight (E24 M4 T3b2)"
+# The engine's start (`h3map.py engine`, E24 M4 T3b2): its live part, the mouse-over over every
+# explored tile and the whole screen with the pointer over the map the capture's, but the morale
+# of Mephala's Leadership the record lacks (MCL-Q36).
+engine = { differs = ["`status.morale` differs (MCL-Q36: the record has none)"], pixels = 157 }
+
+[[situation]]
+id = "start-jared"
+differing = 0
+why = "exact: a shipped map's start with no random draw in sight (E24 M4 T3b2): Red's hero underground with the map's army, the pointer over it, the starting bonus Gold"
+# The engine's start (`h3map.py engine`, E24 M4 T3b2): every explored tile's hint and cursor and
+# the pointer's the capture's; Jared starts at level 3 from the map's experience, so both games
+# draw his two level-ups' primary skills (a draw no staging writes yet), and the morale of his
+# Leadership the record lacks (MCL-Q36).
+engine = { differs = ["`status.morale` differs (MCL-Q36: the record has none)", "`status.skills` differs"], pixels = 255 }
+
+[[situation]]
+id = "start-good-witch"
+differing = 0
+why = "exact: a shipped map's start with no random draw in sight (E24 M4 T3b2): Red's hero with the map's army beside its named town, the pointer over the town, the starting bonus Gold and the engine's resources shown"
+# The engine's start (`h3map.py engine`, E24 M4 T3b2): every explored tile's hint and cursor and
+# the pointer's the capture's; Glinda starts at level 3 from the map's experience, so both games
+# draw her two level-ups' primary skills (a draw no staging writes yet): her skills and her mana
+# by her Knowledge (the hero list's bar).
+engine = { differs = ["`kingdom.heroes` differs", "`status.skills` differs"], pixels = 101 }

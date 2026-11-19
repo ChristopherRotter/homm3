@@ -481,27 +481,39 @@ fn what_the_viewer_cannot_do_stops_the_replay() {
     }
     // A stub's screen (E27 M2 T6b2) is the client's: shown to `until` and `check`, but no menu
     // opens on it and the replay stops at its shots and inputs as at one not built.
-    let (seen, got, r) = replay(
+    // (Credits since E27 M4 T1a built High Scores: the main menu's C.)
+    let (seen, got, r) = replay(false, &["until:main_menu", "key:c", "move:1,2"]);
+    assert!(seen.is_empty());
+    assert_eq!((got, r.screen(), r.menu()), (None, Screen::Credits, None));
+    for steps in [&["shot:credits"][..], &["key:Return"], &["clip:c:10:1"]] {
+        let mut all = vec!["until:main_menu", "key:c"];
+        all.extend(steps);
+        let (seen, got, _) = replay(false, &all);
+        assert!(seen.is_empty(), "{steps:?}");
+        assert_eq!(got, Some(Stop::NotBuilt(Screen::Credits)), "{steps:?}");
+    }
+    // High Scores' Reset shows the client's notice (CLT-STUB-14): a shot under it stops.
+    let (_, got, r) = replay(
         false,
         &[
             "until:main_menu",
             "click:643,304",
             "check:high_scores",
+            "click:746,213",
             "move:1,2",
         ],
     );
-    assert!(seen.is_empty());
-    assert_eq!(
-        (got, r.screen(), r.menu()),
-        (None, Screen::HighScores, None)
+    assert_eq!((got, r.screen()), (None, Screen::HighScores));
+    let (_, got, _) = replay(
+        false,
+        &[
+            "until:main_menu",
+            "click:643,304",
+            "click:746,213",
+            "shot:question",
+        ],
     );
-    for steps in [&["shot:scores"][..], &["key:Return"], &["clip:c:10:1"]] {
-        let mut all = vec!["until:main_menu", "click:643,304"];
-        all.extend(steps);
-        let (seen, got, _) = replay(false, &all);
-        assert!(seen.is_empty(), "{steps:?}");
-        assert_eq!(got, Some(Stop::NotBuilt(Screen::HighScores)), "{steps:?}");
-    }
+    assert_eq!(got, Some(Stop::Stub(Screen::HighScores)));
 }
 
 /// A start of three Smacker clips of `frames` frames each at 66.66 ms.

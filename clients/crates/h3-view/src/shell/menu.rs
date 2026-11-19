@@ -48,12 +48,12 @@
 //!   only.
 //!
 //! - **The stubs** (E27 M2 T6b2, decision 37; [`STUBS`]): New Game's Campaign and Tutorial (until
-//!   E20 and the engine's tutorial mode, decisions 7 and 9) and the main menu's High Scores and
-//!   Credits (until M4) end their menu as the original's do, and their screen shows that menu
-//!   opened anew with a notice over it, a box of style 1 in the client's own words (its language
-//!   pack's `shell.stub.<screen>`, by the driver's names: `campaigns`, `tutorial`,
-//!   `high-scores`, `credits`); the notice takes the box's inputs as Quit's question does, and
-//!   its OK ends the screen (back to New Game's menu, or to the main menu), which opens anew.
+//!   E20 and the engine's tutorial mode, decisions 7 and 9) and the main menu's Credits (until
+//!   M4 T2; High Scores' until M4 T1a) end their menu as the original's do, and their screen
+//!   shows that menu opened anew with a notice over it, a box of style 1 in the client's own
+//!   words (its language pack's `shell.stub.<screen>`, by the driver's names: `campaigns`,
+//!   `tutorial`, `credits`); the notice takes the box's inputs as Quit's question does, and its
+//!   OK ends the screen (back to New Game's menu, or to the main menu), which opens anew.
 //!
 //! The boxes are laid out by the caller ([`Boxes`]: their texts are the user's tables', the
 //! notices' the client's), framed in red (the viewing player at the menus, recorded at M1 T2:
@@ -75,6 +75,7 @@ use super::keys::{Command, Context};
 use super::multiplayer::Multiplayer;
 use super::play::Play;
 use super::scenario::Scenario;
+use super::scores::Scores;
 use super::{Choice, Ended, Game, Kind as ScenarioKind, PlayEnd, Request, Screen};
 use crate::message::{self, MessageBox, Open, Outcome};
 
@@ -91,16 +92,15 @@ pub const GAME_TYPE_BUTTONS: [u16; 5] = [100, 101, 102, 103, 104];
 /// A game type menu's title picture (105: `newgame.pcx` or `loadgame.pcx`).
 pub const TITLE: u16 = 105;
 
-/// The client's stubs (E27 M2 T6b2, T7): each screen, the menu its notice shows over and the
-/// notice's OK's ending. The scenario screen's (a new single scenario's built since M3 T1a, the
+/// The client's stubs (E27 M2 T6b2, T7; High Scores built since E27 M4 T1a): each screen, the
+/// menu its notice shows over and the notice's OK's ending. The scenario screen's (a new single scenario's built since M3 T1a, the
 /// hot seat's since M3 T4a; the loads' until M4) shows over the game type menu it was reached
 /// from (by Campaign, Tutorial, Load Game's Single or the Multiplayer dialog), its OK back
 /// there. Play's (E27 M3 T6, CLT-STUB-13: until E24 M5 hosts the game) shows over the main menu
 /// after the loading screen's fade ([`super::play`]), its OK the main menu.
-pub const STUBS: [(Screen, Kind, Ended); 9] = [
+pub const STUBS: [(Screen, Kind, Ended); 8] = [
     (Screen::Campaigns, Kind::GameType(Game::New), Ended::Back),
     (Screen::Tutorial, Kind::GameType(Game::New), Ended::Back),
-    (Screen::HighScores, Kind::Main, Ended::Done),
     (Screen::Credits, Kind::Main, Ended::Done),
     scenario(Game::Load, ScenarioKind::Single),
     scenario(Game::Load, ScenarioKind::Multiplayer),
@@ -759,6 +759,8 @@ pub struct Menus {
     /// The scenario screen as it opens (E27 M3 T1a): a new single scenario's, the maps listed and
     /// the kept choices in it.
     pub scenario: Scenario,
+    /// High Scores as it opens (E27 M4 T1a).
+    pub scores: Scores,
 }
 
 impl Menus {
@@ -792,7 +794,8 @@ impl Menus {
     /// Multiplayer dialog over the game type menu `previous` left (E27 M2 T7); a new single
     /// scenario's screen (E27 M3 T1a: its background `gamselb0.pcx` until the caller draws,
     /// [`Scenario::with_background`]), or the hot seat's after the Multiplayer dialog `previous`,
-    /// its names the players (E27 M3 T4a); none for another screen. A scenario screen `previous`
+    /// its names the players (E27 M3 T4a); High Scores opened anew (E27 M4 T1a); none for
+    /// another screen. A scenario screen `previous`
     /// leaves its kept map to the next (E27 M3 T2c: `scenario_last_map` 0x683238, the last
     /// map selected).
     #[must_use]
@@ -824,6 +827,8 @@ impl Menus {
                     self.scenario.opened_hot_seat(hovers, names),
                 )))
             }
+            // High Scores (E27 M4 T1a): opened anew, the main menu's last items kept.
+            (Screen::HighScores, _) => Some(Front::Scores(Box::new(self.scores.opened(hovers)))),
             // Play's start (E27 M3 T6): the loading screen, then the stub's menu under its notice.
             (Screen::Play { restart: false }, _) => self
                 .opened(screen, pointer, hovers)
@@ -844,8 +849,8 @@ impl Menus {
     }
 }
 
-/// What takes the inputs on a built screen (E27 M2 T7): a menu, the Multiplayer dialog, or the
-/// scenario screen (E27 M3 T1a).
+/// What takes the inputs on a built screen (E27 M2 T7): a menu, the Multiplayer dialog, the
+/// scenario screen (E27 M3 T1a), play's start (T6) or High Scores (E27 M4 T1a).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Front {
     /// A menu (a stub's menu under its notice among them).
@@ -856,6 +861,8 @@ pub enum Front {
     Scenario(Box<Scenario>),
     /// Play's start (E27 M3 T6): the loading screen and its fade, then the client's stub.
     Play(Box<Play>),
+    /// High Scores (E27 M4 T1a).
+    Scores(Box<Scores>),
 }
 
 impl Front {
@@ -868,6 +875,7 @@ impl Front {
             Self::Multiplayer(m) => m.under().map(Menu::hovers).unwrap_or_default(),
             Self::Scenario(s) => s.hovers(),
             Self::Play(p) => p.hovers(),
+            Self::Scores(s) => s.hovers(),
         }
     }
 
@@ -879,6 +887,7 @@ impl Front {
             Self::Multiplayer(m) => m.context(),
             Self::Scenario(s) => s.context(),
             Self::Play(p) => p.context(),
+            Self::Scores(s) => s.context(),
         }
     }
 
@@ -891,6 +900,7 @@ impl Front {
             Self::Multiplayer(m) => m.contexts(),
             Self::Scenario(s) => s.contexts(),
             Self::Play(p) => alloc::vec![p.context()],
+            Self::Scores(s) => alloc::vec![s.context()],
         }
     }
 
@@ -898,7 +908,7 @@ impl Front {
     #[must_use]
     pub fn typing(&self) -> bool {
         match self {
-            Self::Menu(_) | Self::Play(_) => false,
+            Self::Menu(_) | Self::Play(_) | Self::Scores(_) => false,
             Self::Multiplayer(m) => m.typing(),
             Self::Scenario(s) => s.typing(),
         }
@@ -908,7 +918,7 @@ impl Front {
     /// T3c1).
     pub fn typed(&mut self, c: char) -> Did {
         match self {
-            Self::Menu(_) | Self::Play(_) => Did::default(),
+            Self::Menu(_) | Self::Play(_) | Self::Scores(_) => Did::default(),
             Self::Multiplayer(m) => m.typed(c),
             Self::Scenario(s) => s.typed(c),
         }
@@ -921,6 +931,7 @@ impl Front {
             Self::Multiplayer(m) => m.moved(point),
             Self::Scenario(s) => s.moved(point),
             Self::Play(p) => p.moved(point),
+            Self::Scores(s) => s.moved(point),
         }
     }
 
@@ -931,6 +942,7 @@ impl Front {
             Self::Multiplayer(m) => m.press(point),
             Self::Scenario(s) => s.press(point),
             Self::Play(p) => p.press(point),
+            Self::Scores(s) => s.press(point),
         }
     }
 
@@ -941,6 +953,7 @@ impl Front {
             Self::Multiplayer(m) => m.release(),
             Self::Scenario(s) => s.release(),
             Self::Play(p) => p.release(),
+            Self::Scores(s) => s.release(),
         }
     }
 
@@ -951,6 +964,7 @@ impl Front {
             Self::Multiplayer(m) => m.right(point),
             Self::Scenario(s) => s.right(point),
             Self::Play(p) => p.right(point),
+            Self::Scores(s) => s.right(),
         }
     }
 
@@ -961,6 +975,7 @@ impl Front {
             Self::Multiplayer(m) => m.right_release(),
             Self::Scenario(s) => s.right_release(),
             Self::Play(p) => p.right_release(),
+            Self::Scores(s) => s.right_release(),
         }
     }
 
@@ -978,6 +993,7 @@ impl Front {
             Self::Multiplayer(m) => m.key(scan, command, by),
             Self::Scenario(s) => s.key(scan, command, by),
             Self::Play(p) => p.key(command, by),
+            Self::Scores(s) => s.key(command, by),
         }
     }
 
@@ -988,12 +1004,14 @@ impl Front {
             Self::Multiplayer(m) => m.key_up(by),
             Self::Scenario(s) => s.key_up(by),
             Self::Play(p) => p.key_up(by),
+            Self::Scores(s) => s.key_up(by),
         }
     }
 
     /// The shell's clock is `ms` (E27 M3 T1b1: the scenario list's double press is timed on it,
-    /// from the screen's opening; T6: play's fade steps by it); the menus and the Multiplayer
-    /// dialog read no clock. Whether what shows changed (the fade's step).
+    /// from the screen's opening; T6: play's fade steps by it; M4 T1a: High Scores' creatures
+    /// step by it); the menus and the Multiplayer dialog read no clock. Whether what shows
+    /// changed (the fade's step, the creatures').
     pub fn clock(&mut self, ms: u32) -> bool {
         match self {
             Self::Scenario(s) => {
@@ -1001,6 +1019,7 @@ impl Front {
                 false
             }
             Self::Play(p) => p.clock(ms),
+            Self::Scores(s) => s.clock(ms),
             _ => false,
         }
     }

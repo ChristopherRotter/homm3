@@ -71,6 +71,12 @@
 //! hero its type's record with full spell points and a starting army), the pool after every
 //! `EndTurn` (TWN-SET-005: the statuses against the slots, the map and the garrisons) and the
 //! customised types' records at the build (GAM-HER-001: `Marshland Menace`'s 2 000 experience).
+//! Since E08 T132b (increment 14's design note §7) the trades and services (2, 7, 35, 99, 106, 213,
+//! 221) by class, each checked to import at subclass 0 without a body as its class's type and
+//! kind (221 the Trading Post) with one entrance on land (221's on snow), nothing held and no
+//! owner, against the survey's census (`E08-trades.md` §1: 1 058 on 148 maps): the objects, the
+//! maps by version, underground, the most on one map, the pictures, the War Machine Factories by
+//! entrance and the maps by their Black Markets.
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -121,6 +127,7 @@ struct Peaks(
     Growth,
     Increment13,
     Taverns,
+    Increment14,
 );
 
 /// The census of the channels the game's build gives (E08 T104, [`built_channels`]; ADV-TEL-002,
@@ -308,6 +315,108 @@ const SURVEY_BANKS: [((u32, u32), &str, [usize; BANK_COUNTS]); 11] = [
 /// The survey's maps holding a bank, those holding one of class 16, and the most banks on one map
 /// (§1: *Thousand Islands* and its allied twin).
 const SURVEY_INCREMENT_13: [usize; 3] = [148, 143, 106];
+
+/// The census of increment 14's trades and services (E08 T132b, [`increment_14`]; survey
+/// `docs/rules/surveys/E08-trades.md` §1): by class the counts of [`TRADE_COUNTS`], the most on one
+/// map with the first map holding that many, and the pictures (the name in lower case without
+/// `.def`, the masks); the maps holding one of the seven; the War Machine Factories by their
+/// entrance (its column left of and row above the anchor); the maps by their Black Markets.
+#[derive(Default)]
+struct Increment14 {
+    classes: BTreeMap<u32, [usize; TRADE_COUNTS]>,
+    most: BTreeMap<u32, (usize, String)>,
+    pictures: BTreeMap<u32, BTreeSet<Picture>>,
+    maps: usize,
+    factories: BTreeMap<(u8, u8), usize>,
+    black_markets: BTreeMap<usize, usize>,
+}
+
+/// A picture of [`Increment14`]: its name in lower case without `.def`, its passable and visitable
+/// masks.
+type Picture = (String, [u8; 6], [u8; 6]);
+
+/// How many counts [`Increment14`] keeps by class: the objects, the maps holding them, those maps
+/// of RoE, AB and SoD, and the objects underground.
+const TRADE_COUNTS: usize = 6;
+
+/// The survey's trades and services by class (§1: 1 058 on 148 maps), each with its type's key:
+/// [`TRADE_COUNTS`]'s counts, the most on one map and the first map (by name) holding that many,
+/// the pictures' names and how many pictures (a name and its masks) there are.
+type SurveyTrade = (
+    u32,
+    &'static str,
+    [usize; TRADE_COUNTS],
+    (usize, &'static str),
+    &'static [&'static str],
+    usize,
+);
+const SURVEY_TRADES: [SurveyTrade; 7] = [
+    (
+        2,
+        "base:altar_of_sacrifice",
+        [177, 88, 32, 28, 28, 44],
+        (7, "Myth and Legend.h3m"),
+        &["avxaltar"],
+        1,
+    ),
+    (
+        7,
+        "base:black_market",
+        [154, 105, 27, 44, 34, 31],
+        (6, "Race for Ardintinny.h3m"),
+        &["avxmktb0"],
+        1,
+    ),
+    (
+        35,
+        "base:hill_fort",
+        [146, 69, 21, 25, 23, 25],
+        (11, "Myth and Legend.h3m"),
+        &["avxhild0", "avxhilg0"],
+        4,
+    ),
+    (
+        99,
+        "base:trading_post",
+        [204, 87, 32, 32, 23, 24],
+        (9, "Myth and Legend.h3m"),
+        &["avxpost0", "avxpstr0"],
+        2,
+    ),
+    (
+        106,
+        "base:war_machine_factory",
+        [258, 104, 20, 41, 43, 32],
+        (7, "Back For Revenge - Allied.h3m"),
+        &["avgsieg0"],
+        2,
+    ),
+    (
+        213,
+        "ab:freelancers_guild",
+        [86, 40, 0, 20, 20, 14],
+        (7, "Rediscovery.h3m"),
+        &["avxfgld"],
+        1,
+    ),
+    (
+        221,
+        "base:trading_post",
+        [33, 27, 0, 10, 17, 1],
+        (2, "Reclamation Allied.h3m"),
+        &["avxpssn"],
+        1,
+    ),
+];
+/// The survey's maps holding one of the seven (§1).
+const SURVEY_INCREMENT_14_MAPS: usize = 148;
+/// The survey's War Machine Factories by their two masks (§1: they differ only in where the
+/// entrance lies, on 3 and 255 objects), by the entrance's column left of and row above the
+/// anchor: 255 west of it, as the game's `Objects.txt` line, 3 at it.
+const SURVEY_FACTORY_ENTRANCES: [((u8, u8), usize); 2] = [((0, 0), 3), ((1, 0), 255)];
+/// The survey's maps by their Black Markets (§1: one on 70 maps, two on 28, three on 2, four on 4,
+/// six on 1).
+const SURVEY_BLACK_MARKETS: [(usize, usize); 5] = [(1, 70), (2, 28), (3, 2), (4, 4), (6, 1)];
 
 /// The census of the dwellings the game's build gives (E08 T94a, [`built_dwellings`]): its
 /// counts, and the resolved random dwellings by faction (the core's index) and level.
@@ -525,6 +634,7 @@ fn main() -> ExitCode {
     failures += town_event_differences(&peaks.10);
     failures += growth_differences(&peaks.12);
     failures += tavern_differences(&peaks.14);
+    failures += increment_14_differences(&peaks.15);
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
         println!("  {outcome}: {}", maps.len());
@@ -687,6 +797,7 @@ fn check(
     increment_12(&map, &setup.map, rules, &mut peaks.11)?;
     increment_13(&map, &setup.map, rules, &mut peaks.13)?;
     map_taverns(&map, &setup.map, rules, &mut peaks.14)?;
+    increment_14(&map, &setup.map, (rules, name), &mut peaks.15)?;
     if map.header.version == Version::RoE {
         let counts = &mut peaks.5;
         roe(&map, base, &mut |what, n| {
@@ -1877,6 +1988,182 @@ fn increment_13_differences(census: &Increment13) -> usize {
         "  increment 13 (checked): {banks} creature banks of {} types on {maps} maps \
          ({class_16} with class 16), {from_water} entered from water, at most {most} on one map",
         census.0.len()
+    );
+    differences
+}
+
+/// Counts increment 14's trades and services (E08 T132b; increment 14's design note §7, survey
+/// `E08-trades.md` §1), each checked to import at subclass 0 without a body as its class's type
+/// and kind (the snow Trading Post, 221, the Trading Post), with one entrance on land (221's on
+/// snow), nothing held and no owner; an error names the first that does not.
+fn increment_14(
+    raw: &RawMap,
+    setup: &MapSetup,
+    (rules, name): (&GameRuleset, &str),
+    census: &mut Increment14,
+) -> Result<(), String> {
+    let part = rules.adventure();
+    let snow = rules.core().terrain_by_key("base:snow");
+    let version = match raw.header.version {
+        Version::RoE => 2,
+        Version::Ab => 3,
+        Version::Sod => 4,
+    };
+    let mut on_map = BTreeMap::<u32, usize>::new();
+    for ((placed, class), object) in placed(raw).zip(&setup.objects) {
+        let Some(trade) = SURVEY_TRADES.iter().find(|t| t.0 == class) else {
+            continue;
+        };
+        let template = usize::try_from(placed.template)
+            .ok()
+            .and_then(|i| raw.templates.get(i))
+            .ok_or("an object without its template")?;
+        let ty = object.object_type.and_then(|id| part.object_type(id));
+        let key = ty.map_or("", |ty| ty.key.as_str());
+        let of_its_kind = ty.is_some_and(|ty| match class {
+            2 => matches!(ty.kind, ObjectKind::Altar(_)),
+            35 => matches!(ty.kind, ObjectKind::HillFort(_)),
+            106 => matches!(ty.kind, ObjectKind::WarMachineFactory(_)),
+            _ => matches!(ty.kind, ObjectKind::Market(_)),
+        });
+        let entrances: Vec<_> = object.visitable.offsets().collect();
+        let a = object.anchor;
+        let terrain = entrances.first().and_then(|&(column, row)| {
+            let (x, y) = (a.x - u16::from(column), a.y - u16::from(row));
+            let index = (usize::from(a.level) * usize::from(setup.height) + usize::from(y))
+                * usize::from(setup.width)
+                + usize::from(x);
+            setup.tiles.get(index).map(|t| t.terrain)
+        });
+        let on_land = terrain
+            .is_some_and(|t| !matches!(part.passage(t), Some(h3_adventure::Passage::Water(_))));
+        let fits = key == trade.1
+            && of_its_kind
+            && template.subclass == 0
+            && placed.body == Body::None
+            && object.holds == Holds::Nothing
+            && object.owner.is_none()
+            && entrances.len() == 1
+            && on_land
+            && (class != 221 || terrain == snow);
+        if !fits {
+            return Err(format!(
+                "an object of class {class} subclass {} at {a:?} imports as {key:?} holding {:?} \
+                 with the entrances {entrances:?} on {terrain:?}",
+                template.subclass, object.holds
+            ));
+        }
+        let counts = census.classes.entry(class).or_default();
+        counts[0] += 1;
+        counts[5] += usize::from(a.level > 0);
+        let def = String::from_utf8_lossy(template.def.as_bytes()).to_lowercase();
+        let def = def.strip_suffix(".def").unwrap_or(&def).to_owned();
+        (census.pictures.entry(class).or_default()).insert((
+            def,
+            template.passable,
+            template.visitable,
+        ));
+        if class == 106 {
+            *census.factories.entry(entrances[0]).or_default() += 1;
+        }
+        *on_map.entry(class).or_default() += 1;
+    }
+    for (&class, &n) in &on_map {
+        let counts = census.classes.entry(class).or_default();
+        counts[1] += 1;
+        counts[version] += 1;
+        let most = census.most.entry(class).or_default();
+        if n > most.0 {
+            *most = (n, name.to_owned());
+        }
+    }
+    census.maps += usize::from(!on_map.is_empty());
+    if let Some(&n) = on_map.get(&7) {
+        *census.black_markets.entry(n).or_default() += 1;
+    }
+    Ok(())
+}
+
+/// Increment 14's census against the survey's (§1; E08 T132b): the trades and services by class,
+/// their maps by version, underground, the most on one map, their pictures; the maps holding one,
+/// the factories by entrance and the maps by their Black Markets. Prints each difference and the
+/// census; returns how many differences there are.
+fn increment_14_differences(census: &Increment14) -> usize {
+    const WHAT: [&str; TRADE_COUNTS] = [
+        "objects",
+        "maps with",
+        "RoE maps with",
+        "AB maps with",
+        "SoD maps with",
+        "underground",
+    ];
+    let mut differences = 0;
+    let mut differ = |what: &str, found: &dyn core::fmt::Debug, survey: &dyn core::fmt::Debug| {
+        let (found, survey) = (format!("{found:?}"), format!("{survey:?}"));
+        if found != survey {
+            println!("h3-map: the census's {what} ({found}) is not the survey's ({survey})");
+            differences += 1;
+        }
+    };
+    for (class, key, counts, most, names, pictures) in SURVEY_TRADES {
+        let counted = census.classes.get(&class).copied().unwrap_or_default();
+        for ((what, found), survey) in WHAT.iter().zip(counted).zip(counts) {
+            differ(&format!("class {class} {what}"), &found, &survey);
+        }
+        let (n, map) = census.most.get(&class).cloned().unwrap_or_default();
+        differ(
+            &format!("class {class} most on one map"),
+            &(n, map.as_str()),
+            &most,
+        );
+        let found = census.pictures.get(&class).cloned().unwrap_or_default();
+        let found_names: BTreeSet<&str> = found.iter().map(|p| p.0.as_str()).collect();
+        let survey_names: BTreeSet<&str> = names.iter().copied().collect();
+        differ(
+            &format!("class {class} pictures' names"),
+            &found_names,
+            &survey_names,
+        );
+        differ(&format!("class {class} pictures"), &found.len(), &pictures);
+        let [objects, maps, roe, ab, sod, underground] =
+            census.classes.get(&class).copied().unwrap_or_default();
+        println!(
+            "  increment 14 (checked): class {class} {key}: {objects} on {maps} maps ({roe} RoE, \
+             {ab} AB, {sod} SoD), {underground} underground, at most {n} on one map ({map}), {} \
+             pictures of {found_names:?}",
+            found.len(),
+        );
+    }
+    let others = census
+        .classes
+        .keys()
+        .filter(|class| !SURVEY_TRADES.iter().any(|t| t.0 == **class))
+        .count();
+    differ("other classes of trades", &others, &0);
+    differ(
+        "maps with a trade or service",
+        &census.maps,
+        &SURVEY_INCREMENT_14_MAPS,
+    );
+    let factories: Vec<((u8, u8), usize)> =
+        census.factories.iter().map(|(&e, &n)| (e, n)).collect();
+    differ(
+        "War Machine Factories by entrance",
+        &factories,
+        &SURVEY_FACTORY_ENTRANCES,
+    );
+    let markets: Vec<(usize, usize)> = census.black_markets.iter().map(|(&k, &n)| (k, n)).collect();
+    differ(
+        "maps by their Black Markets",
+        &markets,
+        &SURVEY_BLACK_MARKETS,
+    );
+    let objects: usize = census.classes.values().map(|n| n[0]).sum();
+    println!(
+        "  increment 14 (checked): {objects} trades and services on {} maps, each at subclass 0 \
+         without a body, one entrance on land; factories by entrance {factories:?}; maps by their \
+         Black Markets {markets:?}",
+        census.maps
     );
     differences
 }
