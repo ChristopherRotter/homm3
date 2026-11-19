@@ -132,7 +132,10 @@ user, 2026-11-10, T29, AI-Q17): **`e25-structure-1` #2** (20 M of PPO from T27's
 clone with the imitation loss) the current best, its head-to-head against `e25-imitate-1` #2
 0.552; increment 8 is probes, then one long run. **At increment 8's checkpoint** (the user,
 2026-11-18, T36, AI-Q18): **#2 stays the current best** (no probe nor the long run passed it);
-increment 9 is a richer observation; a long run stops early (`[gate] futility`).
+increment 9 is a richer observation; a long run stops early (`[gate] futility`). **At T37's
+review** (the user, 2026-11-18, AI-Q19): v23 is the reach block (the rules' reach as the viewer
+may know it, this lane's `cross-lane` query), the kill preview for `hexconv` a second bench arm,
+T39's rule the clone's ladder +0.02 (`E25-log.md` T37).
 
 **Increment 9: a richer observation (v23)** (the user at T36, 2026-11-18, AI-Q18). Increment
 8's probes and its long run ended at #2's level (T32 to T36): the network's size, PPO's
@@ -163,9 +166,9 @@ blocked state; the kill preview (C ABI v33, E06 T6d) only the MLP reads.
 
 | Task | Scope | Status |
 |---|---|---|
-| T37 | v23's design: what v22 hides from the network, where #2 and the fair actor differ, the candidates and their cost; the user's review | next |
-| T38 | v23 built: the encoding, any engine query (`cross-lane`), `layout.py`, the versions, the golden replays | after T37 |
-| T39 | The bench probe: the v23 clone against T32's v22 control at 4 M | after T38 |
+| T37 | v23's design: nothing the fair actor reads is hidden, the reach is left to a pathfinder; #2's moves are blind to it (0.468, chance 0.455), its strikes read the kills; v23 the reach block (AI-Q19) | done 2026-11-18 |
+| T38 | v23 built: T38a the reach block from a viewer-safe query in `h3-battle` (`cross-lane`), C ABI v38; T38b `[network] reach`, the kill preview for the hex kinds and the bench | next |
+| T39 | The bench probe: the control, v23 and v23 with the preview at 4 M; an arm's clone's ladder +0.02 | after T38 |
 | T40 | The long run from the v23 clone, on T39's gain, with the early stop | after T39 |
 | T41 | Increment 9's checkpoint | after T40 |
 

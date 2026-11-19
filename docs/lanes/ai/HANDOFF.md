@@ -30,17 +30,19 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (`e25-anchor-1` to 20 M: 0.511 ± 0.018 against the faithful actor, level with #2) passed #2,
   which stays the current best (AI-Q18). A `hexconv` run sets `accumulate = 4`, `chunk_align =
   32` (T31). **A long run stops early** (the user, 2026-11-18): `[gate] futility` (built at T36;
-  `TRAPS.md`, Python). **Increment 9: a richer observation (v23)** (AI-Q18; the decisions the
-  agent's proposal, the user reviews the design): **T37, v23's design, next** (the sandbox, no
-  GPU; `QUEUE.md`).
-- **Open pull requests:** #1022 (`claude/adoring-turing-tl1huu`: T36's close, `[gate]
-  futility`, increment 9 refined) and #1023 (`shared/e25-increment-8`: the README's E25 row).
-  Merged: #954, #965 (T35's close, T36).
+  `TRAPS.md`, Python). **Increment 9: a richer observation (v23)** (AI-Q18). **T37 closed**
+  2026-11-18 (`E25-log.md` T37, AI-Q19): #2's moves are blind to the enemies' reach, its strikes
+  read the kills; v23 is the reach block (two threat planes, three features a stack slot) from a
+  viewer-safe reach query in `h3-battle`, the kill preview for `hexconv` a bench arm. **Next:
+  T38a** (the query, v23, C ABI v38; one `cross-lane` pull request, the user's consent given at
+  T37), then T38b (the networks, the bench), T39 (the bench on the GPU; `QUEUE.md`).
+- **Open pull requests:** #1028 (`claude/fervent-bardeen-n2suw6`: T37's design, AI-Q19).
+  Merged: #1022, #1023 (T36's close, increment 9 refined, the README's E25 row).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
-  (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
+  (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
   (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q19, AI-QUIRK-1, AI-STUB-2.
+  ids: AI-Q20, AI-QUIRK-1, AI-STUB-2.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -48,6 +50,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-18 — E25 T37 closed: v23's design
+
+- #1022, #1023 merged. No original data (none needed). The user uploaded #2's `best.pt` (in
+  `python/runs/`, ignored); `uv sync --group train`, `cargo build --release -p h3-ffi -p h3-cli`
+  (75 s). (b)'s script `python/records/inspect/disagree.py` (68 s on 25 600 states); (c)'s reach
+  cost by a scratch timing in `h3 ai bench`, reverted. The user reviewed the design (AI-Q19).
+  The queue's inbox trimmed to 12 KB (informational notices to `QUEUE-ARCHIVE.md`). #1028.
 
 ### 2026-11-18 — E25 T36 and increment 8 closed, the early stop, increment 9 refined
 
@@ -64,14 +74,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   committed). The probe within (0.5007 head to head): reward v1 stays. The user chose the long
   run of four offered: the anchor resumed to 20 M. Only `uv sync --group dev` and the records'
   test run (no code changed).
-
-### 2026-11-15 — E25 T32 closed, T34 prepared
-
-- #910 merged. The user uploaded T32's `report.json` and `metrics.jsonl` (no CRLF; the metrics
-  not committed: the report holds every evaluation). No setup script: `uv sync --group train`
-  and `cargo build --release -p h3-ffi` (53 s) in the background; the Python suite 264 (3.3
-  minutes). The user chose T34's arms (the search at play, the KL anchor). #940 merged; #2's
-  `best.pt` uploaded (in `python/runs/`, ignored): (a) run in the sandbox, N 16 72 minutes and
-  the sampled policy 18, N 64 on the hero battles 27; #948 merged. (b)'s five files uploaded
-  (three with CRLF, stripped); T34 closed. At T35 the user chose the win-bonus probe; built
-  and its config tested.
