@@ -708,6 +708,11 @@ fn menus(
             (tables, &rules),
             &catalogue,
         )),
+        // A random map's name and description (T5a).
+        random: [
+            text("shell.scenario.random-name"),
+            text("shell.scenario.random-description"),
+        ],
     };
     Ok(Menus {
         main,

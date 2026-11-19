@@ -19,7 +19,7 @@ use crate::shell::look::parse_layout;
 const LAYOUT: &str = include_str!("../../../../../../layouts/shell.toml");
 
 /// The advanced options' texts of the shell's layout: numbered texts for the tables.
-fn advanced_texts() -> AdvancedTexts {
+pub(crate) fn advanced_texts() -> AdvancedTexts {
     let look = parse_layout(LAYOUT).unwrap().scenario.advanced;
     let numbered = |what: &str, n: usize| (0..n).map(|k| format!("{what} {k}")).collect();
     let creature_names = look
@@ -120,7 +120,7 @@ fn with_options(entries: Vec<Entry>) -> Scenario {
 }
 
 /// The screen over `entries` with the advanced options in the profile `bugs`.
-fn with_options_in(entries: Vec<Entry>, bugs: Bugs) -> Scenario {
+pub(crate) fn with_options_in(entries: Vec<Entry>, bugs: Bugs) -> Scenario {
     let layout = parse_layout(LAYOUT).unwrap();
     Scenario::new(
         layout.scenario.dialog,

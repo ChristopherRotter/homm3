@@ -21,7 +21,7 @@ use h3_towns::{BuildingId, TownCommand, TownCommandError};
 use crate::manage::{Manage, ManageError};
 use crate::observe::HireSeen;
 use crate::system::SystemCommand;
-use crate::town::hire::HiredPart;
+use crate::town::hire::{HiredPart, TavernError};
 use crate::town::tavern::{TavernHero, TavernPart};
 use crate::town::view::{GarrisonStackView, TownBuildingsView};
 use crate::{GameRuleset, GameState, MonthKind, OpenBattle, WeekKind};
@@ -89,6 +89,9 @@ pub enum Answer {
     University(UniversityAnswer),
     /// A hire dialog's purchase or closing (GAM-DEC-008, ADV-HIR-002; E08 T95b).
     Hire(HireAnswer),
+    /// The map Tavern's hire or closing (GAM-DEC-010, ADV-VIS-007; E09 T39a, the town epic's
+    /// design note §66).
+    Tavern(TavernAnswer),
     /// Closes a meeting (GAM-DEC-003), an army dialog (GAM-DEC-004; increment 6's `Decline`) or,
     /// since E08 T114a2, a map garrison's exchange (GAM-DEC-009).
     Close,
@@ -194,6 +197,23 @@ pub enum HireAnswer {
     Close,
 }
 
+/// The map Tavern's answer (GAM-DEC-010; E09 T39a, the town epic's design note §66; the
+/// original's tavern dialog, `map_tavern_visit` 0x5D7E90): a hire of one of the visitor's owner's
+/// two tavern heroes, which closes the decision (one hire a visit), or closing it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TavernAnswer {
+    /// Hires the tavern hero in this slot (0 or 1) for the part's price, placed on the Tavern's
+    /// visitable tile: refused while the slot holds none, the map holds the most heroes of the
+    /// player's, a hero stands on the tile ([`GameCommandError::Tavern`]) or the treasury cannot
+    /// pay ([`GameCommandError::CannotPay`]), the decision then left open.
+    Hire {
+        /// The slot.
+        slot: u8,
+    },
+    /// Closes the Tavern.
+    Close,
+}
+
 impl ChestChoice {
     /// The adventure's pick of this answer.
     pub(crate) const fn pick(self) -> Pick {
@@ -283,6 +303,10 @@ pub enum GameCommandError {
     /// actor's, or the hall's refusal (`h3_towns::check_build`), in that order; the treasury's
     /// is [`Self::CannotPay`], checked after them.
     Town(TownCommandError),
+    /// A map Tavern's hire the game refused (GAM-DEC-010; E09 T39a): the slot, the room on the
+    /// map or the Tavern's tile, in that order; the treasury's is [`Self::CannotPay`], checked
+    /// after them.
+    Tavern(TavernError),
 }
 
 impl fmt::Display for GameCommandError {
@@ -311,6 +335,7 @@ impl fmt::Display for GameCommandError {
             Self::CannotPay => f.write_str("the treasury cannot pay the price"),
             Self::Hire(error) => write!(f, "{error}"),
             Self::Town(error) => write!(f, "{error}"),
+            Self::Tavern(error) => write!(f, "{error}"),
         }
     }
 }
@@ -645,10 +670,23 @@ pub enum GameEvent {
         /// The source.
         source: HireSeen,
     },
+    /// The map Tavern's decision opened for the visitor's owner (GAM-DEC-010, ADV-VIS-007; E09
+    /// T39a, the town epic's design note §75): its offers are the owner's tavern heroes
+    /// ([`crate::GameObservation::tavern`]), its answers [`TavernAnswer`]'s. Seen by the owner.
+    TavernOpened {
+        /// The visitor's owner.
+        player: PlayerId,
+        /// The visiting hero.
+        hero: HeroId,
+        /// The Tavern's type.
+        object_type: ObjectTypeId,
+        /// The Tavern's anchor.
+        anchor: Pos,
+    },
     /// The player's meeting or army dialog closed (its `Close`; E08 T51b); since E08 T63a also
     /// its choice once answered (the answer's payment and effects follow) and its University
-    /// left; since E08 T95b its hire dialog closed or a single creature's bought. Seen by the
-    /// owner.
+    /// left; since E08 T95b its hire dialog closed or a single creature's bought; since E09 T39a
+    /// a map Tavern closed or its hire made. Seen by the owner.
     DecisionClosed {
         /// Its owner.
         player: PlayerId,

@@ -2160,3 +2160,146 @@ an entry only where a task builds on it.
   league, expert iteration in Rust, a richer observation): **increment 9, a richer observation
   (v23)**. **T36 closed** 2026-11-18; **increment 8 closed** (its decisions and tasks in
   `E25-archive.md`).
+
+## T37 — v23's design (2026-11-18)
+
+- **(a) What the fair actor reads** (`h3-battle-ai`'s modules; `choose_fair` is `choose` on its
+  side's world, `BattleState::determinized`), each input against observation v22 and the legal
+  mask (`[network] mask_input`): *shown* as a feature, *derivable* from shown ones by a
+  computation the network must learn, *hidden* where v22 holds nothing of it:
+
+  | Input (module; rule) | What it reads | v22 |
+  |---|---|---|
+  | the walker's map (`computer::map`; BAT-AI-005) | the turns to each hex | this turn's hexes shown (the mask's moves and strikes); farther ones derivable (positions, speed, flight, obstacles) |
+  | the plan (`walker::plan`, 0x4360C0) | each enemy's best hex to strike it from: its turns, the shooters it would block, the multi-headed and breath strikes, the enemy's retaliation | this turn's strike hexes shown (the attack entries, `attack_hex`); their values derivable |
+  | the melee value (`computer::strike_value`) | the damage estimate, the kills, the retaliation | derivable (stats, effects); the kill preview (C ABI v33) shows the kills to the MLP only |
+  | the last retaliation's gain (`gain`; BAT-AI-009) | each own stack's map within its speed, the computer's order of action | derivable (positions, speeds; v22's turn order is the rules', not the computer's ranks) |
+  | the hex scores (`scores`; BAT-AI-007) | the Fire Walls and a damaging moat; **the enemies' reach** (each enemy's map, `computer::reach_map`, its strike value on the walker); the crowding (the area attackers that can strike, the enemy hero's best area spell) | the walls and the moat shown (planes 9, 12, 15, the moat global); the reach and the crowding derivable only through a pathfinder per enemy; the enemy hero's spells hidden (the world's guess) |
+  | the odds (`odds`; BAT-AI-008) | per side the strength of the stacks that can shoot now, the hero's best damage spell, the turrets | a shooter's blocked state derivable (adjacency, shots, its `cannot shoot` flag); the strength from the creature; the other hero's spells hidden (the guess) |
+  | the shot's target (`computer::valued_shot`; BAT-AI-002) | the kill value at each target | as the melee value |
+  | the hero's cast (`hero`, `spells`, `predict`) | each spell's value through predicted turns of both sides | derivable only through the predictions |
+  | the ends (`ends`: the walls held, the besieger's walk, guarding a shooter, the step to safety) | the walls, who stands inside them, the odds, the area threat, the enemies' reach | as above |
+  | the tactics phase (`tactics`; BAT-AI-023) | a shooter's zone hex with the fewest free neighbours, a walker's plan over the whole field | derivable (occupancy, positions) |
+  | the draws (75 to 100 % of a value) | the side's stream | hidden (noise) |
+
+  **Nothing the fair actor reads is information v22 lacks** but the world's guesses and its
+  draws, which carry none: its world holds only what its side may know, and the encoding is
+  complete (E04b T9a). What v22 leaves to the network is computation: above all **the reach**
+  (a pathfinder per stack: the enemies' in the hex scores and the ends, the own stacks' in the
+  gain), then the kills (the damage formula), then the hero's predictions.
+- **(b) Where #2 and the fair actor choose differently** (the sandbox's CPU;
+  `python/records/inspect/disagree.py`, a one-off script beside `battles.py`; its record
+  `python/records/inspect/e25-structure-1-disagree.json`): T30's states, the cloning bench
+  `configs/distill/e25-structure.toml`'s held-out distribution (seed 8, the fair actor's own
+  episodes), 25 600 states, 8 draws each, 68 s; the teacher's entry the draws' most frequent,
+  #2's its most likely legal entry: agreement 0.444 (T30's per draw 0.454). The features are the
+  script's approximations from v22 (no engine query; its docstring): a hex's **threat** counts
+  the opponent's creature stacks whose next turn reaches a hex next to the active stack standing
+  there (a breadth-first walk of its speed, a flyer any free hex within it; shooters that can
+  shoot now left out), **nearest** the hex distance to the opponent's nearest creature stack, a
+  target's **kill hit points** its previewed kills times its creature's hit points, its
+  **potential** its count times its mean damage:
+
+  | The teacher's > #2's (states, share of all) | Threat: the teacher's, #2's (the teacher's higher, lower) | Nearest | The targets' kill hit points; potential (higher, lower) |
+  |---|---|---|---|
+  | a tactics placement on another hex (3 779, 0.148) | 1.03, 0.78 (0.21, 0.05) | 11.2, 12.2 | |
+  | melee at another target (1 823, 0.071) | 3.29, 3.05 (0.28, 0.15) | 1.1, 1.0 | 198, 184 (0.49, 0.38); 160, 179 (0.41, 0.55) |
+  | melee at the same target from another hex (922, 0.036) | 2.40, 2.36 (0.12, 0.10) | 1.0, 1.0 | |
+  | a move to another hex (1 692, 0.066) | 1.57, 0.92 (0.42, 0.05) | 5.6, 8.3 | |
+  | a shot at another target (1 099, 0.043) | | | 109, 89 (0.52, 0.33); 118, 182 (0.23, 0.72) |
+  | move > wait, defend (810, 0.032) | 1.09, 0.26 (0.47, 0.01) | 6.5, 11.2 | |
+  | melee > move (415), > wait, defend (390) (0.031) | 2.13, 1.28; 3.14, 1.09 | 1.1, 5.3; 1.1, 7.7 | |
+  | wait, defend > move (427, 0.017) | 0.82, 0.88 (0.13, 0.20) | 8.3, 8.2 | |
+  | melee > cast (824), cast > melee (448), move > cast (383), wait, defend > cast (331), shot > cast (218) (0.088) | the hero's cast: not measured | | |
+
+  Two tests of what #2 reads, each against a uniform legal choice in the same states:
+  - **The reach: no.** Where the threat varies among the legal move hexes (0.771 of #2's 3 079
+    moves), #2's hex has the least threat 0.468 of the time, a uniform legal hex 0.455; its
+    hex's threat 1.00, the legal hexes' mean 1.03. The teacher's 0.161 (uniform 0.495; 1.40
+    against 0.82): it walks into reach towards its plan (BAT-AI-005).
+  - **The kills: mostly.** Among several legal targets #2's strike has the most previewed kills
+    0.500 of the time (uniform 0.366), its shot 0.496 (0.289); the teacher's 0.533 (0.370) and
+    0.574 (0.297). #2's shots take the largest damage potential 0.370 (0.247), the teacher's
+    0.270 (0.251).
+
+  **The read:** #2 leaves the teacher in two ways (a) explains. **It stays back:** it breaks off
+  melee (0.031 of the states) and waits where the teacher walks (0.032), places one hex farther
+  back, moves 2.7 hexes farther from the enemy. That is not caution from the reach: its moves
+  are blind to it (0.468 against 0.455), the one input (a) found v22 leaves to a pathfinder.
+  **It shoots the dangerous stack** rather than the most kills, a choice the kills it reads
+  support (half its strikes the most kills; the MLP at E06 T6e: with the kill preview 0.61 of
+  its strikes the best previewed, without 0.53, its outcomes unchanged). The casts against the
+  strikes (0.088 of the states) rest on the hero's predictions, which no candidate shows.
+- **(c) The candidates and their cost** (the sandbox, release, one thread; `h3 ai bench --envs
+  64 --threads 0 --calls 1000 --encounters default --seed 1`, the training distribution; a
+  scratch timing, not committed, of `computer::reach_map` and `computer::shoots` for every
+  living stack but the turrets after each step):
+
+  | Candidate | Engine | Observation | Network (`hexconv` 96 × 6, 1 485 079) | The batch's step | A `hexconv` run (217 samples/s) |
+  |---|---|---|---|---|---|
+  | the kill preview for `hexconv` | none: the batch's output since C ABI v33 | none (a batch output, 1 092 × 2 a decision; the rollout keeps it in half precision) | about 17 k (the MLP's head 17 632) | 19 → 38 µs (52 500 → 26 150 a second) | under 1 % |
+  | the threat planes, one a side | a pathfinder search per living stack and decision (11.8 at 7.3 µs: 86 µs) | +2 × 255 | +2 × 96 | 19 → 105 µs (about 9 500 a second) | about 2 % of a thread |
+  | per stack: can shoot now, the stacks it can strike, those that can strike it | the same searches, `computer::shoots` | +3 × 42 | +3 × 96 | with the planes | |
+  | distances | none | derivable from the positions (the trunk's twelve convolutions of radius 1 span the field) | | | not proposed |
+
+  On the fair actor's neutral workload (`--encounters 780,20,0,0,0,25`, its seat inside the
+  step) the step is 52 µs and the searches 43 µs (8.3 at 5.2 µs). The update on the GTX 1070
+  (T31: 686 µs a sample-pass, the inputs' drawing 2.2 % of it): the planes and the slot features
+  enter the drawing's two linear layers, about 0.2 % of the update. The observation grows 9 008
+  → 9 644 floats (+7.1 %), the rollout's storage alike.
+- **The design** (the agent's proposal; the user's review below):
+  1. **Observation encoding v23, the reach block**, appended after v22's turn order (v22's
+     layout its prefix, as v22 kept v21's: every saved network reads the prefix; `layout.REACH`
+     = 9 008): per hex (255 each), for the viewer's side and then the opponent's, the number of
+     the side's creature stacks (alive, with turns: not blind, petrified or paralysed; no war
+     machine, no turret) that can strike in melee a stack standing on the hex on their next
+     turn; then per stack slot `[can shoot now (BAT-RNG-001's test), the other side's stacks it
+     can strike in melee on its next turn, the other side's stacks that can strike it on
+     theirs]`. 9 644 floats.
+  2. **Its source, one engine query** in `h3-battle`: a stack's reach as a viewer may know it,
+     the positions the rules' pathfinder reaches within its speed now (its flight, shape, side's
+     gate, the Force Fields), its walk's stops only the pits both its controller and the viewer
+     see; the strike sets and the counts in `h3-sim`, the blocked state `computer::shoots`. Not
+     `computer::reach_map` (the hex scores' speed + 1 and a computer's moat fear), and not the
+     true state's stops: an enemy's own hidden Quicksand and Land Mines would show through its
+     reach (`pathfinder::stops` reads the pits its controller sees). A property test: two worlds
+     of one battle (`determinized`, two seeds) give the viewer the same v23 encoding.
+  3. **The encoder:** `BattleEnv::encode_observation` (the batch's, the single envs', the
+     worlds') computes the block from its state; `observation::encode(&Observation, …)` takes
+     it as an argument (an empty block where no state is at hand: the battle benches').
+  4. **Versions:** observation encoding v23, C ABI v38 (`h3_observation_len` grows; `_ffi.py`'s
+     `ABI_VERSION`, `layout.py`); action encoding v13, replay format v32 and the battle state
+     hash unchanged. **The golden replays** hold setups, commands and state hashes, no
+     observation: unchanged (the determinism step shows it). The AI lane's batch workloads
+     re-baselined; the battle lane's unchanged (they count `random_rollout`, which encodes
+     nothing; `h3 bench`'s observing rollout is outside their counts).
+  5. **Which lane writes what:** one `cross-lane` pull request of this lane's (the user's
+     consent, as E06 T6f's turn order): the query in `h3-battle` with its tests (the battle
+     lane's code; its inbox told), v23 in `h3-sim`, C ABI v38 in `h3-ffi`, `[network] reach` in
+     Python (the hex kinds draw the planes into each hex's vector and the slot features into the
+     stack tokens; the MLP and the entity network bound at `REACH` without it). No `Observation`
+     field, so no `h3-protocol` mapping; `scripts/verify-once.sh clients` runs (a change of
+     `h3-battle`).
+  6. **The kill preview as a bench arm** (the user's review: offered as the recommendation's
+     alternative; (b) found #2 reading the kills, E06 T6e the MLP's preview moving its
+     targeting, not its outcomes): `[network] preview` for the hex kinds (the bias `φ(f) · u(c)`
+     of `Mlp.with_preview` on each legal strike entry, `c` the hex network's context), the
+     cloning bench collecting the batch's preview for its rows and held-out set (it refuses a
+     preview network today). No encoding change. Such a network plays wherever the batch writes
+     the preview (rollouts, gates, ladders, `inspect`), not in `h3env.search` (a single env
+     writes none; the search refuses it).
+  7. **T39's rule**, stated before it runs: the cloning bench to 4 M on v23's rows, three
+     students with the same seed: the control (`hexconv` 96 × 6 without `reach`, reading v22's
+     prefix), v23 (`reach`) and v23 with the preview (`reach`, `preview`). An arm passes when
+     its clone's ladder against the fair actor (500 a kind, the same episodes) leads the
+     control's by at least 0.02 and its agreement is not below the control's; the moves' and the
+     strikes' agreement reported beside. T40 starts from the passing arm with the better ladder,
+     the preview's arm only when it also leads the v23 arm's by 0.02 (else the cheaper one); no
+     arm passing closes increment 9 at T41. About 6 hours of the GPU (T32's four students'
+     passes 24 820 s), in parts under 2 hours (the bench resumes).
+- **The user's review** (2026-11-18, AI-Q19; four questions, the agent's recommendations): the
+  features **the reach block and the kill preview's arm** (the recommendation: the reach alone);
+  the reach **the rules', viewer-safe** (recommended; not the fair actor's `reach_map`); **this
+  lane's `cross-lane` pull request** for the engine query (recommended); T39's rule **the
+  clone's ladder +0.02** (recommended; not T32's agreement +0.02). **T37 closed** 2026-11-18;
+  T38 and T39 refined in the AI queue.

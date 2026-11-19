@@ -3334,3 +3334,97 @@ begin (T6's); every other recipe as recorded (`drawn.txt` recorded for the three
 
 The begin itself (T6); a hot-seat load's presses (M4, CLT-Q110 (b)); network play's clash step
 and messages (no network play).
+
+## 30. The random map's tab drawn and pressed (M3 T5a, 2026-11-19)
+
+T5 cut in two with the user at its start (decision 62): T5a the tab drawn and its left presses,
+T5b the right press and hints, Show Random Maps, the tab toggled back and Begin. Read from
+`Heroes3.exe` (`random_map_toggle` 0x57FEB0, `random_map_items_create` 0x57D170's arguments,
+`random_map_tab_draw` 0x57EF70 and `random_map_info_build` 0x580430 whole; `scenario_dialog_click`
+0x5865B0's cases 130 and 279 to 335; `random_map_hide` 0x581D80's ends; `scenario_info_draw`
+0x5840F0 and `scenario_entry_name` 0x584010 for what the panel reads; `scenario_dialog_redraw`'s
+tab part 0x584B24; `scenario_list_toggle` 0x580A70's and `scenario_advanced_toggle` 0x581100's
+calls) against `adv-random`, played again under Wine this session (52 of 52 as kept). The client:
+`scenario::random` (`RandomMap`, `Choices`), the screen's `toggle_random`, `random_built`,
+`random_click`, `shown_entry`; the layout's items 103, 280 to 335, 1040 and 1041; the keys
+`shell.scenario.random-*`.
+
+### 30.1 The choices and the presses
+
+- **The constructor's choices** (0x57D192 to 0x57D1D0; each opening of the screen starts from
+  them): size 72, two levels, the players Random (−1), their teams Random, the computer only
+  players **0**, their teams Random, the water Random (3), the monsters Random (−1).
+- **The presses** (`scenario_dialog_click`): 281 to 284 the size (36, 72, 108, 144), 285 the
+  levels (3 − levels), 287 to 294 the players (id − 286), 295 Random, 297 to 304 their teams
+  (id − 297), 305 Random, 307 to 314 the computer only players (id − 307), 315 Random, 317 to 323
+  their teams (id − 317), 324 Random, 326 to 329 the water (id − 326: none, normal, islands,
+  Random 3), 331 to 333 the monsters (id − 331), 334 Random; each `random_map_tab_draw`, the items
+  drawn again and `scenario_dialog_redraw`. The players' (287 to 295), their teams' counts (297 to
+  304, **not** Random's 305) and the computer only players' (307 to 315) then build the record
+  again (`random_map_info_build`); the others do not. 335 is `scenario_list_toggle(1)` (T5b), 279
+  Begin's generation (T5b, decision 13). A disabled button takes no press.
+- **The tab's state** (`random_map_tab_draw`, only while +0x37E): each group's chosen button
+  selected (0x10), the others not; the levels' switch selected for two levels. The caps: the
+  players' teams 1 and up enabled below the players' count, disabled from it on (Random players as
+  8: 1 to 7 enabled); the computer only players 1 and up enabled up to 8 less the players (Random
+  as 1: up to 7); their teams 1 and up enabled below the computer only players shown (their choice
+  up to its cap, Random as the cap). A choice above its cap is kept but shows its cap's button
+  selected (0x57F0C6, 0x57F153, 0x57F201: a disabled button then shows selected; no recording has
+  one, the client copies it). Group 0 (a count of 0) is never disabled, Random never.
+- **The items** (§3.16's table; the constructor's order, after the advanced options' items and
+  before Show Available Scenarios): the counts' buttons, Random's, the water's and the monsters'
+  have the disabled frame 1 and the selected frame 2 (their +0x3C and +0x40, 0x57D73E and the
+  loops after each group); the sizes, the levels' switch and Show Random Maps the defaults (2, 3).
+  The labels are text items of colour 1 with the flags 8 (as the panel's labels), 280 centred, the
+  others left. `scenario_dialog_redraw` draws 739 and 740 after the panel and calls
+  `random_map_tab_draw` last (its states show at the next draw of the items: every caller draws
+  them after a press).
+
+### 30.2 The own record and the panel
+
+- **`random_map_info_build`** (from the toggle's first opening, +0x37F clear, and the counts'
+  presses): a header of the version's format (the single player's SoD: 0x1C), the map's difficulty
+  1, the size and the levels chosen, no special victory or loss (0xFF), no teams (each colour its
+  own), a human may play the colours below the players (8 for Random), anyone those below the
+  players and the computer only players together (8 when either is Random), every faction, a
+  random town (+0xA), +0xB set (*inferred*: a main town), no main hero (+0x1C −1); its name GENRLTXT 741 and
+  description 742; the header into the game (`map_file_open_header` 0x513320, the players block
+  and the hero owners copied), the description into the scrollable text, every record's town and
+  hero cleared, `scenario_players_init`, `scenario_hero_lists`, `scenario_team_flags`, Begin
+  enabled, the items and the redraw. The client builds an `Entry` of it (`RandomMap::build`) and
+  makes the advanced options' records again at their next showing.
+- **What the panel shows** (`scenario_info_draw`): the name by `scenario_entry_name` (741 while
+  +0x37F), the rest from the game's header: the map's difficulty (Normal), the standard victory and
+  loss with their marks (11, 3), the rating, the flags (red the single player's, every other
+  colour that plays an enemy). `scenario_to_game` gives the game the own record while +0x37F
+  (the advanced toggle's and the tab's toggle's call), so the advanced options over a chosen random
+  map show its seats (the client's `shown_entry`).
+- **The size mark** is set by the select alone: in the tab it keeps what it showed (`adv-random`:
+  S, Arrogance's, whatever the size). The client's profile shows the chosen size's (CLT-Q115 (b),
+  decision 22); a size's press builds no record, so the client sets the mark from the choice.
+- **The toggles**: the tab's (130) shown hides it alone (+0x37E cleared, a random map still
+  chosen); else the list (`scenario_list_hide`) and the options hidden, 103 and 280 to 335 shown,
+  `scenario_to_game`, +0x37E set, and with +0x37F clear the record built (the client's profile at
+  each opening: CLT-Q111 (b)). The list's toggle hides the tab and clears +0x37F before it shows the
+  list (0x580A96, 0x580AAA); the advanced toggle hides the tab (0x58136F), +0x37F kept.
+- **The teams' 1 and 2** of the human or computer players are 30 × 24 items (0x57D85B, 0x57D8A9)
+  over 30 × 32 frames: their lowest 8 rows take no press (**CLT-Q146**, open; built as the
+  original's).
+- *The client's mouse* (*provisional*): the tab's hidden items left out of the shared input's
+  dialog (`mouse_dialog`), as the advanced options' (T3a): they lie over the list's columns and
+  over the options' rows.
+
+### 30.3 The recordings and the comparisons
+
+`adv-random` from `tab` to `monsters-random` (44 shots) exact, and `show-hover`; the other seven
+(the popups, `random-maps`, `tab-again`, `tab-hidden`) are T5b's (`drawn.txt` recorded for the
+recipe). Every other recipe as recorded.
+
+### 30.4 Not built (T5b)
+
+The tab's right press and hints (`Help.txt`); Show Random Maps (the random maps' list, kind 1,
+empty: CLT-Q92); the tab toggled back after it (the record built again with an empty list:
+CLT-Q111); Begin with a random map chosen (a stub's message, decision 13; `adv-random` gains a
+Begin after `tab-again`, recorded with `--record`); the list's showing over a chosen random map
+(read only: +0x37F cleared and no select, so the original's panel keeps the random record's header
+and description but the name; not recorded: to record at T5b and ask if it shows).

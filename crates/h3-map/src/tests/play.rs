@@ -3290,12 +3290,17 @@ fn settle(state: &GameState, legal: &[GameCommand], n: u16) -> Option<GameComman
     {
         return Some(CLOSE);
     }
-    (state.choice(actor).is_some() || state.university(actor).is_some() || hiring(state, actor))
-        .then(|| legal[usize::from(n) % legal.len()].clone())
+    // E09 T39a: a map Tavern too (GAM-DEC-010: its listed hires, then `Close`).
+    (state.choice(actor).is_some()
+        || state.university(actor).is_some()
+        || state.tavern(actor).is_some()
+        || hiring(state, actor))
+    .then(|| legal[usize::from(n) % legal.len()].clone())
 }
 
 /// Whether `player`'s first open decision is a hire dialog (GAM-DEC-008, E08 T95b): an open
-/// decision of none of the other kinds (since E08 T116b1 an exchange among them, GAM-DEC-009), as `GameState` shows a hire dialog only through its
+/// decision of none of the other kinds (since E08 T116b1 an exchange among them, GAM-DEC-009;
+/// since E09 T39a a map Tavern, GAM-DEC-010), as `GameState` shows a hire dialog only through its
 /// owner's observation ([`hire_view`]).
 fn hiring(state: &GameState, player: PlayerId) -> bool {
     state.has_decision(player)
@@ -3305,6 +3310,7 @@ fn hiring(state: &GameState, player: PlayerId) -> bool {
         && state.meeting(player).is_none()
         && state.army_dialog(player).is_none()
         && state.exchange(player).is_none()
+        && state.tavern(player).is_none()
         && state.choice(player).is_none()
         && state.university(player).is_none()
 }

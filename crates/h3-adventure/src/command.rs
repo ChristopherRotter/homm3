@@ -319,6 +319,11 @@ pub struct AdventureOutcome {
     /// each of the player's towns that has none (TWN-GRO-007), from the player's stream after the
     /// visit's draws.
     pub flagged_dwelling: bool,
+    /// The tavern decision the visit of the map's Tavern opens for the visitor's owner
+    /// (ADV-VIS-007, GAM-DEC-010; E09 T39a, the town epic's design note §66): the game opens it
+    /// as the player's decision, whose hire places the hero on the Tavern's visitable tile
+    /// ([`crate::AdventureState::check_map_tavern_hire`], [`crate::AdventureState::place_hired`]).
+    pub tavern: Option<crate::TavernVisit>,
 }
 
 /// What a Sirens' visit took from its hero's army ([`AdventureOutcome::drowned`]; E08 T115b).

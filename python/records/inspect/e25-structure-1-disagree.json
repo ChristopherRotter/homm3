@@ -1,0 +1,694 @@
+{
+ "network": "runs/e25-structure-1/best.pt",
+ "network_sha256": "d578f80e51cddbb8f4c9a43ba857ff2217092710f873c90c38131add91eb9836",
+ "identity": {
+  "abi": 37,
+  "observation_encoding": 22,
+  "action_encoding": 13,
+  "encounters": 1,
+  "system_policy": 19,
+  "torch": "2.14.1+cu126"
+ },
+ "bench": "configs/distill/e25-structure.toml",
+ "seed": 8,
+ "draws": 8,
+ "decisions": 25600,
+ "agreement": 0.44375,
+ "seconds": 66.29109492200001,
+ "pairs": {
+  "cast>cast": 36,
+  "cast>melee": 448,
+  "cast>move": 76,
+  "cast>shot": 73,
+  "cast>wait_defend": 97,
+  "heal>heal": 41,
+  "melee>cast": 824,
+  "melee>melee": 2745,
+  "melee>move": 415,
+  "melee>wait_defend": 390,
+  "move>cast": 383,
+  "move>melee": 132,
+  "move>move": 1692,
+  "move>wait_defend": 810,
+  "other>cast": 2,
+  "other>other": 15,
+  "other>shot": 1,
+  "shot>cast": 218,
+  "shot>move": 110,
+  "shot>shot": 1099,
+  "shot>wait_defend": 9,
+  "tactics>tactics": 3779,
+  "wait_defend>cast": 331,
+  "wait_defend>melee": 44,
+  "wait_defend>move": 427,
+  "wait_defend>shot": 4,
+  "wait_defend>wait_defend": 39
+ },
+ "groups": {
+  "melee > move": {
+   "threat": {
+    "n": 415,
+    "teacher": 2.127710843373494,
+    "network": 1.2771084337349397,
+    "teacher_lower": 0.06746987951807229,
+    "teacher_higher": 0.4867469879518072
+   },
+   "threat_value": {
+    "n": 415,
+    "teacher": 210.96265060240964,
+    "network": 125.79879518072289,
+    "teacher_lower": 0.07710843373493977,
+    "teacher_higher": 0.4987951807228916
+   },
+   "adjacent": {
+    "n": 415,
+    "teacher": 1.202409638554217,
+    "network": 0.13975903614457832,
+    "teacher_lower": 0.004819277108433735,
+    "teacher_higher": 0.8602409638554217
+   },
+   "blocks": {
+    "n": 415,
+    "teacher": 0.05783132530120482,
+    "network": 0.012048192771084338,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.04096385542168675
+   },
+   "nearest": {
+    "n": 415,
+    "teacher": 1.1132530120481927,
+    "network": 5.330120481927711,
+    "teacher_lower": 0.8530120481927711,
+    "teacher_higher": 0.00963855421686747
+   },
+   "hazard": {
+    "n": 415,
+    "teacher": 0.0024096385542168677,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0024096385542168677
+   },
+   "free": {
+    "n": 415,
+    "teacher": 3.978313253012048,
+    "network": 5.110843373493976,
+    "teacher_lower": 0.6216867469879518,
+    "teacher_higher": 0.17349397590361446
+   }
+  },
+  "melee > wait_defend": {
+   "threat": {
+    "n": 390,
+    "teacher": 3.135897435897436,
+    "network": 1.087179487179487,
+    "teacher_lower": 0.010256410256410256,
+    "teacher_higher": 0.658974358974359
+   },
+   "threat_value": {
+    "n": 390,
+    "teacher": 680.3628205128205,
+    "network": 200.61153846153846,
+    "teacher_lower": 0.01282051282051282,
+    "teacher_higher": 0.6615384615384615
+   },
+   "adjacent": {
+    "n": 390,
+    "teacher": 1.376923076923077,
+    "network": 0.2641025641025641,
+    "teacher_lower": 0.007692307692307693,
+    "teacher_higher": 0.8051282051282052
+   },
+   "blocks": {
+    "n": 390,
+    "teacher": 0.2692307692307692,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.24871794871794872
+   },
+   "nearest": {
+    "n": 390,
+    "teacher": 1.0974358974358975,
+    "network": 7.720512820512821,
+    "teacher_lower": 0.7974358974358975,
+    "teacher_higher": 0.007692307692307693
+   },
+   "hazard": {
+    "n": 390,
+    "teacher": 0.0,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   },
+   "free": {
+    "n": 390,
+    "teacher": 4.569230769230769,
+    "network": 3.943589743589744,
+    "teacher_lower": 0.22564102564102564,
+    "teacher_higher": 0.5102564102564102
+   }
+  },
+  "melee, other target": {
+   "threat": {
+    "n": 1823,
+    "teacher": 3.2863411958310476,
+    "network": 3.054854635216676,
+    "teacher_lower": 0.151947339550192,
+    "teacher_higher": 0.2803071859572134
+   },
+   "threat_value": {
+    "n": 1823,
+    "teacher": 652.3093801426221,
+    "network": 604.5532089961602,
+    "teacher_lower": 0.17498628634119584,
+    "teacher_higher": 0.29347229840921557
+   },
+   "adjacent": {
+    "n": 1823,
+    "teacher": 1.4744925946242458,
+    "network": 1.405924300603401,
+    "teacher_lower": 0.15743280307185958,
+    "teacher_higher": 0.20789906747120132
+   },
+   "blocks": {
+    "n": 1823,
+    "teacher": 0.19034558420186506,
+    "network": 0.15962698848052662,
+    "teacher_lower": 0.06966538672517827,
+    "teacher_higher": 0.09928688974218322
+   },
+   "nearest": {
+    "n": 1823,
+    "teacher": 1.086121777290181,
+    "network": 1.0186505759736697,
+    "teacher_lower": 0.0021941854086670325,
+    "teacher_higher": 0.024136039495337356
+   },
+   "hazard": {
+    "n": 1823,
+    "teacher": 0.0,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   },
+   "free": {
+    "n": 1823,
+    "teacher": 4.0948985189248495,
+    "network": 3.9396599012616567,
+    "teacher_lower": 0.31212287438288533,
+    "teacher_higher": 0.3746571585298958
+   }
+  },
+  "melee, other target (targets)": {
+   "kill_hp": {
+    "n": 1823,
+    "teacher": 198.45090510148108,
+    "network": 183.81431705979156,
+    "teacher_lower": 0.3834339001645639,
+    "teacher_higher": 0.48710916072408117
+   },
+   "potential": {
+    "n": 1823,
+    "teacher": 160.27290181020297,
+    "network": 178.6069665386725,
+    "teacher_lower": 0.5540318156884256,
+    "teacher_higher": 0.4119583104772353
+   }
+  },
+  "melee, same target": {
+   "threat": {
+    "n": 922,
+    "teacher": 2.3980477223427332,
+    "network": 2.36117136659436,
+    "teacher_lower": 0.09652928416485901,
+    "teacher_higher": 0.12039045553145336
+   },
+   "threat_value": {
+    "n": 922,
+    "teacher": 409.3812364425163,
+    "network": 407.3302603036876,
+    "teacher_lower": 0.09761388286334056,
+    "teacher_higher": 0.12147505422993492
+   },
+   "adjacent": {
+    "n": 922,
+    "teacher": 1.1973969631236443,
+    "network": 1.1073752711496747,
+    "teacher_lower": 0.057483731019522775,
+    "teacher_higher": 0.13557483731019523
+   },
+   "blocks": {
+    "n": 922,
+    "teacher": 0.10737527114967461,
+    "network": 0.09327548806941431,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.014099783080260303
+   },
+   "nearest": {
+    "n": 922,
+    "teacher": 1.0238611713665944,
+    "network": 1.0303687635574836,
+    "teacher_lower": 0.007592190889370932,
+    "teacher_higher": 0.0010845986984815619
+   },
+   "hazard": {
+    "n": 922,
+    "teacher": 0.0021691973969631237,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0021691973969631237
+   },
+   "free": {
+    "n": 922,
+    "teacher": 4.1941431670282,
+    "network": 4.27114967462039,
+    "teacher_lower": 0.3958785249457701,
+    "teacher_higher": 0.3492407809110629
+   }
+  },
+  "move": {
+   "threat": {
+    "n": 1692,
+    "teacher": 1.5673758865248226,
+    "network": 0.9225768321513003,
+    "teacher_lower": 0.047872340425531915,
+    "teacher_higher": 0.42139479905437355
+   },
+   "threat_value": {
+    "n": 1692,
+    "teacher": 239.90514184397162,
+    "network": 149.25886524822695,
+    "teacher_lower": 0.05260047281323877,
+    "teacher_higher": 0.42612293144208035
+   },
+   "adjacent": {
+    "n": 1692,
+    "teacher": 0.0070921985815602835,
+    "network": 0.004137115839243499,
+    "teacher_lower": 0.002955082742316785,
+    "teacher_higher": 0.004728132387706856
+   },
+   "blocks": {
+    "n": 1692,
+    "teacher": 0.002364066193853428,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0017730496453900709
+   },
+   "nearest": {
+    "n": 1692,
+    "teacher": 5.611702127659575,
+    "network": 8.25177304964539,
+    "teacher_lower": 0.7783687943262412,
+    "teacher_higher": 0.10283687943262411
+   },
+   "hazard": {
+    "n": 1692,
+    "teacher": 0.0076832151300236405,
+    "network": 0.000591016548463357,
+    "teacher_lower": 0.000591016548463357,
+    "teacher_higher": 0.0076832151300236405
+   },
+   "free": {
+    "n": 1692,
+    "teacher": 5.16903073286052,
+    "network": 5.41193853427896,
+    "teacher_lower": 0.42021276595744683,
+    "teacher_higher": 0.2783687943262411
+   }
+  },
+  "move > melee": {
+   "threat": {
+    "n": 132,
+    "teacher": 1.606060606060606,
+    "network": 1.5151515151515151,
+    "teacher_lower": 0.2196969696969697,
+    "teacher_higher": 0.24242424242424243
+   },
+   "threat_value": {
+    "n": 132,
+    "teacher": 342.9810606060606,
+    "network": 328.89772727272725,
+    "teacher_lower": 0.22727272727272727,
+    "teacher_higher": 0.23484848484848486
+   },
+   "adjacent": {
+    "n": 132,
+    "teacher": 0.5151515151515151,
+    "network": 1.1363636363636365,
+    "teacher_lower": 0.6439393939393939,
+    "teacher_higher": 0.045454545454545456
+   },
+   "blocks": {
+    "n": 132,
+    "teacher": 0.2727272727272727,
+    "network": 0.20454545454545456,
+    "teacher_lower": 0.06060606060606061,
+    "teacher_higher": 0.12878787878787878
+   },
+   "nearest": {
+    "n": 132,
+    "teacher": 3.628787878787879,
+    "network": 1.0606060606060606,
+    "teacher_lower": 0.007575757575757576,
+    "teacher_higher": 0.6439393939393939
+   },
+   "hazard": {
+    "n": 132,
+    "teacher": 0.007575757575757576,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.007575757575757576
+   },
+   "free": {
+    "n": 132,
+    "teacher": 5.257575757575758,
+    "network": 4.363636363636363,
+    "teacher_lower": 0.17424242424242425,
+    "teacher_higher": 0.5075757575757576
+   }
+  },
+  "move > wait_defend": {
+   "threat": {
+    "n": 810,
+    "teacher": 1.0864197530864197,
+    "network": 0.2641975308641975,
+    "teacher_lower": 0.011111111111111112,
+    "teacher_higher": 0.4666666666666667
+   },
+   "threat_value": {
+    "n": 810,
+    "teacher": 116.53765432098766,
+    "network": 40.477160493827164,
+    "teacher_lower": 0.011111111111111112,
+    "teacher_higher": 0.4666666666666667
+   },
+   "adjacent": {
+    "n": 810,
+    "teacher": 0.007407407407407408,
+    "network": 0.013580246913580247,
+    "teacher_lower": 0.006172839506172839,
+    "teacher_higher": 0.003703703703703704
+   },
+   "blocks": {
+    "n": 810,
+    "teacher": 0.0024691358024691358,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0024691358024691358
+   },
+   "nearest": {
+    "n": 810,
+    "teacher": 6.534567901234568,
+    "network": 11.223456790123457,
+    "teacher_lower": 0.8876543209876543,
+    "teacher_higher": 0.05802469135802469
+   },
+   "hazard": {
+    "n": 810,
+    "teacher": 0.0012345679012345679,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0012345679012345679
+   },
+   "free": {
+    "n": 810,
+    "teacher": 5.45679012345679,
+    "network": 4.312345679012346,
+    "teacher_lower": 0.18641975308641975,
+    "teacher_higher": 0.6209876543209877
+   }
+  },
+  "shot (targets)": {
+   "kill_hp": {
+    "n": 1099,
+    "teacher": 108.80027297543221,
+    "network": 89.22884440400364,
+    "teacher_lower": 0.32848043676069155,
+    "teacher_higher": 0.5204731574158326
+   },
+   "potential": {
+    "n": 1099,
+    "teacher": 117.56369426751593,
+    "network": 181.5432211101001,
+    "teacher_lower": 0.7206551410373067,
+    "teacher_higher": 0.23475887170154686
+   }
+  },
+  "tactics": {
+   "threat": {
+    "n": 3779,
+    "teacher": 1.0261974067213548,
+    "network": 0.7832759989415189,
+    "teacher_lower": 0.04630854723471818,
+    "teacher_higher": 0.214342418629267
+   },
+   "threat_value": {
+    "n": 3779,
+    "teacher": 315.8133103995766,
+    "network": 226.16618152950517,
+    "teacher_lower": 0.04763164858428156,
+    "teacher_higher": 0.21751786186821911
+   },
+   "adjacent": {
+    "n": 3779,
+    "teacher": 0.0,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   },
+   "blocks": {
+    "n": 3779,
+    "teacher": 0.0,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   },
+   "nearest": {
+    "n": 3779,
+    "teacher": 11.217517861868219,
+    "network": 12.221222545646997,
+    "teacher_lower": 0.4641439534268325,
+    "teacher_higher": 0.08335538502249272
+   },
+   "hazard": {
+    "n": 3779,
+    "teacher": 0.0007938608097380259,
+    "network": 0.0002646202699126753,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0005292405398253506
+   },
+   "free": {
+    "n": 3779,
+    "teacher": 4.034136014818735,
+    "network": 3.9915321513627946,
+    "teacher_lower": 0.28155596718708653,
+    "teacher_higher": 0.24927229425774014
+   }
+  },
+  "wait_defend > melee": {
+   "threat": {
+    "n": 44,
+    "teacher": 1.2045454545454546,
+    "network": 1.6136363636363635,
+    "teacher_lower": 0.1590909090909091,
+    "teacher_higher": 0.045454545454545456
+   },
+   "threat_value": {
+    "n": 44,
+    "teacher": 189.04545454545453,
+    "network": 268.2613636363636,
+    "teacher_lower": 0.1590909090909091,
+    "teacher_higher": 0.045454545454545456
+   },
+   "adjacent": {
+    "n": 44,
+    "teacher": 0.8636363636363636,
+    "network": 1.25,
+    "teacher_lower": 0.36363636363636365,
+    "teacher_higher": 0.022727272727272728
+   },
+   "blocks": {
+    "n": 44,
+    "teacher": 0.0,
+    "network": 0.045454545454545456,
+    "teacher_lower": 0.045454545454545456,
+    "teacher_higher": 0.0
+   },
+   "nearest": {
+    "n": 44,
+    "teacher": 2.8181818181818183,
+    "network": 1.0454545454545454,
+    "teacher_lower": 0.022727272727272728,
+    "teacher_higher": 0.36363636363636365
+   },
+   "hazard": {
+    "n": 44,
+    "teacher": 0.0,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   },
+   "free": {
+    "n": 44,
+    "teacher": 4.113636363636363,
+    "network": 3.659090909090909,
+    "teacher_lower": 0.11363636363636363,
+    "teacher_higher": 0.22727272727272727
+   }
+  },
+  "wait_defend > move": {
+   "threat": {
+    "n": 427,
+    "teacher": 0.8243559718969555,
+    "network": 0.8805620608899297,
+    "teacher_lower": 0.1990632318501171,
+    "teacher_higher": 0.13348946135831383
+   },
+   "threat_value": {
+    "n": 427,
+    "teacher": 132.60304449648712,
+    "network": 158.47189695550352,
+    "teacher_lower": 0.20374707259953162,
+    "teacher_higher": 0.13348946135831383
+   },
+   "adjacent": {
+    "n": 427,
+    "teacher": 0.0,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   },
+   "blocks": {
+    "n": 427,
+    "teacher": 0.0,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   },
+   "nearest": {
+    "n": 427,
+    "teacher": 8.339578454332553,
+    "network": 8.236533957845433,
+    "teacher_lower": 0.3747072599531616,
+    "teacher_higher": 0.46604215456674475
+   },
+   "hazard": {
+    "n": 427,
+    "teacher": 0.0,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   },
+   "free": {
+    "n": 427,
+    "teacher": 4.053864168618267,
+    "network": 5.248243559718969,
+    "teacher_lower": 0.6533957845433255,
+    "teacher_higher": 0.18032786885245902
+   }
+  },
+  "wait_defend > wait_defend": {
+   "threat": {
+    "n": 39,
+    "teacher": 0.3076923076923077,
+    "network": 0.3076923076923077,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   },
+   "threat_value": {
+    "n": 39,
+    "teacher": 22.512820512820515,
+    "network": 22.512820512820515,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   },
+   "adjacent": {
+    "n": 39,
+    "teacher": 0.0,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   },
+   "blocks": {
+    "n": 39,
+    "teacher": 0.0,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   },
+   "nearest": {
+    "n": 39,
+    "teacher": 8.384615384615385,
+    "network": 8.384615384615385,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   },
+   "hazard": {
+    "n": 39,
+    "teacher": 0.0,
+    "network": 0.0,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   },
+   "free": {
+    "n": 39,
+    "teacher": 4.564102564102564,
+    "network": 4.564102564102564,
+    "teacher_lower": 0.0,
+    "teacher_higher": 0.0
+   }
+  }
+ },
+ "strikes": {
+  "network melee": {
+   "n": 5527,
+   "most_kills": 0.5002713949701465,
+   "most_kills_uniform": 0.36596235836744573,
+   "most_potential": 0.3446716120861227,
+   "most_potential_uniform": 0.35530394349802924
+  },
+  "network shot": {
+   "n": 2709,
+   "most_kills": 0.49575489110372833,
+   "most_kills_uniform": 0.2886635162488527,
+   "most_potential": 0.3698781838316722,
+   "most_potential_uniform": 0.24675191399509033
+  },
+  "teacher melee": {
+   "n": 6193,
+   "most_kills": 0.5325367350234135,
+   "most_kills_uniform": 0.3695991510156554,
+   "most_potential": 0.31438721136767317,
+   "most_potential_uniform": 0.35646122154536486
+  },
+  "teacher shot": {
+   "n": 2943,
+   "most_kills": 0.5742439687393815,
+   "most_kills_uniform": 0.2965104603566257,
+   "most_potential": 0.26979272850832486,
+   "most_potential_uniform": 0.2514793624045888
+  }
+ },
+ "moves": {
+  "teacher": {
+   "n": 3376,
+   "chosen": 1.3989928909952607,
+   "least": 0.25118483412322273,
+   "mean_legal": 0.8206623318028802,
+   "at_least": 0.409063981042654,
+   "at_least_when_some_higher": 0.1614123581336696,
+   "some_higher": 0.7046800947867299,
+   "chance_when_some_higher": 0.49510063087479983
+  },
+  "network": {
+   "n": 3079,
+   "chosen": 1.0048717115946737,
+   "least": 0.3527119194543683,
+   "mean_legal": 1.0256726966407612,
+   "at_least": 0.5901266645014616,
+   "at_least_when_some_higher": 0.46818373367045935,
+   "some_higher": 0.7707047742773627,
+   "chance_when_some_higher": 0.45534685665724245
+  }
+ }
+}

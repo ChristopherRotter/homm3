@@ -22,17 +22,17 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xa970fdb10e72f28d",
-    "0x242e00e83ea49778",
-    "0x7f75448f901cbe09",
-    "0x88bed9511d383e20",
-    "0xf93d25beabc19ba9",
-    "0x42f67512cfd27ec4",
-    "0xe63ddb55d3081c27",
+    "0xb52503f3aace3de6",
+    "0x6943ccb67bee1caf",
+    "0x70042e013d527cda",
+    "0x0bdd2b2307f2716b",
+    "0x1e7e3ce166bc60b6",
+    "0xeb908c1b302b3b1f",
+    "0x85f1c82f310c3202",
 ]
 
 [replay]
-format = 18
+format = 19
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -52,21 +52,21 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x6ba8109889b34a25"
-adventure_ruleset_hash = "0xa5809e7fd9e842dd"
+adventure_ruleset_hash = "0x56c46df30c45ce3a"
 town_ruleset_hash = "0xabc9756b93a29a55"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 33
+game_state_hash_version = 34
 adventure_state_hash_version = 26
 checkpoint_every = 3
 
 [map]
 path = "fixtures/maps/e09-builds-36.h3m"
 hash = "0x36e954b6f38638d8"
-import_version = 25
+import_version = 26
 
 [result]
 day = 8
-final_hash = "0xe63ddb55d3081c27"
+final_hash = "0x85f1c82f310c3202"

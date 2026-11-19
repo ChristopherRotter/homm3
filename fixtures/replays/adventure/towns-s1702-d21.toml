@@ -588,33 +588,33 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x65bb1403be0e5028",
-    "0x28f3b4fd0c403104",
-    "0xcfab5ce78f983289",
-    "0xe3ad6d66f7e98868",
-    "0x6800b6f9c6599c81",
-    "0x38f3745ec21a4bc9",
-    "0x077d73650101c584",
-    "0x66ecbd298b772e94",
-    "0x1af822e737d22f83",
-    "0x247586eef86d10e4",
-    "0x6e6ec53c7bfbb2b3",
-    "0xc94d80215838ea00",
-    "0x19ce1e9065c56f97",
-    "0x20eca356afcad430",
-    "0x708f2f259bf510c2",
-    "0x4ef80c00344aa4b0",
-    "0xd4124dcac7a52d76",
-    "0x180e7b0ff3e6bd7f",
-    "0x2b683dd54ea1b8ed",
-    "0x336ce83b358c4a50",
-    "0x0b21e9e2b524ded0",
-    "0x4085bd0e7d675959",
-    "0x83de2b089146eb18",
+    "0xa09d669d26486733",
+    "0x2cfbc1bb1b2e6787",
+    "0xbdb7dfa1860b43e2",
+    "0x2abbc3dae78cffd3",
+    "0x4ff3f35972389b4e",
+    "0x7e9f5f0f23c1f272",
+    "0x400358466a4213e7",
+    "0x1dab94bae678004f",
+    "0xea91abb456c92bf8",
+    "0x97a94c887d6d0a1b",
+    "0xe685da5a4d291698",
+    "0xbb568ddeb6f8fdc7",
+    "0x05ad60b3325e2934",
+    "0x39d753515fda84bb",
+    "0x9c9ac63af5b2f767",
+    "0x09cccf63867a180d",
+    "0x6dd5860b643ae6df",
+    "0x616f188a24074db2",
+    "0xb52f988982020e74",
+    "0x40182ec85270112d",
+    "0xd7d8b9c3e4c10345",
+    "0x476d2770631e5994",
+    "0x92acb13f92a4acd1",
 ]
 
 [replay]
-format = 18
+format = 19
 engine = "0.1.0"
 seed = "1702"
 difficulty = 1
@@ -634,21 +634,21 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x6ba8109889b34a25"
-adventure_ruleset_hash = "0xa5809e7fd9e842dd"
+adventure_ruleset_hash = "0x56c46df30c45ce3a"
 town_ruleset_hash = "0xabc9756b93a29a55"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 33
+game_state_hash_version = 34
 adventure_state_hash_version = 26
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e09-towns-36.h3m"
 hash = "0x2f996b94548f5ae2"
-import_version = 25
+import_version = 26
 
 [result]
 day = 22
-final_hash = "0x7d58a9adf21c1622"
+final_hash = "0x32c3524527398eff"

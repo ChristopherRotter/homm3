@@ -103,7 +103,7 @@ pub use state::{
     HirePurchase, MapObject, Monster, Resolved, StaticMap, StaticTile, VisitMarks, Visits, Weekly,
     WhirlpoolTile, allied, hire_price,
 };
-pub use town::{TownHeroError, TownHeroMove, TownReveal};
+pub use town::{TavernVisit, TownHeroError, TownHeroMove, TownReveal};
 
 /// Version of the adventure state's canonical hash encoding (`docs/08-work-process.md`,
 /// "Versions"; owned by the adventure lane). Bump it with any change to what the hash covers.
@@ -155,5 +155,6 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 26;
 /// its anti-magic flag, the bonus with its mark, days, points and drain, the Fountain of Fortune
 /// with its mark and values, the Magic Well, the Magic Spring, the Stables with its points and
 /// creatures, the Sirens with its mark and keep) and every type's kind mark. v21 (E08 T123a):
-/// the creature bank's kind (its question, levels, looted bonus, deck and coast).
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 21;
+/// the creature bank's kind (its question, levels, looted bonus, deck and coast). v22 (E09
+/// T39a): the map's Tavern's and the Den of Thieves' kinds (tags 45 and 46, no parameter).
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 22;

@@ -53,8 +53,9 @@ impl AdventureState {
 
     /// What a revisit of `player`'s hero standing on `at` visits: the object a step onto `at`
     /// meets as it stands now ([`Self::visit_at`]) when the step enters it and visits it, none
-    /// for a tile no object is visited from, a neighbour-visited object's (a hero never stands
-    /// there; a town defended against `player` is visited from the tile before, TWN-VIS-001), a
+    /// for a tile no object is visited from, a neighbour-visited object's (a hero stands there
+    /// only once a map Tavern's hire placed it, E09 T39a, and the original skips case 95 under its
+    /// visitor; a town defended against `player` is visited from the tile before, TWN-VIS-001), a
     /// border gate the player passes (ADV-VIS-005) or an object whose visit is not built. A
     /// garrison of the player's team, passed on the way, is revisited (its exchange, ADV-GAR-003,
     /// E08 T114a2; increment 12's design note §7: `StepVisit::visited_at_end`).

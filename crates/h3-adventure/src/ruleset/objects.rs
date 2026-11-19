@@ -413,6 +413,15 @@ pub enum ObjectKind {
     /// coast. Drawn when the game is built since T124b1 (ADV-BNK-002); visited, fought and
     /// rewarded from T124b2 (ADV-BNK-003 to -005).
     Bank(Bank),
+    /// The adventure map's Tavern (ADV-VIS-007; E09 T39a, the town epic's design note §66; the
+    /// original's class 95): visited from a neighbour, no owner, no mark, no parameter, no draw;
+    /// its visit opens the tavern decision for the visitor's owner (GAM-DEC-010), whose hire
+    /// places the hero on its visitable tile.
+    Tavern,
+    /// The Den of Thieves (ADV-VIS-008; E09 T39a, the town epic's design note §74; the original's
+    /// class 97): entered, no owner, no mark, no parameter, no draw; every visit the same, the
+    /// Thieves' Guild at everything for the visitor's owner (from E09 T39b: `TWN-STUB-20`).
+    DenOfThieves,
 }
 
 /// How long a hero holds a timed mark (E08 T115a; increment 12's design note §12.4): the
@@ -569,6 +578,11 @@ pub(crate) enum Effect<'k> {
         /// The part kept, (numerator, denominator).
         keep: (u32, u32),
     },
+    /// The tavern decision for the visitor's owner (the map's Tavern, ADV-VIS-007, E09 T39a).
+    Tavern,
+    /// The Thieves' Guild at everything for the visitor's owner (the Den of Thieves, ADV-VIS-008,
+    /// E09 T39a; its view from T39b).
+    DenOfThieves,
 }
 
 impl ObjectKind {
@@ -584,7 +598,7 @@ impl ObjectKind {
     /// Shipyards; T95a1: the dwellings and the Refugee Camps; E09 T8a2: the towns; E08 T105a1:
     /// the monoliths and the Subterranean Gates, whose visit is the jump; T105a2: the Whirlpool,
     /// whose visit is its loss and the jump; T114a1: the garrisons; T115b: the fifteen bonus
-    /// visitables. Who reaches a kind's visit is the passage's: on water
+    /// visitables; E09 T39a: the map's Tavern and the Den of Thieves. Who reaches a kind's visit is the passage's: on water
     /// only a boat (ADV-PIK-018, D-46).
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
         match self {
@@ -646,6 +660,9 @@ impl ObjectKind {
                 keep: *keep,
             }),
             Self::Bank(bank) => Some(Effect::Bank(bank)),
+            // E09 T39a (the town epic's design note §66, §74).
+            Self::Tavern => Some(Effect::Tavern),
+            Self::DenOfThieves => Some(Effect::DenOfThieves),
             // E08 T61a: typed; an event is fired by a step, never visited (T62b2). E08 T72: the
             // grounds of the sea and the holes are never visited. E08 T83a: increment 9's seven
             // kinds are typed; the mines' visits came with T84a, the Lighthouses' and the weekly
@@ -1061,6 +1078,10 @@ pub enum ObjectKindDef {
     /// [`ObjectKind::Bank`] (E08 T123a): its checks [`BankDef`]'s; `coast` only on a type
     /// visited from a neighbour.
     Bank(BankDef),
+    /// [`ObjectKind::Tavern`] (E09 T39a): its type visited from a neighbour.
+    Tavern,
+    /// [`ObjectKind::DenOfThieves`] (E09 T39a): its type entered.
+    DenOfThieves,
 }
 
 /// An object type as a pack defines it.
@@ -1249,6 +1270,16 @@ pub(super) fn compile_object_types(
         // rule: ADV-BNK-001
         if matches!(&kind, ObjectKind::Bank(bank) if bank.coast) && def.visit != Visit::Neighbour {
             return Err(invalid("a bank's coast is not a neighbour-visited one's"));
+        }
+        // The map's Tavern is visited from a neighbour (class 95 is on the original's
+        // `object_classes_not_entered` 0x63AA58), the Den of Thieves entered (class 97 is on
+        // neither list; E09 T39a, the town epic's design note §66, §74).
+        // rule: ADV-VIS-007, ADV-VIS-008
+        if matches!(kind, ObjectKind::Tavern) && def.visit != Visit::Neighbour {
+            return Err(invalid("a tavern is not visited from a neighbour"));
+        }
+        if matches!(kind, ObjectKind::DenOfThieves) && def.visit != Visit::Enter {
+            return Err(invalid("a den of thieves is not entered"));
         }
         tables.types.push(ObjectType {
             key: def.key.clone(),
@@ -1854,6 +1885,9 @@ fn compile_kind(
             }
         }
         ObjectKindDef::Bank(def) => compile_bank(scope, def)?.map(ObjectKind::Bank),
+        // rule: ADV-VIS-007, ADV-VIS-008
+        ObjectKindDef::Tavern => Ok(ObjectKind::Tavern),
+        ObjectKindDef::DenOfThieves => Ok(ObjectKind::DenOfThieves),
     })
 }
 
@@ -1959,7 +1993,7 @@ impl CanonicalHash for ObjectType {
     /// part v16 30 dwelling, 31 random dwelling, 32 Refugee Camp; since part v17 33 town; since
     /// part v18 34 monolith, 35 Subterranean Gate, 36 Whirlpool; since part v20 37 garrison, 38
     /// bonus, 39 Fountain of Fortune, 40 Magic Well, 41 Magic Spring, 42 Stables, 43 Sirens; since
-    /// part v21 44 creature bank) and parameters (a pickup's own tag, 0 resource, 1 one of, 2
+    /// part v21 44 creature bank; since part v22 45 Tavern, 46 Den of Thieves) and parameters (a pickup's own tag, 0 resource, 1 one of, 2
     /// paired, then its fields in order; a monster's levels as 0 for none, else 1, low, high; a
     /// ground's battlefield key, since part v10 whether it takes the native price away; an
     /// artifact's classes as 0 for none, else 1 and the classes; a Witch Hut's two skill lists; a
@@ -2236,6 +2270,8 @@ impl CanonicalHash for ObjectType {
                 h.write_u8(44);
                 bank.hash_into(h);
             }
+            ObjectKind::Tavern => h.write_u8(45),
+            ObjectKind::DenOfThieves => h.write_u8(46),
         }
     }
 }

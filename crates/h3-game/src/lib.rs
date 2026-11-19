@@ -63,9 +63,11 @@ mod tests;
 
 pub use command::{
     Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameCommandError, GameEvent,
-    HireAnswer, NoopSink, SchoolChoice, Sink, SkillOffer, UniversityAnswer, apply,
+    HireAnswer, NoopSink, SchoolChoice, Sink, SkillOffer, TavernAnswer, UniversityAnswer, apply,
 };
 pub use garrisons::MapGarrisonView;
+/// A map Tavern's visit (E09 T39a; `h3_adventure`'s type): what [`GameState::tavern`] gives.
+pub use h3_adventure::TavernVisit;
 /// What [`reveal`] answers of the adventure map and the grid it reads (SRV-Q26 (a);
 /// `h3_adventure`'s types): a server keeps each viewer's last explored grid.
 pub use h3_adventure::{AdventureReveal, BitGrid, RevealedTile};
@@ -123,7 +125,7 @@ pub use setup::{
 };
 pub use state::{GameState, MonthKind, OpenBattle};
 pub use system::SystemCommand;
-pub use town::hire::HiredPart;
+pub use town::hire::{HiredPart, TavernError};
 pub use town::offer::TownOffer;
 pub use town::tavern::{TAVERN_BACKPACK_SHOWN, TavernHero, TavernHeroView, TavernPart};
 pub use town::view::{
@@ -169,5 +171,6 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// a town's index, and tag 2, its Portal; TWN-REC-001, -002, E09 design §49). v33 (E09 T37a): the
 /// taverns' stream after the towns'; the hero pool's offered status, each type's record and away
 /// record, each player's faction and two tavern slots with their returning marks (TWN-TAV-002,
-/// E09 design §61).
-pub const GAME_STATE_HASH_VERSION: u32 = 33;
+/// E09 design §61). v34 (E09 T39a): a map Tavern's decision among the decisions (GAM-DEC-010: its
+/// tag 9, the owner, the hero, the Tavern's type and anchor, its visitable tile).
+pub const GAME_STATE_HASH_VERSION: u32 = 34;

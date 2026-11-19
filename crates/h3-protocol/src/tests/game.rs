@@ -787,6 +787,11 @@ fn decision_back(d: &Decision) -> DecisionView {
             removable: *removable,
             army: army_back(army),
         },
+        Decision::Tavern { hero, object } => DecisionView::Tavern {
+            hero: HeroId::new(*hero),
+            object_type: Handle::from_raw(object.object_type),
+            anchor: pos_back(object.anchor),
+        },
     }
 }
 
@@ -1233,6 +1238,12 @@ fn every_decision() -> Vec<DecisionView> {
         object: (object_type, anchor),
         removable: false,
         army: Vec::new(),
+    });
+    // E09 T39a: a map Tavern.
+    out.push(DecisionView::Tavern {
+        hero,
+        object_type,
+        anchor,
     });
     out
 }

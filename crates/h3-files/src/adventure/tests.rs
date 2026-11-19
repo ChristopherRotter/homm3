@@ -100,6 +100,17 @@ fn commands_round_trip_through_their_text() {
             answer(Answer::Hire(HireAnswer::Close)),
             "0 answer hire close",
         ),
+        // Format v19 (E09 T39a): a map Tavern's answers.
+        (
+            PlayerId::new(2),
+            answer(Answer::Tavern(TavernAnswer::Hire { slot: 1 })),
+            "2 answer tavern hire 1",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::Tavern(TavernAnswer::Close)),
+            "0 answer tavern close",
+        ),
         (PlayerId::new(0), answer(Answer::Close), "0 answer close"),
         (
             PlayerId::new(7),

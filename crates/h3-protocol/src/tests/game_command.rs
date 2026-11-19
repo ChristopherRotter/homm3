@@ -16,8 +16,8 @@ use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, ArtifactPlace,
     BuildingId, ChestChoice, Consent, GameCommand, GameCommandError, HireAnswer, HireError, Manage,
-    ManageError, NoopSink, Position, SchoolChoice, SkillOffer, SystemCommand, TownCommand,
-    TownCommandError, TownHeroChange, UniversityAnswer,
+    ManageError, NoopSink, Position, SchoolChoice, SkillOffer, SystemCommand, TavernAnswer,
+    TavernError, TownCommand, TownCommandError, TownHeroChange, UniversityAnswer,
 };
 use h3_heroes::{CombineError, MoveError};
 use h3_kernel::handle::Handle;
@@ -76,6 +76,9 @@ pub(super) fn every_command() -> Vec<GameCommand> {
             amount: 9,
         }),
         Answer::Hire(HireAnswer::Close),
+        // E09 T39a: a map Tavern's.
+        Answer::Tavern(TavernAnswer::Hire { slot: 1 }),
+        Answer::Tavern(TavernAnswer::Close),
         Answer::Close,
     ];
     commands.extend(answers.map(GameCommand::Answer));
@@ -316,6 +319,15 @@ fn every_rejection() -> Vec<GameCommandError> {
         ]
         .map(E::Town),
     );
+    errors.extend(
+        [
+            TavernError::UnknownSlot,
+            TavernError::EmptySlot,
+            TavernError::TooManyHeroes,
+            TavernError::Occupied,
+        ]
+        .map(E::Tavern),
+    );
     errors
 }
 
@@ -502,6 +514,12 @@ fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
             w::TownReject::UnknownSlot {} => TownCommandError::UnknownSlot,
             w::TownReject::EmptySlot {} => TownCommandError::EmptySlot,
         }),
+        R::Tavern { error } => E::Tavern(match error {
+            w::TavernReject::UnknownSlot {} => TavernError::UnknownSlot,
+            w::TavernReject::EmptySlot {} => TavernError::EmptySlot,
+            w::TavernReject::TooManyHeroes {} => TavernError::TooManyHeroes,
+            w::TavernReject::Occupied {} => TavernError::Occupied,
+        }),
     })
 }
 
@@ -559,8 +577,8 @@ fn every_rejection_maps_back_and_round_trips() {
     // `OnlyEmpty`), 6 of an artifact's move, 3 of a combination's, 4 of a hire's, 24 of a town's
     // (E09 T27: `NotRecruiting`, `NotStanding`, `NothingSummoned`; E09 T28a: `GarrisonHeld` to
     // `EmptyArmy`; E09 T38a1: `NoTavern`, `UnknownSlot`, `EmptySlot`), 3 of a dismissal's (E09
-    // T38b2: `NotOnMap`, `InTown`, `LastHero`).
-    assert_eq!(errors.len(), 122);
+    // T38b2: `NotOnMap`, `InTown`, `LastHero`), 4 of a map Tavern's hire (E09 T39a).
+    assert_eq!(errors.len(), 126);
     let wire: BTreeSet<String> = errors.iter().map(|&e| kinds(&reject(e))).collect();
     assert_eq!(wire.len(), errors.len(), "distinct on the wire");
     for e in errors {
