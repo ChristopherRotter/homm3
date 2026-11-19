@@ -882,3 +882,9 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
     onto a coast (`hero_lands_from_boat` 0x49E670, the landing in `hero_move_step` 0x480949 to
     0x480B0C: the boat put on its water tile, facing the hero's), their sounds and the panels;
     M2 left both out (design §3.5). **Depends on:** T1a.
+- 2026-11-19 (read at E24 M4 T2d2: merged with `master`, nothing to do; the adventure lane, E08 T128, `adventure/e08-t128`, `cross-lane` with the user's
+  consent; **two lines in your files, nothing to do**): `h3-map-view`'s `situation.rs` and
+  `art/tests.rs` writer `Map` literals gain `banned_artifacts: Vec::new()`
+  (`h3_map::writer::Map::banned_artifacts`, E08 decision 375). The writer also writes the seven
+  trade classes as `Plain` objects (`TRADE_OBJECTS`; 213 and 221 refused in RoE) for your later
+  situations.
