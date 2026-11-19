@@ -220,6 +220,31 @@ HERO_SPELLS, HERO_TREES, BANK_LOOTED = 0x430, 0x6B, 1 << 25
 QUEST_VTABLE, QUEST_VTABLE_SIZE, QUEST_VARIANT = 0x64174C, 0x3C, 0x38
 BANK_CLASSES = (16, 24, 25, 84, 85)
 CONTENT_CLASSES = (10, 53, 83, 88, 89, 90, 102, 113, 215) + BANK_CLASSES
+# E08 T129a (batch E14's markets; survey docs/rules/surveys/E08-trades.md §3, read live under
+# Wine): the trade window runs one dialog a screen (market_window_run 0x5EA130), each known by
+# its vtable: 0 resources for resources 0x6439F8, 1 the transfer 0x643A34, 2 artifacts bought
+# 0x643A70, 4 creatures sold 0x643AE8 (3, the town's artifacts sold, not seen). Every screen
+# keeps its state in the same globals (its procedure, 0x5ECFE0, 0x5ED550, 0x5ED9E0, 0x5EE890,
+# read): the inputs market_screen, market_kind, market_count, market_hero (a hero record's
+# address, 0 none) and market_artifacts (the seven for sale), and the selection: `given` (screen
+# 0 and 1 the resource given, 2 the paying resource, 4 the hero's slot; -1 none), `wanted` (0
+# and 4 the resource wanted, 1 the recipient's place in the list, 2 the entry), `rate` and
+# `per_unit` (1: one given for `rate` wanted, the slider counting the given; 0: `rate` given for
+# one wanted, the slider counting the wanted), the slider's `most` and `amount`, `traded` (1
+# after a trade). A trade clears `given` and `wanted` to -1; the other values stay until the next
+# selection, closing included (the window's end sets market_screen to 0x7802). The slider is the
+# item 6 (SLIDER_VTABLE); the transfer's recipients the items 70-76, each with its flag (49-55,
+# its frame the colour) where shown.
+MARKET_SCREENS = {0x6439F8: 0, 0x643A34: 1, 0x643A70: 2, 0x643AE8: 4}
+MARKET_GLOBALS = {"screen": 0x6AAAA4, "kind": 0x6AAAC4, "count": 0x6AAA98, "hero": 0x6AAA78,
+                  "artifacts": 0x6AAA74, "given": 0x6AAA90, "wanted": 0x6AAACC,
+                  "rate": 0x6AAAC0, "per_unit": 0x6AAA80, "most": 0x6AAA94, "amount": 0x6AAAB0,
+                  "traded": 0x6AAAAC}
+MARKET_SLIDER, MARKET_FLAGS, MARKET_RECIPIENTS = 6, 49, 70
+# The Black Markets' records (black_market_draw 0x4C0E31; game +0x1F680's vector, begin +0x1F684
+# and end +0x1F688): seven i32 artifact ids each (-1 a sold entry), a market's object word the
+# index of its record (observed: the two of batch E14 0 and 1 in the walk's order).
+BLACK_MARKETS, BLACK_MARKET_SIZE, BLACK_MARKET_CLASS = 0x1F684, 28, 7
 # The palette tick's next time (palette_tick_time 0x6989B4: the tick 0x4ED490 rotates once the
 # clock reaches it and sets it to now + 200 on the map). The adventure map's idle step redraws
 # the view once the clock reaches FRAME_DEADLINE (0x408A88; design §1.6).
@@ -950,6 +975,41 @@ class Mem:
                 "count": struct.unpack_from("<b", raw, BANK_COUNT)[0],
                 "artifacts": list(struct.unpack(f"<{size // 4}i", self.read(begin, size)))
                 if size else []}
+
+    def market(self):
+        """The trade window when one of its screens is the topmost dialog (E08 T129a; None
+        otherwise): MARKET_GLOBALS' values (`hero` the record's index, None for none;
+        `artifacts` the seven ids for sale, read through the pointer), `shown` the screen its
+        dialog is (MARKET_SCREENS), `recipients` the transfer's colours in their places (the
+        flags shown, items 49-55, their frames) and `items` {id: state}."""
+        shown = self.dialog()
+        if not shown or shown["vtable"] not in MARKET_SCREENS:
+            return None
+        state = {name: self.i32(address) for name, address in MARKET_GLOBALS.items()}
+        hero = self.u32(MARKET_GLOBALS["hero"])
+        state["hero"] = (hero - self.game() - HEROES) // HERO_SIZE if hero else None
+        pointer = self.u32(MARKET_GLOBALS["artifacts"])
+        state["artifacts"] = list(struct.unpack("<7i", self.read(pointer, 28))) if pointer else []
+        items = self.dialog_items()
+        state["shown"] = MARKET_SCREENS[shown["vtable"]]
+        state["items"] = {i["id"]: i["state"] for i in items}
+        flags = {i["id"]: i["frame"] for i in items if i["vtable"] == PICTURE_VTABLE
+                 and MARKET_FLAGS <= i["id"] < MARKET_FLAGS + 7 and i["state"] & 0x4}
+        state["recipients"] = [flags[k] for k in sorted(flags)] if state["shown"] == 1 else []
+        return state
+
+    def black_market(self, index):
+        """A Black Market's record by its index (E08 T129a; game +0x1F680's vector): its seven
+        artifact ids in order (-1 sold), or None past the vector's end."""
+        begin, end = struct.unpack("<II", self.read(self.game() + BLACK_MARKETS, 8))
+        if not begin or not 0 <= index < (end - begin) // BLACK_MARKET_SIZE:
+            return None
+        return list(struct.unpack("<7i", self.read(begin + BLACK_MARKET_SIZE * index, 28)))
+
+    def black_market_count(self):
+        """How many Black Market records the game holds (E08 T129a)."""
+        begin, end = struct.unpack("<II", self.read(self.game() + BLACK_MARKETS, 8))
+        return (end - begin) // BLACK_MARKET_SIZE if begin else 0
 
     def spell_name(self, spell):
         """A spell's name from the game's spell table (E08 T47a)."""

@@ -1007,6 +1007,40 @@ parts (`[CRBANKS row 2 name] ([GENRLTXT 203] [ARRAYTXT 185] [GENRLTXT 44])`: the
 by", the size word, "creatures" or a creature's plural). `only_if`'s `points_at_least = <n>`
 plays a step only with that many points left.
 
+**Markets** (E08 T129a, batch E14; `docs/rules/surveys/E08-trades.md` §3 to §7). **The trade
+window** is a screen (`market`): one dialog per screen, known by its vtable (`h3mem.MARKET_SCREENS`:
+0x6439F8 resources for resources, 0x643A34 the transfer, 0x643A70 artifacts bought, 0x643AE8
+creatures sold; the town's artifacts sold not seen), every screen's state in the same globals
+(`h3mem.MARKET_GLOBALS`, read in the procedures: the pair given and wanted, the rate and its
+direction, the slider's most and amount). A walk onto a market (or a `key = "space"` on its
+entrance) notes it in `order` (`trade window (screen 4, creatures sold; kind 3, a Freelancer's
+Guild)`), reads it as it opens, plays the step's `actions` there and closes it with its OK
+(30722): `click` its items by name (`slot:<n>` the hero's slot 139-145, `give:<resource>` and
+`pay:<resource>` 28-34, `want:<resource>` 63-69, `entry:<n>` a Black Market's entry 63-69,
+`player:<colour>` the transfer's recipient 70-76 by its flag, `trade` 5, `max` 7, the screens'
+buttons `resources` 16, `transfer` 17, `artifacts` 18, `creatures` 20, each waited for), `amount =
+<n>` its slider (item 6, an end clicked until the amount global reads n). `market` reads it now
+(in an action's record: after the action): `screen 4 (creatures sold); kind 3 (a Freelancer's
+Guild); count 5; pair slot 0 (10 Pixies) for gold; rate 1 Pixie for 17 gold; most 10; amount 0`,
+or one part (`:screen`, `:kind`, `:count`, `:pair`, `:rate` (one given for so many wanted, or so
+many given for one), `:most`, `:amount`, `:slider` (whether it counts the given or the wanted),
+`:recipients` (`blue`), `:entries` (the seven for sale, `empty` a sold one), `:buttons` (the
+screens' buttons shown and Trade's state)); `market:opening[:<part>]` as the step's window opened,
+`market:after[:<part>]` as its actions left it, `market:at` the hero's tile and points then
+(`5,8 with 1360 points`), `markets` each window's screen and kind. The globals keep their values
+after a trade (the pair -1) and after the window closes (the screen 0x7802): read them only while
+a window shows. **A Black Market's record** by its entrance: `black_market:x,y[,level][:<part>]`
+(game +0x1F680's vector, seven ids each, the object's word its index; under a hero standing there
+the word under it): `record 0; Centaurs Axe (treasure), ...; word 0x00000000`, parts `index`,
+`artifacts`, `classes` (`3 treasures, 3 minors, 1 major`), `word`; `black_markets` how many
+records. `hero:backpack_last` the backpack's last entry. A wide table's cell in a record is
+`<row> | <column>` (E08 T37a) and E09 T34's `<encounter>|<field>` names another encounter only with
+no space before its `|` (since E08 T129a: the encounter's prefix had taken every cell key, the
+harness check's included), so `E14-4|M1, day 29 | the seven` is E14-4's cell too. Observed (batch E14): the guild's window opens on screen 4 with no screens' buttons, a
+Black Market's on 2 with none, a Trading Post's on 0 with the transfer's (17), the transfer's
+screen with 16 back; Trade, Max and the slider read 0xE (disabled) until a pair is chosen; Space
+on the entrance opens the window again on its first screen.
+
 **Taverns and the Thieves' Guild** (E09 T34, batch TWN-4; `docs/rules/surveys/E09-tavern.md` §2
 to §6, §13). **The offers:** `offers:<colour>` a player's two (player +0x28, +0x2C: `slot 0:
 Christian (Knight), slot 1: empty`), `offer:<colour>:<slot>[:<detail>]` the hero record in a slot

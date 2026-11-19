@@ -1,5 +1,7 @@
 # E08 batch E14 — results
 
+> Played by the capture harness on 2026-11-19 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-14.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-14.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `7945e78d`.** The map's description in the scenario list starts with "Stamp 7945e78d.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -27,13 +29,13 @@ Map file: `E08-batch-14.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: E14-1's points; Red's treasury: 
-- at the window: its screen; E14-1's tile; points: 
-- the Pixies for gold: the slider's most; what one gives; Red's treasury after 10; the army: 
-- the Vampires for wood: the slider's most; what one gives; Red's treasury after 2; the army: 
-- E14-2: the Skeletons' most (gold): 
-- after closing: E14-1's tile; points: 
-- Space: what opens; E14-1's tile: 
+- before: E14-1's points; Red's treasury: points: 1560; treasury: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30500 gold
+- at the window: its screen; E14-1's tile; points: the path: 5,8 5,9; the window: 4 (creatures sold); kind: 3 (a Freelancer's Guild); count: 5; buttons: screens none; trade disabled; at the window: 5,8 with 1360 points; in order: trade window (screen 4, creatures sold; kind 3, a Freelancer's Guild)
+- the Pixies for gold: the slider's most; what one gives; Red's treasury after 10; the army: the pair: slot 0 (10 Pixies) for gold; the most: 10; counts: given; one gives: 1 Pixie for 17 gold; amount: 10; the trade's change: +170 gold; treasury after: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30670 gold; army: 1: 2 Vampires, 2: 10 Skeletons; points: 1360
+- the Vampires for wood: the slider's most; what one gives; Red's treasury after 2; the army: the pair: slot 1 (2 Vampires) for wood; the most: 2; counts: given; one gives: 1 Vampire for 1 wood; amount: 2; the trade's change: +2 wood; treasury after: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30670 gold; army: 2: 10 Skeletons
+- E14-2: the Skeletons' most (gold): the pair: slot 2 (10 Skeletons) for gold; the most: 9; counts: given; one gives: 1 Skeleton for 42 gold; army: 2: 10 Skeletons
+- after closing: E14-1's tile; points: tile: 5,8,0; points: 1360; treasury: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30670 gold
+- Space: what opens; E14-1's tile: the key: nothing; in order: trade window (screen 4, creatures sold; kind 3, a Freelancer's Guild); at the window: 5,8 with 1360 points; tile after: 5,8,0; points: 1360
 - anything odd: 
 
 ## E14-4 — The two Black Markets' seven at day 1 and day 29 on a map with bans (E14-3); a purchase by a hero with no room for it (E14-4); where the hero stands (E14-16) (ADV-MKT-006, ADV-MKT-007, A-46, GAM-SET-003, ADV-OBJ-003)
@@ -50,20 +52,20 @@ Map file: `E08-batch-14.h3m`. Fill in the blanks below and keep this file; an ag
 
 | market and day | the seven (name; class) | the word's record index |
 |---|---|---|
-| M1 (12, 8), day 1 |   |   |
-| M2 (18, 8), day 1 |   |   |
-| M1, day 29 |   |   |
-| M2, day 29 |   |   |
+| M1 (12, 8), day 1 | Shield of the Dwarven Lords (treasure), Centaurs Axe (treasure), Bird of Perception (treasure), Crown of the Supreme Magi (minor), Red Dragon Flame Tongue (minor), Buckler of the Gnoll King (minor), Sword of Hellfire (major); classes: 3 treasures, 3 minors, 1 major | record: 0; word: 0x00000000 |
+| M2 (18, 8), day 1 | Stoic Watchman (treasure), Breastplate of Petrified Wood (treasure), Spyglass (treasure), Shield of the Yawning Dead (minor), Rib Cage (minor), Blackshard of the Dead Knight (minor), Shield of the Damned (major); classes: 3 treasures, 3 minors, 1 major | record: 1; word: 0x00000001 |
+| M1, day 29 | empty, Centaurs Axe (treasure), Bird of Perception (treasure), Crown of the Supreme Magi (minor), Red Dragon Flame Tongue (minor), Buckler of the Gnoll King (minor), Sword of Hellfire (major); classes: 2 treasures, 3 minors, 1 major | record: 0; word: 0x00000000 |
+| M2, day 29 | Stoic Watchman (treasure), Breastplate of Petrified Wood (treasure), Spyglass (treasure), Shield of the Yawning Dead (minor), Rib Cage (minor), Blackshard of the Dead Knight (minor), Shield of the Damned (major); classes: 3 treasures, 3 minors, 1 major | record: 1; word: 0x00000001 |
 
-- before: E14-4's points; worn artifacts; the backpack's count; Red's treasury: 
-- at the window: the entries shown; E14-4's tile; points: 
-- M1's first entry: its name and gold price: 
-- after Trade: messages and questions (in order); Red's treasury: 
-- after Trade: E14-4's worn artifacts; the backpack's count and last entry; the window's entries: 
-- M1's record after the purchase: 
-- after closing: E14-4's tile; points; Space: what opens; the tile: 
-- day 29: the date: 
-- anything odd: 
+- before: E14-4's points; worn artifacts; the backpack's count; Red's treasury: points: 1630; worn: 0: Helm of Chaos, 1: Dragon Wing Tabard, 2: Pendant of Dispassion, 3: Ogre's Club of Havoc, 4: Targ of the Rampaging Ogre, 5: Scales of the Greater Basilisk, 6: Diplomat's Ring, 7: Ring of Conjuring, 8: Dragonbone Greaves, 9: Clover of Fortune, 10: Cards of Prophecy, 11: Ladybird of Luck, 12: Badge of Courage, 16: Catapult, 18: Crest of Valor; backpack: 64; treasury: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30670 gold
+- at the window: the entries shown; E14-4's tile; points: the path: 12,8 12,9; the window: 2 (artifacts bought); kind: 2 (a Black Market); entries: Shield of the Dwarven Lords, Centaurs Axe, Bird of Perception, Crown of the Supreme Magi, Red Dragon Flame Tongue, Buckler of the Gnoll King, Sword of Hellfire; buttons: screens none; trade disabled; at the window: 12,8 with 1430 points; in order: trade window (screen 2, artifacts bought; kind 2, a Black Market)
+- M1's first entry: its name and gold price: the pair: gold for entry 0 (Shield of the Dwarven Lords); the price: 5000 gold for 1 Shield of the Dwarven Lords; the most: 6; amount: 1; buttons: screens none; trade enabled
+- after Trade: messages and questions (in order); Red's treasury: questions: none; messages: none; the trade's change: -5000 gold; treasury: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 25670 gold
+- after Trade: E14-4's worn artifacts; the backpack's count and last entry; the window's entries: worn: 0: Helm of Chaos, 1: Dragon Wing Tabard, 2: Pendant of Dispassion, 3: Ogre's Club of Havoc, 4: Targ of the Rampaging Ogre, 5: Scales of the Greater Basilisk, 6: Diplomat's Ring, 7: Ring of Conjuring, 8: Dragonbone Greaves, 9: Clover of Fortune, 10: Cards of Prophecy, 11: Ladybird of Luck, 12: Badge of Courage, 16: Catapult, 18: Crest of Valor; backpack: 64; last: Glyph of Gallantry; the window's entries: empty, Centaurs Axe, Bird of Perception, Crown of the Supreme Magi, Red Dragon Flame Tongue, Buckler of the Gnoll King, Sword of Hellfire; the window: 2 (artifacts bought)
+- M1's record after the purchase: record 0; empty, Centaurs Axe (treasure), Bird of Perception (treasure), Crown of the Supreme Magi (minor), Red Dragon Flame Tongue (minor), Buckler of the Gnoll King (minor), Sword of Hellfire (major); word 0x00000000
+- after closing: E14-4's tile; points; Space: what opens; the tile: tile: 12,8,0; points: 1430; Space: nothing; in order: trade window (screen 2, artifacts bought; kind 2, a Black Market); entries: empty, Centaurs Axe, Bird of Perception, Crown of the Supreme Magi, Red Dragon Flame Tongue, Buckler of the Gnoll King, Sword of Hellfire; tile after: 12,8,0
+- day 29: the date: month 2, week 1, day 1; the Black Market records: 2
+- anything odd: the date at the start: month 1, week 1, day 1; the game's version: SoD; the difficulty: easy; E14-4's backpack's last entry at the start: Glyph of Gallantry
 
 ## E14-5 — A Trading Post's trades (E14-5); a transfer to Blue at the snow Trading Post (E14-6); where the hero stands at both (E14-16) (ADV-MKT-001, ADV-MKT-002, ADV-MKT-003, ADV-MKT-004, ADV-OBJ-003)
 
@@ -79,17 +81,17 @@ Map file: `E08-batch-14.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: E14-5's points; Red's treasury: 
-- P1's window: its screen; E14-5's tile; points: 
-- wood → gold: the rate; the most; Red's treasury after 2: 
-- gold → wood: the rate; the most; Red's treasury after 1: 
-- mercury → gems: the rate; the most; Red's treasury after 1: 
-- after closing P1: E14-5's tile; points; Space: what opens; the tile: 
-- P2: the path's marks; at the window its screen; E14-5's tile; points: 
-- before the transfer: Red's treasury; Blue's treasury; the recipients offered: 
-- after the transfer: Red's treasury; Blue's treasury: 
-- after closing P2: the tile; Space: what opens; the tile: 
-- Blue's turn: Blue's treasury: 
+- before: E14-5's points; Red's treasury: points: 1560; treasury: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 25670 gold
+- P1's window: its screen; E14-5's tile; points: the path: 24,8 24,9; the window: 0 (resources for resources); kind: 1 (a Trading Post); count: 5; buttons: screens 17; trade disabled; at the window: 24,8 with 1360 points; in order: trade window (screen 0, resources for resources; kind 1, a Trading Post)
+- wood → gold: the rate; the most; Red's treasury after 2: the rate: 1 wood for 75 gold; the most: 32; counts: given; the trade's change: -2 wood, +150 gold; treasury after: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 25820 gold
+- gold → wood: the rate; the most; Red's treasury after 1: the rate: 833 gold for 1 wood; the most: 30; counts: wanted; the trade's change: +1 wood, -833 gold; treasury after: 31 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 24987 gold
+- mercury → gems: the rate; the most; Red's treasury after 1: the rate: 3 mercury for 1 gems; the most: 5; counts: wanted; the trade's change: -3 mercury, +1 gems; treasury after: 31 wood, 12 mercury, 30 ore, 15 sulfur, 15 crystal, 16 gems, 24987 gold
+- after closing P1: E14-5's tile; points; Space: what opens; the tile: tile: 24,8,0; points: 1360; Space: nothing; in order: trade window (screen 0, resources for resources; kind 1, a Trading Post); tile after: 24,8,0
+- P2: the path's marks; at the window its screen; E14-5's tile; points: the path: 24,9 24,10 26,10 25,11; marks: 4; the window: 0 (resources for resources); kind: 1 (a Trading Post); buttons: screens 17; trade disabled; at the window: 26,10 with 878 points; in order: trade window (screen 0, resources for resources; kind 1, a Trading Post)
+- before the transfer: Red's treasury; Blue's treasury; the recipients offered: red: 31 wood, 12 mercury, 30 ore, 15 sulfur, 15 crystal, 16 gems, 24987 gold; blue: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30600 gold; the screen: 1 (the transfer); the recipients offered: blue; buttons: screens 16; trade disabled; the pair: ore to blue; the rate: 1 ore for 1 to blue; the most: 30
+- after the transfer: Red's treasury; Blue's treasury: red: 31 wood, 12 mercury, 25 ore, 15 sulfur, 15 crystal, 16 gems, 24987 gold; red's change: -5 ore; blue: 30 wood, 15 mercury, 35 ore, 15 sulfur, 15 crystal, 15 gems, 30600 gold; blue's change: +5 ore
+- after closing P2: the tile; Space: what opens; the tile: tile: 26,10,0; points: 878; Space: nothing; in order: trade window (screen 0, resources for resources; kind 1, a Trading Post); tile after: 26,10,0
+- Blue's turn: Blue's treasury: blue: 30 wood, 15 mercury, 35 ore, 15 sulfur, 15 crystal, 15 gems, 30600 gold; the date: month 1, week 1, day 1
 - anything odd: 
 
 ## E14-8 — A step from above toward an Altar's entrance (E14-16); a Castle hero's Altar (E14-7); a treasure, a minor, a major and a relic sacrificed (E14-8) (ADV-ALT-001, ADV-ALT-002, ADV-OBJ-004, ADV-OBJ-003, HER-EXP-001)

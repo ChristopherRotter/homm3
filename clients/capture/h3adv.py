@@ -1207,7 +1207,7 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
     end = time.monotonic() + 600
     while time.monotonic() < end:
         kind = screen_kind(mem)
-        if kind in ("exchange", "army", "garrison", "boat", "hire"):
+        if kind in ("exchange", "army", "garrison", "boat", "hire", "market"):
             # E08 T79a (batch E9a): also a mine's Leave Guards (the army dialog) and a
             # Shipyard's boat dialog. E08 T90 (batches E10a, E10b): the hire dialog, read as it
             # opens (`hires`: `opening`, before any click) and as the actions leave it (`after`,
@@ -1216,9 +1216,17 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
             # E08 T120 (batch E13's E13-6): every dialog in the order it came (`order`), an army
             # dialog with both bars as it opened (army_bars).
             events["order"].append(f"army dialog ({army_bars(mem, index)})" if kind == "army"
+                                   else market_order(mem) if kind == "market"
                                    else f"{kind} screen")
             if kind == "hire":
                 events.setdefault("hires", []).append({"opening": mem.recruit_dialog()})
+            if kind == "market":
+                # E08 T129a (batch E14): the trade window read as it opens (`markets`:
+                # `opening`, with the hero's tile and points then) and as the actions leave it
+                # (`after`, None when they closed it), then closed by its OK.
+                hero = mem.hero(index)
+                events.setdefault("markets", []).append(
+                    {"opening": mem.market(), "at": (hero["tile"], hero["points"])})
             if kind == "exchange":
                 # E08 T100a (batch E11a's E11-6): whom the meeting shows, read as it opens (the
                 # swap manager's +0x40, +0x44: left the visitor, right the visited).
@@ -1237,7 +1245,10 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
                 events["actions"] = run_actions(game, mem, index, actions)
             if kind == "hire":
                 events["hires"][-1]["after"] = mem.recruit_dialog()
-            if (now := screen_kind(mem)) in ("exchange", "army", "garrison", "boat", "hire"):
+            if kind == "market":
+                events["markets"][-1]["after"] = mem.market()
+            if (now := screen_kind(mem)) in ("exchange", "army", "garrison", "boat", "hire",
+                                             "market"):
                 close_screen(game, mem, now, screen_heroes(mem, now, index))
             last, since, known = None, time.monotonic(), time.monotonic()
             continue
@@ -2005,6 +2016,27 @@ GUILD_ROWS = ("towns", "heroes", "gold", "wood and ore", "rare resources", "obel
               "artifacts", "army", "income")
 GUILD_X, GUILD_PLACE, GUILD_Y, GUILD_ROW = 253, 66, 41, 32
 GUILD_HERO, GUILD_SKILLS, GUILD_CREATURE, GUILD_TACTIC_Y = 750, (1, 10, 20, 30), 850, 452
+# E08 T129a (batch E14's markets; survey docs/rules/surveys/E08-trades.md §3 to §7, the
+# procedures read, the items observed under Wine): the trade window's screens (h3mem.
+# MARKET_SCREENS), one kind `market`. Their items: the given (screen 0, 1) or paying (2)
+# resources 28-34 (wood to gold; their pictures 21-27, the treasury's counts 35-41), the wanted
+# resources 63-69 (0, 4) or the seven entries (2; their pictures 56-62, the frame the artifact),
+# the hero's slots 139-145 (4; the portraits 132-138, the counts 35-41), the recipients 70-76 (1;
+# their flags 49-55, the colours' names 77-83), Trade 5, Max 7 (not on screen 2), the slider 6,
+# the screens' buttons 16 (to 0), 17 (to 1), 18 (to 2), 19 (to 3), 20 (to 4), shown by kind (a
+# Freelancer's Guild none, a Black Market none, a Trading Post 17 on screen 0 and 16 on 1), OK
+# 30722 (the window's end). A selected item's state 0x6, a selectable one 0x2; Trade, Max and the
+# slider 0xE until a pair is chosen.
+SCREEN_KINDS.update({vtable: "market" for vtable in h3mem.MARKET_SCREENS})
+MARKET_ITEMS = {"give": 28, "pay": 28, "want": 63, "entry": 63, "player": 70, "slot": 139,
+                "trade": 5, "max": 7, "resources": 16, "transfer": 17, "artifacts": 18,
+                "creatures": 20, "close": 30722}
+SCREEN_ITEMS["market"] = MARKET_ITEMS
+MARKET_SCREEN_BUTTONS = {"resources": 0, "transfer": 1, "artifacts": 2, "creatures": 4}
+MARKET_SCREEN_NAMES = {0: "resources for resources", 1: "the transfer", 2: "artifacts bought",
+                       3: "artifacts sold", 4: "creatures sold"}
+MARKET_KIND_NAMES = {0: "a town's", 1: "a Trading Post", 2: "a Black Market",
+                     3: "a Freelancer's Guild"}
 
 
 # A message box's pictures by their DEF (E08 T57; observed at a Treasure Chest under Wine): a
@@ -2163,6 +2195,15 @@ def item_id(mem, kind, name, heroes):
         return items[part]
     if arg.lstrip("-").isdigit():
         return items[part] + int(arg)
+    if kind == "market" and part in ("give", "pay", "want") and arg in h3mem.RESOURCES:
+        return items[part] + h3mem.RESOURCES.index(arg)  # E08 T129a: `give:wood`
+    if kind == "market" and part == "player" and arg in COLOURS:
+        # E08 T129a: the transfer's recipient by colour, at its place among the flags shown.
+        offered = mem.market()["recipients"]
+        if COLOURS.index(arg) not in offered:
+            raise ValueError(f"`{name}`: the transfer offers "
+                             f"{', '.join(COLOURS[c] for c in offered) or 'nobody'}")
+        return items[part] + offered.index(COLOURS.index(arg))
     side = part.split()[0] if kind == "exchange" else ""
     hero = mem.hero(heroes[side])
     names = {a: mem.artifact_name(a) for a in [*hero["positions"].values(), *hero["backpack"]]}
@@ -2313,6 +2354,36 @@ def hire_amount(game, mem, wanted):
     quiet_screen(game)
 
 
+def market_amount(game, mem, wanted):
+    """The trade window's amount set to `wanted` by its slider (E08 T129a, batch E14): a click on
+    the slider's right end adds one, on its left end takes one, the amount read from its global
+    (h3mem.MARKET_GLOBALS) after each click. Fails when the amount cannot be reached (it stops at
+    the most)."""
+    for _ in range(1000):
+        state = mem.market()
+        if state is None:
+            raise RuntimeError("no trade window shows (`amount`)")
+        if state["amount"] == wanted:
+            break
+        x, y, width, height = next(i["box"] for i in mem.dialog_items()
+                                   if i["id"] == h3mem.MARKET_SLIDER)
+        end = x + width - height // 2 if state["amount"] < wanted else x + height // 2
+        before = state["amount"]
+        game.click(end, y + height // 2, 0.12)
+        if mem.market()["amount"] == before:
+            raise RuntimeError(f"the amount stays at {before} (the most is {state['most']}) "
+                               f"short of {wanted}")
+    game.move(*PARK)
+    quiet_screen(game)
+
+
+def market_screen_changed(mem, name):
+    """E08 T129a: after a click on the trade window's screen button `name` (MARKET_SCREEN_BUTTONS),
+    waits until that screen's dialog shows."""
+    want = MARKET_SCREEN_BUTTONS[name]
+    wait_for(lambda: (mem.market() or {}).get("shown") == want, f"the trade window's screen {want}")
+
+
 def split_counts(mem):
     """The split dialog's two counts as it shows them, `<source> : <target>`."""
     if screen_kind(mem) != "split":
@@ -2396,7 +2467,7 @@ def run_actions(game, mem, step_hero, actions):
     """Plays a step's `actions` in the screens showing (E08 T47a): each action one `click` (a list
     of item names, clicked in order on whichever screen shows at each), `right` (an item's name)
     or `slider = "max"` (the split dialog's) or, since E08 T90, `amount = <n>` (the hire dialog's
-    slider set to n), since E09 T14b `hall = true` (the town screen's hall opened) and `slot =
+    slider set to n; since E08 T129a the trade window's), since E09 T14b `hall = true` (the town screen's hall opened) and `slot =
     <building id>` (the hall's slot showing it clicked: the building's dialog), since E09 T23
     `hero_in = true` (the town screen's visitor moved into the garrison: its portrait, then the
     garrison's) and `building = <building id>` (the town screen's building clicked: a dwelling's
@@ -2422,6 +2493,8 @@ def run_actions(game, mem, step_hero, actions):
             heroes = screen_heroes(mem, screen_kind(mem), step_hero)
             was = screen_kind(mem)
             click_item(game, mem, name, heroes)
+            if was == "market" and name in MARKET_SCREEN_BUTTONS:
+                market_screen_changed(mem, name)  # E08 T129a: another screen's dialog
             pass_dialogs(game, mem, obs, action.get("answer"), heroes)
             if was in ("army", "garrison"):
                 obs.setdefault("clicks", []).append((name, bar_selection(mem)))
@@ -2457,7 +2530,9 @@ def run_actions(game, mem, step_hero, actions):
             open_tavern(game, mem)  # E09 T34: the town screen's Tavern
         if "hover" in action:
             obs["hovered"] = hover_status(game, mem, action["hover"])  # E09 T34
-        if "amount" in action:
+        if "amount" in action and screen_kind(mem) == "market":
+            market_amount(game, mem, int(action["amount"]))  # E08 T129a: the trade window's
+        elif "amount" in action:
             hire_amount(game, mem, int(action["amount"]))  # E08 T90: the hire dialog's slider
         if "slider" in action:
             if action["slider"] != "max":
@@ -2992,6 +3067,9 @@ def hero_value(mem, hero, field):
     # (+0x3D4).
     if field in ("spell_points", "morale_bonus", "luck_bonus", "backpack_count"):
         return str(hero[field])
+    if field == "backpack_last":
+        # E08 T129a (batch E14's E14-4): the backpack's last entry (where a 65th would go).
+        return mem.artifact_name(hero["backpack"][-1]) if hero["backpack"] else "none"
     if field == "status":
         return f"{hero['status']:#x}"
     # E08 T110 (batch E12b): one bit of the status (`bit:<n>`: set, clear) and a u32 of the
@@ -3417,6 +3495,119 @@ def hire_text(state, part=None, mem=None):
             f"{state['index']} (counts {hire_text(state, 'counts')}); {hire_text(state, 'enabled')}")
 
 
+def market_goods(mem, state, which):
+    """E08 T129a: what the trade window's `given` or `wanted` names on its screen (h3mem.market):
+    a resource, the hero's slot (`slot 0 (10 Pixies)`), an entry (`entry 0 (Centaurs Axe)`), a
+    recipient (`blue`); `none` for -1."""
+    k, screen = state[which], state["shown"]
+    if k < 0:
+        return "none"
+    if screen == 4 and which == "given":
+        creature, count = mem.hero(state["hero"])["slots"][k] if state["hero"] is not None \
+            else (-1, 0)
+        return f"slot {k} ({slot_text(mem, creature, count)})"
+    if screen == 2 and which == "wanted":
+        entry = state["artifacts"][k] if k < len(state["artifacts"]) else -1
+        return f"entry {k} ({mem.artifact_name(entry) if entry >= 0 else 'empty'})"
+    if screen == 1 and which == "wanted":
+        offered = state["recipients"]
+        return COLOURS[offered[k]] if k < len(offered) else f"place {k}"
+    return h3mem.RESOURCES[k] if k < len(h3mem.RESOURCES) else str(k)
+
+
+def market_unit(mem, state, which, amount):
+    """E08 T129a: `amount` of what `given` or `wanted` names, in words (`17 gold`, `1 Pixie`,
+    `1 Centaurs Axe`)."""
+    k, screen = state[which], state["shown"]
+    if screen == 4 and which == "given" and state["hero"] is not None:
+        return slot_text(mem, mem.hero(state["hero"])["slots"][k][0], amount)
+    if screen == 2 and which == "wanted":
+        return f"{amount} {mem.artifact_name(state['artifacts'][k])}"
+    return f"{amount} {h3mem.RESOURCES[k]}"
+
+
+def market_text(mem, state, part=None):
+    """The trade window as `h3mem.market` read it (E08 T129a, batch E14): `screen 4 (creatures
+    sold); kind 3 (a Freelancer's Guild); count 5; pair slot 0 (10 Pixies) for gold; rate 1 Pixie
+    for 17 gold; most 10; amount 0`; `closed` for None. Parts: `screen`, `kind`, `count`, `pair`,
+    `rate` (`per_unit` 1: one given for `rate` wanted, else `rate` given for one; the transfer
+    1 : 1; `none` without a pair), `most`, `amount`, `slider` (what it counts: `given`, `wanted`),
+    `recipients` (the transfer's colours offered), `entries` (the seven for sale, `empty` a sold
+    one), `buttons` (the screens' buttons shown, 16-20, and Trade's, Max's state)."""
+    if state is None:
+        return "closed"
+    screen = state["shown"]
+    paired = state["given"] >= 0 and state["wanted"] >= 0
+    if screen == 1 and paired:
+        rate = f"{market_unit(mem, state, 'given', 1)} for 1 to {market_goods(mem, state, 'wanted')}"
+    elif paired and state["per_unit"]:
+        rate = (f"{market_unit(mem, state, 'given', 1)} for "
+                f"{market_unit(mem, state, 'wanted', state['rate'])}")
+    elif paired:
+        rate = (f"{market_unit(mem, state, 'given', state['rate'])} for "
+                f"{market_unit(mem, state, 'wanted', 1)}")
+    else:
+        rate = "none"
+    shown = [k for k in range(16, 21) if state["items"].get(k, 0) & SHOWN]
+    fields = {
+        "screen": f"{screen} ({MARKET_SCREEN_NAMES.get(screen, '?')})",
+        "kind": f"{state['kind']} ({MARKET_KIND_NAMES.get(state['kind'], '?')})",
+        "count": str(state["count"]),
+        "pair": (f"{market_goods(mem, state, 'given')} "
+                 f"{'to' if screen == 1 else 'for'} {market_goods(mem, state, 'wanted')}"),
+        "rate": rate,
+        "most": str(state["most"]) if paired else "none",
+        "amount": str(state["amount"]) if paired else "none",
+        "slider": ("given" if state["per_unit"] else "wanted") if paired else "none",
+        "recipients": ", ".join(COLOURS[c] for c in state["recipients"]) or "none",
+        "entries": ", ".join(mem.artifact_name(a) if a >= 0 else "empty"
+                             for a in state["artifacts"]) or "none",
+        "buttons": (f"screens {', '.join(map(str, shown)) or 'none'}; trade "
+                    f"{'enabled' if not state['items'].get(5, 0) & 0x8 else 'disabled'}"),
+    }
+    if part:
+        return fields[part]
+    return "; ".join(f"{k} {fields[k]}" for k in ("screen", "kind", "count", "pair", "rate",
+                                                     "most", "amount"))
+
+
+def market_order(mem):
+    """E08 T129a: the trade window in a visit's `order` (`trade window (screen 4, creatures
+    sold; kind 3, a Freelancer's Guild)`)."""
+    state = mem.market()
+    return (f"trade window (screen {state['shown']}, {MARKET_SCREEN_NAMES.get(state['shown'])}; "
+            f"kind {state['kind']}, {MARKET_KIND_NAMES.get(state['kind'])})")
+
+
+def black_market_text(mem, x, y, z=0, part=None):
+    """A Black Market's record by its entrance (E08 T129a, batch E14's E14-3): the record its
+    object word names (h3mem.black_market; under a hero standing there, the word under it):
+    `record 0; Centaurs Axe (treasure), ..., Sword of Hellfire (major); word 0x00000000`, a sold
+    entry `empty`; parts `index`, `artifacts`, `classes` (`3 treasures, 3 minors, 1 major`),
+    `word`; `none` without a Black Market there."""
+    tile = mem.tile_word(x, y, z)
+    kind, word, under = tile["class"], tile["word"], ""
+    if "hero" in tile:
+        kind, word = tile["under_class"], tile["under_word"]
+        under = f" (under {mem.hero(tile['hero'])['name']})"
+    if kind != h3mem.BLACK_MARKET_CLASS:
+        return "none"
+    record = mem.black_market(word)
+    if record is None:
+        return f"no record {word} (of {mem.black_market_count()}){under}"
+    classes = [mem.artifact_class(a) for a in record if a >= 0]
+    counts = [f"{classes.count(c)} {c}{'' if classes.count(c) == 1 else 's'}"
+              for c in ("treasure", "minor", "major", "relic", "special") if c in classes]
+    fields = {"index": str(word),
+              "artifacts": ", ".join(f"{mem.artifact_name(a)} ({mem.artifact_class(a)})"
+                                     if a >= 0 else "empty" for a in record),
+              "classes": ", ".join(counts) or "none",
+              "word": f"{word & 0xFFFFFFFF:#010x}"}
+    if part:
+        return fields[part] + under
+    return f"record {fields['index']}; {fields['artifacts']}; word {fields['word']}{under}"
+
+
 # A hint or popup's pieces (E08 T90, E10-10): never the original's text, only which of the names
 # the game holds it was made of.
 TEXT_REST = re.compile(r"[\s\-,.():%\d]*")
@@ -3764,7 +3955,8 @@ LIVE_READS = ("explored", "word", "object", "monster", "aggression", "never_flee
               "boats", "drawn", "boat_record", "mine", "tile", "income", "gardens", "growth",
               "town", "towns",  # E09 T3b: the towns' records
               "dwelling", "teams", "objects", "access", "camp", "hire",  # E08 T90
-              "bank")  # E08 T120
+              "bank",  # E08 T120
+              "market", "black_market")  # E08 T129a
 
 
 def observations(what):
@@ -4277,6 +4469,31 @@ def value(obs, what, mem):
             mem, x0, y0, x1, y1, int(m.group(6) or 0))
     if m := re.match(r"camp:(\d+),(\d+)(?:,(\d))?$", what):
         return camp_text(mem, int(m.group(1)), int(m.group(2)), int(m.group(3) or 0))
+    # E08 T129a (batch E14): the trade window now (`market[:<part>]`, market_text), as the
+    # step's walk or key saw it open and as its actions left it (`market:opening[:<part>]`,
+    # `market:after[:<part>]`; the last window of the step), the hero's tile and points as it
+    # opened (`market:at`: `5,8 with 1360 points`), the windows in order (`markets`); a Black
+    # Market's record by its entrance (`black_market:x,y[,level][:<part>]`, black_market_text),
+    # live.
+    if m := re.match(r"market(?::(opening|after))?(?::([a-z]+))?$", what):
+        which, part = m.group(1), m.group(2)
+        markets = obs.get("markets", [])
+        if part == "at" and which is None:
+            return (f"{tile_name(markets[-1]['at'][0])} with {markets[-1]['at'][1]} points"
+                    if markets else "none")
+        if which is None:
+            return market_text(mem, mem.market(), part)
+        return market_text(mem, markets[-1][which], part) if markets else "none"
+    if what == "markets":
+        return "; ".join(market_text(mem, k["opening"], "screen") + ", "
+                         + market_text(mem, k["opening"], "kind")
+                         for k in obs.get("markets", [])) or "none"
+    if what == "black_markets":
+        return f"{mem.black_market_count()}"
+    if m := re.match(r"black_market:(\d+),(\d+)(?:,(\d))?(?::(index|artifacts|classes|word))?$",
+                     what):
+        return black_market_text(mem, int(m.group(1)), int(m.group(2)), int(m.group(3) or 0),
+                                 m.group(4))
     if m := re.match(r"hire(?::(opening|after))?(?::([a-z]+))?$", what):
         which, part = m.group(1), m.group(2)
         if which is None:
@@ -5003,7 +5220,11 @@ def batch(recipe_path, map_path=None, out=None):
                 # E09 T34 (batch TWN-4a): `<encounter>|<field>` fills another encounter's field
                 # (one step's reads serving two rows).
                 encounter, plus = step["encounter"], "+" if field.startswith("+") else ""
-                if "|" in field and not field.startswith("row:"):
+                # E09 T34: `<encounter>|<field>` fills another encounter's field; since E08
+                # T129a only with no space before the `|`, so that a wide table's cell `<row> |
+                # <column>` (E08 T37a) stays the step's encounter's (the harness check's).
+                head = field[len(plus):].partition("|")[0]
+                if "|" in field and not field.startswith("row:") and not head.endswith(" "):
                     encounter, field = field[len(plus):].split("|", 1)
                     field = plus + field
                 if obs.get("skipped") and not field.startswith(("row:", "+")) \
