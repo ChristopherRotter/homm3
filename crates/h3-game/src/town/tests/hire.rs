@@ -12,7 +12,8 @@ use alloc::vec::Vec;
 
 use h3_adventure::{AdventureEventKind, HeroOnMap, Pos, Viewers};
 use h3_content::{
-    ArtifactTypeId, HeroTypeId, ProfileDef, ResourceId, Ruleset, SpellId, StartingStackDef,
+    ArtifactTypeId, ContentPack, HeroTypeId, ProfileDef, ResourceId, Ruleset, SpellId,
+    StartingStackDef,
 };
 use h3_contracts::{ArmyStack, PlayerId, TownId};
 use h3_heroes::{ArtifactInstance, max_mana};
@@ -47,7 +48,18 @@ fn rules_with(edit: impl FnOnce(&mut TownPack)) -> GameRuleset {
 /// `t:leave` (`TWN-QUIRK-12`'s flag on: a leave's points over the cleared army); with `slow`
 /// every hero type's first starting stack 2 to 3 gogs (speed 2: one gog's land points are below
 /// the test part's most).
-fn rules_in((profile, slow): (&str, bool), edit: impl FnOnce(&mut TownPack)) -> GameRuleset {
+fn rules_in(profile: (&str, bool), edit: impl FnOnce(&mut TownPack)) -> GameRuleset {
+    rules_in_core(profile, |_| {}, edit)
+}
+
+/// [`rules_in`] with the core pack edited by `core` before it compiles (E09 T39b1: the Thieves'
+/// Guild's resources, AI values and flag).
+fn rules_in_core(
+    (profile, slow): (&str, bool),
+    core: impl FnOnce(&mut ContentPack),
+    edit: impl FnOnce(&mut TownPack),
+) -> GameRuleset {
+    let edit_core = core;
     let mut towns = town_pack(false);
     towns.towns[0].buildings.push(BuildingDef {
         key: "tavern".to_string(),
@@ -84,6 +96,7 @@ fn rules_in((profile, slow): (&str, bool), edit: impl FnOnce(&mut TownPack)) -> 
             true,
         )],
     });
+    edit_core(&mut core);
     let core = Ruleset::compile(&[core], profile).unwrap();
     // E09 T39a: a map Tavern and a Den of Thieves (`hire/map.rs`).
     rules_edited(core, &towns, false, 4, |adventure| {
@@ -540,3 +553,4 @@ fn the_legal_commands_list_each_hire_that_passes_after_the_towns_recruitments() 
 mod dismiss;
 mod leave;
 mod map;
+mod thieves;

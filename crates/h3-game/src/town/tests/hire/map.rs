@@ -60,7 +60,7 @@ fn inn(rules: &GameRuleset, k: &str, at: Pos) -> ObjectSetup {
 }
 
 /// The hire tests' setup with the Tavern and the Den.
-fn inn_setup(rules: &GameRuleset) -> GameSetup {
+pub(super) fn inn_setup(rules: &GameRuleset) -> GameSetup {
     let mut setup = towns_setup(rules);
     setup.map.objects.push(inn(rules, "t:tavern", TAVERN));
     setup.map.objects.push(inn(rules, "t:den", DEN));
@@ -79,7 +79,11 @@ fn answer(answer: TavernAnswer) -> GameCommand {
 }
 
 /// The game of `setup` with red's gold `gold`, red's hero 0 having stepped toward the Tavern.
-fn visited(rules: &GameRuleset, setup: &GameSetup, gold: u32) -> (GameState, Vec<GameEvent>) {
+pub(super) fn visited(
+    rules: &GameRuleset,
+    setup: &GameSetup,
+    gold: u32,
+) -> (GameState, Vec<GameEvent>) {
     let mut game = game(rules, setup, gold);
     let path = [Pos::new(0, 1, 0), BESIDE, TAVERN];
     let events = run(rules, &mut game, RED, step(&path)).unwrap();

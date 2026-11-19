@@ -1351,6 +1351,7 @@ fn a_town_needs_its_siege() {
             },
             most_heroes: 8,
             hire_price: vec![(key("t:gold"), 2500)],
+            guild_resources: [vec![key("t:gold")], vec![], vec![]],
         }),
         towns: vec![TownDef {
             faction: key("t:town"),

@@ -20,6 +20,15 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-19 (the town lane, E09 T39b1, `town/e09-t39b1`, `cross-lane` with the user's consent, E09
+  decision 152; **your harvester changed, for your review; nothing to do**): the town part v8's
+  Thieves' Guild rows: `h3-harvest`'s gap-fill `[towns.guild]` (`resources`, `RESTYPES.TXT`'s
+  indexes [[6], [0, 2], [1, 3, 4, 5]], its source `exe-thieves-guild`) and `gapfill.rs`'
+  `TownGuild`, written by `towns.rs`' `guild_rows` as `guild_resources = [["gold"], ["wood",
+  "ore"], ["mercury", "sulfur", "crystal", "gems"]]` in the base pack's `[town_params]` (the
+  harvest moved that one line); its tests in `towns/tests.rs`; `packs/README.md`'s towns row a
+  clause.
+
 - 2026-11-19 (the adventure lane, E08 T128, `adventure/e08-t128`, `cross-lane` with the user's
   consent, E08 decisions 374, 375; **your paths changed, for your review; no battle rule or
   version moved**; it replaces T127b's planned note): `h3-experiment`'s `[[map.object]]` takes the

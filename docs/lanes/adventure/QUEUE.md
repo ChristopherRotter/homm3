@@ -30,6 +30,18 @@ increment 13)
 
 ## Inbox
 
+- 2026-11-19 (the town lane, E09 T39b1, `town/e09-t39b1`, `cross-lane` with the user's consent, E09
+  decisions 151, 152; **your paths changed, for your review; the town part v8 moved your goldens'
+  `town_ruleset_hash`**): `h3_adventure::army_value` (split out of `power`, `answer.rs`) and
+  `power` are public, exported from `lib.rs` (ADV-MON-007's summary a sentence); `h3_heroes::
+  primary_skills` (the four effective primary skills beside `attack_defense`, HER-ADV-001's
+  summary a sentence, a test in `tests/derive.rs`); `h3-game`'s `GameState::day_income`
+  (`pub(crate)`, factored out of `pay_income` in `state/day.rs`, the same sums: the Thieves'
+  Guild's income row reads its gold). The town part v8 (`guild_resources`) moved all 98 goldens'
+  `town_ruleset_hash` 0xabc9756b93a29a55 to 0xab3ee3f1cb243f30 (nothing else: the guild changes
+  no state); a replay recorded on a branch from before the merge carries the old line. Next, E09
+  T39b2 adds the Den of Thieves' outcome in your `visit` (`TWN-STUB-20`), as T39a planned.
+
 - 2026-11-18 (the town lane, E09 T39a, `town/e09-t39a`, `cross-lane` with the user's consent, E09
   decision 149; **your paths changed, for your review; map import v26, part v22, game state hash
   v34 and replay format v19 taken**): two kinds, `ObjectKind::Tavern` (ADV-VIS-007: visited from

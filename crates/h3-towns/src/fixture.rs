@@ -484,6 +484,7 @@ fn params() -> TownParams {
         },
         most_heroes: 8,
         hire_price: vec![(GOLD, 2500)],
+        guild_resources: [vec![GOLD], vec![WOOD, ORE], vec![]],
     }
 }
 

@@ -137,16 +137,25 @@ fn strength_step(ratio: X87) -> i32 {
     }
 }
 
-/// A hero's power against a wandering monster (survey §3.1; the executable's 0x427650): its
-/// army's value (each stack's creature's AI value times its count, summed; the original's sum
-/// is 32-bit and would wrap above 2³¹, which no army reaches) stored as a float, times the
-/// factor √((1 + 0.05 D)(1 + 0.05 A)) of its Attack A and Defense D (`h3_heroes::attack_defense`,
-/// 0 to 99; 0x4E5400: each term in double precision, the root stored as a float), truncated.
+/// An army's value (survey §3.1; the executable's `army_power` 0x427690 without a hero): each
+/// stack's creature's AI value times its count, summed (the original's sum is 32-bit and would
+/// wrap above 2³¹, which no army reaches; saturating here). Since E09 T39b1 public: the Thieves'
+/// Guild's army row counts a town's shown army by it (TWN-TAV-008).
 // rule: ADV-MON-007
-pub(crate) fn power(core: &Ruleset, army: &[ArmyStack], details: Option<&HeroDetails>) -> u64 {
-    let value = army.iter().fold(0u64, |sum, stack| {
+pub fn army_value(core: &Ruleset, army: &[ArmyStack]) -> u64 {
+    army.iter().fold(0u64, |sum, stack| {
         sum.saturating_add(u64::from(ai_value(core, stack.creature)) * u64::from(stack.count))
-    });
+    })
+}
+
+/// A hero's power against a wandering monster (survey §3.1; the executable's 0x427650): its
+/// army's value ([`army_value`]) stored as a float, times the factor √((1 + 0.05 D)(1 + 0.05 A))
+/// of its Attack A and Defense D (`h3_heroes::attack_defense`, 0 to 99; 0x4E5400: each term in
+/// double precision, the root stored as a float), truncated. Since E09 T39b1 public: the Thieves'
+/// Guild's army row and its best hero read it (TWN-TAV-008, -009).
+// rule: ADV-MON-007
+pub fn power(core: &Ruleset, army: &[ArmyStack], details: Option<&HeroDetails>) -> u64 {
+    let value = army_value(core, army);
     let (attack, defense) = details.map_or((0, 0), |details| attack_defense(details, core));
     let twentieth = X87::ratio(1, 20, DOUBLE_BITS).unwrap_or(X87::ZERO);
     let term = |skill: u8| X87::int(skill.into()).times(twentieth).plus(X87::ONE);

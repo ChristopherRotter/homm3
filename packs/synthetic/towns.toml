@@ -24,6 +24,8 @@ week_creature_bonus = 4            # the original's 5
 garrison_week = { odds = [30, 70], out_of = 100, weights = [2, 3, 4], weeks = 6, upgrade = 10 }
 most_heroes = 8
 hire_price = { coin = 2000 }       # TWN-TAV-003 (E09 T36); the original's 2 500 gold
+guild_resources = [["coin"], ["shard"], []] # TWN-TAV-008 (E09 T39b1): the Thieves' Guild's
+                                   # rows 2 to 4 (the original's gold, wood and ore, the rare)
 
 [[town]]
 faction = "vale"

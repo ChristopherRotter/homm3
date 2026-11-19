@@ -332,6 +332,29 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
      `settle` and `hiring` only (their maps lay out no Tavern; `check_legal` is T40's when a plan
      lays one out).
 
+### Decisions at T39b's start (2026-11-19, the user; TWN-Q26)
+
+151. **T39b cut in two** (recommended; `AskUserQuestion`): **T39b1** the Thieves' Guild as a query
+     (TWN-TAV-007 to -009, TD-23, `TWN-QUIRK-13`'s test, `TWN-STUB-17`, `-18`), **T39b2** the Den
+     of Thieves' visit (the adventure's outcome, `ThievesGuildSeen`, `TWN-STUB-20` lifted) with
+     the whole protocol (v74: the guild's request and the events, the fold), each its own pull
+     request, one a session; `cross-lane` consented for both (the adventure lane's power, the
+     day's gold, the visit's outcome; the server lane's protocol). Not chosen: the request with
+     T39b1 (v74, then v75 for the events); whole as queued.
+152. **The guild's resource rows a town-part parameter** (the user, against the agent's
+     recommendation): `[town_params]`'s `guild_resources`, three lists of core resources (part
+     v8; the harvester's gap-fill gives `RESTYPES.TXT`'s indexes, `cross-lane`), the goldens'
+     `town_ruleset_hash` moved. Not chosen: the rows by the core's resource order (the original's
+     indexes in code, no version), the agent's recommendation.
+153. *Agent's calls at T39b1 (change freely; design §73's As built):* a row's places by player
+     id (each player's place, dense); `thieves_guild_at` without the viewer (the view is the same
+     for every viewer of a level); the parts `GuildHero { hero_type, skills }` and `GuildPlayer
+     { hero, creature }`; the best creature from 0 as the best hero (read at T39b1), a stack of
+     count 0 skipped; the towns in `TownId` order (the original's town list's); sums saturating
+     in u64; `TWN-QUIRK-13` off counting every worn position's artifact; the tavern count to 5 a
+     sibling of the popup's; the income without the week's resources; `h3_heroes::primary_skills`
+     beside `attack_defense`; the tests on the hire tests' game.
+
 ### Exit criteria (accepted at `TWN-Q18`, decision 121; design note §80)
 
 1. The town part's tavern weights and the hire's price compile (part v7); each player's faction
@@ -374,7 +397,7 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
   glossary, `docs/06-security.md`: done 2026-11-16 (`TWN-Q19`, decisions 125–128: the marks cleared
   at every day's start, every record's day's spell points; the drafts deleted; `E09-log.md`).
   **T35b** `StreamId::TAVERNS`, the two quirk flags, the packs and the replays' hashes: done
-  2026-11-17 (whole, decisions 129, 131; the base faithful hash 0x6ba8109889b34a25; `E09-log.md`). **T36** the town part v7 (round 4): done 2026-11-17 (whole, decisions 130, 132; `E09-log.md`). **T37** T37a the pool, the draw and the fills, the turn's points and marks, the views and the protocol: done 2026-11-17 (whole, decisions 133–136; game state hash v33, protocol v70; `E09-log.md`); T37b the map's customised types: done 2026-11-17 (whole, decisions 137–139; map import v25; `E09-log.md`). **T38** T38a the town's hire and the replacement, cut in two at its start (decision 140): T38a1 the hire's rule, the replacement, `HeroHired` and its parts, the protocol and the replay word: done 2026-11-17 (decisions 140–142; protocol v71, replay format v17; `E09-log.md`); T38a2 the hire listed (the legal commands, the env's `TAVERN_HIRE` v12, the plans, the town-map seeds, the benches): done 2026-11-18 (whole, decisions 143, 144; action encoding v12; `E09-log.md`); T38b cut in two at its start (decision 145): T38b1 the leaves and the returns (every leave by a battle or a capture, TWN-TAV-006, TD-18, TD-19, T-16): done 2026-11-18 (decision 146; `E09-log.md`); T38b2 the dismissal (`Manage::Dismiss`, its refusals, the listing, the plans): done 2026-11-18 (whole, decisions 147, 148; replay format v18, protocol v72; `E09-log.md`). **T39** T39a the map's Tavern and the Den of Thieves with the tavern decision: done 2026-11-18 (whole, decisions 149, 150; map import v26, the adventure part v22, game state hash v34, replay format v19, action encoding v13, protocol v73; `E09-log.md`); T39b the Thieves' Guild with the Den's visit (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
+  2026-11-17 (whole, decisions 129, 131; the base faithful hash 0x6ba8109889b34a25; `E09-log.md`). **T36** the town part v7 (round 4): done 2026-11-17 (whole, decisions 130, 132; `E09-log.md`). **T37** T37a the pool, the draw and the fills, the turn's points and marks, the views and the protocol: done 2026-11-17 (whole, decisions 133–136; game state hash v33, protocol v70; `E09-log.md`); T37b the map's customised types: done 2026-11-17 (whole, decisions 137–139; map import v25; `E09-log.md`). **T38** T38a the town's hire and the replacement, cut in two at its start (decision 140): T38a1 the hire's rule, the replacement, `HeroHired` and its parts, the protocol and the replay word: done 2026-11-17 (decisions 140–142; protocol v71, replay format v17; `E09-log.md`); T38a2 the hire listed (the legal commands, the env's `TAVERN_HIRE` v12, the plans, the town-map seeds, the benches): done 2026-11-18 (whole, decisions 143, 144; action encoding v12; `E09-log.md`); T38b cut in two at its start (decision 145): T38b1 the leaves and the returns (every leave by a battle or a capture, TWN-TAV-006, TD-18, TD-19, T-16): done 2026-11-18 (decision 146; `E09-log.md`); T38b2 the dismissal (`Manage::Dismiss`, its refusals, the listing, the plans): done 2026-11-18 (whole, decisions 147, 148; replay format v18, protocol v72; `E09-log.md`). **T39** T39a the map's Tavern and the Den of Thieves with the tavern decision: done 2026-11-18 (whole, decisions 149, 150; map import v26, the adventure part v22, game state hash v34, replay format v19, action encoding v13, protocol v73; `E09-log.md`); T39b cut in two at its start (decision 151): T39b1 the Thieves' Guild as a query (TWN-TAV-007 to -009, TD-23, `TWN-QUIRK-13`, `TWN-STUB-17`, `-18`; its resource rows the town part's, decision 152): done 2026-11-19 (decisions 151–153; town part v8; `E09-log.md`); T39b2 the Den's visit and the protocol (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
 
 ## Risks
 

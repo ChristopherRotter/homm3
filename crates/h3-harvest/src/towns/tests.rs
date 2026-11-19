@@ -50,6 +50,10 @@ most_heroes = 8
 sources = ["s"]
 hire_price = 2500
 
+[towns.guild]
+sources = ["s"]
+resources = [[6], [0, 2], [1, 3, 4, 5]]
+
 [towns.params]
 sources = ["s"]
 gold = "Gold"
@@ -349,7 +353,9 @@ fn harvests_the_town_files_that_compile() {
         "capitol_demoted_to = \"city_hall\"\nvisions_factor = 3\nvisions_min_radius = 2\n\
          week_creature_chance = [1, 4]\nweek_creature_bonus = 5\n\
          garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], weeks = 8, \
-         upgrade = 5 }\nmost_heroes = 8\nhire_price = { gold = 2500 }\n"
+         upgrade = 5 }\nmost_heroes = 8\nhire_price = { gold = 2500 }\n\
+         guild_resources = [[\"gold\"], [\"wood\", \"ore\"], [\"mercury\", \"sulfur\", \
+         \"crystal\", \"gems\"]]\n"
     ));
     // The tavern weights (E09 T36): each record's faction column over its pack's closure, a 0
     // left out; the ab pack's two classes in the base records by its overrides.
@@ -608,6 +614,11 @@ fn gapfill_town_errors() {
     );
     let e = bad("gold = \"Gold\"", "gold = \"Mithril\"");
     assert!(e.contains("unknown resource `Mithril`"), "{e}");
+    // E09 T39b1: a guild row's index past `RESTYPES.TXT`'s seven, and a resource in two rows.
+    let e = bad("resources = [[6], [0, 2]", "resources = [[7], [0, 2]");
+    assert!(e.contains("the guild's resource 7 is unknown"), "{e}");
+    let e = bad("resources = [[6], [0, 2]", "resources = [[6], [0, 6]");
+    assert!(e.contains("do not compile"), "{e}");
     let e = bad("creatures = [129, 100]", "creatures = [129, 999]");
     assert!(e.contains("unknown Visions creature 999"), "{e}");
     let e = bad("creatures = [129, 100]", "creatures = [129, 129]");

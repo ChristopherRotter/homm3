@@ -94,8 +94,9 @@ impl AdventureState {
     /// town epic's design note §53; survey `E08-economy.md` §8.1 point 3, `player_daily_income`
     /// 0x4B8C32): of each town it owns, in `TownId` order, its garrison hero's army if one stands
     /// there, else the town's garrison (empty while a garrison hero stands, TWN-ROW-002). The
-    /// week's resources read them beside its heroes' armies ([`Self::income`]).
-    pub(crate) fn upper_bars(&self, player: PlayerId) -> impl Iterator<Item = &[ArmyStack]> {
+    /// week's resources read them beside its heroes' armies ([`Self::income`]); since E09 T39b1
+    /// public, the Thieves' Guild's army row and best creature read them too (TWN-TAV-008, -009).
+    pub fn upper_bars(&self, player: PlayerId) -> impl Iterator<Item = &[ArmyStack]> {
         (0..=u16::MAX)
             .map(TownId::new)
             .zip(self.map().towns())

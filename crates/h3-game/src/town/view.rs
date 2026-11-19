@@ -336,6 +336,20 @@ pub(crate) fn tavern_level(
     part: &TownRuleset,
     viewer: PlayerId,
 ) -> u8 {
+    tavern_count(adventure, towns, part, viewer, TAVERN_LEVELS)
+}
+
+/// The number of `viewer`'s own towns with a standing Tavern, at most `most` (`player_tavern_count`
+/// 0x4CCE30: the popup's level stops at [`TAVERN_LEVELS`], the Thieves' Guild's at
+/// [`crate::GUILD_LEVELS`], TWN-TAV-007).
+// rule: TWN-VEW-002, TWN-TAV-007
+pub(crate) fn tavern_count(
+    adventure: &AdventureState,
+    towns: &Towns,
+    part: &TownRuleset,
+    viewer: PlayerId,
+    most: u8,
+) -> u8 {
     let count = adventure
         .map()
         .towns()
@@ -344,9 +358,9 @@ pub(crate) fn tavern_level(
         .filter(|&(&index, _)| adventure.owner(index) == Some(viewer))
         .filter_map(|(_, town)| towns.get(town))
         .filter(|town| h3_towns::has_tavern(town, part))
-        .take(usize::from(TAVERN_LEVELS))
+        .take(usize::from(most))
         .count();
-    u8::try_from(count).unwrap_or(TAVERN_LEVELS)
+    u8::try_from(count).unwrap_or(most)
 }
 
 /// The garrison `army` (by slot) as `level` shows it, its slots to the owner's team (`ours`).

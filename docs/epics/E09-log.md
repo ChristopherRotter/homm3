@@ -4964,3 +4964,53 @@ game state hash v34. The agent's calls: decision 150.
   then clean. The tests of `h3-cli`, `h3-files`, `h3-sim`, `h3-protocol` and `h3-server` and
   `cargo clippy --workspace --all-targets` on their own. `master` merged in once (docs only:
   the lanes' inboxes, E08 T127b's planned versions, which this task takes first).
+
+### T39b1 — the Thieves' Guild as a query, its resource rows the town part's (2026-11-19)
+
+Baseline 450e47e (#1030, #1031, #1032 merged; CI's runs on `master` standing in: the setup's
+baseline died with a VM restart before its first step). The user's computer was connected at the
+start only: 28 files staged (the four LODs, both executables, the five DLLs, both `.snd`,
+`H3ab_ahd.vid`, `battle-videos.vid`, both tars, the saves, the three manuals, two help files;
+SHA-256 checked). At the start the user cut T39b in two (decision 151; the agent's
+recommendation) and consented to `cross-lane` for both halves; during the build the user put the
+guild's resource rows in the town part (decision 152, over the agent's recommendation).
+
+- **The guild** (design §73's As built; TWN-TAV-007 to -009): `h3-game`'s `town/thieves.rs`,
+  `thieves_guild` (in the viewer's turn by its towns' Taverns, counted to `GUILD_LEVELS` 5, or at
+  a map Tavern's open decision at that count, 0 without one) and `thieves_guild_at` (the rows the
+  level shows as places by player id; the parts by the level). The rows' values: the towns by the
+  adventure's owners, the heroes on the map, the three resource rows of the part's
+  `guild_resources`, the obelisks 0 (`TWN-STUB-17`), the artifacts under `TWN-QUIRK-13`, the army
+  (`h3_adventure::power` of each hero on the map plus `army_value` of each own town's upper bar,
+  TD-23), the income (`GameState::day_income`'s gold without the week's resources). The parts:
+  the best hero by power from 0, its `h3_heroes::primary_skills` clamped to 99 from level 2, the
+  best creature from level 4 over the towns' upper bars then the heroes' armies from 0 (read at
+  T39b1: 0x5DE992's best starts at 0, `jle`; a stack of count 0 skipped); no tactic
+  (`TWN-STUB-18`). Read again: `thieves_guild_row_value`'s resource cases (player +0x9C the
+  treasury: gold index 6, wood and ore 0 and 2, the rest 1 and 3 to 5).
+- **The town part v8** (decision 152): `TownParamsDef::guild_resources` /
+  `TownParams::guild_resources`, three rows of core resources, each resource in at most one row,
+  each row in the core's order (a `BTreeSet`: logic crates sort nothing); hashed after the hire's
+  price; the pins moved. `h3-pack-towns` parses `guild_resources = [[…], […], […]]`; the
+  synthetic pack's coin, shard and none; the base pack's harvested (`h3-harvest`, `cross-lane`:
+  the gap-fill's `[towns.guild]` with `RESTYPES.TXT`'s indexes and its source
+  `exe-thieves-guild`, written as the keys; a harvest test for an unknown index and a resource
+  given twice). The regenerated packs moved by that one line.
+- **`cross-lane`:** `h3_adventure::army_value` (split out of `power`) and `power` public
+  (`answer.rs`, `lib.rs`); `h3_heroes::primary_skills` (`derive.rs`, with a test); the game's
+  `day_income` factored out of `pay_income` (`state/day.rs`); the catalog's ADV-MON-007 and
+  HER-ADV-001 a sentence each; `packs/README.md`'s towns row; the 98 goldens'
+  `town_ruleset_hash` 0xabc9756b93a29a55 to 0xab3ee3f1cb243f30 (one re-recorded from its
+  commands to read the value, then the line replaced in all; nothing else moves: the guild
+  changes no state). `AdventureState::upper_bars` public (the town lane's `town.rs`).
+- **Catalog:** TWN-TAV-007 to -009 written `verified` (the code reading and batch TWN-4's
+  TWN-4-7; the map Tavern's level 0 on the reading alone); `TWN-QUIRK-13`'s regression test;
+  `TWN-STUB-17`, `-18` registered, `TWN-STUB-20`'s reason pointing at T39b2.
+- **Tests:** `town/tests/hire/thieves.rs` (nine, on the hire tests' game with the core edited by
+  the hire tests' new `rules_in_core`: the query's turn, Tavern and count to five; the map
+  Tavern's level 0 and its close; each level's rows and parts and the Den's; the places; each
+  row's value, the income against the next day's payment, the resource rows by moving the one
+  test resource between them; a garrison hero by its town's army; the first of two equal heroes,
+  a greater replacing, Attack 110 shown as 99, every creature worth 0; the best creature from the
+  towns, then the heroes; `TWN-QUIRK-13` both ways), `h3-towns`' rows and hash, `h3-pack-towns`'
+  synthetic and original rows.
