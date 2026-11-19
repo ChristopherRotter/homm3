@@ -9,6 +9,7 @@ use alloc::collections::BTreeMap;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
+use h3_render::Bugs;
 use h3_ui::text::{Args, Catalogue};
 use h3_ui::ui::{Draw, Item, Shown, State};
 
@@ -56,6 +57,9 @@ pub mod id {
     pub const AMOUNTS: u16 = 1001;
     /// The resource bar's date.
     pub const DATE: u16 = 1008;
+    /// The resource bar's amounts in the small font, the first of seven (E24 M4 T3b1, MCL-Q15
+    /// (b)): an amount wider than its box.
+    pub const WIDE_AMOUNTS: u16 = 1016;
     /// The status bar (E24 M3 T6a1: its text the hint).
     pub const STATUS_BAR: u16 = 200;
     /// The chat's edit, over the status bar (0x5541A0; not drawn while not editing).
@@ -242,20 +246,28 @@ pub const KEYS: [&str; 5] = [
     "word.day",
 ];
 
+/// The characters an amount's box holds in its font (E24 M4 T3b1, MCL-Q15): 50 pixels, seven of
+/// `smalfont.fnt`'s 7-pixel digits (the original cuts an eighth, design §4.7).
+pub const AMOUNT_FITS: usize = 7;
+
 /// What the resource bar shows (design §4.1, §4.7): its picture in the viewer's colours
 /// (0x558C99); each of the kingdom's seven amounts by the key `map.resources.amount` (0x558F55)
 /// and the date by `map.resources.date` with the words `word.month`, `word.week` and `word.day`
-/// (0x558F8B), in `texts`.
+/// (0x558F8B), in `texts`. An amount wider than its box (more than [`AMOUNT_FITS`] characters:
+/// the engine's treasury reaches 2³¹ − 1) shows whole in the small font's item of its place
+/// instead (`tiny.fnt`'s 5-pixel digits: ten fit; MCL-Q15 (b), *provisional*, M4's review
+/// list); with `bugs` the original's, its line cut at the box.
 #[must_use]
-pub fn resource_bar(layout: &AdventureLayout, live: &Live, texts: &Catalogue) -> Shown {
+pub fn resource_bar(layout: &AdventureLayout, live: &Live, texts: &Catalogue, bugs: Bugs) -> Shown {
     let kingdom = &live.kingdom;
-    let mut shown_texts: BTreeMap<u16, _> = (id::AMOUNTS..)
-        .zip(kingdom.resources)
-        .map(|(id, amount)| {
-            let args = Args::new().number("amount", i64::from(amount));
-            (id, texts.text("map.resources.amount", &args))
-        })
-        .collect();
+    let mut shown_texts = BTreeMap::new();
+    for (place, amount) in (0u16..).zip(kingdom.resources) {
+        let args = Args::new().number("amount", i64::from(amount));
+        let text = texts.text("map.resources.amount", &args);
+        let wide = bugs == Bugs::Fixed && text.chars().count() > AMOUNT_FITS;
+        let id = if wide { id::WIDE_AMOUNTS } else { id::AMOUNTS };
+        shown_texts.insert(id + place, text);
+    }
     let date = kingdom.date;
     let word = |key: &str| texts.text(key, &Args::new());
     let args = Args::new()

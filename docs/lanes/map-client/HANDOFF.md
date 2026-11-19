@@ -5,28 +5,24 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1**, **M2**
-  and **M3** closed (`E24-archive.md`); the crate `clients/crates/h3-map-view`; 52 situations and 96
+  and **M3** closed (`E24-archive.md`); the crate `clients/crates/h3-map-view`; 53 situations and 96
   sequences exact on the whole screen (a viewer change runs `h3map.py drawn` first: the runbook,
   "Which captures a change needs"; `--bugs original` the comparisons' profile). **M4** refined
-  (2026-10-31); **Part A done** (2026-11-19): T1a, T1b (T1b1, T1b2), T2 cut in four by the user (T2a
-  the finds told, T2b the questions and choices, T2c a level-up's choice, T2d the map changed by a
-  visit: T2d1 a flag raised, T2d2 a boat boarded and left, T2d3 a spell cast on the map). **T3**
-  cut in two by the user (2026-11-19, the map's view first): **T3a done** (2026-11-19, design
-  §5.9: `h3_map_view::engine`, a whole game's record read, checked against the viewer's rules and
-  the map's import, its start as a capture's live part; `render --record`, `--check`; the
-  engine's starts on `engine-start-owners` and `engine-start-town` equal to the original's;
-  `MCL-STUB-1` a random artifact, dwelling and town). The object identity asked of the adventure
-  lane withdrawn by the user (the same day): objects found by type and anchor; a random
-  artifact's drawn artifact and a random dwelling's class and subclass asked of it (its inbox).
-  **Next: T3b** (the panels, the hover's facts, MCL-Q15 (b), the whole screen, shipped maps);
-  then the inbox's window-sound item (2026-11-19), T4 (has T1b2's gaps), T5 for the client lane's
-  battle entry, T6 the closure. Open questions: **MCL-Q29**, **MCL-Q30** (the new day sounds
-  doubled; (b) recommended), **MCL-Q31**, **MCL-Q32** (two spells in a reward's first box replace
-  the map's text; (b) recommended), **MCL-Q33** (the Arena's Cancel gives +2 Attack; (b)
-  recommended), **MCL-Q34** (the level-up's sentence naming the offers never shows; (a)
-  recommended), **MCL-Q35** (a boarded boat drawn turned; (b) recommended); none blocks. Next ids
-  **MCL-Q36**, **MCL-STUB-2**.
-- **Open pull requests** (2026-11-19): T3a's (`map-client/e24-m4-t3a`): check it first. Merged branches
+  (2026-10-31); **Part A done** (2026-11-19: T1, T2 in their cuts). **T3** cut in two by the user
+  (2026-11-19): **T3a done** (design §5.9: `h3_map_view::engine`, the map's view from a record),
+  **T3b** cut in two by the user (the same day, the panels first; a fact the record lacks an
+  `MCL-Q<n>`, never a rule copied): **T3b1 done** (2026-11-19, design §5.10: the kingdom, the
+  status window, the kingdom's window and `[chosen]` from the record, a town's own name, MCL-Q15
+  (b) as `tiny.fnt`; `h3map.py engine` and `set.toml`'s `engine` entries: `engine-start-panels`
+  exact on the whole screen, `engine-start-town` but MCL-Q36's morale, `engine-start-owners` but
+  the bonus's gold and the morale). **Next: T3b2** (the hover's facts, a town's picture by its
+  buildings, shipped maps; its queue entry's notes from T3b1); then the inbox's window-sound item,
+  T4 (has T1b2's gaps), T5 for the client lane's battle entry, T6 the closure. Open questions:
+  **MCL-Q29**, **MCL-Q30** ((b) recommended), **MCL-Q31**, **MCL-Q32** ((b)), **MCL-Q33** ((b)),
+  **MCL-Q34** ((a)), **MCL-Q35** ((b)), **MCL-Q36** (a hero's morale, luck and whether it can move
+  not in the record; (a) recommended, the adventure and server lanes' inboxes told); none blocks.
+  Next ids **MCL-Q37**, **MCL-STUB-2**.
+- **Open pull requests** (2026-11-19): T3b1's (`map-client/e24-m4-t3b1`): check it first. Merged branches
   are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
@@ -51,6 +47,11 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-19, E24 M4 T3b1** (the user at the start: T3b in two, the panels first; missing facts
+  asked, never copied): the panels from a record's start, MCL-Q15 (b), `h3map.py engine`, three
+  engine situations captured and compared (the log's "M4 T3b1"; MCL-Q36). Original data staged
+  (63 files and the manuals), SHA-256 checked; the PC was not needed after the first minutes.
+  Nothing is waiting on the user's computer.
 - **2026-11-19, E24 M4 T3a** (the user at the start: T3 in two, the map's view first; the object
   identity withdrawn, a random artifact's still asked): `h3_map_view::engine` and `render
   --record`/`--check`, two start situations captured (both exact) and the engine's starts equal to
@@ -64,10 +65,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   viewer built by one worker, every frame exact (the log's "M4 T2d3"). Original data staged (63
   files and the manuals) and a ballast file; the PC's tools went away about 90 minutes in.
   Nothing is waiting on the user's computer.
-- **2026-11-19, E24 M4 T2d2** (the user at the start: big tasks cut only with their consent;
-  T2d2 sized as T2d1 and done whole, the cut after the reading and the recordings the stated
-  fallback): the boarding and the landing read (design §5.7, MCL-Q35), four sequences recorded
-  twice and two sound runs, the viewer built by one worker, every frame exact (the log's "M4
-  T2d2"). The session's server stopped overnight mid-build (the VM restarted, files kept): the
-  worker resumed from its transcript. Original data staged (63 files and the manuals); the PC
-  left about 20 minutes in. Nothing is waiting on the user's computer.

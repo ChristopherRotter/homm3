@@ -19,24 +19,35 @@ context; a task that grows is cut at a seam agreed with the user. Code readings 
 (`clients/capture/README.md`), never in git. Every oddity of the original a reading or a capture
 finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
-### E24 M4 T3b — a record's start: the panels and the whole screen
+T3b, the rest of a record's start through T3a's adapter, was cut in two by the user at its start
+(2026-11-19): the panels first (T3b1, **done** 2026-11-19: its entry in `QUEUE-ARCHIVE.md`, the
+log's "M4 T3b1", design §5.10; MCL-Q36 asked), then T3b2. A fact the record's first observation
+lacks becomes an `MCL-Q<n>` with a note in the engine lane's inbox, its gap shown in the
+comparison, never a rule copied into the client (the user, the same day).
 
-- **Scope:** the rest of a record's first observation through T3a's adapter: the kingdom (the
-  heroes' portraits, movement, mana and whether each can move, the towns, the resources, the
-  date), a hero's status, the hover's facts (increment 9's views: the owners, visited marks, a
-  mine's production), a town's own name from the map. MCL-Q15 (b): an amount past the bar's seven
-  digits written so that it fits (its form a review item), the original's behind `--bugs
-  original`. The check: the engine's start drawn as the original's on the whole screen, on the
-  writer's maps and the shipped maps both play without a random draw in sight, a situation from
+### E24 M4 T3b2 — a record's start: the hover, the towns' pictures, the shipped maps
+
+- **Scope:** the hover's facts from the observation (increment 9's views: the owners, visited
+  marks, a mine's production; the words, the towns' and heroes' ids, the teams, the guarded
+  tiles), a town's picture by its faction and buildings from its view. The check: the engine's
+  start drawn as the original's on the whole screen with the pointer over the map, on the
+  writer's maps and on shipped maps both play without a random draw in sight, a situation from
   each.
 - **Acceptance:** the starts equal to the original's on the whole screen; `drawn` all the same;
   `check.sh` all gates.
-- **Also** (`MCL-STUB-1`, T3a's): a random artifact's, dwelling's and town's drawn picture: the
-  adventure lane's answer to this lane's note of 2026-11-19 (a random artifact's drawn artifact
-  in its view; a drawn dwelling's class and subclass), a town's picture by its faction and
-  buildings from its view.
-- **Depends on:** T3a (**done** 2026-11-19: `h3_map_view::engine`, `render --record`, design
-  §5.9). **Status:** next.
+- **Also** (`MCL-STUB-1`, T3a's): a random artifact's and dwelling's drawn picture, the adventure
+  lane's answer to this lane's note of 2026-11-19 (a random artifact's drawn artifact in its view;
+  a drawn dwelling's class and subclass).
+- **Notes from T3b1** (design §5.10, TRAPS): a town's picture needs its standing buildings by the
+  game's ids, the view's by its faction's record (the packs' keys and editor `slot`s, the map's
+  bits to the game's ids by `map_building_ids` 0x6888C0, the Village Hall and the hordes'
+  upgrades without a slot); a player's town list at a shipped map's start is not in the towns'
+  order (`shipped-hoard`'s [9, 3]: the main town first?); a shipped map's heroes draw their armies
+  and the starting bonus draws (no `map_army` there): `bonus = "gold"` and the differences each
+  draw leaves, or maps whose heroes the map arms.
+- **Depends on:** T3b1 (**done** 2026-11-19: the panels from the record, `h3map.py engine` and
+  `set.toml`'s `engine` entries, the staging's `map_army`, names, `bonus`, `reselect`; design
+  §5.10). **Status:** next.
 
 ### E24 M4 T4 — a record played
 

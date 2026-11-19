@@ -1896,7 +1896,7 @@ fn the_status_window_over_time() {
     // A town selected: its window (a hero's window as the selection's with a town selected is
     // left as it is).
     let town = crate::live::TownStatus {
-        name: 3,
+        name: crate::live::TownName::Record(3),
         buildings: 0,
         garrison: false,
         army: [None; 7],

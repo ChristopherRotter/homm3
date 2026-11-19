@@ -796,6 +796,72 @@ fn refuses_heroes_and_boats_it_cannot_write() {
 }
 
 #[test]
+fn names_and_armies_in_the_map_and_the_engine_s_staging() {
+    // E24 M4 T3b1 (design §5.10): a hero's name and army written into the map, a town's name
+    // (the writer's town of any kind), a reselection after a hero's selection, the Gold bonus.
+    let castle = ObjectTemplate::from_objects_txt(&format!(
+        "avccast0.def {} {} 111111111 111111111 98 0 0 0",
+        "1".repeat(48),
+        "0".repeat(47) + "1"
+    ))
+    .unwrap();
+    let text = |hero: &str, rest: &str| {
+        format!(
+            "size = 36\nterrain = \"grass\"\nview = [0, 0, 0]\nheroes = [{{ at = [4, 4]{hero} }}, \
+             {{ at = [6, 6] }}, {{ at = [9, 9], owner = 1 }}]\ntowns = [{{ at = [20, 20], faction \
+             = 0, owner = 0, buildings = \"fort\", name = \"Brightmoor\" }}]\n{rest}"
+        )
+    };
+    let build = |hero: &str, rest: &str| {
+        Situation::parse(&text(hero, rest))
+            .unwrap()
+            .build(&BTreeMap::new(), core::slice::from_ref(&castle))
+    };
+    let (map, _) = build(
+        ", name = \"Quillon\", map_army = [[28, 20], [30, 2]]",
+        "bonus = \"gold\"\nselect = { hero = [6, 6] }\nreselect = [4, 4]",
+    )
+    .unwrap();
+    let hero = map
+        .objects
+        .iter()
+        .find_map(|o| match o {
+            MapObject::Hero(h) if h.tile == (4, 4) => Some(h),
+            _ => None,
+        })
+        .unwrap();
+    assert_eq!(hero.name.as_deref(), Some("Quillon"));
+    let mut army = [None; ARMY_SLOTS];
+    (army[0], army[1]) = (Some((28, 20)), Some((30, 2)));
+    assert_eq!(hero.army, Some(army));
+    let town = map
+        .objects
+        .iter()
+        .find_map(|o| match o {
+            MapObject::AnyTown(t) => Some(t),
+            _ => None,
+        })
+        .unwrap();
+    assert_eq!(town.name.as_deref(), Some("Brightmoor"));
+    for (hero, rest, error) in [
+        (
+            ", map_army = [[1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [1, 1]]",
+            "",
+            "more than seven stacks",
+        ),
+        (", map_army = [[1, 0]]", "", "an empty one"),
+        (
+            "",
+            "reselect = [4, 4]",
+            "`reselect` without a hero's selection",
+        ),
+    ] {
+        let refused = build(hero, rest).unwrap_err();
+        assert!(refused.contains(error), "{refused}");
+    }
+}
+
+#[test]
 fn the_lists_writes_and_the_selection() {
     // E24 M3 T4a: the harness writes Red's heroes' points and mana and Red's towns' day, then
     // selects Red's hero on its tile (after its walk) or Red's town on its anchor.

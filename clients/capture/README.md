@@ -118,7 +118,15 @@ no Wine needed: from `clients/`, `target/release/h3-map-view situation map/situa
 map/situations/kept/<id>.toml --check`: no difference in the viewer, the explored tiles, the
 objects the view shows (their pictures and owners) and the heroes and boats on explored tiles
 (`engine-start-owners`, `engine-start-town`). Without `--check` it draws the start (the record's
-map view over the capture's live part).
+map view over the capture's live part). Since E24 M4 T3b1 (design §5.10) the panels too (the
+kingdom, the status window, the kingdom's window, `[chosen]`), and `python3 capture/h3map.py
+engine [--only <id>]` runs all of it for the situations of `set.toml` with an `engine` entry
+(after `cargo build -p h3-cli -p h3-server` in the root workspace; `H3_ENGINE` names another
+directory of the two): the check against the kept live part and the whole screen against ours at
+the kept live part, each as the entry expects (`differs`: the check's differences, `pixels`: the
+differing count; `{}` exact). A comparison of the panels gives its heroes' armies in the map
+(`map_army`: the new game draws none), `bonus = "gold"` (no artifact from the starting bonus) and
+the engine's `resources` written, shown by a `select` and a `reselect` of the start's hero.
 
 **The shell's screens** (E27 M2 T4) follow them too: `python3 capture/h3shell.py drawn` (no Wine;
 seconds) plays every recipe in the viewer and compares each shot with the original's kept digest
