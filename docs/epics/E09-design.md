@@ -2803,6 +2803,27 @@ the hygiene (a hire told ends the comparison). No protocol, replay or hash versi
   T38b2's (`check_town_builds`, the dismissal's probes), the room by a town's hire
   `check_town_hire`'s; the map Tavern's hire, the taverns map, its replays and the benchmarks are
   T40b's.
+- *As built (T40b, decisions 159, 160):* a new fixture, `e09-taverns-36.h3m` (the builds map
+  kept: its replays name it by content hash), written by the writer and its allowed heroes set in
+  the raw model (six free types: two of each player's faction's classes, two alchemists); six
+  scripted replays `taverns-{weeks,hires,retreats,surrenders,dismiss,den}-s1`, each with
+  `taverns_map.rs`' test of its commands (`crates/h3-cli/tests/adventure_replays.rs` lists what
+  each shows). A surrender needs an enemy hero (BAT-FLE-002): the map's golems are retreated
+  from, the surrenders made to blue's heroes; a retreated hero comes back with one creature of
+  its first starting stack, a surrendered one with its army (TWN-TAV-006); blue's hire with no
+  type free leaves its slot empty. The plans (`Plan::taverns`, one plan of three: one of two
+  drained the town cover test's Capitols to 0 by the hires' gold) lay out one or two map Taverns
+  or Dens near the heroes; `check_legal` lists and probes the tavern decision's answers
+  (`tavern_answers`, `check_map_hire`: the hire's tile, room, army, price, `HeroHired`, the
+  decision closed; an unlisted slot refused with the hash), `check_decisions` opens it at
+  `TavernOpened` and closes it as told, `managed` holds no army while it is open,
+  `check_conservation` pays the map hire's price. `check_isolation` needed nothing (a hired hero
+  is any `HeroHired`'s), nor did a stand oracle (`check_stand` is the setup's; a hired hero walks
+  off the Tavern's tile as off any); `check_pool` held over every hire. The cover test
+  `the_plans_hire_at_map_taverns`; the shifted cover cases met a Whirlpool taking creatures a
+  guard's battle raised (`check_heroes_after_battle` subtracts the loss). Benchmarks: the new
+  `week-start-taverns-36` (1 833 609 Ir, master's code); the guild's query timed once in release:
+  1.9 µs on the taverns map, 7.3 µs on `Myth and Legend` (8 players, 21 towns).
 - **Benchmarks:** the week workload (`month-start-builds-36` or the taverns map's) re-baselined
   for the fill's draws; the step's legal commands with the hires; the guild's query timed once
   (not on the step path).
