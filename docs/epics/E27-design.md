@@ -3525,14 +3525,14 @@ Read with `scripts/exe.py` (the begin's path from §3.17 on) and recorded under 
   it and `loadprog.def` (0x699570) and sets the count (0x699574) 0; then, loaded or not, copies the
   picture whole to (0, 0), draws the pieces so far (frame *i* of the DEF's group 0 by
   `def_draw_plain` 0x47BCF0 at (395 + 18 *i*, 548)) and shows the screen whole. Called by Begin's
-  tail (0x58C255, after the busy cursor `mouse_set_cursor(1, 1)` 0x58C21C and a network game's
-  message), the tutorial's start, a network join, 0x45B1E0 and the adventure manager's start
-  (0x407517: the screen drawn again with the count kept).
+  tail (0x58C255, after the busy cursor `mouse_set_cursor(1, 1)` and a network game's message),
+  the tutorial's start, a network join, one more and the adventure manager's start (0x407517:
+  the screen drawn again with the count kept).
 - `load_progress_step` 0x4ED2A0 (read whole): nothing without the DEF; the count one more, at
   most 20 (0x14), the pieces drawn again; with `cl` set the bar's rectangle (395, 548, 358 × 16)
   shown (`screen_show_rect` 0x602BD0, which runs the tick). On the begin's path: `new_game_start`
   4 times (0x58C606, 0x58C64C, 0x58C6D5, 0x58C93F), the map's load (`map_objects_place_all`
-  0x4FD6E3, 0x4FDBC0 twice, `map_objects_check` 0x504470 six times, 0x504B70 five times) and the
+  0x4FD6E3, `map_objects_check` 0x504470 six times, two more of its functions seven times) and the
   adventure manager's start nine times: more than 20, so the bar is full before play. Play frees
   both and sets the count 0 (`game_main` 0x4EFDBA to 0x4EFDEB, after the manager is added), so
   every begin starts empty; a campaign's scenario sets the count 20 at once (0x4EFCB3, E20).

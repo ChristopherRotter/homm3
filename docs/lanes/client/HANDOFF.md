@@ -17,7 +17,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   §29). **T5a and T5b done** (2026-11-19, T5 cut in two: decision 62; the random map's tab, its
   presses and popups, Show Random Maps, Begin's stub `CLT-STUB-12`; CLT-Q146 (b), CLT-Q147 (b):
   decisions 63, 64; `adv-random` and `adv-random-list` exact up to Begin: design §30, §31).
-  **Next: M3 T6** (the queue: confirm its cut at its start), then T7.
+  **T6 done** (2026-11-19, kept whole: decision 65; the begin's setup built and validated by the
+  engine and kept for E24 M5, the loading screen, its fade, play's stub `CLT-STUB-13`; both
+  recipes' new `bar` clip exact: design §32). **Next: M3 T7** (M3's closure, the queue).
   Decisions to carry: the dialogs' input one
   implementation (20; `h3_ui::input`); the shell's code as the battle's (21); decision 22's
   fixes; every pixel of a Smacker clip through its palette (24); every clip's sound at the
@@ -29,7 +31,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   portrait shown (55); a pick named by its own name (56); the name's edit drawn clean (58); the hot seat's handicap caption the player's (60); more names
   than colours never begin in the client's profile (61); the random map's teams 1 and 2 32 high
   (63); the list shown after a random map gives the game its selection (64). Open pull request:
-  T5b's (`client/e27-m3-t5b`): watch it until it merges. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
+  T6's (`client/e27-m3-t6`): watch it until it merges. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
   epic's "Placed at the closure", the queue's inbox). E28 and E29 are backlog sketches.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+
   drafts in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`.
@@ -41,9 +43,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   "E17's leftovers"). `CLT-STUB-1` (a server's seat lacks the other hero's Orb and Cloak),
   `CLT-STUB-4` (no Auto Combat switch in a live game's battle), `CLT-STUB-5` (a hot-seat
   battle between two of the host's humans) and `CLT-STUB-6` (the Multiplayer dialog's network
-  modes), `CLT-STUB-7` and `-8` (Campaign, Tutorial), `CLT-STUB-9` (the starting bonus), `CLT-STUB-10` (the handicap), `CLT-STUB-11` (the turn's timer) and `CLT-STUB-12` (the random map's generation) are commented in `docs/stubs.toml` until
+  modes), `CLT-STUB-7` and `-8` (Campaign, Tutorial), `CLT-STUB-9` (the starting bonus), `CLT-STUB-10` (the handicap), `CLT-STUB-11` (the turn's timer), `CLT-STUB-12` (the random map's generation) and `CLT-STUB-13` (play: the game kept for E24 M5) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q148, CLT-STUB-13.
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q148, CLT-STUB-14.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs (`MP3DEC.ASI` there too since 2026-11-17), `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens) and the 40 non-campaign MP3s; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -63,6 +65,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-19, E27 M3 T6 (done; `client/e27-m3-t6`).** The PC's 64 files and the manuals
+  staged (SHA-256 checked). Offered a cut in two, kept whole (decision 65). Read the loading
+  screen, its bar and play's fade; `adv-begin` and `adv-hotseat-begin` played under Wine: their
+  `load` clips start with the full bar faded, so both gained `clip:bar:90` and were recorded again.
+  Built the begin (`Scenario::begun`, `h3-battle-client`'s `begin`: the setup imported, the
+  records applied, validated, kept as `begin::Game`), play's start (`h3_view::shell::play`: the
+  loading screen, the client's steps, the fade, the stub `CLT-STUB-13`). Both `bar` clips exact,
+  every other recipe as recorded. Record: `E27-log.md`, "M3 T6".
 - **2026-11-19, E27 M3 T5b (done; `client/e27-m3-t5b`).** The PC's 64 files and the manuals
   staged (SHA-256 checked). Kept whole; CLT-Q146 answered (b) at the start (its frames checked: 32
   high). Read the list's kind, the empty list's tests, Begin's random path; recorded `adv-random`
@@ -76,10 +86,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `scenario::random` and the screen's tab (the choices, the caps, the record in the panel, the
   layout's items one by one); CLT-Q146 asked (built as the original's). `adv-random` 45 of 52
   exact (T5b's seven left), every other recipe as recorded. Record: `E27-log.md`, "M3 T5a".
-- **2026-11-18, E27 M3 T4b (done; `client/e27-m3-t4b`).** The PC's 64 files and the manuals
-  staged (SHA-256 checked). Kept whole; CLT-Q144 and CLT-Q145 asked and answered at the start.
-  Read the cycle, the handicap's press, the hero's step and clash, Begin's tail; the three
-  hot-seat recipes played under Wine showed the cycle starts after the holder's index (M1's
-  reading corrected). Built the presses and Begin's messages; the box's close keeps the screen
-  as it was. Every shot of the three recipes exact up to the begin, every other recipe as
-  recorded. Record: `E27-log.md`, "M3 T4b".

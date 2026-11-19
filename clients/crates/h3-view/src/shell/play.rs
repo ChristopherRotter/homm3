@@ -25,7 +25,7 @@
 //!   the setup, [`Play::refused`]); its OK ends play with the main menu. A replay stops under it
 //!   ([`Play::noticing`]).
 //!
-//! The busy cursor of Begin's tail (0x58C21C) is not drawn: the loading screen shows no cursor
+//! The busy cursor of Begin's tail (before 0x58C255) is not drawn: the loading screen shows no cursor
 //! (*provisional*: no recording shows the screen before the fade, whose mouse is hidden).
 
 use alloc::string::String;

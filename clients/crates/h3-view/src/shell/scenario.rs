@@ -1769,10 +1769,10 @@ impl Scenario {
         let (records, names) = self.advanced.as_ref().map_or_else(
             || {
                 // No advanced options (no texts): the single player's colour the map's.
-                let mut records = [Record::NEW; 8];
-                if let Some(c) = map.local {
-                    records[usize::from(c & 7)].colour = Some(c);
-                }
+                let records = core::array::from_fn(|c| Record {
+                    colour: map.local.filter(|&l| usize::from(l & 7) == c),
+                    ..Record::NEW
+                });
                 (records, Default::default())
             },
             |a| a.begun(&map),
