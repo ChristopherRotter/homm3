@@ -745,13 +745,15 @@ fn a_stub_s_screen_is_its_menu_opened_anew_under_its_notice() {
             None
         );
     }
-    // A stub without its notice opens nothing (the frame's stand-in).
+    // A stub without its notice opens nothing (the frame's stand-in); neither does a screen no
+    // longer a stub (the credits since E27 M4 T2).
+    assert_eq!(all.opened(Screen::Credits, [0, 0], Hovers::default()), None);
     let without = Menus {
         notices: Vec::new(),
         ..all
     };
     assert_eq!(
-        without.opened(Screen::Credits, [0, 0], Hovers::default()),
+        without.opened(Screen::Tutorial, [0, 0], Hovers::default()),
         None
     );
 }

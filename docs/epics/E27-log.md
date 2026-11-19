@@ -1626,5 +1626,10 @@ Kept whole (no seam needed).
   (95 recipes, 688 of 1011 shots drawn, 680 exact) every other recipe as recorded; both credits
   recipes recorded. The window checked under Xvfb: C opens the credits, F4 goes on, the scroll
   to its closing text and the main menu at its end, Space, a left and a right press end it.
+- **Gates:** `h3-view`'s and `h3-ui`'s coverage 100% of lines and regions but `book.rs` 138-143
+  (CI's first run found a region the local one did not list: the `?` of a stub without its
+  notice, its test's screen the credits; the test takes the tutorial now); `check.sh
+  --no-coverage` all gates passed; `gate` ok; the scoped verify with the original data no failing
+  step; T1b's #1060 merged meanwhile, the branch rebased onto `master`.
 - **Questions:** none new. **The agent's calls** (*provisional*: M4's review list items 10 to
   13; the key's pixel taken as a drawing bug, CLT-Q138's class).
