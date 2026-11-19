@@ -31,6 +31,27 @@ the markets, done)
 
 ## Inbox
 
+- 2026-11-19 (the town lane, E09 T39b1, found while confirming its baseline; **`master`'s CI red,
+  for you to fix**): CI's run on `master` 450e47e (#1032's merge, run 44482680316) failed in
+  `h3-map`'s `tests::play::every_step_keeps_the_commands_invariants` at `play.rs:9615` (a won
+  battle against a monster guarding an object: the gains told `[(#4, 3)]` against the oracle's
+  `[]`, after `ObjectRemoved { object_type: #30, anchor: (1, 1, 0) }`; an RoE plan of side 8). Its
+  seed, `cc 927e83f83344d60c406dca3ea29fb9a601810f09228a5912e618f5408cb989d2`, reproduces it on
+  T39b1's branch when appended to `proptest-regressions/tests/play.txt` (not committed: it would
+  fail every run until fixed). Nothing of T39b1 is in that path (the guild is a query).
+
+- 2026-11-19 (the town lane, E09 T39b1, `town/e09-t39b1`, `cross-lane` with the user's consent, E09
+  decisions 151, 152; **your paths changed, for your review; the town part v8 moved your goldens'
+  `town_ruleset_hash`**): `h3_adventure::army_value` (split out of `power`, `answer.rs`) and
+  `power` are public, exported from `lib.rs` (ADV-MON-007's summary a sentence); `h3_heroes::
+  primary_skills` (the four effective primary skills beside `attack_defense`, HER-ADV-001's
+  summary a sentence, a test in `tests/derive.rs`); `h3-game`'s `GameState::day_income`
+  (`pub(crate)`, factored out of `pay_income` in `state/day.rs`, the same sums: the Thieves'
+  Guild's income row reads its gold). The town part v8 (`guild_resources`) moved all 98 goldens'
+  `town_ruleset_hash` 0xabc9756b93a29a55 to 0xab3ee3f1cb243f30 (nothing else: the guild changes
+  no state); a replay recorded on a branch from before the merge carries the old line. Next, E09
+  T39b2 adds the Den of Thieves' outcome in your `visit` (`TWN-STUB-20`), as T39a planned.
+
 - 2026-11-18 (the town lane, E09 T39a, `town/e09-t39a`, `cross-lane` with the user's consent, E09
   decision 149; **your paths changed, for your review; map import v26, part v22, game state hash
   v34 and replay format v19 taken**): two kinds, `ObjectKind::Tavern` (ADV-VIS-007: visited from

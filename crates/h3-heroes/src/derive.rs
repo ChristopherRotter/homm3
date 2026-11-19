@@ -407,6 +407,22 @@ pub fn attack_defense(details: &HeroDetails, ruleset: &Ruleset) -> (u8, u8) {
     (value(PrimarySkill::Attack), value(PrimarySkill::Defense))
 }
 
+/// The hero's four primary skills as the adventure map reads them (HER-ADV-001, E09 T39b1), in
+/// [`PrimarySkill`] order: each effective value as [`attack_defense`] takes Attack's and
+/// Defense's (the original's +0x476 to +0x479, which the Thieves' Guild shows clamped to 0–99,
+/// TWN-TAV-009). A ruleset without hero parameters takes the base values, as [`attack_defense`]
+/// does.
+pub fn primary_skills(details: &HeroDetails, ruleset: &Ruleset) -> [u8; 4] {
+    // rule: HER-ADV-001
+    PrimarySkill::ALL.map(|skill| {
+        ruleset
+            .hero_params()
+            .map_or(details.primary[skill.index()], |params| {
+                effective_primary(details, ruleset, params, skill)
+            })
+    })
+}
+
 /// The hero's Power as the adventure map reads it (HER-ADV-001, E09 T8c2: the towns' Visions,
 /// TWN-VEW-003): its effective value as [`attack_defense`] takes Attack's and Defense's, the
 /// original's +0x478, which `hero_visions_reach` 0x4E5E10 holds to 1–99 (the original packs'

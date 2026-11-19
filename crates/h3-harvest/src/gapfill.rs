@@ -73,6 +73,20 @@ pub struct Towns {
     pub rows: TownRows,
     /// The tavern's parameter (E09 T36, design §60).
     pub tavern: TownTavern,
+    /// The Thieves' Guild's parameter (E09 T39b1, design §73).
+    pub guild: TownGuild,
+}
+
+/// The Thieves' Guild's `[town_params]` (E09 T39b1, design §73, decision 152; survey
+/// `E09-tavern.md` §6, §13): the resources its rows 2 to 4 sum, by `RESTYPES.TXT`'s index (the
+/// treasury's, as `thieves_guild_row_value` 0x5DEE70 reads it), written as the resources' keys.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownGuild {
+    /// Source ids.
+    pub sources: Vec<String>,
+    /// Each row's resources by index.
+    pub resources: [Vec<usize>; 3],
 }
 
 /// The tavern's `[town_params]` (E09 T36, design §60; survey `E09-tavern.md` §3): the hire's
@@ -1088,6 +1102,7 @@ impl GapFill {
                         .chain(&t.growth.sources)
                         .chain(&t.rows.sources)
                         .chain(&t.tavern.sources)
+                        .chain(&t.guild.sources)
                         .chain(t.role.iter().flat_map(|r| &r.sources))
                 }));
         for r in refs {

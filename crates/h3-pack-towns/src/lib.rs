@@ -38,6 +38,9 @@
 //!                                  # while its owner has fewer heroes on the map (>= 1)
 //! hire_price = { gold = 2500 }     # TWN-TAV-003 (E09 T36): a hero's price at a tavern, each
 //!                                  # resource >= 1, empty for free
+//! guild_resources = [["gold"], ["wood", "ore"], ["mercury", "sulfur", "crystal", "gems"]]
+//!                                  # TWN-TAV-008 (E09 T39b1): the resources the Thieves'
+//!                                  # Guild's rows 2 to 4 sum, each in at most one row
 //!
 //! [town_visions]                   # optional, in any pack (E09 T8c2): creatures that give
 //! creatures = ["rogue"]            # their hero Visions at its expert level for the towns
@@ -219,6 +222,7 @@ struct ParamsDto {
     garrison_week: GarrisonWeekDto,
     most_heroes: u8,
     hire_price: BTreeMap<String, u32>,
+    guild_resources: [Vec<String>; 3],
 }
 
 #[derive(Deserialize)]
@@ -380,6 +384,16 @@ fn weights(pack: &str, weights: BTreeMap<String, u8>) -> Result<Vec<(ContentKey,
 }
 
 /// Amounts of resources (a silo's, a cost) as written, their keys resolved.
+/// The Thieves' Guild's resource rows as written, their keys resolved.
+fn guild_resources(pack: &str, rows: [Vec<String>; 3]) -> Result<[Vec<ContentKey>; 3], KeyError> {
+    let [gold, common, rare] = rows.map(|row| {
+        row.iter()
+            .map(|resource| reference(pack, resource))
+            .collect::<Result<Vec<_>, _>>()
+    });
+    Ok([gold?, common?, rare?])
+}
+
 fn amounts(pack: &str, amounts: BTreeMap<String, u32>) -> Result<Vec<(ContentKey, u32)>, KeyError> {
     amounts
         .into_iter()
@@ -499,6 +513,7 @@ pub fn parse_towns(manifest: &PackManifest, text: &str) -> Result<TownPack, Town
                 },
                 most_heroes: p.most_heroes,
                 hire_price: amounts(pack, p.hire_price)?,
+                guild_resources: guild_resources(pack, p.guild_resources)?,
             })
         })
         .transpose()?;

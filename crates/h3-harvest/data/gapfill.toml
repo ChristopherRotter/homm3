@@ -3914,6 +3914,13 @@ url = "docs/rules/surveys/E09-tavern.md"
 retrieved = "2026-11-15"
 
 [[source]]
+id = "exe-thieves-guild"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/rules/surveys/E09-tavern.md 6 and 13; E09-design.md 73): thieves_guild_row_value 0x5DEE70 ranks row 2 by the treasury's gold (player +0xB4, index 6), row 3 by wood and ore (+0x9C and +0xA4, indexes 0 and 2) and row 4 by mercury, sulfur, crystal and gems (+0xA0, +0xA8, +0xAC, +0xB0, indexes 1, 3, 4 and 5)"
+url = "docs/rules/surveys/E09-tavern.md"
+retrieved = "2026-11-19"
+
+[[source]]
 id = "exe-town-rows"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/rules/surveys/E09-growth.md 9): the town screen's garrison hero out (town_garrison_click 0x5D4C10's case 8, town_hero_out_click 0x5D5220) is refused while the owner has 8 heroes on the map (the player record's count +1; GENRLTXT 19); VCMI 1.7.5 refuses at the map's heroes cap"
@@ -3992,6 +3999,13 @@ most_heroes = 8
 [towns.tavern]
 sources = ["exe-hero-price"]
 hire_price = 2500
+
+# The Thieves' Guild's [town_params] (TWN-TAV-008, E09 T39b1, design §73, decision 152): the
+# resources its rows 2 to 4 sum, by RESTYPES.TXT's index (gold; wood and ore; the rare four),
+# written as their keys.
+[towns.guild]
+sources = ["exe-thieves-guild"]
+resources = [[6], [0, 2], [1, 3, 4, 5]]
 
 # Visions for the towns (TWN-VEW-003, E09 T8c2): its expert factor and least radius go into the
 # [town_params], the creatures that give it into their own pack's [town_visions] (the Rogue, AB's).

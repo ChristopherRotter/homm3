@@ -154,6 +154,7 @@ fn params() -> TownParamsDef {
         },
         most_heroes: 8,
         hire_price: vec![(key("t:gold"), 2500)],
+        guild_resources: [vec![key("t:gold")], vec![key("t:wood")], vec![]],
     }
 }
 
@@ -609,11 +610,11 @@ fn the_hash_is_pinned_and_follows_the_content() {
     let (_, again) = compiled();
     assert_eq!(part.content_hash(), again.content_hash());
     assert_eq!(part.content_hash(), hash_of(&part));
-    // The seventh encoding (v7): pinned, so a change of what it covers bumps the version.
-    assert_eq!(part.content_hash(), 0x0f14_27ea_a4ad_9c09);
+    // The eighth encoding (v8): pinned, so a change of what it covers bumps the version.
+    assert_eq!(part.content_hash(), 0x3d80_d09f_24b4_1949);
     assert_eq!(
         TownRuleset::empty(&core).content_hash(),
-        0x2bc5_8221_66bf_4786
+        0x8157_2d26_c967_da57
     );
     let mut changed = packs();
     changed[0].towns[0].buildings[2].name = "Hall".into();
@@ -702,6 +703,40 @@ fn the_hash_is_pinned_and_follows_the_content() {
         let other = TownRuleset::compile(&core, &changed).unwrap();
         assert_ne!(other.content_hash(), part.content_hash());
     }
+    // The eighth (v8, E09 T39b1): the Thieves' Guild's resource rows, a resource moved between two.
+    let mut changed = packs();
+    let rows = &mut changed[0].params.as_mut().unwrap().guild_resources;
+    rows[2] = core::mem::take(&mut rows[1]);
+    let other = TownRuleset::compile(&core, &changed).unwrap();
+    assert_ne!(other.content_hash(), part.content_hash());
+}
+
+// covers: TWN-TAV-008
+#[test]
+fn the_guilds_resource_rows_are_the_cores_each_in_at_most_one_row() {
+    let (core, part) = compiled();
+    let id = |k: &str| {
+        let index = core.resources().iter().position(|r| r.key == key(k));
+        ResourceId::from_index(index.unwrap()).unwrap()
+    };
+    let rows = &part.params().unwrap().guild_resources;
+    assert_eq!(rows, &[vec![id("t:gold")], vec![id("t:wood")], vec![]]);
+    // Each row in the core's order, whatever the pack's.
+    let mut packs = packs();
+    packs[0].params.as_mut().unwrap().guild_resources =
+        [vec![], vec![key("t:gold"), key("t:wood")], vec![]];
+    let part = TownRuleset::compile(&core, &packs).unwrap();
+    let rows = &part.params().unwrap().guild_resources;
+    assert_eq!(rows[1], [id("t:wood"), id("t:gold")]);
+    let param = |change: fn(&mut TownParamsDef)| refused(|p| change(p[0].params.as_mut().unwrap()));
+    assert_eq!(
+        param(|d| d.guild_resources[2].push(key("t:nope"))),
+        TownCompileError::UnknownResource("t:nope".into())
+    );
+    assert_eq!(
+        param(|d| d.guild_resources[2].push(key("t:gold"))),
+        TownCompileError::InvalidParams("a resource of the Thieves' Guild's rows is given twice")
+    );
 }
 
 // covers: TWN-VEW-003

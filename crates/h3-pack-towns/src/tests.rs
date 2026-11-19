@@ -118,6 +118,17 @@ fn the_synthetic_record_compiles_with_its_override() {
         .map(|&(r, a)| (r.index(), a))
         .collect();
     assert_eq!(price, [(coin, 2000)]);
+    // E09 T39b1: the Thieves' Guild's resource rows, the coin's, the shard's and none.
+    let shard = core
+        .resources()
+        .iter()
+        .position(|r| r.key.as_str() == "synthetic:shard")
+        .unwrap();
+    let rows = params
+        .guild_resources
+        .clone()
+        .map(|row| row.iter().map(|r| r.index()).collect::<Vec<_>>());
+    assert_eq!(rows, [vec![coin], vec![shard], vec![]]);
     let class = |k: &str| {
         core.hero_classes()
             .iter()
@@ -639,6 +650,11 @@ fn the_original_taverns(roe: &TownRuleset, sod: &TownRuleset, core: &Ruleset) {
             .map(|&(r, a)| (r.index(), a))
             .collect();
         assert_eq!(price, [(gold, 2500)]);
+        // E09 T39b1: the Thieves' Guild's resource rows by `RESTYPES.TXT`'s index, the treasury's
+        // as `thieves_guild_row_value` reads it: gold, wood and ore, the rare four.
+        let rows = (part.params().unwrap().guild_resources.clone())
+            .map(|row| row.iter().map(|r| r.index()).collect::<Vec<_>>());
+        assert_eq!(rows, [vec![6], vec![0, 2], vec![1, 3, 4, 5]]);
     }
     assert_eq!(core.hero_classes().len(), 18);
     for record in sod.towns() {

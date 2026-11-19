@@ -297,6 +297,7 @@ pub(super) fn town_pack(elf: bool) -> TownPack {
             },
             most_heroes: 8,
             hire_price: vec![(key("t:gold"), 2500)],
+            guild_resources: [vec![key("t:gold")], vec![], vec![]],
         }),
         towns,
         ..TownPack::new(manifest())
