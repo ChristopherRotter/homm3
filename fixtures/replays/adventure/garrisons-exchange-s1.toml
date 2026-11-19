@@ -55,7 +55,7 @@ checkpoint_every = 5
 [map]
 path = "fixtures/maps/e08-garrisons-36.h3m"
 hash = "0xa3cbaec168902eb6"
-import_version = 26
+import_version = 27
 
 [result]
 day = 2

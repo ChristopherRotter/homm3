@@ -2108,6 +2108,24 @@ the markets, done)
   list; compile both maps again: stamps `7945e78d` and `a88dd771`; the maps not yet copied to the
   user's folder).
 
+## T132b (moved 2026-11-19, done whole: `adventure/e08-t132b`, decision 382; T133 queued)
+
+**E08 T132b — the import of the seven trade classes** (round 5; decisions 373, 378, 381; design
+note §7, §21; T132a1 and T132a2 done)
+
+- **Scope:** `h3-map`: the import of classes 2, 7, 35, 99, 106, 213 and 221 at subclass 0 as the
+  part's six types (221 as `base:trading_post`, the map's class kept for its picture; no body; no
+  RoE mark, decision 378; another subclass refused), the writer's classes for fixtures (T128a's
+  `TRADE_OBJECTS`), a step onto one of the seven refused as an unbuilt visit's until T133 and
+  T134 (`effect` none); map import's next version (v27); the census of the seven classes over the
+  shipped maps (survey §1: 1 058 objects on 148 maps, every one at subclass 0) in the map reader's
+  original-data check, moved from check 8 (design note §6's *As built*); the shipped-map counts
+  that move (`TRAPS.md`); `tests/trades.rs`; the typed classes' test (`tests/import.rs`) taking
+  the six into its cases.
+- **Inputs:** design note §6, §7; `h3-map`'s `import/codes.rs` (the class table), T123b's record
+  in `E08-log.md` as the form; `TRAPS.md` (the shipped maps' counts, the goldens).
+- **Depends on:** T132a's pull request. **Status:** ready; its cut confirmed at its start.
+
 ## Inbox notes settled or for information (moved 2026-11-18, E08 T126)
 
 *(Moved verbatim at increment 13's closure: the other lanes' notes of changes in this lane's paths (the town lane's E09 T29b to T38b1, the map client lane's harness rebuilds), built on by T123b to T125b2b and T126's audit, CI green on each; their lasting rules are one line in `TRAPS.md`, "The town lane's parts of your crates"; the versions they took are the HANDOFF's.)*
