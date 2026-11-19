@@ -1041,6 +1041,44 @@ Black Market's on 2 with none, a Trading Post's on 0 with the transfer's (17), t
 screen with 16 back; Trade, Max and the slider read 0xE (disabled) until a pair is chosen; Space
 on the entrance opens the window again on its first screen.
 
+**The Altar and the Hill Fort** (E08 T129b, batch E14; `docs/rules/surveys/E08-trades.md` §12 to
+§14; the layouts `docs/exe/structs.toml` `altar_dialog`, `hill_fort_dialog`). **The Altar of
+Sacrifice's dialog** is a screen (`altar`, `h3mem.ALTAR_VTABLE`; both its screens one dialog): a
+walk onto an Altar (or a `key = "space"` on it) notes it in `order` (`Altar's dialog (the
+artifacts' screen; allowed artifacts, creatures)`), reads it as it opens, plays the step's
+`actions` there and closes it with Done (every taken artifact returned). Its items by name:
+`worn:<position or artifact>` (102 + 2 x position), `backpack:<place or artifact>` (139-143, the
+five shown), `backpack left`, `backpack right`, `place:<n>` (the altar's 22, 147 + 2 x n; a click
+with an artifact held puts it there), `from backpack` (192), `all` (the screen's own: 193 or
+250), `creatures` (194), `artifacts` (251), `slot:<n>` (the army's, 203 + 3 x n: selects it),
+`max` (249), `sacrifice` (256), `done` (257); `amount = <n>` the selected slot's amount by the
+slider (248). `altar` reads it now: `the artifacts' screen (allowed artifacts, creatures; the
+creatures' button enabled); total 1050; lacking 1000; on the altar 0: Mystic Orb of Mana (from the
+backpack, 1050); held none; Sacrifice enabled` (the creatures' screen: `amounts 0: 3, 1: 1;
+selected 1 (most 1)`), or one part (`:screen`, `:allowed`, `:other` (the other screen's button),
+`:total`, `:lacking` (as the dialog's text shows it), `:places`, `:held` (the cursor's
+artifact), `:amounts`, `:selected`, `:most` (the slider's ticks less one), `:sacrifice`,
+`:buttons`); `altar:opening[:<part>]`, `altar:after[:<part>]`, `altar:at` as `market`'s.
+**A level-up an action brings** (a sacrifice's: E14-17) is passed as the step's `level_up` (or the
+action's) says, recorded as a walk's (`level_up_dialogs`) with the dialog under it (`order`:
+`level-up (E14-17, level 2) over the altar dialog`, the level-up's +0xC), the screen dumped beside
+the batch's output (`level-up-<hero>-<level>.xwd`), then closed by its own OK (item 30722: the
+Altar's Done looks the same to `find_button`); an action's `order` lists its messages, questions
+and level-ups in order. **The Hill Fort's dialog** is a screen (`hill_fort`,
+`h3mem.HILL_FORT_VTABLE`): items `row:<slot>` (261 + slot), `all` (204), `ok` (30722, its close);
+`hill_fort` reads it: `rows 0: 20 Pikemen: 0 (shown GENRLTXT:345), state 1, affordable; ...; the
+whole 2243 gold, 2 gems, state 1, affordable`, or one part (`:rows`, `:row:<slot>[:stack|price|
+state]`, `:whole`, `:buttons`); `hill_fort:opening`, `:after`, `:at` likewise. **The hire
+dialog's creatures** (a War Machine Factory's three): `creature:<n>` (the n-th portrait's frame,
+538 + n) selects one (not clicked when it is the one selected: a second click opens the
+creature's window); `hire:creature`, `hire:cost` and `hire:available` (the Available count its
+text item 521 shows) read it. A `key` step plays its `actions` in a screen the key opens (the
+factory's hire dialog after Space). Observed (batch E14): an Altar opens on its artifacts' screen
+when it offers it, the other screen's button disabled (state 0x26) when not offered; the buttons a
+screen does not show read 0x0; Sacrifice, the backpack's button and all read disabled with
+nothing to give; the Hill Fort's row buttons read enabled whatever the row's state (an empty
+slot's disabled).
+
 **Taverns and the Thieves' Guild** (E09 T34, batch TWN-4; `docs/rules/surveys/E09-tavern.md` §2
 to §6, §13). **The offers:** `offers:<colour>` a player's two (player +0x28, +0x2C: `slot 0:
 Christian (Knight), slot 1: empty`), `offer:<colour>:<slot>[:<detail>]` the hero record in a slot

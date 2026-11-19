@@ -888,6 +888,50 @@ fields = [
 ]
 
 [[struct]]
+name = "altar_dialog"
+size = 0x240
+summary = "The Altar of Sacrifice's dialog (altar_dialog_create 0x55FDD0, vtable 0x641620): both screens' fields, read in the procedures (E08 T127a2) and observed under Wine with the capture harness (E08 T129b, batch E14); the item pointers observed."
+refs = ["rules/surveys/E08-trades.md §12"]
+fields = [
+  { offset = 0x60, name = "hero", type = "hero*", summary = "the visiting hero", confidence = "read", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0x74, name = "screen", type = "u8", summary = "1 the artifacts' screen (altar_show_artifacts 0x562A20), 0 the creatures' (altar_show_creatures 0x563150)", confidence = "read", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0x75, name = "artifacts_allowed", type = "u8", summary = "the artifacts' screen offered: the hero's class's faction 0 to 2 or 6 to 8", confidence = "read", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0x76, name = "creatures_allowed", type = "u8", summary = "the creatures' screen offered: the faction 3 to 8", confidence = "read", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0x78, name = "total", type = "i32", summary = "the experience Sacrifice gives (altar_update 0x562500 shows it)", confidence = "read", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0x7C, name = "lacking_text", type = "dialog_item*", summary = "the experience to the hero's next level's text item (253; observed)", confidence = "inferred", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0x80, name = "total_text", type = "dialog_item*", summary = "the total's text item (255; observed)", confidence = "inferred", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0x90, name = "held_picture", type = "dialog_item*", summary = "the cursor's artifact (191: its frame the artifact, drawn, state bit 0x4, while one is held; observed)", confidence = "inferred", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0x94, name = "slider", type = "dialog_item*", summary = "the creatures' slider (248, vtable 0x641D50): its +0x48 the ticks, the most and one (observed)", confidence = "inferred", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0xA0, name = "backpack_button", type = "dialog_item*", summary = "the backpack onto the altar (192; altar_backpack_to_altar 0x564060)", confidence = "read", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0xA4, name = "sacrifice_button", type = "dialog_item*", summary = "Sacrifice (256; altar_sacrifice 0x5646A0), enabled while the total is above 0", confidence = "read", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0xA8, name = "all_button", type = "dialog_item*", summary = "the worn and backpack artifacts onto the altar (193; altar_all_to_altar 0x564340)", confidence = "read", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0xAC, name = "to_creatures_button", type = "dialog_item*", summary = "the creatures' screen (194; altar_to_creatures 0x564910), enabled by +0x76", confidence = "read", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0xB0, name = "max_button", type = "dialog_item*", summary = "the selected slot's most (249; altar_creature_max 0x564DE0)", confidence = "inferred", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0xB4, name = "all_creatures_button", type = "dialog_item*", summary = "every stack but one creature (250; altar_all_creatures 0x564CF0)", confidence = "read", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0xB8, name = "to_artifacts_button", type = "dialog_item*", summary = "the artifacts' screen (251; altar_to_artifacts 0x564E70), enabled by +0x75", confidence = "read", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0xC0, name = "places_begin", type = "u32", summary = "the altar's 22 places, a vector of 16-byte records (altar_artifact_entry 0x55FC30): the artifact (-1 an empty place), its second word (a scroll's spell), the worn position it came from (19 the backpack), its experience; +0xC4 the end (observed)", confidence = "read", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0x138, name = "amounts", type = "i32", summary = "army slot 0's amount, each slot's 0x20 further (altar_set_creature_amount 0x564C00)", confidence = "read", refs = ["rules/surveys/E08-trades.md §12"] },
+  { offset = 0x214, name = "selected_slot", type = "i32", summary = "the army slot selected, -1 none (altar_show_creatures)", confidence = "read", refs = ["rules/surveys/E08-trades.md §12"] },
+]
+
+[[struct]]
+name = "hill_fort_dialog"
+size = 0x2A0
+summary = "The Hill Fort's dialog (hill_fort_dialog_create 0x4E75F0, vtable 0x63EB68): its rows as hill_fort_rows 0x4E7EB0 fills them (E08 T127a2, read; observed under Wine with the capture harness, E08 T129b)."
+refs = ["rules/surveys/E08-trades.md §13"]
+fields = [
+  { offset = 0x4C, name = "row_texts", type = "char[0x20]", summary = "row 0 (seven rows, 0x50 bytes each): its count's text +0x0, its price's +0xA (the gold; a level-1 row's GENRLTXT 345, an empty or not upgradable row's 346), a second resource's +0x14", confidence = "read", refs = ["rules/surveys/E08-trades.md §13"] },
+  { offset = 0x6C, name = "row_price", type = "i32[7]", summary = "row 0's price by resource, wood to gold (upgrade_cost 0x54E750, the gold scaled by hill_fort_gold_factors 0x63EB4C)", confidence = "read", refs = ["rules/surveys/E08-trades.md §13"] },
+  { offset = 0x88, name = "row_second", type = "i32", summary = "the resource row 0 shows beside the gold, -1 none", confidence = "read", refs = ["rules/surveys/E08-trades.md §13"] },
+  { offset = 0x8C, name = "row_creature", type = "i32", summary = "row 0's creature (the hero's slot), -1 empty", confidence = "read", refs = ["rules/surveys/E08-trades.md §13"] },
+  { offset = 0x90, name = "row_count", type = "i32", summary = "row 0's count", confidence = "read", refs = ["rules/surveys/E08-trades.md §13"] },
+  { offset = 0x94, name = "row_level", type = "i32", summary = "row 0's creature's level, 0 to 6 (creature_record +4)", confidence = "read", refs = ["rules/surveys/E08-trades.md §13"] },
+  { offset = 0x98, name = "row_state", type = "i32", summary = "row 0's state: 0 no upgrade, 1 affordable, 2 not", confidence = "read", refs = ["rules/surveys/E08-trades.md §13"] },
+  { offset = 0x27C, name = "whole_price", type = "i32[7]", summary = "the rows' prices summed by resource", confidence = "read", refs = ["rules/surveys/E08-trades.md §13"] },
+  { offset = 0x298, name = "whole_state", type = "i32", summary = "1 the whole affordable and a row upgrades, 0 none upgrades, else 2", confidence = "read", refs = ["rules/surveys/E08-trades.md §13"] },
+]
+
+[[struct]]
 name = "loaded_def"
 size = 0x38
 summary = "A DEF loaded by the game (H3API's H3LoadedDef; the size H3API's); only what the docs cite (E24 M1 T3b2)."

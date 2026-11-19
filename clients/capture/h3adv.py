@@ -384,6 +384,7 @@ BATTLE_KEYS = {"retreat": "r", "surrender": "s"}
 # The level-up dialog's two offered skills from its OK's corner, the OK disabled until one is
 # chosen (E17 H2, `[button.ok_disabled]`): a step's `level_up`, default the left one.
 LEVEL_UP_CHOICES = {"left": (-150, -64), "right": (-52, -64)}
+LEVEL_UP_OK = 0x7802  # E08 T129b: the level-up dialog's own OK item (h3mem.LEVEL_UP_MARKS)
 
 
 def size_word(record, mem):
@@ -1207,7 +1208,8 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
     end = time.monotonic() + 600
     while time.monotonic() < end:
         kind = screen_kind(mem)
-        if kind in ("exchange", "army", "garrison", "boat", "hire", "market"):
+        if kind in ("exchange", "army", "garrison", "boat", "hire", "market", "altar",
+                    "hill_fort"):
             # E08 T79a (batch E9a): also a mine's Leave Guards (the army dialog) and a
             # Shipyard's boat dialog. E08 T90 (batches E10a, E10b): the hire dialog, read as it
             # opens (`hires`: `opening`, before any click) and as the actions leave it (`after`,
@@ -1217,6 +1219,7 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
             # dialog with both bars as it opened (army_bars).
             events["order"].append(f"army dialog ({army_bars(mem, index)})" if kind == "army"
                                    else market_order(mem) if kind == "market"
+                                   else service_order(mem, kind) if kind in SERVICES
                                    else f"{kind} screen")
             if kind == "hire":
                 events.setdefault("hires", []).append({"opening": mem.recruit_dialog()})
@@ -1227,6 +1230,13 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
                 hero = mem.hero(index)
                 events.setdefault("markets", []).append(
                     {"opening": mem.market(), "at": (hero["tile"], hero["points"])})
+            if kind in SERVICES:
+                # E08 T129b (batch E14): the Altar's or the Hill Fort's dialog read as it opens
+                # (`altars`, `hill_forts`: `opening`, with the hero's tile and points then) and as
+                # the actions leave it (`after`, None when they closed it), then closed (Done, OK).
+                hero = mem.hero(index)
+                events.setdefault(SERVICES[kind], []).append(
+                    {"opening": service_state(mem, kind), "at": (hero["tile"], hero["points"])})
             if kind == "exchange":
                 # E08 T100a (batch E11a's E11-6): whom the meeting shows, read as it opens (the
                 # swap manager's +0x40, +0x44: left the visitor, right the visited).
@@ -1242,13 +1252,15 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
                     {"at": hero["tile"], "upper": found["army"] if found else None,
                      "lower": hero["slots"]})
             if actions and not events["actions"]:
-                events["actions"] = run_actions(game, mem, index, actions)
+                events["actions"] = run_actions(game, mem, index, actions, level_up)
             if kind == "hire":
                 events["hires"][-1]["after"] = mem.recruit_dialog()
             if kind == "market":
                 events["markets"][-1]["after"] = mem.market()
+            if kind in SERVICES:
+                events[SERVICES[kind]][-1]["after"] = service_state(mem, kind)
             if (now := screen_kind(mem)) in ("exchange", "army", "garrison", "boat", "hire",
-                                             "market"):
+                                             "market", "altar", "hill_fort"):
                 close_screen(game, mem, now, screen_heroes(mem, now, index))
             last, since, known = None, time.monotonic(), time.monotonic()
             continue
@@ -1517,12 +1529,13 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left", act
     }
 
 
-def press(game, mem, name, key, answer=None, battle=None, level_up="left"):
+def press(game, mem, name, key, answer=None, battle=None, level_up="left", actions=None):
     """Selects the hero, centres the view on it and presses `key` once (E08 T68a, batch E8a's
     E8-7: the arrow key that steps the selected hero), waiting until it rests (settle); returns
     the observation: `key` says whether the hero stepped, the view scrolled or nothing moved.
     Since E08 T100a (batch E11a's E11-19: Space on a monolith, a visit again) the step's `answer`,
-    `battle` and `level_up` play what the key brings, as a walk's do."""
+    `battle` and `level_up` play what the key brings, as a walk's do; since E08 T129b (batch E14's
+    E14-16 at the War Machine Factory) its `actions` in a screen the key opens."""
     hero = select(game, mem, name)
     index = hero["index"]
     centre(game, mem, *hero["tile"])
@@ -1530,7 +1543,7 @@ def press(game, mem, name, key, answer=None, battle=None, level_up="left"):
     time.sleep(0.3)
     before, view = observe(mem, index), mem.view()
     game.key(key, 0.5)
-    after, events = settle(game, mem, index, answer, battle, level_up)
+    after, events = settle(game, mem, index, answer, battle, level_up, actions)
     moved = after["tile"] != before["tile"]
     return {"hero": name, "index": index, "from": before["tile"], "tile": after["tile"],
             "key": "stepped" if moved else "scrolled" if mem.view() != view else "nothing",
@@ -2037,6 +2050,33 @@ MARKET_SCREEN_NAMES = {0: "resources for resources", 1: "the transfer", 2: "arti
                        3: "artifacts sold", 4: "creatures sold"}
 MARKET_KIND_NAMES = {0: "a town's", 1: "a Trading Post", 2: "a Black Market",
                      3: "a Freelancer's Guild"}
+# E08 T129b (batch E14's services; survey docs/rules/surveys/E08-trades.md §12 to §14, the items
+# observed under Wine): the Altar of Sacrifice's dialog (h3mem.ALTAR_VTABLE; both screens one
+# dialog), kind `altar`. Its artifacts' screen: the hero's worn positions 102 + 2 x position (each
+# over its picture 101 + 2 x position; the frame the artifact), the backpack's five places
+# 139-143 and their arrows 144 (left) and 145 (right), the altar's 22 places 147 + 2 x place
+# (their experience's texts 146 + 2 x place), the cursor's artifact 191, the backpack's button
+# 192, all 193, the creatures' screen 194. Its creatures' screen: the hero's army slots 203 + 3 x
+# slot (the counts 202 + 3 x slot, the selection frames 204 + 3 x slot), the altar's side
+# 223-243, the slider 248, max 249, all 250, the artifacts' screen 251. Both: Sacrifice 256, Done
+# 257. `all` names the screen's own.
+ALTAR_ITEMS = {"worn": 102, "backpack": 139, "backpack left": 144, "backpack right": 145,
+               "place": 147, "from backpack": 192, "all": 193, "creatures": 194, "slot": 203,
+               "max": 249, "artifacts": 251, "sacrifice": 256, "done": 257}
+ALTAR_STEPS = {"worn": 2, "place": 2, "slot": 3}  # the ids from a part's n-th to its next
+ALTAR_CREATURES_ALL = 250
+SCREEN_KINDS[h3mem.ALTAR_VTABLE] = "altar"
+SCREEN_ITEMS["altar"] = ALTAR_ITEMS
+# The Hill Fort's dialog (h3mem.HILL_FORT_VTABLE), kind `hill_fort`: each row's button 261 + slot
+# and All 204 (hill_fort_dialog_proc 0x4E8850, read), OK 30722; the creatures' pictures 205-211,
+# their counts 212-218, the prices' texts 226-232 (the gold) and 240-246 (a second resource), the
+# whole's 254-260 (observed).
+SCREEN_KINDS[h3mem.HILL_FORT_VTABLE] = "hill_fort"
+SCREEN_ITEMS["hill_fort"] = {"row": 261, "all": 204, "ok": 30722}
+HILL_FORT_STATES = {0: "no upgrade", 1: "affordable", 2: "not affordable"}
+# The hire dialog's creatures (E08 T129b; a War Machine Factory offers three): the n-th's
+# portrait frame 538 + n selects it (observed).
+SCREEN_ITEMS["hire"]["creature"] = 538
 
 
 # A message box's pictures by their DEF (E08 T57; observed at a Treasure Chest under Wine): a
@@ -2191,10 +2231,14 @@ def item_id(mem, kind, name, heroes):
     part, _, arg = name.partition(":")
     if part not in items:
         raise ValueError(f"no item `{name}` on the {kind} screen ({', '.join(items)})")
+    # E08 T129b: the Altar's parts by their steps (ALTAR_STEPS), its `all` the screen's own.
+    step = ALTAR_STEPS.get(part, 1) if kind == "altar" else 1
     if not arg:
+        if kind == "altar" and part == "all" and (mem.altar() or {}).get("screen") == "creatures":
+            return ALTAR_CREATURES_ALL
         return items[part]
     if arg.lstrip("-").isdigit():
-        return items[part] + int(arg)
+        return items[part] + int(arg) * step
     if kind == "market" and part in ("give", "pay", "want") and arg in h3mem.RESOURCES:
         return items[part] + h3mem.RESOURCES.index(arg)  # E08 T129a: `give:wood`
     if kind == "market" and part == "player" and arg in COLOURS:
@@ -2215,7 +2259,7 @@ def item_id(mem, kind, name, heroes):
         raise ValueError(f"`{name}`: only a worn position or a backpack place takes a name")
     if not found:
         raise ValueError(f"`{name}`: {hero['name']} shows no {arg} there")
-    return items[part] + found[0]
+    return items[part] + found[0] * step
 
 
 def item_centre(mem, wanted):
@@ -2377,6 +2421,30 @@ def market_amount(game, mem, wanted):
     quiet_screen(game)
 
 
+def altar_amount(game, mem, wanted):
+    """The Altar's amount of the selected army slot set to `wanted` by its slider (E08 T129b,
+    batch E14's E14-10, E14-17): a click on the slider's right end adds one, on its left end
+    takes one (as the hire dialog's), the amount read from the dialog (h3mem.altar) after each
+    click. Fails without a selected slot or when the amount cannot be reached (it stops at the
+    most)."""
+    for _ in range(1000):
+        state = mem.altar()
+        if state is None or state["selected"] < 0:
+            raise RuntimeError("no Altar slot selected (`amount`)")
+        have = state["amounts"][state["selected"]]
+        if have == wanted:
+            break
+        x, y, width, height = next(i["box"] for i in mem.dialog_items()
+                                   if i["vtable"] == h3mem.SLIDER_VTABLE)
+        end = x + width - height // 2 if have < wanted else x + height // 2
+        game.click(end, y + height // 2, 0.12)
+        if mem.altar()["amounts"][state["selected"]] == have:
+            raise RuntimeError(f"the amount stays at {have} (the most is {state['most']}) "
+                               f"short of {wanted}")
+    game.move(*PARK)
+    quiet_screen(game)
+
+
 def market_screen_changed(mem, name):
     """E08 T129a: after a click on the trade window's screen button `name` (MARKET_SCREEN_BUTTONS),
     waits until that screen's dialog shows."""
@@ -2463,7 +2531,7 @@ def bar_selection(mem):
     return ", ".join(found) or "none"
 
 
-def run_actions(game, mem, step_hero, actions):
+def run_actions(game, mem, step_hero, actions, level_up="left"):
     """Plays a step's `actions` in the screens showing (E08 T47a): each action one `click` (a list
     of item names, clicked in order on whichever screen shows at each), `right` (an item's name)
     or `slider = "max"` (the split dialog's) or, since E08 T90, `amount = <n>` (the hire dialog's
@@ -2474,16 +2542,21 @@ def run_actions(game, mem, step_hero, actions):
     hire dialog), since E09 T34 `tavern = true` (the town screen's Tavern: the tavern dialog) and
     `hover = "<item>"` (the mouse over the item until the screen's status line changes: its
     record, `hovered`), or none (only reads); a question that comes is
-    answered with the action's `answer`, a message's OK clicked (its record kept). `record` and
+    answered with the action's `answer`, a message's OK clicked (its record kept), since E08
+    T129b a level-up dialog passed as the step's `level_up` (or the action's) says
+    (pass_level_up; `order` the dialogs in order, `level_up_dialogs`). `record` and
     `note` read right after the action, as a step's do (the step's hero before and after it).
     Returns each action's observation: what it clicked, the questions' and messages' records,
     what a right click opened, the screen showing after it, its records and notes."""
     done = []
     for action in actions:
         kinds = [k for k in SCREEN_ACTIONS if k in action]
-        if len(kinds) > 1 or set(action) - {*SCREEN_ACTIONS, "answer", "record", "note"}:
+        if len(kinds) > 1 or set(action) - {*SCREEN_ACTIONS, "answer", "record", "note",
+                                            "level_up"}:
             raise ValueError(f"an action does one of {', '.join(SCREEN_ACTIONS)}: {action}")
-        obs = {"action": action, "questions": [], "messages": [],
+        chosen = action.get("level_up", level_up)
+        obs = {"action": action, "questions": [], "messages": [], "order": [],
+               "level_up_dialogs": [],
                "before": snapshot(mem, step_hero),
                # E08 T110 (batch E12a's E12-3): the bars' selected slot before the clicks.
                "selected_before": bar_selection(mem), "creature_windows": []}
@@ -2492,10 +2565,16 @@ def run_actions(game, mem, step_hero, actions):
         for k, name in enumerate(names):
             heroes = screen_heroes(mem, screen_kind(mem), step_hero)
             was = screen_kind(mem)
+            if was == "hire" and name.startswith("creature:") \
+                    and mem.recruit_dialog()["index"] == int(name.partition(":")[2]):
+                # E08 T129b (batch E14's E14-15): the hire dialog's creature already selected is
+                # not clicked (a click on it opens the creature's window, as a player's second).
+                obs.setdefault("selected_already", []).append(name)
+                continue
             click_item(game, mem, name, heroes)
             if was == "market" and name in MARKET_SCREEN_BUTTONS:
                 market_screen_changed(mem, name)  # E08 T129a: another screen's dialog
-            pass_dialogs(game, mem, obs, action.get("answer"), heroes)
+            pass_dialogs(game, mem, obs, action.get("answer"), heroes, chosen)
             if was in ("army", "garrison"):
                 obs.setdefault("clicks", []).append((name, bar_selection(mem)))
             following = names[k + 1].partition(":")[0] if k + 1 < len(names) else None
@@ -2532,6 +2611,8 @@ def run_actions(game, mem, step_hero, actions):
             obs["hovered"] = hover_status(game, mem, action["hover"])  # E09 T34
         if "amount" in action and screen_kind(mem) == "market":
             market_amount(game, mem, int(action["amount"]))  # E08 T129a: the trade window's
+        elif "amount" in action and screen_kind(mem) == "altar":
+            altar_amount(game, mem, int(action["amount"]))  # E08 T129b: the selected slot's
         elif "amount" in action:
             hire_amount(game, mem, int(action["amount"]))  # E08 T90: the hire dialog's slider
         if "slider" in action:
@@ -2904,24 +2985,61 @@ def hall_text(obs, what, mem):
         f", {len(unknown)} names not known" if unknown else "")
 
 
-def pass_dialogs(game, mem, obs, answer, heroes):
+def pass_dialogs(game, mem, obs, answer, heroes, level_up="left"):
     """After a click: answers each question that shows (`answer`) and clicks each message's OK,
-    keeping their records in `obs`."""
-    while screen_kind(mem) == "message":
-        if (asked := question_record(mem)) is not None:
+    keeping their records in `obs`; since E08 T129b passes each level-up dialog as `level_up`
+    says (pass_level_up) and notes every dialog in `order`."""
+    while (kind := screen_kind(mem)) in ("message", "level_up"):
+        if kind == "level_up":
+            pass_level_up(game, mem, obs, level_up)
+        elif (asked := question_record(mem)) is not None:
             answer_question(game, mem, answer, heroes)
             obs["questions"].append({"record": asked, "kind": "other", "answer": answer})
+            obs.setdefault("order", []).append(f"question {asked} ({answer})")
         else:
             obs["messages"].append(message_record(mem))
+            obs.setdefault("order", []).append(f"message {obs['messages'][-1]}")
             click_item(game, mem, "ok", heroes)
+
+
+def pass_level_up(game, mem, obs, choice="left"):
+    """E08 T129b (batch E14's E14-17: a level reached by a sacrifice, its dialog over the
+    Altar's): a level-up dialog an action brought, recorded as a walk's (level_up_record) with
+    the dialog under it (`under`: its kind by h3mem.dialog_under, the level-up's +0xC; the screen
+    dumped as `level-up-<hero>-<level>.xwd` beside the batch's output), its offer taken as
+    `choice` says (side_of: the dialog's OK waits for one of two), then its OK (the item 30722
+    of the level-up dialog itself: the Altar's Done looks the same)."""
+    shown = mem.level_up_dialog()
+    record = level_up_record(mem, shown)
+    under = mem.dialog_under()
+    record["under"] = SCREEN_KINDS.get(under, f"{under:#x}") if under else "none"
+    game.dump(game.out / f"level-up-{record['hero']}-{record['level']}.xwd")
+    waiting = find_button(game, "ok_disabled")
+    if waiting:
+        side = side_of(choice, shown)
+        dx, dy = LEVEL_UP_CHOICES[side]
+        game.click(waiting[0][0] + dx, waiting[0][1] + dy, 0.5)
+        game.move(*PARK)
+        record["taken"] = f"{side} ({offer_text(shown[side])})"
+    else:
+        record["taken"] = offer_text(shown["left"])
+    obs.setdefault("level_up_dialogs", []).append(record)
+    obs.setdefault("order", []).append(f"level-up ({record['hero']}, level {record['level']}) "
+                                       f"over the {record['under']} dialog")
+    wait_for(lambda: not find_button(game, "ok_disabled"), "the level-up's OK enabled", 5)
+    game.click(*item_centre(mem, LEVEL_UP_OK), 0.5)
+    game.move(*PARK)
+    wait_for(lambda: screen_kind(mem) != "level_up", "the level-up dialog closed", 5)
+    quiet_screen(game)
 
 
 def close_screen(game, mem, kind, heroes):
     """Closes a hero screen, exchange or army dialog an action left open (its close or OK; since
-    E08 T79a a boat dialog by its cancel: nothing built)."""
+    E08 T79a a boat dialog by its cancel: nothing built; since E08 T129b the Altar's dialog by
+    Done, every artifact taken returned, and the Hill Fort's by OK)."""
     if screen_kind(mem) == kind:
-        click_item(game, mem, {"army": "ok", "garrison": "ok", "boat": "cancel"}.get(kind, "close"),
-                   heroes)
+        click_item(game, mem, {"army": "ok", "garrison": "ok", "boat": "cancel", "altar": "done",
+                               "hill_fort": "ok"}.get(kind, "close"), heroes)
 
 
 def close_town_screen(game, mem):
@@ -3477,7 +3595,8 @@ def hire_text(state, part=None, mem=None):
     for None; part `items` lists every item (`532:0x4/0x..`, id and state), a part from
     most, amount, ally, enabled and counts one field; since E09 T23 (batch TWN-3) `creatures`
     each creature it offers with the count it reads (`14 Halberdiers, 14 Pikemen`), the one
-    selected first."""
+    selected first; since E08 T129b `creature` the one selected, `cost` its gold cost and
+    `available` the count the dialog shows for it."""
     if state is None:
         return "closed"
     if part == "creatures":
@@ -3489,6 +3608,11 @@ def hire_text(state, part=None, mem=None):
         return ", ".join(f"{k} {'enabled' if v else 'disabled'}" for k, v in state["enabled"].items())
     if part == "counts":
         return ", ".join(str(c) for c, t in zip(state["counts"], state["types"]) if t >= 0)
+    # E08 T129b (batch E14's War Machine Factory): the creature selected, its gold cost.
+    if part == "creature":
+        return mem.creature_name(state["type"], 1) if state["type"] >= 0 else "none"
+    if part == "cost":
+        return str(state["gold_cost"])
     if part:
         return str(state[part])
     return (f"most {state['most']}; amount {state['amount']}; ally {state['ally']}; selected "
@@ -3577,6 +3701,136 @@ def market_order(mem):
     state = mem.market()
     return (f"trade window (screen {state['shown']}, {MARKET_SCREEN_NAMES.get(state['shown'])}; "
             f"kind {state['kind']}, {MARKET_KIND_NAMES.get(state['kind'])})")
+
+
+# E08 T129b (batch E14's services): the two dialogs read as `market`'s is, each by its kind.
+SERVICES = {"altar": "altars", "hill_fort": "hill_forts"}
+
+
+def service_state(mem, kind):
+    """The Altar's or the Hill Fort's dialog now (h3mem.altar, h3mem.hill_fort), None closed."""
+    return mem.altar() if kind == "altar" else mem.hill_fort()
+
+
+def service_order(mem, kind):
+    """E08 T129b: how `order` names the Altar's or the Hill Fort's dialog as it opens (`Altar's
+    dialog (the artifacts' screen; allowed artifacts, creatures)`, `Hill Fort's dialog (the
+    whole 1, affordable)`)."""
+    state = service_state(mem, kind)
+    if kind == "altar":
+        return (f"Altar's dialog (the {state['screen']}' screen; allowed "
+                f"{', '.join(state['allowed']) or 'none'})")
+    return f"Hill Fort's dialog (the whole {hill_fort_state_text(state['whole'])})"
+
+
+def button_text(state):
+    """A button's state as the reads give it: `enabled`, `disabled` (bit 0x8 or 0x20), `hidden`
+    (not drawn: bit 0x4 clear)."""
+    if not state & SHOWN:
+        return "hidden"
+    return "disabled" if state & h3mem.DISABLED else "enabled"
+
+
+def artifact_text(mem, artifact, word=-1):
+    """An artifact's name, a Spell Scroll's with its spell (`Spell Scroll (Magic Arrow)`)."""
+    name = mem.artifact_name(artifact)
+    return f"{name} ({mem.spell_name(word)})" if artifact == 1 and word >= 0 else name
+
+
+def altar_text(mem, state, part=None):
+    """The Altar's dialog as `h3mem.altar` read it (E08 T129b, batch E14): `the artifacts'
+    screen (allowed artifacts, creatures; the creatures' button enabled); total 1050; lacking
+    1000; on the altar 0: Mystic Orb of Mana (the backpack, 1050); held none; Sacrifice
+    enabled`, `closed` for None; or one part: `screen`, `allowed`, `other` (the other screen's
+    button), `total`, `lacking`, `places` (each taken place: its artifact, where it came from, its
+    experience), `held` (the cursor's artifact), `amounts` (`0: 3, 1: 1`; `none`), `selected`,
+    `most`, `sacrifice` (Sacrifice's state), `buttons` (every button's)."""
+    if state is None:
+        return "closed"
+    other = "creatures" if state["screen"] == "artifacts" else "artifacts"
+    parts = {
+        "screen": state["screen"],
+        "allowed": ", ".join(state["allowed"]) or "none",
+        "other": f"the {other}' button {button_text(state['buttons'].get(other, 0))}",
+        "total": str(state["total"]),
+        "lacking": str(state["lacking"]),
+        "places": ", ".join(f"{p['place']}: {artifact_text(mem, p['artifact'], p['word'])} "
+                            f"(from {place_source(p)}, {p['experience']})"
+                            for p in state["places"]) or "none",
+        "held": artifact_text(mem, state["held"]) if state["held"] >= 0 else "none",
+        "amounts": ", ".join(f"{s}: {a}" for s, a in enumerate(state["amounts"]) if a) or "none",
+        "selected": str(state["selected"]) if state["selected"] >= 0 else "none",
+        "most": str(state["most"]) if state["most"] is not None else "none",
+        "sacrifice": button_text(state["buttons"].get("sacrifice", 0)),
+        "buttons": ", ".join(f"{name} {button_text(b)}" for name, b in state["buttons"].items()
+                             if b & SHOWN) or "none",
+    }
+    if part:
+        return parts[part]
+    text = (f"the {state['screen']}' screen (allowed {parts['allowed']}; {parts['other']}); "
+            f"total {parts['total']}; lacking {parts['lacking']}")
+    if state["screen"] == "artifacts":
+        return f"{text}; on the altar {parts['places']}; held {parts['held']}; Sacrifice " \
+               f"{parts['sacrifice']}"
+    return (f"{text}; amounts {parts['amounts']}; selected {parts['selected']} (most "
+            f"{parts['most']}); Sacrifice {parts['sacrifice']}")
+
+
+def place_source(place):
+    """Where an artifact on the altar came from: `the backpack` (19) or `worn <position>`."""
+    return "the backpack" if place["from"] == 19 else f"worn {place['from']}"
+
+
+def hill_fort_state_text(state):
+    return f"{state}, {HILL_FORT_STATES.get(state, '?')}"
+
+
+def price_text(price):
+    """A price by resource as the reads give it (`2000 gold, 2 gems`; `0`)."""
+    return ", ".join(f"{n} {r}" for n, r in zip(price, h3mem.RESOURCES) if n) or "0"
+
+
+def hill_fort_row_text(mem, row, part=None):
+    """One Hill Fort row (E08 T129b): `stack` (`20 Pikemen`), `price` (`125 gold`; a row whose
+    price is not computed shows a word instead: `0 (shown GENRLTXT:345)`), `state` (`1,
+    affordable`); all three in one line."""
+    if row["creature"] < 0:
+        return "empty"
+    shown = row["text"]
+    digits = shown.replace(",", "").isdigit()
+    parts = {"stack": slot_text(mem, row["creature"], row["count"]),
+             "price": price_text(row["price"]) + ("" if digits else
+                                                  f" (shown {h3lod.identify(shown) or '?'})"),
+             "state": hill_fort_state_text(row["state"])}
+    if part:
+        return parts[part]
+    return f"{parts['stack']}: {parts['price']}, state {parts['state']}"
+
+
+def hill_fort_text(mem, state, part=None):
+    """The Hill Fort's dialog as `h3mem.hill_fort` read it (E08 T129b, batch E14): `rows 0: 20
+    Pikemen: 0 (shown GENRLTXT:345), state 1, affordable; ...; the whole 2243 gold, 2 gems,
+    state 1, affordable`, `closed` for None; or one part: `rows`, `row:<slot>[:stack|price|state]`,
+    `whole` (the whole's price and state), `buttons` (the rows' and All's states)."""
+    if state is None:
+        return "closed"
+    rows = state["rows"]
+    if part and (m := re.match(r"row:(\d)(?::(stack|price|state))?$", part)):
+        return hill_fort_row_text(mem, rows[int(m.group(1))], m.group(2))
+    texts = {
+        "rows": "; ".join(f"{k}: {hill_fort_row_text(mem, r)}" for k, r in enumerate(rows)
+                          if r["creature"] >= 0) or "none",
+        "whole": f"{price_text(state['sum'])}, state {hill_fort_state_text(state['whole'])}",
+        "buttons": ", ".join(f"{'all' if k == 204 else f'row {k - 261}'} {button_text(b)}"
+                             for k, b in sorted(state["buttons"].items())),
+    }
+    if part:
+        return texts[part]
+    return f"rows {texts['rows']}; the whole {texts['whole']}"
+
+
+def service_text(mem, kind, state, part=None):
+    return altar_text(mem, state, part) if kind == "altar" else hill_fort_text(mem, state, part)
 
 
 def black_market_text(mem, x, y, z=0, part=None):
@@ -3956,7 +4210,8 @@ LIVE_READS = ("explored", "word", "object", "monster", "aggression", "never_flee
               "town", "towns",  # E09 T3b: the towns' records
               "dwelling", "teams", "objects", "access", "camp", "hire",  # E08 T90
               "bank",  # E08 T120
-              "market", "black_market")  # E08 T129a
+              "market", "black_market",  # E08 T129a
+              "altar", "hill_fort")  # E08 T129b
 
 
 def observations(what):
@@ -4484,6 +4739,19 @@ def value(obs, what, mem):
         if which is None:
             return market_text(mem, mem.market(), part)
         return market_text(mem, markets[-1][which], part) if markets else "none"
+    # E08 T129b (batch E14's services): the Altar's or the Hill Fort's dialog now
+    # (`altar[:<part>]`, `hill_fort[:<part>]`: altar_text, hill_fort_text), as the step's walk or
+    # key saw it open and as its actions left it (`altar:opening[:<part>]`, `altar:after[:<part>]`;
+    # the last of the step), the hero's tile and points as it opened (`altar:at`).
+    if m := re.match(r"(altar|hill_fort)(?::(opening|after|at))?(?::(.+))?$", what):
+        kind, which, part = m.groups()
+        if which is None:
+            return service_text(mem, kind, service_state(mem, kind), part)
+        seen = obs.get(SERVICES[kind], [])
+        if which == "at":
+            return (f"{tile_name(seen[-1]['at'][0])} with {seen[-1]['at'][1]} points"
+                    if seen else "none")
+        return service_text(mem, kind, seen[-1][which], part) if seen else "none"
     if what == "markets":
         return "; ".join(market_text(mem, k["opening"], "screen") + ", "
                          + market_text(mem, k["opening"], "kind")
@@ -5124,8 +5392,9 @@ def batch(recipe_path, map_path=None, out=None):
                                         if taken else f"not played: no hero on {tile_name(tile)}")
                 if "repeat" in step and "key" not in step:
                     raise ValueError("`repeat` presses a step's `key` again (E08 T100b)")
-                if "actions" in step and "walk" not in step and "screen" not in step:
-                    raise ValueError("`actions` play in a screen a walk or `screen` opens")
+                if "actions" in step and not {"walk", "screen", "key"} & set(step):
+                    # E08 T129b: also a `key` (Space on a War Machine Factory: its hire dialog).
+                    raise ValueError("`actions` play in a screen a walk, `screen` or `key` opens")
                 if skip:
                     obs = {"hero": step["hero"], "skipped": skip}
                 elif "walk" in step:
@@ -5168,7 +5437,8 @@ def batch(recipe_path, map_path=None, out=None):
                                   step.get("level_up", "left"))
                 elif "key" in step:
                     obs = press(game, mem, step["hero"], step["key"], step.get("answer"),
-                                step.get("battle"), step.get("level_up", "left"))
+                                step.get("battle"), step.get("level_up", "left"),
+                                step.get("actions"))
                 elif "replay" in step:
                     obs = replay(game, mem, step["hero"], step["replay"])
                 elif "cast" in step:

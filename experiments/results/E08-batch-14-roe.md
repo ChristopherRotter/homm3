@@ -1,5 +1,7 @@
 # E08 batch E14 RoE — results
 
+> Played by the capture harness on 2026-11-19 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-14-roe.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-14-roe.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `a88dd771`.** The map's description in the scenario list starts with "Stamp a88dd771.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -25,14 +27,14 @@ Map file: `E08-batch-14-roe.h3m`. Fill in the blanks below and keep this file; a
 
 **Record**
 
-- the game's version; before: Red's treasury; at the dialog: E14-14's tile; points: 
+- the game's version; before: Red's treasury; at the dialog: E14-14's tile; points: the game's version: SoD; treasury: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30700 gold; army: 0: 5 Air Elementals, 1: 5 Pikemen; at the dialog: 10,10 with 1360 points; in order: Hill Fort's dialog (the whole 1, affordable)
 
 | slot | stack | price | state |
 |---|---|---|---|
-| 0 Air Elementals |   |   |   |
-| 1 Pikemen |   |   |   |
+| 0 Air Elementals | 5 Air Elementals | 31 gold | 1, affordable |
+| 1 Pikemen | 5 Pikemen | 0 (shown GENRLTXT:345) | 1, affordable |
 
-- the whole's state: 
-- the Air Elementals' button: what happens; the Pikemen's: what happens: 
-- after: the rows; army; Red's treasury: 
-- anything odd: 
+- the whole's state: 31 gold, state 1, affordable; buttons: all enabled, row 0 enabled, row 1 enabled, row 2 disabled, row 3 disabled, row 4 disabled, row 5 disabled, row 6 disabled
+- the Air Elementals' button: what happens; the Pikemen's: what happens: the Air Elementals: none; the change: -31 gold; army: 0: 5 Storm Elementals, 1: 5 Pikemen; the Pikemen: none; the change: none; army: 0: 5 Storm Elementals, 1: 5 Halberdiers
+- after: the rows; army; Red's treasury: the rows: 0: 5 Storm Elementals: 0 (shown GENRLTXT:346), state 0, no upgrade; 1: 5 Halberdiers: 0 (shown GENRLTXT:346), state 0, no upgrade; the whole: 0, state 0, no upgrade; army: 0: 5 Storm Elementals, 1: 5 Halberdiers; treasury: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30669 gold
+- anything odd: the date at the start: month 1, week 1, day 1; the difficulty: easy; the game's version reads SoD (game +0x1F698) on this map, whose header is the RoE format (0x0E; as batch E7a's RoE map, `E08-batch-7a-roe.md`): so the Air Elementals were upgradable (31 gold, no message) and became Storm Elementals, against the reading's game version 0.

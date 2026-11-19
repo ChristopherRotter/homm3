@@ -1,10 +1,10 @@
 # E08 batch E14 played by the capture harness (E08 T129; h3adv.py batch): the procedure of
 # experiments/specs/E08-batch-14.toml as steps, on Easy, the starting bonus gold, Red and Blue
-# human in hot seat. T129 was cut in two by family (decision 376): **T129a, the markets** (this
-# part: E14-3's day-1 reads, E14-1 with E14-2, E14-4, E14-5 with E14-6, E14-16 at each of them,
-# Blue's read on its turn, E14-3's day-29 reads); T129b adds the services' rows (E14-8, E14-9,
-# E14-10, E14-12, E14-15 on Red's day 1, E14-13 and E14-17 on Blue's) in the template's order,
-# before Red's turn ends, and the RoE map's E14-14 (`E08-batch-14-roe.toml`).
+# human in hot seat. T129 was cut in two by family (decision 376): **T129a, the markets** (E14-3's
+# day-1 reads, E14-1 with E14-2, E14-4, E14-5 with E14-6, E14-16 at each of them, Blue's read on
+# its turn, E14-3's day-29 reads); **T129b, the services** (E14-8, E14-9, E14-10 with E14-11,
+# E14-12, E14-15 on Red's day 1, E14-13 and E14-17 on Blue's, E14-16 and E14-7 with them) in the
+# template's order; the RoE map's E14-14 is `E08-batch-14-roe.toml`.
 #
 # The trade window (README, "Markets"): a walk onto a market plays its `actions` in the window
 # (`click` its items by name: `slot:<n>`, `give:<resource>`, `want:<resource>`, `entry:<n>`,
@@ -131,7 +131,139 @@ hero = "E14-5"
 key = "space"
 record = { "+after closing P2: the tile; Space: what opens; the tile" = ["text:Space: ", "key", "text:in order: ", "order", "text:tile after: ", "hero:tile"] }
 
-# T129b: E14-8, E14-9, E14-10, E14-12, E14-15 here, before Red's turn ends.
+# --- Day 1, Red: E14-8 (the Altar A1 from above; a Castle hero's artifacts), E14-16 ------------------
+# The Altar's dialog (README, "The Altar and the Hill Fort"): a walk onto it plays its `actions`
+# there (`click` its items by name: `worn:<position or artifact>`, `backpack:<place or artifact>`,
+# `place:<n>`, `from backpack`, `all`, `creatures`, `artifacts`, `slot:<n>`, `max`, `sacrifice`;
+# `amount = <n>` the selected slot's slider) and closes it with Done; `altar[:part]` reads it.
+
+[[step]]
+encounter = "E14-8"
+hero = "E14-8"
+record = { "before: E14-8's points" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E14-8"
+hero = "E14-8"
+walk = [6, 18]
+actions = [
+    { record = { "before: experience; level; on the altar: the total; the experience lacking" = ["text:experience: ", "hero:experience", "text:level: ", "hero:level", "text:backpack: ", "hero:backpack"] } },
+    { click = ["from backpack"], record = { "+before: experience; level; on the altar: the total; the experience lacking" = ["text:on the altar: ", "altar:places", "text:the total: ", "altar:total", "text:lacking: ", "altar:lacking", "text:Sacrifice: ", "altar:sacrifice"] } },
+    { click = ["sacrifice"], record = { "after Sacrifice: messages and dialogs (in order); experience; level; artifacts; the Altar still open" = ["text:in order: ", "order", "text:experience: ", "hero:experience", "text:level: ", "hero:level", "text:worn: ", "hero:artifacts", "text:backpack: ", "hero:backpack", "text:the screen: ", "screen", "text:the Altar: ", "altar"] } },
+]
+record = { "the first click's path (the marked tiles in order)" = ["text:the path: ", "path_tiles", "text:marks: ", "marks"], "at the dialog: E14-8's tile; points" = ["text:at the dialog: ", "altar:at", "text:in order: ", "order"], "E14-7: the first screen; the other screen's button (enabled or not)" = ["text:the screen: ", "altar:opening:screen", "text:allowed: ", "altar:opening:allowed", "text:the other: ", "altar:opening:other"], "after Done: E14-8's tile; points; Space: what opens; the tile" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:the Altar after its actions: ", "altar:after:total"] }
+
+[[step]]
+encounter = "E14-8"
+hero = "E14-8"
+key = "space"
+record = { "+after Done: E14-8's tile; points; Space: what opens; the tile" = ["text:Space: ", "key", "text:in order: ", "order", "text:at the dialog: ", "altar:at", "text:tile after: ", "hero:tile"] }
+
+# --- Day 1, Red: E14-9 (a Fortress hero's Altar A2; the Ballista, a scroll, the Grail) -----------------
+
+[[step]]
+encounter = "E14-9"
+hero = "E14-9"
+record = { "before: E14-9's points; the scroll's messages; after it: tile; points; worn artifacts; backpack" = ["text:before: points: ", "hero:points"] }
+
+[[step]]
+encounter = "E14-9"
+hero = "E14-9"
+walk = [13, 20]
+expect = { dialogs = true }
+record = { "+before: E14-9's points; the scroll's messages; after it: tile; points; worn artifacts; backpack" = ["text:the scroll's messages: ", "order", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:worn: ", "hero:positions", "text:backpack: ", "hero:backpack"] }
+
+[[step]]
+encounter = "E14-9"
+hero = "E14-9"
+walk = [12, 18]
+actions = [
+    { click = ["worn:Ballista", "place:0"] },
+    { click = ["worn:Spell Scroll", "place:1"] },
+    { click = ["from backpack"], record = { "the four on the altar: the total" = ["text:on the altar: ", "altar:places", "text:the total: ", "altar:total", "text:lacking: ", "altar:lacking"] } },
+    { click = ["worn:Catapult"], record = { "the Catapult's click: what happens; the Catapult after" = ["text:in order: ", "order", "text:held: ", "altar:held", "text:worn: ", "hero:positions", "text:on the altar: ", "altar:places"] } },
+    { click = ["sacrifice"], record = { "after Sacrifice: messages; experience; level; worn artifacts; backpack" = ["text:in order: ", "order", "text:experience: ", "hero:experience", "text:level: ", "hero:level", "text:worn: ", "hero:artifacts", "text:backpack: ", "hero:backpack", "text:the Altar: ", "altar"] } },
+]
+record = { "at the dialog: E14-9's tile; points; experience" = ["text:at the dialog: ", "altar:at", "text:experience: ", "before:hero:experience", "text:in order: ", "order"], "E14-7: the first screen; the other screen's button (enabled or not)" = ["text:the screen: ", "altar:opening:screen", "text:allowed: ", "altar:opening:allowed", "text:the other: ", "altar:opening:other"], "after Done: E14-9's tile" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+# --- Day 1, Red: E14-10, E14-11 (a Necropolis hero's Altar A3: creatures) ------------------------------
+
+[[step]]
+encounter = "E14-10"
+hero = "E14-10"
+walk = [18, 18]
+actions = [
+    { click = ["slot:0"] },
+    { amount = 3 },
+    { click = ["slot:1"], record = { "slot 1's most; the total of 3 and 1" = ["text:slot 1's most: ", "altar:most"] } },
+    { amount = 1, record = { "+slot 1's most; the total of 3 and 1" = ["text:amounts: ", "altar:amounts", "text:the total: ", "altar:total", "text:lacking: ", "altar:lacking"] } },
+    { click = ["sacrifice"], record = { "after Sacrifice: experience; army" = ["text:in order: ", "order", "text:experience: ", "hero:experience", "text:army: ", "hero:slots", "text:the Altar: ", "altar"] } },
+    { click = ["slot:2"], record = { "E14-11: slot 2's most; All's amounts; the total" = ["text:slot 2's most: ", "altar:most"] } },
+    { click = ["all"], record = { "+E14-11: slot 2's most; All's amounts; the total" = ["text:All's amounts: ", "altar:amounts", "text:the total: ", "altar:total"] } },
+]
+record = { "at the dialog: E14-10's tile; experience" = ["text:at the dialog: ", "altar:at", "text:experience: ", "before:hero:experience", "text:in order: ", "order"], "E14-7: the first screen; the other screen's button (enabled or not)" = ["text:the screen: ", "altar:opening:screen", "text:allowed: ", "altar:opening:allowed", "text:the other: ", "altar:opening:other"], "after Done: army; tile" = ["text:army: ", "hero:slots", "text:tile: ", "hero:tile", "text:experience: ", "hero:experience"] }
+
+# --- Day 1, Red: E14-12 (the Hill Fort H1 and All), E14-16 ------------------------------------------
+# The Hill Fort's dialog (README, "The Altar and the Hill Fort"): `click` `row:<slot>`, `all`;
+# closed with its OK; `hill_fort[:part]` reads it (`rows`, `row:<slot>[:stack|price|state]`,
+# `whole`, `buttons`).
+
+[[step]]
+encounter = "E14-12"
+hero = "E14-12"
+record = { "before: Red's treasury; at the dialog: E14-12's tile; points" = ["text:treasury: ", "treasury"] }
+
+[[step]]
+encounter = "E14-12"
+hero = "E14-12"
+walk = [24, 18]
+actions = [
+    { record = { "E14-12|0 Pikemen | stack" = "hill_fort:row:0:stack", "E14-12|0 Pikemen | price" = "hill_fort:row:0:price", "E14-12|0 Pikemen | state" = "hill_fort:row:0:state", "E14-12|1 Archers | stack" = "hill_fort:row:1:stack", "E14-12|1 Archers | price" = "hill_fort:row:1:price", "E14-12|1 Archers | state" = "hill_fort:row:1:state", "E14-12|2 Wood Elves | stack" = "hill_fort:row:2:stack", "E14-12|2 Wood Elves | price" = "hill_fort:row:2:price", "E14-12|2 Wood Elves | state" = "hill_fort:row:2:state", "E14-12|3 Pegasi | stack" = "hill_fort:row:3:stack", "E14-12|3 Pegasi | price" = "hill_fort:row:3:price", "E14-12|3 Pegasi | state" = "hill_fort:row:3:state", "E14-12|4 Angel | stack" = "hill_fort:row:4:stack", "E14-12|4 Angel | price" = "hill_fort:row:4:price", "E14-12|4 Angel | state" = "hill_fort:row:4:state", "E14-12|5 Air Elementals | stack" = "hill_fort:row:5:stack", "E14-12|5 Air Elementals | price" = "hill_fort:row:5:price", "E14-12|5 Air Elementals | state" = "hill_fort:row:5:state", "the whole's state" = ["hill_fort:whole", "text:buttons: ", "hill_fort:buttons"] } },
+    { click = ["all"], record = { "after All: messages; Red's treasury; army; the rows' states" = ["text:in order: ", "order", "text:the change: ", "gain", "text:treasury: ", "treasury", "text:army: ", "hero:slots", "text:rows: ", "hill_fort:rows", "text:the whole: ", "hill_fort:whole"] } },
+]
+record = { "+before: Red's treasury; at the dialog: E14-12's tile; points" = ["text:at the dialog: ", "hill_fort:at", "text:in order: ", "order"], "after closing: tile; points; Space: what opens; the tile" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E14-12"
+hero = "E14-12"
+key = "space"
+record = { "+after closing: tile; points; Space: what opens; the tile" = ["text:Space: ", "key", "text:in order: ", "order", "text:its rows: ", "hill_fort:opening:rows", "text:tile after: ", "hero:tile"] }
+
+# --- Day 1, Red: E14-15 (the War Machine Factory F through the hire dialog), E14-16 ----------------
+# The factory's question answered yes; its hire dialog (README, "Dwellings, the hire dialog ...")
+# selects a machine by `creature:<n>` (538 + n); `hire:creature`, `hire:available`, `hire:cost`.
+
+[[step]]
+encounter = "E14-15"
+hero = "E14-15"
+record = { "before: Red's treasury; at the question: E14-15's tile; points" = ["text:treasury: ", "treasury", "text:worn: ", "hero:positions"] }
+
+[[step]]
+encounter = "E14-15"
+hero = "E14-15"
+walk = [29, 18]
+answer = "yes"
+actions = [
+    { click = ["creature:0"], record = { "row:machine" = ["hire:creature", "hire:available", "hire:cost"] } },
+    { click = ["creature:1"], record = { "row:machine" = ["hire:creature", "hire:available", "hire:cost"] } },
+    { click = ["creature:2"], record = { "row:machine" = ["hire:creature", "hire:available", "hire:cost"] } },
+    { click = ["creature:1", "max", "recruit"] },
+    { click = ["creature:2", "max", "recruit"] },
+    { record = { "after the purchases: Red's treasury; the war machine positions" = ["text:treasury: ", "treasury", "text:worn: ", "hero:positions", "text:the dialog: ", "hire"] } },
+]
+record = { "+before: Red's treasury; at the question: E14-15's tile; points" = ["text:at the question: ", "questions:at", "text:in order: ", "order"], "after closing: tile; Space: the question; the counts; the tile after" = ["text:tile: ", "hero:tile", "text:the change: ", "gain"] }
+
+[[step]]
+encounter = "E14-15"
+hero = "E14-15"
+key = "space"
+answer = "yes"
+actions = [
+    { click = ["creature:0"], record = { "+after closing: tile; Space: the question; the counts; the tile after" = ["text:Space: ", "hire:creature", "text:available: ", "hire:available"] } },
+    { click = ["creature:1"], record = { "+after closing: tile; Space: the question; the counts; the tile after" = ["hire:creature", "text:available: ", "hire:available"] } },
+    { click = ["creature:2"], record = { "+after closing: tile; Space: the question; the counts; the tile after" = ["hire:creature", "text:available: ", "hire:available"] } },
+]
+record = { "E14-15|+after closing: tile; Space: the question; the counts; the tile after" = ["text:in order: ", "order", "text:tile after: ", "hero:tile"] }
 
 [[step]]
 end_turn = true
@@ -143,7 +275,44 @@ encounter = "E14-5"
 hero = "E14-13"
 record = { "Blue's turn: Blue's treasury" = ["text:blue: ", "treasury:blue", "text:the date: ", "date"] }
 
-# T129b: E14-13 and E14-17 here, before Blue's turn ends.
+# --- Day 1, Blue: E14-13 (the Hill Fort H2: too poor for the Pegasi) ---------------------------------
+
+[[step]]
+encounter = "E14-13"
+hero = "E14-13"
+record = { "before: Blue's treasury; at the dialog: E14-13's tile" = ["text:treasury: ", "treasury:blue"] }
+
+[[step]]
+encounter = "E14-13"
+hero = "E14-13"
+walk = [24, 26]
+actions = [
+    { record = { "E14-13|0 Rogues | stack" = "hill_fort:row:0:stack", "E14-13|0 Rogues | price" = "hill_fort:row:0:price", "E14-13|0 Rogues | state" = "hill_fort:row:0:state", "E14-13|1 Marksmen | stack" = "hill_fort:row:1:stack", "E14-13|1 Marksmen | price" = "hill_fort:row:1:price", "E14-13|1 Marksmen | state" = "hill_fort:row:1:state", "E14-13|2 Pegasi | stack" = "hill_fort:row:2:stack", "E14-13|2 Pegasi | price" = "hill_fort:row:2:price", "E14-13|2 Pegasi | state" = "hill_fort:row:2:state", "the whole's state" = ["hill_fort:whole", "text:buttons: ", "hill_fort:buttons"] } },
+    { click = ["row:2"], record = { "the Pegasi's button: what happens; All: what happens" = ["text:the Pegasi: ", "order", "text:the change: ", "gain", "text:army: ", "hero:slots"] } },
+    { click = ["all"], record = { "+the Pegasi's button: what happens; All: what happens" = ["text:All: ", "order", "text:the change: ", "gain", "text:the rows: ", "hill_fort:rows"] } },
+]
+record = { "+before: Blue's treasury; at the dialog: E14-13's tile" = ["text:at the dialog: ", "hill_fort:at", "text:in order: ", "order"], "after: Blue's treasury; army" = ["text:treasury: ", "treasury:blue", "text:army: ", "hero:slots"] }
+
+# --- Day 1, Blue: E14-17 (a treasure for a level at the Altar A4; then 10 Gnolls) --------------------
+
+[[step]]
+encounter = "E14-17"
+hero = "E14-17"
+record = { "before: experience; level; skills; at the dialog: E14-17's tile; the first screen; the creatures' button" = ["text:experience: ", "hero:experience", "text:level: ", "hero:level", "text:skills: ", "hero:skills", "text:backpack: ", "hero:backpack", "text:army: ", "hero:slots"] }
+
+[[step]]
+encounter = "E14-17"
+hero = "E14-17"
+walk = [12, 26]
+level_up = "left"
+actions = [
+    { click = ["from backpack"], record = { "the Mystic Orb: the total; the experience lacking" = ["text:on the altar: ", "altar:places", "text:the total: ", "altar:total", "text:lacking: ", "altar:lacking"] } },
+    { click = ["sacrifice"], record = { "after Sacrifice: the dialogs (in order) and what is drawn under them; the offered skills" = ["text:in order: ", "order", "text:the level-ups: ", "level_up_dialogs"], "after the level-up: the Altar still open; experience; level; skills" = ["text:the screen: ", "screen", "text:the Altar: ", "altar", "text:experience: ", "hero:experience", "text:level: ", "hero:level", "text:skills: ", "hero:skills"] } },
+    { click = ["creatures", "slot:0"], record = { "10 Gnolls: the total; after Sacrifice: experience; level; army" = ["text:slot 0's most: ", "altar:most"] } },
+    { amount = 10, record = { "+10 Gnolls: the total; after Sacrifice: experience; level; army" = ["text:amounts: ", "altar:amounts", "text:the total: ", "altar:total"] } },
+    { click = ["sacrifice"], record = { "+10 Gnolls: the total; after Sacrifice: experience; level; army" = ["text:after Sacrifice: ", "order", "text:experience: ", "hero:experience", "text:level: ", "hero:level", "text:army: ", "hero:slots", "text:the Altar: ", "altar"] } },
+]
+record = { "+before: experience; level; skills; at the dialog: E14-17's tile; the first screen; the creatures' button" = ["text:at the dialog: ", "altar:at", "text:the screen: ", "altar:opening:screen", "text:allowed: ", "altar:opening:allowed", "text:the other: ", "altar:opening:other", "text:in order: ", "order"] }
 
 # --- Red's day 29: E14-3's second reads (both players' turns ended 28 times) --------------------------
 
