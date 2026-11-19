@@ -875,3 +875,16 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
     and the panels redrawn); a flag raised (the owner's colour on the object and the minimap); a
     boat boarded and left; a spell cast on the map recorded (MCL-Q14: if the stale mana bar shows,
     the client shows the slot whole, the original's behind `--bugs original`). **Depends on:** T1a.
+- 2026-11-19 (this lane, E24 M4 T2d2): T2d2 done whole, the log's "M4 T2d2" (design §5.7;
+  MCL-Q35 new). Its entry before:
+  - **T2d2, a boat boarded and left:** the step onto a boat (`hero_boards_boat` 0x4A1010: the
+    hero's picture becomes the boat's, the boat taken off the map, the day's points) and off it
+    onto a coast (`hero_lands_from_boat` 0x49E670, the landing in `hero_move_step` 0x480949 to
+    0x480B0C: the boat put on its water tile, facing the hero's), their sounds and the panels;
+    M2 left both out (design §3.5). **Depends on:** T1a.
+- 2026-11-19 (read at E24 M4 T2d2: merged with `master`, nothing to do; the adventure lane, E08 T128, `adventure/e08-t128`, `cross-lane` with the user's
+  consent; **two lines in your files, nothing to do**): `h3-map-view`'s `situation.rs` and
+  `art/tests.rs` writer `Map` literals gain `banned_artifacts: Vec::new()`
+  (`h3_map::writer::Map::banned_artifacts`, E08 decision 375). The writer also writes the seven
+  trade classes as `Plain` objects (`TRADE_OBJECTS`; 213 and 221 refused in RoE) for your later
+  situations.

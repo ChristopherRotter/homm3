@@ -2747,3 +2747,46 @@ watcher (fmt, clippy, doc tests and deny passed), CI's green `master` standing i
   `h3-map-view`'s library 100 % lines, regions and functions (the worker's run); the window under
   Xvfb (`--check 8`) on `flag-dwelling` and `flag-mine-blue`, 44 of 44 and 45 of 45 frames read
   back exact, every change the headless loop's; `scripts/exe.py check` and `cited` clean.
+
+### M4 T2d2 — a boat boarded and left (2026-11-18 to 2026-11-19)
+
+On `map-client/e24-m4-t2d2`, the user present at the start (big tasks cut only with their
+consent); `master` at #1026. Original data staged from the PC at the start (63 files, SHA-256
+checked against the PC's line by line; the four manuals and three help files too; the PC left
+about 20 minutes in); the setup's baseline stopped at its coverage step by a watcher (fmt,
+clippy, doc tests and deny passed), CI's green `master` standing in. The session's server
+stopped overnight while the worker built (the VM restarted, every file kept); the worker resumed
+from its transcript.
+
+- **The cut:** none. Sized at the start as T2d1 (both visits read whole by E08 T66a1, the step's
+  two branches and the draws left), done whole; the fallback cut (T2d2a the reading and the
+  recordings, T2d2b the viewer) stated to the user and not needed.
+- **Read** (design §5.7; `docs/exe/map.toml`: `hero_move_step`, `hero_boards_boat`,
+  `hero_lands_from_boat`, `hero_loss_effect` given the draws): the boarding from land (the hero
+  unlifted and dissolved off with killfade before the frames, the boat lifted in its own facing's
+  group after the step), the landing (the boat put back facing the step and shown before the
+  frames, the hero dissolved in with killfade after); `hero_walk_end` before the visit in the
+  loop and the key's step; the mirror by the hero's facing (MCL-Q35). The worker's corrections
+  (the build): `hero_boards_boat`'s `view_show_step`, the key step's tail after
+  `status_window_choose` (`make_hero_path`, `hero_list_update`), no button in
+  `visit_and_update`.
+- **Recorded** (each twice, the second run `ok`, the frame at 0 exact; speed 2, `points` 1 500,
+  `seed` 7; no harness change): `board` (48 timeline lines, 18 screens), `board-walk` (74, 25),
+  `land` (47, 18), `land-walk` (82, 27; its first target (12, 12) was water, moved to (13, 12));
+  situations `seq-board`, `seq-board-walk`, `seq-land`. Two sound runs (scratch): killfade at
+  each dissolve, the stepped tile's step sound started and stopped in one millisecond, the
+  ocean's ambient loop.
+- **Built** (one worker; design §5.7's *Built*; *provisional*, M4's review list): the timeline's
+  `Boats`, `Start::boats`, `Start::water`, `Draw::hidden`, `Draw::boats`; the human's step as
+  `mobilize`, `stride` and `animate`; `board_start`, `land_start`, the visits `board` and
+  `land`, `updated`, `stuck`; `Dissolving::holds` and `then`; `Walking::hidden`; the binary's
+  boats and water; `timeline/tests/boats.rs` (the four replayed headless and nine focused tests).
+- **Checked:** the four moved into `sequences.toml` (`to-record.toml` removed), every frame exact
+  by `frames --only <id> --reuse` (18, 25, 18, 27) and the viewer's timelines the recorded ones
+  (`<id>-frames.txt` kept); `h3-map-view sequences` the 93 as recorded; `drawn` the 50 situations
+  and 89 earlier sequences the same, `--record` for the four (88 digests); 416 library tests;
+  coverage of `h3-map-view`'s library 100 % lines, regions and functions (the worker's run); the
+  window under Xvfb (`--check 8`) on `board` and `land-walk`, 55 of 55 and 61 of 61 frames read
+  back exact, every change the headless loop's; `scripts/exe.py check` and `cited` clean;
+  `RUST_TEST_THREADS=1 check.sh --no-coverage` all gates passed; the scoped verify
+  `--with-original-data` no failing step.

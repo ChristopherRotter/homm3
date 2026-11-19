@@ -1479,6 +1479,7 @@ fn walking(live: &Live, index: usize, group: u32, frame: u32, offset: [i32; 2]) 
             frame,
         }),
         attacking: None,
+        hidden: None,
     };
     live
 }
@@ -1543,6 +1544,23 @@ fn a_lifted_hero_is_drawn_at_the_views_middle_and_once_more_blended() {
     assert_eq!(heroes_of(&s, Pass::Body).len(), 12);
     assert!(heroes_of(&s, Pass::Body).iter().all(|p| p.1 == 2));
     assert!(heroes_of(&drawn(&art, &live, &shapes, at(0, 0)), Pass::Body).is_empty());
+}
+
+#[test]
+fn a_hidden_hero_is_drawn_nowhere() {
+    // E24 M4 T2d2 (design §5.7): a boarding's or a landing's step, the hero off its tile and not
+    // lifted: neither on its tile nor at the view's middle; another hero still on its own.
+    let (art, mut live) = art_with(vec![]);
+    live.heroes = vec![
+        land_hero(20, 20, 3, 2, Facing::Left),
+        land_hero(21, 20, 3, 2, Facing::Left),
+    ];
+    let shapes = hero_shapes(&art, &[("af02.def", 8), ("ah03_.def", 8)]);
+    let both = heroes_of(&drawn(&art, &live, &shapes, at(11, 12)), Pass::Body).len();
+    live.walking.hidden = Some(0);
+    let s = drawn(&art, &live, &shapes, at(11, 12));
+    assert!(grouped(&s, Pass::Blend).is_empty());
+    assert_eq!((heroes_of(&s, Pass::Body).len(), both), (12, 24));
 }
 
 #[test]
