@@ -449,6 +449,11 @@ The user, 2026-11-19 (M3 T5b's start and reading; T5b kept whole):
     original's keeps the random map's description or flags under the selection's name; the
     original's for the comparisons only.
 
+The user, 2026-11-19 (M3 T6's start):
+
+65. **T6 kept whole** (offered: T6a the setup and the stub, T6b the loading bar; or the bar
+    first): one session and one pull request.
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -559,7 +564,7 @@ catalogue: design §3; the shell's frame, menus, edits and the hot seat's names:
 | T4b | The hot seat's presses (§3.6, §3.14, §3.15; decision 59): the handicap's (+1 modulo 3, `handicap_names`), the flags' cycle (CLT-Q94, decision 13: the client's; the original's `hot_seat_colour_cycle` for the comparisons), a hero another human record holds passed over and stepped on (`scenario_hero_step`, `scenario_heroes_unclash`), the name's press taking nothing, Begin's GENRLTXT 83 and 531; exact against the rest of `adv-hotseat-rows` and `adv-hotseat-two` | **done** 2026-11-18 (CLT-Q144 (b), CLT-Q145 (c): decisions 60, 61): `Advanced::cycle` (the original's, as recorded: the holder's index + 1, the colour pressed last and the kept one), `pass` (CLT-Q94's exchange), `step_handicap` (the client's caption the record's), `held_elsewhere`, `unclash`, `refusal` (`Refusal`), `seating`; the screen's Begin over a map (`Texts::unplaced`, `too_few`; the keys `shell.scenario.unplaced`, `too-few`), the box's close keeping the screen as it was; `adv-hotseat-rows` 12 of 12, `adv-hotseat-two` 7 of 7, `adv-hotseat-begin` 7 of 7 up to its begin exact; log "M3 T4b", design §29 |
 | T5a | The random map's tab drawn and its left presses (§3.16; decision 62): the toggle (130) with the list and the options hidden, `RanMapBk.pcx` and items 280 to 335, the titles; every choice, the caps and disabled counts, the levels; the own record in the panel (GENRLTXT 741, 742, the flags), built again by the counts; the size mark (CLT-Q115 (b)); exact against `adv-random` from `tab` to `monsters-random` | **done** 2026-11-19: `scenario::random` (`RandomMap`, `Choices`, `Pressed`), the screen's `toggle_random`, `random_built`, `random_click`, `random_size_mark`, `shown_entry` (the panel, the game and the advanced options read a chosen random map's record), `Texts::random`, `random_showing`, `random_map`; the layout's 103, 280 to 335, 1040, 1041; the keys `shell.scenario.random-*`; the tab's hidden items out of the mouse's dialog; the record built at each opening in the client's profile (CLT-Q111 (b)); CLT-Q146 asked (built as the original's); `adv-random` 45 of 52 exact (the 44 and `show-hover`); log "M3 T5a", design §30 |
 | T5b | The rest of the random map's tab (§3.16; decision 62; CLT-Q92): the items' right press and hints, Show Random Maps (335: the random maps' list, kind 1, empty), the tab toggled back after it (CLT-Q111 (b)), the list's showing over a chosen random map (design §30.4), Begin with a random map chosen (a stub's message); CLT-Q146's answer; exact against the rest of `adv-random` (§6.4: Begin after `tab-again`, recorded by this task with `h3shell.py run --only adv-random --record`) | **done** 2026-11-19 (kept whole; CLT-Q146 (b), CLT-Q147 (b): decisions 63, 64): `random::HELPED` (the keys `shell.scenario.help.random-*`), `RandomMap::heights`; the screen's list kind (`random_list`, `toggle_list(random)`), the panel over an empty list (`blank_panel`, `show_with`; `give_to_game` and `select` of none as the original's), `random_built` setting the description and flags, Begin's stub (`Texts::random_stub`, `stubbed`, `CLT-STUB-12`, `shell.stub.random-map`), the replay stopping under it; `adv-random` recorded with Begin (53), `adv-random-list` new (12); `adv-random` 52 of 53 exact (the replay stops at `begin` under the stub), `adv-random-list` 12 of 12; log "M3 T5b", design §31 |
-| T6 | The game's begin (§3.17, §2.1; CLT-Q95, CLT-Q135): the setup built and validated by the engine (a refusal shown), the loading bar (`loadbar.pcx`, `loadprog.def`; the client's steps), the begin's notice (a `CLT-STUB`) and back to the menu, the setup kept for E24 M5 (the map-client lane's inbox); exact against `adv-begin` and `adv-hotseat-begin` up to the bar | after T5 |
+| T6 | The game's begin (§3.17, §2.1; CLT-Q95, CLT-Q135): the setup built and validated by the engine (a refusal shown), the loading bar (`loadbar.pcx`, `loadprog.def`; the client's steps), the begin's notice (a `CLT-STUB`) and back to the menu, the setup kept for E24 M5 (the map-client lane's inbox); exact against `adv-begin` and `adv-hotseat-begin` up to the bar | **done** 2026-11-19 (kept whole: decision 65): Begin, Enter and a row's double press end the screen, `Scenario::begun` (`Begun`, `Advanced::begun`); `h3-battle-client`'s `begin` (`GameSetup` from the import and the records, `validate`, `begin::Game` kept for E24 M5); `h3_view::shell::play` (`Play`, `Front::Play`, `LoadingLook`, the layout's `[loading]`; `Screen::Play` built), `start::faded`; the keys `shell.stub.play`, `play-refused` (`CLT-STUB-13`); both recipes' `bar` clip (new: the full bar fading, 2 frames) exact, their shots up to it as before; log "M3 T6", design §32 |
 | T7 | M3's closure: a fresh reviewer, the review list, M4's refinement (M4 T0: the saves' record and its extension, decision 8; Options with the menu in play, CLT-Q136; the load and save modes with §6.4's recipes for them) | after T6 |
 
 **M3's review list** (the agent's calls, *provisional*, for T7): (1) the maps read whole
@@ -638,6 +643,15 @@ list showing (CLT-Q147) rather than a game record kept apart from the entry show
 profile over any empty list showing no description (decision 51 extended: the random maps' list
 leaves the random map's); Begin's stub over the screen as Begin's other messages (`Over::Notice`),
 told from them by a random map chosen; the tab's 56 records one key each.
+(22) T6: the setup built by the adapter at play's start (`h3-battle-client`'s `begin`: the map read
+and imported again, not kept from the list's read) in three steps of the bar, then the bar filled
+at once; the engine's refusal (none on the shipped maps the recipes play) shown after the fade as
+play's notice in the client's words, its OK the main menu (the original has none: its load
+failures' message, the tutorial's GENRLTXT 743, leads to its menu); play's stub the main menu
+under its notice (`STUBS`), `Screen::Play { restart: false }` built whole and the replay stopping
+under the notice (`Play::noticing`, as the random map's Begin); no busy cursor on the loading
+screen; the kept game (`begin::Game`) in the window's state alone, printed as play's stub ends;
+the replay builds no setup (its frames do not depend on it).
 
 ## Dependencies and boundaries
 

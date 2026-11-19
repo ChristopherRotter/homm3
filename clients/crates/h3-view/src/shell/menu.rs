@@ -73,8 +73,9 @@ use h3_ui::ui::{Dialog, Draw, Item, Shown, State};
 
 use super::keys::{Command, Context};
 use super::multiplayer::Multiplayer;
+use super::play::Play;
 use super::scenario::Scenario;
-use super::{Choice, Ended, Game, Kind as ScenarioKind, Request, Screen};
+use super::{Choice, Ended, Game, Kind as ScenarioKind, PlayEnd, Request, Screen};
 use crate::message::{self, MessageBox, Open, Outcome};
 
 /// The player whose colours frame the menus' boxes: the viewing player there, red (0).
@@ -94,8 +95,9 @@ pub const TITLE: u16 = 105;
 /// notice's OK's ending. The scenario screen's (a new single scenario's built since M3 T1a, the
 /// hot seat's since M3 T4a; the loads' until M4) shows over the game type menu it was reached
 /// from (by Campaign, Tutorial, Load Game's Single or the Multiplayer dialog), its OK back
-/// there.
-pub const STUBS: [(Screen, Kind, Ended); 8] = [
+/// there. Play's (E27 M3 T6, CLT-STUB-13: until E24 M5 hosts the game) shows over the main menu
+/// after the loading screen's fade ([`super::play`]), its OK the main menu.
+pub const STUBS: [(Screen, Kind, Ended); 9] = [
     (Screen::Campaigns, Kind::GameType(Game::New), Ended::Back),
     (Screen::Tutorial, Kind::GameType(Game::New), Ended::Back),
     (Screen::HighScores, Kind::Main, Ended::Done),
@@ -104,6 +106,11 @@ pub const STUBS: [(Screen, Kind, Ended); 8] = [
     scenario(Game::Load, ScenarioKind::Multiplayer),
     scenario(Game::Load, ScenarioKind::Campaign),
     scenario(Game::Load, ScenarioKind::Tutorial),
+    (
+        Screen::Play { restart: false },
+        Kind::Main,
+        Ended::Play(PlayEnd::Request(Request::MainMenu)),
+    ),
 ];
 
 /// The scenario screen's stub of `game` and `kind`.
@@ -234,7 +241,7 @@ impl Did {
         }
     }
 
-    fn with(self, other: Self) -> Self {
+    pub(crate) fn with(self, other: Self) -> Self {
         Self {
             changed: self.changed || other.changed,
             sample: self.sample || other.sample,
@@ -372,7 +379,7 @@ impl Menu {
 
     /// The menu as the stub `screen` shows it (E27 M2 T6b2): `notice` open over it, its OK ending
     /// the screen as [`STUBS`] says.
-    fn stub(mut self, screen: Screen, notice: MessageBox) -> Self {
+    pub(super) fn stub(mut self, screen: Screen, notice: MessageBox) -> Self {
         self.screen = screen;
         self.over = Over::Notice(Box::new(Open::new(notice)));
         self
@@ -817,6 +824,10 @@ impl Menus {
                     self.scenario.opened_hot_seat(hovers, names),
                 )))
             }
+            // Play's start (E27 M3 T6): the loading screen, then the stub's menu under its notice.
+            (Screen::Play { restart: false }, _) => self
+                .opened(screen, pointer, hovers)
+                .map(|m| Front::Play(Box::new(Play::new(m)))),
             _ => self
                 .opened(screen, pointer, hovers)
                 .map(|m| Front::Menu(Box::new(m))),
@@ -843,6 +854,8 @@ pub enum Front {
     Multiplayer(Box<Multiplayer>),
     /// The scenario screen (E27 M3 T1a).
     Scenario(Box<Scenario>),
+    /// Play's start (E27 M3 T6): the loading screen and its fade, then the client's stub.
+    Play(Box<Play>),
 }
 
 impl Front {
@@ -854,6 +867,7 @@ impl Front {
             Self::Menu(m) => m.hovers(),
             Self::Multiplayer(m) => m.under().map(Menu::hovers).unwrap_or_default(),
             Self::Scenario(s) => s.hovers(),
+            Self::Play(p) => p.hovers(),
         }
     }
 
@@ -864,6 +878,7 @@ impl Front {
             Self::Menu(m) => m.context(),
             Self::Multiplayer(m) => m.context(),
             Self::Scenario(s) => s.context(),
+            Self::Play(p) => p.context(),
         }
     }
 
@@ -875,6 +890,7 @@ impl Front {
             Self::Menu(m) => alloc::vec![m.context()],
             Self::Multiplayer(m) => m.contexts(),
             Self::Scenario(s) => s.contexts(),
+            Self::Play(p) => alloc::vec![p.context()],
         }
     }
 
@@ -882,7 +898,7 @@ impl Front {
     #[must_use]
     pub fn typing(&self) -> bool {
         match self {
-            Self::Menu(_) => false,
+            Self::Menu(_) | Self::Play(_) => false,
             Self::Multiplayer(m) => m.typing(),
             Self::Scenario(s) => s.typing(),
         }
@@ -892,7 +908,7 @@ impl Front {
     /// T3c1).
     pub fn typed(&mut self, c: char) -> Did {
         match self {
-            Self::Menu(_) => Did::default(),
+            Self::Menu(_) | Self::Play(_) => Did::default(),
             Self::Multiplayer(m) => m.typed(c),
             Self::Scenario(s) => s.typed(c),
         }
@@ -904,6 +920,7 @@ impl Front {
             Self::Menu(m) => m.moved(point),
             Self::Multiplayer(m) => m.moved(point),
             Self::Scenario(s) => s.moved(point),
+            Self::Play(p) => p.moved(point),
         }
     }
 
@@ -913,6 +930,7 @@ impl Front {
             Self::Menu(m) => m.press(point),
             Self::Multiplayer(m) => m.press(point),
             Self::Scenario(s) => s.press(point),
+            Self::Play(p) => p.press(point),
         }
     }
 
@@ -922,6 +940,7 @@ impl Front {
             Self::Menu(m) => m.release(),
             Self::Multiplayer(m) => m.release(),
             Self::Scenario(s) => s.release(),
+            Self::Play(p) => p.release(),
         }
     }
 
@@ -931,6 +950,7 @@ impl Front {
             Self::Menu(m) => m.right(point),
             Self::Multiplayer(m) => m.right(point),
             Self::Scenario(s) => s.right(point),
+            Self::Play(p) => p.right(point),
         }
     }
 
@@ -940,6 +960,7 @@ impl Front {
             Self::Menu(m) => m.right_release(),
             Self::Multiplayer(m) => m.right_release(),
             Self::Scenario(s) => s.right_release(),
+            Self::Play(p) => p.right_release(),
         }
     }
 
@@ -956,6 +977,7 @@ impl Front {
             Self::Menu(m) => command.map_or(Did::default(), |c| m.key(c, by)),
             Self::Multiplayer(m) => m.key(scan, command, by),
             Self::Scenario(s) => s.key(scan, command, by),
+            Self::Play(p) => p.key(command, by),
         }
     }
 
@@ -965,14 +987,21 @@ impl Front {
             Self::Menu(m) => m.key_up(by),
             Self::Multiplayer(m) => m.key_up(by),
             Self::Scenario(s) => s.key_up(by),
+            Self::Play(p) => p.key_up(by),
         }
     }
 
     /// The shell's clock is `ms` (E27 M3 T1b1: the scenario list's double press is timed on it,
-    /// from the screen's opening); the menus and the Multiplayer dialog read no clock.
-    pub fn clock(&mut self, ms: u32) {
-        if let Self::Scenario(s) = self {
-            s.clock(ms);
+    /// from the screen's opening; T6: play's fade steps by it); the menus and the Multiplayer
+    /// dialog read no clock. Whether what shows changed (the fade's step).
+    pub fn clock(&mut self, ms: u32) -> bool {
+        match self {
+            Self::Scenario(s) => {
+                s.clock(ms);
+                false
+            }
+            Self::Play(p) => p.clock(ms),
+            _ => false,
         }
     }
 }

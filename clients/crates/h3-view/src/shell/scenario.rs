@@ -68,10 +68,14 @@
 //!   place (`random`); a chosen random map's own record is what the panel, the game and the
 //!   advanced options read first (`scenario_to_game` 0x583580, `scenario_entry_name` 0x584010).
 //!
-//! *Not built yet:* Begin with a map (T6: a double press begins nothing yet either), the random
-//! map's right press, Show Random Maps and Begin with it (T5b), the load's modes (the client's
-//! stub until M4), GENRLTXT 503 while the list is read again (a network game's message 1015
-//! alone, `sub_58B120` 0x58B120: the network modes', `CLT-STUB-6`; design §20.3).
+//! - **The begin** (E27 M3 T6; §3.17, §32): Begin, Enter or a row's double press over a map that
+//!   passes Begin's checks ends the screen (`Ended::Scenario(true)`); [`Scenario::begun`] is
+//!   what it hands the game's setup (the adapter's: the engine's `GameSetup`, decision 4), play's
+//!   start the loading screen ([`super::play`]).
+//!
+//! *Not built yet:* the load's modes (the client's stub until M4), GENRLTXT 503 while the list is
+//! read again (a network game's message 1015 alone, `sub_58B120` 0x58B120: the network modes',
+//! `CLT-STUB-6`; design §20.3).
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
@@ -384,6 +388,25 @@ impl Seat {
     pub const fn plays(self) -> bool {
         self.human || self.computer
     }
+}
+
+/// What Begin hands the game's setup (E27 M3 T6; §3.9, §3.17: `scenario_dialog_begin`
+/// 0x588330's reads): the adapter imports the map again, applies the records and has the engine
+/// validate it (decision 4).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Begun {
+    /// The map's file (the entry's).
+    pub file: String,
+    /// The difficulty (0 easy to 4 impossible).
+    pub difficulty: u8,
+    /// Each colour's record, red first: a human record's (its colour set) where one holds the
+    /// colour, else the computer's (no colour).
+    pub records: [Record; 8],
+    /// The name of the human record holding each colour (the hot seat's names, the single
+    /// player's edit), red first; none for a computer's.
+    pub names: [Option<String>; 8],
+    /// The turn's duration (`turndur.txt`'s record; no timer runs it yet, `CLT-STUB-11`).
+    pub duration: u8,
 }
 
 /// A map of the list (`scenario_info`, `scenario_header_read` 0x583170: what the screen shows
@@ -1433,19 +1456,19 @@ impl Scenario {
 
     /// A row's click (`scenario_row_click` 0x5872E4): within the list, a second within
     /// [`DOUBLE_MS`] of the last (in the original's profile any row's or the opening; in the
-    /// client's the same row's, CLT-Q91 (c)) begins (Begin: T2, nothing yet); else it is timed
-    /// and selected.
-    fn row_click(&mut self, row: u16) {
+    /// client's the same row's, CLT-Q91 (c)) begins (as Begin, E27 M3 T6); else it is timed and
+    /// selected.
+    fn row_click(&mut self, row: u16) -> Did {
         let index = self.top + usize::from(row - ROW);
         if index >= self.listed.len() {
-            return;
+            return Did::CHANGED;
         }
         let double = self.last_row.is_some_and(|(at, last)| {
             let soon = self.now.saturating_sub(at) < DOUBLE_MS;
             soon && (self.bugs == Bugs::Original || last == Some(index))
         });
         if double {
-            return;
+            return Did::CHANGED.with(self.begin());
         }
         self.last_row = Some((self.now, Some(index)));
         let same = self.selected == Some(index);
@@ -1456,6 +1479,7 @@ impl Scenario {
         } else {
             self.whole();
         }
+        Did::CHANGED
     }
 
     /// The screen redrawn whole: the size mark as it is now is the one drawn.
@@ -1703,8 +1727,9 @@ impl Scenario {
     /// an OK box, the original's only once a map of a known format was shown (its check of the
     /// game's map comes first: with no map at all Begin does nothing, CLT-Q114 (b)); over a map
     /// the advanced options' refusal (E27 M3 T4b, `scenario_begin_tail` 0x58C11F: GENRLTXT 531,
-    /// the hot seat's 83; [`Advanced::refusal`]), else nothing yet (the game's begin: T6).
-    fn begin(&mut self) -> bool {
+    /// the hot seat's 83; [`Advanced::refusal`]), else the game begins (E27 M3 T6: the screen
+    /// ends, [`Scenario::begun`] what it hands on).
+    fn begin(&mut self) -> Did {
         // stub: CLT-STUB-12
         let message = if self.random.chosen() {
             self.texts.random_stub.clone()
@@ -1713,7 +1738,12 @@ impl Scenario {
             match self.advanced.as_ref().and_then(|a| a.refusal(&map)) {
                 Some(Refusal::Unplaced) => self.texts.unplaced.clone(),
                 Some(Refusal::TooFew) => self.texts.too_few.clone(),
-                None => None,
+                None => {
+                    return Did {
+                        ended: Some(Ended::Scenario(true)),
+                        ..Did::default()
+                    };
+                }
             }
         } else {
             let checked =
@@ -1723,10 +1753,37 @@ impl Scenario {
         match message {
             Some(message) => {
                 self.over = Over::Notice(Box::new(Open::new(message)));
-                true
+                Did::CHANGED
             }
-            None => false,
+            None => Did::default(),
         }
+    }
+
+    /// What Begin hands the game's setup (E27 M3 T6; §3.9, §3.17): the map selected, the
+    /// difficulty, each colour's record and its human's name, the turn's duration; none without a
+    /// map, or with a random map chosen (its stub).
+    #[must_use]
+    pub fn begun(&self) -> Option<Begun> {
+        let entry = self.entry().filter(|_| !self.random.chosen())?;
+        let map = self.players();
+        let (records, names) = self.advanced.as_ref().map_or_else(
+            || {
+                // No advanced options (no texts): the single player's colour the map's.
+                let records = core::array::from_fn(|c| Record {
+                    colour: map.local.filter(|&l| usize::from(l & 7) == c),
+                    ..Record::NEW
+                });
+                (records, Default::default())
+            },
+            |a| a.begun(&map),
+        );
+        Some(Begun {
+            file: entry.file.clone(),
+            difficulty: self.difficulty,
+            records,
+            names,
+            duration: self.duration().unwrap_or(advanced::UNLIMITED),
+        })
     }
 
     /// The screen's draw list as it is (the background is the caller's: [`Scenario::background`]):
@@ -2009,7 +2066,7 @@ impl Scenario {
         if let Some(row) = self.row.take() {
             let over = self.item_at(self.pointer) == Some(row);
             if self.bugs == Bugs::Original || over {
-                self.row_click(row);
+                return self.row_click(row);
             }
             return Did::CHANGED;
         }
@@ -2403,7 +2460,7 @@ impl Scenario {
             self.choose(u8::try_from(k).unwrap_or(OPENING_DIFFICULTY));
             did.changed = true;
         } else if id == BEGIN {
-            did.changed |= self.begin();
+            did = did.with(self.begin());
         }
         did
     }

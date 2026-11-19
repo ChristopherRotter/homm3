@@ -38,7 +38,7 @@ pub fn rules() -> Result<GameRuleset, String> {
 }
 
 /// The maps' folder of an installation (`maps`, as the original names it: the copy's `Maps`).
-const MAPS: &str = "Maps";
+pub(crate) const MAPS: &str = "Maps";
 
 /// The entries of `install`'s maps (`*.h3m`, any case) under `rules`, in the list's order; none
 /// without the folder.

@@ -161,7 +161,7 @@ steps = [
 
 [[recipe]]
 id = "adv-hotseat-begin"
-what = "§3.6, §3.14, §3.17: the hot seat (three players, two colours): a flag's press passes the colour on; the local player without a colour (GENRLTXT 531); the begin to the first player's turn"
+what = "§3.6, §3.14, §3.17, §32: the hot seat (three players, two colours): a flag's press passes the colour on; the local player without a colour (GENRLTXT 531); the begin: the loading bar full, faded (`bar`, E27 M3 T6), to the first player's turn"
 maps = ["A Warm and Familiar Place.h3m"]
 steps = [
   "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
@@ -169,7 +169,7 @@ steps = [
   "click:345,450", "move:790,300", "until:scenario_list", "click:514,519", "move:790,300", "shot:panel",
   "click:35,155", "move:790,300", "shot:flag-red-1", "click:497,555", "shot:begin-1", "key:Return", "shot:closed-1",
   "click:35,155", "move:790,300", "shot:flag-red-2", "click:35,205", "move:790,300", "shot:flag-green-1",
-  "click:35,155", "move:790,300", "shot:flag-red-3", "click-wait:497,555:3000",
+  "click:35,155", "move:790,300", "shot:flag-red-3", "click-wait:497,555:3000", "clip:bar:90",
   "clip-until:load:turn_dialog|adventure", "shot:turn", "key:Return", "step:500", "shot:map",
 ]
 
@@ -256,12 +256,12 @@ steps = [
 
 [[recipe]]
 id = "adv-begin"
-what = "§3.17: Begin from the advanced options single (a town, a hero, the gold bonus): the loading bar to the first adventure frame"
+what = "§3.17, §32: Begin from the advanced options single (a town, a hero, the gold bonus): the loading bar full, faded (`bar`, E27 M3 T6), to the first adventure frame"
 maps = ["Arrogance.h3m"]
 steps = [
   "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
   "move:790,300", "until:scenario_list", "click:514,519", "click:230,145", "click:306,145", "click:382,145", "click:382,145",
-  "move:790,300", "shot:panel", "click-wait:497,555:3000",
+  "move:790,300", "shot:panel", "click-wait:497,555:3000", "clip:bar:90",
   "clip-until:load:adventure", "shot:map",
 ]
 

@@ -3513,3 +3513,68 @@ folder). The client shows its stub's notice in its own words (`shell.stub.random
 `adv-random` 52 of 53 drawn, all exact, the replay stopping at `begin` under the stub (the
 original's message is its generator's); `adv-random-list` 12 of 12 exact. Every other recipe of
 every group as recorded.
+
+## 32. The game's begin (M3 T6, 2026-11-19)
+
+Read with `scripts/exe.py` (the begin's path from §3.17 on) and recorded under Wine (`adv-begin`,
+`adv-hotseat-begin`).
+
+### 32.1 The loading screen and its bar
+
+- `loading_screen_open` 0x4ED350 (read whole): with no `loadbar.pcx` loaded (0x69956C) it loads
+  it and `loadprog.def` (0x699570) and sets the count (0x699574) 0; then, loaded or not, copies the
+  picture whole to (0, 0), draws the pieces so far (frame *i* of the DEF's group 0 by
+  `def_draw_plain` 0x47BCF0 at (395 + 18 *i*, 548)) and shows the screen whole. Called by Begin's
+  tail (0x58C255, after the busy cursor `mouse_set_cursor(1, 1)` and a network game's message),
+  the tutorial's start, a network join, one more and the adventure manager's start (0x407517:
+  the screen drawn again with the count kept).
+- `load_progress_step` 0x4ED2A0 (read whole): nothing without the DEF; the count one more, at
+  most 20 (0x14), the pieces drawn again; with `cl` set the bar's rectangle (395, 548, 358 × 16)
+  shown (`screen_show_rect` 0x602BD0, which runs the tick). On the begin's path: `new_game_start`
+  4 times (0x58C606, 0x58C64C, 0x58C6D5, 0x58C93F), the map's load (`map_objects_place_all`
+  0x4FD6E3, `map_objects_check` 0x504470 six times, two more of its functions seven times) and the
+  adventure manager's start nine times: more than 20, so the bar is full before play. Play frees
+  both and sets the count 0 (`game_main` 0x4EFDBA to 0x4EFDEB, after the manager is added), so
+  every begin starts empty; a campaign's scenario sets the count 20 at once (0x4EFCB3, E20).
+- The load runs in real time and reads no clock: the harness sees the bar only full.
+
+### 32.2 Play's fade
+
+The adventure manager's start, after the loading screen again (0x407517), calls
+`window_manager_state` with (1, 4, 1) (0x407526; `edi` 1 since 0x4074C3): the fade out (§10:
+the screen copied, shown at shifts 0, 1, 2 of each channel, each step 50 ms of the clock after the
+last began, then black; the mouse hidden first), then the map drawn and faded in (0x6032E0, not
+read). On the harness's frozen clock: Begin's release at *t*, the load and the shift 0 at *t*, the
+input's step to *t* + 100 (shift 1), *t* + 150 (shift 2), *t* + 200 the black and the map's first
+step at once, the map whole at *t* + 300. `adv-begin` (*t* 1 000) and `adv-hotseat-begin` (*t* 2
+300, the turn's dialog over the covered view) show the same two faded loading screens (the bar
+full, no cursor).
+
+### 32.3 The recordings
+
+Both recipes gained `clip:bar:90` after Begin's `click-wait` (the two faded frames: 1 100 and 1
+150, 2 400 and 2 450), their `load` clips starting 90 ms on; recorded again twice each, every other
+shot as kept (a single run had once shown the map 10 ms late: the fade's last step reads the clock
+after the load's real time).
+
+### 32.4 The client
+
+- **The begin** (`h3_view::shell::scenario`): Begin, Enter or a row's double press over a map
+  passing Begin's checks ends the screen (`Ended::Scenario(true)`); `Scenario::begun` hands on the
+  map's file, the difficulty, each colour's record (as the rows show them, or as the next showing
+  would make them: the human records seated, Random towns and heroes, `Advanced::begun`), the
+  human records' names by colour and the duration.
+- **The setup** (`h3-battle-client`'s `begin`, decision 4): the map read and imported again
+  (`h3_map::import`), each player's `human` the records' (a colour a human record holds), a
+  record's town `FactionChoice::Fixed` (its Random the import's choice: CLT-Q95), a human's pick by
+  its hero type, the difficulty; `GameSetup::validate`. What it has no field for (names, bonuses,
+  handicaps, the duration) kept beside it (`begin::Game`) for E24 M5 (the map-client lane's inbox).
+  The two recipes' choices validate (`the_recipes_begins_validate`).
+- **Play's start** (`h3_view::shell::play`, `Front::Play`; `Screen::Play { restart: false }` built
+  whole): the loading screen (the layout's `[loading]`), the bar stepped by the client's work (the
+  map read, the setup made, validated: `begin::STEPS`), then filled and the fade begun; the fade's
+  shift drawn by the adapter (`start::faded`, shared with the start's fade); at the black the
+  client's notice over the main menu (`shell.stub.play`, `CLT-STUB-13`), or the engine's refusal
+  (`shell.stub.play-refused`, the error on standard error); its OK the main menu. The replay loads
+  at once and stops under the notice (`Stop::Stub`). No busy cursor on the loading screen
+  (*provisional*: no recording shows it before the fade).
