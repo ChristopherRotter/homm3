@@ -1,12 +1,12 @@
-"""Observation encoding v22's layout as the entity network reads it (E06 T5a, design §11): the
+"""Observation encoding v23's layout as the entity network reads it (E06 T5a, design §11): the
 offsets of its parts and the stack columns it uses, the columns the behaviour analysis reads
-(`h3env.train.inspect`, E06 T6a) and the turn order's (v22). `h3-sim`'s test
+(`h3env.train.inspect`, E06 T6a), the turn order's (v22) and the reach block's (v23). `h3-sim`'s test
 `the_python_layout_is_the_encodings` pins every value here against `observation.rs`; a new
 observation encoding changes this file in the same change.
 """
 
 #: The encoding this layout describes (`_ffi.versions()["observation_encoding"]`).
-OBSERVATION_ENCODING = 22
+OBSERVATION_ENCODING = 23
 
 GLOBALS = 38
 HERO_PUBLIC_FEATURES = 14
@@ -16,6 +16,7 @@ MAX_FIELD_HEXES = 255
 STACK_FEATURES = 99
 STACK_CAPACITY = 42
 ORDER_FEATURES = 3
+REACH_FEATURES = 3
 
 #: The viewer's public hero part; the opponent's follows it.
 HEROES = GLOBALS
@@ -25,7 +26,12 @@ STACKS = FIELD + HEX_PLANES * MAX_FIELD_HEXES
 #: The turn order (v22), after the stack slots: v21's layout is the prefix before it, which a
 #: network without `[network] order` reads.
 ORDER = STACKS + STACK_FEATURES * STACK_CAPACITY
-OBSERVATION_LEN = ORDER + ORDER_FEATURES * STACK_CAPACITY
+#: The reach block (v23, E25 T38a), after the turn order: v22's layout is the prefix before it,
+#: which a network without `[network] reach` reads. Two planes of `MAX_FIELD_HEXES` (the viewer's
+#: side's, then the opponent's: per hex the strikers that can strike a stack standing there in
+#: melee on their next turn), then `REACH_FEATURES` per stack slot.
+REACH = ORDER + ORDER_FEATURES * STACK_CAPACITY
+OBSERVATION_LEN = REACH + 2 * MAX_FIELD_HEXES + REACH_FEATURES * STACK_CAPACITY
 
 #: A stack slot's columns the network reads apart: the slot holds a stack, its creature's handle,
 #: its position's column and row (a two-hex stack's rear hex; a turret's off-field hex), it is
@@ -72,6 +78,13 @@ TURRET = 47
 ORDER_ROUND = 0
 ORDER_SIDE = 1
 ORDER_NEXT = 2
+
+#: A stack slot's reach columns (`h3_sim::observation::ReachBlock`): it can shoot now, the stacks
+#: it may attack that it can strike in melee on its next turn, the strikers that may attack it
+#: and can strike it on theirs.
+REACH_SHOOTS = 0
+REACH_STRIKES = 1
+REACH_STRUCK = 2
 
 #: Action encoding v13's entries the heads build (`h3_sim::action`): Wait, Defend, the moves,
 #: 24 attack positions per stack, 2 shots per stack, a heal per stack, End tactics, Retreat,

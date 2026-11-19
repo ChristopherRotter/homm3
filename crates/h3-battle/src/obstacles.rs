@@ -278,6 +278,21 @@ pub(crate) fn seen_pits(state: &BattleState, viewer: BattleSide) -> HexSet {
         .fold(HexSet::new(), |set, o| set.union(o.hexes))
 }
 
+/// The hexes of the pits both `a` and `b` see (BAT-MAG-031): the stops of a walk of `a`'s as `b`
+/// may know them (`movement::reach_seen_by`).
+// rule: BAT-MAG-031
+pub(crate) fn pits_seen_by_both(state: &BattleState, a: BattleSide, b: BattleSide) -> HexSet {
+    if state.spell_obstacles.pits.is_empty() {
+        return HexSet::new();
+    }
+    state
+        .spell_obstacles
+        .list
+        .iter()
+        .filter(|o| o.kind == ObstacleKind::Pit && sees(a, o) && sees(b, o))
+        .fold(HexSet::new(), |set, o| set.union(o.hexes))
+}
+
 /// The hexes of the pits both sides see (BAT-MAG-031): all that a choice the rules make and
 /// report to both sides may read (the automatic turrets' and Ballista's targets, BAT-SIE-022,
 /// BAT-WAR-008).

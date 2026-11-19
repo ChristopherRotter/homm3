@@ -153,7 +153,7 @@ def test_a_clone_bench_trains_saves_starts_a_run_and_plays_its_ladder(tmp_path) 
     stats = report["teacher"]["stats"]
     assert stats["lost"] == 0 and stats["decisions"] > 600 and stats["episodes"] > 0
     assert report["teacher"]["config"]["tactics_rounds"] == 3
-    assert report["identity"]["abi"] == 37 and report["teacher"]["system_policy"] > 0
+    assert report["identity"]["abi"] == 38 and report["teacher"]["system_policy"] > 0
     ladders = report["ladders"]["mlp"]
     assert set(ladders) == {"report-v1", "neutral-v1"}
     assert set(ladders["report-v1"]) == {"system"} and set(ladders["neutral-v1"]) == {"system"}

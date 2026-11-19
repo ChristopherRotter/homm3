@@ -36,6 +36,7 @@ mod protect;
 mod rage;
 mod raise;
 mod raisers;
+mod reach;
 mod ranged;
 mod rebirth;
 mod remove;

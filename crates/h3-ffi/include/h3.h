@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 37 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
+ * h3 engine C ABI, version 38 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -16,7 +16,9 @@
  * (E25 T1b) is trusted tooling, a diagnostic's world with nothing guessed. v36 (E25 T14):
  * H3_SEAT_SYSTEM is the fair system actor, H3_SEAT_SYSTEM_ALL_SEEING the all-seeing one. v37
  * (E25 T16): h3_batch_choice, a seat's choice as an external seat's action, is trusted tooling
- * (a teacher's labels; the all-seeing seat reads the whole state).
+ * (a teacher's labels; the all-seeing seat reads the whole state). v38 (E25 T38a): observation
+ * encoding v23, the reach block appended (h3_observation_len grows; computed from the battle's
+ * state with only what the viewer may know).
  */
 #ifndef H3_H
 #define H3_H
