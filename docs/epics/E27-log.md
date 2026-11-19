@@ -1595,3 +1595,36 @@ CI's green `master` standing in. Kept whole (a small task).
   the original's (recommended (a)). **The agent's calls** (*provisional*: M4's review list items 6
   to 9).
 
+
+## M4 T2 — the credits: the scroll, the closing text, the ends (2026-11-19)
+
+On `client/e27-m4-t2`, stacked on T1b's #1060 (open, green); the user present at the start, then
+away. The original data staged at once (64 files, the four manuals and three help files, checked
+by SHA-256 against the user's computer), `cp -rn` into the clone; the setup's baseline stopped by
+a watcher at coverage (fmt, clippy, the doc tests and deny passed), CI's green #1060 standing in.
+Kept whole (no seam needed).
+
+- **Read** (design §36.1): `credits_screen` again (its three counts, the step's copies, the closing
+  text's test in the leaving phase: rows under 435) and `pcx16_copy_rect` whole (its arguments,
+  its cuts, its key: the save of the background skips the key's pixels).
+- **Recorded:** `credits-scroll` and `credits-end` played once again under Wine (as kept); every
+  frame of both compared with a model of the reading (the text's picture drawn by the client's
+  text drawer, the copies by their rules): all equal (§36.2: the first step 100 ms after the
+  opening, the 12th the first change; the end's step shows the main menu). One pixel of
+  `mainmenu.pcx` is the key's colour and shows black from the first step (§36.3).
+- **Built, pure** (`h3-view`): `shell::credits` (`Credits`, `CreditsLook`, `Texts`, `laid`),
+  `Front::Credits`, `Menus::credits`, `Screen::Credits` built whole (its stub gone from `STUBS`),
+  `Context::Credits`, `look`'s credits, `Front::clock` returning a `Did` (the replay's tick ends
+  a screen by it); the text driver's lost and won screens named E27 M5's; the layout's
+  `[credits]`. `h3-ui` (common, additive): `Draw::Part` and `Draw::Keyed`.
+- **Built, the adapters** (`h3-battle-client`): the catalogue's `shell.credits.text` and
+  `.closing` (`CREDITS:1`, `CREDITS:2`), `Credits::laid` in `Credits.fnt`, the window's clock
+  stepping and ending the credits (a 5 ms wait while they show); the own key
+  `shell.stub.credits` gone.
+- **The comparisons:** `drawn --group scores`: `credits-scroll` 5 of 5 exact (its scroll's 2 611
+  frames), `credits-end` 8 of 8, `scores-tabs` 28 of 28, `scores-reset` 10 of 10; `drawn` whole
+  (95 recipes, 688 of 1011 shots drawn, 680 exact) every other recipe as recorded; both credits
+  recipes recorded. The window checked under Xvfb: C opens the credits, F4 goes on, the scroll
+  to its closing text and the main menu at its end, Space, a left and a right press end it.
+- **Questions:** none new. **The agent's calls** (*provisional*: M4's review list items 10 to
+  13; the key's pixel taken as a drawing bug, CLT-Q138's class).

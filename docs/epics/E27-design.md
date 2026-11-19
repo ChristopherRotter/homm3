@@ -402,9 +402,8 @@ scenario screen (New Game) or the load (Load Game) to follow. Positions here are
   next input message: a key down but F4 (0x3E), a left or a right press end it. On each frame of
   the clip due (Complete's `CREDITS.SMK`: one frame at 10 a second): the background put back at
   (460, 10); the text moved 2 px: first in from the window's bottom (580 px), then up until its end
-  reaches the window's bottom, then out at the top; near the end, once the text's end has risen to
-  about 435 px (recorded, §6.3; the reading's "while the text's visible part is under 435 px"
-  refuted: never at the start; the exact test: M4's credits task, from the kept frames),
+  reaches the window's bottom, then out at the top; near the end, once the leaving text's rows
+  shown are under 435 (a test made in the leaving phase alone: §36.1, M4 T2; recorded, §6.3),
   `Credits.txt`'s record 2 (`credits_closing_text` 0x6A7704) in `smalfont.fnt`, colour 0xD,
   alignment 8 (the window's bottom) over it; (460, 10, 328, 580) shown, the clip shown. When the
   text has left, the screen ends. No music change, no sound. CLT-Q88: the client steps it ten
@@ -413,6 +412,7 @@ scenario screen (New Game) or the load (Load Game) to follow. Positions here are
 - *Recorded (M1 T2, §6.3; a correction):* the closing text shows only near the end, once the
   text's end has risen to about 435 px (first at 244.6 s); the first frame 1 100 ms after the
   screen opens, then one every 100 ms of 2 px; the last at 265.2 s, the main menu at 266.5 s.
+  (M4 T2, §36.2: the first step comes 100 ms after the opening, its first change at the 12th.)
 
 ### 2.10 Not built (the agent's calls, *provisional*; M1's review list)
 
@@ -3796,3 +3796,78 @@ DEF item setters) and recorded under Wine (`scores-reset` played once again, as 
   original box (`Front::question`: High Scores' alone so far) at the probes' point
   (`replay::button_point`); `Stop::NoButton` when it does not show.
 
+
+## 36. The credits (M4 T2, 2026-11-19)
+
+Read with `scripts/exe.py` (`credits_screen` 0x4EDDA0 again, its copies' routine `pcx16_copy_rect`
+0x44E2B0 whole) and recorded under Wine (`credits-scroll` and `credits-end` played once again, as
+kept; every frame of both compared with a model of the reading below: all equal).
+
+### 36.1 The reading
+
+- **The pictures:** `Credits.fnt` (31 rows a line); `text_line_count` 0x4B5820 of record 1 at 328
+  px: 153 lines, so *H* = 4 743 rows; the background a 16-bit picture of 328 × 580
+  (`sub_44DF70`), the text's one of 328 × (*H* + 31) filled with the 16-bit colour 1
+  (`pcx16_fill_rect` 0x44E4C0) and the text drawn into it at (0, 0) in its size, colour 0x11C,
+  alignment 5: so its lines start half a line (15 rows) down.
+- **`pcx16_copy_rect`** (this the source; the source's corner, the size, the target's pixels, the
+  target's corner, the target's width, height and pitch, then a key byte): the target's left and
+  top edges cut the part (moving the source's corner with it), its right and bottom edges too;
+  the source's are not checked. A key of 0 copies whole; any other skips each source pixel equal
+  to the key as a 16-bit value. The credits copy with key 1 (the text's fill) and save the
+  background from the screen with key 1 too (0x4EDE77), so a screen pixel of the 16-bit colour 1
+  keeps the background picture's own pixel, black (§36.3).
+- **A step** (0x4EE022; the background put back first, opaque): while the entering count
+  (`ebp−0x1C`, 580) is not 0 it drops by 2 and the text's rows [0, 580 − count) go to (460, 10 +
+  count); then, while the first row shown (`ebp−0x14`, 0) is under *H* − 580, it moves on 2 and
+  580 rows from it go to (460, 10); then, while the leaving count (`ebp−0x24`, 580) is not
+  negative, it drops by 2, the first row moves on 2, and that many rows go to (460, 10), the
+  closing text drawn over the window (`small_font`, colour 0xD, alignment 8: the lines at the
+  window's bottom, left aligned) **when the count is then under 435** (0x1B3); a count already
+  negative marks the end: the window shown with its background alone and the screen left. So:
+  290 steps in, 2 082 up (to row 4 164), 291 out (to −2), the end at the 2 664th.
+
+### 36.2 The recordings
+
+- **The steps' times:** the first 100 ms after the screen opens (the main menu's key up at 100,
+  the first step at 200: the text's top two rows, blank), then one each 100 ms; the first ink
+  (row 22: 15 rows of the alignment, 7 of `C`'s blank top) reaches the window's bottom at the
+  12th step (1 300 ms: §2.9's "first frame 1 100 ms after the screen opens" is this first change).
+  The closing text first at the 73rd step out (count 434: 244.6 s; the reading's test of §2.9 is
+  right for the leaving phase, the only one it is made in); the last ink leaves at count 22
+  (265.2 s; the picture's last rows past its last line's ink are blank), the closing text alone
+  until the end; the 2 664th step at 266.5 s shows the main menu at once (`menu`). §2.9's and
+  §6.3's numbers stand; their "1 100 ms" and "about 435 px" are now these.
+- **The ends:** a key (Space), a left press and a right press end the credits at the input; the
+  main menu shows at that step (`credits-end`: `key-ended`, `left-ended`, `right-ended`); a move
+  does not end them (`moved`).
+- **The opening:** the main menu's dialog closed shows the screen without its buttons
+  (`opened`); `mainmenu.pcx` is pixel for pixel `GamSelBk.pcx`'s right part (a 24-bit PCX), so
+  copying it changes nothing.
+
+### 36.3 The background's key
+
+`mainmenu.pcx`'s pixel (3, 553) is RGB (5, 3, 10), the 16-bit colour 1 on the screen: the save
+skips it, so (463, 553) shows black from the first step to the end (`opened` and every frame
+after; `GamSelBk.pcx` shows it as 1 in the main menu). A drawing bug of the original (E17's
+binding decisions; as CLT-Q138's class, not asked: M4's review list): the client's profile draws
+the background whole; the original's (`Bugs::Original`) makes the window's pixels of the key
+black from the first step (`h3_ui::ui::Draw::Keyed`), for the comparisons only.
+
+### 36.4 The client
+
+- **`h3_view::shell::credits`:** `Credits` (its counts as the reading's, `Credits::laid` counting
+  the text's lines in the look's font at the window's width), `CreditsLook` (the layout's
+  `[credits]`), `Texts` (the catalogue's `shell.credits.text` and `.closing`: `CREDITS:1`,
+  `CREDITS:2`); its clock steps once a reading, the first 100 ms after its first reading (the
+  opening), each next 100 ms after the last (CLT-Q88 (a): no clip; the window waits 5 ms at a turn
+  while it shows, as play's fade); the step after the end ends it (`Front::clock` returns a `Did`
+  since: the replay's tick and the window's end the screen by it). Its look: the main menu's
+  background, `mainmenu.pcx`, the text's part (`h3_ui::ui::Draw::Part`: the picture filled with
+  the key, the text drawn whole, the part copied with the key skipped, as the original's), the
+  closing text a label over the window. A key down but F4 (`start::key_skips`, the start's rule),
+  a left or a right press end it; `Context::Credits` binds no command.
+- **The main menu after it** opens anew with the last items the credits found (as after High
+  Scores).
+- **Not built:** the original's `any_video_running` guard (no clip: CLT-Q86, CLT-Q88), a picture
+  that cannot be made (GENRLTXT 223, the end: the client's `Draw::Part` refuses its draw).

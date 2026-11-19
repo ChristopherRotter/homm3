@@ -527,13 +527,14 @@ mod tests {
         // E17 M6 T5a the artifacts' names (ARTRAITS.TXT); E27 M3 T1a the scenario screen's
         // victories' and losses' texts (VCDESC.TXT, LCDESC.TXT); E24 M4 T2a2 the map viewer's
         // finds' texts (ADVEVENT.TXT); E27 M3 T3a the turn's durations (TURNDUR.TXT); E27 M3 T3b2
-        // a hero popup's class and specialty (HCTRAITS.TXT, HEROSPEC.TXT).
+        // a hero popup's class and specialty (HCTRAITS.TXT, HEROSPEC.TXT); E27 M4 T2 the credits
+        // (CREDITS.TXT).
         assert!(keys.keys.contains_key("stats.attack"));
         assert!(keys.keys.contains_key("creature-ability.base:marksman"));
         assert!(keys.keys.contains_key("stats.hint.ok"));
         let tables = [
-            "ADVEVENT", "ARRAYTXT", "ARTRAITS", "BLDGNEUT", "BLDGSPEC", "CRTRAITS", "EXE",
-            "GENRLTXT", "HCTRAITS", "HELP", "HEROSPEC", "HOTRAITS", "LCDESC", "MINENAME",
+            "ADVEVENT", "ARRAYTXT", "ARTRAITS", "BLDGNEUT", "BLDGSPEC", "CREDITS", "CRTRAITS",
+            "EXE", "GENRLTXT", "HCTRAITS", "HELP", "HEROSPEC", "HOTRAITS", "LCDESC", "MINENAME",
             "PRISKILL", "SEERHUT", "SKILLLEV", "SPTRAITS", "TURNDUR", "VCDESC", "WALLS",
         ];
         assert_eq!(names, BTreeSet::from(tables));
