@@ -19867,3 +19867,69 @@ user if the sources disagree.
 
 **Versions:** none moved (the harness, the recipes, the filled templates, the address map and
 structs, docs).
+
+### Increment 14, round 3: T130, batch E14 scored (2026-11-19, `adventure/e08-t130`)
+
+Baseline: `master` ea613a1 (#1044, T129b's merge). Docs and one code reading: only
+`original-data/install/Heroes3.exe` staged (SHA-256 `aac39e8c…` checked), `scripts/exe.py`.
+**The checkpoint** (ADV-Q59, asked once the version was read, one round of two): (1) E14-14's
+rule: the enabled packs decide (decision 378); (2) T130, then T131 in this session (decision 379).
+
+- **The version read** (survey §21's finding; `docs/exe/structs.toml` `map_kind` now `read`,
+  `docs/exe/map.toml` `scenario_version_from_slots`): `new_game_heroes` 0x4BFF09 writes game
+  +0x1F698 from `new_game_start`'s scenario dialog version (+0x1898, 0x58C593), which starts at
+  the edition (0x579BD9, 3) and becomes the highest format every colour slot's edition allows
+  (`scenario_version_from_slots` 0x58E700, `edition_formats` 0x699240); the selected map's or
+  save's format is only tested against it (0x58E7B7 to 0x58E871). So an RoE-format map plays at
+  SoD's in every single and hot-seat game; version 0 only in an RoE campaign (index below 7,
+  0x4BFF24) or beside a network peer with RoE alone. VCMI 1.7.5's `HillFort::fillUpgradeInfo`
+  (every `upgrades` entry, no version) and the wiki's Hill Fort page (any non-upgraded creature)
+  have no RoE exception.
+- **Scored** (survey `E08-trades.md` §21, a table of the seventeen rows): every row as predicted
+  but E14-14; D-71 to D-74 confirmed as the original (decisions 365, 367), A-46 and A-47 seen;
+  E14-17's level-up drawn over the Altar without covering it (the map client lane's inbox told,
+  decision 371's note); the rules toward `verified` listed by building task; the drafts' changes
+  for T131.
+- **Decision 378's effect:** design note §4 (`hill_fort { gold }`, `roe_except` withdrawn; which
+  stacks by the ruleset's upgrades, the elementals' only under the ab pack's override), §7 (no
+  import mark), §20 (*Scored*), §21 (T132b without `Holds::RoE`; exit criterion 6), §22; the
+  drafts (`0016-increment-14.md`'s Hill Fort point, consequence, alternative and history;
+  `0017-`'s point 9 and history); survey §0 and §13 reworded; `TRAPS.md`'s RoE line; the battle
+  lane's inbox told (a lead for E11 T1: RoE and AB rules observable only in their campaigns or the
+  older executables).
+- **Docs:** decisions 378, 379 and the task's line; ADV-Q59 in `QUESTIONS-ANSWERED.md`; the queue
+  (T130 out to `QUEUE-ARCHIVE.md`, T131 in).
+
+**Versions:** none moved. T131 (round 4, `shared/`) next, in this session (decision 379).
+
+### Increment 14, round 4: T131, the `shared/` task (2026-11-19, `shared/e08-t131`, `cross-lane`)
+
+**The cut** (decision 379, the user at T130's checkpoint): whole, one `shared/` pull request, docs
+only, right after T130 in the same session (stacked on T130's branch until it merges). Nothing
+staged beyond T130's executable.
+
+- **The ADRs** (the two drafts accepted at ADV-Q58, decision 373, applied with batch E14's
+  outcome, survey `E08-trades.md` §21, decision 378; then deleted with their folder):
+  **ADR-0016** points 1 (**Increment 14's objects**: no new block), 4 (**Increment 14's kinds**:
+  the market, the rates, the Black Market's draw, the Altar, the Hill Fort by the enabled packs'
+  upgrades, the factory, the purchase's refusal; then a batch E14 paragraph citing every row, E14-14
+  by decision 378) and 6 (the four kinds' views, the stock in the decision only), a consequence,
+  an alternative (the draft's and the RoE mark withdrawn, VCMI's roundings), the history.
+  **ADR-0017** points 1 (no command; E14-16), 6 (the three decisions, the factory, the listed
+  answers; E14-1, E14-5, E14-8, E14-13, E14-15, E14-17), 8 (the 67 entries, the next encoding v14
+  after the town lane's v12 and v13), 9 (the versions by name, then the numbers after E09's
+  increment 4: part v23, import v27, adventure state hash v27, game state hash v35, replay format
+  v20, encoding v14), 10 (the outcomes; E14-6's transfer), a consequence, an alternative, the
+  history. The index's Read-when cells of ADR-0016 and -0017. *Agent's calls:* each point cites
+  the rows that confirmed it (T122's); point 9's numbers written out, since the town lane's
+  increment 4 merged first (the draft had the numbers before it).
+- **The glossary** (`docs/03-domain.md`): market, a market's lot, the Black Market's stock,
+  transfer, sacrifice, the Hill Fort's upgrade, War Machine Factory.
+- **`docs/06-security.md`**: increment 14's lines (design §10 to §17: the four kinds public by
+  type, the stock server-only outside its visitor's decision, every answer's validation against
+  the trusted actor and the open decision, the owner's events, a transfer's recipient its gain
+  alone).
+- **Docs:** the design note's header (applied), the task's line, the queue (T131 out, T132 in),
+  the town lane's inbox (the ADRs' new parts and the versions), HANDOFF.
+
+**Versions:** none moved. T132 (round 5, its cut at its start) next.

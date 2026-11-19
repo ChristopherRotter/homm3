@@ -216,6 +216,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    offers' answers, its battle with the battle's commands, its reward's army dialog with `Close`
    and the management commands (batch E13's E13-11: the move ends on the entrance, the hero stays
    there through the question, and `Revisit` asks again).
+   **Increment 14** (the trades and services; E08 decision 361) adds **no command**: the seven
+   classes are visited by `MoveHero`'s last step onto their entrance and by `Revisit`; their
+   windows are pending decisions answered with `Answer`'s new kinds (point 6), the War Machine
+   Factory's question with the offers' answers and its dialog with the hire dialog's (batch E14's
+   E14-16: the move ends on the entrance, the hero stays there through the window, and `Revisit`
+   opens it again).
 2. **Actors and viewers.** `Actor::Player(PlayerId)` for every player command, also a bot's;
    `Actor::System` for the trusted layer that hosts the game only (the server's session layer,
    the env), never for a player, with its own closed set of commands (end a player's turn,
@@ -764,6 +770,47 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    `bank_battle_reward`'s reward (E08 decision 342, replacing 337; survey `E08-banks.md` §6,
    D-67); every player answers as a human (point 1). Batch E13 confirmed it (E13-6: the level-ups,
    then the reward's message, then its army dialog; E13-7: the artifacts in the record's order).
+   **Increment 14's decisions:** three new kinds, each its owner's alone, holding no one else and
+   blocking its owner's `EndTurn` like an offer, open until its `Leave` (every other answer keeps it
+   open, as the original's windows stay open for more trades), the system actor's default
+   `Leave` (nothing is lost: a sacrifice names everything it takes in one answer, A-48 fixed,
+   E08 decision 366):
+   - **A market** (GAM-DEC-011), opened by a Trading Post's, a Freelancer's Guild's or a Black
+     Market's visit, answered **`Market(MarketAnswer)`**: `Trade { give, take, lots }` (whole lots
+     at the rate, from 1 to what the treasury holds), `Transfer { resource, amount, to }` (1 : 1 to
+     another player still in the game, allies and enemies alike), `Sell { slot, take, lots }` (the
+     army keeping one creature), `Buy { entry, pay }` (an unsold entry at its price; refused
+     before paying when the hero cannot receive the artifact, A-46 fixed), `Leave`; an answer of a
+     screen the object lacks is refused. Its view shows the screens with their rates, the stock
+     and the recipients.
+   - **An Altar of Sacrifice** (GAM-DEC-012), answered **`Altar(AltarAnswer)`**:
+     `Artifacts(places)` (at most 23, none kept), `Creatures(amounts by slot)` (one creature kept),
+     each with a total above 0 and only where the hero's class's faction allows it, and `Leave`.
+     The total is gained as experience with its levels: levels without a decision at once, the
+     Altar staying open; when a level-up opens, **the Altar closes before it and its visit is the
+     visit's rest** (GAM-DEC-007, `Rest::Visit`): once the level-ups are answered the Altar opens
+     again and a later sacrifice reads the new level (the original's dialog beneath its level-up
+     dialogs; a client keeps the Altar drawn beneath them, E08 decision 371). A player keeps one
+     open decision. Its view shows each artifact's and each stack's experience and the experience
+     to the next level.
+   - **A Hill Fort** (GAM-DEC-013), answered **`HillFort(HillFortAnswer)`**: `Upgrade(slot)` a row
+     whose price the treasury holds, `All` when some row upgrades and the treasury holds every
+     row's price (each paid and upgraded in slot order), `Leave`. Its view shows each row's
+     upgrade, price and state and the whole's.
+   - **The War Machine Factory's question** is the hire question (`Offer(Consent)`, [`Decline`]);
+     accepted, **the hire dialog** (GAM-DEC-008 amended) with the factory as its source: each
+     machine with a count of 1 while the hero lacks its artifact, else 0; `Buy { creature, amount:
+     1 }` pays the creature's cost and gives the artifact into its position (no army change), the
+     dialog of three staying open; `Close`.
+   `legal_commands` lists a representative answer per action, as the hire dialog lists each
+   creature's most: a market's trade of one lot per pair it can pay, its sale of one lot for gold
+   per slot, its purchase in gold per unsold entry it can pay; the Altar's two "all" sacrifices
+   (the original's buttons); the Hill Fort's upgrade per affordable row and its `All`; each
+   `Leave`. No transfer is listed (as the management commands, E08 decision 99). Any other answer
+   the view allows is still legal for `apply`. Batch E14 (E08 T130, survey `E08-trades.md` §21)
+   saw the windows so: each open for more trades (E14-1, E14-5, E14-8), the factory's dialog open
+   after each purchase (E14-15), a refused upgrade a message with nothing paid (E14-13), the
+   Altar's level-up drawn over its dialog, which then stays open with the new level read (E14-17).
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -857,6 +904,13 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    legal as the legal commands list it. **The dismissal has no entry** (a management command, as the
    army commands: E08 decision 99), nor has the Thieves' Guild (a query, no command): the AI lane
    may read the query for its agents.
+   **Increment 14's action encoding** (the next version at merge: v14 after E09's v12 and v13)
+   appends 67 entries, each legal where `legal_commands` lists its answer, tile 0 alone: a market's
+   trade of one lot per pair (42, given then wanted in the core's order), its sale of one lot for
+   gold per slot (7), its purchase in gold per entry (7); the Altar's two "all" sacrifices (2); the
+   Hill Fort's upgrade per slot (7) and `All` (1); one `Leave` for the three kinds (E08 decision
+   372, `cross-lane`). The factory uses the offer's and the hire dialog's entries. An amount head
+   stays the AI lane's.
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format (`h3-sim`'s `replay.rs`), and until increment 6 the action
@@ -919,6 +973,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    battle lane's battle state hash and battle part and the shared pack format move with the bank
    battle (ADR-0022 point 8), in its `cross-lane` task. The numbers are the next at merge, in
    merge order with E09's increment 4.
+   **Increment 14** bumps the adventure ruleset part (the five kinds, the market parameters), the
+   map import (the seven classes), the adventure state hash (the stock's draw and sold entries),
+   the game state hash (the three decisions, the rest's name), the adventure replay format (the
+   answers' words) and the env's action encoding (the AI lane's, point 8), and `h3-protocol`'s
+   protocol once per wire task (the server lane's). The core ruleset hash and the pack format
+   stay. The numbers are the next at merge; after E09's increment 4 (merged first: part v22, map
+   import v26, game state hash v34, replay format v19, encoding v13) they are part v23, map import
+   v27, adventure state hash v27, game state hash v35, replay format v20 and encoding v14.
 10. **Gains and costs cross by outcome.** A context's `apply` returns an outcome: the resources
     its command gains for the actor and the offers it opens, each with its price. The context
     never sees a treasury. The game adds the gains after the context applied (gains cannot fail,
@@ -1012,6 +1074,21 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     adventure's own change; a looted search's once-bonus is the adventure's own change of the hero
     on the map (ADR-0013 point 1 as amended for increment 12). Batch E13's E13-10 and E13-7 saw
     the level's resources and artifacts so.
+    **Increment 14's outcomes:** a visit names the window to open (the market, the Altar, the Hill
+    Fort) or the factory's question. **A trade:** the adventure computes the rate (the lot) from
+    the part's parameters; the game checks the lots against the treasury, pays the given resource
+    and adds the wanted one (saturating). **A transfer** is the first cost and gain of two players:
+    the actor pays, the recipient gains 1 : 1, each told its own change; nothing else of it is
+    seen. **A sale:** the adventure checks the slot, the lot and the army's last creature and
+    names the gain; the game adds it after the adventure's infallible change. **A purchase** (a
+    Black Market's, a factory's): the adventure checks the entry or the machine and the hero's
+    room and names the price; the game checks the treasury, pays, then calls the adventure's
+    infallible change. **A sacrifice:** the adventure checks the places or amounts and names the
+    total; the game applies the changes and gives the experience with its levels. **An upgrade:**
+    the adventure names each row's price; the game checks the treasury, pays, then calls the
+    upgrade. A rejection leaves everything untouched. Every rate, price and most is the state's
+    answer, never the command's. Batch E14 saw the gains and costs so (E14-1, E14-5, E14-6: Red
+    −5 ore, Blue +5 on its turn; E14-4, E14-8, E14-10, E14-12, E14-15).
 11. **Battles through the game** (increment 3; ADR-0013 point 5). The game builds the
     `BattleSetup`: the armies from the adventure (a monster's stacks by its split), each hero's
     `BattleHero` and war machines from `h3-heroes`, the battlefield from the tile in the
@@ -1252,6 +1329,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   their outcomes but for the new state (re-recorded with the game state hash). Two commands, a
   decision kind, four events and the guild's query reach the wire (the server lane's, `cross-lane`)
   and two of them the env's encoding (v12, v13, the AI lane's).
+- Increment 14 (E08 T127b, T131): three decision kinds with typed answers and views carrying the
+  rates (so neither a client nor the env needs a copy of the computation); the Altar's levels
+  reuse the visit's rest; the factory reuses the hire question and dialog with a source of war
+  machines; the first gain of a player other than the actor (a transfer); `h3-protocol` maps the
+  new answers, views, events and errors at each wire task (`cross-lane`), and the env appends 67
+  entries once every answer exists.
 
 ## Alternatives considered
 
@@ -1352,6 +1435,13 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   the day's start, decisions 126, 127); the offers only with a Tavern (an event at every Tavern
   built or lost) and the guild in every observation (every command telling each viewer's ranks); an
   env entry per hero slot for the dismissal.
+- Increment 14 (ADV-Q57, ADV-Q58): the windows as commands valid while the hero stands on the
+  entrance (no decision; every trade would re-prove the object and nothing would end the window);
+  the Altar's levels held until it is left (a later sacrifice would read the old level); the
+  level-ups queued in front of the open Altar (two open decisions of one player); an event naming
+  a transfer's giver to its recipient (the original's hot seat shows the treasury only); every
+  trade amount in `legal_commands` (thousands per pair, as the hire dialog's amounts); a smaller
+  env set without the market's trades, or no env change (E08 decision 372).
 
 ## Revision history
 
@@ -1513,3 +1603,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   of Thieves' guild is told as `ThievesGuildSeen` (the level) with `GuildPartSeen` per part (a
   row's place, a player's best hero and creature), as the tavern views' parts, not the view in
   one event; the wire's (protocol v74) `GameQuery::ThievesGuild` answers the query.
+- 2026-11-19 (E08 T131 `shared/`; E08 decisions 361, 366, 371 to 373, 378; ADV-Q56 to ADV-Q59):
+  points 1, 6, 8, 9 and 10 amended for increment 14, the trades and services: no command; the
+  market, the Altar and the Hill Fort as decisions, the factory's question and hire dialog, the
+  Altar's return after its level-ups as the visit's rest, the listed answers; the env's 67
+  entries; the versions; the trades' outcomes, a transfer to another player; the Consequences and
+  Alternatives. Drafted in E08 T127b (design note `E08-design.md` §13 to §19); batch E14's outcome
+  (T130, survey `E08-trades.md` §21: every point as read; the import without the RoE mark,
+  decision 378) folded in; placed after E09 increment 4's text.

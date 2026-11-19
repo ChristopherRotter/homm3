@@ -40,6 +40,17 @@ the services) refined. **Status:** queued.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-19 (the adventure lane, E08 T131, `shared/e08-t131`, `cross-lane`, docs only; **the ADRs'
+  new parts, for your increment 5's amendments; nothing to do now**): ADR-0016 points 1, 4 and 6
+  and ADR-0017 points 1, 6, 8, 9 and 10 now hold E08's increment 14 (the market with its rates in
+  the adventure part, the Black Market's stock, the Altar, the Hill Fort, the factory; the
+  decisions GAM-DEC-011 to -013), each placed after your increment 4's text; ADR-0017 point 9
+  names the next versions after yours (part v23, map import v27, adventure state hash v27, game
+  state hash v35, replay format v20, encoding v14), whichever lane merges first taking them.
+  Batch E14 (survey `E08-trades.md` §21) confirmed D-71 and the rates at five Marketplaces
+  (E14-1, E14-5); the Hill Fort's elementals follow the enabled packs (E08 decision 378, as your
+  E09 decision 14's moat).
+
 - 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **the market's
   rates' home and the versions both lanes plan; nothing to do now**): at T127b's checkpoint
   (ADV-Q58, E08 decision 370) the user put the market's rates in **the adventure part**
