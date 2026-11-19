@@ -104,7 +104,7 @@ fn hero_kingdom(status: HeroStatus) -> Kingdom {
 
 fn town() -> TownStatus {
     TownStatus {
-        name: 37,
+        name: TownName::Record(37),
         buildings: 1 << 12 | 1 << 8,
         garrison: true,
         army: [None, stack(13, 5), None, None, None, None, None],
@@ -309,6 +309,27 @@ fn a_town_s_window() {
             2012, 2013, 2014, 2015, 2016, 2017, 2019, 2022, 2023, 2024, 2025, 2026, 2027
         ]
     );
+}
+
+#[test]
+fn a_town_named_by_its_map() {
+    // E24 M4 T3b1 (design §5.10): the map's own name, as it is.
+    let layout = layout();
+    let named = TownStatus {
+        name: TownName::Own("Brightmoor".into()),
+        ..town()
+    };
+    let (_, shown) = window(
+        &layout,
+        &art(),
+        &lists(),
+        &live(town_kingdom(named)),
+        &names(),
+        &texts(),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(texts_of(&shown)[0], (2002, "Brightmoor"));
 }
 
 #[test]

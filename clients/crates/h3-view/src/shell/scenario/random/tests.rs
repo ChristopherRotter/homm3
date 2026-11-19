@@ -14,6 +14,7 @@ use super::super::{
 };
 use super::*;
 use crate::shell::keys::{Command, Context};
+use crate::shell::menu::Hovers;
 
 /// The tab shown with `choices`.
 fn tab(choices: Choices) -> (RandomMap, Shown) {
@@ -191,7 +192,8 @@ fn the_record_lets_humans_play_below_the_players_and_anyone_below_the_total() {
     random.click(PLAYERS + 1);
     random.click(COMPUTERS + 3);
     random.click(281);
-    random.build("Random Map", "Randomly made");
+    let offers: [Vec<u8>; 9] = core::array::from_fn(|f| vec![u8::try_from(16 * f).unwrap()]);
+    random.build("Random Map", "Randomly made", &offers);
     assert!(random.chosen());
     let record = random.record().unwrap();
     assert_eq!(record.name, "Random Map");
@@ -214,6 +216,8 @@ fn the_record_lets_humans_play_below_the_players_and_anyone_below_the_total() {
     );
     assert_eq!(record.teams, [0, 1, 2, 3, 4, 5, 6, 7]);
     assert_eq!((record.players(), record.humans()), (5, 2));
+    // Each colour offered each faction's heroes (E27 M3 T7).
+    assert!(record.heroes.offers.iter().all(|o| *o == offers));
     random.unchoose();
     assert_eq!(random.record(), None);
 }
@@ -432,6 +436,36 @@ fn the_advanced_options_hide_the_tab_and_show_the_random_map_s_players() {
     assert!(click(&mut s, [514, 115]).changed);
     assert!(!s.advanced_showing());
     assert!(s.random_showing());
+}
+
+#[test]
+fn a_random_map_s_row_shows_the_hero_random_and_its_arrows_once_a_town_is_chosen() {
+    // E27 M3 T7, the review's C2: the record's generate flag set (+0xB, design §30.2), so the
+    // hero is Random (`hpsrand1.pcx`, not None's `hpsrand6.pcx`), its arrows shown with a town
+    // (§3.14); each faction's free heroes offered (recorded, `adv-random-options`: Castle's
+    // arrow to Orrin, its first), so the arrow steps to the first; kept by an opening anew.
+    let castle: Vec<u8> = (0..16).collect();
+    let offers: [Vec<u8>; 9] =
+        core::array::from_fn(|f| if f == 0 { castle.clone() } else { Vec::new() });
+    let mut s = with_options_in(vec![map("Arrogance.h3m", "Arrogance")], Bugs::Fixed)
+        .with_random_offers(offers.clone())
+        .opened(Hovers::default());
+    click(&mut s, [514, 115]);
+    click(&mut s, [514, 519]);
+    assert!(s.players().seats.iter().all(|seat| seat.generates));
+    let hero = |s: &Scenario| {
+        s.draws("P").into_iter().find_map(|d| match d {
+            Draw::Picture { picture, x, y, .. } if [x, y] == [252, 130] => Some(picture),
+            _ => None,
+        })
+    };
+    assert_eq!(hero(&s).as_deref(), Some("hpsrand1.pcx"));
+    assert!(s.shown.state(231).hidden);
+    click(&mut s, [230, 145]);
+    assert!(!s.shown.state(231).hidden && !s.shown.state(239).hidden);
+    click(&mut s, [306, 145]);
+    assert_ne!(hero(&s).as_deref(), Some("hpsrand1.pcx"));
+    assert_eq!(s.records().unwrap()[0].hero, Some(0));
 }
 
 #[test]

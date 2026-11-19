@@ -475,7 +475,7 @@ fn the_turns_selection_a_hero_a_town_or_none() {
     l.chosen.towns = vec![Some(ChosenTown {
         at: Pos { x: 8, y: 4, z: 0 },
         status: crate::live::TownStatus {
-            name: 0,
+            name: crate::live::TownName::Record(0),
             buildings: 0,
             garrison: false,
             army: [None; 7],

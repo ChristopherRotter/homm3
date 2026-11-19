@@ -3963,3 +3963,56 @@ start is M1's (§1, §2, §2.7 to §2.10), its capture `h3map.py set` with `expl
   boats). `tests/engine.rs`: a game built on a writer's map (a random resource, monster,
   artifact and dwelling, a sawmill, a pile, three colours' heroes, a boat), every refusal, what
   `differences` finds.
+
+### 5.10 A record's start: the panels (M4 T3b1)
+
+The first of T3b's two (the user at T3b's start, 2026-11-19: the panels first; the hover's
+facts, the towns' pictures and the shipped maps T3b2; a fact the record lacks an `MCL-Q<n>`, never
+a rule copied into the client). No reading of the original: the panels are M3's (§4.1, §4.5, §4.7
+to §4.9, §4.13), their capture `h3map.py set`.
+
+- **From the first observation** (`h3_map_view::engine`'s `panels`, the live part's `kingdom`,
+  `status`, `realm` and `[chosen]` as the harness writes them): the viewer's heroes on the map in
+  their types' order (the original's new game: every capture's `hero_list` so far, 17 situations
+  with two heroes or more, shipped maps among them; the later hires appended, T4's), each one's
+  portrait its file's (the hero standing on its tile) or its type's, its points and mana the
+  view's; the viewer's towns in the view's order (one a player in this task's maps: a shipped
+  map's several, T3b2's: `shipped-hoard`'s list is not in the towns' order), its faction, Fort
+  and day's build; the first hero selected, else the first town, else none (the original's
+  start); the treasury in the original's resource order; the date by the engine's calendar
+  (`CalendarParams`: the month, the week of the month, the day of the week).
+- **The status window:** a hero's type, whether the map names it (the art's names), its base
+  primary skills (the original's +0x476 as stored), its army by slot; a town's name the map's
+  (`TownName::Own`, the view's `name`) else its faction's first (the client's: the engine draws
+  none), its hall and fort by the view's levels (all the window draws of the buildings: §4.8), its
+  garrison hero's mark, the army the view shows, its silo the income's resources but gold (the
+  town part has no other), its gold. The kingdom's window: the viewer's towns by their halls, the
+  players in the game by the map's teams.
+- **Not in the record** (MCL-Q36; the adventure and server lanes' inboxes): a hero's morale and
+  luck as the status window shows them (0 meanwhile) and whether it can still move (shown as
+  having points left).
+- **MCL-Q15 (b)** (*provisional*, M4's review list): an amount of more than seven characters
+  (`panels::AMOUNT_FITS`: the 50-pixel box holds seven of `smalfont.fnt`'s 7-pixel digits) shows
+  whole in `tiny.fnt` (5-pixel digits: the treasury's ten fit) in the layout's items 1016 to 1022,
+  in the same boxes, centred on the line; with `--bugs original` the original's cut. Rejected: the
+  executable's own `%dk` (0x660CB0) in thousands, which still passes the box from a thousand
+  million.
+- **The comparisons' staging** (the harness, additive): a situation's hero `name` and `map_army`
+  and town `name` written into the map (the new game then draws no army: the engine's start and
+  the original's hold the same); `bonus = "gold"` (every player's starting bonus Gold: no artifact
+  changes a hero; `h3drive.gold_bonus` counts the rows' Gold, a row's value sitting in either of
+  the dialog's two arrays) and `resources` written, shown by `select` then `reselect` (the turn
+  start's hero chosen back), since the engine has no starting bonus yet (E10's). The town's own
+  name kept as the situation's text in the live part (`OWN_TOWN_NAMES`), never the original's.
+- **`h3map.py engine`** (no Wine): each situation of `set.toml` with an `engine` entry: its map
+  gzip-compressed, the engine's start recorded (`h3 adventure run`, `h3-server record`), `render
+  --record --check` against the kept live part and its pixels against ours at the kept live part
+  (exact there: `set`), each as the entry expects (`differs`, `pixels`).
+- **Checked** (M4 T3b1): `engine-start-panels` (Red's Rion and Astral, their armies in the map,
+  Astral named by it; Red's town named by it; each chosen in turn) captured exact and the engine's
+  start of it equal on the whole screen (0 pixels) and in every panel's table, `[chosen]` with the
+  town's own name among them; `engine-start-town` (now with its heroes' armies in the map, its
+  town named, the Gold bonus and the resources written) only in Orrin's morale (MCL-Q36, 157
+  pixels); `engine-start-owners` (one hero of Red's: no reselection, the bonus's gold stays) in the
+  resources and the morale (192 pixels). `tests/engine.rs`: the panels of a start, a town's window
+  selected or nothing, a hero off its file tile, what differs.

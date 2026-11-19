@@ -4,28 +4,57 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132a1 and T132a2 done (the rates, the kinds; decisions 380, 381), T132b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T132 — the kinds, the packs, the import** (round 5; decisions 370, 373, 378; design note
-§1 to §7, §19, §21)
+**E08 T132b — the import of the seven trade classes** (round 5; decisions 373, 378, 381; design
+note §7, §21; T132a1 and T132a2 done)
 
-- **Scope:** T132a (`h3-adventure`, `h3-pack-adventure`, the packs): the five kinds `market`,
-  `altar`, `hill_fort { gold }` (no `roe_except`: decision 378), `war_machine_factory` and the
-  Black Market's stock classes, with their hash tags; `[market]` and the rates' module with its
-  tables (`h3_kernel::arith::X87`, survey §4's halves pinned; D-71's cases); the base and ab packs'
-  types (§6); the eighth original-data check (`--with-original-data`); adventure ruleset part's
-  next version (v23 after the town lane's v22). T132b (`h3-map`): the import of classes 2, 7, 35,
-  99, 106, 213 and 221 at subclass 0 (no body, no RoE mark), the writer's classes for fixtures, a
-  step onto one of the seven refused as an unbuilt visit's until its task; map import's next (v27);
-  the shipped-map census and the counts that move (`TRAPS.md`).
-- **Rules:** ADV-MKT-001, -002, ADV-HFT-001's which stacks, ADV-ALT's values, ADV-WMF-001's
-  machines, each with its sources (survey §21's rows as `observation` once built).
-- **Inputs:** design note §1 to §7, §19; ADR-0016 point 4 and ADR-0017 point 9 as applied (T131);
-  survey §4 to §14; `TRAPS.md` (shared changes, original data, extra target directories).
-- **Depends on:** T131 (its `shared/` pull request merged first). **Status:** ready; the cut
-  confirmed at its start (T132a and T132b as the note has them, one or both in a session).
+- **Scope:** `h3-map`: the import of classes 2, 7, 35, 99, 106, 213 and 221 at subclass 0 as the
+  part's six types (221 as `base:trading_post`, the map's class kept for its picture; no body; no
+  RoE mark, decision 378; another subclass refused), the writer's classes for fixtures (T128a's
+  `TRADE_OBJECTS`), a step onto one of the seven refused as an unbuilt visit's until T133 and
+  T134 (`effect` none); map import's next version (v27); the census of the seven classes over the
+  shipped maps (survey §1: 1 058 objects on 148 maps, every one at subclass 0) in the map reader's
+  original-data check, moved from check 8 (design note §6's *As built*); the shipped-map counts
+  that move (`TRAPS.md`); `tests/trades.rs`; the typed classes' test (`tests/import.rs`) taking
+  the six into its cases.
+- **Inputs:** design note §6, §7; `h3-map`'s `import/codes.rs` (the class table), T123b's record
+  in `E08-log.md` as the form; `TRAPS.md` (the shipped maps' counts, the goldens).
+- **Depends on:** T132a's pull request. **Status:** ready; its cut confirmed at its start.
 
 ## Inbox
+
+- 2026-11-19 (the map client lane, E24 M4 T3b1, `map-client/e24-m4-t3b1`; **MCL-Q36, for your
+  planning; the user's answer first**): a whole game's record shows the panels of the original's
+  adventure screen (E24 design §5.10), and two facts of a viewer's own hero are not in the view:
+  its morale and luck as the status window shows them (`H3Hero::GetMoraleBonus` 0x4E39B0,
+  `GetLuckBonus` 0x4E36C0: its skills, artifacts, specialty and army's alignments, outside battle;
+  today derived only into a battle, `h3_heroes::derive_battle_hero`) and whether it can still move
+  today (`hero_can_move` 0x4E5F30: its points against the cheapest step from its tile). The map
+  client lane recommends (MCL-Q36 (a)) that the engine derives them once for the adventure (an
+  `h3-heroes` or `h3-game` reader the server lane's view then carries on `OwnMapHero`); the client
+  copies no rule meanwhile (it draws 0, 0 and "has points"). Nothing to build before the user
+  answers MCL-Q36.
+
+- 2026-11-19 (the client lane, E27 M3 T7 (M4 T0), `client/e27-m3-t7`; **a format extension
+  for you, before E27 M4 T3**): the user's CLT-Q156 (a), E27 decision 69: the client's saves are
+  the engine's adventure replay (`h3-files`' format, `h3_sim::adventure::Replay`) extended with the
+  setup's choices it lacks today: per colour the human flag, the town's `FactionChoice` and the
+  starting hero's pick (`PlayerStart.pick`), as `h3-battle-client`'s `begin::setup` sets them over
+  the map's import; verifying builds the game from the import with them applied (absent: the
+  import's, so every v19 file reads the same). The client's own fields (names, bonuses, handicaps,
+  the turn's duration) stay in the client's wrapper, not in your format. The server's whole-game
+  journals carry the replay too, so a lobby's choices (E28) would ride on it. E27 M4 T3 (the save
+  file) needs it; should it start first, the client lane asks the user to do it cross-lane.
+
+- 2026-11-19 (the client lane, E27 M3 T7, `client/e27-m3-t7`; **for E10's starting bonus,
+  nothing to do now**): the scenario screen's starting bonus is kept as the original keeps it
+  across a map change and a flag's press (CLT-Q153 (a)): only the bonus's arrows skip Artifact,
+  so a colour can begin with the Artifact bonus and no hero to take it (Arrogance's single player
+  on Artifact, then Rebellion, whose human row has none). The shell hands each colour's bonus
+  beside the setup (`h3-battle-client`'s `begin::Game::bonuses`, `CLT-STUB-9`); when E10 builds
+  the bonus, decide what Artifact gives a colour with no hero (the original's effect is not read:
+  `docs/epics/E27-design.md` §3.17).
 
 - 2026-11-19 (the map client lane, E24 M4 T3a, `map-client/e24-m4-t3a`; **your inbox's entry of
   2026-10-31 from this lane, answered in part**): (1) **the object identity is withdrawn** (the

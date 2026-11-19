@@ -69,6 +69,14 @@
 //! free_level = 1                   # growth (from 1); one of this level or less (0 to 7) joins
 //!                                  # its owner's visitor free
 //!
+//! [params.market]                  # E08 T132a2 (ADV-MKT-002): required when the part has a
+//! values = { wood = 250, gold = 1 } # `market` type; each core resource once (1 to 65535) for a
+//! artifact_values = { wood = 125, gold = 1 } # trade and a creature sale, and for an
+//!                                  # artifact's price
+//! resources = [10, 15, 20]         # the factors in hundredths by the count of Marketplaces
+//! artifacts = [20, 25, 30]         # from 1 (as binary32), one length (1 to 255), none 0
+//! creatures = [30, 45, 50]
+//!
 //! not_random_monsters = ["azure_dragon"] # top-level, before any table (E08 T20a2a): creatures
 //!                                  # no random monster becomes (ADV-MON-003)
 //!
@@ -197,6 +205,27 @@
 //! # E09 T39a, the map's Tavern and the Den of Thieves (ADV-VIS-007, -008), no parameters:
 //! # tavern = {}                    # visit = "neighbour"; its visit opens the tavern decision
 //! # den_of_thieves = {}            # visit = "enter"; its visit shows the Thieves' Guild
+//! # E08 T132a2, increment 14's trades and services, each visit = "enter":
+//! # market = { screens = ["trade", "transfer"], count = 5 } # ADV-MKT-001: screens from "trade",
+//! #                                # "transfer", "sell", "buy" (distinct, one at least); count
+//! #                                # from 1 to [params.market]'s rows; with "buy" exactly, stock =
+//! #                                # ["treasure", "minor", "major"] (classes, none "special")
+//! # [object_type.altar]            # ADV-ALT-001 to -003
+//! # experience = { treasure = 1000, minor = 1500, major = 3000, relic = 6000 } # by class
+//! #                                # (special too), 0 if left out
+//! # keeps = ["spell_book"]         # core artifacts never sacrificed, distinct (none if left out)
+//! # places = 23                    # the most artifacts a sacrifice takes, from 1
+//! # creature_factor = 5            # a creature's experience: factor x (AI value / divisor),
+//! # creature_divisor = 40          # truncated; divisor from 1
+//! # hill_fort = { gold = [0, 25, 50, 75, 100, 100, 100] } # ADV-HFT-002: the percent of an
+//! #                                # upgrade's gold by creature level 1 to 7, each 0 to 100 by 25
+//! # war_machine_factory = { machines = ["ballista"] } # ADV-WMF-001: war machine creatures, each
+//! #                                # with one artifact in the core, distinct, one at least
+//!
+//! [[altar_faction]]                # E08 T132a2 (ADV-ALT-001): what a faction's heroes sacrifice
+//! faction = "castle"               # at an Altar (once per faction in the part; with an altar
+//! artifacts = true                 # type every core faction has one); artifacts, creatures or
+//! creatures = false                # both (false if left out), one at least
 //!
 //! [[random_dwelling]]              # E08 T93a (ADV-DWL-005): one table per faction in the part;
 //! faction = "castle"               # a core faction; the `dwelling` types a random dwelling of
@@ -222,12 +251,13 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 
 use h3_adventure::{
-    AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, BankDef,
-    BankLevelDef, BankQuestion, BattleTerrainsDef, CalendarParams, ChestDef, DWELLING_LEVELS,
-    DwellingParams, FindContentDef, FindDef, GiftDef, Gives, MonolithWay, MonsterParamsDef,
-    MonthParamsDef, ObjectKindDef, ObjectTypeDef, OnceBonus, Passage, PickupDef, PrimarySkill,
-    PyramidDef, RandomDwellingDef, RiverDef, RoadDef, StartingResourcesDef, TerrainMovementDef,
-    TerrainWalkerDef, TurnDef, Visit,
+    AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, AltarDef,
+    AltarFactionDef, BankDef, BankLevelDef, BankQuestion, BattleTerrainsDef, CalendarParams,
+    ChestDef, DWELLING_LEVELS, DwellingParams, FindContentDef, FindDef, GiftDef, Gives, HillFort,
+    Market, MarketParamsDef, MarketScreen, MonolithWay, MonsterParamsDef, MonthParamsDef,
+    ObjectKindDef, ObjectTypeDef, OnceBonus, Passage, PickupDef, PrimarySkill, PyramidDef,
+    RandomDwellingDef, RiverDef, RoadDef, StartingResourcesDef, TerrainMovementDef,
+    TerrainWalkerDef, TurnDef, Visit, WarMachineFactoryDef,
 };
 use h3_content::{ArtifactClass, ContentKey, KeyError, PackManifest, Ruleset};
 use h3_pack::PackError;
@@ -321,6 +351,18 @@ struct AdventureFile {
     terrain_walker: Vec<TerrainWalkerDto>,
     #[serde(default)]
     random_dwelling: Vec<RandomDwellingDto>,
+    #[serde(default)]
+    altar_faction: Vec<AltarFactionDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AltarFactionDto {
+    faction: String,
+    #[serde(default)]
+    artifacts: bool,
+    #[serde(default)]
+    creatures: bool,
 }
 
 #[derive(Deserialize)]
@@ -371,6 +413,18 @@ struct ParamsDto {
     months: Option<MonthsDto>,
     #[serde(default)]
     dwellings: Option<DwellingsDto>,
+    #[serde(default)]
+    market: Option<MarketParamsDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MarketParamsDto {
+    values: BTreeMap<String, u16>,
+    artifact_values: BTreeMap<String, u16>,
+    resources: Vec<u16>,
+    artifacts: Vec<u16>,
+    creatures: Vec<u16>,
 }
 
 #[derive(Deserialize)]
@@ -520,6 +574,67 @@ struct ObjectTypeDto {
     bank: Option<BankDto>,
     tavern: Option<EmptyDto>,
     den_of_thieves: Option<EmptyDto>,
+    market: Option<MarketDto>,
+    altar: Option<AltarDto>,
+    hill_fort: Option<HillFortDto>,
+    war_machine_factory: Option<FactoryDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MarketDto {
+    screens: Vec<ScreenDto>,
+    count: u8,
+    #[serde(default)]
+    stock: Vec<ClassDto>,
+}
+
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+enum ScreenDto {
+    Trade,
+    Transfer,
+    Sell,
+    Buy,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AltarDto {
+    experience: AltarExperienceDto,
+    #[serde(default)]
+    keeps: Vec<String>,
+    places: u8,
+    creature_factor: u32,
+    creature_divisor: u32,
+}
+
+/// An Altar's experience by artifact class, each 0 if left out.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AltarExperienceDto {
+    #[serde(default)]
+    treasure: u32,
+    #[serde(default)]
+    minor: u32,
+    #[serde(default)]
+    major: u32,
+    #[serde(default)]
+    relic: u32,
+    #[serde(default)]
+    special: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HillFortDto {
+    gold: [u8; DWELLING_LEVELS],
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FactoryDto {
+    machines: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -1287,6 +1402,41 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
             coast: b.coast,
         }));
     }
+    if let Some(m) = t.market {
+        kinds.push(ObjectKindDef::Market(Market {
+            screens: m
+                .screens
+                .into_iter()
+                .map(|screen| match screen {
+                    ScreenDto::Trade => MarketScreen::Trade,
+                    ScreenDto::Transfer => MarketScreen::Transfer,
+                    ScreenDto::Sell => MarketScreen::Sell,
+                    ScreenDto::Buy => MarketScreen::Buy,
+                })
+                .collect(),
+            count: m.count,
+            stock: classes(m.stock),
+        }));
+    }
+    if let Some(a) = t.altar {
+        let e = a.experience;
+        kinds.push(ObjectKindDef::Altar(AltarDef {
+            experience: [e.treasure, e.minor, e.major, e.relic, e.special],
+            keeps: refs(a.keeps)?,
+            places: a.places,
+            creature_factor: a.creature_factor,
+            creature_divisor: a.creature_divisor,
+        }));
+    }
+    kinds.extend(
+        t.hill_fort
+            .map(|h| ObjectKindDef::HillFort(HillFort { gold: h.gold })),
+    );
+    if let Some(f) = t.war_machine_factory {
+        kinds.push(ObjectKindDef::WarMachineFactory(WarMachineFactoryDef {
+            machines: refs(f.machines)?,
+        }));
+    }
     let [kind] = <[ObjectKindDef; 1]>::try_from(kinds)
         .map_err(|_| AdventurePackError::ObjectKind(t.id.clone()))?;
     Ok(ObjectTypeDef {
@@ -1405,9 +1555,21 @@ pub fn parse_adventure(
             })
         })
         .collect::<Result<_, KeyError>>()?;
+    let altar_factions = file
+        .altar_faction
+        .iter()
+        .map(|a| {
+            Ok(AltarFactionDef {
+                faction: reference(pack, &a.faction)?,
+                artifacts: a.artifacts,
+                creatures: a.creatures,
+            })
+        })
+        .collect::<Result<_, KeyError>>()?;
     Ok(AdventurePack {
         terrains,
         random_dwellings,
+        altar_factions,
         roads,
         rivers,
         object_types,
@@ -1460,6 +1622,23 @@ pub fn parse_adventure(
                         })
                     })
                     .transpose()?;
+                let market = p
+                    .market
+                    .map(|m| {
+                        let table = |row: BTreeMap<String, u16>| {
+                            row.iter()
+                                .map(|(k, &v)| Ok((reference(pack, k)?, v)))
+                                .collect::<Result<Vec<_>, KeyError>>()
+                        };
+                        Ok::<_, KeyError>(MarketParamsDef {
+                            values: table(m.values)?,
+                            artifact_values: table(m.artifact_values)?,
+                            resources: m.resources,
+                            artifacts: m.artifacts,
+                            creatures: m.creatures,
+                        })
+                    })
+                    .transpose()?;
                 Ok::<_, KeyError>(AdventureParamsDef {
                     native_cost: p.native_cost,
                     land_points: p.land_points,
@@ -1487,6 +1666,7 @@ pub fn parse_adventure(
                         guard_factor: d.guard_factor,
                         free_level: d.free_level,
                     }),
+                    market,
                 })
             })
             .transpose()?,

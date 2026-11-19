@@ -291,11 +291,14 @@ computation.
 | Give ↓ for → | wood | mercury | ore | sulfur | crystal | gems | gold |
 |---|---|---|---|---|---|---|---|
 | wood | | 7 : 1 | 3 : 1 | 7 : 1 | 7 : 1 | 7 : 1 | 1 : 75 |
-| mercury, sulfur, crystal, gems | 1 : 2 | 3 : 1 | 1 : 2 | 3 : 1 | 3 : 1 | 3 : 1 | 1 : 150 |
+| mercury, sulfur, crystal, gems | 2 : 1 | 3 : 1 | 2 : 1 | 3 : 1 | 3 : 1 | 3 : 1 | 1 : 150 |
 | ore | 3 : 1 | 7 : 1 | | 7 : 1 | 7 : 1 | 7 : 1 | 1 : 75 |
 | gold | 833 : 1 | 1667 : 1 | 833 : 1 | 1667 : 1 | 1667 : 1 | 1667 : 1 | |
 
-(a : b = give a, get b; a precious resource for another precious one 3 : 1.) A creature sells for
+(a : b = give a, get b; a precious resource for another precious one 3 : 1, for wood or ore 2 : 1:
+q = 250 / 150 is at least 1, so round(q) given for one wanted; the first version of this table had
+1 : 2 there, corrected at T132a1 when `market_resources_proc` was read again and the module's
+tests ran every case against a binary32 model.) A creature sells for
 round(1 / q) gold, 70 % of its cost as rounded above (a Pikeman's 60: 42; 25: 17; 75: 52); for
 wood or ore one per creature from a cost of about 357 to 714 (and 8 wood for a 3 000-gold creature),
 for a precious resource one per creature from about 714. An artifact costs 2.5 times its cost in

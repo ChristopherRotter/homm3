@@ -19933,3 +19933,103 @@ staged beyond T130's executable.
   the town lane's inbox (the ADRs' new parts and the versions), HANDOFF.
 
 **Versions:** none moved. T132 (round 5, its cut at its start) next.
+
+### Increment 14, round 5: T132a1, the market's rates (2026-11-19, `adventure/e08-t132a1`)
+
+**The cut** (decision 380; asked at T132's start, `AskUserQuestion`): T132a in two, the rates
+first, alone in this session's third pull request (stacked on T131's #1046 until it merges).
+**Baseline:** `master` defc293 (#1045 merged; CI green on 38d422b, the last code); the setup's
+baseline stopped at its coverage step (the disk at 11 GB free; CI stands for it). Only
+`Heroes3.exe` staged.
+
+- **The code read again** (`market_resources_proc` 0x5ECFE0, `market_creature_rate` 0x5ECE80,
+  `market_buy_artifact_proc` 0x5ED9E0): every integer `fild` then stored to binary32, the
+  product with the table's binary32 factor stored, the quotient at 53 bits stored, `fcomp 1.0`,
+  then `fadd` 0.5 (f64) and `crt_ftol` of q or of `fld1 / q`; the factor tables' bit patterns at
+  counts 1 to 10 (`scripts/exe.py data`). **A correction:** survey §4's table had a precious
+  resource for wood or ore at 1 : 2; q = 250 / 150 is at least 1, so 2 : 1 (VCMI's
+  `getOffer` agrees); the table corrected.
+- **`h3_adventure::MarketParams`** (`market.rs`; exported with `Lot` and `MarketParamsError`):
+  `new(values, artifact_values, rows)` (the value tables by resource as `u16`, the rows'
+  resources', artifacts' and creatures' factors in hundredths; refused: an empty or uneven table,
+  a 0 value, no row or more than 255, a 0 factor), `counts`, `factor_bits` (for T132a2's eighth
+  check), `resource_lot`, `creature_lot`, `artifact_price` (`// rule: ADV-MKT-002`). Each step in
+  `h3_kernel::arith::X87`; a stored quotient held scaled by 2^32 (neither rounding depends on a
+  power of two), since a dear creature sold for gold gives a quotient below 2^-11, where `X87`
+  would drop bits. *Agent's calls:* the parameters as one compiled type with a validating
+  constructor (T132a2's compile maps its error); a lot past `u32` or a price that rounds to 0 is
+  none.
+- **Tests** (`market/tests.rs`, `covers: ADV-MKT-002`): survey §4's table at five (corrected), the
+  wood-for-gold and gold-for-wood rows at every count (D-70's 37, 62, 112; 88 at 6), the creature
+  sale (E14-1's Pixie 17 gold and Vampire 1 wood, E14-2's Skeleton 42; 3 000 gold for 8 wood;
+  30 000 for 21 000 gold), the artifact's price (E14-4's 5 000; cost / 50 of wood, / 100 of a
+  precious one), the factors' bit patterns, the refusals, the constructor's errors and a property
+  (every lot at least 1, one side 1). A throwaway comparison against a binary32 model in Python
+  (`struct`'s float32 with Python's doubles) agreed on all 1 120 490 cases: every pair at every
+  count, creature and artifact costs 1 to 6 000 and on to 200 000 by 97, every resource. Coverage
+  of `market.rs`: 100 % of lines and regions; clippy, fmt, `check-rules`, `check-arch`.
+- **ADV-MKT-002** in the catalog, `verified` (the code reading, batch E14's E14-1, E14-2, E14-4,
+  E14-5, VCMI's `getOffer`, the wiki's merchants' percentages). The town lane's inbox told (the
+  API, the correction).
+
+**Versions:** none moved (no part, pack or hash change). T132a2 next (the kinds, `[market]` in the
+part, the packs, the eighth check, part v23).
+
+### Increment 14, round 5: T132a2, the kinds, the packs and the eighth original-data check (2026-11-19, `adventure/e08-t132a1`, `cross-lane`)
+
+**The cut** (decision 381, the user: "do the next part on your current branch, then open the
+PR"): T132a2 on T132a1's branch, one pull request for T132a, `cross-lane` for the AI lane's two
+bots tables (asked before the change, consented). **Baseline:** `master` c84f854 (#1046 merged;
+T132a1's commits rebased on it). Staged beside `Heroes3.exe`: `extracted.tar` and `maps.tar`
+(the PC's tools back for a while; untarred into `original-data/`).
+
+- **The kinds** (`h3-adventure`'s new `ruleset/trades.rs`; design note §1, §3 to §5):
+  `ObjectKind::{Market, Altar, HillFort, WarMachineFactory}` and their definitions
+  (`Market` with `MarketScreen`; `Altar` from `AltarDef`; `HillFort`; `WarMachineFactory` from
+  `WarMachineFactoryDef`), the compile checks (screens, count, stock; kept artifacts, places,
+  divisor; percents; machines with one artifact each) and `Scope::artifact`
+  (`UnknownArtifact`), hash tags 47 to 50, every one entered (`a trade or service is not
+  entered`), `effect` none until T133 and T134. **`[params.market]`**:
+  `AdventureParamsDef::market` (`MarketParamsDef`), compiled into T132a1's `MarketParams`
+  (`compile_market_params`: every core resource once per table, the lists of one length) and
+  `AdventureParams::market()`; `MarketParams` hashed (the tables, the factors' bit patterns) and
+  given `value`, `artifact_value`. **The Altar's factions** (*agent's call*, design note §3's
+  *As built*): `AdventurePack::altar_factions` (`[[altar_faction]]`, `AltarFactionDef`), the
+  part's `altar_screens(faction)`, `AdventureCompileError::AltarFaction` (nothing sacrificed, a
+  second entry, none beside an Altar); `check_trades` (a market's count within the rows, the
+  parameters present, every faction's entry). **Part v23.**
+- **The pack syntax** (`h3-pack-adventure`): `market = { screens, count, stock }`,
+  `[object_type.altar]` (`experience` by class, 0 if left out; `keeps`; `places`;
+  `creature_factor`, `creature_divisor`), `hill_fort = { gold }`, `war_machine_factory = {
+  machines }`, `[params.market]`, `[[altar_faction]]`; in the format's doc block.
+- **The packs** (design note §6): base's five types after the Den of Thieves, `[params.market]`,
+  the eight factions' entries; ab's Freelancer's Guild and Conflux's entry; each with sources.
+- **Check 8** (`examples/original_data.rs`): the seven classes' types, kinds and visit modes
+  against the class lists, no other type of the four kinds; the market's values (`u16`s at
+  0x68C482, 0x68C492, a new `Exe::u16s`) and factors (bit patterns at counts 1 to 10) against the
+  executable's; the Hill Fort's percents against 0x63EB4C; the 63 creatures with an upgrade each
+  a town's unupgraded one with the town table's upgrade (`creature_is_unupgraded`,
+  `creature_upgrade`); the Altar and the Hill Fort added to check 6's kind marks. Passes on the
+  staged installation (every check's summary line); fails on three perturbations (wood's value
+  251, the Hill Fort's level 3 at 25, the creatures' factor at 10 as 99). The census moved to
+  T132b.
+- **Tests:** `h3-adventure`'s `ruleset/tests/trades.rs` (a core with factions, artifacts and war
+  machines: the four kinds compiled and unvisited, every check's reason, the market parameters'
+  errors, the factions' errors, every parameter in the hash); `h3-pack-adventure`'s
+  `tests/trades.rs` (every field and error of the syntax; the original packs' six types, their
+  kinds, visits and marks, the nine factions, the rates at five); the type counts (base + 5, ab
+  + 1) and the kind marks (+ 2) in `tests.rs`; `h3-map`'s typed classes' test leaving the six
+  out until T132b.
+- **Rules:** ADV-MKT-001, ADV-ALT-001, -002, -003, ADV-HFT-002, ADV-WMF-001 new, `implemented`
+  (the kinds' data and checks; the visits with T133, T134), each with the code reading, batch
+  E14's rows and VCMI or the wiki.
+- **Replays and records:** the 98 adventure goldens re-recorded from their commands (a scratch
+  script, `h3 adventure run --script` with each header's options): only hash lines moved, every
+  `adventure_ruleset_hash` (to `0x00ffbc3dd7a90159`), and in the 28 played with ab or sod the
+  checkpoints and `final_hash` (base's five new types move ab's and sod's ids). The AI lane's two
+  bots tables regenerated in release: only `engine.adventure` moved.
+- **Docs:** design note §1, §2, §3, §4, §5, §6's *As built*; decision 381 and the task's line;
+  `OVERVIEW.md`'s part line; the queue (T132a2 out, T132b in); the town lane's inbox note
+  (the accessor).
+
+**Versions:** adventure ruleset part v23. T132b (the import, map import v27) next.

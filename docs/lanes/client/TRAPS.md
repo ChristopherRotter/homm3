@@ -397,6 +397,13 @@ run its recipes one at a time (`--only`), deleting between them. Delete
   load `start-bink`'s 3DO logo (1 ms steps) once showed a frame 1 ms late in one of its two runs
   (5578 against 5577, the same picture; the other as kept): play the start's recipes with
   nothing else running.
+- **A run a step off** (E27 M3 T7, the closure's replay): with nothing else running, a recipe
+  through a load or a looping clip can play one of its two runs a step off with the same pixels
+  (`adv-hotseat-begin`'s load clip 10 ms longer, `end-conquest`'s score clip a frame longer,
+  `end-v4-lost`'s shot 10 ms late); each was as kept in both runs played again alone. Play such a
+  recipe again before calling it changed. A closure's full replay: about 4 hours on one instance
+  (`start-bink` and `start-bink-sound` 53 and 55 minutes each); a runner that writes each recipe's
+  line as it ends resumes after a VM restart.
 - **Sandbox routines as a skill:** GitHub (pull requests and CI by REST), waiting for long jobs, worktrees for concurrent fixers, VM restarts: the skill `homm3-sandbox-session`.
 - **The sound tests** (E17 M7 T4): the battle client's tests open SDL's dummy audio driver
   (`h3_sdl::Audio::open_driver`) through `audio::tests::dummy`, which holds one lock for the

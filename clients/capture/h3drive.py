@@ -713,7 +713,8 @@ def gold_bonus(game, players=2):
     exactly `players` rows Gold and none Artifact or Resource, else the run stops (a lost click
     would have left Artifact). Since E08 T110 (batch E12b's Blue, a town and no hero: no Artifact
     in its row, so Random, Gold, Resource) each row's arrow is clicked until the memory reads
-    Gold, at most four times."""
+    Gold, at most four times (since E24 M4 T3b1 until the rows read Gold number one more: a row's
+    value sits in either of the two arrays)."""
     import h3mem
 
     game.click(*ADVANCED_OPTIONS, 1.0)
@@ -722,7 +723,9 @@ def gold_bonus(game, players=2):
     for row in range(players):
         for _ in range(4):
             game.click(x, y + step * row, 0.5)
-            if h3mem.starting_bonuses(mem)[row] == h3mem.BONUS_GOLD:
+            # The rows' Gold so far (E24 M4 T3b1: a row's value may sit in either array, a
+            # writer's map with three players showed Blue's in the second).
+            if h3mem.starting_bonuses(mem).count(h3mem.BONUS_GOLD) == row + 1:
                 break
     bonuses = h3mem.starting_bonuses(mem)
     wrong = {h3mem.BONUS_ARTIFACT, h3mem.BONUS_RESOURCE} & set(bonuses)
@@ -733,16 +736,17 @@ def gold_bonus(game, players=2):
 
 def to_scenario(game, gold=False, seed=None):
     """From the start to the adventure map of the only map in Maps/ (a single scenario); with
-    `gold` (the battle recipes, E17 M5 T8a) every player's starting bonus Gold, else random;
-    with `seed` (E24 M4 T1b1) the random generator seeded so just before Begin, so that the new
-    game draws its armies, heroes and objects alike in every run."""
+    `gold` (the battle recipes, E17 M5 T8a) every player's starting bonus Gold, else random (a
+    number: that many players' rows, E24 M4 T3b1; true: two); with `seed` (E24 M4 T1b1) the
+    random generator seeded so just before Begin, so that the new game draws its armies, heroes
+    and objects alike in every run."""
     game.wait("main_menu", 90)
     game.click(640, 75, 1.0)  # New Game
     game.wait("new_game_menu")
     game.click(640, 75, 1.0)  # Single Scenario
     game.wait("scenario_list")
     if gold:
-        gold_bonus(game)
+        gold_bonus(game, players=2 if gold is True else gold)
     if seed is not None:
         game.seed(seed)
     game.click(497, 553, 1.0)  # Begin

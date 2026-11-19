@@ -28,12 +28,17 @@
 //!   (`scenario_to_game` 0x583580 and `scenario_entry_name` 0x584010 read it before the list's
 //!   selection).
 //!
-//! *Not built yet* (T5b): the items' right press and hints, Show Random Maps (335: the random
-//! maps' list, kind 1), Begin with a random map chosen (CLT-Q92: a stub's message); the
-//! generation itself is not built (decision 13). *Provisional* (the agent's): what the record
-//! leaves of a header unread (its main towns and heroes: no hero, a random town; T6 begins none).
+//! Built at T5b: the items' right press and hints, Show Random Maps (335: the random maps' list,
+//! kind 1, the client's empty: CLT-Q92), Begin with a random map chosen (CLT-Q92: the client's
+//! stub's notice). *Not built yet:* the generation itself (decision 13). *Provisional* (the
+//! agent's): what the record leaves of a header unread: each colour's main town generating its
+//! hero (the player's +0xB set, design §30.2; *inferred* a main town: E27 M3 T7, the review's
+//! C2), a random town and no main hero (T6 begins none). Each colour offered each faction's free
+//! heroes (E27 M3 T7: `scenario_hero_lists` 0x583890 over the game the build resets: the faction's
+//! first 16 hero types of its two classes; recorded, `adv-random-options`).
 
 use alloc::string::String;
+use alloc::vec::Vec;
 
 use h3_render::Bugs;
 use h3_ui::ui::{Dialog, Item, Shown, State};
@@ -340,7 +345,8 @@ impl RandomMap {
     }
 
     /// Item `id` pressed (`scenario_dialog_click` 0x586DCC to 0x586F7A): its choice set and what
-    /// the press did; none for an item that is not one of the choices (Show Random Maps is T5b's).
+    /// the press did; none for an item that is not one of the choices (Show Random Maps is the
+    /// screen's, T5b: its list).
     pub(super) fn click(&mut self, id: u16) -> Option<Pressed> {
         let c = &mut self.choices;
         let offset = |first: u16| u8::try_from(id - first).unwrap_or(0);
@@ -416,24 +422,29 @@ impl RandomMap {
     }
 
     /// The own record built from the choices (`random_map_info_build` 0x580430), named `name`
-    /// and described as `description`, and a random map chosen; the record.
-    pub(super) fn build(&mut self, name: &str, description: &str) -> &Entry {
+    /// and described as `description`, each colour offered each faction's `offers`, and a random
+    /// map chosen; the record.
+    pub(super) fn build(&mut self, name: &str, description: &str, offers: &[Vec<u8>; 9]) -> &Entry {
         self.chosen = true;
-        let made = self.made(name, description);
+        let made = self.made(name, description, offers);
         self.record.insert(made)
     }
 
     /// The own record of the choices.
-    fn made(&self, name: &str, description: &str) -> Entry {
+    fn made(&self, name: &str, description: &str, offers: &[Vec<u8>; 9]) -> Entry {
         let c = self.choices;
         let (humans, total) = (c.humans(), c.total());
         let seats = core::array::from_fn(|k| {
             let k = u8::try_from(k).unwrap_or(u8::MAX);
+            // The generate flag set (+0xB, design §30.2): the row shows the hero Random, its
+            // arrows once a town is chosen (§3.14; E27 M3 T7, the review's C2); no main hero,
+            // *provisional* (the module's notes).
             Seat {
                 human: k < humans,
                 computer: k < total,
                 factions: 0x1FF,
                 random_town: true,
+                generates: true,
                 ..Seat::default()
             }
         });
@@ -450,7 +461,12 @@ impl RandomMap {
             loss: None,
             seats,
             teams: [0, 1, 2, 3, 4, 5, 6, 7],
-            heroes: Heroes::default(),
+            // Each faction's free heroes (E27 M3 T7: `scenario_hero_lists` over the reset game,
+            // recorded by `adv-random-options`: Castle's first hero Orrin).
+            heroes: Heroes {
+                offers: core::array::from_fn(|_| offers.clone()),
+                ..Heroes::default()
+            },
         }
     }
 }
