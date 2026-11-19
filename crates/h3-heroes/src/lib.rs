@@ -67,7 +67,7 @@ pub use combine::{assemble_changes, check_assemble, check_disassemble, disassemb
 pub use day::{daily_income, day_mana, owner_town_growth, town_growth};
 pub use derive::{
     BattleBonuses, MANA_PER_KNOWLEDGE, MAX_JOIN_BONUS, Necromancy, VisitBonus, attack_defense,
-    derive_battle_hero, gained_experience, join_bonus, max_mana, necromancy, power,
+    derive_battle_hero, gained_experience, join_bonus, max_mana, necromancy, power, primary_skills,
 };
 pub use details::{
     ArtifactInstance, HeroDetails, OfferLevels, PrimarySkill, validate, validate_artifact,

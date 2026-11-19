@@ -232,9 +232,21 @@ reason = "A hero the scenario's loss condition \"lose this hero\" names may be d
 epic   = "E09"
 
 [[stub]]
+id     = "TWN-STUB-17"
+where  = "crates/h3-game/src/town/thieves.rs::value"
+reason = "The Thieves' Guild's obelisks row ranks every player at 0 (TWN-TAV-008; E09 T39b1, design note E09-design.md section 73): the original's thieves_guild_row_value 0x5DEE70 case 5 counts the obelisks the player visited (player_obelisks_visited 0x4BABA0). The engine places no obelisks before the Grail (E09 increment 6); lifted there"
+epic   = "E09"
+
+[[stub]]
+id     = "TWN-STUB-18"
+where  = "crates/h3-game/src/town/thieves.rs::thieves_guild_at"
+reason = "The Thieves' Guild shows no player's tactic from level 3 (TWN-TAV-009; E09 T39b1, design note E09-design.md section 73): the original's thieves_guild_fill 0x5DDA10 shows player +0x34, ai_type (a computer's drawn at the new game, 3 for a human), as a line of text. The computer's play is E13's; lifted there"
+epic   = "E09"
+
+[[stub]]
 id     = "TWN-STUB-20"
 where  = "crates/h3-adventure/src/state.rs::visit"
-reason = "A Den of Thieves' visit gives nothing (ADV-VIS-008; E09 T39a, design note E09-design.md section 74): the original's visit_object 0x4A84F0 case 97 opens the Thieves' Guild window at its top level for the visitor's owner, which the engine tells as ThievesGuildSeen (TWN-TAV-007 to -009, design note section 73). The guild's query and view are E09 T39b's; lifted there"
+reason = "A Den of Thieves' visit gives nothing (ADV-VIS-008; E09 T39a, design note E09-design.md section 74): the original's visit_object 0x4A84F0 case 97 opens the Thieves' Guild window at its top level for the visitor's owner, which the engine tells as ThievesGuildSeen (TWN-TAV-007 to -009, design note section 73). The guild's query is E09 T39b1's (h3_game::thieves_guild, town::thieves::thieves_guild_at at DEN_LEVEL); the visit's outcome and event are E09 T39b2's; lifted there"
 epic   = "E09"
 
 # --- ai (AI-STUB-<n>) ---

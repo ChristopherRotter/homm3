@@ -123,5 +123,6 @@ pub const TOWN_STATE_HASH_VERSION: u32 = 3;
 /// roles `horde`, `portal` and `week_of`, each record's `roe`, the week's and the garrison week's
 /// parameters (E09 design §38). v6 (E09 T28a): the most heroes on the map in the parameters
 /// (TWN-ROW-003, design §53). v7 (E09 T36): the hire's price in the parameters and each record's
-/// tavern weights (TWN-TAV-001, -003; design §60).
-pub const TOWN_RULESET_HASH_VERSION: u32 = 7;
+/// tavern weights (TWN-TAV-001, -003; design §60). v8 (E09 T39b1): the Thieves' Guild's resource
+/// rows in the parameters (TWN-TAV-008, design §73).
+pub const TOWN_RULESET_HASH_VERSION: u32 = 8;

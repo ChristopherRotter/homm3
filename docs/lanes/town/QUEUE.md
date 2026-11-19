@@ -10,7 +10,8 @@ by T35a, `TWN-Q19`; its code by T35b, decisions 129 to 131; the town part v7 by 
 132; the pool in the game by T37a, `TWN-Q20`, decisions 133 to 136; the map's customised types
 by T37b, `TWN-Q21`, decisions 137 to 139; T38a cut in two, `TWN-Q22`, decisions 140 to 142;
 T38a2 whole, decisions 143, 144; T38b cut in two, `TWN-Q23`, decisions 145, 146; T38b2
-whole, `TWN-Q24`, decisions 147, 148; T38 done; T39a whole, `TWN-Q25`, decisions 149, 150);
+whole, `TWN-Q24`, decisions 147, 148; T38 done; T39a whole, `TWN-Q25`, decisions 149, 150; T39b cut in two, `TWN-Q26`, decisions 151 to
+153);
 done tasks in `E09-log.md`; increments 1 to 3
 (closed by T10, T20 and T30) in `E09-archive.md`. The building tasks are the design note's
 `E09-design.md` §79 (round by round, with the order against E08's increment 13); each task's cut
@@ -19,12 +20,18 @@ confirmed at its start; every entry's acceptance includes the Definition of Done
 
 **E09 T39 — the map's objects and the information** (round 7; `cross-lane`; design §66, §73 to
 §76): T39a done (2026-11-18, whole, decisions 149, 150: the kinds `Tavern` and `DenOfThieves`,
-classes 95 and 97, the tavern decision GAM-DEC-010; `E09-log.md`). **T39b** the Thieves' Guild
-(TWN-TAV-007 to -009: the query, the Den's visit and its `ThievesGuildSeen`, lifting
-`TWN-STUB-20`; TD-23, `TWN-QUIRK-13`, `TWN-STUB-17`, `-18`; the adventure's power and the day's
-gold made public), the protocol's request. Versions to take: protocol v74 (the guild's request,
-`ThievesGuildSeen`), the adventure's outcome for the Den; no replay word. **Status:** next
-(T39b), its cut confirmed at its start.
+classes 95 and 97, the tavern decision GAM-DEC-010; `E09-log.md`). T39b cut in two (decision
+151): T39b1 done (2026-11-19: the guild as a query, `h3_game::thieves_guild`,
+`town::thieves::thieves_guild_at`; its resource rows the town part's `guild_resources`, part v8,
+decision 152; `E09-log.md`). **T39b2** the Den of Thieves' visit and the protocol: the
+adventure's outcome for the Den (`Effect::DenOfThieves`, `h3-adventure`'s `visit`), the game's
+`ThievesGuildSeen` told to the visitor's owner alone in parts (`GameEvent` stays `Copy`:
+`thieves_guild_at(state, rules, DEN_LEVEL)`'s rows and players), lifting `TWN-STUB-20` (ADV-VIS-008
+amended); the protocol (server lane's, `cross-lane`): the guild's request (`GameQuery`,
+`GameAnswer`: the server answers `thieves_guild` for the asking seat) and the events, their wire
+view and fold (the guild is not in the observation), the fold gate and `game_event`'s round
+trips; whether a golden replay steps onto a Den (a census: none expected). Versions to take:
+protocol v74; no replay word, no hash. **Status:** next (T39b2), its cut confirmed at its start.
 
 **E09 T40 — the gates** (round 8; design §78): the taverns map and its scripted replays, the
 census of the 160 maps' first offers and of the maps classes 95 and 97 unblock, the pool's

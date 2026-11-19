@@ -206,28 +206,8 @@ impl GameState {
     /// start.
     // rule: GAM-RES-003, GAM-RES-004, GAM-RES-005, TWN-INC-001, TWN-INC-002, TWN-ROW-005
     fn pay_income<S: Sink>(&mut self, rules: &GameRuleset, week_start: bool, sink: &mut S) {
-        let (core, part) = (rules.core(), rules.adventure());
         for player in (0..=u8::MAX).take(self.players.len()).map(PlayerId::new) {
-            let mut income = self.adventure.income(core, part, player, week_start);
-            // Its heroes on the map, then since E09 T28b1 its garrison heroes (TWN-ROW-005: the
-            // original's `count_worn_artifact` 0x4BABD0 and `town_gold_income` read the towns'
-            // garrison heroes too).
-            let garrisons = self.adventure.town_heroes().iter().map(|(_, hero)| hero);
-            let all = self.adventure.heroes().iter().chain(garrisons);
-            let heroes = all.filter(|h| h.owner == player);
-            for details in heroes.filter_map(|h| self.heroes.get(usize::from(h.id.raw()))) {
-                let daily = h3_heroes::daily_income(details, core);
-                for (entry, amount) in income.iter_mut().zip(daily) {
-                    *entry = entry.saturating_add(amount);
-                }
-            }
-            town::add_income(
-                &self.adventure,
-                &self.towns,
-                rules.towns(),
-                player,
-                &mut income,
-            );
+            let income = self.day_income(rules, player, week_start);
             let gains: Vec<(ResourceId, u32)> = (0..=u16::MAX)
                 .map(ResourceId::from_raw)
                 .zip(income)
@@ -235,6 +215,43 @@ impl GameState {
                 .collect();
             self.gain(player, &gains, sink);
         }
+    }
+
+    /// `player`'s income of a day's start as it stands now (GAM-RES-003 to -005, TWN-INC-001,
+    /// -002, TWN-ROW-005; [`Self::pay_income`]'s), by resource in the core's order, saturating:
+    /// the adventure's income of its mines and, with `week_start`, its armies' weekly resources,
+    /// plus each of its heroes' on the map and its garrison heroes' `h3_heroes::daily_income`,
+    /// plus each of its towns' ([`crate::town::add_income`]). Since E09 T39b1 factored out of the
+    /// day's start: the Thieves' Guild's income row reads its gold (TWN-TAV-008).
+    // rule: GAM-RES-003, GAM-RES-004, GAM-RES-005, TWN-INC-001, TWN-INC-002, TWN-ROW-005
+    pub(crate) fn day_income(
+        &self,
+        rules: &GameRuleset,
+        player: PlayerId,
+        week_start: bool,
+    ) -> Vec<u32> {
+        let (core, part) = (rules.core(), rules.adventure());
+        let mut income = self.adventure.income(core, part, player, week_start);
+        // Its heroes on the map, then since E09 T28b1 its garrison heroes (TWN-ROW-005: the
+        // original's `count_worn_artifact` 0x4BABD0 and `town_gold_income` read the towns'
+        // garrison heroes too).
+        let garrisons = self.adventure.town_heroes().iter().map(|(_, hero)| hero);
+        let all = self.adventure.heroes().iter().chain(garrisons);
+        let heroes = all.filter(|h| h.owner == player);
+        for details in heroes.filter_map(|h| self.heroes.get(usize::from(h.id.raw()))) {
+            let daily = h3_heroes::daily_income(details, core);
+            for (entry, amount) in income.iter_mut().zip(daily) {
+                *entry = entry.saturating_add(amount);
+            }
+        }
+        town::add_income(
+            &self.adventure,
+            &self.towns,
+            rules.towns(),
+            player,
+            &mut income,
+        );
+        income
     }
 
     /// The map's timed events at `player`'s turn start (GAM-CAL-004; survey `E08-economy.md` §11,

@@ -59,6 +59,9 @@ mod town;
 #[cfg(test)]
 mod testing;
 
+/// An army's value and a hero's power as the wandering monsters read them (ADV-MON-007), public
+/// since E09 T39b1 for the Thieves' Guild (TWN-TAV-008, -009).
+pub use answer::{army_value, power};
 pub use army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, split_range};
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,

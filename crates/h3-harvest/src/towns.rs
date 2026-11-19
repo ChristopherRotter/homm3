@@ -402,7 +402,8 @@ fn params(ctx: &Ctx<'_>) -> Result<String, String> {
          week_creature_bonus = {}\n\
          garrison_week = {{ odds = [{}, {}], out_of = {}, weights = [{}], weeks = {}, upgrade = {} }}\n\
          most_heroes = {}\n\
-         hire_price = {{ {} = {} }}\n",
+         hire_price = {{ {} = {} }}\n\
+         guild_resources = [{}]\n",
         quote(gold),
         p.grail_gold,
         p.reveal_radius,
@@ -423,7 +424,24 @@ fn params(ctx: &Ctx<'_>) -> Result<String, String> {
         ctx.spec.rows.most_heroes,
         toml_key(gold),
         ctx.spec.tavern.hire_price,
+        guild_rows(ctx)?,
     ))
+}
+
+/// The Thieves' Guild's resource rows (E09 T39b1): each row's resources by `RESTYPES.TXT`'s
+/// index, written as their keys.
+fn guild_rows(ctx: &Ctx<'_>) -> Result<String, String> {
+    let rows = ctx.spec.guild.resources.iter().map(|row| {
+        let keys = row.iter().map(|&index| {
+            ctx.resources
+                .get(index)
+                .map(|key| quote(key))
+                .ok_or_else(|| format!("gapfill: towns: the guild's resource {index} is unknown"))
+        });
+        keys.collect::<Result<Vec<_>, String>>()
+            .map(|keys| format!("[{}]", keys.join(", ")))
+    });
+    Ok(rows.collect::<Result<Vec<_>, String>>()?.join(", "))
 }
 
 /// Each pack's `[town_visions]` (E09 T8c2): the gap-fill's creatures, each in its own pack's file.

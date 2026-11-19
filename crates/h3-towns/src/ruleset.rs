@@ -103,6 +103,12 @@ pub struct TownParamsDef {
     /// least 1, empty for free (TWN-TAV-003; E09 design §60: 2 500 gold, `hero_price` 0x67814C,
     /// every edition and difficulty).
     pub hire_price: Vec<(ContentKey, u32)>,
+    /// The resources the Thieves' Guild's three resource rows sum, rows 2 to 4 (TWN-TAV-008; E09
+    /// design §73, T39b1, decision 152: the original's gold, wood and ore, then mercury, sulfur,
+    /// crystal and gems, `thieves_guild_row_value` 0x5DEE70 reading the treasury's indices 6, 0
+    /// and 2, 1 and 3 to 5), resources of the core, each in at most one row; a row may be empty
+    /// (every player's value 0).
+    pub guild_resources: [Vec<ContentKey>; 3],
 }
 
 /// The week's parameters (E09 design §38, §42): the chance of a creature's week and the bonus
@@ -444,6 +450,9 @@ pub struct TownParams {
     pub most_heroes: u8,
     /// A hero's price at a tavern, in the core's resource order (TWN-TAV-003).
     pub hire_price: Vec<(ResourceId, u32)>,
+    /// The resources of the Thieves' Guild's rows 2 to 4, each row in the core's order
+    /// (TWN-TAV-008).
+    pub guild_resources: [Vec<ResourceId>; 3],
 }
 
 /// A faction's compiled town record.
@@ -690,8 +699,8 @@ fn hash_option<T>(h: &mut StateHasher, value: Option<T>, write: impl FnOnce(&mut
 }
 
 impl CanonicalHash for TownRuleset {
-    /// Encoding v7 (E09 T36; v6, T28a's, without the hire's price and the records' tavern weights;
-    /// v5, T25a's, without the most heroes on the map; v4, T16a's, without the roles `horde`,
+    /// Encoding v8 (E09 T39b1; v7, T36's, without the Thieves' Guild's resource rows; v6, T28a's,
+    /// without the hire's price and the records' tavern weights; v5, T25a's, without the most heroes on the map; v4, T16a's, without the roles `horde`,
     /// `portal`, `week_of`, a record's `roe` and the week's and garrison week's parameters; v3, T8c2's, without the
     /// requirements, the costs and the role `shipyard`; v2, T5b2a's, without Visions; v1, T5a1's
     /// first, without the automatic set): version; the parameters (0 for none, else 1, the gold
@@ -700,7 +709,8 @@ impl CanonicalHash for TownRuleset {
     /// Visions' factor and least radius, its creatures as their number and handles, the week's
     /// creature chance and bonus, the garrison week's two odds, its denominator, its weights as
     /// their number and values, its weeks and its upgrade chance, the most heroes on the map, the
-    /// hire's price (length, each resource handle and amount)); the records in faction order as
+    /// hire's price (length, each resource handle and amount), the Thieves' Guild's three resource
+    /// rows (each its length and resource handles)); the records in faction order as
     /// their number and each one's faction handle, moat (0 absent, 1 harmless, 2 damaging),
     /// natural obstacles, the silo (length, each resource handle and amount), the creatures
     /// (length, each base handle and the upgrade as an option), the buildings (length, each key,
@@ -744,6 +754,10 @@ impl CanonicalHash for TownRuleset {
             for &(resource, amount) in &p.hire_price {
                 resource.hash_into(h);
                 h.write_u32(amount);
+            }
+            for row in &p.guild_resources {
+                h.write_len(row.len());
+                row.iter().for_each(|resource| resource.hash_into(h));
             }
         });
         h.write_len(self.towns.len());

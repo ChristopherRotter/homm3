@@ -2556,6 +2556,25 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   artifacts only (`TWN-QUIRK-13` both ways); a garrison hero and a town's own garrison in the army row and as the best
   creature; the first of two equal heroes; none for a player without heroes; a primary skill past
   99 clamped; the query's none outside the turn and without a Tavern; the map Tavern's level 0.
+- *As built* (T39b1, decisions 151 to 153): `town/thieves.rs` (new): `h3_game::thieves_guild`
+  and `thieves_guild_at(state, rules, level)` (the viewer drops out: the view is the same for every
+  viewer of a level), `GUILD_LEVELS` and `DEN_LEVEL` (5), `ThievesGuildView { level, rows, players
+  }`, each row a `GuildRanking { row: GuildRow, places }` (**each player's place by id**, 0 the
+  first, dense: the next lower value the next place), each player a `GuildPlayer { hero:
+  Option<GuildHero { hero_type, skills }>, creature }`. **The resource rows are data** (decision
+  152, over the agent's core order): the town part's `guild_resources`, three lists of core
+  resources (part **v8**; the base pack's from the gap-fill's `RESTYPES.TXT` indexes 6; 0, 2; 1, 3
+  to 5, read at 0x5DEF3F to 0x5DEF93: player +0x9C is the treasury; the synthetic pack's coin,
+  shard, none), each resource in at most one row. Made public `cross-lane`:
+  `h3_adventure::army_value` and `power` (ADV-MON-007), `AdventureState::upper_bars` (the town
+  lane's file), `h3_heroes::primary_skills` (HER-ADV-001), `GameState::day_income` (`pub(crate)`,
+  factored out of `pay_income`, without the week's resources). Read at T39b1: **the best creature
+  starts from 0 too** (0x5DE992, `jle`) and skips a stack of count 0; the towns in the player's
+  town list's order (TownId order here). The tavern count to 5 is `view.rs`' `tavern_count`
+  beside the popup's `tavern_level`. Sums saturate in u64. Flag off of `TWN-QUIRK-13`: every worn
+  position's artifact and the backpack's (VCMI counts a combination's locked slots too). Tests
+  `town/tests/hire/thieves.rs` (nine, on the hire tests' game; the guild's rows checked by moving
+  the one test resource between them: the adventure test pack wants a mine per core resource).
 
 ### 74. The Den of Thieves (class 97; the kind `DenOfThieves`; `visit_object`'s case 97)
 

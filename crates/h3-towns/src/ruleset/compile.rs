@@ -303,6 +303,7 @@ fn compile_params(scope: &Scope<'_>, def: &TownParamsDef) -> Result<TownParams> 
         .ok_or(TownCompileError::InvalidParams(
             "the hire's price gives each resource once, at least 1",
         ))?;
+    let guild_resources = guild_resources(scope, &def.guild_resources)?;
     Ok(TownParams {
         gold,
         hall_gold: def.hall_gold,
@@ -318,7 +319,29 @@ fn compile_params(scope: &Scope<'_>, def: &TownParamsDef) -> Result<TownParams> 
         garrison_week: def.garrison_week.clone(),
         most_heroes: def.most_heroes,
         hire_price,
+        guild_resources,
     })
+}
+
+/// The Thieves' Guild's resource rows (TWN-TAV-008; E09 design §73, T39b1): each row's resources
+/// of the core in the core's order, a resource in at most one row.
+fn guild_resources(scope: &Scope<'_>, def: &[Vec<ContentKey>; 3]) -> Result<[Vec<ResourceId>; 3]> {
+    let mut seen = BTreeSet::new();
+    let mut rows: [Vec<ResourceId>; 3] = Default::default();
+    for (row, keys) in rows.iter_mut().zip(def) {
+        let mut ordered = BTreeSet::new();
+        for key in keys {
+            let resource = scope.resource(key)?;
+            if !seen.insert(resource) {
+                return Err(TownCompileError::InvalidParams(
+                    "a resource of the Thieves' Guild's rows is given twice",
+                ));
+            }
+            ordered.insert(resource);
+        }
+        *row = ordered.into_iter().collect();
+    }
+    Ok(rows)
 }
 
 /// The growth's parameters (E09 design §38): a week's creature chance `1 <= numerator <=

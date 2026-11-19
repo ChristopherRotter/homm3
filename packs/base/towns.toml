@@ -27,6 +27,7 @@ week_creature_bonus = 5
 garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], weeks = 8, upgrade = 5 }
 most_heroes = 8
 hire_price = { gold = 2500 }
+guild_resources = [["gold"], ["wood", "ore"], ["mercury", "sulfur", "crystal", "gems"]]
 
 [[town]]
 faction = "castle"

@@ -164,7 +164,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 
 ### TWN-QUIRK-13 — The Thieves' Guild counts the backpacks' artifacts alone
 - Class: fix-optional (the user, 2026-11-16, TWN-Q18, T-17: a `fix-optional` flag over the agent's `preserve`; the epic's decision 117)
-- Context / rules affected: town, TWN-TAV-008 (the Thieves' Guild's rows; planned, E09 T39b)
+- Context / rules affected: town, TWN-TAV-008 (the Thieves' Guild's rows; E09 T39b1)
 - Original behavior: the Thieves' Guild's artifacts row (`thieves_guild_row_value` 0x5DEE70, at 0x5DEFF8) sums over a player's heroes on the map the backpack's count (`hero_backpack_count` 0x4D90C0) and `hero_worn_count` (0x4D9070) with argument 1, which counts nothing with that argument (its flag's test at 0x4D9090 skips every position; with 0, the tavern dialog's, it counts the worn artifacts but the spell book and the war machines): a hero's worn artifacts never count.
 - Intended/expected behavior: with the flag off the row counts the worn and the backpack's artifacts (VCMI's).
 - Impact: information only, no state touched: which player the row ranks first (batch TWN-4's TWN-4-7: one artifact in a backpack ranks above three worn).
@@ -172,5 +172,5 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Sources: code reading of `thieves_guild_fill` 0x5DDA10, `thieves_guild_row_value` 0x5DEE70 and `hero_worn_count` 0x4D9070 (E09 T33b; survey `docs/rules/surveys/E09-tavern.md` §13, T-17); batch TWN-4's row TWN-4-7 (`experiments/results/E09-batch-4c.md`, `-4c-run2.md`: artifacts 1st Blue, one in a backpack against Red's three worn; survey §14).
 - Flag: `quirk.town.guild_artifacts_by_backpacks` (`GUILD_ARTIFACTS_BY_BACKPACKS`, registry position 43, E09 T35b)
 - Defaults: faithful = on (the backpacks alone), strict-fixed = off (the worn and the backpack's)
-- Regression test: planned with the guild (E09 T39b, `crates/h3-game`'s Thieves' Guild tests, both settings)
+- Regression test: `crates/h3-game/src/town/tests/hire/thieves.rs`, `the_artifacts_row_counts_the_backpacks_alone_under_twn_quirk_13` (E09 T39b1: two worn rings against a charm in a backpack, both settings)
 - Decided by / date: the user, 2026-11-16 (TWN-Q18; decision 117); the flag added and the entry made by E09 T35b, 2026-11-16

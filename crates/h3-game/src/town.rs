@@ -17,7 +17,8 @@
 //! month ([`growth`]); since E09 T26b it grows the neutral towns' garrisons each week
 //! ([`garrison`]) and draws the Portals of Summoning ([`portal`]); since E09 T27 it opens a town's
 //! hire dialog and makes its purchases ([`recruit`]); since E09 T38b1 a hero that leaves the game
-//! goes back to the hero pool or its owner's tavern ([`leave`]).
+//! goes back to the hero pool or its owner's tavern ([`leave`]); since E09 T39b1 it answers the
+//! Thieves' Guild ([`thieves`]).
 
 use alloc::vec::Vec;
 
@@ -46,6 +47,7 @@ pub(crate) mod recruit;
 pub(crate) mod rows;
 pub(crate) mod siege;
 pub(crate) mod tavern;
+pub(crate) mod thieves;
 pub(crate) mod view;
 
 pub(crate) use build::{adventure_reveal, build_towns, draw_towns, without_water};
