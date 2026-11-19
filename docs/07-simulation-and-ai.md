@@ -39,10 +39,16 @@ design note kept in `docs/epics/E05-log.md` (§1 to §9).
   side's previewed kills of each legal attack and shot entry are an option (`Outputs::preview`,
   C ABI v33, E06 T5): the engine's preview (BAT-DMG-011), what the original shows a player
   before a strike, never the retaliation.
-- **The observation** (`h3_sim::observation`, encoding v22): v21's flat layout, then per stack
+- **The observation** (`h3_sim::observation`, encoding v23): v21's flat layout, then per stack
   slot its places in the engine's turn order (`h3_battle::turn_order`: in the rest of the round,
-  among its side's, in the next round; E06 T6f). A network may read v21's prefix alone (the
-  trainer's `[network] order` off, its default).
+  among its side's, in the next round; E06 T6f), then the reach block (E25 T38a, AI-Q19): per hex
+  each side's stacks that can strike a stack standing there in melee on their next turn, per stack
+  slot whether it can shoot now, the stacks it can strike and those that can strike it. The block
+  is computed from the battle's state with only what the viewer may know
+  (`h3_battle::reach_seen_by`: the pits both a stack's controller and the viewer see), so a
+  world's encoding is the battle's. A network may read v21's prefix alone (the trainer's
+  `[network] order` off, its default) or v22's (the reach block unread until `[network] reach`,
+  E25 T38b).
 - **Seats** per scenario side: `External` (the caller acts) or `Internal(policy)`, played inside
   the call: `Random` (tests and benchmarks), `System` (E23's policy of the original's computer),
   the bots `Aggressor` and `Greedy`. Every side plays as a human player's (`human`), and Retreat
