@@ -49,6 +49,8 @@ use crate::art::MapArt;
 use crate::live::{BOAT_CLASS, HERO_CLASS, owner};
 use crate::objects;
 
+mod panels;
+
 /// A random hero (class 70): the import places it as a hero, not a static object.
 const RANDOM_HERO: u32 = 70;
 /// A hero's placeholder (class 214), placed as a hero too.
@@ -362,6 +364,8 @@ pub fn start(
     table.insert("heroes".to_string(), Value::Array(heroes));
     table.insert("boats".to_string(), Value::Array(boats));
     table.insert("explored".to_string(), explored(observation, art));
+    // The panels (E24 M4 T3b1, design §5.10).
+    panels::insert(&mut table, observation, &loaded.raw, art, rules, &colour)?;
     Ok(Start { table, seen })
 }
 
@@ -516,6 +520,7 @@ pub fn differences(ours: &Start, theirs: &Table) -> Vec<String> {
             found.push(format!("`{key}` on explored tiles differ"));
         }
     }
+    panels::differences(mine, theirs, &mut found);
     found
 }
 

@@ -104,7 +104,7 @@ fn hero_kingdom(status: HeroStatus) -> Kingdom {
 
 fn town() -> TownStatus {
     TownStatus {
-        name: 37,
+        name: TownName::Record(37),
         buildings: 1 << 12 | 1 << 8,
         garrison: true,
         army: [None, stack(13, 5), None, None, None, None, None],

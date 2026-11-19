@@ -4,6 +4,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_map::model::Pos;
+use h3_render::Bugs;
 
 use crate::live::{Arrow, Explored, Kingdom, KingdomHero, KingdomTown, Moment, Walking};
 
@@ -195,6 +196,7 @@ fn the_resource_bar_s_picture_in_the_viewer_s_colours() {
         &layout,
         &live(Kingdom::default(), vec![]),
         &Catalogue::default(),
+        Bugs::Fixed,
     );
     assert_eq!(shown.players.into_iter().collect::<Vec<_>>(), [(1000, 2)]);
 }
@@ -220,7 +222,13 @@ fn the_resource_bar_s_amounts_and_date_by_their_keys() {
     );
     let pack = h3_ui::text::pack::Pack::from_json("en", json).unwrap();
     let texts = Catalogue { packs: vec![pack] };
-    let shown = resource_bar(&layout, &live(kingdom.clone(), vec![]), &texts);
+    // The original's (`--bugs original`): every amount in its box, cut there (MCL-Q15).
+    let shown = resource_bar(
+        &layout,
+        &live(kingdom.clone(), vec![]),
+        &texts,
+        Bugs::Original,
+    );
     let all: Vec<(u16, &str)> = shown
         .texts
         .iter()
@@ -239,7 +247,12 @@ fn the_resource_bar_s_amounts_and_date_by_their_keys() {
             (1008, "D 7 W 4 M 12"),
         ]
     );
-    let bare = resource_bar(&layout, &live(kingdom, vec![]), &Catalogue::default());
+    let bare = resource_bar(
+        &layout,
+        &live(kingdom.clone(), vec![]),
+        &Catalogue::default(),
+        Bugs::Fixed,
+    );
     assert_eq!(bare.texts[&1001], "map.resources.amount");
     assert_eq!(bare.texts[&1008], "map.resources.date");
     // Drawn as the layout's labels: the amounts at (37 + 84 i, 3), the date at (607, 3), each
@@ -256,6 +269,38 @@ fn the_resource_bar_s_amounts_and_date_by_their_keys() {
     assert_eq!(labels[0], (40, 578, "<0>"));
     assert_eq!(labels[6], (544, 578, "<2147483647>"));
     assert_eq!(labels[7], (610, 578, "D 7 W 4 M 12"));
+    // The client's (MCL-Q15 (b), E24 M4 T3b1): an amount past seven characters in the small
+    // font's item of its place (1016 + i), whole; the rest as the original's.
+    let fixed = resource_bar(&layout, &live(kingdom, vec![]), &texts, Bugs::Fixed);
+    let all: Vec<(u16, &str)> = fixed
+        .texts
+        .iter()
+        .map(|(&id, t)| (id, t.as_str()))
+        .collect();
+    assert_eq!(
+        all,
+        [
+            (1001, "<0>"),
+            (1002, "<7>"),
+            (1003, "<123>"),
+            (1004, "<-4>"),
+            (1005, "<99999>"),
+            (1008, "D 7 W 4 M 12"),
+            (1021, "<1000000>"),
+            (1022, "<2147483647>"),
+        ]
+    );
+    let draws = layout.resource_bar.draws(&fixed, &layout.player_palette);
+    let wide: Vec<(i32, i32, &str)> = draws
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Label { x, y, text, .. } if text.len() > AMOUNT_FITS => {
+                Some((*x, *y, text.as_str()))
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(wide, [(460, 578, "<1000000>"), (544, 578, "<2147483647>")]);
 }
 
 #[test]

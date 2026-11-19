@@ -352,7 +352,7 @@ fn a_maps_start_its_kingdom_and_buttons() {
     assert_eq!(
         blue.status,
         Some(Status::Town(TownStatus {
-            name: 0,
+            name: TownName::Record(0),
             buildings: 1 << 7,
             garrison: false,
             army: [None; 7],
@@ -743,7 +743,7 @@ fn a_live_parts_status_read() {
     assert_eq!(
         read(&town),
         Some(Status::Town(TownStatus {
-            name: 37,
+            name: TownName::Record(37),
             buildings: 1 | 1 << 7 | 1 << 63,
             garrison: true,
             army: slots,
@@ -863,7 +863,7 @@ fn a_maps_start_and_a_live_parts_choices() {
     assert_eq!((hero.hero, hero.status.hero, hero.path.len()), (0, 16, 0));
     let blue = chosen(1);
     let town = blue.towns[0].as_ref().unwrap();
-    assert_eq!((town.status.name, town.status.buildings), (0, 1 << 7));
+    assert_eq!((&town.status.name, town.status.buildings), (&TownName::Record(0), 1 << 7));
     assert!(town.at.x > 0);
     assert_eq!(chosen(2), Chosen::default());
     // The live part's `[chosen]` (`h3map.py`'s `chosen_toml`).

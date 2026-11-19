@@ -39,6 +39,15 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       screen changes (`h3-map-view sequences <id> --frames`, which also checks its timeline), the
       digests against clients/map/timelines/drawn.txt; the walks too since E24 M2 T3b. <dir>
       defaults to clients/out/map-drawn.
+  h3map.py engine [--only <id>] [--out <dir>]
+      without the original (E24 M4 T3b1, design §5.10): each situation of set.toml with an
+      `engine` entry, its map gzip-compressed, the engine's start of it recorded (the root
+      workspace's `target/debug/h3 adventure run` and `h3-server record`; H3_ENGINE names
+      another directory of the two) and drawn by the viewer over its kept live part
+      (`render --record`): its `--check` against the kept live part and its pixels against ours
+      at the kept live part (exact there, `set`), outside the masks; each as `engine` expects
+      (`differs`: render's differences, `pixels`: the differing count), else said; exit 1 unless
+      every one is. <dir> defaults to clients/out/map-engine.
   h3map.py frames [--only <id>] [--out <dir>] [--reuse] [--sequences <file>] [--no-check]
       every sequence of clients/map/sequences.toml (or of <file>: E24 M4 T1b1, the sequences
       recorded before the viewer plays them, with --no-check leaving out the frame check; or
@@ -64,6 +73,7 @@ Needs `clients/capture/setup.sh` and `cargo build --release -p h3-map-view` (fro
 
 import hashlib
 import json
+import os
 import shutil
 import struct
 import subprocess
@@ -98,6 +108,8 @@ TERRAIN_FIELD, RIVER_FIELD = h3mem.TERRAIN_DEFS, h3mem.RIVER_DEFS
 # `hint` mask and `hinted` list, T6a1's, gone).
 MASKS = {name: [tuple(r) for r in rects]
          for name, rects in tomllib.loads((CLIENTS / "map/masks.toml").read_text()).items()}
+# The towns' own names the staged situation gives (E24 M4 T3b1; `stage` sets them).
+OWN_TOWN_NAMES = set()
 # What `lists` writes into a situation's hero's record (E24 M3 T4a, T5b1).
 HERO_WRITES = {"points", "mana", "skills", "morale", "luck", "army", "diplomacy", "secondary"}
 # The status window's kinds the viewer draws (E24 M3 T5b1: a hero's and a town's, design §4.8;
@@ -253,14 +265,15 @@ def to_shipped(game, timeout=120.0):
     h3adv.dismiss(game)
 
 
-def started(map_path, run_dir, shipped=False, tries=2, seed=None, sound=False):
+def started(map_path, run_dir, shipped=False, tries=2, seed=None, sound=False, gold=0):
     """The original on the map's adventure screen (a single scenario). A game that crashes on its
     way there is started once more: the original's tavern rumour at a new game reads one entry past
     its table about once in 800 games (rumour_pick_text 0x4CCF20; E24 M1 T4a saw it). So is one
     whose Wine exits at once, before the main menu, writing nothing (E24 M1 T4b saw it once in a
     set run, right after the game before it stopped). With `seed` (E24 M4 T1b1, a writer's
     map only) the random generator seeded just before Begin (`h3drive.to_scenario`). With `sound`
-    (E24 M4 T1b2) the game plays its sounds (h3drive's `sound`)."""
+    (E24 M4 T1b2) the game plays its sounds (h3drive's `sound`). With `gold` (E24 M4 T3b1, a
+    writer's map) that many players' starting bonus Gold (`h3drive.gold_bonus`): no artifact."""
     if shipped and seed is not None:
         raise ValueError(f"{map_path}: a seed for a shipped map's start")
     for attempt in range(1, tries + 1):
@@ -270,7 +283,7 @@ def started(map_path, run_dir, shipped=False, tries=2, seed=None, sound=False):
             if shipped:
                 to_shipped(game)
             else:
-                h3drive.to_scenario(game, seed=seed)
+                h3drive.to_scenario(game, gold=gold, seed=seed)
             return game
         except BaseException as err:
             # Any other failure on the way stops the game too, so that no later `Mem()` reads it
@@ -409,6 +422,12 @@ def lists(game, mem, sit):
         h3adv.select_town(game, mem, town_index(mem, select["town"]))
     if mem.kingdom(colour)["selected"] == before:
         raise RuntimeError(f"the selection {select} is the turn start's: the lists not redrawn")
+    # `reselect` (E24 M4 T3b1): the turn start's hero chosen back, so that the writes show with
+    # the start's selection (the engine's start's).
+    if "reselect" in sit:
+        h3adv.select(game, mem, hero_at(mem, *sit["reselect"])["name"])
+        if mem.kingdom(colour)["selected"] != before:
+            raise RuntimeError(f"`reselect` {sit['reselect']} is not the turn start's selection")
 
 
 def check_staged(sit, turn, heroes, boats):
@@ -537,6 +556,10 @@ def stage(situation_path, out, seed=None, sound=False):
     out.mkdir(parents=True, exist_ok=True)
     sit = tomllib.loads(situation_path.read_text())
     check_situation(situation_path, sit)
+    # The towns' own names the situation writes into its map (E24 M4 T3b1): `status_toml` keeps
+    # them as text, the situation's own (never the original's: ADR-0009).
+    OWN_TOWN_NAMES.clear()
+    OWN_TOWN_NAMES.update(t["name"] for t in sit.get("towns", []) if "name" in t)
     map_path = out / "map.h3m"
     write_map(situation_path, sit, map_path)
     vx, vy, vz = sit["view"]
@@ -546,8 +569,12 @@ def stage(situation_path, out, seed=None, sound=False):
     if start and hidden:
         raise ValueError(f"{situation_path}: `hidden` with the start's explored tiles")
     # A map with an underground shows the level button enabled (E24 M3 T6b2): `adventure`'s wait.
+    # `bonus = "gold"` (E24 M4 T3b1): every player's starting bonus Gold, none an artifact (the
+    # engine has no starting bonus yet, E10's; the situation writes the resources).
+    colours = {h.get("owner", 0) for h in sit.get("heroes", [])}
+    gold = len(colours) if sit.get("bonus") == "gold" else 0
     game = started(map_path, out / "run", shipped="map" in sit or "underground" in sit,
-                   seed=seed, sound=sound)
+                   seed=seed, sound=sound, gold=gold)
     try:
         mem = game_mem(game)
         turn = arrange(game, mem, sit)
@@ -796,8 +823,8 @@ def status_toml(mem, colour, other=False):
     §4.8): a town's name as its record in `TownName.txt` (the catalogue's `town-name` family: the
     harness keeps numbers, never the text, ADR-0009); a hero's `own_name` 1 when its record's name
     is not its type's (a shipped map's hero: the viewer takes the map's). A town whose name the
-    table lacks (a map's own) is the harness's failure (the town's own names are M4's), as is a
-    kind the viewer does not draw yet (another player's turn, a message's: M4's), since the status
+    table lacks is the harness's failure unless the situation gives it (E24 M4 T3b1: then its
+    text, the situation's own, never the original's), as is a kind the viewer does not draw yet (another player's turn, a message's: M4's), since the status
     window is compared. The date's and the kingdom's (M3 T5b2) as `Mem.status` gives them. With
     `other` (E24 M4 T1b1: a `[[turn]]` table's) another player's turn's too, kind 5 with its
     crest's, sand's and glass's frames (`Mem.other_turn`; the viewer draws it from T1b2)."""
@@ -811,9 +838,13 @@ def status_toml(mem, colour, other=False):
                   **{k: v for k, v in status.items() if k not in ("kind", "hero")}}
     elif status["kind"] == 4:
         names = ids_from("TownName.txt", 0)
-        if status["name"] not in names:
+        if status["name"] in OWN_TOWN_NAMES:
+            # A name the situation gives (E24 M4 T3b1), its own text.
+            status["name"] = json.dumps(status["name"])
+        elif status["name"] not in names:
             raise RuntimeError("a town's name is not in TownName.txt")
-        status["name"] = names.index(status["name"])
+        else:
+            status["name"] = names.index(status["name"])
     return "{ " + ", ".join(f"{key} = {value}" for key, value in status.items()) + " }"
 
 
@@ -1765,6 +1796,93 @@ def drawn_sequences(rest, base, record):
     return failed, broken
 
 
+def run_engine(rest):
+    """`h3map.py engine` (the docstring's; E24 M4 T3b1, design §5.10): the engine's starts of the
+    set's situations with an `engine` entry against their kept live parts and ours there."""
+    import gzip
+
+    only = rest[rest.index("--only") + 1] if "--only" in rest else None
+    base = Path(rest[rest.index("--out") + 1]) if "--out" in rest else OUT.parent / "map-engine"
+    engine_dir = Path(os.environ.get("H3_ENGINE", CLIENTS.parent / "target/debug"))
+    packs = CLIENTS.parent / "packs"
+    entries = [e for e in tomllib.loads((SITUATIONS / "set.toml").read_text())["situation"]
+               if "engine" in e and (only is None or e["id"] == only)]
+    if only and not entries:
+        sys.exit(f"no situation `{only}` with an `engine` entry (set.toml)")
+    failed = 0
+    for e in entries:
+        ident, expected = e["id"], e["engine"]
+        kept = SITUATIONS / "kept" / f"{ident}.toml"
+        situation_path = SITUATIONS / f"{ident}.toml"
+        sit = tomllib.loads(situation_path.read_text())
+        if tomllib.loads(kept.read_text()).get("situation") != situation_digest(sit):
+            print(f"{ident}: STALE (`set --only {ident}`)", flush=True)
+            failed += 1
+            continue
+        here = base / ident
+        shutil.rmtree(here, ignore_errors=True)
+        here.mkdir(parents=True)
+        write_map(situation_path, sit, here / "raw.h3m")
+        # The engine reads only gzip (`h3_map::read`), with no name or time in its header.
+        (here / "map.h3m").write_bytes(gzip.compress((here / "raw.h3m").read_bytes(), mtime=0))
+        (here / "empty.txt").write_text("")
+        # A replay names its map relative to its root: both run in `here`.
+        for args in [[engine_dir / "h3", "adventure", "run", "--map", "map.h3m", "--packs-dir",
+                      packs, "--script", "empty.txt", "--record", "start.toml"],
+                     [engine_dir / "h3-server", "record", "start.toml", "--packs-dir", packs,
+                      "--root", ".", "--out", "."]]:
+            done = subprocess.run([str(a) for a in args], capture_output=True, text=True,
+                                  cwd=here)
+            if done.returncode:
+                raise RuntimeError(f"{args[0]}: {done.stderr.strip() or done.stdout.strip()}")
+        record = here / "start.player-0.jsonl"
+        vx, vy, vz = sit["view"]
+        common = [MAP_VIEW, "render", here / "map.h3m", "--view", f"{vx},{vy},{vz}", "--live",
+                  kept, "--record", record]
+        check = subprocess.run([*map(str, common), "--check"], capture_output=True, text=True)
+        text = (check.stdout + check.stderr).strip()
+        differs = [] if check.returncode == 0 else text.split(f"{kept}: ", 1)[-1].split("; ")
+        hidden = [a for rect in sit.get("hidden", []) for a in ("--hidden", ",".join(map(str, rect)))]
+        run(*common, "--bugs", "original", *hidden, "--out", here / "engine.png")
+        draw_ours(here / "raw.h3m", sit, kept, here / "ours.png")
+        pixels = differing_pixels(here / "engine.png", here / "ours.png", panel_rects())
+        got = {"differs": differs, "pixels": pixels}
+        want = {"differs": expected.get("differs", []), "pixels": expected.get("pixels", 0)}
+        verdict = "as expected" if got == want else f"NOT as expected (want {want})"
+        failed += got != want
+        said = "; ".join(differs) if differs else "its live part as the capture's"
+        print(f"{ident}: {pixels} differing pixels; {said}; {verdict}", flush=True)
+    print(f"engine: {len(entries)} starts, {failed} not as expected; under {base}")
+    return 1 if failed else 0
+
+
+def differing_pixels(a, b, boxes):
+    """How many pixels of two viewer PNGs (the same size) differ outside `boxes`."""
+    import zlib
+
+    import numpy as np
+
+    def pixels(path):
+        data = Path(path).read_bytes()
+        at, idat, width, height = 8, b"", 0, 0
+        while at < len(data):
+            length, kind = struct.unpack(">I4s", data[at:at + 8])
+            body = data[at + 8:at + 8 + length]
+            if kind == b"IHDR":
+                width, height = struct.unpack(">II", body[:8])
+            elif kind == b"IDAT":
+                idat += body
+            at += 12 + length
+        rows = np.frombuffer(zlib.decompress(idat), np.uint8).reshape(height, 1 + 3 * width)
+        return rows[:, 1:].reshape(height, width, 3)
+
+    first, second = pixels(a), pixels(b)
+    differ = (first != second).any(axis=2)
+    for x0, y0, x1, y1 in boxes:
+        differ[max(y0, 0):y1, max(x0, 0):x1] = False
+    return int(differ.sum())
+
+
 def main(args):
     if args[:1] == ["still"] and len(args) >= 2:
         out = args[args.index("--out") + 1] if "--out" in args else None
@@ -1777,6 +1895,8 @@ def main(args):
         return run_drawn(args[1:])
     if args[:1] == ["frames"]:
         return run_frames(args[1:])
+    if args[:1] == ["engine"]:
+        return run_engine(args[1:])
     print(__doc__, file=sys.stderr)
     return 2
 
