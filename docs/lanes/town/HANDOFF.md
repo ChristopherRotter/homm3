@@ -11,8 +11,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-15` (increment
   5), `-13` (Visions' reach), `TWN-STUB-2` (the victory conditions), `TWN-STUB-16` (E10's loss
   condition), `-17` (increment 7), `-18` (E13).
-- **Open pull requests:** T41's (`town/e09-t41`, docs only) and the README's row (`shared/e09-t41-readme`),
-  opened at the session's end; watch them until they merge.
+- **Open pull requests:** T41's (#1059, `town/e09-t41`, docs only) and the README's row (#1058,
+  `shared/e09-t41-readme`), opened at the session's end; watch them until they merge.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -46,7 +46,8 @@ The user's computer was connected at the start: 63 files of `original-data/` and
 manuals with three help files staged, SHA-256 checked. The user kept T41 whole, made increment 5
 the mage guild alone (the services 6, travel and the Grail 7) and kept round 1 as before
 (decisions 161 to 164, `TWN-Q30`). The audit (`E09-log.md`, T41): the twelve criteria hold;
-TWN-SET-005 `verified`. Increment 4's section in `E09-archive.md`; T42, T43 queued.
+TWN-SET-005 `verified`. Increment 4's section in `E09-archive.md`; T42, T43 queued. PRs #1059,
+#1058.
 
 ### 2026-11-19 — T40b: the taverns map and its replays, the plans' map Tavern and Den
 
