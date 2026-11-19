@@ -7,7 +7,7 @@ size = 36
 terrain = "grass"
 explored = "start"
 heroes = [
-    { at = [30, 30] },
+    { at = [30, 30], map_army = [[0, 16], [2, 6]] },
     { at = [32, 30], owner = 1 },
     { at = [34, 30], owner = 2 },
     { at = [30, 32], owner = 3 },
@@ -36,3 +36,7 @@ objects = [
     { def = "AVCgar20.def", at = [18, 16], owner = 5 },
 ]
 view = [0, 0, 0]
+# The panels (E24 M4 T3b1, design §5.10): Red's hero's army in the map and every starting bonus
+# Gold (no artifact); its one hero leaves no other to select, so the gold the bonus drew stays
+# (the engine has no bonus yet, E10's): `kingdom.resources` differs, and the morale (MCL-Q36).
+bonus = "gold"

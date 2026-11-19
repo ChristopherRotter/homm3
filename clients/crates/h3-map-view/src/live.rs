@@ -517,9 +517,8 @@ pub struct HeroStatus {
 /// A town's status window: its picture is the selected [`KingdomTown`]'s.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TownStatus {
-    /// Its name, a record of `TownName.txt` (the catalogue's `town-name` family; a map's own
-    /// name is M4's).
-    pub name: u16,
+    /// Its name: a record of `TownName.txt`, or the map's own (E24 M4 T3b1).
+    pub name: TownName,
     /// The buildings standing (+0x150's bits by the game's ids: an upgrade clears the building
     /// it replaces).
     pub buildings: u64,
@@ -534,6 +533,17 @@ pub struct TownStatus {
     pub income: i32,
 }
 
+/// A town's name as its status window shows it (E24 M4 T3b1, design §5.10).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TownName {
+    /// A record of `TownName.txt` (the catalogue's `town-name` family): the new game's draw for a
+    /// town the map leaves unnamed.
+    Record(u16),
+    /// The name the map gives it (`h3_protocol`'s `Town::name`; a situation's own text in a
+    /// comparison's live part, never the original's: ADR-0009).
+    Own(String),
+}
+
 /// An army slot's creatures.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Stack {
@@ -546,7 +556,8 @@ pub struct Stack {
 impl Status {
     /// A live part's `status` as the harness writes it (`h3map.py`'s `status_toml`): `{ kind =
     /// 3, hero = <type>, own_name = <0 or 1>, skills = [a, d, p, k], morale = m, luck = l, army =
-    /// [[type, count], ...7] }`, `{ kind = 4, name = <TownName.txt's record>, buildings = [<ids
+    /// [[type, count], ...7] }`, `{ kind = 4, name = <TownName.txt's record, or the map's own name
+    /// as a string (E24 M4 T3b1)>, buildings = [<ids
     /// standing>], garrison = <0 or 1>, army = [[type, count], ...7], silo = [<resources>],
     /// income = n }`, since E24 M3 T5b2 `{ kind = 1, frame = n }` and `{ kind = 2, halls = [4
     /// counts], allies = [colours], enemies = [colours] }`, since E24 M4 T1b2 `{ kind = 5, crest
@@ -634,8 +645,13 @@ impl Status {
                     .iter()
                     .map(|r| int(r).and_then(|n| u8::try_from(n).ok()))
                     .collect::<Option<Vec<_>>>()?;
+                let name = get("name")?;
+                let name = match name.as_str() {
+                    Some(own) => TownName::Own(own.into()),
+                    None => TownName::Record(u16::try_from(int(name)?).ok()?),
+                };
                 Some(Self::Town(TownStatus {
-                    name: u16::try_from(int(get("name")?)?).ok()?,
+                    name,
                     buildings,
                     garrison: flag(get("garrison")?)?,
                     army: army(get("army")?)?,
@@ -1301,7 +1317,7 @@ impl Live {
             mana: None,
         };
         let town_status = |town: &KingdomTown, buildings: u64| TownStatus {
-            name: u16::from(town.faction).saturating_mul(TOWN_NAMES),
+            name: TownName::Record(u16::from(town.faction).saturating_mul(TOWN_NAMES)),
             buildings,
             garrison: false,
             army: [None; 7],

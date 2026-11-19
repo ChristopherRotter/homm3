@@ -1,7 +1,9 @@
 //! `h3_map_view::engine` (E24 M4 T3a): a whole game's record read and checked, and its start as a
 //! capture's live part, on a game the engine builds on a writer's map with the repository's packs
 //! (no original data): a random resource, monster and artifact, an owned sawmill, a pile, heroes
-//! of three colours and an empty boat; then every refusal, and what `differences` finds.
+//! of three colours and an empty boat; then every refusal, and what `differences` finds. Since
+//! E24 M4 T3b1 the panels: the kingdom, the status window, the kingdom's window and what choosing
+//! each hero and town shows, on a map with Red's town (`PANELS`).
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -63,8 +65,9 @@ def = "avrcgen0.def"
 at = [8, 15]
 "#;
 
-/// The map's templates as `Objects.txt` gives them, a boat's among them.
-const LINES: [&str; 7] = [
+/// The map's templates as `Objects.txt` gives them, a boat's and a Castle's among them.
+const LINES: [&str; 8] = [
+    "AVCcasx0.def 000001110000011110001111111111111111111111111111 001000000000000000000000000000000000000000000000 011111111 011111111 98 0 1 0",
     "avrcgen0.def 001111110011111111111111111111111111111111111111 110000000000000000000000000000000000000000000000 111111111 011111111 216 0 0 0",
     "AVXboat1.def 101111111111111111111111111111111111111111111111 010000000000000000000000000000000000000000000000 100000000 100000000 8 1 0 0",
     "AVTrndm0.def 011111111111111111111111111111111111111111111111 100000000000000000000000000000000000000000000000 111111111 000000001 76 0 5 0",
@@ -119,8 +122,12 @@ struct Game {
 }
 
 fn game() -> Game {
+    game_on(map_file(MAP))
+}
+
+/// A game on the map file `bytes`.
+fn game_on(bytes: Vec<u8>) -> Game {
     let rules = rules();
-    let bytes = map_file(MAP);
     let raw = h3_map::read(&bytes, &Limits::default()).unwrap();
     let setup = h3_map::import(&raw, rules).unwrap();
     let state = GameState::new(rules, &setup, 7).unwrap();
@@ -343,6 +350,8 @@ fn what_differs_from_a_capture() {
             format!("object {sawmill}: `owners` differ"),
             "`heroes` on explored tiles differ".to_owned(),
             "`boats` on explored tiles differ".to_owned(),
+            // The chosen hero's row is another hero's once the first is gone (E24 M4 T3b1).
+            "`chosen.heroes` 0: its tile or path differs".to_owned(),
         ]
     );
     // A capture without the objects' keys differs for every object in sight.
@@ -475,4 +484,267 @@ fn each_refusal_says_why() {
     assert_eq!(texts[1], "line 3: bad");
     assert!(texts[4].contains("0x0000000000000001"));
     assert!(texts[10].contains("(1, 2, 0)"));
+}
+
+/// The panels' map (E24 M4 T3b1): Red's two heroes out of their types' order (Astral named by
+/// the map, its army and Rion's given), Red's town named by the map, Blue's hero far off.
+const PANELS: &str = r#"
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [12, 12], class = 5, name = "Quillon", map_army = [[28, 20]] },
+    { at = [8, 10], class = 1, map_army = [[0, 15], [2, 5]] },
+    { at = [33, 33], owner = 1, class = 6 },
+]
+towns = [{ at = [16, 8], faction = 0, owner = 0, buildings = "fort", name = "Brightmoor" }]
+view = [0, 0, 0]
+"#;
+
+/// A game on `PANELS`' map, with the map's teams when given.
+fn panels_game(teams: Option<[u8; 8]>) -> Game {
+    let (mut map, extras) = Situation::parse(PANELS)
+        .unwrap()
+        .build(&BTreeMap::new(), &templates())
+        .unwrap();
+    map.teams = teams.map(|of_player| h3_map::model::Teams {
+        count: of_player.iter().max().unwrap() + 1,
+        of_player,
+    });
+    game_on(writer::gzip(&writer::write_with(&map, &extras).unwrap()))
+}
+
+fn table(value: &Value) -> &toml::Table {
+    value.as_table().unwrap()
+}
+
+#[test]
+fn the_panels_of_a_start() {
+    let g = panels_game(None);
+    let start = start(&g, &g.observation).unwrap();
+    let t = &start.table;
+    let o = &g.observation;
+    let own = |id: u16| {
+        let hero = o.adventure.heroes.iter().find(|h| h.id == id).unwrap();
+        hero.own.clone().unwrap()
+    };
+    let info = |id: u16| o.heroes.iter().find(|h| h.id == id).unwrap().clone();
+    // The map's heroes: Astral (40) first in the file, Rion (8) second; the list by type.
+    let ids: Vec<u16> = o.adventure.heroes.iter().map(|h| h.id).collect();
+    let (astral, rion) = (ids[0], ids[1]);
+    assert_eq!((info(rion).hero_type, info(astral).hero_type), (8, 40));
+    let mana = |id: u16| i64::from(info(id).details.unwrap().mana);
+    let points = |id: u16| i64::from(own(id).movement);
+    let kingdom = table(&t["kingdom"]);
+    let rows: Vec<Vec<i64>> = kingdom["heroes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(numbers)
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            vec![0, 1, 8, points(rion), mana(rion)],
+            vec![0, 1, 40, points(astral), mana(astral)],
+        ]
+    );
+    let towns: Vec<Vec<i64>> = kingdom["towns"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(numbers)
+        .collect();
+    assert_eq!(towns, [vec![0, 1, 0]]);
+    assert_eq!(numbers(&kingdom["selected"]), [1, 0]);
+    assert_eq!(numbers(&kingdom["tops"]), [0, 0]);
+    assert_eq!(kingdom["quests"], Value::Integer(0));
+    let treasury: Vec<i64> = o.treasury.iter().map(|&a| i64::from(a)).collect();
+    assert_eq!(numbers(&kingdom["resources"]), treasury);
+    assert_eq!(numbers(&kingdom["date"]), [1, 1, 1]);
+    // Rion's status window: its type, no name of the map's, its base skills, morale and luck 0
+    // (MCL-Q36), its army by slot.
+    let status = table(&t["status"]);
+    assert_eq!(status["kind"], Value::Integer(3));
+    assert_eq!(status["hero"], Value::Integer(8));
+    assert_eq!(status["own_name"], Value::Integer(0));
+    let primary = info(rion).details.unwrap().primary.map(i64::from);
+    assert_eq!(numbers(&status["skills"]), primary);
+    assert_eq!(
+        (&status["morale"], &status["luck"]),
+        (&Value::Integer(0), &Value::Integer(0))
+    );
+    let army: Vec<Vec<i64>> = status["army"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(numbers)
+        .collect();
+    assert_eq!(army[..3], [vec![0, 15], vec![2, 5], vec![-1, 0]]);
+    // The kingdom's window: one village, Red against Blue (no teams).
+    let realm = table(&t["realm"]);
+    assert_eq!(numbers(&realm["halls"]), [1, 0, 0, 0]);
+    assert_eq!(numbers(&realm["allies"]), [0]);
+    assert_eq!(numbers(&realm["enemies"]), [1]);
+    // Each one chosen: the heroes by their places among the view's, Astral named by the map;
+    // the town at its entrance, named by the map, its Fort and Village Hall, its 500 gold.
+    let chosen = table(&t["chosen"]);
+    let heroes = chosen["heroes"].as_array().unwrap();
+    assert_eq!(heroes[0]["hero"], Value::Integer(1));
+    assert_eq!(heroes[1]["hero"], Value::Integer(0));
+    assert_eq!(heroes[1]["status"]["own_name"], Value::Integer(1));
+    assert_eq!(heroes[0]["path"], Value::Array(Vec::new()));
+    let town = &chosen["towns"].as_array().unwrap()[0];
+    assert_eq!(numbers(&town["at"]), [14, 8, 0]);
+    let status = table(&town["status"]);
+    assert_eq!(status["name"], Value::String("Brightmoor".into()));
+    assert_eq!(numbers(&status["buildings"]), [7, 10]);
+    assert_eq!(status["garrison"], Value::Integer(0));
+    assert_eq!(numbers(&status["silo"]), Vec::<i64>::new());
+    assert_eq!(status["income"], Value::Integer(500));
+    assert!(engine::differences(&start, t).is_empty());
+}
+
+#[test]
+fn a_town_s_window_selected_or_nothing_selected() {
+    let g = panels_game(Some([0, 0, 1, 1, 1, 1, 1, 1]));
+    let mut o = g.observation.clone();
+    // Red's heroes gone: the town selected, its window (a nameless Citadel with a silo of wood
+    // and ore, a garrison hero's army; no hall known).
+    let red = o.adventure.viewer;
+    o.adventure.heroes.retain(|h| h.owner != red);
+    let town = &mut o.towns[0];
+    town.name = None;
+    town.fort = 2;
+    let facts = town.owner_facts.as_mut().unwrap();
+    facts.garrison_hero = true;
+    facts.income = [(0, 1), (2, 1), (5, 0), (6, 1250)]
+        .map(|(resource, amount)| h3_protocol::wire::game::Amount { resource, amount })
+        .to_vec();
+    town.garrison.army = Some(vec![h3_protocol::wire::game::ArmyStack {
+        slot: 2,
+        creature: 4,
+        count: 3,
+    }]);
+    let selected = start(&g, &o).unwrap();
+    let t = &selected.table;
+    assert_eq!(numbers(&t["kingdom"]["selected"]), [2, 0]);
+    let status = table(&t["status"]);
+    assert_eq!(status["kind"], Value::Integer(4));
+    assert_eq!(status["name"], Value::Integer(0));
+    assert_eq!(numbers(&status["buildings"]), [8, 10]);
+    assert_eq!(status["garrison"], Value::Integer(1));
+    assert_eq!(numbers(&status["army"].as_array().unwrap()[2]), [4, 3]);
+    assert_eq!(numbers(&status["silo"]), [0, 2]);
+    assert_eq!(status["income"], Value::Integer(1250));
+    // Blue on Red's team: an ally.
+    assert_eq!(numbers(&t["realm"]["allies"]), [0, 1]);
+    // A town the file holds none of at its anchor: its anchor for its entrance; no facts known.
+    let town = &mut o.towns[0];
+    town.anchor.x = 3;
+    town.owner_facts = None;
+    town.fort = 0;
+    let start_moved = start(&g, &o).unwrap();
+    let chosen = &start_moved.table["chosen"]["towns"].as_array().unwrap()[0];
+    assert_eq!(numbers(&chosen["at"]), [3, 8, 0]);
+    let status = table(&chosen["status"]);
+    assert_eq!(numbers(&status["buildings"]), Vec::<i64>::new());
+    assert_eq!(numbers(&start_moved.table["realm"]["halls"]), [0; 4]);
+    // No town either: nothing selected, no window.
+    o.towns.clear();
+    let none = start(&g, &o).unwrap();
+    assert_eq!(numbers(&none.table["kingdom"]["selected"]), [0, 0]);
+    assert!(!none.table.contains_key("status"));
+}
+
+#[test]
+fn a_hero_off_its_file_tile_shows_its_type_s_portrait() {
+    let g = panels_game(None);
+    let mut o = g.observation.clone();
+    o.adventure.heroes[1].pos.x = 20;
+    o.adventure.heroes[1].own.as_mut().unwrap().movement = 0;
+    let start = start(&g, &o).unwrap();
+    let row = numbers(&start.table["kingdom"]["heroes"].as_array().unwrap()[0]);
+    // Rion (type 8) unmoved by the map's portrait (none given), not able to move.
+    assert_eq!(row[..3], [0, 0, 8]);
+}
+
+#[test]
+fn what_differs_in_the_panels() {
+    let g = panels_game(None);
+    let ours = start(&g, &g.observation).unwrap();
+    let mut theirs = ours.table.clone();
+    // A town's buildings compare by the hall and fort its window draws.
+    let town = &mut theirs["chosen"]["towns"].as_array_mut().unwrap()[0]["status"];
+    town["buildings"] = Value::Array([5, 7, 10, 30].map(Value::Integer).to_vec());
+    assert!(engine::differences(&ours, &theirs).is_empty());
+    let kingdom = theirs["kingdom"].as_table_mut().unwrap();
+    kingdom.insert(
+        "date".into(),
+        Value::Array([1, 1, 2].map(Value::Integer).to_vec()),
+    );
+    theirs["status"]["morale"] = Value::Integer(1);
+    theirs["status"]["army"] = Value::Integer(0);
+    theirs["realm"]["halls"] = Value::Integer(0);
+    let chosen = theirs["chosen"].as_table_mut().unwrap();
+    chosen["heroes"].as_array_mut().unwrap()[0]["path"] = Value::Array(vec![Value::Integer(0)]);
+    chosen["heroes"].as_array_mut().unwrap()[1]["hero"] = Value::Integer(9);
+    chosen["towns"].as_array_mut().unwrap()[0]["at"] = Value::Integer(0);
+    chosen["towns"].as_array_mut().unwrap()[0]["status"]["buildings"] =
+        Value::Array(vec![Value::Integer(11)]);
+    assert_eq!(
+        engine::differences(&ours, &theirs),
+        [
+            "`kingdom.date` differs",
+            "`status.army` differs",
+            "`status.morale` differs (MCL-Q36: the record has none)",
+            "`realm.halls` differs",
+            "`chosen.heroes` 0: its tile or path differs",
+            "`chosen.heroes` 1: its tile or path differs",
+            "`chosen.towns` 0: its tile differs",
+            "`chosen.towns 0.buildings` differs",
+        ]
+    );
+    // A list longer on one side, a window that is no table, a kingdom or a window missing.
+    let mut theirs = ours.table.clone();
+    let chosen = theirs["chosen"].as_table_mut().unwrap();
+    chosen["heroes"].as_array_mut().unwrap().pop();
+    chosen["towns"]
+        .as_array_mut()
+        .unwrap()
+        .push(Value::Integer(0));
+    theirs.insert("realm".into(), Value::Integer(2));
+    theirs.remove("kingdom");
+    theirs.remove("status");
+    assert_eq!(
+        engine::differences(&ours, &theirs),
+        [
+            "`kingdom` differs",
+            "`status` differs",
+            "`realm` differs",
+            "`chosen.heroes` differ in number",
+            "`chosen.towns` differ in number",
+        ]
+    );
+    // A chosen hero's row missing: the capture's `heroes` gone, or not a list.
+    let mut theirs = ours.table.clone();
+    let rows = theirs.remove("heroes").unwrap();
+    let mut mine = ours.clone();
+    mine.table.insert("heroes".into(), Value::Integer(0));
+    let missing = [
+        "`heroes` on explored tiles differ",
+        "`chosen.heroes` 0: its tile or path differs",
+        "`chosen.heroes` 1: its tile or path differs",
+    ];
+    assert_eq!(engine::differences(&ours, &theirs), missing);
+    theirs.insert("heroes".into(), rows);
+    assert_eq!(engine::differences(&mine, &theirs), missing);
+    // A capture without `[chosen]` compares no choice; nor do two without a kingdom or a window.
+    let mut theirs = ours.table.clone();
+    theirs.remove("chosen");
+    let mut mine = ours.clone();
+    for key in ["kingdom", "status"] {
+        mine.table.remove(key);
+        theirs.remove(key);
+    }
+    assert!(engine::differences(&mine, &theirs).is_empty());
 }

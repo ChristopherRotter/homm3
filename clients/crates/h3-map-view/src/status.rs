@@ -49,7 +49,7 @@ use crate::layout::AdventureLayout;
 use crate::lists::ListArt;
 use crate::live::{
     Date, DateStatus, FoundStatus, HeroStatus, KingdomStatus, Live, Selected, Stack, Status,
-    TownStatus, TurnStatus,
+    TownName, TownStatus, TurnStatus,
 };
 
 /// The status window's control ids (ours, design §4.8; the original numbers its items from 2000
@@ -538,9 +538,11 @@ fn hero_window(
 fn town_window(art: &StatusArt, status: &TownStatus, picture: u32, texts: &Catalogue) -> Shown {
     let mut shown = Shown::default();
     shown.frames.insert(id::PORTRAIT, picture);
-    shown
-        .texts
-        .insert(id::NAME, texts.text(&town_key(status.name), &Args::new()));
+    let name = match &status.name {
+        TownName::Record(record) => texts.text(&town_key(*record), &Args::new()),
+        TownName::Own(own) => own.clone(),
+    };
+    shown.texts.insert(id::NAME, name);
     shown.frames.insert(id::HALL, art.hall(status.buildings));
     shown.frames.insert(id::FORT, art.fort(status.buildings));
     let hidden = State {
