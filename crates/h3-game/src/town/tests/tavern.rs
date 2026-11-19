@@ -227,6 +227,20 @@ fn the_start_fills_each_players_slots_with_new_records() {
     assert_eq!(game.heroes().len(), 6);
     // The placed heroes' types name their records (Orrin, hero 0: the first of the two).
     assert_eq!(pool.record(hero(&rules, "t:orrin")), Some(HeroId::new(0)));
+    // E09 T40a (decision 158): the public readers read the pool.
+    for t in (0..core.hero_types().len()).filter_map(HeroTypeId::from_index) {
+        assert_eq!(game.hero_status(t), pool.status(t));
+        assert_eq!(game.hero_record(t), pool.record(t));
+    }
+    let past = HeroTypeId::from_index(core.hero_types().len()).unwrap();
+    assert_eq!(
+        (game.hero_status(past), game.hero_record(past)),
+        (None, None)
+    );
+    for player in [RED, BLUE] {
+        assert_eq!(game.player_tavern(player), pool.tavern(player));
+    }
+    assert_eq!(game.player_tavern(PlayerId::new(2)), None);
     // The same seed, the same offers; the setup's own draws did not move (hero 1's army).
     let again = GameState::new(&rules, &setup, 3).unwrap();
     assert_eq!(again.state_hash(), game.state_hash());
