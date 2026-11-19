@@ -193,8 +193,16 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   T5): T2d1, a flag raised (**done** 2026-11-18, the log's "M4 T2d1"), T2d2, a boat boarded and
   left (**done** 2026-11-19, whole; the log's "M4 T2d2"; MCL-Q35), T2d3, a spell cast on the map
   (**done** 2026-11-19, whole: Summon Boat, the user's choice; the log's "M4 T2d3"; MCL-Q14 seen);
-  T3, a record's start (after the server lane's whole-game record
-  and the adventure lane's object identity); T4, a record played; T5, the battles handed over
+  T3, a record's start, cut in two by the user at its start (2026-11-19, the map's view first):
+  T3a, the record read and the map view's live part (each object found in the map's file by its
+  type and anchor, the random ones by their anchor, the towns by their id; the owners, the heroes,
+  the empty boats, the explored tiles; MCL-Q21 (b) at the viewer's load; the engine's starts on
+  the writer's maps against the original's), T3b, the panels' live part (the kingdom, a hero's
+  status, the hover's facts, a town's own name, MCL-Q15 (b)) and the whole screen (the shipped
+  maps too); the object identity asked of the adventure lane withdrawn by the user (the same day,
+  the server lane's note of 2026-11-12: the view's objects in tile order, found by type and
+  anchor; an object added in play, T4's, drawn after the file's), a random artifact's drawn
+  artifact still asked (the view names none); T4, a record played; T5, the battles handed over
   (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
   with the user.
 - **Exit:** Part A's situations and sequences exact on the whole screen (or each difference an

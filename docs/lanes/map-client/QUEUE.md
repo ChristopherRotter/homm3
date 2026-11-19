@@ -19,24 +19,42 @@ context; a task that grows is cut at a seam agreed with the user. Code readings 
 (`clients/capture/README.md`), never in git. Every oddity of the original a reading or a capture
 finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
-### E24 M4 T3 — a record's start
+### E24 M4 T3a — a record's start: the map's view (in progress, 2026-11-19)
 
-- **Scope:** a game's record (the protocol's whole-game messages for one player) read: the
-  static art from the map it names; `h3_map_view::live` from its first observation through an
-  adapter from the protocol's types (*provisional*): each object by its identity, a random
-  object's type, the owners, the heroes (class, owner, tile, boat; their facing from their
-  steps), the empty boats, the explored tiles, the kingdom (the heroes' portraits, movement,
-  mana and whether each can move, the towns, the resources, the date), a hero's status, the
-  hover's facts (increment 9's views: the owners, visited marks, a mine's production); a town's
-  own name from the map. MCL-Q15 (b): an amount past the bar's seven digits written so that it
-  fits (its form a review item), the original's behind `--bugs original`. MCL-Q21 (b): the
-  viewer's load refuses a map the engine's import refuses for it. The check: the engine's start
-  drawn as the original's on the maps both play (the writer's without random objects, the 8
-  shipped maps that import whole), a situation from each.
-- **Acceptance:** the starts equal to the original's; `drawn` all the same; `check.sh` all gates.
-- **Depends on:** the server lane's whole-game record (E16 M5's start: its inbox, 2026-10-31);
-  the adventure lane's object identity and increment 9's views (its inbox, 2026-10-31; T83b2b,
-  T85). **Status:** waiting.
+- **Cut** (the user, 2026-11-19, at T3's start; the agent's recommendation): T3 in two, the map's
+  view first. The object identity asked of the adventure lane withdrawn the same day (the user):
+  the view's objects are found in the map's file by type and anchor (the server lane's note of
+  2026-11-12); a random artifact's drawn artifact stays asked (the view names none).
+- **Scope:** a game's record (the protocol's whole-game messages for one player, `h3-server
+  record`'s `.jsonl`) read by the viewer: its header checked (the map by its file's content hash
+  and the import's version), the map read and imported again (MCL-Q21 (b): the viewer's load
+  refuses a map the engine's import refuses), the static art from it; `h3_map_view::live` from
+  its first observation through an adapter from the protocol's types (*provisional*): each object
+  found in the file by its type and anchor (two alike special grounds either way), a random one
+  by its anchor among the file's random objects (a random dwelling's moved anchor), a town by its
+  id; what a random object became (a pile, a monster, a dwelling, a town; an artifact drawn as a
+  stub until the adventure lane names it); the owners, the heroes (class, owner, tile, boat; the
+  start's facing), the empty boats, the explored tiles. The check: the engine's start on the
+  writer's maps without random objects drawn as the original's start of the same map (the map's
+  view; the original's phases), a situation from each.
+- **Acceptance:** the starts' views equal to the original's; `drawn` all the same; `check.sh` all
+  gates.
+- **Depends on:** the server lane's whole-game record (protocol v43/v44: there); increment 9's
+  views (the adventure lane's T83b2b, T85: there). **Status:** in progress.
+
+### E24 M4 T3b — a record's start: the panels and the whole screen
+
+- **Scope:** the rest of a record's first observation through T3a's adapter: the kingdom (the
+  heroes' portraits, movement, mana and whether each can move, the towns, the resources, the
+  date), a hero's status, the hover's facts (increment 9's views: the owners, visited marks, a
+  mine's production), a town's own name from the map. MCL-Q15 (b): an amount past the bar's seven
+  digits written so that it fits (its form a review item), the original's behind `--bugs
+  original`. The check: the engine's start drawn as the original's on the whole screen, on the
+  writer's maps and the shipped maps both play without a random draw in sight, a situation from
+  each.
+- **Acceptance:** the starts equal to the original's on the whole screen; `drawn` all the same;
+  `check.sh` all gates.
+- **Depends on:** T3a. **Status:** waiting.
 
 ### E24 M4 T4 — a record played
 
@@ -51,7 +69,7 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
   visual moment from its recording; a golden adventure replay as a record viewed to its end, its
   battles skipped to their results until T5.
 - **Acceptance:** the scripted games exact; `drawn` all the same; `check.sh` all gates.
-- **Depends on:** T1a, T1b, T2, T3. **Status:** waiting.
+- **Depends on:** T1a, T1b, T2, T3a, T3b. **Status:** waiting.
 
 ### E24 M4 T5 — the battles handed over
 
@@ -202,27 +220,6 @@ while the work waits.
   replaces the view. A bounded record (the server's, part 2) is cut only at a snapshot, so it
   always begins with one (the header's `first` is its number); `h3-server record` writes whole
   games unbounded, one snapshot.
-
-- 2026-11-12 (the server lane, E16 M5 T5c, branch `claude/optimistic-meitner-j73r89`; **for
-  your M4 T3, T4**): a whole game's record and wire, protocol **v43**: (1) after a command's
-  `GameEvents` (and a battle's last `Snapshot`) a player whose explored tiles grew gets
-  `GameReveal { n, reveal }`: the tiles whose sight changed with their views, the heroes (with
-  their types), objects, empty boats and towns it newly sees; fold it after the events with
-  `GameObservation::reveal`, and the view equals `observe`'s on the tiles, objects, boats and
-  towns (`SRV-STUB-1` lifted; `h3-server record` writes it). (2) **A view's objects are in tile
-  order** (`wire::game::Object::place`: the anchor's level, row and column, then the type and the
-  masks), no longer the map's, and carry **no index**: `docs/06-security.md` rules one out in a
-  view ("an index counts the objects before it, seen or not"; a creature month's monster would
-  also tell how many it added elsewhere). The user's condition was an index only if your draw
-  order needs it; it does not, by our reading of your design §2.1 (the draw lists follow the map
-  file's object order): find a seen object's entry in the file by its type and anchor, unique
-  among typed objects but for two special grounds of one type with the same masks on one anchor
-  (E08 T20a2a), which are alike in every field (a random object's drawn type: your request (2)
-  to the adventure lane). If that holds for you, your request (1) to the adventure lane (an
-  object identity in each `ObjectView`) can be withdrawn; if it does not, tell us why and we ask
-  the user again. (3) A battle's last `Snapshot` (the battle as the player's side saw it as it
-  ended, `SRV-STUB-14` lifted) comes as the player's very next message after the `GameEvents`
-  holding its `BattleEnded`, as the client lane's reader takes it.
 
 - 2026-11-12 (the client lane, E27 M1 T1b2, branch `client/e27-m1-t1b2`; **for your M5**,
   informational until then): the scenario screen's advanced options read (`docs/epics/E27-design.md`
