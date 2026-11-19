@@ -16,7 +16,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6`, `-13` and `-15` (increment
   5), `TWN-STUB-2` (the victory conditions), `TWN-STUB-16` (E10's loss condition), `-17`
   (increment 6), `-18` (E13).
-- **Open pull requests:** T40a's (`town/e09-t40a`, `cross-lane`), opened at the session's end;
+- **Open pull requests:** T40a's (#1048, `town/e09-t40a`, `cross-lane`), opened at the session's end;
   watch it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
@@ -51,7 +51,7 @@ the setup's baseline died). The user's computer was connected at the start only:
 lane's 64 files and the four manuals with three help files staged, SHA-256 checked; its tools
 went away minutes in (staging had finished). The user cut T40 in two, the census first, consented to
 `cross-lane` and chose public read-only readers of the pool (decisions 156 to 158, `TWN-Q28`).
-Built: design §78's As built (T40a). PR `town/e09-t40a`.
+Built: design §78's As built (T40a). PR #1048.
 
 ### 2026-11-19 — T39b2: the Den of Thieves' visit, the guild on the wire
 
