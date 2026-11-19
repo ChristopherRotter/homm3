@@ -256,6 +256,7 @@ fn start(situation: &str, speed: usize) -> Start {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
     }
@@ -406,7 +407,10 @@ fn the_walks_frames_are_m2_t3bs() {
             "board",
             "board-walk",
             "land",
-            "land-walk"
+            "land-walk",
+            "cast-boat",
+            "cast-boat-far",
+            "cast-boat-new"
         ]
     );
 }
@@ -443,6 +447,7 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
     };
@@ -658,6 +663,7 @@ fn what_it_cannot_play_yet() {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
     };
@@ -805,6 +811,7 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
     };
@@ -1457,6 +1464,7 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
     }
@@ -1704,7 +1712,7 @@ fn listed(speed: usize, heroes: usize, top: usize, points: Vec<(u32, i32)>) -> L
 fn the_lists_drawn_again_by_a_lift_each_steps_end_and_a_walk_that_ends_the_points() {
     // E24 M3 T4b (design §4.5): at 0 the list as shown, memory's points the recording's; a key's
     // step lifting the hero draws both lists as memory holds them (the points before the step);
-    // the step's end its slot, the points it left shown, the mana bar left as shown; a path's
+    // the step's end its slot, the points it left shown (the client's: the mana too); a path's
     // walk whose points end draws both lists.
     let run = |l: &mut Loop, from: u32, to: u32| {
         for t in from..=to {
@@ -1726,17 +1734,18 @@ fn the_lists_drawn_again_by_a_lift_each_steps_end_and_a_walk_that_ends_the_point
     l.run(201, &[]).unwrap();
     assert_eq!(shown(&l, 201), (1900, 10, Some(1900)));
     run(&mut l, 202, 300);
-    // A second step, the hero lifted: nothing drawn until its end; the mana a spell took (M4) not
-    // shown by the slot.
+    // A second step, the hero lifted: nothing drawn until its end; the mana a spell took shown by
+    // the slot at its end (the client's fix of MCL-Q14, E24 M4 T2d3: the slot shown whole; the
+    // original's movement bar alone, `casts`' test).
     l.kingdom.heroes[0].mana = 5;
     l.run(301, &[Action::Step(Direction::East)]).unwrap();
     run(&mut l, 302, 500);
     assert_eq!(shown(&l, 500), (1900, 10, Some(1900)));
     l.run(501, &[]).unwrap();
-    assert_eq!(shown(&l, 501), (1759, 10, Some(1759)));
+    assert_eq!(shown(&l, 501), (1759, 5, Some(1759)));
     // A scroll puts the hero back; the next step lifts it again: every slot drawn.
     l.run(601, &[Action::Scroll(Direction::South)]).unwrap();
-    assert_eq!(shown(&l, 601), (1759, 10, Some(1759)));
+    assert_eq!(shown(&l, 601), (1759, 5, Some(1759)));
     l.run(800, &[Action::Step(Direction::West)]).unwrap();
     assert_eq!(shown(&l, 800), (1759, 5, Some(1759)));
     // The timeline's lines: memory's points at 0 and at each step's end.
@@ -2073,6 +2082,7 @@ fn hovering(live: bool, bugs: Bugs) -> Loop {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
     };
@@ -2564,6 +2574,7 @@ fn a_choice_with_the_facts_and_the_sound() {
     ];
     l.index = Some(0);
     let status = HeroStatus {
+        mana: None,
         hero: 1,
         own_name: false,
         skills: [0; 4],
@@ -2638,6 +2649,7 @@ fn underground_start() -> Start {
         }],
         selected: Selected::Hero(0),
         status: Some(Status::Hero(HeroStatus {
+            mana: None,
             hero: 2,
             own_name: false,
             skills: [1, 2, 3, 4],
@@ -3092,6 +3104,7 @@ fn a_hotkeys_up_during_a_hold_releases_its_button_in_the_client() {
 
 mod asks;
 mod boats;
+mod casts;
 mod choices;
 mod computers;
 mod finds;

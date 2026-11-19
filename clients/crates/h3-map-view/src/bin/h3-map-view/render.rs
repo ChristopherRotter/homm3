@@ -19,8 +19,8 @@ use h3_map_view::compose::compose;
 use h3_map_view::hover::{self, Facts};
 use h3_map_view::levels::LevelUp;
 use h3_map_view::live::{
-    Arrow, Buttons, Chosen, Drawn, Explored, Kingdom, Live, LiveBoat, LiveHero, Moment, Status,
-    TOWN_CLASS, Turn,
+    Arrow, Buttons, Cast, Chosen, Drawn, Explored, Kingdom, Live, LiveBoat, LiveHero, Moment,
+    Status, TOWN_CLASS, Turn,
 };
 use h3_map_view::objects;
 use h3_map_view::scene::{self, Draw, ViewAt};
@@ -629,6 +629,15 @@ pub fn read_live(
                 "`[[level_up]]` is not hero, level, offers = [left, right] (secskill.def's \
                  frames, -1 none) and pictures = [[def, frame], ...] (the primary skill's third \
                  from the end)",
+            )
+        })?;
+    }
+    if let Some(value) = table.get("cast") {
+        // The spells the recording cast on the map (E24 M4 T2d3, design §5.8).
+        live.casts = Cast::read_all(value).ok_or_else(|| {
+            failed(
+                "`[[cast]]` is not at, spell (0 to 69), spent (-1 none), mana and boats = [[from \
+                 x, y, level, to x, y, level, type, facing], ...] (from -1, -1, -1 for one made)",
             )
         })?;
     }

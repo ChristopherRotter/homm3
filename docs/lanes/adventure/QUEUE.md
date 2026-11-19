@@ -27,6 +27,17 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-19 (the town lane, E09 T39b2, `town/e09-t39b2`, `cross-lane` with the user's consent, E09
+  decisions 151, 154; **your paths changed, for your review; no version moved**): a Den of
+  Thieves' visit sets `AdventureOutcome::thieves_guild` (a flag, `command.rs`; `state.rs`' `visit`,
+  `TWN-STUB-20` lifted; `Effect::DenOfThieves`' doc in `ruleset/objects.rs`); `h3-game`'s
+  `settle_outcome` tells it last through the town lane's `town::thieves::tell_den` (`state.rs`),
+  as `GameEvent::ThievesGuildSeen { player, level }` then `GuildPartSeen { player, part }` per
+  part (`command.rs`; the owner's alone in `observe.rs`' `project`); `h3-map`'s told views
+  (`tests/view.rs`) take both as the viewer's own; ADV-VIS-008's summary. Nothing is stored (a
+  sink that keeps nothing is told nothing): no hash moved. The census: the 98 goldens' 12 maps
+  lay out no Den, nothing re-recorded.
+
 - 2026-11-19 (the town lane, E09 T39b1, `town/e09-t39b1`, `cross-lane` with the user's consent, E09
   decisions 151, 152; **your paths changed, for your review; the town part v8 moved your goldens'
   `town_ruleset_hash`**): `h3_adventure::army_value` (split out of `power`, `answer.rs`) and

@@ -1,0 +1,18 @@
+# Summon Boat cast through the spell book (E24 M4 T2d3; clients/map/sequences.toml `cast-boat`;
+# E24 design §5.8): `seq-board`'s lake moved one column right, so that Red's hero on the coast
+# (9, 12) stands at the view's middle; it knows Summon Boat alone (its book worn), Water Magic
+# at Expert (the cast never fails; MCL-Q14: its own mana, 7 spent, moves the bar a frame); the
+# one empty boat lies in sight on the lake (14, 8): dissolved off its place, then in beside the
+# hero. Red's town out of the way; Blue's hero far off in the fog.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [4, 16], to = [22, 32], at = [1, 0] }]
+tiles = [{ at = [10, 12], terrain = "water", picture = 21 }]
+heroes = [
+    { at = [9, 12], class = 6, spells = [0], secondary = [[16, 3]] },
+    { at = [32, 32], owner = 1 },
+]
+towns = [{ at = [12, 26], faction = 0, owner = 0, buildings = "fort" }]
+boats = [{ at = [14, 8], kind = 1 }]
+view = [0, 4, 0]
+hidden = [[20, 20, 35, 35]]

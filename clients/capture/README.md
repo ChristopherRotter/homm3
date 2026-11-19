@@ -1433,6 +1433,22 @@ cleared first), so that a level-up offers one advance or none. A sequence may pr
 and `2` (the dialog's left and right offers). T2c's sequences (`level-up*`) wait in
 `map/to-record.toml` until the viewer plays them.
 
+**A cast on the map** (E24 M4 T2d3, design §5.8): a sequence casts by the cast button's hotkey
+(`keydown`/`keyup` of `c`: the key up opens the spell book, on its adventure bookmark at its first
+opening) and a `click` on the book's place k (the dialog at (90, 2), place 0's middle at (246,
+123): `h3drive.book_place`'s points), which closes it and casts. While the book is on top
+(`Mem.spell_book`: its vtable 0x641DCC) a state's `book` is 1 and no screen is kept (the book is
+M5's: the next screen kept is compared with the last kept before it), the timeline has `<ms> book
+1` where it opens and `<ms> book 0` where it leaves, and `Mem.message_box` gives none. From the
+book's close to the millisecond the hero's mana changes `frames` follows the cast and then appends
+a `[[cast]]` table (after the other tables of that millisecond; at the end if the mana never
+changed): `at` the book's close, the `spell` it answered (`Mem.modal_answer`: 0 to 69, 0x7801
+closed), `spent` (−1 none), the hero's `mana`, and the `boats` moved or made since the book opened,
+each `[from x, y, level, to x, y, level, type, facing]` (from −1, −1, −1 for one made). A
+situation's hero may carry `spells` (0 to 69: the writer gives it the spell book worn in slot 17
+and these spells; its artifacts are then the book alone). T2d3's sequences (`cast-boat*`) wait in
+`map/to-record.toml` until the viewer plays them.
+
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
 <out>/<id>/live.toml`: the map's timeline from the situation, this run's live part at 0 and the

@@ -4,8 +4,25 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1**, **M2** and **M3** closed (`E24-archive.md`); the crate `clients/crates/h3-map-view`; 50 situations and 93 sequences exact on the whole screen (a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change needs"; `--bugs original` the comparisons' profile). **M4** refined (2026-10-31); T1a, T1b1, T1b2 done (2026-11-17); T2 cut in four by the user (2026-11-17: T2a the finds told, T2b the questions and choices, T2c a level-up's choice, T2d the map changed by a visit): **T2a done** (T2a1 2026-11-17, T2a2 2026-11-18: the box with pictures, the finds, kind 6, an object taken, the event's boxes, the turn's two boxes; design §5.3); T2b cut in two by the user (2026-11-18, as T2a): **T2b1 done** (2026-11-18: every question's and choice's box read, 22 sequences recorded; design §5.4), **T2b2 done** (2026-11-18, whole: the viewer plays the 22 `ask-*` and `choose-*` frame-exact, MCL-Q33 as the original's; design §5.4's *Built* bullets), **T2c done** (2026-11-18, whole: the level-up's dialog read, five `level-up*` sequences recorded and played frame-exact, MCL-Q34 as the original's; design §5.5); T2d cut in three by the user (2026-11-18, by family; "a monster beaten" moved to T5): **T2d1 done** (2026-11-18: a flag raised, the mine's, the Lighthouse's and a dwelling's, four `flag-*` sequences recorded and played frame-exact; design §5.6), **T2d2 done** (2026-11-19, whole: a boat boarded and left read, `board`, `board-walk`, `land`, `land-walk` recorded and played frame-exact, MCL-Q35 as the original's; design §5.7), **next: T2d3** (a spell cast on the map, MCL-Q14; the spell whose result the map shows chosen at its start: Summon Boat, Dimension Door, Scuttle Boat or View Air/Earth; the recording needs a way past the spell book); T3 (waits for the adventure lane's object identity; the server lane's whole-game record is there), T4 (has T1b2's gaps), T5 for the client lane's battle entry. Open questions: **MCL-Q29**, **MCL-Q30** (the sound run done: the new day sounds doubled; (b) recommended), **MCL-Q31**, **MCL-Q32** (two spells in a reward's first box replace the map's text; (b) recommended), **MCL-Q33** (the Arena's Cancel gives +2 Attack; (b) recommended), **MCL-Q34** (the level-up's sentence naming the offers never shows; (a) recommended), **MCL-Q35** (a boarded boat drawn turned; (b) recommended); none blocks. Next id **MCL-Q36**.
-- **Open pull requests** (2026-11-19): T2d2's (`map-client/e24-m4-t2d2`): check it first. Merged branches are the user's to delete (the proxy refuses it).
+- **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1**, **M2**
+  and **M3** closed (`E24-archive.md`); the crate `clients/crates/h3-map-view`; 50 situations and 96
+  sequences exact on the whole screen (a viewer change runs `h3map.py drawn` first: the runbook,
+  "Which captures a change needs"; `--bugs original` the comparisons' profile). **M4** refined
+  (2026-10-31); **Part A done** (2026-11-19): T1a, T1b (T1b1, T1b2), T2 cut in four by the user (T2a
+  the finds told, T2b the questions and choices, T2c a level-up's choice, T2d the map changed by a
+  visit: T2d1 a flag raised, T2d2 a boat boarded and left, **T2d3 a spell cast on the map**: Summon
+  Boat, the user's choice, done whole 2026-11-19, design §5.8; MCL-Q14 seen and fixed as answered).
+  **Next: T3** (a record's start: check its dependencies first, the adventure lane's object identity
+  and increment 9's views; the server lane's whole-game record is there since protocol v43/v44, its
+  inbox note of 2026-11-12 asks whether the object identity is still needed); if T3 still waits, the
+  inbox's window-sound item (2026-11-19). T4 (has T1b2's gaps), T5 for the client lane's battle
+  entry, T6 the closure. Open questions: **MCL-Q29**, **MCL-Q30** (the new day sounds doubled; (b)
+  recommended), **MCL-Q31**, **MCL-Q32** (two spells in a reward's first box replace the map's text;
+  (b) recommended), **MCL-Q33** (the Arena's Cancel gives +2 Attack; (b) recommended), **MCL-Q34**
+  (the level-up's sentence naming the offers never shows; (a) recommended), **MCL-Q35** (a boarded
+  boat drawn turned; (b) recommended); none blocks. Next id **MCL-Q36**.
+- **Open pull requests** (2026-11-19): T2d3's (`map-client/e24-m4-t2d3`): check it first. Merged branches
+  are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
 - **From E17** (`clients/README.md`; ADR-0020, ADR-0024): the decoders, the compositor, the SDL 3 adapter, the string catalogue, the gate, the harness (the original under Wine, `h3mem.py`, `h3map.py`: the runbook `clients/capture/README.md`).
@@ -29,6 +46,13 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-19, E24 M4 T2d3** (the user at the start: Summon Boat of the four, whole, the cut
+  after the reading, the harness's cast and the recordings the stated fallback, not needed): the
+  cast read (design §5.8; MCL-Q14's stale mana bar seen), the harness's spell book and `[[cast]]`
+  table and a hero's `spells`, `cast-boat`, `-far`, `-new` recorded twice and a sound run, the
+  viewer built by one worker, every frame exact (the log's "M4 T2d3"). Original data staged (63
+  files and the manuals) and a ballast file; the PC's tools went away about 90 minutes in.
+  Nothing is waiting on the user's computer.
 - **2026-11-19, E24 M4 T2d2** (the user at the start: big tasks cut only with their consent;
   T2d2 sized as T2d1 and done whole, the cut after the reading and the recordings the stated
   fallback): the boarding and the landing read (design §5.7, MCL-Q35), four sequences recorded
@@ -43,9 +67,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   viewer built by one worker, every frame exact (the log's "M4 T2d1"). Original data staged
   (63 files and the manuals) and a ballast file for the game's disk check. Nothing is waiting on
   the user's computer.
-- **2026-11-18, E24 M4 T2c** (the user at the start: whole, the cut after the reading and the
-  recordings as the fallback): the level-up's dialog read (design §5.5, MCL-Q34), the harness's
-  `[[level_up]]` table and a hero's `secondary`, five sequences recorded twice and played
-  frame-exact by the viewer (one worker; the log's "M4 T2c"); two restaged for the morale shown
-  (TRAPS). Original data staged (63 files) and a ballast file for the game's disk check. Nothing
-  is waiting on the user's computer.

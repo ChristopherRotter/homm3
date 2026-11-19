@@ -1,8 +1,9 @@
 //! The whole game's queries (E16 M5 T11, protocol v50; ADR-0018 point 10): what a seat asks of
 //! the server's rules ([`GameQuery`]) and what they answer ([`GameAnswer`]), for the seat's
 //! player alone: a hero's moves (`h3_game::legal_moves`, which `GameTurn` leaves out as
-//! `h3_game::legal_commands` does), a town's hall (`h3_game::GameState::town_offer`) and a
-//! battle's targets (the battle wire's [`Query`], for the side the player owns in its battle).
+//! `h3_game::legal_commands` does), a town's hall (`h3_game::GameState::town_offer`), a
+//! battle's targets (the battle wire's [`Query`], for the side the player owns in its battle)
+//! and since v74 (E09 T39b2) the Thieves' Guild (`h3_game::thieves_guild`).
 //!
 //! A hero's moves travel as a path tree ([`Moves`]): each tile it can reach today with the points
 //! it would have left there, and the path to it as its node's chain of steps, the paths' common
@@ -18,7 +19,7 @@ use alloc::vec::Vec;
 
 use serde::{Deserialize, Serialize};
 
-use super::Pos;
+use super::{Pos, ThievesGuild};
 use crate::wire::{Query, Target, WireU64};
 
 /// A question about the whole game for the seat's player (E16 M5 T11, v50).
@@ -42,6 +43,8 @@ pub enum GameQuery {
         /// The question.
         query: Query,
     },
+    /// The Thieves' Guild the player may open now (`h3_game::thieves_guild`; TWN-TAV-007, v74).
+    ThievesGuild,
 }
 
 /// The answer to a [`GameQuery`] (E16 M5 T11, v50), by the question's kind.
@@ -68,6 +71,12 @@ pub enum GameAnswer {
         /// The targets the server's rules allow, as a battle's `QueryResult` gives them: none
         /// without a battle of the player's.
         targets: Vec<Target>,
+    },
+    /// The Thieves' Guild (v74).
+    ThievesGuild {
+        /// The guild at the player's level: none outside its turn, or without a town with a
+        /// standing Tavern or a map Tavern's decision open (`h3_game::thieves_guild`).
+        guild: Option<ThievesGuild>,
     },
 }
 

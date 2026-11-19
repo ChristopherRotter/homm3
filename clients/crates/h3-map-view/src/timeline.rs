@@ -98,6 +98,18 @@
 //! `visit_and_update`'s redraws (the minimap, the lists, the status window, the buttons). *Not
 //! built:* the Admiral's Hat's points at sea, the mouse-over's boats (the live part's at 0), a
 //! computer's boarding or landing, a find on the tile landed on.
+//!
+//! A spell cast on the map (E24 M4 T2d3, design §5.8, *provisional*): the cast button's command
+//! lifts and centres the selected hero, shows the view and opens the spell book ([`State::book`];
+//! its screens are M5's), during which only the tick runs; a click closes it and casts the next of
+//! [`Start::casts`] (a recording's facts, from Part B the engine's). Summon Boat: the boat moved
+//! taken off its tile, its box dissolved when it lay in the view; the boat put beside the hero
+//! with the spell's sound, its box dissolved in from the back buffer's picture
+//! ([`Dissolve::from`]); at the end the cost spent (the hero list's slot drawn, MCL-Q14 in both
+//! profiles), the status window built again and the map's redraw due since the book opened. *Not
+//! built:* the book's own screens and inputs, the other spells, Summon Boat's refusals and its
+//! chance, the wait for the spell's sound with sound on (the original's ends the cast after it),
+//! the cast in the window (live: the button does nothing).
 
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
@@ -120,9 +132,9 @@ use crate::layout::{AdventureLayout, DIRECTIONS};
 use crate::levels::{self, LevelArt};
 use crate::lists::{SLOTS, top_showing};
 use crate::live::{
-    Arrow, Attacking, Boat, Buttons, Chosen, ChosenHero, ChosenTown, Date, DateStatus, Facing,
-    FoundStatus, HeroStatus, Kingdom, KingdomStatus, Live, LiveBoat, Selected, Stack, Status, Turn,
-    TurnStatus,
+    Arrow, Attacking, Boat, Buttons, Cast, Chosen, ChosenHero, ChosenTown, Date, DateStatus,
+    Facing, FoundStatus, HeroStatus, Kingdom, KingdomStatus, Live, LiveBoat, Selected, Stack,
+    Status, Summoned, Turn, TurnStatus,
 };
 use crate::minimap::{MinimapArt, divided};
 use crate::panels;
@@ -130,7 +142,7 @@ use crate::scene::ViewAt;
 use crate::sequence::{DEFAULT_COMPUTER_SPEED, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
 use crate::sound::{Cue, Sound};
 use crate::status::{DateArt, OtherArt};
-use crate::tables::{Tables, WalkArt};
+use crate::tables::{CastArt, Tables, WalkArt};
 use crate::turn::{self, TurnArt};
 
 /// The mouse manager's type of the adventure cursor (`cursor_defs` 0x67FF38: 1, `cradvntr.def`),
@@ -460,6 +472,13 @@ pub enum Unplayable {
     /// A level the selected hero's experience reaches whose dialog the facts lack (E24 M4 T2c: a
     /// recording's `[[level_up]]` tables; the engine's from Part B), by the level.
     LevelUp(u8),
+    /// A spell cast through the book whose facts are not given (E24 M4 T2d3: a recording's
+    /// `[[cast]]` table at the book's close, its cost spent at the cast's end; the engine's from
+    /// Part B), by the millisecond.
+    Cast(u32),
+    /// A spell's cast on the map that is not built (E24 M4 T2d3: Summon Boat's alone, with one
+    /// boat moved or made), by the spell.
+    Spell(u8),
 }
 
 impl fmt::Display for Unplayable {
@@ -483,6 +502,8 @@ impl fmt::Display for Unplayable {
             Self::LevelUp(level) => {
                 write!(f, "the level-up to level {level}: its facts not given")
             }
+            Self::Cast(t) => write!(f, "the cast at {t} ms: its facts not given"),
+            Self::Spell(spell) => write!(f, "spell {spell}'s cast on the map (not built)"),
         }
     }
 }
@@ -551,6 +572,10 @@ pub struct Rules {
     /// A level-up's numbers (E24 M4 T2c): the experience each level starts at, the dialog's
     /// sound.
     pub level_up: LevelArt,
+    /// A cast's numbers (E24 M4 T2d3): Summon Boat's dissolves and sound.
+    pub cast: CastArt,
+    /// The default cursor's frame the spell book leaves (E24 M4 T2d3: 1, over its place).
+    pub book: u32,
 }
 
 impl Rules {
@@ -584,6 +609,8 @@ impl Rules {
             busy: layout.cursor.busy,
             finds: tables.map.finds.clone(),
             level_up: tables.map.level_up.clone(),
+            cast: tables.map.cast.clone(),
+            book: layout.cursor.book,
         }
     }
 
@@ -846,6 +873,10 @@ pub struct Start {
     /// level, row and column (`(z × size + y) × size + x`, the map art's order); a tile past its
     /// end is water, so that none known lands nowhere.
     pub water: Arc<Vec<bool>>,
+    /// The spells cast through the spell book, in order (E24 M4 T2d3, design §5.8,
+    /// *provisional*: a recording's `[[cast]]` tables; the engine's from Part B): the book's
+    /// clicks cast them one after another; past the last the cast button's command is not built.
+    pub casts: Vec<Cast>,
 }
 
 /// A level-up's dialog (E24 M4 T2c, design §5.5, *provisional*: laid out by the adapter,
@@ -1160,11 +1191,18 @@ pub struct Draw {
 /// before's.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dissolve {
-    /// What the screen showed before (no dissolve of its own).
+    /// What the screen showed before: outside the rectangle, and in it the picture blended from
+    /// unless [`Dissolve::from`] gives another. Since E24 M4 T2d3 it may show a dissolve of its
+    /// own, an earlier one ended (its step 8: the screen as that one left it, Summon Boat's
+    /// first box).
     pub before: Arc<Draw>,
-    /// The rectangle.
+    /// The picture the rectangle blends from when not the screen's (E24 M4 T2d3: the back
+    /// buffer's rectangle `screen_save_rect` 0x602CC0 saved, the view a first dissolve drew
+    /// without the boat; its rest never shown); none: [`Dissolve::before`]'s.
+    pub from: Option<Arc<Draw>>,
+    /// The rectangle (left, top, right, bottom, the last two exclusive).
     pub rect: [i64; 4],
-    /// The step, 0 (the picture before) to 7.
+    /// The step, 0 (the picture before) to 7; 8 the dissolve ended, its rectangle the draw's.
     pub step: u8,
 }
 
@@ -1201,6 +1239,9 @@ pub struct State {
     /// Another player's turn's status window shown (E24 M4 T1b2): its crest's, sand's and glass's
     /// frames, the timeline's `other`; none under another kind.
     pub other: Option<[u32; 3]>,
+    /// The spell book open over the map (E24 M4 T2d3, design §5.8): the timeline's `book`; its
+    /// screens are M5's.
+    pub book: bool,
 }
 
 /// A walk under way: inside a key's step or the path's walk, which wait for their frames' times.
@@ -1379,6 +1420,11 @@ pub struct Loop {
     boats: Boats,
     water: Arc<Vec<bool>>,
     aboard: Option<Aboard>,
+    /// The spells cast through the book ([`Start::casts`]) and the next one's place among them,
+    /// and the book open (E24 M4 T2d3).
+    casts: Arc<Vec<Cast>>,
+    next_cast: usize,
+    book: bool,
 }
 
 /// A computer player's turn under way (E24 M4 T1b2, design §5.2, *provisional*): its facts, kind
@@ -1459,6 +1505,12 @@ enum After {
 struct Dissolving {
     start: u32,
     before: Arc<Draw>,
+    /// The picture its rectangle blends from when not the screen's ([`Dissolve::from`]), the
+    /// rectangle and its steps' time (E24 M4 T2d3: an object's and a boat's the tables' middle
+    /// at 65 ms, Summon Boat's a boat's box at 33 ms).
+    from: Option<Arc<Draw>>,
+    rect: [i64; 4],
+    step_ms: u32,
     queued: Vec<Action>,
     /// What the panels show at its end (an artifact's primary skills: `find-artifact`'s Attack at
     /// 1580, the hero's window built again by the step's end).
@@ -1481,6 +1533,10 @@ enum Then {
     Board(Box<Boarding>),
     /// A landing's: `visit_and_update`'s redraws, then the walk's end (a key's or not).
     Landed(bool),
+    /// Summon Boat's boat taken off its tile in sight (E24 M4 T2d3): its arrival dissolved next.
+    Summoned(Box<Cast>, Summoned),
+    /// Its arrival: the cost spent, the cast's end.
+    Cast(Box<Cast>),
 }
 
 /// A step onto a boat held by its dissolve (E24 M4 T2d2): the walk, the boat's tile and whether
@@ -1503,6 +1559,12 @@ enum Aboard {
 
 /// A dissolve's steps (`screen_dissolve` 0x602DC0: eight, the blend's eighths).
 const DISSOLVE_STEPS: u32 = 8;
+
+/// A dissolve's step once it ended: its rectangle the new picture (E24 M4 T2d3).
+const DISSOLVE_DONE: u8 = 8;
+
+/// Summon Boat's spell (the spell table's 0; E24 M4 T2d3).
+const SUMMON_BOAT: u8 = 0;
 
 /// Kind 6, a resource found (the status window's kind a pile's visit asks).
 const KIND_FOUND: u8 = 6;
@@ -1711,6 +1773,9 @@ impl Loop {
             boats: start.boats.clone(),
             water: Arc::clone(&start.water),
             aboard: None,
+            casts: Arc::new(start.casts.clone()),
+            next_cast: 0,
+            book: false,
             rules,
         };
         // The status window at 0 (E24 M3 T5b2): the kind asked, else the date's or the kingdom's
@@ -1784,6 +1849,7 @@ impl Loop {
                 Some(Status::Turn(s)) => Some([s.crest, s.sand, s.glass]),
                 _ => None,
             },
+            book: self.book,
         }
     }
 
@@ -1953,6 +2019,10 @@ impl Loop {
             self.box_step(t);
             return;
         }
+        // The spell book's (E24 M4 T2d3): the map stands still, the tick runs.
+        if self.book {
+            return;
+        }
         // The mouse holding a button down runs the button's loop: the tick only (0x45641C); so
         // does the minimap's (0x40A344, E24 M3 T6b2).
         if self.held.is_some() || self.dragging.is_some() {
@@ -1975,6 +2045,9 @@ impl Loop {
     fn act(&mut self, t: u32, action: Action, fresh: bool) -> Result<(), Unplayable> {
         if self.boxed.is_some() {
             return self.box_act(t, action, fresh);
+        }
+        if self.book {
+            return self.book_act(t, action, fresh);
         }
         if self.held.is_some() || self.dragging.is_some() {
             return self.holding(t, action, fresh);
@@ -2218,9 +2291,9 @@ impl Loop {
     }
 
     /// A button's command (`adventure_command` 0x409A70, its switch 0x409AB4): the
-    /// underground's (0x409F6B), next hero's (0x409D89), end turn's (0x409D12, E24 M4 T1a), the
-    /// hero list's arrows (0x403220) and the town list's (0x403280); the rest a dialog's or the
-    /// engine's (M4, M5).
+    /// underground's (0x409F6B), next hero's (0x409D89), end turn's (0x409D12, E24 M4 T1a), cast a
+    /// spell's (E24 M4 T2d3), the hero list's arrows (0x403220) and the town list's (0x403280); the
+    /// rest a dialog's or the engine's (M4, M5).
     fn command(&mut self, t: u32, id: u16) -> Result<(), Unplayable> {
         match id {
             panels::id::UNDERGROUND => {
@@ -2229,6 +2302,7 @@ impl Loop {
             }
             panels::id::NEXT_HERO => self.next_hero(t),
             panels::id::END_TURN => self.end_turn(t),
+            panels::id::CAST => self.cast_open(t),
             id if panels::id::HEROES.contains(&id) || panels::id::TOWNS.contains(&id) => {
                 let towns = panels::id::TOWNS.contains(&id);
                 let up = id == panels::id::HEROES[0] || id == panels::id::TOWNS[0];
@@ -3370,14 +3444,26 @@ impl Loop {
     /// cycling held when it `holds`, `gain` shown at its end and `then` after it.
     fn dissolve(&mut self, t: u32, before: Arc<Draw>, gain: Gain, holds: bool, then: Then) {
         self.cursor.shown = false;
-        self.dissolving = Some(Dissolving {
-            start: t,
-            before,
-            queued: Vec::new(),
-            gain,
-            holds,
-            then,
-        });
+        let [x, y, w, h] = self.rules.finds.dissolve.map(i64::from);
+        self.dissolve_over(
+            t,
+            Dissolving {
+                start: t,
+                before,
+                from: None,
+                rect: [x, y, x + w, y + h],
+                step_ms: self.rules.finds.dissolve_ms,
+                queued: Vec::new(),
+                gain,
+                holds,
+                then,
+            },
+        );
+    }
+
+    /// A dissolve under way from `t` ([`Loop::dissolve_step`]): its first step shown at once.
+    fn dissolve_over(&mut self, t: u32, dissolving: Dissolving) {
+        self.dissolving = Some(dissolving);
         self.dissolve_step(t);
     }
 
@@ -3387,7 +3473,13 @@ impl Loop {
     /// with `visit_and_update`'s redraws, then the walk's end; then the actions given meanwhile.
     fn dissolved(&mut self, t: u32, dissolving: Dissolving) -> Result<(), Unplayable> {
         let Dissolving {
-            queued, gain, then, ..
+            before,
+            from,
+            rect,
+            queued,
+            gain,
+            then,
+            ..
         } = dissolving;
         match then {
             Then::Taken => {
@@ -3421,6 +3513,20 @@ impl Loop {
                 }
                 self.resume(t, queued)?;
             }
+            Then::Summoned(cast, boat) => {
+                // The new picture copied back, its rectangle shown (E17 design §7.25): the screen
+                // the view without the boat there, as shown before elsewhere; the back buffer that
+                // view whole.
+                let back = Arc::new(self.drawn.clone());
+                self.drawn.dissolve = Some(Dissolve {
+                    before,
+                    from,
+                    rect,
+                    step: DISSOLVE_DONE,
+                });
+                self.arrive(t, cast, boat, Some(back), queued);
+            }
+            Then::Cast(cast) => self.cast_end(t, &cast, queued)?,
         }
         Ok(())
     }
@@ -3438,7 +3544,7 @@ impl Loop {
     }
 
     /// A dissolve's turn at `t` (`screen_dissolve` 0x602DC0; E17 design §7.25): step k shown at
-    /// the start plus k times the tables' step (0 the picture before, 7 the last before the
+    /// the start plus k times its step's time (0 the picture before, 7 the last before the
     /// view without the object); eight steps on, the view without it shown, the mouse shown, the
     /// step's end ([`Loop::finish`]) and the actions given meanwhile, then the idle step. Whether
     /// the dissolve is over.
@@ -3447,16 +3553,16 @@ impl Loop {
             return true;
         };
         let since = t.saturating_sub(dissolving.start);
-        let step_ms = self.rules.finds.dissolve_ms.max(1);
+        let step_ms = dissolving.step_ms.max(1);
         if since >= step_ms.saturating_mul(DISSOLVE_STEPS) {
             self.drawn.dissolve = None;
             return true;
         }
         if since % step_ms == 0 {
-            let [x, y, w, h] = self.rules.finds.dissolve.map(i64::from);
             self.drawn.dissolve = Some(Dissolve {
                 before: Arc::clone(&dissolving.before),
-                rect: [x, y, x + w, y + h],
+                from: dissolving.from.clone(),
+                rect: dissolving.rect,
                 step: u8::try_from(since / step_ms).unwrap_or(0),
             });
         }
@@ -3522,6 +3628,194 @@ impl Loop {
         Arc::make_mut(&mut self.drawn.kingdom)
             .status
             .clone_from(&self.kingdom.status);
+    }
+
+    /// The cast button's command (`adventure_cast_open` 0x41C2F0; E24 M4 T2d3, design §5.8,
+    /// *provisional*): the selected hero lifted and centred, the whole screen shown when it was
+    /// not (`mobilize_hero` with 0, 0, 1: its lists' redraw leaving the status bar empty,
+    /// MCL-Q22), the view drawn and shown with the objects' step when due (`view_show_step`), the
+    /// adventure cursor; then the spell book, modal ([`Loop::book_act`]; its screens are M5's).
+    /// Not built past the casts a recording gives ([`Start::casts`]); live (the window) nothing.
+    fn cast_open(&mut self, t: u32) -> Result<(), Unplayable> {
+        if self.live || self.next_cast >= self.casts.len() {
+            return self.unbuilt(Unplayable::Command(panels::id::CAST));
+        }
+        if !self.lifted {
+            self.lift(t, true);
+        }
+        self.draw(t);
+        self.step_objects(t);
+        self.set_cursor(CURSOR_TYPE, self.rules.arrow);
+        self.book = true;
+        Ok(())
+    }
+
+    /// An action while the spell book is open (`spell_book_proc` 0x59D429 with the adventure
+    /// bookmark; E24 M4 T2d3, *provisional*: the book is M5's): a click on a spell's place closes
+    /// it with that spell and casts it, the next of [`Start::casts`], which must be given at the
+    /// click's millisecond; every other input is dropped, the mouse's point read.
+    fn book_act(&mut self, t: u32, action: Action, fresh: bool) -> Result<(), Unplayable> {
+        if fresh && let Some(at) = action.point() {
+            self.pointer = at;
+        }
+        if !matches!(action, Action::Click(_)) {
+            return Ok(());
+        }
+        let cast = self
+            .casts
+            .get(self.next_cast)
+            .filter(|c| c.at == t)
+            .cloned()
+            .ok_or(Unplayable::Cast(t))?;
+        self.next_cast += 1;
+        self.book = false;
+        // The book's last cursor stays until the cast's end: the default one's frame over its
+        // place, where the mouse manager last drew it.
+        [self.cursor.kind, self.cursor.frame] = [DEFAULT_CURSOR, self.rules.book];
+        self.summon(t, cast)
+    }
+
+    /// Summon Boat cast (`adventure_spell` 0x41C490's case 0, `summon_boat_cast` 0x41C8A0; design
+    /// §5.8, *provisional*: its boat the facts', its chance and refusals the engine's from Part B):
+    /// the boat moved taken off its old tile; when that tile lies in the view on its level, its box
+    /// (the tables', [`Loop::boat_box`]) saved, the view drawn without it and dissolved into it in
+    /// eight steps, the palettes cycling on; then its arrival ([`Loop::arrive`]). Only Summon Boat
+    /// with one boat moved or made is built.
+    fn summon(&mut self, t: u32, cast: Cast) -> Result<(), Unplayable> {
+        if cast.spell != SUMMON_BOAT {
+            return Err(Unplayable::Spell(cast.spell));
+        }
+        let &[boat] = cast.boats.as_slice() else {
+            return Err(Unplayable::Spell(cast.spell));
+        };
+        let cast = Box::new(cast);
+        if let Some(from) = boat.from {
+            self.boats.empty.retain(|b| b.at != from);
+            if self.in_view(from) {
+                let before = Arc::new(self.drawn.clone());
+                self.draw(t);
+                let then = Then::Summoned(cast, boat);
+                let dissolving = self.cast_dissolve(t, before, None, from, then);
+                self.dissolve_over(t, dissolving);
+                return Ok(());
+            }
+        }
+        self.arrive(t, cast, boat, None, Vec::new());
+        Ok(())
+    }
+
+    /// Summon Boat's boat put on its new tile, its type and facing the facts' (a boat made, type
+    /// 0 facing right, likewise), the spell's sound (the spell table's +0x4), the new tile's box
+    /// saved (from the back buffer: `back`, the view a first dissolve drew, else the screen), the
+    /// view drawn with the boat and dissolved into it; the cast's end at the dissolve's
+    /// ([`Loop::cast_end`]), the actions `queued` and those given meanwhile after it.
+    fn arrive(
+        &mut self,
+        t: u32,
+        cast: Box<Cast>,
+        boat: Summoned,
+        back: Option<Arc<Draw>>,
+        queued: Vec<Action>,
+    ) {
+        self.boats.empty.push(boat.to);
+        if let Some(sound) = &mut self.sound {
+            sound.effect(t, &self.rules.cast.summon_boat);
+        }
+        let before = Arc::new(self.drawn.clone());
+        self.draw(t);
+        let mut dissolving = self.cast_dissolve(t, before, back, boat.to.at, Then::Cast(cast));
+        dissolving.queued = queued;
+        self.dissolve_over(t, dissolving);
+    }
+
+    /// A Summon Boat's dissolve from `t` over the box about the boat's tile `at`, from `before`
+    /// (and `from`, [`Dissolve::from`]), at the tables' step, the palettes cycling on and the
+    /// mouse shown (*provisional*); `then` at its end.
+    fn cast_dissolve(
+        &self,
+        t: u32,
+        before: Arc<Draw>,
+        from: Option<Arc<Draw>>,
+        at: Pos,
+        then: Then,
+    ) -> Dissolving {
+        Dissolving {
+            start: t,
+            before,
+            from,
+            rect: self.boat_box(at),
+            step_ms: self.rules.cast.dissolve_ms,
+            queued: Vec::new(),
+            gain: Gain::default(),
+            holds: false,
+            then,
+        }
+    }
+
+    /// Whether the tile `at` lies in the view's columns and rows on its level (the tables' 19 ×
+    /// 17 from the corner).
+    fn in_view(&self, at: Pos) -> bool {
+        let [columns, rows] = self.rules.cast.view;
+        let (dx, dy) = (i32::from(at.x) - self.view.x, i32::from(at.y) - self.view.y);
+        at.z == self.view.z && (0..columns).contains(&dx) && (0..rows).contains(&dy)
+    }
+
+    /// The box about the boat's tile `at` dissolved (`summon_boat_cast`; the tables' `boat_box`
+    /// in tiles from it and `clip`, both ends inclusive): ((dx − 1) · 32, (dy − 1) · 32) to ((dx +
+    /// 3) · 32, (dy + 2) · 32), dx and dy from the view's corner, cut to (8, 8) to (615, 551); as
+    /// left, top, right, bottom, the last two exclusive.
+    fn boat_box(&self, at: Pos) -> [i64; 4] {
+        let [left, top, right, bottom] = self.rules.cast.boat_box.map(i64::from);
+        let [cl, ct, cr, cb] = self.rules.cast.clip.map(i64::from);
+        let side = i64::from(self.rules.tile);
+        let (dx, dy) = (
+            i64::from(at.x) - i64::from(self.view.x),
+            i64::from(at.y) - i64::from(self.view.y),
+        );
+        [
+            ((dx + left) * side).max(cl),
+            ((dy + top) * side).max(ct),
+            ((dx + right) * side).min(cr) + 1,
+            ((dy + bottom) * side).min(cb) + 1,
+        ]
+    }
+
+    /// Summon Boat's end at its arrival's dissolve's (design §5.8): the view shown with the
+    /// objects' step when due (`view_show_step`), the cost spent (`hero_spend_mana` 0x4D92D0:
+    /// the facts' mana, at their millisecond, else refused; the hero list's slot drawn,
+    /// [`Loop::draw_slot`], MCL-Q14), the status window built again with it (the opening's
+    /// `status_window_choose` with 1, 1, 1), the adventure cursor; then the actions given
+    /// meanwhile and the loop's turn, whose redraw has been due since the book opened.
+    fn cast_end(&mut self, t: u32, cast: &Cast, queued: Vec<Action>) -> Result<(), Unplayable> {
+        if cast.spent != Some(t) {
+            return Err(Unplayable::Cast(t));
+        }
+        self.step_objects(t);
+        if let Some(i) = self.selected_hero()
+            && let Some(hero) = self.kingdom.heroes.get_mut(i)
+        {
+            hero.mana = cast.mana;
+        }
+        self.draw_slot();
+        // The window built with the hero's mana now (MCL-Q14: the slot may show another).
+        let kingdom = &mut self.kingdom;
+        for status in [&mut kingdom.status, &mut kingdom.selection] {
+            if let Some(Status::Hero(hero)) = status {
+                hero.mana = Some(cast.mana);
+            }
+        }
+        if let Some(Some(chosen)) = self
+            .selected_hero()
+            .and_then(|i| self.chosen.heroes.get_mut(i))
+        {
+            chosen.status.mana = Some(cast.mana);
+        }
+        Arc::make_mut(&mut self.drawn.kingdom)
+            .status
+            .clone_from(&self.kingdom.status);
+        self.choose(t, true);
+        self.set_cursor(CURSOR_TYPE, self.rules.arrow);
+        self.resume(t, queued)
     }
 
     /// The underground's command (`adventure_command` 0x409F6B; E24 M3 T6b2, design §4.14): on
@@ -4686,24 +4980,30 @@ impl Loop {
     /// §4.5), when the list shows it: the portrait, both bars and the frame drawn, the rectangle
     /// (609, 212 + 32 i), 48 × 32 shown, which holds the movement bar and leaves out the mana bar
     /// (and the portrait's last 8 columns): the hero's points shown, its mana as last shown (the
-    /// slot's hero and portrait change only by an update, which shows the whole screen).
+    /// slot's hero and portrait change only by an update, which shows the whole screen; seen at
+    /// E24 M4 T2d3, MCL-Q14: the original's, [`Bugs::Original`]); the client's shows its mana too.
     fn draw_slot(&mut self) {
         let Some(i) = self.selected_hero() else {
             return;
         };
         let top = self.kingdom.tops[0];
-        let points = self.kingdom.heroes.get(i).map(|h| h.points);
+        let hero = self.kingdom.heroes.get(i).copied();
         let shown = i.checked_sub(top).is_some_and(|slot| slot < SLOTS);
-        if let Some(points) = points.filter(|_| shown)
-            && self
-                .drawn
-                .kingdom
-                .heroes
-                .get(i)
-                .is_some_and(|h| h.points != points)
-            && let Some(hero) = Arc::make_mut(&mut self.drawn.kingdom).heroes.get_mut(i)
+        if let Some(hero) = hero.filter(|_| shown)
+            && let Some(drawn) = self.drawn.kingdom.heroes.get(i)
         {
-            hero.points = points;
+            // The client's fix of MCL-Q14 (the user, 2026-10-31; E24 M4 T2d3, design §5.8): the
+            // slot shown whole, its mana bar too (a cast's cost).
+            let mana = match self.rules.bugs {
+                Bugs::Original => drawn.mana,
+                Bugs::Fixed => hero.mana,
+            };
+            if (drawn.points, drawn.mana) != (hero.points, mana)
+                && let Some(slot) = Arc::make_mut(&mut self.drawn.kingdom).heroes.get_mut(i)
+            {
+                slot.points = hero.points;
+                slot.mana = mana;
+            }
         }
     }
 
@@ -5094,6 +5394,10 @@ pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String>
                     || format!("{} other", s.t),
                     |[crest, sand, glass]| format!("{} other {crest} {sand} {glass}", s.t),
                 ));
+            }
+            // The spell book where it opens and leaves (E24 M4 T2d3).
+            if s.book != l.book {
+                out.push(format!("{} book {}", s.t, u8::from(s.book)));
             }
             if s.arrows != l.arrows {
                 let arrows: String = s

@@ -3,7 +3,8 @@
 //! its decision for the visitor's owner (`TavernOpened`, `DecisionView::Tavern`), answered by a
 //! hire of a tavern hero placed on the Tavern's visitable tile, which closes it, or by `Close`;
 //! each refusal typed, changing nothing and leaving it open; the listing and the default answer; a
-//! hired hero on the tile hides it; the Den entered with nothing more until T39b (`TWN-STUB-20`).
+//! hired hero on the tile hides it; the Den entered, its visit showing the visitor's owner the
+//! Thieves' Guild at everything (E09 T39b2, design note §74, §75; `ThievesGuildSeen`, its parts).
 //! On the hire tests' game: red's hero 0 on (0, 0), blue's hero 1 on (2, 2), red's T0 on (1, 1),
 //! blue's T1 on (3, 0); the Tavern's one tile (0, 2), visited from (1, 2), the Den's (2, 0).
 
@@ -13,8 +14,10 @@ use h3_adventure::{
 use h3_contracts::HeroId;
 
 use super::*;
+use crate::town::thieves::thieves_guild_at;
 use crate::{
-    Answer, DecisionView, TavernAnswer, TavernError, TavernVisit, default_answer, legal_commands,
+    Answer, DEN_LEVEL, DecisionView, GuildPart, TavernAnswer, TavernError, TavernVisit,
+    ThievesGuildView, default_answer, legal_commands, thieves_guild,
 };
 
 const RED_HERO: HeroId = HeroId::new(0);
@@ -352,12 +355,58 @@ fn each_refusal_of_a_map_taverns_hire_changes_nothing_and_leaves_it_open() {
     assert!(texts.iter().all(|text| !text.is_empty()));
 }
 
-// covers: ADV-VIS-008
+/// The Thieves' Guild a command's events told: its head's player and level, then the view its
+/// parts make (a place of a row other than the one before begins that row), as a client folds
+/// them; none without a head.
+fn told_guild(events: &[GameEvent]) -> Option<(PlayerId, ThievesGuildView)> {
+    let mut told: Option<(PlayerId, ThievesGuildView)> = None;
+    for event in events {
+        match *event {
+            GameEvent::ThievesGuildSeen { player, level } => {
+                assert!(told.is_none(), "one guild a visit");
+                let view = ThievesGuildView {
+                    level,
+                    rows: Vec::new(),
+                    players: Vec::new(),
+                };
+                told = Some((player, view));
+            }
+            GameEvent::GuildPartSeen { player, part } => {
+                let (seer, view) = told.as_mut().expect("its head first");
+                assert_eq!(player, *seer);
+                match part {
+                    GuildPart::Place { row, of, place } => {
+                        if view.rows.last().is_none_or(|r| r.row != row) {
+                            view.rows.push(crate::GuildRanking {
+                                row,
+                                places: Vec::new(),
+                            });
+                        }
+                        let ranking = view.rows.last_mut().unwrap();
+                        assert_eq!(usize::from(of.raw()), ranking.places.len());
+                        ranking.places.push(place);
+                    }
+                    GuildPart::Player { of, shown } => {
+                        assert_eq!(usize::from(of.raw()), view.players.len());
+                        view.players.push(shown);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    told
+}
+
+// covers: ADV-VIS-008, TWN-TAV-007
 #[test]
-fn the_den_of_thieves_is_entered_and_revisited() {
-    // stub: TWN-STUB-20 (its Thieves' Guild at everything comes with E09 T39b)
+fn a_den_of_thieves_shows_its_visitors_owner_the_guild_at_everything() {
+    // E09 T39b2 (design note §74, §75): a step onto the Den ends the move there and tells red
+    // alone the guild at everything, whatever its Taverns (one: its own query's level is 1),
+    // after the step; blue is told nothing of it.
     let rules = rules();
     let mut game = game(&rules, &inn_setup(&rules), 5000);
+    assert_eq!(thieves_guild(&game, &rules, RED).map(|g| g.level), Some(1));
     let events = run(&rules, &mut game, RED, step(&[Pos::new(1, 0, 0), DEN])).unwrap();
     assert_eq!(game.adventure().hero(RED_HERO).map(|h| h.pos), Some(DEN));
     assert!(!game.has_decision(RED));
@@ -365,8 +414,89 @@ fn the_den_of_thieves_is_entered_and_revisited() {
         e,
         GameEvent::TavernOpened { .. } | GameEvent::OfferOpened { .. }
     )));
+    let (seer, view) = told_guild(&events).unwrap();
+    assert_eq!(seer, RED);
+    let at_everything = thieves_guild_at(&game, &rules, DEN_LEVEL);
+    assert_eq!(view, at_everything);
+    assert_eq!(
+        (view.level, view.rows.len(), view.players.len()),
+        (DEN_LEVEL, 9, 2)
+    );
+    // Told after the step, together, in the parts' order.
+    let head = events
+        .iter()
+        .position(|e| matches!(e, GameEvent::ThievesGuildSeen { .. }))
+        .unwrap();
+    let stepped = events.iter().rposition(|e| {
+        matches!(e, GameEvent::Adventure(event) if matches!(
+            event.kind,
+            AdventureEventKind::HeroStepped { .. }
+        ))
+    });
+    assert!(stepped.is_some_and(|s| s < head));
+    let parts: Vec<GuildPart> = (events[head + 1..].iter())
+        .map_while(|e| match *e {
+            GameEvent::GuildPartSeen { part, .. } => Some(part),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(parts, at_everything.parts().collect::<Vec<_>>());
+    assert_eq!(parts.len(), 9 * 2 + 2);
+    let guild = |e: &GameEvent| {
+        matches!(
+            e,
+            GameEvent::ThievesGuildSeen { .. } | GameEvent::GuildPartSeen { .. }
+        )
+    };
+    let blue: Vec<_> = (events.iter())
+        .filter_map(|e| project(e, Viewer::Player(BLUE)))
+        .collect();
+    assert!(!blue.iter().any(guild));
+    let red: Vec<_> = (events.iter())
+        .filter_map(|e| project(e, Viewer::Player(RED)))
+        .collect();
+    assert_eq!(red.iter().filter(|e| guild(e)).count(), 1 + parts.len());
+}
+
+// covers: ADV-VIS-008
+#[test]
+fn every_visit_of_the_den_is_alike_and_a_revisit_is_one() {
+    // A `Revisit` (listed for the hero on the Den) and a second step onto it the same day each
+    // tell the guild at everything again, as it stands then.
+    let rules = rules();
+    let mut game = game(&rules, &inn_setup(&rules), 5000);
+    let first = run(&rules, &mut game, RED, step(&[Pos::new(1, 0, 0), DEN])).unwrap();
     let revisit = GameCommand::Adventure(AdventureCommand::Revisit { hero: RED_HERO });
     assert!(legal_commands(&game, &rules, Actor::Player(RED)).contains(&revisit));
-    run(&rules, &mut game, RED, revisit).unwrap();
+    let again = run(&rules, &mut game, RED, revisit).unwrap();
     assert_eq!(game.adventure().hero(RED_HERO).map(|h| h.pos), Some(DEN));
+    assert_eq!(told_guild(&again), told_guild(&first));
+    let back = run(&rules, &mut game, RED, step(&[Pos::new(1, 0, 0), DEN])).unwrap();
+    assert_eq!(game.adventure().hero(RED_HERO).map(|h| h.pos), Some(DEN));
+    let (seer, view) = told_guild(&back).unwrap();
+    assert_eq!(
+        (seer, view),
+        (RED, thieves_guild_at(&game, &rules, DEN_LEVEL))
+    );
+}
+
+// covers: ADV-VIS-008
+#[test]
+fn a_den_visit_without_a_recording_sink_changes_the_same() {
+    // The guild is not stored: a sink that keeps nothing is told nothing and the state is the
+    // same as a recorded visit's.
+    let rules = rules();
+    let mut recorded = game(&rules, &inn_setup(&rules), 5000);
+    let mut quiet = recorded.clone();
+    let command = step(&[Pos::new(1, 0, 0), DEN]);
+    run(&rules, &mut recorded, RED, command.clone()).unwrap();
+    apply(
+        &mut quiet,
+        &rules,
+        Actor::Player(RED),
+        command,
+        &mut NoopSink,
+    )
+    .unwrap();
+    assert_eq!(quiet.state_hash(), recorded.state_hash());
 }

@@ -420,7 +420,8 @@ pub enum ObjectKind {
     Tavern,
     /// The Den of Thieves (ADV-VIS-008; E09 T39a, the town epic's design note §74; the original's
     /// class 97): entered, no owner, no mark, no parameter, no draw; every visit the same, the
-    /// Thieves' Guild at everything for the visitor's owner (from E09 T39b: `TWN-STUB-20`).
+    /// Thieves' Guild at everything for the visitor's owner (E09 T39b2: the outcome's
+    /// `thieves_guild`, which the game tells as `ThievesGuildSeen`).
     DenOfThieves,
 }
 

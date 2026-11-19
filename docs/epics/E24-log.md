@@ -2790,3 +2790,56 @@ from its transcript.
   back exact, every change the headless loop's; `scripts/exe.py check` and `cited` clean;
   `RUST_TEST_THREADS=1 check.sh --no-coverage` all gates passed; the scoped verify
   `--with-original-data` no failing step.
+
+### M4 T2d3 — a spell cast on the map (2026-11-19)
+
+On `map-client/e24-m4-t2d3`, the user present at the start (big tasks cut only with their
+consent); `master` at #1034. Original data staged from the PC at the start (63 files and the four
+manuals and three help files, SHA-256 checked line by line; the PC's tools went away about 90
+minutes in, nothing needed by then); the setup's baseline stopped at its coverage step by a
+watcher, CI's green `master` standing in; a ballast file for the game's disk check.
+
+- **The cut:** none. The user at the start (2026-11-19): Summon Boat of the four (no target to
+  pick; Dimension Door and Scuttle Boat need a target mode, View Air and Earth the View World
+  screen), whole, the fallback cut (T2d3a the reading, the harness's cast and the recordings,
+  T2d3b the viewer) stated and not needed.
+- **Read** (design §5.8; `docs/exe/map.toml`: `adventure_cast_open` 0x41C2F0, `view_clip_init`,
+  `view_clip`, `manager_clear_50`, `scuttle_boat_cast` and `hero_special_ground` new;
+  `adventure_spell` 0x41C490 was `visions_cast`, its switch read; `summon_boat_cast` read whole;
+  Dimension Door's and Town Portal's entries told their cases): the opening (the lift, the view
+  shown, the book modal on its adventure bookmark), Summon Boat's refusals, chance, boat, box,
+  dissolves, sound and cost, `hero_spend_mana`'s slot. **MCL-Q14 seen**: the slot pixel-identical
+  after the cast, the mana bar stale; the client's fix as the user answered at M3 T7c1.
+- **The harness** (*provisional*; the runbook's "A cast on the map"): `Mem.spell_book`,
+  `Mem.modal_answer`, `Mem.mana`, the boats' `index`; no screen kept while the book shows, the
+  timeline's `book` lines, `Mem.message_box` none under it; the `[[cast]]` table (its boats from
+  the book's opening: in `cast-boat-far` and `-new` the boat moves or is made in the click's own
+  millisecond, so the first run's snapshot at the close missed them); a situation's hero's
+  `spells` (`h3_map_view::situation`: the writer's book in slot 17); a sound run's clock let run
+  before its settling (the look over the view leaves it stepped: the first two sound runs never
+  settled).
+- **Recorded** (each twice, timelines, `[[cast]]` tables and screens the same; speed 2, `seed` 7):
+  `cast-boat` (48 lines, 24 screens), `cast-boat-far` (36, 15), `cast-boat-new` (36, 15);
+  situations `seq-cast-boat`, `-far`, `-new` (`seq-board`'s lake one column right, the hero at the
+  view's middle with Summon Boat and Expert Water Magic). One sound run (scratch): the press, the
+  ambient restarted by the lift, `SUMMBOAT` (1 200 ms) at the second dissolve and the cast's end
+  waiting for it.
+- **Built** (one worker; design §5.8's *Built*; *provisional*, M4's review list): `live::Cast`,
+  `Start::casts`, `State::book`; `cast_open`, `book_act`, `summon`, `arrive`, `cast_dissolve`,
+  `in_view`, `boat_box`, `cast_end`; the dissolve's own box, step and source (`Dissolve::from`,
+  nested `before`: the second dissolve blends from the back buffer the first drew); `[map.cast]`
+  and `summboat.wav` in the tables, the book's cursor in the layout; MCL-Q14 by
+  `HeroStatus::mana` and `draw_slot` (`the_lists_drawn_again_by_a_lift…`, a `Bugs::Fixed` test that
+  asserted the stale bar, now asserts the fix); `Unplayable::Cast`, `Unplayable::Spell`;
+  `timeline/tests/casts.rs` (11 tests), the `[[cast]]` reading's tests, the situation's spells'.
+- **Checked:** the three moved into `sequences.toml` (`to-record.toml` removed), every frame exact
+  by `frames --only <id> --reuse` (24, 15, 15), the viewer's timelines the recorded ones;
+  `drawn` the 50 situations and 93 earlier sequences the same, `--record` for the three; the
+  window under Xvfb (`--check 8`) on `cast-boat` 49 of 49 read back exact (live: no cast); 430
+  library tests, coverage of `h3-map-view`'s library 100 % lines, regions and functions (the
+  worker's run); `RUST_TEST_THREADS=1 check.sh --no-coverage` all gates passed; `scripts/exe.py
+  check` clean; the scoped verify `--with-original-data` no failing step (its `check-exe-map`
+  first found `view_clip`'s kind and the cited 0x4E4EC0 without an entry: both added).
+- **Found on the way** (the lane's inbox): `killfade` and the pickups are not among
+  `SoundRules::effects`, which the window's library decodes, so the window seems to play them
+  silent (the worker's reading, not heard).

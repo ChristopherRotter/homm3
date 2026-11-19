@@ -9,7 +9,8 @@ Epic: E24, the adventure map client. **M1 (stills of the map view) closed 2026-1
 scope, decisions, tasks and review lists: `docs/epics/E24-archive.md`; their cuts' history:
 `QUEUE-ARCHIVE.md`). **M4 (the engine's games shown) refined 2026-10-31** (M4 T0, with the user:
 `docs/epics/E24-map-client.md`, M4's scope, decisions and exit): Part A (T1a, T1b, T2) the original's
-reactions to a game's events, its memory the live part; Part B (T3, T4) the engine's games
+reactions to a game's events, its memory the live part (**done** 2026-11-19 with T2d3: their
+entries in `QUEUE-ARCHIVE.md`); Part B (T3, T4) the engine's games
 through `h3-protocol`'s whole-game record (ADR-0020 point 8), after the server lane builds it;
 Part C (T5) the battles handed to the battle client's viewer. Tasks in order, each about half a
 context; a task that grows is cut at a seam agreed with the user. Code readings in the sandbox
@@ -17,37 +18,6 @@ context; a task that grows is cut at a seam agreed with the user. Code readings 
 `docs/epics/E24-design.md` (§5 from T1: the game's events); captures by the harness
 (`clients/capture/README.md`), never in git. Every oddity of the original a reading or a capture
 finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
-
-### E24 M4 T2 — a visit's results (cut in four by the user at its start, 2026-11-17)
-
-Read and build what the original shows when a visit or an event changes the game, the live part
-from its memory, for the finds and questions the engine's visits make; new sequences recorded in
-the original, the harness giving the answers. **Acceptance** of each: as T1a's. Cut by dialog
-family (the user, 2026-11-17: the recommended cut; a part that grows is cut again into its
-reading and recordings, then the viewer's build, as T1b was).
-
-- **T2a, the finds told:** done 2026-11-18 (its entry in `QUEUE-ARCHIVE.md`; the log's "M4 T2a1",
-  "M4 T2a2"). Its pictures (`h3_ui::message`), `finds` and the timeline's boxes are T2b's base.
-- **T2b, the questions and choices:** done 2026-11-18 (T2b1 and T2b2; their entries in
-  `QUEUE-ARCHIVE.md`; the log's "M4 T2b1", "M4 T2b2"). `asks`, `Question`, `Answer`, `Reply` and
-  `h3_ui::message`'s styles 7 and 10 are T2c's base.
-- **T2c, a level-up's choice:** done 2026-11-18 (whole; its entry in `QUEUE-ARCHIVE.md`; the log's
-  "M4 T2c"). `levels`, `LevelUp` and the timeline's `Loop::level_up` are T5's base for a battle's
-  levels.
-- **T2d, the map changed by a visit:** cut in three by the user at its start (2026-11-18, by
-  family, each read, recorded and built in one task as T2c was; "an object taken" was T2a2's and
-  T2b2's; "a monster beaten" moved to T5, its recording needing a battle):
-  - **T2d1, a flag raised:** done 2026-11-18 (its entry in `QUEUE-ARCHIVE.md`; the log's "M4
-    T2d1"; design §5.6). `Found::flag`, the owners in memory and `Minimap::owners` are T2d2's and
-    T4's base.
-  - **T2d2, a boat boarded and left:** done 2026-11-19 (whole; its entry in `QUEUE-ARCHIVE.md`;
-    the log's "M4 T2d2"; design §5.7). The boarding's and landing's dissolves and the boat lifted
-    or put back are T2d3's base for Summon Boat and Scuttle Boat, and T4's for a record's boats.
-  - **T2d3, a spell cast on the map:** a cast recorded (MCL-Q14: if the stale mana bar shows, the
-    client shows the slot whole, the original's behind `--bugs original`); the spell book is M5's,
-    so the recording needs a way past it (the harness's cast, or the frames under the book left
-    out); a spell whose result the map shows (Summon Boat, Dimension Door, Scuttle Boat or View
-    Air/Earth's screen: chosen at its start). **Depends on:** T1a; T2d2 for a boat's spells.
 
 ### E24 M4 T3 — a record's start
 
@@ -109,6 +79,13 @@ reading and recordings, then the viewer's build, as T1b was).
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
+
+- 2026-11-19 (this lane, E24 M4 T2d3, found by its worker; **for the next task that touches the
+  window's sound, or T6's hand test**): `killfade` and the pickups (`pickup01` to `07`) are not
+  among `h3_map_view::sound::SoundRules::effects` (only the button and, since T2d3, `summboat`),
+  and the window's library decodes only `SoundRules::wavs`, so the window seems to play them
+  silent (a reading of `bin/h3-map-view/audio.rs` `play`, not heard): add every effect the
+  timeline cues (the finds', the asks', the boats') to `effects` and test the library's names.
 
 - 2026-11-19 (the client lane, E27 M3 T6, `client/e27-m3-t6`; **for E24 M5, nothing to do now**):
   the scenario screen's Begin now builds the game's setup and the engine validates it

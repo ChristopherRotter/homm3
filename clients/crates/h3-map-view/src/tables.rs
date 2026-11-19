@@ -121,9 +121,36 @@ pub struct ViewArt {
     /// T2c; design §5.5): none, and no level is ever reached (*provisional*).
     #[serde(default)]
     pub level_up: LevelArt,
+    /// A spell cast on the map (E24 M4 T2d3; design §5.8, *provisional*): Summon Boat's dissolves
+    /// and sound. None: their steps take 1 ms over an empty box, with no sound.
+    #[serde(default)]
+    pub cast: CastArt,
     /// The map's sounds (E24 M2 T5; design §3.11): none, and the map plays none.
     #[serde(default)]
     pub sound: Option<SoundArt>,
+}
+
+/// A spell cast on the map (E24 M4 T2d3; design §5.8, *provisional*, `summon_boat_cast` 0x41C8A0):
+/// the time of each of a dissolve's eight steps, the box dissolved about a boat's tile, the clip it
+/// is cut to, the view's tiles the boat's old tile must lie in for its box to dissolve, and Summon
+/// Boat's sound.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CastArt {
+    /// A dissolve's step, ms (`screen_dissolve` 0x602DC0 with −1: 33, 0x602E74).
+    pub dissolve_ms: u32,
+    /// The box about a boat's tile, in tiles from it: left, top, right, bottom (−1, −1, 3, 2:
+    /// the pixels ((dx − 1) · 32, (dy − 1) · 32) to ((dx + 3) · 32, (dy + 2) · 32), dx and dy the
+    /// tile's from the view's corner, both ends inclusive).
+    pub boat_box: [i32; 4],
+    /// The clip the box is cut to (`view_clip` 0x691250: (8, 8) to (615, 551), both ends
+    /// inclusive).
+    pub clip: [i32; 4],
+    /// The view's columns and rows a boat's old tile must lie in, from the corner (19 × 17).
+    pub view: [i32; 2],
+    /// Summon Boat's sound (the spell table's +0x4: `SUMMBOAT`), played as its boat's box starts
+    /// to dissolve.
+    pub summon_boat: String,
 }
 
 /// The hero's walk (E24 M2 T3a; design §3.5, `hero_walk_animation` 0x480380): the group a step
@@ -741,6 +768,10 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         // A level-up's dialog's (E24 M4 T2c), when the tables name it.
         if !map.level_up.sound.is_empty() {
             rules.effects.push(map.level_up.sound.clone());
+        }
+        // Summon Boat's (E24 M4 T2d3), when the tables name it.
+        if !map.cast.summon_boat.is_empty() {
+            rules.effects.push(map.cast.summon_boat.clone());
         }
         tables.sound = Some(rules);
     }

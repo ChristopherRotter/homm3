@@ -380,7 +380,9 @@ pub fn window<'l>(
                     Some(own) if status.own_name => own.clone(),
                     _ => texts.text(&hero_key(status.hero), &Args::new()),
                 };
-                let shown = hero_window(art, status, portrait, hero.mana, name, texts);
+                // The window's own mana when it has one (E24 M4 T2d3, MCL-Q14).
+                let mana = status.mana.unwrap_or(hero.mana);
+                let shown = hero_window(art, status, portrait, mana, name, texts);
                 Some((&layout.status_hero, shown))
             }
             None => None,

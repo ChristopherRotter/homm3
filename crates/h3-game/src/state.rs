@@ -609,9 +609,10 @@ impl GameState {
     /// University ([`Self::open_university`], T63a) or the hire dialog ([`Self::open_hire`], E08
     /// T95b): an outcome has at most one of the offer, the battle, the meeting, the group without
     /// room, the choice, the University and the hire dialog; since E09 T39a the map Tavern's
-    /// decision ([`Self::open_tavern`]), alone.
+    /// decision ([`Self::open_tavern`]), alone; since E09 T39b2 a Den of Thieves' Thieves' Guild
+    /// at everything, told to the player ([`town::thieves::tell_den`]), alone.
     // rule: GAM-DEC-001, GAM-DEC-005, GAM-DEC-006, GAM-DEC-007, GAM-DEC-008, ADV-MON-006
-    // rule: TWN-SIE-002, GAM-DEC-009, TWN-GRO-007, GAM-DEC-010
+    // rule: TWN-SIE-002, GAM-DEC-009, TWN-GRO-007, GAM-DEC-010, ADV-VIS-008
     pub(crate) fn settle_outcome<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -702,6 +703,9 @@ impl GameState {
             }
             if let Some(visit) = outcome.tavern {
                 self.open_tavern(player, visit, sink);
+            }
+            if outcome.thieves_guild {
+                town::thieves::tell_den(self, rules, player, sink);
             }
         }
     }
