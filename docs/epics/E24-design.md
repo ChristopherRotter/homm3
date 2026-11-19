@@ -3830,7 +3830,7 @@ returned and the book closed when it costs at most the hero's mana), `screen_dis
   redraw leaves the status bar empty, MCL-Q22), the view drawn and shown (`view_show_step`: the
   objects' step when due), the adventure cursor; then the spell book, modal. Its screens are M5's:
   the harness keeps none while it shows. Its close (0x7801) ends the command; a spell goes through
-  a ground's test (`0x4E4EC0`, not read: 21 with a spell above level 1 GENRLTXT 748's box, 33
+  a ground's test (`hero_special_ground` 0x4E4EC0, not read: 21 with a spell above level 1 GENRLTXT 748's box, 33
   GENRLTXT 685's; neither recorded) to `adventure_spell`, then `status_window_choose` with 1, 1, 1.
   The screen when the book leaves is the map as the opening left it (`cast-boat`'s 300 against
   100: the hero lifted, the button up, the bar empty; the palettes' step at 200, taken while the
@@ -3874,3 +3874,35 @@ returned and the book closed when it costs at most the hero's mana), `screen_dis
   moved or made since the book opened, `[from x, y, level, to x, y, level, type, facing]`, from
   −1 for one made); a situation's hero's `spells` (the writer's, the book worn in slot 17, its
   artifacts then the book alone).
+- **The sound run** (`cast-boat` with `sound = true`, a scratch sequence; the samples by length):
+  the button's press at 100 (151 ms), the ambient loop restarted by the opening's lift at 160
+  (3 751 ms, looping), Summon Boat's own `SUMMBOAT` at the second dissolve's start (564, 1 200
+  ms), and the cast's end waiting for it (`wait_for_sample`): the end at 1 764, not 828. The
+  harness's look over the view had left the clock stepped, so a sound run with a click over the
+  view never settled: `frames` now lets it run first.
+- **Built** (M4 T2d3, one worker; *provisional*, M4's review list): `live::Cast` and
+  `live::Summoned` (`Live::casts`, the `[[cast]]` tables read and checked), `Start::casts`,
+  `State::book` and the timeline's `book` lines (the runner keeps no frame and writes no `screen`
+  line while it shows); command 8's `cast_open` (the lift, the view drawn and shown, the book
+  open), `book_act` (a click closes it with the next `[[cast]]`, whose `at` must be the click's;
+  other inputs dropped), `summon`, `arrive`, `cast_dissolve`, `in_view`, `boat_box` and `cast_end`
+  (the cost, the slot, the status window, the redraw due, the adventure cursor; `spent` checked);
+  the dissolve generalised (`Dissolving`'s `from`, `rect` and `step_ms`; `Then::Summoned` and
+  `Then::Cast`; the second dissolve blends from the back buffer the first one drew, at its later
+  palette step, so `Dissolve::from` and a nested ended `before` compose it); the tables'
+  `[map.cast]` (33 ms, the box in tiles, the clip, the view's 19 × 17) and `summboat.wav` among the
+  effects, the layout's book cursor (frame 1); MCL-Q14 by `HeroStatus::mana` and `draw_slot` (the
+  old bar kept under `Bugs::Original`, the slot shown whole under `Bugs::Fixed`, every slot draw);
+  refusals `Unplayable::Cast` (no table, another `at`, another `spent`) and `Unplayable::Spell`
+  (another spell, no boat or several). Left out: the wait for the spell's sample (the viewer's
+  sound knows no lengths: with sound the original ends at 1 764, the viewer at 828), the window's
+  cast (live it does nothing, as before), the book's own inputs, a cast opened with the hero
+  already lifted (tested, not recorded), the refusals' boxes.
+- **Checked** (M4 T2d3): the three moved into `sequences.toml`, `to-record.toml` removed; `frames
+  --only <id> --reuse` every frame exact (24, 15, 15), the timelines as recorded (48, 36, 36
+  lines), their `-frames.txt` kept; `drawn` the 50 situations and the 93 other sequences the same,
+  `--record` for the three; the window's read-back exact on `cast-boat` (live: no cast); unit tests
+  (`timeline/tests/casts.rs`: the three replayed headless, the book's span and refusals, both
+  dissolves' boxes and steps, the boat moved and made, MCL-Q14 in both profiles, the sound's cue,
+  the cursor, a second cast with the hero lifted), 430 in the library, 100 % of `h3-map-view`'s
+  library (lines, regions, functions).

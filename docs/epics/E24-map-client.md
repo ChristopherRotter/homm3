@@ -191,7 +191,9 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   2026-11-18, whole: the user kept it uncut; the log's "M4 T2c"), T2d, the map changed by a
   visit, cut in three by the user at its start (2026-11-18, by family; "a monster beaten" moved to
   T5): T2d1, a flag raised (**done** 2026-11-18, the log's "M4 T2d1"), T2d2, a boat boarded and
-  left (**done** 2026-11-19, whole; the log's "M4 T2d2"; MCL-Q35), T2d3, a spell cast on the map (MCL-Q14); T3, a record's start (after the server lane's whole-game record
+  left (**done** 2026-11-19, whole; the log's "M4 T2d2"; MCL-Q35), T2d3, a spell cast on the map
+  (**done** 2026-11-19, whole: Summon Boat, the user's choice; the log's "M4 T2d3"; MCL-Q14 seen);
+  T3, a record's start (after the server lane's whole-game record
   and the adventure lane's object identity); T4, a record played; T5, the battles handed over
   (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
   with the user.
@@ -354,3 +356,9 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   second view draw taken for the list's dialog redraw (0x4033EA not read); left out: the
   mouse-over's boats (the live part's at 0), a computer's boarding or landing, a find on the
   tile landed on.
+- **M4 T2d3, a spell cast on the map** (*provisional*; design §5.8, *Built*): the spell book left
+  to M5 (no screen compared while it shows; its inputs dropped but the click that closes it);
+  Summon Boat alone, from the live part's `[[cast]]` table (the engine has no adventure spells
+  yet); the wait for its sound not built (with sound the original's cast ends 936 ms later); the
+  window's cast button does nothing; MCL-Q14's fix (the slot shown whole) under `Bugs::Fixed` on
+  every slot draw, not only after a cast; the harness's `[[cast]]` table and a hero's `spells`.

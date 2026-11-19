@@ -888,3 +888,37 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
   (`h3_map::writer::Map::banned_artifacts`, E08 decision 375). The writer also writes the seven
   trade classes as `Plain` objects (`TRADE_OBJECTS`; 213 and 221 refused in RoE) for your later
   situations.
+- 2026-11-19 (this lane, E24 M4 T2d3): T2d3 done whole (Summon Boat, the user's choice at its
+  start), the log's "M4 T2d3" (design §5.8; MCL-Q14 seen); with it T2 is done. T2's entry as it
+  stood:
+
+  ### E24 M4 T2 — a visit's results (cut in four by the user at its start, 2026-11-17)
+
+  Read and build what the original shows when a visit or an event changes the game, the live part
+  from its memory, for the finds and questions the engine's visits make; new sequences recorded in
+  the original, the harness giving the answers. **Acceptance** of each: as T1a's. Cut by dialog
+  family (the user, 2026-11-17: the recommended cut; a part that grows is cut again into its
+  reading and recordings, then the viewer's build, as T1b was).
+
+  - **T2a, the finds told:** done 2026-11-18 (its entry in `QUEUE-ARCHIVE.md`; the log's "M4 T2a1",
+    "M4 T2a2"). Its pictures (`h3_ui::message`), `finds` and the timeline's boxes are T2b's base.
+  - **T2b, the questions and choices:** done 2026-11-18 (T2b1 and T2b2; their entries in
+    `QUEUE-ARCHIVE.md`; the log's "M4 T2b1", "M4 T2b2"). `asks`, `Question`, `Answer`, `Reply` and
+    `h3_ui::message`'s styles 7 and 10 are T2c's base.
+  - **T2c, a level-up's choice:** done 2026-11-18 (whole; its entry in `QUEUE-ARCHIVE.md`; the log's
+    "M4 T2c"). `levels`, `LevelUp` and the timeline's `Loop::level_up` are T5's base for a battle's
+    levels.
+  - **T2d, the map changed by a visit:** cut in three by the user at its start (2026-11-18, by
+    family, each read, recorded and built in one task as T2c was; "an object taken" was T2a2's and
+    T2b2's; "a monster beaten" moved to T5, its recording needing a battle):
+    - **T2d1, a flag raised:** done 2026-11-18 (its entry in `QUEUE-ARCHIVE.md`; the log's "M4
+      T2d1"; design §5.6). `Found::flag`, the owners in memory and `Minimap::owners` are T2d2's and
+      T4's base.
+    - **T2d2, a boat boarded and left:** done 2026-11-19 (whole; its entry in `QUEUE-ARCHIVE.md`;
+      the log's "M4 T2d2"; design §5.7). The boarding's and landing's dissolves and the boat lifted
+      or put back are T2d3's base for Summon Boat and Scuttle Boat, and T4's for a record's boats.
+    - **T2d3, a spell cast on the map:** a cast recorded (MCL-Q14: if the stale mana bar shows, the
+      client shows the slot whole, the original's behind `--bugs original`); the spell book is M5's,
+      so the recording needs a way past it (the harness's cast, or the frames under the book left
+      out); a spell whose result the map shows (Summon Boat, Dimension Door, Scuttle Boat or View
+      Air/Earth's screen: chosen at its start). **Depends on:** T1a; T2d2 for a boat's spells.
