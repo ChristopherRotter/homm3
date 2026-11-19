@@ -12,7 +12,7 @@
 //!   a Shrine's spell, a Tree's price, a Witch Hut's skill as the player's visits learnt them).
 //! - **The towns** the viewer sees, in the view's order: each one's name the map's own, else its
 //!   faction's first (the client's: the engine draws none), and its faction; the viewer's towns
-//!   among them in its list's order (the panels', its main town first).
+//!   among them in its list's order (the panels': the view's, MCL-Q38).
 //! - **The heroes** in the view's order (the live part's `heroes`): each one's type and whether
 //!   the map names it; the viewer's in their types' order (the panels', `super::panels`).
 //! - **The teams** the map's, each colour its own without them.
@@ -117,7 +117,7 @@ pub(super) fn table(
             Value::Array(alloc::vec![name, Value::Integer(i64::from(t.faction))])
         })
         .collect();
-    let town_list: Vec<i64> = super::panels::viewer_towns(observation, raw, art)
+    let town_list: Vec<i64> = super::panels::viewer_towns(observation)
         .into_iter()
         .filter_map(|t| observation.towns.iter().position(|o| o.town == t.town))
         .map(int)

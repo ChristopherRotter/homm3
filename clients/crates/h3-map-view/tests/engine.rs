@@ -1011,6 +1011,15 @@ fn the_hover_s_facts_of_a_start() {
     let owned = object_at(&g, "hv53.def", [11, 16]);
     assert_eq!(mines(ore).as_array().unwrap()[1], Value::Integer(2));
     assert_eq!(mines(owned).as_array().unwrap()[1], Value::Integer(2));
+    // The map's own town names, in its order of towns (an empty one none).
+    assert_eq!(g.art.town_names, [Some("Brightmoor".to_string()), None]);
+    let mut raw = h3_map::read(&g.bytes, &Limits::default()).unwrap();
+    for object in &mut raw.objects {
+        if let h3_map::model::Body::Town(town) = &mut object.body {
+            town.name = Some(h3_map::model::Text(Vec::new()));
+        }
+    }
+    assert_eq!(MapArt::from_raw(&raw).unwrap().town_names, [None, None]);
     // Read as a capture's: the facts' table as the viewer takes it.
     let heroes = start.table["heroes"].as_array().unwrap().len();
     let facts = Facts::read(&start.table["hover"], g.art.objects.len(), heroes, 36, 1).unwrap();
@@ -1215,46 +1224,4 @@ fn row_of_none(hover: &toml::Table, i: usize) -> Value {
         .find(|r| r.as_array().unwrap()[0] == Value::Integer(i64::try_from(i).unwrap()))
         .cloned()
         .unwrap()
-}
-
-#[test]
-fn the_viewer_s_main_town_first_in_its_list() {
-    // Both towns Red's; the map read with the Rampart (its entrance two columns left of its
-    // anchor) Red's main town (the writer names none).
-    let text = HOVER.replace(
-        "{ at = [18, 7], faction = 1, buildings = \"village\" }",
-        "{ at = [18, 7], faction = 1, owner = 0, buildings = \"village\" }",
-    );
-    let (map, extras) = Situation::parse(&text)
-        .unwrap()
-        .build(&BTreeMap::new(), &hover_templates())
-        .unwrap();
-    let g = game_on(writer::gzip(&writer::write_with(&map, &extras).unwrap()));
-    let record = text_of(&g);
-    let mut loaded = engine::load(&record, &g.bytes, rules()).unwrap();
-    let in_view = |loaded: &engine::Loaded| {
-        let start =
-            engine::start(loaded, &g.art, &hover_templates(), &town_art(), rules()).unwrap();
-        let list = numbers(&table(&start.table["hover"])["town_list"]);
-        let towns: Vec<i64> = table(&start.table["kingdom"])["towns"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|t| numbers(t)[0])
-            .collect();
-        (list, towns)
-    };
-    assert_eq!(in_view(&loaded), (vec![0, 1], vec![0, 1]));
-    let details = loaded.raw.players[0].details.as_mut().unwrap();
-    details.main_town = Some(h3_map::model::MainTown {
-        generate_hero: false,
-        town_type: 0,
-        pos: h3_map::model::Pos { x: 16, y: 7, z: 0 },
-    });
-    assert_eq!(in_view(&loaded), (vec![1, 0], vec![1, 0]));
-}
-
-/// The record of a game's start.
-fn text_of(g: &Game) -> String {
-    text(&g.header, &[snapshot(&g.observation)])
 }

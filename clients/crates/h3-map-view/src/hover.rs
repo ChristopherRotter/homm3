@@ -153,6 +153,11 @@ struct Written {
     contents: contents::Written,
 }
 
+/// A town's record a capture writes for a name `TownName.txt` lacks: the name its map gives it
+/// (E24 M3 T7a's mark; the viewer reads it from the map since E24 M4 T3b2,
+/// [`Facts::name_towns`]).
+pub const MAP_TOWN_NAME: u16 = u16::MAX;
+
 /// A town's name as the `[hover]` table writes it: a record of `TownName.txt`, or the map's own
 /// (E24 M4 T3b2: a situation's own text in a comparison's, as the status window's).
 #[derive(Debug, Deserialize)]
@@ -165,6 +170,19 @@ enum WrittenName {
 }
 
 impl Facts {
+    /// Each town whose name is [`MAP_TOWN_NAME`] named as its map names it, `names` the map's in
+    /// its order of towns (`MapArt::town_names`: the game's towns are the map's, E24 M4 T3b2);
+    /// a town the map leaves unnamed keeps the mark (no text).
+    pub fn name_towns(&mut self, names: &[Option<String>]) {
+        for (town, (name, _)) in self.towns.iter_mut().enumerate() {
+            if *name == TownName::Record(MAP_TOWN_NAME)
+                && let Some(Some(own)) = names.get(town)
+            {
+                *name = TownName::Own(own.clone());
+            }
+        }
+    }
+
     /// The facts of the live part's `[hover]` table for a map of `size` and `levels` with
     /// `objects` objects and `heroes` heroes: `words` (one per object, -1 none), `armed` (one
     /// per object, 0 or 1), `towns` (`[[name, type], ...]` by the game's town index, a name a record or since E24 M4

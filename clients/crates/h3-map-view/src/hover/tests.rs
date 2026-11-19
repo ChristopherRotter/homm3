@@ -850,3 +850,23 @@ fn two_mouse_overs_compared_over_every_tile() {
         "{found:?}"
     );
 }
+
+#[test]
+fn the_towns_the_map_names_named_from_it() {
+    let text = FACTS.replace(
+        "towns = [[5, 0]]",
+        "towns = [[65535, 0], [65535, 1], [65535, 2], [6, 3]]",
+    );
+    let value: toml::Value = toml::from_str(&text).unwrap();
+    let mut f = Facts::read(&value, 12, 3, 8, 1).unwrap();
+    f.name_towns(&[Some("Brightmoor".into()), None]);
+    assert_eq!(
+        f.towns,
+        [
+            (TownName::Own("Brightmoor".into()), 0),
+            (TownName::Record(MAP_TOWN_NAME), 1),
+            (TownName::Record(MAP_TOWN_NAME), 2),
+            (TownName::Record(6), 3)
+        ]
+    );
+}

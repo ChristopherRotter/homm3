@@ -37,6 +37,7 @@ use h3_adventure::{ObjectKind, ObjectSetup, ObjectTypeId, Pickup};
 use h3_game::{GameRuleset, GameSetup};
 use h3_kernel::Handle;
 use h3_kernel::hash::StateHasher;
+use h3_map::model::Body;
 use h3_map::writer::ObjectTemplate;
 use h3_map::{Limits, MAP_IMPORT_VERSION, RawMap};
 use h3_protocol::map::game::manifest;
@@ -46,7 +47,7 @@ use h3_protocol::{PROTOCOL_VERSION, RECORD_FORMAT_VERSION, codec};
 use toml::{Table, Value};
 
 use crate::art::MapArt;
-use crate::live::{BOAT_CLASS, HERO_CLASS, TOWN_CLASS, owner};
+use crate::live::{BOAT_CLASS, HERO_CLASS, TOWN_CLASS, built_at_start, owner};
 use crate::objects;
 use crate::tables::{CAPITOL, FORT, TownArt};
 
@@ -288,9 +289,18 @@ pub fn start(
     let mut defs: Vec<Value> = Vec::with_capacity(count);
     let mut drawn: Vec<(u32, u32)> = Vec::with_capacity(count);
     for index in 0..count {
-        let (def, (c, s)) = objects::template(art, index).map_or((String::new(), (0, 0)), |t| {
-            (t.def.clone(), (t.class, t.subclass))
-        });
+        let (mut def, (c, s)) = objects::template(art, index)
+            .map_or((String::new(), (0, 0)), |t| {
+                (t.def.clone(), (t.class, t.subclass))
+            });
+        // A town the view does not show: its picture at a new game by the map's buildings, as
+        // the capture's (design §2.9; E24 M4 T3b2), the view's below for one it shows.
+        if let (TOWN_CLASS, Some(Body::Town(town))) =
+            (c, loaded.raw.objects.get(index).map(|o| &o.body))
+            && let Some(picture) = town_art.picture(s, built_at_start(&town.buildings))
+        {
+            def = picture.into();
+        }
         defs.push(Value::String(def));
         drawn.push((c, s));
     }

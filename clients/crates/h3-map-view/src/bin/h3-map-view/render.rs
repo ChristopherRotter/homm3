@@ -819,7 +819,7 @@ pub fn apply_live(
     if let Some(value) = table.get("hover") {
         // The game's facts the mouse-over reads (E24 M3 T6a1, design §4.10).
         let (objects, heroes) = (art.objects.len(), live.heroes.len());
-        live.hover = Some(
+        let mut facts =
             Facts::read(value, objects, heroes, art.size, art.levels).ok_or_else(|| {
                 failed(
                     "`[hover]` is not words and armed (one per object), towns ([[name, type]]), \
@@ -827,8 +827,10 @@ pub fn apply_live(
                      name]]), town_list, teams (8), guarded (rows), reach ([[x, y, cost]]) and \
                      day_points",
                 )
-            })?,
-        );
+            })?;
+        // A town the map names (E24 M4 T3b2): its name from the map.
+        facts.name_towns(&art.town_names);
+        live.hover = Some(facts);
     }
     table.get("pointer").map_or(Ok(None), |value| {
         let point: Option<Vec<i32>> = value.as_array().and_then(|a| {

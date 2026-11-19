@@ -1933,7 +1933,7 @@ class Mem:
         raw = self.read(nodes + 30 * ((y + 2 * z * side) * side + x), 30)
         return struct.unpack_from("<H", raw, 0x18)[0] if raw[4] & 1 else None
 
-    def hover(self, colour, hotraits, town_names, z=0, reach=None, own_names=()):
+    def hover(self, colour, hotraits, town_names, z=0, reach=None):
         """The game's facts the mouse-over reads (E24 M3 T6a1; design §4.10), as `render
         --live`'s `[hover]` takes them, for the viewing player `colour` and the view's level `z`:
         per map object the word of its entrance tile (with a hero or boat standing there, the word
@@ -1947,8 +1947,7 @@ class Mem:
         destination is reached, so each tile's cost is the run's for it, `h3map.look_over_view`),
         and its day points (+0x49). `hotraits` and `town_names`:
         the hero types' names and TownName.txt's, in order (the harness keeps the records'
-        numbers, never the text); `own_names` (E24 M4 T3b2): the towns' names the situation writes
-        into its map, kept as their text (the situation's own, never the original's)."""
+        numbers, never the text)."""
         game = self.game()
         side = self.i32(game + MAP_SIDE)
         tiles = self.u32(game + TILES)
@@ -2007,11 +2006,9 @@ class Mem:
         for record in town_records:
             name = self.c_string(self.u32(record + TOWN_NAME), 64)
             # A town named by its map (`shipped-good-witch`'s) has no record of TownName.txt: 65535,
-            # no record (E24 M3 T7a, *provisional*: the viewer reads no map's town names before M4,
-            # and only a hint over that town needs one; a still's pointer is parked).
-            # E24 M4 T3b2: a name the situation gives, its own text.
-            towns.append([name if name in own_names
-                          else town_names.index(name) if name in town_names else 0xFFFF,
+            # no record (E24 M3 T7a, *provisional*); since E24 M4 T3b2 the viewer reads that name
+            # from the map (the game's towns are the map's in its order).
+            towns.append([town_names.index(name) if name in town_names else 0xFFFF,
                           struct.unpack("<b", self.read(record + TOWN_FACTION, 1))[0]])
         hero_ids = [[index, own_name(index)]
                     for (_, _), (kind, index) in sorted(self.standing(z).items(),
