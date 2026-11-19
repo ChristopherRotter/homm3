@@ -1989,6 +1989,25 @@ file `docs/rules/surveys/E08-trades.md`)
   form.
 - **Depends on:** T127a2 (done, its checkpoint answered). **Status:** ready (docs only).
 
+## T128 (moved 2026-11-19, done in two parts: `adventure/e08-t128`, decisions 374, 375; T129 queued)
+
+**E08 T128 — batch E14's maps: the writer's seven classes, the spec's fields, the specs** (round 2;
+decisions 368, 373; as T119 for increment 13)
+
+- **Scope:** design note `E08-design.md` §20, §21's round 2: `h3_map::writer` writes the seven
+  classes by template (2, 7, 35, 99 and 106 at subclass 0; 213 and 221 in the AB and SoD formats
+  only; no body); `h3-experiment`'s spec gains them by template and what its adventure hero lacks
+  at the start (secondary skills such as Advanced Learning, a hero of the Learning specialty by
+  type, war machines, worn artifacts and a full backpack, the map's banned artifacts, Blue's
+  starting resources, the RoE format; battle-owned: `cross-lane` with the user's consent, label
+  it); the specs `experiments/specs/E08-batch-14.toml` (SoD: survey §18's E14-1 to E14-13 and
+  E14-15 with the note's E14-16 and E14-17; Red and Blue; days 1, 2 and 29) and
+  `E08-batch-14-roe.toml` (E14-14).
+- **Inputs:** survey `docs/rules/surveys/E08-trades.md` §1 (the templates, as corrected: all
+  entered), §18 (the rows); design note §20; T119's record in `E08-log.md` as the form.
+- **Depends on:** T127b (done). **Status:** ready (the original data: the executable and both
+  tars, to compile the maps and check them in the editor's reader; confirm the cut at its start).
+
 ## Inbox notes settled or for information (moved 2026-11-18, E08 T126)
 
 *(Moved verbatim at increment 13's closure: the other lanes' notes of changes in this lane's paths (the town lane's E09 T29b to T38b1, the map client lane's harness rebuilds), built on by T123b to T125b2b and T126's audit, CI green on each; their lasting rules are one line in `TRAPS.md`, "The town lane's parts of your crates"; the versions they took are the HANDOFF's.)*

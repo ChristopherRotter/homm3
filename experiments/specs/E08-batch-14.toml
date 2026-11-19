@@ -1,0 +1,725 @@
+# Experiment batch E14 (E08 T128; decisions 368, 373): increment 14's plan, the trades and services
+# (survey docs/rules/surveys/E08-trades.md §18 with docs/epics/E08-design.md §20's changes), in SoD
+# on Easy, hot seat, day 1 (Red's turn, then Blue's) and Red's day 29. The RoE row E14-14 is
+# `E08-batch-14-roe.toml`. Build: docs/experiments/README.md. Predictions are for the agent who
+# evaluates the results; the template never shows them.
+#
+# | row    | settles                                  | the reading (faithful)                        | the other source(s)                     |
+# | E14-1  | §6, D-71: the guild's sale               | 10 Pixies 170 gold; 2 Vampires 2 wood         | VCMI 180; 4                             |
+# | E14-2  | §6: the army keeps a creature            | the slider's most 9 of the only stack of 10   | VCMI the same                           |
+# | E14-3  | §7.1: the Black Markets' draw            | 3 treasures, 3 minors, 1 major each, none     | VCMI the same, rolled on day 1, never   |
+# |        |                                          | banned, the two distinct; unchanged at day 29 | restocked (`blackMarketRestockPeriod` 0)|
+# | E14-4  | §7.2, A-46: a purchase with no room      | the price paid, the artifact nowhere, the     | VCMI: an unbounded backpack takes it    |
+# |        |                                          | entry empty (the engine refuses it, 366)      |                                         |
+# | E14-5  | §4, §5: the Trading Post's trade         | +150 gold; +1 wood; +1 gem                    | VCMI the same at five                   |
+# | E14-6  | §5: the transfer                         | Red −5 ore, Blue +5                           | VCMI the same                           |
+# | E14-7  | §12.1: the Altar's screens               | Castle artifacts only; Necropolis creatures   | VCMI the same (the client's test)       |
+# |        |                                          | only; Fortress both, the artifacts first      |                                         |
+# | E14-8  | §12.2: the artifacts' experience         | +11 500 (1 000, 1 500, 3 000, 6 000)          | VCMI the same                           |
+# | E14-9  | §12.2, D-72, A-47: the special artifacts | 1 000; the four gone; the Catapult kept, a    | VCMI: the Ballista refused              |
+# |        |                                          | message                                       |                                         |
+# | E14-10 | §12.3, D-73: the Learning per stack      | 21                                            | VCMI 22 (one product)                   |
+# | E14-11 | §12.3: the army keeps a creature         | the most 9; All 9                             | VCMI the same                           |
+# | E14-12 | §13, D-74: the Hill Fort's prices        | 0; 125; 37; 56; 2 000 gold and 2 gems; 25     | VCMI 120, 36, 54; 24                    |
+# | E14-13 | §13: the states                          | Rogues and Marksmen 0; the Pegasi 2; All      | VCMI the same                           |
+# |        |                                          | refused, nothing paid                         |                                         |
+# | E14-15 | §14: the War Machine Factory             | Ballista 0, the tent and the cart 1; −1 750;  | VCMI and the manual the same            |
+# |        |                                          | both equipped; then all 0                     |                                         |
+# | E14-16 | design §0: where the hero stands         | on the entrance at the window, after it and   | VCMI the same (no `blockedVisitable`)   |
+# |        |                                          | after Space; none entered from above          |                                         |
+# | E14-17 | design §14: the Altar and a level-up     | the level-up over the Altar, then the Altar   | VCMI unread                             |
+# |        |                                          | open; then 10 Gnolls 55 (Advanced Learning)   |                                         |
+#
+# **Changes from design §20** (agent's calls): **E14-17** has no hero of the Learning specialty
+# (none of the 156 hero types has one, `h3-experiment --list heroes`): a Fortress hero at level 1
+# with eight secondary skills, seven at Expert and Basic Learning, so its level-up offers Advanced
+# Learning alone; a treasure (1 050) gives the level, then the creatures' screen reads the new
+# Learning (10 Gnolls: 55, not Basic's 52); a relic would give five levels from level 1, and a hero
+# placed higher takes its levels at load (below). The dialogs' order as planned. **Blue's starting resources** need no field (the format holds none): E14-6 reads
+# Blue's treasury from memory on Red's turn before and after the transfer, and on Blue's turn.
+# **Day 2** is not needed: every row plays on day 1, E14-3's second read on Red's day 29. **E14-12**
+# adds four Air Elementals (level 2 under the ab pack: trunc(100 × 0.25) = 25, VCMI 6 × 4 = 24), the
+# SoD side of E14-14's RoE elementals. **E14-9's Spell Scroll** is picked up from the map (Haste):
+# a hero's artifacts in the format are codes without a spell, so a scroll in the starting backpack
+# would hold none; it reaches the altar from its misc position, the Grail from the backpack. **E14-13**'s Pegasi are 3 000 (56 250 gold, above Blue's
+# Easy treasury), so no event makes Blue poor. **E14-16** is read in the other rows' visits (the
+# guild, a Black Market, both Trading Posts, the Altars, a Hill Fort, the factory), the step from
+# above in E14-8's.
+#
+# **The pictures** (docs/experiments/README.md, "Increment 14's objects"): each blocks `at` and the
+# tile west of it on its bottom row, the Freelancer's Guild also the second tile west; the entrance
+# is `at` for the Altar `AvXAltar`, the Black Market `AVXmktb0`, the Hill Fort `AVXhild0` and
+# `AVXhilg0` and the Trading Posts `AVXpost0` and `AVXpsSn` (class 221), the tile west of `at` for
+# the War Machine Factory `AVGsieg0` and the guild `avxfgld`. The hero steps onto the entrance and
+# stands there (the class lists `object_classes_not_entered` 0x63AA58 and
+# `object_classes_from_above` 0x63AB00 name none of the seven); none is entered from the three
+# tiles above its entrance, nor left upward (ADV-OBJ-004). No visit spends points but the step; the
+# windows' trades spend none (survey §2). Space visits the tile the hero stands on again.
+#
+# **The rates** are at five Marketplaces for every map market (survey §4 to §7: binary32 steps,
+# half up). **The heroes.** Red has eight (the most a player holds), Blue two. A step costs 100 on
+# grass, 141 diagonally; an army whose slowest is speed 4 (Pikemen, Archers, Skeletons, Gnolls) gives
+# 1 560 points a day, speed 6 (Rogues, Marksmen) 1 700 (packs/base/adventure.toml `land_points`). A hero's scouting radius is 5 (ADV-FOG-002), so every
+# target is explored at its click. Valeska's Archers are one faster (her specialty): 1 630. No
+# hero has a skill but E14-8's, E14-9's, E14-10's and E14-17's, no artifact but its listed ones.
+#
+# **Levels at load** (survey `E08-progression.md` §3, GAM-SET-002): a hero placed with experience
+# takes its levels at the new game, the computer choosing every offer (a Logistics or a Learning
+# could come). So E14-8 (68 700, level 19) and E14-9 (2 100, level 3) know eight skills, all at
+# Expert and none of them Learning, Logistics, Pathfinding or Scouting: their levels at load add
+# primary skills only. The thresholds past level 12 are the pack's steps grown by a fifth (24 320,
+# 28 784, 34 140, 40 567, 48 279, 57 533, 68 637, 81 961; packs/base/core.toml).
+#
+# **The bans** (E14-3): every treasure, minor and major below 127 but seven treasures (Centaurs Axe,
+# Shield of the Dwarven Lords, Helm of the Alabaster Unicorn, Breastplate of Petrified Wood,
+# Spyglass, Bird of Perception, Stoic Watchman), seven minors (Blackshard of the Dead Knight,
+# Greater Gnoll's Flail, Shield of the Yawning Dead, Buckler of the Gnoll King, Crown of the Supreme
+# Magi, Rib Cage, Red Dragon Flame Tongue) and three majors (Sword of Hellfire, Shield of the
+# Damned, Hellstorm Helmet), beside the editor's default bans 127 to 143. Every hero's starting
+# artifact is a banned one, a relic or a special one, so the draw's pool is these seventeen whether
+# or not the game counts the heroes' artifacts as given.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give an artifact (a
+# draw from the same pool, which would leave the markets one treasure fewer) or a resource; the
+# template asks for gold, and every treasury is read before and after each row.
+
+[map]
+name = "E08 batch E14"
+description = "Engine-generated experiment map (E08, batch E14): trades and services: a Freelancer's Guild, two Black Markets on a map with bans, a purchase with no room, two Trading Posts and a transfer, four Altars of Sacrifice, two Hill Forts, a War Machine Factory; where a hero stands at each. Hot seat, Red and Blue human; difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-14.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), at the start of Blue's turn (save 2) and at the start of Red's day 29 (save 3).",
+    "Most records are the game's memory: a hero's tile, its movement points (hero +0x4D), army, experience, level, worn artifacts and backpack; both players' treasuries; the Black Markets' records (game +0x1F680, seven artifacts each) and each market's object word; the trade window's screen, pair and slider's most (`market_screen` 0x6AAAA4, `market_kind` 0x6AAAC4, `market_count` 0x6AAA98); the Altar's dialog (+0x78 the total, its places, the slider's most); the Hill Fort's rows (prices, states, the whole +0x298); the questions, messages and dialogs in their order; the path's marks after one click. The capture harness reads them (`clients/capture/batches/E08-batch-14.toml`, E08 T129). Played by hand, read the screens instead and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show), then again (the hero goes). Where the procedure says so (E14-16): note the hero's tile while the window (or question) is open, close it as the procedure says, note the tile again, press Space (the visit of the tile the hero stands on), note what opens and the tile, and close it again without a trade.",
+    "A level-up's dialog: take the left skill (E14-17's offers one). Close every window with its Done or OK button unless the procedure says otherwise.",
+    "Order: day 1, Red's turn: E14-4's first reads (both Black Markets, before any move), E14-1, E14-4, E14-5, E14-8, E14-9, E14-10, E14-12, E14-15; end the turn. Blue's turn: E14-5's Blue read, E14-13, E14-17; end the turn. Then end both players' turns until Red's day 29 (no hero moves; answer each turn's prompt to end it) and read E14-4's day-29 lines. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+# E14-3's bans (the header): every treasure, minor and major below 127 but the seventeen.
+banned_artifacts = [
+    "Ogre's Club of Havoc",
+    "Targ of the Rampaging Ogre",
+    "Skull Helmet",
+    "Helm of Chaos",
+    "Scales of the Greater Basilisk",
+    "Tunic of the Cyclops King",
+    "Breastplate of Brimstone",
+    "Armor of Wonder",
+    "Quiet Eye of the Dragon",
+    "Dragon Scale Shield",
+    "Dragonbone Greaves",
+    "Dragon Wing Tabard",
+    "Necklace of Dragonteeth",
+    "Still Eye of the Dragon",
+    "Clover of Fortune",
+    "Cards of Prophecy",
+    "Ladybird of Luck",
+    "Badge of Courage",
+    "Crest of Valor",
+    "Glyph of Gallantry",
+    "Speculum",
+    "Amulet of the Undertaker",
+    "Vampire's Cowl",
+    "Dead Man's Boots",
+    "Garniture of Interference",
+    "Surcoat of Counterpoise",
+    "Bow of Elven Cherrywood",
+    "Bowstring of the Unicorn's Mane",
+    "Angel Feather Arrows",
+    "Emblem of Cognizance",
+    "Statesman's Medal",
+    "Diplomat's Ring",
+    "Ambassador's Sash",
+    "Ring of the Wayfarer",
+    "Equestrian's Gloves",
+    "Necklace of Ocean Guidance",
+    "Charm of Mana",
+    "Talisman of Mana",
+    "Mystic Orb of Mana",
+    "Collar of Conjuring",
+    "Ring of Conjuring",
+    "Cape of Conjuring",
+    "Orb of the Firmament",
+    "Orb of Silt",
+    "Orb of Tempestuous Fire",
+    "Orb of Driving Rain",
+    "Recanter's Cloak",
+    "Spirit of Oppression",
+    "Hourglass of the Evil Hour",
+    "Golden Bow",
+    "Sphere of Permanence",
+    "Ring of Vitality",
+    "Ring of Life",
+    "Vial of Lifeblood",
+    "Necklace of Swiftness",
+    "Boots of Speed",
+    "Cape of Velocity",
+    "Pendant of Dispassion",
+    "Pendant of Second Sight",
+    "Pendant of Holiness",
+    "Pendant of Life",
+    "Pendant of Death",
+    "Pendant of Free Will",
+    "Pendant of Negativity",
+    "Pendant of Total Recall",
+    "Pendant of Courage",
+    "Everflowing Crystal Cloak",
+    "Ring of Infinite Gems",
+    "Everpouring Vial of Mercury",
+    "Inexhaustible Cart of Ore",
+    "Eversmoking Ring of Sulfur",
+    "Inexhaustible Cart of Lumber",
+    "Endless Bag of Gold",
+    "Endless Purse of Gold",
+    "Legs of Legion",
+    "Loins of Legion",
+    "Torso of Legion",
+    "Arms of Legion",
+    "Head of Legion",
+    "Shackles of War",
+]
+
+# --- The towns (a player without one is defeated after seven days; no row reads them) --------------
+
+[[map.town]]
+entrance = [6, 33]
+faction = "castle"
+owner = "red"
+
+[[map.town]]
+entrance = [31, 33]
+faction = "rampart"
+owner = "blue"
+
+# --- Row 8: the Freelancer's Guild G (entrance (5, 8)), the Black Markets M1 (12, 8) and M2 (18, 8),
+# the Trading Post P1 (24, 8); row 10: the snow Trading Post P2 (26, 10) --------------------------
+
+[[map.object]]
+picture = "avxfgld"
+at = [6, 8]
+
+[[map.object]]
+picture = "AVXmktb0"
+at = [12, 8]
+
+[[map.object]]
+picture = "AVXmktb0"
+at = [18, 8]
+
+[[map.object]]
+picture = "AVXpost0"
+at = [24, 8]
+
+[[map.object]]
+picture = "AVXpsSn"
+at = [26, 10]
+
+# --- Row 18: the Altars A1 (6, 18), A2 (12, 18), A3 (18, 18), the Hill Fort H1 (24, 18), the War
+# Machine Factory F (entrance (29, 18)); row 26: the Altar A4 (12, 26) and the Hill Fort H2 (24, 26)
+
+[[map.object]]
+picture = "AvXAltar"
+at = [6, 18]
+grid = { columns = 3, step = [6, 0] }
+
+[[map.object]]
+picture = "AVXhild0"
+at = [24, 18]
+
+[[map.object]]
+picture = "AVGsieg0"
+at = [30, 18]
+
+[[map.object]]
+picture = "AvXAltar"
+at = [12, 26]
+
+[[map.object]]
+picture = "AVXhilg0"
+at = [24, 26]
+
+# --- E14-9's Spell Scroll, picked up from (12, 20) ---------------------------------------------------
+
+[[map.scroll]]
+spell = "Haste"
+at = [13, 20]
+
+# --- E14-1 and E14-2 ---------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E14-1"
+title = "A Freelancer's Guild: 10 Pixies for gold, 2 Vampires for wood (E14-1); the only stack's most (E14-2); where the hero stands (E14-16)"
+questions = ["ADV-MKT-001", "ADV-MKT-002", "ADV-MKT-005", "D-71", "ADV-OBJ-003"]
+procedure = [
+    "**E14-1.** Day 1, Red's turn, after E14-4's first reads: E14-1 stands at (5, 10) with 10 Pixies (slot 0), 2 Vampires (slot 1) and 10 Skeletons (slot 2). Note its points and Red's treasury. Click the guild G's entrance (5, 8) twice: E14-1 walks onto it and the window opens. Note the window (its screen), E14-1's tile and points.",
+    "Select the Pixies' slot and gold. Note the slider's most and what one Pixie gives. Set the slider to **10** and Trade. Note Red's treasury and E14-1's army.",
+    "Select the Vampires' slot and wood. Note the slider's most and what one Vampire gives. Set the slider to **2** and Trade. Note Red's treasury and E14-1's army.",
+    "**E14-2.** Select the Skeletons' slot (now the army's only stack) and gold. Note the slider's most. Close the window without a trade.",
+    "**E14-16.** Note E14-1's tile and points. Press Space: note what opens and E14-1's tile; close it.",
+]
+record = [
+    { field = "before: E14-1's points; Red's treasury" },
+    { field = "at the window: its screen; E14-1's tile; points" },
+    { field = "the Pixies for gold: the slider's most; what one gives; Red's treasury after 10; the army" },
+    { field = "the Vampires for wood: the slider's most; what one gives; Red's treasury after 2; the army" },
+    { field = "E14-2: the Skeletons' most (gold)" },
+    { field = "after closing: E14-1's tile; points" },
+    { field = "Space: what opens; E14-1's tile" },
+    { field = "anything odd" },
+]
+predictions = """
+E14-1 (survey §4, §6; D-71; `freelancers_guild_trade` 0x5E9E60, kind 3, screen 4, five
+Marketplaces):
+
+- **The walk** (5, 9), (5, 8): 200 from below; E14-1 **on (5, 8)** with 1 360 at the window (1 560
+  a day, the slowest a Skeleton); the window opens on the sale's screen (4), the other screens'
+  buttons hidden.
+- **The Pixies** (25 gold each): one Pixie buys 17 gold (the creature factor 0.7 at five, binary32
+  steps, half up), so the slider counts creatures, most 10 (another stack is in the army): **10
+  sell for 170 gold** (VCMI's ceiling: 18 each, 180). Slot 0 empty after.
+- **The Vampires** (360 gold): **one wood each**, the slider's most **2**: **2 wood** for both
+  (VCMI 2 each, 4); slot 1 empty.
+- No points spent by either trade.
+
+E14-2 (§6): the Skeletons the army's only stack: **the most 9** (the hero keeps one; VCMI the
+same).
+
+E14-16 (design §0): E14-1 on (5, 8) at the window, after closing it (1 360 points) and after Space,
+which opens the guild's window again.
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [5, 10]
+primary = [1, 1, 1, 1]
+army = [["Pixie", 10], ["Vampire", 2], ["Skeleton", 10]]
+
+# --- E14-3 and E14-4 ---------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E14-4"
+title = "The two Black Markets' seven at day 1 and day 29 on a map with bans (E14-3); a purchase by a hero with no room for it (E14-4); where the hero stands (E14-16)"
+questions = ["ADV-MKT-006", "ADV-MKT-007", "A-46", "GAM-SET-003", "ADV-OBJ-003"]
+procedure = [
+    "**E14-3.** Day 1, Red's turn, first, before any hero moves: read both Black Markets' records (M1, entrance (12, 8); M2, entrance (18, 8)): the seven artifacts in order (name; class) and each object's word (the record's index).",
+    "**E14-4.** E14-4 stands at (12, 10) wearing an artifact in every body position (head to feet, the four misc and the fifth) with 64 in the backpack. Note its points, every worn artifact, the backpack's count and Red's treasury. Click M1's entrance (12, 8) twice: E14-4 walks onto it and the window opens. Note the window's entries, E14-4's tile and points.",
+    "Select M1's **first** entry and gold. Note its price. Click Trade once. Note every message and question in order, Red's treasury, E14-4's worn artifacts and backpack (its count and its last entry) and the window's entries. Close the window. Read M1's record.",
+    "**E14-16.** Note E14-4's tile and points. Press Space: note what opens and the tile; close it.",
+    "**Day 29**, Red's turn, before any move (after both players' turns were ended 28 times): read both markets' records again, and the date.",
+]
+record = [
+    { table = ["market and day", "the seven (name; class)", "the word's record index"], labels = ["M1 (12, 8), day 1", "M2 (18, 8), day 1", "M1, day 29", "M2, day 29"] },
+    { field = "before: E14-4's points; worn artifacts; the backpack's count; Red's treasury" },
+    { field = "at the window: the entries shown; E14-4's tile; points" },
+    { field = "M1's first entry: its name and gold price" },
+    { field = "after Trade: messages and questions (in order); Red's treasury" },
+    { field = "after Trade: E14-4's worn artifacts; the backpack's count and last entry; the window's entries" },
+    { field = "M1's record after the purchase" },
+    { field = "after closing: E14-4's tile; points; Space: what opens; the tile" },
+    { field = "day 29: the date" },
+    { field = "anything odd" },
+]
+predictions = """
+E14-3 (survey §7.1; `black_market_draw` 0x4C0E31 per market in the walk's order by entrance:
+level, row, column, so **M1's record 0, M2's 1**):
+
+- Each market **three treasures, three minors, one major**, in that order (levels 2, 4, 8), each
+  **one of the seventeen the map leaves unbanned** (seven treasures, seven minors, three majors;
+  the header), and **no artifact twice across the two** (each marked as given): so six of the
+  seven treasures, six of the seven minors and two of the three majors, one of each left over.
+- **Day 29:** both records **unchanged** but M1's first entry, emptied by E14-4 (never restocked;
+  `new_month` redraws the town Artifact Merchants' only). **VCMI 1.7.5** the same
+  (`blackMarketRestockPeriod` 0).
+
+E14-4 (§7.2, A-46; `black_market_trade` 0x5EA100, kind 2, screen 2):
+
+- The walk (12, 9), (12, 8): 200; E14-4 **on (12, 8)**, 1 430 at the window (1 630 a day: her
+  specialty's Archers one faster), which shows M1's seven.
+- M1's first entry is a treasure: **its price 2.5 × its cost in gold** (Helm of the Alabaster
+  Unicorn, Breastplate of Petrified Wood, Spyglass or Bird of Perception 2 500; Centaurs Axe,
+  Shield of the Dwarven Lords or Stoic Watchman 5 000).
+- **Trade: the price paid, no message or question, the artifact nowhere** (every body position
+  that takes it full, the backpack at 64: `hero_give_artifact` 0x4E3070's result untested),
+  **the entry empty** in the window and in M1's record; the worn artifacts and the backpack
+  unchanged (64, its last entry a Glyph of Gallantry). **VCMI:** the backpack unbounded, the
+  artifact the 65th. The engine refuses the purchase before paying (decision 366); this row
+  confirms what is fixed.
+
+E14-16: E14-4 on (12, 8) at the window, after closing it (1 430) and after Space (the window again,
+the first entry still empty).
+"""
+[encounter.hero]
+type = "Valeska"
+specialty = "creature Archer"
+at = [12, 10]
+primary = [1, 1, 1, 1]
+army = [["Archer", 5]]
+fill_backpack = "Glyph of Gallantry"
+[encounter.hero.artifacts]
+"head" = "Helm of Chaos"
+"shoulders" = "Dragon Wing Tabard"
+"neck" = "Pendant of Dispassion"
+"right hand" = "Ogre's Club of Havoc"
+"left hand" = "Targ of the Rampaging Ogre"
+"torso" = "Scales of the Greater Basilisk"
+"right ring" = "Diplomat's Ring"
+"left ring" = "Ring of Conjuring"
+"feet" = "Dragonbone Greaves"
+"misc 1" = "Clover of Fortune"
+"misc 2" = "Cards of Prophecy"
+"misc 3" = "Ladybird of Luck"
+"misc 4" = "Badge of Courage"
+"misc 5" = "Crest of Valor"
+
+# --- E14-5 and E14-6 ---------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E14-5"
+title = "A Trading Post's trades (E14-5); a transfer to Blue at the snow Trading Post (E14-6); where the hero stands at both (E14-16)"
+questions = ["ADV-MKT-001", "ADV-MKT-002", "ADV-MKT-003", "ADV-MKT-004", "ADV-OBJ-003"]
+procedure = [
+    "**E14-5.** Day 1, Red's turn, after E14-4: E14-5 stands at (24, 10). Note its points and Red's treasury. Click the Trading Post P1's entrance (24, 8) twice: E14-5 walks onto it and the window opens. Note the window (its screen), E14-5's tile and points.",
+    "Give **wood**, want **gold**: note the rate shown and the slider's most; set **2** (wood) and Trade; note Red's treasury.",
+    "Give **gold**, want **wood**: note the rate and the slider's most; set **1** (wood) and Trade; note Red's treasury.",
+    "Give **mercury**, want **gems**: note the rate and the slider's most; set **1** (gem) and Trade; note Red's treasury. Close the window.",
+    "**E14-16.** Note E14-5's tile and points. Press Space: note what opens and the tile; close it.",
+    "**E14-6.** Click the snow Trading Post P2's entrance (26, 10) twice: E14-5 walks onto it (note the path's marks after the first click) and the window opens. Note E14-5's tile and points. Read **both** treasuries (Red's and Blue's). Open the transfer's screen: note the recipients offered. Choose **ore**, the recipient **Blue**, the amount **5** and Trade. Read both treasuries again. Close the window; note the tile; press Space: note what opens and the tile; close it.",
+    "**Blue's turn** (day 1), first: read Blue's treasury.",
+]
+record = [
+    { field = "before: E14-5's points; Red's treasury" },
+    { field = "P1's window: its screen; E14-5's tile; points" },
+    { field = "wood → gold: the rate; the most; Red's treasury after 2" },
+    { field = "gold → wood: the rate; the most; Red's treasury after 1" },
+    { field = "mercury → gems: the rate; the most; Red's treasury after 1" },
+    { field = "after closing P1: E14-5's tile; points; Space: what opens; the tile" },
+    { field = "P2: the path's marks; at the window its screen; E14-5's tile; points" },
+    { field = "before the transfer: Red's treasury; Blue's treasury; the recipients offered" },
+    { field = "after the transfer: Red's treasury; Blue's treasury" },
+    { field = "after closing P2: the tile; Space: what opens; the tile" },
+    { field = "Blue's turn: Blue's treasury" },
+    { field = "anything odd" },
+]
+predictions = """
+E14-5 (survey §4, §5; `trading_post_trade` 0x5EA0C0, kind 1, screen 0, five Marketplaces):
+
+- The walk (24, 9), (24, 8): 200; E14-5 **on (24, 8)** with 1 360, the window on the trade screen.
+- **Wood for gold:** one wood buys 75 gold, the slider counts the given wood, most Red's wood
+  (**32** with a gold bonus: 30 and E14-1's 2): **2 wood, +150 gold**.
+- **Gold for wood:** 833 gold a wood, the slider counts the wanted wood, most ⌊Red's gold ÷ 833⌋:
+  **−833 gold, +1 wood**.
+- **Mercury for gems:** 3 mercury a gem, the slider counts the gems, most ⌊15 ÷ 3⌋ = **5**:
+  **−3 mercury, +1 gem**. VCMI the same at five (D-70 is
+  2, 4 and 8 Marketplaces only, the town's).
+
+E14-6 (§5, screen 1):
+
+- The walk from (24, 8) to P2's entrance (26, 10): 482 by a shortest path that enters from the
+  side or below (none leaves P1's entrance upward or enters P2's from above: e.g. (24, 9), (24, 10),
+  (25, 11), (26, 10)); E14-5 **on (26, 10)** with 878. Class 221 opens the same window (the
+  original loads it as 99).
+- **The recipients: Blue alone** (the colours nobody plays have their defeat flag set at the new
+  game). **Red's ore −5, Blue's +5** at once, 1 : 1: Blue's **30 to 35** (Easy's 30, a gold
+  bonus); Blue's turn starts with 35 (day 1 gives no income).
+
+E14-16: E14-5 on each entrance at its window, after closing it and after Space (the window again).
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [24, 10]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+
+# --- E14-7 (Castle) and E14-8 ------------------------------------------------------------------------
+
+[[encounter]]
+id = "E14-8"
+title = "A step from above toward an Altar's entrance (E14-16); a Castle hero's Altar (E14-7); a treasure, a minor, a major and a relic sacrificed (E14-8)"
+questions = ["ADV-ALT-001", "ADV-ALT-002", "ADV-OBJ-004", "ADV-OBJ-003", "HER-EXP-001"]
+procedure = [
+    "**E14-16.** Day 1, Red's turn, after E14-5: E14-8 stands at (6, 17), right above the Altar A1's entrance (6, 18). Note its points. Click the entrance (6, 18) **once**: note the path's marks (the tiles, in order). Click it again: E14-8 walks; the Altar's dialog opens. Note E14-8's tile and points.",
+    "**E14-7.** Note the screen the dialog opens on and whether its button to the other screen is enabled.",
+    "**E14-8.** Note E14-8's experience and level. Put the four backpack artifacts (a treasure, a minor, a major and a relic) on the altar (the backpack's button, or each by hand). Note the total and the experience the dialog says the hero lacks for its next level. Click Sacrifice. Note every message and dialog in order, E14-8's experience, level, worn artifacts and backpack, and whether the Altar is still open. Click Done.",
+    "**E14-16.** Note E14-8's tile and points. Press Space: note what opens and the tile; close it with Done.",
+]
+record = [
+    { field = "before: E14-8's points" },
+    { field = "the first click's path (the marked tiles in order)" },
+    { field = "at the dialog: E14-8's tile; points" },
+    { field = "E14-7: the first screen; the other screen's button (enabled or not)" },
+    { field = "before: experience; level; on the altar: the total; the experience lacking" },
+    { field = "after Sacrifice: messages and dialogs (in order); experience; level; artifacts; the Altar still open" },
+    { field = "after Done: E14-8's tile; points; Space: what opens; the tile" },
+    { field = "anything odd" },
+]
+predictions = """
+E14-16 (design §0, ADV-OBJ-004): no step enters A1's entrance from the three tiles above it, so
+**the path goes round: (7, 18), (6, 18)**, 241 (141 + 100); E14-8 **on (6, 18)** with 1 319 at the
+dialog (1 560 a day: its eight skills leave its levels at load no Logistics to give).
+
+E14-7 (survey §12.1): a Castle hero (faction 0): **the artifacts' screen, the creatures' button
+disabled**.
+
+E14-8 (§12.2): no Learning (eight skills at Expert, none of them it): the total **1 000 + 1 500 +
+3 000 + 6 000 = 11 500** (Charm of Mana,
+Emblem of Cognizance, Garniture of Interference, Tome of Fire Magic); the experience 68 700
+(level 19) **to 80 200**, no level (81 961); the four gone, the Altar **still open** (Sacrifice
+leaves it open). VCMI the same. The experience lacking shown with the total (`altar_update`):
+**13 261** before the sacrifice, the threshold less the experience (1 761 if the dialog subtracts
+the total on the altar: record which). After Done E14-8 on (6, 18), 1 319; **Space opens the Altar
+again**, E14-8 still there.
+"""
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+at = [6, 17]
+experience = 68700
+primary = [1, 1, 1, 1]
+skills = [["Archery", 3], ["Armorer", 3], ["Offense", 3], ["Resistance", 3], ["Ballistics", 3], ["Artillery", 3], ["Tactics", 3], ["First Aid", 3]]
+army = [["Pikeman", 5]]
+backpack = ["Charm of Mana", "Emblem of Cognizance", "Garniture of Interference", "Tome of Fire Magic"]
+
+# --- E14-7 (Fortress) and E14-9 ----------------------------------------------------------------------
+
+[[encounter]]
+id = "E14-9"
+title = "A Fortress hero's Altar (E14-7); the Ballista, a Spell Scroll, the Grail and a treasure sacrificed, the Catapult clicked (E14-9)"
+questions = ["ADV-ALT-001", "ADV-ALT-002", "D-72", "A-47"]
+procedure = [
+    "**E14-9.** Day 1, Red's turn, after E14-8: E14-9 stands at (12, 20) wearing a Ballista and a Catapult, the Grail and a Talisman of Mana in its backpack. Note its points. Click the Spell Scroll at (13, 20) twice: E14-9 picks it up from its tile. Note every message, E14-9's tile, points, worn artifacts and backpack.",
+    "Click the Altar A2's entrance (12, 18) twice: E14-9 walks onto it and the dialog opens. **E14-7:** note the screen it opens on and whether its button to the other screen is enabled. Note E14-9's tile and experience.",
+    "Take the **Ballista** (from its position), the **Spell Scroll**, the **Grail** and the **Talisman of Mana** onto the altar. Note the total. Click the **Catapult**: note what happens (a message?) and where the Catapult is. Click Sacrifice. Note every message, E14-9's experience, level, worn artifacts and backpack. Click Done; note E14-9's tile.",
+]
+record = [
+    { field = "before: E14-9's points; the scroll's messages; after it: tile; points; worn artifacts; backpack" },
+    { field = "at the dialog: E14-9's tile; points; experience" },
+    { field = "E14-7: the first screen; the other screen's button (enabled or not)" },
+    { field = "the four on the altar: the total" },
+    { field = "the Catapult's click: what happens; the Catapult after" },
+    { field = "after Sacrifice: messages; experience; level; worn artifacts; backpack" },
+    { field = "after Done: E14-9's tile" },
+    { field = "anything odd" },
+]
+predictions = """
+- The scroll (Haste) from the neighbouring tile: its step's 100 paid, E14-9 stays on (12, 20) with
+  1 460; the scroll in its first free misc position (misc 1). Then the walk (12, 19), (12, 18):
+  200, E14-9 **on (12, 18)** with 1 260.
+- E14-7 (survey §12.1): a Fortress hero (faction 7): **the artifacts' screen first, the creatures'
+  button enabled**.
+- E14-9 (§12.2, D-72, A-47): the Ballista, the scroll and the Grail are special (0 each), the
+  Talisman a treasure: **the total 1 000**. **The Catapult's click: a message, the Catapult kept**
+  in its position (not taken). **Sacrifice: the four gone** (the specials destroyed for nothing,
+  A-47); the experience **2 100 to 3 100** (level 3, no level; no Learning among its eight
+  skills). **VCMI 1.7.5** refuses the Ballista
+  (a war machine is not tradable, D-72): it would stay, the scroll and the Grail go for 0.
+"""
+[encounter.hero]
+type = "Bron"
+specialty = "creature Basilisk"
+at = [12, 20]
+experience = 2100
+primary = [1, 1, 1, 1]
+skills = [["Archery", 3], ["Armorer", 3], ["Offense", 3], ["Resistance", 3], ["Ballistics", 3], ["Artillery", 3], ["Tactics", 3], ["First Aid", 3]]
+army = [["Gnoll", 5]]
+backpack = ["The Grail", "Talisman of Mana"]
+artifacts = { "war machine 1" = "Ballista", "war machine 4" = "Catapult" }
+
+# --- E14-7 (Necropolis), E14-10 and E14-11 -----------------------------------------------------------
+
+[[encounter]]
+id = "E14-10"
+title = "A Necropolis hero's Altar (E14-7); 3 and 1 Skeletons sacrificed with Advanced Learning (E14-10); the only stack's most and All (E14-11)"
+questions = ["ADV-ALT-001", "ADV-ALT-003", "D-73", "HER-EXP-001"]
+procedure = [
+    "**E14-10.** Day 1, Red's turn, after E14-9: E14-10 stands at (18, 20) with Advanced Learning and Skeletons in three slots: 3 (slot 0), 1 (slot 1), 10 (slot 2). Click the Altar A3's entrance (18, 18) twice: E14-10 walks onto it and the dialog opens. **E14-7:** note the screen it opens on and whether its button to the other screen is enabled. Note E14-10's tile and experience.",
+    "Select slot 0 and set its amount to **3**; select slot 1 and set **1** (note its slider's most). Note the total. Click Sacrifice. Note E14-10's experience and army.",
+    "**E14-11.** Select slot 2 (10 Skeletons, now the only stack): note the slider's most. Click **All**: note every slot's amount and the total. Click Done (no sacrifice). Note E14-10's army and tile.",
+]
+record = [
+    { field = "at the dialog: E14-10's tile; experience" },
+    { field = "E14-7: the first screen; the other screen's button (enabled or not)" },
+    { field = "slot 1's most; the total of 3 and 1" },
+    { field = "after Sacrifice: experience; army" },
+    { field = "E14-11: slot 2's most; All's amounts; the total" },
+    { field = "after Done: army; tile" },
+    { field = "anything odd" },
+]
+predictions = """
+- The walk (18, 19), (18, 18): 200; E14-10 **on (18, 18)**.
+- E14-7 (§12.1): a Necropolis hero (faction 4): **the creatures' screen, the artifacts' button
+  disabled**.
+- E14-10 (§12.3, D-73): a Skeleton 5 × ⌊60 / 40⌋ = 5; Advanced Learning truncated per stack:
+  trunc(1.1 × 15) = 16 and trunc(1.1 × 5) = 5, **the total 21**; slot 1's most 1 (slot 2's amount is
+  0, so the army keeps its creature there). Sacrifice: **0 to 21 experience**, slots 0 and 1 empty.
+  **VCMI 22** (one product, trunc(1.1 × 20)).
+- E14-11: **the most 9**; All takes every stack from slot 6 down, the last less one: **slot 2's
+  amount 9**, the total trunc(1.1 × 45) = 49. Done: the amounts cleared, the army 10 Skeletons.
+"""
+[encounter.hero]
+type = "Straker"
+specialty = "creature Walking Dead"
+at = [18, 20]
+primary = [1, 1, 1, 1]
+skills = [["Learning", 2]]
+army = [["Skeleton", 3], ["Skeleton", 1], ["Skeleton", 10]]
+
+# --- E14-12 ------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E14-12"
+title = "A Hill Fort's prices and All (E14-12, with four Air Elementals); where the hero stands (E14-16)"
+questions = ["ADV-HFT-001", "ADV-HFT-002", "D-74", "ADV-OBJ-003"]
+procedure = [
+    "**E14-12.** Day 1, Red's turn, after E14-10: E14-12 stands at (24, 20) with 20 Pikemen, 10 Archers, 3 Wood Elves, 3 Pegasi, 1 Angel and 4 Air Elementals (slots 0 to 5). Note Red's treasury. Click the Hill Fort H1's entrance (24, 18) twice: E14-12 walks onto it and the dialog opens. Note E14-12's tile and points.",
+    "Note every row: its price (gold and other resources, or the text) and its state; and the whole's state. Click **All**. Note every message, Red's treasury, E14-12's army and the rows again. Close the dialog.",
+    "**E14-16.** Note E14-12's tile and points. Press Space: note what opens (and its rows) and the tile; close it.",
+]
+record = [
+    { field = "before: Red's treasury; at the dialog: E14-12's tile; points" },
+    { table = ["slot", "stack", "price", "state"], labels = ["0 Pikemen", "1 Archers", "2 Wood Elves", "3 Pegasi", "4 Angel", "5 Air Elementals"] },
+    { field = "the whole's state" },
+    { field = "after All: messages; Red's treasury; army; the rows' states" },
+    { field = "after closing: tile; points; Space: what opens; the tile" },
+    { field = "anything odd" },
+]
+predictions = """
+E14-12 (survey §13, D-74; `upgrade_cost` 0x54E750, the gold alone scaled by the record's level,
+0, 0.25, 0.5, 0.75, 1, 1, 1, truncated once per stack):
+
+- The walk (24, 19), (24, 18): 200; E14-12 **on (24, 18)**, 1 360.
+- **Pikemen free** (level 1, a text); **Archers 125** (10 × 50 × 0.25); **Wood Elves 37** (3 × 25 ×
+  0.5); **Pegasi 56** (3 × 25 × 0.75); **the Angel 2 000 gold and 2 gems** (level 7, the gems
+  unscaled); **Air Elementals 25** (4 × 25 × 0.25; level 2 under the ab pack, their upgrade the
+  Storm Elemental). Every row state 1, the whole 1. **VCMI** (per creature, truncated, × the
+  count): 120, 36, 54, 2 000 and 2 gems, 24.
+- **All:** every row upgraded in slot order (Halberdiers, Marksmen, Grand Elves, Silver Pegasi, an
+  Archangel, Storm Elementals), **−2 243 gold and −2 gems**; the rows then all state 0.
+- After closing and after Space: E14-12 on (24, 18), 1 360; Space opens the Hill Fort again, every
+  row not upgradable.
+"""
+[encounter.hero]
+type = "Tyris"
+specialty = "creature Cavalier"
+at = [24, 20]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 20], ["Archer", 10], ["Wood Elf", 3], ["Pegasus", 3], ["Angel", 1], ["Air Elemental", 4]]
+
+# --- E14-15 ------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E14-15"
+title = "A War Machine Factory bought from by a hero with a Ballista, then visited again (E14-15); where the hero stands (E14-16)"
+questions = ["ADV-WMF-001", "GAM-DEC-008", "ADV-HIR-002", "ADV-OBJ-003"]
+procedure = [
+    "**E14-15.** Day 1, Red's turn, after E14-12: E14-15 stands at (29, 20) wearing a Ballista. Note Red's treasury. Click the factory F's entrance (29, 18) twice: E14-15 walks onto it. Note every question and E14-15's tile and points at it; answer **yes**.",
+    "In the dialog note each machine (in order) with its count and price. Buy every machine whose count is 1 (one each). Note Red's treasury and E14-15's war machine positions. Close the dialog.",
+    "**E14-16.** Note E14-15's tile. Press Space: note the question; answer yes; note each machine's count; close it. Note the tile. Then end Red's turn.",
+]
+record = [
+    { field = "before: Red's treasury; at the question: E14-15's tile; points" },
+    { table = ["machine", "count", "price"], rows = 3 },
+    { field = "after the purchases: Red's treasury; the war machine positions" },
+    { field = "after closing: tile; Space: the question; the counts; the tile after" },
+    { field = "anything odd" },
+]
+predictions = """
+E14-15 (survey §14; the hire dialog with three machines, one count of 4 000, each 1 less when the
+hero holds it, at most the gold over the cost):
+
+- The walk (29, 19), (29, 18): 200 from below; E14-15 **on (29, 18)** with 1 360 at the question
+  (ADVEVENT's).
+- The dialog: **the Ballista 0** (held), **the First Aid Tent 1** (750), **the Ammo Cart 1**
+  (1 000), in that order. Both bought: **−1 750 gold**, the tent in war machine 3, the cart in
+  war machine 2.
+- Space: the question again; yes: **all three 0**. E14-15 on (29, 18) throughout. VCMI the same.
+"""
+[encounter.hero]
+type = "Adela"
+specialty = "spell Bless"
+at = [29, 20]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 5]]
+artifacts = { "war machine 1" = "Ballista" }
+
+# --- E14-13 (Blue) -----------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E14-13"
+title = "A Hill Fort for a hero too poor for its one upgradable stack (E14-13)"
+questions = ["ADV-HFT-001", "ADV-HFT-002"]
+procedure = [
+    "**E14-13.** Day 1, Blue's turn, after E14-5's Blue read: E14-13 stands at (24, 28) with 5 Rogues, 5 Marksmen and 3 000 Pegasi. Note Blue's treasury. Click the Hill Fort H2's entrance (24, 26) twice: E14-13 walks onto it and the dialog opens. Note E14-13's tile.",
+    "Note every row's price and state and the whole's state. Click the Pegasi's row button: note what happens. Click **All**: note what happens. Note Blue's treasury and E14-13's army. Close the dialog.",
+]
+record = [
+    { field = "before: Blue's treasury; at the dialog: E14-13's tile" },
+    { table = ["slot", "stack", "price", "state"], labels = ["0 Rogues", "1 Marksmen", "2 Pegasi"] },
+    { field = "the whole's state" },
+    { field = "the Pegasi's button: what happens; All: what happens" },
+    { field = "after: Blue's treasury; army" },
+    { field = "anything odd" },
+]
+predictions = """
+E14-13 (survey §13): **the Rogues not upgradable** (neutral) and **the Marksmen not** (already the
+upgrade): state 0; **the Pegasi 56 250 gold** (3 000 × 25 × 0.75; VCMI 54 000), **state 2** (Blue
+holds about 30 000); the whole **2**. The row's button and All: **a message each, nothing paid**,
+the army unchanged. E14-13 on (24, 26).
+"""
+[encounter.hero]
+type = "Mephala"
+specialty = "skill Armorer"
+owner = "blue"
+at = [24, 28]
+primary = [1, 1, 1, 1]
+army = [["Rogue", 5], ["Marksman", 5], ["Pegasus", 3000]]
+
+# --- E14-17 (Blue) -----------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E14-17"
+title = "A treasure sacrificed for a level: the level-up over the Altar, the Altar still open, the creatures' total with the new Learning (E14-17)"
+questions = ["ADV-ALT-002", "ADV-ALT-003", "GAM-DEC-012", "GAM-DEC-007", "HER-EXP-001"]
+procedure = [
+    "**E14-17.** Day 1, Blue's turn, after E14-13: E14-17 stands at (12, 28), level 1 with eight secondary skills (seven at Expert, Basic Learning), a Mystic Orb of Mana in its backpack, 10 Gnolls (slot 0) and 5 Lizardmen (slot 1). Note its experience, level and skills. Click the Altar A4's entrance (12, 26) twice: E14-17 walks onto it and the dialog opens. Note the screen and whether the creatures' button is enabled.",
+    "Put the **Mystic Orb of Mana** on the altar. Note the total and the experience lacking. Click Sacrifice. Note every dialog in order and what is drawn around it (is the Altar's dialog still drawn under the level-up?); at the level-up note the offered skills and take the left one. After it note whether the Altar is still open, E14-17's experience, level and skills.",
+    "Open the **creatures'** screen. Set the Gnolls' (slot 0) amount to **10**. Note the total. Click Sacrifice. Note E14-17's experience, level and army. Click Done. Then end Blue's turn.",
+]
+record = [
+    { field = "before: experience; level; skills; at the dialog: E14-17's tile; the first screen; the creatures' button" },
+    { field = "the Mystic Orb: the total; the experience lacking" },
+    { field = "after Sacrifice: the dialogs (in order) and what is drawn under them; the offered skills" },
+    { field = "after the level-up: the Altar still open; experience; level; skills" },
+    { field = "10 Gnolls: the total; after Sacrifice: experience; level; army" },
+    { field = "anything odd" },
+]
+predictions = """
+E14-17 (design §14, survey §12.1 to §12.3; `altar_sacrifice` 0x5646A0 calls `hero_gain_experience`
+0x4E33B0 with the levels given, its level-up dialogs over the altar's, then clears the total and
+leaves the dialog open, "with the levels' new Learning"):
+
+- The walk (12, 27), (12, 26): 200; E14-17 on (12, 26); a Fortress hero: **the artifacts' screen,
+  the creatures' button enabled**.
+- **The Mystic Orb: 1 050** (Basic Learning, trunc((1 + f32(0.05)) × 1 000) in x87), the
+  experience lacking **1 000** (or none left if the dialog subtracts the total); the experience
+  0 to **1 050, level 2**: **the level-up dialog after Sacrifice, over the Altar**, offering
+  **Advanced Learning alone** (eight skills, only Learning below Expert); then **the Altar still
+  open**.
+- **10 Gnolls** (5 × ⌊56 / 40⌋ = 5 each, one stack): **55** with Advanced Learning (Basic's would be
+  52); 1 050 to **1 105**, still level 2. VCMI the same (one stack). The engine's decision 371: the
+  Altar closes before the level-up and returns as the visit's rest, what the clients draw (the
+  user's note).
+"""
+[encounter.hero]
+type = "Alkin"
+specialty = "creature Gorgon"
+owner = "blue"
+at = [12, 28]
+primary = [1, 1, 1, 1]
+skills = [["Archery", 3], ["Armorer", 3], ["Offense", 3], ["Resistance", 3], ["Ballistics", 3], ["Artillery", 3], ["Tactics", 3], ["Learning", 1]]
+army = [["Gnoll", 10], ["Lizardman", 5]]
+backpack = ["Mystic Orb of Mana"]

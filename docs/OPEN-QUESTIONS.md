@@ -172,6 +172,22 @@ lines), the original's behind `--bugs original` for the comparisons. **Recommend
 dialog's layout was made without it and the captions already tell it; (b) adds text no player of
 the original saw. The viewer draws the original's meanwhile. Blocks nothing.
 
+#### MCL-Q35 — A boarded boat drawn turned (E24 M4 T2d2, a reading and a recording)
+
+A hero who boards a boat (`hero_boards_boat` 0x4A1010, E24 design §5.7) is drawn as the boat in
+the group of the boat's own facing (`boat_map_group`), but the view mirrors it by the hero's
+facing, the step's direction (`view_moving_hero_piece` 0x47F860). A boat whose facing lies on the
+other side of the step's draws turned until the hero's next step: recorded, `board`'s boat facing
+down-left, boarded by a step east, shows down-right (neither the boat's facing nor the step's); a
+boat facing right boarded by a step west would show left. The empty boat a landing leaves faces
+the step (the boat record's facing set from the hero's), so the turn shows only at a boarding.
+Options: (a) the original's: the boat's group, the hero's mirror; (b) the client keeps the boat
+as it lay, its own group and mirror, until the next step, the original's behind `--bugs original`
+for the comparisons; (c) the client turns the boat to the step's facing at once (group and
+mirror by the hero's, as the next step draws it). **Recommended (b)**: nothing should turn on its
+own, and the boat seen before the step is the one the hero boards. The viewer draws the
+original's meanwhile. Blocks nothing.
+
 ### Town lane (`TWN-Q<n>`)
 
 (no open questions)

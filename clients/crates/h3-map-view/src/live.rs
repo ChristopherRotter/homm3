@@ -761,6 +761,10 @@ pub struct Walking {
     /// The monster a hero visits (E24 M4 T2b2 part A2), drawn as its attack in passes 5 and 7;
     /// none else.
     pub attacking: Option<Attacking>,
+    /// The hero off its tile but not lifted (E24 M4 T2d2, design §5.7: `hero_select` took it off,
+    /// +0x1EC 0; a boarding's dissolve and step, a landing's step), by its index in
+    /// [`Live::heroes`]: drawn nowhere; none else.
+    pub hidden: Option<usize>,
 }
 
 /// A monster a hero visits (the adventure manager's +0x218, its object, from `visit_object`

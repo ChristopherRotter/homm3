@@ -233,6 +233,7 @@ fn census_map() -> Vec<u8> {
         underground: None,
         level_limit: 0,
         banned_skills: Vec::new(),
+        banned_artifacts: Vec::new(),
         events: Vec::new(),
         teams: None,
     };

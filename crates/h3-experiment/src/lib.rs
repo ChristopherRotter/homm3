@@ -230,7 +230,7 @@ pub struct MapSpec {
     /// Objects without a body (`[[map.object]]`, E08 T32a): the Cartographers; since E08 T36a
     /// the trees and the Border Gates; later increments' (the list at [`ObjectSpec::picture`]),
     /// since E08 T109a the fifteen bonus visitables, since E08 T119 the creature banks, since E09
-    /// T34 the Tavern and the Den of Thieves.
+    /// T34 the Tavern and the Den of Thieves, since E08 T128 the trades and services.
     #[serde(default)]
     pub object: Vec<ObjectSpec>,
     /// The scenario's level limit (E08 T32a; 0, the default: none).
@@ -240,13 +240,20 @@ pub struct MapSpec {
     /// no level-up offers one the hero does not know (batch E5e's forced offers).
     #[serde(default)]
     pub banned_skills: Vec<String>,
+    /// The artifacts the map bans besides the editor's default ones (127 to 143), by
+    /// `ARTRAITS.TXT` name (E08 T128: batch E14's E14-3; none, the default): no Black Market
+    /// draws one (survey `docs/rules/surveys/E08-trades.md` §7.1). An RoE map holds none.
+    #[serde(default)]
+    pub banned_artifacts: Vec<String>,
     /// Towns that are no encounter's opponent (`[[map.town]]`, E23 T7): a player's own town
     /// elsewhere on the map (batch 4b: the Tavern the computer's retreat test asks for).
     #[serde(default)]
     pub town: Vec<MapTownSpec>,
     /// The map's format (E08 T56): "sod" (the default) or "roe" (batch E7's row E7-7: an RoE
-    /// map's Witch Huts). An RoE map holds no level limit, banned skills, towns, hero spells or
-    /// primary skills (its heroes take `defaults`), and RoE's codes only.
+    /// map's Witch Huts). An RoE map holds no level limit, banned skills or artifacts, towns, AB's
+    /// trades (the Freelancer's Guild, the snow Trading Post), hero spells or primary skills (its
+    /// heroes take `defaults`, or since E08 T128 their own army, experience, skills and artifacts
+    /// with no `primary` and no `spells`: their types'), and RoE's codes only.
     #[serde(default)]
     pub format: Option<String>,
     /// Artifacts and random artifacts (`[[map.artifact]]`, E08 T56), on the surface.
@@ -721,7 +728,15 @@ pub struct ObjectSpec {
     /// tile west of `at`, or `AVAwre20`, at `at`; since E09 T34 increment 4's Tavern `AVXtvrn0`
     /// ([`h3_map::writer::TAVERN_OBJECT`], entered at the tile west of `at`) and Den of Thieves
     /// `AVXdend0` ([`h3_map::writer::DEN_OF_THIEVES_OBJECT`], entered at `at`), each blocking
-    /// `at` and the tile west of it. No picture's terrains are checked).
+    /// `at` and the tile west of it; since E08 T128 increment 14's trades and services
+    /// ([`h3_map::writer::TRADE_OBJECTS`]; survey `docs/rules/surveys/E08-trades.md` §1), each
+    /// blocking `at` and the tile west of it and with one entrance among them, which the hero
+    /// stands on: entered at `at` the Altar of Sacrifice `AvXAltar`, the Black Market `AVXmktb0`,
+    /// the Hill Fort `AVXhild0` or `AVXhilg0` (the editor's dirt or grass picture) and the Trading
+    /// Post `AVXpost0` (dirt and grass), `AVXpstr0` (rough) or `AVXpsSn` (snow, class 221); at the
+    /// tile west of `at` the War Machine Factory `AVGsieg0` and the Freelancer's Guild `avxfgld`
+    /// (which also blocks the second tile west); the guild and the snow post are AB's, refused in
+    /// the RoE format. No picture's terrains are checked).
     pub picture: String,
     /// The object's position, `[column, row]`: the picture's bottom-right tile (the land
     /// Cartographer covers it and the tile west of it, its entrance; a Border Gate it and the two
@@ -889,7 +904,8 @@ pub struct HeroSpec {
     /// Experience (0 = level 1).
     #[serde(default)]
     pub experience: u32,
-    /// Attack, defense, power, knowledge (required unless [`HeroSpec::defaults`]).
+    /// Attack, defense, power, knowledge (required unless [`HeroSpec::defaults`]; none on an RoE
+    /// map, E08 T128: the hero type's).
     #[serde(default)]
     pub primary: Option<[u8; 4]>,
     /// Secondary skills as (name, level 1–3); replaces the hero type's.
@@ -1074,7 +1090,8 @@ pub fn build_only(
     if ![36, 72, 108, 144].contains(&size) {
         return Err(format!("map size {size} (36, 72, 108 or 144)"));
     }
-    map_format(spec)?;
+    // An RoE map's heroes take their types' primary skills and spells (E08 T128).
+    let roe = map_format(spec)? == Format::RoE;
     let base = terrain(&spec.map.terrain)?;
     let patches = level_patches(&spec.map.patch, size)?;
     let below = spec
@@ -1226,7 +1243,7 @@ pub fn build_only(
         }
         let mut add_hero = |h: &HeroSpec, tile: (u8, u8), name: Option<&str>, owner: &str| {
             let tile = h.at.map_or(tile, |[x, y]| (x, y));
-            let hero = hero(h, tables, tile, name, owner).map_err(ctx)?;
+            let hero = hero(h, tables, tile, name, owner, roe).map_err(ctx)?;
             if used_types.contains(&hero.hero_type) {
                 return Err(ctx(format!(
                     "hero type {} is used twice",
@@ -1493,6 +1510,12 @@ pub fn build_only(
         .iter()
         .map(|name| Ok(lookup(&tables.skills, name, "skill")? as u8))
         .collect::<Result<Vec<u8>, String>>()?;
+    let banned_artifacts = spec
+        .map
+        .banned_artifacts
+        .iter()
+        .map(|name| artifact_id(tables, name))
+        .collect::<Result<Vec<u16>, String>>()?;
     let teams = teams(&spec.map.teams, &players)?;
     let map = Map {
         name: spec.map.name.clone(),
@@ -1510,6 +1533,7 @@ pub fn build_only(
         }),
         level_limit: spec.map.level_limit,
         banned_skills,
+        banned_artifacts,
         events: timed_events(&spec.map.timed_event)?,
         teams,
     };
@@ -2050,12 +2074,15 @@ fn lookup(list: &[String], name: &str, what: &str) -> Result<usize, String> {
     }
 }
 
+/// A hero of the map; on an RoE map (`roe`, E08 T128: batch E14's E14-14) without primary skills
+/// or spells, which the format cannot hold: the hero type's are its own.
 fn hero(
     h: &HeroSpec,
     tables: &Tables,
     tile: (u8, u8),
     name: Option<&str>,
     default_owner: &str,
+    roe: bool,
 ) -> Result<Hero, String> {
     let hero_type = match &h.hero_type {
         NameOrId::Name(n) => lookup(&tables.heroes, n, "hero")?,
@@ -2111,9 +2138,23 @@ fn hero(
             primary: None,
         });
     }
-    let primary = h
-        .primary
-        .ok_or("`primary` is required unless the hero has `defaults`")?;
+    let primary = match (h.primary, roe) {
+        (Some(_), true) => {
+            return Err(
+                "an RoE map holds no primary skills: its heroes take their types' \
+                        (no `primary`)"
+                    .into(),
+            );
+        }
+        (None, true) => None,
+        (Some(primary), false) => Some(primary),
+        (None, false) => {
+            return Err("`primary` is required unless the hero has `defaults`".into());
+        }
+    };
+    if roe && !h.spells.is_empty() {
+        return Err("an RoE map holds no hero spells".into());
+    }
     if h.skills.len() > 8 {
         return Err("at most 8 secondary skills".into());
     }
@@ -2204,8 +2245,8 @@ fn hero(
         army: Some(army),
         tight_formation: h.tight,
         artifacts: Some(HeroArtifacts { worn, backpack }),
-        spells: Some(spells),
-        primary: Some(primary),
+        spells: (!roe).then_some(spells),
+        primary,
     })
 }
 
@@ -2720,14 +2761,18 @@ fn hero_summary(h: &HeroSpec, hero: &Hero, tables: &Tables) -> String {
         .name
         .as_deref()
         .unwrap_or(&tables.heroes[usize::from(hero.hero_type)]);
-    let Some([a, d, p, k]) = h.primary else {
+    if h.defaults {
         return format!(
             "{owner} hero **{name}** ({}, specialty {}): everything its hero type's own (army, \
              skills, artifacts, spells)",
             tables.heroes[usize::from(hero.hero_type)],
             h.specialty,
         );
-    };
+    }
+    let primary = h.primary.map_or_else(
+        || "its hero type's primary skills".to_owned(),
+        |[a, d, p, k]| format!("attack {a}, defense {d}, power {p}, knowledge {k}"),
+    );
     let skills = if h.skills.is_empty() {
         "no skills".to_owned()
     } else {
@@ -2782,8 +2827,8 @@ fn hero_summary(h: &HeroSpec, hero: &Hero, tables: &Tables) -> String {
         format!(", {} experience", h.experience)
     };
     format!(
-        "{owner} hero **{}** ({}, specialty {}{level}): attack {a}, defense {d}, power {p}, \
-         knowledge {k}; {skills}; {artifacts}; {spells}; army {army}",
+        "{owner} hero **{}** ({}, specialty {}{level}): {primary}; {skills}; {artifacts}; \
+         {spells}; army {army}",
         name,
         tables.heroes[usize::from(hero.hero_type)],
         h.specialty,
@@ -2973,6 +3018,27 @@ mod tests {
                  010000000000000000000000000000000000000000000000 111111111 011111111 95 0 0 0",
                 "AVXdend0.def 001111111111111111111111111111111111111111111111 \
                  100000000000000000000000000000000000000000000000 111111111 011111111 97 0 0 0",
+                // The trades and services (E08 T128), the game's lines: the Altar, the Black
+                // Market, the Hill Fort's two, the Trading Post's three, the War Machine
+                // Factory, the Freelancer's Guild.
+                "AvXAltar.def 001111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 011111111 2 0 0 0",
+                "AVXmktb0.def 001111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 011111111 7 0 0 0",
+                "AVXhild0.def 001111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 000000001 35 0 0 0",
+                "AVXhilg0.def 001111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 000000100 35 0 0 0",
+                "AVXpost0.def 001111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 000000101 99 0 0 0",
+                "AVXpstr0.def 001111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 000100000 99 0 0 0",
+                "AVXpsSn.def 001111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 000001000 221 0 0 0",
+                "AVGsieg0.def 001111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 111111111 011111111 106 0 0 0",
+                "avxfgld.def 000111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 111111111 011111111 213 0 0 0",
             ]
             .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
             .to_vec(),
@@ -4388,6 +4454,53 @@ mod tests {
         assert!(h3_map::writer::write_in(&map, Format::RoE).is_err());
         let sod = text.replacen(" RoE ", "sod", 1);
         assert_eq!(map_format(&parse(&sod).expect("spec")), Ok(Format::Sod));
+        // E08 T128 (batch E14's E14-14): an RoE hero's own army, experience, skills and
+        // artifacts, its type's primary skills and spells (none written); `primary` or `spells`
+        // refused there.
+        let own = text.replacen(
+            "defaults = true",
+            "experience = 1500\n            skills = [[\"Archery\", 2]]\n            \
+             army = [[\"Archangel\", 2]]\n            artifacts = { \"war machine 1\" = \"Ballista\" }",
+            1,
+        );
+        let (map, text_out) =
+            build(&parse(&own).expect("spec"), &tables(), "roe.h3m").expect("build");
+        let hero = map
+            .objects
+            .iter()
+            .find_map(|o| match o {
+                MapObject::Hero(h) => Some(h),
+                _ => None,
+            })
+            .expect("the hero");
+        assert_eq!(
+            (hero.primary, hero.spells, hero.experience),
+            (None, None, Some(1500))
+        );
+        assert_eq!(hero.army.expect("army")[0], Some((1, 2)));
+        assert!(
+            text_out.contains("its hero type's primary skills; Advanced Archery"),
+            "{text_out}"
+        );
+        let raw = h3_map::parse(
+            &h3_map::writer::write_in(&map, Format::RoE).expect("writes"),
+            &h3_map::Limits::default(),
+        )
+        .expect("reads back");
+        assert_eq!(raw.objects.len(), 9);
+        for (extra, error) in [
+            (
+                "primary = [1, 1, 1, 1]",
+                "an RoE map holds no primary skills",
+            ),
+            ("spells = [\"Spell 0\"]", "an RoE map holds no hero spells"),
+        ] {
+            let spec =
+                parse(&own.replacen("experience", &format!("{extra}\n            experience"), 1))
+                    .expect("spec");
+            let err = build(&spec, &tables(), "roe.h3m").expect_err(extra);
+            assert!(err.contains(error), "{extra}: {err}");
+        }
     }
 
     /// Batch E11's objects (E08 T99a): two levels, water on both; a one-way entrance on the
@@ -5513,6 +5626,114 @@ mod tests {
                 .count(),
             2
         );
+    }
+
+    /// The trades and services (E08 T128: batch E14), their nine pictures on rows 20 and 24 of
+    /// [`BANKS`]'s map, and a ban.
+    fn trades() -> String {
+        let pictures = [
+            ("AvXAltar", [8, 20]),
+            ("avxmktb0.def", [12, 20]),
+            ("AVXhild0", [16, 20]),
+            ("AVXhilg0", [20, 20]),
+            ("AVXpost0", [24, 20]),
+            ("AVXpstr0", [8, 24]),
+            ("AVXpsSn", [12, 24]),
+            ("AVGsieg0", [16, 24]),
+            ("avxfgld", [21, 24]),
+        ];
+        let objects: String = pictures
+            .iter()
+            .map(|(picture, at)| {
+                format!("[[map.object]]\n        picture = \"{picture}\"\n        at = {at:?}\n\n        ")
+            })
+            .collect();
+        BANKS
+            .replacen(
+                "terrain = \"grass\"\n",
+                "terrain = \"grass\"\n        banned_artifacts = [\"ballista\"]\n",
+                1,
+            )
+            .replacen(
+                "[[map.object]]\n        picture = \"AVXboat1\"",
+                &format!("{objects}[[map.object]]\n        picture = \"AVXboat1\""),
+                1,
+            )
+    }
+
+    #[test]
+    fn builds_increment_14_s_objects() {
+        // E08 T128 (batch E14): the seven classes' nine pictures by name, any case, each at its
+        // tile without a body; a hero on an entrance or a blocked tile refused (the Altar's at
+        // `at`, the factory's west of it, the guild's two west); the map's ban by name, written
+        // beside the editor's default bans; refused in RoE, as an unknown artifact.
+        let spec = trades();
+        let (map, _) = build(&parse(&spec).expect("spec"), &tables(), "t.h3m").expect("build");
+        let found: Vec<(u32, (u8, u8))> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Plain(p) => Some((p.template.class, p.tile)),
+                _ => None,
+            })
+            .filter(|(class, _)| h3_map::writer::TRADE_OBJECTS.contains(class))
+            .collect();
+        assert_eq!(
+            found,
+            [
+                (2, (8, 20)),
+                (7, (12, 20)),
+                (35, (16, 20)),
+                (35, (20, 20)),
+                (99, (24, 20)),
+                (99, (8, 24)),
+                (221, (12, 24)),
+                (106, (16, 24)),
+                (213, (21, 24)),
+            ]
+        );
+        assert_eq!(map.banned_artifacts, [0]);
+        for at in [
+            "at = [8, 20]",
+            "at = [7, 20]",
+            "at = [15, 24]",
+            "at = [19, 24]",
+        ] {
+            let err = build(
+                &parse(&spec.replacen("at = [4, 30]", at, 1)).expect("spec"),
+                &tables(),
+                "t.h3m",
+            )
+            .expect_err(at);
+            assert!(err.contains("two objects on the tile"), "{at}: {err}");
+        }
+        let bytes = h3_map::writer::write(&map).expect("writes");
+        let raw = h3_map::parse(&bytes, &h3_map::Limits::default()).expect("reads back");
+        assert_eq!(
+            raw.objects
+                .iter()
+                .filter(|o| {
+                    let t = &raw.templates[usize::try_from(o.template).unwrap()];
+                    h3_map::writer::TRADE_OBJECTS.contains(&t.class)
+                        && o.body == h3_map::model::Body::None
+                })
+                .count(),
+            9
+        );
+        let banned: Vec<usize> = (0..144).filter(|&a| raw.banned_artifacts.get(a)).collect();
+        assert_eq!(banned, [0].into_iter().chain(127..144).collect::<Vec<_>>());
+        let roe = h3_map::writer::write_in(&map, Format::RoE).expect_err("RoE");
+        assert!(
+            roe.to_string().starts_with("banned artifact in an RoE map"),
+            "{roe}"
+        );
+        let err = build(
+            &parse(&spec.replacen("[\"ballista\"]", "[\"Tome\"]", 1)).expect("spec"),
+            &tables(),
+            "t.h3m",
+        )
+        .expect_err("unknown");
+        assert_eq!(err, "unknown artifact `Tome`");
     }
 
     #[test]

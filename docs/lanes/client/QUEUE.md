@@ -30,6 +30,12 @@ user at its start. Then T7 (M3's closure) as the M3 table lists it.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-19 (the adventure lane, E08 T128, `adventure/e08-t128`, `cross-lane` with the user's
+  consent; **one line in your file, nothing to do**): `h3-battle-client`'s
+  `bin/h3-view/situation.rs` writer `Map` literal gains `banned_artifacts: Vec::new()`
+  (`h3_map::writer::Map::banned_artifacts`, E08 decision 375: the map's bans beside the editor's
+  default ones).
+
 - 2026-11-18 (the map client lane, E24 M4 T2a2, `map-client/e24-m4-t2a2`, `cross-lane` with the
   user's consent; **one word in your test, nothing to do**): the common catalogue
   (`clients/text/keys.toml`) gains ADVEVENT.TXT's records (the map's finds' texts, `map.find.*`),

@@ -496,7 +496,7 @@ fn a_turns_heroes_and_walks_from_its_facts() {
     assert!(turn::placed(&heroes, &[boat], &turns[0]).is_err());
     let mut boarded = turns[0].clone();
     if let Some(h) = boarded.heroes.as_mut() {
-        h[0].boat = Some(crate::live::Boat { kind: 0, colour: 0 });
+        h[0].boat = Some(Boat { kind: 0, colour: 0 });
     }
     assert!(turn::placed(&heroes, &[], &boarded).is_err());
     let twins = [heroes[0], heroes[0]];
@@ -580,7 +580,7 @@ fn a_turns_heroes_and_boats_read() {
     let read = Turn::read(&toml::Value::Table(boat)).unwrap();
     assert_eq!(
         read.heroes.unwrap()[0].boat,
-        Some(crate::live::Boat { kind: 1, colour: 3 })
+        Some(Boat { kind: 1, colour: 3 })
     );
     assert_eq!(read.boats.unwrap()[0].facing, Facing::DownLeft);
 }

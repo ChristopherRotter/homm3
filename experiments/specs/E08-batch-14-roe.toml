@@ -1,0 +1,78 @@
+# Experiment batch E14, the RoE map (E08 T128; decisions 368, 373): row E14-14 of increment 14's
+# plan (survey docs/rules/surveys/E08-trades.md §13, §18; docs/epics/E08-design.md §4, §20), in the
+# RoE format, SoD on Easy, hot seat, day 1. The other rows are `E08-batch-14.toml`. Build:
+# docs/experiments/README.md. Predictions are for the agent who evaluates the results; the template
+# never shows them.
+#
+# | row    | settles                                     | the reading (faithful)                   | the other source(s)                  |
+# | E14-14 | §13: the RoE elementals at a Hill Fort      | the Air Elementals not upgradable on an  | VCMI unread (its creatures' upgrades |
+# |        |                                             | RoE map (game version 0); the Pikemen    | would offer Storm Elementals); E14-12|
+# |        |                                             | free                                     | the SoD side (25 gold for four)      |
+#
+# **The map:** one Hill Fort `AVXhild0` (it blocks `at` and the tile west of it, entered at `at`;
+# docs/experiments/README.md, "Increment 14's objects"). An RoE map holds no primary skills or hero
+# spells: E14-14 takes its hero type's (since E08 T128 its own army). A step costs 100 on grass; the
+# slowest stack a Pikeman: 1 560 points a day.
+
+[map]
+name = "E08 batch E14 RoE"
+description = "Engine-generated experiment map (E08, batch E14, row E14-14), in the RoE format: a Hill Fort visited by a hero with Air Elementals and Pikemen. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+format = "roe"
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-14-roe.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy** (the scenario list shows it as a Restoration of Erathia map). If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "The records are the game's memory: the hero's tile, army and points (hero +0x4D), Red's treasury, the game's version (game +0x1F698) and the Hill Fort's rows (prices, states, the whole +0x298). The capture harness reads them (`clients/capture/batches/E08-batch-14.toml`, E08 T129). Played by hand, read the screens instead and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show), then again (the hero goes).",
+    "Order: day 1, Red's turn: E14-14. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+[[map.object]]
+picture = "AVXhild0"
+at = [10, 10]
+
+[[encounter]]
+id = "E14-14"
+title = "An RoE map's Hill Fort: Air Elementals and Pikemen"
+questions = ["ADV-HFT-001", "ADV-HFT-002"]
+procedure = [
+    "**E14-14.** Day 1, Red's turn: read the game's version. E14-14 stands at (10, 12) with 5 Air Elementals (slot 0) and 5 Pikemen (slot 1). Note Red's treasury. Click the Hill Fort's entrance (10, 10) twice: E14-14 walks onto it and the dialog opens. Note E14-14's tile and points.",
+    "Note both rows (price or text, state) and the whole's state. Click the Air Elementals' row button: note what happens. Click the Pikemen's row button: note what happens. Note the rows again, E14-14's army and Red's treasury. Close the dialog.",
+    "Blue's hero at (30, 30) only makes the map playable; it plays nothing.",
+]
+record = [
+    { field = "the game's version; before: Red's treasury; at the dialog: E14-14's tile; points" },
+    { table = ["slot", "stack", "price", "state"], labels = ["0 Air Elementals", "1 Pikemen"] },
+    { field = "the whole's state" },
+    { field = "the Air Elementals' button: what happens; the Pikemen's: what happens" },
+    { field = "after: the rows; army; Red's treasury" },
+    { field = "anything odd" },
+]
+predictions = """
+E14-14 (survey §13; `hill_fort_rows` 0x4E7EB0: on a map of game version 0 the four elementals, 112
+to 115, do not upgrade, their upgrades being AB's):
+
+- The game's version **0**. The walk (10, 11), (10, 10): 200; E14-14 **on (10, 10)** with 1 360.
+- **The Air Elementals: not upgradable** (state 0), **the Pikemen free** (level 1, a text; state 1);
+  the whole 1. The Air Elementals' button: a message, nothing; the Pikemen's: **Halberdiers**, the
+  treasury unchanged.
+- On the SoD map (E14-12) four Air Elementals upgrade for 25 gold: the test is the map's version.
+  VCMI unread (the RoE elementals' test not checked; its creatures' upgrades name the Storm
+  Elemental).
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [10, 12]
+army = [["Air Elemental", 5], ["Pikeman", 5]]
+
+[[encounter.also]]
+type = "Valeska"
+specialty = "creature Archer"
+owner = "blue"
+at = [30, 30]
+defaults = true
