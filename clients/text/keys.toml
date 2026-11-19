@@ -3062,6 +3062,52 @@ original = [{ at = "GENRLTXT:502" }]
 id = "shell.scenario.random"
 original = [{ at = "GENRLTXT:760" }]
 
+# The random map's tab (E27 M3 T5a; design §3.16, §30): the title and the line under it (GENRLTXT
+# 739, 740), a random map's name and description (741, 742), the labels (753 to 759).
+[[key]]
+id = "shell.scenario.random-title"
+original = [{ at = "GENRLTXT:739" }]
+
+[[key]]
+id = "shell.scenario.random-subtitle"
+original = [{ at = "GENRLTXT:740" }]
+
+[[key]]
+id = "shell.scenario.random-name"
+original = [{ at = "GENRLTXT:741" }]
+
+[[key]]
+id = "shell.scenario.random-description"
+original = [{ at = "GENRLTXT:742" }]
+
+[[key]]
+id = "shell.scenario.random-size"
+original = [{ at = "GENRLTXT:753" }]
+
+[[key]]
+id = "shell.scenario.random-players"
+original = [{ at = "GENRLTXT:754" }]
+
+[[key]]
+id = "shell.scenario.random-teams"
+original = [{ at = "GENRLTXT:755" }]
+
+[[key]]
+id = "shell.scenario.random-computers"
+original = [{ at = "GENRLTXT:756" }]
+
+[[key]]
+id = "shell.scenario.random-computer-teams"
+original = [{ at = "GENRLTXT:757" }]
+
+[[key]]
+id = "shell.scenario.random-water"
+original = [{ at = "GENRLTXT:758" }]
+
+[[key]]
+id = "shell.scenario.random-monsters"
+original = [{ at = "GENRLTXT:759" }]
+
 [[key]]
 id = "shell.scenario.unnamed"
 original = [{ at = "GENRLTXT:509" }]

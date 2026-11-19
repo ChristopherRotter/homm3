@@ -87,6 +87,7 @@ pub(crate) fn texts(bugs: Bugs) -> Texts {
         )),
         description_font: None,
         advanced: None,
+        random: [String::from("Random Map"), String::from("Randomly made")],
     }
 }
 

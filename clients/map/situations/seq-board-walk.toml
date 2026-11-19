@@ -1,0 +1,12 @@
+# A boat boarded at a walk's end (E24 M4 T2d2; clients/map/sequences.toml `board-walk`; E24 design
+# §5.7): `seq-board`'s lake, the empty boat on the inlet (9, 12) facing right (the map's); Red's
+# hero on (6, 12) walks its path of three steps onto it. Red's town and Blue's hero as there.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [4, 16], to = [22, 32], at = [0, 0] }]
+tiles = [{ at = [9, 12], terrain = "water", picture = 21 }]
+heroes = [{ at = [6, 12], class = 6 }, { at = [32, 32], owner = 1 }]
+towns = [{ at = [12, 26], faction = 0, owner = 0, buildings = "fort" }]
+boats = [{ at = [9, 12], kind = 1 }]
+view = [0, 4, 0]
+hidden = [[20, 20, 35, 35]]

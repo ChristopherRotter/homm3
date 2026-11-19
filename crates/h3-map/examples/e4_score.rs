@@ -1147,6 +1147,7 @@ mod tests {
                 underground: None,
                 level_limit: limit,
                 banned_skills: Vec::new(),
+                banned_artifacts: Vec::new(),
                 events: Vec::new(),
                 teams: None,
             };
@@ -1479,6 +1480,7 @@ mod tests {
             underground: None,
             level_limit: 0,
             banned_skills: (0..w::SKILL_COUNT).filter(|&c| c != 2 && c != 3).collect(),
+            banned_artifacts: Vec::new(),
             events: Vec::new(),
             teams: None,
         };

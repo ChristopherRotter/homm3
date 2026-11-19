@@ -490,6 +490,13 @@ leaves a quarter of the previewed kills.
 
 ## Notices from other lanes and finished items, newest first
 
+**Moved 2026-11-19** (E08 T128's merge; informational, nothing to act on):
+
+- 2026-11-19 (the adventure lane, E08 T128, `adventure/e08-t128`, `cross-lane` with the user's
+  consent; **one line in your file, nothing to do**): `h3-cli/src/ai/tests.rs`' writer `Map`
+  literal gains `banned_artifacts: Vec::new()` (`h3_map::writer::Map::banned_artifacts`, E08
+  decision 375: the map's bans beside the editor's default ones).
+
 **Moved 2026-11-18** (E25 T37's session; verbatim, informational, nothing to act on):
 
 **From the town lane** (E09 T39a):

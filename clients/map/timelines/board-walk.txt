@@ -1,0 +1,74 @@
+0 view 0 4 0
+0 objects 0
+0 cycles 0 0
+0 cursor 1 0 700 300
+0 buttons 0 1
+0 points 1500
+100 buttons 1 1
+100 arrows 7,12,0,12 8,12,0,12 9,12,0,1
+100 screen 192,240,709,572
+180 objects 1
+200 cycles 1 1
+300 view -2 4 0
+300 hero 7 12 0 2
+300 walk 7 1 22 0
+300 arrows 8,12,0,12 9,12,0,1
+300 screen 8,8,710,552
+350 walk 7 2 10 0
+350 screen 8,8,600,552
+400 cycles 2 2
+400 walk 7 3 0 0
+400 screen 8,8,600,552
+450 view -1 4 0
+450 points 1400
+450 hero 8 12 0 2
+450 walk 7 4 22 0
+450 arrows 9,12,0,1
+450 screen 8,8,706,552
+500 walk 7 5 10 0
+500 screen 8,8,600,552
+550 walk 7 6 0 0
+550 screen 8,8,600,552
+600 cycles 3 3
+600 points 1300
+600 walk 2 0 0 0
+600 arrows
+600 screen 610,42,702,226
+665 screen 226,160,416,296
+730 screen 226,160,416,296
+795 screen 226,160,416,296
+800 cycles 4 4
+860 screen 226,160,416,296
+925 screen 226,160,416,296
+990 screen 226,160,416,296
+1000 cycles 5 5
+1055 screen 226,160,416,296
+1120 view 0 4 0
+1120 hero 9 12 0 2
+1120 walk 7 0 22 0
+1120 screen 8,8,600,552
+1170 walk 7 0 10 0
+1170 screen 8,8,600,552
+1200 cycles 6 6
+1220 walk 7 0 0 0
+1220 screen 8,8,600,552
+1270 objects 3
+1270 buttons 0 0
+1270 points 0
+1270 walk 2 0 0 0
+1270 screen 281,42,741,569
+1400 cycles 7 7
+1450 objects 4
+1450 screen 8,8,600,296
+1600 cycles 8 8
+1630 objects 5
+1630 screen 8,8,600,296
+1800 cycles 9 9
+1810 objects 6
+1810 screen 8,8,600,296
+1990 objects 7
+1990 screen 288,233,308,241
+2000 cycles 10 10
+2170 objects 8
+2170 screen 8,8,600,296
+2200 cycles 11 11

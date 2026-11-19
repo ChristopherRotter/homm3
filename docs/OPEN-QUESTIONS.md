@@ -89,7 +89,15 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Client lane (`CLT-Q<n>`)
 
-(no open questions)
+#### CLT-Q146 — Two team buttons of the random map's tab take the mouse in their upper 24 rows only (E27 M3 T5a, a reading)
+
+`random_map_items_create` 0x57D170 makes the human or computer teams' buttons 1 and 2 (298, 299:
+`RanNum1`, `RanNum2.def`) 30 × 24 (0x57D85B, 0x57D8A9), every other count's button 30 × 32 like
+their DEFs' frames (30 × 32, drawn whole). So a press on the lowest 8 rows of those two numbers
+does nothing (the computer only players' 1 and 2 below them are 32 high). No recording presses
+there (`adv-random` presses their middles); built as the original's (design §30.2). Options: (a)
+the original's everywhere; (b) the client's profile makes them 32 high like the rest, the
+original's for the comparisons. **Recommended (b).** Blocks nothing (T5b can build the answer).
 
 ### Map client lane (`MCL-Q<n>`)
 
@@ -171,6 +179,22 @@ the offers' pictures name the same skills and levels. Options: (a) the original'
 lines), the original's behind `--bugs original` for the comparisons. **Recommended (a)**: the
 dialog's layout was made without it and the captions already tell it; (b) adds text no player of
 the original saw. The viewer draws the original's meanwhile. Blocks nothing.
+
+#### MCL-Q35 — A boarded boat drawn turned (E24 M4 T2d2, a reading and a recording)
+
+A hero who boards a boat (`hero_boards_boat` 0x4A1010, E24 design §5.7) is drawn as the boat in
+the group of the boat's own facing (`boat_map_group`), but the view mirrors it by the hero's
+facing, the step's direction (`view_moving_hero_piece` 0x47F860). A boat whose facing lies on the
+other side of the step's draws turned until the hero's next step: recorded, `board`'s boat facing
+down-left, boarded by a step east, shows down-right (neither the boat's facing nor the step's); a
+boat facing right boarded by a step west would show left. The empty boat a landing leaves faces
+the step (the boat record's facing set from the hero's), so the turn shows only at a boarding.
+Options: (a) the original's: the boat's group, the hero's mirror; (b) the client keeps the boat
+as it lay, its own group and mirror, until the next step, the original's behind `--bugs original`
+for the comparisons; (c) the client turns the boat to the step's facing at once (group and
+mirror by the hero's, as the next step draws it). **Recommended (b)**: nothing should turn on its
+own, and the boat seen before the step is the one the hero boards. The viewer draws the
+original's meanwhile. Blocks nothing.
 
 ### Town lane (`TWN-Q<n>`)
 

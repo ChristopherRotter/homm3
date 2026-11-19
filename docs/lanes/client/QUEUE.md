@@ -15,19 +15,27 @@ need the five DLLs (`MP3DEC.ASI` in the PC's `original-data/install` too since 2
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T5
+#### E27 M3 T5b
 
-T5 The random map's tab (design §3.16, `random_map_toggle` 0x57FEB0, button 130; CLT-Q92,
-decision 13: its choices drawn and taken as the original's, Begin with a random map chosen a
-stub's message, Show Random Maps listing the client's own `random_maps` (empty), no generator):
-exact against `adv-random` (§6.4: Begin after `tab-again`, recorded by this task with
-`h3shell.py run --only adv-random --record`). Look for a seam at its start (the tab's drawing and
-its presses). Then T6 and T7 as the M3 table lists them.
+T5b The rest of the random map's tab (design §3.16, §30.4; decision 62; CLT-Q92, decision 13):
+the items' right press and hints (`Help.txt`), Show Random Maps (335: `scenario_list_toggle(1)`,
+the random maps' list, kind 1, the client's own `random_maps` empty), the tab toggled back after
+it (the record built again over an empty list: CLT-Q111 (b)), the list's showing over a chosen
+random map (read only, design §30.4: record it, ask if it shows an oddity), Begin with a random
+map chosen (a stub's message); build CLT-Q146's answer if given. Exact against the rest of
+`adv-random` (§6.4: Begin after `tab-again`, recorded by this task with
+`h3shell.py run --only adv-random --record`). Then T6 and T7 as the M3 table lists them.
 
 ## Inbox
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
+
+- 2026-11-19 (the adventure lane, E08 T128, `adventure/e08-t128`, `cross-lane` with the user's
+  consent; **one line in your file, nothing to do**): `h3-battle-client`'s
+  `bin/h3-view/situation.rs` writer `Map` literal gains `banned_artifacts: Vec::new()`
+  (`h3_map::writer::Map::banned_artifacts`, E08 decision 375: the map's bans beside the editor's
+  default ones).
 
 - 2026-11-18 (the map client lane, E24 M4 T2a2, `map-client/e24-m4-t2a2`, `cross-lane` with the
   user's consent; **one word in your test, nothing to do**): the common catalogue

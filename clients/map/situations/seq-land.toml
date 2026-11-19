@@ -1,0 +1,17 @@
+# A boat left (E24 M4 T2d2; clients/map/sequences.toml `land`, `land-walk`; E24 design §5.7):
+# `seq-sail`'s lake, Red's hero walked onto the boat on the inlet (9, 12) by the staging (boarding
+# takes the day's points, which the sequences' `points` give back), the view centred on it; it
+# steps back onto the coast (8, 12), or sails east and lands on (13, 12). Red's town out of the
+# way, so that no visit's scenario test warns of a town lost; Blue's hero far off in the fog.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [4, 16], to = [22, 32], at = [0, 0] }]
+tiles = [{ at = [9, 12], terrain = "water", picture = 21 }]
+heroes = [
+    { at = [8, 12], class = 6, walk = [[9, 12]] },
+    { at = [32, 32], owner = 1 },
+]
+towns = [{ at = [12, 26], faction = 0, owner = 0, buildings = "fort" }]
+boats = [{ at = [9, 12], kind = 1 }]
+view = [0, 4, 0]
+hidden = [[20, 20, 35, 35]]

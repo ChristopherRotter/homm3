@@ -1329,3 +1329,34 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
   a computer-only colour is hidden, so its press is tested by a direct call); the real-asset
   `gate` passed; the scoped verify with original data passed every step (`check-exe-map` after a
   site for Begin's players' checks, 0x58C11F).
+
+## M3 T5a — the random map's tab drawn and pressed (2026-11-19)
+
+- **Staged** from the PC at once: the 64 files and the seven manuals and help files, each checked
+  by SHA-256 against the PC's (71 of 71 equal); the PC's clone was behind `master` (#1006), the
+  session worked from GitHub. The setup's baseline stopped at `check.sh`'s coverage by a watcher
+  (fmt, clippy, the doc tests and deny passed; CI's green `master` stands in).
+- **Cut** with the user at the start (decision 62): T5a the tab drawn and its left presses, T5b
+  the rest.
+- **Read** (design §30): `random_map_toggle` and `random_map_tab_draw` whole, the items'
+  arguments (the counts' frames, the constructor's choices: the computer only players 0), the
+  presses' cases (the counts' presses build the record, Random teams not), `random_map_info_build`
+  whole (the header's fields, the record into the game), what the panel and `scenario_entry_name`
+  read, the toggles' calls. **Played** `adv-random` once under Wine (52 of 52 as kept) for the
+  original's frames.
+- **Built:** `scenario::random` (`RandomMap`: the choices, the tab shown, a random map chosen, the
+  own record; `states` as `random_map_tab_draw`, `click`, `build`; `Choices`, `Pressed`); the
+  screen's `toggle_random`, `random_built`, `random_click`, `random_size_mark`, `shown_entry` (the
+  panel, the game's map and the advanced options' seats read a chosen random map's record first),
+  the list's toggle hiding the tab and unchoosing, the options' hiding it; `Texts::random`,
+  `Scenario::random_showing`, `random_map`; the layout's 103 (`RanMapBk.pcx`), 280 to 335 (one by
+  one), 1040 and 1041 (739, 740); the keys `shell.scenario.random-*` (GENRLTXT 739 to 742, 753 to
+  759); the tab's hidden items out of the mouse's dialog. Asked **CLT-Q146** (the teams' 1 and 2
+  are 24 high: open, built as the original's). Tests: `random/tests.rs` (twelve).
+- **Compared:** `adv-random` 45 of 52 exact: `tab` to `monsters-random` (44) and `show-hover`, at
+  the first build; the popups, `random-maps`, `tab-again` and `tab-hidden` are T5b's. Every other
+  recipe of every group as recorded (93 recipes); `drawn.txt` recorded for `adv-random`.
+- **Gates:** `RUST_TEST_THREADS=1 check.sh --no-coverage` passed; `h3-view`'s coverage 100% of
+  lines and regions but `book.rs`' known per-crate lines (a difficulty's press over the tab covers
+  the press that is no choice); the real-asset `gate` passed; the scoped verify with original
+  data passed every step.

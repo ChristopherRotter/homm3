@@ -38,6 +38,7 @@ mod teleporters_map;
 mod teleporters_xl_map;
 mod towns;
 mod towns_map;
+mod trades;
 mod view;
 
 use proptest::prelude::*;
@@ -715,6 +716,7 @@ fn the_experiment_writer_marks_the_coast() {
         underground: None,
         level_limit: 0,
         banned_skills: Vec::new(),
+        banned_artifacts: Vec::new(),
         events: Vec::new(),
         teams: None,
     };
@@ -793,6 +795,7 @@ fn towns_from_the_experiment_writer_read_back() {
         underground: None,
         level_limit: 0,
         banned_skills: Vec::new(),
+        banned_artifacts: Vec::new(),
         events: Vec::new(),
         teams: None,
     };
@@ -953,6 +956,7 @@ fn maps_from_the_experiment_writer_read_back() {
         // Banned skills (E08 T36b: batch E5e's forced level-ups): Navigation, Eagle Eye, First
         // Aid.
         banned_skills: vec![5, 11, 27],
+        banned_artifacts: Vec::new(),
         events: Vec::new(),
         teams: None,
     };
@@ -1185,6 +1189,7 @@ fn the_writer_s_underground_and_guarded_piles_read_back() {
         }),
         level_limit: 0,
         banned_skills: Vec::new(),
+        banned_artifacts: Vec::new(),
         events: Vec::new(),
         teams: None,
     };

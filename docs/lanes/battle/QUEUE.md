@@ -30,13 +30,18 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
   (its tests compare the block with the legal attacks; two worlds of a battle must encode alike).
   The replays, the state hash and the battle workloads are unchanged.
 
-- 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **a planned
-  `cross-lane` change in your paths; nothing changed yet**): E08 T128 (batch E14's maps) adds to
-  `h3-experiment`'s spec the seven trade classes by template, an adventure hero's start (secondary
-  skills, a type by its specialty, war machines, worn artifacts, a full backpack), the map's banned
-  artifacts, a player's starting resources and the RoE format (design note
-  `docs/epics/E08-design.md` §20), with the user's consent at its start; no battle rule or version
-  moves.
+- 2026-11-19 (the adventure lane, E08 T128, `adventure/e08-t128`, `cross-lane` with the user's
+  consent, E08 decisions 374, 375; **your paths changed, for your review; no battle rule or
+  version moved**; it replaces T127b's planned note): `h3-experiment`'s `[[map.object]]` takes the
+  seven trade classes by picture (`h3_map::writer::TRADE_OBJECTS` among `PLAIN_OBJECTS`, so
+  `Tables::plains` holds them); `MapSpec::banned_artifacts` by name (written beside the editor's
+  default bans, refused in RoE); an RoE map's hero may list its own army, experience, skills and
+  artifacts with no `primary` and no `spells` (its type's: `hero()` takes `roe`, `hero_summary`
+  says "its hero type's primary skills"). Tests: `builds_increment_14_s_objects`,
+  `builds_an_roe_map` extended, the tables' test with two trade lines; the experiments README
+  ("Increment 14's objects", `format`, the batch table's row E08 14). The writer's `Map` gained
+  `banned_artifacts`: a `Map` literal needs the field. No field for a player's starting resources
+  (the format holds none: batch E14 reads Blue's treasury from memory).
 
 - 2026-11-17 (the adventure lane, E08 T124a, `adventure/e08-t124a`, `cross-lane` with the user's
   consent, E08 decision 353; **your paths changed, for your review; your versions moved**): the
