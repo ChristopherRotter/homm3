@@ -157,6 +157,22 @@ guard_level = 5
 guard_factor = 3
 free_level = 1
 
+# ADV-MKT-002 (E08 T132a2; increment 14's design note section 2, survey E08-trades.md section 4):
+# the market's rates. Values: resource_values 0x68C482 (a trade's and a creature sale's) and
+# resource_values_artifacts 0x68C492 (an artifact's price), u16 in the original's resource order;
+# factors in hundredths by the count of Marketplaces 1 to 10 (market_resource_rates 0x678344,
+# market_artifact_rates 0x678370, market_creature_rates 0x67839C, index 0 unused), used as the
+# binary32 nearest (their bit patterns checked against the executable by the original-data check
+# 8). VCMI 1.7.5 IMarket::getOffer has the same values and factors (survey section 9); the wiki's
+# Artifact merchants page the artifacts' percentages. Batch E14 (E14-1, E14-2, E14-4, E14-5)
+# observed the rates at five.
+[params.market]
+values = { wood = 250, mercury = 500, ore = 250, sulfur = 500, crystal = 500, gems = 500, gold = 1 }
+artifact_values = { wood = 125, mercury = 250, ore = 125, sulfur = 250, crystal = 250, gems = 250, gold = 1 }
+resources = [10, 15, 20, 25, 30, 35, 40, 45, 50, 50]
+artifacts = [20, 25, 30, 35, 40, 45, 50, 55, 60, 60]
+creatures = [30, 45, 50, 65, 70, 85, 90, 100, 100, 100]
+
 # GAM-RES-002 (E08 T13a): the starting resources by the game's difficulty, from 0 (easy) to 4
 # (impossible), a human player's and a computer player's; the engine gives every player the human
 # row (E08 decision 16: no human/computer distinction yet). Code reading (survey
@@ -2150,6 +2166,78 @@ visit = "enter"
 from_above = false
 den_of_thieves = {}
 
+# E08 T132a2, increment 14's trades and services (design note sections 1, 3 to 5; survey
+# E08-trades.md sections 1 to 14): every one entered and none from above (none of classes 2, 7,
+# 35, 99, 106, 213, 221 is in object_classes_not_entered 0x63AA58 or object_classes_from_above
+# 0x63AB00; VCMI 1.7.5's markets.json and generic.json: no blockedVisitable; batch E14's E14-16
+# saw the hero on each entrance). Their visits come with T133 and T134.
+#
+# ADV-MKT-001: the Trading Post (class 99; 221, the snow one, is ab's class with this type):
+# resources for resources and resources to another player (visit_object's case 99, the trade
+# window's screens 0 and 1), at five Marketplaces (the window's count for every map object,
+# survey section 3). No mark, no owner.
+[[object_type]]
+id = "trading_post"
+name = "Trading Post"
+visit = "enter"
+from_above = false
+market = { screens = ["trade", "transfer"], count = 5 }
+
+# ADV-MKT-001, ADV-MKT-006: the Black Market (class 7): artifacts bought (screen 2) at five
+# Marketplaces; its stock of seven drawn when the game is built, three treasures, three minors and
+# one major (black_markets_setup, survey section 7.1; VCMI's rollMarketArtifactSet the same).
+[[object_type]]
+id = "black_market"
+name = "Black Market"
+visit = "enter"
+from_above = false
+market = { screens = ["buy"], count = 5, stock = ["treasure", "treasure", "treasure", "minor", "minor", "minor", "major"] }
+
+# ADV-ALT-001 to -003: the Altar of Sacrifice (class 2; altar_dialog_create 0x55FDD0, survey
+# section 12): an artifact's experience by class (altar_artifact_entry 0x55FC30's immediates:
+# 1000, 1500, 3000, 6000, a special one 0; A-47 accepted, D-72 the original's), never the Spell
+# Book or the Catapult (altar_worn_click 0x5632A0), 23 artifacts a sacrifice (the 22 places,
+# altar_slot_row_counts 0x6412E8, and the one held), a creature 5 x (AI value / 40)
+# (altar_set_creature_amount 0x564C00); which heroes sacrifice what is the factions' entries
+# below. Its visit sets the team's kind mark (k 28). Batch E14's E14-7 to E14-11 and E14-17.
+[[object_type]]
+id = "altar_of_sacrifice"
+name = "Altar of Sacrifice"
+visit = "enter"
+from_above = false
+kind_mark = true
+
+[object_type.altar]
+experience = { treasure = 1000, minor = 1500, major = 3000, relic = 6000 }
+keeps = ["spell_book", "catapult"]
+places = 23
+creature_factor = 5
+creature_divisor = 40
+
+# ADV-HFT-001, -002: the Hill Fort (class 35; hill_fort_rows 0x4E7EB0, survey section 13): an
+# upgrade's gold difference times the count, scaled by the creature's level (hill_fort_gold_factors
+# 0x63EB4C: 0, 0.25, 0.5, 0.75, 1, 1, 1, as percents), truncated once (D-74 the original's); the
+# other resources whole. Which stacks: a creature with an upgrade in the enabled packs (E08
+# decision 378). Its visit sets the team's kind mark (k 14). Batch E14's E14-12 to E14-14.
+[[object_type]]
+id = "hill_fort"
+name = "Hill Fort"
+visit = "enter"
+from_above = false
+kind_mark = true
+hill_fort = { gold = [0, 25, 50, 75, 100, 100, 100] }
+
+# ADV-WMF-001: the War Machine Factory (class 106; survey section 14): the hire question, then the
+# hire dialog of the Ballista, the First Aid Tent and the Ammo Cart in this order at their gold
+# costs, one of each the hero lacks, bought as its artifact; never the Catapult. VCMI's
+# generic.json the same; the RoE manual (page 117) the prices. Batch E14's E14-15.
+[[object_type]]
+id = "war_machine_factory"
+name = "War Machine Factory"
+visit = "enter"
+from_above = false
+war_machine_factory = { machines = ["ballista", "first_aid_tent", "ammo_cart"] }
+
 # ADV-DWL-005 (E08 T93a, increment 10's design note section 2): what a random dwelling of level n
 # of the faction becomes. The original derives it (random_dwellings_resolve 0x502B60 steps 3 and
 # 4; survey E08-dwellings.md section 3.2): town_creatures 0x6747B4[faction x 14 + level], the
@@ -2187,3 +2275,42 @@ dwellings = ["goblin_barracks", "wolf_pen", "orc_tower", "ogre_fort", "cliff_nes
 [[random_dwelling]]
 faction = "fortress"
 dwellings = ["gnoll_hut", "lizard_den", "serpent_fly_hive", "basilisk_pit", "gorgon_lair", "wyvern_nest", "hydra_pond"]
+
+# ADV-ALT-001 (E08 T132a2; increment 14's design note section 3, survey section 12.1): what the
+# heroes of each faction sacrifice at an Altar of Sacrifice, by the hero's class's faction
+# (altar_dialog_create 0x55FDD0): Castle, Rampart and Tower artifacts only; Inferno, Necropolis and
+# Dungeon creatures only; Stronghold and Fortress both, the artifacts first. The wiki's list of
+# objects agrees (good heroes artifacts, evil creatures, neutral both); batch E14's E14-7.
+[[altar_faction]]
+faction = "castle"
+artifacts = true
+
+[[altar_faction]]
+faction = "rampart"
+artifacts = true
+
+[[altar_faction]]
+faction = "tower"
+artifacts = true
+
+[[altar_faction]]
+faction = "inferno"
+creatures = true
+
+[[altar_faction]]
+faction = "necropolis"
+creatures = true
+
+[[altar_faction]]
+faction = "dungeon"
+creatures = true
+
+[[altar_faction]]
+faction = "stronghold"
+artifacts = true
+creatures = true
+
+[[altar_faction]]
+faction = "fortress"
+artifacts = true
+creatures = true

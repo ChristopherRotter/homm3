@@ -7,7 +7,7 @@ commands = [
     "1 move 5 13,17,0 12,16,0 12,15,0 13,14,0",
     "1 end-turn",
 ]
-checkpoints = ["0x1b782aed599ef6b6"]
+checkpoints = ["0x9309d0d001757ea5"]
 
 [replay]
 format = 19
@@ -30,7 +30,7 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x6ba8109889b34a25"
-adventure_ruleset_hash = "0x56c46df30c45ce3a"
+adventure_ruleset_hash = "0x00ffbc3dd7a90159"
 town_ruleset_hash = "0xab3ee3f1cb243f30"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
@@ -47,4 +47,4 @@ import_version = 26
 
 [result]
 day = 2
-final_hash = "0xf8b25f757f98060d"
+final_hash = "0xf8be730eba76b906"

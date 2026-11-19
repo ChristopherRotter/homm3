@@ -12,8 +12,8 @@ use alloc::vec::Vec;
 use core::num::NonZeroU32;
 
 use h3_content::{
-    ArtifactClass, ContentKey, CreatureFlag, CreatureTypeId, FactionId, ResourceId, Ruleset,
-    SkillId, TerrainId,
+    ArtifactClass, ArtifactTypeId, ContentKey, CreatureFlag, CreatureTypeId, FactionId, ResourceId,
+    Ruleset, SkillId, TerrainId,
 };
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
@@ -22,6 +22,10 @@ use super::rewards::{
     Chest, ChestDef, Find, FindDef, Gift, GiftDef, Pyramid, PyramidDef, Resources, check_pyramid,
     compile_artifact_classes, compile_chest, compile_find, compile_gift, compile_pyramid,
     compile_resources, hash_classes, hash_resources,
+};
+use super::trades::{
+    Altar, AltarDef, HillFort, Market, WarMachineFactory, WarMachineFactoryDef, compile_altar,
+    compile_factory, compile_hill_fort, compile_market,
 };
 use super::{
     AdventureCompileError, DWELLING_LEVELS, DwellingParams, RandomDwellingDef, check_namespace,
@@ -423,6 +427,21 @@ pub enum ObjectKind {
     /// Thieves' Guild at everything for the visitor's owner (E09 T39b2: the outcome's
     /// `thieves_guild`, which the game tells as `ThievesGuildSeen`).
     DenOfThieves,
+    /// A market (E08 T132a2, increment 14's design note §1; ADV-MKT-001, the original's Trading
+    /// Posts 99 and 221, Freelancer's Guild 213 and Black Market 7): entered, its screens, its
+    /// count of Marketplaces and a Black Market's stock classes; its rates the part's
+    /// `[params.market]` (ADV-MKT-002). Drawn and visited from T133.
+    Market(Market),
+    /// An Altar of Sacrifice (E08 T132a2, increment 14's design note §3; ADV-ALT-001 to -003,
+    /// the original's class 2): entered, its values; the factions' screens are the part's
+    /// ([`super::AdventureRuleset::altar_screens`]). Visited from T134a.
+    Altar(Altar),
+    /// A Hill Fort (E08 T132a2, increment 14's design note §4; ADV-HFT-001, -002, the original's
+    /// class 35): entered, its gold percents by level. Visited from T134b.
+    HillFort(HillFort),
+    /// A War Machine Factory (E08 T132a2, increment 14's design note §5; ADV-WMF-001, the
+    /// original's class 106): entered, its machines. Visited from T134b.
+    WarMachineFactory(WarMachineFactory),
 }
 
 /// How long a hero holds a timed mark (E08 T115a; increment 12's design note §12.4): the
@@ -678,11 +697,17 @@ impl ObjectKind {
             // bonus visitables' with T115b (increment 12's design note §8, §9). E08 T123a: the
             // creature banks are typed, drawn since T124b1, visited since T124b2 (increment 13's
             // design note §6).
+            // E08 T132a2: increment 14's four kinds are typed; their visits come with T133
+            // (the markets) and T134 (the Altar, the Hill Fort, the factory).
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
             | Self::Hole
-            | Self::RandomDwelling => None,
+            | Self::RandomDwelling
+            | Self::Market(_)
+            | Self::Altar(_)
+            | Self::HillFort(_)
+            | Self::WarMachineFactory(_) => None,
         }
     }
 
@@ -1083,6 +1108,14 @@ pub enum ObjectKindDef {
     Tavern,
     /// [`ObjectKind::DenOfThieves`] (E09 T39a): its type entered.
     DenOfThieves,
+    /// [`ObjectKind::Market`] (E08 T132a2): its checks [`Market`]'s (no key); its type entered.
+    Market(Market),
+    /// [`ObjectKind::Altar`] (E08 T132a2): its type entered.
+    Altar(AltarDef),
+    /// [`ObjectKind::HillFort`] (E08 T132a2): its type entered.
+    HillFort(HillFort),
+    /// [`ObjectKind::WarMachineFactory`] (E08 T132a2): its type entered.
+    WarMachineFactory(WarMachineFactoryDef),
 }
 
 /// An object type as a pack defines it.
@@ -1154,6 +1187,16 @@ impl Scope<'_> {
         self.core
             .creature_by_key(key.as_str())
             .ok_or_else(|| AdventureCompileError::UnknownCreature(String::from(key.as_str())))
+    }
+
+    pub(super) fn artifact(
+        &self,
+        key: &ContentKey,
+    ) -> Result<ArtifactTypeId, AdventureCompileError> {
+        self.reach(key)?;
+        self.core
+            .artifact_by_key(key.as_str())
+            .ok_or_else(|| AdventureCompileError::UnknownArtifact(String::from(key.as_str())))
     }
 
     /// Whether the creature is a war machine.
@@ -1281,6 +1324,20 @@ pub(super) fn compile_object_types(
         }
         if matches!(kind, ObjectKind::DenOfThieves) && def.visit != Visit::Enter {
             return Err(invalid("a den of thieves is not entered"));
+        }
+        // The seven trade classes are entered (E08 T132a2, increment 14's design note §0's
+        // correction: none of 2, 7, 35, 99, 106, 213 and 221 is in the original's
+        // `object_classes_not_entered` 0x63AA58).
+        // rule: ADV-MKT-001
+        if matches!(
+            kind,
+            ObjectKind::Market(_)
+                | ObjectKind::Altar(_)
+                | ObjectKind::HillFort(_)
+                | ObjectKind::WarMachineFactory(_)
+        ) && def.visit != Visit::Enter
+        {
+            return Err(invalid("a trade or service is not entered"));
         }
         tables.types.push(ObjectType {
             key: def.key.clone(),
@@ -1889,6 +1946,12 @@ fn compile_kind(
         // rule: ADV-VIS-007, ADV-VIS-008
         ObjectKindDef::Tavern => Ok(ObjectKind::Tavern),
         ObjectKindDef::DenOfThieves => Ok(ObjectKind::DenOfThieves),
+        ObjectKindDef::Market(def) => compile_market(def).map(ObjectKind::Market),
+        ObjectKindDef::Altar(def) => compile_altar(scope, def)?.map(ObjectKind::Altar),
+        ObjectKindDef::HillFort(def) => compile_hill_fort(def).map(ObjectKind::HillFort),
+        ObjectKindDef::WarMachineFactory(def) => {
+            compile_factory(scope, def)?.map(ObjectKind::WarMachineFactory)
+        }
     })
 }
 
@@ -1994,7 +2057,8 @@ impl CanonicalHash for ObjectType {
     /// part v16 30 dwelling, 31 random dwelling, 32 Refugee Camp; since part v17 33 town; since
     /// part v18 34 monolith, 35 Subterranean Gate, 36 Whirlpool; since part v20 37 garrison, 38
     /// bonus, 39 Fountain of Fortune, 40 Magic Well, 41 Magic Spring, 42 Stables, 43 Sirens; since
-    /// part v21 44 creature bank; since part v22 45 Tavern, 46 Den of Thieves) and parameters (a pickup's own tag, 0 resource, 1 one of, 2
+    /// part v21 44 creature bank; since part v22 45 Tavern, 46 Den of Thieves; since part v23 47
+    /// market, 48 Altar of Sacrifice, 49 Hill Fort, 50 War Machine Factory) and parameters (a pickup's own tag, 0 resource, 1 one of, 2
     /// paired, then its fields in order; a monster's levels as 0 for none, else 1, low, high; a
     /// ground's battlefield key, since part v10 whether it takes the native price away; an
     /// artifact's classes as 0 for none, else 1 and the classes; a Witch Hut's two skill lists; a
@@ -2007,7 +2071,8 @@ impl CanonicalHash for ObjectType {
     /// 1 exit, 2 two-way; a Whirlpool's divisor; a garrison's anti-magic flag; a bonus's mark, its
     /// seven days' morale and luck, its points and drain; a Fountain of Fortune's mark and values
     /// as length and each; a Stables' points and creatures; a Sirens' mark and keep as numerator
-    /// and denominator; a creature bank's as [`Bank`]'s hash says; the others' fields in order).
+    /// and denominator; a creature bank's as [`Bank`]'s hash says; a market's, an Altar's and a
+    /// factory's as their hashes say; a Hill Fort's seven percents; the others' fields in order).
     fn hash_into(&self, h: &mut StateHasher) {
         self.key.as_str().hash_into(h);
         self.name.as_str().hash_into(h);
@@ -2273,6 +2338,22 @@ impl CanonicalHash for ObjectType {
             }
             ObjectKind::Tavern => h.write_u8(45),
             ObjectKind::DenOfThieves => h.write_u8(46),
+            ObjectKind::Market(market) => {
+                h.write_u8(47);
+                market.hash_into(h);
+            }
+            ObjectKind::Altar(altar) => {
+                h.write_u8(48);
+                altar.hash_into(h);
+            }
+            ObjectKind::HillFort(fort) => {
+                h.write_u8(49);
+                fort.gold.iter().for_each(|&p| h.write_u8(p));
+            }
+            ObjectKind::WarMachineFactory(factory) => {
+                h.write_u8(50);
+                factory.hash_into(h);
+            }
         }
     }
 }

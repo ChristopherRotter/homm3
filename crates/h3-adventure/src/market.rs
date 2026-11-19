@@ -14,6 +14,7 @@ use alloc::vec::Vec;
 
 use h3_content::ResourceId;
 use h3_kernel::arith::{SINGLE_BITS, SINGLE_FRAC_BITS, X87};
+use h3_kernel::{CanonicalHash, StateHasher};
 
 /// A rate as the original states it (ADV-MKT-002): `give` of the given for `take` of the wanted,
 /// one of the two 1, both at least 1. A trade is a whole number of lots.
@@ -111,6 +112,16 @@ impl MarketParams {
         u8::try_from(self.rows.len()).unwrap_or(u8::MAX)
     }
 
+    /// The value of `resource` in a trade and a creature sale, if the parameters value it.
+    pub fn value(&self, resource: ResourceId) -> Option<u16> {
+        self.values.get(resource.index()).copied()
+    }
+
+    /// The value of `resource` in an artifact's price, if the parameters value it.
+    pub fn artifact_value(&self, resource: ResourceId) -> Option<u16> {
+        self.artifact_values.get(resource.index()).copied()
+    }
+
     /// The binary32 bit patterns of the resources', the artifacts' and the creatures' factors at
     /// `count` Marketplaces (the original-data check compares them with the executable's
     /// tables); none outside the counts.
@@ -175,6 +186,23 @@ impl MarketParams {
     /// The row of `count` Marketplaces, from 1.
     fn row(&self, count: u8) -> Option<Row> {
         self.rows.get(usize::from(count).checked_sub(1)?).copied()
+    }
+}
+
+impl CanonicalHash for MarketParams {
+    /// The two value tables as length and entries, then the rows as their number and each one's
+    /// three factors as binary32 bit patterns (E08 T132a2: in the adventure part's hash, v23).
+    fn hash_into(&self, h: &mut StateHasher) {
+        for table in [&self.values, &self.artifact_values] {
+            h.write_len(table.len());
+            table.iter().for_each(|&v| h.write_u16(v));
+        }
+        h.write_len(self.rows.len());
+        for row in &self.rows {
+            for factor in [row.resources, row.artifacts, row.creatures] {
+                h.write_u32(factor.to_f32_bits());
+            }
+        }
     }
 }
 

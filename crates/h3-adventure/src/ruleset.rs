@@ -27,11 +27,13 @@ use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
 use crate::ADVENTURE_RULESET_HASH_VERSION;
+use crate::market::{MarketParams, MarketParamsError};
 
 mod banks;
 mod objects;
 mod rewards;
 mod starting;
+mod trades;
 
 pub use banks::{
     BANK_ARTIFACT_CLASSES, BANK_GUARDS, BANK_LEVELS, Bank, BankDef, BankLevel, BankLevelDef,
@@ -53,6 +55,11 @@ pub use rewards::{
 };
 use starting::compile_starting;
 pub use starting::{MAX_DIFFICULTIES, StartingResources, StartingResourcesDef};
+pub use trades::{
+    Altar, AltarDef, AltarFactionDef, AltarScreens, HillFort, Market, MarketScreen,
+    WarMachineFactory, WarMachineFactoryDef,
+};
+use trades::{check_trades, compile_altar_faction};
 
 /// Most entries of the land movement table: one per speed a `u8` can hold.
 pub const MAX_LAND_POINTS: usize = 256;
@@ -197,6 +204,27 @@ pub struct AdventureParamsDef {
     /// The dwellings' parameters (E08 T93a; ADV-DWL-001): required when the part has a type of
     /// kind [`ObjectKindDef::Dwelling`], and they need [`Self::monsters`].
     pub dwellings: Option<DwellingParams>,
+    /// The market's rates' parameters (E08 T132a2; ADV-MKT-002): required when the part has a
+    /// type of kind [`ObjectKindDef::Market`], whose count lies within their rows.
+    pub market: Option<MarketParamsDef>,
+}
+
+/// The market's parameters in a pack (`[params.market]`; E08 T132a2, increment 14's design note
+/// §2; ADV-MKT-002), compiled into [`MarketParams`]: the value of every core resource for a trade
+/// and for an artifact's price (each once, from 1), and the three factors in hundredths by the
+/// count of Marketplaces from 1, the three lists of one length, from 1 to 255 rows, none 0.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MarketParamsDef {
+    /// A trade's and a creature sale's value by core resource.
+    pub values: Vec<(ContentKey, u16)>,
+    /// An artifact's price's value by core resource.
+    pub artifact_values: Vec<(ContentKey, u16)>,
+    /// The resources' factor by count, in hundredths.
+    pub resources: Vec<u16>,
+    /// The artifacts' factor by count, in hundredths.
+    pub artifacts: Vec<u16>,
+    /// The creatures' factor by count, in hundredths.
+    pub creatures: Vec<u16>,
 }
 
 /// The dwellings' parameters (E08 T93a, increment 10's design note §2; ADV-DWL-001): the
@@ -434,6 +462,9 @@ pub struct AdventurePack {
     pub terrain_walkers: Vec<TerrainWalkerDef>,
     /// The random dwellings' tables by faction (E08 T93a, ADV-DWL-005).
     pub random_dwellings: Vec<RandomDwellingDef>,
+    /// What each of the pack's factions' heroes sacrifice at an Altar of Sacrifice (E08 T132a2,
+    /// ADV-ALT-001).
+    pub altar_factions: Vec<AltarFactionDef>,
 }
 
 /// A terrain walker in a pack (E08 T40, ADV-MOV-003): an army with a stack of `creature` counts
@@ -475,6 +506,7 @@ impl AdventurePack {
             not_random_monsters: Vec::new(),
             terrain_walkers: Vec::new(),
             random_dwellings: Vec::new(),
+            altar_factions: Vec::new(),
         }
     }
 }
@@ -539,6 +571,7 @@ pub struct AdventureParams {
     calendar: CalendarParams,
     months: Option<MonthParams>,
     dwellings: Option<DwellingParams>,
+    market: Option<MarketParams>,
 }
 
 /// The compiled [`BattleTerrainsDef`].
@@ -669,6 +702,12 @@ impl AdventureParams {
     pub const fn dwellings(&self) -> Option<DwellingParams> {
         self.dwellings
     }
+
+    /// The market's rates' parameters, if the packs give them (E08 T132a2; ADV-MKT-002): given
+    /// whenever the part has a market.
+    pub const fn market(&self) -> Option<&MarketParams> {
+        self.market.as_ref()
+    }
 }
 
 /// Why the adventure packs could not be compiled into an [`AdventureRuleset`].
@@ -754,6 +793,16 @@ pub enum AdventureCompileError {
     TooManyEntries(&'static str),
     /// A second random dwelling table names this faction (E08 T93a).
     DuplicateRandomDwelling(String),
+    /// An object type names an artifact the core lacks (E08 T132a2).
+    UnknownArtifact(String),
+    /// A faction's Altar entry is invalid, given twice or missing beside an Altar (E08 T132a2,
+    /// ADV-ALT-001).
+    AltarFaction {
+        /// The faction.
+        faction: String,
+        /// Why.
+        reason: &'static str,
+    },
     /// A random dwelling table's type of a level does not fit it (E08 T93a, ADV-DWL-005).
     RandomDwelling {
         /// The table's faction.
@@ -826,6 +875,10 @@ impl fmt::Display for AdventureCompileError {
             Self::DuplicateRandomDwelling(k) => {
                 write!(f, "faction `{k}` has a second random dwelling table")
             }
+            Self::UnknownArtifact(k) => write!(f, "unknown artifact `{k}`"),
+            Self::AltarFaction { faction, reason } => {
+                write!(f, "altar entry of `{faction}`: {reason}")
+            }
             Self::RandomDwelling {
                 faction,
                 level,
@@ -854,6 +907,7 @@ pub struct AdventureRuleset {
     not_random_monsters: BTreeSet<CreatureTypeId>,
     terrain_walkers: Vec<TerrainWalker>,
     random_dwellings: Vec<(FactionId, [ObjectTypeId; DWELLING_LEVELS])>,
+    altar_factions: Vec<(FactionId, AltarScreens)>,
     hash: u64,
 }
 
@@ -872,6 +926,7 @@ struct Tables {
     not_random_monsters: BTreeSet<CreatureTypeId>,
     terrain_walkers: Vec<TerrainWalker>,
     random_dwellings: BTreeMap<FactionId, [ObjectTypeId; DWELLING_LEVELS]>,
+    altar_factions: BTreeMap<FactionId, AltarScreens>,
 }
 
 /// The parameters with the battle terrains, the monsters' price resource and (E08 T83a) the
@@ -881,6 +936,7 @@ struct ResolvedParams {
     battle: Option<BattleTerrains>,
     price: Option<ResourceId>,
     month_creatures: Vec<CreatureTypeId>,
+    market: Option<MarketParams>,
 }
 
 impl AdventureRuleset {
@@ -933,6 +989,12 @@ impl AdventureRuleset {
             params.max_stack_count(),
             params.calendar().week_days.get(),
         )?;
+        check_trades(
+            core,
+            &tables.objects.types,
+            params.market().map(MarketParams::counts),
+            &tables.altar_factions,
+        )?;
         let starting_resources = tables
             .starting_resources
             .ok_or(AdventureCompileError::MissingDifficulties)?;
@@ -950,6 +1012,7 @@ impl AdventureRuleset {
             not_random_monsters: tables.not_random_monsters,
             terrain_walkers: tables.terrain_walkers,
             random_dwellings: tables.random_dwellings.into_iter().collect(),
+            altar_factions: tables.altar_factions.into_iter().collect(),
             hash: 0,
         };
         part.hash = hash_of(&part);
@@ -1068,6 +1131,17 @@ impl AdventureRuleset {
         &self.random_dwellings
     }
 
+    /// What the heroes of `faction` sacrifice at an Altar of Sacrifice (E08 T132a2; ADV-ALT-001:
+    /// by the hero's class's faction), if a pack names it; every faction has its entry when the
+    /// part has an Altar.
+    pub fn altar_screens(&self, faction: FactionId) -> Option<AltarScreens> {
+        self.altar_factions
+            .binary_search_by_key(&faction, |&(f, _)| f)
+            .ok()
+            .and_then(|i| self.altar_factions.get(i))
+            .map(|&(_, screens)| screens)
+    }
+
     /// The adventure parameters.
     pub const fn params(&self) -> &AdventureParams {
         &self.params
@@ -1126,7 +1200,11 @@ impl CanonicalHash for AdventureRuleset {
     /// radius; since v16 (E08 T93a) increment 10's three kinds in [`ObjectType`]'s, then last the
     /// dwellings' parameters (0 for none, else 1, the guard level, the guard factor, the free
     /// level) and the random dwellings' tables (their number, then each one's faction and its
-    /// seven types, by faction). The core's hash is not part of it: replays record both.
+    /// seven types, by faction); since v23 (E08 T132a2) increment 14's four kinds in
+    /// [`ObjectType`]'s, then last the market's parameters (0 for none, else 1 and
+    /// [`MarketParams`]' hash) and the Altar's factions (their number, then each one's faction and
+    /// whether its heroes sacrifice artifacts, creatures, by faction). The core's hash is not part
+    /// of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_RULESET_HASH_VERSION);
         h.write_len(self.terrains.len());
@@ -1251,6 +1329,19 @@ impl CanonicalHash for AdventureRuleset {
             faction.hash_into(h);
             row.iter().for_each(|id| id.hash_into(h));
         }
+        match &self.params.market {
+            None => h.write_u8(0),
+            Some(market) => {
+                h.write_u8(1);
+                market.hash_into(h);
+            }
+        }
+        h.write_len(self.altar_factions.len());
+        for (faction, screens) in &self.altar_factions {
+            faction.hash_into(h);
+            h.write_bool(screens.artifacts);
+            h.write_bool(screens.creatures);
+        }
     }
 }
 
@@ -1351,6 +1442,9 @@ fn compile_pack(
     for def in &pack.random_dwellings {
         compile_random_dwelling(&scope, &tables.objects, def, &mut tables.random_dwellings)?;
     }
+    for def in &pack.altar_factions {
+        compile_altar_faction(&scope, def, &mut tables.altar_factions)?;
+    }
     for key in &pack.not_random_monsters {
         if !closure.contains(key.pack()) {
             return Err(AdventureCompileError::ReferenceOutsideDependencies {
@@ -1437,11 +1531,17 @@ fn compile_pack(
                 month_creatures.push(creature);
             }
         }
+        let market = params
+            .market
+            .as_ref()
+            .map(|def| compile_market_params(&scope, def))
+            .transpose()?;
         tables.params = Some(ResolvedParams {
             def: params.clone(),
             battle,
             price,
             month_creatures,
+            market,
         });
     }
     Ok(())
@@ -1551,6 +1651,57 @@ fn core_terrain(
         .ok_or_else(|| AdventureCompileError::UnknownTerrain(String::from(key.as_str())))
 }
 
+/// [`MarketParamsDef`] into [`MarketParams`] (E08 T132a2; increment 14's design note §2): each
+/// value table names every core resource once, in any order, and becomes the core's order; the
+/// three factor lists are the rows, of one length.
+// rule: ADV-MKT-002
+fn compile_market_params(
+    scope: &Scope<'_>,
+    def: &MarketParamsDef,
+) -> Result<MarketParams, AdventureCompileError> {
+    let invalid = AdventureCompileError::InvalidParams;
+    let by_resource = |table: &[(ContentKey, u16)]| {
+        let mut values = (0..scope.core.resources().len())
+            .map(|_| None)
+            .collect::<Vec<Option<u16>>>();
+        for (key, value) in table {
+            let resource = scope.resource(key)?;
+            if values
+                .get_mut(resource.index())
+                .and_then(|slot| slot.replace(*value))
+                .is_some()
+            {
+                return Err(invalid("a market value table names a resource twice"));
+            }
+        }
+        values
+            .into_iter()
+            .collect::<Option<Vec<_>>>()
+            .ok_or(invalid("a market value table misses a core resource"))
+    };
+    let values = by_resource(&def.values)?;
+    let artifact_values = by_resource(&def.artifact_values)?;
+    if def.artifacts.len() != def.resources.len() || def.creatures.len() != def.resources.len() {
+        return Err(invalid("the market's factor lists differ in length"));
+    }
+    let rows = def
+        .resources
+        .iter()
+        .zip(&def.artifacts)
+        .zip(&def.creatures)
+        .map(|((&r, &a), &c)| [r, a, c])
+        .collect::<Vec<_>>();
+    MarketParams::new(values, artifact_values, &rows).map_err(|e| {
+        invalid(match e {
+            MarketParamsError::Values | MarketParamsError::Rows => {
+                "the market has no resource or row, or more than 255 rows"
+            }
+            MarketParamsError::ZeroValue => "a market value is 0",
+            MarketParamsError::ZeroFactor => "a market factor is 0",
+        })
+    })
+}
+
 fn validate_params(
     resolved: ResolvedParams,
     month_monster: Option<ObjectTypeId>,
@@ -1560,6 +1711,7 @@ fn validate_params(
         battle,
         price,
         month_creatures,
+        market,
     } = resolved;
     let reason = if def.land_points.is_empty() {
         Some("land_points is empty")
@@ -1617,6 +1769,7 @@ fn validate_params(
             flag_radius: def.flag_radius,
             calendar: def.calendar,
             dwellings: def.dwellings,
+            market,
             months: def
                 .months
                 .zip(month_monster)

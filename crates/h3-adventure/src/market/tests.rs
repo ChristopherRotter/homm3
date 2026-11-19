@@ -206,6 +206,12 @@ fn the_factors_are_the_executables_binary32() {
     }
     assert_eq!(market.factor_bits(0), None);
     assert_eq!(market.factor_bits(11), None);
+    assert_eq!(market.value(MERCURY), Some(500));
+    assert_eq!(market.artifact_value(MERCURY), Some(250));
+    assert_eq!(
+        (market.value(UNKNOWN), market.artifact_value(UNKNOWN)),
+        (None, None)
+    );
 }
 
 // covers: ADV-MKT-002
