@@ -61,6 +61,11 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-19, E27 M3 T5b (in progress; `client/e27-m3-t5b`).** The PC's 64 files and the
+  manuals staged (SHA-256 checked); T5b kept whole, CLT-Q146 answered (b) (the frames are 32
+  high). Built and tested: the tab's popups, Show Random Maps (the list's kind), the panel over an
+  empty list, Begin's stub, CLT-Q146. Next: record `adv-random` (Begin added) and
+  `adv-random-list` (new) under Wine, then `drawn`, the docs, the PR.
 - **2026-11-19, E27 M3 T5a (done; `client/e27-m3-t5a`).** The PC's 64 files and the manuals
   staged (SHA-256 checked). T5 cut in two with the user (decision 62). Read the tab's toggle,
   items, state, presses and record whole; `adv-random` played once under Wine. Built
@@ -74,9 +79,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   reading corrected). Built the presses and Begin's messages; the box's close keeps the screen
   as it was. Every shot of the three recipes exact up to the begin, every other recipe as
   recorded. Record: `E27-log.md`, "M3 T4b".
-- **2026-11-18, E27 M3 T4a (done; `client/e27-m3-t4a`).** The PC's 64 files and the manuals
-  staged (SHA-256 checked). The hot seat's path read (Single's `scenario_new` after the
-  Multiplayer dialog; M1 had read its branches): T4 cut in two with the user (decision 59). Built
-  the hot seat's screen as it opens (the names' records, the list's filter, the rows, the
-  handicap's caption); `adv-hotseat`'s backgrounds from its run under Wine; `adv-hotseat` 8 of 8
-  and both panels exact, every other recipe as recorded. Record: `E27-log.md`, "M3 T4a".
