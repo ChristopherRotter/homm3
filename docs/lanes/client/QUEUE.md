@@ -15,14 +15,16 @@ need the five DLLs (`MP3DEC.ASI` in the PC's `original-data/install` too since 2
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T5
+#### E27 M3 T5b
 
-T5 The random map's tab (design §3.16, `random_map_toggle` 0x57FEB0, button 130; CLT-Q92,
-decision 13: its choices drawn and taken as the original's, Begin with a random map chosen a
-stub's message, Show Random Maps listing the client's own `random_maps` (empty), no generator):
-exact against `adv-random` (§6.4: Begin after `tab-again`, recorded by this task with
-`h3shell.py run --only adv-random --record`). Look for a seam at its start (the tab's drawing and
-its presses). Then T6 and T7 as the M3 table lists them.
+T5b The rest of the random map's tab (design §3.16, §30.4; decision 62; CLT-Q92, decision 13):
+the items' right press and hints (`Help.txt`), Show Random Maps (335: `scenario_list_toggle(1)`,
+the random maps' list, kind 1, the client's own `random_maps` empty), the tab toggled back after
+it (the record built again over an empty list: CLT-Q111 (b)), the list's showing over a chosen
+random map (read only, design §30.4: record it, ask if it shows an oddity), Begin with a random
+map chosen (a stub's message); build CLT-Q146's answer if given. Exact against the rest of
+`adv-random` (§6.4: Begin after `tab-again`, recorded by this task with
+`h3shell.py run --only adv-random --record`). Then T6 and T7 as the M3 table lists them.
 
 ## Inbox
 
