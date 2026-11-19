@@ -112,6 +112,19 @@ Batch E14 records where the hero stands (§20, E14-16).
   artifact's 2.5 × its cost in gold; D-70's 37, 62 and 112 at 2, 4 and 8 (the town's rows, the
   original's); a property: every lot's `give` and `take` at least 1. Batch E14's E14-1 and E14-5
   confirm against the original.
+- *As built* (T132a1, decision 380): `h3_adventure::MarketParams` (`new` from the two value
+  tables by resource as `u16` and the rows in hundredths, refusing an empty or uneven table, a 0
+  value, no row or more than 255, a 0 factor: `MarketParamsError`), its `resource_lot`,
+  `creature_lot`, `artifact_price`, `factor_bits` (for the eighth check) and `counts`; `Lot`
+  (`give`, `take`). A stored quotient is held scaled by 2^32 (neither rounding depends on a
+  power of two), so a dear creature sold for gold keeps every bit `X87` holds. Tests: survey §4's
+  table at five (its precious-for-wood-or-ore cells corrected to 2 : 1), the wood-for-gold and
+  gold-for-wood rows at every count (D-70's 37, 62, 112; 88 at 6), E14-1's, E14-2's, E14-4's and
+  E14-5's lots, the factors' bit patterns against the executable's tables, the refusals and a
+  property (every lot at least 1, one side 1). A throwaway comparison with a binary32 model
+  (Python, not kept) agreed on 1 120 490 cases: every pair at every count, creature and artifact
+  costs 1 to 6 000 and on to 200 000 by 97. The part's `[market]` (its definition, compile and
+  hash) is T132a2's.
 
 ### 3. The Altar of Sacrifice kind (ADV-ALT-001 to -003; survey §12)
 

@@ -4199,3 +4199,36 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/creatureBanks.json"
   retrieved  = "2026-11-15"
   confidence = "medium"
+
+[[rule]]
+id       = "ADV-MKT-002"
+title    = "The market's rates: a trade's, a creature sale's and an artifact's price"
+context  = "adventure"
+status   = "verified"
+summary  = "The market's parameters hold a value per resource (250, 500, 250, 500, 500, 500, 1 for wood, mercury, ore, sulfur, crystal, gems, gold), a purchase's value per resource (125, 250, 125, 250, 250, 250, 1) and, by the count m of Marketplaces from 1, three factors in hundredths (resources R 10 to 50, artifacts A 20 to 60, creatures C 30 to 100), each used as the binary32 nearest it. Each step is the original's x87 arithmetic, computed exactly in integers (h3_kernel::arith::X87): an integer stored to binary32, a product or quotient at 53 bits stored to binary32, round(x) = trunc(x + 0.5) with the addition at 53 bits. A trade of g for t: a = f32(f32(v(g)) x R_m), q = f32(f32(v(t)) / a); q >= 1 gives the lot round(q) of g for one t, else one g for round(1 / q) of t (1 / q at 53 bits); a resource for itself has no lot. A creature of gold cost c sold for t: a = f32(f32(c) x C_m), q and the lot as above in creatures given; no lot for a cost of 0. An artifact of cost c bought in r: a = f32(f32(w(r)) x A_m), price round(f32(f32(c) / a)) of r, none when it rounds to 0. Every lot gives and takes at least 1 and one side is 1. The original's rounding is the rule (D-71, E08 decision 365). E08 T132a1: h3_adventure::MarketParams (resource_lot, creature_lot, artifact_price); the part's [market] and the visits come with T132a2 and T133."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md section 4; E08 T127a1, read again at T132a1): market_resources_proc 0x5ECFE0 (fild, fstp f32 of the given value, fmul market_resource_rates 0x678344[m], fstp f32; fild, fstp f32 of the wanted value, fdiv, fstp f32; fcomp 1.0; fadd 0.5 (f64) and crt_ftol of q or of fld1 / q), market_creature_rate 0x5ECE80 (the creature record's +0x38 gold cost, market_creature_rates 0x67839C), market_buy_artifact_proc 0x5ED9E0 (resource_values_artifacts 0x68C492, market_artifact_rates 0x678370, the artifact's cost, 0 when either is 0); resource_values 0x68C482; the three tables' bit patterns at m 1 to 10 checked in the tests; a precious resource for wood or ore is 2 : 1 at five Marketplaces (the survey's first table had 1 : 2, corrected at T132a1)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-14.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-19; survey E08-trades.md section 21): E14-1 (a Freelancer's Guild: 1 Pixie for 17 gold, 1 Vampire for 1 wood), E14-2 (a Skeleton 42 gold), E14-4 (a Black Market: 5 000 gold for a treasure of cost 2 000), E14-5 (a Trading Post: 1 wood for 75 gold, 833 gold for 1 wood, 3 mercury for 1 gem)"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/IMarket.cpp IMarket::getOffer (VCMI 1.7.5; survey E08-trades.md section 9): the same values and factors, computed in doubles with the ceiling where one given unit buys several (D-71: a Pixie 18 gold, not the original's 17; wood or ore for gold at 2, 4 and 8 Marketplaces 38, 63, 113, D-70 the town's)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/IMarket.cpp"
+  retrieved  = "2026-11-18"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Artifact merchants (the purchase's percentages, 500 % to 167 %, agreeing with A) and the List of adventure map objects (the Black Market at 2.5 times an artifact's price); no page states a rounding"
+  url        = "https://heroes.shoutwiki.com/wiki/Artifact_merchants"
+  retrieved  = "2026-11-18"
+  confidence = "medium"

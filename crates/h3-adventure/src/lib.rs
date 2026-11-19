@@ -46,6 +46,7 @@ mod answer;
 mod army;
 mod command;
 mod fog;
+mod market;
 mod movement;
 mod observe;
 mod persistent;
@@ -69,6 +70,7 @@ pub use command::{
     HireDialog, HireError, HireSource, HireTarget, Meeting, NoRoom, NothingWhy, Offer, OfferKind,
     OwnHeroes, Pick, ShipyardBlock, Sink, UniversityVisit, Viewers,
 };
+pub use market::{Lot, MarketParams, MarketParamsError};
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};
 pub use observe::{
     AdventureObservation, AdventureReveal, BoatView, GarrisonHeroView, GuardsView, HeroView, Known,
