@@ -19776,4 +19776,12 @@ map's recipe (`E08-batch-14-roe.toml`, E14-14), then one run of the whole recipe
 section (the market sections again). The maps were not copied to the user's folder (the session's
 device tools could not write there, as at T128).
 
-**Versions:** none moved (the harness, the recipe, the filled template, the address map, docs).
+**`master`'s CI** (the run on 450e47e, after #1032) failed in `h3-map`'s
+`every_step_keeps_the_commands_invariants`: a won battle against a monster guarding a Lean To's
+entrance paid the find's 3 crystal in the same command (decision 279's held visit), which
+`check_unowned_battle_end` did not predict (it knew a weekly object's only). The finds' part of
+`visit_gains` is now `find_gains`, called by both; the seed kept in
+`proptest-regressions/tests/play.txt`; the engine unchanged.
+
+**Versions:** none moved (the harness, the recipe, the filled template, the address map, a test
+oracle, docs).
