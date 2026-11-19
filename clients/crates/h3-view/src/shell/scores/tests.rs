@@ -1,6 +1,7 @@
 //! High Scores' tests (E27 M4 T1a): the creatures a score earns, the defaults' tables, the draw of
 //! both tabs, the buttons, keys and ends, the creatures' steps and the hold's rules as
-//! `scores-tabs` recorded them, the original's stale edges, Reset's notice (CLT-STUB-14).
+//! `scores-tabs` recorded them, the original's stale edges; Reset's question and the scores file
+//! (T1b).
 
 use alloc::boxed::Box;
 use alloc::format;
@@ -12,8 +13,8 @@ use h3_render::Bugs;
 use h3_ui::ui::{Draw, Item};
 
 use super::{
-    CAMPAIGN, EXIT, Picture, Pictures, RESET, ROWS, Record, STANDARD, Scores, ScoresLook, Tab,
-    Tables, Texts, atoi,
+    CAMPAIGN, EXIT, FILE_VERSION, Picture, Pictures, RESET, ROWS, Record, STANDARD, Scores,
+    ScoresLook, Tab, Tables, Texts, atoi, quoted,
 };
 use crate::message::{self, Key, MessageBox, Style};
 use crate::shell::keys::{Command, Context};
@@ -87,18 +88,29 @@ fn pictures() -> Pictures {
         .collect()
 }
 
-/// Reset's notice laid out in fonts of 8-wide glyphs.
-fn notice(bugs: Bugs) -> MessageBox {
+/// Reset's question laid out in fonts of 8-wide glyphs.
+fn question(bugs: Bugs) -> MessageBox {
     let layout = parse_layout(LAYOUT).unwrap();
     let (medium, small) = (font(8, 16), font(5, 10));
     message::layout(
         &layout.message,
         (&medium, &small),
-        "Not yet.",
-        Style::Ok,
+        "Reset?",
+        Style::OkCancel,
         None,
         (BOX_PLAYER, bugs),
     )
+}
+
+/// Tables of a scores file: [`records`]' with each scenario's score 40 (a Pikeman, creature 0)
+/// and the first campaign's player `Q`.
+fn file_tables() -> Tables {
+    let mut tables = Tables::defaults(&records()).unwrap();
+    for r in &mut tables.scenarios {
+        r.score = 40;
+    }
+    tables.campaigns[0].player = String::from("Q");
+    tables
 }
 
 /// The dialog as it opens: the layout's look, headings `Rank` to `Score`, [`records`]' tables,
@@ -113,7 +125,7 @@ pub(crate) fn scores(bugs: Bugs) -> Scores {
         score: String::from("Score"),
     };
     let tables = Tables::defaults(&records()).unwrap();
-    Scores::new(look(), texts, tables, pictures(), notice(bugs), bugs)
+    Scores::new(look(), texts, tables, pictures(), question(bugs), bugs)
 }
 
 /// The middle of button `id`.
@@ -131,15 +143,20 @@ fn middle(id: u16) -> [i32; 2] {
     [b.at[0] + b.size[0] / 2, b.at[1] + b.size[1] / 2]
 }
 
-/// The middle of the open notice's OK.
+/// The middle of the open question's OK.
 fn ok_point(scores: &Scores) -> [i32; 2] {
-    let open = scores.open.as_ref().unwrap();
+    button_point(scores, message::YES)
+}
+
+/// The middle of the open question's button `id`.
+fn button_point(scores: &Scores, id: u16) -> [i32; 2] {
+    let open = scores.question().unwrap();
     let dialog = &open.message.dialog;
     let b = dialog
         .items
         .iter()
         .find_map(|i| match i {
-            Item::Button(b) if b.id == message::OK => Some(b.clone()),
+            Item::Button(b) if b.id == id => Some(b.clone()),
             _ => None,
         })
         .unwrap();
@@ -250,7 +267,7 @@ fn it_opens_on_the_scenarios_their_button_selected_their_creatures_shown() {
     assert_eq!(scores.tab(), Tab::Scenarios);
     assert_eq!(scores.background(), "hiscore.pcx");
     assert_eq!(scores.context(), Context::HighScores);
-    assert!(!scores.noticing());
+    assert!(scores.question().is_none());
     assert_eq!(scores.hovers(), Hovers::default());
     assert_eq!(scores.tables().scenarios[0].player, "S0");
     assert_eq!(scores.frames(Tab::Scenarios), [0; ROWS]);
@@ -458,15 +475,16 @@ fn the_original_s_press_shows_the_button_s_box_alone_its_edges_stale() {
 }
 
 #[test]
-fn reset_shows_the_client_s_notice_until_its_ok() {
+fn reset_asks_its_question_its_buttons_by_the_mouse_and_the_keys() {
     let mut scores = scores(Bugs::Fixed);
     assert_eq!(scores.box_draws(""), Vec::new());
+    assert!(scores.question().is_none());
     let did = click(&mut scores, middle(RESET));
     assert!(did.changed);
-    assert!(scores.noticing());
+    assert!(scores.question().is_some());
     assert_eq!(scores.context(), Context::Question);
     assert!(!scores.box_draws("").is_empty());
-    // The dialog's inputs and steps go nowhere meanwhile.
+    // The dialog's inputs and steps go nowhere meanwhile (the box's modal loop takes them).
     scores.clock(0);
     assert!(!scores.clock(1000));
     assert_eq!(
@@ -480,13 +498,13 @@ fn reset_shows_the_client_s_notice_until_its_ok() {
     scores.press(ok);
     scores.moved([0, 0]);
     assert!(scores.release().changed);
-    assert!(scores.noticing());
+    assert!(scores.question().is_some());
     // Its OK by the mouse (followed off and on, the right release ending its hold) closes it.
     assert!(scores.press(ok).changed);
     assert!(scores.moved([0, 0]).changed);
     scores.moved(ok);
     assert!(scores.right_release().changed);
-    assert!(!scores.noticing());
+    assert!(scores.question().is_none());
     // By Enter, at its key up; a press off its button does nothing.
     click(&mut scores, middle(RESET));
     assert_eq!(scores.press([0, 0]), Did::default());
@@ -497,7 +515,183 @@ fn reset_shows_the_client_s_notice_until_its_ok() {
     );
     assert_eq!(scores.release(), Did::default());
     assert!(scores.key_up("Return").changed);
-    assert!(!scores.noticing());
+    assert!(scores.question().is_none());
+    // Cancel by Escape, and by the mouse.
+    click(&mut scores, middle(RESET));
+    scores.key(Some(Command::Message(Key::Cancel)), "Escape");
+    assert!(scores.key_up("Escape").changed);
+    assert!(scores.question().is_none());
+    click(&mut scores, middle(RESET));
+    let cancel = button_point(&scores, message::NO);
+    assert!(click(&mut scores, cancel).changed);
+    assert!(scores.question().is_none());
+}
+
+#[test]
+fn reset_s_cancel_keeps_the_tables_its_ok_sets_the_defaults_and_the_creatures_again() {
+    let defaults = Tables::defaults(&records()).unwrap();
+    let mut scores = scores(Bugs::Fixed).with_tables(file_tables());
+    assert_eq!(scores.tables(), &file_tables());
+    // The file's scores of 40 all earn creature 0's picture (4 frames).
+    assert!(creatures(&scores).iter().all(|(def, ..)| def == "c0.def"));
+    assert_eq!(scores.take_save(), None);
+    // Three steps: each counter at 3.
+    scores.clock(0);
+    for t in [210, 420, 630] {
+        scores.clock(t);
+    }
+    assert_eq!(scores.frames(Tab::Scenarios), [3; ROWS]);
+    // Cancel: nothing changes.
+    click(&mut scores, middle(RESET));
+    let cancel = button_point(&scores, message::NO);
+    click(&mut scores, cancel);
+    assert_eq!(scores.tables(), &file_tables());
+    assert_eq!(scores.take_save(), None);
+    // OK: the defaults, the scores file due once, each creature's DEF by its row's score with
+    // frame 0, the counters kept (the next step shows each counter's next frame).
+    click(&mut scores, middle(RESET));
+    let ok = ok_point(&scores);
+    click(&mut scores, ok);
+    assert_eq!(scores.tables(), &defaults);
+    let saved = scores.take_save().unwrap();
+    assert_eq!(Tables::read(&saved), Ok(defaults.clone()));
+    assert_eq!(scores.take_save(), None);
+    // Row 1's creature has no picture: the rows 0 and 2 drawn first.
+    let drawn = creatures(&scores);
+    assert_eq!(drawn[0], (String::from("c90.def"), 0, 26));
+    assert_eq!(drawn[1], (String::from("c114.def"), 0, 126));
+    assert!(drawn.iter().all(|&(_, frame, _)| frame == 0));
+    assert_eq!(scores.frames(Tab::Scenarios), [3; ROWS]);
+    assert!(scores.clock(840));
+    // Row 0's c90 has no frames (back to 0), row 1 no picture, row 2's c114 four (4: back to 0).
+    assert_eq!(scores.frames(Tab::Scenarios)[..3], [0, 0, 0]);
+    let stepped = scores.clock(1050);
+    assert!(stepped);
+    assert_eq!(creatures(&scores)[1].1, 1);
+    // The campaigns' first player is the default's again.
+    click(&mut scores, middle(CAMPAIGN));
+    assert!(texts(&scores).iter().any(|t| t == "C0"));
+}
+
+#[test]
+fn no_step_while_the_question_shows_its_close_runs_the_one_due() {
+    // `scores-reset`'s times: opened at 0, Reset clicked at 100, Cancel's release at 400.
+    let mut scores = scores(Bugs::Fixed);
+    scores.clock(0);
+    scores.clock(100);
+    click(&mut scores, middle(RESET));
+    assert!(!scores.clock(300));
+    scores.clock(400);
+    let cancel = button_point(&scores, message::NO);
+    click(&mut scores, cancel);
+    assert_eq!(scores.frames(Tab::Scenarios)[2], 1);
+    assert!(!scores.clock(500));
+    // Reset again at 500, its OK at 600: 200 ms since the last, none due; the tick at 700 steps.
+    click(&mut scores, middle(RESET));
+    scores.clock(600);
+    let ok = ok_point(&scores);
+    click(&mut scores, ok);
+    assert_eq!(scores.frames(Tab::Scenarios)[2], 1);
+    assert_eq!(creatures(&scores)[1].1, 0);
+    assert!(scores.clock(700));
+    assert_eq!(creatures(&scores)[1].1, 2);
+    // A close by a key runs it too.
+    click(&mut scores, middle(RESET));
+    scores.clock(1000);
+    scores.key(Some(Command::Message(Key::Cancel)), "Escape");
+    scores.key_up("Escape");
+    assert_eq!(scores.frames(Tab::Scenarios)[2], 3);
+}
+
+#[test]
+fn the_tables_outlive_the_dialog_and_open_anew_as_they_are() {
+    let defaults = Tables::defaults(&records()).unwrap();
+    let mut base = scores(Bugs::Fixed).with_tables(file_tables());
+    let mut left = base.opened(Hovers::default());
+    assert_eq!(left.tables(), &file_tables());
+    click(&mut left, middle(RESET));
+    let ok = ok_point(&left);
+    click(&mut left, ok);
+    base.keep(&left);
+    let opened = base.opened(Hovers::default());
+    assert_eq!(opened.tables(), &defaults);
+    // Its defaults are still CampHigh.txt's: a Reset there sets them again.
+    let mut again = opened.with_tables(file_tables());
+    click(&mut again, middle(RESET));
+    let ok = ok_point(&again);
+    click(&mut again, ok);
+    assert_eq!(again.tables(), &defaults);
+    // The menus keep the tables High Scores left with as the main menu opens.
+    let mut menus = crate::shell::menu::tests::menus(Bugs::Fixed);
+    menus.scores = menus.scores.clone().with_tables(file_tables());
+    let main = menus.front(Screen::MainMenu, None, [643, 304]).unwrap();
+    let Some(Front::Scores(mut s)) = menus.front(Screen::HighScores, Some(main), [0, 0]) else {
+        panic!("High Scores");
+    };
+    assert_eq!(s.tables(), &file_tables());
+    click(&mut s, middle(RESET));
+    let ok = ok_point(&s);
+    click(&mut s, ok);
+    let _ = menus.front(Screen::MainMenu, Some(Front::Scores(s)), [0, 0]);
+    let Some(Front::Scores(s)) = menus.front(Screen::HighScores, None, [0, 0]) else {
+        panic!("High Scores");
+    };
+    assert_eq!(s.tables(), &defaults);
+}
+
+#[test]
+fn the_scores_file_holds_both_tables_by_its_version() {
+    let tables = file_tables();
+    let text = tables.write();
+    assert!(text.starts_with("# High Scores' tables"), "{text}");
+    assert!(
+        text.contains(&format!("\nversion = {FILE_VERSION}\n")),
+        "{text}"
+    );
+    assert_eq!(Tables::read(&text), Ok(tables.clone()));
+    // Names of any characters come back as they were.
+    let mut odd = tables.clone();
+    odd.scenarios[0].player = String::from("a \"b\" \\c\u{7}é\n");
+    odd.campaigns[3].land = String::from("\t\u{7F}x");
+    assert_eq!(Tables::read(&odd.write()), Ok(odd));
+    assert_eq!(quoted("a\"\\\u{1}"), "\"a\\\"\\\\\\u0001\"");
+    // Refused: not TOML, no version or not a number, another version, a table missing or of
+    // another count, a row missing a field or with one it does not know, a number out of range.
+    let err = |text: &str| Tables::read(text).unwrap_err();
+    assert!(!err("version = ").is_empty());
+    assert_eq!(err("x = 1"), "no `version` number");
+    assert_eq!(err("version = \"1\""), "no `version` number");
+    assert_eq!(
+        err(&text.replacen("version = 1", "version = 2", 1)),
+        "version 2: this client reads version 1"
+    );
+    let rows = |name: &str, n: usize| {
+        (0..n)
+            .map(|_| format!("[[{name}]]\nplayer = \"p\"\nland = \"l\"\ndays = 1\nscore = 2\n"))
+            .collect::<String>()
+    };
+    let file = |s: usize, c: usize| {
+        format!(
+            "version = 1\n{}{}",
+            rows("scenarios", s),
+            rows("campaigns", c)
+        )
+    };
+    assert!(Tables::read(&file(ROWS, ROWS)).is_ok());
+    assert_eq!(err(&file(ROWS - 1, ROWS)), "`scenarios`: 10 rows, not 11");
+    assert_eq!(err(&file(ROWS, ROWS + 1)), "`campaigns`: 12 rows, not 11");
+    assert!(err(&format!("version = 1\n{}", rows("scenarios", ROWS))).contains("campaigns"));
+    for (from, to) in [
+        ("land = \"l\"\n", ""),
+        ("days = 1", "days = 1\nrank = 3"),
+        ("score = 2", "score = 4294967296"),
+        ("version = 1\n", "version = 1\nnewest = 0\n"),
+    ] {
+        assert!(
+            !err(&file(ROWS, ROWS).replacen(from, to, 1)).is_empty(),
+            "{to}"
+        );
+    }
 }
 
 #[test]

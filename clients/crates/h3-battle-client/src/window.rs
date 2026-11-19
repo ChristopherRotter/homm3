@@ -2923,7 +2923,7 @@ fn save_settings(settings: &Settings, files: &SettingsFile<'_>) {
 /// Writes `text` to `path` whole or not at all (E17 M6 T7b, R4-5): into a sibling file first
 /// (its name and `.tmp`), renamed over `path`, so that a kill, a crash or a full disk in between
 /// leaves the old file; the sibling removed again when either step fails.
-fn write_whole(path: &Path, text: &str) -> std::io::Result<()> {
+pub(crate) fn write_whole(path: &Path, text: &str) -> std::io::Result<()> {
     let mut name = path.file_name().unwrap_or_default().to_os_string();
     name.push(".tmp");
     let sibling = path.with_file_name(name);

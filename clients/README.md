@@ -91,7 +91,9 @@ search the parent directories).
   Tutorial and the main menu's Credits show the client's stub, a notice over their menu whose OK
   goes back to it (the replay stops there: not the original's screens). High Scores is built
   since E27 M4 T1a (`h3_view::shell::scores`: both tables, `CampHigh.txt`'s defaults, the
-  creatures stepping; Reset a notice until T1b).
+  creatures stepping); since T1b Reset asks its question and its OK resets both tables, the
+  window's scores file read at the start over the defaults and written at that OK (`--scores
+  <file>`, else `scores.toml` in the working directory; never the installation's `HiScore.dat`).
 - **A look at the drawers:** `cargo run --release -p h3-battle-client -- sprite CPKMAN.DEF --group 2
   --background CmBkGrMt.pcx [--mirror]` draws every frame of one group of a DEF side by side over
   a PCX, as the battle draws a stack, into `clients/out/sprite/` (the base archives searched

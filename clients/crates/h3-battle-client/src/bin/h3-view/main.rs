@@ -216,7 +216,7 @@ commands:
           every server in the pins file (default pins.txt), where `connect` and `window
           --server` re-key the account at their next login.
   shell [--script <file> | --steps <file> --frames <dir> [--pointer <x>,<y>] [--input-step <ms>]
-        | --window [--scale <n>]] [--no-intro] [--install <dir>]
+        | --window [--scale <n>] [--keys <file>] [--scores <file>]] [--no-intro] [--install <dir>]
           the game shell's frame (E27 M2 T3a, T4). Headless by words: prints the screen on (the
           start's clips, or with --no-intro the main menu), the task that builds it and the
           words it takes; each word read (a line of standard input, or of <file>, echoed) ends
@@ -228,8 +228,9 @@ commands:
           <dir>/<clip>/t<ms>.565 (5-6-5, little-endian), listed in <dir>/replay.txt with the
           step the viewer cannot take (h3shell.py drawn compares them with the original's).
           --window: the built screens drawn in a window (the others black), the words still
-          read from standard input. The assets from <dir> (default $H3_INSTALL, then
-          original-data/install).
+          read from standard input; High Scores' tables from the scores file (default
+          scores.toml here; E27 M4 T1b), written as Reset resets them. The assets from <dir>
+          (default $H3_INSTALL, then original-data/install).
   help    show this message
 ";
 

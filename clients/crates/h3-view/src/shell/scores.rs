@@ -24,8 +24,7 @@
 //! - **The procedure** (`high_scores_proc` 0x4EA1D0): Escape and Enter end it at their press
 //!   (Exit's id 0x7802), as does Exit's click; Standard's click (S) shows the scenarios, Campaign's
 //!   (C) the campaigns (the creatures of both hidden, then the tab's shown; their frames kept);
-//!   Reset's (no key) asks its question (T1b: the client's notice until then, CLT-STUB-14). Any
-//!   other message, once more than 200 ms of the clock have passed since the last step (the
+//!   Reset's (no key) asks its question ([`Scores::question`]). Any other message, once more than 200 ms of the clock have passed since the last step (the
 //!   dialog's +0x104, set as it opens), steps the tab's eleven creatures a frame (their counters
 //!   +0xA4, from 0 as it opens, back to 0 at their DEF's count of group 0), the table drawn again.
 //!   No hint line and no right press's popup (§6.3: recorded). A key down and a command (the
@@ -33,9 +32,19 @@
 //!   (`def_button_message` 0x45641C), so none steps; the release that ends the hold runs the
 //!   step at its own time (*recorded*, §34: `scores-tabs`' `exit-left` to `campaigns-anim`; the
 //!   message that runs it unread), after its click.
+//! - **Reset** (E27 M4 T1b; the procedure's 0x3EB, design §35): GENRLTXT 667 in a box of style 2;
+//!   its modal loop takes every message, so no step runs while it shows. Cancel changes nothing;
+//!   OK (0x7805) resets both tables to the defaults (`high_scores_reset` 0x4E8FB0), writes the
+//!   scores file (the original's `DATA\HiScore.dat`; the client's own, [`Scores::take_save`]) and
+//!   sets every creature's DEF again by its row's score with its frame 0, the counters kept (so
+//!   the next step shows each counter's next frame); it redraws nothing itself.
+//! - **The scores file** (E27 M4 T1b, *provisional*: its place and format the client's; never
+//!   the installation's `HiScore.dat`): [`Tables::read`] at the start over the defaults,
+//!   [`Tables::write`] at Reset's OK, a TOML file of the [`FILE_VERSION`].
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
+use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
@@ -47,7 +56,7 @@ use serde::Deserialize;
 use super::Ended;
 use super::keys::{Command, Context};
 use super::menu::{Did, Hovers, Stale, outside};
-use crate::message::{MessageBox, Open, Outcome};
+use crate::message::{self, MessageBox, Open, Outcome};
 
 /// The rows of a table.
 pub const ROWS: usize = 11;
@@ -59,6 +68,8 @@ pub const RESET: u16 = 0x3EB;
 pub const CAMPAIGN: u16 = 0x3E9;
 /// Standard's button: the scenarios' tab.
 pub const STANDARD: u16 = 0x3EA;
+/// The scores file's version (E27 M4 T1b, *provisional*): [`Tables::read`] refuses another.
+pub const FILE_VERSION: i64 = 1;
 
 /// A tab: the dialog's +0xFC (0 the campaigns, 1 the scenarios).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -217,6 +228,111 @@ impl Tables {
             Tab::Scenarios => &self.scenarios,
         }
     }
+
+    /// The tables a scores file's `text` holds (E27 M4 T1b, *provisional*; [`Tables::write`]'s
+    /// format): its `version` the [`FILE_VERSION`], then `scenarios` and `campaigns`, each
+    /// [`ROWS`] rows of a `player`, a `land` (a campaign's name in the campaigns'), the `days` and
+    /// the `score`.
+    ///
+    /// # Errors
+    /// Not TOML, another version or none, a table or a row not as above.
+    pub fn read(text: &str) -> Result<Self, String> {
+        let file: toml::Table = toml::from_str(text).map_err(|e| e.to_string())?;
+        match file.get("version").map(toml::Value::as_integer) {
+            Some(Some(FILE_VERSION)) => {}
+            Some(Some(v)) => {
+                return Err(format!(
+                    "version {v}: this client reads version {FILE_VERSION}"
+                ));
+            }
+            _ => return Err(String::from("no `version` number")),
+        }
+        let file: File = toml::from_str(text).map_err(|e| e.to_string())?;
+        let rows = |name: &str, rows: Vec<Row>| {
+            if rows.len() == ROWS {
+                Ok(rows.into_iter().map(Record::from).collect())
+            } else {
+                Err(format!("`{name}`: {} rows, not {ROWS}", rows.len()))
+            }
+        };
+        Ok(Self {
+            scenarios: rows("scenarios", file.scenarios)?,
+            campaigns: rows("campaigns", file.campaigns)?,
+        })
+    }
+
+    /// The scores file's text (E27 M4 T1b, *provisional*): the [`FILE_VERSION`], then each
+    /// table's rows ([`Tables::read`]).
+    #[must_use]
+    pub fn write(&self) -> String {
+        let mut text = format!(
+            "# High Scores' tables (h3-view shell; E27 M4 T1b): read at the start over\n\
+             # CampHigh.txt's defaults, written as Reset's OK resets them to those.\n\
+             version = {FILE_VERSION}\n"
+        );
+        for (name, rows) in [
+            ("scenarios", &self.scenarios),
+            ("campaigns", &self.campaigns),
+        ] {
+            for r in rows {
+                text.push_str(&format!(
+                    "\n[[{name}]]\nplayer = {}\nland = {}\ndays = {}\nscore = {}\n",
+                    quoted(&r.player),
+                    quoted(&r.land),
+                    r.days,
+                    r.score
+                ));
+            }
+        }
+        text
+    }
+}
+
+/// A scores file as [`Tables::read`] takes it.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct File {
+    /// Checked before (a number of any version).
+    #[serde(rename = "version")]
+    _version: i64,
+    scenarios: Vec<Row>,
+    campaigns: Vec<Row>,
+}
+
+/// A row of a scores file.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Row {
+    player: String,
+    land: String,
+    days: i32,
+    score: i32,
+}
+
+impl From<Row> for Record {
+    fn from(r: Row) -> Self {
+        Self {
+            player: r.player,
+            land: r.land,
+            days: r.days,
+            score: r.score,
+        }
+    }
+}
+
+/// `text` as a TOML basic string: `"` and `\` escaped, each control character as `\uXXXX`.
+fn quoted(text: &str) -> String {
+    let mut quoted = String::from("\"");
+    for c in text.chars() {
+        match c {
+            '"' => quoted.push_str("\\\""),
+            '\\' => quoted.push_str("\\\\"),
+            c if c.is_control() => quoted.push_str(&format!("\\u{:04X}", u32::from(c))),
+            c => quoted.push(c),
+        }
+    }
+    quoted.push('"');
+    quoted
 }
 
 /// C's `atoi` (0x617F09): leading blanks, a sign, the digits up to the first other character
@@ -300,6 +416,8 @@ pub struct Scores {
     look: ScoresLook,
     texts: Texts,
     tables: Tables,
+    /// `CampHigh.txt`'s, which Reset's OK sets again.
+    defaults: Tables,
     pictures: Pictures,
     tab: Tab,
     /// The row the new entry made on each tab, by the tab's number (`high_score_newest`; M5).
@@ -315,10 +433,12 @@ pub struct Scores {
     /// step): outside its box it shows so after a press's redraw (the original's profile).
     whole: BTreeMap<u16, State>,
     input: Input,
-    /// Reset's notice (CLT-STUB-14, until T1b builds its question), laid out.
-    notice: MessageBox,
-    /// The notice when open.
+    /// Reset's question (GENRLTXT 667, style 2), laid out.
+    question: MessageBox,
+    /// The question when open.
     open: Option<Box<Open>>,
+    /// The tables Reset's OK set, not yet taken for the scores file ([`Scores::take_save`]).
+    unsaved: bool,
     /// The menus' last items as the main menu left them (the screen writes none).
     hovers: Hovers,
     bugs: Bugs,
@@ -326,21 +446,23 @@ pub struct Scores {
 
 impl Scores {
     /// The dialog as it opens (`high_scores_dialog_init`): the scenarios' tab, every counter 0,
-    /// the creatures' DEFs by `tables`' scores and `pictures`, Reset's `notice` laid out, in the
-    /// profile `bugs`.
+    /// the tables the `defaults` (`CampHigh.txt`'s; a scores file's over them,
+    /// [`Scores::with_tables`]), the creatures' DEFs by their scores and `pictures`, Reset's
+    /// `question` laid out, in the profile `bugs`.
     #[must_use]
     pub fn new(
         look: ScoresLook,
         texts: Texts,
-        tables: Tables,
+        defaults: Tables,
         pictures: Pictures,
-        notice: MessageBox,
+        question: MessageBox,
         bugs: Bugs,
     ) -> Self {
         let mut scores = Self {
             look,
             texts,
-            tables,
+            tables: defaults.clone(),
+            defaults,
             pictures,
             tab: Tab::Scenarios,
             newest: [None; 2],
@@ -350,8 +472,9 @@ impl Scores {
             shown: Shown::default(),
             whole: BTreeMap::new(),
             input: Input::new(bugs),
-            notice,
+            question,
             open: None,
+            unsaved: false,
             hovers: Hovers::default(),
             bugs,
         };
@@ -362,20 +485,43 @@ impl Scores {
     }
 
     /// The dialog opened anew (its tab the manager's first, the scenarios'; the counters 0, the
-    /// clock's first reading its start), the menus' last items `hovers` kept for the main menu.
+    /// clock's first reading its start; its tables as they are), the menus' last items `hovers`
+    /// kept for the main menu.
     #[must_use]
     pub fn opened(&self, hovers: Hovers) -> Self {
         let mut scores = Self::new(
             self.look.clone(),
             self.texts.clone(),
-            self.tables.clone(),
+            self.defaults.clone(),
             self.pictures.clone(),
-            self.notice.clone(),
+            self.question.clone(),
             self.bugs,
-        );
+        )
+        .with_tables(self.tables.clone());
         scores.newest = self.newest;
         scores.hovers = hovers;
         scores
+    }
+
+    /// The dialog with the tables `tables` (a scores file's, read over the defaults at the start:
+    /// `high_score_manager_load` 0x4E90A0), the creatures' DEFs by their scores.
+    #[must_use]
+    pub fn with_tables(mut self, tables: Tables) -> Self {
+        self.tables = tables;
+        self.set_creatures();
+        self
+    }
+
+    /// The tables `left` ended with kept, for the next opening (the manager's, which outlives the
+    /// dialog).
+    pub fn keep(&mut self, left: &Self) {
+        self.tables.clone_from(&left.tables);
+    }
+
+    /// The scores file's text ([`Tables::write`]) when Reset's OK set the tables since the last
+    /// time it was taken: the caller writes it (the original's `HiScore.dat` at 0x4EA3E3).
+    pub fn take_save(&mut self) -> Option<String> {
+        core::mem::take(&mut self.unsaved).then(|| self.tables.write())
     }
 
     /// The dialog with the row `row` of `tab` the newest (drawn in colour 8; the new entry's,
@@ -410,7 +556,7 @@ impl Scores {
         self.hovers
     }
 
-    /// Where it takes its keys: Reset's notice's, else its own.
+    /// Where it takes its keys: Reset's question's, else its own.
     #[must_use]
     pub const fn context(&self) -> Context {
         if self.open.is_some() {
@@ -420,10 +566,10 @@ impl Scores {
         }
     }
 
-    /// Whether the client's notice shows (Reset's, CLT-STUB-14): not the original's screen.
+    /// Reset's question, while it shows.
     #[must_use]
-    pub const fn noticing(&self) -> bool {
-        self.open.is_some()
+    pub fn question(&self) -> Option<&Open> {
+        self.open.as_deref()
     }
 
     /// The picture copied whole onto the screen first: the tab's.
@@ -479,7 +625,7 @@ impl Scores {
             .collect()
     }
 
-    /// Reset's notice over the dialog, when it shows.
+    /// Reset's question over the dialog, when it shows.
     #[must_use]
     pub fn box_draws(&self, players: &str) -> Vec<Draw> {
         self.open
@@ -554,8 +700,8 @@ impl Scores {
             .saturating_add(u16::try_from(row).unwrap_or(u16::MAX))
     }
 
-    /// Every creature's DEF by its row's score and its frame its counter's (the constructor's and
-    /// Reset's `dialog_def_set_def`, `dialog_def_set_frame`).
+    /// Every creature's DEF by its row's score and its frame 0 (the constructor's and Reset's
+    /// `dialog_def_set_def`, `dialog_def_set_frame`: the counters are left as they are).
     fn set_creatures(&mut self) {
         for tab in Tab::ALL {
             for row in 0..ROWS {
@@ -570,9 +716,7 @@ impl Scores {
                     Some(p) => self.shown.defs.insert(id, p.def.clone()),
                     None => self.shown.defs.remove(&id),
                 };
-                self.shown
-                    .frames
-                    .insert(id, self.counters[tab as usize][row]);
+                self.shown.frames.insert(id, 0);
             }
         }
     }
@@ -610,7 +754,8 @@ impl Scores {
     /// [`ScoresLook::step`] ms have passed since the last step, the tab's creatures step a frame
     /// (each back to 0 at its DEF's count) and the dialog shows whole; none while the mouse holds
     /// a button (its own loop takes the messages, `def_button_message` 0x45641C: recorded,
-    /// `scores-tabs`' `reset-press`) or the notice shows. Whether what shows changed.
+    /// `scores-tabs`' `reset-press`) or Reset's question shows (its modal loop's). Whether what
+    /// shows changed.
     pub fn clock(&mut self, now: u32) -> bool {
         self.now = now;
         self.step_due()
@@ -742,7 +887,7 @@ impl Scores {
     }
 
     /// A hold ended (`changed`: a button went up) with the click `clicked`, if any: Exit's ends
-    /// the dialog, a tab's shows its tab, Reset's its notice.
+    /// the dialog, a tab's shows its tab, Reset's asks its question.
     fn clicked(&mut self, changed: bool, clicked: Option<u16>) -> Did {
         let mut did = Did {
             changed,
@@ -752,9 +897,8 @@ impl Scores {
             Some(EXIT) => did.ended = Some(Ended::Done),
             Some(STANDARD) => self.switch(Tab::Scenarios, &mut did),
             Some(CAMPAIGN) => self.switch(Tab::Campaigns, &mut did),
-            // stub: CLT-STUB-14 (Reset's question: E27 M4 T1b)
             Some(RESET) => {
-                self.open = Some(Box::new(Open::new(self.notice.clone())));
+                self.open = Some(Box::new(Open::new(self.question.clone())));
                 did.changed = true;
             }
             _ => {}
@@ -770,13 +914,22 @@ impl Scores {
         did.changed = true;
     }
 
-    /// Reset's notice answered: closed by its OK.
+    /// Reset's question answered: closed by either button, its OK (0x7805) resetting the tables
+    /// (`high_scores_reset` 0x4E8FB0), the scores file due and every creature set again; then the
+    /// step due at the close's time runs, as after a button's hold (*recorded*, `scores-reset`:
+    /// Cancel's release at 400 stepped, so Reset's OK at 600 did not and the tick at 700 did).
     fn answered(&mut self, outcome: Outcome) -> Did {
         match outcome {
             Outcome::Nothing => Did::default(),
             Outcome::Changed => Did::CHANGED,
-            Outcome::Closed(_) => {
+            Outcome::Closed(id) => {
                 self.open = None;
+                if id == message::YES {
+                    self.tables.clone_from(&self.defaults);
+                    self.unsaved = true;
+                    self.set_creatures();
+                }
+                self.step_due();
                 Did::CHANGED
             }
         }

@@ -1550,3 +1550,44 @@ dialog, T1b Reset's question and the client's scores file.
   (decision 70). The press's stale edges taken as CLT-Q118's class (review list item 2).
   CLT-STUB-14 commented in `docs/stubs.toml`. **The agent's calls** (*provisional*: M4's review
   list items 1 to 5).
+
+## M4 T1b — High Scores' Reset: its question, the tables reset, the client's scores file (2026-11-19)
+
+On `client/e27-m4-t1b`, the user away after the start; `master` at `b73bdbb` (#1055 merged; CI's
+`Clients` green on `b8b9e2a`). The original data staged at once (64 files, the four manuals and
+three help files, checked by SHA-256 against the user's computer), `cp -rn` into the clone; the
+setup's baseline stopped by a watcher at coverage (fmt, clippy, the doc tests and deny passed),
+CI's green `master` standing in. Kept whole (a small task).
+
+- **Read** (design §35.1): `high_scores_proc`'s Reset branch: the question (GENRLTXT 667, style
+  2, its own modal loop), OK's reset, `HiScore.dat`'s write and its failure's box, every creature
+  item's DEF and frame 0 with the counters kept (CLT-Q158), no redraw; `dialog_def_set_frame`
+  (the frame modulo its group's count) and `dialog_def_set_def`.
+- **Recorded:** `scores-reset` played once again under Wine (as kept). The viewer's replay against
+  its 10 shots found the step the box's closing release runs (§35.2): first 6 of 10 exact (the
+  creatures one frame behind from `reset` on), then 10 of 10.
+- **Built, pure** (`h3-view`): `shell::scores`: Reset's question (`question`, `Scores::question`),
+  Cancel and OK (the defaults kept beside the tables, `set_creatures` with frame 0, the step due
+  at the close), `Scores::with_tables`, `keep`, `take_save`; `Tables::read` and `write` (TOML,
+  `FILE_VERSION` 1, `quoted`); `Menus::front` keeps the tables High Scores leaves with;
+  `Front::question`; the replay's `Step::Button` (`press`, `point`), `Step::UntilButton`,
+  `Stop::NoButton`, `button_point` (the probes' 66 × 33 and 66 × 32 from the button's frame, a
+  pixel up and left of the button: checked by `ok-hover` and `cancel-hover`); `noticing` gone
+  from High Scores.
+- **Built, the adapters** (`h3-battle-client`): `--scores <file>` (the window's; else
+  `scores.toml` here), `scores_text`, `Drawer::load`'s file (its tables over the defaults, the
+  creatures' DEFs of both), the question laid out (`shell.high-scores.reset`, GENRLTXT 667, style
+  2), the window's write at the OK (`window::write_whole`, a failure told on standard error),
+  `stopped`'s `no-button`; the own key `shell.stub.scores-reset` gone, CLT-STUB-14's comment gone
+  from `docs/stubs.toml`.
+- **The comparisons:** `drawn --group scores`: `scores-reset` 10 of 10 exact, `scores-tabs` 28 of 28;
+  every other group as recorded (`drawn` whole). The window checked under Xvfb: Reset's question,
+  Enter and a click on OK, the file written with the defaults; a file edited by hand (a name with
+  quotes and Ö, a score of 9000: its creature) read at the next start and reset again; a file of
+  version 2 stops the window with its path and reason.
+- **Gates:** `h3-view`'s coverage 100% of lines and regions but `book.rs` 138-143 (as before);
+  `check.sh --no-coverage`, `gate`, the scoped verify with the original data (below).
+- **Questions:** CLT-Q158 (the creatures' frame 0 after Reset, the counters kept), asked, built as
+  the original's (recommended (a)). **The agent's calls** (*provisional*: M4's review list items 6
+  to 9).
+
