@@ -20145,3 +20145,49 @@ light gates only). Staged `Heroes3.exe`, `maps.tar`, `extracted.tar` from the us
 
 **Versions:** adventure state hash v27. The game state hash, the ruleset part, the map import,
 the replay format and the battle's versions unchanged. T133a2 next.
+
+### Increment 14, round 6: T133a2, the market's visit and the adventure's checks (2026-11-20, `adventure/e08-t133a2`)
+
+**The cut** (decision 383): the visits' outcome and the adventure's checks of a sale and a
+purchase, one pull request stacked on T133a1's (#1062); the game's window `ADV-STUB-18` until
+T133b. **Baseline:** T133a1's branch (its scoped verify passing every step but `check-lane`, by
+design).
+
+- **The visit** (design §10; ADV-MKT-001): `Effect::Market` from `effect`, dispatched in
+  `AdventureState::visit` to `AdventureOutcome::service: Option<ServiceVisit>`
+  (`ServiceVisit::Market(MarketVisit { hero, index, object_type, anchor })`). The markets are
+  entered, so the step ends the move on the entrance, and revisitable (`Revisit`,
+  `revisitable`) as every built entered kind; no mark, no event, no block written. The game opens
+  nothing until T133b (`ADV-STUB-18` in `docs/stubs.toml`, its marker in
+  `GameState::settle_outcome`).
+- **The checks and changes** (design §11; `state/markets.rs`): `check_sale` and `sell`
+  (ADV-MKT-005: the visit, the screen, the slot, the lot by `MarketParams::creature_lot` at the
+  kind's count, the lots from 1 to the stack's count over the lot's creatures, the lone stack
+  keeping a creature; the gain in 64 bits saturated; `sell` lowers or empties the slot and
+  returns the `ArmySlot` the game tells), `check_buy` and `buy` (ADV-MKT-007: the visit, the
+  screen, the entry drawn and not sold, the price by `MarketParams::artifact_price`, the hero's
+  room by `check_change`'s `AddArtifact`, HER-CHG-002, before anything is paid: A-46 fixed as
+  ADV-QUIRK-48; `buy` writes the sold bit). `Sale` and `MarketPurchase` keep their fields private
+  with readers and are not `Clone` (the hire's form). `MarketError` in `command.rs`: the design's
+  nine (`SameResource` and `Recipient` the game's at T133b) and, *agent's call* (change freely),
+  `Visit` for a window whose hero is off the map or whose object is no market, as the hire's
+  `NoSource`.
+- **The cost resource** (*agent's call*, ADV-Q60 asked): a creature's and an artifact's value is
+  their cost in "gold" (design §2), which neither the core nor the adventure part names; the
+  checks take the resource from their caller (`value`), so T133b decides where the game takes it
+  (recommended: `[params.market]` names it, part v24).
+- **Tests:** `state/tests/markets.rs` (six): each market's step and Revisit open its window and
+  nothing else; the sale's lots for gold and for wood (survey §4's 25 → 17; 14 peasants for one
+  wood), `Amount`, `Slot`, `NoPrice` (a creature of no cost, a cost read in another resource),
+  the slot emptied and lowered, `LastCreature` with the lone stack, a gain saturated; the
+  purchase's prices (E14-4's 5 000 gold for a cost of 2 000, 40 wood, a cost of 1 at 3), `Entry`
+  past the stock and once sold, `NoPrice`; A-46's room cases (a free finger with a full backpack
+  takes it, unlike A-25's count; neither refused; a hero the store lacks refused); the screens
+  and the windows that are not one; the errors' texts. The test parameters are the base pack's
+  rows 1 to 5. `h3-map`'s `tests/trades.rs`: T132b's refused step split: a market's step
+  entered, the Altar's, the Hill Fort's and the factory's still refused until T134.
+- **Rules and docs:** ADV-MKT-005 and -007 in the catalog, `implemented` (the code reading, batch
+  E14's E14-1, E14-2 and E14-4, VCMI; the decision that pays is T133b's); ADV-MKT-001's summary
+  (the visit); the quirks ledger's ADV-QUIRK-48; ADV-Q60 in `docs/OPEN-QUESTIONS.md`; design §10
+  and §11's *As built*; the task's line; the queue (T133a2 archived verbatim; ADV-Q60 first in
+  T133b's entry); `OVERVIEW.md`; the town lane's inbox (ADV-Q60 concerns its Marketplace).

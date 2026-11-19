@@ -4,25 +4,7 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132a1 and T132a2 done (the rates, the kinds; decisions 380, 381), T132b done (the import; decision 382), T133 cut in three (decision 383): T133a1 done (the stock and its draw), T133a2 and T133b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E08 T133a2 — the market's visit and the adventure's checks** (round 6; decisions 373, 383;
-design note §10, §11, §21; T133a1 done)
-
-- **Scope (§21's plan, decision 383):** `h3-adventure`: the visits' outcome of the four markets
-  (§10: entered, every visit, every player; `AdventureOutcome::service` with
-  `ServiceVisit::Market(MarketVisit { hero, index, object_type, anchor })`; the markets' `effect`,
-  so a step onto one is no longer refused) and the adventure's checks and changes of a sale and a
-  purchase (§11: `check_sale`, `sell`, ADV-MKT-005, the army keeping a creature; `check_buy`,
-  `buy`, ADV-MKT-007, the entry drawn and not sold, its price not 0, the hero able to receive the
-  artifact: A-46 fixed as ADV-QUIRK-48; the sold entry written by `Visits::sell`). The game opens
-  nothing until T133b: `ADV-STUB-18` (registered in `docs/stubs.toml`).
-- **Inputs:** design note §8 to §11 (§8 and §9's *As built*: T133a1); survey `E08-trades.md` §2,
-  §6, §7.2; `h3-adventure`'s `market.rs` (`MarketParams`: `creature_lot`, `artifact_price`),
-  `state/markets.rs` (T133a1), `ruleset/trades.rs`; T124b2's record in `E08-log.md` as the form
-  (a visit's outcome); the hire's `check_hire` and `hire` (ADR-0017 point 10's shape);
-  `TRAPS.md` (the codegen units, the visits' block, the plans' oracles).
-- **Depends on:** T133a1's pull request. **Status:** ready (decision 383).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132a1 and T132a2 done (the rates, the kinds; decisions 380, 381), T132b done (the import; decision 382), T133 cut in three (decision 383): T133a1 and T133a2 done (the stock and its draw; the visit and the adventure's checks), T133b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T133b — the market's decision and its wire** (round 6; decisions 373, 383; design note §12,
 §13, §17)
@@ -32,6 +14,8 @@ design note §10, §11, §21; T133a1 done)
   checks (ADV-MKT-005, -007), `Leave`; what a viewer sees (§12, ADV-MKT-008: the stock only in its
   visitor's open decision); the events and the wire (§17; `cross-lane`, the server lane's
   `h3-protocol`, with the user's consent at its start); `ADV-STUB-18` lifted.
+- **First:** ADV-Q60 (the market's cost resource: `[params.market]` names it, part v24, or the
+  game passes the town part's gold); T133a2's checks take it from their caller.
 - **Depends on:** T133a2's pull request. **Status:** ready after it; its cut confirmed at its
   start.
 

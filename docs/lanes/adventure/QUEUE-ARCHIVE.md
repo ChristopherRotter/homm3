@@ -2146,6 +2146,26 @@ T132b done)
   codegen units, the visits' block, the plans' oracles).
 - **Depends on:** T132b's pull request. **Status:** ready; its cut confirmed at its start.
 
+## T133a2 (moved 2026-11-20, done whole: `adventure/e08-t133a2`, decision 383; ADV-Q60 for T133b)
+
+**E08 T133a2 — the market's visit and the adventure's checks** (round 6; decisions 373, 383;
+design note §10, §11, §21; T133a1 done)
+
+- **Scope (§21's plan, decision 383):** `h3-adventure`: the visits' outcome of the four markets
+  (§10: entered, every visit, every player; `AdventureOutcome::service` with
+  `ServiceVisit::Market(MarketVisit { hero, index, object_type, anchor })`; the markets' `effect`,
+  so a step onto one is no longer refused) and the adventure's checks and changes of a sale and a
+  purchase (§11: `check_sale`, `sell`, ADV-MKT-005, the army keeping a creature; `check_buy`,
+  `buy`, ADV-MKT-007, the entry drawn and not sold, its price not 0, the hero able to receive the
+  artifact: A-46 fixed as ADV-QUIRK-48; the sold entry written by `Visits::sell`). The game opens
+  nothing until T133b: `ADV-STUB-18` (registered in `docs/stubs.toml`).
+- **Inputs:** design note §8 to §11 (§8 and §9's *As built*: T133a1); survey `E08-trades.md` §2,
+  §6, §7.2; `h3-adventure`'s `market.rs` (`MarketParams`: `creature_lot`, `artifact_price`),
+  `state/markets.rs` (T133a1), `ruleset/trades.rs`; T124b2's record in `E08-log.md` as the form
+  (a visit's outcome); the hire's `check_hire` and `hire` (ADR-0017 point 10's shape);
+  `TRAPS.md` (the codegen units, the visits' block, the plans' oracles).
+- **Depends on:** T133a1's pull request. **Status:** ready (decision 383).
+
 ## Inbox notes settled or for information (moved 2026-11-18, E08 T126)
 
 *(Moved verbatim at increment 13's closure: the other lanes' notes of changes in this lane's paths (the town lane's E09 T29b to T38b1, the map client lane's harness rebuilds), built on by T123b to T125b2b and T126's audit, CI green on each; their lasting rules are one line in `TRAPS.md`, "The town lane's parts of your crates"; the versions they took are the HANDOFF's.)*

@@ -354,6 +354,13 @@ Batch E14 records where the hero stands (§20, E14-16).
   creatures }`, ADV-HIR-001's question without a price; the original's ADVEVENT question), whose yes
   opens the hire dialog (`AdventureOutcome::hire`, ADV-HIR-002) with the factory as an object
   source (`HireSource::Object`); no free creatures (`free_level` reads a dwelling only).
+- *As built* (T133a2, decision 383; the markets only, the Altar's, the Hill Fort's and the
+  factory's with T134): `Effect::Market` from `effect`, dispatched in `AdventureState::visit` to
+  `AdventureOutcome::service: Option<ServiceVisit>` with `ServiceVisit::Market(MarketVisit { hero,
+  index, object_type, anchor })`; entered and revisitable as every built entered kind (no mark,
+  no event, no block written). The game opens nothing until T133b (`ADV-STUB-18`, marked in
+  `GameState::settle_outcome`). `h3-map`'s `tests/trades.rs`: a market's step entered, the other
+  three kinds still refused.
 
 ### 11. The adventure's checks and changes (the answers' adventure half)
 
@@ -395,6 +402,20 @@ treasury, pays, and calls the adventure's infallible change: ADR-0017 point 10, 
   artifact** (`recruit_dialog_select` 0x5503A0: the count 1 less whether the hero holds it, at
   least 0); `hire_stock` gives each machine with 1 or 0, `hire_room` 1 when its position is free.
   The change gives the artifact into its position (`HeroChange::AddArtifact`), no army change.
+- *As built* (T133a2): `state/markets.rs`' `check_sale` and `sell`, `check_buy` and `buy`, with
+  `Sale` and `MarketPurchase` (private fields, their readers; not `Clone`: the hire's form) and
+  `MarketError` (`command.rs`: the design's nine and, *agent's call*, `Visit` for a window whose
+  hero is off the map or whose object is no market, as the hire's `NoSource`). The checks take
+  the resource a creature's and an artifact's cost is read in from their caller (`value`: the
+  original's gold; the part names none, ADV-Q60, for T133b). A sale's order: the visit, the
+  screen, the slot, the lot (`NoPrice`), the lots (`Amount`: 0 or more creatures than the stack's),
+  the lone stack whole (`LastCreature`); its gain in 64 bits saturated; `sell` returns the
+  `ArmySlot` the game tells. A purchase's order: the visit, the screen, the entry (`Entry`: past
+  the stock or sold), the price (`NoPrice`), the room (`NoRoom`: `check_change`'s
+  `AddArtifact`; a hero the store lacks has none); `buy` writes the sold bit. Tests
+  (`state/tests/markets.rs`, six): the visit and Revisit of each market, the sale's lots and
+  refusals (survey §4's 25 → 17), the purchase's prices (E14-4's 5 000; 40 wood) and refusals,
+  A-46's room cases, the windows that are not one, the errors' texts.
 
 ### 12. Information (ADV-MKT-008; ADR-0016 point 6; survey §8)
 
