@@ -67,9 +67,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 - **2026-11-19, E27 M3 T7 (in progress; `client/e27-m3-t7`).** The PC's 64 files and the
   manuals staged (SHA-256 checked); the baseline stopped at coverage (CI's green `master` 9deacd0
-  stands in). Kept whole (decision 66). Done: `drawn` over M3's groups as recorded; every shell
-  recipe playing again under Wine (`/home/claude/tools/replay-all.sh`, the sandbox's); next: the
-  three fresh reviewers, the review list to the user, the fixes, M4's refinement.
+  stands in). Kept whole (decision 66). Done: `drawn` over M3's groups as recorded; three fresh
+  reviews (`/home/claude/review/area*/findings.md`, the sandbox's); the user's answers (decisions
+  67, 68; CLT-Q148 to CLT-Q154) and the review list's wording. In progress: a fixer on the code
+  (the review's fixes, decision 67), every shell recipe played again under Wine
+  (`/home/claude/tools/replay-all.sh`; the VM restarted once, resumed). Next: the C2 recipe
+  `adv-random-options`, `drawn` whole, the gates, M4's refinement, M3 to the archive.
 - **2026-11-19, E27 M3 T6 (done; `client/e27-m3-t6`).** The PC's 64 files and the manuals
   staged (SHA-256 checked). Offered a cut in two, kept whole (decision 65). Read the loading
   screen, its bar and play's fade; `adv-begin` and `adv-hotseat-begin` played under Wine: their

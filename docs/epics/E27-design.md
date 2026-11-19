@@ -469,8 +469,8 @@ begin (§3.12 to §3.18); T1b3 the system options, the menu in play and the end 
 - **Kept between visits** (statics, not saved across runs): the last map's file name
   (`scenario_last_map` 0x683238, `Arrogance.h3m` at the start), the last save's name
   (`scenario_last_save` 0x68333C, `NEWGAME.gm1` at the start, cut at its first full stop to
-  `NEWGAME` by the constructor's `strtok`) and the last difficulty (`scenario_last_difficulty`
-  0x683454). The list selects the entry of that name when it is built (§3.3).
+  `NEWGAME` by the constructor's `strtok`) and the last difficulty (`scenario_last_difficulty` 0x683454; *corrected at M3 T2a*, §21.1: a new
+  game's opens at Normal each time). The list selects the entry of that name when it is built (§3.3).
 - **At the end of the constructor:** load mode, the players' slots from the save (0x57F330); new
   game, the slots from the hot seat's names or the player's name (0x57F740; both §3.12); the
   players' rows (0x584C40, §3.12); then by mode: a load (not a network one) and a save open the list (§3.3);

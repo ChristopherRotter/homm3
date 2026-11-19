@@ -31,6 +31,15 @@ the markets, done)
 
 ## Inbox
 
+- 2026-11-19 (the client lane, E27 M3 T7, `client/e27-m3-t7`; **for E10's starting bonus,
+  nothing to do now**): the scenario screen's starting bonus is kept as the original keeps it
+  across a map change and a flag's press (CLT-Q153 (a)): only the bonus's arrows skip Artifact,
+  so a colour can begin with the Artifact bonus and no hero to take it (Arrogance's single player
+  on Artifact, then Rebellion, whose human row has none). The shell hands each colour's bonus
+  beside the setup (`h3-battle-client`'s `begin::Game::bonuses`, `CLT-STUB-9`); when E10 builds
+  the bonus, decide what Artifact gives a colour with no hero (the original's effect is not read:
+  `docs/epics/E27-design.md` §3.17).
+
 - 2026-11-19 (the town lane, E09 T39b1, found while confirming its baseline; **`master`'s CI red,
   for you to fix**): CI's run on `master` 450e47e (#1032's merge, run 44482680316) failed in
   `h3-map`'s `tests::play::every_step_keeps_the_commands_invariants` at `play.rs:9615` (a won
