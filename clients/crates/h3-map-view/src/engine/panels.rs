@@ -276,7 +276,11 @@ fn town_status(town: &Town) -> Table {
     let fort = usize::from(town.fort)
         .checked_sub(1)
         .and_then(|i| FORTS.get(i));
-    let buildings: Vec<i64> = [fort, hall].into_iter().flatten().map(|&b| b.into()).collect();
+    let buildings: Vec<i64> = [fort, hall]
+        .into_iter()
+        .flatten()
+        .map(|&b| b.into())
+        .collect();
     t.insert("buildings".into(), row(&buildings));
     let garrison = facts.is_some_and(|f| f.garrison_hero);
     t.insert("garrison".into(), Value::Integer(i64::from(garrison)));
@@ -444,7 +448,12 @@ pub(super) fn differences(ours: &Table, theirs: &Table, found: &mut Vec<String>)
 
 /// What differs between two status windows' tables, key by key (a town's buildings by its hall
 /// and fort), appended to `found` under `name`.
-fn status_differences(name: &str, ours: Option<&Value>, theirs: Option<&Value>, found: &mut Vec<String>) {
+fn status_differences(
+    name: &str,
+    ours: Option<&Value>,
+    theirs: Option<&Value>,
+    found: &mut Vec<String>,
+) {
     let (Some(a), Some(b)) = (
         ours.and_then(Value::as_table),
         theirs.and_then(Value::as_table),
@@ -477,7 +486,9 @@ fn status_differences(name: &str, ours: Option<&Value>, theirs: Option<&Value>, 
 fn drawn(buildings: Option<&Value>) -> [Option<i64>; 2] {
     let ids: Vec<i64> = buildings
         .and_then(Value::as_array)
-        .map_or_else(Vec::new, |a| a.iter().filter_map(Value::as_integer).collect());
+        .map_or_else(Vec::new, |a| {
+            a.iter().filter_map(Value::as_integer).collect()
+        });
     let highest = |of: &[u32]| {
         ids.iter()
             .copied()

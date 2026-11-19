@@ -4,6 +4,30 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-19, E24 M4 T3b1 done (the log's "M4 T3b1"): its queue entry, verbatim.
+
+  T3b, the rest of a record's start through T3a's adapter, was cut in two by the user at its start
+  (2026-11-19): the panels first (T3b1), then the hover's facts, the towns' pictures and the
+  shipped maps (T3b2). A fact the record's first observation lacks becomes an `MCL-Q<n>` with a
+  note in the engine lane's inbox, its gap shown in the comparison, never a rule copied into the
+  client (the user, the same day).
+
+  ### E24 M4 T3b1 — a record's start: the panels
+
+  - **Scope:** the kingdom from the record's first observation (the heroes in the list's order,
+    their portraits, movement, mana and whether each can move, the towns, the selection, the
+    resources, the date), the status window (a hero's, a town's with its own name from the map,
+    the kingdom's), what choosing each hero and town shows. MCL-Q15 (b): an amount past the bar's
+    seven digits written so that it fits (its form a review item), the original's behind `--bugs
+    original`. `render --record --check` compares these too; `render --record` alone draws the
+    whole screen.
+  - **Acceptance:** the engine's starts of `engine-start-owners` and `engine-start-town` (and a
+    situation with a town of its own name if needed) equal to the original's on the whole screen,
+    the pointer parked off the map, or each difference an `MCL-Q<n>`; `drawn` all the same;
+    `check.sh` all gates.
+  - **Depends on:** T3a (**done** 2026-11-19: `h3_map_view::engine`, `render --record`, design
+    §5.9). **Status:** in progress (2026-11-19).
+
 - 2026-11-19, answered by E24 M4 T3a (the server lane's inbox, the same day; the user withdrew the object identity): the notice below.
 - 2026-11-12 (the server lane, E16 M5 T5c, branch `claude/optimistic-meitner-j73r89`; **for
   your M4 T3, T4**): a whole game's record and wire, protocol **v43**: (1) after a command's

@@ -14,6 +14,16 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   callers of `scenario_condition_met`) opens GENRLTXT 7's box, and every later turn's start the
   days left's (ArrayTxt 128): a sequence that is not about them gives Red a town out of the way
   (the `seq-find-*` situations). A pile's `amount` is the map's: gold in hundreds.
+- **The original's new game draws what an engine's start must match** (E24 M4 T3b1, design
+  §5.10): a hero's army (unless the map gives one), the starting bonus (500 to 1 000 gold, a
+  resource, or an artifact that changes a hero's stored primary skills: `engine-start-owners`'
+  Orrin showed [2, 2, 2, 2] with mana 10) and an unnamed town's name; the engine draws armies its
+  own way and gives no bonus (E10's). A comparison of the panels gives `map_army`, the names,
+  `bonus = "gold"` and the engine's `resources` (shown by a `select` and a `reselect`: a resources
+  write needs a selection that changes, and one hero of Red's has none to change to).
+- **The starting bonus's rows sit in two arrays** (E24 M4 T3b1): `h3mem.starting_bonuses` reads
+  16 values; with three players Blue's row was the second array's, so `h3drive.gold_bonus` counts
+  the Gold read, not a row's index.
 - **A template's class in memory is the game's** (T5b1): the load turns the map's 219 into 33, 220 into 53, decorations 165–205 into others (§2.9), so `live.toml`'s `classes` differ from the map's with no random draw.
 - **A situation changed since its capture** shows as `STALE` in `drawn` (T6b: the kept live part records the situation's digest): capture it again (`set --only <id>`).
 - **A recording reads the tree as it goes** (M2 T2): each `frames --only` run loads `h3map.py`

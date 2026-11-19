@@ -831,7 +831,7 @@ fn names_and_armies_in_the_map_and_the_engine_s_staging() {
         })
         .unwrap();
     assert_eq!(hero.name.as_deref(), Some("Quillon"));
-    let mut army = [None; writer::ARMY_SLOTS];
+    let mut army = [None; ARMY_SLOTS];
     (army[0], army[1]) = (Some((28, 20)), Some((30, 2)));
     assert_eq!(hero.army, Some(army));
     let town = map
@@ -850,7 +850,11 @@ fn names_and_armies_in_the_map_and_the_engine_s_staging() {
             "more than seven stacks",
         ),
         (", map_army = [[1, 0]]", "", "an empty one"),
-        ("", "reselect = [4, 4]", "`reselect` without a hero's selection"),
+        (
+            "",
+            "reselect = [4, 4]",
+            "`reselect` without a hero's selection",
+        ),
     ] {
         let refused = build(hero, rest).unwrap_err();
         assert!(refused.contains(error), "{refused}");

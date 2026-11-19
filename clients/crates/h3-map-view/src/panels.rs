@@ -258,12 +258,7 @@ pub const AMOUNT_FITS: usize = 7;
 /// instead (`tiny.fnt`'s 5-pixel digits: ten fit; MCL-Q15 (b), *provisional*, M4's review
 /// list); with `bugs` the original's, its line cut at the box.
 #[must_use]
-pub fn resource_bar(
-    layout: &AdventureLayout,
-    live: &Live,
-    texts: &Catalogue,
-    bugs: Bugs,
-) -> Shown {
+pub fn resource_bar(layout: &AdventureLayout, live: &Live, texts: &Catalogue, bugs: Bugs) -> Shown {
     let kingdom = &live.kingdom;
     let mut shown_texts = BTreeMap::new();
     for (place, amount) in (0u16..).zip(kingdom.resources) {

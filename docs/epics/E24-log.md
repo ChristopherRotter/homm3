@@ -2887,3 +2887,47 @@ baseline stopped at its coverage step by a watcher (every step before it passed)
   the same; `drawn --record`. `tests/engine.rs` (six tests: a start with a random resource,
   monster, artifact and dwelling; a hero in a boat and a random resource shown as no pile; a
   random dwelling moved right; what differs from a capture; every refusal; each refusal's text).
+
+### M4 T3b1 — a record's start: the panels (2026-11-19)
+
+On `map-client/e24-m4-t3b1`, the user present at the start; `master` at #1048 (T3a's #1047
+merged). Original data staged from the PC at the start (63 files, the four manuals and three help
+files, SHA-256 checked line by line); the setup's baseline stopped at its coverage step by a
+watcher (clippy, the doc tests and deny passed), CI's green `master` standing in; the Wine capture
+set up beside it; a ballast file for the game's disk check.
+
+- **The cut** (the user at the start, `AskUserQuestion`; the agent's recommendations): T3b in two,
+  the panels first (T3b1; T3b2 the hover's facts, a town's picture by its buildings, the shipped
+  maps); a fact the record's first observation lacks becomes an `MCL-Q<n>` with notes in the
+  engine lanes' inboxes, the gap shown in the comparison, no rule copied into the client.
+- **Found first** (the engine's starts of T3a's two situations against their kept live parts):
+  the original's new game draws each hero's army and the starting bonus (`engine-start-town`'s
+  20 500 gold, `engine-start-owners`' Orrin with an artifact's [2, 2, 2, 2] and mana 10), which the
+  engine does not (armies its own draw; no bonus, E10's); the hero list in its heroes' types'
+  order (every capture's `hero_list`, 17 situations with two or more).
+- **Built** (design §5.10; *provisional*, M4's review list): `h3_map_view::engine`'s `panels`
+  (`kingdom`, `status`, `realm`, `[chosen]` in the harness's terms) and their `differences` (a
+  town's buildings by its hall and fort, a morale or luck named with MCL-Q36); `live::TownName`
+  (a record or the map's own name, a `status`'s `name` as text); MCL-Q15 (b): `panels::AMOUNT_FITS`,
+  the layout's `tiny.fnt` items 1016 to 1022, `resource_bar`'s `bugs`; a situation's hero `name`
+  and `map_army`, town `name` (the writer's `AnyTown`), `reselect`, `bonus`; the harness's
+  `bonus = "gold"` (`h3drive.to_scenario`'s `gold` a number of rows; `gold_bonus` counts the
+  rows' Gold: Blue's row sat in the dialog's second array), `reselect`, `OWN_TOWN_NAMES`, `h3map.py
+  engine` and `set.toml`'s `engine` entries.
+- **Agent decisions** (change freely): the panels written as a capture's tables, as T3a's view;
+  the town list in the view's order (one town a player here); an unnamed town's name its
+  faction's first; the silo the income's resources but gold; `h3map.py engine` compares the
+  engine's PNG with ours at the kept live part (exact against the original's there) rather than
+  with the original's screen again.
+- **MCL-Q36** (asked): a hero's morale and luck as the status window shows them, and whether it
+  can still move, are not in the record; recommended (a), the engine derives them and the view
+  carries them to the owner (the adventure and server lanes' inboxes). Meanwhile 0, 0 and "has
+  points".
+- **Checked:** `engine-start-panels` (new: Rion and Astral with their armies in the map, Astral and
+  Red's town named by it, each chosen in turn) and T3a's two (their heroes' armies in the map, the
+  Gold bonus; `engine-start-town`'s town named and its resources written) captured (`set --only`,
+  0 differing of 480 000 each); `h3map.py engine`: `engine-start-panels` 0 pixels and no
+  difference, `engine-start-town` 157 pixels (Orrin's morale, MCL-Q36), `engine-start-owners` 192
+  (the bonus's gold, one hero of Red's to select; the morale). `drawn`: the three changed or new
+  (recorded), every other situation and sequence the same. `tests/engine.rs` (four new tests),
+  the situation's, the live part's, the status window's and the resource bar's unit tests.

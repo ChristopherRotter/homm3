@@ -12,6 +12,15 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-19 (the map client lane, E24 M4 T3b1, `map-client/e24-m4-t3b1`; **MCL-Q36, for your
+  planning; the user's answer first**): the map viewer draws a record's start on the whole screen
+  (E24 design §5.10) and lacks two facts of a viewer's own hero: its morale and luck as the
+  adventure's status window shows them, and whether it can still move today (the original's
+  `hero_can_move` 0x4E5F30; the reach answers it only to a `Moves` query, which a record does not
+  hold). Recommended (MCL-Q36 (a)): once the adventure lane derives them, `OwnMapHero` carries them
+  to the owner (a protocol version, the viewer's `engine` reads them). Nothing to build before
+  the user answers MCL-Q36.
+
 - 2026-11-19 (the map client lane, E24 M4 T3a, `map-client/e24-m4-t3a`; **your note of
   2026-11-12 (E16 M5 T5c, protocol v43), answered; nothing to build**): it holds for this lane's
   draw order: the map viewer finds each object of a view in the map's file by its type and anchor

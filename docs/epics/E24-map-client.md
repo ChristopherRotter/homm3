@@ -198,7 +198,8 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   T3a", design §5.9; `MCL-STUB-1`), T3b, cut in two by the user at its start
   (2026-11-19, the panels first; a fact the record lacks an `MCL-Q<n>`, never a rule copied):
   T3b1, the panels' live part (the kingdom, the status window, a town's own name, MCL-Q15 (b))
-  on the whole screen; T3b2, the hover's facts, a town's picture by its buildings and the shipped
+  on the whole screen (**done** 2026-11-19, whole; the log's "M4 T3b1", design §5.10; MCL-Q36);
+  T3b2, the hover's facts, a town's picture by its buildings and the shipped
   maps; the object identity asked of the adventure lane withdrawn by the user (the same day,
   the server lane's note of 2026-11-12: the view's objects in tile order, found by type and
   anchor; an object added in play, T4's, drawn after the file's), a random artifact's drawn
@@ -385,3 +386,16 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   owner.
 - **M4 T3a, `render --record` and `--check`** (*provisional*): the options' names and messages;
   `--packs` the repository's by default; `--check` compares only what the start says.
+- **M4 T3b1, MCL-Q15 (b)'s form** (*provisional*; design §5.10): an amount of more than seven
+  characters whole in `tiny.fnt` (the layout's items 1016 to 1022, centred on the line), the
+  original's cut behind `--bugs original`; the executable's own `%dk` in thousands was the other
+  form (it passes the box from a thousand million).
+- **M4 T3b1, the panels from a record** (*provisional*): the heroes in their types' order at a
+  start (every capture's), the towns in the view's order (`shipped-hoard`'s is not: T3b2), the
+  first hero selected; an unnamed town named by its faction's first name (the original draws one);
+  a town's window's buildings only its hall and fort (all it draws); a silo the income's resources
+  but gold; morale and luck 0 and a hero able to move while it has points (MCL-Q36).
+- **M4 T3b1, the harness's staging for the engine's starts** (*provisional*): `map_army`, a
+  hero's and a town's `name` in the map; `bonus = "gold"` and the engine's `resources` written,
+  shown by `select` then `reselect`; `h3map.py engine` and `set.toml`'s `engine` entries (the
+  differences and pixels expected).

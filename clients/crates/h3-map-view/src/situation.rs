@@ -23,10 +23,10 @@ use alloc::vec::Vec;
 use h3_map::RawMap;
 use h3_map::model::{Mission, Rewards, Stack};
 use h3_map::writer::{
-    ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS, AnyObject, AnyTown, EVENT_OBJECT, Event, Extras, GivenTile,
-    Guards, Hero, HeroArtifacts, Map, MapObject, Message, Monster, ObjectTemplate, PANDORA_OBJECT,
-    Patch, Pile, Player, RewardBody, RewardObject, RiverKind, Road, RoadKind, SHRINE_OBJECTS,
-    Terrain, Town, TownBuildings, Underground, WITCH_HUT_OBJECT,
+    ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS, AnyObject, AnyTown, EVENT_OBJECT, Event, Extras,
+    GivenTile, Guards, Hero, HeroArtifacts, Map, MapObject, Message, Monster, ObjectTemplate,
+    PANDORA_OBJECT, Patch, Pile, Player, RewardBody, RewardObject, RiverKind, Road, RoadKind,
+    SHRINE_OBJECTS, Terrain, Town, TownBuildings, Underground, WITCH_HUT_OBJECT,
 };
 
 use serde::Deserialize;
@@ -791,10 +791,13 @@ pub struct HeroSpec {
     pub map_army: Vec<[u16; 2]>,
 }
 
+/// An army as the writer takes it: [creature, count] by slot.
+type MapArmy = [Option<(u16, u16)>; ARMY_SLOTS];
+
 impl HeroSpec {
     /// Its army in the map (E24 M4 T3b1): none for an empty `map_army`, else its stacks by slot,
     /// at most seven, each of at least one creature (the writer checks the creature).
-    fn file_army(&self) -> Result<Option<[Option<(u16, u16)>; ARMY_SLOTS]>, String> {
+    fn file_army(&self) -> Result<Option<MapArmy>, String> {
         if self.map_army.is_empty() {
             return Ok(None);
         }

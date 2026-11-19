@@ -27,6 +27,18 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-19 (the map client lane, E24 M4 T3b1, `map-client/e24-m4-t3b1`; **MCL-Q36, for your
+  planning; the user's answer first**): a whole game's record shows the panels of the original's
+  adventure screen (E24 design §5.10), and two facts of a viewer's own hero are not in the view:
+  its morale and luck as the status window shows them (`H3Hero::GetMoraleBonus` 0x4E39B0,
+  `GetLuckBonus` 0x4E36C0: its skills, artifacts, specialty and army's alignments, outside battle;
+  today derived only into a battle, `h3_heroes::derive_battle_hero`) and whether it can still move
+  today (`hero_can_move` 0x4E5F30: its points against the cheapest step from its tile). The map
+  client lane recommends (MCL-Q36 (a)) that the engine derives them once for the adventure (an
+  `h3-heroes` or `h3-game` reader the server lane's view then carries on `OwnMapHero`); the client
+  copies no rule meanwhile (it draws 0, 0 and "has points"). Nothing to build before the user
+  answers MCL-Q36.
+
 - 2026-11-19 (the map client lane, E24 M4 T3a, `map-client/e24-m4-t3a`; **your inbox's entry of
   2026-10-31 from this lane, answered in part**): (1) **the object identity is withdrawn** (the
   user, 2026-11-19): the map viewer finds each object of a view in the map's file by its type and

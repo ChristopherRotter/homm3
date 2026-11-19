@@ -874,7 +874,10 @@ fn a_maps_start_and_a_live_parts_choices() {
     assert_eq!((hero.hero, hero.status.hero, hero.path.len()), (0, 16, 0));
     let blue = chosen(1);
     let town = blue.towns[0].as_ref().unwrap();
-    assert_eq!((&town.status.name, town.status.buildings), (&TownName::Record(0), 1 << 7));
+    assert_eq!(
+        (&town.status.name, town.status.buildings),
+        (&TownName::Record(0), 1 << 7)
+    );
     assert!(town.at.x > 0);
     assert_eq!(chosen(2), Chosen::default());
     // The live part's `[chosen]` (`h3map.py`'s `chosen_toml`).

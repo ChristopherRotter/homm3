@@ -569,8 +569,16 @@ fn the_panels_of_a_start() {
     assert_eq!(status["own_name"], Value::Integer(0));
     let primary = info(rion).details.unwrap().primary.map(i64::from);
     assert_eq!(numbers(&status["skills"]), primary);
-    assert_eq!((&status["morale"], &status["luck"]), (&Value::Integer(0), &Value::Integer(0)));
-    let army: Vec<Vec<i64>> = status["army"].as_array().unwrap().iter().map(numbers).collect();
+    assert_eq!(
+        (&status["morale"], &status["luck"]),
+        (&Value::Integer(0), &Value::Integer(0))
+    );
+    let army: Vec<Vec<i64>> = status["army"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(numbers)
+        .collect();
     assert_eq!(army[..3], [vec![0, 15], vec![2, 5], vec![-1, 0]]);
     // The kingdom's window: one village, Red against Blue (no teams).
     let realm = table(&t["realm"]);
@@ -670,7 +678,10 @@ fn what_differs_in_the_panels() {
     town["buildings"] = Value::Array([5, 7, 10, 30].map(Value::Integer).to_vec());
     assert!(engine::differences(&ours, &theirs).is_empty());
     let kingdom = theirs["kingdom"].as_table_mut().unwrap();
-    kingdom.insert("date".into(), Value::Array([1, 1, 2].map(Value::Integer).to_vec()));
+    kingdom.insert(
+        "date".into(),
+        Value::Array([1, 1, 2].map(Value::Integer).to_vec()),
+    );
     theirs["status"]["morale"] = Value::Integer(1);
     theirs["status"]["army"] = Value::Integer(0);
     theirs["realm"]["halls"] = Value::Integer(0);
@@ -697,7 +708,10 @@ fn what_differs_in_the_panels() {
     let mut theirs = ours.table.clone();
     let chosen = theirs["chosen"].as_table_mut().unwrap();
     chosen["heroes"].as_array_mut().unwrap().pop();
-    chosen["towns"].as_array_mut().unwrap().push(Value::Integer(0));
+    chosen["towns"]
+        .as_array_mut()
+        .unwrap()
+        .push(Value::Integer(0));
     theirs.insert("realm".into(), Value::Integer(2));
     theirs.remove("kingdom");
     theirs.remove("status");

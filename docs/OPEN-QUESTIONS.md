@@ -188,6 +188,27 @@ mirror by the hero's, as the next step draws it). **Recommended (b)**: nothing s
 own, and the boat seen before the step is the one the hero boards. The viewer draws the
 original's meanwhile. Blocks nothing.
 
+#### MCL-Q36 — A record's start lacks a hero's morale and luck and whether it can move (E24 M4 T3b1, a comparison)
+
+The panels drawn from a whole game's record (E24 design §5.10) need three facts of the viewer's
+own heroes its first observation does not hold: the status window's morale and luck
+(`H3Hero::GetMoraleBonus` 0x4E39B0, `GetLuckBonus` 0x4E36C0: the hero's skills, artifacts and
+specialty and its army's alignments; the engine derives them only into a battle,
+`h3_heroes::derive_battle_hero` and `h3-battle`'s morale), and whether a hero can still move today
+(`hero_can_move` 0x4E5F30, the hero list's movement mark: its points against the cheapest step
+from its tile; the engine's reach answers it only to a `Moves` query, which a record does not
+hold). Seen: `engine-start-town`'s Orrin shows morale 1 (Basic Leadership) in the original, 0
+drawn from the record (157 pixels of the status window); `engine-start-panels`, no morale or luck
+either way, is exact. Options: (a) the engine's view carries them to the owner: the adventure lane
+derives a hero's adventure morale, luck and whether it can move (`h3-heroes`, `h3-game`), the
+server lane puts them on `OwnMapHero`; the client draws them as given; (b) the client derives them
+from the view and the ruleset (rules copied into the client: not wanted, the user at T3b1's
+start); (c) the record's session asks a `Moves` query per hero at each turn's start and keeps the
+answers (whether it can move only). **Recommended (a)**: one derivation, the engine's, which the
+RL observation can use too; notes in the adventure and server lanes' inboxes (2026-11-19).
+Meanwhile the viewer shows morale and luck 0 and a hero able to move while it has points
+(`stub: MCL-Q36` in `h3_map_view::engine`'s panels). Blocks nothing.
+
 ### Town lane (`TWN-Q<n>`)
 
 (no open questions)
