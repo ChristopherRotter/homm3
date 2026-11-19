@@ -20033,3 +20033,57 @@ T132a1's commits rebased on it). Staged beside `Heroes3.exe`: `extracted.tar` an
   (the accessor).
 
 **Versions:** adventure ruleset part v23. T132b (the import, map import v27) next.
+
+### Increment 14, round 5: T132b, the import (2026-11-19, `adventure/e08-t132b`, `cross-lane`)
+
+**The cut** (decision 382; asked at the start, `AskUserQuestion`): whole, one pull request (the
+census is the import's check), `cross-lane` with the user's consent for `h3-server`'s
+`tests::record` (the AI lane's bots tables record no import version). **Baseline:** `master`
+33efd6c (#1051); the setup's baseline died with a VM restart at the coverage step, CI's run on
+`master` stands for it. Staged from the user's repo folder: `Heroes3.exe`, `maps.tar`,
+`extracted.tar` (SHA-256 checked on both sides).
+
+- **The import** (`h3-map`'s `import/codes.rs`; design note §7): 2 `base:altar_of_sacrifice`, 7
+  `base:black_market`, 35 `base:hill_fort`, 99 and 221 `base:trading_post` (the original loads
+  221 as 99, `object_class_values` 0x63A6E4; the map keeps its class), 106
+  `base:war_machine_factory`, 213 `ab:freelancers_guild`, each through the subclass test at 0
+  (past 0 `ImportError::Subclass`, whose doc names them). No body: nothing held, no owner; the
+  footprint the template's. **Map import v27** (`MAP_IMPORT_VERSION`'s doc line; E09 T39a took
+  v26). The adventure needed nothing: the four kinds' `effect` is none since T132a2, so a step
+  onto an entrance is `AdventureCommandError::Visit` until T133 and T134.
+- **The census** (`h3-map`'s `original_data`: `increment_14`, `Increment14`, `SURVEY_TRADES`,
+  `SURVEY_INCREMENT_14_MAPS`, `SURVEY_FACTORY_ENTRANCES`, `SURVEY_BLACK_MARKETS`): every object
+  of the seven checked to import at subclass 0 without a body as its class's type and kind, one
+  entrance on land (221's on snow), nothing held, no owner; by class the objects, the maps by
+  version, underground, the most on one map with the first map holding that many, the pictures
+  (names and masks); the maps holding one (148), the War Machine Factories by entrance, the maps
+  by their Black Markets. Every count as survey §1 on its first run but the factories' split,
+  which §1 gave without the places: 255 with the entrance west of the anchor (the game's
+  `Objects.txt` line), 3 at it (now in §1's *Checked*). The example's whole output otherwise as
+  `master`'s (a run of both, compared line by line).
+- **Tests:** `the_typed_classes_import_as_their_object_types` with the six cases at subclass 0
+  (the uncounted types back to increment 10's 84), 221 as the Trading Post and the seven classes'
+  subclass 1 refused; `tests/trades.rs`' `the_import_types_the_trades` (was
+  `…_as_blockers_until_t132b`: the nine pictures typed of their kinds in SoD and RoE, nothing
+  held, no owner, one blocked entrance; a subclass past 0 refused on the read map) and
+  `a_step_onto_a_trade_is_refused_until_t133_and_t134` (the hero below each entrance: no point
+  left on it, the step `Visit { step: 0 }`, the state hash unchanged). No test used one of the
+  seven classes as a plain blocker.
+- **Replays:** the 98 adventure goldens re-recorded from their commands (a scratch script, `h3
+  adventure run --script` with each header's options): only `import_version` moved (26 to 27); no
+  fixture map holds one of the seven. `h3-server`'s `tests::record` `import` case edits 27 to 26
+  (`cross-lane`; the server lane's inbox told); `h3-protocol`'s `tests::game_fold`,
+  `tests::game_session`, `h3-server`'s `tests::record` and `h3-cli`'s `adventure_replays` pass.
+- **Docs:** design note §7's *As built*; decision 382 and the task's line; survey §1's *Checked*;
+  `h3m.md`'s import (the heading at v27, the Tavern's line of E09 T39a, increment 14's trades,
+  T132b's census); ADV-OBJ-002, ADV-MKT-001, ADV-ALT-001, ADV-HFT-002 and ADV-WMF-001 amended;
+  `OVERVIEW.md`'s import line; the queue (T132b out, archived verbatim; T133 in); the inboxes of
+  the server lane (the test) and the town lane (v27 taken).
+- **Gates:** the scoped verify (without `--with-original-data`: the LODs not staged; the map
+  reader's original-data example run apart, passing): fmt, the checks, coverage, determinism and
+  bench-check passing, `check-lane` failing by design (`check-lane --cross-lane` passes); clippy
+  found the census's set type too complex (`type_complexity`): `Picture` named, clippy clean on the
+  five crates. `cargo check --workspace --all-targets` clean.
+
+**Versions:** map import v27. The game state hash, the adventure state hash, the ruleset part and
+the replay format unchanged. Round 5 done; T133 next.

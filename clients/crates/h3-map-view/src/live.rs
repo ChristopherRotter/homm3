@@ -1457,7 +1457,7 @@ fn entrance(anchor: Pos, template: &TemplateArt) -> Option<Pos> {
 /// `i`; design §2.9): the standard set's Fort if it has one (0x5C0C0F); the chosen ones' Capitol,
 /// Fort, Citadel and Castle, the map's buildings 2 to 5 (the map-to-game table 0x6888C0, the same
 /// for every faction).
-fn built_at_start(buildings: &Buildings) -> u64 {
+pub(crate) fn built_at_start(buildings: &Buildings) -> u64 {
     let bit = |id: u32| 1u64 << id;
     match buildings {
         Buildings::Standard { fort } => u64::from(*fort) * bit(tables::FORT),

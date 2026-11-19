@@ -2006,8 +2006,8 @@ class Mem:
         for record in town_records:
             name = self.c_string(self.u32(record + TOWN_NAME), 64)
             # A town named by its map (`shipped-good-witch`'s) has no record of TownName.txt: 65535,
-            # no record (E24 M3 T7a, *provisional*: the viewer reads no map's town names before M4,
-            # and only a hint over that town needs one; a still's pointer is parked).
+            # no record (E24 M3 T7a, *provisional*); since E24 M4 T3b2 the viewer reads that name
+            # from the map (the game's towns are the map's in its order).
             towns.append([town_names.index(name) if name in town_names else 0xFFFF,
                           struct.unpack("<b", self.read(record + TOWN_FACTION, 1))[0]])
         hero_ids = [[index, own_name(index)]

@@ -271,6 +271,19 @@ Batch E14 records where the hero stands (§20, E14-16).
   import reads the seven as untyped blockers until T132b (`tests/trades.rs`).
 - **Versions:** map import's next (v26 today; the town lane's T39a plans v26 too: whichever merges
   first takes it, the other the next).
+- *As built* (T132b, decision 382; **map import v27**, E09 T39a took v26): `codes.rs`'
+  `object_type` maps the seven at subclass 0 (a subclass past 0 `ImportError::Subclass`), 221 to
+  `base:trading_post` (the map keeps its class); no body, nothing held, no owner; the footprint
+  the template's (the entrance blocked and visitable: the kind's `entered` decides the visit, as
+  the Magic Well's). A step onto one is `AdventureCommandError::Visit` (`effect` none) until T133
+  and T134 (`tests/trades.rs`). **The census** (`h3-map`'s `original_data`: `increment_14`,
+  `SURVEY_TRADES`): each of the seven's 1 058 objects typed as its class's kind at subclass 0, no
+  body, one entrance on land (221's on snow); by class the objects, the maps by version,
+  underground, the most on one map and the pictures as survey §1 on its first run; 148 maps; the
+  War Machine Factories 255 with the entrance west of the anchor (the game's `Objects.txt` line)
+  and 3 at it; the maps by their Black Markets as §1. The example's other output as `master`'s
+  (compared line by line). No fixture map holds one of the seven: the 98 goldens moved only
+  `import_version`.
 
 ### 8. The state (`h3-adventure`; adventure state hash's next version)
 

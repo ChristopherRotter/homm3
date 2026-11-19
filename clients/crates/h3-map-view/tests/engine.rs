@@ -9,17 +9,23 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::OnceLock;
 
+use h3_adventure::{ObjectKind, ObjectTypeId};
 use h3_contracts::PlayerId;
 use h3_game::{GameRuleset, GameState, Viewer};
 use h3_map::writer::{self, ObjectTemplate};
 use h3_map::{Limits, MAP_IMPORT_VERSION};
 use h3_map_view::art::MapArt;
 use h3_map_view::engine::{self, Refused};
+use h3_map_view::hover::Facts;
 use h3_map_view::situation::Situation;
+use h3_map_view::tables::TownArt;
 use h3_protocol::RECORD_FORMAT_VERSION;
 use h3_protocol::codec;
 use h3_protocol::map::game::{manifest, observe};
-use h3_protocol::wire::game::{GameObservation, GameRecordHeader, MapIdentity};
+use h3_protocol::wire::game::{
+    Amount, GameObservation, GameRecordHeader, GarrisonStack, Guards, Known, KnownObject,
+    MapIdentity, Object, ObjectRef, SkillLevel, VisitBonus,
+};
 use h3_protocol::wire::{ServerMessage, WireU64};
 use toml::Value;
 
@@ -172,7 +178,17 @@ fn snapshot(observation: &GameObservation) -> ServerMessage {
 fn start(g: &Game, observation: &GameObservation) -> Result<engine::Start, Refused> {
     let record = text(&g.header, &[snapshot(observation)]);
     let loaded = engine::load(&record, &g.bytes, rules())?;
-    engine::start(&loaded, &g.art, &templates(), rules())
+    engine::start(&loaded, &g.art, &templates(), &town_art(), rules())
+}
+
+/// Every faction's town pictures, named by their list and faction.
+fn town_art() -> TownArt {
+    let list = |word: &str| (0..9).map(|f| format!("{word}{f}.def")).collect();
+    TownArt {
+        village: list("village"),
+        fort: list("fort"),
+        capitol: list("capitol"),
+    }
 }
 
 /// The index of the map's object whose template is `def`.
@@ -297,7 +313,7 @@ fn a_hero_in_a_boat_and_an_odd_pile() {
 fn a_random_dwelling_moved_right() {
     let g = game();
     let dwelling = object(&g, "avrcgen0.def");
-    let at = |o: &h3_protocol::wire::game::Object| (o.anchor.x, o.anchor.y) == (8, 15);
+    let at = |o: &Object| (o.anchor.x, o.anchor.y) == (8, 15);
     let start_at = |shift: u16| {
         let mut observation = g.observation.clone();
         let shown = observation
@@ -422,7 +438,7 @@ fn records_it_refuses() {
     };
     let loaded = engine::load(&text(&g.header, &[turn]), &g.bytes, rules()).unwrap();
     assert_eq!(
-        engine::start(&loaded, &g.art, &[], rules()),
+        engine::start(&loaded, &g.art, &[], &town_art(), rules()),
         Err(Refused::NoStart)
     );
     // Another map's art; an object, a hero or a player the map or the view does not hold.
@@ -435,7 +451,7 @@ fn records_it_refuses() {
         })
         .unwrap();
     assert_eq!(
-        engine::start(&loaded, &other, &[], rules()),
+        engine::start(&loaded, &other, &[], &town_art(), rules()),
         Err(Refused::Setup)
     );
     let changed = |change: &dyn Fn(&mut GameObservation)| {
@@ -618,7 +634,7 @@ fn a_town_s_window_selected_or_nothing_selected() {
     let facts = town.owner_facts.as_mut().unwrap();
     facts.garrison_hero = true;
     facts.income = [(0, 1), (2, 1), (5, 0), (6, 1250)]
-        .map(|(resource, amount)| h3_protocol::wire::game::Amount { resource, amount })
+        .map(|(resource, amount)| Amount { resource, amount })
         .to_vec();
     town.garrison.army = Some(vec![h3_protocol::wire::game::ArmyStack {
         slot: 2,
@@ -747,4 +763,487 @@ fn what_differs_in_the_panels() {
         theirs.remove(key);
     }
     assert!(engine::differences(&mine, &theirs).is_empty());
+}
+
+/// E24 M4 T3b2: the map of the mouse-over's facts: Red's hero among objects of every case the
+/// facts write (each a one-tile template of its own, `HOVER_LINES`), Red's named Castle, a neutral
+/// Rampart, a random monster, Blue's hero far off and a Hill Fort out of sight.
+const HOVER: &str = r#"
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [12, 12], class = 2 },
+    { at = [34, 34], owner = 1, class = 6 },
+]
+towns = [
+    { at = [12, 7], faction = 0, owner = 0, buildings = "fort", name = "Brightmoor" },
+    { at = [18, 7], faction = 1, buildings = "village" },
+]
+view = [0, 0, 0]
+
+[[objects]]
+def = "hv33.def"
+at = [9, 10]
+
+[[objects]]
+def = "hv16.def"
+at = [10, 10]
+
+[[objects]]
+def = "hv88.def"
+at = [11, 10]
+
+[[objects]]
+def = "hv89.def"
+at = [13, 10]
+
+[[objects]]
+def = "hv102.def"
+at = [14, 10]
+
+[[objects]]
+def = "hv102.def"
+at = [15, 10]
+
+[[objects]]
+def = "hv102.def"
+at = [9, 12]
+
+[[objects]]
+def = "hv113.def"
+at = [10, 12]
+
+[[objects]]
+def = "hv113.def"
+at = [11, 12]
+
+[[objects]]
+def = "hv83.def"
+at = [14, 12]
+quest = { level = 10 }
+
+[[objects]]
+def = "hv10.def"
+at = [15, 12]
+
+[[objects]]
+def = "hv30.def"
+at = [9, 14]
+
+[[objects]]
+def = "hv49.def"
+at = [10, 14]
+
+[[objects]]
+def = "hv22.def"
+at = [11, 14]
+
+[[objects]]
+def = "hv112.def"
+at = [12, 14]
+
+[[objects]]
+def = "hv112.def"
+at = [13, 14]
+
+[[objects]]
+def = "hv35.def"
+at = [14, 14]
+
+[[objects]]
+def = "hv105.def"
+at = [15, 14]
+
+[[objects]]
+def = "hv537.def"
+at = [9, 16]
+
+[[objects]]
+def = "hv53.def"
+at = [10, 16]
+
+[[objects]]
+def = "hv53.def"
+at = [11, 16]
+owner = 0
+
+[[objects]]
+def = "AVWmrnd0.def"
+at = [13, 16]
+
+[[objects]]
+def = "hv35.def"
+at = [30, 30]
+
+[[objects]]
+def = "hv14.def"
+at = [14, 16]
+
+[[objects]]
+def = "hv92.def"
+at = [15, 16]
+"#;
+
+/// The templates of `HOVER`'s objects: one tile, visited there, by class and subclass; a
+/// Rampart's town.
+fn hover_templates() -> Vec<ObjectTemplate> {
+    let one = |def: &str, class: u32, subclass: u32| {
+        format!(
+            "{def} 0{} 1{} 111111111 000000001 {class} {subclass} 2 0",
+            "1".repeat(47),
+            "0".repeat(47)
+        )
+    };
+    let mut lines: Vec<String> = [
+        ("hv33.def", 33, 0),
+        ("hv16.def", 16, 0),
+        ("hv88.def", 88, 0),
+        ("hv89.def", 89, 0),
+        ("hv102.def", 102, 0),
+        ("hv113.def", 113, 0),
+        ("hv83.def", 83, 0),
+        ("hv10.def", 10, 2),
+        ("hv30.def", 30, 0),
+        ("hv49.def", 49, 0),
+        ("hv22.def", 22, 0),
+        ("hv112.def", 112, 0),
+        ("hv35.def", 35, 0),
+        ("hv105.def", 105, 0),
+        ("hv537.def", 53, 7),
+        ("hv53.def", 53, 2),
+        ("hv14.def", 14, 0),
+        ("hv92.def", 92, 0),
+    ]
+    .iter()
+    .map(|&(def, class, subclass)| one(def, class, subclass))
+    .collect();
+    lines.push(
+        LINES[0]
+            .replace("AVCcasx0.def", "AVCramx0.def")
+            .replace(" 98 0 ", " 98 1 "),
+    );
+    let mut all: Vec<ObjectTemplate> = lines
+        .iter()
+        .map(|line| ObjectTemplate::from_objects_txt(line).unwrap())
+        .collect();
+    all.extend(templates());
+    all
+}
+
+/// A game on `HOVER`'s map.
+fn hover_game() -> Game {
+    let (map, extras) = Situation::parse(HOVER)
+        .unwrap()
+        .build(&BTreeMap::new(), &hover_templates())
+        .unwrap();
+    game_on(writer::gzip(&writer::write_with(&map, &extras).unwrap()))
+}
+
+/// The index of the map's object at `at` whose template is `def`.
+fn object_at(g: &Game, def: &str, at: [u8; 2]) -> usize {
+    (0..g.art.objects.len())
+        .find(|&i| {
+            let o = &g.art.objects[i];
+            g.art.templates[o.template].def == def && [o.anchor.x, o.anchor.y] == at
+        })
+        .unwrap()
+}
+
+/// The view's object of the map's object `index` (its type and anchor).
+fn view_of<'a>(g: &Game, o: &'a mut GameObservation, index: usize) -> &'a mut Object {
+    let a = g.art.objects[index].anchor;
+    o.adventure
+        .objects
+        .iter_mut()
+        .find(|v| (v.anchor.x, v.anchor.y, v.anchor.level) == (u16::from(a.x), u16::from(a.y), a.z))
+        .unwrap()
+}
+
+#[test]
+fn the_hover_s_facts_of_a_start() {
+    let g = hover_game();
+    let start = start(&g, &g.observation).unwrap();
+    let hover = table(&start.table["hover"]);
+    let rows = |key: &str| -> Vec<Vec<i64>> {
+        hover[key].as_array().unwrap().iter().map(numbers).collect()
+    };
+    let castle = object_at(&g, "AVCcasx0.def", [12, 7]);
+    let rampart = object_at(&g, "AVCramx0.def", [18, 7]);
+    let monster = object_at(&g, "AVWmrnd0.def", [13, 16]);
+    let far = object_at(&g, "hv35.def", [30, 30]);
+    let words = numbers(&hover["words"]);
+    // A town's word its index among the towns written; a monster's the first count of its word;
+    // an object out of sight none.
+    assert_eq!((words[castle], words[rampart], words[far]), (0, 1, -1));
+    let word = g
+        .observation
+        .adventure
+        .objects
+        .iter()
+        .find_map(|o| o.monster)
+        .unwrap();
+    let first = [1, 5, 10, 20, 50, 100, 250, 500, 1000][usize::from(word.count_word)];
+    assert_eq!(words[monster], first);
+    assert_eq!(
+        hover["towns"],
+        toml::from_str::<toml::Table>(r#"t = [["Brightmoor", 0], [16, 1]]"#).unwrap()["t"]
+    );
+    assert_eq!(numbers(&hover["town_list"]), [0]);
+    assert_eq!(rows("hero_ids"), [vec![16, 0]]);
+    assert_eq!(rows("hero_list"), [vec![16, 2, 0]]);
+    assert_eq!(numbers(&hover["teams"]), [0, 1, 2, 3, 4, 5, 6, 7]);
+    // MCL-Q37: no guarded tile, no reach.
+    assert!(
+        hover["guarded"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|r| !r.as_str().unwrap().contains('1'))
+    );
+    assert!(rows("reach").is_empty());
+    let own = g.observation.adventure.heroes[0].own.clone().unwrap();
+    assert_eq!(
+        hover["day_points"],
+        Value::Integer(i64::from(own.max_movement))
+    );
+    // The mines: the abandoned one's name its own, a neutral one's resource its subclass, Red's its
+    // production's.
+    let mines = |i: usize| {
+        hover["mines"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r.as_array().unwrap()[0] == Value::Integer(i64::try_from(i).unwrap()))
+            .cloned()
+            .unwrap()
+    };
+    let ore = object_at(&g, "hv53.def", [10, 16]);
+    let owned = object_at(&g, "hv53.def", [11, 16]);
+    assert_eq!(mines(ore).as_array().unwrap()[1], Value::Integer(2));
+    assert_eq!(mines(owned).as_array().unwrap()[1], Value::Integer(2));
+    // The map's own town names, in its order of towns (an empty one none).
+    assert_eq!(g.art.town_names, [Some("Brightmoor".to_string()), None]);
+    let mut raw = h3_map::read(&g.bytes, &Limits::default()).unwrap();
+    for object in &mut raw.objects {
+        if let h3_map::model::Body::Town(town) = &mut object.body {
+            town.name = Some(h3_map::model::Text(Vec::new()));
+        }
+    }
+    assert_eq!(MapArt::from_raw(&raw).unwrap().town_names, [None, None]);
+    // Read as a capture's: the facts' table as the viewer takes it.
+    let heroes = start.table["heroes"].as_array().unwrap().len();
+    let facts = Facts::read(&start.table["hover"], g.art.objects.len(), heroes, 36, 1).unwrap();
+    assert_eq!(facts.words[castle], Some(0));
+    assert!(facts.contents.contains_key(&ore));
+}
+
+#[test]
+fn the_hover_s_facts_of_what_the_player_learnt() {
+    let g = hover_game();
+    let rules = rules();
+    let mut o = g.observation.clone();
+    let index = |def: &str, at: [u8; 2]| object_at(&g, def, at);
+    let (shrine, shrine2) = (index("hv88.def", [11, 10]), index("hv89.def", [13, 10]));
+    let (gems, gold, plain) = (
+        index("hv102.def", [14, 10]),
+        index("hv102.def", [15, 10]),
+        index("hv102.def", [9, 12]),
+    );
+    let (hut, hut2) = (index("hv113.def", [10, 12]), index("hv113.def", [11, 12]));
+    let (bank, fortune, well, corpse) = (
+        index("hv16.def", [10, 10]),
+        index("hv30.def", [9, 14]),
+        index("hv49.def", [10, 14]),
+        index("hv22.def", [11, 14]),
+    );
+    let (mill, mill2, tent, garrison) = (
+        index("hv112.def", [12, 14]),
+        index("hv112.def", [13, 14]),
+        index("hv10.def", [15, 12]),
+        index("hv33.def", [9, 10]),
+    );
+    let (ore, seer, castle) = (
+        index("hv53.def", [10, 16]),
+        index("hv83.def", [14, 12]),
+        index("AVCcasx0.def", [12, 7]),
+    );
+    let reference = |o: &mut GameObservation, i: usize| {
+        let v = view_of(&g, o, i);
+        ObjectRef {
+            object_type: v.object_type,
+            anchor: v.anchor,
+        }
+    };
+    let learnt = |o: &mut GameObservation, i: usize, known: Known| {
+        let r = reference(o, i);
+        o.adventure.known.push(KnownObject {
+            object_type: r.object_type,
+            anchor: r.anchor,
+            known,
+        });
+    };
+    let (spell, skill) = (3u16, 4u16);
+    learnt(&mut o, shrine, Known::Spell { spell: Some(spell) });
+    learnt(&mut o, hut, Known::Skill { skill: Some(skill) });
+    let price = |resource| {
+        vec![Amount {
+            resource,
+            amount: 1,
+        }]
+    };
+    learnt(&mut o, gems, Known::Price { price: price(5) });
+    learnt(&mut o, gold, Known::Price { price: price(6) });
+    learnt(&mut o, bank, Known::Emptied { emptied: true });
+    learnt(&mut o, fortune, Known::Visited);
+    learnt(&mut o, corpse, Known::Emptied { emptied: true });
+    let shrine_type = reference(&mut o, shrine).object_type;
+    let hut_type = reference(&mut o, hut).object_type;
+    o.adventure.kinds = vec![shrine_type, hut_type];
+    o.adventure.kinds.sort_unstable();
+    o.adventure.keys = 1 << 2;
+    view_of(&g, &mut o, mill).visited = true;
+    view_of(&g, &mut o, ore).guards = Some(Guards {
+        creature: None,
+        count_word: 0,
+        army: None,
+    });
+    // The selected hero's marks: the Tree's, the Well's day, the Fountain's once-mark; its spell
+    // and skill; it visits Red's town.
+    let tree = reference(&mut o, gems);
+    let well_type = reference(&mut o, well).object_type;
+    let fortune_type = reference(&mut o, fortune).object_type;
+    let mark = match &rules
+        .adventure()
+        .object_type(ObjectTypeId::from_raw(fortune_type))
+        .unwrap()
+        .kind
+    {
+        ObjectKind::FountainOfFortune { mark, .. } => *mark,
+        kind => panic!("{kind:?}"),
+    };
+    let hero = &mut o.adventure.heroes[0];
+    let own = hero.own.as_mut().unwrap();
+    own.marks.push(tree);
+    own.timed.push(well_type);
+    own.bonuses.once.push(VisitBonus {
+        mark,
+        morale: 0,
+        luck: 1,
+    });
+    hero.pos.x = 10;
+    hero.pos.y = 7;
+    let id = hero.id;
+    let details = o
+        .heroes
+        .iter_mut()
+        .find(|h| h.id == id)
+        .and_then(|h| h.details.as_mut())
+        .unwrap();
+    details.spells.push(spell);
+    details.skills.push(SkillLevel { skill, level: 1 });
+    let anchor = reference(&mut o, garrison).anchor;
+    for g in &mut o.garrisons {
+        if g.anchor == anchor {
+            g.garrison.stacks = vec![GarrisonStack {
+                creature: 1,
+                count_word: None,
+                count: None,
+            }];
+        }
+    }
+    let learnt_start = start(&g, &o).unwrap();
+    let hover = table(&learnt_start.table["hover"]);
+    let row_of = |key: &str, i: usize| -> Vec<Value> {
+        hover[key]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r.as_array().unwrap().clone())
+            .find(|r| r[0] == Value::Integer(i64::try_from(i).unwrap()))
+            .unwrap()
+    };
+    let ints = |r: Vec<Value>| -> Vec<i64> { r.iter().filter_map(Value::as_integer).collect() };
+    let s = i64::from(spell);
+    let k = i64::from(skill);
+    assert_eq!(
+        ints(row_of("shrines", shrine)),
+        [i64::try_from(shrine).unwrap(), 1, s, 1]
+    );
+    // A Shrine of another level: its kind as its type's mark, nothing learnt.
+    let other = reference(&mut o, shrine2).object_type;
+    let known = i64::from(o.adventure.kinds.contains(&other));
+    assert_eq!(ints(row_of("shrines", shrine2))[1..], [known, -1, 0]);
+    assert_eq!(ints(row_of("witch_huts", hut))[1..], [1, k, 1]);
+    // Another Witch Hut of its type: its kind known, its skill not learnt.
+    assert_eq!(ints(row_of("witch_huts", hut2))[1..], [1, -1, 0]);
+    assert_eq!(ints(row_of("trees", gems))[1..], [0, 2, 1]);
+    assert_eq!(ints(row_of("trees", gold))[1..], [0, 1, 0]);
+    assert_eq!(ints(row_of("trees", plain))[1..], [0, -1, 0]);
+    assert_eq!(ints(row_of("banks", bank))[1..], [1]);
+    // The Seer's Hut: the engine's views show none yet (no row; its hint its name).
+    assert!(!learnt_start.seen[seer]);
+    let several = row_of("mines", ore);
+    assert_eq!(
+        several[2],
+        Value::Array(vec![Value::Array(vec![
+            Value::Integer(i64::from(u32::MAX)),
+            Value::Integer(1)
+        ])])
+    );
+    let visits: Vec<Vec<i64>> = hover["visits"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(numbers)
+        .collect();
+    assert_eq!(visits[fortune], [1, 1]);
+    assert_eq!(visits[well], [0, 1]);
+    assert_eq!(visits[corpse], [0, 1]);
+    assert_eq!(
+        (visits[mill].clone(), visits[mill2].clone()),
+        (vec![0, 1], vec![0, -1])
+    );
+    assert_eq!(visits[tent], [0, 1]);
+    let armed = numbers(&hover["armed"]);
+    assert_eq!((armed[garrison], armed[castle]), (1, 1));
+    // A Swan Pond's and the Sirens' once-marks the hero does not hold.
+    let (pond, sirens) = (index("hv14.def", [14, 16]), index("hv92.def", [15, 16]));
+    assert_eq!(
+        (visits[pond].clone(), visits[sirens].clone()),
+        (vec![0, 0], vec![0, 0])
+    );
+    // A town with a Capitol: its picture the Capitol's.
+    let mut capitol = o.clone();
+    capitol.towns[0].capitol = true;
+    let with = start(&g, &capitol).unwrap();
+    let defs = with.table["defs"].as_array().unwrap();
+    assert_eq!(defs[castle].as_str(), Some("capitol0.def"));
+    // Without a hero of the viewer's: no mark a hero keeps, no day's points.
+    let mut none = o.clone();
+    none.adventure.heroes.retain(|h| h.owner != 0);
+    let alone = start(&g, &none).unwrap();
+    let hover = table(&alone.table["hover"]);
+    let visits: Vec<Vec<i64>> = hover["visits"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(numbers)
+        .collect();
+    assert_eq!(
+        (visits[well].clone(), visits[corpse].clone()),
+        (vec![0, -1], vec![0, -1])
+    );
+    assert_eq!(hover["day_points"], Value::Integer(0));
+    assert!(numbers(&row_of_none(hover, gems))[3] == -1);
+}
+
+/// The row of `trees` of the object `i` in `hover`.
+fn row_of_none(hover: &toml::Table, i: usize) -> Value {
+    hover["trees"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r.as_array().unwrap()[0] == Value::Integer(i64::try_from(i).unwrap()))
+        .cloned()
+        .unwrap()
 }

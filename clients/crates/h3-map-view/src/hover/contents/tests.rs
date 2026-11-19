@@ -194,6 +194,14 @@ fn guards_merge_by_creature() {
             count: 7
         })
     );
+    // E24 M4 T3b2: the engine's several creatures the view does not name.
+    assert_eq!(
+        Guards::of(&[(SEVERAL, 20)]),
+        Some(Guards {
+            creature: None,
+            count: 20
+        })
+    );
 }
 
 fn texts() -> Catalogue {

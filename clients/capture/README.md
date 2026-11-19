@@ -126,7 +126,13 @@ directory of the two): the check against the kept live part and the whole screen
 the kept live part, each as the entry expects (`differs`: the check's differences, `pixels`: the
 differing count; `{}` exact). A comparison of the panels gives its heroes' armies in the map
 (`map_army`: the new game draws none), `bonus = "gold"` (no artifact from the starting bonus) and
-the engine's `resources` written, shown by a `select` and a `reselect` of the start's hero.
+the engine's `resources` written, shown by a `select` and a `reselect` of the start's hero. Since
+E24 M4 T3b2 (design §5.11) the check compares the mouse-over too (every explored tile's hint and
+cursor), a situation's `pointer` (a point inside a drawn tile of the view, off the scroll zones)
+parks the mouse over the map last (its tile's cost read first, `look_over_view`), and a shipped
+map's situation may give `bonus = "gold"` with `players` (the map's rows of the advanced options),
+`resources`, `select`, `reselect` and `pointer` (`start-jared`, `start-good-witch`: the two
+shipped starts with no draw in sight).
 
 **The shell's screens** (E27 M2 T4) follow them too: `python3 capture/h3shell.py drawn` (no Wine;
 seconds) plays every recipe in the viewer and compares each shot with the original's kept digest
