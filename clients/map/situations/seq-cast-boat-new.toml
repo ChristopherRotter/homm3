@@ -1,0 +1,14 @@
+# Summon Boat with no boat on the map (E24 M4 T2d3; clients/map/sequences.toml `cast-boat-new`;
+# E24 design §5.8): `seq-cast-boat`'s lake, hero and spells, no boat: at Advanced or Expert the
+# cast makes one beside the hero (create_boat 0x4BB250), dissolved in.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [4, 16], to = [22, 32], at = [1, 0] }]
+tiles = [{ at = [10, 12], terrain = "water", picture = 21 }]
+heroes = [
+    { at = [9, 12], class = 6, spells = [0], secondary = [[16, 3]] },
+    { at = [32, 32], owner = 1 },
+]
+towns = [{ at = [12, 26], faction = 0, owner = 0, buildings = "fort" }]
+view = [0, 4, 0]
+hidden = [[20, 20, 35, 35]]

@@ -1,0 +1,16 @@
+# Summon Boat's boat out of sight (E24 M4 T2d3; clients/map/sequences.toml `cast-boat-far`; E24
+# design §5.8): `seq-cast-boat`'s lake, hero and spells; the one empty boat lies in the channel
+# above the view (10, 1), outside the view's 19 × 17 tiles: no dissolve off its place, only in
+# beside the hero.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [4, 16], to = [22, 32], at = [1, 0] }]
+tiles = [{ at = [10, 12], terrain = "water", picture = 21 }]
+heroes = [
+    { at = [9, 12], class = 6, spells = [0], secondary = [[16, 3]] },
+    { at = [32, 32], owner = 1 },
+]
+towns = [{ at = [12, 26], faction = 0, owner = 0, buildings = "fort" }]
+boats = [{ at = [10, 1], kind = 1 }]
+view = [0, 4, 0]
+hidden = [[20, 20, 35, 35]]

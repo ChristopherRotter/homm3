@@ -407,6 +407,10 @@ SKILL_COUNT, SKILLS_KNOWN = 28, 0x101
 # and 0x7DD, the OK 0x7802).
 LEVEL_UP_VTABLE, PCX_VTABLE, LEVEL_UP_OFFERS, LEVEL_UP_CHOSEN = 0x63FE60, 0x63BA94, 0x60, 0x68
 LEVEL_UP_MARKS = (0x7DC, 0x7DD, 0x7802)
+# The spell book's dialog (spell_book_dialog 0x59BDF0, its vtable 0x641DCC; E24 M4 T2d3, design
+# §5.8): on the map the cast's opening (adventure_cast_open 0x41C2F0) runs it modal, and its
+# answer stays in the window manager's +0x38 (the spell, 0x7801 for none) until the next modal.
+SPELL_BOOK_VTABLE, MODAL_ANSWER = 0x641DCC, 0x38
 MOVE_HERO, NEXT_HERO, QUEST_LOG = 7, 11, 5
 # A path arrow's frame: 0 none, 1 to 25 a move today (green), 26 to 50 a later one (red).
 GREEN_FRAMES = range(1, 26)
@@ -1271,6 +1275,11 @@ class Mem:
         """A hero's movement points left (E24 M3 T4b: a sequence's timeline; i32 +0x4D)."""
         return self.i32(self.game() + HEROES + HERO_SIZE * index + HERO_POINTS)
 
+    def mana(self, index):
+        """A hero's mana (E24 M4 T2d3: a cast's cost spent; i16 +0x18)."""
+        record = self.game() + HEROES + HERO_SIZE * index
+        return struct.unpack("<h", self.read(record + SPELL_POINTS, 2))[0]
+
     def write_points(self, index, points):
         """A hero's movement points (T1b: a sequence's `points`)."""
         self.write_u32(self.game() + HEROES + HERO_SIZE * index + HERO_POINTS, points)
@@ -1470,10 +1479,11 @@ class Mem:
         nothing) is: its box (x, y, width, height), its text items' texts in item order (the
         text, then the pictures' captions), its pictures (`dialog_pictures`: [def, frame,
         caption]) and its buttons' ids (0x7801 to 0x780A). Since E24 M4 T2c None under the
-        level-up dialog too (`level_up_box`)."""
+        level-up dialog too (`level_up_box`), since E24 M4 T2d3 under the spell book
+        (`spell_book`)."""
         shown = self.dialog()
         if (shown is None or shown["at"] == self.manager_field(ADVENTURE_DIALOG)
-                or shown["vtable"] == LEVEL_UP_VTABLE):
+                or shown["vtable"] in (LEVEL_UP_VTABLE, SPELL_BOOK_VTABLE)):
             return None
         items = self.dialog_items()
         return {"box": shown["box"],
@@ -1487,6 +1497,17 @@ class Mem:
                 "chosen": self.i32(MESSAGE_BOX_CHOSEN),
                 "marks": [[i["id"], *i["box"], i["state"]] for i in items
                           if i["id"] in BOX_BUTTONS]}
+
+    def spell_book(self):
+        """Whether the spell book's dialog is on top (E24 M4 T2d3, design §5.8: a map sequence's
+        cast; its screens are M5's, so the frame check keeps none while it shows)."""
+        shown = self.dialog()
+        return shown is not None and shown["vtable"] == SPELL_BOOK_VTABLE
+
+    def modal_answer(self):
+        """The last modal dialog's answer (the window manager's +0x38, E24 M4 T2d3): after the
+        spell book, the spell chosen (0 to 69) or 0x7801 (closed)."""
+        return self.i32(self.u32(WINDOW_MANAGER_POINTER) + MODAL_ANSWER)
 
     def level_up_box(self):
         """The level-up dialog on top (E24 M4 T2c, design §5.5), None if another or none shows:
@@ -2263,14 +2284,16 @@ class Mem:
 
     def boats(self):
         """Every boat record's address and fields (E24 M1 T5a): [{address, tile, used, type,
-        facing, colour, hero, aboard}]."""
+        facing, colour, hero, aboard}]; since E24 M4 T2d3 its `index` too (a boat created moves
+        the records, so a cast's boats are matched by index)."""
         begin, end = struct.unpack("<II", self.read(self.game() + BOATS, 8))
         raw = self.read(begin, end - begin) if end > begin else b""
         out = []
         for i in range(0, len(raw) - BOAT_RECORD + 1, BOAT_RECORD):
             x, y, z = struct.unpack_from("<3h", raw, i)
             kind, facing, colour = struct.unpack_from("<3b", raw, i + 0x1A)
-            out.append({"address": begin + i, "tile": [x, y, z], "used": raw[i + 0x18],
+            out.append({"address": begin + i, "index": i // BOAT_RECORD, "tile": [x, y, z],
+                        "used": raw[i + 0x18],
                         "type": kind, "facing": facing, "colour": colour,
                         "hero": struct.unpack_from("<i", raw, i + 0x20)[0],
                         "aboard": raw[i + 0x24]})
