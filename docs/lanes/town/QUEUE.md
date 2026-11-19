@@ -10,21 +10,21 @@ by T35a, `TWN-Q19`; its code by T35b, decisions 129 to 131; the town part v7 by 
 132; the pool in the game by T37a, `TWN-Q20`, decisions 133 to 136; the map's customised types
 by T37b, `TWN-Q21`, decisions 137 to 139; T38a cut in two, `TWN-Q22`, decisions 140 to 142;
 T38a2 whole, decisions 143, 144; T38b cut in two, `TWN-Q23`, decisions 145, 146; T38b2
-whole, `TWN-Q24`, decisions 147, 148; T38 done);
+whole, `TWN-Q24`, decisions 147, 148; T38 done; T39a whole, `TWN-Q25`, decisions 149, 150);
 done tasks in `E09-log.md`; increments 1 to 3
 (closed by T10, T20 and T30) in `E09-archive.md`. The building tasks are the design note's
 `E09-design.md` §79 (round by round, with the order against E08's increment 13); each task's cut
 confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`) and the exit criteria it serves (the epic's list, decision 121).
 
-**E09 T39 — the map's objects and the information** (round 7; `cross-lane`, after E08's T123;
-design §66, §73 to §76): T39a the kinds `Tavern` and `DenOfThieves` (the adventure part, classes
-95 and 97 imported and written), the tavern decision (GAM-DEC-010, `TavernOpened`, `answer
-tavern`, the env's answers by role v13); T39b the Thieves' Guild (TWN-TAV-007 to -009: the query,
-the Den's `ThievesGuildSeen`, TD-23, `TWN-QUIRK-13`, `TWN-STUB-17`, `-18`; the adventure's power
-and the day's gold made public), the protocol's request. Versions to take: map import v26,
-replay format v19 (`answer tavern`), protocol v73, the env's v13. **Status:** next (T39a), its
-cut confirmed at its start.
+**E09 T39 — the map's objects and the information** (round 7; `cross-lane`; design §66, §73 to
+§76): T39a done (2026-11-18, whole, decisions 149, 150: the kinds `Tavern` and `DenOfThieves`,
+classes 95 and 97, the tavern decision GAM-DEC-010; `E09-log.md`). **T39b** the Thieves' Guild
+(TWN-TAV-007 to -009: the query, the Den's visit and its `ThievesGuildSeen`, lifting
+`TWN-STUB-20`; TD-23, `TWN-QUIRK-13`, `TWN-STUB-17`, `-18`; the adventure's power and the day's
+gold made public), the protocol's request. Versions to take: protocol v74 (the guild's request,
+`ThievesGuildSeen`), the adventure's outcome for the Den; no replay word. **Status:** next
+(T39b), its cut confirmed at its start.
 
 **E09 T40 — the gates** (round 8; design §78): the taverns map and its scripted replays, the
 census of the 160 maps' first offers and of the maps classes 95 and 97 unblock, the pool's

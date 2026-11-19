@@ -36,7 +36,8 @@ pub use command::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, GameCommand,
     GameReject, HireAnswer, HireReject, Manage, ManageReject, MoveReject, SchoolChoice, SkillOffer,
-    StandReject, SystemCommand, TownCommand, TownHeroChange, TownReject, UniversityAnswer,
+    StandReject, SystemCommand, TavernAnswer, TavernReject, TownCommand, TownHeroChange,
+    TownReject, UniversityAnswer,
 };
 pub use event::{AdventureEvent, GameEvent, HeroChange, NothingWhy, ShipyardBlock};
 pub use lobby::{Computer, MapGameInfo, MapOffer, SeatedPlayer};
@@ -613,6 +614,14 @@ pub enum Decision {
         removable: bool,
         /// The garrison's stacks, by slot.
         army: Vec<ArmyStack>,
+    },
+    /// A map Tavern (GAM-DEC-010, E09 T39a, v73), answered with a hire of one of the viewer's
+    /// tavern heroes (the observation's `tavern`, its offers) or its closing.
+    Tavern {
+        /// The visiting hero.
+        hero: u16,
+        /// The Tavern by type and anchor.
+        object: ObjectRef,
     },
 }
 

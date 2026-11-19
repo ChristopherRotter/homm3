@@ -626,35 +626,35 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xba924c8f759d46bd",
-    "0xa7d192664799300a",
-    "0x4e35f4a6e97620a9",
-    "0xc37e51aee0369b67",
-    "0x02a9c185672bf1be",
-    "0x227da5df149ec142",
-    "0x497439fbb30636f7",
-    "0xd82bf58687490f2f",
-    "0xcde944cd0e9841f4",
-    "0x22ba167bf2687d22",
-    "0x5ca229fe7e20510d",
-    "0x567204aec7a72bd3",
-    "0xfa189b232bdb2535",
-    "0xc8813d0de947b7d2",
-    "0xafc8514830d186a3",
-    "0xed060e54663298bf",
-    "0x53a68745b822cefe",
-    "0x68e542446caeddc2",
-    "0x05a52e62a8f70d09",
-    "0x57d8062f866dd283",
-    "0x8f33946ec260dcba",
-    "0x6f4e4b8ebc5669a4",
-    "0xc335130d31e013a2",
-    "0xfce56441d66cf148",
-    "0xd07c00728ffdc3c3",
+    "0x1073b147d986628a",
+    "0x2be7f8fc07505365",
+    "0x4f1bd1ce16e2075e",
+    "0x7b21c6d91a16c6d8",
+    "0x5c543a2588deb899",
+    "0xee10e86110867ba9",
+    "0x0ae97d78c5f16ba4",
+    "0x033ef77ce6d67e70",
+    "0xd2939e44d94527d7",
+    "0x3f0ffe0851d0f219",
+    "0xe6b0336ba23eb7d8",
+    "0x6f43e589848acb18",
+    "0xfe533ddae1bf69f2",
+    "0x42feb1f12824a5c9",
+    "0x38c5bde0e9b7f52c",
+    "0x2131ae13989ade8c",
+    "0x9bea68a911151f95",
+    "0xf3a1af88f2f03865",
+    "0xfa4b66aebc113288",
+    "0x322bf0258d308647",
+    "0x5239d4f35edf79df",
+    "0x9779f6e607606fe4",
+    "0xa558812248428e00",
+    "0x2da3371d3f4ecb82",
+    "0x793c884a53dc6f56",
 ]
 
 [replay]
-format = 18
+format = 19
 engine = "0.1.0"
 seed = "4893"
 difficulty = 1
@@ -674,21 +674,21 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x6ba8109889b34a25"
-adventure_ruleset_hash = "0xa5809e7fd9e842dd"
+adventure_ruleset_hash = "0x56c46df30c45ce3a"
 town_ruleset_hash = "0xabc9756b93a29a55"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 33
+game_state_hash_version = 34
 adventure_state_hash_version = 26
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
 hash = "0x5918efa3271a85e0"
-import_version = 25
+import_version = 26
 
 [result]
 day = 29
-final_hash = "0xd07c00728ffdc3c3"
+final_hash = "0x793c884a53dc6f56"

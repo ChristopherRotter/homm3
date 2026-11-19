@@ -151,3 +151,39 @@ fn a_hired_hero_stands_on_the_entrance_as_the_visitor_with_its_away_record() {
         Err(TownHeroError::EntranceHeld)
     );
 }
+
+// covers: GAM-DEC-010
+#[test]
+fn a_map_tavern_s_hire_needs_room_on_the_map_and_its_tile_free() {
+    // E09 T39a (the town epic's design note §66): the room first, then any hero on the Tavern's
+    // visitable tile, another player's included; no town and no visitor are read.
+    let rules = rules();
+    let tile = Pos::new(11, 2, 0);
+    let away = game(&rules, Pos::new(5, 5, 0));
+    assert!(away.tile_free(tile));
+    assert_eq!(away.check_map_tavern_hire(RED, (tile, 8)), Ok(()));
+    assert_eq!(
+        away.check_map_tavern_hire(RED, (tile, 2)),
+        Err(TownHeroError::TooManyHeroes)
+    );
+    assert_eq!(away.check_map_tavern_hire(BLUE, (tile, 2)), Ok(()));
+    let held = game(&rules, tile);
+    assert!(!held.tile_free(tile));
+    for player in [RED, BLUE] {
+        assert_eq!(
+            held.check_map_tavern_hire(player, (tile, 8)),
+            Err(TownHeroError::EntranceHeld)
+        );
+    }
+    // A hired hero placed there holds it.
+    let mut placed = game(&rules, Pos::new(5, 5, 0));
+    placed.place_hired(
+        &rules.0,
+        HeroOnMap {
+            pos: tile,
+            ..hired(2)
+        },
+    );
+    assert_eq!(placed.hero(HeroId::new(2)).map(|h| h.pos), Some(tile));
+    assert!(!placed.tile_free(tile));
+}

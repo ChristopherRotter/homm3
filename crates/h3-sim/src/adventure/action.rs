@@ -62,7 +62,8 @@
 //! first [`UNIVERSITY_SLOTS`] slots and its leaving (GAM-DEC-006), a hire dialog's purchase of the
 //! most of each of the first [`HIRE_SLOTS`] creatures in its source's order (the `Buy`
 //! `legal_commands` lists for it, so an entry is legal when that creature's most is 1 or more) and
-//! its `Close` (GAM-DEC-008). With no open decision of that role the entry decodes to the offer's
+//! its `Close` (GAM-DEC-008), a map Tavern's hires of the two slots and its `Close` (GAM-DEC-010,
+//! version 13). With no open decision of that role the entry decodes to the offer's
 //! or the level-up's answer, or the purchase (a hire entry's: a `Buy` of 0, [`hire_answer`]),
 //! which `apply` rejects.
 //!
@@ -112,7 +113,10 @@
 //! [`TAVERN_HIRE`] entries (the design note's `HIRE + s`): a town's hire of the hero in the
 //! player's tavern slot `s` (`TownCommand::Hire`, TWN-TAV-003) by its town's entrance in the tile
 //! head, the building head 0; one action per listed `Hire`. A hero hired takes the player's next
-//! hero slot by its id.
+//! hero slot by its id. Version 13 (E09 T39a, the town lane's `cross-lane` change with the user's
+//! consent, E09 decision 149; the town epic's design note §76) maps the map Tavern's decision
+//! (GAM-DEC-010) onto the answers by role, no new entry: the hire of slot 0 its first, of slot 1
+//! its second, its `Close` the closing role.
 
 use h3_adventure::{AdventureCommand, Pos, Reach};
 use h3_battle::{BattleState, LegalCommands};
@@ -121,14 +125,15 @@ use h3_contracts::TownId;
 use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameRuleset, GameState,
-    HireAnswer, SchoolChoice, SkillOffer, UniversityAnswer, legal_commands, legal_moves,
+    HireAnswer, SchoolChoice, SkillOffer, TavernAnswer, UniversityAnswer, legal_commands,
+    legal_moves,
 };
 use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand, TownHeroChange};
 
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 12;
+pub const ACTION_ENCODING_VERSION: u32 = 13;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -696,7 +701,9 @@ const fn tileless(entry: usize) -> bool {
 /// declined offer, a closed meeting, army dialog or hire dialog (E08 T95b), a School or a
 /// University left; the first or the second of a level-up's, a chest's, the Arena's or a School's
 /// answers; a University's purchase of one of its first [`UNIVERSITY_SLOTS`] slots (none for a
-/// later one). None for a hire dialog's purchase, whose entry is its creature's place in the
+/// later one); since version 13 (E09 T39a) a map Tavern's `Close` the closing role, its hire of
+/// slot 0 the first, of slot 1 the second (none for another slot). None for a hire dialog's
+/// purchase, whose entry is its creature's place in the
 /// dialog's source, which the answer does not carry ([`hire_entry`], E08 T95b).
 pub const fn answer_entry(answer: Answer) -> Option<usize> {
     match answer {
@@ -705,15 +712,18 @@ pub const fn answer_entry(answer: Answer) -> Option<usize> {
         | Answer::Close
         | Answer::School(SchoolChoice::Leave)
         | Answer::University(UniversityAnswer::Leave)
-        | Answer::Hire(HireAnswer::Close) => Some(DECLINE),
+        | Answer::Hire(HireAnswer::Close)
+        | Answer::Tavern(TavernAnswer::Close) => Some(DECLINE),
         Answer::LevelUp(SkillOffer::First)
         | Answer::Chest(ChestChoice::Gold)
         | Answer::Arena(ArenaChoice::Attack)
-        | Answer::School(SchoolChoice::First) => Some(FIRST),
+        | Answer::School(SchoolChoice::First)
+        | Answer::Tavern(TavernAnswer::Hire { slot: 0 }) => Some(FIRST),
         Answer::LevelUp(SkillOffer::Second)
         | Answer::Chest(ChestChoice::Experience)
         | Answer::Arena(ArenaChoice::Defense)
-        | Answer::School(SchoolChoice::Second) => Some(SECOND),
+        | Answer::School(SchoolChoice::Second)
+        | Answer::Tavern(TavernAnswer::Hire { slot: 1 }) => Some(SECOND),
         Answer::University(UniversityAnswer::Buy(slot)) => {
             let slot = slot as usize;
             if slot < UNIVERSITY_SLOTS {
@@ -722,7 +732,7 @@ pub const fn answer_entry(answer: Answer) -> Option<usize> {
                 None
             }
         }
-        Answer::Hire(HireAnswer::Buy { .. }) => None,
+        Answer::Hire(HireAnswer::Buy { .. }) | Answer::Tavern(TavernAnswer::Hire { .. }) => None,
     }
 }
 

@@ -214,7 +214,11 @@ pub mod wire;
 /// v72 (E09 T38b2, the town lane's, `cross-lane`): a hero's dismissal (GAM-MAN-003):
 /// `Manage::Dismiss` (the hero) and its refusals `NotOnMap`, `InTown` and `LastHero`; its
 /// `HeroRemoved` as a battle's.
-pub const PROTOCOL_VERSION: u32 = 72;
+/// v73 (E09 T39a, the town lane's, `cross-lane`): the adventure map's Tavern's decision
+/// (GAM-DEC-010): `Answer::Tavern` (a hire by its slot, its closing), `GameReject::Tavern` (the
+/// slot, the room, the Tavern's tile held), `Decision::Tavern` (the hero, the Tavern by type and
+/// anchor) and its event `TavernOpened`, folded into the viewer's decision whole.
+pub const PROTOCOL_VERSION: u32 = 73;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

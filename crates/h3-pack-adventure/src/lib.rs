@@ -194,6 +194,9 @@
 //! #                                # coast (false if left out)
 //! # kind_mark = true               # on the type, beside `from_above` (false if left out): its
 //! #                                # visit sets the visitor's team's kind mark (ADV-BON-009)
+//! # E09 T39a, the map's Tavern and the Den of Thieves (ADV-VIS-007, -008), no parameters:
+//! # tavern = {}                    # visit = "neighbour"; its visit opens the tavern decision
+//! # den_of_thieves = {}            # visit = "enter"; its visit shows the Thieves' Guild
 //!
 //! [[random_dwelling]]              # E08 T93a (ADV-DWL-005): one table per faction in the part;
 //! faction = "castle"               # a core faction; the `dwelling` types a random dwelling of
@@ -515,6 +518,8 @@ struct ObjectTypeDto {
     stables: Option<StablesDto>,
     sirens: Option<SirensDto>,
     bank: Option<BankDto>,
+    tavern: Option<EmptyDto>,
+    den_of_thieves: Option<EmptyDto>,
 }
 
 #[derive(Deserialize)]
@@ -1238,6 +1243,8 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
     );
     kinds.extend(t.magic_well.map(|_| ObjectKindDef::MagicWell));
     kinds.extend(t.magic_spring.map(|_| ObjectKindDef::MagicSpring));
+    kinds.extend(t.tavern.map(|_| ObjectKindDef::Tavern));
+    kinds.extend(t.den_of_thieves.map(|_| ObjectKindDef::DenOfThieves));
     if let Some(st) = t.stables {
         kinds.push(ObjectKindDef::Stables {
             points: st.points,

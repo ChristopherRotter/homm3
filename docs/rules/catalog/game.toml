@@ -758,6 +758,31 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "GAM-DEC-010"
+title    = "A map Tavern's decision: a hire of one of the visitor's owner's tavern heroes, or its closing"
+context  = "game"
+status   = "implemented"
+summary  = "The adventure map's Tavern's visit (`AdventureOutcome::tavern`, ADV-VIS-007: a step toward its visitable tile from a neighbour) opens as the visitor's owner's decision (`Decision::Tavern`; E09 T39a, the town epic's design note section 66; the original's tavern dialog, map_tavern_visit 0x5D7E90), whatever the treasury and the room: told to the owner alone as `TavernOpened` (the hero, the Tavern's type and anchor); its offers are the owner's two tavern heroes (`GameObservation::tavern`, TWN-SET-005). It blocks its owner's `EndTurn` as every decision. Its answers (`Answer::Tavern`): `Hire { slot }`, checked as a town's hire (TWN-TAV-003) without the town, its Tavern and its visitor (the original sets 0x6AAA48: no visitor test), in this order, each refusal typed, changing nothing and leaving the decision open: the slot one of the two (`TavernError::UnknownSlot`) holding a hero (`EmptySlot`), fewer than the town part's most heroes of the player's on the map, a town's garrison heroes not counted (`TooManyHeroes`), no hero on the Tavern's visitable tile, another player's included (`Occupied`: VCMI's refusal; the original never reaches it, its visit skipped while the visitor stands there), then the price in the treasury (`CannotPay`); applied as a town's hire (the price, the type taken by the colour, `HeroHired` to the owner and every player that sees the tile, the owner's `HiredPartSeen`s, the replacement TWN-TAV-004, the slot's `TavernOffered`) but the hero placed on the Tavern's visitable tile (map_tavern_hire 0x4D7890: hero_place at the visited tile) and no guild spells; then the decision closes (`DecisionClosed`: one hire a visit, the original's dialog closes). `Close`, its default answer too, only closes. Listed while open (`legal_commands`): a `Hire` of each slot whose hire passes, in slot order, then `Close`. Its view, the owner's: `DecisionView::Tavern` (the hero, the Tavern's type and anchor). In the game state hash as its kind 9 (the owner, the hero, the Tavern's type, anchor and visitable tile; game state hash v34)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E09-tavern.md section 3): visit_object 0x4A84F0 case 95, skipped when the visitor stands on the visited tile; map_tavern_visit 0x5D7E90 opens the tavern dialog with 0x6AAA48 set (no visitor test); its Recruit button 0x5D81EE disabled below 2 500 gold or with 8 heroes on the map (a garrison hero out of the count); map_tavern_hire 0x4D7890: the price, hero_place at the visited tile, the slot refilled (tavern_slot_replace 0x4C86A0), no guild spells"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-tavern.md sections 3 and 7: the map tavern's hire places the hero at the Tavern's visitable tile and refuses while it is occupied; HERO_GOLD_COST 2 500, 8 heroes on the map"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/HeroPoolProcessor.cpp"
+  retrieved  = "2026-11-15"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 point 6 as amended by E09 T35a (increment 4's tavern decision, its answers, its close after a hire); the town epic's design note E09-design.md sections 66, 75 and 76; E09 decisions 106, 149"
+  confidence = "high"
+
+[[rule]]
 id       = "GAM-BAT-001"
 title    = "A battle on the map: its sides, its setup, its seeds, a decision its players own"
 context  = "game"

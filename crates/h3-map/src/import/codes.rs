@@ -555,6 +555,11 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         86 => Some("base:shipwreck_survivor"),
         124 => Some("base:hole"),
         225 => Some("sod:favorable_winds"),
+        // E09 T39a (the town epic's design note §66, §74): the map's Tavern and the Den of
+        // Thieves.
+        // rule: ADV-VIS-007, ADV-VIS-008
+        95 => Some("base:tavern"),
+        97 => Some("base:den_of_thieves"),
         // E08 T93b (increment 10's design note §4): the dwellings by subclass, the Refugee Camp
         // and the random dwellings (216 to 218, a faction set and a level range the import
         // reads from the object's body; since E09 T11 one tied to a town holds its town).

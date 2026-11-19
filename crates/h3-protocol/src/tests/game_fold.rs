@@ -2507,3 +2507,47 @@ fn a_hire_moves_the_owners_slot_view_into_its_heroes() {
     // In id order among the heroes.
     assert!(other.heroes.windows(2).all(|w| w[0].id < w[1].id));
 }
+
+#[test]
+fn a_map_taverns_decision_folds_whole_and_a_stray_part_changes_nothing() {
+    // E09 T39a (v73): `TavernOpened` is the decision's view whole, `DecisionClosed` closes it;
+    // a tavern part for a slot without a hero, or past the two, folds into nothing.
+    let mut v = view();
+    v.decision = None;
+    v.tavern = [None, None];
+    let before = v.clone();
+    let part = TavernPart::Skill {
+        skill: SkillLevel { skill: 3, level: 2 },
+    };
+    for slot in [0, 1, 7] {
+        v.fold(&GameEvent::TavernPartSeen {
+            player: v.viewer,
+            slot,
+            part,
+        });
+    }
+    assert_eq!(v, before);
+    let anchor = Pos {
+        x: 4,
+        y: 2,
+        level: 0,
+    };
+    v.fold(&GameEvent::TavernOpened {
+        player: v.viewer,
+        hero: 3,
+        object_type: 17,
+        anchor,
+    });
+    assert_eq!(
+        v.decision,
+        Some(Decision::Tavern {
+            hero: 3,
+            object: ObjectRef {
+                object_type: 17,
+                anchor,
+            },
+        })
+    );
+    v.fold(&GameEvent::DecisionClosed { player: v.viewer });
+    assert_eq!(v, before);
+}

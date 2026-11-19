@@ -1720,5 +1720,6 @@ mod dwellings;
 mod economy;
 mod garrisons;
 mod rewards;
+mod taverns;
 mod teleporters;
 mod towns;
