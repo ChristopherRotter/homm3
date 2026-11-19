@@ -725,11 +725,26 @@ fn what_differs_in_the_panels() {
             "`chosen.towns` differ in number",
         ]
     );
-    // A capture without `[chosen]` compares no choice; nor do two without a window.
+    // A chosen hero's row missing: the capture's `heroes` gone, or not a list.
+    let mut theirs = ours.table.clone();
+    let rows = theirs.remove("heroes").unwrap();
+    let mut mine = ours.clone();
+    mine.table.insert("heroes".into(), Value::Integer(0));
+    let missing = [
+        "`heroes` on explored tiles differ",
+        "`chosen.heroes` 0: its tile or path differs",
+        "`chosen.heroes` 1: its tile or path differs",
+    ];
+    assert_eq!(engine::differences(&ours, &theirs), missing);
+    theirs.insert("heroes".into(), rows);
+    assert_eq!(engine::differences(&mine, &theirs), missing);
+    // A capture without `[chosen]` compares no choice; nor do two without a kingdom or a window.
     let mut theirs = ours.table.clone();
     theirs.remove("chosen");
     let mut mine = ours.clone();
-    mine.table.remove("status");
-    theirs.remove("status");
+    for key in ["kingdom", "status"] {
+        mine.table.remove(key);
+        theirs.remove(key);
+    }
     assert!(engine::differences(&mine, &theirs).is_empty());
 }

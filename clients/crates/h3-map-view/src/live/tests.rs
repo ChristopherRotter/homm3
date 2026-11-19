@@ -756,10 +756,12 @@ fn a_live_parts_status_read() {
         "{{ kind = 4, name = \"Brightmoor\", buildings = [7], garrison = 0, {army}, silo = [], \
          income = 500 }}"
     );
-    let Some(Status::Town(named)) = read(&named) else {
+    let Some(Status::Town(own)) = read(&named) else {
         panic!("a town's window");
     };
-    assert_eq!(named.name, TownName::Own("Brightmoor".into()));
+    assert_eq!(own.name, TownName::Own("Brightmoor".into()));
+    // Neither a number nor a text: refused.
+    assert_eq!(read(&named.replace("\"Brightmoor\"", "true")), None);
     // The date's and the kingdom's (E24 M3 T5b2), their numbers; another kind by its number.
     let date = "{ kind = 1, frame = 9 }";
     assert_eq!(read(date), Some(Status::Date(DateStatus { frame: 9 })));
