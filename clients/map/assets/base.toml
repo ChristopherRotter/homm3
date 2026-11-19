@@ -281,6 +281,19 @@ sound = "nwherolv.wav"
 morale = 6
 luck = 9
 
+# A spell cast on the map (E24 M4 T2d3; design §5.8, *provisional*: summon_boat_cast 0x41C8A0):
+# each of a dissolve's eight steps 33 ms (screen_dissolve 0x602DC0 with -1), the box about a boat's
+# tile from (dx - 1, dy - 1) to (dx + 3, dy + 2) tiles from the view's corner (both ends inclusive)
+# cut to view_clip 0x691250 (8, 8) to (615, 551), dissolved only when the boat's old tile lies in
+# the view's 19 x 17 tiles on its level; Summon Boat's sound (the spell table's +0x4, SUMMBOAT,
+# 1200 ms) as its boat's box starts to dissolve.
+[map.cast]
+dissolve_ms = 33
+boat_box = [-1, -1, 3, 2]
+clip = [8, 8, 615, 551]
+view = [19, 17]
+summon_boat = "summboat.wav"
+
 [map.status]
 portraits = [
     "HPL000Kn.PCX", "HPL001Kn.PCX", "HPL002Kn.PCX", "HPL003Kn.PCX", "HPL004Kn.PCX", "HPL005Kn.PCX",

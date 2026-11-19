@@ -4,6 +4,40 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-19, E08 T131: done whole, decision 379; the record in `E08-log.md`; T132 queued.)* **E08 T131 — the `shared/` task** (round 4; decisions 370 to 373, 378, 379; as T122 for
+increment 13; `shared/e08-t131`, `cross-lane`)
+
+- **Scope:** design note `E08-design.md` §21's shared work. The two accepted drafts applied
+  (`adr-drafts/0016-`, `0017-increment-14.md`: ADR-0016 points 1, 4, 6; ADR-0017 points 1, 6, 8
+  to 10) with batch E14's outcome (survey `E08-trades.md` §21: the rows cited; the Hill Fort's RoE
+  mark withdrawn, the packs deciding, decision 378), then the drafts deleted;
+  `docs/03-domain.md`'s terms (market, a market's lot, the Black Market's stock, a transfer, a
+  sacrifice, the Hill Fort's upgrade, the War Machine Factory); `docs/06-security.md`'s lines (the
+  amounts, the recipient and the price validated; the stock server-only; design §12, §17); the
+  index's Read-when cells; the town lane's inbox told the ADRs' new parts.
+- **Inputs:** the drafts; design §12, §17, §21; T122's record in `E08-log.md` as the form.
+- **Depends on:** T130 (done). **Status:** ready; whole (decision 379, docs only); then T132
+  (round 5, its cut at its start).
+
+*(Moved 2026-11-19, E08 T130: done whole, decisions 378, 379; the record in `E08-log.md`; survey `E08-trades.md` §21; T131 queued.)* **E08 T130 — batch E14 scored** (round 3; decisions 368, 373; T129a and T129b the runs, done)
+
+- **Scope:** the survey `docs/rules/surveys/E08-trades.md`'s new §21: each of E14-1 to E14-17
+  scored against the reading (§3 to §14) and the specs' predictions (their headers): as predicted,
+  or the finding and its effect on the design note `E08-design.md` and the drafts
+  `adr-drafts/0016-`, `0017-increment-14.md` (T131 applies them). The results:
+  `experiments/results/E08-batch-14.md` (T129b's run, every section) and `-14-roe.md`; T129a's
+  run of the markets in `E08-log.md` (the draws differ by start).
+- **The finding to settle first:** E14-14: the game's version (game +0x1F698) reads SoD on the
+  RoE-format map (as batch E7a's RoE map), so its Air Elementals were offered and upgraded; the
+  reading's exclusion (`hill_fort_rows`, survey §13) keys on game version 0, which a new game of
+  an RoE map does not take on this executable. Design note §4 and exit criterion 6 ("not an RoE
+  map's elementals") rest on it: read where +0x1F698 is set at a new game, compare the wiki and
+  VCMI; a question for the user if they disagree (gameplay impact).
+- **Inputs:** T129b's record in `E08-log.md` (the raw observations, the notes), the specs'
+  headers, survey §18.
+- **Then T131** (`shared/`, `cross-lane`).
+- **Depends on:** T129b (done). **Status:** ready (docs; the executable for the +0x1F698 reading).
+
 *(Moved 2026-11-18, E08 T126: the "Tasks" text's lead with increment 13's chronicle, and the T126 entry as they stood before T126 closed increment 13; done whole, decision 360; the record in `E08-log.md`; T127a and T127b queued.)* Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T117 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 12 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15; increment 12, garrisons and the bonus visitables, by T117's audit). **Increment 13, creature banks**, refined with the user at T117 (ADV-Q52; decisions 333, 334): round 1, the survey (T118a, done 2026-11-15: decisions 335 to 339, its checkpoint ADV-Q53) and the ADR amendment drafts (T118b1 and T118b2 done 2026-11-15, decisions 340 to 342; the checkpoint ADV-Q54, decisions 343 to 345: the note, the drafts and the cut T119 to T126 accepted). Round 2: T119 done 2026-11-15 (`adventure/e08-t119`, `cross-lane`, whole: decision 346; the writer's banks, the spec's pictures and `slots`, batch E13's spec). Round 3: T120 done 2026-11-16 (`adventure/e08-t120`, alone: decision 347; the harness's reads, the recipe, three runs, the template filled); T121 done 2026-11-16 (`adventure/e08-t121`, whole, docs only: survey `E08-banks.md` §14, every row as predicted; the checkpoint ADV-Q55, decisions 348, 349). Round 4: T122 done 2026-11-16 (`shared/e08-t122`, `cross-lane`, whole: decision 350; the three drafts in ADR-0013, -0016, -0017, -0022 with batch E13's rows, the glossary, the security lines, `BattleSetup::creature_bank`). Round 5: T123a done 2026-11-16 (`adventure/e08-t123a`, `cross-lane`, alone: decision 351; the kind, the packs, the seventh check; part v21); T123b done 2026-11-16 (`adventure/e08-t123b`, `cross-lane`, whole: decision 352; the import, the census, map import v24). Round 6: T124a done 2026-11-17 (`adventure/e08-t124a`, `cross-lane`, whole: decision 353; the bank battle in `h3-battle`, the battle pack's `bank_positions`); T124b in two (decision 354): T124b1 done 2026-11-17 (`adventure/e08-t124b1`, `cross-lane`, alone: the state and the draw, adventure state hash v26); T124b2 done 2026-11-17 (`adventure/e08-t124b2`, whole: decision 355; the visit, the battle, the reward and the once-marks). Round 7: T125a done 2026-11-17 (`adventure/e08-t125a`, whole: decision 356; the hint and its events, the Shipwreck's passage); T125b in two (decision 357): T125b1 done 2026-11-18 (`adventure/e08-t125b1`, `cross-lane`: the two banks maps, nine golden replays, the server lane's counts); T125b2 in two (decision 358): T125b2a done 2026-11-18 (`adventure/e08-t125b2a`: the banks in the plans' properties, the views, the cover test); T125b2b done 2026-11-18 (`adventure/e08-t125b2b`, whole: decision 359; the three workloads, the original data); round 7 done. Round 8: T126 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T126 — increment 13's audit** (round 8; design `E08-design.md` §20's exit criteria)
@@ -2008,6 +2042,31 @@ decisions 368, 373; as T119 for increment 13)
 - **Depends on:** T127b (done). **Status:** ready (the original data: the executable and both
   tars, to compile the maps and check them in the editor's reader; confirm the cut at its start).
 
+## T129b (moved 2026-11-19, done whole: `adventure/e08-t129b`, decision 377; T130 queued)
+
+**E08 T129b — batch E14's services and the whole run** (round 3; decisions 368, 373, 376; T129a
+the markets, done)
+
+- **Scope:** design note `E08-design.md` §20's harness and recipe for the services: the capture
+  harness's reads (`clients/capture/`, common): the Altar's dialog (`altar_dialog_create` 0x55FDD0:
+  +0x78 the total, the places' +0xC0 vector, the slider's most, its two screens, Sacrifice, All,
+  the creatures' amounts +0x138), the Hill Fort's rows (`hill_fort_rows` 0x4E7EB0: prices, states,
+  the whole +0x298; items 261-267 and 204), the factory through the hire dialog's existing reads
+  (GAM-DEC-008), the hero's experience, level, skills, artifacts, army and tile (earlier batches'
+  reads), the dialogs' order (E14-17: the level-up over the Altar); the recipe
+  `clients/capture/batches/E08-batch-14.toml`: E14-8, E14-9, E14-10, E14-12, E14-15 on Red's day 1
+  after E14-5 (its comment marks the place), E14-13 and E14-17 on Blue's (Blue's step marks it),
+  as the template's instructions order them; a recipe `E08-batch-14-roe.toml` for E14-14 on the
+  RoE map; then one run of each recipe filling the templates `experiments/results/E08-batch-14.md`
+  (every section, the market ones again) and `-14-roe.md`.
+- **Inputs:** T129a's record in `E08-log.md` (the trade window as the form: a screen kind, its
+  globals or fields, items by name, `amount`); the specs' headers; `clients/capture/README.md`
+  ("Markets", "Dwellings, the hire dialog ...", "Creature banks": `order`).
+- **Then T130:** scored in the survey's new §21.
+- **Depends on:** T129a (done). **Status:** ready (the original data: the client lane's staging
+  list; compile both maps again: stamps `7945e78d` and `a88dd771`; the maps not yet copied to the
+  user's folder).
+
 ## Inbox notes settled or for information (moved 2026-11-18, E08 T126)
 
 *(Moved verbatim at increment 13's closure: the other lanes' notes of changes in this lane's paths (the town lane's E09 T29b to T38b1, the map client lane's harness rebuilds), built on by T123b to T125b2b and T126's audit, CI green on each; their lasting rules are one line in `TRAPS.md`, "The town lane's parts of your crates"; the versions they took are the HANDOFF's.)*
@@ -2126,3 +2185,14 @@ decisions 368, 373; as T119 for increment 13)
   of `master`'s, `OwnedOnWater`; your E08 T116b1's ownable garrisons were not in its
   `entrances`). A new workload `benches/adventure/month-start-builds-36.toml` (the step that
   starts day 29 on the builds map), its README row by #942.
+
+*(Moved 2026-11-19, E08 T129b: settled by E08 T129a, #1037: `find_gains` shared with `visit_gains`, the seed kept in `proptest-regressions/tests/play.txt`.)*
+
+- 2026-11-19 (the town lane, E09 T39b1, found while confirming its baseline; **`master`'s CI red,
+  for you to fix**): CI's run on `master` 450e47e (#1032's merge, run 44482680316) failed in
+  `h3-map`'s `tests::play::every_step_keeps_the_commands_invariants` at `play.rs:9615` (a won
+  battle against a monster guarding an object: the gains told `[(#4, 3)]` against the oracle's
+  `[]`, after `ObjectRemoved { object_type: #30, anchor: (1, 1, 0) }`; an RoE plan of side 8). Its
+  seed, `cc 927e83f83344d60c406dca3ea29fb9a601810f09228a5912e618f5408cb989d2`, reproduces it on
+  T39b1's branch when appended to `proptest-regressions/tests/play.txt` (not committed: it would
+  fail every run until fixed). Nothing of T39b1 is in that path (the guild is a query).

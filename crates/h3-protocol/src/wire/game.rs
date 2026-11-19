@@ -17,6 +17,7 @@
 //! Provisional (E16 M5 part 1's review): the shapes, the palette.
 
 use alloc::string::String;
+use alloc::vec;
 use alloc::vec::Vec;
 
 use serde::{Deserialize, Serialize};
@@ -1013,6 +1014,127 @@ pub struct TavernHero {
     pub skills: Vec<SkillLevel>,
     /// Its worn artifacts by position, then the backpack's first five, each with its place.
     pub artifacts: Vec<(ArtifactPlace, Artifact)>,
+}
+
+/// A row of the Thieves' Guild (`h3_game::GuildRow`; TWN-TAV-008, protocol v74), in the original's
+/// order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum GuildRow {
+    /// The towns the player owns.
+    Towns,
+    /// Its heroes on the map.
+    Heroes,
+    /// Its resources of the town part's first guild row (the original's gold).
+    Gold,
+    /// Those of the second (the original's wood and ore).
+    Common,
+    /// Those of the third (the original's mercury, sulfur, crystal and gems).
+    Rare,
+    /// The obelisks it visited.
+    Obelisks,
+    /// Its heroes' artifacts on the map.
+    Artifacts,
+    /// Its army strength.
+    Army,
+    /// Its gold of a day's start as it stands now.
+    Income,
+}
+
+/// A row as the guild shows it (`h3_game::GuildRanking`; protocol v74): its kind and each
+/// player's place by player id, 0 the first, equal values sharing one place.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GuildRanking {
+    /// The row.
+    pub row: GuildRow,
+    /// Each player's place, by player id.
+    pub places: Vec<u8>,
+}
+
+/// A player's best hero as the guild shows it (`h3_game::GuildHero`; TWN-TAV-009, protocol v74).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GuildHero {
+    /// Its type, by handle.
+    pub hero_type: u16,
+    /// From level 2 its attack, defense, power and knowledge, each 0 to 99.
+    pub skills: Option<[u8; 4]>,
+}
+
+/// What the guild shows of one player beside the rows (`h3_game::GuildPlayer`; TWN-TAV-009,
+/// protocol v74).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GuildPlayer {
+    /// From level 1 its best hero.
+    pub hero: Option<GuildHero>,
+    /// From level 4 its best creature, by handle.
+    pub creature: Option<u16>,
+}
+
+/// The Thieves' Guild as its viewer sees it (`h3_game::ThievesGuildView`; TWN-TAV-007 to -009,
+/// protocol v74): the answer to the guild's `GameQuery`, or what a Den of Thieves'
+/// `ThievesGuildSeen` and its parts tell ([`Self::see`]). Never in the observation: a snapshot.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ThievesGuild {
+    /// Its level, 0 to 5.
+    pub level: u8,
+    /// The rows the level shows, in [`GuildRow`]'s order.
+    pub rows: Vec<GuildRanking>,
+    /// Every player of the game, by id.
+    pub players: Vec<GuildPlayer>,
+}
+
+/// A part of the Thieves' Guild a Den of Thieves' visit tells (`h3_game::GuildPart`; protocol
+/// v74): after its `ThievesGuildSeen`, every shown row's places (the rows in order, each row's
+/// players by id), then every player's parts by id.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum GuildPart {
+    /// A player's place in a row.
+    Place {
+        /// The row.
+        row: GuildRow,
+        /// The player placed.
+        of: u8,
+        /// Its place, 0 the first.
+        place: u8,
+    },
+    /// What the guild shows of a player beside the rows.
+    Player {
+        /// The player.
+        of: u8,
+        /// Its best hero and best creature.
+        shown: GuildPlayer,
+    },
+}
+
+impl ThievesGuild {
+    /// The guild of `level` before its parts (a `ThievesGuildSeen`): no row, no player.
+    #[must_use]
+    pub const fn at(level: u8) -> Self {
+        Self {
+            level,
+            rows: Vec::new(),
+            players: Vec::new(),
+        }
+    }
+
+    /// Adds a part after the ones before it (`GuildPartSeen`): a place to its row, a place of a
+    /// row other than the last one's beginning that row; a player's parts to the players. From
+    /// [`Self::at`] of the told level, the parts in order give the told guild.
+    pub fn see(&mut self, part: GuildPart) {
+        match part {
+            GuildPart::Place { row, of: _, place } => match self.rows.last_mut() {
+                Some(ranking) if ranking.row == row => ranking.places.push(place),
+                _ => self.rows.push(GuildRanking {
+                    row,
+                    places: vec![place],
+                }),
+            },
+            GuildPart::Player { of: _, shown } => self.players.push(shown),
+        }
+    }
 }
 
 /// The bonuses a hero on the map holds until the end of its next battle (HER-ADV-008; v57, E08

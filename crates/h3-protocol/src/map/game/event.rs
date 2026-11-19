@@ -17,8 +17,8 @@ use h3_kernel::handle::Handle;
 use super::command::{artifact_place, slot};
 use super::town_buildings;
 use super::{
-    army_stack, artifact, fort_level, garrison_stack, hire_seen, hire_target, hired_part,
-    month_kind, pos, primary_skill, tavern_head, tavern_part, visit_bonus, week_kind,
+    army_stack, artifact, fort_level, garrison_stack, guild_part, hire_seen, hire_target,
+    hired_part, month_kind, pos, primary_skill, tavern_head, tavern_part, visit_bonus, week_kind,
 };
 use crate::map::{from_engine, outcome};
 use crate::wire::game::{
@@ -380,6 +380,15 @@ fn event(e: &EngineEvent) -> GameEvent {
             player: player.raw(),
             hero: hero.raw(),
             part: hired_part(part),
+        },
+        // E09 T39b2 (v74).
+        EngineEvent::ThievesGuildSeen { player, level } => GameEvent::ThievesGuildSeen {
+            player: player.raw(),
+            level,
+        },
+        EngineEvent::GuildPartSeen { player, part } => GameEvent::GuildPartSeen {
+            player: player.raw(),
+            part: guild_part(part),
         },
         EngineEvent::GarrisonChanged {
             player,

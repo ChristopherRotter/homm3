@@ -11,31 +11,25 @@ by T35a, `TWN-Q19`; its code by T35b, decisions 129 to 131; the town part v7 by 
 by T37b, `TWN-Q21`, decisions 137 to 139; T38a cut in two, `TWN-Q22`, decisions 140 to 142;
 T38a2 whole, decisions 143, 144; T38b cut in two, `TWN-Q23`, decisions 145, 146; T38b2
 whole, `TWN-Q24`, decisions 147, 148; T38 done; T39a whole, `TWN-Q25`, decisions 149, 150; T39b cut in two, `TWN-Q26`, decisions 151 to
-153);
+153; T39b2 whole, `TWN-Q27`, decisions 154, 155; T39 done; T40 cut in two, `TWN-Q28`,
+decisions 156 to 158, T40a done);
 done tasks in `E09-log.md`; increments 1 to 3
 (closed by T10, T20 and T30) in `E09-archive.md`. The building tasks are the design note's
 `E09-design.md` §79 (round by round, with the order against E08's increment 13); each task's cut
 confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`) and the exit criteria it serves (the epic's list, decision 121).
 
-**E09 T39 — the map's objects and the information** (round 7; `cross-lane`; design §66, §73 to
-§76): T39a done (2026-11-18, whole, decisions 149, 150: the kinds `Tavern` and `DenOfThieves`,
-classes 95 and 97, the tavern decision GAM-DEC-010; `E09-log.md`). T39b cut in two (decision
-151): T39b1 done (2026-11-19: the guild as a query, `h3_game::thieves_guild`,
-`town::thieves::thieves_guild_at`; its resource rows the town part's `guild_resources`, part v8,
-decision 152; `E09-log.md`). **T39b2** the Den of Thieves' visit and the protocol: the
-adventure's outcome for the Den (`Effect::DenOfThieves`, `h3-adventure`'s `visit`), the game's
-`ThievesGuildSeen` told to the visitor's owner alone in parts (`GameEvent` stays `Copy`:
-`thieves_guild_at(state, rules, DEN_LEVEL)`'s rows and players), lifting `TWN-STUB-20` (ADV-VIS-008
-amended); the protocol (server lane's, `cross-lane`): the guild's request (`GameQuery`,
-`GameAnswer`: the server answers `thieves_guild` for the asking seat) and the events, their wire
-view and fold (the guild is not in the observation), the fold gate and `game_event`'s round
-trips; whether a golden replay steps onto a Den (a census: none expected). Versions to take:
-protocol v74; no replay word, no hash. **Status:** next (T39b2), its cut confirmed at its start.
-
-**E09 T40 — the gates** (round 8; design §78): the taverns map and its scripted replays, the
-census of the 160 maps' first offers and of the maps classes 95 and 97 unblock, the pool's
-properties, the benchmarks, `--with-original-data`. **Status:** queued.
+**E09 T40b — the gates' second half** (round 8; design §78; T40 cut in two, decision 156,
+T40a done): the taverns map (the builds map grown, or a new fixture: two players with Taverns,
+one a Castle with the Brotherhood, a map Tavern, a Den of Thieves, wandering monsters to flee
+from and to surrender to, few free types) and its scripted replays (four weeks of fills; the
+town's hire and the map Tavern's with their replacements; a retreat and a surrender in the
+owner's own turn and in another's, TD-18; a dismissal and the type drawn again; a Den's visit),
+the server lane's golden counts (`cross-lane`); the plans' map Tavern and Den (`check_legal`,
+`check_isolation`, `check_conservation` taught the map Tavern's hire, `check_stand` exempting
+its tile, `check_pool` kept; the town lane's `TRAPS.md`, "The plans lay out no map Tavern"); the
+benchmarks (the week workload on the taverns map re-baselined for the fill's draws, the guild's
+query timed once); `--with-original-data`. **Status:** next, its cut confirmed at its start.
 
 **E09 T41 — the audit** (round 8): against the exit criteria; increment 4 closed (the archive,
 the README's epic row in the session's `shared/` pull request); increment 5 (the mage guild and
@@ -45,6 +39,17 @@ the services) refined. **Status:** queued.
 
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
+
+- 2026-11-19 (the adventure lane, E08 T131, `shared/e08-t131`, `cross-lane`, docs only; **the ADRs'
+  new parts, for your increment 5's amendments; nothing to do now**): ADR-0016 points 1, 4 and 6
+  and ADR-0017 points 1, 6, 8, 9 and 10 now hold E08's increment 14 (the market with its rates in
+  the adventure part, the Black Market's stock, the Altar, the Hill Fort, the factory; the
+  decisions GAM-DEC-011 to -013), each placed after your increment 4's text; ADR-0017 point 9
+  names the next versions after yours (part v23, map import v27, adventure state hash v27, game
+  state hash v35, replay format v20, encoding v14), whichever lane merges first taking them.
+  Batch E14 (survey `E08-trades.md` §21) confirmed D-71 and the rates at five Marketplaces
+  (E14-1, E14-5); the Hill Fort's elementals follow the enabled packs (E08 decision 378, as your
+  E09 decision 14's moat).
 
 - 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **the market's
   rates' home and the versions both lanes plan; nothing to do now**): at T127b's checkpoint

@@ -207,6 +207,8 @@ pub fn for_sequence<'a>(
         town: Some(town),
         experience,
         level_ups,
+        // The spells cast on the map (E24 M4 T2d3): the recording's.
+        casts: painter.live.casts.clone(),
         // The boats and the water (E24 M4 T2d2): the live part's, the map's.
         boats: Boats::of(&painter.live),
         water: water(&painter.art),
@@ -301,6 +303,7 @@ pub fn for_situation<'a>(
         // A still reaches no level (E24 M4 T2c: its hero's experience not known).
         experience: None,
         level_ups: Vec::new(),
+        casts: Vec::new(),
         boats: Boats::of(&painter.live),
         water: water(&painter.art),
     };
@@ -404,13 +407,7 @@ impl<'a> Painter<'a> {
         let mut start = Live::at_start(raw, &art, 0, &tables.map.towns);
         match live {
             Some(path) => {
-                render::read_live(
-                    &path.to_path_buf(),
-                    view,
-                    &mut art,
-                    &mut start,
-                    assets.templates,
-                )?;
+                render::read_live(path, view, &mut art, &mut start, assets.templates)?;
             }
             None => {
                 start.moment = Moment::at(0, tables.map.cycle_ms, tables.map.frame_ms);
@@ -1488,20 +1485,53 @@ impl<'a> Painter<'a> {
     }
 
     /// A dissolve's screen (E24 M4 T2a2 part B, design §5.3): the view of the draw before, its
-    /// rectangle `step` eighths of the way to `drawn`'s (`h3_render::Screen::dissolve_rect`).
+    /// rectangle `step` eighths of the way to `drawn`'s (`h3_render::Screen::dissolve_rect`);
+    /// since E24 M4 T2d3 the screen before an earlier dissolve's end (its own dissolve, step 8)
+    /// and the rectangle blended from another draw ([`Dissolve::from`]: the back buffer's).
     fn dissolved(
         &mut self,
         drawn: &Draw,
         dissolve: &Dissolve,
         buttons: Buttons,
     ) -> Result<Screen, String> {
-        let mut screen = self.view(&dissolve.before, buttons)?.clone();
+        let before = &dissolve.before;
+        let mut screen = match &before.dissolve {
+            Some(earlier) => self.dissolved(before, earlier, buttons)?,
+            None => self.view(before, buttons)?.clone(),
+        };
+        if let Some(from) = &dissolve.from {
+            screen.copy_rect(self.view(from, buttons)?, dissolve.rect);
+        }
         let after = Draw {
             dissolve: None,
             ..drawn.clone()
         };
         let now = self.view(&after, buttons)?;
         screen.dissolve_rect(now, dissolve.rect, dissolve.step);
+        Ok(screen)
+    }
+
+    /// [`Painter::dissolved`] composed afresh, with no frame kept.
+    fn dissolved_afresh(
+        &mut self,
+        drawn: &Draw,
+        dissolve: &Dissolve,
+        buttons: Buttons,
+    ) -> Result<Screen, String> {
+        let before = &dissolve.before;
+        let mut screen = match &before.dissolve {
+            Some(earlier) => self.dissolved_afresh(before, earlier, buttons)?,
+            None => self.composed(before, buttons)?,
+        };
+        if let Some(from) = &dissolve.from {
+            screen.copy_rect(&self.composed(from, buttons)?, dissolve.rect);
+        }
+        let after = Draw {
+            dissolve: None,
+            ..drawn.clone()
+        };
+        let now = self.composed(&after, buttons)?;
+        screen.dissolve_rect(&now, dissolve.rect, dissolve.step);
         Ok(screen)
     }
 
@@ -1567,17 +1597,8 @@ impl<'a> Painter<'a> {
         cursor: Cursor,
     ) -> Result<Screen, String> {
         let mut screen = match &drawn.dissolve {
-            // A dissolve's (E24 M4 T2a2 part B): both draws composed afresh.
-            Some(dissolve) => {
-                let mut before = self.composed(&dissolve.before, buttons)?;
-                let after = Draw {
-                    dissolve: None,
-                    ..drawn.clone()
-                };
-                let now = self.composed(&after, buttons)?;
-                before.dissolve_rect(&now, dissolve.rect, dissolve.step);
-                before
-            }
+            // A dissolve's (E24 M4 T2a2 part B): its draws composed afresh.
+            Some(dissolve) => self.dissolved_afresh(drawn, dissolve, buttons)?,
             None => self.composed(drawn, buttons)?,
         };
         if cursor.shown {

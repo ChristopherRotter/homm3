@@ -29,12 +29,12 @@ Map file: `E08-batch-14.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: E14-1's points; Red's treasury: points: 1560; treasury: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30500 gold
+- before: E14-1's points; Red's treasury: points: 1560; treasury: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30600 gold
 - at the window: its screen; E14-1's tile; points: the path: 5,8 5,9; the window: 4 (creatures sold); kind: 3 (a Freelancer's Guild); count: 5; buttons: screens none; trade disabled; at the window: 5,8 with 1360 points; in order: trade window (screen 4, creatures sold; kind 3, a Freelancer's Guild)
-- the Pixies for gold: the slider's most; what one gives; Red's treasury after 10; the army: the pair: slot 0 (10 Pixies) for gold; the most: 10; counts: given; one gives: 1 Pixie for 17 gold; amount: 10; the trade's change: +170 gold; treasury after: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30670 gold; army: 1: 2 Vampires, 2: 10 Skeletons; points: 1360
-- the Vampires for wood: the slider's most; what one gives; Red's treasury after 2; the army: the pair: slot 1 (2 Vampires) for wood; the most: 2; counts: given; one gives: 1 Vampire for 1 wood; amount: 2; the trade's change: +2 wood; treasury after: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30670 gold; army: 2: 10 Skeletons
+- the Pixies for gold: the slider's most; what one gives; Red's treasury after 10; the army: the pair: slot 0 (10 Pixies) for gold; the most: 10; counts: given; one gives: 1 Pixie for 17 gold; amount: 10; the trade's change: +170 gold; treasury after: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30770 gold; army: 1: 2 Vampires, 2: 10 Skeletons; points: 1360
+- the Vampires for wood: the slider's most; what one gives; Red's treasury after 2; the army: the pair: slot 1 (2 Vampires) for wood; the most: 2; counts: given; one gives: 1 Vampire for 1 wood; amount: 2; the trade's change: +2 wood; treasury after: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30770 gold; army: 2: 10 Skeletons
 - E14-2: the Skeletons' most (gold): the pair: slot 2 (10 Skeletons) for gold; the most: 9; counts: given; one gives: 1 Skeleton for 42 gold; army: 2: 10 Skeletons
-- after closing: E14-1's tile; points: tile: 5,8,0; points: 1360; treasury: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30670 gold
+- after closing: E14-1's tile; points: tile: 5,8,0; points: 1360; treasury: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30770 gold
 - Space: what opens; E14-1's tile: the key: nothing; in order: trade window (screen 4, creatures sold; kind 3, a Freelancer's Guild); at the window: 5,8 with 1360 points; tile after: 5,8,0; points: 1360
 - anything odd: 
 
@@ -52,18 +52,18 @@ Map file: `E08-batch-14.h3m`. Fill in the blanks below and keep this file; an ag
 
 | market and day | the seven (name; class) | the word's record index |
 |---|---|---|
-| M1 (12, 8), day 1 | Shield of the Dwarven Lords (treasure), Centaurs Axe (treasure), Bird of Perception (treasure), Crown of the Supreme Magi (minor), Red Dragon Flame Tongue (minor), Buckler of the Gnoll King (minor), Sword of Hellfire (major); classes: 3 treasures, 3 minors, 1 major | record: 0; word: 0x00000000 |
-| M2 (18, 8), day 1 | Stoic Watchman (treasure), Breastplate of Petrified Wood (treasure), Spyglass (treasure), Shield of the Yawning Dead (minor), Rib Cage (minor), Blackshard of the Dead Knight (minor), Shield of the Damned (major); classes: 3 treasures, 3 minors, 1 major | record: 1; word: 0x00000001 |
-| M1, day 29 | empty, Centaurs Axe (treasure), Bird of Perception (treasure), Crown of the Supreme Magi (minor), Red Dragon Flame Tongue (minor), Buckler of the Gnoll King (minor), Sword of Hellfire (major); classes: 2 treasures, 3 minors, 1 major | record: 0; word: 0x00000000 |
-| M2, day 29 | Stoic Watchman (treasure), Breastplate of Petrified Wood (treasure), Spyglass (treasure), Shield of the Yawning Dead (minor), Rib Cage (minor), Blackshard of the Dead Knight (minor), Shield of the Damned (major); classes: 3 treasures, 3 minors, 1 major | record: 1; word: 0x00000001 |
+| M1 (12, 8), day 1 | Stoic Watchman (treasure), Breastplate of Petrified Wood (treasure), Bird of Perception (treasure), Crown of the Supreme Magi (minor), Blackshard of the Dead Knight (minor), Shield of the Yawning Dead (minor), Sword of Hellfire (major); classes: 3 treasures, 3 minors, 1 major | record: 0; word: 0x00000000 |
+| M2 (18, 8), day 1 | Helm of the Alabaster Unicorn (treasure), Spyglass (treasure), Shield of the Dwarven Lords (treasure), Greater Gnoll's Flail (minor), Rib Cage (minor), Red Dragon Flame Tongue (minor), Shield of the Damned (major); classes: 3 treasures, 3 minors, 1 major | record: 1; word: 0x00000001 |
+| M1, day 29 | empty, Breastplate of Petrified Wood (treasure), Bird of Perception (treasure), Crown of the Supreme Magi (minor), Blackshard of the Dead Knight (minor), Shield of the Yawning Dead (minor), Sword of Hellfire (major); classes: 2 treasures, 3 minors, 1 major | record: 0; word: 0x00000000 |
+| M2, day 29 | Helm of the Alabaster Unicorn (treasure), Spyglass (treasure), Shield of the Dwarven Lords (treasure), Greater Gnoll's Flail (minor), Rib Cage (minor), Red Dragon Flame Tongue (minor), Shield of the Damned (major); classes: 3 treasures, 3 minors, 1 major | record: 1; word: 0x00000001 |
 
-- before: E14-4's points; worn artifacts; the backpack's count; Red's treasury: points: 1630; worn: 0: Helm of Chaos, 1: Dragon Wing Tabard, 2: Pendant of Dispassion, 3: Ogre's Club of Havoc, 4: Targ of the Rampaging Ogre, 5: Scales of the Greater Basilisk, 6: Diplomat's Ring, 7: Ring of Conjuring, 8: Dragonbone Greaves, 9: Clover of Fortune, 10: Cards of Prophecy, 11: Ladybird of Luck, 12: Badge of Courage, 16: Catapult, 18: Crest of Valor; backpack: 64; treasury: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30670 gold
-- at the window: the entries shown; E14-4's tile; points: the path: 12,8 12,9; the window: 2 (artifacts bought); kind: 2 (a Black Market); entries: Shield of the Dwarven Lords, Centaurs Axe, Bird of Perception, Crown of the Supreme Magi, Red Dragon Flame Tongue, Buckler of the Gnoll King, Sword of Hellfire; buttons: screens none; trade disabled; at the window: 12,8 with 1430 points; in order: trade window (screen 2, artifacts bought; kind 2, a Black Market)
-- M1's first entry: its name and gold price: the pair: gold for entry 0 (Shield of the Dwarven Lords); the price: 5000 gold for 1 Shield of the Dwarven Lords; the most: 6; amount: 1; buttons: screens none; trade enabled
-- after Trade: messages and questions (in order); Red's treasury: questions: none; messages: none; the trade's change: -5000 gold; treasury: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 25670 gold
-- after Trade: E14-4's worn artifacts; the backpack's count and last entry; the window's entries: worn: 0: Helm of Chaos, 1: Dragon Wing Tabard, 2: Pendant of Dispassion, 3: Ogre's Club of Havoc, 4: Targ of the Rampaging Ogre, 5: Scales of the Greater Basilisk, 6: Diplomat's Ring, 7: Ring of Conjuring, 8: Dragonbone Greaves, 9: Clover of Fortune, 10: Cards of Prophecy, 11: Ladybird of Luck, 12: Badge of Courage, 16: Catapult, 18: Crest of Valor; backpack: 64; last: Glyph of Gallantry; the window's entries: empty, Centaurs Axe, Bird of Perception, Crown of the Supreme Magi, Red Dragon Flame Tongue, Buckler of the Gnoll King, Sword of Hellfire; the window: 2 (artifacts bought)
-- M1's record after the purchase: record 0; empty, Centaurs Axe (treasure), Bird of Perception (treasure), Crown of the Supreme Magi (minor), Red Dragon Flame Tongue (minor), Buckler of the Gnoll King (minor), Sword of Hellfire (major); word 0x00000000
-- after closing: E14-4's tile; points; Space: what opens; the tile: tile: 12,8,0; points: 1430; Space: nothing; in order: trade window (screen 2, artifacts bought; kind 2, a Black Market); entries: empty, Centaurs Axe, Bird of Perception, Crown of the Supreme Magi, Red Dragon Flame Tongue, Buckler of the Gnoll King, Sword of Hellfire; tile after: 12,8,0
+- before: E14-4's points; worn artifacts; the backpack's count; Red's treasury: points: 1630; worn: 0: Helm of Chaos, 1: Dragon Wing Tabard, 2: Pendant of Dispassion, 3: Ogre's Club of Havoc, 4: Targ of the Rampaging Ogre, 5: Scales of the Greater Basilisk, 6: Diplomat's Ring, 7: Ring of Conjuring, 8: Dragonbone Greaves, 9: Clover of Fortune, 10: Cards of Prophecy, 11: Ladybird of Luck, 12: Badge of Courage, 16: Catapult, 18: Crest of Valor; backpack: 64; treasury: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30770 gold
+- at the window: the entries shown; E14-4's tile; points: the path: 12,8 12,9; the window: 2 (artifacts bought); kind: 2 (a Black Market); entries: Stoic Watchman, Breastplate of Petrified Wood, Bird of Perception, Crown of the Supreme Magi, Blackshard of the Dead Knight, Shield of the Yawning Dead, Sword of Hellfire; buttons: screens none; trade disabled; at the window: 12,8 with 1430 points; in order: trade window (screen 2, artifacts bought; kind 2, a Black Market)
+- M1's first entry: its name and gold price: the pair: gold for entry 0 (Stoic Watchman); the price: 5000 gold for 1 Stoic Watchman; the most: 6; amount: 1; buttons: screens none; trade enabled
+- after Trade: messages and questions (in order); Red's treasury: questions: none; messages: none; the trade's change: -5000 gold; treasury: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 25770 gold
+- after Trade: E14-4's worn artifacts; the backpack's count and last entry; the window's entries: worn: 0: Helm of Chaos, 1: Dragon Wing Tabard, 2: Pendant of Dispassion, 3: Ogre's Club of Havoc, 4: Targ of the Rampaging Ogre, 5: Scales of the Greater Basilisk, 6: Diplomat's Ring, 7: Ring of Conjuring, 8: Dragonbone Greaves, 9: Clover of Fortune, 10: Cards of Prophecy, 11: Ladybird of Luck, 12: Badge of Courage, 16: Catapult, 18: Crest of Valor; backpack: 64; last: Glyph of Gallantry; the window's entries: empty, Breastplate of Petrified Wood, Bird of Perception, Crown of the Supreme Magi, Blackshard of the Dead Knight, Shield of the Yawning Dead, Sword of Hellfire; the window: 2 (artifacts bought)
+- M1's record after the purchase: record 0; empty, Breastplate of Petrified Wood (treasure), Bird of Perception (treasure), Crown of the Supreme Magi (minor), Blackshard of the Dead Knight (minor), Shield of the Yawning Dead (minor), Sword of Hellfire (major); word 0x00000000
+- after closing: E14-4's tile; points; Space: what opens; the tile: tile: 12,8,0; points: 1430; Space: nothing; in order: trade window (screen 2, artifacts bought; kind 2, a Black Market); entries: empty, Breastplate of Petrified Wood, Bird of Perception, Crown of the Supreme Magi, Blackshard of the Dead Knight, Shield of the Yawning Dead, Sword of Hellfire; tile after: 12,8,0
 - day 29: the date: month 2, week 1, day 1; the Black Market records: 2
 - anything odd: the date at the start: month 1, week 1, day 1; the game's version: SoD; the difficulty: easy; E14-4's backpack's last entry at the start: Glyph of Gallantry
 
@@ -81,17 +81,17 @@ Map file: `E08-batch-14.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: E14-5's points; Red's treasury: points: 1560; treasury: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 25670 gold
+- before: E14-5's points; Red's treasury: points: 1560; treasury: 32 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 25770 gold
 - P1's window: its screen; E14-5's tile; points: the path: 24,8 24,9; the window: 0 (resources for resources); kind: 1 (a Trading Post); count: 5; buttons: screens 17; trade disabled; at the window: 24,8 with 1360 points; in order: trade window (screen 0, resources for resources; kind 1, a Trading Post)
-- wood → gold: the rate; the most; Red's treasury after 2: the rate: 1 wood for 75 gold; the most: 32; counts: given; the trade's change: -2 wood, +150 gold; treasury after: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 25820 gold
-- gold → wood: the rate; the most; Red's treasury after 1: the rate: 833 gold for 1 wood; the most: 30; counts: wanted; the trade's change: +1 wood, -833 gold; treasury after: 31 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 24987 gold
-- mercury → gems: the rate; the most; Red's treasury after 1: the rate: 3 mercury for 1 gems; the most: 5; counts: wanted; the trade's change: -3 mercury, +1 gems; treasury after: 31 wood, 12 mercury, 30 ore, 15 sulfur, 15 crystal, 16 gems, 24987 gold
+- wood → gold: the rate; the most; Red's treasury after 2: the rate: 1 wood for 75 gold; the most: 32; counts: given; the trade's change: -2 wood, +150 gold; treasury after: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 25920 gold
+- gold → wood: the rate; the most; Red's treasury after 1: the rate: 833 gold for 1 wood; the most: 31; counts: wanted; the trade's change: +1 wood, -833 gold; treasury after: 31 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 25087 gold
+- mercury → gems: the rate; the most; Red's treasury after 1: the rate: 3 mercury for 1 gems; the most: 5; counts: wanted; the trade's change: -3 mercury, +1 gems; treasury after: 31 wood, 12 mercury, 30 ore, 15 sulfur, 15 crystal, 16 gems, 25087 gold
 - after closing P1: E14-5's tile; points; Space: what opens; the tile: tile: 24,8,0; points: 1360; Space: nothing; in order: trade window (screen 0, resources for resources; kind 1, a Trading Post); tile after: 24,8,0
 - P2: the path's marks; at the window its screen; E14-5's tile; points: the path: 24,9 24,10 26,10 25,11; marks: 4; the window: 0 (resources for resources); kind: 1 (a Trading Post); buttons: screens 17; trade disabled; at the window: 26,10 with 878 points; in order: trade window (screen 0, resources for resources; kind 1, a Trading Post)
-- before the transfer: Red's treasury; Blue's treasury; the recipients offered: red: 31 wood, 12 mercury, 30 ore, 15 sulfur, 15 crystal, 16 gems, 24987 gold; blue: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30600 gold; the screen: 1 (the transfer); the recipients offered: blue; buttons: screens 16; trade disabled; the pair: ore to blue; the rate: 1 ore for 1 to blue; the most: 30
-- after the transfer: Red's treasury; Blue's treasury: red: 31 wood, 12 mercury, 25 ore, 15 sulfur, 15 crystal, 16 gems, 24987 gold; red's change: -5 ore; blue: 30 wood, 15 mercury, 35 ore, 15 sulfur, 15 crystal, 15 gems, 30600 gold; blue's change: +5 ore
+- before the transfer: Red's treasury; Blue's treasury; the recipients offered: red: 31 wood, 12 mercury, 30 ore, 15 sulfur, 15 crystal, 16 gems, 25087 gold; blue: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30800 gold; the screen: 1 (the transfer); the recipients offered: blue; buttons: screens 16; trade disabled; the pair: ore to blue; the rate: 1 ore for 1 to blue; the most: 30
+- after the transfer: Red's treasury; Blue's treasury: red: 31 wood, 12 mercury, 25 ore, 15 sulfur, 15 crystal, 16 gems, 25087 gold; red's change: -5 ore; blue: 30 wood, 15 mercury, 35 ore, 15 sulfur, 15 crystal, 15 gems, 30800 gold; blue's change: +5 ore
 - after closing P2: the tile; Space: what opens; the tile: tile: 26,10,0; points: 878; Space: nothing; in order: trade window (screen 0, resources for resources; kind 1, a Trading Post); tile after: 26,10,0
-- Blue's turn: Blue's treasury: blue: 30 wood, 15 mercury, 35 ore, 15 sulfur, 15 crystal, 15 gems, 30600 gold; the date: month 1, week 1, day 1
+- Blue's turn: Blue's treasury: blue: 30 wood, 15 mercury, 35 ore, 15 sulfur, 15 crystal, 15 gems, 30800 gold; the date: month 1, week 1, day 1
 - anything odd: 
 
 ## E14-8 — A step from above toward an Altar's entrance (E14-16); a Castle hero's Altar (E14-7); a treasure, a minor, a major and a relic sacrificed (E14-8) (ADV-ALT-001, ADV-ALT-002, ADV-OBJ-004, ADV-OBJ-003, HER-EXP-001)
@@ -105,14 +105,14 @@ Map file: `E08-batch-14.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: E14-8's points: 
-- the first click's path (the marked tiles in order): 
-- at the dialog: E14-8's tile; points: 
-- E14-7: the first screen; the other screen's button (enabled or not): 
-- before: experience; level; on the altar: the total; the experience lacking: 
-- after Sacrifice: messages and dialogs (in order); experience; level; artifacts; the Altar still open: 
-- after Done: E14-8's tile; points; Space: what opens; the tile: 
-- anything odd: 
+- before: E14-8's points: tile: 6,17,0; points: 1560
+- the first click's path (the marked tiles in order): the path: 6,18 7,18; marks: 2
+- at the dialog: E14-8's tile; points: at the dialog: 6,18 with 1319 points; in order: Altar's dialog (the artifacts' screen; allowed artifacts)
+- E14-7: the first screen; the other screen's button (enabled or not): the screen: artifacts; allowed: artifacts; the other: the creatures' button disabled
+- before: experience; level; on the altar: the total; the experience lacking: experience: 68700; level: 19; backpack: Charm of Mana, Emblem of Cognizance, Garniture of Interference, Tome of Fire Magic; on the altar: 0: Charm of Mana (from the backpack, 1000), 1: Emblem of Cognizance (from the backpack, 1500), 2: Garniture of Interference (from the backpack, 3000), 3: Tome of Fire Magic (from the backpack, 6000); the total: 11500; lacking: 13261; Sacrifice: enabled
+- after Sacrifice: messages and dialogs (in order); experience; level; artifacts; the Altar still open: in order: none; experience: 80200; level: 19; worn: Catapult (war machine 4); backpack: none; the screen: altar; the Altar: the artifacts' screen (allowed artifacts; the creatures' button disabled); total 0; lacking 1761; on the altar none; held none; Sacrifice disabled
+- after Done: E14-8's tile; points; Space: what opens; the tile: tile: 6,18,0; points: 1319; the Altar after its actions: 0; Space: nothing; in order: Altar's dialog (the artifacts' screen; allowed artifacts); at the dialog: 6,18 with 1319 points; tile after: 6,18,0
+- anything odd: the path's order (the record lists its tiles by row, then column): (7, 18), then the entrance (6, 18), 241 points (a diagonal step and a straight one); none from above (E14-16).
 
 ## E14-9 — A Fortress hero's Altar (E14-7); the Ballista, a Spell Scroll, the Grail and a treasure sacrificed, the Catapult clicked (E14-9) (ADV-ALT-001, ADV-ALT-002, D-72, A-47)
 
@@ -124,13 +124,13 @@ Map file: `E08-batch-14.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: E14-9's points; the scroll's messages; after it: tile; points; worn artifacts; backpack: 
-- at the dialog: E14-9's tile; points; experience: 
-- E14-7: the first screen; the other screen's button (enabled or not): 
-- the four on the altar: the total: 
-- the Catapult's click: what happens; the Catapult after: 
-- after Sacrifice: messages; experience; level; worn artifacts; backpack: 
-- after Done: E14-9's tile: 
+- before: E14-9's points; the scroll's messages; after it: tile; points; worn artifacts; backpack: before: points: 1560; the scroll's messages: message ADVEVENT:135; tile: 12,20,0; points: 1460; worn: 9: Spell Scroll, 13: Ballista, 16: Catapult; backpack: The Grail, Talisman of Mana
+- at the dialog: E14-9's tile; points; experience: at the dialog: 12,18 with 1260 points; experience: 2100; in order: Altar's dialog (the artifacts' screen; allowed artifacts, creatures)
+- E14-7: the first screen; the other screen's button (enabled or not): the screen: artifacts; allowed: artifacts, creatures; the other: the creatures' button enabled
+- the four on the altar: the total: on the altar: 0: Ballista (from worn 13, 0), 1: Spell Scroll (Haste) (from worn 9, 0), 2: The Grail (from the backpack, 0), 3: Talisman of Mana (from the backpack, 1000); the total: 1000; lacking: 1100
+- the Catapult's click: what happens; the Catapult after: in order: message GENRLTXT:483; held: none; worn: 16: Catapult; on the altar: 0: Ballista (from worn 13, 0), 1: Spell Scroll (Haste) (from worn 9, 0), 2: The Grail (from the backpack, 0), 3: Talisman of Mana (from the backpack, 1000)
+- after Sacrifice: messages; experience; level; worn artifacts; backpack: in order: none; experience: 3100; level: 3; worn: Catapult (war machine 4); backpack: none; the Altar: the artifacts' screen (allowed artifacts, creatures; the creatures' button enabled); total 0; lacking 100; on the altar none; held none; Sacrifice disabled
+- after Done: E14-9's tile: tile: 12,18,0; points: 1260
 - anything odd: 
 
 ## E14-10 — A Necropolis hero's Altar (E14-7); 3 and 1 Skeletons sacrificed with Advanced Learning (E14-10); the only stack's most and All (E14-11) (ADV-ALT-001, ADV-ALT-003, D-73, HER-EXP-001)
@@ -143,12 +143,12 @@ Map file: `E08-batch-14.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- at the dialog: E14-10's tile; experience: 
-- E14-7: the first screen; the other screen's button (enabled or not): 
-- slot 1's most; the total of 3 and 1: 
-- after Sacrifice: experience; army: 
-- E14-11: slot 2's most; All's amounts; the total: 
-- after Done: army; tile: 
+- at the dialog: E14-10's tile; experience: at the dialog: 18,18 with 1360 points; experience: 0; in order: Altar's dialog (the creatures' screen; allowed creatures)
+- E14-7: the first screen; the other screen's button (enabled or not): the screen: creatures; allowed: creatures; the other: the artifacts' button disabled
+- slot 1's most; the total of 3 and 1: slot 1's most: 1; amounts: 0: 3, 1: 1; the total: 21; lacking: 1000
+- after Sacrifice: experience; army: in order: none; experience: 21; army: 2: 10 Skeletons; the Altar: the creatures' screen (allowed creatures; the artifacts' button disabled); total 0; lacking 979; amounts none; selected none (most none); Sacrifice disabled
+- E14-11: slot 2's most; All's amounts; the total: slot 2's most: 9; All's amounts: 2: 9; the total: 49
+- after Done: army; tile: army: 2: 10 Skeletons; tile: 18,18,0; experience: 21
 - anything odd: 
 
 ## E14-12 — A Hill Fort's prices and All (E14-12, with four Air Elementals); where the hero stands (E14-16) (ADV-HFT-001, ADV-HFT-002, D-74, ADV-OBJ-003)
@@ -161,20 +161,20 @@ Map file: `E08-batch-14.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: Red's treasury; at the dialog: E14-12's tile; points: 
+- before: Red's treasury; at the dialog: E14-12's tile; points: treasury: 31 wood, 12 mercury, 25 ore, 15 sulfur, 15 crystal, 16 gems, 25087 gold; at the dialog: 24,18 with 1360 points; in order: Hill Fort's dialog (the whole 1, affordable)
 
 | slot | stack | price | state |
 |---|---|---|---|
-| 0 Pikemen |   |   |   |
-| 1 Archers |   |   |   |
-| 2 Wood Elves |   |   |   |
-| 3 Pegasi |   |   |   |
-| 4 Angel |   |   |   |
-| 5 Air Elementals |   |   |   |
+| 0 Pikemen | 20 Pikemen | 0 (shown GENRLTXT:345) | 1, affordable |
+| 1 Archers | 10 Archers | 125 gold | 1, affordable |
+| 2 Wood Elves | 3 Wood Elves | 37 gold | 1, affordable |
+| 3 Pegasi | 3 Pegasi | 56 gold | 1, affordable |
+| 4 Angel | 1 Angel | 2 gems, 2000 gold | 1, affordable |
+| 5 Air Elementals | 4 Air Elementals | 25 gold | 1, affordable |
 
-- the whole's state: 
-- after All: messages; Red's treasury; army; the rows' states: 
-- after closing: tile; points; Space: what opens; the tile: 
+- the whole's state: 2 gems, 2243 gold, state 1, affordable; buttons: all enabled, row 0 enabled, row 1 enabled, row 2 enabled, row 3 enabled, row 4 enabled, row 5 enabled, row 6 disabled
+- after All: messages; Red's treasury; army; the rows' states: in order: none; the change: -2 gems, -2243 gold; treasury: 31 wood, 12 mercury, 25 ore, 15 sulfur, 15 crystal, 14 gems, 22844 gold; army: 0: 20 Halberdiers, 1: 10 Marksmen, 2: 3 Grand Elves, 3: 3 Silver Pegasi, 4: 1 Archangel, 5: 4 Storm Elementals; rows: 0: 20 Halberdiers: 0 (shown GENRLTXT:346), state 0, no upgrade; 1: 10 Marksmen: 0 (shown GENRLTXT:346), state 0, no upgrade; 2: 3 Grand Elves: 0 (shown GENRLTXT:346), state 0, no upgrade; 3: 3 Silver Pegasi: 0 (shown GENRLTXT:346), state 0, no upgrade; 4: 1 Archangel: 0 (shown GENRLTXT:346), state 0, no upgrade; 5: 4 Storm Elementals: 0 (shown GENRLTXT:346), state 0, no upgrade; the whole: 0, state 0, no upgrade
+- after closing: tile; points; Space: what opens; the tile: tile: 24,18,0; points: 1360; Space: nothing; in order: Hill Fort's dialog (the whole 0, no upgrade); its rows: 0: 20 Halberdiers: 0 (shown GENRLTXT:346), state 0, no upgrade; 1: 10 Marksmen: 0 (shown GENRLTXT:346), state 0, no upgrade; 2: 3 Grand Elves: 0 (shown GENRLTXT:346), state 0, no upgrade; 3: 3 Silver Pegasi: 0 (shown GENRLTXT:346), state 0, no upgrade; 4: 1 Archangel: 0 (shown GENRLTXT:346), state 0, no upgrade; 5: 4 Storm Elementals: 0 (shown GENRLTXT:346), state 0, no upgrade; tile after: 24,18,0
 - anything odd: 
 
 ## E14-15 — A War Machine Factory bought from by a hero with a Ballista, then visited again (E14-15); where the hero stands (E14-16) (ADV-WMF-001, GAM-DEC-008, ADV-HIR-002, ADV-OBJ-003)
@@ -187,16 +187,16 @@ Map file: `E08-batch-14.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: Red's treasury; at the question: E14-15's tile; points: 
+- before: Red's treasury; at the question: E14-15's tile; points: treasury: 31 wood, 12 mercury, 25 ore, 15 sulfur, 15 crystal, 14 gems, 22844 gold; worn: 13: Ballista, 16: Catapult; at the question: ADVEVENT:157 (yes) on 29,18 with 1360; in order: question ADVEVENT:157 (yes); hire screen
 
 | machine | count | price |
 |---|---|---|
-|   |   |   |
-|   |   |   |
-|   |   |   |
+| Ballista | 0 | 2500 |
+| First Aid Tent | 1 | 750 |
+| Ammo Cart | 1 | 1000 |
 
-- after the purchases: Red's treasury; the war machine positions: 
-- after closing: tile; Space: the question; the counts; the tile after: 
+- after the purchases: Red's treasury; the war machine positions: treasury: 31 wood, 12 mercury, 25 ore, 15 sulfur, 15 crystal, 14 gems, 21094 gold; worn: 13: Ballista, 14: Ammo Cart, 15: First Aid Tent, 16: Catapult; the dialog: most 0; amount 0; ally 0; selected 2 (counts 0, 0, 0); max disabled, recruit disabled, close enabled, slider disabled
+- after closing: tile; Space: the question; the counts; the tile after: tile: 29,18,0; the change: -1750 gold; Space: Ballista; available: 0; First Aid Tent; available: 0; Ammo Cart; available: 0; in order: question ADVEVENT:157 (yes); hire screen; tile after: 29,18,0
 - anything odd: 
 
 ## E14-13 — A Hill Fort for a hero too poor for its one upgradable stack (E14-13) (ADV-HFT-001, ADV-HFT-002)
@@ -208,17 +208,17 @@ Map file: `E08-batch-14.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: Blue's treasury; at the dialog: E14-13's tile: 
+- before: Blue's treasury; at the dialog: E14-13's tile: treasury: 30 wood, 15 mercury, 35 ore, 15 sulfur, 15 crystal, 15 gems, 30800 gold; at the dialog: 24,26 with 1500 points; in order: Hill Fort's dialog (the whole 2, not affordable)
 
 | slot | stack | price | state |
 |---|---|---|---|
-| 0 Rogues |   |   |   |
-| 1 Marksmen |   |   |   |
-| 2 Pegasi |   |   |   |
+| 0 Rogues | 5 Rogues | 0 (shown GENRLTXT:346) | 0, no upgrade |
+| 1 Marksmen | 5 Marksmen | 0 (shown GENRLTXT:346) | 0, no upgrade |
+| 2 Pegasi | 3000 Pegasi | 56250 gold | 2, not affordable |
 
-- the whole's state: 
-- the Pegasi's button: what happens; All: what happens: 
-- after: Blue's treasury; army: 
+- the whole's state: 56250 gold, state 2, not affordable; buttons: all enabled, row 0 enabled, row 1 enabled, row 2 enabled, row 3 disabled, row 4 disabled, row 5 disabled, row 6 disabled
+- the Pegasi's button: what happens; All: what happens: the Pegasi: message GENRLTXT:315; the change: none; army: 0: 5 Rogues, 1: 5 Marksmen, 2: 3000 Pegasi; All: message GENRLTXT:317; the change: none; the rows: 0: 5 Rogues: 0 (shown GENRLTXT:346), state 0, no upgrade; 1: 5 Marksmen: 0 (shown GENRLTXT:346), state 0, no upgrade; 2: 3000 Pegasi: 56250 gold, state 2, not affordable
+- after: Blue's treasury; army: treasury: 30 wood, 15 mercury, 35 ore, 15 sulfur, 15 crystal, 15 gems, 30800 gold; army: 0: 5 Rogues, 1: 5 Marksmen, 2: 3000 Pegasi
 - anything odd: 
 
 ## E14-17 — A treasure sacrificed for a level: the level-up over the Altar, the Altar still open, the creatures' total with the new Learning (E14-17) (ADV-ALT-002, ADV-ALT-003, GAM-DEC-012, GAM-DEC-007, HER-EXP-001)
@@ -231,9 +231,9 @@ Map file: `E08-batch-14.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: experience; level; skills; at the dialog: E14-17's tile; the first screen; the creatures' button: 
-- the Mystic Orb: the total; the experience lacking: 
-- after Sacrifice: the dialogs (in order) and what is drawn under them; the offered skills: 
-- after the level-up: the Altar still open; experience; level; skills: 
-- 10 Gnolls: the total; after Sacrifice: experience; level; army: 
-- anything odd: 
+- before: experience; level; skills; at the dialog: E14-17's tile; the first screen; the creatures' button: experience: 0; level: 1; skills: Archery expert, Armorer expert, Offense expert, Resistance expert, Ballistics expert, Artillery expert, Tactics expert, Learning basic; backpack: Mystic Orb of Mana; army: 0: 10 Gnolls, 1: 5 Lizardmen; at the dialog: 12,26 with 1360 points; the screen: artifacts; allowed: artifacts, creatures; the other: the creatures' button enabled; in order: Altar's dialog (the artifacts' screen; allowed artifacts, creatures)
+- the Mystic Orb: the total; the experience lacking: on the altar: 0: Mystic Orb of Mana (from the backpack, 1050); the total: 1050; lacking: 1000
+- after Sacrifice: the dialogs (in order) and what is drawn under them; the offered skills: in order: level-up (E14-17, level 2) over the altar dialog; the level-ups: level 2: Learning or none, took Learning
+- after the level-up: the Altar still open; experience; level; skills: the screen: altar; the Altar: the artifacts' screen (allowed artifacts, creatures; the creatures' button enabled); total 0; lacking 950; on the altar none; held none; Sacrifice disabled; experience: 1050; level: 2; skills: Archery expert, Armorer expert, Offense expert, Resistance expert, Ballistics expert, Artillery expert, Tactics expert, Learning advanced
+- 10 Gnolls: the total; after Sacrifice: experience; level; army: slot 0's most: 10; amounts: 0: 10; the total: 55; after Sacrifice: none; experience: 1105; level: 2; army: 1: 5 Lizardmen; the Altar: the creatures' screen (allowed artifacts, creatures; the artifacts' button enabled); total 0; lacking 895; amounts none; selected none (most none); Sacrifice disabled
+- anything odd: the screen under the level-up (its dump, `level-up-E14-17-2.xwd`, looked at): the Altar's dialog around it, its places already empty (the orb gone) while its texts still read the total 1,050 and 1,000 lacking (the Altar redrawn after the level-up's OK).

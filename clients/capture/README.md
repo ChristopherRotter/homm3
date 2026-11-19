@@ -107,6 +107,19 @@ a timeline not as recorded fails the sequence), their digests outside the panels
 as `CHANGED`, `new` or `STALE` (and its counts recorded), then `drawn --record`. A walk is M2
 T3's.
 
+**The engine's starts** (E24 M4 T3a, design §5.9): a situation with `explored = "start"` (a
+writer's map too) captured as above, then the engine's start of the same map compared with it,
+no Wine needed: from `clients/`, `target/release/h3-map-view situation map/situations/<id>.toml
+--out <dir>/<id>.raw.h3m`, `gzip -nc` it to `<dir>/<id>.h3m` (the engine reads only gzip), then in
+`<dir>` `h3 adventure run --map <id>.h3m --packs-dir <repo>/packs --script <an empty file>
+--record <id>.replay.toml` and `h3-server record <id>.replay.toml --packs-dir <repo>/packs --root .
+--out .` (the engine's `target/debug/h3`, `h3-server`); last `h3-map-view render <dir>/<id>.h3m
+--view <the situation's> --record <dir>/<id>.replay.player-0.jsonl --live
+map/situations/kept/<id>.toml --check`: no difference in the viewer, the explored tiles, the
+objects the view shows (their pictures and owners) and the heroes and boats on explored tiles
+(`engine-start-owners`, `engine-start-town`). Without `--check` it draws the start (the record's
+map view over the capture's live part).
+
 **The shell's screens** (E27 M2 T4) follow them too: `python3 capture/h3shell.py drawn` (no Wine;
 seconds) plays every recipe in the viewer and compares each shot with the original's kept digest
 (`exact`) and with `shell/drawn.txt`; a task that builds or changes a screen records it (`drawn
@@ -1041,6 +1054,44 @@ Black Market's on 2 with none, a Trading Post's on 0 with the transfer's (17), t
 screen with 16 back; Trade, Max and the slider read 0xE (disabled) until a pair is chosen; Space
 on the entrance opens the window again on its first screen.
 
+**The Altar and the Hill Fort** (E08 T129b, batch E14; `docs/rules/surveys/E08-trades.md` §12 to
+§14; the layouts `docs/exe/structs.toml` `altar_dialog`, `hill_fort_dialog`). **The Altar of
+Sacrifice's dialog** is a screen (`altar`, `h3mem.ALTAR_VTABLE`; both its screens one dialog): a
+walk onto an Altar (or a `key = "space"` on it) notes it in `order` (`Altar's dialog (the
+artifacts' screen; allowed artifacts, creatures)`), reads it as it opens, plays the step's
+`actions` there and closes it with Done (every taken artifact returned). Its items by name:
+`worn:<position or artifact>` (102 + 2 x position), `backpack:<place or artifact>` (139-143, the
+five shown), `backpack left`, `backpack right`, `place:<n>` (the altar's 22, 147 + 2 x n; a click
+with an artifact held puts it there), `from backpack` (192), `all` (the screen's own: 193 or
+250), `creatures` (194), `artifacts` (251), `slot:<n>` (the army's, 203 + 3 x n: selects it),
+`max` (249), `sacrifice` (256), `done` (257); `amount = <n>` the selected slot's amount by the
+slider (248). `altar` reads it now: `the artifacts' screen (allowed artifacts, creatures; the
+creatures' button enabled); total 1050; lacking 1000; on the altar 0: Mystic Orb of Mana (from the
+backpack, 1050); held none; Sacrifice enabled` (the creatures' screen: `amounts 0: 3, 1: 1;
+selected 1 (most 1)`), or one part (`:screen`, `:allowed`, `:other` (the other screen's button),
+`:total`, `:lacking` (as the dialog's text shows it), `:places`, `:held` (the cursor's
+artifact), `:amounts`, `:selected`, `:most` (the slider's ticks less one), `:sacrifice`,
+`:buttons`); `altar:opening[:<part>]`, `altar:after[:<part>]`, `altar:at` as `market`'s.
+**A level-up an action brings** (a sacrifice's: E14-17) is passed as the step's `level_up` (or the
+action's) says, recorded as a walk's (`level_up_dialogs`) with the dialog under it (`order`:
+`level-up (E14-17, level 2) over the altar dialog`, the level-up's +0xC), the screen dumped beside
+the batch's output (`level-up-<hero>-<level>.xwd`), then closed by its own OK (item 30722: the
+Altar's Done looks the same to `find_button`); an action's `order` lists its messages, questions
+and level-ups in order. **The Hill Fort's dialog** is a screen (`hill_fort`,
+`h3mem.HILL_FORT_VTABLE`): items `row:<slot>` (261 + slot), `all` (204), `ok` (30722, its close);
+`hill_fort` reads it: `rows 0: 20 Pikemen: 0 (shown GENRLTXT:345), state 1, affordable; ...; the
+whole 2243 gold, 2 gems, state 1, affordable`, or one part (`:rows`, `:row:<slot>[:stack|price|
+state]`, `:whole`, `:buttons`); `hill_fort:opening`, `:after`, `:at` likewise. **The hire
+dialog's creatures** (a War Machine Factory's three): `creature:<n>` (the n-th portrait's frame,
+538 + n) selects one (not clicked when it is the one selected: a second click opens the
+creature's window); `hire:creature`, `hire:cost` and `hire:available` (the Available count its
+text item 521 shows) read it. A `key` step plays its `actions` in a screen the key opens (the
+factory's hire dialog after Space). Observed (batch E14): an Altar opens on its artifacts' screen
+when it offers it, the other screen's button disabled (state 0x26) when not offered; the buttons a
+screen does not show read 0x0; Sacrifice, the backpack's button and all read disabled with
+nothing to give; the Hill Fort's row buttons read enabled whatever the row's state (an empty
+slot's disabled).
+
 **Taverns and the Thieves' Guild** (E09 T34, batch TWN-4; `docs/rules/surveys/E09-tavern.md` §2
 to §6, §13). **The offers:** `offers:<colour>` a player's two (player +0x28, +0x2C: `slot 0:
 Christian (Knight), slot 1: empty`), `offer:<colour>:<slot>[:<detail>]` the hero record in a slot
@@ -1393,6 +1444,22 @@ OK's state changed appends a table. A situation's hero may carry its `secondary`
 (`[[skill, level], ...]`, levels 1 to 3, at most eight, `Mem.write_secondary`: every level and slot
 cleared first), so that a level-up offers one advance or none. A sequence may press the keys `1`
 and `2` (the dialog's left and right offers). T2c's sequences (`level-up*`) wait in
+`map/to-record.toml` until the viewer plays them.
+
+**A cast on the map** (E24 M4 T2d3, design §5.8): a sequence casts by the cast button's hotkey
+(`keydown`/`keyup` of `c`: the key up opens the spell book, on its adventure bookmark at its first
+opening) and a `click` on the book's place k (the dialog at (90, 2), place 0's middle at (246,
+123): `h3drive.book_place`'s points), which closes it and casts. While the book is on top
+(`Mem.spell_book`: its vtable 0x641DCC) a state's `book` is 1 and no screen is kept (the book is
+M5's: the next screen kept is compared with the last kept before it), the timeline has `<ms> book
+1` where it opens and `<ms> book 0` where it leaves, and `Mem.message_box` gives none. From the
+book's close to the millisecond the hero's mana changes `frames` follows the cast and then appends
+a `[[cast]]` table (after the other tables of that millisecond; at the end if the mana never
+changed): `at` the book's close, the `spell` it answered (`Mem.modal_answer`: 0 to 69, 0x7801
+closed), `spent` (−1 none), the hero's `mana`, and the `boats` moved or made since the book opened,
+each `[from x, y, level, to x, y, level, type, facing]` (from −1, −1, −1 for one made). A
+situation's hero may carry `spells` (0 to 69: the writer gives it the spell book worn in slot 17
+and these spells; its artifacts are then the book alone). T2d3's sequences (`cast-boat*`) wait in
 `map/to-record.toml` until the viewer plays them.
 
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the

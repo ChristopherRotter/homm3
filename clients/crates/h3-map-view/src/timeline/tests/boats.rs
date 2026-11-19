@@ -68,6 +68,7 @@ fn live_part(text: &str) -> Live {
         turns: Vec::new(),
         computer: false,
         level_ups: Vec::new(),
+        casts: Vec::new(),
     }
 }
 

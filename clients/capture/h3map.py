@@ -707,7 +707,8 @@ def look_over_view(game, mem, sit, points):
     kept as `mem.reach` for `live_part`; then the pointer over the kingdom overview's button and
     back to the parking (its item looked at again: the status bar's hint as before), the view's
     column and row forgotten (the manager's +0xEC and +0xF0 -1, as after a walk), so that a
-    sequence's first move over the view looks at its tile. The clock runs."""
+    sequence's first move over the view looks at its tile. With `points` the clock is left
+    stepped (its `step 0`), else as it was."""
     before = status_bar_text(mem)
     vx, vy, vz = sit["view"]
     reach = {}
@@ -923,7 +924,9 @@ def map_timeline(states):
     arrows left, `Mem.path_arrows`' order; nothing after `arrows` once none is left).
     Since E24 M4 T1a `<ms> date <month> <week> <day>` and `<ms> player <colour>` where they
     change; since T1b1 `<ms> other <crest> <sand> <glass>` (kind 5's frames, `Mem.other_turn`)
-    where they change while kind 5 is shown, `<ms> other` once it is not."""
+    where they change while kind 5 is shown, `<ms> other` once it is not. Since E24 M4 T2d3
+    `<ms> book 1` where the spell book comes on top and `<ms> book 0` where it leaves (design
+    §5.8; no screen is kept while it shows)."""
     lines, last = [], {}
     for state in states:
         t = state["t"]
@@ -931,7 +934,7 @@ def map_timeline(states):
             if key in state and last.get(key) != state[key]:
                 lines.append(f"{t} {key} " + " ".join(map(str, state[key])))
                 last[key] = state[key]
-        for key in ("hero", "walk", "date", "player", "other"):
+        for key in ("hero", "walk", "date", "player", "other", "book"):
             if key not in state:
                 continue
             if key in last and last[key] != state[key]:
@@ -1048,6 +1051,27 @@ def found_toml(found, t):
     the text (`Mem.found`)."""
     return (f"\n[[found]]\nat = {t}\nresource = {found['resource']}\n"
             f"amount = {found['amount']}\ntext = {json.dumps(found['text'])}\n")
+
+
+def cast_toml(mem, casting, t):
+    """A cast through the spell book in a sequence (E24 M4 T2d3, design §5.8), a `[[cast]]` table
+    of the live part: `at` the millisecond the book left, the `spell` it answered (0 to 69, 0x7801
+    closed), `spent` the millisecond the hero's mana changed (-1: not before the sequence's end),
+    the hero's `mana` then, and the `boats` the cast moved or made since the book opened, each
+    `[from x, y, level, to x, y, level, type, facing]` by its record (from -1, -1, -1 for a record
+    not in use before)."""
+    before = {b["index"]: b for b in casting["boats"]}
+    boats = []
+    for b in mem.boats():
+        was = before.get(b["index"])
+        if not b["used"] or (was is not None and was["used"] and was["tile"] == b["tile"]):
+            continue
+        start = was["tile"] if was is not None and was["used"] else [-1, -1, -1]
+        boats.append([*start, *b["tile"], b["type"], b["facing"]])
+    hero = casting["hero"]
+    return (f"\n[[cast]]\nat = {casting['at']}\nspell = {casting['spell']}\n"
+            f"spent = {-1 if t is None else t}\n"
+            f"mana = {mem.mana(hero) if hero >= 0 else 0}\nboats = {json.dumps(boats)}\n")
 
 
 def known_key(name):
@@ -1216,6 +1240,9 @@ def sequence(entry, out):
         # (a key held is one press, design §3.4).
         h3drive.run("xset", "r", "off")
         if sound:
+            # The look's `step 0` left the clock stepped (E24 M4 T2d3: `cast-boat`'s click over
+            # the view): let it run, or the samples never reach their ends.
+            game.clock("run")
             h3drive.sounds_settled(game)
         heard = len(h3drive.sounds(game))
         game.clock("step 100")
@@ -1269,10 +1296,14 @@ def sequence(entry, out):
                  "objects": [mem.frame_steps() - base["objects"]], "cycles": list(ticks),
                  "cursor": mem.cursor(), "due": [d - t0 for d in mem.map_due()],
                  "hero": hero, "walk": mem.walk(), "arrows": mem.path_arrows(),
-                 "buttons": mem.buttons(), "other": mem.other_turn()}
+                 "buttons": mem.buttons(), "other": mem.other_turn(),
+                 # E24 M4 T2d3 (design §5.8): the spell book on top; its screens are M5's, so
+                 # none is kept while it shows (the next kept one is compared with the last
+                 # kept before it).
+                 "book": [int(mem.spell_book())]}
             if index >= 0:
                 s["points"] = [mem.points(index)]
-            box = None if before is None else view_changed(before, pix)
+            box = None if before is None or s["book"][0] else view_changed(before, pix)
             if before is None or box:
                 s["changed"] = box
                 s["frame"] = f"t{t - t0:05d}.npz"
@@ -1288,6 +1319,7 @@ def sequence(entry, out):
         # T2a1, design §5.3): their facts in the millisecond they first show, after the turns'.
         shown_box, shown_found, finds = None, mem.status_shown() == 6, []
         shown_level_up = None
+        shown_book, casting, boats_before = False, None, []
         for i in range(entry["ms"]):
             t = game.clock("step 1", settle_reads=500)
             # Each step one millisecond (M2 T6a, the reviewer's R3-6): an input at a skipped one
@@ -1335,6 +1367,24 @@ def sequence(entry, out):
             if found and not shown_found:
                 finds.append(found_toml(mem.found(), t - t0))
             shown_found = found
+            # E24 M4 T2d3 (design §5.8): a cast through the spell book, from the millisecond
+            # the book leaves (its answer, the hero's mana and the boats then) to the one its
+            # cost is spent (the boats again): a `[[cast]]` table then, or at the end.
+            book = states[-1]["book"][0]
+            if book and not shown_book:
+                # The boats as the book opens (nothing moves them while it shows): a cast that
+                # moves or makes one without a first dissolve does so in the click's millisecond.
+                boats_before = mem.boats()
+            if shown_book and not book:
+                hero = mem.selected()[0]
+                casting = {"at": t - t0, "spell": mem.modal_answer(), "hero": hero,
+                           "mana": mem.mana(hero) if hero >= 0 else 0, "boats": boats_before}
+            if casting and casting["hero"] >= 0 and mem.mana(casting["hero"]) != casting["mana"]:
+                finds.append(cast_toml(mem, casting, t - t0))
+                casting = None
+            shown_book = book
+        if casting:
+            finds.append(cast_toml(mem, casting, None))
         if sound:
             # `<ms> <channel> <length ms> <loops>` from the sequence's 0, each sample started
             # since the map's own sounds settled (the channel: xdd.dll's numbering of the game's

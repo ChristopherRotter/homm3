@@ -10,7 +10,8 @@ Black Market (7) and the trade window they share with the town's Marketplace, it
 **T127a2** (§12 to §20, whole: the user at its start, decision 364, after its reading was measured
 again at about 14.5 KB) the services (the Altar of Sacrifice 2, the Hill Fort 35, the War Machine
 Factory 106) with their VCMI and wiki comparison, the interfaces' sketch for all seven, batch E14's
-plan, the proposed rule ids and the checkpoint's questions. Input, not rules (`README.md`): a fact
+plan, the proposed rule ids and the checkpoint's questions; later **T130** (§21, 2026-11-19) batch
+E14 scored. Input, not rules (`README.md`): a fact
 becomes binding when a task writes it into the catalog with its sources and tests.
 
 **Sources** (retrieved 2026-11-18):
@@ -139,8 +140,8 @@ becomes binding when a task writes it into the catalog with its sources and test
   Scroll and the Grail for 0); the army keeps one creature; Sacrifice needs a total above 0 and
   gives the levels at once, the dialog staying open; 22 places on the altar (and the one artifact
   held) per sacrifice, as many sacrifices as the player likes.
-- **The Hill Fort** (§13): each of the visitor's stacks of a town's unupgraded creature (on a RoE
-  map not the four elementals) upgrades to its town's upgrade for the cost difference times the
+- **The Hill Fort** (§13): each of the visitor's stacks of a town's unupgraded creature (at the
+  game's version 0 not the four elementals: an RoE campaign's, never an RoE map's in this edition, §21) upgrades to its town's upgrade for the cost difference times the
   count, **the gold alone scaled by the creature's level**: free at level 1, **25 %, 50 %, 75 %**
   at levels 2 to 4, whole from level 5, truncated once per stack; one stack at a time, or all
   when the whole is affordable.
@@ -526,7 +527,8 @@ visitor's.
 
 - **Which stacks** (`hill_fort_rows`, per slot): a stack upgrades when its creature is a town's
   unupgraded one (`creature_is_unupgraded` 0x47B120: the town creature table holds it as a base)
-  and, on a map of game version 0 (RoE, game +0x1F698), it is not one of the four elementals (Air,
+  and, in a game of version 0 (RoE, game +0x1F698: an RoE campaign or a peer with RoE alone, never a
+  map's format in this edition, §21), it is not one of the four elementals (Air,
   Earth, Fire, Water: 112 to 115; their upgrades are AB's); its upgrade is `creature_upgrade`
   0x47B1A0's. Neutral and upgraded creatures do not.
 - **The price:** `upgrade_cost` 0x54E750 (also the town's creature dialog's and the computer's):
@@ -772,3 +774,112 @@ D-70 is the town lane's (§10, §11). The open points of §10 and §16 are T127b
 (1) D-71, D-73 and D-74 **the original's** in each; (2) A-46 and A-48 **both fixed**; (3) the special
 artifacts **as the original** (A-47 harmless and accepted, D-72 the original's); (4) **batch E14 before
 the build**. All as recommended.
+
+## 21. Batch E14 scored (T130)
+
+Scored on 2026-11-19 (E08 T130; docs and one code reading) from the recorded runs
+`experiments/results/E08-batch-14.md` (T129b's fourth run of the whole recipe, every section; its
+third alike in every service row) and `-14-roe.md` (E14-14, one run), with T129a's two runs of the
+markets (`E08-log.md`, T129a: alike in every rule-level record, the draws differing by start),
+played by the capture harness (`clients/capture/batches/E08-batch-14.toml`, 33 steps, and
+`E08-batch-14-roe.toml`) in SoD 4.0 on Easy, hot seat, and read from the game's memory. Each row
+against §18's prediction with design §20's changes and the specs' headers
+(`experiments/specs/E08-batch-14.toml`, `-14-roe.toml`). E14-2 is read in E14-1's visit, E14-7 in
+E14-8's, E14-9's and E14-10's, E14-11 in E14-10's, E14-16 in every visit.
+
+| Row | Predicted | Observed | Verdict |
+|---|---|---|---|
+| E14-1 (§6; D-71) | 10 Pixies 170 gold; 2 Vampires 2 wood (VCMI 180; 4) | the window screen 4, kind 3; 1 Pixie for 17 gold, the most 10: +170 gold, slot 0 emptied; 1 Vampire for 1 wood, the most 2: +2 wood; no points spent | **D-71 confirmed**: the original's half-up rounding after the binary32 steps (decision 365) |
+| E14-2 (§6) | the only stack of 10: the most 9 | the Skeletons (the only stack left) the most 9, 42 gold each | confirmed: the army keeps a creature |
+| E14-3 (§7.1) | each market three treasures, three minors, one major, none banned, the two distinct; unchanged at day 29 | M1 and M2 each 3, 3, 1 in that order, all from the seventeen allowed, distinct (and different between runs); day 29 (month 2, week 1, day 1): both records as on day 1 but M1's sold entry, still empty | confirmed: drawn once at the new game, never restocked, a sold entry stays empty |
+| E14-4 (§7.2; A-46) | the price paid, the artifact nowhere, the entry empty | 5 000 gold for the Stoic Watchman (a treasure of cost 2 000; the most 6): no question, no message, −5 000, the 15 worn and the 64 in the backpack unchanged, the entry emptied in the window and the record | **A-46 seen** as read: the engine refuses that purchase before paying (decision 366); the row confirms what is fixed |
+| E14-5 (§4, §5) | +150 gold; +1 wood; +1 gem | screen 0, kind 1, the transfer's button shown; wood → gold 1 for 75 (most 32): −2 wood, +150 gold; gold → wood 833 for 1 (most ⌊gold ÷ 833⌋ = 31): −833, +1 wood; mercury → gems 3 for 1 (most 5): −3, +1 gem | confirmed: §4's rates at five Marketplaces, trades by whole lots |
+| E14-6 (§5) | Red −5 ore, Blue +5 | the transfer's screen offers Blue alone; 5 ore: Red 30 → 25, Blue 30 → 35, Blue's the same on its turn | confirmed: 1 : 1 to a player still in the game |
+| E14-7 (§12.1) | Castle artifacts only; Necropolis creatures only; Fortress both, the artifacts first | E14-8 (Castle) the artifacts' screen, the creatures' button disabled; E14-10 (Necropolis) the creatures', the artifacts' disabled; E14-9 (Fortress) the artifacts' first, the creatures' enabled | confirmed |
+| E14-8 (§12.2) | +11 500 (1 000, 1 500, 3 000, 6 000) | 68 700, level 19; the backpack's button put the four on: 1 000, 1 500, 3 000, 6 000 = 11 500; Sacrifice: no message, 80 200, level 19, the backpack empty, the Altar open | confirmed |
+| E14-9 (§12.2; D-72, A-47) | 1 000; the four gone; the Catapult kept with a message (VCMI: the Ballista refused) | the Ballista, the Spell Scroll (Haste, from the misc position) and the Grail 0 each, the Talisman of Mana 1 000: total 1 000; the Catapult's click GENRLTXT 483, nothing held, the Catapult stays; Sacrifice: 2 100 → 3 100, all four gone | **D-72 confirmed** (the original's), **A-47 seen** (harmless and accepted, decision 367) |
+| E14-10 (§12.3; D-73) | 21 (VCMI 22) | Advanced Learning; slot 1's most 1; 3 and 1 Skeletons 16 + 5 = 21; Sacrifice: 21, both slots cleared, the third stack kept | **D-73 confirmed**: the Learning per stack, each truncated (decision 365) |
+| E14-11 (§12.3) | the most 9; All 9 | the only stack's most 9; All: 9, total 49; Done: nothing given | confirmed: the army keeps a creature; leaving gives and loses nothing |
+| E14-12 (§13; D-74) | 0; 125; 37; 56; 2 000 gold and 2 gems; four Air Elementals 25 (VCMI 120, 36, 54; 24) | the Pikemen free (GENRLTXT 345), 10 Archers 125, 3 Wood Elves 37, 3 Pegasi 56, the Angel 2 000 gold and 2 gems, 4 Air Elementals 25; every row state 1, the whole 2 243 gold and 2 gems, state 1; All: no message, every stack upgraded, −2 243 gold, −2 gems, every row then GENRLTXT 346, state 0 | **D-74 confirmed**: the stack's gold scaled once and truncated, the other resources whole (decision 365); the SoD side of E14-14 |
+| E14-13 (§13) | Rogues and Marksmen not upgradable; the Pegasi state 2; All refused, nothing paid | the Rogues and the Marksmen state 0; 3 000 Pegasi 56 250 gold, state 2; the whole state 2; the Pegasi's button GENRLTXT 315, All GENRLTXT 317, nothing changed | confirmed: neutral and upgraded creatures do not upgrade; the states are the only bound |
+| E14-14 (§13) | an RoE map: the Air Elementals not upgradable (game version 0); the Pikemen free | the game's version **SoD** (game +0x1F698 2) on the RoE-format map (header 0x0E); the Air Elementals 31 gold, state 1, upgraded to Storm Elementals (−31 gold, no message); the Pikemen free, to Halberdiers | **the finding** (below): the reading's version-0 branch holds, but an RoE map does not take version 0; **decision 378**: the enabled packs decide |
+| E14-15 (§14) | Ballista 0, the tent and the cart 1; −1 750; both equipped; then all 0 | ADVEVENT 157 on (29, 18) with 1 360; the Ballista 0 available (2 500), the First Aid Tent 1 (750), the Ammo Cart 1 (1 000); both bought: −1 750, positions 15 and 14, the dialog open; Space: the question, every count 0 | confirmed |
+| E14-16 (design §0) | on the entrance at the window, after it and after Space; none entered from above | the guild (5, 8), M1 (12, 8), P1 (24, 8), P2 (26, 10), the Altars (6, 18), (12, 18), (18, 18), (12, 26), the Hill Forts (24, 18), (24, 26), the factory (29, 18): the hero on the entrance at the window, after closing it and after Space, which opens the same window again (or the factory's question); E14-8 from (6, 17) above A1's entrance walked (7, 18) then (6, 18), 241 points; P2 reached from below (482, 878 left) | confirmed: all seven entered (§2's correction, T127b), none from above |
+| E14-17 (design §14) | the level-up over the Altar, then the Altar open; then 10 Gnolls 55 | Basic Learning: the Mystic Orb 1 050 (lacking 1 000); Sacrifice: the level-up (level 2, Attack, Advanced Learning its only offer) drawn **over the Altar's dialog**, the Altar visible around it, its places already empty, its texts the old total until the level-up's OK; then the Altar open, 1 050, level 2, Advanced Learning; 10 Gnolls (the Lizardmen kept): the most 10, total 55; Sacrifice: 1 105 | confirmed: the order and the new Learning read at once (HER-EXP-001); the drawing as decision 371's note asked (below) |
+
+**The finding (E14-14): the game's version is the scenario dialog's, from the players' editions.**
+Read at T130 (`docs/exe/structs.toml` `map_kind`, `docs/exe/map.toml`): `new_game_heroes`
+0x4BFE70 writes game +0x1F698 from its fourth argument (0x4BFF09; a campaign by its index at
+0x4BFF24: below 7 RoE, below 13 AB, else SoD), which `new_game_start` 0x58C570 takes from the
+scenario dialog's version (+0x1898 at 0x58C593: 2 or 3 SoD, 1 AB, any other RoE). The dialog
+starts at the edition (`scenario_dialog_create` 0x579BD9: `edition_pointer` 0x69923C's value, 3 in
+this build) and `scenario_version_from_slots` 0x58E700 sets it to the highest format, 3 down to 0,
+that **every colour slot's edition** allows (`edition_formats` 0x699240, a mask per edition, filled
+at run time); the selected map's or save's format (game +0x1F86C: above 0x15 SoD, above 0x0E AB,
+else RoE) is only tested against that version, and a map it does not allow hides the advanced
+panel (0x58E817 to 0x58E871): **the map's format never lowers the version.** So in the Complete
+edition every single-player and hot-seat game, of any map format, plays at version 2 (SoD); version
+0 comes only from an RoE campaign (index below 7) or a network game with a peer whose edition
+allows RoE alone (or a save of such a game, `saved_game_load` 0x4BCDA0). This explains batch E7a's
+RoE map (`E08-rewards.md`, E7-7's version note, T57) and E14-14. The other sources: **VCMI
+1.7.5** (`HillFort::fillUpgradeInfo`: every one of the creature's `upgrades` at its level's
+percentage, no version test; the elementals' upgrades always in its creatures' config) and **the
+wiki** (<https://heroes.thelazy.net/index.php/Hill_Fort>: "any non-upgraded creatures", the same
+percentages; nothing on RoE or the elementals) have no RoE exception. The reading's branch on
+version 0 (`hill_fort_rows` 0x4E7EB0) stands; it is reached by no map of the shipped 160 in this
+edition's single and hot-seat play.
+
+**Decision 378** (the user at T130, ADV-Q59; recommended): **the enabled packs decide** (decision
+104's rule; E09 decision 14's for the moat): the Hill Fort upgrades a creature with an upgrade in
+the ruleset. Under the base pack alone the four elementals have none (the ab pack's `upgrades`
+override adds Storm, Magma, Ice and Energy Elementals), so none upgrades, as the original's version
+0; under ab or sod they upgrade on every map, as the Complete edition plays an RoE-format map, VCMI
+and the wiki. The original's version-0 branch (an RoE campaign, a peer with RoE alone) is the
+recorded deviation. **Effect:** design §4's `roe_except` and §7's import mark `Holds::RoE` are
+withdrawn (the part's `hill_fort { gold }`, no import change), exit criterion 6 reads the packs'
+upgrades; ADR-0016's draft point drops the mark and its alternative is reversed (T131 applies it).
+Not chosen: the mark kept (the original's RoE rule on every RoE-format map, against decision 104
+and against what the Complete edition plays).
+
+**The disputes:** D-71 the original (E14-1), D-72 the original (E14-9), D-73 the original (E14-10),
+D-74 the original (E14-12): every VCMI difference this survey named is the original's in the
+batch, as decisions 365 and 367 chose. A-46 (E14-4) and A-47 (E14-9) seen as read. No new dispute,
+no quirk candidate.
+
+**Beyond the rows:**
+- **E14-17's drawing** (decision 371's note for the clients): the original draws the level-up over
+  the Altar's dialog without covering it; the Altar's places are already empty and its total's
+  texts stale until the level-up's OK, then redrawn. So a client keeps both drawn, the Altar
+  beneath (the map client lane's inbox told).
+- **E14-9's scroll** reached the misc position 9 at its pickup (HER-CHG-002's placement: a body
+  position first), as the spec planned; the altar takes it from there.
+- **E14-15's positions:** the First Aid Tent into 15, the Ammo Cart into 14 (the machines' own
+  positions); the dialog stays open after each, as §14 read.
+- **E14-8's path** from above an Altar's entrance goes round it (a diagonal step and a straight
+  one): a step from above is refused, so the path finder takes another neighbour (ADV-OBJ-004).
+- **Not played:** A-48 (a timed turn; the hot seat's turn time not set by the harness), the
+  computer's visits (E10), the town's Marketplace (the town lane's).
+
+**The rules toward `verified`:** every row but E14-14 agrees with the reading, and E14-14 with the
+rule of decision 378 (the SoD side by E14-12's four elementals, the RoE-format map by E14-14 under
+the sod pack), so each rule below, built and tested, takes the batch as its `observation` source
+and is `verified` at once.
+- T132a: ADV-MKT-002 (E14-1, E14-5), ADV-HFT-001's which stacks (E14-12, E14-13, E14-14).
+- T132b: ADV-MKT-001 and ADV-OBJ-003 (E14-16).
+- T133a: ADV-MKT-006 (E14-3), ADV-MKT-003, -004, -005 (E14-5, E14-6, E14-1, E14-2), ADV-MKT-007
+  (E14-4: the price and the emptied entry; the refusal before paying is decision 366's, no row).
+- T134a: ADV-ALT-001 (E14-7, E14-16), ADV-ALT-002 (E14-8, E14-9), ADV-ALT-003 (E14-10, E14-11,
+  E14-17), HER-EXP-001's products (E14-10, E14-17), GAM-DEC-007's reopening order (E14-17).
+- T134b: ADV-HFT-002 (E14-12, E14-13), ADV-WMF-001 with GAM-DEC-008 and ADV-HIR-002 (E14-15).
+- ADV-MKT-008 (what a viewer sees) and GAM-DEC-011 to -013's validation have no row: the reading's
+  and the design's (as planned, §18).
+
+**For T131** (the drafts with this outcome): every point the rows test holds as drafted (ADR-0016
+points 1, 4, 6: the seven entered, the draw, the purchase, the trades, the sacrifices, the
+upgrades, the factory; ADR-0017 points 1, 6, 8 to 10: the decisions, the Altar's return after its
+levels), but **ADR-0016's Hill Fort point**: the RoE mark withdrawn, the packs' upgrades deciding
+(decision 378), its alternative reversed; ADR-0017's import line loses "the RoE Hill Fort's mark".
+
+**The checkpoint** (ADV-Q59, `AskUserQuestion`, one round of two; the epic's decisions 378, 379):
+(1) E14-14: **the enabled packs decide** (decision 378, as recommended); (2) **T130, then T131 in
+this session** (decision 379, as recommended).

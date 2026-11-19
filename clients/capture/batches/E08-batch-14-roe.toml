@@ -1,0 +1,28 @@
+# E08 batch E14's RoE map played by the capture harness (E08 T129b; h3adv.py batch): the procedure
+# of experiments/specs/E08-batch-14-roe.toml as steps, on Easy, the starting bonus gold, Red and
+# Blue human in hot seat: row E14-14, a Hill Fort on a map of game version 0 (RoE). The Hill Fort's
+# dialog (README, "The Altar and the Hill Fort"): `click` `row:<slot>`, `all`; closed with its OK;
+# `hill_fort[:part]` reads it. Blue's hero only makes the map playable.
+
+spec = "experiments/specs/E08-batch-14-roe.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+[[step]]
+encounter = "E14-14"
+hero = "E14-14"
+record = { "the game's version; before: Red's treasury; at the dialog: E14-14's tile; points" = ["text:the game's version: ", "map_kind", "text:treasury: ", "treasury", "text:army: ", "hero:slots"] }
+note = { "the date at the start" = "date", "the difficulty" = "difficulty" }
+
+[[step]]
+encounter = "E14-14"
+hero = "E14-14"
+walk = [10, 10]
+actions = [
+    { record = { "E14-14|0 Air Elementals | stack" = "hill_fort:row:0:stack", "E14-14|0 Air Elementals | price" = "hill_fort:row:0:price", "E14-14|0 Air Elementals | state" = "hill_fort:row:0:state", "E14-14|1 Pikemen | stack" = "hill_fort:row:1:stack", "E14-14|1 Pikemen | price" = "hill_fort:row:1:price", "E14-14|1 Pikemen | state" = "hill_fort:row:1:state", "the whole's state" = ["hill_fort:whole", "text:buttons: ", "hill_fort:buttons"] } },
+    { click = ["row:0"], record = { "the Air Elementals' button: what happens; the Pikemen's: what happens" = ["text:the Air Elementals: ", "order", "text:the change: ", "gain", "text:army: ", "hero:slots"] } },
+    { click = ["row:1"], record = { "+the Air Elementals' button: what happens; the Pikemen's: what happens" = ["text:the Pikemen: ", "order", "text:the change: ", "gain", "text:army: ", "hero:slots"] } },
+    { record = { "after: the rows; army; Red's treasury" = ["text:the rows: ", "hill_fort:rows", "text:the whole: ", "hill_fort:whole", "text:army: ", "hero:slots", "text:treasury: ", "treasury"] } },
+]
+record = { "+the game's version; before: Red's treasury; at the dialog: E14-14's tile; points" = ["text:at the dialog: ", "hill_fort:at", "text:in order: ", "order"] }

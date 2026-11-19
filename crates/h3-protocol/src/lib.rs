@@ -218,7 +218,13 @@ pub mod wire;
 /// (GAM-DEC-010): `Answer::Tavern` (a hire by its slot, its closing), `GameReject::Tavern` (the
 /// slot, the room, the Tavern's tile held), `Decision::Tavern` (the hero, the Tavern by type and
 /// anchor) and its event `TavernOpened`, folded into the viewer's decision whole.
-pub const PROTOCOL_VERSION: u32 = 73;
+/// v74 (E09 T39b2, the town lane's, `cross-lane`): the Thieves' Guild (TWN-TAV-007 to -009):
+/// `GameQuery::ThievesGuild` answered by `GameAnswer::ThievesGuild` (`ThievesGuild`: its level,
+/// the rows' places, each player's best hero and creature; none without a Tavern of the asking
+/// seat's in its turn), and a Den of Thieves' visit's `ThievesGuildSeen` (the level) with
+/// `GuildPartSeen` per part (`GuildPart`: a row's place, a player's parts), told to the
+/// visitor's owner alone and not folded (the guild is not in the observation).
+pub const PROTOCOL_VERSION: u32 = 74;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

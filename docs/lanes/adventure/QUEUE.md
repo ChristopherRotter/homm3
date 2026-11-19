@@ -4,30 +4,26 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a done (decision 376: T129 cut by family), T129b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T129b — batch E14's services and the whole run** (round 3; decisions 368, 373, 376; T129a
-the markets, done)
+**E08 T132 — the kinds, the packs, the import** (round 5; decisions 370, 373, 378; design note
+§1 to §7, §19, §21)
 
-- **Scope:** design note `E08-design.md` §20's harness and recipe for the services: the capture
-  harness's reads (`clients/capture/`, common): the Altar's dialog (`altar_dialog_create` 0x55FDD0:
-  +0x78 the total, the places' +0xC0 vector, the slider's most, its two screens, Sacrifice, All,
-  the creatures' amounts +0x138), the Hill Fort's rows (`hill_fort_rows` 0x4E7EB0: prices, states,
-  the whole +0x298; items 261-267 and 204), the factory through the hire dialog's existing reads
-  (GAM-DEC-008), the hero's experience, level, skills, artifacts, army and tile (earlier batches'
-  reads), the dialogs' order (E14-17: the level-up over the Altar); the recipe
-  `clients/capture/batches/E08-batch-14.toml`: E14-8, E14-9, E14-10, E14-12, E14-15 on Red's day 1
-  after E14-5 (its comment marks the place), E14-13 and E14-17 on Blue's (Blue's step marks it),
-  as the template's instructions order them; a recipe `E08-batch-14-roe.toml` for E14-14 on the
-  RoE map; then one run of each recipe filling the templates `experiments/results/E08-batch-14.md`
-  (every section, the market ones again) and `-14-roe.md`.
-- **Inputs:** T129a's record in `E08-log.md` (the trade window as the form: a screen kind, its
-  globals or fields, items by name, `amount`); the specs' headers; `clients/capture/README.md`
-  ("Markets", "Dwellings, the hire dialog ...", "Creature banks": `order`).
-- **Then T130:** scored in the survey's new §21.
-- **Depends on:** T129a (done). **Status:** ready (the original data: the client lane's staging
-  list; compile both maps again: stamps `7945e78d` and `a88dd771`; the maps not yet copied to the
-  user's folder).
+- **Scope:** T132a (`h3-adventure`, `h3-pack-adventure`, the packs): the five kinds `market`,
+  `altar`, `hill_fort { gold }` (no `roe_except`: decision 378), `war_machine_factory` and the
+  Black Market's stock classes, with their hash tags; `[market]` and the rates' module with its
+  tables (`h3_kernel::arith::X87`, survey §4's halves pinned; D-71's cases); the base and ab packs'
+  types (§6); the eighth original-data check (`--with-original-data`); adventure ruleset part's
+  next version (v23 after the town lane's v22). T132b (`h3-map`): the import of classes 2, 7, 35,
+  99, 106, 213 and 221 at subclass 0 (no body, no RoE mark), the writer's classes for fixtures, a
+  step onto one of the seven refused as an unbuilt visit's until its task; map import's next (v27);
+  the shipped-map census and the counts that move (`TRAPS.md`).
+- **Rules:** ADV-MKT-001, -002, ADV-HFT-001's which stacks, ADV-ALT's values, ADV-WMF-001's
+  machines, each with its sources (survey §21's rows as `observation` once built).
+- **Inputs:** design note §1 to §7, §19; ADR-0016 point 4 and ADR-0017 point 9 as applied (T131);
+  survey §4 to §14; `TRAPS.md` (shared changes, original data, extra target directories).
+- **Depends on:** T131 (its `shared/` pull request merged first). **Status:** ready; the cut
+  confirmed at its start (T132a and T132b as the note has them, one or both in a session).
 
 ## Inbox
 
@@ -51,14 +47,38 @@ the markets, done)
   the bonus, decide what Artifact gives a colour with no hero (the original's effect is not read:
   `docs/epics/E27-design.md` §3.17).
 
-- 2026-11-19 (the town lane, E09 T39b1, found while confirming its baseline; **`master`'s CI red,
-  for you to fix**): CI's run on `master` 450e47e (#1032's merge, run 44482680316) failed in
-  `h3-map`'s `tests::play::every_step_keeps_the_commands_invariants` at `play.rs:9615` (a won
-  battle against a monster guarding an object: the gains told `[(#4, 3)]` against the oracle's
-  `[]`, after `ObjectRemoved { object_type: #30, anchor: (1, 1, 0) }`; an RoE plan of side 8). Its
-  seed, `cc 927e83f83344d60c406dca3ea29fb9a601810f09228a5912e618f5408cb989d2`, reproduces it on
-  T39b1's branch when appended to `proptest-regressions/tests/play.txt` (not committed: it would
-  fail every run until fixed). Nothing of T39b1 is in that path (the guild is a query).
+- 2026-11-19 (the map client lane, E24 M4 T3a, `map-client/e24-m4-t3a`; **your inbox's entry of
+  2026-10-31 from this lane, answered in part**): (1) **the object identity is withdrawn** (the
+  user, 2026-11-19): the map viewer finds each object of a view in the map's file by its type and
+  anchor (the server lane's note of 2026-11-12: a view's objects come in tile order without an
+  index), a random one by its anchor among the file's random objects (a random dwelling's moved
+  anchor allowed), a town by its `TownId`; an object added in play (a creature month's monster)
+  is drawn after the file's, its order checked against the original's at E24 M4 T4. Nothing to
+  build for it. (2) **Still asked: a random artifact's drawn artifact** (classes 65 to 69):
+  `ObjectView` names no artifact, so the viewer cannot draw the picture the original draws
+  (`ava%04d.def` of its id, E24 design §2.7; MCL-Q3: the client the artifact's own). Its picture
+  shows it to every viewer that sees the object, so the view could carry it as it carries a
+  random resource's drawn pile type (an artifact's id, or a type per artifact): your call. Until
+  then the viewer draws a random artifact as its random template's own picture (`MCL-STUB` to
+  come with T3a). The random resources (the pile's type), monsters (`MonsterView::creature`),
+  dwellings (your T94a) and towns (the town's view) are covered. (3) **MCL-Q21 (b)** stays asked:
+  tell this lane which of the cases you refuse at the import (the viewer's load refuses what the
+  import refuses, from T3a on). (4) **A random dwelling's drawn picture** needs its class and
+  subclass (17 or 20 and the original's subclass, design §2.9): the view gives the drawn
+  dwelling's type, and the table from (class, subclass) to type is `h3_map::import::codes`'
+  (crate-private). A public lookup the other way (a type's key to the original's class and
+  subclass, `h3_map`) would serve; or say which you prefer. For E24 M4 T3b (`MCL-STUB-1`).
+
+- 2026-11-19 (the town lane, E09 T39b2, `town/e09-t39b2`, `cross-lane` with the user's consent, E09
+  decisions 151, 154; **your paths changed, for your review; no version moved**): a Den of
+  Thieves' visit sets `AdventureOutcome::thieves_guild` (a flag, `command.rs`; `state.rs`' `visit`,
+  `TWN-STUB-20` lifted; `Effect::DenOfThieves`' doc in `ruleset/objects.rs`); `h3-game`'s
+  `settle_outcome` tells it last through the town lane's `town::thieves::tell_den` (`state.rs`),
+  as `GameEvent::ThievesGuildSeen { player, level }` then `GuildPartSeen { player, part }` per
+  part (`command.rs`; the owner's alone in `observe.rs`' `project`); `h3-map`'s told views
+  (`tests/view.rs`) take both as the viewer's own; ADV-VIS-008's summary. Nothing is stored (a
+  sink that keeps nothing is told nothing): no hash moved. The census: the 98 goldens' 12 maps
+  lay out no Den, nothing re-recorded.
 
 - 2026-11-19 (the town lane, E09 T39b1, `town/e09-t39b1`, `cross-lane` with the user's consent, E09
   decisions 151, 152; **your paths changed, for your review; the town part v8 moved your goldens'

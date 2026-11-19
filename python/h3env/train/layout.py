@@ -1,6 +1,7 @@
 """Observation encoding v23's layout as the entity network reads it (E06 T5a, design §11): the
 offsets of its parts and the stack columns it uses, the columns the behaviour analysis reads
-(`h3env.train.inspect`, E06 T6a), the turn order's (v22) and the reach block's (v23). `h3-sim`'s test
+(`h3env.train.inspect`, E06 T6a), the turn order's (v22) and the reach block's (v23; the hex
+kinds read it with `[network] reach`, E25 T38b). `h3-sim`'s test
 `the_python_layout_is_the_encodings` pins every value here against `observation.rs`; a new
 observation encoding changes this file in the same change.
 """
@@ -31,7 +32,9 @@ ORDER = STACKS + STACK_FEATURES * STACK_CAPACITY
 #: side's, then the opponent's: per hex the strikers that can strike a stack standing there in
 #: melee on their next turn), then `REACH_FEATURES` per stack slot.
 REACH = ORDER + ORDER_FEATURES * STACK_CAPACITY
-OBSERVATION_LEN = REACH + 2 * MAX_FIELD_HEXES + REACH_FEATURES * STACK_CAPACITY
+#: The reach block's stack slot features, after its two planes.
+REACH_STACKS = REACH + 2 * MAX_FIELD_HEXES
+OBSERVATION_LEN = REACH_STACKS + REACH_FEATURES * STACK_CAPACITY
 
 #: A stack slot's columns the network reads apart: the slot holds a stack, its creature's handle,
 #: its position's column and row (a two-hex stack's rear hex; a turret's off-field hex), it is

@@ -77,6 +77,96 @@ pub struct Live {
     /// comparison's `[[level_up]]` tables, the original's random draws; the engine's from Part
     /// B): what each level's dialog shows.
     pub level_ups: Vec<LevelUp>,
+    /// The spells a recording casts on the map, in order (E24 M4 T2d3, design §5.8,
+    /// *provisional*: a comparison's `[[cast]]` tables, what the original's memory showed of each;
+    /// the engine's from Part B).
+    pub casts: Vec<Cast>,
+}
+
+/// A spell cast on the map through the spell book (E24 M4 T2d3, design §5.8, *provisional*): a
+/// comparison's `[[cast]]` table, as the harness reads memory from the book's close to the
+/// millisecond the hero's mana changed (`h3map.py`'s `cast_toml`); from Part B the engine's.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Cast {
+    /// The book's close: the click on the spell's place.
+    pub at: u32,
+    /// The spell the book answered (0 to 69: 0 Summon Boat).
+    pub spell: u8,
+    /// The millisecond the hero's mana changed, the cost spent; none: it never did.
+    pub spent: Option<u32>,
+    /// The hero's mana then (at the end when it never changed).
+    pub mana: i32,
+    /// The boats moved or made since the book opened, in the harness's order.
+    pub boats: Vec<Summoned>,
+}
+
+/// A boat a cast moved or made (E24 M4 T2d3): the tile it left (none: made) and the boat where it
+/// lies now, its type and facing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Summoned {
+    /// The tile it was taken off; none for a boat made (`create_boat`).
+    pub from: Option<Pos>,
+    /// The boat on its new tile.
+    pub to: LiveBoat,
+}
+
+impl Cast {
+    /// A live part's `[[cast]]` table as the harness writes it: `at = <ms>`, `spell = <0 to 69>`,
+    /// `spent = <ms, -1 none>`, `mana = <the hero's>` and `boats = [[from x, y, level, to x, y,
+    /// level, type, facing], ...]` (from −1, −1, −1 for one made; [`Summoned`]); none for anything
+    /// else.
+    #[must_use]
+    pub fn read(value: &toml::Value) -> Option<Self> {
+        let table = value.as_table()?;
+        let int = |key: &str| table.get(key)?.as_integer();
+        let spent = match int("spent")? {
+            -1 => None,
+            ms => Some(u32::try_from(ms).ok()?),
+        };
+        let boats = table
+            .get("boats")?
+            .as_array()?
+            .iter()
+            .map(Summoned::read)
+            .collect::<Option<_>>()?;
+        Some(Self {
+            at: u32::try_from(int("at")?).ok()?,
+            spell: byte(int("spell")?).filter(|&s| s < 70)?,
+            spent,
+            mana: i32::try_from(int("mana")?).ok().filter(|&m| m >= 0)?,
+            boats,
+        })
+    }
+
+    /// A live part's `[[cast]]` tables, each by [`Cast::read`].
+    #[must_use]
+    pub fn read_all(value: &toml::Value) -> Option<Vec<Self>> {
+        value.as_array()?.iter().map(Self::read).collect()
+    }
+}
+
+impl Summoned {
+    /// A row of a `[[cast]]` table's `boats`: `[from x, y, level, to x, y, level, type, facing]`,
+    /// from −1, −1, −1 for one made; none for anything else.
+    #[must_use]
+    pub fn read(value: &toml::Value) -> Option<Self> {
+        let [fx, fy, fz, x, y, z, kind, facing] = row(value)?;
+        let from = match [fx, fy, fz] {
+            [-1, -1, -1] => None,
+            _ => Some(Pos {
+                x: byte(fx)?,
+                y: byte(fy)?,
+                z: byte(fz)?,
+            }),
+        };
+        let to = LiveBoat::read(&toml::Value::Array(
+            [x, y, z, kind, facing]
+                .map(toml::Value::Integer)
+                .into_iter()
+                .collect(),
+        ))?;
+        Some(Self { from, to })
+    }
 }
 
 /// A turn's start (E24 M4 T1a, design §5.1, *provisional*): a comparison's `[[turn]]` table, as the
@@ -418,6 +508,10 @@ pub struct HeroStatus {
     pub luck: i8,
     /// Its army's seven slots (+0x91 the types, +0xAD the counts).
     pub army: [Option<Stack>; 7],
+    /// The spell points it shows when not its kingdom's hero's as the hero list shows them (E24
+    /// M4 T2d3, design §5.8, MCL-Q14: a cast's end builds the window with the hero's mana then,
+    /// the list's slot showing the mana bar as last shown); none: the kingdom's (a live part's).
+    pub mana: Option<i32>,
 }
 
 /// A town's status window: its picture is the selected [`KingdomTown`]'s.
@@ -522,6 +616,7 @@ impl Status {
                     morale: small(get("morale")?)?,
                     luck: small(get("luck")?)?,
                     army: army(get("army")?)?,
+                    mana: None,
                 }))
             }
             4 => {
@@ -1203,6 +1298,7 @@ impl Live {
             morale: 0,
             luck: 0,
             army: [None; 7],
+            mana: None,
         };
         let town_status = |town: &KingdomTown, buildings: u64| TownStatus {
             name: u16::from(town.faction).saturating_mul(TOWN_NAMES),
@@ -1320,6 +1416,7 @@ impl Live {
             pressed: Vec::new(),
             turns: Vec::new(),
             level_ups: Vec::new(),
+            casts: Vec::new(),
             computer: false,
         }
     }
@@ -1368,7 +1465,7 @@ fn colour(owner: impl Into<u32>) -> Option<u8> {
 }
 
 /// The owner a map object's body gives.
-fn owner(body: &Body) -> Option<u8> {
+pub(crate) fn owner(body: &Body) -> Option<u8> {
     match body {
         Body::Town(town) => colour(town.owner),
         Body::Hero(hero) => colour(hero.owner),

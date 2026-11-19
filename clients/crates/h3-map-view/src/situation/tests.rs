@@ -67,6 +67,11 @@ fn a_plain_map_with_two_heroes() {
     let situation = Situation::parse(PLAIN).unwrap();
     assert!(situation.sources().is_empty());
     assert!(situation.hidden.is_empty());
+    assert_eq!(situation.explored, None);
+    // The start's explored tiles kept (E24 M4 T3a); no other choice.
+    let start = Situation::parse(&format!("{PLAIN}explored = \"start\"\n")).unwrap();
+    assert_eq!(start.explored, Some(Explored::Start));
+    assert!(Situation::parse(&format!("{PLAIN}explored = \"all\"\n")).is_err());
     let (map, extras) = situation.build(&BTreeMap::new(), &[]).unwrap();
     assert_eq!((map.size, map.terrain), (36, Terrain::Grass));
     assert!(
@@ -611,6 +616,47 @@ view = [0, 0, 0]
     assert_eq!(boats, [((4, 1), 1), ((21, 4), 2)]);
     let bytes = writer::write_with(&map, &extras).unwrap();
     assert!(h3_map::parse(&bytes, &Limits::default()).is_ok());
+}
+
+#[test]
+fn a_heros_spells_in_its_worn_book() {
+    // E24 M4 T2d3: the spells given, the book worn in slot 17 its artifacts alone; none, the
+    // type's; one past 69 or given twice refused.
+    let text = |spells: &str| {
+        format!(
+            "size = 36\nterrain = \"grass\"\nheroes = [{{ at = [4, 4], class = 4{spells} }}, \
+             {{ at = [9, 9], owner = 1, class = 4 }}]\nview = [0, 0, 0]\n"
+        )
+    };
+    let hero = |spells: &str| {
+        let (map, _) = Situation::parse(&text(spells))
+            .unwrap()
+            .build(&BTreeMap::new(), &[])
+            .unwrap();
+        map.objects
+            .into_iter()
+            .find_map(|o| match o {
+                MapObject::Hero(h) => Some(h),
+                _ => None,
+            })
+            .unwrap()
+    };
+    let caster = hero(", spells = [0, 9, 69]");
+    let mut bits = [0u8; 9];
+    (bits[0], bits[1], bits[8]) = (1, 2, 0x20);
+    assert_eq!(caster.spells, Some(bits));
+    let worn = caster.artifacts.unwrap().worn;
+    assert_eq!(worn.iter().flatten().count(), 1);
+    assert_eq!(worn[17], Some(0));
+    let plain = hero("");
+    assert_eq!((plain.spells, plain.artifacts), (None, None));
+    for bad in [", spells = [70]", ", spells = [9, 9]"] {
+        let refused = Situation::parse(&text(bad))
+            .unwrap()
+            .build(&BTreeMap::new(), &[])
+            .unwrap_err();
+        assert!(refused.contains("past 69 or given twice"), "{refused}");
+    }
 }
 
 #[test]

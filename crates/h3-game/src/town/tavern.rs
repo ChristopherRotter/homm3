@@ -15,7 +15,7 @@ use h3_kernel::Rng;
 use h3_towns::TownRuleset;
 
 use super::FactionSet;
-use super::pool::{HeroPool, Tavern};
+use super::pool::{HeroPool, PlayerTavern};
 use crate::command::{GameEvent, Sink};
 use crate::setup::{hero_details, starting_army, wear_machines};
 use crate::state::Progression;
@@ -480,7 +480,7 @@ pub(crate) fn start_turn(state: &mut GameState, rules: &GameRuleset, player: Pla
 /// only when a mark is set.
 // rule: TWN-TAV-005
 pub(crate) fn clear_marks(state: &mut GameState, player: Option<PlayerId>) {
-    let marked = |(p, t): (usize, &Tavern)| {
+    let marked = |(p, t): (usize, &PlayerTavern)| {
         player.is_none_or(|player| player.index() == p) && t.returning.iter().any(|&r| r)
     };
     if !state.pool().taverns().iter().enumerate().any(marked) {

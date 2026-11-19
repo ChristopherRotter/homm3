@@ -227,3 +227,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   counts instructions, not cache misses), the first week's new records (`setup::hero_details`)
   and the new tavern heroes' first points. A design change there: compare per function with
   `master` (`homm3-bench-regression`).
+- **Every status write of the pool is checked after every command** (E09 T40a: `h3-map`'s
+  `check_pool` in the plans' `check_invariants`, the census's `pool_holds` after every `EndTurn`
+  of the 160 maps): a type offered exactly when one slot holds it, taken by a colour exactly when
+  one hero of it stands on the map or in a garrison of that colour and is its record, every other
+  status neither. A new path that puts a hero on the map or takes one off (T40b's map Tavern
+  hire, E10's defeated players, a prison's hero) writes the type's status in the same command, or
+  both fail; the census's fills assume `EndTurn` alone (no hire, no return: every slot drawn by
+  the fill).

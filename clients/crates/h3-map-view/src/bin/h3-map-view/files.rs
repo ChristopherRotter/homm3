@@ -34,6 +34,12 @@ pub fn default_install() -> PathBuf {
     )
 }
 
+/// The repository's packs (`packs/`, beside the client workspace): a record's rules (E24 M4
+/// T3a).
+pub fn default_packs() -> PathBuf {
+    manifest().join("../../../packs")
+}
+
 /// The map client's data folder (`clients/map`).
 pub fn default_map() -> PathBuf {
     manifest().join("../../map")

@@ -7,7 +7,7 @@
 //! the explored tiles and the path's arrows).
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_map::Limits;
@@ -16,11 +16,12 @@ use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::{MapArt, TemplateArt};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
+use h3_map_view::engine;
 use h3_map_view::hover::{self, Facts};
 use h3_map_view::levels::LevelUp;
 use h3_map_view::live::{
-    Arrow, Buttons, Chosen, Drawn, Explored, Kingdom, Live, LiveBoat, LiveHero, Moment, Status,
-    TOWN_CLASS, Turn,
+    Arrow, Buttons, Cast, Chosen, Drawn, Explored, Kingdom, Live, LiveBoat, LiveHero, Moment,
+    Status, TOWN_CLASS, Turn,
 };
 use h3_map_view::objects;
 use h3_map_view::scene::{self, Draw, ViewAt};
@@ -37,6 +38,9 @@ pub struct Options {
     at: u32,
     cycles: Option<u32>,
     live: Option<PathBuf>,
+    record: Option<PathBuf>,
+    packs: PathBuf,
+    check: bool,
     viewer: u8,
     hidden: Vec<[i32; 4]>,
     bugs: Bugs,
@@ -57,18 +61,25 @@ fn numbers<const N: usize>(value: &str, what: &str) -> Result<[i32; N], String> 
 
 impl Options {
     /// Parses `<map.h3m> --view <x>,<y>[,<z>] [--at <ms>] [--cycles <k>] [--live <live.toml>]
-    /// [--viewer <0-7>] [--hidden <x0>,<y0>,<x1>,<y1>]... [--bugs fixed|original]
-    /// [--install <dir>] [--map <dir>] [--out <file.png>] [--list]`.
+    /// [--record <record.jsonl> [--packs <dir>] [--check]] [--viewer <0-7>]
+    /// [--hidden <x0>,<y0>,<x1>,<y1>]... [--bugs fixed|original] [--install <dir>] [--map <dir>]
+    /// [--out <file.png>] [--list]`. `--record` (E24 M4 T3a) takes the live part's map view from
+    /// a whole game's record's start, after `--live`'s; `--check` compares it with `--live`'s
+    /// and draws nothing.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let mut rest = args.iter();
         let mut map_file = None;
         let (mut view, mut at, mut cycles, mut viewer, mut hidden) = (None, 0, None, 0, Vec::new());
-        let mut live = None;
+        let (mut live, mut record, mut packs, mut check) = (None, None, None, false);
         let (mut bugs, mut install, mut map, mut out, mut list) =
             (Bugs::Fixed, None, None, None, false);
         while let Some(arg) = rest.next() {
             if arg == "--list" {
                 list = true;
+                continue;
+            }
+            if arg == "--check" {
+                check = true;
                 continue;
             }
             if !arg.starts_with("--") {
@@ -111,6 +122,8 @@ impl Options {
                         .ok_or("render: --viewer takes a colour, 0-7")?;
                 }
                 "--live" => live = Some(PathBuf::from(value)),
+                "--record" => record = Some(PathBuf::from(value)),
+                "--packs" => packs = Some(PathBuf::from(value)),
                 "--hidden" => hidden.push(numbers::<4>(value, "--hidden")?),
                 "--bugs" => {
                     bugs = match value.as_str() {
@@ -131,6 +144,9 @@ impl Options {
             at,
             cycles,
             live,
+            record,
+            packs: packs.unwrap_or_else(files::default_packs),
+            check,
             viewer,
             hidden,
             bugs,
@@ -163,6 +179,10 @@ impl Options {
 
 pub fn run(options: &Options) -> ExitCode {
     match render(options) {
+        Ok(path) if options.check => {
+            println!("render: {}: its start is the capture's", path.display());
+            ExitCode::SUCCESS
+        }
         Ok(path) => {
             println!("render: wrote {}", path.display());
             ExitCode::SUCCESS
@@ -197,13 +217,38 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     let archives = files::parse_archives(&archive_bytes)?;
     tables.texts = crate::texts::catalogue(&options.install, &options.map, &archives)?;
     let mut pointer = None;
+    let templates = files::templates(&archives)?;
     if let Some(path) = &options.live {
-        pointer = read_live(
-            path,
+        pointer = read_live(path, options.view, &mut art, &mut live, &templates)?;
+    }
+    if let Some(path) = &options.record {
+        // A whole game's record's start (E24 M4 T3a): its map view's live part after the
+        // capture's, or compared with it.
+        let start = record_start(path, &bytes, &art, &templates, &options.packs)?;
+        if options.check {
+            let theirs = options
+                .live
+                .as_ref()
+                .ok_or("render: --check compares the record's start with --live's")?;
+            let found = engine::differences(&start, &read_table(theirs)?);
+            if !found.is_empty() {
+                return Err(format!(
+                    "{}: its start differs from {}: {}",
+                    path.display(),
+                    theirs.display(),
+                    found.join("; ")
+                ));
+            }
+            return Ok(path.clone());
+        }
+        let label = path.display().to_string();
+        apply_live(
+            &label,
+            &start.table,
             options.view,
             &mut art,
             &mut live,
-            &files::templates(&archives)?,
+            &templates,
         )?;
     }
     hide(&art, &mut live, options.view.z, &options.hidden);
@@ -269,6 +314,26 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     Ok(out)
 }
 
+/// The start of the whole game's record at `path` on the map file `map` (its bytes), its art
+/// `art`, under the rules of the record's packs and profile read from `packs`
+/// (`h3_map_view::engine`).
+fn record_start(
+    path: &Path,
+    map: &[u8],
+    art: &MapArt,
+    templates: &[ObjectTemplate],
+    packs: &Path,
+) -> Result<engine::Start, String> {
+    let failed = |why: &dyn std::fmt::Display| format!("{}: {why}", path.display());
+    let text = fs::read_to_string(path).map_err(|e| failed(&e))?;
+    let header = engine::parse(&text).map_err(|e| failed(&e))?.header;
+    let ids: Vec<String> = header.manifest.packs.iter().map(|p| p.id.clone()).collect();
+    let rules = h3_files::adventure::load_rules(packs, &ids, &header.manifest.profile)
+        .map_err(|e| format!("{}: {e}", packs.display()))?;
+    let loaded = engine::load(&text, map, &rules).map_err(|e| failed(&e))?;
+    engine::start(&loaded, art, templates, &rules).map_err(|e| failed(&e))
+}
+
 /// The tiles of the rectangles `hidden` (`[x0, y0, x1, y1]`, corners included) on level `z` left
 /// unexplored; each rectangle clamped to the map (E24 M1 T6b, the reviewer's R2-13: a huge one
 /// took long).
@@ -321,18 +386,43 @@ const RANDOM_DWELLINGS: [u32; 3] = [216, 217, 218];
 /// together); other keys are left. The file's `cycles`, `frames` and `viewer` override
 /// `--cycles`, `--at` and `--viewer`: the comparisons draw the original's.
 pub fn read_live(
-    path: &PathBuf,
+    path: &Path,
+    view: ViewAt,
+    art: &mut MapArt,
+    live: &mut Live,
+    templates: &[ObjectTemplate],
+) -> Result<Option<[i32; 2]>, String> {
+    let table = read_table(path)?;
+    apply_live(
+        &path.display().to_string(),
+        &table,
+        view,
+        art,
+        live,
+        templates,
+    )
+}
+
+/// A live part's file (`live.toml`) read as its table.
+pub fn read_table(path: &Path) -> Result<toml::Table, String> {
+    let failed = |why: &str| format!("{}: {why}", path.display());
+    let text = fs::read_to_string(path).map_err(|e| failed(&e.to_string()))?;
+    text.parse()
+        .map_err(|e: toml::de::Error| failed(&e.to_string()))
+}
+
+/// A live part's table applied as [`read_live`] applies its file's, `label` naming it in a
+/// message (E24 M4 T3a: a record's start, `h3_map_view::engine`, as a capture's).
+pub fn apply_live(
+    label: &str,
+    table: &toml::Table,
     view: ViewAt,
     art: &mut MapArt,
     live: &mut Live,
     templates: &[ObjectTemplate],
 ) -> Result<Option<[i32; 2]>, String> {
     let mut resolved = vec![false; art.objects.len()];
-    let failed = |why: &str| format!("{}: {why}", path.display());
-    let text = fs::read_to_string(path).map_err(|e| failed(&e.to_string()))?;
-    let table: toml::Table = text
-        .parse()
-        .map_err(|e: toml::de::Error| failed(&e.to_string()))?;
+    let failed = |why: &str| format!("{label}: {why}");
     let number = |key: &str| -> Result<Option<u32>, String> {
         table.get(key).map_or(Ok(None), |v| {
             v.as_integer()
@@ -629,6 +719,15 @@ pub fn read_live(
                 "`[[level_up]]` is not hero, level, offers = [left, right] (secskill.def's \
                  frames, -1 none) and pictures = [[def, frame], ...] (the primary skill's third \
                  from the end)",
+            )
+        })?;
+    }
+    if let Some(value) = table.get("cast") {
+        // The spells the recording cast on the map (E24 M4 T2d3, design §5.8).
+        live.casts = Cast::read_all(value).ok_or_else(|| {
+            failed(
+                "`[[cast]]` is not at, spell (0 to 69), spent (-1 none), mana and boats = [[from \
+                 x, y, level, to x, y, level, type, facing], ...] (from -1, -1, -1 for one made)",
             )
         })?;
     }

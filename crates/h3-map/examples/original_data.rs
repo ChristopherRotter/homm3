@@ -62,7 +62,15 @@
 //! first creatures, each week's growth and bonus, the neutral garrison weeks read from the
 //! garrisons, month 2's kind, the town events' builds and creatures), the owners' standing
 //! Portals after each week against their dwellings (TWN-GRO-007), and what of the growth's sum
-//! the towns read counted.
+//! the towns read counted. Since E09 T40a (the town epic's increment 4, design §78) the map's
+//! Taverns (95) and Dens of Thieves (97) by class, each typed as its kind (checked against the
+//! survey's census: 93 on 47 maps, 227 on 107), and every such game played by `EndTurn` alone to
+//! day 29 for the taverns: the start's fill and every week's checked against the census's own
+//! walk of the draw (TWN-TAV-001, -002: each slot a type drawable then, slot 0 of its player's
+//! faction's classes while one weighs, slot 1 avoiding slot 0's class, no type twice; each
+//! hero its type's record with full spell points and a starting army), the pool after every
+//! `EndTurn` (TWN-SET-005: the statuses against the slots, the map and the garrisons) and the
+//! customised types' records at the build (GAM-HER-001: `Marshland Menace`'s 2 000 experience).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -78,12 +86,12 @@ use h3_adventure::{
     DWELLING_LEVELS, Holds, MapSetup, MonolithWay, ObjectKind, ObjectTypeId, Pos, SetupError,
     land_table_points,
 };
-use h3_content::{CreatureTypeId, Formation};
-use h3_contracts::TownId;
+use h3_content::{CreatureTypeId, Formation, HeroTypeId};
+use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, BuildingsSetup, DEFAULT_DIFFICULTY, FactionChoice, GameCommand, GameEvent, GameRuleset,
-    GameSetup, GameSetupError, GameState, GarrisonCreature, PlayerSetup, TimedEventSetup,
-    TownFaction, TownSetup,
+    GameSetup, GameSetupError, GameState, GarrisonCreature, HeroStatus, PlayerSetup, PlayerTavern,
+    TimedEventSetup, TownFaction, TownSetup, Viewer,
 };
 use h3_map::model::{Artifacts, Body, Object, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
@@ -112,6 +120,7 @@ struct Peaks(
     Increment12,
     Growth,
     Increment13,
+    Taverns,
 );
 
 /// The census of the channels the game's build gives (E08 T104, [`built_channels`]; ADV-TEL-002,
@@ -515,6 +524,7 @@ fn main() -> ExitCode {
     failures += increment_13_differences(&peaks.13);
     failures += town_event_differences(&peaks.10);
     failures += growth_differences(&peaks.12);
+    failures += tavern_differences(&peaks.14);
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
         println!("  {outcome}: {}", maps.len());
@@ -676,6 +686,7 @@ fn check(
     }
     increment_12(&map, &setup.map, rules, &mut peaks.11)?;
     increment_13(&map, &setup.map, rules, &mut peaks.13)?;
+    map_taverns(&map, &setup.map, rules, &mut peaks.14)?;
     if map.header.version == Version::RoE {
         let counts = &mut peaks.5;
         roe(&map, base, &mut |what, n| {
@@ -721,6 +732,10 @@ fn check(
             // criterion 11).
             played_growth(game.clone(), rules, &mut peaks.12)
                 .map_err(|e| format!("growth: {e}"))?;
+            // E09 T40a: the taverns' fills played by `EndTurn` alone to day 29, the pool after
+            // every one, the customised types' records (increment 4's design §78).
+            played_taverns(&setup, game.clone(), rules, &mut peaks.14)
+                .map_err(|e| format!("taverns: {e}"))?;
             // E09 T19c2: the town events played by `EndTurn` alone (exit criterion 6).
             played_town_events(&setup, game, rules, &mut peaks.10)
                 .map_err(|e| format!("played: {e}"))?;
@@ -984,7 +999,7 @@ fn built_heroes(
     let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
     let generated = game.heroes().iter().skip(setup.heroes.len());
     for (details, index) in generated.zip(setup.heroes.len()..) {
-        let id = h3_contracts::HeroId::new(u16::try_from(index).unwrap_or(u16::MAX));
+        let id = HeroId::new(u16::try_from(index).unwrap_or(u16::MAX));
         let Some(owner) = game.adventure().hero(id).map(|hero| hero.owner) else {
             continue;
         };
@@ -4038,6 +4053,406 @@ fn week_name(kind: &h3_game::WeekKind) -> &'static str {
         h3_game::WeekKind::Creature(_) => "a creature's",
         h3_game::WeekKind::Of { .. } => "a building's",
     }
+}
+
+/// The census of the taverns (E09 T40a; increment 4's design §78, its exit criteria 1, 2, 7, 9
+/// and 12): its counts ([`played_taverns`]), and the map's Taverns and Dens of Thieves by class,
+/// each with its objects and the maps holding one ([`map_taverns`]).
+#[derive(Default)]
+struct Taverns(BTreeMap<&'static str, usize>, BTreeMap<u32, (usize, usize)>);
+
+/// The survey's census of the map's Taverns (class 95) and Dens of Thieves (97): the objects and
+/// the maps holding one (survey `E09-tavern.md` §0, E08 T97c's census; exit criterion 9).
+const SURVEY_TAVERNS: [(u32, usize, usize); 2] = [(95, 93, 47), (97, 227, 107)];
+
+/// E09 T40a: the map's Taverns (class 95) and Dens of Thieves (97), each imported as its kind
+/// (`ObjectKind::Tavern`, `ObjectKind::DenOfThieves`; map import v26, design §66 and §74),
+/// holding nothing and owned by no one; counted by class with the maps holding one. Checked (an
+/// object that imports otherwise fails the map).
+fn map_taverns(
+    raw: &RawMap,
+    setup: &MapSetup,
+    rules: &GameRuleset,
+    census: &mut Taverns,
+) -> Result<(), String> {
+    let part = rules.adventure();
+    let mut on_map = BTreeMap::<u32, usize>::new();
+    for ((_, class), object) in placed(raw).zip(&setup.objects) {
+        if !matches!(class, 95 | 97) {
+            continue;
+        }
+        let kind = (object.object_type)
+            .and_then(|id| part.object_type(id))
+            .map(|ty| &ty.kind);
+        let typed = match class {
+            95 => matches!(kind, Some(ObjectKind::Tavern)),
+            _ => matches!(kind, Some(ObjectKind::DenOfThieves)),
+        };
+        if !typed || object.holds != Holds::Nothing || object.owner.is_some() {
+            return Err(format!(
+                "an object of class {class} at {:?} imports as {kind:?} holding {:?}",
+                object.anchor, object.holds
+            ));
+        }
+        *on_map.entry(class).or_default() += 1;
+    }
+    for (class, n) in on_map {
+        let entry = census.1.entry(class).or_default();
+        *entry = (entry.0 + n, entry.1 + 1);
+    }
+    Ok(())
+}
+
+/// E09 T40a (increment 4's design §78): a game that builds played by `EndTurn` alone to day
+/// [`GROWTH_DAYS`], the start's fill and every week's checked by the census's own walk of the
+/// draw ([`fills`]; TWN-TAV-001, -002), the pool after the start and after every `EndTurn`
+/// ([`pool_holds`]; TWN-SET-005), and the customised types' records at the build
+/// ([`customised`]; GAM-HER-001, TWN-SET-005).
+fn played_taverns(
+    setup: &GameSetup,
+    mut game: GameState,
+    rules: &GameRuleset,
+    census: &mut Taverns,
+) -> Result<(), String> {
+    let counts = &mut census.0;
+    let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+    customised(setup, &game, &mut add)?;
+    pool_holds(&game).map_err(|e| format!("day 1: {e}"))?;
+    fills(setup, &game, rules, &mut add).map_err(|e| format!("the start's fill: {e}"))?;
+    let mut sink = Vec::new();
+    while game.day() <= GROWTH_DAYS {
+        let day = game.day();
+        let player = (game.turn_group().iter().copied())
+            .find(|&player| game.is_acting(player))
+            .ok_or_else(|| format!("day {day}: no player acting"))?;
+        let end = h3_game::apply(
+            &mut game,
+            rules,
+            Actor::Player(player),
+            GameCommand::EndTurn,
+            &mut sink,
+        );
+        end.map_err(|e| format!("day {day}: EndTurn refused: {e:?}"))?;
+        let week = (sink.iter()).any(|event| matches!(event, GameEvent::WeekStarted { .. }));
+        sink.clear();
+        pool_holds(&game).map_err(|e| format!("day {}: {e}", game.day()))?;
+        if week {
+            fills(setup, &game, rules, &mut add)
+                .map_err(|e| format!("day {}'s fill: {e}", game.day()))?;
+        }
+    }
+    Ok(())
+}
+
+/// The census's own reading of the pool (TWN-SET-005; E09 T40a, decision 158's readers): no type
+/// in two slots; a slot's type offered, with a record of that type, its hero neither on the map
+/// nor in a garrison; a returning mark only on a slot that holds a hero; each type of a hero on
+/// the map or in a garrison taken by its owner's colour, its record one of those heroes; every
+/// other type (free, a prisoner's, out) neither held nor in a slot.
+fn pool_holds(game: &GameState) -> Result<(), String> {
+    let adventure = game.adventure();
+    let mut held = BTreeMap::<HeroTypeId, Vec<(HeroId, u8)>>::new();
+    let garrisons = adventure.town_heroes().iter().map(|(_, hero)| hero);
+    for hero in adventure.heroes().iter().chain(garrisons) {
+        let details = (game.hero(hero.id)).ok_or_else(|| format!("{:?}: no record", hero.id))?;
+        let colour = (game.colour(hero.owner)).ok_or_else(|| format!("{:?}", hero.owner))?;
+        let of_type = held.entry(details.hero_type).or_default();
+        of_type.push((hero.id, colour));
+    }
+    let mut slots = BTreeMap::<HeroTypeId, usize>::new();
+    for player in (0..=u8::MAX).map(PlayerId::new).take(game.players()) {
+        let tavern = tavern_of(game, player)?;
+        for (slot, (t, returning)) in tavern.slots.iter().zip(tavern.returning).enumerate() {
+            let Some(t) = *t else {
+                if returning {
+                    return Err(format!(
+                        "{player:?}'s empty slot {slot} is marked returning"
+                    ));
+                }
+                continue;
+            };
+            *slots.entry(t).or_default() += 1;
+            let record = game.hero_record(t).and_then(|id| game.hero(id));
+            if record.is_none_or(|details| details.hero_type != t) {
+                return Err(format!(
+                    "{player:?}'s slot {slot}: {t:?} without its record"
+                ));
+            }
+        }
+    }
+    let types = (0..usize::MAX).map_while(HeroTypeId::from_index);
+    for t in types.take_while(|&t| game.hero_status(t).is_some()) {
+        let status = game.hero_status(t).unwrap_or(HeroStatus::Out);
+        let in_slots = slots.get(&t).copied().unwrap_or(0);
+        let heroes = held.get(&t).map_or(&[][..], Vec::as_slice);
+        let holds = match status {
+            HeroStatus::Offered => in_slots == 1 && heroes.is_empty(),
+            HeroStatus::Taken(colour) => {
+                in_slots == 0
+                    && heroes
+                        .iter()
+                        .any(|&(id, _)| game.hero_record(t) == Some(id))
+                    && heroes.iter().all(|&(_, owner)| owner == colour)
+            }
+            HeroStatus::Free | HeroStatus::Prisoner | HeroStatus::Out => {
+                in_slots == 0 && heroes.is_empty()
+            }
+        };
+        if !holds {
+            return Err(format!(
+                "{t:?} {status:?}: in {in_slots} slots, heroes {heroes:?}, record {:?}",
+                game.hero_record(t)
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// `player`'s tavern part ([`GameState::player_tavern`]).
+fn tavern_of(game: &GameState, player: PlayerId) -> Result<PlayerTavern, String> {
+    (game.player_tavern(player).copied()).ok_or_else(|| format!("{player:?}: no tavern part"))
+}
+
+/// A fill (the start's or a week's after its release; TWN-TAV-001, -002, E09 T40a) by the
+/// census's own walk: played by `EndTurn` alone, no hero returns, so every slot was drawn by
+/// this fill, per player in player order, slot 0 then slot 1, slot 0 with the other empty. At
+/// each draw the free types were those free now and those a slot of the player's from that one
+/// on or of a later player holds; of them the colour's (the setup's masks; nothing hires here),
+/// counted by class, each class with a count weighing its faction record's tavern weight (1
+/// without a record), slot 1 avoiding slot 0's class while another class has a count, slot 0
+/// only its faction's classes while one of them weighs. A slot holds a counted type of a class
+/// that weighs, and is empty only when none weighs. Each slot's hero, as its owner sees it
+/// (`GameObservation::tavern`): its type's record, its spell points full, a starting army of
+/// its type (GAM-SET-001: the first stack, then later ones in order, each count in its bounds).
+fn fills(
+    setup: &GameSetup,
+    game: &GameState,
+    rules: &GameRuleset,
+    add: &mut impl FnMut(&'static str, usize),
+) -> Result<(), String> {
+    let core = rules.core();
+    let classes = core.hero_classes();
+    let class = |t: HeroTypeId| core.hero_type(t).map_or(usize::MAX, |ty| ty.class.index());
+    let mask = |t: HeroTypeId| {
+        (setup.hero_masks.iter())
+            .filter(|&&(id, _)| id == t)
+            .fold(0xFF_u8, |mask, &(_, m)| mask & m)
+    };
+    let players: Vec<PlayerId> = (0..=u8::MAX)
+        .map(PlayerId::new)
+        .take(game.players())
+        .collect();
+    let taverns: Vec<PlayerTavern> = (players.iter())
+        .map(|&p| tavern_of(game, p))
+        .collect::<Result<_, _>>()?;
+    let types = (0..usize::MAX).map_while(HeroTypeId::from_index);
+    let free: BTreeSet<HeroTypeId> = (types.take_while(|&t| game.hero_status(t).is_some()))
+        .filter(|&t| game.hero_status(t) == Some(HeroStatus::Free))
+        .collect();
+    let mut offered = BTreeSet::new();
+    for (index, (&player, tavern)) in players.iter().zip(&taverns).enumerate() {
+        let colour = game.colour(player).ok_or("a player without a colour")?;
+        if tavern.returning != [false; 2] {
+            return Err(format!("{player:?}: a returning mark without a return"));
+        }
+        let record = tavern.faction.and_then(|f| rules.towns().town(f));
+        let own = |c: usize| {
+            (tavern.faction).is_some_and(|f| classes.get(c).is_some_and(|k| k.faction == f))
+        };
+        let later = taverns[index + 1..]
+            .iter()
+            .flat_map(|t| t.slots.iter().flatten());
+        let views = h3_game::observe(game, rules, Viewer::Player(player)).tavern;
+        for (slot, view) in views.iter().enumerate() {
+            let mut at = free.clone();
+            at.extend(later.clone().copied());
+            at.extend(tavern.slots[slot..].iter().flatten().copied());
+            let mut counts = vec![0_u32; classes.len()];
+            let takes = |t: &&HeroTypeId| {
+                mask(**t)
+                    .checked_shr(u32::from(colour))
+                    .is_some_and(|m| m & 1 == 1)
+            };
+            for t in at.iter().filter(takes) {
+                if let Some(n) = counts.get_mut(class(*t)) {
+                    *n += 1;
+                }
+            }
+            let mut weights: Vec<u32> = (counts.iter().enumerate())
+                .map(|(c, &n)| match (n, record) {
+                    (0, _) => 0,
+                    (_, None) => 1,
+                    (_, Some(r)) => u32::from(r.tavern.get(c).copied().unwrap_or(0)),
+                })
+                .collect();
+            let avoid = (slot == 1).then(|| tavern.slots[0].map(class)).flatten();
+            if let Some(a) = avoid
+                && counts.iter().enumerate().any(|(c, &n)| c != a && n > 0)
+                && let Some(w) = weights.get_mut(a)
+            {
+                *w = 0;
+            }
+            if slot == 0 && weights.iter().enumerate().any(|(c, &w)| own(c) && w > 0) {
+                for (c, w) in weights.iter_mut().enumerate() {
+                    if !own(c) {
+                        *w = 0;
+                    }
+                }
+                add("slot 0s drawn among the player's faction's classes", 1);
+            }
+            let Some(t) = tavern.slots[slot] else {
+                if weights.iter().any(|&w| w > 0) {
+                    return Err(format!(
+                        "{player:?}'s slot {slot} empty with a type to draw"
+                    ));
+                }
+                add("slots empty, no type to draw", 1);
+                continue;
+            };
+            if !at.contains(&t) || !takes(&&t) || weights.get(class(t)).is_none_or(|&w| w == 0) {
+                return Err(format!(
+                    "{player:?}'s slot {slot}: {t:?} of class {} not drawable (weights {weights:?})",
+                    class(t)
+                ));
+            }
+            if !offered.insert(t) {
+                return Err(format!("{t:?} offered twice"));
+            }
+            if slot == 1 && avoid == Some(class(t)) {
+                add("slot 1s of slot 0's class (no other class free)", 1);
+            }
+            offer_shown(game, rules, (player, slot), t, view.as_ref())?;
+            add("slots filled and checked", 1);
+        }
+    }
+    add("fills checked", 1);
+    Ok(())
+}
+
+/// A filled slot's hero as its owner sees it (TWN-TAV-002; GAM-SET-001, HER-MAN-001): `t`'s, its
+/// record's, spell points full, a starting army of its type.
+fn offer_shown(
+    game: &GameState,
+    rules: &GameRuleset,
+    (player, slot): (PlayerId, usize),
+    t: HeroTypeId,
+    view: Option<&h3_game::TavernHeroView>,
+) -> Result<(), String> {
+    let core = rules.core();
+    let at = || format!("{player:?}'s slot {slot} ({t:?})");
+    let view = view.ok_or_else(|| format!("{}: not shown", at()))?;
+    let details = game
+        .hero(view.hero.id)
+        .ok_or_else(|| format!("{}: no record", at()))?;
+    let ty = core
+        .hero_type(t)
+        .ok_or_else(|| format!("{}: no type", at()))?;
+    if view.hero.hero_type != t
+        || game.hero_record(t) != Some(view.hero.id)
+        || details.hero_type != t
+    {
+        return Err(format!("{}: shown as {:?}", at(), view.hero));
+    }
+    let most = h3_heroes::max_mana(details, core);
+    if view.hero.mana != details.mana || details.mana != most {
+        return Err(format!(
+            "{}: spell points {} of {most}",
+            at(),
+            view.hero.mana
+        ));
+    }
+    let slots = rules.adventure().params().army_slots();
+    let in_bounds = |s: &h3_contracts::ArmyStack, start: &h3_content::StartingStack| {
+        let [low, high] = start.count;
+        s.creature == start.creature && (u32::from(low)..=u32::from(high)).contains(&s.count)
+    };
+    let shaped = match ty.army.split_first() {
+        Some((first, rest)) if ty.army.len() <= usize::from(slots) => {
+            let mut later = rest.iter();
+            (view.army.iter().zip(0..)).all(|(s, i)| usize::from(s.slot) == i)
+                && view.army.first().is_some_and(|s| in_bounds(s, first))
+                && view.army[1..]
+                    .iter()
+                    .all(|s| later.any(|start| in_bounds(s, start)))
+        }
+        _ => view.army.is_empty(),
+    };
+    if !shaped {
+        return Err(format!("{}: army {:?} for {:?}", at(), view.army, ty.army));
+    }
+    Ok(())
+}
+
+/// The customised types' records at the build (E09 T37b; GAM-HER-001, TWN-SET-005; exit
+/// criterion 7): each customised type has a record of its type; one off the map (still free at
+/// the build, or offered by the start's fill) has its entry's experience (gained under the level
+/// limit: reached exactly, or the limit's level); counted by where it is and by level.
+fn customised(
+    setup: &GameSetup,
+    game: &GameState,
+    add: &mut impl FnMut(&'static str, usize),
+) -> Result<(), String> {
+    for (t, entry) in &setup.custom_types {
+        let record = game.hero_record(*t);
+        let details = record.and_then(|id| game.hero(id));
+        let Some(details) = details.filter(|d| d.hero_type == *t) else {
+            return Err(format!("customised {t:?}: no record of its type"));
+        };
+        add("customised types", 1);
+        if game
+            .hero_status(*t)
+            .is_some_and(|s| matches!(s, HeroStatus::Taken(_)))
+        {
+            add("customised types on the map at the start", 1);
+            continue;
+        }
+        if game.hero_status(*t) == Some(HeroStatus::Offered) {
+            add("customised types offered at the start", 1);
+        }
+        if let Some(experience) = entry.experience {
+            let limited = game.level_limit() > 0 && details.level >= game.level_limit();
+            if details.experience != experience && !limited {
+                return Err(format!(
+                    "customised {t:?}: experience {} for {experience}",
+                    details.experience
+                ));
+            }
+            add("customised records off the map with their experience", 1);
+            if details.level == 3 {
+                add("customised records off the map at level 3", 1);
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Prints the census of the taverns (E09 T40a, [`played_taverns`], [`map_taverns`]) and checks
+/// the map's Taverns and Dens against the survey's ([`SURVEY_TAVERNS`]); the fills and the pool
+/// are checked as each game plays.
+fn tavern_differences(census: &Taverns) -> usize {
+    println!(
+        "  the taverns played by EndTurn alone to day {GROWTH_DAYS} (seed {SEED}): every fill \
+         checked against the census's walk of TWN-TAV-001, the pool after every EndTurn:"
+    );
+    for (what, n) in &census.0 {
+        println!("    {what}: {n}");
+    }
+    let mut differences = 0;
+    for (class, objects, maps) in SURVEY_TAVERNS {
+        let found = census.1.get(&class).copied().unwrap_or_default();
+        println!(
+            "    class {class}: {} on {} maps, each typed as its kind",
+            found.0, found.1
+        );
+        if found != (objects, maps) {
+            println!(
+                "h3-map: the census's class {class} ({found:?}) is not the survey's \
+                 ({objects}, {maps})"
+            );
+            differences += 1;
+        }
+    }
+    differences
 }
 
 /// A creature's key, or its handle when the core lacks it.

@@ -18,21 +18,17 @@ moves are blind to the enemies' reach (0.468, chance 0.455), its strikes read th
 the reach block** (the design's points 1 to 5), the kill preview for `hexconv` a bench arm
 (point 6), T39's rule the clone's ladder +0.02 (point 7). **T38a done** 2026-11-19
 (`E25-log.md` T38a): observation v23, the reach block (`layout.REACH`), from
-`h3_battle::reach_seen_by`; C ABI v38; no network reads it yet.
+`h3_battle::reach_seen_by`; C ABI v38. **T38b done** 2026-11-19 (`E25-log.md` T38b): `[network]
+reach` and `preview` for the hex kinds, the cloning bench's preview rows and `same_start`, T39's
+config `configs/distill/e25-reach.toml` (its CPU smoke stopped and resumed).
 
-- **T38b — the networks and the bench** (Python; the sandbox; after T38a; the design's points 5
-  to 7): `[network] reach` for the hex kinds (the planes into each hex's drawn vector, the slot
-  features into the stack tokens; default off, a test that the default computes what the older
-  code did); `[network] preview` for the hex kinds (`Mlp.with_preview`'s bias from the hex
-  network's context); the cloning bench collecting the batch's preview (its rows and held-out
-  set; a preview student no longer refused); T39's config (three students: the control, `reach`,
-  `reach` with `preview`; T32's settings, 4 M, the same seed), its CPU smoke and resume test.
 - **T39 — the bench probe** (the user's GPU, about 6 hours in parts under 2 hours; the design's
-  point 7): the rule stated before it runs: an arm passes when its clone's ladder against the
-  fair actor (500 a kind, the same episodes) leads the control's by at least 0.02 and its
-  agreement is not below the control's; T40 starts from the passing arm with the better ladder,
-  the preview's only when it also leads the `reach` arm's by 0.02; none passing closes increment
-  9 at T41. The user uploads the bench's record.
+  point 7; `configs/distill/e25-reach.toml`, its header the commands: `--out runs/reach-1`, then
+  `--resume runs/reach-1` for each later part): the rule stated before it runs: an arm passes
+  when its clone's ladder against the fair actor (500 a kind, the same episodes) leads the
+  control's by at least 0.02 and its agreement is not below the control's; T40 starts from the
+  passing arm with the better ladder, the preview's only when it also leads the `reach` arm's by
+  0.02; none passing closes increment 9 at T41. The user uploads the bench's record.
 
 ## Inbox
 

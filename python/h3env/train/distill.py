@@ -27,7 +27,11 @@ beside them), with its training seconds and its cost (`cost`: the microseconds a
 the peak CUDA memory of a step). `report.json` holds the settings,
 the teacher, each student's parameters and every evaluation; `metrics.jsonl` the evaluations as
 they come; `students/<name>.pt` each student as a run's network file (`evaluate.load` and
-`--init-from` read it). No network that reads the kill preview takes part.
+`--init-from` read it). A student that reads the kill preview (`[network] preview`, the MLP's and
+the hex kinds') is the clone mode's only (E25 T38b: its rows hold the batch's preview); a network
+teacher reads none. The students are made in order from the bench's `seed`, one stream for all, or
+with `same_start` (E25 T38b) each from the seed itself: a student whose `[network]` keys add
+modules (made after the others) then starts with the weights of the one without them.
 
 A bench resumes (E25 T26a; the shared loop `go`, both modes): it checkpoints (`checkpoint.pt`)
 at a batch boundary every `checkpoint_minutes` of wall clock, after each evaluation, at a stop
@@ -136,6 +140,10 @@ class Bench:
     #: (none: no ladder), the neutral set v1 beside it, `ladder_per_kind` episodes of each kind.
     ladder: list[str] = field(default_factory=list)
     ladder_per_kind: int = REPORT_V1_ENVS
+    #: Each student made from the bench's `seed` itself (E25 T38b), not from one stream for all
+    #: in order (False: every bench before T38b): an arm whose keys add modules starts with the
+    #: control's weights.
+    same_start: bool = False
     #: Each student's `[network]` keys (and `STUDENT_KEYS`) over the teacher's, by name, in order.
     students: dict[str, dict[str, Any]] = field(default_factory=dict)
 
@@ -215,8 +223,6 @@ def checked(data: dict[str, Any]) -> Bench:
         bad = sorted(set(keys) - NETWORK_KEYS - STUDENT_KEYS)
         if bad:
             problems.append(f"student {name!r}: {', '.join(bad)} are no `[network]` keys")
-        if keys.get("preview"):
-            problems.append(f"student {name!r}: no network that reads the kill preview")
         for key in ("warmup", "weight_decay"):
             if keys.get(key, 0) < 0:
                 problems.append(f"student {name!r}: `{key}` must not be negative")
@@ -247,12 +253,14 @@ def category(obs: torch.Tensor, entry: torch.Tensor) -> torch.Tensor:
 
 
 def heads(net: Policy, m: dict[str, torch.Tensor]):
-    """`net`'s log-probabilities on a minibatch `m` (the rollout's fields, bool masks): the entry
-    head's [rows, entries], the cast rows' spell, target and second heads' along the stored
-    choices, the masked entry logits and the value."""
+    """`net`'s log-probabilities on a minibatch `m` (the rollout's fields, bool masks; with
+    `preview` the rows' kill preview, for a network that reads it): the entry head's [rows,
+    entries], the cast rows' spell, target and second heads' along the stored choices, the
+    masked entry logits (the preview's bias in them) and the value."""
     h = net.encode(m["obs"], m["entry_mask"])
     value = net.value(h)
-    logits = masked(net.entry_logits(h), m["entry_mask"])
+    logits = net.with_preview(net.entry_logits(h), h, m["obs"], m.get("preview"), m["entry_mask"])
+    logits = masked(logits, m["entry_mask"])
     rows = torch.nonzero(m["cast"]).squeeze(1)
     hc, c = rows_of(h, rows), net.cast_of(m["entry"][rows])
     s, t = m["spell"][rows], m["target"][rows]
@@ -664,10 +672,11 @@ def go(
     player = parts.player
     segment = 0 if state is None else state["segment"] + 1
     torch.manual_seed(bench.seed)
-    students = [
-        make_student(name, keys, parts.base, bench, player.batch, device)
-        for name, keys in bench.students.items()
-    ]
+    students = []
+    for name, keys in bench.students.items():
+        if bench.same_start:
+            torch.manual_seed(bench.seed)
+        students.append(make_student(name, keys, parts.base, bench, player.batch, device))
     gpu = torch.cuda.get_device_name(device) if device.type == "cuda" else None
     started = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     begun = time.monotonic()
@@ -839,7 +848,7 @@ def distill_parts(
     """The distillation bench's parts (`go`): the teacher `saved` (a run's network file, named
     `path` in the report), its play on the bench's seed's `segment`."""
     if saved["config"].get("preview"):
-        raise ConfigError("the teacher reads the kill preview: no bench network does")
+        raise ConfigError("the teacher reads the kill preview: no network teacher does")
     base = resolve(Config(**saved["config"]))
     play = dataclasses.replace(
         base,
@@ -902,6 +911,12 @@ def run(
     returns the report."""
     if bench.run or bench.ladder:
         raise ConfigError("`run` and `ladder` are the clone mode's (--teacher system)")
+    readers = [name for name, keys in bench.students.items() if keys.get("preview")]
+    if readers:
+        raise ConfigError(
+            f"the students {', '.join(readers)} read the kill preview, the clone mode's alone "
+            "(--teacher system): only its rows hold it"
+        )
     fresh(out)
     saved = torch.load(teacher_path, map_location="cpu", weights_only=True)
     device = bench_device(bench.device)

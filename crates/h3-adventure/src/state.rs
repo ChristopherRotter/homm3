@@ -2555,9 +2555,8 @@ impl AdventureState {
                     entrance: visit.tile,
                 });
             }
-            // stub: TWN-STUB-20 (the Den's Thieves' Guild at everything, `ThievesGuildSeen`: E09
-            // T39b)
-            Effect::DenOfThieves => {}
+            // rule: ADV-VIS-008
+            Effect::DenOfThieves => outcome.thieves_guild = true,
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
             Effect::Message(leaves) => {

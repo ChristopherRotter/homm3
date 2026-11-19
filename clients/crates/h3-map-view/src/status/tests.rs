@@ -58,6 +58,7 @@ fn live(kingdom: Kingdom) -> Live {
         turns: Vec::new(),
         computer: false,
         level_ups: Vec::new(),
+        casts: Vec::new(),
     }
 }
 
@@ -67,6 +68,7 @@ fn stack(creature: u16, count: i32) -> Option<Stack> {
 
 fn fiona() -> HeroStatus {
     HeroStatus {
+        mana: None,
         hero: 48,
         own_name: false,
         skills: [120, -5, 0, -1],
@@ -226,6 +228,7 @@ fn a_hero_s_own_name_the_map_s() {
     // type's.
     let name = |hero: u8| {
         let status = HeroStatus {
+            mana: None,
             hero,
             own_name: true,
             ..fiona()

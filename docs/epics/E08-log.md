@@ -19785,3 +19785,151 @@ entrance paid the find's 3 crystal in the same command (decision 279's held visi
 
 **Versions:** none moved (the harness, the recipe, the filled template, the address map, a test
 oracle, docs).
+
+### Increment 14, round 3: T129b, batch E14's services: the harness's Altar and Hill Fort, the recipes and the whole runs (2026-11-19, `adventure/e08-t129b`)
+
+Baseline: `master` 8930a1b (#1034, #1035, #1036, #1037 merged; CI's run on it in progress at the
+start); the setup's full baseline lost to a VM restart at its test gate, CI's run stands for it.
+Staged the client lane's 64 files (SHA-256 checked against the PC's). **Kept whole** (decision
+377: the user, against the agent's two parts by family). Both maps compiled again: stamps
+`7945e78d` and `a88dd771`.
+
+**The reading** (`docs/exe/structs.toml` `altar_dialog`, `hill_fort_dialog`; `docs/exe/map.toml`):
+the Altar's dialog (vtable 0x641620) keeps its screen +0x74, the screens allowed +0x75 and +0x76,
+the total +0x78, the altar's 22 places as a vector of 16-byte records at +0xC0 (the artifact, its
+second word, the position it came from, 19 the backpack, its experience), each army slot's
+amount +0x138 (stride 0x20), the slot selected +0x214, and pointers to its items (+0x7C the
+lacking text, +0x80 the total's, +0x90 the cursor's artifact, +0x94 the slider, whose +0x48 is the
+most and one, +0xA0 to +0xB8 the buttons); its items' ids come from a counter, the same every
+visit (worn 102 + 2 x position, backpack 139-143, places 147 + 2 x place, army slots 203 + 3 x
+slot, Sacrifice 256, Done 257). The Hill Fort's rows (vtable 0x63EB68; `hill_fort_rows` read):
+seven of 0x50 bytes from +0x4C (the texts, the price by resource +0x20, the second resource +0x3C,
+the creature +0x40, the count +0x44, the level +0x48, the state +0x4C), the whole +0x27C and
++0x298; buttons 261-267, All 204, OK 30722. The factory's hire dialog: the portraits' frames 538 +
+n select a machine (a click on the one selected opens its window), the Available text 521. A
+level-up over another dialog: its +0xC is the dialog under it.
+
+**The harness** (`clients/capture/h3adv.py`, `h3mem.py`, common; README "The Altar and the Hill
+Fort"): the screen kinds `altar` and `hill_fort`, read as a walk or Space opens them
+(`order`, `altar:opening`, `altar:at`, `altar:after`, likewise `hill_fort`), the step's
+`actions` played there (items by name: `worn:`, `backpack:`, `place:`, `slot:`, `from backpack`,
+`all` (the screen's own), `creatures`, `artifacts`, `max`, `sacrifice`; `row:`, `all`; `amount =
+<n>` the Altar's slider), closed by Done or OK; `altar[:part]`, `hill_fort[:part]` (`row:<slot>[:stack|price|state]`);
+the hire dialog's `creature:<n>` (not clicked when selected), `hire:creature`, `hire:cost`,
+`hire:available`; a level-up an action brings passed (`level_up`) and recorded with the dialog
+under it, the screen dumped; an action's `order`; a `key` step's `actions`. The harness check
+passed (23 steps), `test_h3drive` too.
+
+**The recipes:** `E08-batch-14.toml` (33 steps: the services' rows in the template's order) and
+`E08-batch-14-roe.toml` (E14-14). **The runs:** the RoE recipe once; the whole recipe four times
+(the first stopped at E14-15: a click on the hire dialog's selected portrait opened the creature's
+window; the second stopped at its Space step: a key step's actions refused, both fixed; the third
+complete, then a label fix and the fourth complete). The third and fourth alike in every service
+row; their markets as T129a's (the draws differ by start). The templates filled from the fourth
+and the RoE run (`experiments/results/E08-batch-14.md`, every section; `-14-roe.md`), with three
+notes of the agent: E14-8's path order, the screen under E14-17's level-up (its dump looked at),
+E14-14's game version.
+
+**Raw observations** (unscored; T130 scores them, survey §21): **E14-16 at the Altar:** E14-8 on
+(6, 17) right above A1's entrance: the path (7, 18) then (6, 18), 241 points, none from above;
+at the dialog on (6, 18) with 1 319; after Done the same; Space opens the dialog again, the hero
+stays. **E14-7:** the Castle hero artifacts only (the creatures' button disabled), the Fortress
+heroes both, on the artifacts first (the creatures' enabled), the Necropolis hero creatures only
+(the artifacts' disabled). **E14-8:** 68 700, level 19, lacking 13 261; the backpack's button put
+the four on: **1 000, 1 500, 3 000, 6 000 = 11 500**; Sacrifice: no message, no dialog, 80 200,
+level 19, the backpack empty, the Altar open (total 0, lacking 1 761). **E14-9:** the scroll
+taken from (12, 20) (ADVEVENT:135, 100 points) went to the misc position 9, not the backpack; on
+the altar the Ballista (worn 13), the Spell Scroll (Haste; worn 9), the Grail, all three **0**,
+and the Talisman of Mana 1 000: total **1 000**; the Catapult's click: **GENRLTXT:483**, nothing
+held, the Catapult stays; Sacrifice: 2 100 to **3 100**, all four gone (A-47 seen). **E14-10:**
+Advanced Learning: slot 1's most **1**; 3 and 1 Skeletons **16 + 5 = 21** (truncated per stack);
+Sacrifice: 21, slots 0 and 1 cleared. **E14-11:** the only stack's most **9**; All: 9, total
+**49**; Done: nothing given. **E14-12:** the Pikemen **free** (price 0, GENRLTXT:345), 10 Archers
+**125**, 3 Wood Elves **37**, 3 Pegasi **56**, the Angel **2 000 gold and 2 gems**, 4 Air
+Elementals **25** (VCMI 24); every row state 1, the whole 2 243 gold and 2 gems, state 1; All: no
+message, every stack upgraded, −2 243 gold, −2 gems, every row then N/A (GENRLTXT:346), state 0;
+Space opens the dialog again. **E14-15:** the question ADVEVENT:157 on (29, 18) with 1 360; the
+Ballista **0** available (2 500), the First Aid Tent 1 (750), the Ammo Cart 1 (1 000); both
+bought: −1 750, positions 15 and 14, the dialog open; Space: the question, every count 0.
+**E14-13:** the Rogues and the Marksmen N/A, state 0; 3 000 Pegasi **56 250 gold**, state 2; the
+whole state 2; the Pegasi's button **GENRLTXT:315**, All **GENRLTXT:317**, nothing changed.
+**E14-17:** Basic Learning: the Mystic Orb **1 050** (lacking 1 000); Sacrifice: **the level-up
+(level 2, Attack, Advanced Learning its only offer) over the Altar's dialog** (on the screen: the
+Altar around it, its places already empty, its texts still the old total; redrawn after the OK);
+then the Altar open, 1 050, level 2, Advanced Learning; 10 Gnolls: the most **10** (the
+Lizardmen stay), total **55**; Sacrifice: 1 105. **E14-14 (the RoE map):** the game's version
+reads **SoD** (game +0x1F698) though the map's header is the RoE format (0x0E), as batch E7a's RoE
+map: the Air Elementals **31 gold, state 1, upgraded** to Storm Elementals (no message); the
+Pikemen free to Halberdiers. **For T130:** the RoE elementals (survey §13, design note §4, exit
+criterion 6) rest on game version 0, which a new game of an RoE map does not take on this
+executable: settle the rule first (where +0x1F698 is set; the wiki and VCMI), a question for the
+user if the sources disagree.
+
+**Versions:** none moved (the harness, the recipes, the filled templates, the address map and
+structs, docs).
+
+### Increment 14, round 3: T130, batch E14 scored (2026-11-19, `adventure/e08-t130`)
+
+Baseline: `master` ea613a1 (#1044, T129b's merge). Docs and one code reading: only
+`original-data/install/Heroes3.exe` staged (SHA-256 `aac39e8c…` checked), `scripts/exe.py`.
+**The checkpoint** (ADV-Q59, asked once the version was read, one round of two): (1) E14-14's
+rule: the enabled packs decide (decision 378); (2) T130, then T131 in this session (decision 379).
+
+- **The version read** (survey §21's finding; `docs/exe/structs.toml` `map_kind` now `read`,
+  `docs/exe/map.toml` `scenario_version_from_slots`): `new_game_heroes` 0x4BFF09 writes game
+  +0x1F698 from `new_game_start`'s scenario dialog version (+0x1898, 0x58C593), which starts at
+  the edition (0x579BD9, 3) and becomes the highest format every colour slot's edition allows
+  (`scenario_version_from_slots` 0x58E700, `edition_formats` 0x699240); the selected map's or
+  save's format is only tested against it (0x58E7B7 to 0x58E871). So an RoE-format map plays at
+  SoD's in every single and hot-seat game; version 0 only in an RoE campaign (index below 7,
+  0x4BFF24) or beside a network peer with RoE alone. VCMI 1.7.5's `HillFort::fillUpgradeInfo`
+  (every `upgrades` entry, no version) and the wiki's Hill Fort page (any non-upgraded creature)
+  have no RoE exception.
+- **Scored** (survey `E08-trades.md` §21, a table of the seventeen rows): every row as predicted
+  but E14-14; D-71 to D-74 confirmed as the original (decisions 365, 367), A-46 and A-47 seen;
+  E14-17's level-up drawn over the Altar without covering it (the map client lane's inbox told,
+  decision 371's note); the rules toward `verified` listed by building task; the drafts' changes
+  for T131.
+- **Decision 378's effect:** design note §4 (`hill_fort { gold }`, `roe_except` withdrawn; which
+  stacks by the ruleset's upgrades, the elementals' only under the ab pack's override), §7 (no
+  import mark), §20 (*Scored*), §21 (T132b without `Holds::RoE`; exit criterion 6), §22; the
+  drafts (`0016-increment-14.md`'s Hill Fort point, consequence, alternative and history;
+  `0017-`'s point 9 and history); survey §0 and §13 reworded; `TRAPS.md`'s RoE line; the battle
+  lane's inbox told (a lead for E11 T1: RoE and AB rules observable only in their campaigns or the
+  older executables).
+- **Docs:** decisions 378, 379 and the task's line; ADV-Q59 in `QUESTIONS-ANSWERED.md`; the queue
+  (T130 out to `QUEUE-ARCHIVE.md`, T131 in).
+
+**Versions:** none moved. T131 (round 4, `shared/`) next, in this session (decision 379).
+
+### Increment 14, round 4: T131, the `shared/` task (2026-11-19, `shared/e08-t131`, `cross-lane`)
+
+**The cut** (decision 379, the user at T130's checkpoint): whole, one `shared/` pull request, docs
+only, right after T130 in the same session (stacked on T130's branch until it merges). Nothing
+staged beyond T130's executable.
+
+- **The ADRs** (the two drafts accepted at ADV-Q58, decision 373, applied with batch E14's
+  outcome, survey `E08-trades.md` §21, decision 378; then deleted with their folder):
+  **ADR-0016** points 1 (**Increment 14's objects**: no new block), 4 (**Increment 14's kinds**:
+  the market, the rates, the Black Market's draw, the Altar, the Hill Fort by the enabled packs'
+  upgrades, the factory, the purchase's refusal; then a batch E14 paragraph citing every row, E14-14
+  by decision 378) and 6 (the four kinds' views, the stock in the decision only), a consequence,
+  an alternative (the draft's and the RoE mark withdrawn, VCMI's roundings), the history.
+  **ADR-0017** points 1 (no command; E14-16), 6 (the three decisions, the factory, the listed
+  answers; E14-1, E14-5, E14-8, E14-13, E14-15, E14-17), 8 (the 67 entries, the next encoding v14
+  after the town lane's v12 and v13), 9 (the versions by name, then the numbers after E09's
+  increment 4: part v23, import v27, adventure state hash v27, game state hash v35, replay format
+  v20, encoding v14), 10 (the outcomes; E14-6's transfer), a consequence, an alternative, the
+  history. The index's Read-when cells of ADR-0016 and -0017. *Agent's calls:* each point cites
+  the rows that confirmed it (T122's); point 9's numbers written out, since the town lane's
+  increment 4 merged first (the draft had the numbers before it).
+- **The glossary** (`docs/03-domain.md`): market, a market's lot, the Black Market's stock,
+  transfer, sacrifice, the Hill Fort's upgrade, War Machine Factory.
+- **`docs/06-security.md`**: increment 14's lines (design §10 to §17: the four kinds public by
+  type, the stock server-only outside its visitor's decision, every answer's validation against
+  the trusted actor and the open decision, the owner's events, a transfer's recipient its gain
+  alone).
+- **Docs:** the design note's header (applied), the task's line, the queue (T131 out, T132 in),
+  the town lane's inbox (the ADRs' new parts and the versions), HANDOFF.
+
+**Versions:** none moved. T132 (round 5, its cut at its start) next.

@@ -254,3 +254,77 @@ def test_a_stopped_clone_bench_resumes_its_training_and_its_ladder(tmp_path) -> 
     assert load(out / "students" / "mlp.pt").tactics_rounds == 3
     with pytest.raises(ResumeError, match="extend it"):
         resume(out)
+
+
+def test_preview_rows_are_the_same_episodes_with_the_kill_preview() -> None:
+    # E25 T38b: with the preview the fair actor plays the same episodes (the batch's play is the
+    # same), each row keeping its batch's preview of the legal strikes, in half precision.
+    config = replace(load_config(RUN), seed=7, system_share=0.0)
+    plain, shown = (Episodes(config, 7, 8, 2, preview=p) for p in (False, True))
+    a, rows = plain.take(100)
+    b, same = shown.take(100)
+    plain.close()
+    shown.close()
+    assert np.array_equal(rows, same)
+    assert set(b) == set(a) | {"preview"} == set(FIELDS) | {"preview"}
+    for name in FIELDS:
+        assert np.array_equal(a[name][rows], b[name][rows]), name
+    kills = b["preview"][rows, 0]
+    assert kills.dtype == np.float16 and kills.shape[1:] == (shown.batch.preview_entries, 2)
+    strikes = a["entry_mask"][rows, 0, shown.batch.preview_base :][:, : kills.shape[1]]
+    assert (kills[~strikes] == 0).all() and (kills[strikes] > 0).any()
+
+
+def test_a_bench_of_t39s_arms_starts_them_alike_and_resumes_with_the_preview(tmp_path) -> None:
+    # E25 T38b, T39's bench in small: the control, `reach`, `reach` with `preview`, made with
+    # `same_start` (each arm the one before it with its new modules after the others'); stopped
+    # at the first evaluation, before any training, then resumed to its budget and its ladders.
+    # The rows and the held-out set hold the preview; the preview student's file reads it.
+    net = {"kind": "hexconv", "width": 8, "layers": 1, "embed": 8, "mask_input": True}
+    bench = Bench(
+        seed=7,
+        samples=300,
+        heldout=100,
+        eval_every=300,
+        envs=8,
+        threads=2,
+        rollout=16,
+        epochs=1,
+        minibatch=64,
+        lr=3e-3,
+        device="cpu",
+        ladder=["system"],
+        ladder_per_kind=1,
+        same_start=True,
+        students={
+            "control": net,
+            "reach": net | {"reach": True},
+            "preview": net | {"reach": True, "preview": True},
+        },
+    )
+    out = tmp_path / "bench"
+
+    def at_the_start(line: str) -> None:
+        if line.startswith("at 0 "):
+            signal.raise_signal(signal.SIGINT)
+
+    stopped = run(bench, out, log=at_the_start, config_text=RUN)
+    assert stopped["ended"] == "stop" and stopped["samples"] == 0
+    assert stopped["teacher"]["preview"] is True and stopped["bench"]["same_start"] is True
+    states = torch.load(out / "checkpoint.pt", weights_only=True)["students"]
+    for before, after in (("control", "reach"), ("reach", "preview")):
+        old, new = states[before]["policy"], states[after]["policy"]
+        assert set(old) < set(new) and all(torch.equal(v, new[k]) for k, v in old.items())
+    with np.load(out / "heldout.npz") as f:
+        assert f["preview"].dtype == np.float16 and len(f["preview"]) == 100
+    done = resume(out)
+    assert done["ended"] == "budget" and done["samples"] >= 300
+    last = done["evaluations"][-1]["students"]
+    assert all(np.isfinite(last[name]["cross_entropy"]["entry"]) for name in bench.students)
+    assert set(done["ladders"]) == set(bench.students)
+    loaded = {name: load(out / "students" / f"{name}.pt") for name in bench.students}
+    assert [(n.reads_reach, n.reads_preview) for n in loaded.values()] == [
+        (False, False),
+        (True, False),
+        (True, True),
+    ]

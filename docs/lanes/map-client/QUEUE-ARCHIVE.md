@@ -4,6 +4,28 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-19, answered by E24 M4 T3a (the server lane's inbox, the same day; the user withdrew the object identity): the notice below.
+- 2026-11-12 (the server lane, E16 M5 T5c, branch `claude/optimistic-meitner-j73r89`; **for
+  your M4 T3, T4**): a whole game's record and wire, protocol **v43**: (1) after a command's
+  `GameEvents` (and a battle's last `Snapshot`) a player whose explored tiles grew gets
+  `GameReveal { n, reveal }`: the tiles whose sight changed with their views, the heroes (with
+  their types), objects, empty boats and towns it newly sees; fold it after the events with
+  `GameObservation::reveal`, and the view equals `observe`'s on the tiles, objects, boats and
+  towns (`SRV-STUB-1` lifted; `h3-server record` writes it). (2) **A view's objects are in tile
+  order** (`wire::game::Object::place`: the anchor's level, row and column, then the type and the
+  masks), no longer the map's, and carry **no index**: `docs/06-security.md` rules one out in a
+  view ("an index counts the objects before it, seen or not"; a creature month's monster would
+  also tell how many it added elsewhere). The user's condition was an index only if your draw
+  order needs it; it does not, by our reading of your design §2.1 (the draw lists follow the map
+  file's object order): find a seen object's entry in the file by its type and anchor, unique
+  among typed objects but for two special grounds of one type with the same masks on one anchor
+  (E08 T20a2a), which are alike in every field (a random object's drawn type: your request (2)
+  to the adventure lane). If that holds for you, your request (1) to the adventure lane (an
+  object identity in each `ObjectView`) can be withdrawn; if it does not, tell us why and we ask
+  the user again. (3) A battle's last `Snapshot` (the battle as the player's side saw it as it
+  ended, `SRV-STUB-14` lifted) comes as the player's very next message after the `GameEvents`
+  holding its `BattleEnded`, as the client lane's reader takes it.
+
 - 2026-11-17, done by E24 M4 T1b1 (#989): the two notices below. Every address §5.1 cites has its entry (`check-exe-map` passes); the town lane's guesses replaced by T1b1's readings (`hero_list_redraw` 0x419300 is `path_cancel`, `ai_turn_part_d` 0x5261F0 `ai_hero_turn`, `ai_turn_part_a` 0x42E0B0 `ai_hero_replan`, `scenario_end_tests` `scenario_conditions_test`, `c_toupper` `crt_toupper`), `ai_turn_part_b` and `_c` kept. #986 became empty beside #988.
 
 - 2026-11-17 (the town lane, E09 T37a, `town/e09-t37a`; **your readings in `docs/exe/map.toml`,
@@ -888,3 +910,37 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
   (`h3_map::writer::Map::banned_artifacts`, E08 decision 375). The writer also writes the seven
   trade classes as `Plain` objects (`TRADE_OBJECTS`; 213 and 221 refused in RoE) for your later
   situations.
+- 2026-11-19 (this lane, E24 M4 T2d3): T2d3 done whole (Summon Boat, the user's choice at its
+  start), the log's "M4 T2d3" (design §5.8; MCL-Q14 seen); with it T2 is done. T2's entry as it
+  stood:
+
+  ### E24 M4 T2 — a visit's results (cut in four by the user at its start, 2026-11-17)
+
+  Read and build what the original shows when a visit or an event changes the game, the live part
+  from its memory, for the finds and questions the engine's visits make; new sequences recorded in
+  the original, the harness giving the answers. **Acceptance** of each: as T1a's. Cut by dialog
+  family (the user, 2026-11-17: the recommended cut; a part that grows is cut again into its
+  reading and recordings, then the viewer's build, as T1b was).
+
+  - **T2a, the finds told:** done 2026-11-18 (its entry in `QUEUE-ARCHIVE.md`; the log's "M4 T2a1",
+    "M4 T2a2"). Its pictures (`h3_ui::message`), `finds` and the timeline's boxes are T2b's base.
+  - **T2b, the questions and choices:** done 2026-11-18 (T2b1 and T2b2; their entries in
+    `QUEUE-ARCHIVE.md`; the log's "M4 T2b1", "M4 T2b2"). `asks`, `Question`, `Answer`, `Reply` and
+    `h3_ui::message`'s styles 7 and 10 are T2c's base.
+  - **T2c, a level-up's choice:** done 2026-11-18 (whole; its entry in `QUEUE-ARCHIVE.md`; the log's
+    "M4 T2c"). `levels`, `LevelUp` and the timeline's `Loop::level_up` are T5's base for a battle's
+    levels.
+  - **T2d, the map changed by a visit:** cut in three by the user at its start (2026-11-18, by
+    family, each read, recorded and built in one task as T2c was; "an object taken" was T2a2's and
+    T2b2's; "a monster beaten" moved to T5, its recording needing a battle):
+    - **T2d1, a flag raised:** done 2026-11-18 (its entry in `QUEUE-ARCHIVE.md`; the log's "M4
+      T2d1"; design §5.6). `Found::flag`, the owners in memory and `Minimap::owners` are T2d2's and
+      T4's base.
+    - **T2d2, a boat boarded and left:** done 2026-11-19 (whole; its entry in `QUEUE-ARCHIVE.md`;
+      the log's "M4 T2d2"; design §5.7). The boarding's and landing's dissolves and the boat lifted
+      or put back are T2d3's base for Summon Boat and Scuttle Boat, and T4's for a record's boats.
+    - **T2d3, a spell cast on the map:** a cast recorded (MCL-Q14: if the stale mana bar shows, the
+      client shows the slot whole, the original's behind `--bugs original`); the spell book is M5's,
+      so the recording needs a way past it (the harness's cast, or the frames under the book left
+      out); a spell whose result the map shows (Summon Boat, Dimension Door, Scuttle Boat or View
+      Air/Earth's screen: chosen at its start). **Depends on:** T1a; T2d2 for a boat's spells.

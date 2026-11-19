@@ -23,12 +23,18 @@ use alloc::vec::Vec;
 use h3_map::RawMap;
 use h3_map::model::{Mission, Rewards, Stack};
 use h3_map::writer::{
-    ARMY_SLOTS, ARTIFACT_OBJECT, AnyObject, EVENT_OBJECT, Event, Extras, GivenTile, Guards, Hero,
-    Map, MapObject, Message, Monster, ObjectTemplate, PANDORA_OBJECT, Patch, Pile, Player,
-    RewardBody, RewardObject, RiverKind, Road, RoadKind, SHRINE_OBJECTS, Terrain, Town,
-    TownBuildings, Underground, WITCH_HUT_OBJECT,
+    ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS, AnyObject, EVENT_OBJECT, Event, Extras, GivenTile,
+    Guards, Hero, HeroArtifacts, Map, MapObject, Message, Monster, ObjectTemplate, PANDORA_OBJECT,
+    Patch, Pile, Player, RewardBody, RewardObject, RiverKind, Road, RoadKind, SHRINE_OBJECTS,
+    Terrain, Town, TownBuildings, Underground, WITCH_HUT_OBJECT,
 };
 use serde::Deserialize;
+
+/// The spell book's artifact and its worn slot (`ArtSlots.txt`: 17), and the spells a book holds
+/// (E24 M4 T2d3).
+const SPELL_BOOK: u16 = 0;
+const SPELL_BOOK_SLOT: usize = 17;
+const SPELLS: u8 = 70;
 
 /// One situation as written.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -73,6 +79,10 @@ pub struct Situation {
     /// Rectangles of tiles Red has not explored (corners inclusive); every other tile explored.
     #[serde(default)]
     pub hidden: Vec<[i32; 4]>,
+    /// The explored tiles as the new game left them (`"start"`, E24 M4 T3a: the engine's start
+    /// compared with the original's), not written by the harness; none: `hidden`'s.
+    #[serde(default)]
+    pub explored: Option<Explored>,
     /// What the harness selects from its list after its walks and writes (E24 M3 T4a; design
     /// §4.5): the selection scrolls its list to show it and redraws both lists (and builds the
     /// status window again, M3 T5b1), so a situation whose heroes or towns the harness writes
@@ -280,6 +290,14 @@ pub struct RoadSpec {
     pub from: u8,
     /// Its last column.
     pub to: u8,
+}
+
+/// Which explored tiles a situation keeps (E24 M4 T3a).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Explored {
+    /// The new game's: the harness writes none (`h3map.py`'s `explored = "start"`).
+    Start,
 }
 
 /// A rectangle of a shipped map's tiles copied onto the map.
@@ -734,9 +752,46 @@ pub struct HeroSpec {
     /// morale or luck shown (Leadership, Luck): TRAPS. It needs no selection.
     #[serde(default)]
     pub secondary: Vec<[u8; 2]>,
+    /// The spells in its spell book (0 to 69, E24 M4 T2d3, design §5.8: a cast on the map),
+    /// written by the writer with the book worn in slot 17 (its artifacts then these alone: the
+    /// type's war machines left out); empty the type's spells and artifacts.
+    #[serde(default)]
+    pub spells: Vec<u8>,
 }
 
 impl HeroSpec {
+    /// Its worn spell book alone when it has spells (E24 M4 T2d3): artifact 0 in slot 17.
+    fn book(&self) -> Option<HeroArtifacts> {
+        if self.spells.is_empty() {
+            return None;
+        }
+        let mut worn = [None; ARTIFACT_SLOTS];
+        worn[SPELL_BOOK_SLOT] = Some(SPELL_BOOK);
+        Some(HeroArtifacts {
+            worn,
+            backpack: Vec::new(),
+        })
+    }
+
+    /// Its spells as the writer's bits (E24 M4 T2d3), each spell once and below 70.
+    fn spell_bits(&self) -> Result<Option<[u8; 9]>, String> {
+        if self.spells.is_empty() {
+            return Ok(None);
+        }
+        let mut bits = [0u8; 9];
+        for &spell in &self.spells {
+            let (byte, bit) = (usize::from(spell / 8), spell % 8);
+            if spell >= SPELLS || bits[byte] & (1 << bit) != 0 {
+                return Err(format!(
+                    "hero at {:?}: the spell {spell} past 69 or given twice",
+                    self.at
+                ));
+            }
+            bits[byte] |= 1 << bit;
+        }
+        Ok(Some(bits))
+    }
+
     /// Whether the harness writes anything into its record (E24 M3 T4a, T5b1).
     fn written(&self) -> bool {
         self.points.is_some()
@@ -1043,8 +1098,8 @@ impl Situation {
                 skills: None,
                 army: None,
                 tight_formation: false,
-                artifacts: None,
-                spells: None,
+                artifacts: h.book(),
+                spells: h.spell_bits()?,
                 primary: None,
             }));
         }

@@ -2596,6 +2596,16 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   97 imported (map import v26); a step onto it ends the move there and its `Revisit` is listed;
   its visit gives nothing yet (`TWN-STUB-20`, `h3-adventure`'s `visit`): T39b adds the outcome and
   `ThievesGuildSeen`.
+- *As built* (T39b2, decisions 154, 155): the visit's outcome a flag,
+  `AdventureOutcome::thieves_guild` (`h3-adventure`'s `visit`, `cross-lane`), which the game's
+  `settle_outcome` tells after the visit's other effects through `town::thieves::tell_den`:
+  `thieves_guild_at(state, rules, DEN_LEVEL)` whatever the visitor's Taverns, as §75's events.
+  Every visit alike (a second step onto it the same day, a `Revisit`); a sink that keeps nothing
+  is told nothing and nothing is computed (`Sink::RECORDS`; the state the same). `TWN-STUB-20`
+  lifted, ADV-VIS-008's summary amended. **The census:** the 98 golden replays play 12 maps with
+  no Den (and no map Tavern): none steps onto one, nothing re-recorded. Tests
+  `town/tests/hire/map.rs` (three: the guild at everything to red alone after the step, its parts
+  in order, blue told nothing; a `Revisit` and a second step alike; a `NoopSink` visit's state).
 
 ### 75. The views and events (both halves; `docs/06-security.md`'s town section by the `shared/` task)
 
@@ -2666,6 +2676,22 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
   map and, for the owner, moves the slot's view into its heroes, the worn positions grown to the
   told count). `h3-protocol`'s `a_hire_folds_as_observe_shows_it` plays a hire on three golden
   games (none of them hires: `TWN-STUB-19`) and compares every viewer's fold with `observe`.
+- *As built* (T39b2, decisions 154, 155): **`ThievesGuildSeen { player, level }`** then
+  **`GuildPartSeen { player, part: GuildPart }`** per part (`GameEvent` stays `Copy`), in
+  `ThievesGuildView::parts`' order: `GuildPart::Place { row, of, place }` for each shown row's
+  players by id, the rows in order, then `GuildPart::Player { of, shown: GuildPlayer }` per
+  player; seen by `player` alone (`project`). The engine folds no parts. Protocol **v74**: the
+  wire's `GuildRow`, `GuildRanking`, `GuildHero`, `GuildPlayer`, `ThievesGuild` (with
+  `ThievesGuild::at(level)` and `see(part)`, a client's fold of the parts: a place of a row other
+  than the last begins that row), `GuildPart`; both events mapped and dropped by the fold (the
+  guild is not in the observation); `GameQuery::ThievesGuild` answered by
+  `GameAnswer::ThievesGuild { guild }` (`map::game::query::answer`: `h3_game::thieves_guild` for
+  the asking seat's player). Tests: `game_event`'s every event (46 kinds) and
+  `a_dens_guild_on_the_wire_is_the_guild_its_parts_make` (a level-5 view's parts map back, round
+  trip, and `see` gives the query's mapping), the fold's no-change list, `game_query`'s
+  `the_thieves_guild_is_the_engines_for_the_asking_player` (every golden's first 30 commands, each
+  player and one beyond), the wire's message round trips. `h3-map`'s told views take both events
+  as the viewer's own.
 
 ### 76. The env and the protocol
 
@@ -2762,6 +2788,21 @@ the hygiene (a hire told ends the comparison). No protocol, replay or hash versi
 - **The census** (`h3-map`'s `original_data`): the 160 maps' first offers (every player's two:
   slot 0 of its faction where one weighs, no type twice, every army full), the customised types'
   records (`Marshland Menace`), and the maps that import whole once classes 95 and 97 do.
+- *As built (T40a, decisions 156 to 158):* the census (`original_data`'s `map_taverns`,
+  `played_taverns`, `fills`, `pool_holds`, `customised`) types every class 95 and 97 object as its
+  kind (93 on 47 maps, 227 on 107, the survey's) and plays every game by `EndTurn` alone to day
+  29: the start's fill and every week's by the census's own walk of the draw (what was free at
+  each draw: the free types now with every slot of the player's from that one on and of later
+  players; the masks; the class weights, slot 1's avoidance, slot 0's own faction), each hero its
+  type's record with full spell points and a starting army; the pool after every `EndTurn`; the
+  customised types' records (17 on the maps, 13 off the map at level 3 with their 2 000). The
+  properties: `check_invariants` ends with `check_pool` (the same statuses against the slots, the
+  map, the garrisons and the store), `a_forks_week_is_its_parents` asserts the week's fill and the
+  slots of both. Both read the pool through `GameState::hero_status`, `player_tavern` and
+  `hero_record` (decision 158). A refused hire or dismissal leaving the state was T38a2's and
+  T38b2's (`check_town_builds`, the dismissal's probes), the room by a town's hire
+  `check_town_hire`'s; the map Tavern's hire, the taverns map, its replays and the benchmarks are
+  T40b's.
 - **Benchmarks:** the week workload (`month-start-builds-36` or the taverns map's) re-baselined
   for the fill's draws; the step's legal commands with the hires; the guild's query timed once
   (not on the step path).

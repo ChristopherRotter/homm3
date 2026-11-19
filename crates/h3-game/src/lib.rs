@@ -127,10 +127,11 @@ pub use state::{GameState, MonthKind, OpenBattle};
 pub use system::SystemCommand;
 pub use town::hire::{HiredPart, TavernError};
 pub use town::offer::TownOffer;
+pub use town::pool::{HeroStatus, PlayerTavern};
 pub use town::tavern::{TAVERN_BACKPACK_SHOWN, TavernHero, TavernHeroView, TavernPart};
 pub use town::thieves::{
-    DEN_LEVEL, GUILD_LEVELS, GuildHero, GuildPlayer, GuildRanking, GuildRow, ThievesGuildView,
-    thieves_guild,
+    DEN_LEVEL, GUILD_LEVELS, GuildHero, GuildPart, GuildPlayer, GuildRanking, GuildRow,
+    ThievesGuildView, thieves_guild,
 };
 pub use town::view::{
     GarrisonStackView, GarrisonView, OWNER_LEVEL, TAVERN_LEVELS, TownBuildingsView, TownOwnerView,

@@ -69,7 +69,7 @@ def teacher_file(tmp_path):
     return path
 
 
-def test_the_bench_config_refuses_what_it_does_not_know() -> None:
+def test_the_bench_config_refuses_what_it_does_not_know(tmp_path) -> None:
     bench = load_bench("samples = 10\n[students.a]\nkind = 'hexconv'\nwidth = 8\nlr = 1e-3\n")
     assert bench.samples == 10 and bench.students == {
         "a": {"kind": "hexconv", "width": 8, "lr": 1e-3}
@@ -79,13 +79,20 @@ def test_the_bench_config_refuses_what_it_does_not_know() -> None:
         ("sample = 1\n[students.a]\n", "unknown bench keys sample"),
         ("samples = 1\n", "no `\\[students.<name>\\]` table"),
         ("[students.a]\ngamma = 0.9\n", "gamma are no `\\[network\\]` keys"),
-        ("[students.a]\npreview = true\n", "kill preview"),
         ("epochs = 0\n[students.a]\n", "`epochs` must be positive"),
     ):
         with pytest.raises(ConfigError, match=match):
             load_bench(text)
     with pytest.raises(ConfigError, match="--set takes key=value"):
         load_bench("[students.a]\n", ["samples"])
+    # A student that reads the kill preview is the clone mode's (E25 T38b): the bench file takes
+    # it, the distillation bench refuses it before it writes anything.
+    preview = load_bench("same_start = true\n[students.a]\nkind = 'hexconv'\npreview = true\n")
+    assert preview.students["a"]["preview"] is True and preview.same_start
+    out = tmp_path / "none"
+    with pytest.raises(ConfigError, match="students a read the kill preview"):
+        run(out / "teacher.pt", preview, out)
+    assert not out.exists()
     # The optimizer's keys (E25 T24): the bench's, and a student's over them, never its network's.
     bench = load_bench(
         "warmup = 100\nweight_decay = 0.01\n[students.a]\nwarmup = 5\nweight_decay = 0.1\n"
@@ -188,6 +195,23 @@ def test_increment_8s_architecture_bench_is_t26bs_with_three_arms_beside_its_con
         "hexconv-n-64x10": {"width": 64, "layers": 10},
     }
     assert all(set(keys) == set(control) for keys in arch.students.values())
+
+
+def test_increment_9s_bench_is_t32s_control_with_the_reach_and_the_preview_beside_it() -> None:
+    # E25 T39 (the design's point 7, AI-Q19): T32's bench (teacher, samples, seed, held-out set,
+    # ladders), its control, and two arms, each one change from the one before it, all made from
+    # the bench's seed.
+    folder = Path(__file__).parents[1] / "configs" / "distill"
+    reach = load_bench((folder / "e25-reach.toml").read_text(encoding="utf-8"))
+    arch = load_bench((folder / "e25-arch.toml").read_text(encoding="utf-8"))
+    assert reach.same_start and not arch.same_start
+    assert replace(reach, students={}, same_start=False) == replace(arch, students={})
+    control = arch.students["hexconv-n-96x6-a"]
+    assert list(reach.students.values()) == [
+        control,
+        control | {"reach": True},
+        control | {"reach": True, "preview": True},
+    ]
 
 
 def test_every_committed_bench_report_is_complete() -> None:
