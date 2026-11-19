@@ -39,7 +39,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (re-baselined); `[network] reach` and `preview` for the hex kinds, the cloning bench's preview
   rows and `same_start`. **Next: T39**, the bench probe on the user's GPU
   (`configs/distill/e25-reach.toml`, about 6 hours in parts; its rule in `QUEUE.md`).
-- **Open pull requests:** T38b's (`claude/intelligent-bohr-5ii8qn`). Merged: #1036 (T38a,
+- **Open pull requests:** #1040 (`claude/intelligent-bohr-5ii8qn`: T38b). Merged: #1036 (T38a,
   `cross-lane`) and the `shared/` docs/07 line (v23).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
@@ -58,7 +58,7 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 - #1036 and the `shared/` docs/07 line merged. No original data (none needed). `cargo build
   --release -p h3-ffi`, `uv sync --group train`; the scoped verify (coverage's tool installed
   by hand: the setup script was not run). T39's bench as a CPU smoke (`--set` small), stopped by
-  SIGINT and resumed. Python only.
+  SIGINT and resumed. Python only. #1040, watched until it merges.
 
 ### 2026-11-19 — E25 T38a: the reach query, observation v23, C ABI v38
 
