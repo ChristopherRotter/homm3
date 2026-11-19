@@ -107,6 +107,7 @@ fn params() -> AdventureParamsDef {
         },
         months: None,
         dwellings: None,
+        market: None,
     }
 }
 
@@ -1723,3 +1724,4 @@ mod rewards;
 mod taverns;
 mod teleporters;
 mod towns;
+mod trades;

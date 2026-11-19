@@ -272,6 +272,17 @@ visit = "enter"
 from_above = true
 garrison = { anti_magic = true }
 
+# ADV-MKT-001, ADV-MKT-005 (E08 T132a2; increment 14's design note section 1, survey section 6):
+# the Freelancer's Guild (class 213, AB's): creatures sold for resources (screen 4) at five
+# Marketplaces, the army keeping one creature; entered, none from above, no mark. Batch E14's
+# E14-1 and E14-2.
+[[object_type]]
+id = "freelancers_guild"
+name = "Freelancer's Guild"
+visit = "enter"
+from_above = false
+market = { screens = ["sell"], count = 5 }
+
 # ADV-DWL-005 (E08 T93a, increment 10's design note section 2): Conflux's random-dwelling table,
 # derived as base's (random_dwellings_resolve 0x502B60 steps 3 and 4; town_creatures
 # 0x6747B4[8 x 14 + level], then the last class-17 subclass dwelling_creatures 0x63D570 lists the
@@ -279,3 +290,10 @@ garrison = { anti_magic = true }
 [[random_dwelling]]
 faction = "conflux"
 dwellings = ["magic_lantern", "altar_of_air", "altar_of_water", "altar_of_fire", "altar_of_earth", "altar_of_thought", "pyre"]
+
+# ADV-ALT-001 (E08 T132a2): Conflux heroes sacrifice both at an Altar of Sacrifice, the artifacts
+# first (altar_dialog_create 0x55FDD0's lists hold faction 8 in both; survey section 12.1).
+[[altar_faction]]
+faction = "conflux"
+artifacts = true
+creatures = true

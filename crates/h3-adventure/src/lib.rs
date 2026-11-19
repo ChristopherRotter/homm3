@@ -46,6 +46,7 @@ mod answer;
 mod army;
 mod command;
 mod fog;
+mod market;
 mod movement;
 mod observe;
 mod persistent;
@@ -69,6 +70,7 @@ pub use command::{
     HireDialog, HireError, HireSource, HireTarget, Meeting, NoRoom, NothingWhy, Offer, OfferKind,
     OwnHeroes, Pick, ShipyardBlock, Sink, UniversityVisit, Viewers,
 };
+pub use market::{Lot, MarketParams, MarketParamsError};
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};
 pub use observe::{
     AdventureObservation, AdventureReveal, BoatView, GarrisonHeroView, GuardsView, HeroView, Known,
@@ -78,16 +80,18 @@ pub use persistent::BitGrid;
 pub use reach::Reach;
 pub use ruleset::{
     AdventureCompileError, AdventurePack, AdventureParams, AdventureParamsDef, AdventureRuleset,
-    BANK_ARTIFACT_CLASSES, BANK_GUARDS, BANK_LEVELS, BONUS_DAYS, Bank, BankDef, BankLevel,
-    BankLevelDef, BankQuestion, BattleTerrains, BattleTerrainsDef, CalendarParams, Chest, ChestDef,
-    DWELLING_LEVELS, DwellingParams, Find, FindContent, FindContentDef, FindDef, Gift, GiftDef,
-    Gives, KEY_COLOURS, MAX_BANK_REWARD, MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS,
-    MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, MAX_PLAYERS, MarkLifetime, MonolithWay, MonsterParams,
-    MonsterParamsDef, MonthParams, MonthParamsDef, ObjectKind, ObjectKindDef, ObjectType,
-    ObjectTypeDef, ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef, Pyramid, PyramidDef,
-    RandomDwellingDef, RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind, StartingResources,
-    StartingResourcesDef, TerrainMovement, TerrainMovementDef, TerrainWalker, TerrainWalkerDef,
-    Turn, TurnDef, Visit, Weekday,
+    Altar, AltarDef, AltarFactionDef, AltarScreens, BANK_ARTIFACT_CLASSES, BANK_GUARDS,
+    BANK_LEVELS, BONUS_DAYS, Bank, BankDef, BankLevel, BankLevelDef, BankQuestion, BattleTerrains,
+    BattleTerrainsDef, CalendarParams, Chest, ChestDef, DWELLING_LEVELS, DwellingParams, Find,
+    FindContent, FindContentDef, FindDef, Gift, GiftDef, Gives, HillFort, KEY_COLOURS,
+    MAX_BANK_REWARD, MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS, MAX_MONSTER_COUNT,
+    MAX_PICKUP_AMOUNT, MAX_PLAYERS, MarkLifetime, Market, MarketParamsDef, MarketScreen,
+    MonolithWay, MonsterParams, MonsterParamsDef, MonthParams, MonthParamsDef, ObjectKind,
+    ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef,
+    Pyramid, PyramidDef, RandomDwellingDef, RiverDef, RiverId, RiverKind, RoadDef, RoadId,
+    RoadKind, StartingResources, StartingResourcesDef, TerrainMovement, TerrainMovementDef,
+    TerrainWalker, TerrainWalkerDef, Turn, TurnDef, Visit, WarMachineFactory, WarMachineFactoryDef,
+    Weekday,
 };
 pub use setup::{
     AdventureSetup, ArmyError, Bans, BoatSetup, EventSetup, Guards, HeroSetup, Holds, MapSetup,
@@ -159,5 +163,7 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 26;
 /// with its mark and values, the Magic Well, the Magic Spring, the Stables with its points and
 /// creatures, the Sirens with its mark and keep) and every type's kind mark. v21 (E08 T123a):
 /// the creature bank's kind (its question, levels, looted bonus, deck and coast). v22 (E09
-/// T39a): the map's Tavern's and the Den of Thieves' kinds (tags 45 and 46, no parameter).
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 22;
+/// T39a): the map's Tavern's and the Den of Thieves' kinds (tags 45 and 46, no parameter). v23
+/// (E08 T132a2): increment 14's four kinds (the market, the Altar of Sacrifice, the Hill Fort, the
+/// War Machine Factory: tags 47 to 50), the market's parameters and the Altar's factions.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 23;

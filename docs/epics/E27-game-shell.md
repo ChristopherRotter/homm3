@@ -1,11 +1,8 @@
 # E27 — The game shell: main menu and the screens outside play
 
-Status: **refined** (2026-11-12, M0, with the user); **M1 closed** (2026-11-13, T3: the fresh
-reviews, the review list accepted, decisions 19 to 22); **M2 refined** (2026-11-13, at M1 T3);
-**M2 T1 done** (2026-11-13, decisions 23 and 24); **M2 T2 done** (2026-11-14, decisions 25 to
-27); **M2 T2b done** (2026-11-14, decision 28); **M2 T3a done** (2026-11-14, decision 29); **M2
-T3b done** (2026-11-14); **M2 T4 done** (2026-11-14, decision 30); **M2 T5a done** (2026-11-14,
-decisions 31, 32); **M2 T5a2 done** (2026-11-15); next **M2 T5b** (`docs/lanes/client/QUEUE.md`).
+Status: **refined** (2026-11-12, M0, with the user); **M1 closed** (2026-11-13), **M2 closed**
+(2026-11-17), **M3 closed** (2026-11-19, T7: the fresh reviews, decisions 66 to 68); **M4 refined**
+(2026-11-19, M4 T0 at M3 T7, decision 69); next **M4 T1** (`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
 catalogue and capture harness). Working detail (readings, the clips, layouts):
@@ -454,6 +451,34 @@ The user, 2026-11-19 (M3 T6's start):
 65. **T6 kept whole** (offered: T6a the setup and the stub, T6b the loading bar; or the bar
     first): one session and one pull request.
 
+The user, 2026-11-19 (M3 T7's start):
+
+66. **T7 kept whole** (offered: the closure now and M4's refinement in a later session; or the
+    reviews and fixes first, the replay, the archive and M4 later): one session, as M2 T8.
+67. **M3's review list accepted with the reviewers' changes, fixed in T7** (offered: bugs only,
+    or the fixes as M4's first task): items 1, 4 (into 12), 9, 13, 16, 20, 21 and 22 reworded,
+    Page Up's negative index and the list's ASCII fold added (`E27-archive.md`); the fixes of the
+    three reviews in T7: a row or name held while a box opens let go without its click, the list's
+    keys dropped under a held button (read: its own loop, 0x456341), a double press only on the
+    same map, Begin taking the open edit's name, CLT-Q93 (b) built (decision 13), a random map's
+    seats with the generate flag, the begin's guard on a computer-only colour, the window's
+    `begin` word refused, the stubs' marker, the stale comments; a file `h3_map::read` refuses
+    left out unlisted and the list's held keys unrecorded (M4's, its load mode's list).
+68. **The oddities the review found** (each as recommended but CLT-Q151): the description's
+    scroll kept while the map stays (CLT-Q148 (b)); Up and Down bring the page to the selection
+    first (CLT-Q149 (b)); a row takes the press over its whole width (CLT-Q150 (b)); a map's name
+    and description whole in the client's profile, the record's 60 and 300 bytes for the
+    comparisons (CLT-Q151 (b)); the advanced options' rows made again whenever the map given to
+    the game changes (CLT-Q152 (b)); a bonus kept across a map change, E10 told (CLT-Q153 (a)); the
+    random map's count above its cap copied (CLT-Q154 (a)). Built in T7.
+69. **M4 refined** (M4 T0 at M3 T7): M4 the screens around play but outside it, a new **M5 in
+    play** (the system options and the menu in play, Save from play, Restart, the end of a
+    scenario) refined once the shell hosts play (E24 M5), so decision 7's four milestones are five
+    (CLT-Q155 (a)); a save is the engine's adventure replay extended with the setup's choices (each
+    colour's human flag, town and hero pick: the adventure lane's format, its inbox told) and a
+    table of the client's own (the names, bonuses, handicaps, the turn's duration) (CLT-Q156 (a));
+    M4's task table as proposed (below).
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -486,7 +511,7 @@ SoD) the shipped installation decides; E11 owns historical differences.
 - **Load Game and Save Game:** the lists, the dialogs, the engine's adventure record as the file
   (decision 8).
 - **Options:** the system options dialog (volumes, speeds, the original's settings), wherever the
-  original reaches it (T1b: the adventure screen alone; M4's with the menu in play, decision 44). From E17 (placed at its M7 T4): the volume settings (0x5996C0) and a
+  original reaches it (T1b: the adventure screen alone; M5's with the menu in play, decisions 44 and 69). From E17 (placed at its M7 T4): the volume settings (0x5996C0) and a
   track resuming where it stopped (0x59AA82), the client's own options beside the original's
   (CLT-Q25's step of a two-hex stack one hex back by the mouse, a gameplay option off by
   default); `lanes/client/NOTES.md`, "Options and layouts". The settings in the client's own
@@ -520,8 +545,9 @@ tasks are refined here.
 | M0 | Refinement with the user (done 2026-11-12: decisions 4 to 8, CLT-Q79 to CLT-Q83) |
 | M1 | (closed 2026-11-13) **Reading and captures:** the catalogue of the original's screens, each with its entry points, transitions, assets, texts (table and record) and sounds; the clips cut from the user's `VIDEO.VID`; the harness on every screen and its captures; the traps list; the questions the reading finds |
 | M2 | (closed 2026-11-16) **The start and the menus:** the Smacker decoder (decision 5); the clips at start and their sound; start-up loading by the LODs' tables (CLT-Q2); the main menu, New Game, Load Game's choice, Multiplayer and the hot seat's names, Quit's question, their hover, press, sounds and music, exact against the captures; the shell's state machine with a headless driver (the text client first, E17's pattern) |
-| M3 | (refined 2026-11-16) **A game's setup:** scenario selection, the players' setup, the advanced options, the game's begin (the filled `GameSetup` kept for E24 M5, CLT-Q135; the stubs of decision 6) |
-| M4 | **Around play:** Save and Load (the engine's record), the system menu in play and Options, one dialog (with the map-client lane; decision 44), the end of a scenario's screens, high scores, credits |
+| M3 | (closed 2026-11-19) **A game's setup:** scenario selection, the players' setup, the advanced options, the game's begin (the filled `GameSetup` kept for E24 M5, CLT-Q135; the stubs of decision 6) |
+| M4 | (refined 2026-11-19) **Around play, outside it:** High Scores, Credits, the save file (the engine's record with the setup's choices, decision 69), Load Game single and hot seat |
+| M5 | **In play** (decision 69; refined once the shell hosts play, E24 M5): the system menu in play and Options, one dialog (with the map-client lane; decision 44), Save from play, Restart, the end of a scenario's screens |
 
 ### M1 — reading and captures (closed 2026-11-13)
 
@@ -536,122 +562,32 @@ Tasks T1 to T8 and the review list (accepted at T8 with its changes, decisions 4
 `E27-archive.md` (verbatim); the build record: `E27-log.md`; the readings: `E27-design.md` §7 to
 §17. The shell's frame, its start, menus, stubs, Multiplayer dialog and edits are M3's ground.
 
-### M3 — a game's setup (refined 2026-11-16, M3 T0 at M2 T8)
+### M3 — a game's setup (closed 2026-11-19)
 
-Decisions 4, 6 and 44 bind it: the scenario screen fills the engine's `GameSetup` through the
-engine's own functions (4); what the engine lacks is drawn and chosen, its effect a `CLT-STUB`
-(6); every shipped map listed, each read whole, Begin's hand-over a notice until E24 M5, Options
-M4's (44). Each screen is exact against its group's shots (`scenario`, `advanced`; recorded again
-at M2 T8), with the sound sequences its task records; each of design §6.4's recipe fixes is
-recorded by the task that builds its screen (`h3shell.py run --only <id> --record`). The
-catalogue: design §3; the shell's frame, menus, edits and the hot seat's names: M2's
-(`E27-archive.md`).
+Tasks T1a to T7 and the review list (accepted at T7 with its changes, decisions 67 and 68):
+`E27-archive.md` (verbatim); the build record: `E27-log.md`; the readings: `E27-design.md` §18 to
+§33. The scenario screen, its list, the advanced options, the random map's tab and the begin are
+M4's ground (its load mode reuses the list and the options' rows).
+
+### M4 — around play, outside it (refined 2026-11-19, M4 T0 at M3 T7)
+
+Decisions 8 and 69 bind it: the screens around play that need no play (High Scores, Credits, Load
+Game), a save the engine's adventure replay with the setup's choices and the client's own table
+(CLT-Q156 (a)); what play reaches (the options, Save, Restart, the end of a scenario) is M5's
+(CLT-Q155 (a)). Each screen exact against its group's shots, each of design §6.4's recipe fixes
+recorded by the task that builds its screen. The readings: design §2.8, §2.9, §3.1 to §3.6 (the
+load mode), §3.12 to §3.14 (a load's rows).
 
 | Task | Scope | Status |
 |---|---|---|
-| T1a | The scenario screen's frame and its information panel (§3.1, §3.2, §3.5's drawing, §3.8; decision 45): the new-game mode of a single scenario, the list hidden; both backgrounds; the kept map's name, description, victory and loss, the flags, the size, the map's difficulty and the rating; the panel buttons (caption buttons), Begin and Back, their press, hold and popups; Back and Escape; the maps read whole; exact against `scn-new` but `list-shown`; M2's leftover (found met: `Key::Other`) | **done** 2026-11-17: `h3_view::shell::scenario` (`Scenario`, `Entry`, `Texts`, `sort`), `Front::Scenario`, `Menus::scenario`, `menu::Arrow` (CLT-Q137 (b), decision 46: the original's arrow for the comparisons only), `look::ScenarioLayout`, the replay's `with_backgrounds` (a recipe's `backgrounds`); `h3_ui::ui::Caption`; `h3-battle-client`'s `maps` and the shell's `--backgrounds`; the layout's `[scenario]`, `[adventure_cursor]`; the keys `shell.scenario.*`; `scn-new` 30 of 31 exact; log "M3 T1a", design §18 |
-| T1b1 | The list (§3.3, §3.4; decision 47): its panel and the toggle (128), the rows and columns, the sort, the size filters, the list's keys and scroll bar, a row's press and double press; exact against `scn-new`'s `list-shown`, `scn-list-keys`, `scn-sort`, `scn-filter` (§6.4: `up-past-top` with Page Up first) | **done** 2026-11-17: `h3_ui::scrollbar` (`H3DlgScrollbar` read whole); the screen's list (`ListLook`, `sort_by`, `list_names`, `Scenario::clock`, `Front::clock`), the keys `Command::List`, the replay's Prior and Next, the viewer's `--maps`; CLT-Q138 (b), decision 48 (the original's partial redraw, for the comparisons); `scn-list-keys` recorded again; 59 of 67 exact, the 8 others the ties' order (decision 12); log "M3 T1b1", design §19 |
-| T1b2 | The list's right press (§3.8; decision 47): the popups on the columns, the filters, the bar, a row (nothing), the labels and the texts, the flags' strip's teams dialog (387, 0x576540); GENRLTXT 503 in a shot (design §19.6); exact against `scn-right` | **done** 2026-11-17 (decision 49: whole): `HELPED` (the labels, the filters, the columns, the bar `BAR`), the teams' dialog (`TEAMS`, `TeamsLook`, `Teams`, the layout's `[scenario.teams]`, `h3_view::message::frame` public); `scn-right` 30 of 30 exact; GENRLTXT 503 found a network game's alone (design §20.3: to `CLT-STUB-6`, no shot); log "M3 T1b2", design §20 |
-| T2a | The difficulty (§3.5; decision 50): the presses (107 to 111) and the rating, the opening's difficulty, the victory's text of goals 0, 4, 5 and 10; exact against `scn-difficulty` (`reopened` added), `scn-info` | **done** 2026-11-17: `OPENING_DIFFICULTY` (Normal at each opening: the record's +0x33C), `choose`, `maps::STANDARD_ALWAYS` (`victory_standard_set` 0x4BF780); `scn-difficulty` 9 of 9, `scn-info` 21 of 21 exact; log "M3 T2a, T2b", design §21.1 |
-| T2b | The empty list and Begin's messages (§3.5, §3.6; decision 50): the empty list's panel, its teams' dialog, a difficulty's press over it, GENRLTXT 530; exact against `scn-begin-none` (its strip and a press added), `scn-begin-filter` up to its load, `scn-empty-filter` (new) | **done** 2026-11-17 (CLT-Q139 (b), decision 51): `show_empty`, `begin`, `Over::Notice` (the box's default arrow), `Texts::no_maps`, the key `shell.scenario.no-maps`; `scn-begin-none` 7 of 7, `scn-begin-filter` 6 of 6 up to its load, `scn-empty-filter` 5 of 5 exact; log "M3 T2a, T2b", design §21.2, §21.3 |
-| T2c | The description's scroll bar (§3.5; design §18.1, §21.5; decision 50): `H3DlgScrollableText`'s path for a text longer than its box (0x5BA19E) read and built; no shipped map reaches it, so a map of the harness's own with a longer description (made from a shipped one) and a recipe of it; exact against that recipe | **done** 2026-11-17: `scenario::description` (`Description`, `DescriptionLook`, `[scenario.description]`), `h3_render::text::split_lines` (0x4B5B90), `h3_ui::scrollbar`'s keys (0x596230), `Scroll::Left`/`Right`; the kept map carried (`Menus::front`); the harness's `made` maps; `scn-long-text` 36 of 36 exact; CLT-Q140 asked; log "M3 T2c", design §22 |
-| T3a | The advanced options' panel and rows, the town's and the bonus's arrows and popups (§3.12 to §3.15; decision 53: T3 cut in three by recipe): the panel, the headers, the duration's text and bar drawn; a row per colour that plays; the records (`GameSetup`'s choices at T6: `PlayerStart.choice`), the bonus a `CLT-STUB`; exact against `adv-single-town` | **done** 2026-11-18: `scenario::advanced` (`Advanced`, `AdvancedLook`, `AdvancedTexts`, `Record`, `Bonus`), `Scenario::records`, the layout's `[scenario.advanced]`, the seats' factions and flags, `h3_ui::scrollbar`'s horizontal draw, `CLT-STUB-9`; CLT-Q140 (b) built (decision 52); `adv-single-town` 27 of 27 exact, `adv-single-hero` and `adv-single-maps` exact but the hero's box; log "M3 T3a", design §23 |
-| T3b1 | The hero's arrows and a hero's portrait and name (§3.14, §3.15; decision 54): the engine's offer from each map's import, the pick into the records, the heroes' small portraits, the main heroes' and the map's names, Random's popup, CLT-Q112's rows; exact against `adv-single-hero`, `adv-single-maps` but a hero's popup | **done** 2026-11-18: `scenario::Heroes`, `CustomHero`, `Entry::heroes`, `MainHero::portrait` (CLT-Q141 (b), decision 55), the options' hero list, step, show and name (CLT-Q142 (b), decision 56), Random's popup; `h3-battle-client`'s `maps::rules`, `maps::heroes` (`h3-files`, `h3-game` dependencies); the asset tables' `small_portrait` (the harvest's +0x30); `adv-single-hero` 26 of 28, `adv-single-maps` 11 of 13 exact (the four hero popups T3b2's); log "M3 T3b1", design §24 |
-| T3b2 | A hero's own popup (§3.15, design §24.3: `scenario_hero_popup` 0x575A90 read whole: the name, the portrait, the class and level, GENRLTXT 78 and 79's headings, the specialty's picture and text); exact against `adv-single-hero`, `adv-single-maps` | **done** 2026-11-18: `advanced::own_hero_popup`, `HeroPopupLook` (`[scenario.advanced.hero_popup]`: 320 × 256 at (250, 172)), `AdvancedTexts`' `hero_popup`, `hero_line`, `hero_classes`, `specialties`; the keys `shell.advanced.hero-popup.*`, the family `hero-specialty`, `hero-class` listed by the battle client; the classes from the game's rules; `adv-single-hero` 28 of 28, `adv-single-maps` 13 of 13 exact; the harness without `TMPDIR` for Wine; log "M3 T3b2", design §25 |
-| T3c1 | The flags' hover and press (single: `scenario_flag_click` 0x58B790, CLT-Q93), the handicap (single: shown, no press), the name's edit (353, `scenario_name_click` 0x58B620) (§3.13, §3.14; decision 57; the handicap a `CLT-STUB`, decision 6); exact against `adv-single-rest`'s first ten shots (`flag-hover-own` to `name-after-flag`) | **done** 2026-11-18: the flags' hover and press (`Advanced::hover`, `flag_click`; the screen's flags from the moved colour, `Scenario::team_flags`), the name's edit (`EDIT`, the layout's `edit`, `name_click`, its keys by scan code and by the key table and text input, `Scenario::typing`, `contexts`, `typed`), the handicap drawn up (`CLT-STUB-10`); the original's strip after a flag's press and the edit's piece as stale rectangles (CLT-Q143 (b), decision 58); `adv-single-rest`'s first twelve shots exact; log "M3 T3c1", design §26 |
-| T3c2 | The duration's bar's input and texts (`scenario_duration_scrolled` 0x57C7F0), the items' hints (`HELPED`) (§3.13 to §3.15; decision 57; the timer a `CLT-STUB`, decision 6); exact against the rest of `adv-single-rest` (§6.4: `popup-hero-arrow` recorded again on row 2's arrow) | **done** 2026-11-18: `h3_ui::scrollbar`'s horizontal input (the press's thumb 16 wide), the duration's bar (`Advanced::bar_press`, `bar_moved`, `bar_release`, `scrolled`; no page: the layout's `step` 0), `Scenario::duration`, `CLT-STUB-11` (no timer); `HELPED`'s headers, label and bar, `COLOUR_HELPED`, the right press past an item not enabled; the keys `shell.scenario.help.*`; `popup-hero-arrow` after the row's town (its hero's arrows hide under Random); `adv-single-rest` 39 of 39 exact; log "M3 T3c2", design §27 |
-| T4a | The hot seat's screen and advanced options as they open (§3.12 to §3.14; decision 59): the entry from the Multiplayer dialog's names (`Multiplayer::names`, M2's item 61), two to eight human records, the list of the maps two humans may play, each colour a human may play to the next name, the rows (the names, the handicap a caption button, the arrows by the hot seat's rules), the flags' strip from the first player's colour, Back; exact against `adv-hotseat`, `adv-hotseat-rows`' and `adv-hotseat-two`'s `panel` | **done** 2026-11-18: `Scenario::opened_hot_seat`, `hot_seat`, `Entry::first_human`, `Menus::front`'s hot seat; `Advanced::seated`, its human records (`Human`, the single player's the first), `seat_humans`, `row_items` (the handicap's caption), `takes` by the mode; `Screen::Scenario(New, Multiplayer)` built whole (no longer a stub); the layout's `handicap_caption`, the keys `shell.advanced.handicap.*`; `adv-hotseat`'s `backgrounds`; `adv-hotseat` 8 of 8, both panels exact (also `handicap-3`, `handicap-popup`, `flag-hover-green`; `hotseat-names`' and `hotseat-long`'s screen shots); log "M3 T4a", design §28 |
-| T4b | The hot seat's presses (§3.6, §3.14, §3.15; decision 59): the handicap's (+1 modulo 3, `handicap_names`), the flags' cycle (CLT-Q94, decision 13: the client's; the original's `hot_seat_colour_cycle` for the comparisons), a hero another human record holds passed over and stepped on (`scenario_hero_step`, `scenario_heroes_unclash`), the name's press taking nothing, Begin's GENRLTXT 83 and 531; exact against the rest of `adv-hotseat-rows` and `adv-hotseat-two` | **done** 2026-11-18 (CLT-Q144 (b), CLT-Q145 (c): decisions 60, 61): `Advanced::cycle` (the original's, as recorded: the holder's index + 1, the colour pressed last and the kept one), `pass` (CLT-Q94's exchange), `step_handicap` (the client's caption the record's), `held_elsewhere`, `unclash`, `refusal` (`Refusal`), `seating`; the screen's Begin over a map (`Texts::unplaced`, `too_few`; the keys `shell.scenario.unplaced`, `too-few`), the box's close keeping the screen as it was; `adv-hotseat-rows` 12 of 12, `adv-hotseat-two` 7 of 7, `adv-hotseat-begin` 7 of 7 up to its begin exact; log "M3 T4b", design §29 |
-| T5a | The random map's tab drawn and its left presses (§3.16; decision 62): the toggle (130) with the list and the options hidden, `RanMapBk.pcx` and items 280 to 335, the titles; every choice, the caps and disabled counts, the levels; the own record in the panel (GENRLTXT 741, 742, the flags), built again by the counts; the size mark (CLT-Q115 (b)); exact against `adv-random` from `tab` to `monsters-random` | **done** 2026-11-19: `scenario::random` (`RandomMap`, `Choices`, `Pressed`), the screen's `toggle_random`, `random_built`, `random_click`, `random_size_mark`, `shown_entry` (the panel, the game and the advanced options read a chosen random map's record), `Texts::random`, `random_showing`, `random_map`; the layout's 103, 280 to 335, 1040, 1041; the keys `shell.scenario.random-*`; the tab's hidden items out of the mouse's dialog; the record built at each opening in the client's profile (CLT-Q111 (b)); CLT-Q146 asked (built as the original's); `adv-random` 45 of 52 exact (the 44 and `show-hover`); log "M3 T5a", design §30 |
-| T5b | The rest of the random map's tab (§3.16; decision 62; CLT-Q92): the items' right press and hints, Show Random Maps (335: the random maps' list, kind 1, empty), the tab toggled back after it (CLT-Q111 (b)), the list's showing over a chosen random map (design §30.4), Begin with a random map chosen (a stub's message); CLT-Q146's answer; exact against the rest of `adv-random` (§6.4: Begin after `tab-again`, recorded by this task with `h3shell.py run --only adv-random --record`) | **done** 2026-11-19 (kept whole; CLT-Q146 (b), CLT-Q147 (b): decisions 63, 64): `random::HELPED` (the keys `shell.scenario.help.random-*`), `RandomMap::heights`; the screen's list kind (`random_list`, `toggle_list(random)`), the panel over an empty list (`blank_panel`, `show_with`; `give_to_game` and `select` of none as the original's), `random_built` setting the description and flags, Begin's stub (`Texts::random_stub`, `stubbed`, `CLT-STUB-12`, `shell.stub.random-map`), the replay stopping under it; `adv-random` recorded with Begin (53), `adv-random-list` new (12); `adv-random` 52 of 53 exact (the replay stops at `begin` under the stub), `adv-random-list` 12 of 12; log "M3 T5b", design §31 |
-| T6 | The game's begin (§3.17, §2.1; CLT-Q95, CLT-Q135): the setup built and validated by the engine (a refusal shown), the loading bar (`loadbar.pcx`, `loadprog.def`; the client's steps), the begin's notice (a `CLT-STUB`) and back to the menu, the setup kept for E24 M5 (the map-client lane's inbox); exact against `adv-begin` and `adv-hotseat-begin` up to the bar | **done** 2026-11-19 (kept whole: decision 65): Begin, Enter and a row's double press end the screen, `Scenario::begun` (`Begun`, `Advanced::begun`); `h3-battle-client`'s `begin` (`GameSetup` from the import and the records, `validate`, `begin::Game` kept for E24 M5); `h3_view::shell::play` (`Play`, `Front::Play`, `LoadingLook`, the layout's `[loading]`; `Screen::Play` built), `start::faded`; the keys `shell.stub.play`, `play-refused` (`CLT-STUB-13`); both recipes' `bar` clip (new: the full bar fading, 2 frames) exact, their shots up to it as before; log "M3 T6", design §32 |
-| T7 | M3's closure: a fresh reviewer, the review list, M4's refinement (M4 T0: the saves' record and its extension, decision 8; Options with the menu in play, CLT-Q136; the load and save modes with §6.4's recipes for them) | after T6 |
+| T1 | High Scores (§2.8): the dialog, both tabs and their buttons, the eleven creatures stepping every 200 ms (the adventure map's DEFs by `high_score_creatures`), Reset's question (GENRLTXT 667), the client's own scores file (the defaults `CampHigh.txt`'s; never `HiScore.dat`), M2's stub lifted; exact against `scores-tabs`, `scores-reset` | next |
+| T2 | Credits (§2.9): `Credits.fnt`, `Credits.txt`'s two records wrapped to 328 px, the scroll of 2 px ten times a second (CLT-Q88), the closing text's moment read from the kept frames, a key (but F4) or a press ending it, M2's stub lifted; exact against `credits-scroll`, `credits-end` | after T1 |
+| T3 | The save file (decision 69): the engine's adventure replay with the setup's choices (the adventure lane's format, its inbox told; this lane cross-lane with the user's consent should it not be built yet) and the client's table (the names, bonuses, handicaps, the turn's duration, the save's name), written and read with its version; a load's setup rebuilt and its commands replayed by the engine; tests, no screen | after T2 |
+| T4 | Load Game single (§3.1, §3.3 to §3.6, the load mode): the client's saves listed (the map's header, the date, the difficulty shown, the turn's duration), the keys, the sort, Delete's question (688), the notice with none (686), Load's popup, the load to play's stub (as M3's begin); §6.4's fixes (the date's order: a day above 12 and a pinned time zone; a save of another size; Delete of the last save) and M3 T7's leftover (the list's held keys); exact against `scn-load`, `scn-load-none` (the viewer given client saves made to match the recipe's) | after T3 |
+| T5 | Load Game hot seat (§3.12 to §3.14, a load's rows: the saved choices, no arrows; §6.4's Random Map button in a load): exact against `mp-load`, `adv-load` | after T4 |
+| T6 | M4's closure: a fresh reviewer, M4's review list to the user, M4 to the archive, M5's refinement once the shell hosts play (else its prerequisites recorded) | after T5 |
 
-**M3's review list** (the agent's calls, *provisional*, for T7): (1) the maps read whole
-(`h3_map::read`: the 160 in about 0.15 s in release, 2026-11-16), no header-only read in
-`h3-map`; T1a reads them once, at the shell's start (the original at each opening); (2) T1a: what
-the redraw draws itself (the name, the texts and marks) and the original's unnamed items (its
-100s) as layout items of the client's own ids (1000 on, no hint or right press); (3) T1a: the
-background's draw given to the replay by a recipe's `backgrounds` (the original's under the
-harness), the window's from the system's randomness; (4) T1a: the description as one label of
-width − 3 while it fits (design §18.1); (5) T1a: the caption buttons as a `caption` of
-`h3_ui::ui::Button` (the foundation, additive); (6) T1b1: the list's rows drawn by the screen
-from a row template (`[scenario.list]`), the bar a `h3_ui::scrollbar` beside the dialog (not a
-dialog item: a new `ui::Item` variant would change the map-client lane's code), drawn after the
-items; (7) T1b1: a row's double press timed on the shell's clock given by the window and the
-replay (`Front::clock`, the screen's opening its first time); (8) T1b1: the original's partial
-redraw reproduced from the items' order and a stale rectangle (design §19.4), not a screen kept
-between frames; (9) T1b2: the teams' dialog's items under the client's ids (the original's −1:
-the title 1, the names 2 on, the flags 10 on), none without a selection (T2's empty list), the
-list's bar's right press tested before the items' (design §20.1, §20.2); (10) T2a: the
-header's read's standard victory (`victory_standard_set` 0x4BF780) applied by the client's map
-reading (`maps::STANDARD_ALWAYS`), the game's rule left to E10; (11) T2b: the game's map kept as
-the last entry shown (`Scenario::game`, a copy) for the original's leftovers over an empty list;
-Begin's message a box of the screen's own (`Over::Notice`), its default arrow through `hovers`;
-(12) T2c: the description as one label of the lines shown (a highlight closed at a line's end),
-the fitting case through the split too; its bar drawn after the items; the key's step at once
-(the original's 60 ms with the arrow pressed not drawn); a description cut at 300 bytes (the
-record's next bytes not read); the harness's own maps by path in `--maps`. (13) T3a: the
-advanced options' items made by the code from a row template (`[scenario.advanced]`, the DEFs'
-`{}` the colour's letter) and moved to their rows at each showing; what a row draws itself after
-the dialog's items, its items drawn again over its bar (the original's order); the screen handing
-the mouse a dialog without the options' hidden items (`mouse_dialog`) rather than the shared input
-passing over hidden items; the records kept in the screen (`Scenario::records`) for T6's
-`GameSetup`; the popups' pictures centred by the layout (`picture = [104, 60]`: 48-pixel
-pictures); the horizontal scroll bar drawn by symmetry (*provisional* until T3c's presses).
-(14) T3b1: the offers computed at the shell's start from each map's import with the repository's
-packs (`maps::rules`: base, ab, sod, `base:faithful`; a map that does not import offers none) and
-kept in the entry (`Heroes`: 8 × 9 lists), not the setup itself (T6 imports the chosen map again);
-the record keeps the hero type, not the original's index; the small portraits in the asset tables
-by hero type (`small_portrait`), the campaign heroes' seven portraits not tabled (not drawn).
-(15) T3b2: a hero type's class taken from the game's rules (`rules.core().hero_types()`, the
-engine's class number into the catalogue's `hero-class`), not the asset tables; the popup's
-"%s - %s" the catalogue's format resolved once with U+0001 and U+0002 for the name and the class
-(`HERO_NAME`, `HERO_CLASS`), filled at the popup (the screen holds no catalogue); `un44.def`'s frame
-the hero type (the original's modulo of its 156 frames not done: no type past them).
-(16) T3c1: the name's edit an item of every colour (the original's constructor adds it single only:
-the hot seat's T4 leaves it hidden); in the client's profile, while the edit is open, Begin's
-command closes it as the original's Enter, Back's is the screen's, every other key the edit's; the
-original's piece (CLT-Q143) and the flag press's strip as stale rectangles; the name kept in the
-screen, not carried to the next opening (no settings: M4); the screen's flags read the options'
-single player's colour while its rows are as made, else the map's. (17) T3c2: one key a group
-for the eight colours' hints (`COLOUR_HELPED`: the first colour's `Help.txt` record; the eight
-records one text in both LODs), not one a record; the duration's bar drawn and pressed by the
-options beside the dialog's items (as the list's, item (6)); the right press passing over an item
-not enabled through `Advanced::takes` (a single player's handicap) rather than a state bit.
-(18) T4a: the human records a list in the options (`Advanced`'s `humans`: the single player's the
-first, the hot seat's the names'), the mode a flag of the options and of the screen; the hot
-seat's list filtered at its opening from the list read at the shell's start (the original reads
-the files at each opening); the handicap's caption the item's text, set at the showing where
-none is (the press sets it: T4b); the hot seat's records new at each opening (as single's).
-(19) T4b: the original's cycle reads the holder's +0x74 as its index (recorded; its writer not
-found); its restore keeps the holder's town and hero type (the original's index into the new
-colour's list not modelled: no recording reaches it); the client's exchange gives both movers a
-Random town and hero; the clash's step built though unreachable; Begin's check before the first
-showing reads the colours the showing will give; the client's caption set at each refresh of
-the rows (`Advanced::refresh`); Begin's box closed without the screen drawn again whole.
-(20) T5a: the tab's items in the layout one by one (`[scenario.dialog]`, not made by code: no
-row template); the random map's record an `Entry` the screen builds (`RandomMap::build`), not a
-header read; the screen reading it before the selection (`shown_entry`) wherever the original's
-`scenario_to_game` and `scenario_entry_name` read +0x38C; the size mark of the client's profile
-set from the choice at each press (no record built by a size's press); the tab's hidden items out
-of the mouse's dialog (as the options', item (13)); the advanced options' records made again at
-their next showing after a build (the original's `scenario_players_init` at once).
-(21) T5b: the random maps' list a flag of the screen (`random_list`), the client's own random maps
-none (no folder read); the panel's header and flags passed apart to `show_with` for the original's
-list showing (CLT-Q147) rather than a game record kept apart from the entry shown; the client's
-profile over any empty list showing no description (decision 51 extended: the random maps' list
-leaves the random map's); Begin's stub over the screen as Begin's other messages (`Over::Notice`),
-told from them by a random map chosen; the tab's 56 records one key each.
-(22) T6: the setup built by the adapter at play's start (`h3-battle-client`'s `begin`: the map read
-and imported again, not kept from the list's read) in three steps of the bar, then the bar filled
-at once; the engine's refusal (none on the shipped maps the recipes play) shown after the fade as
-play's notice in the client's words, its OK the main menu (the original has none: its load
-failures' message, the tutorial's GENRLTXT 743, leads to its menu); play's stub the main menu
-under its notice (`STUBS`), `Screen::Play { restart: false }` built whole and the replay stopping
-under the notice (`Play::noticing`, as the random map's Begin); no busy cursor on the loading
-screen; the kept game (`begin::Game`) in the window's state alone, printed as play's stub ends;
-the replay builds no setup (its frames do not depend on it).
+**M4's review list** (the agent's calls, *provisional*, for T6): none yet.
 
 ## Dependencies and boundaries
 
@@ -659,7 +595,7 @@ the replay builds no setup (its frames do not depend on it).
   they are; this epic adds screens, not a second renderer. `h3-bink` decodes the Bink clips.
 - **E24 M5 (hot seat)** starts its game from the filled `GameSetup` (decision 4); what else the
   hand-over carries (the hot seat's names, the map's file) is agreed with the map-client lane at
-  M3's T0 within the existing crates. The system menu in play (M4) draws over E24's screen.
+  M3's T0 within the existing crates. The system menu in play (M5, decision 69) draws over E24's screen.
 - **E10** (adventure lane) adds the starting bonus, the handicap and victory and defeat to the
   engine; **E13** the computer players; until then the stubs of decision 6.
 - **The engine and the server** own what a game is: the shell builds a game's setup and hands
@@ -680,4 +616,4 @@ the replay builds no setup (its frames do not depend on it).
   banks on 148 maps among them); the list shows every map as the original's (decision 44), so a
   game's begin starts maps that cannot yet be played as the original's (every map's game builds
   at the census's seed; M3's begin shows an engine refusal should one come).
-- **Unknown size:** the screens are listed from the code at M1; M2 to M4 are a sketch until then.
+- **Unknown size:** the screens are listed from the code at M1; M2 to M5 are a sketch until then.

@@ -73,6 +73,7 @@ enum State {
 }
 
 /// Play's start: the loading screen, then the stub's menu under its notice.
+// stub: CLT-STUB-13 (play: the game kept for E24 M5)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Play {
     count: u8,

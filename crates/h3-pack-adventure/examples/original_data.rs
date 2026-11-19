@@ -34,7 +34,16 @@
 //! resources; the reward's count with `bank_reward_creatures`' creature, 0 none; the four artifact
 //! counts); it is entered and visited from above as the class lists say; a search exactly for 24,
 //! 84 and 85 (with a looted bonus exactly then), on the deck exactly for 24 and 85, from the coast
-//! exactly for 85. Fails with the mismatches of the first check that has any.
+//! exactly for 85. Since E08 T132a2 the trades and services (increment 14's design note §6; survey
+//! `docs/rules/surveys/E08-trades.md` §1, §4, §13): the seven classes (2, 7, 35, 99, 106, 213 and
+//! 221) have their types of their kinds, and no other type has one of the four kinds, each
+//! entered and visited from above as the class lists say; the market's values and factors equal
+//! the executable's tables (`resource_values`, `resource_values_artifacts` and the three factor
+//! tables' binary32 bit patterns at counts 1 to 10); the Hill Fort's percents its gold factors;
+//! every creature with an upgrade in the packs is a town's unupgraded creature and its first
+//! upgrade the town table's upgraded one (`creature_is_unupgraded`, `creature_upgrade`); the Altar
+//! and the Hill Fort set the kind mark (check 6). Fails with the mismatches of the first check that
+//! has any.
 //!
 //! `cargo run -p h3-pack-adventure --example original_data -- original-data/install`
 //!
@@ -145,6 +154,29 @@ const BANK_KINDS: [Class; 11] = [
 ];
 /// `CrBanks.txt`'s guard count columns, one per guard slot.
 const BANK_GUARD_COLUMNS: [usize; 4] = [3, 6, 8, 10];
+/// The executable's market values, seven `u16`s in the original's resource order (E08 T132a2).
+const RESOURCE_VALUES: u32 = 0x0068_C482;
+/// The executable's artifact purchase values, seven `u16`s.
+const RESOURCE_VALUES_ARTIFACTS: u32 = 0x0068_C492;
+/// The executable's market factor tables (binary32 by count, index 0 unused): the resources',
+/// the artifacts', the creatures'.
+const MARKET_RATES: [u32; 3] = [0x0067_8344, 0x0067_8370, 0x0067_839C];
+/// The executable's Hill Fort gold factors (binary32 by zero-based creature level).
+const HILL_FORT_GOLD_FACTORS: u32 = 0x0063_EB4C;
+/// The seven trade classes, their types and kinds (increment 14's design note §1, §3 to §5; 221
+/// the snow Trading Post, typed as 99).
+const TRADE_CLASSES: [(u32, &str, &str); 7] = [
+    (2, "base:altar_of_sacrifice", "altar"),
+    (7, "base:black_market", "market"),
+    (35, "base:hill_fort", "hill fort"),
+    (99, "base:trading_post", "market"),
+    (106, "base:war_machine_factory", "factory"),
+    (213, "ab:freelancers_guild", "market"),
+    (221, "base:trading_post", "market"),
+];
+/// Increment 14's types whose visit sets the team's kind mark (the original's k 28 and k 14).
+const TRADE_KIND_MARKED: [&str; 2] = ["altar_of_sacrifice", "hill_fort"];
+
 /// The resources in the original's order (the record's +0x38, `CrBanks.txt`'s columns 13 to 19).
 const RESOURCES: [&str; 7] = [
     "base:wood",
@@ -459,10 +491,37 @@ fn check(files: &[PathBuf; 8]) -> Result<String, Vec<String>> {
         [&not_entered, &from_above],
     )?;
 
+    // 8. The trades and services (E08 T132a2).
+    let words = |va: u32, what: &str| {
+        exe.u16s(va, 7)
+            .ok_or_else(|| vec![format!("{what} ({va:#x}) is not in the executable's image")])
+    };
+    let values = [
+        words(RESOURCE_VALUES, "resource_values")?,
+        words(RESOURCE_VALUES_ARTIFACTS, "resource_values_artifacts")?,
+    ];
+    let rates = MARKET_RATES
+        .iter()
+        .map(|&va| table(va, 11, "a market factor table"))
+        .collect::<Result<Vec<_>, _>>()?;
+    let hill = table(HILL_FORT_GOLD_FACTORS, 7, "hill_fort_gold_factors")?;
+    let trades = trades(
+        &core,
+        &part,
+        Tables {
+            values,
+            rates,
+            hill,
+            town_creatures: &town_creatures,
+        },
+        &creatures,
+        [&not_entered, &from_above],
+    )?;
+
     Ok(format!(
         "{} dwelling types match {} CrGen1 + {} CrGen4 rows, their Objects.txt footprints and \
          the executable's creatures; the {} factions' random dwelling tables match the \
-         original's derivation ({} outcomes); {teleporters}; {bonuses}; {banks}",
+         original's derivation ({} outcomes); {teleporters}; {bonuses}; {banks}; {trades}",
         types.len(),
         rows[0].1.len(),
         rows[1].1.len(),
@@ -709,6 +768,7 @@ fn garrisons_and_bonuses(
         .filter(|b| b.2)
         .map(|b| b.1)
         .chain(KIND_MARKED.iter().map(|k| k.1))
+        .chain(TRADE_KIND_MARKED)
         .map(|key| format!("base:{key}"))
         .collect::<BTreeSet<_>>();
     let marked = part
@@ -934,6 +994,174 @@ fn level_text(core: &Ruleset, level: &BankLevel) -> String {
     )
 }
 
+/// The executable's tables check 8 reads.
+struct Tables<'a> {
+    /// The market values and the artifact purchase values, by resource.
+    values: [Vec<u16>; 2],
+    /// The three factor tables' bit patterns, by count from 0.
+    rates: Vec<Vec<i32>>,
+    /// The Hill Fort's gold factors' bit patterns, by zero-based level.
+    hill: Vec<i32>,
+    /// `town_creatures`, `faction × 14 + level` (0 to 6 unupgraded, 7 to 13 their upgrades).
+    town_creatures: &'a [i32],
+}
+
+/// Check 8 (E08 T132a2): the trades and services against the executable (the class lists
+/// `lists`: not entered, from above; the tables; `creatures` by original id).
+fn trades(
+    core: &Ruleset,
+    part: &AdventureRuleset,
+    tables: Tables<'_>,
+    creatures: &BTreeMap<i32, CreatureTypeId>,
+    lists: [&[i32]; 2],
+) -> Result<String, Vec<String>> {
+    let mut mismatches = Vec::new();
+    // The types by class, their kinds and visits; no other type of the four kinds.
+    let kind_name = |kind: &ObjectKind| match kind {
+        ObjectKind::Market(_) => Some("market"),
+        ObjectKind::Altar(_) => Some("altar"),
+        ObjectKind::HillFort(_) => Some("hill fort"),
+        ObjectKind::WarMachineFactory(_) => Some("factory"),
+        _ => None,
+    };
+    for (class, key, kind) in TRADE_CLASSES {
+        let Some(ty) = part
+            .object_type_by_key(key)
+            .and_then(|id| part.object_type(id))
+        else {
+            mismatches.push(format!("class {class} has no type {key}"));
+            continue;
+        };
+        let class = i32::try_from(class).unwrap_or(-1);
+        let visit = if lists[0].contains(&class) {
+            Visit::Neighbour
+        } else {
+            Visit::Enter
+        };
+        let above = lists[1].contains(&class);
+        if kind_name(&ty.kind) != Some(kind) || ty.visit != visit || ty.from_above != above {
+            mismatches.push(format!(
+                "class {class} ({key}): {:?}, {:?}, from above {}; the original's a {kind}, \
+                 {visit:?}, from above {above}",
+                kind_name(&ty.kind),
+                ty.visit,
+                ty.from_above
+            ));
+        }
+    }
+    for ty in part.object_types() {
+        if kind_name(&ty.kind).is_some() && !TRADE_CLASSES.iter().any(|c| c.1 == ty.key.as_str()) {
+            mismatches.push(format!(
+                "{} is a trade or service type of no listed class",
+                ty.key.as_str()
+            ));
+        }
+    }
+    // The market's values and factors.
+    match part.params().market() {
+        None => mismatches.push("the packs give no [params.market]".to_owned()),
+        Some(market) => {
+            let resource = |key: &str| {
+                core.resources()
+                    .iter()
+                    .position(|r| r.key.as_str() == key)
+                    .and_then(ResourceId::from_index)
+            };
+            for (i, key) in RESOURCES.iter().enumerate() {
+                let ours = resource(key).map(|r| (market.value(r), market.artifact_value(r)));
+                let theirs = (
+                    tables.values[0].get(i).copied(),
+                    tables.values[1].get(i).copied(),
+                );
+                if ours != Some(theirs) {
+                    mismatches.push(format!(
+                        "{key}'s market values are {ours:?} in the pack, {theirs:?} in the \
+                         executable"
+                    ));
+                }
+            }
+            if market.counts() != 10 {
+                mismatches.push(format!(
+                    "the market has {} counts, not the executable's 10",
+                    market.counts()
+                ));
+            }
+            for count in 1..=10u8 {
+                let theirs = tables
+                    .rates
+                    .iter()
+                    .map(|t| t.get(usize::from(count)).map(|&b| b.cast_unsigned()))
+                    .collect::<Option<Vec<_>>>();
+                let ours = market.factor_bits(count).map(Vec::from);
+                if ours != theirs {
+                    mismatches.push(format!(
+                        "the market's factors at {count} are {ours:x?} in the pack, {theirs:x?} \
+                         in the executable"
+                    ));
+                }
+            }
+        }
+    }
+    // The Hill Fort's percents.
+    for ty in part.object_types() {
+        if let ObjectKind::HillFort(fort) = &ty.kind {
+            let theirs = tables
+                .hill
+                .iter()
+                .map(|&bits| f32::from_bits(bits.cast_unsigned()) * 100.0)
+                .collect::<Vec<_>>();
+            let ours = fort.gold.iter().map(|&p| f32::from(p)).collect::<Vec<_>>();
+            if ours != theirs {
+                mismatches.push(format!(
+                    "{}'s gold percents are {ours:?} in the pack, {theirs:?} in the executable",
+                    ty.key.as_str()
+                ));
+            }
+        }
+    }
+    // Every creature with an upgrade is a town's unupgraded one, its upgrade the town's.
+    let original = creatures
+        .iter()
+        .map(|(&id, &c)| (c, id))
+        .collect::<BTreeMap<_, _>>();
+    let mut upgraded = 0;
+    for id in (0..core.creature_count()).filter_map(CreatureTypeId::from_index) {
+        let Some(info) = core.creature(id) else {
+            continue;
+        };
+        let Some(&first) = info.upgrades.first() else {
+            continue;
+        };
+        upgraded += 1;
+        let faction = info.faction.and_then(|f| {
+            let key = core.factions().get(f.index())?.key.as_str();
+            FACTIONS.iter().position(|&k| k == key)
+        });
+        let at = |offset: usize| {
+            faction.and_then(|f| {
+                let level = usize::from(info.level).checked_sub(1)?;
+                tables.town_creatures.get(f * 14 + level + offset).copied()
+            })
+        };
+        let (base, upgrade) = (at(0), at(7));
+        let (ours, our_upgrade) = (original.get(&id).copied(), original.get(&first).copied());
+        if base.is_none() || base != ours || upgrade != our_upgrade {
+            mismatches.push(format!(
+                "{} (original {ours:?}) upgrades to {} (original {our_upgrade:?}); the town \
+                 table has {base:?} upgrading to {upgrade:?}",
+                creature_key(core, id),
+                creature_key(core, first)
+            ));
+        }
+    }
+    done(mismatches)?;
+    Ok(format!(
+        "the seven trade classes match their types, kinds and the executable's class lists, the \
+         market's values and factors and the Hill Fort's percents the executable's tables, and the \
+         {upgraded} creatures with an upgrade the towns' unupgraded ones"
+    ))
+}
+
 /// `Err` with the mismatches if there are any.
 fn done(mismatches: Vec<String>) -> Result<(), Vec<String>> {
     if mismatches.is_empty() {
@@ -1037,6 +1265,26 @@ impl Exe {
             base,
             sections,
         })
+    }
+
+    /// `n` little-endian `u16`s from the virtual address `va`, if a section's raw data holds them.
+    fn u16s(&self, va: u32, n: usize) -> Option<Vec<u16>> {
+        let words = self.i32s(
+            va & !3,
+            (va % 4 + 2 * u32::try_from(n).ok()?).div_ceil(4) as usize,
+        )?;
+        let bytes = words
+            .iter()
+            .flat_map(|w| w.to_le_bytes())
+            .skip((va % 4) as usize)
+            .take(2 * n)
+            .collect::<Vec<_>>();
+        Some(
+            bytes
+                .chunks_exact(2)
+                .map(|b| u16::from_le_bytes([b[0], b[1]]))
+                .collect(),
+        )
     }
 
     /// `n` little-endian `i32`s from the virtual address `va`, if a section's raw data holds them.

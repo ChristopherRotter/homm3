@@ -6,23 +6,25 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 **E27, the game shell** (refined 2026-11-12, M0, with the user: `docs/epics/E27-game-shell.md`,
 decisions 4 to 8, CLT-Q79 to CLT-Q83; the clips: `E27-design.md` §1). M1 closed 2026-11-13 (T3),
-M2 2026-11-16 (T8); M3 (a game's setup) below, refined at M2 T8 (decision 44); M4 is refined at
-its T0. The original files: stage them from the user's `original-data/install/` (one large file
-per staging call; the user's computer must be online); never from the installation. The captures
-need the five DLLs (`MP3DEC.ASI` in the PC's `original-data/install` too since 2026-11-17),
+M2 2026-11-16 (T8), M3 2026-11-19 (T7); M4 (around play, outside it) below, refined at M3 T7
+(decision 69); M5 (in play) is refined once the shell hosts play (E24 M5). The original files:
+stage them from the user's `original-data/install/` (one large file per staging call; the user's
+computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
 `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check;
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T7
+#### E27 M4 T1
 
-T7 M3's closure (the epic's M3 table): a fresh reviewer agent over M3's screens and code (the
-scenario screen, its list, advanced options, random map's tab and the begin; one per area, the
-shots as contact sheets), M3's review list (items 1 to 22) to the user, M3 moved to
-`E27-archive.md`; M4's refinement with the user (M4 T0: the saves' record and its extension,
-decision 8; Options with the menu in play, CLT-Q136; the load and save modes with design §6.4's
-recipes for them). The README's E27 row in the session's `shared/` pull request.
+T1 High Scores (the epic's M4 table; design §2.8): the dialog (800 × 600, `hiscore.pcx` and
+`hiscore2.pcx`), its four buttons (Standard, Campaign, Reset, Exit; S, C, Enter, Escape), both
+tabs' headings and eleven rows, the newest row in colour 8, the eleven creatures stepping every
+200 ms (the adventure map's DEF of the creature each row's score earns: `high_score_creatures`
+0x67F1FC, a campaign's score divided by 5), Reset's question (GENRLTXT 667) resetting both tables
+to the defaults; the client's own scores file (the defaults `CampHigh.txt`'s rows 1 to 11 and 13
+to 23; never the installation's `HiScore.dat`); M2's stub lifted. Exact against `scores-tabs` and
+`scores-reset` (`h3shell.py drawn --group scores`). Confirm the cut at the start (Credits is T2).
 
 ## Inbox
 

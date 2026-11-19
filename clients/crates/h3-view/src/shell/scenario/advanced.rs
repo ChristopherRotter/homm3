@@ -29,7 +29,7 @@
 //!   customised heroes (`scenario_shown_hero` 0x58D0E0); its small portrait (`hero_table`
 //!   0x679DD0's +0x30) and its name (`scenario_shown_hero_name` 0x58D1F0: the main hero's own
 //!   name of the map, a customised hero's, the type's; CLT-Q142).
-//! - **The hero's arrows** (231 to 246, the single player's colour; `scenario_hero_step`
+//! - **The hero's arrows** (231 to 246, a human record's colour since T4a; `scenario_hero_step`
 //!   0x58AF20): through the list its town offers (`GameSetup::offer`, the original's
 //!   `scenario_hero_lists` 0x583890): right from Random to the first, on to the last, past it to
 //!   Random; left the reverse; the row drawn again.
@@ -80,6 +80,14 @@
 //!   human record holds, a town's arrow and the showing step on a hero held twice
 //!   (`scenario_heroes_unclash` 0x58BBC0); Begin refused with GENRLTXT 531 (a player without a
 //!   colour: the original's the first player alone) or 83 (fewer than two placed).
+//!
+//! - **A colour only a human may play** (E27 M3 T7; §3.12, CLT-Q93, decision 13: no shipped map
+//!   has one): where the single player takes one, the original's makes it and every later colour
+//!   a human may play the computer's alone, the client's only the other colours only a human may
+//!   play (the screen's `seats_of`).
+//! - **Begin with the name's edit open** (E27 M3 T7, the review's B2): the client's profile takes
+//!   the edit's text into the record first, as Enter does ([`Advanced::begun`]); the original's
+//!   path is not read (design §26.5), its record's name as it was.
 //!
 //! *Not built yet:* the name written to
 //! the setting `Network Default Name` (0x698817 and `settings_save` 0x50C1B0 at the edit's close:
@@ -546,7 +554,7 @@ pub(super) struct Advanced {
     /// seat's clock is E24 M5's).
     // stub: CLT-STUB-11
     duration: u8,
-    /// The duration's bar (338: 11 ticks, enabled for a single player).
+    /// The duration's bar (338: 11 ticks, enabled for a single player and in the hot seat).
     bar: Scrollbar,
     /// The name's edit while it shows, by colour (it has the focus then).
     editing: Option<(u8, Edit)>,
@@ -867,11 +875,20 @@ impl Advanced {
 
     /// Each colour's record and the name of the human record holding it, red first, as Begin
     /// hands them on over `map` (E27 M3 T6): the rows' records, or while they are made again at
-    /// the next showing those the showing will make ([`Advanced::remake`], as
-    /// [`Advanced::refusal`] reads the colours).
-    pub(super) fn begun(&self, map: &Map) -> ([Record; 8], [Option<String>; 8]) {
+    /// the next showing (or `moved`: the client's, the map not the one the rows were made over,
+    /// E27 M3 T7, CLT-Q152 (b)) those the showing will make ([`Advanced::remake`], as
+    /// [`Advanced::refusal`] reads the colours). In the client's profile the name's open edit's
+    /// text is the record's name first, as Enter's close makes it (E27 M3 T7, the review's B2;
+    /// the original's path not read, design §26.5: its record's name as it was).
+    pub(super) fn begun(&self, map: &Map, moved: bool) -> ([Record; 8], [Option<String>; 8]) {
         let mut made = self.clone();
-        if made.changed {
+        if let (Bugs::Fixed, Some((_, edit))) = (self.bugs, &self.editing) {
+            let name = String::from(edit.text());
+            for local in &mut made.humans {
+                local.name.clone_from(&name);
+            }
+        }
+        if made.changed || moved {
             made.remake(map);
         }
         let names = core::array::from_fn(|c| made.human_of(c as u8).map(|h| h.name.clone()));
@@ -1317,6 +1334,9 @@ impl Advanced {
     /// colour, or a computer's whose town shows a town or may change; the hot seat every colour's
     /// (0x58DE46).
     fn bonus_choosable(&self, seat: Seat, c: u8) -> bool {
+        // (E27 M3 T7, the review's B6: in a new game every colour's town shows a town or may
+        // change, so the hot seat's and the local colour's terms decide nothing before the load's
+        // records, M4: a load's colour whose town neither shows nor changes.)
         self.hot_seat
             || self.local_held() == Some(c)
             || self.shown_town(seat, c).is_some()
@@ -1554,7 +1574,8 @@ impl Advanced {
     }
 
     /// The popup of a right press on item `id` over `map`: a town's area's alignment (or a Random
-    /// town's), a hero's area's Random hero's, a bonus's area's bonus; none for another item.
+    /// town's), a hero's area's hero's own (T3b2) or a Random hero's, a bonus's area's bonus; none
+    /// for another item.
     pub(super) fn popup(&self, id: u16, map: &Map) -> Option<MessageBox> {
         if !self.showing {
             return None;
