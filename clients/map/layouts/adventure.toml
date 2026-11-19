@@ -60,6 +60,9 @@ default_hot = [0, 0]
 # mouse_set_cursor(2, 0) at 0x4C74FE; hidden from its first step in sight, so never drawn in a
 # recording: its hot spot the default's, *provisional*).
 busy = 2
+# The default cursor's frame the spell book leaves at its close (E24 M4 T2d3, design §5.8: frame 1,
+# the book's over its place; *provisional*, the book is M5's), until the cast ends.
+book = 1
 
 # The adventure screen's dialog (E24 M3 T2a; design §4.1: adventure_dialog_create 0x401510, the
 # manager's +0x44): at (0, 0), its items in the executable's order, each with its control id (the

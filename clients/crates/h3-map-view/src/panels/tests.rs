@@ -49,6 +49,7 @@ fn live(kingdom: Kingdom, path: Vec<Arrow>) -> Live {
         turns: Vec::new(),
         computer: false,
         level_ups: Vec::new(),
+        casts: Vec::new(),
     }
 }
 

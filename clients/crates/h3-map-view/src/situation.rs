@@ -23,10 +23,10 @@ use alloc::vec::Vec;
 use h3_map::RawMap;
 use h3_map::model::{Mission, Rewards, Stack};
 use h3_map::writer::{
-    ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS, AnyObject, EVENT_OBJECT, Event, Extras, GivenTile, Guards, Hero,
-    HeroArtifacts, Map, MapObject, Message, Monster, ObjectTemplate, PANDORA_OBJECT, Patch, Pile, Player,
-    RewardBody, RewardObject, RiverKind, Road, RoadKind, SHRINE_OBJECTS, Terrain, Town,
-    TownBuildings, Underground, WITCH_HUT_OBJECT,
+    ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS, AnyObject, EVENT_OBJECT, Event, Extras, GivenTile,
+    Guards, Hero, HeroArtifacts, Map, MapObject, Message, Monster, ObjectTemplate, PANDORA_OBJECT,
+    Patch, Pile, Player, RewardBody, RewardObject, RiverKind, Road, RoadKind, SHRINE_OBJECTS,
+    Terrain, Town, TownBuildings, Underground, WITCH_HUT_OBJECT,
 };
 use serde::Deserialize;
 
