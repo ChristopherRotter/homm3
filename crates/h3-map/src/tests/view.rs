@@ -26,7 +26,7 @@ use super::play::{
     STRICT, Slots, Spot, Step, TELEPORTER_OBJECTS, TOWN_BLOCKED, TOWN_BUILDINGS, TOWN_ENTRANCE,
     TownPlan, WHIRLPOOL_OBJECT, add_town, all_objects, army, at_sea, experience, experienced,
     lay_out, masks, object_index, object_reach, options, plan, player_of, resolve, slots, start_on,
-    steps, teleporter_at, tile,
+    steps, tavern_plan, teleporter_at, tile,
 };
 use crate::model::{Body, Buildings, Object, Pos, RawMap, Stack};
 
@@ -42,7 +42,7 @@ use crate::model::{Body, Buildings, Object, Pos, RawMap, Stack};
 /// plans' teleporters (T106b1's `TELEPORTERS`), which draw nothing at the setup: [`vary`] removes
 /// and adds those the viewer never sees, so that a jump's draw or a gate's pair may differ.
 fn hygienic() -> impl Strategy<Value = super::play::Plan> {
-    plan().prop_map(|mut plan| {
+    tavern_plan().prop_map(|mut plan| {
         plan.towns.iter_mut().for_each(hygienic_town);
         plan
     })
@@ -3489,7 +3489,7 @@ proptest! {
     /// ([`check_bank_views`]).
     #[test]
     fn views_move_as_the_events_say(
-        plan in plan(),
+        plan in tavern_plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
         steps in steps(),

@@ -156,11 +156,12 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   (its part of the open set, opened and closed as told), `managed` (no army while it is open) and
   `check_conservation` (a price it pays); `settle` and `hiring` name it too. A new decision kind
   (increment 5's services, E08's markets) teaches all of them, as `check_map_hire` does.
-- **A new plan draw shifts every deterministic cover test's cases** (E09 T40b): the cover tests
-  draw their cases from one runner in sequence, so a value appended to `plan()` changes every
-  case after the first (the regressions files keep theirs). Raise a failing cover test's cases,
-  or draw a new object that costs gold in fewer plans: map Taverns in one plan of two spent the
-  gold the town views' Capitols needed (9 to 0), one of three kept them (15).
+- **A draw added to `plan()` shifts every deterministic cover test's cases** (E09 T40b): the
+  cover tests draw their cases from one runner in sequence, so a value appended to `plan()`
+  changes every case after the first. Map Taverns drawn there failed three cover tests, then
+  three others at another frequency (thin counts gone, two oracle gaps met). Draw a new object
+  apart, as `tavern_plan()` (`plan()`'s, then the taverns) for the properties and the object's
+  own cover test: every other cover test keeps its cases.
 
 ## The views (`h3-game` `src/town/view.rs`)
 

@@ -5131,21 +5131,25 @@ cut in two with the plans first and the queue's order) and consented to `cross-l
 160, `TWN-Q29`).
 
 - **The plans** (`h3-map`'s `play.rs`, `cross-lane`): two kinds appended to `KINDS` (95, 97;
-  `TAVERNS`, `TAVERN_OBJECT`, `DEN_OBJECT`, the original's masks), `Plan::taverns` drawn last
-  (the fourth of the innermost tuple, so the regressions keep their maps) and laid out with the
-  banks: one or two near the heroes in one plan of three, a Tavern in two cases of three. The
+  `TAVERNS`, `TAVERN_OBJECT`, `DEN_OBJECT`, the original's masks), `Plan::taverns` laid out with
+  the banks, drawn by `tavern_plan()` (`plan()`'s, then the taverns: one or two near the heroes
+  in one plan of three, a Tavern in two cases of three), which the properties of `play.rs` and
+  `view.rs` and the taverns' cover test draw; the cover tests keep `plan()`'s. The
   oracles: `check_legal`'s listing and probe of the tavern decision (`tavern_answers`: the hires
   `apply` accepts, then `Close`; `check_map_hire`: a listed hire's hero as its owner's view
   showed it on the Tavern's free tile within the most heroes, the price paid, `HeroHired` of the
   slot and tile, the visitor unmoved, the decision closed; an unlisted slot refused with the
   state and its hash; `Close` alone), `check_decisions` (a fifth part of its open set, opened at
   `TavernOpened` and closed by `DecisionClosed`), `managed` (no army while the decision is open:
-  the first failure, `check_managing`'s), `check_conservation` (the map hire's price). Every
-  deterministic cover test's cases shift with a new draw: three failed at one plan of two (the
-  dwellings' boat deck 3 to 0, the town views' Capitols 9 to 0: the hires spent the gold), all
-  held at one plan of three (deck 3, Capitols 15); the garrisons' met an oracle gap of the
+  the first failure, `check_managing`'s), `check_conservation` (the map hire's price). Drawn
+  first inside `plan()` (the innermost tuple's fourth), the taverns shifted every deterministic
+  cover test's cases: at one plan of two the dwellings' boat deck (3 to 0) and the town views'
+  Capitols (9 to 0: the hires spent the gold) failed and the garrisons' met an oracle gap of the
   adventure's (a Whirlpool taking skeletons a guard's battle raised: `check_heroes_after_battle`
-  subtracts the loss told after). New cover test `the_plans_hire_at_map_taverns` (256 cases:
+  now subtracts the loss told after); at one of three the verify's coverage run failed three
+  others (the teleporters' `at_exits` and the bonuses' Sirens after a battle at 0, the
+  garrisons' turn start compared whole). Hence `tavern_plan()` apart: the cover tests' cases are
+  `master`'s again. New cover test `the_plans_hire_at_map_taverns` (256 cases:
   68 Taverns and 36 Dens laid out, 80 decisions opened, 32 with a hire listed and 56 without, 15
   hires, 65 closes, 11 hired heroes off the Tavern's tile, 58 guilds seen at a Den). The
   properties of `play.rs` and `view.rs` at 240 cases (five times their 48) passed,
@@ -5174,6 +5178,13 @@ cut in two with the plans first and the queue's order) and consented to `cross-l
   taverns map (level 1, 6 parts), 7.30 µs on `Myth and Legend` (8 players, 21 towns, 16 heroes,
   40 parts): far off any step.
 - **Versions:** none moved. Ids: none new.
+- **Verify** (`--scope town --with-original-data`): every step passed (fmt, clippy, the checks,
+  coverage 1 181 s, determinism, bench-check, doc-drift, original-data) but `check-lane`
+  (`cross-lane`: `cargo xtask check-lane --cross-lane` ok, `cargo check --workspace
+  --all-targets` clean). The bench: every workload inside its gate, as at T40a
+  (`random-play-bonuses-36` +1.66 %, `manage-army-12` +1.36 %, `fork-economy-xl-144` +1.28 %,
+  `day-start-builds-36` +1.04 %, every other within 1 %). `h3-protocol`'s and `h3-server`'s
+  suites passed over the 104 goldens.
 
 **The queue:** T40b out, T40 done; T41 next (the audit, increment 4's closure, increment 5
 refined). Ids: decisions next 161, questions `TWN-Q30`.

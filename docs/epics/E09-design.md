@@ -2811,9 +2811,9 @@ the hygiene (a hire told ends the comparison). No protocol, replay or hash versi
   each shows). A surrender needs an enemy hero (BAT-FLE-002): the map's golems are retreated
   from, the surrenders made to blue's heroes; a retreated hero comes back with one creature of
   its first starting stack, a surrendered one with its army (TWN-TAV-006); blue's hire with no
-  type free leaves its slot empty. The plans (`Plan::taverns`, one plan of three: one of two
-  drained the town cover test's Capitols to 0 by the hires' gold) lay out one or two map Taverns
-  or Dens near the heroes; `check_legal` lists and probes the tavern decision's answers
+  type free leaves its slot empty. The properties' plans (`tavern_plan`: `plan()`'s, then
+  `Plan::taverns`, one or two map Taverns or Dens near the heroes in one plan of three; the cover
+  tests keep `plan()`'s cases, which a draw inside it shifted, failing six of them); `check_legal` lists and probes the tavern decision's answers
   (`tavern_answers`, `check_map_hire`: the hire's tile, room, army, price, `HeroHired`, the
   decision closed; an unlisted slot refused with the hash), `check_decisions` opens it at
   `TavernOpened` and closes it as told, `managed` holds no army while it is open,

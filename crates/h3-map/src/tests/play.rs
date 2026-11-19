@@ -1294,8 +1294,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 teleporters(),
                 // E08 T116b1, drawn last for the same reason; (E08 T116b2) the bonus
                 // visitables after them (a pair: the tuple holds twelve at most), (E08 T125b2a)
-                // the creature banks after those, (E09 T40b) the map Taverns and Dens last.
-                (garrisons(), bonuses(), banks(), taverns()),
+                // the creature banks after those.
+                (garrisons(), bonuses(), banks()),
             ),
         ),
     )
@@ -1329,7 +1329,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                         dwellings,
                         towns,
                         teleporters,
-                        (garrisons, bonuses, banks, taverns),
+                        (garrisons, bonuses, banks),
                     ),
                 ),
             )| {
@@ -1547,16 +1547,6 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     army.resize(army.len().max(7), None);
                     army[usize::from(slot) % 7] = Some((ARCHANGEL, count));
                 }
-                // E09 T40b: the map Taverns and Dens near the heroes ([`taverns`]).
-                let taverns = taverns
-                    .iter()
-                    .map(|&((dx, dy), hero, object)| {
-                        let levels = 1 + u8::from(two_levels);
-                        let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
-                        let ((hx, hy, hz), _) = heroes[usize::from(hero) % heroes.len()];
-                        ((at(hx, dx), at(hy, dy), hz % levels), object)
-                    })
-                    .collect();
                 Plan {
                     version,
                     side,
@@ -1579,7 +1569,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     garrisons,
                     bonuses: bonused,
                     banks: banked,
-                    taverns,
+                    taverns: Vec::new(),
                 }
             },
         )
@@ -1718,8 +1708,7 @@ fn banks() -> impl Strategy<Value = Banks> {
 }
 
 /// The map Taverns and Dens of Thieves of a plan (E09 T40b, the town epic's design note §78):
-/// in one plan of three (one of two drained the gold of the town cover tests' Capitols), one or
-/// two near the heroes, each an offset from a hero's tile (two
+/// in one plan of three, one or two near the heroes, each an offset from a hero's tile (two
 /// columns and rows left of it to two right) and the hero (modulo the plan's), on its level, so
 /// that random play visits them: a Tavern in two cases of three (its decision hires onto its
 /// tile, GAM-DEC-010), else a Den (the Thieves' Guild at everything, TWN-TAV-009).
@@ -1727,6 +1716,26 @@ fn taverns() -> impl Strategy<Value = Vec<((u8, u8), u8, usize)>> {
     let kind = prop_oneof![2 => Just(TAVERN_OBJECT), 1 => Just(DEN_OBJECT)];
     let near = vec(((0u8..5, 0u8..5), any::<u8>(), kind), 1..=2);
     prop_oneof![2 => Just(Vec::new()), 1 => near]
+}
+
+/// [`plan`]'s plans with map Taverns and Dens of Thieves (E09 T40b, the town epic's design note
+/// §78; [`Plan::taverns`], [`taverns`]), each at an offset from a hero's tile on its level. The
+/// properties draw these; the cover tests draw [`plan`]'s, whose deterministic cases come from
+/// one runner in sequence, so that a new draw there would shift every one of them (the town
+/// lane's `TRAPS.md`).
+pub(super) fn tavern_plan() -> impl Strategy<Value = Plan> {
+    (plan(), taverns()).prop_map(|(mut plan, near)| {
+        let (side, levels) = (plan.side, 1 + u8::from(plan.two_levels));
+        let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
+        plan.taverns = near
+            .iter()
+            .map(|&((dx, dy), hero, object)| {
+                let ((hx, hy, hz), _) = plan.heroes[usize::from(hero) % plan.heroes.len()];
+                ((at(hx, dx), at(hy, dy), hz % levels), object)
+            })
+            .collect();
+        plan
+    })
 }
 
 /// A teleporter near a hero ([`Teleporters::near`]): its offset from the hero's tile, the hero, the
@@ -12357,7 +12366,7 @@ proptest! {
     /// ([`check_dismissals`]).
     #[test]
     fn every_step_keeps_the_commands_invariants(
-        plan in plan(),
+        plan in tavern_plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
         steps in steps(),
@@ -12453,7 +12462,7 @@ proptest! {
     /// parent evolve identically under the same commands.
     #[test]
     fn forks_evolve_as_their_parent(
-        plan in plan(),
+        plan in tavern_plan(),
         seed in any::<u64>(),
         steps in steps().prop_filter("a step", |steps| !steps.is_empty()),
         split in any::<proptest::sample::Index>(),
@@ -12498,7 +12507,7 @@ proptest! {
     /// forked with the state).
     #[test]
     fn a_forks_week_is_its_parents(
-        plan in plan(),
+        plan in tavern_plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
         steps in steps(),
@@ -12557,7 +12566,7 @@ proptest! {
     /// also with the rules compiled again.
     #[test]
     fn replays_are_deterministic(
-        plan in plan(),
+        plan in tavern_plan(),
         seed in any::<u64>(),
         steps in steps(),
     ) {
@@ -15249,7 +15258,7 @@ fn tavern_plans() -> impl Strategy<Value = (Plan, bool, u64, Vec<Step>)> {
         ],
         0..200,
     );
-    let plan = plan().prop_filter("map taverns", |p| !p.taverns.is_empty());
+    let plan = tavern_plan().prop_filter("map taverns", |p| !p.taverns.is_empty());
     (plan, any::<bool>(), any::<u64>(), steps)
 }
 
