@@ -665,3 +665,11 @@ fn the_files_list_back_keeps_the_random_map_s_flags_in_the_original_s_profile() 
         assert_eq!(flags(&draws), shown, "{bugs:?}");
     }
 }
+
+/// E27 M3 T6: with a random map chosen Begin hands nothing on (its stub's notice, T5b).
+#[test]
+fn a_random_map_chosen_begins_nothing() {
+    let s = opened(Bugs::Fixed);
+    assert!(s.random_map().is_some());
+    assert_eq!(s.begun(), None);
+}

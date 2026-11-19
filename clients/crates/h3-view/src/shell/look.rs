@@ -9,7 +9,8 @@
 //! the menu it was chosen from with the stub's notice over it. The Multiplayer dialog (T7) shows
 //! over the game type menu as that menu left the screen, the hot seat's names over it, a popup or
 //! the network's notice over them ([`super::multiplayer`]). The scenario screen (M3 T1a) is its
-//! drawn background, its dialog and its popup ([`super::scenario`]).
+//! drawn background, its dialog and its popup ([`super::scenario`]). Play's start (M3 T6) is the
+//! loading screen, its bar and the fade's step, then its stub's menu ([`super::play`]).
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -18,6 +19,7 @@ use h3_ui::ui::{Dialog, Draw, Shown};
 use serde::Deserialize;
 
 use super::menu::{Arrow, Front, Kind, Stale, TITLE};
+use super::play::LoadingLook;
 use super::scenario::{DescriptionLook, ListLook, TeamsLook};
 use super::{Game, Screen};
 use crate::message::MessageLayout;
@@ -49,6 +51,8 @@ pub struct ShellLayout {
     pub hot_seat: Dialog,
     /// The scenario screen (§3: `scenario_dialog_create` 0x579960; E27 M3 T1a).
     pub scenario: ScenarioLayout,
+    /// The loading screen (§3.17, §32: `loading_screen_open` 0x4ED350; E27 M3 T6).
+    pub loading: LoadingLook,
 }
 
 /// The scenario screen: its two backgrounds, its dialog, its list's rows and bar, its teams'
@@ -136,6 +140,9 @@ pub struct Look {
     pub cursor: bool,
     /// Which arrow it is (CLT-Q137).
     pub arrow: Arrow,
+    /// The fade's step (E27 M3 T6, play's start): the screen drawn, then each channel shifted down
+    /// so many bits (`screen_fade_out` 0x6030E0); 0 none.
+    pub shift: u8,
 }
 
 /// Reads the shell's layout.
@@ -191,6 +198,21 @@ pub fn look(layout: &ShellLayout, screen: Screen, front: Option<&Front>) -> Opti
                 over: scenario.box_draws(players),
                 cursor: scenario.cursor(),
                 arrow,
+                shift: 0,
+            });
+        }
+        // Play's start (E27 M3 T6): the loading screen, its bar and the fade's step, no cursor;
+        // then the stub's menu under its notice.
+        Front::Play(play) if play.noticing() => (play.menu(), None),
+        Front::Play(play) => {
+            return matches!(screen, Screen::Play { .. }).then(|| Look {
+                background: layout.loading.background.clone(),
+                draws: play.draws(&layout.loading),
+                stale: Vec::new(),
+                over: Vec::new(),
+                cursor: false,
+                arrow,
+                shift: play.shift(),
             });
         }
     };
@@ -222,6 +244,7 @@ pub fn look(layout: &ShellLayout, screen: Screen, front: Option<&Front>) -> Opti
         over,
         cursor,
         arrow,
+        shift: 0,
     })
 }
 
@@ -243,6 +266,10 @@ pub fn names(layout: &ShellLayout) -> Vec<String> {
         names.extend(menu.titles.iter().cloned());
     }
     names.extend(layout.scenario.backgrounds.iter().cloned());
+    names.extend([
+        layout.loading.background.clone(),
+        layout.loading.bar.clone(),
+    ]);
     for dialog in [
         &layout.multiplayer,
         &layout.hot_seat,

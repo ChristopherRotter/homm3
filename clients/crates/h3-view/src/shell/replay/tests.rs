@@ -16,7 +16,7 @@ use crate::shell::menu::Front;
 use crate::shell::menu::Kind as MenuKind;
 use crate::shell::menu::tests::menus;
 use crate::shell::start::{Header, Op, Pace, Part, Start};
-use crate::shell::{Choice, Ended, Game, Kind, Request, Screen, Shell};
+use crate::shell::{Choice, Ended, Game, Kind, PlayEnd, Request, Screen, Shell};
 
 fn names(list: &[&str]) -> Vec<String> {
     list.iter().map(|s| (*s).to_string()).collect()
@@ -456,7 +456,11 @@ fn what_the_viewer_cannot_do_stops_the_replay() {
     shell.end(Ended::MainMenu(Request::NewGame)).unwrap();
     shell.end(Ended::GameType(Choice::Single)).unwrap();
     shell.end(Ended::Scenario(true)).unwrap();
-    let not_built = Some(Stop::NotBuilt(Screen::Play { restart: false }));
+    // Play's restart (M4; a begin's play is built since E27 M3 T6).
+    shell
+        .end(Ended::Play(PlayEnd::Request(Request::Restart)))
+        .unwrap();
+    let not_built = Some(Stop::NotBuilt(Screen::Play { restart: true }));
     for steps in [
         &["until:main_menu"][..],
         &["shot:menu"],
@@ -942,12 +946,52 @@ fn the_list_takes_xdotool_s_page_keys_as_the_adapter_s() {
     assert_eq!((stop, rows(&r)), (None, Some((Some(17), 17))));
     let (_, stop, r) = replay_from(r, &["key:Prior"]);
     assert_eq!((stop, rows(&r)), (None, Some((Some(0), 0))));
-    // A row's click selects it; another row's 100 ms later begins in the original's profile
-    // (the selection stays); 500 ms later it selects.
+    // A row's click selects it; another row's 500 ms later selects it; another's 100 ms later
+    // begins in the original's profile (E27 M3 T6: play's start, its loading screen).
     let (_, stop, r) = replay_from(r, &["click:216,235"]);
-    assert_eq!((stop, rows(&r)), (None, Some((Some(4), 0))));
-    let (_, stop, r) = replay_from(r, &["click:216,260"]);
     assert_eq!((stop, rows(&r)), (None, Some((Some(4), 0))));
     let (_, stop, r) = replay_from(r, &["step:500", "click:216,260"]);
     assert_eq!((stop, rows(&r)), (None, Some((Some(5), 0))));
+    let (_, stop, r) = replay_from(r, &["click:216,235"]);
+    assert_eq!((stop, r.screen()), (None, Screen::Play { restart: false }));
+}
+
+/// E27 M3 T6: Begin over a map: play's start at once on the frozen clock, its fade's steps at
+/// the click (the screen as it is), 100 ms on (the input's step) and 150 ms on (`adv-begin`'s
+/// `bar` clip), then its notice, where the replay stops.
+#[test]
+fn begin_shows_the_full_bar_fading_then_play_s_notice_stops_the_replay() {
+    let (_, stop, r) = replay(
+        false,
+        &[
+            "until:main_menu",
+            "click:643,70",
+            "click:649,65",
+            "until:scenario_list",
+        ],
+    );
+    assert_eq!(stop, None);
+    let begun = r.time();
+    let mut r = r;
+    let mut seen = Vec::new();
+    for step in ["click-wait:497,555:3000", "clip:bar:90"] {
+        let step = parse(step).unwrap();
+        let mut take = |r: &Replay, t: Take<'_>| {
+            let shift = match r.front() {
+                Some(Front::Play(p)) => (p.count(), p.shift()),
+                other => panic!("{other:?}"),
+            };
+            seen.push((format!("{t:?}"), r.time() - begun, shift));
+            Ok(())
+        };
+        assert_eq!(r.play(&step, &mut take).unwrap(), None);
+    }
+    assert_eq!(r.screen(), Screen::Play { restart: false });
+    let shifts: Vec<(u32, (u8, u8))> = seen.iter().map(|(_, t, s)| (*t, *s)).collect();
+    assert_eq!(shifts.first(), Some(&(100, (20, 1))));
+    assert!(shifts.contains(&(150, (20, 2))));
+    assert_eq!(shifts.last(), Some(&(190, (20, 2))));
+    // At 200 the notice: a shot or a wait stops the replay (the client's stub).
+    let (_, stop, _) = replay_from(r, &["step:10", "shot:map"]);
+    assert_eq!(stop, Some(Stop::Stub(Screen::Play { restart: false })));
 }

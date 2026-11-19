@@ -263,6 +263,7 @@ fn the_menus_and_the_multiplayer_dialog_are_built_the_others_stubs_or_not() {
             (Screen::Tutorial, Built::Stub),
             (Screen::HighScores, Built::Stub),
             (Screen::Credits, Built::Stub),
+            (Screen::Play { restart: false }, Built::Whole),
             (Screen::GameType(Game::New), Built::Whole),
             (Screen::Multiplayer(Game::New), Built::Whole),
             (Screen::Scenario(Game::New, Kind::Single), Built::Whole),
