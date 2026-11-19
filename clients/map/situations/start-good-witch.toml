@@ -1,0 +1,16 @@
+# A shipped map's start the engine plays with no random draw in sight (E24 M4 T3b2; design §5.11):
+# Good Witch, Bad Witch (108 tiles, two players), Red's hero with the army the map gives it beside
+# its town the map names, the explored tiles as the new game left them; every player's starting
+# bonus Gold (the engine has none yet, E10's) and the engine's resources written, shown by the
+# town's selection and the hero's again. `h3map.py engine` compares the engine's start with it.
+map = "Good Witch, Bad Witch.h3m"
+explored = "start"
+view = [28, 30, 0]
+bonus = "gold"
+players = 2
+resources = [20, 10, 20, 10, 10, 10, 20000]
+select = { town = [39, 38] }
+reselect = [37, 39]
+# Over the town's body above its entrance (its tile (38, 37): x 10 × 32 + 24, y 7 × 32 + 24): its
+# name the map's, the cursor of a town of Red's.
+pointer = [344, 248]

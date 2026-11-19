@@ -17,15 +17,16 @@ use h3_map_view::art::{MapArt, TemplateArt};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
 use h3_map_view::engine;
-use h3_map_view::hover::{self, Facts};
+use h3_map_view::hover::{self, Facts, Hover};
 use h3_map_view::levels::LevelUp;
 use h3_map_view::live::{
     Arrow, Buttons, Cast, Chosen, Drawn, Explored, Kingdom, Live, LiveBoat, LiveHero, Moment,
     Status, TOWN_CLASS, Turn,
 };
-use h3_map_view::objects;
+use h3_map_view::objects::{self, DrawLists};
 use h3_map_view::scene::{self, Draw, ViewAt};
-use h3_map_view::tables::PATH_FRAMES;
+use h3_map_view::tables::{PATH_FRAMES, TownArt};
+use h3_map_view::timeline::Rules;
 use h3_render::Bugs;
 
 use crate::files;
@@ -224,13 +225,35 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     if let Some(path) = &options.record {
         // A whole game's record's start (E24 M4 T3a): its map view's live part after the
         // capture's, or compared with it.
-        let start = record_start(path, &bytes, &art, &templates, &options.packs)?;
+        let start = record_start(
+            path,
+            &bytes,
+            &art,
+            &templates,
+            &tables.map.towns,
+            &options.packs,
+        )?;
         if options.check {
             let theirs = options
                 .live
                 .as_ref()
                 .ok_or("render: --check compares the record's start with --live's")?;
-            let found = engine::differences(&start, &read_table(theirs)?);
+            let mut found = engine::differences(&start, &read_table(theirs)?);
+            // The mouse-over over every explored tile (E24 M4 T3b2, design §5.11): the record's
+            // start applied after the capture's, as a still draws it.
+            let (mut our_art, mut ours) = (art.clone(), live.clone());
+            let label = path.display().to_string();
+            apply_live(
+                &label,
+                &start.table,
+                options.view,
+                &mut our_art,
+                &mut ours,
+                &templates,
+            )?;
+            found.extend(hover_differences(
+                &archives, &tables, &our_art, &ours, &art, &live,
+            )?);
             if !found.is_empty() {
                 return Err(format!(
                     "{}: its start differs from {}: {}",
@@ -257,6 +280,29 @@ fn render(options: &Options) -> Result<PathBuf, String> {
         live.hint = Some(hover::parked_hint(&layout, &live, art.levels, point));
     }
     let mut shapes = files::load_shapes(&archives, &objects::pictures(&art, &live))?;
+    // A still's pointer over the view (E24 M4 T3b2, design §5.11): the map's hint and cursor at its
+    // tile with the hero selected at the start, as the mouse's move there shows them (0x40E360).
+    let rules = Rules::new(&tables, &layout, options.bugs);
+    let mut frame = layout.cursor.arrow;
+    if let Some(point) = pointer.filter(|&p| rules.over_view(p))
+        && live.hover.is_some()
+    {
+        let lists = (0..art.levels)
+            .map(|z| {
+                let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
+                DrawLists::build(&art, &live, &shapes, z).map_err(|e| e.to_string())
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        if let Some(over) = Hover::new(&art, &live, &tables.records, &lists) {
+            let tile = rules.tile_at(options.view, point);
+            if over.explored(tile) {
+                let selected = over.start_selection(&live.kingdom);
+                let middle = rules.column_at(point) == rules.middle;
+                live.hint = Some(over.hint(tile, middle, selected));
+                frame = over.cursor(tile, selected, true).frame;
+            }
+        }
+    }
     let heroes: Vec<String> = tables
         .map
         .heroes
@@ -286,12 +332,13 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     let mut screen = compose(&scene, &batch, layout.frame).map_err(|e| e.to_string())?;
     if let Some([x, y]) = pointer {
         // The parked mouse's cursor (E24 M3 T2a): the arrow, as the mouse manager draws it over
-        // all (0x50D8B0) at the point less its hot spot.
+        // all (0x50D8B0) at the point less its hot spot; since E24 M4 T3b2 over the view the
+        // map's cursor there.
         let art = &layout.cursor;
         let name = art.def.to_ascii_uppercase();
         let (_, data) = files::find(&archives, &name)?.ok_or(format!("{name}: in no archive"))?;
         batch.add(&name, &data).map_err(|e| e.to_string())?;
-        let [hx, hy] = usize::try_from(art.arrow)
+        let [hx, hy] = usize::try_from(frame)
             .ok()
             .and_then(|f| art.hot.get(f).copied())
             .unwrap_or_default();
@@ -301,8 +348,8 @@ fn render(options: &Options) -> Result<PathBuf, String> {
         );
         let cursor = batch
             .sprite(&name)
-            .and_then(|s| h3_ui::cursor::Cursor::read(s, art.arrow, hot, screen.format()))
-            .ok_or_else(|| format!("{}: no frame {}", art.def, art.arrow))?;
+            .and_then(|s| h3_ui::cursor::Cursor::read(s, frame, hot, screen.format()))
+            .ok_or_else(|| format!("{}: no frame {frame}", art.def))?;
         cursor.draw(&mut screen, x, y);
     }
     let out = options.out();
@@ -314,6 +361,43 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     Ok(out)
 }
 
+/// What differs between the mouse-overs of two live parts (`ours` with its art `our_art`, and
+/// `theirs` with `art`) over every explored tile ([`Hover::differences`]); nothing when either
+/// has no facts.
+fn hover_differences(
+    archives: &[h3_formats::lod::LodArchive<'_>],
+    tables: &h3_map_view::tables::Tables,
+    our_art: &MapArt,
+    ours: &Live,
+    art: &MapArt,
+    theirs: &Live,
+) -> Result<Vec<String>, String> {
+    let mut defs = objects::pictures(our_art, ours);
+    defs.extend(objects::pictures(art, theirs));
+    defs.sort_unstable();
+    defs.dedup();
+    let shapes = files::load_shapes(archives, &defs)?;
+    let hover = |art: &MapArt, live: &Live| -> Result<Option<std::sync::Arc<Hover>>, String> {
+        let lists = (0..art.levels)
+            .map(|z| {
+                let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
+                DrawLists::build(art, live, &shapes, z).map_err(|e| e.to_string())
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        Ok(Hover::new(art, live, &tables.records, &lists))
+    };
+    let (Some(a), Some(b)) = (hover(our_art, ours)?, hover(art, theirs)?) else {
+        return Ok(Vec::new());
+    };
+    Ok(a.differences(
+        &ours.kingdom,
+        &b,
+        &theirs.kingdom,
+        &art.hero_names,
+        &tables.texts,
+    ))
+}
+
 /// The start of the whole game's record at `path` on the map file `map` (its bytes), its art
 /// `art`, under the rules of the record's packs and profile read from `packs`
 /// (`h3_map_view::engine`).
@@ -322,6 +406,7 @@ fn record_start(
     map: &[u8],
     art: &MapArt,
     templates: &[ObjectTemplate],
+    towns: &TownArt,
     packs: &Path,
 ) -> Result<engine::Start, String> {
     let failed = |why: &dyn std::fmt::Display| format!("{}: {why}", path.display());
@@ -331,7 +416,7 @@ fn record_start(
     let rules = h3_files::adventure::load_rules(packs, &ids, &header.manifest.profile)
         .map_err(|e| format!("{}: {e}", packs.display()))?;
     let loaded = engine::load(&text, map, &rules).map_err(|e| failed(&e))?;
-    engine::start(&loaded, art, templates, &rules).map_err(|e| failed(&e))
+    engine::start(&loaded, art, templates, towns, &rules).map_err(|e| failed(&e))
 }
 
 /// The tiles of the rectangles `hidden` (`[x0, y0, x1, y1]`, corners included) on level `z` left
@@ -734,7 +819,7 @@ pub fn apply_live(
     if let Some(value) = table.get("hover") {
         // The game's facts the mouse-over reads (E24 M3 T6a1, design §4.10).
         let (objects, heroes) = (art.objects.len(), live.heroes.len());
-        live.hover = Some(
+        let mut facts =
             Facts::read(value, objects, heroes, art.size, art.levels).ok_or_else(|| {
                 failed(
                     "`[hover]` is not words and armed (one per object), towns ([[name, type]]), \
@@ -742,8 +827,10 @@ pub fn apply_live(
                      name]]), town_list, teams (8), guarded (rows), reach ([[x, y, cost]]) and \
                      day_points",
                 )
-            })?,
-        );
+            })?;
+        // A town the map names (E24 M4 T3b2): its name from the map.
+        facts.name_towns(&art.town_names);
+        live.hover = Some(facts);
     }
     table.get("pointer").map_or(Ok(None), |value| {
         let point: Option<Vec<i32>> = value.as_array().and_then(|a| {

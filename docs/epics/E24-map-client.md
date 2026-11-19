@@ -200,7 +200,8 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   T3b1, the panels' live part (the kingdom, the status window, a town's own name, MCL-Q15 (b))
   on the whole screen (**done** 2026-11-19, whole; the log's "M4 T3b1", design §5.10; MCL-Q36);
   T3b2, the hover's facts, a town's picture by its buildings and the shipped
-  maps; the object identity asked of the adventure lane withdrawn by the user (the same day,
+  maps (**done** 2026-11-19, whole: the user kept it uncut; the log's "M4 T3b2", design §5.11;
+  MCL-Q37, MCL-Q38); the object identity asked of the adventure lane withdrawn by the user (the same day,
   the server lane's note of 2026-11-12: the view's objects in tile order, found by type and
   anchor; an object added in play, T4's, drawn after the file's), a random artifact's drawn
   artifact still asked (the view names none); T4, a record played; T5, the battles handed over
@@ -399,3 +400,16 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   hero's and a town's `name` in the map; `bonus = "gold"` and the engine's `resources` written,
   shown by `select` then `reselect`; `h3map.py engine` and `set.toml`'s `engine` entries (the
   differences and pixels expected).
+- **M4 T3b2, the hover's facts from a record** (*provisional*; design §5.11): a monster's count
+  written as its word's first count, a mine's guards of several creatures as one stack of
+  `hover::SEVERAL` (the live part's format, the view giving words and a creature only); a town's
+  name in `[hover]` its text where the engine's view gives one, a capture's 65535 named from the
+  map (`MapArt::town_names`); the visits' marks by the view's kind marks, the selected hero's
+  marks (object, type, once-mark) and the player's learnt and weekly marks, per §4.11's class
+  rules (only a start's, nothing visited, compared); the cursor's facts left out (MCL-Q37).
+- **M4 T3b2, the comparisons** (*provisional*): a record's mouse-over compared with a capture's
+  over every explored tile (the hint's text, the cursor's frame and action; five tiles named); a
+  still's `pointer` over the view (inside a drawn tile off the scroll zones), its tile's cost read
+  first; a shipped situation's staging keys (`bonus` with `players`, `resources`, `select`,
+  `reselect`, `pointer`); the two shipped starts' level-up draws listed as differences, not
+  staged.

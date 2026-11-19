@@ -312,6 +312,7 @@ pub(crate) fn map_with(
         templates: Vec::new(),
         objects: Vec::new(),
         hero_names: BTreeMap::new(),
+        town_names: Vec::new(),
     };
     for (i, (t, (x, y))) in objects.iter().enumerate() {
         let width = if wide.contains(&i) { 2 } else { 1 };

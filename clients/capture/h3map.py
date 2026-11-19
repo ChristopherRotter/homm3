@@ -321,8 +321,11 @@ def game_mem(game):
 
 
 # The keys a situation that loads a shipped map whole may have (E24 M1 T4b, T5b2): the Rust
-# parser sees only the writer's situations (E24 M1 T6b, the reviewer's R3-11).
-SHIPPED_KEYS = {"map", "view", "explored", "hidden"}
+# parser sees only the writer's situations (E24 M1 T6b, the reviewer's R3-11). Since E24 M4 T3b2
+# the engine's starts' staging too: the starting bonus Gold for the map's `players` (its rows of
+# the advanced options), the resources written and shown by a selection, the pointer.
+SHIPPED_KEYS = {"map", "view", "explored", "hidden", "bonus", "players", "resources", "select",
+                "reselect", "pointer"}
 
 
 def check_situation(situation_path, sit):
@@ -572,7 +575,7 @@ def stage(situation_path, out, seed=None, sound=False):
     # `bonus = "gold"` (E24 M4 T3b1): every player's starting bonus Gold, none an artifact (the
     # engine has no starting bonus yet, E10's; the situation writes the resources).
     colours = {h.get("owner", 0) for h in sit.get("heroes", [])}
-    gold = len(colours) if sit.get("bonus") == "gold" else 0
+    gold = sit.get("players", len(colours)) if sit.get("bonus") == "gold" else 0
     game = started(map_path, out / "run", shipped="map" in sit or "underground" in sit,
                    seed=seed, sound=sound, gold=gold)
     try:
@@ -619,6 +622,23 @@ def stage(situation_path, out, seed=None, sound=False):
             h3adv.wait_for(lambda: mem.status_shown() == sit["status"],
                            lambda: f"the status window's kind {sit['status']} built "
                                    f"({mem.status_shown()} shown)")
+        # A still's pointer over the view (E24 M4 T3b2, design §5.11): the selected hero's cost
+        # of its tile read first (`look_over_view`: the pathfinder stops at the tile looked at),
+        # then the mouse moved there last, its hint and cursor shown.
+        if "pointer" in sit:
+            point = tuple(sit["pointer"])
+            # Off the scroll zones, and where the original's tile (the screen's point by 32) is
+            # the drawn one's (MCL-Q18: the last 8 pixel rows and columns of a drawn tile differ).
+            if (not over_view(point) or in_scroll_zone(point)
+                    or point[0] % 32 < 8 or point[1] % 32 < 8):
+                raise ValueError(f"{situation_path}: the pointer {point} is not inside a drawn "
+                                 "tile of the view off the scroll zones")
+            look_over_view(game, mem, sit, [point])
+            tile = (vx + point[0] // 32, vy + point[1] // 32)
+            game.move(*point)
+            h3adv.wait_for(lambda: mem.mouse_tile()[:2] == tile,
+                           lambda: f"the mouse over the view's tile {tile}")
+            time.sleep(0.5)
     except BaseException:
         game.stop()
         raise
@@ -1823,8 +1843,11 @@ def run_engine(rest):
         shutil.rmtree(here, ignore_errors=True)
         here.mkdir(parents=True)
         write_map(situation_path, sit, here / "raw.h3m")
-        # The engine reads only gzip (`h3_map::read`), with no name or time in its header.
-        (here / "map.h3m").write_bytes(gzip.compress((here / "raw.h3m").read_bytes(), mtime=0))
+        # The engine reads only gzip (`h3_map::read`), with no name or time in its header; a
+        # shipped map is gzip already (E24 M4 T3b2).
+        raw = (here / "raw.h3m").read_bytes()
+        (here / "map.h3m").write_bytes(raw if raw[:2] == b"\x1f\x8b"
+                                       else gzip.compress(raw, mtime=0))
         (here / "empty.txt").write_text("")
         # A replay names its map relative to its root: both run in `here`.
         for args in [[engine_dir / "h3", "adventure", "run", "--map", "map.h3m", "--packs-dir",

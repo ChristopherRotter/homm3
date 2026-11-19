@@ -1,0 +1,13 @@
+# A shipped map's start the engine plays with no random draw in sight (E24 M4 T3b2; design §5.11):
+# Adventures of Jared Haret (36 tiles, three players), Red's hero underground with the army the
+# map gives it, the explored tiles as the new game left them; every player's starting bonus Gold
+# (the engine has none yet, E10's). No other hero or town of Red's to select: the resource bar
+# keeps the bonus's gold. `h3map.py engine` compares the engine's start with it.
+map = "Adventures of Jared Haret.h3m"
+explored = "start"
+view = [0, 19, 1]
+bonus = "gold"
+players = 3
+# Over Red's hero (its tile (6, 33): x 6 × 32 + 24, y 14 × 32 + 24): its name the map's, the
+# hero's cursor.
+pointer = [216, 472]

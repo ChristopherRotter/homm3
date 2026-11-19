@@ -291,12 +291,19 @@ pub struct Guards {
     pub count: u32,
 }
 
+/// A stack's creature that stands for several creatures a view does not name (E24 M4 T3b2,
+/// *provisional*): the engine's view of guards gives the word of their total count and their
+/// creature only when they are of one (`h3_protocol`'s `Guards`), so its live part writes one
+/// stack of this creature with the word's first count.
+pub const SEVERAL: u32 = u32::MAX;
+
 impl Guards {
-    /// The guards of `stacks` ([creature, count] in slot order); none without one.
+    /// The guards of `stacks` ([creature, count] in slot order; [`SEVERAL`] a stack of several
+    /// creatures); none without one.
     #[must_use]
     pub fn of(stacks: &[(u32, u32)]) -> Option<Self> {
         let first = stacks.first()?.0;
-        let one = stacks.iter().all(|&(c, _)| c == first);
+        let one = first != SEVERAL && stacks.iter().all(|&(c, _)| c == first);
         Some(Self {
             creature: one.then_some(first),
             count: stacks.iter().fold(0u32, |sum, &(_, n)| sum.wrapping_add(n)),

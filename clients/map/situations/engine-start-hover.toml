@@ -1,0 +1,59 @@
+# The engine's start's mouse-over (E24 M4 T3b2; design §5.11): Red's two heroes (their armies in
+# the map) among a monster of a given count, Red's Sawmill, a neutral Gold Mine, a Swan Pond, a
+# Magic Well, a Windmill and a Shrine; Red's Castle and a neutral Rampart, both named by the map;
+# Blue's hero out of sight; the explored tiles the start's. The pointer rests over the Rampart's body:
+# the still shows its hint ("Greenvale, Rampart") and the arrow. `h3-map-view render --record
+# --check` compares the engine's start with this one's live part, the hint and cursor over every
+# explored tile among it (`h3map.py engine`).
+size = 36
+terrain = "grass"
+explored = "start"
+heroes = [
+    { at = [10, 10], class = 2, map_army = [[0, 10]] },
+    { at = [6, 12], class = 5, map_army = [[28, 8]] },
+    { at = [14, 5], owner = 1, class = 9 },
+    { at = [33, 33], owner = 2 },
+]
+towns = [
+    { at = [8, 6], faction = 0, owner = 0, buildings = "fort", name = "Brightmoor" },
+    { at = [16, 14], faction = 1, buildings = "village", name = "Greenvale" },
+]
+view = [0, 0, 0]
+# The panels as T3b1's: the starting bonus Gold and the engine's resources written, shown by the
+# start's selection again.
+bonus = "gold"
+resources = [20, 10, 20, 10, 10, 10, 20000]
+select = { hero = [6, 12] }
+reselect = [10, 10]
+# Over the Rampart's body (its tile (14, 13): x 14 × 32 + 24, y 13 × 32 + 24).
+pointer = [472, 440]
+
+[[objects]]
+def = "AVMsawd0.def"
+at = [5, 15]
+owner = 0
+
+[[objects]]
+def = "AVMgodr0.def"
+at = [14, 10]
+
+[[objects]]
+def = "AVWpeas.def"
+at = [11, 13]
+monster = { count = 30, disposition = 0 }
+
+[[objects]]
+def = "AVSclvg0.def"
+at = [8, 13]
+
+[[objects]]
+def = "AVXwelg0.def"
+at = [12, 8]
+
+[[objects]]
+def = "AVMwndd0.def"
+at = [7, 10]
+
+[[objects]]
+def = "AVXl1sh0.def"
+at = [10, 12]

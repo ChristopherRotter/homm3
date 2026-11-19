@@ -36,6 +36,9 @@ pub struct MapArt {
     /// window), by hero type: a hero object's (the first named of the type), else a disposed
     /// hero's (SoD's hero settings); *provisional*: the game's order between them not read.
     pub hero_names: BTreeMap<u8, String>,
+    /// The names the map gives its towns, in its order of towns (the game's towns' order, the
+    /// mouse-over's word of a town: E24 M4 T3b2), none for a town it leaves unnamed.
+    pub town_names: Vec<Option<String>>,
 }
 
 /// One tile's pictures (the `.h3m` tile record, as the original keeps it in map_item +0x4 to
@@ -233,6 +236,19 @@ impl MapArt {
                     .or_insert_with(|| decode_1252(name.as_bytes()));
             }
         }
+        let town_names = raw
+            .objects
+            .iter()
+            .filter_map(|o| match &o.body {
+                Body::Town(t) => Some(
+                    t.name
+                        .as_ref()
+                        .filter(|n| !n.as_bytes().is_empty())
+                        .map(|n| decode_1252(n.as_bytes())),
+                ),
+                _ => None,
+            })
+            .collect();
         Ok(Self {
             size: terrain.size,
             levels: terrain.levels,
@@ -240,6 +256,7 @@ impl MapArt {
             templates,
             objects,
             hero_names,
+            town_names,
         })
     }
 
