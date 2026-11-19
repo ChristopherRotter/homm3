@@ -1502,7 +1502,11 @@ replay read).
   the frames deleted between): every one of the 95 recipes as recorded, 637 shots drawn, 629
   exact (`scn-sort`'s other 8 the ties' order, decision 12; the options', scores' and end's
   recipes stop where play or M4's screens begin); `adv-random-options`' lines into `drawn.txt`.
-- **Gates:** GATES_RESULT
+- **Gates:** `RUST_TEST_THREADS=1 check.sh --no-coverage` with the data staged: every gate passed
+  (after the fixes, niced beside the captures, and again after `master`'s merge); the coverage of
+  `h3-view` as CI runs it (`H3_INSTALL` empty): 100 % of lines and regions on every shell file
+  (`book.rs` 138 to 143 per crate only, as noted); `cargo xtask verify --scope client --summary
+  --with-original-data` after the merge: no failing step (exit 2); `h3-battle-client gate`: passed.
 - **The sandbox:** the VM restarted once (about 16:20, under the replay's `start-bink-sound` and
   the fixer's first debug build), the runner resumed from its summary (a recipe's line written at
   its end) and the fixer from its log; the debug and release builds beside the captures ran as
