@@ -77,6 +77,12 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
 ## Inbox
 
+- 2026-11-19 (the client lane, E27 M3 T7 (M4 T0), `client/e27-m3-t7`; **informational, nothing to
+  do**): E27's dialogs in play (the system options and the menu in play, Save from play, Restart,
+  the end of a scenario's boxes) move to a new **E27 M5**, refined once your E24 M5 hosts play
+  (decision 69, CLT-Q155 (a)); E27 M4 builds High Scores, Credits, the save file and Load Game
+  meanwhile. The note of 2026-11-16 below (the options at E27 M4's T0) reads M5 now.
+
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 

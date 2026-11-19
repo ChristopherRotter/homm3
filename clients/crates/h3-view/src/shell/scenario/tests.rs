@@ -724,7 +724,7 @@ fn the_columns_sort_and_flip_the_size_first_descending_in_the_original_s_profile
     assert_eq!(names_of(&f)[6], "Map 01");
     // Another key compares nothing: the name then the file.
     let mut all = many(2);
-    sort_by(&mut all, 9, true);
+    sort_by(&mut all, 9, true, Bugs::Fixed);
     assert_eq!(all[0].name, "Arrogance");
 }
 
@@ -801,7 +801,7 @@ fn the_keys_move_the_selection_and_the_top() {
     let mut hidden = scenario_of(many(3), Bugs::Fixed);
     assert_eq!(key(&mut hidden, Scroll::Down), Did::default());
     // Selected off the list's page by the bar, Page Up keeps a row above the top none.
-    let mut off = shown(many(40), Bugs::Fixed);
+    let mut off = shown(many(40), Bugs::Original);
     click(&mut off, [383, 540]);
     assert_eq!(off.rows(), (Some(0), 18));
     key(&mut off, Scroll::PageUp);
@@ -809,8 +809,40 @@ fn the_keys_move_the_selection_and_the_top() {
     // Page Down keeps its distance from the top: one row above it, row 17 of the next page.
     key(&mut off, Scroll::PageDown);
     assert_eq!(off.rows(), (Some(17), 18));
+    // The original's Down with the selection above the page: the top as it is.
     key(&mut off, Scroll::Down);
     assert_eq!(off.rows(), (Some(18), 18));
+    // E27 M3 T7, CLT-Q149 (b): the client's brings the page to a selection off it first (above
+    // it: the top on it; below: a page above it), then steps; on the first or the last row the
+    // page alone.
+    let mut fixed = shown(many(40), Bugs::Fixed);
+    click(&mut fixed, [383, 540]);
+    assert_eq!(fixed.rows(), (Some(0), 18));
+    assert!(key(&mut fixed, Scroll::Up).changed);
+    assert_eq!(fixed.rows(), (Some(0), 0));
+    click(&mut fixed, [383, 540]);
+    key(&mut fixed, Scroll::Down);
+    assert_eq!(fixed.rows(), (Some(1), 0));
+    key(&mut fixed, Scroll::PageDown);
+    key(&mut fixed, Scroll::PageDown);
+    assert_eq!(fixed.rows(), (Some(24), 23));
+    click(&mut fixed, [383, 300]);
+    assert_eq!(fixed.rows(), (Some(24), 5));
+    let mut down = fixed.clone();
+    key(&mut down, Scroll::Down);
+    assert_eq!(down.rows(), (Some(25), 8));
+    key(&mut fixed, Scroll::Up);
+    assert_eq!(fixed.rows(), (Some(23), 7));
+    for _ in 0..17 {
+        key(&mut fixed, Scroll::Down);
+    }
+    assert_eq!(fixed.rows(), (Some(40), 23));
+    click(&mut fixed, [383, 300]);
+    click(&mut fixed, [383, 115]);
+    assert_eq!(fixed.rows(), (Some(40), 0));
+    key(&mut fixed, Scroll::Down);
+    assert_eq!(fixed.rows(), (Some(40), 23));
+    assert_eq!(thumb(&fixed.draws("PLAYERS.PAL")), Some(92 + 16 + 432));
 }
 
 #[test]
@@ -1311,41 +1343,48 @@ fn the_mouse_scrolls_the_description_by_its_bar() {
 
 #[test]
 fn the_selected_row_again_leaves_the_description_as_drawn_in_the_original_s_profile() {
-    for bugs in [Bugs::Original, Bugs::Fixed] {
-        let mut s = long(bugs);
-        s.key(None, Some(Command::List(Scroll::Down)), "Down");
-        click(&mut s, [733, 240]);
-        assert_eq!(described(&s), (Some("line 7".into()), Some(thumb_at(7))));
-        // The select resets the text and the bar; the partial redraw draws neither.
-        s.clock(2000);
-        click(&mut s, [216, 160]);
-        assert_eq!(s.shown.texts[&DESCRIPTION].lines().next(), Some("line 0"));
-        let stale = (Some("line 7".into()), Some(thumb_at(7)));
-        let fresh = (Some("line 0".into()), Some(thumb_at(0)));
-        assert_eq!(
-            described(&s),
-            if bugs == Bugs::Original {
-                stale.clone()
-            } else {
-                fresh.clone()
-            }
-        );
-        // The top arrow at 0 draws the bar, not the lines.
-        click(&mut s, [733, 163]);
-        let up = (
-            Some(
-                if bugs == Bugs::Original {
-                    "line 7"
-                } else {
-                    "line 0"
-                }
-                .into(),
-            ),
-            Some(thumb_at(0)),
-        );
-        assert_eq!(described(&s), up);
-        // A right press on the description redraws whole.
-        s.right([600, 200]);
-        assert_eq!(described(&s), fresh);
-    }
+    let mut s = long(Bugs::Original);
+    s.key(None, Some(Command::List(Scroll::Down)), "Down");
+    click(&mut s, [733, 240]);
+    let stale = (Some("line 7".into()), Some(thumb_at(7)));
+    assert_eq!(described(&s), stale);
+    // The select resets the text and the bar; the partial redraw draws neither.
+    s.clock(2000);
+    click(&mut s, [216, 160]);
+    assert_eq!(s.shown.texts[&DESCRIPTION].lines().next(), Some("line 0"));
+    assert_eq!(described(&s), stale);
+    // The top arrow at 0 draws the bar, not the lines.
+    click(&mut s, [733, 163]);
+    assert_eq!(described(&s), (Some("line 7".into()), Some(thumb_at(0))));
+    // A right press on the description redraws whole.
+    s.right([600, 200]);
+    assert_eq!(described(&s), (Some("line 0".into()), Some(thumb_at(0))));
 }
+
+#[test]
+fn a_select_keeping_the_map_keeps_the_description_s_scroll_in_the_client_s_profile() {
+    // E27 M3 T7, CLT-Q148 (b): a click on the selected row and Page Up at the top keep the map,
+    // its description as it shows; another map's select sets its own, the long one's again from
+    // its first line.
+    let mut s = long(Bugs::Fixed);
+    s.key(None, Some(Command::List(Scroll::Down)), "Down");
+    click(&mut s, [733, 240]);
+    let scrolled = (Some("line 7".into()), Some(thumb_at(7)));
+    assert_eq!(described(&s), scrolled);
+    s.clock(2000);
+    click(&mut s, [216, 160]);
+    assert_eq!(s.rows(), (Some(1), 0));
+    assert_eq!(described(&s), scrolled);
+    assert!(
+        s.key(None, Some(Command::List(Scroll::PageUp)), "Prior")
+            .changed
+    );
+    assert_eq!(s.rows(), (Some(1), 0));
+    assert_eq!(described(&s), scrolled);
+    s.key(None, Some(Command::List(Scroll::Up)), "Up");
+    assert_eq!(described(&s), (Some("A map.".into()), None));
+    s.key(None, Some(Command::List(Scroll::Down)), "Down");
+    assert_eq!(described(&s), (Some("line 0".into()), Some(thumb_at(0))));
+}
+
+mod review;

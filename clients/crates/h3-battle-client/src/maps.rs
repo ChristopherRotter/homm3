@@ -15,9 +15,7 @@ use h3_game::{FactionChoice, GameRuleset};
 use h3_map::model::{Loss, Player, Version, Victory, VictoryGoal};
 use h3_map::{Limits, RawMap};
 use h3_ui::text::decode_1252;
-use h3_view::shell::scenario::{
-    self, CustomHero, DESCRIPTION_BYTES, Entry, Format, Heroes, MainHero, Seat,
-};
+use h3_view::shell::scenario::{self, CustomHero, Entry, Format, Heroes, MainHero, Seat};
 
 /// The packs of the game's rules the shell imports the maps with, and their profile (as `h3
 /// adventure`'s defaults: Complete's content, the faithful profile).
@@ -118,12 +116,10 @@ pub fn entry(file: String, map: &RawMap, rules: &GameRuleset) -> Entry {
             Version::Ab => Format::Ab,
             Version::Sod => Format::SoD,
         }),
+        // Whole: the screen cuts them to the list's record's 60 and 300 bytes in the original's
+        // profile alone (E27 M3 T7, CLT-Q151 (b)).
         name: decode_1252(header.name.as_bytes()),
-        // The list's record keeps the description's first 300 bytes (E27 M3 T2c).
-        description: {
-            let bytes = header.description.as_bytes();
-            decode_1252(&bytes[..bytes.len().min(DESCRIPTION_BYTES)])
-        },
+        description: decode_1252(header.description.as_bytes()),
         size: header.size,
         difficulty: header.difficulty,
         victory,
@@ -133,6 +129,27 @@ pub fn entry(file: String, map: &RawMap, rules: &GameRuleset) -> Entry {
         teams,
         heroes: heroes(map, rules),
     }
+}
+
+/// Each faction's heroes a random map's row offers, Castle first (E27 M3 T7; design §33.2): the
+/// faction's first 16 hero types of its two classes, in type order, as `scenario_hero_lists`
+/// 0x583890 lists them over the game `random_map_info_build` 0x580430 resets (every hero free,
+/// no map's bans; recorded, `adv-random-options`: Castle's first Orrin).
+#[must_use]
+pub fn random_offers(rules: &GameRuleset) -> [Vec<u8>; 9] {
+    let core = rules.core();
+    let classes = core.hero_classes();
+    let mut offers: [Vec<u8>; 9] = Default::default();
+    for (k, hero) in core.hero_types().iter().enumerate() {
+        let faction = classes.get(hero.class.index()).map(|c| c.faction.index());
+        let offer = faction.and_then(|f| offers.get_mut(f));
+        if let (Some(offer), Ok(k)) = (offer, u8::try_from(k))
+            && offer.len() < 16
+        {
+            offer.push(k);
+        }
+    }
+    offers
 }
 
 /// What `map`'s import under `rules` gives the advanced options of its heroes (E27 M3 T3b1;
@@ -277,7 +294,9 @@ mod tests {
         assert_eq!(super::named(entries.clone(), None, &rules).len(), 159);
         assert!(super::named(Vec::new(), Some(&[]), &rules).is_empty());
         // E27 M3 T2c: a name with a `/` is a map file of its own (the harness's), read and listed
-        // in the list's order; Jihad's description is the record's 300 bytes whole.
+        // in the list's order; Jihad's description whole, the record's 300 bytes exactly (E27 M3
+        // T7, CLT-Q151 (b): a longer one kept whole, the screen cutting it in the original's
+        // profile).
         let path = install.join(MAPS).join("Jihad.h3m");
         let names = [
             String::from("Arrogance.h3m"),
@@ -289,7 +308,10 @@ mod tests {
         let own = super::named(entries, Some(&names), &rules);
         let files: Vec<&str> = own.iter().map(|e| e.file.as_str()).collect();
         assert_eq!(files, ["Jihad.h3m", "Arrogance.h3m"]);
-        assert_eq!(own[0].description.len(), DESCRIPTION_BYTES);
+        assert_eq!(
+            own[0].description.chars().count(),
+            scenario::DESCRIPTION_BYTES
+        );
     }
 
     #[test]
@@ -300,6 +322,17 @@ mod tests {
 
     /// E27 M3 T3b1: the engine's offers, the main heroes and the map's customised heroes as the
     /// advanced options read them (`adv-single-hero`, `adv-single-maps`).
+    #[test]
+    fn a_random_map_offers_each_faction_s_sixteen_heroes() {
+        // E27 M3 T7 (`adv-random-options`: Castle's first Orrin): each faction's first 16 hero
+        // types of its classes, in type order (the campaigns' heroes past 143 left out).
+        let offers = random_offers(&rules().unwrap());
+        assert!(offers.iter().all(|o| o.len() == 16));
+        assert_eq!(offers[0], (0..16).collect::<Vec<u8>>());
+        assert_eq!(offers[1].first(), Some(&16));
+        assert_eq!(offers[8].first(), Some(&128));
+    }
+
     #[test]
     fn the_shipped_maps_offer_their_heroes() {
         let Some(install) = staged() else {

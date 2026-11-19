@@ -255,6 +255,23 @@ steps = [
 ]
 
 [[recipe]]
+id = "adv-random-options"
+what = "§3.14, §3.16, design §30.2, §33.2 (E27 M3 T7, the review's C2): the advanced options over a chosen random map (its seats' generate flag: the hero's cell), the hero's popup and arrows, a town, the files' list shown again and the options over it (CLT-Q152)"
+maps = ["Arrogance.h3m"]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click:514,115", "move:790,300", "shot:tab",
+  "click:514,519", "move:790,300", "shot:options",
+  "right:276,146", "shot:hero-popup", "right-up",
+  "click:306,145", "move:790,300", "shot:hero-arrow",
+  "click:230,145", "move:790,300", "shot:town-1",
+  "click:306,145", "move:790,300", "shot:hero-1",
+  "right:276,146", "shot:hero-popup-1", "right-up",
+  "click:514,91", "move:790,300", "shot:list",
+  "click:514,519", "move:790,300", "shot:options-again",
+]
+
+[[recipe]]
 id = "adv-begin"
 what = "§3.17, §32: Begin from the advanced options single (a town, a hero, the gold bonus): the loading bar full, faded (`bar`, E27 M3 T6), to the first adventure frame"
 maps = ["Arrogance.h3m"]

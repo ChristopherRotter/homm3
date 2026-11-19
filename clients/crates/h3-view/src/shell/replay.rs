@@ -718,7 +718,8 @@ impl Replay {
     }
 
     /// The screen on, when it is not built whole (a stub's is the client's, not the original's),
-    /// or under the client's notice (the network modes', a random map's Begin).
+    /// or under the client's notice (the network modes', a random map's Begin, play's after its
+    /// fade: `noticing`).
     fn unbuilt(&self) -> Option<Stop> {
         (self.screen().built() != Built::Whole)
             .then(|| Stop::NotBuilt(self.screen()))

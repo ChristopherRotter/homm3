@@ -753,7 +753,8 @@ fn menus(
             scenario_texts,
             crate::maps::named(crate::maps::entries(install, &rules), maps, &rules),
             bugs,
-        ),
+        )
+        .with_random_offers(crate::maps::random_offers(&rules)),
     };
     Ok((menus, rules, refused))
 }
@@ -1453,6 +1454,11 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
         }
         while let Ok(line) = words.try_recv() {
             let before = shell.screen();
+            if let Some(refusal) = refused_word(before, &line) {
+                eprintln!("h3-view shell: {refusal}");
+                println!("{}", text::describe(before));
+                continue;
+            }
             println!("{}", text::answer(&mut shell, &line));
             if shell.screen() == Screen::End {
                 return Ok(());
@@ -1506,7 +1512,7 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
                     }
                 };
                 show(&mut front, false);
-                let at = (options.install.as_path(), None, &drawer.rules);
+                let at = (options.install.as_path(), &drawer.rules);
                 let outcome = begun
                     .take()
                     .map(|b| begun_game(&b, at, &mut || show(&mut front, true)));
@@ -1555,24 +1561,32 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     }
 }
 
-/// The game `begun` begins (T6; `crate::begin`): its map read from `install`'s copy or `maps`'
-/// own, its setup made and validated under `rules`, each a step of the loading screen's bar
-/// (`step`: the client's steps).
+/// The game `begun` begins (T6; `crate::begin`): its map read from `install`'s copy, its setup
+/// made and validated under `rules`, each a step of the loading screen's bar (`step`: the
+/// client's steps).
 ///
 /// # Errors
 /// The map does not read or import, or the engine refuses the setup.
 fn begun_game(
     begun: &Begun,
-    (install, maps, rules): (&Path, Option<&[String]>, &GameRuleset),
+    (install, rules): (&Path, &GameRuleset),
     step: &mut dyn FnMut(),
 ) -> Result<crate::begin::Game, String> {
-    let map = crate::begin::read(&crate::begin::map_path(install, maps, &begun.file))?;
+    let map = crate::begin::read(&crate::begin::map_path(install, &begun.file))?;
     step();
     let setup = crate::begin::setup(&map, begun, rules)?;
     step();
     crate::begin::validated(&setup, rules)?;
     step();
     Ok(crate::begin::game(setup, begun))
+}
+
+/// Why the window refuses the standard input's word `line` on `screen` (E27 M3 T7, the review's
+/// C6), none where the shell's words take it: `begin` makes no game's setup (the scenario
+/// screen's Begin does, its choices with it), so the screen stays.
+fn refused_word(screen: Screen, line: &str) -> Option<&'static str> {
+    matches!(text::ending(screen, line), Some(Ended::Scenario(true)))
+        .then_some("begin refused: a game begins from the scenario screen's Begin")
 }
 
 /// The scenario screen's background drawn as the original draws it (`random_between(1, 100) <
@@ -1649,7 +1663,7 @@ fn on_front(
 mod tests {
     use std::path::{Path, PathBuf};
 
-    use super::{Given, Mode, Options, PARK, merged, skips_start};
+    use super::{Given, Mode, Options, PARK, merged, refused_word, skips_start};
     use h3_sdl::{Event, Key, KeyScan};
     use h3_ui::keys::Keys;
     use h3_view::shell::keys::Command;
@@ -1664,6 +1678,18 @@ mod tests {
         let (keys, from) = crate::window::load_keys::<Command>(None).unwrap();
         assert_eq!((keys, from.as_str()), (Keys::original(), "the defaults"));
         assert!(crate::window::load_keys::<Command>(Some(Path::new("no/such/keys.toml"))).is_err());
+    }
+
+    /// E27 M3 T7 (the review's C6): the window's typed `begin` makes no setup, so it is refused on
+    /// the scenario screen; its other words, and `begin` where no screen takes it, are the
+    /// shell's.
+    #[test]
+    fn a_typed_begin_is_refused_on_the_scenario_screen() {
+        use h3_view::shell::{Game, Kind, Screen};
+        let scenario = Screen::Scenario(Game::New, Kind::Single);
+        assert!(refused_word(scenario, " begin ").is_some_and(|r| r.contains("Begin")));
+        assert_eq!(refused_word(scenario, "back"), None);
+        assert_eq!(refused_word(Screen::MainMenu, "begin"), None);
     }
 
     #[test]

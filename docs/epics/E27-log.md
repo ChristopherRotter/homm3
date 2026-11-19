@@ -1429,3 +1429,88 @@ reviewers, two fixers in a worktree (`client/e27-m2-t8-fixes`, merged).
   `bar` clips included (the replay stops at `load`: the adventure screen, E24's); the scenario,
   advanced, menus and multiplayer groups and the start's recipes as recorded; `drawn.txt`
   recorded for both.
+
+## M3 T7 — M3's closure: three fresh reviews, their fixes, every recipe played again, M4 refined (2026-11-19)
+
+On `client/e27-m3-t7`, the user present; `master` at `9deacd0` (#1041; CI green). Staged at once
+while the user's computer was online: the 64 files and the four manuals and three help files, each
+checked by SHA-256 against the PC's (the PC's tools went away about 25 minutes in). The setup's
+baseline stopped by a watcher at coverage (fmt, clippy, the doc tests and deny passed), CI's green
+`master` on the same commit standing in. **Kept whole** (decision 66; offered: the closure now and
+M4's refinement later, or the reviews and fixes first), sub-agents for the bounded jobs: three
+fresh reviewers one after another (one per area, the shots as contact sheets: 181, 143 and 82
+shots in 31, 24 and 14 sheets), one fixer in the clone (never in `clients/capture/`, which the
+replay read).
+
+- **Played again** (`h3shell.py run`, every recipe twice against `kept/`, one at a time by a
+  runner of the sandbox's, `/home/claude/tools/replay-all.sh`: the disk check's ballast sized
+  before each recipe, a recipe's frames deleted once it played as kept; the start group first,
+  `start-smacker` and `start-smacker-sound` left out as at M2 T8): the 92 others, 89 the same in
+  both runs and as kept; three with one run a step off, the same pixels (`adv-hotseat-begin`'s
+  load clip ended 10 ms later and its two shots after it with it; `end-conquest`'s score clip one
+  frame longer, so the entry over it showed the next frame; `end-v4-lost`'s shot 10 ms late), each
+  as kept in both runs when played again alone. Nothing recorded anew.
+- **Reviewer 1** (the screen, its list and panel; items 1 to 12): 9 kept, 3 changed (1, 4, 9);
+  its findings: a held row's release under a box (A1), the name's 60 bytes (A3), the list's keys
+  under a held button (A4), the off-page keys (A5), the double press after a sort (A9), the files
+  `h3_map::read` refuses (A2), the held keys' repeats (A6), Page Up's negative index and the fold
+  missing from the list (A7, A8), the thumb's drag (A10), two stale notes (A11, A12); four
+  oddities (CLT-Q148 to CLT-Q151).
+- **Reviewer 2** (the advanced options; items 13 to 19): 5 kept, 2 changed (13, 16); its findings:
+  the rows not made again after a sort or a filter that keeps row 0 (B1), Begin by the mouse
+  losing the open edit's name (B2), CLT-Q93 (b) never built (B3), `Scenario::records` test-only
+  (B4), stale comments (B5), `bonus_choosable`'s dead terms (B6); two oddities (CLT-Q152, CLT-Q153).
+- **Reviewer 3** (the random map's tab and the begin; items 20 to 22): 3 changed; its findings: the
+  files' list shown again after the tab keeping the random map's records (C1), a random map's
+  hero cell None (C2), stale comments (C3), the stub's marker (C4), `map_path`'s unused argument
+  (C5), the window's typed `begin` (C6), Enter's paths untested (C7), a computer-only colour made
+  human by the adapter (C8); one oddity (CLT-Q154).
+- **Read** (design §33.1): the DEF button's own loop drops keys (0x456341 to 0x45641C), so A4 is
+  a plain fix; `scenario_select` compares the index alone (0x585574), so B1 is the original's too
+  (CLT-Q152).
+- **The user's answers** (decisions 67 to 69): the review list accepted with the reviewers'
+  wording, Page Up's negative index and the ASCII fold added, A2 and A6 recorded as M4's; every
+  fix in T7; CLT-Q148 (b), CLT-Q149 (b), CLT-Q150 (b, after a picture of the rows), CLT-Q151 (b,
+  against the recommendation), CLT-Q152 (b), CLT-Q153 (a), CLT-Q154 (a); M4 refined: CLT-Q155 (a),
+  a new M5 in play; CLT-Q156 (a), a save the engine's replay extended; M4's table as proposed.
+- **The fixes** (the fixer, design §33.2, §33.3): `Scenario::release` lets go of a row or name a
+  box opened over; the list's keys dropped while a button is held; `caseless` folds ASCII alone;
+  the double press on the map pressed (the client's: selected first, then begun); the advanced
+  rows made again when the map given to the game changes (`options_map`, `sync_options`); Begin
+  takes the open edit's text; `seats_of` (CLT-Q93 (b)); the random seats' generate flag; the
+  begin's guard (`begin::setup`); the typed `begin` refused (`refused_word`); the cuts in the
+  original's profile alone (`NAME_BYTES`, `kept_name`, `kept_description`, `sort_by(.., bugs)`);
+  the description's scroll kept (`described`); `bring` (CLT-Q149); `row_at` (CLT-Q150); the
+  stub's marker, the comments; the tests mostly in `scenario/tests/review.rs`. The fixer's calls:
+  a double press selects the pressed map before it begins it (a key between the presses moved the
+  selection); the original's CLT-Q93 path leaves a colour no human may play as the map has it
+  (*inferred*); CLT-Q152's map is the one the options read (over an empty filter the rows stay).
+- **Recorded** (new, `h3shell.py run --only adv-random-options --record`, both runs alike):
+  `adv-random-options` (the `advanced` group, 9 shots: the tab, the options over the random map,
+  the hero's popup and arrows, a town, the files' list, the options again). Its first `drawn` 6 of
+  9 exact: the original's hero arrow on a random map's row steps to Orrin, Castle's first, so the
+  empty offer T5a had left *provisional* was wrong (`scenario_hero_lists` 0x583890 over the game
+  `random_map_info_build` resets: each faction's first 16 hero types of its classes); built
+  (`maps::random_offers`, `Scenario::with_random_offers`, kept by each opening anew), then 9 of 9.
+  Its `options-again` shows the original keeping the random map's rows over Arrogance
+  (CLT-Q152's oddity recorded, the original's profile as it).
+- **M4 refined** (M4 T0): the epic's M4 table (T1 High Scores to T6 its closure), M5 in play; the
+  measure of review item 1 (the release shell's start 0.42 to 0.57 s with the 159 maps, 0.17 to
+  0.23 s with an empty `Maps`); the adventure lane's inbox (the replay's setup choices for M4 T3;
+  CLT-Q153's bonus for E10), the map-client lane's (the dialogs in play now E27 M5).
+- **The comparisons:** `drawn` with the fixed viewer, by group (the start group a recipe at a time,
+  the frames deleted between): every one of the 95 recipes as recorded, 637 shots drawn, 629
+  exact (`scn-sort`'s other 8 the ties' order, decision 12; the options', scores' and end's
+  recipes stop where play or M4's screens begin); `adv-random-options`' lines into `drawn.txt`.
+- **Gates:** `RUST_TEST_THREADS=1 check.sh --no-coverage` with the data staged: every gate passed
+  (after the fixes, niced beside the captures, and again after `master`'s merge); the coverage of
+  `h3-view` as CI runs it (`H3_INSTALL` empty): 100 % of lines and regions on every shell file
+  (`book.rs` 138 to 143 per crate only, as noted); `cargo xtask verify --scope client --summary
+  --with-original-data` after the merge: no failing step (exit 2); `h3-battle-client gate`: passed.
+- **The sandbox:** the VM restarted once (about 16:20, under the replay's `start-bink-sound` and
+  the fixer's first debug build), the runner resumed from its summary (a recipe's line written at
+  its end) and the fixer from its log; the debug and release builds beside the captures ran as
+  `CARGO_BUILD_JOBS=1 nice` (TRAPS). `start-bink` and `start-bink-sound` took 53 and 55 minutes
+  (the 3DO logo at 1 ms steps).
+- **Change freely** (the agent's): the contact sheets and crop tools, the replay's runner and the
+  text tool for loose-whitespace edits (`/home/claude/tools/`, outside the repo).

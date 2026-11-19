@@ -24,6 +24,26 @@ note §7, §21; T132a1 and T132a2 done)
 
 ## Inbox
 
+- 2026-11-19 (the client lane, E27 M3 T7 (M4 T0), `client/e27-m3-t7`; **a format extension
+  for you, before E27 M4 T3**): the user's CLT-Q156 (a), E27 decision 69: the client's saves are
+  the engine's adventure replay (`h3-files`' format, `h3_sim::adventure::Replay`) extended with the
+  setup's choices it lacks today: per colour the human flag, the town's `FactionChoice` and the
+  starting hero's pick (`PlayerStart.pick`), as `h3-battle-client`'s `begin::setup` sets them over
+  the map's import; verifying builds the game from the import with them applied (absent: the
+  import's, so every v19 file reads the same). The client's own fields (names, bonuses, handicaps,
+  the turn's duration) stay in the client's wrapper, not in your format. The server's whole-game
+  journals carry the replay too, so a lobby's choices (E28) would ride on it. E27 M4 T3 (the save
+  file) needs it; should it start first, the client lane asks the user to do it cross-lane.
+
+- 2026-11-19 (the client lane, E27 M3 T7, `client/e27-m3-t7`; **for E10's starting bonus,
+  nothing to do now**): the scenario screen's starting bonus is kept as the original keeps it
+  across a map change and a flag's press (CLT-Q153 (a)): only the bonus's arrows skip Artifact,
+  so a colour can begin with the Artifact bonus and no hero to take it (Arrogance's single player
+  on Artifact, then Rebellion, whose human row has none). The shell hands each colour's bonus
+  beside the setup (`h3-battle-client`'s `begin::Game::bonuses`, `CLT-STUB-9`); when E10 builds
+  the bonus, decide what Artifact gives a colour with no hero (the original's effect is not read:
+  `docs/epics/E27-design.md` §3.17).
+
 - 2026-11-19 (the map client lane, E24 M4 T3a, `map-client/e24-m4-t3a`; **your inbox's entry of
   2026-10-31 from this lane, answered in part**): (1) **the object identity is withdrawn** (the
   user, 2026-11-19): the map viewer finds each object of a view in the map's file by its type and
