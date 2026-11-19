@@ -1,0 +1,52 @@
+# The engine's start compared with the original's (E24 M4 T3a; design §5.9): Deluge's lake copied
+# to the top-left (as `boats`), Red's town, Red's two heroes (one beside the lake, one by the
+# town) and Blue's hero in sight of Red's, empty boats of the three types, monsters and piles with
+# their counts and amounts given (no draw), an artifact and Blue's mine; the explored tiles the
+# start's. `h3-map-view render --record` of the engine's start on the same map compares its live
+# part with this one's (`--check`).
+size = 36
+terrain = "grass"
+explored = "start"
+copy = [{ map = "Deluge.h3m", from = [4, 16], to = [22, 32], at = [0, 0] }]
+heroes = [
+    { at = [4, 8], class = 3 },
+    { at = [24, 14], class = 0 },
+    { at = [27, 18], owner = 1, class = 9 },
+    { at = [33, 33], owner = 2 },
+]
+towns = [{ at = [30, 10], faction = 0, owner = 0, buildings = "fort" }]
+boats = [
+    { at = [1, 7], kind = 0 },
+    { at = [4, 7], kind = 1 },
+    { at = [7, 10], kind = 2 },
+]
+view = [12, 4, 0]
+
+[[objects]]
+def = "AVTwood0.def"
+at = [21, 12]
+amount = 5
+
+[[objects]]
+def = "AVTgold0.def"
+at = [23, 18]
+amount = 700
+
+[[objects]]
+def = "AVA0007.def"
+at = [26, 12]
+
+[[objects]]
+def = "AVMore0.def"
+at = [22, 16]
+owner = 1
+
+[[objects]]
+def = "AVWpeas.def"
+at = [20, 15]
+monster = { count = 10, disposition = 0 }
+
+[[objects]]
+def = "AVWskel0.def"
+at = [6, 11]
+monster = { count = 25, disposition = 0 }

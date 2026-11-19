@@ -408,7 +408,7 @@ impl<'a> Painter<'a> {
         match live {
             Some(path) => {
                 render::read_live(
-                    &path.to_path_buf(),
+                    path,
                     view,
                     &mut art,
                     &mut start,

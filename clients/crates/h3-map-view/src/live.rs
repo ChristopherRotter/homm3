@@ -1465,7 +1465,7 @@ fn colour(owner: impl Into<u32>) -> Option<u8> {
 }
 
 /// The owner a map object's body gives.
-fn owner(body: &Body) -> Option<u8> {
+pub(crate) fn owner(body: &Body) -> Option<u8> {
     match body {
         Body::Town(town) => colour(town.owner),
         Body::Hero(hero) => colour(hero.owner),

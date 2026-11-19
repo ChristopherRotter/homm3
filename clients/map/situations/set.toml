@@ -263,3 +263,13 @@ why = "exact: the date's status window on a week's first day, the week's picture
 id = "status-kingdom"
 differing = 0
 why = "exact: the kingdom's status window, Red's towns by their halls, the teams written: two flags of Red's team, two of the others"
+
+[[situation]]
+id = "engine-start-owners"
+differing = 0
+why = "exact: owners-objects' map as the new game leaves it (E24 M4 T3a): the explored circles of Red's hero and of the two objects Red owns, the objects in sight with their owners' flags"
+
+[[situation]]
+id = "engine-start-town"
+differing = 0
+why = "exact: a start with Red's town and two heroes, Blue's hero in sight, empty boats, monsters and piles with their counts given, an artifact, Blue's mine (E24 M4 T3a), the explored tiles the start's"
