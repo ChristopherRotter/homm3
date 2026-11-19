@@ -23,14 +23,14 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xd47b17cfdb4e5d4d",
-    "0x8b35f265bb67b7de",
-    "0x97b56f4b780225a7",
-    "0xbe423c36aaac437a",
+    "0x7a541df904052ab8",
+    "0x34d4626ada000727",
+    "0x4abefdcd664f68e2",
+    "0x0fff77665da3b2fd",
 ]
 
 [replay]
-format = 18
+format = 19
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -50,21 +50,21 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x6ba8109889b34a25"
-adventure_ruleset_hash = "0xa5809e7fd9e842dd"
+adventure_ruleset_hash = "0x56c46df30c45ce3a"
 town_ruleset_hash = "0xabc9756b93a29a55"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 33
+game_state_hash_version = 34
 adventure_state_hash_version = 26
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-banks-36.h3m"
 hash = "0xda3dd80d4aa94083"
-import_version = 25
+import_version = 26
 
 [result]
 day = 2
-final_hash = "0x87c4aaa963912cf2"
+final_hash = "0x161bfb97658941a5"

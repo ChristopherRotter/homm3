@@ -678,37 +678,37 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x8791fa1bef821fb9",
-    "0xa2f2b74ee4874210",
-    "0x9238ffbfddfdd933",
-    "0xd747ec6f5e3e53bd",
-    "0x95708470b243b0a3",
-    "0x6abf8fb190e17cba",
-    "0x3d46f6c183a08e62",
-    "0x1b751bdf0bdc11ef",
-    "0xc668f1175c55f79b",
-    "0xc007b885215f210f",
-    "0xd49f5042b94f2566",
-    "0x48f45c85897bd1ce",
-    "0x6bfd72abb469e37b",
-    "0x6b78eed0c8ef86f4",
-    "0xe3fd8408a74ddf4e",
-    "0xcb60cc618acb8dd2",
-    "0x8bb9dd64d81cd78a",
-    "0x4b7e62a73b8090eb",
-    "0x34934156ba7df591",
-    "0x4f714667559817c5",
-    "0x79a63b4214cb43fd",
-    "0x7ae8cdadcee39b5a",
-    "0x892fc500f7c57ebe",
-    "0xf58cfa5f0faf7486",
-    "0x02560567846f87d5",
-    "0x1eee6a2df2218376",
-    "0xf014bd82ead2e630",
+    "0xe96f8a242ac2c324",
+    "0x5834480e1811a531",
+    "0x1392d8675111f4ee",
+    "0xe6ac6dae88022a60",
+    "0xd46d6330c8fce1f6",
+    "0x34e20b20235bfbe3",
+    "0x304f8cbb1c0fbea3",
+    "0xf4fde100a5f5072a",
+    "0xaa09865fb562224c",
+    "0x4efda0ad54021f70",
+    "0x2718a31a9052b745",
+    "0x8387d43e568583d1",
+    "0x02496059f4d2a5e8",
+    "0x4006fa9965f1f09b",
+    "0x1674606324a1d2cd",
+    "0xf9626a4833269317",
+    "0xfa7606192f29b3b3",
+    "0x90ace8a50f9841aa",
+    "0x4003a5cee4ec157c",
+    "0x8e07514632a871e8",
+    "0xa292b954f0d671b4",
+    "0x1acc1065d4a0d08f",
+    "0x574183c307e186bf",
+    "0xfd4e16008756b9df",
+    "0xafb9c6da3365a1d4",
+    "0xe9ee6b4868a83d23",
+    "0xa13b832ed32f206d",
 ]
 
 [replay]
-format = 18
+format = 19
 engine = "0.1.0"
 seed = "2647"
 difficulty = 1
@@ -728,21 +728,21 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x6ba8109889b34a25"
-adventure_ruleset_hash = "0xa5809e7fd9e842dd"
+adventure_ruleset_hash = "0x56c46df30c45ce3a"
 town_ruleset_hash = "0xabc9756b93a29a55"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 33
+game_state_hash_version = 34
 adventure_state_hash_version = 26
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-teleporters-36.h3m"
 hash = "0x27ac37d3c2d89975"
-import_version = 25
+import_version = 26
 
 [result]
 day = 29
-final_hash = "0x374fbde84b14de1d"
+final_hash = "0xf8cef00256ce86ba"

@@ -39,7 +39,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **Open pull requests:** #1028 (`claude/fervent-bardeen-n2suw6`: T37's design, AI-Q19).
   Merged: #1022, #1023 (T36's close, increment 9 refined, the README's E25 row).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
-  (CLT-Q40), the adventure env's action encoding v12 (E09 T38a2), C ABI v37 (E25 T16:
+  (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
   (`docs/08-work-process.md`, "Versions"). Next
   ids: AI-Q20, AI-QUIRK-1, AI-STUB-2.

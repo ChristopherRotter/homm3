@@ -150,6 +150,17 @@ pub enum DecisionView {
         /// The garrison's stacks, by slot.
         army: Vec<ArmyStack>,
     },
+    /// A map Tavern (GAM-DEC-010, E09 T39a; the town epic's design note §75), answered `Tavern`:
+    /// a hire of one of the viewer's tavern heroes ([`GameObservation::tavern`], its offers) or
+    /// closing it.
+    Tavern {
+        /// The visiting hero.
+        hero: HeroId,
+        /// The Tavern's type.
+        object_type: ObjectTypeId,
+        /// The Tavern's anchor.
+        anchor: Pos,
+    },
 }
 
 impl DecisionView {
@@ -348,6 +359,14 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
                     removable: adventure.garrison_removable(index).unwrap_or_default(),
                     army: adventure.garrison_army(index).to_vec(),
                 })
+            })
+            .or_else(|| {
+                let visit = state.tavern(player)?;
+                Some(DecisionView::Tavern {
+                    hero: visit.hero,
+                    object_type: visit.object_type,
+                    anchor: visit.anchor,
+                })
             }),
         heroes: hero_infos(state, &adventure.heroes, &adventure.garrison_heroes),
         adventure,
@@ -517,6 +536,7 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::ChoiceOpened { player: owner, .. }
         | GameEvent::UniversityOpened { player: owner, .. }
         | GameEvent::HireOpened { player: owner, .. }
+        | GameEvent::TavernOpened { player: owner, .. }
         | GameEvent::DecisionClosed { player: owner }
         | GameEvent::GroupLost { player: owner, .. }
         | GameEvent::TimedEventFired { player: owner, .. } => (owner == player).then_some(*event),

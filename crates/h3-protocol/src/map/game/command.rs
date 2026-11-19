@@ -15,8 +15,9 @@ use h3_game::{
     ArtifactPlace as EnginePlace, BuildingId, ChestChoice as EngineChest, Consent as EngineConsent,
     GameCommand as EngineCommand, GameCommandError, HireAnswer as EngineHire, HireError,
     Manage as EngineManage, ManageError, Position, SchoolChoice as EngineSchool,
-    SkillOffer as EngineOffer, SystemCommand as EngineSystem, TownCommand as EngineTown,
-    TownCommandError, TownHeroChange as EngineHeroChange, UniversityAnswer as EngineUniversity,
+    SkillOffer as EngineOffer, SystemCommand as EngineSystem, TavernAnswer as EngineTavern,
+    TavernError, TownCommand as EngineTown, TownCommandError, TownHeroChange as EngineHeroChange,
+    UniversityAnswer as EngineUniversity,
 };
 use h3_heroes::{CombineError, MoveError};
 use h3_kernel::handle::Handle;
@@ -27,8 +28,8 @@ use crate::wire::game::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, Formation,
     GameCommand, GameReject, HireAnswer, HireReject, Manage, ManageReject, MoveReject, Pos,
-    SchoolChoice, SkillOffer, StandReject, SystemCommand, TownCommand, TownHeroChange, TownReject,
-    UniversityAnswer,
+    SchoolChoice, SkillOffer, StandReject, SystemCommand, TavernAnswer, TavernReject, TownCommand,
+    TownHeroChange, TownReject, UniversityAnswer,
 };
 
 /// An engine command on the wire (a legal list's, the echo of an applied command).
@@ -146,6 +147,12 @@ const fn answer(a: EngineAnswer) -> Answer {
                     amount,
                 },
                 EngineHire::Close => HireAnswer::Close {},
+            },
+        },
+        EngineAnswer::Tavern(answer) => Answer::Tavern {
+            answer: match answer {
+                EngineTavern::Hire { slot } => TavernAnswer::Hire { slot },
+                EngineTavern::Close => TavernAnswer::Close {},
             },
         },
         EngineAnswer::Close => Answer::Close {},
@@ -363,6 +370,10 @@ const fn answer_to_engine(a: Answer) -> EngineAnswer {
             },
             HireAnswer::Close {} => EngineHire::Close,
         }),
+        Answer::Tavern { answer } => EngineAnswer::Tavern(match answer {
+            TavernAnswer::Hire { slot } => EngineTavern::Hire { slot },
+            TavernAnswer::Close {} => EngineTavern::Close,
+        }),
         Answer::Close {} => EngineAnswer::Close,
     }
 }
@@ -509,6 +520,14 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 TownCommandError::NoTavern => TownReject::NoTavern {},
                 TownCommandError::UnknownSlot => TownReject::UnknownSlot {},
                 TownCommandError::EmptySlot => TownReject::EmptySlot {},
+            },
+        },
+        E::Tavern(error) => GameReject::Tavern {
+            error: match error {
+                TavernError::UnknownSlot => TavernReject::UnknownSlot {},
+                TavernError::EmptySlot => TavernReject::EmptySlot {},
+                TavernError::TooManyHeroes => TavernReject::TooManyHeroes {},
+                TavernError::Occupied => TavernReject::Occupied {},
             },
         },
     }

@@ -333,6 +333,14 @@ fn decision_view(d: &DecisionView) -> Decision {
             removable: *removable,
             army: army(stacks),
         },
+        DecisionView::Tavern {
+            hero,
+            object_type,
+            anchor,
+        } => Decision::Tavern {
+            hero: hero.raw(),
+            object: object_ref((*object_type, *anchor)),
+        },
     }
 }
 

@@ -58,7 +58,7 @@ origin stays in brackets. Moved to `QUEUE-ARCHIVE.md` as done or informational: 
 E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last part, the battle
 lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's fair system actor
 (folded into T14); at E25 T37 (2026-11-18) every other lane's informational notice of E08 T63a
-to T127b, E09 T8c to T38b1 and E16 M5 T14.
+to T127b, E09 T8c to T39a and E16 M5 T14.
 
 **From the battle lane** (CLT-Q40, BAT-Q64; `claude/keen-cori-oaahgi`, `cross-lane`; for your
 information and one choice):

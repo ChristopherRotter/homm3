@@ -174,6 +174,13 @@ pub enum GameEvent {
         target: HireTarget,
         source: HireSeen,
     },
+    /// E09 T39a (v73).
+    TavernOpened {
+        player: u8,
+        hero: u16,
+        object_type: u16,
+        anchor: Pos,
+    },
     DecisionClosed {
         player: u8,
     },

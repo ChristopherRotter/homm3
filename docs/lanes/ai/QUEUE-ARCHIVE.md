@@ -492,6 +492,17 @@ leaves a quarter of the previewed kills.
 
 **Moved 2026-11-18** (E25 T37's session; verbatim, informational, nothing to act on):
 
+**From the town lane** (E09 T39a):
+
+- 2026-11-18 (the town lane, E09 T39a, `town/e09-t39a`, `cross-lane` with the user's consent, E09
+  decision 149; **the env's action encoding v13, for the adventure agents; the bots tables'
+  `engine.adventure` line**): the adventure map's Tavern opens a decision (GAM-DEC-010) whose
+  answers map onto the roles, no new entry (`answer_entry`): the hire of tavern slot 0 `FIRST`,
+  of slot 1 `SECOND`, its `Close` `DECLINE` (masked by `legal_commands`: the hires that pass,
+  then `Close`). The adventure part's hash moved (v22, the two kinds), so both bots tables were
+  regenerated (only their `engine` line). Shipped maps with a Tavern or a Den import now when
+  nothing else blocks them; no env map or golden holds one.
+
 **From the adventure lane** (E08 T127b):
 
 - 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **a planned

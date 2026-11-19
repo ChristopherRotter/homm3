@@ -9,12 +9,12 @@ use super::*;
 use crate::shell::menu::Hovers;
 
 /// The names `A`, `B`, … of `n` players.
-fn names(n: u8) -> Vec<String> {
+pub(super) fn names(n: u8) -> Vec<String> {
     (0..n).map(|k| String::from(char::from(b'A' + k))).collect()
 }
 
 /// The hot seat's screen over `entries` with `n` players, its options shown, in the profile `bugs`.
-fn hot_seat_in(entries: Vec<Entry>, n: u8, bugs: Bugs) -> Scenario {
+pub(super) fn hot_seat_in(entries: Vec<Entry>, n: u8, bugs: Bugs) -> Scenario {
     let mut s = with_options_in(entries, bugs).opened_hot_seat(Hovers::default(), &names(n));
     assert!(s.hot_seat());
     assert!(click(&mut s, [514, 519]));
@@ -23,7 +23,7 @@ fn hot_seat_in(entries: Vec<Entry>, n: u8, bugs: Bugs) -> Scenario {
 }
 
 /// The hot seat's screen over `entries` with `n` players, its options shown.
-fn hot_seat(entries: Vec<Entry>, n: u8) -> Scenario {
+pub(super) fn hot_seat(entries: Vec<Entry>, n: u8) -> Scenario {
     hot_seat_in(entries, n, Bugs::Fixed)
 }
 

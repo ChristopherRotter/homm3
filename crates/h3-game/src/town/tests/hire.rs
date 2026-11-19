@@ -21,7 +21,7 @@ use h3_towns::{
 };
 
 use super::command::{BLUE, RED, T0, T1, run};
-use super::{rules_of, town_pack, towns_core_pack, towns_setup};
+use super::{rules_edited, town_pack, towns_core_pack, towns_setup};
 use crate::tests::key;
 use crate::town::pool::HeroStatus;
 use crate::town::tavern::{draw, views};
@@ -85,7 +85,10 @@ fn rules_in((profile, slow): (&str, bool), edit: impl FnOnce(&mut TownPack)) -> 
         )],
     });
     let core = Ruleset::compile(&[core], profile).unwrap();
-    rules_of(core, &towns, false, 4)
+    // E09 T39a: a map Tavern and a Den of Thieves (`hire/map.rs`).
+    rules_edited(core, &towns, false, 4, |adventure| {
+        adventure.object_types.extend(map::inn_types());
+    })
 }
 
 fn rules() -> GameRuleset {
@@ -536,3 +539,4 @@ fn the_legal_commands_list_each_hire_that_passes_after_the_towns_recruitments() 
 
 mod dismiss;
 mod leave;
+mod map;

@@ -308,6 +308,30 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
      the tile); the plans dismiss in one `Step::Manage` of sixteen, `managing` without the
      dismissals, so that the other steps play as before.
 
+### Decisions at T39a's start (2026-11-18, the user; TWN-Q25)
+
+149. **T39a kept whole as queued** (the user, `TWN-Q25`; the agent recommended the Tavern alone
+     with the Den of Thieves' kind moved to T39b, whose visit is the Thieves' Guild): both kinds,
+     the tavern decision, the env's v13, the replay word v19 and the protocol v73 in one
+     `cross-lane` pull request (the user's consent), the Den's visit a stub until T39b
+     (`TWN-STUB-20`); the game state hash v34 with it (the decision's hash kind 9, which design
+     §77's table missed).
+150. *Agent's calls at T39a (change freely; design §66's and §74's As built):* the kinds' rule ids
+     ADV-VIS-007 and ADV-VIS-008 (the adventure's visit family), a pack's Tavern entered or Den
+     visited from a neighbour refused; the visit's `h3_adventure::TavernVisit` (the hero, the
+     Tavern's type and anchor, its visitable tile), held whole by the decision; the decision opens
+     whatever the gold and the room (the original's dialog opens with its Recruit button
+     disabled), its listing then `Close` alone; `Answer::Tavern(TavernAnswer::{Hire { slot },
+     Close})`, the kind's own as the hire dialog's; the refusals a new
+     `GameCommandError::Tavern(TavernError::{UnknownSlot, EmptySlot, TooManyHeroes, Occupied})`
+     in that order, then `CannotPay` (the town's order without the town); a refused hire leaves
+     the decision open, a hire closes it after its events; `DecisionView::Tavern` and
+     `TavernOpened` the hero, the type and the anchor (the fold takes the view whole); the env's
+     v13 the hire of slot 0 the first role, of slot 1 the second, `Close` the closing; the replay
+     words `answer tavern hire <slot>` and `answer tavern close`; the plans name the kind in
+     `settle` and `hiring` only (their maps lay out no Tavern; `check_legal` is T40's when a plan
+     lays one out).
+
 ### Exit criteria (accepted at `TWN-Q18`, decision 121; design note §80)
 
 1. The town part's tavern weights and the hire's price compile (part v7); each player's faction
@@ -350,7 +374,7 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
   glossary, `docs/06-security.md`: done 2026-11-16 (`TWN-Q19`, decisions 125–128: the marks cleared
   at every day's start, every record's day's spell points; the drafts deleted; `E09-log.md`).
   **T35b** `StreamId::TAVERNS`, the two quirk flags, the packs and the replays' hashes: done
-  2026-11-17 (whole, decisions 129, 131; the base faithful hash 0x6ba8109889b34a25; `E09-log.md`). **T36** the town part v7 (round 4): done 2026-11-17 (whole, decisions 130, 132; `E09-log.md`). **T37** T37a the pool, the draw and the fills, the turn's points and marks, the views and the protocol: done 2026-11-17 (whole, decisions 133–136; game state hash v33, protocol v70; `E09-log.md`); T37b the map's customised types: done 2026-11-17 (whole, decisions 137–139; map import v25; `E09-log.md`). **T38** T38a the town's hire and the replacement, cut in two at its start (decision 140): T38a1 the hire's rule, the replacement, `HeroHired` and its parts, the protocol and the replay word: done 2026-11-17 (decisions 140–142; protocol v71, replay format v17; `E09-log.md`); T38a2 the hire listed (the legal commands, the env's `TAVERN_HIRE` v12, the plans, the town-map seeds, the benches): done 2026-11-18 (whole, decisions 143, 144; action encoding v12; `E09-log.md`); T38b cut in two at its start (decision 145): T38b1 the leaves and the returns (every leave by a battle or a capture, TWN-TAV-006, TD-18, TD-19, T-16): done 2026-11-18 (decision 146; `E09-log.md`); T38b2 the dismissal (`Manage::Dismiss`, its refusals, the listing, the plans): done 2026-11-18 (whole, decisions 147, 148; replay format v18, protocol v72; `E09-log.md`). **T39** T39a the Tavern and the Den of Thieves with the tavern decision, T39b the Thieves' Guild (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
+  2026-11-17 (whole, decisions 129, 131; the base faithful hash 0x6ba8109889b34a25; `E09-log.md`). **T36** the town part v7 (round 4): done 2026-11-17 (whole, decisions 130, 132; `E09-log.md`). **T37** T37a the pool, the draw and the fills, the turn's points and marks, the views and the protocol: done 2026-11-17 (whole, decisions 133–136; game state hash v33, protocol v70; `E09-log.md`); T37b the map's customised types: done 2026-11-17 (whole, decisions 137–139; map import v25; `E09-log.md`). **T38** T38a the town's hire and the replacement, cut in two at its start (decision 140): T38a1 the hire's rule, the replacement, `HeroHired` and its parts, the protocol and the replay word: done 2026-11-17 (decisions 140–142; protocol v71, replay format v17; `E09-log.md`); T38a2 the hire listed (the legal commands, the env's `TAVERN_HIRE` v12, the plans, the town-map seeds, the benches): done 2026-11-18 (whole, decisions 143, 144; action encoding v12; `E09-log.md`); T38b cut in two at its start (decision 145): T38b1 the leaves and the returns (every leave by a battle or a capture, TWN-TAV-006, TD-18, TD-19, T-16): done 2026-11-18 (decision 146; `E09-log.md`); T38b2 the dismissal (`Manage::Dismiss`, its refusals, the listing, the plans): done 2026-11-18 (whole, decisions 147, 148; replay format v18, protocol v72; `E09-log.md`). **T39** T39a the map's Tavern and the Den of Thieves with the tavern decision: done 2026-11-18 (whole, decisions 149, 150; map import v26, the adventure part v22, game state hash v34, replay format v19, action encoding v13, protocol v73; `E09-log.md`); T39b the Thieves' Guild with the Den's visit (round 7). **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
 
 ## Risks
 

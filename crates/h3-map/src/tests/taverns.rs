@@ -1,8 +1,8 @@
 //! The experiment writer's Tavern and Den of Thieves (E09 T34: batch TWN-4's maps; increment 4's
 //! design note `docs/epics/E09-design.md` §78, survey `docs/rules/surveys/E09-tavern.md` §3, §6):
 //! the two classes without a body, read back as written in SoD and RoE, their templates' masks as
-//! the game's; and the import as it reads them until E09 T39a types them: each a blocker without a
-//! type (its blocked mask and its one entrance), the setup valid.
+//! the game's; and the import, which since E09 T39a (map import v26; design note §66, §74) types
+//! them: the map's Tavern and the Den of Thieves, no body, no owner, the setup valid.
 
 use super::import::{ROE, SOD};
 use super::limits;
@@ -103,20 +103,23 @@ fn the_tavern_and_the_den_read_back_as_written() {
     }
 }
 
-// covers: ADV-OBJ-001
+// covers: ADV-OBJ-001, ADV-VIS-007, ADV-VIS-008
 #[test]
-fn the_import_reads_the_tavern_and_the_den_as_blockers_until_t39a() {
-    // Until E09 T39a types them (design note §66, §74), the two classes import as the shipped
-    // maps' do: without a type or a body, their template's blocked tiles and the one entrance as
-    // the footprint; the setup validates under SoD's and RoE's rules.
+fn the_import_types_the_tavern_and_the_den() {
+    // E09 T39a (design note §66, §74): the two classes import as the base pack's Tavern and Den
+    // of Thieves, without a body or an owner, their template's blocked tiles and the one entrance
+    // as the footprint; the setup validates under SoD's and RoE's rules.
     let map = taverns_map();
     for (format, rules) in [(w::Format::Sod, &*SOD), (w::Format::RoE, &*ROE)] {
         let raw = read_back(&w::write_in(&map, format).unwrap());
         let setup = import(&raw, rules).unwrap();
         setup.validate(rules).unwrap();
         assert_eq!(setup.map.objects.len(), 2);
-        for (object, (x, y)) in setup.map.objects.iter().zip(TILES) {
-            assert_eq!(object.object_type, None);
+        let types =
+            ["base:tavern", "base:den_of_thieves"].map(|k| rules.adventure().object_type_by_key(k));
+        assert!(types.iter().all(Option::is_some));
+        for ((object, (x, y)), ty) in setup.map.objects.iter().zip(TILES).zip(types) {
+            assert_eq!(object.object_type, ty);
             assert_eq!(object.holds, Holds::Nothing);
             assert_eq!(object.owner, None);
             assert_eq!(

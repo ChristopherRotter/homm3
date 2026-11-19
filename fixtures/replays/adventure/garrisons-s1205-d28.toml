@@ -502,30 +502,30 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x772fe273d8cc5c65",
-    "0x93252ae9a0b79ebb",
-    "0x0756c5c3007dac3b",
-    "0x2191f076a493d74b",
-    "0x899a40c7f36465ea",
-    "0xd331f14de21680a2",
-    "0x23f3e2875ab54380",
-    "0xef20c5dfc27de502",
-    "0xff715f3fbf63d1e0",
-    "0xd86c54fc4a8f4517",
-    "0x8d30ca3330ac73bf",
-    "0x98e54f3c031535b8",
-    "0xd8436d55bd58a02f",
-    "0x6ceca7e69542b8ba",
-    "0x4e6606bc03c30d76",
-    "0x56e007d88456e082",
-    "0x3b130b4b42b435f1",
-    "0x1eb49f56393f38f2",
-    "0x01141c91905dcaac",
-    "0x801e8f3fa66cae18",
+    "0xad92a135e7976c56",
+    "0xaa9f61176afb601d",
+    "0x467311a9798be2ad",
+    "0xe986495ffe5577fd",
+    "0x1d1ebdce17e2b7b0",
+    "0x8402668c6e6b55ac",
+    "0xe78013881a892d1e",
+    "0x0239d9eabf532950",
+    "0x909d61dc84025d17",
+    "0xcc094b13b0d64a88",
+    "0xd18336bb10417583",
+    "0x3d36556dbd561f15",
+    "0xcb98ea60afcadd23",
+    "0x9d225ec5e277fe3a",
+    "0xa6677f0dc811ca50",
+    "0x74e0af2f95c42a23",
+    "0xa46ac8f8f100887a",
+    "0x3cc30adcd06c1115",
+    "0xd754b997cda02b05",
+    "0x7baaeb894190dde9",
 ]
 
 [replay]
-format = 18
+format = 19
 engine = "0.1.0"
 seed = "1205"
 difficulty = 1
@@ -545,21 +545,21 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x6ba8109889b34a25"
-adventure_ruleset_hash = "0xa5809e7fd9e842dd"
+adventure_ruleset_hash = "0x56c46df30c45ce3a"
 town_ruleset_hash = "0xabc9756b93a29a55"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 33
+game_state_hash_version = 34
 adventure_state_hash_version = 26
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-garrisons-36.h3m"
 hash = "0xa3cbaec168902eb6"
-import_version = 25
+import_version = 26
 
 [result]
 day = 29
-final_hash = "0x39bea36236313751"
+final_hash = "0x51265ce3de639429"

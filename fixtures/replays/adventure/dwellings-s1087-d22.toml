@@ -290,21 +290,21 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xeb7e1fab4eb3de9f",
-    "0xf369c272e9e5cf16",
-    "0x0bada3e1627f26b4",
-    "0x3f63b7fbc1387938",
-    "0xf45bc0c5f9e68ab1",
-    "0xbdd37b445fd93d2f",
-    "0x0b0d3b16bf4f057d",
-    "0x0c4eaffe98777b6e",
-    "0x662ad9adf57704ba",
-    "0x63f13463463a5592",
-    "0xafa40033457193df",
+    "0x5f4e679ee8479b2e",
+    "0x02373ac523d4bd8d",
+    "0x8e9d4b392d9de94f",
+    "0xc74d6d79bcdf7aa1",
+    "0x272448733bdea898",
+    "0x03a9472b9d8623e2",
+    "0xb22b3669407b367c",
+    "0x7e855bb21cb902ab",
+    "0xaaee5e3c3284fc6f",
+    "0xb5b8c518e0095943",
+    "0x64a90ff79ef575f2",
 ]
 
 [replay]
-format = 18
+format = 19
 engine = "0.1.0"
 seed = "1087"
 difficulty = 1
@@ -324,21 +324,21 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x6ba8109889b34a25"
-adventure_ruleset_hash = "0xa5809e7fd9e842dd"
+adventure_ruleset_hash = "0x56c46df30c45ce3a"
 town_ruleset_hash = "0xabc9756b93a29a55"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 33
+game_state_hash_version = 34
 adventure_state_hash_version = 26
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-dwellings-36.h3m"
 hash = "0xbbd135d542e15bc3"
-import_version = 25
+import_version = 26
 
 [result]
 day = 23
-final_hash = "0x1ae333dffda640c6"
+final_hash = "0xfa5ef253c3712af9"
