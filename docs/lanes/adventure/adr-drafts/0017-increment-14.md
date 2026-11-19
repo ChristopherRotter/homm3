@@ -70,7 +70,7 @@
 ## Point 9 (after increment 13's versions)
 
    **Increment 14** bumps the adventure ruleset part (v22: the five kinds, the market
-   parameters), the map import (v26: the seven classes, the RoE Hill Fort's mark), the adventure
+   parameters), the map import (v26: the seven classes), the adventure
    state hash (v27: the stock's draw and sold entries), the game state hash (v34: the three
    decisions, the rest's name), the adventure replay format (v19: the answers' words) and the env's
    action encoding (v13, the AI lane's), and `h3-protocol`'s protocol once per wire task (the
@@ -117,8 +117,9 @@
 ## Revision history (append)
 
 - 2026-11-?? (E08 T131's `shared/` part; drafted in E08 T127b, the checkpoints ADV-Q56 to
-  ADV-Q58): point 1 (increment 14 adds no command), point 6 (the market, the Altar and the Hill
+  ADV-Q59): point 1 (increment 14 adds no command), point 6 (the market, the Altar and the Hill
   Fort as decisions; the factory's question and hire dialog; the Altar's return after its
   level-ups as the visit's rest; the listed answers), point 8 (the env's 67 entries), point 9
   (the versions), point 10 (the trades' outcomes; a transfer to another player). Batch E14's
-  outcome (T130) folded in.
+  outcome (T130, survey §21): every point as drafted; point 9's import without the RoE mark (E08
+  decision 378).

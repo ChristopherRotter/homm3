@@ -33,7 +33,8 @@ accepted, D-72 the original's (367), batch E14 before the build (368), this task
 **T127b's checkpoint** (ADV-Q58, decisions 370 to 373): the rates in the adventure part (370,
 §2), the Altar's close and return around a level-up with a note for the clients (371, §14), the
 env's 67 entries `cross-lane` (372, §18), the cut and every other agent's call as written (373).
-The note and the two drafts accepted.
+The note and the two drafts accepted. **Batch E14's outcome** (T130, ADV-Q59): the Hill Fort's RoE side by the enabled
+packs (378, §4, §7).
 
 **A correction to the survey** (this task; survey §0, §1, §2, §17 and §19 corrected in the same
 change): the seven classes are **entered**, not visited from a neighbour. The survey read the visit
@@ -137,20 +138,26 @@ Batch E14 records where the hero stands (§20, E14-16).
 
 ### 4. The Hill Fort kind (ADV-HFT-001, -002; survey §13; D-74 the original's)
 
-- **`hill_fort { gold, roe_except }`**:
+- **`hill_fort { gold }`**:
   - `gold`: the percent of the upgrade's gold difference paid, by creature level 1 to 7 (0, 25,
     50, 75, 100, 100, 100: `hill_fort_gold_factors` 0x63EB4C as percents); **a level of 0 % is free
     whole** (the original computes no price at level 1, `hill_fort_rows` 0x4E7EB0). The original's
     binary32 factors are quarters, so `trunc(f32(gold) × factor)` is exactly `gold × percent / 100`
     rounded down for a gold below 2²⁴: integer arithmetic (*agent's call*), the part refusing a
-    percent that is not a multiple of 25 or above 100 so the equivalence holds;
-  - `roe_except`: the creatures an RoE map's Hill Fort never upgrades (the base pack's Air, Earth,
-    Fire and Water Elementals, the original's 112 to 115 on a map of game version 0), §7.
-- **Which stacks:** a creature with an upgrade in the core (`upgrades`' first), not in `roe_except`
-  on an RoE map's Hill Fort: the original's `creature_is_unupgraded` 0x47B120 and
+    percent that is not a multiple of 25 or above 100 so the equivalence holds.
+  *Batch E14 (T130, decision 378):* `roe_except` withdrawn (it held the base pack's four
+  elementals for an RoE map's Hill Fort): **the enabled packs decide** (decision 104's rule).
+- **Which stacks:** a creature with an upgrade in the ruleset (`upgrades`' first): the original's
+  `creature_is_unupgraded` 0x47B120 and
   `creature_upgrade` 0x47B1A0 (a town's base creature and its upgrade), equivalent on the shipped
   packs, where every creature with an upgrade is a town's base creature (the eighth check asserts
-  it, §6). Neutral and upgraded creatures have no upgrade.
+  it, §6). Neutral and upgraded creatures have no upgrade. The four elementals have an upgrade only
+  under the ab pack's override (Storm, Magma, Ice, Energy): with the base pack alone none
+  upgrades, as the original's game version 0 (`hill_fort_rows` skips 112 to 115 there); with ab
+  or sod they upgrade on every map, as the Complete edition plays an RoE-format map (its version
+  comes from the players' editions, never the map's format: survey §21, E14-14), VCMI and the wiki.
+  The original's version 0 (an RoE campaign, a network peer with RoE alone) is the recorded
+  deviation, as E09 decision 14's moat.
 - **The price** of a stack of n (`upgrade_cost` 0x54E750): for each resource max(0, the upgrade's
   cost − the creature's) × n; then the gold alone scaled by its level's percent, rounded down once
   for the stack (D-74). A level-1 stack is free.
@@ -193,12 +200,11 @@ Batch E14 records where the hero stands (§20, E14-16).
   subclass than 0 is refused; no body is read (`docs/formats/h3m.md`'s "every other class:
   nothing"). Their footprints are the templates' with the entrance enterable (§0's correction: the
   class lists' rule, as the Magic Wells').
-- **An RoE map's Hill Fort:** the import writes `Holds::RoE` on every class-35 object of a map in
-  the RoE format (the original's game version 0, game +0x1F698), which the Hill Fort's rows read
-  (§4). *Agent's call:* a per-object mark, as an RoE map's Witch Huts take no mask (A-21), so the
-  static map keeps no format of its own. Not chosen: a format field on `MapSetup` (a fact every
-  later rule could read, not needed yet); the pack set alone (under the ab and sod packs an RoE
-  map's elementals would upgrade, the original refusing them).
+- **An RoE map's Hill Fort:** nothing of its own (decision 378, T130, replacing T127b's mark
+  `Holds::RoE` by the map's format): the enabled packs decide which stacks upgrade (§4). The
+  original's game version is not the map's format (survey §21: the scenario dialog's, from the
+  players' editions; SoD for every single and hot-seat game of this edition), so a mark would have
+  refused what the Complete edition upgrades. Not chosen: the mark kept.
 - **The writer** (`h3_map::writer`): the seven classes by template, no body, for the fixtures and
   batch E14's maps (§20); class 221 only in the AB and SoD formats, 213 likewise. *As built*
   (T128a): `TRADE_OBJECTS` among `PLAIN_OBJECTS`, `AB_TRADE_OBJECTS` refused in RoE ("an AB trade
@@ -385,7 +391,9 @@ original's windows stay open for more trades). The system actor's default is `Le
   level-ups, by `AltarOpened` for the same hero and object), unless the level-up covers the
   Altar entirely, as the original draws them (`altar_sacrifice` 0x5646A0 calls
   `hero_gain_experience` 0x4E33B0 with the dialog open, its level-up dialogs over it; the client
-  confirms the drawing against the original).
+  confirms the drawing against the original). *Recorded* (batch E14's E14-17, T130): the level-up
+  over the Altar without covering it, the Altar's places already empty and its total's texts the
+  old ones until the level-up's OK: both drawn (the map client lane's inbox told).
 - **The view** `DecisionView::Altar(AltarView)`: the hero, the screens its faction allows, each
   place's artifact with the experience it gives (with Learning) or none for a kept one, each slot's
   experience per creature before Learning (e) and for its most with Learning, the experience to
@@ -541,6 +549,10 @@ changes:
   Pegasi cost more than Blue holds; Blue's treasury read from memory (no field); every row on day
   1; E14-16 inside the other rows' visits. The spec gained an RoE hero's own army (no `primary`,
   no `spells`).
+- *Scored* (T130, survey §21): every row as predicted but E14-14: the RoE-format map played at the
+  game's version SoD (the version is the scenario dialog's, from the players' editions), its Air
+  Elementals upgraded; decision 378: the enabled packs decide (§4, §7, exit criterion 6). D-71 to
+  D-74 the original's, A-46 and A-47 seen; E14-17's level-up drawn over the Altar (§14's note).
 
 ### 21. Shared and `cross-lane` work; the building tasks; the exit criteria
 
@@ -565,7 +577,7 @@ ADRs are applied once with the rows' verdicts:
 | 2 | **T128** | Batch E14's maps: the writer's seven classes (by template, no body; 213 and 221 in AB and SoD), the spec's fields (`cross-lane`), the spec and its two maps (§20) |
 | 3 | **T129** + **T130** | T129: the harness's reads, the recipe, the run. T130: scored (survey §21) |
 | 4 | **T131** | `shared/` (`cross-lane`): the two drafts with T130's outcome, the glossary, `docs/06-security.md` |
-| 5 | **T132** | T132a: the five kinds, `[market]` and the rates' module with its tables (§1 to §5), the packs, the eighth original-data check (§6; part v22). T132b: the import (with `Holds::RoE`) and the writer's classes for fixtures (§7; map import v26); a step onto one of the seven refused as an unbuilt visit's until its task |
+| 5 | **T132** | T132a: the five kinds, `[market]` and the rates' module with its tables (§1 to §5), the packs, the eighth original-data check (§6; part v22). T132b: the import and the writer's classes for fixtures (§7; map import v26); a step onto one of the seven refused as an unbuilt visit's until its task |
 | 6 | **T133** | The market: T133a the state and the draw (§8, §9; adventure state hash v27), the visits' outcome (§10) and the adventure's checks (§11's sale and purchase); T133b the decision (§13; game state hash v34) with its wire (`cross-lane`) |
 | 7 | **T134** | T134a: the Altar (§11's sacrifices, §14 with `Rest::Visit`, the kind mark) with its wire. T134b: the Hill Fort (§15) and the factory (§16, GAM-DEC-008 amended) with their wire |
 | 8 | **T135** | T135a: `legal_commands`, the env's entries (v13, `cross-lane`) and the replay words (v19). T135b: the two maps, the replays, the plans and oracles, the benchmarks, `--with-original-data` (§18) |
@@ -593,7 +605,8 @@ the encoding and the format move once.
    levels come as the original's, the Altar returning after a level-up; leaving loses nothing
    (ADV-ALT-001 to -003, GAM-DEC-012, GAM-DEC-007; D-72, D-73 the original's; A-47 accepted, A-48
    fixed).
-6. The Hill Fort upgrades a stack of a creature with an upgrade (not an RoE map's elementals) for
+6. The Hill Fort upgrades a stack of a creature with an upgrade in the enabled packs (none for the
+   four elementals under the base pack alone; decision 378) for
    the difference times the count, the gold scaled by its level and truncated once, a level-1
    stack free; one row at a time or all when the whole is affordable (ADV-HFT-001, -002,
    GAM-DEC-013; D-74 the original's).
@@ -619,8 +632,9 @@ the encoding and the format move once.
 - **The halves:** the rates rest on the x87's 53-bit precision (installation.md §7.10's
   inference, Q-0005's) and the binary32 stores read in the code; the tests pin the halves (survey
   §4's 17 and 37) and a wrong reading shows in E14-1 and E14-5.
-- **RoE unread:** RoE's own executable is not read (E11's T1 may revisit); the Hill Fort's RoE rule
-  rests on SoD's test of the map's version.
+- **RoE unread:** RoE's own executable is not read (E11's T1 may revisit); the Hill Fort's RoE
+  side rests on the packs (decision 378) and SoD's test of version 0, which only an RoE campaign
+  reaches in this edition (survey §21).
 - **1 058 objects stop being inert** on 148 shipped maps: any test that used one of the seven
   classes as a plain blocker breaks (`TRAPS.md`), and the shipped-map counts move once (T132b,
   T135b).
