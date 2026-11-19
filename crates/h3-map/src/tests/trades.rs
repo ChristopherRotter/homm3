@@ -3,15 +3,19 @@
 //! the nine pictures of the game's `Objects.txt` read back as written in SoD and, but for AB's
 //! Freelancer's Guild (213) and snow Trading Post (221), which the writer refuses there, in RoE;
 //! their templates' masks as the game's; the map's banned artifacts written beside the editor's
-//! default bans, refused in RoE; and the import as it reads the seven until T132b types them:
-//! each a blocker without a type (its blocked mask and its one entrance), the setup valid.
+//! default bans, refused in RoE; and the import that types them (E08 T132b; design note §7):
+//! each its type at subclass 0 with its blocked mask and its one entrance, no body, the setup
+//! valid, a subclass past 0 refused, and a step onto one refused as an unbuilt visit's until T133
+//! and T134 build the visits.
 
 use super::import::{ROE, SOD};
 use super::limits;
 use crate::model::{Body, RawMap};
 use crate::writer as w;
-use crate::{import, read};
-use h3_adventure::Holds;
+use crate::{ImportError, import, read};
+use h3_adventure::{AdventureCommand, AdventureCommandError, Holds, ObjectKind, Pos};
+use h3_contracts::PlayerId;
+use h3_game::{Actor, GameCommand, GameCommandError, GameState, apply};
 
 /// The game's `Objects.txt` lines (`H3bitmap.lod`'s): the Altar of Sacrifice (2), the Black
 /// Market (7), the Hill Fort (35) on the editor's dirt and grass, the Trading Post (99) on dirt
@@ -41,6 +45,19 @@ const PICTURES: [&str; 9] = [
 
 /// Each picture's class.
 const CLASSES: [u32; 9] = [2, 7, 35, 35, 99, 99, 221, 106, 213];
+
+/// Each picture's object type (E08 T132b): the snow Trading Post (221) the Trading Post.
+const TYPES: [&str; 9] = [
+    "base:altar_of_sacrifice",
+    "base:black_market",
+    "base:hill_fort",
+    "base:hill_fort",
+    "base:trading_post",
+    "base:trading_post",
+    "base:trading_post",
+    "base:war_machine_factory",
+    "ab:freelancers_guild",
+];
 
 /// The pictures' tiles: four a row from (6, 4), six columns and four rows apart.
 fn tile(i: usize) -> (u8, u8) {
@@ -246,25 +263,38 @@ fn the_map_s_banned_artifacts_are_written_beside_the_default_ones() {
     );
 }
 
-// covers: ADV-OBJ-001
+// covers: ADV-OBJ-002, ADV-MKT-001, ADV-ALT-001, ADV-WMF-001
 #[test]
-fn the_import_reads_the_trades_as_blockers_until_t132b() {
-    // Until T132b types them (increment 14's design note §7), the seven classes import as the
-    // shipped maps' did before: without a type or a body, their template's blocked tiles and the
-    // one entrance as the footprint; the setup validates under SoD's and RoE's rules.
+fn the_import_types_the_trades() {
+    // The seven classes at subclass 0 (increment 14's design note §7): 2 the Altar of Sacrifice,
+    // 7 the Black Market, 35 the Hill Fort, 99 and 221 the Trading Post, 106 the War Machine
+    // Factory and 213 AB's Freelancer's Guild, each of its kind; without a body (nothing held, no
+    // owner) and with their template's blocked tiles and one entrance; the setup valid under
+    // SoD's and RoE's rules (an RoE map holds neither 213 nor 221).
     for (format, rules, keep) in [
         (w::Format::Sod, &*SOD, (|_| true) as fn(usize) -> bool),
         (w::Format::RoE, &*ROE, in_roe),
     ] {
+        let part = rules.adventure();
         let raw = read_back(&w::write_in(&trades_map(keep), format).unwrap());
         let setup = import(&raw, rules).unwrap();
         setup.validate(rules).unwrap();
-        let tiles: Vec<(u8, u8)> = expected(keep).iter().map(|&(_, _, t)| t).collect();
-        assert_eq!(setup.map.objects.len(), tiles.len(), "{format:?}");
-        for (object, (x, y)) in setup.map.objects.iter().zip(tiles) {
-            assert_eq!(object.object_type, None);
+        let kept: Vec<usize> = (0..PICTURES.len()).filter(|&i| keep(i)).collect();
+        assert_eq!(setup.map.objects.len(), kept.len(), "{format:?}");
+        for (object, i) in setup.map.objects.iter().zip(kept) {
+            let key = TYPES[i];
+            assert_eq!(object.object_type, part.object_type_by_key(key), "{key}");
+            let kind = &part.object_type(object.object_type.unwrap()).unwrap().kind;
+            let of_its_kind = match CLASSES[i] {
+                2 => matches!(kind, ObjectKind::Altar(_)),
+                35 => matches!(kind, ObjectKind::HillFort(_)),
+                106 => matches!(kind, ObjectKind::WarMachineFactory(_)),
+                _ => matches!(kind, ObjectKind::Market(_)),
+            };
+            assert!(of_its_kind, "{key}");
             assert_eq!(object.holds, Holds::Nothing);
-            assert_eq!(object.owner, None);
+            assert_eq!((object.owner, object.amount), (None, None));
+            let (x, y) = tile(i);
             assert_eq!(
                 (object.anchor.x, object.anchor.y),
                 (u16::from(x), u16::from(y))
@@ -274,5 +304,69 @@ fn the_import_reads_the_trades_as_blockers_until_t132b() {
             let (column, row) = entrance[0];
             assert!(object.blocked.contains(column, row));
         }
+    }
+    // A subclass past 0 is one the class does not define (the writer writes 0 alone, so the read
+    // map is edited). Object 0 is the hero.
+    let raw = read_back(&w::write(&trades_map(|_| true)).unwrap());
+    for index in 1..=PICTURES.len() {
+        let mut edited = raw.clone();
+        let template = usize::try_from(edited.objects[index].template).unwrap();
+        edited.templates[template].subclass = 1;
+        assert_eq!(
+            import(&edited, &SOD).err(),
+            Some(ImportError::Subclass(index)),
+            "{index}"
+        );
+    }
+}
+
+// covers: ADV-OBJ-003
+#[test]
+fn a_step_onto_a_trade_is_refused_until_t133_and_t134() {
+    // Until T133 (the markets) and T134 (the Altar, the Hill Fort and the factory) build their
+    // visits (increment 14's design note §10), a trade's entrance is refused as any unbuilt
+    // visit's (`effect` none): Red's hero, placed on the tile below each entrance (free: the
+    // pictures are four rows apart), reaches no point on it, the step onto it is `Visit` and the
+    // state stays as it was.
+    let rules = &*SOD;
+    let raw = read_back(&w::write(&trades_map(|_| true)).unwrap());
+    let setup = import(&raw, rules).unwrap();
+    let red = PlayerId::new(0);
+    assert_eq!(setup.map.objects.len(), PICTURES.len());
+    for (index, object) in setup.map.objects.iter().enumerate() {
+        let (column, row) = object.visitable.offsets().next().unwrap();
+        let entrance = Pos::new(
+            object.anchor.x - u16::from(column),
+            object.anchor.y - u16::from(row),
+            0,
+        );
+        let mut setup = setup.clone();
+        setup.heroes[0].pos = Pos::new(entrance.x, entrance.y + 1, 0);
+        let mut state = GameState::new(rules, &setup, 1).unwrap();
+        let hero = state.adventure().heroes()[0].id;
+        let reach = state
+            .adventure()
+            .reach(rules.core(), rules.adventure(), state.heroes(), hero)
+            .unwrap();
+        assert_eq!(reach.points_left(entrance), None, "{index}");
+        let before = state.state_hash();
+        let path = vec![entrance];
+        let refused = apply(
+            &mut state,
+            rules,
+            Actor::Player(red),
+            GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }),
+            &mut Vec::new(),
+        );
+        assert!(
+            matches!(
+                refused,
+                Err(GameCommandError::Adventure(AdventureCommandError::Visit {
+                    step: 0
+                }))
+            ),
+            "{index}"
+        );
+        assert_eq!(state.state_hash(), before, "{index}");
     }
 }

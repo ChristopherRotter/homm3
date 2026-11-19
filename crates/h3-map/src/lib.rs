@@ -88,8 +88,11 @@ pub use parse::parse;
 /// subclass past 0 refused), none with a body. v25 (E09 T37b): SoD's customised hero types into
 /// the game's setup (`GameSetup::custom_types`: each entry that sets a field the game keeps, as a
 /// placed hero's customisations; a type code past the table refused). v26 (E09 T39a): the map's
-/// Tavern (class 95) and the Den of Thieves (97) typed, without a body.
-pub const MAP_IMPORT_VERSION: u32 = 26;
+/// Tavern (class 95) and the Den of Thieves (97) typed, without a body. v27 (E08 T132b): the trades
+/// and services typed at subclass 0, none with a body: the Altar of Sacrifice (2), the Black Market
+/// (7), the Hill Fort (35), the Trading Post (99, and the snow one 221 as 99), the War Machine
+/// Factory (106) and the Freelancer's Guild (213); a subclass past 0 refused.
+pub const MAP_IMPORT_VERSION: u32 = 27;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

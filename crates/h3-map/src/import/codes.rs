@@ -600,6 +600,18 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         24 => by_subclass(&["base:derelict_ship"]),
         84 => by_subclass(&["base:crypt"]),
         25 => by_subclass(&["base:dragon_utopia"]),
+        // E08 T132b (increment 14's design note §7): the trades and services, none with a body,
+        // each at subclass 0, the only one `Objects.txt` lists (survey `E08-trades.md` §1: every
+        // shipped one); a subclass past 0 is one the class does not define. The snow Trading Post
+        // (221) is the Trading Post, as the original loads it as 99 (`object_class_values`
+        // 0x63A6E4); the map keeps its class for the picture, as 220's.
+        // rule: ADV-MKT-001, ADV-ALT-001, ADV-WMF-001
+        2 => by_subclass(&["base:altar_of_sacrifice"]),
+        7 => by_subclass(&["base:black_market"]),
+        35 => by_subclass(&["base:hill_fort"]),
+        99 | 221 => by_subclass(&["base:trading_post"]),
+        106 => by_subclass(&["base:war_machine_factory"]),
+        213 => by_subclass(&["ab:freelancers_guild"]),
         // rule: ADV-BON-001
         _ => match BONUS_VISITABLES.binary_search_by_key(&class, |&(c, _)| c) {
             Ok(i) => by_subclass(&[BONUS_VISITABLES[i].1]),
