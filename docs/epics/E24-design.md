@@ -3742,11 +3742,19 @@ Recorded by the harness (the sequences in `clients/map/to-record.toml`, the situ
   and shown at once (`hero_list_slot` −1, 1, 1); the boat's captain, aboard 1 and **its colour the
   hero's owner**; for a human here (0x4A10D0) the lifted picture becomes the boat's: +0x1F0 8,
   +0x1F4 the boat's facing, **the group `boat_map_group`, by the boat's own facing** (+0x1B),
-  +0x1EC 1, the view drawn and shown at once. Pass 7 and 9 mirror it by the hero's facing +0x47,
+  +0x1EC 1, the view drawn and shown (0x4A1106, `view_show_step` 0x4A1111: the objects' step when
+  due; the worker's reading at T2d2's build). Pass 7 and 9 mirror it by the hero's facing +0x47,
   the step's direction, so a boat whose facing lies on the other side of the step's draws turned
   (MCL-Q35: `board`'s boat facing down-left, stepped onto eastwards, shows down-right); the group
   stays until the hero's next step. Then `visit_and_update`'s redraws (§5.6: the minimap, both
-  lists, the status window, the resource bar), Move Hero and Next Hero disabled with no points.
+  lists, the status window, the resource bar; no button, read at 0x4AAAA0). A key's step then
+  (`adventure_key_down` after `status_window_choose` 0x4090FE): a hero that cannot move
+  (0x40913E) gets `make_hero_path` 1, 0, 0 (0x409153, the view drawn, the objects' step when
+  due) and `hero_list_update` −1, 1, 1 (0x409167; the view drawn once more by the dialog's redraw
+  at 0x4033EA, not read: the four recordings agree), Next Hero disabled when no hero can move;
+  `hero_move_loop`'s tail is the same (0x408193 to 0x4081C4), its `make_hero_path` drawing
+  nothing, the destination and the path's flag cleared. Move Hero goes off at a walk's end
+  (`land-walk`'s 900, before the dissolve), after the visit at a key's step (`land`'s 770).
 - **The landing** (a hero in a boat stepping onto a free land tile, class 3), before the
   animation (0x48095A): the boat put back on the hero's water tile (`hero_show` with class 8,
   0x480A71), facing the hero's facing (the step's direction), aboard 0; +0x1EC 0, the standing
@@ -3776,3 +3784,30 @@ Recorded by the harness (the sequences in `clients/map/to-record.toml`, the situ
   boarding's 770; `HORSE01`, the sand's, at the landing's 900) and stopped in the same
   millisecond by `hero_walk_end`; the ocean's ambient loop (`LOOPOCEA`) when the view moved (100;
   the walk's start at 300 with the start tile's `HORSE08`). No other sample.
+- **Built** (M4 T2d2, one worker; *provisional*, M4's review list): the timeline's `Boats` (the
+  empty boats and the boats sailed, `Boats::of` the live part's), `Start::boats` and
+  `Start::water` (each tile's water flag in the art's order; none known, nothing is a landing),
+  `Draw::hidden` (the hero off its tile and not lifted) and `Draw::boats`; a human's step split
+  into `mobilize` (the lift, centring and whole-screen show, a key's step's one arrow
+  `DESTINATION` on its tile) and `animate`, `stride` choosing the boarding (`board_start`: the
+  hero turned to the step, hidden, `lose`: killfade and the dissolve) or the landing
+  (`land_start`: the boat `moored` on the water tile facing the step, the view shown) before the
+  frames; the visits `board` (the boat `sail`ed off the map, its colour the owner's, points 0,
+  the hero list's slot, the boat lifted in its own facing's group mirrored by the hero's,
+  MCL-Q35 in both profiles) and `land` (the hero out of the boat, points 0, killfade and the
+  dissolve in), then `updated` (minimap, lists, status window, buttons) and, after a key's step,
+  `stuck` (§5.7's tail); `Dissolving::holds` (only an object's removal holds the colour cycling:
+  `board` cycles at 200, 400 and 600) and `Dissolving::then` (`Then::Taken`, `Board`,
+  `Landed`); `frame_drawn` steps no frame with nothing lifted; `live`'s `Walking::hidden`,
+  `scene`'s hidden hero not on its tile; the binary fills `Start::boats` and `Start::water` from
+  the art and applies `Draw::boats` to the live part. Left out: the Admiral's Hat (not recorded),
+  the mouse-over's boats (the live part's at 0), a computer's boarding or landing (the
+  computers' `step` unchanged), a find on the tile landed on.
+- **Checked** (M4 T2d2): the four moved into `sequences.toml`, `to-record.toml` removed; `frames
+  --only <id> --reuse` every frame exact (18, 25, 18, 27), the viewer's timelines the recorded
+  ones (48, 74, 47, 82 lines), their `-frames.txt` kept; `drawn` the 50 situations and the 89
+  other sequences the same, `--record` for the four (88 digests); the window's read-back exact
+  on `board` and `land-walk`; unit tests (`timeline/tests/boats.rs`: the four replayed headless,
+  the dissolves' contents, the boat lifted and put back, the queued actions, the sounds, speed
+  4, the refusals), 416 in the library, 100 % of `h3-map-view`'s library (lines, regions,
+  functions).
