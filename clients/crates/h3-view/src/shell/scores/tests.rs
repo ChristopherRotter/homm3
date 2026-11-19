@@ -739,7 +739,7 @@ fn the_shell_opens_it_from_the_main_menu_and_its_front_takes_the_inputs() {
     assert!(!front.typing());
     assert_eq!(front.typed('a'), Did::default());
     front.clock(0);
-    assert!(front.clock(210));
+    assert!(front.clock(210).changed);
     assert!(front.moved([0, 0]) == Did::default());
     assert!(front.press(middle(CAMPAIGN)).changed);
     assert!(front.release().changed);

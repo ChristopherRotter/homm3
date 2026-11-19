@@ -118,6 +118,7 @@ pub(crate) fn menus(bugs: Bugs) -> Menus {
         multiplayer: crate::shell::multiplayer::tests::multiplayer(bugs),
         scenario: crate::shell::scenario::tests::scenario(bugs),
         scores: crate::shell::scores::tests::scores(bugs),
+        credits: crate::shell::credits::tests::credits(),
     }
 }
 
@@ -881,8 +882,8 @@ fn the_scenario_screen_is_a_stub_over_its_game_type_menu() {
         stub_name(Screen::Scenario(Game::Load, ScenarioKind::Tutorial)),
         "scenario"
     );
-    assert_eq!(stub_name(Screen::Credits), "credits");
-    assert_eq!(super::scenario(Game::Load, ScenarioKind::Single), STUBS[3]);
+    assert_eq!(stub_name(Screen::Tutorial), "tutorial");
+    assert_eq!(super::scenario(Game::Load, ScenarioKind::Single), STUBS[2]);
     for built in [ScenarioKind::Single, ScenarioKind::Multiplayer] {
         assert!(
             !STUBS

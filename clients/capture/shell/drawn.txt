@@ -645,6 +645,19 @@ scores-reset campaigns t800 43b806abbac59e17
 scores-reset question-campaigns t900 8983771692b5f7b3
 scores-reset reset-campaigns t1000 5bceace60424d9e5
 scores-reset menu t1100 b7dd66a1e899af04
+credits-scroll opened t200 3a30c7568043aa20
+credits-scroll start clip 21@200-3200 62fd9b1a073174f4
+credits-scroll scroll clip 2611@3200-264200 4c721bf3fa7358da
+credits-scroll end clip 12@264200-266500 ee01363232ff68ab
+credits-scroll menu t266500 e41a9f4a11e12d84
+credits-end before-key clip 21@200-3200 62fd9b1a073174f4
+credits-end moved t3300 2866bdbc595497bb
+credits-end key-ended t3400 f63f22cc282db23d
+credits-end before-left clip 21@3600-6600 20de84598dd9a1a1
+credits-end left-ended t6700 e41a9f4a11e12d84
+credits-end before-right clip 21@6800-9800 c225b5591f840bb4
+credits-end right-ended t9900 e41a9f4a11e12d84
+credits-end menu t10000 e41a9f4a11e12d84
 start-plain menu t0 e62581b7ce362971
 start-bink logo clip 68@0-5977 860a3323c1a880b2
 start-bink clips clip 2519@6000-180480 94fba25cd372b2ba

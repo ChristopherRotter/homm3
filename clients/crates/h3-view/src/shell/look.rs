@@ -13,7 +13,8 @@
 //! loading screen, its bar and the fade's step, then its stub's menu ([`super::play`]). High
 //! Scores (M4 T1a) is its tab's picture, the headings and rows, its dialog over them and Reset's
 //! notice over all ([`super::scores`]); its creatures' DEFs are the adapter's (not in
-//! [`names`]).
+//! [`names`]). The credits (M4 T2) are the main menu's background, `mainmenu.pcx` over its
+//! buttons, the text's part in the window and the closing text ([`super::credits`]).
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -21,6 +22,7 @@ use alloc::vec::Vec;
 use h3_ui::ui::{Dialog, Draw, Shown};
 use serde::Deserialize;
 
+use super::credits::CreditsLook;
 use super::menu::{Arrow, Front, Kind, Stale, TITLE};
 use super::play::LoadingLook;
 use super::scenario::{DescriptionLook, ListLook, TeamsLook};
@@ -59,6 +61,8 @@ pub struct ShellLayout {
     pub loading: LoadingLook,
     /// High Scores (§2.8, §34: `high_scores_dialog_init` 0x4E9880; E27 M4 T1a).
     pub high_scores: ScoresLook,
+    /// The credits (§2.9, §36: `credits_screen` 0x4EDDA0; E27 M4 T2).
+    pub credits: CreditsLook,
 }
 
 /// The scenario screen: its two backgrounds, its dialog, its list's rows and bar, its teams'
@@ -221,6 +225,18 @@ pub fn look(layout: &ShellLayout, screen: Screen, front: Option<&Front>) -> Opti
                 shift: 0,
             });
         }
+        // The credits (E27 M4 T2): over the main menu's background.
+        Front::Credits(credits) => {
+            return (screen == Screen::Credits).then(|| Look {
+                background: layout.main_menu.background.clone(),
+                draws: credits.draws(),
+                stale: Vec::new(),
+                over: Vec::new(),
+                cursor: true,
+                arrow,
+                shift: 0,
+            });
+        }
         // Play's start (E27 M3 T6): the loading screen, its bar and the fade's step, no cursor;
         // then the stub's menu under its notice.
         Front::Play(play) if play.noticing() => (play.menu(), None),
@@ -296,6 +312,13 @@ pub fn names(layout: &ShellLayout) -> Vec<String> {
         scores.scenarios.picture.clone(),
         scores.font.clone(),
         scores.font_palette.clone(),
+    ]);
+    let credits = &layout.credits;
+    names.extend([
+        credits.picture.clone(),
+        credits.font.clone(),
+        credits.closing_font.clone(),
+        credits.font_palette.clone(),
     ]);
     for dialog in [
         &layout.multiplayer,

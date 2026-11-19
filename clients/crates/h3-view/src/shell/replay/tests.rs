@@ -510,16 +510,80 @@ fn what_the_viewer_cannot_do_stops_the_replay() {
     }
     // A stub's screen (E27 M2 T6b2) is the client's: shown to `until` and `check`, but no menu
     // opens on it and the replay stops at its shots and inputs as at one not built.
-    // (Credits since E27 M4 T1a built High Scores: the main menu's C.)
-    let (seen, got, r) = replay(false, &["until:main_menu", "key:c", "move:1,2"]);
+    // (Campaign since E27 M4 T2 built Credits, T1a High Scores: New Game's menu's C.)
+    let to_campaigns = ["until:main_menu", "key:n", "key:c"];
+    let (seen, got, r) = replay(false, &[&to_campaigns[..], &["move:1,2"]].concat());
     assert!(seen.is_empty());
-    assert_eq!((got, r.screen(), r.menu()), (None, Screen::Credits, None));
-    for steps in [&["shot:credits"][..], &["key:Return"], &["clip:c:10:1"]] {
-        let mut all = vec!["until:main_menu", "key:c"];
+    assert_eq!((got, r.screen(), r.menu()), (None, Screen::Campaigns, None));
+    for steps in [&["shot:campaigns"][..], &["key:Return"], &["clip:c:10:1"]] {
+        let mut all = to_campaigns.to_vec();
         all.extend(steps);
         let (seen, got, _) = replay(false, &all);
         assert!(seen.is_empty(), "{steps:?}");
-        assert_eq!(got, Some(Stop::NotBuilt(Screen::Credits)), "{steps:?}");
+        assert_eq!(got, Some(Stop::NotBuilt(Screen::Campaigns)), "{steps:?}");
+    }
+}
+
+#[test]
+fn the_credits_step_on_the_clock_and_end_at_the_main_menu() {
+    // `credits-scroll` (E27 M4 T2, design §36.2): the first step 100 ms after the screen opens,
+    // then one each 100 ms; the step after the text has left shows the main menu (266.5 s).
+    let mut r = Replay::new(
+        Shell::new(false),
+        [400, 300],
+        INPUT_STEP,
+        None,
+        &menus(Bugs::Original),
+    );
+    let mut changes = Vec::new();
+    let mut last = None;
+    let mut take = |r: &Replay, t: Take<'_>| {
+        let shown = match r.front() {
+            Some(Front::Credits(c)) => format!("{:?}", c.draws()),
+            Some(Front::Menu(_)) => String::from("menu"),
+            _ => String::from("other"),
+        };
+        if last.as_ref() != Some(&shown) {
+            let _ = t;
+            changes.push(r.time());
+            last = Some(shown);
+        }
+        Ok(())
+    };
+    let steps = [
+        "until:main_menu",
+        "move:300,560",
+        "key:c",
+        "shot:opened",
+        "clip:start:3000:10",
+        "clip:scroll:261000:100",
+        "clip-until:end:main_menu:10:20000",
+        "shot:menu",
+    ];
+    for step in steps {
+        assert_eq!(r.play(&parse(step).unwrap(), &mut take).unwrap(), None);
+    }
+    let times = changes;
+    // The first step at 200 (the picture's top two rows), then a step every 100 ms; the last two
+    // rows at 266.2 s, the closing text alone at 266.3 and 266.4, the main menu at 266.5 s (the
+    // pixels' last change is at 265.2 s: the picture's rows past its last line's ink are blank).
+    assert_eq!(times[..3], [200, 300, 400]);
+    assert_eq!(times.len(), 2_663);
+    assert_eq!(times[times.len() - 3..], [266_200, 266_300, 266_500]);
+    assert_eq!(r.screen(), Screen::MainMenu);
+    assert_eq!(r.time(), 266_500);
+    // `credits-end`: a move goes on, a key, a left press and a right press end them.
+    for (end, more) in [
+        ("key:space", None),
+        ("click:300,560", None),
+        ("right:300,560", Some("right-up")),
+    ] {
+        let mut steps = vec!["until:main_menu", "key:c", "step:3000", "move:200,200"];
+        steps.extend([end].into_iter().chain(more));
+        let (_, stop, r) = replay(false, &steps);
+        assert_eq!((stop, r.screen()), (None, Screen::MainMenu), "{end}");
+        let (_, _, before) = replay(false, &steps[..4]);
+        assert_eq!(before.screen(), Screen::Credits);
     }
 }
 

@@ -640,8 +640,9 @@ impl Replay {
     /// The clock moved on: the start's reading of it.
     fn tick(&mut self, ms: u32) {
         self.time = self.time.saturating_add(ms);
-        if let Some(front) = self.front.as_mut() {
-            front.clock(self.time);
+        // The credits end by the clock (E27 M4 T2).
+        if let Some(ended) = self.front.as_mut().and_then(|f| f.clock(self.time).ended) {
+            self.end(ended);
         }
         if let Some(start) = self.start.as_mut() {
             start.read(self.time, &mut self.ops);

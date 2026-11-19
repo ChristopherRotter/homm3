@@ -1648,3 +1648,23 @@ id = 1015
 at = [649, 26]
 size = [64, 64]
 repeat = { count = [1, 11], step = [0, 50] }
+
+# The credits (E27 M4 T2; docs/epics/E27-design.md §2.9, §36: game_main's case 104 0x4EF12D,
+# credits_screen 0x4EDDA0): mainmenu.pcx over the main menu's buttons, the window the text moves
+# through, Credits.txt's record 1 in Credits.fnt (colour 0x11C, alignment 5), record 2 in
+# smalfont.fnt (0xD, alignment 8: at the window's bottom) once the leaving text's rows are under
+# 435; 2 px a step, a step every 100 ms (CLT-Q88).
+[credits]
+picture = "mainmenu.pcx"
+at = [460, 0]
+window = [460, 10, 328, 580]
+font = "Credits.fnt"
+font_palette = "game.pal"
+colour = 0x11C
+align = 5
+closing_font = "smalfont.fnt"
+closing_colour = 0xD
+closing_align = 8
+closing_below = 435
+step = 2
+every = 100

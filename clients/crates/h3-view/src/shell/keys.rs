@@ -68,6 +68,9 @@ pub enum Context {
     Scenario,
     /// High Scores with nothing over it (E27 M4 T1a).
     HighScores,
+    /// The credits (E27 M4 T2): no command; every key but F4 ends them
+    /// (`super::credits::Credits::key`).
+    Credits,
 }
 
 /// The shell's commands.
