@@ -5065,3 +5065,58 @@ as recommended).
   The bench: every workload inside its gate, none re-baselined; `random-play-bonuses-36` +1.66 %,
   `manage-army-12` +1.36 %, `fork-economy-xl-144` +1.28 %, `day-start-builds-36` +1.04 % (as at
   T39b1: nothing of the visit runs on those paths), every other within 1 %.
+
+### T40a — the census of the taverns, the pool's properties (2026-11-19)
+
+Baseline 38d422b (#1040 merged; CI's runs on `master` standing in: the VM restarted minutes in and
+the setup's baseline died while compiling). The user's computer was connected at the start only:
+the client lane's 64 files and the four manuals with three help files staged, SHA-256 checked;
+its shell went away minutes in, after the staging. At the start the user cut T40 in two, the
+census first (decision 156, `TWN-Q28`, as recommended), consented to `cross-lane` (decision 157)
+and, once the pool proved crate-private, chose public read-only readers (decision 158, as
+recommended).
+
+- **The readers** (`h3-game`'s `town/pool.rs`, the town lane's; `lib.rs`' re-export
+  `cross-lane`): `HeroStatus` public (its `Taken` doc names the hire), the player's tavern part
+  public as `PlayerTavern` (renamed from `Tavern`: `ObjectKind::Tavern` and the decision's
+  `Tavern` were names already), `GameState::hero_status`, `player_tavern` and `hero_record`;
+  `HeroPool::status` no longer test-only. Nothing on the wire, no hash or version moved. Tested
+  in `town/tests/tavern.rs`' start fill (every type, one past the core, both players, a third).
+- **The census** (`h3-map`'s `original_data`, design §78's As built): classes 95 and 97 typed as
+  `ObjectKind::Tavern` and `DenOfThieves`, nothing held, no owner: 93 on 47 maps and 227 on 107,
+  the survey's (exit criterion 9; every one of the 160 maps already imported whole). Every game
+  played by `EndTurn` alone to day 29: the start's fill and the four weeks' by the census's own
+  walk of TWN-TAV-001 (what was free at each draw, the setup's masks, the class weights, slot 1's
+  avoidance, slot 0's own faction while one of its classes weighs; an empty slot only with
+  nothing to draw; no type twice), each slot's hero as its owner sees it (its type's record,
+  full spell points, a starting army by GAM-SET-001's shape); the pool after every `EndTurn`
+  (`pool_holds`); the customised types' records at the build. All 160 hold, the census 35 s in
+  debug (21 s before): 800 fills, 7 440 slots filled and checked, none empty; 3 694 slot 0s
+  among the faction's classes (the other 26 a player without a faction); no slot 1 of slot 0's
+  class; 17 customised types (2 on the map, 1 offered at the start), 13 off the map at level 3
+  with their 2 000 experience (`Marshland Menace`, T37b's 13 or 14). Two mutations of the engine
+  fail it on the first map: slot 0's own faction dropped (`A Viking We Shall Go Allied`: a class
+  7 hero for a weight 0) and the week's release leaving the type offered (day 8, `Offered` in no
+  slot).
+- **The properties** (`h3-map`'s plans, `cross-lane`): `check_invariants` ends with
+  `check_pool` (a slot's type offered with its record, none on the map; a returning mark only on
+  a held slot; each hero on the map or in a garrison its type's record, taken by its owner's
+  colour, one hero a taken type; every other status neither held nor offered);
+  `check_dismissals` before every step of `every_step_keeps_the_commands_invariants` (the heroes
+  on the map and in the garrisons, any owner's, the first record off them and an id past the
+  store: accepted exactly when `legal_management` lists it, a refused one leaving the state, its
+  hash and the events); probing every record of the store cost the property +75 % (155 to
+  271 s), the narrowed probe +7 % (166 s). `a_forks_week_is_its_parents` asserts the week's fill
+  (`TavernOffered` told: the plans' maps allow every type) and every player's tavern part before
+  and after. All 184 of `h3-map`'s tests passed at once (673 s); both changed properties at 240
+  cases (five times their 48) passed. A refused hire leaving the state was T38a2's
+  (`check_town_builds`), the room by a town's hire `check_town_hire`'s.
+- **Versions:** none moved.
+- **Verify** (`--scope town --with-original-data`): every step passed (fmt, clippy, the checks,
+  coverage, determinism, bench-check, doc-drift, original-data) but `check-lane` (`cross-lane`:
+  `cargo xtask check-lane --cross-lane` ok, `cargo check --workspace --all-targets` clean). The
+  bench: every workload inside its gate, none re-baselined; `random-play-bonuses-36` +1.66 %,
+  `manage-army-12` +1.36 %, `fork-economy-xl-144` +1.28 %, `day-start-builds-36` +1.04 % (as at
+  T39b1 and T39b2: nothing of this task runs on those paths), every other within 1 %.
+
+**The queue:** T40a out; T40b next. Ids: decisions next 159, questions `TWN-Q29`.
