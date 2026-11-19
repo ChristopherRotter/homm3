@@ -8,7 +8,8 @@ banks) is in `E08-log.md` ("Increment 13's design note at its closure", moved by
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 14's
 amendments, drafted in the lane's `adr-drafts/` (`0016-` and `0017-increment-14.md`) and
 applied to the ADRs by the round's `shared/` task with batch E14's outcome (the drafts then
-deleted). Written by T127b whole (decision 369, the user at its start; not the recommendation, a
+deleted; *applied* by T131: ADR-0016 points 1, 4, 6 and ADR-0017 points 1, 6, 8 to 10 hold the
+decisions, the drafts are gone). Written by T127b whole (decision 369, the user at its start; not the recommendation, a
 cut by side) from T127a's survey and the answers at ADV-Q56 and ADV-Q57 (the epic's decisions 361
 to 368). A building task adds an *As built* line to the section it builds; the note moves to
 `E08-log.md` when the increment closes. Facts and sources: survey `docs/rules/surveys/E08-trades.md`

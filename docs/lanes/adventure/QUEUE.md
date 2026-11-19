@@ -4,22 +4,26 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T131 — the `shared/` task** (round 4; decisions 370 to 373, 378, 379; as T122 for
-increment 13; `shared/e08-t131`, `cross-lane`)
+**E08 T132 — the kinds, the packs, the import** (round 5; decisions 370, 373, 378; design note
+§1 to §7, §19, §21)
 
-- **Scope:** design note `E08-design.md` §21's shared work. The two accepted drafts applied
-  (`adr-drafts/0016-`, `0017-increment-14.md`: ADR-0016 points 1, 4, 6; ADR-0017 points 1, 6, 8
-  to 10) with batch E14's outcome (survey `E08-trades.md` §21: the rows cited; the Hill Fort's RoE
-  mark withdrawn, the packs deciding, decision 378), then the drafts deleted;
-  `docs/03-domain.md`'s terms (market, a market's lot, the Black Market's stock, a transfer, a
-  sacrifice, the Hill Fort's upgrade, the War Machine Factory); `docs/06-security.md`'s lines (the
-  amounts, the recipient and the price validated; the stock server-only; design §12, §17); the
-  index's Read-when cells; the town lane's inbox told the ADRs' new parts.
-- **Inputs:** the drafts; design §12, §17, §21; T122's record in `E08-log.md` as the form.
-- **Depends on:** T130 (done). **Status:** ready; whole (decision 379, docs only); then T132
-  (round 5, its cut at its start).
+- **Scope:** T132a (`h3-adventure`, `h3-pack-adventure`, the packs): the five kinds `market`,
+  `altar`, `hill_fort { gold }` (no `roe_except`: decision 378), `war_machine_factory` and the
+  Black Market's stock classes, with their hash tags; `[market]` and the rates' module with its
+  tables (`h3_kernel::arith::X87`, survey §4's halves pinned; D-71's cases); the base and ab packs'
+  types (§6); the eighth original-data check (`--with-original-data`); adventure ruleset part's
+  next version (v23 after the town lane's v22). T132b (`h3-map`): the import of classes 2, 7, 35,
+  99, 106, 213 and 221 at subclass 0 (no body, no RoE mark), the writer's classes for fixtures, a
+  step onto one of the seven refused as an unbuilt visit's until its task; map import's next (v27);
+  the shipped-map census and the counts that move (`TRAPS.md`).
+- **Rules:** ADV-MKT-001, -002, ADV-HFT-001's which stacks, ADV-ALT's values, ADV-WMF-001's
+  machines, each with its sources (survey §21's rows as `observation` once built).
+- **Inputs:** design note §1 to §7, §19; ADR-0016 point 4 and ADR-0017 point 9 as applied (T131);
+  survey §4 to §14; `TRAPS.md` (shared changes, original data, extra target directories).
+- **Depends on:** T131 (its `shared/` pull request merged first). **Status:** ready; the cut
+  confirmed at its start (T132a and T132b as the note has them, one or both in a session).
 
 ## Inbox
 

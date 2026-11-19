@@ -4,6 +4,21 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-19, E08 T131: done whole, decision 379; the record in `E08-log.md`; T132 queued.)* **E08 T131 — the `shared/` task** (round 4; decisions 370 to 373, 378, 379; as T122 for
+increment 13; `shared/e08-t131`, `cross-lane`)
+
+- **Scope:** design note `E08-design.md` §21's shared work. The two accepted drafts applied
+  (`adr-drafts/0016-`, `0017-increment-14.md`: ADR-0016 points 1, 4, 6; ADR-0017 points 1, 6, 8
+  to 10) with batch E14's outcome (survey `E08-trades.md` §21: the rows cited; the Hill Fort's RoE
+  mark withdrawn, the packs deciding, decision 378), then the drafts deleted;
+  `docs/03-domain.md`'s terms (market, a market's lot, the Black Market's stock, a transfer, a
+  sacrifice, the Hill Fort's upgrade, the War Machine Factory); `docs/06-security.md`'s lines (the
+  amounts, the recipient and the price validated; the stock server-only; design §12, §17); the
+  index's Read-when cells; the town lane's inbox told the ADRs' new parts.
+- **Inputs:** the drafts; design §12, §17, §21; T122's record in `E08-log.md` as the form.
+- **Depends on:** T130 (done). **Status:** ready; whole (decision 379, docs only); then T132
+  (round 5, its cut at its start).
+
 *(Moved 2026-11-19, E08 T130: done whole, decisions 378, 379; the record in `E08-log.md`; survey `E08-trades.md` §21; T131 queued.)* **E08 T130 — batch E14 scored** (round 3; decisions 368, 373; T129a and T129b the runs, done)
 
 - **Scope:** the survey `docs/rules/surveys/E08-trades.md`'s new §21: each of E14-1 to E14-17

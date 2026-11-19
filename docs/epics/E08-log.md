@@ -19901,3 +19901,35 @@ rule: the enabled packs decide (decision 378); (2) T130, then T131 in this sessi
   (T130 out to `QUEUE-ARCHIVE.md`, T131 in).
 
 **Versions:** none moved. T131 (round 4, `shared/`) next, in this session (decision 379).
+
+### Increment 14, round 4: T131, the `shared/` task (2026-11-19, `shared/e08-t131`, `cross-lane`)
+
+**The cut** (decision 379, the user at T130's checkpoint): whole, one `shared/` pull request, docs
+only, right after T130 in the same session (stacked on T130's branch until it merges). Nothing
+staged beyond T130's executable.
+
+- **The ADRs** (the two drafts accepted at ADV-Q58, decision 373, applied with batch E14's
+  outcome, survey `E08-trades.md` §21, decision 378; then deleted with their folder):
+  **ADR-0016** points 1 (**Increment 14's objects**: no new block), 4 (**Increment 14's kinds**:
+  the market, the rates, the Black Market's draw, the Altar, the Hill Fort by the enabled packs'
+  upgrades, the factory, the purchase's refusal; then a batch E14 paragraph citing every row, E14-14
+  by decision 378) and 6 (the four kinds' views, the stock in the decision only), a consequence,
+  an alternative (the draft's and the RoE mark withdrawn, VCMI's roundings), the history.
+  **ADR-0017** points 1 (no command; E14-16), 6 (the three decisions, the factory, the listed
+  answers; E14-1, E14-5, E14-8, E14-13, E14-15, E14-17), 8 (the 67 entries, the next encoding v14
+  after the town lane's v12 and v13), 9 (the versions by name, then the numbers after E09's
+  increment 4: part v23, import v27, adventure state hash v27, game state hash v35, replay format
+  v20, encoding v14), 10 (the outcomes; E14-6's transfer), a consequence, an alternative, the
+  history. The index's Read-when cells of ADR-0016 and -0017. *Agent's calls:* each point cites
+  the rows that confirmed it (T122's); point 9's numbers written out, since the town lane's
+  increment 4 merged first (the draft had the numbers before it).
+- **The glossary** (`docs/03-domain.md`): market, a market's lot, the Black Market's stock,
+  transfer, sacrifice, the Hill Fort's upgrade, War Machine Factory.
+- **`docs/06-security.md`**: increment 14's lines (design §10 to §17: the four kinds public by
+  type, the stock server-only outside its visitor's decision, every answer's validation against
+  the trusted actor and the open decision, the owner's events, a transfer's recipient its gain
+  alone).
+- **Docs:** the design note's header (applied), the task's line, the queue (T131 out, T132 in),
+  the town lane's inbox (the ADRs' new parts and the versions), HANDOFF.
+
+**Versions:** none moved. T132 (round 5, its cut at its start) next.
