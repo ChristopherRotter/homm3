@@ -19,6 +19,10 @@
 //!   top by a page, at the key's press; the description's scroll bar's (E27 M3 T2c, its arrows'
 //!   keys: 0x48 to 0x51) at the key's release: Up and Left a line back, Down and Right a line
 //!   on, Page Up and Page Down a page.
+//! - **High Scores** (`high_scores_dialog_init` 0x4E9880, the buttons' scan codes; E27 M4 T1a):
+//!   C Campaign (0x2E), S Standard (0x1F), each at its release; Exit's Enter (0x1C) and Escape
+//!   end the dialog at their press (`high_scores_proc` 0x4EA1D0 ends it on both key downs), so
+//!   Exit's command ends it at its key down whatever its key.
 //! - **An edit's own keys** (E27 M2 T7b, decision 39: the client's profile): Home, End, Left,
 //!   Right, Delete and BackSpace, taken while an edit has the focus ([`Context::Edit`], asked
 //!   before its dialog's); **the hot seat's ring** (`hot_seat_edit_key` 0x50DF60): Tab and Down to
@@ -62,6 +66,8 @@ pub enum Context {
     Edit,
     /// The scenario screen with nothing over it (E27 M3 T1a).
     Scenario,
+    /// High Scores with nothing over it (E27 M4 T1a).
+    HighScores,
 }
 
 /// The shell's commands.
@@ -136,6 +142,15 @@ pub const DIALOGS: [(u16, &str, &str, Context); 8] = [
     (188, "scenario-back", "Escape", Context::Scenario),
 ];
 
+/// High Scores' buttons with a key (E27 M4 T1a), by id, with their names and the original's keys
+/// (`high_scores_dialog_init` 0x4E9880: Campaign's 0x2E, Standard's 0x1F, Exit's 0x1C;
+/// `high_scores_proc` 0x4EA1D0: Escape and Enter end it at their press).
+pub const SCORES: [(u16, &str, &[&str]); 3] = [
+    (0x3E9, "scores-campaign", &["C"]),
+    (0x3EA, "scores-standard", &["S"]),
+    (0x7802, "scores-exit", &["Return", "Escape"]),
+];
+
 /// The scenario list's keys (E27 M3 T1b1) and the description's bar's (T2c: Left and Right its
 /// own), with their names and the original's keys by the adapter's names.
 pub const LIST: [(Scroll, &str, &str); 6] = [
@@ -192,7 +207,16 @@ impl Command {
             Self::Dialog(id) => DIALOGS
                 .iter()
                 .find(|&&(d, _, _, _)| d == id)
-                .map(|&(_, name, key, _)| (name, one(key))),
+                .map(|&(_, name, key, _)| (name, one(key)))
+                .or_else(|| {
+                    SCORES
+                        .iter()
+                        .find(|&&(d, _, _)| d == id)
+                        .map(|&(_, name, keys)| {
+                            let chords = keys.iter().map(|&k| Chord::new(false, k)).collect();
+                            (name, chords)
+                        })
+                }),
             Self::Edit(c) => EDIT
                 .iter()
                 .find(|&&(e, _, _)| e == c)
@@ -219,12 +243,14 @@ impl keys::Command for Command {
     const TABLE: &'static str = "shell";
 
     /// Every command, in the table's order: the main menu's buttons, the game type menus', the
-    /// box's, the dialogs', an edit's own keys, the hot seat's ring, the scenario list's.
+    /// box's, the dialogs', High Scores', an edit's own keys, the hot seat's ring, the scenario
+    /// list's.
     fn all() -> Vec<Self> {
         let mut all: Vec<Self> = MAIN_MENU.map(|(id, _, _)| Self::Button(id)).into();
         all.extend(GAME_TYPE.map(|(c, _, _)| Self::Choice(c)));
         all.extend(MESSAGE.map(|(k, _, _)| Self::Message(k)));
         all.extend(DIALOGS.map(|(id, _, _, _)| Self::Dialog(id)));
+        all.extend(SCORES.map(|(id, _, _)| Self::Dialog(id)));
         all.extend(EDIT.map(|(c, _, _)| Self::Edit(c)));
         all.extend(RING.map(|(next, _, _)| Self::Ring(next)));
         all.extend(LIST.map(|(scroll, _, _)| Self::List(scroll)));
@@ -249,7 +275,13 @@ impl keys::Command for Command {
             Self::Button(_) => Context::MainMenu,
             Self::Choice(_) => Context::GameType,
             Self::Message(_) => Context::Question,
-            Self::Dialog(id) => DIALOGS.iter().find(|&&(d, _, _, _)| d == id)?.3,
+            Self::Dialog(id) => match DIALOGS.iter().find(|&&(d, _, _, _)| d == id) {
+                Some(&(_, _, _, context)) => context,
+                None => {
+                    SCORES.iter().find(|&&(d, _, _)| d == id)?;
+                    Context::HighScores
+                }
+            },
             Self::Edit(_) => Context::Edit,
             Self::Ring(_) => Context::HotSeat,
             Self::List(_) => Context::Scenario,
