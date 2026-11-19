@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b, T97b1, T103b, T113b, T123b; E09 T7a1, T8a1, T11, T26a2; `MAP_IMPORT_VERSION` 24)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b, T97b1, T103b, T113b, T123b, T132b; E09 T7a1, T8a1, T11, T26a2, T37b, T39a; `MAP_IMPORT_VERSION` 27)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -315,6 +315,16 @@ content and draws nothing; it rejects what the current increment cannot represen
   nothing held and no owner. Refused: class 16's subclass past 6 (`Subclass`: the original indexes
   its kinds' table by it without a test; none shipped) and the four others' past 0. Until T124b a
   step onto a bank is refused as any unbuilt visit's (`AdventureCommandError::Visit`).
+- **The map's Tavern and the Den of Thieves** (v26, E09 T39a): 95 `base:tavern` and 97
+  `base:den_of_thieves`, no body.
+- **Increment 14's trades and services** (v27, E08 T132b, increment 14's design note §7;
+  ADV-OBJ-002, ADV-MKT-001): at subclass 0, no body (nothing held, no owner): 2
+  `base:altar_of_sacrifice`, 7 `base:black_market`, 35 `base:hill_fort`, 99 and 221
+  `base:trading_post` (the original loads 221 as 99, `object_class_values` 0x63A6E4; the map keeps
+  its class for the picture), 106 `base:war_machine_factory`, 213 `ab:freelancers_guild`.
+  Refused: a subclass past 0 (`Subclass`; none shipped). Each is entered at its one entrance,
+  which the template marks blocked and visitable. Until T133 (the markets) and T134 (the rest) a
+  step onto one is refused as any unbuilt visit's (`AdventureCommandError::Visit`).
 - **Placed heroes** (class 34): owner colour → player (a colour nobody plays is an error), hero
   type by original id → its key (the packs' `# original id`), the tile its template marks
   visitable (the editor's one column left of the position), the army's stacks by slot (creature by
@@ -574,6 +584,14 @@ level and entrance as survey `docs/rules/surveys/E08-banks.md` §1 (the land kin
 the 401 Shipwrecks and 170 Derelict Ships from water, 183 and 11 of them beside land, a land tile
 among the entrance's eight neighbours), the maps holding each kind, and 106 the most on one map
 (*Thousand Islands* and its allied twin). No other class or subclass of the five.
+
+E08 T132b's census (import v27, seed 0): all 160 import, validate and build, every other count
+unchanged. The 1 058 trades and services on 148 maps are typed (checked) as survey
+`docs/rules/surveys/E08-trades.md` §1, each at subclass 0 without a body, with one entrance on
+land (the 33 snow Trading Posts' on snow), nothing held and no owner: by class the objects, the
+maps by version, underground, the most on one map and the pictures; the War Machine Factories 255
+with the entrance west of the anchor and 3 at it; one Black Market on 70 maps, two on 28, three on
+2, four on 4, six on 1.
 
 E09 T19c2's census (the same import, seed 0; exit criterion 6 of the town epic's increment 2):
 all 160 import, validate, build and play by `EndTurn` alone (a week; the 29 maps with town

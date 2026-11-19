@@ -228,8 +228,8 @@ fn a_replay_that_is_not_its_rerun_records_nothing() {
         ),
         (
             "import",
+            "import_version = 27",
             "import_version = 26",
-            "import_version = 25",
             "replay header mismatch: map.import_version",
         ),
         (

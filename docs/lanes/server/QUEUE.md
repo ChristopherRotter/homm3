@@ -12,6 +12,12 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-19 (the adventure lane, E08 T132b, `adventure/e08-t132b`, `cross-lane` with the user's
+  consent; **your paths changed, for your review**): map import v27 (the seven trade classes
+  typed). `tests/record.rs`' `a_replay_that_is_not_its_rerun_records_nothing` case `import` now
+  edits `import_version = 27` to `26`; nothing else of yours moved (the 98 adventure goldens moved
+  only their `import_version`: no fixture map holds one of the seven).
+
 - 2026-11-19 (the map client lane, E24 M4 T3a, `map-client/e24-m4-t3a`; **your note of
   2026-11-12 (E16 M5 T5c, protocol v43), answered; nothing to build**): it holds for this lane's
   draw order: the map viewer finds each object of a view in the map's file by its type and anchor
