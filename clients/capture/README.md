@@ -1476,6 +1476,16 @@ situation's hero may carry `spells` (0 to 69: the writer gives it the spell book
 and these spells; its artifacts are then the book alone). T2d3's sequences (`cast-boat*`) wait in
 `map/to-record.toml` until the viewer plays them.
 
+**The scripted games** (E24 M4 T4a1, design §5.12): a sequence may carry `script`, the engine's
+commands of the same game (a list of strings, each a command as `h3 adventure run --script` reads
+it: `0 move 0 13,12,0 14,12,0`, `0 end-turn`; `frames` checks the list and plays the original from
+the inputs alone). Its situation must be one the engine imports and starts alike: `explored =
+"start"`, its heroes' armies in the map (`map_army`), `bonus = "gold"` with the engine's
+`resources` shown by a second hero's selection (`select`, then `reselect` the first), and a town
+for every player (the original banishes one without a town after seven days). A path's tiles in
+the script are the original's walk (its recorded `hero` lines). T4a1's three (`game-*`) wait in
+`map/to-record.toml` until the viewer plays them from their records.
+
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
 <out>/<id>/live.toml`: the map's timeline from the situation, this run's live part at 0 and the

@@ -995,3 +995,32 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
       so the recording needs a way past it (the harness's cast, or the frames under the book left
       out); a spell whose result the map shows (Summon Boat, Dimension Door, Scuttle Boat or View
       Air/Earth's screen: chosen at its start). **Depends on:** T1a; T2d2 for a boat's spells.
+
+### E24 M4 T4 — a record played
+
+- **Scope:** a record's messages played over time: each event as T1 and T2 built it (the steps
+  along the engine's paths as M2's walk, the reveals, the removals, the owners, the turns and
+  days, the message boxes with the record's answers, the other players' turns as a computer
+  player's, with what T1b2 left: several heroes and a boat in one computer's turn, its music
+  (`AITheme0` to `2`, design §5.1) and its walk's sounds, and speed 4's held draws shown on the
+  window's clock, which no recording can show: the steps come from the record); the viewer's controls (pause, step, restart, a speed: the window's keys, new design,
+  each a review item). The check: scripted games (the same commands, no random draw between
+  them) played in the engine and in the original, compared frame by frame, the original's
+  visual moment from its recording; a golden adventure replay as a record viewed to its end, its
+  battles skipped to their results until T5.
+- **Acceptance:** the scripted games exact; `drawn` all the same; `check.sh` all gates.
+- **Notes from T3b2** (design §5.11): the cursor's facts are not in the record (MCL-Q37: the
+  costs over several days, the guarded tiles, a defended town at level 0), so a walk's cursor
+  waits on its answer; the engine's views show no Seer's Hut, Quest Guard or Obelisk yet; a
+  shipped map's town list order is MCL-Q38's; `MCL-STUB-1` (a random artifact's and dwelling's
+  drawn picture) still waits on the adventure lane's answer to this lane's note of 2026-11-19.
+- **Depends on:** T1a, T1b, T2, T3a, T3b. **Status:** cut in three by the user at its start (2026-11-19): T4a (T4a1 done 2026-11-19, then T4a2), T4b, T4c (`QUEUE.md`).
+
+Inbox item done at T4a1's session (2026-11-19: the window's library decodes the pickups' and `killfade`'s sounds, `tables::load`):
+
+- 2026-11-19 (this lane, E24 M4 T2d3, found by its worker; **for the next task that touches the
+  window's sound, or T6's hand test**): `killfade` and the pickups (`pickup01` to `07`) are not
+  among `h3_map_view::sound::SoundRules::effects` (only the button and, since T2d3, `summboat`),
+  and the window's library decodes only `SoundRules::wavs`, so the window seems to play them
+  silent (a reading of `bin/h3-map-view/audio.rs` `play`, not heard): add every effect the
+  timeline cues (the finds', the asks', the boats') to `effects` and test the library's names.

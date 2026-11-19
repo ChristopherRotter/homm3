@@ -4131,4 +4131,10 @@ again at its start (the agreed fallback): T4a1 the reading and the recordings, T
 - **The records against the recordings:** `game-walk`'s engine record walks the same tiles and
   leaves the same points after each command (1160, 678, 537); its start against the recording's
   live part at 0 (`render --record --check`): equal but the cursor over the two tiles whose cost
-  the capture read (MCL-Q37's day costs, as T3b2 found).
+  the capture read (MCL-Q37's day costs, as T3b2 found). `game-day`'s: day 2's start with the
+  town's 500 gold (the original's kingdom 20 500 at the turn's start), the hero's points full and
+  1160 after its walk, as the original's. `game-week`'s: days 2 to 8 each with 500 gold (20 500 to
+  23 500), week 2 a normal one in both (the original's draw forced to it, name 4), its message a
+  box of style 1 at day 8's start (6160, closed by Enter at 7160). Blue's turns on its island are
+  out of Red's sight: the original's computer hires a hero and enters its town (`[[turn]]`'s
+  heroes), the engine's script only ends them, which no fact of Red's record shows.

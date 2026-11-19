@@ -225,7 +225,9 @@ fn the_tables_with_and_without_sound() {
     // E24 M4 T1a the week's and the month's message's, since T2c a level-up's dialog's, since T2d3
     // Summon Boat's, since T4a the pickups' and a monster's removal's (`Loop::take`'s cues).
     assert_eq!(sounds.len(), 95);
-    assert!((1..=7).all(|i| sounds.contains(&format!("PICKUP0{i}"))) && sounds.contains("KILLFADE"));
+    assert!(
+        (1..=7).all(|i| sounds.contains(&format!("PICKUP0{i}"))) && sounds.contains("KILLFADE")
+    );
     assert!(sounds.contains("LOOPANIM") && sounds.contains("HORSE10") && sounds.contains("NEWDAY"));
     assert!(sounds.contains("BUTTON") && sounds.contains("NEWWEEK") && sounds.contains("NEWMONTH"));
     // Without a level-up's sound (E24 M4 T2c) none of its own.
