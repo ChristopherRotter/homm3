@@ -5120,3 +5120,71 @@ recommended).
   T39b1 and T39b2: nothing of this task runs on those paths), every other within 1 %.
 
 **The queue:** T40a out; T40b next. Ids: decisions next 159, questions `TWN-Q29`.
+
+### T40b — the taverns map, its replays, the plans' map Tavern and Den, the benchmarks (2026-11-19)
+
+Baseline dc92305 (#1048 merged; master's code verified by CI, the setup's light gates passed).
+The user's computer was connected at the start: 63 files of `original-data/` (the client lane's
+list without `shell-videos.vid`) and the four manuals with three help files staged, SHA-256
+checked against the PC's. At the start the user kept T40b whole (decision 159, over the agent's
+cut in two with the plans first and the queue's order) and consented to `cross-lane` (decision
+160, `TWN-Q29`).
+
+- **The plans** (`h3-map`'s `play.rs`, `cross-lane`): two kinds appended to `KINDS` (95, 97;
+  `TAVERNS`, `TAVERN_OBJECT`, `DEN_OBJECT`, the original's masks), `Plan::taverns` laid out with
+  the banks, drawn by `tavern_plan()` (`plan()`'s, then the taverns: one or two near the heroes
+  in one plan of three, a Tavern in two cases of three), which the properties of `play.rs` and
+  `view.rs` and the taverns' cover test draw; the cover tests keep `plan()`'s. The
+  oracles: `check_legal`'s listing and probe of the tavern decision (`tavern_answers`: the hires
+  `apply` accepts, then `Close`; `check_map_hire`: a listed hire's hero as its owner's view
+  showed it on the Tavern's free tile within the most heroes, the price paid, `HeroHired` of the
+  slot and tile, the visitor unmoved, the decision closed; an unlisted slot refused with the
+  state and its hash; `Close` alone), `check_decisions` (a fifth part of its open set, opened at
+  `TavernOpened` and closed by `DecisionClosed`), `managed` (no army while the decision is open:
+  the first failure, `check_managing`'s), `check_conservation` (the map hire's price). Drawn
+  first inside `plan()` (the innermost tuple's fourth), the taverns shifted every deterministic
+  cover test's cases: at one plan of two the dwellings' boat deck (3 to 0) and the town views'
+  Capitols (9 to 0: the hires spent the gold) failed and the garrisons' met an oracle gap of the
+  adventure's (a Whirlpool taking skeletons a guard's battle raised: `check_heroes_after_battle`
+  now subtracts the loss told after); at one of three the verify's coverage run failed three
+  others (the teleporters' `at_exits` and the bonuses' Sirens after a battle at 0, the
+  garrisons' turn start compared whole). Hence `tavern_plan()` apart: the cover tests' cases are
+  `master`'s again. New cover test `the_plans_hire_at_map_taverns` (256 cases:
+  68 Taverns and 36 Dens laid out, 80 decisions opened, 32 with a hire listed and 56 without, 15
+  hires, 65 closes, 11 hired heroes off the Tavern's tile, 58 guilds seen at a Den). The
+  properties of `play.rs` and `view.rs` at 240 cases (five times their 48) passed,
+  `every_step_keeps_the_commands_invariants` at 480 too.
+- **The taverns map** (`fixtures/maps/e09-taverns-36.h3m`, `h3-map`'s `taverns_map.rs`): written
+  by the writer, read back, its allowed heroes set in the raw model and encoded (the writer
+  writes the default set; no writer change): red's Castle "Bastion" (Fort, Tavern, Brotherhood),
+  blue's Rampart "Glade" (Fort, Tavern), five red heroes with five Royal Griffins (speed 9: they
+  act first, so each retreat or surrender is the battle's first command), blue's three slow
+  armies, the map Tavern, the Den, forty savage Stone Golems; six free types.
+- **The replays** (scripted at seed 1, each with its test): `taverns-weeks-s1` (56 commands:
+  five fills, slot 0 of the faction's classes), `taverns-hires-s1` (the town's and the map
+  Tavern's hires with their replacements, blue's slot emptied, the hired hero off the tile, a
+  second visit closed), `taverns-retreats-s1` (Orrin's from the golems in red's turn back at once
+  with one Pikeman, the mark cleared at the turn's end; Sorsha's on day 6 and Cuthbert's on day 7
+  in blue's turns, Cuthbert kept through day 8's release, TD-18), `taverns-surrenders-s1` (Edric
+  to Ufretin in red's turn, Sorsha to Mephala in blue's, 600 gold each, both back with their
+  armies; Sorsha hired back on day 2), `taverns-dismiss-s1` (Valeska dismissed, drawn again into
+  red's slot 0 by week 2's fill, hired back with the Charm of Mana, which the fill equipped),
+  `taverns-den-s1` (the guild at level 5 and its parts). The golden counts to 104
+  (`h3-protocol`'s fold and session, `h3-server`'s record; the server lane's, `cross-lane`);
+  `h3-protocol`'s and `h3-server`'s suites pass over them.
+- **The benchmarks:** `week-start-taverns-36` (new; the step that starts day 8 on the taverns
+  map, 16 random games: 1 833 609 Ir, master's code); no engine code changed, so no baseline
+  moved. The guild's query timed once (release, a scratch test not committed): 1.87 µs on the
+  taverns map (level 1, 6 parts), 7.30 µs on `Myth and Legend` (8 players, 21 towns, 16 heroes,
+  40 parts): far off any step.
+- **Versions:** none moved. Ids: none new.
+- **Verify** (`--scope town --with-original-data`): every step passed (fmt, clippy, the checks,
+  coverage 1 181 s, determinism, bench-check, doc-drift, original-data) but `check-lane`
+  (`cross-lane`: `cargo xtask check-lane --cross-lane` ok, `cargo check --workspace
+  --all-targets` clean). The bench: every workload inside its gate, as at T40a
+  (`random-play-bonuses-36` +1.66 %, `manage-army-12` +1.36 %, `fork-economy-xl-144` +1.28 %,
+  `day-start-builds-36` +1.04 %, every other within 1 %). `h3-protocol`'s and `h3-server`'s
+  suites passed over the 104 goldens.
+
+**The queue:** T40b out, T40 done; T41 next (the audit, increment 4's closure, increment 5
+refined). Ids: decisions next 161, questions `TWN-Q30`.

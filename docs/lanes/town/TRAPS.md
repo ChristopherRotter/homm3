@@ -151,12 +151,17 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   its `entrances`): the import refuses one entered from water (`OwnedOnWater`). A new ownable
   body (E08 T116b1's map garrisons, missed until T29b) joins that list.
 
-- **The plans lay out no map Tavern** (E09 T39a): `settle` answers a Tavern decision from its
-  listing and `hiring` names the kind, but `check_legal` expects the turn's listing for it (it
-  falls to its last branch) and no oracle knows a hire placed on the Tavern's tile. A plan that
-  lays out a Tavern (T40) teaches `check_legal`, `check_isolation` and `check_conservation` the
-  hire first. A hero hired there stands on a neighbour-visited tile, which a setup refuses
-  (`check_stand`): an oracle over where heroes stand exempts it.
+- **A decision kind is known to four oracles** (E09 T40b, the plans' map Tavern): `check_legal`
+  (its listing's branch and its probe, else it falls to the turn's listing), `check_decisions`
+  (its part of the open set, opened and closed as told), `managed` (no army while it is open) and
+  `check_conservation` (a price it pays); `settle` and `hiring` name it too. A new decision kind
+  (increment 5's services, E08's markets) teaches all of them, as `check_map_hire` does.
+- **A draw added to `plan()` shifts every deterministic cover test's cases** (E09 T40b): the
+  cover tests draw their cases from one runner in sequence, so a value appended to `plan()`
+  changes every case after the first. Map Taverns drawn there failed three cover tests, then
+  three others at another frequency (thin counts gone, two oracle gaps met). Draw a new object
+  apart, as `tavern_plan()` (`plan()`'s, then the taverns) for the properties and the object's
+  own cover test: every other cover test keeps its cases.
 
 ## The views (`h3-game` `src/town/view.rs`)
 
@@ -231,7 +236,7 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   `check_pool` in the plans' `check_invariants`, the census's `pool_holds` after every `EndTurn`
   of the 160 maps): a type offered exactly when one slot holds it, taken by a colour exactly when
   one hero of it stands on the map or in a garrison of that colour and is its record, every other
-  status neither. A new path that puts a hero on the map or takes one off (T40b's map Tavern
-  hire, E10's defeated players, a prison's hero) writes the type's status in the same command, or
-  both fail; the census's fills assume `EndTurn` alone (no hire, no return: every slot drawn by
+  status neither. A new path that puts a hero on the map or takes one off (E10's defeated
+  players, a prison's hero; the map Tavern's hire does, T40b's plans) writes the type's status in
+  the same command, or both fail; the census's fills assume `EndTurn` alone (no hire, no return: every slot drawn by
   the fill).

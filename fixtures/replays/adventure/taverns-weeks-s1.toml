@@ -1,0 +1,114 @@
+commands = [
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0x2016ce09ea291c91",
+    "0x4f72ba35a06dd26a",
+    "0x97334f8324e4caad",
+    "0x633fa640ca9fee2f",
+    "0x13da492554552c48",
+    "0xc109d0f2f0628d4d",
+    "0xf8ba9c5f5ca37591",
+    "0xd6068879a57c777c",
+    "0x4da7611a5aa3f99b",
+    "0xab58e516fdd711df",
+    "0x1c46a52d508b1ee9",
+    "0xe97d642a91cb3472",
+    "0x2778b06cbd98fd6e",
+    "0xd437711988e4f197",
+]
+
+[replay]
+format = 19
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x6ba8109889b34a25"
+adventure_ruleset_hash = "0x00ffbc3dd7a90159"
+town_ruleset_hash = "0xab3ee3f1cb243f30"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 34
+adventure_state_hash_version = 26
+checkpoint_every = 4
+
+[map]
+path = "fixtures/maps/e09-taverns-36.h3m"
+hash = "0x5857a6118d8c8733"
+import_version = 26
+
+[result]
+day = 29
+final_hash = "0xd437711988e4f197"

@@ -468,6 +468,7 @@ fn duel() -> Plan {
         garrisons: Vec::new(),
         bonuses: Vec::new(),
         banks: Vec::new(),
+        taverns: Vec::new(),
     }
 }
 
@@ -515,6 +516,7 @@ fn xl() -> Plan {
         garrisons: Vec::new(),
         bonuses: Vec::new(),
         banks: Vec::new(),
+        taverns: Vec::new(),
     }
 }
 
@@ -556,6 +558,7 @@ fn army() -> Plan {
         garrisons: Vec::new(),
         bonuses: Vec::new(),
         banks: Vec::new(),
+        taverns: Vec::new(),
     }
 }
 
