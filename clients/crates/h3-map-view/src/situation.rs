@@ -969,6 +969,7 @@ impl Situation {
             }),
             level_limit: 0,
             banned_skills: vec![],
+            banned_artifacts: Vec::new(),
             events: Vec::new(),
             teams: None,
         };

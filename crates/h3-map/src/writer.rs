@@ -53,6 +53,12 @@
 //! it writes the adventure map's Tavern ([`TAVERN_OBJECT`]) and the Den of Thieves
 //! ([`DEN_OF_THIEVES_OBJECT`]) as [`Plain`] objects, without a body as the game's maps.
 //!
+//! Since E08 T128 (batch E14's maps, increment 14's design note §7, §20) it writes the trades and
+//! services ([`TRADE_OBJECTS`]: the Altar of Sacrifice, the Black Market, the Hill Fort, the
+//! Trading Posts, the War Machine Factory and the Freelancer's Guild; the guild and the snow post
+//! not in the RoE format) as [`Plain`] objects without a body, and the map's banned artifacts
+//! ([`Map::banned_artifacts`]).
+//!
 //! Since E09 T9a (the town map, design note `docs/epics/E09-design.md` §18) it writes a town of
 //! any kind ([`AnyTown`]: random towns with their alignments, a player's main town in the header,
 //! a name, random garrison stacks) and random heroes ([`RandomHero`]); since E09 T19a (design
@@ -268,12 +274,25 @@ pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228
 /// body, batch E12's E12-17: a refused visit's kind mark, decision 313). Since E08 T119 increment
 /// 13's creature banks ([`BANK_OBJECTS`]). Since E09 T34 increment 4's Tavern (95) and Den of
 /// Thieves (97; batch TWN-4, survey `docs/rules/surveys/E09-tavern.md` §3, §6: no body, subclass
-/// 0). On either level (a level's objects, [`Underground::objects`]).
-pub const PLAIN_OBJECTS: [u32; 49] = [
-    8, 11, 13, 14, 16, 22, 24, 25, 28, 29, 30, 31, 38, 43, 44, 45, 48, 49, 52, 55, 56, 63, 64, 78,
-    82, 84, 85, 86, 92, 94, 95, 96, 97, 100, 101, 103, 104, 105, 107, 108, 109, 110, 111, 112, 124,
-    135, 137, 155, 212,
+/// 0). Since E08 T128 increment 14's trades and services ([`TRADE_OBJECTS`]). On either level (a
+/// level's objects, [`Underground::objects`]).
+pub const PLAIN_OBJECTS: [u32; 56] = [
+    2, 7, 8, 11, 13, 14, 16, 22, 24, 25, 28, 29, 30, 31, 35, 38, 43, 44, 45, 48, 49, 52, 55, 56,
+    63, 64, 78, 82, 84, 85, 86, 92, 94, 95, 96, 97, 99, 100, 101, 103, 104, 105, 106, 107, 108,
+    109, 110, 111, 112, 124, 135, 137, 155, 212, 213, 221,
 ];
+/// Object classes of increment 14's trades and services (E08 T128: batch E14; survey
+/// `docs/rules/surveys/E08-trades.md` §1, increment 14's design note §7), among
+/// [`PLAIN_OBJECTS`], each subclass 0 with no body: the Altar of Sacrifice (2), the Black Market
+/// (7), the Hill Fort (35), the Trading Post (99, and 221 on snow), the War Machine Factory (106)
+/// and the Freelancer's Guild (213). Every template has one visitable tile on its bottom row,
+/// which it also blocks; the hero stands on it (the original's class lists, not the mask).
+/// [`AB_TRADE_OBJECTS`] are refused in the RoE format.
+pub const TRADE_OBJECTS: [u32; 7] = [2, 7, 35, 99, 106, 213, 221];
+/// The trades of [`TRADE_OBJECTS`] that Armageddon's Blade added (E08 T128; survey
+/// `E08-trades.md` §1: none on an RoE map): the Freelancer's Guild (213) and the snow Trading Post
+/// (221). The writer refuses them in [`Format::RoE`].
+pub const AB_TRADE_OBJECTS: [u32; 2] = [213, 221];
 /// Object class of the adventure map's Tavern (E09 T34; among [`PLAIN_OBJECTS`], no body): a
 /// human hires its player's two tavern offers there onto the Tavern's visitable tile (survey
 /// `docs/rules/surveys/E09-tavern.md` §3).
@@ -796,6 +815,11 @@ pub struct Map {
     /// The secondary skills the map bans, by their codes (0 Pathfinding … 27 First Aid, below
     /// [`SKILL_COUNT`]; E08 T36b): no level-up offers one the hero does not know (HER-LVL-003).
     pub banned_skills: Vec<u8>,
+    /// The artifacts the map bans besides the editor's default ones (127 to 143), by their codes
+    /// below the format's artifact count (E08 T128: batch E14's E14-3; GAM-SET-003): no Black
+    /// Market draws one (survey `docs/rules/surveys/E08-trades.md` §7.1). None in an RoE map,
+    /// which holds no banned artifacts.
+    pub banned_artifacts: Vec<u16>,
     /// The map's timed events (E08 T78), in the list's order: the order the game fires them in
     /// on a day (GAM-CAL-004, survey `docs/rules/surveys/E08-economy.md` §11).
     pub events: Vec<TimedEvent>,
@@ -830,8 +854,9 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
 ///
 /// # Errors
 /// As [`write()`]; in [`Format::RoE`] also what an RoE map cannot hold: a level limit, banned
-/// skills, a town, a hero type, artifact or creature past RoE's, a hero's spells, primary skills
-/// or fifth miscellaneous artifact, a Witch Hut's skills, a town choice past the eight factions.
+/// skills or artifacts, a town, a hero type, artifact or creature past RoE's, a hero's spells,
+/// primary skills or fifth miscellaneous artifact, a Witch Hut's skills, a town choice past the
+/// eight factions, an [`AB_TRADE_OBJECTS`] class.
 pub fn write_in(map: &Map, format: Format) -> Result<Vec<u8>, WriteError> {
     write_all(map, &Extras::default(), format)
 }
@@ -886,7 +911,11 @@ fn write_all(map: &Map, extras: &Extras, format: Format) -> Result<Vec<u8>, Writ
     }
     out.bytes(&[0; 31]); // map options (unused)
     if sod {
-        out.bytes(&DEFAULT_BANNED_ARTIFACTS);
+        let mut banned = DEFAULT_BANNED_ARTIFACTS;
+        for &code in &map.banned_artifacts {
+            banned[usize::from(code / 8)] |= 1 << (code % 8);
+        }
+        out.bytes(&banned);
         out.bytes(&[0; 9]); // no banned spells
         let mut banned = [0u8; SKILL_COUNT.div_ceil(8) as usize];
         for &code in &map.banned_skills {
@@ -984,6 +1013,16 @@ fn validate(map: &Map, codes: &Codes) -> Result<(), WriteError> {
     if let Some(&code) = map.banned_skills.first() {
         codes.refuse("banned skill in an RoE map", code)?;
     }
+    if let Some(&code) = map
+        .banned_artifacts
+        .iter()
+        .find(|&&code| usize::from(code) >= codes.artifacts)
+    {
+        return Err(out_of_range("banned artifact", code));
+    }
+    if let Some(&code) = map.banned_artifacts.first() {
+        codes.refuse("banned artifact in an RoE map", code)?;
+    }
     for player in map.players.iter().flatten() {
         if player.towns >> 8 != 0 {
             codes.refuse("allowed towns in an RoE map (eight factions)", player.towns)?;
@@ -1035,7 +1074,7 @@ fn validate(map: &Map, codes: &Codes) -> Result<(), WriteError> {
             MapObject::Monster(monster) => validate_monster(monster, codes)?,
             MapObject::Pile(pile) => validate_pile(pile, codes)?,
             MapObject::Ground(ground) => validate_ground(ground)?,
-            MapObject::Plain(plain) => validate_plain(plain)?,
+            MapObject::Plain(plain) => validate_plain(plain, codes)?,
             MapObject::Town(town) => validate_town(map, town, codes)?,
             MapObject::AnyTown(town) => town::validate(map, town, codes)?,
             MapObject::RandomHero(hero) => town::validate_hero(map, hero, codes)?,
@@ -1154,12 +1193,14 @@ fn validate_ground(ground: &Ground) -> Result<(), WriteError> {
     }
 }
 
-fn validate_plain(plain: &Plain) -> Result<(), WriteError> {
+fn validate_plain(plain: &Plain, codes: &Codes) -> Result<(), WriteError> {
     let template = &plain.template;
     if !PLAIN_OBJECTS.contains(&template.class) {
         Err(out_of_range("plain object class", template.class))
     } else if template.class == CREATURE_BANK_OBJECT && template.subclass >= BANK_SUBCLASSES {
         Err(out_of_range("creature bank subclass", template.subclass))
+    } else if AB_TRADE_OBJECTS.contains(&template.class) {
+        codes.refuse("an AB trade in an RoE map", template.class)
     } else {
         Ok(())
     }
@@ -1566,6 +1607,7 @@ mod tests {
             underground: None,
             level_limit: 0,
             banned_skills: Vec::new(),
+            banned_artifacts: Vec::new(),
             events: Vec::new(),
             teams: None,
         }

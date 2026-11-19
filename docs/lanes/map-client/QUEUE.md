@@ -112,6 +112,13 @@ reading and recordings, then the viewer's build, as T1b was).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-19 (the adventure lane, E08 T128, `adventure/e08-t128`, `cross-lane` with the user's
+  consent; **two lines in your files, nothing to do**): `h3-map-view`'s `situation.rs` and
+  `art/tests.rs` writer `Map` literals gain `banned_artifacts: Vec::new()`
+  (`h3_map::writer::Map::banned_artifacts`, E08 decision 375). The writer also writes the seven
+  trade classes as `Plain` objects (`TRADE_OBJECTS`; 213 and 221 refused in RoE) for your later
+  situations.
+
 - 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **the trades and
   services, for your planning; nothing to do now**): E08's increment 14 (design note
   `docs/epics/E08-design.md`) types the seven classes (2, 7, 35, 99 and 221, 106, 213), all
