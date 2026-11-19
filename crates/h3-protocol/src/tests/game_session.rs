@@ -475,7 +475,7 @@ fn the_golden_replays_run_through_the_session() {
     assert!(seen.last_snapshots > 0, "{seen:?}");
     assert!(seen.start_events > 0, "{seen:?}");
     assert!(seen.clocks > 0, "{seen:?}");
-    assert_eq!(seen.restores, 98, "{seen:?}");
+    assert_eq!(seen.restores, 104, "{seen:?}");
     // The server's bounds counted, never met (E16 M5 T18: 26 and 348 when measured; T20: the
     // system's 505 in one battle).
     assert!(seen.spent.0 > 10 && seen.spent.1 > 100, "{seen:?}");

@@ -26,7 +26,7 @@ use super::play::{
     STRICT, Slots, Spot, Step, TELEPORTER_OBJECTS, TOWN_BLOCKED, TOWN_BUILDINGS, TOWN_ENTRANCE,
     TownPlan, WHIRLPOOL_OBJECT, add_town, all_objects, army, at_sea, experience, experienced,
     lay_out, masks, object_index, object_reach, options, plan, player_of, resolve, slots, start_on,
-    steps, teleporter_at, tile,
+    steps, tavern_plan, teleporter_at, tile,
 };
 use crate::model::{Body, Buildings, Object, Pos, RawMap, Stack};
 
@@ -42,7 +42,7 @@ use crate::model::{Body, Buildings, Object, Pos, RawMap, Stack};
 /// plans' teleporters (T106b1's `TELEPORTERS`), which draw nothing at the setup: [`vary`] removes
 /// and adds those the viewer never sees, so that a jump's draw or a gate's pair may differ.
 fn hygienic() -> impl Strategy<Value = super::play::Plan> {
-    plan().prop_map(|mut plan| {
+    tavern_plan().prop_map(|mut plan| {
         plan.towns.iter_mut().for_each(hygienic_town);
         plan
     })
@@ -3489,7 +3489,7 @@ proptest! {
     /// ([`check_bank_views`]).
     #[test]
     fn views_move_as_the_events_say(
-        plan in plan(),
+        plan in tavern_plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
         steps in steps(),
@@ -3706,6 +3706,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         garrisons: Vec::new(),
         bonuses: Vec::new(),
         banks: Vec::new(),
+        taverns: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -3808,6 +3809,7 @@ fn vary_keeps_a_random_dwelling_whose_resolved_tiles_may_show() {
         garrisons: Vec::new(),
         bonuses: Vec::new(),
         banks: Vec::new(),
+        taverns: Vec::new(),
     };
     let m = lay_out(&plan);
     let random = |m: &RawMap| -> Vec<(Spot, u32)> {
@@ -3885,6 +3887,7 @@ fn vary_keeps_a_shipyard_s_boat_tiles() {
         garrisons: Vec::new(),
         bonuses: Vec::new(),
         banks: Vec::new(),
+        taverns: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -3968,6 +3971,7 @@ fn vary_changes_the_teleporters_the_viewer_never_sees_only() {
         garrisons: Vec::new(),
         bonuses: Vec::new(),
         banks: Vec::new(),
+        taverns: Vec::new(),
     };
     let m = lay_out(&plan);
     let objects = |m: &RawMap| -> Vec<(u8, u8, u32)> {
@@ -4090,6 +4094,7 @@ fn vary_changes_the_towns_the_viewer_never_sees_only() {
         garrisons: Vec::new(),
         bonuses: Vec::new(),
         banks: Vec::new(),
+        taverns: Vec::new(),
     };
     let m = lay_out(&plan);
     // Each town's anchor, owner, garrison and buildings.
@@ -4229,6 +4234,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         garrisons: Vec::new(),
         bonuses: Vec::new(),
         banks: Vec::new(),
+        taverns: Vec::new(),
     };
     let m = lay_out(&plan);
     let red = PlayerId::new(0);
@@ -4304,6 +4310,7 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         garrisons: Vec::new(),
         bonuses: Vec::new(),
         banks: Vec::new(),
+        taverns: Vec::new(),
     };
     let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
     let attack = GameCommand::Adventure(AdventureCommand::MoveHero {
