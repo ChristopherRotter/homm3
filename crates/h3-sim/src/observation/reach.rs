@@ -263,7 +263,7 @@ mod tests {
         let block = ReachBlock::of(&s, &r, BattleSide::Attacker);
         assert!(block.slots.iter().all(|f| f[1] == 0 && f[2] == 0));
         for plane in &block.planes {
-            assert!(plane.iter().any(|&n| n == 1) && plane.iter().all(|&n| n <= 1));
+            assert!(plane.contains(&1) && plane.iter().all(|&n| n <= 1));
         }
         let mut out = [1.0; OBSERVATION_LEN];
         block.write(&mut out[REACH..]);

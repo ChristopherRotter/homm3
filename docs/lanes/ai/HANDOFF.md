@@ -39,7 +39,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   encounters (re-baselined). **Next: T38b** (`[network] reach`, the preview for the hex kinds, the
   cloning bench; Python only), then T39 (the bench on the GPU; `QUEUE.md`).
 - **Open pull requests:** T38a's (`claude/intelligent-tesla-tm17cq`, `cross-lane`; see the
-  newest session). Merged: #1028 (T37's design, AI-Q19).
+  newest session). Merged: #1028 (T37's design, AI-Q19). **Owed to a `shared/` pull request:**
+  `docs/07-simulation-and-ai.md`'s observation line still names encoding v22 (v23's reach block,
+  after T38a merges).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
