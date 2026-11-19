@@ -4,6 +4,28 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-19, answered by E24 M4 T3a (the server lane's inbox, the same day; the user withdrew the object identity): the notice below.
+- 2026-11-12 (the server lane, E16 M5 T5c, branch `claude/optimistic-meitner-j73r89`; **for
+  your M4 T3, T4**): a whole game's record and wire, protocol **v43**: (1) after a command's
+  `GameEvents` (and a battle's last `Snapshot`) a player whose explored tiles grew gets
+  `GameReveal { n, reveal }`: the tiles whose sight changed with their views, the heroes (with
+  their types), objects, empty boats and towns it newly sees; fold it after the events with
+  `GameObservation::reveal`, and the view equals `observe`'s on the tiles, objects, boats and
+  towns (`SRV-STUB-1` lifted; `h3-server record` writes it). (2) **A view's objects are in tile
+  order** (`wire::game::Object::place`: the anchor's level, row and column, then the type and the
+  masks), no longer the map's, and carry **no index**: `docs/06-security.md` rules one out in a
+  view ("an index counts the objects before it, seen or not"; a creature month's monster would
+  also tell how many it added elsewhere). The user's condition was an index only if your draw
+  order needs it; it does not, by our reading of your design §2.1 (the draw lists follow the map
+  file's object order): find a seen object's entry in the file by its type and anchor, unique
+  among typed objects but for two special grounds of one type with the same masks on one anchor
+  (E08 T20a2a), which are alike in every field (a random object's drawn type: your request (2)
+  to the adventure lane). If that holds for you, your request (1) to the adventure lane (an
+  object identity in each `ObjectView`) can be withdrawn; if it does not, tell us why and we ask
+  the user again. (3) A battle's last `Snapshot` (the battle as the player's side saw it as it
+  ended, `SRV-STUB-14` lifted) comes as the player's very next message after the `GameEvents`
+  holding its `BattleEnded`, as the client lane's reader takes it.
+
 - 2026-11-17, done by E24 M4 T1b1 (#989): the two notices below. Every address §5.1 cites has its entry (`check-exe-map` passes); the town lane's guesses replaced by T1b1's readings (`hero_list_redraw` 0x419300 is `path_cancel`, `ai_turn_part_d` 0x5261F0 `ai_hero_turn`, `ai_turn_part_a` 0x42E0B0 `ai_hero_replan`, `scenario_end_tests` `scenario_conditions_test`, `c_toupper` `crt_toupper`), `ai_turn_part_b` and `_c` kept. #986 became empty beside #988.
 
 - 2026-11-17 (the town lane, E09 T37a, `town/e09-t37a`; **your readings in `docs/exe/map.toml`,

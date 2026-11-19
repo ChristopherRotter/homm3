@@ -2843,3 +2843,47 @@ watcher, CI's green `master` standing in; a ballast file for the game's disk che
 - **Found on the way** (the lane's inbox): `killfade` and the pickups are not among
   `SoundRules::effects`, which the window's library decodes, so the window seems to play them
   silent (the worker's reading, not heard).
+
+### M4 T3a — a record's start: the map's view (2026-11-19)
+
+On `map-client/e24-m4-t3a`, the user present at the start; `master` at #1044. Original data staged
+from the PC at the start (63 files and the four manuals and three help files, SHA-256 checked line
+by line; the PC's shell went away about 15 minutes in, nothing needed by then); the setup's
+baseline stopped at its coverage step by a watcher (every step before it passed), CI's green
+`master` standing in; a ballast file for the game's disk check.
+
+- **The dependencies checked first:** the server lane's whole-game record there (protocol v43/v44,
+  now v74; `h3-server record`), increment 9's views there (the adventure lane's T83b2b, T85); the
+  object identity not built: the server lane's note of 2026-11-12 (a view's objects in tile order,
+  found by type and anchor) unanswered.
+- **The cut** (the user at the start, `AskUserQuestion`; the agent's recommendations): T3 in two,
+  the map's view first (T3a; T3b the panels, the hover's facts, MCL-Q15 (b), the whole screen,
+  shipped maps); the object identity withdrawn (the server lane's inbox answered, the adventure
+  lane's told), a random artifact's drawn artifact still asked (the view names none); later in
+  the task, a random dwelling's class and subclass asked of it too.
+- **Built** (design §5.9; *provisional*, M4's review list): `h3_map_view::engine`: `parse` (a
+  record's lines, its format and protocol), `load` (the manifest the protocol makes of the
+  viewer's rules and the map file equal to the record's; the map read and imported: MCL-Q21 (b)),
+  `start` (the first snapshot as `live.toml`'s table: `viewer`, `defs`, `classes`, `owners`,
+  `heroes`, `boats`, `explored`; which objects the view shows), `differences`; `render --record
+  [--packs] [--check]`, `render::apply_live` (a table applied as a capture's file is,
+  `read_table`), `files::default_packs`; a writer situation's `explored = "start"`
+  (`situation::Explored`). The library's pure dependencies grew by `h3-protocol`, `h3-game`,
+  `h3-adventure`, `h3-kernel` (its purity test's allowlist), the binary's by `h3-files`, the tests'
+  by `h3-contracts`; the client workspace names `h3-adventure` (additive, the common foundation).
+- **Agent decisions** (change freely): the engine's start written in the original's memory's terms
+  (a capture's table) rather than `Live`, so that `render`'s application (a random dwelling's
+  template, a town's picture check) and the comparison are a capture's; an object out of sight
+  keeps the file's owner; a hero faces right at the start; a random dwelling one column left of
+  the view's anchor (the Angel Portal's shift) is found, any other random object only at its
+  anchor (the first build let every random object shift: the tests' moved artifact caught it).
+- **Checked:** `engine-start-owners` (`owners-objects`' map) and `engine-start-town` (Deluge's
+  lake, Red's town and two heroes, Blue's hero in sight, three empty boats, monsters and piles
+  with their counts given, an artifact, Blue's mine) captured (`set --only`, 0 differing of
+  480 000 each); each map's start recorded by the engine (`h3 adventure run --script` with no
+  command, `h3-server record`) and `render --check`ed against its capture: no difference (the
+  town's: 249 explored tiles, seven objects in sight, three heroes, three boats; Purple's hero
+  out of sight left out on both sides). `drawn`: the two new, every other situation and sequence
+  the same; `drawn --record`. `tests/engine.rs` (six tests: a start with a random resource,
+  monster, artifact and dwelling; a hero in a boat and a random resource shown as no pile; a
+  random dwelling moved right; what differs from a capture; every refusal; each refusal's text).

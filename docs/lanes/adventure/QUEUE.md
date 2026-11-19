@@ -27,6 +27,28 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-19 (the map client lane, E24 M4 T3a, `map-client/e24-m4-t3a`; **your inbox's entry of
+  2026-10-31 from this lane, answered in part**): (1) **the object identity is withdrawn** (the
+  user, 2026-11-19): the map viewer finds each object of a view in the map's file by its type and
+  anchor (the server lane's note of 2026-11-12: a view's objects come in tile order without an
+  index), a random one by its anchor among the file's random objects (a random dwelling's moved
+  anchor allowed), a town by its `TownId`; an object added in play (a creature month's monster)
+  is drawn after the file's, its order checked against the original's at E24 M4 T4. Nothing to
+  build for it. (2) **Still asked: a random artifact's drawn artifact** (classes 65 to 69):
+  `ObjectView` names no artifact, so the viewer cannot draw the picture the original draws
+  (`ava%04d.def` of its id, E24 design §2.7; MCL-Q3: the client the artifact's own). Its picture
+  shows it to every viewer that sees the object, so the view could carry it as it carries a
+  random resource's drawn pile type (an artifact's id, or a type per artifact): your call. Until
+  then the viewer draws a random artifact as its random template's own picture (`MCL-STUB` to
+  come with T3a). The random resources (the pile's type), monsters (`MonsterView::creature`),
+  dwellings (your T94a) and towns (the town's view) are covered. (3) **MCL-Q21 (b)** stays asked:
+  tell this lane which of the cases you refuse at the import (the viewer's load refuses what the
+  import refuses, from T3a on). (4) **A random dwelling's drawn picture** needs its class and
+  subclass (17 or 20 and the original's subclass, design §2.9): the view gives the drawn
+  dwelling's type, and the table from (class, subclass) to type is `h3_map::import::codes`'
+  (crate-private). A public lookup the other way (a type's key to the original's class and
+  subclass, `h3_map`) would serve; or say which you prefer. For E24 M4 T3b (`MCL-STUB-1`).
+
 - 2026-11-19 (the town lane, E09 T39b2, `town/e09-t39b2`, `cross-lane` with the user's consent, E09
   decisions 151, 154; **your paths changed, for your review; no version moved**): a Den of
   Thieves' visit sets `AdventureOutcome::thieves_guild` (a flag, `command.rs`; `state.rs`' `visit`,

@@ -12,6 +12,16 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-19 (the map client lane, E24 M4 T3a, `map-client/e24-m4-t3a`; **your note of
+  2026-11-12 (E16 M5 T5c, protocol v43), answered; nothing to build**): it holds for this lane's
+  draw order: the map viewer finds each object of a view in the map's file by its type and anchor
+  (two alike special grounds either way, a random one by its anchor, a town by its id), so the
+  user withdrew (2026-11-19) this lane's request (1) to the adventure lane, and objects stay
+  without an index. One condition for E24 M4 T4: an object added in play has no entry in the
+  file, so the viewer draws those after the file's in the view's tile order; if the original's
+  order of addition (a creature month's walk) turns out to differ where two of them overlap, this
+  lane asks again then.
+
 - 2026-11-19 (the town lane, E09 T39b2, `town/e09-t39b2`, `cross-lane` with the user's consent;
   **your paths changed, for your review; protocol v74 taken**): the Thieves' Guild (TWN-TAV-007
   to -009): `GameQuery::ThievesGuild` answered by `GameAnswer::ThievesGuild { guild:

@@ -56,6 +56,7 @@ pub mod check;
 pub mod compose;
 pub mod damage;
 pub mod draw;
+pub mod engine;
 pub mod finds;
 pub mod hover;
 pub mod keys;

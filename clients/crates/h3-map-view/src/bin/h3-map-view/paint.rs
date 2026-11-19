@@ -407,13 +407,7 @@ impl<'a> Painter<'a> {
         let mut start = Live::at_start(raw, &art, 0, &tables.map.towns);
         match live {
             Some(path) => {
-                render::read_live(
-                    &path.to_path_buf(),
-                    view,
-                    &mut art,
-                    &mut start,
-                    assets.templates,
-                )?;
+                render::read_live(path, view, &mut art, &mut start, assets.templates)?;
             }
             None => {
                 start.moment = Moment::at(0, tables.map.cycle_ms, tables.map.frame_ms);

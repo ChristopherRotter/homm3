@@ -15,17 +15,32 @@ use std::path::{Path, PathBuf};
 /// the client lane's crates and the foundation; this copy of it checks this lane's crate. `h3-map`
 /// gives the raw map's model (its parser reads bytes; the crate has no I/O); `h3-render` the
 /// compositor (pure, E17's foundation; since T3b1); `h3-ui` what both viewers share (E24 M3 T1a,
-/// pure: its own `tests/purity.rs`).
+/// pure: its own `tests/purity.rs`); the engine's pure crates `h3-protocol`, `h3-game`,
+/// `h3-adventure` and `h3-kernel` a record's (E24 M4 T3a, `engine`).
 const PURE: [(&str, &[&str]); 1] = [(
     "h3-map-view",
-    &["h3-assets", "h3-map", "h3-render", "h3-ui", "serde", "toml"],
+    &[
+        "h3-adventure",
+        "h3-assets",
+        "h3-game",
+        "h3-kernel",
+        "h3-map",
+        "h3-protocol",
+        "h3-render",
+        "h3-ui",
+        "serde",
+        "toml",
+    ],
 )];
 
 /// Dependencies of the package that only its binary (an adapter) uses: Cargo has no binary-only
 /// dependencies, so the library's sources must never name them (*provisional*, E24 M1 T2: the
 /// archives' reader `h3-formats`, the gate's; E24 M2 T4a: the window's adapter `h3-sdl`; E24 M2 T5:
-/// the music's decoder `nanomp3`).
-const BINARY_ONLY: [(&str, &[&str]); 1] = [("h3-map-view", &["h3-formats", "h3-sdl", "nanomp3"])];
+/// the music's decoder `nanomp3`; E24 M4 T3a: the packs' reader `h3-files`).
+const BINARY_ONLY: [(&str, &[&str]); 1] = [(
+    "h3-map-view",
+    &["h3-files", "h3-formats", "h3-sdl", "nanomp3"],
+)];
 
 /// Attributes every pure crate root carries.
 const REQUIRED: [&str; 2] = ["#![no_std]", "#![forbid(unsafe_code)]"];

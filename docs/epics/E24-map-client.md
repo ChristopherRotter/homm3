@@ -193,8 +193,14 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   T5): T2d1, a flag raised (**done** 2026-11-18, the log's "M4 T2d1"), T2d2, a boat boarded and
   left (**done** 2026-11-19, whole; the log's "M4 T2d2"; MCL-Q35), T2d3, a spell cast on the map
   (**done** 2026-11-19, whole: Summon Boat, the user's choice; the log's "M4 T2d3"; MCL-Q14 seen);
-  T3, a record's start (after the server lane's whole-game record
-  and the adventure lane's object identity); T4, a record played; T5, the battles handed over
+  T3, a record's start, cut in two by the user at its start (2026-11-19, the map's view first):
+  T3a, the record read and the map view's live part (**done** 2026-11-19, whole; the log's "M4
+  T3a", design §5.9; `MCL-STUB-1`), T3b, the panels' live part (the kingdom, a hero's
+  status, the hover's facts, a town's own name, MCL-Q15 (b)) and the whole screen (the shipped
+  maps too); the object identity asked of the adventure lane withdrawn by the user (the same day,
+  the server lane's note of 2026-11-12: the view's objects in tile order, found by type and
+  anchor; an object added in play, T4's, drawn after the file's), a random artifact's drawn
+  artifact still asked (the view names none); T4, a record played; T5, the battles handed over
   (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
   with the user.
 - **Exit:** Part A's situations and sequences exact on the whole screen (or each difference an
@@ -362,3 +368,18 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   yet); the wait for its sound not built (with sound the original's cast ends 936 ms later); the
   window's cast button does nothing; MCL-Q14's fix (the slot shown whole) under `Bugs::Fixed` on
   every slot draw, not only after a cast; the harness's `[[cast]]` table and a hero's `spells`.
+
+- **M4 T3a, a record's start as a capture's live part** (*provisional*; design §5.9): the
+  engine's start turned into `live.toml`'s table (the original's memory's terms: the copy's DEF
+  names, classes, colours), applied by the binary as a capture's; T4 folds the record's events
+  into `Live` itself.
+- **M4 T3a, the library's engine dependencies** (*provisional*): `h3-map-view`'s pure library
+  names `h3-protocol`, `h3-game`, `h3-adventure` and `h3-kernel` (all `no_std`, already in the
+  workspace; its purity test's allowlist), the binary `h3-files`; its own small record reader
+  beside `h3_view::game_record`'s (no dependency on the client lane's crate).
+- **M4 T3a, the objects matched** (*provisional*): type, anchor and masks, else a random type at
+  the anchor (a random dwelling one column left too); an object the file does not hold refuses
+  the whole record; a hero faces right at the start; an object out of sight keeps the file's
+  owner.
+- **M4 T3a, `render --record` and `--check`** (*provisional*): the options' names and messages;
+  `--packs` the repository's by default; `--check` compares only what the start says.

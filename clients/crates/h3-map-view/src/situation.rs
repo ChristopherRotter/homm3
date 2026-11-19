@@ -79,6 +79,10 @@ pub struct Situation {
     /// Rectangles of tiles Red has not explored (corners inclusive); every other tile explored.
     #[serde(default)]
     pub hidden: Vec<[i32; 4]>,
+    /// The explored tiles as the new game left them (`"start"`, E24 M4 T3a: the engine's start
+    /// compared with the original's), not written by the harness; none: `hidden`'s.
+    #[serde(default)]
+    pub explored: Option<Explored>,
     /// What the harness selects from its list after its walks and writes (E24 M3 T4a; design
     /// §4.5): the selection scrolls its list to show it and redraws both lists (and builds the
     /// status window again, M3 T5b1), so a situation whose heroes or towns the harness writes
@@ -286,6 +290,14 @@ pub struct RoadSpec {
     pub from: u8,
     /// Its last column.
     pub to: u8,
+}
+
+/// Which explored tiles a situation keeps (E24 M4 T3a).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Explored {
+    /// The new game's: the harness writes none (`h3map.py`'s `explored = "start"`).
+    Start,
 }
 
 /// A rectangle of a shipped map's tiles copied onto the map.
