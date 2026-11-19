@@ -4,26 +4,26 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T130 — batch E14 scored** (round 3; decisions 368, 373; T129a and T129b the runs, done)
+**E08 T132 — the kinds, the packs, the import** (round 5; decisions 370, 373, 378; design note
+§1 to §7, §19, §21)
 
-- **Scope:** the survey `docs/rules/surveys/E08-trades.md`'s new §21: each of E14-1 to E14-17
-  scored against the reading (§3 to §14) and the specs' predictions (their headers): as predicted,
-  or the finding and its effect on the design note `E08-design.md` and the drafts
-  `adr-drafts/0016-`, `0017-increment-14.md` (T131 applies them). The results:
-  `experiments/results/E08-batch-14.md` (T129b's run, every section) and `-14-roe.md`; T129a's
-  run of the markets in `E08-log.md` (the draws differ by start).
-- **The finding to settle first:** E14-14: the game's version (game +0x1F698) reads SoD on the
-  RoE-format map (as batch E7a's RoE map), so its Air Elementals were offered and upgraded; the
-  reading's exclusion (`hill_fort_rows`, survey §13) keys on game version 0, which a new game of
-  an RoE map does not take on this executable. Design note §4 and exit criterion 6 ("not an RoE
-  map's elementals") rest on it: read where +0x1F698 is set at a new game, compare the wiki and
-  VCMI; a question for the user if they disagree (gameplay impact).
-- **Inputs:** T129b's record in `E08-log.md` (the raw observations, the notes), the specs'
-  headers, survey §18.
-- **Then T131** (`shared/`, `cross-lane`).
-- **Depends on:** T129b (done). **Status:** ready (docs; the executable for the +0x1F698 reading).
+- **Scope:** T132a (`h3-adventure`, `h3-pack-adventure`, the packs): the five kinds `market`,
+  `altar`, `hill_fort { gold }` (no `roe_except`: decision 378), `war_machine_factory` and the
+  Black Market's stock classes, with their hash tags; `[market]` and the rates' module with its
+  tables (`h3_kernel::arith::X87`, survey §4's halves pinned; D-71's cases); the base and ab packs'
+  types (§6); the eighth original-data check (`--with-original-data`); adventure ruleset part's
+  next version (v23 after the town lane's v22). T132b (`h3-map`): the import of classes 2, 7, 35,
+  99, 106, 213 and 221 at subclass 0 (no body, no RoE mark), the writer's classes for fixtures, a
+  step onto one of the seven refused as an unbuilt visit's until its task; map import's next (v27);
+  the shipped-map census and the counts that move (`TRAPS.md`).
+- **Rules:** ADV-MKT-001, -002, ADV-HFT-001's which stacks, ADV-ALT's values, ADV-WMF-001's
+  machines, each with its sources (survey §21's rows as `observation` once built).
+- **Inputs:** design note §1 to §7, §19; ADR-0016 point 4 and ADR-0017 point 9 as applied (T131);
+  survey §4 to §14; `TRAPS.md` (shared changes, original data, extra target directories).
+- **Depends on:** T131 (its `shared/` pull request merged first). **Status:** ready; the cut
+  confirmed at its start (T132a and T132b as the note has them, one or both in a session).
 
 ## Inbox
 

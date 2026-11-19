@@ -1,0 +1,81 @@
+# E25 T39's bench probe (increment 9, AI-Q18; v23's design and its rule, the user's review AI-Q19,
+# `docs/epics/E25-log.md` T37; `h3env.train.clone`, the distillation bench's clone mode): T32's
+# bench (`e25-arch.toml`: the fair system actor as the teacher on `e25-neutral.toml`'s mix, 4 M
+# samples, two passes, the same seed and held-out set, its ladders at the end) with its control,
+# `hexconv` normalised 96 x 6 at 1e-3 (#2's network, reading observation v22's prefix), and two
+# arms beside it on observation v23: `reach` (the reach block into the hexes and the stack tokens,
+# T38b) and `reach` with the kill preview (`preview`: the bias on each legal strike from its
+# previewed kills; the bench's rows then hold the batch's preview, the play the same). Each arm is
+# made from the bench's seed (`same_start`): it starts with the control's weights, its new modules
+# beside them. The rule, stated before it runs: an arm passes when its clone's ladder against the
+# fair actor (500 a kind, the same episodes) leads the control's by at least 0.02 and its
+# agreement is not below the control's; T40 starts from the passing arm with the better ladder,
+# the preview's only when it also leads the `reach` arm's by 0.02; none passing closes increment
+# 9 at T41. About 6 hours of the GTX 1070 (T32's four students' passes 24 820 s; three here, the
+# teacher's play with the preview and v23's reach block slower). From python/:
+#
+#   uv run --group train python -m h3env.train.distill --teacher system --config configs/distill/e25-reach.toml --out runs/reach-1
+#
+# It resumes (E25 T26a): Ctrl-C stops it at the next minibatch, scored and saved (a part under 2
+# hours, the user's rule); each later part continues it to the budget, then plays the ladders:
+#
+#   uv run --group train python -m h3env.train.distill --resume runs/reach-1
+run = "configs/e25-neutral.toml"
+seed = 7
+samples = 4_000_000
+heldout = 16_384
+eval_every = 500_000
+envs = 256
+rollout = 128
+epochs = 2
+minibatch = 512
+lr = 3e-4
+lr_floor = 0.1
+value_coef = 0.5
+max_grad_norm = 0.5
+device = "auto"
+ladder = ["system", "system-all-seeing"]
+ladder_per_kind = 500
+same_start = true
+
+# The control: T32's (`e25-arch.toml`'s student of the same name), #2's network, v22's prefix.
+[students.hexconv-n-96x6-a]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 6
+mask_input = true
+order = true
+attack_hex = true
+lr = 1e-3
+warmup = 131_072
+weight_decay = 0.01
+
+# v23: the reach block (the design's points 1 and 5).
+[students.hexconv-n-96x6-reach]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 6
+mask_input = true
+order = true
+attack_hex = true
+reach = true
+lr = 1e-3
+warmup = 131_072
+weight_decay = 0.01
+
+# v23 with the kill preview (the design's point 6).
+[students.hexconv-n-96x6-reach-preview]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 6
+mask_input = true
+order = true
+attack_hex = true
+reach = true
+preview = true
+lr = 1e-3
+warmup = 131_072
+weight_decay = 0.01

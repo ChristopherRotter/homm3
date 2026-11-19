@@ -42,7 +42,7 @@ from .. import _ffi
 from ..batch import BattleBatch
 from . import layout as L
 from .geometry import FIELD_HEIGHT, FIELD_WIDTH, attack_hexes, attack_table
-from .policy import Encoding, Policy, init, symlog
+from .policy import Encoding, Policy, init, make_preview, preview_bias, symlog
 
 #: The embeddings' sizes: creature handles (a larger one shares the last), columns and rows (an
 #: off-field turret's included).
@@ -61,6 +61,9 @@ LEADING = 3
 #: The hex planes of the entry mask (`mask_features`): the legal moves, the legal attacks'
 #: from-hexes.
 MASK_PLANES = 2
+#: The reach block's hex planes (`[network] reach`, E25 T38b; `layout.REACH`): the viewer's
+#: side's strikers, the opponent's.
+REACH_PLANES = 2
 
 
 def mask_features(mask: torch.Tensor, legal_from: torch.Tensor, hexes: int):
@@ -185,6 +188,9 @@ class Pointed(Policy):
     reads_order = False
     #: Whether the melee entries score their from-hex (`[network] attack_hex`; `AttackHex`).
     attack_hex = False
+    #: Whether the hexes and the stack tokens read observation v23's reach block (`[network]
+    #: reach`, E25 T38b; the hex kinds').
+    reads_reach = False
 
     def make_heads(self, width: int, hex_width: int, embed: int) -> None:
         """Makes the heads for vectors of `width` (the context, the stacks) and `hex_width`."""
@@ -211,12 +217,18 @@ class Pointed(Policy):
         order: bool,
         attack_hex: bool,
         field: tuple[int, int],
+        reach: bool = False,
+        preview: tuple[int, int] | None = None,
+        embed: int = 32,
     ) -> None:
         """The opt-in keys' modules (module docstring), made after the others (so a network with
-        a key starts with the others' weights of the one without): `mask_input`'s linear layers
-        into the hexes' vectors (`hex_width`), the stacks' tokens and the global (`width`),
-        `order`'s into the stacks' tokens, `attack_hex`'s head; the attack positions' table of
-        the `field` (columns, rows) where the mask is read, a buffer saved files lack."""
+        a key starts with the others' weights of the one without), in the keys' order:
+        `mask_input`'s linear layers into the hexes' vectors (`hex_width`), the stacks' tokens
+        and the global (`width`), `order`'s into the stacks' tokens, `attack_hex`'s head,
+        `reach`'s into the hexes' vectors and the stacks' tokens (E25 T38b), the kill preview's
+        (`policy.make_preview` of the batch's `preview` entries, its `u` from the context,
+        `embed` wide; E25 T38b); the attack positions' table of the `field` (columns, rows)
+        where the mask is read, a buffer saved files lack."""
         self.mask_input, self.reads_order, self.attack_hex = mask_input, order, attack_hex
         self.reads_mask = mask_input or attack_hex
         if self.reads_mask:
@@ -231,13 +243,20 @@ class Pointed(Policy):
             self.order_in = nn.Linear(L.ORDER_FEATURES, width)
         if attack_hex:
             self.attack_hex_head = AttackHex(width, hex_width, width)
+        self.reads_reach = reach
+        if reach:
+            self.reach_hex_in = nn.Linear(REACH_PLANES, hex_width)
+            self.reach_stack_in = nn.Linear(L.REACH_FEATURES, width)
+        self.reads_preview = preview is not None
+        if preview is not None:
+            make_preview(self, preview, width, embed)
 
     def extra(
         self, obs: torch.Tensor, x: torch.Tensor, mask: torch.Tensor | None, hexes: int
     ) -> Extra:
         """The opt-in keys' terms (`Extra`) for the rows `obs` (`x` their `symlog`, `mask` their
         entry mask; the first `hexes` hexes' vectors)."""
-        if not (self.reads_mask or self.reads_order):
+        if not (self.reads_mask or self.reads_order or self.reads_reach):
             return Extra()
         rows = obs.shape[0]
         stacks = glob = planes = legal_from = None
@@ -255,7 +274,20 @@ class Pointed(Policy):
                 slot = self.mask_stack_in(per_slot)
                 stacks = slot if stacks is None else stacks + slot
                 glob = self.mask_fixed_in(fixed)
+        if self.reads_reach:
+            reach = x[:, L.REACH : L.REACH_STACKS].view(rows, REACH_PLANES, L.MAX_FIELD_HEXES)
+            hex_terms = self.reach_hex_in(reach[:, :, :hexes].transpose(1, 2))
+            planes = hex_terms if planes is None else planes + hex_terms
+            slot = self.reach_stack_in(
+                x[:, L.REACH_STACKS : L.OBSERVATION_LEN].reshape(rows, L.STACK_CAPACITY, -1)
+            )
+            stacks = slot if stacks is None else stacks + slot
         return Extra(planes, stacks, glob, legal_from if self.attack_hex else None)
+
+    def with_preview(self, logits, encoding, obs, preview, mask):
+        if not self.reads_preview:
+            return logits
+        return preview_bias(self, logits, encoding[0], obs, preview, mask)
 
     def value(self, encoding: Encoding) -> torch.Tensor:
         return self.value_head(encoding[0]).squeeze(1)

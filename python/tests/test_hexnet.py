@@ -3,7 +3,8 @@ hex's neighbours, a stack is drawn on its hexes, an empty slot is not seen and t
 does not matter to the context, the field's size holds on real battles, the visualization counts
 the convolutions; the normalisation keeps the field and the defaults are the networks before it,
 the transformer blocks' feed-forward width (E25 T24); E25 T25's keys (`mask_input`, `order`,
-`attack_hex`) on the structured kinds. They need the group `train`."""
+`attack_hex`) on the structured kinds; E25 T38b's (`reach`, `preview`) on the hex kinds. They
+need the group `train`."""
 
 from __future__ import annotations
 
@@ -11,9 +12,10 @@ from dataclasses import asdict
 
 import numpy as np
 import pytest
+from conftest import scenario
 from test_train import mixed_batch
 
-from h3env import _ffi
+from h3env import BattleBatch, _ffi
 from h3env.train import layout as L
 from h3env.train.run import Config, ConfigError, load_config
 
@@ -517,3 +519,123 @@ def net_field(net) -> tuple[int, int]:
     if isinstance(net, Entity):
         return FIELD_WIDTH, FIELD_HEIGHT
     return net.grid.width, net.grid.height
+
+
+#: E25 T38b's keys of the hex kinds and each one's new modules.
+T38B_MODULES = {
+    "reach": {"reach_hex_in", "reach_stack_in"},
+    "preview": {"preview_net", "preview_context"},
+}
+HEX_KINDS = ["hexconv", "hexformer"]
+
+
+def preview_batch() -> BattleBatch:
+    """`mixed_batch`'s battles with the batch's kill preview (C ABI v33)."""
+    batch = BattleBatch(8, threads=2, seed=3, max_steps=300, preview=True)
+    batch.add_scenario(scenario("full"))
+    batch.add_scenario(scenario("siege"))
+    batch.add_encounters()
+    batch.reset()
+    return batch
+
+
+def biased(net, obs, mask, preview):
+    """`net`'s entry logits with its kill preview's bias (none without `preview`)."""
+    h = net.encode(obs, mask)
+    return net.with_preview(net.entry_logits(h), h, obs, preview, mask)
+
+
+@pytest.mark.parametrize("kind", HEX_KINDS)
+def test_the_defaults_are_the_networks_before_t38b(kind) -> None:
+    # A hex network file before E25 T38b has no `reach` or `preview`: it builds the network it
+    # was (the same parameters by name and shape, E25 T25's keys on) and computes as it did, its
+    # kill preview handed or not.
+    batch = preview_batch()
+    obs = torch.from_numpy(batch.obs.copy())
+    mask = torch.from_numpy(batch.entry_mask.copy()).bool()
+    preview = torch.from_numpy(batch.preview.copy())
+    keys = {"mask_input": True, "order": True, "attack_hex": True}
+    config = asdict(Config(kind=kind, width=16, layers=1, heads=2, embed=8, **keys))
+    old = {k: v for k, v in config.items() if k not in ("reach", "preview")}
+    torch.manual_seed(0)
+    net = build(old, batch).eval()
+    torch.manual_seed(0)
+    same = build(config, batch).eval()
+    batch.close()
+    assert not (net.reads_reach or net.reads_preview)
+    assert {k: v.shape for k, v in net.state_dict().items()} == {
+        k: v.shape for k, v in same.state_dict().items()
+    }
+    with torch.no_grad():
+        plain = biased(net, obs, mask, None)
+        assert torch.equal(plain, biased(net, obs, mask, preview))
+        assert torch.equal(plain, biased(same, obs, mask, None))
+        assert torch.equal(net.values(obs, mask), same.values(obs, mask))
+
+
+@pytest.mark.parametrize("key", list(T38B_MODULES))
+@pytest.mark.parametrize("kind", HEX_KINDS)
+def test_a_t38b_key_adds_its_modules_to_the_network_without_it(kind, key) -> None:
+    # As T25's keys: a key's modules come after the others (the preview's after the reach's), so
+    # with the same seed the network with it has the other's weights, and with its new weights at
+    # 0 computes the other's outputs; with them as made it computes others, finite, and its
+    # choices keep to the masks. A preview network refuses rows without the preview.
+    batch = preview_batch()
+    obs = torch.from_numpy(batch.obs.copy())
+    mask = torch.from_numpy(batch.entry_mask.copy()).bool()
+    preview = torch.from_numpy(batch.preview.copy())
+    base = {"reach": True} if key == "preview" else {}
+    plain, net = keyed(kind, batch, **base), keyed(kind, batch, **base, **{key: True})
+    choice = net.act(batch, torch.Generator().manual_seed(1))
+    assert (batch.entry_mask[np.arange(batch.envs), choice.entry] == 1).all()
+    batch.close()
+    old, new = plain.state_dict(), net.state_dict()
+    assert set(old) <= set(new) and all(torch.equal(v, new[k]) for k, v in old.items())
+    assert {name.split(".")[0] for name in set(new) - set(old)} == T38B_MODULES[key]
+    assert net.reads_reach and net.reads_preview == (key == "preview")
+    assert not net.reads_mask
+    with torch.no_grad():
+        logits = biased(net, obs, mask, preview)
+        assert torch.isfinite(logits).all()
+        assert not torch.allclose(logits, biased(plain, obs, mask, preview))
+        if key == "preview":
+            with pytest.raises(ValueError, match="kill preview"):
+                biased(net, obs, mask, None)
+        for name in T38B_MODULES[key]:
+            for p in getattr(net, name).parameters():
+                p.zero_()
+        assert torch.equal(biased(net, obs, mask, preview), biased(plain, obs, mask, preview))
+        assert torch.equal(net.values(obs, mask), plain.values(obs, mask))
+
+
+@pytest.mark.parametrize("kind", HEX_KINDS)
+def test_the_reach_block_reaches_its_hexes_and_its_stack_tokens(kind) -> None:
+    # `reach`: a count of the opponent's plane at a hex moves that hex's drawn vector alone, a
+    # stack slot's feature its token alone (`Pointed.extra`'s terms); without the key neither is
+    # read; a hex past the field (a smaller field's) is not drawn.
+    batch = mixed_batch()
+    obs = torch.from_numpy(batch.obs.copy())
+    mask = torch.from_numpy(batch.entry_mask.copy()).bool()
+    net = keyed(kind, batch, reach=True)
+    small_field = build(
+        asdict(Config(kind=kind, width=16, layers=1, heads=2, embed=8, reach=True, field_width=5)),
+        batch,
+    ).eval()
+    batch.close()
+    moved = obs.clone()
+    moved[:, L.REACH + L.MAX_FIELD_HEXES + 7] += 3.0
+    moved[:, L.REACH_STACKS + 5 * L.REACH_FEATURES + L.REACH_STRUCK] += 2.0
+    hexes = net.grid.hexes
+    with torch.no_grad():
+        before = net.extra(obs, symlog(obs), mask, hexes)
+        after = net.extra(moved, symlog(moved), mask, hexes)
+        assert before.hexes.shape == (len(obs), hexes, 16) and before.glob is None
+        hex_moved = (after.hexes - before.hexes).abs().amax((0, 2)) > 0
+        assert hex_moved.nonzero().flatten().tolist() == [7]
+        slot_moved = (after.stacks - before.stacks).abs().amax((0, 2)) > 0
+        assert slot_moved.nonzero().flatten().tolist() == [5]
+        assert not torch.allclose(net.values(obs), net.values(moved))
+        far = obs.clone()
+        far[:, L.REACH + 5 * 11 + 3] += 3.0
+        assert small_field.grid.hexes == 55
+        assert torch.equal(small_field.values(obs), small_field.values(far))

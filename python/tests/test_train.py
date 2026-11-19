@@ -6,6 +6,7 @@ train`) and are skipped without it; `test_run.py` covers the run's lifecycle wit
 from __future__ import annotations
 
 import copy
+import dataclasses
 import json
 import math
 import signal
@@ -1437,18 +1438,25 @@ def test_a_structured_run_stops_resumes_and_plays_its_ladder(tmp_path, kind) -> 
     assert rows["random"]["games"] == 6
 
 
-def test_the_kill_preview_biases_the_legal_strikes_alone_and_is_recomputed() -> None:
+@pytest.mark.parametrize("kind", ["mlp", "hexconv"])
+def test_the_kill_preview_biases_the_legal_strikes_alone_and_is_recomputed(kind) -> None:
     # E06 T6d (AI-Q7 (b) part 2): a network that reads the preview adds a bias to each legal
-    # attack and shot entry's logit from its previewed kills, every other logit the MLP's own; it
-    # refuses a batch without the preview, and the update's log-probabilities come back from the
-    # rollout's stored preview (half precision).
+    # attack and shot entry's logit from its previewed kills, every other logit the network's own;
+    # it refuses a batch without the preview, and the update's log-probabilities come back from
+    # the rollout's stored preview (half precision). The MLP's, a hex kind's since E25 T38b.
     batch = BattleBatch(8, threads=2, seed=3, max_steps=300, preview=True)
     batch.add_scenario(scenario("full"))
     batch.add_encounters()
     batch.reset()
     torch.manual_seed(0)
-    policy = Mlp.for_batch(batch, hidden=32, embed=8, preview=True)
-    assert policy.reads_preview and not Mlp.for_batch(batch, hidden=32, embed=8).reads_preview
+    if kind == "mlp":
+        policy: Policy = Mlp.for_batch(batch, hidden=32, embed=8, preview=True)
+        assert not Mlp.for_batch(batch, hidden=32, embed=8).reads_preview
+    else:
+        config = Config(kind=kind, width=16, layers=1, embed=8, preview=True)
+        policy = build(asdict(config), batch)
+        assert not build(asdict(dataclasses.replace(config, preview=False)), batch).reads_preview
+    assert policy.reads_preview
     with torch.no_grad():
         policy.preview_context.weight.mul_(300.0)  # a bias large enough to move the choices
     generator = torch.Generator().manual_seed(1)

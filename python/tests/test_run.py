@@ -124,6 +124,8 @@ lr_schedule = "constant"
         ("", ["ladder.ladder_final_episodes=501"], "`ladder_episodes` lies in"),
         ("", ["env.kinds=[1, 2]"], "six weights"),
         ("", ['network.kind="entity"', "network.preview=true"], "`preview` is the MLP's"),
+        ("", ["network.reach=true"], "`reach` is the hex kinds'"),
+        ("", ['network.kind="entity"', "network.reach=true"], "`reach` is the hex kinds'"),
         ("", ["league.system_share=1.5"], "`system_share` lies in"),
         ("", ["ppo.entropy_floor=1.5"], "`entropy_floor`, `imitation_floor` and `self_play`"),
         ("", ["ppo.imitation_floor=-0.5"], "`imitation_floor` and `self_play` lie in"),

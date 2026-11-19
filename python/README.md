@@ -120,11 +120,12 @@ it reads v21's prefix, as every network saved before v22 does (`configs/e06-orde
 `t7-1`'s settings with the order, the A/B run `order-1`). No measurable gain (E06 T6g): off by
 default.
 
-**The kill preview** (E06 T6d, AI-Q7 (b), design §13): `[network] preview = true` (the MLP's)
-has the entry head read each legal attack's and shot's previewed kills (`BattleBatch(…,
-preview=True)`, above) as a bias of those entries alone; every batch the network plays then
-writes the preview (`configs/e06-t6d.toml`, the A/B run `t6d-1`). No measurable gain (E06 T6e,
-AI-Q7 closed): off by default.
+**The kill preview** (E06 T6d, AI-Q7 (b), design §13): `[network] preview = true` (the MLP's,
+the hex kinds' since E25 T38b) has the entry head read each legal attack's and shot's previewed
+kills (`BattleBatch(…, preview=True)`, above) as a bias of those entries alone; every batch the
+network plays then writes the preview (`configs/e06-t6d.toml`, the A/B run `t6d-1`). No
+measurable gain for the MLP (E06 T6e, AI-Q7 closed): off by default. Not in `h3env.search` (a
+single env writes no preview).
 
 **The tactics bound** (E25 T4a): `[network] tactics_rounds = n` (any kind; 0, off, by default)
 has the agent play n rounds of its own tactics phase, then End tactics alone, wherever the
@@ -143,6 +144,11 @@ turn-order places to its token, and `[network] attack_hex = true` (not the MLP's
 entry also score the hex its attack is made from (its target's vector, that hex's and the context,
 for the legal entries only; it reads the mask too). A network saved without the keys reads no mask
 and computes what it did before.
+
+**The reach block** (E25 T38b, increment 9): `[network] reach = true` (the hex kinds'; false by
+default) has the network read observation v23's reach block (above): its two planes into each
+hex's vector, each stack slot's three features into its token. Without it a network reads v22's
+prefix, as every network saved before.
 
 **The imitation loss** (E25 T21, increment 6, decision 3's second form): `[ppo] imitation_coef`
 (0, off, by default) weighs an auxiliary cross-entropy to the fair system actor's choice on the
@@ -331,7 +337,11 @@ teacher's choices by cross-entropy (the entry, a cast's heads) and its value on 
 Monte Carlo at the run's settings (reward v1, the truncation penalty, shaping). The held-out
 scores are the cross-entropy per head, the agreement per category and of the cast heads, and
 the value's explained variance; `ladder` (the report set's opponents) plays each student on the
-report and neutral sets at the end. The all-seeing system actor is never imitated.
+report and neutral sets at the end. The all-seeing system actor is never imitated. A student may
+read the kill preview here alone (E25 T38b): the rows and the held-out set then hold the batch's
+preview (the play is the same). `same_start = true` makes each student from the bench's seed (by
+default one stream makes them in order), so an arm whose keys add modules starts with the
+control's weights (`configs/distill/e25-reach.toml`, T39's bench).
 
 **The teacher's ceiling** (E25 T19, `h3env.train.ceiling`): how often the fair actor repeats its
 own choice on the clone bench's held-out states, the bound on any clone's agreement with it:

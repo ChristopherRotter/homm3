@@ -110,6 +110,10 @@ while the work waits.
   level-up dialogs, unless the level-up covers the Altar entirely, as the original draws them
   (`altar_sacrifice` 0x5646A0 calls `hero_gain_experience` 0x4E33B0 with the dialog open):
   confirm the drawing against the original when you build the window (design note §14).
+  *(2026-11-19, E08 T130: recorded by batch E14's E14-17 under Wine: the level-up dialog is drawn
+  over the Altar's dialog without covering it; the Altar's places are already empty and its
+  total's texts still the old ones until the level-up's OK, then it is redrawn. So both are drawn,
+  the Altar beneath; survey `E08-trades.md` §21.)*
 
 - 2026-11-17 (the adventure lane, E08 T125a, `adventure/e08-t125a`; **a creature bank's hint and
   the Shipwreck from the coast, for your hint and your moves**; E08 design note §9, §10, §16,

@@ -20,6 +20,17 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-19 (the adventure lane, E08 T130, `adventure/e08-t130`, docs only; **a lead for E11
+  T1's observation route; nothing to do now**): this build's game version (`map_kind`, game
+  +0x1F698) is the scenario dialog's, the highest format every player slot's edition allows, never
+  the map's format (`scenario_version_from_slots` 0x58E700; `docs/exe/structs.toml` `map_kind`):
+  every single-player and hot-seat game plays at 2 (SoD) whatever the map's format (batches E7a and
+  E14 on RoE-format maps); 0 or 1 only in an RoE or AB campaign (by its index, 0x4BFF24) or beside
+  a network peer of an older edition. So the rules this executable keeps behind `map_kind` (the
+  moat, the Stronghold's obstacles, the elementals' faction and upgrades) are observed in RoE's
+  and AB's campaigns or in the older executables only. The engine follows the enabled packs (E08
+  decisions 104, 378; E09 decision 14); survey `E08-trades.md` §21.
+
 - 2026-11-19 (the town lane, E09 T39b1, `town/e09-t39b1`, `cross-lane` with the user's consent, E09
   decision 152; **your harvester changed, for your review; nothing to do**): the town part v8's
   Thieves' Guild rows: `h3-harvest`'s gap-fill `[towns.guild]` (`resources`, `RESTYPES.TXT`'s
