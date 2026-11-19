@@ -19,29 +19,6 @@ context; a task that grows is cut at a seam agreed with the user. Code readings 
 (`clients/capture/README.md`), never in git. Every oddity of the original a reading or a capture
 finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
-### E24 M4 T3a — a record's start: the map's view (in progress, 2026-11-19)
-
-- **Cut** (the user, 2026-11-19, at T3's start; the agent's recommendation): T3 in two, the map's
-  view first. The object identity asked of the adventure lane withdrawn the same day (the user):
-  the view's objects are found in the map's file by type and anchor (the server lane's note of
-  2026-11-12); a random artifact's drawn artifact stays asked (the view names none).
-- **Scope:** a game's record (the protocol's whole-game messages for one player, `h3-server
-  record`'s `.jsonl`) read by the viewer: its header checked (the map by its file's content hash
-  and the import's version), the map read and imported again (MCL-Q21 (b): the viewer's load
-  refuses a map the engine's import refuses), the static art from it; `h3_map_view::live` from
-  its first observation through an adapter from the protocol's types (*provisional*): each object
-  found in the file by its type and anchor (two alike special grounds either way), a random one
-  by its anchor among the file's random objects (a random dwelling's moved anchor), a town by its
-  id; what a random object became (a pile, a monster, a dwelling, a town; an artifact drawn as a
-  stub until the adventure lane names it); the owners, the heroes (class, owner, tile, boat; the
-  start's facing), the empty boats, the explored tiles. The check: the engine's start on the
-  writer's maps without random objects drawn as the original's start of the same map (the map's
-  view; the original's phases), a situation from each.
-- **Acceptance:** the starts' views equal to the original's; `drawn` all the same; `check.sh` all
-  gates.
-- **Depends on:** the server lane's whole-game record (protocol v43/v44: there); increment 9's
-  views (the adventure lane's T83b2b, T85: there). **Status:** in progress.
-
 ### E24 M4 T3b — a record's start: the panels and the whole screen
 
 - **Scope:** the rest of a record's first observation through T3a's adapter: the kingdom (the
@@ -54,7 +31,12 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
   each.
 - **Acceptance:** the starts equal to the original's on the whole screen; `drawn` all the same;
   `check.sh` all gates.
-- **Depends on:** T3a. **Status:** waiting.
+- **Also** (`MCL-STUB-1`, T3a's): a random artifact's, dwelling's and town's drawn picture: the
+  adventure lane's answer to this lane's note of 2026-11-19 (a random artifact's drawn artifact
+  in its view; a drawn dwelling's class and subclass), a town's picture by its faction and
+  buildings from its view.
+- **Depends on:** T3a (**done** 2026-11-19: `h3_map_view::engine`, `render --record`, design
+  §5.9). **Status:** next.
 
 ### E24 M4 T4 — a record played
 

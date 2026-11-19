@@ -3906,3 +3906,60 @@ returned and the book closed when it costs at most the hero's mana), `screen_dis
   dissolves' boxes and steps, the boat moved and made, MCL-Q14 in both profiles, the sound's cue,
   the cursor, a second cast with the hero lifted), 430 in the library, 100 % of `h3-map-view`'s
   library (lines, regions, functions).
+
+### 5.9 A record's start: the map's view (M4 T3a)
+
+The first of T3's two (the user at T3's start, 2026-11-19: the map's view first, the panels T3b;
+the object identity asked of the adventure lane withdrawn). No reading of the original: the
+start is M1's (§1, §2, §2.7 to §2.10), its capture `h3map.py set` with `explored = "start"`.
+
+- **The input** is a whole game's record as `h3-server record` writes it (record format 5,
+  protocol v74): an adventure replay run through `h3_protocol::session::game`, one file per
+  player, its first line the `GameRecordHeader` (the manifest: the packs, the profile, the
+  rules' hashes, the map by its content hash and the import's version, the key tables), then one
+  numbered server message a line, the first the `GameSnapshot`. A game's start is a replay with no
+  command: `h3 adventure run --map <m.h3m> --script <empty> --record <r.toml>`, then `h3-server
+  record <r.toml> --packs-dir packs --root <dir> --out <dir>` (the map gzip-compressed: the
+  engine's reader takes no other; the writer's map is not, `gzip -n` it).
+- **Checked against the viewer:** the manifest the protocol makes of the viewer's own rules (the
+  record's packs and profile read from the repository's `packs/`) and of the map file
+  (`h3_protocol::map::game::manifest`) equals the record's, or the record is refused; the map read
+  and imported again (`h3_map::import`): MCL-Q21 (b), the viewer's load refuses a map the import
+  refuses.
+- **Each object of the view** comes in tile order without an index (`docs/06-security.md`): the
+  map's file objects but its heroes (34, 70, 214) and boats (8) pair in order with the import's
+  static objects (`h3_map::import_map`), and a view's object is the first such not yet taken with
+  its type, anchor and masks (two alike special grounds either way); else, drawn when the game was
+  built, the first with a random type at its anchor (a random dwelling also one column left of
+  it: the Angel Portal's shift, the adventure lane's T94a); else the record is refused.
+- **What a random object became**, as the original's copy names it (§2.7): a random resource the
+  pile of its drawn resource (`avtwood0` … `avtgold0`, the view's pile type's resource), a random
+  monster the last template of class 54 with its creature (`MonsterView::creature`). A random
+  artifact, dwelling or town keeps its random template (`MCL-STUB-1`: the view names no drawn
+  artifact, asked of the adventure lane; a dwelling's class and subclass are the import's table,
+  `h3_map::import::codes` crate-private; a town's picture by its buildings is T3b's).
+- **Owners, heroes, boats, explored tiles:** the view names players, its `players` give their
+  colours; a hero's class its type's (the packs list heroes and classes in the original's order),
+  facing right as the original's new game has them (§2.8; the engine keeps no facing: T4 takes it
+  from the steps), a hero's boat's flag its owner's; an object the view does not show keeps the
+  file's owner (under the fog it is not drawn); the explored bits as `size × levels` rows.
+- **Built** (M4 T3a; *provisional*, M4's review list): `h3_map_view::engine` (pure; the library
+  now depends on the engine's `h3-protocol`, `h3-game`, `h3-adventure` and `h3-kernel`, no new
+  external crate): `parse`, `load`, `start` (a `live.toml` table: `viewer`, `defs`, `classes`,
+  `owners`, `heroes`, `boats`, `explored`, and which objects the view shows), `differences`;
+  `render --record <r.jsonl> [--packs <dir>] [--check]` (the binary; `h3-files` reads the packs):
+  the table applied as a capture's after `--live`'s (`render::apply_live`), or with `--check`
+  compared with `--live`'s capture: the viewer, the explored rows, each object the view shows
+  (its DEF's name in any case, its owner), the heroes and boats on explored tiles (the capture
+  holds every one in memory); a writer situation's `explored = "start"` (the parser's, as the
+  harness's).
+- **Checked** (M4 T3a): two new situations, `engine-start-owners` (`owners-objects`' map: eight
+  colours' heroes, owned mines, dwellings, garrisons, a lighthouse and a shipyard, the explored
+  circles of Red's hero and of the two objects Red owns) and `engine-start-town` (Deluge's lake,
+  Red's town and two heroes, Blue's hero in sight, empty boats of the three types, monsters and
+  piles with their counts given, an artifact, Blue's mine), captured (`set --only`, both exact);
+  the engine's start of each map against its capture: `render --check` finds no difference (the
+  town's: 249 explored tiles, seven objects in sight, Red's two heroes and Blue's, the three
+  boats). `tests/engine.rs`: a game built on a writer's map (a random resource, monster,
+  artifact and dwelling, a sawmill, a pile, three colours' heroes, a boat), every refusal, what
+  `differences` finds.

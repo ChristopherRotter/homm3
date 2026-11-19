@@ -36,5 +36,9 @@ nanomp3.workspace = true
 # The packs a record's rules are read from (E24 M4 T3a): the binary only (`render --record`).
 h3-files.workspace = true
 
+[dev-dependencies]
+# A player's id in the engine's tests (E24 M4 T3a: a game observed for Red).
+h3-contracts.workspace = true
+
 [lints]
 workspace = true

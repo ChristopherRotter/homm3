@@ -107,6 +107,19 @@ a timeline not as recorded fails the sequence), their digests outside the panels
 as `CHANGED`, `new` or `STALE` (and its counts recorded), then `drawn --record`. A walk is M2
 T3's.
 
+**The engine's starts** (E24 M4 T3a, design §5.9): a situation with `explored = "start"` (a
+writer's map too) captured as above, then the engine's start of the same map compared with it,
+no Wine needed: from `clients/`, `target/release/h3-map-view situation map/situations/<id>.toml
+--out <dir>/<id>.raw.h3m`, `gzip -nc` it to `<dir>/<id>.h3m` (the engine reads only gzip), then in
+`<dir>` `h3 adventure run --map <id>.h3m --packs-dir <repo>/packs --script <an empty file>
+--record <id>.replay.toml` and `h3-server record <id>.replay.toml --packs-dir <repo>/packs --root .
+--out .` (the engine's `target/debug/h3`, `h3-server`); last `h3-map-view render <dir>/<id>.h3m
+--view <the situation's> --record <dir>/<id>.replay.player-0.jsonl --live
+map/situations/kept/<id>.toml --check`: no difference in the viewer, the explored tiles, the
+objects the view shows (their pictures and owners) and the heroes and boats on explored tiles
+(`engine-start-owners`, `engine-start-town`). Without `--check` it draws the start (the record's
+map view over the capture's live part).
+
 **The shell's screens** (E27 M2 T4) follow them too: `python3 capture/h3shell.py drawn` (no Wine;
 seconds) plays every recipe in the viewer and compares each shot with the original's kept digest
 (`exact`) and with `shell/drawn.txt`; a task that builds or changes a screen records it (`drawn

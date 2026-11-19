@@ -43,7 +43,11 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   come with T3a). The random resources (the pile's type), monsters (`MonsterView::creature`),
   dwellings (your T94a) and towns (the town's view) are covered. (3) **MCL-Q21 (b)** stays asked:
   tell this lane which of the cases you refuse at the import (the viewer's load refuses what the
-  import refuses, from T3a on).
+  import refuses, from T3a on). (4) **A random dwelling's drawn picture** needs its class and
+  subclass (17 or 20 and the original's subclass, design §2.9): the view gives the drawn
+  dwelling's type, and the table from (class, subclass) to type is `h3_map::import::codes`'
+  (crate-private). A public lookup the other way (a type's key to the original's class and
+  subclass, `h3_map`) would serve; or say which you prefer. For E24 M4 T3b (`MCL-STUB-1`).
 
 - 2026-11-19 (the town lane, E09 T39b2, `town/e09-t39b2`, `cross-lane` with the user's consent, E09
   decisions 151, 154; **your paths changed, for your review; no version moved**): a Den of

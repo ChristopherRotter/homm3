@@ -463,6 +463,7 @@ version = "0.1.0"
 dependencies = [
  "h3-adventure",
  "h3-assets",
+ "h3-contracts",
  "h3-files",
  "h3-formats",
  "h3-game",

@@ -67,6 +67,11 @@ fn a_plain_map_with_two_heroes() {
     let situation = Situation::parse(PLAIN).unwrap();
     assert!(situation.sources().is_empty());
     assert!(situation.hidden.is_empty());
+    assert_eq!(situation.explored, None);
+    // The start's explored tiles kept (E24 M4 T3a); no other choice.
+    let start = Situation::parse(&format!("{PLAIN}explored = \"start\"\n")).unwrap();
+    assert_eq!(start.explored, Some(Explored::Start));
+    assert!(Situation::parse(&format!("{PLAIN}explored = \"all\"\n")).is_err());
     let (map, extras) = situation.build(&BTreeMap::new(), &[]).unwrap();
     assert_eq!((map.size, map.terrain), (36, Terrain::Grass));
     assert!(

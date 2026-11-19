@@ -12,8 +12,8 @@
 //!   the viewer's load refuses a map the import refuses).
 //! - **Each object of the view** (in tile order, without an index: `docs/06-security.md`) is
 //!   found in the map's file by its type, anchor and masks (two alike special grounds either
-//!   way), else as a random object at its anchor (a random dwelling's moved one column right,
-//!   the Angel Portal's shift); an object the file does not hold there refuses the record. The
+//!   way), else as a random object at its anchor (a random dwelling's also one column right of
+//!   it, the Angel Portal's shift); an object the file does not hold there refuses the record. The
 //!   file's objects pair with the import's static objects in order, the heroes and boats left
 //!   out (`h3_map::import_map`).
 //! - **What a random object became** (design §2.7): a random resource the pile of its drawn
@@ -297,9 +297,9 @@ pub fn start(
         .collect();
     let mut seen = vec![false; count];
     let mut taken = vec![false; entries.len()];
-    let random = |id: Option<ObjectTypeId>| is_random(rules, id);
+    let shift = |id: Option<ObjectTypeId>| drawn_shift(rules, id);
     for object in &observation.adventure.objects {
-        let k = find(entries, &taken, object, &random).ok_or_else(|| {
+        let k = find(entries, &taken, object, &shift).ok_or_else(|| {
             let a = object.anchor;
             Refused::Object(object.object_type, [a.x, a.y, u16::from(a.level)])
         })?;
@@ -365,13 +365,13 @@ pub fn start(
     Ok(Start { table, seen })
 }
 
-/// The entry of `entries` not yet `taken` that `object` is: its type, anchor and masks; else a
-/// random one at its anchor or one column left of it (a random dwelling's shift).
+/// The entry of `entries` not yet `taken` that `object` is: its type, anchor and masks; else one
+/// drawn when the game was built at its anchor, or as far left of it as `shift` allows.
 fn find(
     entries: &[ObjectSetup],
     taken: &[bool],
     object: &Object,
-    random: &dyn Fn(Option<ObjectTypeId>) -> bool,
+    shift: &dyn Fn(Option<ObjectTypeId>) -> Option<u16>,
 ) -> Option<usize> {
     let a = object.anchor;
     let at = |e: &ObjectSetup, shift: u16| {
@@ -386,24 +386,25 @@ fn find(
         (0..entries.len()).find(|&k| !taken[k] && test(&entries[k]))
     };
     pick(&|e| at(e, 0) && same(e))
-        .or_else(|| pick(&|e| random(e.object_type) && (at(e, 0) || at(e, 1))))
+        .or_else(|| pick(&|e| shift(e.object_type).is_some_and(|s| (0..=s).any(|d| at(e, d)))))
 }
 
-/// Whether the type `id` is drawn when the game is built: a random monster, artifact, resource
-/// or dwelling.
-fn is_random(rules: &GameRuleset, id: Option<ObjectTypeId>) -> bool {
+/// How far right of its file's anchor a view may show an object of the type `id` that the game
+/// draws when it is built: a random dwelling one column (the Angel Portal's shift, the adventure
+/// lane's E08 T94a), a random monster, artifact or resource none; none for every other type.
+fn drawn_shift(rules: &GameRuleset, id: Option<ObjectTypeId>) -> Option<u16> {
     let kind = id
         .and_then(|id| rules.adventure().object_type(id))
         .map(|t| &t.kind);
-    matches!(
-        kind,
+    match kind {
+        Some(ObjectKind::RandomDwelling) => Some(1),
         Some(
             ObjectKind::Monster { levels: Some(_) }
-                | ObjectKind::Artifact { classes: Some(_) }
-                | ObjectKind::Pickup(Pickup::OneOf(_))
-                | ObjectKind::RandomDwelling
-        )
-    )
+            | ObjectKind::Artifact { classes: Some(_) }
+            | ObjectKind::Pickup(Pickup::OneOf(_)),
+        ) => Some(0),
+        _ => None,
+    }
 }
 
 /// What a random object of the file's class `class` became, as the original's copy of its
