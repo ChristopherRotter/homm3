@@ -555,6 +555,7 @@ mod tests {
                 "shell.stub.credits",
                 "shell.stub.high-scores",
                 "shell.stub.network",
+                "shell.stub.random-map",
                 "shell.stub.scenario",
                 "shell.stub.tutorial",
             ]

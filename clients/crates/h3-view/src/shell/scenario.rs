@@ -1248,15 +1248,13 @@ impl Scenario {
     /// T5b: over the random maps' empty list too), then the panel drawn.
     fn random_built(&mut self) {
         let [name, description] = &self.texts.random;
-        self.random.build(name, description);
+        let record = self.random.build(name, description).clone();
         if let Some(advanced) = &mut self.advanced {
             advanced.selection_changed();
         }
-        if let Some(record) = self.random.record().cloned() {
-            self.describe(&record.description);
-            self.team_flags(&record);
-            self.game = Some(record);
-        }
+        self.describe(&record.description);
+        self.team_flags(&record);
+        self.game = Some(record);
         self.show();
     }
 

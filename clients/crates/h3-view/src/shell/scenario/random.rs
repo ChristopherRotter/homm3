@@ -416,10 +416,11 @@ impl RandomMap {
     }
 
     /// The own record built from the choices (`random_map_info_build` 0x580430), named `name`
-    /// and described as `description`, and a random map chosen.
-    pub(super) fn build(&mut self, name: &str, description: &str) {
-        self.record = Some(self.made(name, description));
+    /// and described as `description`, and a random map chosen; the record.
+    pub(super) fn build(&mut self, name: &str, description: &str) -> &Entry {
         self.chosen = true;
+        let made = self.made(name, description);
+        self.record.insert(made)
     }
 
     /// The own record of the choices.

@@ -1054,7 +1054,7 @@ fn stopped(k: usize, stop: &Stop) -> String {
         // the original generates it; CLT-Q92, decision 13).
         Stop::Stub(screen) => {
             let why = match screen {
-                h3_view::shell::Screen::Scenario(..) => "a random map: CLT-Q92, no generator",
+                Screen::Scenario(..) => "a random map: CLT-Q92, no generator",
                 _ => "CLT-STUB-6, E28",
             };
             format!(
