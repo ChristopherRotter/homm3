@@ -1586,7 +1586,11 @@ CI's green `master` standing in. Kept whole (a small task).
   quotes and Ö, a score of 9000: its creature) read at the next start and reset again; a file of
   version 2 stops the window with its path and reason.
 - **Gates:** `h3-view`'s coverage 100% of lines and regions but `book.rs` 138-143 (as before);
-  `check.sh --no-coverage`, `gate`, the scoped verify with the original data (below).
+  `check.sh --no-coverage` all gates passed; `gate` ok; `drawn` whole (95 recipes, 675 of 1011
+  shots drawn, 667 exact) every recipe as recorded but `scores-reset`, then recorded; `master`
+  merged (#1056, #1059: no shell path); the scoped verify with the original data no failing step
+  after `docs/exe/map.toml` took the four runtime addresses §35.1 cites (`c_open`, `c_write`,
+  `c_close`, `string_data_folder`).
 - **Questions:** CLT-Q158 (the creatures' frame 0 after Reset, the counters kept), asked, built as
   the original's (recommended (a)). **The agent's calls** (*provisional*: M4's review list items 6
   to 9).
