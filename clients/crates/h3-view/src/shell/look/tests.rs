@@ -151,6 +151,8 @@ fn the_shell_s_assets_are_named_once() {
             "loadgame.pcx",
             "gamselb0.pcx",
             "gamselb1.pcx",
+            "loadbar.pcx",
+            "loadprog.def",
             "mupopup.pcx",
             "muBhot.def",
             "muBipx.def",
@@ -264,7 +266,7 @@ fn the_shell_s_assets_are_named_once() {
     // A name given twice in another case is kept once.
     let mut twice = layout;
     twice.cursor.def = String::from("MMENUNG.DEF");
-    assert_eq!(names(&twice).len(), 124);
+    assert_eq!(names(&twice).len(), 126);
 }
 
 #[test]

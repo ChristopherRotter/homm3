@@ -134,7 +134,8 @@ adv-hotseat-begin closed-1 t1700 94f55abf8d961221
 adv-hotseat-begin flag-red-2 t1900 92f4e3c9f0787f58
 adv-hotseat-begin flag-green-1 t2100 88c8940b2e754df2
 adv-hotseat-begin flag-red-3 t2300 40ef83f4f8ad6981
-adv-hotseat-begin load clip 3@2400-2500 4d76662753f97363
+adv-hotseat-begin bar clip 2@2400-2450 e74665741b77693c
+adv-hotseat-begin load clip 2@2490-2500 f6609e69f142d02d
 adv-hotseat-begin turn t2500 5a17d32ddf7a5469
 adv-hotseat-begin map t3100 f28e8d8807052321
 adv-hotseat-two panel t1100 e6ba9f6c74576e0c
@@ -218,5 +219,6 @@ adv-random-list random-maps t2300 b9449bd494c47d47
 adv-random-list list-hidden t2500 51ead194762be394
 adv-random-list list-back t2700 85d2d9d7f2afd710
 adv-begin panel t1000 2ba2a5a0b018d34c
-adv-begin load clip 5@1100-1300 3e937e886a75a16c
+adv-begin bar clip 2@1100-1150 65a5ff92411b272f
+adv-begin load clip 4@1190-1300 dcd08df5c6d51c6b
 adv-begin map t1300 6879ac14319147e6

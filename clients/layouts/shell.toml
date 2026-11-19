@@ -1538,3 +1538,12 @@ name = { id = 3, at = [30, 91], size = [260, 18], font = "smalfont.fnt", font_pa
 heading = { id = 4, at = [30, 122], size = [260, 36], font = "medfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
 specialty = { id = 5, def = "un44.def", at = [138, 149], size = [44, 44] }
 specialty_name = { id = 6, at = [30, 195], size = [260, 36], font = "smalfont.fnt", font_palette = "game.pal", colour = 1, align = 1 }
+
+# The loading screen (E27 M3 T6; design §3.17, §32: `loading_screen_open` 0x4ED350,
+# `load_progress_step` 0x4ED2A0): `loadbar.pcx` copied whole to (0, 0), the bar's piece i
+# `loadprog.def`'s frame i by the plain drawer at (395 + 18 i, 548), 20 at most.
+[loading]
+background = "loadbar.pcx"
+bar = "loadprog.def"
+at = [395, 548]
+step = 18

@@ -3986,3 +3986,11 @@ id = "shell.stub.scenario"
 # scenario screen.
 [[key]]
 id = "shell.stub.random-map"
+
+# E27 M3 T6: play's start after a begin (CLT-STUB-13, decision 44: until E24 M5 hosts the game),
+# over the main menu after the loading screen's fade; and the engine's refusal of the setup there.
+[[key]]
+id = "shell.stub.play"
+
+[[key]]
+id = "shell.stub.play-refused"

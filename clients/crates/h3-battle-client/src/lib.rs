@@ -30,6 +30,7 @@ pub mod aims;
 pub mod assets;
 pub mod audio;
 pub mod battle;
+pub mod begin;
 pub mod bot;
 pub mod boxes;
 #[cfg(test)]

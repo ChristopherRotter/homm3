@@ -67,6 +67,7 @@ use std::sync::mpsc;
 use std::thread;
 
 use h3_assets::wav::Pcm;
+use h3_game::GameRuleset;
 use h3_render::Bugs;
 use h3_render::blit::draw_image;
 use h3_render::screen::Screen as Pixels;
@@ -76,13 +77,13 @@ use h3_ui::keys::Keys;
 use h3_ui::text::Args;
 use h3_view::batch::Batch;
 use h3_view::compose::FORMAT;
-use h3_view::message::{self, Style};
+use h3_view::message::{self, MessageBox, Style};
 use h3_view::shell::keys::{self as shell_keys, Command, GAME_TYPE, MAIN_MENU};
 use h3_view::shell::look::{self, CursorLook, ShellLayout};
 use h3_view::shell::menu::{self, Arrow, Boxes, Front, Kind, Menu, Menus};
 use h3_view::shell::multiplayer::{self, Multiplayer, Texts};
 use h3_view::shell::replay::{self, INPUT_STEP, Replay, Stop, Take};
-use h3_view::shell::scenario::{self, Scenario};
+use h3_view::shell::scenario::{self, Begun, Scenario};
 use h3_view::shell::start::{self as clips, Header, Op, Pace, Part, Picture, Source, Start};
 use h3_view::shell::{Ended, Game, Screen, Shell, text};
 
@@ -364,6 +365,10 @@ struct Drawer {
     menus: Menus,
     /// The press sample, when the sound archives hold it.
     button: Option<Pcm>,
+    /// The game's rules the maps are imported with (E27 M3 T3b1), the begin's setup too (T6).
+    rules: GameRuleset,
+    /// Play's notice when the engine refuses the begin's setup (T6: `shell.stub.play-refused`).
+    refused: MessageBox,
 }
 
 impl Drawer {
@@ -383,7 +388,8 @@ impl Drawer {
         for (name, bytes) in names.iter().zip(lods.batch(&names)?) {
             batch.add(name, &bytes).map_err(|e| e.to_string())?;
         }
-        let menus = menus(&layout, (&batch, &tables), &lods, (install, maps), bugs)?;
+        let (menus, rules, refused) =
+            menus(&layout, (&batch, &tables), &lods, (install, maps), bugs)?;
         let mut lines = Vec::new();
         let button = crate::audio::clips(install, &[BUTTON_ENTRY.to_owned()], &mut lines)?
             .into_values()
@@ -423,6 +429,8 @@ impl Drawer {
             videos: Videos::open(install),
             menus,
             button,
+            rules,
+            refused,
         })
     }
 
@@ -473,6 +481,11 @@ impl Drawer {
             for draw in &shown.over {
                 h3_ui::paint::draw(&mut pixels, draw, &self.batch, self.bugs)?;
             }
+            // Play's start's fade (E27 M3 T6): the screen drawn, its channels shifted down.
+            if shown.shift > 0 {
+                let from = pixels.clone();
+                clips::faded(&from, &mut pixels, shown.shift);
+            }
             cursor = shown.cursor;
             if shown.arrow == Arrow::Adventure {
                 arrow = &self.adventure;
@@ -517,7 +530,7 @@ fn menus(
     lods: &Lods,
     (install, maps): (&Path, Option<&[String]>),
     bugs: Bugs,
-) -> Result<Menus, String> {
+) -> Result<(Menus, GameRuleset, MessageBox), String> {
     let exe = crate::text::executable(install)?;
     let catalogue = crate::log::catalogue(tables, lods, &exe)?;
     // The game's rules (E27 M3 T3b1: the maps' heroes; T3b2: the hero types' classes).
@@ -718,7 +731,9 @@ fn menus(
         // Begin with a random map chosen (T5b): the client's stub (CLT-Q92).
         random_stub: Some(laid("shell.stub.random-map", Style::Ok)),
     };
-    Ok(Menus {
+    // Play's notice when the engine refuses the begin's setup (T6).
+    let refused = laid("shell.stub.play-refused", Style::Ok);
+    let menus = Menus {
         main,
         new_game: game_type(Game::New),
         load_game: game_type(Game::Load),
@@ -739,7 +754,8 @@ fn menus(
             crate::maps::named(crate::maps::entries(install, &rules), maps, &rules),
             bugs,
         ),
-    })
+    };
+    Ok((menus, rules, refused))
 }
 
 /// The advanced options' texts (E27 M3 T3a): the catalogue's `shell.advanced.*` and, for the
@@ -747,7 +763,7 @@ fn menus(
 /// hero's popup (T3b2) each hero type's class's name (its class in `rules`) and specialty's name.
 fn advanced_texts(
     look: &scenario::AdvancedLook,
-    (tables, rules): (&h3_view::tables::Tables, &h3_game::GameRuleset),
+    (tables, rules): (&h3_view::tables::Tables, &GameRuleset),
     catalogue: &h3_ui::text::Catalogue,
 ) -> scenario::AdvancedTexts {
     let text = |key: &str| catalogue.text(key, &Args::new());
@@ -1298,11 +1314,16 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
     let mut cursor_arrow = Arrow::Default;
     // The inputs given during the start's last fade, the main menu's first (CLT-Q130 (a)).
     let mut kept: Vec<Given> = Vec::new();
+    // The begin's choices (T6) until play's start, and the game it began, kept for E24 M5.
+    let mut begun: Option<Begun> = None;
+    let mut game: Option<crate::begin::Game> = None;
     loop {
         let playing = shell.screen() == Screen::Start;
+        // Play's fade (T6) steps every 50 ms: the window's wait as the start's.
+        let fading = matches!(&front, Some(Front::Play(p)) if !p.noticing());
         // The edits' typing (T7b): text input while one has the focus.
         win.set_text_input(front.as_ref().is_some_and(Front::typing));
-        let events = win.wait(if playing { 5 } else { 50 });
+        let events = win.wait(if playing || fading { 5 } else { 50 });
         let mut inputs = if playing {
             Vec::new()
         } else {
@@ -1361,6 +1382,14 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
                 presses.extend(host.play_clip(&sound, volume).ok());
             }
             if let Some(ended) = did.ended {
+                // The begin's choices (T6), for play's start.
+                if let (Ended::Scenario(true), Some(Front::Scenario(s))) = (ended, front.as_ref()) {
+                    begun = s.begun();
+                }
+                // The game kept for E24 M5 left as play's stub ends.
+                if let (Ended::Play(_), Some(game)) = (ended, game.take()) {
+                    eprintln!("h3-view shell: {} left (E24 M5 hosts it)", game.file);
+                }
                 let _ = shell.end(ended);
                 println!("{}", text::describe(shell.screen()));
                 if shell.screen() == Screen::End {
@@ -1434,11 +1463,13 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             }
             dirty = true;
         }
-        // The help popup hides the cursor (`popup_run_held`): the hardware one too.
+        // The help popup hides the cursor (`popup_run_held`): the hardware one too; play's
+        // loading screen and fade too (T6).
         let hidden = front.as_ref().is_some_and(|f| match f {
             Front::Menu(m) => !m.cursor(),
             Front::Multiplayer(m) => !m.cursor(),
             Front::Scenario(s) => !s.cursor(),
+            Front::Play(p) => !p.noticing() || !p.menu().cursor(),
         });
         // Which arrow (CLT-Q137): the adventure map's after the scenario screen's busy cursor.
         let arrow = front.as_ref().map(Front::hovers).unwrap_or_default().arrow;
@@ -1462,6 +1493,44 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             if let Some(Front::Scenario(s)) = front.as_mut() {
                 **s = s.as_ref().clone().with_background(background_draw());
             }
+            // Play's start (T6): the loading screen's bar stepped as the begin's work goes, the
+            // setup kept for E24 M5 or its refusal the notice's, then the bar full and the fade.
+            if matches!(front, Some(Front::Play(_))) {
+                let screen = shell.screen();
+                let mut show = |front: &mut Option<Front>, step: bool| {
+                    if let (Some(Front::Play(p)), true) = (front.as_mut(), step) {
+                        p.step();
+                    }
+                    if let Ok(frame) = drawer.frame(screen, None, front.as_ref()) {
+                        let _ = win.present(&frame.xrgb());
+                    }
+                };
+                show(&mut front, false);
+                let at = (options.install.as_path(), None, &drawer.rules);
+                let outcome = begun
+                    .take()
+                    .map(|b| begun_game(&b, at, &mut || show(&mut front, true)));
+                match outcome {
+                    Some(Ok(begun)) => {
+                        eprintln!(
+                            "h3-view shell: {} begun, {} players: the setup kept for E24 M5",
+                            begun.file,
+                            begun.setup.players.len()
+                        );
+                        game = Some(begun);
+                    }
+                    Some(Err(e)) => {
+                        eprintln!("h3-view shell: the game's setup refused: {e}");
+                        if let Some(Front::Play(p)) = front.as_mut() {
+                            p.refused(drawer.refused.clone());
+                        }
+                    }
+                    None => {}
+                }
+                if let Some(Front::Play(p)) = front.as_mut() {
+                    p.loaded(now(&win));
+                }
+            }
             if let Some(front) = front.as_mut() {
                 front.clock(now(&win));
             }
@@ -1469,6 +1538,10 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
                 let _ = host.request(MAIN_MUSIC, false);
             }
             dirty = true;
+        }
+        // Play's fade (T6) on the window's clock.
+        if let Some(f @ Front::Play(_)) = front.as_mut() {
+            dirty |= f.clock(now(&win));
         }
         if dirty {
             let frame = if shell.screen() == Screen::Start {
@@ -1480,6 +1553,26 @@ fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(
             dirty = false;
         }
     }
+}
+
+/// The game `begun` begins (T6; `crate::begin`): its map read from `install`'s copy or `maps`'
+/// own, its setup made and validated under `rules`, each a step of the loading screen's bar
+/// (`step`: the client's steps).
+///
+/// # Errors
+/// The map does not read or import, or the engine refuses the setup.
+fn begun_game(
+    begun: &Begun,
+    (install, maps, rules): (&Path, Option<&[String]>, &GameRuleset),
+    step: &mut dyn FnMut(),
+) -> Result<crate::begin::Game, String> {
+    let map = crate::begin::read(&crate::begin::map_path(install, maps, &begun.file))?;
+    step();
+    let setup = crate::begin::setup(&map, begun, rules)?;
+    step();
+    crate::begin::validated(&setup, rules)?;
+    step();
+    Ok(crate::begin::game(setup, begun))
 }
 
 /// The scenario screen's background drawn as the original draws it (`random_between(1, 100) <

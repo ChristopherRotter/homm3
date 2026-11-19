@@ -15,15 +15,14 @@ need the five DLLs (`MP3DEC.ASI` in the PC's `original-data/install` too since 2
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M3 T6
+#### E27 M3 T7
 
-T6 The game's begin (design §3.17, §2.1; CLT-Q95, CLT-Q135; decisions 4, 6, 44): the setup built
-from the screen's records (`Scenario::records`, `duration`, the kept map) and validated by the
-engine (`GameSetup`; a refusal shown), the loading bar (`loadbar.pcx`, `loadprog.def`; the client's
-own steps), the begin's notice (a `CLT-STUB`) and back to the menu, the setup kept for E24 M5 (the
-map-client lane's inbox). Exact against `adv-begin` and `adv-hotseat-begin` up to the bar. Likely
-big (the engine's setup, the bar's reading, two recipes): look for a seam and confirm it with the
-user at its start. Then T7 (M3's closure) as the M3 table lists it.
+T7 M3's closure (the epic's M3 table): a fresh reviewer agent over M3's screens and code (the
+scenario screen, its list, advanced options, random map's tab and the begin; one per area, the
+shots as contact sheets), M3's review list (items 1 to 22) to the user, M3 moved to
+`E27-archive.md`; M4's refinement with the user (M4 T0: the saves' record and its extension,
+decision 8; Options with the menu in play, CLT-Q136; the load and save modes with design §6.4's
+recipes for them). The README's E27 row in the session's `shared/` pull request.
 
 ## Inbox
 

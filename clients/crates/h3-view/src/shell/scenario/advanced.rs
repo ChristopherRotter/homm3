@@ -472,7 +472,7 @@ pub struct Record {
 impl Record {
     /// A record as `scenario_player_init` starts it: no colour, Random town, hero and bonus, no
     /// handicap.
-    const NEW: Self = Self {
+    pub(super) const NEW: Self = Self {
         colour: None,
         town: None,
         hero: None,
@@ -788,13 +788,7 @@ impl Advanced {
         let seats = &map.seats;
         self.showing = true;
         if self.changed {
-            let humans = self.humans.iter_mut().map(|h| &mut h.record);
-            for record in humans.chain(&mut self.computers) {
-                record.colour = None;
-                record.town = None;
-                record.hero = None;
-            }
-            self.seat_humans(map);
+            self.remake(map);
             self.changed = false;
         }
         for id in [PANEL, TITLE, SUBTITLE, DURATION]
@@ -857,6 +851,31 @@ impl Advanced {
         self.unclash(map);
         self.set_names(shown);
         self.refresh(seats, shown);
+    }
+
+    /// The records made again over `map` (`scenario_players_init` 0x584C40): every record's
+    /// colour, town and hero cleared, the human records seated.
+    fn remake(&mut self, map: &Map) {
+        let humans = self.humans.iter_mut().map(|h| &mut h.record);
+        for record in humans.chain(&mut self.computers) {
+            record.colour = None;
+            record.town = None;
+            record.hero = None;
+        }
+        self.seat_humans(map);
+    }
+
+    /// Each colour's record and the name of the human record holding it, red first, as Begin
+    /// hands them on over `map` (E27 M3 T6): the rows' records, or while they are made again at
+    /// the next showing those the showing will make ([`Advanced::remake`], as
+    /// [`Advanced::refusal`] reads the colours).
+    pub(super) fn begun(&self, map: &Map) -> ([Record; 8], [Option<String>; 8]) {
+        let mut made = self.clone();
+        if made.changed {
+            made.remake(map);
+        }
+        let names = core::array::from_fn(|c| made.human_of(c as u8).map(|h| h.name.clone()));
+        (made.records(), names)
     }
 
     /// The human records' colours from `map` (`scenario_players_init` 0x584C40, every record's
