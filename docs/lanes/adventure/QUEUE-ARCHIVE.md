@@ -2008,6 +2008,31 @@ decisions 368, 373; as T119 for increment 13)
 - **Depends on:** T127b (done). **Status:** ready (the original data: the executable and both
   tars, to compile the maps and check them in the editor's reader; confirm the cut at its start).
 
+## T129b (moved 2026-11-19, done whole: `adventure/e08-t129b`, decision 377; T130 queued)
+
+**E08 T129b — batch E14's services and the whole run** (round 3; decisions 368, 373, 376; T129a
+the markets, done)
+
+- **Scope:** design note `E08-design.md` §20's harness and recipe for the services: the capture
+  harness's reads (`clients/capture/`, common): the Altar's dialog (`altar_dialog_create` 0x55FDD0:
+  +0x78 the total, the places' +0xC0 vector, the slider's most, its two screens, Sacrifice, All,
+  the creatures' amounts +0x138), the Hill Fort's rows (`hill_fort_rows` 0x4E7EB0: prices, states,
+  the whole +0x298; items 261-267 and 204), the factory through the hire dialog's existing reads
+  (GAM-DEC-008), the hero's experience, level, skills, artifacts, army and tile (earlier batches'
+  reads), the dialogs' order (E14-17: the level-up over the Altar); the recipe
+  `clients/capture/batches/E08-batch-14.toml`: E14-8, E14-9, E14-10, E14-12, E14-15 on Red's day 1
+  after E14-5 (its comment marks the place), E14-13 and E14-17 on Blue's (Blue's step marks it),
+  as the template's instructions order them; a recipe `E08-batch-14-roe.toml` for E14-14 on the
+  RoE map; then one run of each recipe filling the templates `experiments/results/E08-batch-14.md`
+  (every section, the market ones again) and `-14-roe.md`.
+- **Inputs:** T129a's record in `E08-log.md` (the trade window as the form: a screen kind, its
+  globals or fields, items by name, `amount`); the specs' headers; `clients/capture/README.md`
+  ("Markets", "Dwellings, the hire dialog ...", "Creature banks": `order`).
+- **Then T130:** scored in the survey's new §21.
+- **Depends on:** T129a (done). **Status:** ready (the original data: the client lane's staging
+  list; compile both maps again: stamps `7945e78d` and `a88dd771`; the maps not yet copied to the
+  user's folder).
+
 ## Inbox notes settled or for information (moved 2026-11-18, E08 T126)
 
 *(Moved verbatim at increment 13's closure: the other lanes' notes of changes in this lane's paths (the town lane's E09 T29b to T38b1, the map client lane's harness rebuilds), built on by T123b to T125b2b and T126's audit, CI green on each; their lasting rules are one line in `TRAPS.md`, "The town lane's parts of your crates"; the versions they took are the HANDOFF's.)*
@@ -2126,3 +2151,14 @@ decisions 368, 373; as T119 for increment 13)
   of `master`'s, `OwnedOnWater`; your E08 T116b1's ownable garrisons were not in its
   `entrances`). A new workload `benches/adventure/month-start-builds-36.toml` (the step that
   starts day 29 on the builds map), its README row by #942.
+
+*(Moved 2026-11-19, E08 T129b: settled by E08 T129a, #1037: `find_gains` shared with `visit_gains`, the seed kept in `proptest-regressions/tests/play.txt`.)*
+
+- 2026-11-19 (the town lane, E09 T39b1, found while confirming its baseline; **`master`'s CI red,
+  for you to fix**): CI's run on `master` 450e47e (#1032's merge, run 44482680316) failed in
+  `h3-map`'s `tests::play::every_step_keeps_the_commands_invariants` at `play.rs:9615` (a won
+  battle against a monster guarding an object: the gains told `[(#4, 3)]` against the oracle's
+  `[]`, after `ObjectRemoved { object_type: #30, anchor: (1, 1, 0) }`; an RoE plan of side 8). Its
+  seed, `cc 927e83f83344d60c406dca3ea29fb9a601810f09228a5912e618f5408cb989d2`, reproduces it on
+  T39b1's branch when appended to `proptest-regressions/tests/play.txt` (not committed: it would
+  fail every run until fixed). Nothing of T39b1 is in that path (the guild is a query).

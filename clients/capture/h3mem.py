@@ -163,6 +163,7 @@ TEAMS, ACCESS, BLOCKED = 0x1F879, 0xD, 0x01
 # memory for the vtable. The hire dialog's slider is an item of vtable 0x641D50, id 559
 # (observed), 135 x 16 pixels, a click on its right end adds one to the amount.
 RECRUIT_DIALOG, RECRUIT_VTABLE, RECRUIT_NEXT, SLIDER_VTABLE = 0x640C4C, 0x640C70, 0x80, 0x641D50
+RECRUIT_AVAILABLE = 521  # E08 T129b: the Available count's text item (observed)
 RECRUIT_MAX, RECRUIT_BUTTONS = 0xAC, {"max": 532, "recruit": 30722, "close": 30721}
 STATUS_BAR, MESSAGE_BUFFER, OBJECT_NAMES, OWNED_NAMES, DISABLED = 200, 0x6973D8, 0x6A79EC, 0x6A5898, 0x28
 # A player's day's income (E08 T79b, batch E9b; survey E08-economy §8.1, structs.toml
@@ -245,6 +246,31 @@ MARKET_SLIDER, MARKET_FLAGS, MARKET_RECIPIENTS = 6, 49, 70
 # and end +0x1F688): seven i32 artifact ids each (-1 a sold entry), a market's object word the
 # index of its record (observed: the two of batch E14 0 and 1 in the walk's order).
 BLACK_MARKETS, BLACK_MARKET_SIZE, BLACK_MARKET_CLASS = 0x1F684, 28, 7
+# E08 T129b (batch E14's services; survey docs/rules/surveys/E08-trades.md §12, §13; the fields
+# read in the procedures, the items observed under Wine). The Altar of Sacrifice's dialog
+# (altar_dialog_create 0x55FDD0, vtable 0x641620, 0x240 bytes read): its screen +0x74 (1 the
+# artifacts', 0 the creatures'), the screens allowed +0x75 (artifacts) and +0x76 (creatures), the
+# total +0x78; the altar's 22 places a vector of 16-byte records, begin +0xC0 and end +0xC4 (the
+# artifact, -1 an empty place; its second word, a scroll's spell; the worn position it came from,
+# 19 the backpack; its experience); each army slot's amount +0x138 (stride 0x20), the slot
+# selected +0x214 (-1 none). Its pointers to its items (ALTAR_ITEM_FIELDS): the experience
+# lacking's text +0x7C, the total's +0x80, the cursor's artifact +0x90 (a picture: the frame the
+# artifact, drawn while one is held), the slider +0x94 (its ticks +0x48: the most and one), the
+# buttons +0xA0 to +0xB8.
+ALTAR_VTABLE, ALTAR_SIZE, ALTAR_TOTAL, ALTAR_PLACES = 0x641620, 0x240, 0x78, 0xC0
+ALTAR_AMOUNTS, ALTAR_SLOT_STRIDE, ALTAR_SELECTED, SLIDER_TICKS = 0x138, 0x20, 0x214, 0x48
+ALTAR_ITEM_FIELDS = {"lacking": 0x7C, "total": 0x80, "held": 0x90, "slider": 0x94,
+                     "from backpack": 0xA0, "sacrifice": 0xA4, "all": 0xA8, "creatures": 0xAC,
+                     "max": 0xB0, "all creatures": 0xB4, "artifacts": 0xB8}
+# The Hill Fort's dialog (hill_fort_dialog_create 0x4E75F0, vtable 0x63EB68; hill_fort_rows
+# 0x4E7EB0 read): seven rows from +0x4C, 0x50 bytes each: the count's text +0x0, the price's
+# text +0xA (the gold, or the level-1 and the empty rows' words), the second resource's amount's
+# text +0x14, the price by resource +0x20 (seven i32, wood to gold), the second resource shown
+# +0x3C (-1 none), the creature +0x40 (-1 an empty slot), the count +0x44, the level +0x48 (0 to
+# 6), the state +0x4C (0 no upgrade, 1 affordable, 2 not); the whole's price +0x27C (seven i32)
+# and state +0x298 (1 affordable, 0 nothing upgrades, 2 not).
+HILL_FORT_VTABLE, HILL_FORT_SIZE, HILL_FORT_ROWS, HILL_FORT_ROW = 0x63EB68, 0x2A0, 0x4C, 0x50
+HILL_FORT_SUM, HILL_FORT_WHOLE = 0x27C, 0x298
 # The palette tick's next time (palette_tick_time 0x6989B4: the tick 0x4ED490 rotates once the
 # clock reaches it and sets it to now + 200 on the map). The adventure map's idle step redraws
 # the view once the clock reaches FRAME_DEADLINE (0x408A88; design §1.6).
@@ -1014,6 +1040,78 @@ class Mem:
         """How many Black Market records the game holds (E08 T129a)."""
         begin, end = struct.unpack("<II", self.read(self.game() + BLACK_MARKETS, 8))
         return (end - begin) // BLACK_MARKET_SIZE if begin else 0
+
+    def altar(self):
+        """The Altar of Sacrifice's dialog when it is the topmost dialog (E08 T129b; None
+        otherwise): `screen` (`artifacts` or `creatures`), `allowed` (the screens it offers),
+        `total` (+0x78), `lacking` (the experience to the next level, as its text shows it),
+        `places` ({place, artifact, word, from, experience} for each taken place), `held` (the
+        cursor's artifact, -1 none), `amounts` (by army slot), `selected` (-1 none), `most` (the
+        slider's, None without a selected slot) and `buttons` {name: the item's state}."""
+        shown = self.dialog()
+        if not shown or shown["vtable"] != ALTAR_VTABLE:
+            return None
+        raw = self.read(shown["at"], ALTAR_SIZE)
+        items = {i["at"]: i for i in self.dialog_items()}
+        pointed = {name: items.get(struct.unpack_from("<I", raw, offset)[0])
+                   for name, offset in ALTAR_ITEM_FIELDS.items()}
+        begin, end = struct.unpack_from("<II", raw, ALTAR_PLACES)
+        places = []
+        for k in range((end - begin) // 16 if begin else 0):
+            artifact, word, source, experience = struct.unpack("<4i", self.read(begin + 16 * k, 16))
+            if artifact != -1:
+                places.append({"place": k, "artifact": artifact, "word": word, "from": source,
+                               "experience": experience})
+        held = pointed["held"]
+        selected = struct.unpack_from("<i", raw, ALTAR_SELECTED)[0]
+        slider = pointed["slider"]
+        most = (self.i32(slider["at"] + SLIDER_TICKS) - 1
+                if slider and selected >= 0 and raw[0x74] == 0 else None)
+        lacking = (pointed["lacking"] or {}).get("text") or ""
+        return {"screen": "artifacts" if raw[0x74] else "creatures",
+                "allowed": [name for name, flag in (("artifacts", raw[0x75]),
+                                                    ("creatures", raw[0x76])) if flag],
+                "total": struct.unpack_from("<i", raw, ALTAR_TOTAL)[0],
+                "lacking": int(lacking.replace(",", "")) if lacking.replace(",", "").isdigit()
+                else None,
+                "places": places,
+                "held": held["frame"] if held and held["state"] & 0x4 else -1,
+                "amounts": [struct.unpack_from("<i", raw, ALTAR_AMOUNTS + ALTAR_SLOT_STRIDE * s)[0]
+                            for s in range(7)],
+                "selected": selected, "most": most,
+                "buttons": {name: item["state"] for name, item in pointed.items()
+                            if item and name not in ("lacking", "total", "held", "slider")}}
+
+    def hill_fort(self):
+        """The Hill Fort's dialog when it is the topmost dialog (E08 T129b; None otherwise):
+        `rows` (seven: creature, count, level, price by resource, second resource, state, the
+        price's text), `sum` (the whole's price), `whole` (its state) and `buttons` {id: state}
+        (the rows' 261 to 267, All 204)."""
+        shown = self.dialog()
+        if not shown or shown["vtable"] != HILL_FORT_VTABLE:
+            return None
+        raw = self.read(shown["at"], HILL_FORT_SIZE)
+        rows = []
+        for r in range(7):
+            at = HILL_FORT_ROWS + HILL_FORT_ROW * r
+            rows.append({"creature": struct.unpack_from("<i", raw, at + 0x40)[0],
+                         "count": struct.unpack_from("<i", raw, at + 0x44)[0],
+                         "level": struct.unpack_from("<i", raw, at + 0x48)[0],
+                         "price": list(struct.unpack_from("<7i", raw, at + 0x20)),
+                         "second": struct.unpack_from("<i", raw, at + 0x3C)[0],
+                         "state": struct.unpack_from("<i", raw, at + 0x4C)[0],
+                         "text": raw[at + 0xA:at + 0x14].split(b"\0")[0].decode("cp1252")})
+        return {"rows": rows, "sum": list(struct.unpack_from("<7i", raw, HILL_FORT_SUM)),
+                "whole": struct.unpack_from("<i", raw, HILL_FORT_WHOLE)[0],
+                "buttons": {i["id"]: i["state"] for i in self.dialog_items()
+                            if 261 <= i["id"] <= 267 or i["id"] == 204}}
+
+    def dialog_under(self):
+        """The vtable of the dialog under the topmost one (E08 T129b: H3API's lastDlg, the
+        dialog's +0xC; observed: a level-up's over the Altar's), None for none."""
+        shown = self.dialog()
+        below = self.u32(shown["at"] + 0xC) if shown else 0
+        return self.u32(below) if below else None
 
     def spell_name(self, spell):
         """A spell's name from the game's spell table (E08 T47a)."""
@@ -2433,7 +2531,8 @@ class Mem:
         pointers at +0x6C), gold_cost, resource (-1 none), resource_cost, most (+0xAC), amount
         (+0xB8), enabled: {max, recruit, close, slider: whether the item exists and its state has neither
         bit 8 nor 0x20; the Max and Recruit of an amount of 0 read disabled}, slider: its item's
-        id (None), items: [{id, vtable, state, box}] (every item)}."""
+        id (None), items: [{id, vtable, state, box}] (every item), available (since E08 T129b:
+        the Available count the dialog shows, item 521)}."""
         shown = self.dialog()
         if not shown or shown["vtable"] != RECRUIT_DIALOG:
             return None
@@ -2443,8 +2542,12 @@ class Mem:
         raw = self.read(manager, RECRUIT_MAX + 0x10)
         pointers = struct.unpack_from("<4I", raw, 0x6C)
         counts = [struct.unpack("<h", self.read(p, 2))[0] if p else 0 for p in pointers]
+        shown_items = self.dialog_items()
         items = [{"id": i["id"], "vtable": i["vtable"], "state": i["state"], "box": i["box"]}
-                 for i in self.dialog_items()]
+                 for i in shown_items]
+        # E08 T129b (batch E14's War Machine Factory): the Available count the dialog shows for
+        # the creature selected (text item 521, observed), None without it.
+        available = next((i["text"] for i in shown_items if i["id"] == RECRUIT_AVAILABLE), None)
         enabled = {name: any(i["id"] == k for i in items)
                    and not any(i["id"] == k and i["state"] & DISABLED for i in items)
                    for name, k in RECRUIT_BUTTONS.items()}
@@ -2460,7 +2563,8 @@ class Mem:
                 "most": struct.unpack_from("<i", raw, RECRUIT_MAX)[0],
                 "amount": struct.unpack_from("<i", raw, 0xB8)[0],
                 "enabled": enabled, "slider": slider[0]["id"] if slider else None,
-                "slider_state": slider[0]["state"] if slider else None, "items": items}
+                "slider_state": slider[0]["state"] if slider else None, "items": items,
+                "available": int(available) if available and available.isdigit() else None}
 
     def status_bar(self):
         """The adventure screen's status bar text (E08 T90, E10-10): the text of the adventure
