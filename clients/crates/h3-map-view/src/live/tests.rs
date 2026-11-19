@@ -751,6 +751,15 @@ fn a_live_parts_status_read() {
             income: 1500,
         }))
     );
+    // A town named by its map (E24 M4 T3b1): its name as text.
+    let named = alloc::format!(
+        "{{ kind = 4, name = \"Brightmoor\", buildings = [7], garrison = 0, {army}, silo = [], \
+         income = 500 }}"
+    );
+    let Some(Status::Town(named)) = read(&named) else {
+        panic!("a town's window");
+    };
+    assert_eq!(named.name, TownName::Own("Brightmoor".into()));
     // The date's and the kingdom's (E24 M3 T5b2), their numbers; another kind by its number.
     let date = "{ kind = 1, frame = 9 }";
     assert_eq!(read(date), Some(Status::Date(DateStatus { frame: 9 })));
@@ -824,7 +833,8 @@ fn a_live_parts_status_read() {
     ] {
         assert_eq!(read(&wrong), None, "{wrong}");
     }
-    // Every field missing or a text: refused; the flags 0 too.
+    // Every field missing or a text: refused (but a town's name, its own since E24 M4 T3b1);
+    // the flags 0 too.
     let fields = |text: &str| -> toml::Table {
         let table: toml::Table = toml::from_str(&alloc::format!("s = {text}")).unwrap();
         table["s"].as_table().unwrap().clone()
@@ -837,11 +847,12 @@ fn a_live_parts_status_read() {
             assert_eq!(Status::read(&toml::Value::Table(without)), None, "no {key}");
             let mut text = whole.clone();
             text.insert(key.clone(), toml::Value::String("x".into()));
-            assert_eq!(
-                Status::read(&toml::Value::Table(text)),
-                None,
-                "{key} a text"
-            );
+            let read = Status::read(&toml::Value::Table(text));
+            if key == "name" {
+                assert!(read.is_some(), "a town's own name");
+            } else {
+                assert_eq!(read, None, "{key} a text");
+            }
         }
         for key in flags.iter().filter(|k| whole.contains_key(**k)) {
             let mut zero = whole.clone();

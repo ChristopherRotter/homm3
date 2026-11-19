@@ -28,13 +28,16 @@ use alloc::vec::Vec;
 
 use h3_game::GameRuleset;
 use h3_map::RawMap;
-use h3_map::model::Body;
+use h3_map::model::{Body, HeroBody};
 use h3_protocol::wire::game::{ArmyStack, GameObservation, HeroInfo, MapHero, Town};
 use toml::{Table, Value};
 
-use super::{Refused, int, row};
+use super::{int, row};
 use crate::art::MapArt;
 use crate::live::{HERO_CLASS, TOWN_CLASS, TOWN_NAMES};
+
+/// A random town's class: its template's entrance is a town's.
+const RANDOM_TOWN: u32 = 77;
 use crate::objects;
 
 /// The army's slots.
@@ -55,20 +58,16 @@ const HALLS: [u32; 4] = [10, 11, 12, 13];
 const FORTS: [u32; 3] = [7, 8, 9];
 
 /// The panels' keys of a live part's table (`kingdom`, `status`, `realm`, `chosen`), inserted into
-/// `table` for `observation` on the map `raw` (its art `art`) under `rules`; `colour` turns a
-/// player into its colour. `heroes` is the view's map heroes in the order of the table's
-/// `heroes` (the record's).
-///
-/// # Errors
-/// A player the view does not list; a hero of no known type.
+/// `table` for `observation` on the map `raw` (its art `art`) under `rules`. A chosen hero is
+/// named by its place among the view's map heroes, the order of the table's `heroes`; every one
+/// has its type (`super::start` refused the record otherwise).
 pub(super) fn insert(
     table: &mut Table,
     observation: &GameObservation,
     raw: &RawMap,
     art: &MapArt,
     rules: &GameRuleset,
-    colour: &dyn Fn(u8) -> Result<i64, Refused>,
-) -> Result<(), Refused> {
+) {
     let viewer = observation.adventure.viewer;
     let info = |id: u16| observation.heroes.iter().find(|h| h.id == id);
     // The viewer's heroes on the map, in their types' order (the original's new game).
@@ -78,8 +77,8 @@ pub(super) fn insert(
         .iter()
         .enumerate()
         .filter(|(_, h)| h.owner == viewer)
-        .map(|(i, h)| info(h.id).map(|info| (i, h, info)).ok_or(Refused::Hero(h.id)))
-        .collect::<Result<_, _>>()?;
+        .filter_map(|(i, h)| info(h.id).map(|info| (i, h, info)))
+        .collect();
     heroes.sort_by_key(|&(i, _, info)| (info.hero_type, i));
     let towns: Vec<&Town> = observation
         .towns
@@ -155,7 +154,7 @@ pub(super) fn insert(
     }
     table.insert(
         "realm".into(),
-        Value::Table(realm(observation, raw, &towns, colour)?),
+        Value::Table(realm(observation, raw, &towns)),
     );
     let mut chosen = Table::new();
     chosen.insert(
@@ -196,28 +195,30 @@ pub(super) fn insert(
         ),
     );
     table.insert("chosen".into(), Value::Table(chosen));
-    Ok(())
 }
 
-/// The map file's hero standing on `hero`'s tile, its index among the objects.
-fn file_hero(art: &MapArt, hero: &MapHero) -> Option<usize> {
+/// The map file's hero (its body) standing on `hero`'s tile.
+fn file_hero<'a>(raw: &'a RawMap, art: &MapArt, hero: &MapHero) -> Option<&'a HeroBody> {
     let p = hero.pos;
-    (0..art.objects.len()).find(|&i| {
+    let on = |i: usize| {
         objects::template(art, i).is_some_and(|t| t.class == HERO_CLASS)
-            && art.objects[i].anchor.z == p.level
+            && art.objects.get(i).is_some_and(|o| o.anchor.z == p.level)
             && objects::entrance(art, i) == Some((i32::from(p.x), i32::from(p.y)))
-    })
+    };
+    raw.objects
+        .iter()
+        .enumerate()
+        .find_map(|(i, o)| match &o.body {
+            Body::Hero(body) if on(i) => Some(&**body),
+            _ => None,
+        })
 }
 
 /// A hero's portrait: its file's own, else its type's.
 fn portrait(raw: &RawMap, art: &MapArt, hero: &MapHero, info: &HeroInfo) -> i64 {
-    let own = file_hero(art, hero)
-        .and_then(|i| raw.objects.get(i))
-        .and_then(|o| match &o.body {
-            Body::Hero(body) => body.portrait,
-            _ => None,
-        });
-    own.map_or_else(|| i64::from(info.hero_type), i64::from)
+    file_hero(raw, art, hero)
+        .and_then(|body| body.portrait)
+        .map_or_else(|| i64::from(info.hero_type), i64::from)
 }
 
 /// An army by slot, as a live part's `army`: `[creature, count]` each, `[-1, 0]` an empty slot.
@@ -303,7 +304,7 @@ fn town_entrance(art: &MapArt, town: &Town) -> Option<[i64; 3]> {
     let a = town.anchor;
     let index = (0..art.objects.len()).find(|&i| {
         let o = &art.objects[i];
-        objects::template(art, i).is_some_and(|t| t.class == TOWN_CLASS)
+        objects::template(art, i).is_some_and(|t| matches!(t.class, TOWN_CLASS | RANDOM_TOWN))
             && (u16::from(o.anchor.x), u16::from(o.anchor.y), o.anchor.z) == (a.x, a.y, a.level)
     })?;
     objects::entrance(art, index).map(|(x, y)| [i64::from(x), i64::from(y), i64::from(a.level)])
@@ -311,12 +312,7 @@ fn town_entrance(art: &MapArt, town: &Town) -> Option<[i64; 3]> {
 
 /// The kingdom's window (`live::KingdomStatus`): the viewer's towns by their halls, the players
 /// in the game by the map's teams.
-fn realm(
-    observation: &GameObservation,
-    raw: &RawMap,
-    towns: &[&Town],
-    colour: &dyn Fn(u8) -> Result<i64, Refused>,
-) -> Result<Table, Refused> {
+fn realm(observation: &GameObservation, raw: &RawMap, towns: &[&Town]) -> Table {
     let mut halls = [0i64; 4];
     for town in towns {
         let hall = town
@@ -327,20 +323,22 @@ fn realm(
             *count += 1;
         }
     }
-    let team = |c: i64| {
-        usize::try_from(c).map_or(usize::MAX, |c| {
-            raw.teams
-                .as_ref()
-                .and_then(|t| t.of_player.get(c))
-                .map_or(c, |&code| usize::from(code))
-        })
+    let team = |c: u8| {
+        raw.teams
+            .as_ref()
+            .and_then(|t| t.of_player.get(usize::from(c)))
+            .map_or(usize::from(c), |&code| usize::from(code))
     };
-    let viewer = colour(observation.adventure.viewer)?;
-    let mut by_colour = BTreeMap::new();
-    for (id, _) in observation.players.iter().enumerate() {
-        let c = colour(u8::try_from(id).unwrap_or(u8::MAX))?;
-        by_colour.insert(c, team(c) == team(viewer));
-    }
+    let colours: Vec<u8> = observation.players.iter().map(|p| p.colour).collect();
+    // The viewer is among the players (`super::start` refused the record otherwise).
+    let viewer = colours
+        .get(usize::from(observation.adventure.viewer))
+        .copied()
+        .unwrap_or_default();
+    let by_colour: BTreeMap<i64, bool> = colours
+        .iter()
+        .map(|&c| (i64::from(c), team(c) == team(viewer)))
+        .collect();
     let side = |ally: bool| -> Vec<i64> {
         by_colour
             .iter()
@@ -354,7 +352,7 @@ fn realm(
     t.insert("halls".into(), row(&halls));
     t.insert("allies".into(), row(&allies));
     t.insert("enemies".into(), row(&enemies));
-    Ok(t)
+    t
 }
 
 /// What differs between the panels' keys of two live parts' tables (`ours` the engine's start,

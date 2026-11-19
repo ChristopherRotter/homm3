@@ -251,17 +251,18 @@ fn the_resource_bar_s_amounts_and_date_by_their_keys() {
         &layout,
         &live(kingdom.clone(), vec![]),
         &Catalogue::default(),
-        Bugs::Fixed,
+        Bugs::Original,
     );
     assert_eq!(bare.texts[&1001], "map.resources.amount");
     assert_eq!(bare.texts[&1008], "map.resources.date");
     // Drawn as the layout's labels: the amounts at (37 + 84 i, 3), the date at (607, 3), each
     // from the bar's corner (3, 575).
     let draws = layout.resource_bar.draws(&shown, &layout.player_palette);
+    // (The wide amounts' labels, E24 M4 T3b1, are drawn empty.)
     let labels: Vec<(i32, i32, &str)> = draws
         .iter()
         .filter_map(|d| match d {
-            Draw::Label { x, y, text, .. } => Some((*x, *y, text.as_str())),
+            Draw::Label { x, y, text, .. } if !text.is_empty() => Some((*x, *y, text.as_str())),
             _ => None,
         })
         .collect();
@@ -294,7 +295,7 @@ fn the_resource_bar_s_amounts_and_date_by_their_keys() {
     let wide: Vec<(i32, i32, &str)> = draws
         .iter()
         .filter_map(|d| match d {
-            Draw::Label { x, y, text, .. } if text.len() > AMOUNT_FITS => {
+            Draw::Label { x, y, text, .. } if text.starts_with('<') && text.len() > AMOUNT_FITS => {
                 Some((*x, *y, text.as_str()))
             }
             _ => None,

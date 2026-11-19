@@ -312,6 +312,27 @@ fn a_town_s_window() {
 }
 
 #[test]
+fn a_town_named_by_its_map() {
+    // E24 M4 T3b1 (design §5.10): the map's own name, as it is.
+    let layout = layout();
+    let named = TownStatus {
+        name: TownName::Own("Brightmoor".into()),
+        ..town()
+    };
+    let (_, shown) = window(
+        &layout,
+        &art(),
+        &lists(),
+        &live(town_kingdom(named)),
+        &names(),
+        &texts(),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(texts_of(&shown)[0], (2002, "Brightmoor"));
+}
+
+#[test]
 fn a_town_s_hall_fort_garrison_and_silo_by_what_stands() {
     let shown = |status: TownStatus| {
         window(

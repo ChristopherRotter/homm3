@@ -365,7 +365,7 @@ pub fn start(
     table.insert("boats".to_string(), Value::Array(boats));
     table.insert("explored".to_string(), explored(observation, art));
     // The panels (E24 M4 T3b1, design §5.10).
-    panels::insert(&mut table, observation, &loaded.raw, art, rules, &colour)?;
+    panels::insert(&mut table, observation, &loaded.raw, art, rules);
     Ok(Start { table, seen })
 }
 
