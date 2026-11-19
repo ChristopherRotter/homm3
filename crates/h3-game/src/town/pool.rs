@@ -13,14 +13,15 @@ use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
 use super::{FactionChoice, needs_faction};
-use crate::{GameRuleset, GameSetup, GameSetupError};
+use crate::{GameRuleset, GameSetup, GameSetupError, GameState};
 
-/// Where a hero type stands in the pool (TWN-SET-005).
+/// Where a hero type stands in the pool (TWN-SET-005), as [`GameState::hero_status`] reads it
+/// (public since E09 T40a, decision 158: the gates' oracles read it; nothing on the wire).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum HeroStatus {
+pub enum HeroStatus {
     /// Free: a draw may give it.
     Free,
-    /// Taken by the player of this colour: placed, drawn or reserved as its pick.
+    /// Taken by the player of this colour: placed, drawn or reserved as its pick, or hired.
     Taken(u8),
     /// A tavern hero (E09 T37a, design note §61): a player's slot holds it, so no draw gives it
     /// (the original's 0x40, which also marks a type the map does not allow: kept apart, `Out`).
@@ -80,14 +81,16 @@ impl Away {
 /// faction (TWN-SET-001's resolved choice, kept; none without a choice) and its two tavern heroes,
 /// each slot a hero type whose record the pool names (the agent's call: the slot names the type,
 /// its entry the record), with its returning mark (the original's bit 17 of the hero's +0x105).
+/// [`GameState::player_tavern`] reads it (public since E09 T40a, decision 158: the gates' oracles
+/// read it; what the player sees of it is `GameObservation::tavern`).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) struct Tavern {
+pub struct PlayerTavern {
     /// The player's faction.
-    pub(crate) faction: Option<FactionId>,
+    pub faction: Option<FactionId>,
     /// Its two tavern heroes' types by slot.
-    pub(crate) slots: [Option<HeroTypeId>; 2],
+    pub slots: [Option<HeroTypeId>; 2],
     /// Each slot's returning mark (TD-18; set by a hero's return, E09 T38b).
-    pub(crate) returning: [bool; 2],
+    pub returning: [bool; 2],
 }
 
 /// A hero type's entry in the pool: what a draw reads (its [`Record`] beside it).
@@ -120,7 +123,7 @@ struct Record {
 pub(crate) struct HeroPool {
     types: Vec<Entry>,
     records: Vec<Record>,
-    players: Vec<Tavern>,
+    players: Vec<PlayerTavern>,
 }
 
 impl HeroPool {
@@ -141,7 +144,7 @@ impl HeroPool {
         let mut pool = Self {
             types: core.hero_types().iter().map(entry).collect(),
             records: vec![Record::default(); core.hero_types().len()],
-            players: vec![Tavern::default(); setup.players.len()],
+            players: vec![PlayerTavern::default(); setup.players.len()],
         };
         for &id in &setup.allowed_heroes {
             pool.set(id, HeroStatus::Free);
@@ -171,7 +174,6 @@ impl HeroPool {
     }
 
     /// Where `id` stands; `None` for a type the ruleset does not have.
-    #[cfg(test)]
     pub(crate) fn status(&self, id: HeroTypeId) -> Option<HeroStatus> {
         self.types.get(id.index()).map(|entry| entry.status)
     }
@@ -355,7 +357,7 @@ impl HeroPool {
 
     /// Whether a slot holds a hero whose returning mark is clear ([`Self::release`] frees it).
     pub(super) fn releases(&self) -> bool {
-        let held = |t: &Tavern| {
+        let held = |t: &PlayerTavern| {
             t.slots
                 .iter()
                 .zip(t.returning)
@@ -396,17 +398,17 @@ impl HeroPool {
     }
 
     /// The players' tavern parts, by player id.
-    pub(crate) fn taverns(&self) -> &[Tavern] {
+    pub(crate) fn taverns(&self) -> &[PlayerTavern] {
         &self.players
     }
 
     /// `player`'s tavern part, if the player exists.
-    pub(crate) fn tavern(&self, player: PlayerId) -> Option<&Tavern> {
+    pub(crate) fn tavern(&self, player: PlayerId) -> Option<&PlayerTavern> {
         self.players.get(player.index())
     }
 
     /// `player`'s tavern part to change, if the player exists.
-    pub(crate) fn tavern_mut(&mut self, player: PlayerId) -> Option<&mut Tavern> {
+    pub(crate) fn tavern_mut(&mut self, player: PlayerId) -> Option<&mut PlayerTavern> {
         self.players.get_mut(player.index())
     }
 
@@ -452,6 +454,34 @@ impl HeroPool {
         let count = u32::try_from(listed.len()).unwrap_or(u32::MAX);
         let drawn = usize::try_from(draws.below(count)).unwrap_or(usize::MAX);
         listed.get(drawn).copied()
+    }
+}
+
+/// The pool read from outside the game (E09 T40a, decision 158): the gates' oracles (`h3-map`'s
+/// plans, its census of the shipped maps) check the pool's statuses, slots and records against
+/// the map, the garrisons and the store of heroes. Read-only; what a player sees of its tavern
+/// is `GameObservation::tavern` (ADR-0017 point 2).
+impl GameState {
+    /// Where `hero_type` stands in the pool (TWN-SET-005); `None` for a type the ruleset does not
+    /// have.
+    #[must_use]
+    pub fn hero_status(&self, hero_type: HeroTypeId) -> Option<HeroStatus> {
+        self.pool().status(hero_type)
+    }
+
+    /// `player`'s tavern part (TWN-TAV-002): its faction, its two tavern heroes' types by slot and
+    /// their returning marks; `None` for a player the game does not have.
+    #[must_use]
+    pub fn player_tavern(&self, player: PlayerId) -> Option<&PlayerTavern> {
+        self.pool().tavern(player)
+    }
+
+    /// `hero_type`'s record in the store of heroes ([`GameState::hero`]) once it has one (decision
+    /// 109: a placed or generated hero's from the build, a customised type's from the build, a
+    /// drawn type's from its first draw; kept from then on).
+    #[must_use]
+    pub fn hero_record(&self, hero_type: HeroTypeId) -> Option<HeroId> {
+        self.pool().record(hero_type)
     }
 }
 
