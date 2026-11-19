@@ -293,6 +293,7 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             },
             months: None,
             dwellings: None,
+            market: None,
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
@@ -574,6 +575,7 @@ pub(crate) fn movement_rules_with(
             },
             months: None,
             dwellings: None,
+            market: None,
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))

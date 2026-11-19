@@ -392,10 +392,11 @@ fn the_base_pack_types_the_objects_of_increment_2() {
     // the Refugee Camp, the random dwelling); E09 T8a1: the town; E08 T103a: increment 11's
     // eleven (nine monoliths, the Subterranean Gate, the Whirlpool); E08 T113a: increment 12's
     // seventeen (two garrisons, the fifteen bonus visitables); E08 T123a: increment 13's eleven
-    // creature banks; E09 T39a: the map's Tavern and the Den of Thieves.
+    // creature banks; E09 T39a: the map's Tavern and the Den of Thieves; E08 T132a2: increment
+    // 14's five (the Trading Post, the Black Market, the Altar, the Hill Fort, the factory).
     assert_eq!(
         part.object_types().len(),
-        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64 + 1 + 11 + 17 + 11 + 2
+        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64 + 1 + 11 + 17 + 11 + 2 + 5
     );
     // E09 T8a1: one type for the classes 77 and 98, ownable and entered, not from above; E09
     // T18a: the original's two boat offsets (town_buildings_setup 0x5C08C0).
@@ -972,10 +973,10 @@ fn the_expansions_add_the_border_gates() {
     assert_ne!(ab.content_hash(), base.content_hash());
     assert_ne!(sod.content_hash(), ab.content_hash());
     // AB's eight Border Gates and, since E08 T93a, its twenty dwellings; since E08 T113a its two
-    // vertical garrisons.
+    // vertical garrisons; since E08 T132a2 the Freelancer's Guild.
     assert_eq!(
         ab.object_types().len(),
-        base.object_types().len() + 8 + 20 + 2
+        base.object_types().len() + 8 + 20 + 2 + 1
     );
     assert_eq!(
         ab.object_types()[..base.object_types().len()],
@@ -1756,6 +1757,7 @@ fn parses_every_field() {
                 spawn_aggression: [1, 10],
             }),
             dwellings: None,
+            market: None,
         })
     );
     assert_eq!(
@@ -2775,14 +2777,15 @@ fn the_packs_type_the_garrisons_and_the_bonus_visitables_of_increment_12() {
         })
         .collect::<std::collections::BTreeSet<_>>();
     assert_eq!(marks, (2..=13).collect());
-    // The kind marks: twelve of the fifteen and increment 7's fourteen (design note §3).
+    // The kind marks: twelve of the fifteen and increment 7's fourteen (design note §3); since E08
+    // T132a2 the Altar's and the Hill Fort's (increment 14's design note §3, §4).
     let marked = sod
         .object_types()
         .iter()
         .filter(|t| t.kind_mark)
         .map(|t| t.key.as_str())
         .collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(marked.len(), 12 + 14);
+    assert_eq!(marked.len(), 12 + 14 + 2);
     for key in [
         "base:marletto_tower",
         "base:witch_hut",
@@ -2794,6 +2797,7 @@ fn the_packs_type_the_garrisons_and_the_bonus_visitables_of_increment_12() {
 }
 
 mod banks;
+mod trades;
 
 // covers: ADV-VIS-007, ADV-VIS-008
 #[test]
