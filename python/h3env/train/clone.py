@@ -33,7 +33,10 @@ teacher's entry, `distill.CATEGORIES`), of its cast heads' most likely choices a
 teacher's, and its value's mean squared error and explained variance against the returns, with
 its training seconds. At the end each student plays its ladder (`ladder`: the opponents on the
 report set v1, the neutral set v1 beside them; the sampled policy): how near the clone plays to
-the fair actor, which scores 0.5 against itself. `report.json` (the distillation bench's layout,
+the fair actor, which scores 0.5 against itself. Where a student reads the kill preview (E25
+T38b, `[network] preview`) the batches write it (the play is the same) and the rows and the
+held-out set hold it (`preview`, half precision as PPO's rollouts keep it; `teacher.preview` in
+the report). `report.json` (the distillation bench's layout,
 the teacher's statistics and the ladders added), `metrics.jsonl` and `students/<name>.pt` (run
 network files of the run config, the bench's seed as theirs: `--init-from` starts a run from one)
 as the distillation bench writes them. It checkpoints, stops (Ctrl-C) and resumes (`--resume
@@ -98,7 +101,16 @@ class Episodes:
     documentation), kept by whole episodes: `take` plays until enough decisions of ended
     episodes have their returns, `release` drops them (the open episodes' decisions stay)."""
 
-    def __init__(self, config: Config, seed: int, envs: int, threads: int, rows: int = 0) -> None:
+    def __init__(
+        self,
+        config: Config,
+        seed: int,
+        envs: int,
+        threads: int,
+        rows: int = 0,
+        preview: bool = False,
+    ) -> None:
+        """`preview`: the batch writes its kill preview and every row keeps it (E25 T38b)."""
         c = self.config = config
         if seed in HELD_OUT_BATCH_SEEDS:
             raise ConfigError(f"the seed {seed:#x} is a held-out set's")
@@ -110,7 +122,10 @@ class Episodes:
             currency=c.currency,
             mana_price=c.mana_price,
             potential=c.shaping,
+            preview=preview,
         )
+        #: The arrays `take` hands out: `FIELDS`, with the preview `preview` (E25 T38b).
+        self.fields = FIELDS + (("preview",) if preview else ())
         for weight, kinds, side in episode_entries(c):
             b.add_encounters(weight, kinds=kinds, **({} if side < 0 else _SEATS[side]))
         self.held_out = HeldOut(held_out_seeds())
@@ -157,6 +172,8 @@ class Episodes:
             "side": ((), np.int8),
             "phi": ((), np.float32),
         }
+        if b.preview is not None:
+            shapes["preview"] = ((b.preview_entries, 2), np.float16)
         for name, (shape, dtype) in shapes.items():
             grown = np.zeros((rows, *shape), dtype)
             old = self.arrays.get(name)
@@ -186,6 +203,8 @@ class Episodes:
         actions = b.actions[rows]
         a["obs"][at] = b.obs[rows]
         a["entry_mask"][at] = b.entry_mask[rows]
+        if b.preview is not None:
+            a["preview"][at] = b.preview[rows]
         for name in ("entry", "spell", "target", "second"):
             a[name][at] = actions[name]
         cast = np.isin(actions["entry"], CASTS)
@@ -249,7 +268,7 @@ class Episodes:
                 return None
             self.step()
         idx = np.sort(np.concatenate(self.complete))
-        return {k: self.arrays[k][:, None] for k in FIELDS}, idx
+        return {k: self.arrays[k][:, None] for k in self.fields}, idx
 
     def release(self) -> None:
         """Drops the kept rows of ended episodes: the open episodes' rows move to the front."""
@@ -394,18 +413,26 @@ def parts(
     log: Callable[[str], None] = print,
 ) -> Parts:
     """The clone mode's parts (`distill.go`): the fair actor's play of the run config `base` on
-    the bench's seed's `segment`, the ladders at the end (the module's documentation)."""
+    the bench's seed's `segment` (the kill preview kept where a student reads it), the ladders at
+    the end (the module's documentation)."""
+    preview = any(bool(keys.get("preview")) for keys in bench.students.values())
     player = Episodes(
         base,
         segment_seed(bench.seed, segment),
         bench.envs,
         bench.threads,
         bench.envs * (bench.rollout + 64),
+        preview,
     )
 
     def held() -> Episodes:
         return Episodes(
-            base, bench.seed + 1, bench.envs, bench.threads, bench.heldout + 64 * bench.envs
+            base,
+            bench.seed + 1,
+            bench.envs,
+            bench.threads,
+            bench.heldout + 64 * bench.envs,
+            preview,
         )
 
     def loss(m: dict[str, torch.Tensor]) -> Callable[[Policy], torch.Tensor]:
@@ -467,6 +494,7 @@ def parts(
             "shaping": base.shaping,
             "truncation_penalty": base.truncation_penalty,
             "max_steps": base.max_steps,
+            "preview": preview,
         },
         player=player,
         held=held,

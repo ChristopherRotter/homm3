@@ -33,14 +33,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `TRAPS.md`, Python). **Increment 9: a richer observation (v23)** (AI-Q18). **T37 closed**
   2026-11-18 (`E25-log.md` T37, AI-Q19): #2's moves are blind to the enemies' reach, its strikes
   read the kills; v23 is the reach block (two threat planes, three features a stack slot) from a
-  viewer-safe reach query in `h3-battle`, the kill preview for `hexconv` a bench arm. **T38a
-  done** 2026-11-19 (`E25-log.md` T38a): observation v23's reach block from
-  `h3_battle::reach_seen_by`, C ABI v38; no network reads it yet; the batch's step +140 % on the
-  encounters (re-baselined). **Next: T38b** (`[network] reach`, the preview for the hex kinds, the
-  cloning bench; Python only), then T39 (the bench on the GPU; `QUEUE.md`).
-- **Open pull requests:** #1036 (`claude/intelligent-tesla-tm17cq`, `cross-lane`: T38a). Merged: #1028 (T37's design, AI-Q19). **Owed to a `shared/` pull request:**
-  `docs/07-simulation-and-ai.md`'s observation line still names encoding v22 (v23's reach block,
-  after T38a merges).
+  viewer-safe reach query in `h3-battle`, the kill preview for `hexconv` a bench arm. **T38
+  done** 2026-11-19 (`E25-log.md` T38a, T38b): observation v23's reach block from
+  `h3_battle::reach_seen_by`, C ABI v38, the batch's step +140 % on the encounters
+  (re-baselined); `[network] reach` and `preview` for the hex kinds, the cloning bench's preview
+  rows and `same_start`. **Next: T39**, the bench probe on the user's GPU
+  (`configs/distill/e25-reach.toml`, about 6 hours in parts; its rule in `QUEUE.md`).
+- **Open pull requests:** #1040 (`claude/intelligent-bohr-5ii8qn`: T38b). Its CI verify failed
+  twice before it started (`apt-get install valgrind`: Ubuntu's mirrors 503, 2026-11-19, one
+  re-run); the full local verify on `9d2eea7` passed (`deny` run alone: its tool was missing). Merged: #1036 (T38a,
+  `cross-lane`) and the `shared/` docs/07 line (v23).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
@@ -52,6 +54,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-19 — E25 T38b: `[network] reach` and `preview`, the bench's preview rows
+
+- #1036 and the `shared/` docs/07 line merged. No original data (none needed). `cargo build
+  --release -p h3-ffi`, `uv sync --group train`; the scoped verify (coverage's tool installed
+  by hand: the setup script was not run). T39's bench as a CPU smoke (`--set` small), stopped by
+  SIGINT and resumed. Python only. #1040, watched until it merges.
 
 ### 2026-11-19 — E25 T38a: the reach query, observation v23, C ABI v38
 
@@ -68,11 +77,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   (75 s). (b)'s script `python/records/inspect/disagree.py` (68 s on 25 600 states); (c)'s reach
   cost by a scratch timing in `h3 ai bench`, reverted. The user reviewed the design (AI-Q19).
   The queue's inbox trimmed to 12 KB (informational notices to `QUEUE-ARCHIVE.md`). #1028.
-
-### 2026-11-18 — E25 T36 and increment 8 closed, the early stop, increment 9 refined
-
-- #965 merged. The user uploaded the 20 M run's `record.json` and `metrics.jsonl`, then its
-  ladders (the first measure files and the head-to-head were of the 2 M network: identical to
-  T34's; the 20 M head-to-head skipped by the user). No computer folder linked. Built `[gate]
-  futility` (the user's directive); `uv sync --group train` and `cargo build --release -p
-  h3-ffi` (1.5 minutes), the Python suite 270 (3.5 minutes). The user chose increment 9.

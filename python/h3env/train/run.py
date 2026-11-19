@@ -120,9 +120,9 @@ class Config:
     #: T25: `mask_input`, `attack_hex`).
     field_width: int = field(default=17, metadata=_in("network"))
     field_height: int = field(default=11, metadata=_in("network"))
-    #: Whether the MLP's entry head reads the batch's kill preview (AI-Q7 (b) part 2, E06 T6d:
-    #: each legal strike's previewed kills, `policy`'s documentation); every batch the network
-    #: plays then writes it.
+    #: Whether the entry head reads the batch's kill preview (AI-Q7 (b) part 2, E06 T6d: each
+    #: legal strike's previewed kills, `policy`'s documentation): the MLP's, the hex kinds' since
+    #: E25 T38b (`hexnet`); every batch the network plays then writes it.
     preview: bool = field(default=False, metadata=_in("network"))
     #: Whether the network reads the turn order (observation v22's last block, each stack slot's
     #: places; the turn-order probe, E06-log): the MLP's trunk, else v21's prefix, as before v22;
@@ -142,6 +142,11 @@ class Config:
     #: (E25 T25, `entity.AttackHex`; it reads the entry mask). False: every network before T25;
     #: not the MLP's.
     attack_hex: bool = field(default=False, metadata=_in("network"))
+    #: Whether a hex kind reads observation v23's reach block (E25 T38b, increment 9; `hexnet`):
+    #: its two planes into each hex's vector, each stack slot's three features into its token.
+    #: False: every network before T38b, reading v22's prefix; not the MLP's nor the entity
+    #: network's.
+    reach: bool = field(default=False, metadata=_in("network"))
     rollout: int = field(default=128, metadata=_in("ppo"))
     #: 1.0 since E06 T5a (AI-Q9: γ 0.995 let the winner stall, `t4-1` against `t4-2`).
     gamma: float = field(default=1.0, metadata=_in("ppo"))
@@ -434,8 +439,10 @@ def resolve(config: Config) -> Config:
             problems.append(f"`{key}` must be positive")
     if c.kind not in NETWORK_KINDS:
         problems.append(f"`kind` is one of {', '.join(NETWORK_KINDS)}")
-    elif c.preview and c.kind != "mlp":
-        problems.append('`preview` is the MLP\'s (`kind = "mlp"`)')
+    elif c.preview and c.kind == "entity":
+        problems.append("`preview` is the MLP's and the hex kinds' (mlp, hexconv, hexformer)")
+    elif c.reach and c.kind not in ("hexconv", "hexformer"):
+        problems.append("`reach` is the hex kinds' (hexconv, hexformer)")
     elif c.norm != "none" and c.kind != "hexconv":
         problems.append('`norm` is the hex convolution network\'s (`kind = "hexconv"`)')
     elif c.attack_hex and c.kind == "mlp":

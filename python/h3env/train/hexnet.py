@@ -1,5 +1,5 @@
 """The networks that read the battlefield as hexes (E25 T7a, AI-Q11; `docs/epics/E25-log.md`):
-observation v22 read as a field of hexes by its layout (`layout`), with no encoding change, and
+observation v22 (v23 with `reach`) read as a field of hexes by its layout (`layout`), and
 the entity network's heads (`entity.Pointed`).
 
 Both kinds draw the battle on the field the same way (`HexNet.draw`): each hex's vector is its
@@ -38,7 +38,12 @@ The opt-in keys (E25 T25; `entity`'s module docstring has their inputs, `entity.
 each stack slot's entries into its token before it is drawn, the fixed entries into the global
 vector (and so onto every hex); with `order` each slot's turn-order places into its token before
 it is drawn; with `attack_hex` a melee entry also scores its from-hex's vector of the trunk's
-output (`entity.AttackHex`).
+output (`entity.AttackHex`). Two more since E25 T38b (increment 9; `docs/epics/E25-log.md`
+T37's design, points 5 and 6), each off by default: with `reach` observation v23's reach block
+(`layout.REACH`: per hex the strikers of either side, per stack slot its three features) after
+`symlog`, its two planes through a linear layer into each hex's drawn vector and each slot's
+features through one into its token before it is drawn; with `preview` the entry head reads the
+batch's kill preview, the MLP's bias (`policy.preview_bias`) with its `u` reading the context.
 """
 
 from __future__ import annotations
@@ -274,6 +279,8 @@ class HexConv(HexNet):
         mask_input: bool = False,
         order: bool = False,
         attack_hex: bool = False,
+        reach: bool = False,
+        preview: tuple[int, int] | None = None,
     ) -> None:
         super().__init__(width, embed, field_width, field_height)
         if norm not in ("none", "layer"):
@@ -288,7 +295,17 @@ class HexConv(HexNet):
         self.norm_out = CellNorm(width) if layer else None
         self.glob_out = nn.Linear(width, width)
         self.make_heads(width, width, embed)
-        self.make_extra(width, width, mask_input, order, attack_hex, (field_width, field_height))
+        self.make_extra(
+            width,
+            width,
+            mask_input,
+            order,
+            attack_hex,
+            (field_width, field_height),
+            reach,
+            preview,
+            embed,
+        )
 
     def trunk(self, field: torch.Tensor, glob: torch.Tensor):
         rows = field.shape[0]
@@ -330,6 +347,8 @@ class HexFormer(HexNet):
         mask_input: bool = False,
         order: bool = False,
         attack_hex: bool = False,
+        reach: bool = False,
+        preview: tuple[int, int] | None = None,
     ) -> None:
         super().__init__(width, embed, field_width, field_height)
         if width % heads:
@@ -343,7 +362,17 @@ class HexFormer(HexNet):
         self.offset_bias = nn.Parameter(torch.zeros(layers, heads, span_q * span_r))
         self.norm = nn.LayerNorm(width)
         self.make_heads(width, width, embed)
-        self.make_extra(width, width, mask_input, order, attack_hex, (field_width, field_height))
+        self.make_extra(
+            width,
+            width,
+            mask_input,
+            order,
+            attack_hex,
+            (field_width, field_height),
+            reach,
+            preview,
+            embed,
+        )
 
     def trunk(self, field: torch.Tensor, glob: torch.Tensor):
         x = torch.cat([glob.unsqueeze(1), field], dim=1)
@@ -360,13 +389,18 @@ def for_batch(kind: str, batch: BattleBatch, config: dict) -> HexNet:
     """The hex network `kind` names for `batch` (whose encodings must be the layout's), from a
     run's `[network]` settings (`config`; a file without `norm` or `feed_forward`, before E25
     T24, has none and twice the width; one without `mask_input`, `order` or `attack_hex`, before
-    E25 T25, none of them)."""
+    E25 T25, none of them; one without `reach`, before E25 T38b, reads no reach block, and one
+    without `preview` reads no kill preview: every hex network before T38b)."""
     check_layout(batch, f"{kind} network")
     field = (
         int(config.get("field_width", FIELD_WIDTH)),
         int(config.get("field_height", FIELD_HEIGHT)),
     )
-    keys = {key: bool(config.get(key, False)) for key in ("mask_input", "order", "attack_hex")}
+    keys: dict = {
+        key: bool(config.get(key, False)) for key in ("mask_input", "order", "attack_hex", "reach")
+    }
+    if config.get("preview", False):
+        keys["preview"] = (batch.preview_base, batch.preview_entries)
     if kind == "hexconv":
         return HexConv(
             config["width"],

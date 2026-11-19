@@ -11,18 +11,20 @@ second target, chosen one head after another; its log-probability is the sum ove
 chose. Masked logits take the dtype's lowest value, never `-inf`, so a row with a single legal
 choice (or none: an env that gave up) stays finite.
 
-The kill preview (AI-Q7 (b) part 2, E06 T6d; `[network] preview`, the MLP's): the batch's
-previewed kills of each legal attack and shot entry (`BattleBatch.preview`, C ABI v33) add a bias
-to that entry's logit, `φ(f) · u(h)`: `f` the entry's features (the least and greatest kills, the
-share of the target stack they are, the hit points they are), `φ` a small network shared by the
-entries, `u` a linear map of the trunk's output, so the state decides how much a kill counts.
-Only the entry head reads it; the value and the cast heads do not.
+The kill preview (AI-Q7 (b) part 2, E06 T6d; `[network] preview`, the MLP's, since E25 T38b also
+the hex kinds', `hexnet`): the batch's previewed kills of each legal attack and shot entry
+(`BattleBatch.preview`, C ABI v33) add a bias to that entry's logit, `φ(f) · u(h)`: `f` the
+entry's features (the least and greatest kills, the share of the target stack they are, the hit
+points they are), `φ` a small network shared by the entries, `u` a linear map of the trunk's
+output (a hex kind's context), so the state decides how much a kill counts (`make_preview`,
+`preview_bias`). Only the entry head reads it; the value and the cast heads do not.
 
 The turn order (`[network] order`; the turn-order probe, E06-log): the MLP's trunk reads
-observation v22's layout (v23's prefix before the reach block, `layout.REACH`, which no network
-reads yet: a network saved before v23 plays on), each stack slot's places in the turn order
-(`layout.ORDER_ROUND` to `ORDER_NEXT`) with it; without it the trunk reads v21's prefix, so a
-network saved before v22 plays on. The structured kinds' stack tokens read the places since E25 T25 (`entity`).
+observation v22's layout (v23's prefix before the reach block, `layout.REACH`, which only a hex
+kind with `[network] reach` reads, E25 T38b: a network saved before v23 plays on), each stack
+slot's places in the turn order (`layout.ORDER_ROUND` to `ORDER_NEXT`) with it; without it the
+trunk reads v21's prefix, so a network saved before v22 plays on. The structured kinds' stack
+tokens read the places since E25 T25 (`entity`).
 
 The tactics bound (`[network] tactics_rounds`, E25 T4a, any kind): the agent ends its own tactics
 phase after that many rounds of it, the rules unchanged (BAT-TAC-002 has no limit): once its
@@ -408,6 +410,70 @@ def preview_slots(base: int, entries: int) -> np.ndarray:
     )
 
 
+def make_preview(net: nn.Module, preview: tuple[int, int], context: int, embed: int) -> None:
+    """The kill preview's modules on `net` (`preview_bias`; the MLP's since E06 T6d, the hex
+    kinds' since E25 T38b): the batch's previewed entries `preview` (`preview_base`,
+    `preview_entries`), each one's target slot's count and hit-point columns, `φ` (the features
+    through two layers of `embed`) and `u` (the `context`-wide vector to `embed`, near 0 at the
+    start: the network begins as the one without the preview). Made last, after the network's
+    other modules."""
+    root2 = float(np.sqrt(2.0))
+    net.preview_base, net.preview_entries = preview
+    slot = torch.from_numpy(preview_slots(*preview))
+    column = L.STACKS + slot * L.STACK_FEATURES
+    net.register_buffer("count_column", column + L.COUNT, persistent=False)
+    net.register_buffer("hp_column", column + L.MAX_HP, persistent=False)
+    net.preview_net = nn.Sequential(
+        init(nn.Linear(PREVIEW_FEATURES, embed), root2),
+        nn.ReLU(),
+        init(nn.Linear(embed, embed), 1.0),
+    )
+    net.preview_context = init(nn.Linear(context, embed), 0.01)
+
+
+def preview_bias(
+    net: nn.Module,
+    logits: torch.Tensor,
+    context: torch.Tensor,
+    obs: torch.Tensor,
+    preview: torch.Tensor | None,
+    mask: torch.Tensor,
+) -> torch.Tensor:
+    """The entry `logits` with the kill preview's bias `φ(f) · u(c)` on each legal strike
+    (`make_preview`'s modules on `net`; `context` [rows, …] the vector `u` reads: the MLP's
+    trunk output, a hex network's context; `obs` the raw rows, `mask` their entry mask, bool)."""
+    if preview is None:
+        raise ValueError("this network reads the kill preview: BattleBatch(preview=True)")
+    base, entries = net.preview_base, net.preview_entries
+    # Only the legal strikes' features (a row has a few dozen of its 1 092 entries).
+    row, k = torch.nonzero(mask[:, base : base + entries], as_tuple=True)
+    kills = preview[row, k].to(obs.dtype)
+    least, greatest = kills[:, 0], kills[:, 1]
+    mean = 0.5 * (least + greatest)
+    count = obs[row, net.count_column[k]]
+    hp = obs[row, net.hp_column[k]]
+    features = torch.stack(
+        [
+            symlog(least),
+            symlog(greatest),
+            (mean / count.clamp(min=1.0)).clamp(0.0, 1.0),
+            symlog(mean * hp),
+        ],
+        dim=1,
+    )
+    bias = (net.preview_net(features) * net.preview_context(context)[row]).sum(1)
+    strikes = torch.zeros(logits.shape[0], entries, dtype=logits.dtype, device=logits.device)
+    strikes = strikes.index_put((row, k), bias)
+    return torch.cat(
+        [
+            logits[:, :base],
+            logits[:, base : base + entries] + strikes,
+            logits[:, base + entries :],
+        ],
+        dim=1,
+    )
+
+
 class Mlp(Policy):
     """The MLP (E05 T8): `symlog`, a trunk of `layers` `hidden`-unit layers (two before E25 T7a,
     the default), the value and entry heads on it; the spell head takes the trunk and which cast,
@@ -453,18 +519,7 @@ class Mlp(Policy):
         #: `preview`: the batch's (`preview_base`, `preview_entries`), or None.
         self.reads_preview = preview is not None
         if preview is not None:
-            self.preview_base, self.preview_entries = preview
-            slot = torch.from_numpy(preview_slots(*preview))
-            column = L.STACKS + slot * L.STACK_FEATURES
-            self.register_buffer("count_column", column + L.COUNT, persistent=False)
-            self.register_buffer("hp_column", column + L.MAX_HP, persistent=False)
-            self.preview_net = nn.Sequential(
-                init(nn.Linear(PREVIEW_FEATURES, embed), root2),
-                nn.ReLU(),
-                init(nn.Linear(embed, embed), 1.0),
-            )
-            # Near 0 at the start: the network begins as the MLP without the preview.
-            self.preview_context = init(nn.Linear(hidden, embed), 0.01)
+            make_preview(self, preview, hidden, embed)
 
     @classmethod
     def for_batch(
@@ -495,36 +550,7 @@ class Mlp(Policy):
     def with_preview(self, logits, encoding, obs, preview, mask):
         if not self.reads_preview:
             return logits
-        if preview is None:
-            raise ValueError("this network reads the kill preview: BattleBatch(preview=True)")
-        base, entries = self.preview_base, self.preview_entries
-        # Only the legal strikes' features (a row has a few dozen of its 1 092 entries).
-        row, k = torch.nonzero(mask[:, base : base + entries], as_tuple=True)
-        kills = preview[row, k].to(obs.dtype)
-        least, greatest = kills[:, 0], kills[:, 1]
-        mean = 0.5 * (least + greatest)
-        count = obs[row, self.count_column[k]]
-        hp = obs[row, self.hp_column[k]]
-        features = torch.stack(
-            [
-                symlog(least),
-                symlog(greatest),
-                (mean / count.clamp(min=1.0)).clamp(0.0, 1.0),
-                symlog(mean * hp),
-            ],
-            dim=1,
-        )
-        bias = (self.preview_net(features) * self.preview_context(encoding[0])[row]).sum(1)
-        strikes = torch.zeros(logits.shape[0], entries, dtype=logits.dtype, device=logits.device)
-        strikes = strikes.index_put((row, k), bias)
-        return torch.cat(
-            [
-                logits[:, :base],
-                logits[:, base : base + entries] + strikes,
-                logits[:, base + entries :],
-            ],
-            dim=1,
-        )
+        return preview_bias(self, logits, encoding[0], obs, preview, mask)
 
     def encode(self, obs: torch.Tensor, mask: torch.Tensor | None = None) -> Encoding:
         x = symlog(obs[:, : self.inputs])
@@ -563,13 +589,18 @@ def build(config: dict[str, Any], batch: BattleBatch) -> Policy:
     without `mask_input` (before E25 T25) a network that does not read the entry mask, a
     structured one without `order` or `attack_hex` (before T25) one whose stack tokens do not
     read the turn order and whose melee entries do not score their from-hexes (`entity`'s
-    documentation)."""
+    documentation), a hex one without `reach` or `preview` (before E25 T38b) one that reads
+    neither the reach block nor the kill preview (`hexnet`'s)."""
     kind = config.get("kind", "mlp")
     mask_input = bool(config.get("mask_input", False))
     order = bool(config.get("order", False))
     attack_hex = bool(config.get("attack_hex", False))
     if attack_hex and kind == "mlp":
         raise ValueError("`attack_hex` is the structured kinds', not the MLP's")
+    if config.get("reach", False) and kind not in ("hexconv", "hexformer"):
+        raise ValueError("`reach` is the hex kinds'")
+    if config.get("preview", False) and kind == "entity":
+        raise ValueError("`preview` is the MLP's and the hex kinds', not the entity network's")
     if kind == "mlp":
         policy: Policy = Mlp.for_batch(
             batch,
