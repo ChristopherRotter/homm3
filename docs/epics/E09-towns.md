@@ -393,6 +393,17 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
      lost to every draw). Not chosen: the public observables only (the views, the map and the
      store; the statuses unchecked).
 
+### Decisions at T40b's start (2026-11-19, the user; TWN-Q29)
+
+159. **T40b whole** (`AskUserQuestion`; over the agent's cut in two, the plans first, and the
+     queue's order with the map first): the plans' map Tavern and Den with the oracles taught the
+     hire, the taverns map with its scripted replays and the golden counts, the benchmarks, in one
+     session and one pull request.
+160. **`cross-lane` for T40b** (the user's consent): `h3-map`'s plans, tests and regressions, the
+     new fixture under `fixtures/maps/` and its replays under `fixtures/replays/adventure/`, the
+     benchmarks under `benches/adventure/`, `h3-cli`'s replay notes, the server lane's golden
+     replay count in `h3-protocol`'s fold test.
+
 ### Exit criteria (accepted at `TWN-Q18`, decision 121; design note §80)
 
 1. The town part's tavern weights and the hire's price compile (part v7); each player's faction

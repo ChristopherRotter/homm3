@@ -53,8 +53,8 @@ use h3_game::{
     BuildingSet, ChestChoice, ChoiceKind, Consent, DecisionView, GameCommand, GameCommandError,
     GameEvent, GameRuleset, GameState, HeroChange, HeroStatus, HireAnswer, HireSeen, HireTarget,
     HireView, Manage, MonthKind, NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer,
-    SlotState, TownCommand, TownHeroChange, UniversityAnswer, Viewer, apply, hire_range,
-    legal_commands, legal_management, legal_moves, observe, split_range,
+    SlotState, TavernAnswer, TownCommand, TownHeroChange, UniversityAnswer, Viewer, apply,
+    hire_range, legal_commands, legal_management, legal_moves, observe, split_range,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::collection::vec;
@@ -141,8 +141,9 @@ pub(super) const BLOCKER_CLASS: u32 = 118;
 /// the monoliths of two channels, the Subterranean Gate and the Whirlpool. Then (E08 T116b1,
 /// increment 12's design note §16) the map garrisons ([`GARRISONS`]) and (E08 T116b2) the bonus
 /// visitables ([`BONUSES`]); then (E08 T125b2a, increment 13's design note §17) the creature banks
-/// ([`BANKS`]).
-pub(super) const KINDS: [(u32, u32, Option<u32>); 133] = [
+/// ([`BANKS`]); then (E09 T40b, the town epic's design note §78) the adventure map's Tavern and the
+/// Den of Thieves ([`TAVERNS`]).
+pub(super) const KINDS: [(u32, u32, Option<u32>); 135] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -276,6 +277,8 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 133] = [
     (25, 0, None),
     (24, 0, None),
     (85, 0, None),
+    (95, 0, None),
+    (97, 0, None),
 ];
 /// Increment 7's kinds in [`KINDS`] (E08 T64b, increment 7's design note §16): the first of them,
 /// and how many. In order: the Arena, Centaur's Axe, a Pandora's Box (experience, gold, Magic Arrow
@@ -494,6 +497,18 @@ const UTOPIA_BLOCKED: Mask = &[
     (3, 2),
 ];
 
+/// The town epic's increment 4 kinds in [`KINDS`] (E09 T40b, the town epic's design note §78): the
+/// first of them, and how many. In order: the adventure map's Tavern (95), visited from a
+/// neighbour (ADV-VIS-007: its visit opens the tavern decision, GAM-DEC-010), and the Den of
+/// Thieves (97), entered (ADV-VIS-008: its visit shows the Thieves' Guild at everything,
+/// TWN-TAV-009). Neither has a body.
+pub(super) const TAVERNS: (usize, usize) = (133, 2);
+/// The map Tavern's object (the original's template, `taverns.rs`' `PICTURES`: two tiles of a row,
+/// visited on the left one, from a neighbour).
+pub(super) const TAVERN_OBJECT: usize = BLOCKERS.len() * TAVERNS.0;
+/// The Den of Thieves' object (the original's template: two tiles of a row, entered on the anchor).
+pub(super) const DEN_OBJECT: usize = BLOCKERS.len() * (TAVERNS.0 + 1);
+
 /// Whether an object of kind `kind` is ownable, its owner at load from the plan's
 /// [`Plan::owners`]: [`OWNABLE`]'s (E08 T86b1) and (E08 T96b1) a dwelling or a random dwelling of
 /// [`DWELLINGS`] (not the camp), as the import's ownable kinds (ADV-OWN-001).
@@ -589,7 +604,9 @@ pub(super) type Mask = &'static [(u8, u8)];
 /// the Medusa Stores and the Naga Bank, on the anchor for the Griffin Conservatory and the Imp
 /// Cache; three of a row entered on the middle one for the Dwarven Treasury and the Crypt; the
 /// Dragon Fly Hive's one left of the anchor; Dragon Utopia's twelve, [`UTOPIA_BLOCKED`]) and the
-/// sea's two one tile ([`BANK_OBJECTS`]).
+/// sea's two one tile ([`BANK_OBJECTS`]); (E09 T40b) the map Tavern's and the Den's original
+/// templates (two tiles of a row, visited on the left one for the Tavern, on the anchor for the
+/// Den: [`TAVERN_OBJECT`], [`DEN_OBJECT`]).
 pub(super) fn masks(object: usize) -> (Mask, Mask) {
     let (class, subclass, _) = KINDS[object / BLOCKERS.len()];
     match (class, subclass) {
@@ -604,8 +621,8 @@ pub(super) fn masks(object: usize) -> (Mask, Mask) {
     match class {
         54 | 26 | 8 | 29 | 82 | 86 | 59 | 43 | 44 | 45 => (&[(0, 0)], &[(0, 0)]),
         30 | 38 | 49 | 11 | 52 | 92 => (&[(0, 0)], &[(0, 0)]),
-        14 | 28 | 96 => (&[(0, 0), (1, 0)], &[(1, 0)]),
-        64 | 94 => (&[(0, 0), (1, 0)], &[(0, 0)]),
+        14 | 28 | 96 | 95 => (&[(0, 0), (1, 0)], &[(1, 0)]),
+        64 | 94 | 97 => (&[(0, 0), (1, 0)], &[(0, 0)]),
         48 => (&[(0, 0), (1, 0)], &[(0, 0), (1, 0)]),
         31 => (&[(0, 0), (1, 0), (0, 1), (1, 1)], &[(0, 0)]),
         56 => (&[(0, 0), (1, 0), (0, 1), (1, 1)], &[(0, 0), (1, 0)]),
@@ -970,6 +987,10 @@ pub(super) struct Plan {
     /// anchor (modulo the map) and object ([`BANK_OBJECTS`]), laid out after the bonus visitables
     /// (with them, [`bonuses_laid_out`]).
     pub(super) banks: Vec<(Spot, usize)>,
+    /// (E09 T40b; the town epic's design note §78) The map Taverns and Dens of Thieves
+    /// ([`taverns`]): each one's anchor (modulo the map) and object ([`TAVERN_OBJECT`],
+    /// [`DEN_OBJECT`]), laid out after the creature banks (with them, [`bonuses_laid_out`]).
+    pub(super) taverns: Vec<(Spot, usize)>,
 }
 
 /// A plan's map garrison (E08 T116b1; increment 12's design note §16; ADV-GAR-001): where it
@@ -1273,8 +1294,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 teleporters(),
                 // E08 T116b1, drawn last for the same reason; (E08 T116b2) the bonus
                 // visitables after them (a pair: the tuple holds twelve at most), (E08 T125b2a)
-                // the creature banks after those.
-                (garrisons(), bonuses(), banks()),
+                // the creature banks after those, (E09 T40b) the map Taverns and Dens last.
+                (garrisons(), bonuses(), banks(), taverns()),
             ),
         ),
     )
@@ -1308,7 +1329,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                         dwellings,
                         towns,
                         teleporters,
-                        (garrisons, bonuses, banks),
+                        (garrisons, bonuses, banks, taverns),
                     ),
                 ),
             )| {
@@ -1526,6 +1547,16 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     army.resize(army.len().max(7), None);
                     army[usize::from(slot) % 7] = Some((ARCHANGEL, count));
                 }
+                // E09 T40b: the map Taverns and Dens near the heroes ([`taverns`]).
+                let taverns = taverns
+                    .iter()
+                    .map(|&((dx, dy), hero, object)| {
+                        let levels = 1 + u8::from(two_levels);
+                        let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
+                        let ((hx, hy, hz), _) = heroes[usize::from(hero) % heroes.len()];
+                        ((at(hx, dx), at(hy, dy), hz % levels), object)
+                    })
+                    .collect();
                 Plan {
                     version,
                     side,
@@ -1548,6 +1579,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     garrisons,
                     bonuses: bonused,
                     banks: banked,
+                    taverns,
                 }
             },
         )
@@ -1683,6 +1715,18 @@ fn banks() -> impl Strategy<Value = Banks> {
         1 => Just(Banks::default()),
         2 => (near, sea, army).prop_map(|(near, sea, army)| Banks { near, sea, army }),
     ]
+}
+
+/// The map Taverns and Dens of Thieves of a plan (E09 T40b, the town epic's design note §78):
+/// in one plan of three (one of two drained the gold of the town cover tests' Capitols), one or
+/// two near the heroes, each an offset from a hero's tile (two
+/// columns and rows left of it to two right) and the hero (modulo the plan's), on its level, so
+/// that random play visits them: a Tavern in two cases of three (its decision hires onto its
+/// tile, GAM-DEC-010), else a Den (the Thieves' Guild at everything, TWN-TAV-009).
+fn taverns() -> impl Strategy<Value = Vec<((u8, u8), u8, usize)>> {
+    let kind = prop_oneof![2 => Just(TAVERN_OBJECT), 1 => Just(DEN_OBJECT)];
+    let near = vec(((0u8..5, 0u8..5), any::<u8>(), kind), 1..=2);
+    prop_oneof![2 => Just(Vec::new()), 1 => near]
 }
 
 /// A teleporter near a hero ([`Teleporters::near`]): its offset from the hero's tile, the hero, the
@@ -2041,6 +2085,8 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
     // E08 T116b2: the bonus visitables'; (E08 T125b2a) the creature banks'.
     let used = used.chain(plan.bonuses.iter().map(|&(_, o)| o));
     let used = used.chain(plan.banks.iter().map(|&(_, o)| o));
+    // E09 T40b: the map Taverns' and Dens'.
+    let used = used.chain(plan.taverns.iter().map(|&(_, o)| o));
     let used = used.map(|o| o + 1).max().unwrap_or(0);
     m.templates.extend((0..used.max(BLOCKERS.len())).map(|o| {
         let (blocked, visitable) = masks(o);
@@ -2450,7 +2496,8 @@ fn garrisons_laid_out(
 /// (`covered`, which takes its tiles), so that each of its visitable tiles is listed for it and no
 /// two of a type share an anchor. One anywhere else is left out; plans without bonus visitables
 /// keep their maps. (E08 T125b2a) The creature banks after them, laid out alike ([`Plan::banks`]):
-/// the nine on land, the sea's two on water (the Shipwreck's tile beside the coast or not).
+/// the nine on land, the sea's two on water (the Shipwreck's tile beside the coast or not); (E09
+/// T40b) the map Taverns and Dens last, on land ([`Plan::taverns`]).
 fn bonuses_laid_out(
     m: &mut RawMap,
     plan: &Plan,
@@ -2458,7 +2505,7 @@ fn bonuses_laid_out(
     covered: &mut Vec<Spot>,
 ) {
     let (side, levels) = (plan.side, 1 + u8::from(plan.two_levels));
-    for &((x, y, z), bonus) in plan.bonuses.iter().chain(&plan.banks) {
+    for &((x, y, z), bonus) in plan.bonuses.iter().chain(&plan.banks).chain(&plan.taverns) {
         let (ax, ay, az) = (x % side, y % side, z % levels);
         let (blocked, visitable) = masks(bonus);
         let tiles = |mask: Mask| -> Vec<Spot> {
@@ -3369,7 +3416,7 @@ fn seek(state: &GameState, legal: &[GameCommand], n: u16) -> GameCommand {
 /// heroes, an army dialog's hero and group, else each of its heroes alone; none while it may
 /// not manage (a battle, an offer or a level-up open, the game waiting for another player; since
 /// E08 T64b's plans a choice or a University open, GAM-DEC-005, GAM-DEC-006; since E08 T95b a
-/// hire dialog, GAM-DEC-008).
+/// hire dialog, GAM-DEC-008; since E09 T40b's plans a map Tavern's decision, GAM-DEC-010).
 fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
     let player = acting(state);
     if actor(state) != Actor::Player(player)
@@ -3377,6 +3424,7 @@ fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
         || state.decision(player).is_some()
         || state.choice(player).is_some()
         || state.university(player).is_some()
+        || state.tavern(player).is_some()
         || hiring(state, player)
         || state.waiting_for().is_some()
     {
@@ -5627,7 +5675,8 @@ fn check_hire(
 /// level-up (E08 T30) is a decision too, its answers `First` and `Second`, each of which applies;
 /// it holds the game, so its owner acts (in its turn or not: a battle's defender that won) and no
 /// one else lists a command. A hire dialog (E08 T95b) lists its answers ([`hire_answers`]), each
-/// checked by [`check_hire`].
+/// checked by [`check_hire`]; a map Tavern's decision (E09 T40b) its own ([`tavern_answers`]), each
+/// checked by [`check_map_hire`].
 fn check_legal(
     state: &GameState,
     rules: &GameRuleset,
@@ -5648,6 +5697,8 @@ fn check_legal(
     let choosing = state.choice(actor).is_some() || state.university(actor).is_some();
     // E08 T95b: a hire dialog, as its owner sees it.
     let hiring = hire_view(state, rules, actor);
+    // E09 T40b: a map Tavern's decision (GAM-DEC-010).
+    let taverning = state.tavern(actor).is_some();
     let system = legal_commands(state, rules, Actor::System);
     prop_assert_eq!(system.is_empty(), who != Actor::System);
     prop_assert!(system.iter().all(|c| matches!(c, GameCommand::Battle(_))));
@@ -5676,6 +5727,8 @@ fn check_legal(
                 vec![CLOSE]
             } else if choosing {
                 choice_answers(state, rules, player)
+            } else if taverning {
+                tavern_answers(state, rules, player)
             } else if hiring.is_some() {
                 hire_answers(state, rules, player)
             } else {
@@ -5696,6 +5749,7 @@ fn check_legal(
                 && !decided
                 && !exchanging
                 && !choosing
+                && !taverning
                 && hiring.is_none()
                 && !levelling
                 && !fighting
@@ -5835,6 +5889,11 @@ fn check_legal(
             prop_assert!(probe.choice(actor).is_none());
         }
         return Ok(());
+    }
+    // E09 T40b: a map Tavern's answers, each applied ([`check_map_hire`]).
+    if taverning {
+        prop_assert_eq!(legal, &tavern_answers(state, rules, actor)[..]);
+        return check_map_hire(state, rules, actor, legal);
     }
     // E08 T95b: a hire dialog's answers, each applied ([`check_hire`]).
     if let Some(view) = &hiring {
@@ -6718,6 +6777,104 @@ fn check_town_heroes(
     Ok(())
 }
 
+/// A map Tavern's answers `player` may give in `state` (GAM-DEC-010; E09 T40b): of the hires of
+/// each tavern slot and one past them, those `apply` accepts, in slot order, then `Close`, as
+/// `legal_commands` must list them.
+fn tavern_answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
+    (0..=2)
+        .map(|slot| GameCommand::Answer(Answer::Tavern(TavernAnswer::Hire { slot })))
+        .filter(|command| {
+            let mut probe = state.clone();
+            let actor = Actor::Player(player);
+            apply(&mut probe, rules, actor, command.clone(), &mut NoopSink).is_ok()
+        })
+        .chain(core::iter::once(GameCommand::Answer(Answer::Tavern(
+            TavernAnswer::Close,
+        ))))
+        .collect()
+}
+
+/// A map Tavern's answers (GAM-DEC-010; E09 T40b, the town epic's design note §66, §78): each
+/// one the actor lists applies; a hire places the slot's hero, as its owner's view showed it, on
+/// the Tavern's visitable tile (free before), within the part's most heroes, pays the part's
+/// price, is told as `HeroHired` with its slot and tile and closes the decision, the visitor where
+/// it stood; `Close` closes it and changes no hero; a hire of a slot not listed is rejected with
+/// the state unchanged and the decision open.
+fn check_map_hire(
+    state: &GameState,
+    rules: &GameRuleset,
+    actor: PlayerId,
+    legal: &[GameCommand],
+) -> Result<(), TestCaseError> {
+    let visit = *state.tavern(actor).unwrap();
+    let params = rules.towns().params().unwrap();
+    let seen = observe(state, rules, Viewer::Player(actor));
+    let was = state.adventure();
+    let own = |a: &AdventureState| a.heroes().iter().filter(|h| h.owner == actor).count();
+    for slot in 0..=2u8 {
+        let command = GameCommand::Answer(Answer::Tavern(TavernAnswer::Hire { slot }));
+        let mut probe = state.clone();
+        let mut events = Vec::new();
+        let result = apply(
+            &mut probe,
+            rules,
+            Actor::Player(actor),
+            command.clone(),
+            &mut events,
+        );
+        if !legal.contains(&command) {
+            prop_assert!(result.is_err(), "unlisted {:?} applied", command);
+            prop_assert_eq!(probe.state_hash(), state.state_hash());
+            prop_assert!(probe.tavern(actor).is_some());
+            continue;
+        }
+        prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
+        let view = seen.tavern.get(usize::from(slot)).cloned().flatten();
+        let view = view.ok_or_else(|| fail(format!("hire of {slot}: no hero in the view")))?;
+        let now = probe.adventure();
+        prop_assert!(was.tile_free(visit.entrance));
+        prop_assert!(own(was) < usize::from(params.most_heroes));
+        prop_assert_eq!(own(now), own(was) + 1);
+        let id = view.hero.id;
+        prop_assert!(was.hero(id).is_none() && was.town_heroes().iter().all(|(_, h)| h.id != id));
+        let hired = now
+            .hero(id)
+            .ok_or_else(|| fail(format!("{id:?} not on the map")))?;
+        prop_assert_eq!(
+            (hired.owner, hired.pos, &hired.army),
+            (actor, visit.entrance, &view.army)
+        );
+        prop_assert_eq!(
+            (hired.formation, hired.tactics),
+            (view.hero.formation, view.hero.tactics)
+        );
+        let at = |a: &AdventureState| a.hero(visit.hero).map(|h| h.pos);
+        prop_assert_eq!(at(now), at(was));
+        let mut treasury = state.treasury(actor).unwrap().to_vec();
+        for &(r, amount) in &params.hire_price {
+            treasury[r.index()] -= amount;
+        }
+        prop_assert_eq!(probe.treasury(actor).unwrap(), &treasury[..]);
+        let told = events.iter().any(|e| {
+            matches!(*e, GameEvent::HeroHired { player, hero, slot: Some(s), pos, .. }
+                if player == actor && hero == id && s == slot && pos == visit.entrance)
+        });
+        prop_assert!(told, "{:?}", events);
+        prop_assert!(probe.tavern(actor).is_none());
+        let closed = GameEvent::DecisionClosed { player: actor };
+        prop_assert!(events.contains(&closed), "{:?}", events);
+    }
+    let mut probe = state.clone();
+    let mut events = Vec::new();
+    let close = GameCommand::Answer(Answer::Tavern(TavernAnswer::Close));
+    let result = apply(&mut probe, rules, Actor::Player(actor), close, &mut events);
+    prop_assert!(result.is_ok(), "Close rejected: {:?}", result);
+    prop_assert!(probe.tavern(actor).is_none());
+    prop_assert_eq!(probe.adventure().heroes(), was.heroes());
+    prop_assert_eq!(probe.treasury(actor), state.treasury(actor));
+    Ok(())
+}
+
 /// A listed hire of `actor`'s tavern slot `slot` at `town` (E09 T38a2; TWN-TAV-003), from
 /// `state` to `after`, by an independent reading: the slot's hero in the actor's tavern view
 /// before stands on the town's entrance after as its visitor, the actor's, with the view's army,
@@ -7379,7 +7536,7 @@ fn check_timed(
 /// in the order it is told them (a reward's rest after a level-up, GAM-DEC-007). Since E08 T95b a
 /// hire dialog's purchase pays the cost of one times the amount and joins the amount as a join does.
 /// Since E09 T38a2 a town's hire pays the part's price, and its hero joins the map with its tavern
-/// slot's army; its slot's refill may add a record. Since E09 T38b2 a dismissed hero leaves the
+/// slot's army; its slot's refill may add a record; since E09 T40b a map Tavern's hire alike. Since E09 T38b2 a dismissed hero leaves the
 /// map with its army, its record's spell points full untold.
 fn check_conservation(
     rules: &GameRuleset,
@@ -7686,9 +7843,11 @@ fn check_conservation(
             .map(|building| &building.cost),
         _ => None,
     };
-    // E09 T38a2: a town's hire pays the part's price (TWN-TAV-003).
+    // E09 T38a2: a town's hire pays the part's price (TWN-TAV-003); (E09 T40b) a map Tavern's too
+    // (GAM-DEC-010).
     let hire = match *command {
-        GameCommand::Town(TownCommand::Hire { .. }) => {
+        GameCommand::Town(TownCommand::Hire { .. })
+        | GameCommand::Answer(Answer::Tavern(TavernAnswer::Hire { .. })) => {
             rules.towns().params().map(|params| &params.hire_price)
         }
         _ => None,
@@ -11190,8 +11349,10 @@ fn check_heroes_after_battle(
         );
     }
     // E08 T19a2b: creatures are raised into the army of a battle hero that stays, told to its
-    // owner, as a stack of the creature told with at least that many.
-    for event in events {
+    // owner, as a stack of the creature told with at least that many; (E09 T40b's CI of the
+    // shifted cover cases) less what a Whirlpool the winner then enters takes of them, told after
+    // (a guard's battle on its entrance, the visit held for after it: ADV-TEL-006).
+    for (at, event) in events.iter().enumerate() {
         if let GameEvent::CreaturesRaised {
             player,
             hero,
@@ -11202,12 +11363,29 @@ fn check_heroes_after_battle(
             prop_assert!(fought.contains(&hero), "{:?} raised", hero);
             // E09 T29b: a garrison hero that won its defence raises in its army too.
             prop_assert_eq!(player, hero_anywhere(before, hero).unwrap().owner);
+            let lost: u32 = events[at..]
+                .iter()
+                .map(|e| match e {
+                    GameEvent::Adventure(AdventureEvent {
+                        kind:
+                            AdventureEventKind::WhirlpoolLoss {
+                                hero: h,
+                                creature: c,
+                                count: n,
+                                ..
+                            },
+                        ..
+                    }) if *h == hero && *c == creature => *n,
+                    _ => 0,
+                })
+                .sum();
+            let left = count.saturating_sub(lost);
             let stays = hero_anywhere(after, hero);
             prop_assert!(
-                stays.is_some_and(|h| h
-                    .army
-                    .iter()
-                    .any(|s| s.creature == creature && s.count >= count)),
+                stays.is_some_and(|h| left == 0
+                    || h.army
+                        .iter()
+                        .any(|s| s.creature == creature && s.count >= left)),
                 "{:?} raised {} of {:?}",
                 hero,
                 count,
@@ -11766,17 +11944,21 @@ fn check_decisions(
     };
     // E08 T116b1: an exchange with a map garrison (GAM-DEC-009), by its hero and garrison.
     let garrison = |state: &GameState| state.exchange(actor).map(|e| (e.hero, e.garrison));
+    // E09 T40b: a map Tavern's decision (GAM-DEC-010), by its visitor and the Tavern's anchor,
+    // opened as told when nothing of these is open and closed as told (a hire or `Close`).
+    let tavern = |state: &GameState| state.tavern(actor).map(|v| (v.hero, v.anchor));
     let mut exchange = (
         before.meeting(actor),
         dialog(before),
         choosing(before),
         garrison(before),
+        tavern(before),
     );
     let mut guards = false;
     for event in events {
         match *event {
             GameEvent::MeetingOpened { player, heroes } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None, None)));
+                prop_assert_eq!((player, exchange), (actor, (None, None, None, None, None)));
                 for hero in heroes {
                     let owner = after.adventure().hero(hero).map(|h| h.owner);
                     prop_assert_eq!(owner, Some(actor));
@@ -11791,7 +11973,7 @@ fn check_decisions(
                 object_type,
                 anchor,
             } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None, None)));
+                prop_assert_eq!((player, exchange), (actor, (None, None, None, None, None)));
                 let map = after.adventure().map();
                 let own = map.objects().iter().enumerate().any(|(i, o)| {
                     (o.object_type, o.anchor) == (Some(object_type), anchor)
@@ -11802,10 +11984,13 @@ fn check_decisions(
                 guards = true;
             }
             GameEvent::ArmyDialogOpened { player, hero, .. } if guards => {
-                prop_assert_eq!((player, exchange), (actor, (None, Some(hero), None, None)));
+                prop_assert_eq!(
+                    (player, exchange),
+                    (actor, (None, Some(hero), None, None, None))
+                );
             }
             GameEvent::ArmyDialogOpened { player, hero, .. } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None, None)));
+                prop_assert_eq!((player, exchange), (actor, (None, None, None, None, None)));
                 exchange.1 = Some(hero);
             }
             GameEvent::ChoiceOpened { player, hero, .. }
@@ -11815,7 +12000,7 @@ fn check_decisions(
                 target: HireTarget::Hero(hero),
                 ..
             } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None, None)));
+                prop_assert_eq!((player, exchange), (actor, (None, None, None, None, None)));
                 prop_assert_eq!(after.adventure().hero(hero).map(|h| h.owner), Some(actor));
                 exchange.2 = Some(HireTarget::Hero(hero));
             }
@@ -11825,7 +12010,7 @@ fn check_decisions(
                 target: target @ HireTarget::Garrison(town),
                 ..
             } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None, None)));
+                prop_assert_eq!((player, exchange), (actor, (None, None, None, None, None)));
                 let adventure = after.adventure();
                 let index = adventure.map().town_object(town);
                 prop_assert_eq!(index.and_then(|i| adventure.owner(i)), Some(actor));
@@ -11858,17 +12043,29 @@ fn check_decisions(
                     prop_assert_eq!(open, Some((hero, garrison)));
                     continue;
                 }
-                prop_assert_eq!(exchange, (None, None, None, None));
+                prop_assert_eq!(exchange, (None, None, None, None, None));
                 exchange.3 = Some((hero, garrison));
+            }
+            GameEvent::TavernOpened {
+                player,
+                hero,
+                object_type,
+                anchor,
+            } => {
+                prop_assert_eq!((player, exchange), (actor, (None, None, None, None, None)));
+                prop_assert_eq!(after.adventure().hero(hero).map(|h| h.owner), Some(actor));
+                let kind = &rules.adventure().object_type(object_type).unwrap().kind;
+                prop_assert!(matches!(kind, ObjectKind::Tavern), "{:?}", event);
+                exchange.4 = Some((hero, anchor));
             }
             GameEvent::DecisionClosed { player } => {
                 prop_assert_eq!(player, actor);
                 prop_assert!(
-                    exchange != (None, None, None, None),
+                    exchange != (None, None, None, None, None),
                     "{:?} with nothing open",
                     event
                 );
-                exchange = (None, None, None, None);
+                exchange = (None, None, None, None, None);
                 guards = false;
             }
             _ => {}
@@ -11879,6 +12076,7 @@ fn check_decisions(
         dialog(after),
         choosing(after),
         garrison(after),
+        tavern(after),
     );
     prop_assert_eq!(open, exchange);
     prop_assert_eq!(after.decision(actor), decision.as_ref());
@@ -13048,6 +13246,7 @@ fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed
         garrisons: Vec::new(),
         bonuses: Vec::new(),
         banks: Vec::new(),
+        taverns: Vec::new(),
     };
     // The second hero's levels at load, at 12 000 experience (level 8), after the first hero's
     // at `first` experience.
@@ -14974,4 +15173,162 @@ fn the_plans_visit_and_fight_the_banks() {
         "{b:?}"
     );
     assert!(b.looted.iter().all(|&n| n > 0), "{b:?}");
+}
+
+/// What the plans' games meet at the map Taverns and Dens of Thieves (E09 T40b; the town epic's
+/// design note §78, exit criteria 3, 8 and 9): the Taverns and Dens laid out; the tavern decisions
+/// opened, those whose listing holds a hire and those whose holds none (no gold, no room, or no
+/// hero offered), hires at a map Tavern, `Close` answered; a hero hired there that moves off the
+/// Tavern's tile; and the Thieves' Guild seen at a Den.
+#[derive(Debug, Default)]
+struct Taverned {
+    laid: [usize; 2],
+    opened: usize,
+    offered: usize,
+    unoffered: usize,
+    hired: usize,
+    closed: usize,
+    moved_off: usize,
+    dens: usize,
+}
+
+impl Taverned {
+    fn count(
+        &mut self,
+        (before, after): (&GameState, &GameState),
+        (actor, command): (PlayerId, &GameCommand),
+        events: &[GameEvent],
+    ) {
+        self.opened += events
+            .iter()
+            .filter(|e| matches!(e, GameEvent::TavernOpened { .. }))
+            .count();
+        if let Some(visit) = before.tavern(actor) {
+            match command {
+                GameCommand::Answer(Answer::Tavern(TavernAnswer::Hire { .. })) => {
+                    let placed = events.iter().any(
+                        |e| matches!(*e, GameEvent::HeroHired { pos, .. } if pos == visit.entrance),
+                    );
+                    self.hired += usize::from(placed);
+                }
+                GameCommand::Answer(Answer::Tavern(TavernAnswer::Close)) => self.closed += 1,
+                _ => {}
+            }
+        }
+        if let Some((hero, _)) = as_move(command) {
+            let from = before.adventure().hero(hero).map(|h| h.pos);
+            let on = from.is_some_and(|pos| tavern_tile(before, pos));
+            let moved = after.adventure().hero(hero).map(|h| h.pos) != from;
+            self.moved_off += usize::from(on && moved);
+        }
+        self.dens += events
+            .iter()
+            .filter(|e| matches!(e, GameEvent::ThievesGuildSeen { .. }))
+            .count();
+    }
+}
+
+/// Whether `pos` is a map Tavern's visitable tile in `state` (E09 T40b).
+fn tavern_tile(state: &GameState, pos: TilePos) -> bool {
+    let adventure = state.adventure();
+    visited_at(state, pos)
+        .and_then(|i| adventure.object(i)?.object_type)
+        .and_then(|ty| FAITHFUL.adventure().object_type(ty))
+        .is_some_and(|ty| matches!(ty.kind, ObjectKind::Tavern))
+}
+
+/// Plans with map Taverns or Dens of Thieves for [`the_plans_hire_at_map_taverns`] (E09 T40b):
+/// steps that mostly visit ([`Step::Visit`], which also answers a tavern decision by the listing:
+/// a hire in two cases of three when one is listed), some other options and turn ends.
+fn tavern_plans() -> impl Strategy<Value = (Plan, bool, u64, Vec<Step>)> {
+    let steps = vec(
+        prop_oneof![
+            8 => any::<u16>().prop_map(Step::Visit),
+            2 => any::<u16>().prop_map(Step::Legal),
+            1 => Just(Step::EndTurn),
+        ],
+        0..200,
+    );
+    let plan = plan().prop_filter("map taverns", |p| !p.taverns.is_empty());
+    (plan, any::<bool>(), any::<u64>(), steps)
+}
+
+/// The plans hire at map Taverns and see the Thieves' Guild at Dens (E09 T40b; the town epic's
+/// design note §78, exit criteria 3, 8 and 9): over a fixed set of cases (proptest's
+/// deterministic runner), with the oracles the Tavern meets after every command (below), random
+/// play visits the Taverns and Dens laid out ([`tavern_plans`]) and meets each count of
+/// [`Taverned`]: the tavern decision opened with a hire listed and with none, a hire placed on the
+/// Tavern's tile and `Close`, the hired hero moving off that tile, a Den's guild, so that the
+/// properties' checks ([`check_legal`]'s [`check_map_hire`], [`check_decisions`],
+/// [`check_isolation`], [`check_conservation`], `check_invariants`' pool) see each.
+// covers: GAM-DEC-010, ADV-VIS-007, ADV-VIS-008, TWN-TAV-003, TWN-TAV-004, TWN-TAV-009
+#[test]
+fn the_plans_hire_at_map_taverns() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    let strategy = tavern_plans();
+    let mut taverned = Taverned::default();
+    for _ in 0..256 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let mut state = start(&plan, rules, seed);
+        let adventure = state.adventure();
+        for (i, o) in adventure.map().objects().iter().enumerate() {
+            let kind = o
+                .object_type
+                .and_then(|ty| rules.adventure().object_type(ty))
+                .map(|ty| &ty.kind);
+            match kind {
+                Some(ObjectKind::Tavern) if !adventure.is_removed(i) => taverned.laid[0] += 1,
+                Some(ObjectKind::DenOfThieves) if !adventure.is_removed(i) => {
+                    taverned.laid[1] += 1;
+                }
+                _ => {}
+            }
+        }
+        for (i, step) in steps.iter().enumerate() {
+            check_invariants(rules, &state).unwrap();
+            let legal = options(&state, rules);
+            let player = acting(&state);
+            if state.tavern(player).is_some() {
+                let hires = legal.iter().any(|c| {
+                    matches!(
+                        c,
+                        GameCommand::Answer(Answer::Tavern(TavernAnswer::Hire { .. }))
+                    )
+                });
+                if hires {
+                    taverned.offered += 1;
+                } else {
+                    taverned.unoffered += 1;
+                }
+            }
+            // The listing's oracle probes every listed command: on every fourth step, and at
+            // every open tavern decision.
+            if i % 4 == 0 || state.tavern(player).is_some() {
+                let reaches = reaches(&state, rules);
+                check_legal(&state, rules, &legal, &reaches).unwrap();
+            }
+            let (actor, command) = resolve(&state, rules, &legal, step);
+            let before = state.clone();
+            let mut events = Vec::new();
+            let result = apply(&mut state, rules, actor, command.clone(), &mut events);
+            let player = player_of(&before, actor);
+            if result.is_ok() {
+                let after = (&before, &state);
+                check_decisions(rules, after, player, &events).unwrap();
+                check_isolation(&before, &state, player, &events).unwrap();
+                check_conservation(rules, after, &command, &events).unwrap();
+                taverned.count(after, (player, &command), &events);
+            } else {
+                assert_eq!(state, before);
+            }
+        }
+    }
+    let t = &taverned;
+    eprintln!("{t:?}");
+    assert!(t.laid.iter().all(|&n| n > 0), "{t:?}");
+    assert!(t.opened > 0 && t.offered > 0 && t.unoffered > 0, "{t:?}");
+    assert!(t.hired > 0 && t.closed > 0 && t.moved_off > 0, "{t:?}");
+    assert!(t.dens > 0, "{t:?}");
 }
