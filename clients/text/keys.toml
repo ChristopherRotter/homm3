@@ -3970,11 +3970,6 @@ id = "shell.stub.tutorial"
 [[key]]
 id = "shell.stub.credits"
 
-# E27 M4 T1a: High Scores' Reset over the dialog (CLT-STUB-14: its question, GENRLTXT 667, and the
-# tables' reset are M4 T1b's).
-[[key]]
-id = "shell.stub.scores-reset"
-
 # E27 M2 T7: the network modes' notice over the Multiplayer dialog (IPX, TCP/IP, Modem, Direct
 # Connect and Online: decision 10, CLT-STUB-6, until E28) and the scenario screen's (until M3),
 # over the game type menu it is reached from.
@@ -4023,3 +4018,9 @@ original = [{ at = "GENRLTXT:673" }]
 [[key]]
 id = "shell.high-scores.score"
 original = [{ at = "GENRLTXT:76" }]
+
+# E27 M4 T1b: Reset's question (high_scores_proc 0x4EA39C: GENRLTXT 667, style 2; its OK resets
+# both tables to the defaults).
+[[key]]
+id = "shell.high-scores.reset"
+original = [{ at = "GENRLTXT:667" }]

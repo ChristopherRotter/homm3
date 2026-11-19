@@ -20,8 +20,7 @@
 //! manager plays it ([`Replay::samples`]).
 //!
 //! What only the harness can do stops the replay ([`Stop`]): a step on the original's memory or
-//! its probes (`poke`, `press`, `point`, `until-button`, `games-time`, `freeze`), a screen name the
-//! viewer does not know, a screen not built yet ([`Screen::built`]: nothing on it changes by
+//! its probes (`poke`, `games-time`, `freeze`), a screen name the viewer does not know, a screen not built yet ([`Screen::built`]: nothing on it changes by
 //! itself, and its shots would be a stand-in's; its moves are taken, its presses, releases and
 //! keys stop the replay). A stub's screen (E27 M2 T6b2: the client's notice, not the original's
 //! screen) is one not built here: no menu opens on it. The real-time pauses (`settle`, `wait`)
@@ -38,6 +37,11 @@
 //! input but a move ([`Stop::Stub`]; M2's review: an input fed the notice before); so does the
 //! scenario screen's Begin with a random map chosen (E27 M3 T5b: the original generates it), and
 //! play's notice after the loading screen's fade (E27 M3 T6: the original's play, E24 M5).
+//!
+//! A box of the original's over a front (E27 M4 T1b: High Scores' Reset question,
+//! [`Front::question`]) takes the harness's `press`, `point` and `until-button`: its button found
+//! where the harness's probes find it ([`button_point`]), clicked or pointed at as `click` and
+//! `move`; a button that does not show stops the replay ([`Stop::NoButton`]).
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -53,6 +57,8 @@ use super::menu::{Did, Front, Menus};
 use super::samples::{Played, Samples};
 use super::start::{Op, Start};
 use super::{Built, Ended, Game, Screen, Shell};
+use crate::message::{self, Open};
+use h3_ui::ui::Item;
 
 /// The clock's step after each input (h3shell's `INPUT_STEP`: the game draws its cursor at the
 /// pointer only on a later tick).
@@ -97,6 +103,23 @@ pub enum Step {
     },
     /// A real-time pause (`settle`, `wait`): no time passes on the frozen clock.
     Pause,
+    /// `press:<button>[:<k>]` or `point:<button>[:<k>]` (E27 M4 T1b): a box's button found as
+    /// the harness's probes find it, clicked or only pointed at, then the input step.
+    Button {
+        /// The probes' name (`ok`, `cancel`).
+        name: String,
+        /// The k-th place it shows, from the top left.
+        k: usize,
+        /// Clicked (`press`), else pointed at.
+        press: bool,
+    },
+    /// `until-button:<button>[:<limit>]` (E27 M4 T1b): the clock stepped until the button shows.
+    UntilButton {
+        /// The probes' name.
+        name: String,
+        /// The most milliseconds waited.
+        limit: u32,
+    },
     /// A step only the harness takes (its verb).
     Harness(String),
 }
@@ -207,9 +230,16 @@ pub fn parse(step: &str) -> Result<Step, String> {
             step: clip_step(at(2), number)?,
         },
         "settle" | "wait" => Step::Pause,
-        "freeze" | "press" | "point" | "until-button" | "games-time" | "poke" => {
-            Step::Harness(verb.to_string())
-        }
+        "press" | "point" => Step::Button {
+            name: name(at(0))?,
+            k: optional(at(1), 0, number)? as usize,
+            press: verb == "press",
+        },
+        "until-button" => Step::UntilButton {
+            name: name(at(0))?,
+            limit: optional(at(1), UNTIL_LIMIT, number)?,
+        },
+        "freeze" | "games-time" | "poke" => Step::Harness(verb.to_string()),
         _ => return Err(format!("the step `{step}`: an unknown verb")),
     })
 }
@@ -274,6 +304,9 @@ pub enum Stop {
     /// The client's stub's notice shows over the screen (E27 M2 T7: the network modes',
     /// `CLT-STUB-6`): not the original's screen.
     Stub(Screen),
+    /// A box's button does not show (E27 M4 T1b: at `press` or `point`, or at the end of
+    /// `until-button`'s wait): its probes' name.
+    NoButton(String),
     /// None of the screens shows (at the end of the wait, for `until` and `clip-until`).
     NotShown {
         /// The screens' names.
@@ -350,6 +383,32 @@ pub fn skips(input: &Input) -> bool {
         Input::Click(_) | Input::Down(_) | Input::Right(_) => true,
         Input::Move(_) | Input::Up | Input::RightUp | Input::KeyUp(_) => false,
     }
+}
+
+/// Where the harness's `press` and `point` put the pointer on the button `name` of the box `open`
+/// (E27 M4 T1b; h3shell's `button`): the middle of its probes' box (`capture/screens.toml`'s
+/// `[button.ok]`, 66 × 33, and `[button.cancel]`, 66 × 32, from the top left corner of the
+/// button's frame, `Box64x30.pcx`, a pixel up and left of the button), the k-th from the top left
+/// (a box has one of each: only the first); none for another name.
+#[must_use]
+pub fn button_point(open: &Open, name: &str, k: usize) -> Option<[i32; 2]> {
+    let (ids, [w, h]): (&[u16], [i32; 2]) = match name {
+        "ok" => (&[message::OK, message::YES], [66, 33]),
+        "cancel" => (&[message::NO], [66, 32]),
+        _ => return None,
+    };
+    let dialog = &open.message.dialog;
+    let [px, py] = dialog.place;
+    dialog
+        .items
+        .iter()
+        .filter_map(|item| match item {
+            Item::Button(b) if ids.contains(&b.id) => {
+                Some([px + b.at[0] - 1 + w / 2, py + b.at[1] - 1 + h / 2])
+            }
+            _ => None,
+        })
+        .nth(k)
 }
 
 impl Replay {
@@ -551,8 +610,31 @@ impl Replay {
             }
             Step::Clip { name, end, step } => self.clip(name, end, *step, take),
             Step::Pause => Ok(None),
+            Step::Button { name, k, press } => match self.button(name, *k) {
+                Some(at) if *press => self.play(&Step::Input(Input::Click(at)), take),
+                Some(at) => self.play(&Step::Input(Input::Move(at)), take),
+                None => Ok(Some(Stop::NoButton(name.clone()))),
+            },
+            Step::UntilButton { name, limit } => {
+                for _ in 0..limit / UNTIL_STEP {
+                    if self.button(name, 0).is_some() {
+                        return Ok(None);
+                    }
+                    self.tick(UNTIL_STEP);
+                }
+                Ok(Some(Stop::NoButton(name.clone())))
+            }
             Step::Harness(verb) => Ok(Some(Stop::Harness(verb.clone()))),
         }
+    }
+
+    /// Where the harness's `press` and `point` find the button `name` of the box over the front
+    /// ([`button_point`]), while one shows.
+    fn button(&self, name: &str, k: usize) -> Option<[i32; 2]> {
+        self.front
+            .as_ref()
+            .and_then(Front::question)
+            .and_then(|open| button_point(open, name, k))
     }
 
     /// The clock moved on: the start's reading of it.
@@ -714,7 +796,6 @@ impl Replay {
             Some(Front::Multiplayer(m)) => m.noticing(),
             Some(Front::Scenario(s)) => s.stubbed(),
             Some(Front::Play(p)) => p.noticing(),
-            Some(Front::Scores(s)) => s.noticing(),
             _ => false,
         }
     }

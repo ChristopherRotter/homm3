@@ -558,7 +558,6 @@ mod tests {
                 "shell.stub.play-refused",
                 "shell.stub.random-map",
                 "shell.stub.scenario",
-                "shell.stub.scores-reset",
                 "shell.stub.tutorial",
             ]
         );

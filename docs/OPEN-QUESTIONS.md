@@ -89,7 +89,18 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Client lane (`CLT-Q<n>`)
 
-(no open questions)
+#### CLT-Q158 — After Reset's OK the creatures show frame 0, then their counter's next frame (E27 M4 T1b, a reading)
+
+High Scores' Reset (`high_scores_proc`'s OK, 0x4EA4B3 and 0x4EA535; `docs/epics/E27-design.md`
+§35.1) gives every creature item its DEF again and frame 0, but leaves the dialog's frame
+counters (+0xA4) as they are; the next step (at most 200 ms later, at once when one is due at
+the close) shows each counter's next frame. So a creature that was at frame 5 shows frame 0 for
+up to a step, then frame 6: its animation skips. In `scores-reset` it does not show (the step
+follows the close before the next shot). Options: (a) the original's everywhere; (b) the
+client's profile also sets the counters to 0 (the creatures start over from frame 0, then 1),
+the original's for the comparisons; (c) the client's profile keeps each frame (no frame 0) where
+the creature's DEF does not change. **Recommended (a)** (it lasts at most one step after a rare
+action; either fix changes the look as much as it cures). Built as (a). Blocks nothing.
 
 ### Map client lane (`MCL-Q<n>`)
 

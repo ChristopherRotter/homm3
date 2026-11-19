@@ -111,16 +111,40 @@ fn the_steps_read_as_the_harness_reads_them() {
     );
     assert_eq!(read("settle:2.5"), Step::Pause);
     assert_eq!(read("wait:1"), Step::Pause);
-    for verb in [
-        "freeze",
-        "press",
-        "point",
-        "until-button",
-        "games-time",
-        "poke",
-    ] {
+    for verb in ["freeze", "games-time", "poke"] {
         assert_eq!(read(&format!("{verb}:x")), Step::Harness(verb.into()));
     }
+    // A box's buttons (E27 M4 T1b).
+    assert_eq!(
+        read("press:ok"),
+        Step::Button {
+            name: "ok".into(),
+            k: 0,
+            press: true
+        }
+    );
+    assert_eq!(
+        read("point:cancel:1"),
+        Step::Button {
+            name: "cancel".into(),
+            k: 1,
+            press: false
+        }
+    );
+    assert_eq!(
+        read("until-button:ok"),
+        Step::UntilButton {
+            name: "ok".into(),
+            limit: UNTIL_LIMIT
+        }
+    );
+    assert_eq!(
+        read("until-button:ok:30"),
+        Step::UntilButton {
+            name: "ok".into(),
+            limit: 30
+        }
+    );
 }
 
 #[test]
@@ -151,6 +175,11 @@ fn a_step_not_the_harness_s_is_refused() {
         "key-down:",
         "key-up:",
         "type:",
+        "press:",
+        "point::1",
+        "press:ok:x",
+        "until-button:",
+        "until-button:ok:x",
     ];
     for step in bad {
         assert!(parse(step).is_err(), "{step}");
@@ -492,28 +521,62 @@ fn what_the_viewer_cannot_do_stops_the_replay() {
         assert!(seen.is_empty(), "{steps:?}");
         assert_eq!(got, Some(Stop::NotBuilt(Screen::Credits)), "{steps:?}");
     }
-    // High Scores' Reset shows the client's notice (CLT-STUB-14): a shot under it stops.
-    let (_, got, r) = replay(
-        false,
-        &[
-            "until:main_menu",
-            "click:643,304",
-            "check:high_scores",
-            "click:746,213",
-            "move:1,2",
-        ],
-    );
-    assert_eq!((got, r.screen()), (None, Screen::HighScores));
-    let (_, got, _) = replay(
-        false,
-        &[
-            "until:main_menu",
-            "click:643,304",
-            "click:746,213",
-            "shot:question",
-        ],
-    );
-    assert_eq!(got, Some(Stop::Stub(Screen::HighScores)));
+}
+
+#[test]
+fn a_box_s_buttons_are_found_where_the_harness_s_probes_find_them() {
+    // `scores-reset`: High Scores' Reset asks its question (E27 M4 T1b), the original's box.
+    let opened = [
+        "until:main_menu",
+        "click:643,304",
+        "check:high_scores",
+        "click:746,213",
+    ];
+    let (seen, got, r) = replay(false, &[&opened[..], &["shot:question"]].concat());
+    assert_eq!((got, seen.len()), (None, 1));
+    let open = r.front().and_then(Front::question).unwrap();
+    let ok = super::button_point(open, "ok", 0).unwrap();
+    let cancel = super::button_point(open, "cancel", 0).unwrap();
+    // The probes' box (66 × 33, 66 × 32) from the button's frame, a pixel up and left of it.
+    let at = |id: u16| {
+        let dialog = &open.message.dialog;
+        dialog
+            .items
+            .iter()
+            .find_map(|i| match i {
+                h3_ui::ui::Item::Button(b) if b.id == id => {
+                    Some([dialog.place[0] + b.at[0], dialog.place[1] + b.at[1]])
+                }
+                _ => None,
+            })
+            .unwrap()
+    };
+    let [x, y] = at(crate::message::YES);
+    assert_eq!(ok, [x - 1 + 33, y - 1 + 16]);
+    let [x, y] = at(crate::message::NO);
+    assert_eq!(cancel, [x - 1 + 33, y - 1 + 16]);
+    // Another name, another place: none.
+    assert_eq!(super::button_point(open, "yes", 0), None);
+    assert_eq!(super::button_point(open, "ok", 1), None);
+    // `until-button` takes no time while it shows; `point` moves there, `press` clicks it.
+    let t = r.time();
+    let steps = [&opened[..], &["until-button:ok", "point:ok"]].concat();
+    let (_, got, r) = replay(false, &steps);
+    assert_eq!((got, r.pointer(), r.time()), (None, ok, t + INPUT_STEP));
+    let steps = [&opened[..], &["press:cancel"]].concat();
+    let (_, got, r) = replay(false, &steps);
+    assert_eq!(got, None);
+    assert!(r.front().and_then(Front::question).is_none());
+    // With no box: `press` and `point` stop; `until-button` waits its limit, then stops.
+    let no = Some(Stop::NoButton("ok".into()));
+    let (_, got, _) = replay(false, &["until:main_menu", "press:ok"]);
+    assert_eq!(got, no);
+    let (_, got, _) = replay(false, &["until:main_menu", "point:ok"]);
+    assert_eq!(got, no);
+    let (_, got, r) = replay(false, &["until:main_menu", "until-button:ok:30"]);
+    assert_eq!((got, r.time()), (no, 30));
+    let (_, got, _) = replay(false, &["until:main_menu", "click:643,304", "press:ok"]);
+    assert_eq!(got, Some(Stop::NoButton("ok".into())));
 }
 
 /// A start of three Smacker clips of `frames` frames each at 66.66 ms.
