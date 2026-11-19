@@ -256,6 +256,8 @@ fn start(situation: &str, speed: usize) -> Start {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        boats: Boats::default(),
+        water: Arc::default(),
     }
 }
 
@@ -400,7 +402,11 @@ fn the_walks_frames_are_m2_t3bs() {
             "flag-mine",
             "flag-mine-blue",
             "flag-lighthouse",
-            "flag-dwelling"
+            "flag-dwelling",
+            "board",
+            "board-walk",
+            "land",
+            "land-walk"
         ]
     );
 }
@@ -437,6 +443,8 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        boats: Boats::default(),
+        water: Arc::default(),
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -650,6 +658,8 @@ fn what_it_cannot_play_yet() {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        boats: Boats::default(),
+        water: Arc::default(),
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -795,6 +805,8 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        boats: Boats::default(),
+        water: Arc::default(),
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
 }
@@ -1445,6 +1457,8 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        boats: Boats::default(),
+        water: Arc::default(),
     }
 }
 
@@ -2059,6 +2073,8 @@ fn hovering(live: bool, bugs: Bugs) -> Loop {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        boats: Boats::default(),
+        water: Arc::default(),
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -3075,6 +3091,7 @@ fn a_hotkeys_up_during_a_hold_releases_its_button_in_the_client() {
 }
 
 mod asks;
+mod boats;
 mod choices;
 mod computers;
 mod finds;

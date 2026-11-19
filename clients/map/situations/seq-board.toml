@@ -1,0 +1,15 @@
+# A boat boarded by a key's step (E24 M4 T2d2; clients/map/sequences.toml `board`; E24 design §5.7):
+# `boats`' copy of Deluge's lake, an empty boat on the inlet (9, 12), given an open water picture,
+# turned down-left (facing 5); Red's hero on the coast (8, 12) steps right onto it: dissolved off
+# the land, the step, then the boat lifted as the hero's, in the boat's group mirrored by the
+# hero's facing. Red's town out of the way, so that no visit's scenario test warns of a town lost;
+# Blue's hero far off in the fog.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [4, 16], to = [22, 32], at = [0, 0] }]
+tiles = [{ at = [9, 12], terrain = "water", picture = 21 }]
+heroes = [{ at = [8, 12], class = 6 }, { at = [32, 32], owner = 1 }]
+towns = [{ at = [12, 26], faction = 0, owner = 0, buildings = "fort" }]
+boats = [{ at = [9, 12], kind = 1, facing = 5 }]
+view = [0, 4, 0]
+hidden = [[20, 20, 35, 35]]

@@ -40,11 +40,9 @@ reading and recordings, then the viewer's build, as T1b was).
   - **T2d1, a flag raised:** done 2026-11-18 (its entry in `QUEUE-ARCHIVE.md`; the log's "M4
     T2d1"; design §5.6). `Found::flag`, the owners in memory and `Minimap::owners` are T2d2's and
     T4's base.
-  - **T2d2, a boat boarded and left:** the step onto a boat (`hero_boards_boat` 0x4A1010: the
-    hero's picture becomes the boat's, the boat taken off the map, the day's points) and off it
-    onto a coast (`hero_lands_from_boat` 0x49E670, the landing in `hero_move_step` 0x480949 to
-    0x480B0C: the boat put on its water tile, facing the hero's), their sounds and the panels;
-    M2 left both out (design §3.5). **Depends on:** T1a.
+  - **T2d2, a boat boarded and left:** done 2026-11-19 (whole; its entry in `QUEUE-ARCHIVE.md`;
+    the log's "M4 T2d2"; design §5.7). The boarding's and landing's dissolves and the boat lifted
+    or put back are T2d3's base for Summon Boat and Scuttle Boat, and T4's for a record's boats.
   - **T2d3, a spell cast on the map:** a cast recorded (MCL-Q14: if the stale mana bar shows, the
     client shows the slot whole, the original's behind `--bugs original`); the spell book is M5's,
     so the recording needs a way past it (the harness's cast, or the frames under the book left
@@ -111,13 +109,6 @@ reading and recordings, then the viewer's build, as T1b was).
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
-
-- 2026-11-19 (the adventure lane, E08 T128, `adventure/e08-t128`, `cross-lane` with the user's
-  consent; **two lines in your files, nothing to do**): `h3-map-view`'s `situation.rs` and
-  `art/tests.rs` writer `Map` literals gain `banned_artifacts: Vec::new()`
-  (`h3_map::writer::Map::banned_artifacts`, E08 decision 375). The writer also writes the seven
-  trade classes as `Plain` objects (`TRADE_OBJECTS`; 213 and 221 refused in RoE) for your later
-  situations.
 
 - 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **the trades and
   services, for your planning; nothing to do now**): E08's increment 14 (design note
