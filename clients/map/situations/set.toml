@@ -288,3 +288,12 @@ why = "exact: Red's two heroes with their armies in the map (one named by it), R
 # The engine's start (`h3map.py engine`, E24 M4 T3b1): its live part and the whole screen the
 # capture's.
 engine = {}
+
+[[situation]]
+id = "engine-start-hover"
+differing = 0
+why = "exact: the pointer over a neutral town the map names (its hint and the arrow), Red's two heroes with their armies in the map, a monster, mines, visitables and a Shrine in sight (E24 M4 T3b2)"
+# The engine's start (`h3map.py engine`, E24 M4 T3b2): its live part, the mouse-over over every
+# explored tile and the whole screen with the pointer over the map the capture's, but the morale
+# of Mephala's Leadership the record lacks (MCL-Q36).
+engine = { differs = ["`status.morale` differs (MCL-Q36: the record has none)"], pixels = 157 }

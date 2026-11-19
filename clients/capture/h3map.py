@@ -619,6 +619,23 @@ def stage(situation_path, out, seed=None, sound=False):
             h3adv.wait_for(lambda: mem.status_shown() == sit["status"],
                            lambda: f"the status window's kind {sit['status']} built "
                                    f"({mem.status_shown()} shown)")
+        # A still's pointer over the view (E24 M4 T3b2, design §5.11): the selected hero's cost
+        # of its tile read first (`look_over_view`: the pathfinder stops at the tile looked at),
+        # then the mouse moved there last, its hint and cursor shown.
+        if "pointer" in sit:
+            point = tuple(sit["pointer"])
+            # Off the scroll zones, and where the original's tile (the screen's point by 32) is
+            # the drawn one's (MCL-Q18: the last 8 pixel rows and columns of a drawn tile differ).
+            if (not over_view(point) or in_scroll_zone(point)
+                    or point[0] % 32 < 8 or point[1] % 32 < 8):
+                raise ValueError(f"{situation_path}: the pointer {point} is not inside a drawn "
+                                 "tile of the view off the scroll zones")
+            look_over_view(game, mem, sit, [point])
+            tile = (vx + point[0] // 32, vy + point[1] // 32)
+            game.move(*point)
+            h3adv.wait_for(lambda: mem.mouse_tile()[:2] == tile,
+                           lambda: f"the mouse over the view's tile {tile}")
+            time.sleep(0.5)
     except BaseException:
         game.stop()
         raise
@@ -799,7 +816,8 @@ def live_part(mem, sit, turn, k, k_rivers, kingdom=None):
     check_staged(sit, turn, heroes, boats)
     # The game's facts the mouse-over reads (E24 M3 T6a1; design §4.10), a table of its own last.
     hover = mem.hover(mem.current_player(), ids_from("HOTRAITS.TXT", 2),
-                      ids_from("TownName.txt", 0), sit["view"][2], getattr(mem, "reach", None))
+                      ids_from("TownName.txt", 0), sit["view"][2], getattr(mem, "reach", None),
+                      OWN_TOWN_NAMES)
     # What choosing each hero and town shows (E24 M3 T6b1), a table before the last.
     chosen = chosen_toml(mem, heroes) if getattr(mem, "chosen", None) else ""
     return ("".join(f"{key} = {value}\n" for key, value in live.items()) + chosen

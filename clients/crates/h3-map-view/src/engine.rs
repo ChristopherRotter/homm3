@@ -46,9 +46,11 @@ use h3_protocol::{PROTOCOL_VERSION, RECORD_FORMAT_VERSION, codec};
 use toml::{Table, Value};
 
 use crate::art::MapArt;
-use crate::live::{BOAT_CLASS, HERO_CLASS, owner};
+use crate::live::{BOAT_CLASS, HERO_CLASS, TOWN_CLASS, owner};
 use crate::objects;
+use crate::tables::{CAPITOL, FORT, TownArt};
 
+mod hover;
 mod panels;
 
 /// A random hero (class 70): the import places it as a hero, not a static object.
@@ -248,7 +250,7 @@ pub struct Start {
 
 /// The live part of `loaded`'s first observation (the module's documentation), its map's art
 /// `art` (`MapArt::from_raw` of `loaded.raw`), the game's templates `templates` (`Objects.txt`:
-/// a random monster's picture) under `rules`.
+/// a random monster's picture) and towns' pictures `town_art` (`[map.towns]`) under `rules`.
 ///
 /// # Errors
 /// [`Refused::NoStart`]; [`Refused::Setup`]; an object the file does not hold where the view
@@ -257,6 +259,7 @@ pub fn start(
     loaded: &Loaded,
     art: &MapArt,
     templates: &[ObjectTemplate],
+    town_art: &TownArt,
     rules: &GameRuleset,
 ) -> Result<Start, Refused> {
     let observation = loaded.first()?;
@@ -283,14 +286,15 @@ pub fn start(
         return Err(Refused::Setup);
     }
     let mut defs: Vec<Value> = Vec::with_capacity(count);
-    let mut classes: Vec<Value> = Vec::with_capacity(count);
+    let mut drawn: Vec<(u32, u32)> = Vec::with_capacity(count);
     for index in 0..count {
         let (def, (c, s)) = objects::template(art, index).map_or((String::new(), (0, 0)), |t| {
             (t.def.clone(), (t.class, t.subclass))
         });
         defs.push(Value::String(def));
-        classes.push(pair(c, s));
+        drawn.push((c, s));
     }
+    let mut views: Vec<Option<&Object>> = vec![None; count];
     let mut owners: Vec<Value> = loaded
         .raw
         .objects
@@ -308,13 +312,21 @@ pub fn start(
         taken[k] = true;
         let index = kept[k];
         seen[index] = true;
+        views[index] = Some(object);
         owners[index] = Value::Integer(object.owner.map_or(Ok(-1), colour)?);
         let became = class(index).and_then(|(c, _)| became(c, object, rules, templates));
         if let Some((def, c, s)) = became {
             defs[index] = Value::String(def);
-            classes[index] = pair(c, s);
+            drawn[index] = (c, s);
+        }
+        // A town's picture by its faction and its view's fort and Capitol (E24 M4 T3b2); a
+        // random town a town of its faction, as the original's copy (design §2.9).
+        if let Some((def, faction)) = town_picture(observation, object, town_art) {
+            defs[index] = Value::String(def.into());
+            drawn[index] = (TOWN_CLASS, faction);
         }
     }
+    let classes: Vec<Value> = drawn.iter().map(|&(c, s)| pair(c, s)).collect();
     let mut heroes = Vec::new();
     for hero in &observation.adventure.heroes {
         let class = observation
@@ -366,7 +378,34 @@ pub fn start(
     table.insert("explored".to_string(), explored(observation, art));
     // The panels (E24 M4 T3b1, design §5.10).
     panels::insert(&mut table, observation, &loaded.raw, art, rules);
+    // The mouse-over's facts (E24 M4 T3b2, design §5.11).
+    let sight = hover::Sight {
+        views,
+        classes: drawn,
+    };
+    let facts = hover::table(observation, &loaded.raw, art, rules, &sight);
+    table.insert("hover".to_string(), Value::Table(facts));
     Ok(Start { table, seen })
+}
+
+/// The picture of the town `object` (its view among `observation`'s towns) by its faction and
+/// its view's fort and Capitol (`town_art`'s lists: a Capitol's, a Fort's to a Castle's, a
+/// village's; design §2.9), the buildings the original's picture reads (0x4C9ADE); none for
+/// another object or a faction without one; with its faction.
+fn town_picture<'a>(
+    observation: &GameObservation,
+    object: &Object,
+    town_art: &'a TownArt,
+) -> Option<(&'a str, u32)> {
+    let town = observation
+        .towns
+        .iter()
+        .find(|t| Some(t.town) == object.town)?;
+    let bit = |id: u32| 1u64 << id;
+    let built =
+        if town.capitol { bit(CAPITOL) } else { 0 } | if town.fort > 0 { bit(FORT) } else { 0 };
+    let faction = u32::from(town.faction);
+    town_art.picture(faction, built).map(|def| (def, faction))
 }
 
 /// The entry of `entries` not yet `taken` that `object` is: its type, anchor and masks; else one

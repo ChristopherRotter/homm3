@@ -132,7 +132,7 @@ fn the_facts_read_from_the_live_parts_table() {
     assert_eq!(f.words[3], Some(7));
     assert_eq!(f.words[6], None);
     assert_eq!(f.armed[..3], [true, false, true]);
-    assert_eq!(f.towns, [(5, 0)]);
+    assert_eq!(f.towns, [(TownName::Record(5), 0)]);
     assert_eq!(f.heroes, [(16, false), (20, true), (32, false)]);
     assert_eq!(f.hero_list, [(16, 2, false), (20, 3, true)]);
     assert_eq!(f.town_list, [0]);
@@ -327,7 +327,13 @@ fn the_hint_by_the_tile_its_object_records() {
             own_name: false
         }
     );
-    assert_eq!(hint(2, 2), Hint::Town { name: 5, kind: 0 });
+    assert_eq!(
+        hint(2, 2),
+        Hint::Town {
+            name: TownName::Record(5),
+            kind: 0
+        }
+    );
     assert_eq!(
         hint(5, 4),
         Hint::Monster {
@@ -589,7 +595,13 @@ fn a_hints_text() {
     };
     assert_eq!(text(hero(16, false)), "Mephala the Ranger");
     assert_eq!(text(hero(20, true)), "Own the Ranger");
-    assert_eq!(text(Hint::Town { name: 5, kind: 0 }), "Arcton, Castle");
+    assert_eq!(
+        text(Hint::Town {
+            name: TownName::Record(5),
+            kind: 0
+        }),
+        "Arcton, Castle"
+    );
     let monster = |creature, count| Hint::Monster { creature, count };
     assert_eq!(text(monster(13, 4)), "A few Archangels");
     assert_eq!(text(monster(13, 5)), "Several Archangels");
@@ -600,10 +612,18 @@ fn a_hints_text() {
     assert_eq!(text(hero(200, false)), " the Ranger");
     assert_eq!(
         text(Hint::Town {
-            name: 999,
+            name: TownName::Record(999),
             kind: 12
         }),
         ", "
+    );
+    // E24 M4 T3b2: a town the map names.
+    assert_eq!(
+        text(Hint::Town {
+            name: TownName::Own("Brightmoor".into()),
+            kind: 0
+        }),
+        "Brightmoor, Castle"
     );
     let visits = |bonus, visited| Hint::Visits {
         class: 46,
@@ -710,7 +730,10 @@ fn the_panels_hint_by_its_item() {
     assert_eq!(hint(Some(id::FRAMES + 2)), Hint::Empty);
     assert_eq!(
         hint(Some(id::TOWN_PICTURES)),
-        Hint::Town { name: 5, kind: 0 }
+        Hint::Town {
+            name: TownName::Record(5),
+            kind: 0
+        }
     );
     assert_eq!(hint(Some(id::TOWN_PICTURES + 1)), Hint::Empty);
     // Without facts the slots name nothing.
@@ -739,4 +762,91 @@ fn a_held_buttons_box() {
     assert!(panels.holds(3, [679, 196]) && panels.holds(3, [710, 227]));
     assert!(!panels.holds(3, [711, 212]) && !panels.holds(3, [695, 228]));
     assert!(!panels.holds(999, [695, 212]));
+}
+
+#[test]
+fn a_town_named_by_its_map_in_the_facts() {
+    let text = FACTS.replace("towns = [[5, 0]]", r#"towns = [["Brightmoor", 0], [6, 1]]"#);
+    let value: toml::Value = toml::from_str(&text).unwrap();
+    let f = Facts::read(&value, 12, 3, 8, 1).unwrap();
+    assert_eq!(
+        f.towns,
+        [
+            (TownName::Own("Brightmoor".into()), 0),
+            (TownName::Record(6), 1)
+        ]
+    );
+}
+
+#[test]
+fn two_mouse_overs_compared_over_every_tile() {
+    let (art, live, hover) = fixture(false);
+    let t = texts();
+    let names = BTreeMap::new();
+    let k = kingdom();
+    // The selected hero: the list's first (A) where the live part has it, with its points.
+    assert_eq!(
+        hover.start_selection(&k),
+        Some(Selection {
+            id: 16,
+            at: pos(4, 3),
+            lifted: false,
+            points: 0,
+        })
+    );
+    let town = Kingdom {
+        selected: Selected::Town(0),
+        ..kingdom()
+    };
+    assert_eq!(hover.start_selection(&town), None);
+    let far = Kingdom {
+        selected: Selected::Hero(9),
+        ..kingdom()
+    };
+    assert_eq!(hover.start_selection(&far), None);
+    assert!(hover.differences(&k, &hover, &k, &names, &t).is_empty());
+    // Another start: the town renamed, the monster's count a word lower, the garrison unarmed,
+    // a tile unexplored, nothing selected.
+    let mut other = live.clone();
+    let mut facts = other.hover.clone().unwrap();
+    facts.towns[0].0 = TownName::Record(999);
+    facts.words[3] = Some(1);
+    facts.armed[2] = false;
+    other.hover = Some(facts);
+    other.explored.set(0, 7, 0, false);
+    let lists = [DrawLists::build(&art, &other, &shapes_of(&art), 0).unwrap()];
+    let theirs = Hover::new(&art, &other, &tables().records, &lists).unwrap();
+    let found = hover.differences(&k, &theirs, &town, &names, &t);
+    assert_eq!(found[0], "the selected hero differs");
+    assert!(found.iter().any(|f| f.contains("(5, 4, 0)")), "{found:?}");
+    assert!(
+        found.iter().any(|f| f.ends_with("tiles' explored differ")),
+        "{found:?}"
+    );
+    assert!(
+        found.iter().any(|f| f.starts_with("the cursor over")),
+        "{found:?}"
+    );
+    // Past the named tiles' count the rest are counted.
+    let mut many = live.clone();
+    let mut facts = many.hover.clone().unwrap();
+    facts.heroes = vec![(99, false); 3];
+    facts.hero_list.clear();
+    facts.towns.clear();
+    facts.words = vec![Some(4095); facts.words.len()];
+    facts.visits = vec![
+        Visit {
+            known: true,
+            visited: Some(true),
+        };
+        facts.words.len()
+    ];
+    many.hover = Some(facts);
+    let lists = [DrawLists::build(&art, &many, &shapes_of(&art), 0).unwrap()];
+    let theirs = Hover::new(&art, &many, &tables().records, &lists).unwrap();
+    let found = hover.differences(&k, &theirs, &k, &names, &t);
+    assert!(
+        found.iter().any(|f| f.ends_with("more hints differ")),
+        "{found:?}"
+    );
 }

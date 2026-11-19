@@ -129,6 +129,11 @@ pub struct Situation {
     /// the live part's `[chosen]` (the viewer takes it from there, not from here).
     #[serde(default)]
     pub choose: bool,
+    /// The point of the screen the harness moves the mouse to last, over the view (E24 M4 T3b2,
+    /// design §5.11): the still shows the map's hint and cursor there, the selected hero's cost of
+    /// that tile read as a sequence's (`look_over_view`); none the parking over the right panel.
+    #[serde(default)]
+    pub pointer: Option<[i32; 2]>,
 }
 
 /// What the viewer knows of the object anchored on a tile (E24 M3 T6a2a): whether Red knows its

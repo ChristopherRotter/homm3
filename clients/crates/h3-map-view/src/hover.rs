@@ -36,12 +36,12 @@ use serde::Deserialize;
 use crate::art::MapArt;
 use crate::layout::AdventureLayout;
 use crate::lists::SLOTS;
-use crate::live::{Buttons, Explored, Kingdom, Live};
+use crate::live::{Buttons, Explored, Kingdom, Live, Selected, TownName};
 use crate::objects::{self, DrawLists, Entry};
 use crate::panels::{self, id};
 use crate::record::Records;
 use crate::status::{hero_key, town_key};
-pub use contents::{BankMark, Content, Guards, Quest, Teach};
+pub use contents::{BankMark, Content, Guards, Quest, SEVERAL, Teach};
 
 /// The terrain code of water (8).
 pub const WATER: u8 = crate::art::WATER;
@@ -92,8 +92,8 @@ pub struct Facts {
     /// 0x5BDFE0: a garrisoned or visiting hero's army, else its own) or a garrison (its army).
     pub armed: Vec<bool>,
     /// The game's towns by index: each one's name (a record of `TownName.txt`, the catalogue's
-    /// `town-name` family) and type.
-    pub towns: Vec<(u16, u8)>,
+    /// `town-name` family; since E24 M4 T3b2 the map's own) and type.
+    pub towns: Vec<(TownName, u8)>,
     /// Per hero of the live part's (`Live::heroes`, in its order), its record's index (its type,
     /// whose name is the `hero` family's) and whether its name is the map's own.
     pub heroes: Vec<(u8, bool)>,
@@ -139,7 +139,7 @@ pub struct Visit {
 struct Written {
     words: Vec<i64>,
     armed: Vec<u8>,
-    towns: Vec<(u16, u8)>,
+    towns: Vec<(WrittenName, u8)>,
     hero_ids: Vec<(u8, u8)>,
     hero_list: Vec<(u8, u8, u8)>,
     town_list: Vec<usize>,
@@ -153,10 +153,22 @@ struct Written {
     contents: contents::Written,
 }
 
+/// A town's name as the `[hover]` table writes it: a record of `TownName.txt`, or the map's own
+/// (E24 M4 T3b2: a situation's own text in a comparison's, as the status window's).
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum WrittenName {
+    /// A record.
+    Record(u16),
+    /// The map's own.
+    Own(String),
+}
+
 impl Facts {
     /// The facts of the live part's `[hover]` table for a map of `size` and `levels` with
     /// `objects` objects and `heroes` heroes: `words` (one per object, -1 none), `armed` (one
-    /// per object, 0 or 1), `towns` (`[[name, type], ...]` by the game's town index),
+    /// per object, 0 or 1), `towns` (`[[name, type], ...]` by the game's town index, a name a record or since E24 M4
+    /// T3b2 the map's own text),
     /// `hero_ids` (`[[index, own name], ...]`, one per live hero), `hero_list` (`[[index,
     /// class, own name], ...]`), `town_list` (town indices), `teams` (eight), `guarded` (a
     /// string per row of every level in turn, `1` guarded), `reach` (`[[x, y, cost], ...]`
@@ -205,7 +217,17 @@ impl Facts {
                 })
                 .collect::<Option<_>>()?,
             armed: w.armed.into_iter().map(flag).collect::<Option<_>>()?,
-            towns: w.towns,
+            towns: w
+                .towns
+                .into_iter()
+                .map(|(name, kind)| {
+                    let name = match name {
+                        WrittenName::Record(record) => TownName::Record(record),
+                        WrittenName::Own(own) => TownName::Own(own),
+                    };
+                    (name, kind)
+                })
+                .collect(),
             heroes: w
                 .hero_ids
                 .into_iter()
@@ -339,8 +361,8 @@ pub enum Hint {
     },
     /// A town's name and its type's (`map.hint.town`).
     Town {
-        /// Its name (a record of `TownName.txt`).
-        name: u16,
+        /// Its name (a record of `TownName.txt`, or the map's own).
+        name: TownName,
         /// Its type.
         kind: u8,
     },
@@ -483,9 +505,13 @@ impl Hint {
                 let args = Args::new().text("name", &name).text("class", &class);
                 texts.text("map.hint.hero", &args)
             }
-            Self::Town { name, kind } => {
+            Self::Town { ref name, kind } => {
+                let name = match name {
+                    TownName::Record(record) => named(&town_key(*record)),
+                    TownName::Own(own) => own.clone(),
+                };
                 let args = Args::new()
-                    .text("name", &named(&town_key(name)))
+                    .text("name", &name)
                     .text("type", &named(&alloc::format!("town-type.{kind}")));
                 texts.text("map.hint.town", &args)
             }
@@ -808,7 +834,10 @@ impl Hover {
                         .towns
                         .get(usize::try_from(w).unwrap_or(usize::MAX))
                 })
-                .map_or(Hint::Empty, |&(name, kind)| Hint::Town { name, kind }),
+                .map_or(Hint::Empty, |(name, kind)| Hint::Town {
+                    name: name.clone(),
+                    kind: *kind,
+                }),
             MONSTER if tile.entrance => Hint::Monster {
                 creature: tile.subclass,
                 count: tile.word.unwrap_or(0) & COUNT,
@@ -1128,6 +1157,95 @@ pub const SHIPWRECK: u32 = 85;
 /// The coast's class (3).
 pub const COAST: u32 = 3;
 
+impl Hover {
+    /// The selected hero at a still's start as `kingdom` gives it (E24 M4 T3b2): the hero list's
+    /// selected one ([`Facts::hero_list`]) where the live part's heroes have it, with its points;
+    /// none for a town, nothing or a hero the live part does not have.
+    #[must_use]
+    pub fn start_selection(&self, kingdom: &Kingdom) -> Option<Selection> {
+        let Selected::Hero(i) = kingdom.selected else {
+            return None;
+        };
+        let id = self.facts.hero_list.get(i)?.0;
+        let at = self.heroes.iter().find(|h| h.id == id)?.at;
+        Some(Selection {
+            id,
+            at,
+            lifted: false,
+            points: kingdom.heroes.get(i).map_or(0, |h| h.points),
+        })
+    }
+
+    /// What differs between this mouse-over and `theirs` over every tile either has explored
+    /// (E24 M4 T3b2: a record's start against a capture's): whether it is explored, the hint's
+    /// text (by `names` and `texts`, the hero names the map gives) and the cursor's frame and
+    /// action, each with its selected hero by its own `kingdom`. Each tile that differs in a
+    /// hint is named with both texts, the first [`NAMED`]; the cursors that differ are counted.
+    #[must_use]
+    pub fn differences(
+        &self,
+        kingdom: &Kingdom,
+        theirs: &Self,
+        their_kingdom: &Kingdom,
+        names: &BTreeMap<u8, String>,
+        texts: &Catalogue,
+    ) -> Vec<String> {
+        let (ours_selected, theirs_selected) = (
+            self.start_selection(kingdom),
+            theirs.start_selection(their_kingdom),
+        );
+        let mut found = Vec::new();
+        if ours_selected != theirs_selected {
+            found.push(String::from("the selected hero differs"));
+        }
+        let (mut hints, mut cursors, mut explored) = (0usize, 0usize, 0usize);
+        let side = to_i32(self.size);
+        for z in 0..to_i32(self.levels) {
+            for y in 0..side {
+                for x in 0..side {
+                    let at = [x, y, z];
+                    let seen = self.explored(at);
+                    if seen != theirs.explored(at) {
+                        explored += 1;
+                        continue;
+                    }
+                    if !seen {
+                        continue;
+                    }
+                    let a = self.hint(at, false, ours_selected).text(names, texts);
+                    let b = theirs.hint(at, false, theirs_selected).text(names, texts);
+                    if a != b {
+                        hints += 1;
+                        if hints <= NAMED {
+                            found.push(alloc::format!(
+                                "the hint over ({x}, {y}, {z}) differs: {a:?}, not {b:?}"
+                            ));
+                        }
+                    }
+                    if self.cursor(at, ours_selected, true)
+                        != theirs.cursor(at, theirs_selected, true)
+                    {
+                        cursors += 1;
+                    }
+                }
+            }
+        }
+        if explored > 0 {
+            found.push(alloc::format!("{explored} tiles' explored differ"));
+        }
+        if hints > NAMED {
+            found.push(alloc::format!("{} more hints differ", hints - NAMED));
+        }
+        if cursors > 0 {
+            found.push(alloc::format!("the cursor over {cursors} tiles differs"));
+        }
+        found
+    }
+}
+
+/// How many tiles whose hints differ [`Hover::differences`] names.
+pub const NAMED: usize = 5;
+
 /// The days a path of `cost` takes beyond today with `points` left and `day` points a day
 /// (0x40E98F): 0 within the points, else one more for each day's points beyond, at most 3.
 #[must_use]
@@ -1316,7 +1434,10 @@ pub fn panel_hint(item: Option<u16>, kingdom: &Kingdom, facts: Option<&Facts>) -
                     .get(towns_top.saturating_add(usize::from(item - 32)))?;
                 f.towns.get(*town)
             })
-            .map_or(Hint::Empty, |&(name, kind)| Hint::Town { name, kind });
+            .map_or(Hint::Empty, |(name, kind)| Hint::Town {
+                name: name.clone(),
+                kind: *kind,
+            });
     }
     match item {
         1..=14 => Hint::Panel(u8::try_from(item - 1).unwrap_or(0)),
