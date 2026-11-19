@@ -5305,3 +5305,43 @@ and `check-lane --base origin/master`; `shared/e09-t41-readme` `check-lane` and 
 pull requests is the record.
 
 **The queue:** T41 out; T42 next, T43 queued. Ids: decisions next 165, questions `TWN-Q31`.
+
+### T42a — the survey's first part: what the guild holds (2026-11-19)
+
+One session, the user present at the start; branch `town/e09-t42a`, docs only. Starting point:
+`master` at 7dbe195 (CI green there). The setup's baseline had run on 0d91fe8, whose coverage
+and determinism steps failed only on the six taverns replays' `import_version` (#1053 recorded at
+v26 while #1054 took v27); the adventure lane's 7dbe195 re-recorded them, and the session moved
+its branch onto it. The user's computer was connected at the start only: 68 files staged (the
+four LODs, the executables, the DLLs, sounds and videos, `maps.tar`, `extracted.tar`, the 40 MP3s,
+the three saved games, the four manuals and three help files), SHA-256 checked against the PC's.
+**At its start** (the user, `AskUserQuestion`): T42 cut in two, the guild first (decision 165).
+
+**Read** (survey `docs/rules/surveys/E09-guild.md` §2 to §6; `docs/exe/map.toml`): the spell
+table's load (`spell_table_load` 0x59E090, `spell_row_load` 0x59E150: the nine town chances at
+the record's +0x44), the draw again at its details (`town_setup_spells` 0x5BE600), the map's two
+spell sets (`load_town_body`, its spells part), the guild's part of `town_build_effects`, the
+Aurora's branch of `town_heroes_learn_spells` again, the guild's window (`mage_guild_open`
+0x5CE560 with the spell book's offer, `mage_guild_dialog_fill` 0x5D6EF0). Five new map entries,
+five changed; `structs.toml`: the spell record's +0x44, the town record's +0x70 read and +0x7C.
+
+**Found** (§0): the weights are `SPTRAITS.TXT`'s columns, summing to 100 at each level a faction
+reaches; every town draws all five levels' slots and the spare at the new game, required spells
+first (whatever their weight), banned ones never; the counts follow every build; the exact
+chances match the wiki's table to the percent; the Aurora teaches every spell the town does not
+ban up to Wisdom's + 2 whatever the guild's level, the map-wide bans not tested (T-18). VCMI: the
+same in law, but a required spell even when banned (TD-25) and the Aurora by the map's bans, not
+the town's (TD-26). Batch TWN-5's three rows from this part for T42b (§9).
+
+**The census** (§1, a throwaway example over `h3_map::read` and a script, not committed): 32 towns
+with required spells (never more than a level shows), one requiring a spell it bans (`Faeries`);
+396 towns banning spells, the 14 random towns of `Heroes of Might not Magic` and its Allied
+version the only short pools; 249 guilds at the start (34 at level 5), 5 Libraries, no fixed
+Conflux, 5 random towns on AB or SoD maps with the Grail building.
+
+**Verify:** the engine's code is `master`'s. `cargo xtask verify --scope town --summary
+--with-original-data` on the branch with no failing step (coverage 15.1 minutes, determinism 4.0,
+bench-check 9.9, original-data 0.5; `deny` and `ffi-smoke` skipped by the scope); `check-exe-map`,
+`scripts/exe.py check` and `cited` (every address covered), `doc-drift` and `check-lane` against
+`origin/master`. CI on the pull request is the record. **The queue:** T42 becomes T42b, then T43. Ids: decisions next 166; disputes `TD-27`;
+quirk candidates `T-19`; questions `TWN-Q31` (T42b's checkpoint).

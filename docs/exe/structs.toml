@@ -300,6 +300,7 @@ fields = [
   { offset = 0xC, name = "flags", type = "u32", summary = "flag bits (installation.md §7.6); 0x2000 (only 57, Titan's Lightning Bolt) bans the spell in every game (new_game_bans 0x4C286C)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.5"] },
   { offset = 0x18, name = "level", type = "i32", summary = "the spell's level 1-5 (from SPTRAITS.TXT; H3API level): a reward's and the Pyramid's spell is learned at most at 2 + Wisdom (0x4A059D, 0x4A442A)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4", "rules/surveys/E08-rewards.md §7.5"] },
   { offset = 0x1C, name = "school", type = "u32", summary = "the spell's school bits (from SPTRAITS.TXT; H3API school): 0 none; the Pyramid's draw takes only spells with one (0x4C1A17)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.5"] },
+  { offset = 0x44, name = "town_chances", type = "i32[9]", summary = "the spell's weight in each faction's guild draw, Castle to Conflux (SPTRAITS.TXT fields 16 to 24, spell_row_load 0x59E150; town_setup_spells 0x5BE600 reads +0x44 + 4 x faction; E09 T42a)", confidence = "read", refs = ["rules/surveys/E09-guild.md §2"] },
 ]
 
 [[struct]]
@@ -1003,7 +1004,8 @@ fields = [
   { offset = 0x38, name = "garrison_counts", type = "i32[7]", summary = "the garrison's counts; 0 an empty slot", confidence = "read", refs = ["rules/surveys/E09-towns.md §5.2"] },
   { offset = 0x54, name = "custom_name", type = "u8", summary = "set when the map names the town (its name at +0x58); else setup_towns draws one from the faction's list", confidence = "read", refs = ["rules/surveys/E09-towns.md §2.4"] },
   { offset = 0x68, name = "faction", type = "i32", summary = "the town's faction: the template's subclass, a random town's resolved one", confidence = "read", refs = ["rules/surveys/E09-towns.md §2.3"] },
-  { offset = 0x70, name = "spells", type = "bytes[12]", summary = "copied into the town's +0xD4 (town_setup 0x5C089A); not read", confidence = "inferred", refs = ["rules/surveys/E09-towns.md §5.1"] },
+  { offset = 0x70, name = "spells", type = "bytes[12]", summary = "the banned spells, a 70-bit set (the map's second 9 bytes, every version; load_town_body 0x5019F0, E09 T42a): copied into the town's +0xD4 (town_setup 0x5C089A)", confidence = "read", refs = ["rules/surveys/E09-towns.md §5.1", "rules/surveys/E09-guild.md §3.4"] },
+  { offset = 0x7C, name = "required_spells", type = "bytes[12]", summary = "the required spells, a 70-bit set (the map's first 9 bytes, AB and SoD; none on an RoE map; load_town_body 0x5019F0, E09 T42a): each slot of the guild's draw takes the first of its level not excluded (town_setup_spells 0x5BE600)", confidence = "read", refs = ["rules/surveys/E09-guild.md §3.2"] },
 ]
 
 [[struct]]

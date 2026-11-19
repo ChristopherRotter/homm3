@@ -10,17 +10,19 @@ Epic: `docs/epics/E09-towns.md` (increment 5: the mage guild, refined at T41, `T
 task's cut confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`).
 
-**E09 T42 — increment 5's survey** (round 1, decision 163), with its checkpoint (`TWN-Q31`): the
-code reading of `Heroes3.exe` (the guild's draw into its levels by the spells' town chances,
-`SPTRAITS.TXT`'s columns to harvest, RoE's without Conflux; a town's required and banned spells
-from the map; the faction's highest level and the Tower's Library; learning at a visit, at the
-start and at a hire with the spell book and Wisdom, `town_heroes_learn_spells` 0x5BE030,
-`TWN-STUB-6`'s dispute with VCMI, `TWN-STUB-15`; the spell book; the spell points restored in a
-town; the Dungeon's Mana Vortex; the Conflux's Aurora Borealis placed with the guild or the
-Grail); VCMI 1.7.5 and the wiki compared; a census of the 160 shipped maps (the towns' required
-and banned spells, the guilds standing at the start, the heroes with a spell book in a main
-town); batch TWN-5's rows proposed. The survey `docs/rules/surveys/E09-guild.md`. Needs
-`Heroes3.exe` and `extracted.tar` staged. **Status:** next.
+**E09 T42b — increment 5's survey, its second part** (round 1, decisions 163, 165), with the
+checkpoint over both parts (`TWN-Q31`): what a hero gets from the guild. The code reading of
+`Heroes3.exe`: learning at each of `town_heroes_learn_spells` 0x5BE030's nine callers (a visit,
+the start `TWN-STUB-6` with its dispute TD-10, a hire `TWN-STUB-15`, a build, the guild's
+window, `hero_relocate_spell` 0x41D360 and `town_castle_gate` 0x5D8480 (both names inferred),
+the computer's visit, one caller not named yet), with the
+spell book and Wisdom's bound; the spell book (bought at the guild: `mage_guild_open` 0x5CE560,
+read by T42a, survey §6; elsewhere); the spell points restored in a town with a guild; the
+Dungeon's Mana Vortex (the map's bit 18); VCMI 1.7.5 and the wiki compared; the heroes' census
+(the main towns' heroes with a spell book, the heroes standing in towns with a guild); batch
+TWN-5's rows (T42a's three in §9 with this part's); the survey `docs/rules/surveys/E09-guild.md`
+from §10, its §0 findings for this part, the disputes TD-25, TD-26 and quirk candidate T-18 for
+the checkpoint. Needs `Heroes3.exe` and `extracted.tar` staged. **Status:** next.
 
 **E09 T43 — the drafts** (round 1, decision 163): the ADR amendment drafts
 (`docs/lanes/town/adr-drafts/`), the design note's Part G (`E09-design.md`, from §82), the cut
@@ -179,7 +181,8 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   classes' tavern weights (RoE lacks the Conflux column: an override kind or a per-faction table).
   Increment 4, the Tavern (weights: only the tavern's draw reads them, survey `E09-towns.md`
   §4.4; read by T32: `E09-tavern.md` §2.2, the Complete's file has the nine columns, harvested by T36),
-  increment 5 (chances: T42, `SPTRAITS.TXT`'s columns).
+  increment 5 (chances: read by T42a, survey `E09-guild.md` §2: the nine columns at the spell
+  record's +0x44; their home in the packs is T43's call, §2.3).
 - (ADR-0013 point 13.6; E08 decision 199, A-30) The Castle's Lighthouse building (sea movement).
   Increment 6, the services (decision 162).
 - (adventure archive, 2026-10-14, T19a2b) The Necropolis buildings' +10/+20 % Necromancy
