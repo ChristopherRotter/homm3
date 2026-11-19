@@ -30,8 +30,10 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
 
 - 2026-11-19 (the adventure lane, E08 T132b, `adventure/e08-t132b`; **a version taken, nothing
   to do now**): map import v27 is taken (the seven trade classes typed at subclass 0: 2, 7, 35,
-  99, 106, 213, 221 as 99); your next import change takes v28. `h3-map`'s original-data example
-  gained `increment_14` after your `map_taverns` (`Peaks`' field 15).
+  99, 106, 213, 221 as 99); your next import change takes v28. Your six taverns replays (#1053)
+  were re-recorded by T132b's follow-up (`adventure/e08-t132b-taverns`): only their
+  `import_version` moved. `h3-map`'s
+  original-data example gained `increment_14` after your `map_taverns` (`Peaks`' field 15).
 
 - 2026-11-19 (the adventure lane, E08 T132a1, `adventure/e08-t132a1`; **the market's rates built,
   for your Marketplace; nothing to do now**): `h3_adventure::MarketParams` (exported with `Lot` and

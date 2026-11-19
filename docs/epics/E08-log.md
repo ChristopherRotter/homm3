@@ -20074,6 +20074,11 @@ census is the import's check), `cross-lane` with the user's consent for `h3-serv
   fixture map holds one of the seven. `h3-server`'s `tests::record` `import` case edits 27 to 26
   (`cross-lane`; the server lane's inbox told); `h3-protocol`'s `tests::game_fold`,
   `tests::game_session`, `h3-server`'s `tests::record` and `h3-cli`'s `adventure_replays` pass.
+  **Master red, fixed:** the town lane's #1053 merged while #1054's CI ran, adding six taverns
+  replays at import v26 (`e09-taverns-36.h3m` holds none of the seven); #1054 merged green but
+  left `master` b8b9e2a failing `h3-cli`'s `adventure_replays` on their `import_version`. A
+  follow-up pull request (`adventure/e08-t132b-taverns`) re-recorded the 104 from their commands:
+  only the six's `import_version` moved (`TRAPS.md`).
 - **Docs:** design note §7's *As built*; decision 382 and the task's line; survey §1's *Checked*;
   `h3m.md`'s import (the heading at v27, the Tavern's line of E09 T39a, increment 14's trades,
   T132b's census); ADV-OBJ-002, ADV-MKT-001, ADV-ALT-001, ADV-HFT-002 and ADV-WMF-001 amended;
