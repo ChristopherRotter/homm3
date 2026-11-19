@@ -156,12 +156,11 @@ impl ThievesGuildView {
                 place,
             })
         });
-        let players = (self.players.iter().enumerate()).map(move |(index, &shown)| {
-            GuildPart::Player {
+        let players =
+            (self.players.iter().enumerate()).map(move |(index, &shown)| GuildPart::Player {
                 of: of(index),
                 shown,
-            }
-        });
+            });
         places.chain(players)
     }
 }

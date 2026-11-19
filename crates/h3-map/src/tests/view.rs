@@ -1868,6 +1868,12 @@ fn check_told(
             // E09 T18c: a town event, its owner's; no plan's town has one before E09 T19 (the
             // writer's events), what it gives and builds told around it as above.
             GameEvent::TownEventFired { player, .. } => prop_assert_eq!(player, viewer),
+            // E09 T39b2: a Den of Thieves' Thieves' Guild, the visitor's owner's alone; a snapshot
+            // no view holds (no plan lays out a Den).
+            GameEvent::ThievesGuildSeen { player, .. }
+            | GameEvent::GuildPartSeen { player, .. } => {
+                prop_assert_eq!(player, viewer);
+            }
             // E08 T63a: a choice and a University open as the viewer's decision.
             GameEvent::ChoiceOpened {
                 player,

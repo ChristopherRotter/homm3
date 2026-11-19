@@ -447,7 +447,13 @@ fn guild_row_back(row: w::GuildRow) -> GuildRow {
 /// The engine's Thieves' Guild as the wire should carry it (test code, independent of the
 /// mapping it checks): the rows by [`GUILD_ROWS`], the handles raw.
 pub(super) fn guild_wire(view: &ThievesGuildView) -> w::ThievesGuild {
-    let row = |row| GUILD_ROWS.iter().find(|(_, engine)| *engine == row).unwrap().0;
+    let row = |row| {
+        GUILD_ROWS
+            .iter()
+            .find(|(_, engine)| *engine == row)
+            .unwrap()
+            .0
+    };
     w::ThievesGuild {
         level: view.level,
         rows: (view.rows.iter())
@@ -1825,7 +1831,9 @@ fn a_dens_guild_on_the_wire_is_the_guild_its_parts_make() {
         player: P0,
         level: 5,
     };
-    let parts = view.parts().map(|part| GameEvent::GuildPartSeen { player: P0, part });
+    let parts = view
+        .parts()
+        .map(|part| GameEvent::GuildPartSeen { player: P0, part });
     let engine: Vec<GameEvent> = core::iter::once(head).chain(parts).collect();
     assert_eq!(engine.len(), 1 + 9 * 2 + 2);
     let wire = events(&engine, Viewer::Player(P0));

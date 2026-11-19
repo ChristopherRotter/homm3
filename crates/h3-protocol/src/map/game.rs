@@ -41,12 +41,12 @@ use crate::wire::WireU64;
 use crate::wire::game::{
     Adventure, AdventureReveal, Amount, ArmyStack, Artifact, Boat, Bonuses, Choice, ChoiceKind,
     Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonHero, GarrisonStack,
-    Guards, GuildHero, GuildPart, GuildPlayer, GuildRanking, GuildRow, HeroDetails, HeroInfo,
-    Hire, HireCreature, HireSeen, HireTarget, HiredPart, Known,
-    KnownObject as WireKnownObject, LevelUp, MapGarrison, MapHero, Monster, Month, Object,
-    ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, RevealedArea,
-    RevealedView, SkillLevel, SlotState, Summoned, TavernHero, TavernHeroHead, TavernPart,
-    ThievesGuild, Tile, Town, TownBuildings, TownOwnerFacts, UniversityVisit, VisitBonus, Week,
+    Guards, GuildHero, GuildPart, GuildPlayer, GuildRanking, GuildRow, HeroDetails, HeroInfo, Hire,
+    HireCreature, HireSeen, HireTarget, HiredPart, Known, KnownObject as WireKnownObject, LevelUp,
+    MapGarrison, MapHero, Monster, Month, Object, ObjectRef, Offer, OfferKind, OfferLevels,
+    OwnMapHero, Player, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, SlotState,
+    Summoned, TavernHero, TavernHeroHead, TavernPart, ThievesGuild, Tile, Town, TownBuildings,
+    TownOwnerFacts, UniversityVisit, VisitBonus, Week,
 };
 
 mod command;

@@ -418,7 +418,10 @@ fn a_den_of_thieves_shows_its_visitors_owner_the_guild_at_everything() {
     assert_eq!(seer, RED);
     let at_everything = thieves_guild_at(&game, &rules, DEN_LEVEL);
     assert_eq!(view, at_everything);
-    assert_eq!((view.level, view.rows.len(), view.players.len()), (DEN_LEVEL, 9, 2));
+    assert_eq!(
+        (view.level, view.rows.len(), view.players.len()),
+        (DEN_LEVEL, 9, 2)
+    );
     // Told after the step, together, in the parts' order.
     let head = events
         .iter()
@@ -471,7 +474,10 @@ fn every_visit_of_the_den_is_alike_and_a_revisit_is_one() {
     let back = run(&rules, &mut game, RED, step(&[Pos::new(1, 0, 0), DEN])).unwrap();
     assert_eq!(game.adventure().hero(RED_HERO).map(|h| h.pos), Some(DEN));
     let (seer, view) = told_guild(&back).unwrap();
-    assert_eq!((seer, view), (RED, thieves_guild_at(&game, &rules, DEN_LEVEL)));
+    assert_eq!(
+        (seer, view),
+        (RED, thieves_guild_at(&game, &rules, DEN_LEVEL))
+    );
 }
 
 // covers: ADV-VIS-008
@@ -484,6 +490,13 @@ fn a_den_visit_without_a_recording_sink_changes_the_same() {
     let mut quiet = recorded.clone();
     let command = step(&[Pos::new(1, 0, 0), DEN]);
     run(&rules, &mut recorded, RED, command.clone()).unwrap();
-    apply(&mut quiet, &rules, Actor::Player(RED), command, &mut NoopSink).unwrap();
+    apply(
+        &mut quiet,
+        &rules,
+        Actor::Player(RED),
+        command,
+        &mut NoopSink,
+    )
+    .unwrap();
     assert_eq!(quiet.state_hash(), recorded.state_hash());
 }
