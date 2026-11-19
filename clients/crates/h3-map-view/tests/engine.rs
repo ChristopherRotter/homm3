@@ -420,7 +420,7 @@ fn records_it_refuses() {
     let loaded = engine::load(&good, &g.bytes, rules()).unwrap();
     let other = MapArt::from_raw(&h3_map::read(&g.bytes, &Limits::default()).unwrap())
         .map(|mut art| {
-            let first = art.objects[3].clone();
+            let first = art.objects[3];
             art.objects.push(first);
             art
         })
