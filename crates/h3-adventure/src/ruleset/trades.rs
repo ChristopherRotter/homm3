@@ -3,8 +3,9 @@
 //! Freelancer's Guild, the Black Market), an Altar of Sacrifice, a Hill Fort and a War Machine
 //! Factory hold as data, the factions whose heroes sacrifice at an Altar, and their compilation
 //! from the packs' keys. The rates are [`crate::MarketParams`]' (ADV-MKT-002, the part's
-//! `[params.market]`); the visits, the draws and the decisions come with T133 and T134, so a step
-//! onto one is refused as any unbuilt visit's until then.
+//! `[params.market]`); a Black Market's stock is drawn since E08 T133a1 (ADV-MKT-006); the visits
+//! and the decisions come with T133 and T134, so a step onto one is refused as any unbuilt visit's
+//! until then.
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
@@ -40,9 +41,14 @@ pub struct Market {
     /// every map object 5 (survey §3).
     pub count: u8,
     /// The artifact classes a Black Market's stock is drawn in, in order (survey §7.1): present
-    /// exactly when [`MarketScreen::Buy`] is among the screens, none [`ArtifactClass::Special`].
+    /// exactly when [`MarketScreen::Buy`] is among the screens, none [`ArtifactClass::Special`],
+    /// at most [`MAX_STOCK`].
     pub stock: Vec<ArtifactClass>,
 }
+
+/// The most entries a market's stock holds (E08 T133a1): a bit each in the visits' block's sold
+/// entries (increment 14's design note §8); the original's seven.
+pub const MAX_STOCK: usize = 8;
 
 impl Market {
     /// Whether its window shows `screen`.
@@ -156,6 +162,8 @@ pub(super) fn compile_market(def: &Market) -> Result<Market, &'static str> {
         Err("a market's stock is not exactly a buying one's")
     } else if def.stock.contains(&ArtifactClass::Special) {
         Err("a market's stock names the special class")
+    } else if def.stock.len() > MAX_STOCK {
+        Err("a market's stock holds more than 8 entries")
     } else {
         Ok(def.clone())
     }

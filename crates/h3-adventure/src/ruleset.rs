@@ -56,7 +56,7 @@ pub use rewards::{
 use starting::compile_starting;
 pub use starting::{MAX_DIFFICULTIES, StartingResources, StartingResourcesDef};
 pub use trades::{
-    Altar, AltarDef, AltarFactionDef, AltarScreens, HillFort, Market, MarketScreen,
+    Altar, AltarDef, AltarFactionDef, AltarScreens, HillFort, MAX_STOCK, Market, MarketScreen,
     WarMachineFactory, WarMachineFactoryDef,
 };
 use trades::{check_trades, compile_altar_faction};

@@ -765,6 +765,8 @@ fn check(
     for shipyard in built_economy(&built, rules, name, &mut peaks.5) {
         println!("h3-map: a Shipyard without a boat tile: {shipyard}");
     }
+    // E08 T133a1: the Black Markets' stocks it draws (ADV-MKT-006).
+    built_markets(&built, rules, (&[], MARKETS_STATIC), &mut peaks.5)?;
     // E08 T94a: the dwellings it builds, the random ones resolved (ADV-DWL-005).
     for dwelling in built_dwellings(&built, &map, &setup.map, rules, name, &mut peaks.6)? {
         println!("h3-map: a resolved dwelling's anchor past the right edge: {dwelling}");
@@ -825,6 +827,9 @@ fn check(
             built_towns(&setup, &game, rules, &mut peaks.5).map_err(|e| format!("{name}: {e}"))?;
             built_linked(&setup, &game, rules, name, &mut peaks.5)?;
             built_heroes(&setup, &game, rules, map.header.size, &mut peaks.5);
+            // E08 T133a1: the stocks again under the map's bans (GAM-SET-003).
+            let banned = (&setup.banned_artifacts[..], MARKETS_IMPORTED);
+            built_markets(&game, rules, banned, &mut peaks.5)?;
             // E08 T29: the placed heroes' levels at load (GAM-SET-002; survey
             // E08-progression.md §6.5: 9 heroes, 41 level-ups on the 5 maps that import whole).
             let levels: Vec<u8> = game.heroes().iter().map(|h| h.level).collect();
@@ -2506,6 +2511,68 @@ fn built_economy(
     );
     without
 }
+
+/// Counts the Black Markets' stocks the game's build draws (E08 T133a1; ADV-MKT-006, increment
+/// 14's design note §9), on the static layer (no bans) and on the imported game (the map's bans),
+/// under `names`: the stocks and the entries repeating another stock's on their map. Checked (an
+/// error fails the map): each stock holds an artifact of each of its kind's classes in order
+/// (none left out: no shipped map bans every artifact), none of `banned`, and a market without a
+/// stock draws nothing.
+fn built_markets(
+    game: &GameState,
+    rules: &GameRuleset,
+    (banned, names): (&[h3_content::ArtifactTypeId], [&'static str; 2]),
+    counts: &mut BTreeMap<&'static str, usize>,
+) -> Result<(), String> {
+    let map = game.adventure().map();
+    let mut drawn = BTreeSet::new();
+    let mut repeats = 0;
+    for object in map.objects() {
+        let kind = object
+            .object_type
+            .and_then(|ty| rules.adventure().object_type(ty))
+            .map(|ty| &ty.kind);
+        let Some(ObjectKind::Market(market)) = kind else {
+            continue;
+        };
+        let stock = object.resolved.stock();
+        if market.stock.is_empty() {
+            if object.resolved != h3_adventure::Resolved::Nothing {
+                return Err(format!(
+                    "a market without a stock drew {:?}",
+                    object.resolved
+                ));
+            }
+            continue;
+        }
+        let classes: Vec<_> = stock
+            .iter()
+            .map(|a| rules.core().artifacts()[a.index()].class)
+            .collect();
+        if classes != market.stock {
+            return Err(format!("a Black Market's stock of classes {classes:?}"));
+        }
+        if let Some(a) = stock.iter().find(|a| banned.contains(a)) {
+            return Err(format!("a Black Market's stock holds the banned {a:?}"));
+        }
+        *counts.entry(names[0]).or_default() += 1;
+        repeats += stock.iter().filter(|&&a| !drawn.insert(a)).count();
+    }
+    *counts.entry(names[1]).or_default() += repeats;
+    Ok(())
+}
+
+/// [`built_markets`]' counts on the static layer.
+const MARKETS_STATIC: [&str; 2] = [
+    "markets: Black Market stocks drawn (static layer)",
+    "markets: their entries repeating another stock's on their map (static layer)",
+];
+
+/// [`built_markets`]' counts on the imported game.
+const MARKETS_IMPORTED: [&str; 2] = [
+    "markets: Black Market stocks drawn (imported)",
+    "markets: their entries repeating another stock's on their map (imported)",
+];
 
 /// Counts the dwellings the game's build gives (E08 T94a; ADV-DWL-005, increment 10's design note
 /// §5), on the static map built with [`SEED`]: the dwellings (`StaticMap::dwellings`), placed by
