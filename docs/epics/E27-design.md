@@ -2540,6 +2540,11 @@ press; the thumb drags; the callback (`scenario_list_scrolled` 0x57C990: the top
   redraw, then redraws whole; it sets the size mark 189 to its own size's frame first (0x585EFB),
   which the select replaces (T2: an empty list's panel keeps it).
 
+- *Added at M3 T7 (the review's A5):* with the selection off the page (a move of the bar), Up and
+  Down step the selection; the original's Down moves the top a row (the selection still off the
+  page), its Up brings the top to it only from above; the client's first brings the page to the
+  selection (CLT-Q149 (b), §33.3).
+
 ### 19.4 The partial redraw (CLT-Q138)
 
 `scenario_select` 0x585500 with the redraw flag and an unchanged selection redraws part
@@ -3132,8 +3137,8 @@ ten) exact, `hidden` too; its other 26 T3c2's; every other group as recorded.
 
 The hot seat's flags, handicap and names (T4); the name written to `Network Default Name` and read
 at the next opening and by the Multiplayer dialog (M4: the settings); the handicap's effect
-(`CLT-STUB-10`); Begin pressed by the mouse while the edit is open (T6: the record's name not yet
-taken).
+(`CLT-STUB-10`); Begin pressed by the mouse while the edit is open (the original's path not read; the client's
+takes the edit's text since M3 T7, §33.2).
 
 ## 27. The advanced options: the duration's bar and the hints (M3 T3c2, 2026-11-18)
 
@@ -3578,3 +3583,83 @@ after the load's real time).
   (`shell.stub.play-refused`, the error on standard error); its OK the main menu. The replay loads
   at once and stops under the notice (`Stop::Stub`). No busy cursor on the loading screen
   (*provisional*: no recording shows it before the fade).
+
+## 33. M3's review (M3 T7, 2026-11-19)
+
+Three fresh reviewers (the screen and its list, T1a to T2c; the advanced options, T3a to T4b; the
+random map's tab and the begin, T5a to T6), each over its code, readings and recipes, the shots as
+contact sheets; their findings, the user's answers (decisions 67, 68; CLT-Q148 to CLT-Q154) and
+what T7 built. The review list's new wording: `E27-archive.md` (M3).
+
+### 33.1 Read at T7
+
+- **A key under a held button** (`def_button_message`'s own loop, 0x456341 to 0x45641C): the loop
+  takes every input message (the mouse manager's +8) and acts on a move (type 4) and the button's
+  release (0x10, 0x40) alone, so a key pressed while the mouse holds a DEF button is dropped. The
+  list's keys (`Command::List`) now do nothing while the shell's input holds a button, in both
+  profiles (they bypassed `h3_ui::input`).
+- **The selection's change** (`scenario_select` 0x585500, at 0x585542 to 0x585574): +0x1854 is
+  set when the new index differs from +0x374 or in the save mode; the map behind the index is not
+  compared. So a sort or a filter that leaves the selection on row 0, or the files' list shown
+  again after the random map's tab, keeps the advanced options' rows made for the old map at their
+  next showing (CLT-Q152): the original's profile keeps the index compare; the client's makes the
+  rows again whenever the map given to the game changes, by its file (`Scenario::options_map`,
+  `sync_options`).
+
+### 33.2 Built at T7 (decision 67)
+
+- **A held row or name under a box** (both profiles): the release that ends a hold made while a
+  box, popup or notice opened (Enter's refusal, a right press's help) goes to that box; the row
+  or name is let go without its click (the original's modal loops take that release).
+- **The double press** (the client's profile; CLT-Q91 (c) made "the same map"): the last press
+  keeps its map's file, a second press within 400 ms begins only that map, selecting it first
+  (a key, a sort or a bar move between the presses no longer begins the map the selection moved
+  to). The original's: any second press within 400 ms begins the selection.
+- **The open name's edit at Begin** (the client's profile): `Advanced::begun` takes the edit's text
+  first, as Enter does (the original's path not read, §26.5).
+- **CLT-Q93 (b)** (decision 13, built at last): on a map with colours only a human may play, the
+  single player starts on the first of them and only the others become the computer's; it may
+  return to its start colour. The original's (that colour and every later one the computer's) for
+  the comparisons; a colour no human may play stays as the map has it (*inferred*). No shipped map
+  has such a colour.
+- **The random map's seats** (`RandomMap::made`): the generate flag (+0xB) set, as §30.2 reads it
+  (*inferred*: a main town), so a row over a chosen random map shows Random for the hero and its
+  arrows once a town is chosen; each colour offered each faction's free heroes (`scenario_hero_lists`
+  0x583890 over the game the build resets: the faction's first 16 hero types of its two classes,
+  in type order; `maps::random_offers`, `Scenario::with_random_offers`); no main hero
+  *provisional*. Recorded by `adv-random-options` (new: the tab, the options, the hero's popup and
+  arrows, a town, the files' list and the options over it): 9 of 9 exact, the empty offer T5a had
+  left *provisional* refuted (the arrow steps to Orrin), and the original's rows kept over the
+  map shown after the random one (CLT-Q152's oddity, as read).
+- **The begin's guard** (`h3-battle-client`'s `begin::setup`): a colour is human when a human
+  record holds it and the import lets a human play it; a human record on a colour the import gives
+  the computer alone is refused (play's refusal notice; the detail on standard error).
+- **The window's typed `begin`** is refused on the scenario screen (a game begins by Begin alone).
+- **The names' fold** (`caseless`): ASCII letters alone, as `kept_row` (*provisional*: the
+  original's compare not read).
+
+### 33.3 The oddities (decision 68)
+
+- **CLT-Q148 (b):** a select that keeps the map keeps the description's scroll in the client's
+  profile; the original's resets it at every select (`scenario_to_game`).
+- **CLT-Q149 (b):** Up or Down with the selection off the page first moves the page to the
+  selection, then steps, in the client's profile. The original's (§19.3): Down steps the selection and moves the top a row, the selection staying off
+  the page; Up steps it and brings the top to it only when it is above the page.
+- **CLT-Q150 (b):** a row takes the press from x 26 (the players' column, the layout's
+  `[scenario.list].players`) in the client's profile, from x 57 in the original's.
+- **CLT-Q151 (b):** the list's entries keep a map's name and description whole; the original's
+  profile cuts them to the record's 60 and 300 bytes where the screen sorts, lists, shows and
+  describes them (`NAME_BYTES`, `DESCRIPTION_BYTES`).
+- **CLT-Q152 (b):** §33.1.
+- **CLT-Q153 (a):** the bonus kept across a map change and a flag's press, as the original's; the
+  adventure lane's inbox told for E10.
+- **CLT-Q154 (a):** the random map's count above its cap shown selected and disabled, as the
+  original's.
+
+### 33.4 Not built, not recorded (M4's)
+
+A file `h3_map::read` refuses is left out of the list (the original lists one of an unknown format
+with GENRLTXT 431 and 506, Begin disabled, and a map with no players with 507; §3.3); no shipped
+file reaches it. A held list key's repeats (the window takes no key repeats, §16.4) are not read
+or recorded: M4's load mode's list records them. No recipe drags the list's thumb (the scroll
+bar's own tests cover it).
