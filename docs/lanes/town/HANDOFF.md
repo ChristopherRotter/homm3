@@ -14,7 +14,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   Grail 6. Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6`, `-13` and
   `-15` (increment 5), `TWN-STUB-2` (the victory conditions), `TWN-STUB-16` (E10's loss
   condition), `-17` (increment 6), `-18` (E13).
-- **Open pull requests:** T40b's (`town/e09-t40b`, `cross-lane`), opened at the session's end;
+- **Open pull requests:** T40b's (#1053, `town/e09-t40b`, `cross-lane`), opened at the session's end;
   watch it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
@@ -50,7 +50,7 @@ manuals with three help files staged, SHA-256 checked. The user kept T40b whole 
 to `cross-lane` (decisions 159, 160, `TWN-Q29`). Built: design §78's As built (T40b): the plans'
 `Plan::taverns` with `tavern_answers`, `check_map_hire` and the decision in `check_decisions`
 and `managed`; `e09-taverns-36.h3m` and six `taverns-*-s1` replays with their tests; the golden
-counts 104; `week-start-taverns-36`. PR `town/e09-t40b`.
+counts 104; `week-start-taverns-36`. PR #1053.
 
 ### 2026-11-19 — T40a: the census of the taverns, the pool's properties
 
