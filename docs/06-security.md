@@ -263,8 +263,9 @@ heroes, hires, leaves and the guild.
   sharing a place, **never the values**; by level, each player's best hero's type, then its four
   primary skills, then its best creature; never a player's tactic nor a screen of another player's hero or creature. It
   is a query answered only in the viewer's turn while it owns a town with a Tavern or has a tavern
-  decision open; a Den of Thieves' visit tells its visitor's owner alone the guild at everything
-  (`ThievesGuildSeen`). It changes nothing and draws nothing.
+  decision open (on the wire `GameQuery::ThievesGuild`, for the asking seat's player only); a Den
+  of Thieves' visit tells its visitor's owner alone the guild at everything (`ThievesGuildSeen`
+  and its `GuildPartSeen`s). It changes nothing and draws nothing.
 
 ## Denial of service and resource limits
 
