@@ -65,6 +65,11 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-19, E27 M3 T7 (in progress; `client/e27-m3-t7`).** The PC's 64 files and the
+  manuals staged (SHA-256 checked); the baseline stopped at coverage (CI's green `master` 9deacd0
+  stands in). Kept whole (decision 66). Done: `drawn` over M3's groups as recorded; every shell
+  recipe playing again under Wine (`/home/claude/tools/replay-all.sh`, the sandbox's); next: the
+  three fresh reviewers, the review list to the user, the fixes, M4's refinement.
 - **2026-11-19, E27 M3 T6 (done; `client/e27-m3-t6`).** The PC's 64 files and the manuals
   staged (SHA-256 checked). Offered a cut in two, kept whole (decision 65). Read the loading
   screen, its bar and play's fade; `adv-begin` and `adv-hotseat-begin` played under Wine: their
@@ -80,9 +85,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   tab's popups, Show Random Maps, the panel over an empty list, Begin's stub (`CLT-STUB-12`).
   `adv-random` 52 of 53 exact (the replay stops at Begin's stub), `adv-random-list` 12 of 12, every
   other recipe as recorded. Record: `E27-log.md`, "M3 T5b".
-- **2026-11-19, E27 M3 T5a (done; `client/e27-m3-t5a`).** The PC's 64 files and the manuals
-  staged (SHA-256 checked). T5 cut in two with the user (decision 62). Read the tab's toggle,
-  items, state, presses and record whole; `adv-random` played once under Wine. Built
-  `scenario::random` and the screen's tab (the choices, the caps, the record in the panel, the
-  layout's items one by one); CLT-Q146 asked (built as the original's). `adv-random` 45 of 52
-  exact (T5b's seven left), every other recipe as recorded. Record: `E27-log.md`, "M3 T5a".

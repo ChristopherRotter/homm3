@@ -454,6 +454,11 @@ The user, 2026-11-19 (M3 T6's start):
 65. **T6 kept whole** (offered: T6a the setup and the stub, T6b the loading bar; or the bar
     first): one session and one pull request.
 
+The user, 2026-11-19 (M3 T7's start):
+
+66. **T7 kept whole** (offered: the closure now and M4's refinement in a later session; or the
+    reviews and fixes first, the replay, the archive and M4 later): one session, as M2 T8.
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
