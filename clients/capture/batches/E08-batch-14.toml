@@ -1,0 +1,157 @@
+# E08 batch E14 played by the capture harness (E08 T129; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-14.toml as steps, on Easy, the starting bonus gold, Red and Blue
+# human in hot seat. T129 was cut in two by family (decision 376): **T129a, the markets** (this
+# part: E14-3's day-1 reads, E14-1 with E14-2, E14-4, E14-5 with E14-6, E14-16 at each of them,
+# Blue's read on its turn, E14-3's day-29 reads); T129b adds the services' rows (E14-8, E14-9,
+# E14-10, E14-12, E14-15 on Red's day 1, E14-13 and E14-17 on Blue's) in the template's order,
+# before Red's turn ends, and the RoE map's E14-14 (`E08-batch-14-roe.toml`).
+#
+# The trade window (README, "Markets"): a walk onto a market plays its `actions` in the window
+# (`click` its items by name: `slot:<n>`, `give:<resource>`, `want:<resource>`, `entry:<n>`,
+# `pay:<resource>`, `player:<colour>`, `trade`, `max`, `transfer`; `amount = <n>` the slider) and
+# closes it with its OK; `market` reads it after an action (`:pair`, `:rate`, `:most`, ...),
+# `market:opening` as it opened, `market:at` the hero's tile and points then. A Black Market's
+# record by its entrance: `black_market:x,y[:part]`; a wide table's cell `<row> | <column>`, here
+# with its encounter first (`E14-4|<row> | <column>`). A `key = "space"` step on a market's
+# entrance is E14-16's revisit: `order` names what opens (the window, closed again at once).
+
+spec = "experiments/specs/E08-batch-14.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- Day 1, Red: E14-3's first reads (before any hero moves) ------------------------------------
+
+[[step]]
+encounter = "E14-4"
+hero = "E14-4"
+record = { "E14-4|M1 (12, 8), day 1 | the seven (name; class)" = ["black_market:12,8:artifacts", "text:classes: ", "black_market:12,8:classes"], "E14-4|M1 (12, 8), day 1 | the word's record index" = ["text:record: ", "black_market:12,8:index", "text:word: ", "black_market:12,8:word"], "E14-4|M2 (18, 8), day 1 | the seven (name; class)" = ["black_market:18,8:artifacts", "text:classes: ", "black_market:18,8:classes"], "E14-4|M2 (18, 8), day 1 | the word's record index" = ["text:record: ", "black_market:18,8:index", "text:word: ", "black_market:18,8:word"] }
+note = { "the date at the start" = "date", "the game's version" = "map_kind", "the difficulty" = "difficulty" }
+
+# --- Day 1, Red: E14-1, E14-2 (the Freelancer's Guild G) --------------------------------------------
+
+[[step]]
+encounter = "E14-1"
+hero = "E14-1"
+record = { "before: E14-1's points; Red's treasury" = ["text:points: ", "hero:points", "text:treasury: ", "treasury"] }
+note = { "E14-1 worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E14-1"
+hero = "E14-1"
+walk = [5, 8]
+actions = [
+    { click = ["slot:0", "want:gold"], record = { "the Pixies for gold: the slider's most; what one gives; Red's treasury after 10; the army" = ["text:the pair: ", "market:pair", "text:the most: ", "market:most", "text:counts: ", "market:slider", "text:one gives: ", "market:rate"] } },
+    { amount = 10, record = { "+the Pixies for gold: the slider's most; what one gives; Red's treasury after 10; the army" = ["text:amount: ", "market:amount"] } },
+    { click = ["trade"], record = { "+the Pixies for gold: the slider's most; what one gives; Red's treasury after 10; the army" = ["text:the trade's change: ", "gain", "text:treasury after: ", "treasury", "text:army: ", "hero:slots", "text:points: ", "hero:points"] } },
+    { click = ["slot:1", "want:wood"], record = { "the Vampires for wood: the slider's most; what one gives; Red's treasury after 2; the army" = ["text:the pair: ", "market:pair", "text:the most: ", "market:most", "text:counts: ", "market:slider", "text:one gives: ", "market:rate"] } },
+    { amount = 2, record = { "+the Vampires for wood: the slider's most; what one gives; Red's treasury after 2; the army" = ["text:amount: ", "market:amount"] } },
+    { click = ["trade"], record = { "+the Vampires for wood: the slider's most; what one gives; Red's treasury after 2; the army" = ["text:the trade's change: ", "gain", "text:treasury after: ", "treasury", "text:army: ", "hero:slots"] } },
+    { click = ["slot:2", "want:gold"], record = { "E14-2: the Skeletons' most (gold)" = ["text:the pair: ", "market:pair", "text:the most: ", "market:most", "text:counts: ", "market:slider", "text:one gives: ", "market:rate", "text:army: ", "hero:slots"] } },
+]
+record = { "at the window: its screen; E14-1's tile; points" = ["text:the path: ", "path_tiles", "text:the window: ", "market:opening:screen", "text:kind: ", "market:opening:kind", "text:count: ", "market:opening:count", "text:buttons: ", "market:opening:buttons", "text:at the window: ", "market:at", "text:in order: ", "order"], "after closing: E14-1's tile; points" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:treasury: ", "treasury"] }
+
+# E14-16: Space on the guild's entrance (the visit again).
+[[step]]
+encounter = "E14-1"
+hero = "E14-1"
+key = "space"
+record = { "Space: what opens; E14-1's tile" = ["text:the key: ", "key", "text:in order: ", "order", "text:at the window: ", "market:at", "text:tile after: ", "hero:tile", "text:points: ", "hero:points"] }
+
+# --- Day 1, Red: E14-4 (M1, a purchase with no room) -------------------------------------------------
+
+[[step]]
+encounter = "E14-4"
+hero = "E14-4"
+record = { "before: E14-4's points; worn artifacts; the backpack's count; Red's treasury" = ["text:points: ", "hero:points", "text:worn: ", "hero:positions", "text:backpack: ", "hero:backpack_count", "text:treasury: ", "treasury"] }
+note = { "E14-4's backpack's last entry at the start" = "hero:backpack_last" }
+
+[[step]]
+encounter = "E14-4"
+hero = "E14-4"
+walk = [12, 8]
+actions = [
+    { click = ["entry:0", "pay:gold"], record = { "M1's first entry: its name and gold price" = ["text:the pair: ", "market:pair", "text:the price: ", "market:rate", "text:the most: ", "market:most", "text:amount: ", "market:amount", "text:buttons: ", "market:buttons"] } },
+    { click = ["trade"], record = { "after Trade: messages and questions (in order); Red's treasury" = ["text:questions: ", "questions", "text:messages: ", "messages", "text:the trade's change: ", "gain", "text:treasury: ", "treasury"], "after Trade: E14-4's worn artifacts; the backpack's count and last entry; the window's entries" = ["text:worn: ", "hero:positions", "text:backpack: ", "hero:backpack_count", "text:last: ", "hero:backpack_last", "text:the window's entries: ", "market:entries", "text:the window: ", "market:screen"] } },
+]
+record = { "at the window: the entries shown; E14-4's tile; points" = ["text:the path: ", "path_tiles", "text:the window: ", "market:opening:screen", "text:kind: ", "market:opening:kind", "text:entries: ", "market:opening:entries", "text:buttons: ", "market:opening:buttons", "text:at the window: ", "market:at", "text:in order: ", "order"], "M1's record after the purchase" = "black_market:12,8", "after closing: E14-4's tile; points; Space: what opens; the tile" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E14-4"
+hero = "E14-4"
+key = "space"
+record = { "+after closing: E14-4's tile; points; Space: what opens; the tile" = ["text:Space: ", "key", "text:in order: ", "order", "text:entries: ", "market:opening:entries", "text:tile after: ", "hero:tile"] }
+
+# --- Day 1, Red: E14-5 (P1, the trades) and E14-6 (P2, the transfer) ---------------------------------
+
+[[step]]
+encounter = "E14-5"
+hero = "E14-5"
+record = { "before: E14-5's points; Red's treasury" = ["text:points: ", "hero:points", "text:treasury: ", "treasury"] }
+
+[[step]]
+encounter = "E14-5"
+hero = "E14-5"
+walk = [24, 8]
+actions = [
+    { click = ["give:wood", "want:gold"], record = { "wood → gold: the rate; the most; Red's treasury after 2" = ["text:the rate: ", "market:rate", "text:the most: ", "market:most", "text:counts: ", "market:slider"] } },
+    { amount = 2 },
+    { click = ["trade"], record = { "+wood → gold: the rate; the most; Red's treasury after 2" = ["text:the trade's change: ", "gain", "text:treasury after: ", "treasury"] } },
+    { click = ["give:gold", "want:wood"], record = { "gold → wood: the rate; the most; Red's treasury after 1" = ["text:the rate: ", "market:rate", "text:the most: ", "market:most", "text:counts: ", "market:slider"] } },
+    { amount = 1 },
+    { click = ["trade"], record = { "+gold → wood: the rate; the most; Red's treasury after 1" = ["text:the trade's change: ", "gain", "text:treasury after: ", "treasury"] } },
+    { click = ["give:mercury", "want:gems"], record = { "mercury → gems: the rate; the most; Red's treasury after 1" = ["text:the rate: ", "market:rate", "text:the most: ", "market:most", "text:counts: ", "market:slider"] } },
+    { amount = 1 },
+    { click = ["trade"], record = { "+mercury → gems: the rate; the most; Red's treasury after 1" = ["text:the trade's change: ", "gain", "text:treasury after: ", "treasury"] } },
+]
+record = { "P1's window: its screen; E14-5's tile; points" = ["text:the path: ", "path_tiles", "text:the window: ", "market:opening:screen", "text:kind: ", "market:opening:kind", "text:count: ", "market:opening:count", "text:buttons: ", "market:opening:buttons", "text:at the window: ", "market:at", "text:in order: ", "order"], "after closing P1: E14-5's tile; points; Space: what opens; the tile" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E14-5"
+hero = "E14-5"
+key = "space"
+record = { "+after closing P1: E14-5's tile; points; Space: what opens; the tile" = ["text:Space: ", "key", "text:in order: ", "order", "text:tile after: ", "hero:tile"] }
+
+[[step]]
+encounter = "E14-5"
+hero = "E14-5"
+walk = [26, 10]
+actions = [
+    { record = { "before the transfer: Red's treasury; Blue's treasury; the recipients offered" = ["text:red: ", "treasury:red", "text:blue: ", "treasury:blue"] } },
+    { click = ["transfer"], record = { "+before the transfer: Red's treasury; Blue's treasury; the recipients offered" = ["text:the screen: ", "market:screen", "text:the recipients offered: ", "market:recipients", "text:buttons: ", "market:buttons"] } },
+    { click = ["give:ore", "player:blue"], record = { "+before the transfer: Red's treasury; Blue's treasury; the recipients offered" = ["text:the pair: ", "market:pair", "text:the rate: ", "market:rate", "text:the most: ", "market:most"] } },
+    { amount = 5 },
+    { click = ["trade"], record = { "after the transfer: Red's treasury; Blue's treasury" = ["text:red: ", "treasury:red", "text:red's change: ", "gain:red", "text:blue: ", "treasury:blue", "text:blue's change: ", "gain:blue"] } },
+]
+record = { "P2: the path's marks; at the window its screen; E14-5's tile; points" = ["text:the path: ", "path_tiles", "text:marks: ", "marks", "text:the window: ", "market:opening:screen", "text:kind: ", "market:opening:kind", "text:buttons: ", "market:opening:buttons", "text:at the window: ", "market:at", "text:in order: ", "order"], "after closing P2: the tile; Space: what opens; the tile" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E14-5"
+hero = "E14-5"
+key = "space"
+record = { "+after closing P2: the tile; Space: what opens; the tile" = ["text:Space: ", "key", "text:in order: ", "order", "text:tile after: ", "hero:tile"] }
+
+# T129b: E14-8, E14-9, E14-10, E14-12, E14-15 here, before Red's turn ends.
+
+[[step]]
+end_turn = true
+
+# --- Day 1, Blue: E14-6's read on Blue's turn ---------------------------------------------------------
+
+[[step]]
+encounter = "E14-5"
+hero = "E14-13"
+record = { "Blue's turn: Blue's treasury" = ["text:blue: ", "treasury:blue", "text:the date: ", "date"] }
+
+# T129b: E14-13 and E14-17 here, before Blue's turn ends.
+
+# --- Red's day 29: E14-3's second reads (both players' turns ended 28 times) --------------------------
+
+[[step]]
+end_turn = true
+to_day = 29
+
+[[step]]
+encounter = "E14-4"
+hero = "E14-4"
+record = { "E14-4|M1, day 29 | the seven (name; class)" = ["black_market:12,8:artifacts", "text:classes: ", "black_market:12,8:classes"], "E14-4|M1, day 29 | the word's record index" = ["text:record: ", "black_market:12,8:index", "text:word: ", "black_market:12,8:word"], "E14-4|M2, day 29 | the seven (name; class)" = ["black_market:18,8:artifacts", "text:classes: ", "black_market:18,8:classes"], "E14-4|M2, day 29 | the word's record index" = ["text:record: ", "black_market:18,8:index", "text:word: ", "black_market:18,8:word"], "day 29: the date" = ["date", "text:the Black Market records: ", "black_markets"] }

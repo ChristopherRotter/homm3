@@ -8122,7 +8122,6 @@ fn visit_gains(
     command: &GameCommand,
     events: &[GameEvent],
 ) -> Amounts {
-    let map = before.adventure().map();
     let chest = (0..before.players()).find_map(|p| {
         let player = PlayerId::new(u8::try_from(p).unwrap());
         match before.choice(player).map(|c| &c.kind) {
@@ -8141,9 +8140,23 @@ fn visit_gains(
         let weekly = before.adventure().weekly(i).unwrap();
         gains.push((weekly.resource, weekly.amount));
     }
-    // A find's artifact when its hero receives it, with a fixed entry's resources (E08 T72), else
-    // what the artifact turns into (the Corpse's gold, the Wagon's own resources, nothing when it
-    // is lost), or its resources; (E08 T75b) a find that leaves, at its removal.
+    // A find's (find_gains).
+    find_gains(rules, (before, after), events, &mut gains);
+    gains
+}
+
+/// The finds a step emptied or that left the map, their gains added to `gains` ([`visit_gains`];
+/// since E08 T129a also a battle's held visit, [`check_unowned_battle_end`]): a find's artifact
+/// when its hero receives it, with a fixed entry's resources (E08 T72), else what the artifact
+/// turns into (the Corpse's gold, the Wagon's own resources, nothing when it is lost), or its
+/// resources; (E08 T75b) a find that leaves, at its removal.
+fn find_gains(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    events: &[GameEvent],
+    gains: &mut Amounts,
+) {
+    let map = before.adventure().map();
     for i in emptied(before, after).chain(left(rules, before, after)) {
         let o = &map.objects()[i];
         let ty = o
@@ -8168,7 +8181,6 @@ fn visit_gains(
             (Some(_), Some(Turn::Drawn)) | (None, _) => gains.extend(o.contents.iter().copied()),
         }
     }
-    gains
 }
 
 /// A reward record's resources that `event` gives (E08 T64b; ADV-RWD-001, ADV-PIK-013,
@@ -9585,6 +9597,9 @@ fn check_unowned_battle_end(
         let weekly = before.adventure().weekly(i).unwrap();
         gains.push((weekly.resource, weekly.amount));
     }
+    // E08 T129a: or a find's that stays, emptied (a Lean To's resources: found by CI's run on
+    // `master` 450e47e, 2026-11-19), or that leaves.
+    find_gains(rules, (before, after), events, &mut gains);
     let mut treasury = before.treasury(owner).unwrap().to_vec();
     let mut gained = Vec::new();
     for event in events {

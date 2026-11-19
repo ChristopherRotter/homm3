@@ -19710,3 +19710,78 @@ branch; `cargo xtask check-lane --cross-lane` ok); `cargo check --workspace --al
 clippy with `-D warnings` on `h3-map` and `h3-experiment` clean; the clients' build is CI's
 (`Clients`, the client files' lines). CI's full verify on the pull request is the record.
 **Next:** T129.
+
+### Increment 14, round 3: T129a, batch E14's markets: the harness's trade window, the recipe and the runs (2026-11-19, `adventure/e08-t129a`)
+
+Baseline: `master` 450e47e (#1032, T128, merged; CI's run on it in progress at the start; the
+setup's full baseline lost to a VM restart while it ran beside `clients/capture/setup.sh`, CI's
+run stands for it). Staged the client lane's 64 files (SHA-256 checked against the PC's). **The
+cut** (decision 376): by family, T129a the markets, T129b the services and the whole run.
+Both maps compiled again with the staged tables: stamps `7945e78d` and `a88dd771`, each
+template byte-equal to the committed one.
+
+**The reading** (`docs/exe/map.toml`: the four screens' vtables and seven globals): every screen
+of the trade window keeps its selection in the same globals, read in the four procedures
+(0x5ECFE0, 0x5ED550, 0x5ED9E0, 0x5EE890): the given side 0x6AAA90 (a resource, or the hero's
+slot on screen 4, the paying resource on screen 2), the wanted 0x6AAACC (a resource, the
+recipient's place, the entry), the rate 0x6AAAC0 with its direction 0x6AAA80 (1: one given for
+the rate wanted, the slider counting the given), the slider's most 0x6AAA94 and amount 0x6AAAB0,
+0x6AAAAC set by a trade. A trade clears the pair; the rest stays, after the window closes too.
+Seen live under Wine: the screens' dialogs 0x6439F8 (0), 0x643A34 (1), 0x643A70 (2), 0x643AE8
+(4), their items (the survey's ids; the recipients' flags 49-55, the entries' pictures 56-62),
+the slider item 6.
+
+**The harness** (`clients/capture/h3adv.py`, `h3mem.py`, common; README "Markets"): the screen
+kind `market`, read as a walk or Space opens it (`order`, `markets`, `market:opening`,
+`market:at`), the step's `actions` played there (items by name: `slot:<n>`, `give:`/`pay:`/
+`want:<resource>`, `entry:<n>`, `player:<colour>`, `trade`, `max`, the screens' buttons waited
+for; `amount = <n>` its slider), then closed by its OK; `market[:part]` the window now
+(`pair`, `rate`, `most`, `amount`, `slider`, `recipients`, `entries`, `buttons`, ...);
+`black_market:x,y[:part]` a Black Market's record by its entrance (game +0x1F680, the word its
+index), `black_markets`, `hero:backpack_last`. **A clash fixed:** E09 T34's `<encounter>|<field>`
+had taken every wide table's cell key `<row> | <column>` (E08 T37a), so the harness check failed
+at its fill since then; a `|` with a space before it is a cell key again. The harness check
+passed (23 steps) and the harness's tests (23).
+
+**The recipe** `clients/capture/batches/E08-batch-14.toml` (16 steps: day 1 Red 13, Blue 1, the
+turns ended to Red's day 29, its reads; T129b adds the services' rows before each player's turn
+ends) and **two runs**, alike in every rule-level record (the gold bonus and the markets' draws
+differ by start). The template's E14-1, E14-4 and E14-5 sections filled from the second
+(`experiments/results/E08-batch-14.md`); the other sections are T129b's.
+
+**Raw observations** (unscored; T130 scores them, survey §21): **E14-1:** the walk (5, 9), (5, 8),
+on (5, 8) with 1 360 at the window (screen 4, kind 3, count 5, no screens' buttons, Trade, Max
+and the slider disabled until a pair); **1 Pixie for 17 gold**, the most 10 (counting creatures),
+10 sold: **+170 gold**, slot 0 empty; **1 Vampire for 1 wood**, the most 2: **+2 wood**; no points
+spent. **E14-2:** the Skeletons (the only stack) **most 9** (42 gold each). **E14-16:** on (5, 8)
+after closing with 1 360; Space opens the guild's window again (screen 4), the hero stays.
+**E14-3:** each market **3 treasures, 3 minors, 1 major** in that order, none banned, the two
+distinct (run 1 and run 2 drew different sets); M1's word 0, M2's 1; **day 29** (month 2, week 1,
+day 1) both records unchanged but M1's sold entry (-1). **E14-4:** on (12, 8) with 1 430; the
+first entry's price **5 000 gold** (a treasure of cost 2 000), the most 6, amount 1; Trade: **no
+question, no message, −5 000 gold, the artifact nowhere** (the 15 worn positions and the 64 in the
+backpack unchanged, the last a Glyph of Gallantry), **the entry emptied** (the window and the
+record); Space reopens screen 2 with the entry empty. **E14-5:** P1 (24, 8) with 1 360, screen 0,
+kind 1, the transfer's button 17 shown; **wood → gold 1 for 75** (most 32, counting wood): **−2
+wood, +150 gold**; **gold → wood 833 for 1** (most ⌊gold ÷ 833⌋, counting wood): **+1 wood, −833
+gold**; **mercury → gems 3 for 1** (most 5): **−3 mercury, +1 gem**; Space reopens screen 0.
+**E14-6:** P2 (26, 10) by (24, 9), (24, 10), (25, 11) (4 marks; 482, 878 left: none from above);
+the transfer's screen (16 back) offers **Blue alone**; 5 ore: **Red −5, Blue +5** (30 to 35),
+Blue's treasury the same on its turn; Space reopens screen 0.
+
+**For T129b:** the services' reads (the Altar's dialog: +0x78 the total, its places, the
+slider's most; the Hill Fort's rows: prices, states, the whole +0x298; the factory through the
+hire dialog's existing reads), their rows in the template's order before each turn's end, the RoE
+map's recipe (`E08-batch-14-roe.toml`, E14-14), then one run of the whole recipe filling every
+section (the market sections again). The maps were not copied to the user's folder (the session's
+device tools could not write there, as at T128).
+
+**`master`'s CI** (the run on 450e47e, after #1032) failed in `h3-map`'s
+`every_step_keeps_the_commands_invariants`: a won battle against a monster guarding a Lean To's
+entrance paid the find's 3 crystal in the same command (decision 279's held visit), which
+`check_unowned_battle_end` did not predict (it knew a weekly object's only). The finds' part of
+`visit_gains` is now `find_gains`, called by both; the seed kept in
+`proptest-regressions/tests/play.txt`; the engine unchanged.
+
+**Versions:** none moved (the harness, the recipe, the filled template, the address map, a test
+oracle, docs).

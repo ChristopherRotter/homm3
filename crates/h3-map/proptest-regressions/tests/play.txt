@@ -51,3 +51,4 @@ cc b3da114a63ec729662a815e356bb35c2f86f87d9a9ecd65ba2a426a48c3a05cc # shrinks to
 cc 7ada641d0101ab4ec67b792fe1b0473b02278d37ed47e355ac3eee5f7cd0487f # E08 T116c's CI (#934) on c05bccd: a garrison hero gone at its town's capture without a battle (TWN-STUB-14); since #930 it defends, the case passes
 cc 6990fd1cb7b22009649478c2a15e0387746cda8e823fad7e75c63ccbb75415ea # E09 T29b: a garrison hero that won its siege's defence stays in the garrison (a stress of 240 cases)
 cc d434f32c9613bfbd24cca09aba0b8bf902ce4a716f95bb097109382d255dcdd2 # E09 T29b: a garrison hero raises after its defence and answers its level-up (CI on #946)
+cc 927e83f83344d60c406dca3ea29fb9a601810f09228a5912e618f5408cb989d2 # E08 T129a: CI's run on master 450e47e, a won battle's 3 of resource 4

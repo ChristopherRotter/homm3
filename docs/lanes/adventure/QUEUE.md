@@ -4,29 +4,30 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a done (decision 376: T129 cut by family), T129b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T129 — batch E14's harness, recipe and run** (round 3; decisions 368, 373; as T120 for
-increment 13)
+**E08 T129b — batch E14's services and the whole run** (round 3; decisions 368, 373, 376; T129a
+the markets, done)
 
-- **Scope:** design note `E08-design.md` §20's harness and recipe: the capture harness's reads
-  (`clients/capture/`, common): the market window (`market_screen` 0x6AAAA4, `market_kind`
-  0x6AAAC4, `market_count` 0x6AAA98: the screen, the pair, the slider's most), the Altar's dialog
-  (+0x78 the total, the places, the slider's most), the Hill Fort's rows (prices, states, the whole
-  +0x298), the Black Markets' records (game +0x1F680) and the markets' object words, both
-  treasuries, the hero's experience, skills, artifacts, army and tile (earlier batches' reads), the
-  dialogs' order (E14-17); the recipe `clients/capture/batches/E08-batch-14.toml` (each row's
-  clicks and keys with its reads before and after, the order in the template's instructions; Space
-  revisits; E14-3's day 29 by both players' turns ended 28 times; E14-14 on the RoE map); the runs
-  under Wine; the templates `experiments/results/E08-batch-14.md` and `-14-roe.md` filled.
-- **Inputs:** the specs `experiments/specs/E08-batch-14.toml` and `-14-roe.toml` (their headers:
-  the changes from design §20, the pictures, the bans, the levels at load); T120's record in
-  `E08-log.md` as the form; `clients/capture/README.md`.
-- **Then T130:** scored in the survey's new §21 (each row as predicted, or the finding and its
-  effect on the design note and the drafts).
-- **Depends on:** T128 (done). **Status:** ready (the original data: the client lane's staging list
-  for the harness; compile the maps again with the staged tables: stamps `7945e78d` and `a88dd771`, as
-  their templates; confirm the cut at its start).
+- **Scope:** design note `E08-design.md` §20's harness and recipe for the services: the capture
+  harness's reads (`clients/capture/`, common): the Altar's dialog (`altar_dialog_create` 0x55FDD0:
+  +0x78 the total, the places' +0xC0 vector, the slider's most, its two screens, Sacrifice, All,
+  the creatures' amounts +0x138), the Hill Fort's rows (`hill_fort_rows` 0x4E7EB0: prices, states,
+  the whole +0x298; items 261-267 and 204), the factory through the hire dialog's existing reads
+  (GAM-DEC-008), the hero's experience, level, skills, artifacts, army and tile (earlier batches'
+  reads), the dialogs' order (E14-17: the level-up over the Altar); the recipe
+  `clients/capture/batches/E08-batch-14.toml`: E14-8, E14-9, E14-10, E14-12, E14-15 on Red's day 1
+  after E14-5 (its comment marks the place), E14-13 and E14-17 on Blue's (Blue's step marks it),
+  as the template's instructions order them; a recipe `E08-batch-14-roe.toml` for E14-14 on the
+  RoE map; then one run of each recipe filling the templates `experiments/results/E08-batch-14.md`
+  (every section, the market ones again) and `-14-roe.md`.
+- **Inputs:** T129a's record in `E08-log.md` (the trade window as the form: a screen kind, its
+  globals or fields, items by name, `amount`); the specs' headers; `clients/capture/README.md`
+  ("Markets", "Dwellings, the hire dialog ...", "Creature banks": `order`).
+- **Then T130:** scored in the survey's new §21.
+- **Depends on:** T129a (done). **Status:** ready (the original data: the client lane's staging
+  list; compile both maps again: stamps `7945e78d` and `a88dd771`; the maps not yet copied to the
+  user's folder).
 
 ## Inbox
 
