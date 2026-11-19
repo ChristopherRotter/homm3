@@ -122,8 +122,11 @@ pub use batch::{
 /// the new seat `H3_SEAT_SYSTEM_ALL_SEEING`; the encodings unchanged. v37 (E25 T16, the cloning
 /// bench): `h3_batch_choice`, an internal seat's choice for each env's side to move as the action
 /// an external seat plays (the system actors' labels), drawn from that side's seat stream; the
-/// encodings unchanged.
-pub const H3_ABI_VERSION: u32 = 37;
+/// encodings unchanged. v38 (E25 T38a, AI-Q19): observation encoding v23 (the reach block, each
+/// side's strikers per hex and each stack slot's shot and strikes, from the battle's state as the
+/// viewer may know it, `h3_sim::observation::REACH`, appended: v22's layout is its prefix;
+/// `h3_observation_len` grows); no function changes.
+pub const H3_ABI_VERSION: u32 = 38;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -716,7 +719,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 37);
+        assert_eq!(h3_abi_version(), 38);
         assert_eq!(
             h3_observation_encoding_version(),
             OBSERVATION_ENCODING_VERSION

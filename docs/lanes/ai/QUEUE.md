@@ -16,27 +16,10 @@ gates at least every quarter of the budget, the check named in its rule (`TRAPS.
 in the epic file). **T37 closed** 2026-11-18 (`E25-log.md` T37, the user's review AI-Q19): #2's
 moves are blind to the enemies' reach (0.468, chance 0.455), its strikes read the kills; **v23 is
 the reach block** (the design's points 1 to 5), the kill preview for `hexconv` a bench arm
-(point 6), T39's rule the clone's ladder +0.02 (point 7).
+(point 6), T39's rule the clone's ladder +0.02 (point 7). **T38a done** 2026-11-19
+(`E25-log.md` T38a): observation v23, the reach block (`layout.REACH`), from
+`h3_battle::reach_seen_by`; C ABI v38; no network reads it yet.
 
-- **T38a — v23 in the engine** (`cross-lane`, the user's consent at T37; the sandbox; one
-  pull request; the design's points 1 to 5).
-  - **(a) The query in `h3-battle`:** a stack's reach as a viewer may know it, the positions
-    the rules' pathfinder reaches within its speed now (flight, shape, its side's gate, Force
-    Fields), its stops only the pits both its controller and the viewer see. Tests: the other
-    side's hidden Quicksand or Land Mine changes nothing, a seen one stops the walk; a flyer; a
-    two-hex stack; the gate; a bound stack. The battle lane's inbox told (its code).
-  - **(b) Observation encoding v23 in `h3-sim`:** the reach block after the turn order
-    (`REACH` = 9 008; two planes, per slot three features; 9 644), from
-    `BattleEnv::encode_observation`'s state; `observation::encode` takes the block. Tests: its
-    columns on built battles; two worlds of a battle (`determinized`, two seeds) give the viewer
-    the same encoding (a property); the layout against `layout.py`. C ABI v38 (`_ffi.py`);
-    `layout.py`'s `REACH`; the MLP and the entity network bounded at `REACH` (a saved network
-    loads and plays as before: a test).
-  - **(c) The measures:** the batch workloads re-baselined (lane-only; the reason in the
-    commit), `cargo xtask determinism` (the golden replays unchanged), `bench-check` of the
-    battle lane's workloads (unchanged), the Python suite, `scripts/verify-once.sh clients`.
-  - **Acceptance:** the pull request labelled `cross-lane`, CI green; the versions in the
-    HANDOFF; a trap for a state-read feature (viewer-safe) in `TRAPS.md`.
 - **T38b — the networks and the bench** (Python; the sandbox; after T38a; the design's points 5
   to 7): `[network] reach` for the hex kinds (the planes into each hex's drawn vector, the slot
   features into the stack tokens; default off, a test that the default computes what the older

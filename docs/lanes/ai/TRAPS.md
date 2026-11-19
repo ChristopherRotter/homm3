@@ -70,6 +70,17 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   lacks, a turret, the Catapult: no decision); in the tactics phase it tells round 1's order
   (the active stack is not at place 1). A probe that labels by decisions sees those as misses
   (E06-log T6g).
+- Observation v23 appends the reach block after v22's layout (`layout.REACH`, v22's length; E25
+  T38a, AI-Q19): a network reads it only with `[network] reach` (T38b; else v22's prefix, as
+  every network saved before v23); slices of the turn order end at `REACH`, never at the end.
+  **The block is read from the state, not the `Observation`** (`ReachBlock::of`, in
+  `BattleEnv::encode_observation`): every input of a state-read feature must be one the viewer may
+  know, through a viewer-safe engine query (`h3_battle::reach_seen_by`: the pits both a stack's
+  controller and the viewer see; `computer::shoots`), never the controller's own view
+  (`pathfinder::stops`, `computer::reach_map`) or anything `observe_as` hides. The test
+  `a_viewers_worlds_encode_as_its_battle` (two worlds of a battle encode alike for their viewer)
+  catches a leak; a reach with the controller's pits fails it. `observation::encode` takes the
+  block (`ReachBlock::EMPTY` where no state is at hand: zeros).
 - `h3env.BattleBatch`'s output arrays are read-only attributes (the engine holds their
   addresses): copy or write into them, never rebind; its head arrays must be N long.
 - The agent's tactics bound (E25 T4a, `[network] tactics_rounds`) lives in Python: the binding

@@ -1,5 +1,6 @@
-"""The trainer's networks behind one interface (`Policy`): each reads the flat observation v22
-(without `[network] order` only v21's prefix, `layout.ORDER`, as before v22), gives a value and
+"""The trainer's networks behind one interface (`Policy`): each reads the flat observation v23 up
+to its reach block, v22's prefix (`layout.REACH`; without `[network] order` only v21's prefix,
+`layout.ORDER`, as before v22), gives a value and
 the factorized action's heads, each cast head conditioned on the earlier choices and masked by the
 batch's head calls. Four kinds (`[network] kind`, E06 T5a, design §11; E25 T7a): `Mlp`, the
 smoke run's (E05 T8, `docs/epics/E05-log.md` §8.3), the entity network (`entity.Entity`) and the
@@ -17,10 +18,11 @@ share of the target stack they are, the hit points they are), `φ` a small netwo
 entries, `u` a linear map of the trunk's output, so the state decides how much a kill counts.
 Only the entry head reads it; the value and the cast heads do not.
 
-The turn order (`[network] order`; the turn-order probe, E06-log): the MLP's trunk reads the
-whole observation v22, each stack slot's places in the turn order (`layout.ORDER_ROUND` to
-`ORDER_NEXT`) with it; without it the trunk reads v21's prefix, so a network saved before v22
-plays on. The structured kinds' stack tokens read the places since E25 T25 (`entity`).
+The turn order (`[network] order`; the turn-order probe, E06-log): the MLP's trunk reads
+observation v22's layout (v23's prefix before the reach block, `layout.REACH`, which no network
+reads yet: a network saved before v23 plays on), each stack slot's places in the turn order
+(`layout.ORDER_ROUND` to `ORDER_NEXT`) with it; without it the trunk reads v21's prefix, so a
+network saved before v22 plays on. The structured kinds' stack tokens read the places since E25 T25 (`entity`).
 
 The tactics bound (`[network] tactics_rounds`, E25 T4a, any kind): the agent ends its own tactics
 phase after that many rounds of it, the rules unchanged (BAT-TAC-002 has no limit): once its
@@ -430,9 +432,10 @@ class Mlp(Policy):
     ) -> None:
         super().__init__()
         root2 = float(np.sqrt(2.0))
-        #: Whether the trunk reads the turn order; else only v21's prefix of the observation.
+        #: Whether the trunk reads the turn order (v22's layout, up to the reach block); else only
+        #: v21's prefix of the observation.
         self.reads_order = order
-        self.inputs = observation_len if order else min(observation_len, L.ORDER)
+        self.inputs = min(observation_len, L.REACH if order else L.ORDER)
         #: Whether the trunk reads the entry mask after the observation (`[network] mask_input`).
         self.reads_mask = mask_input
         width = self.inputs + (actions if mask_input else 0)

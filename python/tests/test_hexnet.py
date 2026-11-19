@@ -330,6 +330,37 @@ def test_the_defaults_are_the_networks_before_t25() -> None:
     batch.close()
 
 
+def test_no_network_reads_the_reach_block() -> None:
+    # E25 T38a: observation v23 appends the reach block (`layout.REACH`), which no network reads
+    # before `[network] reach` (T38b): every kind, with the turn order and the mask, encodes as if
+    # it were not there; a network saved on v22's rows (the MLP with `order`: its trunk's 9 008
+    # inputs) loads into the network built for v23's batch and plays as before.
+    batch = mixed_batch()
+    obs = torch.from_numpy(batch.obs.copy())
+    mask = torch.from_numpy(batch.entry_mask.copy()).bool()
+    assert obs.shape[1] == L.OBSERVATION_LEN == L.REACH + 2 * L.MAX_FIELD_HEXES + 3 * 42
+    moved = obs.clone()
+    moved[:, L.REACH :] += 5.0
+    for kind in ("mlp", "entity", "hexconv", "hexformer"):
+        config = Config(kind=kind, hidden=32, width=16, layers=2, heads=2, embed=8)
+        config = asdict(config) | {"order": True, "mask_input": True}
+        torch.manual_seed(0)
+        net = build(config, batch).eval()
+        with torch.no_grad():
+            given, shifted = net.encode(obs, mask), net.encode(moved, mask)
+            assert all(torch.equal(a, b) for a, b in zip(given, shifted, strict=True)), kind
+            assert torch.equal(net.values(obs, mask), net.values(moved, mask))
+    torch.manual_seed(0)
+    sizes = (batch.action_count, batch.spell_count, batch.target_count)
+    saved = Mlp(L.REACH, *sizes, hidden=32, embed=8, order=True).eval()
+    loaded = Mlp.for_batch(batch, hidden=32, embed=8, order=True).eval()
+    loaded.load_state_dict(saved.state_dict())
+    with torch.no_grad():
+        assert torch.equal(loaded.encode(obs)[0], saved.encode(obs[:, : L.REACH])[0])
+        assert torch.equal(loaded.values(obs), saved.values(obs[:, : L.REACH]))
+    batch.close()
+
+
 def test_the_t25_keys_config() -> None:
     # E25 T25: `mask_input` and `order` are every kind's, `attack_hex` the structured kinds'
     # (`run.validate` refuses it on the MLP, `policy.build` too).

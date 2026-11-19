@@ -33,15 +33,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `TRAPS.md`, Python). **Increment 9: a richer observation (v23)** (AI-Q18). **T37 closed**
   2026-11-18 (`E25-log.md` T37, AI-Q19): #2's moves are blind to the enemies' reach, its strikes
   read the kills; v23 is the reach block (two threat planes, three features a stack slot) from a
-  viewer-safe reach query in `h3-battle`, the kill preview for `hexconv` a bench arm. **Next:
-  T38a** (the query, v23, C ABI v38; one `cross-lane` pull request, the user's consent given at
-  T37), then T38b (the networks, the bench), T39 (the bench on the GPU; `QUEUE.md`).
-- **Open pull requests:** #1028 (`claude/fervent-bardeen-n2suw6`: T37's design, AI-Q19).
-  Merged: #1022, #1023 (T36's close, increment 9 refined, the README's E25 row).
-- **Versions:** battle action encoding v13, observation encoding v22, replay format v32
-  (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI v37 (E25 T16:
-  `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
-  (`docs/08-work-process.md`, "Versions"). Next
+  viewer-safe reach query in `h3-battle`, the kill preview for `hexconv` a bench arm. **T38a
+  done** 2026-11-19 (`E25-log.md` T38a): observation v23's reach block from
+  `h3_battle::reach_seen_by`, C ABI v38; no network reads it yet; the batch's step +140 % on the
+  encounters (re-baselined). **Next: T38b** (`[network] reach`, the preview for the hex kinds, the
+  cloning bench; Python only), then T39 (the bench on the GPU; `QUEUE.md`).
+- **Open pull requests:** #1036 (`claude/intelligent-tesla-tm17cq`, `cross-lane`: T38a). Merged: #1028 (T37's design, AI-Q19). **Owed to a `shared/` pull request:**
+  `docs/07-simulation-and-ai.md`'s observation line still names encoding v22 (v23's reach block,
+  after T38a merges).
+- **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
+  block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
+  v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
   ids: AI-Q20, AI-QUIRK-1, AI-STUB-2.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -50,6 +52,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-19 — E25 T38a: the reach query, observation v23, C ABI v38
+
+- #1028 merged. No original data (none needed). `cargo build --release -p h3-ffi`, `uv sync
+  --group train`; the Python suite took 70 minutes beside the benches (alone 3.5). The batch
+  workloads measured right after the first build (+340 %), the strike hexes rewritten on a
+  neighbour table (+176 %), then re-baselined; a `master` worktree (`target/wt-master`) for the
+  siege workload's per-function check. #1036 (`cross-lane`), watched until it merges.
 
 ### 2026-11-18 — E25 T37 closed: v23's design
 
@@ -66,11 +76,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   T34's; the 20 M head-to-head skipped by the user). No computer folder linked. Built `[gate]
   futility` (the user's directive); `uv sync --group train` and `cargo build --release -p
   h3-ffi` (1.5 minutes), the Python suite 270 (3.5 minutes). The user chose increment 9.
-
-### 2026-11-16 — E25 T35 closed, T36 prepared
-
-- #954 merged. The user uploaded `e25-win-bonus-1`'s `record.json`, `metrics.jsonl` and the three
-  measures (the measures with CRLF, stripped; the update records read from `metrics.jsonl`, not
-  committed). The probe within (0.5007 head to head): reward v1 stays. The user chose the long
-  run of four offered: the anchor resumed to 20 M. Only `uv sync --group dev` and the records'
-  test run (no code changed).

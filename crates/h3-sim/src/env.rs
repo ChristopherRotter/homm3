@@ -12,7 +12,7 @@ use h3_contracts::{BattleHero, BattleResult, BattleSetup, BattleSide, RetreatFac
 use h3_kernel::{Rng, StreamId};
 
 use crate::action::{self, Action, ActionMask, SpellMask, TargetMask};
-use crate::observation;
+use crate::observation::{self, Neighbours, ReachBlock};
 use crate::reward::{self, RewardConfig};
 
 /// Result of one environment step.
@@ -66,12 +66,14 @@ impl fmt::Display for StepError {
 
 impl std::error::Error for StepError {}
 
-/// One battle as an RL environment. Cheap to [`fork`](BattleEnv::fork): the ruleset and setup
-/// are shared, the state is a fixed-size value.
+/// One battle as an RL environment. Cheap to [`fork`](BattleEnv::fork): the ruleset, the setup and
+/// the field's neighbour table are shared, the state is a fixed-size value.
 #[derive(Debug, Clone)]
 pub struct BattleEnv {
     ruleset: Arc<BattleRuleset>,
     setup: Arc<BattleSetup>,
+    /// The ruleset's field's neighbours, for the observation's reach block.
+    neighbours: Arc<Neighbours>,
     /// Each episode gets obstacles generated for the setup's terrain from its seed.
     random_obstacles: bool,
     state: BattleState,
@@ -118,6 +120,7 @@ impl BattleEnv {
     ) -> Result<Self, SetupError> {
         let state = Self::episode(&ruleset, &setup, random_obstacles, seed)?;
         Ok(Self {
+            neighbours: Arc::new(Neighbours::new(&ruleset)),
             ruleset,
             setup,
             random_obstacles,
@@ -346,11 +349,16 @@ impl BattleEnv {
     }
 
     /// Writes the flat observation encoding for `viewer` into `out`
-    /// (length [`crate::OBSERVATION_LEN`]).
+    /// (length [`crate::OBSERVATION_LEN`]), its reach block from the battle's state
+    /// ([`ReachBlock::of`], what `viewer` may know).
     pub fn encode_observation(&self, viewer: BattleSide, out: &mut [f32]) -> Result<(), usize> {
+        if out.len() < observation::OBSERVATION_LEN {
+            return Err(observation::OBSERVATION_LEN);
+        }
         observation::encode(
             &self.observation(viewer),
             self.ruleset.battle().field.width,
+            &ReachBlock::with(&self.neighbours, &self.state, &self.ruleset, viewer),
             out,
         )
     }

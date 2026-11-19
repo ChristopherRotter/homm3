@@ -2303,3 +2303,48 @@ an entry only where a task builds on it.
   lane's `cross-lane` pull request** for the engine query (recommended); T39's rule **the
   clone's ladder +0.02** (recommended; not T32's agreement +0.02). **T37 closed** 2026-11-18;
   T38 and T39 refined in the AI queue.
+
+## T38a — v23 in the engine (2026-11-19)
+
+- **(a) The query** (`h3-battle`, `movement.rs`; the battle lane's inbox told): `reach_seen_by`
+  and `SeenReach` (the positions within the stack's speed now, its own included, and the stops
+  among them), the rules' movement (`reach`'s second instance: flight, shape, its side's gate,
+  the Force Fields; nothing while bound), its walk stopping only at the pits both its controller
+  and the viewer see (`obstacles::pits_seen_by_both`) and a town's moat. Tests
+  `src/tests/reach.rs` (six): the other side's hidden Quicksand and Land Mine change no reach
+  (its worlds' reach the battle's), a pit both see stops every stack for every viewer and no
+  attack follows a move onto it, a flyer, a two-hex walker (a position stops it when its footprint
+  covers a pit), the closed gate (the defender's reach only), a bound stack; each against the
+  stack's legal moves where the viewer is its controller.
+- **(b) Observation encoding v23** (`h3-sim`, `observation/reach.rs`): the reach block after the
+  turn order (`REACH` = 9 008, 9 644 floats): per hex the viewer's side's and the opponent's
+  *strikers* (alive, with turns, no war machine or turret; by controller) that can strike a stack
+  standing there in melee on their next turn, per stack slot `[can shoot now (computer::shoots),
+  the stacks it may attack that it can strike, the strikers that may attack it and can strike
+  it]`. A striker's strike hexes: next to its footprint at a position it attacks from (where it
+  stands, or a reached position that is no stop), that footprint left out, standable only.
+  Shooters are strikers too (the design's list; whether one shoots is its slot's first feature).
+  `ReachBlock::with` in `BattleEnv::encode_observation` (the batch's, the single envs', the
+  worlds'); `observation::encode` takes the block (`ReachBlock::EMPTY` without a state). Tests:
+  the block against the active stack's commands on random battles of the full scenario and the
+  siege, their heroes casting Mire and Snare whenever they can (the shot flag with the shots, a
+  striker's strikes with its attacks' targets, whose hexes its plane counts; each pair once from
+  either side: over 200 strikes checked); two worlds of a battle encode as the battle for their viewer
+  (2 battles, over 500 viewer states with a pit hidden from the viewer; a reach with the
+  controller's pits fails it, checked by a mutation); the layout against `layout.py`. C ABI v38
+  (`h3.h`, `smoke.c`, `_ffi.py`); `layout.py`'s `REACH`, `REACH_FEATURES`, the slot columns. The
+  MLP with `order` and the structured kinds' turn order read up to `REACH`: no network reads the
+  block before `[network] reach` (T38b); a network saved on v22's rows loads and plays as before
+  (`test_no_network_reads_the_reach_block`).
+- **(c) The measures:** the batch workloads re-baselined (lane-only): `batch-random-full` +176 %,
+  `batch-random-siege` +69 %, `batch-random-encounters-v1` +140 % (196 k → 471 k instructions a
+  step; T37's 19 µs about 46 µs, its estimate with the computer's pathfinder 105 µs),
+  `batch-system-neutral-v1` +33 % (the system actor's decisions inside its count). A first
+  build cost +340 % on the full scenario: the strike hexes from `Field::neighbors` per position;
+  a neighbour table per env (`Neighbours`, shared by forks and worlds) and the pairs counted
+  once brought it to +176 %; what is left is the engine's reach search per striker (about 40 %
+  of the step) and `HexSet::iter`'s 256-hex scan (the battle lane's; not changed). The battle
+  lane's workloads unchanged: `random-rollouts-full` +0.08 %, `computer-decisions` +0.01 %
+  against their baselines, `random-rollouts-siege` +0.79 % (`master` itself +0.82 %: −0.03 %
+  against it). `cargo xtask determinism`: the golden replays unchanged. The Python suite 271
+  passed, 1 skipped.
