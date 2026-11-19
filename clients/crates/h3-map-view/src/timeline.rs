@@ -87,12 +87,24 @@
 //! mouse-over's owners (the live part's at 0: a hint or a cursor over the object after its visit)
 //! and the rest of `visit_and_update`'s redraws (the lists, the status window, the resource bar:
 //! nothing they show changes in the recordings).
+//!
+//! A boat boarded and left (E24 M4 T2d2, design §5.7, *provisional*): a human's step onto an
+//! empty boat ([`Boats::empty`]) dissolves the hero off the land before its animation
+//! (`hero_loss_effect` 0x4ACBB0: the view drawn without it, [`Draw::hidden`]), the step then
+//! drawn with nothing lifted; at its end the boat is taken off the map and lifted as the hero's
+//! picture ([`Boats::sailed`]: its group by the boat's facing, mirrored by the hero's, MCL-Q35). A
+//! step from a boat onto land ([`Start::water`]) puts the boat back on the water first, steps with
+//! nothing lifted and at its end dissolves the hero in on the land. Both visits end with
+//! `visit_and_update`'s redraws (the minimap, the lists, the status window, the buttons). *Not
+//! built:* the Admiral's Hat's points at sea, the mouse-over's boats (the live part's at 0), a
+//! computer's boarding or landing, a find on the tile landed on.
 
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::format;
 use alloc::string::String;
 use alloc::sync::Arc;
+use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
 
@@ -108,8 +120,9 @@ use crate::layout::{AdventureLayout, DIRECTIONS};
 use crate::levels::{self, LevelArt};
 use crate::lists::{SLOTS, top_showing};
 use crate::live::{
-    Arrow, Attacking, Buttons, Chosen, ChosenHero, ChosenTown, Date, DateStatus, FoundStatus,
-    HeroStatus, Kingdom, KingdomStatus, Selected, Stack, Status, Turn, TurnStatus,
+    Arrow, Attacking, Boat, Buttons, Chosen, ChosenHero, ChosenTown, Date, DateStatus, Facing,
+    FoundStatus, HeroStatus, Kingdom, KingdomStatus, Live, LiveBoat, Selected, Stack, Status, Turn,
+    TurnStatus,
 };
 use crate::minimap::{MinimapArt, divided};
 use crate::panels;
@@ -703,6 +716,32 @@ pub struct Hero {
     pub facing: Direction,
 }
 
+/// The boats on the map (E24 M4 T2d2, design §5.7, *provisional*: the live part's at 0, from Part
+/// B the engine's): the empty ones on their tiles and the one each of the map's heroes sails.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Boats {
+    /// The boats without a hero, in order: one boarded taken off its tile (`hero_hide`), one left
+    /// put back last (`hero_show`).
+    pub empty: Vec<LiveBoat>,
+    /// The boat each of the map's heroes sails ([`Start::heroes`]' order), none on land: a boarded
+    /// one's type and its captain's colour.
+    pub sailed: Vec<Option<Boat>>,
+}
+
+impl Boats {
+    /// A live part's boats: its empty ones and its heroes' (E24 M4 T2d2).
+    #[must_use]
+    pub fn of(live: &Live) -> Self {
+        Self {
+            empty: live.boats.clone(),
+            sailed: live.heroes.iter().map(|h| h.boat).collect(),
+        }
+    }
+}
+
+/// The destination's arrow of a path the hero pays today (`path_arrows` frame 0, design §2.10).
+pub const DESTINATION: u16 = 1;
+
 /// Where a sequence starts (its 0: the palette tick, the redraw, the mouse poll and the scroll's
 /// last time all at 0, as the harness sets them).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -801,6 +840,12 @@ pub struct Start {
     /// The selected hero's level-ups' dialogs, by their level (E24 M4 T2c: the adapter's, laid
     /// out from a recording's facts).
     pub level_ups: Vec<LevelBox>,
+    /// The boats at 0 (E24 M4 T2d2, design §5.7: the live part's, [`Boats::of`]).
+    pub boats: Boats,
+    /// The map's water (E24 M4 T2d2: a hero in a boat lands on a tile that is not), each tile's by
+    /// level, row and column (`(z × size + y) × size + x`, the map art's order); a tile past its
+    /// end is water, so that none known lands nowhere.
+    pub water: Arc<Vec<bool>>,
 }
 
 /// A level-up's dialog (E24 M4 T2c, design §5.5, *provisional*: laid out by the adapter,
@@ -1101,6 +1146,12 @@ pub struct Draw {
     /// The objects' owners changed since 0 as the view was last drawn (E24 M4 T2d1, design §5.6:
     /// the flags' colours; the minimap's are [`Minimap::owners`]).
     pub owners: Owners,
+    /// The selected hero off its tile and not lifted (E24 M4 T2d2, design §5.7: +0x1EC 0 after
+    /// `hero_select` took it off its tile, +0x20C; a boarding's dissolve and step, a landing's
+    /// step): drawn nowhere.
+    pub hidden: bool,
+    /// The boats as the view was last drawn (E24 M4 T2d2).
+    pub boats: Arc<Boats>,
 }
 
 /// A dissolve's step (`screen_dissolve` 0x602DC0; E17 design §7.25, E24 design §5.3): the
@@ -1200,6 +1251,8 @@ pub struct Loop {
     hero: Option<Hero>,
     /// The selected hero lifted off its tile (the manager's +0x1EC, +0x20C).
     lifted: bool,
+    /// The selected hero off its tile and not lifted (E24 M4 T2d2: [`Draw::hidden`]).
+    hidden: bool,
     walk: Walk,
     /// The path shown, in its order from the hero (its last arrow the destination), each arrow with
     /// the step onto it.
@@ -1321,6 +1374,11 @@ pub struct Loop {
     hero_level: u8,
     experienced: Option<usize>,
     level_ups: Arc<Vec<LevelBox>>,
+    /// The boats in memory and the map's water ([`Start::boats`], [`Start::water`]), and the boat's
+    /// visit the step under way ends with (E24 M4 T2d2).
+    boats: Boats,
+    water: Arc<Vec<bool>>,
+    aboard: Option<Aboard>,
 }
 
 /// A computer player's turn under way (E24 M4 T1b2, design §5.2, *provisional*): its facts, kind
@@ -1405,6 +1463,42 @@ struct Dissolving {
     /// What the panels show at its end (an artifact's primary skills: `find-artifact`'s Attack at
     /// 1580, the hero's window built again by the step's end).
     gain: Gain,
+    /// The palettes' cycling held meanwhile: an object's removal's (`visit_resource_pile`, the
+    /// pickups' and the monsters' handlers), not a boat's (E24 M4 T2d2: `hero_loss_effect`
+    /// 0x4ACBB0 alone, `board`'s cycles at 200, 400 and 600).
+    holds: bool,
+    /// What follows its end.
+    then: Then,
+}
+
+/// What follows a dissolve's end (E24 M4 T2d2).
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Then {
+    /// An object taken (E24 M4 T2a2 part B): the gain shown, the levels reached, the key's step's
+    /// end.
+    Taken,
+    /// A boarding's dissolve: the step's animation onto the boat, the walk going on.
+    Board(Box<Boarding>),
+    /// A landing's: `visit_and_update`'s redraws, then the walk's end (a key's or not).
+    Landed(bool),
+}
+
+/// A step onto a boat held by its dissolve (E24 M4 T2d2): the walk, the boat's tile and whether
+/// the step is one draw.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Boarding {
+    moving: Moving,
+    next: Pos,
+    single: bool,
+}
+
+/// The visit a step ends with by its tile's class (`visit_object`'s cases 8 and 3, E24 M4 T2d2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Aboard {
+    /// The empty boat boarded, as it lay.
+    Board(LiveBoat),
+    /// The land stepped onto from the boat.
+    Land,
 }
 
 /// A dissolve's steps (`screen_dissolve` 0x602DC0: eight, the blend's eighths).
@@ -1537,9 +1631,12 @@ impl Loop {
                 revealed: 0,
                 attacking: None,
                 owners: Arc::new(Vec::new()),
+                hidden: false,
+                boats: Arc::new(start.boats.clone()),
             },
             hero: start.hero,
             lifted: false,
+            hidden: false,
             walk: Walk {
                 group: 0,
                 frame: 0,
@@ -1611,6 +1708,9 @@ impl Loop {
             hero_level: start.experience.map_or(1, |e| rules.level_up.level_of(e)),
             experienced: start.index,
             level_ups: Arc::new(start.level_ups.clone()),
+            boats: start.boats.clone(),
+            water: Arc::clone(&start.water),
+            aboard: None,
             rules,
         };
         // The status window at 0 (E24 M3 T5b2): the kind asked, else the date's or the kingdom's
@@ -1733,15 +1833,7 @@ impl Loop {
             if self.dissolve_step(t)
                 && let Some(dissolving) = self.dissolving.take()
             {
-                self.gain(dissolving.gain);
-                // The levels its experience reaches (E24 M4 T2c: a chest's after its removal,
-                // `level-up-twice` at 1980), the step's end after them.
-                if let Some(After::Step(queued)) =
-                    self.level_up(t, After::Step(dissolving.queued))?
-                {
-                    self.finish(t, true);
-                    self.resume(t, queued)?;
-                }
+                self.dissolved(t, dissolving)?;
             }
         } else {
             self.turn_of_loop(t)?;
@@ -1838,9 +1930,10 @@ impl Loop {
     /// (0x50D680: the cursor drawn where it reads the mouse), the palettes' step when due.
     fn tick(&mut self, t: u32) {
         if t >= self.palette_at {
-            // A dissolve holds the cycling: the deadline moves on, the palettes stay (E24 M4
-            // T2a2 part B: `find-pile`'s due 200 at 165, 400 at 230, its cycles 0 to 800).
-            if self.dissolving.is_none() {
+            // An object's dissolve holds the cycling: the deadline moves on, the palettes stay
+            // (E24 M4 T2a2 part B: `find-pile`'s due 200 at 165, 400 at 230, its cycles 0 to
+            // 800); a boat's does not (E24 M4 T2d2).
+            if !self.dissolving.as_ref().is_some_and(|d| d.holds) {
                 self.ticks = self.ticks.saturating_add(1);
             }
             self.palette_at = t.saturating_add(self.rules.cycle_ms);
@@ -3269,14 +3362,79 @@ impl Loop {
         if let (Some(sound), Some(name)) = (&mut self.sound, name) {
             sound.effect(t, name);
         }
+        self.dissolve(t, before, gain, true, Then::Taken);
+    }
+
+    /// The view's middle dissolved from `before` into the view as last drawn, from `t`
+    /// (`screen_dissolve` 0x602DC0, [`Loop::dissolve_step`]): the mouse hidden, the palettes'
+    /// cycling held when it `holds`, `gain` shown at its end and `then` after it.
+    fn dissolve(&mut self, t: u32, before: Arc<Draw>, gain: Gain, holds: bool, then: Then) {
         self.cursor.shown = false;
         self.dissolving = Some(Dissolving {
             start: t,
             before,
             queued: Vec::new(),
             gain,
+            holds,
+            then,
         });
         self.dissolve_step(t);
+    }
+
+    /// A dissolve's end (E24 M4 T2a2 part B, T2d2): an object taken shows its gain, the levels its
+    /// experience reaches, then the key's step's end; a boarding's step goes on (its animation onto
+    /// the boat, the actions given meanwhile waiting in the walk's queue); a landing's visit ends
+    /// with `visit_and_update`'s redraws, then the walk's end; then the actions given meanwhile.
+    fn dissolved(&mut self, t: u32, dissolving: Dissolving) -> Result<(), Unplayable> {
+        let Dissolving {
+            queued, gain, then, ..
+        } = dissolving;
+        match then {
+            Then::Taken => {
+                self.gain(gain);
+                // The levels its experience reaches (E24 M4 T2c: a chest's after its removal,
+                // `level-up-twice` at 1980), the step's end after them.
+                if let Some(After::Step(queued)) = self.level_up(t, After::Step(queued))? {
+                    self.finish(t, true);
+                    self.resume(t, queued)?;
+                }
+            }
+            Then::Board(boarding) => {
+                let Boarding {
+                    mut moving,
+                    next,
+                    single,
+                } = *boarding;
+                for action in queued {
+                    wait_in(&mut moving, action, self.rules.bugs);
+                }
+                self.animate(t, moving.direction, next, single);
+                if let Some(queued) = self.carry_on(t, moving) {
+                    self.resume(t, queued)?;
+                }
+            }
+            Then::Landed(key) => {
+                self.updated(t);
+                self.walk_done(t, key);
+                if key {
+                    self.stuck(t);
+                }
+                self.resume(t, queued)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// `hero_loss_effect` 0x4ACBB0 with 0 (E24 M4 T2d2, design §5.7: a boat boarded or left):
+    /// `killfade.82M`, the mouse hidden, the view's middle as the screen last showed it dissolved
+    /// into the view drawn now, the palettes cycling on; `then` at its end.
+    fn lose(&mut self, t: u32, then: Then) {
+        let before = Arc::new(self.drawn.clone());
+        self.draw(t);
+        if let Some(sound) = &mut self.sound {
+            sound.effect(t, &self.rules.finds.killfade);
+        }
+        self.dissolve(t, before, Gain::default(), false, then);
     }
 
     /// A dissolve's turn at `t` (`screen_dissolve` 0x602DC0; E17 design §7.25): step k shown at
@@ -3824,7 +3982,7 @@ impl Loop {
         Some(Selection {
             id,
             at: hero.at,
-            lifted: self.lifted,
+            lifted: self.lifted || self.hidden,
             points,
         })
     }
@@ -3999,23 +4157,69 @@ impl Loop {
             until: t,
             queued: Vec::new(),
         };
-        self.step(t, direction, next, self.pixels.is_empty());
-        self.carry_on(t, moving);
+        if let Some(moving) = self.stride(t, moving, next) {
+            self.carry_on(t, moving);
+        }
     }
 
-    /// A step's start (`hero_move_step` 0x4805E0, then `hero_walk_animation` 0x480380): a hero not
-    /// lifted (after a scroll) lifted, the view centred on it, drawn and shown (`mobilize_hero`
-    /// with 0, 0, 1, 0x480914); the next tile's arrow zeroed (0x480B30: the next frame shows it
-    /// gone); the offset 0, the walking group, the facing, the hero on the next tile at once and
-    /// the view centred on it (0x48041D, never clamped); at speed 4 (`single`: the hero speed's or,
-    /// E24 M4 T1b2, Computer Walk Speed's) the view drawn once (0x480483), else the offset a tile
-    /// back (`walk_start_offsets` 0x63D6F0) for the frames.
+    /// A step's start (`hero_move_step` 0x4805E0, then `hero_walk_animation` 0x480380): see
+    /// [`Loop::mobilize`] and [`Loop::animate`] (a computer's: E24 M4 T1b2).
     fn step(&mut self, t: u32, direction: Direction, next: Pos, single: bool) {
+        self.mobilize(t, direction, next);
+        self.animate(t, direction, next, single);
+    }
+
+    /// A human's step onto `next` (E24 M4 T2d2, design §5.7): its start ([`Loop::mobilize`]), then
+    /// by the tile's class (`hero_move_step`'s switch, 0x480D05): onto an empty boat the
+    /// boarding's start, the walk held by its dissolve (none returned); from a boat onto land the
+    /// landing's start; then the animation ([`Loop::animate`]).
+    fn stride(&mut self, t: u32, moving: Moving, next: Pos) -> Option<Moving> {
+        let (direction, single) = (moving.direction, self.pixels.is_empty());
+        self.mobilize(t, direction, next);
+        if let Some(boat) = self.boat_on(next) {
+            self.board_start(t, direction, boat);
+            let boarding = Boarding {
+                moving,
+                next,
+                single,
+            };
+            self.lose(t, Then::Board(Box::new(boarding)));
+            return None;
+        }
+        if let Some(boat) = self.landing(next, direction) {
+            self.land_start(t, direction, boat);
+        }
+        self.animate(t, direction, next, single);
+        Some(moving)
+    }
+
+    /// A step's start before its tile's class (`hero_move_step` 0x4805E0): a hero not lifted (after
+    /// a scroll) lifted, the view centred on it, drawn and shown (`mobilize_hero` with 0, 0, 1,
+    /// 0x480914), its selection's path (`make_hero_path` from `hero_select`: a key's step's own,
+    /// one arrow on `next`, the destination's, *provisional*: a step the points pay; E24 M4 T2d2,
+    /// `board`'s screen at 100 shows it on the boat); the next tile's arrow zeroed (0x480B30: the
+    /// next draw shows it gone).
+    fn mobilize(&mut self, t: u32, direction: Direction, next: Pos) {
         if !self.lifted {
             self.lift(t, true);
+            self.path = vec![(
+                direction,
+                Arrow {
+                    at: next,
+                    arrow: DESTINATION,
+                },
+            )];
             self.draw(t);
         }
         self.path.retain(|(_, a)| a.at != next);
+    }
+
+    /// A step's animation (`hero_walk_animation` 0x480380): the offset 0, the walking group, the
+    /// facing, the hero on the next tile at once and the view centred on it (0x48041D, never
+    /// clamped); at speed 4 (`single`: the hero speed's or, E24 M4 T1b2, Computer Walk Speed's)
+    /// the view drawn once (0x480483), else the offset a tile back (`walk_start_offsets`
+    /// 0x63D6F0) for the frames.
+    fn animate(&mut self, t: u32, direction: Direction, next: Pos, single: bool) {
         let n = usize::try_from(direction.number()).unwrap_or(0);
         self.walk.offset = [0, 0];
         self.walk.group = self.rules.walk.groups.get(n).copied().unwrap_or(0);
@@ -4098,6 +4302,11 @@ impl Loop {
             }
             let Some((direction, next)) = moving.rest.pop_front() else {
                 self.finish(t, moving.key);
+                // A landing's dissolve (E24 M4 T2d2): the actions waiting wait for its end.
+                if let Some(dissolving) = &mut self.dissolving {
+                    dissolving.queued.append(&mut moving.queued);
+                    return None;
+                }
                 // A find on its last tile told (E24 M4 T2a2): its box empties the queue.
                 if self.tell_find(t) {
                     moving.queued.clear();
@@ -4107,7 +4316,7 @@ impl Loop {
             moving.direction = direction;
             moving.last = moving.rest.is_empty();
             moving.frame = 0;
-            self.step(t, direction, next, self.pixels.is_empty());
+            moving = self.stride(t, moving, next)?;
         }
     }
 
@@ -4116,9 +4325,9 @@ impl Loop {
     /// path's walk clears the path once the hero stands on its destination, else shows it again
     /// for the rest and draws the view (`make_hero_path` 0x418DD0 at 0x4080C9, with the option
     /// Show Route on, 0x698774; M2: the arrows left, as `walk-points` recorded; the engine's path
-    /// from M4); the cursor shown again where the mouse is now,
-    /// by its move with its tile forgotten (`mouse_position_now` 0x50D500, its x even;
-    /// `adventure_mouse_move` 0x40E360: a key's 0x4090F1, the path's 0x40812F).
+    /// from M4); then the boat's visit, if any (E24 M4 T2d2: `visit_and_update` after
+    /// `hero_walk_end`, the path's 0x4080E9, a key's 0x4090A9; a landing's ends after its
+    /// dissolve), and [`Loop::walk_done`].
     fn finish(&mut self, t: u32, key: bool) {
         self.stand();
         if let Some(sound) = &mut self.sound {
@@ -4151,6 +4360,41 @@ impl Loop {
                 self.buttons.next_hero = self.kingdom.next_hero();
             }
         }
+        let stuck = match self.aboard.take() {
+            Some(Aboard::Board(boat)) => {
+                self.board(t, boat);
+                self.updated(t);
+                key
+            }
+            Some(Aboard::Land) => return self.land(t, key),
+            None => false,
+        };
+        self.walk_done(t, key);
+        if stuck {
+            self.stuck(t);
+        }
+    }
+
+    /// A key's step's end with the hero unable to move (`adventure_key_down` from 0x40913E, after
+    /// the status window; E24 M4 T2d2, *provisional*: built after a boat's visit, whose points 0
+    /// the loop knows; another step's end leaves points the engine's from Part B): the step's own
+    /// path cleared (`make_hero_path` with 1, 0, 0: +0x4C) and the view drawn and shown with the
+    /// objects' step when due (`view_show_step`), then both lists and every item of the dialog
+    /// drawn, the view again (`board`'s boat's flag at 770 a frame step on), and the whole screen
+    /// shown (`hero_list_update` with −1, 1, 1, 0x409167); Next Hero by the kingdom (0x40918B).
+    fn stuck(&mut self, t: u32) {
+        self.draw(t);
+        self.step_objects(t);
+        self.draw_lists();
+        self.draw(t);
+        self.buttons.next_hero = self.kingdom.next_hero();
+    }
+
+    /// The walk's end after the visit: the cursor shown again where the mouse is now, by its move
+    /// with its tile forgotten (`mouse_position_now` 0x50D500, its x even; `adventure_mouse_move`
+    /// 0x40E360: a key's 0x4090F1, the path's 0x40812F); a key's step builds the status window
+    /// again.
+    fn walk_done(&mut self, t: u32, key: bool) {
         self.cursor.at = self.rules.drawn_at(self.pointer);
         self.cursor.shown = true;
         // The mouse looked at again (+0xEC -1: 0x40812F, 0x4090F1).
@@ -4160,6 +4404,153 @@ impl Loop {
             // The status window built again (0x4090FE, E24 M3 T5b2).
             self.choose(t, true);
         }
+    }
+
+    /// The empty boat on `at` the selected hero on land steps onto (E24 M4 T2d2: its tile's class
+    /// 8); none for a hero in a boat.
+    fn boat_on(&self, at: Pos) -> Option<LiveBoat> {
+        let boat = self.boats.empty.iter().find(|b| b.at == at).copied();
+        boat.filter(|_| self.sailed().is_none())
+    }
+
+    /// The boat the selected hero sails ([`Boats::sailed`]), if any.
+    fn sailed(&self) -> Option<Boat> {
+        self.index
+            .and_then(|i| self.boats.sailed.get(i).copied())
+            .flatten()
+    }
+
+    /// The boat a step of the selected hero's from its boat onto the land `at` puts back on its
+    /// water tile, facing the step's way `direction` (E24 M4 T2d2): none at sea, none on land.
+    fn landing(&self, at: Pos, direction: Direction) -> Option<LiveBoat> {
+        let (Some(boat), Some(hero)) = (self.sailed(), self.hero) else {
+            return None;
+        };
+        let facing = Facing::ALL[usize::try_from(direction.number()).unwrap_or(0) % 8];
+        (!self.water(at)).then_some(LiveBoat {
+            at: hero.at,
+            kind: boat.kind,
+            facing,
+        })
+    }
+
+    /// Whether the tile `at` is water ([`Start::water`]: past its end it is).
+    fn water(&self, at: Pos) -> bool {
+        let side = usize::try_from(self.last).map_or(0, |last| last + 1);
+        let tile = (usize::from(at.z) * side + usize::from(at.y)) * side + usize::from(at.x);
+        self.water.get(tile).copied().unwrap_or(true)
+    }
+
+    /// The selected hero turned `direction`'s way.
+    fn turn_to(&mut self, direction: Direction) {
+        self.hero = self.hero.map(|hero| Hero {
+            facing: direction,
+            ..hero
+        });
+    }
+
+    /// The boarding's start (`hero_move_step`'s class 8, 0x480C19 to 0x480D84; design §5.7): the
+    /// hero turned the step's way (*provisional*: both recordings' heroes faced it already), its
+    /// standing group and frame 0 (`hero_map_group`), the step sound stopped, no longer lifted
+    /// (+0x1EC 0) but off its tile, so that nothing draws it; the boat boarded at the step's end.
+    /// [`Loop::lose`] follows: the hero dissolved off the land.
+    fn board_start(&mut self, t: u32, direction: Direction, boat: LiveBoat) {
+        self.turn_to(direction);
+        self.stand();
+        if let Some(sound) = &mut self.sound {
+            sound.walk_end(t);
+        }
+        self.lifted = false;
+        self.hidden = true;
+        self.aboard = Some(Aboard::Board(boat));
+    }
+
+    /// The landing's start (`hero_move_step` before the animation, 0x480949 to 0x480B0C; design
+    /// §5.7): the boat put back on the hero's water tile facing the step's way (`hero_show` with
+    /// class 8, 0x480A71: `boat`, aboard 0), the hero turned that way, no longer lifted but off its
+    /// tile, its standing group and frame 0, the step sound stopped, the view drawn and shown at
+    /// once (0x480AFE) and the objects' step when due (`view_show_step`); the land visited at the
+    /// step's end.
+    fn land_start(&mut self, t: u32, direction: Direction, boat: LiveBoat) {
+        self.boats.empty.push(boat);
+        self.turn_to(direction);
+        self.lifted = false;
+        self.hidden = true;
+        self.stand();
+        if let Some(sound) = &mut self.sound {
+            sound.walk_end(t);
+        }
+        self.draw(t);
+        self.step_objects(t);
+        self.aboard = Some(Aboard::Land);
+    }
+
+    /// The boat boarded (`visit_object`'s case 8, `hero_boards_boat` 0x4A1010; design §5.7): taken
+    /// off its tile (`hero_hide`), the hero in it with its type and the hero's owner's colour (the
+    /// boat's captain, aboard 1), the points 0 ([`Loop::moored`]); for a human (0x4A10D0) the boat
+    /// lifted as the hero's picture: the group `boat_map_group` 0x4D9160 by the boat's own facing
+    /// (+0x1B), which passes 7 and 9 mirror by the hero's, the step's way (MCL-Q35, the original's
+    /// in both modes, *provisional*: `board`'s boat facing down-left shows down-right), the view
+    /// drawn and shown at once with the objects' step when due (`view_draw_here`,
+    /// `view_show_step` 0x4A1111). The group stays until the hero's next step.
+    fn board(&mut self, t: u32, boat: LiveBoat) {
+        self.boats.empty.retain(|b| b.at != boat.at);
+        self.sail(Some(Boat {
+            kind: boat.kind,
+            colour: self.player,
+        }));
+        self.moored();
+        self.walk.group = self.group(u32::from(boat.facing.number()));
+        self.lifted = true;
+        self.hidden = false;
+        self.draw(t);
+        self.step_objects(t);
+    }
+
+    /// The land stepped onto from the boat (`visit_object`'s case 3, `hero_lands_from_boat`
+    /// 0x49E670; design §5.7): the hero out of its boat, the points 0 ([`Loop::moored`]); its
+    /// facing the step's way (+0x47 from +0x1F4), its standing group, lifted (+0x1F0 34, +0x1EC 1);
+    /// then [`Loop::lose`]: the hero dissolved in on the land, `visit_and_update`'s redraws and the
+    /// walk's end after it (`guard_attack`: none built).
+    fn land(&mut self, t: u32, key: bool) {
+        self.sail(None);
+        self.moored();
+        self.stand();
+        self.lifted = true;
+        self.hidden = false;
+        self.lose(t, Then::Landed(key));
+    }
+
+    /// The boat the selected hero sails set ([`Boats::sailed`]: a boarded one's, none at a landing).
+    fn sail(&mut self, boat: Option<Boat>) {
+        if let Some(sailed) = self.index.and_then(|i| self.boats.sailed.get_mut(i)) {
+            *sailed = boat;
+        }
+    }
+
+    /// The selected hero's points 0 after a boat's visit (`hero_boards_boat`,
+    /// `hero_lands_from_boat`; *provisional*: the Admiral's Hat's share at sea not built), so that
+    /// it cannot move on (`hero_can_move`, the engine's from Part B), and its slot drawn and shown
+    /// at once (`hero_list_slot` with −1, 1, 1).
+    fn moored(&mut self) {
+        if let Some(i) = self.selected_hero()
+            && let Some(hero) = self.kingdom.heroes.get_mut(i)
+        {
+            hero.points = 0;
+            hero.movable = false;
+        }
+        self.draw_slot();
+    }
+
+    /// `visit_and_update` 0x4AAAA0's redraws after a boat's visit (E24 M4 T2d2, design §5.6,
+    /// §5.7): the minimap at once, both lists and the resource bar ([`Loop::draw_lists`]), the
+    /// status window built again (`status_window_choose` with 1, 1, 1); Move Hero and Next Hero
+    /// as the kingdom and the path give them (none: Move Hero off, the hero unable to move).
+    fn updated(&mut self, t: u32) {
+        self.draw_minimap();
+        self.draw_lists();
+        self.choose(t, true);
+        self.buttons = Buttons::of(&self.kingdom, &self.arrows());
     }
 
     /// The loop's turn after a walk at its last millisecond: the actions given during it and
@@ -4223,15 +4614,22 @@ impl Loop {
 
     /// The selected hero standing on its tile (not lifted).
     fn standing(&self) -> Option<Pos> {
-        self.hero.filter(|_| !self.lifted).map(|h| h.at)
+        self.hero
+            .filter(|_| !self.lifted && !self.hidden)
+            .map(|h| h.at)
     }
 
     /// The standing group by the hero's facing and frame 0 (`hero_map_group` 0x4D9110).
     fn stand(&mut self) {
         let facing = self.hero.map_or(0, |h| h.facing.number());
-        let n = usize::try_from(facing).unwrap_or(0);
-        self.walk.group = self.rules.standing.get(n).copied().unwrap_or(0);
+        self.walk.group = self.group(facing);
         self.walk.frame = 0;
+    }
+
+    /// The group a facing draws (`hero_map_group` 0x4D9110, `boat_map_group` 0x4D9160: one table).
+    fn group(&self, facing: u32) -> u32 {
+        let n = usize::try_from(facing).unwrap_or(0);
+        self.rules.standing.get(n).copied().unwrap_or(0)
     }
 
     /// The view centred on the selected hero: its tile less the view's middle (never clamped).
@@ -4371,6 +4769,12 @@ impl Loop {
             revealed: self.drawn.revealed,
             attacking: self.drawn.attacking,
             owners: Arc::clone(&self.owners),
+            hidden: self.hidden,
+            boats: if *self.drawn.boats == self.boats {
+                Arc::clone(&self.drawn.boats)
+            } else {
+                Arc::new(self.boats.clone())
+            },
         };
         self.choose(t, false);
     }
@@ -4473,9 +4877,13 @@ impl Loop {
         Some(Status::Date(DateStatus { frame: 0 }))
     }
 
-    /// A walk's frame drawn: pass 9 steps the lifted hero's frame after it (0x47FF6D).
+    /// A walk's frame drawn: pass 9 steps the lifted hero's frame after it (0x47FF6D); with none
+    /// lifted it does not run (E24 M4 T2d2: a boarding's and a landing's step keep frame 0).
     fn frame_drawn(&mut self, t: u32) {
         self.draw(t);
+        if !self.lifted {
+            return;
+        }
         self.walk.frame = (self.walk.frame + 1)
             .checked_rem(self.rules.walk.frames)
             .unwrap_or(0);

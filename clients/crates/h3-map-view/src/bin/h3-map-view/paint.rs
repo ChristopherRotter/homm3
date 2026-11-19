@@ -22,7 +22,7 @@ use h3_map::Limits;
 
 use h3_map::model::{Body, EventBody, Pos, RawMap};
 use h3_map::writer::ObjectTemplate;
-use h3_map_view::art::MapArt;
+use h3_map_view::art::{MapArt, WATER};
 use h3_map_view::asks::{self, Ask, Reply, Seen, Visitor};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
@@ -42,8 +42,8 @@ use h3_map_view::situation::Situation;
 use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
-    Action, Answer, Computer, Cursor, DEFAULT_CURSOR, Direction, Dissolve, Draw, Found, Hero,
-    LevelBox, NextTurn, Owners, Question, Start, TownBoxes,
+    Action, Answer, Boats, Computer, Cursor, DEFAULT_CURSOR, Direction, Dissolve, Draw, Found,
+    Hero, LevelBox, NextTurn, Owners, Question, Start, TownBoxes,
 };
 use h3_map_view::{status, turn};
 use h3_render::Bugs;
@@ -207,6 +207,9 @@ pub fn for_sequence<'a>(
         town: Some(town),
         experience,
         level_ups,
+        // The boats and the water (E24 M4 T2d2): the live part's, the map's.
+        boats: Boats::of(&painter.live),
+        water: water(&painter.art),
     };
     Ok(Setup {
         painter,
@@ -298,6 +301,8 @@ pub fn for_situation<'a>(
         // A still reaches no level (E24 M4 T2c: its hero's experience not known).
         experience: None,
         level_ups: Vec::new(),
+        boats: Boats::of(&painter.live),
+        water: water(&painter.art),
     };
     Ok(Setup {
         painter,
@@ -305,6 +310,11 @@ pub fn for_situation<'a>(
         actions: BTreeMap::new(),
         recorded: None,
     })
+}
+
+/// The map's water tiles in the art's order (E24 M4 T2d2: the timeline's [`Start::water`]).
+fn water(art: &MapArt) -> Arc<Vec<bool>> {
+    Arc::new(art.tiles.iter().map(|t| t.terrain.code == WATER).collect())
 }
 
 /// The live part's heroes on their tiles and facings (the timeline's [`Start::heroes`]).
@@ -355,6 +365,9 @@ pub struct Painter<'a> {
     owners_at_0: Vec<Option<u8>>,
     owners: Owners,
     minimap_owners: Option<Owners>,
+    /// The boats the live part holds now (E24 M4 T2d2: `Draw::boats`, the empty ones and the
+    /// heroes' as the draw last drawn has them).
+    boats: Arc<Boats>,
     batch: Batch,
     added: BTreeSet<String>,
     /// The frame the last view was drawn into, and that view's draw and buttons.
@@ -425,6 +438,7 @@ impl<'a> Painter<'a> {
         let composer = Composer::new(assets.layout.frame).map_err(|e| e.to_string())?;
         let explored = start.explored.clone();
         let owners_at_0 = start.objects.iter().map(|o| o.owner).collect();
+        let boats = Arc::new(Boats::of(&start));
         let mut painter = Self {
             assets,
             art,
@@ -439,6 +453,7 @@ impl<'a> Painter<'a> {
             owners_at_0,
             owners: Arc::new(Vec::new()),
             minimap_owners: None,
+            boats,
             batch: Batch::default(),
             added: BTreeSet::new(),
             composer,
@@ -1273,10 +1288,20 @@ impl<'a> Painter<'a> {
                     offset: draw.offset,
                     lifted: None,
                     attacking: draw.attacking,
+                    hidden: None,
                 };
             }
             // No hero selected from the start: the live part's as it is.
             (None, None) => {}
+        }
+        // The boats as the draw has them (E24 M4 T2d2): one boarded off its tile and its hero in
+        // it, one left back on the water.
+        if self.boats != draw.boats {
+            self.live.boats.clone_from(&draw.boats.empty);
+            for (hero, sailed) in self.live.heroes.iter_mut().zip(&draw.boats.sailed) {
+                hero.boat = *sailed;
+            }
+            self.boats = Arc::clone(&draw.boats);
         }
         // The minimap as last drawn (E24 M3 T3b): its box's corner and the selected hero's tile.
         self.live.minimap = Some(Shown {
@@ -1498,6 +1523,7 @@ impl<'a> Painter<'a> {
                 frame,
             }),
             attacking: draw.attacking,
+            hidden: draw.hidden.then_some(index),
         };
     }
 

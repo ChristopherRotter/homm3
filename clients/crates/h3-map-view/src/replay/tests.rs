@@ -1,3 +1,4 @@
+use alloc::sync::Arc;
 use alloc::vec;
 
 use h3_render::Bugs;
@@ -5,7 +6,7 @@ use h3_render::Bugs;
 use super::*;
 use crate::scene::ViewAt;
 use crate::timeline::tests::{recorded, rules};
-use crate::timeline::{Computer, Direction, play};
+use crate::timeline::{Boats, Computer, Direction, play};
 
 /// The changes of what the screen shows in a headless play's states: each state whose draw or
 /// cursor differs from the one before (the first always).
@@ -89,6 +90,8 @@ fn idle() -> Replay {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        boats: Boats::default(),
+        water: Arc::default(),
     };
     let actions = BTreeMap::from([
         (0, vec![Action::Scroll(Direction::East)]),
@@ -283,6 +286,8 @@ fn its_cues_are_handed_out_once() {
         town: None,
         experience: None,
         level_ups: Vec::new(),
+        boats: Boats::default(),
+        water: Arc::default(),
     };
     let actions = BTreeMap::from([
         (1, vec![Action::Click(dest)]),
