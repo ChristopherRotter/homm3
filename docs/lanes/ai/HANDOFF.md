@@ -38,8 +38,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `h3_battle::reach_seen_by`, C ABI v38; no network reads it yet; the batch's step +140 % on the
   encounters (re-baselined). **Next: T38b** (`[network] reach`, the preview for the hex kinds, the
   cloning bench; Python only), then T39 (the bench on the GPU; `QUEUE.md`).
-- **Open pull requests:** T38a's (`claude/intelligent-tesla-tm17cq`, `cross-lane`; see the
-  newest session). Merged: #1028 (T37's design, AI-Q19). **Owed to a `shared/` pull request:**
+- **Open pull requests:** #1036 (`claude/intelligent-tesla-tm17cq`, `cross-lane`: T38a). Merged: #1028 (T37's design, AI-Q19). **Owed to a `shared/` pull request:**
   `docs/07-simulation-and-ai.md`'s observation line still names encoding v22 (v23's reach block,
   after T38a merges).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
@@ -60,7 +59,7 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   --group train`; the Python suite took 70 minutes beside the benches (alone 3.5). The batch
   workloads measured right after the first build (+340 %), the strike hexes rewritten on a
   neighbour table (+176 %), then re-baselined; a `master` worktree (`target/wt-master`) for the
-  siege workload's per-function check. In progress: the pull request (`cross-lane`), CI.
+  siege workload's per-function check. #1036 (`cross-lane`), watched until it merges.
 
 ### 2026-11-18 — E25 T37 closed: v23's design
 
