@@ -430,6 +430,7 @@ fn became(
             ((*def).to_string(), PILE, subclass)
         });
     }
+    // stub: MCL-STUB-1 (a random artifact, dwelling or town keeps its random template)
     if !RANDOM_MONSTERS.contains(&class) {
         return None;
     }
