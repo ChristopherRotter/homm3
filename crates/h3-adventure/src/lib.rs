@@ -67,8 +67,9 @@ pub use army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, split_range};
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
     BattleStart, Choice, ChoiceKind, Combatant, Defender, Drowned, Exchange, Garrison, HeroGains,
-    HireDialog, HireError, HireSource, HireTarget, Meeting, NoRoom, NothingWhy, Offer, OfferKind,
-    OwnHeroes, Pick, ShipyardBlock, Sink, UniversityVisit, Viewers,
+    HireDialog, HireError, HireSource, HireTarget, MarketError, MarketVisit, Meeting, NoRoom,
+    NothingWhy, Offer, OfferKind, OwnHeroes, Pick, ServiceVisit, ShipyardBlock, Sink,
+    UniversityVisit, Viewers,
 };
 pub use market::{Lot, MarketParams, MarketParamsError};
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};
@@ -107,8 +108,8 @@ pub use split::{TileRand, split, split_with_second};
 pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
     AdventureState, BACKGROUND_RADIUS, Boat, Channels, GateEntry, HeroBonuses, HeroOnMap,
-    HirePurchase, MapObject, Monster, Resolved, StaticMap, StaticTile, VisitMarks, Visits, Weekly,
-    WhirlpoolTile, allied, hire_price,
+    HirePurchase, MapObject, MarketPurchase, Monster, Resolved, Sale, StaticMap, StaticTile,
+    VisitMarks, Visits, Weekly, WhirlpoolTile, allied, hire_price,
 };
 pub use town::{TavernVisit, TownHeroError, TownHeroMove, TownReveal};
 

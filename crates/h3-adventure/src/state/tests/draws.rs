@@ -274,15 +274,16 @@ pub(super) fn rules_with(
                 ),
             ]);
             more(&mut part.object_types);
-            // E08 T133a1: a market needs the market's parameters (ADV-MKT-002).
+            // E08 T133a1: a market needs the market's parameters (ADV-MKT-002): the base pack's
+            // values and its rows for one to five Marketplaces.
             let market = |t: &ObjectTypeDef| matches!(t.kind, ObjectKindDef::Market(_));
             if part.object_types.iter().any(market) {
                 part.params.as_mut().unwrap().market = Some(MarketParamsDef {
                     values: vec![(key("t:wood"), 250), (key("t:gold"), 1)],
                     artifact_values: vec![(key("t:wood"), 125), (key("t:gold"), 1)],
                     resources: vec![10, 15, 20, 25, 30],
-                    artifacts: vec![20, 30, 40, 50, 60],
-                    creatures: vec![30, 45, 60, 75, 90],
+                    artifacts: vec![20, 25, 30, 35, 40],
+                    creatures: vec![30, 45, 50, 65, 70],
                 });
             }
         },

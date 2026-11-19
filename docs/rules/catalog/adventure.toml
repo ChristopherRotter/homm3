@@ -4238,7 +4238,7 @@ id       = "ADV-MKT-001"
 title    = "The markets: the Trading Posts, the Freelancer's Guild and the Black Market"
 context  = "adventure"
 status   = "implemented"
-summary  = "One kind, market, for the original's classes 99 and 221 (the Trading Post), 213 (the Freelancer's Guild, AB's) and 7 (the Black Market): its window's screens (trade: resources for resources; transfer: resources 1 : 1 to another player; sell: creatures for resources; buy: resources for an artifact of its stock; at least one, distinct), the count of Marketplaces it trades as (from 1 to the market parameters' counts; 5 for every map object) and a Black Market's stock classes (exactly with buy, none special: three treasures, three minors, one major). Every market type is entered (none of the seven trade classes is on the original's not-entered list) and, in the original packs, none from above, without a mark or an owner. E08 T132a2: the kind, its checks, the packs' three types (base's trading_post and black_market, ab's freelancers_guild) and the eighth original-data check. E08 T132b (map import v27, ADV-OBJ-002): the import of 99 and 221 as trading_post, 213 as freelancers_guild and 7 as black_market, each at subclass 0 without a body; the stock's draw and the visits (T133) come later."
+summary  = "One kind, market, for the original's classes 99 and 221 (the Trading Post), 213 (the Freelancer's Guild, AB's) and 7 (the Black Market): its window's screens (trade: resources for resources; transfer: resources 1 : 1 to another player; sell: creatures for resources; buy: resources for an artifact of its stock; at least one, distinct), the count of Marketplaces it trades as (from 1 to the market parameters' counts; 5 for every map object) and a Black Market's stock classes (exactly with buy, none special: three treasures, three minors, one major). Every market type is entered (none of the seven trade classes is on the original's not-entered list) and, in the original packs, none from above, without a mark or an owner. E08 T132a2: the kind, its checks, the packs' three types (base's trading_post and black_market, ab's freelancers_guild) and the eighth original-data check. E08 T132b (map import v27, ADV-OBJ-002): the import of 99 and 221 as trading_post, 213 as freelancers_guild and 7 as black_market, each at subclass 0 without a body. E08 T133a1: the Black Market's stock (ADV-MKT-006). E08 T133a2: the visit: a step onto a market's entrance ends the move there and, at every visit of any player's hero (and every Revisit, ADV-TEL-008), opens its window for the visitor's owner (the outcome's service: the hero, the object's index, type and anchor; the screens, count and stock read at each answer); no mark, owner, day or week is tested and nothing but the step is spent. The game's decision is T133b's (GAM-DEC-011; until then the window opens nothing, ADV-STUB-18)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4256,6 +4256,32 @@ numeric  = "integer"
   kind       = "vcmi"
   ref        = "config/objects/markets.json (VCMI 1.7.5; survey section 9): the Trading Posts resource-resource and resource-player, the Freelancer's Guild creature-resource, the Black Market resource-artifact, every map market at an efficiency of five; no blockedVisitable"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/markets.json"
+  retrieved  = "2026-11-18"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MKT-005"
+title    = "The Freelancer's Guild's sale: creatures by whole lots, the army keeping one"
+context  = "adventure"
+status   = "implemented"
+summary  = "A market's sale screen (the Freelancer's Guild's) sells creatures of one slot of the visiting hero's army for a resource by whole lots of ADV-MKT-002's creature lot at the kind's count (five on the map): g creatures for t units, one of them 1, a creature valued at its cost in the market's cost resource (the original's gold; the caller's, ADV-Q60). Any creature of the army sells, of any faction or level; one of no cost, or a resource the market does not value, has no lot. The lots go from 1 to the most: the stack's count divided by g, less one creature when the army's other slots are empty (the army keeps a creature). The stack loses the creatures sold (its slot emptied at 0) and the owner gains lots times t of the resource (in 64 bits, saturating at the treasury, GAM-RES-001). E08 T133a2: the adventure's check and change (check_sale, sell; MarketError Visit, Screen, Slot, NoPrice, Amount, LastCreature); the decision that answers it and adds the gain is T133b's (GAM-DEC-011)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md section 6): freelancers_guild_trade 0x5E9E60 (screen 4 at five Marketplaces), market_sell_creatures_proc 0x5EE890 (the slider in creatures when one creature buys one or more units, else in units of round(q) creatures each; its most the stack's count less one when it is the army's only stack, divided by round(q)), market_creature_rate 0x5ECE80 (the creature record's +0x38 gold cost)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-14.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-19; survey E08-trades.md section 21): E14-1 (a Freelancer's Guild: 1 Pixie for 17 gold, 1 Vampire for 1 wood; the lone stack's most its count less one), E14-2 (a Skeleton 42 gold)"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp sellCreatures (VCMI 1.7.5; survey E08-trades.md section 9): refuses selling the army's last stack whole; its rates' ceiling differs (D-71, ADV-MKT-002)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
   retrieved  = "2026-11-18"
   confidence = "high"
 
@@ -4282,6 +4308,32 @@ numeric  = "integer"
   kind       = "vcmi"
   ref        = "lib/mapObjects/CGMarket.cpp CGBlackMarket::newTurn and lib/callback/GameRandomizer.cpp rollMarketArtifactSet (VCMI 1.7.5; survey E08-trades.md section 9): three treasures, three minors, one major rolled on the first day; config/gameConfig.json markets.blackMarketRestockPeriod 0 (the default) never restocks"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGMarket.cpp"
+  retrieved  = "2026-11-18"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MKT-007"
+title    = "The Black Market's purchase: one entry at its price, refused without room"
+context  = "adventure"
+status   = "implemented"
+summary  = "A market's buy screen (the Black Market's) sells one entry of its stock (ADV-MKT-006) at a time, paid in a resource the player names: the price is ADV-MKT-002's artifact price at the kind's count (five on the map: 2.5 times the cost in gold, the cost over 50 in wood or ore, over 100 in a precious resource), the artifact valued at its cost in the market's cost resource (the original's gold; the caller's, ADV-Q60); an artifact of no cost or a price that rounds to 0 has none. An entry past the stock or already bought is refused; so is a hero that cannot receive the artifact (HER-CHG-002's check: a position that takes it, else the backpack below its most; not the pickups' full-backpack count, A-25), before anything is paid (A-46 fixed, ADV-QUIRK-48: the original pays and loses it). A purchase pays the price, gives the artifact to the hero (in SoD a completed combination's question as any received artifact's) and marks the entry sold for every later visitor, never restocked. E08 T133a2: the adventure's check and change (check_buy, buy; MarketError Visit, Screen, Entry, NoPrice, NoRoom); the decision that answers it, checks the treasury, pays and gives the artifact is T133b's (GAM-DEC-011)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md section 7.2): black_market_trade 0x5EA100 (screen 2 at five Marketplaces), market_buy_artifact_proc 0x5ED9E0 (the price, one artifact a click, the entry emptied whatever hero_give_artifact 0x4E3070 did: A-46), market_buy_artifact_redraw 0x5EB6A0 (a sold entry shown empty, not selectable)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-14.md (survey E08-trades.md section 21): E14-4 (a Black Market: 5 000 gold for a treasure of cost 2 000, the artifact given, the entry empty after), E14-3 (the sold entry still empty on day 29); the refusal before paying is decision 366's, no row"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp buyArtifact (VCMI 1.7.5; survey E08-trades.md section 9): the artifact at the first free position, the backpack unbounded by default, so A-46's loss does not arise"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
   retrieved  = "2026-11-18"
   confidence = "high"
 

@@ -328,6 +328,12 @@ pub struct AdventureOutcome {
     /// note §74): the game shows the visitor's owner the Thieves' Guild at everything (its
     /// `ThievesGuildSeen`, TWN-TAV-007 to -009), every visit alike.
     pub thieves_guild: bool,
+    /// The window a service's visit opens for the visitor's owner (E08 T133a2; increment 14's
+    /// design note §10): a market's at every visit of any player's hero (ADV-MKT-001). The game
+    /// opens it as the player's decision from E08 T133b (GAM-DEC-011; until then nothing,
+    /// `ADV-STUB-18`), whose answers [`crate::AdventureState::check_sale`] and
+    /// [`crate::AdventureState::check_buy`] check. The Altar's and the Hill Fort's come with T134.
+    pub service: Option<ServiceVisit>,
 }
 
 /// What a Sirens' visit took from its hero's army ([`AdventureOutcome::drowned`]; E08 T115b).
@@ -472,6 +478,84 @@ pub struct UniversityVisit {
     /// The price of each, by resource.
     pub price: Vec<(ResourceId, u32)>,
 }
+
+/// The window a service's visit opens (E08 T133a2; increment 14's design note §10;
+/// [`AdventureOutcome::service`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServiceVisit {
+    /// A market's window (ADV-MKT-001): a Trading Post's, the Freelancer's Guild's or a Black
+    /// Market's.
+    Market(MarketVisit),
+}
+
+/// A market's window a visit opened (ADV-MKT-001; E08 T133a2, increment 14's design note §10): the
+/// visiting hero and the object. Its screens and count are its kind's and a Black Market's stock
+/// and sold entries the state's, read at each answer, never copied.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MarketVisit {
+    /// The visiting hero.
+    pub hero: HeroId,
+    /// The object's index.
+    pub index: usize,
+    /// The object's type.
+    pub object_type: ObjectTypeId,
+    /// The object's anchor.
+    pub anchor: Pos,
+}
+
+/// Why a market's answer is refused (E08 T133a2; increment 14's design note §11, §13): the
+/// adventure's checks of a sale ([`crate::AdventureState::check_sale`]) and a purchase
+/// ([`crate::AdventureState::check_buy`]); a trade's and a transfer's are the game's (T133b,
+/// which wraps these in its command error). A refused answer changes nothing (ADR-0004).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MarketError {
+    /// The visit's hero is not on the map, or its object is not a market (defensive: the game
+    /// holds the visit its outcome gave, and its hero cannot move while the window is open).
+    /// *Agent's call* (T133a2), beside the design's list, as the hire's `NoSource`.
+    Visit,
+    /// The market's window has no screen for the answer.
+    Screen,
+    /// A trade of a resource for itself (the game's, T133b).
+    SameResource,
+    /// The lots (a transfer's amount) are 0 or above the most.
+    Amount(u32),
+    /// A transfer's recipient is the actor or not a player still in the game (the game's,
+    /// T133b).
+    Recipient,
+    /// The slot holds no stack of the hero's army.
+    Slot(u8),
+    /// The sale would take the army's last creature (the hero keeps one: survey
+    /// `E08-trades.md` §6).
+    LastCreature,
+    /// The entry is not one of the Black Market's stock, or it was bought.
+    Entry(u8),
+    /// No lot or price in the resource: a creature or an artifact of no cost in it, a price that
+    /// rounds to 0, a resource the market does not value.
+    NoPrice,
+    /// The hero cannot receive the artifact (A-46 fixed, `ADV-QUIRK-48`: refused before paying).
+    NoRoom,
+}
+
+impl fmt::Display for MarketError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Visit => {
+                f.write_str("the market's hero is not on the map or its object no market")
+            }
+            Self::Screen => f.write_str("the market's window has no such screen"),
+            Self::SameResource => f.write_str("a resource is not traded for itself"),
+            Self::Amount(amount) => write!(f, "{amount} is not an amount the market takes"),
+            Self::Recipient => f.write_str("the recipient is not another player in the game"),
+            Self::Slot(slot) => write!(f, "slot {slot} holds no stack of the hero's army"),
+            Self::LastCreature => f.write_str("the hero keeps its army's last creature"),
+            Self::Entry(entry) => write!(f, "entry {entry} is not for sale"),
+            Self::NoPrice => f.write_str("the market has no price in that resource"),
+            Self::NoRoom => f.write_str("the hero has no room for the artifact"),
+        }
+    }
+}
+
+impl core::error::Error for MarketError {}
 
 /// The hire dialog an accepted hire question opens (ADV-HIR-002; E08 T95b, increment 10's design
 /// note §8, §13; survey `E08-dwellings.md` §5, the original's `H3RecruitMgr`): the army the
