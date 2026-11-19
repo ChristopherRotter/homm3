@@ -11,16 +11,25 @@ by T35a, `TWN-Q19`; its code by T35b, decisions 129 to 131; the town part v7 by 
 by T37b, `TWN-Q21`, decisions 137 to 139; T38a cut in two, `TWN-Q22`, decisions 140 to 142;
 T38a2 whole, decisions 143, 144; T38b cut in two, `TWN-Q23`, decisions 145, 146; T38b2
 whole, `TWN-Q24`, decisions 147, 148; T38 done; T39a whole, `TWN-Q25`, decisions 149, 150; T39b cut in two, `TWN-Q26`, decisions 151 to
-153; T39b2 whole, `TWN-Q27`, decisions 154, 155; T39 done);
+153; T39b2 whole, `TWN-Q27`, decisions 154, 155; T39 done; T40 cut in two, `TWN-Q28`,
+decisions 156 to 158, T40a done);
 done tasks in `E09-log.md`; increments 1 to 3
 (closed by T10, T20 and T30) in `E09-archive.md`. The building tasks are the design note's
 `E09-design.md` §79 (round by round, with the order against E08's increment 13); each task's cut
 confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`) and the exit criteria it serves (the epic's list, decision 121).
 
-**E09 T40 — the gates** (round 8; design §78): the taverns map and its scripted replays, the
-census of the 160 maps' first offers and of the maps classes 95 and 97 unblock, the pool's
-properties, the benchmarks, `--with-original-data`. **Status:** next, its cut confirmed at its start.
+**E09 T40b — the gates' second half** (round 8; design §78; T40 cut in two, decision 156,
+T40a done): the taverns map (the builds map grown, or a new fixture: two players with Taverns,
+one a Castle with the Brotherhood, a map Tavern, a Den of Thieves, wandering monsters to flee
+from and to surrender to, few free types) and its scripted replays (four weeks of fills; the
+town's hire and the map Tavern's with their replacements; a retreat and a surrender in the
+owner's own turn and in another's, TD-18; a dismissal and the type drawn again; a Den's visit),
+the server lane's golden counts (`cross-lane`); the plans' map Tavern and Den (`check_legal`,
+`check_isolation`, `check_conservation` taught the map Tavern's hire, `check_stand` exempting
+its tile, `check_pool` kept; the town lane's `TRAPS.md`, "The plans lay out no map Tavern"); the
+benchmarks (the week workload on the taverns map re-baselined for the fill's draws, the guild's
+query timed once); `--with-original-data`. **Status:** next, its cut confirmed at its start.
 
 **E09 T41 — the audit** (round 8): against the exit criteria; increment 4 closed (the archive,
 the README's epic row in the session's `shared/` pull request); increment 5 (the mage guild and

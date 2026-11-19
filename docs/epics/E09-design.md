@@ -2788,6 +2788,21 @@ the hygiene (a hire told ends the comparison). No protocol, replay or hash versi
 - **The census** (`h3-map`'s `original_data`): the 160 maps' first offers (every player's two:
   slot 0 of its faction where one weighs, no type twice, every army full), the customised types'
   records (`Marshland Menace`), and the maps that import whole once classes 95 and 97 do.
+- *As built (T40a, decisions 156 to 158):* the census (`original_data`'s `map_taverns`,
+  `played_taverns`, `fills`, `pool_holds`, `customised`) types every class 95 and 97 object as its
+  kind (93 on 47 maps, 227 on 107, the survey's) and plays every game by `EndTurn` alone to day
+  29: the start's fill and every week's by the census's own walk of the draw (what was free at
+  each draw: the free types now with every slot of the player's from that one on and of later
+  players; the masks; the class weights, slot 1's avoidance, slot 0's own faction), each hero its
+  type's record with full spell points and a starting army; the pool after every `EndTurn`; the
+  customised types' records (17 on the maps, 13 off the map at level 3 with their 2 000). The
+  properties: `check_invariants` ends with `check_pool` (the same statuses against the slots, the
+  map, the garrisons and the store), `a_forks_week_is_its_parents` asserts the week's fill and the
+  slots of both. Both read the pool through `GameState::hero_status`, `player_tavern` and
+  `hero_record` (decision 158). A refused hire or dismissal leaving the state was T38a2's and
+  T38b2's (`check_town_builds`, the dismissal's probes), the room by a town's hire
+  `check_town_hire`'s; the map Tavern's hire, the taverns map, its replays and the benchmarks are
+  T40b's.
 - **Benchmarks:** the week workload (`month-start-builds-36` or the taverns map's) re-baselined
   for the fill's draws; the step's legal commands with the hires; the guild's query timed once
   (not on the step path).

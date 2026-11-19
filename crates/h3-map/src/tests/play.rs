@@ -44,16 +44,17 @@ use h3_battle::{
     CastTargets, Command, Event, EventKind, Field, cast_targets, castable_spells, second_targets,
 };
 use h3_content::{
-    ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, ResourceId, SIRENS_AGAIN_AFTER_BATTLE,
+    ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, HeroTypeId, ResourceId,
+    SIRENS_AGAIN_AFTER_BATTLE,
 };
 use h3_contracts::{BattleResult, BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
     BuildingSet, ChestChoice, ChoiceKind, Consent, DecisionView, GameCommand, GameCommandError,
-    GameEvent, GameRuleset, GameState, HeroChange, HireAnswer, HireSeen, HireTarget, HireView,
-    Manage, MonthKind, NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer, SlotState,
-    TownCommand, TownHeroChange, UniversityAnswer, Viewer, apply, hire_range, legal_commands,
-    legal_management, legal_moves, observe, split_range,
+    GameEvent, GameRuleset, GameState, HeroChange, HeroStatus, HireAnswer, HireSeen, HireTarget,
+    HireView, Manage, MonthKind, NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer,
+    SlotState, TownCommand, TownHeroChange, UniversityAnswer, Viewer, apply, hire_range,
+    legal_commands, legal_management, legal_moves, observe, split_range,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::collection::vec;
@@ -9169,6 +9170,8 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
             }
         }
     }
+    // E09 T40a: the pool (TWN-SET-005, TWN-TAV-002, -003, -006; increment 4's design §78).
+    check_pool(state)?;
     Ok(())
 }
 
@@ -9178,6 +9181,44 @@ fn spread<T>(items: &[T], most: usize, seed: u64) -> impl Iterator<Item = &T> {
     let stride = items.len().div_ceil(most).max(1);
     let offset = usize::try_from(seed % u64::try_from(stride).unwrap()).unwrap();
     items.iter().skip(offset).step_by(stride)
+}
+
+/// Every dismissal the acting player may try, before a step (E09 T40a; GAM-MAN-003, TD-22;
+/// increment 4's design §78): of each hero on the map or in a garrison, any owner's, of the first
+/// record off them (a tavern hero's or one that left) and of an id past the store, a probe accepts
+/// it exactly when [`legal_management`] lists it for its hero; a refused one leaves the state,
+/// its hash and the events as they were. (Every record of the store probed cost the property
+/// +75 %: the records off the map are refused alike.)
+fn check_dismissals(state: &GameState, rules: &GameRuleset) -> Result<(), TestCaseError> {
+    let player = Actor::Player(acting(state));
+    let hash = state.state_hash();
+    let adventure = state.adventure();
+    let garrisons = adventure.town_heroes().iter().map(|(_, hero)| hero.id);
+    let mut ids: Vec<HeroId> = adventure
+        .heroes()
+        .iter()
+        .map(|h| h.id)
+        .chain(garrisons)
+        .collect();
+    let past = u16::try_from(state.heroes().len()).unwrap();
+    ids.extend((0..past).map(HeroId::new).find(|id| !ids.contains(id)));
+    ids.push(HeroId::new(past));
+    for hero in ids {
+        let dismiss = Manage::Dismiss { hero };
+        let listed = legal_management(state, rules, player, hero).contains(&dismiss);
+        let (mut probe, mut events) = (state.clone(), Vec::new());
+        let command = GameCommand::Manage(dismiss);
+        let result = apply(&mut probe, rules, player, command.clone(), &mut events);
+        if listed {
+            prop_assert!(result.is_ok(), "listed {:?} refused: {:?}", command, result);
+            continue;
+        }
+        prop_assert!(result.is_err(), "unlisted {:?} accepted", command);
+        prop_assert_eq!(&probe, state);
+        prop_assert_eq!(probe.state_hash(), hash);
+        prop_assert!(events.is_empty());
+    }
+    Ok(())
 }
 
 /// Management's legality consistency, before a step (E08 T52; GAM-MAN-002, ADR-0017 point 6):
@@ -9315,6 +9356,76 @@ fn hero_anywhere(state: &GameState, id: HeroId) -> Option<&h3_adventure::HeroOnM
         let mut held = adventure.town_heroes().iter().map(|(_, h)| h);
         held.find(|h| h.id == id)
     })
+}
+
+/// The pool's invariants (E09 T40a; TWN-SET-005, TWN-TAV-002, -003, -006; increment 4's design
+/// §78, its risk in §81: a type neither free nor taken is lost to every draw), by an independent
+/// reading through the game's read-only pool (decision 158) against the map, the garrisons and
+/// the store of heroes: no hero type in two slots, nor in a slot of two players; a slot's type
+/// offered, with a record of that type, and no hero of it on the map or in a garrison; a returning
+/// mark only on a slot that holds a hero; every offered type in a slot; each hero on the map or in
+/// a garrison of a type taken by its owner's colour, its record that hero; every taken type
+/// such a hero's; every other type (free, a prisoner's, out) neither held nor offered.
+fn check_pool(state: &GameState) -> Result<(), TestCaseError> {
+    let adventure = state.adventure();
+    let mut held = std::collections::BTreeMap::<HeroTypeId, Vec<(HeroId, u8)>>::new();
+    let garrisons = adventure.town_heroes().iter().map(|(_, hero)| hero);
+    for hero in adventure.heroes().iter().chain(garrisons) {
+        let details = state
+            .hero(hero.id)
+            .ok_or_else(|| fail(format!("{:?}", hero.id)))?;
+        let colour = state.colour(hero.owner).unwrap();
+        let of_type = held.entry(details.hero_type).or_default();
+        of_type.push((hero.id, colour));
+    }
+    let mut slots = std::collections::BTreeMap::<HeroTypeId, usize>::new();
+    for player in (0..state.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        let tavern = state.player_tavern(player).unwrap();
+        for (slot, (t, returning)) in tavern.slots.iter().zip(tavern.returning).enumerate() {
+            let Some(t) = *t else {
+                prop_assert!(!returning, "{:?}'s empty slot {} returning", player, slot);
+                continue;
+            };
+            *slots.entry(t).or_default() += 1;
+            let record = state.hero_record(t).and_then(|id| state.hero(id));
+            prop_assert_eq!(
+                record.map(|d| d.hero_type),
+                Some(t),
+                "{:?} {}",
+                player,
+                slot
+            );
+        }
+    }
+    let types = (0..).map_while(HeroTypeId::from_index);
+    for t in types.take_while(|&t| state.hero_status(t).is_some()) {
+        let status = state.hero_status(t).unwrap();
+        let in_slots = slots.get(&t).copied().unwrap_or(0);
+        let heroes = held.get(&t).map_or(&[][..], Vec::as_slice);
+        let holds = match status {
+            HeroStatus::Offered => in_slots == 1 && heroes.is_empty(),
+            HeroStatus::Taken(colour) => {
+                in_slots == 0
+                    && heroes.len() == 1
+                    && heroes
+                        .iter()
+                        .all(|&(id, owner)| owner == colour && state.hero_record(t) == Some(id))
+            }
+            HeroStatus::Free | HeroStatus::Prisoner | HeroStatus::Out => {
+                in_slots == 0 && heroes.is_empty()
+            }
+        };
+        prop_assert!(
+            holds,
+            "{:?} {:?}: in {} slots, heroes {:?}, record {:?}",
+            t,
+            status,
+            in_slots,
+            heroes,
+            state.hero_record(t)
+        );
+    }
+    Ok(())
 }
 
 /// Conservation for a command that ended a battle (E08 T19a; GAM-BAT-002, -003, -005): only one
@@ -12043,7 +12154,9 @@ proptest! {
     /// random play on imported maps, in both profiles; since E08 T31 the heroes' levels by their
     /// experience in every state ([`check_progression`]), in half the cases with heroes of a
     /// custom experience ([`experience`]: levels at load, and level-ups in play from the first
-    /// battle); since E09 T9b1 the towns' owners, garrisons and records ([`check_towns`]).
+    /// battle); since E09 T9b1 the towns' owners, garrisons and records ([`check_towns`]); since
+    /// E09 T40a the pool in every state ([`check_pool`]) and every dismissal probed before a step
+    /// ([`check_dismissals`]).
     #[test]
     fn every_step_keeps_the_commands_invariants(
         plan in plan(),
@@ -12067,6 +12180,7 @@ proptest! {
             let reaches = reaches(&state, rules);
             check_legal(&state, rules, &legal, &reaches)?;
             check_managing(&state, rules)?;
+            check_dismissals(&state, rules)?;
             let (actor, command) = resolve(&state, rules, &legal, step);
             let listed = actor == self::actor(&state) && legal.contains(&command);
             let before = state.clone();
@@ -12181,7 +12295,9 @@ proptest! {
     /// leaves its parent as it was (its hash, and its towns' counts and Portals read out before:
     /// the store is shared until the fork's first write); the parent crossing it then gives the
     /// same result, events, state and hash, each town's week among them (its growth, a neutral
-    /// garrison's week, the Portal's draw, a month's after it: TWN-GRO-002 to -007).
+    /// garrison's week, the Portal's draw, a month's after it: TWN-GRO-002 to -007), and since E09
+    /// T40a the taverns' release and fill (TWN-TAV-002: the slots filled, from the taverns' stream
+    /// forked with the state).
     #[test]
     fn a_forks_week_is_its_parents(
         plan in plan(),
@@ -12198,6 +12314,11 @@ proptest! {
                 .map(|town| (*town.available_all(), town.portal()))
                 .collect()
         };
+        let taverns = |state: &GameState| -> Vec<h3_game::PlayerTavern> {
+            (0..state.players())
+                .map(|p| *state.player_tavern(PlayerId::new(u8::try_from(p).unwrap())).unwrap())
+                .collect()
+        };
         for k in 0..512u16 {
             let step = if options(&state, rules).contains(&GameCommand::EndTurn) {
                 Step::EndTurn
@@ -12206,7 +12327,7 @@ proptest! {
             } else {
                 Step::Legal(n.wrapping_add(k))
             };
-            let (hash, held) = (state.state_hash(), counts(&state));
+            let (hash, held, slots) = (state.state_hash(), counts(&state), taverns(&state));
             let mut fork = state.clone();
             let mut forked = Vec::new();
             let result = advance(&mut fork, rules, &step, &mut forked);
@@ -12216,12 +12337,19 @@ proptest! {
             }
             prop_assert_eq!(state.state_hash(), hash);
             prop_assert_eq!(counts(&state), held);
+            // E09 T40a: the taverns' stream forked with the state (decision 115; design §78):
+            // the fork's week filled the slots (the plans' maps allow every hero type), the
+            // parent's slots as before, then its own week the fork's.
+            let filled = |e: &GameEvent| matches!(e, GameEvent::TavernOffered { .. });
+            prop_assert!(forked.iter().any(filled), "the week filled no slot");
+            prop_assert_eq!(taverns(&state), slots);
             let mut events = Vec::new();
             prop_assert_eq!(advance(&mut state, rules, &step, &mut events), result);
             prop_assert_eq!(&events, &forked);
             prop_assert_eq!(&state, &fork);
             prop_assert_eq!(state.state_hash(), fork.state_hash());
             prop_assert_eq!(counts(&state), counts(&fork));
+            prop_assert_eq!(taverns(&state), taverns(&fork));
             return Ok(());
         }
         prop_assert!(false, "no week started within 512 steps");

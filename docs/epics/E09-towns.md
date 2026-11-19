@@ -375,6 +375,24 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
      `GuildRanking`, `GuildHero`, `GuildPlayer`, `GuildPart`; the fold drops both events; the
      ADR's wording by a `shared/` pull request (#1039).
 
+### Decisions at T40's start (2026-11-19, the user; TWN-Q28)
+
+156. **T40 cut in two, the census first** (recommended; `AskUserQuestion`): **T40a** the census
+     of the 160 maps (the first offers and every week's to day 29, the pool, the customised
+     types' records, the map's Taverns and Dens by class) and the pool's properties over the
+     existing plans; **T40b** the taverns map with its scripted replays, the plans' map Tavern
+     and Den of Thieves (`check_legal`, `check_isolation`, `check_conservation` taught that
+     hire), the benchmarks. Not chosen: T29's cut (the map, its replays and the census first),
+     three parts, whole.
+157. **`cross-lane` for T40a** (the user's consent): `h3-map`'s `examples/original_data.rs`,
+     `src/tests/play.rs` and its regressions, `h3-game`'s `lib.rs` re-export.
+158. **The pool read through public read-only readers** (recommended): `GameState::hero_status`,
+     `player_tavern` and `hero_record`, with `HeroStatus` and `PlayerTavern` public (in the town
+     lane's `town/pool.rs`; nothing on the wire, the projections unchanged), so the plans and the
+     census check the statuses themselves (design §81's risk: a type neither free nor taken is
+     lost to every draw). Not chosen: the public observables only (the views, the map and the
+     store; the statuses unchecked).
+
 ### Exit criteria (accepted at `TWN-Q18`, decision 121; design note §80)
 
 1. The town part's tavern weights and the hire's price compile (part v7); each player's faction
@@ -417,7 +435,7 @@ Refined with the user on 2026-11-15 (T30; `TWN-Q15`, asked at T30's start with a
   glossary, `docs/06-security.md`: done 2026-11-16 (`TWN-Q19`, decisions 125–128: the marks cleared
   at every day's start, every record's day's spell points; the drafts deleted; `E09-log.md`).
   **T35b** `StreamId::TAVERNS`, the two quirk flags, the packs and the replays' hashes: done
-  2026-11-17 (whole, decisions 129, 131; the base faithful hash 0x6ba8109889b34a25; `E09-log.md`). **T36** the town part v7 (round 4): done 2026-11-17 (whole, decisions 130, 132; `E09-log.md`). **T37** T37a the pool, the draw and the fills, the turn's points and marks, the views and the protocol: done 2026-11-17 (whole, decisions 133–136; game state hash v33, protocol v70; `E09-log.md`); T37b the map's customised types: done 2026-11-17 (whole, decisions 137–139; map import v25; `E09-log.md`). **T38** T38a the town's hire and the replacement, cut in two at its start (decision 140): T38a1 the hire's rule, the replacement, `HeroHired` and its parts, the protocol and the replay word: done 2026-11-17 (decisions 140–142; protocol v71, replay format v17; `E09-log.md`); T38a2 the hire listed (the legal commands, the env's `TAVERN_HIRE` v12, the plans, the town-map seeds, the benches): done 2026-11-18 (whole, decisions 143, 144; action encoding v12; `E09-log.md`); T38b cut in two at its start (decision 145): T38b1 the leaves and the returns (every leave by a battle or a capture, TWN-TAV-006, TD-18, TD-19, T-16): done 2026-11-18 (decision 146; `E09-log.md`); T38b2 the dismissal (`Manage::Dismiss`, its refusals, the listing, the plans): done 2026-11-18 (whole, decisions 147, 148; replay format v18, protocol v72; `E09-log.md`). **T39** T39a the map's Tavern and the Den of Thieves with the tavern decision: done 2026-11-18 (whole, decisions 149, 150; map import v26, the adventure part v22, game state hash v34, replay format v19, action encoding v13, protocol v73; `E09-log.md`); T39b cut in two at its start (decision 151): T39b1 the Thieves' Guild as a query (TWN-TAV-007 to -009, TD-23, `TWN-QUIRK-13`, `TWN-STUB-17`, `-18`; its resource rows the town part's, decision 152): done 2026-11-19 (decisions 151–153; town part v8; `E09-log.md`); T39b2 the Den's visit and the protocol: done 2026-11-19 (whole, decisions 154, 155; `TWN-STUB-20` lifted; protocol v74; `E09-log.md`); T39 done. **T40** the gates, **T41** the audit and increment 5's refinement (round 8). Design note §79.
+  2026-11-17 (whole, decisions 129, 131; the base faithful hash 0x6ba8109889b34a25; `E09-log.md`). **T36** the town part v7 (round 4): done 2026-11-17 (whole, decisions 130, 132; `E09-log.md`). **T37** T37a the pool, the draw and the fills, the turn's points and marks, the views and the protocol: done 2026-11-17 (whole, decisions 133–136; game state hash v33, protocol v70; `E09-log.md`); T37b the map's customised types: done 2026-11-17 (whole, decisions 137–139; map import v25; `E09-log.md`). **T38** T38a the town's hire and the replacement, cut in two at its start (decision 140): T38a1 the hire's rule, the replacement, `HeroHired` and its parts, the protocol and the replay word: done 2026-11-17 (decisions 140–142; protocol v71, replay format v17; `E09-log.md`); T38a2 the hire listed (the legal commands, the env's `TAVERN_HIRE` v12, the plans, the town-map seeds, the benches): done 2026-11-18 (whole, decisions 143, 144; action encoding v12; `E09-log.md`); T38b cut in two at its start (decision 145): T38b1 the leaves and the returns (every leave by a battle or a capture, TWN-TAV-006, TD-18, TD-19, T-16): done 2026-11-18 (decision 146; `E09-log.md`); T38b2 the dismissal (`Manage::Dismiss`, its refusals, the listing, the plans): done 2026-11-18 (whole, decisions 147, 148; replay format v18, protocol v72; `E09-log.md`). **T39** T39a the map's Tavern and the Den of Thieves with the tavern decision: done 2026-11-18 (whole, decisions 149, 150; map import v26, the adventure part v22, game state hash v34, replay format v19, action encoding v13, protocol v73; `E09-log.md`); T39b cut in two at its start (decision 151): T39b1 the Thieves' Guild as a query (TWN-TAV-007 to -009, TD-23, `TWN-QUIRK-13`, `TWN-STUB-17`, `-18`; its resource rows the town part's, decision 152): done 2026-11-19 (decisions 151–153; town part v8; `E09-log.md`); T39b2 the Den's visit and the protocol: done 2026-11-19 (whole, decisions 154, 155; `TWN-STUB-20` lifted; protocol v74; `E09-log.md`); T39 done. **T40** the gates, cut in two at its start (decision 156): T40a the census of the 160 maps and the pool's properties: done 2026-11-19 (decisions 156–158; the pool's public readers; `E09-log.md`); T40b the taverns map, its replays, the plans' map Tavern and Den, the benchmarks: next. **T41** the audit and increment 5's refinement (round 8). Design note §79.
 
 ## Risks
 
