@@ -5,33 +5,27 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 69). **M1 to M3 closed** (2026-11-13, -16, -19; `E27-archive.md`; the build record
-  `E27-log.md`; the readings `E27-design.md` §1 to §33): the start's clips and their sound, the
-  menus, the hot seat's names, the scenario screen (its list, panel, difficulty, description, the
-  advanced options single and hot seat, the random map's tab, the begin: the setup validated and
-  kept for E24 M5, the loading screen, play's stub `CLT-STUB-13`); `drawn` as recorded on every
-  recipe the shell builds. M3's closure (T7, 2026-11-19): three fresh reviews, their fixes
-  (decision 67, design §33), CLT-Q148 to CLT-Q154 (decision 68), every recipe played again.
-  **M4 refined** (decision 69): around play but outside it (T1 High Scores, T2 Credits, T3 the save
-  file, T4 and T5 Load Game, T6 its closure); a **new M5 in play** (the options and the menu in
-  play, Save, Restart, the end of a scenario), refined once the shell hosts play (E24 M5); a save
-  the engine's adventure replay extended with the setup's choices (CLT-Q156 (a)). **M4 T1a, T1b
-  and T2 done** (2026-11-19, decision 70: T1 cut in two; High Scores whole, Reset's question, the
-  window's `scores.toml`; the credits; design §34 to §36). T3 cut in two (decision 71, the user
-  2026-11-20): **T3a done** (the adventure replay format v20, `Replay::players` and
-  `Replay::setup`, built `cross-lane`; the 104 goldens recorded again). **Next: M4 T3b** (the
-  client's save file and its load on T3a's replay; the queue).
-  Decisions to carry (all: the epic's list): the dialogs' input one implementation (20; `h3_ui::input`); the
-  shell's code as the battle's (21); every pixel of a Smacker clip through its palette (24); every
-  clip's sound at the effects setting (27); a menu opening anew takes the hover (40); the list
-  and the description drawn whole in the client's profile (48, CLT-Q148 (b)); the client's
-  profile: a map's name and description whole (CLT-Q151 (b)), the advanced rows made again when
-  the map changes (CLT-Q152 (b)); a press's stale edges as CLT-Q118's (§34.2); the credits'
-  background's key pixel as a drawing bug (§36.3). Open pull request: T3a's
-  #1066 (`client/e27-m4-t3a`, `cross-lane`; T2's #1063 merged): watch it until it merges. E17 done (`E17-archive.md`,
-  `E17-log.md`; its open threads: the epic's "Placed at the closure", the queue's inbox). E28 and
-  E29 are backlog sketches. Workspace `clients/` (`clients/README.md`), gates
-  `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
+  to 71). **M1 to M3 closed** (2026-11-13, -16, -19; `E27-archive.md`; the build record
+  `E27-log.md`; the readings `E27-design.md` §1 to §33): the start's clips and sound, the menus,
+  the hot seat's names, the scenario screen (list, panel, advanced options, random map, the begin:
+  the setup validated and kept for E24 M5, play's stub `CLT-STUB-13`). **M4** (decision 69: around
+  play but outside it; a **new M5 in play**, refined once the shell hosts play, E24 M5): T1a, T1b
+  (High Scores, its scores file) and T2 (Credits) done 2026-11-19; T3 cut in two (decision 71):
+  **T3a** (the adventure replay format v20 with the players' choices, `cross-lane`) and **T3b**
+  (the client's save file and its load: `h3-battle-client`'s `save`, design §37) done 2026-11-20.
+  **Next: M4 T4** (Load Game single; the queue), then T5 (hot seat), T6 (M4's closure).
+  Decisions to carry (all: the epic's list): the dialogs' input one implementation (20;
+  `h3_ui::input`); the shell's code as the battle's (21); every pixel of a Smacker clip through
+  its palette (24); every clip's sound at the effects setting (27); a menu opening anew takes the
+  hover (40); the list and the description drawn whole in the client's profile (48, CLT-Q148
+  (b)); a map's name and description whole (CLT-Q151 (b)); the advanced rows made again when the
+  map changes (CLT-Q152 (b)); a press's stale edges as CLT-Q118's (§34.2); the credits'
+  background's key pixel a drawing bug (§36.3); a save loads only under the rules and over the
+  map it was made with (review item 18). Open pull request: T3b's
+  (`client/e27-m4-t3b`; T3a's #1066 merged): watch it until it merges. E17 done
+  (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
+  queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
+  gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
   `clients/capture/README.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
@@ -64,6 +58,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-20, E27 M4 T3b (done; `client/e27-m4-t3b`).** The PC's 64 files and the manuals
+  staged (SHA-256 checked). Kept whole. Built `h3-battle-client`'s `save` (design §37): the file
+  (the engine's replay text, then the client's `[save]` table, version 1), its strict reader, the
+  load (the rules, the map by name, hash and import version, the may-be-human check,
+  `Replay::setup`, the commands through `h3_game::apply` with `verify`'s checks) into the
+  `begin::Game` and the state; `h3-sim` a dependency. Three tests on a committed map (CI runs
+  them). Record: `E27-log.md`, "M4 T3b".
 - **2026-11-20, E27 M4 T3a (done; `client/e27-m4-t3a`, `cross-lane`).** The PC's 64 files and
   the manuals staged (SHA-256 checked). The user at the start: the format extension built by this
   lane cross-lane, T3 cut in two (decision 71). Built the adventure replay format v20 (`h3-sim`'s
@@ -77,11 +78,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `h3_ui`'s `Draw::Part` and `Draw::Keyed`, the window's credits; the stub gone. Both recipes
   exact (5 of 5, 8 of 8), `drawn` whole as recorded; the window checked under Xvfb. Record:
   `E27-log.md`, "M4 T2".
-- **2026-11-19, E27 M4 T1b (done; `client/e27-m4-t1b`).** The PC's 64 files and the manuals
-  staged (SHA-256 checked). Kept whole. Read Reset's branch (§35.1: OK resets, writes, sets every
-  creature's DEF and frame 0, the counters kept: CLT-Q158); `scores-reset` played again (as
-  kept): the release closing the box runs the step due (§35.2). Built Reset's question, the
-  tables' reset and keep, the scores file (`Tables::read`, `write`; the window's `--scores`,
-  else `scores.toml`), the replay's `press`, `point`, `until-button`; CLT-STUB-14 lifted.
-  `scores-reset` 10 of 10 exact, `scores-tabs` 28 of 28; the window checked under Xvfb. Record:
-  `E27-log.md`, "M4 T1b".

@@ -39,6 +39,8 @@ h3-map.workspace = true
 # offer (`h3_game::GameSetup::offer`, decision 4).
 h3-files.workspace = true
 h3-game.workspace = true
+# A saved game (E27 M4 T3b): the engine's adventure replay beside the client's table.
+h3-sim.workspace = true
 # A siege's buildings by the town records (E17 M6 T3c3).
 h3-pack-towns.workspace = true
 h3-towns.workspace = true

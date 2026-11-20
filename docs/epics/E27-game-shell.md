@@ -3,7 +3,7 @@
 Status: **refined** (2026-11-12, M0, with the user); **M1 closed** (2026-11-13), **M2 closed**
 (2026-11-17), **M3 closed** (2026-11-19, T7: the fresh reviews, decisions 66 to 68); **M4 refined**
 (2026-11-19, M4 T0 at M3 T7, decision 69); M4 T1a, T1b and T2 done (2026-11-19, decision 70);
-T3 cut in two (decision 71), T3a done (2026-11-20); next **M4 T3b** (`docs/lanes/client/QUEUE.md`).
+T3 cut in two (decision 71), T3a and T3b done (2026-11-20); next **M4 T4** (`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
 catalogue and capture harness). Working detail (readings, the clips, layouts):
@@ -596,7 +596,7 @@ load mode), §3.12 to §3.14 (a load's rows).
 | T1b | High Scores' Reset (§2.8, §35): its question (GENRLTXT 667) resetting both tables to the defaults, the client's own scores file (read at the start, written at Reset; never `HiScore.dat`), CLT-STUB-14 lifted; exact against `scores-reset` | done 2026-11-19 (`scores-reset` 10 of 10 exact, `scores-tabs` 28 of 28; CLT-Q158 asked) |
 | T2 | Credits (§2.9): `Credits.fnt`, `Credits.txt`'s two records wrapped to 328 px, the scroll of 2 px ten times a second (CLT-Q88), the closing text's moment read from the kept frames, a key (but F4) or a press ending it, M2's stub lifted; exact against `credits-scroll`, `credits-end` | done 2026-11-19 (`credits-scroll` 5 of 5 exact, its scroll's 2 611 frames; `credits-end` 8 of 8; design §36) |
 | T3a | The save file's engine part (decisions 69, 71; `cross-lane`): the adventure replay format v20, `Replay::players` (each player's human flag, faction's choice and hero's pick, recorded from the setup, set over the import by `Replay::setup` when verifying, none the import's), its `[[players]]` tables in `h3-files`' file, the 104 golden replays recorded again (only the version and the players' lines moved) | done 2026-11-20 (the adventure lane's inbox: its increment 14 takes v21) |
-| T3b | The save file (decisions 69, 71): the client's own file, its table (the names, bonuses, handicaps, the turn's duration, the save's name) beside the engine's replay of T3a, written and read with its version; a load's setup rebuilt (`Replay::setup` over the map's import) and its commands replayed by the engine; tests, no screen | next |
+| T3b | The save file (decisions 69, 71): the client's own file, its table (the names, bonuses, handicaps, the turn's duration, the save's name) beside the engine's replay of T3a, written and read with its version; a load's setup rebuilt (`Replay::setup` over the map's import) and its commands replayed by the engine; tests, no screen | done 2026-11-20 (`h3-battle-client`'s `save`; design §37) |
 | T4 | Load Game single (§3.1, §3.3 to §3.6, the load mode): the client's saves listed (the map's header, the date, the difficulty shown, the turn's duration), the keys, the sort, Delete's question (688), the notice with none (686), Load's popup, the load to play's stub (as M3's begin); §6.4's fixes (the date's order: a day above 12 and a pinned time zone; a save of another size; Delete of the last save) and M3 T7's leftover (the list's held keys); exact against `scn-load`, `scn-load-none` (the viewer given client saves made to match the recipe's) | after T3 |
 | T5 | Load Game hot seat (§3.12 to §3.14, a load's rows: the saved choices, no arrows; §6.4's Random Map button in a load): exact against `mp-load`, `adv-load` | after T4 |
 | T6 | M4's closure: a fresh reviewer, M4's review list to the user, M4 to the archive, M5's refinement once the shell hosts play (else its prerequisites recorded) | after T5 |
@@ -644,6 +644,23 @@ load mode), §3.12 to §3.14 (a load's rows).
 16. (T3a) The file names a faction's choice by the faction's index or the word `random`, a pick by
     the hero type's index; the server's journals and its measure write none (the server lane's
     inbox: its seats' choices are its to carry).
+17. (T3b) The save's file (design §37.1): one file, the engine's replay text whole, then the
+    client's table from the line `[save]` on (its version 1; eight `[[save.colours]]`, a name for
+    a human's, the bonus by its word); the part before that line is an engine replay file. The
+    date not kept (the file's last-write time, as the original's list), nor the map's header (the
+    map the replay names, T4's).
+18. (T3b) The replay names its map by the file's name in the installation's `Maps`: a save loads
+    only over the same map's bytes and import version and under the same rules (the replay's
+    header: the packs, the profile, the rules' hashes, the state hash versions), so every engine
+    change of the rules or of a hash version leaves the saves before it refused, the field named
+    (T4 lists them; the original lists a save of another version as a broken file, §3.3).
+19. (T3b) The load applies the commands itself through `h3_game::apply` with `Replay::verify`'s
+    checks in its order (the engine's `verify` keeps no state; no engine change: a `Replay`
+    function returning the state, the adventure lane's file, would replace the client's loop).
+20. (T3b) The load refuses a save making a colour human where the map lets none play (the
+    import's mark, which the engine cannot check; the begin's rule of M3 T7) and a name for a
+    colour no human holds; a save file is read whole, with no size limit (as the settings and
+    scores files).
 
 ## Dependencies and boundaries
 

@@ -15,14 +15,18 @@ computer must be online); never from the installation. The captures need the fiv
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M4 T3b
+#### E27 M4 T4
 
-T3b the save file (the epic's M4 table; decisions 69 and 71, CLT-Q156 (a)): the client's own file,
-its table (the names, bonuses, handicaps, the turn's duration, the save's name) beside the
-engine's adventure replay (`h3-files`' format v20 since T3a: `Replay::players`, `[[players]]`),
-written and read with its version; a load's setup rebuilt (`Replay::setup` over the map's import,
-as `begin::setup` reads the map) and its commands replayed by the engine; tests, no screen. T3a's
-calls: the epic's M4 review list items 14 to 16.
+T4 Load Game single (the epic's M4 table; design §3.1, §3.3 to §3.6, the load mode; §37 the save
+file of T3b, `h3-battle-client`'s `save`): the client's saves listed (the map's header from the map
+the replay names, the file's date, the difficulty shown, the turn's duration; where the saves are
+kept and their file's name this task's call), the keys, the sort, Delete's question (688), the
+notice with none (686), Load's popup, the load to play's stub (as M3's begin: `save::load`'s
+`Loaded` kept for E24 M5); §6.4's fixes (the date's order: a day above 12 and a pinned time zone;
+a save of another size; Delete of the last save) and M3 T7's leftover (the list's held keys); a
+how a save `save::load` refuses (other rules, §37.2) is listed is this task's call (the original
+lists a broken save so, §3.3); exact against `scn-load`, `scn-load-none` (the viewer given client saves made to match the
+recipe's). M4's review list items 17 to 20 are T3b's calls.
 
 ## Inbox
 

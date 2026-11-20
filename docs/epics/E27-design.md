@@ -3871,3 +3871,40 @@ black from the first step (`h3_ui::ui::Draw::Keyed`), for the comparisons only.
   Scores).
 - **Not built:** the original's `any_video_running` guard (no clip: CLT-Q86, CLT-Q88), a picture
   that cannot be made (GENRLTXT 223, the end: the client's `Draw::Part` refuses its draw).
+
+## 37. The save file (M4 T3b, 2026-11-20)
+
+No reading: the save is the client's own (decisions 8, 69 and 71; CLT-Q156 (a)), never the
+original's (`game_save` 0x4BEEA0 writes the game's memory). Built in `h3-battle-client`'s `save`
+(an adapter: files, the engine's crates), tests only; the list, the folder and the file's name are
+Load Game's (T4) and Save's (M5).
+
+### 37.1 The file (*provisional*)
+
+- **One file, two parts:** the engine's adventure replay as `h3_files::adventure::replay_to_toml`
+  writes it (format v20: the map, the seed, the difficulty, `[[players]]`' choices, the commands,
+  the checkpoints, the final hash and day), after a two-line comment; then, from the line `[save]`
+  on, the client's table: `version` (1), `name` (the save's name), `duration` (`turndur.txt`'s
+  record, at most 10, unlimited), and eight `[[save.colours]]`, red first, each a `bonus`
+  (`artifact`, `gold`, `resource`, `random`), a `handicap` (0 to 2) and, for a human's, its
+  `name`. The reader splits at the first line `[save]` (CRLF or LF), reads the table by its own
+  version first (another or none refused) and its keys strictly, the replay's part by the engine's
+  reader (`parse_replay`, which refuses a key of the table's).
+- **The map** by its file's name in the installation's `Maps` (`MapRef::path`, resolved against
+  that folder; `save::map`), with its content hash and the import's version.
+- **Not kept:** the date (the file's last-write time, as the original's list shows it, §3.5), the
+  map's header (read from the map the replay names: T4).
+
+### 37.2 The load
+
+In order: the replay's header against the rules (`ReplayHeader::check`: a save of other packs, a
+profile, the rules' hashes or the state hash versions refused before anything is read, the field
+named); the map read again (`read_map`: a plain name below `Maps`, `h3-map`'s size limit), its
+content hash and import version against the replay's; read and imported as the begin reads a map
+(`h3_map::read`, `h3_map::import`); a colour the replay makes human must be one the import lets a
+human play (E27 M3 T7's rule: the engine cannot check it again); the choices set over the import
+(`Replay::setup`: a colour no player has, or twice, refused); a name only for a human's colour; the
+game built (`GameState::new`, the engine's validation) and the commands applied in order through
+`h3_game::apply`, each as its actor's, with `Replay::verify`'s checks in its order (the
+checkpoints' count, each checkpoint, the final hash, the final day). The result: `begin::Game`
+(the map's file, the rebuilt setup, the table) and the state after the commands, for M5's host.
