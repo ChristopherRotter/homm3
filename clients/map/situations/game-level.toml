@@ -1,0 +1,23 @@
+# A scripted game's level-up (E24 M4 T4b1; clients/map/sequences.toml `game-level`): Red's Rion
+# with its army in the map (as `game-walk`) and no experience, a key's step right onto a Learning
+# Stone's entrance (its box with the 1 000 experience, Enter), level 2's dialog with two offers
+# (the right one clicked, the OK clicked). The level's primary skill and offers are drawn in both
+# games: the engine's seed (`engine_seed`) is one whose draws are the original's under the
+# sequence's `seed`. A town of Red's out of the way (no visit's scenario test warns of a town
+# lost); a second hero of Red's far off (its selection shows the engine's resources); Blue's hero
+# far off. The engine plays the same commands (the sequence's `script`).
+size = 36
+terrain = "grass"
+explored = "start"
+heroes = [
+    { at = [12, 12], class = 1, experience = 0, map_army = [[0, 15], [2, 5]] },
+    { at = [4, 28], class = 5, map_army = [[28, 20]] },
+    { at = [33, 33], owner = 1, class = 6 },
+]
+towns = [{ at = [6, 6], faction = 0, owner = 0, buildings = "fort" }]
+objects = [{ def = "AVSgzbo0.def", at = [13, 12] }]
+bonus = "gold"
+resources = [20, 10, 20, 10, 10, 10, 20000]
+select = { hero = [4, 28] }
+reselect = [12, 12]
+view = [3, 4, 0]

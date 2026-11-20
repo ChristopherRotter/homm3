@@ -113,11 +113,16 @@ pub struct Record<'p> {
 }
 
 /// What a sequence takes from a record (E24 M4 T4a2): its start and turns' tables, applied after
-/// the kept live part, and its walks.
+/// the kept live part, and its walks; since E24 M4 T4b1 its visits, level-ups and its heroes'
+/// experience at the start.
 struct Played {
     table: toml::Table,
     label: String,
     moves: Vec<timeline::Move>,
+    ends: Vec<Option<Pos>>,
+    visits: Vec<engine::Visit>,
+    levels: Vec<engine::Leveled>,
+    experience: Vec<(Pos, u32)>,
 }
 
 /// The record's start (`engine::start`) with its turns' starts as the `turn` tables, and its
@@ -142,22 +147,28 @@ fn played(assets: &Assets<'_>, raw: &RawMap, record: Record<'_>) -> Result<Playe
         table,
         label: record.path.display().to_string(),
         moves: game.moves,
+        ends: game.ends,
+        visits: game.visits,
+        levels: game.levels,
+        experience: game.experience,
     })
 }
 
 /// The arrows of each of the engine's walks, from where the walk before left the hero (`from`
-/// the selected hero's tile at 0; E24 M4 T4a2: `timeline::arrows`).
+/// the selected hero's tile at 0; E24 M4 T4a2: `timeline::arrows`; since E24 M4 T4b1 a visit
+/// from beside leaves it where it stood, `ends`).
 fn record_paths(
     assets: &Assets<'_>,
     from: Pos,
     moves: &[timeline::Move],
+    ends: &[Option<Pos>],
 ) -> Result<Vec<Vec<h3_map_view::live::Arrow>>, String> {
     let mut at = from;
     let mut paths = Vec::with_capacity(moves.len());
-    for walk in moves {
+    for (walk, end) in moves.iter().zip(ends) {
         let arrows = timeline::arrows(&assets.tables.map.walk.arrows, at, &walk.tiles)
             .ok_or_else(|| format!("a record's walk from {at:?} is no path: {:?}", walk.tiles))?;
-        at = walk.tiles.last().copied().unwrap_or(at);
+        at = end.unwrap_or(at);
         paths.push(arrows);
     }
     Ok(paths)
@@ -211,7 +222,7 @@ pub fn for_sequence<'a>(
             sequence::selected_hero(live).map_err(|e| format!("{}: {e}", live_path.display()))?;
         painter.selected = sequence::selected_in(live).ok();
         let paths = match (&played, walks) {
-            (Some(p), true) => record_paths(assets, hero.at, &p.moves)?,
+            (Some(p), true) => record_paths(assets, hero.at, &p.moves, &p.ends)?,
             (None, true) => sequence.paths(facts)?,
             (_, false) => Vec::new(),
         };
@@ -229,7 +240,15 @@ pub fn for_sequence<'a>(
         })
     });
     painter.diplomacy = spec.and_then(|spec| spec.diplomacy).unwrap_or(0);
-    let experience = spec.and_then(|spec| spec.experience);
+    // A record's hero's experience its start gives (E24 M4 T4b1).
+    let experience = match (&played, hero) {
+        (Some(p), Some(h)) => p
+            .experience
+            .iter()
+            .find(|(at, _)| *at == h.at)
+            .map(|&(_, experience)| experience),
+        _ => spec.and_then(|spec| spec.experience),
+    };
     let sound = painter.sound(hero.map(|h| h.at))?;
     // End Turn's question and the turns' messages (E24 M4 T1a); a computer's walks from the
     // recorded `hero` lines (E24 M4 T1b2).
@@ -237,12 +256,29 @@ pub fn for_sequence<'a>(
     let (question, turns) = painter
         .boxes(&lines)
         .map_err(|e| format!("{}: {e}", live_path.display()))?;
-    // The finds a walk tells and the turn without a town's boxes (E24 M4 T2a2).
+    // The finds a walk tells and the turn without a town's boxes (E24 M4 T2a2); a record's from
+    // its visits (E24 M4 T4b1).
     let hover = painter.hover()?;
-    let finds = painter.finds(&raw, hover.as_deref())?;
+    let finds = match &played {
+        Some(p) => painter.record_finds(&p.visits, hover.as_deref())?,
+        None => painter.finds(&raw, hover.as_deref())?,
+    };
     let town = painter.town()?;
-    // The level-ups' dialogs (E24 M4 T2c): the recording's facts.
-    let level_ups = painter.level_ups(hover.as_deref())?;
+    // The level-ups' dialogs (E24 M4 T2c): the recording's facts, a record's (E24 M4 T4b1) with
+    // the offer each answer took.
+    if let Some(p) = &played {
+        painter.live.level_ups = p.levels.iter().map(|l| l.up.clone()).collect();
+    }
+    let mut level_ups = painter.level_ups(hover.as_deref())?;
+    if let Some(p) = &played {
+        for level in &mut level_ups {
+            level.chosen = p
+                .levels
+                .iter()
+                .find(|l| l.up.level == level.level && l.up.offers == level.offers)
+                .and_then(|l| l.chosen);
+        }
+    }
     let start = Start {
         view,
         size: i32::from(situation.size),
@@ -938,6 +974,103 @@ impl<'a> Painter<'a> {
         Ok(out)
     }
 
+    /// The finds of a record's `visits` (E24 M4 T4b1, design §5.14): each visit on the object of
+    /// its tile (the mouse-over's tiles, as [`Painter::finds`]) told by the record's events
+    /// (`engine::visits::told`) and laid out as Part A's: a find's first visit its box (a pile's
+    /// kind 6) and what the panels show, the object taken where the record says so, a later
+    /// visit's box its `again`; a question's box with only the record's answer built (another
+    /// refused; the Arena's Cancel is its Attack, MCL-Q33). A visit that tells nothing is left
+    /// out.
+    fn record_finds(
+        &mut self,
+        visits: &[engine::Visit],
+        hover: Option<&Hover>,
+    ) -> Result<Vec<Found>, String> {
+        use engine::visits::{Answered, Told as Visited};
+        let Some(hover) = hover else {
+            return Ok(Vec::new());
+        };
+        let assets = self.assets;
+        let texts = &assets.tables.texts;
+        let hero = self.hero_name();
+        let mut out: Vec<Found> = Vec::new();
+        for visit in visits {
+            let pos = visit.at;
+            let at = [i32::from(pos.x), i32::from(pos.y), i32::from(pos.z)];
+            let Some(tile) = hover.base(at) else {
+                continue;
+            };
+            let Some(o) = tile.object.filter(|_| tile.entrance) else {
+                continue;
+            };
+            let Some(told) = engine::visits::told(visit, [tile.class, tile.subclass], &hero) else {
+                continue;
+            };
+            let found = match told {
+                Visited::Find { find, gain, taken } => {
+                    // A Learning Stone's picture the record's experience.
+                    let mut art = assets.tables.map.finds.clone();
+                    art.experience = gain.experience;
+                    let boxed = match find.told(&art, texts) {
+                        Some(told) => Some(self.told(&told)?),
+                        None => None,
+                    };
+                    if let Some(earlier) = out.iter_mut().find(|f| f.at == pos) {
+                        earlier.again = boxed;
+                        continue;
+                    }
+                    Found {
+                        at: pos,
+                        first: boxed
+                            .map(|b| vec![(b, Gain::default())])
+                            .unwrap_or_default(),
+                        again: None,
+                        gain,
+                        found: find.found(texts),
+                        taken: taken.then_some(o),
+                        event: false,
+                        blocks: taken.then_some(o),
+                        ask: None,
+                        flag: None,
+                    }
+                }
+                Visited::Ask { ask, answered } => {
+                    let mut question = self.question(&ask, o)?;
+                    match answered {
+                        Answered::Yes => {
+                            question.second = None;
+                            if !matches!(ask, Ask::Arena(_)) {
+                                question.no = None;
+                            }
+                        }
+                        Answered::Second => {
+                            question.yes = None;
+                            question.no = None;
+                        }
+                        Answered::No => {
+                            question.yes = None;
+                            question.second = None;
+                        }
+                    }
+                    Found {
+                        at: pos,
+                        first: Vec::new(),
+                        again: None,
+                        gain: Gain::default(),
+                        found: None,
+                        taken: None,
+                        event: false,
+                        blocks: ask.beside().then_some(o),
+                        ask: Some(question),
+                        flag: None,
+                    }
+                }
+            };
+            out.push(found);
+        }
+        Ok(out)
+    }
+
     /// An event's find (E24 M4 T2a2 part B, design §5.3: `event_fire` 0x4A0ED0 after the step onto
     /// it, `grant_rewards` 0x49FA90's boxes for the hero named `hero`, the map's text in the
     /// first; the scenario's test after them): none when it does not fire for the viewer's colour
@@ -1273,6 +1406,7 @@ impl<'a> Painter<'a> {
                     dialog: Arc::new(dialog),
                     offers: up.offers.clone(),
                     primary: up.primary,
+                    chosen: None,
                 }
             })
             .collect())

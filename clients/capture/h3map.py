@@ -1167,10 +1167,17 @@ def sequence_inputs(entry):
     # `script` (E24 M4 T4a1, design §5.12): a scripted game's engine commands, the viewer's (a
     # string per command as `h3 adventure run --script` reads them).
     unknown = set(entry) - {"id", "situation", "ms", "why", "inputs", "status", "rolls",
-                            "seed", "sound", "script", *OPTIONS}
+                            "seed", "sound", "script", "engine_seed", *OPTIONS}
     script = entry.get("script", [])
     if not (isinstance(script, list) and all(isinstance(c, str) and c.strip() for c in script)):
         raise ValueError(f"{entry['id']}: `script` is a list of engine commands: {script!r}")
+    # `engine_seed` (E24 M4 T4b1): the engine's seed of a scripted game (`h3 adventure run
+    # --seed`), one whose draws are the original's under `seed`; 1 (the engine's) without it.
+    engine_seed = entry.get("engine_seed", 1)
+    if (not isinstance(engine_seed, int) or isinstance(engine_seed, bool) or engine_seed < 0
+            or "engine_seed" in entry and not script):
+        raise ValueError(f"{entry['id']}: `engine_seed` is a whole number of a scripted "
+                         f"sequence: {engine_seed!r}")
     if unknown:
         raise ValueError(f"{entry['id']}: unknown keys {sorted(unknown)}")
     # The rolls a sequence forces (E24 M4 T1a: the week's and the month's), every draw of each
@@ -1857,17 +1864,19 @@ def drawn_sequences(rest, base, record):
     return failed, broken
 
 
-def engine_game(here, script, name):
+def engine_game(here, script, name, seed=1):
     """The engine's whole game of `script` (its commands, one per line as `h3 adventure run
-    --script` reads them) on `here/map.h3m`, recorded (`<name>.toml`) and turned into the
-    players' records by `h3-server record` (the root workspace's `target/debug`, or H3_ENGINE):
-    returns the viewer's (`<name>.player-0.jsonl`; E24 M4 T3b1, T4a2)."""
+    --script` reads them) on `here/map.h3m` under the engine's `seed` (E24 M4 T4b1; 1 the
+    engine's own), recorded (`<name>.toml`) and turned into the players' records by `h3-server
+    record` (the root workspace's `target/debug`, or H3_ENGINE): returns the viewer's
+    (`<name>.player-0.jsonl`; E24 M4 T3b1, T4a2)."""
     engine_dir = Path(os.environ.get("H3_ENGINE", CLIENTS.parent / "target/debug"))
     packs = CLIENTS.parent / "packs"
     (here / f"{name}.txt").write_text("".join(f"{line}\n" for line in script))
     # A replay names its map relative to its root: both run in `here`.
     for args in [[engine_dir / "h3", "adventure", "run", "--map", "map.h3m", "--packs-dir",
-                  packs, "--script", f"{name}.txt", "--record", f"{name}.toml"],
+                  packs, "--script", f"{name}.txt", "--record", f"{name}.toml",
+                  "--seed", str(seed)],
                  [engine_dir / "h3-server", "record", f"{name}.toml", "--packs-dir", packs,
                   "--root", ".", "--out", "."]]:
         done = subprocess.run([str(a) for a in args], capture_output=True, text=True, cwd=here)
@@ -1898,7 +1907,7 @@ def scripted(entry, here):
     shutil.rmtree(here, ignore_errors=True)
     here.mkdir(parents=True)
     engine_map(situation_path, tomllib.loads(situation_path.read_text()), here)
-    record = engine_game(here, entry["script"], "game")
+    record = engine_game(here, entry["script"], "game", entry.get("engine_seed", 1))
     return ["--record", str(record), "--record-map", str(here / "map.h3m")]
 
 

@@ -4195,3 +4195,85 @@ and the binary plays the sequence from it (`sequences <id> --record <r.jsonl> --
 - **Checked:** the three games exact but the listed gaps, again after `master`'s replay format
   v20 (#1066); `drawn` all the same; `check.sh --no-coverage` all gates, `h3-map-view`'s coverage
   at 100 %; the scoped verify.
+
+### 5.14 A record's visits played: the message boxes (M4 T4b1)
+
+T4b cut in two by the user at its start (2026-11-20, by family): T4b1 the message boxes (the finds
+told and taken, the questions and choices with the record's answers, the level-ups), T4b2 the
+map changed by a visit (the flags, the boats). Summon Boat moved out of T4b by the user the same
+day: the engine casts no adventure spell (`AdventureCommand` holds `MoveHero`, `BuildBoat` and
+`Revisit`; E08 has not placed the adventure spells), so no record holds a cast.
+
+- **A record's facts of a visit** (protocol v75, record format 5; the engine's games of the
+  `seq-find-*`, `seq-choose-*`, `seq-ask-pandora` and `seq-level-up` situations read first): a
+  walk onto an object's entrance or a key's step onto a blocking object is a `MoveHero` whose
+  path ends on the entrance or on the object's own tile (no `HeroStepped` for a visit from
+  beside, its points spent as a step's: 100 on grass, the original's too, `game-finds` at 3200),
+  then its events: a Temple `OnceMarkChanged` (its morale), at a visit again `NothingGained {
+  why: Visited }`; a pile `ObjectRemoved` and `ResourceGained` (the map's amount, gold's times
+  100); an artifact `ObjectRemoved` and `HeroChanged { AddArtifact }`; a Learning Stone
+  `GainExperience`, then `LevelUpOpened` (two offers, answered `level-up first` or `second`, then
+  `LevelGained`) or `LevelGained` alone (none or one offer); a Windmill `ResourceGained`, emptied
+  `ObjectEmpty`; the Arena `ChoiceOpened`, its answer `DecisionClosed` and `GainPrimary`;
+  Pandora's Box `OfferOpened`, its answer `OfferAnswered`, `ObjectRemoved` and its gains; a
+  treasure chest `ObjectRemoved` and `ChoiceOpened`, its answer `DecisionClosed` and the part
+  taken (`ResourceGained` or `GainExperience`).
+- **What the record lacks** (each an `MCL-Q<n>`, notes in the engine lanes' inboxes): a choice's
+  and an offer's parts before the answer (MCL-Q41: a chest's box shows both, the record neither;
+  the server lane's SRV-STUB-5); a once-per-hero object's visit the hero's mark refuses (MCL-Q42:
+  the Learning Stone's and the Star Axis's `revisit` give no event, the Temple's
+  `NothingGained`). Seen too: the status window's morale and luck with an artifact's bonus (the
+  Pendant of Courage's +3, recorded in a first take of `game-finds`): the record holds neither
+  (MCL-Q36), so `game-finds` picks the Pendant of Dispassion, which no panel shows.
+- **The record read** (`engine::played`, *provisional*): each of the viewer's `MoveHero` with a
+  tile a `Visit` at its last tile with the command's events, then each `Answer` echoed after it
+  with its own (another command ends the visit); each walk's end (`Played::ends`: its last
+  `HeroStepped`'s tile, none for a visit from beside; the arrows of the next path start there);
+  the level-ups (`Leveled`: a `LevelUpOpened`'s dialog and the offer its `LevelGained` took, a
+  `LevelGained` alone a dialog with none or one offer, each offer's level the one it reaches by
+  the hero's skills then; the hero's type, the primary skill); the viewer's heroes' experience at
+  the start by their tiles (the levels a visit's experience reaches).
+- **What a visit tells** (`engine::visits::told`, *provisional*): by the class of the object on
+  the visit's tile (the mouse-over's tiles, as Part A's finds) a find told, Part A's `Find` with
+  the record's facts (a Temple visited or its mark's morale; a pile's resource and amount; an
+  artifact; a Learning Stone's experience, its box's picture the record's amount; a Star Axis; a
+  Windmill's resource or its emptiness), what the panels show at its box's close from the events
+  (`visits::gain`: the resources, the primary skills, a mark's morale and luck, the experience)
+  and the object taken where an `ObjectRemoved` says so; or a question with the record's answer
+  (Part A's `Ask`: the Arena's gain the answer's, Pandora's Box's rewards the answer's gains, a
+  chest's part taken the answer's gain and the other none, `stub: MCL-Q41`). The adapter lays
+  them out as Part A's (`Painter::record_finds`): a find's later visit its `again` box; a
+  question's answers but the record's left out (another refused, `Unplayable::Answer`; the
+  Arena's Cancel kept with its Attack, MCL-Q33); the level-ups' dialogs from the record's facts
+  with the offer each answer took (`LevelBox::chosen`: the OK with another refused,
+  `Unplayable::LevelUp`).
+- **The timeline:** a visit from beside on a record takes the record's next move, its one tile
+  the object's (`Unplayable::Moved` else), its points the move's (the hero stays); the rest as
+  Part A's.
+- **The scripted games** (`clients/map/sequences.toml`, situations `game-finds`, `game-asks`,
+  `game-level`; Rion with its army in the map as `game-walk`, a town of Red's out of the way):
+  `game-finds` a key's step onto a Temple (its box), off and onto it again (the visited box), a
+  gold pile beside (1 000: kind 6, taken), a step and the Pendant of Dispassion beside (its box,
+  taken); `game-asks` a step onto the Arena (+2 Attack clicked, Enter), Pandora's Box beside
+  opened (1 500 gold), a step and a chest beside (its gold chosen; the original's gold written as
+  the engine draws it, 1 500, `visits`); `game-level` a step onto a Learning Stone at 0
+  experience, level 2's dialog with two offers, the right one clicked, the OK clicked. A click's
+  pointer moved off the map at once (a record gives no reach: the cursor over the view after a
+  box is MCL-Q37's). The level-up's draws: the engine's seed (`engine_seed`, `h3map.py` passes
+  it to `h3 adventure run --seed`; the viewer's `Sequence` accepts it) one whose draws are the
+  original's under the sequence's `seed`, found by a search over the engine's seeds (74:
+  Knowledge, Advanced First Aid and Basic Diplomacy, the original's under seed 1).
+- **The timeline's queue:** a box the loop's turn opens (a walk's end, outside the millisecond's
+  actions) emptied the input queue then, but its `flush` stayed set and dropped every action
+  after the first of the next millisecond that had any (`game-asks`: the click on the Arena's
+  picture kept, the pointer's move off the map lost); it is cleared before a millisecond's
+  actions now (the other 99 sequences as recorded).
+- **Found** (the screens recorded in this sandbox; each exact at 0): `game-finds` and
+  `game-level` exact, their timelines and every frame (no gap); `game-asks`' timeline exact, 3 of
+  its 43 frames differing by 136 pixels: the chest's choice without the experience's amount
+  (MCL-Q41 (c), `game-asks-frames.txt`).
+- **Checked:** the three games exact but the listed gap, each recorded twice (`game-finds` three
+  times: its second run's objects' step after the pile's dissolve a millisecond later, the third
+  as the first); `drawn` all the same (the 102 sequences with the three new); `check.sh` all gates
+  (its tests but the client lane's `save` test, red on `master` at the start and fixed there
+  during the session), `h3-map-view`'s coverage at 100 %; the scoped verify.

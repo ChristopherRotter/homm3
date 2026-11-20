@@ -413,7 +413,10 @@ fn the_walks_frames_are_m2_t3bs() {
             "cast-boat-far",
             "cast-boat-new",
             "game-walk",
-            "game-day"
+            "game-day",
+            "game-finds",
+            "game-asks",
+            "game-level"
         ]
     );
 }
