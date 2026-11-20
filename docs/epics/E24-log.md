@@ -3131,7 +3131,9 @@ was not needed after the first minutes.
   `game-asks`' click and pointer at 1000).
 - **Found:** `game-finds` and `game-level` exact (no gap, no frame differing); `game-asks`' timeline
   exact, 3 of its 43 frames differing by 136 pixels: the chest's box without the experience's
-  amount (MCL-Q41 (c)).
+  amount (MCL-Q41 (c)). Each recorded twice, the second `ok`; `game-finds`' second run moved the
+  objects' step after the pile's dissolve a millisecond later (3721 for 3720, not explained), a
+  third run as the first.
 - **Agent decisions** (change freely; M4's review list): the visit's shape and its end at
   another command; a find's later visit as its `again`; the questions' answers left out but the
   record's; `engine_seed` by a search; the pointer moved off the map after each click in the
