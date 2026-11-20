@@ -910,6 +910,7 @@ mod flight;
 mod garrisons;
 mod hiring;
 mod holds;
+mod markets;
 mod mines;
 mod monsters;
 mod piles;
