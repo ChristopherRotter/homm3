@@ -499,6 +499,8 @@ The user, 2026-11-19 (M3 T7's start):
     disabled difficulty's popups, exact against `scn-load` up to `easy-pressed`; T4b2 Delete's
     question and its end, the notice with no saves, Load's end at play's stub, exact against the
     rest of `scn-load`, `scn-load-last` and `scn-load-none`.
+74. **T4b2 kept whole** (the user, 2026-11-20, at its start; offered: whole, or cut after
+    Delete).
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
@@ -608,7 +610,7 @@ load mode), §3.12 to §3.14 (a load's rows).
 | T3b | The save file (decisions 69, 71): the client's own file, its table (the names, bonuses, handicaps, the turn's duration, the save's name) beside the engine's replay of T3a, written and read with its version; a load's setup rebuilt (`Replay::setup` over the map's import) and its commands replayed by the engine; tests, no screen | done 2026-11-20 (`h3-battle-client`'s `save`; design §37) |
 | T4a | Load Game single's reading and recordings (§38; decision 72): the date's order, the load mode's name, Delete's end read; the original's saves of shipped maps made by maker recipes (the user's are a random map's), a pinned time zone, a held key's repeats (`h3shell.py`); `scn-load` recorded again (§6.4's fixes: a day above 12, three sizes, the held key), `scn-load-last` new (Delete of the last save) | done 2026-11-20 (25 and 9 shots, twice the same; `scn-load-none` as kept) |
 | T4b1 | Load Game single's screen (§3.1, §3.3 to §3.6, §38, §39; decision 73): the load mode (title, no panel buttons or flags, Load, the save's difficulty on the disabled buttons and its rating), the client's saves listed (the folder `games`, `<name>.GM<n>`, the map's header from the map the replay names, a save it cannot list as a broken file, the file's local time), the keys and a held key's repeats (the viewer's `key-hold`, the window's), the sorts with CLT-Q138's stale buttons and rating, Load's and a disabled difficulty's popups, a right press without a popup redrawing nothing; the viewer given client saves made as the makers' (`h3-view save`, the makers' `viewer`) and `games-time`; Load and Delete the client's notice (CLT-STUB-15) | done 2026-11-20 (`scn-load` 19 of 25 exact: all but Delete's four, the load's clip and the map) |
-| T4b2 | Delete's question (688) both ways and its end (the version sort in the last direction, the first selected, the stale buttons and rating), the notice with no saves (686, Load disabled), Load's end at play's stub (as M3's begin: `save::load`'s `Loaded` kept for E24 M5; a save the load refuses its call), CLT-STUB-15 lifted; exact against `scn-load`'s Delete shots, `scn-load-last`, `scn-load-none` (`scn-load`'s `load` clip and `map` are play's, M5's) | after T4b1 |
+| T4b2 | Delete's question (688) both ways and its end (the version sort in the last direction, the first selected, the stale buttons and rating), the notice with no saves (686, Load disabled), Load's end at play's stub (as M3's begin: `save::load`'s `Loaded` kept for E24 M5; a save the load refuses its call), CLT-STUB-15 lifted; exact against `scn-load`'s Delete shots, `scn-load-last`, `scn-load-none` (`scn-load`'s `load` clip and `map` are play's, M5's) | done 2026-11-20 (`scn-load` 23 of 25 exact, `scn-load-last` 9 of 9, `scn-load-none` 5 of 5; design §40; CLT-Q159) |
 | T5 | Load Game hot seat (§3.12 to §3.14, a load's rows: the saved choices, no arrows; §6.4's Random Map button in a load): hot-seat saves of shipped maps made as T4a's (`adv-load`'s are the user's random map's); exact against `mp-load`, `adv-load` | after T4b2 |
 | T6 | M4's closure: a fresh reviewer, M4's review list to the user, M4 to the archive, M5's refinement once the shell hosts play (else its prerequisites recorded) | after T5 |
 
@@ -709,6 +711,18 @@ load mode), §3.12 to §3.14 (a load's rows).
 30. (T4b1) The made saves (`h3-view save`, a maker's `viewer` table, left out of its digest): the
     single player's colour the map's, the advanced options untouched, seed 1, every player's End
     Turn until the day; the computers make no moves (the list shows no more of them).
+31. (T4b2) Load's end: the save read and loaded by the engine at play's start (`save::load`, the
+    loading screen's bar stepped by the read and the load), the game kept for E24 M5; play's
+    notice in the client's words (`shell.stub.loaded`, or `shell.stub.load-refused` with the error
+    on standard error) where the original plays. A save the list shows broken is loaded and
+    refused there too (the original's load of a broken file not read).
+32. (T4b2) Delete deletes a listed file of the client's own folder alone (`saves::delete`: a plain
+    name of the pattern, a file); a failure is told on standard error and the entry leaves the
+    list all the same, as the original's unchecked `DeleteFileA` (CLT-Q159).
+33. (T4b2) A disabled button takes no hotkey on the scenario screen (recorded for Load: `scn-load-last`
+    and `scn-load-none` enter; the other screens' disabled buttons not recorded).
+34. (T4b2) The viewer's replay keeps the saves Delete left for the next opening (the original reads
+    its folder again; the window lists its folder anew at each opening).
 
 ## Dependencies and boundaries
 

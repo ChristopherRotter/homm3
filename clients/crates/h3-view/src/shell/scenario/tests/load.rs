@@ -180,7 +180,10 @@ fn delete_asks_about_the_selected_save_and_its_cancel_keeps_it() {
         assert_eq!(s.asked, Asked::Told);
         assert_eq!(s.take_deleted(), None);
         assert_eq!(s.shown, before);
-        assert_eq!(names(&s.draws("")), ["Week_one.GM1", "AUTOSAVE.GM1", "small.GM1"]);
+        assert_eq!(
+            names(&s.draws("")),
+            ["Week_one.GM1", "AUTOSAVE.GM1", "small.GM1"]
+        );
     }
 }
 
@@ -192,7 +195,10 @@ fn delete_s_ok_removes_the_save_and_sorts_by_the_version_in_the_last_direction()
     // The original's first size press after the build sorts descending (its recorded key 1).
     let mut s = load(Bugs::Original);
     click(&mut s, [74, 106]);
-    assert_eq!(names(&s.draws("")), ["Week_one.GM1", "AUTOSAVE.GM1", "small.GM1"]);
+    assert_eq!(
+        names(&s.draws("")),
+        ["Week_one.GM1", "AUTOSAVE.GM1", "small.GM1"]
+    );
     s.key(None, Some(Command::Delete), "Delete");
     s.key_up("Delete");
     assert!(answer(&mut s, message::Key::Ok, "Return").changed);
@@ -242,7 +248,10 @@ fn deleting_the_last_save_empties_the_panel_and_disables_load() {
         }
         // Load, Enter, Delete and Down do nothing.
         assert!(!click(&mut s, [497, 555]).changed);
-        assert_eq!(s.key(None, Some(Command::Dialog(BEGIN)), "Return"), Did::default());
+        assert_eq!(
+            s.key(None, Some(Command::Dialog(BEGIN)), "Return"),
+            Did::default()
+        );
         s.key_up("Return");
         assert_eq!(s.key(None, Some(Command::Delete), "Delete"), Did::default());
         s.key(None, Some(Command::List(Scroll::Down)), "Down");

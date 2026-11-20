@@ -2230,7 +2230,10 @@ mod tests {
         crate::save::write_file(&path, &save).unwrap();
         let mut steps = 0;
         let loaded = loaded_game(&path, (&dir, &rules), &mut || steps += 1).unwrap();
-        assert_eq!((loaded.game.file.as_str(), loaded.state.day(), steps), (duel, 2, 2));
+        assert_eq!(
+            (loaded.game.file.as_str(), loaded.state.day(), steps),
+            (duel, 2, 2)
+        );
         // Not a save, or a save whose map is gone: refused, the bar stepped as far as it went.
         fs::write(dir.join("bad.GM1"), "not a save").unwrap();
         let mut steps = 0;

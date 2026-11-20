@@ -1773,3 +1773,29 @@ Kept whole (no seam needed).
   (the date's key read with `%02d`), `test_h3shell`, the client scope's verify with the original
   data.
 - **Questions:** none new. **The agent's calls** (*provisional*: M4's review list items 24 to 30).
+
+## M4 T4b2 — Delete, the notice and Load's end (2026-11-20)
+
+- **Start:** the PC's 63 files of `original-data/` (and `Lose Campain.mp3`), the manuals and the
+  help files staged, SHA-256 checked against the PC's; the setup's baseline stopped at coverage
+  (fmt, clippy, the doc tests, deny passed); `master`'s CI green (#1082). Kept whole at its start
+  (decision 74). The original's `scn-load`, `scn-load-last` and `scn-load-none` played twice
+  under Wine (the makers first): as kept.
+- **Read** (design §40.1): Delete's end (`saved_game_delete`: the unchecked `DeleteFileA`, the
+  sort's arguments), the select of none (Begin disabled over an empty full list), the opening
+  with no saves (`scenario_buttons_show`: Load disabled before the notice).
+- **Built** (design §40.2): `scenario`'s `load` (`Asking`, `FILE`, `Asked`; `ask_delete`,
+  `closed`, `delete`, `no_saves`, `load`, `take_deleted`, `loaded`), `Texts`' `delete` and
+  `no_saves` (`load_stub` gone), `Scenario::question` and `Front::question`'s scenario screen, a
+  disabled button taking no hotkey, `keep`'s saves; `Play::notice` (was `refused`); the battle
+  client's `saves::delete`, the shell's Delete and Load (`loaded_game`, `PlayNotices`), the
+  catalogue's `shell.scenario.delete`, `no-saves`, `shell.stub.loaded`, `load-refused`
+  (`shell.stub.load` gone); `scn-load-last`'s `backgrounds`; CLT-STUB-15 lifted.
+- **Compared:** at the first build `scn-load` 23 of 25 exact, `scn-load-last` 7 of 9 and
+  `scn-load-none` 3 of 5 (Load enabled under the notice: the original's is disabled at the
+  opening; the second opening's background); then 23, 9 and 5 exact. The other groups as
+  recorded. `drawn --record` for the three.
+- **Gates:** `check.sh --no-coverage`, the coverage of `h3-view`, the real-asset gate, the client
+  scope's verify with the original data.
+- **Questions:** CLT-Q159 (Delete's failure unchecked). **The agent's calls** (*provisional*: M4's
+  review list items 31 to 34).
