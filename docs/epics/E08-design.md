@@ -298,6 +298,13 @@ Batch E14 records where the hero stands (§20, E14-16).
   state (no visit limit, no owner, no week: survey §2); the kind marks are increment 12's flags.
 - **The hash:** `Resolved`'s tag 10 (the stock as length and entries) and the visits' block's sold
   map after its emptied bits; the adventure state hash's next version (v27 today).
+- *As built* (T133a1, decision 383; **adventure state hash v27**): `Resolved::Stock(Vec<ArtifactTypeId>)`
+  (`stock()` reads it, empty for every other draw; hash tag 10); `Visits::sold:
+  BTreeMap<u32, u8>` with `is_sold(index, entry)` and `sell(index, entry)` (an object past the
+  map's or an entry past the eighth: nothing), hashed after the emptied bits as its number and,
+  in object order, the index and its bits; `AdventureState::is_sold` reads it (none without a
+  block). The kind's stock holds at most `MAX_STOCK` (8) entries, a bit each (`compile_market`:
+  "a market's stock holds more than 8 entries").
 
 ### 9. The Black Market's draw (ADV-MKT-006; survey §7.1)
 
@@ -313,6 +320,15 @@ Batch E14 records where the hero stands (§20, E14-16).
   purchase writes the sold entries.
 - The original draws in its entrances' walk (`setup_map_objects` 0x4C0CC0: level, row, column);
   the engine's walk is object order (E08 decision 17: the draws' order is the engine's).
+- *As built* (T133a1): `stock_draw` in the new `state/markets.rs` (its own module, as the banks'
+  draw: the release build's codegen units), from `resolve_rewards`' second walk for a market whose
+  kind has a stock (a Trading Post or the guild draws nothing, its `resolved` `Nothing`):
+  `ArtifactPool::draw` per class in order, an entry with none left out. Tests (`state/tests/draws.rs`):
+  the classes in order with the placed and random treasures marked first and the pool's restart;
+  two markets and a random treasure fifteen distinct artifacts; a banned class widened, never the
+  ban; every artifact banned an empty stock. `h3-map`'s original-data check counts the shipped
+  maps' stocks on the static layer and under the map's bans (each its kind's classes in order,
+  none banned).
 
 ### 10. The visits (ADV-MKT-001, ADV-ALT-001, ADV-HFT-001, ADV-WMF-001: the adventure's half)
 

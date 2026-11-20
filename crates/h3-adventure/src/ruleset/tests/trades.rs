@@ -322,6 +322,11 @@ fn the_kinds_parameters_are_checked() {
         refused("post", market(&[Buy], 1, &[Treasure, Special])),
         "a market's stock names the special class"
     );
+    // E08 T133a1: a bit per entry in the sold entries.
+    assert_eq!(
+        refused("post", market(&[Buy], 1, &[Treasure; 9])),
+        "a market's stock holds more than 8 entries"
+    );
     assert_eq!(
         refused("post", market(&[Buy], 3, &[Treasure])),
         "a market's count is past [params.market]'s rows"

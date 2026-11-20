@@ -96,6 +96,7 @@ mod garrisons;
 mod holds;
 mod jumps;
 mod manage;
+mod markets;
 mod mines;
 mod monsters;
 mod occupancy;

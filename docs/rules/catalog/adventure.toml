@@ -4260,6 +4260,32 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "ADV-MKT-006"
+title    = "The Black Market's stock: drawn once when the game is built"
+context  = "adventure"
+status   = "verified"
+summary  = "Each Black Market's stock is drawn once when the game is built (increment 14's design note sections 8 and 9; E08 T133a1, adventure state hash v27), in the second walk of the build's draws in object order with the chests, gifts, Shrines, finds, the Pyramid and the creature banks, from the setup stream: for each class of its kind's stock in order (the base pack's three treasures, three minors, one major; at most 8, none special) one artifact of that class from the random artifacts' pool (ADV-OBJ-006: shared with the random artifacts, the chests, the finds and the banks; the map's bans and the artifacts given so far marked, so the markets repeat neither each other nor the map's other random artifacts until a class has none left, then the marks restart from the bans, then widen to any class but special); an entry the pool cannot fill (every artifact banned) is left out. The static map keeps the stock in the draw's order (`Resolved::Stock`); which entries were bought is the visits' block's (a bit per entry by object index, none before a purchase). A market without a stock (the Trading Posts, the Freelancer's Guild) draws nothing. Never drawn again: no week, month or visit restocks it. The purchase is ADV-MKT-007 (T133a2)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md section 7.1): setup_map_objects 0x4C0CC0 walks the entrances and at case 7 (black_market_draw 0x4C0E31) draws three treasures, three minors and one major in that order with random_artifact_of_level 0x4C94D0 (levels 2, 4, 8: the bans and the given marks, refilled from the bans), appending the seven to the game's black_markets list (game +0x1F680); in play only the purchase writes it (new_month 0x4C8F40 redraws the town Artifact Merchants' only)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-14.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-19; survey E08-trades.md section 21): E14-3 (two Black Markets on a map banning some artifacts: each 3, 3, 1 in that order from the allowed, the two distinct and different between runs; on day 29 both as on day 1 but the sold entry, still empty)"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGMarket.cpp CGBlackMarket::newTurn and lib/callback/GameRandomizer.cpp rollMarketArtifactSet (VCMI 1.7.5; survey E08-trades.md section 9): three treasures, three minors, one major rolled on the first day; config/gameConfig.json markets.blackMarketRestockPeriod 0 (the default) never restocks"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGMarket.cpp"
+  retrieved  = "2026-11-18"
+  confidence = "high"
+
+[[rule]]
 id       = "ADV-ALT-001"
 title    = "The Altar of Sacrifice's visit: the screens by the hero's class's faction"
 context  = "adventure"

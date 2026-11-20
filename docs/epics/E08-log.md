@@ -20092,3 +20092,56 @@ census is the import's check), `cross-lane` with the user's consent for `h3-serv
 
 **Versions:** map import v27. The game state hash, the adventure state hash, the ruleset part and
 the replay format unchanged. Round 5 done; T133 next.
+
+### Increment 14, round 6: T133a1, the Black Market's stock and its draw (2026-11-19, `adventure/e08-t133a1`, `cross-lane`)
+
+**The cut** (decision 383; asked at T133's start, `AskUserQuestion`): T133a in two at the banks'
+seam (T124b1, T124b2), T133a1 and T133a2 in this session, each its own pull request; T133b a
+later session; `cross-lane` with the user's consent for `h3-server`'s `tests::record`.
+**Baseline:** `master` 7dbe195 (#1057 merged; CI green, its fingerprint, so the setup ran the
+light gates only). Staged `Heroes3.exe`, `maps.tar`, `extracted.tar` from the user's repo folder
+(SHA-256 checked).
+
+- **The state** (design §8): `Resolved::Stock(Vec<ArtifactTypeId>)` (`stock()`; hash tag 10),
+  `Visits::sold: BTreeMap<u32, u8>` with `is_sold` and `sell` (an object past the map's or an
+  entry past the eighth: nothing; hashed after the emptied bits), `AdventureState::is_sold`; the
+  kind's stock at most `MAX_STOCK` (8, a bit each: `compile_market`'s new refusal, the pack
+  format's comment). **Adventure state hash v27.**
+- **The draw** (design §9, survey §7.1; ADV-MKT-006): `stock_draw` in the new `state/markets.rs`
+  (its own module, the codegen-unit trap), from `resolve_rewards`' second walk for a market with a
+  stock: `ArtifactPool::draw` per class in order (the bans and the given marks, the restart, the
+  widening), an entry with none left out; a Trading Post or the guild draws nothing.
+- **Tests:** `state/tests/draws.rs` (two: the classes in order after a placed and a random
+  treasure, the restart giving the second and third among the three, all six orders over 40
+  seeds, a Trading Post drawing nothing and taking no draw; two markets and a random treasure
+  fifteen distinct, the one minor banned widened never to the ban or the special, all banned an
+  empty stock; the hash's four stock cases), `state/tests/visits.rs` (the sold bits, the bounds,
+  the state's reader, the hash's three sold cases), `ruleset/tests/trades.rs` (nine entries
+  refused).
+- **The measure** (`homm3-bench-regression`, before the re-record): `bench-check --lane
+  adventure`: all 38 workloads inside their baselines (the most `manage-army-12` +1.37 %,
+  `random-play-bonuses-36` +1.18 %); no baseline moved.
+- **Replays:** the 104 adventure goldens re-recorded from their commands (a scratch script): only
+  `adventure_state_hash_version`, the final hashes (104) and the checkpoints (101) moved; no
+  fixture map holds a market. `h3-server`'s `tests::record`: `army-dialog-s1`'s checkpoint and
+  final hash (`cross-lane`; the server lane's inbox told). The bots tables record no adventure
+  state hash: unchanged.
+- **The original data:** `h3-map`'s `original_data` (`built_markets`, on the static layer and on
+  the imported game under the map's bans): 154 Black Market stocks on each (survey §1's maps by
+  their markets: 70 + 2 × 28 + 3 × 2 + 4 × 4 + 6), each of its kind's classes in order, none
+  banned; 6 entries repeating another stock's on its map (11 under the bans: a class used up
+  restarts the marks). Compared with `master`'s output line by line: only the new lines and the
+  Refugee Camps' draws by level (the setup stream after the markets) moved.
+- **Docs:** design §8 and §9's *As built*; decision 383 and the task's line; ADV-MKT-006 in the
+  catalog, `verified` (the code reading, E14-3, VCMI); the queue (T133 archived verbatim, T133a2
+  and T133b in); `OVERVIEW.md`'s state line; `TRAPS.md` (a worktree sharing the target
+  directory); the server lane's inbox.
+- **Gates:** the scoped verify `--scope adventure` (the LODs not staged, so without
+  `--with-original-data`; the example run on its own, above): every step passing but `check-lane`
+  (`cross-lane` by design; `check-lane --cross-lane` passes): fmt, clippy, the checks, coverage,
+  determinism, bench-check (every workload inside its baseline). `cargo check --workspace
+  --all-targets` clean; `h3-protocol`'s fold and session tests, `h3-server`'s `tests::record`,
+  `h3-cli`'s `adventure_replays` and `h3-sim`'s adventure tests pass.
+
+**Versions:** adventure state hash v27. The game state hash, the ruleset part, the map import,
+the replay format and the battle's versions unchanged. T133a2 next.

@@ -2,7 +2,8 @@
 //! artifacts' pool and its marks, the chests, the gifts' prices, the Shrines' marks, the Witch Huts
 //! (`ADV-QUIRK-21`), the Scholars, the Universities, the finds and the Pyramid, the bans, and the
 //! static map's hash. Since E08 T124b1 the creature banks' (ADV-BNK-002; increment 13's design
-//! note §5): the level, the split, the upgrade and the artifacts.
+//! note §5): the level, the split, the upgrade and the artifacts; since T133a1 the Black Markets'
+//! stocks (ADV-MKT-006; increment 14's design note §9).
 
 use std::collections::BTreeSet;
 use std::format;
@@ -19,7 +20,8 @@ use h3_kernel::hash::hash_of;
 use super::*;
 use crate::ruleset::{
     AdventurePack, BankDef, BankLevelDef, BankQuestion, ChestDef, FindContentDef, FindDef, GiftDef,
-    Gives, ObjectKindDef, ObjectTypeDef, OnceBonus, PyramidDef, TurnDef, Visit,
+    Gives, Market, MarketParamsDef, MarketScreen, ObjectKindDef, ObjectTypeDef, OnceBonus,
+    PyramidDef, TurnDef, Visit,
 };
 use crate::setup::{Bans, Holds};
 use crate::state::Resolved;
@@ -272,6 +274,17 @@ pub(super) fn rules_with(
                 ),
             ]);
             more(&mut part.object_types);
+            // E08 T133a1: a market needs the market's parameters (ADV-MKT-002).
+            let market = |t: &ObjectTypeDef| matches!(t.kind, ObjectKindDef::Market(_));
+            if part.object_types.iter().any(market) {
+                part.params.as_mut().unwrap().market = Some(MarketParamsDef {
+                    values: vec![(key("t:wood"), 250), (key("t:gold"), 1)],
+                    artifact_values: vec![(key("t:wood"), 125), (key("t:gold"), 1)],
+                    resources: vec![10, 15, 20, 25, 30],
+                    artifacts: vec![20, 30, 40, 50, 60],
+                    creatures: vec![30, 45, 60, 75, 90],
+                });
+            }
         },
     )
 }
@@ -805,6 +818,10 @@ fn the_static_maps_hash_sees_what_the_build_drew() {
             level: 0,
             artifacts: vec![RING],
         },
+        Resolved::Stock(vec![]),
+        Resolved::Stock(vec![RING]),
+        Resolved::Stock(vec![RING, CHARM]),
+        Resolved::Stock(vec![CHARM, RING]),
     ];
     let hashes: BTreeSet<u64> = all.iter().map(hash_of).collect();
     assert_eq!(hashes.len(), all.len());
@@ -1080,4 +1097,141 @@ fn a_banks_artifacts_come_relics_first_from_the_random_artifacts_pool() {
     };
     let objects = vec![object(&rules, 0, "t:bank", Holds::Nothing)];
     assert_eq!(bank(&built(&rules, objects, &bans, 0), 0).2, []);
+}
+
+/// [`rules_with`] with `extra` more treasures, minors and majors after the book (`t:trinket0`,
+/// `t:trinket1`, … in turn), a Black Market
+/// (`t:black_market`: three treasures, three minors and a major, the base pack's stock) and a
+/// Trading Post (`t:trading_post`, no stock), entered as the base pack's.
+fn market_rules(extra: u16) -> Rules {
+    let market = |k: &str, screens: Vec<MarketScreen>, stock: Vec<ArtifactClass>| ObjectTypeDef {
+        key: key(k),
+        name: "Market".into(),
+        visit: Visit::Enter,
+        from_above: false,
+        kind_mark: false,
+        kind: ObjectKindDef::Market(Market {
+            screens,
+            count: 5,
+            stock,
+        }),
+    };
+    use ArtifactClass::{Major, Minor, Treasure};
+    rules_with(
+        true,
+        |core| {
+            let mut trinket = core.artifacts[0].clone();
+            for n in 0..extra * 3 {
+                trinket.key = key(&format!("t:trinket{n}"));
+                trinket.class = [Treasure, Minor, Major][usize::from(n % 3)];
+                core.artifacts.push(trinket.clone());
+            }
+        },
+        |types| {
+            types.push(market(
+                "t:black_market",
+                vec![MarketScreen::Buy],
+                vec![Treasure, Treasure, Treasure, Minor, Minor, Minor, Major],
+            ));
+            types.push(market(
+                "t:trading_post",
+                vec![MarketScreen::Trade, MarketScreen::Transfer],
+                vec![],
+            ));
+        },
+    )
+}
+
+/// The stock of the Black Market at object index `index`.
+fn stock(state: &AdventureState, index: usize) -> Vec<ArtifactTypeId> {
+    state.map().objects()[index].resolved.stock().to_vec()
+}
+
+// covers: ADV-MKT-006, ADV-OBJ-006
+#[test]
+fn a_black_market_draws_its_classes_in_order_from_the_random_artifacts_pool() {
+    let rules = market_rules(0);
+    let mut seen = BTreeSet::new();
+    for seed in 0..40 {
+        // A placed ring and a random treasure mark theirs: the market's first treasure is the
+        // third; then the treasures are out and the marks restart from the bans, so its second
+        // and third are two of the three. The one minor is out at each draw after the first, the
+        // major is the one.
+        let objects = vec![
+            object(&rules, 0, "t:artifact", Holds::Artifact(RING.into())),
+            object(&rules, 1, "t:random_treasure", Holds::Nothing),
+            object(&rules, 2, "t:black_market", Holds::Nothing),
+        ];
+        let state = built(&rules, objects, &Bans::default(), seed);
+        let random = artifact(&state.map().objects()[1].resolved).unwrap();
+        let third = if random == CHARM { AMULET } else { CHARM };
+        let stock = stock(&state, 2);
+        assert_eq!(stock.len(), 7, "seed {seed}");
+        assert_eq!(stock[0], third, "seed {seed}");
+        assert_ne!(stock[1], stock[2], "seed {seed}");
+        assert!([RING, CHARM, AMULET].contains(&stock[1]), "seed {seed}");
+        assert!([RING, CHARM, AMULET].contains(&stock[2]), "seed {seed}");
+        assert_eq!(stock[3..], [CLOAK, CLOAK, CLOAK, HELM], "seed {seed}");
+        seen.insert(stock[1..3].to_vec());
+    }
+    // Every pair of the three in both orders: the draw is the setup stream's.
+    assert_eq!(seen.len(), 6);
+    // A Trading Post holds no stock and draws nothing: the next object's draw is the same.
+    let post = |with: bool| {
+        let mut objects = vec![object(&rules, 0, "t:random_treasure", Holds::Nothing)];
+        if with {
+            objects.insert(0, object(&rules, 1, "t:trading_post", Holds::Nothing));
+        }
+        let state = built(&rules, objects, &Bans::default(), 7);
+        resolved(&state)
+    };
+    let (with, without) = (post(true), post(false));
+    assert_eq!(with[0], Resolved::Nothing);
+    assert!(with[0].stock().is_empty());
+    assert_eq!(with[1], without[0]);
+}
+
+// covers: ADV-MKT-006, ADV-OBJ-006, GAM-SET-003
+#[test]
+fn black_markets_repeat_neither_each_other_nor_the_maps_random_artifacts_nor_a_ban() {
+    // Nine treasures, seven minors and seven majors: a random treasure and two markets' seven
+    // each are fifteen distinct ones, none run out (a class's last taken restarts the marks).
+    let rules = market_rules(6);
+    for seed in 0..40 {
+        let objects = vec![
+            object(&rules, 0, "t:black_market", Holds::Nothing),
+            object(&rules, 1, "t:random_treasure", Holds::Nothing),
+            object(&rules, 2, "t:black_market", Holds::Nothing),
+        ];
+        let state = built(&rules, objects, &Bans::default(), seed);
+        let mut drawn = stock(&state, 0);
+        drawn.extend(stock(&state, 2));
+        drawn.extend(artifact(&state.map().objects()[1].resolved));
+        let distinct: BTreeSet<_> = drawn.iter().collect();
+        assert_eq!(distinct.len(), 15, "seed {seed}");
+    }
+    // The one minor banned: the minors' draws widen to any class but the special one, never
+    // the ban.
+    let rules = market_rules(0);
+    let bans = Bans {
+        artifacts: vec![CLOAK],
+        ..Bans::default()
+    };
+    for seed in 0..40 {
+        let objects = vec![object(&rules, 0, "t:black_market", Holds::Nothing)];
+        let stock = stock(&built(&rules, objects, &bans, seed), 0);
+        assert_eq!(stock.len(), 7, "seed {seed}");
+        assert!(
+            !stock.contains(&CLOAK) && !stock.contains(&BOOK),
+            "seed {seed}"
+        );
+    }
+    // Every artifact but the special one banned: every entry is left out.
+    let bans = Bans {
+        artifacts: vec![RING, CHARM, AMULET, CLOAK, HELM, CROWN],
+        ..Bans::default()
+    };
+    let objects = vec![object(&rules, 0, "t:black_market", Holds::Nothing)];
+    let state = built(&rules, objects, &bans, 0);
+    assert_eq!(state.map().objects()[0].resolved, Resolved::Stock(vec![]));
 }
