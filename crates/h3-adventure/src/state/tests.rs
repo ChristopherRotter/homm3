@@ -909,6 +909,7 @@ mod economy;
 mod events;
 mod flight;
 mod garrisons;
+mod hill_fort;
 mod hiring;
 mod holds;
 mod markets;

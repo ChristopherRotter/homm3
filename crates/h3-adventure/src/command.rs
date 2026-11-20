@@ -338,7 +338,10 @@ pub struct AdventureOutcome {
     /// E08 T134a an Altar of Sacrifice's, for a hero whose class's faction has its screens
     /// (ADV-ALT-001; GAM-DEC-012), whose sacrifices
     /// [`crate::AdventureState::check_artifact_sacrifice`] and
-    /// [`crate::AdventureState::check_creature_sacrifice`] check. The Hill Fort's comes with T134b.
+    /// [`crate::AdventureState::check_creature_sacrifice`] check; since E08 T134b1 a Hill Fort's,
+    /// after the team's kind mark (ADV-HFT-001; GAM-DEC-013), whose upgrades
+    /// [`crate::AdventureState::check_upgrade`] and [`crate::AdventureState::check_upgrade_all`]
+    /// check.
     pub service: Option<ServiceVisit>,
 }
 
@@ -495,7 +498,54 @@ pub enum ServiceVisit {
     /// An Altar of Sacrifice's window (ADV-ALT-001; E08 T134a), for a hero whose class's faction
     /// sacrifices artifacts, creatures or both.
     Altar(AltarVisit),
+    /// A Hill Fort's window (ADV-HFT-001; E08 T134b1), after the team's kind mark.
+    HillFort(HillFortVisit),
 }
+
+/// A Hill Fort's window a visit opened (ADV-HFT-001; E08 T134b1, increment 14's design note §10):
+/// the visiting hero and the object. Its rows (each stack's upgrade and price) are read from the
+/// hero's army and the ruleset at each answer and view, never copied.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HillFortVisit {
+    /// The visiting hero.
+    pub hero: HeroId,
+    /// The object's index.
+    pub index: usize,
+    /// The object's type.
+    pub object_type: ObjectTypeId,
+    /// The object's anchor.
+    pub anchor: Pos,
+}
+
+/// Why a Hill Fort's upgrade was refused by the adventure (ADV-HFT-002; E08 T134b1, increment 14's
+/// design note §11, §15; [`crate::AdventureState::check_upgrade`],
+/// [`crate::AdventureState::check_upgrade_all`]); the treasury's refusal is the game's. A refused
+/// answer changes nothing (ADR-0004).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HillFortError {
+    /// The visit's hero is not on the map, or its object is not a Hill Fort (defensive, as a
+    /// market's and an Altar's).
+    Visit,
+    /// The slot holds no stack of the hero's army, or its creature has no upgrade (the original's
+    /// row of state 0).
+    NoUpgrade(u8),
+    /// No stack of the army upgrades (the original's whole of state 0, for `All`).
+    Nothing,
+}
+
+impl fmt::Display for HillFortError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Visit => {
+                f.write_str("the hill fort's hero is not on the map or its object no hill fort")
+            }
+            Self::NoUpgrade(slot) => write!(f, "slot {slot} holds no stack that upgrades"),
+            Self::Nothing => f.write_str("no stack of the army upgrades"),
+        }
+    }
+}
+
+impl core::error::Error for HillFortError {}
 
 /// An Altar of Sacrifice's window a visit opened (ADV-ALT-001; E08 T134a, increment 14's design
 /// note §10): the visiting hero and the object. The screens its hero's class's faction allows,
