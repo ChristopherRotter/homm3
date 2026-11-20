@@ -52,6 +52,12 @@ information and one choice):
 
 **The adventure env** (yours since E08 T45):
 
+- 2026-11-20 (the client lane, E27 M4 T3a, `client/e27-m4-t3a`, `cross-lane` with the user's
+  consent; **your tests touched, nothing to do**): the adventure replay format v20
+  (`Replay::players`, the players' choices) gave four `Replay` literals of `h3-sim`'s
+  `adventure/tests` `players: Vec::new()`, `tests/hiring.rs`' version assertion 20, and
+  `tests/towns.rs` a test of the choices on the town map
+  (`a_replay_keeps_the_players_choices_over_the_import`).
 - 2026-11-07 (the adventure lane, E08 T103b, `adventure/e08-t103b`; **for when you regenerate
   `census-v1.toml`**): `h3 ai census original-data/install/Maps` counts 1 of the 159 maps on
   `master` and on this branch: every other map stops at `GameState::new` with "object N has an

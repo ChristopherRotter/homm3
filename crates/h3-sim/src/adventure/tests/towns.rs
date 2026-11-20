@@ -404,3 +404,71 @@ fn a_hire_action_names_its_town_by_the_entrance_and_the_slot_by_its_entry() {
 fn town_of(state: &GameState, index: u32) -> Option<TownId> {
     state.adventure().map().town_at(tile_pos(state, index)?)
 }
+
+/// The town map as a replay names it.
+fn towns_map() -> replay::MapRef {
+    replay::MapRef {
+        path: "fixtures/maps/e09-towns-36.h3m".to_owned(),
+        content_hash: replay::map_content_hash(TOWNS),
+        import_version: h3_map::MAP_IMPORT_VERSION,
+    }
+}
+
+/// The players' choices over the import (replay format v20, E27 M4 T3a; CLT-Q156 (a)): a game set
+/// up with red's hero picked and blue's faction drawn (its one faction, the map's fixed choice)
+/// and its human flag turned records them and verifies against the map's plain import; without
+/// them the import's game is another. A choice of a colour no player has, or of a colour twice,
+/// is refused before the game is built, and a pick the offer lacks by the game.
+#[test]
+fn a_replay_keeps_the_players_choices_over_the_import() {
+    use h3_game::FactionChoice;
+    use replay::ReplayError as E;
+    let import = town_setup(&FAITHFUL, 1);
+    let (red, seed) = (PlayerId::new(0), 7);
+    let drawn = GameState::new(&FAITHFUL, &import, seed)
+        .unwrap()
+        .state_hash();
+    let mut setup = (*import).clone();
+    setup.players[1].start.choice = Some(FactionChoice::Random);
+    setup.players[1].human = !setup.players[1].human;
+    let offer = setup.offer(&FAITHFUL, red);
+    // A hero of red's offer whose game is not the import's draw.
+    let pick = offer
+        .iter()
+        .copied()
+        .find(|&hero| {
+            setup.players[0].start.pick = Some(hero);
+            GameState::new(&FAITHFUL, &setup, seed).is_ok_and(|s| s.state_hash() != drawn)
+        })
+        .unwrap();
+    setup.players[0].start.pick = Some(pick);
+    let commands = vec![(Actor::Player(red), GameCommand::EndTurn)];
+    let recorded =
+        replay::Replay::record_commands(&FAITHFUL, (&setup, towns_map()), seed, commands, 1)
+            .unwrap();
+    assert_eq!(recorded.players, replay::PlayerChoices::of(&setup));
+    assert_eq!(recorded.players.len(), import.players.len());
+    assert_eq!(recorded.setup(&import), Ok(setup.clone()));
+    let verify = |r: &replay::Replay| r.verify(&FAITHFUL, &towns_map(), &import);
+    assert_eq!(verify(&recorded), Ok(()));
+    let mut none = recorded.clone();
+    none.players.clear();
+    assert_eq!(none.setup(&import), Ok((*import).clone()));
+    assert!(matches!(verify(&none), Err(E::HashMismatch { .. })));
+    let mut stranger = recorded.clone();
+    stranger.players[1].colour = 9;
+    assert_eq!(verify(&stranger), Err(E::Incompatible("players")));
+    let mut twice = recorded.clone();
+    twice.players[1].colour = twice.players[0].colour;
+    assert_eq!(twice.setup(&import), Err(E::Incompatible("players")));
+    let unoffered = (0..u16::MAX)
+        .map(h3_content::HeroTypeId::from_raw)
+        .find(|hero| !offer.contains(hero))
+        .unwrap();
+    let mut wrong = recorded.clone();
+    wrong.players[0].hero = Some(unoffered);
+    assert_eq!(
+        verify(&wrong),
+        Err(E::Setup(h3_game::GameSetupError::Pick(red)))
+    );
+}
