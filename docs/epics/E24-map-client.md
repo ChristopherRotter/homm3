@@ -209,7 +209,9 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   agreed fallback): T4a1, the reading and the recordings (**done** 2026-11-19; the log's "M4
   T4a1", design §5.12; MCL-Q39, MCL-Q40), T4a2 the viewer (**done** 2026-11-20, kept whole by
   the user: the log's "M4 T4a2", design §5.13; the three games exact but the listed gaps of
-  MCL-Q39 and MCL-Q40); T4b the visits; T4c the other
+  MCL-Q39 and MCL-Q40); T4b the visits, cut in two by the user at its start (2026-11-20, by
+  family): T4b1 the message boxes (the finds, the questions, the level-ups), T4b2 the flags and
+  the boats; Summon Boat moved out of T4b (the engine casts no adventure spell yet); T4c the other
   players' turns, the viewer's controls and a golden replay; the kept live parts' message texts
   as labels first (ADR-0009, found at T4a1, the user: none new meanwhile; **done** 2026-11-20,
   whole: the log's "M4, the labels"); T5, the battles handed over

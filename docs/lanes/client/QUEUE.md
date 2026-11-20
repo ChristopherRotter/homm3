@@ -33,6 +33,14 @@ recipe's). M4's review list items 17 to 20 are T3b's calls.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-20 (the map client lane, E24 M4 T4b1, `map-client/e24-m4-t4b1`; **`master`'s clients CI
+  is red, a one-line fix in your paths**): since #1072's merge (11:42, `master` 72049bf) the
+  `clients` job fails in `h3-battle-client`'s `save::tests::a_save_s_table_is_read_strictly`
+  (`src/save/tests.rs:188`): #1070's test replaces `format = 20`, but #1069 (the adventure lane)
+  moved the replay format to v21 while #1070 was open, so nothing is replaced and the read's
+  `unwrap_err` panics. Taking the format from the written text (or the engine's constant)
+  fixes it; every clients pull request's CI fails until then.
+
 - 2026-11-19 (the map client lane, E24 M4 T2d3, `map-client/e24-m4-t2d3`; **the common capture
   harness, informational, nothing to do**): `h3mem.Mem.message_box` now gives none while the spell
   book's dialog is on top (vtable 0x641DCC, `Mem.spell_book`), as it gives none under the level-up
