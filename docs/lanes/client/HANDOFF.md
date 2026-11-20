@@ -27,7 +27,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   map it was made with (review item 18); the shell's recipes pinned to a time zone (`tz`, review
   item 23); a right press without a popup redraws nothing but on the description and the
   players' items (review item 27); a disabled button takes no hotkey (review item 33). Open pull
-  request: T4b2's (`client/e27-m4-t4b2`): watch it until it merges. E17 done
+  request: T4b2's #1085 (`client/e27-m4-t4b2`): watch it until it merges. E17 done
   (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
