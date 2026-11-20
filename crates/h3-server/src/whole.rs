@@ -380,6 +380,8 @@ impl Prepared {
             map: offer.map.clone(),
             seed: self.seed,
             difficulty: self.difficulty,
+            // None: the offer's setup (E27 M4 T3a; the seats' choices are the server lane's).
+            players: Vec::new(),
             commands: Vec::new(),
             checkpoint_every: self.options.checkpoint_every,
             checkpoints: Vec::new(),

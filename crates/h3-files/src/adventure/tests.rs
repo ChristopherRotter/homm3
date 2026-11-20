@@ -490,3 +490,55 @@ fn map_paths_stay_below_the_root() {
         assert!(check_map_path(bad).is_err(), "{bad}");
     }
 }
+
+/// Since format v20 (E27 M4 T3a, CLT-Q156 (a)): the players' choices round-trip through the file
+/// (a fixed faction, a random one or none; a pick or the draw's) and a game set up with them
+/// verifies from its file; a file without them reads as the import's; a faction neither an index
+/// nor `random` is malformed.
+#[test]
+fn the_players_choices_round_trip_through_the_file() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let ids = ["base", "ab", "sod"].map(String::from);
+    let rules = load_rules(&root.join("packs"), &ids, "base:faithful").unwrap();
+    let path = "fixtures/maps/e09-towns-36.h3m";
+    let (map, import) = load_map(&root, path, &rules).unwrap();
+    let red = PlayerId::new(0);
+    let mut setup = import.clone();
+    let faction = setup.players[0].start.factions.iter().last().unwrap();
+    setup.players[0].start.choice = Some(FactionChoice::Fixed(faction));
+    setup.players[0].start.pick = setup.offer(&rules, red).first().copied();
+    assert!(setup.players[0].start.pick.is_some());
+    let commands = vec![(Actor::Player(red), GameCommand::EndTurn)];
+    let replay = Replay::record_commands(&rules, (&setup, map), 3, commands, 0).unwrap();
+    let text = replay_to_toml(&replay).unwrap();
+    let red_entry = format!(
+        "[[players]]\ncolour = 0\nhuman = true\nfaction = {}\nhero = {}\n",
+        faction.raw(),
+        setup.players[0].start.pick.unwrap().raw()
+    );
+    assert!(text.contains(&red_entry), "{text}");
+    assert_eq!(parse_replay(&text).unwrap(), replay);
+    let dir = std::env::temp_dir().join(format!("h3-files-players-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("r.toml");
+    std::fs::write(&file, &text).unwrap();
+    let verified = verify_file(&file, &root.join("packs"), &root).unwrap();
+    assert_eq!(verified.final_hash, replay.final_hash);
+    std::fs::remove_dir_all(&dir).unwrap();
+    // Every kind of choice round-trips, verified or not.
+    let mut kinds = replay.clone();
+    kinds.players[0].faction = Some(FactionChoice::Random);
+    kinds.players[0].hero = None;
+    kinds.players[1].faction = None;
+    let text = replay_to_toml(&kinds).unwrap();
+    assert!(text.contains("faction = \"random\"\n"), "{text}");
+    assert_eq!(parse_replay(&text).unwrap(), kinds);
+    // A file without them: the import's.
+    let bare = &text[..text.find("[[players]]").unwrap()];
+    assert!(parse_replay(bare).unwrap().players.is_empty());
+    let e = parse_replay(&text.replacen("\"random\"", "\"any\"", 1)).unwrap_err();
+    assert!(
+        e.to_string().contains("bad faction `any` of colour 0"),
+        "{e}"
+    );
+}

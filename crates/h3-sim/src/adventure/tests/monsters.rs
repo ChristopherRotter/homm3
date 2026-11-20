@@ -235,6 +235,7 @@ fn a_replay_records_the_system_actors_commands() {
         map: duel_map(),
         seed: 1,
         difficulty: h3_game::DEFAULT_DIFFICULTY,
+        players: Vec::new(),
         commands,
         checkpoint_every: 0,
         checkpoints: Vec::new(),

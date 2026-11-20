@@ -198,7 +198,7 @@ checkpoints = [
 ]
 
 [replay]
-format = 19
+format = 20
 engine = "0.1.0"
 seed = "3435"
 difficulty = 1
@@ -236,3 +236,13 @@ import_version = 27
 [result]
 day = 22
 final_hash = "0xff7d5e7869b42faa"
+
+[[players]]
+colour = 0
+human = true
+faction = 0
+
+[[players]]
+colour = 1
+human = true
+faction = 6
