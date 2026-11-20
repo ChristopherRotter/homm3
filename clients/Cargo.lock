@@ -348,6 +348,7 @@ dependencies = [
  "h3-protocol",
  "h3-render",
  "h3-sdl",
+ "h3-sim",
  "h3-smacker",
  "h3-towns",
  "h3-ui",
