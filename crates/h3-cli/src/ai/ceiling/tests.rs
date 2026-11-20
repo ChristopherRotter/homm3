@@ -117,6 +117,21 @@ fn a_run_is_the_same_on_any_threads_and_continues_from_its_games_file() {
         "{lines:?}"
     );
     same(&full, &resumed);
+    // A stop during an append leaves the last game cut short: it is dropped and played again.
+    let text = std::fs::read_to_string(&path).unwrap();
+    let (last, _) = text.match_indices("\n[[game]]").last().unwrap();
+    std::fs::write(&path, &text[..last + 30]).unwrap();
+    let mut lines = Vec::new();
+    let torn = run(
+        &sampler,
+        &options(s.clone(), 2, Some(path.clone())),
+        &mut |line| {
+            lines.push(line.to_owned());
+        },
+    )
+    .unwrap();
+    assert!(lines[0].contains("1 to play"), "{lines:?}");
+    same(&full, &torn);
     // The file holds every game now: a third start plays none.
     let mut lines = Vec::new();
     let again = run(

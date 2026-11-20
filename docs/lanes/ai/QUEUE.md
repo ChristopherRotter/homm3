@@ -15,13 +15,15 @@ the fair and the all-seeing system actor, the neutral set +0.302). **A long run 
 budget, the check named in its rule (`TRAPS.md`, Python). **Increment 10: the ceiling** (the
 user at T41, AI-Q20; its decisions in the epic file).
 
-- **T43 — the ceiling measured** (the user's CPU, 24 threads; parts under 2 hours: Ctrl-C, then
-  the same command continues from its `--out`; T42's tool, `E25-log.md` T42; from the repository's
-  root, the records into `python/records/ceiling/`, the games files into `target/ceiling/`):
+- **T43 — the ceiling measured** (the user's CPU, **16 threads**, the user's limit; parts under 2
+  hours: Ctrl-C keeps the finished games, the same command continues from its `--out`; T42's
+  tool, `E25-log.md` T42; from the repository's root, the records into `python/records/ceiling/`,
+  the games files into `target/ceiling/`):
   1. **The budget check** (about 12, 24 and 48 minutes): the report set, 20 episodes a kind, against
      the fair actor, side worlds, at budgets 4, 8 and 16:
      `cargo run --release -p h3-cli -- ai ceiling --episodes 20 --opponents system --budget 4
-     --out target/ceiling/budget-4.toml --json python/records/ceiling/budget-4.json` (then
+     --threads 16 --out target/ceiling/budget-4.toml --json python/records/ceiling/budget-4.json`
+     (then
      `--budget 8`, `--budget 16`, each its own files). The agent picks the measurement's budget:
      the smallest whose value against the fair actor is within the noise of the next one's.
   2. **The measurement** at that budget: the report set, 100 a kind, against the fair actor on the
