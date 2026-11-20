@@ -587,6 +587,23 @@ original's windows stay open for more trades). The system actor's default is `Le
   (`HeroChanged`, not `CreaturesJoined`); the dialog of three stays open; `Close` closes it.
   `hire_mosts` reads the stock's 1 or 0 with the gold bound, so `legal_commands` lists a machine
   only while the hero lacks it and can pay (as the original's slider's most 1 or 0).
+- *As built* (T134b2, decision 388; no version moved): the adventure (`state/factory.rs`,
+  `state/dwellings.rs`): `Effect::Factory` asks at every visit (`ask_factory`: `OfferKind::Hire`
+  naming the machines, no mark), `accept_hire` opens the dialog for it as for a camp;
+  `hire_stock((part, heroes), dialog)` reads the dialog, not its source alone (the user's choice:
+  each machine 1 while the dialog's hero holds none of its artifact, worn or carried, else 0; the
+  game's `GameState::hire_stock(rules, dialog)` and the env's one call follow);
+  `dialog_room((core, part, heroes), dialog, creature)`, *agent's call*, the room of any dialog (a
+  machine's 1 while `HeroChange::AddArtifact`'s check finds its artifact a position, else 0; any
+  other source's the army's `hire_room`, whose signature the town lane's tests use);
+  `check_hire((core, part, heroes), …)` with a machine's `Amount` (a held one's count 0) then
+  `NoRoom`, its purchase `Goods::Machine` (`HirePurchase::machine`: the hero and the artifact),
+  which `hire` leaves alone (no count, no army, no event). The game (`state/hire.rs`): after
+  paying, `HeroChange::AddArtifact` through `change_hero` (`HeroChanged`); `hire_mosts` bounds by
+  `dialog_room`. *Agent's call:* the factory keeps no count (the original's three share one count
+  of 4 000, lowered by each purchase, which no game reaches). Tests: the adventure's
+  `state/tests/factory.rs`, the game's `tests/factory.rs`, `h3-map`'s `tests/trades.rs` (every
+  trade's step entered; the factory's dialog of the base pack's three at their costs).
 
 ### 17. The observation, the events and the wire (ADR-0016 point 6; ADR-0018 point 5)
 

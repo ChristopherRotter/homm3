@@ -20402,3 +20402,50 @@ seven manuals and help files (SHA-256 checked) and was not needed afterwards.
   --script`, release): only `format`, `game_state_hash_version`, the checkpoints and `final_hash`
   moved; none visits a Hill Fort. `h3-server`'s `tests/record.rs` `army-dialog-s1` lines; `h3-cli`'s
   format literals (the refusal's text now from `REPLAY_FORMAT_VERSION`); the bots tables unchanged.
+
+### Increment 14, round 7: T134b2, the War Machine Factory through the hire question and dialog (2026-11-20, `adventure/e08-t134b2`, `cross-lane`)
+
+**The cut** (decision 388, the user at its start): whole, one pull request; the factory's stock
+reads the dialog (its hero), so `GameState::hire_stock` takes the dialog and `h3-sim`'s one call
+follows (`cross-lane`, no behaviour change, no version). Baseline: `master` a8460e1 (#1082 merged;
+the setup's baseline only the light gates, CI's fingerprint on `master`'s code).
+
+- **The adventure** (design §10, §11, §16; `state/factory.rs`, `state/dwellings.rs`):
+  `Effect::Factory(&WarMachineFactory)` for `ObjectKind::WarMachineFactory`; the visit asks at
+  every visit (`ask_factory`: `OfferKind::Hire` naming the machines in order, any player's hero,
+  no mark, nothing free); `accept_hire` opens the dialog for it as for a camp (`HireSource::Object`).
+  `hire_stock((part, heroes), dialog)` (was `(part, source)`) through `source_effect` and
+  `stock_of`: a factory's machines each 1 while the dialog's hero holds none of its artifact (worn
+  or carried: `holds`, the original's `hero_has_artifact`), else 0; none for a garrison target or a
+  hero the store lacks. `dialog_room((core, part, heroes), dialog, creature)` (*agent's call*): a
+  machine's 1 while `HeroChange::AddArtifact`'s check finds its artifact a position (`machine_room`),
+  else 0, 0 for a creature not sold; any other source's `hire_room` (unchanged: the town lane's
+  tests call it). `check_hire((core, part, heroes), …)` reads the source's effect once: the same
+  refusals with the factory's stock (`Amount` for a held machine, its count 0), then `NoRoom`;
+  the purchase `Goods::Machine(hero, artifact)` (`HirePurchase` now holds `goods`: `Army(Joining,
+  Room)` or `Machine`), read by `HirePurchase::machine`; `hire` leaves a machine's purchase alone
+  (no count, no army change, no event). *Agent's call:* the factory keeps no count (the
+  original's three share one count of 4 000, lowered by each purchase, which no game reaches).
+  `HireSource::Object`'s and `HireError`'s docs name the factory.
+- **The game** (`state/hire.rs`; GAM-DEC-008 amended): `hire` passes the hero store to
+  `check_hire`, and after paying gives a machine's artifact through `change_hero`
+  (`HeroChange::AddArtifact`, `HeroChanged` to the owner); the dialog of several stays open as
+  before; `hire_stock(rules, dialog)`; `hire_mosts` bounds by `dialog_room`; `hire_view` reads the
+  dialog's stock. `h3-sim`'s `hire_creatures` passes the dialog.
+- **Tests:** `h3-adventure`'s `state/tests/factory.rs` (three: the question at every visit, no
+  mark, its yes the dialog with nothing told; the stock and room with nothing held, a Ballista
+  worn (E14-15's 0), one carried, a non-machine in the cart's position (lacked but no room), a
+  creature not sold, a gone hero and a garrison, a portal's room the army's; the purchase's price
+  and artifact, `hire` changing nothing, each refusal in order); `hiring.rs` (a creatures'
+  purchase gives no machine), the callers of the new signatures; `h3-game`'s `tests/factory.rs`
+  (the question and its view, the dialog to red alone, the cart held 0 and the tent 1 with their
+  costs, the legal set and `hire_range` 1 or 0 with the gold bound, `CannotPay` at 749 gold, the
+  adventure's refusals first, the purchase's `ResourcePaid` and `HeroChanged` with the artifact
+  at its position and no army change, the dialog open with nothing left, `Close`, the question
+  again at a Revisit); `h3-map`'s `tests/trades.rs` (every trade's and service's step entered; the
+  imported factory's dialog of the base pack's Ballista, First Aid Tent and Ammo Cart at 2 500,
+  750, 1 000 gold, each 1 or 0 by the hero's artifacts).
+- **Rules:** ADV-WMF-001 `verified` (batch E14's E14-15); ADV-HIR-002 and GAM-DEC-008 amended.
+- **Versions:** none moved (no hashed or wire shape changed: `Effect` is not hashed, the dialog
+  and its answer are T95b's); no fixture map holds a factory, so the 104 goldens, the benches'
+  courses and the bots tables are as they were.
