@@ -1142,7 +1142,19 @@ town list (selected, then its row clicked again), plays its `actions` on the tow
 closes what they left open (the guild, the tavern, a building's dialog, the hall) and the
 screen; `town:x,y:visitor:<detail>` and `:garrison_hero:<detail>` read that hero
 (`hero[<name>]:`'s details: a hired hero's `offer`, `tile`, `spells`), `:guild_spells` the
-spells the guild shows (+0x44, six a level, +0xBC of each). **A step's writes before it plays:**
+spells the guild shows (+0x44, six a level, +0xBC of each). **The guild by level** (E09 T44,
+batch TWN-5; survey `docs/rules/surveys/E09-guild.md` §3): `town:x,y:guild` reads each level's
+count and its drawn slots, the shown first (`level 1 shows 5: Magic Arrow, Haste, … | spare
+Bless; …`: 6, 5, 4, 3, 2 slots a level, `guild_spell_slots[L] + 1`; the record's six past them
+hold other data; `empty` a slot of −1, as a Castle's level 5), `:guild_level` (+0x14) and
+`:week_flag` (the Mana Vortex's week, +0x33); `:standing` the hero on the entrance by the heroes'
+tiles (its name; `:standing:<detail>` a detail), which reads where the visitor field gives −1
+(its hero selected). A message an opening of the town screen brings (the Mana Vortex's, GENRLTXT
+580) comes over the screen a moment after it shows (observed under Wine): a walk and a `town`
+step wait for the screen to settle, record it (`messages`) and click its OK before the actions.
+`hall = true` hovers the hall building's box (its centre, then a grid 8 pixels apart from the
+middle out) until the status line names the hall (BLDGNEUT.TXT's names), then clicks there: a
+Tower with Mage Guild 5 draws the guild over the hall's centre. **A step's writes before it plays:**
 `resources = { <colour> = [wood, mercury, ore, sulfur, crystal, gems, gold] }`, `mana = {
 "<hero>" = <n> }` (spell points), `narrow_pool = true | ["<hero>", ...]` (every free type of the
 pool marked reserved but the named heroes' types: a map that allows no other type). The hero
@@ -1502,7 +1514,11 @@ workspace's `target/debug/h3 adventure run` and `h3-server record`, `H3_ENGINE` 
 build them first) and pass `--record <r.jsonl> --record-map <map.h3m>` to `h3-map-view
 sequences`, whose timeline must then differ from the original's by the gaps listed in
 `timelines/<id>-gaps.txt` (its verdict "the record's n gaps as listed"; the run's own list in
-`<out>/<id>/gaps.txt`). T4a1's three (`game-*`) are in `sequences.toml` since T4a2.
+`<out>/<id>/gaps.txt`). T4a1's three (`game-*`) are in `sequences.toml` since T4a2. Since E24 M4
+T4b1 (design §5.14) a scripted sequence may carry `engine_seed` (a whole number; 1 without it),
+the engine's seed `h3 adventure run --seed` plays its script under: one whose draws are the
+original's under `seed` where both games draw at random (`game-level`'s level-up, 74: found by a
+search over the engine's seeds against the recording's `[[level_up]]`).
 
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live

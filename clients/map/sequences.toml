@@ -1601,3 +1601,81 @@ script = [
     "0 end-turn", "1 end-turn", "0 end-turn", "1 end-turn", "0 end-turn", "1 end-turn",
     "0 end-turn", "1 end-turn",
 ]
+
+# The scripted games' visits (E24 M4 T4b1, design §5.14): finds, questions and choices, a level-up,
+# each told as Part A built it, its facts the engine's record's events (a gain, an object taken, a
+# decision opened) and its answers the script's; each click's pointer moved off the map at once (a
+# record gives no reach: the cursor over the view after a box, MCL-Q37). `engine_seed`
+# (`game-level`): the engine's seed, one whose level-up draws are the original's under `seed`.
+
+[[sequence]]
+id = "game-finds"
+situation = "game-finds"
+ms = 8800
+seed = 1
+why = "a scripted game's finds: a key's step onto a Temple (its box, Enter), a step off and onto it again (the visited box, Enter), a gold pile beside taken (the status window's kind 6), a step and an artifact beside taken (its box, Enter)"
+inputs = [
+    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1400, keydown = "Left" }, { at = 1460, keyup = "Left" },
+    { at = 2000, keydown = "Right" }, { at = 2060, keyup = "Right" },
+    { at = 2800, keydown = "Return" }, { at = 2860, keyup = "Return" },
+    { at = 3200, keydown = "Down" }, { at = 3260, keyup = "Down" },
+    { at = 3800, keydown = "Down" }, { at = 3860, keyup = "Down" },
+    { at = 4400, keydown = "Down" }, { at = 4460, keyup = "Down" },
+    { at = 5200, keydown = "Return" }, { at = 5260, keyup = "Return" },
+]
+script = [
+    "0 move 0 13,12,0",
+    "0 move 0 12,12,0",
+    "0 move 0 13,12,0",
+    "0 move 0 13,13,0",
+    "0 move 0 13,13,0",
+    "0 move 0 13,14,0",
+]
+
+[[sequence]]
+id = "game-asks"
+situation = "game-asks"
+ms = 6600
+seed = 1
+why = "a scripted game's questions and choices: a key's step onto the Arena (its choice, +2 Attack clicked, Enter), Pandora's Box beside opened (Enter; its gold's box, Enter), a step and a chest beside (its choice, the gold clicked, Enter)"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, click = [338, 364] }, { at = 1000, pointer = [700, 300] },
+    { at = 1400, keydown = "Return" }, { at = 1460, keyup = "Return" },
+    { at = 1800, keydown = "Left" }, { at = 1860, keyup = "Left" },
+    { at = 2600, keydown = "Return" }, { at = 2660, keyup = "Return" },
+    { at = 3200, keydown = "Return" }, { at = 3260, keyup = "Return" },
+    { at = 3800, keydown = "Down" }, { at = 3860, keyup = "Down" },
+    { at = 4400, keydown = "Down" }, { at = 4460, keyup = "Down" },
+    { at = 5200, click = [338, 380] }, { at = 5200, pointer = [700, 300] },
+    { at = 5600, keydown = "Return" }, { at = 5660, keyup = "Return" },
+]
+script = [
+    "0 move 0 12,11,0",
+    "0 answer arena attack",
+    "0 move 0 11,11,0",
+    "0 answer offer accept",
+    "0 move 0 12,12,0",
+    "0 move 0 12,13,0",
+    "0 answer chest gold",
+]
+
+[[sequence]]
+id = "game-level"
+situation = "game-level"
+ms = 2600
+seed = 1
+engine_seed = 74
+why = "a scripted game's level-up: a key's step onto a Learning Stone (its box, Enter), level 2's dialog with two offers, the right one clicked, the OK clicked"
+inputs = [
+    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1600, click = [449, 413] }, { at = 1600, pointer = [700, 300] },
+    { at = 2000, click = [533, 493] }, { at = 2000, pointer = [700, 300] },
+]
+script = [
+    "0 move 0 13,12,0",
+    "0 answer level-up second",
+]

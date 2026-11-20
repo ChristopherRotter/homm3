@@ -7,28 +7,34 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **E05** closed 2026-10-20, **E06** closed 2026-10-27 (`t7-1` the battle AI v1 and the baseline); their tasks' history and E06's closing numbers in `QUEUE-ARCHIVE.md`.
 
 **E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`): increments 1
-to 8 closed (`E25-archive.md`; increment 8, probes, then one long run, 2026-11-18: no probe nor
-the long run passed #2, `E25-log.md` T30 to T36); **`e25-structure-1` #2 the current best**
-(AI-Q17, T29: 0.511 and 0.507 against the fair and the all-seeing system actor, the neutral set
-+0.302). **A long run stops early** (the user, 2026-11-18, T36): `[gate] futility` at least 1,
-gates at least every quarter of the budget, the check named in its rule (`TRAPS.md`, Python).
-**Increment 9, a richer observation (v23)** (the user at T36, 2026-11-18, AI-Q18; its decisions
-in the epic file). **T37 closed** 2026-11-18 (`E25-log.md` T37, the user's review AI-Q19): #2's
-moves are blind to the enemies' reach (0.468, chance 0.455), its strikes read the kills; **v23 is
-the reach block** (the design's points 1 to 5), the kill preview for `hexconv` a bench arm
-(point 6), T39's rule the clone's ladder +0.02 (point 7). **T38a done** 2026-11-19
-(`E25-log.md` T38a): observation v23, the reach block (`layout.REACH`), from
-`h3_battle::reach_seen_by`; C ABI v38. **T38b done** 2026-11-19 (`E25-log.md` T38b): `[network]
-reach` and `preview` for the hex kinds, the cloning bench's preview rows and `same_start`, T39's
-config `configs/distill/e25-reach.toml` (its CPU smoke stopped and resumed).
+to 9 closed (`E25-archive.md`; increment 8, probes and one long run, 2026-11-18; increment 9, a
+richer observation, 2026-11-20: neither v23 arm passed T39's bench, T40 not run, `E25-log.md`
+T37 to T39); **`e25-structure-1` #2 the current best** (AI-Q17, T29: 0.511 and 0.507 against
+the fair and the all-seeing system actor, the neutral set +0.302). **A long run stops early**
+(the user, 2026-11-18, T36): `[gate] futility` at least 1, gates at least every quarter of the
+budget, the check named in its rule (`TRAPS.md`, Python). **Increment 10: the ceiling** (the
+user at T41, AI-Q20; its decisions in the epic file).
 
-- **T39 — the bench probe** (the user's GPU, about 6 hours in parts under 2 hours; the design's
-  point 7; `configs/distill/e25-reach.toml`, its header the commands: `--out runs/reach-1`, then
-  `--resume runs/reach-1` for each later part): the rule stated before it runs: an arm passes
-  when its clone's ladder against the fair actor (500 a kind, the same episodes) leads the
-  control's by at least 0.02 and its agreement is not below the control's; T40 starts from the
-  passing arm with the better ladder, the preview's only when it also leads the `reach` arm's by
-  0.02; none passing closes increment 9 at T41. The user uploads the bench's record.
+- **T43 — the ceiling measured** (the user's CPU, 24 threads; parts under 2 hours: Ctrl-C, then
+  the same command continues from its `--out`; T42's tool, `E25-log.md` T42; from the repository's
+  root, the records into `python/records/ceiling/`, the games files into `target/ceiling/`):
+  1. **The budget check** (about 12, 24 and 48 minutes): the report set, 20 episodes a kind, against
+     the fair actor, side worlds, at budgets 4, 8 and 16:
+     `cargo run --release -p h3-cli -- ai ceiling --episodes 20 --opponents system --budget 4
+     --out target/ceiling/budget-4.toml --json python/records/ceiling/budget-4.json` (then
+     `--budget 8`, `--budget 16`, each its own files). The agent picks the measurement's budget:
+     the smallest whose value against the fair actor is within the noise of the next one's.
+  2. **The measurement** at that budget: the report set, 100 a kind, against the fair actor on the
+     side worlds and the true battle (`--worlds true`; about 2 hours each), then the neutral set
+     (`--set neutral-v1`, about 1 hour each); the all-seeing opponent (`--opponents
+     system-all-seeing`) only if the time allows. The user uploads the JSON records (and the
+     games files of a set cut short).
+
+- **T44 — where #2 diverges** (after T42): #2's decisions against the fair actor (its ladder's
+  episodes replayed by seed and commands, `inspect`'s recorder) valued by the same rollouts: the
+  value its choice leaves against the best command, by category, beside the fair actor's own.
+- **T45 — increment 10's checkpoint** (the user): the headroom, the information's cost, the
+  divergence; the next lever.
 
 ## Inbox
 
@@ -63,6 +69,14 @@ information and one choice):
 
 **The adventure env** (yours since E08 T45):
 
+- 2026-11-20 (the adventure lane, E08 T134a, `adventure/e08-t134a`, `cross-lane` with the user's
+  consent, E08 decision 385; **your paths changed, for your review; adventure action encoding
+  v15 taken**): an Altar of Sacrifice's decision (GAM-DEC-012) is a new `h3_game::Answer::Altar`,
+  so `answer_entry` maps its `Leave` onto the closing role (`DECLINE`) and its two sacrifices onto
+  none, no new entry (the module's docs, the test in `adventure/tests.rs`); `legal_commands` lists
+  its `Leave` alone until E08 T135a (encoding the next free then). Also the adventure replay format
+  v22 (`adventure/replay.rs`, `answer altar …`); the bots tables did not move. Random games now
+  open an Altar's decision on the maps with one and leave it.
 - 2026-11-20 (the adventure lane, E08 T133b, `adventure/e08-t133b`, `cross-lane` with the user's
   consent, E08 decision 384; **your paths changed, for your review; adventure action encoding
   v14 taken**): a market's decision (GAM-DEC-011) is a new `h3_game::Answer::Market`, so

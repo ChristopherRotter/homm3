@@ -1,0 +1,95 @@
+# E09 batch TWN-5, part b, played by the capture harness (E09 T44; h3adv.py batch): the procedure
+# of experiments/specs/E09-batch-5b.toml as steps, on Easy, hot seat, Red and Blue human, the
+# starting bonus Gold. Row TWN-5-5 over three weeks: week 1 G's visit and its move into the
+# garrison; weeks 2 and 3 the turn's start, D's screen opened from the town list, week 2 V's visit.
+#
+# A step's writes before it plays (README, "Towns"): `mana = { "<hero>" = <n> }` (the spell
+# points, hero +0x18) and `date = [month, week, day]` (game +0x1F63E: each week's last day, so
+# that the next two end turns start the next week). The reads: `hero[<name>]:spell_points`,
+# `town:7,7:week_flag` (the Mana Vortex's week, +0x33), `:garrison_hero`, `:visitor`. A `town`
+# step opens D from the town list; the message its opening brings (the Vortex's, GENRLTXT 580)
+# is recorded (`messages`) and its OK clicked. The walk's `hero_in` moves the visitor into the
+# garrison.
+
+spec = "experiments/specs/E09-batch-5b.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- week 1, day 1 ------------------------------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-5-5"
+hero = "TWN-5-5"
+[step.record]
+"week 1, day 1: G's points; V's points; the flag" = ["text:G: ", "hero[TWN-5-5]:spell_points", "text:V: ", "hero[TWN-5-5v]:spell_points", "text:flag: ", "town:7,7:week_flag"]
+[step.note]
+"the game's version" = "map_kind"
+
+[[step]]
+encounter = "TWN-5-5"
+hero = "TWN-5-5"
+walk = [7, 7]
+expect = { question = "none", battle = false }
+[[step.actions]]
+record = { "week 1, G's visit: G's points and the flag as the screen shows" = ["text:G: ", "hero[TWN-5-5]:spell_points", "text:flag: ", "town:7,7:week_flag"] }
+[[step.actions]]
+hero_in = true
+[step.record]
+"week 1, G's visit and move into the garrison: the messages; G's points; the flag" = ["messages", "text:G: ", "hero[TWN-5-5]:spell_points", "text:flag: ", "town:7,7:week_flag", "text:garrison hero: ", "town:7,7:garrison_hero"]
+[step.note]
+"G's visit: a town screen; how it closed" = ["town_screen", "town_screen_closed"]
+
+# --- to week 2 ------------------------------------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-5-5"
+end_turn = true
+mana = { "TWN-5-5" = 5 }
+date = [1, 1, 7]
+
+[[step]]
+encounter = "TWN-5-5"
+end_turn = true
+[step.record]
+"week 2, day 8, the turn's start: G's points; V's points; the flag" = ["text:G: ", "hero[TWN-5-5]:spell_points", "text:V: ", "hero[TWN-5-5v]:spell_points", "text:flag: ", "town:7,7:week_flag", "text:date: ", "date"]
+[step.note]
+"week 2's start: the messages" = "messages"
+
+[[step]]
+encounter = "TWN-5-5"
+town = [7, 7]
+[step.record]
+"week 2, D's screen opened from the town list: the messages; G's points; the flag" = ["messages", "text:G: ", "hero[TWN-5-5]:spell_points", "text:flag: ", "town:7,7:week_flag"]
+
+[[step]]
+encounter = "TWN-5-5"
+hero = "TWN-5-5v"
+walk = [7, 7]
+expect = { question = "none", battle = false }
+[step.record]
+"week 2, V's visit: the messages; V's points; G's points; the flag" = ["messages", "text:V: ", "hero[TWN-5-5v]:spell_points", "text:G: ", "hero[TWN-5-5]:spell_points", "text:flag: ", "town:7,7:week_flag"]
+[step.note]
+"V's visit: a town screen; how it closed" = ["town_screen", "town_screen_closed"]
+
+# --- to week 3 ------------------------------------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-5-5"
+end_turn = true
+mana = { "TWN-5-5" = 5, "TWN-5-5v" = 5 }
+date = [1, 2, 7]
+
+[[step]]
+encounter = "TWN-5-5"
+end_turn = true
+[step.record]
+"week 3, day 15, the turn's start: G's points; V's points; D's garrison hero and visitor; the flag" = ["text:G: ", "hero[TWN-5-5]:spell_points", "text:V: ", "hero[TWN-5-5v]:spell_points", "text:garrison hero: ", "town:7,7:garrison_hero", "text:standing: ", "town:7,7:standing", "text:flag: ", "town:7,7:week_flag", "text:date: ", "date"]
+[step.note]
+"week 3's start: the messages" = "messages"
+
+[[step]]
+encounter = "TWN-5-5"
+town = [7, 7]
+[step.record]
+"week 3, D's screen opened: the messages; G's points; V's points; the flag" = ["messages", "text:G: ", "hero[TWN-5-5]:spell_points", "text:V: ", "hero[TWN-5-5v]:spell_points", "text:flag: ", "town:7,7:week_flag"]

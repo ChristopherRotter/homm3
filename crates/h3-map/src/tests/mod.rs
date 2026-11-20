@@ -718,6 +718,7 @@ fn the_experiment_writer_marks_the_coast() {
         level_limit: 0,
         banned_skills: Vec::new(),
         banned_artifacts: Vec::new(),
+        banned_spells: Vec::new(),
         events: Vec::new(),
         teams: None,
     };
@@ -797,6 +798,7 @@ fn towns_from_the_experiment_writer_read_back() {
         level_limit: 0,
         banned_skills: Vec::new(),
         banned_artifacts: Vec::new(),
+        banned_spells: Vec::new(),
         events: Vec::new(),
         teams: None,
     };
@@ -958,6 +960,7 @@ fn maps_from_the_experiment_writer_read_back() {
         // Aid.
         banned_skills: vec![5, 11, 27],
         banned_artifacts: Vec::new(),
+        banned_spells: Vec::new(),
         events: Vec::new(),
         teams: None,
     };
@@ -1191,6 +1194,7 @@ fn the_writer_s_underground_and_guarded_piles_read_back() {
         level_limit: 0,
         banned_skills: Vec::new(),
         banned_artifacts: Vec::new(),
+        banned_spells: Vec::new(),
         events: Vec::new(),
         teams: None,
     };

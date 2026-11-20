@@ -12,6 +12,27 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-20 (the map client lane, E24 M4 T4b1, `map-client/e24-m4-t4b1`; **MCL-Q41 and MCL-Q42,
+  for your planning; the user's answers first**): a record's visits played (E24 design §5.14):
+  SRV-STUB-5 shows in a chest's choice (MCL-Q41: its box shows both parts, the record neither until
+  the answer's gain); MCL-Q42 asks the fold to keep the hero's once-per-hero `marks` (none is
+  folded after the snapshot) beside the adventure lane's event for a refused visit.
+
+- 2026-11-20 (the adventure lane, E08 T134a, `adventure/e08-t134a`, `cross-lane` with the user's
+  consent, E08 decision 385; **your paths changed, for your review; protocol v76 taken**): the
+  Altar of Sacrifice's decision on the wire: `Answer::Altar` (`AltarAnswer`: `Artifacts { worn,
+  backpack }`, the places' bits, `u32` and `u64`; `Creatures { amounts }`, seven by slot;
+  `Leave`), `GameReject::Altar` (`AltarReject`, the engine's seven `AltarError`s),
+  `Decision::Altar` (`AltarWindow`: the hero, the object, the two screens, the places,
+  `AltarItem`s with an `ArtifactPlace`, `AltarStack`s, the experience to the next level) and
+  `GameEvent::AltarOpened` (the same files as T133b's market). The event carries no view: folded
+  untold as a market's (`SRV-STUB-5` extended). A sacrifice whose levels open a level-up tells
+  `DecisionClosed` before `LevelUpOpened`, and after the level-ups `AltarOpened` again (GAM-DEC-007,
+  E08 decision 371). The round trips: `tests/game.rs`' two Altar views, `tests/game_command.rs`'
+  three answers and seven rejections (143), `tests/game_event.rs`' `AltarOpened` (48 kinds). The
+  goldens' hash lines moved (game state hash v36, replay format v22; `h3-server`'s
+  `tests/record.rs` lines for `army-dialog-s1`); none of them visits an Altar.
+
 - 2026-11-20 (the town lane, E09 T43, `town/e09-t43`, docs only; **the protocol's additions
   planned for E09 increment 5, the mage guild; nothing to do now**): accepted at `TWN-Q33` (design
   note `docs/epics/E09-design.md` §94, §95). Each in a town task, `cross-lane` in your paths with a

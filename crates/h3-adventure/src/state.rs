@@ -23,8 +23,8 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher};
 use crate::ADVENTURE_STATE_HASH_VERSION;
 use crate::command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    BattleStart, Combatant, Defender, MarketVisit, Meeting, Offer, OfferKind, ServiceVisit, Sink,
-    Viewers,
+    AltarVisit, BattleStart, Combatant, Defender, MarketVisit, Meeting, Offer, OfferKind,
+    ServiceVisit, Sink, Viewers,
 };
 use crate::fog::{on_fringe, reveal};
 use crate::movement::{
@@ -83,6 +83,7 @@ impl StaticTile {
     };
 }
 
+mod altar;
 mod banks;
 mod boats;
 mod bonuses;
@@ -111,6 +112,7 @@ mod visitables;
 mod visits;
 mod weekly;
 
+pub use altar::{AltarArtifact, AltarOffers, AltarStack, Sacrifice, Sacrificed};
 pub use boats::Boat;
 use boats::Boats;
 pub(crate) use bonuses::{HeldMarks, marks_in};
@@ -2570,6 +2572,19 @@ impl AdventureState {
                     object_type: visit.object_type,
                     anchor,
                 }));
+            }
+            // rule: ADV-ALT-001, ADV-BON-009
+            Effect::Altar => {
+                self.mark_kind(rules.1, player, visit.object_type, sink);
+                let screens = altar::screens((core, rules.1, rules.2), hero);
+                outcome.service = screens.map(|_| {
+                    ServiceVisit::Altar(AltarVisit {
+                        hero,
+                        index: visit.object,
+                        object_type: visit.object_type,
+                        anchor,
+                    })
+                });
             }
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),

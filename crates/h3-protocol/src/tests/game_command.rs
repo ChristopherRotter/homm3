@@ -14,11 +14,11 @@ use h3_battle::{CommandError, Hex};
 use h3_content::{CreatureTypeId, Formation as EngineFormation};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{
-    Actor, Answer, ArenaChoice, ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, ArtifactPlace,
-    BuildingId, ChestChoice, Consent, GameCommand, GameCommandError, HireAnswer, HireError, Manage,
-    ManageError, MarketAnswer, MarketError, NoopSink, Position, SchoolChoice, SkillOffer,
-    SystemCommand, TavernAnswer, TavernError, TownCommand, TownCommandError, TownHeroChange,
-    UniversityAnswer,
+    Actor, AltarAnswer, AltarError, AltarPlaces, Answer, ArenaChoice, ArmyCommand,
+    ArmyCommandError, ArmyRef, ArmySlot, ArtifactPlace, BuildingId, ChestChoice, Consent,
+    GameCommand, GameCommandError, HireAnswer, HireError, Manage, ManageError, MarketAnswer,
+    MarketError, NoopSink, Position, SchoolChoice, SkillOffer, SystemCommand, TavernAnswer,
+    TavernError, TownCommand, TownCommandError, TownHeroChange, UniversityAnswer,
 };
 use h3_heroes::{CombineError, MoveError};
 use h3_kernel::handle::Handle;
@@ -101,6 +101,13 @@ pub(super) fn every_command() -> Vec<GameCommand> {
             pay: Handle::from_raw(5),
         }),
         Answer::Market(MarketAnswer::Leave),
+        // E08 T134a (v76): an Altar's.
+        Answer::Altar(AltarAnswer::Artifacts(AltarPlaces::from_bits(
+            1 << 31 | 1,
+            1 << 63 | 1 << 2,
+        ))),
+        Answer::Altar(AltarAnswer::Creatures([0, 5, 0, 0, 12, 0, 1])),
+        Answer::Altar(AltarAnswer::Leave),
         Answer::Close,
     ];
     commands.extend(answers.map(GameCommand::Answer));
@@ -365,6 +372,18 @@ fn every_rejection() -> Vec<GameCommandError> {
         ]
         .map(E::Market),
     );
+    errors.extend(
+        [
+            AltarError::Visit,
+            AltarError::Screen,
+            AltarError::Places,
+            AltarError::Kept(Handle::from_raw(9)),
+            AltarError::Amount(4),
+            AltarError::LastCreature,
+            AltarError::Nothing,
+        ]
+        .map(E::Altar),
+    );
     errors
 }
 
@@ -569,6 +588,15 @@ fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
             w::MarketReject::NoPrice {} => MarketError::NoPrice,
             w::MarketReject::NoRoom {} => MarketError::NoRoom,
         }),
+        R::Altar { error } => E::Altar(match error {
+            w::AltarReject::Visit {} => AltarError::Visit,
+            w::AltarReject::Screen {} => AltarError::Screen,
+            w::AltarReject::Places {} => AltarError::Places,
+            w::AltarReject::Kept { artifact } => AltarError::Kept(Handle::from_raw(artifact)),
+            w::AltarReject::Amount { slot } => AltarError::Amount(slot),
+            w::AltarReject::LastCreature {} => AltarError::LastCreature,
+            w::AltarReject::Nothing {} => AltarError::Nothing,
+        }),
     })
 }
 
@@ -627,8 +655,8 @@ fn every_rejection_maps_back_and_round_trips() {
     // (E09 T27: `NotRecruiting`, `NotStanding`, `NothingSummoned`; E09 T28a: `GarrisonHeld` to
     // `EmptyArmy`; E09 T38a1: `NoTavern`, `UnknownSlot`, `EmptySlot`), 3 of a dismissal's (E09
     // T38b2: `NotOnMap`, `InTown`, `LastHero`), 4 of a map Tavern's hire (E09 T39a), 10 of a
-    // market's (E08 T133b).
-    assert_eq!(errors.len(), 136);
+    // market's (E08 T133b), 7 of an Altar's (E08 T134a).
+    assert_eq!(errors.len(), 143);
     let wire: BTreeSet<String> = errors.iter().map(|&e| kinds(&reject(e))).collect();
     assert_eq!(wire.len(), errors.len(), "distinct on the wire");
     for e in errors {

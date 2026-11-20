@@ -527,6 +527,27 @@ original's windows stay open for more trades). The system actor's default is `Le
   place's artifact with the experience it gives (with Learning) or none for a kept one, each slot's
   experience per creature before Learning (e) and for its most with Learning, the experience to
   the next level, `places`.
+- *As built* (T134a, decisions 385, 386; game state hash v36): **the places are a set**
+  (`h3_adventure::AltarPlaces`: the worn positions' bits in a `u32`, the backpack indices' in a
+  `u64`; decision 386, the user's, so `Answer` stays `Copy`): distinct by construction, the
+  change's order read from the bits; the part refuses an Altar under a core backpack above 64
+  (`ALTAR_BACKPACK_PLACES`) and, *agent's call*, under more than seven army slots (`ALTAR_SLOTS`,
+  the creatures' `[u32; 7]`). The adventure (`state/altar.rs`): `Effect::Altar` (the team's kind
+  mark first, then `ServiceVisit::Altar(AltarVisit { hero, index, object_type, anchor })` for a
+  hero whose class's faction has its screens; nothing opens for a hero the store lacks),
+  `check_artifact_sacrifice`, `check_creature_sacrifice` (`Sacrifice`, not `Clone`; `AltarError`:
+  the design's six and, *agent's call*, `Visit` as the market's; §11's orders), `sacrifice`
+  (`Sacrificed`: the places to remove in order, or the stacks lowered, and the total),
+  `altar_offers` (`AltarOffers` with `AltarArtifact`, `AltarStack`, `to_next_level`). The game
+  (`state/altar.rs`): `Decision::Altar` (kind 11), `open_altar` (`AltarOpened`), `answer_altar`
+  (the removals as `HeroChange::RemoveArtifact`, `HeroChanged` each, or `StackChanged` each, then
+  `GainExperience`; the levels by `give_plain_levels`, split out of `next_level_up`: at a level
+  with two offers the Altar closed, `Rest::Visit` held, then `LevelUpOpened`), `altar_view`;
+  `legal_commands` lists `Leave` alone, the default answer `Leave`. Tests: the adventure's
+  `state/tests/altar.rs` (the visit and its kind mark by faction, both sacrifices with Learning per
+  item, the offers, the places' set, the texts), the part's bounds (`ruleset/tests/trades.rs`), the
+  game's `tests/altar.rs` (the decision, both sacrifices' events, the level-up's close and the
+  Altar's return, levels with no offers given at once).
 
 ### 15. The Hill Fort's decision (GAM-DEC-013; ADV-HFT-001, -002; D-74 the original's)
 
@@ -575,7 +596,12 @@ original's windows stay open for more trades). The system actor's default is `Le
   University's (`SRV-STUB-5` extended). With the answer the replay words (**format v21**, the client lane's E27 M4 T3a having taken v20: `answer
   market trade|transfer|sell|buy|leave`, §18's) and the env's `Leave` on the closing entry
   (**encoding v14**, no new entry) came in the same pull request: a new answer breaks both
-  crates' exhaustive matches.
+  crates' exhaustive matches. T134a (**protocol v76**, `cross-lane`): `Answer::Altar`
+  (`AltarAnswer`: `Artifacts { worn, backpack }` the places' bits, `Creatures { amounts }`,
+  `Leave`), `GameReject::Altar` (`AltarReject`), `Decision::Altar` (`AltarWindow` with `AltarItem`,
+  `AltarStack`), `GameEvent::AltarOpened` (folded as a market's, `SRV-STUB-5` extended); the replay
+  words (**format v22**: `answer altar artifacts <place> …`, `creatures <amount> …` ×7, `leave`)
+  and the env's `Leave` (**encoding v15**).
 
 ### 18. The env, replays, maps, properties, benchmarks
 

@@ -1,0 +1,253 @@
+# Experiment batch TWN-5, part a (E09 T44; design note §97, survey
+# docs/rules/surveys/E09-guild.md §18 rows TWN-5-1 to TWN-5-4): the guild's draw with a spell both
+# required and banned, the Aurora Borealis against the town's and the map's bans, the Library
+# built later, a main town's hero at the start; in SoD on Easy, hot seat, day 1 only. Part b
+# (`E09-batch-5b.toml`) holds row TWN-5-5 (the Mana Vortex over three weeks). Build:
+# docs/experiments/README.md. Predictions are for the agent who evaluates the results; the
+# template never shows them. "The reading" is the survey's code reading of Heroes3.exe; VCMI's is
+# VCMI 1.7.5 as the survey summarises it (§7, §16).
+#
+# | row     | settles             | the reading                          | otherwise                   |
+# | TWN-5-1 | TD-25 (§3.2)        | a spell required and banned by its   | VCMI: added first, as       |
+# |         |                     | town in none of its level's six      | required                    |
+# |         |                     | slots; a required one first          |                             |
+# | TWN-5-2 | TD-26, T-18, §5     | the Aurora teaches every spell 0-69  | VCMI: the map's allowed     |
+# |         |                     | up to level 5 but 57 and the town's  | spells, the town's bans not |
+# |         |                     | ban (Implosion), the map's ban       | tested (Implosion learned,  |
+# |         |                     | (Armageddon) learned                 | Armageddon not)             |
+# | TWN-5-3 | §3.3, §4            | the Library shows one more a level   | -                           |
+# |         |                     | at once; the visitor learns the      |                             |
+# |         |                     | five spares at the build             |                             |
+# | TWN-5-4 | TD-10, §12          | the main town's hero knows the       | VCMI: its own spell only    |
+# |         |                     | guild's 5 + 4 shown spells on day 1  |                             |
+#
+# **An SoD map, not AB** (agent's call): survey §9's row a names an AB map, but the town's
+# required set is read in every version above RoE (§3.4, `load_town_body` tests only the RoE
+# version), the writer writes SoD maps, and the user's game is the Complete edition.
+#
+# **The map** (36 x 36, grass): the map bans Armageddon (level 4; no guild here draws it, the
+# Aurora's T-18). Red's towns along row 7 (entrances 8 columns apart): R4 (7, 7) Red's main
+# Tower with Mage Guild 2 that generates Red's starting hero (TWN-5-4); R1a (15, 7) a Castle
+# with Mage Guild 1 requiring and banning Magic Arrow; R1b (23, 7) the same with Haste; R1c (31,
+# 7) the control: requiring Magic Arrow and Haste, banning nothing (TWN-5-1). Along row 15: R3 (7,
+# 15) a Tower with Mage Guild 5, no Library (TWN-5-3); R2 (15, 15) a Conflux with Mage Guild 1
+# and the Grail building (the Aurora Borealis, in its custom set), banning Implosion (TWN-5-2).
+# Blue's Castle (23, 30). Red's resources are written before the Library's build (30 of each,
+# 50 000 gold). No hero stands on an entrance at the start but the main town's.
+
+[map]
+name = "E09 batch TWN-5a"
+description = "Engine-generated experiment map (E09, batch TWN-5, part a): the guild's draw with spells required and banned, the Aurora Borealis, the Library built later, the main town's hero. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+banned_spells = ["Armageddon"]
+instructions = [
+    "Copy `E09-batch-5a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, Red and Blue both human, difficulty **Easy**, Red's starting hero Random, both players' starting bonus Gold. Before you start it, compare the stamp at the start of the map's description with the stamp above.",
+    "The scenario bans Armageddon (the scenario's information does not show it).",
+    "The records are the game's memory (the capture harness, `clients/capture/batches/E09-batch-5a.toml`, E09 T44): a town's record (game +0x21614, 0x168 bytes each, `docs/exe/structs.toml` \"town\"): its guild's six slots a level (+0x44), the count each level shows (+0xBC), the guild level (+0x14); a hero's learned spells (+0x3EA). Played by hand they show in the Mage Guild's window and the hero's spell book.",
+    "Tiles are (column, row) from 0 at the top left; a town's entrance is the tile its gate stands on. A step: click the target once (the path's marks show), then again (the hero goes).",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- the towns ------------------------------------------------------------------------------------
+
+[[map.town]]  # R4: Red's main town, generating Red's starting hero
+entrance = [7, 7]
+faction = "tower"
+owner = "red"
+buildings = ["mage guild 1", "mage guild 2"]
+garrison = []
+main = true
+generates_hero = true
+
+[[map.town]]  # R1a: Magic Arrow required and banned
+entrance = [15, 7]
+faction = "castle"
+owner = "red"
+buildings = ["mage guild 1"]
+garrison = []
+required_spells = ["Magic Arrow"]
+banned_spells = ["Magic Arrow"]
+
+[[map.town]]  # R1b: Haste required and banned
+entrance = [23, 7]
+faction = "castle"
+owner = "red"
+buildings = ["mage guild 1"]
+garrison = []
+required_spells = ["Haste"]
+banned_spells = ["Haste"]
+
+[[map.town]]  # R1c: the control, both required, none banned
+entrance = [31, 7]
+faction = "castle"
+owner = "red"
+buildings = ["mage guild 1"]
+garrison = []
+required_spells = ["Magic Arrow", "Haste"]
+
+[[map.town]]  # R3: Mage Guild 5, no Library
+entrance = [7, 15]
+faction = "tower"
+owner = "red"
+buildings = ["mage guild 1", "mage guild 2", "mage guild 3", "mage guild 4", "mage guild 5"]
+garrison = []
+
+[[map.town]]  # R2: the Aurora Borealis with Mage Guild 1, Implosion banned
+entrance = [15, 15]
+faction = "conflux"
+owner = "red"
+buildings = ["mage guild 1", "grail"]
+garrison = []
+banned_spells = ["Implosion"]
+
+[[map.town]]  # Blue's
+entrance = [23, 30]
+faction = "castle"
+owner = "blue"
+buildings = ["fort"]
+garrison = []
+
+# --- TWN-5-1: a spell both required and banned ------------------------------------------------------
+
+[[encounter]]
+id = "TWN-5-1"
+title = "A level-1 spell both required and banned by its town (TD-25): the guilds' slots"
+questions = ["TD-25", "TWN-GLD-002", "TWN-SET-012"]
+procedure = [
+    "Red's turn, day 1, before any hero moves. For R1a (15, 7), R1b (23, 7) and R1c (31, 7): note the guild's level-1 spells (the window shows five; the record's sixth slot is the spare) and every level's slots.",
+    "For every town of the map: note whether any guild slot holds Armageddon or Titan's Lightning Bolt.",
+]
+record = [
+    { field = "R1a (Magic Arrow required and banned): the guild by level (shown | spare)" },
+    { field = "R1b (Haste required and banned): the guild by level" },
+    { field = "R1c (both required, none banned): the guild by level" },
+    { field = "every town: a slot with Armageddon or Titan's Lightning Bolt" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (§3.1, §3.2: the excluded set starts with the town's banned bits and the
+  map-wide bans; a slot takes the first required spell of its level **not excluded**): R1a's six
+  level-1 slots without Magic Arrow, R1b's without Haste; R1c's first two level-1 slots **Magic
+  Arrow, Haste** (spell order: 15 before 53), the other four drawn. No slot of any town holds
+  Armageddon (the map's ban) or Titan's Lightning Bolt (57, weight 0 everywhere). Each guild a
+  level's spells without repeats; R1a's and R1b's other level-1 slots drawn by the weights.
+- **VCMI** (§7: the required spells added first, banned or not): R1a's first level-1 slot Magic
+  Arrow, R1b's Haste; R1c as the reading.
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [31, 20]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- TWN-5-2: the Aurora Borealis --------------------------------------------------------------------
+
+[[encounter]]
+id = "TWN-5-2"
+title = "The Aurora Borealis with Mage Guild 1 (TD-26, T-18, §5): the spells an Expert in Wisdom learns against the town's and the map's bans"
+questions = ["TD-26", "T-18", "TWN-GLD-004"]
+procedure = [
+    "Red's turn, day 1. Note TWN-5-2's spells (its own).",
+    "TWN-5-2 stands south of R2 at (15, 16): step north onto the entrance (15, 15). The town screen opens: close it.",
+    "Note TWN-5-2's spells by level, and whether Implosion (the town's ban) and Armageddon (the map's) are among them.",
+]
+record = [
+    { field = "before: TWN-5-2's spells" },
+    { field = "after the visit: TWN-5-2's spells" },
+    { field = "after the visit: Implosion; Armageddon; Titan's Lightning Bolt (learned or not)" },
+    { field = "R2: the guild by level; the guild level" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (§5, §11 point 3): a hero with a spell book in a Conflux whose every-built set
+  holds building 26 learns every spell 0 to 69 not in the town's banned set whose level is at
+  most Wisdom + 2 (Expert: 5), but 57; the guild's level and slots are not looked at; **the
+  map-wide bans are not tested (T-18)**. So after the visit TWN-5-2 knows **68 spells**: all of 0
+  to 69 but Titan's Lightning Bolt (57) and **Implosion** (18, the town's ban), **Armageddon**
+  (26, the map's ban) among them. R2's guild shows its level 1 as drawn (5 slots; the window shows
+  the "all spells" scroll).
+- **VCMI** (§7): the map's allowed spells, the town's bans not tested: **Implosion learned,
+  Armageddon not**. **The wiki:** every spell "not banned", by whom unsaid.
+"""
+[encounter.hero]
+type = "Grindan"
+specialty = "resource gold"
+at = [15, 16]
+primary = [1, 1, 1, 2]
+skills = [["Wisdom", 3]]
+army = [["Pikeman", 1]]
+artifacts = { "spell book" = "Spell Book" }
+
+# --- TWN-5-3: the Library built later ------------------------------------------------------------------
+
+[[encounter]]
+id = "TWN-5-3"
+title = "The Library built in the game with a visitor (§3.3, §4): each level's count before and after, the spares learned at once"
+questions = ["TWN-GLD-003", "TWN-GLD-005"]
+procedure = [
+    "Red's turn, day 1. Note R3's guild by level (shown | spare) and TWN-5-3's spells.",
+    "TWN-5-3 stands south of R3 at (7, 16): step north onto the entrance (7, 15). On the town screen, note TWN-5-3's spells and R3's guild.",
+    "Set Red's resources to 30 of each and 50 000 gold. Open the hall, click the Library and Build. Note at once TWN-5-3's spells and R3's guild; close the town screen.",
+]
+record = [
+    { field = "before: R3's guild by level; TWN-5-3's spells" },
+    { field = "on the town screen (the visit): TWN-5-3's spells; R3's guild" },
+    { field = "the Library built: TWN-5-3's spells; R3's guild; R3's buildings" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (§3.3: each level's count `guild_spell_slots[L]`, 5, 4, 3, 2, 1, plus one for a
+  Tower whose every-built set holds the Library, 22; §3.2: each level's `guild_spell_slots[L] + 1`
+  slots drawn, the last the spare; §4: the Library's build recomputes the counts and teaches the
+  visitor at once; §11: the visitor learns each level's shown slots up to Wisdom + 2, Expert 5):
+  before, R3 shows **5, 4, 3, 2, 1** (15 spells; each level's spare drawn, not shown). On the
+  town screen TWN-5-3 knows those 15 (no spell of its own: its book's spells are the spec's,
+  none). The Library built: R3 shows **6, 5, 4, 3, 2** (each level's spare, as drawn at the
+  start, no new draw), and **TWN-5-3 knows the 5 spares at once** (20).
+- **VCMI** (§16: a player's build teaches both heroes through its building visit; the Library's
+  slot one more a level): the same.
+"""
+[encounter.hero]
+type = "Damacon"
+specialty = "resource gold"
+at = [7, 16]
+primary = [1, 1, 1, 2]
+skills = [["Wisdom", 3]]
+army = [["Pikeman", 1]]
+artifacts = { "spell book" = "Spell Book" }
+
+# --- TWN-5-4: the main town's hero at the start ----------------------------------------------------------
+
+[[encounter]]
+id = "TWN-5-4"
+title = "A main town's hero with a spell book on day 1 (TD-10, §12): the guild's spells learned at the start"
+questions = ["TD-10", "TWN-GLD-005", "TWN-SET-009"]
+procedure = [
+    "Red's turn, day 1, before any hero moves: the hero the game generated stands on R4's entrance (7, 7). Select another hero of Red's (TWN-5-4), then note the generated hero's type, secondary skills and spells, and R4's guild by level.",
+]
+record = [
+    { field = "R4's visitor (the generated hero): its name; its secondary skills" },
+    { field = "R4's visitor: its spells on day 1" },
+    { field = "R4: the guild by level; the guild level" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (§12: `main_town_heroes` 0x4CA1A2 teaches the town's visitor and garrison
+  hero once the main town's hero is placed on its entrance; §11: up to Wisdom + 2, and every
+  Tower hero has a spell book): on day 1, before any action, the generated hero (a Tower hero,
+  drawn) knows **its own spell and R4's 5 level-1 and 4 level-2 shown spells** (levels 1 and 2
+  without Wisdom too; R4's guild level 2).
+- **VCMI** (§16: the start teaches nothing): its own spell only, until a visit or a turn start
+  (VCMI's turn start teaches: then the same as the reading, so read before any action).
+"""
+[encounter.hero]
+type = "Valeska"
+specialty = "creature Archer"
+at = [31, 24]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]

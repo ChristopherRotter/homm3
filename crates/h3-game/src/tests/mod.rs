@@ -6,6 +6,7 @@
 //! takes no pack adapter as a dev-dependency).
 
 mod aftermath;
+mod altar;
 mod banks;
 mod battles;
 mod calendar;

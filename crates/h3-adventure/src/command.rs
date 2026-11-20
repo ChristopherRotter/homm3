@@ -10,9 +10,11 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_content::{ContentKey, CreatureTypeId, Formation, ResourceId, SkillId, TerrainId};
+use h3_content::{
+    ArtifactTypeId, ContentKey, CreatureTypeId, Formation, ResourceId, SkillId, TerrainId,
+};
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
-use h3_heroes::{HeroChange, PrimarySkill, VisitBonus};
+use h3_heroes::{ArtifactPlace, HeroChange, Position, PrimarySkill, VisitBonus};
 
 use crate::ruleset::ObjectTypeId;
 use crate::setup::{Pos, StandError};
@@ -332,8 +334,11 @@ pub struct AdventureOutcome {
     /// design note §10): a market's at every visit of any player's hero (ADV-MKT-001). The game
     /// opens it as the player's decision (GAM-DEC-011, E08 T133b), whose answers
     /// [`crate::AdventureState::trade_lot`], [`crate::AdventureState::check_screen`],
-    /// [`crate::AdventureState::check_sale`] and [`crate::AdventureState::check_buy`] check. The
-    /// Altar's and the Hill Fort's come with T134.
+    /// [`crate::AdventureState::check_sale`] and [`crate::AdventureState::check_buy`] check; since
+    /// E08 T134a an Altar of Sacrifice's, for a hero whose class's faction has its screens
+    /// (ADV-ALT-001; GAM-DEC-012), whose sacrifices
+    /// [`crate::AdventureState::check_artifact_sacrifice`] and
+    /// [`crate::AdventureState::check_creature_sacrifice`] check. The Hill Fort's comes with T134b.
     pub service: Option<ServiceVisit>,
 }
 
@@ -487,7 +492,177 @@ pub enum ServiceVisit {
     /// A market's window (ADV-MKT-001): a Trading Post's, the Freelancer's Guild's or a Black
     /// Market's.
     Market(MarketVisit),
+    /// An Altar of Sacrifice's window (ADV-ALT-001; E08 T134a), for a hero whose class's faction
+    /// sacrifices artifacts, creatures or both.
+    Altar(AltarVisit),
 }
+
+/// An Altar of Sacrifice's window a visit opened (ADV-ALT-001; E08 T134a, increment 14's design
+/// note §10): the visiting hero and the object. The screens its hero's class's faction allows,
+/// the hero's artifacts and army are read at each answer and view, never copied.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AltarVisit {
+    /// The visiting hero.
+    pub hero: HeroId,
+    /// The object's index.
+    pub index: usize,
+    /// The object's type.
+    pub object_type: ObjectTypeId,
+    /// The object's anchor.
+    pub anchor: Pos,
+}
+
+/// The most worn positions an Altar's sacrifice names ([`AltarPlaces`]'s worn bits): the core's
+/// most positions of all slots together ([`h3_content::MAX_SLOT_POSITIONS`]), so every position
+/// of every ruleset has its bit.
+pub const ALTAR_WORN_PLACES: usize = 32;
+
+/// The most backpack places an Altar's sacrifice names ([`AltarPlaces`]'s backpack bits; E08
+/// decision 386): the original's backpack of 64 (the base pack's `[hero_params] backpack`), so a
+/// part with an Altar refuses a core whose backpack holds more.
+pub const ALTAR_BACKPACK_PLACES: usize = 64;
+
+/// The most army slots an Altar's creature sacrifice names (E08 decision 386: the answer's
+/// amounts by slot, a fixed array so the answer stays `Copy`): the original's seven, so a part
+/// with an Altar refuses more `army_slots`.
+pub const ALTAR_SLOTS: usize = 7;
+
+// Every position of every ruleset has its bit.
+const _: () = assert!(ALTAR_WORN_PLACES == h3_content::MAX_SLOT_POSITIONS);
+
+/// The places of a hero's artifacts an Altar's sacrifice names (ADV-ALT-002; E08 T134a, decision
+/// 386: the user's choice over the design note's list, so `h3_game::Answer` stays `Copy`): a set
+/// of worn positions (bit `p` of `worn`, below [`ALTAR_WORN_PLACES`]) and backpack indices (bit
+/// `i` of `backpack`, below [`ALTAR_BACKPACK_PLACES`]). The places are distinct by construction;
+/// [`Self::places`] gives them in the change's order (the worn ones by position, then the
+/// backpack's from the last index down, so no place moves before it is removed). Nothing in it is
+/// trusted: [`crate::AdventureState::check_artifact_sacrifice`] checks each place against the
+/// hero.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct AltarPlaces {
+    /// Bit `p`: the worn position `p`.
+    worn: u32,
+    /// Bit `i`: the backpack's index `i`.
+    backpack: u64,
+}
+
+impl AltarPlaces {
+    /// No place.
+    pub const NONE: Self = Self {
+        worn: 0,
+        backpack: 0,
+    };
+
+    /// The places of these bits (the wire's form).
+    pub const fn from_bits(worn: u32, backpack: u64) -> Self {
+        Self { worn, backpack }
+    }
+
+    /// The worn positions' bits.
+    pub const fn worn_bits(self) -> u32 {
+        self.worn
+    }
+
+    /// The backpack indices' bits.
+    pub const fn backpack_bits(self) -> u64 {
+        self.backpack
+    }
+
+    /// These places and `place`, if it has a bit (a position below [`ALTAR_WORN_PLACES`], an
+    /// index below [`ALTAR_BACKPACK_PLACES`]).
+    pub fn with(self, place: ArtifactPlace) -> Option<Self> {
+        match place {
+            ArtifactPlace::Worn(at) => {
+                let bit = u32::try_from(at.0)
+                    .ok()
+                    .and_then(|p| 1_u32.checked_shl(p))?;
+                Some(Self {
+                    worn: self.worn | bit,
+                    ..self
+                })
+            }
+            ArtifactPlace::Backpack(i) => {
+                let bit = u32::try_from(i).ok().and_then(|i| 1_u64.checked_shl(i))?;
+                Some(Self {
+                    backpack: self.backpack | bit,
+                    ..self
+                })
+            }
+        }
+    }
+
+    /// Whether `place` is one of these.
+    pub fn contains(self, place: ArtifactPlace) -> bool {
+        self.with(place) == Some(self)
+    }
+
+    /// How many places.
+    pub const fn len(self) -> u32 {
+        self.worn.count_ones() + self.backpack.count_ones()
+    }
+
+    /// Whether there is none.
+    pub const fn is_empty(self) -> bool {
+        self.worn == 0 && self.backpack == 0
+    }
+
+    /// The places in the change's order: the worn positions by position, then the backpack's
+    /// indices from the last down.
+    pub fn places(self) -> impl Iterator<Item = ArtifactPlace> {
+        let worn = (0..ALTAR_WORN_PLACES)
+            .filter(move |&p| self.worn >> p & 1 == 1)
+            .map(|p| ArtifactPlace::Worn(Position(p)));
+        let backpack = (0..ALTAR_BACKPACK_PLACES)
+            .rev()
+            .filter(move |&i| self.backpack >> i & 1 == 1)
+            .map(ArtifactPlace::Backpack);
+        worn.chain(backpack)
+    }
+}
+
+/// Why an Altar of Sacrifice's answer is refused (ADV-ALT-002, -003; E08 T134a, increment 14's
+/// design note §11, §14): the adventure's checks of a sacrifice
+/// ([`crate::AdventureState::check_artifact_sacrifice`],
+/// [`crate::AdventureState::check_creature_sacrifice`]). A refused answer changes nothing
+/// (ADR-0004).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AltarError {
+    /// The visit's hero is not on the map, or its object is not an Altar (defensive, as a
+    /// market's). *Agent's call* (T134a), beside the design's list, as [`MarketError::Visit`].
+    Visit,
+    /// The hero's class's faction does not sacrifice what the answer names (ADV-ALT-001).
+    Screen,
+    /// More places than the Altar takes, or a place without an artifact of the hero's.
+    Places,
+    /// An artifact the Altar never takes (the Spell Book, the Catapult).
+    Kept(ArtifactTypeId),
+    /// The slot's amount is above its stack's count (or names an empty slot).
+    Amount(u8),
+    /// The sacrifice would take the army's last creature (the army keeps one: survey
+    /// `E08-trades.md` §12.3).
+    LastCreature,
+    /// The sacrifice gives no experience (the original's disabled Sacrifice): nothing named, or
+    /// only what gives 0.
+    Nothing,
+}
+
+impl fmt::Display for AltarError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Visit => f.write_str("the altar's hero is not on the map or its object no altar"),
+            Self::Screen => f.write_str("the hero's faction does not sacrifice that"),
+            Self::Places => f.write_str("the places are not the hero's artifacts the altar takes"),
+            Self::Kept(artifact) => {
+                write!(f, "artifact {} is never sacrificed", artifact.index())
+            }
+            Self::Amount(slot) => write!(f, "slot {slot}'s amount is above its stack"),
+            Self::LastCreature => f.write_str("the hero keeps its army's last creature"),
+            Self::Nothing => f.write_str("the sacrifice gives no experience"),
+        }
+    }
+}
+
+impl core::error::Error for AltarError {}
 
 /// A market's window a visit opened (ADV-MKT-001; E08 T133a2, increment 14's design note §10): the
 /// visiting hero and the object. Its screens and count are its kind's and a Black Market's stock

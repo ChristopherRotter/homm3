@@ -114,6 +114,7 @@ pub(super) fn town(at: (u8, u8), faction: Option<u32>, owner: Option<u8>) -> w::
         tight_formation: false,
         buildings: w::TownBuildings::Standard { fort: true },
         events: Vec::new(),
+        spells: crate::writer::TownSpells::default(),
     }
 }
 
@@ -253,6 +254,7 @@ fn map() -> w::Map {
         level_limit: 0,
         banned_skills: Vec::new(),
         banned_artifacts: Vec::new(),
+        banned_spells: Vec::new(),
         events: Vec::new(),
         teams: None,
     }
