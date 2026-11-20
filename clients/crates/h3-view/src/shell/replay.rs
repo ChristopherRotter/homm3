@@ -20,7 +20,7 @@
 //! manager plays it ([`Replay::samples`]).
 //!
 //! What only the harness can do stops the replay ([`Stop`]): a step on the original's memory or
-//! its probes (`poke`, `games-time`, `freeze`; `key-hold`'s real-time repeats until E27 M4 T4b), a screen name the viewer does not know, a screen not built yet ([`Screen::built`]: nothing on it changes by
+//! its probes (`poke`, `freeze`), a screen name the viewer does not know, a screen not built yet ([`Screen::built`]: nothing on it changes by
 //! itself, and its shots would be a stand-in's; its moves are taken, its presses, releases and
 //! keys stop the replay). A stub's screen (E27 M2 T6b2: the client's notice, not the original's
 //! screen) is one not built here: no menu opens on it. The real-time pauses (`settle`, `wait`)
@@ -42,6 +42,11 @@
 //! [`Front::question`]) takes the harness's `press`, `point` and `until-button`: its button found
 //! where the harness's probes find it ([`button_point`]), clicked or pointed at as `click` and
 //! `move`; a button that does not show stops the replay ([`Stop::NoButton`]).
+//!
+//! The load mode (E27 M4 T4b1): `games-time` sets the saves' times the load mode's screen shows
+//! at its next opening ([`Step::GamesTime`]); `key-hold` gives the key's presses as the display's
+//! auto-repeat gives them in the harness's hold ([`held_presses`]), then its release; Load and
+//! Delete show the client's notice there (CLT-STUB-15), a stop as the random map's Begin.
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -120,6 +125,14 @@ pub enum Step {
         /// The most milliseconds waited.
         limit: u32,
     },
+    /// `games-time:<s>[:<file>]` (E27 M4 T4b1): the saves' files (every one, or the one named)
+    /// last written at `time` (seconds from 1970 UTC): the load mode's dates.
+    GamesTime {
+        /// The time.
+        time: i64,
+        /// The save's file, none for every one.
+        file: Option<String>,
+    },
     /// A step only the harness takes (its verb).
     Harness(String),
 }
@@ -161,6 +174,45 @@ pub enum Input {
     KeyUp(String),
     /// `type:<text>`.
     Type(String),
+    /// `key-hold:<name>:<s>` (E27 M4 T4b1): a key held with the display's auto-repeat, its
+    /// presses (the first and each repeat, [`held_presses`]) without a release between, then
+    /// its release.
+    KeyHold(String, u32),
+}
+
+/// The display's auto-repeat while the harness holds a key (`h3shell.py`'s `REPEAT_DELAY` and
+/// `REPEAT_RATE`: Xvfb's 660 ms delay, then 25 a second).
+pub const REPEAT_DELAY: u32 = 660;
+/// The time between two repeats (ms).
+pub const REPEAT_EVERY: u32 = 40;
+
+/// The presses of a key held `ms` milliseconds with the display's auto-repeat (E27 M4 T4b1): the
+/// first, then a repeat at [`REPEAT_DELAY`] and each [`REPEAT_EVERY`] after, up to the release.
+/// The harness holds it in real time, so its count of repeats is the nearest (*provisional*):
+/// the recipes hold a key until the list's end, where the count no longer matters.
+#[must_use]
+pub const fn held_presses(ms: u32) -> u32 {
+    if ms < REPEAT_DELAY {
+        1
+    } else {
+        2 + (ms - REPEAT_DELAY) / REPEAT_EVERY
+    }
+}
+
+/// Seconds as a recipe writes them (`1.5`, `0.3`, `2`) in milliseconds, the digits past the third
+/// decimal dropped; none for another text.
+fn milliseconds(text: &str) -> Option<u32> {
+    let (whole, fraction) = text.split_once('.').unwrap_or((text, ""));
+    let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
+    if !digits(whole) || !(fraction.is_empty() || digits(fraction)) {
+        return None;
+    }
+    let mut ms = whole.parse::<u32>().ok()?.checked_mul(1000)?;
+    for (k, b) in fraction.bytes().take(3).enumerate() {
+        let place = [100, 10, 1][k];
+        ms = ms.checked_add(u32::from(b - b'0') * place)?;
+    }
+    Some(ms)
 }
 
 /// Reads a step as `h3shell.py` does (`<verb>[:<arguments>]`).
@@ -239,9 +291,17 @@ pub fn parse(step: &str) -> Result<Step, String> {
             name: name(at(0))?,
             limit: optional(at(1), UNTIL_LIMIT, number)?,
         },
-        // E27 M4 T4a: `key-hold`, a key held in real time with the display's repeats (the
-        // harness's until E27 M4 T4b gives the viewer a held key's repeats).
-        "freeze" | "games-time" | "poke" | "key-hold" => Step::Harness(verb.to_string()),
+        // E27 M4 T4b1: a key held with the display's repeats (`key-hold`, the harness's own
+        // since T4a: [`held_presses`]), the saves' times (`games-time`: the load mode's dates).
+        "key-hold" => {
+            let ms = milliseconds(at(1)).ok_or_else(bad)?;
+            Step::Input(Input::KeyHold(name(at(0))?, held_presses(ms)))
+        }
+        "games-time" => Step::GamesTime {
+            time: at(0).parse().map_err(|_| bad())?,
+            file: (!at(1).is_empty()).then(|| at(1).to_string()),
+        },
+        "freeze" | "poke" => Step::Harness(verb.to_string()),
         _ => return Err(format!("the step `{step}`: an unknown verb")),
     })
 }
@@ -380,7 +440,9 @@ fn whole(
 #[must_use]
 pub fn skips(input: &Input) -> bool {
     match input {
-        Input::Key(name) | Input::KeyDown(name) => super::start::key_skips(name),
+        Input::Key(name) | Input::KeyDown(name) | Input::KeyHold(name, _) => {
+            super::start::key_skips(name)
+        }
         Input::Type(text) => !text.is_empty(),
         Input::Click(_) | Input::Down(_) | Input::Right(_) => true,
         Input::Move(_) | Input::Up | Input::RightUp | Input::KeyUp(_) => false,
@@ -626,6 +688,10 @@ impl Replay {
                 }
                 Ok(Some(Stop::NoButton(name.clone())))
             }
+            Step::GamesTime { time, file } => {
+                self.menus.load.set_time(file.as_deref(), *time);
+                Ok(None)
+            }
             Step::Harness(verb) => Ok(Some(Stop::Harness(verb.clone()))),
         }
     }
@@ -713,6 +779,12 @@ impl Replay {
             Input::Key(name) => vec![down(name), Given::KeyUp(key(name).0)],
             Input::KeyDown(name) => vec![down(name)],
             Input::KeyUp(name) => vec![Given::KeyUp(key(name).0)],
+            // E27 M4 T4b1: each press, then the one release.
+            Input::KeyHold(name, presses) => {
+                let mut given: Vec<Given> = (0..*presses).map(|_| down(name)).collect();
+                given.push(Given::KeyUp(key(name).0));
+                given
+            }
             Input::Type(text) => {
                 for c in text.chars() {
                     // A character's key: the original reads its US key's scan code; an edit that

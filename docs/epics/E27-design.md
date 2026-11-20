@@ -680,7 +680,7 @@ to 270 (`scenario_hovered` 0x683470; §3.15); a close through the vtable's +0x38
 → 103 Begin's; 188 → 105; 190 → 107 to 195 → 112, the columns'). A right press on a list row shows
 nothing; on 362 to 385 the players' popups (§3.15); on 387 a dialog of the teams (0x576540, *not
 read*; a new game's variant); on any other item its hint's right-click text (`dialog_right_click`),
-then the screen redrawn.
+then the screen redrawn (*corrected at M4 T4b1*, §39.3: only after a popup).
 
 ### 3.9 To `GameSetup` (decision 4)
 
@@ -2594,7 +2594,7 @@ original's frames played again as kept). The client: `h3_view::shell::scenario` 
   dialog (§20.2); any other id, and 386 (case 4), `dialog_right_click` 0x5FF790 with the item's
   hint (`Help.txt` record id − 83 for 104 to 344, §3.8), then 0x58AE80, the dialog's redraw
   (vtable +0x14 with 0, 0xFFFF0001, 0xFFFF) and `scenario_dialog_redraw`: the client's whole
-  redraw as the popup closes.
+  redraw as the popup closes (*corrected at M4 T4b1*, §39.3: no redraw without a popup).
 - The item is the last in order whose box holds the point (`dialog_item_at`): 134 (`MAP_SIZE`,
   record 51) over 132 (record 49) at x 414 to 503, 132 from 504 to 664 (no recipe), 133 record
   50; 105 the description's label, record 22; the filters 137 to 141 records 54 to 58; the
@@ -2792,7 +2792,8 @@ shipped maps' recipes stay exact; none of the 159 descriptions has a brace).
   draws the bar at 0 (`page-up-list`). The client's original profile keeps what it last drew
   (`Description::drew`), its own draws whole (decision 48).
 - **A right press** that shows no popup (no hint, not a row) redraws the screen whole at once
-  (§20.1): the client's `right` now does so (the partial redraw's leftovers gone).
+  (§20.1): the client's `right` now does so (the partial redraw's leftovers gone). *Corrected at
+  M4 T4b1* (§39.3): the description's box alone (its scrolling text) and the players' items.
 - **The kept map** (`scenario_last_map` 0x683238): every select of a new game keeps its file's
   name, the next opening selects it (`reopened`: "Arrogance Retold"). The client keeps it at every
   select and carries it to the next opening (`Menus::front`, `Scenario::keep`); before T2c it kept
@@ -3999,3 +4000,70 @@ ends at play's stub (as M3's begin; `save::load`'s `Loaded` kept for E24 M5), so
 `load` clip and `map` stay the original's alone. A held key's repeats in the viewer (`key-hold`)
 and the window (the shell's window takes none, §16.4). The hot seat's load (T5, `adv-load`) uses
 the user's random-map saves too: T5 makes hot-seat saves the same way.
+
+## 39. Load Game single's screen (M4 T4b1, 2026-11-20)
+
+Decision 73: T4b cut at Delete. Built in `h3_view::shell::scenario` (the load mode, `load`),
+`menu`, `replay`, `keys`; `h3_ui::text::message` (`%02d`); `h3_sdl::local_offset`; the battle
+client's `saves` and `shell`; `h3shell.py drawn`. Nothing new read but the right press (§39.3).
+
+### 39.1 The saves (*provisional*, the task's calls; review items 24, 25, 30)
+
+- **Where:** the client's own folder, `games` in the working directory (the window's `--games`
+  names another; a replay's is the harness's run folder), never the original's `games` (decision
+  8). A save's file `<name>.GM<n>` as the original's (`game_save_dialog` 0x418160: `.GM` and the
+  count of humans still playing), so the rows show the same names; the client's format is §37's.
+  The list: up to 5 000 files of `*.gm?` (any case), read in their names' order, then sorted.
+- **An entry:** the map the replay names, read from the installation's `Maps` as a new game's list
+  reads it (its header and heroes, `maps::entry`), the save's file's name, its difficulty and the
+  file's last-write time (`Saved`). The window reads the folder again at each opening of the load
+  mode (as the original); a replay once, its `games-time` setting the times (`Step::GamesTime`).
+- **A save the client cannot list** (the file does not read as a save, its replay's header the
+  rules refuse, its map is missing or moved): as the original lists a broken file (§3.3: GENRLTXT
+  431 its name, 505 its description), no map's columns, difficulty Easy. Load's full check (the
+  commands replayed, `save::load`) is T4b2's.
+- **Made saves for `drawn`** (`h3-view save --map --difficulty --day --name --out`): a single
+  game begun on the map as Begin begins it with the advanced options untouched (the single
+  player's colour the map's), seed 1, each player's End Turn until the day; the makers' `viewer`
+  tables (`difficulty`, `day`) say which, left out of the makers' digests. `drawn` writes them
+  into the run's own folder (`--games`), empty without `made_games`.
+
+### 39.2 The screen
+
+- **Built as recorded** (§38.3): the title ArrayTxt 230; Show Available Scenarios, Random Map and
+  Advanced Options hidden (their hotkeys S, R, A nothing); no allies' or enemies' labels, flags or
+  strip; Load (`scnrlod.def`, the layout's `load_begin`) on Begin's place; the list shown and built
+  at the opening (key 2, the kept save `NEWGAME` at the start, else the first; a select keeps the
+  file's name for the next opening, *not read*); the rows the files' names; the panel the map's
+  name (the autosave's GENRLTXT 77), the date (the client's item 1015, "%d/%d/%d - %d:%02d" at the
+  zone's present offset: `h3_sdl::local_offset`, review item 26), the map's difficulty, the
+  save's difficulty selected on the five disabled buttons (frame 3, the others 2) and its rating.
+- **The sorts** (CLT-Q138, the original's profile): the partial redraw after a sort leaves the
+  difficulty's buttons as the last whole redraw drew them and draws the rating over the last one
+  (`Scenario::drawn_difficulties`, `drawn_rating`; a new game's select keeps the difficulty, so
+  the same pixels there). The name's sort takes a file beginning `AUTOSAVE.` first (review item
+  29).
+- **Keys:** a held key's presses in the viewer (`key-hold`: 1 under 660 ms, then one each 40 ms,
+  `replay::held_presses`), the window's repeats on the scenario screen (`Window::set_key_repeats`,
+  review item 28). Delete is a command of the screen (`scenario-delete`, the key Delete).
+- **Load and Delete** show the client's notice (`shell.stub.load`, CLT-STUB-15) until T4b2: a
+  replay stops at it as at the random map's Begin.
+
+### 39.3 The right press (read)
+
+`scenario_dialog_right_click` 0x5822D0's default (0x582A76): `dialog_right_click` 0x5FF790 (the
+item by id, its right-click text or hint; none or empty: false, else a style-4 box and true), and
+the dialog's and the screen's redraw (0x582A84 to 0x582A9E) only when it returned true. The
+players' items 362 to 385 have their own cases, most of which reach the redraw without a popup
+(0x58236F, 0x5823FA). Recorded: `scn-load` no-list-button (no item where a new game has Show
+Available Scenarios: the partial redraw's leftovers kept). **Corrects §3.8 and §20.1** ("then the
+screen redrawn"; M3 T2c's "a right press that shows no popup redraws whole"): the client's redraws
+on the description's box (its scrolling text: `scn-long-text` right-bar) and the players' items
+alone (review item 27); every recording of the other groups as before.
+
+### 39.4 The comparisons
+
+`scn-load` 19 of 25 exact at the first build (the four Delete shots T4b2's, the load's clip and
+the map M5's); `scn-load-last` 1 of 9 and `scn-load-none` 0 of 5 (the screen, then Delete and
+the notice: T4b2's). The `scenario`, `advanced`, `menus`, `multiplayer`, `end`, `options` and
+`scores` groups as recorded.

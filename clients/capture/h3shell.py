@@ -48,7 +48,11 @@ A recipe (a `[[recipe]]` of shell/<group>.toml): `id`, `what` (the catalogue's s
             digest of them is kept
   made_games  the run's Games/ too (E27 M4 T4a; `[[recipe.made_games]]` tables): `by` (the maker
             recipe) and `file` (one of its `makes`), taken from clients/out/shell/games/<by>/;
-            the maker is played first when the file is not there or its recipe changed since
+            the maker is played first when the file is not there or its recipe changed since.
+            `drawn` gives the viewer the client's saves of the same names (E27 M4 T4b1,
+            `h3-view save`), made on the maker's first map with its `viewer` table
+  viewer    a maker's save as the client makes it (E27 M4 T4b1): `difficulty` (0 to 4) and `day`
+            (the day it is made on, default 1); left out of the maker's digest
   tz        the run's time zone (E27 M4 T4a; Wine's local time is the TZ variable's, the list's
             dates by it: design §38), default "UTC"; a zone without daylight saving time, since
             the original converts a file's time by the present offset
@@ -299,8 +303,8 @@ def write_made(recipe, folder):
 
 def recipe_digest(recipe):
     """A recipe's digest (E27 M4 T4a: what a maker's saves were made by): its table as read,
-    the group left out."""
-    table = {k: v for k, v in recipe.items() if k != "group"}
+    the group and the viewer's save (`viewer`, E27 M4 T4b1: not the original's) left out."""
+    table = {k: v for k, v in recipe.items() if k not in ("group", "viewer")}
     return hashlib.sha256(repr(sorted(table.items())).encode()).hexdigest()[:16]
 
 
@@ -309,6 +313,25 @@ def recipe_by_id(ident):
     if recipe is None:
         raise RuntimeError(f"no recipe `{ident}`")
     return recipe
+
+
+def client_save(made, folder):
+    """The client's save matching a maker's (E27 M4 T4b1, `made_games` for `drawn`): `h3-view
+    save` on the maker's map with its `viewer` table's `difficulty` and `day` (default 1), named
+    and written as the maker's file in `folder`."""
+    by, name = made["by"], made["file"]
+    maker = recipe_by_id(by)
+    viewer = maker.get("viewer")
+    if viewer is None or not maker.get("maps"):
+        raise RuntimeError(f"`{by}` has no `viewer` table or map: no client's save of {name}")
+    done = subprocess.run(
+        [str(H3VIEW), "save", "--map", maker["maps"][0], "--difficulty", str(viewer["difficulty"]),
+         "--day", str(viewer.get("day", 1)), "--name", Path(name).stem, "--out",
+         str(folder / name)],
+        capture_output=True, text=True)
+    if done.returncode != 0:
+        raise RuntimeError(f"{by}: the client's {name}: {(done.stdout + done.stderr).strip()}")
+    return folder / name
 
 
 def made_game(made):
@@ -1050,6 +1073,13 @@ def drawn_recipe(recipe, out):
     # starts and stops listed (`sound`, `quiet`; compared from T5b2 on).
     if recipe.get("sound", False):
         args += ["--effects", str(h3drive.SOUND_VOLUME)]
+    # E27 M4 T4b1: the viewer's saves' folder, the run's own (empty but for the client's saves
+    # matching the makers', `made_games`): never the working directory's.
+    games = here / "games"
+    games.mkdir(parents=True, exist_ok=True)
+    for made in recipe.get("made_games", []):
+        client_save(made, games)
+    args += ["--games", str(games)]
     # E27 M4 T4a: the recipe's time zone, the original's (a save's local time on the list).
     env = dict(os.environ, TZ=recipe.get("tz", DEFAULT_TZ))
     done = subprocess.run(args, capture_output=True, text=True, env=env)

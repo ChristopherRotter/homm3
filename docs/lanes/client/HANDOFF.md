@@ -5,7 +5,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 71). **M1 to M3 closed** (2026-11-13, -16, -19; `E27-archive.md`; the build record
+  to 73). **M1 to M3 closed** (2026-11-13, -16, -19; `E27-archive.md`; the build record
   `E27-log.md`; the readings `E27-design.md` §1 to §33): the start's clips and sound, the menus,
   the hot seat's names, the scenario screen (list, panel, advanced options, random map, the begin:
   the setup validated and kept for E24 M5, play's stub `CLT-STUB-13`). **M4** (decision 69: around
@@ -14,8 +14,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   **T3a** (the adventure replay format v20 with the players' choices, `cross-lane`) and **T3b**
   (the client's save file and its load: `h3-battle-client`'s `save`, design §37) done 2026-11-20;
   T4 cut in two (decision 72): **T4a** (the load mode read, `scn-load` recorded again on saves the
-  original made of shipped maps, `scn-load-last` new; design §38) done 2026-11-20. **Next: M4
-  T4b** (Load Game single's client; the queue), then T5 (hot seat), T6 (M4's closure).
+  original made of shipped maps, `scn-load-last` new; design §38) done 2026-11-20; T4b cut at
+  Delete (decision 73): **T4b1** (the load mode's screen, the client's saves in `games`, keys and
+  held keys, sorts, popups; design §39; `scn-load` 19 of 25 exact) done 2026-11-20. **Next: M4
+  T4b2** (Delete, the notice, Load's end; the queue), then T5 (hot seat), T6 (M4's closure).
   Decisions to carry (all: the epic's list): the dialogs' input one implementation (20;
   `h3_ui::input`); the shell's code as the battle's (21); every pixel of a Smacker clip through
   its palette (24); every clip's sound at the effects setting (27); a menu opening anew takes the
@@ -24,8 +26,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   map changes (CLT-Q152 (b)); a press's stale edges as CLT-Q118's (§34.2); the credits'
   background's key pixel a drawing bug (§36.3); a save loads only under the rules and over the
   map it was made with (review item 18); the shell's recipes pinned to a time zone (`tz`, review
-  item 23). Open pull requests: T4a's (`client/e27-m4-t4a`) and #1073 (`client/e27-save-test-v21`,
-  `master`'s Clients job red since #1070 until it merges): watch both until they merge. E17 done
+  item 23); a right press without a popup redraws nothing but on the description and the
+  players' items (review item 27). Open pull request: T4b1's (`client/e27-m4-t4b1`): watch it
+  until it merges. E17 done
   (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -39,10 +42,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   "E17's leftovers"). `CLT-STUB-1` (a server's seat lacks the other hero's Orb and Cloak),
   `CLT-STUB-4` (no Auto Combat switch in a live game's battle), `CLT-STUB-5` (a hot-seat
   battle between two of the host's humans) and `CLT-STUB-6` (the Multiplayer dialog's network
-  modes), `CLT-STUB-7` and `-8` (Campaign, Tutorial), `CLT-STUB-9` (the starting bonus), `CLT-STUB-10` (the handicap), `CLT-STUB-11` (the turn's timer), `CLT-STUB-12` (the random map's generation) and `CLT-STUB-13` (play: the game kept for E24 M5) are commented in `docs/stubs.toml` until
+  modes), `CLT-STUB-7` and `-8` (Campaign, Tutorial), `CLT-STUB-9` (the starting bonus), `CLT-STUB-10` (the handicap), `CLT-STUB-11` (the turn's timer), `CLT-STUB-12` (the random map's generation), `CLT-STUB-13` (play: the game kept for E24 M5) and `CLT-STUB-15` (the load mode's Load and Delete, until T4b2) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q159, CLT-STUB-15.
-- Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs (`MP3DEC.ASI` there too since 2026-11-17), `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens) and the 40 non-campaign MP3s; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q159, CLT-STUB-16.
+- Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs (`MP3DEC.ASI` there too since 2026-11-17), `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens) and the 39 non-campaign MP3s (63 files); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
@@ -61,6 +64,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-20, E27 M4 T4b1 (done; `client/e27-m4-t4b1`).** The PC's 63 files and the manuals
+  staged (SHA-256 checked). T4b cut at Delete with the user (decision 73). Built the load mode's
+  screen (`Scenario::loading`), the client's saves listed (`saves`: `games`, `<name>.GM<n>`, a
+  broken file's look), the date at SDL's present offset, `Command::Delete`, the viewer's
+  `games-time` and `key-hold`, `h3-view save` and `drawn`'s made client saves; read the right
+  press (no redraw without a popup). `scn-load` 19 of 25 exact, the other groups as recorded.
+  Record: `E27-log.md`, "M4 T4b1".
 - **2026-11-20, E27 M4 T4a (done; `client/e27-m4-t4a`).** The PC's 64 files and the manuals
   staged (SHA-256 checked). T4 cut in two with the user (decision 72). `master`'s Clients job red
   (T3b's test against the replay format v21): fixed, #1073. Read the date's order, the load
@@ -74,9 +84,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `Replay::setup`, the commands through `h3_game::apply` with `verify`'s checks) into the
   `begin::Game` and the state; `h3-sim` a dependency. Three tests on a committed map (CI runs
   them). Record: `E27-log.md`, "M4 T3b".
-- **2026-11-20, E27 M4 T3a (done; `client/e27-m4-t3a`, `cross-lane`).** The PC's 64 files and
-  the manuals staged (SHA-256 checked). The user at the start: the format extension built by this
-  lane cross-lane, T3 cut in two (decision 71). Built the adventure replay format v20 (`h3-sim`'s
-  `PlayerChoices`, `Replay::players`, `Replay::setup`; `h3-files`' `[[players]]`), the server's
-  and the AI lane's literals, the 104 goldens recorded again (only the version and the players'
-  lines moved); the adventure, server and AI lanes' inboxes told. Record: `E27-log.md`, "M4 T3a".

@@ -196,6 +196,16 @@ fn printf_rows_name_their_specifiers() {
         Message::from_printf("%+s", &[s("who")], kinds),
         Err(PrintfError::Specifier(Some('+')))
     );
+    // Two digits at least (`%02d`): a text the caller writes padded (E27 M4 T4b1, a save's date).
+    let m = Message::from_printf("%d:%02d", &[s("n"), s("who")], kinds).unwrap();
+    assert_eq!(m.segments, vec![ph("n"), lit(":"), ph("who")]);
+    for row in ["%03d", "%0", "%02s", "%02"] {
+        assert_eq!(
+            Message::from_printf(row, &[s("who")], kinds),
+            Err(PrintfError::Specifier(Some('0'))),
+            "{row}"
+        );
+    }
 }
 
 #[test]
