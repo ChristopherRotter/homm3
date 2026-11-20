@@ -133,13 +133,14 @@ fn a_right_press_on_the_options_shows_each_item_s_help() {
         assert!(s.right_release().changed);
     }
     // A single player's handicap is not enabled, a name and a hidden arrow (a computer's hero's)
-    // have no hint: no popup, the screen redrawn whole (popup-handicap, popup-name).
+    // have no hint: no popup, nothing (popup-handicap, popup-name; E27 M4 T4b1's reading of
+    // `dialog_right_click` 0x5FF790: no redraw without a popup).
     for point in [[135, 163], [110, 138], [245, 195]] {
-        assert_eq!(s.right(point), Did::CHANGED, "{point:?}");
+        assert_eq!(s.right(point), Did::default(), "{point:?}");
         assert_eq!(s.over, Over::Nothing, "{point:?}");
     }
     // The bar's help only while the options show.
     click(&mut s, [514, 519]);
-    assert_eq!(s.right([155, 565]), Did::CHANGED);
+    assert_eq!(s.right([155, 565]), Did::default());
     assert_eq!(s.over, Over::Nothing);
 }

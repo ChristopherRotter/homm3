@@ -117,6 +117,7 @@ pub(crate) fn menus(bugs: Bugs) -> Menus {
         notices,
         multiplayer: crate::shell::multiplayer::tests::multiplayer(bugs),
         scenario: crate::shell::scenario::tests::scenario(bugs),
+        load: crate::shell::scenario::tests::load(bugs),
         scores: crate::shell::scores::tests::scores(bugs),
         credits: crate::shell::credits::tests::credits(),
     }
@@ -879,13 +880,22 @@ fn the_front_is_a_menu_or_the_multiplayer_dialog_over_its_menu() {
 #[test]
 fn the_scenario_screen_is_a_stub_over_its_game_type_menu() {
     // E27 M2 T7, until M3: from Single, Campaign, Tutorial or the Multiplayer dialog; a new
-    // single scenario's built since M3 T1a, the hot seat's since M3 T4a.
+    // single scenario's built since M3 T1a, the hot seat's since M3 T4a, a single load's since M4
+    // T4b1.
     assert_eq!(
         stub_name(Screen::Scenario(Game::Load, ScenarioKind::Tutorial)),
         "scenario"
     );
     assert_eq!(stub_name(Screen::Tutorial), "tutorial");
-    assert_eq!(super::scenario(Game::Load, ScenarioKind::Single), STUBS[2]);
+    assert_eq!(
+        super::scenario(Game::Load, ScenarioKind::Multiplayer),
+        STUBS[2]
+    );
+    assert!(
+        !STUBS
+            .iter()
+            .any(|&(s, _, _)| s == Screen::Scenario(Game::Load, ScenarioKind::Single))
+    );
     for built in [ScenarioKind::Single, ScenarioKind::Multiplayer] {
         assert!(
             !STUBS

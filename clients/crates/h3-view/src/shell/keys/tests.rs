@@ -96,7 +96,8 @@ fn the_commands_have_names_in_the_shell_s_table() {
             "scenario-page-up",
             "scenario-page-down",
             "scenario-left",
-            "scenario-right"
+            "scenario-right",
+            "scenario-delete"
         ]
     );
     assert_eq!(Command::from_name("quit"), Some(Command::Button(105)));
@@ -107,6 +108,15 @@ fn the_commands_have_names_in_the_shell_s_table() {
         Some(Command::List(Scroll::PageDown))
     );
     assert_eq!(keys.command(Context::HotSeat, false, "PageDown"), None);
+    // E27 M4 T4b1: the load mode's Delete, over the scenario screen; an edit's Delete over an edit.
+    assert_eq!(
+        keys.command(Context::Scenario, false, "Delete"),
+        Some(Command::Delete)
+    );
+    assert_eq!(
+        keys.command(Context::Edit, false, "Delete"),
+        Some(Command::Edit(Caret::Delete))
+    );
     assert_eq!(
         Command::from_name("back"),
         Some(Command::Choice(Choice::Back))

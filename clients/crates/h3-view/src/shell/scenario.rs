@@ -89,7 +89,7 @@
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 
@@ -98,6 +98,7 @@ use h3_render::Bugs;
 use h3_ui::edit::Scan;
 use h3_ui::input::Input;
 use h3_ui::scrollbar::{self, Scrollbar};
+use h3_ui::text::message::Message;
 use h3_ui::ui::{Def, Dialog, Draw, Label, Shown, State};
 use serde::Deserialize;
 
@@ -108,6 +109,7 @@ use crate::message::{MessageBox, Open, Outcome};
 
 mod advanced;
 mod description;
+mod load;
 mod random;
 
 use advanced::{Advanced, Map, Refusal};
@@ -117,6 +119,7 @@ pub use advanced::{
 };
 use description::Description;
 pub use description::{DESCRIPTION_BYTES, DescriptionLook, description_names};
+pub use load::{AUTOSAVE, DATE, Saved, is_autosave, local, sorts_first};
 pub use random::{Choices, HELPED as RANDOM_HELPED};
 use random::{Pressed, RandomMap};
 
@@ -179,6 +182,8 @@ pub const FILTERS: [(u16, u32); 5] = [(137, 36), (138, 72), (139, 108), (140, 14
 pub const COLUMNS: [(u16, u8); 6] = [(190, 3), (191, 1), (192, 2), (193, 0), (194, 4), (195, 5)];
 /// The right-hand panel's picture (`GSelPop1.pcx`, drawn into the screen at once).
 pub const PANEL_BACK: u16 = 1020;
+/// The allies' label ("%s:" of GENRLTXT 391; the client's id, the original's 100).
+pub const ALLIES_LABEL: u16 = 1013;
 /// The enemies' label ("%s:" of GENRLTXT 392).
 pub const ENEMIES_LABEL: u16 = 386;
 /// The flags' strip `scenario_team_flags` 0x585300 restores and shows (456, 402, 290, 25).
@@ -304,6 +309,10 @@ pub const RATINGS: [u32; 5] = [80, 100, 130, 160, 200];
 
 /// The map kept between visits at the start (`scenario_last_map` 0x683238).
 pub const KEPT_MAP: &str = "Arrogance.h3m";
+
+/// The save kept between visits at the start (`scenario_last_save` 0x68333C, `NEWGAME.gm1` cut at
+/// its first full stop by the constructor's `strtok`: no save's file is named so; E27 M4 T4b1).
+pub const KEPT_SAVE: &str = "NEWGAME";
 
 /// The difficulty at each opening (E27 M3 T2a, design §21.1): the list's build at the opening
 /// (`scenario_slots_new` 0x57FADC, `scenario_list_finish` 0x58314E) sets
@@ -447,6 +456,9 @@ pub struct Entry {
     pub teams: [u8; 8],
     /// The heroes its import offers and customises (E27 M3 T3b1).
     pub heroes: Heroes,
+    /// A save's own (E27 M4 T4b1: the load mode's entries, the save's map's header above, its
+    /// [`Entry::file`] the save's file); none for a map.
+    pub saved: Option<Saved>,
 }
 
 impl Entry {
@@ -531,9 +543,15 @@ fn compare(key: u8, a: &Entry, b: &Entry, bugs: Bugs) -> Ordering {
     }
 }
 
-/// `entry`'s name as the profile `bugs` sorts it: kept ([`kept_name`]), case-insensitively.
+/// `entry`'s name as the profile `bugs` sorts it: kept ([`kept_name`]), case-insensitively; a
+/// save's its file's name (E27 M4 T4b1, `scenario_compare_name` 0x5903B0 in the load and save
+/// modes: the rows' names), the autosave's after a space ([`sorts_first`]: it leads).
 fn sort_name(entry: &Entry, bugs: Bugs) -> impl Iterator<Item = char> + '_ {
-    caseless(kept_name(&entry.name, bugs))
+    let (lead, name) = match entry.saved {
+        Some(_) => (sorts_first(&entry.file).then_some(' '), entry.file.as_str()),
+        None => (None, kept_name(&entry.name, bugs)),
+    };
+    lead.into_iter().chain(caseless(name))
 }
 
 /// The count of an iterator's items (at most 8 here).
@@ -629,6 +647,17 @@ pub struct Texts {
     /// stub, `shell.stub.random-map`, where the original generates the map; none: Begin does
     /// nothing there).
     pub random_stub: Option<MessageBox>,
+    /// The load mode's title (E27 M4 T4b1: `scenario_titles` 0x6A8098, ArrayTxt.txt 230).
+    pub load_title: String,
+    /// The autosave's name in the panel (E27 M4 T4b1: GENRLTXT 77; [`is_autosave`]).
+    pub autosave: String,
+    /// A save's date (E27 M4 T4b1: "%d/%d/%d - %d:%02d", 0x6837C0), a message with the
+    /// placeholders `{{month}}`, `{{day}}`, `{{year}}`, `{{hour}}` and `{{minute}}` (two digits).
+    pub date: String,
+    /// Load's and Delete's notice in the load mode (E27 M4 T4b1, CLT-STUB-15: the client's stub,
+    /// `shell.stub.load`, until T4b2 builds Delete's question and the load; none: both do
+    /// nothing).
+    pub load_stub: Option<MessageBox>,
 }
 
 /// The teams' dialog's look (`scenario_teams_dialog` 0x576540; the layout's `[scenario.teams]`):
@@ -825,6 +854,15 @@ pub struct Scenario {
     hovers: Hovers,
     /// The hot seat's (E27 M3 T4a): its players the hot seat's names.
     hot_seat: bool,
+    /// The load mode's (E27 M4 T4b1), with Load's DEF (`scnrlod.def`); none for a new game.
+    loading: Option<String>,
+    /// The zone's present offset from UTC in seconds (E27 M4 T4b1: a save's date, [`local`]).
+    offset: i32,
+    /// The original's profile: the difficulty's buttons and the rating as the last whole redraw
+    /// drew them (E27 M4 T4b1, CLT-Q138: the partial redraw draws the rating over the last one and
+    /// not the buttons, a save's own difficulty selected since).
+    drawn_difficulties: [State; 5],
+    drawn_rating: String,
     bugs: Bugs,
 }
 
@@ -910,6 +948,10 @@ impl Scenario {
             over: Over::Nothing,
             hovers: Hovers::default(),
             hot_seat: false,
+            loading: None,
+            offset: 0,
+            drawn_difficulties: [State::default(); 5],
+            drawn_rating: String::new(),
             bugs,
         };
         Advanced::hide_items(&mut scenario.shown);
@@ -929,9 +971,82 @@ impl Scenario {
     }
 
     /// The map `left` kept, for the screen's next opening (E27 M3 T2c: `scenario_last_map`
-    /// 0x683238 outlives the screen).
+    /// 0x683238 outlives the screen); the save, the load mode's (E27 M4 T4b1:
+    /// `scenario_last_save` 0x68333C). A screen of the other mode's keeps nothing here.
     pub fn keep(&mut self, left: &Self) {
-        self.kept.clone_from(&left.kept);
+        if left.loading.is_some() == self.loading.is_some() {
+            self.kept.clone_from(&left.kept);
+        }
+    }
+
+    /// The screen in its load mode (E27 M4 T4b1; `scenario_dialog_create` 0x579960 with 1, a
+    /// single load: §3.1, §3.2, §38.3): its entries the saves (each with its [`Saved`]), Load's
+    /// DEF `begin` (`scnrlod.def`) on Begin, the dates at the zone's present `offset` (seconds east
+    /// of UTC). The title ArrayTxt.txt 230; no Show Available Scenarios, Random Map or Advanced
+    /// Options (not made in a single load), no allies, enemies or flags (`scenario_team_flags`
+    /// 0x585300 not in a single load); the difficulty's buttons disabled, showing the save's; the
+    /// list shown and built at once (`scenario_list_finish` 0x582E90: key 2's order, the kept save
+    /// selected on the top row, `NEWGAME` at the start: [`KEPT_SAVE`], else the first).
+    #[must_use]
+    pub fn loading(mut self, begin: &str, offset: i32) -> Self {
+        self.kept = String::from(KEPT_SAVE);
+        self.set_load(String::from(begin), offset);
+        self.selecting()
+    }
+
+    /// Whether it is the load mode's (E27 M4 T4b1).
+    #[must_use]
+    pub const fn is_load(&self) -> bool {
+        self.loading.is_some()
+    }
+
+    /// The saves listed anew (E27 M4 T4b1: the original reads the folder at each opening; the
+    /// window's adapter gives them before the screen opens), in the list's order ([`sort`]).
+    pub fn set_entries(&mut self, entries: Vec<Entry>) {
+        self.entries = entries;
+    }
+
+    /// The last-write time of the save `file` (every save's without one), in seconds from 1970
+    /// UTC (E27 M4 T4b1: the harness's `games-time`, its run's files' times); shown at the next
+    /// opening.
+    pub fn set_time(&mut self, file: Option<&str>, time: i64) {
+        for entry in &mut self.entries {
+            let named = file.is_none_or(|f| f.eq_ignore_ascii_case(&entry.file));
+            if let Some(saved) = entry.saved.as_mut().filter(|_| named) {
+                saved.time = time;
+            }
+        }
+    }
+
+    /// The load mode set over the screen as [`Scenario::new`] made it (E27 M4 T4b1;
+    /// [`Scenario::loading`]): its items, the list shown and built.
+    fn set_load(&mut self, begin: String, offset: i32) {
+        for id in [LIST, ADVANCED, RANDOM, ALLIES_LABEL, ENEMIES_LABEL, TEAMS] {
+            hide(&mut self.shown, id);
+        }
+        for id in ALLIES..ENEMIES + 8 {
+            hide(&mut self.shown, id);
+        }
+        for id in DIFFICULTIES {
+            let state = self.shown.state(id);
+            self.shown.states.insert(
+                id,
+                State {
+                    disabled: true,
+                    ..state
+                },
+            );
+        }
+        self.shown.texts.insert(TITLE, self.texts.load_title.clone());
+        self.shown.defs.insert(BEGIN, begin.clone());
+        self.loading = Some(begin);
+        self.offset = offset;
+        self.list_items(true);
+        self.showing = true;
+        self.built = true;
+        self.finish();
+        self.bar.reset(self.ticks());
+        self.set_bar();
     }
 
     /// The screen opened anew (`scenario_new` 0x4F0490), the menus' last items `hovers` carried
@@ -981,6 +1096,9 @@ impl Scenario {
         }
         opened.kept.clone_from(&self.kept);
         opened.random_offers.clone_from(&self.random_offers);
+        if let Some(begin) = &self.loading {
+            opened.set_load(begin.clone(), self.offset);
+        }
         opened.hovers = hovers;
         opened.selecting()
     }
@@ -1100,10 +1218,11 @@ impl Scenario {
     }
 
     /// Whether the client's stub's notice shows (E27 M3 T5b: Begin with a random map chosen; not
-    /// the original's screen, which generates the map).
+    /// the original's screen, which generates the map; E27 M4 T4b1: the load mode's Load and
+    /// Delete, CLT-STUB-15).
     #[must_use]
     pub fn stubbed(&self) -> bool {
-        matches!(self.over, Over::Notice(_)) && self.random.chosen()
+        matches!(self.over, Over::Notice(_)) && (self.random.chosen() || self.loading.is_some())
     }
 
     /// Whether the cursor shows (a help popup hides it; the teams' dialog and a message run with
@@ -1657,6 +1776,8 @@ impl Scenario {
         self.strip = false;
         let frame = self.shown.frames.get(&SIZE).copied().unwrap_or(0);
         self.drawn_size = (self.shown.state(SIZE), frame);
+        self.drawn_difficulties = DIFFICULTIES.map(|id| self.shown.state(id));
+        self.drawn_rating = self.shown.texts.get(&RATING).cloned().unwrap_or_default();
         self.description.drew();
     }
 
@@ -1727,12 +1848,21 @@ impl Scenario {
         let shown = &mut self.shown;
         shown.texts.insert(RATING, rating);
         let t = &self.texts;
-        let name = if entry.name.is_empty() {
+        // The load mode's (E27 M4 T4b1, §38.1: 0x583F20): the autosave's GENRLTXT 77, else the
+        // save's map's name.
+        let name = if entry.saved.is_some() && is_autosave(&entry.file, &t.autosave) {
+            t.autosave.clone()
+        } else if entry.name.is_empty() {
             t.unnamed.clone()
         } else {
             String::from(kept_name(&entry.name, self.bugs))
         };
         shown.texts.insert(NAME, name);
+        let date = entry
+            .saved
+            .map(|saved| date(&t.date, local(saved.time, self.offset)))
+            .unwrap_or_default();
+        shown.texts.insert(DATE, date);
         shown.texts.insert(DESCRIPTION, self.description.text());
         let victory = match header.victory {
             Some(goal) if header.standard => text_at(&t.with_standard, usize::from(goal)),
@@ -1759,7 +1889,8 @@ impl Scenario {
         shown
             .frames
             .insert(LOSS_MARK, header.loss.map_or(3, u32::from));
-        if flags {
+        // No flags in a single load (`scenario_team_flags` 0x585300; E27 M4 T4b1).
+        if flags && self.loading.is_none() {
             self.team_flags(&entry);
         }
         self.random_size_mark();
@@ -1811,6 +1942,11 @@ impl Scenario {
     fn select(&mut self) {
         if let Some(file) = self.entry().map(|e| e.file.clone()) {
             self.kept = file;
+        }
+        // The load mode's buttons show the save's difficulty, and the rating is its (E27 M4 T4b1:
+        // `scenario_select` 0x585500, the game's difficulty from the save's header).
+        if let Some(saved) = self.entry().and_then(|e| e.saved) {
+            self.difficulty = saved.difficulty;
         }
         // A changed selection makes the advanced options' rows again at their next showing
         // (+0x1854, 0x585574; E27 M3 T3a): the original's by the selection's index; the client's
@@ -1889,7 +2025,7 @@ impl Scenario {
     /// texts, marks, map's difficulty nor rating.
     fn blank_panel(&mut self) {
         let shown = &mut self.shown;
-        for id in [NAME, VICTORY, LOSS, MAP_DIFFICULTY, RATING] {
+        for id in [NAME, VICTORY, LOSS, MAP_DIFFICULTY, RATING, DATE] {
             shown.texts.insert(id, String::new());
         }
         for id in [VICTORY_MARK, LOSS_MARK] {
@@ -1917,6 +2053,10 @@ impl Scenario {
     /// ends, [`Scenario::begun`] what it hands on).
     fn begin(&mut self) -> Did {
         // stub: CLT-STUB-12
+        // The load mode's Load (E27 M4 T4b1): the client's notice until T4b2 loads.
+        if self.loading.is_some() {
+            return self.load_stub();
+        }
         let message = if self.random.chosen() {
             self.texts.random_stub.clone()
         } else if self.entry().is_some() {
@@ -1938,6 +2078,19 @@ impl Scenario {
             self.texts.no_maps.clone().filter(|_| checked)
         };
         match message {
+            Some(message) => {
+                self.over = Over::Notice(Box::new(Open::new(message)));
+                Did::CHANGED
+            }
+            None => Did::default(),
+        }
+    }
+
+    /// The load mode's Load and Delete (E27 M4 T4b1): the client's notice (`shell.stub.load`)
+    /// until T4b2 builds Delete's question and the load; nothing without its text.
+    fn load_stub(&mut self) -> Did {
+        // stub: CLT-STUB-15
+        match self.texts.load_stub.clone() {
             Some(message) => {
                 self.over = Over::Notice(Box::new(Open::new(message)));
                 Did::CHANGED
@@ -1993,6 +2146,15 @@ impl Scenario {
             let (state, frame) = self.drawn_size;
             rest.states.insert(SIZE, state);
             rest.frames.insert(SIZE, frame);
+            // The difficulty's buttons as last drawn whole, the rating drawn over the last one
+            // (E27 M4 T4b1: `scenario_info_draw` 0x5840F0 draws its text without the panel under
+            // it; a save's own difficulty selected since; the same pixels in a new game, whose
+            // select keeps the difficulty).
+            for (id, state) in DIFFICULTIES.into_iter().zip(self.drawn_difficulties) {
+                rest.states.insert(id, state);
+            }
+            rest.states.insert(RATING, self.shown.state(RATING));
+            rest.texts.insert(RATING, self.drawn_rating.clone());
             // The description's lines as last drawn (E27 M3 T2c: the select reset them, undrawn).
             let drawn = String::from(self.description.drawn_text());
             rest.texts.insert(DESCRIPTION, drawn);
@@ -2101,7 +2263,10 @@ impl Scenario {
             };
             draws.push(text(&look.size, text_at(&self.texts.sizes, size)));
             draws.extend(mark(&look.version, entry.format.map(Format::mark)));
-            let name = if entry.name.is_empty() {
+            // A save's file's name (E27 M4 T4b1: `scenario_entry_name` 0x584010).
+            let name = if entry.saved.is_some() {
+                entry.file.clone()
+            } else if entry.name.is_empty() {
                 self.texts.unnamed.clone()
             } else {
                 String::from(kept_name(&entry.name, self.bugs))
@@ -2297,7 +2462,8 @@ impl Scenario {
 
     /// The right button pressed at `point` (`scenario_dialog_right_click` 0x5822D0): on the
     /// flags' strip the teams' dialog, on the list's bar or another item its help, unless the
-    /// mouse holds a button or a bar; anywhere else but a row the screen redrawn whole.
+    /// mouse holds a button or a bar; the description's box with no popup the screen redrawn
+    /// whole, anywhere else nothing (E27 M4 T4b1).
     pub fn right(&mut self, point: [i32; 2]) -> Did {
         if self.over != Over::Nothing
             || self.input.holds_button()
@@ -2338,9 +2504,20 @@ impl Scenario {
                 self.over = Over::Help(id);
                 Did::CHANGED
             }
-            // No popup: the screen redrawn whole at once, but on a row (E27 M3 T2c: the
-            // description's lines and its bar, design §20.1).
+            // No popup: nothing on a row (design §20.1).
             None if id.is_some_and(|id| (ROW..ROW + self.look.rows).contains(&id)) => {
+                Did::default()
+            }
+            // Nor anywhere but the description and the players' items (E27 M4 T4b1:
+            // `dialog_right_click` 0x5FF790 shows nothing without a hint and the redraw follows
+            // only a popup, 0x582A80; recorded, `scn-load` no-list-button: the right-hand panel,
+            // where a single load makes no Show Available Scenarios, the partial redraw's
+            // leftovers kept). The description's scrolling text redraws (E27 M3 T2c:
+            // `scn-long-text` right-bar); the players' items' own cases (362 to 385) go to the
+            // redraw without a popup too (0x58236F, 0x5823FA).
+            None if !self.on_description(point)
+                && !id.is_some_and(|id| (advanced::HERO_AREA..TEAMS - 1).contains(&id)) =>
+            {
                 Did::default()
             }
             None => {
@@ -2467,12 +2644,27 @@ impl Scenario {
             };
         }
         match (&self.over, command) {
-            (Over::Nothing, Some(Command::Dialog(id))) if self.has(id) => {
+            // A hidden button takes no key (E27 M4 T4b1: a single load makes no Show Available
+            // Scenarios, Random Map or Advanced Options, so S, R and A do nothing there).
+            (Over::Nothing, Some(Command::Dialog(id)))
+                if self.has(id) && !self.shown.state(id).hidden =>
+            {
                 Did::held(self.input.key(&mut self.shown, id, by))
             }
             // A DEF button's own loop (0x456341 to 0x45641C) takes every message and acts on its
             // moves and its release alone: the list's keys dropped (E27 M3 T7, the review's A4).
-            (Over::Nothing, Some(Command::List(_))) if self.input.holds_button() => Did::default(),
+            (Over::Nothing, Some(Command::List(_) | Command::Delete))
+                if self.input.holds_button() =>
+            {
+                Did::default()
+            }
+            // The load mode's Delete (E27 M4 T4b1; `saved_game_delete` 0x58DFB0 with a save
+            // selected): the client's notice until T4b2 asks GENRLTXT 688.
+            (Over::Nothing, Some(Command::Delete))
+                if self.loading.is_some() && self.entry().is_some() =>
+            {
+                self.load_stub()
+            }
             (Over::Nothing, Some(Command::List(scroll))) => {
                 let list = !matches!(scroll, Scroll::Left | Scroll::Right);
                 // The description's bar steps at the key's release (E27 M3 T2c); in the client's
@@ -2603,6 +2795,19 @@ impl Scenario {
             .map(h3_ui::ui::Item::id)
     }
 
+    /// Whether `point` lies on the description's box (its scrolling text, an item of the
+    /// original's under the client's own id).
+    fn on_description(&self, point: [i32; 2]) -> bool {
+        let [x, y] = self.inside(point);
+        self.dialog
+            .item(DESCRIPTION)
+            .and_then(h3_ui::ui::Item::area)
+            .is_some_and(|([left, top], [w, h])| {
+                (left..left.saturating_add(w)).contains(&x)
+                    && (top..top.saturating_add(h)).contains(&y)
+            })
+    }
+
     /// The list's row at `point` (its text item, `dialog_item_at` 0x5FF3E0: from x 57, the
     /// original's profile's); in the client's, the list showing, from the players column's left
     /// too (x 26: E27 M3 T7, CLT-Q150 (b)) on a row's height.
@@ -2710,7 +2915,7 @@ fn mouse_dialog(dialog: &Dialog, shown: &Shown) -> Dialog {
 /// what the redraw draws itself (the client's ids but the right-hand panel, the constructor's
 /// labels and the description's lines, items of the scrolling text: E27 M3 T2c).
 fn redrawn(id: u16) -> bool {
-    let own = ((NAME..=RATING).contains(&id) && id != DESCRIPTION) || id == SIZES;
+    let own = ((NAME..=RATING).contains(&id) && id != DESCRIPTION) || id == SIZES || id == DATE;
     own || id == PANEL
         || id == TITLE
         || FILTERS.iter().any(|&(f, _)| f == id)
@@ -2754,6 +2959,21 @@ const fn hidden() -> State {
 /// The text `k` of `texts`, empty past them.
 fn text_at(texts: &[String], k: usize) -> String {
     texts.get(k).cloned().unwrap_or_default()
+}
+
+/// A save's date (E27 M4 T4b1): `pattern` ([`Texts::date`]) of the month, the day, the year, the
+/// hour and the minute ([`local`]), the minute with two digits.
+fn date(pattern: &str, [month, day, year, hour, minute]: [i64; 5]) -> String {
+    Message::parse(pattern).write(|name| {
+        Some(match name {
+            "month" => month.to_string(),
+            "day" => day.to_string(),
+            "year" => year.to_string(),
+            "hour" => hour.to_string(),
+            "minute" => alloc::format!("{minute:02}"),
+            _ => return None,
+        })
+    })
 }
 
 #[cfg(test)]

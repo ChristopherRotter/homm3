@@ -97,6 +97,17 @@ pub(crate) fn texts(bugs: Bugs) -> Texts {
             None,
             (BOX_PLAYER, bugs),
         )),
+        load_title: String::from("Load a game"),
+        autosave: String::from("AUTOSAVE"),
+        date: String::from("{{month}}/{{day}}/{{year}} - {{hour}}:{{minute}}"),
+        load_stub: Some(message::layout(
+            &layout.message,
+            (&medium, &small),
+            "No loads yet",
+            Style::Ok,
+            None,
+            (BOX_PLAYER, bugs),
+        )),
     }
 }
 
@@ -130,6 +141,7 @@ pub(crate) fn map(file: &str, name: &str) -> Entry {
         seats,
         teams: [0, 1, 0, 3, 4, 5, 6, 7],
         heroes: Heroes::default(),
+        saved: None,
     }
 }
 
@@ -144,6 +156,52 @@ pub(crate) fn scenario_of(entries: Vec<Entry>, bugs: Bugs) -> Scenario {
         bugs,
     )
 }
+
+/// The save `file` of `map` at `difficulty`, its file last written at `time` (E27 M4 T4b1).
+pub(crate) fn save(file: &str, map: Entry, difficulty: u8, time: i64) -> Entry {
+    Entry {
+        file: file.to_string(),
+        saved: Some(Saved { difficulty, time }),
+        ..map
+    }
+}
+
+/// The load mode's screen over `scn-load`'s three saves (E27 M4 T4b1, design §38.2): a large RoE
+/// map's at Hard, a medium AB one's autosave at Expert, a small SoD one's at Easy, at Asia/Kolkata's
+/// offset.
+pub(crate) fn load(bugs: Bugs) -> Scenario {
+    let layout = parse_layout(LAYOUT).unwrap();
+    let sized = |file: &str, name: &str, size, format| Entry {
+        size,
+        format: Some(format),
+        ..map(file, name)
+    };
+    let mut saves = vec![
+        save(
+            "Week_one.GM1",
+            sized("Middletown.h3m", "Middletown", 108, Format::RoE),
+            2,
+            1_016_336_220,
+        ),
+        save(
+            "AUTOSAVE.GM1",
+            sized("Dawn of War.h3m", "Dawn of War", 72, Format::Ab),
+            3,
+            1_009_838_340,
+        ),
+        save(
+            "small.GM1",
+            sized("Arrogance.h3m", "Arrogance", 36, Format::SoD),
+            0,
+            1_003_826_100,
+        ),
+    ];
+    sort(&mut saves);
+    scenario_of(saves, bugs).loading(&layout.scenario.load_begin, KOLKATA)
+}
+
+/// Asia/Kolkata's offset (+5:30), the load's recipes' zone.
+pub(crate) const KOLKATA: i32 = 5 * 3600 + 1800;
 
 /// The screen over two maps, the kept one second.
 pub(crate) fn scenario(bugs: Bugs) -> Scenario {
@@ -365,8 +423,10 @@ fn a_press_holds_a_button_and_back_ends_the_screen() {
 #[test]
 fn a_right_press_shows_the_item_s_help_while_held() {
     let mut s = scenario(Bugs::Original);
-    // The name drawn by the redraw shows no popup: the screen redrawn whole at once (E27 M3 T2c).
-    assert_eq!(s.right([580, 57]), Did::CHANGED);
+    // The name drawn by the redraw shows no popup, nor redraws (E27 M4 T4b1: the redraw follows
+    // a popup alone, `dialog_right_click` 0x5FF790; the description's box redraws, M3 T2c).
+    assert_eq!(s.right([580, 57]), Did::default());
+    assert_eq!(s.right([580, 200]), Did::CHANGED);
     assert_eq!(s.over, Over::Nothing);
     assert!(s.box_draws("PLAYERS.PAL").is_empty());
     assert!(s.right([514, 91]).changed);
@@ -541,9 +601,13 @@ fn the_list_s_items_and_bar_show_their_help() {
         assert!(s.right_release().changed);
     }
     assert_eq!(s.right([216, 160]), Did::default());
-    // The bar's help only while the list shows (else no popup, the screen redrawn whole).
+    // The bar's help only while the list shows (else no item there: nothing, E27 M4 T4b1's
+    // reading of `dialog_right_click` 0x5FF790).
     let mut s = scenario_of(many(30), Bugs::Original);
-    assert_eq!(s.right([383, 300]), Did::CHANGED);
+    assert_eq!(s.right([383, 300]), Did::default());
+    assert_eq!(s.over, Over::Nothing);
+    // An item without help redraws whole (the description's box).
+    assert_eq!(s.right([500, 200]), Did::CHANGED);
     assert_eq!(s.over, Over::Nothing);
 }
 
@@ -1387,4 +1451,5 @@ fn a_select_keeping_the_map_keeps_the_description_s_scroll_in_the_client_s_profi
     assert_eq!(described(&s), (Some("line 0".into()), Some(thumb_at(0))));
 }
 
+mod load;
 mod review;

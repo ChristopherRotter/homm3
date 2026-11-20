@@ -377,6 +377,8 @@ align = 1
 # texts: h3_view::shell::scenario::LABELS and the screen's (its entry's).
 [scenario]
 backgrounds = ["gamselb0.pcx", "gamselb1.pcx"]
+# Load on Begin's place in the load mode (E27 M4 T4b1; design §3.2).
+load_begin = "scnrlod.def"
 
 [scenario.dialog]
 place = [0, 0]
@@ -1245,7 +1247,8 @@ def = "scnrback.def"
 at = [584, 535]
 size = [166, 40]
 
-# What the redraw draws itself (scenario_info_draw 0x5840F0; the client's ids): the name, the map's
+# What the redraw draws itself (scenario_info_draw 0x5840F0; the client's ids): the name, a save's
+# date (E27 M4 T4b1: the load mode's, "%d/%d/%d - %d:%02d" of the file's local time), the map's
 # difficulty, the rating, the victory's and the loss's texts and marks.
 [[scenario.dialog.items]]
 kind = "label"
@@ -1256,6 +1259,16 @@ font = "bigfont.fnt"
 font_palette = "game.pal"
 colour = 8
 align = 0
+
+[[scenario.dialog.items]]
+kind = "label"
+id = 1015
+at = [422, 27]
+size = [278, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 6
 
 [[scenario.dialog.items]]
 kind = "label"

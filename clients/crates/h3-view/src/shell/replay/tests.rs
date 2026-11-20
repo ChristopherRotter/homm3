@@ -111,8 +111,47 @@ fn the_steps_read_as_the_harness_reads_them() {
     );
     assert_eq!(read("settle:2.5"), Step::Pause);
     assert_eq!(read("wait:1"), Step::Pause);
-    for verb in ["freeze", "games-time", "poke", "key-hold"] {
+    for verb in ["freeze", "poke"] {
         assert_eq!(read(&format!("{verb}:x")), Step::Harness(verb.into()));
+    }
+    // E27 M4 T4b1: the saves' times, a key held with the display's repeats.
+    assert_eq!(
+        read("games-time:1003826100"),
+        Step::GamesTime {
+            time: 1_003_826_100,
+            file: None
+        }
+    );
+    assert_eq!(
+        read("games-time:1009838340:AUTOSAVE.GM1"),
+        Step::GamesTime {
+            time: 1_009_838_340,
+            file: Some("AUTOSAVE.GM1".into())
+        }
+    );
+    assert_eq!(
+        read("key-hold:Down:0.3"),
+        Step::Input(Input::KeyHold("Down".into(), 1))
+    );
+    assert_eq!(
+        read("key-hold:Up:1.5"),
+        Step::Input(Input::KeyHold("Up".into(), 23))
+    );
+    assert_eq!(
+        read("key-hold:Up:2"),
+        Step::Input(Input::KeyHold("Up".into(), 35))
+    );
+    for bad in [
+        "games-time:x",
+        "games-time:",
+        "key-hold:Down",
+        "key-hold:Down:x",
+        "key-hold:Down:1.x",
+        "key-hold:Down:.5",
+        "key-hold::1",
+        "key-hold:Down:99999999",
+    ] {
+        assert!(parse(bad).is_err(), "{bad}");
     }
     // A box's buttons (E27 M4 T1b).
     assert_eq!(
