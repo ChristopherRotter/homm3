@@ -1542,13 +1542,23 @@ python3 h3shell.py drawn [--group menus] [--only menu-main] [--record]   # the v
   name, listed in `maps`), `from` (the shipped map copied), `name` and `description` (the header's,
   ours), written by `made_map` into the run's `Maps/` at each run and into `drawn`'s folder, the
   viewer given their paths in `--maps`; never kept, never committed), `games` (files of
-  `original-data/games/`), `backgrounds` (the scenario screen's
+  `original-data/games/`), since E27 M4 T4a `makes` (a maker recipe's saves, left by the original
+  in its run's `Games/` and copied to `clients/out/shell/games/<id>/`, local) and `made_games`
+  (`[[recipe.made_games]]`: `by`, the maker, and `file`: the run's saves from there, the maker
+  played first when they are missing or its recipe changed; a save's bytes differ from run to
+  run, so none is kept or committed), `tz` (the run's time zone, default UTC: Wine's local time is
+  `TZ`'s, the load and save lists show a save's local time; a zone without daylight saving time,
+  since the original converts by the present offset), `backgrounds` (the scenario screen's
   background as the original drew it at each opening, 0 or 1: the viewer's alone, E27 M3 T1a),
   `input_step` and `steps` (the docstring's
   `STEPS`: `until`, `check`, `step` (in increments: `step:<ms>:<by>`), `move`, `click`,
   `down`/`up`, `right`/`right-up`, `key`, `type`, `press`/`point` a dialog's button by its probes,
   `until-button`, `shot`, `clip`, `clip-until`; for a load, `settle` (the next input's real-time
-  pause), `click-wait` and `wait`; `games-time` (the saves' file times); `poke` (bytes into the
+  pause), `click-wait` and `wait`; `games-time` (the saves' file times, since E27 M4 T4a one file's
+  with `games-time:<s>:<file>`); `key-hold:<key>:<s>` (E27 M4 T4a: a key held `<s>` seconds of
+  real time with the display's auto-repeat on, 660 ms then 25 a second: a held key's repeats,
+  their count by real time, so a recipe holds long enough that it no longer matters; each run
+  otherwise starts with the auto-repeat off); `poke` (bytes into the
   game's memory, only to bring about what the original then shows itself: an end's condition
   met). Each run starts afresh: the settings key removed and written again from
   `setup.sh`'s `h3.reg` with `First Time` 0 and `Bink Video` 1 (the Bink copies of the start's

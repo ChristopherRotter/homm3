@@ -111,7 +111,7 @@ fn the_steps_read_as_the_harness_reads_them() {
     );
     assert_eq!(read("settle:2.5"), Step::Pause);
     assert_eq!(read("wait:1"), Step::Pause);
-    for verb in ["freeze", "games-time", "poke"] {
+    for verb in ["freeze", "games-time", "poke", "key-hold"] {
         assert_eq!(read(&format!("{verb}:x")), Step::Harness(verb.into()));
     }
     // A box's buttons (E27 M4 T1b).

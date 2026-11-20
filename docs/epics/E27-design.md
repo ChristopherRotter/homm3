@@ -3908,3 +3908,94 @@ game built (`GameState::new`, the engine's validation) and the commands applied 
 `h3_game::apply`, each as its actor's, with `Replay::verify`'s checks in its order (the
 checkpoints' count, each checkpoint, the final hash, the final day). The result: `begin::Game`
 (the map's file, the rebuilt setup, the table) and the state after the commands, for M5's host.
+
+## 38. Load Game single: the reading and the recordings (M4 T4a, 2026-11-20)
+
+Decision 72: T4 cut in two, T4a the reading and the recordings (the harness and the docs, no
+client code), T4b the client against them. Read with `scripts/exe.py` (what §3.3 to §3.6 left
+*not read*); recorded under Wine (`scn-load` again, `scn-load-last` new, `scn-load-none` as kept).
+
+### 38.1 Read
+
+- **The date** (`scenario_info_draw` 0x5841C8 to 0x58426B): the record's file time through
+  `FileTimeToLocalFileTime` and `FileTimeToSystemTime`, then "%d/%d/%d - %d:%02d" of the month,
+  the day, the year (four digits), the hour (0 to 23) and the minute: `3/17/2002 - 9:07`
+  (recorded). Windows' conversion takes the zone's present offset, not the one at the file's
+  date, so under a zone with daylight saving time the shown hour follows the day it is shown on;
+  Wine's local time is the `TZ` variable's (checked: UTC, Asia/Kolkata, Europe/Berlin). Drawn
+  only with a selection and in the load or save mode (or the random maps' list, +0x66).
+- **The panel's name in the load and save modes** (0x583F20, from the info draw): the record's
+  +0x58C (the save's map name), GENRLTXT 509 when empty, 508 past the list, the current game's
+  (game +0x1FB40) with no selection; the autosave's shows GENRLTXT 77 (`AUTOSAVE`, §3.3:
+  recorded, the map's name not shown). The rows show the file's name (§3.4).
+- **Delete's end** (`saved_game_delete` 0x58E219 to 0x58E2C9): the bar's range (count − rows +
+  1); with saves left `scenario_list_sort`(2) in the direction the last sort left (+0x36C kept:
+  recorded, a flipped size sort's descending order makes the version order descending too), then
+  `scenario_select`(0); with none the whole redraw and `scenario_select`(−1).
+- **A held key** (`input_key_message` 0x4EC0E0, read at E24 M2 T1a2): every WM_KEYDOWN is queued,
+  a repeat's too, so a held list key moves the selection at each of the system's repeats.
+
+### 38.2 The harness (`h3shell.py`; the runbook's "The shell's screens")
+
+- **The saves made by the original** (the user's `AUTOSAVE.GM1` and `save1.GM1` are of a random
+  map, `random_map_6.h3m`, which no client's save can name): three maker recipes (`makes`) play
+  a shipped map's new game and leave a save: `scn-load-make-large` `Week_one.GM1` (Middletown,
+  108, RoE, Hard), `scn-load-make-small` `small.GM1` (Arrogance, 36, SoD, Easy), both saved from
+  the system options on the first day; `scn-load-make-auto` `AUTOSAVE.GM1` (Dawn of War, 72, AB,
+  Expert), written at the second day's start (End Turn, the computers' turns on the stepped clock;
+  no autosave is written on the first day, nor with the settings' Autosave off, setup.sh's).
+  A recipe's `made_games` takes them from `clients/out/shell/games/<maker>/` (local), the maker
+  played first when they are missing or its recipe changed since. A save's bytes differ from run
+  to run in three bytes after its file's name (heap pointers the original never set), so no
+  digest of them is kept; the recipes that list them are recorded twice as any other.
+- **The time zone** (`tz`, default UTC): pinned for every shell run (a session's own `TZ` was
+  Europe/Berlin on 2026-11-20, the system's UTC: the recordings before T4a took whichever their
+  session had). The load's recipes take Asia/Kolkata (+5:30, no daylight saving time), so the
+  local conversion shows in the minutes and across a year's end. `drawn` gives the viewer the
+  recipe's zone too.
+- **Each file its own time** (`games-time:<s>:<file>`): `small.GM1` 10/23/2001 - 14:05,
+  `AUTOSAVE.GM1` 1/1/2002 - 4:09 (2001-12-31 22:39 UTC), `Week_one.GM1` 3/17/2002 - 9:07.
+- **A held key** (`key-hold:<key>:<s>`): the display's auto-repeat on at Xvfb's rate (660 ms, then
+  25 a second) for `<s>` seconds of real time, then off and the key released. A second `xdotool
+  keydown` of a held key gives no X event (checked), and the frozen clock cannot time X's repeats,
+  so their count follows real time: the recipe holds long enough that the outcome is the list's
+  end either way. Each shell run now starts with the display's auto-repeat off (as h3drive's and
+  h3map.py's do). The viewer stops at `key-hold` as the harness's own until T4b.
+
+### 38.3 What the recordings show
+
+- **The screen** (`scn-load` screen): title ArrayTxt 230, no Show Available Scenarios, Random
+  Map or Advanced Options button (a right press there shows nothing: no-list-button), no flags'
+  strip, Load `scnrlod.def`; the list built in key 2's order, the first selected (no kept save:
+  §3.1's `NEWGAME` matches none): `Week_one.GM1` (RoE) 4/2 L, `AUTOSAVE.GM1` (AB) 6/4 M,
+  `small.GM1` (SoD) 4/4 S, each row's victory and loss marks; the panel the map's name, the date,
+  the map's difficulty, the save's difficulty selected on the disabled buttons and its rating.
+- **Keys:** Down and Up move a row; a key held 0.3 s (under the delay) one row; held 1.5 s Down
+  reaches the last row, Up the first (the repeats act as presses).
+- **Rows:** a press selects (row-1, row-2), past the list nothing (row-past).
+- **Sorts** (name twice, size twice): the order as §3.4's comparisons, the autosave leading by
+  name. After each sort the partial redraw (CLT-Q138, §19.4) leaves the size mark, the difficulty
+  buttons and now the rating stale: the rating's text drawn over the last one (name-1: Easy and
+  "80%" over "160%" for the autosave's Expert). Decision 48's class: the client draws whole, the
+  original's stale pixels for the comparisons only (review item 22).
+- **Popups:** Load's is Begin's (`Help.txt` 103, "Start the selected scenario"); a disabled
+  difficulty's shows its popup (easy-popup), and its press changes nothing (easy-pressed: the
+  whole screen as it was before the sorts, the popups' redraw having drawn it whole).
+- **Delete** (688 with the file's name, style 2): Cancel keeps it; OK deletes the selection
+  (`Week_one.GM1`), the list in descending version order (`small.GM1` before `AUTOSAVE.GM1`),
+  the first selected with the partial redraw's stale difficulty and rating.
+- **Load:** the loading's clip, then the map (Arrogance, day 1; play is M5's).
+- **The last save deleted** (`scn-load-last`): the empty list, the panel empty but for the size
+  mark's last frame and the difficulty last shown, Load disabled; Load, Enter and Down do nothing;
+  Back; Single again shows GENRLTXT 686 (no saved games), and after its OK no difficulty chosen.
+- **No saves** (`scn-load-none`): as kept.
+
+### 38.4 For T4b
+
+The client's saves made to match the recipes' (the viewer given them as `drawn` gives the made
+maps: the same three maps, difficulties and file names, each file's time), so that the list, the
+panel and the sorts compare whole; the autosave's day 2 needs the replay's End Turns. The load
+ends at play's stub (as M3's begin; `save::load`'s `Loaded` kept for E24 M5), so `scn-load`'s
+`load` clip and `map` stay the original's alone. A held key's repeats in the viewer (`key-hold`)
+and the window (the shell's window takes none, §16.4). The hot seat's load (T5, `adv-load`) uses
+the user's random-map saves too: T5 makes hot-seat saves the same way.
