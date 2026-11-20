@@ -606,6 +606,9 @@ pub(crate) enum Effect<'k> {
     /// The market's window for the visitor's owner (a Trading Post, the Freelancer's Guild, a
     /// Black Market: ADV-MKT-001, E08 T133a2).
     Market,
+    /// The team's kind mark, then the Altar's window for the visitor's owner (ADV-ALT-001,
+    /// ADV-BON-009; E08 T134a).
+    Altar,
 }
 
 impl ObjectKind {
@@ -702,14 +705,14 @@ impl ObjectKind {
             // creature banks are typed, drawn since T124b1, visited since T124b2 (increment 13's
             // design note §6).
             // E08 T132a2: increment 14's four kinds are typed; the markets' visit came with
-            // T133a2, the Altar's, the Hill Fort's and the factory's come with T134.
+            // T133a2, the Altar's with T134a, the Hill Fort's and the factory's come with T134b.
             Self::Market(_) => Some(Effect::Market),
+            Self::Altar(_) => Some(Effect::Altar),
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
             | Self::Hole
             | Self::RandomDwelling
-            | Self::Altar(_)
             | Self::HillFort(_)
             | Self::WarMachineFactory(_) => None,
         }

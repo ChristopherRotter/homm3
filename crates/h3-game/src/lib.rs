@@ -62,13 +62,20 @@ mod treasury;
 mod tests;
 
 pub use command::{
-    Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameCommandError, GameEvent,
-    HireAnswer, MarketAnswer, NoopSink, SchoolChoice, Sink, SkillOffer, TavernAnswer,
+    Actor, AltarAnswer, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameCommandError,
+    GameEvent, HireAnswer, MarketAnswer, NoopSink, SchoolChoice, Sink, SkillOffer, TavernAnswer,
     UniversityAnswer, apply,
 };
 pub use garrisons::MapGarrisonView;
 /// A map Tavern's visit (E09 T39a; `h3_adventure`'s type): what [`GameState::tavern`] gives.
 pub use h3_adventure::TavernVisit;
+/// An Altar of Sacrifice's visit, its places, its refusals and what its window offers (E08 T134a;
+/// `h3_adventure`'s types): what [`GameState::altar`], [`AltarAnswer`],
+/// [`GameCommandError::Altar`] and [`DecisionView::Altar`] carry.
+pub use h3_adventure::{
+    ALTAR_BACKPACK_PLACES, ALTAR_SLOTS, ALTAR_WORN_PLACES, AltarArtifact, AltarError, AltarOffers,
+    AltarPlaces, AltarScreens, AltarStack, AltarVisit,
+};
 /// What [`reveal`] answers of the adventure map and the grid it reads (SRV-Q26 (a);
 /// `h3_adventure`'s types): a server keeps each viewer's last explored grid.
 pub use h3_adventure::{AdventureReveal, BitGrid, RevealedTile};
@@ -122,8 +129,8 @@ pub use legal::{
 };
 pub use manage::{Manage, ManageError};
 pub use observe::{
-    DecisionView, GameObservation, GameReveal, HeroInfo, HireCreature, HireSeen, HireView,
-    LevelUpView, MarketView, PlayerView, Viewer, observe, project, reveal,
+    AltarView, DecisionView, GameObservation, GameReveal, HeroInfo, HireCreature, HireSeen,
+    HireView, LevelUpView, MarketView, PlayerView, Viewer, observe, project, reveal,
 };
 pub use ruleset::{GameRuleset, RulesetMismatch};
 pub use setup::{
@@ -186,5 +193,7 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// E09 design §61). v34 (E09 T39a): a map Tavern's decision among the decisions (GAM-DEC-010: its
 /// tag 9, the owner, the hero, the Tavern's type and anchor, its visitable tile). v35 (E08 T133b):
 /// a market's decision among the decisions (GAM-DEC-011: its tag 10, the owner, the hero, the
-/// market's object index, type and anchor).
-pub const GAME_STATE_HASH_VERSION: u32 = 35;
+/// market's object index, type and anchor). v36 (E08 T134a): an Altar of Sacrifice's decision
+/// among the decisions (GAM-DEC-012: its tag 11, the owner, the hero, the Altar's object index,
+/// type and anchor).
+pub const GAME_STATE_HASH_VERSION: u32 = 36;

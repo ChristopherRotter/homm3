@@ -754,40 +754,40 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x4677964fd76ec16c",
-    "0x7c1994637e80401f",
-    "0x5c18352e852fe945",
-    "0x3d836a24f1eb0c1c",
-    "0xb19a4ce88651b3e4",
-    "0x4abf23470ccacd0d",
-    "0xd249d25fcfd3e8aa",
-    "0x64c0875a4de31153",
-    "0xb14b003323701d85",
-    "0xf5649f5b911fcff0",
-    "0x1dbc583edc4da0c3",
-    "0x7fd8707edfeb2d8f",
-    "0x867c8f2aeb5d3df2",
-    "0x7f35c44ee24e82e8",
-    "0x23e1abba73a9aec4",
-    "0xd8620aefe7a11056",
-    "0x811eb94b641bccf8",
-    "0xdeffa395d3173121",
-    "0x9ad7b212f9c8c3a2",
-    "0x8b7d426a0f42f2da",
-    "0x2f98a1e5c6105529",
-    "0x94b85d9dc8076e2e",
-    "0x6e81f059234d108a",
-    "0xf60b54032ae121dd",
-    "0xf6ab580276a60cbb",
-    "0xcf8a2f52773af977",
-    "0xb369d4d9a23bab38",
-    "0xedcf40902999eb73",
-    "0xf41ce78c6fb723b1",
-    "0x76b9d3fe035be9c6",
+    "0xefb1b0550aff5bff",
+    "0xba34ccc229b05798",
+    "0x4c3df810daf5880a",
+    "0xb3c419ace3b16d6b",
+    "0x8c00b800570731d7",
+    "0xa8db2d8fc98b48b2",
+    "0x258fe73c3ed3c781",
+    "0xd24093ac1c41c888",
+    "0x55d14808293f8d22",
+    "0x232c3d02a95ffa27",
+    "0x167d1c54a6851438",
+    "0xc0f077acb18a31a0",
+    "0xad1fc21575d99b31",
+    "0x970279189004186b",
+    "0x349a00384aeebe03",
+    "0xb4cb1bd54ab72075",
+    "0xa4844ed50d90b9df",
+    "0x0d837c9a7c565926",
+    "0x0b9d395547893a4d",
+    "0x907def3c40779e39",
+    "0x7043f7c314336336",
+    "0x95c7624722b6cd39",
+    "0xc662506ab9b9a40d",
+    "0x9b1d1c2999544216",
+    "0x71219ded8396c5b0",
+    "0x5e35e1ad6d3483ea",
+    "0xba1218620df4d485",
+    "0x02d3ec77f816fee6",
+    "0xc46573f999147d3c",
+    "0x8d6c533fbb68fe63",
 ]
 
 [replay]
-format = 21
+format = 22
 engine = "0.1.0"
 seed = "169"
 difficulty = 1
@@ -813,7 +813,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 35
+game_state_hash_version = 36
 adventure_state_hash_version = 27
 checkpoint_every = 25
 
@@ -824,7 +824,7 @@ import_version = 27
 
 [result]
 day = 29
-final_hash = "0x453a1be605e01bc1"
+final_hash = "0xac12c97c59d431f6"
 
 [[players]]
 colour = 0

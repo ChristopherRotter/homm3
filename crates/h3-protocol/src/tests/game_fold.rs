@@ -86,6 +86,7 @@ fn untold(decision: Option<&Decision>) -> bool {
                 | Decision::University { .. }
                 | Decision::Hire { .. }
                 | Decision::Market { .. }
+                | Decision::Altar { .. }
         )
     )
 }
@@ -804,6 +805,12 @@ fn the_fold_leaves_the_view_for_messages_and_what_no_event_carries() {
                 anchor: a,
             },
             GameEvent::MarketOpened {
+                player: 1,
+                hero: 4,
+                object_type: ty,
+                anchor: a,
+            },
+            GameEvent::AltarOpened {
                 player: 1,
                 hero: 4,
                 object_type: ty,

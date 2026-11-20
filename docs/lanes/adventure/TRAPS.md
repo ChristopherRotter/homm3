@@ -54,6 +54,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   golden another lane merges while its pull request is open, which GitHub still shows mergeable:
   merge `master` in and re-record once more right before the merge (E08 T132b: #1053's six
   taverns replays left `master` red).
+- A replay format, encoding or protocol bump also breaks another lane's literal of the old
+  number, which only that lane's workflow runs (E08 T134a: the client lane's `save/tests.rs`
+  replaced `format = 20`, which matched nothing once T133b's v21 met #1070, so its refusal check
+  failed and `master`'s Clients workflow went red): grep `clients/` and the other lanes' tests for the old number when bumping, and
+  write the literal from the version constant.
 - Counting increment 10's events (E08 T96a): a purchase's joins are `CreaturesJoined`, as the free creatures' are; tell them apart by the answer before (the hire question's accept, or a `Buy`). A refusal cannot stand in a golden replay: `Replay::record_commands` stops at the first command the game rejects, so a script shows a refusal as the legal set without that `Buy` and checks the error on a copy in its probe.
 - The capture harness's hire dialog (E08 T90): the topmost dialog's vtable is 0x640C4C, not the manager's 0x640C70 that `docs/exe/map.toml` names; the manager (the most +0xAC, the amount +0xB8) is 0x80 after the dialog, else found by a scan (`h3mem.recruit_manager`). A settle that does not know a screen returns with it open and the next step's key fails.
 - A recipe's step is checked only as it comes (E08 T129b: a `key` step's `actions` refused at E14-15, three minutes into batch E14): try a new step shape in a short recipe, or the driver, before a long run.

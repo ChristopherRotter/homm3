@@ -69,6 +69,14 @@ information and one choice):
 
 **The adventure env** (yours since E08 T45):
 
+- 2026-11-20 (the adventure lane, E08 T134a, `adventure/e08-t134a`, `cross-lane` with the user's
+  consent, E08 decision 385; **your paths changed, for your review; adventure action encoding
+  v15 taken**): an Altar of Sacrifice's decision (GAM-DEC-012) is a new `h3_game::Answer::Altar`,
+  so `answer_entry` maps its `Leave` onto the closing role (`DECLINE`) and its two sacrifices onto
+  none, no new entry (the module's docs, the test in `adventure/tests.rs`); `legal_commands` lists
+  its `Leave` alone until E08 T135a (encoding the next free then). Also the adventure replay format
+  v22 (`adventure/replay.rs`, `answer altar …`); the bots tables did not move. Random games now
+  open an Altar's decision on the maps with one and leave it.
 - 2026-11-20 (the adventure lane, E08 T133b, `adventure/e08-t133b`, `cross-lane` with the user's
   consent, E08 decision 384; **your paths changed, for your review; adventure action encoding
   v14 taken**): a market's decision (GAM-DEC-011) is a new `h3_game::Answer::Market`, so

@@ -203,6 +203,11 @@ pub enum Answer {
         /// The answer.
         answer: MarketAnswer,
     },
+    /// An Altar of Sacrifice's sacrifice or leaving (GAM-DEC-012; E08 T134a, v76).
+    Altar {
+        /// The answer.
+        answer: AltarAnswer,
+    },
     /// Closes a meeting (GAM-DEC-003) or an army dialog (GAM-DEC-004).
     Close {},
 }
@@ -335,6 +340,27 @@ pub enum MarketAnswer {
         pay: u16,
     },
     /// Leaves the market.
+    Leave {},
+}
+
+/// An Altar of Sacrifice's answer (`h3_game::AltarAnswer`, GAM-DEC-012; E08 T134a, v76): a
+/// sacrifice names everything it takes. The experience is the server's (ADR-0004).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum AltarAnswer {
+    /// Sacrifices the hero's artifacts at these places (ADV-ALT-002; `h3_game::AltarPlaces`).
+    Artifacts {
+        /// Bit `p`: the worn position `p`.
+        worn: u32,
+        /// Bit `i`: the backpack's index `i`.
+        backpack: u64,
+    },
+    /// Sacrifices so many creatures of each slot of the hero's army (ADV-ALT-003).
+    Creatures {
+        /// The amounts by slot, 0 none.
+        amounts: [u32; 7],
+    },
+    /// Leaves the Altar.
     Leave {},
 }
 
@@ -550,6 +576,11 @@ pub enum GameReject {
     Market {
         /// Why.
         error: MarketReject,
+    },
+    /// An Altar's sacrifice the game refused (E08 T134a, v76).
+    Altar {
+        /// Why.
+        error: AltarReject,
     },
     /// The session's, not the engine's (E16 M5 T8a, v45): the connection holds no seat of the
     /// game.
@@ -861,6 +892,32 @@ pub enum TavernReject {
     TooManyHeroes {},
     /// A hero stands on the Tavern's visitable tile.
     Occupied {},
+}
+
+/// Why an Altar's sacrifice was refused (`h3_game::AltarError`, GAM-DEC-012; E08 T134a, v76).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum AltarReject {
+    /// The visit's hero is not on the map, or its object is no Altar.
+    Visit {},
+    /// The hero's class's faction does not sacrifice that.
+    Screen {},
+    /// More places than the Altar takes, or a place without an artifact.
+    Places {},
+    /// An artifact the Altar never takes.
+    Kept {
+        /// The artifact's handle.
+        artifact: u16,
+    },
+    /// A slot's amount above its stack (or on an empty slot).
+    Amount {
+        /// The slot.
+        slot: u8,
+    },
+    /// The sacrifice would take the army's last creature.
+    LastCreature {},
+    /// The sacrifice gives no experience.
+    Nothing {},
 }
 
 /// Why a market's answer was refused (`h3_game::MarketError`, GAM-DEC-011; E08 T133b, v75).

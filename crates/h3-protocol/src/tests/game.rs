@@ -793,6 +793,49 @@ fn decision_back(d: &Decision) -> DecisionView {
             anchor: pos_back(object.anchor),
         },
         Decision::Market { market } => DecisionView::Market(market_back(market)),
+        Decision::Altar { altar } => DecisionView::Altar(altar_back(altar)),
+    }
+}
+
+/// An Altar's window back in the engine's types (E08 T134a, v76).
+fn altar_back(a: &AltarWindow) -> h3_game::AltarView {
+    let place = |p: ArtifactPlace| match p {
+        ArtifactPlace::Worn { position } => {
+            h3_game::ArtifactPlace::Worn(h3_game::Position(position.into()))
+        }
+        ArtifactPlace::Backpack { index } => h3_game::ArtifactPlace::Backpack(index.into()),
+    };
+    h3_game::AltarView {
+        hero: HeroId::new(a.hero),
+        object_type: Handle::from_raw(a.object.object_type),
+        anchor: pos_back(a.object.anchor),
+        offers: h3_game::AltarOffers {
+            screens: h3_game::AltarScreens {
+                artifacts: a.artifacts,
+                creatures: a.creatures,
+            },
+            places: a.places,
+            artifacts: a
+                .items
+                .iter()
+                .map(|item| h3_game::AltarArtifact {
+                    place: place(item.place),
+                    artifact: Handle::from_raw(item.artifact),
+                    experience: item.experience,
+                })
+                .collect(),
+            stacks: a
+                .stacks
+                .iter()
+                .map(|s| h3_game::AltarStack {
+                    slot: s.slot,
+                    each: s.each,
+                    most: s.most,
+                    experience: s.experience,
+                })
+                .collect(),
+            to_next_level: a.to_next_level,
+        },
     }
 }
 
@@ -1345,6 +1388,44 @@ fn every_decision() -> Vec<DecisionView> {
         anchor,
         offers: h3_game::MarketOffers::default(),
         recipients: Vec::new(),
+    }));
+    // E08 T134a (v76): an Altar with both screens and each list, and one with none.
+    out.push(DecisionView::Altar(h3_game::AltarView {
+        hero,
+        object_type,
+        anchor,
+        offers: h3_game::AltarOffers {
+            screens: h3_game::AltarScreens {
+                artifacts: true,
+                creatures: true,
+            },
+            places: 23,
+            artifacts: vec![
+                h3_game::AltarArtifact {
+                    place: h3_game::ArtifactPlace::Worn(h3_game::Position(17)),
+                    artifact: Handle::from_raw(0),
+                    experience: None,
+                },
+                h3_game::AltarArtifact {
+                    place: h3_game::ArtifactPlace::Backpack(63),
+                    artifact: Handle::from_raw(41),
+                    experience: Some(3150),
+                },
+            ],
+            stacks: vec![h3_game::AltarStack {
+                slot: 6,
+                each: 625,
+                most: 4,
+                experience: 2625,
+            }],
+            to_next_level: 1200,
+        },
+    }));
+    out.push(DecisionView::Altar(h3_game::AltarView {
+        hero,
+        object_type,
+        anchor,
+        offers: h3_game::AltarOffers::default(),
     }));
     out
 }

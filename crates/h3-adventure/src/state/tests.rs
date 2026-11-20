@@ -894,6 +894,7 @@ fn the_hash_sees_content_not_sharing() {
 }
 
 mod added;
+mod altar;
 mod answers;
 mod banks;
 mod boats;

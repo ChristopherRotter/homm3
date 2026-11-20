@@ -24,6 +24,9 @@ pub(super) enum Rest {
     /// guard and its walk visits the object after it; `AdventureState::visit_held`). The hero's
     /// tile is the one it entered: its owner has an open decision until the rest runs. From E08
     /// T63b to T103d the rest was the guard's visit after the object's (`Guard`), hashed the same.
+    /// Since E08 T134a (GAM-DEC-007 amended, decision 371) also an Altar of Sacrifice's return
+    /// after the level-ups a sacrifice opened: the Altar closed before them and its visit is held
+    /// here, so it opens again once they are answered (`AltarOpened`).
     Visit,
     /// A reward record's experience (ADV-RWD-001, HER-CHG-003: computed with the record), given
     /// with its levels once the record's army dialog closes (the original's order, D-39).

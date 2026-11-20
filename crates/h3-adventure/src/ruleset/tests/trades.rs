@@ -8,7 +8,9 @@ extern crate std;
 
 use std::boxed::Box;
 
-use h3_content::{ArtifactClass, ArtifactDef, ArtifactSlotDef, FactionDef};
+use h3_content::{
+    ArtifactClass, ArtifactDef, ArtifactSlotDef, FactionDef, HeroParamsDef, SecondarySkillDef,
+};
 
 use super::*;
 use crate::Lot;
@@ -41,7 +43,12 @@ fn artifact(k: &str, class: ArtifactClass, machine: Option<&str>) -> ArtifactDef
 /// two of the war machine `t:ram` (`t:ram_a`, `t:ram_b`) and the war machine `t:tent` without
 /// one.
 fn trade_core() -> Ruleset {
-    let t = ContentPack {
+    trade_core_with(|_| {})
+}
+
+/// [`trade_core`] with its pack `t` edited by `edit`.
+fn trade_core_with(edit: impl FnOnce(&mut ContentPack)) -> Ruleset {
+    let mut t = ContentPack {
         terrains: vec![terrain("t:grass"), terrain("t:sea"), terrain("t:rock")],
         resources: vec![resource("t:wood"), resource("t:gold"), resource("t:gem")],
         factions: vec![faction("t:castle"), faction("t:keep")],
@@ -71,6 +78,7 @@ fn trade_core() -> Ruleset {
         }],
         ..ContentPack::new(manifest("t", &[]))
     };
+    edit(&mut t);
     let u = ContentPack {
         terrains: vec![terrain("u:swamp")],
         factions: vec![faction("u:fen")],
@@ -252,9 +260,13 @@ fn the_four_kinds_compile_entered_and_only_the_markets_visited() {
     );
     for k in ["t:post", "t:altar", "t:fort", "t:factory"] {
         let kind = kind(k);
-        // The markets' visit since E08 T133a2, the others' none before T134; neither ownable
-        // nor weekly.
-        assert_eq!(kind.effect().is_some(), k == "t:post", "{k}");
+        // The markets' visit since E08 T133a2, the Altar's since T134a, the others' none
+        // before T134b; neither ownable nor weekly.
+        assert_eq!(
+            kind.effect().is_some(),
+            ["t:post", "t:altar"].contains(&k),
+            "{k}"
+        );
         assert!(!kind.ownable() && !kind.weekly());
         assert_eq!(kind.timed_mark(), None);
     }
@@ -486,6 +498,59 @@ fn the_market_parameters_are_checked() {
             pack: "t".into(),
         }
     );
+}
+
+// covers: ADV-ALT-002, ADV-ALT-003
+#[test]
+fn an_altar_refuses_a_backpack_or_an_army_its_answer_cannot_name() {
+    // A backpack of 64 at most (the answer's set of places, decision 386).
+    let with_backpack = |backpack| {
+        trade_core_with(|t| {
+            t.skills = vec![SecondarySkillDef {
+                key: key("t:wisdom"),
+                name: "Wisdom".into(),
+                levels: [vec![], vec![], vec![]],
+            }];
+            t.hero_params = Some(HeroParamsDef {
+                primary_min: [0, 0, 1, 1],
+                primary_max: 99,
+                backpack,
+                learn_level: 2,
+                experience: vec![0, 1000],
+                max_level: 74,
+                wisdom: key("t:wisdom"),
+                schools: vec![],
+                mana_ceiling: 999,
+                base_mana_regain: 1,
+                regain_specialist_bonus: 1,
+            });
+        })
+    };
+    let reason =
+        |core: &Ruleset, packs: &[AdventurePack]| match AdventureRuleset::compile(core, packs) {
+            Err(AdventureCompileError::InvalidObjectType { key, reason }) => (key, reason),
+            other => panic!("{other:?}"),
+        };
+    assert!(AdventureRuleset::compile(&with_backpack(64), &trade_packs()).is_ok());
+    assert_eq!(
+        reason(&with_backpack(65), &trade_packs()),
+        (
+            "t:altar".into(),
+            "an altar under a backpack of more than 64"
+        )
+    );
+    // Seven army slots at most (the answer's amounts by slot).
+    let mut packs = trade_packs();
+    pack(&mut packs, "t").params.as_mut().unwrap().army_slots = NonZeroU8::new(8).unwrap();
+    assert_eq!(
+        reason(&trade_core(), &packs),
+        ("t:altar".into(), "an altar under more than 7 army slots")
+    );
+    // Without an Altar neither bounds anything.
+    pack(&mut packs, "t")
+        .object_types
+        .retain(|t| t.key.as_str() != "t:altar");
+    assert!(compile_trades(&packs).is_ok());
 }
 
 // covers: ADV-ALT-001

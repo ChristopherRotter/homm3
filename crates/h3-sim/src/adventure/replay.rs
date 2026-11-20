@@ -53,10 +53,11 @@ use super::rollout::choose;
 /// 20 (E27 M4 T3a, the client lane's with the user's consent; CLT-Q156 (a)): the players' choices
 /// over the map's import ([`PlayerChoices`]: who is human, the faction's choice, the hero's pick),
 /// so a game a client's scenario screen set up replays; version 21 (E08 T133b): a market's answers
-/// (`h3_game::MarketAnswer`: a trade, a transfer, a sale, a purchase, `Leave`; GAM-DEC-011). A
-/// replay of another version is refused
-/// ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 21;
+/// (`h3_game::MarketAnswer`: a trade, a transfer, a sale, a purchase, `Leave`; GAM-DEC-011);
+/// version 22 (E08 T134a): an Altar of Sacrifice's answers (`h3_game::AltarAnswer`: a sacrifice of
+/// artifacts by their places, of creatures by slot, `Leave`; GAM-DEC-012). A replay of another
+/// version is refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 22;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -4024,7 +4024,7 @@ id       = "ADV-BON-009"
 title    = "The kind marks"
 context  = "adventure"
 status   = "verified"
-summary  = "A team's kind marks (increment 12's design note sections 3 and 10; decision 302; the original's kinds_visited, game +0x4E344 + k, a bit for every player of the visitor's team, which the map hint's bonus line reads): a visit of a type the part marks (`ObjectType::kind_mark`) gives each player of the visitor's team that did not hold it the type's mark, told to each of them (`KindKnown`); the team is the visitor alone until E10's teams. Where: the ten `bonus` kinds with their gain, the Magic Well when its day mark was not held, the Magic Spring on every visit; increment 7's once-per-hero gifts once the hero is admitted and unmarked (the Schools before their gold, the Tree before its price), the Shrines and the Witch Huts first, the University at the visit that opens its dialog (the original's after it). A player sees its team's marks (`AdventureObservation::kinds`), never another team's. E08 T115b: the flags' `kinds`, `AdventureState::mark_kind`, `knows_kind`, `kinds_known`; adventure state hash v24."
+summary  = "A team's kind marks (increment 12's design note sections 3 and 10; decision 302; the original's kinds_visited, game +0x4E344 + k, a bit for every player of the visitor's team, which the map hint's bonus line reads): a visit of a type the part marks (`ObjectType::kind_mark`) gives each player of the visitor's team that did not hold it the type's mark, told to each of them (`KindKnown`); the team is the visitor alone until E10's teams. Where: the ten `bonus` kinds with their gain, the Magic Well when its day mark was not held, the Magic Spring on every visit; increment 7's once-per-hero gifts once the hero is admitted and unmarked (the Schools before their gold, the Tree before its price), the Shrines and the Witch Huts first, the University at the visit that opens its dialog (the original's after it); since E08 T134a the Altar of Sacrifice at every visit, before its window (the original's k 28 after its dialog; increment 14's design note section 10). A player sees its team's marks (`AdventureObservation::kinds`), never another team's. E08 T115b: the flags' `kinds`, `AdventureState::mark_kind`, `knows_kind`, `kinds_known`; adventure state hash v24."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4405,8 +4405,8 @@ numeric  = "integer"
 id       = "ADV-ALT-001"
 title    = "The Altar of Sacrifice's visit: the screens by the hero's class's faction"
 context  = "adventure"
-status   = "implemented"
-summary  = "An Altar of Sacrifice (the original's class 2) is entered, none from above, and its visit sets the team's kind mark. Which screens its window allows follows the visiting hero's class's faction: Castle, Rampart and Tower heroes sacrifice artifacts only; Inferno, Necropolis and Dungeon heroes creatures only; Stronghold, Fortress and Conflux heroes both, the artifacts first. Each pack names its factions' entries (artifacts, creatures or both, one at least, once per faction); with an Altar type in the part every core faction has one. E08 T132a2: the kind, the factions' entries (base's eight, ab's Conflux) and their checks. E08 T132b (map import v27, ADV-OBJ-002): class 2 imported as altar_of_sacrifice at subclass 0 without a body; the visit and its window come with T134a."
+status   = "verified"
+summary  = "An Altar of Sacrifice (the original's class 2) is entered, none from above, and its visit sets the team's kind mark. Which screens its window allows follows the visiting hero's class's faction: Castle, Rampart and Tower heroes sacrifice artifacts only; Inferno, Necropolis and Dungeon heroes creatures only; Stronghold, Fortress and Conflux heroes both, the artifacts first. Each pack names its factions' entries (artifacts, creatures or both, one at least, once per faction); with an Altar type in the part every core faction has one. E08 T132a2: the kind, the factions' entries (base's eight, ab's Conflux) and their checks. E08 T132b (map import v27, ADV-OBJ-002): class 2 imported as altar_of_sacrifice at subclass 0 without a body. E08 T134a: the visit (every visit, any player's hero: the computer's nothing is E10's behaviour) sets the team's kind mark (ADV-BON-009), then opens the window (AdventureOutcome::service, ServiceVisit::Altar) for a hero whose class's faction has its screens, the game's decision (GAM-DEC-012); its view (AltarOffers: the screens, the places, each artifact's and stack's experience, the experience to the next level; AdventureState::altar_offers)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4431,8 +4431,8 @@ numeric  = "integer"
 id       = "ADV-ALT-002"
 title    = "The Altar of Sacrifice's artifacts"
 context  = "adventure"
-status   = "implemented"
-summary  = "An artifact put on the altar gives experience by its class: treasure 1 000, minor 1 500, major 3 000, relic 6 000, a special one 0 (the Grail, a Spell Scroll, the Ballista, the Ammo Cart, the First Aid Tent go for 0 beside others: A-47 harmless and accepted, D-72 the original's, E08 decision 367); the Spell Book and the Catapult are never put on it; a sacrifice takes at most 23 (the altar's 22 places and the one held); each artifact's experience is the hero's gain with Learning (HER-EXP-001), truncated per artifact. E08 T132a2: the kind's values (experience by class, kept artifacts, places) and their checks; the sacrifice comes with T134a."
+status   = "verified"
+summary  = "An artifact put on the altar gives experience by its class: treasure 1 000, minor 1 500, major 3 000, relic 6 000, a special one 0 (the Grail, a Spell Scroll, the Ballista, the Ammo Cart, the First Aid Tent go for 0 beside others: A-47 harmless and accepted, D-72 the original's, E08 decision 367); the Spell Book and the Catapult are never put on it; a sacrifice takes at most 23 (the altar's 22 places and the one held); each artifact's experience is the hero's gain with Learning (HER-EXP-001), truncated per artifact. A sacrifice names everything it takes in one answer (A-48 fixed, ADV-QUIRK-50): nothing lies on the altar between commands. E08 T132a2: the kind's values (experience by class, kept artifacts, places) and their checks. E08 T134a: the places as a set (AltarPlaces: worn positions' and backpack indices' bits, E08 decision 386, so the answer stays Copy; the part refuses an Altar under a core backpack above 64); check_artifact_sacrifice refuses the screen, more places than the Altar's, a place without an artifact, a kept artifact and a total of 0 (AltarError); the change removes the worn ones by position, then the backpack's from the last index down (the game's HeroChange::RemoveArtifact, HeroChanged each), then the experience and its levels (GAM-DEC-012)."
 numeric  = "float"
 
   [[rule.source]]
@@ -4457,8 +4457,8 @@ numeric  = "float"
 id       = "ADV-ALT-003"
 title    = "The Altar of Sacrifice's creatures"
 context  = "adventure"
-status   = "implemented"
-summary  = "A creature sacrificed gives factor x floor(AI value / divisor) experience (5 and 40), with the hero's Learning applied per stack and truncated (D-73 the original's, E08 decision 365); the army keeps one creature. E08 T132a2: the kind's factor and divisor (from 1) and their checks; the sacrifice comes with T134a."
+status   = "verified"
+summary  = "A creature sacrificed gives factor x floor(AI value / divisor) experience (5 and 40), with the hero's Learning applied per stack and truncated (D-73 the original's, E08 decision 365); the army keeps one creature. E08 T132a2: the kind's factor and divisor (from 1) and their checks. E08 T134a: the amounts by slot (seven, E08 decision 386: the part refuses an Altar under more army slots); check_creature_sacrifice refuses the screen, an amount above its stack or on an empty slot, the army's last creature and a total of 0 (AltarError); each stack's product in 32 bits saturated; the change lowers each stack (a slot at 0 emptied; StackChanged each), then the experience and its levels (GAM-DEC-012)."
 numeric  = "float"
 
   [[rule.source]]

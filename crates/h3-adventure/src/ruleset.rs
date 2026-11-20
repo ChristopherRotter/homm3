@@ -995,7 +995,7 @@ impl AdventureRuleset {
         )?;
         check_trades(
             core,
-            &tables.objects.types,
+            (&tables.objects.types, params.army_slots()),
             params.market().map(MarketParams::counts),
             &tables.altar_factions,
         )?;

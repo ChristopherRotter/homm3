@@ -10,8 +10,8 @@
 use core::fmt;
 
 use h3_adventure::{
-    AdventureCommand, AdventureCommandError, AdventureEvent, ArmySlot, HireError, HireTarget,
-    MarketError, ObjectTypeId, Pick, Pos, Viewers,
+    ALTAR_SLOTS, AdventureCommand, AdventureCommandError, AdventureEvent, AltarError, AltarPlaces,
+    ArmySlot, HireError, HireTarget, MarketError, ObjectTypeId, Pick, Pos, Viewers,
 };
 use h3_content::{CreatureTypeId, Formation, HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, BattleResult, FortLevel, HeroId, PlayerId, TownId};
@@ -96,6 +96,9 @@ pub enum Answer {
     /// A market's trade, transfer, sale, purchase or leaving (GAM-DEC-011, ADV-MKT-003 to -007;
     /// E08 T133b, increment 14's design note §13).
     Market(MarketAnswer),
+    /// An Altar of Sacrifice's sacrifice or leaving (GAM-DEC-012, ADV-ALT-001 to -003; E08 T134a,
+    /// increment 14's design note §14).
+    Altar(AltarAnswer),
     /// Closes a meeting (GAM-DEC-003), an army dialog (GAM-DEC-004; increment 6's `Decline`) or,
     /// since E08 T114a2, a map garrison's exchange (GAM-DEC-009).
     Close,
@@ -278,6 +281,30 @@ pub enum MarketAnswer {
     Leave,
 }
 
+/// An Altar of Sacrifice's answer (GAM-DEC-012; E08 T134a, increment 14's design note §14;
+/// survey `E08-trades.md` §12, the original's altar dialog): a sacrifice names everything it takes
+/// in one answer (decision 366: A-48 fixed as `ADV-QUIRK-50`, nothing lies on an altar between
+/// commands, so leaving loses nothing), and keeps the window open for more (the original's stays
+/// open) unless its levels open a level-up, before which the Altar closes and returns after it
+/// (GAM-DEC-007's `Rest::Visit`; decision 371). Nothing in it is trusted: the experience is the
+/// state's answer (ADR-0004); a refused answer changes nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AltarAnswer {
+    /// Sacrifices the hero's artifacts at these places (ADV-ALT-002): the adventure's check
+    /// (`h3_adventure::AdventureState::check_artifact_sacrifice`: the screen, the places, the kept
+    /// artifacts, a total above 0), then each removed (`HeroChanged`, the worn ones by position,
+    /// then the backpack's from the last index down), then the experience (`HeroChanged`) and the
+    /// levels.
+    Artifacts(AltarPlaces),
+    /// Sacrifices so many creatures of each slot of the hero's army, 0 none (ADV-ALT-003): the
+    /// adventure's check (`h3_adventure::AdventureState::check_creature_sacrifice`: the screen,
+    /// each amount at most its stack, the army keeping a creature, a total above 0), then each
+    /// stack lowered (`StackChanged`), then the experience and the levels.
+    Creatures([u32; ALTAR_SLOTS]),
+    /// Leaves the Altar (`DecisionClosed`), losing nothing.
+    Leave,
+}
+
 impl ChestChoice {
     /// The adventure's pick of this answer.
     pub(crate) const fn pick(self) -> Pick {
@@ -377,6 +404,10 @@ pub enum GameCommandError {
     /// against the treasury, `Amount`; a transfer's recipient, `Recipient`); a purchase's
     /// treasury is [`Self::CannotPay`], checked after them.
     Market(MarketError),
+    /// An Altar's sacrifice refused (GAM-DEC-012, ADV-ALT-002, -003; E08 T134a): the adventure's
+    /// checks (the visit, the screen, the places, a kept artifact, an amount, the last creature,
+    /// a total of 0).
+    Altar(AltarError),
 }
 
 impl fmt::Display for GameCommandError {
@@ -407,6 +438,7 @@ impl fmt::Display for GameCommandError {
             Self::Town(error) => write!(f, "{error}"),
             Self::Tavern(error) => write!(f, "{error}"),
             Self::Market(error) => write!(f, "{error}"),
+            Self::Altar(error) => write!(f, "{error}"),
         }
     }
 }
@@ -765,6 +797,20 @@ pub enum GameEvent {
         /// The market's type.
         object_type: ObjectTypeId,
         /// The market's anchor.
+        anchor: Pos,
+    },
+    /// An Altar of Sacrifice's decision opened for the visitor's owner (GAM-DEC-012, ADV-ALT-001;
+    /// E08 T134a, increment 14's design note §14, §17), at the visit and again after the
+    /// level-ups a sacrifice opened (decision 371): what its window offers is its view
+    /// ([`crate::DecisionView::Altar`]), its answers [`AltarAnswer`]'s. Seen by the owner.
+    AltarOpened {
+        /// The visitor's owner.
+        player: PlayerId,
+        /// The visiting hero.
+        hero: HeroId,
+        /// The Altar's type.
+        object_type: ObjectTypeId,
+        /// The Altar's anchor.
         anchor: Pos,
     },
     /// The player's meeting or army dialog closed (its `Close`; E08 T51b); since E08 T63a also

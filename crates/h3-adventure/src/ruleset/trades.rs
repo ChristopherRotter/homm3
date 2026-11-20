@@ -3,9 +3,10 @@
 //! Freelancer's Guild, the Black Market), an Altar of Sacrifice, a Hill Fort and a War Machine
 //! Factory hold as data, the factions whose heroes sacrifice at an Altar, and their compilation
 //! from the packs' keys. The rates are [`crate::MarketParams`]' (ADV-MKT-002, the part's
-//! `[params.market]`); a Black Market's stock is drawn since E08 T133a1 (ADV-MKT-006); the visits
-//! and the decisions come with T133 and T134, so a step onto one is refused as any unbuilt visit's
-//! until then.
+//! `[params.market]`); a Black Market's stock is drawn since E08 T133a1 (ADV-MKT-006); the
+//! markets' visits came with T133, the Altar's with T134a (`crate::state`'s `altar`), the Hill
+//! Fort's and the factory's come with T134b, so a step onto one of those is refused as any unbuilt
+//! visit's until then.
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
@@ -17,6 +18,7 @@ use h3_kernel::{CanonicalHash, StateHasher};
 
 use super::rewards::{Compiled, hash_classes};
 use super::{AdventureCompileError, DWELLING_LEVELS, ObjectKind, ObjectType, Scope};
+use crate::command::{ALTAR_BACKPACK_PLACES, ALTAR_SLOTS};
 
 /// A screen of a market's window (ADV-MKT-001; survey §3): the original's screens 0, 1, 4 and
 /// 2. The town's artifact sale (screen 3) is the town lane's to add with its Marketplace.
@@ -100,8 +102,9 @@ pub struct AltarDef {
 }
 
 /// What a faction's heroes sacrifice at an Altar of Sacrifice (ADV-ALT-001; the hero's class's
-/// faction, `altar_dialog_create` 0x55FDD0): artifacts, creatures or both.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// faction, `altar_dialog_create` 0x55FDD0): artifacts, creatures or both (by default neither:
+/// an empty window's, E08 T134a).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct AltarScreens {
     /// Whether its heroes sacrifice artifacts.
     pub artifacts: bool,
@@ -279,11 +282,13 @@ pub(super) fn compile_altar_faction(
 }
 
 /// The trades' checks once every pack and the parameters are in: a market's count within the
-/// market parameters' counts (none: no market), and with an Altar every core faction's entry.
+/// market parameters' counts (none: no market), and with an Altar every core faction's entry; since
+/// E08 T134a (decision 386) an Altar only with a core backpack of at most
+/// [`ALTAR_BACKPACK_PLACES`] and at most [`ALTAR_SLOTS`] army slots, the most its answer names.
 // rule: ADV-MKT-001, ADV-ALT-001
 pub(super) fn check_trades(
     core: &Ruleset,
-    types: &[ObjectType],
+    (types, army_slots): (&[ObjectType], u8),
     counts: Option<u8>,
     altar_factions: &BTreeMap<FactionId, AltarScreens>,
 ) -> Result<(), AdventureCompileError> {
@@ -304,7 +309,24 @@ pub(super) fn check_trades(
     }
     let altar = types
         .iter()
-        .any(|ty| matches!(ty.kind, ObjectKind::Altar(_)));
+        .find(|ty| matches!(ty.kind, ObjectKind::Altar(_)));
+    if let Some(ty) = altar {
+        let backpack = core.hero_params().map_or(0, |params| params.backpack);
+        let reason = if usize::from(backpack) > ALTAR_BACKPACK_PLACES {
+            "an altar under a backpack of more than 64"
+        } else if usize::from(army_slots) > ALTAR_SLOTS {
+            "an altar under more than 7 army slots"
+        } else {
+            ""
+        };
+        if !reason.is_empty() {
+            return Err(AdventureCompileError::InvalidObjectType {
+                key: String::from(ty.key.as_str()),
+                reason,
+            });
+        }
+    }
+    let altar = altar.is_some();
     if let Some(missing) = (0..core.factions().len())
         .filter_map(FactionId::from_index)
         .find(|f| altar && !altar_factions.contains_key(f))

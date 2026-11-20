@@ -152,6 +152,31 @@ fn commands_round_trip_through_their_text() {
             answer(Answer::Market(MarketAnswer::Leave)),
             "0 answer market leave",
         ),
+        // Format v22 (E08 T134a): an Altar's answers, the places in the change's order.
+        (
+            PlayerId::new(1),
+            answer(Answer::Altar(AltarAnswer::Artifacts(
+                AltarPlaces::from_bits(1 << 2 | 1 << 18, 1 << 63 | 1),
+            ))),
+            "1 answer altar artifacts w2 w18 b63 b0",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::Altar(AltarAnswer::Artifacts(AltarPlaces::NONE))),
+            "0 answer altar artifacts",
+        ),
+        (
+            PlayerId::new(2),
+            answer(Answer::Altar(AltarAnswer::Creatures([
+                0, 5, 0, 0, 12, 0, 1,
+            ]))),
+            "2 answer altar creatures 0 5 0 0 12 0 1",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::Altar(AltarAnswer::Leave)),
+            "0 answer altar leave",
+        ),
         (PlayerId::new(0), answer(Answer::Close), "0 answer close"),
         (
             PlayerId::new(7),
@@ -532,6 +557,18 @@ fn commands_round_trip_through_their_text() {
         "0 answer market buy x 5",
         "0 answer market buy 6 x",
         "0 answer market leave now",
+        "0 answer altar",
+        "0 answer altar burn",
+        "0 answer altar artifacts w2 w2",
+        "0 answer altar artifacts w32",
+        "0 answer altar artifacts b64",
+        "0 answer altar artifacts x2",
+        "0 answer altar artifacts wx",
+        "0 answer altar artifacts w",
+        "0 answer altar creatures 0 5 0 0 12 0",
+        "0 answer altar creatures 0 5 0 0 12 0 1 1",
+        "0 answer altar creatures 0 5 x 0 12 0 1",
+        "0 answer altar leave now",
     ] {
         assert!(
             matches!(parse_command(bad), Err(AdventureFileError::Format(_))),
