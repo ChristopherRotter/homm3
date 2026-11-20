@@ -13,6 +13,190 @@
 //!   text as its name in the panel ([`Texts::autosave`](super::Texts::autosave)); the name's sort
 //!   takes one whose name begins `AUTOSAVE.` as a space and its file's name, so it leads
 //!   (`scenario_compare_name` 0x5903B0, [`AUTOSAVE`]).
+//! - **Delete** (E27 M4 T4b2; `saved_game_delete` 0x58DFB0, design §38.1, §40): over a selected
+//!   save GENRLTXT 688 with its file's name in a box of style 2 ([`Asking`]); Cancel keeps it (the
+//!   box takes its pixels back), OK deletes it: the file the caller's to delete from its folder
+//!   ([`Scenario::take_deleted`]; the original's `DeleteFileA`, whose failure it does not check),
+//!   the entry gone from both lists, the bar's range; with saves left the full list sorted by the
+//!   version in the direction the last sort left (`scenario_list_sort`(2), the recorded key kept),
+//!   the first selected with the select's partial redraw (CLT-Q138: the difficulty's buttons and
+//!   the rating stale); with none the whole redraw, nothing selected (the panel as an empty
+//!   list's) and Load disabled (`scenario_select`(−1), 0x585922: Begin disabled over an empty full
+//!   list).
+//! - **No saves** (`scenario_buttons_show` 0x57FE68, `scenario_list_finish` 0x583044,
+//!   `scenario_dialog_proc` 0x587D1B): an opening with no save disables Load and shows GENRLTXT
+//!   686 in an OK box once; its OK disables Load again and redraws whole.
+//! - **Load** (E27 M4 T4b2): over a selected save it ends the screen as Begin does
+//!   ([`Scenario::loaded`] the save's file, the adapter's to load: E27 M4 T3b's `save::load`, then
+//!   play's start), over none nothing.
+
+use alloc::boxed::Box;
+use alloc::string::String;
+
+use h3_assets::fnt::Font;
+use h3_render::Bugs;
+use h3_ui::ui::State;
+
+use super::{BEGIN, BUILT_KEY, Did, Ended, Open, Over, Scenario};
+use crate::message::{self, MessageBox, MessageLayout, Style};
+use crate::shell::menu::BOX_PLAYER;
+
+/// Delete's question (E27 M4 T4b2; `saved_game_delete` 0x58DFB0: GENRLTXT 688, its `%s` the
+/// selected save's file's name, in a box of style 2), laid out at Delete's press.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Asking {
+    /// The box's look (the layout's `[message]`).
+    pub layout: MessageLayout,
+    /// The box's medium and small fonts (their metrics).
+    pub fonts: [Font; 2],
+    /// The question, [`FILE`] where the file's name goes.
+    pub text: String,
+}
+
+/// Where [`Asking::text`] takes the file's name.
+pub const FILE: &str = "{{file}}";
+
+impl Asking {
+    /// The question about the save `file`, laid out in the profile `bugs` (framed as the shell's
+    /// boxes, [`BOX_PLAYER`]).
+    #[must_use]
+    pub fn about(&self, file: &str, bugs: Bugs) -> MessageBox {
+        let [medium, small] = &self.fonts;
+        message::layout(
+            &self.layout,
+            (medium, small),
+            &self.text.replace(FILE, file),
+            Style::OkCancel,
+            None,
+            (BOX_PLAYER, bugs),
+        )
+    }
+}
+
+/// What the box over the screen is (E27 M4 T4b2).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(super) enum Asked {
+    /// A message of Begin's or the client's stub's notice: its OK closes it.
+    #[default]
+    Told,
+    /// Delete's question: its OK deletes the save.
+    Delete,
+    /// The notice with no saves: its OK disables Load.
+    NoSaves,
+}
+
+impl Scenario {
+    /// The save `file` deleted by Delete's OK since the last time it was taken (E27 M4 T4b2): the
+    /// caller deletes it from its own folder (the original's `DeleteFileA` in `games`, 0x58E08B).
+    pub fn take_deleted(&mut self) -> Option<String> {
+        self.deleted.take()
+    }
+
+    /// The save the load mode's Load ended the screen with (E27 M4 T4b2): its file's name, for the
+    /// adapter to load; none in a new game's screen or with no save selected.
+    #[must_use]
+    pub fn loaded(&self) -> Option<&str> {
+        self.loading.as_ref()?;
+        self.entry().map(|e| e.file.as_str())
+    }
+
+    /// The load mode's Load (`scenario_begin` 0x58BCE0): over a selected save the screen ends
+    /// as at Begin ([`Scenario::loaded`]); over none nothing (Load is disabled there).
+    pub(super) fn load(&self) -> Did {
+        if self.entry().is_none() {
+            return Did::default();
+        }
+        Did {
+            ended: Some(Ended::Scenario(true)),
+            ..Did::default()
+        }
+    }
+
+    /// The box `message` opened over the screen as `asked`.
+    pub(super) fn notice(&mut self, message: MessageBox, asked: Asked) -> Did {
+        self.over = Over::Notice(Box::new(Open::new(message)));
+        self.asked = asked;
+        Did::CHANGED
+    }
+
+    /// Delete in the load mode over a selected save (`saved_game_delete` 0x58DFB0): its question
+    /// about the save's file; nothing without its text.
+    pub(super) fn ask_delete(&mut self) -> Did {
+        let message = match (&self.texts.delete, self.entry()) {
+            (Some(asking), Some(entry)) => asking.about(&entry.file, self.bugs),
+            _ => return Did::default(),
+        };
+        self.notice(message, Asked::Delete)
+    }
+
+    /// An opening of the load mode over no saves: Load disabled (`scenario_buttons_show`
+    /// 0x57FE68: an empty shown list in the load mode; recorded, `scn-load-none` notice) and the
+    /// notice with no saves (`scenario_list_finish` 0x583044 sets it, the procedure's next call
+    /// shows it once; none without its text).
+    pub(super) fn no_saves(&mut self) {
+        if !self.entries.is_empty() {
+            return;
+        }
+        self.enable_load(false);
+        if let Some(message) = self.texts.no_saves.clone() {
+            self.notice(message, Asked::NoSaves);
+        }
+    }
+
+    /// The box over the screen closed by its button `id` (the asked's end): Delete's OK deletes
+    /// the save; the no saves notice's OK disables Load and redraws whole (0x587D57 to
+    /// 0x587D81); any other close takes the box's pixels back alone.
+    pub(super) fn closed(&mut self, id: u16) {
+        match core::mem::take(&mut self.asked) {
+            Asked::Delete if id == message::YES => self.delete(),
+            Asked::NoSaves => {
+                self.enable_load(false);
+                self.whole();
+            }
+            Asked::Told | Asked::Delete => {}
+        }
+    }
+
+    /// Delete's OK (0x58E07D to 0x58E2C9; the module's docs).
+    fn delete(&mut self) {
+        let Some(at) = self
+            .selected
+            .and_then(|i| self.listed.get(i).copied())
+            .filter(|&at| at < self.entries.len())
+        else {
+            return;
+        };
+        self.deleted = Some(self.entries.remove(at).file);
+        self.relist();
+        self.bar.reset(self.ticks());
+        if self.listed.is_empty() {
+            self.selected = None;
+            self.select();
+            self.enable_load(!self.entries.is_empty());
+            self.whole();
+        } else {
+            // The sort gives its first row's save to the game and redraws whole, then the select
+            // of that row, which it already is: the partial redraw (as a column's press).
+            self.sort_list(BUILT_KEY, self.descending);
+            self.give_to_game();
+            self.whole();
+            self.select();
+            self.partial = true;
+        }
+    }
+
+    /// Load (Begin, 186) enabled or disabled.
+    fn enable_load(&mut self, enabled: bool) {
+        let state = self.shown.state(BEGIN);
+        self.shown.states.insert(
+            BEGIN,
+            State {
+                disabled: !enabled,
+                ..state
+            },
+        );
+    }
+}
 
 /// What a save adds to its map's entry (the original's `scenario_info` of a save file: the save's
 /// header, `sub_4BC750`): its difficulty and its file's time.

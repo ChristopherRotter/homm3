@@ -15,19 +15,17 @@ computer must be online); never from the installation. The captures need the fiv
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M4 T4b2
+#### E27 M4 T5
 
-T4b2 Delete, the notice and the load's end (decision 73; T4b1 built the load mode's screen and the
-client's saves, design §39; §3.3, §3.4, §38.1, §38.3; §37 the load, `h3-battle-client`'s
-`save::load`): Delete's question (GENRLTXT 688 with the file's name, style 2, over the selection:
-`Command::Delete`, today CLT-STUB-15's notice) both ways and its end (the file deleted from the
-folder, the list sorted by the version in the last sort's direction, the first selected with the
-partial redraw's stale buttons and rating; none left: the whole redraw, the empty panel), the
-notice with no saves (686, once at the opening, Load disabled), Load's end (the save loaded with
-`save::load`; play's stub as M3's begin, the `Loaded` kept for E24 M5; a save the load refuses:
-the client's message, this task's call), CLT-STUB-15 lifted. Exact against `scn-load` delete to
-deleted (`load` and `map` are play's, M5's), `scn-load-last` and `scn-load-none`; the window's
-Delete removes a file of the client's own folder only.
+T5 Load Game hot seat (the epic's M4 table; design §3.12 to §3.14, a load's rows: the saved
+choices, no arrows; §6.4's Random Map button in a load; T4b's single load, design §38 to §40, the
+screen it builds on): the hot seat's load mode (the Multiplayer dialog's hot seat over Load Game's
+menu, `mp-load`'s `load` and `load-closed`), its advanced options showing a save's choices, the
+rows without arrows, a row's popups. The original's hot-seat saves of shipped maps made by maker
+recipes as T4a's (`adv-load`'s are the user's saves of a random map, which no client's save can
+name: record `adv-load` again over the made ones), the client's made the same way (`h3-view save`
+for a hot seat). Exact against `mp-load` and `adv-load`. Confirm its cut at its start (a seam: the
+makers and the recordings first, as T4a; then the screen).
 
 ## Inbox
 

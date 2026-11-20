@@ -102,6 +102,17 @@ the original's for the comparisons; (c) the client's profile keeps each frame (n
 the creature's DEF does not change. **Recommended (a)** (it lasts at most one step after a rare
 action; either fix changes the look as much as it cures). Built as (a). Blocks nothing.
 
+#### CLT-Q159 — Delete's OK takes the save off the list whether its file was deleted or not (E27 M4 T4b2, a reading)
+
+The load mode's Delete (`saved_game_delete` 0x58E08B; `docs/epics/E27-design.md` §40.1) calls
+`DeleteFileA` on the save and does not look at its result: the entry leaves the list either way,
+and a file that could not be deleted (read-only, in use) shows again at the next opening, with no
+word of the failure. Options: (a) the original's: the entry removed, the failure told only on the
+client's standard error (built); (b) the client's profile keeps the entry and shows a message
+(the client's own words) when the file does not delete, the original's for the comparisons;
+(c) (b) without the message. **Recommended (a)** (a failure is rare, and the next opening shows
+the truth; (b) adds a box of the client's own). Built as (a). Blocks nothing.
+
 ### Map client lane (`MCL-Q<n>`)
 
 #### MCL-Q29 — The Deity's week names the Imp's growth for the Familiar (E24 M4 T1a, a reading)

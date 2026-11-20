@@ -100,10 +100,15 @@ pub(crate) fn texts(bugs: Bugs) -> Texts {
         load_title: String::from("Load a game"),
         autosave: String::from("AUTOSAVE"),
         date: String::from("{{month}}/{{day}}/{{year}} - {{hour}}:{{minute}}"),
-        load_stub: Some(message::layout(
+        delete: Some(Asking {
+            layout: layout.message.clone(),
+            fonts: [medium.clone(), small.clone()],
+            text: format!("Delete {FILE}?"),
+        }),
+        no_saves: Some(message::layout(
             &layout.message,
             (&medium, &small),
-            "No loads yet",
+            "No saved games",
             Style::Ok,
             None,
             (BOX_PLAYER, bugs),

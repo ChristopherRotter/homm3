@@ -436,8 +436,11 @@ fn hero_tables() -> heroes::Tables {
         spell("Bolt", ["", "", "", "x"]),
         spell("Mine", ["", "", "x", ""]),
     ]);
+    // The town chances (E09 T46): fields 16 to 24, Zap's 0 in town 1, Bolt's (SoD's alone) all 0.
+    let bolt = sod.len() - 2;
+    sod[bolt - 1][17] = "0".to_owned();
+    sod[bolt][16..25].fill("0".to_owned());
     let mut ab = sod.clone();
-    let bolt = ab.len() - 2;
     ab[bolt] = spell("Old (disabled)", [" ", " ", " ", " "]);
     heroes::Tables {
         classes: table(&classes),

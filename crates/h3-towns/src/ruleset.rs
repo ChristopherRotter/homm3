@@ -13,7 +13,9 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_content::{ContentKey, CreatureTypeId, FactionId, PackManifest, ResourceId, Ruleset};
+use h3_content::{
+    ContentKey, CreatureTypeId, FactionId, PackManifest, ResourceId, Ruleset, SpellId,
+};
 use h3_contracts::Moat;
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, StateHasher};
@@ -109,6 +111,18 @@ pub struct TownParamsDef {
     /// and 2, 1 and 3 to 5), resources of the core, each in at most one row; a row may be empty
     /// (every player's value 0).
     pub guild_resources: [Vec<ContentKey>; 3],
+    /// The mage guild's slots by spell level 1 to 5 (TWN-GLD-001; E09 design §83: the original's
+    /// 5, 4, 3, 2, 1, `guild_spell_slots` 0x6782A4), each 1 to 5: the draw fills one more a level,
+    /// the spare, which a building of role `library` shows (at most six a level, the original's
+    /// slots a level, survey `E09-guild.md` §3.2).
+    pub guild_slots: [u8; 5],
+    /// The spell book's price at a mage guild, resources of the core as a building's cost, each
+    /// once and at least 1, empty for free (TWN-GLD-001; E09 design §83: 500 gold,
+    /// `mage_guild_open` 0x5CE560, every purchase and edition).
+    pub spell_book_price: Vec<(ContentKey, u32)>,
+    /// What a standing building of role `mana_vortex` multiplies a hero's maximum spell points by
+    /// (TWN-GLD-001; E09 design §83: the original's 2, `town_visit_buildings` 0x5BD8E0), 1 to 10.
+    pub vortex_factor: u8,
 }
 
 /// The week's parameters (E09 design §38, §42): the chance of a creature's week and the bonus
@@ -173,6 +187,10 @@ pub struct TownDef {
     /// E09 design §60: `HCTRAITS.TXT`'s tavern column), each class once; a class not given weighs
     /// 0, and the weights after the overrides must sum to more than 0.
     pub tavern: Vec<(ContentKey, u8)>,
+    /// Per hero spell of the core its weight in the record's mage guild draw (TWN-GLD-001; E09
+    /// design §83: `SPTRAITS.TXT`'s town column of the faction), each spell once and 1 to 10 000;
+    /// a spell not given weighs 0. No sum is checked (nothing reads it).
+    pub guild: Vec<(ContentKey, u16)>,
 }
 
 /// A level's creatures in a pack: the faction's creature of that level and its upgrade.
@@ -249,6 +267,19 @@ pub struct BuildingRoles {
     pub defender: DefenderBonus,
     /// A reveal larger than the part's radius (the Lookout Tower, a Grail), if any.
     pub reveal: Option<Reveal>,
+    /// The mage guild of a spell level, 1 to 5 (TWN-GLD-001; the original's buildings 0 to 4): at
+    /// most one building of a record a level, read standing for the town's guild level and ever
+    /// built for a guild's presence (E09 design §83).
+    pub guild: Option<u8>,
+    /// The Library (the Tower's building 22): one more slot shown at every guild level; at most
+    /// one building of a record, read ever built (TWN-GLD-001).
+    pub library: bool,
+    /// The Aurora Borealis (the Conflux's building 26): every spell of the town's Aurora set
+    /// taught; at most one building of a record, read ever built (TWN-GLD-001).
+    pub aurora: bool,
+    /// The Mana Vortex (the Dungeon's building 21): a hero's spell points to the part's factor of
+    /// its maximum, once a week; at most one building of a record, read standing (TWN-GLD-001).
+    pub mana_vortex: bool,
 }
 
 /// A dwelling's level and whether it is the upgraded one.
@@ -349,6 +380,8 @@ pub enum TownCompileError {
     UnknownCreature(String),
     /// A hero class the core ruleset does not define (a tavern weight's).
     UnknownHeroClass(String),
+    /// A spell the core ruleset does not define (a guild weight's).
+    UnknownSpell(String),
     /// Two packs define a town record for one faction.
     DuplicateTown(String),
     /// An override names a faction without a town record.
@@ -396,6 +429,7 @@ impl fmt::Display for TownCompileError {
             Self::UnknownResource(k) => write!(f, "unknown resource `{k}`"),
             Self::UnknownCreature(k) => write!(f, "unknown creature `{k}`"),
             Self::UnknownHeroClass(k) => write!(f, "unknown hero class `{k}`"),
+            Self::UnknownSpell(k) => write!(f, "unknown spell `{k}`"),
             Self::DuplicateTown(k) => write!(f, "faction `{k}` has two town records"),
             Self::UnknownTown(k) => write!(f, "faction `{k}` has no town record to override"),
             Self::MissingParams => f.write_str("no pack provides the town parameters"),
@@ -453,6 +487,12 @@ pub struct TownParams {
     /// The resources of the Thieves' Guild's rows 2 to 4, each row in the core's order
     /// (TWN-TAV-008).
     pub guild_resources: [Vec<ResourceId>; 3],
+    /// The mage guild's slots by spell level 1 to 5, each 1 to 5 (TWN-GLD-001).
+    pub guild_slots: [u8; 5],
+    /// The spell book's price at a mage guild, in the core's resource order (TWN-GLD-001).
+    pub spell_book_price: Vec<(ResourceId, u32)>,
+    /// The Mana Vortex's factor of a hero's maximum spell points, 1 to 10 (TWN-GLD-001).
+    pub vortex_factor: u8,
 }
 
 /// A faction's compiled town record.
@@ -478,9 +518,19 @@ pub struct TownRecord {
     /// draw for a player of the faction (TWN-TAV-001); 0 for a class the packs give none. Not all
     /// 0.
     pub tavern: Vec<u8>,
+    /// Per core spell (indexed by its [`SpellId`]) its weight in the record's mage guild draw
+    /// (TWN-GLD-001); 0 for a spell the packs give none (every creature ability).
+    pub guild: Vec<u16>,
 }
 
 impl TownRecord {
+    /// The weight of `spell` in the record's mage guild draw (TWN-GLD-001): 0 for a spell the packs
+    /// give none or the core lacks.
+    // rule: TWN-GLD-001
+    pub fn guild_weight(&self, spell: SpellId) -> u16 {
+        self.guild.get(spell.index()).copied().unwrap_or(0)
+    }
+
     /// A building of the record.
     pub fn building(&self, id: BuildingId) -> Option<&Building> {
         self.buildings.get(id.index())
@@ -699,7 +749,9 @@ fn hash_option<T>(h: &mut StateHasher, value: Option<T>, write: impl FnOnce(&mut
 }
 
 impl CanonicalHash for TownRuleset {
-    /// Encoding v8 (E09 T39b1; v7, T36's, without the Thieves' Guild's resource rows; v6, T28a's,
+    /// Encoding v9 (E09 T46; v8, T39b1's, without the mage guild's slots, the spell book's price,
+    /// the Vortex's factor, the records' guild weights and the roles `guild`, `library`, `aurora`
+    /// and `mana_vortex`; v7, T36's, without the Thieves' Guild's resource rows; v6, T28a's,
     /// without the hire's price and the records' tavern weights; v5, T25a's, without the most heroes on the map; v4, T16a's, without the roles `horde`,
     /// `portal`, `week_of`, a record's `roe` and the week's and garrison week's parameters; v3, T8c2's, without the
     /// requirements, the costs and the role `shipyard`; v2, T5b2a's, without Visions; v1, T5a1's
@@ -710,7 +762,9 @@ impl CanonicalHash for TownRuleset {
     /// creature chance and bonus, the garrison week's two odds, its denominator, its weights as
     /// their number and values, its weeks and its upgrade chance, the most heroes on the map, the
     /// hire's price (length, each resource handle and amount), the Thieves' Guild's three resource
-    /// rows (each its length and resource handles)); the records in faction order as
+    /// rows (each its length and resource handles), the guild's five slot counts, the spell
+    /// book's price (length, each resource handle and amount), the Vortex's factor); the records
+    /// in faction order as
     /// their number and each one's faction handle, moat (0 absent, 1 harmless, 2 damaging),
     /// natural obstacles, the silo (length, each resource handle and amount), the creatures
     /// (length, each base handle and the upgrade as an option), the buildings (length, each key,
@@ -720,9 +774,10 @@ impl CanonicalHash for TownRuleset {
     /// tavern, silo, grail, shipyard, the horde as an option of its level and upgrade flag,
     /// portal, `week_of` as an option, the dwelling as an option of its level and upgrade flag,
     /// morale, luck, the escape tunnel, the defender's attack, defense, power and mana, the reveal
-    /// as 0 none, 1 and the radius, 2 all), `roe`, the demoted Capitol's building and the tavern
-    /// weights (length, each weight by class index). The core's hash is not part of it: replays
-    /// record both.
+    /// as 0 none, 1 and the radius, 2 all, the guild level as an option, the library, the aurora,
+    /// the Mana Vortex), `roe`, the demoted Capitol's building, the tavern weights (length, each
+    /// weight by class index) and the guild weights (length, each weight by spell index). The
+    /// core's hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(TOWN_RULESET_HASH_VERSION);
         hash_option(h, self.params.as_ref(), |h, p| {
@@ -759,6 +814,13 @@ impl CanonicalHash for TownRuleset {
                 h.write_len(row.len());
                 row.iter().for_each(|resource| resource.hash_into(h));
             }
+            p.guild_slots.iter().for_each(|&n| h.write_u8(n));
+            h.write_len(p.spell_book_price.len());
+            for &(resource, amount) in &p.spell_book_price {
+                resource.hash_into(h);
+                h.write_u32(amount);
+            }
+            h.write_u8(p.vortex_factor);
         });
         h.write_len(self.towns.len());
         for t in &self.towns {
@@ -795,6 +857,8 @@ impl CanonicalHash for TownRuleset {
             h.write_u8(t.capitol_demoted_to.raw());
             h.write_len(t.tavern.len());
             t.tavern.iter().for_each(|&w| h.write_u8(w));
+            h.write_len(t.guild.len());
+            t.guild.iter().for_each(|&w| h.write_u16(w));
         }
     }
 }
@@ -832,6 +896,10 @@ fn hash_roles(h: &mut StateHasher, r: &BuildingRoles) {
         }
         Some(Reveal::All) => h.write_u8(2),
     }
+    hash_option(h, r.guild, StateHasher::write_u8);
+    h.write_bool(r.library);
+    h.write_bool(r.aurora);
+    h.write_bool(r.mana_vortex);
 }
 
 #[cfg(test)]

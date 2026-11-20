@@ -10,7 +10,8 @@
 //!
 //! # Format (E09 T5a1; the requirements, costs and role `shipyard` since E09 T16a; the roles
 //! `horde`, `portal`, `week_of`, a record's `roe` and the growth's parameters since E09 T25a;
-//! the hire's price and the tavern weights since E09 T36)
+//! the hire's price and the tavern weights since E09 T36; the guild weights, the roles `guild`,
+//! `library`, `aurora`, `mana_vortex` and the guild's parameters since E09 T46)
 //!
 //! ```toml
 //! [town_params]                    # exactly one enabled pack gives them when any pack has a
@@ -41,6 +42,12 @@
 //! guild_resources = [["gold"], ["wood", "ore"], ["mercury", "sulfur", "crystal", "gems"]]
 //!                                  # TWN-TAV-008 (E09 T39b1): the resources the Thieves'
 //!                                  # Guild's rows 2 to 4 sum, each in at most one row
+//! guild_slots = [5, 4, 3, 2, 1]    # TWN-GLD-001 (E09 T46): the mage guild's slots by spell
+//!                                  # level 1 to 5, each 1 to 5 (the draw's spare is one more)
+//! spell_book_price = { gold = 500 } # TWN-GLD-001: the spell book's price at a guild, each
+//!                                  # resource >= 1, empty for free
+//! vortex_factor = 2                # TWN-GLD-001: the Mana Vortex's factor of a hero's maximum
+//!                                  # spell points, 1 to 10
 //!
 //! [town_visions]                   # optional, in any pack (E09 T8c2): creatures that give
 //! creatures = ["rogue"]            # their hero Visions at its expert level for the towns
@@ -61,6 +68,9 @@
 //!   knight = 6                     # tavern's draw for a player of the faction (0 to 255, a
 //!   cleric = 6                     # class not given 0); each class once, the record's sum
 //!                                  # after the overrides above 0
+//!   [town.guild]                   # TWN-GLD-001 (E09 T46): core hero spell = its weight in the
+//!   magic_arrow = 30               # record's mage guild draw (1 to 10 000, a spell not given
+//!   haste = 25                     # 0), each spell once; no creature ability; no sum checked
 //!   [[town.building]]              # every building of the faction, roles or not; at most 64
 //!   key = "town_hall"              # [a-z0-9_]+, unique within the record
 //!   name = "Town Hall"             # the name only (Q13)
@@ -105,9 +115,13 @@
 //! | `escape_tunnel = true` | the siege's defender may retreat | ever built |
 //! | `defender = { attack, defense, power, mana }` | the defending hero's bonuses, each optional (ADR-0023 point 3) | ever built |
 //! | `reveal = n` or `"all"` | a reveal larger than `reveal_radius` (the Lookout Tower, a Grail) | ever built |
+//! | `guild = level` | the mage guild of a spell level, 1 to 5; at most one building a level (TWN-GLD-001) | standing (the guild level), ever built (a guild's presence) |
+//! | `library = true` | at most one building: one more slot shown a level (the Tower's Library) | ever built |
+//! | `aurora = true` | at most one building: the town's Aurora set taught (the Conflux's Aurora Borealis) | ever built |
+//! | `mana_vortex = true` | at most one building: the Mana Vortex (the Dungeon's) | standing |
 //!
 //! Keys without a pack prefix name an entity of the file's own pack; core references (factions,
-//! creatures, resources, hero classes) must lie in the pack's dependency closure.
+//! creatures, resources, hero classes, spells) must lie in the pack's dependency closure.
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
@@ -223,6 +237,9 @@ struct ParamsDto {
     most_heroes: u8,
     hire_price: BTreeMap<String, u32>,
     guild_resources: [Vec<String>; 3],
+    guild_slots: [u8; 5],
+    spell_book_price: BTreeMap<String, u32>,
+    vortex_factor: u8,
 }
 
 #[derive(Deserialize)]
@@ -281,6 +298,8 @@ struct TownDto {
     #[serde(default)]
     tavern: BTreeMap<String, u8>,
     #[serde(default)]
+    guild: BTreeMap<String, u16>,
+    #[serde(default)]
     building: Vec<BuildingDto>,
 }
 
@@ -328,6 +347,13 @@ struct BuildingDto {
     #[serde(default)]
     defender: DefenderDto,
     reveal: Option<RevealDto>,
+    guild: Option<u8>,
+    #[serde(default)]
+    library: bool,
+    #[serde(default)]
+    aurora: bool,
+    #[serde(default)]
+    mana_vortex: bool,
 }
 
 #[derive(Deserialize, Default, Clone, Copy)]
@@ -375,8 +401,8 @@ fn reference(pack: &str, text: &str) -> Result<ContentKey, KeyError> {
     }
 }
 
-/// Tavern weights as written (class = weight), their keys resolved.
-fn weights(pack: &str, weights: BTreeMap<String, u8>) -> Result<Vec<(ContentKey, u8)>, KeyError> {
+/// Weights as written (a tavern's class = weight, a guild's spell = weight), their keys resolved.
+fn weights<W>(pack: &str, weights: BTreeMap<String, W>) -> Result<Vec<(ContentKey, W)>, KeyError> {
     weights
         .into_iter()
         .map(|(k, w)| Ok((reference(pack, &k)?, w)))
@@ -437,6 +463,10 @@ fn building(pack: &str, b: BuildingDto) -> Result<BuildingDef, KeyError> {
                 RevealDto::Radius(radius) => Reveal::Radius(radius),
                 RevealDto::Word(RevealWord::All) => Reveal::All,
             }),
+            guild: b.guild,
+            library: b.library,
+            aurora: b.aurora,
+            mana_vortex: b.mana_vortex,
         },
     })
 }
@@ -470,6 +500,7 @@ fn town(pack: &str, t: TownDto) -> Result<TownDef, TownPackError> {
             .collect::<Result<_, _>>()?,
         roe: t.roe,
         tavern: weights(pack, t.tavern)?,
+        guild: weights(pack, t.guild)?,
     })
 }
 
@@ -514,6 +545,9 @@ pub fn parse_towns(manifest: &PackManifest, text: &str) -> Result<TownPack, Town
                 most_heroes: p.most_heroes,
                 hire_price: amounts(pack, p.hire_price)?,
                 guild_resources: guild_resources(pack, p.guild_resources)?,
+                guild_slots: p.guild_slots,
+                spell_book_price: amounts(pack, p.spell_book_price)?,
+                vortex_factor: p.vortex_factor,
             })
         })
         .transpose()?;

@@ -4067,3 +4067,59 @@ alone (review item 27); every recording of the other groups as before.
 the map M5's); `scn-load-last` 1 of 9 and `scn-load-none` 0 of 5 (the screen, then Delete and
 the notice: T4b2's). The `scenario`, `advanced`, `menus`, `multiplayer`, `end`, `options` and
 `scores` groups as recorded.
+
+## 40. Delete, the notice and Load's end (M4 T4b2, 2026-11-20)
+
+Decision 74: T4b2 kept whole. Built in `h3_view::shell::scenario`'s `load` (Delete's question,
+its end, the notice, Load), `menu`, `play`, `replay`; the battle client's `shell` and `saves`.
+Read with `scripts/exe.py` (§40.1); recorded again under Wine (`scn-load`, `scn-load-last`,
+`scn-load-none`: as kept).
+
+### 40.1 Read
+
+- **Delete** (`saved_game_delete` 0x58DFB0 to 0x58E2C9): only over a shown list not empty, in the
+  load or save mode (+0x64, +0x65); GENRLTXT 688 through `sprintf` with the selected record's
+  file's name (+0x33D) in a box of style 2 (`message_box` 0x4F6570); its OK (0x7805) changes to
+  `games`, `DeleteFileA` (its result not checked), changes back; the entry found in the full list
+  by its file's name (a byte compare) and removed from both lists; the bar's range (count − rows
+  + 1); with saves left `scenario_list_sort`(2, 1, 1): the key not recorded (+0x185C as it was),
+  the direction +0x36C as the last sort left it, the first row to the game and the whole redraw
+  (0x5852BF), then `scenario_select`(0, 1): its partial redraw; with none the whole redraw, then
+  `scenario_select`(−1, 1).
+- **The select of none** (`scenario_select` 0x585500 with −1): the description emptied
+  (0x585639), then Begin's state (0x5858D9): in the load mode disabled over an empty full list
+  (+0x1034), else enabled; a new game's by the map's format (RoE, AB, SoD enabled).
+- **No saves** (`scenario_buttons_show` 0x57FE68, from the constructor): in the load mode an
+  empty shown list disables Begin; `scenario_list_finish` 0x583044 sets `no_saves_notice`
+  0x69FDA0, which the procedure's next call (`scenario_dialog_proc` 0x587D1B) clears, showing
+  GENRLTXT 686 in a box of style 1, then disables Begin again and redraws whole. Recorded: Load
+  disabled under the notice (`scn-load-none` notice).
+- **A disabled button's hotkey:** Enter over a disabled Load does nothing (recorded:
+  `scn-load-last` enter, `scn-load-none` enter).
+
+### 40.2 The client
+
+- **Delete:** the screen's question (`Texts::delete`, `Asking`: the layout, the fonts' metrics
+  and GENRLTXT 688 with `{{file}}`, laid out at the press); Cancel closes it (the box's pixels
+  back); OK as read, the file the window's to delete from its own folder (`take_deleted`;
+  `saves::delete`: a listed plain name of the folder, a file; a failure on standard error, the
+  entry gone all the same, review item 32). The replay keeps the saves as Delete left them for
+  the next opening (`Scenario::keep`), as the original reads the folder again; the window lists
+  its folder anew there.
+- **The notice:** `Texts::no_saves`; Load disabled at the opening with no saves, the notice over
+  it; its OK the whole redraw. The replay's `press` finds the scenario screen's boxes' buttons
+  (`Front::question`: Delete's, the notice, Begin's messages).
+- **Load:** over a selected save the screen ends as Begin does (`Scenario::loaded`; `begun`
+  none in the load mode); play's start reads the save and loads its game (`save::read_file`,
+  `save::load`, a step of the bar each), the `Loaded` kept for E24 M5 (CLT-STUB-13), then play's
+  notice in the client's words (`shell.stub.loaded`; a save the load refuses
+  `shell.stub.load-refused`, the error on standard error; review item 31). A replay stops at
+  `scn-load`'s `clip-until:load:adventure` (the adventure screen is M5's).
+- **A disabled button takes no hotkey** on the scenario screen (review item 33).
+
+### 40.3 The comparisons
+
+`scn-load` 23 of 25 exact (the load's clip and the map are M5's), `scn-load-last` 9 of 9 (its
+second opening drew `gamselb1.pcx`: the recipe's `backgrounds`), `scn-load-none` 5 of 5. The
+`scenario`, `advanced`, `menus`, `multiplayer`, `end`, `options` and `scores` groups as
+recorded.

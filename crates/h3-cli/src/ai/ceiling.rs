@@ -27,7 +27,8 @@
 //! means). Games run on `--threads`; a game's result depends on its seed alone and the record
 //! sums the games in order. Each finished game is appended to `--out` (TOML: the run's settings,
 //! then a `[[game]]` per game); a run started again with the same `--out` and settings continues
-//! it, skipping the games it holds.
+//! it, skipping the games it holds (a last game a stop cut short is dropped and played again):
+//! Ctrl-C loses only the games in progress.
 
 use std::fmt::Write as _;
 use std::io::Write as _;
@@ -695,7 +696,19 @@ fn open(
     let shown = path.display();
     if path.exists() {
         let text = std::fs::read_to_string(path).map_err(|e| format!("{shown}: {e}"))?;
-        let held: File = toml::from_str(&text).map_err(|e| format!("{shown}: {e}"))?;
+        let held: File = match toml::from_str(&text) {
+            Ok(held) => held,
+            Err(e) => {
+                // A stop during an append can cut the last game short: drop it (it is played
+                // again), as long as the rest reads.
+                let cut = text
+                    .rfind("\n[[game]]")
+                    .ok_or_else(|| format!("{shown}: {e}"))?;
+                let held = toml::from_str(&text[..cut]).map_err(|_| format!("{shown}: {e}"))?;
+                std::fs::write(path, &text[..cut]).map_err(|e| format!("{shown}: {e}"))?;
+                held
+            }
+        };
         if held.settings != *settings {
             return Err(format!(
                 "{shown} holds a run of other settings ({:?}); start a new file",

@@ -33,6 +33,15 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   (ADR-0016 point 6), where the original draws the hero stepping from or into the fog;
   recommended: both tiles of a step the viewer sees by either end.
 
+- 2026-11-20 (the town lane, E09 T46, `town/e09-t46`, `cross-lane` with the user's consent;
+  **your replays' header, mechanical; act only at a merge**): the town ruleset part v9 (the mage
+  guild's weights, roles and parameters) moves `town_ruleset_hash` 0xab3ee3f1cb243f30 to
+  **0xcf8db1aa2bb768d2** in all 104 golden adventure replays, re-recorded from their commands
+  (nothing else moved: no state reads the part's new fields until E09 T47a). A branch of yours
+  that re-records goldens across this merge keeps the new line. `h3-game`'s `tests/mod.rs` town
+  pack literal gained the new fields (`guild`, `guild_slots`, `spell_book_price`,
+  `vortex_factor`).
+
 - 2026-11-20 (the town lane, E09 T45, `shared/e09-t45`, `cross-lane` with the user's consent;
   **your replays' header, mechanical; act only at a merge**): one `quirk.town` flag
   (`QuirkFlag(44)`, `quirk.town.aurora_ignores_map_bans`, `TWN-QUIRK-14`, on in `faithful`) moves

@@ -34,7 +34,18 @@ role = [
   { faction = "Beta", building = 26, roles = { reveal = "all", defender = { attack = 20, mana = 5 } }, sources = ["s"] },
   { faction = "Beta", building = 21, roles = { portal = true }, sources = ["s"] },
   { faction = "Gamma", building = 26, roles = { week_of = 1 }, sources = ["s"] },
+  { building = 0, roles = { guild = 1 }, sources = ["s"] },
+  { building = 1, roles = { guild = 2 }, sources = ["s"] },
+  { building = 19, roles = { library = true }, sources = ["s"] },
+  { faction = "Gamma", building = 21, roles = { mana_vortex = true }, sources = ["s"] },
+  { faction = "Gamma", building = 26, roles = { aurora = true }, sources = ["s"] },
 ]
+
+[towns.mage_guild]
+sources = ["s"]
+guild_slots = [5, 4, 3, 2, 1]
+spell_book_price = 500
+vortex_factor = 2
 
 [towns.growth]
 sources = ["s"]
@@ -355,8 +366,40 @@ fn harvests_the_town_files_that_compile() {
          garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], weeks = 8, \
          upgrade = 5 }\nmost_heroes = 8\nhire_price = { gold = 2500 }\n\
          guild_resources = [[\"gold\"], [\"wood\", \"ore\"], [\"mercury\", \"sulfur\", \
-         \"crystal\", \"gems\"]]\n"
+         \"crystal\", \"gems\"]]\nguild_slots = [5, 4, 3, 2, 1]\n\
+         spell_book_price = { gold = 500 }\nvortex_factor = 2\n"
     ));
+    // The guild weights (E09 T46): each record's column of the hero spells in `SPTRAITS.TXT`'s
+    // order, a 0 left out (Zap's in Beta's, Bolt's, SoD's own, in every one), Gamma's by prefix.
+    assert!(base.contains("\n  [town.guild]\n  look = 16\n  zap = 16\n  mine = 16\n\n"));
+    assert!(base.contains("\n  [town.guild]\n  look = 17\n  mine = 17\n\n"));
+    assert!(ab.contains(
+        "\n  [town.guild]\n  \"base:look\" = 18\n  \"base:zap\" = 18\n  \"base:mine\" = 18\n\n"
+    ));
+    assert!(!sod.contains("[town.guild]") && !base.contains("bolt"));
+    // The guild's roles: the levels of every faction, the upgraded horde's Library only where the
+    // list holds it (Alpha's and Gamma's), Gamma's Vortex and Aurora (with its week).
+    assert_eq!(
+        (
+            base.matches("  guild = 1\n").count(),
+            ab.matches("  guild = 2\n").count()
+        ),
+        (2, 1)
+    );
+    assert!(base.contains("key = \"guild_2\"\n  name = \"Guild 2\"\n  slot = 12\n"));
+    assert_eq!(
+        (
+            base.matches("  library = true\n").count(),
+            ab.matches("  library = true\n").count()
+        ),
+        (1, 1)
+    );
+    assert!(ab.contains("grail = true\n  week_of = 1\n  aurora = true\n"));
+    assert!(
+        ab.contains("  mana_vortex = true\n")
+            && !base.contains("mana_vortex")
+            && !base.contains("aurora")
+    );
     // The tavern weights (E09 T36): each record's faction column over its pack's closure, a 0
     // left out; the ab pack's two classes in the base records by its overrides.
     assert!(base.contains("\n  [town.tavern]\n  class_0 = 4\n  class_1 = 5\n  class_2 = 6\n\n"));
@@ -564,6 +607,34 @@ fn inconsistent_tables_are_errors() {
         i.town_names.costs.records.truncate(125 + 16 * 2 + 13);
     });
     assert!(e.contains("row 171, column 1: `` is not a number"), "{e}");
+    // The guild weights (E09 T46): a spell of SoD's own weighing, a weight not a number.
+    let e = error(|i| i.hero_tables.sod_spells.records[7][16] = "5".into());
+    assert!(
+        e.contains("towns: spell `bolt` of the `sod` pack weighs in Alpha's guild"),
+        "{e}"
+    );
+    let e = error(|i| {
+        i.hero_tables.sod_spells.records[3][17] = "x".into();
+        i.hero_tables.ab_spells.records[3][17] = "x".into();
+    });
+    assert!(
+        e.contains("spell `Look`: column 17 `x` is not a number"),
+        "{e}"
+    );
+    // The main harvest refuses these first; the reader on its own.
+    let mut tables = town_inputs().hero_tables;
+    tables.ab_spells.records.pop();
+    let e = heroes::spell_guilds(&tables, 3).unwrap_err();
+    assert!(
+        e.contains("SPTRAITS.TXT: 4 hero spells, H3ab_bmp's 3"),
+        "{e}"
+    );
+    tables.sod_spells.records.insert(2, vec!["Early".into()]);
+    let e = heroes::spell_guilds(&tables, 3).unwrap_err();
+    assert!(
+        e.contains("SPTRAITS.TXT: spell `Early` before a group row"),
+        "{e}"
+    );
     // The town compiler's checks: no level-1 dwelling.
     let e = error(|i| {
         let buildings = &mut i.town_tables.factions[0].buildings;
@@ -612,6 +683,17 @@ fn gapfill_town_errors() {
         e.contains("Alpha: the gap-fill gives roles to building 2, not its"),
         "{e}"
     );
+    // E09 T46: a role of every faction on a building no faction's list holds.
+    let e = bad(
+        "{ building = 19, roles = { library = true }",
+        "{ building = 2, roles = { library = true }",
+    );
+    assert!(
+        e.contains("gapfill: towns: building 2: no faction's list holds it"),
+        "{e}"
+    );
+    let e = bad("vortex_factor = 2", "vortex_factor = 0");
+    assert!(e.contains("do not compile"), "{e}");
     let e = bad("gold = \"Gold\"", "gold = \"Mithril\"");
     assert!(e.contains("unknown resource `Mithril`"), "{e}");
     // E09 T39b1: a guild row's index past `RESTYPES.TXT`'s seven, and a resource in two rows.

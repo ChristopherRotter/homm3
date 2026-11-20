@@ -17,6 +17,8 @@
 //!   import version): listed as the original lists a broken file (§3.3: a save of another version,
 //!   GENRLTXT 431 its name and 505 its description), with no map's columns. The full load (the
 //!   commands replayed, `save::load`) is Load's (T4b2).
+//! - **Delete** (E27 M4 T4b2, [`delete`]): a listed file of the folder alone, by its plain name
+//!   (the original's `DeleteFileA` in `games`, 0x58E08B).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -67,6 +69,23 @@ pub fn entries(dir: &Path, install: &Path, rules: &GameRuleset, broken: &Broken)
         .collect();
     scenario::sort(&mut entries);
     entries
+}
+
+/// Deletes the save `name` of the folder `dir` (E27 M4 T4b2: Delete's OK): a plain file name the
+/// list shows ([`listed`]), never a path out of the folder nor a folder.
+///
+/// # Errors
+/// The name is not a listed file's, or the file does not delete.
+pub fn delete(dir: &Path, name: &str) -> Result<(), String> {
+    let plain = Path::new(name).file_name().is_some_and(|n| n == name);
+    if !plain || !listed(name) {
+        return Err(format!("{name}: not a save of {}", dir.display()));
+    }
+    let path = dir.join(name);
+    if !path.is_file() {
+        return Err(format!("{}: not a file", path.display()));
+    }
+    fs::remove_file(&path).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 /// Whether a file of the name `name` is listed (`*.gm?`, any case: the original's pattern of a

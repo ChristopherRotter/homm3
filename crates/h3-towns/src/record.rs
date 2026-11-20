@@ -256,6 +256,7 @@ mod tests {
             capitol_demoted_to: id(2),
             roe: true,
             tavern: vec![],
+            guild: vec![],
         }
     }
 

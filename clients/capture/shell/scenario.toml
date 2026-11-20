@@ -303,6 +303,8 @@ steps = [
 [[recipe]]
 id = "scn-load-last"
 what = "§3.3, §3.4, §38: Delete of the last save: the empty list, Load pressed and Enter, Back, the screen again with the notice (GENRLTXT 686)"
+# E27 M4 T4b2: the original's second opening drew `gamselb1.pcx` (`again`).
+backgrounds = [0, 1]
 tz = "Asia/Kolkata"
 made_games = [{ by = "scn-load-make-small", file = "small.GM1" }]
 steps = [

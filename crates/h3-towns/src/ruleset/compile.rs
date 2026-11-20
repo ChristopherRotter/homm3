@@ -1,14 +1,17 @@
 //! The town part's compiler (E09 increment 1's design note §2; increment 2's requirements, costs
 //! and role `shipyard`, design §24; increment 3's roles `horde`, `portal`, `week_of`, `roe` and
 //! the growth's parameters, design §38; increment 4's tavern weights and the hire's price, design
-//! §60): the load order, each pack's parameters, records and overrides in it, then the checks
+//! §60; increment 5's guild weights, roles `guild`, `library`, `aurora`, `mana_vortex` and the
+//! guild's parameters, design §83): the load order, each pack's parameters, records and overrides in it, then the checks
 //! across packs.
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use h3_content::{ContentKey, CreatureTypeId, FactionId, HeroClassId, ResourceId, Ruleset};
+use h3_content::{
+    ContentKey, CreatureTypeId, FactionId, HeroClassId, ResourceId, Ruleset, SpellCategory, SpellId,
+};
 use h3_contracts::{MAX_TOWN_BONUSES, Moat};
 
 use super::{
@@ -19,6 +22,16 @@ use super::{
 use crate::building::{BuildingId, BuildingSet, MAX_BUILDINGS};
 
 type Result<T> = core::result::Result<T, TownCompileError>;
+
+/// The highest weight a spell has in a record's guild draw (E09 design §83).
+const MAX_GUILD_WEIGHT: u16 = 10_000;
+/// The mage guild's spell levels.
+const GUILD_LEVELS: u8 = 5;
+/// The most slots a guild level shows without the Library: the draw's spare makes at most six, the
+/// original's slots a level (survey `E09-guild.md` §3.2).
+const MAX_GUILD_SLOTS: u8 = 5;
+/// The highest Mana Vortex factor.
+const MAX_VORTEX_FACTOR: u8 = 10;
 
 /// A record being compiled: the pack that defined it and its fields (the demoted Capitol's
 /// building is resolved once the parameters are known).
@@ -34,6 +47,8 @@ struct Entry {
     roe: bool,
     /// The tavern weights by the core's class index (checked once the overrides are applied).
     tavern: Vec<u8>,
+    /// The guild weights by the core's spell index.
+    guild: Vec<u16>,
 }
 
 /// The pack being compiled: references resolve against the core within its dependency closure.
@@ -109,6 +124,46 @@ impl Scope<'_> {
             weights[class.index()] = *weight;
         }
         Ok(())
+    }
+
+    fn spell(&self, key: &ContentKey) -> Result<SpellId> {
+        let id = self
+            .core
+            .spell_by_key(key.as_str())
+            .ok_or_else(|| TownCompileError::UnknownSpell(String::from(key.as_str())))?;
+        self.check(key).map(|()| id)
+    }
+
+    /// The guild weights by the core's spell index (TWN-GLD-001; E09 design §83): each listed
+    /// spell a hero spell of the core, once, weighing 1 to 10 000; the others 0.
+    // rule: TWN-GLD-001
+    fn guild(&self, def: &[(ContentKey, u16)], faction: &str) -> Result<Vec<u16>> {
+        let mut weights = alloc::vec![0; self.core.spells().len()];
+        for (key, weight) in def {
+            let spell = self.spell(key)?;
+            if self
+                .core
+                .spell(spell)
+                .is_some_and(|s| s.category == SpellCategory::Ability)
+            {
+                return Err(invalid_town(
+                    faction,
+                    "a guild weight's spell is a creature ability",
+                ));
+            }
+            if !(1..=MAX_GUILD_WEIGHT).contains(weight) {
+                return Err(invalid_town(faction, "a guild weight is 1 to 10 000"));
+            }
+            let slot = &mut weights[spell.index()];
+            if *slot != 0 {
+                return Err(invalid_town(
+                    faction,
+                    "a guild weight's spell is given twice",
+                ));
+            }
+            *slot = *weight;
+        }
+        Ok(weights)
     }
 
     /// Amounts of resources in the core's order, or `None` when one is named twice or is 0.
@@ -304,6 +359,27 @@ fn compile_params(scope: &Scope<'_>, def: &TownParamsDef) -> Result<TownParams> 
             "the hire's price gives each resource once, at least 1",
         ))?;
     let guild_resources = guild_resources(scope, &def.guild_resources)?;
+    // rule: TWN-GLD-001
+    if def
+        .guild_slots
+        .iter()
+        .any(|&n| !(1..=MAX_GUILD_SLOTS).contains(&n))
+    {
+        return Err(TownCompileError::InvalidParams(
+            "a guild level's slots are 1 to 5",
+        ));
+    }
+    let spell_book_price =
+        scope
+            .amounts(&def.spell_book_price)?
+            .ok_or(TownCompileError::InvalidParams(
+                "the spell book's price gives each resource once, at least 1",
+            ))?;
+    if !(1..=MAX_VORTEX_FACTOR).contains(&def.vortex_factor) {
+        return Err(TownCompileError::InvalidParams(
+            "the Mana Vortex's factor is 1 to 10",
+        ));
+    }
     Ok(TownParams {
         gold,
         hall_gold: def.hall_gold,
@@ -320,6 +396,9 @@ fn compile_params(scope: &Scope<'_>, def: &TownParamsDef) -> Result<TownParams> 
         most_heroes: def.most_heroes,
         hire_price,
         guild_resources,
+        guild_slots: def.guild_slots,
+        spell_book_price,
+        vortex_factor: def.vortex_factor,
     })
 }
 
@@ -412,6 +491,7 @@ fn compile_town(scope: &Scope<'_>, faction: FactionId, def: &TownDef) -> Result<
     let silo = scope.silo(&def.silo, name)?;
     let mut tavern = alloc::vec![0; scope.core.hero_classes().len()];
     scope.tavern(&def.tavern, name, &mut tavern)?;
+    let guild = scope.guild(&def.guild, name)?;
     let buildings = compile_buildings(scope, name, &def.buildings, &creatures)?;
     check_roles(name, &buildings)?;
     Ok(Entry {
@@ -425,6 +505,7 @@ fn compile_town(scope: &Scope<'_>, faction: FactionId, def: &TownDef) -> Result<
         buildings,
         roe: def.roe,
         tavern,
+        guild,
     })
 }
 
@@ -479,6 +560,12 @@ fn check_building(
     }
     if !(-3..=3).contains(&roles.morale) || !(-3..=3).contains(&roles.luck) {
         return bad("morale and luck are -3 to 3");
+    }
+    if roles
+        .guild
+        .is_some_and(|level| !(1..=GUILD_LEVELS).contains(&level))
+    {
+        return bad("a guild level is 1 to 5");
     }
     Ok(())
 }
@@ -655,7 +742,8 @@ fn forbidden_cycle(forbidden: &[Option<BuildingId>], start: BuildingId) -> bool 
 /// The record's roles across its buildings: one building of each hall and fort level, one Grail,
 /// one silo, at most one Shipyard, Portal of Summoning and week's building; at most
 /// `MAX_TOWN_BONUSES` with a morale or luck change; each dwelling once, the level-1 and level-2
-/// ones present; each index's horde once.
+/// ones present; each index's horde once; at most one building of each guild level, one Library,
+/// one Aurora Borealis and one Mana Vortex (TWN-GLD-001).
 fn check_roles(faction: &str, buildings: &[Building]) -> Result<()> {
     let count =
         |role: &dyn Fn(&BuildingRoles) -> bool| buildings.iter().filter(|b| role(&b.roles)).count();
@@ -711,6 +799,16 @@ fn check_roles(faction: &str, buildings: &[Building]) -> Result<()> {
             return Err(invalid_town(faction, "has a horde of one index twice"));
         }
     }
+    // rule: TWN-GLD-001
+    if (1..=GUILD_LEVELS).any(|level| count(&|r| r.guild == Some(level)) > 1) {
+        return Err(invalid_town(faction, "has two buildings of a guild level"));
+    }
+    if count(&|r| r.library) > 1 || count(&|r| r.aurora) > 1 || count(&|r| r.mana_vortex) > 1 {
+        return Err(invalid_town(
+            faction,
+            "has more than one Library, Aurora Borealis or Mana Vortex",
+        ));
+    }
     Ok(())
 }
 
@@ -742,5 +840,6 @@ fn finish(params: &TownParams, entry: Entry) -> Result<TownRecord> {
         capitol_demoted_to,
         roe: entry.roe,
         tavern: entry.tavern,
+        guild: entry.guild,
     })
 }

@@ -2481,4 +2481,8 @@ an entry only where a task builds on it.
   (100 a kind, both seats) against the fair actor at budget 8 are about 32 thread-hours, about 2
   hours a world; the neutral set's 300 games about 1 hour; the all-seeing opponent doubles a set.
   A budget check first: 20 episodes a kind at budgets 4, 8 and 16 (about 12, 24 and 48 minutes),
-  the value against the fair actor on the same episodes.
+  the value against the fair actor on the same episodes. The user limits the runs to 16 threads
+  (2026-11-20; the estimates above assume about 16 threads' worth).
+- **Stopping** (after #1075): Ctrl-C keeps the finished games; a stop during an append could cut
+  the last one short, which the resume now drops and plays again (a test). A real SIGINT on the
+  release build 70 s into a 12-game run kept 4 games; the same command played the other 8.

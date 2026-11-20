@@ -9,7 +9,7 @@ use std::vec::Vec;
 
 use h3_content::{
     ContentKey, ContentPack, CreatureDef, CreatureInfoDef, FactionDef, HeroClassDef, PackManifest,
-    ProfileDef, ResourceDef, Ruleset,
+    ProfileDef, ResourceDef, Ruleset, SpellCategory, SpellDef, SpellSchoolDef,
 };
 
 use super::*;
@@ -53,6 +53,24 @@ fn class(k: &str, faction: &str) -> HeroClassDef {
     }
 }
 
+fn spell(k: &str, category: SpellCategory, level: u8, granted_by_name_only: bool) -> SpellDef {
+    SpellDef {
+        key: key(k),
+        name: "Spell".into(),
+        category,
+        level,
+        schools: if category == SpellCategory::Ability {
+            vec![]
+        } else {
+            vec![key("t:air")]
+        },
+        cost: [0; 4],
+        power: 0,
+        effect: [0; 4],
+        granted_by_name_only,
+    }
+}
+
 fn creature(k: &str, faction: Option<&str>, level: u8, upgrades: &[&str]) -> CreatureDef {
     CreatureDef {
         key: key(k),
@@ -69,9 +87,11 @@ fn creature(k: &str, faction: Option<&str>, level: u8, upgrades: &[&str]) -> Cre
 /// Core packs: `t` (the resources `t:wood` and `t:gold`, the factions `t:keep` with `t:pike`
 /// upgrading to `t:halberd` at level 1 and `t:archer` at level 2, and `t:wild` with `t:imp` and
 /// `t:gog`; the neutral `t:wisp`; the hero classes `t:knight` of `t:keep` and `t:shaman` of
-/// `t:wild`; the profile), `u` (depends on `t`: the resource `u:gem`, the faction `u:marsh` with
-/// `u:frog` and `u:toad`, its hero class `u:seer`), `v` (no dependencies: the faction `v:dune` with
-/// `v:a` and `v:b`) and `w` (depends on `t`, nothing defined).
+/// `t:wild`; the spells `t:bolt` (combat, level 1), `t:fly` (adventure, level 2), the creature
+/// ability `t:howl` and `t:titan` (granted by name only, level 5), each hero spell of the school
+/// `t:air`; the profile), `u` (depends on `t`: the resource `u:gem`, the faction `u:marsh` with `u:frog` and `u:toad`, its hero class
+/// `u:seer`, the spell `u:mist`), `v` (no dependencies: the faction `v:dune` with `v:a` and `v:b`)
+/// and `w` (depends on `t`, nothing defined).
 fn core() -> Ruleset {
     let t = ContentPack {
         resources: vec![resource("t:wood"), resource("t:gold")],
@@ -85,6 +105,17 @@ fn core() -> Ruleset {
             creature("t:wisp", None, 1, &[]),
         ],
         hero_classes: vec![class("t:knight", "t:keep"), class("t:shaman", "t:wild")],
+        spell_schools: vec![SpellSchoolDef {
+            key: key("t:air"),
+            name: "Air".into(),
+            protection_rank: 0,
+        }],
+        spells: vec![
+            spell("t:bolt", SpellCategory::Combat, 1, false),
+            spell("t:fly", SpellCategory::Adventure, 2, false),
+            spell("t:howl", SpellCategory::Ability, 1, false),
+            spell("t:titan", SpellCategory::Combat, 5, true),
+        ],
         profiles: vec![ProfileDef {
             key: key("t:faithful"),
             quirks: vec![],
@@ -99,6 +130,7 @@ fn core() -> Ruleset {
             creature("u:toad", Some("u:marsh"), 2, &[]),
         ],
         hero_classes: vec![class("u:seer", "u:marsh")],
+        spells: vec![spell("u:mist", SpellCategory::Combat, 1, false)],
         ..ContentPack::new(manifest("u", &["t"]))
     };
     let v = ContentPack {
@@ -155,6 +187,9 @@ fn params() -> TownParamsDef {
         most_heroes: 8,
         hire_price: vec![(key("t:gold"), 2500)],
         guild_resources: [vec![key("t:gold")], vec![key("t:wood")], vec![]],
+        guild_slots: [5, 4, 3, 2, 1],
+        spell_book_price: vec![(key("t:gold"), 500)],
+        vortex_factor: 2,
     }
 }
 
@@ -221,7 +256,8 @@ fn horde(level: u8, upgraded: bool) -> BuildingRoles {
 /// first), the Lookout Tower, a horde requiring the level-2 dwelling and its upgrade requiring
 /// it, forbidden with it and built with it and the level-2 dwelling, and the Shipyard requiring
 /// the Tavern; the Town Hall, the City Hall and the Shipyard cost resources (E09 T16a); the horde
-/// of level 2, the Lookout the Portal of Summoning, the Grail every week level 1's (E09 T25a).
+/// of level 2, the Lookout the Portal of Summoning, the Grail every week level 1's (E09 T25a); the
+/// guild weights `t:bolt` 60 and `t:fly` 40 (E09 T46).
 fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDef {
     let buildings = vec![
         BuildingDef {
@@ -327,13 +363,14 @@ fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDe
         buildings,
         roe: true,
         tavern: vec![(key("t:knight"), 6), (key("t:shaman"), 5)],
+        guild: vec![(key("t:bolt"), 60), (key("t:fly"), 40)],
     }
 }
 
 /// The packs: `t` the parameters, the records of `t:keep` (harmless, its upgraded level-1
 /// dwelling and horde too) and `t:wild` (absent) and the Visions creature `t:wisp`, `u` the
 /// record of `u:marsh` (harmless, not a Restoration of Erathia record, its class `u:seer` in its
-/// tavern), overrides of `t:keep` (damaging, `u:seer` joining its tavern) and of its own record
+/// tavern, its spell `u:mist` in its guild), overrides of `t:keep` (damaging, `u:seer` joining its tavern) and of its own record
 /// (natural obstacles) and the Visions creatures `u:toad` and `u:frog`, `v` and `w` empty.
 fn packs() -> Vec<TownPack> {
     let mut keep = town(
@@ -351,6 +388,7 @@ fn packs() -> Vec<TownPack> {
     );
     marsh.roe = false;
     marsh.tavern.push((key("u:seer"), 5));
+    marsh.guild.push((key("u:mist"), 25));
     let t = TownPack {
         params: Some(params()),
         towns: vec![
@@ -610,11 +648,11 @@ fn the_hash_is_pinned_and_follows_the_content() {
     let (_, again) = compiled();
     assert_eq!(part.content_hash(), again.content_hash());
     assert_eq!(part.content_hash(), hash_of(&part));
-    // The eighth encoding (v8): pinned, so a change of what it covers bumps the version.
-    assert_eq!(part.content_hash(), 0x3d80_d09f_24b4_1949);
+    // The ninth encoding (v9): pinned, so a change of what it covers bumps the version.
+    assert_eq!(part.content_hash(), 0x67ee_ef1c_7b56_fda6);
     assert_eq!(
         TownRuleset::empty(&core).content_hash(),
-        0x8157_2d26_c967_da57
+        0xedec_d7c9_34cc_e444
     );
     let mut changed = packs();
     changed[0].towns[0].buildings[2].name = "Hall".into();
@@ -709,6 +747,233 @@ fn the_hash_is_pinned_and_follows_the_content() {
     rows[2] = core::mem::take(&mut rows[1]);
     let other = TownRuleset::compile(&core, &changed).unwrap();
     assert_ne!(other.content_hash(), part.content_hash());
+    // The ninth (v9, E09 T46): the guild's slots, the book's price, the Vortex's factor, the guild
+    // weights and the roles `guild`, `library`, `aurora`, `mana_vortex`.
+    let changes: [fn(&mut Vec<TownPack>); 10] = [
+        |p| p[0].params.as_mut().unwrap().guild_slots[4] = 2,
+        |p| p[0].params.as_mut().unwrap().spell_book_price[0].1 = 400,
+        |p| p[0].params.as_mut().unwrap().vortex_factor = 3,
+        |p| keep(p).guild[0].1 = 59,
+        |p| drop(p[0].towns[1].guild.pop()),
+        |p| keep(p).guild.push((key("t:titan"), 1)),
+        |p| keep_building(p, "lookout").roles.guild = Some(1),
+        |p| keep_building(p, "lookout").roles.library = true,
+        |p| keep_building(p, "grail").roles.aurora = true,
+        |p| keep_building(p, "silo").roles.mana_vortex = true,
+    ];
+    for change in changes {
+        let mut changed = packs();
+        change(&mut changed);
+        let other = TownRuleset::compile(&core, &changed).unwrap();
+        assert_ne!(other.content_hash(), part.content_hash());
+    }
+}
+
+// covers: TWN-GLD-001
+#[test]
+fn the_guild_weights_are_the_cores_hero_spells_by_index() {
+    let (core, part) = compiled();
+    let spell = |k: &str| core.spell_by_key(k).unwrap();
+    let faction = |k: &str| core.faction_by_key(k).unwrap();
+    let record = part.town(faction("t:keep")).unwrap();
+    assert_eq!(record.guild.len(), core.spells().len());
+    let weights =
+        ["t:bolt", "t:fly", "t:howl", "t:titan", "u:mist"].map(|k| record.guild_weight(spell(k)));
+    assert_eq!(weights, [60, 40, 0, 0, 0]);
+    let marsh = part.town(faction("u:marsh")).unwrap();
+    assert_eq!(marsh.guild_weight(spell("u:mist")), 25);
+    // A spell past the core's weighs 0.
+    assert_eq!(record.guild_weight(SpellId::from_index(99).unwrap()), 0);
+    // A spell granted by name only may be listed; at the bounds 1 and 10 000.
+    let mut listed = packs();
+    keep(&mut listed).guild = vec![(key("t:titan"), 1), (key("t:bolt"), 10_000)];
+    let part = TownRuleset::compile(&core, &listed).unwrap();
+    let record = part.town(faction("t:keep")).unwrap();
+    assert_eq!(
+        (
+            record.guild_weight(spell("t:titan")),
+            record.guild_weight(spell("t:bolt")),
+            record.guild_weight(spell("t:fly"))
+        ),
+        (1, 10_000, 0)
+    );
+    // The refusals.
+    use TownCompileError as E;
+    let reason = |change: fn(&mut TownDef)| refused(|p| change(keep(p)));
+    assert_eq!(
+        reason(|t| t.guild[0].0 = key("t:nope")),
+        E::UnknownSpell("t:nope".into())
+    );
+    assert_eq!(
+        reason(|t| t.guild.push((key("u:mist"), 1))),
+        E::ReferenceOutsideDependencies {
+            key: "u:mist".into(),
+            pack: "t".into(),
+        }
+    );
+    assert_eq!(
+        reason(|t| t.guild.push((key("t:howl"), 1))),
+        town_error("t:keep", "a guild weight's spell is a creature ability")
+    );
+    let bounds = town_error("t:keep", "a guild weight is 1 to 10 000");
+    assert_eq!(reason(|t| t.guild[1].1 = 0), bounds);
+    assert_eq!(reason(|t| t.guild[1].1 = 10_001), bounds);
+    assert_eq!(
+        reason(|t| t.guild.push((key("t:bolt"), 5))),
+        town_error("t:keep", "a guild weight's spell is given twice")
+    );
+}
+
+// covers: TWN-GLD-001
+#[test]
+fn the_guilds_parameters_are_checked() {
+    let (core, part) = compiled();
+    let params = part.params().unwrap();
+    let gold = core.resources().iter().position(|r| r.key == key("t:gold"));
+    let gold = ResourceId::from_index(gold.unwrap()).unwrap();
+    assert_eq!(params.guild_slots, [5, 4, 3, 2, 1]);
+    assert_eq!(params.spell_book_price, [(gold, 500)]);
+    assert_eq!(params.vortex_factor, 2);
+    use TownCompileError as E;
+    let param = |change: fn(&mut TownParamsDef)| refused(|p| change(p[0].params.as_mut().unwrap()));
+    let slots = E::InvalidParams("a guild level's slots are 1 to 5");
+    assert_eq!(param(|d| d.guild_slots[0] = 0), slots);
+    assert_eq!(param(|d| d.guild_slots[4] = 6), slots);
+    let price = E::InvalidParams("the spell book's price gives each resource once, at least 1");
+    assert_eq!(param(|d| d.spell_book_price[0].1 = 0), price);
+    assert_eq!(
+        param(|d| d.spell_book_price.push((key("t:gold"), 1))),
+        price
+    );
+    assert_eq!(
+        param(|d| d.spell_book_price[0].0 = key("t:nope")),
+        E::UnknownResource("t:nope".into())
+    );
+    let factor = E::InvalidParams("the Mana Vortex's factor is 1 to 10");
+    assert_eq!(param(|d| d.vortex_factor = 0), factor);
+    assert_eq!(param(|d| d.vortex_factor = 11), factor);
+    // At the bounds, a free book: compiles, the price in the core's order.
+    let mut bounds = packs();
+    let p = bounds[0].params.as_mut().unwrap();
+    p.guild_slots = [1, 5, 5, 5, 1];
+    p.vortex_factor = 10;
+    p.spell_book_price.clear();
+    let part = TownRuleset::compile(&core, &bounds).unwrap();
+    assert!(part.params().unwrap().spell_book_price.is_empty());
+    let mut both = packs();
+    both[0].params.as_mut().unwrap().spell_book_price =
+        vec![(key("t:gold"), 5), (key("t:wood"), 1)];
+    let part = TownRuleset::compile(&core, &both).unwrap();
+    let wood = ResourceId::from_index(0).unwrap();
+    assert_eq!(
+        part.params().unwrap().spell_book_price,
+        [(wood, 1), (gold, 5)]
+    );
+}
+
+// covers: TWN-GLD-001
+#[test]
+fn the_guilds_roles_are_checked() {
+    let guild = |level: u8| BuildingRoles {
+        guild: Some(level),
+        ..BuildingRoles::default()
+    };
+    let with_guild = |t: &mut TownDef| {
+        t.buildings.push(building("mage_guild_1", guild(1)));
+        t.buildings
+            .push(superseding("mage_guild_2", "mage_guild_1", guild(2)));
+        t.buildings.push(building(
+            "library",
+            BuildingRoles {
+                library: true,
+                ..BuildingRoles::default()
+            },
+        ));
+        t.buildings.push(building(
+            "vortex",
+            BuildingRoles {
+                mana_vortex: true,
+                ..BuildingRoles::default()
+            },
+        ));
+        let aurora = &mut t
+            .buildings
+            .iter_mut()
+            .find(|b| b.key == "grail")
+            .unwrap()
+            .roles;
+        aurora.aurora = true;
+    };
+    let mut packs_with = packs();
+    with_guild(keep(&mut packs_with));
+    let core = core();
+    let part = TownRuleset::compile(&core, &packs_with).unwrap();
+    let keep_record = part.town(core.faction_by_key("t:keep").unwrap()).unwrap();
+    let roles = |k: &str| {
+        keep_record
+            .building(keep_record.building_by_key(k).unwrap())
+            .unwrap()
+            .roles
+    };
+    assert_eq!(
+        (roles("mage_guild_1").guild, roles("mage_guild_2").guild),
+        (Some(1), Some(2))
+    );
+    assert!(roles("library").library && roles("vortex").mana_vortex && roles("grail").aurora);
+    assert!(!roles("tavern").library && roles("tavern").guild.is_none());
+    // A level outside 1 to 5.
+    let level = |raw: u8| {
+        refused(move |p| {
+            with_guild(keep(p));
+            keep_building(p, "mage_guild_2").roles.guild = Some(raw);
+        })
+    };
+    assert_eq!(
+        level(0),
+        building_error("mage_guild_2", "a guild level is 1 to 5")
+    );
+    assert_eq!(
+        level(6),
+        building_error("mage_guild_2", "a guild level is 1 to 5")
+    );
+    assert!(
+        TownRuleset::compile(&core, &{
+            let mut p = packs_with.clone();
+            keep_building(&mut p, "mage_guild_2").roles.guild = Some(5);
+            p
+        })
+        .is_ok()
+    );
+    // A level twice, a second Library, Aurora or Vortex.
+    let reason = |change: fn(&mut TownDef)| {
+        refused(|p| {
+            with_guild(keep(p));
+            change(keep(p));
+        })
+    };
+    assert_eq!(
+        reason(|t| t.buildings.push(building(
+            "guild_again",
+            BuildingRoles {
+                guild: Some(1),
+                ..BuildingRoles::default()
+            }
+        ))),
+        town_error("t:keep", "has two buildings of a guild level")
+    );
+    let one = town_error(
+        "t:keep",
+        "has more than one Library, Aurora Borealis or Mana Vortex",
+    );
+    let second = |change: fn(&mut BuildingRoles)| {
+        refused(move |p| {
+            with_guild(keep(p));
+            change(&mut keep_building(p, "tavern").roles);
+        })
+    };
+    assert_eq!(second(|r| r.library = true), one);
+    assert_eq!(second(|r| r.aurora = true), one);
+    assert_eq!(second(|r| r.mana_vortex = true), one);
 }
 
 // covers: TWN-TAV-008
@@ -1337,6 +1602,7 @@ fn every_error_has_a_message() {
             E::UnknownHeroClass("p:x".into()),
             "unknown hero class `p:x`",
         ),
+        (E::UnknownSpell("p:x".into()), "unknown spell `p:x`"),
         (
             E::DuplicateTown("p:x".into()),
             "faction `p:x` has two town records",

@@ -936,17 +936,15 @@ impl Front {
     }
 
     /// The original's box over it whose buttons a recipe's `press`, `point` and `until-button`
-    /// find (E27 M4 T1b: High Scores' Reset question; *provisional*: the other boxes' recipes are
-    /// not replayed yet), while it shows.
+    /// find (E27 M4 T1b: High Scores' Reset question; T4b2: the scenario screen's boxes, Delete's
+    /// question among them; *provisional*: the other boxes' recipes are not replayed yet), while
+    /// it shows.
     #[must_use]
     pub fn question(&self) -> Option<&Open> {
         match self {
             Self::Scores(s) => s.question(),
-            Self::Menu(_)
-            | Self::Multiplayer(_)
-            | Self::Scenario(_)
-            | Self::Play(_)
-            | Self::Credits(_) => None,
+            Self::Scenario(s) => s.question(),
+            Self::Menu(_) | Self::Multiplayer(_) | Self::Play(_) | Self::Credits(_) => None,
         }
     }
 

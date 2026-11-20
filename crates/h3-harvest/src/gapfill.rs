@@ -75,6 +75,24 @@ pub struct Towns {
     pub tavern: TownTavern,
     /// The Thieves' Guild's parameter (E09 T39b1, design §73).
     pub guild: TownGuild,
+    /// The mage guild's parameters (E09 T46, design §83).
+    pub mage_guild: TownMageGuild,
+}
+
+/// The mage guild's `[town_params]` (E09 T46, design §83; survey `E09-guild.md` §3.3, §13, §15):
+/// the slots a level shows, the spell book's price in the parameters' gold, the Mana Vortex's
+/// factor (the records' guild weights are `SPTRAITS.TXT`'s).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownMageGuild {
+    /// Source ids.
+    pub sources: Vec<String>,
+    /// The slots a guild level shows, levels 1 to 5.
+    pub guild_slots: [u8; 5],
+    /// The spell book's price, in gold.
+    pub spell_book_price: u32,
+    /// What the Mana Vortex multiplies a hero's maximum spell points by.
+    pub vortex_factor: u8,
 }
 
 /// The Thieves' Guild's `[town_params]` (E09 T39b1, design §73, decision 152; survey
@@ -1103,6 +1121,7 @@ impl GapFill {
                         .chain(&t.rows.sources)
                         .chain(&t.tavern.sources)
                         .chain(&t.guild.sources)
+                        .chain(&t.mage_guild.sources)
                         .chain(t.role.iter().flat_map(|r| &r.sources))
                 }));
         for r in refs {

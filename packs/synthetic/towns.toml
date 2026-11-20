@@ -5,7 +5,9 @@
 # the dwellings', the hordes') and the costs, and a Shipyard; since E09 T25a the growth's
 # parameters, a horde (its upgrade has none: `vale`'s levels have no upgrades), a Portal of
 # Summoning (the Lookout's) and a week's building (the Grail's, as the Inferno's Deity of Fire);
-# since E09 T36 the hire's price and the record's tavern weights (its two classes).
+# since E09 T36 the hire's price and the record's tavern weights (its two classes); since E09 T46
+# the guild's parameters, the record's guild weights, two Mage Guild levels, a Library, a Mana
+# Vortex and the Grail's Aurora.
 
 [town_params]
 gold = "coin"
@@ -26,6 +28,9 @@ most_heroes = 8
 hire_price = { coin = 2000 }       # TWN-TAV-003 (E09 T36); the original's 2 500 gold
 guild_resources = [["coin"], ["shard"], []] # TWN-TAV-008 (E09 T39b1): the Thieves' Guild's
                                    # rows 2 to 4 (the original's gold, wood and ore, the rare)
+guild_slots = [4, 3, 3, 2, 1]      # TWN-GLD-001 (E09 T46); the original's 5, 4, 3, 2, 1
+spell_book_price = { coin = 400 }  # the original's 500 gold
+vortex_factor = 3                  # the original's 2
 
 [[town]]
 faction = "vale"
@@ -36,6 +41,13 @@ creatures = [["spearman"], ["synthetic:brute"]]
   [town.tavern]                    # TWN-TAV-001 (E09 T36): the original's 5 or 6 a class
   warden = 7
   sage = 3
+
+  [town.guild]                     # TWN-GLD-001 (E09 T46): the original's columns sum to 100 a
+  spark = 60                       # reachable level
+  hasten = 40
+  farsight = 100
+  ward = 70
+  "synthetic:fury" = 30
 
   [[town.building]]
   key = "village_hall"
@@ -108,6 +120,7 @@ creatures = [["spearman"], ["synthetic:brute"]]
   key = "grail"
   name = "Grail"
   grail = true
+  aurora = true                    # E09 T46: as the Conflux's Aurora Borealis
   luck = 2
   escape_tunnel = true
   defender = { attack = 2, mana = 150 }
@@ -163,3 +176,32 @@ creatures = [["spearman"], ["synthetic:brute"]]
   requires = ["tavern"]
   cost = { coin = 2000, shard = 20 }
   shipyard = true
+
+  # The mage guild (E09 T46): two levels, the Library and the Mana Vortex (TWN-GLD-001).
+  [[town.building]]
+  key = "mage_guild_1"
+  name = "Mage Guild Level 1"
+  cost = { coin = 2000, shard = 5 }
+  guild = 1
+
+  [[town.building]]
+  key = "mage_guild_2"
+  name = "Mage Guild Level 2"
+  supersedes = ["mage_guild_1"]
+  requires = ["mage_guild_1"]
+  cost = { coin = 1000, shard = 4 }
+  guild = 2
+
+  [[town.building]]
+  key = "library"
+  name = "Library"
+  requires = ["mage_guild_1"]
+  cost = { coin = 1500 }
+  library = true
+
+  [[town.building]]
+  key = "mana_vortex"
+  name = "Mana Vortex"
+  requires = ["mage_guild_1"]
+  cost = { coin = 1000 }
+  mana_vortex = true
