@@ -42,7 +42,7 @@ quests = []
 [[message]]
 at = 100
 box = [240, 76, 320, 448]
-texts = ["or", "500", "1000", "{Chest}\n\nAfter scouring the area, you fall upon a hidden treasure cache.  You may take the gold or distribute it to the peasants for experience.  Which do you choose?"]
+texts = ["[GENRLTXT:5]", "500", "1000", "[ADVEVENT:146]"]
 pictures = [["pskill.def", 4, "500"], ["resour82.def", 6, "1000"]]
 buttons = [30730, 30729, 30722]
 style = 7
@@ -52,7 +52,7 @@ marks = [[30730, 419, 332, 86, 97, 2], [30729, 295, 332, 86, 97, 2], [30722, 368
 [[message]]
 at = 1000
 box = [240, 76, 320, 448]
-texts = ["or", "500", "1000", "{Chest}\n\nAfter scouring the area, you fall upon a hidden treasure cache.  You may take the gold or distribute it to the peasants for experience.  Which do you choose?"]
+texts = ["[GENRLTXT:5]", "500", "1000", "[ADVEVENT:146]"]
 pictures = [["pskill.def", 4, "500"], ["resour82.def", 6, "1000"]]
 buttons = [30730, 30729, 30722]
 style = 7
@@ -62,7 +62,7 @@ marks = [[30730, 419, 332, 86, 97, 2], [30729, 295, 332, 86, 97, 6], [30722, 368
 [[message]]
 at = 1400
 box = [240, 76, 320, 448]
-texts = ["or", "500", "1000", "{Chest}\n\nAfter scouring the area, you fall upon a hidden treasure cache.  You may take the gold or distribute it to the peasants for experience.  Which do you choose?"]
+texts = ["[GENRLTXT:5]", "500", "1000", "[ADVEVENT:146]"]
 pictures = [["pskill.def", 4, "500"], ["resour82.def", 6, "1000"]]
 buttons = [30730, 30729, 30722]
 style = 7
@@ -72,7 +72,7 @@ marks = [[30730, 419, 332, 86, 97, 6], [30729, 295, 332, 86, 97, 2], [30722, 368
 [[message]]
 at = 1800
 box = [240, 76, 320, 448]
-texts = ["or", "500", "1000", "{Chest}\n\nAfter scouring the area, you fall upon a hidden treasure cache.  You may take the gold or distribute it to the peasants for experience.  Which do you choose?"]
+texts = ["[GENRLTXT:5]", "500", "1000", "[ADVEVENT:146]"]
 pictures = [["pskill.def", 4, "500"], ["resour82.def", 6, "1000"]]
 buttons = [30730, 30729, 30722]
 style = 7

@@ -42,7 +42,7 @@ quests = []
 [[message]]
 at = 100
 box = [240, 204, 320, 192]
-texts = ["Do you wish to open the box?"]
+texts = ["[ADVEVENT:14]"]
 pictures = []
 buttons = [30726, 30725]
 style = 2
@@ -52,7 +52,7 @@ marks = [[30726, 409, 335, 64, 30, 6], [30725, 327, 335, 64, 30, 6]]
 [[message]]
 at = 1000
 box = [240, 204, 320, 192]
-texts = ["Do you wish to open the box?"]
+texts = ["[ADVEVENT:14]"]
 pictures = []
 buttons = [30726, 30725]
 style = 2
@@ -62,7 +62,7 @@ marks = [[30726, 409, 335, 64, 30, 6], [30725, 327, 335, 64, 30, 7]]
 [[message]]
 at = 1060
 box = [240, 140, 320, 320]
-texts = ["1500", "Mephala has found treasure."]
+texts = ["1500", "[ADVEVENT:183]"]
 pictures = [["resour82.def", 6, "1500"]]
 buttons = [30729, 30722]
 style = 1
@@ -72,7 +72,7 @@ marks = [[30729, 357, 268, 86, 97, 2], [30722, 368, 399, 64, 30, 6]]
 [[message]]
 at = 1600
 box = [240, 140, 320, 320]
-texts = ["1500", "Mephala has found treasure."]
+texts = ["1500", "[ADVEVENT:183]"]
 pictures = [["resour82.def", 6, "1500"]]
 buttons = [30729, 30722]
 style = 1

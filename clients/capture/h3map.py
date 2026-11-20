@@ -1066,7 +1066,25 @@ def turn_toml(mem, t):
             f"heroes = {heroes}\nboats = {boats}\n")
 
 
-def message_toml(box, t):
+def own_texts(sit):
+    """The texts a situation gives itself (its `text` and `message` strings, at any depth: a
+    guard's question, an event's message), which a kept text names `[the map's text]`."""
+    if isinstance(sit, dict):
+        return [t for k, v in sit.items()
+                for t in ([v] if k in ("text", "message") and isinstance(v, str)
+                          else own_texts(v))]
+    if isinstance(sit, list):
+        return [t for v in sit for t in own_texts(v)]
+    return []
+
+
+def labels(texts, own=()):
+    """A box's texts as the records they were made of (`h3lod.label`; the labels task, ADR-0009:
+    the original's texts never kept)."""
+    return [h3lod.label(text, own) for text in texts]
+
+
+def message_toml(box, t, own=()):
     """A message box opened in a sequence (E24 M4 T2a1, design §5.3), a `[[message]]` table of
     the live part (after the `[[turn]]` tables): its millisecond, its place (x, y, width,
     height), its texts (the text, then the pictures' captions), its pictures ([DEF, frame,
@@ -1074,13 +1092,16 @@ def message_toml(box, t):
     viewer lays out from a find's facts is checked against (Part B: the engine's events). Since
     E24 M4 T2b1 (design §5.4) its `style`, the picture `chosen` (0x7809 or 0x780A in styles 7
     and 10, -1 none) and its `marks`, each button's and choice frame's [id, x, y, width, height,
-    state]: a choice or a button enabled appends a table of its own."""
-    return (f"\n[[message]]\nat = {t}\nbox = {box['box']}\ntexts = {json.dumps(box['texts'])}\n"
-            f"pictures = {json.dumps(box['pictures'])}\nbuttons = {box['buttons']}\n"
+    state]: a choice or a button enabled appends a table of its own. Since the labels task the
+    texts and the captions by their records (`labels`, with the situation's `own` texts)."""
+    pictures = [[*p[:2], *labels(p[2:], own)] for p in box["pictures"]]
+    return (f"\n[[message]]\nat = {t}\nbox = {box['box']}\n"
+            f"texts = {json.dumps(labels(box['texts'], own))}\n"
+            f"pictures = {json.dumps(pictures)}\nbuttons = {box['buttons']}\n"
             f"style = {box['style']}\nchosen = {box['chosen']}\nmarks = {box['marks']}\n")
 
 
-def level_up_toml(box, t):
+def level_up_toml(box, t, own=()):
     """The level-up dialog opened in a sequence (E24 M4 T2c, design §5.5), a `[[level_up]]`
     table of the live part beside the `[[message]]` tables: its millisecond, the `hero` (the
     selected one) and its new `level`, its place, its texts and pictures in item order, the
@@ -1089,19 +1110,19 @@ def level_up_toml(box, t):
     x, y, width, height, state] (`Mem.level_up_box`): a choice or the OK's state changed appends
     a table of its own. The viewer takes a level-up's facts from it (the hero, the level, the
     primary skill and the offers: the original's draws), as Part B takes them from the engine's
-    `LevelUpView`."""
+    `LevelUpView`. Since the labels task the texts by their records (`labels`)."""
     return (f"\n[[level_up]]\nat = {t}\nhero = {box['hero']}\nlevel = {box['level']}\n"
-            f"box = {box['box']}\ntexts = {json.dumps(box['texts'])}\n"
+            f"box = {box['box']}\ntexts = {json.dumps(labels(box['texts'], own))}\n"
             f"pictures = {json.dumps(box['pictures'])}\noffers = {box['offers']}\n"
             f"chosen = {box['chosen']}\nmarks = {box['marks']}\n")
 
 
-def found_toml(found, t):
+def found_toml(found, t, own=()):
     """The status window of a resource found built in a sequence (kind 6; E24 M4 T2a1, design
     §5.3), a `[[found]]` table of the live part: its millisecond, the resource, the amount and
-    the text (`Mem.found`)."""
+    the text (`Mem.found`; since the labels task by its records, `h3lod.label`)."""
     return (f"\n[[found]]\nat = {t}\nresource = {found['resource']}\n"
-            f"amount = {found['amount']}\ntext = {json.dumps(found['text'])}\n")
+            f"amount = {found['amount']}\ntext = {json.dumps(h3lod.label(found['text'], own))}\n")
 
 
 def cast_toml(mem, casting, t):
@@ -1263,6 +1284,7 @@ def sequence(entry, out):
         raise ValueError(f"{entry['id']}: `sound` is true or false, not `{sound!r}`")
     (out / "sounds.txt").unlink(missing_ok=True)
     game, mem, sit, turn = stage(situation_path, out, seed=seed, sound=sound)
+    own = own_texts(sit)
     down = set()
     try:
         kept.mkdir(parents=True)
@@ -1408,7 +1430,7 @@ def sequence(entry, out):
             key = None if box is None else (box["box"], box["texts"], box["pictures"],
                                             box["chosen"], box["marks"])
             if key is not None and key != shown_box:
-                finds.append(message_toml(box, t - t0))
+                finds.append(message_toml(box, t - t0, own))
             shown_box = key
             # E24 M4 T2c (design §5.5): the level-up dialog, a table at its build and at each
             # change of its choice or its OK.
@@ -1417,11 +1439,11 @@ def sequence(entry, out):
                                                  level_up["pictures"], level_up["chosen"],
                                                  level_up["marks"])
             if key is not None and key != shown_level_up:
-                finds.append(level_up_toml(level_up, t - t0))
+                finds.append(level_up_toml(level_up, t - t0, own))
             shown_level_up = key
             found = mem.status_shown() == 6
             if found and not shown_found:
-                finds.append(found_toml(mem.found(), t - t0))
+                finds.append(found_toml(mem.found(), t - t0, own))
             shown_found = found
             # E24 M4 T2d3 (design §5.8): a cast through the spell book, from the millisecond
             # the book leaves (its answer, the hero's mana and the boats then) to the one its

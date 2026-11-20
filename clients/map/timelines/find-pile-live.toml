@@ -43,4 +43,4 @@ quests = []
 at = 100
 resource = 6
 amount = 70000
-text = "You find a small quantity of gold."
+text = "[ADVEVENT:113]"

@@ -26,19 +26,6 @@ their entries in `QUEUE-ARCHIVE.md`). A fact the record lacks becomes an `MCL-Q<
 the engine lane's inbox, its gap shown in the comparison, never a rule copied into the client (the
 user, the same day).
 
-### E24 M4 — the kept live parts' message texts as labels (ADR-0009)
-
-- **Scope:** found at T4a1 (2026-11-19; the user: labels later, none new meanwhile): since T2a1 the
-  harness's `[[message]]` tables (`message_toml`, `Mem.message_box`) keep each box's `texts`
-  verbatim from the original, and 41 kept live parts in git (`clients/map/timelines/*-live.toml`)
-  hold them. Write them as the hint and the popup recordings do (`hint`, `popup`: the record a
-  text comes from, `[TABLE:row]`, else `[other: n characters]`; the captions likewise), check
-  that nothing of the viewer reads them (the boxes are composed from the catalogue), rewrite the
-  41 kept files (a transform by the extracted tables, or the sequences recorded again), and add a
-  guard (`h3map.py`, or a test over `clients/map/`) that refuses a kept file with a text.
-- **Acceptance:** no original text in `clients/map/`; `drawn` all the same; `check.sh` all gates.
-- **Depends on:** nothing. **Status:** next (before T4a2: `game-week`'s live part waits on it).
-
 ### E24 M4 T4 — a record played (cut in three by the user at its start, 2026-11-19)
 
 T4 cut by event family, as Part A was: **T4a** the viewer's own turns (its walks along the
@@ -71,7 +58,8 @@ engine lanes' inboxes, its gap shown in the comparison, never a rule copied into
   show no Seer's Hut, Quest Guard or Obelisk yet; a shipped map's town list order is MCL-Q38's;
   `MCL-STUB-1` (a random artifact's and dwelling's drawn picture) still waits on the adventure
   lane's answer to this lane's note of 2026-11-19.
-- **Depends on:** T4a1; the labels task above (`game-week`'s live part). **Status:** waiting.
+- **Depends on:** T4a1; the labels task (done 2026-11-20: `game-week`'s live part is kept with
+  labels once T4a2 records it again). **Status:** next.
 
 #### E24 M4 T4b — a record's visits played
 
@@ -115,6 +103,14 @@ engine lanes' inboxes, its gap shown in the comparison, never a rule copied into
 - **Depends on:** T1a to T5. **Status:** waiting.
 
 ## Inbox
+
+- 2026-11-20 (this lane, the labels task; **the user's to decide, then a small task**): the
+  viewer's tests' own catalogues (`h3-map-view`'s `finds/tests.rs`, `asks/tests.rs`,
+  `status/tests.rs`) imitate the catalogue's texts, and a few are the original's sentences or
+  their starts (a sign's default text, RANDSIGN 5; a pile's, ADVEVENT 113; a bank's, ADVEVENT 32;
+  a luck reward's, ADVEVENT's; `levels.rs`'s doc comment quotes GENRLTXT 446's words). The tests
+  compare the viewer's composition, so words of our own serve as well (ADR-0009); found by the
+  labels task's scan, outside its `clients/map/`.
 
 - 2026-11-19 (the client lane, E27 M3 T7 (M4 T0), `client/e27-m3-t7`; **informational, nothing to
   do**): E27's dialogs in play (the system options and the menu in play, Save from play, Restart,

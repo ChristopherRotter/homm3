@@ -42,6 +42,6 @@ quests = []
 [[message]]
 at = 100
 box = [272, 204, 256, 192]
-texts = ["Proceed at Your Own Risk"]
+texts = ["[RANDSIGN:5]"]
 pictures = []
 buttons = [30722]

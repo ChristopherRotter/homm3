@@ -159,6 +159,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   T2a sequence recorded again (`find-*`, `turn-*`) keeps a live part with more tables than git's:
   expected, nothing of the viewer reads them. A choice's OK is disabled until a picture is
   chosen (styles 7 and 10): a sequence's Enter before the click does nothing.
+- **A kept text is a label** (the labels task, ADR-0009): `frames` writes a box's, a level-up's
+  and a find's texts as their records (`h3lod.label`), and `h3-map-view`'s `tests/texts.rs`
+  fails on a kept live part with anything else (a live part from an older branch, a hand edit):
+  label it with `h3lod.label` (a label stays as it is). A recording again may move the
+  palette's phase at 0 (`cycles` 10 for 11, two of three runs at the labels task): keep git's
+  lines where only the labels were meant to change.
 - **Two tests pin the recorded sequences** (M4 T2d1): moving a task's sequences from
   `to-record.toml` into `sequences.toml` fails `sequence::tests::reads_the_recorded_sequences`
   (their count) and `timeline::tests::the_walks_frames_are_m2_t3bs` (the ids replayed, in order)

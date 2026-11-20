@@ -42,6 +42,6 @@ quests = []
 [[message]]
 at = 100
 box = [240, 108, 320, 384]
-texts = ["4", "{Windmill}\n\nThe keeper of the mill announces: \"Milord, I have been working very hard to provide you with these resources, come back next week for more.\""]
+texts = ["4", "[ADVEVENT:170]"]
 pictures = [["resour82.def", 1, "4"]]
 buttons = [30729, 30722]

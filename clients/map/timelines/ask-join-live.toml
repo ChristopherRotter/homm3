@@ -42,7 +42,7 @@ quests = []
 [[message]]
 at = 100
 box = [240, 172, 320, 256]
-texts = ["{Followers}\n\nA group of Peasants with a desire for greater glory wish to join you. Do you accept? "]
+texts = ["[ADVEVENT:86]"]
 pictures = []
 buttons = [30726, 30725]
 style = 2
@@ -52,7 +52,7 @@ marks = [[30726, 409, 367, 64, 30, 6], [30725, 327, 367, 64, 30, 6]]
 [[message]]
 at = 1000
 box = [240, 172, 320, 256]
-texts = ["{Followers}\n\nA group of Peasants with a desire for greater glory wish to join you. Do you accept? "]
+texts = ["[ADVEVENT:86]"]
 pictures = []
 buttons = [30726, 30725]
 style = 2

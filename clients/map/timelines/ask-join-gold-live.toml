@@ -42,7 +42,7 @@ quests = []
 [[message]]
 at = 100
 box = [240, 108, 320, 384]
-texts = ["300", "The creatures are swayed by your diplomatic tongue, and make you an offer:\n\nAll 5 of the Pikemen will join your army for the sum of 300 gold.  Do you accept?"]
+texts = ["300", "[ADVEVENT:89+90]"]
 pictures = [["resour82.def", 6, "300"]]
 buttons = [30729, 30726, 30725]
 style = 2
@@ -52,7 +52,7 @@ marks = [[30729, 357, 300, 86, 97, 2], [30726, 409, 431, 64, 30, 6], [30725, 327
 [[message]]
 at = 1000
 box = [240, 108, 320, 384]
-texts = ["300", "The creatures are swayed by your diplomatic tongue, and make you an offer:\n\nAll 5 of the Pikemen will join your army for the sum of 300 gold.  Do you accept?"]
+texts = ["300", "[ADVEVENT:89+90]"]
 pictures = [["resour82.def", 6, "300"]]
 buttons = [30729, 30726, 30725]
 style = 2
