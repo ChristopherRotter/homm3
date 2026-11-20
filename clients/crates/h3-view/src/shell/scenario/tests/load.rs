@@ -71,12 +71,21 @@ fn the_autosave_shows_its_name_and_leads_the_name_sort() {
     assert_eq!(difficulty_frames(&draws), [2, 2, 2, 3, 2]);
     // The name's column: the autosave first, then the files' names; again, the other way.
     click(&mut s, [216, 106]);
-    assert_eq!(names(&s.draws("")), ["AUTOSAVE.GM1", "small.GM1", "Week_one.GM1"]);
+    assert_eq!(
+        names(&s.draws("")),
+        ["AUTOSAVE.GM1", "small.GM1", "Week_one.GM1"]
+    );
     click(&mut s, [216, 106]);
-    assert_eq!(names(&s.draws("")), ["Week_one.GM1", "small.GM1", "AUTOSAVE.GM1"]);
+    assert_eq!(
+        names(&s.draws("")),
+        ["Week_one.GM1", "small.GM1", "AUTOSAVE.GM1"]
+    );
     // The size's: small, medium, large.
     click(&mut s, [74, 106]);
-    assert_eq!(names(&s.draws("")), ["small.GM1", "AUTOSAVE.GM1", "Week_one.GM1"]);
+    assert_eq!(
+        names(&s.draws("")),
+        ["small.GM1", "AUTOSAVE.GM1", "Week_one.GM1"]
+    );
     assert_eq!(label(&s.draws(""), NAME).as_deref(), Some("Arrogance"));
     assert_eq!(s.difficulty(), 0);
 }
@@ -202,4 +211,14 @@ fn an_opening_keeps_the_save_and_shows_the_times_given() {
     let opened = again.opened(Hovers::default());
     assert_eq!(opened.rows(), (None, 0));
     assert_eq!(label(&opened.draws(""), DATE).as_deref(), Some(""));
+}
+
+#[test]
+fn the_date_writes_its_pattern_s_placeholders_and_keeps_another() {
+    let fields = local(1_016_336_220, KOLKATA);
+    assert_eq!(
+        date("{{day}}.{{month}}.{{year}} {{hour}}:{{minute}}", fields),
+        "17.3.2002 9:07"
+    );
+    assert_eq!(date("{{week}} {{year}}", fields), "{{week}} 2002");
 }

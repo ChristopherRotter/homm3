@@ -1037,7 +1037,9 @@ impl Scenario {
                 },
             );
         }
-        self.shown.texts.insert(TITLE, self.texts.load_title.clone());
+        self.shown
+            .texts
+            .insert(TITLE, self.texts.load_title.clone());
         self.shown.defs.insert(BEGIN, begin.clone());
         self.loading = Some(begin);
         self.offset = offset;

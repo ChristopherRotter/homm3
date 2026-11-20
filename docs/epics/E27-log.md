@@ -1743,3 +1743,33 @@ Kept whole (no seam needed).
   (the load's stop at `games-time` until T4b); `cargo xtask check-exe-map`; the client scope's
   verify with the original data.
 - **Questions:** none new. **The agent's calls** (*provisional*: M4's review list items 21 to 23).
+
+## M4 T4b1 — Load Game single's screen and the client's saves listed (2026-11-20)
+
+- **Start:** the PC's 63 files of `original-data/` (its `install/MP3` holds 39 non-campaign
+  tracks, not the HANDOFF's 40) and the manuals staged, SHA-256 checked against the PC's; the setup's
+  baseline stopped at coverage (fmt, clippy, the doc tests, deny passed); `master`'s Clients job
+  green. T4b cut at Delete at its start (decision 73). The original's `scn-load` played once
+  under Wine (the makers first): as kept, its frames for the comparisons.
+- **Built** (design §39): `h3_view::shell::scenario`'s load mode (`Scenario::loading`,
+  `is_load`, `set_entries`, `set_time`; `load`'s `Saved`, `DATE`, `local`, `is_autosave`,
+  `sorts_first`; `Entry::saved`; `Texts`' `load_title`, `autosave`, `date`, `load_stub`;
+  `KEPT_SAVE`, `ALLIES_LABEL`), the stale buttons and rating of the partial redraw, a right
+  press without a popup redrawing nothing (read: §39.3), a hidden button taking no key;
+  `Menus::load` and its front (a single load `Built::Whole`, `Screen::task` of the other loads);
+  `keys::Command::Delete` (`scenario-delete`); the replay's `Step::GamesTime` and
+  `Input::KeyHold` (`held_presses`); `h3_ui::text::message`'s `%02d`; `h3_sdl::local_offset`;
+  the battle client's `saves` (`entries`, `entry`, `listed`, `Broken`, `made`, `h3-view save`)
+  and the shell's `--games`, the load's texts, the folder read at each opening, the window's
+  repeats on the scenario screen; the catalogue's `shell.scenario.load-title`, `autosave`,
+  `date`, `broken-name`, `broken` and `shell.stub.load` (en.json); the layout's `load_begin` and
+  the date's item 1015; `h3shell.py`'s `client_save` (`drawn --games`) and the makers' `viewer`
+  tables; CLT-STUB-15 (commented in `docs/stubs.toml`).
+- **Compared:** `scn-load` 19 of 25 exact at the first build (all but Delete's four shots, the
+  load's clip and the map); `scn-load-last` 1 of 9, `scn-load-none` 0 of 5 (T4b2's); the
+  `scenario`, `advanced`, `menus`, `multiplayer`, `end`, `options` and `scores` groups as
+  recorded (the right press's change moved no recording). `drawn --record` for the three.
+- **Gates:** `check.sh --no-coverage`, the coverage of `h3-view` and `h3-ui`, the real-asset gate
+  (the date's key read with `%02d`), `test_h3shell`, the client scope's verify with the original
+  data.
+- **Questions:** none new. **The agent's calls** (*provisional*: M4's review list items 24 to 30).

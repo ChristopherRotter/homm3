@@ -1746,7 +1746,8 @@ fn in_window(
             // its folder at each one).
             if shell.screen() == Screen::Scenario(Game::Load, h3_view::shell::Kind::Single) {
                 let install = options.install.as_path();
-                let saves = crate::saves::entries(&drawer.games, install, &drawer.rules, &drawer.broken);
+                let saves =
+                    crate::saves::entries(&drawer.games, install, &drawer.rules, &drawer.broken);
                 menus.load.set_entries(saves);
             }
             front = menus.front(shell.screen(), previous.take(), pointer.unwrap_or(PARK));

@@ -1098,6 +1098,49 @@ fn begin_with_a_random_map_chosen_stops_the_replay_under_the_client_s_stub() {
 }
 
 #[test]
+fn the_load_mode_takes_the_saves_times_and_a_held_key_and_stops_at_load() {
+    // E27 M4 T4b1: `scn-load`'s steps: the saves' times before the opening, Load Game's Single,
+    // a key held short (one press) and long (to the list's end), then Load: the client's notice.
+    let rows = |r: &Replay| match r.front() {
+        Some(Front::Scenario(s)) if s.is_load() => Some(s.rows()),
+        _ => None,
+    };
+    let steps = [
+        "until:main_menu",
+        "games-time:0",
+        "games-time:3600:small.GM1",
+        "click:645,192",
+        "check:load_game_menu",
+        "click:649,65",
+        "step:500",
+        "key-hold:Down:0.3",
+    ];
+    let (_, stop, r) = replay(false, &steps);
+    assert_eq!((stop, rows(&r)), (None, Some((Some(1), 0))));
+    assert_eq!(r.time(), 200 + 500 + 100);
+    let Some(Front::Scenario(s)) = r.front() else {
+        panic!("the load mode")
+    };
+    let times: Vec<i64> = s
+        .entries()
+        .iter()
+        .filter_map(|e| e.saved.map(|saved| saved.time))
+        .collect();
+    assert_eq!(times, [0, 0, 3600]);
+    let (_, stop, r) = replay_from(r, &["key-hold:Down:1.5"]);
+    assert_eq!((stop, rows(&r)), (None, Some((Some(2), 0))));
+    let (_, stop, r) = replay_from(r, &["key-hold:Up:1.5", "click:497,555"]);
+    assert_eq!(stop, None);
+    assert!(matches!(r.front(), Some(Front::Scenario(s)) if s.stubbed()));
+    let (seen, stop, _) = replay_from(r, &["shot:delete"]);
+    assert!(seen.is_empty());
+    assert_eq!(
+        stop,
+        Some(Stop::Stub(Screen::Scenario(Game::Load, Kind::Single)))
+    );
+}
+
+#[test]
 fn the_list_takes_xdotool_s_page_keys_as_the_adapter_s() {
     // E27 M3 T1b1: `scn-list-keys`' Next and Prior are the adapter's PageDown and PageUp; the
     // screen's double press is timed from its opening on the replay's clock.

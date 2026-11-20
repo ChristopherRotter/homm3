@@ -15,24 +15,19 @@ computer must be online); never from the installation. The captures need the fiv
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M4 T4b
+#### E27 M4 T4b2
 
-T4b Load Game single's client (decision 72: T4a read and recorded it; design §3.1, §3.3 to §3.6,
-§38; §37 the save file, `h3-battle-client`'s `save`): the load mode of `h3_view`'s scenario screen
-(title 230, no panel buttons, no flags, `scnrlod.def`, the difficulty shown disabled with the
-save's rating, its popup shown, the autosave's name GENRLTXT 77, the date "%d/%d/%d - %d:%02d" of
-the file's local time) and the window's saves (where they are kept and their file's name this
-task's call; each listed with the map's header from the map its replay names; how a save
-`save::load` refuses is listed is this task's call, the original lists a broken save, §3.3), the
-keys and a held key's repeats (`key-hold` in the viewer, the window's repeats: the shell's window
-takes none, §16.4), the sort (and CLT-Q138's stale difficulty and rating in the original's
-profile), Delete's question (688) and its end (the version sort in the last direction), the notice
-with none (686), Load's popup, the load to play's stub (as M3's begin: `save::load`'s `Loaded` kept
-for E24 M5). `drawn` gives the viewer client saves made to match the makers' (`made_games`: the
-same three maps, difficulties and file names, the autosave on its day 2) and each file's time
-(`games-time`), under the recipe's `tz`; exact against `scn-load`, `scn-load-last`,
-`scn-load-none` (`scn-load`'s `load` clip and `map` are play's, M5's). The stub's stop names "E27
-M3" for the load's screen (`Screen::built`): T4b builds it.
+T4b2 Delete, the notice and the load's end (decision 73; T4b1 built the load mode's screen and the
+client's saves, design §39; §3.3, §3.4, §38.1, §38.3; §37 the load, `h3-battle-client`'s
+`save::load`): Delete's question (GENRLTXT 688 with the file's name, style 2, over the selection:
+`Command::Delete`, today CLT-STUB-15's notice) both ways and its end (the file deleted from the
+folder, the list sorted by the version in the last sort's direction, the first selected with the
+partial redraw's stale buttons and rating; none left: the whole redraw, the empty panel), the
+notice with no saves (686, once at the opening, Load disabled), Load's end (the save loaded with
+`save::load`; play's stub as M3's begin, the `Loaded` kept for E24 M5; a save the load refuses:
+the client's message, this task's call), CLT-STUB-15 lifted. Exact against `scn-load` delete to
+deleted (`load` and `map` are play's, M5's), `scn-load-last` and `scn-load-none`; the window's
+Delete removes a file of the client's own folder only.
 
 ## Inbox
 

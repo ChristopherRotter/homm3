@@ -97,7 +97,13 @@ fn a_made_save_is_listed_with_its_map_its_difficulty_and_its_time() {
     assert_eq!(junk.name, "Broken");
     assert_eq!(junk.description, "Save it again.");
     assert_eq!(junk.format, None);
-    assert_eq!(junk.saved, Some(Saved { difficulty: 0, time: 7 }));
+    assert_eq!(
+        junk.saved,
+        Some(Saved {
+            difficulty: 0,
+            time: 7
+        })
+    );
     // No folder: nothing.
     assert!(entries_of(&install.join("none"), &install, &rules).is_empty());
 }
@@ -116,9 +122,8 @@ fn a_save_without_its_map_or_of_other_rules_is_broken() {
     crate::save::write_file(&games.join("small.GM1"), &save).unwrap();
     save.replay.header.profile = String::from("other:profile");
     crate::save::write_file(&games.join("other.GM1"), &save).unwrap();
-    let names = |entries: &[Entry]| -> Vec<String> {
-        entries.iter().map(|e| e.name.clone()).collect()
-    };
+    let names =
+        |entries: &[Entry]| -> Vec<String> { entries.iter().map(|e| e.name.clone()).collect() };
     let listed = entries_of(&games, &install, &rules);
     assert_eq!(listed.len(), 2);
     assert_eq!(listed[0].file, "other.GM1");

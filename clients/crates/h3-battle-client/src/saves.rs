@@ -26,9 +26,7 @@ use h3_contracts::PlayerId;
 use h3_game::{Actor, GameCommand, GameRuleset, GameState, NoopSink, apply};
 use h3_map::Limits;
 use h3_sim::adventure::replay::Replay;
-use h3_view::shell::scenario::{
-    self, Begun, Bonus, Entry, Heroes, Record, Saved, Seat, UNLIMITED,
-};
+use h3_view::shell::scenario::{self, Begun, Bonus, Entry, Heroes, Record, Saved, Seat, UNLIMITED};
 
 use crate::maps::MAPS;
 
@@ -138,7 +136,8 @@ fn map_of(path: &Path, install: &Path, rules: &GameRuleset) -> Result<(Entry, u8
     replay.header.check(rules).map_err(|e| e.to_string())?;
     let (bytes, map) = h3_files::adventure::read_map(&install.join(MAPS), &replay.map.path)
         .map_err(|e| e.to_string())?;
-    if map.content_hash != replay.map.content_hash || map.import_version != replay.map.import_version
+    if map.content_hash != replay.map.content_hash
+        || map.import_version != replay.map.import_version
     {
         return Err(format!("{}: not the save's map", replay.map.path));
     }
@@ -169,9 +168,7 @@ pub fn made(
     let raw = crate::begin::read(&crate::begin::map_path(install, map))?;
     let local = crate::maps::entry(map.to_owned(), &raw, rules).local();
     let records = core::array::from_fn(|c| Record {
-        colour: local
-            .filter(|&l| l == c)
-            .and_then(|l| u8::try_from(l).ok()),
+        colour: local.filter(|&l| l == c).and_then(|l| u8::try_from(l).ok()),
         town: None,
         hero: None,
         bonus: Bonus::Random,
@@ -196,8 +193,14 @@ pub fn made(
             .find(|&p| state.is_acting(p))
             .map(Actor::Player)
             .ok_or_else(|| format!("{map}: no player's turn on day {}", state.day()))?;
-        apply(&mut state, rules, actor, GameCommand::EndTurn, &mut NoopSink)
-            .map_err(|e| format!("{map}: End Turn: {e:?}"))?;
+        apply(
+            &mut state,
+            rules,
+            actor,
+            GameCommand::EndTurn,
+            &mut NoopSink,
+        )
+        .map_err(|e| format!("{map}: End Turn: {e:?}"))?;
         commands.push((actor, GameCommand::EndTurn));
     }
     let map_ref = crate::save::map(install, map)?;
