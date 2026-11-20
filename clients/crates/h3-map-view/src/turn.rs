@@ -276,6 +276,7 @@ pub fn walks(
         slot,
         steps,
         unseen: Vec::new(),
+        taken: Vec::new(),
     }])
 }
 
@@ -294,7 +295,8 @@ pub fn record_heroes(shown: &[(u16, Pos)], map: &[LiveHero]) -> Vec<(u16, usize)
 /// kingdom the order its heroes first walk in (the turn's table's), its steps: one with both tiles
 /// facing from the one to the other; one into sight (no tile it left: MCL-Q44) taken unseen onto
 /// its tile, facing as before; one out of sight (no tile it entered: MCL-Q44) left out, the hero
-/// standing where the viewer last saw it.
+/// standing where the viewer last saw it; the objects the record takes off the map after a walk
+/// taken at its end, each by its anchor and its index `object_at` gives (none: left out).
 ///
 /// # Errors
 /// A walk's hero the record's start does not show (not built), a step between tiles that are not
@@ -303,6 +305,7 @@ pub fn record_walks(
     other: &OtherTurn,
     ids: &[(u16, usize)],
     map: &[LiveHero],
+    object_at: impl Fn(Pos) -> Option<usize>,
 ) -> Result<Vec<Steps>, String> {
     let mut order: Vec<u16> = Vec::new();
     let mut facings: Vec<(usize, Direction)> = Vec::new();
@@ -355,6 +358,12 @@ pub fn record_walks(
                 slot,
                 steps,
                 unseen,
+                // stub: MCL-STUB-2 (a computer's boarding and landing in sight: plain steps)
+                taken: walk
+                    .taken
+                    .iter()
+                    .filter_map(|&at| object_at(at).map(|o| (at, o)))
+                    .collect(),
             })
         })
         .collect()

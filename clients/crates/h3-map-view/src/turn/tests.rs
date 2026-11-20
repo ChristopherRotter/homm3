@@ -152,7 +152,11 @@ fn a_record_s_other_turn_as_walks() {
         to,
         sea: None,
     };
-    let walk = |hero, steps| OtherWalk { hero, steps };
+    let walk = |hero, steps| OtherWalk {
+        hero,
+        steps,
+        taken: vec![at(9, 4)],
+    };
     let other = OtherTurn {
         turn: 1,
         player: 1,
@@ -169,7 +173,7 @@ fn a_record_s_other_turn_as_walks() {
             walk(7, vec![step(Some(at(9, 6)), Some(at(9, 5)))]),
         ],
     };
-    let walks = record_walks(&other, &ids, &map).unwrap();
+    let walks = record_walks(&other, &ids, &map, |at| (at.x == 9).then_some(4)).unwrap();
     let to = |x, y, facing| Hero {
         at: at(x, y),
         facing,
@@ -186,12 +190,14 @@ fn a_record_s_other_turn_as_walks() {
                     to(9, 6, Direction::SouthEast),
                 ],
                 unseen: vec![2],
+                taken: vec![(at(9, 4), 4)],
             },
             Steps {
                 hero: 1,
                 slot: 0,
                 steps: vec![to(9, 5, Direction::North)],
                 unseen: Vec::new(),
+                taken: vec![(at(9, 4), 4)],
             },
         ]
     );
@@ -200,12 +206,12 @@ fn a_record_s_other_turn_as_walks() {
         walks: vec![walk(9, vec![])],
         ..other.clone()
     };
-    assert!(record_walks(&unknown, &ids, &map).is_err());
+    assert!(record_walks(&unknown, &ids, &map, |_| None).is_err());
     let apart = OtherTurn {
         walks: vec![walk(7, vec![step(Some(at(5, 5)), Some(at(8, 5)))])],
         ..other.clone()
     };
-    assert!(record_walks(&apart, &ids, &map).is_err());
+    assert!(record_walks(&apart, &ids, &map, |_| None).is_err());
     // A first step into sight faces as the map hero did.
     let into = OtherTurn {
         walks: vec![walk(7, vec![step(None, Some(at(6, 5)))])],
@@ -213,7 +219,7 @@ fn a_record_s_other_turn_as_walks() {
     };
     let facing = hero_of(&map[1]).facing;
     assert_eq!(
-        record_walks(&into, &ids, &map).unwrap()[0].steps,
+        record_walks(&into, &ids, &map, |_| None).unwrap()[0].steps,
         vec![to(6, 5, facing)]
     );
 }

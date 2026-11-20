@@ -1733,3 +1733,17 @@ script = [
     "0 move 0 9,12,0",
     "0 move 0 8,12,0",
 ]
+
+[[sequence]]
+id = "game-ai"
+situation = "game-ai"
+ms = 2600
+seed = 1
+why = "a scripted game's computer turn in sight: End Turn's key, Blue's two heroes across the strait each walking five tiles north in Red's sight and taking a gold pile, the next day's start"
+inputs = [{ at = 100, keydown = "e" }, { at = 160, keyup = "e" }]
+script = [
+    "0 end-turn",
+    "1 move 2 19,12,0 19,11,0 19,10,0 19,9,0 19,8,0 19,7,0",
+    "1 move 3 19,20,0 19,19,0 19,18,0 19,17,0 19,16,0 19,15,0",
+    "1 end-turn",
+]

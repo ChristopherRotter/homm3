@@ -133,6 +133,9 @@ pub struct OtherWalk {
     pub hero: u16,
     /// Its steps.
     pub steps: Vec<OtherStep>,
+    /// The objects taken off the map after them, by their anchors (`ObjectRemoved`: a pile, an
+    /// artifact picked up).
+    pub taken: Vec<Pos>,
 }
 
 /// One step of another player's hero (`HeroStepped`): its two tiles, each none where the viewer
@@ -217,7 +220,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
         .adventure
         .heroes
         .iter()
-        .filter_map(|h| Some((h.id, tile(h.pos.x, h.pos.y, h.pos.level)?)))
+        .filter_map(|h| tile(h.pos.x, h.pos.y, h.pos.level).map(|at| (h.id, at)))
         .collect();
     let slots = slots(&observation, viewer);
     for (i, message) in loaded.record.messages.iter().enumerate().skip(1) {
@@ -438,6 +441,7 @@ fn other_event(other: &mut OtherOpen, event: &AdventureEvent) {
                 None => other.walks.push(OtherWalk {
                     hero: *hero,
                     steps: vec![step],
+                    taken: Vec::new(),
                 }),
             }
         }
@@ -461,6 +465,14 @@ fn other_event(other: &mut OtherOpen, event: &AdventureEvent) {
                 }));
             }
         }
+        AdventureEvent::ObjectRemoved { anchor, .. } => {
+            if let (Some(walk), Some(at)) = (
+                other.walks.last_mut(),
+                tile(anchor.x, anchor.y, anchor.level),
+            ) {
+                walk.taken.push(at);
+            }
+        }
         _ => {}
     }
 }
@@ -478,21 +490,21 @@ fn last_step(other: &mut OtherOpen, hero: u16) -> Option<&mut OtherStep> {
 /// The viewer's heroes' places in its kingdom's list in `observation` (`super::panels`' order:
 /// their types', then their places on the map), by their ids.
 fn slots(observation: &GameObservation, viewer: u8) -> Vec<(u16, usize)> {
-    let mut own: Vec<(u16, u16, usize)> = observation
+    let mut own: Vec<(u16, usize, u16)> = observation
         .adventure
         .heroes
         .iter()
         .enumerate()
         .filter(|(_, h)| h.owner == viewer)
         .filter_map(|(i, h)| {
-            let info = observation.heroes.iter().find(|info| info.id == h.id)?;
-            Some((info.hero_type, h.id, i))
+            let info = observation.heroes.iter().find(|info| info.id == h.id);
+            info.map(|info| (info.hero_type, i, h.id))
         })
         .collect();
-    own.sort_unstable_by_key(|&(kind, _, i)| (kind, i));
+    own.sort_unstable();
     own.iter()
         .enumerate()
-        .map(|(slot, &(_, id, _))| (id, slot))
+        .map(|(slot, &(_, _, id))| (id, slot))
         .collect()
 }
 
@@ -658,13 +670,16 @@ fn computer_turn(
     table.remove("realm");
     table.remove("chosen");
     // stub: MCL-Q43 (the computer's heroes' points and kind 5's value: none told)
-    if let Some(Value::Table(kingdom)) = table.get_mut("kingdom") {
-        kingdom.insert(
-            "heroes".to_string(),
-            Value::Array(vec![row(&[0, 1, 0, 0, 0]); heroes]),
-        );
-        kingdom.insert("selected".to_string(), row(&[1, 0]));
-    }
+    let mut kingdom = table
+        .remove("kingdom")
+        .and_then(|k| k.as_table().cloned())
+        .unwrap_or_default();
+    kingdom.insert(
+        "heroes".to_string(),
+        Value::Array(vec![row(&[0, 1, 0, 0, 0]); heroes]),
+    );
+    kingdom.insert("selected".to_string(), row(&[1, 0]));
+    table.insert("kingdom".to_string(), Value::Table(kingdom));
     let mut status = Table::new();
     status.insert("kind".to_string(), Value::Integer(5));
     for key in ["sand", "glass"] {

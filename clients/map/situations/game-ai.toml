@@ -1,11 +1,12 @@
 # A scripted game's computer turn in sight (E24 M4 T4c; clients/map/sequences.toml `game-ai`):
 # Red's Rion and a second hero of Red's (its selection shows the engine's resources) on the west
-# shore of a strait one tile wide, Red's town behind them; across the strait, in Red's
-# start-explored land, two heroes of Blue's (a computer player's, their armies in the map), one
-# north and one south of an inlet that parts them, each with a gold pile six tiles off along the
-# shore. End Turn: the computer walks each hero to its pile in Red's sight. The strait keeps
-# Blue's heroes off Red's heroes and town; Blue's town on an island in the fog keeps Blue in the
-# game (as `game-turns`). The engine plays the same commands (the sequence's `script`).
+# shore of a strait, Red's town behind them; across it, two strips of land wholly in Red's
+# start-explored land (explored or beside it), parted by an inlet, each with a hero of Blue's (a
+# computer player's, its army in the map) and a gold pile six tiles north of it. End Turn: the
+# computer walks each hero five tiles north in Red's sight and takes its pile from below (a pile
+# is not taken from above). The water keeps Blue's heroes off Red's heroes and town; Blue's town on
+# an island in the fog keeps Blue in the game (as `game-turns`). The engine plays the same
+# commands (the sequence's `script`).
 size = 36
 terrain = "grass"
 explored = "start"
@@ -26,8 +27,8 @@ towns = [
     { at = [32, 31], faction = 1, owner = 1, buildings = "fort" },
 ]
 objects = [
-    { def = "AVTgold0.def", at = [19, 7], amount = 500 },
-    { def = "AVTgold0.def", at = [19, 15], amount = 500 },
+    { def = "AVTgold0.def", at = [19, 7], amount = 10 },
+    { def = "AVTgold0.def", at = [19, 15], amount = 10 },
 ]
 bonus = "gold"
 resources = [20, 10, 20, 10, 10, 10, 20000]

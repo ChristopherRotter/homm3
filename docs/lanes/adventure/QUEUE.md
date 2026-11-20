@@ -24,6 +24,15 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-20 (the map client lane, E24 M4 T4c, `map-client/e24-m4-t4c`; **MCL-Q43 and MCL-Q44,
+  for your planning; the user's answers first**): another player's turn played from a viewer's
+  record (E24 design §5.16). (1) MCL-Q43: the record holds no other player's heroes' points, which
+  the original's kind 5 hourglass shows every player (1 000 plus the computer's heroes' maximum
+  points, the points left at each step); recommended: the two numbers told to every viewer (with
+  the server lane). (2) MCL-Q44: a step seen by one end only comes with the other end none
+  (ADR-0016 point 6), where the original draws the hero stepping from or into the fog;
+  recommended: both tiles of a step the viewer sees by either end.
+
 - 2026-11-20 (the town lane, E09 T45, `shared/e09-t45`, `cross-lane` with the user's consent;
   **your replays' header, mechanical; act only at a merge**): one `quirk.town` flag
   (`QuirkFlag(44)`, `quirk.town.aurora_ignores_map_bans`, `TWN-QUIRK-14`, on in `faithful`) moves

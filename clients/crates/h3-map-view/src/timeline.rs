@@ -1135,6 +1135,9 @@ pub struct Steps {
     /// The steps taken unseen whatever the viewer sees (E24 M4 T4c: a record's step into sight,
     /// whose start it does not give, MCL-Q44), by their places among [`Steps::steps`].
     pub unseen: Vec<usize>,
+    /// The objects taken off the map at its end, each by its anchor and its index among the
+    /// map's objects (E24 M4 T4c: a record's pile or artifact the hero picks up from beside).
+    pub taken: Vec<(Pos, usize)>,
 }
 
 /// A status window's kind asked for a time (`status_window_set_kind` 0x415D60: the manager's
@@ -1540,6 +1543,8 @@ struct AiTurn {
     /// the timeline's `points`) and its steps left, each with whether it is taken unseen.
     slot: usize,
     steps: VecDeque<(Hero, bool)>,
+    /// The objects the walk under way takes at its end (E24 M4 T4c).
+    taken: Vec<(Pos, usize)>,
     /// The viewer's turn's end.
     ended: Ended,
 }
@@ -1634,6 +1639,8 @@ enum Then {
     Summoned(Box<Cast>, Summoned),
     /// Its arrival: the cost spent, the cast's end.
     Cast(Box<Cast>),
+    /// A computer's pickup (E24 M4 T4c): its turn going on.
+    Ai,
 }
 
 /// A step onto a boat held by its dissolve (E24 M4 T2d2): the walk, the boat's tile and whether
@@ -2807,6 +2814,7 @@ impl Loop {
             slot: walks.first().map_or(0, |w| w.slot),
             walks: walks.into(),
             steps: VecDeque::new(),
+            taken: Vec::new(),
             ended,
         });
         self.ai_on(t)?;
@@ -2857,8 +2865,16 @@ impl Loop {
                 self.computer_step(t, to, unseen);
                 continue;
             }
+            if !ai.taken.is_empty() {
+                let taken = core::mem::take(&mut ai.taken);
+                if self.ai_take(t, &taken) {
+                    return Ok(Some(false));
+                }
+                continue;
+            }
             if let Some(walk) = ai.walks.pop_front() {
                 ai.slot = walk.slot;
+                ai.taken = walk.taken;
                 ai.steps = walk
                     .steps
                     .iter()
@@ -2929,6 +2945,37 @@ impl Loop {
             self.within.push(state);
         }
         self.ai_step = Some((to.facing, 0, t));
+    }
+
+    /// The objects `taken` (anchors, indexes) a computer's hero takes from beside at its walk's end (E24 M4
+    /// T4c, design §5.16: `visit_resource_pile` 0x4A4BE0 as the viewer's own, §5.3): the hero
+    /// turned to the first, standing; where the viewer sees the hero's tile its removal dissolved
+    /// with the pickup's sound ([`Loop::take`]: the computer's turn going on at its end), else
+    /// taken off at once. Whether a dissolve holds the turn.
+    fn ai_take(&mut self, t: u32, taken: &[(Pos, usize)]) -> bool {
+        let objects: Vec<usize> = taken.iter().map(|&(_, o)| o).collect();
+        // Kind 5's step at the visit (*provisional*: recorded, `game-ai` at 660; its caller not
+        // read).
+        self.ai_status_step(t);
+        let at = self.hero.map(|h| h.at);
+        let towards = at
+            .zip(taken.first())
+            .and_then(|(h, &(a, _))| Direction::between(h, a));
+        if let Some(direction) = towards {
+            self.turn_to(direction);
+        }
+        self.stand();
+        let seen = !self.blackout && at.is_some_and(|a| self.sees(a));
+        let Some((&object, rest)) = objects.split_first().filter(|_| seen) else {
+            let gone = Arc::make_mut(&mut self.drawn.gone);
+            gone.extend(objects);
+            gone.sort_unstable();
+            gone.dedup();
+            return false;
+        };
+        Arc::make_mut(&mut self.drawn.gone).extend(rest);
+        self.take_then(t, object, Gain::default(), Fade::Pickup, Then::Ai);
+        true
     }
 
     /// A computer player's turn's end (`ai_player_turn`'s, design §5.2): the last hero put back on
@@ -3649,6 +3696,11 @@ impl Loop {
     /// drawn without it and the tables' rectangle dissolved into that in eight steps from now
     /// ([`Loop::dissolve_step`]), `gain` shown at its end.
     fn take(&mut self, t: u32, object: usize, gain: Gain, fade: Fade) {
+        self.take_then(t, object, gain, fade, Then::Taken);
+    }
+
+    /// [`Loop::take`] with `then` after the dissolve (E24 M4 T4c: a computer's pickup).
+    fn take_then(&mut self, t: u32, object: usize, gain: Gain, fade: Fade, then: Then) {
         self.draw(t);
         let before = Arc::new(self.drawn.clone());
         self.drawn.attacking = None;
@@ -3664,7 +3716,7 @@ impl Loop {
         if let (Some(sound), Some(name)) = (&mut self.sound, name) {
             sound.effect(t, name);
         }
-        self.dissolve(t, before, gain, true, Then::Taken);
+        self.dissolve(t, before, gain, true, then);
     }
 
     /// The view's middle dissolved from `before` into the view as last drawn, from `t`
@@ -3710,6 +3762,8 @@ impl Loop {
             ..
         } = dissolving;
         match then {
+            // A computer's pickup: its turn on in the dissolve's last millisecond.
+            Then::Ai => return self.ai_on(t).map(|_| ()),
             Then::Taken => {
                 self.gain(gain);
                 // The levels its experience reaches (E24 M4 T2c: a chest's after its removal,

@@ -839,8 +839,14 @@ impl<'a> Painter<'a> {
             0
         };
         let live = &self.live;
-        // A record's other players' turns in sight (E24 M4 T4c): its heroes by the start's tiles.
+        // A record's other players' turns in sight (E24 M4 T4c): its heroes by the start's tiles,
+        // the objects they take by their anchors' tiles.
         let ids = record.map(|p| turn::record_heroes(&p.shown, &live.heroes));
+        let hover = self.hover()?;
+        let object_at = |at: Pos| {
+            let tile = [i32::from(at.x), i32::from(at.y), i32::from(at.z)];
+            hover.as_ref()?.base(tile)?.object
+        };
         let turns = live
             .turns
             .iter()
@@ -848,7 +854,7 @@ impl<'a> Painter<'a> {
             .map(|(i, t)| {
                 let walks = match (record, &ids) {
                     (Some(p), Some(ids)) => match p.others.iter().find(|o| o.turn == i) {
-                        Some(other) => turn::record_walks(other, ids, &live.heroes)?,
+                        Some(other) => turn::record_walks(other, ids, &live.heroes, object_at)?,
                         None => Vec::new(),
                     },
                     _ => turn::walks(&live.turns, i, &live.heroes, lines)?,

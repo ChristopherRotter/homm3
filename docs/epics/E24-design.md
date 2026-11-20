@@ -4336,3 +4336,102 @@ start (the same day; offered a cut by family, the flags first).
   tests (`tests/engine.rs`' flags, hires and boats, the turn's points; the timeline's record
   boarding, landing and refusal, the dissolve's date window); `check.sh` all gates,
   `h3-map-view`'s coverage at 100 %; the scoped verify.
+
+### 5.16 The other players' turns from a record (M4 T4c)
+
+T4c kept whole by the user at its start (2026-11-20; offered a cut in two or three: the other
+players' turns, the viewer's controls, a golden replay).
+
+- **A record's facts of another player's turn** (protocol v77, record format 5; read from the
+  engine's records of scripted games): `TurnEnded` of the viewer and `TurnStarted` of the next
+  player in one message; then one `GameEvents` message per command of that player (its commands
+  are not echoed to the viewer), holding only the events the viewer sees: a hero's step is in it
+  when the viewer sees its start or its end tile or a neighbour of either explored (the engine's
+  `viewers`, `seen_from ∪ seen_to` with the fringe: the original's `step_seen` 0x480000), its
+  other tile none where the viewer does not see it (ADR-0016 point 6); a step seen by neither end
+  is not in the record. No `MovementChanged` of another player's hero. Then `TurnEnded` of that
+  player and the next one's `TurnStarted` (`DayStarted` between at the round's end).
+- **Read** (`engine::played`, *provisional*): each other player's turn from its `TurnStarted` to
+  its `TurnEnded`, its heroes' steps in order, a run of one hero's steps a walk
+  (`engine::OtherWalk`, a step's `Boarded` or `Landed` its `sea`); a turn with any is a computer's
+  turn in sight (`engine::OtherTurn`): a `[[turn]]` table of kind 5 among the viewer's (the
+  computer's colour, the sand and the glass at 0, the viewer's panels' kingdom with the walking
+  heroes, the first selected). A turn with none seen stays out of the tables: it takes no time
+  and draws nothing (§5.1), as before.
+- **Played** (the timeline's T1b2 machinery, its facts from the record: `turn::record_heroes`, the
+  record's heroes matched with the live part's by the start's tiles; `turn::record_walks`, each
+  walk the timeline's `Steps`): each walk's hero chosen when it first steps (lifted, the view
+  centred and drawn where the viewer sees it), each step with both tiles a computer's step (seen
+  or not by the viewer's explored tiles, at Computer Walk Speed, kind 5 stepped at its start);
+  MCL-Q44 (b): a step into sight onto its tile unseen (`Steps::unseen`: no frame, no time), a
+  step out of sight left out (the hero left where it was last seen).
+- **The sounds** (`ai_hero_step` 0x42FC50 and `hero_move_step` 0x4805E0's step end read again at
+  T4c, 0x481216 to 0x48141B): the computer's walk starts no step sound (the path walk's
+  0x407D03 is the human's alone), each step's end where the terrain at the view's middle changes
+  asks for that terrain's music (`music_track_play` 0x4812F1, over the computer's) and plays its
+  step sound (at once at the lifted hero's frame 0, else queued for the frame's wrap), the last
+  step stopping it; `hero_select` on a seen hero the terrain's music where it differs (0x4180A0).
+  The computer's start asks for one of `AITheme0` to `AITheme2` (`random_between(1, 3)` − 1,
+  §5.1): the client takes the tables' `[map.turn] computer` in turn by the turn's place
+  (*provisional*, a review item). Whether pass 9 steps the frame during a computer's walk (the
+  queued step sound's wrap) is not read: built as the human's.
+- **What the record lacks** (each an `MCL-Q<n>`, notes in the engine lanes' inboxes): the
+  computer's heroes' points and kind 5's value (MCL-Q43: built (c), the value 1 000 and no points
+  left, so the glass rises a frame a step), a seen step's hidden end (MCL-Q44), which heroes take
+  a turn without a step in sight (MCL-Q45: built (b)).
+- **A computer's pickup in sight** (recorded, `visit_resource_pile` 0x4A4BE0 as the viewer's own,
+  §5.3): the walk's last step ends beside the pile (the AI never takes one from the tile above
+  it), kind 5 stepped, the pile taken off with its dissolve (eight steps of 65 ms, the pickup's
+  sound), the next hero chosen in the dissolve's last millisecond. Built (`Steps::taken`, the
+  record's `ObjectRemoved` after a walk; `Loop::ai_take`, `Then::Ai`).
+- **The scripted games** (`clients/map/situations/game-ai*.toml`; Blue across a strait or a lake
+  from Red, so it cannot reach Red's heroes or town, its land all in Red's sight; seed 1, each
+  recorded twice the same, the engine's scripts the original's walks): `game-ai`, Blue's two
+  heroes each walking five tiles north and taking a gold pile (160 to 2200); `game-ai-boat`
+  (`to-record.toml`), Blue's hero round a lake onto an empty boat (its turn to the boat at 860,
+  the hero dissolved off the land to 1380, the step onto it), sailing a tile and landing on an
+  island the next day, taking its pile from below the day after.
+- **Found:** `game-ai` exact but its listed gaps (`timelines/game-ai-gaps.txt`: MCL-Q43's points
+  and glass and the screens the glass changes; recorded, not read: an objects' step at 1180 and
+  the second pickup's dissolve's box one row shorter); its 41 frames differ only in the glass (411
+  to 780 pixels). `game-ai-boat` not played yet: a computer's boarding and landing in sight (the
+  hero's dissolve off the land, then its step onto the boat; the boat put back at the landing)
+  are not built for a computer's turn (`MCL-STUB-2`, T4c2).
+
+### 5.17 A record played without a recording: the record player, the controls, the golden replays (M4 T4c)
+
+- **The record player** (`h3_map_view::director`, *provisional*): the viewer's commands echoed in
+  the record (`engine::Command`) given to the map as its player's input, each once the map has
+  waited 400 ms (`Pace`): a walk its hero chosen (`Action::Choose`, the kingdom's list's place,
+  `Played::slots`: the panels' order) and 400 ms later its path walked (`Action::Walk`: the path
+  to the record's last tile among the map's, its arrows in their order, shown then walked as its
+  destination's two clicks); End Turn its hotkey held 60 ms; a box open (a find, a question, End
+  Turn's question, the week's message, a level-up) the record's answer when its next command is
+  one (an offer's yes Enter, no Escape, a level-up its offer's key, the other choices Enter,
+  *provisional*), else Enter; a command of a screen the map has not (a town's, a hero's, an
+  army's, a battle's: M5's and T5's) not shown, its events folded. The record is at its end when
+  its last command is given and the map waits again with every walk taken (`Loop::walks_left`).
+  The input is kept, so the window and the headless play run the same loop on it.
+- **The setup** (`paint::for_record`): the map file the record names, the record's start as the
+  live part at 0 over the map's own (`Painter::new` without a capture), the view centred on the
+  selected hero, never clamped; the original's default speeds, Move Reminder on, Computer Walk
+  Speed 3; each hero's walks chained from where its last left it (`record_paths` by
+  `Played::walkers`).
+- **The commands:** `h3-map-view record <r.jsonl> --record-map <map.h3m>` plays it headless to
+  its end, every screen it shows drawn (`--timeline` writes the timeline); `window --record …`
+  plays it in the window, the map live past its last input.
+- **The controls** (new design, each a review item; `keys::Playback`, the map viewer's own: the
+  window's table `h3_ui::keys::Window` is common with the battle window): Ctrl+F2 twice as fast
+  (up to 8 times: `h3_ui::clock::Clock::set_rate`, additive), Ctrl+F3 half as fast, Ctrl+F4 on to
+  the record's next input; the window's own pause (Ctrl+F5), a frame on (Ctrl+F6) and restart
+  (Ctrl+F7) as for a sequence.
+- **The golden replays** (`fixtures/replays/adventure/`, each made a player's record by `h3-server
+  record`): those on maps with the original's templates play to their end headless (T4c's check:
+  `sea-board-s1`, `sea-event-s1` and `sea-landing-guards-s1` on the sea map, `rewards-stone-guard-s1`
+  and `rewards-university-s1`, `dwellings-free-s1`, `banks-declined-s1`, `teleporters-gates-s1`,
+  `garrisons-passage-s1`, `towns-capture-s1`); a battle skipped to its result (its commands not
+  shown, its level-up's dialog after it from the record, the beaten monster still drawn until T5);
+  `rewards-stone-guard-s1` in the window under Xvfb, every frame read back exact and every change
+  the headless loop's. Not playable: the duel's and the army's maps (`obj.def`, no original
+  template: nothing to draw), `economy-shipyard-s1` (a boat a Shipyard builds is not on the map:
+  M5's dialog).

@@ -214,7 +214,10 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   whole: the log's "M4 T4b1", design §5.14; MCL-Q41, MCL-Q42), T4b2 the flags and the boats
   (**done** 2026-11-20, whole: the log's "M4 T4b2", design §5.15; both games exact, no gap);
   Summon Boat moved out of T4b (the engine casts no adventure spell yet); T4c the other
-  players' turns, the viewer's controls and a golden replay; the kept live parts' message texts
+  players' turns, the viewer's controls and a golden replay (**done** 2026-11-20, kept whole by
+  the user: the log's "M4 T4c", design §5.16, §5.17; `game-ai` exact but MCL-Q43's gaps; ten
+  golden replays viewed to their end; MCL-Q43 to MCL-Q45; a computer's boat in sight left to
+  T4c2, `MCL-STUB-2`, `game-ai-boat` recorded in `to-record.toml`); the kept live parts' message texts
   as labels first (ADR-0009, found at T4a1, the user: none new meanwhile; **done** 2026-11-20,
   whole: the log's "M4, the labels"); T5, the battles handed over
   (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
@@ -293,6 +296,20 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   cursor's (never drawn: hidden from the first seen step); the cursor's type set back to the
   adventure arrow's at the turn's end; the redraws missed caught up there before the next day's
   whole redraw (recorded, not read).
+
+- **M4 T4c, the record player** (*provisional*; design §5.17): a record without a recording
+  played by its own commands, each after 400 ms of the map waiting (a walk's hero chosen, its path
+  walked 400 ms later; End Turn's key held 60 ms; a box's answer the record's next when it is one,
+  an offer's yes Enter and no Escape, a level-up its key, the other choices Enter, else Enter); a
+  town's, a hero's, an army's and a battle's commands not shown; the view at the start centred on
+  the selected hero, the original's default speeds, Move Reminder on.
+- **M4 T4c, the playback keys** (new design): Ctrl+F2 twice as fast up to 8 times, Ctrl+F3 half
+  as fast, Ctrl+F4 on to the next input (`keys::Playback`, the map viewer's own; the clock's rate
+  in `h3_ui::clock`, additive); the window's own pause, a frame on and restart as for a sequence.
+- **M4 T4c, a computer's turn's music** (*provisional*): `AITheme0` to `AITheme2` taken in turn by
+  the turn's place (the original draws one at random); the queued step sound's wrap during a
+  computer's walk as the human's (pass 9 during it not read); kind 5's step at a computer's pickup
+  (recorded, its caller not read).
 
 - **M4 T2a2, a find's facts without the engine** (*provisional*; design §5.3, *Built*): a
   sequence's finds take their facts from the map and the live part (the Windmill's, the Witch

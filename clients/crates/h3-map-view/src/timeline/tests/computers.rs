@@ -517,6 +517,7 @@ fn a_turns_heroes_and_walks_from_its_facts() {
             slot: 0,
             steps: vec![east(6), east(7)],
             unseen: Vec::new(),
+            taken: Vec::new(),
         }])
     );
     assert_eq!(turn::walks(&turns, 1, &heroes, &lines), Ok(Vec::new()));
@@ -647,4 +648,38 @@ fn a_computers_turn_s_sounds_and_unseen_steps() {
             .iter()
             .any(|(t, c)| *t == 160 && matches!(c, Cue::Music(m) if m.starts_with("AITheme")))
     );
+}
+
+/// A computer's pickup in sight (E24 M4 T4c, design §5.16): at its walk's end the object taken off
+/// with the viewer's dissolve, the turn going on at its end; out of sight (Blackout) at once.
+#[test]
+fn a_computers_pickup_in_sight_and_out() {
+    let (mut start, actions, _, _) = computing("ai-walk");
+    // Two of the map's objects (their indexes; the first's anchor beside the walk's end).
+    start.turns[0].walks[0].taken = vec![
+        (Pos { x: 21, y: 24, z: 0 }, 0),
+        (Pos { x: 1, y: 1, z: 0 }, 1),
+    ];
+    let run = |start: &Start, until: u32| {
+        let mut l = Loop::start(rules(Bugs::Original), start).unwrap();
+        for t in 1..=until {
+            l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+                .unwrap();
+        }
+        l
+    };
+    // The walk's end at 1660: the first object's dissolve under way, both off the map.
+    let l = run(&start, 1661);
+    assert!(l.dissolving.is_some() && l.ai.is_some());
+    assert_eq!(l.drawn.gone.len(), 2);
+    let l = run(&start, 2400);
+    assert!(l.dissolving.is_none() && l.ai.is_none());
+    assert_eq!(l.drawn.gone.len(), 2);
+    // Under Blackout Computer both at once, no dissolve (the first not beside the hero: it is
+    // not turned to).
+    start.computer.blackout = true;
+    start.turns[0].walks[0].taken.reverse();
+    let l = run(&start, 161);
+    assert!(l.dissolving.is_none());
+    assert_eq!(l.drawn.gone.len(), 2);
 }

@@ -322,6 +322,50 @@ where a comparison meets it). **Recommended (a)**; a note in the adventure lane'
 (2026-11-20). Meanwhile (c) (`engine::visits` tells the visited box once the event comes; no
 scripted game visits one twice yet). Blocks nothing.
 
+#### MCL-Q43 — A record does not tell another player's heroes' points: kind 5's hourglass (E24 M4 T4c, a record)
+
+The original's status window of another player's turn (kind 5, `status_other_turn_step`
+0x4536F0, E24 design §5.2) fills its glass by the computer's heroes' points: its value is 1 000
+plus the sum of their maximum movement points, and each step raises the glass towards (value −
+the points left) × 9 / value, so every player watches a computer's turn's progress. A viewer's
+record holds no other player's heroes' points (`MovementChanged` goes to the owner alone), so the
+viewer cannot fill the glass as the original does. Options: (a) the engine tells every viewer
+the two numbers kind 5 shows (a computer's heroes' maximum points summed at its turn's start, its
+points left at each of its commands' ends: what the original's hourglass already shows every
+player), a protocol change (the adventure and server lanes); (b) the client fills the glass by
+its own measure (the turn's seen steps); (c) the value 1 000 and no points left: the glass rises
+one frame a step to its last (the comparisons list the difference). **Recommended (a)**; a note
+in the adventure and server lanes' inboxes (2026-11-20). Meanwhile (c) (`stub: MCL-Q43` in
+`h3_map_view::engine`'s played). Blocks nothing.
+
+#### MCL-Q44 — A record does not tell a seen step's end the viewer does not see (E24 M4 T4c, a record)
+
+The original draws another player's step when the viewer sees its start or its end tile or a
+neighbour of either (`step_seen` 0x480000, design §5.2): a hero walking into sight is drawn
+stepping out of the fog, one walking out of sight stepping into it. The engine's projection
+(ADR-0016 point 6) leaves out a step's tile the viewer does not see (`HeroStepped`'s `from` or
+`to` none), so the viewer has neither the step's direction nor its other tile. Options: (a) the
+engine tells both tiles of a step the viewer sees by either end (the hidden tile is a neighbour
+of one the viewer sees, and the original draws the hero there), amending ADR-0016 point 6 (the
+adventure lane); (b) the client shows a step into sight as the hero appearing on its tile (no
+animation, no time) and a step out of sight not at all, the hero left where it was last seen;
+(c) a guessed direction. **Recommended (a)**; a note in the adventure lane's inbox (2026-11-20).
+Meanwhile (b) (`stub: MCL-Q44` in `h3_map_view::turn::record_walks`). Blocks nothing.
+
+#### MCL-Q45 — A record does not tell which of another player's heroes take a turn (E24 M4 T4c, a record)
+
+A computer's turn selects each of its heroes in turn (`ai_hero_turn` 0x5261F0: the view centred
+and drawn on one the viewer sees, even when it does not move, then its walk), and a second pass
+over those with points left (design §5.2). A record holds the steps the viewer sees and nothing of
+a hero that does not move or moves out of sight: the viewer cannot select those as the original
+does (the view centred on a seen hero standing still). Options: (a) the engine tells each hero's
+turn's start to the viewers that see the hero (an event of the AI's turn, the adventure lane; a
+scripted game's heroes would need a command for it); (b) the client selects only the heroes the
+record shows stepping, in the order they first step; (c) the client selects every seen hero of
+that player in the kingdom's order. **Recommended (b)** for scripted games and records (a
+script's turn has no AI order to tell); the difference listed where a comparison meets it. Built
+as (b). Blocks nothing.
+
 ### Town lane (`TWN-Q<n>`)
 
 (no open questions)

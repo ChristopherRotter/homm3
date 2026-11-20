@@ -1776,10 +1776,31 @@ fn a_record_s_other_players_turns() {
                 }),
                 step(red, Some(pos(10, 10)), Some(pos(10, 9))),
                 step(blue, Some(pos(12, 8)), None),
+                // An object it takes, then another of its events: nothing of a walk.
+                event(AdventureEvent::ObjectRemoved {
+                    object_type: 79,
+                    anchor: pos(13, 12),
+                }),
+                event(AdventureEvent::MovementChanged {
+                    hero: blue,
+                    movement: 0,
+                    max_movement: 1500,
+                }),
             ]),
             events(vec![
                 GameEvent::TurnEnded { player: 1 },
                 GameEvent::TurnStarted { player: 2 },
+                // Purple's: an object taken and a landing with no walk, nothing.
+                event(AdventureEvent::ObjectRemoved {
+                    object_type: 79,
+                    anchor: pos(13, 12),
+                }),
+                event(AdventureEvent::Landed {
+                    hero: blue,
+                    boat: 1,
+                    at: pos(12, 8),
+                    facing: 0,
+                }),
             ]),
             events(vec![
                 GameEvent::TurnEnded { player: 2 },
@@ -1819,6 +1840,8 @@ fn a_record_s_other_players_turns() {
     );
     assert_eq!(other.walks[1].hero, red);
     assert_eq!(other.walks[2].steps, [seen(8, None, None)]);
+    assert_eq!(other.walks[2].taken, [tile(13, 12)]);
+    assert!(other.walks[0].taken.is_empty());
     // Blue's turn's table, then Red's day 2: kind 5 for Blue, its two walking heroes, no points.
     assert_eq!(played.turns.len(), 2);
     let t = table(&played.turns[0]);

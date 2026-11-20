@@ -1520,6 +1520,15 @@ the engine's seed `h3 adventure run --seed` plays its script under: one whose dr
 original's under `seed` where both games draw at random (`game-level`'s level-up, 74: found by a
 search over the engine's seeds against the recording's `[[level_up]]`).
 
+**A computer player's scripted turn** (E24 M4 T4c, design §5.16): a scripted game's other
+player's commands in its `script` are the original's computer's walk as recorded under the
+sequence's `seed` (its `hero` lines in that turn; hero ids the engine's, the situation's `heroes`
+in order), recorded first and the script written after; the viewer's record then holds the steps
+Red sees (`game-ai`, `game-ai-boat`). A whole game's record without a recording: `h3-map-view
+record <r.jsonl> --record-map <map.h3m>` plays it headless to its end, `window --record` in the
+window (design §5.17); a golden replay's record comes from `h3-server record <replay.toml>
+--packs-dir packs --root . --out <dir>`.
+
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
 <out>/<id>/live.toml`: the map's timeline from the situation, this run's live part at 0 and the
