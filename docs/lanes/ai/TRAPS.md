@@ -158,6 +158,8 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   be met): its config sets `[gate] futility` (at least 1: the run ends `futile` after so many
   gates in a row without a promotion) and `gate_every` at most a quarter of its `samples`, and
   the rule stated before it runs names the check. A resume past it: `--set gate.futility=0`.
+- **A user's CPU run takes at most 16 threads** (the user, 2026-11-20, E25 T43): its commands
+  name them (`h3 ai ceiling --threads 16`; the tool's default is every core).
 - **A user's run over 2 hours must resume** (the user, 2026-11-05; no overnight runs): the
   trainer's `--resume`, the benches' since E25 T26a; a run that cannot resume is split into parts
   under 2 hours or not handed over.

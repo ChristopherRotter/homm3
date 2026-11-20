@@ -37,7 +37,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   fair actor on `h3 ai eval`'s sets, sequential halving, a resumable games file; about 190
   thread-seconds a game at budget 8. **Next: T43** on the user's CPU (the budget check, then the
   measurement; the commands in `QUEUE.md`), T44 (where #2 diverges) beside it.
-- **Open pull requests:** #1075 (`claude/intelligent-bohr-5ii8qn`: T39, T41, T42). Merged: #1040 (T38b). **Owed to a `shared/` pull request:** the
+- **Open pull requests:** none. Merged: #1075 (T39, T41, T42), #1040 (T38b). **Owed to a `shared/` pull request:** the
   README's E25 row (increment 9 closed, increment 10 the ceiling next; "as of" 2026-11-20) and
   a line for `h3 ai ceiling` in `docs/07-simulation-and-ai.md` (beside `h3 ai eval`).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
@@ -58,7 +58,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   `report.json` (committed as `python/records/distill/reach-1.json`). The checkpoint (AI-Q20):
   the user proposed the ceiling; the rollout design agreed (the fair actor, both worlds). T42
   built (`cargo build --release -p h3-cli`, timing runs in the sandbox; the refused casts traced
-  to BAT-STUB-19 by a temporary print, removed). #1075, watched until it merges.
+  to BAT-STUB-19 by a temporary print, removed). #1075 merged. The user limits T43 to 16 threads
+  (`TRAPS.md`); a stop during an append now drops the torn last game on resume.
 
 ### 2026-11-19 — E25 T38b: `[network] reach` and `preview`, the bench's preview rows
 
