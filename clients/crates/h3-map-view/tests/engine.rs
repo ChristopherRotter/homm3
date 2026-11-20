@@ -1449,3 +1449,422 @@ fn a_record_s_rarer_lines() {
         Err(Refused::Line(_, why)) if why.contains("off the map")
     ));
 }
+
+/// A message of Red's command `command` accepted.
+fn accepted(command: h3_protocol::wire::game::GameCommand) -> ServerMessage {
+    ServerMessage::GameAccepted {
+        n: 50,
+        seq: 5,
+        command,
+    }
+}
+
+/// A message of `events`.
+fn events(events: Vec<h3_protocol::wire::game::GameEvent>) -> ServerMessage {
+    ServerMessage::GameEvents { n: 51, events }
+}
+
+#[test]
+fn a_record_s_visits_and_level_ups() {
+    use h3_protocol::wire::game::{
+        AdventureCommand, AdventureEvent, Answer, ChestChoice, GameCommand, GameEvent, HeroChange,
+        Pos, PrimarySkill, SkillOffer,
+    };
+    let g = game();
+    let red = g
+        .observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == 0)
+        .unwrap()
+        .clone();
+    let details = g
+        .observation
+        .heroes
+        .iter()
+        .find(|i| i.id == red.id)
+        .and_then(|i| i.details.clone())
+        .unwrap();
+    let known = details.skills[0];
+    let moved = |x, y| {
+        accepted(GameCommand::Adventure {
+            command: AdventureCommand::MoveHero {
+                hero: red.id,
+                path: vec![Pos { x, y, level: 0 }],
+            },
+        })
+    };
+    let answer = |answer| accepted(GameCommand::Answer { answer });
+    let gold = GameEvent::ResourceGained {
+        player: 0,
+        resource: 6,
+        amount: 500,
+    };
+    let opened = GameEvent::LevelUpOpened {
+        player: 0,
+        hero: red.id,
+        level: 2,
+        primary: PrimarySkill::Defense,
+        offers: [known.skill, 20],
+    };
+    let gained = |level, skill| GameEvent::LevelGained {
+        player: 0,
+        hero: red.id,
+        level,
+        primary: PrimarySkill::Knowledge,
+        skill,
+    };
+    let removed = GameEvent::Adventure {
+        event: AdventureEvent::ObjectRemoved {
+            object_type: 6,
+            anchor: Pos {
+                x: 11,
+                y: 10,
+                level: 0,
+            },
+        },
+    };
+    let record = text(
+        &g.header,
+        &[
+            snapshot(&g.observation),
+            // A walk with a visit's events, an answer and its own, a level-up opened and taken.
+            moved(11, 10),
+            events(vec![removed.clone(), gold.clone(), opened]),
+            answer(Answer::Chest {
+                choice: ChestChoice::Gold,
+            }),
+            events(vec![gold.clone()]),
+            answer(Answer::LevelUp {
+                offer: SkillOffer::Second,
+            }),
+            events(vec![gained(2, Some(20))]),
+            // A level without a decision (one offer, then none), an empty walk, End Turn: the
+            // events after it belong to no visit; a level-up of a hero without details nothing.
+            moved(12, 10),
+            events(vec![gained(3, Some(known.skill)), gained(4, None)]),
+            accepted(GameCommand::Adventure {
+                command: AdventureCommand::MoveHero {
+                    hero: red.id,
+                    path: Vec::new(),
+                },
+            }),
+            answer(Answer::Chest {
+                choice: ChestChoice::Experience,
+            }),
+            accepted(GameCommand::EndTurn {}),
+            events(vec![
+                gold.clone(),
+                GameEvent::HeroChanged {
+                    player: 0,
+                    hero: red.id,
+                    change: HeroChange::GainExperience { amount: 5 },
+                },
+                gained(5, None),
+                GameEvent::LevelGained {
+                    player: 0,
+                    hero: 999,
+                    level: 2,
+                    primary: PrimarySkill::Attack,
+                    skill: None,
+                },
+            ]),
+        ],
+    );
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    let tile = |x, y| h3_map::model::Pos { x, y, z: 0 };
+    let [first, second] = &played.visits[..] else {
+        panic!("two visits: {:?}", played.visits);
+    };
+    assert_eq!(first.at, tile(11, 10));
+    assert_eq!(first.events.len(), 3);
+    assert_eq!(first.answers.len(), 2);
+    assert_eq!(first.answers[0].1, [gold]);
+    assert_eq!((second.at, second.events.len()), (tile(12, 10), 2));
+    assert!(second.answers.is_empty());
+    // The level-ups: the dialog's offers with the levels they reach, the record's choice.
+    let levels: Vec<_> = played
+        .levels
+        .iter()
+        .map(|l| {
+            let offers: Vec<_> = l.up.offers.iter().map(|o| (o.skill, o.level)).collect();
+            (l.up.level, l.up.primary, offers, l.chosen)
+        })
+        .collect();
+    let skill = u8::try_from(known.skill).unwrap();
+    assert_eq!(
+        levels,
+        [
+            (2, 1, vec![(skill, known.level + 1), (20, 1)], Some(1)),
+            (3, 3, vec![(skill, known.level + 1)], Some(0)),
+            (4, 3, Vec::new(), None),
+            (5, 3, Vec::new(), None),
+        ]
+    );
+    assert!(
+        played
+            .levels
+            .iter()
+            .all(|l| u16::from(l.up.hero) == details.hero_type)
+    );
+    // The heroes' experience at the start, by their tiles.
+    assert_eq!(
+        played.experience,
+        [(
+            tile(
+                u8::try_from(red.pos.x).unwrap(),
+                u8::try_from(red.pos.y).unwrap()
+            ),
+            details.experience
+        )]
+    );
+}
+
+#[test]
+fn what_a_record_s_visits_tell() {
+    use h3_map_view::asks::Ask;
+    use h3_map_view::engine::visits::{self, Answered, Told};
+    use h3_map_view::finds::{Find, Gain};
+    use h3_protocol::wire::game::{
+        AdventureEvent, Answer, ArenaChoice, ChestChoice, Consent, GameEvent, HeroChange,
+        NothingWhy, Pos,
+    };
+    let anchor = Pos {
+        x: 5,
+        y: 4,
+        level: 0,
+    };
+    let adventure = |event| GameEvent::Adventure { event };
+    let visited = adventure(AdventureEvent::NothingGained {
+        hero: 0,
+        object_type: 1,
+        anchor,
+        why: NothingWhy::Visited,
+    });
+    let full = adventure(AdventureEvent::NothingGained {
+        hero: 0,
+        object_type: 1,
+        anchor,
+        why: NothingWhy::Full,
+    });
+    let removed = adventure(AdventureEvent::ObjectRemoved {
+        object_type: 1,
+        anchor,
+    });
+    let emptied = adventure(AdventureEvent::ObjectEmpty {
+        object_type: 1,
+        anchor,
+    });
+    let mark = |held| {
+        adventure(AdventureEvent::OnceMarkChanged {
+            hero: 0,
+            bonus: VisitBonus {
+                mark: 8,
+                morale: 1,
+                luck: 2,
+            },
+            held,
+        })
+    };
+    let changed = |change| GameEvent::HeroChanged {
+        player: 0,
+        hero: 0,
+        change,
+    };
+    let primary = |primary| changed(HeroChange::GainPrimary { primary });
+    let experience = changed(HeroChange::GainExperience { amount: 1000 });
+    let resource = |resource, amount| GameEvent::ResourceGained {
+        player: 0,
+        resource,
+        amount,
+    };
+    let artifact = changed(HeroChange::AddArtifact {
+        artifact: h3_protocol::wire::game::Artifact {
+            artifact: 108,
+            spell: None,
+        },
+    });
+    let at = h3_map::model::Pos { x: 5, y: 4, z: 0 };
+    let visit = |events: Vec<GameEvent>| engine::Visit {
+        at,
+        events,
+        answers: Vec::new(),
+    };
+    let found = |class, events| visits::told(&visit(events), [class, 0], "Rion");
+    let find = |told: Option<Told>| match told {
+        Some(Told::Find { find, gain, taken }) => Some((find, gain, taken)),
+        _ => None,
+    };
+    let none = Gain::default();
+    // A Temple: its mark's morale (the luck too, on any day), else visited; nothing else tells.
+    let morale = Gain {
+        morale: [1, 1],
+        luck: 2,
+        ..Gain::default()
+    };
+    assert_eq!(
+        find(found(96, vec![mark(true)])),
+        Some((Find::Temple { visited: false }, morale, false))
+    );
+    assert_eq!(
+        find(found(96, vec![visited.clone()])),
+        Some((Find::Temple { visited: true }, none, false))
+    );
+    assert_eq!(found(96, vec![mark(false), full]), None);
+    // A Star Axis and a Learning Stone.
+    let power = Gain {
+        skills: [0, 0, 1, 0],
+        ..Gain::default()
+    };
+    assert_eq!(
+        find(found(61, vec![primary([0, 0, 1, 0])])),
+        Some((Find::Axis { visited: false }, power, false))
+    );
+    assert_eq!(
+        find(found(61, vec![visited.clone()])).map(|f| f.0),
+        Some(Find::Axis { visited: true })
+    );
+    assert_eq!(found(61, Vec::new()), None);
+    assert_eq!(
+        find(found(100, vec![experience.clone()])).map(|f| (f.0, f.1.experience)),
+        Some((Find::Stone { visited: false }, 1000))
+    );
+    assert_eq!(
+        find(found(100, vec![visited.clone()])).map(|f| f.0),
+        Some(Find::Stone { visited: true })
+    );
+    assert_eq!(found(100, Vec::new()), None);
+    // A pile taken, a Windmill's resource or its emptiness; none for several or none.
+    assert_eq!(
+        find(found(79, vec![removed.clone(), resource(6, 1000)])).map(|f| (f.0, f.2)),
+        Some((
+            Find::Pile {
+                resource: 6,
+                amount: 1000
+            },
+            true
+        ))
+    );
+    assert_eq!(
+        find(found(112, vec![resource(1, 3)])).map(|f| f.0),
+        Some(Find::Windmill {
+            resource: 1,
+            amount: 3
+        })
+    );
+    assert_eq!(
+        find(found(112, vec![emptied.clone()])).map(|f| f.0),
+        Some(Find::Windmill {
+            resource: 0,
+            amount: 0
+        })
+    );
+    assert_eq!(found(112, Vec::new()), None);
+    assert_eq!(found(79, vec![emptied]), None);
+    assert_eq!(found(79, vec![resource(1, 3), resource(2, 3)]), None);
+    // An artifact added and taken; none without it; another class tells nothing.
+    assert_eq!(
+        find(found(5, vec![removed.clone(), artifact])).map(|f| (f.0, f.2)),
+        Some((Find::Artifact { artifact: 108 }, true))
+    );
+    assert_eq!(found(5, vec![removed]), None);
+    assert_eq!(found(91, vec![visited]), None);
+    // The questions: no answer, none; the answer another class's, none.
+    let asked = |class, answer, after: Vec<GameEvent>| {
+        let mut v = visit(Vec::new());
+        v.answers.push((answer, after));
+        match visits::told(&v, [class, 0], "Rion") {
+            Some(Told::Ask { ask, answered }) => Some((ask, answered)),
+            _ => None,
+        }
+    };
+    assert_eq!(found(4, Vec::new()), None);
+    let attack = Answer::Arena {
+        choice: ArenaChoice::Attack,
+    };
+    assert_eq!(asked(101, attack, Vec::new()), None);
+    assert_eq!(
+        asked(4, attack, vec![primary([2, 0, 0, 0])]),
+        Some((Ask::Arena(2), Answered::Yes))
+    );
+    assert_eq!(
+        asked(
+            4,
+            Answer::Arena {
+                choice: ArenaChoice::Defense
+            },
+            vec![primary([0, 2, 0, 0])]
+        ),
+        Some((Ask::Arena(2), Answered::Second))
+    );
+    // Pandora's Box: its answer's gains its rewards; declined, none.
+    let accept = Answer::Offer {
+        consent: Consent::Accept,
+    };
+    let Some((Ask::OpenBox { rewards, hero }, Answered::Yes)) = asked(
+        6,
+        accept,
+        vec![resource(6, 1500), experience.clone(), primary([1, 0, 0, 0])],
+    ) else {
+        panic!("Pandora's Box accepted");
+    };
+    assert_eq!(
+        (rewards.resources[6], rewards.experience, rewards.primary),
+        (1500, 1000, [1, 0, 0, 0])
+    );
+    assert_eq!(hero, "Rion");
+    assert!(matches!(
+        asked(
+            6,
+            Answer::Offer {
+                consent: Consent::Decline
+            },
+            Vec::new()
+        ),
+        Some((Ask::OpenBox { .. }, Answered::No))
+    ));
+    // A chest: the part taken the answer's gain, the other none (MCL-Q41).
+    assert_eq!(
+        asked(
+            101,
+            Answer::Chest {
+                choice: ChestChoice::Gold
+            },
+            vec![resource(6, 1500)]
+        ),
+        Some((
+            Ask::Chest {
+                gold: 1500,
+                experience: 0
+            },
+            Answered::Yes
+        ))
+    );
+    assert_eq!(
+        asked(
+            101,
+            Answer::Chest {
+                choice: ChestChoice::Experience
+            },
+            vec![experience]
+        ),
+        Some((
+            Ask::Chest {
+                gold: 0,
+                experience: 1000
+            },
+            Answered::Second
+        ))
+    );
+    // What the panels show: an unknown resource, another change and another event left out.
+    let gain = visits::gain(&[
+        resource(9, 5),
+        resource(0, 5),
+        changed(HeroChange::SetSpellPoints { points: 3 }),
+        GameEvent::DayStarted { day: 2 },
+    ]);
+    assert_eq!(gain.resources, [5, 0, 0, 0, 0, 0, 0]);
+    assert_eq!(gain.skills, [0; 4]);
+}

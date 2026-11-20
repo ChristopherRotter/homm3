@@ -78,6 +78,10 @@ pub struct Sequence {
     /// record.
     #[serde(default)]
     pub script: Vec<String>,
+    /// The engine's seed of a scripted game (E24 M4 T4b1, design §5.14: `h3 adventure run
+    /// --seed`), one whose draws are the original's under [`Sequence::seed`]: the viewer reads
+    /// only the record, so it only accepts it.
+    pub engine_seed: Option<u64>,
 }
 
 /// One input: at a millisecond, exactly one of a key pressed or released, the pointer moved, a

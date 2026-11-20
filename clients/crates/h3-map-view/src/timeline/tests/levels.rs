@@ -83,6 +83,7 @@ fn boxed(layout: &AdventureLayout, up: &LevelUp) -> LevelBox {
         )),
         offers: up.offers.clone(),
         primary: up.primary,
+        chosen: None,
     }
 }
 
@@ -472,4 +473,22 @@ fn the_dialogs_input_beside_its_offers() {
     let mut l = level_to("level-up", 50);
     l.run(51, &[Action::Offer(0)]).unwrap();
     assert!(l.boxed.is_none());
+}
+
+#[test]
+fn a_record_s_level_up_closes_only_with_its_answer() {
+    // E24 M4 T4b1 (design §5.14): `level-up` with the record's choice: the left offer, chosen by
+    // the click at 1800, closes at 2260; the right, the OK's close is refused.
+    let (mut start, actions, _, _) = levelling("level-up");
+    let run = |start: &Start| {
+        let mut l = Loop::start(rules(Bugs::Original), start).unwrap();
+        for t in 1..=2260 {
+            l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))?;
+        }
+        Ok::<_, Unplayable>(l)
+    };
+    start.level_ups[0].chosen = Some(0);
+    assert!(run(&start).unwrap().boxed.is_none());
+    start.level_ups[0].chosen = Some(1);
+    assert_eq!(run(&start).err(), Some(Unplayable::LevelUp(2)));
 }

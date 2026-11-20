@@ -43,6 +43,11 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-20, E24 M4 T4b1** (the user at the start: T4b cut in two by family, T4b1 the boxes;
+  Summon Boat out of T4b): **in progress** — three scripted games with visits (`game-finds`,
+  `game-asks`, `game-level`, `engine_seed` 74), `engine::visits`, the record's level-ups, the
+  timeline's record checks; recordings under Wine; MCL-Q41, MCL-Q42 asked. Branch
+  `map-client/e24-m4-t4b1`.
 - **2026-11-20, E24 M4 T4a2** (the user at the start: kept whole, the suggested cut declined):
   the three scripted games recorded again and played from their engine records (`engine::played`,
   the timeline's `moves`, the path's arrows, the walks' reveal on the view and the minimap,

@@ -1,0 +1,28 @@
+# A scripted game's finds (E24 M4 T4b1; clients/map/sequences.toml `game-finds`): Red's Rion with
+# its army in the map (as `game-walk`), a key's step right onto a Temple's entrance (its box with
+# the morale), a step off and onto it again (the visited box), a key's step down to a gold pile
+# below (the status window's kind 6, the pile taken), a step down where it lay and one more onto an
+# artifact below (its box, the artifact taken: the Pendant of Dispassion, which no panel shows).
+# Nothing drawn at random between the two games: the pile's gold and the artifact are the map's.
+# A town of Red's out of the way (no visit's scenario test warns of a town lost); a second hero of
+# Red's far off (its selection shows the engine's resources); Blue's hero far off. The engine
+# plays the same commands (the sequence's `script`).
+size = 36
+terrain = "grass"
+explored = "start"
+heroes = [
+    { at = [12, 12], class = 1, map_army = [[0, 15], [2, 5]] },
+    { at = [4, 28], class = 5, map_army = [[28, 20]] },
+    { at = [33, 33], owner = 1, class = 6 },
+]
+towns = [{ at = [6, 6], faction = 0, owner = 0, buildings = "fort" }]
+objects = [
+    { def = "AVStmpl0.def", at = [14, 12] },
+    { def = "AVTgold0.def", at = [13, 13], amount = 10 },
+    { def = "AVA0108.def", at = [13, 14] },
+]
+bonus = "gold"
+resources = [20, 10, 20, 10, 10, 10, 20000]
+select = { hero = [4, 28] }
+reselect = [12, 12]
+view = [3, 4, 0]

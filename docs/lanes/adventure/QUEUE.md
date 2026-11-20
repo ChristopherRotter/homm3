@@ -25,6 +25,15 @@ sacrifices, §14; survey `E08-trades.md` §12, §16)
 
 ## Inbox
 
+- 2026-11-20 (the map client lane, E24 M4 T4b1, `map-client/e24-m4-t4b1`; **MCL-Q41 and MCL-Q42,
+  for your planning; the user's answers first**): a record's visits played (E24 design §5.14).
+  (1) MCL-Q41: `ChoiceOpened` and `OfferOpened` carry no view, so a chest's choice box cannot show
+  both parts before the answer (the server lane's SRV-STUB-5 too); recommended: the events carry
+  what the observation's `Decision` holds. (2) MCL-Q42: a once-per-hero object's visit the hero's
+  mark refuses (the Learning Stone, the Star Axis: `revisit` gives an empty event list) tells
+  nothing, where a Temple's gives `NothingGained { why: Visited }`; recommended: the same event
+  for the marks' objects.
+
 - 2026-11-19 (the map client lane, E24 M4 T4a1, `map-client/e24-m4-t4a`; **MCL-Q39 and MCL-Q40,
   for your planning; the user's answers first**): a record's walk (E24 design §5.12) tells the
   points left once, after the walk (`MovementChanged`), but the original's bar falls at each
