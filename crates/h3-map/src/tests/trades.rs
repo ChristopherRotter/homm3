@@ -6,17 +6,17 @@
 //! default bans, refused in RoE; and the import that types them (E08 T132b; design note §7):
 //! each its type at subclass 0 with its blocked mask and its one entrance, no body, the setup
 //! valid, a subclass past 0 refused, and a step onto one refused as an unbuilt visit's until T133
-//! and T134 build the visits (the markets' with T133, the Altar's with T134a, the Hill Fort's with
-//! T134b1).
+//! and T134 built the visits (the markets' with T133, the Altar's with T134a, the Hill Fort's with
+//! T134b1, the War Machine Factory's with T134b2: since then every step onto one enters it).
 
 use super::import::{ROE, SOD};
 use super::limits;
 use crate::model::{Body, RawMap};
 use crate::writer as w;
 use crate::{ImportError, import, read};
-use h3_adventure::{AdventureCommand, AdventureCommandError, Holds, ObjectKind, Pos};
+use h3_adventure::{AdventureCommand, Holds, ObjectKind, Pos};
 use h3_contracts::PlayerId;
-use h3_game::{Actor, GameCommand, GameCommandError, GameState, apply};
+use h3_game::{Actor, GameCommand, GameState, apply};
 
 /// The game's `Objects.txt` lines (`H3bitmap.lod`'s): the Altar of Sacrifice (2), the Black
 /// Market (7), the Hill Fort (35) on the editor's dirt and grass, the Trading Post (99) on dirt
@@ -322,22 +322,21 @@ fn the_import_types_the_trades() {
     }
 }
 
-// covers: ADV-OBJ-003, ADV-MKT-001, ADV-ALT-001, ADV-HFT-001
+// covers: ADV-OBJ-003, ADV-MKT-001, ADV-ALT-001, ADV-HFT-001, ADV-WMF-001
 #[test]
-fn a_step_onto_a_market_an_altar_or_a_hill_fort_enters_it_and_onto_the_factory_is_refused() {
+fn a_step_onto_each_trade_or_service_enters_it() {
     // A market's visit is built (E08 T133a2): the step onto its entrance ends the move there (its
     // window opens the market's decision since T133b, GAM-DEC-011); an Altar's since T134a (its
-    // decision, GAM-DEC-012); a Hill Fort's since T134b1 (GAM-DEC-013). Until T134b2 builds the
-    // factory's (increment 14's design note §10), its entrance is refused as any unbuilt visit's
-    // (`effect` none):
-    // Red's hero, placed on the tile below each entrance (free: the pictures are four rows
-    // apart), reaches no point on it, the step onto it is `Visit` and the state stays as it was.
+    // decision, GAM-DEC-012); a Hill Fort's since T134b1 (GAM-DEC-013); the War Machine Factory's
+    // since T134b2 (its hire question, whose yes opens the hire dialog of the base pack's three
+    // machines, GAM-DEC-008). Red's hero is placed on the tile below each entrance (free: the
+    // pictures are four rows apart).
     let rules = &*SOD;
     let raw = read_back(&w::write(&trades_map(|_| true)).unwrap());
     let setup = import(&raw, rules).unwrap();
     let red = PlayerId::new(0);
     assert_eq!(setup.map.objects.len(), PICTURES.len());
-    let (mut markets, mut altars, mut forts) = (0, 0, 0);
+    let (mut markets, mut altars, mut forts, mut factories) = (0, 0, 0, 0);
     for (index, object) in setup.map.objects.iter().enumerate() {
         let (column, row) = object.visitable.offsets().next().unwrap();
         let entrance = Pos::new(
@@ -353,7 +352,7 @@ fn a_step_onto_a_market_an_altar_or_a_hill_fort_enters_it_and_onto_the_factory_i
             .adventure()
             .reach(rules.core(), rules.adventure(), state.heroes(), hero)
             .unwrap();
-        let before = state.state_hash();
+        assert!(reach.points_left(entrance).is_some(), "{index}");
         let path = vec![entrance];
         let stepped = apply(
             &mut state,
@@ -366,10 +365,10 @@ fn a_step_onto_a_market_an_altar_or_a_hill_fort_enters_it_and_onto_the_factory_i
             .object_type
             .and_then(|ty| rules.adventure().object_type(ty))
             .map(|ty| &ty.kind);
+        assert!(stepped.is_ok(), "{index}");
+        assert_eq!(state.adventure().heroes()[0].pos, entrance, "{index}");
         if let Some(ObjectKind::Market(market)) = kind {
             markets += 1;
-            assert!(reach.points_left(entrance).is_some(), "{index}");
-            assert!(stepped.is_ok(), "{index}");
             assert_eq!(state.adventure().heroes()[0].pos, entrance, "{index}");
             // E08 T133b: its decision opens with the original packs' rates (a Trading Post's 42
             // trades of the seven resources, at five Marketplaces).
@@ -387,8 +386,6 @@ fn a_step_onto_a_market_an_altar_or_a_hill_fort_enters_it_and_onto_the_factory_i
         }
         if let Some(ObjectKind::Altar(altar)) = kind {
             altars += 1;
-            assert!(stepped.is_ok(), "{index}");
-            assert_eq!(state.adventure().heroes()[0].pos, entrance, "{index}");
             // E08 T134a: its decision opens with the original packs' values (23 places), the
             // screens the hero's class's faction allows (every faction has one at least).
             assert_eq!(state.altar(red).map(|visit| visit.hero), Some(hero));
@@ -403,8 +400,6 @@ fn a_step_onto_a_market_an_altar_or_a_hill_fort_enters_it_and_onto_the_factory_i
         }
         if let Some(ObjectKind::HillFort(fort)) = kind {
             forts += 1;
-            assert!(stepped.is_ok(), "{index}");
-            assert_eq!(state.adventure().heroes()[0].pos, entrance, "{index}");
             // E08 T134b1: its decision opens with the base pack's percents, a row per stack.
             assert_eq!(fort.gold, [0, 25, 50, 75, 100, 100, 100], "{index}");
             assert_eq!(state.hill_fort(red).map(|visit| visit.hero), Some(hero));
@@ -416,21 +411,73 @@ fn a_step_onto_a_market_an_altar_or_a_hill_fort_enters_it_and_onto_the_factory_i
             assert_eq!(view.rows.len(), army, "{index}");
             continue;
         }
-        assert_eq!(reach.points_left(entrance), None, "{index}");
-        assert!(
-            matches!(
-                stepped,
-                Err(GameCommandError::Adventure(AdventureCommandError::Visit {
-                    step: 0
-                }))
-            ),
-            "{index}"
+        // E08 T134b2: the factory asks the hire question naming the base pack's machines; its
+        // yes opens the hire dialog of them, each 1 while the hero lacks its artifact, at the
+        // creatures' costs (the Ballista 2 500, the First Aid Tent 750, the Ammo Cart 1 000 gold).
+        let Some(ObjectKind::WarMachineFactory(factory)) = kind else {
+            panic!("{index}: {kind:?}")
+        };
+        factories += 1;
+        let names: Vec<_> = factory
+            .machines
+            .iter()
+            .map(|&(machine, _)| rules.core().creature_key(machine).unwrap().as_str())
+            .collect();
+        assert_eq!(
+            names,
+            ["base:ballista", "base:first_aid_tent", "base:ammo_cart"]
         );
-        assert_eq!(state.state_hash(), before, "{index}");
+        let answer = GameCommand::Answer(h3_game::Answer::Offer(h3_game::Consent::Accept));
+        apply(
+            &mut state,
+            rules,
+            Actor::Player(red),
+            answer,
+            &mut Vec::new(),
+        )
+        .unwrap();
+        let seen = h3_game::observe(&state, rules, h3_game::Viewer::Player(red)).decision;
+        let Some(h3_game::DecisionView::Hire(view)) = seen else {
+            panic!("{index}: {seen:?}")
+        };
+        let details = &state.heroes()[usize::from(hero.raw())];
+        let held = |artifact| {
+            details
+                .worn
+                .iter()
+                .flatten()
+                .any(|i| i.artifact == artifact)
+        };
+        let expected: Vec<_> = factory
+            .machines
+            .iter()
+            .zip([2500, 750, 1000])
+            .map(|(&(machine, artifact), gold)| {
+                (
+                    machine,
+                    u32::from(!held(artifact)),
+                    vec![(gold_id(rules), gold)],
+                )
+            })
+            .collect();
+        let shown: Vec<_> = view
+            .creatures
+            .into_iter()
+            .map(|c| (c.creature, c.count, c.cost))
+            .collect();
+        assert_eq!(shown, expected, "{index}");
     }
     // The Black Market, the two Trading Posts' classes and the guild's pictures; the Altar's; the
-    // Hill Fort's.
+    // Hill Fort's; the factory's.
     assert!(markets >= 4, "{markets}");
     assert!(altars >= 1, "{altars}");
     assert!(forts >= 1, "{forts}");
+    assert_eq!(factories, 1);
+}
+
+/// The core's gold.
+fn gold_id(rules: &h3_game::GameRuleset) -> h3_content::ResourceId {
+    let resources = rules.core().resources();
+    let at = resources.iter().position(|r| r.key.as_str() == "base:gold");
+    h3_content::ResourceId::from_index(at.unwrap()).unwrap()
 }

@@ -907,6 +907,7 @@ mod dwelling_weeks;
 mod dwellings;
 mod economy;
 mod events;
+mod factory;
 mod flight;
 mod garrisons;
 mod hill_fort;

@@ -254,13 +254,13 @@ fn a_towns_purchase_joins_its_garrison_and_lowers_no_count_of_the_map() {
         HireSource::Portal { town: red },
     ];
     for source in sources {
-        assert_eq!(state.hire_stock(rules.1, &source), None);
         let dialog = HireDialog {
             target: HireTarget::Garrison(red),
             source,
         };
+        assert_eq!(state.hire_stock((rules.1, &[]), &dialog), None);
         assert_eq!(
-            state.check_hire(rules, &dialog, (PIKEMAN, 1)),
+            state.check_hire((rules.0, rules.1, &[]), &dialog, (PIKEMAN, 1)),
             Err(HireError::NoSource)
         );
     }

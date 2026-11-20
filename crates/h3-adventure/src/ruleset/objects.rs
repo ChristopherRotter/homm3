@@ -437,10 +437,11 @@ pub enum ObjectKind {
     /// ([`super::AdventureRuleset::altar_screens`]). Visited from T134a.
     Altar(Altar),
     /// A Hill Fort (E08 T132a2, increment 14's design note §4; ADV-HFT-001, -002, the original's
-    /// class 35): entered, its gold percents by level. Visited from T134b.
+    /// class 35): entered, its gold percents by level. Visited from T134b1.
     HillFort(HillFort),
     /// A War Machine Factory (E08 T132a2, increment 14's design note §5; ADV-WMF-001, the
-    /// original's class 106): entered, its machines. Visited from T134b.
+    /// original's class 106): entered, its machines. Visited from T134b2 (its hire question and
+    /// dialog).
     WarMachineFactory(WarMachineFactory),
 }
 
@@ -612,6 +613,9 @@ pub(crate) enum Effect<'k> {
     /// The team's kind mark, then the Hill Fort's window for the visitor's owner (ADV-HFT-001,
     /// ADV-BON-009; E08 T134b1).
     HillFort,
+    /// The hire question naming its machines in order, whose yes opens the hire dialog of them
+    /// (a War Machine Factory, ADV-WMF-001, ADV-HIR-002; E08 T134b2).
+    Factory(&'k WarMachineFactory),
 }
 
 impl ObjectKind {
@@ -709,17 +713,17 @@ impl ObjectKind {
             // creature banks are typed, drawn since T124b1, visited since T124b2 (increment 13's
             // design note §6).
             // E08 T132a2: increment 14's four kinds are typed; the markets' visit came with
-            // T133a2, the Altar's with T134a, the Hill Fort's with T134b1; the factory's comes
-            // with T134b2.
+            // T133a2, the Altar's with T134a, the Hill Fort's with T134b1, the factory's with
+            // T134b2.
             Self::Market(_) => Some(Effect::Market),
             Self::Altar(_) => Some(Effect::Altar),
             Self::HillFort(_) => Some(Effect::HillFort),
+            Self::WarMachineFactory(factory) => Some(Effect::Factory(factory)),
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
             | Self::Hole
-            | Self::RandomDwelling
-            | Self::WarMachineFactory(_) => None,
+            | Self::RandomDwelling => None,
         }
     }
 

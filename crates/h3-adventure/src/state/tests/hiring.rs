@@ -33,6 +33,20 @@ fn dialog(rules: &Rules, hero: HeroId, k: &str) -> HireDialog {
     }
 }
 
+/// The stock of `source` for hero 1 ([`AdventureState::hire_stock`], no hero details: no
+/// factory's).
+fn stock(
+    s: &AdventureState,
+    rules: &Rules,
+    source: HireSource,
+) -> Option<Vec<(CreatureTypeId, u32)>> {
+    let dialog = HireDialog {
+        target: HireTarget::Hero(HERO),
+        source,
+    };
+    s.hire_stock((&rules.1, &[]), &dialog)
+}
+
 /// A purchase's price, or why it was refused.
 type Bought = Result<Vec<(ResourceId, u32)>, HireError>;
 
@@ -45,9 +59,15 @@ fn buy(
 ) -> (Bought, Vec<AdventureEvent>) {
     let mut events = Vec::new();
     let bought = state
-        .check_hire((&rules.0, &rules.1), dialog, (creature(rules, k), amount))
+        .check_hire(
+            (&rules.0, &rules.1, &[]),
+            dialog,
+            (creature(rules, k), amount),
+        )
         .map(|purchase| {
             let price = purchase.price().to_vec();
+            // A purchase of creatures gives no machine (E08 T134b2).
+            assert_eq!(purchase.machine(), None);
             state.hire(purchase, &mut events);
             price
         });
@@ -117,15 +137,9 @@ fn the_stock_is_a_dwelling_s_creatures_or_a_camp_s_and_none_for_another_object()
     let (c5, w5) = (creature(&rules, "t:c5"), creature(&rules, "t:w5"));
     let mut s = game(&rules, at_entrance(&rules, "t:d5", Some(RED)), peasant());
     let source = dialog(&rules, HERO, "t:d5").source;
-    assert_eq!(
-        s.hire_stock(&rules.1, &source),
-        Some(vec![(c5, 2), (w5, 2)])
-    );
+    assert_eq!(stock(&s, &rules, source), Some(vec![(c5, 2), (w5, 2)]));
     s.set_dwelling(0, &[2, 1], &[]);
-    assert_eq!(
-        s.hire_stock(&rules.1, &source),
-        Some(vec![(c5, 2), (w5, 1)])
-    );
+    assert_eq!(stock(&s, &rules, source), Some(vec![(c5, 2), (w5, 1)]));
     // Another anchor, another type, an index past the objects: none.
     let HireSource::Object {
         index, object_type, ..
@@ -145,18 +159,15 @@ fn the_stock_is_a_dwelling_s_creatures_or_a_camp_s_and_none_for_another_object()
         anchor: ENTRANCE,
     };
     for other in [moved, typed, past] {
-        assert_eq!(s.hire_stock(&rules.1, &other), None);
+        assert_eq!(stock(&s, &rules, other), None);
     }
     // A camp's creature and count; a Windmill sells nothing.
     let s = game(&rules, at_entrance(&rules, "t:camp", None), peasant());
     let source = dialog(&rules, HERO, "t:camp").source;
-    assert_eq!(
-        s.hire_stock(&rules.1, &source),
-        Some(vec![s.camp(0).unwrap()])
-    );
+    assert_eq!(stock(&s, &rules, source), Some(vec![s.camp(0).unwrap()]));
     let s = game(&rules, at_entrance(&rules, "t:windmill", None), peasant());
     let source = dialog(&rules, HERO, "t:windmill").source;
-    assert_eq!(s.hire_stock(&rules.1, &source), None);
+    assert_eq!(stock(&s, &rules, source), None);
 }
 
 // covers: ADV-ARM-007, ADV-HIR-002
@@ -200,8 +211,12 @@ fn a_purchase_lowers_the_count_joins_the_army_and_tells_the_owner_alone() {
     let visited = s.clone();
     // The price by resource in the core's order (wood, then gold), whatever the pack's order.
     let check = |s: &AdventureState, k, amount| {
-        s.check_hire((&rules.0, &rules.1), &open, (creature(&rules, k), amount))
-            .map(|purchase| purchase.price().to_vec())
+        s.check_hire(
+            (&rules.0, &rules.1, &[]),
+            &open,
+            (creature(&rules, k), amount),
+        )
+        .map(|purchase| purchase.price().to_vec())
     };
     assert_eq!(check(&s, "t:w5", 2), Ok(vec![(WOOD, 8), (GOLD, 100)]));
     assert_eq!(check(&s, "t:c5", 1), Ok(vec![(GOLD, 50)]));
@@ -232,7 +247,7 @@ fn a_purchase_lowers_the_count_joins_the_army_and_tells_the_owner_alone() {
         [stack(0, PEASANT, 1), stack(1, w5, 2)]
     );
     assert_eq!(
-        s.hire_stock(&rules.1, &open.source),
+        s.hire_stock((&rules.1, &[]), &open),
         Some(vec![(c5, 2), (w5, 0)])
     );
     assert_eq!(check(&s, "t:w5", 1), Err(HireError::Amount(1)));
@@ -240,7 +255,7 @@ fn a_purchase_lowers_the_count_joins_the_army_and_tells_the_owner_alone() {
     let level_1 = dialog(&rules, HERO, "t:d1");
     let s = game(&rules, at_entrance(&rules, "t:d1", Some(RED)), peasant());
     let price = s.check_hire(
-        (&rules.0, &rules.1),
+        (&rules.0, &rules.1, &[]),
         &level_1,
         (creature(&rules, "t:w1"), 2),
     );
@@ -338,7 +353,11 @@ fn each_refused_purchase_leaves_the_state_as_it_was() {
         (open, ("t:c5", 2), HireError::NoRoom),
         (open, ("t:w5", 1), HireError::NoRoom),
     ] {
-        let check = s.check_hire((&rules.0, &rules.1), &dialog, (creature(&rules, k), amount));
+        let check = s.check_hire(
+            (&rules.0, &rules.1, &[]),
+            &dialog,
+            (creature(&rules, k), amount),
+        );
         assert_eq!(check, Err(error));
         let mut refused = s.clone();
         let (bought, events) = buy(&rules, &mut refused, &dialog, (k, amount));

@@ -4,23 +4,25 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132a1 and T132a2 done (the rates, the kinds; decisions 380, 381), T132b done (the import; decision 382), T133 cut in three (decision 383): T133a1 and T133a2 done (the stock and its draw; the visit and the adventure's checks), T133b done (the decision and its wire; decision 384), T134a done (the Altar with its wire; decisions 385, 386), T134b in two (decision 387): T134b1 done (the Hill Fort with its wire), T134b2 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132a1 and T132a2 done (the rates, the kinds; decisions 380, 381), T132b done (the import; decision 382), T133 cut in three (decision 383): T133a1 and T133a2 done (the stock and its draw; the visit and the adventure's checks), T133b done (the decision and its wire; decision 384), T134a done (the Altar with its wire; decisions 385, 386), T134b in two (decision 387): T134b1 done (the Hill Fort with its wire), T134b2 done (the factory; decision 388); T135a below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T134b2 — the War Machine Factory** (round 7; decisions 373, 384, 387; design note §5,
-§10's factory, §11's purchase, §16; survey `E08-trades.md` §14)
+**E08 T135a — the trades' and services' answers listed, and their env entries** (round 8;
+decisions 372, 384; design note §18, §21)
 
-- **Scope:** `h3-adventure`: the factory's visit (ADV-WMF-001: `Effect` for
-  `ObjectKind::WarMachineFactory`, no mark; the hire question `OfferKind::Hire { creatures }`, its
-  yes opening the hire dialog with the factory as `HireSource::Object`), `hire_stock` (each machine
-  1 while the hero lacks its artifact, else 0), `hire_room` (1 when its position is free),
-  `check_hire` and `hire` extended for its machines (ADV-HIR-002 amended: the amount 1, the hero
-  lacking the machine's artifact, the artifact given into its position by
-  `HeroChange::AddArtifact`, no army change); `h3-game`: the purchase through the hire dialog
-  (GAM-DEC-008 amended: `HeroChanged`, not `CreaturesJoined`; the dialog of three stays open;
-  `hire_mosts` 1 or 0 with the gold bound). No new answer: the wire, the replay words and the env
-  are expected unchanged (`HireSource::Object`, `HireSeen::Object` fit); a version moves only if
-  a hashed or wire shape does. `h3-map`'s `tests/trades.rs`: the factory's step entered.
-- **Depends on:** T134b1's pull request. **Status:** ready after it; its cut confirmed at its start.
+- **Scope:** `h3-game`'s `legal_commands` (each kind lists only its `Leave` today): a
+  representative answer per action, as design note §18 says (a market's trades of one lot per pair
+  the treasury can pay, its sales of one lot for gold per slot with the army's last creature kept,
+  its purchases in gold per unsold entry it can pay; an Altar's two alls where the screen allows
+  and the total is above 0; a Hill Fort's `Upgrade` per row of state 1 and `All` when the whole is
+  1; no transfer; each `Leave` as now); the env's entries (`h3-sim`, the action encoding's v17,
+  `cross-lane` consented at decision 372: `MARKET_TRADE + 42`, `MARKET_SELL + 7`, `MARKET_BUY + 7`,
+  `ALTAR_ARTIFACTS`, `ALTAR_CREATURES`, `HILL_FORT_UPGRADE + 7`, `HILL_FORT_ALL`; the closing
+  `Leave` entries exist since T133b; the AI lane's inbox told). The replay words exist since
+  T133b, T134a, T134b1; the factory needs nothing (the offer's and the hire dialog's entries). A
+  newly listed command moves random games where it appears (`TRAPS.md`): no fixture map holds a
+  trade yet (T135b's maps), so the workloads and goldens are expected unchanged.
+- **Depends on:** T134b2's pull request. **Status:** ready after it; its cut confirmed at its start
+  (a seam if it is big: `legal_commands` first, the env's entries second).
 
 ## Inbox
 

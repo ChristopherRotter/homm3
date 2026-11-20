@@ -5,8 +5,8 @@
 //! from the packs' keys. The rates are [`crate::MarketParams`]' (ADV-MKT-002, the part's
 //! `[params.market]`); a Black Market's stock is drawn since E08 T133a1 (ADV-MKT-006); the
 //! markets' visits came with T133, the Altar's with T134a (`crate::state`'s `altar`), the Hill
-//! Fort's and the factory's come with T134b, so a step onto one of those is refused as any unbuilt
-//! visit's until then.
+//! Fort's with T134b1 (`hill_fort`), the factory's with T134b2 (`factory`, through the hire
+//! dialog).
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;

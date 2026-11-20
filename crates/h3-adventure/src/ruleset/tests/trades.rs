@@ -216,7 +216,7 @@ fn refused(name: &str, kind: ObjectKindDef) -> &'static str {
 
 // covers: ADV-MKT-001, ADV-MKT-002, ADV-ALT-001, ADV-ALT-002, ADV-ALT-003, ADV-HFT-002, ADV-WMF-001
 #[test]
-fn the_four_kinds_compile_entered_and_all_but_the_factory_visited() {
+fn the_four_kinds_compile_entered_and_visited() {
     let core = trade_core();
     let part = AdventureRuleset::compile(&core, &trade_packs()).unwrap();
     let kind = |k: &str| {
@@ -261,12 +261,8 @@ fn the_four_kinds_compile_entered_and_all_but_the_factory_visited() {
     for k in ["t:post", "t:altar", "t:fort", "t:factory"] {
         let kind = kind(k);
         // The markets' visit since E08 T133a2, the Altar's since T134a, the Hill Fort's since
-        // T134b1, the factory's none before T134b2; neither ownable nor weekly.
-        assert_eq!(
-            kind.effect().is_some(),
-            ["t:post", "t:altar", "t:fort"].contains(&k),
-            "{k}"
-        );
+        // T134b1, the factory's since T134b2; neither ownable nor weekly.
+        assert!(kind.effect().is_some(), "{k}");
         assert!(!kind.ownable() && !kind.weekly());
         assert_eq!(kind.timed_mark(), None);
     }

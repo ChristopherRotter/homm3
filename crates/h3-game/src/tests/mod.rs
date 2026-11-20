@@ -15,6 +15,7 @@ mod decisions;
 mod dwellings;
 mod events;
 mod exchanges;
+mod factory;
 mod garrisons;
 mod heroes;
 mod hill_fort;

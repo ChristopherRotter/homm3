@@ -8,13 +8,16 @@
 //! the payload); the dialog's creatures and counts are the adventure's, read at each step. Since
 //! E09 T27 a town's recruitment opens the same dialog (TWN-REC-001, -002): its source a town's
 //! index or Portal, its counts the town's (`h3_towns::recruit_stock`), its purchase checked and
-//! made by `crate::town::recruit`, its target the town's garrison.
+//! made by `crate::town::recruit`, its target the town's garrison. Since E08 T134b2 a War Machine
+//! Factory's dialog (ADV-WMF-001; increment 14's design note §16): its machines, one of each the
+//! hero lacks, each purchase the machine's artifact given into its position (`HeroChanged`).
 
 use alloc::vec::Vec;
 
-use h3_adventure::{HireDialog, HireSource, hire_price};
+use h3_adventure::{HireDialog, hire_price};
 use h3_content::CreatureTypeId;
 use h3_contracts::PlayerId;
+use h3_heroes::HeroChange;
 
 use super::{Decision, GameState};
 use crate::GameRuleset;
@@ -52,15 +55,18 @@ impl GameState {
     /// then the price is paid (`ResourcePaid` per resource, in the core's order) and the map makes
     /// the purchase (the source's count lowered, the creatures joined, `CreaturesJoined` to the
     /// owner); since E09 T27 a town's source's purchase is `crate::town::recruit::buy`'s
-    /// (TWN-REC-001, -002). A dialog whose source sells one creature then closes
-    /// (`DecisionClosed`), as the original's; one of several stays open, its counts read again at
-    /// the next step.
+    /// (TWN-REC-001, -002). Since E08 T134b2 a War Machine Factory's purchase of one machine joins
+    /// no army: the machine's artifact is given into its position (`HeroChange::AddArtifact`,
+    /// `HeroChanged` to the owner; ADV-WMF-001, the original's `hero_give_artifact` 0x4E3070). A
+    /// dialog whose source sells one creature then closes (`DecisionClosed`), as the original's;
+    /// one of several stays open (a factory's three), its counts read again at the next step.
     ///
     /// # Errors
     ///
     /// `Hire` (the map's or the town's refusal: the creature not the source's, the amount 0 or
-    /// above its count, no room in the army), then `CannotPay`; the state is then unchanged.
-    // rule: GAM-DEC-008, ADV-HIR-002
+    /// above its count, no room in the army or for the machine's artifact), then `CannotPay`; the
+    /// state is then unchanged.
+    // rule: GAM-DEC-008, ADV-HIR-002, ADV-WMF-001
     pub(super) fn hire<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -72,18 +78,24 @@ impl GameState {
         if let Some(town) = recruit::town_source(&dialog.source) {
             recruit::buy(self, rules, player, (dialog, town), buy, sink)?;
         } else {
+            let rules3 = (rules.core(), rules.adventure(), self.heroes.as_slice());
             let purchase = self
                 .adventure
-                .check_hire((rules.core(), rules.adventure()), dialog, buy)
+                .check_hire(rules3, dialog, buy)
                 .map_err(GameCommandError::Hire)?;
             if !self.treasuries.can_pay(player, purchase.price()) {
                 return Err(GameCommandError::CannotPay);
             }
             self.pay_price(player, purchase.price(), sink);
+            let machine = purchase.machine();
             let _hero = self.adventure.hire(purchase, &mut AdventureSink(sink));
+            if let Some((hero, artifact)) = machine {
+                let change = HeroChange::AddArtifact(artifact.into());
+                self.change_hero(rules.core(), hero, Some(player), change, sink);
+            }
         }
         let single = self
-            .hire_stock(rules, &dialog.source)
+            .hire_stock(rules, dialog)
             .is_some_and(|stock| stock.len() == 1);
         if single {
             self.close(at);
@@ -92,18 +104,23 @@ impl GameState {
         Ok(())
     }
 
-    /// The creatures `source` sells with their counts as they stand, in its order (GAM-DEC-008):
-    /// a map object's the adventure's ([`h3_adventure::AdventureState::hire_stock`]), a town's
-    /// the town's (E09 T27, `h3_towns::recruit_stock`). None for a source that is gone. The env
-    /// reads a dialog's creatures' order from it (action encoding v7).
+    /// The creatures `dialog`'s source sells with their counts as they stand, in its order
+    /// (GAM-DEC-008): a map object's the adventure's
+    /// ([`h3_adventure::AdventureState::hire_stock`]; since E08 T134b2 a War Machine Factory's
+    /// machines, each 1 while the dialog's hero lacks its artifact, else 0, which is why it reads
+    /// the dialog and not its source alone, E08 decision 388), a town's the town's (E09 T27,
+    /// `h3_towns::recruit_stock`). None for a source that is gone. The env reads a dialog's
+    /// creatures' order from it (action encoding v7).
     pub fn hire_stock(
         &self,
         rules: &GameRuleset,
-        source: &HireSource,
+        dialog: &HireDialog,
     ) -> Option<Vec<(CreatureTypeId, u32)>> {
-        match recruit::town_source(source) {
+        match recruit::town_source(&dialog.source) {
             Some(town) => recruit::stock(self, rules, town),
-            None => self.adventure.hire_stock(rules.adventure(), source),
+            None => self
+                .adventure
+                .hire_stock((rules.adventure(), self.heroes.as_slice()), dialog),
         }
     }
 
@@ -121,10 +138,12 @@ impl GameState {
     /// player may buy of it now (GAM-DEC-008; the original's `recruit_dialog_select` 0x5503A0,
     /// survey `E08-dwellings.md` §5.2): the least of its count, the treasury divided by its cost
     /// for each resource it costs more than 0 of (integer division), and the room's bound
-    /// ([`h3_adventure::AdventureState::hire_room`]). *Agent's call* (increment 10's design note
-    /// §13): the room in the bound, so every amount from 1 to the most is accepted; the original's
-    /// slider leaves it out and refuses at Recruit, the same rule. Empty for a source that is gone
-    /// (defensive: nothing moves the hero or the source while the dialog is open).
+    /// ([`h3_adventure::AdventureState::dialog_room`]: the army's, since E08 T134b2 at a War
+    /// Machine Factory the machine's artifact's, so its most is 1 or 0, the original's).
+    /// *Agent's call* (increment 10's design note §13): the room in the bound, so every amount
+    /// from 1 to the most is accepted; the original's slider leaves it out and refuses at Recruit,
+    /// the same rule. Empty for a source that is gone (defensive: nothing moves the hero or the
+    /// source while the dialog is open).
     // rule: GAM-DEC-008, ADV-HIR-002
     pub(crate) fn hire_mosts(
         &self,
@@ -133,14 +152,13 @@ impl GameState {
         dialog: &HireDialog,
     ) -> Vec<(CreatureTypeId, u32)> {
         let treasury = self.treasuries.of(player).unwrap_or_default();
-        let stock = self.hire_stock(rules, &dialog.source);
+        let stock = self.hire_stock(rules, dialog);
+        let rules3 = (rules.core(), rules.adventure(), self.heroes.as_slice());
         stock
             .unwrap_or_default()
             .into_iter()
             .map(|(creature, count)| {
-                let room = self
-                    .adventure
-                    .hire_room(rules.adventure(), &dialog.target, creature);
+                let room = self.adventure.dialog_room(rules3, dialog, creature);
                 let most = hire_price(rules.core(), creature, 1)
                     .into_iter()
                     .map(|(resource, each)| {
@@ -158,7 +176,7 @@ impl GameState {
     /// cost of one by resource ([`hire_price`]). The treasury is the owner's own observation's, so
     /// no most shows: a client draws the slider.
     pub(crate) fn hire_view(&self, rules: &GameRuleset, dialog: &HireDialog) -> HireView {
-        let stock = self.hire_stock(rules, &dialog.source);
+        let stock = self.hire_stock(rules, dialog);
         HireView {
             target: dialog.target,
             source: HireSeen::of(&dialog.source),

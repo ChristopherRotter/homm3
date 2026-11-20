@@ -728,7 +728,7 @@ fn a_hero_in_a_boat_visits_a_dwelling_entered_from_water_as_on_land() {
     let (accepted, _) = accept(&rules, &mut s, &question);
     let dialog = accepted.hire.unwrap();
     let purchase = s
-        .check_hire((&rules.0, &rules.1), &dialog, (c5, 1))
+        .check_hire((&rules.0, &rules.1, &[]), &dialog, (c5, 1))
         .unwrap();
     s.hire(purchase, &mut Vec::new());
     assert_eq!(
