@@ -16,7 +16,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (`QUEUE.md`). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and
   `-15` (increment 5), `-13` (Visions' reach), `TWN-STUB-2` (the victory conditions),
   `TWN-STUB-16` (E10's loss condition), `-17` (increment 7), `-18` (E13).
-- **Open pull requests:** T43's (`town/e09-t43`, docs only), opened at the session's end; watch it
+- **Open pull requests:** T43's (#1071, `town/e09-t43`, docs only), opened at the session's end; watch it
   until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
@@ -55,7 +55,7 @@ manuals with three help files staged, SHA-256 checked. The user kept T43 whole (
 chose at `TWN-Q32` the weights in the town records, the Aurora now, `Open` listed where useful,
 `BuySpellBook` (173–176); at `TWN-Q33` both heroes learn at an opening, the towns' stream (over
 the agent's new stream), the views as proposed, the cut as written (178–181). Written: the four
-drafts, Part G §82 to §100, four lanes' inboxes. PR on `town/e09-t43`.
+drafts, Part G §82 to §100, four lanes' inboxes. PR #1071.
 
 ### 2026-11-20 — T42b: the survey's second part, what a hero gets; the checkpoint TWN-Q31
 
