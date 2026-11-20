@@ -42,6 +42,6 @@ quests = []
 [[message]]
 at = 100
 box = [176, 108, 448, 384]
-texts = ["1000", "{Learning Stone}\n\nA smooth stone on the face of this pillar begins to swirl as you approach. Looking into it, you are amazed to see answers to questions you have pondered for years.  The stone suddenly goes still, but you realize you have learned much."]
+texts = ["1000", "[ADVEVENT:143]"]
 pictures = [["pskill.def", 4, "1000"]]
 buttons = [30729, 30722]

@@ -42,8 +42,8 @@ quests = []
 [[message]]
 at = 100
 box = [176, 108, 448, 384]
-texts = ["+1 Level", "{Tree of Knowledge}\n\nUpon your approach, the tree opens its eyes in delight.  \"Ahh, an adventurer! I will be happy to teach you a little of what I have learned over the ages for a mere 2000 gold.\"  (Just bury it around my roots.)"]
-pictures = [["pskill.def", 4, "+1 Level"]]
+texts = ["[GENRLTXT:443]", "[ADVEVENT:149]"]
+pictures = [["pskill.def", 4, "[GENRLTXT:443]"]]
 buttons = [30729, 30726, 30725]
 style = 2
 chosen = -1
@@ -52,8 +52,8 @@ marks = [[30729, 357, 300, 86, 97, 2], [30726, 409, 431, 64, 30, 6], [30725, 327
 [[message]]
 at = 1000
 box = [176, 108, 448, 384]
-texts = ["+1 Level", "{Tree of Knowledge}\n\nUpon your approach, the tree opens its eyes in delight.  \"Ahh, an adventurer! I will be happy to teach you a little of what I have learned over the ages for a mere 2000 gold.\"  (Just bury it around my roots.)"]
-pictures = [["pskill.def", 4, "+1 Level"]]
+texts = ["[GENRLTXT:443]", "[ADVEVENT:149]"]
+pictures = [["pskill.def", 4, "[GENRLTXT:443]"]]
 buttons = [30729, 30726, 30725]
 style = 2
 chosen = -1

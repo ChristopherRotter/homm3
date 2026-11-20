@@ -1024,3 +1024,16 @@ Inbox item done at T4a1's session (2026-11-19: the window's library decodes the 
   and the window's library decodes only `SoundRules::wavs`, so the window seems to play them
   silent (a reading of `bin/h3-map-view/audio.rs` `play`, not heard): add every effect the
   timeline cues (the finds', the asks', the boats') to `effects` and test the library's names.
+
+### E24 M4 — the kept live parts' message texts as labels (ADR-0009)
+
+- **Scope:** found at T4a1 (2026-11-19; the user: labels later, none new meanwhile): since T2a1 the
+  harness's `[[message]]` tables (`message_toml`, `Mem.message_box`) keep each box's `texts`
+  verbatim from the original, and 41 kept live parts in git (`clients/map/timelines/*-live.toml`)
+  hold them. Write them as the hint and the popup recordings do (`hint`, `popup`: the record a
+  text comes from, `[TABLE:row]`, else `[other: n characters]`; the captions likewise), check
+  that nothing of the viewer reads them (the boxes are composed from the catalogue), rewrite the
+  41 kept files (a transform by the extracted tables, or the sequences recorded again), and add a
+  guard (`h3map.py`, or a test over `clients/map/`) that refuses a kept file with a text.
+- **Acceptance:** no original text in `clients/map/`; `drawn` all the same; `check.sh` all gates.
+- **Depends on:** nothing. **Status:** done 2026-11-20 (the log's "M4, the labels").

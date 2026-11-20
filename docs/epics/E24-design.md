@@ -3141,7 +3141,8 @@ two boxes: the client lane's reading of `scenario_condition_met` 0x4F2CE0 (E27 d
 - **The harness** (additive): the live part's `[[message]]` tables, one per box opened in a
   sequence (`Mem.message_box`: its place, its texts, its pictures as DEF, frame and caption, its
   buttons) and `[[found]]` tables, one per kind 6 built (`Mem.found`: the resource, the amount,
-  the text), after the `[[turn]]` tables; the situations' bodies (`h3_map_view::situation`: a
+  the text), after the `[[turn]]` tables (since the labels task every text and caption as the
+  records it was made of, `h3lod.label`; the runbook's "The kept texts as labels"); the situations' bodies (`h3_map_view::situation`: a
   pile's `amount`, a Shrine's `spell`, a Witch Hut's `skills`, an event's `rewards`, a hero's
   `experience`; the bodied objects among the writer's placed objects).
 - **For T2a2:** the box's pictures (`h3_ui::message` gains the client lane's slots and their

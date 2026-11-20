@@ -42,7 +42,7 @@ quests = []
 [[message]]
 at = 100
 box = [240, 172, 320, 256]
-texts = ["{Crypt}\n\nYou tentatively approach the burial crypt of ancient warriors.  Do you want to search the graves?"]
+texts = ["[ADVEVENT:119]"]
 pictures = []
 buttons = [30726, 30725]
 style = 2
@@ -52,7 +52,7 @@ marks = [[30726, 409, 367, 64, 30, 6], [30725, 327, 367, 64, 30, 6]]
 [[message]]
 at = 1000
 box = [240, 172, 320, 256]
-texts = ["{Crypt}\n\nYou tentatively approach the burial crypt of ancient warriors.  Do you want to search the graves?"]
+texts = ["[ADVEVENT:119]"]
 pictures = []
 buttons = [30726, 30725]
 style = 2

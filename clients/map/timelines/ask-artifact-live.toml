@@ -42,7 +42,7 @@ quests = []
 [[message]]
 at = 100
 box = [240, 140, 320, 320]
-texts = ["{Artifact}\n\nThrough a clearing you observe an ancient artifact.  Unfortunately, it's guarded by a pack of Pikemen.  Do you want to fight the Pikemen for the artifact?"]
+texts = ["[GENRLTXT:421]"]
 pictures = []
 buttons = [30726, 30725]
 style = 2
@@ -52,7 +52,7 @@ marks = [[30726, 409, 399, 64, 30, 6], [30725, 327, 399, 64, 30, 6]]
 [[message]]
 at = 1000
 box = [240, 140, 320, 320]
-texts = ["{Artifact}\n\nThrough a clearing you observe an ancient artifact.  Unfortunately, it's guarded by a pack of Pikemen.  Do you want to fight the Pikemen for the artifact?"]
+texts = ["[GENRLTXT:421]"]
 pictures = []
 buttons = [30726, 30725]
 style = 2

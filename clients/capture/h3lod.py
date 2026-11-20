@@ -7,12 +7,15 @@ texts the game formats from them. Read from the run directory's copy at run time
 the harness names a record by its number, never by its text (ADR-0009).
 
   h3lod.py find <table> <text>   the records of a table (ADVEVENT.TXT) a text was formatted from
+  h3lod.py label <text>          the text as a kept file holds it (`label`)
 
 Library use: `table(name)` (records of fields, header rows included, from 0), `matches(name,
 text)` (the records whose first field formats to `text`, or two neighbours' together: "89+90"),
 `identify(text)` (the most specific match in ADVEVENT.TXT, GENRLTXT.TXT or, since E08 T68b,
 RANDSIGN.TXT, the signs' and Ocean Bottles' default texts, since E08 T79a MINEEVNT.TXT, the mines'
-flag messages: "ADVEVENT:86", "RANDSIGN:24", "MINEEVNT:0").
+flag messages: "ADVEVENT:86", "RANDSIGN:24", "MINEEVNT:0"); since E24 M4's labels task
+`label(text, own)`, a text as the records it was made of for a file kept in git ("[ADVEVENT:86]",
+"+2 [PRISKILL:0]", "[other: 3 characters]").
 """
 
 import re
@@ -183,8 +186,136 @@ def building_names(faction):
     return {b: n.strip() for b, n in sorted(names.items()) if n.strip()}
 
 
+# E24 M4, the labels task (ADR-0009): a text the harness keeps in git (a live part's boxes, their
+# captions, the level-up's and a find's texts) written as the records it was made of, never as
+# the original's text. `label` gives `[ADVEVENT:86]` for a text one record (or two neighbours',
+# "89+90") formats, its conversions each a number or names; else the text piece by piece: a name
+# of NAME_FIELDS (`[CRTRAITS:15.1]`, the row's field 1: a plural) or a record of FORMAT_TABLES
+# without conversions (`[GENRLTXT:5]`), numbers and punctuation kept, any other piece `[other: n
+# characters]`; `[the map's text]` for a text the situation gives itself. LABELLED is what a kept
+# text may hold (the client test `timeline::tests::texts` checks the kept files by it).
+FORMAT_TABLES = ("ADVEVENT.TXT", "GENRLTXT.TXT", "ARRAYTXT.TXT", "ARTEVENT.TXT", "RANDSIGN.TXT",
+                 "MINEEVNT.TXT")
+NAME_FIELDS = {"ARTRAITS.TXT": (0,), "CRTRAITS.TXT": (0, 1), "SPTRAITS.TXT": (0,),
+               "SSTRAITS.TXT": (0,), "SKILLLEV.TXT": (0,), "PRISKILL.TXT": (0,),
+               "HOTRAITS.TXT": (0,), "HCTRAITS.TXT": (0,), "OBJNAMES.TXT": (0,),
+               "CRGEN1.TXT": (0,), "CRGEN4.TXT": (0,), "CRBANKS.TXT": (0,), "RESTYPES.TXT": (0,),
+               "PLCOLORS.TXT": (0,), "TOWNNAME.TXT": (0,), "TERRNAME.TXT": (0,),
+               "MINENAME.TXT": (0,)}
+KEPT = r"[\s\d+\-,.:;()%/'\"!?]"
+LABELLED = re.compile(rf"(?:\[(?:[A-Z][A-Z0-9]*:\d+(?:\.\d+)?(?:\+\d+)?|other: \d+ characters"
+                      rf"|the map's text)\]|{KEPT})*")
+CONVERSION = r"%[-+ #0]*\d*(?:\.\d+)?[a-zA-Z]"
+
+
+def groups_pattern(text):
+    """`pattern`'s expression with each conversion a group of its own."""
+    parts = re.split(rf"(%%|{CONVERSION}|\s+)", text.strip())
+    out = []
+    for part in parts:
+        if part == "%%":
+            out.append("%")
+        elif part.startswith("%") and len(part) > 1:
+            out.append("(.*?)")
+        elif part and part.isspace():
+            out.append(r"\s+")
+        elif part:
+            out.append(re.escape(part).replace('""', '"{1,2}').replace(r"\{", r"\{?")
+                       .replace(r"\}", r"\}?"))
+    return re.compile("".join(out), re.S)
+
+
+@lru_cache(maxsize=None)
+def formats():
+    """Every record of FORMAT_TABLES with a conversion (and each two neighbours' together, as
+    `patterns`): (label, literal length, expression with groups)."""
+    out = []
+    for name in FORMAT_TABLES:
+        rows = table(name)
+        texts = [(str(n), r[0]) for n, r in enumerate(rows) if r and r[0].strip()]
+        texts += [(f"{n}+{n + 1}", rows[n][0] + rows[n + 1][0]) for n in range(len(rows) - 1)
+                  if rows[n] and rows[n + 1] and rows[n][0].strip() and rows[n + 1][0].strip()]
+        out += [(f"{name.split('.')[0]}:{n}", literal(name, n), groups_pattern(t))
+                for n, t in texts if re.search(CONVERSION, t.replace("%%", ""))]
+    return out
+
+
+def piece_pattern(text, fold=False):
+    """A piece's expression: its words with any white space between (a doubled quote and a
+    brace as `pattern`'s), whole words only; with `fold` in any case."""
+    words = text.split()
+    body = r"\s+".join(re.escape(w).replace('""', '"{1,2}').replace(r"\{", r"\{?")
+                       .replace(r"\}", r"\}?") for w in words)
+    head = r"(?<![A-Za-z0-9])" if words[0][0].isalnum() else ""
+    tail = r"(?![A-Za-z0-9])" if words[-1][-1].isalnum() else ""
+    return re.compile(head + body + tail, re.I if fold else 0)
+
+
+@lru_cache(maxsize=None)
+def pieces(fold=False):
+    """The names of NAME_FIELDS and the records of FORMAT_TABLES without a conversion, longest
+    first: (label, expression; with `fold` in any case)."""
+    out = []
+    for name, fields in NAME_FIELDS.items():
+        for n, record in enumerate(table(name)):
+            for f in fields:
+                if f < len(record) and record[f].strip():
+                    out.append((f"{name.split('.')[0]}:{n}" + (f".{f}" if f else ""),
+                                record[f].strip()))
+    for name in FORMAT_TABLES:
+        for n, record in enumerate(table(name)):
+            if record and record[0].strip() and not re.search(CONVERSION,
+                                                              record[0].replace("%%", "")):
+                out.append((f"{name.split('.')[0]}:{n}", record[0].strip()))
+    out.sort(key=lambda p: -len(p[1]))
+    return [(lab, piece_pattern(text, fold)) for lab, text in out]
+
+
+def by_pieces(text, fold=False):
+    """`text` piece by piece: the leftmost, then longest, piece of `pieces` (with `fold` in any
+    case) a label each, the rest kept where it is numbers and punctuation (KEPT), else `[other: n
+    characters]`."""
+    out, rest = [], text
+    while rest:
+        hits = [(m.start(), -(m.end() - m.start()), lab, m) for lab, p in pieces(fold)
+                if (m := p.search(rest))]
+        if not hits:
+            break
+        _, _, lab, m = min(hits, key=lambda h: (h[0], h[1]))
+        out += [rest[:m.start()], f"[{lab}]"]
+        rest = rest[m.end():]
+    out.append(rest)
+    return "".join(part if part.startswith("[") or re.fullmatch(f"{KEPT}*", part)
+                   else f"[other: {len(part.strip())} characters]" for part in out)
+
+
+def label(text, own=()):
+    """A kept text by the records it was made of (above): "" for none; `text` itself when it is
+    numbers and punctuation, or labels already (LABELLED: a kept file labelled again stays as it
+    is); `[the map's text]` when it is one of `own` (the situation's own
+    texts, white space aside); `[TABLE:record]` for the most literal record of FORMAT_TABLES
+    that formats it whose conversions hold only numbers and names (`by_pieces` of them together,
+    in any case: the game writes a resource's name in lower case, ADVEVENT 113, with no other
+    piece); else `by_pieces`."""
+    if LABELLED.fullmatch(text):
+        return text
+    plain = " ".join(text.split())
+    if any(plain == " ".join(o.split()) for o in own):
+        return "[the map's text]"
+    found = []
+    for lab, length, p in formats():
+        m = p.fullmatch(text.strip())
+        if m and "[other:" not in by_pieces(" ".join(m.groups()), fold=True):
+            found.append((length, -len(found), lab))
+    if found:
+        return f"[{max(found)[2]}]"
+    return by_pieces(text)
+
+
 if __name__ == "__main__":
     if len(sys.argv) == 4 and sys.argv[1] == "find":
         print(matches(sys.argv[2], sys.argv[3]))
+    elif len(sys.argv) == 3 and sys.argv[1] == "label":
+        print(label(sys.argv[2]))
     else:
         sys.exit(__doc__)

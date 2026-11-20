@@ -3015,3 +3015,51 @@ restarted once mid-recording (files kept; `game-day` and `game-week` recorded ag
   `check.sh --no-coverage` all gates, the gate, `drawn`, `scripts/exe.py check`, the scoped
   verify.
 
+
+### M4, the labels — the kept live parts' texts as their records (2026-11-20)
+
+On `map-client/e24-m4-labels`, the user present at the start (the task as queued: kept whole);
+`master` at #1064 (T4a1 merged), CI green there. Original data staged from the PC at the start
+(64 files with `shell-videos.vid`, the four manuals and three help files, SHA-256 checked: one
+hash of each side's sorted list); the setup's baseline stopped at its coverage step by a watcher
+(fmt, clippy, the doc tests and deny passed), the Wine capture set up beside it. The PC was not
+needed after the first minutes.
+
+- **Read:** nothing of the viewer reads a live part's box texts. The binary takes from
+  `[[level_up]]` only `hero`, `level`, `offers` and the pictures' frames, nothing from
+  `[[message]]` and `[[found]]`; the timeline tests compare the viewer's own texts, composed
+  from their catalogues. The texts kept: 353 in 42 files (41 with boxes or level-ups, and
+  `find-pile`'s found text): each box's texts and pictures' captions, each level-up's texts.
+- **Built** (the harness, common, additive): `h3lod.label` (and `h3lod.py label <text>`): a text
+  as the records it was made of, `[ADVEVENT:86]` for a text one record of `FORMAT_TABLES`
+  (ADVEVENT, GENRLTXT, ARRAYTXT, ARTEVENT, RANDSIGN, MINEEVNT; two neighbours' `89+90`) formats
+  with only numbers and names in its conversions (ADVEVENT 113's resource in lower case: names
+  matched in any case there), else piece by piece (a name of `NAME_FIELDS`, `[CRTRAITS:3.1]` the
+  row's field 1, or a record without conversions; numbers and punctuation kept, `[other: n
+  characters]`), `[the map's text]` for a situation's own (`h3map.own_texts`: its `text` and
+  `message` strings; `seq-ask-pile`'s guard); a label left as it is. `h3map.py`'s
+  `message_toml`, `level_up_toml` and `found_toml` write labels (`h3map.labels`). The identify
+  of before named ARTEVENT 7 (the Centaur's Axe) GENRLTXT 16 (`%s the %s`): ARTEVENT is in the
+  tables now, and a conversion holding a sentence is refused.
+- **The 42 files rewritten** by the same functions from the run directory's tables (a one-off
+  script, not kept: every other line byte for byte; 135 lines). Checked by recording
+  `find-sign`, `level-up-one` and `find-pile` again under Wine (all as recorded, exact): their
+  new live parts' texts equal the rewritten ones, `find-pile`'s whole file too; the other two
+  differ in the palette's phase at 0 (`cycles` 10, not 11, a run's) and `find-sign`'s table a
+  button's state appends since T2b1 (TRAPS), so git's lines were kept.
+- **The guard:** `h3-map-view`'s `tests/texts.rs` (no original data: CI runs it): every kept
+  live part's texts hold labels, numbers and punctuation only (the grammar), at least the 353;
+  a second test of what it accepts and refuses. Against git's old files it fails.
+- **Scanned** (a one-off): every field of four words or more of both archives' text tables
+  (6 647 pieces), looked for in every file of `clients/map/`: only names (a shipped map's name in
+  three situations' `why`, the three Shrines' names in two). Outside `clients/map/`: the
+  viewer's tests' own catalogues (`finds/tests.rs`, `asks/tests.rs`, `status/tests.rs`) imitate
+  the catalogue's texts, a few of them the original's sentences (a sign's default text, a
+  pile's and a bank's message): in the inbox for the user.
+- **Agent decisions** (change freely): the labels' grammar; no arguments in a label (the viewer
+  reads none, the record names the message); exact matches only outside a conversion, so a flag
+  box's caption "Red" is `[other: 3 characters]` (PLCOLORS holds "red"); `[the map's text]`
+  without the text (it is in the situation); the guard a client integration test (M4's review
+  list).
+- **Checked:** `h3-map-view`'s tests, clippy, fmt; the three recordings; `drawn` all the same;
+  `check.sh --no-coverage` all gates; the scoped verify.

@@ -42,6 +42,6 @@ quests = []
 [[message]]
 at = 100
 box = [240, 108, 320, 384]
-texts = ["Centaurs Axe", "You see a heavy axe embedded deeply in the ground.  After several unsuccessful attempts by your army to remove it, you tightly grip the handle of the axe and effortlessly pull it free."]
-pictures = [["artifact.def", 7, "Centaurs Axe"]]
+texts = ["[ARTRAITS:9]", "[ARTEVENT:7]"]
+pictures = [["artifact.def", 7, "[ARTRAITS:9]"]]
 buttons = [30729, 30722]

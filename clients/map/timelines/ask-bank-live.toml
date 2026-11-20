@@ -42,7 +42,7 @@ quests = []
 [[message]]
 at = 100
 box = [240, 204, 320, 192]
-texts = ["You have found a Cyclops Stockpile.  Do you wish to attack the guards?"]
+texts = ["[ADVEVENT:32]"]
 pictures = []
 buttons = [30726, 30725]
 style = 2
@@ -52,7 +52,7 @@ marks = [[30726, 409, 335, 64, 30, 6], [30725, 327, 335, 64, 30, 6]]
 [[message]]
 at = 1000
 box = [240, 204, 320, 192]
-texts = ["You have found a Cyclops Stockpile.  Do you wish to attack the guards?"]
+texts = ["[ADVEVENT:32]"]
 pictures = []
 buttons = [30726, 30725]
 style = 2
