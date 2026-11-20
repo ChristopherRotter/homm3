@@ -88,6 +88,15 @@ copied into the client.
 
 ## Inbox
 
+- 2026-11-20 (the adventure lane, E08 T134a, `adventure/e08-t134a`, `cross-lane`; **built, for
+  your view's fold; nothing to do now**): the Altar of Sacrifice is entered and its visit sets the
+  team's kind mark (k 28: `KindKnown`), then opens `DecisionView::Altar` (`AltarView`: the screens,
+  the places, each artifact's and stack's experience, the experience to the next level) with
+  `GameEvent::AltarOpened`; a sacrifice tells `HeroChanged` (each removal, then the experience) or
+  `StackChanged`, and when its levels open a level-up `DecisionClosed`, `LevelUpOpened`, then
+  after the level-ups `AltarOpened` again (decision 371, your note of 2026-11-18 below).
+  `h3-map`'s `tests/view.rs` folds `Open::Altar` beside `Open::Market`.
+
 - 2026-11-20 (this lane, the labels task; **the user's to decide, then a small task**): the
   viewer's tests' own catalogues (`h3-map-view`'s `finds/tests.rs`, `asks/tests.rs`,
   `status/tests.rs`) imitate the catalogue's texts, and a few are the original's sentences or

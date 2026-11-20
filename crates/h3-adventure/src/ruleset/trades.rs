@@ -102,8 +102,9 @@ pub struct AltarDef {
 }
 
 /// What a faction's heroes sacrifice at an Altar of Sacrifice (ADV-ALT-001; the hero's class's
-/// faction, `altar_dialog_create` 0x55FDD0): artifacts, creatures or both.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// faction, `altar_dialog_create` 0x55FDD0): artifacts, creatures or both (by default neither:
+/// an empty window's, E08 T134a).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct AltarScreens {
     /// Whether its heroes sacrifice artifacts.
     pub artifacts: bool,

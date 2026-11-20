@@ -10,14 +10,15 @@ use h3_adventure::{AdventureCommand as EngineAdventure, AdventureCommandError, S
 use h3_content::{CreatureTypeId, Formation as EngineFormation};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{
-    Answer as EngineAnswer, ArenaChoice as EngineArena, ArmyCommand as EngineArmy,
-    ArmyCommandError, ArmyRef as EngineArmyRef, ArmySlot as EngineSlot,
-    ArtifactPlace as EnginePlace, BuildingId, ChestChoice as EngineChest, Consent as EngineConsent,
-    GameCommand as EngineCommand, GameCommandError, HireAnswer as EngineHire, HireError,
-    Manage as EngineManage, ManageError, MarketAnswer as EngineMarket, MarketError, Position,
-    SchoolChoice as EngineSchool, SkillOffer as EngineOffer, SystemCommand as EngineSystem,
-    TavernAnswer as EngineTavern, TavernError, TownCommand as EngineTown, TownCommandError,
-    TownHeroChange as EngineHeroChange, UniversityAnswer as EngineUniversity,
+    AltarAnswer as EngineAltar, AltarError, AltarPlaces, Answer as EngineAnswer,
+    ArenaChoice as EngineArena, ArmyCommand as EngineArmy, ArmyCommandError,
+    ArmyRef as EngineArmyRef, ArmySlot as EngineSlot, ArtifactPlace as EnginePlace, BuildingId,
+    ChestChoice as EngineChest, Consent as EngineConsent, GameCommand as EngineCommand,
+    GameCommandError, HireAnswer as EngineHire, HireError, Manage as EngineManage, ManageError,
+    MarketAnswer as EngineMarket, MarketError, Position, SchoolChoice as EngineSchool,
+    SkillOffer as EngineOffer, SystemCommand as EngineSystem, TavernAnswer as EngineTavern,
+    TavernError, TownCommand as EngineTown, TownCommandError, TownHeroChange as EngineHeroChange,
+    UniversityAnswer as EngineUniversity,
 };
 use h3_heroes::{CombineError, MoveError};
 use h3_kernel::handle::Handle;
@@ -25,9 +26,9 @@ use h3_kernel::handle::Handle;
 use super::pos;
 use crate::map::{command_to_engine as battle_to_engine, from_engine};
 use crate::wire::game::{
-    AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
-    ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, Formation,
-    GameCommand, GameReject, HireAnswer, HireReject, Manage, ManageReject, MarketAnswer,
+    AdventureCommand, AdventureReject, AltarAnswer, AltarReject, Answer, ArenaChoice, ArmyCommand,
+    ArmyRef, ArmyReject, ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent,
+    Formation, GameCommand, GameReject, HireAnswer, HireReject, Manage, ManageReject, MarketAnswer,
     MarketReject, MoveReject, Pos, SchoolChoice, SkillOffer, StandReject, SystemCommand,
     TavernAnswer, TavernReject, TownCommand, TownHeroChange, TownReject, UniversityAnswer,
 };
@@ -181,6 +182,16 @@ const fn answer(a: EngineAnswer) -> Answer {
                     pay: pay.raw(),
                 },
                 EngineMarket::Leave => MarketAnswer::Leave {},
+            },
+        },
+        EngineAnswer::Altar(answer) => Answer::Altar {
+            answer: match answer {
+                EngineAltar::Artifacts(places) => AltarAnswer::Artifacts {
+                    worn: places.worn_bits(),
+                    backpack: places.backpack_bits(),
+                },
+                EngineAltar::Creatures(amounts) => AltarAnswer::Creatures { amounts },
+                EngineAltar::Leave => AltarAnswer::Leave {},
             },
         },
         EngineAnswer::Close => Answer::Close {},
@@ -428,6 +439,13 @@ const fn answer_to_engine(a: Answer) -> EngineAnswer {
             },
             MarketAnswer::Leave {} => EngineMarket::Leave,
         }),
+        Answer::Altar { answer } => EngineAnswer::Altar(match answer {
+            AltarAnswer::Artifacts { worn, backpack } => {
+                EngineAltar::Artifacts(AltarPlaces::from_bits(worn, backpack))
+            }
+            AltarAnswer::Creatures { amounts } => EngineAltar::Creatures(amounts),
+            AltarAnswer::Leave {} => EngineAltar::Leave,
+        }),
         Answer::Close {} => EngineAnswer::Close,
     }
 }
@@ -596,6 +614,19 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 MarketError::Entry(entry) => MarketReject::Entry { entry },
                 MarketError::NoPrice => MarketReject::NoPrice {},
                 MarketError::NoRoom => MarketReject::NoRoom {},
+            },
+        },
+        E::Altar(error) => GameReject::Altar {
+            error: match error {
+                AltarError::Visit => AltarReject::Visit {},
+                AltarError::Screen => AltarReject::Screen {},
+                AltarError::Places => AltarReject::Places {},
+                AltarError::Kept(artifact) => AltarReject::Kept {
+                    artifact: artifact.raw(),
+                },
+                AltarError::Amount(slot) => AltarReject::Amount { slot },
+                AltarError::LastCreature => AltarReject::LastCreature {},
+                AltarError::Nothing => AltarReject::Nothing {},
             },
         },
     }

@@ -240,7 +240,7 @@ fn an_altars_step_marks_its_kind_and_opens_the_window_its_heros_faction_allows()
     assert!(state.knows_kind(RED, altar));
 }
 
-// covers: ADV-ALT-002, HER-EXP-001, ADV-QUIRK-49
+// covers: ADV-ALT-002, HER-EXP-001
 #[test]
 fn a_sacrifice_of_artifacts_names_its_places_and_takes_learning_per_artifact() {
     let rules = rules();

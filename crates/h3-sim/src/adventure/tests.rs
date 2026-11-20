@@ -181,7 +181,7 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 14);
+    assert_eq!(ACTION_ENCODING_VERSION, 15);
     assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 37));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!((HIRE_BASE, HIRE_SLOTS, REVISIT_BASE), (18, 4, 22));
@@ -215,6 +215,16 @@ fn tiles_and_actions_encode_as_documented() {
             }),
         ],
         [Some(DECLINE), None]
+    );
+    // E08 T134a (v15): an Altar's `Leave` the closing role, its sacrifices none until T135a.
+    let altar = |answer| answer_entry(h3_game::Answer::Altar(answer));
+    assert_eq!(
+        [
+            altar(h3_game::AltarAnswer::Leave),
+            altar(h3_game::AltarAnswer::Artifacts(h3_game::AltarPlaces::NONE)),
+            altar(h3_game::AltarAnswer::Creatures([1, 0, 0, 0, 0, 0, 0])),
+        ],
+        [Some(DECLINE), None, None]
     );
     // E09 T38a2 (v12): a hire of each of the two tavern slots.
     assert_eq!((TAVERN_HIRE, TAVERN_SLOTS), (35, 2));

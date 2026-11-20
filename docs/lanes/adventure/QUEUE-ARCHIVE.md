@@ -2296,6 +2296,25 @@ design note §10, §11, §21; T133a1 done)
   T39b1's branch when appended to `proptest-regressions/tests/play.txt` (not committed: it would
   fail every run until fixed). Nothing of T39b1 is in that path (the guild is a query).
 
+## T134a (moved 2026-11-20, done whole: `adventure/e08-t134a`, decision 385; the places' bitmask, decision 386)
+
+**E08 T134a — the Altar of Sacrifice** (round 7; decisions 366, 367, 373; design note §11's
+sacrifices, §14; survey `E08-trades.md` §12, §16)
+
+- **Scope:** `h3-adventure`: `ServiceVisit::Altar` (the visit, the screens by the hero's class's
+  faction, the kind mark, ADV-ALT-001, ADV-BON-009), the sacrifices' checks and changes (§11:
+  ADV-ALT-002 the artifacts, -003 the creatures; A-47 accepted as ADV-QUIRK-49); `h3-game`:
+  `Decision::Altar` (GAM-DEC-012, game state hash v36), `Answer::Altar`, `AltarOpened`, the view,
+  the levels inside the Altar and `Rest::Visit` (GAM-DEC-007 amended; A-48 fixed as ADV-QUIRK-50:
+  a sacrifice names everything in one answer); the wire (`cross-lane`, protocol v76), the replay
+  words (format v21) and the env's `Leave` on the closing entry (encoding v15), as T133b's
+  (decision 384: a new answer forces them).
+- **Trap:** `h3_game::Answer` is `Copy` (`h3-sim`'s `const fn answer_entry`, the replay's
+  `format_answer(*answer)`): §14's `Artifacts(Vec<ArtifactPlace>)` cannot be one; a fixed array
+  (at most 23 places with a count) or a decision to drop `Copy` (every lane's matches), asked at
+  the start.
+- **Depends on:** T133b's pull request. **Status:** ready after it; its cut confirmed at its start.
+
 ## Inbox items done at E08 T133b (2026-11-20)
 
 The client lane's format v20 (E27 M4 T3a, CLT-Q156 (a)), merged into T133b's branch, whose market words took v21 (decision 384).

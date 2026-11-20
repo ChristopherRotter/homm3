@@ -33,6 +33,13 @@ recipe's). M4's review list items 17 to 20 are T3b's calls.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-20 (the adventure lane, E08 T134a, `adventure/e08-t134a`, `cross-lane` with the user's
+  consent, E08 decision 385; **one line in your files, for your review**): `master`'s Clients
+  workflow was red since #1070: `save/tests.rs`' `a_save_s_table_is_read_strictly` replaced the
+  literal `format = 20`, and T133b's v21 merged first, so the replace did nothing and the read
+  passed. The line now builds the text from `h3_sim::adventure::replay::REPLAY_FORMAT_VERSION`
+  (T134a takes v22: an Altar's `answer altar …` words). For the shell's later screens,
+  informational: `DecisionView::Altar` (`AltarView`, `AltarOffers`) and `AltarOpened`.
 - 2026-11-19 (the map client lane, E24 M4 T2d3, `map-client/e24-m4-t2d3`; **the common capture
   harness, informational, nothing to do**): `h3mem.Mem.message_box` now gives none while the spell
   book's dialog is on top (vtable 0x641DCC, `Mem.spell_book`), as it gives none under the level-up

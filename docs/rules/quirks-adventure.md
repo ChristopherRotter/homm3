@@ -597,3 +597,29 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: fixed in every profile
 - Regression test: `crates/h3-adventure/src/state/tests/markets.rs`, `a_purchase_is_refused_before_paying_when_the_hero_cannot_receive_the_artifact`
 - Decided by / date: the user 2026-11-18 (ADV-Q57 (2), E08 decision 366); built and recorded by E08 T133a2 (the game's half, the payment after the check, by T133b)
+
+### ADV-QUIRK-49 — A special artifact sacrificed for no experience
+- Class: harmless, accepted (no flag; E08 decision 367; A-47)
+- Context / rules affected: adventure, ADV-ALT-002 (the Altar of Sacrifice's artifacts)
+- Original behavior: `altar_artifact_entry` 0x55FC30 gives a special artifact (ARTRAITS.TXT's class S: the Grail, a Spell Scroll, the Ballista, the Ammo Cart, the First Aid Tent; the Spell Book and the Catapult never put on the altar) 0 experience, and `altar_sacrifice` 0x5646A0 destroys it with the others; alone it leaves the total at 0 and Sacrifice disabled (survey `E08-trades.md` §12.2).
+- Intended/expected behavior: as the original: such an artifact goes with others for 0, alone it is refused (`AltarError::Nothing`); nothing is corrupted, and the view shows its 0 before the answer.
+- Impact: the player loses an artifact for nothing only by naming it beside others; the window shows its value.
+- Community status: not documented; VCMI refuses the war machines (D-72, the original's kept).
+- Sources: code reading (survey §12.2); observation, batch E14's E14-9 (the Ballista, a Spell Scroll and the Grail 0 beside a treasure's 1 000; survey §21).
+- Flag: none (as the original)
+- Defaults: as the original in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/altar.rs`, `a_sacrifice_of_artifacts_names_its_places_and_takes_learning_per_artifact`
+- Decided by / date: the user 2026-11-18 (ADV-Q57 (3), E08 decision 367); built and recorded by E08 T134a
+
+### ADV-QUIRK-50 — The artifacts on the altar lost when the turn's time runs out
+- Class: bug-fix (no flag: always fixed; E08 decision 366; A-48)
+- Context / rules affected: adventure and game, ADV-ALT-002, GAM-DEC-012 (the Altar's decision and its default answer)
+- Original behavior: when the turn's time runs out, `dialog_proc_base` 0x41B1C0 calls `altar_time_expired` 0x565430, which returns only the artifact held on the cursor and closes; the artifacts lying on the altar's places are lost for no experience (survey `E08-trades.md` §12.4; a timed game only).
+- Intended/expected behavior: a sacrifice names everything it takes in one answer (`AltarAnswer::Artifacts`, `Creatures`), so nothing lies on an altar between commands; the decision's default answer (`Leave`, the system actor's at the time's end) closes it with everything kept.
+- Impact: a timed game's player who left artifacts on the altar loses them in the original.
+- Community status: not documented.
+- Sources: code reading (survey §12.4); no batch row (decision 366's, survey §21).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-game/src/tests/altar.rs`, `an_altars_visit_opens_its_decision_for_its_owner_until_it_is_left`
+- Decided by / date: the user 2026-11-18 (ADV-Q57 (2), E08 decision 366); built and recorded by E08 T134a

@@ -36,7 +36,10 @@
 //! it names none of the import's, as every file before v20 reads; v21 a market's answers, E08
 //! T133b: `answer market trade <give> <take> <lots>`, `transfer <resource> <amount> <player>`,
 //! `sell <slot> <take> <lots>`, `buy <entry> <pay>` and `leave`, each resource by its index in the
-//! core's order):
+//! core's order; v22 an Altar of Sacrifice's answers, E08 T134a: `answer altar artifacts <place>
+//! …` (the places as the management lines', `w<position>` and `b<index>`, the worn ones by
+//! position, then the backpack's from the last index down), `creatures <amount> …` (seven, by
+//! slot) and `leave`):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -65,7 +68,7 @@
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 21
+//! format = 22
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -109,10 +112,10 @@ use h3_adventure::{AdventureCommand, ObjectTypeId, Pos};
 use h3_content::{CreatureTypeId, FactionId, Formation, HeroTypeId, ResourceId};
 use h3_contracts::{BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
-    Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
-    ChestChoice, Consent, FactionChoice, GameCommand, GameRuleset, GameSetup, HireAnswer, Manage,
-    MarketAnswer, Position, SchoolChoice, SkillOffer, SystemCommand, TavernAnswer, TownCommand,
-    TownHeroChange, UniversityAnswer,
+    ALTAR_SLOTS, Actor, AltarAnswer, AltarPlaces, Answer, ArenaChoice, ArmyCommand, ArmyRef,
+    ArmySlot, ArtifactPlace, BuildingId, ChestChoice, Consent, FactionChoice, GameCommand,
+    GameRuleset, GameSetup, HireAnswer, Manage, MarketAnswer, Position, SchoolChoice, SkillOffer,
+    SystemCommand, TavernAnswer, TownCommand, TownHeroChange, UniversityAnswer,
 };
 use h3_sim::adventure::replay::{
     MapRef, PlayerChoices, RecordError, Replay, ReplayError, ReplayHeader, map_content_hash,
@@ -422,13 +425,29 @@ fn format_answer(answer: Answer) -> String {
             return format!("market buy {entry} {}", pay.raw());
         }
         Answer::Market(MarketAnswer::Leave) => "market leave",
+        // Format v22 (E08 T134a): the places as the management lines' (`w<position>`,
+        // `b<index>`) in the change's order; the seven amounts by slot.
+        Answer::Altar(AltarAnswer::Artifacts(places)) => {
+            let words: Vec<String> = places.places().map(place_word).collect();
+            return ["altar artifacts".to_owned()]
+                .into_iter()
+                .chain(words)
+                .collect::<Vec<_>>()
+                .join(" ");
+        }
+        Answer::Altar(AltarAnswer::Creatures(amounts)) => {
+            let words: Vec<String> = amounts.iter().map(u32::to_string).collect();
+            return format!("altar creatures {}", words.join(" "));
+        }
+        Answer::Altar(AltarAnswer::Leave) => "altar leave",
         Answer::Close => "close",
     };
     words.to_owned()
 }
 
 /// Parses the words of an answer after `answer` (format v7, [`format_answer`]; a hire dialog's
-/// since v10, a map Tavern's since v19, a market's since v21); none for others.
+/// since v10, a map Tavern's since v19, a market's since v21, an Altar's since v22); none for
+/// others.
 fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> {
     let answer = match (words.next()?, words.next()) {
         ("offer", Some("accept")) => Answer::Offer(Consent::Accept),
@@ -475,6 +494,22 @@ fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> 
             pay: ResourceId::from_raw(words.next()?.parse().ok()?),
         }),
         ("market", Some("leave")) => Answer::Market(MarketAnswer::Leave),
+        ("altar", Some("artifacts")) => {
+            // Each place once, every word a place (the words end the answer).
+            let set = words.try_fold(AltarPlaces::NONE, |set, word| {
+                let place = parse_place_word(word)?;
+                set.with(place).filter(|_| !set.contains(place))
+            })?;
+            return Some(Answer::Altar(AltarAnswer::Artifacts(set)));
+        }
+        ("altar", Some("creatures")) => {
+            let mut amounts = [0; ALTAR_SLOTS];
+            for amount in &mut amounts {
+                *amount = words.next()?.parse().ok()?;
+            }
+            Answer::Altar(AltarAnswer::Creatures(amounts))
+        }
+        ("altar", Some("leave")) => Answer::Altar(AltarAnswer::Leave),
         ("close", None) => return Some(Answer::Close),
         _ => return None,
     };
@@ -495,9 +530,15 @@ fn format_slot(at: ArmySlot) -> String {
 
 /// A hero's artifact place as `<hero>:w<position>` or `<hero>:b<index>`.
 fn format_place((hero, place): (HeroId, ArtifactPlace)) -> String {
+    format!("{}:{}", hero.raw(), place_word(place))
+}
+
+/// An artifact place as `w<position>` or `b<index>` (a management line's after its hero; since
+/// format v22 an Altar's places).
+fn place_word(place: ArtifactPlace) -> String {
     match place {
-        ArtifactPlace::Worn(at) => format!("{}:w{}", hero.raw(), at.0),
-        ArtifactPlace::Backpack(index) => format!("{}:b{index}", hero.raw()),
+        ArtifactPlace::Worn(at) => format!("w{}", at.0),
+        ArtifactPlace::Backpack(index) => format!("b{index}"),
     }
 }
 
@@ -556,12 +597,16 @@ fn parse_slot(word: &str) -> Option<ArmySlot> {
 fn parse_place(word: &str) -> Option<(HeroId, ArtifactPlace)> {
     let (hero, place) = word.split_once(':')?;
     let hero = HeroId::new(hero.parse().ok()?);
-    let place = match place.split_at_checked(1)? {
+    Some((hero, parse_place_word(place)?))
+}
+
+/// Parses an artifact place written by [`place_word`].
+fn parse_place_word(word: &str) -> Option<ArtifactPlace> {
+    Some(match word.split_at_checked(1)? {
         ("w", at) => ArtifactPlace::Worn(Position(at.parse().ok()?)),
         ("b", index) => ArtifactPlace::Backpack(index.parse().ok()?),
         _ => return None,
-    };
-    Some((hero, place))
+    })
 }
 
 /// Parses a management command's words written by [`format_manage`], its kind's word first.

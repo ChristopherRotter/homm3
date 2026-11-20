@@ -90,8 +90,9 @@ pub struct Sacrificed {
 /// What an Altar's window offers its visitor (ADV-ALT-001 to -003, GAM-DEC-012; E08 T134a,
 /// increment 14's design note §14): the screens, and for each screen it shows the experience the
 /// state's answer would give, so a client and the env need no copy of the computation (ADR-0004:
-/// the answers are checked against the state again, never against this). Read at each view.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// the answers are checked against the state again, never against this). Read at each view; by
+/// default an empty window's.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AltarOffers {
     /// The screens the hero's class's faction allows.
     pub screens: AltarScreens,
