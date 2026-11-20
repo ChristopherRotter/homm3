@@ -671,3 +671,35 @@ fn a_pickup_lifted_already_without_kind_6_and_the_refusals_after() {
     }
     assert!(l.run(2260, &actions[&2260]).is_err());
 }
+
+#[test]
+fn a_record_s_visit_from_beside_takes_its_move() {
+    // E24 M4 T4b1 (design §5.14): `find-pile` played from a record: the visit from beside takes
+    // the record's move onto the pile's tile, no step, its points the move's; the walk done at
+    // the dissolve's end.
+    let (mut start, actions, _, _) = picking("find-pile");
+    let onto = |tile: Pos, points| Move {
+        tiles: vec![tile],
+        points: vec![points],
+        revealed: vec![Vec::new()],
+    };
+    start.moves = Some(vec![onto(ENTRANCE, Some(1234))]);
+    let run = |start: &Start, until: u32| {
+        let mut l = Loop::start(rules(Bugs::Original), start).unwrap();
+        for t in 1..=until {
+            l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))?;
+        }
+        Ok::<_, Unplayable>(l)
+    };
+    let l = run(&start, 100).unwrap();
+    assert_eq!(l.state(100).points, Some(1234));
+    assert_eq!(
+        l.state(100).hero.map(|h| h.at),
+        Some(Pos { x: 4, y: 4, z: 0 })
+    );
+    let l = run(&start, 700).unwrap();
+    assert_eq!((l.walking, l.next_move), (None, 1));
+    // A record's move elsewhere refuses the visit's millisecond.
+    start.moves = Some(vec![onto(Pos { x: 6, y: 4, z: 0 }, None)]);
+    assert_eq!(run(&start, 100).err(), Some(Unplayable::Moved([5, 4, 0])));
+}

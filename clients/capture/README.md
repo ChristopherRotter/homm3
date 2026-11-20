@@ -1514,7 +1514,11 @@ workspace's `target/debug/h3 adventure run` and `h3-server record`, `H3_ENGINE` 
 build them first) and pass `--record <r.jsonl> --record-map <map.h3m>` to `h3-map-view
 sequences`, whose timeline must then differ from the original's by the gaps listed in
 `timelines/<id>-gaps.txt` (its verdict "the record's n gaps as listed"; the run's own list in
-`<out>/<id>/gaps.txt`). T4a1's three (`game-*`) are in `sequences.toml` since T4a2.
+`<out>/<id>/gaps.txt`). T4a1's three (`game-*`) are in `sequences.toml` since T4a2. Since E24 M4
+T4b1 (design §5.14) a scripted sequence may carry `engine_seed` (a whole number; 1 without it),
+the engine's seed `h3 adventure run --seed` plays its script under: one whose draws are the
+original's under `seed` where both games draw at random (`game-level`'s level-up, 74: found by a
+search over the engine's seeds against the recording's `[[level_up]]`).
 
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live

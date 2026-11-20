@@ -289,6 +289,39 @@ holds a normal week's number) and every client of one game must show the same; a
 modulo the 15 names, the month's modulo the 10); `game-week` forces the original's draw to a name
 and its frames list the difference (E24 design §5.13). Blocks nothing.
 
+#### MCL-Q41 — A record's choice and offer carry no parts (E24 M4 T4b1, a record and a recording)
+
+A treasure chest's choice shows both its parts before the answer (`chest_gold_or_experience`
+0x4A6440: ADVEVENT 146 with the gold's and the experience's pictures, each with its amount; E24
+design §5.4), but a whole game's record opens the decision without its view (`ChoiceOpened` and
+`OfferOpened` name only the object; the server lane's `SRV-STUB-5`: the views of an offer, a
+choice, a University and a hire dialog are not folded): the viewer learns the part taken from the
+answer's gain and nothing of the other. Options: (a) the engine's events carry the decision's
+view (a chest's gold and experience, the Arena's and a School's skills and price, an offer's
+kind and price: what the observation's `Decision` holds), so the fold keeps it (the server lane,
+SRV-STUB-5, with the adventure lane's events); (b) the client derives the other part (the
+chest's experience the gold less 500 by the hero's Learning: a rule copied, not wanted); (c) the
+part not taken shown without its amount. **Recommended (a)**; notes in the server and adventure
+lanes' inboxes (2026-11-20). Meanwhile (c), played so since T4b1 (`stub: MCL-Q41`: `game-asks`'s
+chest box shows the experience's picture with no amount; its frames list the difference, E24
+design §5.14). The Arena's gain and Pandora's Box's rewards come from the answer's gains, which
+the record holds. Blocks nothing.
+
+#### MCL-Q42 — A record's visit again to a once-per-hero object tells nothing (E24 M4 T4b1, a record)
+
+A Learning Stone's or a Star Axis's second visit by the same hero shows its visited box
+(ADVEVENT 144, 101; E24 design §5.3), and a Temple's, a bonus visitable's, comes as
+`NothingGained { why: Visited }` in the record; but the once-per-hero objects (the hero's
+`marks`, ADV-VIS-006: the Learning Stone, the Star Axis, the Tree of Knowledge, …) give no event
+at a visit the mark refuses (the engine's `revisit` of both: an empty event list), and the fold
+keeps no hero's marks after the snapshot: the viewer cannot tell such a visit from one that
+gives nothing. Options: (a) the engine tells it as the bonus visitables' (`NothingGained {
+Visited }`, the adventure lane), and the fold keeps the hero's marks; (b) the client tells a
+visit with no event as visited (an inference from silence); (c) no box (the difference listed
+where a comparison meets it). **Recommended (a)**; a note in the adventure lane's inbox
+(2026-11-20). Meanwhile (c) (`engine::visits` tells the visited box once the event comes; no
+scripted game visits one twice yet). Blocks nothing.
+
 ### Town lane (`TWN-Q<n>`)
 
 (no open questions)

@@ -1,0 +1,6 @@
+# The record's gaps from the original's timeline (E24 M4 T4b1, design §5.14): `h3-map-view
+# sequences game-asks --record` plays the sequence from its script's engine record and lists its
+# timeline's differences from the recorded one, `- ` the original's line and `+ ` ours, in order;
+# they must be these.
+# None: the chest's experience the record lacks (MCL-Q41 (c): its picture without the amount)
+# only the choice's frames show (`game-asks-frames.txt`).

@@ -12,6 +12,12 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-20 (the map client lane, E24 M4 T4b1, `map-client/e24-m4-t4b1`; **MCL-Q41 and MCL-Q42,
+  for your planning; the user's answers first**): a record's visits played (E24 design §5.14):
+  SRV-STUB-5 shows in a chest's choice (MCL-Q41: its box shows both parts, the record neither until
+  the answer's gain); MCL-Q42 asks the fold to keep the hero's once-per-hero `marks` (none is
+  folded after the snapshot) beside the adventure lane's event for a refused visit.
+
 - 2026-11-20 (the adventure lane, E08 T134a, `adventure/e08-t134a`, `cross-lane` with the user's
   consent, E08 decision 385; **your paths changed, for your review; protocol v76 taken**): the
   Altar of Sacrifice's decision on the wire: `Answer::Altar` (`AltarAnswer`: `Artifacts { worn,

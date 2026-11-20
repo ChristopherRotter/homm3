@@ -1,0 +1,37 @@
+# A scripted game's questions and choices (E24 M4 T4b1; clients/map/sequences.toml `game-asks`):
+# Red's Rion with its army in the map (as `game-walk`), a key's step up onto the Arena's entrance
+# (its choice, +2 Attack clicked, Enter), a key's step left to Pandora's Box beside it (its
+# question, Enter; its gold's box, Enter; the box taken), a step down to where the hero started
+# and one more to a treasure chest below (its choice, the gold clicked, Enter; the chest taken).
+# The chest's gold written in the original as the engine draws it (`visits`); Pandora's Box's gold
+# the map's. A town of Red's out of the way (no visit's scenario test warns of a town lost); a
+# second hero of Red's far off (its selection shows the engine's resources); Blue's hero far off.
+# The engine plays the same commands (the sequence's `script`).
+size = 36
+terrain = "grass"
+explored = "start"
+heroes = [
+    { at = [12, 12], class = 1, map_army = [[0, 15], [2, 5]] },
+    { at = [4, 28], class = 5, map_army = [[28, 20]] },
+    { at = [33, 33], owner = 1, class = 6 },
+]
+towns = [{ at = [6, 6], faction = 0, owner = 0, buildings = "fort" }]
+visits = [{ at = [12, 13], gold = 1500 }]
+bonus = "gold"
+resources = [20, 10, 20, 10, 10, 10, 20000]
+select = { hero = [4, 28] }
+reselect = [12, 12]
+view = [3, 4, 0]
+
+[[objects]]
+def = "AVSarna0.def"
+at = [13, 11]
+
+[[objects]]
+def = "AVA0128.def"
+at = [11, 11]
+rewards = { resources = [0, 0, 0, 0, 0, 0, 1500] }
+
+[[objects]]
+def = "AVTchst0.def"
+at = [12, 13]
