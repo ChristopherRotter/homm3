@@ -15,11 +15,15 @@
 //!   fold holds them, a normal one's name the client's (MCL-Q40 (b): the week's number less one
 //!   modulo the names, the month's likewise; the original draws it). The table holds no
 //!   millisecond (`at` 0) and no heroes or boats: nothing moves out of the viewer's own turns in
-//!   T4a2's games (the other players' turns are T4c's).
+//!   T4a2's games (the other players' turns are T4c's). Since E24 M4 T4b2 the table is built once
+//!   the message's events are folded: the engine tells the heroes' new points after
+//!   `TurnStarted`.
 //! - **A visit** (E24 M4 T4b1, design §5.14): each of the viewer's `MoveHero` echoed as a
 //!   [`Visit`] at its path's last tile (the visited object's entrance, or its own tile visited
 //!   from beside) with the command's events, then each answer the record gives after it with its
 //!   own ([`super::visits`] tells what it shows).
+//! - **A boat** (E24 M4 T4b2, design §5.15): a walk's `Boarded` or `Landed` its [`Move::sea`],
+//!   the timeline's boarding or landing at its last step in place of Part A's boats and water.
 //! - **A level-up** ([`Leveled`]): a `LevelUpOpened` (two offers) or a `LevelGained` without one
 //!   (none or one), its dialog's facts as a recording's `[[level_up]]` gives them
 //!   ([`crate::levels::LevelUp`]: the hero's type, the level, the primary skill, each offer's
@@ -41,7 +45,8 @@ use toml::{Table, Value};
 use super::{Loaded, Refused, int, panels, row};
 use crate::art::MapArt;
 use crate::levels::{LevelUp, Offer};
-use crate::timeline::Move;
+use crate::live::{Facing, LiveBoat};
+use crate::timeline::{Move, Sea};
 use crate::turn::{MONTH_NAMES, WEEK_NAMES};
 
 /// The date's window (`Status`'s kind 1) at its first frame.
@@ -96,6 +101,7 @@ struct Open {
     points: Option<i32>,
     before: Vec<Pos>,
     end: Option<Pos>,
+    sea: Option<Sea>,
 }
 
 /// The walks and turns of `loaded`'s record (the module's documentation), its map's art `art`
@@ -152,6 +158,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                             points: None,
                             before: explored(&observation, art),
                             end: None,
+                            sea: None,
                         });
                     }
                     GameCommand::Answer { answer } => {
@@ -169,6 +176,9 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                         None => visit.events.extend(events.iter().cloned()),
                     }
                 }
+                // The viewer's turn's start (E24 M4 T4b2): its table once the batch is folded (the
+                // engine tells the heroes' new points after `TurnStarted`: `game-boats` at 1460).
+                let mut starts = false;
                 for event in events {
                     level(&mut levels, &mut pending, &observation, event);
                     observation.fold(event);
@@ -187,13 +197,41 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                                 walk.points = Some(i32::try_from(*movement).unwrap_or(i32::MAX));
                             }
                         }
+                        GameEvent::Adventure {
+                            event: AdventureEvent::Boarded { hero, boat, .. },
+                        } => {
+                            if let Some(walk) = open.as_mut().filter(|w| w.hero == *hero) {
+                                walk.sea = Some(Sea::Board(*boat));
+                            }
+                        }
+                        GameEvent::Adventure {
+                            event:
+                                AdventureEvent::Landed {
+                                    hero,
+                                    boat,
+                                    at,
+                                    facing,
+                                },
+                        } => {
+                            let left = tile(at.x, at.y, at.level).zip(Facing::from_number(*facing));
+                            if let Some(walk) = open.as_mut().filter(|w| w.hero == *hero)
+                                && let Some((at, facing)) = left
+                            {
+                                walk.sea = Some(Sea::Land(LiveBoat {
+                                    at,
+                                    kind: *boat,
+                                    facing,
+                                }));
+                            }
+                        }
                         GameEvent::WeekStarted { week: n, kind } => week = (*n, *kind),
                         GameEvent::MonthStarted { month: n, kind } => month = (*n, *kind),
-                        GameEvent::TurnStarted { player } if *player == viewer => {
-                            turns.push(turn(&observation, loaded, art, rules, week, month));
-                        }
+                        GameEvent::TurnStarted { player } if *player == viewer => starts = true,
                         _ => {}
                     }
+                }
+                if starts {
+                    turns.push(turn(&observation, loaded, art, rules, week, month));
                 }
             }
             ServerMessage::GameReveal { reveal, .. } => observation.reveal(reveal),
@@ -354,6 +392,7 @@ fn close(
         tiles: walk.tiles,
         points,
         revealed: per_step,
+        sea: walk.sea,
     });
     ends.push(walk.end);
 }

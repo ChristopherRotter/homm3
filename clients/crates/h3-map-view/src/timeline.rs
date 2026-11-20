@@ -86,7 +86,8 @@
 //! next draw its flag ([`Draw::owners`]: the idle step's at the box's close). *Not built:* the
 //! mouse-over's owners (the live part's at 0: a hint or a cursor over the object after its visit)
 //! and the rest of `visit_and_update`'s redraws (the lists, the status window, the resource bar:
-//! nothing they show changes in the recordings).
+//! nothing they show changes in the recordings). On a record (E24 M4 T4b2) the flag is the
+//! record's (`ObjectFlagged`, in its colour).
 //!
 //! A boat boarded and left (E24 M4 T2d2, design §5.7, *provisional*): a human's step onto an
 //! empty boat ([`Boats::empty`]) dissolves the hero off the land before its animation
@@ -95,9 +96,11 @@
 //! picture ([`Boats::sailed`]: its group by the boat's facing, mirrored by the hero's, MCL-Q35). A
 //! step from a boat onto land ([`Start::water`]) puts the boat back on the water first, steps with
 //! nothing lifted and at its end dissolves the hero in on the land. Both visits end with
-//! `visit_and_update`'s redraws (the minimap, the lists, the status window, the buttons). *Not
-//! built:* the Admiral's Hat's points at sea, the mouse-over's boats (the live part's at 0), a
-//! computer's boarding or landing, a find on the tile landed on.
+//! `visit_and_update`'s redraws (the minimap, the lists, the status window, the buttons). On a
+//! record (E24 M4 T4b2, design §5.15) the record's boarding or landing ([`Move::sea`]) decides in
+//! place of the boats and the water; the dissolve's view draw shows the status window it chose at
+//! once (the date's step). *Not built:* the Admiral's Hat's points at sea, the mouse-over's boats
+//! (the live part's at 0), a computer's boarding or landing, a find on the tile landed on.
 //!
 //! A spell cast on the map (E24 M4 T2d3, design §5.8, *provisional*): the cast button's command
 //! lifts and centres the selected hero, shows the view and opens the spell book ([`State::book`];
@@ -909,6 +912,21 @@ pub struct Move {
     pub points: Vec<Option<i32>>,
     /// The tiles each step reveals at its start.
     pub revealed: Vec<Vec<Pos>>,
+    /// What its last step does with a boat (E24 M4 T4b2, design §5.15): the record's boarding or
+    /// landing; none, nothing (on a record the boats' rules of Part A are not asked).
+    pub sea: Option<Sea>,
+}
+
+/// A record's walk's last step with a boat (E24 M4 T4b2, design §5.15, *provisional*): the
+/// record's `Boarded` or `Landed`, in place of Part A's empty boats and water ([`Boats`],
+/// [`Start::water`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Sea {
+    /// The empty boat of this type on the step's tile boarded (`Boarded`).
+    Board(u8),
+    /// The hero's boat left on its water tile, of its type and facing the record's way
+    /// (`Landed`).
+    Land(LiveBoat),
 }
 
 /// The tiles the viewer's walks explored since the sequence's 0 (E24 M4 T4a2, design §5.13: a
@@ -3619,10 +3637,19 @@ impl Loop {
 
     /// `hero_loss_effect` 0x4ACBB0 with 0 (E24 M4 T2d2, design §5.7: a boat boarded or left):
     /// `killfade.82M`, the mouse hidden, the view's middle as the screen last showed it dissolved
-    /// into the view drawn now, the palettes cycling on; `then` at its end.
+    /// into the view drawn now, the palettes cycling on; `then` at its end. The view's draw
+    /// chooses the status window, shown at once (E24 M4 T4b2: the date's frame stepped).
     fn lose(&mut self, t: u32, then: Then) {
-        let before = Arc::new(self.drawn.clone());
+        let mut before = self.drawn.clone();
         self.draw(t);
+        // The status window the draw chose is shown at once (`status_date_update` 0x4511A0: the
+        // date's step; E24 M4 T4b2, `game-boats`' landing at 4250), outside the view's middle.
+        if before.kingdom.status != self.drawn.kingdom.status {
+            Arc::make_mut(&mut before.kingdom)
+                .status
+                .clone_from(&self.drawn.kingdom.status);
+        }
+        let before = Arc::new(before);
         if let Some(sound) = &mut self.sound {
             sound.effect(t, &self.rules.finds.killfade);
         }
@@ -4553,12 +4580,19 @@ impl Loop {
     /// A human's step onto `next` (E24 M4 T2d2, design §5.7): its start ([`Loop::mobilize`]), then
     /// by the tile's class (`hero_move_step`'s switch, 0x480D05): onto an empty boat the
     /// boarding's start, the walk held by its dissolve (none returned); from a boat onto land the
-    /// landing's start; then the animation ([`Loop::animate`]).
+    /// landing's start; then the animation ([`Loop::animate`]). On a record (E24 M4 T4b2, design
+    /// §5.15) the record's boarding or landing ([`Move::sea`]) in place of the boats and the water.
     fn stride(&mut self, t: u32, moving: Moving, next: Pos) -> Option<Moving> {
         let (direction, single) = (moving.direction, self.pixels.is_empty());
         self.mobilize(t, direction, next);
         self.step_on_record(next);
-        if let Some(boat) = self.boat_on(next) {
+        let record = self.sea_on_record(next);
+        let boat = match record {
+            None => self.boat_on(next),
+            Some(Some(Sea::Board(kind))) => self.boarded(next, kind),
+            Some(_) => None,
+        };
+        if let Some(boat) = boat {
             self.board_start(t, direction, boat);
             let boarding = Boarding {
                 moving,
@@ -4568,7 +4602,12 @@ impl Loop {
             self.lose(t, Then::Board(Box::new(boarding)));
             return None;
         }
-        if let Some(boat) = self.landing(next, direction) {
+        let landing = match record {
+            None => self.landing(next, direction),
+            Some(Some(Sea::Land(boat))) => Some(boat),
+            Some(_) => None,
+        };
+        if let Some(boat) = landing {
             self.land_start(t, direction, boat);
         }
         self.animate(t, direction, next, single);
@@ -4800,6 +4839,28 @@ impl Loop {
     fn boat_on(&self, at: Pos) -> Option<LiveBoat> {
         let boat = self.boats.empty.iter().find(|b| b.at == at).copied();
         boat.filter(|_| self.sailed().is_none())
+    }
+
+    /// What the record says the step onto `next` does with a boat (E24 M4 T4b2, design §5.15):
+    /// the walk's [`Move::sea`] at its last step, nothing at another; none off a record (Part A's
+    /// boats and water decide).
+    fn sea_on_record(&self, next: Pos) -> Option<Option<Sea>> {
+        let moves = self.moves.as_ref()?;
+        let walk = self.walking.and_then(|(m, k)| {
+            let walk = moves.get(m)?;
+            (k + 1 == walk.tiles.len() && walk.tiles.get(k) == Some(&next)).then_some(walk)
+        });
+        Some(walk.and_then(|w| w.sea))
+    }
+
+    /// The empty boat on `next` the record's boarding takes, of its type `kind` (E24 M4 T4b2);
+    /// none there: the step is off the record ([`Unplayable::Moved`]), no boarding.
+    fn boarded(&mut self, next: Pos, kind: u8) -> Option<LiveBoat> {
+        let boat = self.boats.empty.iter().find(|b| b.at == next).copied();
+        if boat.is_none() {
+            self.off(next);
+        }
+        boat.map(|b| LiveBoat { kind, ..b })
     }
 
     /// The boat the selected hero sails ([`Boats::sailed`]), if any.

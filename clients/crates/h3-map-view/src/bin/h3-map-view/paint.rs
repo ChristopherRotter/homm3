@@ -979,8 +979,9 @@ impl<'a> Painter<'a> {
     /// (`engine::visits::told`) and laid out as Part A's: a find's first visit its box (a pile's
     /// kind 6) and what the panels show, the object taken where the record says so, a later
     /// visit's box its `again`; a question's box with only the record's answer built (another
-    /// refused; the Arena's Cancel is its Attack, MCL-Q33). A visit that tells nothing is left
-    /// out.
+    /// refused; the Arena's Cancel is its Attack, MCL-Q33). Since E24 M4 T4b2 (design §5.15) a
+    /// flag raised where the record's `ObjectFlagged` says so, in its colour: a mine's and a
+    /// Lighthouse's find, a dwelling's before its hire. A visit that tells nothing is left out.
     fn record_finds(
         &mut self,
         visits: &[engine::Visit],
@@ -1007,7 +1008,12 @@ impl<'a> Painter<'a> {
                 continue;
             };
             let found = match told {
-                Visited::Find { find, gain, taken } => {
+                Visited::Find {
+                    find,
+                    gain,
+                    taken,
+                    flag,
+                } => {
                     // A Learning Stone's picture the record's experience.
                     let mut art = assets.tables.map.finds.clone();
                     art.experience = gain.experience;
@@ -1031,10 +1037,14 @@ impl<'a> Painter<'a> {
                         event: false,
                         blocks: taken.then_some(o),
                         ask: None,
-                        flag: None,
+                        flag: flag.map(|colour| (o, colour)),
                     }
                 }
-                Visited::Ask { ask, answered } => {
+                Visited::Ask {
+                    ask,
+                    answered,
+                    flag,
+                } => {
                     let mut question = self.question(&ask, o)?;
                     match answered {
                         Answered::Yes => {
@@ -1062,7 +1072,7 @@ impl<'a> Painter<'a> {
                         event: false,
                         blocks: ask.beside().then_some(o),
                         ask: Some(question),
-                        flag: None,
+                        flag: flag.map(|colour| (o, colour)),
                     }
                 }
             };

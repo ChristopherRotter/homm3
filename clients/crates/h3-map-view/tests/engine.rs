@@ -1331,6 +1331,14 @@ fn a_record_s_walks_and_turns() {
         );
         assert!(!t.contains_key("realm") && !t.contains_key("chosen"));
     }
+    // The walker's points at its turn's start the new day's (E24 M4 T4b2: told after
+    // `TurnStarted`), never the walk's leftover.
+    let leftover = i64::from(walk.points[1].unwrap());
+    let rows = table(&turn(0)["kingdom"])["heroes"]
+        .as_array()
+        .unwrap()
+        .clone();
+    assert!(rows.iter().all(|r| numbers(r)[3] != leftover));
     assert_eq!(numbers(&turn(0)["week"]), [0, 0]);
     assert_eq!(numbers(&turn(6)["week"]), [0, 1]);
     assert_eq!(numbers(&turn(6)["month"]), [0, 0]);
@@ -1748,7 +1756,12 @@ fn what_a_record_s_visits_tell() {
     };
     let found = |class, events| visits::told(&visit(events), [class, 0], "Rion");
     let find = |told: Option<Told>| match told {
-        Some(Told::Find { find, gain, taken }) => Some((find, gain, taken)),
+        Some(Told::Find {
+            find,
+            gain,
+            taken,
+            flag: None,
+        }) => Some((find, gain, taken)),
         _ => None,
     };
     let none = Gain::default();
@@ -1830,7 +1843,11 @@ fn what_a_record_s_visits_tell() {
         let mut v = visit(Vec::new());
         v.answers.push((answer, after));
         match visits::told(&v, [class, 0], "Rion") {
-            Some(Told::Ask { ask, answered }) => Some((ask, answered)),
+            Some(Told::Ask {
+                ask,
+                answered,
+                flag: None,
+            }) => Some((ask, answered)),
             _ => None,
         }
     };
@@ -1921,4 +1938,202 @@ fn what_a_record_s_visits_tell() {
     ]);
     assert_eq!(gain.resources, [5, 0, 0, 0, 0, 0, 0]);
     assert_eq!(gain.skills, [0; 4]);
+}
+
+#[test]
+fn what_a_record_s_flags_tell() {
+    use h3_map_view::asks::Ask;
+    use h3_map_view::engine::visits::{self, Answered, Told};
+    use h3_map_view::finds::Find;
+    use h3_map_view::live::Stack;
+    use h3_protocol::wire::game::{AdventureEvent, Answer, Consent, GameEvent, Pos};
+    let anchor = Pos {
+        x: 5,
+        y: 4,
+        level: 0,
+    };
+    let flagged = GameEvent::Adventure {
+        event: AdventureEvent::ObjectFlagged {
+            object_type: 77,
+            anchor,
+            owner: 2,
+        },
+    };
+    let joined = GameEvent::Adventure {
+        event: AdventureEvent::CreaturesJoined {
+            hero: 0,
+            creature: 0,
+            count: 14,
+        },
+    };
+    let at = h3_map::model::Pos { x: 5, y: 4, z: 0 };
+    let visit = |events: Vec<GameEvent>, answers: Vec<(Answer, Vec<GameEvent>)>| engine::Visit {
+        at,
+        events,
+        answers,
+    };
+    let told = |v: &engine::Visit, class, subclass| visits::told(v, [class, subclass], "Rion");
+    let flag = |told: Option<Told>| match told {
+        Some(Told::Find {
+            find, taken, flag, ..
+        }) => Some((find, taken, flag)),
+        _ => None,
+    };
+    // A mine of its type's resource and a Lighthouse flagged: their finds in the record's
+    // colour; unflagged (another's own visit), an abandoned mine's type: nothing.
+    let flags = visit(vec![flagged.clone()], Vec::new());
+    assert_eq!(
+        flag(told(&flags, 53, 0)),
+        Some((Find::Mine { resource: 0 }, false, Some(2)))
+    );
+    assert_eq!(
+        flag(told(&flags, 42, 0)),
+        Some((Find::Lighthouse, false, Some(2)))
+    );
+    assert_eq!(told(&visit(Vec::new(), Vec::new()), 53, 0), None);
+    assert_eq!(told(&flags, 53, 7), None);
+    // A dwelling flagged, its hire accepted: the creatures joined free; one of the visitor's own
+    // not flagged; declined, or none joined: nothing.
+    let accept = Answer::Offer {
+        consent: Consent::Accept,
+    };
+    let hire = |events, after| {
+        let v = visit(events, vec![(accept, after)]);
+        match told(&v, 17, 0) {
+            Some(Told::Ask {
+                ask,
+                answered,
+                flag,
+            }) => Some((ask, answered, flag)),
+            _ => None,
+        }
+    };
+    let joins = Stack {
+        creature: 0,
+        count: 14,
+    };
+    let hired = |flag| Ask::Hire {
+        dwelling: 0,
+        joins,
+        free: true,
+        room: true,
+        flag,
+    };
+    assert_eq!(
+        hire(vec![flagged.clone()], vec![joined.clone()]),
+        Some((hired(true), Answered::Yes, Some(2)))
+    );
+    assert_eq!(
+        hire(Vec::new(), vec![joined.clone()]),
+        Some((hired(false), Answered::Yes, None))
+    );
+    // Refused for want of room, none to join: their boxes' facts.
+    let refused = GameEvent::Adventure {
+        event: AdventureEvent::JoinRefused {
+            hero: 0,
+            creature: 0,
+            count: 14,
+        },
+    };
+    let none = GameEvent::Adventure {
+        event: AdventureEvent::NoneToRecruit {
+            object_type: 77,
+            anchor,
+            creature: 0,
+        },
+    };
+    let Some((Ask::Hire { joins, room, .. }, ..)) = hire(Vec::new(), vec![refused]) else {
+        panic!("refused");
+    };
+    assert_eq!((joins.count, room), (14, false));
+    let Some((Ask::Hire { joins, room, .. }, ..)) = hire(Vec::new(), vec![none]) else {
+        panic!("none");
+    };
+    assert_eq!((joins.count, room), (0, true));
+    let other = GameEvent::DayStarted { day: 2 };
+    assert_eq!(hire(vec![flagged.clone()], vec![other]), None);
+    assert_eq!(hire(vec![flagged.clone()], Vec::new()), None);
+    let declined = visit(
+        vec![flagged],
+        vec![(
+            Answer::Offer {
+                consent: Consent::Decline,
+            },
+            Vec::new(),
+        )],
+    );
+    assert_eq!(told(&declined, 20, 0), None);
+    assert_eq!(told(&visit(Vec::new(), Vec::new()), 17, 0), None);
+}
+
+#[test]
+fn a_record_s_boats() {
+    use h3_map_view::live::{Facing, LiveBoat};
+    use h3_map_view::timeline::Sea;
+    use h3_protocol::wire::game::{AdventureCommand, AdventureEvent, GameCommand, GameEvent, Pos};
+    let g = game();
+    let hero = |owner| {
+        g.observation
+            .adventure
+            .heroes
+            .iter()
+            .find(|h| h.owner == owner)
+            .unwrap()
+            .id
+    };
+    let (red, blue) = (hero(0), hero(1));
+    let pos = |x, y| Pos { x, y, level: 0 };
+    let moved = |x, y| {
+        accepted(GameCommand::Adventure {
+            command: AdventureCommand::MoveHero {
+                hero: red,
+                path: vec![pos(x, y)],
+            },
+        })
+    };
+    let adventure = |event| GameEvent::Adventure { event };
+    let stepped = |x, y| {
+        adventure(AdventureEvent::HeroStepped {
+            hero: red,
+            from: None,
+            to: Some(pos(x, y)),
+        })
+    };
+    let landed = |hero, facing| {
+        adventure(AdventureEvent::Landed {
+            hero,
+            boat: 1,
+            at: pos(11, 10),
+            facing,
+        })
+    };
+    let record = text(
+        &g.header,
+        &[
+            snapshot(&g.observation),
+            // Boarded; then landed, another hero's landing beside it; a landing with no facing.
+            moved(11, 10),
+            events(vec![
+                stepped(11, 10),
+                adventure(AdventureEvent::Boarded {
+                    hero: red,
+                    boat: 2,
+                    at: pos(11, 10),
+                }),
+            ]),
+            moved(12, 10),
+            events(vec![stepped(12, 10), landed(red, 6), landed(blue, 2)]),
+            moved(13, 10),
+            events(vec![stepped(13, 10), landed(red, 9)]),
+        ],
+    );
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    let seas: Vec<_> = played.moves.iter().map(|m| m.sea).collect();
+    let boat = LiveBoat {
+        at: h3_map::model::Pos { x: 11, y: 10, z: 0 },
+        kind: 1,
+        facing: Facing::Left,
+    };
+    assert_eq!(seas, [Some(Sea::Board(2)), Some(Sea::Land(boat)), None]);
 }

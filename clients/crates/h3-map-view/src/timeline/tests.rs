@@ -416,7 +416,9 @@ fn the_walks_frames_are_m2_t3bs() {
             "game-day",
             "game-finds",
             "game-asks",
-            "game-level"
+            "game-level",
+            "game-flags",
+            "game-boats"
         ]
     );
 }

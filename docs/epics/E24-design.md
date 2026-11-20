@@ -4277,3 +4277,56 @@ day: the engine casts no adventure spell (`AdventureCommand` holds `MoveHero`, `
   as the first); `drawn` all the same (the 102 sequences with the three new); `check.sh` all gates
   (its tests but the client lane's `save` test, red on `master` at the start and fixed there
   during the session), `h3-map-view`'s coverage at 100 %; the scoped verify.
+
+### 5.15 A record's visits played: the flags and the boats (M4 T4b2)
+
+The second of T4b's two (the user's cut at T4b's start, 2026-11-20); kept whole by the user at its
+start (the same day; offered a cut by family, the flags first).
+
+- **A record's facts** (protocol v76, record format 5; the engine's games of `game-flags` and
+  `game-boats` read first): a step onto a mine's or a Lighthouse's entrance is a `MoveHero` whose
+  events are `HeroStepped`, `ObjectFlagged { object_type, anchor, owner }` (the visitor's
+  colour), `TilesRevealed` (none new here: the step's reveal covered the radius) and
+  `MovementChanged`; a dwelling's has `OfferOpened` after its flag, its answer `offer accept`
+  then `OfferAnswered` and `CreaturesJoined` (the Guardhouse's 14 Pikemen; the engine tells
+  `JoinRefused` without room and `NoneToRecruit` with none, not recorded here); a boarding
+  `HeroStepped`, `Boarded { hero, boat: its type, at }` and the points 0; a landing
+  `HeroStepped`, `Landed { hero, boat, at: the water tile, facing }` and the points 0 (the
+  original's too at both). A turn's start is `TurnStarted`, then in the same message the heroes'
+  new points (`MovementChanged`: 1 500 in the boat, the sea's).
+- **The record read** (`engine::played`, *provisional*): a walk's `Boarded` or `Landed` its
+  [`Move::sea`] (`timeline::Sea`: `Board(type)`, `Land(the boat left)`; a facing past 7 none);
+  the viewer's turn's start table built once its message's events are folded (before, at its
+  `TurnStarted`: the points it showed were the last turn's, `game-boats` at 1460).
+- **What a visit tells** (`engine::visits::told`): a mine (53; its resource its type's, 0 to 6)
+  or a Lighthouse (42) with an `ObjectFlagged`, Part A's `Find::Mine` or `Find::Lighthouse` with
+  the record's colour; a dwelling (17, 20) its hire's question (`Ask::Hire`, its flag where the
+  record raises one), answered `accept`: the free creatures as the record tells them (joined,
+  refused without room, none); else nothing (a declined hire names the dwelling's creature, which
+  the record does not: not built; the hire dialog is M5's). The adapter (`record_finds`) raises
+  the flag in the record's colour (`Found::flag`), as Part A raised the visitor's.
+- **The timeline on a record** (`Loop::sea_on_record`): a walk's last step boards or lands as the
+  record says, in place of Part A's boats and water: the boarding takes the empty boat on the
+  tile, with the record's type (none there: the step is off the record, `Unplayable::Moved`), the
+  landing puts back the record's boat facing the record's way; a step the record says neither of
+  is a plain step (Part A's `boat_on` and `landing` serve a recording alone).
+- **The dissolve's status window:** `hero_loss_effect`'s view draw chooses the status window
+  (`adventure_view_draw`'s `status_window_choose`), and `status_date_update` 0x4511A0 shows the
+  date's step at once, outside the dissolving middle; the viewer's `lose` kept the screen before
+  that draw for all but the middle, so the date's window stayed a frame behind through
+  `game-boats`' landing (4250 to 4705: 20 790 pixels). `lose` now keeps the window the draw chose
+  in that screen (Part A's `board` and `land` show the hero's window, which an unforced draw
+  leaves as it is).
+- **The scripted games** (`clients/map/sequences.toml`, situations of the same names; Rion and
+  the second hero as `game-finds`): `game-flags`: a key's step up onto a neutral Sawmill's
+  entrance (anchor 13, 11: its box with the wood per day, Enter), down, two right onto a
+  Lighthouse (14, 12: its box, Enter), right and up onto a neutral Guardhouse's entrance (15, 11:
+  its flag, its hire's question, Enter, the 14 Pikemen's box, Enter); `game-boats`: Rion on a
+  lake's shore (`patches`), a key's step right onto an empty boat facing right (MCL-Q35's mirror
+  not met), End Turn, the computer's turn out of sight (Blue on an island, as `game-turns`), on
+  day 2 a step right at sea and one back, then one left onto the shore.
+- **Found** (each recorded twice, the second run `ok`, exact at 0): `game-flags` exact, its
+  timeline (155 lines) and its 47 frames, no gap; `game-boats` exact (141 lines, 53 frames) once
+  the turn's table and the dissolve's window above were fixed (before: the points at 1460, 139
+  pixels to 3000; the date's window through the landing's dissolve). The record's start's boats
+  and Part A's rules had already played the boarding and the landing as the original.

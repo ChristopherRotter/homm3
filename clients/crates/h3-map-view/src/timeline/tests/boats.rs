@@ -366,3 +366,53 @@ fn a_boat_by_a_hero_in_a_boat_or_water_unknown_is_neither_boarded_nor_left() {
     assert!(l.water(Pos { x: 40, y: 40, z: 1 }));
     assert_eq!(l.boat_on(at(9)).map(|b| b.facing), Some(Facing::DownLeft));
 }
+
+/// A record's one-step walk onto `x` with its boat's fact `sea` (E24 M4 T4b2).
+fn on_record(x: u8, sea: Option<Sea>) -> impl FnOnce(&mut Start) {
+    move |start: &mut Start| {
+        start.moves = Some(vec![Move {
+            tiles: vec![at(x)],
+            points: vec![Some(0)],
+            revealed: vec![Vec::new()],
+            sea,
+        }]);
+    }
+}
+
+#[test]
+fn a_record_boards_and_lands_as_it_says() {
+    // `board` on a record: its boarding takes the empty boat on the tile, of the record's type.
+    let l = run_with("board", 100, on_record(9, Some(Sea::Board(2))));
+    let Some(Aboard::Board(boat)) = l.aboard else {
+        panic!("boarding: {:?}", l.aboard);
+    };
+    assert_eq!(
+        (boat.at, boat.kind, boat.facing),
+        (at(9), 2, Facing::DownLeft)
+    );
+    // A record that says none: the boat's tile stepped onto as any.
+    let l = run_with("board", 100, on_record(9, None));
+    assert!(l.aboard.is_none() && !l.hidden && l.dissolving.is_none());
+    // A boarding with no empty boat on the tile: the step is off the record.
+    let (mut start, ..) = boating("board");
+    on_record(9, Some(Sea::Board(1)))(&mut start);
+    start.boats.empty.clear();
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    for t in 1..100 {
+        l.run(t, &[]).unwrap();
+    }
+    let step = [Action::Step(Direction::East)];
+    assert_eq!(l.run(100, &step), Err(Unplayable::Moved([9, 12, 0])));
+    // `land` on a record: the boat left on its water tile facing the record's way.
+    let left = LiveBoat {
+        at: at(9),
+        kind: 0,
+        facing: Facing::DownLeft,
+    };
+    let l = run_with("land", 100, on_record(8, Some(Sea::Land(left))));
+    assert_eq!(l.aboard, Some(Aboard::Land));
+    assert_eq!(l.drawn().boats.empty, [left]);
+    // One that says none: no landing.
+    let l = run_with("land", 100, on_record(8, None));
+    assert!(l.aboard.is_none() && l.drawn().boats.empty.is_empty());
+}
