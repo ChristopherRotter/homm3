@@ -40,6 +40,18 @@ A recipe (a `[[recipe]]` of shell/<group>.toml): `id`, `what` (the catalogue's s
             `description` (its header's, ours, Windows-1252), written at each run's start
             (`made_map`) and given to the viewer by path; never kept, never committed (ADR-0009)
   games     the run's Games/: files of original-data/games (default none)
+  makes     saved games the run leaves in its Games/ (E27 M4 T4a; names, no spaces): each copied
+            at the run's end into <out>/games/ and clients/out/shell/games/<id>/ (local, never
+            in git) with the recipe's digest (`made.txt`): a maker recipe, the original making
+            saves of shipped maps that a client's save can name too. A save's bytes are not the
+            same from run to run (the original writes a few heap pointers it never set), so no
+            digest of them is kept
+  made_games  the run's Games/ too (E27 M4 T4a; `[[recipe.made_games]]` tables): `by` (the maker
+            recipe) and `file` (one of its `makes`), taken from clients/out/shell/games/<by>/;
+            the maker is played first when the file is not there or its recipe changed since
+  tz        the run's time zone (E27 M4 T4a; Wine's local time is the TZ variable's, the list's
+            dates by it: design §38), default "UTC"; a zone without daylight saving time, since
+            the original converts a file's time by the present offset
   frozen    false: the clock runs in real time until a step freezes it (default true)
   sound     true: the game plays its sounds (h3drive's `sound`: an audio driver, the effects at
             volume 5, the samples on the virtual clock), each sample started kept as a line
@@ -103,6 +115,10 @@ INPUT_STEP = 100
 # How long an input is given to reach the game (Wine's X events come in its message loop) before
 # the game is waited for (`Run.after_input`).
 INPUT_SETTLE = 0.15
+# The display's auto-repeat while a `key-hold` holds a key (E27 M4 T4a): Xvfb's defaults, a
+# 660 ms delay, then 25 repeats a second.
+REPEAT_DELAY = 660
+REPEAT_RATE = 25
 # A step of the frozen clock while waiting for a screen (`until`) and a clip's default step.
 UNTIL_STEP = 10
 UNTIL_LIMIT = 60_000
@@ -117,12 +133,15 @@ STEPS = """The steps (strings `<verb>[:<arguments>]`):
   down:<x>,<y> | up      the left button pressed there and held | released
   right:<x>,<y> | right-up   the right button pressed there and held | released
   key:<name> | key-down:<name> | key-up:<name>   a key (xdotool's names) pressed, held, let go
+  key-hold:<name>:<s>    a key held <s> seconds of real time with the display's auto-repeat on
+                         (660 ms, then 25 a second), then let go: a held key's repeats
   type:<text>            the text typed
   press:<button>[:<k>] | point:<button>[:<k>]   a dialog's button found by its probes ([button.
                          <name>], screens.toml: ok, cancel, …; the k-th from the top left)
                          clicked, or only pointed at
   until-button:<button>[:<limit ms>]   step the clock until the button shows
-  games-time:<s>         every file of the run's Games/ modified at <s> (seconds since 1970)
+  games-time:<s>[:<file>]   every file of the run's Games/ (or only <file>) modified at <s>
+                         (seconds since 1970)
   click-wait:<x>,<y>:<ms>   a click, then <ms> of real time before the input step (a load)
   wait:<s>               <s> seconds of real time, the clock where it is, then idle (a load)
   settle:<s>             the next input's settle: <s> seconds of real time (not 0.15) before the
@@ -238,6 +257,10 @@ def registry_file(values):
 
 
 SHIPPED_MAPS = DATA / "install" / "Maps"
+# The saves maker recipes made (E27 M4 T4a, `makes`): <maker id>/<file>, local, never in git.
+MADE_GAMES = OUT / "games"
+# A run's time zone unless its recipe gives one (E27 M4 T4a, `tz`).
+DEFAULT_TZ = "UTC"
 # A map file's formats whose header starts as `made_map` reads it (RoE, AB, SoD: h3m.md).
 MADE_FORMATS = (0x0E, 0x15, 0x1C)
 
@@ -274,8 +297,44 @@ def write_made(recipe, folder):
     return paths
 
 
+def recipe_digest(recipe):
+    """A recipe's digest (E27 M4 T4a: what a maker's saves were made by): its table as read,
+    the group left out."""
+    table = {k: v for k, v in recipe.items() if k != "group"}
+    return hashlib.sha256(repr(sorted(table.items())).encode()).hexdigest()[:16]
+
+
+def recipe_by_id(ident):
+    recipe = next((r for r in all_recipes() if r["id"] == ident), None)
+    if recipe is None:
+        raise RuntimeError(f"no recipe `{ident}`")
+    return recipe
+
+
+def made_game(made):
+    """A save a maker recipe made (E27 M4 T4a, `made_games`): its file under MADE_GAMES, the
+    maker played first when the file is missing or was made by another version of the recipe."""
+    by, name = made["by"], made["file"]
+    maker = recipe_by_id(by)
+    if name not in maker.get("makes", []):
+        raise RuntimeError(f"`{by}` makes no {name}")
+    folder = MADE_GAMES / by
+    stamp = folder / "made.txt"
+    current = (folder / name).is_file() and stamp.is_file() and \
+        stamp.read_text().strip() == recipe_digest(maker)
+    if not current:
+        print(f"{by}: making {', '.join(maker['makes'])}", flush=True)
+        Run(maker, OUT / by / "make").play()
+    return folder / name
+
+
 def prepare(recipe):
     game = h3drive.GAME_DIR
+    # E27 M4 T4a: the made saves first (a maker's run is a run of its own).
+    made_saves = [made_game(m) for m in recipe.get("made_games", [])]
+    # E27 M4 T4a: the run's time zone pinned (Wine's local time follows TZ; the list shows a
+    # save's time in it, design §38): every Wine command from here takes it (`h3drive.env`).
+    os.environ["TZ"] = recipe.get("tz", DEFAULT_TZ)
     maps = recipe.get("maps", "all")
     shipped = SHIPPED_MAPS
     made = {m["file"] for m in recipe.get("made", [])}
@@ -292,7 +351,7 @@ def prepare(recipe):
     missing = [str(p) for p in saves if not p.is_file()]
     if missing:
         raise RuntimeError(f"{recipe['id']}: saved games not staged: {missing}")
-    fill(game / "Games", saves)
+    fill(game / "Games", saves + made_saves)
     for old in (game / "HiScore.dat", game / "Data" / "HiScore.dat"):
         if old.exists():
             old.unlink()
@@ -321,6 +380,9 @@ def display():
                           f"{h3drive.WIDTH}x{h3drive.HEIGHT}x16", "-nolisten", "tcp"],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(1)
+    # E27 M4 T4a: the display's auto-repeat off (h3drive's and h3map.py's runs turn it off too,
+    # Xvfb starts with it on): a key held across steps is one key down; `key-hold` turns it on.
+    h3drive.run("xset", "r", "off")
 
 
 # -- the steps ---------------------------------------------------------------------------------
@@ -565,6 +627,25 @@ class Run:
             h3drive.run("xdotool", "keyup", arg)
             g.keys_held.discard(arg)
             self.after_input()
+        elif verb == "key-hold":
+            # E27 M4 T4a: a key held for <s> seconds of real time with the display's auto-repeat
+            # on (Xvfb's defaults: a 660 ms delay, then 25 a second), then auto-repeat off and
+            # the key let go. Wine takes X's repeats as Windows' (a WM_KEYDOWN each, no WM_KEYUP
+            # between: XkbSetDetectableAutoRepeat), and the game queues every key down
+            # (input_key_message 0x4EC0E0, its repeat flag not looked at). A second `xdotool
+            # keydown` of a held key gives no event (found 2026-11-20), so a repeat comes only
+            # this way; its count follows real time, so a recipe holds a key long enough that the
+            # outcome no longer depends on it (the list's end reached).
+            name, _, seconds = arg.partition(":")
+            h3drive.run("xset", "r", "rate", str(REPEAT_DELAY), str(REPEAT_RATE))
+            h3drive.run("xset", "r", "on")
+            h3drive.run("xdotool", "keydown", name)
+            g.keys_held.add(name)
+            time.sleep(float(seconds))
+            h3drive.run("xset", "r", "off")
+            h3drive.run("xdotool", "keyup", name)
+            g.keys_held.discard(name)
+            self.after_input()
         elif verb == "type":
             h3drive.run("xdotool", "type", "--delay", "50", arg)
             self.after_input()
@@ -590,9 +671,14 @@ class Run:
             # Every file of the run's Games/ given one modification time (seconds since 1970):
             # the scenario screen's load and save modes show a save's time (design §3.5), and
             # `fill`'s copies carry the real time of the run (E27 M1 T2, the scenario group).
-            for path in (h3drive.GAME_DIR / "Games").iterdir():
-                if path.is_file():
-                    os.utime(path, (int(arg), int(arg)))
+            # E27 M4 T4a: `<s>:<file>` gives one file its time (each save's own date).
+            when, _, only = arg.partition(":")
+            games = h3drive.GAME_DIR / "Games"
+            paths = [games / only] if only else sorted(games.iterdir())
+            for path in paths:
+                if not path.is_file():
+                    raise RuntimeError(f"games-time:{arg}: no {path.name} in the run's Games/")
+                os.utime(path, (int(when), int(when)))
         elif verb == "settle":
             # The next input's settle (E27 M1 T2): an input that starts a map's load (Begin) is
             # taken while the game loads; the input's own idle test and step could come during
@@ -639,6 +725,24 @@ class Run:
         else:
             raise ValueError(f"{self.recipe['id']}: an unknown step `{step}`\n{STEPS}")
 
+    def made(self):
+        """The saves the run left in its Games/ (E27 M4 T4a, `makes`), copied into the run's
+        out/games/ and the maker's MADE_GAMES folder with the recipe's digest (`made.txt`)."""
+        names = self.recipe.get("makes", [])
+        if not names:
+            return
+        games = h3drive.GAME_DIR / "Games"
+        missing = [n for n in names if not (games / n).is_file()]
+        if missing:
+            listed = sorted(p.name for p in games.iterdir())
+            raise RuntimeError(f"the run left no {missing} in its Games/ (there: {listed})")
+        made = MADE_GAMES / self.recipe["id"]
+        for folder in (self.out / "games", made):
+            folder.mkdir(parents=True, exist_ok=True)
+            for name in names:
+                shutil.copy(games / name, folder / name)
+        (made / "made.txt").write_text(recipe_digest(self.recipe) + "\n")
+
     def play(self, keep=False):
         prepare(self.recipe)
         display()
@@ -649,6 +753,7 @@ class Run:
             self.start_drawn()
             for step in self.recipe["steps"]:
                 self.do(step)
+            self.made()
             if self.game.sound:
                 # Each sample started (xdd.dll's `sounds`), its time from the frozen start.
                 for k, (t, channel, length, loops) in enumerate(h3drive.sounds(self.game), 1):
@@ -945,7 +1050,9 @@ def drawn_recipe(recipe, out):
     # starts and stops listed (`sound`, `quiet`; compared from T5b2 on).
     if recipe.get("sound", False):
         args += ["--effects", str(h3drive.SOUND_VOLUME)]
-    done = subprocess.run(args, capture_output=True, text=True)
+    # E27 M4 T4a: the recipe's time zone, the original's (a save's local time on the list).
+    env = dict(os.environ, TZ=recipe.get("tz", DEFAULT_TZ))
+    done = subprocess.run(args, capture_output=True, text=True, env=env)
     if done.returncode != 0:
         return None, None, ((done.stdout + done.stderr).strip().splitlines() or ["no output"])[-1]
     masks = shot_masks(recipe["steps"])

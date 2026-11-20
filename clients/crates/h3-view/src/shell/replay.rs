@@ -20,7 +20,7 @@
 //! manager plays it ([`Replay::samples`]).
 //!
 //! What only the harness can do stops the replay ([`Stop`]): a step on the original's memory or
-//! its probes (`poke`, `games-time`, `freeze`), a screen name the viewer does not know, a screen not built yet ([`Screen::built`]: nothing on it changes by
+//! its probes (`poke`, `games-time`, `freeze`; `key-hold`'s real-time repeats until E27 M4 T4b), a screen name the viewer does not know, a screen not built yet ([`Screen::built`]: nothing on it changes by
 //! itself, and its shots would be a stand-in's; its moves are taken, its presses, releases and
 //! keys stop the replay). A stub's screen (E27 M2 T6b2: the client's notice, not the original's
 //! screen) is one not built here: no menu opens on it. The real-time pauses (`settle`, `wait`)
@@ -239,7 +239,9 @@ pub fn parse(step: &str) -> Result<Step, String> {
             name: name(at(0))?,
             limit: optional(at(1), UNTIL_LIMIT, number)?,
         },
-        "freeze" | "games-time" | "poke" => Step::Harness(verb.to_string()),
+        // E27 M4 T4a: `key-hold`, a key held in real time with the display's repeats (the
+        // harness's until E27 M4 T4b gives the viewer a held key's repeats).
+        "freeze" | "games-time" | "poke" | "key-hold" => Step::Harness(verb.to_string()),
         _ => return Err(format!("the step `{step}`: an unknown verb")),
     })
 }

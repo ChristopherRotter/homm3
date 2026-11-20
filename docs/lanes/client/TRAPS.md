@@ -327,6 +327,15 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   is set (the sandbox sets `TMPDIR=/tmp`, found 2026-11-18: wineboot's segfault in i386 libc, or
   `free(): invalid pointer`; `dmesg` shows `segfault at ff…00000`). `setup.sh` unsets it and
   `h3drive.env()` drops it; a Wine command run by hand takes `env -u TMPDIR`.
+- **Wine's time zone, a held key, a made save** (E27 M4 T4a): Wine's local time is `TZ`'s, and a
+  sandbox session's `TZ` is the user's (Europe/Berlin on 2026-11-20; the system's UTC), so a shot
+  showing a save's date changed with the session until `h3shell.py` pinned every run (`tz`, UTC
+  by default; a zone without daylight saving time: the original converts by the present offset).
+  Xvfb starts with its auto-repeat on (660 ms, then 25 a second): a key held across steps in real
+  time repeats, so each shell run turns it off and `key-hold` on for its hold; a second `xdotool
+  keydown` of a held key gives no X event. The original's saves differ run to run in three bytes
+  (heap pointers after the file's name): never compare a save's digest; a made save's name has no
+  space (the kept lines split on it).
 - **The shell's viewer side** (E27 M2 T4): `h3shell.py drawn` runs the release `h3-view`
   (rebuild it after a change, or it compares the old one); a recipe's `mask` steps are Python's,
   left out of the viewer's steps (its `stop <k>` counts the viewer's). The window under Xvfb:
