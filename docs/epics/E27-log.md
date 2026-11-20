@@ -1669,3 +1669,38 @@ Kept whole (no seam needed).
   `-D warnings`, fmt; `cargo check --workspace --all-targets`, `check-lane --cross-lane`, the
   client scope's verify with the original data, `clients/`' check.
 - **Questions:** none new. **The agent's calls** (*provisional*: M4's review list items 14 to 16).
+
+## M4 T3b — the save file and its load (2026-11-20)
+
+- **Start:** the PC's 64 files and the manuals staged (SHA-256 checked); the setup's baseline of
+  `clients/` stopped at its coverage step (fmt, clippy, the doc tests and deny passed; CI's run on
+  `master` green, `f4c21af`). Kept whole (one module and its tests).
+- **Built (`h3-battle-client`'s `save`, design §37):** `Save` (the save's name, each colour's
+  name, bonus and handicap, the turn's duration, the engine's `Replay`), `Save::of` (a begun
+  game's table and its replay), `Save::write` and `Save::read` (the replay's text, then the
+  `[save]` table of `VERSION` 1 and its eight `[[save.colours]]`), `read_file` and `write_file`
+  (whole or not at all, `window::write_whole`), `map` (how a replay names an installation's map:
+  its file in `Maps`), `load` (the header against the rules, the map by its name, hash and import
+  version, the import, the may-be-human check, `Replay::setup`, a name only for a human's colour,
+  the commands applied through `h3_game::apply` with `Replay::verify`'s checks) into `Loaded` (the
+  `begin::Game` and the `GameState`).
+- **Elsewhere:** `h3-sim` a dependency of the client crate (a workspace entry in
+  `clients/Cargo.toml`, additive; the lockfile's one line); `h3_view::shell::scenario` exports
+  `UNLIMITED` (the duration's bound); the crate's docs name `maps`, `begin` and `save`.
+- **Tests** (CI runs them: the committed `fixtures/maps/e08-duel-36.h3m` in a test installation):
+  `a_save_writes_reads_and_loads_its_game` (a begun game, a human with a name of a quote, a
+  backslash and a control character, gold, a mild handicap, the other colour the computer's at
+  Hard; the random agent's 60 commands recorded; written, the replay's part the engine's text
+  whole, read back equal, with CRLF too, loaded into the same `Game`, its state's hash and day the
+  replay's; the file written and read; a missing, an unwritable and a foreign file refused);
+  `a_save_s_table_is_read_strictly` (no line, another version, none, a key unknown, a table
+  after it, not TOML, a duration past unlimited, a bonus word, a handicap, seven colours, the
+  replay's part malformed or with a key of the table's; unlimited read); `a_load_refuses_a_save
+  _that_does_not_fit` (other rules, a missing map, a path outside `Maps`, the map's hash and import
+  version, a colour twice, a name for the computer's colour, a difficulty the engine refuses, a
+  command of another actor, a checkpoint, their count, the final hash and day, the map's file
+  changed; a map written for the test whose second colour is the computer's alone, a save making
+  it human refused before its commands run).
+- **Gates:** clippy of the workspace with `-D warnings`, `RUST_TEST_THREADS=1 clients/scripts/check.sh
+  --no-coverage`, the client scope's verify with the original data.
+- **Questions:** none new. **The agent's calls** (*provisional*: M4's review list items 17 to 20).

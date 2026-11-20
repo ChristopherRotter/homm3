@@ -46,6 +46,7 @@ const ROWS: [[u16; 3]; 10] = [
 /// 0x68C492, [`ROWS`]).
 fn original() -> MarketParams {
     MarketParams::new(
+        GOLD,
         vec![250, 500, 250, 500, 500, 500, 1],
         vec![125, 250, 125, 250, 250, 250, 1],
         &ROWS,
@@ -244,7 +245,7 @@ fn what_has_no_rate_is_refused() {
 fn the_parameters_refuse_what_no_rate_can_use() {
     let rows = [[30, 40, 70]];
     let new = |values: Vec<u16>, artifact_values: Vec<u16>, rows: &[[u16; 3]]| {
-        MarketParams::new(values, artifact_values, rows)
+        MarketParams::new(WOOD, values, artifact_values, rows)
     };
     assert_eq!(new(vec![], vec![], &rows), Err(MarketParamsError::Values));
     assert_eq!(
@@ -268,6 +269,12 @@ fn the_parameters_refuse_what_no_rate_can_use() {
     }
     let most = new(vec![1], vec![1], &[[30, 40, 70]; 255]).unwrap();
     assert_eq!(most.counts(), 255);
+    // E08 T133b (ADV-Q60 (a)): the cost resource is one the tables value.
+    assert_eq!(
+        MarketParams::new(ORE, vec![250, 1], vec![125, 1], &rows),
+        Err(MarketParamsError::Cost)
+    );
+    assert_eq!((original().cost(), most.cost()), (GOLD, WOOD));
 }
 
 proptest! {

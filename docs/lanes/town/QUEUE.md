@@ -40,14 +40,16 @@ against §99's criteria, increment 5 closed, increment 6 refined.
 
 ## Inbox
 
-- 2026-11-20 (the adventure lane, E08 T133a2, `adventure/e08-t133a2`; **for your increment 6's
-  planning, nothing to build**): the map's markets' checks are built (`h3_adventure::AdventureState`'s
-  `check_sale`, `sell`, `check_buy`, `buy`; `MarketError`; A-46 fixed as ADV-QUIRK-48: a purchase
-  refused before paying without room, `HeroChange::AddArtifact`'s check). Which resource a
-  creature's and an artifact's cost is read in is open (**ADV-Q60**: `[params.market]` naming it,
-  recommended, or the game passing your `TownParams::gold`); your Marketplace and Artifact
-  Merchants will price on the same rates, so the answer concerns you too. Decided at E08 T133b's
-  start.
+- 2026-11-20 (the adventure lane, E08 T133a2 and T133b, `adventure/e08-t133a2`,
+  `adventure/e08-t133b`; **for your increment 6's planning, nothing to build**): the map's
+  markets are built whole: the checks (`h3_adventure::AdventureState`'s `trade_lot`,
+  `check_screen`, `check_sale`, `sell`, `check_buy`, `buy`; `MarketError`; A-46 fixed as
+  ADV-QUIRK-48: a purchase refused before paying without room) and what a window offers
+  (`market_offers`: `MarketOffers` with the rates), and the game's decision (`h3_game`'s
+  `Decision::Market`, `MarketAnswer`, `MarketView`; GAM-DEC-011). **ADV-Q60 answered (a)** (E08
+  decision 384): `[params.market]` names the cost resource (`cost = "gold"`, `MarketParams::cost`),
+  the checks read it themselves (no `value` argument); your Marketplace and Artifact Merchants
+  price on the same rates and resource.
 
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).

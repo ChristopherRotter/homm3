@@ -330,9 +330,10 @@ pub struct AdventureOutcome {
     pub thieves_guild: bool,
     /// The window a service's visit opens for the visitor's owner (E08 T133a2; increment 14's
     /// design note §10): a market's at every visit of any player's hero (ADV-MKT-001). The game
-    /// opens it as the player's decision from E08 T133b (GAM-DEC-011; until then nothing,
-    /// `ADV-STUB-18`), whose answers [`crate::AdventureState::check_sale`] and
-    /// [`crate::AdventureState::check_buy`] check. The Altar's and the Hill Fort's come with T134.
+    /// opens it as the player's decision (GAM-DEC-011, E08 T133b), whose answers
+    /// [`crate::AdventureState::trade_lot`], [`crate::AdventureState::check_screen`],
+    /// [`crate::AdventureState::check_sale`] and [`crate::AdventureState::check_buy`] check. The
+    /// Altar's and the Hill Fort's come with T134.
     pub service: Option<ServiceVisit>,
 }
 
@@ -504,9 +505,12 @@ pub struct MarketVisit {
 }
 
 /// Why a market's answer is refused (E08 T133a2; increment 14's design note §11, §13): the
-/// adventure's checks of a sale ([`crate::AdventureState::check_sale`]) and a purchase
-/// ([`crate::AdventureState::check_buy`]); a trade's and a transfer's are the game's (T133b,
-/// which wraps these in its command error). A refused answer changes nothing (ADR-0004).
+/// adventure's checks of a sale ([`crate::AdventureState::check_sale`]), a purchase
+/// ([`crate::AdventureState::check_buy`]) and since E08 T133b a trade's lot
+/// ([`crate::AdventureState::trade_lot`]) and a transfer's screen
+/// ([`crate::AdventureState::check_screen`]); a trade's and a transfer's amounts and a transfer's
+/// recipient are the game's, which wraps these in its command error. A refused answer changes
+/// nothing (ADR-0004).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MarketError {
     /// The visit's hero is not on the map, or its object is not a market (defensive: the game
@@ -515,12 +519,11 @@ pub enum MarketError {
     Visit,
     /// The market's window has no screen for the answer.
     Screen,
-    /// A trade of a resource for itself (the game's, T133b).
+    /// A trade of a resource for itself.
     SameResource,
     /// The lots (a transfer's amount) are 0 or above the most.
     Amount(u32),
-    /// A transfer's recipient is the actor or not a player still in the game (the game's,
-    /// T133b).
+    /// A transfer's recipient is the actor or not a player still in the game (the game's).
     Recipient,
     /// The slot holds no stack of the hero's army.
     Slot(u8),

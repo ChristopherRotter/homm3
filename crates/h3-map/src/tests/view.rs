@@ -1197,6 +1197,8 @@ enum Open {
     Exchange(HeroId, u32, Vec<ArmyStack>),
     // E09 T39a: a map Tavern, named by the hero and the object.
     Tavern(HeroId, h3_adventure::ObjectTypeId, TilePos),
+    // E08 T133b: a market, named by the hero and the object.
+    Market(HeroId, h3_adventure::ObjectTypeId, TilePos),
 }
 
 /// The owner's own view of `hero` in `view`: on the map, or (E09 T28a) in one of its towns'
@@ -1266,6 +1268,7 @@ fn check_told(
             object_type,
             anchor,
         } => Open::Tavern(*hero, *object_type, *anchor),
+        DecisionView::Market(view) => Open::Market(view.hero, view.object_type, view.anchor),
     };
     // E08 T51b: the group of the army dialog the viewer is told closed, whose stacks are lost.
     let mut lost: Vec<ArmyStack> = Vec::new();
@@ -2005,6 +2008,16 @@ fn check_told(
                 prop_assert!(decision.is_none());
                 decision = Some(Open::Tavern(hero, object_type, anchor));
             }
+            GameEvent::MarketOpened {
+                player,
+                hero,
+                object_type,
+                anchor,
+            } => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(decision.is_none());
+                decision = Some(Open::Market(hero, object_type, anchor));
+            }
             // E08 T86b1: a Leave Guards dialog's close loses nothing: its group, which the viewer
             // was told stack by stack, is the mine's guards now.
             GameEvent::DecisionClosed { player } => {
@@ -2024,6 +2037,7 @@ fn check_told(
                                     | Open::Hire(..)
                                     | Open::Exchange(..)
                                     | Open::Tavern(..)
+                                    | Open::Market(..)
                             )
                         ),
                         "{:?}",

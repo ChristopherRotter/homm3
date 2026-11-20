@@ -58,38 +58,38 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xa5ab99a0747c5514",
-    "0xf663655b11f09c86",
-    "0xbb7d198bba61f4a9",
-    "0x74244aaf56e142fa",
-    "0x62ed34944c567ac5",
-    "0xa6f636497dc0f9f7",
-    "0xdbab38d048487c9b",
-    "0xad1750347ffde154",
-    "0xacc91fcbb2b5a74b",
-    "0x5a12ca99ce1ace36",
-    "0xf4e390b500697ffd",
-    "0x88d2f7b17b70e811",
-    "0x4ef417599fbad548",
-    "0xd5d05f1d47c0c8fd",
-    "0x6f9f8cd0208028bb",
-    "0x08db0f675e7c3f29",
-    "0x1ef59b9911e85f28",
-    "0xbf0c25a74ad39f3b",
-    "0xee830691e41a427f",
-    "0xb2058095ab6ec685",
-    "0x4b7e7c33809101f6",
-    "0x0042f563e5e5512d",
-    "0x1ba65b129cb4d786",
-    "0xd7ad687e0287fddd",
-    "0x870e544470132f8d",
-    "0x2e8cfe3d088a2d13",
-    "0xbfc839b507abe51c",
-    "0x79f77daa717be68c",
+    "0x49f91e5d487d7df1",
+    "0xfea49f64706fb58f",
+    "0x3e914338ba519da8",
+    "0x0c8a2b348b16d0fb",
+    "0x226628699530261c",
+    "0x7720bbd9abf13dca",
+    "0xfd203f8b0651ceb2",
+    "0xddf4493e6977c85b",
+    "0xd7805c2ef5f872f4",
+    "0x495aaae6c4cc2935",
+    "0xc42efa947619b6de",
+    "0x7e256a6ee81e8b7a",
+    "0x37ecc9bb978dcb77",
+    "0x2e4ec00f8760190e",
+    "0x714221606b07a120",
+    "0x5ae6921411aa2e86",
+    "0xe7c773b2bb1bca63",
+    "0x2a7d0c370df46510",
+    "0x34f4665d038bbe50",
+    "0x354c7fde5f2f5a36",
+    "0x0127530b5cbc7f5d",
+    "0x77efb60e711d927e",
+    "0xb666b7d8222103a5",
+    "0x45cab41eb0e8ac4a",
+    "0x476effa377c5fcaa",
+    "0x5b481f1462c14d10",
+    "0x91dd9d7aef15b917",
+    "0x0489b0395a5b8607",
 ]
 
 [replay]
-format = 20
+format = 21
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -109,13 +109,13 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x6ba8109889b34a25"
-adventure_ruleset_hash = "0x00ffbc3dd7a90159"
+adventure_ruleset_hash = "0x0c610f9192575256"
 town_ruleset_hash = "0xab3ee3f1cb243f30"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 34
+game_state_hash_version = 35
 adventure_state_hash_version = 27
 checkpoint_every = 2
 
@@ -126,7 +126,7 @@ import_version = 27
 
 [result]
 day = 29
-final_hash = "0xc18534dc339fb5fc"
+final_hash = "0xe47d94ed3125759b"
 
 [[players]]
 colour = 0

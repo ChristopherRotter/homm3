@@ -7,7 +7,7 @@
 //! carries yet stays as it was, each a gap for the adventure and town lanes (SRV-Q26, SRV-Q27):
 //! a reveal's tiles, objects, heroes and towns; a hero, object or boat coming into sight without a
 //! reveal; two changes told to nobody who sees them; the views of an
-//! offer, a choice, a University and a hire dialog; a town's or a map garrison's view moved by a
+//! offer, a choice, a University, a hire dialog and a market; a town's or a map garrison's view moved by a
 //! Visions holder's reach; and the values the rules derive (where an added artifact or joined creatures land, a
 //! capped gain, what a new owner's team sees of an object). The
 //! battle is its snapshots' (SRV-Q27 (1)): its events are the battle client's, and the fold only
@@ -92,12 +92,13 @@ impl GameObservation {
                 }
             }
             // Their views are not carried (SRV-Q27 (2)): an offer's kind and price, a choice's
-            // options, a University's skills and slots, a hire dialog's creatures and costs
-            // (stub: SRV-STUB-5).
+            // options, a University's skills and slots, a hire dialog's creatures and costs, since
+            // E08 T133b (v75) a market's window (stub: SRV-STUB-5).
             GameEvent::OfferOpened { .. }
             | GameEvent::ChoiceOpened { .. }
             | GameEvent::UniversityOpened { .. }
-            | GameEvent::HireOpened { .. } => {}
+            | GameEvent::HireOpened { .. }
+            | GameEvent::MarketOpened { .. } => {}
             // A message: the treasury could not pay.
             GameEvent::OfferRefused { .. } => {}
             // A Cartographer's type is not carried (stub: SRV-STUB-11).

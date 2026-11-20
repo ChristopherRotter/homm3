@@ -1,7 +1,8 @@
 //! Increment 14's kinds and tables in the ruleset part (E08 T132a2; increment 14's design note §1
 //! to §5): the market, the Altar of Sacrifice, the Hill Fort and the War Machine Factory, every
 //! one entered and without a built visit yet; `[params.market]` compiled into the rates
-//! (`crate::MarketParams`); the Altar's factions; every check and the hash (part v23).
+//! (`crate::MarketParams`); the Altar's factions; every check and the hash (part v23; the cost
+//! resource v24, E08 T133b).
 
 extern crate std;
 
@@ -83,6 +84,7 @@ fn trade_core() -> Ruleset {
 /// `[params.market]` for [`trade_core`]: every resource valued, two rows.
 fn market_params() -> MarketParamsDef {
     MarketParamsDef {
+        cost: key("t:gold"),
         values: vec![
             (key("t:wood"), 250),
             (key("t:gold"), 1),
@@ -264,6 +266,7 @@ fn the_four_kinds_compile_entered_and_only_the_markets_visited() {
         ResourceId::from_raw(2),
     );
     assert_eq!(rates.counts(), 2);
+    assert_eq!(rates.cost(), gold);
     assert_eq!(
         rates.resource_lot(2, wood, gold),
         Some(Lot { give: 1, take: 75 })
@@ -464,6 +467,11 @@ fn the_market_parameters_are_checked() {
         invalid(|m| m.values[0].0 = key("t:ore")),
         AdventureCompileError::UnknownResource("t:ore".into())
     );
+    // E08 T133b (ADV-Q60 (a)): the cost resource is a core resource.
+    assert_eq!(
+        invalid(|m| m.cost = key("t:ore")),
+        AdventureCompileError::UnknownResource("t:ore".into())
+    );
     // `t` does not depend on `u`: a gem valued in `t`'s parameters is out of reach.
     let outside = trade_err(|p| {
         let t = pack(p, "t");
@@ -603,6 +611,11 @@ fn every_trade_parameter_is_in_the_hash() {
             pack(p, "t")
                 .object_types
                 .retain(|t| t.key.as_str() != "t:factory");
+        }),
+        Box::new(|p| {
+            let mut m = market_of(p).unwrap();
+            m.cost = key("t:wood");
+            pack(p, "t").params.as_mut().unwrap().market = Some(m);
         }),
         Box::new(|p| {
             let mut m = market_of(p).unwrap();

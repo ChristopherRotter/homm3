@@ -198,6 +198,11 @@ pub enum Answer {
         /// The hire or closing.
         answer: TavernAnswer,
     },
+    /// A market's trade, transfer, sale, purchase or leaving (GAM-DEC-011; E08 T133b, v75).
+    Market {
+        /// The answer.
+        answer: MarketAnswer,
+    },
     /// Closes a meeting (GAM-DEC-003) or an army dialog (GAM-DEC-004).
     Close {},
 }
@@ -288,6 +293,49 @@ pub enum TavernAnswer {
     },
     /// Closes the Tavern.
     Close {},
+}
+
+/// A market's answer (`h3_game::MarketAnswer`, GAM-DEC-011; E08 T133b, v75): resources by their
+/// handle. The rate, the price and the most are the server's (ADR-0004).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum MarketAnswer {
+    /// Trades whole lots of one resource for another at the market's rate (ADV-MKT-003).
+    Trade {
+        /// The resource given.
+        give: u16,
+        /// The resource wanted.
+        take: u16,
+        /// The lots.
+        lots: u32,
+    },
+    /// Gives a resource to another player, 1 : 1 (ADV-MKT-004).
+    Transfer {
+        /// The resource.
+        resource: u16,
+        /// The amount.
+        amount: u32,
+        /// The recipient.
+        to: u8,
+    },
+    /// Sells whole lots of a stack of the hero's army (ADV-MKT-005).
+    Sell {
+        /// The army's slot.
+        slot: u8,
+        /// The resource wanted.
+        take: u16,
+        /// The lots.
+        lots: u32,
+    },
+    /// Buys a Black Market's entry (ADV-MKT-007).
+    Buy {
+        /// The stock's entry.
+        entry: u8,
+        /// The resource paid in.
+        pay: u16,
+    },
+    /// Leaves the market.
+    Leave {},
 }
 
 /// A management command (`h3_game::Manage`, GAM-MAN-001).
@@ -497,6 +545,11 @@ pub enum GameReject {
     Tavern {
         /// Why.
         error: TavernReject,
+    },
+    /// A market's answer the game refused (E08 T133b, v75); the treasury's is [`Self::CannotPay`].
+    Market {
+        /// Why.
+        error: MarketReject,
     },
     /// The session's, not the engine's (E16 M5 T8a, v45): the connection holds no seat of the
     /// game.
@@ -808,4 +861,39 @@ pub enum TavernReject {
     TooManyHeroes {},
     /// A hero stands on the Tavern's visitable tile.
     Occupied {},
+}
+
+/// Why a market's answer was refused (`h3_game::MarketError`, GAM-DEC-011; E08 T133b, v75).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum MarketReject {
+    /// The visit's hero is not on the map, or its object is no market.
+    Visit {},
+    /// The market's window has no screen for the answer.
+    Screen {},
+    /// A trade of a resource for itself.
+    SameResource {},
+    /// The lots (a transfer's amount) are 0 or above the most.
+    Amount {
+        /// The lots or the amount.
+        amount: u32,
+    },
+    /// A transfer's recipient is the actor or no player of the game.
+    Recipient {},
+    /// The slot holds no stack of the hero's army.
+    Slot {
+        /// The slot.
+        slot: u8,
+    },
+    /// The sale would take the army's last creature.
+    LastCreature {},
+    /// The entry is not one of the stock, or it was bought.
+    Entry {
+        /// The entry.
+        entry: u8,
+    },
+    /// No lot or price in the resource.
+    NoPrice {},
+    /// The hero cannot receive the artifact.
+    NoRoom {},
 }

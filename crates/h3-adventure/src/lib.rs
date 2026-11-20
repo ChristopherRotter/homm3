@@ -108,8 +108,9 @@ pub use split::{TileRand, split, split_with_second};
 pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
     AdventureState, BACKGROUND_RADIUS, Boat, Channels, GateEntry, HeroBonuses, HeroOnMap,
-    HirePurchase, MapObject, MarketPurchase, Monster, Resolved, Sale, StaticMap, StaticTile,
-    VisitMarks, Visits, Weekly, WhirlpoolTile, allied, hire_price,
+    HirePurchase, MapObject, MarketOffers, MarketPurchase, Monster, Resolved, Sale, SaleOffer,
+    StaticMap, StaticTile, StockEntry, TradeOffer, VisitMarks, Visits, Weekly, WhirlpoolTile,
+    allied, hire_price,
 };
 pub use town::{TavernVisit, TownHeroError, TownHeroMove, TownReveal};
 
@@ -168,5 +169,6 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 27;
 /// the creature bank's kind (its question, levels, looted bonus, deck and coast). v22 (E09
 /// T39a): the map's Tavern's and the Den of Thieves' kinds (tags 45 and 46, no parameter). v23
 /// (E08 T132a2): increment 14's four kinds (the market, the Altar of Sacrifice, the Hill Fort, the
-/// War Machine Factory: tags 47 to 50), the market's parameters and the Altar's factions.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 23;
+/// War Machine Factory: tags 47 to 50), the market's parameters and the Altar's factions. v24
+/// (E08 T133b, ADV-Q60 (a)): the market parameters' cost resource.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 24;

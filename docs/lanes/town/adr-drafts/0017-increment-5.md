@@ -98,8 +98,8 @@ view) and the env's action encoding (point 8, the AI lane's, `cross-lane`). The 
 hash and ruleset part do not move (`AdventureOutcome`'s town entered is not state, ADR-0016 point
 4). Shared: the quirk flag of `TWN-QUIRK-14` (no version moves: the profiles' ruleset hashes do);
 no new stream (decision 179). The numbers are the next at merge, in merge order with E08's
-increment 14 (its game state hash v35, replay format v21 and encoding v14 planned) and the client
-lane's replay format v20 (E27 M4 T3a).
+increment 14 (E08 T133b took game state hash v35, replay format v21, encoding v14 and protocol v75
+after the client lane's replay format v20, E27 M4 T3a; its T134a plans the next).
 
 ## Point 10, after E09's increment 4 paragraph on a hire's application
 

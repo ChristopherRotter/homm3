@@ -359,8 +359,8 @@ Batch E14 records where the hero stands (§20, E14-16).
   `AdventureOutcome::service: Option<ServiceVisit>` with `ServiceVisit::Market(MarketVisit { hero,
   index, object_type, anchor })`; entered and revisitable as every built entered kind (no mark,
   no event, no block written). The game opens nothing until T133b (`ADV-STUB-18`, marked in
-  `GameState::settle_outcome`). `h3-map`'s `tests/trades.rs`: a market's step entered, the other
-  three kinds still refused.
+  `GameState::settle_outcome`; lifted by T133b). `h3-map`'s `tests/trades.rs`: a market's step
+  entered, the other three kinds still refused.
 
 ### 11. The adventure's checks and changes (the answers' adventure half)
 
@@ -432,6 +432,13 @@ treasury, pays, and calls the adventure's infallible change: ADR-0017 point 10, 
 - **No new adventure event:** a trade's resources, the army's changes and the hero's changes are
   the game's events (§17); the sold entry is shown by the view alone (as a University's bought
   slot).
+- *As built* (T133b, decision 384): `AdventureState::market_offers` (`state/markets.rs`) gives
+  `MarketOffers { screens, count, trades, sales, stock }` for the screens the window shows:
+  `TradeOffer { give, take, lot }` per pair of distinct valued resources (given, then wanted, in
+  the core's order), `SaleOffer { slot, lots }` per stack (none for a creature of no cost in the
+  cost resource), `StockEntry { artifact, prices }` per entry (none and no price once sold); the
+  visit refused as `Visit`. `GameState::market_view` adds the recipients (every other player,
+  with the transfer's screen) into `h3_game::MarketView`, `DecisionView::Market`.
 
 ## Part C — the game (`h3-game`, the wire, the env; T127b)
 
@@ -471,6 +478,19 @@ original's windows stay open for more trades). The system actor's default is `Le
   lot per resource; for `Buy` the seven entries (the artifact or empty) with the price per
   resource; for `Transfer` the recipients. *Agent's call:* the view carries the rates, so a client
   needs no copy of the computation (the env reads it too, §18).
+- *As built* (T133b, decision 384; **game state hash v35**, E09 T39a took v34; **adventure
+  ruleset part v24**, ADV-Q60 (a): `[params.market]`'s `cost`, `MarketParams::cost`, the checks
+  reading it): `Decision::Market { owner, visit: MarketVisit }` (hash kind 10: the owner, the
+  hero, the object's index, type and anchor), opened in `settle_outcome` from
+  `AdventureOutcome::service` (`state/market.rs`' `open_market`, `MarketOpened`);
+  `answer_market`: `Trade` through the adventure's `trade_lot` (the visit, the screen,
+  `SameResource`, `NoPrice`), then the game's `Amount` against the treasury; `Transfer` through
+  `check_screen`, then `Recipient` (the actor, or no player of the game), then `Amount`; `Sell`
+  through `check_sale`, then `StackChanged` and `ResourceGained`; `Buy` through `check_buy`, then
+  `CannotPay`, `ResourcePaid`, `HeroChanged` (`AddArtifact`), the entry sold; `Leave` closes.
+  `GameCommandError::Market(MarketError)`. `legal_commands` lists `Leave` alone and it is the
+  default answer (T135a lists the rest, §18). Tests: `h3-game`'s `tests/markets.rs` (its own
+  ruleset: wood beside the gold, the three markets at five).
 
 ### 14. The Altar's decision (GAM-DEC-012; ADV-ALT-001 to -003; A-48 fixed)
 
@@ -548,6 +568,14 @@ original's windows stay open for more trades). The system actor's default is `Le
   pull request (`cross-lane`, with the user's consent at its start, as T115b; or the server lane
   first), each with the protocol's next version and a fold test on golden games; the server lane's
   inbox told at each.
+- *As built* (T133b, decision 384; **protocol v75**, `cross-lane`): `Answer::Market`
+  (`MarketAnswer`, resources by handle), `GameReject::Market` (`MarketReject`), `Decision::Market`
+  (`MarketWindow` with `MarketScreen`, `Lot`, `TradeLot`, `SaleLots`, `ResourceLot`,
+  `StockEntry`), `GameEvent::MarketOpened`; the fold leaves a market's view untold as a
+  University's (`SRV-STUB-5` extended). With the answer the replay words (**format v21**, the client lane's E27 M4 T3a having taken v20: `answer
+  market trade|transfer|sell|buy|leave`, §18's) and the env's `Leave` on the closing entry
+  (**encoding v14**, no new entry) came in the same pull request: a new answer breaks both
+  crates' exhaustive matches.
 
 ### 18. The env, replays, maps, properties, benchmarks
 

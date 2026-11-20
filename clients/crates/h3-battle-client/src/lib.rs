@@ -17,7 +17,8 @@
 //!   renderer), [`sequences`] (the harness's sequences), [`scenario`] (a scenario file and its
 //!   packs), [`sprite`], [`text`], [`video`], [`assets`] (the asset tables and layouts read).
 //! - **The game shell** (E27; CLT-Q103, decision 21): [`shell`] (`h3-view shell`, its headless
-//!   driver; E27 M2 T3a).
+//!   driver; E27 M2 T3a), [`maps`] and [`begin`] (a game's setup, M3), [`save`] (a saved game
+//!   and its load, M4 T3b).
 //!
 //! An adapter, not pure: it reads files and the archives, measures time, prints, runs threads and
 //! drives the window and the audio device through `h3-sdl`. Left out of the coverage gate as the
@@ -48,6 +49,7 @@ pub mod online;
 pub mod pointer;
 pub mod render;
 pub mod results;
+pub mod save;
 pub mod scenario;
 pub mod sequences;
 pub mod shell;

@@ -11,7 +11,7 @@ use core::fmt;
 
 use h3_adventure::{
     AdventureCommand, AdventureCommandError, AdventureEvent, ArmySlot, HireError, HireTarget,
-    ObjectTypeId, Pick, Pos, Viewers,
+    MarketError, ObjectTypeId, Pick, Pos, Viewers,
 };
 use h3_content::{CreatureTypeId, Formation, HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, BattleResult, FortLevel, HeroId, PlayerId, TownId};
@@ -93,6 +93,9 @@ pub enum Answer {
     /// The map Tavern's hire or closing (GAM-DEC-010, ADV-VIS-007; E09 T39a, the town epic's
     /// design note §66).
     Tavern(TavernAnswer),
+    /// A market's trade, transfer, sale, purchase or leaving (GAM-DEC-011, ADV-MKT-003 to -007;
+    /// E08 T133b, increment 14's design note §13).
+    Market(MarketAnswer),
     /// Closes a meeting (GAM-DEC-003), an army dialog (GAM-DEC-004; increment 6's `Decline`) or,
     /// since E08 T114a2, a map garrison's exchange (GAM-DEC-009).
     Close,
@@ -215,6 +218,66 @@ pub enum TavernAnswer {
     Close,
 }
 
+/// A market's answer (GAM-DEC-011; E08 T133b, increment 14's design note §13; survey
+/// `E08-trades.md` §5 to §7, the original's market dialog): each but [`Self::Leave`] keeps the
+/// window open for more (the original's stays open), each refused for a screen the market's kind
+/// lacks (`MarketError::Screen`). Nothing in it is trusted: the rate, the price and the most are
+/// the state's answer (ADR-0004, `docs/06-security.md`); a refused answer changes nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MarketAnswer {
+    /// Trades `lots` lots of `give` for `take` at the market's rate (screen `Trade`,
+    /// ADV-MKT-003): each lot pays its `give` of the given (`ResourcePaid`) and gains its `take`
+    /// of the wanted (`ResourceGained`, saturating, GAM-RES-001). The amount as lots, the
+    /// original's slider unit (survey §5), so every accepted amount is one the original could
+    /// trade. Refused for a resource for itself (`SameResource`), one the market does not value
+    /// (`NoPrice`), then lots of 0 or above the most the treasury pays (`Amount`).
+    Trade {
+        /// The resource given.
+        give: ResourceId,
+        /// The resource wanted.
+        take: ResourceId,
+        /// The lots, from 1 to what the treasury holds of `give` divided by the lot's `give`.
+        lots: u32,
+    },
+    /// Gives `amount` of `resource` to the player `to`, 1 : 1, ally or enemy (screen `Transfer`,
+    /// ADV-MKT-004): paid by the actor (`ResourcePaid`), gained by `to` (`ResourceGained`, to it
+    /// alone, saturating). Refused for a recipient that is the actor or no player of the game
+    /// (`Recipient`; until E10's elimination every player is still in it), then an amount of 0 or
+    /// above the treasury's (`Amount`).
+    Transfer {
+        /// The resource.
+        resource: ResourceId,
+        /// The amount, from 1 to the treasury's.
+        amount: u32,
+        /// The recipient.
+        to: PlayerId,
+    },
+    /// Sells `lots` lots of the creatures in the hero's army's slot `slot` for `take` (screen
+    /// `Sell`, ADV-MKT-005): the adventure's check (`h3_adventure::AdventureState::check_sale`:
+    /// the slot, the lot, the amount, the army's last creature kept), then the stack lowered
+    /// (`StackChanged`) and the gain (`ResourceGained`).
+    Sell {
+        /// The army's slot.
+        slot: u8,
+        /// The resource wanted.
+        take: ResourceId,
+        /// The lots.
+        lots: u32,
+    },
+    /// Buys the Black Market's entry `entry` paying in `pay` (screen `Buy`, ADV-MKT-007): the
+    /// adventure's check (`h3_adventure::AdventureState::check_buy`: the entry, the price, the
+    /// hero's room, A-46 fixed), then the price against the treasury (`CannotPay`), then paid
+    /// (`ResourcePaid`), the artifact given (`HeroChanged`) and the entry sold.
+    Buy {
+        /// The stock's entry.
+        entry: u8,
+        /// The resource paid in.
+        pay: ResourceId,
+    },
+    /// Leaves the market (`DecisionClosed`), losing nothing.
+    Leave,
+}
+
 impl ChestChoice {
     /// The adventure's pick of this answer.
     pub(crate) const fn pick(self) -> Pick {
@@ -308,6 +371,12 @@ pub enum GameCommandError {
     /// map or the Tavern's tile, in that order; the treasury's is [`Self::CannotPay`], checked
     /// after them.
     Tavern(TavernError),
+    /// A market's answer refused (GAM-DEC-011, ADV-MKT-003 to -007; E08 T133b): the
+    /// adventure's checks (the visit, the screen, the resources, the slot, the last creature, the
+    /// entry, the price, the hero's room) and the game's (a trade's lots and a transfer's amount
+    /// against the treasury, `Amount`; a transfer's recipient, `Recipient`); a purchase's
+    /// treasury is [`Self::CannotPay`], checked after them.
+    Market(MarketError),
 }
 
 impl fmt::Display for GameCommandError {
@@ -337,6 +406,7 @@ impl fmt::Display for GameCommandError {
             Self::Hire(error) => write!(f, "{error}"),
             Self::Town(error) => write!(f, "{error}"),
             Self::Tavern(error) => write!(f, "{error}"),
+            Self::Market(error) => write!(f, "{error}"),
         }
     }
 }
@@ -684,10 +754,23 @@ pub enum GameEvent {
         /// The Tavern's anchor.
         anchor: Pos,
     },
+    /// A market's decision opened for the visitor's owner (GAM-DEC-011, ADV-MKT-001; E08 T133b,
+    /// increment 14's design note §13, §17): what its window offers is its view
+    /// ([`crate::DecisionView::Market`]), its answers [`MarketAnswer`]'s. Seen by the owner.
+    MarketOpened {
+        /// The visitor's owner.
+        player: PlayerId,
+        /// The visiting hero.
+        hero: HeroId,
+        /// The market's type.
+        object_type: ObjectTypeId,
+        /// The market's anchor.
+        anchor: Pos,
+    },
     /// The player's meeting or army dialog closed (its `Close`; E08 T51b); since E08 T63a also
     /// its choice once answered (the answer's payment and effects follow) and its University
     /// left; since E08 T95b its hire dialog closed or a single creature's bought; since E09 T39a
-    /// a map Tavern closed or its hire made. Seen by the owner.
+    /// a map Tavern closed or its hire made; since E08 T133b a market left. Seen by the owner.
     DecisionClosed {
         /// Its owner.
         player: PlayerId,

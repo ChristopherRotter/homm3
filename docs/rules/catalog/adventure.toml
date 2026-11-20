@@ -4238,7 +4238,7 @@ id       = "ADV-MKT-001"
 title    = "The markets: the Trading Posts, the Freelancer's Guild and the Black Market"
 context  = "adventure"
 status   = "implemented"
-summary  = "One kind, market, for the original's classes 99 and 221 (the Trading Post), 213 (the Freelancer's Guild, AB's) and 7 (the Black Market): its window's screens (trade: resources for resources; transfer: resources 1 : 1 to another player; sell: creatures for resources; buy: resources for an artifact of its stock; at least one, distinct), the count of Marketplaces it trades as (from 1 to the market parameters' counts; 5 for every map object) and a Black Market's stock classes (exactly with buy, none special: three treasures, three minors, one major). Every market type is entered (none of the seven trade classes is on the original's not-entered list) and, in the original packs, none from above, without a mark or an owner. E08 T132a2: the kind, its checks, the packs' three types (base's trading_post and black_market, ab's freelancers_guild) and the eighth original-data check. E08 T132b (map import v27, ADV-OBJ-002): the import of 99 and 221 as trading_post, 213 as freelancers_guild and 7 as black_market, each at subclass 0 without a body. E08 T133a1: the Black Market's stock (ADV-MKT-006). E08 T133a2: the visit: a step onto a market's entrance ends the move there and, at every visit of any player's hero (and every Revisit, ADV-TEL-008), opens its window for the visitor's owner (the outcome's service: the hero, the object's index, type and anchor; the screens, count and stock read at each answer); no mark, owner, day or week is tested and nothing but the step is spent. The game's decision is T133b's (GAM-DEC-011; until then the window opens nothing, ADV-STUB-18)."
+summary  = "One kind, market, for the original's classes 99 and 221 (the Trading Post), 213 (the Freelancer's Guild, AB's) and 7 (the Black Market): its window's screens (trade: resources for resources; transfer: resources 1 : 1 to another player; sell: creatures for resources; buy: resources for an artifact of its stock; at least one, distinct), the count of Marketplaces it trades as (from 1 to the market parameters' counts; 5 for every map object) and a Black Market's stock classes (exactly with buy, none special: three treasures, three minors, one major). Every market type is entered (none of the seven trade classes is on the original's not-entered list) and, in the original packs, none from above, without a mark or an owner. E08 T132a2: the kind, its checks, the packs' three types (base's trading_post and black_market, ab's freelancers_guild) and the eighth original-data check. E08 T132b (map import v27, ADV-OBJ-002): the import of 99 and 221 as trading_post, 213 as freelancers_guild and 7 as black_market, each at subclass 0 without a body. E08 T133a1: the Black Market's stock (ADV-MKT-006). E08 T133a2: the visit: a step onto a market's entrance ends the move there and, at every visit of any player's hero (and every Revisit, ADV-TEL-008), opens its window for the visitor's owner (the outcome's service: the hero, the object's index, type and anchor; the screens, count and stock read at each answer); no mark, owner, day or week is tested and nothing but the step is spent. E08 T133b: the window opens as the visitor's owner's decision (GAM-DEC-011)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4260,11 +4260,57 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "ADV-MKT-003"
+title    = "The Trading Post's trade: resources for resources by whole lots"
+context  = "adventure"
+status   = "verified"
+summary  = "A market's trade screen (the Trading Post's, screen 0) trades one resource for another at ADV-MKT-002's resource lot at the kind's count (five on the map): g of the given for t of the wanted, one of them 1, by whole lots, the original's slider unit (survey E08-trades.md section 5): the amount the player names is a number of lots, so every accepted amount is one the original's slider could trade. Refused: a resource for itself (`MarketError::SameResource`: the original disables its controls), a resource the market parameters do not value (`NoPrice`), lots of 0 or above the most, what the treasury holds of the given divided by g (`Amount`). The lots' g are paid and their t gained (in 64 bits, saturating at the treasury, GAM-RES-001); the window stays open for more. E08 T133b: `AdventureState::trade_lot` (the visit, the screen, the resources, the lot; increment 14's design note section 13) and the game's `MarketAnswer::Trade` (the most, the payment `ResourcePaid`, the gain `ResourceGained`)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md section 5): trading_post_trade 0x5EA0C0 (kind 1, screen 0, five Marketplaces), market_resources_proc 0x5ECFE0 and market_resources_redraw 0x5EA6E0 (the controls disabled while the two resources are one; the slider in wanted units when one given buys less than one, else in given units; Max the most; Trade subtracts and adds at once; the window stays open)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-14.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-19; survey E08-trades.md section 21): E14-5 (a Trading Post: 1 wood for 75 gold, 833 gold for 1 wood, 3 mercury for 1 gem)"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/IMarket.cpp and server/CGameHandler.cpp tradeResources (VCMI 1.7.5; survey E08-trades.md section 9): the Trading Post's resource-resource mode at five; its rounding differs (D-71, ADV-MKT-002)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-11-18"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MKT-004"
+title    = "The Trading Post's transfer: a resource 1 : 1 to another player in the game"
+context  = "adventure"
+status   = "implemented"
+summary  = "A market's transfer screen (the Trading Post's, screen 1) gives an amount of one resource to another player 1 : 1, ally or enemy: the recipient a player of the game other than the actor and still in it (the original offers the colours whose defeat flag is clear; every player until E10's elimination), the amount from 1 to what the treasury holds. Refused: a recipient that is the actor or no player of the game (`MarketError::Recipient`), then an amount of 0 or above the treasury's (`Amount`). The actor pays it (`ResourcePaid`, to the actor) and the recipient gains it (`ResourceGained`, to the recipient alone; saturating at its treasury, GAM-RES-001); no event names the giver to the recipient (the original's hot seat shows only its treasury; its network message is not modelled: agent's call, increment 14's design note section 13). The window stays open. E08 T133b: `AdventureState::check_screen` and the game's `MarketAnswer::Transfer`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md section 5): market_transfer_proc 0x5ED550 (a resource, a recipient among the colours other than the current player's whose defeat flag, game +0x1F636, is clear, an amount from 1 to what the player has; Trade moves it 1 : 1); new_game_heroes 0x4BFE70 sets the flag of every colour nobody plays"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp sendResources (VCMI 1.7.5; survey E08-trades.md section 9): the resource-player mode, 1 : 1"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-11-18"
+  confidence = "high"
+
+[[rule]]
 id       = "ADV-MKT-005"
 title    = "The Freelancer's Guild's sale: creatures by whole lots, the army keeping one"
 context  = "adventure"
-status   = "implemented"
-summary  = "A market's sale screen (the Freelancer's Guild's) sells creatures of one slot of the visiting hero's army for a resource by whole lots of ADV-MKT-002's creature lot at the kind's count (five on the map): g creatures for t units, one of them 1, a creature valued at its cost in the market's cost resource (the original's gold; the caller's, ADV-Q60). Any creature of the army sells, of any faction or level; one of no cost, or a resource the market does not value, has no lot. The lots go from 1 to the most: the stack's count divided by g, less one creature when the army's other slots are empty (the army keeps a creature). The stack loses the creatures sold (its slot emptied at 0) and the owner gains lots times t of the resource (in 64 bits, saturating at the treasury, GAM-RES-001). E08 T133a2: the adventure's check and change (check_sale, sell; MarketError Visit, Screen, Slot, NoPrice, Amount, LastCreature); the decision that answers it and adds the gain is T133b's (GAM-DEC-011)."
+status   = "verified"
+summary  = "A market's sale screen (the Freelancer's Guild's) sells creatures of one slot of the visiting hero's army for a resource by whole lots of ADV-MKT-002's creature lot at the kind's count (five on the map): g creatures for t units, one of them 1, a creature valued at its cost in the market parameters' cost resource (the original's gold; the base pack's `[params.market]` cost, ADV-Q60 (a), E08 T133b). Any creature of the army sells, of any faction or level; one of no cost, or a resource the market does not value, has no lot. The lots go from 1 to the most: the stack's count divided by g, less one creature when the army's other slots are empty (the army keeps a creature). The stack loses the creatures sold (its slot emptied at 0) and the owner gains lots times t of the resource (in 64 bits, saturating at the treasury, GAM-RES-001). E08 T133a2: the adventure's check and change (check_sale, sell; MarketError Visit, Screen, Slot, NoPrice, Amount, LastCreature). E08 T133b: the decision's `Sell` answers it (GAM-DEC-011): the stack lowered (`StackChanged`), then the gain (`ResourceGained`); the window stays open."
 numeric  = "float"
 
   [[rule.source]]
@@ -4315,8 +4361,8 @@ numeric  = "integer"
 id       = "ADV-MKT-007"
 title    = "The Black Market's purchase: one entry at its price, refused without room"
 context  = "adventure"
-status   = "implemented"
-summary  = "A market's buy screen (the Black Market's) sells one entry of its stock (ADV-MKT-006) at a time, paid in a resource the player names: the price is ADV-MKT-002's artifact price at the kind's count (five on the map: 2.5 times the cost in gold, the cost over 50 in wood or ore, over 100 in a precious resource), the artifact valued at its cost in the market's cost resource (the original's gold; the caller's, ADV-Q60); an artifact of no cost or a price that rounds to 0 has none. An entry past the stock or already bought is refused; so is a hero that cannot receive the artifact (HER-CHG-002's check: a position that takes it, else the backpack below its most; not the pickups' full-backpack count, A-25), before anything is paid (A-46 fixed, ADV-QUIRK-48: the original pays and loses it). A purchase pays the price, gives the artifact to the hero (in SoD a completed combination's question as any received artifact's) and marks the entry sold for every later visitor, never restocked. E08 T133a2: the adventure's check and change (check_buy, buy; MarketError Visit, Screen, Entry, NoPrice, NoRoom); the decision that answers it, checks the treasury, pays and gives the artifact is T133b's (GAM-DEC-011)."
+status   = "verified"
+summary  = "A market's buy screen (the Black Market's) sells one entry of its stock (ADV-MKT-006) at a time, paid in a resource the player names: the price is ADV-MKT-002's artifact price at the kind's count (five on the map: 2.5 times the cost in gold, the cost over 50 in wood or ore, over 100 in a precious resource), the artifact valued at its cost in the market parameters' cost resource (the original's gold; ADV-Q60 (a), E08 T133b); an artifact of no cost or a price that rounds to 0 has none. An entry past the stock or already bought is refused; so is a hero that cannot receive the artifact (HER-CHG-002's check: a position that takes it, else the backpack below its most; not the pickups' full-backpack count, A-25), before anything is paid (A-46 fixed, ADV-QUIRK-48: the original pays and loses it). A purchase pays the price, gives the artifact to the hero (in SoD a completed combination's question as any received artifact's) and marks the entry sold for every later visitor, never restocked. E08 T133a2: the adventure's check and change (check_buy, buy; MarketError Visit, Screen, Entry, NoPrice, NoRoom). E08 T133b: the decision's `Buy` answers it (GAM-DEC-011): the adventure's checks, then the price against the treasury (`CannotPay`), then paid (`ResourcePaid`), the artifact given (`HeroChanged`) and the entry sold; the window stays open."
 numeric  = "float"
 
   [[rule.source]]
@@ -4335,6 +4381,24 @@ numeric  = "float"
   ref        = "server/CGameHandler.cpp buyArtifact (VCMI 1.7.5; survey E08-trades.md section 9): the artifact at the first free position, the backpack unbounded by default, so A-46's loss does not arise"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
   retrieved  = "2026-11-18"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MKT-008"
+title    = "What a viewer sees of a market: its type, and a Black Market's stock only in its visitor's window"
+context  = "adventure"
+status   = "implemented"
+summary  = "Every viewer of a market's tile sees its type, the same to all (no owner, no mark); the rates are the ruleset's, public. A Black Market's stock is server-only outside its visitor's open decision: the visitor's owner sees it there alone (`DecisionView::Market`, `MarketOffers::stock`: each entry's artifact and price per resource, a bought one empty), and a viewer keeps nothing of a market it visited (agent's call, increment 14's design note section 12: the original shows the stock only in the window; not chosen: the last seen seven as a knowledge by object). The window's view carries the rates the state's answers use: the screens and count, each pair of distinct valued resources' trade lot (given, then wanted, in the core's order), each stack's lot per resource, the stock's prices, the transfer's recipients (every other player of the game), so a client and the env need no copy of the computation; the answers are checked against the state, never against the view (ADR-0004). No adventure event: a trade's resources, the army's and the hero's changes are the game's events. E08 T133b: `AdventureState::market_offers`, `GameState::market_view`; on the wire `Decision::Market` (protocol v75), its event `MarketOpened` carrying no view (the server lane's fold, `SRV-STUB-5`)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md section 8): none of the three market classes has an owner or a mark (visit_object's cases 7, 99, 213, 221); the Black Market's seven drawn only in black_market_trade 0x5EA100's window (market_buy_artifact_redraw 0x5EB6A0), to the visiting human"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0016 point 6 (the hidden information's projections) as amended by E08 T131; increment 14's design note E08-design.md sections 12 and 13"
   confidence = "high"
 
 [[rule]]

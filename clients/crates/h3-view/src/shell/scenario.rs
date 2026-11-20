@@ -113,7 +113,7 @@ mod random;
 use advanced::{Advanced, Map, Refusal};
 pub use advanced::{
     AdvancedLook, AdvancedTexts, Bonus, CreatureRow, HERO_CLASS, HERO_NAME, HeroPopupLook,
-    Pictured, PopupLook, Record, TownPopupLook,
+    Pictured, PopupLook, Record, TownPopupLook, UNLIMITED,
 };
 use description::Description;
 pub use description::{DESCRIPTION_BYTES, DescriptionLook, description_names};
@@ -1972,7 +1972,7 @@ impl Scenario {
             difficulty: self.difficulty,
             records,
             names,
-            duration: self.duration().unwrap_or(advanced::UNLIMITED),
+            duration: self.duration().unwrap_or(UNLIMITED),
         })
     }
 

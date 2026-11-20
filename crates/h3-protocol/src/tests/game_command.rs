@@ -16,8 +16,9 @@ use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, ArtifactPlace,
     BuildingId, ChestChoice, Consent, GameCommand, GameCommandError, HireAnswer, HireError, Manage,
-    ManageError, NoopSink, Position, SchoolChoice, SkillOffer, SystemCommand, TavernAnswer,
-    TavernError, TownCommand, TownCommandError, TownHeroChange, UniversityAnswer,
+    ManageError, MarketAnswer, MarketError, NoopSink, Position, SchoolChoice, SkillOffer,
+    SystemCommand, TavernAnswer, TavernError, TownCommand, TownCommandError, TownHeroChange,
+    UniversityAnswer,
 };
 use h3_heroes::{CombineError, MoveError};
 use h3_kernel::handle::Handle;
@@ -79,6 +80,27 @@ pub(super) fn every_command() -> Vec<GameCommand> {
         // E09 T39a: a map Tavern's.
         Answer::Tavern(TavernAnswer::Hire { slot: 1 }),
         Answer::Tavern(TavernAnswer::Close),
+        // E08 T133b (v75): a market's.
+        Answer::Market(MarketAnswer::Trade {
+            give: Handle::from_raw(6),
+            take: Handle::from_raw(0),
+            lots: 3,
+        }),
+        Answer::Market(MarketAnswer::Transfer {
+            resource: Handle::from_raw(2),
+            amount: 40,
+            to: PlayerId::new(1),
+        }),
+        Answer::Market(MarketAnswer::Sell {
+            slot: 4,
+            take: Handle::from_raw(6),
+            lots: 12,
+        }),
+        Answer::Market(MarketAnswer::Buy {
+            entry: 6,
+            pay: Handle::from_raw(5),
+        }),
+        Answer::Market(MarketAnswer::Leave),
         Answer::Close,
     ];
     commands.extend(answers.map(GameCommand::Answer));
@@ -328,6 +350,21 @@ fn every_rejection() -> Vec<GameCommandError> {
         ]
         .map(E::Tavern),
     );
+    errors.extend(
+        [
+            MarketError::Visit,
+            MarketError::Screen,
+            MarketError::SameResource,
+            MarketError::Amount(7),
+            MarketError::Recipient,
+            MarketError::Slot(3),
+            MarketError::LastCreature,
+            MarketError::Entry(5),
+            MarketError::NoPrice,
+            MarketError::NoRoom,
+        ]
+        .map(E::Market),
+    );
     errors
 }
 
@@ -520,6 +557,18 @@ fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
             w::TavernReject::TooManyHeroes {} => TavernError::TooManyHeroes,
             w::TavernReject::Occupied {} => TavernError::Occupied,
         }),
+        R::Market { error } => E::Market(match error {
+            w::MarketReject::Visit {} => MarketError::Visit,
+            w::MarketReject::Screen {} => MarketError::Screen,
+            w::MarketReject::SameResource {} => MarketError::SameResource,
+            w::MarketReject::Amount { amount } => MarketError::Amount(amount),
+            w::MarketReject::Recipient {} => MarketError::Recipient,
+            w::MarketReject::Slot { slot } => MarketError::Slot(slot),
+            w::MarketReject::LastCreature {} => MarketError::LastCreature,
+            w::MarketReject::Entry { entry } => MarketError::Entry(entry),
+            w::MarketReject::NoPrice {} => MarketError::NoPrice,
+            w::MarketReject::NoRoom {} => MarketError::NoRoom,
+        }),
     })
 }
 
@@ -577,8 +626,9 @@ fn every_rejection_maps_back_and_round_trips() {
     // `OnlyEmpty`), 6 of an artifact's move, 3 of a combination's, 4 of a hire's, 24 of a town's
     // (E09 T27: `NotRecruiting`, `NotStanding`, `NothingSummoned`; E09 T28a: `GarrisonHeld` to
     // `EmptyArmy`; E09 T38a1: `NoTavern`, `UnknownSlot`, `EmptySlot`), 3 of a dismissal's (E09
-    // T38b2: `NotOnMap`, `InTown`, `LastHero`), 4 of a map Tavern's hire (E09 T39a).
-    assert_eq!(errors.len(), 126);
+    // T38b2: `NotOnMap`, `InTown`, `LastHero`), 4 of a map Tavern's hire (E09 T39a), 10 of a
+    // market's (E08 T133b).
+    assert_eq!(errors.len(), 136);
     let wire: BTreeSet<String> = errors.iter().map(|&e| kinds(&reject(e))).collect();
     assert_eq!(wire.len(), errors.len(), "distinct on the wire");
     for e in errors {

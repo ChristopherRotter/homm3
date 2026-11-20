@@ -63,6 +63,18 @@ information and one choice):
 
 **The adventure env** (yours since E08 T45):
 
+- 2026-11-20 (the adventure lane, E08 T133b, `adventure/e08-t133b`, `cross-lane` with the user's
+  consent, E08 decision 384; **your paths changed, for your review; adventure action encoding
+  v14 taken**): a market's decision (GAM-DEC-011) is a new `h3_game::Answer::Market`, so
+  `adventure/action.rs`' `answer_entry` maps its `Leave` onto the closing role (`DECLINE`) and
+  its trade, transfer, sale and purchase onto none, no new entry (the module's docs, the test in
+  `adventure/tests.rs`); `legal_commands` lists a market's `Leave` alone until E08 T135a appends
+  the 67 entries (design note §18, decision 372: v15 then). Also the adventure replay format v21
+  (`adventure/replay.rs`, `answer market …`; after the client lane's v20) and the adventure ruleset part v24 (ADV-Q60 (a):
+  `[params.market]`'s `cost`): the bots tables' `engine.adventure` lines (`python/records/
+  bots-report-v1.json`, `bots-neutral-v1.json`) regenerated. Random games now open a market's
+  decision on the maps with one and answer it with its `Leave`.
+
 - 2026-11-20 (the client lane, E27 M4 T3a, `client/e27-m4-t3a`, `cross-lane` with the user's
   consent; **your tests touched, nothing to do**): the adventure replay format v20
   (`Replay::players`, the players' choices) gave four `Replay` literals of `h3-sim`'s

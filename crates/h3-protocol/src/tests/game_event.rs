@@ -727,6 +727,17 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             object_type: ty(object_type),
             anchor: pos_back(anchor),
         },
+        G::MarketOpened {
+            player,
+            hero,
+            object_type,
+            anchor,
+        } => GameEvent::MarketOpened {
+            player: p(player),
+            hero: id(hero),
+            object_type: ty(object_type),
+            anchor: pos_back(anchor),
+        },
         G::ChoiceOpened {
             player,
             hero,
@@ -1160,6 +1171,13 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             removable: true,
         },
         GameEvent::TavernOpened {
+            player: P0,
+            hero,
+            object_type: ty,
+            anchor: at,
+        },
+        // E08 T133b (v75).
+        GameEvent::MarketOpened {
             player: P0,
             hero,
             object_type: ty,
@@ -1743,8 +1761,8 @@ fn every_event_maps_back_for_its_viewers_and_round_trips() {
     // The game's 46 kinds of event (the adventure's as one; E08 T114a2: `ExchangeOpened`; T114b:
     // `GarrisonChanged`, `GarrisonStackSeen`; E09 T37a: `TavernOffered`, `TavernPartSeen`; T38a1:
     // `HeroHired`, `HiredPartSeen`; T39a: `TavernOpened`; T39b2: `ThievesGuildSeen`,
-    // `GuildPartSeen`).
-    assert_eq!(distinct.len(), 46, "{distinct:?}");
+    // `GuildPartSeen`; E08 T133b: `MarketOpened`).
+    assert_eq!(distinct.len(), 47, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);

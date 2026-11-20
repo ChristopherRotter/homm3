@@ -2,7 +2,7 @@
 //! adventure-owned, `lanes.toml`): the packs with their adventure, battle and town files and the
 //! `.h3m` maps read from disk, and the adventure replay file format (TOML).
 //!
-//! Replay file format v19 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
+//! Replay file format v20 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
 //! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
 //! refused by its format version; a later file without one is malformed; v3 added the battle
 //! commands, E08 T19b1, and names each command's actor: a player by its number; v4 the system
@@ -33,7 +33,10 @@
 //! Tavern's answers, E09 T39a: `answer tavern hire <slot>|close`; v20 the players' choices over the
 //! map's import, E27 M4 T3a (the client lane's with the user's consent, CLT-Q156 (a)): a
 //! `[[players]]` table each, its colour, human flag, faction's choice and hero's pick, the players
-//! it names none of the import's, as every file before v20 reads):
+//! it names none of the import's, as every file before v20 reads; v21 a market's answers, E08
+//! T133b: `answer market trade <give> <take> <lots>`, `transfer <resource> <amount> <player>`,
+//! `sell <slot> <take> <lots>`, `buy <entry> <pay>` and `leave`, each resource by its index in the
+//! core's order):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -62,7 +65,7 @@
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 20
+//! format = 21
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -103,13 +106,13 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use h3_adventure::{AdventureCommand, ObjectTypeId, Pos};
-use h3_content::{CreatureTypeId, FactionId, Formation, HeroTypeId};
+use h3_content::{CreatureTypeId, FactionId, Formation, HeroTypeId, ResourceId};
 use h3_contracts::{BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
     ChestChoice, Consent, FactionChoice, GameCommand, GameRuleset, GameSetup, HireAnswer, Manage,
-    Position, SchoolChoice, SkillOffer, SystemCommand, TavernAnswer, TownCommand, TownHeroChange,
-    UniversityAnswer,
+    MarketAnswer, Position, SchoolChoice, SkillOffer, SystemCommand, TavernAnswer, TownCommand,
+    TownHeroChange, UniversityAnswer,
 };
 use h3_sim::adventure::replay::{
     MapRef, PlayerChoices, RecordError, Replay, ReplayError, ReplayHeader, map_content_hash,
@@ -403,13 +406,29 @@ fn format_answer(answer: Answer) -> String {
         // Format v19 (E09 T39a).
         Answer::Tavern(TavernAnswer::Hire { slot }) => return format!("tavern hire {slot}"),
         Answer::Tavern(TavernAnswer::Close) => "tavern close",
+        // Format v21 (E08 T133b): resources by their index in the core's order.
+        Answer::Market(MarketAnswer::Trade { give, take, lots }) => {
+            return format!("market trade {} {} {lots}", give.raw(), take.raw());
+        }
+        Answer::Market(MarketAnswer::Transfer {
+            resource,
+            amount,
+            to,
+        }) => return format!("market transfer {} {amount} {}", resource.raw(), to.raw()),
+        Answer::Market(MarketAnswer::Sell { slot, take, lots }) => {
+            return format!("market sell {slot} {} {lots}", take.raw());
+        }
+        Answer::Market(MarketAnswer::Buy { entry, pay }) => {
+            return format!("market buy {entry} {}", pay.raw());
+        }
+        Answer::Market(MarketAnswer::Leave) => "market leave",
         Answer::Close => "close",
     };
     words.to_owned()
 }
 
 /// Parses the words of an answer after `answer` (format v7, [`format_answer`]; a hire dialog's
-/// since v10, a map Tavern's since v19); none for others.
+/// since v10, a map Tavern's since v19, a market's since v21); none for others.
 fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> {
     let answer = match (words.next()?, words.next()) {
         ("offer", Some("accept")) => Answer::Offer(Consent::Accept),
@@ -436,6 +455,26 @@ fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> 
             slot: words.next()?.parse().ok()?,
         }),
         ("tavern", Some("close")) => Answer::Tavern(TavernAnswer::Close),
+        ("market", Some("trade")) => Answer::Market(MarketAnswer::Trade {
+            give: ResourceId::from_raw(words.next()?.parse().ok()?),
+            take: ResourceId::from_raw(words.next()?.parse().ok()?),
+            lots: words.next()?.parse().ok()?,
+        }),
+        ("market", Some("transfer")) => Answer::Market(MarketAnswer::Transfer {
+            resource: ResourceId::from_raw(words.next()?.parse().ok()?),
+            amount: words.next()?.parse().ok()?,
+            to: PlayerId::new(words.next()?.parse().ok()?),
+        }),
+        ("market", Some("sell")) => Answer::Market(MarketAnswer::Sell {
+            slot: words.next()?.parse().ok()?,
+            take: ResourceId::from_raw(words.next()?.parse().ok()?),
+            lots: words.next()?.parse().ok()?,
+        }),
+        ("market", Some("buy")) => Answer::Market(MarketAnswer::Buy {
+            entry: words.next()?.parse().ok()?,
+            pay: ResourceId::from_raw(words.next()?.parse().ok()?),
+        }),
+        ("market", Some("leave")) => Answer::Market(MarketAnswer::Leave),
         ("close", None) => return Some(Answer::Close),
         _ => return None,
     };

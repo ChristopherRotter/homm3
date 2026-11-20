@@ -69,6 +69,9 @@ h3-towns = { path = "../crates/h3-towns" }
 # rules read by `h3-files`, the adventure part from `h3-pack-adventure`, the game's setup type).
 h3-files = { path = "../crates/h3-files" }
 h3-game = { path = "../crates/h3-game" }
+# The engine's adventure replay (E27 M4 T3b): a saved game's record (`h3_sim::adventure::replay`,
+# which `h3-files` writes and reads), never in a pure crate.
+h3-sim = { path = "../crates/h3-sim" }
 # The engine's object types and setup (E24 M4 T3a): a record's objects found in the map's file
 # (`h3_map_view::engine`, the map client's pure library).
 h3-adventure = { path = "../crates/h3-adventure" }

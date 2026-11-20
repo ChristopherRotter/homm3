@@ -292,6 +292,17 @@ fn event(e: &EngineEvent) -> GameEvent {
             object_type: object_type.raw(),
             anchor: pos(anchor),
         },
+        EngineEvent::MarketOpened {
+            player,
+            hero,
+            object_type,
+            anchor,
+        } => GameEvent::MarketOpened {
+            player: player.raw(),
+            hero: hero.raw(),
+            object_type: object_type.raw(),
+            anchor: pos(anchor),
+        },
         EngineEvent::DecisionClosed { player } => GameEvent::DecisionClosed {
             player: player.raw(),
         },

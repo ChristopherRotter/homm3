@@ -3221,17 +3221,16 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
 
 - **The env** (`h3-sim`, the AI lane's paths, `cross-lane`): after `TAVERN_HIRE`'s two entries,
   `TOWN_OPEN` (the town by its entrance in the tile head) and `SPELL_BOOK` (the same head), each
-  one action per listed command; the action encoding the next at merge for each (v14 and v15 if
-  E08's increment 14 has not merged its v14 first; else the two after it), or one bump when both
-  land together. `h3-sim`'s town-map tests and the `*-towns-36` workloads move (the town lane's
+  one action per listed command; the action encoding the next at merge for each (E08 T133b took
+  v14, its T134a plans v15: so v15 and v16 or later), or one bump when both land together. `h3-sim`'s town-map tests and the `*-towns-36` workloads move (the town lane's
   `TRAPS.md`).
 - **The protocol** (the server lane's, `cross-lane`): `TownCommand::Open` and `BuySpellBook`, the
   errors `NoGuild`, `NoHero`, `HasSpellBook`, `TownSetup`'s two sets where the setup crosses, the
   town view's three fields; a protocol bump per wire task.
 - **The replays** (`h3-sim`'s adventure replay, `h3-files`' format, the adventure lane's,
   `cross-lane`): `town open <town>`, `town book <town>` (the replay word in the same pull request as
-  the command, the town lane's `TRAPS.md`); the format the next at merge (v21 after the client
-  lane's v20, or v22 after E08's increment 14's).
+  the command, the town lane's `TRAPS.md`); the format the next at merge (E08 T133b took v21 after
+  the client lane's v20; its T134a plans v22).
 
 ### 96. The increment's ids, versions, quirks and stubs
 
