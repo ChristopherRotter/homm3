@@ -5,7 +5,7 @@ input for T43's ADR amendment drafts, the design note's Part G and the cut. **Cu
 the user at T42's start (decision 165): **T42a** (this part, §0 to §9) what the guild holds: the
 spells' town chances, the draw, the levels and the Library, the map's required and banned
 spells, a level built later, the Conflux's Aurora Borealis, the guild's window, the towns'
-census; **T42b** (to come, from §10) what a hero gets from it: learning at each of
+census; **T42b** (§10 to §19) what a hero gets from it: learning at each of
 `town_heroes_learn_spells`' nine callers with the spell book and Wisdom, the spell book, the
 spell points restored, the Dungeon's Mana Vortex, the heroes' census, batch TWN-5's rows, then
 the checkpoint `TWN-Q31` over both parts. Input, not rules (`README.md`): a fact becomes
@@ -43,6 +43,22 @@ are another set.
   table of each spell's chance to appear in each town.
 - The manuals (the user's `HoMM 3 Complete`): RoE's (the town's Mage Guild, the Magic System,
   the Tower's Library); AB's and SoD's say nothing more on the guild.
+- **T42b** (retrieved 2026-11-20): the code reading again. **Read whole:**
+  `town_heroes_learn_spells` 0x5BE030 (a third time), `town_screen_open` 0x5BE210,
+  `hero_primary_clamped` 0x5BDE40. **Read in part:** each of the nine callers at its call;
+  `town_screen_bars` 0x5C6E10 (its tail), `ai_town_visit` 0x5253D0 (to 0x525545 and its end),
+  `ai_hero_turn` 0x5261F0 (its start), `new_day` 0x4C7FE0 (0x4C8237 to 0x4C8434),
+  `town_visit_buildings` 0x5BD8E0 (its first branch), `hero_reset` 0x4D8720 (0x4D889F to
+  0x4D890A), the ends of `town_screen_init` 0x5C63C0, `town_castle_gate` 0x5D8480 and
+  `town_tavern_click` 0x5D82B0; `GENRLTXT.TXT`. VCMI 1.7.5: `server/CGameHandler.cpp`
+  (`giveSpells`, `changeSecSkill`, `heroVisitCastle`, `visitCastleObjects`, the build's end,
+  `buyArtifact`), `lib/mapObjects/CGTownInstance.cpp` (`onHeroVisit`),
+  `lib/mapObjects/CGHeroInstance.cpp` (`getManaNewTurn`, `maxSpellLevel`),
+  `server/processors/NewTurnProcessor.cpp`, `server/processors/HeroPoolProcessor.cpp`,
+  `config/factions/dungeon.json`, `config/gameConfig.json`, `lib/rewardable/Reward.cpp`,
+  `Limiter.cpp`, `Configuration.h`. The wiki's "Mana Vortex" and "Mage Guild" through search
+  results (the pages are not reachable from the session). RoE's manual (the Town Screen, the
+  Magic System, the Dungeon's buildings).
 
 ## 0. Findings in short (T42a)
 
@@ -92,6 +108,44 @@ are another set.
    level; the same slots and Library) but adds every required spell, banned or not (TD-25), and
    its Aurora teaches the map's allowed spells, ignoring the town's bans (TD-26: the original
    does the opposite).
+
+**T42b** (what a hero gets, §10 to §19):
+
+9. **Who learns** (§11): the town's visitor, then its garrison hero (or the one hero a caller
+   names), each wearing a spell book in a town with any Mage Guild: every spell the guild shows
+   at levels 1 to Wisdom + 2 (none 2, Expert 5; HER-SPL-005's bound), or §5's Aurora set. A known
+   spell stays; no owner test (an allied visitor learns), no map-wide bans.
+10. **When** (§12): at the end of every visit of an own or allied town, a capture and a siege
+    battle at it; at every build (a town event's too); at a tavern hire; at the start for a main
+    town's hero (TD-10); after the guild's window; whenever the town screen's hero bars are built
+    with a visitor there, so at **every opening of the owner's town screen**, visit or not, and at
+    a move between the garrison and the entrance; at Town Portal's and Castle Gate's arrivals; at
+    the computer's visits. **Not** at the new day or a human's turn start, nor when a hero in a
+    town gains Wisdom or a book (it learns at the next trigger); a placed hero on an entrance learns
+    nothing at the start.
+11. **The spell book** (§13): the human is asked at the guild (500 gold, §6); the computer buys
+    one without asking at each visit of a town with a guild while its owner has 500 gold; else a
+    hero has one by its type, the map's artifacts, Titan's Thunder or a reward, and learns at the
+    next trigger.
+12. **The spell points** (§14): at every new day, after each hero's daily regain, each town with a
+    Mage Guild raises its visitor's and garrison hero's points to their maximum (HER-MAN-001),
+    never lowering them; **no spell book needed**; a visit alone restores nothing.
+13. **The Mana Vortex** (§15; the Dungeon's building 21, slot 18): **once a week a town** (its
+    flag set at the start and every week), a hero below twice its maximum gets twice it, no book
+    needed. Given at every opening of the town screen and at a build with the visit (the garrison
+    hero first, then the visitor), a human's tavern hire, Castle Gate's arrival and the computer's
+    visit; not at Town Portal's arrival, not at a turn's start.
+14. **The census** (§10): 561 heroes on an entrance at the start (538 main towns' heroes, 23
+    placed), none in a garrison; in a town with a guild 33 main towns' heroes and 8 placed ones
+    with a book; Wisdom's bound bites for none; one Vortex at the start, in a neutral town.
+15. **VCMI 1.7.5** (§16) learns the same set, buys the book alike, refills the points and gives the
+    Vortex alike, but by other triggers: every turn start visits each town for its garrison hero
+    and visitor (learning, the Vortex), a skill changed in town teaches at once, a visit teaches
+    the visitor only, a town event's build only a guild's, the Library or the Aurora (a player's
+    build both, the garrison hero first); nothing at the start.
+16. **For the checkpoint** (§17): TD-10, TD-25, TD-26 with T-18, and **TD-27** (when the heroes learn
+    and get the Vortex: the original's screen opening against VCMI's turn start); batch TWN-5's
+    five rows (§18).
 
 ## 1. The census (the 160 maps of the installation; a throwaway example over `h3_map::read`, not committed)
 
@@ -380,3 +434,243 @@ Aurora's run-time branch):
 | c | a Tower with a level-5 guild; the Library built in the game | each level's count before and after, the spare's spell learned at once by the visitor | §3.3, §4 |
 
 Not needed: the chances (§3.5), the faction's highest levels (the building lists).
+
+## 10. The heroes' census (T42b; the same throwaway example over the built games, not committed)
+
+Over the 160 shipped maps as `h3-map`'s `original_data` builds them (seed 0: the main towns'
+heroes are drawn by the engine's stream, not the original's, so their types vary by seed; the
+T7b2b census counted the same 33 below):
+
+- **249 towns start with a guild** (T42a), 142 of them owned; **74** hold a hero on the entrance
+  at the start; **none a garrison hero** (the original writes none at a new game, `E09-towns.md`
+  §4.6).
+- **561 heroes stand on a town's entrance at the start:** 538 main towns' heroes (all drawn: the
+  import picks none) and 23 placed heroes moved onto an entrance (TWN-SET-010).
+- **In a town with a guild:** 60 main towns' heroes, **33 with a spell book** (they learn the
+  guild's spells at the start in the original, TD-10; 27 without), and 14 placed heroes, **8 with
+  a spell book** on 5 maps (`Dead and Buried` 2, `Hoard` and its Allied version 2 each, `The
+  Gauntlet`, `Wings of War`), which learn nothing at the start (§12) and so at their first
+  trigger.
+- **Wisdom's bound bites for none of the 41** with a book: no such guild stands above its hero's
+  Wisdom + 2.
+- **One town starts with the Mana Vortex** (a neutral Dungeon on `Caught in the Middle`), no hero
+  in it; the others come from builds and town events (not counted).
+
+## 11. Learning (`town_heroes_learn_spells` 0x5BE030, read whole again)
+
+1. **The heroes:** with argument 0 the town's visitor (+0x10), then its garrison hero (+0xC), each
+   that exists (both −1: nothing); with a hero, that hero alone (whether it stands there is not
+   tested: the one such caller passes the visitor, §12).
+2. **Each hero learns only** while it wears a spell book (`hero_wears_artifact` 0x4D91F0 with 0:
+   the book's position) in a town whose every-built set (+0x158) holds building 0 (Mage Guild 1;
+   a higher level supersedes it, so the set holds 0 whenever any guild stands).
+3. **A Conflux with the Aurora Borealis:** §5's branch (every spell of a level up to Wisdom + 2 the
+   town does not ban, but 57).
+4. **Otherwise** level after level from 1 while the level is at most Wisdom + 2 and at most the
+   guild level + 1: the level's first `count` slots (+0x44 + 0x18 × (level − 1); `count` the
+   town's +0xBC + level − 1, §3.3: the level's shown spells, 0 for a level not built, so the
+   level past the guild read at 0x5BE195 adds nothing), each through `hero_learn_spell` 0x4D9330
+   (the learned and the available bits set; a known spell unchanged).
+5. **Wisdom** is the hero's skill level byte +0xD0 (0 none, 1 to 3): levels 1 and 2 without it,
+   3 at Basic, 4 at Advanced, 5 at Expert, as the Shrines, the Scholar, Eagle Eye and the boxes
+   (HER-SPL-005's `learn_level`; the engine's `can_learn_spell` with the known spells counting,
+   HER-CHG-004, gives the same set spell by spell).
+6. **Not tested:** the owner (the town's or the hero's: an allied visitor learns), the map-wide
+   bans (the guild's spells were drawn without them, §3.1; the Aurora's T-18), the class. Nothing
+   is told but by the screens.
+
+## 12. When a town's heroes learn (the nine callers)
+
+| Caller (call) | When | Heroes |
+|---|---|---|
+| `town_visit` 0x4AAFD0 (0x4AB3C3) | the end of every visit of an own or allied town (after the human's town screen or the computer's visit), of an undefended town captured, and after a siege's battle at the town whoever won (not after the battle against a visitor beside a garrison hero, which returns first); **before** the visitor's level-up (`hero_level_up` 0x4AB3CB) and the scenario's tests | 0 |
+| `town_screen_bars` 0x5C6E10 (0x5C7007; named here) | the town screen's two hero bars built: at every opening of the screen (`town_screen_load` 0x5C6D01), after a garrison click, the visitor put into the garrison (`town_hero_in_click` 0x5D5150), the garrison hero sent out (`town_hero_out_click` 0x5D5220) | 0, only while a visitor stands there and Mage Guild 1 stands |
+| `town_screen_proc` 0x5D3240 (0x5D3589) | after the guild's window (§6), so a book just bought teaches at once | 0 |
+| `town_build_effects` 0x5BEDE0 (0x5BF034) | after every building built (the hall's, the computer's, a town event's, a campaign's), once the guild's counts are set again (§4); before the building's visit (§15) | 0 |
+| `town_tavern_hire` 0x5C12E0 (0x5C138E) | a tavern hire (the human's and the computer's), the hero placed as the visitor | 0 |
+| `main_town_heroes` 0x4CA040 (0x4CA1A2) | the start: a main town's hero placed on its entrance (TD-10) | 0 (a hero already on the entrance learns in the new one's place; the engine refuses that start, `TWN-QUIRK-6`) |
+| `hero_relocate_spell` 0x41D360 (0x41D867) | Town Portal's arrival (`adventure_spell`'s case 9), the hero on the town's entrance; no building visit (§15) | 0 |
+| `town_castle_gate` 0x5D8480 (0x5D862E) | Castle Gate's arrival, before the screen is rebuilt | 0 |
+| `ai_town_visit` 0x5253D0 (0x52553E) | the computer's visit: inside `town_visit`'s (which then teaches with 0 too), and at the start of every turn of a computer hero standing on a town's entrance (`ai_hero_turn` 0x526262, by `town_at_entrance`), after its spell book is bought (§13) | the hero alone |
+
+- **The town screen opens without a visit too:** `town_screen_open` 0x5BE210 (read whole: the
+  town manager's town, the manager run by 0x4B0C70, whose init is `town_screen_init` 0x5C63C0,
+  then the visitor selected for the shown player) is called by `town_visit` and by the adventure
+  screen (its town button 0x409EA3, 0x409EC6, and two clicks in `hero_move_loop` 0x4081F3,
+  0x4082F0). So the owner's every opening of a town with a visitor teaches both heroes, and its
+  building visits run (§15).
+- **Nothing else teaches:** not the new day, not a turn's start of a human (the computer's heroes
+  on an entrance re-visit, above), not a level-up, a secondary skill or a spell book a hero gets
+  while standing in a town. Such a hero learns at the next of the triggers above; the visit's
+  level-up comes after its learning, so a Wisdom level it brings counts at the next visit,
+  opening or build. A placed hero moved onto an entrance at the start learns nothing
+  (`placed_heroes_setup` 0x4CAE10, §10).
+
+## 13. The spell book
+
+- **The human** buys one at the guild's window (§6): the visitor, else the garrison hero, asked
+  (GENRLTXT 215) for 500 gold of the current player, refused below it (GENRLTXT 214, the window not
+  opened); then the town's heroes learn (§12).
+- **The computer** (`ai_town_visit` 0x5254C2 to 0x525531) buys one without asking at every visit
+  (§12's two): its hero's owner (+0x22) with 500 gold or more (the player record +0xB4), Mage
+  Guild 1 standing, the hero without a worn book: the book given (`hero_give_artifact` 0x4E3070)
+  and 500 gold taken; then the hero learns. Whether a computer buys is the computer player's
+  choice (E10, E13); the purchase itself is the human's rule.
+- **Other sources:** the hero type's flag (the hero table +0x1C; `hero_reset` 0x4D88DA puts the
+  book at its position and learns the type's spell +0x20), a placed or customised hero's
+  artifacts (`placed_hero_setup` 0x4D8B30), Titan's Thunder (HER-ART-007), any artifact given
+  (`hero_give_artifact`'s callers: the rewards and the other objects; a battle's spoils never
+  hold it). None
+  teaches the guild's spells by itself: a hero standing in a town that gets one learns at the
+  next trigger (§12). The book never moves nor is captured (HER-ART rules).
+
+## 14. The spell points restored (`new_day` 0x4C7FE0, 0x4C82E4 to 0x4C8434)
+
+- **After every hero record's daily regain** (0x4C8237 to 0x4C82DE, HER-MAN-002), each town in
+  order whose every-built set holds building 0 raises its visitor's, then its garrison hero's
+  spell points (+0x18) to the hero's maximum: trunc(intelligence × f32(10 × Knowledge clamped to
+  1 to 99)) (`hero_intelligence` 0x4E48B0; HER-MAN-001's). Points above it stay (never lowered).
+- **Not tested:** a spell book, the owner (an allied visitor is refilled), the guild's level.
+- **Only at the new day:** a visit, a build or a hire restores nothing (the manuals: "after staying
+  for one day", "when he or she starts a new day in a town with a mage guild"); day 1 has no new
+  day (GAM-CAL-002).
+
+## 15. The Mana Vortex (`town_visit_buildings` 0x5BD8E0, its first branch 0x5BD8EB to 0x5BD996)
+
+- **The test and the effect:** a Dungeon (faction 5) whose week flag (+0x33, `structs.toml`
+  `week_flag`) is set, with building 21 standing (+0x150; the pack's `mana_vortex`, the map's
+  and the pack's slot 18, requiring Mage Guild 1), and a hero whose spell points are below twice
+  its maximum (2 × trunc(intelligence × f32(10 × Knowledge clamped to 1 to 99)),
+  `hero_primary_clamped` 0x5BDE40): the points set to twice the maximum and the flag cleared; a
+  message (GENRLTXT 580, an OK box) when the town's owner is a human here. No spell book needed;
+  a hero at or above twice its maximum leaves the flag set for the next.
+- **The week:** the flag is set to 1 by `town_init` 0x5BDF40 and for every town at each week's
+  first day (`new_day_week_events` 0x4C8A09): **once a week a town**, not a hero.
+- **When** (`town_visit_buildings`' callers, its heroes in order):
+
+  | Caller (calls) | When | Heroes |
+  |---|---|---|
+  | `town_screen_init` 0x5C63C0 (0x5C65ED, 0x5C661A) | every opening of the town screen (§12: a visit's or the owner's at will) | the garrison hero, then the visitor |
+  | `town_build_effects` 0x5BEDE0 (0x5BF1B1, 0x5BF1CC, 0x5BF1F6) | a build with the visit (the hall's and the computer's buys, the town events; a campaign's buildings without) | the garrison hero, then the visitor |
+  | `town_tavern_click` 0x5D82B0 (0x5D846C) | after a human's hire | the hired hero (the visitor) |
+  | `town_castle_gate` 0x5D8480 (0x5D8686, 0x5D86B3) | Castle Gate's arrival | the visitor |
+  | `ai_town_visit` 0x5253D0 (0x525977, 0x52598B, 0x5259B1) | the computer's visit (§12) | the garrison hero, then the visitor |
+
+  Not Town Portal's arrival (only the learning, §12), not a visit but through the screen or the
+  computer's, not a turn's start. So with both heroes in a town the garrison hero takes it, and
+  a garrison hero alone gets it when its owner opens the town screen.
+- The rest of `town_visit_buildings` (from 0x5BD99A: the Castle's Stables, the Tower's Wall of
+  Knowledge and the other buildings a hero visits once) is increment 6's.
+
+## 16. VCMI 1.7.5, the wiki and the manuals compared (T42b)
+
+- **VCMI's learning** (`CGameHandler::giveSpells`): a spell book, then each guild level up to
+  the lesser of `mageGuildLevel` and `maxSpellLevel` (the bonus `MAX_LEARNABLE_SPELL_LEVEL`, base
+  2 in `gameConfig.json`, Wisdom adding), the level's shown spells (`spellsAtLevel`): **the same
+  set.** Its callers differ: a visit (`heroVisitCastle` from `CGTownInstance::onHeroVisit`: an own
+  or allied town, an undefended one captured) teaches **the visitor only**; a player's build
+  teaches both through its building visit (`buildStructure`'s end: the garrison hero first), a
+  town event's build (`force`, `NewTurnProcessor`) only for a guild level, a Library or the
+  Aurora and with no building visit; a bought book teaches its hero; a secondary
+  skill changed while in a town teaches **at once** (`changeSecSkill`); a hire visits the town
+  (`HeroPoolProcessor`, `objectVisited`); and **every player's turn start** makes each of its
+  towns' garrison hero, then visitor, visit the town (`NewTurnProcessor::onPlayerTurnStarted`):
+  learning and the buildings. The start teaches nothing (TD-10).
+- **VCMI's book** (`buyArtifact`): Mage Guild 1, 500 gold of the hero's owner, none yet: the same
+  rule (its client asks). Its computer player's purchases are its AI's.
+- **VCMI's spell points** (`CGHeroInstance::getManaNewTurn`): a hero whose visited town (visitor or
+  garrison) has Mage Guild 1 gets the greater of its points and its limit, else its regain to the
+  limit: the same, no book tested.
+- **VCMI's Mana Vortex** (`dungeon.json`'s `special2`, a rewardable building): visited once, reset
+  every 7 days with its visitors, a limiter of mana below 200 % of the limit, the mana set to
+  200 % of it (`Reward::calculateManaPoints`, `Limiter`): **the same effect and week.** Its
+  triggers are the town's visits above: the turn start and a build with the garrison hero first,
+  "consistent with original H3" by its comment. VCMI's bug 735 (an observation by a user) claims
+  the visitor first at a build or the week's first opening; the reading, VCMI's code and the wiki
+  give the garrison hero.
+- **The wiki:** "Mage Guild": the spells taught, the points refilled when a hero stays overnight,
+  the book for 500. "Mana Vortex" (read through search results; the page itself is not reachable
+  from the session): twice the maximum, one hero a week, with two heroes in town only the
+  garrison hero, so the bonus goes to it once the player opens the town menu; the AI never builds
+  it.
+- **The manuals** (RoE's): a visiting hero learns any new spells its Wisdom allows; its points are
+  replenished after a day in a town with a guild; some heroes come with a book, others buy one at
+  the guild; the Vortex doubles the spell points of visiting heroes.
+
+## 17. Disputes, quirk candidates and open points (T42b)
+
+- **TD-10 — a main town's hero learns at the start** (increment 1's, `E09-towns.md`'s table;
+  `TWN-STUB-6`). The reading again: `main_town_heroes` 0x4CA1A2 teaches the visitor and the
+  garrison hero. VCMI: nothing at the start. The wiki and the manuals: silent. 33 of 538 main
+  towns' heroes (§10). Recommended: the original. Row TWN-5-4.
+- **TD-27 — when a town's heroes learn and get the Mana Vortex.** The reading: at the triggers of
+  §12 and §15, among them every opening of the owner's town screen (learning with a visitor, the
+  Vortex to the garrison hero first); never at a human's turn start; a computer's hero standing
+  on an entrance re-visits at each of its turns. VCMI: at every turn start (each town's garrison
+  hero, then visitor), at once on a skill changed in town, besides its visits, builds, a bought
+  book and a hire. The wiki: "once the player opens the town menu". Impact: a garrison
+  hero's Vortex and a hero's new Wisdom wait for its owner's action in the original (free, at any
+  time of its turn) and come by themselves at the turn start in VCMI; the engine has no town
+  screen, so the original's needs a command of its own (T43's design). Recommended: the
+  original's triggers, the screen's opening as a free command of the owner's. Row TWN-5-5.
+- **Agent's calls** (change freely): the computer's purchase without asking, and its heroes'
+  re-visit at each turn, are the computer player's (E10, E13), the purchase's rule the human's; the
+  visit's level-up after its learning as read; the learning after a siege teaches whoever then
+  stands in the town (the attacker stands outside until it enters).
+- **Quirk candidates:** none (next `T-19`). Castle Gate's and the tavern click's building visit of a
+  visitor of −1 (a null hero) cannot happen: the arriving or hired hero is the visitor.
+- **Open for T43:** which engine commands teach (the visit, `Revisit`, the build, the hire, the
+  garrison moves, the book's purchase, the start) and how TD-27's opening is modelled; the
+  town's refill in the new day after HER-MAN-002 (GAM-CAL-002's order); the Vortex's week flag
+  in the town state (a hash) and its message as an event; the book's purchase as a town command
+  (the price, 500, in the part), who may buy (the reading: the visitor, else the garrison hero,
+  the current player paying; an allied visitor too, as TD-11's question) and what the owner's
+  view tells (`docs/06-security.md`); TD-25, TD-26, T-18 and the T43 points of §8.
+
+## 18. Batch TWN-5's rows (§9's three with T42b's; run on the capture harness)
+
+| Row | Settles | Setup | Record | The reading predicts |
+|---|---|---|---|---|
+| TWN-5-1 | TD-25 (§9 a) | an AB map, a town requiring and banning one level-1 spell, a level-1 guild built | the guild's five spells | the spell absent |
+| TWN-5-2 | TD-26, T-18, §5 (§9 b) | a SoD map banning spell A map-wide; a Conflux banning spell B with the Grail building and a level-1 guild; a hero with a spell book and Expert Wisdom visits | the spells learned, by level | A learned, B not, every level to 5 |
+| TWN-5-3 | §3.3, §4 (§9 c) | a Tower with a level-5 guild; the Library built in the game with a visitor | each level's count before and after; the visitor's spells | one more a level at once; the spare's spell learned by the visitor |
+| TWN-5-4 | TD-10, §12 | an SoD map: red's main town a Tower with Mage Guild 2 built that generates a hero; red picks a hero with a spell book and no Wisdom | the hero's learned spells on day 1 before any action | the guild's level-1 and level-2 spells learned beside its own |
+| TWN-5-5 | TD-27, §15 | red's Dungeon with Mage Guild 1 and the Mana Vortex, a garrison hero with a spell book; on a week's first day: the turn's start, then the town screen opened from the town list, then a second hero's visit; the next week the visitor and the garrison hero both there, the screen opened | the garrison hero's and the visitor's spell points at each step | unchanged at the turn's start; the garrison hero's doubled at the opening; the visitor's not that week; the next week the garrison hero's again, the visitor's not |
+
+**Not rows:** the learning's set and Wisdom's bound (§11: VCMI agrees, the engine's HER-CHG-004
+already observed by E08's batches), the book's purchase (read whole, VCMI agrees), the night's
+refill (VCMI agrees), the Vortex's effect and week (VCMI and the wiki agree). **What the harness
+may lack** (`docs/experiments/README.md`; checked at the batch's cut): the town screen opened
+from the town list in a recipe; reads of a hero's spell points (+0x18) and learned spells
+(+0x3EA) at a turn's start.
+
+## 19. Not read (T42b)
+
+The rest of `town_visit_buildings` (increment 6), `mage_guild_dialog_create`, the executive's run
+of a manager (0x4B0C70), `hero_move_loop`'s two openings of the screen, Town Portal's and Castle
+Gate's other steps (increment 7), the computer's planning around its visits (E10, E13).
+
+## 20. The checkpoint (T42b; `TWN-Q31`, the user, 2026-11-20)
+
+Asked interactively (`AskUserQuestion`, one round of four, a recommendation each; the Aurora's
+question asked again in other words after the user found its first wording ambiguous); the
+epic's decisions 167 to 170, each as recommended, and the agent's calls of 171:
+
+- **TD-10** (decision 167): the original. A main town's hero with a spell book learns its town's
+  guild spells at the start (the visitor and the garrison hero, `main_town_heroes`' call);
+  `TWN-STUB-6` lifts when it is built; row TWN-5-4 observes it.
+- **TD-25** (decision 168): the original. A spell the town both requires and bans is never in its
+  guild (the ban wins, as the map-wide bans do); row TWN-5-1.
+- **TD-26 with T-18** (decision 169): the original's set with **T-18 `fix-optional`**. The Aurora
+  never teaches a spell the town bans (nor 57); a spell the map bans is taught in `faithful` and
+  not in `strict-fixed`. The flag waits for its confirmation (`docs/04-rules-and-sources.md`,
+  "Confirm before flagging": row TWN-5-2, or a second look at 0x5BE10C to 0x5BE172); over the
+  original without a flag, both bans respected without a flag, and VCMI's set.
+- **TD-27** (decision 170): the original's triggers (§12, §15) **with a free command of the
+  owner's that stands for opening the town screen** (the garrison hero, then the visitor visit the
+  town's buildings; with a visitor both learn), its shape T43's; over VCMI's visits at every turn
+  start and over the original's triggers without the opening.
+- **The agent's calls** (decision 171, change freely): §17's (the computer's purchase and its
+  heroes' re-visits the computer player's, E10 and E13; the visit's level-up after its learning;
+  a siege's learning by whoever then stands there); batch TWN-5's five rows (§18) for T43's cut,
+  run as TWN-1 to TWN-4 were.
