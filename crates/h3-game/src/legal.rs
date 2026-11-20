@@ -189,7 +189,7 @@ fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answ
     if state.altar(player).is_some() {
         return vec![Answer::Altar(AltarAnswer::Leave)];
     }
-    // rule: GAM-DEC-013 (the upgrades listed with T135a, increment 14's design note §18)
+    // rule: GAM-DEC-013
     if state.hill_fort(player).is_some() {
         return vec![Answer::HillFort(HillFortAnswer::Leave)];
     }

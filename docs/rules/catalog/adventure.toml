@@ -4024,7 +4024,7 @@ id       = "ADV-BON-009"
 title    = "The kind marks"
 context  = "adventure"
 status   = "verified"
-summary  = "A team's kind marks (increment 12's design note sections 3 and 10; decision 302; the original's kinds_visited, game +0x4E344 + k, a bit for every player of the visitor's team, which the map hint's bonus line reads): a visit of a type the part marks (`ObjectType::kind_mark`) gives each player of the visitor's team that did not hold it the type's mark, told to each of them (`KindKnown`); the team is the visitor alone until E10's teams. Where: the ten `bonus` kinds with their gain, the Magic Well when its day mark was not held, the Magic Spring on every visit; increment 7's once-per-hero gifts once the hero is admitted and unmarked (the Schools before their gold, the Tree before its price), the Shrines and the Witch Huts first, the University at the visit that opens its dialog (the original's after it); since E08 T134a the Altar of Sacrifice at every visit, before its window (the original's k 28 after its dialog; increment 14's design note section 10). A player sees its team's marks (`AdventureObservation::kinds`), never another team's. E08 T115b: the flags' `kinds`, `AdventureState::mark_kind`, `knows_kind`, `kinds_known`; adventure state hash v24."
+summary  = "A team's kind marks (increment 12's design note sections 3 and 10; decision 302; the original's kinds_visited, game +0x4E344 + k, a bit for every player of the visitor's team, which the map hint's bonus line reads): a visit of a type the part marks (`ObjectType::kind_mark`) gives each player of the visitor's team that did not hold it the type's mark, told to each of them (`KindKnown`); the team is the visitor alone until E10's teams. Where: the ten `bonus` kinds with their gain, the Magic Well when its day mark was not held, the Magic Spring on every visit; increment 7's once-per-hero gifts once the hero is admitted and unmarked (the Schools before their gold, the Tree before its price), the Shrines and the Witch Huts first, the University at the visit that opens its dialog (the original's after it); since E08 T134a the Altar of Sacrifice at every visit, before its window (the original's k 28 after its dialog; increment 14's design note section 10); since E08 T134b1 the Hill Fort alike (the original's k 14). A player sees its team's marks (`AdventureObservation::kinds`), never another team's. E08 T115b: the flags' `kinds`, `AdventureState::mark_kind`, `knows_kind`, `kinds_known`; adventure state hash v24."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4480,11 +4480,37 @@ numeric  = "float"
   confidence = "medium"
 
 [[rule]]
-id       = "ADV-HFT-002"
-title    = "The Hill Fort's price"
+id       = "ADV-HFT-001"
+title    = "The Hill Fort's visit and which stacks upgrade"
 context  = "adventure"
-status   = "implemented"
-summary  = "A stack's upgrade at a Hill Fort costs, for each resource, max(0, the upgrade's cost minus the creature's) times the count; the gold alone is then scaled by the creature's level, by the percents 0, 25, 50, 75, 100, 100, 100 for levels 1 to 7 (each a multiple of 25 to 100: the original's binary32 quarter times a gold below 2^24, truncated, equals the integer share), truncated once per stack (D-74 the original's, E08 decision 365); a level-1 stack is free. Which stacks upgrade is the enabled packs' (E08 decision 378). E08 T132a2: the kind's percents and their check. E08 T132b (map import v27, ADV-OBJ-002): class 35 imported as hill_fort at subclass 0 without a body; the rows and the upgrade come with T134b."
+status   = "verified"
+summary  = "A Hill Fort (the original's class 35) is entered, none from above, and every visit of any player's hero sets the team's kind mark (ADV-BON-009) and opens its window (the computer's nothing is E10's behaviour), the game's decision (GAM-DEC-013). Its rows are the visitor's army's stacks in their order: a stack upgrades when its creature has an upgrade in the enabled packs (the first of its upgrades), none for a neutral or an upgraded creature; the four elementals upgrade only under the ab pack's override (E08 decision 378: the enabled packs decide; the original's game version 0, an RoE campaign or a peer with RoE alone, the recorded deviation). E08 T132a2: the kind. E08 T132b (map import v27, ADV-OBJ-002): class 35 imported as hill_fort at subclass 0 without a body. E08 T134b1: the visit (AdventureOutcome::service, ServiceVisit::HillFort with HillFortVisit; the kind mark first) and its rows (AdventureState::hill_fort_rows, HillFortRow: each stack's creature, count, upgrade and price, ADV-HFT-002), read at each view and answer."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md section 13): visit_object's case 35 (0x4A9172), hill_fort_dialog_create 0x4E75F0 and hill_fort_dialog_run 0x4E7E90, then the kind mark k 14; hill_fort_rows 0x4E7EB0 (creature_is_unupgraded 0x47B120, creature_upgrade 0x47B1A0; game version 0 skips 112 to 115)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-14.md (survey section 21): E14-12 (every row of a town's unupgraded creature, the four Air Elementals too), E14-13 (Rogues and Marksmen not upgradable), E14-14 (an RoE-format map plays as SoD: its Air Elementals upgraded), E14-16 (the hero on the Hill Forts' entrances, none from above)"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/MiscObjects.cpp HillFort (VCMI 1.7.5): the window of every visit, the creatures with an upgrade"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-HFT-002"
+title    = "The Hill Fort's price and upgrade"
+context  = "adventure"
+status   = "verified"
+summary  = "A stack's upgrade at a Hill Fort costs, for each resource, max(0, the upgrade's cost minus the creature's) times the count; the gold alone is then scaled by the creature's level, by the percents 0, 25, 50, 75, 100, 100, 100 for levels 1 to 7 (each a multiple of 25 to 100: the original's binary32 quarter times a gold below 2^24, truncated, equals the integer share), truncated once per stack (D-74 the original's, E08 decision 365); a level-1 stack is free. Which stacks upgrade is the enabled packs' (E08 decision 378). E08 T132a2: the kind's percents and their check. E08 T132b (map import v27, ADV-OBJ-002): class 35 imported as hill_fort at subclass 0 without a body. E08 T134b1: each row's price (HillFortRow::price, by resource in the core's order, each above 0; the gold the market parameters' cost resource, so the part refuses a Hill Fort without [params.market]; in 64 bits, saturated to 32), check_upgrade (a slot's stack with an upgrade, else HillFortError::NoUpgrade) and check_upgrade_all (every row that upgrades in slot order, else HillFortError::Nothing), upgrade (the stack's creature replaced by its upgrade, the count kept); the treasury is the game's (GAM-DEC-013)."
 numeric  = "integer"
 
   [[rule.source]]

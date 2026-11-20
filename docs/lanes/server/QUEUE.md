@@ -12,6 +12,18 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-20 (the adventure lane, E08 T134b1, `adventure/e08-t134b1`, `cross-lane` with the
+  user's consent, E08 decision 387; **your paths changed, for your review; protocol v77 taken**):
+  the Hill Fort's decision on the wire: `Answer::HillFort` (`HillFortAnswer`: `Upgrade { slot }`,
+  `All`, `Leave`), `GameReject::HillFort` (`HillFortReject`, the engine's three `HillFortError`s;
+  the treasury's is `CannotPay`), `Decision::HillFort` (`HillFortWindow`: the hero, the object,
+  `HillFortRow`s with the stack, the upgrade's handle or none, the price as `Amount`s and a
+  `HillFortState`, the whole's price and state) and `GameEvent::HillFortOpened` (the same files
+  as T134a's Altar). The event carries no view: folded untold as an Altar's (`SRV-STUB-5`
+  extended). The round trips: `tests/game.rs`' two Hill Fort views, `tests/game_command.rs`'
+  three answers and three rejections (146), `tests/game_event.rs`' `HillFortOpened` (49 kinds).
+  The goldens' hash lines moved (game state hash v37, replay format v23; `h3-server`'s
+  `tests/record.rs` lines for `army-dialog-s1`); none of them visits a Hill Fort.
 - 2026-11-20 (the adventure lane, E08 T134a, `adventure/e08-t134a`, `cross-lane` with the user's
   consent, E08 decision 385; **your paths changed, for your review; protocol v76 taken**): the
   Altar of Sacrifice's decision on the wire: `Answer::Altar` (`AltarAnswer`: `Artifacts { worn,

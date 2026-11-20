@@ -269,4 +269,8 @@ fn all_upgrades_every_row_in_slot_order_when_the_whole_is_affordable() {
     let army = &state.adventure().hero(HERO).unwrap().army;
     assert!(army.iter().all(|stack| stack.creature == ELF));
     assert!(state.hill_fort(RED).is_some());
+    assert_eq!(
+        GameCommandError::HillFort(HillFortError::Nothing).to_string(),
+        "no stack of the army upgrades"
+    );
 }

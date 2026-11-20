@@ -20342,3 +20342,63 @@ workflow) standing for it. `master`'s Clients workflow red since #1070 (below).
   --script`, release): only `format`, `game_state_hash_version`, the checkpoints and `final_hash`
   moved; none visits an Altar. `h3-server`'s `tests/record.rs` `army-dialog-s1` lines; the bots
   tables unchanged (no part or encoding line moved them).
+
+### Increment 14, round 7: T134b1, the Hill Fort and its wire (2026-11-20, `adventure/e08-t134b1`, `cross-lane`)
+
+**The cut** (decision 387, the user at its start): T134b in two, T134b1 the Hill Fort with its
+wire in one pull request, T134b2 the War Machine Factory through the existing hire question and
+dialog next; `cross-lane` consented as T134a's for the server lane's `h3-protocol` (protocol v77,
+its `h3-server` record test's hash lines) and the AI lane's `h3-sim` (encoding v16). **Baseline:**
+`master` b0efed6 (#1077 merged); the setup's baseline first ran in full (the clone too shallow for
+CI's fingerprint: the `TRAPS.md` line), was stopped and restarted after `git fetch --depth=60`, then
+lost to a VM restart; CI's `master` run (b0efed6) stands for it. The PC staged the 64 files and the
+seven manuals and help files (SHA-256 checked) and was not needed afterwards.
+
+- **The adventure** (design §4, §10, §11; `state/hill_fort.rs`): `Effect::HillFort` from `effect`,
+  the visit marking the team's kind (ADV-BON-009, k 14) then giving `ServiceVisit::HillFort(
+  HillFortVisit { hero, index, object_type, anchor })` at every visit; entered and revisited as every
+  built entered kind. `hill_fort_rows` (`HillFortRow`: each stack in the army's order with its
+  creature, count, the first of its upgrades or none, and the upgrade's price), the price by
+  `upgrade_price` (per resource max(0, the upgrade's cost − the creature's) × the count in 64
+  bits, the gold alone times its level's percent and divided by 100 once, saturated to 32 bits; a
+  level of 0 % free whole; a level outside 1 to 7 pays whole, none in the packs). The gold is the
+  market parameters' cost resource (*agent's call*, decision 387): `check_trades` refuses a Hill
+  Fort without `[params.market]`; the draws' test rules give a part with a Hill Fort the market's
+  parameters. `check_upgrade` (the visit, then `NoUpgrade(slot)` for a slot without a stack or a
+  stack without an upgrade), `check_upgrade_all` (every row that upgrades in slot order, `Nothing`
+  without one), `HillFortUpgrade` (not `Clone`; `hero`, `price`), `upgrade` (the creature replaced,
+  the count kept; the `ArmySlot` the game tells). `HillFortError` (`Visit`, `NoUpgrade`, `Nothing`).
+- **The game** (design §15; `state/hill_fort.rs`): `Decision::HillFort` (kind 12, game state hash
+  v37), opened in `settle_outcome` from the service (`open_hill_fort`, `HillFortOpened`),
+  `answer_hill_fort` (the adventure's check, then the summed price against the treasury,
+  `CannotPay`, then per row in slot order `pay_price` and `StackChanged`; the Hill Fort stays
+  open; `Leave` closes it), `hill_fort_view` (`HillFortView`: each row with its
+  `HillFortState`, the original's 0, 1, 2 against the treasury; the whole's price, the sum of the
+  rows that upgrade, and its state); `HillFortAnswer`, `GameCommandError::HillFort`,
+  `GameState::hill_fort`, `DecisionView::HillFort`; `legal_commands` lists `Leave` alone, the
+  default answer `Leave`. The adventure's types re-exported.
+- **The edges a new answer forces** (decisions 384, 385, 387): the wire, protocol v77
+  (`HillFortAnswer`, `HillFortReject`, `HillFortWindow` with `HillFortRow` and `HillFortState`;
+  `HillFortOpened` folded untold, `SRV-STUB-5` extended); the replay words, format v23 (`answer
+  hill-fort upgrade <slot>`, `all`, `leave`); the env's encoding v16 (`answer_entry`: `Leave` the
+  closing role, the upgrades none until T135a). `h3-map`'s `tests/view.rs` (`Open::HillFort`) and
+  `tests/trades.rs` (the imported Hill Fort's step entered, its decision open with the base pack's
+  percents and a row per stack; the factory's still refused).
+- **Tests:** `h3-adventure`'s `state/tests/hill_fort.rs` (four: the visit and kind mark and
+  Revisit; the rows' prices on survey §13's cases, the Pikemen free, 10 Archers 125 with their wood
+  unscaled, 3 Elves 37 truncated once, 3 Pegasi 56, the Angel 2 000 gold and 2 wood, an upgraded
+  and a neutral stack without an upgrade, a cheaper resource unpaid and a 32-bit saturation; the
+  checks, `All`'s order, the change, the windows that are not one; the texts) and the part's
+  refusal (`ruleset/tests/trades.rs`); `h3-game`'s `tests/hill_fort.rs` (three: the decision, its
+  view, listing, default, wrong kinds, `EndTurn` held, the hash, `Leave`; a row's upgrade paid and
+  a free row's, the refusals once nothing upgrades; the too dear row and whole refused, `All`'s
+  events in slot order); the protocol's round trips (two Hill Fort views, three answers, three
+  rejections: 146; `HillFortOpened`: 49 kinds); the replay words (three round trips, six malformed
+  lines); the env's entries.
+- **Rules:** ADV-HFT-001 written and with ADV-HFT-002 `verified` (batch E14's E14-12 to -14,
+  -16: every row's price and state as the build computes); GAM-DEC-013 written, `implemented`;
+  ADV-BON-009's list (the Hill Fort).
+- **Goldens:** the 104 re-recorded from their commands (a scratch script, `h3 adventure run
+  --script`, release): only `format`, `game_state_hash_version`, the checkpoints and `final_hash`
+  moved; none visits a Hill Fort. `h3-server`'s `tests/record.rs` `army-dialog-s1` lines; `h3-cli`'s
+  format literals (the refusal's text now from `REPLAY_FORMAT_VERSION`); the bots tables unchanged.

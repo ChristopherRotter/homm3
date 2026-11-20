@@ -127,7 +127,7 @@ fn a_hill_forts_step_marks_its_kind_and_opens_its_window_at_every_visit() {
             count: 1,
         }],
     );
-    let heroes = vec![Arc::new(hero_details(&[])); 3];
+    let heroes: Vec<_> = (0..3).map(|_| Arc::new(hero_details(&[]))).collect();
     let apply = |state: &mut AdventureState, command: &AdventureCommand| {
         let mut events = Vec::new();
         let turn = (RED, Weekday::FIRST, &mut stream());
