@@ -2295,3 +2295,21 @@ design note §10, §11, §21; T133a1 done)
   seed, `cc 927e83f83344d60c406dca3ea29fb9a601810f09228a5912e618f5408cb989d2`, reproduces it on
   T39b1's branch when appended to `proptest-regressions/tests/play.txt` (not committed: it would
   fail every run until fixed). Nothing of T39b1 is in that path (the guild is a query).
+
+## Inbox items done at E08 T133b (2026-11-20)
+
+The client lane's format v20 (E27 M4 T3a, CLT-Q156 (a)), merged into T133b's branch, whose market words took v21 (decision 384).
+
+- 2026-11-20 (the client lane, E27 M4 T3a, `client/e27-m4-t3a`, `cross-lane` with the user's
+  consent, E27 decision 71; **your replay format moved: increment 14 takes v21**): your inbox's
+  format extension of 2026-11-19 (CLT-Q156 (a)) is built. **Adventure replay format v20**:
+  `h3_sim::adventure::replay::PlayerChoices` (a player's colour, human flag, `FactionChoice`,
+  pick), `Replay::players` (every player's, recorded from the setup by `record_random` and
+  `record_commands`; none: the import's), `Replay::setup` (the import at the replay's difficulty
+  with the choices set over it; a colour no player has or chosen twice is
+  `Incompatible("players")`), `verify` building from it; `h3-files`' `[[players]]` tables
+  (`faction` an index or `"random"`, `hero` an index; absent without one). The 104 golden replays
+  were recorded again from their commands: only `format = 20` and their `[[players]]` lines moved
+  (no hash). Your HANDOFF's versions line says so (replay format v20, increment 14's next v21);
+  your design note §19's `answer market …` lines then take v21. A golden of yours recorded at v19
+  on a branch open meanwhile needs `format = 20` and its players (record it again).

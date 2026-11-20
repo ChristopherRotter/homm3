@@ -1,8 +1,9 @@
 //! Adventure replays (ADR-0004 point 9, ADR-0015 "a replay names its map", E08 T9b): the rules'
 //! identity, the map by content hash and path plus the import version (ADV-Q2), the seed and the
-//! game's difficulty (format v2, E08 T14b), the game commands in the authoritative order with
-//! their actors (answers to decisions included; battle commands since format v3, E08 T19b1), and
-//! state hashes.
+//! game's difficulty (format v2, E08 T14b), the players' choices over the map's import (format
+//! v20, E27 M4 T3a: [`PlayerChoices`]), the game commands in the authoritative order with their
+//! actors (answers to decisions included; battle commands since format v3, E08 T19b1), and state
+//! hashes.
 //!
 //! A replay records **game commands**, not the env's actions (the user, 2026-10-11): what the game
 //! accepts from any source (the env, a server game, a client with a path of its own), so the
@@ -13,9 +14,10 @@
 use std::fmt;
 use std::sync::Arc;
 
+use h3_content::HeroTypeId;
 use h3_game::{
-    Actor, GAME_STATE_HASH_VERSION, GameCommand, GameCommandError, GameRuleset, GameSetup,
-    GameSetupError, GameState, NoopSink, apply,
+    Actor, FactionChoice, GAME_STATE_HASH_VERSION, GameCommand, GameCommandError, GameRuleset,
+    GameSetup, GameSetupError, GameState, NoopSink, apply,
 };
 use h3_kernel::hash::{HASH_ALGORITHM, HASH_VERSION, StateHasher};
 use h3_kernel::rng::{RNG_ALGORITHM, RNG_VERSION};
@@ -48,10 +50,13 @@ use super::rollout::choose;
 /// (`h3_towns::TownCommand::Hire` by its town and slot, TWN-TAV-003); version 18 (E09 T38b2): a
 /// hero's dismissal (`Manage::Dismiss` by its hero, GAM-MAN-003); version 19 (E09 T39a): a map
 /// Tavern's answers (`h3_game::TavernAnswer`: a hire by its slot, `Close`; GAM-DEC-010); version
-/// 20 (E08 T133b): a market's answers (`h3_game::MarketAnswer`: a trade, a transfer, a sale, a
-/// purchase, `Leave`; GAM-DEC-011). A replay of another version is refused
+/// 20 (E27 M4 T3a, the client lane's with the user's consent; CLT-Q156 (a)): the players' choices
+/// over the map's import ([`PlayerChoices`]: who is human, the faction's choice, the hero's pick),
+/// so a game a client's scenario screen set up replays; version 21 (E08 T133b): a market's answers
+/// (`h3_game::MarketAnswer`: a trade, a transfer, a sale, a purchase, `Leave`; GAM-DEC-011). A
+/// replay of another version is refused
 /// ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 20;
+pub const REPLAY_FORMAT_VERSION: u32 = 21;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -167,6 +172,41 @@ pub fn map_content_hash(bytes: &[u8]) -> u64 {
     h.finish()
 }
 
+/// A player's choices over its map's import (format v20, E27 M4 T3a; the user's CLT-Q156 (a)):
+/// whether it counts as human, its faction's choice and its starting hero's pick, as whoever seats
+/// the players sets them before the game is built (a client's scenario screen: the client lane's
+/// `begin::setup`, E27 M3 T6; GAM-BAT-010, TWN-SET-001, TWN-SET-006). A recording takes every
+/// player's from its setup ([`Self::of`]); verifying sets them over the import
+/// ([`Replay::setup`]), as it sets the difficulty, and the game checks them when it is built (an
+/// unoffered pick is [`GameSetupError::Pick`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlayerChoices {
+    /// The player's colour (`PlayerSetup::colour`): which of the setup's players it is.
+    pub colour: u8,
+    /// `PlayerSetup::human`.
+    pub human: bool,
+    /// `PlayerStart::choice`: `None` without a faction to start with.
+    pub faction: Option<FactionChoice>,
+    /// `PlayerStart::pick`: `None` for the draw's.
+    pub hero: Option<HeroTypeId>,
+}
+
+impl PlayerChoices {
+    /// Every player's choices in `setup`, in its order.
+    pub fn of(setup: &GameSetup) -> Vec<Self> {
+        setup
+            .players
+            .iter()
+            .map(|player| Self {
+                colour: player.colour,
+                human: player.human,
+                faction: player.start.choice,
+                hero: player.start.pick,
+            })
+            .collect()
+    }
+}
+
 /// A recorded adventure game.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Replay {
@@ -179,6 +219,10 @@ pub struct Replay {
     /// The game's difficulty (`GameSetup::difficulty`, E08 T14b): verifying builds the game at
     /// it, whatever the map's import sets.
     pub difficulty: u8,
+    /// The players' choices (format v20, E27 M4 T3a): verifying sets each over the import's player
+    /// of its colour, the players it names none of keeping the import's (none: the import's
+    /// setup, as a file before v20 reads).
+    pub players: Vec<PlayerChoices>,
     /// Accepted commands in order, each with its actor (the trusted identity `apply` checks it
     /// against).
     pub commands: Vec<(Actor, GameCommand)>,
@@ -311,8 +355,8 @@ impl Replay {
     /// Records a game on `map` played by the uniformly random legal agent
     /// ([`super::rollout::choose`]) for every seat (the neutral seat's commands recorded as the
     /// system actor's, E08 T20b3a), as [`super::random_rollout`] plays it, at
-    /// the setup's difficulty. Increment 1's games end only by a limit: give `max_days` or
-    /// `max_steps`.
+    /// the setup's difficulty and with its players' choices. Increment 1's games end only by a
+    /// limit: give `max_days` or `max_steps`.
     ///
     /// # Errors
     ///
@@ -326,6 +370,7 @@ impl Replay {
         if options.max_days == 0 && options.max_steps == 0 {
             return Err(RecordError::NoLimit);
         }
+        let players = PlayerChoices::of(&setup);
         let mut env = AdventureEnv::new(rules.clone(), setup, options.seed, options.max_days)
             .map_err(RecordError::Setup)?;
         let mut rng = Rng::for_stream(options.agent_seed, StreamId::AGENT);
@@ -356,6 +401,7 @@ impl Replay {
             map,
             seed: options.seed,
             difficulty: env.difficulty(),
+            players,
             commands,
             checkpoint_every: options.checkpoint_every,
             checkpoints,
@@ -365,9 +411,9 @@ impl Replay {
     }
 
     /// Records a game on `map` of scripted commands, each with its actor, applied in order through
-    /// `h3-game` at the setup's difficulty (E08 T52: the golden replays of a meeting and an army
-    /// dialog, which the random agent does not play): the replay of [`Self::verify`], a checkpoint
-    /// after every `checkpoint_every` commands (0: none).
+    /// `h3-game` at the setup's difficulty and with its players' choices (E08 T52: the golden
+    /// replays of a meeting and an army dialog, which the random agent does not play): the replay
+    /// of [`Self::verify`], a checkpoint after every `checkpoint_every` commands (0: none).
     ///
     /// # Errors
     ///
@@ -395,6 +441,7 @@ impl Replay {
             map,
             seed,
             difficulty: setup.difficulty,
+            players: PlayerChoices::of(setup),
             commands,
             checkpoint_every,
             checkpoints,
@@ -403,9 +450,39 @@ impl Replay {
         })
     }
 
+    /// The setup the replay's game is built from: `import` (its map's) at the replay's difficulty,
+    /// each of its [`PlayerChoices`] set over the import's player of its colour (E27 M4 T3a: a
+    /// client's load rebuilds its game so).
+    ///
+    /// # Errors
+    ///
+    /// [`ReplayError::Incompatible`]`("players")`: a choice of a colour no player of `import` has,
+    /// or a colour chosen twice.
+    pub fn setup(&self, import: &GameSetup) -> Result<GameSetup, ReplayError> {
+        let mut setup = GameSetup {
+            difficulty: self.difficulty,
+            ..import.clone()
+        };
+        for (i, choices) in self.players.iter().enumerate() {
+            let twice = self.players[..i].iter().any(|c| c.colour == choices.colour);
+            let player = setup
+                .players
+                .iter_mut()
+                .find(|p| p.colour == choices.colour);
+            let Some(player) = player.filter(|_| !twice) else {
+                return Err(ReplayError::Incompatible("players"));
+            };
+            player.human = choices.human;
+            player.start.choice = choices.faction;
+            player.start.pick = choices.hero;
+        }
+        Ok(setup)
+    }
+
     /// Re-runs the replay through `h3-game` and compares every recorded hash and the final day.
     /// `map` names the file the caller loaded (its content hash and this build's import version)
-    /// and `setup` is that file's import; the game is built at the replay's difficulty.
+    /// and `setup` is that file's import; the game is built from [`Self::setup`]: at the replay's
+    /// difficulty, with its players' choices.
     ///
     /// # Errors
     ///
@@ -428,10 +505,7 @@ impl Replay {
         if self.checkpoints.len() != expected_checkpoints {
             return Err(ReplayError::CheckpointCount);
         }
-        let setup = GameSetup {
-            difficulty: self.difficulty,
-            ..setup.clone()
-        };
+        let setup = self.setup(setup)?;
         let mut state = GameState::new(rules, &setup, self.seed).map_err(ReplayError::Setup)?;
         let mut next_checkpoint = self.checkpoints.iter();
         for (i, (actor, command)) in self.commands.iter().enumerate() {

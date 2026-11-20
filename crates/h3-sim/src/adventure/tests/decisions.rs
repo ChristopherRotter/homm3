@@ -305,6 +305,7 @@ fn a_replay_records_the_answers_and_the_difficulty() {
         map: duel_map(),
         seed: 1,
         difficulty: 0,
+        players: Vec::new(),
         commands,
         checkpoint_every: 2,
         checkpoints: Vec::new(),

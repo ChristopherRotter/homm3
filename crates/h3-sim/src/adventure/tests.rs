@@ -1239,6 +1239,7 @@ fn a_path_of_the_players_own_choice_steps_and_replays() {
         map: duel_map(),
         seed: 1,
         difficulty: h3_game::DEFAULT_DIFFICULTY,
+        players: Vec::new(),
         commands: vec![(Actor::Player(player), own)],
         checkpoint_every: 0,
         checkpoints: Vec::new(),

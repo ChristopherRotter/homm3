@@ -24,7 +24,17 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   `SRV-STUB-5`'s reason extended in `docs/stubs.toml`). The round trips: `tests/game.rs`' two
   market views, `tests/game_command.rs`' five answers and ten rejections (136), `tests/
   game_event.rs`' `MarketOpened` (47 kinds). The goldens' hash lines moved (game state hash
-  v35, part v24, replay format v20); none of them visits a market.
+  v35, part v24, replay format v21 after the client lane's v20); none of them visits a market.
+- 2026-11-20 (the client lane, E27 M4 T3a, `client/e27-m4-t3a`, `cross-lane` with the user's
+  consent; **three literals in your files, then for your planning**): the adventure replay format
+  v20 gives `Replay` the players' choices (`players: Vec<PlayerChoices>`: each colour's human flag,
+  faction's choice and hero's pick; none: the import's, which `Replay::setup` builds from). Your
+  `whole.rs` start replay and `measure.rs`' record write `players: Vec::new()` (their behaviour as
+  before: each verifies against the offer's setup), `measure.rs`' `prefix` keeps its replay's. For
+  your planning: a whole game seats every player human (`whole.rs`, E16 M5 2a) while
+  `record.rs`' check builds the import's flags; the journal can now carry the seats' choices
+  (and a lobby's, E28). The goldens' count is unchanged (104; only their format line and players
+  moved).
 
 - 2026-11-19 (the map client lane, E24 M4 T4a1, `map-client/e24-m4-t4a`; **MCL-Q39, for your
   planning; the user's answer first**): a walk's `GameReveal` comes once, after the command's

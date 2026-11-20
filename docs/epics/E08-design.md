@@ -572,7 +572,7 @@ original's windows stay open for more trades). The system actor's default is `Le
   (`MarketAnswer`, resources by handle), `GameReject::Market` (`MarketReject`), `Decision::Market`
   (`MarketWindow` with `MarketScreen`, `Lot`, `TradeLot`, `SaleLots`, `ResourceLot`,
   `StockEntry`), `GameEvent::MarketOpened`; the fold leaves a market's view untold as a
-  University's (`SRV-STUB-5` extended). With the answer the replay words (**format v20**: `answer
+  University's (`SRV-STUB-5` extended). With the answer the replay words (**format v21**, the client lane's E27 M4 T3a having taken v20: `answer
   market trade|transfer|sell|buy|leave`, §18's) and the env's `Leave` on the closing entry
   (**encoding v14**, no new entry) came in the same pull request: a new answer breaks both
   crates' exhaustive matches.

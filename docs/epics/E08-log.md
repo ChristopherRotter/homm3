@@ -20241,7 +20241,8 @@ env's closing entry.
   `MarketReject`, `MarketWindow` with `MarketScreen`, `Lot`, `TradeLot`, `SaleLots`,
   `ResourceLot`, `StockEntry`; `MarketOpened` folded as a University's, `SRV-STUB-5` extended; the
   round-trip tests: two market views, five answers, ten rejections, the event); the replay words,
-  format v20 (`answer market trade <give> <take> <lots>`, `transfer <resource> <amount> <player>`,
+  format v21 (the client lane's E27 M4 T3a took v20, `[[players]]`, merged in while the pull request
+  was open; `answer market trade <give> <take> <lots>`, `transfer <resource> <amount> <player>`,
   `sell <slot> <take> <lots>`, `buy <entry> <pay>`, `leave`; resources by index; the round trips
   and eighteen malformed lines); the env's encoding v14 (`answer_entry`: `Leave` the closing role,
   the rest none until T135a). `h3-map`'s `tests/view.rs` (the told decision `Open::Market`) and
@@ -20268,6 +20269,6 @@ env's closing entry.
   resource, `scripts/exe.py check`). `cargo check --workspace --all-targets` clean; `h3-cli`,
   `h3-files`, `h3-sim`, `h3-protocol` and `h3-server`'s record tests and clippy run apart.
 
-**Versions:** adventure ruleset part v24, game state hash v35, adventure replay format v20; the
+**Versions:** adventure ruleset part v24, game state hash v35, adventure replay format v21; the
 AI lane's adventure action encoding v14 and the server lane's protocol v75 (`cross-lane`). T134a
 next.

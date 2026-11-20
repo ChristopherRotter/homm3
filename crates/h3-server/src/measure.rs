@@ -285,6 +285,8 @@ fn busy(offer: &MapOffer, options: &Options) -> Result<Replay, Error> {
         map: offer.map.clone(),
         seed: options.seed,
         difficulty: env.difficulty(),
+        // None: the offer's setup, which the measure verifies against.
+        players: Vec::new(),
         commands,
         checkpoint_every: options.checkpoint_every,
         checkpoints,
@@ -371,6 +373,7 @@ fn prefix(replay: &Replay, (commands, day, hash): (usize, u32, u64)) -> Replay {
         map: replay.map.clone(),
         seed: replay.seed,
         difficulty: replay.difficulty,
+        players: replay.players.clone(),
         commands: replay.commands[..commands].to_vec(),
         checkpoint_every: replay.checkpoint_every,
         checkpoints: replay.checkpoints[..checkpoints].to_vec(),

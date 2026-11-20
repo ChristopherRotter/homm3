@@ -30,7 +30,10 @@
 //! and the management lines naming a town's upper bar, `t<town>:<slot>` its garrison or a garrison
 //! hero's army by the hero; v17 `town hire <town> <slot>`, a tavern hero hired at a town's Tavern,
 //! E09 T38a1, the slot 0 or 1; v18 `dismiss <hero>`, a hero's dismissal, E09 T38b2; v19 a map
-//! Tavern's answers, E09 T39a: `answer tavern hire <slot>|close`; v20 a market's answers, E08
+//! Tavern's answers, E09 T39a: `answer tavern hire <slot>|close`; v20 the players' choices over the
+//! map's import, E27 M4 T3a (the client lane's with the user's consent, CLT-Q156 (a)): a
+//! `[[players]]` table each, its colour, human flag, faction's choice and hero's pick, the players
+//! it names none of the import's, as every file before v20 reads; v21 a market's answers, E08
 //! T133b: `answer market trade <give> <take> <lots>`, `transfer <resource> <amount> <player>`,
 //! `sell <slot> <take> <lots>`, `buy <entry> <pay>` and `leave`, each resource by its index in the
 //! core's order):
@@ -62,7 +65,7 @@
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 18
+//! format = 21
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -87,6 +90,13 @@
 //! [result]
 //! day = 29                            # the day after the last command
 //! final_hash = "0x…"
+//!
+//! [[players]]                         # each player's choices over the import (format 20):
+//! colour = 0                          #   which player (`PlayerSetup::colour`)
+//! human = true                        #   `PlayerSetup::human`
+//! faction = 3                         #   the start's choice: a faction's index, or "random";
+//!                                     #   absent without one
+//! hero = 12                           #   the pick: a hero type's index; absent for the draw's
 //! ```
 
 #![allow(clippy::disallowed_types, clippy::disallowed_methods)]
@@ -96,16 +106,17 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use h3_adventure::{AdventureCommand, ObjectTypeId, Pos};
-use h3_content::{CreatureTypeId, Formation, ResourceId};
+use h3_content::{CreatureTypeId, FactionId, Formation, HeroTypeId, ResourceId};
 use h3_contracts::{BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
-    ChestChoice, Consent, GameCommand, GameRuleset, GameSetup, HireAnswer, Manage, MarketAnswer,
+    ChestChoice, Consent, FactionChoice, GameCommand, GameRuleset, GameSetup, HireAnswer, Manage,
+    MarketAnswer,
     Position, SchoolChoice, SkillOffer, SystemCommand, TavernAnswer, TownCommand, TownHeroChange,
     UniversityAnswer,
 };
 use h3_sim::adventure::replay::{
-    MapRef, RecordError, Replay, ReplayError, ReplayHeader, map_content_hash,
+    MapRef, PlayerChoices, RecordError, Replay, ReplayError, ReplayHeader, map_content_hash,
 };
 use serde::{Deserialize, Serialize};
 
@@ -396,7 +407,7 @@ fn format_answer(answer: Answer) -> String {
         // Format v19 (E09 T39a).
         Answer::Tavern(TavernAnswer::Hire { slot }) => return format!("tavern hire {slot}"),
         Answer::Tavern(TavernAnswer::Close) => "tavern close",
-        // Format v20 (E08 T133b): resources by their index in the core's order.
+        // Format v21 (E08 T133b): resources by their index in the core's order.
         Answer::Market(MarketAnswer::Trade { give, take, lots }) => {
             return format!("market trade {} {} {lots}", give.raw(), take.raw());
         }
@@ -418,7 +429,7 @@ fn format_answer(answer: Answer) -> String {
 }
 
 /// Parses the words of an answer after `answer` (format v7, [`format_answer`]; a hire dialog's
-/// since v10, a map Tavern's since v19, a market's since v20); none for others.
+/// since v10, a map Tavern's since v19, a market's since v21); none for others.
 fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> {
     let answer = match (words.next()?, words.next()) {
         ("offer", Some("accept")) => Answer::Offer(Consent::Accept),
@@ -772,6 +783,9 @@ struct ReplayFile {
     replay: Meta,
     map: MapEntry,
     result: ResultEntry,
+    /// Since format v20 (E27 M4 T3a); none: the import's.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    players: Vec<PlayerEntry>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -813,6 +827,63 @@ struct MapEntry {
 struct ResultEntry {
     day: u32,
     final_hash: String,
+}
+
+/// A player's choices as the file names them (format v20, E27 M4 T3a; [`PlayerChoices`]).
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PlayerEntry {
+    colour: u8,
+    human: bool,
+    /// The faction's choice: its index, or `"random"`; absent without one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    faction: Option<FactionEntry>,
+    /// The starting hero's pick by its hero type's index; absent for the draw's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    hero: Option<u16>,
+}
+
+/// A faction's choice as the file names it: a fixed faction's index, or the word `random`.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+enum FactionEntry {
+    Fixed(u16),
+    Word(String),
+}
+
+/// The word of [`FactionChoice::Random`] in a replay file.
+const RANDOM: &str = "random";
+
+fn player_entry(choices: &PlayerChoices) -> PlayerEntry {
+    PlayerEntry {
+        colour: choices.colour,
+        human: choices.human,
+        faction: choices.faction.map(|choice| match choice {
+            FactionChoice::Random => FactionEntry::Word(RANDOM.to_owned()),
+            FactionChoice::Fixed(faction) => FactionEntry::Fixed(faction.raw()),
+        }),
+        hero: choices.hero.map(HeroTypeId::raw),
+    }
+}
+
+fn parse_player(entry: PlayerEntry) -> Result<PlayerChoices> {
+    let faction = match entry.faction {
+        None => None,
+        Some(FactionEntry::Fixed(index)) => Some(FactionChoice::Fixed(FactionId::from_raw(index))),
+        Some(FactionEntry::Word(word)) if word == RANDOM => Some(FactionChoice::Random),
+        Some(FactionEntry::Word(word)) => {
+            return Err(AdventureFileError::Format(format!(
+                "bad faction `{word}` of colour {}",
+                entry.colour
+            )));
+        }
+    };
+    Ok(PlayerChoices {
+        colour: entry.colour,
+        human: entry.human,
+        faction,
+        hero: entry.hero.map(HeroTypeId::from_raw),
+    })
 }
 
 /// The first format version whose files name the game's difficulty: an earlier file has none and
@@ -864,6 +935,7 @@ pub fn replay_to_toml(replay: &Replay) -> Result<String> {
             day: replay.final_day,
             final_hash: hex64(replay.final_hash),
         },
+        players: replay.players.iter().map(player_entry).collect(),
     };
     toml::to_string_pretty(&file).map_err(|e| AdventureFileError::Format(e.to_string()))
 }
@@ -916,6 +988,11 @@ pub fn parse_replay(text: &str) -> Result<Replay> {
             .parse()
             .map_err(|_| AdventureFileError::Format(format!("bad seed `{}`", m.seed)))?,
         difficulty,
+        players: f
+            .players
+            .into_iter()
+            .map(parse_player)
+            .collect::<Result<_>>()?,
         commands: f
             .commands
             .iter()

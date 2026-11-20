@@ -240,6 +240,7 @@ fn a_replay_records_a_battle_with_its_actors() {
         map: duel_map(),
         seed: 1,
         difficulty: h3_game::DEFAULT_DIFFICULTY,
+        players: Vec::new(),
         commands,
         checkpoint_every: 7,
         checkpoints: Vec::new(),
