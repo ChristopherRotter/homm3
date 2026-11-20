@@ -20191,3 +20191,13 @@ design).
   (the visit); the quirks ledger's ADV-QUIRK-48; ADV-Q60 in `docs/OPEN-QUESTIONS.md`; design §10
   and §11's *As built*; the task's line; the queue (T133a2 archived verbatim; ADV-Q60 first in
   T133b's entry); `OVERVIEW.md`; the town lane's inbox (ADV-Q60 concerns its Marketplace).
+- **Gates:** `bench-check --lane adventure`: every workload inside its baseline (the same numbers
+  as T133a1's). The scoped verify: every step passing but `check-lane` (the branch carries
+  T133a1's `cross-lane` commit against `master`; the pull request's base is T133a1's branch, where
+  it is in lane) and, in its first run, coverage (a test's assertion that no trade kind had a
+  visit, then `sell`'s `if let` with an else no checked sale reaches: rewritten as a walk over the
+  checked hero and slot); the last run's coverage on the final code passes, its determinism and
+  bench-check from the first run (only that test and `sell`'s body changed since). `cargo check
+  --workspace --all-targets` clean; `h3-map`'s trades tests pass.
+
+**Versions:** none moved (no state, replay, part or format change). T133b next, ADV-Q60 first.
