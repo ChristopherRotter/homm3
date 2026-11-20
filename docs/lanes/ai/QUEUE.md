@@ -7,28 +7,39 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **E05** closed 2026-10-20, **E06** closed 2026-10-27 (`t7-1` the battle AI v1 and the baseline); their tasks' history and E06's closing numbers in `QUEUE-ARCHIVE.md`.
 
 **E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`): increments 1
-to 8 closed (`E25-archive.md`; increment 8, probes, then one long run, 2026-11-18: no probe nor
-the long run passed #2, `E25-log.md` T30 to T36); **`e25-structure-1` #2 the current best**
-(AI-Q17, T29: 0.511 and 0.507 against the fair and the all-seeing system actor, the neutral set
-+0.302). **A long run stops early** (the user, 2026-11-18, T36): `[gate] futility` at least 1,
-gates at least every quarter of the budget, the check named in its rule (`TRAPS.md`, Python).
-**Increment 9, a richer observation (v23)** (the user at T36, 2026-11-18, AI-Q18; its decisions
-in the epic file). **T37 closed** 2026-11-18 (`E25-log.md` T37, the user's review AI-Q19): #2's
-moves are blind to the enemies' reach (0.468, chance 0.455), its strikes read the kills; **v23 is
-the reach block** (the design's points 1 to 5), the kill preview for `hexconv` a bench arm
-(point 6), T39's rule the clone's ladder +0.02 (point 7). **T38a done** 2026-11-19
-(`E25-log.md` T38a): observation v23, the reach block (`layout.REACH`), from
-`h3_battle::reach_seen_by`; C ABI v38. **T38b done** 2026-11-19 (`E25-log.md` T38b): `[network]
-reach` and `preview` for the hex kinds, the cloning bench's preview rows and `same_start`, T39's
-config `configs/distill/e25-reach.toml` (its CPU smoke stopped and resumed).
+to 9 closed (`E25-archive.md`; increment 8, probes and one long run, 2026-11-18; increment 9, a
+richer observation, 2026-11-20: neither v23 arm passed T39's bench, T40 not run, `E25-log.md`
+T37 to T39); **`e25-structure-1` #2 the current best** (AI-Q17, T29: 0.511 and 0.507 against
+the fair and the all-seeing system actor, the neutral set +0.302). **A long run stops early**
+(the user, 2026-11-18, T36): `[gate] futility` at least 1, gates at least every quarter of the
+budget, the check named in its rule (`TRAPS.md`, Python). **Increment 10: the ceiling** (the
+user at T41, AI-Q20; its decisions in the epic file).
 
-- **T39 — the bench probe** (the user's GPU, about 6 hours in parts under 2 hours; the design's
-  point 7; `configs/distill/e25-reach.toml`, its header the commands: `--out runs/reach-1`, then
-  `--resume runs/reach-1` for each later part): the rule stated before it runs: an arm passes
-  when its clone's ladder against the fair actor (500 a kind, the same episodes) leads the
-  control's by at least 0.02 and its agreement is not below the control's; T40 starts from the
-  passing arm with the better ladder, the preview's only when it also leads the `reach` arm's by
-  0.02; none passing closes increment 9 at T41. The user uploads the bench's record.
+- **T42 — the rollout tool** (Rust, the sandbox; this lane's `h3-cli/src/ai/`, the rollouts in
+  `h3-sim` where pure; no engine or C ABI change): `h3 ai ceiling` plays a held-out set's episodes
+  (the report set v1, the neutral set v1) with the agent's side the **rollout-improved fair
+  actor** against the fair actor (the all-seeing one beside): at each of its decisions every legal
+  command (casts with their targets), N rollouts of each to the battle's end with the fair actor
+  on both sides, each rollout's world re-seeded by a seed the commands share (common random
+  numbers); `--worlds true` (`true_world`) or `--worlds side` (`determinize` per rollout); reward
+  v1; the command of the best mean played (ties to the fair actor's own choice). Seeded and
+  deterministic, threaded by episode. Its JSON record: per opponent the win rate, interval and
+  value by kind and side (`h3 ai eval`'s layout), and per decision category (`distill.CATEGORIES`'
+  names) how often the improved choice differs from the fair actor's and the mean advantage of
+  the played command over the fair actor's (the rollouts' means). Tests: one legal command plays
+  the fair actor's game; a fixed seed repeats bit for bit; both worlds' plumbing (the side's
+  worlds never read the other side's hidden part: its record identical across the other hero's
+  private parts); a clear refusal of a non-held-out seed. The timing (decisions a second) and
+  **the convergence check**: on 20 episodes a kind, N = 8, 16, 32, 64, the win rate and the
+  chosen commands' agreement between N and 2N; N fixed where they agree.
+- **T43 — the ceiling measured** (the user's 24 threads or the sandbox, by T42's timing): the
+  report set v1 (500 a kind if the time allows, else 100) and the neutral set v1, both worlds, at
+  T42's N; the record committed.
+- **T44 — where #2 diverges** (after T42): #2's decisions against the fair actor (its ladder's
+  episodes replayed by seed and commands, `inspect`'s recorder) valued by the same rollouts: the
+  value its choice leaves against the best command, by category, beside the fair actor's own.
+- **T45 — increment 10's checkpoint** (the user): the headroom, the information's cost, the
+  divergence; the next lever.
 
 ## Inbox
 
