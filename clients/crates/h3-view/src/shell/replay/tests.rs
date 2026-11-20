@@ -9,8 +9,8 @@ use alloc::vec::Vec;
 use h3_render::Bugs;
 
 use super::{
-    ClipEnd, INPUT_STEP, Input, Replay, Step, Stop, Take, UNTIL_LIMIT, UNTIL_STEP, parse, shown,
-    skips,
+    ClipEnd, INPUT_STEP, Input, Replay, Step, Stop, Take, UNTIL_LIMIT, UNTIL_STEP, held_presses,
+    parse, shown, skips,
 };
 use crate::shell::menu::Front;
 use crate::shell::menu::Kind as MenuKind;
@@ -150,9 +150,18 @@ fn the_steps_read_as_the_harness_reads_them() {
         "key-hold:Down:.5",
         "key-hold::1",
         "key-hold:Down:99999999",
+        "key-hold:Down:99999999999",
+        "key-hold:Down:4294967.999",
     ] {
         assert!(parse(bad).is_err(), "{bad}");
     }
+    assert_eq!(
+        read("key-hold:Down:4294967.295"),
+        Step::Input(Input::KeyHold("Down".into(), held_presses(u32::MAX)))
+    );
+    // A held key skips the start as its press does.
+    assert!(skips(&Input::KeyHold("Down".into(), 3)));
+    assert!(!skips(&Input::KeyHold("F4".into(), 3)));
     // A box's buttons (E27 M4 T1b).
     assert_eq!(
         read("press:ok"),
