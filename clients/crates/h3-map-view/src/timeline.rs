@@ -479,6 +479,9 @@ pub enum Unplayable {
     /// A spell's cast on the map that is not built (E24 M4 T2d3: Summon Boat's alone, with one
     /// boat moved or made), by the spell.
     Spell(u8),
+    /// A walk's step the engine's record does not take (E24 M4 T4a2: a tile off the move's, or
+    /// a walk past the record's last), by the tile stepped onto.
+    Moved([i32; 3]),
 }
 
 impl fmt::Display for Unplayable {
@@ -504,6 +507,12 @@ impl fmt::Display for Unplayable {
             }
             Self::Cast(t) => write!(f, "the cast at {t} ms: its facts not given"),
             Self::Spell(spell) => write!(f, "spell {spell}'s cast on the map (not built)"),
+            Self::Moved([x, y, z]) => {
+                write!(
+                    f,
+                    "a step onto ({x}, {y}, {z}) the record's walks do not take"
+                )
+            }
         }
     }
 }
@@ -877,7 +886,34 @@ pub struct Start {
     /// *provisional*: a recording's `[[cast]]` tables; the engine's from Part B): the book's
     /// clicks cast them one after another; past the last the cast button's command is not built.
     pub casts: Vec<Cast>,
+    /// The engine's walks of the viewer's heroes, in order (E24 M4 T4a2, design §5.13,
+    /// *provisional*: a whole game's record's, `crate::engine::played`): each walk the selected
+    /// hero starts takes the next one's facts, its steps checked against the move's tiles
+    /// ([`Unplayable::Moved`]), its points ([`Start::points`] not read) and the tiles each step
+    /// reveals. None: a recording's walks (the points from [`Start::points`], nothing revealed).
+    pub moves: Option<Vec<Move>>,
 }
+
+/// One of the engine's walks (E24 M4 T4a2, design §5.13, *provisional*): a `MoveHero`'s tiles
+/// in order, without the hero's own, and per step the points memory holds after it (none: as
+/// they were) and the tiles it reveals at its start, before its animation (`hero_move_step`
+/// 0x4805E0: `reveal_disk` at 0x48106B; design §5.12). A record tells neither per step
+/// (MCL-Q39): `crate::engine::played` gives the walk's points at its last step and its whole
+/// reveal at its first (MCL-Q39 (c)).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Move {
+    /// The tiles stepped onto, in order.
+    pub tiles: Vec<Pos>,
+    /// The points after each step (none: unchanged).
+    pub points: Vec<Option<i32>>,
+    /// The tiles each step reveals at its start.
+    pub revealed: Vec<Vec<Pos>>,
+}
+
+/// The tiles the viewer's walks explored since the sequence's 0 (E24 M4 T4a2, design §5.13: a
+/// record's [`Move::revealed`]), in the order revealed: the live part at 0's explored tiles with
+/// these (each level's index built again).
+pub type Walked = Arc<Vec<Pos>>;
 
 /// A level-up's dialog (E24 M4 T2c, design §5.5, *provisional*: laid out by the adapter,
 /// `crate::levels::dialog`, from the facts `crate::levels::LevelUp`): the level it shows, the
@@ -1111,6 +1147,10 @@ pub struct Minimap {
     pub index: Option<usize>,
     /// The objects' owners changed since 0 (E24 M4 T2d1).
     pub owners: Owners,
+    /// The tiles the walks explored since 0 (E24 M4 T4a2): a step's reveal shows on the minimap
+    /// at its next draw, the step's end (`reveal_disk` 0x49D160 draws it at once only in a network
+    /// game; design §5.12).
+    pub walked: Walked,
 }
 
 /// The objects whose owner changed since the sequence's 0 (E24 M4 T2d1, design §5.6: a flag
@@ -1183,6 +1223,10 @@ pub struct Draw {
     pub hidden: bool,
     /// The boats as the view was last drawn (E24 M4 T2d2).
     pub boats: Arc<Boats>,
+    /// The tiles the walks explored since 0 as the view was last drawn (E24 M4 T4a2, design
+    /// §5.13: a step's reveal shows from its first frame; the minimap's are
+    /// [`Minimap::walked`]).
+    pub walked: Walked,
 }
 
 /// A dissolve's step (`screen_dissolve` 0x602DC0; E17 design §7.25, E24 design §5.3): the
@@ -1425,6 +1469,14 @@ pub struct Loop {
     casts: Arc<Vec<Cast>>,
     next_cast: usize,
     book: bool,
+    /// The engine's walks ([`Start::moves`]), the next one's place among them, the one under way
+    /// and its step, the tiles the walks explored and the step off the record found in this
+    /// millisecond (E24 M4 T4a2).
+    moves: Option<Arc<Vec<Move>>>,
+    next_move: usize,
+    walking: Option<(usize, usize)>,
+    walked_tiles: Walked,
+    off_record: Option<Unplayable>,
 }
 
 /// A computer player's turn under way (E24 M4 T1b2, design §5.2, *provisional*): its facts, kind
@@ -1658,6 +1710,7 @@ impl Loop {
             hero: start.hero.map(|h| h.at),
             index: start.index,
             owners: Arc::new(Vec::new()),
+            walked: Arc::new(Vec::new()),
         };
         let mut l = Self {
             last: start.size.saturating_sub(1),
@@ -1695,6 +1748,7 @@ impl Loop {
                 owners: Arc::new(Vec::new()),
                 hidden: false,
                 boats: Arc::new(start.boats.clone()),
+                walked: Arc::new(Vec::new()),
             },
             hero: start.hero,
             lifted: false,
@@ -1776,6 +1830,11 @@ impl Loop {
             casts: Arc::new(start.casts.clone()),
             next_cast: 0,
             book: false,
+            moves: start.moves.clone().map(Arc::new),
+            next_move: 0,
+            walking: None,
+            walked_tiles: Arc::new(Vec::new()),
+            off_record: None,
             rules,
         };
         // The status window at 0 (E24 M3 T5b2): the kind asked, else the date's or the kingdom's
@@ -1949,7 +2008,10 @@ impl Loop {
             }
         }
         self.hint_again();
-        Ok(())
+        match self.off_record.take() {
+            Some(why) => Err(why),
+            None => Ok(()),
+        }
     }
 
     /// The loop's turn at `t` outside a dissolve: a computer player's turn (E24 M4 T1b2: its walk's
@@ -4442,6 +4504,7 @@ impl Loop {
     ) {
         self.cursor.shown = false;
         self.walked = true;
+        self.take_move(next);
         let moving = Moving {
             key,
             direction,
@@ -4470,6 +4533,7 @@ impl Loop {
     fn stride(&mut self, t: u32, moving: Moving, next: Pos) -> Option<Moving> {
         let (direction, single) = (moving.direction, self.pixels.is_empty());
         self.mobilize(t, direction, next);
+        self.step_on_record(next);
         if let Some(boat) = self.boat_on(next) {
             self.board_start(t, direction, boat);
             let boarding = Boarding {
@@ -4623,6 +4687,13 @@ impl Loop {
     /// `hero_walk_end`, the path's 0x4080E9, a key's 0x4090A9; a landing's ends after its
     /// dissolve), and [`Loop::walk_done`].
     fn finish(&mut self, t: u32, key: bool) {
+        // One of the engine's walks ends whole (E24 M4 T4a2): a step it does not take is off the
+        // record (a walk a message ended).
+        if let (Some(moves), Some((m, k))) = (&self.moves, self.walking.take())
+            && let Some(&left) = moves.get(m).and_then(|w| w.tiles.get(k))
+        {
+            self.off(left);
+        }
         self.stand();
         if let Some(sound) = &mut self.sound {
             sound.walk_end(t);
@@ -4966,13 +5037,75 @@ impl Loop {
     }
 
     /// The selected hero's points memory holds at `t` as [`Start::points`] gives them (none
-    /// given: as they are).
+    /// given: as they are); during one of the engine's walks (E24 M4 T4a2) its step's
+    /// ([`Move::points`]), the walk then at its next step.
     fn spend(&mut self, t: u32) {
-        let given = self.points.iter().take_while(|(at, _)| *at <= t).last();
-        if let (Some(&(_, points)), Some(i)) = (given, self.selected_hero())
+        let given = match (&self.moves, self.walking) {
+            (Some(moves), Some((m, k))) => {
+                self.walking = Some((m, k.saturating_add(1)));
+                moves
+                    .get(m)
+                    .and_then(|w| w.points.get(k))
+                    .copied()
+                    .flatten()
+            }
+            (Some(_), None) => None,
+            (None, _) => self
+                .points
+                .iter()
+                .take_while(|(at, _)| *at <= t)
+                .last()
+                .map(|&(_, points)| points),
+        };
+        if let (Some(points), Some(i)) = (given, self.selected_hero())
             && let Some(hero) = self.kingdom.heroes.get_mut(i)
         {
             hero.points = points;
+        }
+    }
+
+    /// A walk's start (E24 M4 T4a2): the next of the engine's walks under way, from its first
+    /// step; past the last the step onto `next` is off the record.
+    fn take_move(&mut self, next: Pos) {
+        let Some(moves) = &self.moves else {
+            return;
+        };
+        if self.next_move < moves.len() {
+            self.walking = Some((self.next_move, 0));
+            self.next_move += 1;
+        } else {
+            self.walking = None;
+            self.off(next);
+        }
+    }
+
+    /// A human's step onto `next` during one of the engine's walks (E24 M4 T4a2, design §5.13):
+    /// off the record unless it is the move's step; its tiles revealed at once, before the step's
+    /// animation (`reveal_disk` at 0x48106B; *provisional*: a boarding's before its dissolve, not
+    /// read), which the view's next draw shows and the minimap's at the step's end.
+    fn step_on_record(&mut self, next: Pos) {
+        let Some((moves, (m, k))) = self.moves.clone().zip(self.walking) else {
+            return;
+        };
+        let walk = moves.get(m);
+        if walk.and_then(|w| w.tiles.get(k)) != Some(&next) {
+            self.off(next);
+            return;
+        }
+        let revealed = walk.and_then(|w| w.revealed.get(k));
+        if let Some(tiles) = revealed.filter(|tiles| !tiles.is_empty()) {
+            let mut walked = (*self.walked_tiles).clone();
+            walked.extend(tiles.iter().copied());
+            self.walked_tiles = Arc::new(walked);
+        }
+    }
+
+    /// A step off the engine's record (E24 M4 T4a2): the first of the millisecond refuses it
+    /// when the millisecond ends ([`Loop::run`]).
+    fn off(&mut self, next: Pos) {
+        if self.off_record.is_none() {
+            let at = [i32::from(next.x), i32::from(next.y), i32::from(next.z)];
+            self.off_record = Some(Unplayable::Moved(at));
         }
     }
 
@@ -5036,6 +5169,7 @@ impl Loop {
             hero: self.hero.map(|h| h.at),
             index: self.index,
             owners: Arc::clone(&self.owners),
+            walked: Arc::clone(&self.walked_tiles),
         };
     }
 
@@ -5075,6 +5209,7 @@ impl Loop {
             } else {
                 Arc::new(self.boats.clone())
             },
+            walked: Arc::clone(&self.walked_tiles),
         };
         self.choose(t, false);
     }
@@ -5271,6 +5406,38 @@ pub fn chain(from: Pos, arrows: &[Arrow]) -> Option<Vec<(Direction, Arrow)>> {
         at = arrow.at;
     }
     Some(out)
+}
+
+/// The arrows of a path the hero walks whole today from `from` along `tiles` (E24 M4 T4a2,
+/// design §5.12, *provisional*: a record's `MoveHero`, which the engine walks whole that day,
+/// ADV-MOV-006): each tile it passes `table` (`path_arrow_frames` 0x6782AC: by the step into it
+/// plus 8 × the step out of it, [`Direction::number`]) plus 2, the destination
+/// [`DESTINATION`]; all green (`make_hero_path` 0x418DD0's red twin is for a step the points do
+/// not pay). `None` when two tiles in a row are no neighbours on one level, or the table holds
+/// no arrow for a pair of steps.
+#[must_use]
+pub fn arrows(table: &[u8], from: Pos, tiles: &[Pos]) -> Option<Vec<Arrow>> {
+    let mut at = from;
+    let mut steps = Vec::with_capacity(tiles.len());
+    for &tile in tiles {
+        steps.push((Direction::between(at, tile)?, tile));
+        at = tile;
+    }
+    steps
+        .iter()
+        .enumerate()
+        .map(|(i, &(into, tile))| {
+            let arrow = match steps.get(i + 1) {
+                None => DESTINATION,
+                Some(&(out, _)) => {
+                    let n = into.number() + 8 * out.number();
+                    let frame = table.get(usize::try_from(n).unwrap_or(usize::MAX))?;
+                    u16::from(*frame) + 2
+                }
+            };
+            Some(Arrow { at: tile, arrow })
+        })
+        .collect()
 }
 
 /// A sequence played: the state after each millisecond from 0 to `until`, the actions at their

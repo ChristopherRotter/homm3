@@ -1,0 +1,13 @@
+# The record's gaps from the original's timeline (E24 M4 T4a2, design §5.13): `h3-map-view
+# sequences game-walk --record` plays the sequence from its script's engine record and lists its
+# timeline's differences from the recorded one, `- ` the original's line and `+ ` ours, in order;
+# they must be these.
+# MCL-Q39 (c): a record gives a walk's points only after its last step, so the points the
+# original's steps before it left are not written (and the whole walk's reveal shows from its
+# first step, which changes no line here: the frames, `game-walk-frames.txt`).
+- 450 points 1460
+- 600 points 1360
+- 750 points 1260
+- 1850 points 1060
+- 2000 points 960
+- 2150 points 819

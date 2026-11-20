@@ -72,6 +72,12 @@ pub struct Sequence {
     /// The inputs in time order.
     #[serde(default)]
     pub inputs: Vec<Input>,
+    /// A scripted game's engine commands (E24 M4 T4a1, design §5.12: one per line as `h3
+    /// adventure run --script` reads them): `h3map.py` makes the whole game's record the viewer
+    /// plays the sequence from (`sequences <id> --record`, T4a2); the viewer reads only the
+    /// record.
+    #[serde(default)]
+    pub script: Vec<String>,
 }
 
 /// One input: at a millisecond, exactly one of a key pressed or released, the pointer moved, a

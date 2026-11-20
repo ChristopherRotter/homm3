@@ -1496,18 +1496,25 @@ def sequence(entry, out):
     return states, n
 
 
-def ours_frames(ident, here, live):
+def ours_frames(ident, here, live, record=()):
     """The viewer's frames of a sequence (E24 M2 T2): `h3-map-view sequences <id> --frames
     <here> --live <live>` writes `<here>/ours/t<ms>.png` at every time its screen changed and
     every time `<here>/frames/` holds one of the original's, and its timeline (`ours.txt`); its
-    own verdict on the timeline is its first line. Returns that line."""
+    own verdict on the timeline is its first line. Returns that line. `record`: a scripted
+    sequence's arguments to play it from its engine record (`scripted`; E24 M4 T4a2: its gaps
+    from the recorded timeline in `gaps.txt`)."""
     shutil.rmtree(here / "ours", ignore_errors=True)
     done = subprocess.run([str(MAP_VIEW), "sequences", ident, "--frames", str(here),
-                           "--live", str(live)], capture_output=True, text=True)
+                           "--live", str(live), *record], capture_output=True, text=True)
     said = (done.stdout.strip() or done.stderr.strip()).splitlines()
     if done.returncode not in (0, 1) or not said:
         raise RuntimeError(f"h3-map-view sequences {ident}: {done.stderr.strip()}")
     return said[0]
+
+
+# The viewer's verdicts on a sequence's timeline that pass: as recorded, or played from a record
+# with its gaps from the recorded timeline as listed (`timelines/<id>-gaps.txt`, E24 M4 T4a2).
+VIEWER_SAME = ("as recorded", "gaps as listed")
 
 
 def frame_check(entry, here):
@@ -1518,7 +1525,7 @@ def frame_check(entry, here):
     ones), against `timelines/<id>-frames.txt` (`ok`, `CHANGED`, `new`: a new one is copied there
     by hand once a second run gives the same). Returns the verdict, the viewer's line on its
     timeline, the frames and how many differ."""
-    said = ours_frames(entry["id"], here, here / "live.toml")
+    said = ours_frames(entry["id"], here, here / "live.toml", scripted(entry, here / "engine"))
     diffs = here / "diff"
     shutil.rmtree(diffs, ignore_errors=True)
     lines, differ = [], 0
@@ -1624,8 +1631,9 @@ def run_frames(rest):
         print(f"{e['id']}: the viewer: {said}", flush=True)
         print(f"{e['id']}: the frame check: {frames} frames, {differ} differing, {checked} "
               f"({here / 'frames.txt'})", flush=True)
-        # The viewer's own timeline counts too (M2 T6a, the reviewer's R3-1).
-        failed += checked != "ok" or not said.endswith("as recorded")
+        # The viewer's own timeline counts too (M2 T6a, the reviewer's R3-1): as recorded, or
+        # with a record's gaps as listed (E24 M4 T4a2).
+        failed += checked != "ok" or not said.endswith(VIEWER_SAME)
     print(f"frames: {len(entries)} sequences, {failed} not as recorded; under {base}")
     return 1 if failed else 0
 
@@ -1811,7 +1819,7 @@ def drawn_sequences(rest, base, record):
         shutil.rmtree(here, ignore_errors=True)
         here.mkdir(parents=True)
         try:
-            said = ours_frames(ident, here, kept)
+            said = ours_frames(ident, here, kept, scripted(e, here / "engine"))
         except RuntimeError as err:
             print(f"sequences/{ident}: the viewer failed ({last_lines(err)})", flush=True)
             failed += 1
@@ -1821,7 +1829,7 @@ def drawn_sequences(rest, base, record):
                 for png in sorted((here / "ours").glob("t*.png"))}
         before = {k: v for k, v in recorded.items() if k[0] == ident}
         verdict = ("new" if not before else "same" if before == mine else "CHANGED")
-        timeline_same = said.endswith("as recorded")
+        timeline_same = said.endswith(VIEWER_SAME)
         failed += verdict != "same" or not timeline_same
         print(f"sequences/{ident}: {len(mine)} frames {verdict}; the viewer: {said}", flush=True)
         # A viewer's run not as recorded, or one that failed partway, is not recorded (M2 T6a,
@@ -1843,15 +1851,56 @@ def drawn_sequences(rest, base, record):
     return failed, broken
 
 
+def engine_game(here, script, name):
+    """The engine's whole game of `script` (its commands, one per line as `h3 adventure run
+    --script` reads them) on `here/map.h3m`, recorded (`<name>.toml`) and turned into the
+    players' records by `h3-server record` (the root workspace's `target/debug`, or H3_ENGINE):
+    returns the viewer's (`<name>.player-0.jsonl`; E24 M4 T3b1, T4a2)."""
+    engine_dir = Path(os.environ.get("H3_ENGINE", CLIENTS.parent / "target/debug"))
+    packs = CLIENTS.parent / "packs"
+    (here / f"{name}.txt").write_text("".join(f"{line}\n" for line in script))
+    # A replay names its map relative to its root: both run in `here`.
+    for args in [[engine_dir / "h3", "adventure", "run", "--map", "map.h3m", "--packs-dir",
+                  packs, "--script", f"{name}.txt", "--record", f"{name}.toml"],
+                 [engine_dir / "h3-server", "record", f"{name}.toml", "--packs-dir", packs,
+                  "--root", ".", "--out", "."]]:
+        done = subprocess.run([str(a) for a in args], capture_output=True, text=True, cwd=here)
+        if done.returncode:
+            raise RuntimeError(f"{args[0]}: {done.stderr.strip() or done.stdout.strip()}")
+    return here / f"{name}.player-0.jsonl"
+
+
+def engine_map(situation_path, sit, here):
+    """A situation's map written for the engine under `here` (`raw.h3m` as the writer gives
+    it, `map.h3m` gzip-compressed with no name or time in its header: `h3_map::read` reads
+    only gzip; a shipped map is gzip already, E24 M4 T3b2)."""
+    import gzip
+
+    write_map(situation_path, sit, here / "raw.h3m")
+    raw = (here / "raw.h3m").read_bytes()
+    (here / "map.h3m").write_bytes(raw if raw[:2] == b"\x1f\x8b" else gzip.compress(raw, mtime=0))
+
+
+def scripted(entry, here):
+    """The viewer's arguments to play a scripted sequence from its engine record (E24 M4 T4a2,
+    design §5.13): its situation's map and its `script`'s game made under `here`, then
+    `--record <the viewer's record> --record-map <map.h3m>`; none for a sequence without a
+    `script`."""
+    if not entry.get("script"):
+        return []
+    situation_path = SITUATIONS / f"{entry['situation']}.toml"
+    shutil.rmtree(here, ignore_errors=True)
+    here.mkdir(parents=True)
+    engine_map(situation_path, tomllib.loads(situation_path.read_text()), here)
+    record = engine_game(here, entry["script"], "game")
+    return ["--record", str(record), "--record-map", str(here / "map.h3m")]
+
+
 def run_engine(rest):
     """`h3map.py engine` (the docstring's; E24 M4 T3b1, design §5.10): the engine's starts of the
     set's situations with an `engine` entry against their kept live parts and ours there."""
-    import gzip
-
     only = rest[rest.index("--only") + 1] if "--only" in rest else None
     base = Path(rest[rest.index("--out") + 1]) if "--out" in rest else OUT.parent / "map-engine"
-    engine_dir = Path(os.environ.get("H3_ENGINE", CLIENTS.parent / "target/debug"))
-    packs = CLIENTS.parent / "packs"
     entries = [e for e in tomllib.loads((SITUATIONS / "set.toml").read_text())["situation"]
                if "engine" in e and (only is None or e["id"] == only)]
     if only and not entries:
@@ -1869,23 +1918,8 @@ def run_engine(rest):
         here = base / ident
         shutil.rmtree(here, ignore_errors=True)
         here.mkdir(parents=True)
-        write_map(situation_path, sit, here / "raw.h3m")
-        # The engine reads only gzip (`h3_map::read`), with no name or time in its header; a
-        # shipped map is gzip already (E24 M4 T3b2).
-        raw = (here / "raw.h3m").read_bytes()
-        (here / "map.h3m").write_bytes(raw if raw[:2] == b"\x1f\x8b"
-                                       else gzip.compress(raw, mtime=0))
-        (here / "empty.txt").write_text("")
-        # A replay names its map relative to its root: both run in `here`.
-        for args in [[engine_dir / "h3", "adventure", "run", "--map", "map.h3m", "--packs-dir",
-                      packs, "--script", "empty.txt", "--record", "start.toml"],
-                     [engine_dir / "h3-server", "record", "start.toml", "--packs-dir", packs,
-                      "--root", ".", "--out", "."]]:
-            done = subprocess.run([str(a) for a in args], capture_output=True, text=True,
-                                  cwd=here)
-            if done.returncode:
-                raise RuntimeError(f"{args[0]}: {done.stderr.strip() or done.stdout.strip()}")
-        record = here / "start.player-0.jsonl"
+        engine_map(situation_path, sit, here)
+        record = engine_game(here, [], "start")
         vx, vy, vz = sit["view"]
         common = [MAP_VIEW, "render", here / "map.h3m", "--view", f"{vx},{vy},{vz}", "--live",
                   kept, "--record", record]

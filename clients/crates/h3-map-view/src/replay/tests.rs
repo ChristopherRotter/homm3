@@ -93,6 +93,7 @@ fn idle() -> Replay {
         casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
+        moves: None,
     };
     let actions = BTreeMap::from([
         (0, vec![Action::Scroll(Direction::East)]),
@@ -290,6 +291,7 @@ fn its_cues_are_handed_out_once() {
         casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
+        moves: None,
     };
     let actions = BTreeMap::from([
         (1, vec![Action::Click(dest)]),

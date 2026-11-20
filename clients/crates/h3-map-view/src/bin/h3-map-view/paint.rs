@@ -43,9 +43,9 @@ use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
     Action, Answer, Boats, Computer, Cursor, DEFAULT_CURSOR, Direction, Dissolve, Draw, Found,
-    Hero, LevelBox, NextTurn, Owners, Question, Start, TownBoxes,
+    Hero, LevelBox, NextTurn, Owners, Question, Start, TownBoxes, Walked,
 };
-use h3_map_view::{status, turn};
+use h3_map_view::{engine, status, timeline, turn};
 use h3_render::Bugs;
 use h3_render::screen::{Screen, Widening};
 use h3_ui::cursor::{Cursor as Sprite, Image};
@@ -102,14 +102,79 @@ pub struct Setup<'a> {
     pub recorded: Option<String>,
 }
 
+/// A whole game's record a sequence is played from (E24 M4 T4a2, design §5.13): the record (a
+/// player's `h3-server record` file), the map file the engine played (its record names it by its
+/// bytes' hash) and the packs' folder its rules are read from.
+#[derive(Debug, Clone, Copy)]
+pub struct Record<'p> {
+    pub path: &'p Path,
+    pub map: &'p Path,
+    pub packs: &'p Path,
+}
+
+/// What a sequence takes from a record (E24 M4 T4a2): its start and turns' tables, applied after
+/// the kept live part, and its walks.
+struct Played {
+    table: toml::Table,
+    label: String,
+    moves: Vec<timeline::Move>,
+}
+
+/// The record's start (`engine::start`) with its turns' starts as the `turn` tables, and its
+/// walks (`engine::played`) on the map `raw`.
+fn played(assets: &Assets<'_>, raw: &RawMap, record: Record<'_>) -> Result<Played, String> {
+    let map = fs::read(record.map).map_err(|e| format!("{}: {e}", record.map.display()))?;
+    let (loaded, rules) = render::load_record(record.path, &map, record.packs)?;
+    let art = MapArt::from_raw(raw).map_err(|e| e.to_string())?;
+    let failed = |why: &dyn std::fmt::Display| format!("{}: {why}", record.path.display());
+    let start = engine::start(
+        &loaded,
+        &art,
+        assets.templates,
+        &assets.tables.map.towns,
+        &rules,
+    )
+    .map_err(|e| failed(&e))?;
+    let game = engine::played(&loaded, &art, &rules).map_err(|e| failed(&e))?;
+    let mut table = start.table;
+    table.insert("turn".to_string(), toml::Value::Array(game.turns));
+    Ok(Played {
+        table,
+        label: record.path.display().to_string(),
+        moves: game.moves,
+    })
+}
+
+/// The arrows of each of the engine's walks, from where the walk before left the hero (`from`
+/// the selected hero's tile at 0; E24 M4 T4a2: `timeline::arrows`).
+fn record_paths(
+    assets: &Assets<'_>,
+    from: Pos,
+    moves: &[timeline::Move],
+) -> Result<Vec<Vec<h3_map_view::live::Arrow>>, String> {
+    let mut at = from;
+    let mut paths = Vec::with_capacity(moves.len());
+    for walk in moves {
+        let arrows = timeline::arrows(&assets.tables.map.walk.arrows, at, &walk.tiles)
+            .ok_or_else(|| format!("a record's walk from {at:?} is no path: {:?}", walk.tiles))?;
+        at = walk.tiles.last().copied().unwrap_or(at);
+        paths.push(arrows);
+    }
+    Ok(paths)
+}
+
 /// A recorded sequence (`<map>/sequences.toml`) set up: its situation's map built by the writer,
-/// its live part at 0 (`live`, else `<map>/timelines/<id>-live.toml`).
+/// its live part at 0 (`live`, else `<map>/timelines/<id>-live.toml`); since E24 M4 T4a2 with a
+/// whole game's `record` the record's facts in place of the recording's (its start and turns
+/// over the kept live part, its walks' paths, points and reveals; the recorded timeline read only
+/// to compare).
 pub fn for_sequence<'a>(
     assets: &'a Assets<'a>,
     map: &Path,
     install: &Path,
     sequence: &Sequence,
     live: Option<&Path>,
+    record: Option<Record<'_>>,
 ) -> Result<Setup<'a>, String> {
     let walks = sequence.walks();
     let path = map
@@ -129,18 +194,26 @@ pub fn for_sequence<'a>(
         },
         Path::to_path_buf,
     );
-    let mut painter = Painter::new(assets, &raw, Some(&live_path), view, &[])?;
-    // A walk's hero is the live part's selected one, its paths the ones the recording shows.
-    // The mouse-over's facts (E24 M3 T6a1) select a hero too: the cursor reads it.
+    let played = record.map(|r| played(assets, &raw, r)).transpose()?;
+    let after = played.as_ref().map(|p| (p.label.as_str(), &p.table));
+    let mut painter = Painter::new(assets, &raw, Some(&live_path), after, view, &[])?;
+    // The recording's facts, or none with a record (E24 M4 T4a2): its timeline only compared.
+    let facts = match played {
+        Some(_) => "",
+        None => recorded.as_deref().unwrap_or_default(),
+    };
+    // A walk's hero is the live part's selected one, its paths the ones the recording shows (the
+    // record's walks with one). The mouse-over's facts (E24 M3 T6a1) select a hero too: the
+    // cursor reads it.
     let (hero, paths) = if walks || painter.live.hover.is_some() {
         let live = &painter.live;
         let hero =
             sequence::selected_hero(live).map_err(|e| format!("{}: {e}", live_path.display()))?;
         painter.selected = sequence::selected_in(live).ok();
-        let paths = if walks {
-            sequence.paths(recorded.as_deref().unwrap_or_default())?
-        } else {
-            Vec::new()
+        let paths = match (&played, walks) {
+            (Some(p), true) => record_paths(assets, hero.at, &p.moves)?,
+            (None, true) => sequence.paths(facts)?,
+            (_, false) => Vec::new(),
         };
         (Some(hero), paths)
     } else {
@@ -160,7 +233,7 @@ pub fn for_sequence<'a>(
     let sound = painter.sound(hero.map(|h| h.at))?;
     // End Turn's question and the turns' messages (E24 M4 T1a); a computer's walks from the
     // recorded `hero` lines (E24 M4 T1b2).
-    let lines = sequence.heroes(recorded.as_deref().unwrap_or_default())?;
+    let lines = sequence.heroes(facts)?;
     let (question, turns) = painter
         .boxes(&lines)
         .map_err(|e| format!("{}: {e}", live_path.display()))?;
@@ -183,10 +256,12 @@ pub fn for_sequence<'a>(
         live: false,
         sound,
         kingdom: painter.live.kingdom.clone(),
-        // The selected hero's points memory held (E24 M3 T4b): the recording's.
-        points: sequence.points(recorded.as_deref().unwrap_or_default())?,
-        // The cursor over the view after a walk (E24 M4 T2b2 part B): the recording's.
-        reached: sequence.reached(recorded.as_deref().unwrap_or_default())?,
+        // The selected hero's points memory held (E24 M3 T4b): the recording's (a record's
+        // walks give theirs).
+        points: sequence.points(facts)?,
+        // The cursor over the view after a walk (E24 M4 T2b2 part B): the recording's (a
+        // record's: none, MCL-Q37).
+        reached: sequence.reached(facts)?,
         buttons: painter.live.buttons,
         // The status window's kind the recording asked at 0 (E24 M3 T5b2).
         asked: sequence.asked()?,
@@ -212,6 +287,8 @@ pub fn for_sequence<'a>(
         // The boats and the water (E24 M4 T2d2): the live part's, the map's.
         boats: Boats::of(&painter.live),
         water: water(&painter.art),
+        // The engine's walks (E24 M4 T4a2): a record's.
+        moves: played.map(|p| p.moves),
     };
     Ok(Setup {
         painter,
@@ -263,7 +340,7 @@ pub fn for_situation<'a>(
     let view = view_at(view, &path)?;
     let kept = map.join("situations/kept").join(format!("{id}.toml"));
     let live = kept.exists().then_some(kept);
-    let mut painter = Painter::new(assets, &raw, live.as_deref(), view, &hidden)?;
+    let mut painter = Painter::new(assets, &raw, live.as_deref(), None, view, &hidden)?;
     let hero = sequence::selected_hero(&painter.live).ok();
     painter.selected = sequence::selected_in(&painter.live).ok();
     let sound = painter.sound(hero.map(|h| h.at))?;
@@ -306,6 +383,7 @@ pub fn for_situation<'a>(
         casts: Vec::new(),
         boats: Boats::of(&painter.live),
         water: water(&painter.art),
+        moves: None,
     };
     Ok(Setup {
         painter,
@@ -357,17 +435,20 @@ pub struct Painter<'a> {
     index: Vec<TileIndex>,
     gone: Arc<Vec<usize>>,
     spare: Option<(Arc<Vec<usize>>, Vec<TileIndex>)>,
-    /// The terrains revealed by the draw last drawn (E24 M4 T2b2 part A2: `Draw::revealed`) and
-    /// the tiles the live part at 0 has explored, which the revealed ones join.
+    /// The terrains revealed by the draw last drawn (E24 M4 T2b2 part A2: `Draw::revealed`), the
+    /// tiles its walks explored (E24 M4 T4a2: `Draw::walked`) and the tiles the live part at 0
+    /// has explored, which both join.
     revealed: u32,
+    walked: Walked,
     explored: Explored,
     /// The objects' owners at 0, the owners changed that the indexes' looks were built for (E24
     /// M4 T2d1: `Draw::owners`, the live part's objects holding them), and those their minimaps
     /// were built for when not the same (`Minimap::owners`, the spare set dropped: a visit's
-    /// end draws the minimap before the view).
+    /// end draws the minimap before the view), with the tiles explored they were built for (E24
+    /// M4 T4a2: `Minimap::walked`, a step's reveal shown on the minimap at its end).
     owners_at_0: Vec<Option<u8>>,
     owners: Owners,
-    minimap_owners: Option<Owners>,
+    minimap_owners: Option<(Owners, Walked)>,
     /// The boats the live part holds now (E24 M4 T2d2: `Draw::boats`, the empty ones and the
     /// heroes' as the draw last drawn has them).
     boats: Arc<Boats>,
@@ -399,6 +480,7 @@ impl<'a> Painter<'a> {
         assets: &'a Assets<'a>,
         raw: &RawMap,
         live: Option<&Path>,
+        after: Option<(&str, &toml::Table)>,
         view: ViewAt,
         hidden: &[[i32; 4]],
     ) -> Result<Self, String> {
@@ -408,6 +490,11 @@ impl<'a> Painter<'a> {
         match live {
             Some(path) => {
                 render::read_live(path, view, &mut art, &mut start, assets.templates)?;
+                // A whole game's record's start and turns after the kept live part (E24 M4
+                // T4a2), as `render --record` applies its start.
+                if let Some((label, table)) = after {
+                    render::apply_live(label, table, view, &mut art, &mut start, assets.templates)?;
+                }
             }
             None => {
                 start.moment = Moment::at(0, tables.map.cycle_ms, tables.map.frame_ms);
@@ -446,6 +533,7 @@ impl<'a> Painter<'a> {
             gone: Arc::new(Vec::new()),
             spare: None,
             revealed: 0,
+            walked: Arc::new(Vec::new()),
             explored,
             owners_at_0,
             owners: Arc::new(Vec::new()),
@@ -1319,9 +1407,9 @@ impl<'a> Painter<'a> {
         // The objects' owners changed (E24 M4 T2d1), the objects taken off the map (E24 M4 T2a2
         // part B), the terrains revealed (T2b2), then the minimap's own owners (T2d1).
         self.owned(&draw.owners)?;
-        self.reveal(draw.revealed)?;
+        self.reveal(draw.revealed, &draw.walked)?;
         self.taken(&draw.gone)?;
-        self.minimap_owned(&draw.owners, &draw.minimap.owners);
+        self.minimap_owned(draw);
         let assets = self.assets;
         let z = draw.view.z;
         let index = self
@@ -1411,16 +1499,25 @@ impl<'a> Painter<'a> {
         Ok(())
     }
 
-    /// Each level's minimap built for the owners `minimap` shows when they are not the view's
-    /// `view` (E24 M4 T2d1: a visit's end draws the minimap with a flag raised, the view's next
-    /// draw its flag), the live part's owners the view's again after.
-    fn minimap_owned(&mut self, view: &Owners, minimap: &Owners) {
-        let wanted = (minimap != view).then(|| Arc::clone(minimap));
+    /// Each level's minimap built for the owners and the walks' tiles `draw`'s minimap shows when
+    /// they are not the view's (E24 M4 T2d1: a visit's end draws the minimap with a flag raised,
+    /// the view's next draw its flag; E24 M4 T4a2: a step's reveal shows on the view from the
+    /// step's first frame, on the minimap at its end), the live part's owners and explored tiles
+    /// the view's again after.
+    fn minimap_owned(&mut self, draw: &Draw) {
+        let minimap = &draw.minimap;
+        let wanted = (minimap.owners != draw.owners || minimap.walked != draw.walked)
+            .then(|| (Arc::clone(&minimap.owners), Arc::clone(&minimap.walked)));
         if self.minimap_owners == wanted {
             return;
         }
         let assets = self.assets;
-        self.set_owners(wanted.as_ref().unwrap_or(view));
+        let (owners, walked) = wanted
+            .clone()
+            .unwrap_or_else(|| (Arc::clone(&draw.owners), Arc::clone(&draw.walked)));
+        self.set_owners(&owners);
+        let shown = self.explored_with(self.revealed, &walked);
+        let view_explored = core::mem::replace(&mut self.live.explored, shown);
         for index in &mut self.index {
             index.minimap_again(
                 &self.art,
@@ -1430,7 +1527,8 @@ impl<'a> Painter<'a> {
                 assets.bugs,
             );
         }
-        self.set_owners(view);
+        self.live.explored = view_explored;
+        self.set_owners(&draw.owners);
         self.minimap_owners = wanted;
         self.spare = None;
     }
@@ -1455,33 +1553,46 @@ impl<'a> Painter<'a> {
             .collect()
     }
 
-    /// The tiles explored as the live part at 0 has them and every tile of the terrains in `mask`
+    /// The tiles explored as the live part at 0 has them, every tile of the terrains in `mask`
     /// on both levels (E24 M4 T2b2 part A2: a Cartographer's, `reveal_terrain_mask` 0x4CA240, a
-    /// bit per terrain code), each level's index built again for them (TRAPS: "A level's index
-    /// holds for the objects it was built for"; the other set's indexes dropped).
-    fn reveal(&mut self, mask: u32) -> Result<(), String> {
-        if self.revealed == mask {
+    /// bit per terrain code) and the tiles `walked` (E24 M4 T4a2: the walks'), each level's index
+    /// built again for them (TRAPS: "A level's index holds for the objects it was built for"; the
+    /// other set's indexes dropped).
+    fn reveal(&mut self, mask: u32, walked: &Walked) -> Result<(), String> {
+        if self.revealed == mask && self.walked == *walked {
             return Ok(());
         }
-        let mut explored = self.explored.clone();
-        for z in 0..self.art.levels {
-            let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
-            for y in 0..self.art.size {
-                for x in 0..self.art.size {
-                    let at = [x, y].map(|v| i32::try_from(v).unwrap_or(i32::MAX));
-                    let terrain = self.art.tile(at[0], at[1], z).map(|t| t.terrain.code);
-                    if terrain.is_some_and(|code| mask >> code & 1 == 1) {
-                        explored.set(at[0], at[1], z, true);
-                    }
-                }
-            }
-        }
-        self.live.explored = explored;
+        self.live.explored = self.explored_with(mask, walked);
         self.revealed = mask;
+        self.walked = Arc::clone(walked);
         self.index = self.indexes()?;
         self.spare = None;
         self.minimap_owners = None;
         Ok(())
+    }
+
+    /// The tiles the live part at 0 has explored with the terrains of `mask` and the tiles
+    /// `walked` ([`Painter::reveal`]).
+    fn explored_with(&self, mask: u32, walked: &Walked) -> Explored {
+        let mut explored = self.explored.clone();
+        if mask != 0 {
+            for z in 0..self.art.levels {
+                let Ok(z) = u8::try_from(z) else { continue };
+                for y in 0..self.art.size {
+                    for x in 0..self.art.size {
+                        let at = [x, y].map(|v| i32::try_from(v).unwrap_or(i32::MAX));
+                        let terrain = self.art.tile(at[0], at[1], z).map(|t| t.terrain.code);
+                        if terrain.is_some_and(|code| mask >> code & 1 == 1) {
+                            explored.set(at[0], at[1], z, true);
+                        }
+                    }
+                }
+            }
+        }
+        for tile in walked.iter() {
+            explored.set(i32::from(tile.x), i32::from(tile.y), tile.z, true);
+        }
+        explored
     }
 
     /// A dissolve's screen (E24 M4 T2a2 part B, design §5.3): the view of the draw before, its

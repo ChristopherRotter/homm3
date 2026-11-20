@@ -48,6 +48,13 @@ pub const KEYS: [&str; 7] = [
     "map.turn.week-deity",
 ];
 
+/// A normal week's names (`random_between(0, 14)` at 0x4C87A6; the catalogue's `week-name`
+/// family).
+pub const WEEK_NAMES: u16 = 15;
+
+/// A normal month's names (`random_between(0, 9)` at 0x4C8FCC; `month-name`).
+pub const MONTH_NAMES: u16 = 10;
+
 /// The key of a normal week's name `n` (ArrayTxt's record 43 + n, `random_between(0, 14)` at
 /// 0x4C87A6).
 #[must_use]
