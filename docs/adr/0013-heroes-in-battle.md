@@ -303,6 +303,13 @@ are computed before the seam (03-domain). The seam must change once for E04a and
        (`strict-fixed`) the artifact is placed first (the first position that takes it, else the
        backpack below its most: HER-CHG-002), and only an artifact without room is refused (E08
        decision 145). The caller loses or converts a refused artifact.
+    5. **A town's guild teaches** (E09 increment 5; TWN-GLD-004) by the same tests as the objects
+       that teach (`can_learn_spell`: a worn spell book, a level at most the learnable level of
+       HER-SPL-005, not known), the map's bans not tested; the spells it may teach are the town's
+       part's (ADR-0028 point 2: the guild's shown slots, or the Aurora set), the hero's side only
+       the test and the `LearnSpell` changes. Batch TWN-5 confirmed it (E09 T44, survey
+       `E09-guild.md` §21: TWN-5-2's Aurora taught the map's ban, T-18; TWN-5-3's visitor learned
+       the shown spells and the Library's spares).
 
 16. **The day's income and spell points are `h3-heroes`' derivations** (E08 increment 9; pure
     functions of the details, the ruleset and explicit inputs; the game calls them at the day's
@@ -357,6 +364,14 @@ are computed before the seam (03-domain). The seam must change once for E04a and
        returning (ADR-0017 point 11; batch TWN-4's TWN-4-2 and TWN-4-4); a returning hero keeps its
        own at the leave. Its day's points come from point 13's derivation over the army the game
        keeps for it (ADR-0017 point 3).
+    6. **A town's spell points** (E09 increment 5; TWN-GLD-008, -009): a town with a Mage Guild
+       raises its visitor's and garrison hero's points to their maximum (16.2's maximum,
+       HER-MAN-001) after the day's regain, never lowering them; the Mana Vortex sets them to
+       twice the maximum (the town part's factor), no ceiling (the reward records' 999, D-38, is
+       theirs alone; as read, `E09-guild.md` §15). Both are the game's
+       `HeroChange::SetSpellPoints` (ADR-0017 points 3 and 10); `h3-heroes` gives the maximum.
+       Batch TWN-5 confirmed both (E09 T44, TWN-5-5: the guild's refill to 20 at a turn's start,
+       not doubled; the Vortex's 40 at a visit or an opening, once a week a town).
 
 ## Consequences
 
@@ -557,3 +572,7 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   amended at T35's start, decision 127). Drafted in E09 T33a (design note `E09-design.md` §63, §67);
   batch TWN-4's outcome (T34, survey `E09-tavern.md` §14: every row as read; the day's spell points
   read in the code after the runs) folded in.
+- 2026-11-20 (E09 T45 `shared/`; E09 decisions 162, 177): points 15.5 and 16.6 added for E09
+  increment 5, the mage guild: a guild's teaching by `can_learn_spell`; the town's refill and the
+  Vortex's points. Drafted in E09 T43 (design note `E09-design.md` §88, §92, §93), accepted at
+  `TWN-Q33`; batch TWN-5's outcome (T44, survey `E09-guild.md` §21: every row as read) folded in.
