@@ -1,0 +1,69 @@
+# The scripted games of E24 M4 T4a1 (design §5.12), recorded in the original before the viewer
+# plays them from the engine's records (T4a2 moves them into `sequences.toml`): `python3
+# capture/h3map.py frames --sequences map/to-record.toml --only <id> --no-check`, from clients/.
+# Each is a sequence as `sequences.toml`'s (its keys there) on a situation the engine imports, with
+# its explored tiles the new game's (`explored = "start"`) and its heroes' armies in the map, so
+# that the original's new game and the engine's start agree; `script` (new) holds the engine's
+# commands of the same game, one per line as `h3 adventure run --script` reads them (the
+# commands of the original's clicks and keys: a path's tiles as the original walked them, its
+# recorded `hero` lines; every End Turn followed by Blue's, the computer player's that cannot
+# move).
+
+[[sequence]]
+id = "game-walk"
+situation = "game-walk"
+ms = 4000
+seed = 1
+why = "a scripted game's walks: a path of four tiles east clicked twice, a path of four tiles to the south-east clicked twice, a key's step, each walk's steps revealing the tiles beyond the start's explored circle"
+inputs = [
+    { at = 100, click = [440, 280] }, { at = 100, pointer = [700, 300] },
+    { at = 300, click = [440, 280] }, { at = 300, pointer = [700, 300] },
+    { at = 1500, click = [440, 344] }, { at = 1500, pointer = [700, 300] },
+    { at = 1700, click = [440, 344] }, { at = 1700, pointer = [700, 300] },
+    { at = 2900, keydown = "Next" }, { at = 2960, keyup = "Next" },
+]
+script = [
+    "0 move 0 13,12,0 14,12,0 15,12,0 16,12,0",
+    "0 move 0 17,12,0 18,12,0 19,13,0 20,14,0",
+    "0 move 0 21,15,0",
+]
+
+[[sequence]]
+id = "game-day"
+situation = "game-turns"
+ms = 3000
+seed = 1
+why = "a scripted game's next day: End Turn's key, the computer player's turn out of sight, the next day's start (its date window, the town's income), then a path of four tiles east clicked twice with the day's points"
+inputs = [
+    { at = 100, keydown = "e" }, { at = 160, keyup = "e" },
+    { at = 1600, click = [440, 280] }, { at = 1600, pointer = [700, 300] },
+    { at = 1800, click = [440, 280] }, { at = 1800, pointer = [700, 300] },
+]
+script = [
+    "0 end-turn",
+    "1 end-turn",
+    "0 move 0 13,12,0 14,12,0 15,12,0 16,12,0",
+]
+
+[[sequence]]
+id = "game-week"
+situation = "game-turns"
+ms = 7600
+seed = 1
+rolls = { week_chance = 2, week_name = 4 }
+why = "a scripted game's week: End Turn seven times, the second week's start with its message (the engine's week 2 a normal one: the original's draw forced to it, its name 4), closed by Enter"
+inputs = [
+    { at = 100, keydown = "e" }, { at = 160, keyup = "e" },
+    { at = 1100, keydown = "e" }, { at = 1160, keyup = "e" },
+    { at = 2100, keydown = "e" }, { at = 2160, keyup = "e" },
+    { at = 3100, keydown = "e" }, { at = 3160, keyup = "e" },
+    { at = 4100, keydown = "e" }, { at = 4160, keyup = "e" },
+    { at = 5100, keydown = "e" }, { at = 5160, keyup = "e" },
+    { at = 6100, keydown = "e" }, { at = 6160, keyup = "e" },
+    { at = 7100, keydown = "Return" }, { at = 7160, keyup = "Return" },
+]
+script = [
+    "0 end-turn", "1 end-turn", "0 end-turn", "1 end-turn", "0 end-turn", "1 end-turn",
+    "0 end-turn", "1 end-turn", "0 end-turn", "1 end-turn", "0 end-turn", "1 end-turn",
+    "0 end-turn", "1 end-turn",
+]

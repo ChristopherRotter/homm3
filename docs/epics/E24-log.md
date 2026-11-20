@@ -2973,3 +2973,45 @@ doc tests and deny passed), the Wine capture set up beside it.
   level-up skills). `tests/engine.rs` (three new tests: the facts of a start, of what a player
   learnt, the towns' names), the hover's unit tests (a town the map names, two mouse-overs
   compared, the towns named from the map), the guards' `SEVERAL`.
+
+### M4 T4a1 — a record's own walks and turns: the reading and the scripted games (2026-11-19)
+
+On `map-client/e24-m4-t4a`, the user present at the start; `master` at #1056 (T3b2 merged).
+Original data staged from the PC at the start (64 files with `shell-videos.vid`, the four manuals
+and three help files, SHA-256 checked); the setup's baseline stopped at its coverage step by a
+watcher (fmt, clippy, the doc tests and deny passed), the Wine capture set up beside it. The VM
+restarted once mid-recording (files kept; `game-day` and `game-week` recorded again).
+
+- **The inbox's window-sound item first** (the user's order): `tables::load` adds the pickups'
+  seven and `killfade` to `SoundRules::effects`, so the window's library decodes them (95 WAVs;
+  the tests count them and a table without `killfade`). All eight are in `Heroes3.snd`.
+- **The cuts** (the user, `AskUserQuestion`): T4 in three by event family (T4a the viewer's own
+  turns, T4b the visits, T4c the other players, the controls and a golden replay); then T4a in
+  two, the agreed fallback, once the record's gaps and the unread arrows showed (T4a1 the reading
+  and the recordings, T4a2 the viewer).
+- **Read** (design §5.12; `docs/exe/map.toml`): `make_hero_path` 0x418DD0 whole (the arrow per
+  tile from `path_arrow_frames` 0x6782AC by the step in and out, the destination's cross, the red
+  twin where the points left fall below 0, move hero's state), `hero_move_step`'s order (the
+  reveal at the step's destination before the animation, the points after it).
+- **Recorded** (`clients/map/to-record.toml`, new; `h3map.py` accepts a sequence's `script`):
+  `game-walk` (two paths clicked twice and a key's step), `game-day` (End Turn, day 2, a walk),
+  `game-week` (End Turn seven times, week 2's message), on `game-walk` and `game-turns` (new
+  situations the engine imports). The engine's records of their scripts: the same tiles walked,
+  the same points after each command, the same income, week 2 normal in both. `game-walk`
+  recorded twice: the same timeline.
+- **Found:** the original banishes a player without a town after seven days (`game-week`'s first
+  take: Blue, then Red's victory): E10's rule, not the engine's yet; the scripted games give
+  every player a town. The kept live parts in git hold the original's box texts (41 files since
+  T2a1): against ADR-0009, the user's answer: a labels task first, none new meanwhile
+  (`game-week-live.toml` not kept).
+- **Agent decisions** (change freely): the scripted games' second hero (its selection shows the
+  engine's resources), Blue's island with a town, the scripts written from the recordings' `hero`
+  lines.
+- **MCL-Q39** (asked; the adventure and server lanes' inboxes): a walk's points and reveal per
+  step are not in the record. **MCL-Q40** (asked; the adventure lane's inbox): a normal week's and
+  month's name.
+- **Checked:** `game-walk`'s engine start against its recording's live part (`render --record
+  --check`): only the cursor over the two tiles whose cost the capture read (MCL-Q37);
+  `check.sh --no-coverage` all gates, the gate, `drawn`, `scripts/exe.py check`, the scoped
+  verify.
+

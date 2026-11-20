@@ -19,15 +19,23 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   §5.11: the `[hover]` facts from the record, every explored tile's hint and cursor compared, a
   still's `pointer` over the map, a town's picture by its view, a map's own town names; two
   shipped starts with no draw in sight, `start-jared` and `start-good-witch`; six engine starts as
-  expected). **Next: the inbox's window-sound item, then T4** (has T1b2's gaps and T3b2's notes),
-  T5 for the client lane's battle entry, T6 the closure. Open questions: **MCL-Q29**, **MCL-Q30**
+  expected). **T4** cut in three by the user (2026-11-19, by event family: T4a the viewer's own
+  turns, T4b the visits, T4c the other players, the controls and a golden replay); **T4a1 done**
+  (2026-11-19, the agreed fallback's first half; design §5.12: `make_hero_path`'s arrows and a
+  step's order read, three scripted games recorded with their engine scripts in
+  `clients/map/to-record.toml`). **Next: the kept live parts' message texts as labels** (ADR-0009,
+  found at T4a1; the user: none new meanwhile, so `game-week`'s live part is not in git), **then
+  T4a2** (the viewer plays the scripted games from their records), T4b, T4c, T5, T6. The inbox's
+  window-sound item done in the same session. Open questions: **MCL-Q29**, **MCL-Q30**
   ((b) recommended), **MCL-Q31**, **MCL-Q32** ((b)), **MCL-Q33** ((b)), **MCL-Q34** ((a)),
   **MCL-Q35** ((b)), **MCL-Q36** and **MCL-Q37** (facts not in the record: a hero's morale, luck and
   whether it can move; the cursor's costs, guarded tiles, a defended town, a visited bank's guards;
   (a) recommended, the adventure and server lanes' inboxes told), **MCL-Q38** (a shipped map's town
-  list order; (a)); none blocks. Next ids **MCL-Q39**, **MCL-STUB-2**.
-- **Open pull requests** (2026-11-19): T3b2's (`map-client/e24-m4-t3b2`): check it first. Merged branches
-  are the user's to delete (the proxy refuses it).
+  list order; (a)), **MCL-Q39** (a walk's points and reveal per step; (a), both engine lanes told),
+  **MCL-Q40** (a normal week's and month's name; (a), the adventure lane told); none blocks. Next
+  ids **MCL-Q41**, **MCL-STUB-2**.
+- **Open pull requests** (2026-11-19): T4a1's (`map-client/e24-m4-t4a`): check it first. Merged
+  branches are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
 - **From E17** (`clients/README.md`; ADR-0020, ADR-0024): the decoders, the compositor, the SDL 3 adapter, the string catalogue, the gate, the harness (the original under Wine, `h3mem.py`, `h3map.py`: the runbook `clients/capture/README.md`).
@@ -51,6 +59,14 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-19, E24 M4 T4a1** (the user at the start: the window-sound item, then T4 in three by
+  event family; T4a cut again, the reading and recordings first): the window decodes the pickups'
+  and `killfade`'s sounds; `make_hero_path`'s arrows and a step's reveal and points read; three
+  scripted games recorded under Wine with their engine scripts, the records' paths and points
+  the original's (the log's "M4 T4a1"; MCL-Q39, MCL-Q40). Found: 41 kept live parts hold the
+  original's box texts (ADR-0009: a labels task queued first). Original data staged (the 64 files
+  and the manuals), SHA-256 checked; the PC was not needed after the first minutes. Nothing is
+  waiting on the user's computer.
 - **2026-11-19, E24 M4 T3b2** (the user at the start: kept whole; MCL-STUB-1 still the adventure
   lane's): the hover's facts from a record, the towns' pictures, two shipped starts found by a
   scan of the 160 and compared, every explored tile's hint and cursor checked (the log's "M4
@@ -61,9 +77,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   engine situations captured and compared (the log's "M4 T3b1"; MCL-Q36). Original data staged
   (63 files and the manuals), SHA-256 checked; the PC was not needed after the first minutes.
   Nothing is waiting on the user's computer.
-- **2026-11-19, E24 M4 T3a** (the user at the start: T3 in two, the map's view first; the object
-  identity withdrawn, a random artifact's still asked): `h3_map_view::engine` and `render
-  --record`/`--check`, two start situations captured (both exact) and the engine's starts equal to
-  them, `tests/engine.rs` (the log's "M4 T3a"). Original data staged (63 files and the manuals),
-  SHA-256 checked; the PC's shell went away about 15 minutes in, nothing needed by then. Nothing
-  is waiting on the user's computer.

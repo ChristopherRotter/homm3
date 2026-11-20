@@ -4074,3 +4074,67 @@ adventure lane's). No reading of the original: the hover is M3's (§4.10 to §4.
   harness writes them); `h3map.py engine`: all six starts as expected, every explored tile's
   hint and cursor the capture's, the pixels only the panels' MCL-Q36 morale, the bonus's gold
   (`engine-start-owners`) and the two level-ups' skills.
+
+### 5.12 A record's own walks and turns: the reading and the scripted games (M4 T4a1)
+
+The first of T4a's two. T4 cut in three by the user at its start (2026-11-19): T4a the viewer's
+own turns (its walks along the engine's paths, End Turn and the turn's change), T4b the visits,
+T4c the other players' turns, the viewer's controls and a golden replay viewed to its end; T4a cut
+again at its start (the agreed fallback): T4a1 the reading and the recordings, T4a2 the viewer.
+
+- **A record's facts of a walk and a turn** (protocol v74, record format 5: `h3-server record`
+  of `h3 adventure run --script`): the player's own command echoed (`GameAccepted`: `MoveHero {
+  hero, path }`, its tiles in order without its own; `EndTurn`), then its events: one
+  `HeroStepped { from, to }` a step, one `MovementChanged` after the walk (the points left; at a
+  turn's start only when they changed), a `GameReveal` after the command's events when it
+  explored tiles (every tile whose sight changed, by area), `TurnEnded` and `TurnStarted` a
+  player, `DayStarted`, `WeekStarted { kind }`, `MonthStarted { kind }`, `ResourceGained` (a
+  town's income at the day's start). The engine refuses a path with a step it cannot pay
+  (`TooFewPoints`, ADV-MOV-006), so a command's path is walked whole that day; a path the
+  original shows past today's points (its destination clicked) is not in the record.
+- **The path's arrows** (`make_hero_path` 0x418DD0, read whole; the map's entry): the
+  pathfinder's path from the hero to its destination, each step priced at the points left
+  (`hero_step_cost` 0x4B18C0, the engine's) and taken off them; the tile a step enters gets
+  `path_arrow_frames` 0x6782AC [the step's direction + 8 × the next step's] + 2 (directions
+  clockwise from north, `step_directions`' order; the out step's direction, plus 8 for a straight
+  step or its reverse, 16 for a turn one way, 0 the other), the destination 1 (frame 0, the
+  cross); 25 more (the red twin, `adag.def` frames 25 to 49) where the points left after the
+  step are below 0. So the arrows are a drawing rule of the client's (the table's 64 numbers into
+  the tables, T4a2), the colour a fact the walk gives: a record's path walked whole is green.
+  Recorded (`game-walk`): `13,12,0,12` … `16,12,0,1` east (10 + 2), `18,12,0,21` east into
+  south-east (19 + 2), `19,13,0,13` south-east (11 + 2), as the table gives.
+- **A step's order** (`hero_move_step` 0x4805E0, 0x48103F to 0x481191): the tiles around the
+  step's destination revealed (`reveal_disk` 0x49D160, radius `hero_scouting_radius` 0x4E4070,
+  0x48106B; the minimap redrawn there only in a network game) before the step's animation
+  (`hero_walk_animation`, 0x48117A), whose frames so show the shroud lifted from the first; the
+  points taken off after it (0x481182), the bar's at the step's end. Recorded (`game-walk`, hero
+  speed 2, 150 ms a step): the points 1560, 1460, 1360, 1260, 1160 (100 a straight step on
+  grass), 1060, 960, 819 (141 a diagonal one), 678, then the key's step 537.
+- **What the record lacks** (each an `MCL-Q<n>`, a note in the engine lanes' inboxes): a step's
+  points and the tiles a step revealed (MCL-Q39: one `MovementChanged` and one `GameReveal` a
+  walk); a normal week's and month's name (MCL-Q40: `Week::Normal` only). Seen too: the original
+  banishes a player who held no town for seven days (`game-week`'s first take: Blue, a hero and
+  no town, out on day 8, then Red's victory), E10's victory and loss, which the engine does not
+  have yet: the scripted games give every player a town.
+- **The scripted games** (`clients/map/to-record.toml`, recorded with `frames --sequences
+  map/to-record.toml --only <id> --no-check`; T4a2 moves them into `sequences.toml`): sequences
+  on situations the engine imports (`game-walk`, `game-turns`: `explored = "start"`, Red's heroes'
+  armies in the map, the starting bonus Gold and the engine's resources written, shown by a
+  second hero's selection and the first's again), each with a new key `script`, the engine's
+  commands of the same game as `h3 adventure run --script` reads them (`h3map.py` accepts and
+  checks it: a list of non-empty strings). `game-walk`: a path of four tiles east clicked twice,
+  one of four to the south-east clicked twice (the original's `hero` lines: east, east, then
+  south-east twice), a key's step (Page Down); `game-day`: End Turn, the computer's turn out of
+  sight, day 2's start, a path of four tiles clicked twice; `game-week`: End Turn seven times, the
+  second week's message (the engine's week 2 a normal one with the default seed: the original's
+  draw forced, `week_chance` 2, `week_name` 4), closed by Enter.
+- **The records against the recordings:** `game-walk`'s engine record walks the same tiles and
+  leaves the same points after each command (1160, 678, 537); its start against the recording's
+  live part at 0 (`render --record --check`): equal but the cursor over the two tiles whose cost
+  the capture read (MCL-Q37's day costs, as T3b2 found). `game-day`'s: day 2's start with the
+  town's 500 gold (the original's kingdom 20 500 at the turn's start), the hero's points full and
+  1160 after its walk, as the original's. `game-week`'s: days 2 to 8 each with 500 gold (20 500 to
+  23 500), week 2 a normal one in both (the original's draw forced to it, name 4), its message a
+  box of style 1 at day 8's start (6160, closed by Enter at 7160). Blue's turns on its island are
+  out of Red's sight: the original's computer hires a hero and enters its town (`[[turn]]`'s
+  heroes), the engine's script only ends them, which no fact of Red's record shows.

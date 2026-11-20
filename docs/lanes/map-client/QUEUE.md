@@ -26,25 +26,71 @@ their entries in `QUEUE-ARCHIVE.md`). A fact the record lacks becomes an `MCL-Q<
 the engine lane's inbox, its gap shown in the comparison, never a rule copied into the client (the
 user, the same day).
 
-### E24 M4 T4 — a record played
+### E24 M4 — the kept live parts' message texts as labels (ADR-0009)
 
-- **Scope:** a record's messages played over time: each event as T1 and T2 built it (the steps
-  along the engine's paths as M2's walk, the reveals, the removals, the owners, the turns and
-  days, the message boxes with the record's answers, the other players' turns as a computer
-  player's, with what T1b2 left: several heroes and a boat in one computer's turn, its music
-  (`AITheme0` to `2`, design §5.1) and its walk's sounds, and speed 4's held draws shown on the
-  window's clock, which no recording can show: the steps come from the record); the viewer's controls (pause, step, restart, a speed: the window's keys, new design,
-  each a review item). The check: scripted games (the same commands, no random draw between
-  them) played in the engine and in the original, compared frame by frame, the original's
-  visual moment from its recording; a golden adventure replay as a record viewed to its end, its
-  battles skipped to their results until T5.
-- **Acceptance:** the scripted games exact; `drawn` all the same; `check.sh` all gates.
+- **Scope:** found at T4a1 (2026-11-19; the user: labels later, none new meanwhile): since T2a1 the
+  harness's `[[message]]` tables (`message_toml`, `Mem.message_box`) keep each box's `texts`
+  verbatim from the original, and 41 kept live parts in git (`clients/map/timelines/*-live.toml`)
+  hold them. Write them as the hint and the popup recordings do (`hint`, `popup`: the record a
+  text comes from, `[TABLE:row]`, else `[other: n characters]`; the captions likewise), check
+  that nothing of the viewer reads them (the boxes are composed from the catalogue), rewrite the
+  41 kept files (a transform by the extracted tables, or the sequences recorded again), and add a
+  guard (`h3map.py`, or a test over `clients/map/`) that refuses a kept file with a text.
+- **Acceptance:** no original text in `clients/map/`; `drawn` all the same; `check.sh` all gates.
+- **Depends on:** nothing. **Status:** next (before T4a2: `game-week`'s live part waits on it).
+
+### E24 M4 T4 — a record played (cut in three by the user at its start, 2026-11-19)
+
+T4 cut by event family, as Part A was: **T4a** the viewer's own turns (its walks along the
+engine's paths, End Turn and the turn's change), **T4b** the visits, **T4c** the other players,
+the viewer's controls and a golden replay. T4a cut again at its start (the agreed fallback):
+**T4a1** the reading and the recordings (**done** 2026-11-19: the log's "M4 T4a1", design §5.12;
+MCL-Q39, MCL-Q40), then T4a2. A fact the record lacks becomes an `MCL-Q<n>` with a note in the
+engine lanes' inboxes, its gap shown in the comparison, never a rule copied into the client.
+
+#### E24 M4 T4a2 — a record's own walks and turns played
+
+- **Scope:** the viewer plays T4a1's three scripted games (`clients/map/to-record.toml`:
+  `game-walk`, `game-day`, `game-week`) from their engine records: the record folded
+  (`GameObservation::fold`, `reveal`) and each own command turned into the timeline's facts: a
+  walk's path and arrows (`path_arrow_frames`' 64 numbers into the tables, design §5.12; green,
+  the command's path being walked whole), its steps' facings, the points (MCL-Q39 (c) meanwhile:
+  the walk's at its last step), its reveal (MCL-Q39 (c): the command's whole at its first step),
+  End Turn and each turn's start (`NextTurn` from the fold at `TurnStarted`: the kingdom and the
+  status by `engine::panels`, the date, the income, a creature's week from `WeekStarted`, a
+  normal one's name by MCL-Q40's (b) meanwhile); the binary plays a sequence with the record's
+  facts in place of the recording's (`sequences <id> --record <r.jsonl>`, or as the design
+  settles), `h3map.py` makes the record from the sequence's `script` and compares the frames
+  with the original's (the screens recorded again in a fresh sandbox, TRAPS); the sequences
+  moved into `sequences.toml`, `drawn --record`; each difference listed or an `MCL-Q<n>`.
+- **Acceptance:** the scripted games exact but the listed gaps (MCL-Q37, MCL-Q39, MCL-Q40);
+  `drawn` all the same; `check.sh` all gates.
 - **Notes from T3b2** (design §5.11): the cursor's facts are not in the record (MCL-Q37: the
   costs over several days, the guarded tiles, a defended town at level 0), so a walk's cursor
-  waits on its answer; the engine's views show no Seer's Hut, Quest Guard or Obelisk yet; a
-  shipped map's town list order is MCL-Q38's; `MCL-STUB-1` (a random artifact's and dwelling's
-  drawn picture) still waits on the adventure lane's answer to this lane's note of 2026-11-19.
-- **Depends on:** T1a, T1b, T2, T3a, T3b. **Status:** next.
+  waits on its answer (the scripted games park the pointer over the panel); the engine's views
+  show no Seer's Hut, Quest Guard or Obelisk yet; a shipped map's town list order is MCL-Q38's;
+  `MCL-STUB-1` (a random artifact's and dwelling's drawn picture) still waits on the adventure
+  lane's answer to this lane's note of 2026-11-19.
+- **Depends on:** T4a1; the labels task above (`game-week`'s live part). **Status:** waiting.
+
+#### E24 M4 T4b — a record's visits played
+
+- **Scope:** each visit's events as Part A built them (T2: the finds, the questions with the
+  record's answers, the level-ups, the flags, the boats, the removals, Summon Boat), scripted
+  games with visits played in the engine and in the original and compared frame by frame.
+- **Acceptance:** the scripted games exact but the listed gaps; `drawn` all the same; `check.sh`
+  all gates. **Depends on:** T4a2. **Status:** waiting.
+
+#### E24 M4 T4c — the other players, the viewer's controls, a golden replay
+
+- **Scope:** the other players' turns as a computer player's (with what T1b2 left: several
+  heroes and a boat in one computer's turn, its music, `AITheme0` to `2`, design §5.1, and its
+  walk's sounds, and speed 4's held draws shown on the window's clock, which no recording can
+  show: the steps come from the record); the viewer's controls (pause, step, restart, a speed:
+  the window's keys, new design, each a review item); a golden adventure replay as a record
+  viewed to its end, its battles skipped to their results until T5.
+- **Acceptance:** a golden replay viewed to its end; `drawn` all the same; `check.sh` all gates.
+- **Depends on:** T4b. **Status:** waiting.
 
 ### E24 M4 T5 — the battles handed over
 
@@ -78,13 +124,6 @@ user, the same day).
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
-
-- 2026-11-19 (this lane, E24 M4 T2d3, found by its worker; **for the next task that touches the
-  window's sound, or T6's hand test**): `killfade` and the pickups (`pickup01` to `07`) are not
-  among `h3_map_view::sound::SoundRules::effects` (only the button and, since T2d3, `summboat`),
-  and the window's library decodes only `SoundRules::wavs`, so the window seems to play them
-  silent (a reading of `bin/h3-map-view/audio.rs` `play`, not heard): add every effect the
-  timeline cues (the finds', the asks', the boats') to `effects` and test the library's names.
 
 - 2026-11-19 (the client lane, E27 M3 T6, `client/e27-m3-t6`; **for E24 M5, nothing to do now**):
   the scenario screen's Begin now builds the game's setup and the engine validates it

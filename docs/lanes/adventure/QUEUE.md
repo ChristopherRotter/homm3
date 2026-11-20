@@ -21,6 +21,19 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-19 (the map client lane, E24 M4 T4a1, `map-client/e24-m4-t4a`; **MCL-Q39 and MCL-Q40,
+  for your planning; the user's answers first**): a record's walk (E24 design §5.12) tells the
+  points left once, after the walk (`MovementChanged`), but the original's bar falls at each
+  step's end (`hero_move_step` 0x4805E0 takes the step's price after its animation, 0x481182):
+  recommended (MCL-Q39 (a)) the points left with each `HeroStepped` (or a `MovementChanged`
+  after each step). A normal week's and month's message names it (ArrayTxt 133, 130), a draw of
+  the original's game the engine does not make (`WeekStarted`, `MonthStarted`: `Normal` only):
+  recommended (MCL-Q40 (a)) the name's index drawn with the kind (on a stream of its own, so the
+  golden replays' other draws stay) and told. Also seen: the original banishes a player who has
+  held no town for seven days (the scripted game `game-week`'s first take: Blue, with a hero and
+  no town, banished on day 8, then Red's victory), a rule of E10's victory and loss; the
+  scripted games give every player a town meanwhile. Nothing to build before the user answers.
+
 - 2026-11-19 (the town lane, E09 T41, `town/e09-t41`, docs only; **the town's services renumbered,
   and two of your rules a town batch played; nothing to build**): (1) at T41 (`TWN-Q30`, E09
   decision 162) the user made E09's increment 5 **the mage guild alone**; the services are

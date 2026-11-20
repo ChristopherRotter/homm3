@@ -204,7 +204,12 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   MCL-Q37, MCL-Q38); the object identity asked of the adventure lane withdrawn by the user (the same day,
   the server lane's note of 2026-11-12: the view's objects in tile order, found by type and
   anchor; an object added in play, T4's, drawn after the file's), a random artifact's drawn
-  artifact still asked (the view names none); T4, a record played; T5, the battles handed over
+  artifact still asked (the view names none); T4, a record played, cut in three by the user at
+  its start (2026-11-19, by event family): T4a the viewer's own turns, cut again at its start (the
+  agreed fallback): T4a1, the reading and the recordings (**done** 2026-11-19; the log's "M4
+  T4a1", design §5.12; MCL-Q39, MCL-Q40), T4a2 the viewer; T4b the visits; T4c the other
+  players' turns, the viewer's controls and a golden replay; the kept live parts' message texts
+  as labels first (ADR-0009, found at T4a1, the user: none new meanwhile); T5, the battles handed over
   (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
   with the user.
 - **Exit:** Part A's situations and sequences exact on the whole screen (or each difference an
@@ -413,3 +418,10 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   first; a shipped situation's staging keys (`bonus` with `players`, `resources`, `select`,
   `reselect`, `pointer`); the two shipped starts' level-up draws listed as differences, not
   staged.
+- **M4 T4a1, the scripted games' form** (*provisional*; design §5.12): a sequence's `script`, the
+  engine's commands of the same game as `h3 adventure run --script` reads them, written by hand
+  from the original's walk (its recorded `hero` lines) and checked against the engine's record
+  (the same tiles, the same points after each command); the scripted games' situations give
+  every player a town (the original banishes one without for seven days, E10's rule) and Red a
+  second hero whose selection shows the engine's resources; recorded first in
+  `clients/map/to-record.toml`.
