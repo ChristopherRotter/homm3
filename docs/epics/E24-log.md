@@ -3100,3 +3100,44 @@ needed after the first minutes.
   `a_record_s_rarer_lines` (each week's and month's kind, a snapshot, a walk without tiles, a
   record ending in a walk, a tile past a byte), `sequences`' differences.
 - **Checked:** see design §5.13.
+
+### M4 T4b1 — a record's visits played: the message boxes (2026-11-20)
+
+On `map-client/e24-m4-t4b1`, the user present at the start: T4b cut in two by family (T4b1 the
+boxes, T4b2 the flags and the boats; the user's choice among a cut in three, two by phase and
+whole), Summon Boat moved out of T4b (the engine casts no adventure spell). `master` at #1072
+(T4a2 merged); its clients CI red on the client lane's `save` test (#1069 and #1070 crossed:
+`format = 20` against replay format v21; the client lane's inbox told, the user too). Original
+data staged from the PC at the start (the 64 files and the manuals, SHA-256 checked); the setup's
+baseline stopped at its coverage step by a watcher; the Wine capture set up beside it. The PC
+was not needed after the first minutes.
+
+- **Read** (the engine's games of Part A's situations, design §5.14): each visit's events in a
+  record, by class; what the record lacks (MCL-Q41, MCL-Q42; the morale and luck of an
+  artifact's bonus, MCL-Q36, seen in a first take of `game-finds` with the Pendant of Courage).
+- **Recorded:** `game-finds`, `game-asks`, `game-level` under Wine (situations of the same
+  names), each exact at 0; `game-level`'s engine seed 74 found by a search (the original's
+  level-up draws under seed 1). A first take of `game-finds` used Space on the Temple (the
+  original shows the visited box; the viewer builds no visit on Space: walked off and on
+  instead).
+- **Built** (design §5.14): `engine::played`'s `Visit`, `Leveled`, `ends` and `experience`;
+  `engine::visits` (`told`, `gain`, `Told`, `Answered`); the adapter's `record_finds` and the
+  record's level-ups with `LevelBox::chosen`; the timeline's visit from beside on a record (its
+  move, its points) and the level-up's OK refused with another offer; `record_paths` from where a
+  walk left the hero; `h3map.py`'s `engine_seed` (`h3 adventure run --seed`), the viewer's
+  `Sequence::engine_seed`; the timeline's `flush` cleared before a millisecond's actions (a box
+  the loop's turn opened dropped every action after the first of a later millisecond's: found by
+  `game-asks`' click and pointer at 1000).
+- **Found:** `game-finds` and `game-level` exact (no gap, no frame differing); `game-asks`' timeline
+  exact, 3 of its 43 frames differing by 136 pixels: the chest's box without the experience's
+  amount (MCL-Q41 (c)).
+- **Agent decisions** (change freely; M4's review list): the visit's shape and its end at
+  another command; a find's later visit as its `again`; the questions' answers left out but the
+  record's; `engine_seed` by a search; the pointer moved off the map after each click in the
+  scripted games (MCL-Q37's reach); the Pendant of Dispassion; the `flush` fix.
+- **Tests:** `tests/engine.rs`' `a_record_s_visits_and_level_ups` (visits, answers, the level-ups'
+  offers and choices, a hero without details, a skill past a byte, `ends`, the experience) and
+  `what_a_record_s_visits_tell` (every class and answer, the gains);
+  `timeline::tests::finds::a_record_s_visit_from_beside_takes_its_move`,
+  `timeline::tests::levels::a_record_s_level_up_closes_only_with_its_answer`; the sequences'
+  count and ids.

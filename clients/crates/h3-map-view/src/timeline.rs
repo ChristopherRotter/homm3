@@ -1967,6 +1967,10 @@ impl Loop {
         } else {
             self.turn_of_loop(t)?;
         }
+        // A box opened by the loop's turn (a walk's end) emptied the queue then: the actions given
+        // after it are not behind it (E24 M4 T4b1: `game-asks`' click and pointer at 1000 after
+        // the Arena's box at 250).
+        self.flush = false;
         for &action in actions {
             if let Some(dissolving) = &mut self.dissolving {
                 // The mouse's point is read at once; the message waits as during a walk.

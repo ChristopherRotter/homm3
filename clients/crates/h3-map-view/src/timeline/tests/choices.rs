@@ -330,3 +330,23 @@ fn the_cursor_over_the_view_after_the_walk_is_the_recordings() {
     l.run(1461, &[Action::Pointer([304, 272])]).unwrap();
     assert_eq!(l.cursor().frame, hover::frame::HERO);
 }
+
+#[test]
+fn a_box_a_walk_s_end_opens_drops_no_later_input() {
+    // E24 M4 T4b1: at hero speed 2 the walk onto the Arena ends in the loop's turn (no action
+    // then), its box opening there; the click on a picture and the pointer's move off the map at
+    // 1000 are both taken (the queue emptied when the box opened, not at the next actions).
+    let (mut start, mut actions, _, _) = choosing("choose-arena");
+    start.hero_speed = 2;
+    actions
+        .get_mut(&1000)
+        .unwrap()
+        .push(Action::Pointer([700, 300]));
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    for t in 1..=1000 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    assert!(l.boxed.is_some());
+    assert_eq!(l.pointer, [700, 300]);
+}

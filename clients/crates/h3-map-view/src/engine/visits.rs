@@ -214,7 +214,7 @@ fn resource(gained: &Gain) -> Option<(i32, i32)> {
     if found.next().is_some() {
         return None;
     }
-    Some((i32::try_from(resource).ok()?, amount))
+    Some((i32::try_from(resource).unwrap_or(0), amount))
 }
 
 /// What `events` give that the panels show: the resources gained (in the bar's order), the

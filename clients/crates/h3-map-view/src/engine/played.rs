@@ -52,6 +52,9 @@ const DATE_WINDOW: i64 = 1;
 pub struct Played {
     /// The viewer's walks (the timeline's `Start::moves`).
     pub moves: Vec<Move>,
+    /// Where each walk left its hero (E24 M4 T4b1: its last step's tile), none where it took no
+    /// step (a visit from beside).
+    pub ends: Vec<Option<Pos>>,
     /// The viewer's turns' starts after the first, each a `[[turn]]` table.
     pub turns: Vec<Value>,
     /// The viewer's visits (E24 M4 T4b1), one a walk, in order.
@@ -92,6 +95,7 @@ struct Open {
     tiles: Vec<Pos>,
     points: Option<i32>,
     before: Vec<Pos>,
+    end: Option<Pos>,
 }
 
 /// The walks and turns of `loaded`'s record (the module's documentation), its map's art `art`
@@ -104,6 +108,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
     let mut observation = loaded.first()?.clone();
     let viewer = observation.adventure.viewer;
     let mut moves = Vec::new();
+    let mut ends = Vec::new();
     let mut turns = Vec::new();
     let mut open: Option<Open> = None;
     let mut week = (1, observation.week);
@@ -118,7 +123,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
     for (i, message) in loaded.record.messages.iter().enumerate().skip(1) {
         match message {
             ServerMessage::GameAccepted { command, .. } => {
-                close(&mut open, &observation, art, &mut moves);
+                close(&mut open, &observation, art, (&mut moves, &mut ends));
                 match command {
                     GameCommand::Adventure {
                         command: AdventureCommand::MoveHero { hero, path },
@@ -146,6 +151,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                             tiles,
                             points: None,
                             before: explored(&observation, art),
+                            end: None,
                         });
                     }
                     GameCommand::Answer { answer } => {
@@ -168,6 +174,13 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                     observation.fold(event);
                     match event {
                         GameEvent::Adventure {
+                            event: AdventureEvent::HeroStepped { hero, to, .. },
+                        } => {
+                            if let Some(walk) = open.as_mut().filter(|w| w.hero == *hero) {
+                                walk.end = to.and_then(|to| tile(to.x, to.y, to.level));
+                            }
+                        }
+                        GameEvent::Adventure {
                             event: AdventureEvent::MovementChanged { hero, movement, .. },
                         } => {
                             if let Some(walk) = open.as_mut().filter(|w| w.hero == *hero) {
@@ -184,7 +197,9 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                 }
             }
             ServerMessage::GameReveal { reveal, .. } => observation.reveal(reveal),
-            ServerMessage::GameTurn { .. } => close(&mut open, &observation, art, &mut moves),
+            ServerMessage::GameTurn { .. } => {
+                close(&mut open, &observation, art, (&mut moves, &mut ends))
+            }
             ServerMessage::GameSnapshot {
                 observation: snapshot,
                 ..
@@ -192,9 +207,10 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
             _ => {}
         }
     }
-    close(&mut open, &observation, art, &mut moves);
+    close(&mut open, &observation, art, (&mut moves, &mut ends));
     Ok(Played {
         moves,
+        ends,
         turns,
         visits,
         levels,
@@ -210,9 +226,13 @@ fn experience(observation: &GameObservation, viewer: u8) -> Vec<(Pos, u32)> {
         .iter()
         .filter(|h| h.owner == viewer)
         .filter_map(|h| {
-            let at = tile(h.pos.x, h.pos.y, h.pos.level)?;
-            let details = observation.heroes.iter().find(|i| i.id == h.id)?;
-            Some((at, details.details.as_ref()?.experience))
+            let experience = observation
+                .heroes
+                .iter()
+                .find(|i| i.id == h.id)
+                .and_then(|i| i.details.as_ref())
+                .map(|d| d.experience);
+            tile(h.pos.x, h.pos.y, h.pos.level).zip(experience)
         })
         .collect()
 }
@@ -276,9 +296,8 @@ fn level_up(
     let details = observation
         .heroes
         .iter()
-        .find(|i| i.id == hero)?
-        .details
-        .as_ref()?;
+        .find(|i| i.id == hero)
+        .and_then(|i| i.details.as_ref())?;
     let offers = offers
         .iter()
         .map(|&skill| {
@@ -294,7 +313,7 @@ fn level_up(
         })
         .collect::<Option<Vec<_>>>()?;
     Some(LevelUp {
-        hero: u8::try_from(details.hero_type).ok()?,
+        hero: u8::try_from(details.hero_type).unwrap_or(u8::MAX),
         level,
         primary: match primary {
             PrimarySkill::Attack => 0,
@@ -312,7 +331,7 @@ fn close(
     open: &mut Option<Open>,
     observation: &GameObservation,
     art: &MapArt,
-    out: &mut Vec<Move>,
+    (out, ends): (&mut Vec<Move>, &mut Vec<Option<Pos>>),
 ) {
     let Some(walk) = open.take() else {
         return;
@@ -336,6 +355,7 @@ fn close(
         points,
         revealed: per_step,
     });
+    ends.push(walk.end);
 }
 
 /// A viewer's turn's start as a `[[turn]]` table (the module's documentation).

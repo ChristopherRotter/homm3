@@ -1314,6 +1314,7 @@ fn a_record_s_walks_and_turns() {
     assert!(walk.points[1].is_some_and(|p| p > 0 && p < 2000));
     assert!(!walk.revealed[0].is_empty() && walk.revealed[1].is_empty());
     assert!(walk.revealed[0].iter().all(|t| t.y < 8));
+    assert_eq!(played.ends, [Some(at(10, 8))]);
     // Red's turns' starts, days 2 to 8: the date's window, the panels' kingdom with the day, the
     // week's kind and its client's name (MCL-Q40 (b): week 2 the names' second).
     assert_eq!(played.turns.len(), 7);
@@ -1487,6 +1488,14 @@ fn a_record_s_visits_and_level_ups() {
         .and_then(|i| i.details.clone())
         .unwrap();
     let known = details.skills[0];
+    let blue = g
+        .observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == 1)
+        .unwrap()
+        .id;
     let moved = |x, y| {
         accepted(GameCommand::Adventure {
             command: AdventureCommand::MoveHero {
@@ -1569,6 +1578,21 @@ fn a_record_s_visits_and_level_ups() {
                     primary: PrimarySkill::Attack,
                     skill: None,
                 },
+                // Blue's hero (no details in Red's view), an offer past the skills' bytes.
+                GameEvent::LevelUpOpened {
+                    player: 1,
+                    hero: blue,
+                    level: 2,
+                    primary: PrimarySkill::Attack,
+                    offers: [1, 2],
+                },
+                GameEvent::LevelUpOpened {
+                    player: 0,
+                    hero: red.id,
+                    level: 6,
+                    primary: PrimarySkill::Attack,
+                    offers: [300, 2],
+                },
             ]),
         ],
     );
@@ -1584,6 +1608,8 @@ fn a_record_s_visits_and_level_ups() {
     assert_eq!(first.answers[0].1, [gold]);
     assert_eq!((second.at, second.events.len()), (tile(12, 10), 2));
     assert!(second.answers.is_empty());
+    // Where each walk left its hero: none for those without a step (a visit from beside).
+    assert_eq!(played.ends, [None, None, None]);
     // The level-ups: the dialog's offers with the levels they reach, the record's choice.
     let levels: Vec<_> = played
         .levels

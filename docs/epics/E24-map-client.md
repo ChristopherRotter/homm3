@@ -210,8 +210,9 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   T4a1", design §5.12; MCL-Q39, MCL-Q40), T4a2 the viewer (**done** 2026-11-20, kept whole by
   the user: the log's "M4 T4a2", design §5.13; the three games exact but the listed gaps of
   MCL-Q39 and MCL-Q40); T4b the visits, cut in two by the user at its start (2026-11-20, by
-  family): T4b1 the message boxes (the finds, the questions, the level-ups), T4b2 the flags and
-  the boats; Summon Boat moved out of T4b (the engine casts no adventure spell yet); T4c the other
+  family): T4b1 the message boxes (the finds, the questions, the level-ups; **done** 2026-11-20,
+  whole: the log's "M4 T4b1", design §5.14; MCL-Q41, MCL-Q42), T4b2 the flags and the boats;
+  Summon Boat moved out of T4b (the engine casts no adventure spell yet); T4c the other
   players' turns, the viewer's controls and a golden replay; the kept live parts' message texts
   as labels first (ADR-0009, found at T4a1, the user: none new meanwhile; **done** 2026-11-20,
   whole: the log's "M4, the labels"); T5, the battles handed over
@@ -446,3 +447,13 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   differences from the original's listed in `timelines/<id>-gaps.txt` (an LCS's complement, `- `
   the original's line, `+ ` ours), the frames' in `<id>-frames.txt`; a step's reveal before a
   boarding's dissolve (not read).
+- **M4 T4b1, a record's visits** (*provisional*; design §5.14): a visit is a `MoveHero` with its
+  events and the answers after it (another command ends it), told by the class of the object on
+  its last tile with Part A's `Find` and `Ask` built from the record's facts (a Learning Stone's
+  picture the record's experience; Pandora's Box's rewards the answer's gains); a later visit to
+  the same tile its `again` box; a question's answers but the record's left out (the Arena's
+  Cancel kept with its Attack); a level-up's OK with another offer refused; a visit from beside
+  takes the record's move (its points); a chest's part not taken shown without its amount
+  (MCL-Q41 (c)); `engine_seed` found by a search over the engine's seeds for draws the original
+  makes at random (the level-up's); a box the loop's turn opens no longer drops the next
+  millisecond's input after its first (a lingering `flush`, found by `game-asks`).

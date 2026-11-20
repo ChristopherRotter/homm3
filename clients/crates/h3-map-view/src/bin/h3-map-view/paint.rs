@@ -119,6 +119,7 @@ struct Played {
     table: toml::Table,
     label: String,
     moves: Vec<timeline::Move>,
+    ends: Vec<Option<Pos>>,
     visits: Vec<engine::Visit>,
     levels: Vec<engine::Leveled>,
     experience: Vec<(Pos, u32)>,
@@ -146,6 +147,7 @@ fn played(assets: &Assets<'_>, raw: &RawMap, record: Record<'_>) -> Result<Playe
         table,
         label: record.path.display().to_string(),
         moves: game.moves,
+        ends: game.ends,
         visits: game.visits,
         levels: game.levels,
         experience: game.experience,
@@ -153,18 +155,20 @@ fn played(assets: &Assets<'_>, raw: &RawMap, record: Record<'_>) -> Result<Playe
 }
 
 /// The arrows of each of the engine's walks, from where the walk before left the hero (`from`
-/// the selected hero's tile at 0; E24 M4 T4a2: `timeline::arrows`).
+/// the selected hero's tile at 0; E24 M4 T4a2: `timeline::arrows`; since E24 M4 T4b1 a visit
+/// from beside leaves it where it stood, `ends`).
 fn record_paths(
     assets: &Assets<'_>,
     from: Pos,
     moves: &[timeline::Move],
+    ends: &[Option<Pos>],
 ) -> Result<Vec<Vec<h3_map_view::live::Arrow>>, String> {
     let mut at = from;
     let mut paths = Vec::with_capacity(moves.len());
-    for walk in moves {
+    for (walk, end) in moves.iter().zip(ends) {
         let arrows = timeline::arrows(&assets.tables.map.walk.arrows, at, &walk.tiles)
             .ok_or_else(|| format!("a record's walk from {at:?} is no path: {:?}", walk.tiles))?;
-        at = walk.tiles.last().copied().unwrap_or(at);
+        at = end.unwrap_or(at);
         paths.push(arrows);
     }
     Ok(paths)
@@ -218,7 +222,7 @@ pub fn for_sequence<'a>(
             sequence::selected_hero(live).map_err(|e| format!("{}: {e}", live_path.display()))?;
         painter.selected = sequence::selected_in(live).ok();
         let paths = match (&played, walks) {
-            (Some(p), true) => record_paths(assets, hero.at, &p.moves)?,
+            (Some(p), true) => record_paths(assets, hero.at, &p.moves, &p.ends)?,
             (None, true) => sequence.paths(facts)?,
             (_, false) => Vec::new(),
         };
