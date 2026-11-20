@@ -5345,3 +5345,56 @@ bench-check 9.9, original-data 0.5; `deny` and `ffi-smoke` skipped by the scope)
 `scripts/exe.py check` and `cited` (every address covered), `doc-drift` and `check-lane` against
 `origin/master`. CI on the pull request is the record. **The queue:** T42 becomes T42b, then T43. Ids: decisions next 166; disputes `TD-27`;
 quirk candidates `T-19`; questions `TWN-Q31` (T42b's checkpoint).
+
+### T42b — the survey's second part: what a hero gets; the checkpoint TWN-Q31 (2026-11-20)
+
+One session, the user present at the start and at the checkpoint; branch `town/e09-t42b`, docs
+only. Starting point: `master` at 4c19fbb (#1061 merged; CI green there). The user's computer was
+connected at the start only: 68 files staged (the four LODs, the executables, the DLLs, sounds
+and videos but `shell-videos.vid`, `maps.tar`, `extracted.tar`, the 40 MP3s, the three saved
+games, the four manuals and three help files), SHA-256 checked against the PC's. The VM
+restarted during the setup's baseline (killed at its test step; files kept): CI's green run on
+4c19fbb stands for it. **At its start** (the user, `AskUserQuestion`): T42b whole (decision 166).
+
+**Read** (survey `docs/rules/surveys/E09-guild.md` §11 to §15; `docs/exe/map.toml`):
+`town_heroes_learn_spells` 0x5BE030 a third time and each of its nine callers at its call (the
+ninth named `town_screen_bars` 0x5C6E10: the town screen's hero bars, so every opening of the
+screen teaches with a visitor there); `town_screen_open` 0x5BE210 whole (its callers: a visit, the
+adventure screen's town button and two clicks: an opening without a visit); the computer's visit
+(`ai_town_visit` 0x5253D0: its spell book bought without a question at 500 gold, its learning, its
+building visits) and `ai_hero_turn`'s start (a computer hero on an entrance re-visits each turn);
+the new day's town refill (`new_day` 0x4C82E4 to 0x4C8434); the Mana Vortex (`town_visit_buildings`
+0x5BD8E0's first branch, `hero_primary_clamped` 0x5BDE40, the week flag +0x33) with every caller's
+heroes in order; the hero type's spell book (`hero_reset` 0x4D889F to 0x4D890A). Three new map
+entries (`manager_run`, `hero_primary_clamped`, `town_screen_bars`), eleven changed; `structs.toml`'s
+town `week_flag` read.
+
+**Found** (§0's items 9 to 16): learning by a worn book and Wisdom's bound (HER-SPL-005) at the
+guild's shown slots, no owner or map-ban test; its triggers (the visit's end, a capture and a siege,
+every build, a hire, the start, the guild's window, the screen's every opening with a visitor, the
+garrison moves, Town Portal, Castle Gate, the computer's visits), none at the new day or a human's
+turn start; the book bought by a human at the guild with a question, by the computer without; the
+night's refill to the maximum in a town with a guild, no book needed; the Vortex once a week a town,
+twice the maximum, given at the screen's opening and a build with the visit (the garrison hero
+first), a human's hire, Castle Gate and the computer's visit, not Town Portal. VCMI 1.7.5: the same
+set, book, refill and Vortex, but its triggers are every turn start (each town's garrison hero then
+visitor), a skill changed in town, a visit (the visitor only), a guild's build and a hire; nothing at
+the start. The wiki: the Vortex goes to the garrison hero "once the player opens the town menu".
+New dispute TD-27 (when the heroes learn and get the Vortex). Batch TWN-5: five rows (§18).
+
+**The census** (§10; the census function added to `h3-map`'s `original_data` for the run, not
+committed; seed 0): 561 heroes on an entrance at the start (538 main towns' heroes, 23 placed),
+none in a garrison; in the 74 guild towns with a hero 33 main towns' heroes and 8 placed heroes with
+a book (5 maps); Wisdom's bound bites for none; one Mana Vortex at the start (a neutral Dungeon,
+`Caught in the Middle`), no hero there.
+
+**The checkpoint** (`TWN-Q31`, survey §20; `AskUserQuestion`, one round of four; the Aurora's
+question asked again in other words after the user found "excluded" and "ignored" ambiguous): TD-10
+the original (decision 167), TD-25 the original (168), TD-26 the original's set with T-18
+`fix-optional` (169), TD-27 the original's triggers with a free opening command (170), the agent's
+calls (171); each as recommended.
+
+**Verify:** VERIFY_LINE
+
+**The queue:** T42b leaves it; T43 next (the drafts, Part G from §82, the cut). Ids: decisions
+next 172; disputes `TD-28`; quirk candidates `T-19`; questions `TWN-Q32`.

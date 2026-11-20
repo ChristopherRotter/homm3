@@ -1402,7 +1402,7 @@ factions (and 27 to 29 have no row). The horde and its upgrade share a name in e
 |---|---|---|---|---|---|
 | TD-8 | The Fortress' Glyphs of Fear (21) and Blood Obelisk (22) for a siege's defender | 21 +2 attack, 22 +2 defense | the same | the game's texts and the fandom wiki: 21 defense, 22 attack | 1 (the `defender` role) |
 | TD-9 | The Conflux's upgraded Altar of Fire (40) | needs the Altar of Fire and the upgraded Altar of Air (38) | the base Altar of Air (31) | not checked | 2 (requirements) |
-| TD-10 | A main town's hero learns the guild's spells at the start | yes: 0x5BE030 at 0x4CA1A2 (the visitor and the garrison hero, a spell book, the Mage Guild) | no (`giveSpells` only on a visit, a skill, a bought book, a building) | not found | 33 of 523 main towns' heroes (E09 T7b2b's census; `TWN-STUB-6`, increment 4) |
+| TD-10 | A main town's hero learns the guild's spells at the start | yes: 0x5BE030 at 0x4CA1A2 (the visitor and the garrison hero, a spell book, the Mage Guild) | no (`giveSpells` only on a visit, a skill, a bought book, a building) | not found | 33 of 523 main towns' heroes (E09 T7b2b's census; `TWN-STUB-6`, increment 4); decided at `TWN-Q31`: the original (E09 decision 167; `E09-guild.md` §17) |
 
 - **T-6** (§16.5): a custom set's horde leaves its dwelling standing (the keep +1).
 - **For the checkpoint (`TWN-Q6`, answered in §16.10):** the hall companions in the part or not

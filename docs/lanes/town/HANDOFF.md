@@ -5,13 +5,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E09** (towns): increments 1 to 4 closed (T10, T20, T30, T41; `E09-archive.md`, design notes
-  Parts A to F). **Increment 5** (the mage guild; decisions 161–165, `TWN-Q30`): T42 cut in two
-  (decision 165); **T42a done** (survey `E09-guild.md` §0 to §9: what the guild holds). **Next:**
-  T42b (what a hero gets, then the checkpoint `TWN-Q31` over both parts; `QUEUE.md`), then T43
-  (the drafts, Part G, the cut). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox),
-  `TWN-STUB-6` and `-15` (increment 5), `-13` (Visions' reach), `TWN-STUB-2` (the victory
-  conditions), `TWN-STUB-16` (E10's loss condition), `-17` (increment 7), `-18` (E13).
-- **Open pull requests:** T42a's (#1061, `town/e09-t42a`, docs only), opened at the session's end;
+  Parts A to F). **Increment 5** (the mage guild; decisions 161–171, `TWN-Q30`, `TWN-Q31`): its
+  survey done in two parts (decision 165): T42a (`E09-guild.md` §0 to §9, what the guild holds)
+  and **T42b** (§10 to §20, what a hero gets, with the checkpoint `TWN-Q31`: TD-10, TD-25 the
+  original, T-18 `fix-optional`, TD-27 the original's triggers with a free opening command;
+  decisions 166–171). **Next:** T43 (the drafts, Part G from §82, the cut with batch TWN-5's five
+  rows; `QUEUE.md`). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and
+  `-15` (increment 5), `-13` (Visions' reach), `TWN-STUB-2` (the victory conditions),
+  `TWN-STUB-16` (E10's loss condition), `-17` (increment 7), `-18` (E13).
+- **Open pull requests:** T42b's (`town/e09-t42b`, docs only), opened at the session's end;
   watch it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
@@ -25,11 +27,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (v74 by T39b2) are bumped `cross-lane` (each task's record in `E09-log.md`; the
   plan in design §77). Shared: core ruleset hash v53, pack format v52 (T24),
   quirk flags 43 and `StreamId::TAVERNS` (8) by T35b.
-- **Ids** (next): questions `TWN-Q31`; decisions 166; quirks `TWN-QUIRK-14` (`-12`, `-13` entered
+- **Ids** (next): questions `TWN-Q32`; decisions 172; quirks `TWN-QUIRK-14` (`-12`, `-13` entered
   by T35b; their tests by T38b1, T39b1); stubs `TWN-STUB-21` (`-11`, `-12` planned by §34; `-16`
   by T38b2, `-17`, `-18` by T39b1; `-20` lifted by T39b2); rules: TWN-TAV-001 to -009, GAM-MAN-003,
-  GAM-DEC-010 and the adventure's ADV-VIS-007, -008 built; experiment batch `TWN-5`; disputes `TD-27`
-  (`TD-25`, `-26` by T42a); quirk candidates `T-19` (`T-18` by T42a).
+  GAM-DEC-010 and the adventure's ADV-VIS-007, -008 built; experiment batch `TWN-5` (rows in survey
+  §18); disputes `TD-28` (`TD-25`, `-26` by T42a, `-27` by T42b); quirk candidates `T-19` (`T-18`
+  by T42a, `fix-optional` by decision 169).
   ADR-0028 is the lane's; no drafts open.
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at
   each round; the user confirms seams and ADRs; tokens first.
@@ -39,6 +42,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-20 — T42b: the survey's second part, what a hero gets; the checkpoint TWN-Q31
+
+Baseline 4c19fbb (#1061 merged; CI green there; the setup's baseline was lost to a VM restart at
+its test step, CI's run stands). The user's computer was connected at the start only: 61 files of
+`original-data/` and the four manuals with three help files staged, SHA-256 checked. The user kept
+T42b whole (decision 166). Read and counted: survey `E09-guild.md` §10 to §19 (learning and its
+nine callers, the town screen's opening among them; the spell book; the night's refill; the Mana
+Vortex; VCMI and the wiki; the heroes' census; TD-27; batch TWN-5's five rows). The checkpoint
+`TWN-Q31` (§20; decisions 167–171, each as recommended). PR on `town/e09-t42b`.
 
 ### 2026-11-19 — T42a: the survey's first part, what the guild holds
 
@@ -59,13 +72,3 @@ the mage guild alone (the services 6, travel and the Grail 7) and kept round 1 a
 (decisions 161 to 164, `TWN-Q30`). The audit (`E09-log.md`, T41): the twelve criteria hold;
 TWN-SET-005 `verified`. Increment 4's section in `E09-archive.md`; T42, T43 queued. PRs #1059,
 #1058.
-
-### 2026-11-19 — T40b: the taverns map and its replays, the plans' map Tavern and Den
-
-Baseline dc92305 (#1048 merged; master's code verified by CI, the setup's light gates passed).
-The user's computer was connected at the start: 63 files of `original-data/` and the four
-manuals with three help files staged, SHA-256 checked. The user kept T40b whole and consented
-to `cross-lane` (decisions 159, 160, `TWN-Q29`). Built: design §78's As built (T40b): the plans'
-`Plan::taverns` with `tavern_answers`, `check_map_hire` and the decision in `check_decisions`
-and `managed`; `e09-taverns-36.h3m` and six `taverns-*-s1` replays with their tests; the golden
-counts 104; `week-start-taverns-36`. PR #1053.

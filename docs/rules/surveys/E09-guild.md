@@ -646,3 +646,28 @@ from the town list in a recipe; reads of a hero's spell points (+0x18) and learn
 The rest of `town_visit_buildings` (increment 6), `mage_guild_dialog_create`, the executive's run
 of a manager (0x4B0C70), `hero_move_loop`'s two openings of the screen, Town Portal's and Castle
 Gate's other steps (increment 7), the computer's planning around its visits (E10, E13).
+
+## 20. The checkpoint (T42b; `TWN-Q31`, the user, 2026-11-20)
+
+Asked interactively (`AskUserQuestion`, one round of four, a recommendation each; the Aurora's
+question asked again in other words after the user found its first wording ambiguous); the
+epic's decisions 167 to 170, each as recommended, and the agent's calls of 171:
+
+- **TD-10** (decision 167): the original. A main town's hero with a spell book learns its town's
+  guild spells at the start (the visitor and the garrison hero, `main_town_heroes`' call);
+  `TWN-STUB-6` lifts when it is built; row TWN-5-4 observes it.
+- **TD-25** (decision 168): the original. A spell the town both requires and bans is never in its
+  guild (the ban wins, as the map-wide bans do); row TWN-5-1.
+- **TD-26 with T-18** (decision 169): the original's set with **T-18 `fix-optional`**. The Aurora
+  never teaches a spell the town bans (nor 57); a spell the map bans is taught in `faithful` and
+  not in `strict-fixed`. The flag waits for its confirmation (`docs/04-rules-and-sources.md`,
+  "Confirm before flagging": row TWN-5-2, or a second look at 0x5BE10C to 0x5BE172); over the
+  original without a flag, both bans respected without a flag, and VCMI's set.
+- **TD-27** (decision 170): the original's triggers (§12, §15) **with a free command of the
+  owner's that stands for opening the town screen** (the garrison hero, then the visitor visit the
+  town's buildings; with a visitor both learn), its shape T43's; over VCMI's visits at every turn
+  start and over the original's triggers without the opening.
+- **The agent's calls** (decision 171, change freely): §17's (the computer's purchase and its
+  heroes' re-visits the computer player's, E10 and E13; the visit's level-up after its learning;
+  a siege's learning by whoever then stands there); batch TWN-5's five rows (§18) for T43's cut,
+  run as TWN-1 to TWN-4 were.
