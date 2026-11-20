@@ -29,7 +29,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   cut, `cross-lane`). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and
   `-15` (increment 5), `-13` (Visions' reach), `TWN-STUB-2` (the victory conditions),
   `TWN-STUB-16` (E10's loss condition), `-17` (increment 7), `-18` (E13).
-- **Open pull requests:** T47a1's (PR_NUMBER, `town/e09-t47a1`), opened at the session's end;
+- **Open pull requests:** T47a1's (#1090, `town/e09-t47a1`), opened at the session's end;
   watch it until it merges (T46's #1086 merged 2026-11-20).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
@@ -68,7 +68,7 @@ at the start only: 71 files (64 of `original-data/`, the four manuals with three
 staged, SHA-256 checked. The user cut T47a in two (decision 186). Built: the `guild` module with
 its 13 tests and the fixture's guild (`guild_core`, `guild_keep`), `h3-towns` at 100 %; the
 catalog's TWN-GLD-002 to -004, `TWN-QUIRK-14`'s rule test, design §85 to §87 *As built*. Agent's
-calls in decision 187 (six slots a level). PR_NUMBER.
+calls in decision 187 (six slots a level). PR #1090.
 
 ### 2026-11-20 — T46: the town part v9, the guild weights harvested, `cross-lane`
 
