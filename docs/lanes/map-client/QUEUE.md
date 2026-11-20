@@ -97,6 +97,13 @@ copied into the client.
   after the level-ups `AltarOpened` again (decision 371, your note of 2026-11-18 below).
   `h3-map`'s `tests/view.rs` folds `Open::Altar` beside `Open::Market`.
 
+- 2026-11-20 (the town lane, E09 T44, `town/e09-t44`, `cross-lane`; **informational, nothing to
+  do**): `h3_map::writer::Map` gains `banned_spells: Vec<u8>` (the header's banned spells); the
+  two `Map { .. }` literals of `h3-map-view` (`situation.rs`, `art/tests.rs`) got `banned_spells:
+  Vec::new()` in T44's pull request. The capture harness's town screen (common): a walk and a
+  `town` step pass a message that comes over the screen before their actions; `hall = true`
+  hovers the hall's box until the status line names it (`clients/capture/README.md`, "Towns").
+
 - 2026-11-20 (this lane, the labels task; **the user's to decide, then a small task**): the
   viewer's tests' own catalogues (`h3-map-view`'s `finds/tests.rs`, `asks/tests.rs`,
   `status/tests.rs`) imitate the catalogue's texts, and a few are the original's sentences or

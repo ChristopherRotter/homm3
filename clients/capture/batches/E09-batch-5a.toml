@@ -1,0 +1,79 @@
+# E09 batch TWN-5, part a, played by the capture harness (E09 T44; h3adv.py batch): the procedure
+# of experiments/specs/E09-batch-5a.toml as steps, on Easy, hot seat, Red and Blue human, the
+# starting bonus Gold. Everything on Red's day 1: TWN-5-4's reads first (before any hero moves),
+# then TWN-5-1's (the guilds as drawn), TWN-5-2's visit to the Aurora, TWN-5-3's visit with the
+# Library built on its town screen.
+#
+# The reads (README, "Towns"): `town:x,y:guild` (each level's count and its six slots as drawn,
+# the shown ones first), `:guild_level`, `:standing` (the hero on the entrance, by the heroes'
+# tiles: the visitor field reads -1 while its hero is selected) and `:standing:<detail>`, a hero
+# by name (`hero[<name>]:spells`, its learned spells +0x3EA in the spells' order). A walk's
+# `actions` play on the town screen it opens: a first action with only a `record` reads the
+# screen as it opened (the visit's learning done), then the hall, the Library's slot (building 22)
+# and Build, read right after the build. The step's `resources` are written before it plays.
+
+spec = "experiments/specs/E09-batch-5a.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- TWN-5-4: the main town's hero on day 1, before anything moves -----------------------------------
+
+[[step]]
+encounter = "TWN-5-4"
+hero = "TWN-5-4"
+[step.record]
+"R4's visitor (the generated hero): its name; its secondary skills" = ["town:7,7:standing", "text:; skills: ", "town:7,7:standing:skills", "text:; the visitor field: ", "town:7,7:visitor"]
+"R4's visitor: its spells on day 1" = "town:7,7:standing:spells"
+"R4: the guild by level; the guild level" = ["town:7,7:guild", "text:; guild level: ", "town:7,7:guild_level"]
+[step.note]
+"the game's version" = "map_kind"
+
+# --- TWN-5-1: the guilds as drawn ----------------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-5-1"
+hero = "TWN-5-1"
+[step.record]
+"R1a (Magic Arrow required and banned): the guild by level (shown | spare)" = "town:15,7:guild"
+"R1b (Haste required and banned): the guild by level" = "town:23,7:guild"
+"R1c (both required, none banned): the guild by level" = "town:31,7:guild"
+"every town: a slot with Armageddon or Titan's Lightning Bolt" = ["text:R4: ", "town:7,7:guild", "text: || R3: ", "town:7,15:guild", "text: || R2: ", "town:15,15:guild"]
+
+# --- TWN-5-2: the Aurora Borealis ------------------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-5-2"
+hero = "TWN-5-2"
+walk = [15, 15]
+expect = { question = "none", battle = false }
+[step.record]
+"before: TWN-5-2's spells" = "before:hero:spells"
+"after the visit: TWN-5-2's spells" = "hero:spells"
+"R2: the guild by level; the guild level" = ["town:15,15:guild", "text:; guild level: ", "town:15,15:guild_level", "text:; every built: ", "town:15,15:every"]
+[step.note]
+"TWN-5-2's visit: a town screen; how it closed" = ["town_screen", "town_screen_closed"]
+"TWN-5-2's visit: the messages" = "messages"
+
+# --- TWN-5-3: the Library built with a visitor ---------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-5-3"
+hero = "TWN-5-3"
+walk = [7, 15]
+expect = { question = "none", battle = false }
+resources = { red = [30, 30, 30, 30, 30, 30, 50000] }
+[[step.actions]]
+record = { "on the town screen (the visit): TWN-5-3's spells; R3's guild" = ["hero:spells", "text: || R3: ", "town:7,15:guild"] }
+[[step.actions]]
+hall = true
+[[step.actions]]
+slot = 22
+[[step.actions]]
+click = ["build"]
+record = { "the Library built: TWN-5-3's spells; R3's guild; R3's buildings" = ["hero:spells", "text: || R3: ", "town:7,15:guild", "text: || built: ", "town:7,15:built", "text:; every: ", "town:7,15:every"] }
+[step.record]
+"before: R3's guild by level; TWN-5-3's spells" = ["before:town:7,15:guild", "text: || TWN-5-3: ", "before:hero:spells"]
+[step.note]
+"TWN-5-3's visit: a town screen; how it closed" = ["town_screen", "town_screen_closed"]
+"TWN-5-3's visit: screens not known by their vtable" = "unknown_screens"

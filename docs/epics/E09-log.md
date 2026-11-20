@@ -5461,3 +5461,41 @@ moved. Ids: questions next `TWN-Q34`; decisions next 182; disputes `TD-28`; quir
 **Verify:** docs only: the docs gates (`check-docs`, `check-rules`, `check-stubs`,
 `check-exe-map`, `check-lane --base origin/master`, `doc-drift --base origin/master`) and the
 scoped verify; CI on the pull request is the record.
+
+### T44 — batch TWN-5: the maps, the harness's reads, the runs, the scoring (2026-11-20)
+
+One session, the user present at the start; branch `town/e09-t44`, `cross-lane` (the user's
+consent at the start: `h3-map`'s header writer and the writer's `Map` and `AnyTown` literals in
+the adventure lane's tests and the clients, `h3-experiment` and `docs/experiments/README.md` the
+battle lane's). Starting point: `master` at 40c60b8 (#1071 merged; CI's run on `master` green
+there; the setup's full baseline stopped for disk, CI's run standing). The user's computer was
+connected at the start only: 64 files of `original-data/` (the client lane's list) and the four
+manuals with three help files staged, SHA-256 checked. The user kept T44 whole over the agent's
+T44a/T44b (decision 182).
+
+- **The writer** (`h3-map`): `AnyTown::spells` (`TownSpells`: required and banned codes, the
+  town's two nine-byte sets; `writer/town.rs`, the town lane's), `Map::banned_spells` (the
+  header's nine bytes; refused past 70 and in RoE; `writer.rs`, `cross-lane`); every `Map` and
+  `AnyTown` literal given the field (47 and 21, mechanical). Tests: the sets read back through
+  `parse`, the refusals.
+- **The spec** (`h3-experiment`, `cross-lane`): `[map] banned_spells`; `[[map.town]]`'s
+  `required_spells`, `banned_spells`, `main` and `generates_hero` (a town of any kind then, the
+  same bytes as a `Town` without them; a main town's owner allowed its faction alone; refused: a
+  neutral or second main town, `generates_hero` without `main`, an unknown or non-hero spell).
+  Test `a_map_town_may_have_spells_and_be_its_owner_s_main_town`. The spec format in
+  `docs/experiments/README.md`.
+- **The harness** (common): `town:x,y:guild` (each level's count and drawn slots, 6 to 2: the
+  record's six past them hold other data), `:guild_level`, `:week_flag`, `:standing` (the hero on
+  the entrance by the heroes' tiles); a walk's and a `town` step's town screen pass the message
+  that comes over it a moment after it shows (the Mana Vortex's); `hall = true` hovers the hall's
+  box until the status line names it (a Tower with Mage Guild 5 covers its centre). The
+  harness's own check (`harness-check.toml`) run after. `clients/capture/README.md`, "Towns".
+- **The specs** `E09-batch-5a.toml` (stamp `fe8d6a6b`: rows 1 to 4, day 1) and `-5b.toml`
+  (`1ca79538`: row 5 over three weeks), the recipes
+  `clients/capture/batches/E09-batch-5a.toml`, `-5b.toml`; two runs each, the filled templates in
+  `experiments/results/`. **The agent's prediction of TWN-5-3's counts was wrong at first**
+  (5, 4, 4, 3, 2 from memory, not the survey's 5, 4, 3, 2, 1): corrected in the spec before the
+  runs that count.
+- **Scored** (survey `E09-guild.md` §21): every row as the code reading in both runs: TD-25, TD-26,
+  TD-10, TD-27 the original's (decisions 167 to 170 stand), VCMI's refuted on each; **T-18
+  confirmed** (the Aurora teaches the map's ban), so T45b may add `TWN-QUIRK-14`'s flag.

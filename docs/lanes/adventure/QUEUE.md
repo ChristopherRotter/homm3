@@ -26,6 +26,17 @@ design note §4, §5, §10, §11's upgrade and factory, §15, §16; survey `E08-
 
 ## Inbox
 
+- 2026-11-20 (the town lane, E09 T44, `town/e09-t44`, `cross-lane`; **a field in your writer and
+  the harness's town screen; nothing to do now**): `h3_map::writer::Map` gains `banned_spells:
+  Vec<u8>` (the header's nine bytes, refused past 70 and in RoE) beside `banned_skills` and
+  `banned_artifacts`; every literal in the workspace and the clients got `banned_spells:
+  Vec::new()`, so a new `Map { .. }` literal in an open branch of yours needs it too. The town's
+  `AnyTown::spells` (`TownSpells`) is the town lane's. The capture harness: a walk's town screen
+  now waits for the screen to settle and passes a message that comes over it (the Mana Vortex's)
+  before its `actions`; `hall = true` hovers the hall's box until the status line names it; new
+  reads `town:x,y:guild`, `:guild_level`, `:week_flag`, `:standing` (`clients/capture/README.md`,
+  "Towns"). The harness's own check passed after.
+
 - 2026-11-20 (the town lane, E09 T43, `town/e09-t43`, docs only; **the planned `cross-lane`
   changes in your paths for E09 increment 5, the mage guild; nothing to do now**): accepted at
   `TWN-Q33` (E09 decisions 172 to 181; design note `docs/epics/E09-design.md` Part G §82 to §100,

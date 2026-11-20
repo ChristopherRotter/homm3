@@ -16,6 +16,7 @@
 #![allow(clippy::disallowed_types, clippy::disallowed_methods)]
 
 pub mod bench;
+pub mod ceiling;
 pub mod census;
 pub mod eval;
 pub mod rating;
@@ -31,6 +32,10 @@ pub const USAGE: &str = "usage:
               [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
               [--preview false|true]
   h3 ai census <maps folder or file>... [--out <file>]
+  h3 ai ceiling [--set report-v1|neutral-v1] [--episodes <per kind, 100>]
+                [--opponents system,system-all-seeing] [--budget 8] [--worlds side|true]
+                [--max-steps 2000] [--seed 0] [--threads <cores>] [--out <games file>]
+                [--json <file>]
   h3 ai eval [--set report-v1|neutral-v1|v0]
              [--policies random,aggressor,greedy,system,system-all-seeing]
              [--max-steps 2000] [--episodes <per kind, 500 | v0: 1000>] [--json <file>]
@@ -107,6 +112,7 @@ pub fn main(raw: &[String]) -> Result<(), String> {
     match command.as_str() {
         "bench" => bench(&args),
         "census" => census(&args),
+        "ceiling" => ceiling(&args),
         "eval" => eval(&args),
         _ => Err(format!("unknown ai command `{command}`\n{USAGE}")),
     }
@@ -225,6 +231,77 @@ fn eval(args: &Args) -> Result<(), String> {
     let report = eval::run(&sampler, &options)?;
     print!("{}", report.to_text());
     println!("{:.1}s", start.elapsed().as_secs_f64());
+    match args.get("json") {
+        Some(path) => std::fs::write(path, report.to_json()).map_err(|e| format!("{path}: {e}")),
+        None => Ok(()),
+    }
+}
+
+/// `h3 ai ceiling` (E25 T42): the rollout-improved fair actor against the system actors
+/// (`ceiling`'s documentation).
+fn ceiling(args: &Args) -> Result<(), String> {
+    args.check(&[
+        "set",
+        "episodes",
+        "opponents",
+        "budget",
+        "worlds",
+        "max-steps",
+        "seed",
+        "threads",
+        "out",
+        "json",
+    ])?;
+    let set = args.get("set").unwrap_or("report-v1").to_owned();
+    let default = if set == "neutral-v1" {
+        eval::NEUTRAL_DEFENDER.0
+    } else {
+        "system,system-all-seeing"
+    };
+    let opponents = args
+        .get("opponents")
+        .unwrap_or(default)
+        .split(',')
+        .map(|name| name.trim().to_owned())
+        .collect();
+    let seed: u64 = args.num("seed", 0)?;
+    if i64::try_from(seed).is_err() {
+        return Err("--seed: at most 2^63 - 1 (the games file is TOML)".to_owned());
+    }
+    let settings = ceiling::Settings {
+        set,
+        episodes: args.num("episodes", 100)?,
+        opponents,
+        budget: args.num("budget", 8)?,
+        worlds: ceiling::Worlds::parse(args.get("worlds").unwrap_or("side"))?,
+        max_steps: args.num("max-steps", 2000)?,
+        seed,
+        identity: String::new(),
+    };
+    if settings.max_steps == 0 {
+        return Err("--max-steps: ceiling needs a step limit (not 0)".to_owned());
+    }
+    let threads = match args.num("threads", 0)? {
+        0 => std::thread::available_parallelism().map_or(1, std::num::NonZero::get),
+        n => n,
+    };
+    // The files' folders now, not after hours of games.
+    for path in ["out", "json"]
+        .into_iter()
+        .filter_map(|name| args.get(name))
+    {
+        if let Some(dir) = std::path::Path::new(path).parent() {
+            std::fs::create_dir_all(dir).map_err(|e| format!("{path}: {e}"))?;
+        }
+    }
+    let options = ceiling::CeilingOptions {
+        settings,
+        threads,
+        out: args.get("out").map(PathBuf::from),
+    };
+    let sampler = bench::sampler()?;
+    let report = ceiling::run(&sampler, &options, &mut |line| eprintln!("{line}"))?;
+    print!("{}", report.to_text());
     match args.get("json") {
         Some(path) => std::fs::write(path, report.to_json()).map_err(|e| format!("{path}: {e}")),
         None => Ok(()),
