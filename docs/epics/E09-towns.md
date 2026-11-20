@@ -66,6 +66,7 @@ Refined with the user on 2026-11-19 (T41; `TWN-Q30`, asked at T41's start with a
 179. **The guild's draws from the towns' stream** (`TWN-Q33`; the user's choice over the agent's recommendation): `StreamId::TOWNS`, the guilds its first draws at the build; no `shared/` stream change, every later towns' draw moving, so the replays that play a week re-record their outcomes at T47a (design §85, §97, §100). Not chosen: a new named stream `GUILDS` (recommended: no existing draw moving); the setup stream.
 180. **The views and events as proposed** (`TWN-Q33`; recommended): the owner's town view gains the shown spells by level, the Aurora mark and the Vortex's week flag; learning, the Vortex's points and the book told as `HeroChanged`, the flag by `TownChanged`, the night's refill silent (design §94). Not chosen: a dedicated Vortex event; no week flag in the view.
 181. **The cut and the exit criteria as written** (`TWN-Q33`; recommended): design §98's rounds 2 to 8 (T44 batch TWN-5, T45 `shared/`, T46 the town part v9, T47 the guild drawn and shown, T48 learning, T49 the spell points and the commands, T50 the gates, T51 the audit) and §99's twelve criteria; the four drafts accepted (amended for decision 179). Not chosen: batch TWN-5 after the build; the commands before the learning.
+182. **T44 whole** (the user at T44's start, 2026-11-20): the writer's spell sets, the spec's fields, the specs, the harness's reads, the runs and the scoring in one pull request, `cross-lane` (`h3-map`'s header writer and literals, `h3-experiment` and `docs/experiments/README.md`, with the user's consent). Not chosen: T44a (the maps) then T44b (the runs), recommended as T3a and T3b; a cut by rows.
 
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
@@ -73,7 +74,7 @@ Refined with the user on 2026-11-19 (T41; `TWN-Q30`, asked at T41's start with a
 - **T42a** the survey's first part, what the guild holds (decision 165). Done 2026-11-19 (`E09-log.md`; survey `E09-guild.md` §0 to §9).
 - **T42b** the survey's second part, what a hero gets, with its checkpoint (`TWN-Q31`; decision 165). Done 2026-11-20 (decisions 166–171; `E09-log.md`; survey `E09-guild.md` §10 to §20).
 - **T43** the ADR amendment drafts, the design note's Part G, the cut and the exit criteria (decision 163). Done 2026-11-20 (decisions 172–181; `E09-log.md`; drafts `docs/lanes/town/adr-drafts/*-increment-5.md`, design note Part G §82 to §100).
-- **T44** batch TWN-5 (design §97): the specs and templates, the harness's reads, the runs, the scoring.
+- **T44** batch TWN-5 (design §97): the specs and templates, the harness's reads, the runs, the scoring. Done 2026-11-20 (decision 182; `E09-log.md`; survey `E09-guild.md` §21: every row as the reading, T-18 confirmed).
 - **T45** `shared/`: T45a the drafts into the ADRs with T44's verdicts, the glossary, the security lines; T45b T-18's flag (`TWN-QUIRK-14`) once confirmed.
 - **T46** the town part v9 (TWN-GLD-001): the guild weights harvested, the four roles, the slots, the book's price, the Vortex's factor.
 - **T47** the guild drawn and shown: T47a the map's town spell sets (TWN-SET-012, import v28), the draw from the towns' stream, what the guild shows, the store v4, the replays re-recorded; T47b the owner's view, the protocol.
