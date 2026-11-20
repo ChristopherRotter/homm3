@@ -97,6 +97,13 @@ design note kept in `docs/epics/E05-log.md` (§1 to §9).
   the trainer checks every training episode against both and the gate set v1. The bots' table on
   the report set is committed (`python/records/bots-report-v1.json`): Greedy 0.832 ± 0.013 and
   Aggressor 0.810 ± 0.014 against Random, Greedy 0.533 ± 0.018 against Aggressor.
+- **The ceiling** (E25 T42, increment 10, AI-Q20; `docs/epics/E25-log.md` T42): `h3 ai ceiling`
+  plays the held-out sets with the fair system actor improved by rollouts: at each decision every
+  command it may play, valued by full-length rollouts of the fair actor on both sides (reward v1;
+  the budget spent by sequential halving with common random numbers), on the true battle (a
+  trusted diagnostic) or the side's worlds (only what it may know). Its results bound the play
+  possible against the fair actor from below; its record adds, by decision category, how often
+  and by how much the improved choice differs from the fair actor's. Resumable (a games file).
 - **Throughput** (wall time, not gated; the gates count instructions in `benches/ai/`):
   on the user's Ryzen 9 3900X (Windows, release, the encounter distribution) about 50 000 steps/s
   on one thread whatever the batch size, and inside the step 387 000 on 12 threads and 497 000 on
