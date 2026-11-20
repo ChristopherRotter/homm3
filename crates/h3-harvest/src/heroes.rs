@@ -25,6 +25,9 @@ const HOTRAITS_FIELDS: usize = 10;
 const SPTRAITS_FIELDS: usize = 34;
 /// Columns of the four school flags in `SPTRAITS.TXT` (header names in row 1).
 const SCHOOL_COLUMNS: std::ops::Range<usize> = 3..7;
+/// `SPTRAITS.TXT`'s first town chance column: one a town from it in `TownType.txt`'s order (the
+/// spell record's +0x44, survey `E09-guild.md` §2.1; E09 T46).
+const SPTRAITS_TOWN_CHANCES: usize = 16;
 
 /// Skills whose effect the executable's value table gives (installation.md §7.4; the battle's,
 /// and since E08 T18b the outcome's and the adventure's): skill
@@ -341,6 +344,63 @@ pub(crate) fn class_taverns(
                 .map(|c| number::<u8>(row, c, &what))
                 .collect::<Result<_, _>>()?;
             Ok((key_of(name), weights))
+        })
+        .collect()
+}
+
+/// A hero spell's key, pack and weight in each town's guild ([`spell_guilds`]).
+pub(crate) type SpellGuild = (String, &'static str, Vec<u16>);
+
+/// The hero spells' guild weights (E09 T46, design §83; survey `E09-guild.md` §2): per adventure
+/// and combat spell of the SoD archive's `SPTRAITS.TXT`, in its order, its key, its pack (`base`
+/// when the AB-era table names the row alike, else `sod`, as the spell harvest's) and its weight
+/// in each town's guild (the `towns` columns from [`SPTRAITS_TOWN_CHANCES`]); the creature
+/// abilities are left out.
+///
+/// # Errors
+/// A malformed table: a spell before a group row, a weight that is not a `u16`, the two tables
+/// holding different numbers of rows.
+pub(crate) fn spell_guilds(tables: &Tables, towns: usize) -> Result<Vec<SpellGuild>, String> {
+    let hero_rows = |table: &TextTable, what: &str| -> Result<Vec<Vec<String>>, String> {
+        let mut hero = None;
+        let mut rows = Vec::new();
+        for r in table.records.iter().skip(2) {
+            match r.first().map_or("", |n| n.trim()) {
+                "Adventure Spells" | "Combat Spells" => hero = Some(true),
+                "Creature Abilities" => hero = Some(false),
+                "" => {}
+                name => match hero {
+                    None => return Err(format!("{what}: spell `{name}` before a group row")),
+                    Some(true) => rows.push(r.clone()),
+                    Some(false) => {}
+                },
+            }
+        }
+        Ok(rows)
+    };
+    let sod = hero_rows(&tables.sod_spells, "SPTRAITS.TXT")?;
+    let ab = hero_rows(&tables.ab_spells, "H3ab_bmp/SPTRAITS.TXT")?;
+    if sod.len() != ab.len() {
+        return Err(format!(
+            "SPTRAITS.TXT: {} hero spells, H3ab_bmp's {}",
+            sod.len(),
+            ab.len()
+        ));
+    }
+    sod.iter()
+        .zip(&ab)
+        .map(|(row, ab_row)| {
+            let name = row[0].trim();
+            let what = format!("spell `{name}`");
+            let pack = if ab_row[0].trim() == name {
+                "base"
+            } else {
+                "sod"
+            };
+            let weights = (SPTRAITS_TOWN_CHANCES..SPTRAITS_TOWN_CHANCES + towns)
+                .map(|c| number::<u16>(row, c, &what))
+                .collect::<Result<_, _>>()?;
+            Ok((key_of(name), pack, weights))
         })
         .collect()
 }
@@ -1165,7 +1225,8 @@ pub fn harvest_heroes(
          kinds come with their tasks (E04b T5-T7)"
     ));
     report.push(
-        "SPTRAITS: town chances, texts and the attribute column not harvested (E04b, E09); the AI \
+        "SPTRAITS: texts and the attribute column not harvested (E04b; the town chances since E09 \
+         T46, in the town records); the AI \
          values with the flag word's AI categories since E23 T3-0"
             .into(),
     );

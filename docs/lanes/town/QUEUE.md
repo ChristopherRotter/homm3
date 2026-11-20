@@ -7,18 +7,14 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 5: the mage guild, refined at T41, `TWN-Q30`, decisions
 161 to 164; its survey T42a and T42b with the checkpoint `TWN-Q31`, decisions 165 to 171; its
 drafts, cut and exit criteria by T43, `TWN-Q32`, `TWN-Q33`, decisions 172 to 181; batch TWN-5 by
-T44, decision 182; the services are increment 6, travel and the Grail 7, decision 162); done tasks
+T44, decision 182; the drafts in the ADRs by T45, decision 183; the part v9 by T46, decisions 184,
+185; the services are increment 6, travel and the Grail 7, decision 162); done tasks
 in `E09-log.md`; increments 1 to 4 (closed by T10, T20, T30 and T41) in `E09-archive.md`. Each
 task's cut confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`).
 
-**E09 T46 — the town part v9** (round 4, decision 181; design note `E09-design.md` §83, ADR-0028
-point 5 as amended by T45): the guild weights harvested from both LODs' `SPTRAITS.TXT`
-(`h3-harvest`, `cross-lane`), the four roles `guild`, `library`, `aurora`, `mana_vortex`, the
-slots, the book's price, the Vortex's factor (TWN-GLD-001), the packs. Needs the original data.
-Cut at its start. **Status:** next.
-
-**E09 T47 to T51** (queued, design §98's rounds 5 to 8; each cut confirmed at its start): T47 the guild drawn and shown (§84 to §87, §94: T47a the map's town
+**E09 T47 to T51** (queued, design §98's rounds 5 to 8; each cut confirmed at its start; T47
+next, the part v9 built by T46): T47 the guild drawn and shown (§84 to §87, §94: T47a the map's town
 spell sets with import v28 (the writer's `AnyTown::spells` and `Map::banned_spells` exist since
 T44), the draw from the towns' stream, the store v4, the replays re-recorded with the week
 replays' outcomes; T47b the owner's view, the protocol); T48 learning (§88, §89: T48a the set

@@ -4,8 +4,8 @@
 # Do not edit by hand: change the harvester or the gap-fill file and re-run it
 # (`cargo run -p h3-harvest -- --install original-data/install --out packs`).
 # Gameplay data and names only (OPEN-QUESTIONS Q13); sources: docs/formats/installation.md
-# 7.61, docs/rules/surveys/E09-towns.md 16, E09-construction.md 5 and 6; format:
-# crates/h3-pack-towns.
+# 7.61, docs/rules/surveys/E09-towns.md 16, E09-construction.md 5 and 6, E09-guild.md 2
+# (the guild weights, docs/epics/E09-design.md 83); format: crates/h3-pack-towns.
 
 [town_visions]
 creatures = ["rogue"]
@@ -77,11 +77,78 @@ roe = false
   planeswalker = 6
   elementalist = 6
 
+  [town.guild]
+  "base:summon_boat" = 3
+  "base:scuttle_boat" = 4
+  "base:visions" = 2
+  "base:view_earth" = 3
+  "base:disguise" = 2
+  "base:view_air" = 3
+  "base:fly" = 13
+  "base:water_walk" = 10
+  "base:dimension_door" = 13
+  "base:town_portal" = 10
+  "base:quicksand" = 4
+  "base:land_mine" = 4
+  "base:force_field" = 8
+  "base:fire_wall" = 8
+  "base:earthquake" = 4
+  "base:magic_arrow" = 30
+  "base:ice_bolt" = 25
+  "base:lightning_bolt" = 25
+  "base:implosion" = 13
+  "base:chain_lightning" = 10
+  "base:frost_ring" = 12
+  "base:fireball" = 12
+  "base:inferno" = 10
+  "base:meteor_shower" = 10
+  "base:destroy_undead" = 4
+  "base:shield" = 5
+  "base:air_shield" = 4
+  "base:fire_shield" = 5
+  "base:protection_from_air" = 2
+  "base:protection_from_fire" = 3
+  "base:prot_from_water" = 3
+  "base:prot_from_earth" = 4
+  "base:anti_magic" = 12
+  "base:dispel" = 10
+  "base:magic_mirror" = 13
+  "base:cure" = 5
+  "base:resurrection" = 5
+  "base:bless" = 5
+  "base:bloodlust" = 5
+  "base:precision" = 2
+  "base:weakness" = 4
+  "base:stone_skin" = 5
+  "base:disrupting_ray" = 8
+  "base:prayer" = 5
+  "base:mirth" = 4
+  "base:sorrow" = 5
+  "base:fortune" = 2
+  "base:misfortune" = 4
+  "base:haste" = 10
+  "base:slow" = 10
+  "base:slayer" = 5
+  "base:frenzy" = 5
+  "base:counterstrike" = 5
+  "base:berserk" = 5
+  "base:hypnotize" = 12
+  "base:forgetfulness" = 8
+  "base:blind" = 8
+  "base:teleport" = 8
+  "base:remove_obstacle" = 4
+  "base:clone" = 10
+  "base:fire_elemental" = 12
+  "base:earth_elemental" = 12
+  "base:water_elemental" = 12
+  "base:air_elemental" = 12
+
   [[town.building]]
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
   cost = { "base:wood" = 5, "base:ore" = 5, "base:gold" = 2000 }
+  guild = 1
 
   [[town.building]]
   key = "mage_guild_level_2"
@@ -90,6 +157,7 @@ roe = false
   supersedes = ["mage_guild_level_1"]
   requires = ["mage_guild_level_1"]
   cost = { "base:wood" = 5, "base:mercury" = 4, "base:ore" = 5, "base:sulfur" = 4, "base:crystal" = 4, "base:gems" = 4, "base:gold" = 1000 }
+  guild = 2
 
   [[town.building]]
   key = "mage_guild_level_3"
@@ -98,6 +166,7 @@ roe = false
   supersedes = ["mage_guild_level_2"]
   requires = ["mage_guild_level_2"]
   cost = { "base:wood" = 5, "base:mercury" = 6, "base:ore" = 5, "base:sulfur" = 6, "base:crystal" = 6, "base:gems" = 6, "base:gold" = 1000 }
+  guild = 3
 
   [[town.building]]
   key = "mage_guild_level_4"
@@ -106,6 +175,7 @@ roe = false
   supersedes = ["mage_guild_level_3"]
   requires = ["mage_guild_level_3"]
   cost = { "base:wood" = 5, "base:mercury" = 8, "base:ore" = 5, "base:sulfur" = 8, "base:crystal" = 8, "base:gems" = 8, "base:gold" = 1000 }
+  guild = 4
 
   [[town.building]]
   key = "mage_guild_level_5"
@@ -114,6 +184,7 @@ roe = false
   supersedes = ["mage_guild_level_4"]
   requires = ["mage_guild_level_4"]
   cost = { "base:wood" = 5, "base:mercury" = 10, "base:ore" = 5, "base:sulfur" = 10, "base:crystal" = 10, "base:gems" = 10, "base:gold" = 1000 }
+  guild = 5
 
   [[town.building]]
   key = "tavern"
@@ -246,6 +317,7 @@ roe = false
   name = "Aurora Borealias"
   slot = 17
   grail = true
+  aurora = true
 
   [[town.building]]
   key = "magic_lantern"

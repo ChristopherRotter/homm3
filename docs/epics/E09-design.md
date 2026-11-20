@@ -3024,6 +3024,19 @@ something, a visit's end, a capture and a siege's end applying the same (175); t
 - **Tests:** the compiler's refusals each; the weights' round trip; the harvest's columns against
   §2.2's sums (each faction's reachable levels sum to 100, the others 0; Titan's Lightning Bolt 0
   everywhere) in `h3-harvest`'s original-data test.
+- *As built* (T46, decisions 184, 185): as above, with these differences. The slots are bounded
+  **1 to 5** (the spare makes at most six, the original's slots a level: "1 to 6" above
+  contradicted its own reason). A weight of 0 is refused (0s are omitted); no override changes the
+  weights (no pack needs one). The roles come from the gap-fill by building id: the Mage Guilds 0
+  to 4 for **every faction whose list holds the building** (a role of every faction now skips a
+  faction without it, an error when none has it; before, every such role was on a building every
+  faction has), the Tower's 22, the Dungeon's 21 and the Conflux's 26. The Conflux's key is
+  **`aurora_borealias`** (the packs' spelling, from `BldgSpec.txt`). A `sod` spell weighing in a
+  guild is a harvest error (none does). The §2.2 checks are `h3-pack-towns`' `the_original_guilds`
+  on the harvested packs (as T36's taverns: `h3-harvest` has no original-data test, `verify
+  --with-original-data` re-harvests and compares), with Armageddon, Death Ripple and Animate Dead
+  by faction as spot checks. Pins: the test part `0x67ee_ef1c_7b56_fda6`, the empty part
+  `0xedec_d7c9_34cc_e444`; the goldens' town hash `0xcf8db1aa2bb768d2`.
 
 ### 84. The map's town spell sets (TWN-SET-012; `h3-map`'s `import/town.rs`, `h3-towns`' `TownSetup`)
 

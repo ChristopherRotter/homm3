@@ -3914,6 +3914,13 @@ url = "docs/rules/surveys/E09-tavern.md"
 retrieved = "2026-11-15"
 
 [[source]]
+id = "exe-mage-guild"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/rules/surveys/E09-guild.md 0, 3.3, 13 and 15; E09-design.md 83): the Mage Guilds are buildings 0 to 4, levels 1 to 5; guild_spell_slots 0x6782A4 shows 5, 4, 3, 2, 1 spells by level, one more a level for a Tower (faction 2) with its Library (building 22) ever built; the spell book costs 500 gold at the guild's window (mage_guild_open 0x5CE560) and to the computer (ai_town_visit 0x5254C2); a Dungeon (faction 5) with its Mana Vortex (building 21) standing sets a hero's spell points to twice its maximum once a week (town_visit_buildings 0x5BD8E0); a Conflux (faction 8) with its Aurora Borealis (building 26, its Grail building) ever built teaches every spell of its set"
+url = "docs/rules/surveys/E09-guild.md"
+retrieved = "2026-11-20"
+
+[[source]]
 id = "exe-thieves-guild"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/rules/surveys/E09-tavern.md 6 and 13; E09-design.md 73): thieves_guild_row_value 0x5DEE70 ranks row 2 by the treasury's gold (player +0xB4, index 6), row 3 by wood and ore (+0x9C and +0xA4, indexes 0 and 2) and row 4 by mercury, sulfur, crystal and gems (+0xA0, +0xA8, +0xAC, +0xB0, indexes 1, 3, 4 and 5)"
@@ -3942,7 +3949,8 @@ url = "docs/rules/surveys/E09-towns.md"
 retrieved = "2026-11-03"
 
 # Roles (h3-pack-towns' fields but `dwelling`, which the dwellings' ids 30 to 43 give): of every
-# faction without `faction`; a building's entries merge.
+# faction whose list holds the building without `faction` (since E09 T46: the Mage Guilds 3 to 5
+# are not every faction's), of that faction with it; a building's entries merge.
 [towns]
 role = [
   { building = 10, roles = { hall = 1 }, sources = ["exe-town-roles"] },
@@ -3968,6 +3976,14 @@ role = [
   { faction = "Fortress", building = 26, roles = { defender = { attack = 10, defense = 10 } }, sources = ["exe-town-siege"] },
   { faction = "Dungeon", building = 22, roles = { portal = true }, sources = ["exe-town-growth"] },
   { faction = "Inferno", building = 26, roles = { week_of = 1 }, sources = ["exe-town-growth"] },
+  { building = 0, roles = { guild = 1 }, sources = ["exe-mage-guild"] },
+  { building = 1, roles = { guild = 2 }, sources = ["exe-mage-guild"] },
+  { building = 2, roles = { guild = 3 }, sources = ["exe-mage-guild"] },
+  { building = 3, roles = { guild = 4 }, sources = ["exe-mage-guild"] },
+  { building = 4, roles = { guild = 5 }, sources = ["exe-mage-guild"] },
+  { faction = "Tower", building = 22, roles = { library = true }, sources = ["exe-mage-guild"] },
+  { faction = "Dungeon", building = 21, roles = { mana_vortex = true }, sources = ["exe-mage-guild"] },
+  { faction = "Conflux", building = 26, roles = { aurora = true }, sources = ["exe-mage-guild"] },
 ]
 
 # The [town_params] beside the executable's tables (TWN-INC-001, TWN-CAP-001, TWN-CAP-002).
@@ -3999,6 +4015,15 @@ most_heroes = 8
 [towns.tavern]
 sources = ["exe-hero-price"]
 hire_price = 2500
+
+# The mage guild's [town_params] (TWN-GLD-001, E09 T46, design §83): the slots a level shows, the
+# spell book's price in gold, the Mana Vortex's factor; the records' guild weights are
+# SPTRAITS.TXT's town columns (the town harvest).
+[towns.mage_guild]
+sources = ["exe-mage-guild"]
+guild_slots = [5, 4, 3, 2, 1]
+spell_book_price = 500
+vortex_factor = 2
 
 # The Thieves' Guild's [town_params] (TWN-TAV-008, E09 T39b1, design §73, decision 152): the
 # resources its rows 2 to 4 sum, by RESTYPES.TXT's index (gold; wood and ore; the rare four),

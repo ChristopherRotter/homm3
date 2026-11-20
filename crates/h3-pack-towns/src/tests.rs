@@ -139,6 +139,27 @@ fn the_synthetic_record_compiles_with_its_override() {
     weights[class("synthetic:warden")] = 7;
     weights[class("synthetic:sage")] = 4;
     assert_eq!(record.tavern, weights);
+    // E09 T46: the guild's parameters and the record's guild weights by the core's spell index.
+    assert_eq!(params.guild_slots, [4, 3, 3, 2, 1]);
+    let book: Vec<_> = params
+        .spell_book_price
+        .iter()
+        .map(|&(r, a)| (r.index(), a))
+        .collect();
+    assert_eq!((book, params.vortex_factor), (vec![(coin, 400)], 3));
+    let spell = |k: &str| core.spell_by_key(k).unwrap();
+    let mut guild = vec![0; core.spells().len()];
+    for (k, w) in [
+        ("synthetic:spark", 60),
+        ("synthetic:hasten", 40),
+        ("synthetic:farsight", 100),
+        ("synthetic:ward", 70),
+        ("synthetic:fury", 30),
+    ] {
+        guild[spell(k).index()] = w;
+        assert_eq!(record.guild_weight(spell(k)), w);
+    }
+    assert_eq!(record.guild, guild);
 }
 
 #[test]
@@ -210,6 +231,20 @@ fn the_roles_parse() {
     );
     assert_eq!(grail.week_of, Some(1));
     assert!(record.roe);
+    // Increment 5's (E09 T46): two guild levels, the Library, the Mana Vortex, the Grail's Aurora.
+    let guild_1 = record.building_by_key("mage_guild_1").unwrap();
+    let guild_2 = building(record, "mage_guild_2");
+    assert_eq!(
+        (
+            building(record, "mage_guild_1").roles.guild,
+            guild_2.roles.guild
+        ),
+        (Some(1), Some(2))
+    );
+    assert!(guild_2.supersedes.contains(guild_1));
+    assert!(building(record, "library").roles.library);
+    assert!(building(record, "mana_vortex").roles.mana_vortex);
+    assert!(grail.aurora && !grail.library && !grail.mana_vortex && grail.guild.is_none());
     assert!(
         record
             .building(BuildingId::from_index(63).unwrap())
@@ -403,6 +438,26 @@ fn the_parser_is_strict() {
         "week_creature_chance = [1, 3]",
         "week_creature_chance = [1]"
     )));
+    // Increment 5's fields (E09 T46).
+    assert!(syntax(&VALE.replace(
+        "guild_slots = [4, 3, 3, 2, 1]",
+        "guild_slots = [4, 3, 3, 2]"
+    )));
+    assert!(syntax(
+        &VALE.replace("vortex_factor = 3", "vortex_factor = 300")
+    ));
+    assert!(syntax(&VALE.replace(
+        "spell_book_price = { coin = 400 }",
+        "spell_book_price = 400"
+    )));
+    assert!(syntax(&VALE.replace("spark = 60", "spark = -60")));
+    assert!(syntax(&VALE.replace("spark = 60", "spark = 70000")));
+    assert!(syntax(&VALE.replace("guild = 2", "guild = \"two\"")));
+    assert!(syntax(&VALE.replace("library = true", "library = 1")));
+    assert!(syntax(&VALE.replace("aurora = true", "aurora = 1")));
+    assert!(syntax(
+        &VALE.replace("mana_vortex = true", "mana_vortex = 1")
+    ));
     let key = |text: &str| matches!(parse(text), Err(TownPackError::Key(_)));
     assert!(key(
         &VALE.replace("faction = \"vale\"", "faction = \"Vale\"")
@@ -416,6 +471,11 @@ fn the_parser_is_strict() {
     assert!(key(
         &VALE.replace("cost = { coin = 2500 }", "cost = { Coin = 2500 }")
     ));
+    assert!(key(&VALE.replace("spark = 60", "Spark = 60")));
+    assert!(key(&VALE.replace(
+        "spell_book_price = { coin = 400 }",
+        "spell_book_price = { Coin = 400 }"
+    )));
     assert!(key(&VALE_OVERRIDE.replace("synthetic:vale", "Vale")));
     assert!(key(&VALE_OVERRIDE.replace("\"lurker\"", "\"Lurker\"")));
     assert!(key(
@@ -553,6 +613,7 @@ fn the_original_packs_compile_with_every_faction() {
         assert_eq!(siege(&sod, key), (Moat::Damaging, false), "{key}");
     }
     the_original_taverns(&roe, &sod, &core);
+    the_original_guilds(&roe, &sod, &core);
     // The parameters.
     let params = sod.params().unwrap();
     assert_eq!(params.hall_gold, [500, 1000, 2000, 4000]);
@@ -676,6 +737,120 @@ fn the_original_taverns(roe: &TownRuleset, sod: &TownRuleset, core: &Ruleset) {
         assert_eq!(record.tavern.len(), 16);
         assert_eq!(record.tavern.iter().map(|&w| u32::from(w)).sum::<u32>(), 90);
     }
+}
+
+/// E09 T46's harvest in the shipped packs (design §83; survey `E09-guild.md` §2.2): each record's
+/// guild weights, by spell level, sum to 100 at every level its Mage Guilds reach and are 0 at the
+/// others (Castle's level 5, Stronghold's and Fortress' 4 and 5); no creature ability and not
+/// Titan's Lightning Bolt weighs; Armageddon only in the Inferno, Necropolis and Dungeon, Death
+/// Ripple and Animate Dead only in Necropolis; the four roles on their buildings alone; the
+/// parameters the reading's (5, 4, 3, 2, 1 slots, 500 gold, a factor of 2).
+// covers: TWN-GLD-001
+fn the_original_guilds(roe: &TownRuleset, sod: &TownRuleset, core: &Ruleset) {
+    let gold = core
+        .resources()
+        .iter()
+        .position(|r| r.key.as_str() == "base:gold")
+        .unwrap();
+    for part in [roe, sod] {
+        let params = part.params().unwrap();
+        assert_eq!(params.guild_slots, [5, 4, 3, 2, 1]);
+        let book: Vec<_> = params
+            .spell_book_price
+            .iter()
+            .map(|&(r, a)| (r.index(), a))
+            .collect();
+        assert_eq!((book, params.vortex_factor), (vec![(gold, 500)], 2));
+    }
+    let reached = [
+        ("base:castle", 4),
+        ("base:rampart", 5),
+        ("base:tower", 5),
+        ("base:inferno", 5),
+        ("base:necropolis", 5),
+        ("base:dungeon", 5),
+        ("base:stronghold", 3),
+        ("base:fortress", 3),
+        ("ab:conflux", 5),
+    ];
+    let spell = |k: &str| core.spell_by_key(k).unwrap();
+    for (key, top) in reached {
+        let record = sod.town(core.faction_by_key(key).unwrap()).unwrap();
+        assert_eq!(record.guild.len(), core.spells().len(), "{key}");
+        let guilds: Vec<_> = record
+            .buildings
+            .iter()
+            .filter_map(|b| b.roles.guild)
+            .collect();
+        assert_eq!(guilds, (1..=top).collect::<Vec<_>>(), "{key}");
+        for level in 1..=5 {
+            let sum: u32 = core
+                .spells()
+                .iter()
+                .zip(&record.guild)
+                .filter(|(s, _)| {
+                    s.level == level && s.category != h3_content::SpellCategory::Ability
+                })
+                .map(|(_, &w)| u32::from(w))
+                .sum();
+            assert_eq!(
+                sum,
+                if level <= top { 100 } else { 0 },
+                "{key} level {level}"
+            );
+        }
+        let abilities = core.spells().iter().zip(&record.guild);
+        assert!(
+            abilities
+                .filter(|(s, _)| s.category == h3_content::SpellCategory::Ability)
+                .all(|(_, &w)| w == 0),
+            "{key}"
+        );
+        assert_eq!(
+            record.guild_weight(spell("sod:titans_lightning_bolt")),
+            0,
+            "{key}"
+        );
+        let weighs = |k: &str| record.guild_weight(spell(k)) > 0;
+        let dark = ["base:inferno", "base:necropolis", "base:dungeon"].contains(&key);
+        assert_eq!(weighs("base:armageddon"), dark, "{key}");
+        let necropolis = key == "base:necropolis";
+        assert_eq!(weighs("base:death_ripple"), necropolis, "{key}");
+        assert_eq!(weighs("base:animate_dead"), necropolis, "{key}");
+    }
+    // The RoE pack alone: the same eight records' weights, over its core's spells.
+    for record in roe.towns() {
+        let full = sod.town(record.faction).unwrap();
+        assert_eq!(record.guild[..], full.guild[..record.guild.len()]);
+    }
+    // The roles: the Library the Tower's, the Aurora the Conflux's Grail building, the Mana Vortex
+    // the Dungeon's, each alone.
+    let role = |has: fn(&BuildingRoles) -> bool| -> Vec<(FactionId, String)> {
+        sod.towns()
+            .iter()
+            .flat_map(|t| {
+                t.buildings
+                    .iter()
+                    .filter(|b| has(&b.roles))
+                    .map(|b| (t.faction, b.key.clone()))
+            })
+            .collect()
+    };
+    let faction = |k: &str| core.faction_by_key(k).unwrap();
+    assert_eq!(
+        role(|r| r.library),
+        [(faction("base:tower"), "library".into())]
+    );
+    assert_eq!(
+        role(|r| r.mana_vortex),
+        [(faction("base:dungeon"), "mana_vortex".into())]
+    );
+    assert_eq!(
+        role(|r| r.aurora),
+        [(faction("ab:conflux"), "aurora_borealias".into())]
+    );
+    let conflux = sod.town(faction("ab:conflux")).unwrap();
+    assert!(building(conflux, "aurora_borealias").roles.grail);
 }
 
 /// E09 T25a's harvest in the shipped packs (design §38; survey `E09-growth.md` §1, §2, §5): the
