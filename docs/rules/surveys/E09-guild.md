@@ -141,7 +141,8 @@ are another set.
 15. **VCMI 1.7.5** (§16) learns the same set, buys the book alike, refills the points and gives the
     Vortex alike, but by other triggers: every turn start visits each town for its garrison hero
     and visitor (learning, the Vortex), a skill changed in town teaches at once, a visit teaches
-    the visitor only, a build only a guild's, the Library or the Aurora; nothing at the start.
+    the visitor only, a town event's build only a guild's, the Library or the Aurora (a player's
+    build both, the garrison hero first); nothing at the start.
 16. **For the checkpoint** (§17): TD-10, TD-25, TD-26 with T-18, and **TD-27** (when the heroes learn
     and get the Vortex: the original's screen opening against VCMI's turn start); batch TWN-5's
     five rows (§18).
@@ -567,8 +568,10 @@ T7b2b census counted the same 33 below):
   the lesser of `mageGuildLevel` and `maxSpellLevel` (the bonus `MAX_LEARNABLE_SPELL_LEVEL`, base
   2 in `gameConfig.json`, Wisdom adding), the level's shown spells (`spellsAtLevel`): **the same
   set.** Its callers differ: a visit (`heroVisitCastle` from `CGTownInstance::onHeroVisit`: an own
-  or allied town, an undefended one captured) teaches **the visitor only**; a build teaches both
-  only for a guild level, a Library or the Aurora; a bought book teaches its hero; a secondary
+  or allied town, an undefended one captured) teaches **the visitor only**; a player's build
+  teaches both through its building visit (`buildStructure`'s end: the garrison hero first), a
+  town event's build (`force`, `NewTurnProcessor`) only for a guild level, a Library or the
+  Aurora and with no building visit; a bought book teaches its hero; a secondary
   skill changed while in a town teaches **at once** (`changeSecSkill`); a hire visits the town
   (`HeroPoolProcessor`, `objectVisited`); and **every player's turn start** makes each of its
   towns' garrison hero, then visitor, visit the town (`NewTurnProcessor::onPlayerTurnStarted`):
@@ -604,8 +607,8 @@ T7b2b census counted the same 33 below):
   §12 and §15, among them every opening of the owner's town screen (learning with a visitor, the
   Vortex to the garrison hero first); never at a human's turn start; a computer's hero standing
   on an entrance re-visits at each of its turns. VCMI: at every turn start (each town's garrison
-  hero, then visitor), at once on a skill changed in town, besides its visits, guild builds, a
-  bought book and a hire. The wiki: "once the player opens the town menu". Impact: a garrison
+  hero, then visitor), at once on a skill changed in town, besides its visits, builds, a bought
+  book and a hire. The wiki: "once the player opens the town menu". Impact: a garrison
   hero's Vortex and a hero's new Wisdom wait for its owner's action in the original (free, at any
   time of its turn) and come by themselves at the turn start in VCMI; the engine has no town
   screen, so the original's needs a command of its own (T43's design). Recommended: the

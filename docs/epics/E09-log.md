@@ -5378,8 +5378,8 @@ night's refill to the maximum in a town with a guild, no book needed; the Vortex
 twice the maximum, given at the screen's opening and a build with the visit (the garrison hero
 first), a human's hire, Castle Gate and the computer's visit, not Town Portal. VCMI 1.7.5: the same
 set, book, refill and Vortex, but its triggers are every turn start (each town's garrison hero then
-visitor), a skill changed in town, a visit (the visitor only), a guild's build and a hire; nothing at
-the start. The wiki: the Vortex goes to the garrison hero "once the player opens the town menu".
+visitor), a skill changed in town, a visit (the visitor only), a player's build (both; a town
+event's only for a guild, the Library or the Aurora) and a hire; nothing at the start. The wiki: the Vortex goes to the garrison hero "once the player opens the town menu".
 New dispute TD-27 (when the heroes learn and get the Vortex). Batch TWN-5: five rows (§18).
 
 **The census** (§10; the census function added to `h3-map`'s `original_data` for the run, not
@@ -5394,7 +5394,11 @@ the original (decision 167), TD-25 the original (168), TD-26 the original's set 
 `fix-optional` (169), TD-27 the original's triggers with a free opening command (170), the agent's
 calls (171); each as recommended.
 
-**Verify:** VERIFY_LINE
+**Verify:** the engine's code is `master`'s. `cargo xtask verify --scope town --summary
+--with-original-data` on the branch with no failing step (coverage 18.2 minutes, determinism 8.1,
+bench-check 13.7, original-data 0.9; `deny` and `ffi-smoke` skipped by the scope); `check-exe-map`
+and `scripts/exe.py check` (every cited address covered, the sizes the executable's), `check-docs`,
+`doc-drift` and `check-lane` against `origin/master`. CI on the pull request is the record.
 
 **The queue:** T42b leaves it; T43 next (the drafts, Part G from §82, the cut). Ids: decisions
 next 172; disputes `TD-28`; quirk candidates `T-19`; questions `TWN-Q32`.
