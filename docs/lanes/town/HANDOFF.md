@@ -13,7 +13,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   rows; `QUEUE.md`). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and
   `-15` (increment 5), `-13` (Visions' reach), `TWN-STUB-2` (the victory conditions),
   `TWN-STUB-16` (E10's loss condition), `-17` (increment 7), `-18` (E13).
-- **Open pull requests:** T42b's (`town/e09-t42b`, docs only), opened at the session's end;
+- **Open pull requests:** T42b's (#1067, `town/e09-t42b`, docs only), opened at the session's end;
   watch it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
@@ -51,7 +51,7 @@ its test step, CI's run stands). The user's computer was connected at the start 
 T42b whole (decision 166). Read and counted: survey `E09-guild.md` §10 to §19 (learning and its
 nine callers, the town screen's opening among them; the spell book; the night's refill; the Mana
 Vortex; VCMI and the wiki; the heroes' census; TD-27; batch TWN-5's five rows). The checkpoint
-`TWN-Q31` (§20; decisions 167–171, each as recommended). PR on `town/e09-t42b`.
+`TWN-Q31` (§20; decisions 167–171, each as recommended). PR #1067.
 
 ### 2026-11-19 — T42a: the survey's first part, what the guild holds
 
