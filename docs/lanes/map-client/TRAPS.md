@@ -165,6 +165,16 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   label it with `h3lod.label` (a label stays as it is). A recording again may move the
   palette's phase at 0 (`cycles` 10 for 11, two of three runs at the labels task): keep git's
   lines where only the labels were meant to change.
+- **A scripted sequence needs the engine's binaries** (M4 T4a2, design §5.13): `frames`' frame
+  check and `drawn` make a sequence's record from its `script` with the root workspace's
+  `target/debug/h3` and `h3-server` (`H3_ENGINE` another folder): build them first (`cargo build
+  --locked -p h3-cli -p h3-server`, about 2 minutes), and again after merging `master` (an
+  engine change may change the record: `frames --only <id> --reuse` the three `game-*` again).
+- **A record's gaps are listed** (M4 T4a2): a scripted sequence's timeline differs from the
+  original's by `timelines/<id>-gaps.txt` exactly; a gap lifted or new (MCL-Q39 or MCL-Q40
+  answered, a fact the record gains) reports "a gap CHANGED": the run's `gaps.txt` under
+  `clients/out/map-frames/<id>/` is the new list, copied in under the file's comments once
+  reviewed, with `<id>-frames.txt` and `drawn --only <id> --record`.
 - **Two tests pin the recorded sequences** (M4 T2d1): moving a task's sequences from
   `to-record.toml` into `sequences.toml` fails `sequence::tests::reads_the_recorded_sequences`
   (their count) and `timeline::tests::the_walks_frames_are_m2_t3bs` (the ids replayed, in order)

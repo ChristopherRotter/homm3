@@ -57,8 +57,8 @@ commands:
           MCL-Q7).
           --list prints the draw list.
           The assets come from the installation copy's archives (<dir> as for gate).
-  sequences [<id>] [--frames <dir>] [--live <live.toml>] [--bugs fixed|original]
-            [--install <dir>] [--map <dir>]
+  sequences [<id>] [--frames <dir>] [--live <live.toml>] [--record <r.jsonl> --record-map
+            <map.h3m> [--packs <dir>]] [--bugs fixed|original] [--install <dir>] [--map <dir>]
           replays the recorded sequences (<map>/sequences.toml, E24 M2) without the original:
           each one's situation built as `situation` builds it, its live part at 0
           (<map>/timelines/<id>-live.toml, or --live) drawn as `render --live` draws it, its
@@ -72,9 +72,14 @@ commands:
           arrows left: E24 M2 T3b). With --frames (one sequence) the frame at each time the
           screen changed and at each time <dir>/frames/ holds the original's (t<ms>.npz,
           h3map.py frames) is written as <dir>/ours/t<ms>.png, the timeline as
-          <dir>/ours.txt. --bugs defaults to original
+          <dir>/ours.txt. With --record (one sequence; E24 M4 T4a2) the sequence is played from
+          a whole game's record of its script (h3map.py makes it; --record-map the map file the
+          engine played, --packs its packs' folder): the record's start and turns over the live
+          part at 0, its walks' paths, points and reveals; its timeline's differences from the
+          recorded one (`- ` the recorded line, `+ ` ours; <dir>/gaps.txt) must be
+          <map>/timelines/<id>-gaps.txt's. --bugs defaults to original
           (the comparisons: the original's edge zones, MCL-Q6, and its cursor's even x). It
-          exits 1 unless every sequence played is as recorded.
+          exits 1 unless every sequence played is as recorded (or its gaps as listed).
   situation <situation.toml> --out <map.h3m> [--install <dir>]
           writes a situation's map (clients/map/situations/; E24 M1 T3b2) with the adventure
           lane's writer, the shipped maps its copies name read from <dir>/Maps (a situation

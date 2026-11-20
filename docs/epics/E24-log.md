@@ -3063,3 +3063,40 @@ needed after the first minutes.
   list).
 - **Checked:** `h3-map-view`'s tests, clippy, fmt; the three recordings; `drawn` all the same;
   `check.sh --no-coverage` all gates; the scoped verify.
+
+
+### M4 T4a2 — a record's own walks and turns played (2026-11-20)
+
+On `map-client/e24-m4-t4a2`, the user present at the start (the last session's cut in two
+offered, T4a2 kept whole by the user); `master` at #1068 (the labels merged), CI green there,
+#1066 merged in later. Original data staged from the PC at the start (the 64 files with
+`shell-videos.vid`, the four manuals and three help files, SHA-256 checked: one hash of each
+side's sorted list); the setup's baseline stopped at its coverage step by a watcher (fmt,
+clippy, the doc tests and deny passed), the Wine capture set up beside it. The PC was not
+needed after the first minutes.
+
+- **Recorded again** (fresh sandbox, TRAPS): `game-walk`, `game-day`, `game-week` under Wine,
+  each exact at 0; `game-week`'s live part kept now (with labels); the original's timelines
+  kept (`timelines/game-*.txt`); the three moved into `sequences.toml`, `to-record.toml` removed.
+- **Built** (design §5.13): `engine::played` (the record folded: its walks and the viewer's
+  turns' starts as `[[turn]]` tables); `timeline::Start::moves`, `Move`, `Draw::walked`,
+  `Minimap::walked`, `Unplayable::Moved`, `timeline::arrows`; `[map.walk] arrows` (the 64
+  numbers of `path_arrow_frames`); the binary's `sequences --record --record-map --packs` (the
+  record's start and turns after the kept live part, the paths from the record's walks; the
+  timeline's differences against `timelines/<id>-gaps.txt`); the painter's view and minimap
+  built for their walked tiles; `h3map.py`'s `engine_game`, `engine_map` and `scripted` (the
+  record of a sequence's `script` for `frames` and `drawn`), `VIEWER_SAME`; a sequence's
+  `script` read by the viewer's `Sequence` (unused there).
+- **Found:** the three games exact but the listed gaps (design §5.13): `game-walk` and
+  `game-day`'s walks the step points and the reveal shown from the first step (MCL-Q39 (c)),
+  `game-week`'s week name (MCL-Q40 (b)); End Turn, the day's start and the income exact.
+- **Agent decisions** (change freely; M4's review list): the record's flags; the n-th walk the
+  record's n-th `MoveHero`; a turn's table from the panels with the date's window, `at` 0, no
+  heroes or boats; the client's week and month names; the gaps file's form; a step's reveal
+  before a boarding's dissolve (not read).
+- **Tests:** `timeline::tests::moves` (the reveal's and the points' times, a key's step, the
+  steps off the record, the arrows of every pair of steps), `tests/engine.rs`'s
+  `a_record_s_walks_and_turns` (a `GameSession`'s record: a walk and seven days) and
+  `a_record_s_rarer_lines` (each week's and month's kind, a snapshot, a walk without tiles, a
+  record ending in a walk, a tile past a byte), `sequences`' differences.
+- **Checked:** see design §5.13.

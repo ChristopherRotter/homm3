@@ -272,8 +272,9 @@ step (the tiles each step explored, in the step's order); (b) the client derives
 costs and the scouting radius: rules copied, not wanted, the user at T3b1's start); (c) a record
 viewed without them: the walk's points shown at its last step and its whole reveal at its first,
 the difference listed where a comparison meets it. **Recommended (a)**, as MCL-Q36's (notes in the
-adventure and server lanes' inboxes, 2026-11-19). Meanwhile (c) when T4a2 plays a record's walks
-(`stub: MCL-Q39`). Blocks nothing.
+adventure and server lanes' inboxes, 2026-11-19). Meanwhile (c), played so since T4a2 (`stub:
+MCL-Q39`; its gaps listed in `clients/map/timelines/game-walk-gaps.txt` and `game-day-gaps.txt`,
+E24 design §5.13). Blocks nothing.
 
 #### MCL-Q40 — A record's normal week and month carry no name (E24 M4 T4a1, a recording)
 
@@ -286,8 +287,9 @@ its own stream, so the golden replays' other draws stay); (b) the client draws i
 from the game and the week (the viewer's own choice, never the original's); (c) a fixed name (the
 list's first). **Recommended (a)**: the name is a draw of the original's game (its `week_creature` 0x6983FC
 holds a normal week's number) and every client of one game must show the same; a note in the adventure lane's inbox
-(2026-11-19). Meanwhile (b) when T4a2 plays a record's turns (`stub: MCL-Q40`); the scripted
-games force the original's draw to a name and list the difference. Blocks nothing.
+(2026-11-19). Meanwhile (b), played so since T4a2 (`stub: MCL-Q40`: the week's number less one
+modulo the 15 names, the month's modulo the 10); `game-week` forces the original's draw to a name
+and its frames list the difference (E24 design §5.13). Blocks nothing.
 
 ### Town lane (`TWN-Q<n>`)
 

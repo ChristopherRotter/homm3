@@ -1495,8 +1495,14 @@ the inputs alone). Its situation must be one the engine imports and starts alike
 "start"`, its heroes' armies in the map (`map_army`), `bonus = "gold"` with the engine's
 `resources` shown by a second hero's selection (`select`, then `reselect` the first), and a town
 for every player (the original banishes one without a town after seven days). A path's tiles in
-the script are the original's walk (its recorded `hero` lines). T4a1's three (`game-*`) wait in
-`map/to-record.toml` until the viewer plays them from their records.
+the script are the original's walk (its recorded `hero` lines). Since T4a2 (design §5.13) the
+viewer plays such a sequence from its engine record: `frames`' frame check and `drawn` make it
+first (`scripted`: the situation's map gzip-compressed and the script's game recorded by the root
+workspace's `target/debug/h3 adventure run` and `h3-server record`, `H3_ENGINE` another folder;
+build them first) and pass `--record <r.jsonl> --record-map <map.h3m>` to `h3-map-view
+sequences`, whose timeline must then differ from the original's by the gaps listed in
+`timelines/<id>-gaps.txt` (its verdict "the record's n gaps as listed"; the run's own list in
+`<out>/<id>/gaps.txt`). T4a1's three (`game-*`) are in `sequences.toml` since T4a2.
 
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live

@@ -4139,3 +4139,59 @@ again at its start (the agreed fallback): T4a1 the reading and the recordings, T
   box of style 1 at day 8's start (6160, closed by Enter at 7160). Blue's turns on its island are
   out of Red's sight: the original's computer hires a hero and enters its town (`[[turn]]`'s
   heroes), the engine's script only ends them, which no fact of Red's record shows.
+
+### 5.13 A record's own walks and turns played (M4 T4a2)
+
+The second of T4a's two (kept whole by the user, 2026-11-20). The viewer plays §5.12's three
+scripted games, moved into `sequences.toml` (`to-record.toml` removed), from their engine
+records: `h3map.py` makes the record of a sequence's `script` (`engine_game`: `h3 adventure run
+--script`, then `h3-server record`, the root workspace's debug binaries; the gzip map beside it)
+and the binary plays the sequence from it (`sequences <id> --record <r.jsonl> --record-map
+<map.h3m>`), in `frames`' frame check and in `drawn`.
+
+- **The record folded** (`h3_map_view::engine::played`, *provisional*): from its first
+  observation, each event folded (`GameObservation::fold`) and each reveal (`reveal`); the
+  viewer's `MoveHero` echoed (`GameAccepted`) opens a walk with its path's tiles, its hero's
+  `MovementChanged` gives the points it left, the next `GameTurn` closes it with the tiles
+  explored since it opened. Each of the viewer's `TurnStarted` after the first gives a
+  `[[turn]]` table as a recording's (`live::Turn::read`): the panels' kingdom of the
+  observation then (`engine::panels`, T3b1's), the date's window at its first frame (kind 1,
+  frame 0: `player_turn_start` 0x4CC7D0 asks it, §5.1), the week's and the month's kind as the
+  fold holds them, a normal one's name the client's (MCL-Q40 (b): the week's number less one
+  modulo the 15 names, the month's modulo the 10); `at` 0 and no heroes or boats (nothing moves
+  out of the viewer's own turns in these games: the other players' turns are T4c's).
+- **The start and the facts:** the record's start (`engine::start`, §5.9 to §5.11) and its turns
+  applied after the kept live part, as `render --record` applies a start; the recording's
+  timeline is only compared (its `arrows`, `points`, `cursor` and `hero` lines unread).
+- **A walk** (`timeline::Start::moves`, `timeline::Move`): each walk the selected hero starts (a
+  path's second click or a key's step) takes the record's next; each step's tile is checked
+  against the walk's (`Unplayable::Moved`: a step off it, a walk past the record's last, a walk
+  ended short of the record's). A step's tiles are revealed at its start, before its animation
+  (`reveal_disk` at 0x48106B, §5.12): the view shows them from the step's first frame
+  (`Draw::walked`), the minimap from the step's end (`Minimap::walked`: its draw at
+  `after_step_guard_check` 0x4800A5; `reveal_disk` draws it at once only in a network game); the
+  points at the step's end. MCL-Q39 (c): a record gives the walk's points at its last step and
+  its whole reveal at its first.
+- **The path's arrows** (`timeline::arrows`): the record's path from where the walk before left
+  the hero, each tile `path_arrow_frames` [the step in + 8 × the step out] + 2 (the table's 64
+  numbers in `[map.walk] arrows`), the destination 1, all green: the engine walks a path whole
+  that day (ADV-MOV-006). The original's `arrows` lines of the three games are these.
+- **The comparison:** the viewer's timeline against the original's recorded one; their
+  differences (a longest common subsequence's complement, `- ` the original's line and `+ `
+  ours, in order) must be the gaps listed in `timelines/<id>-gaps.txt` (the verdict "the
+  record's n gaps as listed"); the frames' differing counts in `<id>-frames.txt` as for every
+  sequence.
+- **Found** (the screens recorded again in this sandbox; the frames at 0 exact):
+  - `game-walk`: 6 gaps, the points of the steps before each walk's last (MCL-Q39); 24 of its 44
+    frames differ, all within the walks: the tiles beyond the start's circle shown from the
+    first step (the original lifts them step by step) and the movement bar until the last step;
+    the screen after each walk, the key's step included, exact.
+  - `game-day`: End Turn, the computer's turn out of sight and day 2's start (the date's window,
+    the kingdom with the town's income, 20 500 gold) exact; its walk's 3 gaps and 12 frames as
+    `game-walk`'s.
+  - `game-week`: no gap in the timeline: the seven turns' starts exact; 9 of its 56 frames
+    differ, by 361 pixels each, from week 2's message to its close: the week's name (the
+    client's second, the original's draw forced to its fifth; MCL-Q40).
+- **Checked:** the three games exact but the listed gaps, again after `master`'s replay format
+  v20 (#1066); `drawn` all the same; `check.sh --no-coverage` all gates, `h3-map-view`'s coverage
+  at 100 %; the scoped verify.

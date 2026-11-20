@@ -37,8 +37,9 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       captures a change needs"). Since E24 M2 T2 the recorded sequences too: each one's frames
       drawn by the viewer from its kept live part (timelines/<id>-live.toml) at the times its
       screen changes (`h3-map-view sequences <id> --frames`, which also checks its timeline), the
-      digests against clients/map/timelines/drawn.txt; the walks too since E24 M2 T3b. <dir>
-      defaults to clients/out/map-drawn.
+      digests against clients/map/timelines/drawn.txt; the walks too since E24 M2 T3b; a
+      sequence with a `script` played from its engine record since E24 M4 T4a2 (`scripted`, as
+      `frames`). <dir> defaults to clients/out/map-drawn.
   h3map.py engine [--only <id>] [--out <dir>]
       without the original (E24 M4 T3b1, design §5.10): each situation of set.toml with an
       `engine` entry, its map gzip-compressed, the engine's start of it recorded (the root
@@ -65,8 +66,13 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       T2 the frame check: the viewer's frames at the times the original's screen changed
       (`h3-map-view sequences <id> --frames`), each against the original's outside the panels,
       the counts (`frames.txt`) against clients/map/timelines/<id>-frames.txt; a walk's is M2
-      T3's. --reuse keeps the original's run of an earlier `frames` (its screens, its live part)
-      and only compares again. <dir> defaults to clients/out/map-frames.
+      T3's. Since E24 M4 T4a2 a sequence with a `script` (the engine's commands of the same game)
+      is played by the viewer from its engine record (the root workspace's `target/debug/h3
+      adventure run` and `h3-server record`, H3_ENGINE another directory: `sequences <id>
+      --record <r.jsonl> --record-map <map.h3m>`), its timeline's differences from the recorded
+      one the gaps listed in clients/map/timelines/<id>-gaps.txt. --reuse keeps the original's
+      run of an earlier `frames` (its screens, its live part) and only compares again. <dir>
+      defaults to clients/out/map-frames.
 
 Needs `clients/capture/setup.sh` and `cargo build --release -p h3-map-view` (from clients/).
 """

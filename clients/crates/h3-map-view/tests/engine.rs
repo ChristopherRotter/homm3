@@ -1346,8 +1346,8 @@ fn a_record_s_walks_and_turns() {
 fn a_record_s_rarer_lines() {
     use h3_protocol::wire::game::{AdventureCommand, GameCommand, GameEvent, Month, Pos, Week};
     let g = game();
-    let text = session_record(&g, 0);
-    let mut lines: Vec<String> = text.lines().map(String::from).collect();
+    let record = session_record(&g, 0);
+    let mut lines: Vec<String> = record.lines().map(String::from).collect();
     let line = |m: &ServerMessage| codec::encode_text(m);
     let moved = |path: Vec<Pos>| ServerMessage::GameAccepted {
         n: 90,
@@ -1411,8 +1411,8 @@ fn a_record_s_rarer_lines() {
         y: 10,
         level: 0,
     }])));
-    let text = lines.join("\n");
-    let loaded = engine::load(&text, &g.bytes, rules()).unwrap();
+    let record = lines.join("\n");
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
     let played = engine::played(&loaded, &g.art, rules()).unwrap();
     assert_eq!(played.moves.len(), 3);
     assert!(played.moves[1].tiles.is_empty() && played.moves[1].points.is_empty());
@@ -1429,8 +1429,15 @@ fn a_record_s_rarer_lines() {
         };
         assert_eq!(numbers(&table(&played.turns[i])[key]), want, "{start:?}");
     }
+    // A record without its first snapshot has no start.
+    let no_start = text(&g.header, &[ServerMessage::MatchCancelled {}]);
+    let loaded = engine::load(&no_start, &g.bytes, rules()).unwrap();
+    assert_eq!(
+        engine::played(&loaded, &g.art, rules()),
+        Err(Refused::NoStart)
+    );
     // A path's tile past a byte refuses the record.
-    let mut bad: Vec<String> = text.lines().map(String::from).collect();
+    let mut bad: Vec<String> = record.lines().map(String::from).collect();
     bad.push(line(&moved(vec![Pos {
         x: 1,
         y: 300,
