@@ -184,11 +184,16 @@ fn a_save_s_table_is_read_strictly() {
     );
     let seven = text.rfind("\n[[save.colours]]").unwrap();
     refused(&text[..seven], "7 colours, not 8");
-    // The replay's part is the engine's file: its keys and words as its reader takes them.
-    refused(
-        &text.replacen("format = 20", "format = \"20\"", 1),
-        "replay format",
+    // The replay's part is the engine's file: its keys and words as its reader takes them (the
+    // format's number the replay's own: the engine's replay format moves with other lanes).
+    let format = save.replay.header.format_version;
+    let quoted = text.replacen(
+        &format!("format = {format}\n"),
+        &format!("format = \"{format}\"\n"),
+        1,
     );
+    assert_ne!(quoted, text);
+    refused(&quoted, "replay format");
     refused(
         &text.replacen("[map]", "[save.colours]\n[map]", 1),
         "replay format",
