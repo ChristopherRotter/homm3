@@ -490,6 +490,9 @@ The user, 2026-11-19 (M3 T7's start):
     setup's choices, built by this lane `cross-lane` with the user's consent (the adventure lane's
     `h3-sim` `replay.rs` and `h3-files` format, its 104 golden replays; the AI and server lanes'
     literals); T3b the client's own save file and a load, on top of it.
+72. **T4 cut in two** (the user, 2026-11-20, at its start, as offered): T4a the load mode's
+    reading and recordings (the harness and the docs, no client code; design §38), T4b the
+    client's load mode and saves exact against them.
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
@@ -597,8 +600,9 @@ load mode), §3.12 to §3.14 (a load's rows).
 | T2 | Credits (§2.9): `Credits.fnt`, `Credits.txt`'s two records wrapped to 328 px, the scroll of 2 px ten times a second (CLT-Q88), the closing text's moment read from the kept frames, a key (but F4) or a press ending it, M2's stub lifted; exact against `credits-scroll`, `credits-end` | done 2026-11-19 (`credits-scroll` 5 of 5 exact, its scroll's 2 611 frames; `credits-end` 8 of 8; design §36) |
 | T3a | The save file's engine part (decisions 69, 71; `cross-lane`): the adventure replay format v20, `Replay::players` (each player's human flag, faction's choice and hero's pick, recorded from the setup, set over the import by `Replay::setup` when verifying, none the import's), its `[[players]]` tables in `h3-files`' file, the 104 golden replays recorded again (only the version and the players' lines moved) | done 2026-11-20 (the adventure lane's inbox: its increment 14 takes v21) |
 | T3b | The save file (decisions 69, 71): the client's own file, its table (the names, bonuses, handicaps, the turn's duration, the save's name) beside the engine's replay of T3a, written and read with its version; a load's setup rebuilt (`Replay::setup` over the map's import) and its commands replayed by the engine; tests, no screen | done 2026-11-20 (`h3-battle-client`'s `save`; design §37) |
-| T4 | Load Game single (§3.1, §3.3 to §3.6, the load mode): the client's saves listed (the map's header, the date, the difficulty shown, the turn's duration), the keys, the sort, Delete's question (688), the notice with none (686), Load's popup, the load to play's stub (as M3's begin); §6.4's fixes (the date's order: a day above 12 and a pinned time zone; a save of another size; Delete of the last save) and M3 T7's leftover (the list's held keys); exact against `scn-load`, `scn-load-none` (the viewer given client saves made to match the recipe's) | after T3 |
-| T5 | Load Game hot seat (§3.12 to §3.14, a load's rows: the saved choices, no arrows; §6.4's Random Map button in a load): exact against `mp-load`, `adv-load` | after T4 |
+| T4a | Load Game single's reading and recordings (§38; decision 72): the date's order, the load mode's name, Delete's end read; the original's saves of shipped maps made by maker recipes (the user's are a random map's), a pinned time zone, a held key's repeats (`h3shell.py`); `scn-load` recorded again (§6.4's fixes: a day above 12, three sizes, the held key), `scn-load-last` new (Delete of the last save) | done 2026-11-20 (25 and 9 shots, twice the same; `scn-load-none` as kept) |
+| T4b | Load Game single's client (§3.1, §3.3 to §3.6, §38): the client's saves listed (where kept and their file's name T4b's call; the map's header from the map the replay names, the file's local time, the difficulty shown, the turn's duration), the keys and a held key's repeats, the sort, Delete's question (688) and its end, the notice with none (686), Load's popup, the load to play's stub (as M3's begin: `save::load`'s `Loaded` kept for E24 M5); the viewer given client saves made to match the makers' (`made_games`) and `key-hold`; exact against `scn-load`, `scn-load-last`, `scn-load-none` | after T4a |
+| T5 | Load Game hot seat (§3.12 to §3.14, a load's rows: the saved choices, no arrows; §6.4's Random Map button in a load): hot-seat saves of shipped maps made as T4a's (`adv-load`'s are the user's random map's); exact against `mp-load`, `adv-load` | after T4b |
 | T6 | M4's closure: a fresh reviewer, M4's review list to the user, M4 to the archive, M5's refinement once the shell hosts play (else its prerequisites recorded) | after T5 |
 
 **M4's review list** (the agent's calls, *provisional*, for T6):
@@ -661,6 +665,20 @@ load mode), §3.12 to §3.14 (a load's rows).
     import's mark, which the engine cannot check; the begin's rule of M3 T7) and a name for a
     colour no human holds; a save file is read whole, with no size limit (as the settings and
     scores files).
+21. (T4a) The load's recipes use saves the original made of shipped maps (three maker recipes,
+    design §38.2: Middletown at Hard, Arrogance at Easy, Dawn of War's autosave at Expert on its
+    second day) in place of the user's (a random map's, which no client's save can name); the
+    makers run when their saves are missing or their recipe changed, no digest of a save kept
+    (its bytes differ by a few heap pointers from run to run).
+22. (T4a) After a sort in the load mode the partial redraw leaves the difficulty buttons and the
+    rating stale too (the rating's text drawn over the last one; design §38.3), taken as
+    CLT-Q138's class (decision 48: the client draws whole, the original's for the comparisons),
+    not asked again.
+23. (T4a) Every shell run's time zone pinned (`tz`, UTC by default; the load's recipes Asia/Kolkata,
+    a zone without daylight saving time: the original shows a file's time by the present
+    offset); the display's auto-repeat off at each run's start, on only for `key-hold`, whose
+    repeats' count follows real time (a recipe holds a key until the list's end, so it does not
+    matter).
 
 ## Dependencies and boundaries
 
