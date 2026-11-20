@@ -111,9 +111,8 @@ use h3_contracts::{BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
     ChestChoice, Consent, FactionChoice, GameCommand, GameRuleset, GameSetup, HireAnswer, Manage,
-    MarketAnswer,
-    Position, SchoolChoice, SkillOffer, SystemCommand, TavernAnswer, TownCommand, TownHeroChange,
-    UniversityAnswer,
+    MarketAnswer, Position, SchoolChoice, SkillOffer, SystemCommand, TavernAnswer, TownCommand,
+    TownHeroChange, UniversityAnswer,
 };
 use h3_sim::adventure::replay::{
     MapRef, PlayerChoices, RecordError, Replay, ReplayError, ReplayHeader, map_content_hash,
