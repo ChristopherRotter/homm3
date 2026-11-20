@@ -4330,3 +4330,9 @@ start (the same day; offered a cut by family, the flags first).
   the turn's table and the dissolve's window above were fixed (before: the points at 1460, 139
   pixels to 3000; the date's window through the landing's dissolve). The record's start's boats
   and Part A's rules had already played the boarding and the landing as the original.
+- **Checked:** the two games' sequences in `sequences.toml` with their timelines, kept live
+  parts, frames and gaps (none) in `timelines/`; `frames --only <id> --reuse` every frame exact;
+  `drawn` the 56 situations and the 102 other sequences the same, `--record` for the two; unit
+  tests (`tests/engine.rs`' flags, hires and boats, the turn's points; the timeline's record
+  boarding, landing and refusal, the dissolve's date window); `check.sh` all gates,
+  `h3-map-view`'s coverage at 100 %; the scoped verify.

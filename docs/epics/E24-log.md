@@ -3144,3 +3144,43 @@ was not needed after the first minutes.
   `timeline::tests::finds::a_record_s_visit_from_beside_takes_its_move`,
   `timeline::tests::levels::a_record_s_level_up_closes_only_with_its_answer`; the sequences'
   count and ids.
+
+### M4 T4b2 — a record's visits played: the flags and the boats (2026-11-20)
+
+On `map-client/e24-m4-t4b2`, the user present at the start: T4b2 kept whole (offered a cut by
+family, the flags first). `master` at #1078 (T4b1 merged). Original data staged from the PC at
+the start (the 64 files and the manuals, SHA-256 checked); the setup's baseline stopped at its
+coverage step by a watcher; the Wine capture set up beside it. The PC was not needed after the
+first minutes.
+
+- **Read** (design §5.15): the engine's records of the two games: a flag's `ObjectFlagged` in
+  the visitor's colour (a dwelling's before its `OfferOpened`; the hire's `CreaturesJoined`, and
+  in the engine `JoinRefused` and `NoneToRecruit`), `Boarded` and `Landed` (the boat's type, the
+  water tile, the landing's facing), a turn's start's new points after `TurnStarted`.
+- **Recorded:** `game-flags` (a Sawmill, a Lighthouse, a Guardhouse with its Pikemen) and
+  `game-boats` (a boat boarded, End Turn, a step at sea and back, the landing) under Wine, each
+  twice (the second run `ok`), exact at 0.
+- **Built** (design §5.15): `engine::visits::told`'s mines, Lighthouses and dwellings (`Told`'s
+  `flag`; `hired`: the free creatures as the record tells them); the adapter's `record_finds`
+  raising the record's flag; `timeline::Sea` and `Move::sea` from `engine::played`, the timeline's
+  `sea_on_record` and `boarded` in `stride` (Part A's `boat_on` and `landing` for a recording
+  only); the viewer's turn's start table after its message is folded; `lose` keeping the status
+  window its draw chose (the date's step, shown at once).
+- **Found:** both games exact, their timelines and every frame, no gap; before the last two
+  fixes `game-boats` differed in the points at the new day (1460 to 3000, 139 pixels) and the
+  date's window through the landing's dissolve (4250 to 4705, 20 790 pixels). The record's start's
+  boats with Part A's rules had played the boarding and landing as the original already.
+- **Agent decisions** (change freely; M4's review list): the flag's colour the record's; a
+  declined hire not built; the record's boarding and landing in place of the boats and the water,
+  a boarding with no empty boat on its tile off the record; the turn table after the message;
+  `lose`'s status window; the games' layouts (Blue on an island for End Turn, a boat facing the
+  step).
+- **Tests:** `tests/engine.rs`' `what_a_record_s_flags_tell` (the classes, the colour, the
+  hire's three outcomes and the answers that tell nothing), `a_record_s_boats` (`Move::sea` of a
+  boarding, a landing, another hero's and a facing past 7) and the turn's points in
+  `a_record_s_walks_and_turns`; `timeline::tests::boats::a_record_boards_and_lands_as_it_says`;
+  the sequences' count and ids.
+- **Checked:** each game recorded twice (the second `ok`, every frame exact); `drawn` the 56
+  situations and the 102 other sequences the same (`--record` for the two); `check.sh` all gates
+  (`h3-map-view`'s coverage 100 %: a unit test for the dissolve's date window and the hire's other
+  events added after the first run); the scoped verify.

@@ -416,3 +416,35 @@ fn a_record_boards_and_lands_as_it_says() {
     let l = run_with("land", 100, on_record(8, None));
     assert!(l.aboard.is_none() && l.drawn().boats.empty.is_empty());
 }
+
+#[test]
+fn a_dissolve_shows_the_date_window_its_draw_stepped() {
+    // `land` with the date's window asked: the landing's dissolve at 250 shows the window the
+    // view's draw stepped at once, outside the middle (E24 M4 T4b2, `game-boats` at 4250).
+    let (start, actions, _, _) = boating("land");
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    let run = |l: &mut Loop, from: u32, to: u32| {
+        for t in from..=to {
+            l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+                .unwrap();
+        }
+    };
+    run(&mut l, 1, 99);
+    l.asked = 1;
+    l.end = 10_000;
+    l.kingdom.status = Some(Status::Date(DateStatus { frame: 0 }));
+    // Built at the step's start (100) and stepped at 200; its last step put back to 140, so that
+    // the landing's draw at 250 steps it.
+    run(&mut l, 100, 249);
+    l.stepped = 140;
+    let shown = l.drawn().kingdom.status.clone();
+    run(&mut l, 250, 250);
+    let s = l.state(250);
+    let before = s.drawn.dissolve.unwrap().before;
+    let Some(Status::Date(date)) = &s.drawn.kingdom.status else {
+        panic!("the date's window: {:?}", s.drawn.kingdom.status);
+    };
+    assert_eq!(*date, DateStatus { frame: 2 });
+    assert_ne!(shown, s.drawn.kingdom.status);
+    assert_eq!(before.kingdom.status, s.drawn.kingdom.status);
+}

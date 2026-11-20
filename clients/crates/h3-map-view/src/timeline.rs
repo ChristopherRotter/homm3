@@ -4847,8 +4847,9 @@ impl Loop {
     fn sea_on_record(&self, next: Pos) -> Option<Option<Sea>> {
         let moves = self.moves.as_ref()?;
         let walk = self.walking.and_then(|(m, k)| {
-            let walk = moves.get(m)?;
-            (k + 1 == walk.tiles.len() && walk.tiles.get(k) == Some(&next)).then_some(walk)
+            moves
+                .get(m)
+                .filter(|w| k + 1 == w.tiles.len() && w.tiles.get(k) == Some(&next))
         });
         Some(walk.and_then(|w| w.sea))
     }

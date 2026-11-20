@@ -2051,7 +2051,10 @@ fn what_a_record_s_flags_tell() {
     };
     assert_eq!((joins.count, room), (0, true));
     let other = GameEvent::DayStarted { day: 2 };
-    assert_eq!(hire(vec![flagged.clone()], vec![other]), None);
+    assert_eq!(
+        hire(vec![flagged.clone()], vec![flagged.clone(), other]),
+        None
+    );
     assert_eq!(hire(vec![flagged.clone()], Vec::new()), None);
     let declined = visit(
         vec![flagged],
@@ -2125,6 +2128,12 @@ fn a_record_s_boats() {
             events(vec![stepped(12, 10), landed(red, 6), landed(blue, 2)]),
             moved(13, 10),
             events(vec![stepped(13, 10), landed(red, 9)]),
+            // Another hero's boarding: no walk of its own open.
+            events(vec![adventure(AdventureEvent::Boarded {
+                hero: blue,
+                boat: 0,
+                at: pos(30, 30),
+            })]),
         ],
     );
     let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
