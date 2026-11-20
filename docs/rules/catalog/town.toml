@@ -1734,3 +1734,76 @@ numeric  = "integer"
   retrieved  = "2026-11-20"
   confidence = "high"
   note       = "Marked verified by E09 T46: the slots and the factor as observed, the weights the original's files checked against the reading's sums."
+
+[[rule]]
+id       = "TWN-GLD-002"
+title    = "The mage guild's draw: each level's slots and the spare, the required spells first, the excluded never"
+context  = "town"
+status   = "implemented"
+summary  = "A town's guild is drawn once when the game is built, whatever the town has built: per spell level 1 to 5 the part's slots of the level and one more, the spare (six, five, four, three and two in the base part; at most six a level), in order. The excluded spells start as the town's banned spells (the map's town record), the scenario's bans and every spell a guild never holds (a creature ability, a spell granted by name only: Titan's Lightning Bolt); for each slot, among the level's spells not excluded in spell order, the first the town requires is taken whatever its weight; else, with a total of their guild weights (the town's faction's record, TWN-GLD-001) of 0, the slot stays empty without a draw; else one draw of 1 to the total (Rng::range_inclusive) and the first spell whose running weight reaches it (a weight of 0 never chosen). A taken spell is excluded from then on: no spell twice, a spell both required and banned never in the guild (TD-25, E09 decision 168), an empty slot only followed by empty ones of its level. h3_towns::draw_guild with GuildSets and GuildSlots (E09 T47a1, design note section 85); the game's draw at the build from the towns' stream (E09 decision 179) with E09 T47a2."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T42a; survey E09-guild.md sections 3.1 and 3.2): town_setup_spells 0x5BE600 read whole, called by town_setup 0x5C08B0 at the new game; the excluded set of the town's +0xD4 and the game's ban bytes +0x4A (new_game_bans: the scenario's bans and the flag 0x2000); the required set +0x7C taken at once in the scan; random_between(1, total) over the record's +0x44 weights by faction; guild_spell_slots 0x6782A4 plus one"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-5a.md and its run2 record, batch TWN-5 row TWN-5-1 (the capture harness under Wine, the Complete 4.0 executable in SoD, 2026-11-20, E09 T44; survey E09-guild.md section 21): a spell required and banned in none of its town's six level-1 slots, the control's required spells in slots 1 and 2, the map's ban and Titan's Lightning Bolt in no slot, no spell twice in a level"
+  retrieved  = "2026-11-20"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 85; E09 decisions 168, 179, 186 and 187"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-GLD-003"
+title    = "What the guild shows: the guild level, each built level's slots, the Library's spare"
+context  = "town"
+status   = "implemented"
+summary  = "A town's guild level is the highest level of a standing building of role guild (TWN-GLD-001), 0 without one; the faction's highest level is its record's buildings (Castle 4, Stronghold and Fortress 3, the others 5). At each level from 1 to the guild level the guild shows the first of its drawn slots (TWN-GLD-002): the part's slots of the level, one more (the spare) with a building of role library ever built, cut at the first empty slot; it shows nothing above the guild level. The counts are derived, never stored, so a level or a Library built later shows at once; the spells are never drawn again. h3_towns::guild_level and shown (E09 T47a1, design note section 87); the slots join the town's record with the store v4 (E09 T47a2)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T42a; survey E09-guild.md sections 3.3 and 4): after the draw the guild level +0x14 is the highest Mage Guild of the standing set +0x150 (buildings 4 down to 0) and each level's count +0xBC is guild_spell_slots 0x6782A4's, one more for a Tower whose every-built set +0x158 holds building 22, less the empty slots at its end; town_build_effects 0x5BEDE0 recomputes them after a Mage Guild's or the Library's build"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-5a.md and its run2 record, batch TWN-5 row TWN-5-3 (E09 T44; survey E09-guild.md section 21): a Tower's guild showing 5, 4, 3, 2 and 1 spells, with the Library built 6, 5, 4, 3 and 2"
+  retrieved  = "2026-11-20"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 87; E09 decisions 186 and 187"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-GLD-004"
+title    = "What a hero learns at a town's guild: the Aurora set (built), the guild's spells by Wisdom (planned)"
+context  = "town"
+status   = "implemented"
+summary  = "A town's Aurora set, fixed when the game is built: every spell a guild may hold (not a creature ability, not granted by name only) that the town's map record does not ban, less the scenario's bans when quirk.town.aurora_ignores_map_bans (TWN-QUIRK-14, T-18 fix-optional) is off; with the flag on (faithful) a spell the scenario bans is in it; the town's required spells do not matter. A building of role aurora ever built teaches it, the guild level notwithstanding. Built so far: the set, h3_towns::aurora_set (E09 T47a1, design note section 86). Planned with E09 T48a (design note section 88): with a building of role guild ever built and a worn spell book, in a town with a building of role aurora ever built every spell of the Aurora set up to the hero's learnable level (HER-SPL-005), else every spell the guild shows (TWN-GLD-003) up to it, each the hero does not know, in level then slot order."
+quirks   = ["TWN-QUIRK-14"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T7b2b, T42a; survey E09-guild.md section 5): town_heroes_learn_spells 0x5BE030, its first branch: a Conflux (faction 8) whose every-built set holds building 26 teaches every spell 0 to 69 not in the town's banned set +0xD4 up to Wisdom's level + 2, but 57; the map-wide bans +0x4A never tested (0x5BE10C to 0x5BE172)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-5a.md and its run2 record, batch TWN-5 row TWN-5-2 (E09 T44; survey E09-guild.md section 21): an Expert in Wisdom at a Conflux with the Aurora Borealis and Mage Guild 1 learned 68 spells, every one of 0 to 69 but the town's ban and 57, the map's ban among them"
+  retrieved  = "2026-11-20"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md sections 86 and 88; E09 decisions 169, 174, 186 and 187"
+  confidence = "high"
