@@ -231,6 +231,7 @@ id = "scn-load-make-large"
 what = "§38: makes `Week_one.GM1`, Middletown (108, RoE) at Hard on its first day"
 maps = ["Middletown.h3m"]
 makes = ["Week_one.GM1"]
+viewer = { difficulty = 2 }
 steps = [
   "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
   "until:scenario_list", "click:585,478", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",
@@ -244,6 +245,7 @@ id = "scn-load-make-small"
 what = "§38: makes `small.GM1`, Arrogance (36, SoD) at Easy on its first day"
 maps = ["Arrogance.h3m"]
 makes = ["small.GM1"]
+viewer = { difficulty = 0 }
 steps = [
   "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
   "until:scenario_list", "click:521,478", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",
@@ -258,6 +260,7 @@ what = "§38: makes `AUTOSAVE.GM1`, the autosave of Dawn of War (72, AB) at Expe
 registry = { "Autosave" = 1 }
 maps = ["Dawn of War.h3m"]
 makes = ["AUTOSAVE.GM1"]
+viewer = { difficulty = 3, day = 2 }
 steps = [
   "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
   "until:scenario_list", "click:617,478", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",

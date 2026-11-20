@@ -274,6 +274,40 @@ heroes, hires, leaves and the guild.
   of Thieves' visit tells its visitor's owner alone the guild at everything (`ThievesGuildSeen`
   and its `GuildPartSeen`s). It changes nothing and draws nothing.
 
+### The mage guild (E09 increment 5)
+
+ADR-0028 points 2, 5 and 6, ADR-0017 points 1 to 4 and 10, ADR-0016 point 4, ADR-0013 points 15.5
+and 16.6 (E09 decisions 167 to 180; the design note `epics/E09-design.md` §85 to §94; rules
+TWN-GLD-002 to -009, TWN-VEW-004 amended). The build tasks (E09 T47b to T49) implement it;
+`h3-game`'s view tests (`town/tests/view.rs`) and the hygiene and told-views properties check it
+with guilds, learning, the Vortex and the book.
+
+- **The owner's alone:** a town's guild in the owner part of its view, per level 1 to 5 the spells
+  the guild shows (none above the guild level), whether an Aurora Borealis teaches every spell
+  there and the Mana Vortex's week flag. Never to another viewer, not even Visions' top level (the
+  original's quick view shows no spells, survey `rules/surveys/E09-towns.md` §12.3).
+- **Never shown:** a guild's slots it does not show (the spare without the Tower's Library, every
+  level above the guild level), not even to the owner: a build that shows them tells them then
+  (`TownChanged`); a capture shows the new owner what the guild shows.
+- **The towns' stream is server-only** (ADR-0017 point 5): the guilds' draws at the build are told
+  only as the spells a guild shows; nothing in play draws a guild.
+- **The opening is the owner's** (`GameCommand::Town(TownCommand::Open { town })`): the actor must
+  own the town and be in its turn with no open decision (`UnknownTown`, `NotOwner` refused,
+  changing nothing); the command names no hero and no spell. It is free and may be repeated: the
+  Vortex gives once a week a town (the flag) and a hero learns only spells it does not know, so a
+  repeat changes nothing.
+- **The spell book's purchase is the owner's** (`GameCommand::Town(TownCommand::BuySpellBook {
+  town })`): the actor's own town in its turn with no open decision and a standing Mage Guild; the
+  hero the town's visitor, else its garrison hero, wearing no spell book; the part's price from
+  the actor's own treasury. The command names neither hero nor price; each refusal (`NoGuild`,
+  `NoHero`, `HasSpellBook`, the treasury's) changes nothing.
+- **Events:** learning as `HeroChanged { change: LearnSpell(spell) }` per spell and the Vortex as
+  `HeroChanged { change: SetSpellPoints(points) }`, each to the hero's owner, then the town's
+  `TownChanged` for the cleared flag (in the owner's part); the book's purchase as `ResourcePaid` and
+  `HeroChanged { change: AddArtifact(book) }` to the owner, then the learning's; a week's set
+  flags in the week's views; the night's refill tells nothing (the points in the owner's
+  observation, as the day's regain).
+
 ## Denial of service and resource limits
 
 - Bounded command size and count per turn; bounded work per command (path search limits, list lengths).

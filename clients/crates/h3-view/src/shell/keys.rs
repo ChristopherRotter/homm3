@@ -92,6 +92,9 @@ pub enum Command {
     /// The scenario list's move at the key's press, the description's bar's step at its release
     /// (E27 M3 T1b1, T2c).
     List(Scroll),
+    /// The load mode's Delete at the key's press (E27 M4 T4b1; `scenario_dialog_proc` 0x587D00,
+    /// `saved_game_delete` 0x58DFB0: the scan code 0x53).
+    Delete,
 }
 
 /// A move of the scenario list by a key at its press (E27 M3 T1b1), and of the description's
@@ -165,6 +168,9 @@ pub const LIST: [(Scroll, &str, &str); 6] = [
     (Scroll::Right, "scenario-right", "Right"),
 ];
 
+/// The load mode's Delete (E27 M4 T4b1), its name and the original's key.
+pub const DELETE: (&str, &str) = ("scenario-delete", "Delete");
+
 /// A message box's keys with their names and the original's (as the battle's,
 /// `crate::keys`).
 const MESSAGE: [(message::Key, &str, &str); 2] = [
@@ -235,6 +241,7 @@ impl Command {
                 .iter()
                 .find(|&&(l, _, _)| l == scroll)
                 .map(|&(_, name, key)| (name, one(key))),
+            Self::Delete => Some((DELETE.0, one(DELETE.1))),
         };
         let (name, chords) = found.unwrap_or(("", Vec::new()));
         (String::from(name), chords)
@@ -257,6 +264,7 @@ impl keys::Command for Command {
         all.extend(EDIT.map(|(c, _, _)| Self::Edit(c)));
         all.extend(RING.map(|(next, _, _)| Self::Ring(next)));
         all.extend(LIST.map(|(scroll, _, _)| Self::List(scroll)));
+        all.push(Self::Delete);
         all
     }
 
@@ -272,7 +280,7 @@ impl keys::Command for Command {
 
     /// The main menu's buttons over the main menu, a game type menu's over it, the box's keys
     /// over a box, a dialog's over it, an edit's while it has the focus, the ring over the hot
-    /// seat's names, the list's over the scenario screen.
+    /// seat's names, the list's and Delete over the scenario screen.
     fn context(self) -> Option<Context> {
         Some(match self {
             Self::Button(_) => Context::MainMenu,
@@ -287,7 +295,7 @@ impl keys::Command for Command {
             },
             Self::Edit(_) => Context::Edit,
             Self::Ring(_) => Context::HotSeat,
-            Self::List(_) => Context::Scenario,
+            Self::List(_) | Self::Delete => Context::Scenario,
         })
     }
 

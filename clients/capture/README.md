@@ -1514,7 +1514,11 @@ workspace's `target/debug/h3 adventure run` and `h3-server record`, `H3_ENGINE` 
 build them first) and pass `--record <r.jsonl> --record-map <map.h3m>` to `h3-map-view
 sequences`, whose timeline must then differ from the original's by the gaps listed in
 `timelines/<id>-gaps.txt` (its verdict "the record's n gaps as listed"; the run's own list in
-`<out>/<id>/gaps.txt`). T4a1's three (`game-*`) are in `sequences.toml` since T4a2.
+`<out>/<id>/gaps.txt`). T4a1's three (`game-*`) are in `sequences.toml` since T4a2. Since E24 M4
+T4b1 (design §5.14) a scripted sequence may carry `engine_seed` (a whole number; 1 without it),
+the engine's seed `h3 adventure run --seed` plays its script under: one whose draws are the
+original's under `seed` where both games draw at random (`game-level`'s level-up, 74: found by a
+search over the engine's seeds against the recording's `[[level_up]]`).
 
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
@@ -1558,7 +1562,10 @@ python3 h3shell.py drawn [--group menus] [--only menu-main] [--record]   # the v
   in its run's `Games/` and copied to `clients/out/shell/games/<id>/`, local) and `made_games`
   (`[[recipe.made_games]]`: `by`, the maker, and `file`: the run's saves from there, the maker
   played first when they are missing or its recipe changed; a save's bytes differ from run to
-  run, so none is kept or committed), `tz` (the run's time zone, default UTC: Wine's local time is
+  run, so none is kept or committed; since E27 M4 T4b1 `drawn` gives the viewer the client's saves
+  of the same names, made by `h3-view save` on the maker's first map with its `viewer` table,
+  `difficulty` and `day`, left out of the maker's digest, into the run's own `--games` folder,
+  empty without them), `tz` (the run's time zone, default UTC: Wine's local time is
   `TZ`'s, the load and save lists show a save's local time; a zone without daylight saving time,
   since the original converts by the present offset), `backgrounds` (the scenario screen's
   background as the original drew it at each opening, 0 or 1: the viewer's alone, E27 M3 T1a),
@@ -1622,7 +1629,9 @@ python3 h3shell.py drawn [--group menus] [--only menu-main] [--record]   # the v
   time, or the count and box of the pixels that differ when a `run`'s frames are in
   `clients/out/shell/<id>/run1/`) and with the viewer's own record, `shell/drawn.txt` (`same`;
   `CHANGED`, `new`, `GONE` fail; `--record` writes it). The viewer stops a recipe at a step it
-  cannot take, and says which and why: the harness's own (`poke`, `games-time`, `freeze`), a
+  cannot take, and says which and why: the harness's own (`poke`, `freeze`; since E27 M4 T4b1 it
+  takes `games-time`, its saves' times, and `key-hold`, the presses Xvfb's repeat gives in the
+  hold: 1 under 660 ms, then one each 40 ms, `replay::held_presses`), a
   screen name it does not know, a screen not built yet, a press or a key on a screen built at
   rest (each names the task that builds it). Since E27 M4 T1b `press`, `point` and
   `until-button` find a button of an original's box the viewer shows (High Scores' Reset

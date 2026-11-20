@@ -128,6 +128,7 @@ pub fn entry(file: String, map: &RawMap, rules: &GameRuleset) -> Entry {
         seats: map.players.each_ref().map(seat),
         teams,
         heroes: heroes(map, rules),
+        saved: None,
     }
 }
 

@@ -607,6 +607,27 @@ scn-long-text key-page-up-top t5000 3c8752b2bf0368d0
 scn-long-text jihad t5800 4b9e26019ad0bfd0
 scn-long-text retold t6500 2c794b85bd21ea62
 scn-long-text reopened t7100 1172df5b8388e75f
+scn-load screen t900 60c09b6c96cb0b84
+scn-load down t1000 4771e499b3322737
+scn-load up t1100 60c09b6c96cb0b84
+scn-load held-short t1200 4771e499b3322737
+scn-load held-short-back t1300 60c09b6c96cb0b84
+scn-load held-down t1400 d9624b88acbc0ed4
+scn-load held-up t1500 60c09b6c96cb0b84
+scn-load row-1 t2200 4771e499b3322737
+scn-load row-2 t2900 d9624b88acbc0ed4
+scn-load row-past t3600 d9624b88acbc0ed4
+scn-load name-1 t3800 145176f84478df97
+scn-load name-2 t4000 7395bc682d458a9f
+scn-load size-1 t4200 17ddd2eb040972bc
+scn-load size-2 t4400 c1ac12730440b194
+scn-load no-list-button t4500 63623b8afb144c40
+scn-load load-hover t4700 859417d11bf8bae1
+scn-load load-popup t4800 3785ddf10a474413
+scn-load easy-popup t5000 ae11b5560cc0c698
+scn-load easy-pressed t5300 60c09b6c96cb0b84
+scn-load-last screen t900 2607bb5fda1d4554
+scn-load-none notice t800 1d1f5a8a94db2cf6
 scores-tabs scenarios t100 52db78a38d3b7316
 scores-tabs scenarios-anim clip 15@100-2940 56073cb8a9c837fb
 scores-tabs standard-hover t3200 877d00e2fd0a378d

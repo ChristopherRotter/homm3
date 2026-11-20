@@ -131,6 +131,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.adventure.sirens_again_after_battle",
     "quirk.town.leave_points_over_cleared_army",
     "quirk.town.guild_artifacts_by_backpacks",
+    "quirk.town.aurora_ignores_map_bans",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -365,6 +366,14 @@ pub const LEAVE_POINTS_OVER_CLEARED_ARMY: QuirkFlag = QuirkFlag(42);
 /// by `h3-game`'s Thieves' Guild from E09 T39b.
 pub const GUILD_ARTIFACTS_BY_BACKPACKS: QuirkFlag = QuirkFlag(43);
 
+/// TWN-QUIRK-14 (T-18, TD-26, E09 decision 169; survey `E09-guild.md` §5, batch TWN-5's
+/// TWN-5-2): the Conflux's Aurora Borealis teaches every spell its town does not ban (but those
+/// granted by name only) whatever the scenario bans: `town_heroes_learn_spells` 0x5BE030 tests
+/// the town's banned set and never the map-wide bans (0x5BE10C to 0x5BE172). Off: the scenario's
+/// bans are taken out of the Aurora set too (VCMI's map-wide test, with the town's bans kept).
+/// Class `fix-optional`; read by `h3-towns`' Aurora set from E09 T48a.
+pub const AURORA_IGNORES_MAP_BANS: QuirkFlag = QuirkFlag(44);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -407,7 +416,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 44);
+        assert_eq!(REGISTRY.len(), 45);
         assert_eq!(
             [
                 REGISTRY.lookup("quirk.town.creature_month_exact"),
@@ -424,6 +433,10 @@ mod tests {
                 Some(LEAVE_POINTS_OVER_CLEARED_ARMY),
                 Some(GUILD_ARTIFACTS_BY_BACKPACKS)
             ]
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.town.aurora_ignores_map_bans"),
+            Some(AURORA_IGNORES_MAP_BANS)
         );
         assert_eq!(
             [
@@ -604,7 +617,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 44);
+        assert_eq!(REGISTRY.len(), 45);
         assert_eq!(
             [
                 REGISTRY.names[9],
@@ -618,7 +631,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..44).filter(|i| ![9, 10, 14, 30].contains(i)))
+                .eq((0..45).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

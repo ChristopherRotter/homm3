@@ -470,7 +470,8 @@ pub enum Unplayable {
     /// dialog; the engine's, M4 T5 and M5), by its find's tile.
     Answer([i32; 3]),
     /// A level the selected hero's experience reaches whose dialog the facts lack (E24 M4 T2c: a
-    /// recording's `[[level_up]]` tables; the engine's from Part B), by the level.
+    /// recording's `[[level_up]]` tables; the engine's from Part B), or since E24 M4 T4b1 one
+    /// closed with an offer its record's answer did not take, by the level.
     LevelUp(u8),
     /// A spell cast through the book whose facts are not given (E24 M4 T2d3: a recording's
     /// `[[cast]]` table at the book's close, its cost spent at the cast's end; the engine's from
@@ -928,6 +929,9 @@ pub struct LevelBox {
     pub offers: Vec<levels::Offer>,
     /// The primary skill raised (0 Attack to 3 Knowledge).
     pub primary: u8,
+    /// The offer a record's answer took (E24 M4 T4b1, design §5.14): the OK closing it with
+    /// another is refused ([`Unplayable::LevelUp`]); none: any (a recording's).
+    pub chosen: Option<usize>,
 }
 
 /// A find's boxes (E24 M4 T2a2, design §5.3, *provisional*: the viewer's facts at 0,
@@ -1963,6 +1967,10 @@ impl Loop {
         } else {
             self.turn_of_loop(t)?;
         }
+        // A box opened by the loop's turn (a walk's end) emptied the queue then: the actions given
+        // after it are not behind it (E24 M4 T4b1: `game-asks`' click and pointer at 1000 after
+        // the Arena's box at 250).
+        self.flush = false;
         for &action in actions {
             if let Some(dissolving) = &mut self.dissolving {
                 // The mouse's point is read at once; the message waits as during a walk.
@@ -3177,6 +3185,14 @@ impl Loop {
         mut leveling: Leveling,
         chosen: Option<usize>,
     ) -> Result<(), Unplayable> {
+        // A record's level-up closed with the offer its answer took (E24 M4 T4b1).
+        if leveling
+            .open
+            .chosen
+            .is_some_and(|want| chosen != Some(want))
+        {
+            self.unbuilt(Unplayable::LevelUp(leveling.open.level))?;
+        }
         let raised = &mut leveling.raised;
         if let Some(skill) = raised.skills.get_mut(usize::from(leveling.open.primary)) {
             *skill = skill.saturating_add(1);
@@ -3422,6 +3438,14 @@ impl Loop {
     fn visit_beside(&mut self, t: u32, direction: Direction, i: usize) {
         self.cursor.shown = false;
         self.walked = true;
+        // One of the engine's walks (E24 M4 T4b1, design §5.14): a visit from beside is a move
+        // onto the object's tile with no step, its points the move's.
+        if let Some(found) = self.finds.get(i).map(|f| f.at)
+            && self.moves.is_some()
+        {
+            self.take_move(found);
+            self.step_on_record(found);
+        }
         if !self.lifted {
             self.lift(t, true);
             self.draw(t);

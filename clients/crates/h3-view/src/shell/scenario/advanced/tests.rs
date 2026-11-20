@@ -95,6 +95,7 @@ fn map_of(file: &str, seats: [Option<Seat>; 8]) -> Entry {
         seats: seats.map(Option::unwrap_or_default),
         teams: [0, 1, 2, 3, 4, 5, 6, 7],
         heroes: Heroes::default(),
+        saved: None,
     }
 }
 

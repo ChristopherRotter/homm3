@@ -24,6 +24,24 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-20 (the town lane, E09 T45, `shared/e09-t45`, `cross-lane` with the user's consent;
+  **your replays' header, mechanical; act only at a merge**): one `quirk.town` flag
+  (`QuirkFlag(44)`, `quirk.town.aurora_ignores_map_bans`, `TWN-QUIRK-14`, on in `faithful`) moves
+  the base faithful ruleset hash 0x6ba8109889b34a25 to **0x36b98ea152b4db95**: the 101 golden
+  adventure replays on it re-recorded from their commands (only `ruleset_hash` moved; the three
+  `strict-fixed` ones and the ten battle replays unchanged). A branch of yours that re-records
+  goldens across this merge keeps the new hash (re-record after merging `master`). Also: ADR-0016
+  point 4's kind `Town` holds E09 increment 5's `AdventureOutcome::town_entered` (T45a).
+
+- 2026-11-20 (the map client lane, E24 M4 T4b1, `map-client/e24-m4-t4b1`; **MCL-Q41 and MCL-Q42,
+  for your planning; the user's answers first**): a record's visits played (E24 design §5.14).
+  (1) MCL-Q41: `ChoiceOpened` and `OfferOpened` carry no view, so a chest's choice box cannot show
+  both parts before the answer (the server lane's SRV-STUB-5 too); recommended: the events carry
+  what the observation's `Decision` holds. (2) MCL-Q42: a once-per-hero object's visit the hero's
+  mark refuses (the Learning Stone, the Star Axis: `revisit` gives an empty event list) tells
+  nothing, where a Temple's gives `NothingGained { why: Visited }`; recommended: the same event
+  for the marks' objects.
+
 - 2026-11-20 (the town lane, E09 T44, `town/e09-t44`, `cross-lane`; **a field in your writer and
   the harness's town screen; nothing to do now**): `h3_map::writer::Map` gains `banned_spells:
   Vec<u8>` (the header's nine bytes, refused past 70 and in RoE) beside `banned_skills` and

@@ -239,6 +239,10 @@ impl Screen {
             Self::MainMenu => "E27 M2 T6a",
             Self::GameType(_) => "E27 M2 T6b1",
             Self::Multiplayer(_) => "E27 M2 T7",
+            // E27 M4 T4b1: the loads' by their task (a single load's built then).
+            Self::Scenario(Game::Load, Kind::Multiplayer) => "E27 M4 T5",
+            Self::Scenario(Game::Load, Kind::Campaign) => "E20",
+            Self::Scenario(Game::Load, Kind::Tutorial) => "CLT-Q84",
             Self::Scenario(..) => "E27 M3",
             Self::Campaigns => "E20",
             Self::Tutorial => "CLT-Q84",
@@ -255,9 +259,9 @@ impl Screen {
     /// new single scenario's screen (M3 T1a) and the hot seat's (M3 T4a: a new game's from the
     /// Multiplayer dialog, its only path); play's start after a begin (M3 T6: the loading screen
     /// and its fade, then the client's notice until E24 M5, [`play`]); High Scores (M4 T1a,
-    /// [`scores`]); the credits (M4 T2, [`credits`]); the campaigns' selection, the tutorial and
-    /// the loads' scenario screens the client's stubs (T6b2, T7: until E20, CLT-Q84's tutorial
-    /// mode and M4);
+    /// [`scores`]); the credits (M4 T2, [`credits`]); a single load's scenario screen (M4 T4b1);
+    /// the campaigns' selection, the tutorial and the other loads' scenario screens the client's
+    /// stubs (T6b2, T7: until E20, CLT-Q84's tutorial mode and M4 T5);
     /// the others a stand-in until their task ([`Screen::task`]).
     #[must_use]
     pub const fn built(self) -> Built {
@@ -267,6 +271,7 @@ impl Screen {
             | Self::GameType(_)
             | Self::Multiplayer(_)
             | Self::Scenario(Game::New, Kind::Single | Kind::Multiplayer)
+            | Self::Scenario(Game::Load, Kind::Single)
             | Self::Play { restart: false }
             | Self::HighScores
             | Self::Credits => Built::Whole,
