@@ -93,6 +93,7 @@ mod draws;
 mod dwellings;
 mod economy;
 mod events;
+mod factory;
 mod flags;
 mod garrisons;
 mod hill_fort;
@@ -2598,6 +2599,8 @@ impl AdventureState {
                     anchor,
                 }));
             }
+            // rule: ADV-WMF-001
+            Effect::Factory(factory) => outcome = self.ask_factory(hero, object, factory),
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
             Effect::Message(leaves) => {

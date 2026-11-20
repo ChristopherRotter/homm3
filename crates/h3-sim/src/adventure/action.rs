@@ -761,7 +761,7 @@ pub const fn answer_entry(answer: Answer) -> Option<usize> {
 fn hire_creatures(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<CreatureTypeId> {
     state
         .hire_dialog(player)
-        .and_then(|dialog| state.hire_stock(rules, &dialog.source))
+        .and_then(|dialog| state.hire_stock(rules, dialog))
         .unwrap_or_default()
         .into_iter()
         .map(|(creature, _)| creature)

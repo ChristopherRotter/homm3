@@ -5,18 +5,22 @@
 //! camp's creature and count, with their reads, checks and part of the state hash (T94b); the
 //! visits, the hire question and a dwelling's free creatures, with the dwellings' writer (T95a1);
 //! the guards' question, their battle and its end (T95a2); the hire dialog an accepted question
-//! opens, its source's stock, the room's bound and the purchase's map side (T95b). The week's step
+//! opens, its source's stock, the room's bound and the purchase's map side (T95b), since E08
+//! T134b2 a War Machine Factory's too (its machines' stock and room: `factory.rs`). The week's step
 //! and the first week's draws are `calendar.rs`' and `economy.rs`'.
 
 use alloc::borrow::Cow;
 use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_content::{CreatureTypeId, FactionId, ResourceId, Ruleset};
+use h3_content::{ArtifactTypeId, CreatureTypeId, FactionId, ResourceId, Ruleset};
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
+use h3_heroes::HeroDetails;
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
+use super::factory::{machine_room, machine_stock, target_hero};
 use super::monsters::{Room, add_stack, join_at, room, room_bound};
 use super::{AdventureState, StaticMap, allied, pick};
 use crate::army::{ArmyRef, ArmySlot};
@@ -726,8 +730,10 @@ impl AdventureState {
     /// level 2 or more is there; no class-17 dwelling of level 1 opens it). A camp's always opens
     /// the dialog (its question stands only with creatures left, ADV-RFG-001), nothing free. Any
     /// other dwelling's, another team's (unreachable: its visit flags it first), gives nothing; an
-    /// ally's read-only dialog is E10's (design note §13: left out until its teams).
-    // rule: ADV-HIR-001, ADV-HIR-002
+    /// ally's read-only dialog is E10's (design note §13: left out until its teams). Since E08
+    /// T134b2 a War Machine Factory's always opens the dialog of its machines, nothing free
+    /// (ADV-WMF-001; increment 14's design note §10).
+    // rule: ADV-HIR-001, ADV-HIR-002, ADV-WMF-001
     pub(super) fn accept_hire<S: Sink>(
         &mut self,
         (core, part): (&Ruleset, &AdventureRuleset),
@@ -747,7 +753,7 @@ impl AdventureState {
                     .iter()
                     .any(|&creature| core.creature(creature).is_some_and(|c| c.level > free))
             }
-            Some(Effect::Camp) => true,
+            Some(Effect::Camp | Effect::Factory(_)) => true,
             _ => false,
         };
         AdventureOutcome {
@@ -869,7 +875,8 @@ pub fn hire_price(core: &Ruleset, creature: CreatureTypeId, amount: u32) -> Vec<
 /// state stands: nothing of the adventure changes between the check and the purchase. Not
 /// `Clone`, so one check buys once; a count is lowered saturating, so a purchase kept past a
 /// change of the state cannot wrap it (*agent's call*, T95b's review: the game checks and buys in
-/// one command).
+/// one command). Since E08 T134b2 a War Machine Factory's purchase of one machine, which joins no
+/// army: its artifact, which the game gives ([`Self::machine`]).
 #[derive(Debug, PartialEq, Eq)]
 pub struct HirePurchase {
     /// The price, by resource in the core's order ([`hire_price`]).
@@ -879,12 +886,21 @@ pub struct HirePurchase {
     /// How many.
     amount: u32,
     /// The map's source whose count goes down: its object index and the creature's place in its
-    /// stock (its count's place); none for a town's source, whose counts the game writes.
+    /// stock (its count's place); none for a town's source, whose counts the game writes, and for
+    /// a factory's, which keeps none.
     source: Option<(usize, usize)>,
-    /// The army the creatures join.
-    into: Joining,
-    /// Where the creatures join the army.
-    room: Room,
+    /// What the purchase gives.
+    goods: Goods,
+}
+
+/// What a purchase gives ([`HirePurchase`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Goods {
+    /// The creatures, into this army where this room is.
+    Army(Joining, Room),
+    /// A War Machine Factory's machine (E08 T134b2): its artifact for this hero, given by the
+    /// game.
+    Machine(HeroId, ArtifactTypeId),
 }
 
 /// The army a purchase's creatures join ([`HirePurchase`]).
@@ -905,6 +921,17 @@ impl HirePurchase {
     pub fn price(&self) -> &[(ResourceId, u32)] {
         &self.price
     }
+
+    /// The hero and the artifact of a War Machine Factory's purchase (ADV-WMF-001, ADV-HIR-002;
+    /// E08 T134b2, increment 14's design note §11): the game gives it into its position after
+    /// paying (`HeroChange::AddArtifact`, `HeroChanged`; the hero store is the game's); none for a
+    /// purchase of creatures.
+    pub fn machine(&self) -> Option<(HeroId, ArtifactTypeId)> {
+        match self.goods {
+            Goods::Machine(hero, artifact) => Some((hero, artifact)),
+            Goods::Army(..) => None,
+        }
+    }
 }
 
 /// The purchase's map side (ADV-HIR-002, ADV-ARM-007; E08 T95b, increment 10's design note §8,
@@ -913,32 +940,35 @@ impl HirePurchase {
 /// the state's answer, nothing from the payload), as the most a player may buy, which also bounds
 /// by the treasury (GAM-DEC-008).
 impl AdventureState {
-    /// The creatures `source` sells with their counts as they stand, in its order (ADV-HIR-002;
-    /// E08 T95b, increment 10's design note §8, §13): a dwelling's kind's creatures with their
-    /// week's counts ([`Self::dwelling_counts`]; distinct, ADV-DWL-001), a Refugee Camp's week's
-    /// creature and count ([`Self::camp`]). None when the object at its index is not of its type
-    /// and anchor, or is neither, and for a town's source (E09 T27: its counts are the town
-    /// context's, `h3_towns::recruit_stock`). The game's view and legal set read it at each step,
-    /// as the original's dialog points at the dwelling's own counts (survey §5.1).
-    // rule: ADV-HIR-002
+    /// The creatures `dialog`'s source sells with their counts as they stand, in its order
+    /// (ADV-HIR-002; E08 T95b, increment 10's design note §8, §13): a dwelling's kind's creatures
+    /// with their week's counts ([`Self::dwelling_counts`]; distinct, ADV-DWL-001), a Refugee
+    /// Camp's week's creature and count ([`Self::camp`]), since E08 T134b2 a War Machine Factory's
+    /// machines, each 1 while the dialog's hero holds none of its artifact in `heroes`, the game's
+    /// store, else 0 (ADV-WMF-001; increment 14's design note §11: the original's
+    /// `recruit_dialog_select` 0x5503A0). None when the object at its index is not of its type and
+    /// anchor, or is none of them, for a factory's dialog whose hero the store lacks, and for a
+    /// town's source (E09 T27: its counts are the town context's, `h3_towns::recruit_stock`). The
+    /// game's view and legal set read it at each step, as the original's dialog points at the
+    /// dwelling's own counts (survey §5.1).
+    // rule: ADV-HIR-002, ADV-WMF-001
     pub fn hire_stock(
         &self,
-        part: &AdventureRuleset,
-        source: &HireSource,
+        (part, heroes): (&AdventureRuleset, &[Arc<HeroDetails>]),
+        dialog: &HireDialog,
     ) -> Option<Vec<(CreatureTypeId, u32)>> {
-        let HireSource::Object {
-            index,
-            object_type,
-            anchor,
-        } = *source
-        else {
-            return None;
-        };
-        let effect = self
-            .object(index)
-            .filter(|object| object.object_type == Some(object_type) && object.anchor == anchor)
-            .and_then(|_| part.object_type(object_type))
-            .and_then(|ty| ty.kind.effect())?;
+        let source = self.source_effect(part, &dialog.source)?;
+        self.stock_of(heroes, &dialog.target, source)
+    }
+
+    /// [`Self::hire_stock`] of the object at object index `index` whose effect is `effect`, for
+    /// `target`.
+    fn stock_of(
+        &self,
+        heroes: &[Arc<HeroDetails>],
+        target: &HireTarget,
+        (index, effect): (usize, Effect<'_>),
+    ) -> Option<Vec<(CreatureTypeId, u32)>> {
         match effect {
             Effect::Dwelling(creatures) => {
                 let counts = self.dwelling_counts(index).unwrap_or_default();
@@ -951,7 +981,55 @@ impl AdventureState {
                 )
             }
             Effect::Camp => self.camp(index).map(|camp| vec![camp]),
+            Effect::Factory(factory) => machine_stock(heroes, target, factory),
             _ => None,
+        }
+    }
+
+    /// The object index and the effect of the object `source` names, if the object at its index
+    /// is of its type and anchor and its visit is built; none for a town's source.
+    fn source_effect<'p>(
+        &self,
+        part: &'p AdventureRuleset,
+        source: &HireSource,
+    ) -> Option<(usize, Effect<'p>)> {
+        let HireSource::Object {
+            index,
+            object_type,
+            anchor,
+        } = *source
+        else {
+            return None;
+        };
+        self.object(index)
+            .filter(|object| object.object_type == Some(object_type) && object.anchor == anchor)
+            .and_then(|_| part.object_type(object_type))
+            .and_then(|ty| ty.kind.effect())
+            .map(|effect| (index, effect))
+    }
+
+    /// The most `creature`s a purchase in `dialog` finds room for (ADV-HIR-002, ADV-ARM-007; E08
+    /// T134b2, increment 14's design note §11, §16): at a War Machine Factory 1 when the dialog's
+    /// hero can receive the machine's artifact (`HeroChange::AddArtifact`'s check, HER-CHG-002: in
+    /// the original packs its own position free), else 0 (0 for a creature it does not sell); at
+    /// any other source [`Self::hire_room`]'s for the dialog's target. The game's most bounds by
+    /// it (GAM-DEC-008), so every listed purchase finds room.
+    // rule: ADV-HIR-002, ADV-WMF-001
+    pub fn dialog_room(
+        &self,
+        (core, part, heroes): (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
+        dialog: &HireDialog,
+        creature: CreatureTypeId,
+    ) -> u32 {
+        match self.source_effect(part, &dialog.source) {
+            Some((_, Effect::Factory(factory))) => factory
+                .machines
+                .iter()
+                .find(|&&(machine, _)| machine == creature)
+                .map_or(0, |&(_, art)| {
+                    machine_room((core, heroes), &dialog.target, art)
+                }),
+            _ => self.hire_room(part, &dialog.target, creature),
         }
     }
 
@@ -1047,8 +1125,7 @@ impl AdventureState {
             creature,
             amount,
             source: None,
-            into,
-            room,
+            goods: Goods::Army(into, room),
         })
     }
 
@@ -1066,19 +1143,25 @@ impl AdventureState {
     /// GENRLTXT 426, nothing bought; every amount up to [`Self::hire_room`] finds room, in the
     /// [`room`] the purchase keeps). *Agent's call:* the hero's tile is not tested against the
     /// source's entrance, as the visit put it there and nothing moves it while the dialog is open.
-    // rule: ADV-HIR-002, ADV-ARM-007
+    /// Since E08 T134b2 at a War Machine Factory (ADV-WMF-001; increment 14's design note §11):
+    /// the same refusals with its stock (a machine the hero holds has a count of 0, so any amount
+    /// is [`HireError::Amount`]; the original's `recruit_dialog_select` 0x5503A0), then the
+    /// artifact's room ([`Self::dialog_room`], [`HireError::NoRoom`]); the purchase is the one
+    /// machine's artifact for the dialog's hero ([`HirePurchase::machine`]), no army change.
+    /// `heroes` is the game's store of hero details.
+    // rule: ADV-HIR-002, ADV-ARM-007, ADV-WMF-001
     pub fn check_hire(
         &self,
-        (core, part): (&Ruleset, &AdventureRuleset),
+        (core, part, heroes): (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         dialog: &HireDialog,
         (creature, amount): (CreatureTypeId, u32),
     ) -> Result<HirePurchase, HireError> {
-        let HireSource::Object { index, .. } = dialog.source else {
-            return Err(HireError::NoSource);
-        };
-        let (into, stock) = self
+        let source = self.source_effect(part, &dialog.source);
+        let stock = source.and_then(|source| self.stock_of(heroes, &dialog.target, source));
+        let ((into, stock), (index, effect)) = self
             .joining(&dialog.target)
-            .zip(self.hire_stock(part, &dialog.source))
+            .zip(stock)
+            .zip(source)
             .ok_or(HireError::NoSource)?;
         let place = stock
             .iter()
@@ -1086,6 +1169,20 @@ impl AdventureState {
             .ok_or(HireError::NotOffered(creature))?;
         if !(1..=stock[place].1).contains(&amount) {
             return Err(HireError::Amount(amount));
+        }
+        let hero = target_hero(&dialog.target);
+        if let (Effect::Factory(factory), Some(hero)) = (effect, hero) {
+            let (_, artifact) = factory.machines[place];
+            if machine_room((core, heroes), &dialog.target, artifact) == 0 {
+                return Err(HireError::NoRoom);
+            }
+            return Ok(HirePurchase {
+                price: hire_price(core, creature, amount),
+                creature,
+                amount,
+                source: None,
+                goods: Goods::Machine(hero, artifact),
+            });
         }
         let purchase = self.purchase(core, part, into, (creature, amount))?;
         Ok(HirePurchase {
@@ -1105,20 +1202,24 @@ impl AdventureState {
     /// purchase ([`Self::check_join`]) joins the town's garrison, lowers no count of the map's and
     /// tells nothing: it returns the garrison's slot that changed, which the game tells (its
     /// `StackChanged`); none for a hero's army. Since E09 T28a a town's purchase with a garrison
-    /// hero joins its army (the upper bar, design §49) and returns its slot that changed.
-    // rule: ADV-HIR-002, ADV-ARM-007
+    /// hero joins its army (the upper bar, design §49) and returns its slot that changed. Since E08
+    /// T134b2 a War Machine Factory's purchase changes nothing here and tells nothing: its
+    /// artifact is the game's to give ([`HirePurchase::machine`]).
+    // rule: ADV-HIR-002, ADV-ARM-007, ADV-WMF-001
     pub fn hire<S: Sink>(&mut self, purchase: HirePurchase, sink: &mut S) -> Option<ArmySlot> {
         let HirePurchase {
             creature,
             amount,
             source,
-            into,
-            room,
+            goods,
             ..
         } = purchase;
         if let Some((index, place)) = source {
             self.lower_count(index, place, amount);
         }
+        let Goods::Army(into, room) = goods else {
+            return None;
+        };
         match into {
             Joining::Hero(at) => {
                 let on_map = &mut self.heroes[at];

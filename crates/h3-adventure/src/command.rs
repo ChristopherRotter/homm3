@@ -816,8 +816,9 @@ pub enum HireTarget {
 /// Where a hire dialog's creatures are bought ([`HireDialog`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HireSource {
-    /// An object on the map: a dwelling (its kind's creatures and their counts) or a Refugee Camp
-    /// (its week's creature and count), named by index, type and anchor.
+    /// An object on the map: a dwelling (its kind's creatures and their counts), a Refugee Camp
+    /// (its week's creature and count) or since E08 T134b2 a War Machine Factory (its machines,
+    /// one of each the dialog's hero lacks, ADV-WMF-001), named by index, type and anchor.
     Object {
         /// The object's index.
         index: usize,
@@ -846,15 +847,18 @@ pub enum HireSource {
 /// order; ADV-HIR-002, ADV-ARM-007); nothing changed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HireError {
-    /// The dialog's hero is not on the map, or its source is not the dwelling or Refugee Camp it
-    /// names (since E09 T27 also a town's source or target the map does not have).
+    /// The dialog's hero is not on the map, or its source is not the dwelling, Refugee Camp or
+    /// War Machine Factory it names (since E09 T27 also a town's source or target the map does
+    /// not have).
     NoSource,
     /// The creature is not one of the source's.
     NotOffered(CreatureTypeId),
     /// The amount is 0 or above the source's count of the creature.
     Amount(u32),
     /// The army has no room for the amount (ADV-ARM-007: no stack of the creature takes it
-    /// within a stack's most, and no slot is free; the original's GENRLTXT 426).
+    /// within a stack's most, and no slot is free; the original's GENRLTXT 426); since E08 T134b2
+    /// at a War Machine Factory, the hero cannot receive the machine's artifact (HER-CHG-002: its
+    /// position taken).
     NoRoom,
 }
 
