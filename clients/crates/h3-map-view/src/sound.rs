@@ -564,6 +564,16 @@ impl Sound {
         }
     }
 
+    /// A computer player's start (`next_player_turn` 0x4C6FE0, E24 M4 T4c, design §5.1): its music
+    /// `track`; the music's terrain (+0x58) kept, so that a selection or a step's end on another
+    /// terrain asks for that terrain's.
+    pub fn computer(&mut self, t: u32, track: &str) {
+        if self.asked.as_deref() != Some(track) {
+            self.asked = Some(track.into());
+            self.cues.push((t, Cue::Music(track.into())));
+        }
+    }
+
     /// The path's walk starts (0x407D03): the start tile's step sound.
     pub fn walk_start(&mut self, t: u32, hero: Pos) {
         let sound = self.step_sound(hero);

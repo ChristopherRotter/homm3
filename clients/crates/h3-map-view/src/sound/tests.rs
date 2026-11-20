@@ -734,3 +734,11 @@ fn a_buttons_press_and_its_sound() {
     s.press(5);
     assert!(s.take().is_empty());
 }
+
+#[test]
+fn a_computer_s_music_once() {
+    let mut s = sound(tiles(4, |_, _| 2, |_, _| None));
+    s.computer(5, "AITheme1");
+    s.computer(6, "AITheme1");
+    assert_eq!(s.take(), [(5, Cue::Music("AITheme1".into()))]);
+}

@@ -5,6 +5,7 @@ mod audio;
 mod files;
 mod gate;
 mod paint;
+mod records;
 mod render;
 mod sequences;
 mod situation;
@@ -80,11 +81,22 @@ commands:
           <map>/timelines/<id>-gaps.txt's. --bugs defaults to original
           (the comparisons: the original's edge zones, MCL-Q6, and its cursor's even x). It
           exits 1 unless every sequence played is as recorded (or its gaps as listed).
+  record <r.jsonl> --record-map <map.h3m> [--packs <dir>] [--timeline <file>]
+         [--bugs fixed|original] [--install <dir>] [--map <dir>]
+          plays a whole game's record without a recording, headless, to its end (E24 M4 T4c):
+          the map file the engine played (--packs its packs' folder, default the repository's
+          packs/), the record's start as the live part at 0, the viewer's commands as its
+          player's input once the map waits (a walk's hero chosen, its path walked; End Turn;
+          a box's answer, else its OK; a town's, a hero's or an army's command not shown), the
+          other players' turns in sight as a computer's; every screen it shows drawn. It prints
+          the millisecond of its end; --timeline writes its timeline. It exits 1 on what it
+          cannot play.
   situation <situation.toml> --out <map.h3m> [--install <dir>]
           writes a situation's map (clients/map/situations/; E24 M1 T3b2) with the adventure
           lane's writer, the shipped maps its copies name read from <dir>/Maps (a situation
           that names a shipped map whole, `map`, is the harness's to load: refused).
-  window <sequence | situation> [--keys <file>] [--scale <n>] [--vsync] [--fullscreen]
+  window <sequence | situation | --record <r.jsonl> --record-map <map.h3m> [--packs <dir>]>
+         [--keys <file>] [--scale <n>] [--vsync] [--fullscreen]
          [--drawn-cursor] [--mute] [--cues <file>] [--bugs fixed|original] [--install <dir>]
          [--map <dir>] [--check <s> | --measure <s>]
           shows a recorded sequence (<map>/sequences.toml: its inputs replayed at their times,
@@ -113,8 +125,12 @@ commands:
           quest-log, sleep, wake, move-hero, cast-spell, adventure-options, system-options,
           next-hero, end-turn, visit, box-ok, box-cancel, offer-left, offer-right, music,
           effects, pause, frame, restart, vsync, cursor,
-          fullscreen, quit; [] unbinds one). Without the window's focus the effects are held
-          and the music fades out, both coming back with it (T6b3).
+          fullscreen, quit, faster, slower, next-command; [] unbinds one). Without the window's
+          focus the effects are held and the music fades out, both coming back with it (T6b3).
+          --record (E24 M4 T4c) plays a whole game's record as `record` does, in the window:
+          past its last input the map takes the keys and the mouse; Ctrl+F2 plays it twice as
+          fast (up to 8 times), Ctrl+F3 half as fast, Ctrl+F4 on to its next input, with the
+          window's own pause, a frame on and restart.
           --bugs defaults to fixed; original reproduces the original's bugs (the drawing's as for
           render, the edge zones, MCL-Q8's ambient loops sharing a bit, MCL-Q12's music kept on
           the wrong terrain, MCL-Q22's hint hidden by a redraw, MCL-Q24's and MCL-Q28's
@@ -139,6 +155,13 @@ fn main() -> ExitCode {
         },
         Some((command, rest)) if command == "render" => match render::Options::parse(rest) {
             Ok(options) => render::run(&options),
+            Err(message) => {
+                eprintln!("{message}");
+                ExitCode::from(2)
+            }
+        },
+        Some((command, rest)) if command == "record" => match records::Options::parse(rest) {
+            Ok(options) => records::run(&options),
             Err(message) => {
                 eprintln!("{message}");
                 ExitCode::from(2)

@@ -12,6 +12,14 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-20 (the map client lane, E24 M4 T4c, `map-client/e24-m4-t4c`; **MCL-Q43, for your
+  planning; the user's answer first**): kind 5's hourglass in another player's turn needs that
+  player's heroes' points (the sum of their maximum at the turn's start, the points left as the
+  turn goes), which a viewer's record does not hold (E24 design §5.16); recommended: both told to
+  every viewer, with the adventure lane's events. Also new and informational: `h3-map-view record
+  <r.jsonl> --record-map <map.h3m>` plays a player's `h3-server record` file headless to its end
+  (and `window --record`), the golden replays' among them.
+
 - 2026-11-20 (the adventure lane, E08 T134b1, `adventure/e08-t134b1`, `cross-lane` with the
   user's consent, E08 decision 387; **your paths changed, for your review; protocol v77 taken**):
   the Hill Fort's decision on the wire: `Answer::HillFort` (`HillFortAnswer`: `Upgrade { slot }`,

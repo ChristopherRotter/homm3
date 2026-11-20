@@ -3184,3 +3184,39 @@ first minutes.
   situations and the 102 other sequences the same (`--record` for the two); `check.sh` all gates
   (`h3-map-view`'s coverage 100 %: a unit test for the dissolve's date window and the hire's other
   events added after the first run); the scoped verify.
+
+### M4 T4c (2026-11-20; the user at the start: kept whole, the cut in two or three declined)
+
+- **Read** (design §5.16): a viewer's record of another player's turn (`TurnStarted`, one
+  `GameEvents` a command of its, the steps the viewer sees by either end, the hidden end none,
+  no `MovementChanged`); `ai_hero_step` 0x42FC50 whole and `hero_move_step`'s step end again
+  (0x481191 to 0x481440: the computer's walk starts no step sound, a terrain change at the view's
+  middle asks for its music over the computer's and plays its step sound); `hero_select`'s music.
+- **Built** (*provisional* unless said): `engine::played`'s other players' turns
+  (`OtherTurn`, `OtherWalk`, `OtherStep`: a turn with a seen step a kind 5 `[[turn]]` table; its
+  pickups' anchors), the viewer's commands (`Command`), each walk's hero (`walkers`), the heroes
+  the start shows (`shown`) and the kingdom's places (`slots`); `turn::record_heroes`,
+  `record_walks` (MCL-Q44 (b): a step into sight unseen, one out of sight left out); the
+  timeline's `Steps::unseen` and `taken`, `Loop::ai_take` (a computer's pickup in sight with the
+  viewer's dissolve, `Then::Ai`), the computer's music (`[map.turn] computer`, `Sound::computer`)
+  and its step-end and selection sounds; `Action::Choose`, `Action::Walk` (a record's path's arrows
+  in their order), `Loop::idle`, `boxed`, `walks_left`, `Unplayable::Record`, `Untaken`;
+  `h3_map_view::director` (the record player); the binary's `paint::for_record`, `record`
+  (headless to the end, every screen drawn) and `window --record` with `keys::Playback` (Ctrl+F2,
+  F3, F4) and `h3_ui::clock::Clock::set_rate` (common, additive); each hero's walks' arrows
+  chained on their own (`record_paths`).
+- **Recorded** (a sub-agent, under Wine, seed 1, each twice the same): `game-ai` (Blue's two
+  heroes' walks and pickups in Red's sight) and `game-ai-boat` (a boarding, a sail and a landing,
+  a pickup from below); the engine scripts the original's walks, their records the same steps.
+  Seen: the AI takes no pile from the tile above it; a pile visit costs 101 points; a pile's
+  `amount` is in hundreds (500 gave 50 000 gold: 10 used).
+- **Found:** `game-ai` exact but its listed gaps (MCL-Q43; two recorded, not read); the frames'
+  differences the glass's. `game-ai-boat` waits (`to-record.toml`, `MCL-STUB-2`: T4c2). Golden
+  replays viewed to their end headless: `sea-board-s1`, `sea-event-s1`, `sea-landing-guards-s1`,
+  `rewards-stone-guard-s1` (a battle skipped, its level-up after), `rewards-university-s1`,
+  `dwellings-free-s1`, `banks-declined-s1`, `teleporters-gates-s1`, `garrisons-passage-s1`,
+  `towns-capture-s1`; `rewards-stone-guard-s1` in the window under Xvfb (`--check 6`: 27 of 27
+  frames read back exact, 26 of 26 changes the headless loop's). Not playable: the duel's, the
+  army's and the XL map (`obj.def` templates), `economy-shipyard-s1` (a built boat).
+- **Questions:** MCL-Q43 (the computer's points: kind 5's glass), MCL-Q44 (a seen step's hidden
+  end), MCL-Q45 (which heroes take a turn), notes in the adventure and server lanes' inboxes.

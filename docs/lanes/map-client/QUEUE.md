@@ -39,21 +39,20 @@ family: the log's "M4 T4b1" and "M4 T4b2", design §5.14 and §5.15; its entry i
 `MCL-Q<n>` with a note in the engine lanes' inboxes, its gap shown in the comparison, never a rule
 copied into the client.
 
-#### E24 M4 T4c — the other players, the viewer's controls, a golden replay
+#### E24 M4 T4c2 — a computer's boat in sight
 
-- **Scope:** the other players' turns as a computer player's (with what T1b2 left: several
-  heroes and a boat in one computer's turn, its music, `AITheme0` to `2`, design §5.1, and its
-  walk's sounds, and speed 4's held draws shown on the window's clock, which no recording can
-  show: the steps come from the record); the viewer's controls (pause, step, restart, a speed:
-  the window's keys, new design, each a review item); a golden adventure replay as a record
-  viewed to its end, its battles skipped to their results until T5.
-- **Acceptance:** a golden replay viewed to its end; `drawn` all the same; `check.sh` all gates.
-- **Notes from T4b2** (design §5.15): a record's turn start is built once its message's events
-  are folded (the engine tells the heroes' new points after `TurnStarted`); on a record a walk's
-  boarding and landing are the record's (`Move::sea`), the computers' steps still Part A's
-  (`step`: none boards or lands); a scripted game's End Turn keeps Blue on an island
-  (`game-turns`, `game-boats`).
-- **Depends on:** T4b (done). **Status:** **next**.
+T4c (the other players' turns, the controls, a golden replay) **done** 2026-11-20, kept whole by
+the user (the log's "M4 T4c", design §5.16, §5.17); its one remainder:
+
+- **Scope:** a computer's boarding and landing in the viewer's sight from a record (`OtherStep::sea`,
+  read and kept, not played: `MCL-STUB-2`): the hero turned to the boat, dissolved off the land
+  (`hero_loss_effect`, as the viewer's own boarding, design §5.7), its step onto the boat; the
+  landing's boat put back facing the record's way; `game-ai-boat` (in `clients/map/to-record.toml`,
+  recorded twice the same at T4c; record it again, `frames --sequences map/to-record.toml --only
+  game-ai-boat --no-check`, about 10 minutes) moved into `sequences.toml` exact but MCL-Q43's gaps.
+- **Acceptance:** `game-ai-boat` as `game-ai` (its gaps MCL-Q43's); `drawn` all the same;
+  `check.sh` all gates.
+- **Depends on:** T4c (done). **Status:** **next**.
 
 ### E24 M4 T5 — the battles handed over
 

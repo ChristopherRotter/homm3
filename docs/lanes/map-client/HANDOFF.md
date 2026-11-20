@@ -13,14 +13,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   the controls and a golden replay): **T4a1 done** (design §5.12), the labels task done
   (ADR-0009), **T4a2 done** (2026-11-20; design §5.13: the scripted games played from their
   engine records, `sequences <id> --record`, the gaps in `timelines/<id>-gaps.txt`); T4b cut in
-  two by the user (2026-11-20, by family; Summon Boat out of T4b): **T4b1 done** (the message
-  boxes from a record's visits, design §5.14), **T4b2 done** (2026-11-20, kept whole: the flags
-  and the boats from a record, design §5.15: `game-flags`, `game-boats` exact, no gap). **Next:
-  T4c** (the other players, the viewer's controls, a golden replay), then T5, T6. The inbox: the
-  viewer's tests' catalogues hold a few of the original's sentences (the user's to decide). Open
-  questions: **MCL-Q29** to **MCL-Q42** (none blocks; MCL-Q36, Q37, Q39 to Q42: facts not in the
-  record, (a) recommended, the engine lanes' inboxes told). Next ids **MCL-Q43**, **MCL-STUB-2**.
-- **Open pull requests** (2026-11-20): T4b2's (`map-client/e24-m4-t4b2`): check it first. Merged
+  two by the user (2026-11-20, by family; Summon Boat out of T4b): **T4b1 done**, **T4b2 done**
+  (design §5.14, §5.15); **T4c done** (2026-11-20, kept whole by the user: the other players'
+  turns from a record, the record player `director`, `record` and `window --record` with the
+  playback keys, ten golden replays viewed to their end; design §5.16, §5.17; `game-ai` exact but
+  MCL-Q43's gaps). **Next: T4c2** (a computer's boat in sight, `MCL-STUB-2`: `game-ai-boat` waits
+  in `to-record.toml`), then T5, T6. The inbox: the viewer's tests' catalogues hold a few of the
+  original's sentences (the user's to decide). Open questions: **MCL-Q29** to **MCL-Q45** (none
+  blocks; MCL-Q36, Q37, Q39 to Q44: facts not in the record, (a) recommended, the engine lanes'
+  inboxes told; MCL-Q45 (b) built). Next ids **MCL-Q46**, **MCL-STUB-3**.
+- **Open pull requests** (2026-11-20): T4c's (`map-client/e24-m4-t4c`): check it first. Merged
   branches are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
@@ -45,6 +47,13 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-20, E24 M4 T4c** (the user at the start: kept whole): another player's turn from a
+  record (`engine::played`'s other turns, `turn::record_walks`, the computer's pickups, music and
+  sounds), the record player (`h3_map_view::director`, `record`, `window --record`, Ctrl+F2 to F4),
+  ten golden replays viewed to their end; `game-ai` and `game-ai-boat` recorded by a sub-agent
+  (the log's "M4 T4c"); the computer's boat left to T4c2. Original data staged (the 64 files and
+  the manuals), SHA-256 checked; the PC was not needed after the first minutes.
+
 - **2026-11-20, E24 M4 T4b2** (the user at the start: kept whole): two scripted games recorded
   and played from their records (`game-flags`, `game-boats`; the record's flags, hire, boarding
   and landing; the turn's start after its message; a dissolve's date window), both exact (the
@@ -56,10 +65,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   timeline's lingering `flush` fixed); MCL-Q41, MCL-Q42 asked (the log's "M4 T4b1"). Original
   data staged (the 64 files and the manuals), SHA-256 checked; the PC was not needed after the
   first minutes. Nothing is waiting on the user's computer.
-- **2026-11-20, E24 M4 T4a2** (the user at the start: kept whole, the suggested cut declined):
-  the three scripted games recorded again and played from their engine records (`engine::played`,
-  the timeline's `moves`, the path's arrows, the walks' reveal on the view and the minimap,
-  `sequences --record`, `h3map.py`'s `scripted`; the gaps listed); `master`'s #1066 merged in and
-  the games checked again (the log's "M4 T4a2"). Original data staged (the 64 files and the
-  manuals), SHA-256 checked; the PC was not needed after the first minutes. Nothing is waiting on
-  the user's computer.

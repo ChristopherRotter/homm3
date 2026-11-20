@@ -788,7 +788,12 @@ fn a_speed_out_of_range_is_the_originals_default() {
 /// A loop over a 36-tile map, its selected hero at (17, 17) facing east and the view centred on
 /// it, the pointer parked, at a hero speed with these paths.
 fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
-    let start = Start {
+    Loop::start(rules(Bugs::Fixed), &walking_start(speed, paths)).unwrap()
+}
+
+/// [`walking`]'s start (E24 M4 T4c: the record player's tests).
+fn walking_start(speed: usize, paths: Vec<Vec<Arrow>>) -> Start {
+    Start {
         view: ViewAt { x: 8, y: 9, z: 0 },
         size: 36,
         scroll_speed: 1,
@@ -825,8 +830,7 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         boats: Boats::default(),
         water: Arc::default(),
         moves: None,
-    };
-    Loop::start(rules(Bugs::Fixed), &start).unwrap()
+    }
 }
 
 fn arrow(x: u8, y: u8, arrow: u16) -> Arrow {
@@ -3121,6 +3125,7 @@ mod boats;
 mod casts;
 mod choices;
 mod computers;
+mod director;
 mod finds;
 mod flags;
 mod levels;
