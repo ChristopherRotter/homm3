@@ -21,7 +21,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   re-recorded). **Next:** T46, the town part v9 (`QUEUE.md`; needs the original data). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and
   `-15` (increment 5), `-13` (Visions' reach), `TWN-STUB-2` (the victory conditions),
   `TWN-STUB-16` (E10's loss condition), `-17` (increment 7), `-18` (E13).
-- **Open pull requests:** T45's (`shared/e09-t45`, `cross-lane`), opened at the session's end;
+- **Open pull requests:** T45's (#1080, `shared/e09-t45`, `cross-lane`), opened at the session's end;
   watch it until it merges (a golden re-recorded by another lane meanwhile: merge `master`,
   re-record the headers again).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
@@ -62,7 +62,7 @@ manuals with three help files staged, SHA-256 checked. The user kept T45 whole w
 points 1 to 4, 8 to 10; ADR-0028 points 2, 5, 6, 9 with its Consequences and Alternatives; the
 glossary; the security doc's guild section. Built: `quirk.town.aurora_ignores_map_bans` (44), the
 profiles, the ledger's `TWN-QUIRK-14`; 101 goldens' `ruleset_hash`, the server literal, the bot
-reports.
+reports. PR #1080.
 
 ### 2026-11-20 — T44: batch TWN-5, the maps, the harness's reads, the runs
 
