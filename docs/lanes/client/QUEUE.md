@@ -15,31 +15,35 @@ computer must be online); never from the installation. The captures need the fiv
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M4 T4
+#### E27 M4 T4b
 
-T4 Load Game single (the epic's M4 table; design §3.1, §3.3 to §3.6, the load mode; §37 the save
-file of T3b, `h3-battle-client`'s `save`): the client's saves listed (the map's header from the map
-the replay names, the file's date, the difficulty shown, the turn's duration; where the saves are
-kept and their file's name this task's call), the keys, the sort, Delete's question (688), the
-notice with none (686), Load's popup, the load to play's stub (as M3's begin: `save::load`'s
-`Loaded` kept for E24 M5); §6.4's fixes (the date's order: a day above 12 and a pinned time zone;
-a save of another size; Delete of the last save) and M3 T7's leftover (the list's held keys); a
-how a save `save::load` refuses (other rules, §37.2) is listed is this task's call (the original
-lists a broken save so, §3.3); exact against `scn-load`, `scn-load-none` (the viewer given client saves made to match the
-recipe's). M4's review list items 17 to 20 are T3b's calls.
+T4b Load Game single's client (decision 72: T4a read and recorded it; design §3.1, §3.3 to §3.6,
+§38; §37 the save file, `h3-battle-client`'s `save`): the load mode of `h3_view`'s scenario screen
+(title 230, no panel buttons, no flags, `scnrlod.def`, the difficulty shown disabled with the
+save's rating, its popup shown, the autosave's name GENRLTXT 77, the date "%d/%d/%d - %d:%02d" of
+the file's local time) and the window's saves (where they are kept and their file's name this
+task's call; each listed with the map's header from the map its replay names; how a save
+`save::load` refuses is listed is this task's call, the original lists a broken save, §3.3), the
+keys and a held key's repeats (`key-hold` in the viewer, the window's repeats: the shell's window
+takes none, §16.4), the sort (and CLT-Q138's stale difficulty and rating in the original's
+profile), Delete's question (688) and its end (the version sort in the last direction), the notice
+with none (686), Load's popup, the load to play's stub (as M3's begin: `save::load`'s `Loaded` kept
+for E24 M5). `drawn` gives the viewer client saves made to match the makers' (`made_games`: the
+same three maps, difficulties and file names, the autosave on its day 2) and each file's time
+(`games-time`), under the recipe's `tz`; exact against `scn-load`, `scn-load-last`,
+`scn-load-none` (`scn-load`'s `load` clip and `map` are play's, M5's). The stub's stop names "E27
+M3" for the load's screen (`Screen::built`): T4b builds it.
 
 ## Inbox
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
-- 2026-11-20 (the adventure lane, E08 T134a, `adventure/e08-t134a`, `cross-lane` with the user's
-  consent, E08 decision 385; **one line in your files, for your review**): `master`'s Clients
-  workflow was red since #1070: `save/tests.rs`' `a_save_s_table_is_read_strictly` replaced the
-  literal `format = 20`, and T133b's v21 merged first, so the replace did nothing and the read
-  passed. The line now builds the text from `h3_sim::adventure::replay::REPLAY_FORMAT_VERSION`
-  (T134a takes v22: an Altar's `answer altar …` words). For the shell's later screens,
-  informational: `DecisionView::Altar` (`AltarView`, `AltarOffers`) and `AltarOpened`.
+- 2026-11-20 (the adventure lane, E08 T134a, `adventure/e08-t134a`, `cross-lane`; **informational,
+  nothing to do**): the adventure replay format v22 (an Altar's `answer altar …` words); your
+  save test reads the replay's own number since #1074, so it moves with it (this branch's own fix
+  of the same line gave way to yours at the merge). For the shell's later screens:
+  `DecisionView::Altar` (`AltarView`, `AltarOffers`) and `AltarOpened`.
 - 2026-11-19 (the map client lane, E24 M4 T2d3, `map-client/e24-m4-t2d3`; **the common capture
   harness, informational, nothing to do**): `h3mem.Mem.message_box` now gives none while the spell
   book's dialog is on top (vtable 0x641DCC, `Mem.spell_book`), as it gives none under the level-up

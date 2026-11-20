@@ -1704,3 +1704,42 @@ Kept whole (no seam needed).
 - **Gates:** clippy of the workspace with `-D warnings`, `RUST_TEST_THREADS=1 clients/scripts/check.sh
   --no-coverage`, the client scope's verify with the original data.
 - **Questions:** none new. **The agent's calls** (*provisional*: M4's review list items 17 to 20).
+
+## M4 T4a — Load Game single: read and recorded again (2026-11-20)
+
+- **Start:** the PC's 64 files and the manuals staged (SHA-256 checked); the setup's baseline of
+  `clients/` stopped at its coverage step (fmt, clippy, the doc tests, deny passed). `master`'s
+  Clients job red since #1070 (T3b): `save::tests::a_save_s_table_is_read_strictly` replaced
+  `format = 20`, which the adventure lane's #1069 (replay format v21, merged while #1070 was
+  open) left unmatched; fixed in the test (the replay's own number, the edit asserted) and sent
+  ahead as #1073 (its commit also on this branch). T4 cut in two at its start (decision 72).
+- **Read** (design §38.1): `scenario_info_draw`'s date (month/day/year - hour:minute of the local
+  time, by the zone's present offset), the load and save modes' name (0x583F20,
+  `scenario_saved_name`), `saved_game_delete`'s end (the sort in the last sort's direction, the
+  whole redraw with none left); a held key's repeats from `input_key_message`.
+- **The harness** (`h3shell.py`, design §38.2): `makes` and `made_games` (the original's saves
+  of shipped maps made by maker recipes, made again when a maker's recipe changes; a save's bytes
+  differ run to run by three heap pointers after its file's name, so none is kept), `tz` (Wine's
+  local time follows `TZ`; UTC by default), `games-time:<s>:<file>`, `key-hold` (the display's
+  auto-repeat on for its real-time hold; off at each run's start: a second `xdotool keydown` of a
+  held key gives no X event), `drawn` gives the viewer the recipe's zone; `h3-view`'s replay stops
+  at `key-hold` as the harness's own; two tests (`test_h3shell`: 21).
+- **Recipes** (`shell/scenario.toml`): three makers (`Week_one.GM1` Middletown at Hard,
+  `small.GM1` Arrogance at Easy, `AUTOSAVE.GM1` Dawn of War at Expert on its second day: End Turn
+  with Autosave on, none written on the first day); `scn-load` on them (Asia/Kolkata, each file's
+  own date with a day above 12, three sizes and formats, a held key short and long, both sorts
+  flipped, the popups, Delete both ways, the load); `scn-load-last` (Delete of the last save, the
+  empty list, the notice on reopening). Both recorded twice, the same (25 and 9 shots);
+  `scn-load-none` as kept. A name with a space broke the kept lines (`Week one.GM1`): the made
+  saves' names have none (a test).
+- **The zone's pin** changed `scn-save` (9 shots) and `adv-load` (8), each showing a save's date:
+  replayed once under Europe/Berlin (this session's `TZ`) both were as kept, so the earlier
+  sessions' zone was the only difference; recorded again under UTC.
+- **Found:** the date's order and local conversion; the autosave named `AUTOSAVE` on the panel;
+  a single load shows no panel button and no flags; Load's popup is Begin's; a disabled
+  difficulty's popup shows; after Delete the version sort keeps the last sort's direction; after a
+  sort the difficulty buttons and the rating are stale too (CLT-Q138's class, review item 22).
+- **Gates:** `test_h3shell`; `h3shell.py drawn --group scenario` and the load recipes as recorded
+  (the load's stop at `games-time` until T4b); `cargo xtask check-exe-map`; the client scope's
+  verify with the original data.
+- **Questions:** none new. **The agent's calls** (*provisional*: M4's review list items 21 to 23).

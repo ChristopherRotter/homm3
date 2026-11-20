@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use h3_map::writer as w;
-use h3_sim::adventure::replay::{REPLAY_FORMAT_VERSION, RecordOptions, Replay};
+use h3_sim::adventure::replay::{RecordOptions, Replay};
 use h3_view::shell::scenario::{Begun, Bonus, Record};
 
 use super::*;
@@ -184,13 +184,16 @@ fn a_save_s_table_is_read_strictly() {
     );
     let seven = text.rfind("\n[[save.colours]]").unwrap();
     refused(&text[..seven], "7 colours, not 8");
-    // The replay's part is the engine's file: its keys and words as its reader takes them (its
-    // format line the engine's version, whatever the version: E08 T134a).
-    let format = format!("format = {REPLAY_FORMAT_VERSION}");
-    refused(
-        &text.replacen(&format, &format!("format = \"{REPLAY_FORMAT_VERSION}\""), 1),
-        "replay format",
+    // The replay's part is the engine's file: its keys and words as its reader takes them (the
+    // format's number the replay's own: the engine's replay format moves with other lanes).
+    let format = save.replay.header.format_version;
+    let quoted = text.replacen(
+        &format!("format = {format}\n"),
+        &format!("format = \"{format}\"\n"),
+        1,
     );
+    assert_ne!(quoted, text);
+    refused(&quoted, "replay format");
     refused(
         &text.replacen("[map]", "[save.colours]\n[map]", 1),
         "replay format",

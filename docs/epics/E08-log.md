@@ -20278,8 +20278,7 @@ next.
 **The cut** (decision 385, the user at its start): the whole in one pull request (offered, and
 recommended: T134a1 the adventure's half with the game's window a stub, T134a2 the decision with
 its wire); `cross-lane` consented as T133b's for the server lane's `h3-protocol` (protocol v76,
-its `h3-server` record test's hash lines) and the AI lane's `h3-sim` (encoding v15), and the
-client lane's save test. **The `Copy` trap** (decision 386, the user's): the artifacts' places
+its `h3-server` record test's hash lines) and the AI lane's `h3-sim` (encoding v15). **The `Copy` trap** (decision 386, the user's): the artifacts' places
 as a bitmask set. **Baseline:** `master` 72049bf (#1069, #1070, #1072 merged); the setup's
 baseline lost to a VM restart during its build, CI's green `master` run (9b93992, the CI
 workflow) standing for it. `master`'s Clients workflow red since #1070 (below).
@@ -20320,8 +20319,10 @@ workflow) standing for it. `master`'s Clients workflow red since #1070 (below).
   entered and its decision open with 23 places; the Hill Fort's and the factory's still refused).
 - **The client lane's save test:** `master`'s Clients workflow failed since #1070 merged after
   T133b: `a_save_s_table_is_read_strictly` replaced the literal `format = 20`, the replay was at
-  v21, so the replace did nothing. Its line now reads `REPLAY_FORMAT_VERSION` (the client lane's
-  inbox told).
+  v21, so the replace did nothing. The branch's first push made the line read
+  `REPLAY_FORMAT_VERSION`; the client lane's own #1074 (merged meanwhile) reads the replay's own
+  number, and its version was kept at the merge, so the pull request leaves `clients/` untouched
+  (the client lane's inbox told).
 - **Tests:** `h3-adventure`'s `state/tests/altar.rs` (seven: the visit and kind mark by faction
   and Revisit; artifacts with Basic Learning per item 10 + 10 = 20, the minor, major, relic, the
   special 0 beside others and alone refused, the kept book, the places' count, empty places, the

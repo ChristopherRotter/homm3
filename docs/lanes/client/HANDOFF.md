@@ -12,8 +12,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   play but outside it; a **new M5 in play**, refined once the shell hosts play, E24 M5): T1a, T1b
   (High Scores, its scores file) and T2 (Credits) done 2026-11-19; T3 cut in two (decision 71):
   **T3a** (the adventure replay format v20 with the players' choices, `cross-lane`) and **T3b**
-  (the client's save file and its load: `h3-battle-client`'s `save`, design §37) done 2026-11-20.
-  **Next: M4 T4** (Load Game single; the queue), then T5 (hot seat), T6 (M4's closure).
+  (the client's save file and its load: `h3-battle-client`'s `save`, design §37) done 2026-11-20;
+  T4 cut in two (decision 72): **T4a** (the load mode read, `scn-load` recorded again on saves the
+  original made of shipped maps, `scn-load-last` new; design §38) done 2026-11-20. **Next: M4
+  T4b** (Load Game single's client; the queue), then T5 (hot seat), T6 (M4's closure).
   Decisions to carry (all: the epic's list): the dialogs' input one implementation (20;
   `h3_ui::input`); the shell's code as the battle's (21); every pixel of a Smacker clip through
   its palette (24); every clip's sound at the effects setting (27); a menu opening anew takes the
@@ -21,8 +23,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (b)); a map's name and description whole (CLT-Q151 (b)); the advanced rows made again when the
   map changes (CLT-Q152 (b)); a press's stale edges as CLT-Q118's (§34.2); the credits'
   background's key pixel a drawing bug (§36.3); a save loads only under the rules and over the
-  map it was made with (review item 18). Open pull request: T3b's
-  (`client/e27-m4-t3b`; T3a's #1066 merged): watch it until it merges. E17 done
+  map it was made with (review item 18); the shell's recipes pinned to a time zone (`tz`, review
+  item 23). Open pull requests: T4a's (`client/e27-m4-t4a`) and #1073 (`client/e27-save-test-v21`,
+  `master`'s Clients job red since #1070 until it merges): watch both until they merge. E17 done
   (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -58,6 +61,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-20, E27 M4 T4a (done; `client/e27-m4-t4a`).** The PC's 64 files and the manuals
+  staged (SHA-256 checked). T4 cut in two with the user (decision 72). `master`'s Clients job red
+  (T3b's test against the replay format v21): fixed, #1073. Read the date's order, the load
+  mode's name, Delete's end; `h3shell.py`'s maker recipes (`makes`, `made_games`), `tz`, one
+  file's `games-time`, `key-hold`; `scn-load` recorded again and `scn-load-last` new (twice the
+  same), `scn-save` and `adv-load` again under the pinned zone. Record: `E27-log.md`, "M4 T4a".
 - **2026-11-20, E27 M4 T3b (done; `client/e27-m4-t3b`).** The PC's 64 files and the manuals
   staged (SHA-256 checked). Kept whole. Built `h3-battle-client`'s `save` (design §37): the file
   (the engine's replay text, then the client's `[save]` table, version 1), its strict reader, the
@@ -71,10 +80,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `PlayerChoices`, `Replay::players`, `Replay::setup`; `h3-files`' `[[players]]`), the server's
   and the AI lane's literals, the 104 goldens recorded again (only the version and the players'
   lines moved); the adventure, server and AI lanes' inboxes told. Record: `E27-log.md`, "M4 T3a".
-- **2026-11-19, E27 M4 T2 (done; `client/e27-m4-t2`).** The PC's 64 files and the manuals
-  staged (SHA-256 checked). Kept whole. Read `credits_screen` again and `pcx16_copy_rect` whole
-  (§36.1); `credits-scroll` and `credits-end` played again (as kept), every frame equal to the
-  reading's model (§36.2); one pixel of `mainmenu.pcx` black (§36.3). Built `shell::credits`,
-  `h3_ui`'s `Draw::Part` and `Draw::Keyed`, the window's credits; the stub gone. Both recipes
-  exact (5 of 5, 8 of 8), `drawn` whole as recorded; the window checked under Xvfb. Record:
-  `E27-log.md`, "M4 T2".

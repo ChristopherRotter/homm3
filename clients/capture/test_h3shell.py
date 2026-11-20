@@ -191,6 +191,46 @@ class Kept(unittest.TestCase):
                 if line and not line.startswith("#"):
                     self.assertIn(line.split(" ", 1)[0], ids, f"{path.name}: {line}")
 
+    def test_every_made_game_is_its_makers(self):
+        # E27 M4 T4a: a recipe's `made_games` name a maker recipe and one of its `makes`; a made
+        # save's name has no space (the kept lines and steps split on it).
+        by_id = {r["id"]: r for r in h3shell.all_recipes()}
+        for r in by_id.values():
+            for name in r.get("makes", []):
+                self.assertNotIn(" ", name, r["id"])
+            for made in r.get("made_games", []):
+                self.assertIn(made["by"], by_id, r["id"])
+                self.assertIn(made["file"], by_id[made["by"]].get("makes", []), r["id"])
+
+    def test_a_made_game_is_made_again_when_its_recipe_changed(self):
+        maker = {"id": "maker", "group": "g", "makes": ["a.GM1"], "steps": []}
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(h3shell, "MADE_GAMES", Path(tmp)), \
+                mock.patch.object(h3shell, "all_recipes", return_value=[maker]), \
+                mock.patch.object(h3shell, "Run") as run:
+            folder = Path(tmp) / "maker"
+
+            def made(*_):
+                folder.mkdir(exist_ok=True)
+                (folder / "a.GM1").write_bytes(b"save")
+                (folder / "made.txt").write_text(h3shell.recipe_digest(maker) + "\n")
+
+            run.return_value.play.side_effect = made
+            path = h3shell.made_game({"by": "maker", "file": "a.GM1"})
+            self.assertEqual(path, folder / "a.GM1")
+            self.assertEqual(run.call_count, 1)
+            # Made by this recipe: taken as it is.
+            h3shell.made_game({"by": "maker", "file": "a.GM1"})
+            self.assertEqual(run.call_count, 1)
+            # The recipe changed (its group left out of the digest): made again.
+            (folder / "made.txt").write_text("another\n")
+            h3shell.made_game({"by": "maker", "file": "a.GM1"})
+            self.assertEqual(run.call_count, 2)
+            self.assertEqual(h3shell.recipe_digest(maker),
+                             h3shell.recipe_digest({**maker, "group": "other"}))
+            with self.assertRaises(RuntimeError):
+                h3shell.made_game({"by": "maker", "file": "b.GM1"})
+
     def test_the_groups_screens_files_parse(self):
         for path in h3shell.SHELL.glob("*.screens.toml"):
             for name, entry in tomllib.loads(path.read_text()).items():
