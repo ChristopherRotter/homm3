@@ -854,7 +854,7 @@ impl<'a> Painter<'a> {
             .map(|(i, t)| {
                 let walks = match (record, &ids) {
                     (Some(p), Some(ids)) => match p.others.iter().find(|o| o.turn == i) {
-                        Some(other) => turn::record_walks(other, ids, &live.heroes, object_at)?,
+                        Some(other) => turn::record_walks(other, ids, &live.heroes, &object_at)?,
                         None => Vec::new(),
                     },
                     _ => turn::walks(&live.turns, i, &live.heroes, lines)?,

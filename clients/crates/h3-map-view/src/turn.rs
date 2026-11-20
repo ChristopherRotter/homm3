@@ -305,7 +305,7 @@ pub fn record_walks(
     other: &OtherTurn,
     ids: &[(u16, usize)],
     map: &[LiveHero],
-    object_at: impl Fn(Pos) -> Option<usize>,
+    object_at: &dyn Fn(Pos) -> Option<usize>,
 ) -> Result<Vec<Steps>, String> {
     let mut order: Vec<u16> = Vec::new();
     let mut facings: Vec<(usize, Direction)> = Vec::new();
