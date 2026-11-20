@@ -113,6 +113,7 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
 | 6 | 2026-11-04 | T19–T23 | better imitation: the teacher's ceiling (0.972: the gap is the network's), a 16 M clone (0.576), the imitation loss; PPO from the clone with the loss (`e25-imitate-1` #2: 0.458 and 0.462 against the system actors, the neutral set +0.287) (AI-Q15, AI-Q16) |
 | 7 | 2026-11-10 | T24–T29 | a network that reads the battle's structure: `hexconv` 96 × 6 with the legal mask, its clone 0.809 (the MLP's 0.574), PPO from it with the imitation loss (`e25-structure-1` #2: 0.511 and 0.507 against the system actors, the neutral set +0.302; 0.552 head to head against `e25-imitate-1` #2) at 22 times the MLP's time (AI-Q16, AI-Q17) |
 | 8 | 2026-11-18 | T30–T36 | probes, then one long run: the update's speed (98 to 67 s), no gain from size, PPO's settings, the search at play, a KL anchor to #2 or the outcome's weight; the anchor's regime to 20 M level with #2 (0.511 against the faithful actor): #2 stays, the setup's plateau; the early stop (`[gate] futility`) (AI-Q17, AI-Q18) |
+| 9 | 2026-11-20 | T37–T41 | a richer observation: v23's reach block from a viewer-safe query (C ABI v38), `[network] reach` and `preview` for the hex kinds, the bench's preview rows and `same_start`; T39's bench: neither arm passed (0.457, 0.460, 0.459 ± 0.018 against the fair actor), T40 not run (AI-Q19, AI-Q20) |
 
 **At increment 1's checkpoint** (the user, 2026-10-28, T3): increment 2 is shaping, bounded,
 then scale; `e25-shaping-1` (#2, 20 M) was the lineage's current best; `t7-1` stays the battle
@@ -135,42 +136,42 @@ clone with the imitation loss) the current best, its head-to-head against `e25-i
 increment 9 is a richer observation; a long run stops early (`[gate] futility`). **At T37's
 review** (the user, 2026-11-18, AI-Q19): v23 is the reach block (the rules' reach as the viewer
 may know it, this lane's `cross-lane` query), the kill preview for `hexconv` a second bench arm,
-T39's rule the clone's ladder +0.02 (`E25-log.md` T37).
+T39's rule the clone's ladder +0.02 (`E25-log.md` T37). **At increment 9's checkpoint** (the user, 2026-11-20,
+T41, AI-Q20): neither v23 arm passed the bench's rule; **#2 stays the current best**; increment
+10 is the ceiling (rollouts of the fair actor, both worlds).
 
-**Increment 9: a richer observation (v23)** (the user at T36, 2026-11-18, AI-Q18). Increment
-8's probes and its long run ended at #2's level (T32 to T36): the network's size, PPO's
-settings, the search at play, the KL anchor, the outcome's weight and 18 M of a taught regime.
-What is left is the epic's risk: information observation v22 does not show. v22's hex planes hold
-the obstacles, the spell obstacles, the walls and the moat, each stack its stats, position and
-state, the legal mask (`[network] mask_input`) the acting stack's reach and attacks: no other
-stack's reach, no distance, no threat (what the opponent's stacks reach next), no shooter's
-blocked state; the kill preview (C ABI v33, E06 T6d) only the MLP reads.
+**Increment 10: the ceiling** (the user at T41, 2026-11-20, AI-Q20). Increments 8 and 9 ended
+at #2's level whatever the lever (size, PPO's settings, the search at play, a KL anchor, the
+outcome's weight, a taught regime, the reach, the kill preview). Before another lever: how much
+better play against the fair system actor exists at all, what hidden information costs, and
+where #2's choices lose value, so that the next lever aims at them.
 
-*Decisions* (the agent's proposal, 2026-11-18; the user reviews the design at T37's end):
+*Decisions* (the user, 2026-11-20, AI-Q20; the agent's details, change at a checkpoint):
 
-1. **The aim:** increment 8's decision 1 (the long run's promoted network beats the faithful
-   actor beyond its interval), decision 1's other parts kept.
-2. **Design first** (T37, the sandbox): what the fair actor's choice reads that v22 hides from
-   the network, where #2 and the fair actor choose differently (T30's states by category), and
-   the candidate features with their cost a decision. The smallest set that covers the gap; the
-   kill preview for `hexconv` (built, no engine change) the first candidate. The design, its cost
-   and its versions are the user's review: an engine query in `h3-battle` and the golden replays
-   make a `cross-lane` change (`TRAPS.md`, Ownership).
-3. **A feature's worth on the cloning bench before RL** (the clone's ladder predicted PPO's
-   endpoint, T22 and T28): `hexconv` 96 × 6 on v23 against T32's control (v22, 0.752 at 4 M, the
-   same seed and budget); the rule stated before it runs.
-4. **The long run only on a bench gain**, from the v23 clone, with the early stop (T36, the
-   user's directive): `[gate] futility` at least 1, gates at least every quarter of its budget.
-5. **Unchanged:** reward v1 and decision 1's evaluation; the fair actor the only system actor
-   that teaches; action encoding v13; `hexconv` 96 × 6 (T32); fp32; the GPU's memory cap.
+1. **The aim:** a lower bound on the ceiling against the fair actor (the result of a policy that
+   provably does at least as well as the fair actor, up to sampling noise), the cost of hidden
+   information, and the value #2's choices leave by category. No training in the increment.
+2. **The method: rollout policy improvement** (one step of policy iteration against the fixed
+   fair actor): at each of the agent's decisions every legal command, N rollouts of each to the
+   battle's end, **the fair actor on both sides** (the user: first; rollouts with #2 inside them
+   later, if their cost is worth it), the stream re-seeded per rollout and shared by the commands
+   (common random numbers); the command of the best mean reward v1 is played. Randomness is
+   averaged over, so the ceiling is in expectation.
+3. **Both worlds** (the user): the true battle (`true_world`, a trusted diagnostic: the other
+   hero's spells and the hidden obstacles seen) and the side's worlds (`determinize`: only what
+   the side may know; a legitimate agent's); their gap the information's cost.
+4. **A measurement, not a run with a rule:** the budget and the episodes fixed by a check on a
+   subset before the full measurement; the report set v1 and the neutral set v1 beside it. The
+   budget is spent by sequential halving (T42, the agent's call), the rollouts full-length.
+5. **Unchanged:** #2 the current best; reward v1 and the evaluation sets; no engine or C ABI change
+   (a new `h3 ai` tool in this lane's `h3-cli/src/ai/`, its rollouts in `h3-sim` where pure).
 
 | Task | Scope | Status |
 |---|---|---|
-| T37 | v23's design: nothing the fair actor reads is hidden, the reach is left to a pathfinder; #2's moves are blind to it (0.468, chance 0.455), its strikes read the kills; v23 the reach block (AI-Q19) | done 2026-11-18 |
-| T38 | v23 built: T38a the reach block from a viewer-safe query in `h3-battle` (`cross-lane`), C ABI v38 (the batch's step +140 % on the encounters); T38b `[network] reach` and `preview` for the hex kinds, the cloning bench's preview rows and `same_start`, T39's config | done 2026-11-19 |
-| T39 | The bench probe: the control, v23 and v23 with the preview at 4 M (`configs/distill/e25-reach.toml`); an arm's clone's ladder +0.02 | next (the user's GPU) |
-| T40 | The long run from the v23 clone, on T39's gain, with the early stop | after T39 |
-| T41 | Increment 9's checkpoint | after T40 |
+| T42 | The rollout tool: `h3 ai ceiling` (the improved fair actor against the system actors, both worlds, sequential halving with common random numbers, a resumable games file, a JSON record), its tests and timing (about 190 thread-seconds a game at budget 8) | done 2026-11-20 |
+| T43 | The ceiling measured (the user's CPU): a budget check (4, 8, 16), then the report set v1 and the neutral set v1, both worlds | next |
+| T44 | Where #2 diverges: #2's decisions against the fair actor replayed, every command valued by the same rollouts; the value its choice leaves by category, beside the fair actor's own | after T42 |
+| T45 | Increment 10's checkpoint: the headroom, the information's cost, the divergence; the next lever | after T43, T44 |
 
 Scope and acceptance: the AI queue's entries.
 

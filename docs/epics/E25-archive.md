@@ -1,7 +1,7 @@
 # E25 — archive: closed increments
 
 Moved out of `E25-battle-ai-v2.md` verbatim when an increment closes (increment 1 on
-2026-10-28, increment 2 on 2026-10-29, increments 3 and 4 on 2026-11-02, increment 5 on 2026-11-03, 6 on 2026-11-04, 7 on 2026-11-10, 8 on 2026-11-18, at their checkpoints), so that the epic file holds what
+2026-10-28, increment 2 on 2026-10-29, increments 3 and 4 on 2026-11-02, increment 5 on 2026-11-03, 6 on 2026-11-04, 7 on 2026-11-10, 8 on 2026-11-18, 9 on 2026-11-20, at their checkpoints), so that the epic file holds what
 is open and the decisions that apply to the whole epic. Each task's full record is in `E25-log.md` (grep its id).
 
 ## Increment 1 (closed 2026-10-28)
@@ -256,3 +256,40 @@ which aims at a margin beyond the interval.
 | T34 | Training regimes: the search at play with #2 (the sandbox's CPU) and the KL anchor to #2 (PPO from T27's clone, #2 the imitation loss's teacher) | done 2026-11-15 (`E25-log.md` T34: the search gains nothing on #2, 0.508 against 0.511 at N 16, +0.003 at N 64 on the hero battles; the anchor reaches #2's level in 2 M, 0.496 ± 0.002 head to head (−1.97 SE), 0.503 against the fair actor) |
 | T35 | The probes' checkpoint: the long run's start, network, settings and length | done 2026-11-16 (`E25-log.md` T35: the outcome's weight probed first, decision 6 amended; `e25-win-bonus-1`, T33's annealed arm with `win_bonus` 0.1, 0.5007 ± 0.0019 head to head against #2, the annealed arm's 0.5029: it moves nothing, reward v1 stays; the user: the long run is the anchor resumed to 20 M) |
 | T36 | The long run and its checkpoint | done 2026-11-18 (`E25-log.md` T36: `e25-anchor-1` resumed from 2 M to 20 M, #2 teaching T27's clone to 10 M; both gates rejected the learner against its 2 M network; at 20 M 0.511 ± 0.018 against the faithful actor, every row within 0.007 of #2's: the aim not met, #2 stays; the user: a long run stops early, `[gate] futility`; increment 9, a richer observation) |
+
+## Increment 9 (closed 2026-11-20)
+
+**Increment 9: a richer observation (v23)** (the user at T36, 2026-11-18, AI-Q18). Increment
+8's probes and its long run ended at #2's level (T32 to T36): the network's size, PPO's
+settings, the search at play, the KL anchor, the outcome's weight and 18 M of a taught regime.
+What is left is the epic's risk: information observation v22 does not show. v22's hex planes hold
+the obstacles, the spell obstacles, the walls and the moat, each stack its stats, position and
+state, the legal mask (`[network] mask_input`) the acting stack's reach and attacks: no other
+stack's reach, no distance, no threat (what the opponent's stacks reach next), no shooter's
+blocked state; the kill preview (C ABI v33, E06 T6d) only the MLP reads.
+
+*Decisions* (the agent's proposal, 2026-11-18; the user reviews the design at T37's end):
+
+1. **The aim:** increment 8's decision 1 (the long run's promoted network beats the faithful
+   actor beyond its interval), decision 1's other parts kept.
+2. **Design first** (T37, the sandbox): what the fair actor's choice reads that v22 hides from
+   the network, where #2 and the fair actor choose differently (T30's states by category), and
+   the candidate features with their cost a decision. The smallest set that covers the gap; the
+   kill preview for `hexconv` (built, no engine change) the first candidate. The design, its cost
+   and its versions are the user's review: an engine query in `h3-battle` and the golden replays
+   make a `cross-lane` change (`TRAPS.md`, Ownership).
+3. **A feature's worth on the cloning bench before RL** (the clone's ladder predicted PPO's
+   endpoint, T22 and T28): `hexconv` 96 × 6 on v23 against T32's control (v22, 0.752 at 4 M, the
+   same seed and budget); the rule stated before it runs.
+4. **The long run only on a bench gain**, from the v23 clone, with the early stop (T36, the
+   user's directive): `[gate] futility` at least 1, gates at least every quarter of its budget.
+5. **Unchanged:** reward v1 and decision 1's evaluation; the fair actor the only system actor
+   that teaches; action encoding v13; `hexconv` 96 × 6 (T32); fp32; the GPU's memory cap.
+
+| Task | Scope | Status |
+|---|---|---|
+| T37 | v23's design: nothing the fair actor reads is hidden, the reach is left to a pathfinder; #2's moves are blind to it (0.468, chance 0.455), its strikes read the kills; v23 the reach block (AI-Q19) | done 2026-11-18 |
+| T38 | v23 built: T38a the reach block from a viewer-safe query in `h3-battle` (`cross-lane`), C ABI v38 (the batch's step +140 % on the encounters); T38b `[network] reach` and `preview` for the hex kinds, the cloning bench's preview rows and `same_start`, T39's config | done 2026-11-19 |
+| T39 | The bench probe: the control, v23 and v23 with the preview at 4 M (`configs/distill/e25-reach.toml`): no arm passed (0.457, 0.460, 0.459 ± 0.018 against the fair actor) | done 2026-11-20 |
+| T40 | The long run from the v23 clone, on T39's gain, with the early stop | not run (T39: no gain) |
+| T41 | Increment 9's checkpoint: increment 10, the ceiling (AI-Q20) | done 2026-11-20 |

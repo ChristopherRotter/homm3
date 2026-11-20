@@ -25,28 +25,25 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   +0.285; 0.552 head to head against `e25-imitate-1` #2): exit criterion 1 met on its point
   estimates, the faithful actor's win rate inside its interval; 217 samples a second, 28 hours a
   20 M on the GTX 1070. The GPU's memory capped at 90 % of the card (`gpu.cap`, `TRAPS.md`).
-  **Increment 8 closed 2026-11-18** (`E25-archive.md`; `E25-log.md` T30 to T36): no probe (size,
-  PPO's settings, the search at play, the KL anchor, the outcome's weight) nor the long run
-  (`e25-anchor-1` to 20 M: 0.511 ± 0.018 against the faithful actor, level with #2) passed #2,
-  which stays the current best (AI-Q18). A `hexconv` run sets `accumulate = 4`, `chunk_align =
-  32` (T31). **A long run stops early** (the user, 2026-11-18): `[gate] futility` (built at T36;
-  `TRAPS.md`, Python). **Increment 9: a richer observation (v23)** (AI-Q18). **T37 closed**
-  2026-11-18 (`E25-log.md` T37, AI-Q19): #2's moves are blind to the enemies' reach, its strikes
-  read the kills; v23 is the reach block (two threat planes, three features a stack slot) from a
-  viewer-safe reach query in `h3-battle`, the kill preview for `hexconv` a bench arm. **T38
-  done** 2026-11-19 (`E25-log.md` T38a, T38b): observation v23's reach block from
-  `h3_battle::reach_seen_by`, C ABI v38, the batch's step +140 % on the encounters
-  (re-baselined); `[network] reach` and `preview` for the hex kinds, the cloning bench's preview
-  rows and `same_start`. **Next: T39**, the bench probe on the user's GPU
-  (`configs/distill/e25-reach.toml`, about 6 hours in parts; its rule in `QUEUE.md`).
-- **Open pull requests:** #1040 (`claude/intelligent-bohr-5ii8qn`: T38b). Its CI verify failed
-  twice before it started (`apt-get install valgrind`: Ubuntu's mirrors 503, 2026-11-19, one
-  re-run); the full local verify on `9d2eea7` passed (`deny` run alone: its tool was missing). Merged: #1036 (T38a,
-  `cross-lane`) and the `shared/` docs/07 line (v23).
+  **Increments 8 and 9 closed** (`E25-archive.md`; `E25-log.md` T30 to T39): no probe (size,
+  PPO's settings, the search at play, the KL anchor, the outcome's weight), the long run (0.511
+  against the faithful actor) nor v23 (the reach block, the kill preview: T39's bench, 0.457,
+  0.460, 0.459 ± 0.018) passed #2 (AI-Q18, AI-Q20). A `hexconv` run sets `accumulate = 4`,
+  `chunk_align = 32` (T31); a long run stops early (`[gate] futility`, T36); a bench A/B sets
+  `same_start` (T38b; `TRAPS.md`, Python). **Increment 10: the ceiling** (the user, AI-Q20): a
+  lower bound on the play possible against the fair actor by rollouts of the fair actor (every
+  legal command, common random numbers), on the true battle and the side's worlds, then where
+  #2's choices lose value. **T42 done** (`E25-log.md` T42): `h3 ai ceiling`, the rollout-improved
+  fair actor on `h3 ai eval`'s sets, sequential halving, a resumable games file; about 190
+  thread-seconds a game at budget 8. **Next: T43** on the user's CPU (the budget check, then the
+  measurement; the commands in `QUEUE.md`), T44 (where #2 diverges) beside it.
+- **Open pull requests:** #1075 (`claude/intelligent-bohr-5ii8qn`: T39, T41, T42). Merged: #1040 (T38b). **Owed to a `shared/` pull request:** the
+  README's E25 row (increment 9 closed, increment 10 the ceiling next; "as of" 2026-11-20) and
+  a line for `h3 ai ceiling` in `docs/07-simulation-and-ai.md` (beside `h3 ai eval`).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q20, AI-QUIRK-1, AI-STUB-2.
+  ids: AI-Q21, AI-QUIRK-1, AI-STUB-2.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -54,6 +51,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-20 — E25 T39 read, T41: increment 9 closed, increment 10 the ceiling
+
+- #1040 merged. The user ran T39 on the GPU (two segments, 5.1 hours) and uploaded
+  `report.json` (committed as `python/records/distill/reach-1.json`). The checkpoint (AI-Q20):
+  the user proposed the ceiling; the rollout design agreed (the fair actor, both worlds). T42
+  built (`cargo build --release -p h3-cli`, timing runs in the sandbox; the refused casts traced
+  to BAT-STUB-19 by a temporary print, removed). #1075, watched until it merges.
 
 ### 2026-11-19 — E25 T38b: `[network] reach` and `preview`, the bench's preview rows
 
@@ -69,11 +74,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   workloads measured right after the first build (+340 %), the strike hexes rewritten on a
   neighbour table (+176 %), then re-baselined; a `master` worktree (`target/wt-master`) for the
   siege workload's per-function check. #1036 (`cross-lane`), watched until it merges.
-
-### 2026-11-18 — E25 T37 closed: v23's design
-
-- #1022, #1023 merged. No original data (none needed). The user uploaded #2's `best.pt` (in
-  `python/runs/`, ignored); `uv sync --group train`, `cargo build --release -p h3-ffi -p h3-cli`
-  (75 s). (b)'s script `python/records/inspect/disagree.py` (68 s on 25 600 states); (c)'s reach
-  cost by a scratch timing in `h3 ai bench`, reverted. The user reviewed the design (AI-Q19).
-  The queue's inbox trimmed to 12 KB (informational notices to `QUEUE-ARCHIVE.md`). #1028.
