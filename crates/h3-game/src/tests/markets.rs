@@ -303,6 +303,9 @@ fn a_transfer_gives_another_player_the_amount_one_to_one() {
         play(&mut guild, &rules, RED, give(GOLD, 1, BLUE)),
         refused(MarketError::Screen)
     );
+    // The game's refusal reads as the market's reason.
+    let text = GameCommandError::Market(MarketError::Recipient).to_string();
+    assert_eq!(text, MarketError::Recipient.to_string());
 }
 
 // covers: ADV-MKT-005, ADV-MKT-008, GAM-DEC-011

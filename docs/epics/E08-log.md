@@ -20201,3 +20201,73 @@ design).
   --workspace --all-targets` clean; `h3-map`'s trades tests pass.
 
 **Versions:** none moved (no state, replay, part or format change). T133b next, ADV-Q60 first.
+
+### Increment 14, round 6: T133b, the market's decision and its wire (2026-11-20, `adventure/e08-t133b`, `cross-lane`)
+
+**The cut** (decision 384, the user at its start, ADV-Q60): ADV-Q60 (a), the whole in one pull
+request; `cross-lane` consented for the server lane's `h3-protocol` (and its `h3-server` record
+test's hash lines) and the AI lane's `h3-sim` (and its bots tables), a market's `Leave` on the
+env's closing entry.
+
+- **ADV-Q60 (a), part v24:** `MarketParamsDef::cost` (`[params.market]`'s `cost = "gold"` in the
+  base pack, a core resource), `MarketParams::new(cost, …)` (`MarketParamsError::Cost` for a
+  resource the tables do not value; a compiled pack cannot give it), `MarketParams::cost`, in the
+  parameters' hash first; `check_sale` and `check_buy` read it (no `value` argument);
+  `h3-pack-adventure`'s parse and its doc; the eighth original-data check compares it with the
+  executable's gold. Tests: the parameters' refusal and reader, the compile's unknown resource,
+  the hash edit, the pack's parse cases; T133a2's "valued in wood" case replaced (the gnoll's 5
+  wood are no gold cost).
+- **The adventure's half** (`state/markets.rs`): `window` (the visit) split out of `market` (the
+  screen); `check_screen` (a transfer's), `trade_lot` (ADV-MKT-003: the visit, the screen,
+  `SameResource`, `NoPrice`), `market_offers` (ADV-MKT-008: `MarketOffers { screens, count,
+  trades, sales, stock }` with `TradeOffer`, `SaleOffer`, `StockEntry`, each list only for a
+  screen the window shows). *Agent's call:* the offers computed beside the checks (one place for
+  the rates and the cost resource).
+- **The decision** (`h3-game`, game state hash v35): `Decision::Market { owner, visit }` (kind 10:
+  the owner, the hero, the object's index, type and anchor), opened in `settle_outcome` from
+  `AdventureOutcome::service` (`ADV-STUB-18` lifted); `state/market.rs`' `open_market`
+  (`MarketOpened`, the owner's), `answer_market` (the five answers as design note §13 says; a
+  sale's events the stack's change, then the gain), `held`, `market_view` (the recipients by the
+  game); `MarketAnswer`, `GameCommandError::Market`, `GameState::market`, `MarketView`,
+  `DecisionView::Market`; `legal_commands` lists `Leave` alone, the default answer `Leave`. The
+  adventure's types re-exported (`Lot`, `MarketError`, `MarketOffers`, `MarketScreen`,
+  `MarketVisit`, `SaleOffer`, `StockEntry`, `TradeOffer`). Tests: `tests/markets.rs` (its own
+  ruleset: wood beside the gold with its mine, every artifact 2 000 gold, the ring the one
+  treasure; the three markets at five): the opening, the view, the listing, the default, the
+  wrong kinds, `EndTurn` held, the hash, `Leave`; a trade's lots, refusals and saturation; a
+  transfer's recipient and amount, its gain told to the recipient alone; a sale's events and the
+  last creature kept; a purchase's `CannotPay`, payment, artifact and emptied entry.
+- **The edges a new answer forces** (decision 384): the wire, protocol v75 (`MarketAnswer`,
+  `MarketReject`, `MarketWindow` with `MarketScreen`, `Lot`, `TradeLot`, `SaleLots`,
+  `ResourceLot`, `StockEntry`; `MarketOpened` folded as a University's, `SRV-STUB-5` extended; the
+  round-trip tests: two market views, five answers, ten rejections, the event); the replay words,
+  format v20 (`answer market trade <give> <take> <lots>`, `transfer <resource> <amount> <player>`,
+  `sell <slot> <take> <lots>`, `buy <entry> <pay>`, `leave`; resources by index; the round trips
+  and eighteen malformed lines); the env's encoding v14 (`answer_entry`: `Leave` the closing role,
+  the rest none until T135a). `h3-map`'s `tests/view.rs` (the told decision `Open::Market`) and
+  `tests/trades.rs` (each imported market opens its decision with the original packs' rates: a
+  Trading Post's 42 trades).
+- **Rules:** ADV-MKT-003 (`verified`: E14-5), -004, -008, GAM-DEC-011 (`implemented`) written;
+  ADV-MKT-005 and -007 `verified` (E14-1, E14-2; E14-3, E14-4); ADV-MKT-001's summary.
+- **Goldens:** the 104 re-recorded from their commands (a scratch script, `h3 adventure run
+  --script`, release): only `format`, `game_state_hash_version`, `adventure_ruleset_hash`, the
+  checkpoints and `final_hash` moved; none visits a market. `h3-server`'s `tests/record.rs`
+  `army-dialog-s1` lines; the bots tables' `engine.adventure` line (0x0c610f9192575256).
+- **Docs:** the design note's §12, §13, §17 *As built*; the task's line, decision 384; ADV-Q60
+  moved to `QUESTIONS-ANSWERED.md`; the queue (T133b out, T134a in, with the `Copy` trap of §14's
+  `Vec` answer); `OVERVIEW.md`; the server, AI and town lanes' inboxes.
+- **Gates:** the scoped verify with original data: fmt, clippy, check-arch, check-rules,
+  check-stubs, check-docs, check-exe-map, clients-lock, test and determinism passing;
+  `check-lane` failing by design (`cargo xtask check-lane --cross-lane`: ok); coverage's first run
+  4 violations, one line (`GameCommandError::Market`'s `Display` arm, no test formatted it: a
+  test added in `tests/markets.rs`). The VM restarted twice (the setup's baseline at coverage, CI's
+  green `master` standing for it; the verify after determinism): `bench-check --lane adventure`
+  run alone, every workload inside its baseline (the most +1.28 %, `fork-economy-xl-144`; the
+  random games' new `Leave` changed no course visibly), and the original-data step's parts run
+  alone (the harvest's compare, both crates' `original_data` checks with the market's cost
+  resource, `scripts/exe.py check`). `cargo check --workspace --all-targets` clean; `h3-cli`,
+  `h3-files`, `h3-sim`, `h3-protocol` and `h3-server`'s record tests and clippy run apart.
+
+**Versions:** adventure ruleset part v24, game state hash v35, adventure replay format v20; the
+AI lane's adventure action encoding v14 and the server lane's protocol v75 (`cross-lane`). T134a
+next.
