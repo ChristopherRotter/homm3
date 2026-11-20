@@ -504,6 +504,16 @@ The user, 2026-11-19 (M3 T7's start):
 75. **T5 cut in two** (the user, 2026-11-21, at its start, as offered): T5a the hot-seat load's
     reading and recordings (the harness and the docs, no client code; design §41), T5b the
     client's hot-seat load and saves exact against them, its cut confirmed at its start.
+76. **T5b cut in two; a hot-seat load's names and its Random Map** (the user, 2026-11-21, at
+    T5b's start, as offered and recommended): T5b1 the hot seat's load mode from the Multiplayer
+    dialog, the list's filter, the panel's buttons and the flags' strip, the advanced options from
+    the save with the names placed, `h3-view save` for a hot seat, exact against `mp-load`,
+    `adv-load`'s screen, options and list shots and `adv-load-more`; T5b2 the presses that change
+    nothing, the flags' presses and the popups, exact against the rest of `adv-load`. CLT-Q160
+    (a): the names decide who is human after a hot-seat load, as the original's (the engine's
+    part, the humans changed over the loaded game, E24 M5's). CLT-Q161 (b): no Random Map button
+    in a load in the client's profile, the original's (shown, its press and key doing nothing)
+    for the comparisons only.
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
@@ -615,8 +625,9 @@ load mode), §3.12 to §3.14 (a load's rows).
 | T4b1 | Load Game single's screen (§3.1, §3.3 to §3.6, §38, §39; decision 73): the load mode (title, no panel buttons or flags, Load, the save's difficulty on the disabled buttons and its rating), the client's saves listed (the folder `games`, `<name>.GM<n>`, the map's header from the map the replay names, a save it cannot list as a broken file, the file's local time), the keys and a held key's repeats (the viewer's `key-hold`, the window's), the sorts with CLT-Q138's stale buttons and rating, Load's and a disabled difficulty's popups, a right press without a popup redrawing nothing; the viewer given client saves made as the makers' (`h3-view save`, the makers' `viewer`) and `games-time`; Load and Delete the client's notice (CLT-STUB-15) | done 2026-11-20 (`scn-load` 19 of 25 exact: all but Delete's four, the load's clip and the map) |
 | T4b2 | Delete's question (688) both ways and its end (the version sort in the last direction, the first selected, the stale buttons and rating), the notice with no saves (686, Load disabled), Load's end at play's stub (as M3's begin: `save::load`'s `Loaded` kept for E24 M5; a save the load refuses its call), CLT-STUB-15 lifted; exact against `scn-load`'s Delete shots, `scn-load-last`, `scn-load-none` (`scn-load`'s `load` clip and `map` are play's, M5's) | done 2026-11-20 (`scn-load` 23 of 25 exact, `scn-load-last` 9 of 9, `scn-load-none` 5 of 5; design §40; CLT-Q159) |
 | T5a | Load Game hot seat's reading and recordings (§41; decision 75): the slots, the names' placing (the save's humans first; CLT-Q160), the begin after a load, the save's extension, the list's filter, the options in a load (the duration's bar and the handicap disabled), Random Map in a load (§6.4; CLT-Q161); two hot-seat makers (`Pair.GM2`, `Four.GM4`: every colour human with its choices), `adv-load` recorded again over them, `adv-load-more` new | done 2026-11-21 (19 and 2 shots, twice the same; CLT-Q160, CLT-Q161 asked) |
-| T5b | Load Game hot seat's screen (§3.12 to §3.14, §41.4): the hot seat's load mode over the Multiplayer dialog, the list's filter, the panel's buttons and flags, the advanced options from the save (the saved choices, no arrows, the names placed), the presses that change nothing, the flags, the popups; `h3-view save` for a hot seat; exact against `mp-load`, `adv-load`, `adv-load-more` | after T5a |
-| T6 | M4's closure: a fresh reviewer, M4's review list to the user, M4 to the archive, M5's refinement once the shell hosts play (else its prerequisites recorded) | after T5b |
+| T5b1 | Load Game hot seat's screen (§3.12 to §3.14, §41.4; decision 76): the hot seat's load mode over the Multiplayer dialog (the notice with no saves), the list's filter, the panel's buttons and the flags' strip (no Random Map in the client's profile: CLT-Q161 (b)), the advanced options from the save (the saved choices, no arrows, the handicap and the duration's bar disabled, the names placed: CLT-Q160 (a)); `h3-view save` for a hot seat, the makers' `viewer` tables; exact against `mp-load`, `adv-load`'s screen, options and list shots, `adv-load-more` | after T5a |
+| T5b2 | The hot-seat load's presses (decision 76): the presses that change nothing (the arrows, the duration's bar, Random Map and its key), a flag's press among the save's humans (CLT-Q110 (b)), the popups; exact against the rest of `adv-load` | after T5b1 |
+| T6 | M4's closure: a fresh reviewer, M4's review list to the user, M4 to the archive, M5's refinement once the shell hosts play (else its prerequisites recorded) | after T5b2 |
 
 **M4's review list** (the agent's calls, *provisional*, for T6):
 

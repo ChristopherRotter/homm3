@@ -15,22 +15,28 @@ computer must be online); never from the installation. The captures need the fiv
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M4 T5b
+#### E27 M4 T5b1
 
-T5b Load Game hot seat's screen (the epic's M4 table, decision 75; design §41.4, the readings
-§3.12 to §3.14, §41.1, the recordings §41.2 and §41.3; T4b's single load, §38 to §40, the screen
-it builds on): the hot seat's load mode (the Multiplayer dialog's hot seat over Load Game's menu,
-`mp-load`'s `load` and `load-closed`: the notice with no saves), the list's hot-seat filter (a
-save's map for two humans or more), the panel's buttons and the flags' strip, the advanced
-options from the save (the saved towns, first heroes, bonuses and duration; no arrows; the
-handicap disabled; the names placed as §41.1, CLT-Q160), the presses that change nothing (the
-arrows, the duration's bar, Random Map and its key: CLT-Q161), a flag's press among the save's
-humans (CLT-Q110 (b)), the popups. `h3-view save` for a hot seat (the humans, their names and
-choices; the makers' `viewer` tables grown to name them) so that `drawn` gives the viewer
-`Pair.GM2` and `Four.GM4` as the makers'. Exact against `mp-load`, `adv-load` and
-`adv-load-more` (its masked cells aside). Ask CLT-Q160 and CLT-Q161 first if still open; confirm
-its cut at its start (a seam: the screen and the list with `mp-load` and `adv-load` up to
-`advanced`; then the options' presses, the flags and the popups).
+T5b1 Load Game hot seat's screen (the epic's M4 table, decisions 75 and 76; design §41.4, the
+readings §3.12 to §3.14, §41.1, the recordings §41.2 and §41.3; T4b's single load, §38 to §40,
+the screen it builds on): the hot seat's load mode (the Multiplayer dialog's hot seat over Load
+Game's menu, `mp-load`'s `load` and `load-closed`: the notice with no saves), the list's hot-seat
+filter (a save's map for two humans or more), the panel's buttons (Show Saved Games, Advanced
+Options; Random Map in the original's profile only, CLT-Q161 (b)) and the flags' strip, the
+advanced options from the save (the saved towns, first heroes, bonuses and duration; no arrows;
+the handicap and the duration's bar disabled; the names placed as §41.1, CLT-Q160 (a)). `h3-view
+save` for a hot seat (the humans, their names and choices; the makers' `viewer` tables grown to
+name them) so that `drawn` gives the viewer `Pair.GM2` and `Four.GM4` as the makers'. Exact
+against `mp-load`, `adv-load`'s `screen`, `advanced`, `list`, `row-2`, `advanced-2`,
+`list-again`, `list-hidden` and `adv-load-more` (its masked cells aside).
+
+#### E27 M4 T5b2
+
+T5b2 the hot-seat load's presses (decision 76): the presses that change nothing (the arrows, the
+duration's bar, Random Map and its key in the original's profile: CLT-Q161), a flag's press among
+the save's humans (CLT-Q110 (b)), the popups (the town's, the hero's, the bonus's, a saved human's
+past the names, Random Map's; none on the disabled handicap). Exact against the rest of
+`adv-load`.
 
 ## Inbox
 
