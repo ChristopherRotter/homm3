@@ -18,7 +18,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   spec's fields. **Next:** T45, `shared/` (`QUEUE.md`). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and
   `-15` (increment 5), `-13` (Visions' reach), `TWN-STUB-2` (the victory conditions),
   `TWN-STUB-16` (E10's loss condition), `-17` (increment 7), `-18` (E13).
-- **Open pull requests:** T44's (`town/e09-t44`, `cross-lane`), opened at the session's end; watch
+- **Open pull requests:** T44's (#1076, `town/e09-t44`, `cross-lane`), opened at the session's end; watch
   it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
@@ -57,7 +57,7 @@ with three help files staged, SHA-256 checked. The user kept T44 whole and conse
 `cross-lane` (decision 182). Built: `h3-map`'s `AnyTown::spells` and `Map::banned_spells` (every
 literal filled, the clients' too), `h3-experiment`'s spell and main-town fields, the harness's
 guild reads, the Vortex's message over the town screen, the hall found by its status line. Run:
-specs `E09-batch-5a`, `-5b`, twice each; scored in the survey's §21. PR at the session's end.
+specs `E09-batch-5a`, `-5b`, twice each; scored in the survey's §21. PR #1076.
 
 ### 2026-11-20 — T43: increment 5's drafts, Part G, the cut; the checkpoints TWN-Q32, TWN-Q33
 
