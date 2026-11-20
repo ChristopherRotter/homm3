@@ -2,9 +2,10 @@
 //! `E08-log.md`): what visits leave on the map's objects beyond their removal
 //! (`Occupancy`'s), with no bound of the original's on how many objects carry it (A-17's 32 marks
 //! per class not reproduced): each hero's once-per-hero marks, each player's knowledge of what a
-//! visit left (ADV-VIS-006, §13) and the objects emptied (a find searched, a Pyramid looted). The
-//! state holds one only once a visit writes it, then one block the forks share (a write copies
-//! it, its bit grids sharing their leaves). E08 T61b; the visits that write it come with T62.
+//! visit left (ADV-VIS-006, §13) and the objects emptied (a find searched, a Pyramid looted); since
+//! E08 T133a1 the Black Markets' sold entries (increment 14's design note §8). The state holds one
+//! only once a visit writes it, then one block the forks share (a write copies it, its bit grids
+//! sharing their leaves). E08 T61b; the visits that write it come with T62.
 
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
@@ -62,6 +63,11 @@ pub struct Visits {
     known: Vec<ObjectBits>,
     /// The objects a visit emptied: a find searched, a Pyramid looted.
     emptied: ObjectBits,
+    /// The Black Markets' sold entries (E08 T133a1; increment 14's design note §8): by object
+    /// index a bit per entry of its stock ([`crate::MAX_STOCK`] at most); none for a market
+    /// nothing was bought at. *Agent's call:* here, not a block of its own (a few markets per
+    /// map, written rarely).
+    sold: BTreeMap<u32, u8>,
 }
 
 impl Visits {
@@ -73,6 +79,7 @@ impl Visits {
             marks: BTreeMap::new(),
             known: (0..players).map(|_| ObjectBits::new(objects)).collect(),
             emptied: ObjectBits::new(objects),
+            sold: BTreeMap::new(),
         }
     }
 
@@ -116,12 +123,33 @@ impl Visits {
     pub fn empty(&mut self, index: usize) {
         self.emptied.set(index);
     }
+
+    /// Whether the entry `entry` of the Black Market at `index` was bought (an entry past
+    /// [`crate::MAX_STOCK`]: no).
+    pub fn is_sold(&self, index: usize, entry: u8) -> bool {
+        u32::try_from(index)
+            .ok()
+            .and_then(|index| self.sold.get(&index))
+            .and_then(|bits| bits.checked_shr(u32::from(entry)))
+            .is_some_and(|bits| bits & 1 == 1)
+    }
+
+    /// The entry `entry` of the Black Market at `index` is bought (an index past the objects or an
+    /// entry past [`crate::MAX_STOCK`]: nothing).
+    pub fn sell(&mut self, index: usize, entry: u8) {
+        let bit = 1u8.checked_shl(u32::from(entry));
+        if let (true, Ok(index), Some(bit)) = (index < self.objects, u32::try_from(index), bit) {
+            *self.sold.entry(index).or_default() |= bit;
+        }
+    }
 }
 
 impl CanonicalHash for Visits {
     /// The marks as their number and, in hero id order, the hero's id and its grid; each player's
     /// knowledge as their number and grids in player order; the emptied objects' grid
-    /// ([`BitGrid`]'s encoding). The number of objects follows from the static map.
+    /// ([`BitGrid`]'s encoding); since adventure state hash v27 (E08 T133a1) the sold entries as
+    /// their number and, in object order, the index and its bits. The number of objects follows
+    /// from the static map.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_len(self.marks.len());
         for (hero, marks) in &self.marks {
@@ -133,5 +161,10 @@ impl CanonicalHash for Visits {
             known.0.hash_into(h);
         }
         self.emptied.0.hash_into(h);
+        h.write_len(self.sold.len());
+        for (&index, &bits) in &self.sold {
+            h.write_u32(index);
+            h.write_u8(bits);
+        }
     }
 }

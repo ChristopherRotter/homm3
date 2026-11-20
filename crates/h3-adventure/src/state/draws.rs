@@ -7,7 +7,8 @@
 //! so the original's dropped draws (a placed artifact's, §3.1) have no counterpart. No draw gives
 //! a banned skill, spell or artifact (GAM-SET-003), nor a spell granted by name only (the
 //! original's game bans the spells with the flag 0x2000 beside the map's). Since E08 T124b1 the
-//! creature banks' draws in the second walk (ADV-BNK-002; increment 13's design note §5).
+//! creature banks' draws in the second walk (ADV-BNK-002; increment 13's design note §5), since
+//! T133a1 the Black Markets' stocks (ADV-MKT-006; increment 14's design note §9).
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -19,7 +20,7 @@ use h3_content::{
 use h3_heroes::{PrimarySkill, ScholarGift};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
-use super::{MapObject, banks, pick};
+use super::{MapObject, banks, markets, pick};
 use crate::ruleset::{AdventureRuleset, Chest, Find, FindContent, ObjectKind, Turn};
 use crate::setup::{Bans, Holds, Pos};
 
@@ -27,7 +28,7 @@ use crate::setup::{Bans, Holds, Pos};
 /// §9), beside what the map put in it ([`MapObject::holds`]); a chest's gold and a find's resources
 /// are its [`MapObject::contents`]. The visits that read it come with T62. Since E08 T83b1 an
 /// abandoned mine's and a Shipyard's, since T124b1 a creature bank's (its guards as drawn are its
-/// [`MapObject::guards`]).
+/// [`MapObject::guards`]), since T133a1 a Black Market's stock.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum Resolved {
     /// Nothing drawn: every other kind, a gift of one price or none, a chest of gold, a find of
@@ -75,6 +76,13 @@ pub enum Resolved {
         /// The artifacts, in the draw's order.
         artifacts: Vec<ArtifactTypeId>,
     },
+    /// A Black Market's stock (ADV-MKT-006, E08 T133a1; increment 14's design note §8, §9): an
+    /// artifact for each class of its kind's stock in the draw's order, at most [`MAX_STOCK`], an
+    /// entry the pool could not fill left out; never changed after the build. Which entries were
+    /// bought is the visits' block's ([`super::Visits::is_sold`]), by index into this list.
+    ///
+    /// [`MAX_STOCK`]: crate::MAX_STOCK
+    Stock(Vec<ArtifactTypeId>),
 }
 
 impl Resolved {
@@ -109,6 +117,14 @@ impl Resolved {
             _ => None,
         }
     }
+
+    /// A Black Market's stock ([`Self::Stock`]); none for every other draw.
+    pub fn stock(&self) -> &[ArtifactTypeId] {
+        match self {
+            Self::Stock(stock) => stock,
+            _ => &[],
+        }
+    }
 }
 
 impl CanonicalHash for Resolved {
@@ -116,7 +132,8 @@ impl CanonicalHash for Resolved {
     /// gift with its tag (0 a primary skill, 1 a skill, 2 a spell), its value and the fallback, 6
     /// skills as length and entries; since adventure state hash v18, E08 T83b1, 7 a mine's
     /// resource and guards' count, 8 a boat tile; since v26, E08 T124b1, 9 a bank's level and its
-    /// artifacts as length and entries), then its values.
+    /// artifacts as length and entries; since v27, E08 T133a1, 10 a Black Market's stock as length
+    /// and entries), then its values.
     fn hash_into(&self, h: &mut StateHasher) {
         match self {
             Self::Nothing => h.write_u8(0),
@@ -171,6 +188,10 @@ impl CanonicalHash for Resolved {
                 h.write_u8(9);
                 h.write_u8(*level);
                 artifacts.hash_into(h);
+            }
+            Self::Stock(stock) => {
+                h.write_u8(10);
+                stock.hash_into(h);
             }
         }
     }
@@ -336,9 +357,10 @@ fn kind_of<'p>(part: &'p AdventureRuleset, object: &MapObject) -> Option<&'p Obj
 /// draws in its own shape: a chest (ADV-PIK-005), a gift with several prices (ADV-TCH-003), a
 /// Shrine without the map's spell (ADV-TCH-004), a Witch Hut (ADV-TCH-005, `ADV-QUIRK-21` for an
 /// RoE map's), a Scholar (ADV-TCH-006), a University (ADV-TCH-007), a find (ADV-PIK-009 to -012),
-/// the Pyramid (ADV-TCH-008) and, since E08 T124b1, a creature bank (ADV-BNK-002: [`banks::bank_draw`],
-/// its guards set as drawn). The random artifacts' marks are shared by the random artifacts, the
-/// chests, the finds and the banks.
+/// the Pyramid (ADV-TCH-008), since E08 T124b1 a creature bank (ADV-BNK-002: [`banks::bank_draw`],
+/// its guards set as drawn) and since T133a1 a Black Market (ADV-MKT-006:
+/// [`markets::stock_draw`]; a market without a stock draws nothing). The random artifacts' marks
+/// are shared by the random artifacts, the chests, the finds, the banks and the Black Markets.
 pub(super) fn resolve_rewards(
     core: &Ruleset,
     part: &AdventureRuleset,
@@ -421,6 +443,9 @@ pub(super) fn resolve_rewards(
                 let (guards, resolved) = banks::bank_draw(core, bank, &mut artifacts, draws);
                 object.guards = Some(guards);
                 resolved
+            }
+            (ObjectKind::Market(market), _) if !market.stock.is_empty() => {
+                markets::stock_draw(market, &mut artifacts, draws)
             }
             _ => continue,
         };

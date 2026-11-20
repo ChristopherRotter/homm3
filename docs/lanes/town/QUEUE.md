@@ -30,6 +30,15 @@ into rounds and the exit criteria, accepted by the user before anything is built
 
 ## Inbox
 
+- 2026-11-20 (the adventure lane, E08 T133a2, `adventure/e08-t133a2`; **for your increment 6's
+  planning, nothing to build**): the map's markets' checks are built (`h3_adventure::AdventureState`'s
+  `check_sale`, `sell`, `check_buy`, `buy`; `MarketError`; A-46 fixed as ADV-QUIRK-48: a purchase
+  refused before paying without room, `HeroChange::AddArtifact`'s check). Which resource a
+  creature's and an artifact's cost is read in is open (**ADV-Q60**: `[params.market]` naming it,
+  recommended, or the game passing your `TownParams::gold`); your Marketplace and Artifact
+  Merchants will price on the same rates, so the answer concerns you too. Decided at E08 T133b's
+  start.
+
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 

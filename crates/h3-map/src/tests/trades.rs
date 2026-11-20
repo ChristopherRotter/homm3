@@ -320,19 +320,21 @@ fn the_import_types_the_trades() {
     }
 }
 
-// covers: ADV-OBJ-003
+// covers: ADV-OBJ-003, ADV-MKT-001
 #[test]
-fn a_step_onto_a_trade_is_refused_until_t133_and_t134() {
-    // Until T133 (the markets) and T134 (the Altar, the Hill Fort and the factory) build their
-    // visits (increment 14's design note §10), a trade's entrance is refused as any unbuilt
-    // visit's (`effect` none): Red's hero, placed on the tile below each entrance (free: the
-    // pictures are four rows apart), reaches no point on it, the step onto it is `Visit` and the
-    // state stays as it was.
+fn a_step_onto_a_market_enters_it_and_onto_another_trade_is_refused_until_t134() {
+    // A market's visit is built (E08 T133a2): the step onto its entrance ends the move there (its
+    // window opens no decision until T133b, ADV-STUB-18). Until T134 builds the Altar's, the Hill
+    // Fort's and the factory's (increment 14's design note §10), their entrance is refused as any
+    // unbuilt visit's (`effect` none): Red's hero, placed on the tile below each entrance (free:
+    // the pictures are four rows apart), reaches no point on it, the step onto it is `Visit` and
+    // the state stays as it was.
     let rules = &*SOD;
     let raw = read_back(&w::write(&trades_map(|_| true)).unwrap());
     let setup = import(&raw, rules).unwrap();
     let red = PlayerId::new(0);
     assert_eq!(setup.map.objects.len(), PICTURES.len());
+    let mut markets = 0;
     for (index, object) in setup.map.objects.iter().enumerate() {
         let (column, row) = object.visitable.offsets().next().unwrap();
         let entrance = Pos::new(
@@ -348,19 +350,30 @@ fn a_step_onto_a_trade_is_refused_until_t133_and_t134() {
             .adventure()
             .reach(rules.core(), rules.adventure(), state.heroes(), hero)
             .unwrap();
-        assert_eq!(reach.points_left(entrance), None, "{index}");
         let before = state.state_hash();
         let path = vec![entrance];
-        let refused = apply(
+        let stepped = apply(
             &mut state,
             rules,
             Actor::Player(red),
             GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }),
             &mut Vec::new(),
         );
+        let kind = object
+            .object_type
+            .and_then(|ty| rules.adventure().object_type(ty))
+            .map(|ty| &ty.kind);
+        if let Some(ObjectKind::Market(_)) = kind {
+            markets += 1;
+            assert!(reach.points_left(entrance).is_some(), "{index}");
+            assert!(stepped.is_ok(), "{index}");
+            assert_eq!(state.adventure().heroes()[0].pos, entrance, "{index}");
+            continue;
+        }
+        assert_eq!(reach.points_left(entrance), None, "{index}");
         assert!(
             matches!(
-                refused,
+                stepped,
                 Err(GameCommandError::Adventure(AdventureCommandError::Visit {
                     step: 0
                 }))
@@ -369,4 +382,6 @@ fn a_step_onto_a_trade_is_refused_until_t133_and_t134() {
         );
         assert_eq!(state.state_hash(), before, "{index}");
     }
+    // The Black Market, the two Trading Posts' classes and the guild's pictures.
+    assert!(markets >= 4, "{markets}");
 }

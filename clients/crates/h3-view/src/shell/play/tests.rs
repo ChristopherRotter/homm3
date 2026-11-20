@@ -172,7 +172,7 @@ fn the_inputs_wait_for_the_notice_whose_ok_ends_play_with_the_main_menu() {
     assert_eq!(front.contexts(), [Context::Question]);
     assert_eq!(front.hovers(), Hovers::default());
     for t in [50, 100, 150] {
-        assert!(front.clock(t));
+        assert!(front.clock(t).changed);
     }
     // The notice: its OK (pressed, released over it) ends play with the main menu.
     assert_eq!(front.key(None, None, "A"), Did::default());

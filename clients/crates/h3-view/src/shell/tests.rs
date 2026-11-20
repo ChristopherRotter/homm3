@@ -245,7 +245,8 @@ fn each_screen_names_the_task_that_builds_it() {
     assert_eq!(Screen::Scenario(Game::New, Kind::Single).task(), "E27 M3");
     assert_eq!(Screen::Play { restart: true }.task(), "E24 M5");
     assert_eq!(Screen::HighScores.task(), "E27 M4 T1");
-    assert_eq!(Screen::Credits.task(), "E27 M4");
+    assert_eq!(Screen::Credits.task(), "E27 M4 T2");
+    assert_eq!(Screen::Lost.task(), "E27 M5");
 }
 
 #[test]
@@ -263,7 +264,7 @@ fn the_menus_and_the_multiplayer_dialog_are_built_the_others_stubs_or_not() {
             (Screen::Campaigns, Built::Stub),
             (Screen::Tutorial, Built::Stub),
             (Screen::HighScores, Built::Whole),
-            (Screen::Credits, Built::Stub),
+            (Screen::Credits, Built::Whole),
             (Screen::Play { restart: false }, Built::Whole),
             (Screen::GameType(Game::New), Built::Whole),
             (Screen::Multiplayer(Game::New), Built::Whole),

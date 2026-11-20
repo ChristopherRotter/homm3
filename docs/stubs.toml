@@ -64,6 +64,12 @@ epic   = "E26"
 # --- adventure (ADV-STUB-<n>) ---
 
 [[stub]]
+id     = "ADV-STUB-18"
+where  = "crates/h3-game/src/state.rs::GameState::settle_outcome"
+reason = "A market's visit (E08 T133a2, ADV-MKT-001) ends the move and gives AdventureOutcome::service, whose window the game does not open yet: the market's decision, its answers through check_sale and check_buy, the treasury's trade and transfer, the view and the wire are E08 T133b's (GAM-DEC-011, increment 14's design note section 13), which lifts it"
+epic   = "E08"
+
+[[stub]]
 id     = "ADV-STUB-8"
 where  = "crates/h3-game/src/legal.rs::default_answer"
 reason = "The system actor's default answer to a level-up (ADR-0017 point 6) is the original's choice (HER-LVL-006) with the setup's inputs (ArmyWorth::SETUP and the map's terrain shares), as at load (GAM-SET-002): the original's flag-set path when the dialog's time runs out reads the computer player's state with the army counted (survey E08-progression.md §10.4, ADV-Q17, decision 60), which the engine gets with E10"
