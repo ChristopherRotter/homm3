@@ -11,7 +11,7 @@ use core::fmt;
 
 use h3_adventure::{
     ALTAR_SLOTS, AdventureCommand, AdventureCommandError, AdventureEvent, AltarError, AltarPlaces,
-    ArmySlot, HireError, HireTarget, MarketError, ObjectTypeId, Pick, Pos, Viewers,
+    ArmySlot, HillFortError, HireError, HireTarget, MarketError, ObjectTypeId, Pick, Pos, Viewers,
 };
 use h3_content::{CreatureTypeId, Formation, HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, BattleResult, FortLevel, HeroId, PlayerId, TownId};
@@ -99,6 +99,9 @@ pub enum Answer {
     /// An Altar of Sacrifice's sacrifice or leaving (GAM-DEC-012, ADV-ALT-001 to -003; E08 T134a,
     /// increment 14's design note §14).
     Altar(AltarAnswer),
+    /// A Hill Fort's upgrade of a row or of all, or leaving (GAM-DEC-013, ADV-HFT-001, -002; E08
+    /// T134b1, increment 14's design note §15).
+    HillFort(HillFortAnswer),
     /// Closes a meeting (GAM-DEC-003), an army dialog (GAM-DEC-004; increment 6's `Decline`) or,
     /// since E08 T114a2, a map garrison's exchange (GAM-DEC-009).
     Close,
@@ -305,6 +308,29 @@ pub enum AltarAnswer {
     Leave,
 }
 
+/// A Hill Fort's answer (GAM-DEC-013; E08 T134b1, increment 14's design note §15; survey
+/// `E08-trades.md` §13, the original's `hill_fort_dialog_proc` 0x4E8850): a row's upgrade or all
+/// of them, each keeping the window open for more (the original's stays open, its rows computed
+/// again), or leaving. Nothing in it is trusted: the rows and their prices are the state's answer
+/// (ADR-0004); a refused answer changes nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HillFortAnswer {
+    /// Upgrades the stack at this slot of the hero's army (ADV-HFT-002; the original's row of
+    /// state 1, `hill_fort_upgrade_slot` 0x4E8500): the adventure's check
+    /// (`h3_adventure::AdventureState::check_upgrade`: a stack with an upgrade), then the
+    /// treasury ([`GameCommandError::CannotPay`]), then its price paid (`ResourcePaid` per
+    /// resource, the core's order; nothing for a free one) and the stack upgraded
+    /// (`StackChanged`).
+    Upgrade(u8),
+    /// Upgrades every stack that upgrades, in slot order (the original's All of the whole's state
+    /// 1): the adventure's check (`h3_adventure::AdventureState::check_upgrade_all`: some stack
+    /// upgrades), then the sum of their prices against the treasury
+    /// ([`GameCommandError::CannotPay`]), then each paid and upgraded as [`Self::Upgrade`]'s.
+    All,
+    /// Leaves the Hill Fort (`DecisionClosed`).
+    Leave,
+}
+
 impl ChestChoice {
     /// The adventure's pick of this answer.
     pub(crate) const fn pick(self) -> Pick {
@@ -408,6 +434,10 @@ pub enum GameCommandError {
     /// checks (the visit, the screen, the places, a kept artifact, an amount, the last creature,
     /// a total of 0).
     Altar(AltarError),
+    /// A Hill Fort's upgrade refused (GAM-DEC-013, ADV-HFT-002; E08 T134b1): the adventure's
+    /// checks (the visit, a row without an upgrade, no row that upgrades); the treasury is
+    /// [`Self::CannotPay`], checked after them.
+    HillFort(HillFortError),
 }
 
 impl fmt::Display for GameCommandError {
@@ -439,6 +469,7 @@ impl fmt::Display for GameCommandError {
             Self::Tavern(error) => write!(f, "{error}"),
             Self::Market(error) => write!(f, "{error}"),
             Self::Altar(error) => write!(f, "{error}"),
+            Self::HillFort(error) => write!(f, "{error}"),
         }
     }
 }
@@ -813,10 +844,24 @@ pub enum GameEvent {
         /// The Altar's anchor.
         anchor: Pos,
     },
+    /// A Hill Fort's decision opened for the visitor's owner (GAM-DEC-013, ADV-HFT-001; E08
+    /// T134b1, increment 14's design note §15, §17): its rows are its view
+    /// ([`crate::DecisionView::HillFort`]), its answers [`HillFortAnswer`]'s. Seen by the owner.
+    HillFortOpened {
+        /// The visitor's owner.
+        player: PlayerId,
+        /// The visiting hero.
+        hero: HeroId,
+        /// The Hill Fort's type.
+        object_type: ObjectTypeId,
+        /// The Hill Fort's anchor.
+        anchor: Pos,
+    },
     /// The player's meeting or army dialog closed (its `Close`; E08 T51b); since E08 T63a also
     /// its choice once answered (the answer's payment and effects follow) and its University
     /// left; since E08 T95b its hire dialog closed or a single creature's bought; since E09 T39a
-    /// a map Tavern closed or its hire made; since E08 T133b a market left. Seen by the owner.
+    /// a map Tavern closed or its hire made; since E08 T133b a market left; since T134a an Altar,
+    /// since T134b1 a Hill Fort. Seen by the owner.
     DecisionClosed {
         /// Its owner.
         player: PlayerId,

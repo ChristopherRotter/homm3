@@ -12,8 +12,8 @@ use alloc::vec::Vec;
 
 use h3_adventure::{
     AdventureOutcome, AdventureState, AltarVisit, ArmyRef, ArmySlot, Choice, ChoiceKind, Drowned,
-    Exchange, Garrison, HeroGains, HireDialog, HireSource, HireTarget, MarketVisit, Meeting,
-    ObjectTypeId, Offer, OfferKind, Pick, Pos, ServiceVisit, TavernVisit, TownReveal,
+    Exchange, Garrison, HeroGains, HillFortVisit, HireDialog, HireSource, HireTarget, MarketVisit,
+    Meeting, ObjectTypeId, Offer, OfferKind, Pick, Pos, ServiceVisit, TavernVisit, TownReveal,
     UniversityVisit, Weekday,
 };
 use h3_content::{ResourceId, SkillId};
@@ -40,6 +40,7 @@ use rests::{Held, Rest};
 mod altar;
 mod battle;
 mod day;
+mod hill_fort;
 mod hire;
 mod levels;
 mod manage;
@@ -73,7 +74,8 @@ struct PlayerState {
 /// a choice (GAM-DEC-005) and a University (GAM-DEC-006); since E08 T95b a hire dialog
 /// (GAM-DEC-008); since E08 T114a2 a map garrison's exchange (GAM-DEC-009), during which its owner
 /// manages the hero's army and the garrison's; since E09 T39a a map Tavern (GAM-DEC-010); since
-/// E08 T133b a market (GAM-DEC-011); since E08 T134a an Altar of Sacrifice (GAM-DEC-012).
+/// E08 T133b a market (GAM-DEC-011); since E08 T134a an Altar of Sacrifice (GAM-DEC-012); since
+/// E08 T134b1 a Hill Fort (GAM-DEC-013).
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Decision {
     /// An offer, answered by its owner.
@@ -184,6 +186,16 @@ enum Decision {
         /// The visit: the hero and the Altar.
         visit: AltarVisit,
     },
+    /// A Hill Fort's decision (GAM-DEC-013, ADV-HFT-001; E08 T134b1, increment 14's design note
+    /// §15; the original's Hill Fort dialog), open until its owner leaves it. The names only: its
+    /// rows (the hero's army, the upgrades, the prices) and their states (the treasury) are read
+    /// at each view and answer.
+    HillFort {
+        /// The visitor's owner, who answers it.
+        owner: PlayerId,
+        /// The visit: the hero and the Hill Fort.
+        visit: HillFortVisit,
+    },
 }
 
 /// What holds an army dialog's group (GAM-DEC-004 amended; E08 T84a): a join's (or a reward
@@ -240,7 +252,8 @@ impl Decision {
             | Self::Exchange { owner, .. }
             | Self::Tavern { owner, .. }
             | Self::Market { owner, .. }
-            | Self::Altar { owner, .. } => *owner == player,
+            | Self::Altar { owner, .. }
+            | Self::HillFort { owner, .. } => *owner == player,
             Self::Battle(battle) => battle.owners().contains(&Some(player)),
         }
     }
@@ -737,10 +750,11 @@ impl GameState {
             if outcome.thieves_guild {
                 town::thieves::tell_den(self, rules, player, sink);
             }
-            // rule: GAM-DEC-011, GAM-DEC-012
+            // rule: GAM-DEC-011, GAM-DEC-012, GAM-DEC-013
             match outcome.service {
                 Some(ServiceVisit::Market(visit)) => self.open_market(player, visit, sink),
                 Some(ServiceVisit::Altar(visit)) => self.open_altar(player, visit, sink),
+                Some(ServiceVisit::HillFort(visit)) => self.open_hill_fort(player, visit, sink),
                 None => {}
             }
         }
@@ -1130,6 +1144,10 @@ impl GameState {
             (Decision::Altar { visit, .. }, Answer::Altar(answer)) => {
                 self.answer_altar(rules, (player, at), &visit, answer, sink)
             }
+            // rule: GAM-DEC-013
+            (Decision::HillFort { visit, .. }, Answer::HillFort(answer)) => {
+                self.answer_hill_fort(rules, (player, at), &visit, answer, sink)
+            }
             _ => Err(GameCommandError::WrongAnswer),
         }
     }
@@ -1392,6 +1410,16 @@ impl GameState {
     pub fn altar(&self, player: PlayerId) -> Option<&AltarVisit> {
         match self.first_decision(player)? {
             Decision::Altar { visit, .. } => Some(visit),
+            _ => None,
+        }
+    }
+
+    /// The Hill Fort of `player`'s first open decision, if it is one (GAM-DEC-013, E08 T134b1):
+    /// the visiting hero and the Hill Fort. While it is open the player upgrades there or leaves
+    /// it.
+    pub fn hill_fort(&self, player: PlayerId) -> Option<&HillFortVisit> {
+        match self.first_decision(player)? {
+            Decision::HillFort { visit, .. } => Some(visit),
             _ => None,
         }
     }
@@ -2035,6 +2063,15 @@ impl CanonicalHash for GameState {
                 // E08 T134a (game state hash v36).
                 Decision::Altar { owner, visit } => {
                     h.write_u8(11);
+                    h.write_u8(owner.raw());
+                    h.write_u16(visit.hero.raw());
+                    h.write_len(visit.index);
+                    visit.object_type.hash_into(h);
+                    visit.anchor.hash_into(h);
+                }
+                // E08 T134b1 (game state hash v37).
+                Decision::HillFort { owner, visit } => {
+                    h.write_u8(12);
                     h.write_u8(owner.raw());
                     h.write_u16(visit.hero.raw());
                     h.write_len(visit.index);

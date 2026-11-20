@@ -63,8 +63,8 @@ mod tests;
 
 pub use command::{
     Actor, AltarAnswer, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameCommandError,
-    GameEvent, HireAnswer, MarketAnswer, NoopSink, SchoolChoice, Sink, SkillOffer, TavernAnswer,
-    UniversityAnswer, apply,
+    GameEvent, HillFortAnswer, HireAnswer, MarketAnswer, NoopSink, SchoolChoice, Sink, SkillOffer,
+    TavernAnswer, UniversityAnswer, apply,
 };
 pub use garrisons::MapGarrisonView;
 /// A map Tavern's visit (E09 T39a; `h3_adventure`'s type): what [`GameState::tavern`] gives.
@@ -84,6 +84,9 @@ pub use h3_adventure::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
 /// A choice's and a University's views (E08 T63a; `h3_adventure`'s types): what
 /// [`DecisionView::Choice`] and [`DecisionView::University`] show.
 pub use h3_adventure::{Choice, ChoiceKind, UniversityVisit};
+/// A Hill Fort's visit, its rows and its refusals (E08 T134b1; `h3_adventure`'s types): what
+/// [`GameState::hill_fort`], [`GameCommandError::HillFort`] and [`DecisionView::HillFort`] carry.
+pub use h3_adventure::{HillFortError, HillFortRow, HillFortVisit};
 /// A hire dialog, its army, source and refusals (E08 T95b; `h3_adventure`'s types): what
 /// [`GameState::hire_dialog`], [`GameEvent::HireOpened`], [`DecisionView::Hire`] and
 /// [`GameCommandError::Hire`] carry.
@@ -129,8 +132,9 @@ pub use legal::{
 };
 pub use manage::{Manage, ManageError};
 pub use observe::{
-    AltarView, DecisionView, GameObservation, GameReveal, HeroInfo, HireCreature, HireSeen,
-    HireView, LevelUpView, MarketView, PlayerView, Viewer, observe, project, reveal,
+    AltarView, DecisionView, GameObservation, GameReveal, HeroInfo, HillFortRowView, HillFortState,
+    HillFortView, HireCreature, HireSeen, HireView, LevelUpView, MarketView, PlayerView, Viewer,
+    observe, project, reveal,
 };
 pub use ruleset::{GameRuleset, RulesetMismatch};
 pub use setup::{
@@ -195,5 +199,6 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// a market's decision among the decisions (GAM-DEC-011: its tag 10, the owner, the hero, the
 /// market's object index, type and anchor). v36 (E08 T134a): an Altar of Sacrifice's decision
 /// among the decisions (GAM-DEC-012: its tag 11, the owner, the hero, the Altar's object index,
-/// type and anchor).
-pub const GAME_STATE_HASH_VERSION: u32 = 36;
+/// type and anchor). v37 (E08 T134b1): a Hill Fort's decision among the decisions (GAM-DEC-013:
+/// its tag 12, the owner, the hero, the Hill Fort's object index, type and anchor).
+pub const GAME_STATE_HASH_VERSION: u32 = 37;

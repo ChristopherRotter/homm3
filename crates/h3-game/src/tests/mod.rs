@@ -17,6 +17,7 @@ mod events;
 mod exchanges;
 mod garrisons;
 mod heroes;
+mod hill_fort;
 mod hiring;
 mod jumps;
 mod legal;
