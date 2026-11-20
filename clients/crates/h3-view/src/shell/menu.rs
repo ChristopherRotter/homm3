@@ -96,14 +96,13 @@ pub const TITLE: u16 = 105;
 /// The client's stubs (E27 M2 T6b2, T7; High Scores built since E27 M4 T1a, Credits since T2):
 /// each screen, the
 /// menu its notice shows over and the notice's OK's ending. The scenario screen's (a new single scenario's built since M3 T1a, the
-/// hot seat's since M3 T4a; the loads' until M4) shows over the game type menu it was reached
-/// from (by Campaign, Tutorial, Load Game's Single or the Multiplayer dialog), its OK back
-/// there. Play's (E27 M3 T6, CLT-STUB-13: until E24 M5 hosts the game) shows over the main menu
+/// hot seat's since M3 T4a, a single load's since M4 T4b1; the other loads' until M4 T5 and E20)
+/// shows over the game type menu it was reached from (by Campaign, Tutorial or Load Game's
+/// Multiplayer), its OK back there. Play's (E27 M3 T6, CLT-STUB-13: until E24 M5 hosts the game) shows over the main menu
 /// after the loading screen's fade ([`super::play`]), its OK the main menu.
-pub const STUBS: [(Screen, Kind, Ended); 7] = [
+pub const STUBS: [(Screen, Kind, Ended); 6] = [
     (Screen::Campaigns, Kind::GameType(Game::New), Ended::Back),
     (Screen::Tutorial, Kind::GameType(Game::New), Ended::Back),
-    scenario(Game::Load, ScenarioKind::Single),
     scenario(Game::Load, ScenarioKind::Multiplayer),
     scenario(Game::Load, ScenarioKind::Campaign),
     scenario(Game::Load, ScenarioKind::Tutorial),
@@ -760,6 +759,9 @@ pub struct Menus {
     /// The scenario screen as it opens (E27 M3 T1a): a new single scenario's, the maps listed and
     /// the kept choices in it.
     pub scenario: Scenario,
+    /// The scenario screen in its load mode as it opens (E27 M4 T4b1: a single load's,
+    /// [`Scenario::loading`]), the saves listed and the kept save in it.
+    pub load: Scenario,
     /// High Scores as it opens (E27 M4 T1a).
     pub scores: Scores,
     /// The credits as they open (E27 M4 T2).
@@ -810,6 +812,7 @@ impl Menus {
     ) -> Option<Front> {
         if let Some(Front::Scenario(left)) = &previous {
             self.scenario.keep(left);
+            self.load.keep(left);
         }
         // High Scores' tables outlive the dialog (E27 M4 T1b: the manager's, Reset's OK).
         if let Some(Front::Scores(left)) = &previous {
@@ -823,6 +826,10 @@ impl Menus {
             (Screen::Multiplayer(_), _) => None,
             (Screen::Scenario(Game::New, ScenarioKind::Single), _) => {
                 Some(Front::Scenario(Box::new(self.scenario.opened(hovers))))
+            }
+            // A single load's (E27 M4 T4b1): its saves as listed for this opening.
+            (Screen::Scenario(Game::Load, ScenarioKind::Single), _) => {
+                Some(Front::Scenario(Box::new(self.load.opened(hovers))))
             }
             // The hot seat's (E27 M3 T4a): the names its OK stored (`hot_seat_names` 0x69CA50).
             (

@@ -84,6 +84,8 @@ pub struct ScenarioLayout {
     pub description: DescriptionLook,
     /// The advanced options (E27 M3 T3a).
     pub advanced: super::scenario::AdvancedLook,
+    /// Load's DEF on Begin in the load mode (E27 M4 T4b1: `scnrlod.def`).
+    pub load_begin: String,
 }
 
 /// A cursor's DEF and frame.
@@ -302,6 +304,7 @@ pub fn names(layout: &ShellLayout) -> Vec<String> {
         names.extend(menu.titles.iter().cloned());
     }
     names.extend(layout.scenario.backgrounds.iter().cloned());
+    names.push(layout.scenario.load_begin.clone());
     names.extend([
         layout.loading.background.clone(),
         layout.loading.bar.clone(),

@@ -553,6 +553,7 @@ mod tests {
             ids,
             [
                 "shell.stub.campaigns",
+                "shell.stub.load",
                 "shell.stub.network",
                 "shell.stub.play",
                 "shell.stub.play-refused",

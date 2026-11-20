@@ -467,6 +467,7 @@ impl RandomMap {
                 offers: core::array::from_fn(|_| offers.clone()),
                 ..Heroes::default()
             },
+            saved: None,
         }
     }
 }

@@ -9,8 +9,8 @@ use alloc::vec::Vec;
 use h3_render::Bugs;
 
 use super::{
-    ClipEnd, INPUT_STEP, Input, Replay, Step, Stop, Take, UNTIL_LIMIT, UNTIL_STEP, parse, shown,
-    skips,
+    ClipEnd, INPUT_STEP, Input, Replay, Step, Stop, Take, UNTIL_LIMIT, UNTIL_STEP, held_presses,
+    parse, shown, skips,
 };
 use crate::shell::menu::Front;
 use crate::shell::menu::Kind as MenuKind;
@@ -111,9 +111,57 @@ fn the_steps_read_as_the_harness_reads_them() {
     );
     assert_eq!(read("settle:2.5"), Step::Pause);
     assert_eq!(read("wait:1"), Step::Pause);
-    for verb in ["freeze", "games-time", "poke", "key-hold"] {
+    for verb in ["freeze", "poke"] {
         assert_eq!(read(&format!("{verb}:x")), Step::Harness(verb.into()));
     }
+    // E27 M4 T4b1: the saves' times, a key held with the display's repeats.
+    assert_eq!(
+        read("games-time:1003826100"),
+        Step::GamesTime {
+            time: 1_003_826_100,
+            file: None
+        }
+    );
+    assert_eq!(
+        read("games-time:1009838340:AUTOSAVE.GM1"),
+        Step::GamesTime {
+            time: 1_009_838_340,
+            file: Some("AUTOSAVE.GM1".into())
+        }
+    );
+    assert_eq!(
+        read("key-hold:Down:0.3"),
+        Step::Input(Input::KeyHold("Down".into(), 1))
+    );
+    assert_eq!(
+        read("key-hold:Up:1.5"),
+        Step::Input(Input::KeyHold("Up".into(), 23))
+    );
+    assert_eq!(
+        read("key-hold:Up:2"),
+        Step::Input(Input::KeyHold("Up".into(), 35))
+    );
+    for bad in [
+        "games-time:x",
+        "games-time:",
+        "key-hold:Down",
+        "key-hold:Down:x",
+        "key-hold:Down:1.x",
+        "key-hold:Down:.5",
+        "key-hold::1",
+        "key-hold:Down:99999999",
+        "key-hold:Down:99999999999",
+        "key-hold:Down:4294967.999",
+    ] {
+        assert!(parse(bad).is_err(), "{bad}");
+    }
+    assert_eq!(
+        read("key-hold:Down:4294967.295"),
+        Step::Input(Input::KeyHold("Down".into(), held_presses(u32::MAX)))
+    );
+    // A held key skips the start as its press does.
+    assert!(skips(&Input::KeyHold("Down".into(), 3)));
+    assert!(!skips(&Input::KeyHold("F4".into(), 3)));
     // A box's buttons (E27 M4 T1b).
     assert_eq!(
         read("press:ok"),
@@ -1055,6 +1103,49 @@ fn begin_with_a_random_map_chosen_stops_the_replay_under_the_client_s_stub() {
     assert_eq!(
         stop,
         Some(Stop::Stub(Screen::Scenario(Game::New, Kind::Single)))
+    );
+}
+
+#[test]
+fn the_load_mode_takes_the_saves_times_and_a_held_key_and_stops_at_load() {
+    // E27 M4 T4b1: `scn-load`'s steps: the saves' times before the opening, Load Game's Single,
+    // a key held short (one press) and long (to the list's end), then Load: the client's notice.
+    let rows = |r: &Replay| match r.front() {
+        Some(Front::Scenario(s)) if s.is_load() => Some(s.rows()),
+        _ => None,
+    };
+    let steps = [
+        "until:main_menu",
+        "games-time:0",
+        "games-time:3600:small.GM1",
+        "click:645,192",
+        "check:load_game_menu",
+        "click:649,65",
+        "step:500",
+        "key-hold:Down:0.3",
+    ];
+    let (_, stop, r) = replay(false, &steps);
+    assert_eq!((stop, rows(&r)), (None, Some((Some(1), 0))));
+    assert_eq!(r.time(), 200 + 500 + 100);
+    let Some(Front::Scenario(s)) = r.front() else {
+        panic!("the load mode")
+    };
+    let times: Vec<i64> = s
+        .entries()
+        .iter()
+        .filter_map(|e| e.saved.map(|saved| saved.time))
+        .collect();
+    assert_eq!(times, [0, 0, 3600]);
+    let (_, stop, r) = replay_from(r, &["key-hold:Down:1.5"]);
+    assert_eq!((stop, rows(&r)), (None, Some((Some(2), 0))));
+    let (_, stop, r) = replay_from(r, &["key-hold:Up:1.5", "click:497,555"]);
+    assert_eq!(stop, None);
+    assert!(matches!(r.front(), Some(Front::Scenario(s)) if s.stubbed()));
+    let (seen, stop, _) = replay_from(r, &["shot:delete"]);
+    assert!(seen.is_empty());
+    assert_eq!(
+        stop,
+        Some(Stop::Stub(Screen::Scenario(Game::Load, Kind::Single)))
     );
 }
 

@@ -493,6 +493,12 @@ The user, 2026-11-19 (M3 T7's start):
 72. **T4 cut in two** (the user, 2026-11-20, at its start, as offered): T4a the load mode's
     reading and recordings (the harness and the docs, no client code; design §38), T4b the
     client's load mode and saves exact against them.
+73. **T4b cut at Delete** (the user, 2026-11-20, at its start, as offered): T4b1 the load mode's
+    screen and the client's saves listed (the folder and the names, the map's header, the date,
+    the save's difficulty and rating), the keys and a held key's repeats, the sorts, Load's and a
+    disabled difficulty's popups, exact against `scn-load` up to `easy-pressed`; T4b2 Delete's
+    question and its end, the notice with no saves, Load's end at play's stub, exact against the
+    rest of `scn-load`, `scn-load-last` and `scn-load-none`.
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
@@ -601,8 +607,9 @@ load mode), §3.12 to §3.14 (a load's rows).
 | T3a | The save file's engine part (decisions 69, 71; `cross-lane`): the adventure replay format v20, `Replay::players` (each player's human flag, faction's choice and hero's pick, recorded from the setup, set over the import by `Replay::setup` when verifying, none the import's), its `[[players]]` tables in `h3-files`' file, the 104 golden replays recorded again (only the version and the players' lines moved) | done 2026-11-20 (the adventure lane's inbox: its increment 14 takes v21) |
 | T3b | The save file (decisions 69, 71): the client's own file, its table (the names, bonuses, handicaps, the turn's duration, the save's name) beside the engine's replay of T3a, written and read with its version; a load's setup rebuilt (`Replay::setup` over the map's import) and its commands replayed by the engine; tests, no screen | done 2026-11-20 (`h3-battle-client`'s `save`; design §37) |
 | T4a | Load Game single's reading and recordings (§38; decision 72): the date's order, the load mode's name, Delete's end read; the original's saves of shipped maps made by maker recipes (the user's are a random map's), a pinned time zone, a held key's repeats (`h3shell.py`); `scn-load` recorded again (§6.4's fixes: a day above 12, three sizes, the held key), `scn-load-last` new (Delete of the last save) | done 2026-11-20 (25 and 9 shots, twice the same; `scn-load-none` as kept) |
-| T4b | Load Game single's client (§3.1, §3.3 to §3.6, §38): the client's saves listed (where kept and their file's name T4b's call; the map's header from the map the replay names, the file's local time, the difficulty shown, the turn's duration), the keys and a held key's repeats, the sort, Delete's question (688) and its end, the notice with none (686), Load's popup, the load to play's stub (as M3's begin: `save::load`'s `Loaded` kept for E24 M5); the viewer given client saves made to match the makers' (`made_games`) and `key-hold`; exact against `scn-load`, `scn-load-last`, `scn-load-none` | after T4a |
-| T5 | Load Game hot seat (§3.12 to §3.14, a load's rows: the saved choices, no arrows; §6.4's Random Map button in a load): hot-seat saves of shipped maps made as T4a's (`adv-load`'s are the user's random map's); exact against `mp-load`, `adv-load` | after T4b |
+| T4b1 | Load Game single's screen (§3.1, §3.3 to §3.6, §38, §39; decision 73): the load mode (title, no panel buttons or flags, Load, the save's difficulty on the disabled buttons and its rating), the client's saves listed (the folder `games`, `<name>.GM<n>`, the map's header from the map the replay names, a save it cannot list as a broken file, the file's local time), the keys and a held key's repeats (the viewer's `key-hold`, the window's), the sorts with CLT-Q138's stale buttons and rating, Load's and a disabled difficulty's popups, a right press without a popup redrawing nothing; the viewer given client saves made as the makers' (`h3-view save`, the makers' `viewer`) and `games-time`; Load and Delete the client's notice (CLT-STUB-15) | done 2026-11-20 (`scn-load` 19 of 25 exact: all but Delete's four, the load's clip and the map) |
+| T4b2 | Delete's question (688) both ways and its end (the version sort in the last direction, the first selected, the stale buttons and rating), the notice with no saves (686, Load disabled), Load's end at play's stub (as M3's begin: `save::load`'s `Loaded` kept for E24 M5; a save the load refuses its call), CLT-STUB-15 lifted; exact against `scn-load`'s Delete shots, `scn-load-last`, `scn-load-none` (`scn-load`'s `load` clip and `map` are play's, M5's) | after T4b1 |
+| T5 | Load Game hot seat (§3.12 to §3.14, a load's rows: the saved choices, no arrows; §6.4's Random Map button in a load): hot-seat saves of shipped maps made as T4a's (`adv-load`'s are the user's random map's); exact against `mp-load`, `adv-load` | after T4b2 |
 | T6 | M4's closure: a fresh reviewer, M4's review list to the user, M4 to the archive, M5's refinement once the shell hosts play (else its prerequisites recorded) | after T5 |
 
 **M4's review list** (the agent's calls, *provisional*, for T6):
@@ -679,6 +686,29 @@ load mode), §3.12 to §3.14 (a load's rows).
     offset); the display's auto-repeat off at each run's start, on only for `key-hold`, whose
     repeats' count follows real time (a recipe holds a key until the list's end, so it does not
     matter).
+24. (T4b1) The client's saves (design §39.1): the folder `games` in the working directory (the
+    window's `--games` names another), a save's file `<name>.GM<n>` as the original's (the rows
+    show the same names), up to 5 000 files of `*.gm?` read in their names' order; the folder read
+    again at each opening of the load mode (the window), a replay's once.
+25. (T4b1) A save the client cannot list (it does not read, its replay's header the rules
+    refuse, its map missing or moved) shows as the original's broken file (GENRLTXT 431 and 505,
+    no map's columns, difficulty Easy); the full load (the commands replayed) is Load's, T4b2's.
+26. (T4b1) A save's date at the zone's present offset from SDL (`h3_sdl::local_offset`:
+    `localtime_r`'s `TZ` on Linux, Windows' zone), as the original's `FileTimeToLocalFileTime`;
+    no time-zone crate.
+27. (T4b1) A right press without a popup redraws nothing (`dialog_right_click` 0x5FF790 read:
+    the redraw follows a popup alone), but on the description's box (its scrolling text,
+    `scn-long-text` right-bar) and on the players' items 362 to 385 (their own cases redraw);
+    M3's "redrawn whole" for the others was an inference no recording told apart.
+28. (T4b1) The shell's window takes a held key's repeats on the scenario screen alone (the
+    original queues every key down everywhere; the other screens' keys were not recorded held);
+    the viewer gives `key-hold`'s presses by Xvfb's rate (1 under 660 ms, then one each 40 ms).
+29. (T4b1) The autosave known by its file's name: the panel's name GENRLTXT 77 where the file
+    begins with that text, the name's sort's lead where it begins `AUTOSAVE.`, both any case (the
+    original's compares' case not read).
+30. (T4b1) The made saves (`h3-view save`, a maker's `viewer` table, left out of its digest): the
+    single player's colour the map's, the advanced options untouched, seed 1, every player's End
+    Turn until the day; the computers make no moves (the list shows no more of them).
 
 ## Dependencies and boundaries
 

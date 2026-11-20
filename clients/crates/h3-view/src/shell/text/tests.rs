@@ -24,7 +24,7 @@ fn a_screen_is_described_by_its_name_its_task_and_its_words() {
     );
     assert_eq!(
         describe(Screen::Scenario(Game::Load, Kind::Tutorial)),
-        "scenario (load game, tutorial) [E27 M3]: begin back"
+        "scenario (load game, tutorial) [CLT-Q84]: begin back"
     );
     assert_eq!(
         describe(Screen::Play { restart: true }),

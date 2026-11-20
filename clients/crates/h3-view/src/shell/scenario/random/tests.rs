@@ -529,9 +529,9 @@ fn a_right_press_on_the_tab_shows_its_item_s_help_a_disabled_count_s_too() {
     assert!(s.right(at(TEAMS + 1)).changed);
     assert_eq!(s.over, Over::Help(TEAMS + 1));
     assert!(s.right_release().changed);
-    // Hidden, the tab's items show none.
+    // Hidden, the tab's items show none (nothing: E27 M4 T4b1).
     click(&mut s, [514, 115]);
-    assert!(s.right(at(281)).changed);
+    assert_eq!(s.right(at(281)), Did::default());
     assert_eq!(s.over, Over::Nothing);
 }
 

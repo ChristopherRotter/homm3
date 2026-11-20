@@ -3139,6 +3139,32 @@ original = [{ at = "ARRAYTXT:229" }]
 id = "shell.scenario.sizes"
 original = [{ at = "GENRLTXT:511" }]
 
+# The load mode (E27 M4 T4b1; design §3.1 to §3.5, §38.1): its title (ArrayTxt.txt 230), the
+# autosave's name in the panel (GENRLTXT 77), a save's date (the file's local time, "%d/%d/%d -
+# %d:%02d", 0x6837C0: the month, the day, the year, the hour and the minute with two digits), and
+# a save the client cannot read listed as the original lists a broken file (GENRLTXT 431 its name,
+# 505 its description).
+[[key]]
+id = "shell.scenario.load-title"
+original = [{ at = "ARRAYTXT:230" }]
+
+[[key]]
+id = "shell.scenario.autosave"
+original = [{ at = "GENRLTXT:77" }]
+
+[[key]]
+id = "shell.scenario.date"
+args = { month = "number", day = "number", year = "number", hour = "number", minute = "text" }
+original = [{ at = "EXE:0x6837C0", printf = ["month", "day", "year", "hour", "minute"] }]
+
+[[key]]
+id = "shell.scenario.broken-name"
+original = [{ at = "GENRLTXT:431" }]
+
+[[key]]
+id = "shell.scenario.broken"
+original = [{ at = "GENRLTXT:505" }]
+
 [[key]]
 id = "shell.scenario.players"
 args = { players = "number", humans = "number" }
@@ -3980,6 +4006,11 @@ id = "shell.stub.scenario"
 # scenario screen.
 [[key]]
 id = "shell.stub.random-map"
+
+# E27 M4 T4b1: Load and Delete on the load mode's screen (CLT-STUB-15: until T4b2 builds Delete's
+# question and the load).
+[[key]]
+id = "shell.stub.load"
 
 # E27 M3 T6: play's start after a begin (CLT-STUB-13, decision 44: until E24 M5 hosts the game),
 # over the main menu after the loading screen's fade; and the engine's refusal of the setup there.

@@ -11,7 +11,7 @@ mod situation;
 use std::process::ExitCode;
 
 use h3_battle_client::{
-    account, connect, gate, render, sequences, shell, sprite, text, video, window,
+    account, connect, gate, render, saves, sequences, shell, sprite, text, video, window,
 };
 
 const USAGE: &str = "\
@@ -215,8 +215,14 @@ commands:
           first unless its key is kept here, then the new one): the key so far stays due at
           every server in the pins file (default pins.txt), where `connect` and `window
           --server` re-key the account at their next login.
+  save --map <file> --difficulty <0-4> [--day <n>] --name <name> --out <file> [--install <dir>]
+          a saved game of the shell (E27 M4 T4b1: the harness's made saves): a single game
+          begun on the installation's map <file> at the difficulty (0 easy to 4 impossible),
+          the single player's colour the map's, each player's turn ended until day <n>
+          (default 1) begins; written to <file> as the load mode lists it.
   shell [--script <file> | --steps <file> --frames <dir> [--pointer <x>,<y>] [--input-step <ms>]
-        | --window [--scale <n>] [--keys <file>] [--scores <file>]] [--no-intro] [--install <dir>]
+        | --window [--scale <n>] [--keys <file>] [--scores <file>]] [--games <dir>] [--no-intro]
+        [--install <dir>]
           the game shell's frame (E27 M2 T3a, T4). Headless by words: prints the screen on (the
           start's clips, or with --no-intro the main menu), the task that builds it and the
           words it takes; each word read (a line of standard input, or of <file>, echoed) ends
@@ -229,7 +235,8 @@ commands:
           step the viewer cannot take (h3shell.py drawn compares them with the original's).
           --window: the built screens drawn in a window (the others black), the words still
           read from standard input; High Scores' tables from the scores file (default
-          scores.toml here; E27 M4 T1b), written as Reset resets them. The assets from <dir>
+          scores.toml here; E27 M4 T1b), written as Reset resets them. The load mode lists
+          the saves of --games (default games here; E27 M4 T4b1). The assets from <dir>
           (default $H3_INSTALL, then original-data/install).
   help    show this message
 ";
@@ -266,6 +273,10 @@ fn main() -> ExitCode {
             },
             "sequences" => match sequences::Options::parse(rest) {
                 Ok(options) => sequences::run(&options),
+                Err(message) => usage_error(&message),
+            },
+            "save" => match saves::Options::parse(rest) {
+                Ok(options) => saves::run(&options),
                 Err(message) => usage_error(&message),
             },
             "shell" => match shell::Options::parse(rest) {

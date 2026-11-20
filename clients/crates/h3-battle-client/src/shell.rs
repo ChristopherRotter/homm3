@@ -140,12 +140,15 @@ pub struct Options {
     /// The window's scores file (E27 M4 T1b: `--scores`; else `scores.toml` here, beside the
     /// settings' and the keys', *provisional*).
     scores: Option<PathBuf>,
+    /// The saves' folder (E27 M4 T4b1: `--games`; else `games` here, *provisional*): the load
+    /// mode lists its saves, a replay's the harness's made saves.
+    games: Option<PathBuf>,
 }
 
 impl Options {
     /// Parses `[--script <file> | --steps <file> --frames <dir> [--pointer <x>,<y>]
     /// [--input-step <ms>] [--backgrounds <n>,…] [--maps <file>] | --window [--scale <n>]
-    /// [--keys <file>] [--scores <file>]] [--no-intro]
+    /// [--keys <file>] [--scores <file>]] [--games <dir>] [--no-intro]
     /// [--video-quality high|low] [--effects <0..9>] [--install <dir>]`; the installation
     /// defaults to `$H3_INSTALL`, then the repository's `original-data/install`.
     ///
@@ -162,7 +165,7 @@ impl Options {
         let (mut pointer, mut input_step, mut scale) = (None, None, None);
         let (mut intro, mut window, mut bink_video) = (true, false, true);
         let (mut effects, mut keys, mut backgrounds, mut maps) = (None, None, None, None);
-        let mut scores = None;
+        let (mut scores, mut games) = (None, None);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -182,6 +185,7 @@ impl Options {
                 "--scale" => scale = Some(number(&value()?)?),
                 "--keys" => keys = Some(PathBuf::from(value()?)),
                 "--scores" => scores = Some(PathBuf::from(value()?)),
+                "--games" => games = Some(PathBuf::from(value()?)),
                 "--window" => window = true,
                 "--no-intro" => intro = false,
                 "--effects" => {
@@ -249,7 +253,15 @@ impl Options {
                 .unwrap_or_else(|| manifest.join("../../../original-data/install")),
             keys,
             scores,
+            games,
         })
+    }
+
+    /// The saves' folder: `--games`'s, else [`crate::saves::GAMES`] in the working directory.
+    fn games(&self) -> PathBuf {
+        self.games
+            .clone()
+            .unwrap_or_else(|| PathBuf::from(crate::saves::GAMES))
     }
 }
 
@@ -312,7 +324,10 @@ pub fn run(options: &Options) -> ExitCode {
         // A replay's High Scores start from the defaults (as the recipes' runs: no HiScore.dat)
         // and write no file.
         Mode::Replay { maps, .. } => maps_named(maps.as_deref())
-            .and_then(|only| Drawer::load(&options.install, Bugs::Original, only.as_deref(), None))
+            .and_then(|only| {
+                let given = (only.as_deref(), options.games());
+                Drawer::load(&options.install, Bugs::Original, given, None)
+            })
             .and_then(|drawer| replay_steps(options, &drawer)),
         Mode::Window(scale) => {
             let path = options
@@ -322,7 +337,8 @@ pub fn run(options: &Options) -> ExitCode {
             scores_text(&path)
                 .and_then(|text| {
                     let file = text.as_deref().map(|t| (path.as_path(), t));
-                    Drawer::load(&options.install, Bugs::Fixed, None, file)
+                    let given = (None, options.games());
+                    Drawer::load(&options.install, Bugs::Fixed, given, file)
                 })
                 .and_then(|drawer| in_window(options, *scale, &drawer, &path))
         }
@@ -407,6 +423,10 @@ struct Drawer {
     rules: GameRuleset,
     /// Play's notice when the engine refuses the begin's setup (T6: `shell.stub.play-refused`).
     refused: MessageBox,
+    /// The saves' folder and what a save the client cannot list shows (E27 M4 T4b1: the window
+    /// lists the folder again at each opening of the load mode).
+    games: PathBuf,
+    broken: crate::saves::Broken,
 }
 
 impl Drawer {
@@ -416,7 +436,7 @@ impl Drawer {
     fn load(
         install: &Path,
         bugs: Bugs,
-        maps: Option<&[String]>,
+        (maps, games): (Option<&[String]>, PathBuf),
         scores: Option<(&Path, &str)>,
     ) -> Result<Self, String> {
         let path = assets::clients_dir().join("layouts").join("shell.toml");
@@ -437,11 +457,11 @@ impl Drawer {
             batch.add(name, &bytes).map_err(|e| e.to_string())?;
         }
         let pictures = creature_pictures(&batch, creature_defs);
-        let (menus, rules, refused) = menus(
+        let (menus, rules, refused, broken) = menus(
             &layout,
             (&batch, &tables),
             &lods,
-            (install, maps),
+            (install, maps, &games),
             (scores_tables, pictures),
             bugs,
         )?;
@@ -486,6 +506,8 @@ impl Drawer {
             button,
             rules,
             refused,
+            games,
+            broken,
         })
     }
 
@@ -658,10 +680,10 @@ fn menus(
     layout: &ShellLayout,
     (batch, tables): (&Batch, &h3_view::tables::Tables),
     lods: &Lods,
-    (install, maps): (&Path, Option<&[String]>),
+    (install, maps, games): (&Path, Option<&[String]>, &Path),
     (scores_tables, pictures): (ScoresTables, Pictures),
     bugs: Bugs,
-) -> Result<(Menus, GameRuleset, MessageBox), String> {
+) -> Result<(Menus, GameRuleset, MessageBox, crate::saves::Broken), String> {
     let exe = crate::text::executable(install)?;
     let catalogue = crate::log::catalogue(tables, lods, &exe)?;
     // The game's rules (E27 M3 T3b1: the maps' heroes; T3b2: the hero types' classes).
@@ -861,7 +883,39 @@ fn menus(
         ],
         // Begin with a random map chosen (T5b): the client's stub (CLT-Q92).
         random_stub: Some(laid("shell.stub.random-map", Style::Ok)),
+        // The load mode (E27 M4 T4b1): its title, the autosave's name, a save's date (its
+        // placeholders kept for the screen to fill), Load's and Delete's stub (CLT-STUB-15).
+        load_title: text("shell.scenario.load-title"),
+        autosave: text("shell.scenario.autosave"),
+        date: catalogue.text(
+            "shell.scenario.date",
+            &["month", "day", "year", "hour", "minute"]
+                .iter()
+                .fold(Args::new(), |args, name| {
+                    args.text(name, &format!("{{{{{name}}}}}"))
+                }),
+        ),
+        load_stub: Some(laid("shell.stub.load", Style::Ok)),
     };
+    // A save the client cannot list (E27 M4 T4b1: GENRLTXT 431, 505).
+    let broken = crate::saves::Broken {
+        name: text("shell.scenario.broken-name"),
+        description: text("shell.scenario.broken"),
+    };
+    // The load mode's screen (E27 M4 T4b1): the saves of `games`, their dates at the zone's
+    // present offset.
+    let offset = h3_sdl::local_offset().unwrap_or(0);
+    let load = Scenario::new(
+        layout.scenario.dialog.clone(),
+        (
+            layout.scenario.list.clone(),
+            layout.scenario.description.clone(),
+        ),
+        scenario_texts.clone(),
+        crate::saves::entries(games, install, &rules, &broken),
+        bugs,
+    )
+    .loading(&layout.scenario.load_begin, offset);
     // Play's notice when the engine refuses the begin's setup (T6).
     let refused = laid("shell.stub.play-refused", Style::Ok);
     let menus = Menus {
@@ -886,6 +940,7 @@ fn menus(
             bugs,
         )
         .with_random_offers(crate::maps::random_offers(&rules)),
+        load,
         // High Scores (E27 M4 T1a).
         scores: Scores::new(
             layout.high_scores.clone(),
@@ -915,7 +970,7 @@ fn menus(
             bugs,
         ),
     };
-    Ok((menus, rules, refused))
+    Ok((menus, rules, refused, broken))
 }
 
 /// The advanced options' texts (E27 M3 T3a): the catalogue's `shell.advanced.*` and, for the
@@ -1227,10 +1282,13 @@ fn stopped(k: usize, stop: &Stop) -> String {
                 screen.task()
             )
         }
-        // The network modes' notice (CLT-STUB-6), or Begin's with a random map chosen (E27 M3 T5b:
-        // the original generates it; CLT-Q92, decision 13).
+        // The network modes' notice (CLT-STUB-6), Begin's with a random map chosen (E27 M3 T5b:
+        // the original generates it; CLT-Q92, decision 13), or the load mode's Load and Delete
+        // (E27 M4 T4b1, CLT-STUB-15).
         Stop::Stub(screen) => {
             let why = match screen {
+                // E27 M4 T4b1: Load and Delete until T4b2.
+                Screen::Scenario(Game::Load, _) => "CLT-STUB-15, E27 M4 T4b2: Delete and the load",
                 Screen::Scenario(..) => "a random map: CLT-Q92, no generator",
                 _ => "CLT-STUB-6, E28",
             };
@@ -1491,6 +1549,10 @@ fn in_window(
             || matches!(&front, Some(Front::Credits(_)));
         // The edits' typing (T7b): text input while one has the focus.
         win.set_text_input(front.as_ref().is_some_and(Front::typing));
+        // A held key's repeats on the scenario screen (E27 M4 T4b1: the original queues every key
+        // down, `input_key_message` 0x4EC0E0, a repeat's too; *provisional*: the other screens
+        // take none, design §16.4).
+        win.set_key_repeats(matches!(front, Some(Front::Scenario(_))));
         let events = win.wait(if playing || fading { 5 } else { 50 });
         let mut inputs = if playing {
             Vec::new()
@@ -1680,6 +1742,14 @@ fn in_window(
         // E24-design §3.11).
         if on != Some(shell.screen()) {
             on = Some(shell.screen());
+            // The load mode's saves listed anew at each opening (E27 M4 T4b1: the original reads
+            // its folder at each one).
+            if shell.screen() == Screen::Scenario(Game::Load, h3_view::shell::Kind::Single) {
+                let install = options.install.as_path();
+                let saves =
+                    crate::saves::entries(&drawer.games, install, &drawer.rules, &drawer.broken);
+                menus.load.set_entries(saves);
+            }
             front = menus.front(shell.screen(), previous.take(), pointer.unwrap_or(PARK));
             // The scenario screen's background, the client's own draw (E27 M3 T1a, a look):
             // `random_between(1, 100) < 51` gives `gamselb1.pcx`.

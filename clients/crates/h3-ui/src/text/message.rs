@@ -74,7 +74,8 @@ impl Message {
     /// An original row with its `printf` specifiers named in order (`%s` and `%d`; `%%` is a
     /// percent sign), each checked against the kind `kind` gives for its name. A `%+d` (or
     /// `%+i`) is a signed number the caller writes with its sign: a text argument (E17 M6
-    /// T2a2b2, the morale and luck descriptions' spells line, ARRAYTXT 121).
+    /// T2a2b2, the morale and luck descriptions' spells line, ARRAYTXT 121); so is a `%02d`, a
+    /// number the caller writes with two digits at least (E27 M4 T4b1, a save's date).
     ///
     /// # Errors
     /// The first problem found, as [`PrintfError`].
@@ -108,6 +109,15 @@ impl Message {
                         Kind::Text
                     }
                     _ => return Err(PrintfError::Specifier(Some('+'))),
+                },
+                // `%02d` (E27 M4 T4b1, a save's date: its minute): a number the caller writes
+                // with two digits at least, a text argument as `%+d`'s.
+                Some('0') => match (chars.next(), chars.next()) {
+                    (Some((_, '2')), Some((_, 'd'))) => {
+                        width = 4;
+                        Kind::Text
+                    }
+                    _ => return Err(PrintfError::Specifier(Some('0'))),
                 },
                 other => return Err(PrintfError::Specifier(other)),
             };

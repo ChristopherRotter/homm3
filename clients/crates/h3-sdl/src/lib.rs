@@ -1474,9 +1474,43 @@ pub fn load_wav(bytes: &[u8], whole: bool) -> Result<(u32, u16, Vec<i16>), Strin
     }
 }
 
+/// The system's present offset of local time from UTC, in seconds (E27 M4 T4b1: a save's date on
+/// the scenario screen's load mode, as the original's `FileTimeToLocalFileTime` converts a file's
+/// time by the zone's present bias whatever the file's date; design §38.1): SDL's local date of
+/// now (`SDL_GetCurrentTime`, `SDL_TimeToDateTime` with its local flag: the C library's
+/// `localtime_r` and its `TZ`, Windows' time zone). None when SDL cannot tell.
+#[must_use]
+pub fn local_offset() -> Option<i32> {
+    let mut now: SDL_Time = 0;
+    let mut date = SDL_DateTime {
+        year: 0,
+        month: 0,
+        day: 0,
+        hour: 0,
+        minute: 0,
+        second: 0,
+        nanosecond: 0,
+        day_of_week: 0,
+        utc_offset: 0,
+    };
+    // SAFETY: both write only the value they are given; neither needs SDL initialised.
+    unsafe {
+        if !SDL_GetCurrentTime(&raw mut now) || !SDL_TimeToDateTime(now, &raw mut date, true) {
+            return None;
+        }
+    }
+    Some(date.utc_offset)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_local_offset_is_within_a_day() {
+        let offset = local_offset().expect("SDL tells the local offset");
+        assert!(offset.abs() < 24 * 3600, "{offset}");
+    }
 
     #[test]
     fn the_scale_fits() {
