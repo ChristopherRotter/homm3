@@ -204,15 +204,12 @@ impl AdventureState {
     /// adventure event (increment 14's design note §12).
     // rule: ADV-MKT-005
     pub fn sell(&mut self, sale: Sale) -> ArmySlot {
-        if let Some(hero) = self.hero_mut(sale.hero)
-            && let Some(at) = hero.army.iter().position(|stack| stack.slot == sale.slot)
-        {
-            let stack = &mut hero.army[at];
-            stack.count = stack.count.saturating_sub(sale.count);
-            if stack.count == 0 {
-                hero.army.remove(at);
-            }
-        }
+        // The checked hero and slot: no branch for a hero or a slot the check did not find.
+        self.hero_mut(sale.hero).into_iter().for_each(|hero| {
+            let sold = hero.army.iter_mut().filter(|stack| stack.slot == sale.slot);
+            sold.for_each(|stack| stack.count = stack.count.saturating_sub(sale.count));
+            hero.army.retain(|stack| stack.count > 0);
+        });
         ArmySlot {
             army: ArmyRef::Hero(sale.hero),
             slot: sale.slot,
