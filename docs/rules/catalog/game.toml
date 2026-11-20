@@ -826,6 +826,30 @@ quirks   = ["ADV-QUIRK-50"]
   confidence = "high"
 
 [[rule]]
+id       = "GAM-DEC-013"
+title    = "A Hill Fort's decision: a row's upgrade or all until its Leave"
+context  = "game"
+status   = "implemented"
+summary  = "A Hill Fort's visit (`AdventureOutcome::service`, ADV-HFT-001: a step onto its entrance, or a Revisit) opens as the visitor's owner's decision (`Decision::HillFort`; E08 T134b1, increment 14's design note section 15; the original's Hill Fort dialog), whatever its army holds and its treasury pays: told to the owner alone as `HillFortOpened` (the hero, the Hill Fort's type and anchor). It blocks its owner's `EndTurn` as every decision. Its answers (`Answer::HillFort`): `Upgrade(slot)` (ADV-HFT-002: the adventure's check of the slot's row, `GameCommandError::HillFort(NoUpgrade)` else, then the treasury, `CannotPay`), `All` (every row that upgrades, `GameCommandError::HillFort(Nothing)` when none does, then the sum of their prices against the treasury, `CannotPay`), each paying its rows in slot order (`ResourcePaid` per resource in the core's order, nothing for a free one) and upgrading their stacks (`StackChanged` each), the Hill Fort staying open (its rows computed again); each refusal changes nothing (ADR-0004: the rows and prices are the state's); `Leave`, its default answer too, closes it (`DecisionClosed`). Nothing is tested at the press but the states, as the original's. Listed while open (`legal_commands`): `Leave` alone until E08 T135a lists the upgrades of state 1 and `All` (design note section 18). Its view, the owner's: `DecisionView::HillFort` (the hero, the Hill Fort by type and anchor, each row with its state, the original's 0, 1, 2: `HillFortState::NoUpgrade`, `Affordable`, `TooDear` against the treasury; the whole's price, the sum of the rows' that upgrade, and its state). In the game state hash as its kind 12 (the owner, the hero, the Hill Fort's object index, type and anchor; game state hash v37). On the env's encoding (v16) its `Leave` is the closing role."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md section 13): hill_fort_dialog_run 0x4E7E90 (hill_fort_rows 0x4E7EB0, then the modal loop), hill_fort_dialog_proc 0x4E8850 (a row's button calls hill_fort_upgrade_slot 0x4E8500: state 1 upgrades and pays, else a message; All, item 204, the whole's state 1 upgrades every row of state 1 in slot order; the rows computed again after either; the whole's state +0x298)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-14.md (survey E08-trades.md section 21): E14-12 (every row state 1, the whole 2 243 gold and 2 gems), E14-13 (the Pegasi state 2, the whole state 2, All refused with nothing paid), E14-14 (an upgrade paid without a message)"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 point 6 as amended by E08 T131 (increment 14's decisions, their answers, their Leave as the system's default); increment 14's design note E08-design.md sections 15, 17 and 18; E08 decisions 373, 384, 387"
+  confidence = "high"
+
+[[rule]]
 id       = "GAM-BAT-001"
 title    = "A battle on the map: its sides, its setup, its seeds, a decision its players own"
 context  = "game"

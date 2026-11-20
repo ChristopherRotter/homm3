@@ -14,8 +14,8 @@ use alloc::vec::Vec;
 
 use h3_adventure::{
     AdventureObservation, AdventureReveal, AltarOffers, BitGrid, Choice, GarrisonHeroView,
-    HeroView, HireSource, HireTarget, MarketOffers, ObjectTypeId, Offer, Pos, UniversityVisit,
-    Viewers,
+    HeroView, HillFortRow, HireSource, HireTarget, MarketOffers, ObjectTypeId, Offer, Pos,
+    UniversityVisit, Viewers,
 };
 use h3_content::{CreatureTypeId, HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
@@ -168,6 +168,55 @@ pub enum DecisionView {
     /// An Altar of Sacrifice (GAM-DEC-012, ADV-ALT-001 to -003; E08 T134a, increment 14's design
     /// note §14), answered `Altar`: a sacrifice of artifacts or creatures, or leaving it.
     Altar(AltarView),
+    /// A Hill Fort (GAM-DEC-013, ADV-HFT-001, -002; E08 T134b1, increment 14's design note §15),
+    /// answered `HillFort`: a row's upgrade, all of them, or leaving it.
+    HillFort(HillFortView),
+}
+
+/// A Hill Fort's decision as its owner sees it (ADV-HFT-002, GAM-DEC-013; E08 T134b1, increment
+/// 14's design note §15; survey `E08-trades.md` §13): the hero, the Hill Fort by type and anchor
+/// (never by index, ADR-0016 point 6), each stack's row with its state against the owner's
+/// treasury, and the whole's price and state, as the original computes them at each step (so a
+/// client and the env need no copy of the computation; the answers are checked against the
+/// state, never against this).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HillFortView {
+    /// The visiting hero.
+    pub hero: HeroId,
+    /// The Hill Fort's type.
+    pub object_type: ObjectTypeId,
+    /// The Hill Fort's anchor.
+    pub anchor: Pos,
+    /// Each stack of the hero's army in its order, with its state.
+    pub rows: Vec<HillFortRowView>,
+    /// The whole's price: the sum of the rows' that upgrade, by resource in the core's order.
+    pub all: Vec<(ResourceId, u32)>,
+    /// The whole's state (the original's +0x298): [`HillFortState::NoUpgrade`] when no row
+    /// upgrades, [`HillFortState::Affordable`] when the treasury pays the whole's price, else
+    /// [`HillFortState::TooDear`].
+    pub all_state: HillFortState,
+}
+
+/// A row of a Hill Fort's view ([`HillFortView`]): the adventure's row (the stack, its upgrade,
+/// the upgrade's price) and its state.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HillFortRowView {
+    /// The row (`h3_adventure::AdventureState::hill_fort_rows`).
+    pub row: HillFortRow,
+    /// Its state.
+    pub state: HillFortState,
+}
+
+/// A Hill Fort's row's or whole's state (GAM-DEC-013; survey `E08-trades.md` §13: the original's
+/// 0, 1 and 2), against the owner's treasury at each step.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HillFortState {
+    /// No upgrade (0): the stack's creature has none, or no row upgrades.
+    NoUpgrade,
+    /// Every resource of the price within the treasury (1): the upgrade is legal.
+    Affordable,
+    /// Some resource of the price beyond the treasury (2).
+    TooDear,
 }
 
 /// An Altar of Sacrifice's decision as its owner sees it (ADV-ALT-001 to -003, GAM-DEC-012; E08
@@ -423,6 +472,12 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
             .or_else(|| {
                 let visit = state.altar(player)?;
                 Some(DecisionView::Altar(state.altar_view(rules, visit)))
+            })
+            .or_else(|| {
+                let visit = state.hill_fort(player)?;
+                Some(DecisionView::HillFort(
+                    state.hill_fort_view(rules, player, visit),
+                ))
             }),
         heroes: hero_infos(state, &adventure.heroes, &adventure.garrison_heroes),
         adventure,
@@ -597,6 +652,7 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::TavernOpened { player: owner, .. }
         | GameEvent::MarketOpened { player: owner, .. }
         | GameEvent::AltarOpened { player: owner, .. }
+        | GameEvent::HillFortOpened { player: owner, .. }
         | GameEvent::DecisionClosed { player: owner }
         | GameEvent::GroupLost { player: owner, .. }
         | GameEvent::TimedEventFired { player: owner, .. } => (owner == player).then_some(*event),

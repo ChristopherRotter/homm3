@@ -92,7 +92,7 @@ epic   = "E16"
 [[stub]]
 id     = "SRV-STUB-5"
 where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold"
-reason = "The views of an offer (its kind and price), a choice (its options), a University (its skills and slots, after a purchase too), a hire dialog (its creatures, costs and counts, after a purchase too) since E08 T133b (v75) a market (its window's screens, rates, stock and recipients, after an answer too) and since E08 T134a (v76) an Altar of Sacrifice (its window's screens, places and experience, after a sacrifice too): their events open them without their view (SRV-Q27 (2)), so the fold leaves the viewer's decision as it was; the decisions whose events hold their view are exact. The adventure lane's inbox (2026-11-09)"
+reason = "The views of an offer (its kind and price), a choice (its options), a University (its skills and slots, after a purchase too), a hire dialog (its creatures, costs and counts, after a purchase too) since E08 T133b (v75) a market (its window's screens, rates, stock and recipients, after an answer too) since E08 T134a (v76) an Altar of Sacrifice (its window's screens, places and experience, after a sacrifice too) and since E08 T134b1 (v77) a Hill Fort (its rows' upgrades, prices and states, after an upgrade too): their events open them without their view (SRV-Q27 (2)), so the fold leaves the viewer's decision as it was; the decisions whose events hold their view are exact. The adventure lane's inbox (2026-11-09)"
 epic   = "E16"
 
 [[stub]]

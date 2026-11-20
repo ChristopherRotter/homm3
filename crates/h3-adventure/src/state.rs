@@ -23,8 +23,8 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher};
 use crate::ADVENTURE_STATE_HASH_VERSION;
 use crate::command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    AltarVisit, BattleStart, Combatant, Defender, MarketVisit, Meeting, Offer, OfferKind,
-    ServiceVisit, Sink, Viewers,
+    AltarVisit, BattleStart, Combatant, Defender, HillFortVisit, MarketVisit, Meeting, Offer,
+    OfferKind, ServiceVisit, Sink, Viewers,
 };
 use crate::fog::{on_fringe, reveal};
 use crate::movement::{
@@ -95,6 +95,7 @@ mod economy;
 mod events;
 mod flags;
 mod garrisons;
+mod hill_fort;
 mod holds;
 mod jumps;
 mod manage;
@@ -124,6 +125,7 @@ pub use dwellings::{HirePurchase, hire_price};
 pub use economy::Weekly;
 pub use economy::allied;
 use flags::Flags;
+pub use hill_fort::{HillFortRow, HillFortUpgrade};
 pub use markets::{MarketOffers, MarketPurchase, Sale, SaleOffer, StockEntry, TradeOffer};
 pub(crate) use monsters::{Room, join_at, room};
 pub(crate) use occupancy::{Added, Occupancy};
@@ -2585,6 +2587,16 @@ impl AdventureState {
                         anchor,
                     })
                 });
+            }
+            // rule: ADV-HFT-001, ADV-BON-009
+            Effect::HillFort => {
+                self.mark_kind(rules.1, player, visit.object_type, sink);
+                outcome.service = Some(ServiceVisit::HillFort(HillFortVisit {
+                    hero,
+                    index: visit.object,
+                    object_type: visit.object_type,
+                    anchor,
+                }));
             }
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),

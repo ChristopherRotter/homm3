@@ -275,8 +275,14 @@ pub(super) fn rules_with(
             ]);
             more(&mut part.object_types);
             // E08 T133a1: a market needs the market's parameters (ADV-MKT-002): the base pack's
-            // cost resource (T133b), values and its rows for one to five Marketplaces.
-            let market = |t: &ObjectTypeDef| matches!(t.kind, ObjectKindDef::Market(_));
+            // cost resource (T133b), values and its rows for one to five Marketplaces; since
+            // T134b1 a Hill Fort too (its gold the cost resource, ADV-HFT-002).
+            let market = |t: &ObjectTypeDef| {
+                matches!(
+                    t.kind,
+                    ObjectKindDef::Market(_) | ObjectKindDef::HillFort(_)
+                )
+            };
             if part.object_types.iter().any(market) {
                 part.params.as_mut().unwrap().market = Some(MarketParamsDef {
                     cost: key("t:gold"),

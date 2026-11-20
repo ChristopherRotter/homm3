@@ -399,25 +399,25 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x1e4766022f152409",
-    "0xe298450f5ce73b1e",
-    "0xfe35fa9c34313d5f",
-    "0xe343d044ac4188ad",
-    "0x917b08f3e5cb0a23",
-    "0xd1f08e0b25596586",
-    "0x1b4b13911e23637c",
-    "0x647c1274a1b461e0",
-    "0xba84c89716e78547",
-    "0x4ca7c133f5176028",
-    "0xe26acffab17e3b6d",
-    "0x92385cef3da8296c",
-    "0x85b5fdf92ba95fb5",
-    "0x98e07a6adf9ad2fd",
-    "0x63a2d927ac09c403",
+    "0xe613bc191632be9a",
+    "0xee3a8e785fd66b99",
+    "0x862812c5d45fda40",
+    "0x3f46ebb006e1a270",
+    "0x5df3043931036e62",
+    "0x6f966ba4089f8b47",
+    "0xdd9de26525a36667",
+    "0x6f033509a03e2b3b",
+    "0xd999cd2f8fe79ae0",
+    "0xc25e8f3337481cf9",
+    "0x28b0a5c8355538c2",
+    "0xe89a1f6e78ef345f",
+    "0x652f4cad3188e01a",
+    "0x31f32160833d247a",
+    "0x2b778f4470d7392c",
 ]
 
 [replay]
-format = 22
+format = 23
 engine = "0.1.0"
 seed = "2002"
 difficulty = 1
@@ -443,7 +443,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 36
+game_state_hash_version = 37
 adventure_state_hash_version = 27
 checkpoint_every = 25
 
@@ -454,7 +454,7 @@ import_version = 27
 
 [result]
 day = 29
-final_hash = "0x04500fc63c63eb10"
+final_hash = "0xbd4e5e24f86461e9"
 
 [[players]]
 colour = 0

@@ -418,26 +418,26 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x2099316b8f701e16",
-    "0xc28a27ffc6161806",
-    "0xacc20eee11510fbd",
-    "0xef84665afa91c7fc",
-    "0xa43fec243a976f57",
-    "0x52db6b40de18eee6",
-    "0x60ff22c36f538442",
-    "0x03d8fdda1bf54b54",
-    "0x58d111a3d59b2db0",
-    "0xb2c9517fc18049ec",
-    "0xcdec3212a1f875f4",
-    "0xe87a91ef54e88199",
-    "0x23961d84d0e441fe",
-    "0xb9673dd0345249d9",
-    "0x71a12dceb4d9321f",
-    "0x5fed7f3d0c02c367",
+    "0xa927848afaab1aff",
+    "0x8924ef3279328225",
+    "0xa00e88f94a7d9186",
+    "0x6901b5148bb64983",
+    "0x56c4cd8805026c10",
+    "0x7c98ce58b81911b5",
+    "0x3176374e76aeede5",
+    "0x9ba2790c16cb5153",
+    "0x9bb4e98595c5f89f",
+    "0xb4a8c64cdf183b03",
+    "0x3feca6c654c8718b",
+    "0xcceba4aecfcfb216",
+    "0x39fe762d6445220f",
+    "0x7d67d146edba67ec",
+    "0xbf1a8bf386098332",
+    "0xc23b3ec22a2bf1a4",
 ]
 
 [replay]
-format = 22
+format = 23
 engine = "0.1.0"
 seed = "765"
 difficulty = 1
@@ -463,7 +463,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 36
+game_state_hash_version = 37
 adventure_state_hash_version = 27
 checkpoint_every = 25
 
@@ -474,7 +474,7 @@ import_version = 27
 
 [result]
 day = 23
-final_hash = "0x43e02924bd2ec0a4"
+final_hash = "0xa8c608b2483d4f97"
 
 [[players]]
 colour = 0

@@ -181,7 +181,7 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 15);
+    assert_eq!(ACTION_ENCODING_VERSION, 16);
     assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 37));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!((HIRE_BASE, HIRE_SLOTS, REVISIT_BASE), (18, 4, 22));
@@ -223,6 +223,16 @@ fn tiles_and_actions_encode_as_documented() {
             altar(h3_game::AltarAnswer::Leave),
             altar(h3_game::AltarAnswer::Artifacts(h3_game::AltarPlaces::NONE)),
             altar(h3_game::AltarAnswer::Creatures([1, 0, 0, 0, 0, 0, 0])),
+        ],
+        [Some(DECLINE), None, None]
+    );
+    // E08 T134b1 (v16): a Hill Fort's `Leave` the closing role, its upgrades none until T135a.
+    let fort = |answer| answer_entry(h3_game::Answer::HillFort(answer));
+    assert_eq!(
+        [
+            fort(h3_game::HillFortAnswer::Leave),
+            fort(h3_game::HillFortAnswer::Upgrade(0)),
+            fort(h3_game::HillFortAnswer::All),
         ],
         [Some(DECLINE), None, None]
     );

@@ -69,6 +69,14 @@ information and one choice):
 
 **The adventure env** (yours since E08 T45):
 
+- 2026-11-20 (the adventure lane, E08 T134b1, `adventure/e08-t134b1`, `cross-lane` with the
+  user's consent, E08 decision 387; **your paths changed, for your review; adventure action
+  encoding v16 taken**): a Hill Fort's decision (GAM-DEC-013) is a new
+  `h3_game::Answer::HillFort`, so `answer_entry` maps its `Leave` onto the closing role
+  (`DECLINE`) and its `Upgrade` and `All` onto none, no new entry (the module's docs, the test in
+  `adventure/tests.rs`); `legal_commands` lists its `Leave` alone until E08 T135a. Also the
+  adventure replay format v23 (`adventure/replay.rs`, `answer hill-fort …`); the bots tables did
+  not move. Random games now open a Hill Fort's decision on the maps with one and leave it.
 - 2026-11-20 (the adventure lane, E08 T134a, `adventure/e08-t134a`, `cross-lane` with the user's
   consent, E08 decision 385; **your paths changed, for your review; adventure action encoding
   v15 taken**): an Altar of Sacrifice's decision (GAM-DEC-012) is a new `h3_game::Answer::Altar`,

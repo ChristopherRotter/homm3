@@ -25,10 +25,10 @@ use h3_contracts::{ArmyStack as EngineStack, FortLevel};
 use h3_game::{
     AltarView, DecisionView, GameRuleset, GameState, GarrisonStackView, GarrisonView,
     GuildHero as EngineGuildHero, GuildPart as EngineGuildPart, GuildPlayer as EngineGuildPlayer,
-    GuildRow as EngineGuildRow, HeroInfo as EngineInfo, HireCreature as EngineCreature,
-    HireSeen as EngineSeen, HireView, HiredPart as EngineHiredPart, LevelUpView, MapGarrisonView,
-    MarketScreen as EngineScreen, MarketView, MonthKind, PlayerView, SlotState as EngineSlot,
-    TavernHero as EngineTavernHero, TavernHeroView as EngineTavernView,
+    GuildRow as EngineGuildRow, HeroInfo as EngineInfo, HillFortView,
+    HireCreature as EngineCreature, HireSeen as EngineSeen, HireView, HiredPart as EngineHiredPart,
+    LevelUpView, MapGarrisonView, MarketScreen as EngineScreen, MarketView, MonthKind, PlayerView,
+    SlotState as EngineSlot, TavernHero as EngineTavernHero, TavernHeroView as EngineTavernView,
     TavernPart as EngineTavernPart, ThievesGuildView, TownBuildingsView, TownOwnerView, TownView,
     Viewer, WeekKind,
 };
@@ -43,12 +43,13 @@ use crate::wire::game::{
     Adventure, AdventureReveal, AltarItem, AltarStack, AltarWindow, Amount, ArmyStack, Artifact,
     Boat, Bonuses, Choice, ChoiceKind, Decision, Formation, GameObservation, GameReveal, Garrison,
     GarrisonHero, GarrisonStack, Guards, GuildHero, GuildPart, GuildPlayer, GuildRanking, GuildRow,
-    HeroDetails, HeroInfo, Hire, HireCreature, HireSeen, HireTarget, HiredPart, Known,
-    KnownObject as WireKnownObject, LevelUp, Lot, MapGarrison, MapHero, MarketScreen, MarketWindow,
-    Monster, Month, Object, ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos,
-    PrimarySkill, ResourceLot, RevealedArea, RevealedView, SaleLots, SkillLevel, SlotState,
-    StockEntry, Summoned, TavernHero, TavernHeroHead, TavernPart, ThievesGuild, Tile, Town,
-    TownBuildings, TownOwnerFacts, TradeLot, UniversityVisit, VisitBonus, Week,
+    HeroDetails, HeroInfo, HillFortRow, HillFortState, HillFortWindow, Hire, HireCreature,
+    HireSeen, HireTarget, HiredPart, Known, KnownObject as WireKnownObject, LevelUp, Lot,
+    MapGarrison, MapHero, MarketScreen, MarketWindow, Monster, Month, Object, ObjectRef, Offer,
+    OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, ResourceLot, RevealedArea,
+    RevealedView, SaleLots, SkillLevel, SlotState, StockEntry, Summoned, TavernHero,
+    TavernHeroHead, TavernPart, ThievesGuild, Tile, Town, TownBuildings, TownOwnerFacts, TradeLot,
+    UniversityVisit, VisitBonus, Week,
 };
 
 mod command;
@@ -405,6 +406,36 @@ fn decision_view(d: &DecisionView) -> Decision {
             market: market(view),
         },
         DecisionView::Altar(view) => Decision::Altar { altar: altar(view) },
+        DecisionView::HillFort(view) => Decision::HillFort {
+            fort: hill_fort(view),
+        },
+    }
+}
+
+/// A Hill Fort's decision on the wire (E08 T134b1, v77).
+fn hill_fort(view: &HillFortView) -> HillFortWindow {
+    let state = |state: h3_game::HillFortState| match state {
+        h3_game::HillFortState::NoUpgrade => HillFortState::NoUpgrade {},
+        h3_game::HillFortState::Affordable => HillFortState::Affordable {},
+        h3_game::HillFortState::TooDear => HillFortState::TooDear {},
+    };
+    HillFortWindow {
+        hero: view.hero.raw(),
+        object: object_ref((view.object_type, view.anchor)),
+        rows: view
+            .rows
+            .iter()
+            .map(|row| HillFortRow {
+                slot: row.row.slot,
+                creature: row.row.creature.raw(),
+                count: row.row.count,
+                upgrade: row.row.upgrade.map(|upgrade| upgrade.raw()),
+                price: amounts(&row.row.price),
+                state: state(row.state),
+            })
+            .collect(),
+        all: amounts(&view.all),
+        all_state: state(view.all_state),
     }
 }
 

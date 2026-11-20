@@ -2332,3 +2332,23 @@ The client lane's format v20 (E27 M4 T3a, CLT-Q156 (a)), merged into T133b's bra
   (no hash). Your HANDOFF's versions line says so (replay format v20, increment 14's next v21);
   your design note §19's `answer market …` lines then take v21. A golden of yours recorded at v19
   on a branch open meanwhile needs `format = 20` and its players (record it again).
+
+## T134b (moved 2026-11-20, cut in two: T134b1 done, `adventure/e08-t134b1`, decision 387; T134b2 queued)
+
+**E08 T134b — the Hill Fort and the War Machine Factory** (round 7; decisions 373, 378, 384;
+design note §4, §5, §10, §11's upgrade and factory, §15, §16; survey `E08-trades.md` §13, §14)
+
+- **Scope:** `h3-adventure`: `ServiceVisit::HillFort` (the visit after the kind mark k 14,
+  ADV-HFT-001, ADV-BON-009), `hill_fort_rows` and `upgrade` (§11, ADV-HFT-002: each slot's row by
+  the enabled packs' upgrades, its price the gold difference by level and truncated once, a
+  level-1 stack free; D-74 the original's); the factory's hire question and dialog (§10, §16:
+  `OfferKind::Hire` with the factory as `HireSource::Object`, `check_hire` and `hire` extended for
+  its machines, ADV-WMF-001, ADV-HIR-002 amended: the hero lacking the machine's artifact, the
+  artifact given into its position); `h3-game`: `Decision::HillFort` (GAM-DEC-013, the game state hash's
+  next), `Answer::HillFort` (`Upgrade(slot)`, `All`, `Leave`), `HillFortOpened`, the view; the
+  factory's purchase through the hire dialog (GAM-DEC-008 amended, `HeroChanged`); the wire
+  (`cross-lane`), the replay words and the env's `Leave`, as T133b's and T134a's (decisions 384,
+  385: a new answer forces them); each version the next free at its task (today: game state hash
+  v37, protocol v77, format v23, encoding v16).
+- **Depends on:** T134a's pull request. **Status:** ready after it; its cut confirmed at its start
+  (the user's working agreement: a seam if it is big, as T134a's offer of T134a1 and T134a2).

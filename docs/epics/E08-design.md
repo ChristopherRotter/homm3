@@ -202,8 +202,8 @@ Batch E14 records where the hero stands (§20, E14-16).
 - **The base pack's type** `hill_fort` (class 35): `visit = "enter"`, `from_above = false`,
   **`kind_mark = true`** (the original's k 14, every visit).
 - *As built* (T132a2): `ObjectKind::HillFort(HillFort { gold: [u8; 7] })`, the percents checked
-  (to 100, multiples of 25); hash tag 49. Which stacks is the runtime's (T134b): a creature with
-  an upgrade in the enabled packs.
+  (to 100, multiples of 25); hash tag 49. Which stacks is the runtime's (T134b1, §15's *As
+  built*): a creature with an upgrade in the enabled packs, the first of its upgrades.
 
 ### 5. The War Machine Factory kind (ADV-WMF-001; survey §14)
 
@@ -564,6 +564,19 @@ original's windows stay open for more trades). The system actor's default is `Le
   validation.
 - **The view** `DecisionView::HillFort(HillFortView)`: each slot's row (the upgrade, its price,
   its state) and the whole's price and state.
+- *As built* (T134b1, decision 387; game state hash v37): the adventure (`state/hill_fort.rs`):
+  `Effect::HillFort` (the team's kind mark first, then `ServiceVisit::HillFort(HillFortVisit {
+  hero, index, object_type, anchor })` at every visit), `hill_fort_rows` (`HillFortRow`: each
+  stack of the army in its order with its creature, count, upgrade or none, and price; the gold the
+  market parameters' cost resource, *agent's call*: the part refuses a Hill Fort without
+  `[params.market]`), `check_upgrade`, `check_upgrade_all` (`HillFortUpgrade`, not `Clone`;
+  `HillFortError`: `Visit`, `NoUpgrade(slot)` and, *agent's call*, `Nothing` for an `All` without
+  a row that upgrades), `upgrade`. The game (`state/hill_fort.rs`): `Decision::HillFort` (kind 12),
+  `open_hill_fort` (`HillFortOpened`), `answer_hill_fort` (the summed price against the treasury,
+  the existing `CannotPay`, then each row paid and `StackChanged` in slot order), `hill_fort_view`
+  (`HillFortView` with `HillFortRowView` and `HillFortState`: `NoUpgrade`, `Affordable`,
+  `TooDear`); `legal_commands` lists `Leave` alone, the default answer `Leave`. Tests: the
+  adventure's `state/tests/hill_fort.rs`, the part's refusal, the game's `tests/hill_fort.rs`.
 
 ### 16. The factory through the hire question and dialog (GAM-DEC-008, ADV-HIR-002 amended)
 
@@ -601,7 +614,12 @@ original's windows stay open for more trades). The system actor's default is `Le
   `Leave`), `GameReject::Altar` (`AltarReject`), `Decision::Altar` (`AltarWindow` with `AltarItem`,
   `AltarStack`), `GameEvent::AltarOpened` (folded as a market's, `SRV-STUB-5` extended); the replay
   words (**format v22**: `answer altar artifacts <place> …`, `creatures <amount> …` ×7, `leave`)
-  and the env's `Leave` (**encoding v15**).
+  and the env's `Leave` (**encoding v15**). T134b1 (**protocol v77**, `cross-lane`):
+  `Answer::HillFort` (`HillFortAnswer`: `Upgrade { slot }`, `All`, `Leave`), `GameReject::HillFort`
+  (`HillFortReject`), `Decision::HillFort` (`HillFortWindow` with `HillFortRow`, `HillFortState`),
+  `GameEvent::HillFortOpened` (folded as an Altar's, `SRV-STUB-5` extended); the replay words
+  (**format v23**: `answer hill-fort upgrade <slot>`, `all`, `leave`) and the env's `Leave`
+  (**encoding v16**).
 
 ### 18. The env, replays, maps, properties, benchmarks
 

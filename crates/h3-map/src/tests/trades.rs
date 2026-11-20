@@ -6,7 +6,8 @@
 //! default bans, refused in RoE; and the import that types them (E08 T132b; design note §7):
 //! each its type at subclass 0 with its blocked mask and its one entrance, no body, the setup
 //! valid, a subclass past 0 refused, and a step onto one refused as an unbuilt visit's until T133
-//! and T134 build the visits (the markets' with T133, the Altar's with T134a).
+//! and T134 build the visits (the markets' with T133, the Altar's with T134a, the Hill Fort's with
+//! T134b1).
 
 use super::import::{ROE, SOD};
 use super::limits;
@@ -321,13 +322,14 @@ fn the_import_types_the_trades() {
     }
 }
 
-// covers: ADV-OBJ-003, ADV-MKT-001, ADV-ALT-001
+// covers: ADV-OBJ-003, ADV-MKT-001, ADV-ALT-001, ADV-HFT-001
 #[test]
-fn a_step_onto_a_market_or_an_altar_enters_it_and_onto_another_trade_is_refused_until_t134b() {
+fn a_step_onto_a_market_an_altar_or_a_hill_fort_enters_it_and_onto_the_factory_is_refused() {
     // A market's visit is built (E08 T133a2): the step onto its entrance ends the move there (its
     // window opens the market's decision since T133b, GAM-DEC-011); an Altar's since T134a (its
-    // decision, GAM-DEC-012). Until T134b builds the Hill Fort's and the factory's (increment
-    // 14's design note §10), their entrance is refused as any unbuilt visit's (`effect` none):
+    // decision, GAM-DEC-012); a Hill Fort's since T134b1 (GAM-DEC-013). Until T134b2 builds the
+    // factory's (increment 14's design note §10), its entrance is refused as any unbuilt visit's
+    // (`effect` none):
     // Red's hero, placed on the tile below each entrance (free: the pictures are four rows
     // apart), reaches no point on it, the step onto it is `Visit` and the state stays as it was.
     let rules = &*SOD;
@@ -335,7 +337,7 @@ fn a_step_onto_a_market_or_an_altar_enters_it_and_onto_another_trade_is_refused_
     let setup = import(&raw, rules).unwrap();
     let red = PlayerId::new(0);
     assert_eq!(setup.map.objects.len(), PICTURES.len());
-    let (mut markets, mut altars) = (0, 0);
+    let (mut markets, mut altars, mut forts) = (0, 0, 0);
     for (index, object) in setup.map.objects.iter().enumerate() {
         let (column, row) = object.visitable.offsets().next().unwrap();
         let entrance = Pos::new(
@@ -399,6 +401,21 @@ fn a_step_onto_a_market_or_an_altar_enters_it_and_onto_another_trade_is_refused_
             assert!(screens.artifacts || screens.creatures, "{index}");
             continue;
         }
+        if let Some(ObjectKind::HillFort(fort)) = kind {
+            forts += 1;
+            assert!(stepped.is_ok(), "{index}");
+            assert_eq!(state.adventure().heroes()[0].pos, entrance, "{index}");
+            // E08 T134b1: its decision opens with the base pack's percents, a row per stack.
+            assert_eq!(fort.gold, [0, 25, 50, 75, 100, 100, 100], "{index}");
+            assert_eq!(state.hill_fort(red).map(|visit| visit.hero), Some(hero));
+            let seen = h3_game::observe(&state, rules, h3_game::Viewer::Player(red)).decision;
+            let Some(h3_game::DecisionView::HillFort(view)) = seen else {
+                panic!("{index}: {seen:?}")
+            };
+            let army = state.adventure().heroes()[0].army.len();
+            assert_eq!(view.rows.len(), army, "{index}");
+            continue;
+        }
         assert_eq!(reach.points_left(entrance), None, "{index}");
         assert!(
             matches!(
@@ -411,7 +428,9 @@ fn a_step_onto_a_market_or_an_altar_enters_it_and_onto_another_trade_is_refused_
         );
         assert_eq!(state.state_hash(), before, "{index}");
     }
-    // The Black Market, the two Trading Posts' classes and the guild's pictures; the Altar's.
+    // The Black Market, the two Trading Posts' classes and the guild's pictures; the Altar's; the
+    // Hill Fort's.
     assert!(markets >= 4, "{markets}");
     assert!(altars >= 1, "{altars}");
+    assert!(forts >= 1, "{forts}");
 }

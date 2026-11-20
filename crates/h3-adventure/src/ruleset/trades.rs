@@ -293,14 +293,18 @@ pub(super) fn check_trades(
     altar_factions: &BTreeMap<FactionId, AltarScreens>,
 ) -> Result<(), AdventureCompileError> {
     for ty in types {
-        if let ObjectKind::Market(market) = &ty.kind {
-            let reason = match counts {
-                None => "a market without [params.market]",
-                Some(counts) if market.count > counts => {
-                    "a market's count is past [params.market]'s rows"
-                }
-                Some(_) => continue,
-            };
+        // A Hill Fort's gold is the market parameters' cost resource (E08 T134b1, increment
+        // 14's design note §4).
+        // rule: ADV-HFT-002
+        let reason = match (&ty.kind, counts) {
+            (ObjectKind::Market(_), None) => "a market without [params.market]",
+            (ObjectKind::Market(market), Some(counts)) if market.count > counts => {
+                "a market's count is past [params.market]'s rows"
+            }
+            (ObjectKind::HillFort(_), None) => "a hill fort without [params.market] (its gold)",
+            _ => "",
+        };
+        if !reason.is_empty() {
             return Err(AdventureCompileError::InvalidObjectType {
                 key: String::from(ty.key.as_str()),
                 reason,

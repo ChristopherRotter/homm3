@@ -216,7 +216,7 @@ fn refused(name: &str, kind: ObjectKindDef) -> &'static str {
 
 // covers: ADV-MKT-001, ADV-MKT-002, ADV-ALT-001, ADV-ALT-002, ADV-ALT-003, ADV-HFT-002, ADV-WMF-001
 #[test]
-fn the_four_kinds_compile_entered_and_only_the_markets_visited() {
+fn the_four_kinds_compile_entered_and_all_but_the_factory_visited() {
     let core = trade_core();
     let part = AdventureRuleset::compile(&core, &trade_packs()).unwrap();
     let kind = |k: &str| {
@@ -260,11 +260,11 @@ fn the_four_kinds_compile_entered_and_only_the_markets_visited() {
     );
     for k in ["t:post", "t:altar", "t:fort", "t:factory"] {
         let kind = kind(k);
-        // The markets' visit since E08 T133a2, the Altar's since T134a, the others' none
-        // before T134b; neither ownable nor weekly.
+        // The markets' visit since E08 T133a2, the Altar's since T134a, the Hill Fort's since
+        // T134b1, the factory's none before T134b2; neither ownable nor weekly.
         assert_eq!(
             kind.effect().is_some(),
-            ["t:post", "t:altar"].contains(&k),
+            ["t:post", "t:altar", "t:fort"].contains(&k),
             "{k}"
         );
         assert!(!kind.ownable() && !kind.weekly());
@@ -352,6 +352,21 @@ fn the_kinds_parameters_are_checked() {
             assert_eq!(
                 (key.as_str(), reason),
                 ("t:post", "a market without [params.market]")
+            );
+        }
+        other => panic!("{other:?}"),
+    }
+    // E08 T134b1: a Hill Fort's gold is the market parameters' cost resource.
+    let no_market = |p: &mut Vec<AdventurePack>| {
+        let t = pack(p, "t");
+        t.params.as_mut().unwrap().market = None;
+        t.object_types.retain(|ty| ty.key.as_str() != "t:post");
+    };
+    match trade_err(no_market) {
+        AdventureCompileError::InvalidObjectType { key, reason } => {
+            assert_eq!(
+                (key.as_str(), reason),
+                ("t:fort", "a hill fort without [params.market] (its gold)")
             );
         }
         other => panic!("{other:?}"),
@@ -698,10 +713,12 @@ fn every_trade_parameter_is_in_the_hash() {
             pack(p, "t").params.as_mut().unwrap().market = Some(m);
         }),
         Box::new(|p| {
+            // Without the parameters neither the market nor the Hill Fort (its gold, E08
+            // T134b1).
             pack(p, "t").params.as_mut().unwrap().market = None;
             pack(p, "t")
                 .object_types
-                .retain(|t| t.key.as_str() != "t:post");
+                .retain(|t| !["t:post", "t:fort"].contains(&t.key.as_str()));
         }),
         Box::new(|p| pack(p, "t").altar_factions[0].creatures = true),
         Box::new(|p| pack(p, "t").altar_factions[1].artifacts = false),

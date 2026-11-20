@@ -208,6 +208,11 @@ pub enum Answer {
         /// The answer.
         answer: AltarAnswer,
     },
+    /// A Hill Fort's upgrade of a row or of all, or leaving (GAM-DEC-013; E08 T134b1, v77).
+    HillFort {
+        /// The answer.
+        answer: HillFortAnswer,
+    },
     /// Closes a meeting (GAM-DEC-003) or an army dialog (GAM-DEC-004).
     Close {},
 }
@@ -361,6 +366,22 @@ pub enum AltarAnswer {
         amounts: [u32; 7],
     },
     /// Leaves the Altar.
+    Leave {},
+}
+
+/// A Hill Fort's answer (`h3_game::HillFortAnswer`, GAM-DEC-013; E08 T134b1, v77). The rows and
+/// their prices are the server's (ADR-0004).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum HillFortAnswer {
+    /// Upgrades the stack at this slot of the hero's army (ADV-HFT-002).
+    Upgrade {
+        /// The slot.
+        slot: u8,
+    },
+    /// Upgrades every stack that upgrades.
+    All {},
+    /// Leaves the Hill Fort.
     Leave {},
 }
 
@@ -581,6 +602,12 @@ pub enum GameReject {
     Altar {
         /// Why.
         error: AltarReject,
+    },
+    /// A Hill Fort's upgrade the game refused (E08 T134b1, v77); the treasury's is
+    /// [`Self::CannotPay`].
+    HillFort {
+        /// Why.
+        error: HillFortReject,
     },
     /// The session's, not the engine's (E16 M5 T8a, v45): the connection holds no seat of the
     /// game.
@@ -917,6 +944,21 @@ pub enum AltarReject {
     /// The sacrifice would take the army's last creature.
     LastCreature {},
     /// The sacrifice gives no experience.
+    Nothing {},
+}
+
+/// Why a Hill Fort's upgrade was refused (`h3_game::HillFortError`, GAM-DEC-013; E08 T134b1, v77).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum HillFortReject {
+    /// The visit's hero is not on the map, or its object is no Hill Fort.
+    Visit {},
+    /// The slot holds no stack that upgrades.
+    NoUpgrade {
+        /// The slot.
+        slot: u8,
+    },
+    /// No stack of the army upgrades.
     Nothing {},
 }
 
