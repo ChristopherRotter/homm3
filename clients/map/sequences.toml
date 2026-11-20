@@ -1679,3 +1679,57 @@ script = [
     "0 move 0 13,12,0",
     "0 answer level-up second",
 ]
+
+# The scripted games' map changed by a visit (E24 M4 T4b2, design §5.15): the flags raised and the
+# boats boarded and left, each from the engine's record's events (`ObjectFlagged`, `Boarded`,
+# `Landed`), the dwelling's hire with the record's answer and its creatures joined.
+
+[[sequence]]
+id = "game-flags"
+situation = "game-flags"
+ms = 6600
+seed = 1
+why = "a scripted game's flags: a key's step onto a neutral Sawmill's entrance (its box, Enter; the flag raised), a step back, two right onto a Lighthouse (its box, Enter; the flag raised), a step right and one up onto a Guardhouse (its flag raised, its hire's question, Enter; the Pikemen joined, Enter)"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1400, keydown = "Down" }, { at = 1460, keyup = "Down" },
+    { at = 2000, keydown = "Right" }, { at = 2060, keyup = "Right" },
+    { at = 2600, keydown = "Right" }, { at = 2660, keyup = "Right" },
+    { at = 3400, keydown = "Return" }, { at = 3460, keyup = "Return" },
+    { at = 3800, keydown = "Right" }, { at = 3860, keyup = "Right" },
+    { at = 4400, keydown = "Up" }, { at = 4460, keyup = "Up" },
+    { at = 5200, keydown = "Return" }, { at = 5260, keyup = "Return" },
+    { at = 5800, keydown = "Return" }, { at = 5860, keyup = "Return" },
+]
+script = [
+    "0 move 0 12,11,0",
+    "0 move 0 12,12,0",
+    "0 move 0 13,12,0",
+    "0 move 0 14,12,0",
+    "0 move 0 15,12,0",
+    "0 move 0 15,11,0",
+    "0 answer offer accept",
+]
+
+[[sequence]]
+id = "game-boats"
+situation = "game-boats"
+ms = 5400
+seed = 1
+why = "a scripted game's boats: a key's step onto an empty boat (boarded, the points 0), End Turn's key, the computer's turn out of sight, the next day a step right at sea and one back, then one left onto the shore (landed, the points 0)"
+inputs = [
+    { at = 100, keydown = "Right" }, { at = 160, keyup = "Right" },
+    { at = 1400, keydown = "e" }, { at = 1460, keyup = "e" },
+    { at = 2900, keydown = "Right" }, { at = 2960, keyup = "Right" },
+    { at = 3500, keydown = "Left" }, { at = 3560, keyup = "Left" },
+    { at = 4100, keydown = "Left" }, { at = 4160, keyup = "Left" },
+]
+script = [
+    "0 move 0 9,12,0",
+    "0 end-turn",
+    "1 end-turn",
+    "0 move 0 10,12,0",
+    "0 move 0 9,12,0",
+    "0 move 0 8,12,0",
+]

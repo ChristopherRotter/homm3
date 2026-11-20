@@ -211,7 +211,8 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   the user: the log's "M4 T4a2", design §5.13; the three games exact but the listed gaps of
   MCL-Q39 and MCL-Q40); T4b the visits, cut in two by the user at its start (2026-11-20, by
   family): T4b1 the message boxes (the finds, the questions, the level-ups; **done** 2026-11-20,
-  whole: the log's "M4 T4b1", design §5.14; MCL-Q41, MCL-Q42), T4b2 the flags and the boats;
+  whole: the log's "M4 T4b1", design §5.14; MCL-Q41, MCL-Q42), T4b2 the flags and the boats
+  (**done** 2026-11-20, whole: the log's "M4 T4b2", design §5.15; both games exact, no gap);
   Summon Boat moved out of T4b (the engine casts no adventure spell yet); T4c the other
   players' turns, the viewer's controls and a golden replay; the kept live parts' message texts
   as labels first (ADR-0009, found at T4a1, the user: none new meanwhile; **done** 2026-11-20,
@@ -457,3 +458,11 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   (MCL-Q41 (c)); `engine_seed` found by a search over the engine's seeds for draws the original
   makes at random (the level-up's); a box the loop's turn opens no longer drops the next
   millisecond's input after its first (a lingering `flush`, found by `game-asks`).
+- **M4 T4b2, a record's flags and boats** (*provisional*; design §5.15): a flag raised where the
+  record's `ObjectFlagged` says so, in its colour (a mine's resource its type's); a dwelling's hire
+  answered `accept` told by the record's free creatures (a declined hire not built: the record
+  does not name the creature); on a record a walk's boarding or landing is the record's
+  (`Move::sea`) and Part A's boats and water are not asked, a boarding with no empty boat on the
+  tile off the record; the viewer's turn's start built once its message is folded (the engine
+  tells the new points after `TurnStarted`); a boat's dissolve keeps the status window its draw
+  chose (the date's step, shown at once by the original).

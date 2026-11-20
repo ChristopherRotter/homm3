@@ -366,3 +366,85 @@ fn a_boat_by_a_hero_in_a_boat_or_water_unknown_is_neither_boarded_nor_left() {
     assert!(l.water(Pos { x: 40, y: 40, z: 1 }));
     assert_eq!(l.boat_on(at(9)).map(|b| b.facing), Some(Facing::DownLeft));
 }
+
+/// A record's one-step walk onto `x` with its boat's fact `sea` (E24 M4 T4b2).
+fn on_record(x: u8, sea: Option<Sea>) -> impl FnOnce(&mut Start) {
+    move |start: &mut Start| {
+        start.moves = Some(vec![Move {
+            tiles: vec![at(x)],
+            points: vec![Some(0)],
+            revealed: vec![Vec::new()],
+            sea,
+        }]);
+    }
+}
+
+#[test]
+fn a_record_boards_and_lands_as_it_says() {
+    // `board` on a record: its boarding takes the empty boat on the tile, of the record's type.
+    let l = run_with("board", 100, on_record(9, Some(Sea::Board(2))));
+    let Some(Aboard::Board(boat)) = l.aboard else {
+        panic!("boarding: {:?}", l.aboard);
+    };
+    assert_eq!(
+        (boat.at, boat.kind, boat.facing),
+        (at(9), 2, Facing::DownLeft)
+    );
+    // A record that says none: the boat's tile stepped onto as any.
+    let l = run_with("board", 100, on_record(9, None));
+    assert!(l.aboard.is_none() && !l.hidden && l.dissolving.is_none());
+    // A boarding with no empty boat on the tile: the step is off the record.
+    let (mut start, ..) = boating("board");
+    on_record(9, Some(Sea::Board(1)))(&mut start);
+    start.boats.empty.clear();
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    for t in 1..100 {
+        l.run(t, &[]).unwrap();
+    }
+    let step = [Action::Step(Direction::East)];
+    assert_eq!(l.run(100, &step), Err(Unplayable::Moved([9, 12, 0])));
+    // `land` on a record: the boat left on its water tile facing the record's way.
+    let left = LiveBoat {
+        at: at(9),
+        kind: 0,
+        facing: Facing::DownLeft,
+    };
+    let l = run_with("land", 100, on_record(8, Some(Sea::Land(left))));
+    assert_eq!(l.aboard, Some(Aboard::Land));
+    assert_eq!(l.drawn().boats.empty, [left]);
+    // One that says none: no landing.
+    let l = run_with("land", 100, on_record(8, None));
+    assert!(l.aboard.is_none() && l.drawn().boats.empty.is_empty());
+}
+
+#[test]
+fn a_dissolve_shows_the_date_window_its_draw_stepped() {
+    // `land` with the date's window asked: the landing's dissolve at 250 shows the window the
+    // view's draw stepped at once, outside the middle (E24 M4 T4b2, `game-boats` at 4250).
+    let (start, actions, _, _) = boating("land");
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    let run = |l: &mut Loop, from: u32, to: u32| {
+        for t in from..=to {
+            l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+                .unwrap();
+        }
+    };
+    run(&mut l, 1, 99);
+    l.asked = 1;
+    l.end = 10_000;
+    l.kingdom.status = Some(Status::Date(DateStatus { frame: 0 }));
+    // Built at the step's start (100) and stepped at 200; its last step put back to 140, so that
+    // the landing's draw at 250 steps it.
+    run(&mut l, 100, 249);
+    l.stepped = 140;
+    let shown = l.drawn().kingdom.status.clone();
+    run(&mut l, 250, 250);
+    let s = l.state(250);
+    let before = s.drawn.dissolve.unwrap().before;
+    let Some(Status::Date(date)) = &s.drawn.kingdom.status else {
+        panic!("the date's window: {:?}", s.drawn.kingdom.status);
+    };
+    assert_eq!(*date, DateStatus { frame: 2 });
+    assert_ne!(shown, s.drawn.kingdom.status);
+    assert_eq!(before.kingdom.status, s.drawn.kingdom.status);
+}

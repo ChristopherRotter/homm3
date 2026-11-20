@@ -17,7 +17,7 @@ fn one(rest: &str) -> Sequence {
 #[test]
 fn reads_the_recorded_sequences() {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
-    assert_eq!(sequences.sequence.len(), 102);
+    assert_eq!(sequences.sequence.len(), 104);
     // A scripted game's engine commands (E24 M4 T4a2): read, the viewer plays its record; since
     // E24 M4 T4b1 its engine's seed, accepted.
     let walk = sequences.get("game-walk").unwrap();

@@ -1064,3 +1064,34 @@ Inbox item done at T4a1's session (2026-11-19: the window's library decodes the 
 - **Depends on:** T4a1; the labels task (done 2026-11-20: `game-week`'s live part is kept with
   labels once T4a2 records it again). **Status:** done 2026-11-20 (kept whole by the user; the
   log's "M4 T4a2", design §5.13).
+
+### E24 M4 T4b — a record's visits played (cut in two by the user at its start, 2026-11-20)
+
+- **Scope:** each visit's events as Part A built them (T2), scripted games with visits played in
+  the engine and in the original and compared frame by frame. Cut by family: **T4b1** the message
+  boxes (the finds told and taken, the questions and choices with the record's answers, the
+  level-ups; **done** 2026-11-20: the log's "M4 T4b1", design §5.14; MCL-Q41, MCL-Q42), then
+  **T4b2** the map changed by a visit (the flags, the boats boarded and left). **Summon Boat moved out of T4b** (the user, the same day): the engine casts
+  no adventure spell (`AdventureCommand` has only `MoveHero`, `BuildBoat` and `Revisit`; E08 has
+  not placed the adventure spells), so no record holds a cast; Part A's recorded casts (T2d3)
+  stay as they are until E08 places them.
+- **Acceptance (each part):** its scripted games exact but the listed gaps; `drawn` all the same;
+  `check.sh` all gates.
+- **Notes from T4a2** (design §5.13): a sequence with a `script` is played from its engine record
+  (`sequences <id> --record`, `h3map.py`'s `scripted`), its timeline's differences listed in
+  `timelines/<id>-gaps.txt`; the record's start and turns go over the kept live part, but a kept
+  live part's visit tables (`[[message]]`, `[[found]]`, `[[level_up]]`, `[[cast]]`) and the
+  situation's finds still apply: T4b takes them from the record's events instead; a walk that
+  ends in a visit (a decision, a battle) may close without a `GameTurn` (`engine::played`
+  closes a walk at the next command or the record's end).
+- **Notes from T4b1** (design §5.14): a visit is the `MoveHero` echoed with its events and the
+  answers after it (`engine::Visit`), told by the class of the object on its last tile
+  (`engine::visits::told`, Part A's `Find` and `Ask` with the record's facts; the adapter's
+  `record_finds`): T4b2 adds the flags (`ObjectFlagged`: a mine's, a Lighthouse's, a dwelling's
+  before its hire) and the boats (`Boarded`, `Landed`) the same way, from the record's events in
+  place of Part A's `Found::flag` and `Boats`; a visit from beside takes the record's move (its
+  points); a draw both games make at random needs an `engine_seed` found by a search (as
+  `game-level`'s); a click's pointer moved off the map at once (MCL-Q37); a guarded mine's
+  question leads to a battle (T5's).
+- **Depends on:** T4a2 (done). **Status:** done 2026-11-20 (T4b1, then T4b2 kept whole by the
+  user: the log's "M4 T4b2", design §5.15).

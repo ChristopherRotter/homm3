@@ -13,6 +13,11 @@
 //!   gain; the other is not in the record, MCL-Q41: none).
 //! - **What the panels show** ([`gain`]): the resources gained, the primary skills raised, a
 //!   once-mark's morale and luck, the experience.
+//! - **A flag raised** (E24 M4 T4b2, design §5.15): a mine (53: its resource its type's) and a
+//!   Lighthouse (42) whose visit the record's `ObjectFlagged` makes the visitor's, a find told
+//!   with the record's new owner; a dwelling (17, 20) flagged so, then its hire's question with
+//!   the record's answer: accepted, its free creatures as the record tells them (joined, refused
+//!   for want of room, none; another answer, or none told: nothing, its gap).
 //!
 //! A visit of another class, or whose events tell none of these, tells nothing here (its frames
 //! differ from the original's: their gaps). A find's numbers the record gives replace the tables'
@@ -28,6 +33,7 @@ use h3_protocol::wire::game::{
 use super::played::Visit;
 use crate::asks::Ask;
 use crate::finds::{Find, Gain};
+use crate::live::Stack;
 
 /// A Temple's class.
 const TEMPLE: u32 = 96;
@@ -47,6 +53,14 @@ const ARENA: u32 = 4;
 const PANDORA: u32 = 6;
 /// A treasure chest's.
 const CHEST: u32 = 101;
+/// A mine's.
+const MINE: u32 = 53;
+/// A Lighthouse's.
+const LIGHTHOUSE: u32 = 42;
+/// A dwelling's.
+const DWELLING: u32 = 17;
+/// A dwelling's of several creatures.
+const DWELLINGS: u32 = 20;
 /// Gold's place among the resources.
 const GOLD: usize = 6;
 
@@ -62,6 +76,8 @@ pub enum Told {
         gain: Gain,
         /// The object taken.
         taken: bool,
+        /// The colour its flag is raised in (E24 M4 T4b2: the record's `ObjectFlagged`).
+        flag: Option<u8>,
     },
     /// A question or a choice and the answer the record gives it.
     Ask {
@@ -69,6 +85,8 @@ pub enum Told {
         ask: Ask,
         /// The answer.
         answered: Answered,
+        /// The colour the object's flag is raised in before it asks (E24 M4 T4b2: a dwelling's).
+        flag: Option<u8>,
     },
 }
 
@@ -87,8 +105,14 @@ pub enum Answered {
 /// What `visit` of an object of `class` and `subclass` shows (the module's documentation), the
 /// hero named `hero` in Pandora's Box's boxes; none for another class or events that tell none.
 #[must_use]
-pub fn told(visit: &Visit, [class, _]: [u32; 2], hero: &str) -> Option<Told> {
+pub fn told(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<Told> {
     let events = &visit.events;
+    let flag = events.iter().find_map(|e| match e {
+        GameEvent::Adventure {
+            event: AdventureEvent::ObjectFlagged { owner, .. },
+        } => Some(*owner),
+        _ => None,
+    });
     let gained = gain(events);
     let taken = events.iter().any(|e| {
         matches!(
@@ -122,6 +146,7 @@ pub fn told(visit: &Visit, [class, _]: [u32; 2], hero: &str) -> Option<Told> {
             find,
             gain: gained,
             taken,
+            flag: None,
         })
     };
     match class {
@@ -140,6 +165,7 @@ pub fn told(visit: &Visit, [class, _]: [u32; 2], hero: &str) -> Option<Told> {
                     },
                     gain: gained,
                     taken,
+                    flag: None,
                 });
             };
             find(if class == PILE {
@@ -158,8 +184,67 @@ pub fn told(visit: &Visit, [class, _]: [u32; 2], hero: &str) -> Option<Told> {
             _ => None,
         }),
         ARENA | PANDORA | CHEST => asked(visit, class, hero),
+        MINE | LIGHTHOUSE => {
+            let find = match class {
+                MINE => Find::Mine {
+                    resource: u8::try_from(subclass).ok().filter(|r| *r <= 6)?,
+                },
+                _ => Find::Lighthouse,
+            };
+            flag.map(|_| Told::Find {
+                find,
+                gain: gained,
+                taken,
+                flag,
+            })
+        }
+        DWELLING | DWELLINGS => hired(visit, subclass, flag),
         _ => None,
     }
+}
+
+/// A dwelling's hire with the record's answer (E24 M4 T4b2, design §5.15), its flag raised first
+/// in `flag`'s colour where the record says so: accepted, its free creatures as the record tells
+/// them (`CreaturesJoined`, `JoinRefused` for want of room, `NoneToRecruit`); none for another
+/// answer or none told (the hire dialog, M5's).
+fn hired(visit: &Visit, subclass: u32, flag: Option<u8>) -> Option<Told> {
+    let (
+        Answer::Offer {
+            consent: Consent::Accept,
+        },
+        after,
+    ) = visit.answers.first()?
+    else {
+        return None;
+    };
+    let stack = |creature: u16, count: u32| Stack {
+        creature,
+        count: i32::try_from(count).unwrap_or(i32::MAX),
+    };
+    let (joins, room) = after.iter().find_map(|e| match e {
+        GameEvent::Adventure { event } => match *event {
+            AdventureEvent::CreaturesJoined {
+                creature, count, ..
+            } => Some((stack(creature, count), true)),
+            AdventureEvent::JoinRefused {
+                creature, count, ..
+            } => Some((stack(creature, count), false)),
+            AdventureEvent::NoneToRecruit { creature, .. } => Some((stack(creature, 0), true)),
+            _ => None,
+        },
+        _ => None,
+    })?;
+    Some(Told::Ask {
+        ask: Ask::Hire {
+            dwelling: subclass,
+            joins,
+            free: true,
+            room,
+            flag: flag.is_some(),
+        },
+        answered: Answered::Yes,
+        flag,
+    })
 }
 
 /// The question of `visit` (Pandora's Box, the Arena, a treasure chest) with its first answer
@@ -200,7 +285,11 @@ fn asked(visit: &Visit, class: u32, hero: &str) -> Option<Told> {
         }
         _ => return None,
     };
-    Some(Told::Ask { ask, answered })
+    Some(Told::Ask {
+        ask,
+        answered,
+        flag: None,
+    })
 }
 
 /// The one resource `gained` holds, with its amount; none for none or several.
