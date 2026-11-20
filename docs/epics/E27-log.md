@@ -1799,3 +1799,40 @@ Kept whole (no seam needed).
   scope's verify with the original data.
 - **Questions:** CLT-Q159 (Delete's failure unchecked). **The agent's calls** (*provisional*: M4's
   review list items 31 to 34).
+
+## M4 T5a — Load Game hot seat: read and recorded (2026-11-21)
+
+- **Start:** the PC's 64 files of `original-data/` (the 40 non-campaign tracks), the manuals and
+  the help files staged, SHA-256 checked against the PC's (one hash of each side's sorted list);
+  the setup's baseline stopped at coverage (fmt, clippy, the doc tests, deny passed); T4b2's
+  #1085 merged. T5 cut in two at its start (decision 75).
+- **Read** (design §41.1): `scenario_slots_load`'s hot seat (one slot per name),
+  `scenario_players_init`'s two passes of a hot-seat load (the save's humans to the names in
+  colour order, a name left over to the next colour a human may play, a saved human past the
+  names without a record), `scenario_load_begin` (read but its network paths: the begin after the
+  game's load sets the human flags from the records), the save's `.GM<n>` (from play the humans
+  still playing, the autosave's `begin_humans` 0x699274), the list's filter over saves, the
+  advanced options in a load (the duration's bar not enabled, the handicap disabled),
+  `random_map_toggle` in a load. The map: `begin_humans`, `game_load` 0x4BF330 new;
+  `scenario_slots_load`, `scenario_players_init`, `scenario_load_begin` extended.
+- **Recipes** (`shell/advanced.toml`): two hot-seat makers, every colour human with its town,
+  hero and bonus chosen by the arrows and 20 minutes (`adv-load-make-two` `Pair.GM2`, A Warm and
+  Familiar Place at Impossible; `adv-load-make-four` `Four.GM4`, Arrogance at Easy); the map's
+  message hides the adventure probes (A Warm and Familiar Place), so the makers wait for its OK
+  (`until-button:ok`) before `until:adventure`. `adv-load` recorded again over them (the user's
+  random-map saves gone from it; 19 shots); `adv-load-more` new (T4a's `Week_one.GM1` under two
+  names, the rows' drawn cells masked; 2 shots). Both twice the same. A first take pressed y 210
+  for a third row: past the list (rows at y 135 + 25 *k*), and the single save first in the list
+  gave its random draws to every shot: hence the two recipes.
+- **Found:** the hot-seat load's screen has the panel's buttons and the flags (the single's has
+  none); the rows are the save's with no arrows, the saved humans past the names "Computer" (kind
+  Human or CPU), a name left over on a computer's colour; the arrows', the duration's and Random
+  Map's presses (and its key R) change nothing; the handicap's right press shows nothing; a flag's
+  press moves a name among the colours (here both the save's humans); the list's toggle as a new
+  game's.
+- **Gates:** `test_h3shell`; `h3shell.py drawn --group advanced` (the hot seat's load not built:
+  `adv-load` and `adv-load-more` stop before their first shot, as recorded); `cargo xtask
+  check-exe-map`; the client scope's verify with the original data.
+- **Questions:** CLT-Q160 (the names, not the save's humans, decide who is human after a
+  hot-seat load), CLT-Q161 (Random Map shown in a hot-seat load, doing nothing). **The agent's
+  calls** (*provisional*: M4's review list items 35, 36).
