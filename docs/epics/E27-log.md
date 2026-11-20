@@ -1633,3 +1633,39 @@ Kept whole (no seam needed).
   step; T1b's #1060 merged meanwhile, the branch rebased onto `master`.
 - **Questions:** none new. **The agent's calls** (*provisional*: M4's review list items 10 to
   13; the key's pixel taken as a drawing bug, CLT-Q138's class).
+
+## M4 T3a — the adventure replay format v20: the players' choices (2026-11-20)
+
+- **Start:** the PC's 64 files and the manuals staged (SHA-256 checked); the setup's baseline of
+  `clients/` stopped at its coverage step (fmt, clippy, the doc tests and deny passed; CI's run on
+  `master` green). The adventure lane's inbox still held the format's extension (CLT-Q156 (a),
+  2026-11-19): the user had this lane build it `cross-lane` and cut T3 in two (decision 71).
+- **Built (`h3-sim`'s `adventure/replay.rs`, the adventure lane's):** `PlayerChoices` (a player's
+  colour, human flag, faction's choice, hero's pick) and `PlayerChoices::of` (every player's of a
+  setup); `Replay::players`, recorded from the setup by `record_random` and `record_commands`;
+  `Replay::setup` (the import at the replay's difficulty with each choice set over the player of
+  its colour; a colour no player has, or a colour chosen twice, `Incompatible("players")`);
+  `verify` building its game from it; `REPLAY_FORMAT_VERSION` 20.
+- **Built (`h3-files`' `adventure/`, the adventure lane's format):** a `[[players]]` table each
+  (`colour`, `human`, `faction` an index or `"random"`, `hero` an index; the last two absent
+  without one); a file without them reads none (the import's); a faction word other than `random`
+  is malformed; the module's docs (v20, the example's tables).
+- **The other lanes' lines:** `h3-server`'s `whole.rs` start replay and `measure.rs`' record write
+  none (each verifies against its offer's setup, as before), `prefix` keeps its replay's;
+  `h3-sim`'s four test literals none, `tests/hiring.rs`' version 20; `h3-cli`'s file test at
+  format 20. The adventure lane's HANDOFF versions line (v20; increment 14's next v21).
+- **The golden replays:** the 104 recorded again from their own headers and commands (`h3
+  adventure run --script`, release; a scratch script outside the repo classifying every changed
+  line): 104 version lines and 1 040 lines of `[[players]]` tables, nothing else (no hash moved).
+- **Tests:** `h3-sim`'s `a_replay_keeps_the_players_choices_over_the_import` (the town map: red's
+  hero picked, blue's faction drawn and its human flag turned; recorded, verified against the
+  plain import; without the choices the import's game, a hash mismatch; a stranger colour, a
+  colour twice, an unoffered pick refused); `h3-files`'
+  `the_players_choices_round_trip_through_the_file` (every kind of choice, a file verified with
+  them, a file without them, a bad word).
+- **Gates:** `h3-cli`'s golden replays (`adventure_replays`) and adventure tests, `h3-files`,
+  `h3-sim`'s adventure tests, `h3-protocol`'s game tests (`game_fold`, `game_session`, …),
+  `h3-server`'s `record`, `whole`, `clock` and `measure` tests, clippy of the five crates with
+  `-D warnings`, fmt; `cargo check --workspace --all-targets`, `check-lane --cross-lane`, the
+  client scope's verify with the original data, `clients/`' check.
+- **Questions:** none new. **The agent's calls** (*provisional*: M4's review list items 14 to 16).

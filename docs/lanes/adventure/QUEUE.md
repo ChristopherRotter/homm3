@@ -21,6 +21,20 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-20 (the client lane, E27 M4 T3a, `client/e27-m4-t3a`, `cross-lane` with the user's
+  consent, E27 decision 71; **your replay format moved: increment 14 takes v21**): your inbox's
+  format extension of 2026-11-19 (CLT-Q156 (a)) is built. **Adventure replay format v20**:
+  `h3_sim::adventure::replay::PlayerChoices` (a player's colour, human flag, `FactionChoice`,
+  pick), `Replay::players` (every player's, recorded from the setup by `record_random` and
+  `record_commands`; none: the import's), `Replay::setup` (the import at the replay's difficulty
+  with the choices set over it; a colour no player has or chosen twice is
+  `Incompatible("players")`), `verify` building from it; `h3-files`' `[[players]]` tables
+  (`faction` an index or `"random"`, `hero` an index; absent without one). The 104 golden replays
+  were recorded again from their commands: only `format = 20` and their `[[players]]` lines moved
+  (no hash). Your HANDOFF's versions line says so (replay format v20, increment 14's next v21);
+  your design note §19's `answer market …` lines then take v21. A golden of yours recorded at v19
+  on a branch open meanwhile needs `format = 20` and its players (record it again).
+
 - 2026-11-19 (the map client lane, E24 M4 T4a1, `map-client/e24-m4-t4a`; **MCL-Q39 and MCL-Q40,
   for your planning; the user's answers first**): a record's walk (E24 design §5.12) tells the
   points left once, after the walk (`MovementChanged`), but the original's bar falls at each
@@ -69,17 +83,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `h3-heroes` or `h3-game` reader the server lane's view then carries on `OwnMapHero`); the client
   copies no rule meanwhile (it draws 0, 0 and "has points"). Nothing to build before the user
   answers MCL-Q36.
-
-- 2026-11-19 (the client lane, E27 M3 T7 (M4 T0), `client/e27-m3-t7`; **a format extension
-  for you, before E27 M4 T3**): the user's CLT-Q156 (a), E27 decision 69: the client's saves are
-  the engine's adventure replay (`h3-files`' format, `h3_sim::adventure::Replay`) extended with the
-  setup's choices it lacks today: per colour the human flag, the town's `FactionChoice` and the
-  starting hero's pick (`PlayerStart.pick`), as `h3-battle-client`'s `begin::setup` sets them over
-  the map's import; verifying builds the game from the import with them applied (absent: the
-  import's, so every v19 file reads the same). The client's own fields (names, bonuses, handicaps,
-  the turn's duration) stay in the client's wrapper, not in your format. The server's whole-game
-  journals carry the replay too, so a lobby's choices (E28) would ride on it. E27 M4 T3 (the save
-  file) needs it; should it start first, the client lane asks the user to do it cross-lane.
 
 - 2026-11-19 (the client lane, E27 M3 T7, `client/e27-m3-t7`; **for E10's starting bonus,
   nothing to do now**): the scenario screen's starting bonus is kept as the original keeps it
