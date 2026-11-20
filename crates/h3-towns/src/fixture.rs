@@ -5,7 +5,9 @@
 //! requirements, costs and Shipyard, E09 T17b; increment 3's horde roles, Portal and week's
 //! building, E09 T25a), the Marsh's small one (a silo that pays gold, one level of creatures, free
 //! buildings without requirements, not a Restoration of Erathia record) and no record for the
-//! Wild; the core's creatures by handle, with the Keep's and the Marsh's growths and AI values.
+//! Wild; the core's creatures by handle, with the Keep's and the Marsh's growths and AI values;
+//! increment 5's guild (E09 T47a1): a core with spells of every level ([`guild_core`]) and the
+//! Keep's Mage Guilds, Library and Aurora Borealis with its guild weights ([`guild_keep`]).
 
 extern crate std;
 
@@ -14,7 +16,8 @@ use std::vec::Vec;
 
 use h3_content::{
     ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId, FactionDef, FactionId,
-    PackManifest, ProfileDef, ResourceDef, ResourceId, Ruleset,
+    PackManifest, ProfileDef, ResourceDef, ResourceId, Ruleset, SpellCategory, SpellDef, SpellId,
+    SpellSchoolDef,
 };
 use h3_contracts::Moat;
 
@@ -233,6 +236,110 @@ pub(crate) fn core() -> Ruleset {
 
 /// [`core`] with its profile enabling the quirk flags named in `quirks` (E09 T25b1).
 pub(crate) fn core_with(quirks: &[&str]) -> Ruleset {
+    core_edited(quirks, |_| {})
+}
+
+/// The guild's spells (E09 T47a1), by handle in [`guild_core`]: level 1 `L1_A`, `L1_ZERO`, `L1_B`,
+/// `ABILITY` (a creature ability of level 1) and `L1_C`; level 2 `L2_A`, `L2_B`; level 3 `L3`;
+/// level 4 `L4_ZERO`; level 5 `BOLT` (granted by name only), `L5_A`, `L5_B`. Their weights in
+/// [`guild_keep`]'s record: 10, 0, 30, 50, 60; 40, 60; 100; 0; 100, 50, 50.
+pub(crate) const L1_A: SpellId = SpellId::from_raw(0);
+pub(crate) const L1_ZERO: SpellId = SpellId::from_raw(1);
+pub(crate) const L1_B: SpellId = SpellId::from_raw(2);
+pub(crate) const ABILITY: SpellId = SpellId::from_raw(3);
+pub(crate) const L1_C: SpellId = SpellId::from_raw(4);
+pub(crate) const L2_A: SpellId = SpellId::from_raw(5);
+pub(crate) const L2_B: SpellId = SpellId::from_raw(6);
+pub(crate) const L3: SpellId = SpellId::from_raw(7);
+pub(crate) const L4_ZERO: SpellId = SpellId::from_raw(8);
+pub(crate) const BOLT: SpellId = SpellId::from_raw(9);
+pub(crate) const L5_A: SpellId = SpellId::from_raw(10);
+pub(crate) const L5_B: SpellId = SpellId::from_raw(11);
+
+/// The guild's spells' weights in [`guild_keep`]'s record, by handle (the ability's and the
+/// bolt's given here, where the compiler would refuse or the packs give none, so that the draw's
+/// exclusion of both is seen).
+const GUILD_WEIGHTS: [u16; 12] = [10, 0, 30, 50, 60, 40, 60, 100, 0, 100, 50, 50];
+
+/// The Keep's guild buildings, after its record's 24 (E09 T47a1): the Mage Guilds of levels 1 to
+/// 5 (role `guild`, each superseding the lower ones), the Library (`library`) and the Aurora
+/// Borealis (`aurora`).
+pub(crate) const MAGE_GUILD_1: usize = 24;
+pub(crate) const MAGE_GUILD_2: usize = 25;
+pub(crate) const MAGE_GUILD_3: usize = 26;
+pub(crate) const MAGE_GUILD_4: usize = 27;
+pub(crate) const MAGE_GUILD_5: usize = 28;
+pub(crate) const LIBRARY: usize = 29;
+pub(crate) const AURORA: usize = 30;
+
+/// [`core_with`] with a school `t:fire` and the guild's spells (E09 T47a1; `L1_A` and the others
+/// above): each of `cost` 5, power 10, the school's but the ability.
+pub(crate) fn guild_core(quirks: &[&str]) -> Ruleset {
+    core_edited(quirks, |pack| {
+        pack.spell_schools = vec![SpellSchoolDef {
+            key: key("t:fire"),
+            name: "Fire".into(),
+            protection_rank: 0,
+        }];
+        let spell = |k: &str, category, level, by_name| SpellDef {
+            key: key(k),
+            name: "Spell".into(),
+            category,
+            level,
+            schools: if category == SpellCategory::Ability {
+                vec![]
+            } else {
+                vec![key("t:fire")]
+            },
+            cost: [5; 4],
+            power: 10,
+            effect: [10; 4],
+            granted_by_name_only: by_name,
+        };
+        let (combat, adventure) = (SpellCategory::Combat, SpellCategory::Adventure);
+        pack.spells = vec![
+            spell("t:l1_a", combat, 1, false),
+            spell("t:l1_zero", combat, 1, false),
+            spell("t:l1_b", adventure, 1, false),
+            spell("t:ability", SpellCategory::Ability, 1, false),
+            spell("t:l1_c", combat, 1, false),
+            spell("t:l2_a", combat, 2, false),
+            spell("t:l2_b", adventure, 2, false),
+            spell("t:l3", combat, 3, false),
+            spell("t:l4_zero", combat, 4, false),
+            spell("t:bolt", combat, 5, true),
+            spell("t:l5_a", combat, 5, false),
+            spell("t:l5_b", adventure, 5, false),
+        ];
+    })
+}
+
+/// The Keep's record with its guild (E09 T47a1): the buildings from [`MAGE_GUILD_1`] to
+/// [`AURORA`] and the guild's weights of [`guild_core`]'s spells.
+pub(crate) fn guild_keep(keep: &mut TownRecord) {
+    let guild = |level: u8| roles(|r| r.guild = Some(level));
+    keep.buildings.extend([
+        building("mage_guild_1", &[], guild(1)),
+        building("mage_guild_2", &[MAGE_GUILD_1], guild(2)),
+        building("mage_guild_3", &[MAGE_GUILD_1, MAGE_GUILD_2], guild(3)),
+        building(
+            "mage_guild_4",
+            &[MAGE_GUILD_1, MAGE_GUILD_2, MAGE_GUILD_3],
+            guild(4),
+        ),
+        building(
+            "mage_guild_5",
+            &[MAGE_GUILD_1, MAGE_GUILD_2, MAGE_GUILD_3, MAGE_GUILD_4],
+            guild(5),
+        ),
+        building("library", &[], roles(|r| r.library = true)),
+        building("aurora", &[], roles(|r| r.aurora = true)),
+    ]);
+    keep.guild = GUILD_WEIGHTS.to_vec();
+}
+
+/// The fixture's core pack changed by `edit`, its profile enabling `quirks`.
+fn core_edited(quirks: &[&str], edit: impl FnOnce(&mut ContentPack)) -> Ruleset {
     let resource = |k: &str| ResourceDef {
         key: key(k),
         name: "Resource".into(),
@@ -255,7 +362,7 @@ pub(crate) fn core_with(quirks: &[&str]) -> Ruleset {
             },
         }
     };
-    let pack = ContentPack {
+    let mut pack = ContentPack {
         resources: vec![resource("t:wood"), resource("t:ore"), resource("t:gold")],
         factions: vec![faction("t:keep"), faction("t:marsh"), faction("t:wild")],
         creatures: (0..CREATURES).map(creature).collect(),
@@ -269,6 +376,7 @@ pub(crate) fn core_with(quirks: &[&str]) -> Ruleset {
             depends: vec![],
         })
     };
+    edit(&mut pack);
     Ruleset::compile(&[pack], "t:faithful").unwrap()
 }
 
