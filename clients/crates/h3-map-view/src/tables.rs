@@ -773,6 +773,12 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         if !map.cast.summon_boat.is_empty() {
             rules.effects.push(map.cast.summon_boat.clone());
         }
+        // An object taken's (E24 M4 T4a, the inbox's of T2d3): the pickups' and a monster's
+        // removal's, which the window decoded none of (`Loop::take` cues them).
+        rules.effects.extend(map.finds.pickups.iter().cloned());
+        if !map.finds.killfade.is_empty() {
+            rules.effects.push(map.finds.killfade.clone());
+        }
         tables.sound = Some(rules);
     }
     Ok(tables)

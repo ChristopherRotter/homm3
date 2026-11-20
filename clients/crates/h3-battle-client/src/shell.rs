@@ -81,6 +81,7 @@ use h3_ui::text::Args;
 use h3_view::batch::Batch;
 use h3_view::compose::FORMAT;
 use h3_view::message::{self, MessageBox, Style};
+use h3_view::shell::credits::{self, Credits};
 use h3_view::shell::keys::{self as shell_keys, Command, GAME_TYPE, MAIN_MENU};
 use h3_view::shell::look::{self, CursorLook, ShellLayout};
 use h3_view::shell::menu::{self, Arrow, Boxes, Front, Kind, Menu, Menus};
@@ -902,6 +903,17 @@ fn menus(
             bugs,
         )
         .with_tables(scores_tables.tables.unwrap_or(scores_tables.defaults)),
+        // The credits (E27 M4 T2): Credits.txt's two records, the text's lines counted in its
+        // font.
+        credits: Credits::laid(
+            layout.credits.clone(),
+            credits::Texts {
+                text: text("shell.credits.text"),
+                closing: text("shell.credits.closing"),
+            },
+            font(&layout.credits.font)?,
+            bugs,
+        ),
     };
     Ok((menus, rules, refused))
 }
@@ -1473,8 +1485,10 @@ fn in_window(
     let mut game: Option<crate::begin::Game> = None;
     loop {
         let playing = shell.screen() == Screen::Start;
-        // Play's fade (T6) steps every 50 ms: the window's wait as the start's.
-        let fading = matches!(&front, Some(Front::Play(p)) if !p.noticing());
+        // Play's fade (T6) steps every 50 ms, the credits every 100 (E27 M4 T2): the window's
+        // wait as the start's.
+        let fading = matches!(&front, Some(Front::Play(p)) if !p.noticing())
+            || matches!(&front, Some(Front::Credits(_)));
         // The edits' typing (T7b): text input while one has the focus.
         win.set_text_input(front.as_ref().is_some_and(Front::typing));
         let events = win.wait(if playing || fading { 5 } else { 50 });
@@ -1516,9 +1530,19 @@ fn in_window(
                 }
                 Given::Event(event, scan) => {
                     if let Some(front) = front.as_mut() {
-                        // The scenario list's double press is timed on the window's clock (T1b1).
-                        front.clock(now(&win));
-                        did = on_front(front, &keys, (&event, scan), pointer.unwrap_or(PARK));
+                        // The scenario list's double press is timed on the window's clock (T1b1);
+                        // the credits step and end by it (E27 M4 T2).
+                        let ticked = front.clock(now(&win));
+                        did = if ticked.ended.is_some() {
+                            ticked
+                        } else {
+                            let given = (&event, scan);
+                            let did = on_front(front, &keys, given, pointer.unwrap_or(PARK));
+                            menu::Did {
+                                changed: did.changed || ticked.changed,
+                                ..did
+                            }
+                        };
                     }
                 }
             }
@@ -1638,7 +1662,7 @@ fn in_window(
             Front::Multiplayer(m) => !m.cursor(),
             Front::Scenario(s) => !s.cursor(),
             Front::Play(p) => !p.noticing() || !p.menu().cursor(),
-            Front::Scores(_) => false,
+            Front::Scores(_) | Front::Credits(_) => false,
         });
         // Which arrow (CLT-Q137): the adventure map's after the scenario screen's busy cursor.
         let arrow = front.as_ref().map(Front::hovers).unwrap_or_default().arrow;
@@ -1708,9 +1732,18 @@ fn in_window(
             }
             dirty = true;
         }
-        // Play's fade (T6) and High Scores' creatures (E27 M4 T1a) on the window's clock.
-        if let Some(f @ (Front::Play(_) | Front::Scores(_))) = front.as_mut() {
-            dirty |= f.clock(now(&win));
+        // Play's fade (T6), High Scores' creatures (E27 M4 T1a) and the credits (T2) on the
+        // window's clock; the credits' end the main menu, opened at the next turn.
+        if let Some(f @ (Front::Play(_) | Front::Scores(_) | Front::Credits(_))) = front.as_mut() {
+            let ticked = f.clock(now(&win));
+            dirty |= ticked.changed;
+            if let Some(ended) = ticked.ended {
+                let _ = shell.end(ended);
+                println!("{}", text::describe(shell.screen()));
+                on = None;
+                previous = front.take();
+                continue;
+            }
         }
         if dirty {
             let frame = if shell.screen() == Screen::Start {

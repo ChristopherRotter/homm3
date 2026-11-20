@@ -2126,6 +2126,46 @@ note §7, §21; T132a1 and T132a2 done)
   in `E08-log.md` as the form; `TRAPS.md` (the shipped maps' counts, the goldens).
 - **Depends on:** T132a's pull request. **Status:** ready; its cut confirmed at its start.
 
+## T133 (moved 2026-11-19, cut in three at its start: `adventure/e08-t133a1`, decision 383; T133a1 done, T133a2 and T133b queued)
+
+**E08 T133 — the market** (round 6; decisions 373, 382; design note §8 to §13, §17, §21;
+T132b done)
+
+- **Scope (§21's plan):** **T133a** `h3-adventure`: the Black Market's stock in the static map
+  (`Resolved::Stock`) and its sold entries in the visits' block (§8; adventure state hash v27),
+  the draw when the game is built (§9, ADV-MKT-006: three treasures, three minors, one major from
+  the one pool, the map's bans out, never restocked), the visits' outcome of the four markets
+  (§10: entered, the window's screens) and the adventure's checks and changes of a trade, a
+  transfer, a sale and a purchase (§11; ADV-MKT-003 to -005, -007; A-46 fixed as ADV-QUIRK-48);
+  **T133b** `h3-game`: the market's decision (§13, GAM-DEC-011; game state hash v35), what a
+  viewer sees (§12, ADV-MKT-008: the stock only in its visitor's open decision) and the events
+  and the wire (§17; `cross-lane`, the server lane's `h3-protocol`).
+- **Inputs:** design note §8 to §13, §17, §19; survey `E08-trades.md` §2 to §8; `h3-adventure`'s
+  `market.rs` (`MarketParams`, T132a1) and `ruleset/trades.rs` (T132a2); T124b1's and T124b2's
+  records in `E08-log.md` as the form (a draw in the static map, a visit); `TRAPS.md` (the
+  codegen units, the visits' block, the plans' oracles).
+- **Depends on:** T132b's pull request. **Status:** ready; its cut confirmed at its start.
+
+## T133a2 (moved 2026-11-20, done whole: `adventure/e08-t133a2`, decision 383; ADV-Q60 for T133b)
+
+**E08 T133a2 — the market's visit and the adventure's checks** (round 6; decisions 373, 383;
+design note §10, §11, §21; T133a1 done)
+
+- **Scope (§21's plan, decision 383):** `h3-adventure`: the visits' outcome of the four markets
+  (§10: entered, every visit, every player; `AdventureOutcome::service` with
+  `ServiceVisit::Market(MarketVisit { hero, index, object_type, anchor })`; the markets' `effect`,
+  so a step onto one is no longer refused) and the adventure's checks and changes of a sale and a
+  purchase (§11: `check_sale`, `sell`, ADV-MKT-005, the army keeping a creature; `check_buy`,
+  `buy`, ADV-MKT-007, the entry drawn and not sold, its price not 0, the hero able to receive the
+  artifact: A-46 fixed as ADV-QUIRK-48; the sold entry written by `Visits::sell`). The game opens
+  nothing until T133b: `ADV-STUB-18` (registered in `docs/stubs.toml`).
+- **Inputs:** design note §8 to §11 (§8 and §9's *As built*: T133a1); survey `E08-trades.md` §2,
+  §6, §7.2; `h3-adventure`'s `market.rs` (`MarketParams`: `creature_lot`, `artifact_price`),
+  `state/markets.rs` (T133a1), `ruleset/trades.rs`; T124b2's record in `E08-log.md` as the form
+  (a visit's outcome); the hire's `check_hire` and `hire` (ADR-0017 point 10's shape);
+  `TRAPS.md` (the codegen units, the visits' block, the plans' oracles).
+- **Depends on:** T133a1's pull request. **Status:** ready (decision 383).
+
 ## Inbox notes settled or for information (moved 2026-11-18, E08 T126)
 
 *(Moved verbatim at increment 13's closure: the other lanes' notes of changes in this lane's paths (the town lane's E09 T29b to T38b1, the map client lane's harness rebuilds), built on by T123b to T125b2b and T126's audit, CI green on each; their lasting rules are one line in `TRAPS.md`, "The town lane's parts of your crates"; the versions they took are the HANDOFF's.)*

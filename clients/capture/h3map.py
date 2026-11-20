@@ -1137,8 +1137,13 @@ def sequence_inputs(entry):
     ranges; each input one of `INPUTS` at a millisecond from 1 to `ms` (0 is the still the frame
     check compares), in order of time, a key released only once pressed, the button likewise (no
     press or click while it is held: E24 M3 T7b2, F5-7), a pointer inside the screen. Returns the options [(address, value)] and the inputs by time {t: [(kind, value)]}."""
+    # `script` (E24 M4 T4a1, design §5.12): a scripted game's engine commands, the viewer's (a
+    # string per command as `h3 adventure run --script` reads them).
     unknown = set(entry) - {"id", "situation", "ms", "why", "inputs", "status", "rolls",
-                            "seed", "sound", *OPTIONS}
+                            "seed", "sound", "script", *OPTIONS}
+    script = entry.get("script", [])
+    if not (isinstance(script, list) and all(isinstance(c, str) and c.strip() for c in script)):
+        raise ValueError(f"{entry['id']}: `script` is a list of engine commands: {script!r}")
     if unknown:
         raise ValueError(f"{entry['id']}: unknown keys {sorted(unknown)}")
     # The rolls a sequence forces (E24 M4 T1a: the week's and the month's), every draw of each

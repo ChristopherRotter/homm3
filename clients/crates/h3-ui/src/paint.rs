@@ -22,7 +22,7 @@ use h3_render::text::{TextBox, TextStyle, draw_text_caret};
 
 use crate::sprite::Sprite;
 use crate::text::encode_1252;
-use crate::ui::{Draw, PlayerColours};
+use crate::ui::{Draw, PART_KEY, PlayerColours};
 
 /// The decoded assets a draw names, by name as the draw spells it (a viewer's batch).
 pub trait Assets {
@@ -62,10 +62,10 @@ pub fn names(draw: &Draw) -> Vec<&str> {
             item.font.as_str(),
             item.font_palette.as_str(),
         ],
-        Draw::Label { item, .. } | Draw::Edit { item, .. } => {
+        Draw::Label { item, .. } | Draw::Edit { item, .. } | Draw::Part { item, .. } => {
             alloc::vec![item.font.as_str(), item.font_palette.as_str()]
         }
-        Draw::Darken { .. } => Vec::new(),
+        Draw::Darken { .. } | Draw::Keyed { .. } => Vec::new(),
         Draw::Fill { palette, .. } => alloc::vec![palette.as_str()],
         Draw::Creature { def, .. } => alloc::vec![def.as_str()],
         Draw::Shared { def, frames, .. } => alloc::vec![def.as_str(), frames.as_str()],
@@ -280,8 +280,67 @@ pub fn draw(
                 [*x, *y, size[0], size[1]],
             );
         }
+        Draw::Part {
+            item,
+            text,
+            part,
+            x,
+            y,
+        } => {
+            // E27 M4 T2 (`credits_screen` 0x4EDDA0): the text drawn whole into a picture of its
+            // own filled with the key, then the part copied with the key skipped.
+            let [w, h] = item.size.map(|side| u32::try_from(side).unwrap_or(0));
+            let mut picture = Screen::new(w, h, screen.format())
+                .ok_or_else(|| alloc::format!("a part's picture of {w} x {h}"))?;
+            picture.fill(PART_KEY);
+            let area = TextBox {
+                x: 0,
+                y: 0,
+                width: item.size[0],
+                height: item.size[1],
+            };
+            let font = (&item.font, &item.font_palette);
+            let text = (text.as_str(), None);
+            text_in(
+                &mut picture,
+                assets,
+                font,
+                (item.colour, item.align),
+                area,
+                text,
+                bugs,
+            )?;
+            copy_keyed(screen, &picture, *part, [*x, *y]);
+        }
+        Draw::Keyed { rect: [x, y, w, h] } => {
+            let at = |edge: i32, step: i64| i64::from(edge) + step;
+            for row in 0..i64::from((*h).max(0)) {
+                for column in 0..i64::from((*w).max(0)) {
+                    let (px, py) = (at(*x, column), at(*y, row));
+                    if screen.pixel(px, py) == Some(PART_KEY) {
+                        screen.set(px, py, 0);
+                    }
+                }
+            }
+        }
     }
     Ok(())
+}
+
+/// `pcx16_copy_rect` 0x44E2B0 with its key (E27 M4 T2, read whole): the part `[sx, sy, w, h]`
+/// of `from` copied onto `to` with its corner at `[x, y]`, every pixel [`PART_KEY`] skipped. The
+/// target's edges cut it (its left and top moving the part's corner with them, as the
+/// executable's); the source's do too here (the executable reads past them: no caller does).
+fn copy_keyed(to: &mut Screen, from: &Screen, [sx, sy, w, h]: [i32; 4], [x, y]: [i32; 2]) {
+    let at = |edge: i32, step: i64| i64::from(edge) + step;
+    for row in 0..i64::from(h.max(0)) {
+        for column in 0..i64::from(w.max(0)) {
+            let pixel = from.pixel(at(sx, column), at(sy, row));
+            if let Some(pixel) = pixel.filter(|&p| p != PART_KEY) {
+                to.set(at(x, column), at(y, row), pixel);
+            }
+        }
+    }
 }
 
 /// A creature DEF item's frame and where its canvas goes (`dialog_def_draw` 0x4EAB40 with the
@@ -354,7 +413,9 @@ pub fn reach(draw: &Draw, assets: &impl Assets) -> Option<[i32; 4]> {
                 [side(frame.full_width), side(frame.full_height)],
             ))
         }
-        Draw::Darken { rect: [x, y, w, h] } => Some(rect(*x, *y, [*w, *h])),
+        Draw::Darken { rect: [x, y, w, h] } | Draw::Keyed { rect: [x, y, w, h] } => {
+            Some(rect(*x, *y, [*w, *h]))
+        }
         Draw::Fill {
             rect: [x, y, w, h],
             palette,
@@ -372,6 +433,18 @@ pub fn reach(draw: &Draw, assets: &impl Assets) -> Option<[i32; 4]> {
         Draw::Label { item, x, y, .. } | Draw::Edit { item, x, y, .. } => {
             assets.palette(&item.font_palette)?;
             Some(text_reach(assets.font(&item.font)?, *x, *y, item.size))
+        }
+        // E27 M4 T2: only the part copied.
+        Draw::Part {
+            item,
+            part: [_, _, w, h],
+            x,
+            y,
+            ..
+        } => {
+            assets.palette(&item.font_palette)?;
+            assets.font(&item.font)?;
+            Some(rect(*x, *y, [(*w).max(0), (*h).max(0)]))
         }
         Draw::Shared {
             def,

@@ -77,7 +77,9 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-(no open questions)
+#### ADV-Q60 — The market's cost resource: where a creature's and an artifact's value is read (E08 T133a2)
+
+**Context.** The market's rates (ADV-MKT-002, `h3_adventure::MarketParams`) value a creature sold and an artifact bought at their **gold** cost (the original's creature record's +0x38 and the artifact's cost), but nothing in the adventure part names which resource that is: the core has no notion of gold (resources are data, ADR-0006), the part's `[params.market]` values every resource, and only the town part names its gold (`TownParams::gold`, the halls' income) and the chests their own. T133a2's checks (`AdventureState::check_sale`, `check_buy`) therefore take the resource from their caller (`value`); the game (T133b) must pass one. **Options.** (a) `[params.market]` names it (`cost = "gold"` in the base pack; `MarketParams::cost`), the checks read it themselves: one place for the map's markets and the town lane's Marketplace on the same module (E09 increment 6); adventure ruleset part v24 (the goldens' part hash re-recorded, the AI lane's bots tables `cross-lane`). (b) The game passes the town part's `gold` (`TownParams::gold`): no version moves, but the adventure part's market prices in a resource another part names. **Recommendation:** (a), at T133b's start (or a small task before it). **Blocked:** nothing until T133b; T133a2's tests pass the test core's gold.
 
 ### Server lane (`SRV-Q<n>`)
 
@@ -254,6 +256,38 @@ needs only the map, else the engine's view gives the order; (b) keep the view's 
 difference where a comparison meets it. **Recommended (a)** at the task that first compares a start
 with several towns of the viewer's (M4 T4's scripted games or M5). Meanwhile the view's order
 (`stub: MCL-Q38`). Blocks nothing: the starts compared hold one town of Red's.
+
+#### MCL-Q39 — A record's walk lacks each step's points and reveal (E24 M4 T4a1, a reading and a recording)
+
+The original takes each step's points off after the step's animation and reveals the tiles
+around the step's destination before it (`hero_move_step` 0x4805E0: `reveal_disk` 0x49D160 at
+0x48106B, the animation at 0x48117A, the points at 0x481182; E24 design §5.12): the hero list's
+movement bar falls at each step's end (`game-walk`: 1560, 1460, 1360, 1260, 1160) and the shroud
+lifts at each step's first frame. A whole game's record holds one `MovementChanged` after the walk
+(the points it left) and one `GameReveal` after the command's events (every tile the walk
+explored), so a viewer playing it knows neither a step's points nor the tiles a step revealed.
+Options: (a) the engine tells them per step: the adventure lane's `HeroStepped` (or a
+`MovementChanged` after each step) with the points left, and the server lane's reveal folded per
+step (the tiles each step explored, in the step's order); (b) the client derives them (the step
+costs and the scouting radius: rules copied, not wanted, the user at T3b1's start); (c) a record
+viewed without them: the walk's points shown at its last step and its whole reveal at its first,
+the difference listed where a comparison meets it. **Recommended (a)**, as MCL-Q36's (notes in the
+adventure and server lanes' inboxes, 2026-11-19). Meanwhile (c) when T4a2 plays a record's walks
+(`stub: MCL-Q39`). Blocks nothing.
+
+#### MCL-Q40 — A record's normal week and month carry no name (E24 M4 T4a1, a recording)
+
+A normal week's message names the week and a normal month's the month (ArrayTxt 133 and 130 with
+a name the original draws, `week_name` and `month_name` among the harness's forced rolls; E24
+design §5.1), but the engine's `WeekStarted` and `MonthStarted` say only `Normal` (the wire's
+`Week::Normal`, `Month::Normal`): a record holds no name to show. Options: (a) the engine draws the
+name with the week's kind and tells it (the adventure lane: an index into the name list, no text;
+its own stream, so the golden replays' other draws stay); (b) the client draws it, deterministic
+from the game and the week (the viewer's own choice, never the original's); (c) a fixed name (the
+list's first). **Recommended (a)**: the name is a draw of the original's game (its `week_creature` 0x6983FC
+holds a normal week's number) and every client of one game must show the same; a note in the adventure lane's inbox
+(2026-11-19). Meanwhile (b) when T4a2 plays a record's turns (`stub: MCL-Q40`); the scripted
+games force the original's draw to a name and list the difference. Blocks nothing.
 
 ### Town lane (`TWN-Q<n>`)
 

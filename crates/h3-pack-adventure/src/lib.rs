@@ -209,7 +209,8 @@
 //! # market = { screens = ["trade", "transfer"], count = 5 } # ADV-MKT-001: screens from "trade",
 //! #                                # "transfer", "sell", "buy" (distinct, one at least); count
 //! #                                # from 1 to [params.market]'s rows; with "buy" exactly, stock =
-//! #                                # ["treasure", "minor", "major"] (classes, none "special")
+//! #                                # ["treasure", "minor", "major"] (classes, none "special", at
+//! #                                # most 8 since E08 T133a1)
 //! # [object_type.altar]            # ADV-ALT-001 to -003
 //! # experience = { treasure = 1000, minor = 1500, major = 3000, relic = 6000 } # by class
 //! #                                # (special too), 0 if left out

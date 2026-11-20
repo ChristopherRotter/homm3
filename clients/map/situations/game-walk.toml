@@ -1,0 +1,21 @@
+# A scripted game's walks (E24 M4 T4a1; clients/map/sequences.toml `game-walk`, design §5.12):
+# Red's Rion with its army in the map (so that the original's new game and the engine's start
+# give it the same points), on grass, two paths clicked twice and a key's step, each walk ending
+# at the explored circle's edge so that its steps reveal the tiles beyond; a second hero of Red's
+# far off (its selection shows the engine's resources); Blue's hero far off. The engine plays the
+# same commands (the sequence's `script`); no town (the walk ends no turn).
+size = 36
+terrain = "grass"
+explored = "start"
+heroes = [
+    { at = [12, 12], class = 1, map_army = [[0, 15], [2, 5]] },
+    { at = [4, 28], class = 5, map_army = [[28, 20]] },
+    { at = [33, 33], owner = 1, class = 6 },
+]
+bonus = "gold"
+resources = [20, 10, 20, 10, 10, 10, 20000]
+# The engine's resources shown by a selection's redraw (as `engine-start-panels`): the second hero
+# selected, then the turn start's again.
+select = { hero = [4, 28] }
+reselect = [12, 12]
+view = [3, 4, 0]

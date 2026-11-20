@@ -15,17 +15,16 @@ computer must be online); never from the installation. The captures need the fiv
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M4 T2
+#### E27 M4 T3
 
-T2 Credits (the epic's M4 table; design §2.9 with its recorded times, §6.3): `Credits.fnt`,
-`Credits.txt`'s record 1 wrapped to 328 px (colour 0x11C, alignment 5) scrolled 2 px every 100 ms
-with no clip (CLT-Q88), record 2 (`smalfont.fnt`, colour 0xD, alignment 8) once the text's end
-has risen to about 435 px (the exact test from the kept frames), the background saved at (460,
-10, 328, 580) after `mainmenu.pcx` is copied over the menu's buttons; a key down but F4, a left
-or a right press ending it, then the main menu; M2's stub lifted (`shell.stub.credits`). Exact
-against `credits-scroll` and `credits-end` (`h3shell.py drawn --group scores`); the `scores-*`
-recipes stay exact. T1b's notes: the replay takes `press`, `point` and `until-button` on a
-front's original box (`Front::question`; design §35.3), should a box be needed.
+T3 the save file (the epic's M4 table; decision 69, CLT-Q156 (a)): the engine's adventure replay
+(`h3-files`' format, `h3_sim::adventure::Replay`) with the setup's choices (per colour the human
+flag, the town's `FactionChoice`, the starting hero's pick, as `begin::setup` sets them) and the
+client's own table (the names, bonuses, handicaps, the turn's duration, the save's name), written
+and read with its version; a load's setup rebuilt and its commands replayed by the engine; tests,
+no screen. **First:** the adventure lane's inbox still holds the format extension (2026-11-19,
+not built): ask the user whether this lane builds it cross-lane (with the `cross-lane` label) or
+waits; offer a seam if it is big (the format, then the client's table and the load).
 
 ## Inbox
 

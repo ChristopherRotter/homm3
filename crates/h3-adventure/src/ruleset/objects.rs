@@ -603,6 +603,9 @@ pub(crate) enum Effect<'k> {
     /// The Thieves' Guild at everything for the visitor's owner (the Den of Thieves, ADV-VIS-008,
     /// E09 T39a; its view from T39b).
     DenOfThieves,
+    /// The market's window for the visitor's owner (a Trading Post, the Freelancer's Guild, a
+    /// Black Market: ADV-MKT-001, E08 T133a2).
+    Market,
 }
 
 impl ObjectKind {
@@ -618,7 +621,8 @@ impl ObjectKind {
     /// Shipyards; T95a1: the dwellings and the Refugee Camps; E09 T8a2: the towns; E08 T105a1:
     /// the monoliths and the Subterranean Gates, whose visit is the jump; T105a2: the Whirlpool,
     /// whose visit is its loss and the jump; T114a1: the garrisons; T115b: the fifteen bonus
-    /// visitables; E09 T39a: the map's Tavern and the Den of Thieves. Who reaches a kind's visit is the passage's: on water
+    /// visitables; E09 T39a: the map's Tavern and the Den of Thieves; E08 T133a2: the markets.
+    /// Who reaches a kind's visit is the passage's: on water
     /// only a boat (ADV-PIK-018, D-46).
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
         match self {
@@ -697,14 +701,14 @@ impl ObjectKind {
             // bonus visitables' with T115b (increment 12's design note §8, §9). E08 T123a: the
             // creature banks are typed, drawn since T124b1, visited since T124b2 (increment 13's
             // design note §6).
-            // E08 T132a2: increment 14's four kinds are typed; their visits come with T133
-            // (the markets) and T134 (the Altar, the Hill Fort, the factory).
+            // E08 T132a2: increment 14's four kinds are typed; the markets' visit came with
+            // T133a2, the Altar's, the Hill Fort's and the factory's come with T134.
+            Self::Market(_) => Some(Effect::Market),
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
             | Self::Hole
             | Self::RandomDwelling
-            | Self::Market(_)
             | Self::Altar(_)
             | Self::HillFort(_)
             | Self::WarMachineFactory(_) => None,

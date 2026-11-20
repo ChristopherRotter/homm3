@@ -1,5 +1,6 @@
 //! Tests of the visits' block (E08 T61b; increment 7's design note §10): a hero's marks, a player's
-//! knowledge, the emptied objects, and the state's hash and reader.
+//! knowledge, the emptied objects, and the state's hash and reader. Since E08 T133a1 the Black
+//! Markets' sold entries (increment 14's design note §8).
 
 use std::sync::Arc;
 
@@ -55,9 +56,44 @@ fn the_hash_sees_every_part_of_the_visits() {
     known_blue.learn(BLUE, 5);
     let mut emptied = base.clone();
     emptied.empty(5);
-    for visits in [marked, other_hero, known, known_blue, emptied] {
+    // E08 T133a1: a sold entry by its object and its entry.
+    let mut sold = base.clone();
+    sold.sell(5, 0);
+    let mut sold_other = base.clone();
+    sold_other.sell(6, 0);
+    let mut sold_entry = base.clone();
+    sold_entry.sell(5, 1);
+    for visits in [
+        marked, other_hero, known, known_blue, emptied, sold, sold_other, sold_entry,
+    ] {
         assert!(hashes.insert(hash_of(&visits)));
     }
+}
+
+// covers: ADV-MKT-006
+#[test]
+fn visits_keep_each_black_markets_sold_entries() {
+    let mut visits = Visits::new(40, 2);
+    assert!(!visits.is_sold(3, 0));
+    visits.sell(3, 0);
+    visits.sell(3, 6);
+    visits.sell(39, 7);
+    assert!(visits.is_sold(3, 0) && visits.is_sold(3, 6) && !visits.is_sold(3, 1));
+    assert!(visits.is_sold(39, 7) && !visits.is_sold(39, 0) && !visits.is_sold(4, 0));
+    // Twice is once; an entry past the eighth or an object past the map's sells nothing.
+    let before = visits.clone();
+    visits.sell(3, 6);
+    visits.sell(3, 8);
+    visits.sell(40, 0);
+    visits.sell(usize::MAX, 0);
+    assert_eq!(visits, before);
+    assert!(!visits.is_sold(3, 8) && !visits.is_sold(40, 0) && !visits.is_sold(usize::MAX, 0));
+    // The state's reader: nothing sold without a block, the block's entries with one.
+    let (core, part) = rules();
+    let mut state = AdventureState::new(&core, &part, &setup(), &mut draws()).unwrap();
+    assert!(!state.is_sold(0, 0));
+    state.visits_mut().sell(0, 2);
+    assert!(state.is_sold(0, 2) && !state.is_sold(0, 1));
 }
 
 #[test]

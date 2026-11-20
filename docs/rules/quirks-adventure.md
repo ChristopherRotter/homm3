@@ -584,3 +584,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: fixed in every profile
 - Regression test: `crates/h3-adventure/src/state/tests/visitables.rs`, `the_sirens_keep_the_double_products_survivors_in_full_width`
 - Decided by / date: the user 2026-11-11 (ADV-Q49, E08 decision 301); built and recorded by E08 T115b
+
+### ADV-QUIRK-48 — A Black Market's purchase paid and lost without room
+- Class: bug-fix (no flag: always fixed; E08 decision 366; A-46)
+- Context / rules affected: adventure, ADV-MKT-007 (the Black Market's purchase); the town lane's Artifact Merchants on the same window (E09's increment 6)
+- Original behavior: `market_buy_artifact_proc` 0x5ED9E0 pays the price and empties the entry whatever `hero_give_artifact` 0x4E3070 did, so a hero with no body position for the artifact and a full backpack (64) pays and the artifact is lost (survey `E08-trades.md` §7.2).
+- Intended/expected behavior: the purchase is refused before paying when the hero cannot receive the artifact (`MarketError::NoRoom`): `HeroChange::AddArtifact`'s check (HER-CHG-002, a position that takes it, else the backpack below its most), not the pickups' full-backpack count (A-25); the original's placement otherwise.
+- Impact: only a hero with every fitting position worn and a full backpack; the original loses the price and the artifact.
+- Community status: not documented (VCMI's backpack is unbounded by default, so the loss does not arise there).
+- Sources: code reading (survey §7.2); no batch row (decision 366's, survey §21).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/markets.rs`, `a_purchase_is_refused_before_paying_when_the_hero_cannot_receive_the_artifact`
+- Decided by / date: the user 2026-11-18 (ADV-Q57 (2), E08 decision 366); built and recorded by E08 T133a2 (the game's half, the payment after the check, by T133b)

@@ -4,27 +4,35 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132a1 and T132a2 done (the rates, the kinds; decisions 380, 381), T132b done (the import; decision 382), T133 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132a1 and T132a2 done (the rates, the kinds; decisions 380, 381), T132b done (the import; decision 382), T133 cut in three (decision 383): T133a1 and T133a2 done (the stock and its draw; the visit and the adventure's checks), T133b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T133 — the market** (round 6; decisions 373, 382; design note §8 to §13, §17, §21;
-T132b done)
+**E08 T133b — the market's decision and its wire** (round 6; decisions 373, 383; design note §12,
+§13, §17)
 
-- **Scope (§21's plan):** **T133a** `h3-adventure`: the Black Market's stock in the static map
-  (`Resolved::Stock`) and its sold entries in the visits' block (§8; adventure state hash v27),
-  the draw when the game is built (§9, ADV-MKT-006: three treasures, three minors, one major from
-  the one pool, the map's bans out, never restocked), the visits' outcome of the four markets
-  (§10: entered, the window's screens) and the adventure's checks and changes of a trade, a
-  transfer, a sale and a purchase (§11; ADV-MKT-003 to -005, -007; A-46 fixed as ADV-QUIRK-48);
-  **T133b** `h3-game`: the market's decision (§13, GAM-DEC-011; game state hash v35), what a
-  viewer sees (§12, ADV-MKT-008: the stock only in its visitor's open decision) and the events
-  and the wire (§17; `cross-lane`, the server lane's `h3-protocol`).
-- **Inputs:** design note §8 to §13, §17, §19; survey `E08-trades.md` §2 to §8; `h3-adventure`'s
-  `market.rs` (`MarketParams`, T132a1) and `ruleset/trades.rs` (T132a2); T124b1's and T124b2's
-  records in `E08-log.md` as the form (a draw in the static map, a visit); `TRAPS.md` (the
-  codegen units, the visits' block, the plans' oracles).
-- **Depends on:** T132b's pull request. **Status:** ready; its cut confirmed at its start.
+- **Scope:** `h3-game`: the market's decision (§13, GAM-DEC-011; game state hash v35): the trade
+  and the transfer by the treasury (ADV-MKT-003, -004), the sale and the purchase through T133a2's
+  checks (ADV-MKT-005, -007), `Leave`; what a viewer sees (§12, ADV-MKT-008: the stock only in its
+  visitor's open decision); the events and the wire (§17; `cross-lane`, the server lane's
+  `h3-protocol`, with the user's consent at its start); `ADV-STUB-18` lifted.
+- **First:** ADV-Q60 (the market's cost resource: `[params.market]` names it, part v24, or the
+  game passes the town part's gold); T133a2's checks take it from their caller.
+- **Depends on:** T133a2's pull request. **Status:** ready after it; its cut confirmed at its
+  start.
 
 ## Inbox
+
+- 2026-11-19 (the map client lane, E24 M4 T4a1, `map-client/e24-m4-t4a`; **MCL-Q39 and MCL-Q40,
+  for your planning; the user's answers first**): a record's walk (E24 design §5.12) tells the
+  points left once, after the walk (`MovementChanged`), but the original's bar falls at each
+  step's end (`hero_move_step` 0x4805E0 takes the step's price after its animation, 0x481182):
+  recommended (MCL-Q39 (a)) the points left with each `HeroStepped` (or a `MovementChanged`
+  after each step). A normal week's and month's message names it (ArrayTxt 133, 130), a draw of
+  the original's game the engine does not make (`WeekStarted`, `MonthStarted`: `Normal` only):
+  recommended (MCL-Q40 (a)) the name's index drawn with the kind (on a stream of its own, so the
+  golden replays' other draws stay) and told. Also seen: the original banishes a player who has
+  held no town for seven days (the scripted game `game-week`'s first take: Blue, with a hero and
+  no town, banished on day 8, then Red's victory), a rule of E10's victory and loss; the
+  scripted games give every player a town meanwhile. Nothing to build before the user answers.
 
 - 2026-11-19 (the town lane, E09 T41, `town/e09-t41`, docs only; **the town's services renumbered,
   and two of your rules a town batch played; nothing to build**): (1) at T41 (`TWN-Q30`, E09

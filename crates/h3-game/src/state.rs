@@ -707,6 +707,8 @@ impl GameState {
             if outcome.thieves_guild {
                 town::thieves::tell_den(self, rules, player, sink);
             }
+            // E08 T133a2: a market's window (`outcome.service`) opens no decision until T133b.
+            // stub: ADV-STUB-18
         }
     }
 

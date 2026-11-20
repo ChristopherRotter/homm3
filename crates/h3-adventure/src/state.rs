@@ -23,7 +23,8 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher};
 use crate::ADVENTURE_STATE_HASH_VERSION;
 use crate::command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    BattleStart, Combatant, Defender, Meeting, Offer, OfferKind, Sink, Viewers,
+    BattleStart, Combatant, Defender, MarketVisit, Meeting, Offer, OfferKind, ServiceVisit, Sink,
+    Viewers,
 };
 use crate::fog::{on_fringe, reveal};
 use crate::movement::{
@@ -96,6 +97,7 @@ mod garrisons;
 mod holds;
 mod jumps;
 mod manage;
+mod markets;
 mod mines;
 mod monsters;
 mod occupancy;
@@ -120,6 +122,7 @@ pub use dwellings::{HirePurchase, hire_price};
 pub use economy::Weekly;
 pub use economy::allied;
 use flags::Flags;
+pub use markets::{MarketPurchase, Sale};
 pub(crate) use monsters::{Room, join_at, room};
 pub(crate) use occupancy::{Added, Occupancy};
 pub(crate) use passage::{Mode, Node};
@@ -2420,6 +2423,8 @@ impl AdventureState {
     /// kind's marks and question unless looted, a search kind's question). Since E09 T39a the
     /// map's Tavern (ADV-VIS-007: its visit, [`AdventureOutcome::tavern`], the game's tavern
     /// decision) and the Den of Thieves (ADV-VIS-008: entered; its Thieves' Guild from T39b).
+    /// Since E08 T133a2 a market (ADV-MKT-001: entered, its window at every visit,
+    /// [`AdventureOutcome::service`]).
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
     // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017, ADV-DWL-004, ADV-RFG-001, ADV-BON-002
     // rule: ADV-BNK-003, ADV-VIS-007, ADV-VIS-008
@@ -2557,6 +2562,15 @@ impl AdventureState {
             }
             // rule: ADV-VIS-008
             Effect::DenOfThieves => outcome.thieves_guild = true,
+            // rule: ADV-MKT-001
+            Effect::Market => {
+                outcome.service = Some(ServiceVisit::Market(MarketVisit {
+                    hero,
+                    index: visit.object,
+                    object_type: visit.object_type,
+                    anchor,
+                }));
+            }
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
             Effect::Message(leaves) => {

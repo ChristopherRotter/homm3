@@ -67,8 +67,9 @@ pub use army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, split_range};
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
     BattleStart, Choice, ChoiceKind, Combatant, Defender, Drowned, Exchange, Garrison, HeroGains,
-    HireDialog, HireError, HireSource, HireTarget, Meeting, NoRoom, NothingWhy, Offer, OfferKind,
-    OwnHeroes, Pick, ShipyardBlock, Sink, UniversityVisit, Viewers,
+    HireDialog, HireError, HireSource, HireTarget, MarketError, MarketVisit, Meeting, NoRoom,
+    NothingWhy, Offer, OfferKind, OwnHeroes, Pick, ServiceVisit, ShipyardBlock, Sink,
+    UniversityVisit, Viewers,
 };
 pub use market::{Lot, MarketParams, MarketParamsError};
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};
@@ -85,7 +86,7 @@ pub use ruleset::{
     BattleTerrainsDef, CalendarParams, Chest, ChestDef, DWELLING_LEVELS, DwellingParams, Find,
     FindContent, FindContentDef, FindDef, Gift, GiftDef, Gives, HillFort, KEY_COLOURS,
     MAX_BANK_REWARD, MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS, MAX_MONSTER_COUNT,
-    MAX_PICKUP_AMOUNT, MAX_PLAYERS, MarkLifetime, Market, MarketParamsDef, MarketScreen,
+    MAX_PICKUP_AMOUNT, MAX_PLAYERS, MAX_STOCK, MarkLifetime, Market, MarketParamsDef, MarketScreen,
     MonolithWay, MonsterParams, MonsterParamsDef, MonthParams, MonthParamsDef, ObjectKind,
     ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef,
     Pyramid, PyramidDef, RandomDwellingDef, RiverDef, RiverId, RiverKind, RoadDef, RoadId,
@@ -107,8 +108,8 @@ pub use split::{TileRand, split, split_with_second};
 pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
     AdventureState, BACKGROUND_RADIUS, Boat, Channels, GateEntry, HeroBonuses, HeroOnMap,
-    HirePurchase, MapObject, Monster, Resolved, StaticMap, StaticTile, VisitMarks, Visits, Weekly,
-    WhirlpoolTile, allied, hire_price,
+    HirePurchase, MapObject, MarketPurchase, Monster, Resolved, Sale, StaticMap, StaticTile,
+    VisitMarks, Visits, Weekly, WhirlpoolTile, allied, hire_price,
 };
 pub use town::{TavernVisit, TownHeroError, TownHeroMove, TownReveal};
 
@@ -139,8 +140,10 @@ pub use town::{TavernVisit, TownHeroError, TownHeroMove, TownReveal};
 /// the Magic Springs' emptied entrances and the kind marks.
 /// v25 (E09 T28a, the town lane's, `cross-lane`): the towns' garrison heroes after the heroes on
 /// the map ([`AdventureState::town_heroes`]). v26 (E08 T124b1): the creature banks' draws in the
-/// static map, their guards as drawn and [`Resolved::Bank`] (tag 9).
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 26;
+/// static map, their guards as drawn and [`Resolved::Bank`] (tag 9). v27 (E08 T133a1): the Black
+/// Markets' stocks in the static map ([`Resolved::Stock`], tag 10) and their sold entries in the
+/// visits' block.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 27;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

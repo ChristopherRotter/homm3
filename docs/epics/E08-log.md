@@ -20092,3 +20092,112 @@ census is the import's check), `cross-lane` with the user's consent for `h3-serv
 
 **Versions:** map import v27. The game state hash, the adventure state hash, the ruleset part and
 the replay format unchanged. Round 5 done; T133 next.
+
+### Increment 14, round 6: T133a1, the Black Market's stock and its draw (2026-11-19, `adventure/e08-t133a1`, `cross-lane`)
+
+**The cut** (decision 383; asked at T133's start, `AskUserQuestion`): T133a in two at the banks'
+seam (T124b1, T124b2), T133a1 and T133a2 in this session, each its own pull request; T133b a
+later session; `cross-lane` with the user's consent for `h3-server`'s `tests::record`.
+**Baseline:** `master` 7dbe195 (#1057 merged; CI green, its fingerprint, so the setup ran the
+light gates only). Staged `Heroes3.exe`, `maps.tar`, `extracted.tar` from the user's repo folder
+(SHA-256 checked).
+
+- **The state** (design §8): `Resolved::Stock(Vec<ArtifactTypeId>)` (`stock()`; hash tag 10),
+  `Visits::sold: BTreeMap<u32, u8>` with `is_sold` and `sell` (an object past the map's or an
+  entry past the eighth: nothing; hashed after the emptied bits), `AdventureState::is_sold`; the
+  kind's stock at most `MAX_STOCK` (8, a bit each: `compile_market`'s new refusal, the pack
+  format's comment). **Adventure state hash v27.**
+- **The draw** (design §9, survey §7.1; ADV-MKT-006): `stock_draw` in the new `state/markets.rs`
+  (its own module, the codegen-unit trap), from `resolve_rewards`' second walk for a market with a
+  stock: `ArtifactPool::draw` per class in order (the bans and the given marks, the restart, the
+  widening), an entry with none left out; a Trading Post or the guild draws nothing.
+- **Tests:** `state/tests/draws.rs` (two: the classes in order after a placed and a random
+  treasure, the restart giving the second and third among the three, all six orders over 40
+  seeds, a Trading Post drawing nothing and taking no draw; two markets and a random treasure
+  fifteen distinct, the one minor banned widened never to the ban or the special, all banned an
+  empty stock; the hash's four stock cases), `state/tests/visits.rs` (the sold bits, the bounds,
+  the state's reader, the hash's three sold cases), `ruleset/tests/trades.rs` (nine entries
+  refused).
+- **The measure** (`homm3-bench-regression`, before the re-record): `bench-check --lane
+  adventure`: all 38 workloads inside their baselines (the most `manage-army-12` +1.37 %,
+  `random-play-bonuses-36` +1.18 %); no baseline moved.
+- **Replays:** the 104 adventure goldens re-recorded from their commands (a scratch script): only
+  `adventure_state_hash_version`, the final hashes (104) and the checkpoints (101) moved; no
+  fixture map holds a market. `h3-server`'s `tests::record`: `army-dialog-s1`'s checkpoint and
+  final hash (`cross-lane`; the server lane's inbox told). The bots tables record no adventure
+  state hash: unchanged.
+- **The original data:** `h3-map`'s `original_data` (`built_markets`, on the static layer and on
+  the imported game under the map's bans): 154 Black Market stocks on each (survey §1's maps by
+  their markets: 70 + 2 × 28 + 3 × 2 + 4 × 4 + 6), each of its kind's classes in order, none
+  banned; 6 entries repeating another stock's on its map (11 under the bans: a class used up
+  restarts the marks). Compared with `master`'s output line by line: only the new lines and the
+  Refugee Camps' draws by level (the setup stream after the markets) moved.
+- **Docs:** design §8 and §9's *As built*; decision 383 and the task's line; ADV-MKT-006 in the
+  catalog, `verified` (the code reading, E14-3, VCMI); the queue (T133 archived verbatim, T133a2
+  and T133b in); `OVERVIEW.md`'s state line; `TRAPS.md` (a worktree sharing the target
+  directory); the server lane's inbox.
+- **Gates:** the scoped verify `--scope adventure` (the LODs not staged, so without
+  `--with-original-data`; the example run on its own, above): every step passing but `check-lane`
+  (`cross-lane` by design; `check-lane --cross-lane` passes): fmt, clippy, the checks, coverage,
+  determinism, bench-check (every workload inside its baseline). `cargo check --workspace
+  --all-targets` clean; `h3-protocol`'s fold and session tests, `h3-server`'s `tests::record`,
+  `h3-cli`'s `adventure_replays` and `h3-sim`'s adventure tests pass.
+
+**Versions:** adventure state hash v27. The game state hash, the ruleset part, the map import,
+the replay format and the battle's versions unchanged. T133a2 next.
+
+### Increment 14, round 6: T133a2, the market's visit and the adventure's checks (2026-11-20, `adventure/e08-t133a2`)
+
+**The cut** (decision 383): the visits' outcome and the adventure's checks of a sale and a
+purchase, one pull request stacked on T133a1's (#1062); the game's window `ADV-STUB-18` until
+T133b. **Baseline:** T133a1's branch (its scoped verify passing every step but `check-lane`, by
+design).
+
+- **The visit** (design §10; ADV-MKT-001): `Effect::Market` from `effect`, dispatched in
+  `AdventureState::visit` to `AdventureOutcome::service: Option<ServiceVisit>`
+  (`ServiceVisit::Market(MarketVisit { hero, index, object_type, anchor })`). The markets are
+  entered, so the step ends the move on the entrance, and revisitable (`Revisit`,
+  `revisitable`) as every built entered kind; no mark, no event, no block written. The game opens
+  nothing until T133b (`ADV-STUB-18` in `docs/stubs.toml`, its marker in
+  `GameState::settle_outcome`).
+- **The checks and changes** (design §11; `state/markets.rs`): `check_sale` and `sell`
+  (ADV-MKT-005: the visit, the screen, the slot, the lot by `MarketParams::creature_lot` at the
+  kind's count, the lots from 1 to the stack's count over the lot's creatures, the lone stack
+  keeping a creature; the gain in 64 bits saturated; `sell` lowers or empties the slot and
+  returns the `ArmySlot` the game tells), `check_buy` and `buy` (ADV-MKT-007: the visit, the
+  screen, the entry drawn and not sold, the price by `MarketParams::artifact_price`, the hero's
+  room by `check_change`'s `AddArtifact`, HER-CHG-002, before anything is paid: A-46 fixed as
+  ADV-QUIRK-48; `buy` writes the sold bit). `Sale` and `MarketPurchase` keep their fields private
+  with readers and are not `Clone` (the hire's form). `MarketError` in `command.rs`: the design's
+  nine (`SameResource` and `Recipient` the game's at T133b) and, *agent's call* (change freely),
+  `Visit` for a window whose hero is off the map or whose object is no market, as the hire's
+  `NoSource`.
+- **The cost resource** (*agent's call*, ADV-Q60 asked): a creature's and an artifact's value is
+  their cost in "gold" (design §2), which neither the core nor the adventure part names; the
+  checks take the resource from their caller (`value`), so T133b decides where the game takes it
+  (recommended: `[params.market]` names it, part v24).
+- **Tests:** `state/tests/markets.rs` (six): each market's step and Revisit open its window and
+  nothing else; the sale's lots for gold and for wood (survey §4's 25 → 17; 14 peasants for one
+  wood), `Amount`, `Slot`, `NoPrice` (a creature of no cost, a cost read in another resource),
+  the slot emptied and lowered, `LastCreature` with the lone stack, a gain saturated; the
+  purchase's prices (E14-4's 5 000 gold for a cost of 2 000, 40 wood, a cost of 1 at 3), `Entry`
+  past the stock and once sold, `NoPrice`; A-46's room cases (a free finger with a full backpack
+  takes it, unlike A-25's count; neither refused; a hero the store lacks refused); the screens
+  and the windows that are not one; the errors' texts. The test parameters are the base pack's
+  rows 1 to 5. `h3-map`'s `tests/trades.rs`: T132b's refused step split: a market's step
+  entered, the Altar's, the Hill Fort's and the factory's still refused until T134.
+- **Rules and docs:** ADV-MKT-005 and -007 in the catalog, `implemented` (the code reading, batch
+  E14's E14-1, E14-2 and E14-4, VCMI; the decision that pays is T133b's); ADV-MKT-001's summary
+  (the visit); the quirks ledger's ADV-QUIRK-48; ADV-Q60 in `docs/OPEN-QUESTIONS.md`; design §10
+  and §11's *As built*; the task's line; the queue (T133a2 archived verbatim; ADV-Q60 first in
+  T133b's entry); `OVERVIEW.md`; the town lane's inbox (ADV-Q60 concerns its Marketplace).
+- **Gates:** `bench-check --lane adventure`: every workload inside its baseline (the same numbers
+  as T133a1's). The scoped verify: every step passing but `check-lane` (the branch carries
+  T133a1's `cross-lane` commit against `master`; the pull request's base is T133a1's branch, where
+  it is in lane) and, in its first run, coverage (a test's assertion that no trade kind had a
+  visit, then `sell`'s `if let` with an else no checked sale reaches: rewritten as a walk over the
+  checked hero and slot); the last run's coverage on the final code passes, its determinism and
+  bench-check from the first run (only that test and `sell`'s body changed since). `cargo check
+  --workspace --all-targets` clean; `h3-map`'s trades tests pass.
+
+**Versions:** none moved (no state, replay, part or format change). T133b next, ADV-Q60 first.
