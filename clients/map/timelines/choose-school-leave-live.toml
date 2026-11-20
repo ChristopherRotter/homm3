@@ -42,8 +42,8 @@ quests = []
 [[message]]
 at = 100
 box = [176, 76, 448, 448]
-texts = ["+1 Knowledge", "+1 Spell Power", "{School of Magic}\n\nThe tingle of magic fills the air of this school of mystical arts.  An acolyte offers to sign you up for the next class for 1000 gold.  You will have your choice of increasing your knowledge, or learning to better focus your powers."]
-pictures = [["pskill.def", 3, "+1 Knowledge"], ["pskill.def", 2, "+1 Spell Power"]]
+texts = ["+1 [PRISKILL:3]", "+1 [PRISKILL:2]", "[ADVEVENT:71]"]
+pictures = [["pskill.def", 3, "+1 [PRISKILL:3]"], ["pskill.def", 2, "+1 [PRISKILL:2]"]]
 buttons = [30730, 30729, 30722, 30721]
 style = 10
 chosen = -1
@@ -52,8 +52,8 @@ marks = [[30730, 419, 316, 86, 97, 2], [30729, 295, 316, 86, 97, 2], [30722, 327
 [[message]]
 at = 1000
 box = [176, 76, 448, 448]
-texts = ["+1 Knowledge", "+1 Spell Power", "{School of Magic}\n\nThe tingle of magic fills the air of this school of mystical arts.  An acolyte offers to sign you up for the next class for 1000 gold.  You will have your choice of increasing your knowledge, or learning to better focus your powers."]
-pictures = [["pskill.def", 3, "+1 Knowledge"], ["pskill.def", 2, "+1 Spell Power"]]
+texts = ["+1 [PRISKILL:3]", "+1 [PRISKILL:2]", "[ADVEVENT:71]"]
+pictures = [["pskill.def", 3, "+1 [PRISKILL:3]"], ["pskill.def", 2, "+1 [PRISKILL:2]"]]
 buttons = [30730, 30729, 30722, 30721]
 style = 10
 chosen = -1

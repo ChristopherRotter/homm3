@@ -42,8 +42,8 @@ quests = []
 [[message]]
 at = 100
 box = [240, 108, 320, 384]
-texts = ["2/day", "{Ore Pit}\n\nYou gain control of an Ore Pit. It will provide you with two units of ore per day."]
-pictures = [["resour82.def", 2, "2/day"]]
+texts = ["[GENRLTXT:4]", "[MINEEVNT:2]"]
+pictures = [["resour82.def", 2, "[GENRLTXT:4]"]]
 buttons = [30729, 30722]
 style = 1
 chosen = -1
@@ -52,8 +52,8 @@ marks = [[30729, 357, 300, 86, 97, 2], [30722, 368, 431, 64, 30, 6]]
 [[message]]
 at = 1000
 box = [240, 108, 320, 384]
-texts = ["2/day", "{Ore Pit}\n\nYou gain control of an Ore Pit. It will provide you with two units of ore per day."]
-pictures = [["resour82.def", 2, "2/day"]]
+texts = ["[GENRLTXT:4]", "[MINEEVNT:2]"]
+pictures = [["resour82.def", 2, "[GENRLTXT:4]"]]
 buttons = [30729, 30722]
 style = 1
 chosen = -1

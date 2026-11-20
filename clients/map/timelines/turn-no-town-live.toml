@@ -52,13 +52,13 @@ boats = []
 [[message]]
 at = 160
 box = [240, 140, 320, 320]
-texts = ["Red", ", you have lost your last town.  If you do not conquer another town in the next week, you will be eliminated."]
-pictures = [["crest58.def", 0, "Red"]]
+texts = ["[other: 3 characters]", "[GENRLTXT:7]"]
+pictures = [["crest58.def", 0, "[other: 3 characters]"]]
 buttons = [30729, 30722]
 
 [[message]]
 at = 1060
 box = [240, 140, 320, 320]
-texts = ["Red", ", you only have 6 days left to capture a town or you will be banished from this land."]
-pictures = [["crest58.def", 0, "Red"]]
+texts = ["[other: 3 characters]", "[ARRAYTXT:128]"]
+pictures = [["crest58.def", 0, "[other: 3 characters]"]]
 buttons = [30729, 30722]

@@ -1421,7 +1421,8 @@ not 16): rebuild it with `setup.sh`.
 window manager's top dialog not the adventure dialog, or another box's place, texts or pictures)
 `frames` appends a `[[message]]` table to the live part, after the `[[turn]]` tables
 (`message_toml`: `at`, its `box` as x, y, width and height, its `texts` in item order, the text
-and the pictures' captions, its `pictures` as `[DEF, frame, caption]`, its `buttons`' ids:
+and the pictures' captions (as labels: "The kept texts as labels" below), its `pictures` as
+`[DEF, frame, caption]`, its `buttons`' ids:
 `Mem.message_box`), and in each the status window's kind 6 (a resource found) is first built a
 `[[found]]` table (`at`, `resource`, `amount`, `text`: `Mem.found`, the adventure manager's +0x3A0
 to +0x3A8). A situation's object may carry the body the writer writes (`h3_map_view::situation`):
@@ -1459,6 +1460,17 @@ OK's state changed appends a table. A situation's hero may carry its `secondary`
 cleared first), so that a level-up offers one advance or none. A sequence may press the keys `1`
 and `2` (the dialog's left and right offers). T2c's sequences (`level-up*`) wait in
 `map/to-record.toml` until the viewer plays them.
+
+**The kept texts as labels** (E24 M4, the labels task; ADR-0009): the live part never keeps the
+original's texts. A `[[message]]` table's `texts` and its pictures' captions, a `[[level_up]]`
+table's `texts` and a `[[found]]` table's `text` are written as the records they were made of
+(`h3lod.label`, by the run directory's tables): `[ADVEVENT:86]` for a text one record formats
+(two neighbours' `[ADVEVENT:89+90]`; each conversion only numbers and names), else piece by
+piece, a name's row and field (`[CRTRAITS:3.1]`, field 1 a plural) or a record without
+conversions (`[GENRLTXT:5]`), numbers and punctuation kept (`+2 [PRISKILL:0]`), any other piece
+`[other: n characters]`; `[the map's text]` for a text the situation gives itself (a guard's
+`text`: `h3map.own_texts`). `h3lod.py label <text>` shows one. Nothing of the viewer reads them;
+the client test `h3-map-view`'s `tests/texts.rs` refuses a kept live part with anything else.
 
 **A cast on the map** (E24 M4 T2d3, design §5.8): a sequence casts by the cast button's hotkey
 (`keydown`/`keyup` of `c`: the key up opens the spell book, on its adventure bookmark at its first

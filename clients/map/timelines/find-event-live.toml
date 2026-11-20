@@ -42,20 +42,20 @@ quests = []
 [[message]]
 at = 100
 box = [240, 140, 320, 320]
-texts = ["5 Spell Points", "Mephala gains magical energy."]
-pictures = [["ilck82.def", 4, ""], ["pskill.def", 5, "5 Spell Points"]]
+texts = ["5 [GENRLTXT:388]", "[ADVEVENT:177]"]
+pictures = [["ilck82.def", 4, ""], ["pskill.def", 5, "5 [GENRLTXT:388]"]]
 buttons = [30730, 30729, 30722]
 
 [[message]]
 at = 1060
 box = [240, 140, 320, 320]
-texts = ["500", "Mephala has found treasure."]
+texts = ["500", "[ADVEVENT:183]"]
 pictures = [["resour82.def", 6, "500"]]
 buttons = [30729, 30722]
 
 [[message]]
 at = 1660
 box = [240, 172, 320, 256]
-texts = ["5 Halberdiers", "Halberdiers join Mephala's army."]
-pictures = [["twcrport.def", 3, "5 Halberdiers"]]
+texts = ["5 [CRTRAITS:3.1]", "[ADVEVENT:186]"]
+pictures = [["twcrport.def", 3, "5 [CRTRAITS:3.1]"]]
 buttons = [30729, 30722]

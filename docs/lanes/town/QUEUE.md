@@ -5,28 +5,18 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 ## Tasks
 
 Epic: `docs/epics/E09-towns.md` (increment 5: the mage guild, refined at T41, `TWN-Q30`, decisions
-161 to 164; the services are increment 6, travel and the Grail 7, decision 162); done tasks in
+161 to 164; its survey T42a and T42b with the checkpoint `TWN-Q31`, decisions 165 to 171; the services are increment 6, travel and the Grail 7, decision 162); done tasks in
 `E09-log.md`; increments 1 to 4 (closed by T10, T20, T30 and T41) in `E09-archive.md`. Each
 task's cut confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`).
 
-**E09 T42b — increment 5's survey, its second part** (round 1, decisions 163, 165), with the
-checkpoint over both parts (`TWN-Q31`): what a hero gets from the guild. The code reading of
-`Heroes3.exe`: learning at each of `town_heroes_learn_spells` 0x5BE030's nine callers (a visit,
-the start `TWN-STUB-6` with its dispute TD-10, a hire `TWN-STUB-15`, a build, the guild's
-window, `hero_relocate_spell` 0x41D360 and `town_castle_gate` 0x5D8480 (both names inferred),
-the computer's visit, one caller not named yet), with the
-spell book and Wisdom's bound; the spell book (bought at the guild: `mage_guild_open` 0x5CE560,
-read by T42a, survey §6; elsewhere); the spell points restored in a town with a guild; the
-Dungeon's Mana Vortex (the map's bit 18); VCMI 1.7.5 and the wiki compared; the heroes' census
-(the main towns' heroes with a spell book, the heroes standing in towns with a guild); batch
-TWN-5's rows (T42a's three in §9 with this part's); the survey `docs/rules/surveys/E09-guild.md`
-from §10, its §0 findings for this part, the disputes TD-25, TD-26 and quirk candidate T-18 for
-the checkpoint. Needs `Heroes3.exe` and `extracted.tar` staged. **Status:** next.
-
 **E09 T43 — the drafts** (round 1, decision 163): the ADR amendment drafts
 (`docs/lanes/town/adr-drafts/`), the design note's Part G (`E09-design.md`, from §82), the cut
-into rounds and the exit criteria, accepted by the user before anything is built.
+into rounds and the exit criteria, accepted by the user before anything is built. Inputs: survey
+`docs/rules/surveys/E09-guild.md` (§0's findings; §8's and §17's open points for T43) and
+`TWN-Q31`'s answers (decisions 167 to 170: TD-10 and TD-25 the original, T-18 a `fix-optional`
+flag confirmed first, TD-27's free opening command for the owner, its shape here); batch TWN-5's
+five rows (§18) placed in the cut. **Status:** next.
 
 ## Inbox
 

@@ -209,7 +209,8 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   agreed fallback): T4a1, the reading and the recordings (**done** 2026-11-19; the log's "M4
   T4a1", design §5.12; MCL-Q39, MCL-Q40), T4a2 the viewer; T4b the visits; T4c the other
   players' turns, the viewer's controls and a golden replay; the kept live parts' message texts
-  as labels first (ADR-0009, found at T4a1, the user: none new meanwhile); T5, the battles handed over
+  as labels first (ADR-0009, found at T4a1, the user: none new meanwhile; **done** 2026-11-20,
+  whole: the log's "M4, the labels"); T5, the battles handed over
   (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
   with the user.
 - **Exit:** Part A's situations and sequences exact on the whole screen (or each difference an
@@ -418,6 +419,12 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   first; a shipped situation's staging keys (`bonus` with `players`, `resources`, `select`,
   `reselect`, `pointer`); the two shipped starts' level-up draws listed as differences, not
   staged.
+- **M4, the kept texts' labels** (*provisional*; the runbook's "The kept texts as labels"):
+  `h3lod.label`'s form (`[TABLE:record]` for a text one record formats, its conversions only
+  numbers and names, the names' tables and fields of `NAME_FIELDS`; piece by piece else, numbers
+  and punctuation kept, `[other: n characters]`, `[the map's text]`); the labels take no
+  arguments (the viewer reads none; the record names the message); the guard a client test
+  (`h3-map-view`'s `tests/texts.rs`: the grammar, no original data needed, so CI runs it).
 - **M4 T4a1, the scripted games' form** (*provisional*; design §5.12): a sequence's `script`, the
   engine's commands of the same game as `h3 adventure run --script` reads them, written by hand
   from the original's walk (its recorded `hero` lines) and checked against the engine's record

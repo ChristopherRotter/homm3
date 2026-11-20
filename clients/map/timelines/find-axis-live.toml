@@ -42,6 +42,6 @@ quests = []
 [[message]]
 at = 100
 box = [176, 76, 448, 448]
-texts = ["+1 Spell Power", "{Star Axis}\n\nYou've found several of the best astrologers of the land gathered at a Star Axis.  Happy to have some company, they teach you how to use the Sun, Moon, and Stars to enhance your spell casting ability."]
-pictures = [["pskill.def", 2, "+1 Spell Power"]]
+texts = ["+1 [PRISKILL:2]", "[ADVEVENT:100]"]
+pictures = [["pskill.def", 2, "+1 [PRISKILL:2]"]]
 buttons = [30729, 30722]

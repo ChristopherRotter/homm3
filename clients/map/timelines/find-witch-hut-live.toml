@@ -42,6 +42,6 @@ quests = []
 [[message]]
 at = 100
 box = [240, 108, 320, 384]
-texts = ["Basic Logistics", "{Witch's Hut}\n\nAn ancient witch living in a strange hut welcomes you, teaching you Logistics for her own inscrutable purposes."]
-pictures = [["secsk82.def", 9, "Basic Logistics"]]
+texts = ["[SKILLLEV:0] [SSTRAITS:4]", "[ADVEVENT:171]"]
+pictures = [["secsk82.def", 9, "[SKILLLEV:0] [SSTRAITS:4]"]]
 buttons = [30729, 30722]

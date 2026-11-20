@@ -42,6 +42,6 @@ quests = []
 [[message]]
 at = 100
 box = [240, 108, 320, 384]
-texts = ["Haste", "{Shrine of Magic Incantation}\n\nYou come across a small shrine attended by a group of novice acolytes.  In exchange for your protection, they agree to teach you a simple spell - 'Haste'."]
-pictures = [["spellscr.def", 53, "Haste"]]
+texts = ["[SPTRAITS:61]", "[ADVEVENT:127] '[SPTRAITS:61]'."]
+pictures = [["spellscr.def", 53, "[SPTRAITS:61]"]]
 buttons = [30729, 30722]

@@ -42,6 +42,6 @@ quests = []
 [[message]]
 at = 100
 box = [240, 140, 320, 320]
-texts = ["{Temple}\n\nA visit and a prayer at the temple raises the morale of your troops."]
+texts = ["[ADVEVENT:140]"]
 pictures = [["imrl82.def", 4, ""]]
 buttons = [30729, 30722]
