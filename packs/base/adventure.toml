@@ -165,8 +165,11 @@ free_level = 1
 # binary32 nearest (their bit patterns checked against the executable by the original-data check
 # 8). VCMI 1.7.5 IMarket::getOffer has the same values and factors (survey section 9); the wiki's
 # Artifact merchants page the artifacts' percentages. Batch E14 (E14-1, E14-2, E14-4, E14-5)
-# observed the rates at five.
+# observed the rates at five. cost (E08 T133b, ADV-Q60 (a)): the resource a creature's and an
+# artifact's cost is read in, gold (the creature record's +0x38 in market_creature_rate 0x5ECE80,
+# the artifact's cost in market_buy_artifact_proc 0x5ED9E0; survey sections 4, 6, 7.2).
 [params.market]
+cost = "gold"
 values = { wood = 250, mercury = 500, ore = 250, sulfur = 500, crystal = 500, gems = 500, gold = 1 }
 artifact_values = { wood = 125, mercury = 250, ore = 125, sulfur = 250, crystal = 250, gems = 250, gold = 1 }
 resources = [10, 15, 20, 25, 30, 35, 40, 45, 50, 50]

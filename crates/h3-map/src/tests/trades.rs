@@ -324,7 +324,7 @@ fn the_import_types_the_trades() {
 #[test]
 fn a_step_onto_a_market_enters_it_and_onto_another_trade_is_refused_until_t134() {
     // A market's visit is built (E08 T133a2): the step onto its entrance ends the move there (its
-    // window opens no decision until T133b, ADV-STUB-18). Until T134 builds the Altar's, the Hill
+    // window opens the market's decision since T133b, GAM-DEC-011). Until T134 builds the Altar's, the Hill
     // Fort's and the factory's (increment 14's design note §10), their entrance is refused as any
     // unbuilt visit's (`effect` none): Red's hero, placed on the tile below each entrance (free:
     // the pictures are four rows apart), reaches no point on it, the step onto it is `Visit` and
@@ -363,11 +363,23 @@ fn a_step_onto_a_market_enters_it_and_onto_another_trade_is_refused_until_t134()
             .object_type
             .and_then(|ty| rules.adventure().object_type(ty))
             .map(|ty| &ty.kind);
-        if let Some(ObjectKind::Market(_)) = kind {
+        if let Some(ObjectKind::Market(market)) = kind {
             markets += 1;
             assert!(reach.points_left(entrance).is_some(), "{index}");
             assert!(stepped.is_ok(), "{index}");
             assert_eq!(state.adventure().heroes()[0].pos, entrance, "{index}");
+            // E08 T133b: its decision opens with the original packs' rates (a Trading Post's 42
+            // trades of the seven resources, at five Marketplaces).
+            assert_eq!(state.market(red).map(|visit| visit.hero), Some(hero));
+            let seen = h3_game::observe(&state, rules, h3_game::Viewer::Player(red)).decision;
+            let Some(h3_game::DecisionView::Market(view)) = seen else {
+                panic!("{index}: {seen:?}")
+            };
+            assert_eq!(view.offers.screens, market.screens, "{index}");
+            assert_eq!(view.offers.count, 5, "{index}");
+            let trades = market.shows(h3_adventure::MarketScreen::Trade);
+            let expected = if trades { 42 } else { 0 };
+            assert_eq!(view.offers.trades.len(), expected, "{index}");
             continue;
         }
         assert_eq!(reach.points_left(entrance), None, "{index}");

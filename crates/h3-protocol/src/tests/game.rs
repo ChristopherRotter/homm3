@@ -792,6 +792,63 @@ fn decision_back(d: &Decision) -> DecisionView {
             object_type: Handle::from_raw(object.object_type),
             anchor: pos_back(object.anchor),
         },
+        Decision::Market { market } => DecisionView::Market(market_back(market)),
+    }
+}
+
+/// A market's window back in the engine's types (E08 T133b, v75).
+fn market_back(m: &MarketWindow) -> h3_game::MarketView {
+    let lot = |l: &Lot| h3_game::Lot {
+        give: l.give,
+        take: l.take,
+    };
+    h3_game::MarketView {
+        hero: HeroId::new(m.hero),
+        object_type: Handle::from_raw(m.object.object_type),
+        anchor: pos_back(m.object.anchor),
+        offers: h3_game::MarketOffers {
+            screens: m
+                .screens
+                .iter()
+                .map(|screen| match screen {
+                    MarketScreen::Trade => h3_game::MarketScreen::Trade,
+                    MarketScreen::Transfer => h3_game::MarketScreen::Transfer,
+                    MarketScreen::Sell => h3_game::MarketScreen::Sell,
+                    MarketScreen::Buy => h3_game::MarketScreen::Buy,
+                })
+                .collect(),
+            count: m.count,
+            trades: m
+                .trades
+                .iter()
+                .map(|t| h3_game::TradeOffer {
+                    give: Handle::from_raw(t.give),
+                    take: Handle::from_raw(t.take),
+                    lot: lot(&t.lot),
+                })
+                .collect(),
+            sales: m
+                .sales
+                .iter()
+                .map(|s| h3_game::SaleOffer {
+                    slot: s.slot,
+                    lots: s
+                        .lots
+                        .iter()
+                        .map(|l| (Handle::from_raw(l.resource), lot(&l.lot)))
+                        .collect(),
+                })
+                .collect(),
+            stock: m
+                .stock
+                .iter()
+                .map(|e| h3_game::StockEntry {
+                    artifact: e.artifact.map(Handle::from_raw),
+                    prices: amounts_back(&e.prices),
+                })
+                .collect(),
+        },
+        recipients: m.recipients.iter().copied().map(PlayerId::new).collect(),
     }
 }
 
@@ -1245,6 +1302,50 @@ fn every_decision() -> Vec<DecisionView> {
         object_type,
         anchor,
     });
+    // E08 T133b (v75): a market with every screen and each list, and one with none.
+    let lot = |give, take| h3_game::Lot { give, take };
+    let r = Handle::from_raw;
+    out.push(DecisionView::Market(h3_game::MarketView {
+        hero,
+        object_type,
+        anchor,
+        offers: h3_game::MarketOffers {
+            screens: vec![
+                h3_game::MarketScreen::Trade,
+                h3_game::MarketScreen::Transfer,
+                h3_game::MarketScreen::Sell,
+                h3_game::MarketScreen::Buy,
+            ],
+            count: 5,
+            trades: vec![h3_game::TradeOffer {
+                give: r(0),
+                take: r(6),
+                lot: lot(1, 75),
+            }],
+            sales: vec![h3_game::SaleOffer {
+                slot: 2,
+                lots: vec![(r(6), lot(1, 17)), (r(0), lot(14, 1))],
+            }],
+            stock: vec![
+                h3_game::StockEntry {
+                    artifact: Some(Handle::from_raw(41)),
+                    prices: price(),
+                },
+                h3_game::StockEntry {
+                    artifact: None,
+                    prices: Vec::new(),
+                },
+            ],
+        },
+        recipients: vec![PlayerId::new(0), PlayerId::new(3)],
+    }));
+    out.push(DecisionView::Market(h3_game::MarketView {
+        hero,
+        object_type,
+        anchor,
+        offers: h3_game::MarketOffers::default(),
+        recipients: Vec::new(),
+    }));
     out
 }
 

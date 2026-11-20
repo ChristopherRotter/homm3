@@ -63,7 +63,7 @@
 //! most of each of the first [`HIRE_SLOTS`] creatures in its source's order (the `Buy`
 //! `legal_commands` lists for it, so an entry is legal when that creature's most is 1 or more) and
 //! its `Close` (GAM-DEC-008), a map Tavern's hires of the two slots and its `Close` (GAM-DEC-010,
-//! version 13). With no open decision of that role the entry decodes to the offer's
+//! version 13), a market's `Leave` (GAM-DEC-011, version 14). With no open decision of that role the entry decodes to the offer's
 //! or the level-up's answer, or the purchase (a hire entry's: a `Buy` of 0, [`hire_answer`]),
 //! which `apply` rejects.
 //!
@@ -116,7 +116,10 @@
 //! hero slot by its id. Version 13 (E09 T39a, the town lane's `cross-lane` change with the user's
 //! consent, E09 decision 149; the town epic's design note §76) maps the map Tavern's decision
 //! (GAM-DEC-010) onto the answers by role, no new entry: the hire of slot 0 its first, of slot 1
-//! its second, its `Close` the closing role.
+//! its second, its `Close` the closing role. Version 14 (E08 T133b, the adventure lane's
+//! `cross-lane` change with the user's consent; increment 14's design note §18) maps a market's
+//! decision (GAM-DEC-011) onto the closing role, no new entry: its `Leave`; its trades, sales and
+//! purchases have none until E08 T135a appends them.
 
 use h3_adventure::{AdventureCommand, Pos, Reach};
 use h3_battle::{BattleState, LegalCommands};
@@ -125,15 +128,15 @@ use h3_contracts::TownId;
 use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameRuleset, GameState,
-    HireAnswer, SchoolChoice, SkillOffer, TavernAnswer, UniversityAnswer, legal_commands,
-    legal_moves,
+    HireAnswer, MarketAnswer, SchoolChoice, SkillOffer, TavernAnswer, UniversityAnswer,
+    legal_commands, legal_moves,
 };
 use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand, TownHeroChange};
 
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 13;
+pub const ACTION_ENCODING_VERSION: u32 = 14;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -702,9 +705,10 @@ const fn tileless(entry: usize) -> bool {
 /// University left; the first or the second of a level-up's, a chest's, the Arena's or a School's
 /// answers; a University's purchase of one of its first [`UNIVERSITY_SLOTS`] slots (none for a
 /// later one); since version 13 (E09 T39a) a map Tavern's `Close` the closing role, its hire of
-/// slot 0 the first, of slot 1 the second (none for another slot). None for a hire dialog's
-/// purchase, whose entry is its creature's place in the
-/// dialog's source, which the answer does not carry ([`hire_entry`], E08 T95b).
+/// slot 0 the first, of slot 1 the second (none for another slot); since version 14 (E08 T133b) a
+/// market's `Leave` the closing role (none for its other answers until T135a). None for a hire
+/// dialog's purchase, whose entry is its creature's place in the dialog's source, which the answer
+/// does not carry ([`hire_entry`], E08 T95b).
 pub const fn answer_entry(answer: Answer) -> Option<usize> {
     match answer {
         Answer::Offer(Consent::Accept) => Some(ACCEPT),
@@ -713,7 +717,8 @@ pub const fn answer_entry(answer: Answer) -> Option<usize> {
         | Answer::School(SchoolChoice::Leave)
         | Answer::University(UniversityAnswer::Leave)
         | Answer::Hire(HireAnswer::Close)
-        | Answer::Tavern(TavernAnswer::Close) => Some(DECLINE),
+        | Answer::Tavern(TavernAnswer::Close)
+        | Answer::Market(MarketAnswer::Leave) => Some(DECLINE),
         Answer::LevelUp(SkillOffer::First)
         | Answer::Chest(ChestChoice::Gold)
         | Answer::Arena(ArenaChoice::Attack)
@@ -732,7 +737,9 @@ pub const fn answer_entry(answer: Answer) -> Option<usize> {
                 None
             }
         }
-        Answer::Hire(HireAnswer::Buy { .. }) | Answer::Tavern(TavernAnswer::Hire { .. }) => None,
+        Answer::Hire(HireAnswer::Buy { .. })
+        | Answer::Tavern(TavernAnswer::Hire { .. })
+        | Answer::Market(_) => None,
     }
 }
 

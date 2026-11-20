@@ -4,36 +4,26 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132a1 and T132a2 done (the rates, the kinds; decisions 380, 381), T132b done (the import; decision 382), T133 cut in three (decision 383): T133a1 and T133a2 done (the stock and its draw; the visit and the adventure's checks), T133b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132a1 and T132a2 done (the rates, the kinds; decisions 380, 381), T132b done (the import; decision 382), T133 cut in three (decision 383): T133a1 and T133a2 done (the stock and its draw; the visit and the adventure's checks), T133b done (the decision and its wire; decision 384), T134a below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T133b — the market's decision and its wire** (round 6; decisions 373, 383; design note §12,
-§13, §17)
+**E08 T134a — the Altar of Sacrifice** (round 7; decisions 366, 367, 373; design note §11's
+sacrifices, §14; survey `E08-trades.md` §12, §16)
 
-- **Scope:** `h3-game`: the market's decision (§13, GAM-DEC-011; game state hash v35): the trade
-  and the transfer by the treasury (ADV-MKT-003, -004), the sale and the purchase through T133a2's
-  checks (ADV-MKT-005, -007), `Leave`; what a viewer sees (§12, ADV-MKT-008: the stock only in its
-  visitor's open decision); the events and the wire (§17; `cross-lane`, the server lane's
-  `h3-protocol`, with the user's consent at its start); `ADV-STUB-18` lifted.
-- **First:** ADV-Q60 (the market's cost resource: `[params.market]` names it, part v24, or the
-  game passes the town part's gold); T133a2's checks take it from their caller.
-- **Depends on:** T133a2's pull request. **Status:** ready after it; its cut confirmed at its
-  start.
+- **Scope:** `h3-adventure`: `ServiceVisit::Altar` (the visit, the screens by the hero's class's
+  faction, the kind mark, ADV-ALT-001, ADV-BON-009), the sacrifices' checks and changes (§11:
+  ADV-ALT-002 the artifacts, -003 the creatures; A-47 accepted as ADV-QUIRK-49); `h3-game`:
+  `Decision::Altar` (GAM-DEC-012, game state hash v36), `Answer::Altar`, `AltarOpened`, the view,
+  the levels inside the Altar and `Rest::Visit` (GAM-DEC-007 amended; A-48 fixed as ADV-QUIRK-50:
+  a sacrifice names everything in one answer); the wire (`cross-lane`, protocol v76), the replay
+  words (format v21) and the env's `Leave` on the closing entry (encoding v15), as T133b's
+  (decision 384: a new answer forces them).
+- **Trap:** `h3_game::Answer` is `Copy` (`h3-sim`'s `const fn answer_entry`, the replay's
+  `format_answer(*answer)`): §14's `Artifacts(Vec<ArtifactPlace>)` cannot be one; a fixed array
+  (at most 23 places with a count) or a decision to drop `Copy` (every lane's matches), asked at
+  the start.
+- **Depends on:** T133b's pull request. **Status:** ready after it; its cut confirmed at its start.
 
 ## Inbox
-
-- 2026-11-20 (the client lane, E27 M4 T3a, `client/e27-m4-t3a`, `cross-lane` with the user's
-  consent, E27 decision 71; **your replay format moved: increment 14 takes v21**): your inbox's
-  format extension of 2026-11-19 (CLT-Q156 (a)) is built. **Adventure replay format v20**:
-  `h3_sim::adventure::replay::PlayerChoices` (a player's colour, human flag, `FactionChoice`,
-  pick), `Replay::players` (every player's, recorded from the setup by `record_random` and
-  `record_commands`; none: the import's), `Replay::setup` (the import at the replay's difficulty
-  with the choices set over it; a colour no player has or chosen twice is
-  `Incompatible("players")`), `verify` building from it; `h3-files`' `[[players]]` tables
-  (`faction` an index or `"random"`, `hero` an index; absent without one). The 104 golden replays
-  were recorded again from their commands: only `format = 20` and their `[[players]]` lines moved
-  (no hash). Your HANDOFF's versions line says so (replay format v20, increment 14's next v21);
-  your design note §19's `answer market …` lines then take v21. A golden of yours recorded at v19
-  on a branch open meanwhile needs `format = 20` and its players (record it again).
 
 - 2026-11-19 (the map client lane, E24 M4 T4a1, `map-client/e24-m4-t4a`; **MCL-Q39 and MCL-Q40,
   for your planning; the user's answers first**): a record's walk (E24 design §5.12) tells the

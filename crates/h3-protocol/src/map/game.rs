@@ -27,9 +27,10 @@ use h3_game::{
     GuildHero as EngineGuildHero, GuildPart as EngineGuildPart, GuildPlayer as EngineGuildPlayer,
     GuildRow as EngineGuildRow, HeroInfo as EngineInfo, HireCreature as EngineCreature,
     HireSeen as EngineSeen, HireView, HiredPart as EngineHiredPart, LevelUpView, MapGarrisonView,
-    MonthKind, PlayerView, SlotState as EngineSlot, TavernHero as EngineTavernHero,
-    TavernHeroView as EngineTavernView, TavernPart as EngineTavernPart, ThievesGuildView,
-    TownBuildingsView, TownOwnerView, TownView, Viewer, WeekKind,
+    MarketScreen as EngineScreen, MarketView, MonthKind, PlayerView, SlotState as EngineSlot,
+    TavernHero as EngineTavernHero, TavernHeroView as EngineTavernView,
+    TavernPart as EngineTavernPart, ThievesGuildView, TownBuildingsView, TownOwnerView, TownView,
+    Viewer, WeekKind,
 };
 use h3_heroes::{
     ArtifactInstance, HeroDetails as EngineDetails, OfferLevels as EngineLevels,
@@ -43,10 +44,11 @@ use crate::wire::game::{
     Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonHero, GarrisonStack,
     Guards, GuildHero, GuildPart, GuildPlayer, GuildRanking, GuildRow, HeroDetails, HeroInfo, Hire,
     HireCreature, HireSeen, HireTarget, HiredPart, Known, KnownObject as WireKnownObject, LevelUp,
-    MapGarrison, MapHero, Monster, Month, Object, ObjectRef, Offer, OfferKind, OfferLevels,
-    OwnMapHero, Player, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, SlotState,
-    Summoned, TavernHero, TavernHeroHead, TavernPart, ThievesGuild, Tile, Town, TownBuildings,
-    TownOwnerFacts, UniversityVisit, VisitBonus, Week,
+    Lot, MapGarrison, MapHero, MarketScreen, MarketWindow, Monster, Month, Object, ObjectRef,
+    Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, ResourceLot,
+    RevealedArea, RevealedView, SaleLots, SkillLevel, SlotState, StockEntry, Summoned, TavernHero,
+    TavernHeroHead, TavernPart, ThievesGuild, Tile, Town, TownBuildings, TownOwnerFacts, TradeLot,
+    UniversityVisit, VisitBonus, Week,
 };
 
 mod command;
@@ -399,6 +401,66 @@ fn decision_view(d: &DecisionView) -> Decision {
             hero: hero.raw(),
             object: object_ref((*object_type, *anchor)),
         },
+        DecisionView::Market(view) => Decision::Market {
+            market: market(view),
+        },
+    }
+}
+
+/// A market's decision on the wire (E08 T133b, v75).
+fn market(view: &MarketView) -> MarketWindow {
+    let lot = |l: h3_game::Lot| Lot {
+        give: l.give,
+        take: l.take,
+    };
+    let offers = &view.offers;
+    MarketWindow {
+        hero: view.hero.raw(),
+        object: object_ref((view.object_type, view.anchor)),
+        screens: offers
+            .screens
+            .iter()
+            .map(|screen| match screen {
+                EngineScreen::Trade => MarketScreen::Trade,
+                EngineScreen::Transfer => MarketScreen::Transfer,
+                EngineScreen::Sell => MarketScreen::Sell,
+                EngineScreen::Buy => MarketScreen::Buy,
+            })
+            .collect(),
+        count: offers.count,
+        trades: offers
+            .trades
+            .iter()
+            .map(|t| TradeLot {
+                give: t.give.raw(),
+                take: t.take.raw(),
+                lot: lot(t.lot),
+            })
+            .collect(),
+        sales: offers
+            .sales
+            .iter()
+            .map(|sale| SaleLots {
+                slot: sale.slot,
+                lots: sale
+                    .lots
+                    .iter()
+                    .map(|&(resource, l)| ResourceLot {
+                        resource: resource.raw(),
+                        lot: lot(l),
+                    })
+                    .collect(),
+            })
+            .collect(),
+        stock: offers
+            .stock
+            .iter()
+            .map(|entry| StockEntry {
+                artifact: entry.artifact.map(Handle::raw),
+                prices: amounts(&entry.prices),
+            })
+            .collect(),
+        recipients: view.recipients.iter().map(|p| p.raw()).collect(),
     }
 }
 

@@ -12,6 +12,19 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-20 (the adventure lane, E08 T133b, `adventure/e08-t133b`, `cross-lane` with the user's
+  consent, E08 decision 384; **your paths changed, for your review; protocol v75 taken**): the
+  market's decision on the wire: `Answer::Market` (`MarketAnswer`: `Trade`, `Transfer`, `Sell`,
+  `Buy`, `Leave`; resources by handle), `GameReject::Market` (`MarketReject`, the engine's ten
+  `MarketError`s), `Decision::Market` (`MarketWindow`: the hero, the object, `MarketScreen`s, the
+  count, `TradeLot`s, `SaleLots` of `ResourceLot`s, `StockEntry`s, the recipients; with `Lot`) and
+  `GameEvent::MarketOpened` (`map/game/command.rs`, `event.rs`, `map/game.rs`; `wire/game.rs`,
+  `wire/game/command.rs`, `event.rs`; the version's line in `lib.rs`). The event carries no view:
+  the fold leaves it untold as a University's (`fold.rs`, `tests/game_fold.rs`' `untold`;
+  `SRV-STUB-5`'s reason extended in `docs/stubs.toml`). The round trips: `tests/game.rs`' two
+  market views, `tests/game_command.rs`' five answers and ten rejections (136), `tests/
+  game_event.rs`' `MarketOpened` (47 kinds). The goldens' hash lines moved (game state hash
+  v35, part v24, replay format v21 after the client lane's v20); none of them visits a market.
 - 2026-11-20 (the client lane, E27 M4 T3a, `client/e27-m4-t3a`, `cross-lane` with the user's
   consent; **three literals in your files, then for your planning**): the adventure replay format
   v20 gives `Replay` the players' choices (`players: Vec<PlayerChoices>`: each colour's human flag,

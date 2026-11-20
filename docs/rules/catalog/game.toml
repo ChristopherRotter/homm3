@@ -783,6 +783,24 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "GAM-DEC-011"
+title    = "A market's decision: trades, transfers, sales and purchases until its Leave"
+context  = "game"
+status   = "implemented"
+summary  = "A market's visit (`AdventureOutcome::service`, ADV-MKT-001: a step onto its entrance, or a Revisit) opens as the visitor's owner's decision (`Decision::Market`; E08 T133b, increment 14's design note section 13; the original's market dialog), whatever the treasury and the army: told to the owner alone as `MarketOpened` (the hero, the market's type and anchor). It blocks its owner's `EndTurn` as every decision; it holds no one else and no management command. Its answers (`Answer::Market`), each refused for a screen the market's kind lacks (`MarketError::Screen`), each typed refusal changing nothing (ADR-0004) and every answer but `Leave` keeping it open (the original's window stays open for more trades): `Trade { give, take, lots }` (ADV-MKT-003), `Transfer { resource, amount, to }` (ADV-MKT-004), `Sell { slot, take, lots }` (ADV-MKT-005), `Buy { entry, pay }` (ADV-MKT-007, then `CannotPay`), and `Leave`, its default answer too, which closes it (`DecisionClosed`) with nothing lost. Nothing in the payload is trusted: the rate, the price and the most are the state's (`GameCommandError::Market`). Listed while open (`legal_commands`): `Leave` alone until E08 T135a lists a representative trade, sale and purchase (design note section 18); every answer its view allows is legal for `apply`. Its view, the owner's: `DecisionView::Market` (ADV-MKT-008: the hero, the market by type and anchor, what its window offers with the rates, the recipients). In the game state hash as its kind 10 (the owner, the hero, the market's object index, type and anchor; game state hash v35). On the env's encoding (v14) its `Leave` is the closing role."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-trades.md sections 5 to 7): trading_post_trade 0x5EA0C0, freelancers_guild_trade 0x5E9E60 and black_market_trade 0x5EA100 open the one market dialog (kinds 1, 3, 2; screens 0 and 1, 4, 2), which stays open after each trade until its Done"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 point 6 as amended by E08 T131 (increment 14's decisions, their answers, their Leave as the system's default); increment 14's design note E08-design.md sections 13, 17 and 18; E08 decisions 370, 373, 384"
+  confidence = "high"
+
+[[rule]]
 id       = "GAM-BAT-001"
 title    = "A battle on the map: its sides, its setup, its seeds, a decision its players own"
 context  = "game"

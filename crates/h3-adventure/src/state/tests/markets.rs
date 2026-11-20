@@ -2,7 +2,8 @@
 //! increment 14's design note §10, §11): a market entered and its window at every visit
 //! (ADV-MKT-001), a sale by whole lots keeping the army a creature (ADV-MKT-005), a purchase at
 //! its price, refused before paying when the hero cannot receive the artifact (ADV-MKT-007, A-46
-//! fixed as `ADV-QUIRK-48`).
+//! fixed as `ADV-QUIRK-48`); since E08 T133b a trade's lot (ADV-MKT-003), a transfer's screen
+//! (ADV-MKT-004) and what the window offers (ADV-MKT-008).
 
 use std::collections::BTreeSet;
 use std::string::ToString;
@@ -22,16 +23,18 @@ use super::rewards::{
 use super::*;
 use crate::army::{ArmyRef, ArmySlot};
 use crate::command::{MarketError, MarketVisit, ServiceVisit};
+use crate::market::Lot;
 use crate::ruleset::{Market, MarketScreen, ObjectKindDef, ObjectTypeDef, Visit};
 use crate::setup::Holds;
 use crate::state::Resolved;
+use crate::state::{MarketOffers, SaleOffer, StockEntry, TradeOffer};
 use crate::testing::{GNOLL, PEASANT, PIKEMAN, WOLF, key, stream};
 
 const CLOAK: ArtifactTypeId = ArtifactTypeId::from_raw(3);
 
 /// The draws' rules with hero parameters (a backpack of two), costs in gold (the peasant 25, the
-/// pikeman 60, the wolf 4 000 000 000, the gnoll none; the ring 2 000, the charm 1, the cloak
-/// none) and three entered markets at five Marketplaces: `t:black_market` (buy, the base pack's
+/// pikeman 60, the wolf 4 000 000 000, the gnoll none: 5 wood; the ring 2 000, the charm 1, the
+/// cloak none), the market's cost resource gold (ADV-Q60 (a)), and three entered markets at five Marketplaces: `t:black_market` (buy, the base pack's
 /// stock), `t:trading_post` (trade, transfer) and `t:guild` (sell).
 fn rules() -> Rules {
     let market = |k: &str, screens: Vec<MarketScreen>, stock: Vec<ArtifactClass>| ObjectTypeDef {
@@ -54,6 +57,7 @@ fn rules() -> Rules {
             for (creature, cost) in [(PIKEMAN, 60), (PEASANT, 25), (WOLF, 4_000_000_000)] {
                 core.creatures[creature.index()].info.cost = gold(cost);
             }
+            core.creatures[GNOLL.index()].info.cost = vec![(key("t:wood"), 5)];
             core.artifacts[RING.index()].cost = gold(2000);
             core.artifacts[CHARM.index()].cost = gold(1);
             core.hero_params = Some(HeroParamsDef {
@@ -153,34 +157,26 @@ fn a_sale_takes_whole_lots_and_leaves_the_army_a_creature() {
     let guild = window(&rules, "t:guild", 0);
     // A peasant of 25 gold at five Marketplaces: 17 gold each (survey §4's 25 → 17), or 14 for
     // one wood; so many lots of the creatures, or of the wood.
-    let sale = state
-        .check_sale(rules2, GOLD, &guild, (0, GOLD, 40))
-        .unwrap();
+    let sale = state.check_sale(rules2, &guild, (0, GOLD, 40)).unwrap();
     assert_eq!((sale.count(), sale.gain()), (40, (GOLD, 680)));
-    let wood = state
-        .check_sale(rules2, GOLD, &guild, (0, WOOD, 2))
-        .unwrap();
+    let wood = state.check_sale(rules2, &guild, (0, WOOD, 2)).unwrap();
     assert_eq!((wood.count(), wood.gain()), (28, (WOOD, 2)));
     for lots in [0, 3] {
-        let refused = state.check_sale(rules2, GOLD, &guild, (0, WOOD, lots));
+        let refused = state.check_sale(rules2, &guild, (0, WOOD, lots));
         assert_eq!(refused, Err(MarketError::Amount(lots)));
     }
     assert_eq!(
-        state.check_sale(rules2, GOLD, &guild, (0, GOLD, 41)),
+        state.check_sale(rules2, &guild, (0, GOLD, 41)),
         Err(MarketError::Amount(41))
     );
-    // An empty slot, a creature of no gold cost.
+    // An empty slot, a creature of no cost in the market's cost resource (the gnoll's 5 wood are
+    // not read: ADV-Q60 (a), gold).
     assert_eq!(
-        state.check_sale(rules2, GOLD, &guild, (1, GOLD, 1)),
+        state.check_sale(rules2, &guild, (1, GOLD, 1)),
         Err(MarketError::Slot(1))
     );
     assert_eq!(
-        state.check_sale(rules2, GOLD, &guild, (3, GOLD, 1)),
-        Err(MarketError::NoPrice)
-    );
-    // Valued in wood instead of gold, the peasant has no cost.
-    assert_eq!(
-        state.check_sale(rules2, WOOD, &guild, (0, GOLD, 1)),
+        state.check_sale(rules2, &guild, (3, GOLD, 1)),
         Err(MarketError::NoPrice)
     );
     // Sold whole, the slot empties; the slot that changed is the hero's.
@@ -193,9 +189,7 @@ fn a_sale_takes_whole_lots_and_leaves_the_army_a_creature() {
     let after = vec![stack(2, PIKEMAN, 3), stack(3, GNOLL, 5)];
     assert_eq!(state.hero(HERO).unwrap().army, after);
     // A part of a stack: its count goes down.
-    let two = state
-        .check_sale(rules2, GOLD, &guild, (2, GOLD, 2))
-        .unwrap();
+    let two = state.check_sale(rules2, &guild, (2, GOLD, 2)).unwrap();
     assert_eq!(two.gain(), (GOLD, 84));
     state.sell(two);
     let after = vec![stack(2, PIKEMAN, 1), stack(3, GNOLL, 5)];
@@ -203,19 +197,15 @@ fn a_sale_takes_whole_lots_and_leaves_the_army_a_creature() {
     // The army's lone stack keeps a creature: its count less one is the most.
     state.hero_mut(HERO).unwrap().army = vec![stack(2, PIKEMAN, 3)];
     assert_eq!(
-        state.check_sale(rules2, GOLD, &guild, (2, GOLD, 3)),
+        state.check_sale(rules2, &guild, (2, GOLD, 3)),
         Err(MarketError::LastCreature)
     );
-    let sale = state
-        .check_sale(rules2, GOLD, &guild, (2, GOLD, 2))
-        .unwrap();
+    let sale = state.check_sale(rules2, &guild, (2, GOLD, 2)).unwrap();
     state.sell(sale);
     assert_eq!(state.hero(HERO).unwrap().army, [stack(2, PIKEMAN, 1)]);
     // A gain past 32 bits saturates (a wolf of four billion gold: 2 800 000 000 each).
     state.hero_mut(HERO).unwrap().army = vec![stack(0, WOLF, 5)];
-    let rich = state
-        .check_sale(rules2, GOLD, &guild, (0, GOLD, 2))
-        .unwrap();
+    let rich = state.check_sale(rules2, &guild, (0, GOLD, 2)).unwrap();
     assert_eq!(rich.gain(), (GOLD, u32::MAX));
 }
 
@@ -234,30 +224,30 @@ fn a_purchase_pays_the_price_gives_the_artifact_and_empties_the_entry() {
     let heroes = store(hero());
     let rules3 = (&rules.0, &rules.1, &heroes[..]);
     // The ring of 2 000 at five Marketplaces: 5 000 gold (batch E14's E14-4), 40 wood.
-    let purchase = state.check_buy(rules3, GOLD, &market, (0, GOLD)).unwrap();
+    let purchase = state.check_buy(rules3, &market, (0, GOLD)).unwrap();
     assert_eq!(
         (purchase.price(), purchase.artifact(), purchase.hero()),
         ((GOLD, 5000), RING, HERO)
     );
-    let wood = state.check_buy(rules3, GOLD, &market, (0, WOOD)).unwrap();
+    let wood = state.check_buy(rules3, &market, (0, WOOD)).unwrap();
     assert_eq!(wood.price(), (WOOD, 40));
     // The charm of 1 gold: 2.5 at binary32, rounded half up.
-    let charm = state.check_buy(rules3, GOLD, &market, (1, GOLD)).unwrap();
+    let charm = state.check_buy(rules3, &market, (1, GOLD)).unwrap();
     assert_eq!(charm.price(), (GOLD, 3));
     // An entry past the stock, an artifact without a price in the resource.
     assert_eq!(
-        state.check_buy(rules3, GOLD, &market, (3, GOLD)),
+        state.check_buy(rules3, &market, (3, GOLD)),
         Err(MarketError::Entry(3))
     );
     assert_eq!(
-        state.check_buy(rules3, GOLD, &market, (2, GOLD)),
+        state.check_buy(rules3, &market, (2, GOLD)),
         Err(MarketError::NoPrice)
     );
     // Bought: the entry is sold for everyone, never again.
     state.buy(purchase);
     assert!(state.is_sold(0, 0) && !state.is_sold(0, 1));
     assert_eq!(
-        state.check_buy(rules3, GOLD, &market, (0, GOLD)),
+        state.check_buy(rules3, &market, (0, GOLD)),
         Err(MarketError::Entry(0))
     );
     assert_eq!(
@@ -274,7 +264,7 @@ fn a_purchase_is_refused_before_paying_when_the_hero_cannot_receive_the_artifact
     draw(&mut state, 0, Resolved::Stock(vec![RING]), &[]);
     let market = window(&rules, "t:black_market", 0);
     let buy = |heroes: &[Arc<HeroDetails>]| {
-        state.check_buy((&rules.0, &rules.1, heroes), GOLD, &market, (0, GOLD))
+        state.check_buy((&rules.0, &rules.1, heroes), &market, (0, GOLD))
     };
     // A free finger with a full backpack takes it (not the pickups' count, A-25), as a worn
     // finger with room in the backpack does.
@@ -302,13 +292,13 @@ fn a_markets_answer_is_refused_for_another_screen_or_a_window_that_is_not_one() 
     let market = window(&rules, "t:black_market", 0);
     // The Black Market sells nothing it buys; a guild's window buys nothing.
     assert_eq!(
-        state.check_sale(rules2, GOLD, &market, (0, GOLD, 1)),
+        state.check_sale(rules2, &market, (0, GOLD, 1)),
         Err(MarketError::Screen)
     );
     let guild = at_market(&rules, "t:guild", vec![stack(0, PEASANT, 4)]);
     let sells = window(&rules, "t:guild", 0);
     assert_eq!(
-        guild.check_buy(rules3, GOLD, &sells, (0, GOLD)),
+        guild.check_buy(rules3, &sells, (0, GOLD)),
         Err(MarketError::Screen)
     );
     // A hero not on the map, an index past the objects, an object that is not a market.
@@ -321,11 +311,11 @@ fn a_markets_answer_is_refused_for_another_screen_or_a_window_that_is_not_one() 
     ];
     for visit in elsewhere {
         assert_eq!(
-            state.check_sale(rules2, GOLD, &visit, (0, GOLD, 1)),
+            state.check_sale(rules2, &visit, (0, GOLD, 1)),
             Err(MarketError::Visit)
         );
         assert_eq!(
-            state.check_buy(rules3, GOLD, &visit, (0, GOLD)),
+            state.check_buy(rules3, &visit, (0, GOLD)),
             Err(MarketError::Visit)
         );
     }
@@ -340,7 +330,7 @@ fn a_markets_answer_is_refused_for_another_screen_or_a_window_that_is_not_one() 
     );
     other.hero_mut(HERO).unwrap().army = vec![stack(0, PEASANT, 4)];
     assert_eq!(
-        other.check_sale(rules2, GOLD, &market, (0, GOLD, 1)),
+        other.check_sale(rules2, &market, (0, GOLD, 1)),
         Err(MarketError::Visit)
     );
 }
@@ -362,4 +352,147 @@ fn every_market_error_reads_apart() {
     let texts: BTreeSet<_> = all.iter().map(ToString::to_string).collect();
     assert_eq!(texts.len(), all.len());
     assert!(texts.iter().all(|t| !t.is_empty()));
+}
+
+// covers: ADV-MKT-003, ADV-MKT-004, ADV-MKT-002
+#[test]
+fn a_trades_lot_is_the_rates_and_a_transfer_needs_its_screen() {
+    let rules = rules();
+    let part = &rules.1;
+    let rates = part.params().market().unwrap();
+    let state = at_market(&rules, "t:trading_post", vec![stack(0, PEASANT, 1)]);
+    let post = window(&rules, "t:trading_post", 0);
+    // The rate at the kind's five Marketplaces, each way.
+    for (give, take) in [(WOOD, GOLD), (GOLD, WOOD)] {
+        assert_eq!(
+            state.trade_lot(part, &post, (give, take)),
+            Ok(rates.resource_lot(5, give, take).unwrap())
+        );
+    }
+    // A resource for itself, then one the parameters do not value.
+    assert_eq!(
+        state.trade_lot(part, &post, (GOLD, GOLD)),
+        Err(MarketError::SameResource)
+    );
+    let unknown = ResourceId::from_raw(7);
+    assert_eq!(
+        state.trade_lot(part, &post, (WOOD, unknown)),
+        Err(MarketError::NoPrice)
+    );
+    // The transfer's screen is the Trading Post's, not the guild's; neither trades elsewhere.
+    assert_eq!(
+        state.check_screen(part, &post, MarketScreen::Transfer),
+        Ok(())
+    );
+    assert_eq!(
+        state.check_screen(part, &post, MarketScreen::Sell),
+        Err(MarketError::Screen)
+    );
+    let guild = at_market(&rules, "t:guild", vec![stack(0, PEASANT, 1)]);
+    let sells = window(&rules, "t:guild", 0);
+    assert_eq!(
+        guild.trade_lot(part, &sells, (WOOD, GOLD)),
+        Err(MarketError::Screen)
+    );
+    let gone = MarketVisit {
+        hero: HeroId::new(9),
+        ..post
+    };
+    assert_eq!(
+        state.trade_lot(part, &gone, (WOOD, GOLD)),
+        Err(MarketError::Visit)
+    );
+    assert_eq!(
+        state.check_screen(part, &gone, MarketScreen::Transfer),
+        Err(MarketError::Visit)
+    );
+}
+
+// covers: ADV-MKT-008, ADV-MKT-002, ADV-MKT-005, ADV-MKT-007
+#[test]
+fn a_markets_window_offers_the_rates_of_its_screens_alone() {
+    let rules = rules();
+    let rules2 = (&rules.0, &rules.1);
+    let rates = rules.1.params().market().unwrap();
+    // A Trading Post: both trades' lots, no sale, no stock.
+    let post = at_market(&rules, "t:trading_post", vec![stack(0, PEASANT, 40)]);
+    let offers = post
+        .market_offers(rules2, &window(&rules, "t:trading_post", 0))
+        .unwrap();
+    let trade = |give, take| TradeOffer {
+        give,
+        take,
+        lot: rates.resource_lot(5, give, take).unwrap(),
+    };
+    assert_eq!(
+        offers,
+        MarketOffers {
+            screens: vec![MarketScreen::Trade, MarketScreen::Transfer],
+            count: 5,
+            trades: vec![trade(WOOD, GOLD), trade(GOLD, WOOD)],
+            sales: vec![],
+            stock: vec![],
+        }
+    );
+    // The guild: each stack's lot per resource; the gnoll's 5 wood are no gold cost, so none.
+    let army = vec![stack(0, PEASANT, 40), stack(3, GNOLL, 5)];
+    let guild = at_market(&rules, "t:guild", army);
+    let offers = guild
+        .market_offers(rules2, &window(&rules, "t:guild", 0))
+        .unwrap();
+    let peasant = |take| (take, rates.creature_lot(5, 25, take).unwrap());
+    assert_eq!(peasant(GOLD).1, Lot { give: 1, take: 17 });
+    let sales = vec![
+        SaleOffer {
+            slot: 0,
+            lots: vec![peasant(WOOD), peasant(GOLD)],
+        },
+        SaleOffer {
+            slot: 3,
+            lots: vec![],
+        },
+    ];
+    assert_eq!((offers.trades, offers.sales), (vec![], sales));
+    // The Black Market: its stock in order, a sold entry empty, an artifact of no cost unpriced.
+    let mut market = at_market(&rules, "t:black_market", vec![stack(0, PEASANT, 1)]);
+    draw(
+        &mut market,
+        0,
+        Resolved::Stock(vec![RING, CHARM, CLOAK]),
+        &[],
+    );
+    market.visits_mut().sell(0, 0);
+    let visit = window(&rules, "t:black_market", 0);
+    let offers = market.market_offers(rules2, &visit).unwrap();
+    let prices = |cost| {
+        [WOOD, GOLD]
+            .into_iter()
+            .filter_map(|pay| rates.artifact_price(5, cost, pay).map(|p| (pay, p)))
+            .collect::<Vec<_>>()
+    };
+    assert!(prices(1).contains(&(GOLD, 3)));
+    let stock = vec![
+        StockEntry {
+            artifact: None,
+            prices: vec![],
+        },
+        StockEntry {
+            artifact: Some(CHARM),
+            prices: prices(1),
+        },
+        StockEntry {
+            artifact: Some(CLOAK),
+            prices: vec![],
+        },
+    ];
+    assert_eq!(
+        (offers.screens, offers.sales, offers.stock),
+        (vec![MarketScreen::Buy], vec![], stock)
+    );
+    // A window that is not one.
+    let gone = MarketVisit {
+        hero: HeroId::new(9),
+        ..visit
+    };
+    assert_eq!(market.market_offers(rules2, &gone), Err(MarketError::Visit));
 }

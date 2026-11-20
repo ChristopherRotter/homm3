@@ -63,7 +63,8 @@ mod tests;
 
 pub use command::{
     Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameCommandError, GameEvent,
-    HireAnswer, NoopSink, SchoolChoice, Sink, SkillOffer, TavernAnswer, UniversityAnswer, apply,
+    HireAnswer, MarketAnswer, NoopSink, SchoolChoice, Sink, SkillOffer, TavernAnswer,
+    UniversityAnswer, apply,
 };
 pub use garrisons::MapGarrisonView;
 /// A map Tavern's visit (E09 T39a; `h3_adventure`'s type): what [`GameState::tavern`] gives.
@@ -80,6 +81,12 @@ pub use h3_adventure::{Choice, ChoiceKind, UniversityVisit};
 /// [`GameState::hire_dialog`], [`GameEvent::HireOpened`], [`DecisionView::Hire`] and
 /// [`GameCommandError::Hire`] carry.
 pub use h3_adventure::{HireDialog, HireError, HireSource, HireTarget};
+/// A market's visit, its refusals, what its window offers and its screens (E08 T133b;
+/// `h3_adventure`'s types): what [`GameState::market`], [`GameCommandError::Market`] and
+/// [`DecisionView::Market`] carry.
+pub use h3_adventure::{
+    Lot, MarketError, MarketOffers, MarketScreen, MarketVisit, SaleOffer, StockEntry, TradeOffer,
+};
 /// A University's slot state for a hero (`h3_heroes`' derivation, HER-CHG-004), which
 /// [`DecisionView::University`] shows (E08 T63a).
 pub use h3_heroes::SlotState;
@@ -116,7 +123,7 @@ pub use legal::{
 pub use manage::{Manage, ManageError};
 pub use observe::{
     DecisionView, GameObservation, GameReveal, HeroInfo, HireCreature, HireSeen, HireView,
-    LevelUpView, PlayerView, Viewer, observe, project, reveal,
+    LevelUpView, MarketView, PlayerView, Viewer, observe, project, reveal,
 };
 pub use ruleset::{GameRuleset, RulesetMismatch};
 pub use setup::{
@@ -177,5 +184,7 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// taverns' stream after the towns'; the hero pool's offered status, each type's record and away
 /// record, each player's faction and two tavern slots with their returning marks (TWN-TAV-002,
 /// E09 design §61). v34 (E09 T39a): a map Tavern's decision among the decisions (GAM-DEC-010: its
-/// tag 9, the owner, the hero, the Tavern's type and anchor, its visitable tile).
-pub const GAME_STATE_HASH_VERSION: u32 = 34;
+/// tag 9, the owner, the hero, the Tavern's type and anchor, its visitable tile). v35 (E08 T133b):
+/// a market's decision among the decisions (GAM-DEC-011: its tag 10, the owner, the hero, the
+/// market's object index, type and anchor).
+pub const GAME_STATE_HASH_VERSION: u32 = 35;

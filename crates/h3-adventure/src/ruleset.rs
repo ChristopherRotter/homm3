@@ -210,11 +210,15 @@ pub struct AdventureParamsDef {
 }
 
 /// The market's parameters in a pack (`[params.market]`; E08 T132a2, increment 14's design note
-/// §2; ADV-MKT-002), compiled into [`MarketParams`]: the value of every core resource for a trade
+/// §2; ADV-MKT-002), compiled into [`MarketParams`]: the cost resource (E08 T133b, ADV-Q60), the
+/// value of every core resource for a trade
 /// and for an artifact's price (each once, from 1), and the three factors in hundredths by the
 /// count of Marketplaces from 1, the three lists of one length, from 1 to 255 rows, none 0.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MarketParamsDef {
+    /// The core resource a creature's and an artifact's cost is read in (E08 T133b, ADV-Q60
+    /// (a): the base pack's `cost = "gold"`).
+    pub cost: ContentKey,
     /// A trade's and a creature sale's value by core resource.
     pub values: Vec<(ContentKey, u16)>,
     /// An artifact's price's value by core resource.
@@ -1679,6 +1683,7 @@ fn compile_market_params(
             .collect::<Option<Vec<_>>>()
             .ok_or(invalid("a market value table misses a core resource"))
     };
+    let cost = scope.resource(&def.cost)?;
     let values = by_resource(&def.values)?;
     let artifact_values = by_resource(&def.artifact_values)?;
     if def.artifacts.len() != def.resources.len() || def.creatures.len() != def.resources.len() {
@@ -1691,9 +1696,11 @@ fn compile_market_params(
         .zip(&def.creatures)
         .map(|((&r, &a), &c)| [r, a, c])
         .collect::<Vec<_>>();
-    MarketParams::new(values, artifact_values, &rows).map_err(|e| {
+    MarketParams::new(cost, values, artifact_values, &rows).map_err(|e| {
         invalid(match e {
-            MarketParamsError::Values | MarketParamsError::Rows => {
+            // A core resource is one the tables value (every core resource once): `Cost` cannot
+            // come from a compiled pack.
+            MarketParamsError::Values | MarketParamsError::Rows | MarketParamsError::Cost => {
                 "the market has no resource or row, or more than 255 rows"
             }
             MarketParamsError::ZeroValue => "a market value is 0",

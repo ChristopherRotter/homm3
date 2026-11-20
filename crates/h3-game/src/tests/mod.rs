@@ -22,6 +22,7 @@ mod legal;
 mod level_ups;
 pub(crate) mod levels;
 mod manage;
+mod markets;
 mod mines;
 mod monsters;
 mod moves;

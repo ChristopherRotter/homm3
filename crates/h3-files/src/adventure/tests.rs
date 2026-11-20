@@ -111,6 +111,47 @@ fn commands_round_trip_through_their_text() {
             answer(Answer::Tavern(TavernAnswer::Close)),
             "0 answer tavern close",
         ),
+        // Format v21 (E08 T133b): a market's answers, resources by index.
+        (
+            PlayerId::new(1),
+            answer(Answer::Market(MarketAnswer::Trade {
+                give: ResourceId::from_raw(6),
+                take: ResourceId::from_raw(0),
+                lots: 3,
+            })),
+            "1 answer market trade 6 0 3",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::Market(MarketAnswer::Transfer {
+                resource: ResourceId::from_raw(2),
+                amount: 400,
+                to: PlayerId::new(3),
+            })),
+            "0 answer market transfer 2 400 3",
+        ),
+        (
+            PlayerId::new(2),
+            answer(Answer::Market(MarketAnswer::Sell {
+                slot: 4,
+                take: ResourceId::from_raw(6),
+                lots: 12,
+            })),
+            "2 answer market sell 4 6 12",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::Market(MarketAnswer::Buy {
+                entry: 6,
+                pay: ResourceId::from_raw(5),
+            })),
+            "0 answer market buy 6 5",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::Market(MarketAnswer::Leave)),
+            "0 answer market leave",
+        ),
         (PlayerId::new(0), answer(Answer::Close), "0 answer close"),
         (
             PlayerId::new(7),
@@ -473,6 +514,24 @@ fn commands_round_trip_through_their_text() {
         "0 dismiss",
         "0 dismiss x",
         "0 dismiss 1 2",
+        "0 answer market",
+        "0 answer market barter",
+        "0 answer market trade 6 0",
+        "0 answer market trade x 0 3",
+        "0 answer market trade 6 x 3",
+        "0 answer market trade 6 0 x",
+        "0 answer market transfer 2 400",
+        "0 answer market transfer x 400 3",
+        "0 answer market transfer 2 x 3",
+        "0 answer market transfer 2 400 x",
+        "0 answer market sell 4 6",
+        "0 answer market sell x 6 12",
+        "0 answer market sell 4 x 12",
+        "0 answer market sell 4 6 x",
+        "0 answer market buy 6",
+        "0 answer market buy x 5",
+        "0 answer market buy 6 x",
+        "0 answer market leave now",
     ] {
         assert!(
             matches!(parse_command(bad), Err(AdventureFileError::Format(_))),

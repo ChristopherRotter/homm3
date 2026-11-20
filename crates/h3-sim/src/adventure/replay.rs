@@ -52,9 +52,11 @@ use super::rollout::choose;
 /// Tavern's answers (`h3_game::TavernAnswer`: a hire by its slot, `Close`; GAM-DEC-010); version
 /// 20 (E27 M4 T3a, the client lane's with the user's consent; CLT-Q156 (a)): the players' choices
 /// over the map's import ([`PlayerChoices`]: who is human, the faction's choice, the hero's pick),
-/// so a game a client's scenario screen set up replays. A replay of another version is refused
+/// so a game a client's scenario screen set up replays; version 21 (E08 T133b): a market's answers
+/// (`h3_game::MarketAnswer`: a trade, a transfer, a sale, a purchase, `Leave`; GAM-DEC-011). A
+/// replay of another version is refused
 /// ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 20;
+pub const REPLAY_FORMAT_VERSION: u32 = 21;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

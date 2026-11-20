@@ -14,10 +14,10 @@ use h3_game::{
     ArmyCommandError, ArmyRef as EngineArmyRef, ArmySlot as EngineSlot,
     ArtifactPlace as EnginePlace, BuildingId, ChestChoice as EngineChest, Consent as EngineConsent,
     GameCommand as EngineCommand, GameCommandError, HireAnswer as EngineHire, HireError,
-    Manage as EngineManage, ManageError, Position, SchoolChoice as EngineSchool,
-    SkillOffer as EngineOffer, SystemCommand as EngineSystem, TavernAnswer as EngineTavern,
-    TavernError, TownCommand as EngineTown, TownCommandError, TownHeroChange as EngineHeroChange,
-    UniversityAnswer as EngineUniversity,
+    Manage as EngineManage, ManageError, MarketAnswer as EngineMarket, MarketError, Position,
+    SchoolChoice as EngineSchool, SkillOffer as EngineOffer, SystemCommand as EngineSystem,
+    TavernAnswer as EngineTavern, TavernError, TownCommand as EngineTown, TownCommandError,
+    TownHeroChange as EngineHeroChange, UniversityAnswer as EngineUniversity,
 };
 use h3_heroes::{CombineError, MoveError};
 use h3_kernel::handle::Handle;
@@ -27,9 +27,9 @@ use crate::map::{command_to_engine as battle_to_engine, from_engine};
 use crate::wire::game::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, Formation,
-    GameCommand, GameReject, HireAnswer, HireReject, Manage, ManageReject, MoveReject, Pos,
-    SchoolChoice, SkillOffer, StandReject, SystemCommand, TavernAnswer, TavernReject, TownCommand,
-    TownHeroChange, TownReject, UniversityAnswer,
+    GameCommand, GameReject, HireAnswer, HireReject, Manage, ManageReject, MarketAnswer,
+    MarketReject, MoveReject, Pos, SchoolChoice, SkillOffer, StandReject, SystemCommand,
+    TavernAnswer, TavernReject, TownCommand, TownHeroChange, TownReject, UniversityAnswer,
 };
 
 /// An engine command on the wire (a legal list's, the echo of an applied command).
@@ -153,6 +153,34 @@ const fn answer(a: EngineAnswer) -> Answer {
             answer: match answer {
                 EngineTavern::Hire { slot } => TavernAnswer::Hire { slot },
                 EngineTavern::Close => TavernAnswer::Close {},
+            },
+        },
+        EngineAnswer::Market(answer) => Answer::Market {
+            answer: match answer {
+                EngineMarket::Trade { give, take, lots } => MarketAnswer::Trade {
+                    give: give.raw(),
+                    take: take.raw(),
+                    lots,
+                },
+                EngineMarket::Transfer {
+                    resource,
+                    amount,
+                    to,
+                } => MarketAnswer::Transfer {
+                    resource: resource.raw(),
+                    amount,
+                    to: to.raw(),
+                },
+                EngineMarket::Sell { slot, take, lots } => MarketAnswer::Sell {
+                    slot,
+                    take: take.raw(),
+                    lots,
+                },
+                EngineMarket::Buy { entry, pay } => MarketAnswer::Buy {
+                    entry,
+                    pay: pay.raw(),
+                },
+                EngineMarket::Leave => MarketAnswer::Leave {},
             },
         },
         EngineAnswer::Close => Answer::Close {},
@@ -374,6 +402,32 @@ const fn answer_to_engine(a: Answer) -> EngineAnswer {
             TavernAnswer::Hire { slot } => EngineTavern::Hire { slot },
             TavernAnswer::Close {} => EngineTavern::Close,
         }),
+        Answer::Market { answer } => EngineAnswer::Market(match answer {
+            MarketAnswer::Trade { give, take, lots } => EngineMarket::Trade {
+                give: Handle::from_raw(give),
+                take: Handle::from_raw(take),
+                lots,
+            },
+            MarketAnswer::Transfer {
+                resource,
+                amount,
+                to,
+            } => EngineMarket::Transfer {
+                resource: Handle::from_raw(resource),
+                amount,
+                to: PlayerId::new(to),
+            },
+            MarketAnswer::Sell { slot, take, lots } => EngineMarket::Sell {
+                slot,
+                take: Handle::from_raw(take),
+                lots,
+            },
+            MarketAnswer::Buy { entry, pay } => EngineMarket::Buy {
+                entry,
+                pay: Handle::from_raw(pay),
+            },
+            MarketAnswer::Leave {} => EngineMarket::Leave,
+        }),
         Answer::Close {} => EngineAnswer::Close,
     }
 }
@@ -528,6 +582,20 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 TavernError::EmptySlot => TavernReject::EmptySlot {},
                 TavernError::TooManyHeroes => TavernReject::TooManyHeroes {},
                 TavernError::Occupied => TavernReject::Occupied {},
+            },
+        },
+        E::Market(error) => GameReject::Market {
+            error: match error {
+                MarketError::Visit => MarketReject::Visit {},
+                MarketError::Screen => MarketReject::Screen {},
+                MarketError::SameResource => MarketReject::SameResource {},
+                MarketError::Amount(amount) => MarketReject::Amount { amount },
+                MarketError::Recipient => MarketReject::Recipient {},
+                MarketError::Slot(slot) => MarketReject::Slot { slot },
+                MarketError::LastCreature => MarketReject::LastCreature {},
+                MarketError::Entry(entry) => MarketReject::Entry { entry },
+                MarketError::NoPrice => MarketReject::NoPrice {},
+                MarketError::NoRoom => MarketReject::NoRoom {},
             },
         },
     }

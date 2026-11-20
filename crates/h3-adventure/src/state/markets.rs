@@ -5,7 +5,9 @@
 //! `TRAPS.md`). Since E08 T133a2 the adventure's checks and changes of a market's answers (§11):
 //! a sale (ADV-MKT-005) and a purchase (ADV-MKT-007, A-46 fixed as `ADV-QUIRK-48`), which the
 //! game checks against the treasury, pays and makes (ADR-0017 point 10, as the hire's); the visit
-//! itself is `AdventureState::visit`'s (`AdventureOutcome::service`).
+//! itself is `AdventureState::visit`'s (`AdventureOutcome::service`). Since E08 T133b a trade's
+//! lot (ADV-MKT-003), a transfer's screen (ADV-MKT-004) and what the window offers its visitor
+//! (ADV-MKT-008, `MarketOffers`), the game's decision's (GAM-DEC-011).
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -19,6 +21,7 @@ use super::draws::ArtifactPool;
 use super::{AdventureState, HeroOnMap, MapObject, Resolved};
 use crate::army::{ArmyRef, ArmySlot};
 use crate::command::{MarketError, MarketVisit};
+use crate::market::Lot;
 use crate::movement::details_of;
 use crate::ruleset::{AdventureRuleset, Market, MarketScreen, ObjectKind};
 
@@ -28,7 +31,8 @@ type Rules<'a> = (&'a Ruleset, &'a AdventureRuleset, &'a [Arc<HeroDetails>]);
 
 /// A sale [`AdventureState::check_sale`] accepted (ADV-MKT-005; E08 T133a2, increment 14's design
 /// note §11): so many creatures of a hero's stack for so much of a resource, which the game adds
-/// to the treasury (saturating, GAM-RES-001) before [`AdventureState::sell`] lowers the stack. It
+/// to the treasury (saturating, GAM-RES-001) once [`AdventureState::sell`] lowered the stack (the
+/// events' order, design note §13: `StackChanged`, then `ResourceGained`; E08 T133b). It
 /// holds for the state that checked it; not `Clone`, so one check sells once (the hire's form).
 #[derive(Debug, PartialEq, Eq)]
 pub struct Sale {
@@ -90,9 +94,65 @@ impl MarketPurchase {
     }
 }
 
+/// What a market's window offers its visitor (ADV-MKT-008; E08 T133b, increment 14's design
+/// note §12, §13): its kind's screens and count, and for each screen it shows the rates the
+/// state's answer would use, so a client and the env need no copy of the computation (ADR-0004:
+/// the answers are checked against the state again, never against this). Read at each view, never
+/// kept: a viewer keeps nothing of a market it visited (§12).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct MarketOffers {
+    /// The kind's screens, in its order.
+    pub screens: Vec<MarketScreen>,
+    /// The Marketplaces it trades as (the rates' row).
+    pub count: u8,
+    /// With [`MarketScreen::Trade`]: each pair of two resources the parameters value, the given
+    /// then the wanted in the core's order, and its lot (ADV-MKT-003; 42 with the base pack's
+    /// seven). Empty without the screen.
+    pub trades: Vec<TradeOffer>,
+    /// With [`MarketScreen::Sell`]: each stack of the hero's army in its order, its lot per
+    /// resource (ADV-MKT-005). Empty without the screen.
+    pub sales: Vec<SaleOffer>,
+    /// With [`MarketScreen::Buy`]: the Black Market's stock in its order, each entry's artifact
+    /// and price per resource, none for a sold one (ADV-MKT-007). Empty without the screen.
+    pub stock: Vec<StockEntry>,
+}
+
+/// A trade's rate in a market's window (ADV-MKT-003; E08 T133b): so many of `give` for so many of
+/// `take` per lot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TradeOffer {
+    /// The resource given.
+    pub give: ResourceId,
+    /// The resource wanted.
+    pub take: ResourceId,
+    /// The lot.
+    pub lot: Lot,
+}
+
+/// A stack's sale in a market's window (ADV-MKT-005; E08 T133b): its slot and its lot (creatures
+/// given, units gained) per resource it sells for, in the core's order; none for a creature of no
+/// cost in the parameters' cost resource.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SaleOffer {
+    /// The hero's army's slot.
+    pub slot: u8,
+    /// The lot per resource.
+    pub lots: Vec<(ResourceId, Lot)>,
+}
+
+/// A Black Market's entry in its window (ADV-MKT-007; E08 T133b): the artifact and its price per
+/// resource in the core's order, or none and no price once bought (shown empty, design note §8).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StockEntry {
+    /// The artifact, none once bought.
+    pub artifact: Option<ArtifactTypeId>,
+    /// Its price per resource (none for an artifact of no cost, or a price that rounds to 0).
+    pub prices: Vec<(ResourceId, u32)>,
+}
+
 /// The amount of `resource` in `cost` (0 for none): a creature's or an artifact's value for the
-/// market, its cost in the resource the caller names (increment 14's design note §2: "a creature
-/// of gold cost c", "an artifact of gold cost c").
+/// market, its cost in the market parameters' cost resource (increment 14's design note §2: "a
+/// creature of gold cost c", "an artifact of gold cost c"; ADV-Q60 (a)).
 fn cost_in(cost: &[(ResourceId, u32)], resource: ResourceId) -> u32 {
     cost.iter()
         .find(|&&(r, _)| r == resource)
@@ -122,14 +182,12 @@ pub(super) fn stock_draw(
 }
 
 impl AdventureState {
-    /// The market `visit` opened, if its window shows `screen`: its hero on the map
-    /// ([`MarketError::Visit`] else), its object a market's ([`MarketError::Visit`] else), the
-    /// screen its kind's ([`MarketError::Screen`] else).
-    fn market<'p>(
+    /// The market `visit` opened: its hero on the map and its object a market's
+    /// ([`MarketError::Visit`] else).
+    fn window<'p>(
         &self,
         part: &'p AdventureRuleset,
         visit: &MarketVisit,
-        screen: MarketScreen,
     ) -> Result<(&'p Market, &MapObject, &HeroOnMap), MarketError> {
         let hero = self.hero(visit.hero);
         let object = self.object(visit.index);
@@ -141,18 +199,139 @@ impl AdventureState {
         else {
             return Err(MarketError::Visit);
         };
-        if market.shows(screen) {
-            Ok((market, object, hero))
+        Ok((market, object, hero))
+    }
+
+    /// The market `visit` opened, if its window shows `screen` ([`Self::window`], then
+    /// [`MarketError::Screen`]).
+    fn market<'p>(
+        &self,
+        part: &'p AdventureRuleset,
+        visit: &MarketVisit,
+        screen: MarketScreen,
+    ) -> Result<(&'p Market, &MapObject, &HeroOnMap), MarketError> {
+        let found = self.window(part, visit)?;
+        if found.0.shows(screen) {
+            Ok(found)
         } else {
             Err(MarketError::Screen)
         }
     }
 
+    /// Checks that `visit`'s window shows `screen` (E08 T133b; increment 14's design note §13): a
+    /// transfer's first check (ADV-MKT-004), whose recipient and amount are the game's. Refused
+    /// for the visit ([`MarketError::Visit`]) or a window without the screen
+    /// ([`MarketError::Screen`]).
+    pub fn check_screen(
+        &self,
+        part: &AdventureRuleset,
+        visit: &MarketVisit,
+        screen: MarketScreen,
+    ) -> Result<(), MarketError> {
+        self.market(part, visit, screen).map(|_| ())
+    }
+
+    /// The lot of a trade of `give` for `take` in `visit`'s window (ADV-MKT-003; E08 T133b,
+    /// increment 14's design note §13; survey `E08-trades.md` §5, the original's
+    /// `market_resources_proc` 0x5ECFE0): the market parameters' at the kind's count
+    /// (`MarketParams::resource_lot`, ADV-MKT-002). Refused, in this order: the visit
+    /// ([`MarketError::Visit`]), a window without trades ([`MarketError::Screen`]), a resource
+    /// for itself ([`MarketError::SameResource`]), a resource the parameters do not value
+    /// ([`MarketError::NoPrice`]). The lots the treasury can give are the game's.
+    // rule: ADV-MKT-003
+    pub fn trade_lot(
+        &self,
+        part: &AdventureRuleset,
+        visit: &MarketVisit,
+        (give, take): (ResourceId, ResourceId),
+    ) -> Result<Lot, MarketError> {
+        let (market, _, _) = self.market(part, visit, MarketScreen::Trade)?;
+        if give == take {
+            return Err(MarketError::SameResource);
+        }
+        part.params()
+            .market()
+            .and_then(|rates| rates.resource_lot(market.count, give, take))
+            .ok_or(MarketError::NoPrice)
+    }
+
+    /// What `visit`'s window offers (ADV-MKT-008; E08 T133b, increment 14's design note §12,
+    /// §13): the kind's screens and count, a trade's lot for each pair of distinct resources the
+    /// parameters value (given, then wanted, in the core's order), each stack's lot per resource
+    /// it sells for, and each entry of the stock with its price per resource (none once bought),
+    /// each only for a screen the window shows; the visit refused as [`Self::check_screen`]'s
+    /// ([`MarketError::Visit`]).
+    // rule: ADV-MKT-008, ADV-MKT-002
+    pub fn market_offers(
+        &self,
+        (core, part): (&Ruleset, &AdventureRuleset),
+        visit: &MarketVisit,
+    ) -> Result<MarketOffers, MarketError> {
+        let (market, object, hero) = self.window(part, visit)?;
+        let rates = part.params().market();
+        let count = market.count;
+        let resources = || (0..core.resources().len()).filter_map(ResourceId::from_index);
+        let cost = |of: &[(ResourceId, u32)]| rates.map_or(0, |r| cost_in(of, r.cost()));
+        let trades = resources()
+            .filter(|_| market.shows(MarketScreen::Trade))
+            .flat_map(|give| resources().map(move |take| (give, take)))
+            .filter_map(|(give, take)| {
+                let lot = rates.and_then(|r| r.resource_lot(count, give, take))?;
+                Some(TradeOffer { give, take, lot })
+            })
+            .collect();
+        let sales = hero
+            .army
+            .iter()
+            .filter(|_| market.shows(MarketScreen::Sell))
+            .map(|stack| {
+                let value = core
+                    .creature(stack.creature)
+                    .map_or(0, |creature| cost(&creature.cost));
+                let lots = resources()
+                    .filter_map(|take| {
+                        let lot = rates.and_then(|r| r.creature_lot(count, value, take))?;
+                        Some((take, lot))
+                    })
+                    .collect();
+                SaleOffer {
+                    slot: stack.slot,
+                    lots,
+                }
+            })
+            .collect();
+        let stock = (0..=u8::MAX)
+            .zip(object.resolved.stock())
+            .filter(|_| market.shows(MarketScreen::Buy))
+            .map(|(entry, &artifact)| {
+                let artifact = (!self.is_sold(visit.index, entry)).then_some(artifact);
+                let value = artifact
+                    .and_then(|a| core.artifacts().get(a.index()))
+                    .map_or(0, |ty| cost(&ty.cost));
+                let prices = resources()
+                    .filter(|_| artifact.is_some())
+                    .filter_map(|pay| {
+                        let price = rates.and_then(|r| r.artifact_price(count, value, pay))?;
+                        Some((pay, price))
+                    })
+                    .collect();
+                StockEntry { artifact, prices }
+            })
+            .collect();
+        Ok(MarketOffers {
+            screens: market.screens.clone(),
+            count,
+            trades,
+            sales,
+            stock,
+        })
+    }
+
     /// Checks a sale of `lots` lots of the creatures in slot `slot` of `visit`'s hero's army for
     /// `take` (ADV-MKT-005; E08 T133a2, increment 14's design note §11; survey `E08-trades.md`
     /// §6, the original's `market_sell_creatures_proc` 0x5EE890), each creature valued at its
-    /// cost in `value` (the caller's resource for a creature's cost: the original's gold, ADV-Q60).
-    /// The lot is the market parameters' at the kind's count (`MarketParams::creature_lot`,
+    /// cost in the market parameters' cost resource (`MarketParams::cost`, the original's gold;
+    /// E08 T133b, ADV-Q60 (a)). The lot is the market parameters' at the kind's count (`MarketParams::creature_lot`,
     /// ADV-MKT-002): `give` creatures for `take` units, one of them 1. Refused, in this order: the
     /// visit ([`MarketError::Visit`]), a window without the sale ([`MarketError::Screen`]), a
     /// slot without a stack ([`MarketError::Slot`]), no lot ([`MarketError::NoPrice`]: a
@@ -164,7 +343,6 @@ impl AdventureState {
     pub fn check_sale(
         &self,
         (core, part): (&Ruleset, &AdventureRuleset),
-        value: ResourceId,
         visit: &MarketVisit,
         (slot, take, lots): (u8, ResourceId, u32),
     ) -> Result<Sale, MarketError> {
@@ -174,13 +352,15 @@ impl AdventureState {
             .iter()
             .find(|stack| stack.slot == slot)
             .ok_or(MarketError::Slot(slot))?;
-        let cost = core
-            .creature(stack.creature)
-            .map_or(0, |creature| cost_in(&creature.cost, value));
         let lot = part
             .params()
             .market()
-            .and_then(|rates| rates.creature_lot(market.count, cost, take))
+            .and_then(|rates| {
+                let cost = core
+                    .creature(stack.creature)
+                    .map_or(0, |creature| cost_in(&creature.cost, rates.cost()));
+                rates.creature_lot(market.count, cost, take)
+            })
             .ok_or(MarketError::NoPrice)?;
         let count = u64::from(lots) * u64::from(lot.give);
         if lots == 0 || count > u64::from(stack.count) {
@@ -199,7 +379,7 @@ impl AdventureState {
     }
 
     /// Makes `sale` (ADV-MKT-005; E08 T133a2), which [`Self::check_sale`] gave for this state as
-    /// it stands, once the game added its gain: the hero's stack loses the creatures sold, its
+    /// it stands, before the game adds its gain: the hero's stack loses the creatures sold, its
     /// slot emptied at 0. Returns the slot that changed, which the game tells (`StackChanged`); no
     /// adventure event (increment 14's design note §12).
     // rule: ADV-MKT-005
@@ -218,8 +398,9 @@ impl AdventureState {
 
     /// Checks a purchase of the Black Market's entry `entry` paid in `pay` (ADV-MKT-007; E08
     /// T133a2, increment 14's design note §11; survey `E08-trades.md` §7.2, the original's
-    /// `market_buy_artifact_proc` 0x5ED9E0), the artifact valued at its cost in `value` (the
-    /// caller's resource for an artifact's cost: the original's gold, ADV-Q60). The price is the
+    /// `market_buy_artifact_proc` 0x5ED9E0), the artifact valued at its cost in the market
+    /// parameters' cost resource (`MarketParams::cost`, the original's gold; E08 T133b, ADV-Q60
+    /// (a)). The price is the
     /// market parameters' at the kind's count (`MarketParams::artifact_price`, ADV-MKT-002).
     /// Refused, in this order: the visit ([`MarketError::Visit`]), a window without the purchase
     /// ([`MarketError::Screen`]), an entry past the stock or bought ([`MarketError::Entry`]), no
@@ -234,7 +415,6 @@ impl AdventureState {
     pub fn check_buy(
         &self,
         (core, part, heroes): Rules<'_>,
-        value: ResourceId,
         visit: &MarketVisit,
         (entry, pay): (u8, ResourceId),
     ) -> Result<MarketPurchase, MarketError> {
@@ -246,14 +426,16 @@ impl AdventureState {
             .filter(|_| !self.is_sold(visit.index, entry))
             .copied()
             .ok_or(MarketError::Entry(entry))?;
-        let cost = core
-            .artifacts()
-            .get(artifact.index())
-            .map_or(0, |ty| cost_in(&ty.cost, value));
         let price = part
             .params()
             .market()
-            .and_then(|rates| rates.artifact_price(market.count, cost, pay))
+            .and_then(|rates| {
+                let cost = core
+                    .artifacts()
+                    .get(artifact.index())
+                    .map_or(0, |ty| cost_in(&ty.cost, rates.cost()));
+                rates.artifact_price(market.count, cost, pay)
+            })
             .ok_or(MarketError::NoPrice)?;
         let change = HeroChange::AddArtifact(artifact.into());
         if !details_of(heroes, visit.hero).is_some_and(|d| check_change(d, core, change).is_ok()) {

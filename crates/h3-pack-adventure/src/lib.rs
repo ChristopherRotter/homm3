@@ -70,7 +70,9 @@
 //!                                  # its owner's visitor free
 //!
 //! [params.market]                  # E08 T132a2 (ADV-MKT-002): required when the part has a
-//! values = { wood = 250, gold = 1 } # `market` type; each core resource once (1 to 65535) for a
+//! cost = "gold"                    # `market` type; the core resource a creature's and an
+//!                                  # artifact's cost is read in (E08 T133b, ADV-Q60 (a))
+//! values = { wood = 250, gold = 1 } # each core resource once (1 to 65535) for a
 //! artifact_values = { wood = 125, gold = 1 } # trade and a creature sale, and for an
 //!                                  # artifact's price
 //! resources = [10, 15, 20]         # the factors in hundredths by the count of Marketplaces
@@ -421,6 +423,7 @@ struct ParamsDto {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct MarketParamsDto {
+    cost: String,
     values: BTreeMap<String, u16>,
     artifact_values: BTreeMap<String, u16>,
     resources: Vec<u16>,
@@ -1632,6 +1635,7 @@ pub fn parse_adventure(
                                 .collect::<Result<Vec<_>, KeyError>>()
                         };
                         Ok::<_, KeyError>(MarketParamsDef {
+                            cost: reference(pack, &m.cost)?,
                             values: table(m.values)?,
                             artifact_values: table(m.artifact_values)?,
                             resources: m.resources,
