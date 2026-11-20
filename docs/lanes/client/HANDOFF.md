@@ -28,7 +28,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   profile: a map's name and description whole (CLT-Q151 (b)), the advanced rows made again when
   the map changes (CLT-Q152 (b)); a press's stale edges as CLT-Q118's (§34.2); the credits'
   background's key pixel as a drawing bug (§36.3). Open pull request: T3a's
-  (`client/e27-m4-t3a`, `cross-lane`; T2's #1063 merged): watch it until it merges. E17 done (`E17-archive.md`,
+  #1066 (`client/e27-m4-t3a`, `cross-lane`; T2's #1063 merged): watch it until it merges. E17 done (`E17-archive.md`,
   `E17-log.md`; its open threads: the epic's "Placed at the closure", the queue's inbox). E28 and
   E29 are backlog sketches. Workspace `clients/` (`clients/README.md`), gates
   `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
