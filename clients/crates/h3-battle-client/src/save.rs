@@ -1,5 +1,5 @@
 //! A saved game (E27 M4 T3b; decisions 69 and 71, CLT-Q156 (a); `docs/epics/E27-design.md`
-//! §37): the client's own file, the engine's adventure replay (`h3-files`' format v20: the map by
+//! §37): the client's own file, the engine's adventure replay (`h3-files`' format, v20 on: the map by
 //! its file and content hash, the seed, the difficulty, the players' choices, the commands and the
 //! hashes) followed by the client's table (the save's name, the turn's duration, each colour's
 //! human's name, starting bonus and handicap: what the engine's setup has no field for,
