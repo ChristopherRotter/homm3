@@ -36,9 +36,10 @@ pub use clock::{Duel, GameClock, OfferClock, Timer};
 pub use command::{
     AdventureCommand, AdventureReject, AltarAnswer, AltarReject, Answer, ArenaChoice, ArmyCommand,
     ArmyRef, ArmyReject, ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent,
-    GameCommand, GameReject, HireAnswer, HireReject, Manage, ManageReject, MarketAnswer,
-    MarketReject, MoveReject, SchoolChoice, SkillOffer, StandReject, SystemCommand, TavernAnswer,
-    TavernReject, TownCommand, TownHeroChange, TownReject, UniversityAnswer,
+    GameCommand, GameReject, HillFortAnswer, HillFortReject, HireAnswer, HireReject, Manage,
+    ManageReject, MarketAnswer, MarketReject, MoveReject, SchoolChoice, SkillOffer, StandReject,
+    SystemCommand, TavernAnswer, TavernReject, TownCommand, TownHeroChange, TownReject,
+    UniversityAnswer,
 };
 pub use event::{AdventureEvent, GameEvent, HeroChange, NothingWhy, ShipyardBlock};
 pub use lobby::{Computer, MapGameInfo, MapOffer, SeatedPlayer};
@@ -636,6 +637,62 @@ pub enum Decision {
         /// The window.
         altar: AltarWindow,
     },
+    /// A Hill Fort (GAM-DEC-013, ADV-HFT-001, -002; E08 T134b1, v77): each stack's row with its
+    /// upgrade, price and state, and the whole's, answered with a row's upgrade, all, or leaving
+    /// it.
+    HillFort {
+        /// The window.
+        fort: HillFortWindow,
+    },
+}
+
+/// A Hill Fort's decision as its owner sees it (`h3_game::HillFortView`; E08 T134b1, v77): the
+/// hero, the Hill Fort by type and anchor, each stack's row with its state against the owner's
+/// treasury, the whole's price and state (the server computes them, ADR-0004).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HillFortWindow {
+    /// The visiting hero.
+    pub hero: u16,
+    /// The Hill Fort by type and anchor.
+    pub object: ObjectRef,
+    /// Each stack of the hero's army in its order.
+    pub rows: Vec<HillFortRow>,
+    /// The whole's price: the sum of the rows' that upgrade.
+    pub all: Vec<Amount>,
+    /// The whole's state.
+    pub all_state: HillFortState,
+}
+
+/// A row of a Hill Fort's window (`h3_game::HillFortRowView`; E08 T134b1, v77).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HillFortRow {
+    /// The hero's army's slot.
+    pub slot: u8,
+    /// The stack's creature's handle.
+    pub creature: u16,
+    /// The stack's count.
+    pub count: u32,
+    /// The creature's upgrade's handle, none without one.
+    pub upgrade: Option<u16>,
+    /// The upgrade's price for the stack (none for a free one).
+    pub price: Vec<Amount>,
+    /// Its state.
+    pub state: HillFortState,
+}
+
+/// A Hill Fort's row's or whole's state (`h3_game::HillFortState`; E08 T134b1, v77): the
+/// original's 0, 1 and 2.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum HillFortState {
+    /// No upgrade.
+    NoUpgrade {},
+    /// The treasury pays the price.
+    Affordable {},
+    /// The treasury does not pay it.
+    TooDear {},
 }
 
 /// An Altar of Sacrifice's decision as its owner sees it (`h3_game::AltarView`; E08 T134a, v76):

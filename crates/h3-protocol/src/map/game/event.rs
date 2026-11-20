@@ -314,6 +314,17 @@ fn event(e: &EngineEvent) -> GameEvent {
             object_type: object_type.raw(),
             anchor: pos(anchor),
         },
+        EngineEvent::HillFortOpened {
+            player,
+            hero,
+            object_type,
+            anchor,
+        } => GameEvent::HillFortOpened {
+            player: player.raw(),
+            hero: hero.raw(),
+            object_type: object_type.raw(),
+            anchor: pos(anchor),
+        },
         EngineEvent::DecisionClosed { player } => GameEvent::DecisionClosed {
             player: player.raw(),
         },

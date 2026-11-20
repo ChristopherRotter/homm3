@@ -177,6 +177,22 @@ fn commands_round_trip_through_their_text() {
             answer(Answer::Altar(AltarAnswer::Leave)),
             "0 answer altar leave",
         ),
+        // Format v23 (E08 T134b1): a Hill Fort's answers.
+        (
+            PlayerId::new(1),
+            answer(Answer::HillFort(HillFortAnswer::Upgrade(6))),
+            "1 answer hill-fort upgrade 6",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::HillFort(HillFortAnswer::All)),
+            "0 answer hill-fort all",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::HillFort(HillFortAnswer::Leave)),
+            "0 answer hill-fort leave",
+        ),
         (PlayerId::new(0), answer(Answer::Close), "0 answer close"),
         (
             PlayerId::new(7),
@@ -569,6 +585,12 @@ fn commands_round_trip_through_their_text() {
         "0 answer altar creatures 0 5 0 0 12 0 1 1",
         "0 answer altar creatures 0 5 x 0 12 0 1",
         "0 answer altar leave now",
+        "0 answer hill-fort",
+        "0 answer hill-fort upgrade",
+        "0 answer hill-fort upgrade x",
+        "0 answer hill-fort upgrade 1 2",
+        "0 answer hill-fort all now",
+        "0 answer hill-fort leave now",
     ] {
         assert!(
             matches!(parse_command(bad), Err(AdventureFileError::Format(_))),

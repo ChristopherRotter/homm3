@@ -55,9 +55,10 @@ use super::rollout::choose;
 /// so a game a client's scenario screen set up replays; version 21 (E08 T133b): a market's answers
 /// (`h3_game::MarketAnswer`: a trade, a transfer, a sale, a purchase, `Leave`; GAM-DEC-011);
 /// version 22 (E08 T134a): an Altar of Sacrifice's answers (`h3_game::AltarAnswer`: a sacrifice of
-/// artifacts by their places, of creatures by slot, `Leave`; GAM-DEC-012). A replay of another
-/// version is refused ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 22;
+/// artifacts by their places, of creatures by slot, `Leave`; GAM-DEC-012); version 23 (E08
+/// T134b1): a Hill Fort's answers (`h3_game::HillFortAnswer`: a row's upgrade by its slot, `All`,
+/// `Leave`; GAM-DEC-013). A replay of another version is refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 23;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -233,8 +233,13 @@ pub mod wire;
 /// `Answer::Altar` (`AltarAnswer`: a sacrifice of artifacts by the places' bits, of creatures by
 /// slot, leaving), `GameReject::Altar` (`AltarReject`), `Decision::Altar` (`AltarWindow`: the
 /// screens, the places, each artifact's and stack's experience, the experience to the next level)
-/// and its event `AltarOpened`, which carries no view (folded as a market's, `SRV-STUB-5`).
-pub const PROTOCOL_VERSION: u32 = 76;
+/// and its event `AltarOpened`, which carries no view (folded as a market's, `SRV-STUB-5`). v77
+/// (E08 T134b1, the adventure lane's, `cross-lane`): the Hill Fort's decision (GAM-DEC-013):
+/// `Answer::HillFort` (`HillFortAnswer`: a row's upgrade by slot, all, leaving),
+/// `GameReject::HillFort` (`HillFortReject`), `Decision::HillFort` (`HillFortWindow`: each row's
+/// stack, upgrade, price and state, the whole's price and state) and its event `HillFortOpened`,
+/// which carries no view (folded as an Altar's, `SRV-STUB-5`).
+pub const PROTOCOL_VERSION: u32 = 77;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

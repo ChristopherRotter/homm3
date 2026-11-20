@@ -195,6 +195,13 @@ pub enum GameEvent {
         object_type: u16,
         anchor: Pos,
     },
+    /// E08 T134b1 (v77).
+    HillFortOpened {
+        player: u8,
+        hero: u16,
+        object_type: u16,
+        anchor: Pos,
+    },
     DecisionClosed {
         player: u8,
     },

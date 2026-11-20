@@ -14,10 +14,11 @@ use h3_game::{
     ArenaChoice as EngineArena, ArmyCommand as EngineArmy, ArmyCommandError,
     ArmyRef as EngineArmyRef, ArmySlot as EngineSlot, ArtifactPlace as EnginePlace, BuildingId,
     ChestChoice as EngineChest, Consent as EngineConsent, GameCommand as EngineCommand,
-    GameCommandError, HireAnswer as EngineHire, HireError, Manage as EngineManage, ManageError,
-    MarketAnswer as EngineMarket, MarketError, Position, SchoolChoice as EngineSchool,
-    SkillOffer as EngineOffer, SystemCommand as EngineSystem, TavernAnswer as EngineTavern,
-    TavernError, TownCommand as EngineTown, TownCommandError, TownHeroChange as EngineHeroChange,
+    GameCommandError, HillFortAnswer as EngineHillFort, HillFortError, HireAnswer as EngineHire,
+    HireError, Manage as EngineManage, ManageError, MarketAnswer as EngineMarket, MarketError,
+    Position, SchoolChoice as EngineSchool, SkillOffer as EngineOffer,
+    SystemCommand as EngineSystem, TavernAnswer as EngineTavern, TavernError,
+    TownCommand as EngineTown, TownCommandError, TownHeroChange as EngineHeroChange,
     UniversityAnswer as EngineUniversity,
 };
 use h3_heroes::{CombineError, MoveError};
@@ -28,9 +29,10 @@ use crate::map::{command_to_engine as battle_to_engine, from_engine};
 use crate::wire::game::{
     AdventureCommand, AdventureReject, AltarAnswer, AltarReject, Answer, ArenaChoice, ArmyCommand,
     ArmyRef, ArmyReject, ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent,
-    Formation, GameCommand, GameReject, HireAnswer, HireReject, Manage, ManageReject, MarketAnswer,
-    MarketReject, MoveReject, Pos, SchoolChoice, SkillOffer, StandReject, SystemCommand,
-    TavernAnswer, TavernReject, TownCommand, TownHeroChange, TownReject, UniversityAnswer,
+    Formation, GameCommand, GameReject, HillFortAnswer, HillFortReject, HireAnswer, HireReject,
+    Manage, ManageReject, MarketAnswer, MarketReject, MoveReject, Pos, SchoolChoice, SkillOffer,
+    StandReject, SystemCommand, TavernAnswer, TavernReject, TownCommand, TownHeroChange,
+    TownReject, UniversityAnswer,
 };
 
 /// An engine command on the wire (a legal list's, the echo of an applied command).
@@ -192,6 +194,13 @@ const fn answer(a: EngineAnswer) -> Answer {
                 },
                 EngineAltar::Creatures(amounts) => AltarAnswer::Creatures { amounts },
                 EngineAltar::Leave => AltarAnswer::Leave {},
+            },
+        },
+        EngineAnswer::HillFort(answer) => Answer::HillFort {
+            answer: match answer {
+                EngineHillFort::Upgrade(slot) => HillFortAnswer::Upgrade { slot },
+                EngineHillFort::All => HillFortAnswer::All {},
+                EngineHillFort::Leave => HillFortAnswer::Leave {},
             },
         },
         EngineAnswer::Close => Answer::Close {},
@@ -446,6 +455,11 @@ const fn answer_to_engine(a: Answer) -> EngineAnswer {
             AltarAnswer::Creatures { amounts } => EngineAltar::Creatures(amounts),
             AltarAnswer::Leave {} => EngineAltar::Leave,
         }),
+        Answer::HillFort { answer } => EngineAnswer::HillFort(match answer {
+            HillFortAnswer::Upgrade { slot } => EngineHillFort::Upgrade(slot),
+            HillFortAnswer::All {} => EngineHillFort::All,
+            HillFortAnswer::Leave {} => EngineHillFort::Leave,
+        }),
         Answer::Close {} => EngineAnswer::Close,
     }
 }
@@ -627,6 +641,13 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 AltarError::Amount(slot) => AltarReject::Amount { slot },
                 AltarError::LastCreature => AltarReject::LastCreature {},
                 AltarError::Nothing => AltarReject::Nothing {},
+            },
+        },
+        E::HillFort(error) => GameReject::HillFort {
+            error: match error {
+                HillFortError::Visit => HillFortReject::Visit {},
+                HillFortError::NoUpgrade(slot) => HillFortReject::NoUpgrade { slot },
+                HillFortError::Nothing => HillFortReject::Nothing {},
             },
         },
     }

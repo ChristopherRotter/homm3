@@ -64,7 +64,7 @@
 //! `legal_commands` lists for it, so an entry is legal when that creature's most is 1 or more) and
 //! its `Close` (GAM-DEC-008), a map Tavern's hires of the two slots and its `Close` (GAM-DEC-010,
 //! version 13), a market's `Leave` (GAM-DEC-011, version 14), an Altar's `Leave` (GAM-DEC-012,
-//! version 15). With no open decision of that role the entry decodes to the offer's
+//! version 15), a Hill Fort's `Leave` (GAM-DEC-013, version 16). With no open decision of that role the entry decodes to the offer's
 //! or the level-up's answer, or the purchase (a hire entry's: a `Buy` of 0, [`hire_answer`]),
 //! which `apply` rejects.
 //!
@@ -122,7 +122,9 @@
 //! decision (GAM-DEC-011) onto the closing role, no new entry: its `Leave`; its trades, sales and
 //! purchases have none until E08 T135a appends them. Version 15 (E08 T134a, the same) maps an
 //! Altar of Sacrifice's decision (GAM-DEC-012) onto the closing role, no new entry: its `Leave`;
-//! its sacrifices have none until T135a appends its two alls.
+//! its sacrifices have none until T135a appends its two alls. Version 16 (E08 T134b1, the same)
+//! maps a Hill Fort's decision (GAM-DEC-013) onto the closing role, no new entry: its `Leave`;
+//! its upgrades have none until T135a appends them.
 
 use h3_adventure::{AdventureCommand, Pos, Reach};
 use h3_battle::{BattleState, LegalCommands};
@@ -131,15 +133,15 @@ use h3_contracts::TownId;
 use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{
     Actor, AltarAnswer, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameRuleset,
-    GameState, HireAnswer, MarketAnswer, SchoolChoice, SkillOffer, TavernAnswer, UniversityAnswer,
-    legal_commands, legal_moves,
+    GameState, HillFortAnswer, HireAnswer, MarketAnswer, SchoolChoice, SkillOffer, TavernAnswer,
+    UniversityAnswer, legal_commands, legal_moves,
 };
 use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand, TownHeroChange};
 
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 15;
+pub const ACTION_ENCODING_VERSION: u32 = 16;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -710,9 +712,9 @@ const fn tileless(entry: usize) -> bool {
 /// later one); since version 13 (E09 T39a) a map Tavern's `Close` the closing role, its hire of
 /// slot 0 the first, of slot 1 the second (none for another slot); since version 14 (E08 T133b) a
 /// market's `Leave` the closing role (none for its other answers until T135a); since version 15
-/// (E08 T134a) an Altar's `Leave` the closing role (none for its sacrifices until T135a). None
-/// for a hire
-/// dialog's purchase, whose entry is its creature's place in the dialog's source, which the answer
+/// (E08 T134a) an Altar's `Leave` the closing role (none for its sacrifices until T135a); since
+/// version 16 (E08 T134b1) a Hill Fort's `Leave` the closing role (none for its upgrades until
+/// T135a). None for a hire dialog's purchase, whose entry is its creature's place in the dialog's source, which the answer
 /// does not carry ([`hire_entry`], E08 T95b).
 pub const fn answer_entry(answer: Answer) -> Option<usize> {
     match answer {
@@ -724,7 +726,8 @@ pub const fn answer_entry(answer: Answer) -> Option<usize> {
         | Answer::Hire(HireAnswer::Close)
         | Answer::Tavern(TavernAnswer::Close)
         | Answer::Market(MarketAnswer::Leave)
-        | Answer::Altar(AltarAnswer::Leave) => Some(DECLINE),
+        | Answer::Altar(AltarAnswer::Leave)
+        | Answer::HillFort(HillFortAnswer::Leave) => Some(DECLINE),
         Answer::LevelUp(SkillOffer::First)
         | Answer::Chest(ChestChoice::Gold)
         | Answer::Arena(ArenaChoice::Attack)
@@ -746,7 +749,8 @@ pub const fn answer_entry(answer: Answer) -> Option<usize> {
         Answer::Hire(HireAnswer::Buy { .. })
         | Answer::Tavern(TavernAnswer::Hire { .. })
         | Answer::Market(_)
-        | Answer::Altar(_) => None,
+        | Answer::Altar(_)
+        | Answer::HillFort(_) => None,
     }
 }
 

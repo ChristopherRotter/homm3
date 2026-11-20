@@ -39,7 +39,8 @@
 //! core's order; v22 an Altar of Sacrifice's answers, E08 T134a: `answer altar artifacts <place>
 //! …` (the places as the management lines', `w<position>` and `b<index>`, the worn ones by
 //! position, then the backpack's from the last index down), `creatures <amount> …` (seven, by
-//! slot) and `leave`):
+//! slot) and `leave`; v23 a Hill Fort's answers, E08 T134b1: `answer hill-fort upgrade <slot>`,
+//! `all` and `leave`):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -114,8 +115,9 @@ use h3_contracts::{BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
     ALTAR_SLOTS, Actor, AltarAnswer, AltarPlaces, Answer, ArenaChoice, ArmyCommand, ArmyRef,
     ArmySlot, ArtifactPlace, BuildingId, ChestChoice, Consent, FactionChoice, GameCommand,
-    GameRuleset, GameSetup, HireAnswer, Manage, MarketAnswer, Position, SchoolChoice, SkillOffer,
-    SystemCommand, TavernAnswer, TownCommand, TownHeroChange, UniversityAnswer,
+    GameRuleset, GameSetup, HillFortAnswer, HireAnswer, Manage, MarketAnswer, Position,
+    SchoolChoice, SkillOffer, SystemCommand, TavernAnswer, TownCommand, TownHeroChange,
+    UniversityAnswer,
 };
 use h3_sim::adventure::replay::{
     MapRef, PlayerChoices, RecordError, Replay, ReplayError, ReplayHeader, map_content_hash,
@@ -440,14 +442,20 @@ fn format_answer(answer: Answer) -> String {
             return format!("altar creatures {}", words.join(" "));
         }
         Answer::Altar(AltarAnswer::Leave) => "altar leave",
+        // Format v23 (E08 T134b1).
+        Answer::HillFort(HillFortAnswer::Upgrade(slot)) => {
+            return format!("hill-fort upgrade {slot}");
+        }
+        Answer::HillFort(HillFortAnswer::All) => "hill-fort all",
+        Answer::HillFort(HillFortAnswer::Leave) => "hill-fort leave",
         Answer::Close => "close",
     };
     words.to_owned()
 }
 
 /// Parses the words of an answer after `answer` (format v7, [`format_answer`]; a hire dialog's
-/// since v10, a map Tavern's since v19, a market's since v21, an Altar's since v22); none for
-/// others.
+/// since v10, a map Tavern's since v19, a market's since v21, an Altar's since v22, a Hill
+/// Fort's since v23); none for others.
 fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> {
     let answer = match (words.next()?, words.next()) {
         ("offer", Some("accept")) => Answer::Offer(Consent::Accept),
@@ -510,6 +518,11 @@ fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> 
             Answer::Altar(AltarAnswer::Creatures(amounts))
         }
         ("altar", Some("leave")) => Answer::Altar(AltarAnswer::Leave),
+        ("hill-fort", Some("upgrade")) => {
+            Answer::HillFort(HillFortAnswer::Upgrade(words.next()?.parse().ok()?))
+        }
+        ("hill-fort", Some("all")) => Answer::HillFort(HillFortAnswer::All),
+        ("hill-fort", Some("leave")) => Answer::HillFort(HillFortAnswer::Leave),
         ("close", None) => return Some(Answer::Close),
         _ => return None,
     };

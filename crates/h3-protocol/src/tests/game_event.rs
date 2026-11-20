@@ -749,6 +749,17 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             object_type: ty(object_type),
             anchor: pos_back(anchor),
         },
+        G::HillFortOpened {
+            player,
+            hero,
+            object_type,
+            anchor,
+        } => GameEvent::HillFortOpened {
+            player: p(player),
+            hero: id(hero),
+            object_type: ty(object_type),
+            anchor: pos_back(anchor),
+        },
         G::ChoiceOpened {
             player,
             hero,
@@ -1196,6 +1207,13 @@ pub(super) fn every_event() -> Vec<GameEvent> {
         },
         // E08 T134a (v76).
         GameEvent::AltarOpened {
+            player: P0,
+            hero,
+            object_type: ty,
+            anchor: at,
+        },
+        // E08 T134b1 (v77).
+        GameEvent::HillFortOpened {
             player: P0,
             hero,
             object_type: ty,
@@ -1776,11 +1794,12 @@ pub(super) fn every_event() -> Vec<GameEvent> {
 fn every_event_maps_back_for_its_viewers_and_round_trips() {
     let all = every_event();
     let distinct: BTreeSet<String> = all.iter().map(kinds).collect();
-    // The game's 47 kinds of event (the adventure's as one; E08 T114a2: `ExchangeOpened`; T114b:
+    // The game's 49 kinds of event (the adventure's as one; E08 T114a2: `ExchangeOpened`; T114b:
     // `GarrisonChanged`, `GarrisonStackSeen`; E09 T37a: `TavernOffered`, `TavernPartSeen`; T38a1:
     // `HeroHired`, `HiredPartSeen`; T39a: `TavernOpened`; T39b2: `ThievesGuildSeen`,
-    // `GuildPartSeen`; E08 T133b: `MarketOpened`; T134a: `AltarOpened`).
-    assert_eq!(distinct.len(), 48, "{distinct:?}");
+    // `GuildPartSeen`; E08 T133b: `MarketOpened`; T134a: `AltarOpened`; T134b1:
+    // `HillFortOpened`).
+    assert_eq!(distinct.len(), 49, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);

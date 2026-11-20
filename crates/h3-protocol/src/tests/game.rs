@@ -794,6 +794,37 @@ fn decision_back(d: &Decision) -> DecisionView {
         },
         Decision::Market { market } => DecisionView::Market(market_back(market)),
         Decision::Altar { altar } => DecisionView::Altar(altar_back(altar)),
+        Decision::HillFort { fort } => DecisionView::HillFort(hill_fort_back(fort)),
+    }
+}
+
+/// A Hill Fort's window back in the engine's types (E08 T134b1, v77).
+fn hill_fort_back(f: &HillFortWindow) -> h3_game::HillFortView {
+    let state = |s: HillFortState| match s {
+        HillFortState::NoUpgrade {} => h3_game::HillFortState::NoUpgrade,
+        HillFortState::Affordable {} => h3_game::HillFortState::Affordable,
+        HillFortState::TooDear {} => h3_game::HillFortState::TooDear,
+    };
+    h3_game::HillFortView {
+        hero: HeroId::new(f.hero),
+        object_type: Handle::from_raw(f.object.object_type),
+        anchor: pos_back(f.object.anchor),
+        rows: f
+            .rows
+            .iter()
+            .map(|row| h3_game::HillFortRowView {
+                row: h3_game::HillFortRow {
+                    slot: row.slot,
+                    creature: Handle::from_raw(row.creature),
+                    count: row.count,
+                    upgrade: row.upgrade.map(Handle::from_raw),
+                    price: amounts_back(&row.price),
+                },
+                state: state(row.state),
+            })
+            .collect(),
+        all: amounts_back(&f.all),
+        all_state: state(f.all_state),
     }
 }
 
@@ -1426,6 +1457,48 @@ fn every_decision() -> Vec<DecisionView> {
         object_type,
         anchor,
         offers: h3_game::AltarOffers::default(),
+    }));
+    // E08 T134b1 (v77): a Hill Fort with a row of each state, and one with none.
+    let gold = Handle::from_raw(6);
+    let row = |slot, upgrade: Option<u16>, price: Vec<_>, state| h3_game::HillFortRowView {
+        row: h3_game::HillFortRow {
+            slot,
+            creature: Handle::from_raw(13),
+            count: 10,
+            upgrade: upgrade.map(Handle::from_raw),
+            price,
+        },
+        state,
+    };
+    out.push(DecisionView::HillFort(h3_game::HillFortView {
+        hero,
+        object_type,
+        anchor,
+        rows: vec![
+            row(
+                0,
+                Some(14),
+                vec![(gold, 125), (Handle::from_raw(5), 2)],
+                h3_game::HillFortState::Affordable,
+            ),
+            row(3, None, vec![], h3_game::HillFortState::NoUpgrade),
+            row(
+                6,
+                Some(26),
+                vec![(gold, 56_250)],
+                h3_game::HillFortState::TooDear,
+            ),
+        ],
+        all: vec![(gold, 56_375), (Handle::from_raw(5), 2)],
+        all_state: h3_game::HillFortState::TooDear,
+    }));
+    out.push(DecisionView::HillFort(h3_game::HillFortView {
+        hero,
+        object_type,
+        anchor,
+        rows: Vec::new(),
+        all: Vec::new(),
+        all_state: h3_game::HillFortState::NoUpgrade,
     }));
     out
 }
