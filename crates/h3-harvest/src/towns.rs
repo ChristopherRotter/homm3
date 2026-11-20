@@ -25,7 +25,10 @@
 //! `docs/rules/surveys/E09-tavern.md` §2.2): each record's `[town.tavern]`, `HCTRAITS.TXT`'s
 //! column of its faction over the classes of its pack's closure (class i is faction i / 2's), the
 //! `ab` pack's overrides of the base records with its two classes' weights; the hire's price from
-//! the gap-fill.
+//! the gap-fill. Since E09 T46 (design §83; survey `docs/rules/surveys/E09-guild.md` §2): each
+//! record's `[town.guild]`, `SPTRAITS.TXT`'s town column of its faction over the hero spells (a
+//! spell of the `sod` pack, outside every record's closure, must weigh 0); the roles `guild`,
+//! `library`, `aurora` and `mana_vortex` and the guild's parameters from the gap-fill.
 //!
 //! The files are compiled with `h3-pack-towns` on the harvested core files in every allowed
 //! combination before they are returned.
@@ -90,7 +93,7 @@ const LEVELS: u8 = 7;
 /// `Dwelling.txt`'s rows a faction.
 pub const DWELLING_ROWS: usize = 2 * LEVELS as usize;
 /// The role fields, in the order a building's record writes them (`h3-pack-towns`' table).
-const ROLES: [&str; 15] = [
+const ROLES: [&str; 19] = [
     "hall",
     "fort",
     "tavern",
@@ -106,6 +109,10 @@ const ROLES: [&str; 15] = [
     "escape_tunnel",
     "defender",
     "reveal",
+    "guild",
+    "library",
+    "aurora",
+    "mana_vortex",
 ];
 /// The packs' files, in load order, with their header's line.
 const PACKS: [(&str, &str); 3] = [
@@ -186,6 +193,9 @@ struct Ctx<'a> {
     /// The hero classes in `HCTRAITS.TXT`'s order (E09 T36): each one's key, pack (its faction's,
     /// class i of faction i / 2) and weight in each faction's taverns.
     taverns: Vec<(String, &'static str, Vec<u8>)>,
+    /// The hero spells in `SPTRAITS.TXT`'s order (E09 T46): each one's key, pack and weight in each
+    /// faction's guild.
+    guilds: Vec<heroes::SpellGuild>,
 }
 
 /// Runs the town harvest: `(pack id, towns.toml text)` for `base`, `ab` and `sod`, checked to
@@ -193,8 +203,9 @@ struct Ctx<'a> {
 ///
 /// # Errors
 /// No `[towns]` in the gap-fill; the tables, the names and the gap-fill disagreeing (a count, a
-/// missing name or building, a key twice, a slot twice, a horde without its dwelling); the files
-/// failing to compile.
+/// missing name or building, a key twice, a slot twice, a horde without its dwelling, a role of
+/// every faction on a building none holds, a `sod` spell weighing in a guild); the files failing
+/// to compile.
 pub fn harvest_towns(
     inputs: &Inputs,
     gap: &GapFill,
@@ -256,12 +267,29 @@ pub fn harvest_towns(
             .position(|f| f == name)
             .ok_or_else(|| format!("gapfill: towns: unknown town `{name}`"))
     };
+    // A role of every faction goes to each faction whose list holds the building (E09 T46: the
+    // Mage Guilds 3 to 5 are not every faction's), one of a faction to that faction's.
+    let holds = |f: usize, id: u8| {
+        id == VILLAGE_HALL
+            || data
+                .factions
+                .get(f)
+                .is_some_and(|t| t.buildings.iter().any(|e| e.building == id))
+    };
     let mut roles: BTreeMap<(usize, u8), BTreeMap<String, toml::Value>> = BTreeMap::new();
     for role in &spec.role {
         let targets = match &role.faction {
             Some(name) => vec![faction_index(name)?],
-            None => (0..factions.len()).collect(),
+            None => (0..factions.len())
+                .filter(|&f| holds(f, role.building))
+                .collect(),
         };
+        if targets.is_empty() {
+            return Err(format!(
+                "gapfill: towns: building {}: no faction's list holds it",
+                role.building
+            ));
+        }
         for (name, value) in &role.roles {
             if !ROLES.contains(&name.as_str())
                 || ["dwelling", "shipyard", "horde"].contains(&name.as_str())
@@ -305,6 +333,17 @@ pub fn harvest_towns(
             }
         })
         .collect::<Result<_, String>>()?;
+    let guilds = heroes::spell_guilds(&inputs.hero_tables, factions.len())?;
+    if let Some((key, _, weights)) = guilds
+        .iter()
+        .find(|(_, pack, weights)| *pack != "base" && weights.iter().any(|&w| w > 0))
+    {
+        let f = weights.iter().position(|&w| w > 0).unwrap_or_default();
+        return Err(format!(
+            "towns: spell `{key}` of the `sod` pack weighs in {}'s guild",
+            factions[f]
+        ));
+    }
     let ctx = Ctx {
         spec,
         tables: &inputs.town_names,
@@ -315,6 +354,7 @@ pub fn harvest_towns(
         resources,
         roles,
         taverns,
+        guilds,
     };
     let mut texts: BTreeMap<&str, String> =
         PACKS.iter().map(|&(id, line)| (id, header(line))).collect();
@@ -349,8 +389,8 @@ fn header(line: &str) -> String {
          # Do not edit by hand: change the harvester or the gap-fill file and re-run it\n\
          # (`cargo run -p h3-harvest -- --install original-data/install --out packs`).\n\
          # Gameplay data and names only (OPEN-QUESTIONS Q13); sources: docs/formats/installation.md\n\
-         # 7.61, docs/rules/surveys/E09-towns.md 16, E09-construction.md 5 and 6; format:\n\
-         # crates/h3-pack-towns.\n"
+         # 7.61, docs/rules/surveys/E09-towns.md 16, E09-construction.md 5 and 6, E09-guild.md 2\n\
+         # (the guild weights, docs/epics/E09-design.md 83); format: crates/h3-pack-towns.\n"
     )
 }
 
@@ -387,6 +427,8 @@ fn params(ctx: &Ctx<'_>) -> Result<String, String> {
     let g = &ctx.spec.growth;
     let w = &g.garrison_week;
     let weights: Vec<String> = w.weights.iter().map(u8::to_string).collect();
+    let m = &ctx.spec.mage_guild;
+    let slots: Vec<String> = m.guild_slots.iter().map(u8::to_string).collect();
     Ok(format!(
         "\n[town_params]\n\
          gold = {}\n\
@@ -403,7 +445,10 @@ fn params(ctx: &Ctx<'_>) -> Result<String, String> {
          garrison_week = {{ odds = [{}, {}], out_of = {}, weights = [{}], weeks = {}, upgrade = {} }}\n\
          most_heroes = {}\n\
          hire_price = {{ {} = {} }}\n\
-         guild_resources = [{}]\n",
+         guild_resources = [{}]\n\
+         guild_slots = [{}]\n\
+         spell_book_price = {{ {} = {} }}\n\
+         vortex_factor = {}\n",
         quote(gold),
         p.grail_gold,
         p.reveal_radius,
@@ -425,6 +470,10 @@ fn params(ctx: &Ctx<'_>) -> Result<String, String> {
         toml_key(gold),
         ctx.spec.tavern.hire_price,
         guild_rows(ctx)?,
+        slots.join(", "),
+        toml_key(gold),
+        m.spell_book_price,
+        m.vortex_factor,
     ))
 }
 
@@ -479,6 +528,19 @@ fn tavern(ctx: &Ctx<'_>, f: usize, pack: &str) -> Result<String, String> {
     for (key, own, weights) in &ctx.taverns {
         let w = weights[f];
         if w > 0 && (*own == pack || *own == "base") {
+            let _ = writeln!(out, "  {} = {w}", toml_key(&reference(own, key, pack)?));
+        }
+    }
+    Ok(out)
+}
+
+/// A record's guild weights (E09 T46, design §83): the hero spells that weigh in its faction's
+/// column, as `[town.guild]` (every one the `base` pack's, which every record's closure holds).
+fn guild(ctx: &Ctx<'_>, f: usize, pack: &str) -> Result<String, String> {
+    let mut out = String::from("\n  [town.guild]\n");
+    for (key, own, weights) in &ctx.guilds {
+        let w = weights[f];
+        if w > 0 {
             let _ = writeln!(out, "  {} = {w}", toml_key(&reference(own, key, pack)?));
         }
     }
@@ -759,6 +821,7 @@ fn record(ctx: &Ctx<'_>, f: usize, t: &FactionTowns, pack: &str) -> Result<Strin
         out.push_str("roe = false\n");
     }
     out.push_str(&tavern(ctx, f, pack)?);
+    out.push_str(&guild(ctx, f, pack)?);
     // The buildings, by id.
     let key = |id: &u8| quote(&buildings[id].key);
     let mut given: BTreeSet<u8> = BTreeSet::new();

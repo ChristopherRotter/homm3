@@ -4,8 +4,8 @@
 # Do not edit by hand: change the harvester or the gap-fill file and re-run it
 # (`cargo run -p h3-harvest -- --install original-data/install --out packs`).
 # Gameplay data and names only (OPEN-QUESTIONS Q13); sources: docs/formats/installation.md
-# 7.61, docs/rules/surveys/E09-towns.md 16, E09-construction.md 5 and 6; format:
-# crates/h3-pack-towns.
+# 7.61, docs/rules/surveys/E09-towns.md 16, E09-construction.md 5 and 6, E09-guild.md 2
+# (the guild weights, docs/epics/E09-design.md 83); format: crates/h3-pack-towns.
 
 [town_params]
 gold = "gold"
@@ -28,6 +28,9 @@ garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], w
 most_heroes = 8
 hire_price = { gold = 2500 }
 guild_resources = [["gold"], ["wood", "ore"], ["mercury", "sulfur", "crystal", "gems"]]
+guild_slots = [5, 4, 3, 2, 1]
+spell_book_price = { gold = 500 }
+vortex_factor = 2
 
 [[town]]
 faction = "castle"
@@ -61,11 +64,69 @@ creatures = [
   beastmaster = 6
   witch = 6
 
+  [town.guild]
+  summon_boat = 3
+  scuttle_boat = 6
+  visions = 2
+  view_earth = 3
+  disguise = 2
+  view_air = 3
+  water_walk = 10
+  town_portal = 10
+  quicksand = 4
+  land_mine = 8
+  force_field = 4
+  fire_wall = 4
+  earthquake = 4
+  magic_arrow = 30
+  ice_bolt = 50
+  lightning_bolt = 4
+  chain_lightning = 10
+  frost_ring = 16
+  fireball = 8
+  inferno = 5
+  meteor_shower = 10
+  destroy_undead = 12
+  shield = 10
+  air_shield = 4
+  fire_shield = 5
+  protection_from_air = 2
+  protection_from_fire = 3
+  prot_from_water = 3
+  prot_from_earth = 4
+  anti_magic = 12
+  dispel = 10
+  cure = 10
+  resurrection = 10
+  bless = 10
+  precision = 6
+  weakness = 2
+  stone_skin = 5
+  disrupting_ray = 6
+  prayer = 10
+  mirth = 4
+  sorrow = 5
+  fortune = 4
+  misfortune = 4
+  haste = 5
+  slow = 5
+  slayer = 5
+  frenzy = 5
+  counterstrike = 5
+  berserk = 5
+  hypnotize = 4
+  forgetfulness = 8
+  blind = 4
+  teleport = 8
+  remove_obstacle = 4
+  clone = 5
+
   [[town.building]]
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
   cost = { wood = 5, ore = 5, gold = 2000 }
+  guild = 1
 
   [[town.building]]
   key = "mage_guild_level_2"
@@ -74,6 +135,7 @@ creatures = [
   supersedes = ["mage_guild_level_1"]
   requires = ["mage_guild_level_1"]
   cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
+  guild = 2
 
   [[town.building]]
   key = "mage_guild_level_3"
@@ -82,6 +144,7 @@ creatures = [
   supersedes = ["mage_guild_level_2"]
   requires = ["mage_guild_level_2"]
   cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
+  guild = 3
 
   [[town.building]]
   key = "mage_guild_level_4"
@@ -90,6 +153,7 @@ creatures = [
   supersedes = ["mage_guild_level_3"]
   requires = ["mage_guild_level_3"]
   cost = { wood = 5, mercury = 8, ore = 5, sulfur = 8, crystal = 8, gems = 8, gold = 1000 }
+  guild = 4
 
   [[town.building]]
   key = "tavern"
@@ -384,11 +448,75 @@ creatures = [
   beastmaster = 6
   witch = 6
 
+  [town.guild]
+  summon_boat = 5
+  scuttle_boat = 4
+  visions = 2
+  view_earth = 3
+  disguise = 2
+  view_air = 3
+  fly = 16
+  water_walk = 10
+  dimension_door = 20
+  town_portal = 10
+  quicksand = 4
+  land_mine = 8
+  force_field = 4
+  fire_wall = 4
+  earthquake = 8
+  magic_arrow = 30
+  ice_bolt = 50
+  lightning_bolt = 4
+  implosion = 16
+  chain_lightning = 10
+  frost_ring = 16
+  fireball = 8
+  inferno = 5
+  meteor_shower = 10
+  destroy_undead = 8
+  shield = 3
+  air_shield = 8
+  fire_shield = 5
+  protection_from_air = 2
+  protection_from_fire = 3
+  prot_from_water = 3
+  prot_from_earth = 4
+  anti_magic = 8
+  dispel = 10
+  magic_mirror = 16
+  cure = 10
+  resurrection = 10
+  bless = 5
+  precision = 6
+  weakness = 2
+  stone_skin = 5
+  disrupting_ray = 4
+  prayer = 5
+  mirth = 4
+  sorrow = 5
+  fortune = 6
+  misfortune = 4
+  haste = 10
+  slow = 10
+  slayer = 5
+  frenzy = 5
+  counterstrike = 10
+  berserk = 5
+  hypnotize = 4
+  forgetfulness = 8
+  blind = 6
+  teleport = 8
+  remove_obstacle = 4
+  clone = 5
+  earth_elemental = 16
+  water_elemental = 16
+
   [[town.building]]
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
   cost = { wood = 5, ore = 5, gold = 2000 }
+  guild = 1
 
   [[town.building]]
   key = "mage_guild_level_2"
@@ -397,6 +525,7 @@ creatures = [
   supersedes = ["mage_guild_level_1"]
   requires = ["mage_guild_level_1"]
   cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
+  guild = 2
 
   [[town.building]]
   key = "mage_guild_level_3"
@@ -405,6 +534,7 @@ creatures = [
   supersedes = ["mage_guild_level_2"]
   requires = ["mage_guild_level_2"]
   cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
+  guild = 3
 
   [[town.building]]
   key = "mage_guild_level_4"
@@ -413,6 +543,7 @@ creatures = [
   supersedes = ["mage_guild_level_3"]
   requires = ["mage_guild_level_3"]
   cost = { wood = 5, mercury = 8, ore = 5, sulfur = 8, crystal = 8, gems = 8, gold = 1000 }
+  guild = 4
 
   [[town.building]]
   key = "mage_guild_level_5"
@@ -421,6 +552,7 @@ creatures = [
   supersedes = ["mage_guild_level_4"]
   requires = ["mage_guild_level_4"]
   cost = { wood = 5, mercury = 10, ore = 5, sulfur = 10, crystal = 10, gems = 10, gold = 1000 }
+  guild = 5
 
   [[town.building]]
   key = "tavern"
@@ -725,11 +857,77 @@ creatures = [
   beastmaster = 6
   witch = 6
 
+  [town.guild]
+  summon_boat = 5
+  scuttle_boat = 4
+  visions = 2
+  view_earth = 3
+  disguise = 2
+  view_air = 3
+  fly = 16
+  water_walk = 10
+  dimension_door = 14
+  town_portal = 10
+  quicksand = 6
+  land_mine = 8
+  force_field = 8
+  fire_wall = 4
+  earthquake = 4
+  magic_arrow = 30
+  ice_bolt = 6
+  lightning_bolt = 50
+  implosion = 14
+  chain_lightning = 10
+  frost_ring = 16
+  fireball = 8
+  inferno = 5
+  meteor_shower = 10
+  destroy_undead = 8
+  shield = 5
+  air_shield = 8
+  fire_shield = 5
+  protection_from_air = 2
+  protection_from_fire = 3
+  prot_from_water = 3
+  prot_from_earth = 4
+  anti_magic = 8
+  dispel = 10
+  magic_mirror = 14
+  cure = 5
+  resurrection = 10
+  bless = 5
+  curse = 3
+  precision = 4
+  weakness = 2
+  stone_skin = 10
+  disrupting_ray = 6
+  prayer = 5
+  mirth = 4
+  sorrow = 5
+  fortune = 4
+  misfortune = 4
+  haste = 5
+  slow = 10
+  slayer = 5
+  frenzy = 5
+  counterstrike = 5
+  berserk = 5
+  hypnotize = 8
+  forgetfulness = 4
+  blind = 2
+  teleport = 8
+  remove_obstacle = 6
+  clone = 10
+  earth_elemental = 14
+  water_elemental = 14
+  air_elemental = 14
+
   [[town.building]]
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
   cost = { wood = 5, ore = 5, gold = 2000 }
+  guild = 1
 
   [[town.building]]
   key = "mage_guild_level_2"
@@ -738,6 +936,7 @@ creatures = [
   supersedes = ["mage_guild_level_1"]
   requires = ["mage_guild_level_1"]
   cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
+  guild = 2
 
   [[town.building]]
   key = "mage_guild_level_3"
@@ -746,6 +945,7 @@ creatures = [
   supersedes = ["mage_guild_level_2"]
   requires = ["mage_guild_level_2"]
   cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
+  guild = 3
 
   [[town.building]]
   key = "mage_guild_level_4"
@@ -754,6 +954,7 @@ creatures = [
   supersedes = ["mage_guild_level_3"]
   requires = ["mage_guild_level_3"]
   cost = { wood = 5, mercury = 8, ore = 5, sulfur = 8, crystal = 8, gems = 8, gold = 1000 }
+  guild = 4
 
   [[town.building]]
   key = "mage_guild_level_5"
@@ -762,6 +963,7 @@ creatures = [
   supersedes = ["mage_guild_level_4"]
   requires = ["mage_guild_level_4"]
   cost = { wood = 5, mercury = 10, ore = 5, sulfur = 10, crystal = 10, gems = 10, gold = 1000 }
+  guild = 5
 
   [[town.building]]
   key = "tavern"
@@ -889,6 +1091,7 @@ creatures = [
   slot = 18
   requires = ["mage_guild_level_1"]
   cost = { wood = 5, mercury = 5, ore = 5, sulfur = 5, crystal = 5, gems = 5, gold = 1500 }
+  library = true
 
   [[town.building]]
   key = "wall_of_knowledge"
@@ -1056,11 +1259,74 @@ creatures = [
   beastmaster = 6
   witch = 6
 
+  [town.guild]
+  summon_boat = 5
+  scuttle_boat = 4
+  visions = 4
+  view_earth = 3
+  disguise = 4
+  view_air = 3
+  fly = 16
+  water_walk = 10
+  dimension_door = 16
+  town_portal = 10
+  quicksand = 4
+  land_mine = 6
+  force_field = 2
+  fire_wall = 12
+  earthquake = 6
+  magic_arrow = 30
+  lightning_bolt = 20
+  implosion = 16
+  chain_lightning = 10
+  fireball = 50
+  inferno = 10
+  meteor_shower = 10
+  destroy_undead = 2
+  armageddon = 5
+  shield = 3
+  air_shield = 2
+  fire_shield = 5
+  protection_from_air = 4
+  protection_from_fire = 3
+  prot_from_water = 3
+  prot_from_earth = 2
+  anti_magic = 4
+  dispel = 10
+  cure = 5
+  resurrection = 10
+  sacrifice = 20
+  curse = 5
+  bloodlust = 10
+  precision = 8
+  weakness = 8
+  stone_skin = 5
+  disrupting_ray = 12
+  mirth = 2
+  sorrow = 5
+  fortune = 4
+  misfortune = 6
+  haste = 5
+  slow = 10
+  slayer = 5
+  frenzy = 5
+  counterstrike = 5
+  berserk = 5
+  hypnotize = 6
+  forgetfulness = 4
+  blind = 12
+  teleport = 8
+  remove_obstacle = 4
+  clone = 5
+  fire_elemental = 16
+  earth_elemental = 16
+
   [[town.building]]
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
   cost = { wood = 5, ore = 5, gold = 2000 }
+  guild = 1
 
   [[town.building]]
   key = "mage_guild_level_2"
@@ -1069,6 +1335,7 @@ creatures = [
   supersedes = ["mage_guild_level_1"]
   requires = ["mage_guild_level_1"]
   cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
+  guild = 2
 
   [[town.building]]
   key = "mage_guild_level_3"
@@ -1077,6 +1344,7 @@ creatures = [
   supersedes = ["mage_guild_level_2"]
   requires = ["mage_guild_level_2"]
   cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
+  guild = 3
 
   [[town.building]]
   key = "mage_guild_level_4"
@@ -1085,6 +1353,7 @@ creatures = [
   supersedes = ["mage_guild_level_3"]
   requires = ["mage_guild_level_3"]
   cost = { wood = 5, mercury = 8, ore = 5, sulfur = 8, crystal = 8, gems = 8, gold = 1000 }
+  guild = 4
 
   [[town.building]]
   key = "mage_guild_level_5"
@@ -1093,6 +1362,7 @@ creatures = [
   supersedes = ["mage_guild_level_4"]
   requires = ["mage_guild_level_4"]
   cost = { wood = 5, mercury = 10, ore = 5, sulfur = 10, crystal = 10, gems = 10, gold = 1000 }
+  guild = 5
 
   [[town.building]]
   key = "tavern"
@@ -1398,11 +1668,75 @@ creatures = [
   beastmaster = 6
   witch = 6
 
+  [town.guild]
+  summon_boat = 3
+  scuttle_boat = 4
+  visions = 2
+  view_earth = 3
+  disguise = 2
+  view_air = 3
+  fly = 16
+  water_walk = 10
+  dimension_door = 16
+  town_portal = 10
+  quicksand = 4
+  land_mine = 8
+  force_field = 8
+  fire_wall = 4
+  earthquake = 4
+  magic_arrow = 30
+  ice_bolt = 6
+  lightning_bolt = 6
+  implosion = 20
+  chain_lightning = 10
+  frost_ring = 12
+  fireball = 12
+  inferno = 5
+  meteor_shower = 10
+  death_ripple = 50
+  armageddon = 5
+  shield = 10
+  air_shield = 4
+  fire_shield = 5
+  protection_from_air = 2
+  protection_from_fire = 3
+  prot_from_water = 3
+  prot_from_earth = 4
+  anti_magic = 8
+  dispel = 10
+  resurrection = 10
+  animate_dead = 16
+  sacrifice = 16
+  curse = 10
+  bloodlust = 5
+  precision = 2
+  weakness = 4
+  stone_skin = 10
+  disrupting_ray = 4
+  mirth = 4
+  sorrow = 5
+  fortune = 2
+  misfortune = 8
+  haste = 5
+  slow = 5
+  slayer = 5
+  frenzy = 5
+  counterstrike = 5
+  berserk = 10
+  forgetfulness = 4
+  blind = 4
+  teleport = 8
+  remove_obstacle = 4
+  clone = 5
+  earth_elemental = 16
+  air_elemental = 16
+
   [[town.building]]
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
   cost = { wood = 5, ore = 5, gold = 2000 }
+  guild = 1
 
   [[town.building]]
   key = "mage_guild_level_2"
@@ -1411,6 +1745,7 @@ creatures = [
   supersedes = ["mage_guild_level_1"]
   requires = ["mage_guild_level_1"]
   cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
+  guild = 2
 
   [[town.building]]
   key = "mage_guild_level_3"
@@ -1419,6 +1754,7 @@ creatures = [
   supersedes = ["mage_guild_level_2"]
   requires = ["mage_guild_level_2"]
   cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
+  guild = 3
 
   [[town.building]]
   key = "mage_guild_level_4"
@@ -1427,6 +1763,7 @@ creatures = [
   supersedes = ["mage_guild_level_3"]
   requires = ["mage_guild_level_3"]
   cost = { wood = 5, mercury = 8, ore = 5, sulfur = 8, crystal = 8, gems = 8, gold = 1000 }
+  guild = 4
 
   [[town.building]]
   key = "mage_guild_level_5"
@@ -1435,6 +1772,7 @@ creatures = [
   supersedes = ["mage_guild_level_4"]
   requires = ["mage_guild_level_4"]
   cost = { wood = 5, mercury = 10, ore = 5, sulfur = 10, crystal = 10, gems = 10, gold = 1000 }
+  guild = 5
 
   [[town.building]]
   key = "tavern"
@@ -1726,11 +2064,79 @@ creatures = [
   beastmaster = 6
   witch = 6
 
+  [town.guild]
+  summon_boat = 5
+  scuttle_boat = 4
+  visions = 2
+  view_earth = 3
+  disguise = 2
+  view_air = 3
+  fly = 12
+  water_walk = 10
+  dimension_door = 16
+  town_portal = 10
+  quicksand = 4
+  land_mine = 12
+  force_field = 8
+  fire_wall = 4
+  earthquake = 4
+  magic_arrow = 30
+  ice_bolt = 6
+  lightning_bolt = 50
+  implosion = 12
+  chain_lightning = 10
+  frost_ring = 12
+  fireball = 16
+  inferno = 5
+  meteor_shower = 10
+  destroy_undead = 4
+  armageddon = 10
+  shield = 5
+  air_shield = 4
+  fire_shield = 5
+  protection_from_air = 2
+  protection_from_fire = 3
+  prot_from_water = 3
+  prot_from_earth = 4
+  anti_magic = 8
+  dispel = 10
+  magic_mirror = 12
+  cure = 5
+  resurrection = 10
+  sacrifice = 12
+  bless = 3
+  curse = 5
+  bloodlust = 5
+  precision = 6
+  weakness = 4
+  stone_skin = 5
+  disrupting_ray = 6
+  mirth = 4
+  sorrow = 5
+  fortune = 2
+  misfortune = 4
+  haste = 10
+  slow = 5
+  slayer = 5
+  frenzy = 5
+  counterstrike = 5
+  berserk = 5
+  hypnotize = 8
+  forgetfulness = 4
+  blind = 4
+  teleport = 8
+  remove_obstacle = 4
+  clone = 5
+  fire_elemental = 12
+  earth_elemental = 12
+  water_elemental = 12
+
   [[town.building]]
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
   cost = { wood = 5, ore = 5, gold = 2000 }
+  guild = 1
 
   [[town.building]]
   key = "mage_guild_level_2"
@@ -1739,6 +2145,7 @@ creatures = [
   supersedes = ["mage_guild_level_1"]
   requires = ["mage_guild_level_1"]
   cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
+  guild = 2
 
   [[town.building]]
   key = "mage_guild_level_3"
@@ -1747,6 +2154,7 @@ creatures = [
   supersedes = ["mage_guild_level_2"]
   requires = ["mage_guild_level_2"]
   cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
+  guild = 3
 
   [[town.building]]
   key = "mage_guild_level_4"
@@ -1755,6 +2163,7 @@ creatures = [
   supersedes = ["mage_guild_level_3"]
   requires = ["mage_guild_level_3"]
   cost = { wood = 5, mercury = 8, ore = 5, sulfur = 8, crystal = 8, gems = 8, gold = 1000 }
+  guild = 4
 
   [[town.building]]
   key = "mage_guild_level_5"
@@ -1763,6 +2172,7 @@ creatures = [
   supersedes = ["mage_guild_level_4"]
   requires = ["mage_guild_level_4"]
   cost = { wood = 5, mercury = 10, ore = 5, sulfur = 10, crystal = 10, gems = 10, gold = 1000 }
+  guild = 5
 
   [[town.building]]
   key = "tavern"
@@ -1882,6 +2292,7 @@ creatures = [
   slot = 18
   requires = ["mage_guild_level_1"]
   cost = { gold = 1000 }
+  mana_vortex = true
 
   [[town.building]]
   key = "portal_of_summoning"
@@ -2055,11 +2466,56 @@ creatures = [
   beastmaster = 6
   witch = 5
 
+  [town.guild]
+  summon_boat = 5
+  scuttle_boat = 4
+  visions = 2
+  view_earth = 3
+  disguise = 2
+  view_air = 3
+  quicksand = 6
+  land_mine = 8
+  force_field = 4
+  fire_wall = 4
+  earthquake = 4
+  magic_arrow = 30
+  ice_bolt = 4
+  lightning_bolt = 50
+  frost_ring = 12
+  fireball = 12
+  destroy_undead = 4
+  shield = 5
+  air_shield = 8
+  protection_from_air = 2
+  protection_from_fire = 3
+  prot_from_water = 3
+  prot_from_earth = 4
+  anti_magic = 12
+  dispel = 10
+  cure = 5
+  bless = 3
+  bloodlust = 10
+  precision = 4
+  weakness = 4
+  stone_skin = 10
+  disrupting_ray = 6
+  mirth = 12
+  fortune = 4
+  misfortune = 4
+  haste = 5
+  slow = 5
+  hypnotize = 4
+  forgetfulness = 4
+  blind = 4
+  teleport = 8
+  remove_obstacle = 4
+
   [[town.building]]
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
   cost = { wood = 5, ore = 5, gold = 2000 }
+  guild = 1
 
   [[town.building]]
   key = "mage_guild_level_2"
@@ -2068,6 +2524,7 @@ creatures = [
   supersedes = ["mage_guild_level_1"]
   requires = ["mage_guild_level_1"]
   cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
+  guild = 2
 
   [[town.building]]
   key = "mage_guild_level_3"
@@ -2076,6 +2533,7 @@ creatures = [
   supersedes = ["mage_guild_level_2"]
   requires = ["mage_guild_level_2"]
   cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
+  guild = 3
 
   [[town.building]]
   key = "tavern"
@@ -2369,11 +2827,54 @@ creatures = [
   beastmaster = 6
   witch = 6
 
+  [town.guild]
+  summon_boat = 3
+  scuttle_boat = 4
+  visions = 2
+  view_earth = 3
+  view_air = 3
+  quicksand = 6
+  land_mine = 2
+  force_field = 4
+  fire_wall = 4
+  earthquake = 50
+  magic_arrow = 30
+  ice_bolt = 50
+  lightning_bolt = 4
+  frost_ring = 4
+  fireball = 2
+  destroy_undead = 2
+  shield = 5
+  air_shield = 4
+  protection_from_air = 2
+  protection_from_fire = 3
+  prot_from_water = 3
+  anti_magic = 10
+  dispel = 10
+  cure = 10
+  bless = 5
+  bloodlust = 5
+  precision = 4
+  weakness = 4
+  stone_skin = 5
+  disrupting_ray = 6
+  mirth = 2
+  fortune = 4
+  misfortune = 2
+  haste = 10
+  slow = 5
+  hypnotize = 4
+  forgetfulness = 4
+  blind = 6
+  teleport = 10
+  remove_obstacle = 4
+
   [[town.building]]
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
   cost = { wood = 5, ore = 5, gold = 2000 }
+  guild = 1
 
   [[town.building]]
   key = "mage_guild_level_2"
@@ -2382,6 +2883,7 @@ creatures = [
   supersedes = ["mage_guild_level_1"]
   requires = ["mage_guild_level_1"]
   cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
+  guild = 2
 
   [[town.building]]
   key = "mage_guild_level_3"
@@ -2390,6 +2892,7 @@ creatures = [
   supersedes = ["mage_guild_level_2"]
   requires = ["mage_guild_level_2"]
   cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
+  guild = 3
 
   [[town.building]]
   key = "tavern"

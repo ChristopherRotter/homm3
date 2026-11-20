@@ -18,10 +18,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   spec's fields. **T45** (kept whole, decision 183; `shared/`, `cross-lane`): the four drafts in
   ADR-0013, -0016, -0017 and -0028 with TWN-5's verdicts, the glossary, the security doc's guild
   section; `TWN-QUIRK-14`'s flag (the base faithful hash 0x36b98ea152b4db95, the goldens' headers
-  re-recorded). **Next:** T46, the town part v9 (`QUEUE.md`; needs the original data). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and
+  re-recorded). **T46** (kept whole, decision 184; `cross-lane`): the town part v9, the guild
+  weights harvested from `SPTRAITS.TXT`, the roles `guild`, `library`, `aurora`, `mana_vortex`,
+  the slots, the book's price, the Vortex's factor (TWN-GLD-001; the goldens' town hash
+  0xcf8db1aa2bb768d2). **Next:** T47a, the map's town spell sets, the draw, the store v4
+  (`QUEUE.md`; confirm its cut). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and
   `-15` (increment 5), `-13` (Visions' reach), `TWN-STUB-2` (the victory conditions),
   `TWN-STUB-16` (E10's loss condition), `-17` (increment 7), `-18` (E13).
-- **Open pull requests:** T45's (#1080, `shared/e09-t45`, `cross-lane`), opened at the session's end;
+- **Open pull requests:** T46's (`town/e09-t46`, `cross-lane`), opened at the session's end;
   watch it until it merges (a golden re-recorded by another lane meanwhile: merge `master`,
   re-record the headers again).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
@@ -30,19 +34,20 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   experiments. The rest of those crates is the adventure lane's: a change there is `cross-lane`,
   merged in order with its pull requests.
 - **Versions:** the lane's own: the town state hash (`TOWN_STATE_HASH_VERSION`, v3) and the town
-  ruleset part (`TOWN_RULESET_HASH_VERSION`, v8: T39b1), both in `h3-towns`; the adventure lane's
+  ruleset part (`TOWN_RULESET_HASH_VERSION`, v9: T46), both in `h3-towns`; the adventure lane's
   (on `master` 2026-11-20: game state hash v36, adventure part v24, adventure state hash v27, map
   import v27, replay format v22, by E08 T132b to T134a), the env's (v15, E08 T134a) and the
   protocol's (v76, E08 T134a) are bumped `cross-lane` (each task's record in
   `E09-log.md`; increment 5's plan in design §96). Shared: core ruleset hash v53, pack format v53 (E08 T124a; v52 T24),
   quirk flags 44 (T45: `TWN-QUIRK-14`'s; 42, 43 and `StreamId::TAVERNS` (8) by T35b).
-- **Ids** (next): questions `TWN-Q34`; decisions 184; quirks `TWN-QUIRK-15` (`-14` entered by T45,
+- **Ids** (next): questions `TWN-Q34`; decisions 186; quirks `TWN-QUIRK-15` (`-14` entered by T45,
   its rule's test with T48a; `-12`, `-13` by T35b); stubs `TWN-STUB-21` (`-11`, `-12` planned by §34; `-16`
   by T38b2, `-17`, `-18` by T39b1; `-20` lifted by T39b2); rules: TWN-TAV-001 to -009, GAM-MAN-003,
   GAM-DEC-010 and the adventure's ADV-VIS-007, -008 built; experiment batch `TWN-6` (`TWN-5` run
   by T44); disputes `TD-28` (`TD-25`, `-26` by T42a, `-27` by T42b); quirk candidates `T-19` (`T-18`
   by T42a, `fix-optional` by decision 169).
-  ADR-0028 is the lane's; no drafts open; planned rules TWN-GLD-001 to -009, TWN-SET-012.
+  ADR-0028 is the lane's; no drafts open; TWN-GLD-001 built (T46), planned TWN-GLD-002 to -009,
+  TWN-SET-012.
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at
   each round; the user confirms seams and ADRs; tokens first.
 
@@ -51,6 +56,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-20 — T46: the town part v9, the guild weights harvested, `cross-lane`
+
+Baseline a8460e1 (#1082 merged, #1080 before it; the setup's light gates on `master`'s code). The
+user's computer was connected at the start only: 71 files (64 of `original-data/`, its 40 MP3s
+among them, and the four manuals with three help files) staged, SHA-256 checked. The user kept T46 whole
+with the `cross-lane` consent (decision 184). Built: `h3-towns`' guild weights, roles and
+parameters with their refusals (part v9), `h3-pack-towns`' fields, the harvest of `SPTRAITS.TXT`'s
+town columns and the gap-fill's roles; the packs re-harvested; 104 goldens' `town_ruleset_hash`.
+Agent's calls in decision 185 (the slots 1 to 5; a role of every faction where its list holds the
+building). PR opened at the end.
 
 ### 2026-11-20 — T45: `shared/`, the drafts into the ADRs, the glossary, the security lines, `TWN-QUIRK-14`'s flag
 
@@ -73,13 +89,3 @@ with three help files staged, SHA-256 checked. The user kept T44 whole and conse
 literal filled, the clients' too), `h3-experiment`'s spell and main-town fields, the harness's
 guild reads, the Vortex's message over the town screen, the hall found by its status line. Run:
 specs `E09-batch-5a`, `-5b`, twice each; scored in the survey's §21. PR #1076.
-
-### 2026-11-20 — T43: increment 5's drafts, Part G, the cut; the checkpoints TWN-Q32, TWN-Q33
-
-Baseline 67b86dd (#1067 merged; the setup's light gates on `master`'s code, CI's fingerprint).
-The user's computer was connected at the start only: 61 files of `original-data/` and the four
-manuals with three help files staged, SHA-256 checked. The user kept T43 whole (decision 172) and
-chose at `TWN-Q32` the weights in the town records, the Aurora now, `Open` listed where useful,
-`BuySpellBook` (173–176); at `TWN-Q33` both heroes learn at an opening, the towns' stream (over
-the agent's new stream), the views as proposed, the cut as written (178–181). Written: the four
-drafts, Part G §82 to §100, four lanes' inboxes. PR #1071.

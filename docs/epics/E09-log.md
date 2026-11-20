@@ -5557,3 +5557,69 @@ and the four manuals with three help files staged, SHA-256 checked. **Kept whole
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`, `cargo xtask
 check-lane --cross-lane`, `cargo check --workspace --all-targets`, `cargo test -p h3-content -p
 h3-pack -p h3-harvest -p h3-server -p h3-protocol`; CI on the pull request is the record.
+
+### T46 — the town part v9: the guild weights, the four roles, the guild's parameters (2026-11-20)
+
+One session, the user present at the start; branch `town/e09-t46`, `cross-lane` (the harvester,
+its gap-fill and `packs/README.md` the battle lane's, the golden adventure replays and
+`h3-game`'s `tests/mod.rs` the adventure lane's). Starting point: `master` at a8460e1 (#1082, E08
+T134b1; #1080, T45's, merged before it); the setup's light gates on `master`'s code (CI's
+fingerprint). The user's computer was connected at the start only: 71 files staged (the four
+LODs, the executables and DLLs, both `.snd`, the three videos, `maps.tar`, `extracted.tar`, the
+three saves, 40 MP3s, the four manuals and three help files), SHA-256 checked (one hash of each
+side's sorted list). **Kept whole** with the `cross-lane` consent (decision 184).
+
+- **`h3-towns`** (design §83): `TownDef::guild` (spell key, weight) compiled to
+  `TownRecord::guild` (a `u16` per core spell by `SpellId`, 0 not given) with
+  `TownRecord::guild_weight`; `BuildingRoles::guild` (1 to 5), `library`, `aurora`,
+  `mana_vortex`; `TownParamsDef`/`TownParams::guild_slots`, `spell_book_price`, `vortex_factor`.
+  The refusals: `TownCompileError::UnknownSpell` (new), a spell outside the closure, a creature
+  ability, a spell twice, a weight outside 1 to 10 000; a guild level outside 1 to 5, a level's
+  second building, a second Library, Aurora Borealis or Mana Vortex; a level's slots outside 1 to
+  5, the book's price a resource twice or 0 (empty: free), the factor outside 1 to 10. **Town
+  ruleset part v9** (`TOWN_RULESET_HASH_VERSION`: the three parameters after the Thieves' Guild's
+  rows, each record's weights after its tavern weights, the four roles after the reveal); pins
+  `0x67ee_ef1c_7b56_fda6` and the empty part's `0xedec_d7c9_34cc_e444`. TWN-GLD-001 `verified`
+  (its catalog entry new).
+- **`h3-pack-towns`:** `[town.guild]` (spell = weight), the four role fields, `guild_slots`,
+  `spell_book_price`, `vortex_factor` in `[town_params]`; the format's doc. The synthetic pack:
+  slots 4, 3, 3, 2, 1, a book of 400 coin, a factor of 3, five weights, two Mage Guild levels, a
+  Library, a Mana Vortex and the Grail's Aurora.
+- **The harvest** (`h3-harvest`, `cross-lane`): `heroes::spell_guilds` (fields 16 to 24 of the
+  hero spells' rows, each spell's pack as the spell harvest's); each record's `[town.guild]` (its
+  faction's column, a 0 left out; a `sod` spell weighing anywhere refused: Titan's Lightning Bolt
+  weighs 0); the gap-fill's `[towns.mage_guild]` (source `exe-mage-guild`) and eight roles (the
+  Mage Guilds by their ids 0 to 4, the Tower's Library 22, the Dungeon's Mana Vortex 21, the
+  Conflux's Aurora 26); a role of every faction now goes to the factions whose list holds the
+  building (an error when none does). The harvester re-run on the staged installation wrote
+  `base` and `ab` (the weights, the roles, the parameters) and `sod` (its header only); the core
+  and battle files unchanged.
+- **Tests:** `h3-towns`' compile, refusal, message and hash tests (the test core's spells and
+  school new); `h3-pack-towns`' synthetic record and roles, the parser's strictness and
+  `the_original_guilds` (each record's weights by level summing to 100 at every level its Mage
+  Guilds reach, 0 above: Castle 4, Stronghold and Fortress 3, the others 5; no ability and not
+  Titan's Lightning Bolt weighing; Armageddon only in the Inferno, Necropolis and Dungeon, Death
+  Ripple and Animate Dead only in Necropolis; the RoE pack's weights the same; the roles on their
+  four buildings alone; the parameters); `h3-harvest`'s town test (the fixture's columns 16 to 18,
+  Zap's 0, Bolt's SoD-only 0s; the roles; the errors).
+- **Replays:** the 104 golden adventure replays re-recorded from their commands (only
+  `town_ruleset_hash` moved, 0xab3ee3f1cb243f30 to **0xcf8db1aa2bb768d2**). The bot reports record
+  no town part: unchanged.
+- **Also:** `packs/README.md` (the town files' guild data; the town chances no longer "not
+  harvested"); the battle lane's inbox (T43's plan note replaced by what changed in its crate).
+- *Agent's calls* (decision 185): the slots bounded 1 to 5 (design §83's "1 to 6" against its own
+  reason: the spare makes at most six, the original's slots a level, survey §3.2); the guild roles
+  by building id for every faction that holds it (the Mage Guilds 3 to 5 are not every faction's);
+  no override of the weights (no pack needs one: the AB copy's columns are equal, RoE's are E11's);
+  a 0 weight refused (0s are omitted); the §2.2 checks in `h3-pack-towns`' original-packs test, as
+  T36's taverns (`h3-harvest` has no original-data test: `verify --with-original-data`
+  re-harvests and compares); the Conflux's key `aurora_borealias` (the packs' spelling, from
+  `BldgSpec.txt`; §83 wrote `aurora_borealis`). Design §83's *As built*.
+
+**The queue:** T46 out; T47 next (T47a the map's town spell sets, the draw, the store v4). Ids:
+decisions next 186.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`, `cargo xtask
+check-lane --cross-lane`, `cargo check --workspace --all-targets`, `cargo clippy --workspace
+--all-targets -- -D warnings`, `cargo test -p h3-harvest -p h3-protocol -p h3-server -p h3-cli -p
+h3-sim -p h3-game -p h3-towns -p h3-pack-towns`; CI on the pull request is the record.

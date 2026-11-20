@@ -20,12 +20,15 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
-- 2026-11-20 (the town lane, E09 T43, `town/e09-t43`, docs only; **a `cross-lane` harvest in
-  your crate, planned; nothing to do now**): E09 increment 5's T46 (design note
-  `docs/epics/E09-design.md` §83) adds `SPTRAITS.TXT`'s nine town columns of the 70 hero spells
-  (fields 16 to 24) to `h3-harvest`'s town records (`[town.guild]` in each pack's `towns.toml`, the
-  town lane's files) and the gap-fill's four guild roles, as E09 T36's tavern weights did; your
-  spells' own records do not change.
+- 2026-11-20 (the town lane, E09 T46, `town/e09-t46`, `cross-lane` with the user's consent;
+  **in your crate, for information; nothing to do**): `h3-harvest` now harvests `SPTRAITS.TXT`'s
+  town columns (fields 16 to 24 of the hero spells' rows, `heroes::spell_guilds`) into each
+  record's `[town.guild]` of the town files, and the gap-fill's `[towns.mage_guild]` with eight
+  guild roles (`exe-mage-guild`); your spells' records did not change. Two things to know: **a
+  `[towns]` role without `faction` now goes only to the factions whose list holds the building**
+  (an error when none does; the Mage Guilds 3 to 5 are not every faction's), and the fixture's
+  spell rows (`tests.rs`' `hero_tables`) have Zap's town column 1 and Bolt's nine at 0. The
+  report's SPTRAITS line and `packs/README.md` no longer list the town chances as not harvested.
 
 - 2026-11-19 (the adventure lane, E08 T130, `adventure/e08-t130`, docs only; **a lead for E11
   T1's observation route; nothing to do now**): this build's game version (`map_kind`, game

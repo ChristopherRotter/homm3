@@ -424,6 +424,7 @@ fn keep() -> TownRecord {
         capitol_demoted_to: BuildingId::from_index(CITY_HALL).unwrap(),
         roe: true,
         tavern: Vec::new(),
+        guild: Vec::new(),
     }
 }
 
@@ -452,6 +453,7 @@ fn marsh() -> TownRecord {
         capitol_demoted_to: BuildingId::from_index(0).unwrap(),
         roe: false,
         tavern: Vec::new(),
+        guild: Vec::new(),
     }
 }
 
@@ -485,6 +487,9 @@ fn params() -> TownParams {
         most_heroes: 8,
         hire_price: vec![(GOLD, 2500)],
         guild_resources: [vec![GOLD], vec![WOOD, ORE], vec![]],
+        guild_slots: [5, 4, 3, 2, 1],
+        spell_book_price: vec![(GOLD, 500)],
+        vortex_factor: 2,
     }
 }
 
