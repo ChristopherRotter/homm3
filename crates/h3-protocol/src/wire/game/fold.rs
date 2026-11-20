@@ -93,8 +93,8 @@ impl GameObservation {
             }
             // Their views are not carried (SRV-Q27 (2)): an offer's kind and price, a choice's
             // options, a University's skills and slots, a hire dialog's creatures and costs, since
-            // E08 T133b (v75) a market's window, since E08 T134a (v76) an Altar's (stub:
-            // SRV-STUB-5).
+            // E08 T133b (v75) a market's window, since E08 T134a (v76) an Altar's
+            // (stub: SRV-STUB-5).
             GameEvent::OfferOpened { .. }
             | GameEvent::ChoiceOpened { .. }
             | GameEvent::UniversityOpened { .. }

@@ -28,9 +28,10 @@ type Rules<'a> = (&'a Ruleset, &'a AdventureRuleset, &'a [Arc<HeroDetails>]);
 /// `altar_dialog_create` 0x55FDD0): its class's faction's screens, none for a hero the store
 /// lacks or a faction without an entry (none in the packs: with an Altar every faction has one).
 pub(super) fn screens((core, part, heroes): Rules<'_>, hero: HeroId) -> Option<AltarScreens> {
-    let details = details_of(heroes, hero)?;
-    let class = core.hero_type(details.hero_type)?.class;
-    part.altar_screens(core.hero_class(class)?.faction)
+    let class = details_of(heroes, hero)
+        .and_then(|details| core.hero_type(details.hero_type))
+        .and_then(|ty| core.hero_class(ty.class))?;
+    part.altar_screens(class.faction)
 }
 
 /// A sacrifice [`AdventureState::check_artifact_sacrifice`] or

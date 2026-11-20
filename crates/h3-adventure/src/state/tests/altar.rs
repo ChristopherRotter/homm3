@@ -347,6 +347,9 @@ fn a_sacrifice_of_creatures_keeps_the_army_a_creature_and_takes_learning_per_sta
         [1, 0, 0, 0, 0, 0, 0],
     );
     assert_eq!(refused, Err(AltarError::Screen));
+    let elsewhere = AltarVisit { index: 1, ..altar };
+    let refused = state.check_creature_sacrifice(rules3, &elsewhere, [1, 0, 0, 0, 0, 0, 0]);
+    assert_eq!(refused, Err(AltarError::Visit));
 }
 
 // covers: ADV-ALT-001, ADV-ALT-002, ADV-ALT-003
