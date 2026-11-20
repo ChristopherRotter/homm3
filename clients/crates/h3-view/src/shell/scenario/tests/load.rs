@@ -1,7 +1,7 @@
 //! The scenario screen's load mode (E27 M4 T4b1; design §3.1 to §3.5, §38): the screen over
 //! `scn-load`'s three saves ([`load`]): its items, the list, the panel's name and date, the
-//! save's difficulty, the sorts' stale pixels in the original's profile, the right press, Load
-//! and Delete's notice.
+//! save's difficulty, the sorts' stale pixels in the original's profile, the right press; Delete's
+//! question and its end, the notice with no saves, Load's end (T4b2).
 
 use super::*;
 
@@ -138,39 +138,193 @@ fn the_panel_buttons_hotkeys_do_nothing_in_the_load_mode() {
     }
 }
 
+/// The box over the screen's text, its lines joined.
+fn box_text(s: &Scenario) -> String {
+    let Over::Notice(open) = &s.over else {
+        return String::new();
+    };
+    open.message
+        .dialog
+        .draws(&open.message.shown, "")
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Label { text, .. } => Some(text.clone()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// The box's button `id` pressed and released by the key `by` (Return OK, Escape Cancel).
+fn answer(s: &mut Scenario, key: message::Key, by: &str) -> Did {
+    let did = s.key(None, Some(Command::Message(key)), by);
+    did.with(s.key_up(by))
+}
+
 #[test]
-fn load_and_delete_show_the_client_s_notice() {
-    for (key, by) in [
-        (Command::Dialog(BEGIN), "Return"),
-        (Command::Delete, "Delete"),
-    ] {
-        let mut s = load(Bugs::Fixed);
-        assert!(!s.stubbed());
-        s.key(None, Some(key), by);
-        s.key_up(by);
-        assert!(s.stubbed());
+fn delete_asks_about_the_selected_save_and_its_cancel_keeps_it() {
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        let mut s = load(bugs);
+        assert!(s.key(None, Some(Command::Delete), "Delete").changed);
+        s.key_up("Delete");
         assert_eq!(s.context(), Context::Question);
-        // Its OK closes it.
-        let ok = Some(Command::Message(message::Key::Ok));
-        s.key(None, ok, "Return");
-        s.key_up("Return");
         assert!(!s.stubbed());
+        assert!(s.question().is_some());
+        assert_eq!(s.asked, Asked::Delete);
+        assert!(box_text(&s).contains("Delete Week_one.GM1?"));
+        // Cancel: the box closed, nothing deleted, the screen as it was (no redraw: the stale
+        // pixels the opening left are none).
+        let before = s.shown.clone();
+        assert!(answer(&mut s, message::Key::Cancel, "Escape").changed);
+        assert_eq!(s.over, Over::Nothing);
+        assert_eq!(s.asked, Asked::Told);
+        assert_eq!(s.take_deleted(), None);
+        assert_eq!(s.shown, before);
+        assert_eq!(names(&s.draws("")), ["Week_one.GM1", "AUTOSAVE.GM1", "small.GM1"]);
     }
-    // Load clicked, and a row's double press.
+}
+
+#[test]
+fn delete_s_ok_removes_the_save_and_sorts_by_the_version_in_the_last_direction() {
+    // As `scn-load`: the size's column descending, then Week_one's Delete and OK: the
+    // version's order descending, SoD's small before AB's autosave, the first selected with the
+    // partial redraw's stale buttons and rating in the original's profile.
+    // The original's first size press after the build sorts descending (its recorded key 1).
+    let mut s = load(Bugs::Original);
+    click(&mut s, [74, 106]);
+    assert_eq!(names(&s.draws("")), ["Week_one.GM1", "AUTOSAVE.GM1", "small.GM1"]);
+    s.key(None, Some(Command::Delete), "Delete");
+    s.key_up("Delete");
+    assert!(answer(&mut s, message::Key::Ok, "Return").changed);
+    assert_eq!(s.over, Over::Nothing);
+    assert_eq!(s.take_deleted().as_deref(), Some("Week_one.GM1"));
+    assert_eq!(s.take_deleted(), None);
+    let draws = s.draws("");
+    assert_eq!(names(&draws), ["small.GM1", "AUTOSAVE.GM1"]);
+    assert_eq!(s.rows(), (Some(0), 0));
+    assert_eq!(label(&draws, NAME).as_deref(), Some("Arrogance"));
+    assert_eq!(s.difficulty(), 0);
+    assert!(s.stale());
+    assert_eq!(labels(&draws, RATING), ["130%", "80%"]);
+    assert_eq!(difficulty_frames(&draws), [2, 2, 3, 2, 2]);
+    // The recorded key kept: the size's next press flips its order back to ascending.
+    click(&mut s, [74, 106]);
+    assert_eq!(names(&s.draws("")), ["small.GM1", "AUTOSAVE.GM1"]);
+    // The client's draws whole; ascending, the version's order is AB's, then SoD's.
     let mut s = load(Bugs::Fixed);
-    click(&mut s, [497, 555]);
-    assert!(s.stubbed());
+    s.key(None, Some(Command::Delete), "Delete");
+    s.key_up("Delete");
+    answer(&mut s, message::Key::Ok, "Return");
+    let draws = s.draws("");
+    assert_eq!(names(&draws), ["AUTOSAVE.GM1", "small.GM1"]);
+    assert_eq!(labels(&draws, RATING), ["160%"]);
+    assert_eq!(difficulty_frames(&draws), [2, 2, 2, 3, 2]);
+    assert!(!s.shown.state(BEGIN).disabled);
+}
+
+#[test]
+fn deleting_the_last_save_empties_the_panel_and_disables_load() {
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        let mut s = load(bugs);
+        for _ in 0..3 {
+            s.key(None, Some(Command::Delete), "Delete");
+            s.key_up("Delete");
+            answer(&mut s, message::Key::Ok, "Return");
+            assert!(s.take_deleted().is_some());
+        }
+        let draws = s.draws("");
+        assert!(names(&draws).is_empty());
+        assert_eq!(s.rows(), (None, 0));
+        assert!(s.shown.state(BEGIN).disabled);
+        assert!(!s.stale());
+        for id in [NAME, DATE, RATING] {
+            assert_eq!(label(&draws, id).as_deref(), Some(""), "{id}");
+        }
+        // Load, Enter, Delete and Down do nothing.
+        assert!(!click(&mut s, [497, 555]).changed);
+        assert_eq!(s.key(None, Some(Command::Dialog(BEGIN)), "Return"), Did::default());
+        s.key_up("Return");
+        assert_eq!(s.key(None, Some(Command::Delete), "Delete"), Did::default());
+        s.key(None, Some(Command::List(Scroll::Down)), "Down");
+        assert_eq!(s.over, Over::Nothing);
+        assert_eq!(s.loaded(), None);
+        // The next opening shows the notice with no saves (the menus keep the list as left).
+        let mut menus = crate::shell::menu::tests::menus(bugs);
+        menus.load = load(bugs);
+        menus.load.keep(&s);
+        let opened = menus.load.opened(Hovers::default());
+        assert_eq!(opened.asked, Asked::NoSaves);
+    }
+}
+
+#[test]
+fn an_opening_with_no_saves_shows_its_notice_whose_ok_disables_load() {
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        let layout = parse_layout(LAYOUT).unwrap();
+        let mut s = scenario_of(Vec::new(), bugs).loading(&layout.scenario.load_begin, 0);
+        assert_eq!(s.asked, Asked::NoSaves);
+        assert!(box_text(&s).contains("No saved games"));
+        assert!(s.question().is_some() && !s.stubbed());
+        assert_eq!(s.context(), Context::Question);
+        // Load disabled under it; its OK closes it and redraws whole.
+        assert!(s.shown.state(BEGIN).disabled);
+        assert!(answer(&mut s, message::Key::Ok, "Return").changed);
+        assert_eq!(s.over, Over::Nothing);
+        assert!(s.shown.state(BEGIN).disabled);
+        assert_eq!(frame(&s.draws(""), "scnrlod.def", [414, 535]), Some(2));
+        // No difficulty chosen in the original's profile (no map at the opening).
+        let chosen = DIFFICULTIES
+            .iter()
+            .filter(|&&id| s.shown.state(id).selected)
+            .count();
+        assert_eq!(chosen, usize::from(bugs == Bugs::Fixed));
+        // Without its text, none.
+        let mut texts = s.texts.clone();
+        texts.no_saves = None;
+        let mut quiet = scenario_of(Vec::new(), bugs);
+        quiet.texts = texts;
+        let quiet = quiet.loading(&layout.scenario.load_begin, 0);
+        assert_eq!(quiet.over, Over::Nothing);
+        assert!(quiet.shown.state(BEGIN).disabled);
+    }
+}
+
+#[test]
+fn load_ends_the_screen_with_the_selected_save() {
+    // Load clicked, Enter, and a row's double press.
+    let mut s = load(Bugs::Fixed);
+    let did = click(&mut s, [497, 555]);
+    assert_eq!(did.ended, Some(Ended::Scenario(true)));
+    assert_eq!(s.loaded(), Some("Week_one.GM1"));
+    assert!(s.begun().is_none());
+    let mut s = load(Bugs::Fixed);
+    let did = s.key(None, Some(Command::Dialog(BEGIN)), "Return");
+    let did = did.with(s.key_up("Return"));
+    assert_eq!(did.ended, Some(Ended::Scenario(true)));
     let mut s = load(Bugs::Fixed);
     s.clock(1000);
     click(&mut s, [216, 135]);
-    click(&mut s, [216, 135]);
-    assert!(s.stubbed());
-    // Without the notice's text, nothing; a new game's Delete nothing.
+    let did = click(&mut s, [216, 135]);
+    assert_eq!(did.ended, Some(Ended::Scenario(true)));
+    assert_eq!(s.loaded(), Some("Week_one.GM1"));
+    // Without Delete's text, nothing; a new game's Delete nothing, its Begin no load.
     let mut s = load(Bugs::Fixed);
-    s.texts.load_stub = None;
+    s.texts.delete = None;
     assert_eq!(s.key(None, Some(Command::Delete), "Delete"), Did::default());
     let mut s = scenario(Bugs::Fixed);
     assert_eq!(s.key(None, Some(Command::Delete), "Delete"), Did::default());
+    assert_eq!(s.loaded(), None);
+    // An answer with no box open, and a box closed with no save selected, change nothing.
+    let mut s = load(Bugs::Fixed);
+    s.asked = Asked::Delete;
+    s.selected = None;
+    s.closed(message::YES);
+    assert_eq!(s.take_deleted(), None);
+    s.selected = Some(7);
+    s.asked = Asked::Delete;
+    s.closed(message::YES);
+    assert_eq!(s.take_deleted(), None);
+    assert_eq!(s.load(), Did::default());
 }
 
 #[test]

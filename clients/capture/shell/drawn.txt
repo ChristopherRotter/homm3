@@ -626,8 +626,24 @@ scn-load load-hover t4700 859417d11bf8bae1
 scn-load load-popup t4800 3785ddf10a474413
 scn-load easy-popup t5000 ae11b5560cc0c698
 scn-load easy-pressed t5300 60c09b6c96cb0b84
+scn-load delete t5400 bd16f4cd3806539a
+scn-load delete-cancelled t5500 d225e60297382274
+scn-load delete-2 t5600 7f56ff6e04ebfae5
+scn-load deleted t5700 46e325dd73272e20
 scn-load-last screen t900 2607bb5fda1d4554
-scn-load-none notice t800 1d1f5a8a94db2cf6
+scn-load-last delete t1000 22ff543a1de4145e
+scn-load-last deleted t1200 0ae0359960acf387
+scn-load-last load-pressed t1400 0ae0359960acf387
+scn-load-last enter t1500 0ae0359960acf387
+scn-load-last down t1600 0ae0359960acf387
+scn-load-last menu t1800 acb9aca40e149637
+scn-load-last again t2400 14b3c7c9ac5a0580
+scn-load-last again-closed t2600 2b9d0db9c5543ad7
+scn-load-none notice t800 07ca7792aa11fd6a
+scn-load-none screen t1000 98f56d55079b32d4
+scn-load-none load-pressed t1100 e888b097164e461f
+scn-load-none enter t1200 e888b097164e461f
+scn-load-none again t2000 07ca7792aa11fd6a
 scores-tabs scenarios t100 52db78a38d3b7316
 scores-tabs scenarios-anim clip 15@100-2940 56073cb8a9c837fb
 scores-tabs standard-hover t3200 877d00e2fd0a378d

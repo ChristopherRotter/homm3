@@ -211,7 +211,7 @@ fn the_engine_s_refusal_replaces_the_notice() {
     );
     let mut play = play();
     let before = play.menu().box_draws(&layout.player_palette);
-    play.refused(refusal);
+    play.notice(refusal);
     assert_eq!(play.menu().screen(), PLAY);
     assert_ne!(play.menu().box_draws(&layout.player_palette), before);
     // Play's start opens only after a begin's screen or a word: from no screen too; a restart's

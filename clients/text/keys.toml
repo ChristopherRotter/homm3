@@ -3161,6 +3161,18 @@ original = [{ at = "EXE:0x6837C0", printf = ["month", "day", "year", "hour", "mi
 id = "shell.scenario.broken-name"
 original = [{ at = "GENRLTXT:431" }]
 
+# E27 M4 T4b2: the load mode's Delete (saved_game_delete 0x58DFB0: GENRLTXT 688 with the save's
+# file's name, style 2) and the notice at an opening with no saves (scenario_dialog_proc 0x587D1B:
+# GENRLTXT 686, style 1).
+[[key]]
+id = "shell.scenario.delete"
+args = { file = "text" }
+original = [{ at = "GENRLTXT:688", printf = ["file"] }]
+
+[[key]]
+id = "shell.scenario.no-saves"
+original = [{ at = "GENRLTXT:686" }]
+
 [[key]]
 id = "shell.scenario.broken"
 original = [{ at = "GENRLTXT:505" }]
@@ -4007,11 +4019,6 @@ id = "shell.stub.scenario"
 [[key]]
 id = "shell.stub.random-map"
 
-# E27 M4 T4b1: Load and Delete on the load mode's screen (CLT-STUB-15: until T4b2 builds Delete's
-# question and the load).
-[[key]]
-id = "shell.stub.load"
-
 # E27 M3 T6: play's start after a begin (CLT-STUB-13, decision 44: until E24 M5 hosts the game),
 # over the main menu after the loading screen's fade; and the engine's refusal of the setup there.
 [[key]]
@@ -4019,6 +4026,14 @@ id = "shell.stub.play"
 
 [[key]]
 id = "shell.stub.play-refused"
+
+# E27 M4 T4b2: play's notice after the load mode's Load: the save loaded (the game kept for E24
+# M5), or the load's refusal.
+[[key]]
+id = "shell.stub.loaded"
+
+[[key]]
+id = "shell.stub.load-refused"
 
 # E27 M4 T1a: High Scores' headings (high_scores_draw 0x4E9E50: GENRLTXT 434 to 437, 673, 76;
 # docs/epics/E27-design.md §2.8). The rows' texts are the user's tables' (CampHigh.txt's

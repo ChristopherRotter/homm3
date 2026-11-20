@@ -83,7 +83,11 @@
 //!   (b)); Up and Down bring the page to a selection off it first (CLT-Q149 (b)); a row takes the
 //!   press from the players column's left, x 26 (CLT-Q150 (b)).
 //!
-//! *Not built yet:* the load's modes (the client's stub until M4), GENRLTXT 503 while the list is
+//! - **The load mode** (E27 M4 T4b1, T4b2; §38, §39, §40): a single load's screen over the
+//!   client's saves (`load`'s docs: the saves' entries, the date, Delete's question and its end,
+//!   the notice with no saves, Load).
+//!
+//! *Not built yet:* the save mode and the hot seat's load (M5, T5), GENRLTXT 503 while the list is
 //! read again (a network game's message 1015 alone, `scenario_list_reread` 0x58B120: the network modes',
 //! `CLT-STUB-6`; design §20.3).
 
@@ -119,7 +123,8 @@ pub use advanced::{
 };
 use description::Description;
 pub use description::{DESCRIPTION_BYTES, DescriptionLook, description_names};
-pub use load::{AUTOSAVE, DATE, Saved, is_autosave, local, sorts_first};
+use load::Asked;
+pub use load::{AUTOSAVE, Asking, DATE, FILE, Saved, is_autosave, local, sorts_first};
 pub use random::{Choices, HELPED as RANDOM_HELPED};
 use random::{Pressed, RandomMap};
 
@@ -654,10 +659,12 @@ pub struct Texts {
     /// A save's date (E27 M4 T4b1: "%d/%d/%d - %d:%02d", 0x6837C0), a message with the
     /// placeholders `{{month}}`, `{{day}}`, `{{year}}`, `{{hour}}` and `{{minute}}` (two digits).
     pub date: String,
-    /// Load's and Delete's notice in the load mode (E27 M4 T4b1, CLT-STUB-15: the client's stub,
-    /// `shell.stub.load`, until T4b2 builds Delete's question and the load; none: both do
-    /// nothing).
-    pub load_stub: Option<MessageBox>,
+    /// Delete's question in the load mode (E27 M4 T4b2: GENRLTXT 688 with the save's file's name,
+    /// style 2; none: Delete does nothing).
+    pub delete: Option<Asking>,
+    /// The notice at an opening of the load mode with no saves (E27 M4 T4b2: GENRLTXT 686 in an
+    /// OK box; none: no notice, Load enabled).
+    pub no_saves: Option<MessageBox>,
 }
 
 /// The teams' dialog's look (`scenario_teams_dialog` 0x576540; the layout's `[scenario.teams]`):
@@ -771,7 +778,9 @@ enum Over {
     /// The teams' dialog (`scenario_teams_dialog` 0x576540) or an advanced option's popup (E27 M3
     /// T3a: a town's, a bonus's; T3b2: a hero's), while the right button is held.
     Popup(MessageBox),
-    /// Begin's message over an empty list (GENRLTXT 530), until its OK.
+    /// A box of the original's until a button closes it (Begin's messages, E27 M3 T2b; Delete's
+    /// question and the notice with no saves, E27 M4 T4b2: the screen's `asked` says which) or
+    /// the client's stub's notice.
     Notice(Box<Open>),
 }
 
@@ -863,6 +872,11 @@ pub struct Scenario {
     /// not the buttons, a save's own difficulty selected since).
     drawn_difficulties: [State; 5],
     drawn_rating: String,
+    /// What the box over the screen is, while one is open (E27 M4 T4b2).
+    asked: Asked,
+    /// The save Delete's OK deleted, until the caller takes it (E27 M4 T4b2:
+    /// [`Scenario::take_deleted`]).
+    deleted: Option<String>,
     bugs: Bugs,
 }
 
@@ -952,6 +966,8 @@ impl Scenario {
             offset: 0,
             drawn_difficulties: [State::default(); 5],
             drawn_rating: String::new(),
+            asked: Asked::Told,
+            deleted: None,
             bugs,
         };
         Advanced::hide_items(&mut scenario.shown);
@@ -976,6 +992,11 @@ impl Scenario {
     pub fn keep(&mut self, left: &Self) {
         if left.loading.is_some() == self.loading.is_some() {
             self.kept.clone_from(&left.kept);
+        }
+        // The saves as Delete left them (E27 M4 T4b2: the original reads its folder again at the
+        // next opening, where the deleted file is gone; a window lists its folder anew there).
+        if left.loading.is_some() && self.loading.is_some() {
+            self.entries.clone_from(&left.entries);
         }
     }
 
@@ -1049,6 +1070,8 @@ impl Scenario {
         self.finish();
         self.bar.reset(self.ticks());
         self.set_bar();
+        // No saves: Load disabled, the notice once (E27 M4 T4b2).
+        self.no_saves();
     }
 
     /// The screen opened anew (`scenario_new` 0x4F0490), the menus' last items `hovers` carried
@@ -1220,11 +1243,21 @@ impl Scenario {
     }
 
     /// Whether the client's stub's notice shows (E27 M3 T5b: Begin with a random map chosen; not
-    /// the original's screen, which generates the map; E27 M4 T4b1: the load mode's Load and
-    /// Delete, CLT-STUB-15).
+    /// the original's screen, which generates the map).
     #[must_use]
     pub fn stubbed(&self) -> bool {
-        matches!(self.over, Over::Notice(_)) && (self.random.chosen() || self.loading.is_some())
+        matches!(self.over, Over::Notice(_)) && self.random.chosen()
+    }
+
+    /// The original's box over the screen, while one shows (E27 M4 T4b2: Delete's question, the
+    /// notice with no saves, Begin's messages): a recipe's `press`, `point` and `until-button`
+    /// find its buttons. None under the client's stub's notice.
+    #[must_use]
+    pub fn question(&self) -> Option<&Open> {
+        match &self.over {
+            Over::Notice(open) if !self.stubbed() => Some(open),
+            _ => None,
+        }
     }
 
     /// Whether the cursor shows (a help popup hides it; the teams' dialog and a message run with
@@ -2055,9 +2088,9 @@ impl Scenario {
     /// ends, [`Scenario::begun`] what it hands on).
     fn begin(&mut self) -> Did {
         // stub: CLT-STUB-12
-        // The load mode's Load (E27 M4 T4b1): the client's notice until T4b2 loads.
+        // The load mode's Load (E27 M4 T4b2): the screen ends over a selected save.
         if self.loading.is_some() {
-            return self.load_stub();
+            return self.load();
         }
         let message = if self.random.chosen() {
             self.texts.random_stub.clone()
@@ -2080,23 +2113,7 @@ impl Scenario {
             self.texts.no_maps.clone().filter(|_| checked)
         };
         match message {
-            Some(message) => {
-                self.over = Over::Notice(Box::new(Open::new(message)));
-                Did::CHANGED
-            }
-            None => Did::default(),
-        }
-    }
-
-    /// The load mode's Load and Delete (E27 M4 T4b1): the client's notice (`shell.stub.load`)
-    /// until T4b2 builds Delete's question and the load; nothing without its text.
-    fn load_stub(&mut self) -> Did {
-        // stub: CLT-STUB-15
-        match self.texts.load_stub.clone() {
-            Some(message) => {
-                self.over = Over::Notice(Box::new(Open::new(message)));
-                Did::CHANGED
-            }
+            Some(message) => self.notice(message, Asked::Told),
             None => Did::default(),
         }
     }
@@ -2108,6 +2125,10 @@ impl Scenario {
     /// open edit's text taken first ([`Advanced::begun`]).
     #[must_use]
     pub fn begun(&self) -> Option<Begun> {
+        // The load mode's Load begins no new game (E27 M4 T4b2: [`Scenario::loaded`]).
+        if self.loading.is_some() {
+            return None;
+        }
         let entry = self.entry().filter(|_| !self.random.chosen())?;
         let moved = self.options_moved();
         let map = self.players();
@@ -2647,9 +2668,12 @@ impl Scenario {
         }
         match (&self.over, command) {
             // A hidden button takes no key (E27 M4 T4b1: a single load makes no Show Available
-            // Scenarios, Random Map or Advanced Options, so S, R and A do nothing there).
+            // Scenarios, Random Map or Advanced Options, so S, R and A do nothing there), nor a
+            // disabled one (T4b2: Load over no saves, Enter nothing; `scn-load-last` enter).
             (Over::Nothing, Some(Command::Dialog(id)))
-                if self.has(id) && !self.shown.state(id).hidden =>
+                if self.has(id)
+                    && !self.shown.state(id).hidden
+                    && !self.shown.state(id).disabled =>
             {
                 Did::held(self.input.key(&mut self.shown, id, by))
             }
@@ -2660,12 +2684,12 @@ impl Scenario {
             {
                 Did::default()
             }
-            // The load mode's Delete (E27 M4 T4b1; `saved_game_delete` 0x58DFB0 with a save
-            // selected): the client's notice until T4b2 asks GENRLTXT 688.
+            // The load mode's Delete (E27 M4 T4b2; `saved_game_delete` 0x58DFB0 with a save
+            // selected): GENRLTXT 688 asked.
             (Over::Nothing, Some(Command::Delete))
                 if self.loading.is_some() && self.entry().is_some() =>
             {
-                self.load_stub()
+                self.ask_delete()
             }
             (Over::Nothing, Some(Command::List(scroll))) => {
                 let list = !matches!(scroll, Scroll::Left | Scroll::Right);
@@ -2844,15 +2868,17 @@ impl Scenario {
         Did::CHANGED
     }
 
-    /// Begin's message after an input: its OK closes it, the box taking its pixels back (the
-    /// screen as it was: in the original's profile a flags' strip a flag's press left stale stays
-    /// so, E27 M3 T4b, `adv-hotseat-two` closed-1).
+    /// The box over the screen after an input: a button closes it, the box taking its pixels back
+    /// (the screen as it was: in the original's profile a flags' strip a flag's press left stale
+    /// stays so, E27 M3 T4b, `adv-hotseat-two` closed-1); Delete's OK and the no saves notice's
+    /// then act (E27 M4 T4b2: `closed`).
     fn answered(&mut self, outcome: Outcome) -> Did {
         match outcome {
             Outcome::Nothing => Did::default(),
             Outcome::Changed => Did::CHANGED,
-            Outcome::Closed(_) => {
+            Outcome::Closed(id) => {
                 self.over = Over::Nothing;
+                self.closed(id);
                 Did::CHANGED
             }
         }

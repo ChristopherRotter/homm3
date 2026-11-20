@@ -21,9 +21,9 @@
 //!   On the harness's frozen clock: the steps at Begin's release, + 100 ms (the input's step) and
 //!   + 150 (`adv-begin`'s `bar` clip: 1 100 and 1 150).
 //! - **The stub** (CLT-STUB-13, decision 44): at the black the client's notice over the main menu
-//!   ([`super::menu::STUBS`]: `shell.stub.play`, or the adapter's refusal when the engine refused
-//!   the setup, [`Play::refused`]); its OK ends play with the main menu. A replay stops under it
-//!   ([`Play::noticing`]).
+//!   ([`super::menu::STUBS`]: `shell.stub.play`, or the adapter's own, [`Play::notice`]: the
+//!   engine's refusal of the setup, a load's end); its OK ends play with the main menu. A replay
+//!   stops under it ([`Play::noticing`]).
 //!
 //! The busy cursor of Begin's tail (before 0x58C255) is not drawn: the loading screen shows no cursor
 //! (*provisional*: no recording shows the screen before the fade, whose mouse is hidden).
@@ -110,9 +110,9 @@ impl Play {
         }
     }
 
-    /// The engine refused the setup (the adapter's [`MessageBox`] for it): the notice shows it in
-    /// place of the stub's.
-    pub fn refused(&mut self, notice: MessageBox) {
+    /// The adapter's notice in place of the stub's (its [`MessageBox`]): the engine refused the
+    /// begin's setup (E27 M3 T6), or a save loaded or refused (E27 M4 T4b2).
+    pub fn notice(&mut self, notice: MessageBox) {
         let screen = self.then.screen();
         let menu = self.then.clone();
         self.then = menu.stub(screen, notice);

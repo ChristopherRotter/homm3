@@ -45,8 +45,10 @@
 //!
 //! The load mode (E27 M4 T4b1): `games-time` sets the saves' times the load mode's screen shows
 //! at its next opening ([`Step::GamesTime`]); `key-hold` gives the key's presses as the display's
-//! auto-repeat gives them in the harness's hold ([`held_presses`]), then its release; Load and
-//! Delete show the client's notice there (CLT-STUB-15), a stop as the random map's Begin.
+//! auto-repeat gives them in the harness's hold ([`held_presses`]), then its release. Delete's
+//! question and the notice with no saves (T4b2) are the original's boxes ([`Front::question`]:
+//! `press` finds their buttons); Load starts play as Begin does, a stop under play's notice; the
+//! saves Delete left are the next opening's (the original reads its folder again).
 
 use alloc::format;
 use alloc::string::{String, ToString};
