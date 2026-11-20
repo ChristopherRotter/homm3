@@ -25,7 +25,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (`QUEUE.md`; confirm its cut). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and
   `-15` (increment 5), `-13` (Visions' reach), `TWN-STUB-2` (the victory conditions),
   `TWN-STUB-16` (E10's loss condition), `-17` (increment 7), `-18` (E13).
-- **Open pull requests:** T46's (`town/e09-t46`, `cross-lane`), opened at the session's end;
+- **Open pull requests:** T46's (#1086, `town/e09-t46`, `cross-lane`), opened at the session's end;
   watch it until it merges (a golden re-recorded by another lane meanwhile: merge `master`,
   re-record the headers again).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
@@ -66,7 +66,7 @@ with the `cross-lane` consent (decision 184). Built: `h3-towns`' guild weights, 
 parameters with their refusals (part v9), `h3-pack-towns`' fields, the harvest of `SPTRAITS.TXT`'s
 town columns and the gap-fill's roles; the packs re-harvested; 104 goldens' `town_ruleset_hash`.
 Agent's calls in decision 185 (the slots 1 to 5; a role of every faction where its list holds the
-building). PR opened at the end.
+building). PR #1086.
 
 ### 2026-11-20 — T45: `shared/`, the drafts into the ADRs, the glossary, the security lines, `TWN-QUIRK-14`'s flag
 
