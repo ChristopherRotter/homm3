@@ -4272,3 +4272,8 @@ day: the engine casts no adventure spell (`AdventureCommand` holds `MoveHero`, `
   `game-level` exact, their timelines and every frame (no gap); `game-asks`' timeline exact, 3 of
   its 43 frames differing by 136 pixels: the chest's choice without the experience's amount
   (MCL-Q41 (c), `game-asks-frames.txt`).
+- **Checked:** the three games exact but the listed gap, each recorded twice (`game-finds` three
+  times: its second run's objects' step after the pile's dissolve a millisecond later, the third
+  as the first); `drawn` all the same (the 102 sequences with the three new); `check.sh` all gates
+  (its tests but the client lane's `save` test, red on `master` at the start and fixed there
+  during the session), `h3-map-view`'s coverage at 100 %; the scoped verify.
