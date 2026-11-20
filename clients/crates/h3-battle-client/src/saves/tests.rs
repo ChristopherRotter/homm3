@@ -147,3 +147,24 @@ fn the_pattern_is_any_gm_and_one_character() {
         assert!(!listed(name), "{name}");
     }
 }
+
+#[test]
+fn delete_removes_a_listed_file_of_the_folder_alone() {
+    // E27 M4 T4b2: Delete's OK.
+    let (dir, games) = dirs("delete");
+    fs::write(games.join("one.GM1"), "x").unwrap();
+    fs::write(dir.join("out.GM1"), "x").unwrap();
+    fs::create_dir_all(games.join("folder.GM1")).unwrap();
+    fs::write(games.join("notes.txt"), "x").unwrap();
+    assert_eq!(delete(&games, "one.GM1"), Ok(()));
+    assert!(!games.join("one.GM1").exists());
+    // Gone, a path out of the folder, a folder, another pattern: refused, nothing deleted.
+    assert!(delete(&games, "one.GM1").is_err());
+    assert!(delete(&games, "../out.GM1").is_err());
+    assert!(dir.join("out.GM1").exists());
+    assert!(delete(&games, "folder.GM1").is_err());
+    assert!(games.join("folder.GM1").is_dir());
+    assert!(delete(&games, "notes.txt").is_err());
+    assert!(delete(&games, "").is_err());
+    let _ = fs::remove_dir_all(&dir);
+}

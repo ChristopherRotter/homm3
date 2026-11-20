@@ -1107,9 +1107,9 @@ fn begin_with_a_random_map_chosen_stops_the_replay_under_the_client_s_stub() {
 }
 
 #[test]
-fn the_load_mode_takes_the_saves_times_and_a_held_key_and_stops_at_load() {
+fn the_load_mode_takes_the_saves_times_a_held_key_and_delete_s_answers_and_loads() {
     // E27 M4 T4b1: `scn-load`'s steps: the saves' times before the opening, Load Game's Single,
-    // a key held short (one press) and long (to the list's end), then Load: the client's notice.
+    // a key held short (one press) and long (to the list's end).
     let rows = |r: &Replay| match r.front() {
         Some(Front::Scenario(s)) if s.is_load() => Some(s.rows()),
         _ => None,
@@ -1138,15 +1138,25 @@ fn the_load_mode_takes_the_saves_times_and_a_held_key_and_stops_at_load() {
     assert_eq!(times, [0, 0, 3600]);
     let (_, stop, r) = replay_from(r, &["key-hold:Down:1.5"]);
     assert_eq!((stop, rows(&r)), (None, Some((Some(2), 0))));
-    let (_, stop, r) = replay_from(r, &["key-hold:Up:1.5", "click:497,555"]);
+    // E27 M4 T4b2: Delete's question both ways (the harness's `press`), then Load: play's start,
+    // a stop under its notice.
+    let (_, stop, r) = replay_from(r, &["key-hold:Up:1.5", "key:Delete"]);
     assert_eq!(stop, None);
-    assert!(matches!(r.front(), Some(Front::Scenario(s)) if s.stubbed()));
-    let (seen, stop, _) = replay_from(r, &["shot:delete"]);
+    assert!(r.front().and_then(Front::question).is_some());
+    let steps = ["shot:delete", "press:cancel", "key:Delete", "press:ok"];
+    let (seen, stop, r) = replay_from(r, &steps);
+    assert_eq!((seen.len(), stop), (1, None));
+    let Some(Front::Scenario(s)) = r.front() else {
+        panic!("the load mode")
+    };
+    assert_eq!(s.entries().len(), 2);
+    assert!(s.question().is_none());
+    let (_, stop, r) = replay_from(r, &["click:497,555"]);
+    assert_eq!(stop, None);
+    assert_eq!(r.screen(), Screen::Play { restart: false });
+    let (seen, stop, _) = replay_from(r, &["step:1000:10", "shot:map"]);
     assert!(seen.is_empty());
-    assert_eq!(
-        stop,
-        Some(Stop::Stub(Screen::Scenario(Game::Load, Kind::Single)))
-    );
+    assert_eq!(stop, Some(Stop::Stub(Screen::Play { restart: false })));
 }
 
 #[test]

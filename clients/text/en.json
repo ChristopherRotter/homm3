@@ -6,9 +6,10 @@
       "network": "{Network Play}\n\nPlaying over a network is not available yet.",
       "scenario": "{Scenario Selection}\n\nThe scenario selection is not available yet.",
       "random-map": "{Random Map}\n\nMaking a random map is not available yet.",
-      "load": "{Load Game}\n\nDeleting and loading a saved game are not available yet.",
       "play": "{Begin}\n\nThe game is set up, but playing it is not available yet.",
-      "play-refused": "{Begin}\n\nThe game cannot begin with these choices."
+      "play-refused": "{Begin}\n\nThe game cannot begin with these choices.",
+      "loaded": "{Load Game}\n\nThe saved game is loaded, but playing it is not available yet.",
+      "load-refused": "{Load Game}\n\nThe saved game cannot be loaded."
     }
   }
 }

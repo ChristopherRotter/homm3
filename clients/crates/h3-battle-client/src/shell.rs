@@ -421,8 +421,8 @@ struct Drawer {
     button: Option<Pcm>,
     /// The game's rules the maps are imported with (E27 M3 T3b1), the begin's setup too (T6).
     rules: GameRuleset,
-    /// Play's notice when the engine refuses the begin's setup (T6: `shell.stub.play-refused`).
-    refused: MessageBox,
+    /// Play's notices in place of the stub's (T6; E27 M4 T4b2).
+    play: PlayNotices,
     /// The saves' folder and what a save the client cannot list shows (E27 M4 T4b1: the window
     /// lists the folder again at each opening of the load mode).
     games: PathBuf,
@@ -457,7 +457,7 @@ impl Drawer {
             batch.add(name, &bytes).map_err(|e| e.to_string())?;
         }
         let pictures = creature_pictures(&batch, creature_defs);
-        let (menus, rules, refused, broken) = menus(
+        let (menus, rules, play, broken) = menus(
             &layout,
             (&batch, &tables),
             &lods,
@@ -505,7 +505,7 @@ impl Drawer {
             menus,
             button,
             rules,
-            refused,
+            play,
             games,
             broken,
         })
@@ -683,7 +683,7 @@ fn menus(
     (install, maps, games): (&Path, Option<&[String]>, &Path),
     (scores_tables, pictures): (ScoresTables, Pictures),
     bugs: Bugs,
-) -> Result<(Menus, GameRuleset, MessageBox, crate::saves::Broken), String> {
+) -> Result<(Menus, GameRuleset, PlayNotices, crate::saves::Broken), String> {
     let exe = crate::text::executable(install)?;
     let catalogue = crate::log::catalogue(tables, lods, &exe)?;
     // The game's rules (E27 M3 T3b1: the maps' heroes; T3b2: the hero types' classes).
@@ -884,7 +884,8 @@ fn menus(
         // Begin with a random map chosen (T5b): the client's stub (CLT-Q92).
         random_stub: Some(laid("shell.stub.random-map", Style::Ok)),
         // The load mode (E27 M4 T4b1): its title, the autosave's name, a save's date (its
-        // placeholders kept for the screen to fill), Load's and Delete's stub (CLT-STUB-15).
+        // placeholders kept for the screen to fill); T4b2: Delete's question (GENRLTXT 688, the
+        // file's name the screen's to fill) and the notice with no saves (686).
         load_title: text("shell.scenario.load-title"),
         autosave: text("shell.scenario.autosave"),
         date: catalogue.text(
@@ -895,7 +896,15 @@ fn menus(
                     args.text(name, &format!("{{{{{name}}}}}"))
                 }),
         ),
-        load_stub: Some(laid("shell.stub.load", Style::Ok)),
+        delete: Some(scenario::Asking {
+            layout: layout.message.clone(),
+            fonts: [metrics(fonts.0), metrics(fonts.1)],
+            text: catalogue.text(
+                "shell.scenario.delete",
+                &Args::new().text("file", scenario::FILE),
+            ),
+        }),
+        no_saves: Some(laid("shell.scenario.no-saves", Style::Ok)),
     };
     // A save the client cannot list (E27 M4 T4b1: GENRLTXT 431, 505).
     let broken = crate::saves::Broken {
@@ -916,8 +925,13 @@ fn menus(
         bugs,
     )
     .loading(&layout.scenario.load_begin, offset);
-    // Play's notice when the engine refuses the begin's setup (T6).
-    let refused = laid("shell.stub.play-refused", Style::Ok);
+    // Play's notices: the engine's refusal of the begin's setup (T6), a save loaded and a save
+    // the load refuses (E27 M4 T4b2).
+    let play = PlayNotices {
+        refused: laid("shell.stub.play-refused", Style::Ok),
+        loaded: laid("shell.stub.loaded", Style::Ok),
+        load_refused: laid("shell.stub.load-refused", Style::Ok),
+    };
     let menus = Menus {
         main,
         new_game: game_type(Game::New),
@@ -970,7 +984,20 @@ fn menus(
             bugs,
         ),
     };
-    Ok((menus, rules, refused, broken))
+    Ok((menus, rules, play, broken))
+}
+
+/// Play's notices in place of the stub's `shell.stub.play` (CLT-STUB-13; the client's own words):
+/// the engine's refusal of the begin's setup (T6), a save loaded, a save the load refuses (E27
+/// M4 T4b2, *provisional*: the original's load and its messages are M5's).
+#[derive(Debug, Clone)]
+struct PlayNotices {
+    /// `shell.stub.play-refused`.
+    refused: MessageBox,
+    /// `shell.stub.loaded`.
+    loaded: MessageBox,
+    /// `shell.stub.load-refused`.
+    load_refused: MessageBox,
 }
 
 /// The advanced options' texts (E27 M3 T3a): the catalogue's `shell.advanced.*` and, for the
@@ -1283,13 +1310,12 @@ fn stopped(k: usize, stop: &Stop) -> String {
             )
         }
         // The network modes' notice (CLT-STUB-6), Begin's with a random map chosen (E27 M3 T5b:
-        // the original generates it; CLT-Q92, decision 13), or the load mode's Load and Delete
-        // (E27 M4 T4b1, CLT-STUB-15).
+        // the original generates it; CLT-Q92, decision 13), or play's after a begin or a load
+        // (CLT-STUB-13).
         Stop::Stub(screen) => {
             let why = match screen {
-                // E27 M4 T4b1: Load and Delete until T4b2.
-                Screen::Scenario(Game::Load, _) => "CLT-STUB-15, E27 M4 T4b2: Delete and the load",
                 Screen::Scenario(..) => "a random map: CLT-Q92, no generator",
+                Screen::Play { .. } => "CLT-STUB-13, E24 M5: play",
                 _ => "CLT-STUB-6, E28",
             };
             format!(
@@ -1541,6 +1567,9 @@ fn in_window(
     // The begin's choices (T6) until play's start, and the game it began, kept for E24 M5.
     let mut begun: Option<Begun> = None;
     let mut game: Option<crate::begin::Game> = None;
+    // The save the load mode's Load named, and the game it loaded, kept for E24 M5 (E27 M4 T4b2).
+    let mut to_load: Option<PathBuf> = None;
+    let mut loaded: Option<crate::save::Loaded> = None;
     loop {
         let playing = shell.screen() == Screen::Start;
         // Play's fade (T6) steps every 50 ms, the credits every 100 (E27 M4 T2): the window's
@@ -1618,6 +1647,14 @@ fn in_window(
             {
                 eprintln!("h3-view shell: scores: {}: {e}", scores.display());
             }
+            // The load mode's Delete (E27 M4 T4b2): its OK deletes the file from the client's own
+            // folder (the original does not check its `DeleteFileA`: a failure told).
+            if let Some(Front::Scenario(s)) = front.as_mut()
+                && let Some(file) = s.take_deleted()
+                && let Err(e) = crate::saves::delete(&drawer.games, &file)
+            {
+                eprintln!("h3-view shell: delete: {e}");
+            }
             if did.sample
                 && effects_heard
                 && let (Some(host), Some(pcm)) = (host.as_mut(), drawer.button.as_ref())
@@ -1631,13 +1668,17 @@ fn in_window(
                 presses.extend(host.play_clip(&sound, volume).ok());
             }
             if let Some(ended) = did.ended {
-                // The begin's choices (T6), for play's start.
+                // The begin's choices (T6), or the load's save (E27 M4 T4b2), for play's start.
                 if let (Ended::Scenario(true), Some(Front::Scenario(s))) = (ended, front.as_ref()) {
                     begun = s.begun();
+                    to_load = s.loaded().map(|file| drawer.games.join(file));
                 }
                 // The game kept for E24 M5 left as play's stub ends.
                 if let (Ended::Play(_), Some(game)) = (ended, game.take()) {
                     eprintln!("h3-view shell: {} left (E24 M5 hosts it)", game.file);
+                }
+                if let (Ended::Play(_), Some(loaded)) = (ended, loaded.take()) {
+                    eprintln!("h3-view shell: {} left (E24 M5 hosts it)", loaded.game.file);
                 }
                 let _ = shell.end(ended);
                 println!("{}", text::describe(shell.screen()));
@@ -1785,10 +1826,34 @@ fn in_window(
                     Some(Err(e)) => {
                         eprintln!("h3-view shell: the game's setup refused: {e}");
                         if let Some(Front::Play(p)) = front.as_mut() {
-                            p.refused(drawer.refused.clone());
+                            p.notice(drawer.play.refused.clone());
                         }
                     }
                     None => {}
+                }
+                // A load (E27 M4 T4b2): the save read and its game loaded by the engine
+                // (`save::load`), kept for E24 M5; the client's own notice either way.
+                let outcome = to_load
+                    .take()
+                    .map(|path| loaded_game(&path, at, &mut || show(&mut front, true)));
+                let notice = match outcome {
+                    Some(Ok(game)) => {
+                        eprintln!(
+                            "h3-view shell: {} loaded, day {}: the game kept for E24 M5",
+                            game.game.file,
+                            game.state.day()
+                        );
+                        loaded = Some(game);
+                        Some(&drawer.play.loaded)
+                    }
+                    Some(Err(e)) => {
+                        eprintln!("h3-view shell: the save refused: {e}");
+                        Some(&drawer.play.load_refused)
+                    }
+                    None => None,
+                };
+                if let (Some(Front::Play(p)), Some(notice)) = (front.as_mut(), notice) {
+                    p.notice(notice.clone());
                 }
                 if let Some(Front::Play(p)) = front.as_mut() {
                     p.loaded(now(&win));
@@ -1845,6 +1910,24 @@ fn begun_game(
     crate::begin::validated(&setup, rules)?;
     step();
     Ok(crate::begin::game(setup, begun))
+}
+
+/// The game the save at `path` holds (E27 M4 T4b2; `crate::save`): the file read, then loaded by
+/// the engine over `install`'s map under `rules` (`save::load`: its commands replayed), each a
+/// step of the loading screen's bar (`step`).
+///
+/// # Errors
+/// The file does not read as a save, or the load refuses it.
+fn loaded_game(
+    path: &Path,
+    (install, rules): (&Path, &GameRuleset),
+    step: &mut dyn FnMut(),
+) -> Result<crate::save::Loaded, String> {
+    let save = crate::save::read_file(path)?;
+    step();
+    let loaded = crate::save::load(&save, install, rules)?;
+    step();
+    Ok(loaded)
 }
 
 /// Why the window refuses the standard input's word `line` on `screen` (E27 M3 T7, the review's
@@ -1930,7 +2013,9 @@ mod tests {
     use std::fs;
     use std::path::{Path, PathBuf};
 
-    use super::{Given, Mode, Options, PARK, merged, refused_word, scores_text, skips_start};
+    use super::{
+        Given, Mode, Options, PARK, loaded_game, merged, refused_word, scores_text, skips_start,
+    };
     use h3_sdl::{Event, Key, KeyScan};
     use h3_ui::keys::Keys;
     use h3_view::shell::keys::Command;
@@ -2127,5 +2212,37 @@ mod tests {
         for args in refused {
             assert!(parse(args).is_err(), "{args:?}");
         }
+    }
+
+    #[test]
+    fn a_load_reads_the_save_and_loads_its_game_stepping_the_bar() {
+        // E27 M4 T4b2: Load's end, over a save made on a committed map (CI runs it).
+        let rules = crate::maps::rules().unwrap();
+        let dir = std::env::temp_dir().join(format!("h3-view-load-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let maps = dir.join(crate::maps::MAPS);
+        fs::create_dir_all(&maps).unwrap();
+        let duel = "e08-duel-36.h3m";
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../fixtures/maps");
+        fs::copy(fixture.join(duel), maps.join(duel)).unwrap();
+        let save = crate::saves::made(&dir, &rules, duel, (1, 2), "two").unwrap();
+        let path = dir.join("two.GM1");
+        crate::save::write_file(&path, &save).unwrap();
+        let mut steps = 0;
+        let loaded = loaded_game(&path, (&dir, &rules), &mut || steps += 1).unwrap();
+        assert_eq!(
+            (loaded.game.file.as_str(), loaded.state.day(), steps),
+            (duel, 2, 2)
+        );
+        // Not a save, or a save whose map is gone: refused, the bar stepped as far as it went.
+        fs::write(dir.join("bad.GM1"), "not a save").unwrap();
+        let mut steps = 0;
+        assert!(loaded_game(&dir.join("bad.GM1"), (&dir, &rules), &mut || steps += 1).is_err());
+        assert_eq!(steps, 0);
+        fs::remove_file(maps.join(duel)).unwrap();
+        let mut steps = 0;
+        assert!(loaded_game(&path, (&dir, &rules), &mut || steps += 1).is_err());
+        assert_eq!(steps, 1);
+        let _ = fs::remove_dir_all(&dir);
     }
 }
