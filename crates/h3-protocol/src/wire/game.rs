@@ -34,11 +34,11 @@ mod query;
 
 pub use clock::{Duel, GameClock, OfferClock, Timer};
 pub use command::{
-    AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
-    ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, GameCommand,
-    GameReject, HireAnswer, HireReject, Manage, ManageReject, MarketAnswer, MarketReject,
-    MoveReject, SchoolChoice, SkillOffer, StandReject, SystemCommand, TavernAnswer, TavernReject,
-    TownCommand, TownHeroChange, TownReject, UniversityAnswer,
+    AdventureCommand, AdventureReject, AltarAnswer, AltarReject, Answer, ArenaChoice, ArmyCommand,
+    ArmyRef, ArmyReject, ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent,
+    GameCommand, GameReject, HireAnswer, HireReject, Manage, ManageReject, MarketAnswer,
+    MarketReject, MoveReject, SchoolChoice, SkillOffer, StandReject, SystemCommand, TavernAnswer,
+    TavernReject, TownCommand, TownHeroChange, TownReject, UniversityAnswer,
 };
 pub use event::{AdventureEvent, GameEvent, HeroChange, NothingWhy, ShipyardBlock};
 pub use lobby::{Computer, MapGameInfo, MapOffer, SeatedPlayer};
@@ -630,6 +630,64 @@ pub enum Decision {
         /// The window.
         market: MarketWindow,
     },
+    /// An Altar of Sacrifice (GAM-DEC-012, ADV-ALT-001 to -003; E08 T134a, v76): what its window
+    /// offers with the experience, answered with a sacrifice or leaving it.
+    Altar {
+        /// The window.
+        altar: AltarWindow,
+    },
+}
+
+/// An Altar of Sacrifice's decision as its owner sees it (`h3_game::AltarView`; E08 T134a, v76):
+/// the hero, the Altar by type and anchor, the screens its hero's class's faction allows, the most
+/// places, each artifact's and each stack's experience the server's answers give, the experience
+/// to the hero's next level.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AltarWindow {
+    /// The visiting hero.
+    pub hero: u16,
+    /// The Altar by type and anchor.
+    pub object: ObjectRef,
+    /// Whether the hero sacrifices artifacts.
+    pub artifacts: bool,
+    /// Whether the hero sacrifices creatures.
+    pub creatures: bool,
+    /// The most artifacts a sacrifice takes.
+    pub places: u8,
+    /// With the artifacts' screen, each artifact of the hero: the worn ones by position, then the
+    /// backpack's.
+    pub items: Vec<AltarItem>,
+    /// With the creatures' screen, each stack of the hero's army.
+    pub stacks: Vec<AltarStack>,
+    /// The experience the hero lacks for its next level.
+    pub to_next_level: u32,
+}
+
+/// An artifact in an Altar's window (`h3_game::AltarArtifact`; E08 T134a, v76).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AltarItem {
+    /// Where the hero holds it.
+    pub place: ArtifactPlace,
+    /// The artifact's handle.
+    pub artifact: u16,
+    /// Its experience with Learning, none for one the Altar never takes.
+    pub experience: Option<u32>,
+}
+
+/// A stack in an Altar's window (`h3_game::AltarStack`; E08 T134a, v76).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AltarStack {
+    /// The hero's army's slot.
+    pub slot: u8,
+    /// A creature's experience before Learning.
+    pub each: u32,
+    /// The most a sacrifice takes of it.
+    pub most: u32,
+    /// The experience of the most with Learning.
+    pub experience: u32,
 }
 
 /// A market's decision as its owner sees it (`h3_game::MarketView`; ADV-MKT-008, E08 T133b, v75):

@@ -14,8 +14,8 @@ use alloc::vec::Vec;
 use h3_content::{LEVEL_UP_FROM_SEED, Ruleset, SkillId};
 use h3_contracts::{HeroId, HeroSex, PlayerId};
 use h3_heroes::{
-    ArmyWorth, Choice, HeroChange, HeroDetails, LevelUp, Offers, OriginalDraws, TerrainShares,
-    apply_change_limited, draw_level_up, max_mana, original_choice, pending_levels,
+    ArmyWorth, Choice, HeroChange, HeroDetails, LevelUp, OfferLevels, Offers, OriginalDraws,
+    TerrainShares, apply_change_limited, draw_level_up, max_mana, original_choice, pending_levels,
 };
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
@@ -180,6 +180,28 @@ impl CanonicalHash for Progression {
     }
 }
 
+/// The level-up decision of `owner`'s level `view` with its offers' levels `offered`, told to it
+/// alone (`LevelUpOpened`).
+pub(super) fn open_level_up<S: Sink>(
+    owner: PlayerId,
+    view: LevelUpView,
+    offered: OfferLevels,
+    sink: &mut S,
+) -> Decision {
+    sink.emit(GameEvent::LevelUpOpened {
+        player: owner,
+        hero: view.hero,
+        level: view.level,
+        primary: view.primary,
+        offers: view.offers,
+    });
+    Decision::LevelUp {
+        owner,
+        view,
+        offered,
+    }
+}
+
 impl GameState {
     /// Gives `hero`'s pending levels in play (GAM-DEC-002, E08 T30; ADR-0017 point 6), one at a
     /// time, in order: each is drawn when it is given or its decision opens ([`Progression::draw`]:
@@ -234,9 +256,23 @@ impl GameState {
     fn next_level_up<S: Sink>(
         &mut self,
         rules: &GameRuleset,
-        (hero, owner): (HeroId, PlayerId),
+        hero: (HeroId, PlayerId),
         sink: &mut S,
     ) -> Option<Decision> {
+        let (view, offered) = self.give_plain_levels(rules, hero, sink)?;
+        Some(open_level_up(hero.1, view, offered, sink))
+    }
+
+    /// Gives `hero`'s pending levels with one offer or none at once (`LevelGained`), until one
+    /// with two offers, drawn and returned as its owner sees it with its offers' levels, not yet
+    /// told; none when no level is pending. The Altar's sacrifice (GAM-DEC-012, E08 T134a) closes
+    /// its decision between the two (increment 14's design note §14, decision 371).
+    pub(super) fn give_plain_levels<S: Sink>(
+        &mut self,
+        rules: &GameRuleset,
+        (hero, owner): (HeroId, PlayerId),
+        sink: &mut S,
+    ) -> Option<(LevelUpView, OfferLevels)> {
         let core = rules.core();
         while let Some(level_up) = self.draw_level(core, hero, owner) {
             if let Offers::Two(first, second) = level_up.offers {
@@ -246,18 +282,7 @@ impl GameState {
                     primary: level_up.primary,
                     offers: [first, second],
                 };
-                sink.emit(GameEvent::LevelUpOpened {
-                    player: owner,
-                    hero,
-                    level: view.level,
-                    primary: view.primary,
-                    offers: view.offers,
-                });
-                return Some(Decision::LevelUp {
-                    owner,
-                    view,
-                    offered: level_up.offered,
-                });
+                return Some((view, level_up.offered));
             }
             self.gain_level(core, (hero, owner), &level_up, Choice::First, sink);
         }

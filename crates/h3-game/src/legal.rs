@@ -24,8 +24,8 @@ use h3_heroes::{
 };
 
 use crate::command::{
-    Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, HireAnswer, MarketAnswer,
-    SchoolChoice, SkillOffer, TavernAnswer, UniversityAnswer,
+    Actor, AltarAnswer, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, HireAnswer,
+    MarketAnswer, SchoolChoice, SkillOffer, TavernAnswer, UniversityAnswer,
 };
 use crate::manage::Manage;
 use crate::state::Together;
@@ -184,6 +184,10 @@ fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answ
     if state.market(player).is_some() {
         return vec![Answer::Market(MarketAnswer::Leave)];
     }
+    // rule: GAM-DEC-012
+    if state.altar(player).is_some() {
+        return vec![Answer::Altar(AltarAnswer::Leave)];
+    }
     // The other decisions but a battle: a meeting, an army dialog or an exchange.
     vec![Answer::Close]
 }
@@ -194,13 +198,15 @@ fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answ
 /// exchange's (E08 T114a2); a
 /// chest's `Gold` (the original's plain OK), the Arena's `Attack` (its Cancel), a School's and a
 /// University's `Leave`, a hire dialog's `Close` (the original's Close, E08 T95b), a map Tavern's
-/// `Close` (E09 T39a), a market's `Leave` (E08 T133b: nothing lost); for a level-up
+/// `Close` (E09 T39a), a market's `Leave` (E08 T133b: nothing lost), an Altar's `Leave` (E08
+/// T134a: nothing lies on the altar, A-48 fixed); for a level-up
 /// the offer the original's choice takes (HER-LVL-006, the original's when the dialog's time runs
 /// out), with the setup's army worth and the map's terrain shares, as at load (GAM-SET-002), until
 /// E10 gives the engine the computer player's state its flag-set path reads (ADR-0017 point 6,
 /// ADV-Q17: `ADV-STUB-8`); none for a battle (a battle's default is the server lane's) or without
 /// an open decision.
 // rule: GAM-DEC-002, GAM-DEC-005, GAM-DEC-006, GAM-DEC-008, GAM-DEC-010, GAM-DEC-011
+// rule: GAM-DEC-012
 pub fn default_answer(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Option<Answer> {
     if state.decision(player).is_some() {
         return Some(Answer::Offer(Consent::Decline));
@@ -223,6 +229,9 @@ pub fn default_answer(state: &GameState, rules: &GameRuleset, player: PlayerId) 
     }
     if state.market(player).is_some() {
         return Some(Answer::Market(MarketAnswer::Leave));
+    }
+    if state.altar(player).is_some() {
+        return Some(Answer::Altar(AltarAnswer::Leave));
     }
     if !matches!(state.together(player), Some(Together::Alone) | None) {
         return Some(Answer::Close);

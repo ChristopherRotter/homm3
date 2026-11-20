@@ -228,8 +228,13 @@ pub mod wire;
 /// (`MarketAnswer`: a trade, a transfer, a sale, a purchase, leaving; resources by handle),
 /// `GameReject::Market` (`MarketReject`), `Decision::Market` (`MarketWindow`: the screens, the
 /// count, the trades' lots, the stacks' lots, the stock with its prices, the recipients) and its
-/// event `MarketOpened`, which carries no view (folded as a University's, `SRV-STUB-5`).
-pub const PROTOCOL_VERSION: u32 = 75;
+/// event `MarketOpened`, which carries no view (folded as a University's, `SRV-STUB-5`). v76 (E08
+/// T134a, the adventure lane's, `cross-lane`): the Altar of Sacrifice's decision (GAM-DEC-012):
+/// `Answer::Altar` (`AltarAnswer`: a sacrifice of artifacts by the places' bits, of creatures by
+/// slot, leaving), `GameReject::Altar` (`AltarReject`), `Decision::Altar` (`AltarWindow`: the
+/// screens, the places, each artifact's and stack's experience, the experience to the next level)
+/// and its event `AltarOpened`, which carries no view (folded as a market's, `SRV-STUB-5`).
+pub const PROTOCOL_VERSION: u32 = 76;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

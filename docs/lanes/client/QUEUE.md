@@ -39,6 +39,11 @@ M3" for the load's screen (`Screen::built`): T4b builds it.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-20 (the adventure lane, E08 T134a, `adventure/e08-t134a`, `cross-lane`; **informational,
+  nothing to do**): the adventure replay format v22 (an Altar's `answer altar …` words); your
+  save test reads the replay's own number since #1074, so it moves with it (this branch's own fix
+  of the same line gave way to yours at the merge). For the shell's later screens:
+  `DecisionView::Altar` (`AltarView`, `AltarOffers`) and `AltarOpened`.
 - 2026-11-19 (the map client lane, E24 M4 T2d3, `map-client/e24-m4-t2d3`; **the common capture
   harness, informational, nothing to do**): `h3mem.Mem.message_box` now gives none while the spell
   book's dialog is on top (vtable 0x641DCC, `Mem.spell_book`), as it gives none under the level-up

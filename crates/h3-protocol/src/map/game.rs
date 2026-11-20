@@ -23,7 +23,7 @@ use h3_adventure::{
 use h3_content::{CreatureTypeId, Formation as EngineFormation, ResourceId};
 use h3_contracts::{ArmyStack as EngineStack, FortLevel};
 use h3_game::{
-    DecisionView, GameRuleset, GameState, GarrisonStackView, GarrisonView,
+    AltarView, DecisionView, GameRuleset, GameState, GarrisonStackView, GarrisonView,
     GuildHero as EngineGuildHero, GuildPart as EngineGuildPart, GuildPlayer as EngineGuildPlayer,
     GuildRow as EngineGuildRow, HeroInfo as EngineInfo, HireCreature as EngineCreature,
     HireSeen as EngineSeen, HireView, HiredPart as EngineHiredPart, LevelUpView, MapGarrisonView,
@@ -40,15 +40,15 @@ use h3_kernel::handle::Handle;
 
 use crate::wire::WireU64;
 use crate::wire::game::{
-    Adventure, AdventureReveal, Amount, ArmyStack, Artifact, Boat, Bonuses, Choice, ChoiceKind,
-    Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonHero, GarrisonStack,
-    Guards, GuildHero, GuildPart, GuildPlayer, GuildRanking, GuildRow, HeroDetails, HeroInfo, Hire,
-    HireCreature, HireSeen, HireTarget, HiredPart, Known, KnownObject as WireKnownObject, LevelUp,
-    Lot, MapGarrison, MapHero, MarketScreen, MarketWindow, Monster, Month, Object, ObjectRef,
-    Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, ResourceLot,
-    RevealedArea, RevealedView, SaleLots, SkillLevel, SlotState, StockEntry, Summoned, TavernHero,
-    TavernHeroHead, TavernPart, ThievesGuild, Tile, Town, TownBuildings, TownOwnerFacts, TradeLot,
-    UniversityVisit, VisitBonus, Week,
+    Adventure, AdventureReveal, AltarItem, AltarStack, AltarWindow, Amount, ArmyStack, Artifact,
+    Boat, Bonuses, Choice, ChoiceKind, Decision, Formation, GameObservation, GameReveal, Garrison,
+    GarrisonHero, GarrisonStack, Guards, GuildHero, GuildPart, GuildPlayer, GuildRanking, GuildRow,
+    HeroDetails, HeroInfo, Hire, HireCreature, HireSeen, HireTarget, HiredPart, Known,
+    KnownObject as WireKnownObject, LevelUp, Lot, MapGarrison, MapHero, MarketScreen, MarketWindow,
+    Monster, Month, Object, ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos,
+    PrimarySkill, ResourceLot, RevealedArea, RevealedView, SaleLots, SkillLevel, SlotState,
+    StockEntry, Summoned, TavernHero, TavernHeroHead, TavernPart, ThievesGuild, Tile, Town,
+    TownBuildings, TownOwnerFacts, TradeLot, UniversityVisit, VisitBonus, Week,
 };
 
 mod command;
@@ -404,6 +404,39 @@ fn decision_view(d: &DecisionView) -> Decision {
         DecisionView::Market(view) => Decision::Market {
             market: market(view),
         },
+        DecisionView::Altar(view) => Decision::Altar { altar: altar(view) },
+    }
+}
+
+/// An Altar's decision on the wire (E08 T134a, v76).
+fn altar(view: &AltarView) -> AltarWindow {
+    let offers = &view.offers;
+    AltarWindow {
+        hero: view.hero.raw(),
+        object: object_ref((view.object_type, view.anchor)),
+        artifacts: offers.screens.artifacts,
+        creatures: offers.screens.creatures,
+        places: offers.places,
+        items: offers
+            .artifacts
+            .iter()
+            .map(|item| AltarItem {
+                place: command::artifact_place(item.place),
+                artifact: item.artifact.raw(),
+                experience: item.experience,
+            })
+            .collect(),
+        stacks: offers
+            .stacks
+            .iter()
+            .map(|stack| AltarStack {
+                slot: stack.slot,
+                each: stack.each,
+                most: stack.most,
+                experience: stack.experience,
+            })
+            .collect(),
+        to_next_level: offers.to_next_level,
     }
 }
 
