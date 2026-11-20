@@ -39,6 +39,17 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 (folded into T14); at E25 T37 (2026-11-18) every other lane's informational notice of E08 T63a
 to T127b, E09 T8c to T39a and E16 M5 T14.
 
+**From the town lane** (E09 T43, `town/e09-t43`, docs only; **planned, nothing to do now**):
+
+- 2026-11-20: E09 increment 5 (the mage guild; design note `docs/epics/E09-design.md` §95, accepted
+  at `TWN-Q33`) appends two entries to the adventure env's action encoding, `cross-lane` in your
+  paths: `TOWN_OPEN` (T49a; the town by its entrance in the tile head; one action per `Open` the
+  legal commands list, only where it would change something) and `SPELL_BOOK` (T49b; the same head;
+  listed where the town's guild stands, its hero lacks a book and the treasury holds the price),
+  each the next version at merge (one bump when they land together). `h3-sim`'s town-map tests and
+  the `*-towns-36` workloads move with them; the guild's draw from the towns' stream (T47a, decision
+  179) moves every later towns' draw, so the town-map seeds may move there too.
+
 **From the battle lane** (CLT-Q40, BAT-Q64; `claude/keen-cori-oaahgi`, `cross-lane`; for your
 information and one choice):
 

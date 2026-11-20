@@ -20,8 +20,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   user's to decide). Open questions: **MCL-Q29** to **MCL-Q42** (none blocks; MCL-Q36, Q37, Q39
   to Q42: facts not in the record, (a) recommended, the engine lanes' inboxes told). Next ids
   **MCL-Q43**, **MCL-STUB-2**.
-- **Open pull requests** (2026-11-20): T4b1's (`map-client/e24-m4-t4b1`): check it first.
-  `master`'s clients CI is red on the client lane's `save` test (its inbox told). Merged
+- **Open pull requests** (2026-11-20): T4b1's (`map-client/e24-m4-t4b1`): check it first. Merged
   branches are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.

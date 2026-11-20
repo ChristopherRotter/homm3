@@ -5402,3 +5402,62 @@ and `scripts/exe.py check` (every cited address covered, the sizes the executabl
 
 **The queue:** T42b leaves it; T43 next (the drafts, Part G from §82, the cut). Ids: decisions
 next 172; disputes `TD-28`; quirk candidates `T-19`; questions `TWN-Q32`.
+
+### T43 — increment 5's drafts, the design note's Part G, the cut, the checkpoint (2026-11-20)
+
+Decision 163's second task, kept whole at its start (the user, `TWN-Q32`'s first round, decision
+172; the agent had proposed T43a, what the guild holds, then T43b, what a hero gets with the env,
+the cut and the checkpoint, as T33a and T33b). Branch `town/e09-t43`, docs only (the four drafts,
+the design note, the epic, the log, the answered questions, the lane's queue and HANDOFF, four
+lanes' inboxes). Starting point: `master` at 67b86dd (#1067 merged; the setup's baseline passed its
+light gates on `master`'s code, CI's fingerprint). The user's computer was connected at the start
+only: 61 files of `original-data/` (the four LODs, the executables, the five DLLs, both `.snd`,
+`H3ab_ahd.vid`, `battle-videos.vid`, both archives, the 40 non-campaign MP3s, the three saves) and
+the four manuals with three help files staged, SHA-256 checked against the PC's sums.
+
+**The ADR-level choices** (`TWN-Q32`'s second round, four; decisions 173–176, each as
+recommended): the guild weights in the town records; the Aurora in this increment; the opening as
+`TownCommand::Open`, listed only where it would change something, a visit's end, a capture and a
+siege's end applying it; the spell book as `TownCommand::BuySpellBook`.
+
+**Read for it:** nothing new in the executable (the survey's §3 to §6 and §11 to §15 suffice); the
+engine's paths each trigger lands in (`settle_outcome`'s capture, `visit_town`'s outcome for an own
+town, `build_told` for the command's and the events' builds, `hire::hire`, `main_town_heroes`,
+`rows::heroes`, `advance_day`'s `regain_mana`), `HeroChanged` as the meeting's learning tells it,
+the towns' stream's place in the state, the store's hash with its statics.
+
+**Written:**
+- **The drafts** (`docs/lanes/town/adr-drafts/`): `0028-increment-5.md` (point 2 the guild's
+  slots, the Vortex's week flag, the Aurora set and their rules; point 5 the guild weights, the
+  roles `guild`, `library`, `aurora`, `mana_vortex`, the slots, the book's price, the Vortex's
+  factor; point 6 `Open` and `BuySpellBook`; point 9 the versions), `0017-increment-5.md` (points
+  1, 2, 3, 4, 8, 9, 10: the commands, the state and the setup's town spells, the build's draw and
+  the start's learning, the owner's guild view and the events, the week's flags and the night's
+  refill, the towns' stream, the env's two entries, the versions, the learning's triggers),
+  `0016-increment-5.md` (the outcome's town entered), `0013-increment-5.md` (a guild's teaching by
+  `can_learn_spell`; the refill's and the Vortex's points).
+- **The design note** Part G, §82 to §100: scope and choices (§82, the agent's twelve calls), the
+  part v9 (§83), the map's town spell sets (§84), the draw (§85), the store v4 (§86), what the
+  guild shows (§87), what a hero learns (§88), the triggers (§89), the opening (§90), the book
+  (§91), the night's refill (§92), the Vortex (§93), the views and events (§94), the env, the
+  protocol and the replays (§95), ids, versions, quirks and stubs (§96), the gates and batch TWN-5
+  (§97), the building tasks T44 to T51 with the order against E08's increment 14 (§98), the exit
+  criteria (§99), the risks (§100).
+- **The checkpoint** `TWN-Q33` (one round of four; decisions 178–181, each as recommended but the
+  stream): the opening teaches both heroes whenever a guild stands; **the towns' stream** for the
+  draw (the user's choice over the agent's new `GUILDS` stream: no `shared/` stream, the week
+  replays' outcomes re-recorded at T47a; the drafts and Part G amended for it); the views and
+  events as proposed; the cut and the exit criteria as written. The agent's calls of 177.
+- **New ids** (planned): rules TWN-GLD-001 to -009, TWN-SET-012; quirk `TWN-QUIRK-14` (T-18, its
+  flag `quirk.town.aurora_ignores_map_bans`); `TWN-STUB-6` and `-15` to be lifted at T48a; no new
+  dispute or quirk candidate.
+
+**The queue:** T43 out; T44 next, T45 to T51 queued. The adventure lane's inbox told the planned
+`cross-lane` changes in its paths and the merge order, the AI lane's the env's two entries, the
+server lane's the protocol's additions, the battle lane's the harvest's spell columns. No version
+moved. Ids: questions next `TWN-Q34`; decisions next 182; disputes `TD-28`; quirk candidates
+`T-19`.
+
+**Verify:** docs only: the docs gates (`check-docs`, `check-rules`, `check-stubs`,
+`check-exe-map`, `check-lane --base origin/master`, `doc-drift --base origin/master`) and the
+scoped verify; CI on the pull request is the record.

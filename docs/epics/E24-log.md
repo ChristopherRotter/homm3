@@ -3107,7 +3107,8 @@ On `map-client/e24-m4-t4b1`, the user present at the start: T4b cut in two by fa
 boxes, T4b2 the flags and the boats; the user's choice among a cut in three, two by phase and
 whole), Summon Boat moved out of T4b (the engine casts no adventure spell). `master` at #1072
 (T4a2 merged); its clients CI red on the client lane's `save` test (#1069 and #1070 crossed:
-`format = 20` against replay format v21; the client lane's inbox told, the user too). Original
+`format = 20` against replay format v21; the user told), fixed by the client lane on `master`
+during the session (70f4e6b, merged in). Original
 data staged from the PC at the start (the 64 files and the manuals, SHA-256 checked); the setup's
 baseline stopped at its coverage step by a watcher; the Wine capture set up beside it. The PC
 was not needed after the first minutes.

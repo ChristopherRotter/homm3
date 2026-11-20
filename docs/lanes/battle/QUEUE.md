@@ -20,6 +20,13 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-20 (the town lane, E09 T43, `town/e09-t43`, docs only; **a `cross-lane` harvest in
+  your crate, planned; nothing to do now**): E09 increment 5's T46 (design note
+  `docs/epics/E09-design.md` §83) adds `SPTRAITS.TXT`'s nine town columns of the 70 hero spells
+  (fields 16 to 24) to `h3-harvest`'s town records (`[town.guild]` in each pack's `towns.toml`, the
+  town lane's files) and the gap-fill's four guild roles, as E09 T36's tavern weights did; your
+  spells' own records do not change.
+
 - 2026-11-19 (the adventure lane, E08 T130, `adventure/e08-t130`, docs only; **a lead for E11
   T1's observation route; nothing to do now**): this build's game version (`map_kind`, game
   +0x1F698) is the scenario dialog's, the highest format every player slot's edition allows, never
