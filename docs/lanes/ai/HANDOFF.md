@@ -33,10 +33,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `same_start` (T38b; `TRAPS.md`, Python). **Increment 10: the ceiling** (the user, AI-Q20): a
   lower bound on the play possible against the fair actor by rollouts of the fair actor (every
   legal command, common random numbers), on the true battle and the side's worlds, then where
-  #2's choices lose value. **Next: T42**, the rollout tool `h3 ai ceiling` (Rust, this lane's
-  `h3-cli/src/ai/`; `QUEUE.md`).
+  #2's choices lose value. **T42 done** (`E25-log.md` T42): `h3 ai ceiling`, the rollout-improved
+  fair actor on `h3 ai eval`'s sets, sequential halving, a resumable games file; about 190
+  thread-seconds a game at budget 8. **Next: T43** on the user's CPU (the budget check, then the
+  measurement; the commands in `QUEUE.md`), T44 (where #2 diverges) beside it.
 - **Open pull requests:** none. Merged: #1040 (T38b). **Owed to a `shared/` pull request:** the
-  README's E25 row (increment 9 closed, increment 10 the ceiling next; "as of" 2026-11-20).
+  README's E25 row (increment 9 closed, increment 10 the ceiling next; "as of" 2026-11-20) and
+  a line for `h3 ai ceiling` in `docs/07-simulation-and-ai.md` (beside `h3 ai eval`).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
@@ -53,7 +56,9 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 - #1040 merged. The user ran T39 on the GPU (two segments, 5.1 hours) and uploaded
   `report.json` (committed as `python/records/distill/reach-1.json`). The checkpoint (AI-Q20):
-  the user proposed the ceiling; the rollout design agreed (the fair actor, both worlds).
+  the user proposed the ceiling; the rollout design agreed (the fair actor, both worlds). T42
+  built (`cargo build --release -p h3-cli`, timing runs in the sandbox; the refused casts traced
+  to BAT-STUB-19 by a temporary print, removed).
 
 ### 2026-11-19 — E25 T38b: `[network] reach` and `preview`, the bench's preview rows
 

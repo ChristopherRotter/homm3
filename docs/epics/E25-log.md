@@ -2436,3 +2436,49 @@ an entry only where a task builds on it.
   teacher is not information the network lacks; with increment 8 (size, PPO's settings, the
   search at play, the anchor, the outcome's weight, a long taught regime) not the levers
   increments 8 and 9 had. #2 stays the current best.
+
+## T42 — The rollout tool (2026-11-20)
+
+- **`h3 ai ceiling`** (`crates/h3-cli/src/ai/ceiling.rs`, this lane's; no engine or C ABI
+  change): the rollout-improved fair actor (`rollout-system`) plays `h3 ai eval`'s held-out sets,
+  its decisions by rollouts of the fair actor on both sides to the battle's end (reward v1), on
+  the true battle (`--worlds true`, `BattleEnv::fork`) or the side's worlds (`--worlds side`,
+  `BattleEnv::world` with the other hero guessed as `BattleBatch::determinize` guesses it, a world
+  per rollout). The candidates are every command the batch lets an agent play: `legal_commands`
+  but Retreat and Surrender, each castable spell with each target and second target, the stack's
+  cast with each target (a hero battle's decision about 157, a siege's 77 to 90). Its record:
+  per opponent `h3 ai eval`'s report of the pair (`EvalReport`: rates, intervals, values, by kind
+  and side; on the neutral set the fair actor's own row beside), and per category of the fair
+  actor's choice (`distill.CATEGORIES`' names) the decisions, how often the improved command
+  differs, what into, and its mean advantage on the rollouts. Threads by game (a game's result
+  depends on its seed alone); every finished game appended to `--out` (TOML), which a restart
+  with the same settings continues (the user's rule for runs over 2 hours).
+- **The budget, the agent's call:** a first smoke with 4 uniform rollouts a candidate (2
+  episodes a kind, 14 games) changed 75 % of the melee decisions and won 7 of 14: the maximum of
+  about 120 noisy means is chosen by luck. The decision's budget (`--budget`, rollouts a candidate
+  on average, 8 by default) is spent by **sequential halving** (rounds of the same rollouts for
+  the candidates still in, the better half kept, the fair actor's command always kept), so the
+  last rounds compare a few contenders on many rollouts and the advantage is a paired
+  difference on equal rollouts. Rollouts stay full-length: the policy's results are a lower bound
+  on the ceiling whatever the budget; a larger budget can only raise it.
+- **The cost** (the sandbox, release, 4 threads; the report set, 1 episode a kind against the
+  fair actor, side worlds, budget 8: 6 games in 283 s): 102 decisions, 145 candidates and 1 082
+  rollouts each, about 10 ms a rollout, about 190 thread-seconds a game. Every attacker won in both
+  orientations; the improved seat's value +0.072 (6 games: no reading).
+- **Refusals:** 46 of 110 400 candidate rollouts were refused in a side world, every one a cast
+  (Lightning Bolt, Curse: `InvalidSpellTarget`): the other hero's spell defences (Pendant of
+  Negativity, of Holiness) are guessed in a world while the side's cast candidates show the
+  battle's, the battle lane's known gap BAT-STUB-19 (`world.rs`). Such a candidate scores a loss
+  in that rollout; the record counts them.
+- **Tests** (`ceiling/tests.rs`, 24 s in debug): without a budget the improved seat plays `h3 ai
+  eval`'s games of the fair actor against itself (both sets); a run is the same on one and three
+  threads and continues from its games file cut after two games (and refuses other settings);
+  a decision keeps every legal command and the fair actor's as candidates, each applies, and on
+  the side's worlds decides exactly as the battle with the other hero's private part guessed anew
+  (nothing hidden read; the decision repeats with fresh scratch); a true world is the battle on
+  the rollout's stream; the settings and categories.
+- **For T43** (the user's 24 threads; about 16 cores' worth assumed): the report set's 600 games
+  (100 a kind, both seats) against the fair actor at budget 8 are about 32 thread-hours, about 2
+  hours a world; the neutral set's 300 games about 1 hour; the all-seeing opponent doubles a set.
+  A budget check first: 20 episodes a kind at budgets 4, 8 and 16 (about 12, 24 and 48 minutes),
+  the value against the fair actor on the same episodes.

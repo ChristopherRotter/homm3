@@ -160,15 +160,16 @@ where #2's choices lose value, so that the next lever aims at them.
 3. **Both worlds** (the user): the true battle (`true_world`, a trusted diagnostic: the other
    hero's spells and the hidden obstacles seen) and the side's worlds (`determinize`: only what
    the side may know; a legitimate agent's); their gap the information's cost.
-4. **A measurement, not a run with a rule:** N and the episodes fixed by a convergence check on a
-   subset before the full measurement; the report set v1 and the neutral set v1 beside it.
+4. **A measurement, not a run with a rule:** the budget and the episodes fixed by a check on a
+   subset before the full measurement; the report set v1 and the neutral set v1 beside it. The
+   budget is spent by sequential halving (T42, the agent's call), the rollouts full-length.
 5. **Unchanged:** #2 the current best; reward v1 and the evaluation sets; no engine or C ABI change
    (a new `h3 ai` tool in this lane's `h3-cli/src/ai/`, its rollouts in `h3-sim` where pure).
 
 | Task | Scope | Status |
 |---|---|---|
-| T42 | The rollout tool: `h3 ai ceiling` (the improved fair actor against the fair actor, both worlds, common random numbers, a JSON record), its tests and timing; the convergence check of N on a subset | next |
-| T43 | The ceiling measured: the report set v1 and the neutral set v1, both worlds | after T42 |
+| T42 | The rollout tool: `h3 ai ceiling` (the improved fair actor against the system actors, both worlds, sequential halving with common random numbers, a resumable games file, a JSON record), its tests and timing (about 190 thread-seconds a game at budget 8) | done 2026-11-20 |
+| T43 | The ceiling measured (the user's CPU): a budget check (4, 8, 16), then the report set v1 and the neutral set v1, both worlds | next |
 | T44 | Where #2 diverges: #2's decisions against the fair actor replayed, every command valued by the same rollouts; the value its choice leaves by category, beside the fair actor's own | after T42 |
 | T45 | Increment 10's checkpoint: the headroom, the information's cost, the divergence; the next lever | after T43, T44 |
 

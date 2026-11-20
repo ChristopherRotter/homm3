@@ -15,26 +15,21 @@ the fair and the all-seeing system actor, the neutral set +0.302). **A long run 
 budget, the check named in its rule (`TRAPS.md`, Python). **Increment 10: the ceiling** (the
 user at T41, AI-Q20; its decisions in the epic file).
 
-- **T42 — the rollout tool** (Rust, the sandbox; this lane's `h3-cli/src/ai/`, the rollouts in
-  `h3-sim` where pure; no engine or C ABI change): `h3 ai ceiling` plays a held-out set's episodes
-  (the report set v1, the neutral set v1) with the agent's side the **rollout-improved fair
-  actor** against the fair actor (the all-seeing one beside): at each of its decisions every legal
-  command (casts with their targets), N rollouts of each to the battle's end with the fair actor
-  on both sides, each rollout's world re-seeded by a seed the commands share (common random
-  numbers); `--worlds true` (`true_world`) or `--worlds side` (`determinize` per rollout); reward
-  v1; the command of the best mean played (ties to the fair actor's own choice). Seeded and
-  deterministic, threaded by episode. Its JSON record: per opponent the win rate, interval and
-  value by kind and side (`h3 ai eval`'s layout), and per decision category (`distill.CATEGORIES`'
-  names) how often the improved choice differs from the fair actor's and the mean advantage of
-  the played command over the fair actor's (the rollouts' means). Tests: one legal command plays
-  the fair actor's game; a fixed seed repeats bit for bit; both worlds' plumbing (the side's
-  worlds never read the other side's hidden part: its record identical across the other hero's
-  private parts); a clear refusal of a non-held-out seed. The timing (decisions a second) and
-  **the convergence check**: on 20 episodes a kind, N = 8, 16, 32, 64, the win rate and the
-  chosen commands' agreement between N and 2N; N fixed where they agree.
-- **T43 — the ceiling measured** (the user's 24 threads or the sandbox, by T42's timing): the
-  report set v1 (500 a kind if the time allows, else 100) and the neutral set v1, both worlds, at
-  T42's N; the record committed.
+- **T43 — the ceiling measured** (the user's CPU, 24 threads; parts under 2 hours: Ctrl-C, then
+  the same command continues from its `--out`; T42's tool, `E25-log.md` T42; from the repository's
+  root, the records into `python/records/ceiling/`, the games files into `target/ceiling/`):
+  1. **The budget check** (about 12, 24 and 48 minutes): the report set, 20 episodes a kind, against
+     the fair actor, side worlds, at budgets 4, 8 and 16:
+     `cargo run --release -p h3-cli -- ai ceiling --episodes 20 --opponents system --budget 4
+     --out target/ceiling/budget-4.toml --json python/records/ceiling/budget-4.json` (then
+     `--budget 8`, `--budget 16`, each its own files). The agent picks the measurement's budget:
+     the smallest whose value against the fair actor is within the noise of the next one's.
+  2. **The measurement** at that budget: the report set, 100 a kind, against the fair actor on the
+     side worlds and the true battle (`--worlds true`; about 2 hours each), then the neutral set
+     (`--set neutral-v1`, about 1 hour each); the all-seeing opponent (`--opponents
+     system-all-seeing`) only if the time allows. The user uploads the JSON records (and the
+     games files of a set cut short).
+
 - **T44 — where #2 diverges** (after T42): #2's decisions against the fair actor (its ladder's
   episodes replayed by seed and commands, `inspect`'s recorder) valued by the same rollouts: the
   value its choice leaves against the best command, by category, beside the fair actor's own.
