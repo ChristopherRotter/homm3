@@ -3298,7 +3298,8 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   of a hero's spell points (+0x18) and learned spells (+0x3EA) at a turn's start; the writer's town
   spell sets (§84) and the scenario's spell bans (the header's, the adventure lane's writer,
   `cross-lane`), a Conflux with building 26 in a custom set. The batch's games are the original's,
-  so the engine's stream choice does not touch it.
+  so the engine's stream choice does not touch it. *As run* (T44): specs `E09-batch-5a` (rows 1 to
+  4) and `-5b` (row 5), twice each; every row as the reading, T-18 confirmed (survey §21).
 
 ### 98. The building tasks (the whole increment; the order with E08's increment 14)
 

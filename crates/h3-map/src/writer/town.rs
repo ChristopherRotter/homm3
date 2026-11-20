@@ -1,15 +1,16 @@
 //! The town lane's objects (E09 T9a, design note `docs/epics/E09-design.md` §18): a town of any
 //! kind ([`AnyTown`]: of a fixed faction (98) or random (77) with its SoD alignment, a player's
 //! main town, a name, a garrison whose stacks may be random, [`random_stack`], and since E09 T19a
-//! its events, [`TownEvent`], design note §32) and a random hero ([`RandomHero`], class 70). Their bodies are what the import reads (`import/town.rs`, design
+//! its events, [`TownEvent`], design note §32, and since E09 T44 its required and banned spells,
+//! [`TownSpells`], batch TWN-5) and a random hero ([`RandomHero`], class 70). Their bodies are what the import reads (`import/town.rs`, design
 //! note §7); a main town also goes into its owner's header (the position of its entrance, survey
 //! `docs/rules/surveys/E09-towns.md` finding 3). [`Town`](super::Town), E04c's town of a fixed
 //! faction, is written as an [`AnyTown`] without these.
 
 use super::{
     ARMY_SLOTS, Codes, FACTION_COUNT, MAP_BUILDINGS, Map, MapObject, ObjectTemplate, Out, PLAYERS,
-    TOWN_OBJECT, TimedEvent, Town, TownBuildings, WriteError, economy, len32, out_of_range,
-    write_army,
+    SPELL_COUNT, TOWN_OBJECT, TimedEvent, Town, TownBuildings, WriteError, economy, len32,
+    out_of_range, write_army,
 };
 
 /// Object class of a random town (subclass 0): its faction is drawn when the game is built, or
@@ -63,9 +64,33 @@ pub struct TownEvent {
     pub creatures: [u16; 7],
 }
 
+/// A town's required and banned spells (E09 T44, batch TWN-5; survey
+/// `docs/rules/surveys/E09-guild.md` §3.4): spell codes below [`SPELL_COUNT`], each set written as
+/// the map's nine bytes (bit `i % 8` of byte `i / 8` the spell `i`). The required set exists in
+/// AB and SoD maps only (the writer's towns are SoD's).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TownSpells {
+    /// The required spells: a guild slot of a spell's level takes the first not excluded
+    /// (survey §3.2).
+    pub required: Vec<u8>,
+    /// The banned spells: kept out of the guild's draw and of a Conflux's Aurora Borealis
+    /// (survey §3.2, §5).
+    pub banned: Vec<u8>,
+}
+
+/// The map's nine bytes of a set of spells (`spells` below [`SPELL_COUNT`], checked): bit `i % 8`
+/// of byte `i / 8` the spell `i`.
+pub(super) fn spell_bits(spells: &[u8]) -> [u8; 9] {
+    let mut bits = [0; 9];
+    for &spell in spells {
+        bits[usize::from(spell / 8)] |= 1 << (spell % 8);
+    }
+    bits
+}
+
 /// A town of any kind placed on the map (E09 T9a): of a fixed faction or random, perhaps its
-/// owner's main town, with a name, a garrison whose stacks may be random and its events (E09
-/// T19a). No required or banned spells.
+/// owner's main town, with a name, a garrison whose stacks may be random, its events (E09 T19a)
+/// and its required and banned spells (E09 T44).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnyTown {
     /// The object's position: the bottom-right tile of its picture; its entrance is the
@@ -93,6 +118,8 @@ pub struct AnyTown {
     pub buildings: TownBuildings,
     /// Its events, in the town's order (TWN-EVT-001: each named by its place there).
     pub events: Vec<TownEvent>,
+    /// Its required and banned spells (E09 T44).
+    pub spells: TownSpells,
 }
 
 impl From<&Town> for AnyTown {
@@ -108,6 +135,7 @@ impl From<&Town> for AnyTown {
             tight_formation: town.tight_formation,
             buildings: town.buildings,
             events: Vec::new(),
+            spells: TownSpells::default(),
         }
     }
 }
@@ -165,7 +193,7 @@ fn entrance(template: &ObjectTemplate) -> Option<(u8, u8)> {
 /// Checks a town of any kind: its class and subclass, a town in a SoD map, a playable owner, an
 /// alignment only for a random town and of a colour that plays, a main town owned with its
 /// entrance on the map, the garrison's codes (a creature the map may name or a random stack's)
-/// and counts, the buildings' bits and each event's.
+/// and counts, the buildings' bits and each event's, the spells' codes (E09 T44).
 pub(super) fn validate(map: &Map, town: &AnyTown, codes: &Codes) -> Result<(), WriteError> {
     let ObjectTemplate {
         class, subclass, ..
@@ -220,6 +248,10 @@ pub(super) fn validate(map: &Map, town: &AnyTown, codes: &Codes) -> Result<(), W
     }
     if town.events.iter().any(|event| past_slots(&event.buildings)) {
         return Err(out_of_range("town event building (bit)", MAP_BUILDINGS));
+    }
+    let mut spells = town.spells.required.iter().chain(&town.spells.banned);
+    if let Some(&spell) = spells.find(|&&spell| spell >= SPELL_COUNT) {
+        return Err(out_of_range("town spell", spell));
     }
     Ok(())
 }
@@ -298,7 +330,7 @@ pub(super) fn write_main_town(out: &mut Out, map: &Map, colour: u8) {
 }
 
 /// A town's body (`docs/formats/h3m.md`, classes 77 and 98): the name, the garrison, the
-/// buildings, no required or banned spells, the events, the alignment.
+/// buildings, the required and banned spells, the events, the alignment.
 pub(super) fn write_body(out: &mut Out, town: &AnyTown, identifier: u32) -> Result<(), WriteError> {
     out.u32(identifier);
     out.u8(town.owner.unwrap_or(0xff));
@@ -337,7 +369,7 @@ fn write_rest(out: &mut Out, town: &AnyTown) -> Result<(), WriteError> {
     Ok(())
 }
 
-/// A town's garrison, formation, buildings and spells (none required or banned).
+/// A town's garrison, formation, buildings and its required and banned spells (E09 T44).
 fn write_settings(out: &mut Out, town: &AnyTown) {
     out.bool(town.garrison.is_some());
     if let Some(garrison) = &town.garrison {
@@ -355,8 +387,8 @@ fn write_settings(out: &mut Out, town: &AnyTown) {
             out.bytes(forbidden);
         }
     }
-    out.bytes(&[0; 9]); // no required spells
-    out.bytes(&[0; 9]); // no banned spells
+    out.bytes(&spell_bits(&town.spells.required));
+    out.bytes(&spell_bits(&town.spells.banned));
 }
 
 /// A town's alignment (SoD's byte, `0xFF` none) and its three unused bytes.
@@ -394,7 +426,7 @@ mod tests {
     use super::super::{Format, write, write_in};
     use super::*;
     use crate::model::{
-        Body, MainTown as ReadMainTown, Pos, Stack, Text, TimedEvent as ReadTimedEvent,
+        Bits, Body, MainTown as ReadMainTown, Pos, Stack, Text, TimedEvent as ReadTimedEvent,
         TownEvent as ReadTownEvent,
     };
     use crate::{Limits, parse};
@@ -430,6 +462,7 @@ mod tests {
             tight_formation: true,
             buildings: TownBuildings::Standard { fort: false },
             events: Vec::new(),
+            spells: TownSpells::default(),
         }
     }
 
@@ -474,6 +507,7 @@ mod tests {
             tight_formation: false,
             buildings: TownBuildings::Standard { fort: true },
             events: Vec::new(),
+            spells: TownSpells::default(),
         }));
         map.objects.push(MapObject::RandomHero(random_hero()));
         let raw = parse(&write(&map).unwrap(), &Limits::default()).unwrap();
@@ -553,6 +587,39 @@ mod tests {
             }
         }));
         assert_eq!(write(&fixed), write(&any));
+    }
+
+    /// E09 T44 (batch TWN-5): a town's required and banned spells and the map's banned spells
+    /// read back as the nine bytes written (survey `docs/rules/surveys/E09-guild.md` §3.4), none
+    /// without them.
+    #[test]
+    fn a_town_s_spells_and_the_map_s_banned_spells_read_back_as_written() {
+        let set = |bits: &Bits| (0..72).filter(|&spell| bits.get(spell)).collect::<Vec<_>>();
+        let mut map = smoke_like_map();
+        map.objects.push(MapObject::AnyTown(AnyTown {
+            spells: TownSpells {
+                required: vec![0, 15, 69],
+                banned: vec![15, 8],
+            },
+            ..random_town()
+        }));
+        map.banned_spells = vec![69, 1];
+        let raw = parse(&write(&map).unwrap(), &Limits::default()).unwrap();
+        let Body::Town(town) = &raw.objects[2].body else {
+            panic!("a town's body");
+        };
+        assert_eq!(set(town.required_spells.as_ref().unwrap()), [0, 15, 69]);
+        assert_eq!(set(&town.banned_spells), [8, 15]);
+        assert_eq!(set(&raw.banned_spells), [1, 69]);
+        let mut plain = smoke_like_map();
+        plain.objects.push(MapObject::AnyTown(random_town()));
+        let raw = parse(&write(&plain).unwrap(), &Limits::default()).unwrap();
+        let Body::Town(town) = &raw.objects[2].body else {
+            panic!("a town's body");
+        };
+        assert!(set(town.required_spells.as_ref().unwrap()).is_empty());
+        assert!(set(&town.banned_spells).is_empty());
+        assert!(set(&raw.banned_spells).is_empty());
     }
 
     /// A town event for red and blue's humans from the file's day 2 every week: five wood and
@@ -738,6 +805,23 @@ mod tests {
             &|map: &mut Map| map.objects.push(MapObject::AnyTown(random_town())),
             sod,
             "main towns of a player (more than one)",
+        );
+        // E09 T44: the spells below the format's 70, the map's none in RoE.
+        fails(
+            &town(|t| t.spells.required = vec![3, 70]),
+            sod,
+            "town spell",
+        );
+        fails(&town(|t| t.spells.banned = vec![71]), sod, "town spell");
+        fails(
+            &|map: &mut Map| map.banned_spells = vec![70],
+            sod,
+            "banned spell",
+        );
+        fails(
+            &|map: &mut Map| map.banned_spells = vec![3],
+            Format::RoE,
+            "banned spell in an RoE map",
         );
         fails(&|_| {}, Format::RoE, "town in an RoE map");
         let roe_hero = |map: &mut Map| {

@@ -364,6 +364,9 @@ PLAYER_TOWNS, PLAYER_TOWN, PLAYER_TOWN_LIST, HERO_ASLEEP = 0x3E, 0x3F, 0x40, 0x1
 # E09 T34: a town's guild spells (i32[30] +0x44, six a level) and the spells each level shows
 # (i8[5] +0xBC; structs.toml "town").
 TOWN_GUILD_SPELLS, TOWN_GUILD_COUNTS = 0x44, 0xBC
+# E09 T44 (batch TWN-5): the guild level (i8 +0x14, 0 none) and the Mana Vortex's week flag (u8
+# +0x33; structs.toml "town": town_setup_spells, town_visit_buildings).
+TOWN_GUILD_LEVEL, TOWN_WEEK_FLAG = 0x14, 0x33
 ADVENTURE_DIALOG, HERO_TOP, TOWN_TOP = 0x44, 0x64, 0x68
 QUEST_VECTORS = ((0x1FBD4, 19), (0x1FBE4, 5))
 # The lists' contents (E24 M3 T4a; design §4.5 of E24): a hero's portrait (u8 +0x34, an index into
@@ -2775,7 +2778,14 @@ def town_fields(index, at, raw):
             # first +0xBC[level] of each level's built ones).
             "guild_spells": [sp for level in range(5)
                              for sp in struct.unpack_from("<6i", raw, TOWN_GUILD_SPELLS + 24 * level)
-                             [:raw[TOWN_GUILD_COUNTS + level]] if sp >= 0]}
+                             [:raw[TOWN_GUILD_COUNTS + level]] if sp >= 0],
+            # E09 T44 (batch TWN-5): every slot of each level as drawn (-1 empty), each level's
+            # count, the guild level and the Mana Vortex's week flag.
+            "guild_slots": [list(struct.unpack_from("<6i", raw, TOWN_GUILD_SPELLS + 24 * level))
+                            for level in range(5)],
+            "guild_counts": list(raw[TOWN_GUILD_COUNTS:TOWN_GUILD_COUNTS + 5]),
+            "guild_level": struct.unpack_from("<b", raw, TOWN_GUILD_LEVEL)[0],
+            "week_flag": raw[TOWN_WEEK_FLAG]}
 
 
 def adventure_state(mem):

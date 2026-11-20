@@ -1,0 +1,113 @@
+# Experiment batch TWN-5, part b (E09 T44; design note §97, survey
+# docs/rules/surveys/E09-guild.md §18 row TWN-5-5): the Mana Vortex's triggers and week with a
+# garrison hero and a visitor, and the night's refill (§14), over three weeks; in SoD on Easy, hot
+# seat. Part a (`E09-batch-5a.toml`) holds rows TWN-5-1 to TWN-5-4. Build:
+# docs/experiments/README.md. Predictions are for the agent who evaluates the results; the
+# template never shows them. "The reading" is the survey's code reading of Heroes3.exe; VCMI's is
+# VCMI 1.7.5 as the survey summarises it (§16).
+#
+# | row     | settles         | the reading                              | otherwise                     |
+# | TWN-5-5 | TD-27, §14, §15 | the Vortex at each opening of the town   | VCMI: at every turn start too |
+# |         |                 | screen (the garrison hero first), never  | (the garrison hero, then the  |
+# |         |                 | at a turn's start; once a week a town;   | visitor); the same week and   |
+# |         |                 | the night refills to the maximum         | effect                        |
+#
+# **The map** (36 x 36, grass): Red's Dungeon D (7, 7) with Mage Guild 1 and the Mana Vortex
+# (building 21), its garrison empty. Red's TWN-5-5 (G, a Warlock: Knowledge 2, so a maximum of
+# 20 spell points, twice it 40) stands south of it at (7, 8); TWN-5-5v (V: Knowledge 3, a
+# maximum of 30, twice it 60) at (10, 11), out of the town. Both wear a spell book and know no
+# Intelligence or Mysticism (their skills Leadership only). Blue's Castle (23, 30). Weeks are
+# skipped by the date written to each week's last day (game +0x1F63E, the capture harness's
+# `date`): the week's first day then comes at the next end turn, its nights as the game plays
+# them; the spell points are written before each skip (`mana`, hero +0x18) so that a night's
+# refill and a doubling show apart.
+
+[map]
+name = "E09 batch TWN-5b"
+description = "Engine-generated experiment map (E09, batch TWN-5, part b): the Mana Vortex with a garrison hero and a visitor over three weeks. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E09-batch-5b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, Red and Blue both human, difficulty **Easy**, both players' starting bonus Gold. Before you start it, compare the stamp at the start of the map's description with the stamp above.",
+    "The records are the game's memory (the capture harness, `clients/capture/batches/E09-batch-5b.toml`, E09 T44): a hero's spell points (+0x18) and a town's record (game +0x21614, `docs/exe/structs.toml` \"town\"): its garrison hero (+0xC), visitor (+0x10) and the Mana Vortex's week flag (+0x33). The harness writes the date (game +0x1F63E) and the spell points; by hand, play the days out instead and spend points by casting so that they are below the maximum before each week's end.",
+    "Tiles are (column, row) from 0 at the top left; a town's entrance is the tile its gate stands on. A step: click the target once (the path's marks show), then again (the hero goes). On the town screen the lower portrait is the visitor, the upper the garrison's: click the lower, then the upper, to move the visitor into the garrison. The town list (the right panel's lower list) opens a town's screen without a hero: click its row twice.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+[[map.town]]  # D: Mage Guild 1 and the Mana Vortex
+entrance = [7, 7]
+faction = "dungeon"
+owner = "red"
+buildings = ["mage guild 1", "mana vortex"]
+garrison = []
+
+[[map.town]]  # Blue's
+entrance = [23, 30]
+faction = "castle"
+owner = "blue"
+buildings = ["fort"]
+garrison = []
+
+[[encounter]]
+id = "TWN-5-5"
+title = "The Mana Vortex with a garrison hero and a visitor over three weeks (TD-27, §14, §15): the spell points at each step"
+questions = ["TD-27", "TWN-GLD-006", "TWN-GLD-008", "TWN-GLD-009"]
+procedure = [
+    "Red's turn, day 1 (week 1). Note G's and V's spell points and D's week flag.",
+    "G steps north onto D's entrance (7, 7): the town screen opens (note any message). Move G into the garrison (the lower portrait, then the upper). Note the messages, G's points and the flag; close the screen.",
+    "Set G's spell points to 5. Week 2: end the turns to week 2's first day (Red's turn, day 8). At the turn's start, before anything else: note G's and V's points and the flag.",
+    "Open D's screen from the town list (no hero walks): note any message, then G's points and the flag; close it.",
+    "V walks to D's entrance (7, 7): the town screen opens (note any message); close it. Note V's and G's points and the flag.",
+    "Set G's and V's points to 5. Week 3: end the turns to week 3's first day (Red's turn, day 15). At the turn's start: note G's and V's points, D's garrison hero and visitor, the flag.",
+    "Open D's screen from the town list: note any message, then G's and V's points and the flag; close it.",
+]
+record = [
+    { field = "week 1, day 1: G's points; V's points; the flag" },
+    { field = "week 1, G's visit: G's points and the flag as the screen shows" },
+    { field = "week 1, G's visit and move into the garrison: the messages; G's points; the flag" },
+    { field = "week 2, day 8, the turn's start: G's points; V's points; the flag" },
+    { field = "week 2, D's screen opened from the town list: the messages; G's points; the flag" },
+    { field = "week 2, V's visit: the messages; V's points; G's points; the flag" },
+    { field = "week 3, day 15, the turn's start: G's points; V's points; D's garrison hero and visitor; the flag" },
+    { field = "week 3, D's screen opened: the messages; G's points; V's points; the flag" },
+    { field = "anything odd" },
+]
+predictions = """
+Each hero's maximum is 10 x Knowledge (no Intelligence): G 20, V 30; the Vortex sets a hero's
+points below twice its maximum to twice it (G 40, V 60) and clears the town's week flag (+0x33),
+set by `town_init` and at every week's first day; its message GENRLTXT 580 shows to a human owner.
+- **The reading** (§15: `town_visit_buildings` from `town_screen_init`, the garrison hero, then
+  the visitor; never at a turn's start; §14: the new day raises a guild town's visitor's and
+  garrison hero's points to the maximum, never lowers them): **week 1**: G 20, V 30, the flag 1;
+  at G's visit the message, **G 40**, the flag 0 (the move into the garrison changes nothing).
+  **Week 2, the turn's start:** **G 20** (5 refilled to the maximum, not doubled), V 30, the flag
+  1. **The screen opened:** the message, **G 40**, the flag 0. **V's visit:** no message, **V 30**
+  (the flag spent), G 40. **Week 3, the turn's start:** **G 20, V 30** (both refilled), D's
+  garrison hero G, visitor V, the flag 1. **The screen opened:** the message, **G 40** (the
+  garrison hero first), **V 30**, the flag 0.
+- **VCMI** (§16: every turn's start makes each town's garrison hero, then visitor, visit it; the
+  Vortex once a week a town): week 2's turn start **G 40**, the flag spent (no message at the
+  opening, G 40); V's visit V 30; week 3's turn start **G 40, V 30**; the opening changes
+  nothing. **The wiki:** "once the player opens the town menu", the garrison hero first.
+"""
+[encounter.hero]
+type = "Sephinroth"
+specialty = "resource crystal"
+name = "TWN-5-5"
+at = [7, 8]
+primary = [1, 1, 1, 2]
+skills = [["Leadership", 1]]
+army = [["Pikeman", 1]]
+artifacts = { "spell book" = "Spell Book" }
+[[encounter.also]]
+type = "Geon"
+specialty = "skill Eagle Eye"
+name = "TWN-5-5v"
+at = [10, 11]
+primary = [1, 1, 1, 3]
+skills = [["Leadership", 1]]
+army = [["Pikeman", 1]]
+artifacts = { "spell book" = "Spell Book" }

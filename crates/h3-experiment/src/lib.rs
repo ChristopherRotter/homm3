@@ -26,13 +26,14 @@ use std::fmt::Write as _;
 use h3_map::model::{Rewards, Stack};
 use h3_map::writer::{
     ABANDONED_MINE_OBJECT, ABANDONED_MINE_SUBCLASS, ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS,
-    BOAT_OBJECT, EVENT_OBJECT, Event, Format, GARRISON_OBJECT, Ground, Guards, Hero, HeroArtifacts,
-    MINE_OBJECT, Map, MapObject, Message, Monster, ObjectTemplate, OwnedBody, OwnedObject,
-    PANDORA_OBJECT, PLAYERS, Patch, Pile, Plain, Player, RANDOM_ARTIFACT_OBJECTS,
-    RANDOM_DWELLING_BY_FACTION_OBJECT, RANDOM_DWELLING_BY_LEVEL_OBJECT, RANDOM_DWELLING_OBJECT,
-    RewardBody, RewardObject, Road, RoadKind, SCROLL_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS,
-    SUBTERRANEAN_GATE_OBJECT, Teams, Terrain, TimedEvent, Town, TownBuildings, Treasure,
-    Underground, VERTICAL_GARRISON_OBJECT, WHIRLPOOL_OBJECT, WITCH_HUT_OBJECT,
+    AnyTown, BOAT_OBJECT, EVENT_OBJECT, Event, Format, GARRISON_OBJECT, Ground, Guards, Hero,
+    HeroArtifacts, MINE_OBJECT, MainTown, Map, MapObject, Message, Monster, ObjectTemplate,
+    OwnedBody, OwnedObject, PANDORA_OBJECT, PLAYERS, Patch, Pile, Plain, Player,
+    RANDOM_ARTIFACT_OBJECTS, RANDOM_DWELLING_BY_FACTION_OBJECT, RANDOM_DWELLING_BY_LEVEL_OBJECT,
+    RANDOM_DWELLING_OBJECT, RewardBody, RewardObject, Road, RoadKind, SCROLL_OBJECT,
+    SHRINE_OBJECTS, SIGN_OBJECTS, SUBTERRANEAN_GATE_OBJECT, Teams, Terrain, TimedEvent, Town,
+    TownBuildings, TownSpells, Treasure, Underground, VERTICAL_GARRISON_OBJECT, WHIRLPOOL_OBJECT,
+    WITCH_HUT_OBJECT,
 };
 use serde::Deserialize;
 
@@ -245,6 +246,11 @@ pub struct MapSpec {
     /// draws one (survey `docs/rules/surveys/E08-trades.md` §7.1). An RoE map holds none.
     #[serde(default)]
     pub banned_artifacts: Vec<String>,
+    /// The spells the map bans, by `SPTRAITS.TXT` name (E09 T44: batch TWN-5's TWN-5-2; none, the
+    /// default): no guild draws one (survey `docs/rules/surveys/E09-guild.md` §3.1). Hero spells
+    /// only; an RoE map holds none.
+    #[serde(default)]
+    pub banned_spells: Vec<String>,
     /// Towns that are no encounter's opponent (`[[map.town]]`, E23 T7): a player's own town
     /// elsewhere on the map (batch 4b: the Tavern the computer's retreat test asks for).
     #[serde(default)]
@@ -663,6 +669,22 @@ pub struct MapTownSpec {
     /// map's default, `[]` an explicitly empty custom one (E09 T3a).
     #[serde(default)]
     pub garrison: Option<Vec<(String, u16)>>,
+    /// The spells the town requires, by `SPTRAITS.TXT` name (E09 T44, batch TWN-5): a guild slot
+    /// of a spell's level takes the first not excluded (survey `E09-guild.md` §3.2). Hero spells.
+    #[serde(default)]
+    pub required_spells: Vec<String>,
+    /// The spells the town bans, by `SPTRAITS.TXT` name (E09 T44): kept out of its guild and of a
+    /// Conflux's Aurora Borealis (survey §3.2, §5). Hero spells.
+    #[serde(default)]
+    pub banned_spells: Vec<String>,
+    /// Its owner's main town (E09 T44, batch TWN-5's TWN-5-4): the header names it, and the
+    /// owner's allowed towns are its faction alone. At most one per player; not a neutral town.
+    #[serde(default)]
+    pub main: bool,
+    /// The game generates the owner's starting hero at it (the editor's flag; only a main town):
+    /// a hero of the town's faction, drawn by the game unless the player picks one.
+    #[serde(default)]
+    pub generates_hero: bool,
 }
 
 /// The underground level: its own terrain and rectangles; encounters and piles with `level = 1`
@@ -1197,6 +1219,7 @@ pub fn build_only(
     let mut used_types = Vec::new();
     let mut heroes_per_player = [0usize; PLAYERS];
     let mut towns_per_player = [0usize; PLAYERS];
+    let mut main_factions = [None; PLAYERS];
     let mut text = String::new();
     let _ = writeln!(text, "# {} — results\n", spec.map.name);
     let _ = writeln!(
@@ -1429,7 +1452,7 @@ pub fn build_only(
         if let Some(owner) = town.owner {
             towns_per_player[usize::from(owner)] += 1;
         }
-        objects.push((0, MapObject::Town(town)));
+        objects.push((0, map_town(t, town, tables, &mut main_factions)?));
     }
     for m in &spec.map.monster {
         if m.level >= levels {
@@ -1468,7 +1491,9 @@ pub fn build_only(
                 .into_iter()
                 .map(|tile| (*level, tile))
                 .collect(),
-            MapObject::Ground(_) | MapObject::AnyTown(_) | MapObject::RandomHero(_) => vec![],
+            // E09 T44: a map town with spells or as a main town (`map_town`).
+            MapObject::AnyTown(t) => vec![(*level, t.tile)],
+            MapObject::Ground(_) | MapObject::RandomHero(_) => vec![],
         })
         .collect();
     tiles.sort_unstable();
@@ -1516,6 +1541,13 @@ pub fn build_only(
         .iter()
         .map(|name| artifact_id(tables, name))
         .collect::<Result<Vec<u16>, String>>()?;
+    let banned_spells = spell_ids(tables, &spec.map.banned_spells)?;
+    // E09 T44: a main town's owner may choose its faction only (the starting hero is of it).
+    for (player, faction) in players.iter_mut().zip(main_factions) {
+        if let (Some(player), Some(faction)) = (player, faction) {
+            player.towns = 1 << faction;
+        }
+    }
     let teams = teams(&spec.map.teams, &players)?;
     let map = Map {
         name: spec.map.name.clone(),
@@ -1534,6 +1566,7 @@ pub fn build_only(
         level_limit: spec.map.level_limit,
         banned_skills,
         banned_artifacts,
+        banned_spells,
         events: timed_events(&spec.map.timed_event)?,
         teams,
     };
@@ -2502,6 +2535,54 @@ fn spell_id(tables: &Tables, name: &str) -> Result<u8, String> {
     Ok(id as u8)
 }
 
+fn spell_ids(tables: &Tables, names: &[String]) -> Result<Vec<u8>, String> {
+    names.iter().map(|name| spell_id(tables, name)).collect()
+}
+
+/// A map town as written (E09 T44, batch TWN-5): a town of any kind when it has spells or is
+/// its owner's main town (the town lane's writer object; the same bytes as `town` with neither),
+/// else `town`; a main town's faction noted for its owner (`main_factions`).
+fn map_town(
+    t: &MapTownSpec,
+    town: Town,
+    tables: &Tables,
+    main_factions: &mut [Option<u32>; PLAYERS],
+) -> Result<MapObject, String> {
+    let at = |e: String| format!("the town at {:?}: {e}", t.entrance);
+    let spells = TownSpells {
+        required: spell_ids(tables, &t.required_spells).map_err(at)?,
+        banned: spell_ids(tables, &t.banned_spells).map_err(at)?,
+    };
+    if t.generates_hero && !t.main {
+        return Err(at(
+            "`generates_hero` is a main town's (`main = true`)".into()
+        ));
+    }
+    let main = if t.main {
+        let Some(owner) = town.owner else {
+            return Err(at("a neutral town is no player's main town".into()));
+        };
+        let noted = &mut main_factions[usize::from(owner)];
+        if noted.is_some() {
+            return Err(at(format!("a second main town of {}", t.owner)));
+        }
+        *noted = Some(town.template.subclass);
+        Some(MainTown {
+            generates_hero: t.generates_hero,
+        })
+    } else {
+        None
+    };
+    if main.is_none() && spells == TownSpells::default() {
+        return Ok(MapObject::Town(town));
+    }
+    Ok(MapObject::AnyTown(AnyTown {
+        main,
+        spells,
+        ..AnyTown::from(&town)
+    }))
+}
+
 /// An army of at most seven stacks of one or more creatures.
 fn army_of(
     stacks: &[(String, u16)],
@@ -3270,6 +3351,107 @@ mod tests {
         assert!(
             error.contains("red, blue, tan or neutral, not `pink`"),
             "{error}"
+        );
+    }
+
+    /// E09 T44 (batch TWN-5): a map town's required and banned spells, a main town that
+    /// generates its owner's hero (the owner's allowed towns its faction alone) and the map's
+    /// banned spells, read back from the bytes; the refused ones.
+    #[test]
+    fn a_map_town_may_have_spells_and_be_its_owner_s_main_town() {
+        let town = "[[map.town]]\n        entrance = [24, 20]\n        faction = \"stronghold\"\n        \
+                    owner = \"red\"\n        main = true\n        generates_hero = true\n        \
+                    required_spells = [\"Spell 3\"]\n        \
+                    banned_spells = [\"Spell 3\", \"Spell 9\"]\n\n        [[encounter]]";
+        let spec = SIEGE
+            .replace(
+                "terrain = \"rough\"\n",
+                "terrain = \"rough\"\n        banned_spells = [\"Spell 69\"]\n",
+            )
+            .replace("[[encounter]]", town);
+        let build_spec = |text: &str| build(&parse(text).expect("spec"), &tables(), "t.h3m");
+        let (map, _) = build_spec(&spec).expect("build");
+        let Some(MapObject::AnyTown(any)) = map.objects.last() else {
+            panic!("not a town of any kind: {:?}", map.objects.last());
+        };
+        assert_eq!(
+            (any.tile, any.owner, any.main),
+            (
+                (26, 20),
+                Some(0),
+                Some(MainTown {
+                    generates_hero: true
+                })
+            )
+        );
+        assert_eq!(
+            any.spells,
+            TownSpells {
+                required: vec![3],
+                banned: vec![3, 9],
+            }
+        );
+        assert_eq!(map.banned_spells, [69]);
+        assert_eq!(map.players[0].as_ref().map(|p| p.towns), Some(1 << 6));
+        let bytes = h3_map::writer::write(&map).expect("writes");
+        let raw = h3_map::parse(&bytes, &h3_map::Limits::default()).expect("reads back");
+        let main = raw.players[0].details.as_ref().and_then(|d| d.main_town);
+        assert_eq!(
+            main.map(|m| (m.generate_hero, m.town_type)),
+            Some((true, 6))
+        );
+        assert!(raw.banned_spells.get(69) && !raw.banned_spells.get(68));
+        let Some(h3_map::model::Body::Town(body)) = raw.objects.last().map(|o| &o.body) else {
+            panic!("a town's body");
+        };
+        let required = body.required_spells.as_ref().expect("an SoD map's");
+        assert!(required.get(3) && !required.get(9));
+        assert!(body.banned_spells.get(3) && body.banned_spells.get(9));
+        // Spells alone: a town of any kind that is no main town; the owner's towns as before.
+        let plain = spec.replace("main = true\n        generates_hero = true\n        ", "");
+        let (map, _) = build_spec(&plain).expect("build");
+        let Some(MapObject::AnyTown(any)) = map.objects.last() else {
+            panic!("not a town of any kind");
+        };
+        assert_eq!(any.main, None);
+        assert_eq!(map.players[0].as_ref().map(|p| p.towns), Some(1));
+        let refused = |from: &str, to: &str, error: &str| {
+            let text = spec.replace(from, to);
+            let got = build_spec(&text).expect_err(error);
+            assert!(got.contains(error), "{error}: {got}");
+        };
+        refused(
+            "main = true\n",
+            "",
+            "the town at [24, 20]: `generates_hero` is a main town's",
+        );
+        refused(
+            "owner = \"red\"\n        main",
+            "owner = \"neutral\"\n        main",
+            "a neutral town is no player's main town",
+        );
+        refused(
+            "[\"Spell 3\", \"Spell 9\"]",
+            "[\"Spell 99\"]",
+            "the town at [24, 20]: unknown spell `Spell 99`",
+        );
+        refused(
+            "required_spells = [\"Spell 3\"]",
+            "required_spells = [\"Spell 70\"]",
+            "Spell 70 is not a hero spell",
+        );
+        refused(
+            "[\"Spell 69\"]",
+            "[\"Spell 70\"]",
+            "Spell 70 is not a hero spell",
+        );
+        let second = town
+            .replace("[24, 20]", "[24, 28]")
+            .replace("banned_spells", "x");
+        refused(
+            "[[encounter]]",
+            &second.replace("x = [\"Spell 3\", \"Spell 9\"]\n\n        ", ""),
+            "the town at [24, 28]: a second main town of red",
         );
     }
 

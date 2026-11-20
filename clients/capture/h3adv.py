@@ -1269,6 +1269,12 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
         if kind == "town":
             events["town_screen"] = True
             events["screens"].append(kind)
+            # E09 T44 (batch TWN-5's TWN-5-5, observed under Wine): a message the opening brings
+            # comes over the screen a moment after it shows (the Mana Vortex's, GENRLTXT 580:
+            # town_screen_init's building visits): recorded and its OK clicked before the actions.
+            quiet_screen(game)
+            if screen_kind(mem) == "message":
+                pass_dialogs(game, mem, events, answer, None)
             # E09 T14b (batch TWN-2): the step's `actions` played on the town screen once (the
             # hall, a slot, Build); a building's dialog or a hall they left open closed (Cancel,
             # the hall's close: nothing built) before the town screen.
@@ -2639,11 +2645,34 @@ def open_hall(game, mem):
     if len(shown) != 1:
         raise RuntimeError(f"`hall`: the town screen shows {len(shown)} hall buildings")
     x, y, width, height = shown[0]["box"]
-    game.click(x + width // 2, y + height // 2, 0.5)
+    at = hall_point(game, mem, shown[0]["id"], (x, y, width, height))
+    game.click(*at, 0.5)
     game.move(*PARK)
     wait_for(lambda: screen_kind(mem) == "hall", lambda: "`hall`: the hall did not open "
-             f"({screen_kind(mem)}; the town screen's building {shown[0]['id']} clicked)", 5.0)
+             f"({screen_kind(mem)}; the town screen's building {shown[0]['id']} clicked at "
+             f"{at})", 5.0)
     quiet_screen(game)
+
+
+def hall_point(game, mem, building, box):
+    """E09 T44 (batch TWN-5's TWN-5-3: a Tower with Mage Guild 5, whose hall's box centre the
+    guild's picture covers): the point of the hall building's box (x, y, width, height) to click,
+    the first of its centre, then a grid 8 pixels apart from its middle out, where the town
+    screen's status line (item 151) names the building (BLDGNEUT.TXT's hall names, the same for
+    every faction; h3lod.building_names); the centre when none does (the click then fails as
+    before)."""
+    x, y, width, height = box
+    name = h3lod.building_names(0).get(building, "")
+    middle = (x + width // 2, y + height // 2)
+    grid = sorted(((px, py) for px in range(x + 4, x + width - 3, 8)
+                   for py in range(y + 4, y + height - 3, 8)),
+                  key=lambda p: ((p[0] - middle[0]) ** 2 + (p[1] - middle[1]) ** 2, p))
+    for point in [middle, *grid]:
+        game.move(*point)
+        time.sleep(0.15)
+        if name and name in (item_text(mem, TOWN_STATUS) or ""):
+            return point
+    return middle
 
 
 def hall_slot(mem, building):
@@ -2904,10 +2933,12 @@ def guild_text(mem, state, part="all"):
     return f"{len(state['rows'])} rows: {rows or 'none'}; parts: {parts}"
 
 
-def open_town_screen(game, mem, entrance):
+def open_town_screen(game, mem, entrance, obs=None):
     """E09 T34 (batch TWN-4: a town's tavern without a visitor): the current player's town whose
     entrance is `entrance` ([x, y] or [x, y, level]) selected from the town list (select_town) and
-    its row clicked again: its screen."""
+    its row clicked again: its screen. Since E09 T44 (batch TWN-5's TWN-5-5) a message the opening
+    brings over the screen (the Mana Vortex's, GENRLTXT 580, a moment after the screen shows) is
+    recorded in `obs` (`messages`, `order`: pass_dialogs) and its OK clicked."""
     x, y, z = [*entrance, 0][:3]
     colour = mem.current_player()
     town = mem.town_at(x, y, z)
@@ -2919,8 +2950,14 @@ def open_town_screen(game, mem, entrance):
     row = towns.index(town["index"])
     game.click(lx, ly + step * (min(row, rows - 1) if len(towns) > rows else row), 1.0)
     game.move(*PARK)
-    wait_for(lambda: screen_kind(mem) == "town", lambda: f"`town = {entrance}`: its screen did "
-             f"not open ({screen_kind(mem)})", 5.0)
+    wait_for(lambda: screen_kind(mem) in ("town", "message"), lambda: f"`town = {entrance}`: "
+             f"its screen did not open ({screen_kind(mem)})", 5.0)
+    quiet_screen(game)  # the message comes a moment after the screen shows (observed)
+    if screen_kind(mem) == "message":
+        pass_dialogs(game, mem, obs if obs is not None else {"messages": [], "questions": []},
+                     "no", None)
+        wait_for(lambda: screen_kind(mem) == "town", lambda: f"`town = {entrance}`: its screen "
+                 f"did not open after the message ({screen_kind(mem)})", 5.0)
     quiet_screen(game)
 
 
@@ -2928,7 +2965,8 @@ def town_step(game, mem, entrance, actions):
     """E09 T34 (batch TWN-4): a step `town = [x, y]` (no hero): the current player's town opened
     from the town list (open_town_screen), the step's `actions` played on its screen
     (run_actions), what they left open closed (CLOSE_AFTER), the town screen closed."""
-    open_town_screen(game, mem, entrance)
+    opened = {"messages": [], "questions": []}
+    open_town_screen(game, mem, entrance, opened)
     done = run_actions(game, mem, None, actions)
     close_left(game, mem, None)
     closed = close_town_screen(game, mem)
@@ -2936,7 +2974,7 @@ def town_step(game, mem, entrance, actions):
         raise RuntimeError("the town screen does not close")
     game.wait("adventure", 10)
     return {"town": entrance, "actions": done, "town_screen": True, "town_screen_closed": closed,
-            "screens": ["town"], "messages": [], "message_pictures": []}
+            "screens": ["town"], "messages": opened["messages"], "message_pictures": []}
 
 
 # E09 T34: what a town screen's actions may leave open, closed in this order before the town
@@ -3997,6 +4035,9 @@ def popup_at(game, mem, x, y, level=0):
     return {"opened": opened, "record": record, "parts": text_parts(mem, text, (x, y, level))}
 
 
+GUILD_DRAWN = (6, 5, 4, 3, 2)  # E09 T44: the slots the start draws a level (5, 4, 3, 2, 1 + 1)
+
+
 def town_text(mem, x, y, z, part):
     """E09 T3b (batch TWN-1): a part of the record of the town whose entrance is (x, y, z)
     (h3mem.town_at; docs/exe/structs.toml "town"): `owner` (+0x1: `red`, …, `neutral`),
@@ -4036,12 +4077,37 @@ def town_text(mem, x, y, z, part):
     # E09 T34 (batch TWN-4): a detail of the visitor or the garrison hero (`visitor:<detail>`,
     # hero_value: a hired hero's `spells`, `tile`, `offer`), and the spells the guild shows
     # (+0x44, six slots a level, as many as +0xBC counts for each built level).
+    # E09 T44 (batch TWN-5's TWN-5-4): the hero standing on the entrance (`standing`, its name;
+    # `standing:<detail>`), found by the heroes' tiles: the visitor field reads -1 while its hero
+    # is the selected one (a turn's start selects the player's first hero).
+    if part == "standing" or part.startswith("standing:"):
+        on = [h for h in mem.heroes() if tuple(h["tile"]) == (x, y, z)]
+        if not on:
+            return "none"
+        return on[0]["name"] if part == "standing" else hero_value(mem, on[0],
+                                                                   part.split(":", 1)[1])
     if part.startswith(("visitor:", "garrison_hero:")):
         who, detail = part.split(":", 1)
         hero = town["visiting_hero" if who == "visitor" else "garrison_hero"]
         return hero_value(mem, mem.hero(hero), detail) if hero >= 0 else "none"
     if part == "guild_spells":
         return ", ".join(mem.spell_name(sp) for sp in town["guild_spells"]) or "none"
+    # E09 T44 (batch TWN-5): the guild level by level, each level's count and its slots as drawn
+    # (GUILD_DRAWN: `guild_spell_slots[L] + 1` a level, survey E09-guild.md §3.2; the record's
+    # six past them hold other data), the shown ones first (`level 1 shows 5: Bless, Haste, Cure,
+    # Shield, Slow | spare Curse; …`, `empty` for a slot of -1), the guild level (+0x14) and the
+    # Mana Vortex's week flag (+0x33).
+    if part == "guild":
+        def level_text(level):
+            slots = [mem.spell_name(sp) if 0 <= sp < 70 else "empty" if sp == -1
+                     else f"slot value {sp}"
+                     for sp in town["guild_slots"][level][:GUILD_DRAWN[level]]]
+            count = town["guild_counts"][level]
+            return (f"level {level + 1} shows {count}: " + (", ".join(slots[:count]) or "none")
+                    + " | spare " + (", ".join(slots[count:]) or "none"))
+        return "; ".join(level_text(level) for level in range(5))
+    if part in ("guild_level", "week_flag"):
+        return str(town[part])
     return slot_text(mem, *town["army"][int(part.split(":")[1])])
 
 
@@ -4846,7 +4912,8 @@ def value(obs, what, mem):
     # the step); over every town the every-built sets that differ from the built ones and the
     # owned towns' garrisons (towns_text).
     if m := re.match(r"town:(\d+),(\d+)(?:,(\d))?:(owner|visitor|built|every|mark|garrison|"
-                     r"slot:[0-6]|counts|count:\d+|portal|garrison_hero|dwellings|guild_spells|"
+                     r"slot:[0-6]|counts|count:\d+|portal|garrison_hero|dwellings|guild_spells|guild|"
+                     r"guild_level|week_flag|standing|standing:.+|"
                      r"(?:visitor|garrison_hero):.+)$", what):
         return town_text(mem, int(m.group(1)), int(m.group(2)), int(m.group(3) or 0), m.group(4))
     if what in ("towns:every_vs_built", "towns:owned_garrisons"):
