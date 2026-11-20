@@ -15,6 +15,9 @@ pub struct Clock {
     mark: u64,
     /// The viewer's time while paused.
     held: Option<u64>,
+    /// How many times as fast as the adapter's it runs (1 unless set: E24 M4 T4c, a record's
+    /// playback).
+    rate: u32,
 }
 
 impl Clock {
@@ -25,14 +28,34 @@ impl Clock {
             at_mark: u64::from(from_ms) * MS,
             mark: now,
             held: None,
+            rate: 1,
         }
+    }
+
+    /// How many times as fast as the adapter's it runs.
+    #[must_use]
+    pub fn rate(&self) -> u32 {
+        self.rate
+    }
+
+    /// Runs `rate` times as fast as the adapter's from `now` on (at least once; E24 M4 T4c), the
+    /// viewer's time at `now` kept.
+    pub fn set_rate(&mut self, now: u64, rate: u32) {
+        if self.held.is_none() {
+            self.at_mark = self.ns(now);
+            self.mark = now;
+        }
+        self.rate = rate.max(1);
     }
 
     /// The viewer's time at the adapter's `now`, in nanoseconds.
     #[must_use]
     pub fn ns(&self, now: u64) -> u64 {
-        self.held
-            .unwrap_or_else(|| self.at_mark.saturating_add(now.saturating_sub(self.mark)))
+        self.held.unwrap_or_else(|| {
+            let run = now.saturating_sub(self.mark);
+            self.at_mark
+                .saturating_add(run.saturating_mul(u64::from(self.rate)))
+        })
     }
 
     /// The viewer's time at `now` in whole milliseconds (the original's clock).
@@ -73,7 +96,9 @@ impl Clock {
     /// while held.
     #[must_use]
     pub fn until(&self, now: u64, ms: u32) -> Option<u64> {
-        (!self.paused()).then(|| (u64::from(ms) * MS).saturating_sub(self.ns(now)))
+        (!self.paused()).then(|| {
+            (u64::from(ms) * MS).saturating_sub(self.ns(now)) / u64::from(self.rate.max(1))
+        })
     }
 
     /// How far the viewer's time at `now` is past `ms`, in nanoseconds (0 if not yet): a frame's delay.
@@ -86,6 +111,20 @@ impl Clock {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_clock_runs_at_a_rate() {
+        let mut c = Clock::new(0, 0);
+        assert_eq!(c.rate(), 1);
+        c.set_rate(10 * MS, 4);
+        assert_eq!((c.rate(), c.ms(10 * MS), c.ms(12 * MS)), (4, 10, 18));
+        assert_eq!(c.until(12 * MS, 26), Some(2 * MS));
+        c.toggle(13 * MS);
+        c.set_rate(20 * MS, 0);
+        assert_eq!((c.rate(), c.ms(30 * MS)), (1, 22));
+        c.toggle(30 * MS);
+        assert_eq!(c.ms(31 * MS), 23);
+    }
 
     #[test]
     fn the_clock_runs_pauses_and_seeks() {

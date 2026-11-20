@@ -27,6 +27,7 @@ use h3_map_view::asks::{self, Ask, Reply, Seen, Visitor};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
 use h3_map_view::damage::{Held, History, drop_held};
+use h3_map_view::director::{self, Pace};
 use h3_map_view::finds::{self, Find, Gain, Told};
 use h3_map_view::hover::{Facts, Hover, Tile};
 use h3_map_view::layout::{AdventureLayout, CursorArt};
@@ -43,7 +44,7 @@ use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
     Action, Answer, Boats, Computer, Cursor, DEFAULT_CURSOR, Direction, Dissolve, Draw, Found,
-    Hero, LevelBox, NextTurn, Owners, Question, Start, TownBoxes, Walked,
+    Hero, LevelBox, NextTurn, Owners, Question, Rules, Start, TownBoxes, Walked,
 };
 use h3_map_view::{engine, status, timeline, turn};
 use h3_render::Bugs;
@@ -115,19 +116,26 @@ pub struct Record<'p> {
 /// What a sequence takes from a record (E24 M4 T4a2): its start and turns' tables, applied after
 /// the kept live part, and its walks; since E24 M4 T4b1 its visits, level-ups and its heroes'
 /// experience at the start.
-struct Played {
-    table: toml::Table,
-    label: String,
-    moves: Vec<timeline::Move>,
-    ends: Vec<Option<Pos>>,
-    visits: Vec<engine::Visit>,
-    levels: Vec<engine::Leveled>,
-    experience: Vec<(Pos, u32)>,
+pub struct Played {
+    pub table: toml::Table,
+    pub label: String,
+    pub moves: Vec<timeline::Move>,
+    pub ends: Vec<Option<Pos>>,
+    pub visits: Vec<engine::Visit>,
+    pub levels: Vec<engine::Leveled>,
+    pub experience: Vec<(Pos, u32)>,
+    /// Since E24 M4 T4c: each walk's hero, the viewer's commands, the other players' turns in
+    /// sight and the heroes the start shows.
+    pub walkers: Vec<u16>,
+    pub commands: Vec<engine::Command>,
+    pub others: Vec<engine::OtherTurn>,
+    pub shown: Vec<(u16, Pos)>,
+    pub slots: Vec<(u16, usize)>,
 }
 
 /// The record's start (`engine::start`) with its turns' starts as the `turn` tables, and its
 /// walks (`engine::played`) on the map `raw`.
-fn played(assets: &Assets<'_>, raw: &RawMap, record: Record<'_>) -> Result<Played, String> {
+pub fn played(assets: &Assets<'_>, raw: &RawMap, record: Record<'_>) -> Result<Played, String> {
     let map = fs::read(record.map).map_err(|e| format!("{}: {e}", record.map.display()))?;
     let (loaded, rules) = render::load_record(record.path, &map, record.packs)?;
     let art = MapArt::from_raw(raw).map_err(|e| e.to_string())?;
@@ -151,24 +159,37 @@ fn played(assets: &Assets<'_>, raw: &RawMap, record: Record<'_>) -> Result<Playe
         visits: game.visits,
         levels: game.levels,
         experience: game.experience,
+        walkers: game.walkers,
+        commands: game.commands,
+        others: game.others,
+        shown: game.shown,
+        slots: game.slots,
     })
 }
 
-/// The arrows of each of the engine's walks, from where the walk before left the hero (`from`
-/// the selected hero's tile at 0; E24 M4 T4a2: `timeline::arrows`; since E24 M4 T4b1 a visit
-/// from beside leaves it where it stood, `ends`).
-fn record_paths(
+/// The arrows of each of the engine's walks, from where its hero's walk before left it (its tile
+/// at the record's start, `shown`, else `from`, the selected hero's tile at 0; E24 M4 T4a2:
+/// `timeline::arrows`; since E24 M4 T4b1 a visit from beside leaves it where it stood, `ends`;
+/// since E24 M4 T4c each hero's walks chain on their own).
+pub fn record_paths(
     assets: &Assets<'_>,
     from: Pos,
-    moves: &[timeline::Move],
-    ends: &[Option<Pos>],
+    played: &Played,
 ) -> Result<Vec<Vec<h3_map_view::live::Arrow>>, String> {
-    let mut at = from;
-    let mut paths = Vec::with_capacity(moves.len());
-    for (walk, end) in moves.iter().zip(ends) {
-        let arrows = timeline::arrows(&assets.tables.map.walk.arrows, at, &walk.tiles)
-            .ok_or_else(|| format!("a record's walk from {at:?} is no path: {:?}", walk.tiles))?;
-        at = end.unwrap_or(at);
+    let mut at: Vec<(u16, Pos)> = played.shown.clone();
+    let mut paths = Vec::with_capacity(played.moves.len());
+    for ((walk, end), &hero) in played.moves.iter().zip(&played.ends).zip(&played.walkers) {
+        let here = at
+            .iter()
+            .find(|(id, _)| *id == hero)
+            .map_or(from, |&(_, p)| p);
+        let arrows = timeline::arrows(&assets.tables.map.walk.arrows, here, &walk.tiles)
+            .ok_or_else(|| format!("a record's walk from {here:?} is no path: {:?}", walk.tiles))?;
+        let left = end.unwrap_or(here);
+        match at.iter_mut().find(|(id, _)| *id == hero) {
+            Some(entry) => entry.1 = left,
+            None => at.push((hero, left)),
+        }
         paths.push(arrows);
     }
     Ok(paths)
@@ -222,7 +243,7 @@ pub fn for_sequence<'a>(
             sequence::selected_hero(live).map_err(|e| format!("{}: {e}", live_path.display()))?;
         painter.selected = sequence::selected_in(live).ok();
         let paths = match (&played, walks) {
-            (Some(p), true) => record_paths(assets, hero.at, &p.moves, &p.ends)?,
+            (Some(p), true) => record_paths(assets, hero.at, p)?,
             (None, true) => sequence.paths(facts)?,
             (_, false) => Vec::new(),
         };
@@ -254,7 +275,7 @@ pub fn for_sequence<'a>(
     // recorded `hero` lines (E24 M4 T1b2).
     let lines = sequence.heroes(facts)?;
     let (question, turns) = painter
-        .boxes(&lines)
+        .boxes(&lines, played.as_ref())
         .map_err(|e| format!("{}: {e}", live_path.display()))?;
     // The finds a walk tells and the turn without a town's boxes (E24 M4 T2a2); a record's from
     // its visits (E24 M4 T4b1).
@@ -334,6 +355,116 @@ pub fn for_sequence<'a>(
     })
 }
 
+/// A whole game's record set up to play without a recording (E24 M4 T4c, design §5.17): the map
+/// file it names, its start as the live part at 0 (the view on the selected hero, centred, never
+/// clamped), the original's default speeds and options, its turns, walks and visits as
+/// [`for_sequence`] takes them from a record, and the viewer's commands as the map's input
+/// (`h3_map_view::director`) up to `limit` ms. Its other players' turns in sight played as a
+/// computer's.
+pub fn for_record<'a>(
+    assets: &'a Assets<'a>,
+    record: Record<'_>,
+    limit: u32,
+) -> Result<(Setup<'a>, u32), String> {
+    let file = record.map;
+    let bytes = fs::read(file).map_err(|e| format!("{}: {e}", file.display()))?;
+    let raw = if bytes.starts_with(&[0x1F, 0x8B]) {
+        h3_map::read(&bytes, &Limits::default())
+    } else {
+        h3_map::parse(&bytes, &Limits::default())
+    }
+    .map_err(|e| format!("{}: {e}", file.display()))?;
+    let played = played(assets, &raw, record)?;
+    let corner = ViewAt { x: 0, y: 0, z: 0 };
+    let after = Some((played.label.as_str(), &played.table));
+    let mut painter = Painter::new(assets, &raw, None, after, corner, &[])?;
+    let label = played.label.clone();
+    let hero = sequence::selected_hero(&painter.live).map_err(|e| format!("{label}: {e}"))?;
+    painter.selected = sequence::selected_in(&painter.live).ok();
+    // The view centred on the selected hero, never clamped (`hero_select`, design §5.2).
+    let view = ViewAt {
+        x: i32::from(hero.at.x) - 9,
+        y: i32::from(hero.at.y) - 8,
+        z: hero.at.z,
+    };
+    let paths = record_paths(assets, hero.at, &played)?;
+    let experience = played
+        .experience
+        .iter()
+        .find(|(at, _)| *at == hero.at)
+        .map(|&(_, experience)| experience);
+    let sound = painter.sound(Some(hero.at))?;
+    let (question, turns) = painter
+        .boxes(&[], Some(&played))
+        .map_err(|e| format!("{label}: {e}"))?;
+    let hover = painter.hover()?;
+    let finds = painter.record_finds(&played.visits, hover.as_deref())?;
+    let town = painter.town()?;
+    painter.live.level_ups = played.levels.iter().map(|l| l.up.clone()).collect();
+    let mut level_ups = painter.level_ups(hover.as_deref())?;
+    for level in &mut level_ups {
+        level.chosen = played
+            .levels
+            .iter()
+            .find(|l| l.up.level == level.level && l.up.offers == level.offers)
+            .and_then(|l| l.chosen);
+    }
+    let start = Start {
+        view,
+        size: i32::try_from(painter.art.size).unwrap_or(i32::MAX),
+        scroll_speed: DEFAULT_SCROLL_SPEED,
+        hero_speed: DEFAULT_HERO_SPEED,
+        pointer: PARK,
+        hero: Some(hero),
+        paths,
+        path: painter.live.path.clone(),
+        live: false,
+        sound,
+        kingdom: painter.live.kingdom.clone(),
+        points: Vec::new(),
+        reached: Vec::new(),
+        buttons: painter.live.buttons,
+        asked: None,
+        hover,
+        levels: painter.art.levels,
+        heroes: heroes(&painter.live),
+        index: painter.selected,
+        chosen: painter.live.chosen.clone(),
+        player: painter.live.viewer,
+        move_reminder: true,
+        question: Some(question),
+        turns,
+        computer: Computer::default(),
+        finds,
+        town: Some(town),
+        experience,
+        level_ups,
+        casts: Vec::new(),
+        boats: Boats::of(&painter.live),
+        water: water(&painter.art),
+        moves: Some(played.moves.clone()),
+    };
+    let rules = Rules::new(assets.tables, assets.layout, assets.bugs);
+    let directed = director::direct(
+        rules,
+        &start,
+        &played.commands,
+        &played.slots,
+        Pace::default(),
+        limit,
+    )
+    .map_err(|(t, why)| format!("{label}: at {t} ms: {why}"))?;
+    Ok((
+        Setup {
+            painter,
+            start,
+            actions: directed.actions,
+            recorded: None,
+        },
+        directed.end,
+    ))
+}
+
 /// A situation (`<map>/situations/<id>.toml`) set up to stand still: its map (the writer's, or the
 /// shipped one it names), its kept live part if any, the original's default speeds, the pointer
 /// parked; the viewer's hero selected when it has only one (*provisional*: M4 selects by the
@@ -380,7 +511,7 @@ pub fn for_situation<'a>(
     let hero = sequence::selected_hero(&painter.live).ok();
     painter.selected = sequence::selected_in(&painter.live).ok();
     let sound = painter.sound(hero.map(|h| h.at))?;
-    let (question, turns) = painter.boxes(&[])?;
+    let (question, turns) = painter.boxes(&[], None)?;
     let hover = painter.hover()?;
     let finds = painter.finds(&raw, hover.as_deref())?;
     let town = painter.town()?;
@@ -535,6 +666,10 @@ impl<'a> Painter<'a> {
             None => {
                 start.moment = Moment::at(0, tables.map.cycle_ms, tables.map.frame_ms);
                 render::hide(&art, &mut start, view.z, hidden);
+                // A record played without a recording (E24 M4 T4c): its start over the map's.
+                if let Some((label, table)) = after {
+                    render::apply_live(label, table, view, &mut art, &mut start, assets.templates)?;
+                }
             }
         }
         let archives = assets.archives;
@@ -678,8 +813,13 @@ impl<'a> Painter<'a> {
     /// The boxes End Turn opens (E24 M4 T1a, design §5.1): its question (GENRLTXT 56, style 2) and
     /// each of the live part's turns with its week's or month's message at a week's start (style
     /// 1), laid out in the box's font, framed in the viewer's colours; since E24 M4 T1b2 each
-    /// turn's heroes standing and a computer's walks from the recorded `hero` lines (`lines`).
-    fn boxes(&self, lines: &[(u32, Hero)]) -> Result<(Arc<MessageBox>, Vec<NextTurn>), String> {
+    /// turn's heroes standing and a computer's walks from the recorded `hero` lines (`lines`),
+    /// since E24 M4 T4c a record's from its other players' turns in sight.
+    fn boxes(
+        &self,
+        lines: &[(u32, Hero)],
+        record: Option<&Played>,
+    ) -> Result<(Arc<MessageBox>, Vec<NextTurn>), String> {
         let assets = self.assets;
         let layout = &assets.layout.message;
         let font = self
@@ -699,17 +839,26 @@ impl<'a> Painter<'a> {
             0
         };
         let live = &self.live;
+        // A record's other players' turns in sight (E24 M4 T4c): its heroes by the start's tiles.
+        let ids = record.map(|p| turn::record_heroes(&p.shown, &live.heroes));
         let turns = live
             .turns
             .iter()
             .enumerate()
             .map(|(i, t)| {
+                let walks = match (record, &ids) {
+                    (Some(p), Some(ids)) => match p.others.iter().find(|o| o.turn == i) {
+                        Some(other) => turn::record_walks(other, ids, &live.heroes)?,
+                        None => Vec::new(),
+                    },
+                    _ => turn::walks(&live.turns, i, &live.heroes, lines)?,
+                };
                 Ok(NextTurn {
                     turn: t.clone(),
                     message: turn::message(texts, art, (t.kingdom.date, t.week, t.month), growth)
                         .map(|text| laid(&text, Style::Ok)),
                     heroes: turn::placed(&live.heroes, &live.boats, t)?,
-                    walks: turn::walks(&live.turns, i, &live.heroes, lines)?,
+                    walks,
                 })
             })
             .collect::<Result<Vec<_>, String>>()?;

@@ -86,6 +86,37 @@ pub enum Command {
     Offer(usize),
     /// The window's own (the music and the effects since E24 M2 T5, the cursor's kind since T4b).
     Window(Window),
+    /// A record's playback (E24 M4 T4c, *provisional*: the window's `--record`).
+    Playback(Playback),
+}
+
+/// A record's playback controls (E24 M4 T4c, design §5.17, *provisional*; each a review item):
+/// the window's clock twice as fast or half as fast (1 to 8 times the original's), and on to the
+/// record's next command; the window's own pause, a frame on and restart work as for a sequence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Playback {
+    /// Twice as fast, up to 8 times (Ctrl+F2).
+    Faster,
+    /// Half as fast, down to the original's (Ctrl+F3).
+    Slower,
+    /// On to the record's next command (Ctrl+F4).
+    Next,
+}
+
+impl Playback {
+    /// Every one, in the table's order.
+    pub const ALL: [Self; 3] = [Self::Faster, Self::Slower, Self::Next];
+
+    /// Its name in a user's file and its default key (with Ctrl: F2 and F3 alone are the music's
+    /// and the effects').
+    #[must_use]
+    pub const fn name_key(self) -> (&'static str, &'static str) {
+        match self {
+            Self::Faster => ("faster", "F2"),
+            Self::Slower => ("slower", "F3"),
+            Self::Next => ("next-command", "F4"),
+        }
+    }
 }
 
 /// The original's direction keys by the adapter's names, north clockwise to north-west: the scan
@@ -112,7 +143,7 @@ impl Command {
             Self::Visit => Some(Action::Visit),
             Self::Message(key) => Some(Action::BoxKey(key)),
             Self::Offer(n) => Some(Action::Offer(n)),
-            Self::Window(_) => None,
+            Self::Window(_) | Self::Playback(_) => None,
         }
     }
 
@@ -125,7 +156,7 @@ impl Command {
             Self::Panel(key) => Some(Action::KeyUp(key)),
             Self::Message(key) => Some(Action::BoxKeyUp(key)),
             Self::Scroll(_) | Self::Hero(_) | Self::Visit | Self::Offer(_) => Some(Action::Up),
-            Self::Window(_) => None,
+            Self::Window(_) | Self::Playback(_) => None,
         }
     }
 }
@@ -145,6 +176,7 @@ impl keys::Command for Command {
         all.extend(MESSAGE.map(Self::Message));
         all.extend([0, 1].map(Self::Offer));
         all.extend(Window::ALL.map(Self::Window));
+        all.extend(Playback::ALL.map(Self::Playback));
         all
     }
 
@@ -158,6 +190,7 @@ impl keys::Command for Command {
             Self::Message(key) => message_key(key).0.into(),
             Self::Offer(n) => offer_key(n).0.into(),
             Self::Window(w) => w.name().into(),
+            Self::Playback(p) => p.name_key().0.into(),
         }
     }
 
@@ -193,6 +226,10 @@ impl keys::Command for Command {
         for w in Window::ALL {
             defaults.push((Self::Window(w), Vec::from([w.chord()])));
         }
+        for p in Playback::ALL {
+            let chord = Chord::new(true, p.name_key().1);
+            defaults.push((Self::Playback(p), Vec::from([chord])));
+        }
         defaults
     }
 
@@ -203,6 +240,7 @@ impl keys::Command for Command {
     fn context(self) -> Option<Context> {
         match self {
             Self::Window(w) if w.everywhere() => None,
+            Self::Playback(_) => None,
             Self::Message(_) | Self::Offer(_) => Some(Context::Message),
             Self::Scroll(_) | Self::Hero(_) | Self::Panel(_) | Self::Visit | Self::Window(_) => {
                 Some(Context::Map)

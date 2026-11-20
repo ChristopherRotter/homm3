@@ -45,9 +45,21 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
             Some(command),
             "{key}"
         );
-        // A chord matches exactly: Ctrl held is another chord.
-        assert_eq!(keys.command(Context::Map, true, key), None, "{key}");
+        // A chord matches exactly: Ctrl held is another chord (E24 M4 T4c: Ctrl+F2 and Ctrl+F3 a
+        // record's playback).
+        let ctrl = match key {
+            "F2" => Some(Command::Playback(Playback::Faster)),
+            "F3" => Some(Command::Playback(Playback::Slower)),
+            _ => None,
+        };
+        assert_eq!(keys.command(Context::Map, true, key), ctrl, "{key}");
     }
+    assert_eq!(
+        keys.command(Context::Message, true, "F4"),
+        Some(Command::Playback(Playback::Next))
+    );
+    assert_eq!(Command::Playback(Playback::Next).action(), None);
+    assert_eq!(Command::Playback(Playback::Next).release(), None);
     // Pause, a frame on, restart and vsync with Ctrl (the user, 2026-11-04, E17 M6 T4b2a: the
     // battle window's the same, where F5 to F8 alone are the original's).
     for (key, command) in [
@@ -87,7 +99,7 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
     }
     // Every command bound, in the table's order: the map's twice (the key and the keypad's).
     let chords = keys.chords();
-    assert_eq!(chords.len(), 57);
+    assert_eq!(chords.len(), 60);
     let mut commands: Vec<Command> = chords.iter().map(|&(c, _)| c).collect();
     commands.dedup();
     assert_eq!(commands, Command::all());
@@ -149,7 +161,7 @@ fn a_message_box_takes_its_keys_and_the_windows_own() {
 #[test]
 fn every_command_has_a_name_and_the_maps_its_action() {
     let all = Command::all();
-    assert_eq!(all.len(), 41);
+    assert_eq!(all.len(), 44);
     for &command in &all {
         assert_eq!(Command::from_name(&command.name()), Some(command));
     }
@@ -188,7 +200,10 @@ fn every_command_has_a_name_and_the_maps_its_action() {
             "vsync",
             "cursor",
             "fullscreen",
-            "quit"
+            "quit",
+            "faster",
+            "slower",
+            "next-command",
         ]
     );
     assert_eq!(Command::from_name("scroll"), None);
@@ -256,7 +271,7 @@ fn a_users_file_overrides_command_by_command() {
         Some(Command::Window(Window::Frame))
     );
     let chords = keys.chords();
-    assert_eq!(chords.len(), 56);
+    assert_eq!(chords.len(), 59);
     assert!(
         chords
             .iter()

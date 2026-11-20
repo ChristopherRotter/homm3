@@ -27,6 +27,7 @@ fn art() -> TurnArt {
         month: "newmonth.wav".to_string(),
         deity: [42, 43],
         town_days: 7,
+        computer: Vec::new(),
     }
 }
 
@@ -127,4 +128,92 @@ fn the_tables_section_reads_from_toml() {
     )
     .unwrap();
     assert_eq!(section, art());
+}
+
+/// A record's other player's turn (E24 M4 T4c): Blue's hero 7 seen from (5, 5) walking east,
+/// then a step out of sight, then one back into sight; hero 9 not shown at the start.
+#[test]
+fn a_record_s_other_turn_as_walks() {
+    use crate::engine::{OtherStep, OtherTurn, OtherWalk};
+    use crate::live::Facing;
+    let at = |x, y| Pos { x, y, z: 0 };
+    let hero = |x, owner| LiveHero {
+        at: at(x, 5),
+        class: 1,
+        owner,
+        facing: Facing::ALL[2],
+        boat: None,
+    };
+    let map = [hero(1, 0), hero(5, 1)];
+    let ids = record_heroes(&[(3, at(1, 5)), (7, at(5, 5)), (8, at(30, 30))], &map);
+    assert_eq!(ids, vec![(3, 0), (7, 1)]);
+    let step = |from: Option<Pos>, to: Option<Pos>| OtherStep {
+        from,
+        to,
+        sea: None,
+    };
+    let walk = |hero, steps| OtherWalk { hero, steps };
+    let other = OtherTurn {
+        turn: 1,
+        player: 1,
+        walks: vec![
+            walk(
+                7,
+                vec![
+                    step(Some(at(5, 5)), Some(at(6, 5))),
+                    step(Some(at(6, 5)), Some(at(7, 6))),
+                    step(Some(at(7, 6)), None),
+                    step(None, Some(at(9, 6))),
+                ],
+            ),
+            walk(7, vec![step(Some(at(9, 6)), Some(at(9, 5)))]),
+        ],
+    };
+    let walks = record_walks(&other, &ids, &map).unwrap();
+    let to = |x, y, facing| Hero {
+        at: at(x, y),
+        facing,
+    };
+    assert_eq!(
+        walks,
+        vec![
+            Steps {
+                hero: 1,
+                slot: 0,
+                steps: vec![
+                    to(6, 5, Direction::East),
+                    to(7, 6, Direction::SouthEast),
+                    to(9, 6, Direction::SouthEast),
+                ],
+                unseen: vec![2],
+            },
+            Steps {
+                hero: 1,
+                slot: 0,
+                steps: vec![to(9, 5, Direction::North)],
+                unseen: Vec::new(),
+            },
+        ]
+    );
+    // A hero the start does not show, a step between tiles apart: refused.
+    let unknown = OtherTurn {
+        walks: vec![walk(9, vec![])],
+        ..other.clone()
+    };
+    assert!(record_walks(&unknown, &ids, &map).is_err());
+    let apart = OtherTurn {
+        walks: vec![walk(7, vec![step(Some(at(5, 5)), Some(at(8, 5)))])],
+        ..other.clone()
+    };
+    assert!(record_walks(&apart, &ids, &map).is_err());
+    // A first step into sight faces as the map hero did.
+    let into = OtherTurn {
+        walks: vec![walk(7, vec![step(None, Some(at(6, 5)))])],
+        ..other
+    };
+    let facing = hero_of(&map[1]).facing;
+    assert_eq!(
+        record_walks(&into, &ids, &map).unwrap()[0].steps,
+        vec![to(6, 5, facing)]
+    );
 }

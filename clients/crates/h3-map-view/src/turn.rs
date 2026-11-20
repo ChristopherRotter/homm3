@@ -4,7 +4,8 @@
 //! copies them), the keys and families they name. The timeline (`crate::timeline`) opens the boxes
 //! and plays the turn's change; the adapter lays the boxes out (`h3_ui::message`) with the texts
 //! given here. Since E24 M4 T1b2 (design §5.2) what a turn's facts give the timeline of the map's
-//! heroes: those standing ([`placed`]) and a computer player's walks in sight ([`walks`]).
+//! heroes: those standing ([`placed`]) and a computer player's walks in sight ([`walks`]); since
+//! E24 M4 T4c (design §5.16) a record's ([`record_heroes`], [`record_walks`]).
 
 use alloc::format;
 use alloc::string::String;
@@ -14,6 +15,9 @@ use alloc::vec::Vec;
 use h3_ui::text::{Args, Catalogue};
 use serde::Deserialize;
 
+use h3_map::model::Pos;
+
+use crate::engine::OtherTurn;
 use crate::live::{Calendar, Date, LiveBoat, LiveHero, Selected, Status, Turn};
 use crate::timeline::{Direction, Hero, Steps};
 
@@ -34,6 +38,11 @@ pub struct TurnArt {
     /// The days a player with heroes and no town has to take one (`scenario_condition_met`
     /// 0x4F2CE0: the player's +0x3D −1 become 7; E24 M4 T2a2, design §5.3).
     pub town_days: u8,
+    /// A computer player's turn's music (E24 M4 T4c, design §5.1: one of `AITheme0` to
+    /// `AITheme2`, `random_between(1, 3)` − 1 at the computer's start; the client's turn by
+    /// turn, *provisional*); none, no music asked.
+    #[serde(default)]
+    pub computer: Vec<String>,
 }
 
 /// The string catalogue's keys the turn shows (`clients/text/keys.toml`); the names are the
@@ -262,5 +271,91 @@ pub fn walks(
         .filter(|(t, _)| (turn.at..end).contains(t))
         .map(|&(_, h)| h)
         .collect();
-    Ok(vec![Steps { hero, slot, steps }])
+    Ok(vec![Steps {
+        hero,
+        slot,
+        steps,
+        unseen: Vec::new(),
+    }])
+}
+
+/// A record's heroes matched with the live part's map heroes at 0 (E24 M4 T4c): each one the
+/// record's start shows (`shown`, by its id) with the map hero on its tile, by its index.
+#[must_use]
+pub fn record_heroes(shown: &[(u16, Pos)], map: &[LiveHero]) -> Vec<(u16, usize)> {
+    shown
+        .iter()
+        .filter_map(|&(id, at)| Some((id, map.iter().position(|h| h.at == at)?)))
+        .collect()
+}
+
+/// Another player's turn in a record as the timeline's walks (E24 M4 T4c, design §5.16,
+/// *provisional*): each walk's hero by `ids` ([`record_heroes`]), its place in the computer's
+/// kingdom the order its heroes first walk in (the turn's table's), its steps: one with both tiles
+/// facing from the one to the other; one into sight (no tile it left: MCL-Q44) taken unseen onto
+/// its tile, facing as before; one out of sight (no tile it entered: MCL-Q44) left out, the hero
+/// standing where the viewer last saw it.
+///
+/// # Errors
+/// A walk's hero the record's start does not show (not built), a step between tiles that are not
+/// neighbours.
+pub fn record_walks(
+    other: &OtherTurn,
+    ids: &[(u16, usize)],
+    map: &[LiveHero],
+) -> Result<Vec<Steps>, String> {
+    let mut order: Vec<u16> = Vec::new();
+    let mut facings: Vec<(usize, Direction)> = Vec::new();
+    other
+        .walks
+        .iter()
+        .map(|walk| {
+            let Some(&(_, hero)) = ids.iter().find(|(id, _)| *id == walk.hero) else {
+                return Err(format!(
+                    "a record's hero {} walks in sight: not shown at the start (not built)",
+                    walk.hero
+                ));
+            };
+            let slot = order
+                .iter()
+                .position(|&id| id == walk.hero)
+                .unwrap_or_else(|| {
+                    order.push(walk.hero);
+                    order.len() - 1
+                });
+            let mut facing = facings
+                .iter()
+                .rev()
+                .find(|(h, _)| *h == hero)
+                .map(|&(_, f)| f)
+                .or_else(|| map.get(hero).map(|h| hero_of(h).facing))
+                .unwrap_or(Direction::ALL[0]);
+            let mut steps = Vec::new();
+            let mut unseen = Vec::new();
+            for step in &walk.steps {
+                match (step.from, step.to) {
+                    (Some(from), Some(to)) => {
+                        facing = Direction::between(from, to).ok_or_else(|| {
+                            format!("a record's step from {from:?} to {to:?}: no neighbours")
+                        })?;
+                        steps.push(Hero { at: to, facing });
+                    }
+                    (None, Some(to)) => {
+                        // stub: MCL-Q44 (a step into sight: the tile it left not told)
+                        unseen.push(steps.len());
+                        steps.push(Hero { at: to, facing });
+                    }
+                    // stub: MCL-Q44 (a step out of sight: the tile it entered not told)
+                    _ => {}
+                }
+            }
+            facings.push((hero, facing));
+            Ok(Steps {
+                hero,
+                slot,
+                steps,
+                unseen,
+            })
+        })
+        .collect()
 }

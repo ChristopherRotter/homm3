@@ -515,7 +515,8 @@ fn a_turns_heroes_and_walks_from_its_facts() {
         Ok(vec![Steps {
             hero: 1,
             slot: 0,
-            steps: vec![east(6), east(7)]
+            steps: vec![east(6), east(7)],
+            unseen: Vec::new(),
         }])
     );
     assert_eq!(turn::walks(&turns, 1, &heroes, &lines), Ok(Vec::new()));
@@ -585,4 +586,65 @@ fn a_turns_heroes_and_boats_read() {
         Some(Boat { kind: 1, colour: 3 })
     );
     assert_eq!(read.boats.unwrap()[0].facing, Facing::DownLeft);
+}
+
+/// A computer's turn's sounds (E24 M4 T4c, design §5.1, §5.16): its music at its start (the
+/// tables' tracks in turn), the terrain's at a seen hero's selection on another terrain and at a
+/// step's end where the view's middle changes terrain, with its step sound; a step taken unseen
+/// whatever the viewer sees draws nothing.
+#[test]
+fn a_computers_turn_s_sounds_and_unseen_steps() {
+    use crate::sound::tests::{sound, tiles};
+    let (mut start, actions, _, _) = computing("ai-walk");
+    // Grass (2) west of column 12, dirt (0) from it: Blue's hero walks east from (5, 26).
+    start.sound = Some(sound(tiles(
+        36,
+        |x, _| if x < 12 { 2 } else { 0 },
+        |_, _| None,
+    )));
+    start.turns[0].walks[0].unseen = vec![0];
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    l.take_cues();
+    for t in 1..=1600 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    let cues: Vec<(u32, Cue)> = l
+        .take_cues()
+        .into_iter()
+        .filter(|(_, c)| matches!(c, Cue::Music(_) | Cue::Step(_)))
+        .collect();
+    // Its music at its start (the second turn: the second track); the hero chosen on grass, the
+    // music's terrain: no change; dirt at the view's middle from 760, its step sound at the frame's
+    // wrap; the next day's grass.
+    let track = rules(Bugs::Original).turn.computer[1].clone();
+    assert_eq!(
+        cues,
+        [
+            (160, Cue::Music(track)),
+            (760, Cue::Music("Dirt".into())),
+            (910, Cue::Step("horse00.wav".into())),
+            (1560, Cue::Music("Grass".into())),
+        ]
+    );
+    // The unseen first step: the hero onto (6, 26) without a frame; the second drawn.
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    for t in 1..=160 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    assert_eq!(l.hero.map(|h| h.at.x), Some(7));
+    // No tracks: no music.
+    let mut quiet = rules(Bugs::Original);
+    quiet.turn.computer.clear();
+    let mut l = Loop::start(quiet, &start).unwrap();
+    for t in 1..=160 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    assert!(
+        !l.take_cues()
+            .iter()
+            .any(|(t, c)| *t == 160 && matches!(c, Cue::Music(m) if m.starts_with("AITheme")))
+    );
 }

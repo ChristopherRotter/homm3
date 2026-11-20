@@ -1644,6 +1644,36 @@ fn a_record_s_visits_and_level_ups() {
     assert!(second.answers.is_empty());
     // Where each walk left its hero: none for those without a step (a visit from beside).
     assert_eq!(played.ends, [None, None, None]);
+    // E24 M4 T4c: each walk's hero, the viewer's commands (an empty path no walk), Red's place in
+    // its list, the heroes the start shows.
+    assert_eq!(played.walkers, [red.id; 3]);
+    use h3_map_view::engine::Command;
+    assert_eq!(
+        played.commands,
+        [
+            Command::Walk {
+                hero: red.id,
+                to: tile(11, 10)
+            },
+            Command::Answer(Answer::Chest {
+                choice: ChestChoice::Gold
+            }),
+            Command::Answer(Answer::LevelUp {
+                offer: SkillOffer::Second
+            }),
+            Command::Walk {
+                hero: red.id,
+                to: tile(12, 10)
+            },
+            Command::Other,
+            Command::Answer(Answer::Chest {
+                choice: ChestChoice::Experience
+            }),
+            Command::EndTurn,
+        ]
+    );
+    assert_eq!(played.slots, [(red.id, 0)]);
+    assert_eq!(played.shown.len(), g.observation.adventure.heroes.len());
     // The level-ups: the dialog's offers with the levels they reach, the record's choice.
     let levels: Vec<_> = played
         .levels
@@ -1682,6 +1712,126 @@ fn a_record_s_visits_and_level_ups() {
             details.experience
         )]
     );
+}
+
+/// Another player's turn in a record (E24 M4 T4c, design §5.16): Blue's steps by hero, a boat
+/// boarded and left, a step out of sight; Purple's turn with none seen no turn; a town's command
+/// no walk.
+#[test]
+fn a_record_s_other_players_turns() {
+    use h3_map_view::engine::{Command, OtherStep};
+    use h3_map_view::live::{Facing, LiveBoat};
+    use h3_map_view::timeline::Sea;
+    use h3_protocol::wire::game::{AdventureEvent, GameCommand, GameEvent, Pos, TownCommand};
+    let g = game();
+    let hero = |owner| {
+        g.observation
+            .adventure
+            .heroes
+            .iter()
+            .find(|h| h.owner == owner)
+            .unwrap()
+            .id
+    };
+    let (red, blue) = (hero(0), hero(1));
+    let pos = |x, y| Pos { x, y, level: 0 };
+    let event = |event| GameEvent::Adventure { event };
+    let step = |hero, from: Option<Pos>, to: Option<Pos>| {
+        event(AdventureEvent::HeroStepped { hero, from, to })
+    };
+    let record = text(
+        &g.header,
+        &[
+            snapshot(&g.observation),
+            accepted(GameCommand::Town {
+                command: TownCommand::Build {
+                    town: 0,
+                    building: 0,
+                },
+            }),
+            accepted(GameCommand::EndTurn {}),
+            events(vec![
+                GameEvent::TurnEnded { player: 0 },
+                GameEvent::TurnStarted { player: 1 },
+            ]),
+            events(vec![
+                step(blue, Some(pos(12, 10)), Some(pos(12, 9))),
+                event(AdventureEvent::Boarded {
+                    hero: blue,
+                    boat: 1,
+                    at: pos(12, 9),
+                }),
+                step(blue, Some(pos(12, 9)), Some(pos(12, 8))),
+                event(AdventureEvent::Landed {
+                    hero: blue,
+                    boat: 1,
+                    at: pos(12, 8),
+                    facing: 0,
+                }),
+                // A boat of a hero not walking: nothing.
+                event(AdventureEvent::Boarded {
+                    hero: red,
+                    boat: 0,
+                    at: pos(1, 1),
+                }),
+                step(red, Some(pos(10, 10)), Some(pos(10, 9))),
+                step(blue, Some(pos(12, 8)), None),
+            ]),
+            events(vec![
+                GameEvent::TurnEnded { player: 1 },
+                GameEvent::TurnStarted { player: 2 },
+            ]),
+            events(vec![
+                GameEvent::TurnEnded { player: 2 },
+                GameEvent::DayStarted { day: 2 },
+                GameEvent::TurnStarted { player: 0 },
+            ]),
+        ],
+    );
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    assert_eq!(played.commands, [Command::Other, Command::EndTurn]);
+    let [other] = &played.others[..] else {
+        panic!("one other turn: {:?}", played.others);
+    };
+    let tile = |x, y| h3_map::model::Pos { x, y, z: 0 };
+    assert_eq!((other.player, other.turn, other.walks.len()), (1, 0, 3));
+    let seen = |from, to: Option<u8>, sea| OtherStep {
+        from: Some(tile(12, from)),
+        to: to.map(|y| tile(12, y)),
+        sea,
+    };
+    assert_eq!(other.walks[0].hero, blue);
+    assert_eq!(
+        other.walks[0].steps,
+        [
+            seen(10, Some(9), Some(Sea::Board(1))),
+            seen(
+                9,
+                Some(8),
+                Some(Sea::Land(LiveBoat {
+                    at: tile(12, 8),
+                    kind: 1,
+                    facing: Facing::ALL[0],
+                }))
+            ),
+        ]
+    );
+    assert_eq!(other.walks[1].hero, red);
+    assert_eq!(other.walks[2].steps, [seen(8, None, None)]);
+    // Blue's turn's table, then Red's day 2: kind 5 for Blue, its two walking heroes, no points.
+    assert_eq!(played.turns.len(), 2);
+    let t = table(&played.turns[0]);
+    assert_eq!(t["player"].as_integer(), Some(1));
+    let status = table(&t["status"]);
+    assert_eq!(
+        ["kind", "crest", "sand", "glass", "value"].map(|k| status[k].as_integer()),
+        [Some(5), Some(1), Some(0), Some(0), Some(1000)]
+    );
+    let kingdom = table(&t["kingdom"]);
+    assert_eq!(kingdom["heroes"].as_array().unwrap().len(), 2);
+    assert_eq!(numbers(&kingdom["selected"]), [1, 0]);
+    assert_eq!(table(&played.turns[1])["player"].as_integer(), Some(0));
 }
 
 #[test]

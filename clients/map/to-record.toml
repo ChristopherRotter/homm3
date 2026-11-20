@@ -1,0 +1,23 @@
+# Scripted games of a computer player's turn in sight, recorded before the viewer plays them (E24
+# M4 T4c; `frames --sequences map/to-record.toml --no-check`), each moved into `sequences.toml`
+# once it does.
+
+[[sequence]]
+id = "game-ai"
+situation = "game-ai"
+ms = 4000
+seed = 1
+why = "a scripted game's computer turn in sight: End Turn's key, Blue's two heroes each walking to a gold pile across the strait in Red's sight, the next day's start"
+inputs = [{ at = 100, keydown = "e" }, { at = 160, keyup = "e" }]
+
+[[sequence]]
+id = "game-ai-boat"
+situation = "game-ai-boat"
+ms = 8500
+seed = 1
+why = "a scripted game's computer player at sea in sight: End Turn's key, Blue's hero walking round a lake onto an empty boat in Red's sight; the next days End Turn again, the hero sailing to an island in the lake, landing and taking its gold pile"
+inputs = [
+    { at = 100, keydown = "e" }, { at = 160, keyup = "e" },
+    { at = 3000, keydown = "e" }, { at = 3060, keyup = "e" },
+    { at = 6000, keydown = "e" }, { at = 6060, keyup = "e" },
+]

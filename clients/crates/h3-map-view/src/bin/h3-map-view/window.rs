@@ -43,7 +43,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_map_view::damage::{Held, tidy};
-use h3_map_view::keys::{Command, Context, Keys, refuse_shift};
+use h3_map_view::keys::{Command, Context, Keys, Playback, refuse_shift};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
 use h3_map_view::sound;
@@ -92,7 +92,13 @@ pub struct Options {
     mute: bool,
     /// Where each cue played is written (the cue's line and the clock's millisecond it played at).
     cues: Option<PathBuf>,
+    /// A whole game's record played without a recording (E24 M4 T4c): the record, its map file
+    /// and the packs' folder.
+    record: Option<(PathBuf, PathBuf, PathBuf)>,
 }
+
+/// How long a record may play before it must be at its end (E24 M4 T4c), ms: an hour.
+pub const RECORD_LIMIT: u32 = 3_600_000;
 
 impl Options {
     /// Parses `<sequence | situation> [--keys <file>] [--scale <n>] [--vsync] [--fullscreen]
@@ -103,6 +109,7 @@ impl Options {
         let (mut vsync, mut fullscreen, mut drawn_cursor) = (false, false, false);
         let (mut mute, mut cues) = (false, None);
         let (mut bugs, mut run) = (Bugs::Fixed, None);
+        let (mut record, mut record_map, mut packs) = (None, None, None);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -133,6 +140,9 @@ impl Options {
                 "--map" => map = Some(PathBuf::from(value()?)),
                 "--check" => run = Some((number(value()?)?, true)),
                 "--measure" => run = Some((number(value()?)?, false)),
+                "--record" => record = Some(PathBuf::from(value()?)),
+                "--record-map" => record_map = Some(PathBuf::from(value()?)),
+                "--packs" => packs = Some(PathBuf::from(value()?)),
                 flag if flag.starts_with("--") => {
                     return Err(format!("window: unknown option `{flag}`"));
                 }
@@ -140,8 +150,21 @@ impl Options {
                 extra => return Err(format!("window: unexpected `{extra}`")),
             }
         }
+        let record = match (record, record_map) {
+            (Some(r), Some(m)) => Some((r, m, packs.unwrap_or_else(files::default_packs))),
+            (None, None) => None,
+            _ => return Err("window: --record and --record-map go together".into()),
+        };
+        if record.is_some() && id.is_some() {
+            return Err("window: a record plays alone, without a sequence or a situation".into());
+        }
+        let id = match &record {
+            Some((r, _, _)) => r.display().to_string(),
+            None => id.ok_or("window: needs a sequence, a situation or --record")?,
+        };
         Ok(Self {
-            id: id.ok_or("window: needs a sequence or a situation")?,
+            id,
+            record,
             keys,
             scale,
             vsync,
@@ -199,6 +222,16 @@ fn load_keys(path: Option<&Path>) -> Result<(Keys, String), String> {
 /// The map `id` names set up: a recorded sequence of `<map>/sequences.toml`, else a situation of
 /// `<map>/situations/`; and what it is.
 fn set_up<'a>(assets: &'a Assets<'a>, options: &Options) -> Result<(Setup<'a>, String), String> {
+    if let Some((path, map, packs)) = &options.record {
+        let record = paint::Record { path, map, packs };
+        let (setup, end) = paint::for_record(assets, record, RECORD_LIMIT)?;
+        let what = format!(
+            "the record {} ({} inputs to its end at {end} ms)",
+            path.display(),
+            setup.actions.values().map(Vec::len).sum::<usize>()
+        );
+        return Ok((setup, what));
+    }
     let path = options.map.join("sequences.toml");
     let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let sequences = Sequences::parse(&text).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -738,6 +771,20 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     let on = !win.vsync();
                     win.set_vsync(on);
                 }
+                // A record's playback (E24 M4 T4c, *provisional*): the clock 1 to 8 times as
+                // fast, on to the next input's millisecond.
+                Some(Command::Playback(Playback::Faster)) => {
+                    clock.set_rate(now, (clock.rate() * 2).min(8));
+                }
+                Some(Command::Playback(Playback::Slower)) => {
+                    clock.set_rate(now, clock.rate() / 2);
+                }
+                Some(Command::Playback(Playback::Next)) => {
+                    let at = clock.ms(now);
+                    if let Some(&t) = actions.range(at.saturating_add(1)..).next().map(|(t, _)| t) {
+                        clock.seek(now, t);
+                    }
+                }
                 // A frame on while running: nothing.
                 Some(
                     Command::Scroll(_)
@@ -804,7 +851,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     | Action::BoxKeyUp(_)
                     | Action::Offer(_)
                     | Action::Visit
-                    | Action::Up => 4,
+                    | Action::Up
+                    | Action::Choose(_)
+                    | Action::Walk(_) => 4,
                 }] += 1;
                 replay.give(t, action);
             }

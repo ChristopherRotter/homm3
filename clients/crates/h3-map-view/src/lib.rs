@@ -55,6 +55,7 @@ pub mod batch;
 pub mod check;
 pub mod compose;
 pub mod damage;
+pub mod director;
 pub mod draw;
 pub mod engine;
 pub mod finds;
