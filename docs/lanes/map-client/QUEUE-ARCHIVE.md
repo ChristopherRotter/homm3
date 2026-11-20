@@ -1037,3 +1037,30 @@ Inbox item done at T4a1's session (2026-11-19: the window's library decodes the 
   guard (`h3map.py`, or a test over `clients/map/`) that refuses a kept file with a text.
 - **Acceptance:** no original text in `clients/map/`; `drawn` all the same; `check.sh` all gates.
 - **Depends on:** nothing. **Status:** done 2026-11-20 (the log's "M4, the labels").
+
+### E24 M4 T4a2 — a record's own walks and turns played
+
+- **Scope:** the viewer plays T4a1's three scripted games (`clients/map/to-record.toml`:
+  `game-walk`, `game-day`, `game-week`) from their engine records: the record folded
+  (`GameObservation::fold`, `reveal`) and each own command turned into the timeline's facts: a
+  walk's path and arrows (`path_arrow_frames`' 64 numbers into the tables, design §5.12; green,
+  the command's path being walked whole), its steps' facings, the points (MCL-Q39 (c) meanwhile:
+  the walk's at its last step), its reveal (MCL-Q39 (c): the command's whole at its first step),
+  End Turn and each turn's start (`NextTurn` from the fold at `TurnStarted`: the kingdom and the
+  status by `engine::panels`, the date, the income, a creature's week from `WeekStarted`, a
+  normal one's name by MCL-Q40's (b) meanwhile); the binary plays a sequence with the record's
+  facts in place of the recording's (`sequences <id> --record <r.jsonl>`, or as the design
+  settles), `h3map.py` makes the record from the sequence's `script` and compares the frames
+  with the original's (the screens recorded again in a fresh sandbox, TRAPS); the sequences
+  moved into `sequences.toml`, `drawn --record`; each difference listed or an `MCL-Q<n>`.
+- **Acceptance:** the scripted games exact but the listed gaps (MCL-Q37, MCL-Q39, MCL-Q40);
+  `drawn` all the same; `check.sh` all gates.
+- **Notes from T3b2** (design §5.11): the cursor's facts are not in the record (MCL-Q37: the
+  costs over several days, the guarded tiles, a defended town at level 0), so a walk's cursor
+  waits on its answer (the scripted games park the pointer over the panel); the engine's views
+  show no Seer's Hut, Quest Guard or Obelisk yet; a shipped map's town list order is MCL-Q38's;
+  `MCL-STUB-1` (a random artifact's and dwelling's drawn picture) still waits on the adventure
+  lane's answer to this lane's note of 2026-11-19.
+- **Depends on:** T4a1; the labels task (done 2026-11-20: `game-week`'s live part is kept with
+  labels once T4a2 records it again). **Status:** done 2026-11-20 (kept whole by the user; the
+  log's "M4 T4a2", design §5.13).

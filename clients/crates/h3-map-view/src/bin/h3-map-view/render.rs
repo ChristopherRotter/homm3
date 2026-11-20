@@ -10,6 +10,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use h3_game::GameRuleset;
 use h3_map::Limits;
 use h3_map::model::Pos;
 use h3_map::writer::ObjectTemplate;
@@ -409,6 +410,18 @@ fn record_start(
     towns: &TownArt,
     packs: &Path,
 ) -> Result<engine::Start, String> {
+    let (loaded, rules) = load_record(path, map, packs)?;
+    engine::start(&loaded, art, templates, towns, &rules)
+        .map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// The whole game's record at `path` checked against the map file `map` (its bytes), with the
+/// rules of its packs and profile read from `packs` (E24 M4 T3a; T4a2 plays its walks and turns).
+pub fn load_record(
+    path: &Path,
+    map: &[u8],
+    packs: &Path,
+) -> Result<(engine::Loaded, GameRuleset), String> {
     let failed = |why: &dyn std::fmt::Display| format!("{}: {why}", path.display());
     let text = fs::read_to_string(path).map_err(|e| failed(&e))?;
     let header = engine::parse(&text).map_err(|e| failed(&e))?.header;
@@ -416,7 +429,7 @@ fn record_start(
     let rules = h3_files::adventure::load_rules(packs, &ids, &header.manifest.profile)
         .map_err(|e| format!("{}: {e}", packs.display()))?;
     let loaded = engine::load(&text, map, &rules).map_err(|e| failed(&e))?;
-    engine::start(&loaded, art, templates, towns, &rules).map_err(|e| failed(&e))
+    Ok((loaded, rules))
 }
 
 /// The tiles of the rectangles `hidden` (`[x0, y0, x1, y1]`, corners included) on level `z` left

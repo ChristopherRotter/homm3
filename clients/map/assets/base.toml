@@ -81,6 +81,21 @@ groups = [5, 6, 7, 8, 9, 8, 7, 6]
 frames = 8
 frame_ms = 50
 pixels = [[8, 8, 8, 8], [10, 12, 10], [16, 16], []]
+# A path's arrow on a tile it passes (E24 M4 T4a1, read whole; design §5.12:
+# path_arrow_frames 0x6782AC, make_hero_path 0x418DD0): by the step into the tile's direction plus
+# 8 x the step out's (0 north to 7 north-west), the tile's arrow the number + 2 (adag.def's frame +
+# 1; the destination's arrow 1, the cross); the out step's direction plus 8 for a straight step or
+# its reverse, 16 for a turn from one side, 0 from the other.
+arrows = [
+    8, 0, 0, 0, 8, 16, 16, 16,
+    17, 9, 1, 1, 1, 9, 17, 17,
+    18, 18, 10, 2, 2, 2, 10, 18,
+    19, 19, 19, 11, 3, 3, 3, 11,
+    12, 20, 20, 20, 12, 4, 4, 4,
+    5, 13, 21, 21, 21, 13, 5, 5,
+    6, 6, 14, 22, 22, 22, 14, 6,
+    7, 7, 7, 15, 23, 23, 23, 15,
+]
 
 # The owned objects' colours (E24 M1 T5b1; design §2.9): the bodies of these classes (the
 # dwellings 17 and 20, a garrison 33, a lighthouse 42, a mine 53, the towns 77 and 98, a shipyard

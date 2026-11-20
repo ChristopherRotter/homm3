@@ -32,34 +32,10 @@ T4 cut by event family, as Part A was: **T4a** the viewer's own turns (its walks
 engine's paths, End Turn and the turn's change), **T4b** the visits, **T4c** the other players,
 the viewer's controls and a golden replay. T4a cut again at its start (the agreed fallback):
 **T4a1** the reading and the recordings (**done** 2026-11-19: the log's "M4 T4a1", design §5.12;
-MCL-Q39, MCL-Q40), then T4a2. A fact the record lacks becomes an `MCL-Q<n>` with a note in the
-engine lanes' inboxes, its gap shown in the comparison, never a rule copied into the client.
-
-#### E24 M4 T4a2 — a record's own walks and turns played
-
-- **Scope:** the viewer plays T4a1's three scripted games (`clients/map/to-record.toml`:
-  `game-walk`, `game-day`, `game-week`) from their engine records: the record folded
-  (`GameObservation::fold`, `reveal`) and each own command turned into the timeline's facts: a
-  walk's path and arrows (`path_arrow_frames`' 64 numbers into the tables, design §5.12; green,
-  the command's path being walked whole), its steps' facings, the points (MCL-Q39 (c) meanwhile:
-  the walk's at its last step), its reveal (MCL-Q39 (c): the command's whole at its first step),
-  End Turn and each turn's start (`NextTurn` from the fold at `TurnStarted`: the kingdom and the
-  status by `engine::panels`, the date, the income, a creature's week from `WeekStarted`, a
-  normal one's name by MCL-Q40's (b) meanwhile); the binary plays a sequence with the record's
-  facts in place of the recording's (`sequences <id> --record <r.jsonl>`, or as the design
-  settles), `h3map.py` makes the record from the sequence's `script` and compares the frames
-  with the original's (the screens recorded again in a fresh sandbox, TRAPS); the sequences
-  moved into `sequences.toml`, `drawn --record`; each difference listed or an `MCL-Q<n>`.
-- **Acceptance:** the scripted games exact but the listed gaps (MCL-Q37, MCL-Q39, MCL-Q40);
-  `drawn` all the same; `check.sh` all gates.
-- **Notes from T3b2** (design §5.11): the cursor's facts are not in the record (MCL-Q37: the
-  costs over several days, the guarded tiles, a defended town at level 0), so a walk's cursor
-  waits on its answer (the scripted games park the pointer over the panel); the engine's views
-  show no Seer's Hut, Quest Guard or Obelisk yet; a shipped map's town list order is MCL-Q38's;
-  `MCL-STUB-1` (a random artifact's and dwelling's drawn picture) still waits on the adventure
-  lane's answer to this lane's note of 2026-11-19.
-- **Depends on:** T4a1; the labels task (done 2026-11-20: `game-week`'s live part is kept with
-  labels once T4a2 records it again). **Status:** next.
+MCL-Q39, MCL-Q40), then T4a2 (**done** 2026-11-20, kept whole by the user: the log's "M4
+T4a2", design §5.13; its entry in `QUEUE-ARCHIVE.md`). A fact the record lacks becomes an
+`MCL-Q<n>` with a note in the engine lanes' inboxes, its gap shown in the comparison, never a rule
+copied into the client.
 
 #### E24 M4 T4b — a record's visits played
 
@@ -67,7 +43,15 @@ engine lanes' inboxes, its gap shown in the comparison, never a rule copied into
   record's answers, the level-ups, the flags, the boats, the removals, Summon Boat), scripted
   games with visits played in the engine and in the original and compared frame by frame.
 - **Acceptance:** the scripted games exact but the listed gaps; `drawn` all the same; `check.sh`
-  all gates. **Depends on:** T4a2. **Status:** waiting.
+  all gates.
+- **Notes from T4a2** (design §5.13): a sequence with a `script` is played from its engine record
+  (`sequences <id> --record`, `h3map.py`'s `scripted`), its timeline's differences listed in
+  `timelines/<id>-gaps.txt`; the record's start and turns go over the kept live part, but a kept
+  live part's visit tables (`[[message]]`, `[[found]]`, `[[level_up]]`, `[[cast]]`) and the
+  situation's finds still apply: T4b takes them from the record's events instead; a walk that
+  ends in a visit (a decision, a battle) may close without a `GameTurn` (`engine::played`
+  closes a walk at the next command or the record's end).
+- **Depends on:** T4a2 (done). **Status:** next.
 
 #### E24 M4 T4c — the other players, the viewer's controls, a golden replay
 

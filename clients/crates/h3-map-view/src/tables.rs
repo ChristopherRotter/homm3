@@ -170,6 +170,10 @@ pub struct WalkArt {
     /// (`walk_frame_pixels` 0x63D6C8: a tile in 32 / that many frames; speed 2's middle frame 12,
     /// 0x480509): none at speed 4, one draw at the step's end place without a wait (0x480483).
     pub pixels: Vec<Vec<i32>>,
+    /// A path's arrow on a tile it passes (`path_arrow_frames` 0x6782AC, read whole at E24 M4
+    /// T4a1; design §5.12): 64, by the step into the tile's direction plus 8 × the step out's
+    /// (0 north to 7 north-west), the arrow the number plus 2 (`crate::timeline::arrows`).
+    pub arrows: Vec<u8>,
 }
 
 impl WalkArt {

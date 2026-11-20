@@ -53,6 +53,9 @@ use crate::tables::{CAPITOL, FORT, TownArt};
 
 mod hover;
 mod panels;
+mod played;
+
+pub use played::{Played, played};
 
 /// A random hero (class 70): the import places it as a hero, not a static object.
 const RANDOM_HERO: u32 = 70;

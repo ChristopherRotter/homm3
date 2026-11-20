@@ -30,7 +30,7 @@ fn heroes() -> String {
 }
 
 /// The `[map.walk]` section (E24 M2 T3a), as `base.toml`'s.
-const WALK: &str = "[map.walk]\ngroups = [5, 6, 7, 8, 9, 8, 7, 6]\nframes = 8\nframe_ms = 50\npixels = [[8, 8, 8, 8], [10, 12, 10], [16, 16], []]\n";
+const WALK: &str = "[map.walk]\ngroups = [5, 6, 7, 8, 9, 8, 7, 6]\nframes = 8\nframe_ms = 50\npixels = [[8, 8, 8, 8], [10, 12, 10], [16, 16], []]\narrows = [8, 0, 0, 0, 8, 16, 16, 16, 17, 9, 1, 1, 1, 9, 17, 17, 18, 18, 10, 2, 2, 2, 10, 18, 19, 19, 19, 11, 3, 3, 3, 11, 12, 20, 20, 20, 12, 4, 4, 4, 5, 13, 21, 21, 21, 13, 5, 5, 6, 6, 14, 22, 22, 22, 14, 6, 7, 7, 7, 15, 23, 23, 23, 15]\n";
 
 /// The `[map.owners]` and `[map.towns]` sections: a list of every faction's town pictures each.
 fn owners_and_towns() -> String {

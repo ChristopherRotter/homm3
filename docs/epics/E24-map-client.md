@@ -207,7 +207,9 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   artifact still asked (the view names none); T4, a record played, cut in three by the user at
   its start (2026-11-19, by event family): T4a the viewer's own turns, cut again at its start (the
   agreed fallback): T4a1, the reading and the recordings (**done** 2026-11-19; the log's "M4
-  T4a1", design §5.12; MCL-Q39, MCL-Q40), T4a2 the viewer; T4b the visits; T4c the other
+  T4a1", design §5.12; MCL-Q39, MCL-Q40), T4a2 the viewer (**done** 2026-11-20, kept whole by
+  the user: the log's "M4 T4a2", design §5.13; the three games exact but the listed gaps of
+  MCL-Q39 and MCL-Q40); T4b the visits; T4c the other
   players' turns, the viewer's controls and a golden replay; the kept live parts' message texts
   as labels first (ADR-0009, found at T4a1, the user: none new meanwhile; **done** 2026-11-20,
   whole: the log's "M4, the labels"); T5, the battles handed over
@@ -432,3 +434,13 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   every player a town (the original banishes one without for seven days, E10's rule) and Red a
   second hero whose selection shows the engine's resources; recorded first in
   `clients/map/to-record.toml`.
+- **M4 T4a2, a sequence played from a record** (*provisional*; design §5.13): `sequences <id>
+  --record <r.jsonl> --record-map <map.h3m>` (the map the engine played: the record names it by
+  its bytes' hash); the record's start and turns applied after the kept live part, the
+  recording's timeline only compared; the n-th walk the viewer starts takes the record's n-th
+  `MoveHero` (`Unplayable::Moved` for a step off it); a turn's `[[turn]]` table from the panels
+  with the date's window, `at` 0 and no heroes or boats; the client's name of a normal week
+  (the week's number less one modulo 15) and month (modulo 10) for MCL-Q40 (b); the timeline's
+  differences from the original's listed in `timelines/<id>-gaps.txt` (an LCS's complement, `- `
+  the original's line, `+ ` ours), the frames' in `<id>-frames.txt`; a step's reveal before a
+  boarding's dissolve (not read).

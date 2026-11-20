@@ -9,7 +9,10 @@
 //! original's (`h3map.py frames`' `t<ms>.npz`) is written as `<dir>/ours/t<ms>.png`, the timeline
 //! as `<dir>/ours.txt`. The sequence's set-up and drawing are `crate::paint`'s (shared with
 //! `window` since M2 T4a): a walk is played with the hero the live part at 0 selects and the paths
-//! its recorded timeline shows.
+//! its recorded timeline shows. With `--record <r.jsonl> --record-map <map.h3m>` (E24 M4 T4a2,
+//! design §5.13; one sequence) the sequence is played from a whole game's record of its `script`
+//! instead (`h3map.py` makes it): the record's start and turns over the kept live part, its
+//! walks' paths, points and reveals; the recorded timeline is only compared.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -31,17 +34,20 @@ pub struct Options {
     only: Option<String>,
     frames: Option<PathBuf>,
     live: Option<PathBuf>,
+    record: Option<(PathBuf, PathBuf)>,
+    packs: PathBuf,
     bugs: Bugs,
     install: PathBuf,
     map: PathBuf,
 }
 
 impl Options {
-    /// Parses `[<id>] [--frames <dir>] [--live <live.toml>] [--bugs fixed|original] [--install
-    /// <dir>] [--map <dir>]`.
+    /// Parses `[<id>] [--frames <dir>] [--live <live.toml>] [--record <r.jsonl> --record-map
+    /// <map.h3m> [--packs <dir>]] [--bugs fixed|original] [--install <dir>] [--map <dir>]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let mut rest = args.iter();
         let (mut only, mut frames, mut live, mut install, mut map) = (None, None, None, None, None);
+        let (mut record, mut record_map, mut packs) = (None, None, None);
         let mut bugs = Bugs::Original;
         while let Some(arg) = rest.next() {
             if !arg.starts_with("--") {
@@ -56,6 +62,9 @@ impl Options {
             match arg.as_str() {
                 "--frames" => frames = Some(PathBuf::from(value)),
                 "--live" => live = Some(PathBuf::from(value)),
+                "--record" => record = Some(PathBuf::from(value)),
+                "--record-map" => record_map = Some(PathBuf::from(value)),
+                "--packs" => packs = Some(PathBuf::from(value)),
                 "--bugs" => {
                     bugs = match value.as_str() {
                         "fixed" => Bugs::Fixed,
@@ -68,13 +77,20 @@ impl Options {
                 other => return Err(format!("sequences: unknown option `{other}`")),
             }
         }
-        if only.is_none() && (frames.is_some() || live.is_some()) {
-            return Err("sequences: --frames and --live take one sequence".into());
+        if only.is_none() && (frames.is_some() || live.is_some() || record.is_some()) {
+            return Err("sequences: --frames, --live and --record take one sequence".into());
         }
+        let record = match (record, record_map) {
+            (Some(r), Some(m)) => Some((r, m)),
+            (None, None) => None,
+            _ => return Err("sequences: --record and --record-map go together".into()),
+        };
         Ok(Self {
             only,
             frames,
             live,
+            record,
+            packs: packs.unwrap_or_else(files::default_packs),
             bugs,
             install: install.unwrap_or_else(files::default_install),
             map: map.unwrap_or_else(files::default_map),
@@ -91,6 +107,14 @@ enum Verdict {
     New(usize),
     /// The first line that differs (0-based): ours and the recorded one (empty past the end).
     Changed(usize, String, String),
+    /// Played from a record (E24 M4 T4a2): its lines, and its differences from the recorded
+    /// timeline (`- recorded`, `+ ours`, in order) the listed gaps (`timelines/<id>-gaps.txt`).
+    Gaps(usize, usize),
+    /// Played from a record: its differences, none listed (no gaps file).
+    Unlisted(usize),
+    /// Played from a record: the first difference that is not the listed gap there (0-based):
+    /// ours and the listed one (empty past the end).
+    GapChanged(usize, String, String),
 }
 
 pub fn run(options: &Options) -> ExitCode {
@@ -147,6 +171,17 @@ fn all(options: &Options) -> Result<bool, String> {
                 "{id}: CHANGED at line {}: ours `{ours}`, recorded `{recorded}`",
                 line + 1
             ),
+            Ok(Verdict::Gaps(n, gaps)) => {
+                same += 1;
+                println!("{id}: {n} lines, the record's {gaps} gaps as listed");
+            }
+            Ok(Verdict::Unlisted(gaps)) => {
+                println!("{id}: {gaps} gaps from the recorded timeline, none listed");
+            }
+            Ok(Verdict::GapChanged(line, ours, listed)) => println!(
+                "{id}: a gap CHANGED at gap {}: ours `{ours}`, listed `{listed}`",
+                line + 1
+            ),
             Err(message) => println!("{id}: FAILED ({message})"),
         }
     }
@@ -165,12 +200,18 @@ impl Context<'_> {
     /// One sequence: played, drawn, its timeline against the recorded one.
     fn check(&self, sequence: &Sequence) -> Result<Verdict, String> {
         let options = self.options;
+        let record = options.record.as_ref().map(|(path, map)| paint::Record {
+            path,
+            map,
+            packs: &options.packs,
+        });
         let setup = paint::for_sequence(
             self.assets,
             &options.map,
             &options.install,
             sequence,
             options.live.as_deref(),
+            record,
         )?;
         let paint::Setup {
             mut painter,
@@ -235,8 +276,70 @@ impl Context<'_> {
         let Some(recorded) = recorded else {
             return Ok(Verdict::New(lines.len()));
         };
-        Ok(compare(&lines, &recorded))
+        if options.record.is_none() {
+            return Ok(compare(&lines, &recorded));
+        }
+        // Played from a record (E24 M4 T4a2): the differences against the listed gaps.
+        let theirs: Vec<&str> = recorded.lines().collect();
+        let gaps = differences(&lines, &theirs);
+        if let Some(dir) = &self.options.frames {
+            let out = dir.join("gaps.txt");
+            fs::write(&out, gaps.join("\n") + "\n")
+                .map_err(|e| format!("{}: {e}", out.display()))?;
+        }
+        let listed_path = options
+            .map
+            .join("timelines")
+            .join(format!("{}-gaps.txt", sequence.id));
+        let Ok(listed) = fs::read_to_string(&listed_path) else {
+            return Ok(Verdict::Unlisted(gaps.len()));
+        };
+        let listed: Vec<String> = listed
+            .lines()
+            .filter(|l| !l.starts_with('#') && !l.is_empty())
+            .map(String::from)
+            .collect();
+        Ok(match compare(&gaps, &listed.join("\n")) {
+            Verdict::Same(n) => Verdict::Gaps(lines.len(), n),
+            Verdict::Changed(n, ours, theirs) => Verdict::GapChanged(n, ours, theirs),
+            other => other,
+        })
     }
+}
+
+/// Our lines' differences from the recorded ones (E24 M4 T4a2): a longest common subsequence's
+/// complement, in order, each `- <recorded line>` or `+ <our line>`, a run's removals before its
+/// additions.
+fn differences(ours: &[String], theirs: &[&str]) -> Vec<String> {
+    let (n, m) = (ours.len(), theirs.len());
+    // common[i][j]: the longest common subsequence of ours[i..] and theirs[j..].
+    let mut common = vec![vec![0_u32; m + 1]; n + 1];
+    for i in (0..n).rev() {
+        for j in (0..m).rev() {
+            common[i][j] = if ours[i] == theirs[j] {
+                common[i + 1][j + 1] + 1
+            } else {
+                common[i + 1][j].max(common[i][j + 1])
+            };
+        }
+    }
+    let (mut i, mut j) = (0, 0);
+    let (mut out, mut added) = (Vec::new(), Vec::new());
+    while i < n || j < m {
+        if i < n && j < m && ours[i] == theirs[j] {
+            out.append(&mut added);
+            i += 1;
+            j += 1;
+        } else if j < m && (i == n || common[i][j + 1] >= common[i + 1][j]) {
+            out.push(format!("- {}", theirs[j]));
+            j += 1;
+        } else {
+            added.push(format!("+ {}", ours[i]));
+            i += 1;
+        }
+    }
+    out.append(&mut added);
+    out
 }
 
 /// Our lines against the recorded ones.
@@ -292,7 +395,11 @@ mod tests {
             ("a b", "sequences: one sequence or all"),
             (
                 "--frames out/x",
-                "sequences: --frames and --live take one sequence",
+                "sequences: --frames, --live and --record take one sequence",
+            ),
+            (
+                "a --record r.jsonl",
+                "sequences: --record and --record-map go together",
             ),
             ("a --bugs some", "sequences: --bugs takes fixed or original"),
             ("a --frames", "sequences: `--frames` needs a value"),
@@ -304,6 +411,17 @@ mod tests {
                 "{bad}"
             );
         }
+    }
+
+    #[test]
+    fn lists_the_differences_in_order() {
+        let ours: Vec<String> = ["0 a", "5 b", "9 c", "12 d"].map(String::from).into();
+        assert_eq!(
+            differences(&ours, &["0 a", "6 b", "9 c", "12 d", "13 e"]),
+            ["- 6 b", "+ 5 b", "- 13 e"]
+        );
+        assert!(differences(&ours, &["0 a", "5 b", "9 c", "12 d"]).is_empty());
+        assert_eq!(differences(&ours[..1], &[]), ["+ 0 a"]);
     }
 
     #[test]

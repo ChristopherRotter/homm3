@@ -1247,3 +1247,205 @@ fn row_of_none(hover: &toml::Table, i: usize) -> Value {
         .cloned()
         .unwrap()
 }
+
+/// A game of `MAP` hosted (`GameSession`), Red's hero walking two tiles north, then every
+/// player ending its turn for `days` days; Red's record.
+fn session_record(g: &Game, days: u32) -> String {
+    use h3_protocol::session::game::{Clock, CommandBounds, GameOptions, GameSession, Spectators};
+    use h3_protocol::wire::game::{AdventureCommand, GameCommand, Pos};
+    let rules = rules();
+    let raw = h3_map::read(&g.bytes, &Limits::default()).unwrap();
+    let setup = h3_map::import(&raw, rules).unwrap();
+    let options = GameOptions {
+        game: 3,
+        checkpoint_every: 0,
+        record_bytes: usize::MAX,
+        clock: Clock::UNLIMITED,
+        commands: CommandBounds::NONE,
+        spectators: Spectators::NONE,
+    };
+    let manifest = g.header.manifest.clone();
+    let mut out = Vec::new();
+    let mut session = GameSession::start(rules, &setup, 7, manifest, options, &mut out).unwrap();
+    let hero = g
+        .observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == 0)
+        .unwrap()
+        .id;
+    let path = [9, 8].map(|y| Pos { x: 10, y, level: 0 }).to_vec();
+    let walk = GameCommand::Adventure {
+        command: AdventureCommand::MoveHero { hero, path },
+    };
+    let mut seq = 1;
+    session.play(PlayerId::new(0), seq, walk, &mut out).unwrap();
+    for _ in 0..days {
+        for player in 0..3 {
+            seq += 1;
+            session
+                .play(
+                    PlayerId::new(player),
+                    seq,
+                    GameCommand::EndTurn {},
+                    &mut out,
+                )
+                .unwrap();
+        }
+    }
+    session.record(PlayerId::new(0)).unwrap()
+}
+
+#[test]
+fn a_record_s_walks_and_turns() {
+    let g = game();
+    let text = session_record(&g, 7);
+    let loaded = engine::load(&text, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    // The walk: its tiles, its points at its last step, its whole reveal at its first (MCL-Q39
+    // (c)): the rows above the explored circle.
+    let [walk] = &played.moves[..] else {
+        panic!("one walk: {:?}", played.moves);
+    };
+    let at = |x, y| h3_map::model::Pos { x, y, z: 0 };
+    assert_eq!(walk.tiles, [at(10, 9), at(10, 8)]);
+    assert_eq!(walk.points[0], None);
+    assert!(walk.points[1].is_some_and(|p| p > 0 && p < 2000));
+    assert!(!walk.revealed[0].is_empty() && walk.revealed[1].is_empty());
+    assert!(walk.revealed[0].iter().all(|t| t.y < 8));
+    // Red's turns' starts, days 2 to 8: the date's window, the panels' kingdom with the day, the
+    // week's kind and its client's name (MCL-Q40 (b): week 2 the names' second).
+    assert_eq!(played.turns.len(), 7);
+    let turn = |i: usize| table(&played.turns[i]);
+    for (i, day) in (2..=8).enumerate() {
+        let t = turn(i);
+        assert_eq!(t["player"].as_integer(), Some(0));
+        assert_eq!(table(&t["status"])["kind"].as_integer(), Some(1));
+        let date = numbers(&table(&t["kingdom"])["date"]);
+        assert_eq!(
+            date,
+            [1, i64::from(day > 7) + 1, (day - 1) % 7 + 1],
+            "day {day}"
+        );
+        assert!(!t.contains_key("realm") && !t.contains_key("chosen"));
+    }
+    assert_eq!(numbers(&turn(0)["week"]), [0, 0]);
+    assert_eq!(numbers(&turn(6)["week"]), [0, 1]);
+    assert_eq!(numbers(&turn(6)["month"]), [0, 0]);
+    // Each reads as a recording's `[[turn]]` table.
+    assert!(
+        played
+            .turns
+            .iter()
+            .all(|t| h3_map_view::live::Turn::read(t).is_some())
+    );
+}
+
+#[test]
+fn a_record_s_rarer_lines() {
+    use h3_protocol::wire::game::{AdventureCommand, GameCommand, GameEvent, Month, Pos, Week};
+    let g = game();
+    let record = session_record(&g, 0);
+    let mut lines: Vec<String> = record.lines().map(String::from).collect();
+    let line = |m: &ServerMessage| codec::encode_text(m);
+    let moved = |path: Vec<Pos>| ServerMessage::GameAccepted {
+        n: 90,
+        seq: 9,
+        command: GameCommand::Adventure {
+            command: AdventureCommand::MoveHero { hero: 0, path },
+        },
+    };
+    // A walk without a tile, a month's start with Red's turn, a fresh snapshot, another message,
+    // then a walk the record ends in.
+    lines.push(line(&moved(Vec::new())));
+    lines.push(line(&ServerMessage::GameTurn {
+        n: 91,
+        legal: Vec::new(),
+        castable: Vec::new(),
+    }));
+    // Each week's and month's kind but the normal ones, each with a turn's start.
+    let starts = [
+        (
+            GameEvent::MonthStarted {
+                month: 2,
+                kind: Month::Plague {},
+            },
+            [2, 0],
+        ),
+        (
+            GameEvent::MonthStarted {
+                month: 3,
+                kind: Month::Creature { creature: 12 },
+            },
+            [1, 12],
+        ),
+        (
+            GameEvent::WeekStarted {
+                week: 9,
+                kind: Week::Creature { creature: 7 },
+            },
+            [1, 7],
+        ),
+        (
+            GameEvent::WeekStarted {
+                week: 10,
+                kind: Week::Of {
+                    creatures: [Some(30), Some(31)],
+                    bonus: 5,
+                },
+            },
+            [2, 0],
+        ),
+    ];
+    for (start, _) in &starts {
+        lines.push(line(&ServerMessage::GameEvents {
+            n: 92,
+            events: vec![start.clone(), GameEvent::TurnStarted { player: 0 }],
+        }));
+    }
+    lines.push(line(&snapshot(&g.observation)));
+    lines.push(line(&ServerMessage::MatchCancelled {}));
+    lines.push(line(&moved(vec![Pos {
+        x: 11,
+        y: 10,
+        level: 0,
+    }])));
+    let record = lines.join("\n");
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    assert_eq!(played.moves.len(), 3);
+    assert!(played.moves[1].tiles.is_empty() && played.moves[1].points.is_empty());
+    let last = &played.moves[2];
+    assert_eq!(
+        (last.points.as_slice(), last.revealed.as_slice()),
+        (&[None][..], &[Vec::new()][..])
+    );
+    for (i, (start, want)) in starts.iter().enumerate() {
+        let key = if matches!(start, GameEvent::WeekStarted { .. }) {
+            "week"
+        } else {
+            "month"
+        };
+        assert_eq!(numbers(&table(&played.turns[i])[key]), want, "{start:?}");
+    }
+    // A record without its first snapshot has no start.
+    let no_start = text(&g.header, &[ServerMessage::MatchCancelled {}]);
+    let loaded = engine::load(&no_start, &g.bytes, rules()).unwrap();
+    assert_eq!(
+        engine::played(&loaded, &g.art, rules()),
+        Err(Refused::NoStart)
+    );
+    // A path's tile past a byte refuses the record.
+    let mut bad: Vec<String> = record.lines().map(String::from).collect();
+    bad.push(line(&moved(vec![Pos {
+        x: 1,
+        y: 300,
+        level: 0,
+    }])));
+    let loaded = engine::load(&bad.join("\n"), &g.bytes, rules()).unwrap();
+    assert!(matches!(
+        engine::played(&loaded, &g.art, rules()),
+        Err(Refused::Line(_, why)) if why.contains("off the map")
+    ));
+}

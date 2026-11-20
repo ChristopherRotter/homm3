@@ -203,7 +203,8 @@ fn set_up<'a>(assets: &'a Assets<'a>, options: &Options) -> Result<(Setup<'a>, S
     let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let sequences = Sequences::parse(&text).map_err(|e| format!("{}: {e}", path.display()))?;
     if let Some(sequence) = sequences.get(&options.id) {
-        let setup = paint::for_sequence(assets, &options.map, &options.install, sequence, None)?;
+        let setup =
+            paint::for_sequence(assets, &options.map, &options.install, sequence, None, None)?;
         let what = format!(
             "the sequence {} ({} inputs to {} ms)",
             sequence.id,

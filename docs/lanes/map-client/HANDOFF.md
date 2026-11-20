@@ -5,39 +5,21 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1**, **M2**
-  and **M3** closed (`E24-archive.md`); the crate `clients/crates/h3-map-view`; 53 situations and 96
-  sequences exact on the whole screen (a viewer change runs `h3map.py drawn` first: the runbook,
-  "Which captures a change needs"; `--bugs original` the comparisons' profile). **M4** refined
-  (2026-10-31); **Part A done** (2026-11-19: T1, T2 in their cuts). **T3** cut in two by the user
-  (2026-11-19): **T3a done** (design §5.9: `h3_map_view::engine`, the map's view from a record),
-  **T3b** cut in two by the user (the same day, the panels first; a fact the record lacks an
-  `MCL-Q<n>`, never a rule copied): **T3b1 done** (2026-11-19, design §5.10: the kingdom, the
-  status window, the kingdom's window and `[chosen]` from the record, a town's own name, MCL-Q15
-  (b) as `tiny.fnt`; `h3map.py engine` and `set.toml`'s `engine` entries: `engine-start-panels`
-  exact on the whole screen, `engine-start-town` but MCL-Q36's morale, `engine-start-owners` but
-  the bonus's gold and the morale). **T3b2 done** (2026-11-19, kept whole by the user; design
-  §5.11: the `[hover]` facts from the record, every explored tile's hint and cursor compared, a
-  still's `pointer` over the map, a town's picture by its view, a map's own town names; two
-  shipped starts with no draw in sight, `start-jared` and `start-good-witch`; six engine starts as
-  expected). **T4** cut in three by the user (2026-11-19, by event family: T4a the viewer's own
-  turns, T4b the visits, T4c the other players, the controls and a golden replay); **T4a1 done**
-  (2026-11-19, the agreed fallback's first half; design §5.12: `make_hero_path`'s arrows and a
-  step's order read, three scripted games recorded with their engine scripts in
-  `clients/map/to-record.toml`). **The kept texts as labels done** (2026-11-20, ADR-0009: the
-  harness writes a box's, a level-up's and a find's texts as their records, `h3lod.label`; the
-  42 kept live parts rewritten; `tests/texts.rs` refuses a text). **Next: T4a2** (the viewer plays
-  the scripted games from their records; `game-week`'s live part kept with labels once
-  recorded again), T4b, T4c, T5, T6. The inbox: the viewer's tests' catalogues hold a few of
-  the original's sentences (the user's to decide). Open questions: **MCL-Q29**, **MCL-Q30**
-  ((b) recommended), **MCL-Q31**, **MCL-Q32** ((b)), **MCL-Q33** ((b)), **MCL-Q34** ((a)),
-  **MCL-Q35** ((b)), **MCL-Q36** and **MCL-Q37** (facts not in the record: a hero's morale, luck and
-  whether it can move; the cursor's costs, guarded tiles, a defended town, a visited bank's guards;
-  (a) recommended, the adventure and server lanes' inboxes told), **MCL-Q38** (a shipped map's town
-  list order; (a)), **MCL-Q39** (a walk's points and reveal per step; (a), both engine lanes told),
-  **MCL-Q40** (a normal week's and month's name; (a), the adventure lane told); none blocks. Next
-  ids **MCL-Q41**, **MCL-STUB-2**.
-- **Open pull requests** (2026-11-20): the labels task's (`map-client/e24-m4-labels`): check it
-  first. Merged branches are the user's to delete (the proxy refuses it).
+  and **M3** closed (`E24-archive.md`); the crate `clients/crates/h3-map-view`; 53 situations and 99
+  sequences (a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change
+  needs"; `--bugs original` the comparisons' profile). **M4** refined (2026-10-31): Part A done
+  (2026-11-19); T3 done in its cuts (T3a, T3b1, T3b2: a record's start, design §5.9 to §5.11);
+  T4 cut in three by the user (T4a the viewer's own turns, T4b the visits, T4c the other players,
+  the controls and a golden replay): **T4a1 done** (design §5.12), the labels task done
+  (ADR-0009), **T4a2 done** (2026-11-20, kept whole by the user; design §5.13: the three scripted
+  games played from their engine records, `sequences <id> --record`, exact but the listed gaps
+  of MCL-Q39 and MCL-Q40, `timelines/<id>-gaps.txt`). **Next: T4b** (the visits from a record),
+  then T4c, T5, T6. The inbox: the viewer's tests' catalogues hold a few of the original's
+  sentences (the user's to decide). Open questions: **MCL-Q29** to **MCL-Q40** (none blocks;
+  MCL-Q36, Q37, Q39, Q40: facts not in the record, (a) recommended, the engine lanes' inboxes
+  told). Next ids **MCL-Q41**, **MCL-STUB-2**.
+- **Open pull requests** (2026-11-20): T4a2's (`map-client/e24-m4-t4a2`): check it first. Merged
+  branches are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
 - **From E17** (`clients/README.md`; ADR-0020, ADR-0024): the decoders, the compositor, the SDL 3 adapter, the string catalogue, the gate, the harness (the original under Wine, `h3mem.py`, `h3map.py`: the runbook `clients/capture/README.md`).
@@ -61,6 +43,13 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-20, E24 M4 T4a2** (the user at the start: kept whole, the suggested cut declined):
+  the three scripted games recorded again and played from their engine records (`engine::played`,
+  the timeline's `moves`, the path's arrows, the walks' reveal on the view and the minimap,
+  `sequences --record`, `h3map.py`'s `scripted`; the gaps listed); `master`'s #1066 merged in and
+  the games checked again (the log's "M4 T4a2"). Original data staged (the 64 files and the
+  manuals), SHA-256 checked; the PC was not needed after the first minutes. Nothing is waiting on
+  the user's computer.
 - **2026-11-20, E24 M4, the kept texts as labels** (the user at the start: the queued task,
   kept whole): `h3lod.label` and `h3map.py`'s writers; the 42 kept live parts' 353 texts as
   their records (135 lines), three sequences recorded again to check it; the guard
@@ -76,8 +65,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   original's box texts (ADR-0009: a labels task queued first). Original data staged (the 64 files
   and the manuals), SHA-256 checked; the PC was not needed after the first minutes. Nothing is
   waiting on the user's computer.
-- **2026-11-19, E24 M4 T3b2** (the user at the start: kept whole; MCL-STUB-1 still the adventure
-  lane's): the hover's facts from a record, the towns' pictures, two shipped starts found by a
-  scan of the 160 and compared, every explored tile's hint and cursor checked (the log's "M4
-  T3b2"; MCL-Q37, MCL-Q38). Original data staged (63 files and the manuals), SHA-256 checked; the
-  PC was not needed after the first minutes. Nothing is waiting on the user's computer.

@@ -259,6 +259,7 @@ fn start(situation: &str, speed: usize) -> Start {
         casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
+        moves: None,
     }
 }
 
@@ -410,7 +411,9 @@ fn the_walks_frames_are_m2_t3bs() {
             "land-walk",
             "cast-boat",
             "cast-boat-far",
-            "cast-boat-new"
+            "cast-boat-new",
+            "game-walk",
+            "game-day"
         ]
     );
 }
@@ -450,6 +453,7 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
+        moves: None,
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -666,6 +670,7 @@ fn what_it_cannot_play_yet() {
         casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
+        moves: None,
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -814,6 +819,7 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
+        moves: None,
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
 }
@@ -1467,6 +1473,7 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
+        moves: None,
     }
 }
 
@@ -1631,6 +1638,7 @@ fn the_minimap_drawn_again_by_a_scroll_a_lift_and_each_steps_end() {
         hero: Some(Pos { x: hx, y: hy, z: 0 }),
         index: None,
         owners: Arc::new(Vec::new()),
+        walked: Arc::default(),
     };
     let run = |l: &mut Loop, from: u32, to: u32| {
         for t in from..=to {
@@ -2085,6 +2093,7 @@ fn hovering(live: bool, bugs: Bugs) -> Loop {
         casts: Vec::new(),
         boats: Boats::default(),
         water: Arc::default(),
+        moves: None,
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -3110,5 +3119,6 @@ mod computers;
 mod finds;
 mod flags;
 mod levels;
+mod moves;
 mod replies;
 mod turns;

@@ -1,0 +1,6 @@
+# The record's gaps from the original's timeline (E24 M4 T4a2, design §5.13): `h3-map-view
+# sequences game-week --record` plays the sequence from its script's engine record and lists its
+# timeline's differences from the recorded one, `- ` the original's line and `+ ` ours, in order;
+# they must be these.
+# None: week 2's name is the client's (MCL-Q40 (b)), which only the message's frames show
+# (`game-week-frames.txt`).
