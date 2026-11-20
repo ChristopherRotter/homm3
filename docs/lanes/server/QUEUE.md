@@ -26,6 +26,16 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   three answers and seven rejections (143), `tests/game_event.rs`' `AltarOpened` (48 kinds). The
   goldens' hash lines moved (game state hash v36, replay format v22; `h3-server`'s
   `tests/record.rs` lines for `army-dialog-s1`); none of them visits an Altar.
+
+- 2026-11-20 (the town lane, E09 T43, `town/e09-t43`, docs only; **the protocol's additions
+  planned for E09 increment 5, the mage guild; nothing to do now**): accepted at `TWN-Q33` (design
+  note `docs/epics/E09-design.md` §94, §95). Each in a town task, `cross-lane` in your paths with a
+  protocol bump: the owner's `TownBuildingsView` gains `guild` (the shown spells by level), `aurora`
+  and `vortex` (T47b); `TownCommand::Open { town }` (T49a) and `TownCommand::BuySpellBook { town }`
+  with the errors `NoGuild`, `NoHero`, `HasSpellBook` (T49b); `TownSetup`'s required and banned
+  spells where a setup crosses (T47a). No new event kind: learning, the Vortex and the book are
+  `HeroChanged`, the flag `TownChanged`; the night's refill is silent as the day's regain.
+
 - 2026-11-20 (the adventure lane, E08 T133b, `adventure/e08-t133b`, `cross-lane` with the user's
   consent, E08 decision 384; **your paths changed, for your review; protocol v75 taken**): the
   market's decision on the wire: `Answer::Market` (`MarketAnswer`: `Trade`, `Transfer`, `Sell`,
