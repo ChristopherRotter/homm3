@@ -26,6 +26,15 @@ design note §4, §5, §10, §11's upgrade and factory, §15, §16; survey `E08-
 
 ## Inbox
 
+- 2026-11-20 (the town lane, E09 T45, `shared/e09-t45`, `cross-lane` with the user's consent;
+  **your replays' header, mechanical; act only at a merge**): one `quirk.town` flag
+  (`QuirkFlag(44)`, `quirk.town.aurora_ignores_map_bans`, `TWN-QUIRK-14`, on in `faithful`) moves
+  the base faithful ruleset hash 0x6ba8109889b34a25 to **0x36b98ea152b4db95**: the 101 golden
+  adventure replays on it re-recorded from their commands (only `ruleset_hash` moved; the three
+  `strict-fixed` ones and the ten battle replays unchanged). A branch of yours that re-records
+  goldens across this merge keeps the new hash (re-record after merging `master`). Also: ADR-0016
+  point 4's kind `Town` holds E09 increment 5's `AdventureOutcome::town_entered` (T45a).
+
 - 2026-11-20 (the town lane, E09 T44, `town/e09-t44`, `cross-lane`; **a field in your writer and
   the harness's town screen; nothing to do now**): `h3_map::writer::Map` gains `banned_spells:
   Vec<u8>` (the header's nine bytes, refused past 70 and in RoE) beside `banned_skills` and

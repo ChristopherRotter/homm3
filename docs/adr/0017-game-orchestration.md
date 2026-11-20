@@ -1043,7 +1043,7 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    version moves: the profiles' ruleset hashes do); no new stream (decision 179). The numbers are
    the next at merge, in merge order with E08's increment 14 (E08 T133b took game state hash v35,
    replay format v21, encoding v14 and protocol v75 after the client lane's replay format v20, E27
-   M4 T3a; its T134a takes game state hash v36, replay format v22, encoding v15 and protocol v76).
+   M4 T3a; its T134a took game state hash v36, replay format v22, encoding v15 and protocol v76).
    **Increment 12** bumps the game state hash (v28: the exchange, its rest, the battle bonuses
    leaving the details), the adventure state hash (v22), the adventure ruleset part (v20), the
    map import (v22) and the adventure replay format (v13: the map garrison's reference in a
