@@ -657,6 +657,16 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
        or the garrison as a mine's guards).
      - **E09's increment 2 adds no visit rule**: a build is the town command (ADR-0017 point 1),
        never a step, and needs no hero in the town (the original builds from the town list).
+     - **E09's increment 5** (TWN-GLD-005; TD-27, E09 decision 170): the step that **enters** a
+       town (one of the team, or an undefended one it captures) and a `Revisit` of a town of the
+       team name the town in the visit's outcome (`AdventureOutcome::town_entered`, beside
+       `capture`), which the game composes as the town's visit (ADR-0017 point 10: the Vortex,
+       then the town's heroes learn; the original's `town_visit` 0x4AAFD0 opens the town screen
+       and teaches at its end). The adventure gives nothing itself and holds no guild fact; the
+       outcome is not state (no hash moves). A siege names no town entered (the attacker stays
+       outside); the game teaches after its battle. Batch TWN-5 confirmed the triggers (E09 T44,
+       survey `E09-guild.md` §21, TWN-5-5: a visit and an opening give the Vortex, a turn's
+       start never).
    - **E09's kind `Tavern`** (increment 4; class 95; E09 decision 106; survey `E09-tavern.md` §3):
      **visited from a neighbour** (its entrance blocked, VCMI's `blockVisit`), not visitable from
      above as the template says, no owner, no mark, no draw. A step toward its entrance from a
@@ -1474,3 +1484,8 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   E08 T127b (design note `E08-design.md` §1 to §12, survey `E08-trades.md`); batch E14's outcome
   (T130, survey §21: every row as read but the Hill Fort's RoE mark, withdrawn, decision 378)
   folded in; placed after E09 increment 4's text.
+- 2026-11-20 (E09 T45 `shared/`; E09 decisions 170, 175, 177, `TWN-Q31` to `TWN-Q33`): point 4's
+  kind `Town` amended for E09 increment 5, the mage guild: the town entered named in the visit's
+  outcome (`AdventureOutcome::town_entered`, not state). Drafted in E09 T43 (design note
+  `E09-design.md` §89); batch TWN-5's outcome (T44, survey `E09-guild.md` §21: every row as read)
+  folded in.

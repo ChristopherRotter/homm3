@@ -189,6 +189,34 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    ones (TWN-4-1); the two Conflux classes weighing 5 in every slot-1 draw (TWN-4-8).
    **Increment 4's setup** gains, per hero type, the map's customised entry (above); nothing else:
    the masks, the allowed heroes and the prisoners are increment 1's.
+   **E09's increment 5** (the mage guild; E09 decisions 162, 167 to 177) adds two town commands
+   (ADR-0028 point 6). **`TownCommand::Open { town }`** (TWN-GLD-006; TD-27, E09 decision 170)
+   stands for the original's town screen opened from the town list and its guild's window looked
+   at: in an own town, in its turn, with no decision open, it gives the Mana Vortex (TWN-GLD-009)
+   to the town's garrison hero, then to its visitor, then teaches the visitor, then the garrison
+   hero (TWN-GLD-004); refused only for an unknown town or another's (`UnknownTown`, `NotOwner`),
+   changing nothing; listed by `legal_commands` only where it would change something (E09 decision
+   175). **`TownCommand::BuySpellBook { town }`** (TWN-GLD-007; E09 decision 176) buys the core's
+   spell book for the town's visitor, else its garrison hero, in an own town with a standing Mage
+   Guild, for the part's price (500 gold), while that hero wears none; then the town's heroes learn.
+   Both are their player's, in its turn, with no decision open (GAM-DEC-001), each refusal typed
+   and changing nothing.
+   **The state.** Each town's record (ADR-0028 point 2) gains its guild's twenty slots, drawn when
+   the game is built (TWN-GLD-002, the towns' stream, point 4), its Mana Vortex's week flag and,
+   static, its Aurora set; the store of towns shares and hashes them as the rest (the town state
+   hash v4).
+   **The setup** gives each town its map's **required** and **banned** spells (`TownSetup`, the
+   import: TWN-SET-012; an RoE map's required set empty, its banned set read), each the ruleset's
+   (`GameSetupError`'s spell refusal, after the scenario's bans); the scenario's banned spells
+   (GAM-SET-003) are read by the draw and, with `TWN-QUIRK-14`'s flag off, by the Aurora set, both
+   at the build: the game keeps no ban after it.
+   **The build** draws every town's guild from the towns' stream after the towns' records exist
+   (each faction resolved, its buildings set; the original's `town_setup` 0x5C08B0 after the
+   buildings), in `TownId` order; then the main towns' heroes learn (TD-10, E09 decision 167: the
+   visitor, then the garrison hero; the original's `main_town_heroes` 0x4CA1A2), after every draw
+   of the build. Batch TWN-5 confirmed the draw's exclusions and the start's learning (E09 T44,
+   survey `E09-guild.md` §21: TWN-5-1, a spell both required and banned in no slot, TD-25;
+   TWN-5-4, the main town's generated hero knowing the guild's shown spells on day 1, TD-10).
    **Increment 10** (dwellings and hiring; E08 decision 231) adds no command: a dwelling's or a
    Refugee Camp's visit is a step of `MoveHero` (both kinds are entered), and the free creatures
    and the purchases are answers (point 6). The setup gains nothing beyond ADR-0016's (the
@@ -307,6 +335,22 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    so: the best hero the strongest army's, not the most experienced; the artifacts by the backpacks
    alone; the army with a town's garrison counted and the best creature from it; VCMI's best hero,
    artifacts, army and best creature refuted.
+   **E09's increment 5** (TWN-VEW-004 amended): **a town's guild is its owner's** (the original
+   shows it in the owner's town screen only; `E09-guild.md` §6): the owner's town view gains, per
+   level 1 to 5, the spells the guild shows (TWN-GLD-003: none above the guild level; the drawn
+   spells but never the unshown slots), whether a building of role `aurora` teaches every spell
+   there (derivable, given for the client's scroll), and the Mana Vortex's week flag (the owner
+   knows whether it took the Vortex this week). No other viewer sees any of it, not even Visions'
+   top level. A build that changes what the guild shows (a level, the Library), a capture and the
+   Vortex's cleared flag are told as the town view's change (`TownChanged`, TWN-VEW-001's events),
+   after the command's own events; every week's set flag in the week's views. **Learning** is
+   told as `HeroChanged { change: LearnSpell(spell) }` per spell, in the order learned, to the
+   hero's owner (as a meeting's, E08 T51b); **the Vortex** as `HeroChanged { change:
+   SetSpellPoints(points) }` to the hero's owner, then the town's `TownChanged`; the **night's
+   refill** as the day's regain is (HER-MAN-002: no event, the points in the owner's observation).
+   The book's purchase is told as `ResourcePaid`, then `HeroChanged { change: AddArtifact(book) }`,
+   then the learning's. Batch TWN-5 read what the guild shows (E09 T44, TWN-5-3: a Tower's Mage
+   Guild 5 shows 5, 4, 3, 2, 1 spells by level, with the Library 6, 5, 4, 3, 2, the spares at once).
    From increment 12 the observation adds to each **map garrison** a viewer sees (by object: type
    and anchor) its army at the viewer's level, which the game derives as a town's garrison's (the
    owner's team, a hero with Visions at level 3 within reach of the entrance, else the viewer's
@@ -435,6 +479,16 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    cleared too (`next_player_turn` 0x4C705D, after the victory tests), before the next group's turn
    starts: a hero that came back in its owner's own turn goes at the next week's release, and one
    that came back after that turn ended stays through it.
+   **From E09 increment 5** (TWN-GLD-008, -009; GAM-CAL-002 amended) **every week's first day**
+   sets every town's Mana Vortex flag with the towns' week (the original's `new_day_week_events`
+   0x4C8A09), and **every new day**, after every hero's daily regain (HER-MAN-002), raises each
+   town's visitor's, then garrison hero's spell points to their maximum (HER-MAN-001), never
+   lowering them, for each town in `TownId` order with a building of role `guild` ever built (the
+   original's `new_day` 0x4C82E4: no spell book, no owner test; `E09-guild.md` §14). Day 1 has no
+   new day, so no refill. **No turn start teaches or gives the Vortex** (TD-27, E09 decision 170):
+   a hero that gains Wisdom or a spell book while it stands in a town learns at the next trigger
+   (point 10). Batch TWN-5 confirmed both (E09 T44, TWN-5-5: the garrison hero at 20, its maximum,
+   at week 2's and week 3's turn starts, refilled and not doubled; the flag set again each week).
    From increment 10 **the adventure's week step** first refills **every dwelling**, owned or not
    (each count its creature's growth, set; the guards the kind's full guards; no week's or month's
    kind), then draws the weekly objects' contents and **the camps' creatures** in one pass in
@@ -534,6 +588,16 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    player whose hero returns**: its own command (the flight, the surrender) ends the battle. A loss,
    a draw, a capture's leave and a dismissal draw nothing. The map Tavern's hire draws as the
    town's.
+   **E09's increment 5** draws **the guilds from the towns' stream** (`StreamId::TOWNS`; E09
+   decision 179, the user's over a new named stream: no `shared/` change, but every later draw of
+   the towns' stream moves, so the replays that play a week re-record their outcomes): when the
+   game is built, before any other draw of that stream, every town in `TownId` order, its levels 1
+   to 5, each slot not given to a required spell and with a total weight above 0 one draw over the
+   total (the original's `random_between(1, total)` and its running sums). Nothing in play draws a
+   guild. The original's one generator interleaves these draws with the rest of its setup's; the
+   engine's order is its own (E08 decision 17). Batch TWN-5 saw the guild drawn once at the start
+   (E09 T44, TWN-5-3: the Library's spares as drawn at the start, shown when it is built; a
+   Castle's level-5 slots empty, its weights 0 there).
    **Increment 10's setup placeholders**: in the static map's placement walk, in object order,
    each **random dwelling's faction** (uniform among its set) then **level** (uniform in its
    range), after E09's placeholders and **before every other existing one** (the drawn type's
@@ -904,6 +968,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    legal as the legal commands list it. **The dismissal has no entry** (a management command, as the
    army commands: E08 decision 99), nor has the Thieves' Guild (a query, no command): the AI lane
    may read the query for its agents.
+   **E09's increment 5** appends (`cross-lane`, the AI lane's paths, E09 decision 7) **the town's
+   opening** (one entry, the town by its entrance in the tile head; one action per `Open` the legal
+   commands list, so only where it would change something: encoding the next at merge) and **the
+   spell book** (one entry, the same head; listed where the town's guild stands, its hero lacks a
+   book and the treasury holds the price; the next version, or the same when both land together).
+   The env reads the guild through the owner's town view; no learning is an action.
    **Increment 14's action encoding** (the next version at merge: v14 after E09's v12 and v13)
    appends 67 entries, each legal where `legal_commands` lists its answer, tile 0 alone: a market's
    trade of one lot per pair (42, given then wanted in the core's order), its sale of one lot for
@@ -962,6 +1032,18 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    (decision 115) and the quirk flags of `TWN-QUIRK-12` and `-13` (no version moves: the
    profiles' ruleset hashes do, as E08's Sirens flag's). The numbers are the next at merge, after E08's increment 13 (merged first: map import
    v24).
+   **E09's increment 5** bumps the game state hash (the store's v4 folded in), the map import (the
+   towns' required and banned spells into `TownSetup`) and the adventure replay format (`town
+   open`, `town book`), each `cross-lane`; the replays that play a week re-record their outcomes
+   (the guild's draw moves the towns' stream, decision 179); the protocol (the server lane's,
+   `cross-lane`: the two commands and the new `TownCommandError`s, the owner's guild, Aurora mark
+   and week flag in the town view) and the env's action encoding (point 8, the AI lane's,
+   `cross-lane`). The adventure state hash and ruleset part do not move (`AdventureOutcome`'s town
+   entered is not state, ADR-0016 point 4). Shared (E09 T45): the quirk flag of `TWN-QUIRK-14` (no
+   version moves: the profiles' ruleset hashes do); no new stream (decision 179). The numbers are
+   the next at merge, in merge order with E08's increment 14 (E08 T133b took game state hash v35,
+   replay format v21, encoding v14 and protocol v75 after the client lane's replay format v20, E27
+   M4 T3a; its T134a took game state hash v36, replay format v22, encoding v15 and protocol v76).
    **Increment 12** bumps the game state hash (v28: the exchange, its rest, the battle bonuses
    leaving the details), the adventure state hash (v22), the adventure ruleset part (v20), the
    map import (v22) and the adventure replay format (v13: the map garrison's reference in a
@@ -1061,6 +1143,35 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     slot's returning mark cleared, the replacement drawn into the slot. A town's hire would teach
     the town's guild spells (`town_heroes_learn_spells` 0x5BE030; batch TWN-4's TWN-4-2: a hired
     hero with a spell book learned them, a Knight none); the guild is increment 5's (`TWN-STUB-15`).
+    **E09's increment 5: the town's heroes learn** (TWN-GLD-005; the original's nine callers of
+    `town_heroes_learn_spells` 0x5BE030, `E09-guild.md` §12; TD-27 the original's) at each of
+    these, as the town's part returns it (ADR-0028 point 2: the visitor first, then the garrison
+    hero, each its `LearnSpell`s), in one infallible application with the command:
+    - **a visit's end**: a step that enters a town of the team, a `Revisit` there and an
+      undefended town's capture (the outcome's town entered, ADR-0016 point 4), after the
+      capture's own effects: first the opening's Vortex (the garrison hero, then the visitor; the
+      original's town screen opened by the visit, `town_screen_init` 0x5C63C0), then the learning;
+    - **a siege's end** (whoever won; not a battle against a visitor beside a garrison hero, which
+      is no siege): after the battle's outcome and a capture, the town's visitor and garrison hero
+      as they then stand (E09 decision 171; the attacker stays outside, ADR-0016 point 4), no
+      Vortex;
+    - **a build**, the command's and a town event's (TWN-BLD-005, TWN-EVT-003): after `TownBuilt`
+      and its views, the learning, then the Vortex (the garrison hero, then the visitor; the
+      original's `town_build_effects` 0x5BEDE0 learns before the building's visit);
+    - **a town's hire** (TWN-TAV-003; lifts `TWN-STUB-15`): after the placement and its events, the
+      learning (the hired visitor, then the garrison hero), then the Vortex to the hired hero
+      (`town_tavern_click` 0x5D846C); the map Tavern's hire teaches nothing;
+    - **a move between the town's bars** (TWN-ROW-002 to -004): after the move, while a visitor
+      stands, the learning (the original's bars rebuilt, `town_screen_bars` 0x5C7007);
+    - **the opening** (`Open`) and **the book's purchase** (`BuySpellBook`), point 1;
+    - **the start** (TD-10; lifts `TWN-STUB-6`), point 1.
+    Town Portal's and Castle Gate's arrivals (increment 7) and the computer's re-visits and book
+    purchases (E10, E13) are not built here. **The Vortex** (TWN-GLD-009) is the town's part's
+    check per hero in the order named, its flag cleared at the first that takes it. **The book's
+    purchase**: the price paid, the book given (`HeroChange::AddArtifact` of the core's spell book,
+    worn at its position), then the learning; no refusal after the checks. Batch TWN-5 confirmed
+    the triggers it ran (E09 T44, survey `E09-guild.md` §21: TWN-5-3's visit, TWN-5-4's start,
+    TWN-5-5's visit and opening with the garrison hero first; no turn start).
     **Increment 12's outcomes:** the exchange is an outcome the game opens (or holds after a
     battle); a movement gain, the Sirens' losses and the Stables' upgrade, the battle bonuses and
     the timed marks are the adventure's own changes of the hero on the map and its army (E08
@@ -1611,3 +1722,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   Alternatives. Drafted in E08 T127b (design note `E08-design.md` §13 to §19); batch E14's outcome
   (T130, survey `E08-trades.md` §21: every point as read; the import without the RoE mark,
   decision 378) folded in; placed after E09 increment 4's text.
+- 2026-11-20 (E09 T45 `shared/`; E09 decisions 162, 163, 165 to 181; `TWN-Q31` to `TWN-Q33`):
+  points 1, 2, 3, 4, 8, 9 and 10 amended for E09 increment 5, the mage guild: `TownCommand::Open`
+  and `BuySpellBook`, the guild in the store and its draw at the build from the towns' stream, the
+  setup's town spells, the owner's guild view, the night's refill and the Vortex's week, the env's
+  two entries, the versions, the learning's triggers. Drafted in E09 T43 (design note
+  `E09-design.md` Part G §82 to §100); batch TWN-5's outcome (T44, survey `E09-guild.md` §21:
+  every row as read) folded in; placed after E09 increment 4's text.
