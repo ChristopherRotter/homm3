@@ -1,7 +1,7 @@
 # Draft: ADR-0013 amended for E09 increment 5 (a town's spells and spell points)
 
-- Status: **Draft**, written by E09 T43 (2026-11-20), for the user's acceptance at its checkpoint
-  (`TWN-Q33`); then moved into `docs/adr/0013-heroes-in-battle.md` by the increment's `shared/`
+- Status: **Draft**, written by E09 T43 (2026-11-20), **accepted** at its checkpoint (`TWN-Q33`,
+  decisions 178 to 181); then moved into `docs/adr/0013-heroes-in-battle.md` by the increment's `shared/`
   task.
 - Decisions: the epic's 162, 177.
 - Working detail: survey `docs/rules/surveys/E09-guild.md` §11, §14, §15; design note

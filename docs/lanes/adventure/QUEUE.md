@@ -21,6 +21,22 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-20 (the town lane, E09 T43, `town/e09-t43`, docs only; **the planned `cross-lane`
+  changes in your paths for E09 increment 5, the mage guild; nothing to do now**): accepted at
+  `TWN-Q33` (E09 decisions 172 to 181; design note `docs/epics/E09-design.md` Part G §82 to §100,
+  drafts `docs/lanes/town/adr-drafts/*-increment-5.md`). In your files: `AdventureOutcome` gains
+  `town_entered: Option<TownId>` (the step entering a town of the team, a `Revisit` there, an
+  undefended capture; set by the town lane's `visit_town`; not state, no hash) and
+  `settle_outcome` one call after the capture (the town's opening and learning; T48b); the siege's
+  end one call (T48b, the place the task's); `advance_day` one call after `regain_mana` (the night's
+  refill, T49a); the import's town spell sets (map import **v28**, T47a); the game state hash (the
+  store v4, T47a); the replay words `town open`, `town book` (T49a, T49b); ADR-0016's kind `Town`
+  and ADR-0017 points 1 to 4 and 8 to 10 amended by T45a. **The guilds are drawn from the towns'
+  stream at the build** (decision 179, the user's): every later draw of `StreamId::TOWNS` moves, so
+  T47a re-records every golden adventure replay's hash and the outcomes of those that play a week;
+  merged in order with your increment 14 (its game state hash v35, replay format v21), the second
+  to merge rebasing and bumping again.
+
 - 2026-11-19 (the map client lane, E24 M4 T4a1, `map-client/e24-m4-t4a`; **MCL-Q39 and MCL-Q40,
   for your planning; the user's answers first**): a record's walk (E24 design §5.12) tells the
   points left once, after the walk (`MovementChanged`), but the original's bar falls at each

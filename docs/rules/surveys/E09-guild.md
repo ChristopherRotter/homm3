@@ -674,3 +674,10 @@ epic's decisions 167 to 170, each as recommended, and the agent's calls of 171:
   heroes' re-visits the computer player's, E10 and E13; the visit's level-up after its learning;
   a siege's learning by whoever then stands there); batch TWN-5's five rows (§18) for T43's cut,
   run as TWN-1 to TWN-4 were.
+
+**T43** (2026-11-20) settled §8's and §17's open points for T43 in the design note's Part G
+(`docs/epics/E09-design.md` §82 to §100; `TWN-Q32`, `TWN-Q33`, the epic's decisions 172 to 181):
+the weights in the town records, the guilds drawn from the towns' stream with the spare in every
+town, the Aurora in increment 5, the engine's triggers (§89), `TownCommand::Open` and
+`BuySpellBook`, the night's refill after the day's regain, the Vortex's flag in the town state, the
+owner's guild view; batch TWN-5's five rows are T44's.

@@ -1,13 +1,14 @@
 # Draft: ADR-0017 amended for E09 increment 5 (the mage guild)
 
-- Status: **Draft**, written by E09 T43 (2026-11-20), for the user's acceptance at its checkpoint
-  (`TWN-Q33`); then moved into `docs/adr/0017-game-orchestration.md` by the increment's `shared/`
+- Status: **Draft**, written by E09 T43 (2026-11-20), **accepted** at its checkpoint (`TWN-Q33`,
+  decisions 178 to 181); then moved into `docs/adr/0017-game-orchestration.md` by the increment's `shared/`
   task with batch TWN-5's verdicts.
 - Decisions: the epic's 162, 163, 165 to 171 (`TWN-Q31`: TD-10 and TD-25 the original, T-18
   `fix-optional`, TD-27 the original's triggers with an opening command), 172 to 176 (`TWN-Q32`:
   T43 whole, the weights in the town records, the Aurora now, `Open` listed where it changes
-  something, `BuySpellBook`), 177 (T43's agent's calls: among them **the guilds' stream**, a new
-  named kernel stream).
+  something, `BuySpellBook`), 177 (T43's agent's calls), 178 to 181 (`TWN-Q33`: the opening
+  teaches both heroes whenever a guild stands, **the towns' stream** for the draw over the agent's
+  new stream, the views and events, the cut).
 - Working detail: survey `docs/rules/surveys/E09-guild.md` §3 to §6, §11 to §15; design note
   `docs/epics/E09-design.md` Part G §82 to §100.
 
@@ -26,14 +27,14 @@ the part's price (500 gold), while that hero wears none; then the town's heroes 
 their player's, in its turn, with no decision open (GAM-DEC-001), each refusal typed and changing
 nothing.
 **The state.** Each town's record (ADR-0028 point 2) gains its guild's twenty slots, drawn when the
-game is built (TWN-GLD-002, the guilds' stream, point 4), its Mana Vortex's week flag and, static,
+game is built (TWN-GLD-002, the towns' stream, point 4), its Mana Vortex's week flag and, static,
 its Aurora set; the store of towns shares and hashes them as the rest (the town state hash v4).
 **The setup** gives each town its map's **required** and **banned** spells (`TownSetup`, the
 import: TWN-SET-012; an RoE map's required set empty, its banned set read), each the ruleset's
 (`GameSetupError`'s spell refusal, after the scenario's bans); the scenario's banned spells
 (GAM-SET-003) are read by the draw and, with `TWN-QUIRK-14`'s flag off, by the Aurora set, both at
 the build: the game keeps no ban after it.
-**The build** draws every town's guild from the guilds' stream after the towns' records exist (each
+**The build** draws every town's guild from the towns' stream after the towns' records exist (each
 faction resolved, its buildings set; the original's `town_setup` 0x5C08B0 after the buildings), in
 `TownId` order; then the main towns' heroes learn (TD-10, E09 decision 167: the visitor, then the
 garrison hero; the original's `main_town_heroes` 0x4CA1A2), after every draw of the build.
@@ -68,12 +69,12 @@ or a spell book while it stands in a town learns at the next trigger (point 10).
 
 ## Point 4, after E09's increment 4 paragraph on the taverns' stream
 
-**E09's increment 5** draws from **the guilds' stream** (`StreamId::GUILDS`, a new named kernel
-stream beside `TOWNS` and `TAVERNS`, a `shared/` change; E09 decision 177: no existing draw moves,
-so the replays' outcomes keep but for the new state): when the game is built, every town in
-`TownId` order, its levels 1 to 5, each slot not given to a required spell and with a total weight
-above 0 one draw over the total (the original's `random_between(1, total)` and its running sums).
-Nothing in play draws from it; it is server-only (point 5) and hashed with the state. The
+**E09's increment 5** draws **the guilds from the towns' stream** (`StreamId::TOWNS`; E09
+decision 179, the user's over a new named stream: no `shared/` change, but every later draw of the
+towns' stream moves, so the replays that play a week re-record their outcomes): when the game is
+built, before any other draw of that stream, every town in `TownId` order, its levels 1 to 5, each
+slot not given to a required spell and with a total weight above 0 one draw over the total (the
+original's `random_between(1, total)` and its running sums). Nothing in play draws a guild. The
 original's one generator interleaves these draws with the rest of its setup's; the engine's order
 is its own (E08 decision 17).
 
@@ -88,14 +89,15 @@ reads the guild through the owner's town view; no learning is an action.
 
 ## Point 9, after E09's increment 4 sentence
 
-**E09's increment 5** bumps the game state hash (the store's v4 folded in, the guilds' stream), the
-map import (the towns' required and banned spells into `TownSetup`) and the adventure replay format
-(`town open`, `town book`), each `cross-lane`; the protocol (the server lane's, `cross-lane`: the
-two commands and the new `TownCommandError`s, the owner's guild, Aurora mark and week flag in the
-town view) and the env's action encoding (point 8, the AI lane's, `cross-lane`). The adventure
-state hash and ruleset part do not move (`AdventureOutcome`'s town entered is not state, ADR-0016
-point 4). Shared: `StreamId::GUILDS` and the quirk flag of `TWN-QUIRK-14` (no version moves: the
-profiles' ruleset hashes do). The numbers are the next at merge, in merge order with E08's
+**E09's increment 5** bumps the game state hash (the store's v4 folded in), the map import (the
+towns' required and banned spells into `TownSetup`) and the adventure replay format (`town open`,
+`town book`), each `cross-lane`; the replays that play a week re-record their outcomes (the guild's
+draw moves the towns' stream, decision 179); the protocol (the server lane's, `cross-lane`: the two
+commands and the new `TownCommandError`s, the owner's guild, Aurora mark and week flag in the town
+view) and the env's action encoding (point 8, the AI lane's, `cross-lane`). The adventure state
+hash and ruleset part do not move (`AdventureOutcome`'s town entered is not state, ADR-0016 point
+4). Shared: the quirk flag of `TWN-QUIRK-14` (no version moves: the profiles' ruleset hashes do);
+no new stream (decision 179). The numbers are the next at merge, in merge order with E08's
 increment 14 (its game state hash v35, replay format v21 and encoding v14 planned) and the client
 lane's replay format v20 (E27 M4 T3a).
 
@@ -132,6 +134,6 @@ position), then the learning; no refusal after the checks.
 
 - 2026-11-xx (E09 increment 5's `shared/` task): points 1, 2, 3, 4, 8, 9, 10 amended for E09
   increment 5, the mage guild: `TownCommand::Open` and `BuySpellBook`, the guild in the store and
-  its draw at the build from the guilds' stream, the setup's town spells, the owner's guild view,
+  its draw at the build from the towns' stream, the setup's town spells, the owner's guild view,
   the night's refill and the Vortex's week, the env's two entries, the versions, the learning's
   triggers.

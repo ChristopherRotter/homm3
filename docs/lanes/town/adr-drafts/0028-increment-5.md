@@ -1,14 +1,16 @@
 # Draft: ADR-0028 amended for E09 increment 5 (the mage guild)
 
-- Status: **Draft**, written by E09 T43 (2026-11-20), for the user's acceptance at T43's
-  checkpoint (`TWN-Q33`) before anything is built; then moved into
+- Status: **Draft**, written by E09 T43 (2026-11-20), **accepted** at its checkpoint (`TWN-Q33`,
+  decisions 178 to 181; the towns' stream for the draw, decision 179) before anything is built;
+  then moved into
   `docs/adr/0028-town-context.md` by the increment's `shared/` task with batch TWN-5's verdicts
   (as increments 2's T15, 3's T24 and 4's T35a).
 - Decisions: the epic's 162 (content), 163 (the round), 165 to 171 (the survey's cut and its
   checkpoint `TWN-Q31`: TD-10 and TD-25 the original, T-18 `fix-optional`, TD-27 the original's
   triggers with an opening command), 172 (T43 whole), 173 to 176 (`TWN-Q32`: the weights in the
   town records, the Aurora in this increment, `TownCommand::Open` listed where it changes
-  something, `TownCommand::BuySpellBook`), 177 (T43's agent's calls).
+  something, `TownCommand::BuySpellBook`), 177 (T43's agent's calls), 178 to 181 (`TWN-Q33`:
+  the opening teaches both heroes, the towns' stream, the views, the cut).
 - Working detail: the survey `docs/rules/surveys/E09-guild.md` (§2 to §6 what the guild holds,
   §11 to §15 what a hero gets), the design note `docs/epics/E09-design.md` Part G (§82 to §100).
   Each block below says where it goes in the ADR.
@@ -27,8 +29,8 @@ and, static, **the town's Aurora set** (the spells a building of role `aurora` t
 fixed at the build: every hero spell the town's map record does not ban, less those granted by name
 only, less the scenario's bans when `TWN-QUIRK-14`'s flag is off). Its rules, each a pure function
 of a town, the part, the core and plain inputs the game gives:
-- **The draw** (TWN-GLD-002; survey §3): with draws from the stream the game passes (the guilds',
-  ADR-0017 point 4) and the town's **required** and **banned** spells and the scenario's bans (the
+- **The draw** (TWN-GLD-002; survey §3): with draws from the stream the game passes (the towns',
+  ADR-0017 point 4; E09 decision 179) and the town's **required** and **banned** spells and the scenario's bans (the
   setup's, TWN-SET-012, GAM-SET-003), each level's slots in order: the first required spell of the
   level in spell order not excluded, else one drawn by the faction's guild weights (point 5) among
   the level's spells not excluded, else the slot empty; **excluded** a spell the town bans, the
@@ -103,17 +105,17 @@ heroes' changes (point 2's set, read from the details by reference, applied by t
 `aurora` and `mana_vortex`, the slots, the book's price, the Vortex's factor) and the town state
 hash (v4: the guild's slots, the Vortex's week flag, the Aurora set). The adventure lane's versions
 it moves (`cross-lane`): the map import (the towns' required and banned spells into the setup), the
-game state hash (it folds the store's in; the guilds' stream), the adventure replay format (`town
-open`, `town book`); the protocol (the server lane's: the two commands and their refusals, the
+game state hash (it folds the store's in), the adventure replay format (`town open`, `town
+book`; the growth replays re-recorded: the draw moves the towns' stream, decision 179); the protocol (the server lane's: the two commands and their refusals, the
 owner's guild and week flag in the town view) and the env's action encoding (the AI lane's: the
 opening, then the book), each `cross-lane`; `h3-harvest`'s spell columns (the battle lane's,
-`cross-lane`). `shared/`: the kernel's `StreamId::GUILDS` and the quirk flag of `TWN-QUIRK-14` (no
-version moves: the profiles' ruleset hashes do). The adventure state hash and part do not move
+`cross-lane`). `shared/`: the quirk flag of `TWN-QUIRK-14` (no version moves: the profiles'
+ruleset hashes do); no new stream (decision 179). The adventure state hash and part do not move
 (the outcome's town entered, ADR-0016 point 4, is not hashed).
 
 ## Revision history, a new item (when moved)
 
-- 2026-11-xx (E09 increment 5's `shared/` task; decisions 162 to 177 and T43's checkpoint):
+- 2026-11-xx (E09 increment 5's `shared/` task; decisions 162 to 181):
   points 2, 5, 6, 9 (the guild's slots, the Vortex's flag and the Aurora set; the guild weights,
   the four roles, the slots, the book's price and the Vortex's factor; `Open` and `BuySpellBook`;
   the versions).

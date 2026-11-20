@@ -5,18 +5,38 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 ## Tasks
 
 Epic: `docs/epics/E09-towns.md` (increment 5: the mage guild, refined at T41, `TWN-Q30`, decisions
-161 to 164; its survey T42a and T42b with the checkpoint `TWN-Q31`, decisions 165 to 171; the services are increment 6, travel and the Grail 7, decision 162); done tasks in
+161 to 164; its survey T42a and T42b with the checkpoint `TWN-Q31`, decisions 165 to 171; its
+drafts, cut and exit criteria by T43, `TWN-Q32`, `TWN-Q33`, decisions 172 to 181; the services are
+increment 6, travel and the Grail 7, decision 162); done tasks in
 `E09-log.md`; increments 1 to 4 (closed by T10, T20, T30 and T41) in `E09-archive.md`. Each
 task's cut confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`).
 
-**E09 T43 — the drafts** (round 1, decision 163): the ADR amendment drafts
-(`docs/lanes/town/adr-drafts/`), the design note's Part G (`E09-design.md`, from §82), the cut
-into rounds and the exit criteria, accepted by the user before anything is built. Inputs: survey
-`docs/rules/surveys/E09-guild.md` (§0's findings; §8's and §17's open points for T43) and
-`TWN-Q31`'s answers (decisions 167 to 170: TD-10 and TD-25 the original, T-18 a `fix-optional`
-flag confirmed first, TD-27's free opening command for the owner, its shape here); batch TWN-5's
-five rows (§18) placed in the cut. **Status:** next.
+**E09 T44 — batch TWN-5** (round 2, decision 181; design note `E09-design.md` §97, §98): the
+five rows of survey `docs/rules/surveys/E09-guild.md` §18 (TD-25, TD-26 with T-18, the Library
+built later, TD-10, TD-27's Vortex) as specs `experiments/specs/E09-batch-5<x>.toml` and their
+templates: the writer's town required and banned spells (`h3-map`'s `writer/town*`) and the
+scenario's spell bans (the header's writer, the adventure lane's, `cross-lane`), a Conflux with its
+Grail building in a custom set, a Dungeon with the Mana Vortex and a garrison hero; the harness's
+reads of a hero's spell points (+0x18) and learned spells (+0x3EA) at a turn's start and the town
+screen opened from the town list in a recipe (`docs/experiments/README.md`); the runs on the capture
+harness as TWN-1 to TWN-4, the scoring into the survey. Needs the original data and the client
+lane's harness set-up. TWN-5-2 confirms T-18 before its flag is added (T45b). Cut at its start.
+**Status:** next.
+
+**E09 T45 to T51** (queued, design §98's rounds 3 to 8; each cut confirmed at its start): T45
+`shared/` (T45a the four drafts `docs/lanes/town/adr-drafts/*-increment-5.md` into the ADRs with
+T44's verdicts, the glossary, `docs/06-security.md`'s town lines; T45b the flag of `TWN-QUIRK-14`
+once confirmed; no new stream, decision 179); T46 the town part v9 (§83: the guild weights
+harvested `cross-lane`, the roles, the slots, the book's price, the Vortex's factor); T47 the guild
+drawn and shown (§84 to §87, §94: T47a the map's town spell sets with import v28, the draw from the
+towns' stream, the store v4, the replays re-recorded with the week replays' outcomes; T47b the
+owner's view, the protocol); T48 learning (§88, §89: T48a the set with the Aurora and T-18, the
+town's own triggers, `TWN-STUB-6` and `-15` lifted; T48b the visit's end, a capture, a siege's end,
+`cross-lane`); T49 the spell points and the commands (§90 to §93, §95: T49a the night's refill, the
+Mana Vortex, `Open`, its env entry and replay word; T49b `BuySpellBook`, its entry and word); T50
+the guild map, its replays, the census, the properties, the benchmarks (§97); T51 the audit
+against §99's criteria, increment 5 closed, increment 6 refined.
 
 ## Inbox
 
