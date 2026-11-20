@@ -213,7 +213,12 @@ fn names_list_what_each_draw_needs() {
         disabled: false,
     };
     assert_eq!(names(&label), ["f.fnt", "game.pal"]);
+    assert_eq!(
+        names(&part(label_item("f.fnt", "game.pal"), [0; 4])),
+        ["f.fnt", "game.pal"]
+    );
     assert!(names(&Draw::Darken { rect: [0; 4] }).is_empty());
+    assert!(names(&Draw::Keyed { rect: [0; 4] }).is_empty());
 }
 
 #[test]
@@ -384,6 +389,8 @@ fn reach_is_the_rectangle_each_drawer_can_change() {
     assert_eq!(reach(&button("no.def", 0), &s), None);
     let dark = Draw::Darken { rect: [3, 1, 2, 4] };
     assert_eq!(reach(&dark, &s), Some([3, 1, 5, 5]));
+    let keyed = Draw::Keyed { rect: [3, 1, 2, 4] };
+    assert_eq!(reach(&keyed, &s), Some([3, 1, 5, 5]));
     let text = |picture: &str, font: &str, palette: &str| Draw::Text {
         item: text_item(picture, font, palette),
         x: 3,
@@ -416,6 +423,117 @@ fn reach_is_the_rectangle_each_drawer_can_change() {
     };
     assert_eq!(reach(&edit("f.fnt"), &s), Some([-2, 4, 0, 5]));
     assert_eq!(reach(&edit("no.fnt"), &s), None);
+    // E27 M4 T2: a part's the rectangle it is copied to (none for a negative size).
+    let cut = |font: &str, palette: &str, rect| part(label_item(font, palette), rect);
+    assert_eq!(
+        reach(&cut("f.fnt", "game.pal", [1, 0, 3, 2]), &s),
+        Some([5, 6, 8, 8])
+    );
+    assert_eq!(
+        reach(&cut("f.fnt", "game.pal", [1, 0, -3, -2]), &s),
+        Some([5, 6, 5, 6])
+    );
+    assert_eq!(reach(&cut("no.fnt", "game.pal", [0; 4]), &s), None);
+    assert_eq!(reach(&cut("f.fnt", "no.pal", [0; 4]), &s), None);
+}
+
+/// A part of the text `1_1` in a 3 × 2 picture copied to (5, 6) (E27 M4 T2).
+fn part(item: Label, part: [i32; 4]) -> Draw {
+    Draw::Part {
+        item: Label {
+            size: [3, 2],
+            ..item
+        },
+        text: "1_1".into(),
+        part,
+        x: 5,
+        y: 6,
+    }
+}
+
+#[test]
+fn keyed_makes_the_keys_pixels_of_its_rectangle_black() {
+    // E27 M4 T2: the original's credits' background, its key's pixels saved as black.
+    let mut out = Screen::new(3, 2, FORMAT).unwrap();
+    out.pixels_mut().copy_from_slice(&[1, 2, 1, 1, 1, 5]);
+    draw(
+        &mut out,
+        &Draw::Keyed {
+            rect: [1, -1, 9, 2],
+        },
+        &store(),
+        Bugs::Fixed,
+    )
+    .unwrap();
+    assert_eq!(out.pixels(), [1, 2, 0, 1, 1, 5]);
+    draw(
+        &mut out,
+        &Draw::Keyed {
+            rect: [0, 0, -1, 2],
+        },
+        &store(),
+        Bugs::Fixed,
+    )
+    .unwrap();
+    assert_eq!(out.pixels(), [1, 2, 0, 1, 1, 5]);
+}
+
+#[test]
+fn a_part_is_the_text_drawn_whole_then_its_part_copied_without_the_fill() {
+    // E27 M4 T2 (`credits_screen`): the picture filled with the key, the text over it, the part
+    // copied with the key skipped and cut by both pictures' edges.
+    let s = store();
+    let white = FORMAT.pack(WHITE);
+    let mut out = Screen::new(8, 8, FORMAT).unwrap();
+    out.fill(7);
+    // The text's three glyphs on the picture's first row, its second row the fill: the part's
+    // last two columns of both rows land at (5, 6) and (6, 6), (5, 7) and (6, 7) kept.
+    draw(
+        &mut out,
+        &part(label_item("f.fnt", "game.pal"), [1, 0, 2, 2]),
+        &s,
+        Bugs::Fixed,
+    )
+    .unwrap();
+    let row = |y: usize| out.pixels()[y * 8..y * 8 + 8].to_vec();
+    assert_eq!(row(6), [7, 7, 7, 7, 7, white, white, 7]);
+    assert_eq!(row(7), [7; 8]);
+    // Past the target's corner and past the picture's: only what lies inside both.
+    let mut out = Screen::new(8, 8, FORMAT).unwrap();
+    out.fill(7);
+    let mut item = label_item("f.fnt", "game.pal");
+    item.size = [3, 2];
+    let cut = Draw::Part {
+        item,
+        text: "1_1".into(),
+        part: [-1, -1, 5, 4],
+        x: -1,
+        y: 0,
+    };
+    draw(&mut out, &cut, &s, Bugs::Fixed).unwrap();
+    assert_eq!(&out.pixels()[..8], [7; 8]);
+    assert_eq!(&out.pixels()[8..16], [white, white, white, 7, 7, 7, 7, 7]);
+    assert_eq!(&out.pixels()[16..24], [7; 8]);
+    // A picture too large to make, a missing font: refused.
+    let mut item = label_item("f.fnt", "game.pal");
+    item.size = [1 << 15, 1];
+    let huge = Draw::Part {
+        item,
+        text: String::new(),
+        part: [0; 4],
+        x: 0,
+        y: 0,
+    };
+    assert!(draw(&mut out, &huge, &s, Bugs::Fixed).is_err());
+    assert_eq!(
+        draw(
+            &mut out,
+            &part(label_item("no.fnt", "game.pal"), [0; 4]),
+            &s,
+            Bugs::Fixed
+        ),
+        Err("no.fnt".to_string())
+    );
 }
 
 #[test]
@@ -565,6 +683,19 @@ fn every_pixel_a_drawer_changes_lies_inside_its_reach() {
             rect: [38, 10, 5, 5]
         }) > 0
     );
+    // E27 M4 T2: a part of a text, copied from inside and from past the picture's edges.
+    for rect in [[0, 0, 6, 4], [2, 1, 3, 2], [-2, -1, 9, 7]] {
+        let mut item = label_item("o.fnt", "game.pal");
+        (item.size, item.align) = ([6, 4], 5);
+        let part = Draw::Part {
+            item,
+            text: "ab cd".into(),
+            part: rect,
+            x: 20,
+            y: 4,
+        };
+        assert!(check(&part) > 0, "{rect:?}");
+    }
     // E17 M6 T2a1: a creature cut to boxes narrower and wider than its frame.
     for size in [[1, 2], [6, 2], [20, 3]] {
         let creature = Draw::Creature {

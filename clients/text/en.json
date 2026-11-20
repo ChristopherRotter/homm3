@@ -3,7 +3,6 @@
     "stub": {
       "campaigns": "{Campaign}\n\nThe campaigns are not available yet.",
       "tutorial": "{Tutorial}\n\nThe tutorial is not available yet.",
-      "credits": "{Credits}\n\nThe credits are not available yet.",
       "network": "{Network Play}\n\nPlaying over a network is not available yet.",
       "scenario": "{Scenario Selection}\n\nThe scenario selection is not available yet.",
       "random-map": "{Random Map}\n\nMaking a random map is not available yet.",

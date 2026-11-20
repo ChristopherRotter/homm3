@@ -10,7 +10,8 @@
 //! samples as the original's sound manager plays them (E27 M2 T6a); New Game's and Load Game's
 //! menus take theirs on the same machinery (E27 M2 T6b1); [`multiplayer`] the Multiplayer
 //! dialog's first stage and the hot seat's names (E27 M2 T7); [`scenario`] the scenario screen
-//! (E27 M3 T1a: a new single scenario's, the list hidden); [`scores`] High Scores (E27 M4 T1a).
+//! (E27 M3 T1a: a new single scenario's, the list hidden); [`scores`] High Scores (E27 M4 T1a);
+//! [`credits`] the credits (E27 M4 T2).
 //!
 //! **The loop** (§2.2): at its top the screen asked for (`screen_request` 0x6976D8: the request
 //! play ended with, [`PlayEnd::Request`]) is taken by the main menu's switch (0x4EEC0D): none or
@@ -43,6 +44,7 @@
 
 use core::fmt;
 
+pub mod credits;
 pub mod keys;
 pub mod look;
 pub mod menu;
@@ -242,7 +244,8 @@ impl Screen {
             Self::Tutorial => "CLT-Q84",
             Self::Play { .. } => "E24 M5",
             Self::HighScores => "E27 M4 T1",
-            Self::Credits | Self::Lost | Self::Won => "E27 M4",
+            Self::Credits => "E27 M4 T2",
+            Self::Lost | Self::Won => "E27 M5",
             Self::End => "",
         }
     }
@@ -252,8 +255,9 @@ impl Screen {
     /// new single scenario's screen (M3 T1a) and the hot seat's (M3 T4a: a new game's from the
     /// Multiplayer dialog, its only path); play's start after a begin (M3 T6: the loading screen
     /// and its fade, then the client's notice until E24 M5, [`play`]); High Scores (M4 T1a,
-    /// [`scores`]); the campaigns' selection, the tutorial, Credits and the loads' scenario
-    /// screens the client's stubs (T6b2, T7: until E20, CLT-Q84's tutorial mode, M4 T2 and M4);
+    /// [`scores`]); the credits (M4 T2, [`credits`]); the campaigns' selection, the tutorial and
+    /// the loads' scenario screens the client's stubs (T6b2, T7: until E20, CLT-Q84's tutorial
+    /// mode and M4);
     /// the others a stand-in until their task ([`Screen::task`]).
     #[must_use]
     pub const fn built(self) -> Built {
@@ -264,8 +268,9 @@ impl Screen {
             | Self::Multiplayer(_)
             | Self::Scenario(Game::New, Kind::Single | Kind::Multiplayer)
             | Self::Play { restart: false }
-            | Self::HighScores => Built::Whole,
-            Self::Campaigns | Self::Tutorial | Self::Credits | Self::Scenario(..) => Built::Stub,
+            | Self::HighScores
+            | Self::Credits => Built::Whole,
+            Self::Campaigns | Self::Tutorial | Self::Scenario(..) => Built::Stub,
             _ => Built::Not,
         }
     }

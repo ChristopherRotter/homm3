@@ -48,11 +48,11 @@
 //!   only.
 //!
 //! - **The stubs** (E27 M2 T6b2, decision 37; [`STUBS`]): New Game's Campaign and Tutorial (until
-//!   E20 and the engine's tutorial mode, decisions 7 and 9) and the main menu's Credits (until
-//!   M4 T2; High Scores' until M4 T1a) end their menu as the original's do, and their screen
+//!   E20 and the engine's tutorial mode, decisions 7 and 9; the main menu's High Scores until M4
+//!   T1a, its Credits until M4 T2) end their menu as the original's do, and their screen
 //!   shows that menu opened anew with a notice over it, a box of style 1 in the client's own
 //!   words (its language pack's `shell.stub.<screen>`, by the driver's names: `campaigns`,
-//!   `tutorial`, `credits`); the notice takes the box's inputs as Quit's question does, and its
+//!   `tutorial`); the notice takes the box's inputs as Quit's question does, and its
 //!   OK ends the screen (back to New Game's menu, or to the main menu), which opens anew.
 //!
 //! The boxes are laid out by the caller ([`Boxes`]: their texts are the user's tables', the
@@ -71,6 +71,7 @@ use h3_render::Bugs;
 use h3_ui::input::{Held, Input};
 use h3_ui::ui::{Dialog, Draw, Item, Shown, State};
 
+use super::credits::Credits;
 use super::keys::{Command, Context};
 use super::multiplayer::Multiplayer;
 use super::play::Play;
@@ -92,16 +93,16 @@ pub const GAME_TYPE_BUTTONS: [u16; 5] = [100, 101, 102, 103, 104];
 /// A game type menu's title picture (105: `newgame.pcx` or `loadgame.pcx`).
 pub const TITLE: u16 = 105;
 
-/// The client's stubs (E27 M2 T6b2, T7; High Scores built since E27 M4 T1a): each screen, the
+/// The client's stubs (E27 M2 T6b2, T7; High Scores built since E27 M4 T1a, Credits since T2):
+/// each screen, the
 /// menu its notice shows over and the notice's OK's ending. The scenario screen's (a new single scenario's built since M3 T1a, the
 /// hot seat's since M3 T4a; the loads' until M4) shows over the game type menu it was reached
 /// from (by Campaign, Tutorial, Load Game's Single or the Multiplayer dialog), its OK back
 /// there. Play's (E27 M3 T6, CLT-STUB-13: until E24 M5 hosts the game) shows over the main menu
 /// after the loading screen's fade ([`super::play`]), its OK the main menu.
-pub const STUBS: [(Screen, Kind, Ended); 8] = [
+pub const STUBS: [(Screen, Kind, Ended); 7] = [
     (Screen::Campaigns, Kind::GameType(Game::New), Ended::Back),
     (Screen::Tutorial, Kind::GameType(Game::New), Ended::Back),
-    (Screen::Credits, Kind::Main, Ended::Done),
     scenario(Game::Load, ScenarioKind::Single),
     scenario(Game::Load, ScenarioKind::Multiplayer),
     scenario(Game::Load, ScenarioKind::Campaign),
@@ -761,6 +762,8 @@ pub struct Menus {
     pub scenario: Scenario,
     /// High Scores as it opens (E27 M4 T1a).
     pub scores: Scores,
+    /// The credits as they open (E27 M4 T2).
+    pub credits: Credits,
 }
 
 impl Menus {
@@ -833,6 +836,8 @@ impl Menus {
             }
             // High Scores (E27 M4 T1a): opened anew, the main menu's last items kept.
             (Screen::HighScores, _) => Some(Front::Scores(Box::new(self.scores.opened(hovers)))),
+            // The credits (E27 M4 T2): so too.
+            (Screen::Credits, _) => Some(Front::Credits(Box::new(self.credits.opened(hovers)))),
             // Play's start (E27 M3 T6): the loading screen, then the stub's menu under its notice.
             (Screen::Play { restart: false }, _) => self
                 .opened(screen, pointer, hovers)
@@ -854,7 +859,7 @@ impl Menus {
 }
 
 /// What takes the inputs on a built screen (E27 M2 T7): a menu, the Multiplayer dialog, the
-/// scenario screen (E27 M3 T1a), play's start (T6) or High Scores (E27 M4 T1a).
+/// scenario screen (E27 M3 T1a), play's start (T6), High Scores (E27 M4 T1a) or the credits (T2).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Front {
     /// A menu (a stub's menu under its notice among them).
@@ -867,6 +872,8 @@ pub enum Front {
     Play(Box<Play>),
     /// High Scores (E27 M4 T1a).
     Scores(Box<Scores>),
+    /// The credits (E27 M4 T2).
+    Credits(Box<Credits>),
 }
 
 impl Front {
@@ -880,6 +887,7 @@ impl Front {
             Self::Scenario(s) => s.hovers(),
             Self::Play(p) => p.hovers(),
             Self::Scores(s) => s.hovers(),
+            Self::Credits(c) => c.hovers(),
         }
     }
 
@@ -892,6 +900,7 @@ impl Front {
             Self::Scenario(s) => s.context(),
             Self::Play(p) => p.context(),
             Self::Scores(s) => s.context(),
+            Self::Credits(c) => c.context(),
         }
     }
 
@@ -905,6 +914,7 @@ impl Front {
             Self::Scenario(s) => s.contexts(),
             Self::Play(p) => alloc::vec![p.context()],
             Self::Scores(s) => alloc::vec![s.context()],
+            Self::Credits(c) => alloc::vec![c.context()],
         }
     }
 
@@ -912,7 +922,7 @@ impl Front {
     #[must_use]
     pub fn typing(&self) -> bool {
         match self {
-            Self::Menu(_) | Self::Play(_) | Self::Scores(_) => false,
+            Self::Menu(_) | Self::Play(_) | Self::Scores(_) | Self::Credits(_) => false,
             Self::Multiplayer(m) => m.typing(),
             Self::Scenario(s) => s.typing(),
         }
@@ -925,7 +935,11 @@ impl Front {
     pub fn question(&self) -> Option<&Open> {
         match self {
             Self::Scores(s) => s.question(),
-            Self::Menu(_) | Self::Multiplayer(_) | Self::Scenario(_) | Self::Play(_) => None,
+            Self::Menu(_)
+            | Self::Multiplayer(_)
+            | Self::Scenario(_)
+            | Self::Play(_)
+            | Self::Credits(_) => None,
         }
     }
 
@@ -933,7 +947,7 @@ impl Front {
     /// T3c1).
     pub fn typed(&mut self, c: char) -> Did {
         match self {
-            Self::Menu(_) | Self::Play(_) | Self::Scores(_) => Did::default(),
+            Self::Menu(_) | Self::Play(_) | Self::Scores(_) | Self::Credits(_) => Did::default(),
             Self::Multiplayer(m) => m.typed(c),
             Self::Scenario(s) => s.typed(c),
         }
@@ -947,6 +961,7 @@ impl Front {
             Self::Scenario(s) => s.moved(point),
             Self::Play(p) => p.moved(point),
             Self::Scores(s) => s.moved(point),
+            Self::Credits(_) => Did::default(),
         }
     }
 
@@ -958,6 +973,7 @@ impl Front {
             Self::Scenario(s) => s.press(point),
             Self::Play(p) => p.press(point),
             Self::Scores(s) => s.press(point),
+            Self::Credits(c) => c.press(),
         }
     }
 
@@ -969,6 +985,7 @@ impl Front {
             Self::Scenario(s) => s.release(),
             Self::Play(p) => p.release(),
             Self::Scores(s) => s.release(),
+            Self::Credits(_) => Did::default(),
         }
     }
 
@@ -980,6 +997,7 @@ impl Front {
             Self::Scenario(s) => s.right(point),
             Self::Play(p) => p.right(point),
             Self::Scores(s) => s.right(),
+            Self::Credits(c) => c.press(),
         }
     }
 
@@ -991,6 +1009,7 @@ impl Front {
             Self::Scenario(s) => s.right_release(),
             Self::Play(p) => p.right_release(),
             Self::Scores(s) => s.right_release(),
+            Self::Credits(_) => Did::default(),
         }
     }
 
@@ -1009,6 +1028,7 @@ impl Front {
             Self::Scenario(s) => s.key(scan, command, by),
             Self::Play(p) => p.key(command, by),
             Self::Scores(s) => s.key(command, by),
+            Self::Credits(c) => c.key(by),
         }
     }
 
@@ -1020,22 +1040,29 @@ impl Front {
             Self::Scenario(s) => s.key_up(by),
             Self::Play(p) => p.key_up(by),
             Self::Scores(s) => s.key_up(by),
+            Self::Credits(_) => Did::default(),
         }
     }
 
     /// The shell's clock is `ms` (E27 M3 T1b1: the scenario list's double press is timed on it,
     /// from the screen's opening; T6: play's fade steps by it; M4 T1a: High Scores' creatures
-    /// step by it); the menus and the Multiplayer dialog read no clock. Whether what shows
-    /// changed (the fade's step, the creatures').
-    pub fn clock(&mut self, ms: u32) -> bool {
+    /// step by it; T2: the credits' text moves by it and ends); the menus and the Multiplayer
+    /// dialog read no clock. Whether what shows changed (the fade's step, the creatures', the
+    /// credits'), and the end the clock brought (the credits').
+    pub fn clock(&mut self, ms: u32) -> Did {
+        let changed = |changed| Did {
+            changed,
+            ..Did::default()
+        };
         match self {
             Self::Scenario(s) => {
                 s.clock(ms);
-                false
+                Did::default()
             }
-            Self::Play(p) => p.clock(ms),
-            Self::Scores(s) => s.clock(ms),
-            _ => false,
+            Self::Play(p) => changed(p.clock(ms)),
+            Self::Scores(s) => changed(s.clock(ms)),
+            Self::Credits(c) => c.clock(ms),
+            Self::Menu(_) | Self::Multiplayer(_) => Did::default(),
         }
     }
 }

@@ -2,8 +2,8 @@
 
 Status: **refined** (2026-11-12, M0, with the user); **M1 closed** (2026-11-13), **M2 closed**
 (2026-11-17), **M3 closed** (2026-11-19, T7: the fresh reviews, decisions 66 to 68); **M4 refined**
-(2026-11-19, M4 T0 at M3 T7, decision 69); M4 T1a done (2026-11-19, decision 70); next **M4
-T1b** (`docs/lanes/client/QUEUE.md`).
+(2026-11-19, M4 T0 at M3 T7, decision 69); M4 T1a, T1b and T2 done (2026-11-19, decision 70);
+next **M4 T3** (`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
 catalogue and capture harness). Working detail (readings, the clips, layouts):
@@ -589,8 +589,8 @@ load mode), §3.12 to §3.14 (a load's rows).
 |---|---|---|
 | T1a | High Scores (§2.8, §34; decision 70): the dialog, both tabs and their buttons and keys, the rows from `CampHigh.txt`'s defaults, the eleven creatures stepping (the adventure map's DEFs by `high_score_creatures`), M2's stub lifted, Reset a client's notice (CLT-STUB-14); exact against `scores-tabs` | done 2026-11-19 (`scores-tabs` 28 of 28 exact; CLT-Q157 (a)) |
 | T1b | High Scores' Reset (§2.8, §35): its question (GENRLTXT 667) resetting both tables to the defaults, the client's own scores file (read at the start, written at Reset; never `HiScore.dat`), CLT-STUB-14 lifted; exact against `scores-reset` | done 2026-11-19 (`scores-reset` 10 of 10 exact, `scores-tabs` 28 of 28; CLT-Q158 asked) |
-| T2 | Credits (§2.9): `Credits.fnt`, `Credits.txt`'s two records wrapped to 328 px, the scroll of 2 px ten times a second (CLT-Q88), the closing text's moment read from the kept frames, a key (but F4) or a press ending it, M2's stub lifted; exact against `credits-scroll`, `credits-end` | next |
-| T3 | The save file (decision 69): the engine's adventure replay with the setup's choices (the adventure lane's format, its inbox told; this lane cross-lane with the user's consent should it not be built yet) and the client's table (the names, bonuses, handicaps, the turn's duration, the save's name), written and read with its version; a load's setup rebuilt and its commands replayed by the engine; tests, no screen | after T2 |
+| T2 | Credits (§2.9): `Credits.fnt`, `Credits.txt`'s two records wrapped to 328 px, the scroll of 2 px ten times a second (CLT-Q88), the closing text's moment read from the kept frames, a key (but F4) or a press ending it, M2's stub lifted; exact against `credits-scroll`, `credits-end` | done 2026-11-19 (`credits-scroll` 5 of 5 exact, its scroll's 2 611 frames; `credits-end` 8 of 8; design §36) |
+| T3 | The save file (decision 69): the engine's adventure replay with the setup's choices (the adventure lane's format, its inbox told; this lane cross-lane with the user's consent should it not be built yet) and the client's table (the names, bonuses, handicaps, the turn's duration, the save's name), written and read with its version; a load's setup rebuilt and its commands replayed by the engine; tests, no screen | next |
 | T4 | Load Game single (§3.1, §3.3 to §3.6, the load mode): the client's saves listed (the map's header, the date, the difficulty shown, the turn's duration), the keys, the sort, Delete's question (688), the notice with none (686), Load's popup, the load to play's stub (as M3's begin); §6.4's fixes (the date's order: a day above 12 and a pinned time zone; a save of another size; Delete of the last save) and M3 T7's leftover (the list's held keys); exact against `scn-load`, `scn-load-none` (the viewer given client saves made to match the recipe's) | after T3 |
 | T5 | Load Game hot seat (§3.12 to §3.14, a load's rows: the saved choices, no arrows; §6.4's Random Map button in a load): exact against `mp-load`, `adv-load` | after T4 |
 | T6 | M4's closure: a fresh reviewer, M4's review list to the user, M4 to the archive, M5's refinement once the shell hosts play (else its prerequisites recorded) | after T5 |
@@ -618,6 +618,16 @@ load mode), §3.12 to §3.14 (a load's rows).
 9. (T1b) The replay takes `press`, `point` and `until-button` on a front's original box alone
    (`Front::question`: High Scores' question so far), at the probes' point by the box's layout,
    not by a search of the frame.
+10. (T2) The credits' clock (§36.4): one step a reading, the first 100 ms after the opening, each
+    next 100 ms after the reading that ran the last (the original's on the harness's frozen
+    clock); the window waits 5 ms at a turn while they show; a late window is not caught up.
+11. (T2) The background's key pixel (§36.3, (463, 553) black during the credits) taken as a
+    drawing bug (E17's binding decisions, CLT-Q138's class), not asked: the client's profile
+    draws the background whole, the original's for the comparisons only.
+12. (T2) `h3_ui`'s two new draws, `Draw::Part` (the text's picture made whole at each draw, 328 ×
+    4 774: no cache) and `Draw::Keyed` (the original's profile); a part's source rows past its
+    picture not copied (the original reads past it: no caller does).
+13. (T2) The text driver names the lost and won screens' task E27 M5 (decision 69's M5).
 
 ## Dependencies and boundaries
 

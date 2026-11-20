@@ -298,7 +298,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - Coverage counts regions: an `if let Some(x) = s.get_mut(i) { … }` without `else` leaves one
   uncovered when the index is always inside (route such writes through one helper whose outside
   case a test takes, `h3_bink`'s `dsp::set`), and a `const fn` evaluated only at compile time is
-  uncovered until a test calls it at run time.
+  uncovered until a test calls it at run time. `--show-missing-lines` lists lines only: a `?`
+  no test takes any more (E27 M4 T2: a stub's test whose screen got built) shows only in the
+  Regions column, so compare the missed regions with the known ones (`book.rs`'s 4); `--json
+  --output-path` and its segments of count 0 name the column.
 
 - **The shell's captures** (E27 M1 T2; `clients/capture/h3shell.py`, the runbook's "The shell's
   screens"): the clock is frozen from the game's first read, so a step given while the game is

@@ -152,7 +152,38 @@ pub enum Draw {
         /// The item's width and height, which the frame is cut to.
         size: [i32; 2],
     },
+    /// A text drawn whole into a 16-bit picture of its own and a part of that picture copied
+    /// onto the screen, the picture's fill skipped (E27 M4 T2: the credits' scroll,
+    /// `credits_screen` 0x4EDDA0): a picture of the item's size filled with the 16-bit colour
+    /// [`PART_KEY`] (`pcx16_fill_rect` 0x44E4C0), the text drawn in it from its corner in the
+    /// item's box, font, colour and alignment; then the part `part` of it (its left and top edge,
+    /// width and height) copied with its corner at (`x`, `y`), every pixel of that colour skipped
+    /// (`pcx16_copy_rect` 0x44E2B0, its key the colour of its last argument).
+    Part {
+        /// The item: the picture's size, the font and how the text is drawn.
+        item: Label,
+        /// The text.
+        text: String,
+        /// The part copied: its left edge, top edge, width and height in the picture.
+        part: [i32; 4],
+        /// Its corner's left edge on the screen.
+        x: i32,
+        /// Its corner's top edge.
+        y: i32,
+    },
+    /// A rectangle's pixels of the 16-bit colour [`PART_KEY`] made black (E27 M4 T2, the
+    /// original's profile: the credits' background, saved from the screen by `pcx16_copy_rect`
+    /// 0x44E2B0 with its key into a black picture, `credits_screen` 0x4EDE77, and put back at
+    /// each step).
+    Keyed {
+        /// Its left edge, top edge, width and height.
+        rect: [i32; 4],
+    },
 }
+
+/// The 16-bit colour [`Draw::Part`]'s picture is filled with and its copy skips
+/// (`credits_screen`'s 1).
+pub const PART_KEY: u16 = 1;
 
 /// A picture's or a DEF item's player colours (0x450520, 0x4EAA4A): the players' palette and the
 /// player's colour (0 red to 7 pink), whose 32 entries of that palette replace its 224–255.

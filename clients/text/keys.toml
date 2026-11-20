@@ -3960,15 +3960,12 @@ original = [{ at = "GENRLTXT:692" }]
 #
 # The stubs' notices: a box of style 1 over the menu each is chosen from, until its screen is
 # built (New Game's Campaign until E20, its Tutorial until the engine's tutorial mode, CLT-Q84;
-# the main menu's Credits until E27 M4 T2; High Scores' until M4 T1a).
+# the main menu's High Scores' until E27 M4 T1a, its Credits' until M4 T2).
 [[key]]
 id = "shell.stub.campaigns"
 
 [[key]]
 id = "shell.stub.tutorial"
-
-[[key]]
-id = "shell.stub.credits"
 
 # E27 M2 T7: the network modes' notice over the Multiplayer dialog (IPX, TCP/IP, Modem, Direct
 # Connect and Online: decision 10, CLT-STUB-6, until E28) and the scenario screen's (until M3),
@@ -4024,3 +4021,13 @@ original = [{ at = "GENRLTXT:76" }]
 [[key]]
 id = "shell.high-scores.reset"
 original = [{ at = "GENRLTXT:667" }]
+
+# E27 M4 T2: the credits (credits_text_load 0x5B9840: Credits.txt as a line file, its record 1
+# the text scrolled, record 2 the closing text drawn at the window's bottom near the end).
+[[key]]
+id = "shell.credits.text"
+original = [{ at = "CREDITS:1" }]
+
+[[key]]
+id = "shell.credits.closing"
+original = [{ at = "CREDITS:2" }]

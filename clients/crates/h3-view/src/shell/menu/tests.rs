@@ -118,6 +118,7 @@ pub(crate) fn menus(bugs: Bugs) -> Menus {
         multiplayer: crate::shell::multiplayer::tests::multiplayer(bugs),
         scenario: crate::shell::scenario::tests::scenario(bugs),
         scores: crate::shell::scores::tests::scores(bugs),
+        credits: crate::shell::credits::tests::credits(),
     }
 }
 
@@ -744,13 +745,15 @@ fn a_stub_s_screen_is_its_menu_opened_anew_under_its_notice() {
             None
         );
     }
-    // A stub without its notice opens nothing (the frame's stand-in).
+    // A stub without its notice opens nothing (the frame's stand-in); neither does a screen no
+    // longer a stub (the credits since E27 M4 T2).
+    assert_eq!(all.opened(Screen::Credits, [0, 0], Hovers::default()), None);
     let without = Menus {
         notices: Vec::new(),
         ..all
     };
     assert_eq!(
-        without.opened(Screen::Credits, [0, 0], Hovers::default()),
+        without.opened(Screen::Tutorial, [0, 0], Hovers::default()),
         None
     );
 }
@@ -881,8 +884,8 @@ fn the_scenario_screen_is_a_stub_over_its_game_type_menu() {
         stub_name(Screen::Scenario(Game::Load, ScenarioKind::Tutorial)),
         "scenario"
     );
-    assert_eq!(stub_name(Screen::Credits), "credits");
-    assert_eq!(super::scenario(Game::Load, ScenarioKind::Single), STUBS[3]);
+    assert_eq!(stub_name(Screen::Tutorial), "tutorial");
+    assert_eq!(super::scenario(Game::Load, ScenarioKind::Single), STUBS[2]);
     for built in [ScenarioKind::Single, ScenarioKind::Multiplayer] {
         assert!(
             !STUBS
