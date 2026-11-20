@@ -1593,6 +1593,32 @@ fn a_record_s_visits_and_level_ups() {
                     primary: PrimarySkill::Attack,
                     offers: [300, 2],
                 },
+                // The other primary skills; another hero's step with no walk open.
+                GameEvent::LevelGained {
+                    player: 0,
+                    hero: red.id,
+                    level: 7,
+                    primary: PrimarySkill::Attack,
+                    skill: None,
+                },
+                GameEvent::LevelGained {
+                    player: 0,
+                    hero: red.id,
+                    level: 8,
+                    primary: PrimarySkill::Power,
+                    skill: None,
+                },
+                GameEvent::Adventure {
+                    event: AdventureEvent::HeroStepped {
+                        hero: blue,
+                        from: None,
+                        to: Some(Pos {
+                            x: 30,
+                            y: 30,
+                            level: 0,
+                        }),
+                    },
+                },
             ]),
         ],
     );
@@ -1627,6 +1653,8 @@ fn a_record_s_visits_and_level_ups() {
             (3, 3, vec![(skill, known.level + 1)], Some(0)),
             (4, 3, Vec::new(), None),
             (5, 3, Vec::new(), None),
+            (7, 0, Vec::new(), None),
+            (8, 2, Vec::new(), None),
         ]
     );
     assert!(
