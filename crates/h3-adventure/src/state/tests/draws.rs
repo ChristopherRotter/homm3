@@ -19,9 +19,9 @@ use h3_kernel::hash::hash_of;
 
 use super::*;
 use crate::ruleset::{
-    AdventurePack, BankDef, BankLevelDef, BankQuestion, ChestDef, FindContentDef, FindDef, GiftDef,
-    Gives, Market, MarketParamsDef, MarketScreen, ObjectKindDef, ObjectTypeDef, OnceBonus,
-    PyramidDef, TurnDef, Visit,
+    AdventurePack, AltarFactionDef, BankDef, BankLevelDef, BankQuestion, ChestDef, FindContentDef,
+    FindDef, GiftDef, Gives, Market, MarketParamsDef, MarketScreen, ObjectKindDef, ObjectTypeDef,
+    OnceBonus, PyramidDef, TurnDef, Visit,
 };
 use crate::setup::{Bans, Holds};
 use crate::state::Resolved;
@@ -286,6 +286,24 @@ pub(super) fn rules_with(
                     artifacts: vec![20, 25, 30, 35, 40],
                     creatures: vec![30, 45, 50, 65, 70],
                 });
+            }
+            // E08 T134a: with an Altar every faction's screens (ADV-ALT-001): the castle's heroes
+            // sacrifice artifacts, the fortress's both, the wild's creatures.
+            if part
+                .object_types
+                .iter()
+                .any(|t| matches!(t.kind, ObjectKindDef::Altar(_)))
+            {
+                let entry = |k: &str, artifacts, creatures| AltarFactionDef {
+                    faction: key(k),
+                    artifacts,
+                    creatures,
+                };
+                part.altar_factions = vec![
+                    entry("t:castle", true, false),
+                    entry("t:fortress", true, true),
+                    entry("t:wild", false, true),
+                ];
             }
         },
     )

@@ -65,7 +65,8 @@ mod testing;
 pub use answer::{army_value, power};
 pub use army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, split_range};
 pub use command::{
-    AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
+    ALTAR_BACKPACK_PLACES, ALTAR_SLOTS, ALTAR_WORN_PLACES, AdventureCommand, AdventureCommandError,
+    AdventureEvent, AdventureEventKind, AdventureOutcome, AltarError, AltarPlaces, AltarVisit,
     BattleStart, Choice, ChoiceKind, Combatant, Defender, Drowned, Exchange, Garrison, HeroGains,
     HireDialog, HireError, HireSource, HireTarget, MarketError, MarketVisit, Meeting, NoRoom,
     NothingWhy, Offer, OfferKind, OwnHeroes, Pick, ServiceVisit, ShipyardBlock, Sink,
@@ -107,10 +108,10 @@ pub use split::{TileRand, split, split_with_second};
 /// no edge to the hero model.
 pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
-    AdventureState, BACKGROUND_RADIUS, Boat, Channels, GateEntry, HeroBonuses, HeroOnMap,
-    HirePurchase, MapObject, MarketOffers, MarketPurchase, Monster, Resolved, Sale, SaleOffer,
-    StaticMap, StaticTile, StockEntry, TradeOffer, VisitMarks, Visits, Weekly, WhirlpoolTile,
-    allied, hire_price,
+    AdventureState, AltarArtifact, AltarOffers, AltarStack, BACKGROUND_RADIUS, Boat, Channels,
+    GateEntry, HeroBonuses, HeroOnMap, HirePurchase, MapObject, MarketOffers, MarketPurchase,
+    Monster, Resolved, Sacrifice, Sacrificed, Sale, SaleOffer, StaticMap, StaticTile, StockEntry,
+    TradeOffer, VisitMarks, Visits, Weekly, WhirlpoolTile, allied, hire_price,
 };
 pub use town::{TavernVisit, TownHeroError, TownHeroMove, TownReveal};
 
