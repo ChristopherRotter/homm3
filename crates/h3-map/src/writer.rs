@@ -85,7 +85,8 @@ pub use rewards::{
     WITCH_HUT_OBJECT, WITCH_HUT_SKILLS,
 };
 pub use town::{
-    AnyTown, MainTown, RANDOM_HERO_OBJECT, RANDOM_TOWN_OBJECT, RandomHero, TownEvent, random_stack,
+    AnyTown, MainTown, RANDOM_HERO_OBJECT, RANDOM_TOWN_OBJECT, RandomHero, TownEvent, TownSpells,
+    random_stack,
 };
 
 use crate::gzip::crc32;
@@ -820,6 +821,10 @@ pub struct Map {
     /// Market draws one (survey `docs/rules/surveys/E08-trades.md` §7.1). None in an RoE map,
     /// which holds no banned artifacts.
     pub banned_artifacts: Vec<u16>,
+    /// The spells the map bans, by their codes below [`SPELL_COUNT`] (E09 T44: batch TWN-5's
+    /// TWN-5-2; GAM-SET-003): no guild draws one (survey `docs/rules/surveys/E09-guild.md` §3.1).
+    /// None in an RoE map, which holds no banned spells.
+    pub banned_spells: Vec<u8>,
     /// The map's timed events (E08 T78), in the list's order: the order the game fires them in
     /// on a day (GAM-CAL-004, survey `docs/rules/surveys/E08-economy.md` §11).
     pub events: Vec<TimedEvent>,
@@ -854,9 +859,9 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
 ///
 /// # Errors
 /// As [`write()`]; in [`Format::RoE`] also what an RoE map cannot hold: a level limit, banned
-/// skills or artifacts, a town, a hero type, artifact or creature past RoE's, a hero's spells,
-/// primary skills or fifth miscellaneous artifact, a Witch Hut's skills, a town choice past the
-/// eight factions, an [`AB_TRADE_OBJECTS`] class.
+/// skills, artifacts or spells, a town, a hero type, artifact or creature past RoE's, a hero's
+/// spells, primary skills or fifth miscellaneous artifact, a Witch Hut's skills, a town choice
+/// past the eight factions, an [`AB_TRADE_OBJECTS`] class.
 pub fn write_in(map: &Map, format: Format) -> Result<Vec<u8>, WriteError> {
     write_all(map, &Extras::default(), format)
 }
@@ -916,7 +921,7 @@ fn write_all(map: &Map, extras: &Extras, format: Format) -> Result<Vec<u8>, Writ
             banned[usize::from(code / 8)] |= 1 << (code % 8);
         }
         out.bytes(&banned);
-        out.bytes(&[0; 9]); // no banned spells
+        out.bytes(&town::spell_bits(&map.banned_spells));
         let mut banned = [0u8; SKILL_COUNT.div_ceil(8) as usize];
         for &code in &map.banned_skills {
             banned[usize::from(code / 8)] |= 1 << (code % 8);
@@ -1022,6 +1027,12 @@ fn validate(map: &Map, codes: &Codes) -> Result<(), WriteError> {
     }
     if let Some(&code) = map.banned_artifacts.first() {
         codes.refuse("banned artifact in an RoE map", code)?;
+    }
+    if let Some(&code) = map.banned_spells.iter().find(|&&code| code >= SPELL_COUNT) {
+        return Err(out_of_range("banned spell", code));
+    }
+    if let Some(&code) = map.banned_spells.first() {
+        codes.refuse("banned spell in an RoE map", code)?;
     }
     for player in map.players.iter().flatten() {
         if player.towns >> 8 != 0 {
@@ -1608,6 +1619,7 @@ mod tests {
             level_limit: 0,
             banned_skills: Vec::new(),
             banned_artifacts: Vec::new(),
+            banned_spells: Vec::new(),
             events: Vec::new(),
             teams: None,
         }

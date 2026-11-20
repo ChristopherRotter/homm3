@@ -185,6 +185,8 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   the default): no level-up offers a banned skill the hero does not know (HER-LVL-003), so a map
   banning all but two forces a level-up's offers for heroes who know neither (batch E5e). The
   scenario's information does not show them: the spec's instructions say so.
+  `banned_spells` (E09 T44, batch TWN-5): the hero spells the map bans, by `SPTRAITS.TXT` name
+  (none, the default): no guild draws one; an RoE map holds none.
   `difficulty` (E08 T22a1: `easy`, `normal`, `hard`, `expert` or `impossible`): the template
   says to choose it in the scenario list (the map does not hold it; the harness's recipe names
   it too). `[map.underground]` (E08 T22a1): a second level, `terrain` (a land terrain) and its
@@ -194,7 +196,13 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   `garrison` as an opponent's town below: batch 4b's Tavern town of Tan's, which the computer's
   retreat test asks for; batch E9b's town of each player, which a run past the seventh day needs
   (a player without a town is defeated seven days after, the original's countdown); batch TWN-1's
-  standard sets with and without a Fort and its explicitly empty garrisons (E09 T3a).
+  standard sets with and without a Fort and its explicitly empty garrisons (E09 T3a). Since E09
+  T44 (batch TWN-5) a map town also takes `required_spells` and `banned_spells` (hero spells by
+  `SPTRAITS.TXT` name: a guild slot of a spell's level takes the first required one not
+  excluded; a banned one is never drawn) and `main = true` (its owner's main town, in the
+  header; at most one per player, not a neutral town; the owner's allowed towns are then its
+  faction alone) with `generates_hero = true` (the game generates the owner's starting hero
+  there, of the town's faction, drawn at the new game unless the player picks one).
   `format` (E08 T56): `sod` (the default) or `roe`, the map in the RoE format (version `0x0E`,
   batch E7's row E7-7): no level limit, banned skills or artifacts, towns, hero spells or primary
   skills (its heroes take `defaults`, or since E08 T128 their own army, experience, skills and
