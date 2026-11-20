@@ -12,8 +12,8 @@ use alloc::vec::Vec;
 
 use h3_adventure::{
     AdventureOutcome, AdventureState, ArmyRef, ArmySlot, Choice, ChoiceKind, Drowned, Exchange,
-    Garrison, HeroGains, HireDialog, HireSource, HireTarget, Meeting, ObjectTypeId, Offer,
-    OfferKind, Pick, Pos, TavernVisit, TownReveal, UniversityVisit, Weekday,
+    Garrison, HeroGains, HireDialog, HireSource, HireTarget, MarketVisit, Meeting, ObjectTypeId,
+    Offer, OfferKind, Pick, Pos, ServiceVisit, TavernVisit, TownReveal, UniversityVisit, Weekday,
 };
 use h3_content::{ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId, TownId};
@@ -41,6 +41,7 @@ mod day;
 mod hire;
 mod levels;
 mod manage;
+mod market;
 mod rests;
 
 pub use battle::OpenBattle;
@@ -69,7 +70,8 @@ struct PlayerState {
 /// owner also manages the heroes (and the group) it holds together (GAM-MAN-001); since E08 T63a
 /// a choice (GAM-DEC-005) and a University (GAM-DEC-006); since E08 T95b a hire dialog
 /// (GAM-DEC-008); since E08 T114a2 a map garrison's exchange (GAM-DEC-009), during which its owner
-/// manages the hero's army and the garrison's; since E09 T39a a map Tavern (GAM-DEC-010).
+/// manages the hero's army and the garrison's; since E09 T39a a map Tavern (GAM-DEC-010); since
+/// E08 T133b a market (GAM-DEC-011).
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Decision {
     /// An offer, answered by its owner.
@@ -159,6 +161,16 @@ enum Decision {
         /// The visit: the hero, the Tavern and its visitable tile.
         visit: TavernVisit,
     },
+    /// A market's decision (GAM-DEC-011, ADV-MKT-001; E08 T133b, increment 14's design note §13;
+    /// the original's market dialog), open until its owner leaves it: every other answer keeps
+    /// it open (the original's window stays open for more trades). The names only: its screens,
+    /// rates and stock are read from the adventure at each view and answer.
+    Market {
+        /// The visitor's owner, who answers it.
+        owner: PlayerId,
+        /// The visit: the hero and the market.
+        visit: MarketVisit,
+    },
 }
 
 /// What holds an army dialog's group (GAM-DEC-004 amended; E08 T84a): a join's (or a reward
@@ -213,7 +225,8 @@ impl Decision {
             | Self::University { owner, .. }
             | Self::Hire { owner, .. }
             | Self::Exchange { owner, .. }
-            | Self::Tavern { owner, .. } => *owner == player,
+            | Self::Tavern { owner, .. }
+            | Self::Market { owner, .. } => *owner == player,
             Self::Battle(battle) => battle.owners().contains(&Some(player)),
         }
     }
@@ -610,9 +623,10 @@ impl GameState {
     /// T95b): an outcome has at most one of the offer, the battle, the meeting, the group without
     /// room, the choice, the University and the hire dialog; since E09 T39a the map Tavern's
     /// decision ([`Self::open_tavern`]), alone; since E09 T39b2 a Den of Thieves' Thieves' Guild
-    /// at everything, told to the player ([`town::thieves::tell_den`]), alone.
+    /// at everything, told to the player ([`town::thieves::tell_den`]), alone; since E08 T133b a
+    /// market's decision ([`Self::open_market`]), alone.
     // rule: GAM-DEC-001, GAM-DEC-005, GAM-DEC-006, GAM-DEC-007, GAM-DEC-008, ADV-MON-006
-    // rule: TWN-SIE-002, GAM-DEC-009, TWN-GRO-007, GAM-DEC-010, ADV-VIS-008
+    // rule: TWN-SIE-002, GAM-DEC-009, TWN-GRO-007, GAM-DEC-010, ADV-VIS-008, GAM-DEC-011
     pub(crate) fn settle_outcome<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -707,8 +721,10 @@ impl GameState {
             if outcome.thieves_guild {
                 town::thieves::tell_den(self, rules, player, sink);
             }
-            // E08 T133a2: a market's window (`outcome.service`) opens no decision until T133b.
-            // stub: ADV-STUB-18
+            // rule: GAM-DEC-011
+            if let Some(ServiceVisit::Market(visit)) = outcome.service {
+                self.open_market(player, visit, sink);
+            }
         }
     }
 
@@ -1007,7 +1023,8 @@ impl GameState {
     /// GAM-DEC-004, E08 T51b), a choice's ([`Self::answer_choice`], GAM-DEC-005), a University's
     /// purchase ([`Self::buy`]) or leaving (GAM-DEC-006), a hire dialog's purchase
     /// ([`Self::hire`]) or closing (GAM-DEC-008, E08 T95b), a map Tavern's hire or closing, each
-    /// closing it (GAM-DEC-010, E09 T39a).
+    /// closing it (GAM-DEC-010, E09 T39a), a market's trade, transfer, sale, purchase or leaving
+    /// ([`Self::answer_market`], GAM-DEC-011, E08 T133b).
     ///
     /// # Errors
     ///
@@ -1015,9 +1032,10 @@ impl GameState {
     /// T19a), then `WrongAnswer` for an answer of another kind (E08 T30, T63a), then `OfferGone`
     /// for an acceptance, `SlotClosed` and `CannotPay` for a University's purchase (T63a), `Hire`
     /// and `CannotPay` for a hire dialog's (T95b), `Tavern` and `CannotPay` for a map Tavern's
-    /// hire (E09 T39a: [`town::hire::map_hire`]); the state is then unchanged.
+    /// hire (E09 T39a: [`town::hire::map_hire`]), `Market` and `CannotPay` for a market's (E08
+    /// T133b); the state is then unchanged.
     // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006
-    // rule: GAM-DEC-008, GAM-DEC-010
+    // rule: GAM-DEC-008, GAM-DEC-010, GAM-DEC-011
     pub(crate) fn answer<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -1085,6 +1103,10 @@ impl GameState {
                 self.close(at);
                 sink.emit(GameEvent::DecisionClosed { player });
                 Ok(())
+            }
+            // rule: GAM-DEC-011
+            (Decision::Market { visit, .. }, Answer::Market(answer)) => {
+                self.answer_market(rules, (player, at), &visit, answer, sink)
             }
             _ => Err(GameCommandError::WrongAnswer),
         }
@@ -1328,6 +1350,16 @@ impl GameState {
     pub fn tavern(&self, player: PlayerId) -> Option<&TavernVisit> {
         match self.first_decision(player)? {
             Decision::Tavern { visit, .. } => Some(visit),
+            _ => None,
+        }
+    }
+
+    /// The market of `player`'s first open decision, if it is one (GAM-DEC-011, E08 T133b): the
+    /// visiting hero and the market. While it is open the player trades, transfers, sells, buys
+    /// there or leaves it.
+    pub fn market(&self, player: PlayerId) -> Option<&MarketVisit> {
+        match self.first_decision(player)? {
+            Decision::Market { visit, .. } => Some(visit),
             _ => None,
         }
     }
@@ -1958,6 +1990,15 @@ impl CanonicalHash for GameState {
                     visit.object_type.hash_into(h);
                     visit.anchor.hash_into(h);
                     visit.entrance.hash_into(h);
+                }
+                // E08 T133b (game state hash v35).
+                Decision::Market { owner, visit } => {
+                    h.write_u8(10);
+                    h.write_u8(owner.raw());
+                    h.write_u16(visit.hero.raw());
+                    h.write_len(visit.index);
+                    visit.object_type.hash_into(h);
+                    visit.anchor.hash_into(h);
                 }
             }
         }

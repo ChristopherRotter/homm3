@@ -223,8 +223,13 @@ pub mod wire;
 /// the rows' places, each player's best hero and creature; none without a Tavern of the asking
 /// seat's in its turn), and a Den of Thieves' visit's `ThievesGuildSeen` (the level) with
 /// `GuildPartSeen` per part (`GuildPart`: a row's place, a player's parts), told to the
-/// visitor's owner alone and not folded (the guild is not in the observation).
-pub const PROTOCOL_VERSION: u32 = 74;
+/// visitor's owner alone and not folded (the guild is not in the observation). v75 (E08 T133b,
+/// the adventure lane's, `cross-lane`): the market's decision (GAM-DEC-011): `Answer::Market`
+/// (`MarketAnswer`: a trade, a transfer, a sale, a purchase, leaving; resources by handle),
+/// `GameReject::Market` (`MarketReject`), `Decision::Market` (`MarketWindow`: the screens, the
+/// count, the trades' lots, the stacks' lots, the stock with its prices, the recipients) and its
+/// event `MarketOpened`, which carries no view (folded as a University's, `SRV-STUB-5`).
+pub const PROTOCOL_VERSION: u32 = 75;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

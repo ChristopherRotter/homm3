@@ -181,7 +181,7 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 13);
+    assert_eq!(ACTION_ENCODING_VERSION, 14);
     assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 37));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!((HIRE_BASE, HIRE_SLOTS, REVISIT_BASE), (18, 4, 22));
@@ -202,6 +202,19 @@ fn tiles_and_actions_encode_as_documented() {
             tavern(h3_game::TavernAnswer::Close),
         ],
         [Some(FIRST), Some(SECOND), None, Some(DECLINE)]
+    );
+    // E08 T133b (v14): a market's `Leave` the closing role, its other answers none until T135a.
+    let market = |answer| answer_entry(h3_game::Answer::Market(answer));
+    let wood = h3_content::ResourceId::from_raw(0);
+    assert_eq!(
+        [
+            market(h3_game::MarketAnswer::Leave),
+            market(h3_game::MarketAnswer::Buy {
+                entry: 0,
+                pay: wood
+            }),
+        ],
+        [Some(DECLINE), None]
     );
     // E09 T38a2 (v12): a hire of each of the two tavern slots.
     assert_eq!((TAVERN_HIRE, TAVERN_SLOTS), (35, 2));

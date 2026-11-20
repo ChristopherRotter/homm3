@@ -76,7 +76,7 @@ fn towns<T: PartialEq>(
 const VISIONS: &str = "TWN-STUB-13";
 
 /// Whether a decision's view is one no event carries (SRV-STUB-5): an offer's, a choice's, a
-/// University's or a hire dialog's.
+/// University's, a hire dialog's or (E08 T133b, v75) a market's.
 fn untold(decision: Option<&Decision>) -> bool {
     matches!(
         decision,
@@ -85,6 +85,7 @@ fn untold(decision: Option<&Decision>) -> bool {
                 | Decision::Choice { .. }
                 | Decision::University { .. }
                 | Decision::Hire { .. }
+                | Decision::Market { .. }
         )
     )
 }
@@ -797,6 +798,12 @@ fn the_fold_leaves_the_view_for_messages_and_what_no_event_carries() {
                 anchor: a,
             },
             GameEvent::UniversityOpened {
+                player: 1,
+                hero: 4,
+                object_type: ty,
+                anchor: a,
+            },
+            GameEvent::MarketOpened {
                 player: 1,
                 hero: 4,
                 object_type: ty,

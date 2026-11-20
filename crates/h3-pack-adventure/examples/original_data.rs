@@ -1080,6 +1080,14 @@ fn trades(
                     ));
                 }
             }
+            // E08 T133b (ADV-Q60 (a)): the executable values a creature and an artifact at
+            // their gold cost (the creature record's +0x38, the artifact's cost).
+            if resource("base:gold") != Some(market.cost()) {
+                mismatches.push(format!(
+                    "the market's cost resource is {:?}, not the executable's gold",
+                    market.cost()
+                ));
+            }
             if market.counts() != 10 {
                 mismatches.push(format!(
                     "the market has {} counts, not the executable's 10",

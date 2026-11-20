@@ -36,9 +36,9 @@ pub use clock::{Duel, GameClock, OfferClock, Timer};
 pub use command::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, GameCommand,
-    GameReject, HireAnswer, HireReject, Manage, ManageReject, MoveReject, SchoolChoice, SkillOffer,
-    StandReject, SystemCommand, TavernAnswer, TavernReject, TownCommand, TownHeroChange,
-    TownReject, UniversityAnswer,
+    GameReject, HireAnswer, HireReject, Manage, ManageReject, MarketAnswer, MarketReject,
+    MoveReject, SchoolChoice, SkillOffer, StandReject, SystemCommand, TavernAnswer, TavernReject,
+    TownCommand, TownHeroChange, TownReject, UniversityAnswer,
 };
 pub use event::{AdventureEvent, GameEvent, HeroChange, NothingWhy, ShipyardBlock};
 pub use lobby::{Computer, MapGameInfo, MapOffer, SeatedPlayer};
@@ -624,6 +624,101 @@ pub enum Decision {
         /// The Tavern by type and anchor.
         object: ObjectRef,
     },
+    /// A market (GAM-DEC-011, ADV-MKT-008; E08 T133b, v75): what its window offers with the
+    /// rates, answered with a trade, a transfer, a sale, a purchase or leaving it.
+    Market {
+        /// The window.
+        market: MarketWindow,
+    },
+}
+
+/// A market's decision as its owner sees it (`h3_game::MarketView`; ADV-MKT-008, E08 T133b, v75):
+/// the hero, the market by type and anchor, its screens and count, and for each screen it shows
+/// the rates the server's answers use; a Black Market's stock to its visitor alone.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketWindow {
+    /// The visiting hero.
+    pub hero: u16,
+    /// The market by type and anchor.
+    pub object: ObjectRef,
+    /// Its screens, in its kind's order.
+    pub screens: Vec<MarketScreen>,
+    /// The Marketplaces it trades as.
+    pub count: u8,
+    /// Each pair of resources' lot, the given then the wanted in the core's order.
+    pub trades: Vec<TradeLot>,
+    /// Each stack of the hero's army, its lot per resource.
+    pub sales: Vec<SaleLots>,
+    /// The Black Market's stock, each entry's artifact (none once bought) and price per resource.
+    pub stock: Vec<StockEntry>,
+    /// The transfer's recipients: every other player of the game.
+    pub recipients: Vec<u8>,
+}
+
+/// A market's screen (`h3_game::MarketScreen`; E08 T133b, v75).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MarketScreen {
+    /// Resources for resources.
+    Trade,
+    /// Resources to another player, 1 : 1.
+    Transfer,
+    /// Creatures for resources.
+    Sell,
+    /// Resources for an artifact of the stock.
+    Buy,
+}
+
+/// A rate (`h3_game::Lot`; E08 T133b, v75): so many given for so many wanted, one of them 1.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Lot {
+    /// How many of the given one lot takes.
+    pub give: u32,
+    /// How many of the wanted one lot gives.
+    pub take: u32,
+}
+
+/// A trade's lot (`h3_game::TradeOffer`; E08 T133b, v75).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TradeLot {
+    /// The resource given.
+    pub give: u16,
+    /// The resource wanted.
+    pub take: u16,
+    /// The lot.
+    pub lot: Lot,
+}
+
+/// A stack's lots (`h3_game::SaleOffer`; E08 T133b, v75).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SaleLots {
+    /// The hero's army's slot.
+    pub slot: u8,
+    /// The lot per resource it sells for.
+    pub lots: Vec<ResourceLot>,
+}
+
+/// A lot in a resource (E08 T133b, v75).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResourceLot {
+    /// The resource's handle.
+    pub resource: u16,
+    /// The lot: creatures given, units gained.
+    pub lot: Lot,
+}
+
+/// A Black Market's entry (`h3_game::StockEntry`; E08 T133b, v75).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StockEntry {
+    /// The artifact's handle, none once bought.
+    pub artifact: Option<u16>,
+    /// Its price per resource.
+    pub prices: Vec<Amount>,
 }
 
 /// An offer a visit makes to its visitor's owner, answered yes or no (ADR-0017 point 6), its

@@ -77,9 +77,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-#### ADV-Q60 — The market's cost resource: where a creature's and an artifact's value is read (E08 T133a2)
-
-**Context.** The market's rates (ADV-MKT-002, `h3_adventure::MarketParams`) value a creature sold and an artifact bought at their **gold** cost (the original's creature record's +0x38 and the artifact's cost), but nothing in the adventure part names which resource that is: the core has no notion of gold (resources are data, ADR-0006), the part's `[params.market]` values every resource, and only the town part names its gold (`TownParams::gold`, the halls' income) and the chests their own. T133a2's checks (`AdventureState::check_sale`, `check_buy`) therefore take the resource from their caller (`value`); the game (T133b) must pass one. **Options.** (a) `[params.market]` names it (`cost = "gold"` in the base pack; `MarketParams::cost`), the checks read it themselves: one place for the map's markets and the town lane's Marketplace on the same module (E09 increment 6); adventure ruleset part v24 (the goldens' part hash re-recorded, the AI lane's bots tables `cross-lane`). (b) The game passes the town part's `gold` (`TownParams::gold`): no version moves, but the adventure part's market prices in a resource another part names. **Recommendation:** (a), at T133b's start (or a small task before it). **Blocked:** nothing until T133b; T133a2's tests pass the test core's gold.
+(no open questions)
 
 ### Server lane (`SRV-Q<n>`)
 

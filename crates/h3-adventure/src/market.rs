@@ -37,6 +37,8 @@ pub enum MarketParamsError {
     Rows,
     /// A factor is 0.
     ZeroFactor,
+    /// The cost resource is not one the value tables value (E08 T133b, ADV-Q60).
+    Cost,
 }
 
 /// The market's parameters (ADV-MKT-002; the adventure part's `[market]`, Tier 2): a value per
@@ -45,10 +47,12 @@ pub enum MarketParamsError {
 /// 125, 250, 125, 250, 250, 250, 1), both in the core's resource order; and three factors per
 /// count of Marketplaces from 1, in hundredths (`market_resource_rates` 0x678344,
 /// `market_artifact_rates` 0x678370, `market_creature_rates` 0x67839C), each used as the binary32
-/// nearest it, as the executable holds them. A creature's value is its gold cost, an artifact's
-/// its cost; the caller passes them.
+/// nearest it, as the executable holds them. A creature's and an artifact's value is their cost in
+/// the parameters' cost resource (the original's gold: the creature record's +0x38, the
+/// artifact's cost; E08 T133b, ADV-Q60 (a)), which [`Self::cost`] names and the caller reads.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MarketParams {
+    cost: ResourceId,
     values: Vec<u16>,
     artifact_values: Vec<u16>,
     rows: Vec<Row>,
@@ -69,15 +73,20 @@ struct Row {
 const SCALE: u32 = 32;
 
 impl MarketParams {
-    /// The parameters: the two value tables by resource and, by count from 1, the resources',
-    /// the artifacts' and the creatures' factors in hundredths.
+    /// The parameters: the cost resource (a creature's and an artifact's value is their cost in
+    /// it), the two value tables by resource and, by count from 1, the resources', the
+    /// artifacts' and the creatures' factors in hundredths.
     pub fn new(
+        cost: ResourceId,
         values: Vec<u16>,
         artifact_values: Vec<u16>,
         rows: &[[u16; 3]],
     ) -> Result<Self, MarketParamsError> {
         if values.is_empty() || values.len() != artifact_values.len() {
             return Err(MarketParamsError::Values);
+        }
+        if cost.index() >= values.len() {
+            return Err(MarketParamsError::Cost);
         }
         if values.iter().chain(&artifact_values).any(|&v| v == 0) {
             return Err(MarketParamsError::ZeroValue);
@@ -100,10 +109,18 @@ impl MarketParams {
             })
             .collect::<Result<_, _>>()?;
         Ok(Self {
+            cost,
             values,
             artifact_values,
             rows,
         })
+    }
+
+    /// The resource a creature's and an artifact's cost is read in for the market (E08 T133b,
+    /// ADV-Q60 (a): the base pack's gold, the original's creature record's +0x38 and artifact
+    /// cost).
+    pub const fn cost(&self) -> ResourceId {
+        self.cost
     }
 
     /// The counts of Marketplaces the parameters know: 1 to this.
@@ -190,9 +207,11 @@ impl MarketParams {
 }
 
 impl CanonicalHash for MarketParams {
-    /// The two value tables as length and entries, then the rows as their number and each one's
-    /// three factors as binary32 bit patterns (E08 T132a2: in the adventure part's hash, v23).
+    /// The cost resource (v24, E08 T133b), the two value tables as length and entries, then the
+    /// rows as their number and each one's three factors as binary32 bit patterns (E08 T132a2:
+    /// in the adventure part's hash, v23).
     fn hash_into(&self, h: &mut StateHasher) {
+        self.cost.hash_into(h);
         for table in [&self.values, &self.artifact_values] {
             h.write_len(table.len());
             table.iter().for_each(|&v| h.write_u16(v));

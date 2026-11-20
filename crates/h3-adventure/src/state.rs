@@ -122,7 +122,7 @@ pub use dwellings::{HirePurchase, hire_price};
 pub use economy::Weekly;
 pub use economy::allied;
 use flags::Flags;
-pub use markets::{MarketPurchase, Sale};
+pub use markets::{MarketOffers, MarketPurchase, Sale, SaleOffer, StockEntry, TradeOffer};
 pub(crate) use monsters::{Room, join_at, room};
 pub(crate) use occupancy::{Added, Occupancy};
 pub(crate) use passage::{Mode, Node};

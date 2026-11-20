@@ -124,10 +124,12 @@ fn parses_the_market_parameters_and_the_altar_factions() {
     assert_eq!(params(""), Ok(None));
     assert_eq!(
         params(
-            "[params.market]\nvalues = { wood = 250, \"other:gold\" = 1 }\nartifact_values = { wood = \
-             125 }\nresources = [10, 15]\nartifacts = [20]\ncreatures = []"
+            "[params.market]\ncost = \"other:gold\"\nvalues = { wood = 250, \"other:gold\" = 1 }\n\
+             artifact_values = { wood = 125 }\nresources = [10, 15]\nartifacts = [20]\n\
+             creatures = []"
         ),
         Ok(Some(MarketParamsDef {
+            cost: k("other:gold"),
             values: vec![(k("other:gold"), 1), (k("p:wood"), 250)],
             artifact_values: vec![(k("p:wood"), 125)],
             resources: vec![10, 15],
@@ -136,10 +138,21 @@ fn parses_the_market_parameters_and_the_altar_factions() {
         }))
     );
     for (table, key_error) in [
-        ("values = { Bad = 1 }\nartifact_values = {}", true),
-        ("values = {}\nartifact_values = { Bad = 1 }", true),
-        ("values = { wood = 65536 }\nartifact_values = {}", false),
-        ("values = {}", false),
+        (
+            "cost = \"gold\"\nvalues = { Bad = 1 }\nartifact_values = {}",
+            true,
+        ),
+        (
+            "cost = \"gold\"\nvalues = {}\nartifact_values = { Bad = 1 }",
+            true,
+        ),
+        ("cost = \"Bad\"\nvalues = {}\nartifact_values = {}", true),
+        (
+            "cost = \"gold\"\nvalues = { wood = 65536 }\nartifact_values = {}",
+            false,
+        ),
+        ("cost = \"gold\"\nvalues = {}", false),
+        ("values = {}\nartifact_values = {}", false),
     ] {
         let error = params(&format!(
             "[params.market]\n{table}\nresources = []\nartifacts = []\ncreatures = []"

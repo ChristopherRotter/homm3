@@ -47,9 +47,11 @@ use super::rollout::choose;
 /// (TWN-ROW-001); version 17 (E09 T38a1): a tavern hero's hire at a town's Tavern
 /// (`h3_towns::TownCommand::Hire` by its town and slot, TWN-TAV-003); version 18 (E09 T38b2): a
 /// hero's dismissal (`Manage::Dismiss` by its hero, GAM-MAN-003); version 19 (E09 T39a): a map
-/// Tavern's answers (`h3_game::TavernAnswer`: a hire by its slot, `Close`; GAM-DEC-010). A replay
-/// of another version is refused ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 19;
+/// Tavern's answers (`h3_game::TavernAnswer`: a hire by its slot, `Close`; GAM-DEC-010); version
+/// 20 (E08 T133b): a market's answers (`h3_game::MarketAnswer`: a trade, a transfer, a sale, a
+/// purchase, `Leave`; GAM-DEC-011). A replay of another version is refused
+/// ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 20;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

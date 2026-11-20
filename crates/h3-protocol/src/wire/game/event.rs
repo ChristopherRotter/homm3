@@ -181,6 +181,13 @@ pub enum GameEvent {
         object_type: u16,
         anchor: Pos,
     },
+    /// E08 T133b (v75).
+    MarketOpened {
+        player: u8,
+        hero: u16,
+        object_type: u16,
+        anchor: Pos,
+    },
     DecisionClosed {
         player: u8,
     },

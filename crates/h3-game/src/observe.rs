@@ -14,7 +14,7 @@ use alloc::vec::Vec;
 
 use h3_adventure::{
     AdventureObservation, AdventureReveal, BitGrid, Choice, GarrisonHeroView, HeroView, HireSource,
-    HireTarget, ObjectTypeId, Offer, Pos, UniversityVisit, Viewers,
+    HireTarget, MarketOffers, ObjectTypeId, Offer, Pos, UniversityVisit, Viewers,
 };
 use h3_content::{CreatureTypeId, HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
@@ -161,6 +161,30 @@ pub enum DecisionView {
         /// The Tavern's anchor.
         anchor: Pos,
     },
+    /// A market (GAM-DEC-011, ADV-MKT-008; E08 T133b, increment 14's design note §12, §13),
+    /// answered `Market`: a trade, a transfer, a sale, a purchase or leaving it.
+    Market(MarketView),
+}
+
+/// A market's decision as its owner sees it (ADV-MKT-008, GAM-DEC-011; E08 T133b, increment 14's
+/// design note §12, §13): the hero, the market by type and anchor (never by index, ADR-0016 point
+/// 6), what its window offers with the rates the state's answers use (so a client and the env need
+/// no copy of the computation; the answers are checked against the state, never against this)
+/// and the transfer's recipients. A Black Market's stock shows here alone, to its visitor's owner
+/// while the decision is open; nothing of it is kept after (design note §12).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MarketView {
+    /// The visiting hero.
+    pub hero: HeroId,
+    /// The market's type.
+    pub object_type: ObjectTypeId,
+    /// The market's anchor.
+    pub anchor: Pos,
+    /// What the window offers (`h3_adventure::AdventureState::market_offers`).
+    pub offers: MarketOffers,
+    /// With the transfer's screen, every other player of the game in order (ADV-MKT-004); none
+    /// without it.
+    pub recipients: Vec<PlayerId>,
 }
 
 impl DecisionView {
@@ -367,6 +391,12 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
                     object_type: visit.object_type,
                     anchor: visit.anchor,
                 })
+            })
+            .or_else(|| {
+                let visit = state.market(player)?;
+                Some(DecisionView::Market(
+                    state.market_view(rules, player, visit),
+                ))
             }),
         heroes: hero_infos(state, &adventure.heroes, &adventure.garrison_heroes),
         adventure,
@@ -539,6 +569,7 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::UniversityOpened { player: owner, .. }
         | GameEvent::HireOpened { player: owner, .. }
         | GameEvent::TavernOpened { player: owner, .. }
+        | GameEvent::MarketOpened { player: owner, .. }
         | GameEvent::DecisionClosed { player: owner }
         | GameEvent::GroupLost { player: owner, .. }
         | GameEvent::TimedEventFired { player: owner, .. } => (owner == player).then_some(*event),
